@@ -1,0 +1,9 @@
+{
+  "metric": "mean_goal_distance",
+  "direction": "lower",
+  "value": 0.0813,
+  "full_at": 0.8,
+  "source": "measured by `ale validate` on 2026-09-08 (engine 90a7c1c, the oracle of this rehearsal task on the maintainer's machine, 60 episodes); never a published figure. Rehearsal task for the contribution-channel dress rehearsal; closed without merging.",
+  "reference_commit": "b04359f1b9477b114aa72b8e80113096c59956d0",
+  "note": "Rehearsal only: exercises both contribution channels end to end; closed without merging."
+}
