@@ -8,7 +8,7 @@
 > this file.
 >
 > Last updated: 2026-09-08 (website live on agentic-robotics-benchmark.org; both contribution
-> channels rehearsed end to end).
+> channels rehearsed end to end; the leftover paper-onboarding skill link removed).
 
 ## 0. 2026-09-07 — created by the rebrand from "ALE Robotics"
 
@@ -93,15 +93,22 @@ and `verify/` included.
   rename creating a second release row (the website's seed now keys the release by version
   and merges duplicates).
 
+## 3. 2026-09-08 — the paper-onboarding skill link removed
+
+- `.claude/skills/onboard_paper` was a symlink to `skill/`, the paper-reproduction
+  onboarding skill of the project's first months; its target had been deleted long before
+  the rebrand copied the dangling link over. Removed (owner decision: the benchmark is not
+  about reproducing papers, so no replacement). The repository has no `.claude/` directory
+  now; the agent-facing skills are the ones under `skills/onboard-*/`, routed by
+  `skills/onboard-task/SKILL.md`. `docs/research/agentic-robotics-survey.md` pointed at
+  the old `skills/SKILL.md`; it now points at the router.
+
 ## Open items
 
 - Merge or reject the re-opened contribution after `ale validate`; on merge, export the
   registry, install it in the website, commit `identity-history.json`, and delete
-  `drone_hover` (owner decision: with the first community task).
-- Website: land uploads at `tasks/<direction>/<slug>/` here, show the pull request link to
-  the uploader, rebuild the template download from this repository, switch the domain.
-- Delete `drone_hover` when the first community task is merged (the registry must not be
-  empty; the website's tests reference the slug).
+  `drone_hover` (owner decision: with the first community task; the registry must not be
+  empty and the website's tests reference the slug).
 
 ## Gotchas
 
