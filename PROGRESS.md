@@ -7,8 +7,8 @@
 > before every hand-off. Where it disagrees with the code or `git log`, the code wins: fix
 > this file.
 >
-> Last updated: 2026-09-07 (repository created by the Agentic Robotics Benchmark rebrand;
-> not pushed yet).
+> Last updated: 2026-09-08 (pushed; first CI run green; the pending contribution re-opened
+> as a pull request here).
 
 ## 0. 2026-09-07 — created by the rebrand from "ALE Robotics"
 
@@ -62,13 +62,24 @@ and `verify/` included.
   `identity-history.json` byte for byte and the template zip builds (22 entries); ruff reports
   the same nine pre-existing style notes as before (non-blocking in CI).
 
+## 1. 2026-09-08 — pushed; the pending contribution re-opened here
+
+- `main` pushed to `https://github.com/Grounded-Intelligence-Initiative/agentic-robotics-benchmark`
+  after the owner signed off the privacy checklist; the first `pr-checks` run on `main` is
+  green (engine lint over `tasks/` + `templates/`, identity cross-check, static checks).
+- The contribution `fault_adaptive_spacecraft_docking` (old repository PR #14, uploaded on
+  the website by Jiankai-Sun, revision 2) is re-opened here as  on branch
+  `contrib/fault_adaptive_spacecraft_docking`: commit 1 = the 20 uploaded files byte for
+  byte at `tasks/control/fault_adaptive_spacecraft_docking/`; commit 2 = `verify/robotics_grader/`
+  re-vendored from `shared/` (the upload carried the 2026-09-05 kit). Old PR #14 closed with
+  a pointer. Still to do by a maintainer before merge: `ale validate` (the anchor was a
+  dry-run measurement; the oracle runs three hours).
+
 ## Open items
 
-- Push to `https://github.com/Grounded-Intelligence-Initiative/agentic-robotics-benchmark`
-  after the owner signs off the privacy checklist (the repository exists on GitHub, empty).
-- Re-open the pending contribution `fault_adaptive_spacecraft_docking` (old repository
-  PR #14, uploaded by Jiankai-Sun, revision 2) here as a pull request at
-  `tasks/<direction>/fault_adaptive_spacecraft_docking/`, then close PR #14 with a pointer.
+- Merge or reject the re-opened contribution after `ale validate`; on merge, export the
+  registry, install it in the website, commit `identity-history.json`, and delete
+  `drone_hover` (owner decision: with the first community task).
 - Website: land uploads at `tasks/<direction>/<slug>/` here, show the pull request link to
   the uploader, rebuild the template download from this repository, switch the domain.
 - Delete `drone_hover` when the first community task is merged (the registry must not be
