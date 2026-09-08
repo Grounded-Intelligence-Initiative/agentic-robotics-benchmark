@@ -1,0 +1,3 @@
+[submodule "vendor/ale"]
+	path = vendor/ale
+	url = https://github.com/AgentsLastExam/ale.git

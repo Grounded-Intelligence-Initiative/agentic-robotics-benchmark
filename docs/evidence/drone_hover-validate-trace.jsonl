@@ -1,0 +1,6 @@
+{"chars": 2694, "kind": "instruction", "seq": 0, "text_digest": "sha256:34e50184e72d0b170edd1135c29a925d21dacb879633e460d7ab1b4bf2827a99", "ts": "2026-07-28T18:04:42.342Z"}
+{"data": {"mode": "block"}, "kind": "note", "message": "network sealed for the agent", "seq": 1, "ts": "2026-07-28T18:04:42.615Z"}
+{"data": {"exit_code": 0, "harness": "oracle"}, "kind": "note", "message": "agent finished", "seq": 2, "ts": "2026-07-28T18:15:52.586Z"}
+{"argv_digest": "sha256:8214123ba2912bbe644a6cf120248bdabd6248c625947d142f7fedd0b993ce3b", "duration_ms": 5004, "exit_code": 0, "kind": "exec", "seq": 3, "stderr_ref": null, "stdout_ref": null, "truncated": false, "ts": "2026-07-28T18:15:57.742Z"}
+{"entry": "/opt/ale/verify/run.sh", "exit_code": 0, "kind": "verifier", "rewards": {"episodes_aborted": 0.0, "match_lock_ok": 1.0, "mean_episode_reward": 472.0722336800792, "probes_passed": 180.0, "probes_total": 227.0, "ratio": 1.0000047316713183, "reward": 0.6666698211142122}, "seq": 4, "stdout_ref": null, "ts": "2026-07-28T18:15:57.743Z"}
+{"framework_ms": 672575, "kind": "timing", "model_ms": 0, "phases": [{"duration_ms": 1408, "name": "provision"}, {"duration_ms": 255, "name": "setup"}, {"duration_ms": 670243, "name": "agent"}, {"duration_ms": 5157, "name": "verify"}], "sandbox_ms": 5004, "seq": 5, "total_ms": 677579, "ts": "2026-07-28T18:15:58.259Z"}

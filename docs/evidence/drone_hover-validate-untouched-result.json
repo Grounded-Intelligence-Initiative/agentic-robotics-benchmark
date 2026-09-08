@@ -1,0 +1,63 @@
+{
+  "episode_id": "drone_hover-untouched-bc057e38",
+  "finished_at": "2026-08-22T00:26:51.557176Z",
+  "metrics": {
+    "anchor_recorded": 1.0,
+    "ratio": 0.0
+  },
+  "phases": [
+    {
+      "duration_ms": 6078,
+      "finished_at": "2026-08-22T00:26:49.901415Z",
+      "outcome": "succeeded",
+      "phase": "provision",
+      "started_at": "2026-08-22T00:26:43.822878Z"
+    },
+    {
+      "duration_ms": 165,
+      "finished_at": "2026-08-22T00:26:50.071980Z",
+      "outcome": "succeeded",
+      "phase": "setup",
+      "started_at": "2026-08-22T00:26:49.906016Z"
+    },
+    {
+      "duration_ms": 909,
+      "finished_at": "2026-08-22T00:26:51.052928Z",
+      "outcome": "succeeded",
+      "phase": "verify",
+      "started_at": "2026-08-22T00:26:50.143691Z"
+    },
+    {
+      "duration_ms": 491,
+      "finished_at": "2026-08-22T00:26:51.547303Z",
+      "outcome": "succeeded",
+      "phase": "teardown",
+      "started_at": "2026-08-22T00:26:51.055883Z"
+    },
+    {
+      "duration_ms": 6,
+      "finished_at": "2026-08-22T00:26:51.557176Z",
+      "outcome": "succeeded",
+      "phase": "finalize",
+      "started_at": "2026-08-22T00:26:51.550315Z"
+    }
+  ],
+  "rewards": {
+    "reward": 0.0
+  },
+  "sandboxes": [
+    {
+      "gpu_devices": [],
+      "outcome": "destroyed",
+      "provider": "docker",
+      "requested": "destroy",
+      "roles": [
+        "solver",
+        "verifier"
+      ]
+    }
+  ],
+  "schema_version": 2,
+  "started_at": "2026-08-22T00:26:43.822820Z",
+  "status": "completed"
+}

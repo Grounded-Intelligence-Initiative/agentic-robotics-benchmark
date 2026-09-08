@@ -1,0 +1,143 @@
+# PR checks: the CHEAP layer only (no image builds, no GPU).
+#
+# Deliberately does NOT build task images or run tasks: those need docker, GPUs and
+# minutes-to-hours, so real builds and `ale validate` stay a maintainer step before merge.
+# CI here is fast, static, needs no secret, and runs on every pull request, including pull
+# requests from forks and the ones the website's bot opens. Both contribution channels land
+# a task folder directly at tasks/<direction>/<slug>/, so every check below runs over that
+# final path; there is no staging area and nothing relocates a task after merge.
+#
+# What is gated:
+#   - the pinned engine's `ale lint` over tasks/ and templates/;
+#   - the registry identity cross-check for every task the committed history knows
+#     (a new slug is a notice: the maintainer exports the registry after the merge);
+#   - the domain lint (hardware-invariant + positive-scale metrics, agent-visible-surface
+#     isolation, image hygiene, anchor provenance, placement at tasks/<direction>/<slug>/);
+#   - the shared verify-stage kit: robotics_grader selftest + canonical-vs-vendored byte
+#     equality (a task that ships a modified kit fails here; nothing re-vendors it later);
+#   - the pytest suite (onboarding gate, exporter, bundle crypto, registry export, skills,
+#     template, domain lint, template zip).
+name: pr-checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  # The engine's own static gate, from the pinned submodule (the exact `ale lint` a
+  # contributor and a maintainer run locally), plus the registry identity cross-check.
+  # Static only: no docker, no episodes. vendor/ale is the public AgentsLastExam/ale
+  # engine; the default token clones it.
+  engine-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: ale lint (pinned engine; tasks/ and templates/)
+        run: |
+          cd vendor/ale
+          uv run ale lint ../../tasks
+          uv run ale lint ../../templates
+
+      # The committed identity history must describe THIS tree for every task it knows:
+      # re-export with the engine's loader into throwaway paths (--allow-dirty never writes
+      # the canonical history) and compare identities[0] per task against the first
+      # committed record for that slug. A known slug whose identity differs means the task
+      # changed after the last export, and runs against it would land as
+      # task_unknown_version on the server. A slug the history does not know is a NEW task
+      # (a contribution pull request): a notice, not an error; the maintainer exports the
+      # registry after the merge, which records the identity.
+      - name: "Registry identity cross-check (known slugs: identities[0] == committed history)"
+        run: |
+          if [ ! -f identity-history.json ]; then
+            echo "::notice::identity-history.json absent; no committed identity to cross-check"
+            exit 0
+          fi
+          cd vendor/ale
+          VIRTUAL_ENV= uv run python ../../scripts/export_registry.py \
+            --tasks ../../tasks --history /tmp/h.json --allow-dirty --out /tmp/r.json
+          cd ../..
+          python3 - <<'PY'
+          import json, sys
+          registry = json.load(open("/tmp/r.json"))
+          history = json.load(open("identity-history.json"))
+          first = {}
+          for record in history:
+              first.setdefault(record["slug"], (record["spec_hash"], record["content_digest"]))
+          bad, new = [], []
+          for task in registry["tasks"]:
+              current = (task["identities"][0]["spec_hash"], task["identities"][0]["content_digest"])
+              committed = first.get(task["slug"])
+              if committed is None:
+                  new.append(task["slug"])
+              elif committed != current:
+                  bad.append(f"{task['slug']}: tree {current} != committed history {committed}")
+          for slug in new:
+              print(f"::notice::{slug}: new task, not in identity-history.json yet; "
+                    "export the registry after the merge")
+          for line in bad:
+              print("::error::" + line)
+          if bad:
+              sys.exit(1)
+          known = len(registry["tasks"]) - len(new)
+          print(f"identity history matches the tree for {known} known task(s); {len(new)} new")
+          PY
+
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+
+      - name: Sync host-side deps
+        run: uv sync --frozen || uv sync
+
+      # ruff is not a project dependency (uvx fetches it); non-blocking so a style nit
+      # never blocks a contribution pull request. The invariants below are the gate.
+      - name: Ruff (harness / scripts)
+        run: uvx ruff check harness scripts || true
+
+      # The shared verify-stage machinery. Stdlib-only by contract, so it runs on the bare
+      # system python. Upstream has no repository-kit mechanism, so the canonical copy lives
+      # at shared/ and each task vendors it into verify/; the diff below keeps every vendored
+      # copy byte-identical to the canonical one.
+      - name: robotics_grader selftest (canonical copy, shared/)
+        run: |
+          cd shared
+          python3 -m robotics_grader.selftest
+
+      # A task that ships a MODIFIED kit is a job FAILURE, not a warning: the kit computes
+      # every future score, and nothing re-vendors it after merge any more. The fix is one
+      # copy and a re-run of `ale validate` on the contribution branch.
+      - name: robotics_grader vendored copies match the canonical byte-for-byte
+        run: |
+          status=0
+          for vendored in $(find tasks templates -type d -path "*/verify/robotics_grader" 2>/dev/null); do
+            echo "--- $vendored"
+            if ! diff -r --exclude=__pycache__ shared/robotics_grader "$vendored"; then
+              status=1
+              echo "::error file=$vendored::vendored kit differs from shared/robotics_grader. Every task carries the canonical kit: run 'cp -r shared/robotics_grader/. $vendored/' and re-run ale validate before merging"
+            fi
+          done
+          exit $status
+
+      - name: Pytest
+        run: uv run pytest -q
+
+      # The domain's own policy lints over tasks/ and templates/: metrics that measure the
+      # machine, non-positive anchors (which invert the ratio silently), agent-visible
+      # material that reaches the grader, image hygiene, unattributed anchors, and the
+      # placement of every landed task at tasks/<direction>/<slug>/. `ale lint` is generic
+      # and knows none of it.
+      - name: Domain lint (tasks/ and templates/, placement included)
+        run: uv run python scripts/lint_domain.py .

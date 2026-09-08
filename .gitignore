@@ -1,0 +1,42 @@
+# --- Python / uv ---
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+# uv.lock IS tracked; do not ignore it.
+
+# --- Run products (never committed) ---
+runs/
+results/
+*.log
+
+# --- ALE task-folder contract: the four platform-synced asset roots + engine cache ---
+# (`ale assets pull|push`; canonical bytes live on the platform, never in git)
+tasks/**/image/assets/
+tasks/**/setup/assets/
+tasks/**/verify/assets/
+tasks/**/oracle/assets/
+templates/**/image/assets/
+templates/**/setup/assets/
+templates/**/verify/assets/
+templates/**/oracle/assets/
+.ale-cache/
+
+# --- Large data / model artifacts (provisioned, not committed) ---
+*.hdf5
+*.h5
+*.zarr
+*.bag
+*.pt
+*.ckpt
+*.pkl
+*.npz
+*.mp4
+*.pcd
+*.tar.gz
+
+# --- OS / editor cruft ---
+.DS_Store
+*.swp

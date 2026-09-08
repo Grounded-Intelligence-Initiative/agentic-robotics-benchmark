@@ -1,0 +1,75 @@
+{
+  "episode_id": "drone_hover-oracle-ad6ac5ac",
+  "finished_at": "2026-08-22T00:39:34.609786Z",
+  "metrics": {
+    "anchor_recorded": 1.0,
+    "episodes_aborted": 0.0,
+    "match_lock_ok": 1.0,
+    "mean_episode_reward": 472.0722336800792,
+    "probes_passed": 166.0,
+    "probes_total": 218.0,
+    "ratio": 1.0000047316713183
+  },
+  "phases": [
+    {
+      "duration_ms": 6099,
+      "finished_at": "2026-08-22T00:26:57.676699Z",
+      "outcome": "succeeded",
+      "phase": "provision",
+      "started_at": "2026-08-22T00:26:51.576766Z"
+    },
+    {
+      "duration_ms": 161,
+      "finished_at": "2026-08-22T00:26:57.842281Z",
+      "outcome": "succeeded",
+      "phase": "setup",
+      "started_at": "2026-08-22T00:26:57.680333Z"
+    },
+    {
+      "duration_ms": 750329,
+      "finished_at": "2026-08-22T00:39:28.175214Z",
+      "outcome": "succeeded",
+      "phase": "agent",
+      "started_at": "2026-08-22T00:26:57.845626Z"
+    },
+    {
+      "duration_ms": 5801,
+      "finished_at": "2026-08-22T00:39:34.061973Z",
+      "outcome": "succeeded",
+      "phase": "verify",
+      "started_at": "2026-08-22T00:39:28.260449Z"
+    },
+    {
+      "duration_ms": 534,
+      "finished_at": "2026-08-22T00:39:34.599876Z",
+      "outcome": "succeeded",
+      "phase": "teardown",
+      "started_at": "2026-08-22T00:39:34.065086Z"
+    },
+    {
+      "duration_ms": 6,
+      "finished_at": "2026-08-22T00:39:34.609786Z",
+      "outcome": "succeeded",
+      "phase": "finalize",
+      "started_at": "2026-08-22T00:39:34.602816Z"
+    }
+  ],
+  "rewards": {
+    "reward": 1.0
+  },
+  "sandboxes": [
+    {
+      "gpu_devices": [],
+      "outcome": "destroyed",
+      "provider": "docker",
+      "requested": "destroy",
+      "roles": [
+        "solver",
+        "verifier"
+      ]
+    }
+  ],
+  "schema_version": 2,
+  "started_at": "2026-08-22T00:26:51.576701Z",
+  "status": "completed"
+}
