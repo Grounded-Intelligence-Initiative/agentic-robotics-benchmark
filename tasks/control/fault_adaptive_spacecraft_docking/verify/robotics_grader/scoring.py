@@ -11,9 +11,8 @@ genuinely good run lands in:
 
 `full_at` is the task's own declaration of "as good as the reference", sized by the
 measured seed-to-seed spread of the metric (`verify/anchor.json`). It exists because of
-the validate double pass: an untouched sandbox must score exactly 0 (the engine fails the
-run otherwise) and the oracle exactly 1 (ALE Robotics domain policy, enforced by the
-maintainers' onboarding tooling — the engine itself only warns, `partial_oracle`), and an oracle
+the validate double pass: an untouched sandbox must score exactly 0 and the oracle exactly 1
+(the engine fails the run otherwise: `untouched_nonzero`, `oracle_not_full`), and an oracle
 re-run on fresh hidden seeds does not reproduce its anchor to the digit —
 with the template's measured 1.16x spread over 12 runs, an honest oracle lands anywhere in
 ratio ~0.86–1.16. Saturating at `full_at` makes "inside the reference band" an exact 1.0
@@ -147,12 +146,10 @@ def ratio_rewards(measured, anchor, cap=DEFAULT_CAP, higher_is_better=True,
     measured value.
 
     `rewards` carries only the gated score: `reward = clamp(ratio / full_at, 0, 1)`.
-    Every reward key must be exactly 0 from an untouched sandbox (the engine fails the
-    run otherwise) and exactly 1 from the oracle (ALE Robotics domain policy, enforced
-    by the maintainers' onboarding tooling; the engine only warns, `partial_oracle`), so anything
-    that is not that score — the raw
-    metric, the capped ratio, the lock outcomes — goes in `metrics`, where the engine
-    records it without judging it.
+    Every reward key must be exactly 0 from an untouched sandbox and exactly 1 from the
+    oracle (the engine fails the run otherwise: `untouched_nonzero`, `oracle_not_full`),
+    so anything that is not that score — the raw metric, the capped ratio, the lock
+    outcomes — goes in `metrics`, where the engine records it without judging it.
 
     `full_at` is where the reward saturates, in ratio units: the worst ratio a genuinely
     on-reference run can land on under fresh hidden seeds. Size it from a real measured

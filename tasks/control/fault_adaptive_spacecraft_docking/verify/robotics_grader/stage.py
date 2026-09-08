@@ -70,11 +70,8 @@ def write_verdict(verdict, path=None):
 
     `verdict` is `{"rewards": {...}, "metrics": {...}}`. The split is load-bearing under
     `ale validate`: every key in `rewards` must be exactly 0 on an untouched sandbox
-    (the engine fails the run otherwise) and exactly 1 for the oracle (the engine only
-    records a non-1.0 oracle as a `partial_oracle` warning; the exact all-one rule is
-    ALE Robotics domain policy, enforced by the maintainers' onboarding tooling), so
-    `rewards`
-    carries only the gated score —
+    (`untouched_nonzero` fails the run otherwise) and exactly 1 for the oracle
+    (`oracle_not_full` fails it otherwise), so `rewards` carries only the gated score —
     normally the single key `reward`, in [0, 1] — and everything worth keeping but not
     gating (the raw metric, the capped ratio, lock outcomes, abort counts) goes in
     `metrics`, which the engine persists to the run record and never judges.
@@ -84,12 +81,6 @@ def write_verdict(verdict, path=None):
     engine cross-checks the reward file against the verification record and rejects a
     mismatch. Outside a sandbox — the kit's selftest, a practice run — the plain JSON
     envelope is enough.
-
-    `ALE_VERIFICATION_PATH` set without an importable `ale_verify` is a task error (the
-    image's python is too old, or the stage runs outside the engine) — unless `ALE_DRYRUN=1`,
-    the local dry-run's marker, in which case a plain JSON verification record
-    (`{"status": "completed", "criteria": [...], "metrics": {...}, "dryrun": true}`) is
-    written there instead and the verdict envelope is written as usual.
     """
     rewards = verdict.get("rewards") or {}
     metrics = verdict.get("metrics") or {}
@@ -97,36 +88,13 @@ def write_verdict(verdict, path=None):
     require(all(0.0 <= float(v) <= 1.0 for v in rewards.values()),
             "every gated reward must lie in [0, 1]; report raw values under metrics")
 
-    envelope = {"rewards": {k: float(v) for k, v in rewards.items()},
-                "metrics": {k: float(v) for k, v in metrics.items()}}
-
-    verification_path = os.environ.get("ALE_VERIFICATION_PATH")
-    if verification_path:
+    if os.environ.get("ALE_VERIFICATION_PATH"):
         try:
             from ale_verify import CheckResult, Verification
         except ImportError:
-            if os.environ.get("ALE_DRYRUN") != "1":
-                fail("ALE_VERIFICATION_PATH is set but ale_verify is not importable — the "
-                     "image's python3 is older than the engine's 3.12 floor, or the stage "
-                     "is running outside the engine (set ALE_DRYRUN=1 for a local dry-run)")
-            # The local dry-run (`_tools/dryrun.py` in the template download): the same
-            # grader code runs on a contributor's machine without the engine, so there is
-            # no `ale_verify` to record through. Write a plain verification record in the
-            # engine's shape — one `check` criterion per reward key, the metrics as stats —
-            # marked `dryrun`, and the verdict envelope beside it exactly as the engine's
-            # `Verification.write()` would. A maintainer's engine run is still the gate.
-            record = {
-                "status": "completed",
-                "criteria": [{"name": name, "score": envelope["rewards"][name], "source": "check"}
-                             for name in sorted(envelope["rewards"])],
-                "metrics": envelope["metrics"],
-                "dryrun": True,
-            }
-            with open(verification_path, "w") as handle:
-                json.dump(record, handle)
-            with open(path or verdict_path(), "w") as handle:
-                json.dump(envelope, handle)
-            return
+            fail("ALE_VERIFICATION_PATH is set but ale_verify is not importable — the "
+                 "image's python3 is older than the engine's 3.12 floor, or the stage "
+                 "is running outside the engine")
         record = Verification()
         for name, value in sorted(rewards.items()):
             record.check(name, CheckResult(float(value), "computed by the task's grader"))
@@ -136,7 +104,8 @@ def write_verdict(verdict, path=None):
         return
 
     with open(path or verdict_path(), "w") as handle:
-        json.dump(envelope, handle)
+        json.dump({"rewards": {k: float(v) for k, v in rewards.items()},
+                   "metrics": {k: float(v) for k, v in metrics.items()}}, handle)
 
 
 def deprivileged(argv, **kwargs):
@@ -151,15 +120,7 @@ def deprivileged(argv, **kwargs):
 
     Yama's default `ptrace_scope` blocks tracing across UIDs, so the boundary holds even
     though both processes share a sandbox.
-
-    Outside the engine — a local dry-run on a contributor's machine — the grader is not
-    root and there is no second account. The UID boundary exists in the engine's sandbox;
-    a non-root process has nothing to drop, and `runuser` would only fail. So when the
-    effective UID is not 0 the command runs directly as the current user. The root path
-    (the engine, and the dry-run's `--docker` mode) is unchanged.
     """
-    if hasattr(os, "geteuid") and os.geteuid() != 0:
-        return subprocess.Popen(list(argv), **kwargs)  # noqa: S603 — caller-fixed argv
     return subprocess.Popen(  # noqa: S603 — caller-fixed argv, no shell
         ["runuser", "-u", agent_user(), "--"] + list(argv), **kwargs
     )

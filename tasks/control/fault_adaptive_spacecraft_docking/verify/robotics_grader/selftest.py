@@ -206,15 +206,15 @@ def test_verdict():
         except SystemExit:
             check("a reward outside [0, 1] is a task error", True)
 
-        # The engine's record path without the engine. `sys.modules["ale_verify"] = None`
-        # makes the import fail whatever this interpreter happens to have installed.
+        # The engine's record path without the engine is a task error, and nothing is
+        # written. `sys.modules["ale_verify"] = None` makes the import fail whatever this
+        # interpreter happens to have installed.
         record_path = os.path.join(tmp, "verification.json")
         verdict = {"rewards": {"reward": 0.5},
                    "metrics": {"ratio": 0.75, "success_rate": 41.0}}
         saved_module = sys.modules.get("ale_verify", "<absent>")
         sys.modules["ale_verify"] = None
         os.environ["ALE_VERIFICATION_PATH"] = record_path
-        os.environ.pop("ALE_DRYRUN", None)
         try:
             for f in (path, record_path):
                 if os.path.exists(f):
@@ -226,33 +226,8 @@ def test_verdict():
                 check("ALE_VERIFICATION_PATH without ale_verify is a task error", True)
             check("... and nothing is written",
                   not os.path.exists(path) and not os.path.exists(record_path))
-
-            os.environ["ALE_DRYRUN"] = "1"
-            stage.write_verdict(verdict, path=path)
-            with open(record_path) as handle:
-                record = json.load(handle)
-            check("ALE_DRYRUN=1 writes a plain verification record instead",
-                  record["status"] == "completed" and record["dryrun"] is True)
-            check("the record carries one check criterion per reward key",
-                  record["criteria"] == [{"name": "reward", "score": 0.5, "source": "check"}])
-            check("the record carries the metrics as stats",
-                  record["metrics"] == {"ratio": 0.75, "success_rate": 41.0})
-            with open(path) as handle:
-                payload = json.load(handle)
-            check("the dry-run still writes the verdict envelope",
-                  payload == {"rewards": {"reward": 0.5},
-                              "metrics": {"ratio": 0.75, "success_rate": 41.0}})
-
-            os.environ["ALE_DRYRUN"] = "0"
-            os.remove(record_path)
-            try:
-                stage.write_verdict(verdict, path=path)
-                check("ALE_DRYRUN must be exactly '1' to enable the fallback", False)
-            except SystemExit:
-                check("ALE_DRYRUN must be exactly '1' to enable the fallback", True)
         finally:
             os.environ.pop("ALE_VERIFICATION_PATH", None)
-            os.environ.pop("ALE_DRYRUN", None)
             if saved_module == "<absent>":
                 sys.modules.pop("ale_verify", None)
             else:
@@ -554,20 +529,6 @@ def test_stage_identity():
     check("the default home is /home/user", stage.agent_user() == "user")
 
 
-def test_deprivileged_outside_the_sandbox():
-    """Non-root has nothing to drop: `deprivileged` runs argv directly. The root path
-    (`runuser -u <agent>`) needs two accounts and is covered by `ale validate`."""
-    print("[deprivileged]")
-    if not hasattr(os, "geteuid") or os.geteuid() == 0:
-        print("  skip running as root — the runuser path is exercised by ale validate")
-        return
-    proc = stage.deprivileged([sys.executable, "-c", "import os; print(os.geteuid())"],
-                              stdout=subprocess.PIPE, universal_newlines=True)
-    out, _ = proc.communicate(timeout=30)
-    check("a non-root grader spawns the solver as itself, without runuser",
-          proc.returncode == 0 and out.strip() == str(os.geteuid()))
-
-
 def main():
     print("robotics_grader selftest (python {}.{})".format(*sys.version_info[:2]))
     test_seeds()
@@ -577,7 +538,6 @@ def main():
     test_solver_wire()
     test_probe_wire()
     test_stage_identity()
-    test_deprivileged_outside_the_sandbox()
     print()
     if FAILURES:
         print("FAILED: {}".format(", ".join(FAILURES)))
