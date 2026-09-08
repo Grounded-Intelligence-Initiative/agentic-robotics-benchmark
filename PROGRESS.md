@@ -68,7 +68,7 @@ and `verify/` included.
   after the owner signed off the privacy checklist; the first `pr-checks` run on `main` is
   green (engine lint over `tasks/` + `templates/`, identity cross-check, static checks).
 - The contribution `fault_adaptive_spacecraft_docking` (old repository PR #14, uploaded on
-  the website by Jiankai-Sun, revision 2) is re-opened here as  on branch
+  the website by Jiankai-Sun, revision 2) is re-opened here as https://github.com/Grounded-Intelligence-Initiative/agentic-robotics-benchmark/pull/1 on branch
   `contrib/fault_adaptive_spacecraft_docking`: commit 1 = the 20 uploaded files byte for
   byte at `tasks/control/fault_adaptive_spacecraft_docking/`; commit 2 = `verify/robotics_grader/`
   re-vendored from `shared/` (the upload carried the 2026-09-05 kit). Old PR #14 closed with
