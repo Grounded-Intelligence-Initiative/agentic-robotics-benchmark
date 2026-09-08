@@ -1,0 +1,58 @@
+# TEMPLATE — a complete robotics task that scores green as shipped. Change it into yours
+# one field at a time; `ale validate` after each change tells you if you broke it.
+
+spec_type: core/v1
+
+# The task's stable identity: a collection-unique slug (^[a-z0-9][a-z0-9_-]*$), decoupled
+# from the folder path. Pick your own before anything else; the upload precheck requires it
+# to equal the name of the folder you zip.
+name: rehearsal_reach_20260908
+
+# image/Dockerfile is the sole build context, and its final stage must derive directly
+# from an official ALE base (this template's does). A prebuilt registry image works too:
+# `image: {kind: container, ref: ghcr.io/...:tag}` with no image/Dockerfile.
+image: {kind: container}
+
+resources: {cpus: 2, memory_mb: 4096}
+network: {mode: block}
+
+# setup: staging the agent-visible material. agent: the agent's whole budget, including
+# training. verify: the scoring run — closed_loop needs room for every episode plus probes.
+timeouts: {setup: 120, agent: 3600, verify: 900}
+
+# Where the agent leaves its work.
+artifacts: [/home/user/submission]
+
+# Grader knobs live in verify/grader_config.json, NOT here: `params` are rendered into
+# instruction.md and checked strictly both ways, so a declared parameter the prompt does
+# not mention is a lint error — and episode counts are the grader's business anyway.
+#
+# There is no admission bar in this file. `ale validate` runs the task twice: an untouched
+# sandbox must produce an all-zero verdict, and the oracle, run in place of the agent, must
+# score exactly 1.0 on every reward key. Either miss fails validation (`untouched_nonzero`,
+# `oracle_not_full`). The tolerance that lets an honest oracle land on exactly 1.0 under
+# fresh hidden seeds is `full_at` in verify/anchor.json, sized from the metric's measured
+# seed-to-seed spread. See that file.
+
+metadata:
+  # platform: one of the registry's platform keys, VERBATIM (`platforms[]` in the website
+  # repository's content/tasks/registry.json):
+  #   humanoid | manipulation | multirobot | quadruped | soft | spacecraft | surgical |
+  #   uav | underwater | vehicle
+  # direction: one of the registry's `directions[]` keys (control, planning, navigation,
+  # learning, locomotion, motion-planning, ... — read the registry for the full list). It
+  # also names the tasks/<direction>/ folder the task lands in, so it must match
+  # ^[a-z0-9][a-z0-9_-]*$. A key that is not in the registry needs a maintainer to add it
+  # before the task can be listed — say so in your upload title.
+  platform: uav
+  direction: control
+  metric:
+    name: mean_goal_distance            # an OUTCOME: success_rate, reward, SPL, ATE, collision_rate
+    # Must be on a POSITIVE scale — a negative anchor inverts the ratio. A negative
+    # reward sum becomes a positive cost with `direction: lower`. Must agree with
+    # verify/anchor.json's `direction` (the grader reads that one; the server reads this
+    # one): the shipped grader scores mean_goal_distance, a cost, so it is `lower` here.
+    direction: lower      # higher | lower
+    # Never a wall-clock time, throughput, FPS or frequency: those measure the machine,
+    # not the method, and cannot be compared across contributors' hardware.
+    hardware_invariant: true
