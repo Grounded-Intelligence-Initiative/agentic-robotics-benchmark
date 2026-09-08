@@ -7,8 +7,8 @@
 > before every hand-off. Where it disagrees with the code or `git log`, the code wins: fix
 > this file.
 >
-> Last updated: 2026-09-08 (pushed; first CI run green; the pending contribution re-opened
-> as a pull request here).
+> Last updated: 2026-09-08 (website live on agentic-robotics-benchmark.org; both contribution
+> channels rehearsed end to end).
 
 ## 0. 2026-09-07 — created by the rebrand from "ALE Robotics"
 
@@ -74,6 +74,24 @@ and `verify/` included.
   re-vendored from `shared/` (the upload carried the 2026-09-05 kit). Old PR #14 closed with
   a pointer. Still to do by a maintainer before merge: `ale validate` (the anchor was a
   dry-run measurement; the oracle runs three hours).
+
+## 2. 2026-09-08 — website live; both channels rehearsed
+
+- The website (`agentic-robotics-benchmark-website`, formerly `ale-robotics-website`) is live
+  on `https://agentic-robotics-benchmark.org` with the two-channel Contribute page, the
+  download built from this repository at `b04359f`, and the registry exported from the same
+  commit; `ale-robotics.org` and its `www` 301 to the new domain.
+- Dress rehearsal with a template-derived task `rehearsal_reach_20260908` (uav/control;
+  anchor `0.0813` measured by `ale validate` on the maintainer's machine, oracle exactly 1.0):
+  channel A (pull request #2, opened by hand) and channel B (pull request #3, opened by the
+  website's bot after the upload precheck) produced byte-identical trees at
+  `tasks/control/rehearsal_reach_20260908/` (20 files, same modes, nothing outside the
+  folder), and `pr-checks.yml` passed on both. Both were closed without merging and their
+  branches deleted, as planned.
+- Website follow-ups found by the rehearsal and fixed the same day: the `www` alias of the
+  new domain (Caddyfile `WWW_DOMAIN`), and a 500 on `POST /api/v1/challenges` caused by the
+  rename creating a second release row (the website's seed now keys the release by version
+  and merges duplicates).
 
 ## Open items
 
