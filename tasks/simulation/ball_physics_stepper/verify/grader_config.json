@@ -1,0 +1,6 @@
+{
+  "cases_per_family": 8,
+  "steps_per_case": 40,
+  "step_timeout_s": 1,
+  "scoring_cap": 1.5
+}

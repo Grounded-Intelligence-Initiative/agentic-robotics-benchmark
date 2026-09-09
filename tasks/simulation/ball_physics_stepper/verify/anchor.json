@@ -1,0 +1,7 @@
+{
+  "metric": "trajectory_pass_rate",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 1.0,
+  "source": "Measured with the bundled oracle in CPU Docker on 2026-09-09 UTC, ALE commit 90a7c1cfa649c5dbf1078714773f99840e44cba3. Final-code repeat validations: validate-9ef472f0, validate-979c31f1, validate-84f69359. Each passed 70/70 trajectories and 2650/2650 responses; all three raw metrics were 1.0, so full_at=1.0. Oracle solver.py SHA256 fa5e48b7069a3da7f0c37ae6aa50304eb6ad985c739c86ce1a47585b8eec3e34. This is a correctness anchor, not a frontier-model baseline."
+}
