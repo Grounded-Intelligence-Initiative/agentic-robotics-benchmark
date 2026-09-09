@@ -1,0 +1,14 @@
+spec_type: core/v1
+name: ball_physics_stepper
+image: {kind: container}
+resources: {cpus: 2, memory_mb: 4096}
+network: {mode: block}
+timeouts: {setup: 120, agent: 1800, verify: 300}
+artifacts: [/home/user/submission]
+metadata:
+  platform: manipulation
+  direction: simulation
+  metric:
+    name: trajectory_pass_rate
+    direction: higher
+    hardware_invariant: true
