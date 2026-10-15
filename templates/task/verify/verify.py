@@ -30,6 +30,7 @@ For the other two patterns:
   it out yourself on hidden seeds. No wire means no probe lock is needed.
 """
 
+import math
 import os
 import sys
 
@@ -63,9 +64,11 @@ def run_episodes(config, rng):
     scores lower, silently. Report the cost and declare `direction: lower` instead. The kit
     refuses a non-positive anchor for exactly this reason.
 
-    An episode that aborts (solver crash, stalled step, protocol violation) counts as a
-    failure to produce a working policy: it is dropped from the metric and reported, so a
-    solver that answers one episode out of ten cannot average its way to a good score.
+    An episode that aborts (solver crash, stalled step, protocol violation, malformed
+    action) is charged what standing still would cost: its starting distance to the goal,
+    for every step. Dropping it instead would let a weak policy abort the episodes it would
+    do badly in and average only the ones it does well in; charged like this, aborting can
+    never beat trying.
     """
     episodes = int(config.get("episodes", 10))
     lock = ProbeLock(
@@ -81,10 +84,15 @@ def run_episodes(config, rng):
     solver = Solver(step_timeout=config.get("step_timeout_s", 30))
     try:
         for episode in range(episodes):
-            seed = rng.seed()          # hidden; in memory only
+            # Hidden, in memory only. 64 bits: the agent holds a copy of this simulator, and
+            # a 31-bit seed can be brute-forced from the first observation. (Here the seed
+            # decides only what that observation already shows; in a task with hidden
+            # parameters it decides everything.)
+            seed = rng.seed(bits=64)
             total, steps = 0.0, 0
+            obs = env.reset(seed)
+            standing_still = math.hypot(obs[0] - obs[4], obs[1] - obs[5])
             try:
-                obs = env.reset(seed)
                 solver.reset()
                 for t in range(env.max_steps):
                     if lock.due():
@@ -95,15 +103,16 @@ def run_episodes(config, rng):
                         action = lock.probe(solver, t, obs)
                     else:
                         action = solver.act(t, obs)
-                    obs, reward, done = env.step(action)
+                    obs, reward, done = env.step(_two_numbers(action))
                     total += -reward     # reward is the negative distance; accumulate cost
                     steps += 1
                     if done:
                         break
             except SolverAborted as exc:
                 aborted += 1
-                print("[grader] episode {} aborted: {}".format(episode, exc),
-                      file=sys.stderr, flush=True)
+                costs.append(standing_still)
+                print("[grader] episode {} aborted ({}); charged {:.4f}".format(
+                    episode, exc, standing_still), file=sys.stderr, flush=True)
                 continue
             cost = total / steps if steps else float("inf")
             costs.append(cost)
@@ -113,6 +122,18 @@ def run_episodes(config, rng):
         solver.close()
 
     return costs, aborted, lock
+
+
+def _two_numbers(action):
+    """The solver's action as two finite floats, or a protocol error (the episode aborts;
+    a malformed reply must never crash the grader into a task error)."""
+    try:
+        ax, ay = (float(value) for value in action)
+    except (TypeError, ValueError, OverflowError):
+        raise SolverAborted("malformed action: {!r}".format(action)[:160])
+    if not (math.isfinite(ax) and math.isfinite(ay)):
+        raise SolverAborted("non-finite action")
+    return [ax, ay]
 
 
 def main():
