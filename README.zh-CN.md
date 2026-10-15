@@ -75,9 +75,9 @@ reward = clamp(ratio / full_at, 0, 1)         # 唯一受闸门约束的 reward 
 
 ```
 vendor/ale/                     上游引擎（submodule，钉 commit）——不要重新实现它
-tasks/<platform>/<slug>/        任务本身（目前：uav/uav_hover）
+tasks/<platform>/<slug>/        任务本身（目前：space/fault_adaptive_spacecraft_docking）
 tasks/platforms.json            平台词表：`metadata.platform` 的 key 及其显示名
-tasks/README.md                 说明：uav/uav_hover 是展示文件结构的 dummy 示例
+tasks/README.md                 说明：哪个任务是完整示例
 templates/task/                 唯一模板，出厂即闸门全绿（anchor 为 null 是设计）
 templates/README.md             任务契约，逐文件说明（任务形态的事实源）
 identity-history.json           每个任务历史上的 (spec_hash, content_digest) 对（registry v2）
@@ -127,8 +127,7 @@ cd vendor/ale && VIRTUAL_ENV= uv run python ../../scripts/export_registry.py \
 uv run pytest -q
 ```
 
-不要随手对 `uav_hover` 跑 `ale validate`：它的 oracle 真训 PPO，一次要数小时。模板几秒
-就能 validate 完。
+模板和完整示例任务都能在一分钟内 validate 完。
 
 ## 访问
 

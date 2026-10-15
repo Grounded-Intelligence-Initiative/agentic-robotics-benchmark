@@ -87,9 +87,9 @@ is [`docs/contributing-a-task.md`](docs/contributing-a-task.md).
 
 ```
 vendor/ale/                     upstream engine (submodule, pinned commit) — do not reimplement it
-tasks/<platform>/<slug>/        the tasks (today: uav/uav_hover)
+tasks/<platform>/<slug>/        the tasks (today: space/fault_adaptive_spacecraft_docking)
 tasks/platforms.json            the platform vocabulary: the `metadata.platform` keys and their labels
-tasks/README.md                 a note: uav/uav_hover is a dummy example of the file structure
+tasks/README.md                 a note: which task is the worked example
 templates/task/                 ONE template, gates green as shipped (null anchor by design)
 templates/README.md             the task contract, file by file (source of truth for the task form)
 identity-history.json           past (spec_hash, content_digest) pairs per task (registry v2)
@@ -140,8 +140,7 @@ cd vendor/ale && VIRTUAL_ENV= uv run python ../../scripts/export_registry.py \
 uv run pytest -q
 ```
 
-Never run `ale validate` on `uav_hover` casually: its oracle trains PPO and the run takes
-hours. The template validates in seconds.
+The template and the worked example each validate in well under a minute.
 
 ## Access
 

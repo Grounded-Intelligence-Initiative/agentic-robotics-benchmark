@@ -20,8 +20,9 @@ taxonomy axis. The folder shape and the
 manifest are upstream's, and the pinned engine lives at `vendor/ale`.
 
 Read first: `templates/README.md` (the task contract and what each template file is for —
-the source of truth for the layout) and the worked example `tasks/uav/uav_hover` — a real
-closed_loop task that validates green.
+the source of truth for the layout) and the worked example
+`tasks/space/fault_adaptive_spacecraft_docking`, a real closed_loop task that validates
+green.
 
 ## What you are producing
 

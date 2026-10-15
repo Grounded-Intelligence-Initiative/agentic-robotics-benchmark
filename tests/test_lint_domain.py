@@ -77,7 +77,7 @@ def test_a_task_still_carrying_genre_is_not_flagged(tmp_path):
 
 
 def test_the_shipped_domain_lints_clean():
-    """The real tree — template excluded from task batteries, uav_hover included, and the
+    """The real tree — template excluded from task batteries, the worked example included, and the
     repository root as the default target (only tasks/ and templates/ are walked)."""
     assert lint_domain.lint_domain(REPO_ROOT) == []
     assert lint_domain.lint_paths([REPO_ROOT]) == []
@@ -177,7 +177,7 @@ def test_an_anchor_quoting_a_published_figure_is_still_refused(tmp_path):
 
 
 @pytest.mark.parametrize("source", [
-    # uav_hover's exact wording
+    # a former task's exact wording (uav_hover, removed 2026-10-15)
     "oracle implementation (oracle/run.sh, PPO on HoverAviary at the pinned gym-pybullet-drones "
     "commit): real graded run over hidden per-run seeds, never a published figure",
     "oracle/run.sh real graded run — NOT the paper's printed figure",

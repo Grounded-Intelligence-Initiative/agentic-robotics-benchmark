@@ -20,8 +20,8 @@
   https://github.com/AgentsLastExam/ale/blob/main/docs/specs/). Our docs state only the
   robotics deltas and link there; never paraphrase the specs at length.
 - **Our deltas:** `templates/README.md` (the task contract, file by file: the verify
-  patterns, the closed_loop wire, scoring); `tasks/README.md` is only a note on the
-  `uav_hover` example. **Design records** (dated; their 2026-10-15 notes say what no longer
+  patterns, the closed_loop wire, scoring); `tasks/README.md` is only a note on the worked
+  example. **Design records** (dated; their 2026-10-15 notes say what no longer
   holds): `docs/dev/20260902-engine-run-submission.md` (task form, registry; its leaderboard
   bridge is retired) and `docs/dev/20260902-contribute-download-upload.md` (its website
   download and upload channel are retired).
@@ -107,8 +107,8 @@ tasks/<platform>/<slug>/
   raw metric only), image hygiene, anchor provenance (never a published figure), core/v1
   completeness, a `metadata.platform` from `tasks/platforms.json` and placement at
   `tasks/<platform>/<slug>/`.
-- **Never run `ale validate` on `uav_hover` casually** — its oracle trains PPO for hours.
-  The template validates in seconds.
+- The template and the worked example (`tasks/space/fault_adaptive_spacecraft_docking`)
+  each validate in well under a minute.
 
 ## Scoring (the kit owns it; do not re-derive)
 
@@ -206,11 +206,10 @@ uv run pytest -q
   re-simulation (open_loop) sit on top of that; they do not replace it.
 - No secrets in the repo (`.env`, tokens, keys). No hardware-dependent scored metric. No
   100 MB+ blobs in git.
-- `tasks/uav/uav_hover` (renamed from `tasks/control/drone_hover` on 2026-10-12) is a dummy
-  task that frontier models complete easily. It stays only to show what a task's file
-  structure looks like (owner decision 2026-10-12; it replaces "delete it with the first
-  merged community task"). Its `task.yaml` and `verify/verify.py` still carry three comments
-  from the old brand name ("ALE Robotics domain policy").
+- `tasks/space/fault_adaptive_spacecraft_docking` (contributed in #1, merged 2026-10-15 after
+  a maintainer pass) is the worked example of a complete task. The dummy `uav_hover` (formerly
+  `drone_hover`) was removed on 2026-10-15: a task frontier models solve trivially is neither
+  a real example nor a task anyone could submit (owner decision).
 
 ## Gotchas (details in PROGRESS.md)
 

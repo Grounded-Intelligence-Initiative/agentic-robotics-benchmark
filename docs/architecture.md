@@ -191,5 +191,5 @@ tests/                       pytest
   baked into the image.
 - `ale validate` does not keep a stage's stderr; write what the grader says into a collected
   artifact if you need to read it afterwards.
-- `uav_hover`'s oracle trains PPO: a validate takes hours. The template validates in
-  seconds and is the place to test machinery.
+- The template and the worked example each validate in well under a minute; the template is
+  the place to test machinery.
