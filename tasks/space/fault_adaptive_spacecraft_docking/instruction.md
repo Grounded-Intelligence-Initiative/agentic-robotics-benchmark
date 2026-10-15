@@ -16,7 +16,12 @@ nozzles are not the only nonlinear effect: after each bus event every physical n
 also receives an independent hidden duty exponent. Its realized thrust fraction is
 `duty ** exponent`, with exponent between 0.65 and 1.60. The exponent set is replaced
 independently at the re-key. A single-amplitude probe therefore cannot separate
-degradation scale from duty curvature. The two degraded nozzles form a hysteretic
+degradation scale from duty curvature. After each bus event, each electrical action
+slot also acquires its own hidden first-order valve-memory coefficient. For slot `i`,
+the delivered valve state is `z_i <- memory_i * z_i + (1 - memory_i) * duty_i`, and the
+physical nozzle receives `z_i ** exponent`; all six `z_i` states are cleared when an
+event occurs. The state follows the electrical slot while the rotor changes which
+physical nozzle that slot drives. The two degraded nozzles form a hysteretic
 protection relay, armed when each bus event begins. A duty above 0.78 on the more
 severely degraded nozzle while the relay is armed reverses the rotor direction after that
 command and disarms the relay; a duty below 0.12 on the moderately degraded nozzle arms it
@@ -59,6 +64,11 @@ Episode randomization is fixed to these ranges:
 - after each event every physical nozzle has an independent duty exponent from
   0.65 to 1.60; commanded duty still controls fuel use, stride, and relay logic,
   while realized thrust uses the nonlinear exponent;
+- after the first event electrical slot `i` (0 through 5) has an independent
+  valve-memory coefficient from `0.145 + 0.02*i` to `0.155 + 0.02*i`;
+  the re-key replaces it independently with a coefficient from
+  `0.235 + 0.025*i` to `0.245 + 0.025*i` and clears all valve states. Relay logic, rotor
+  stride and fuel use requested duties, while thrust uses the filtered states;
 - the relay is armed when each event begins; a duty above 0.78 on the more severely
   degraded nozzle while it is armed reverses the direction after that command and
   disarms it, and a duty below 0.12 on the moderately degraded nozzle arms it again
@@ -71,20 +81,20 @@ Episode randomization is fixed to these ranges:
 - the first bus remapping and degradation event occurs between steps 58 and 103;
 - the independent re-key arms between steps 108 and 128, at least 25 steps after
   the first event. Once armed, it fires on the first simulator step whose true
-  port-position error is within a hidden 0.88 to 0.98 m threshold; a hidden
+  port-position error is within a hidden 1.18 to 1.30 m threshold; a hidden
   deadline between steps 148 and 165 forces it if the approach has not entered
   that region. The observation carries no explicit arm, proximity, or event flag;
 - two pose blackout bursts last 7 to 18 steps, plus sparse single-frame dropouts;
 - the re-key itself starts an additional pose blackout covering the next 29 to 41
   observations. Thus the target reversal, rotor replacement, and IMU remount must
   initially be detected and survived without a fresh camera pose; the blackout does
-  not add steps to the 300-step episode.
+  not add steps to the 400-step episode.
 
 The practice simulator (see "Development check") is the model the hidden grader runs:
 the same dynamics, ranges, noise levels and dropout rate, with different seeds. Its
 source is the complete statement of every range this list summarizes.
 
-The episode lasts at most 300 steps at 0.12 simulated seconds per step. This shortened
+The episode lasts at most 400 steps at 0.12 simulated seconds per step. This bounded
 horizon is deliberate: difficulty should come from identification and closed-loop
 reasoning, not from a long rollout. There is no network access while you work.
 
@@ -111,8 +121,9 @@ Return six normalized duty cycles `[u0, u1, u2, u3, u4, u5]`. Each is clipped to
 simulator's source documents the nominal six nozzle geometries and every randomization
 range, but each episode's values are hidden: the initial wiring, the continuous column
 errors, the bias, both rotor orderings with their offsets and directions, both degraded
-pairs and their scales, both exponent sets, the first event's step, the re-key's arming
-step, proximity threshold and deadline, the target's slew speed after the re-key, both IMU
+pairs and their scales, both exponent sets, all twelve valve-memory coefficients, the first
+event's step, the re-key's arming step, proximity threshold and deadline, the target's
+slew speed after the re-key, both IMU
 mountings, and the blackout schedule. The bus supplies no explicit event flag.
 
 The circular target body has radius 0.82 m and the docking port is at radius 1.14 m.

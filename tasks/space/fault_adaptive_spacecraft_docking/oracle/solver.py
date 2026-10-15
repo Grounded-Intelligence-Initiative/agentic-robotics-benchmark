@@ -82,8 +82,12 @@ class Controller:
         self.ring_secondary_nozzle = None
         self.ring_scan_start = None
         self.ring_scan_samples = {}
+        self.ring_scan_records = []
         self.ring_scales = np.ones(6)
         self.ring_exponents = np.ones(6)
+        self.ring_valve_memory = np.zeros(6)
+        self.slot_valves = np.zeros(6)
+        self.ring_flush_until = None
         self.ring_identifications = 0
         self.ring_commission_pending = False
         self.pending_score = float("inf")
@@ -277,7 +281,19 @@ class Controller:
                 self.goal_rate = -math.copysign(0.0325, self.goal_rate)
         else:
             self.frame_candidates = [self.frame_matrix.copy()]
-        self.ring_probe_start = int(probe_start)
+        # The event clears the real valve states, but it may have happened a
+        # couple of samples before residual detection. A short zero-input
+        # washout gives identification a clean initial condition without
+        # requiring privileged event timing.
+        if self.ring_identifications >= 1:
+            self.ring_valve_memory = np.array(
+                [0.24 + 0.025 * i for i in range(6)]
+            )
+        else:
+            self.ring_valve_memory = np.array([0.15 + 0.02 * i for i in range(6)])
+        self.slot_valves = np.zeros(6)
+        self.ring_flush_until = int(probe_start) + 3
+        self.ring_probe_start = self.ring_flush_until
         self.ring_probe_phases = []
         self.ring_cycle = None
         self.ring_orientation = None
@@ -290,9 +306,65 @@ class Controller:
         self.ring_secondary_nozzle = None
         self.ring_scan_start = None
         self.ring_scan_samples = {}
+        self.ring_scan_records = []
         self.ring_scales = np.ones(6)
         self.ring_exponents = np.ones(6)
         self.bad_residuals = 0
+
+    def _filter_valves(self, action):
+        u = np.asarray(action, dtype=float)
+        self.slot_valves = (
+            self.ring_valve_memory * self.slot_valves
+            + (1.0 - self.ring_valve_memory) * u
+        )
+
+    def _delivered_action(self):
+        delivered = np.zeros(6)
+        for slot in range(6):
+            nozzle = self._ring_nozzle(slot)
+            delivered[slot] = self.slot_valves[slot] ** max(
+                float(self.ring_exponents[nozzle]), 0.20
+            )
+        return delivered
+
+    def _fit_ring_plant(self):
+        targets = np.concatenate([record[2] for record in self.ring_scan_records])
+
+        def solve(exponents):
+            blocks = []
+            for valves, mapping, _ in self.ring_scan_records:
+                block = np.zeros((3, 6))
+                for slot, nozzle in enumerate(mapping):
+                    block[:, nozzle] = (
+                        self.base_B[:, nozzle]
+                        * max(float(valves[slot]), 1e-6) ** exponents[nozzle]
+                    )
+                blocks.append(block)
+            actuator_design = np.vstack(blocks)
+            bias_design = np.tile(np.eye(3), (len(blocks), 1))
+            design = np.hstack([actuator_design, bias_design])
+            parameters = np.linalg.lstsq(design, targets, rcond=None)[0]
+            scales = np.clip(parameters[:6], 0.05, 1.45)
+            prediction = actuator_design.dot(scales) + bias_design.dot(parameters[6:])
+            error = float(np.linalg.norm(targets - prediction))
+            return error, scales
+
+        exponents = np.ones(6)
+        grid = np.linspace(0.65, 1.60, 25)
+        for _ in range(4):
+            for nozzle in range(6):
+                best = None
+                for candidate in grid:
+                    trial = exponents.copy()
+                    trial[nozzle] = candidate
+                    error, scales = solve(trial)
+                    if best is None or error < best[0]:
+                        best = (error, float(candidate), scales)
+                exponents[nozzle] = best[1]
+        _, scales = solve(exponents)
+        self.ring_scales = scales
+        self.ring_exponents = exponents
+
 
     def _ring_nozzle(self, slot, phase=None):
         phase = self.ring_phase if phase is None else phase
@@ -329,6 +401,12 @@ class Controller:
         u = np.asarray(action, dtype=float)
         y = np.asarray(measured, dtype=float)
 
+        if self.ring_probe_start is not None:
+            self._filter_valves(u)
+
+        if self.ring_flush_until is not None and t <= self.ring_flush_until:
+            return
+
         # Seven low slot-zero pulses reveal one complete hidden rotor cycle
         # without relying on numerical adjacency of physical nozzle indices.
         if self.ring_probe_start is not None and self.ring_cycle is None:
@@ -343,7 +421,8 @@ class Controller:
                     sequence, total_error = [], 0.0
                     for _, raw, duty in samples:
                         baseline = np.linalg.solve(matrix, raw)
-                        estimate = (baseline - self.base_bias) / duty
+                        valve = max(float(self.slot_valves[0]), 0.02)
+                        estimate = (baseline - self.base_bias) / valve
                         nozzle, _, error = self._match_ring_column(estimate)
                         sequence.append(nozzle)
                         total_error += error
@@ -371,7 +450,8 @@ class Controller:
             active = int(np.argmax(u))
             ordered = np.sort(u)
             if active == 1 and u[active] > 0.20 and ordered[-2] < 0.05:
-                estimate = (self._to_baseline(y) - self.base_bias) / u[active]
+                valve = max(float(self.slot_valves[active]), 0.02)
+                estimate = (self._to_baseline(y) - self.base_bias) / valve
                 nozzle, scale, _ = self._match_ring_column(estimate)
                 plus = self.ring_cycle[(self.ring_phase + 1) % 6]
                 minus = self.ring_cycle[(self.ring_phase - 1) % 6]
@@ -394,33 +474,15 @@ class Controller:
                 if u[active] > 0.20 and ordered[-2] < 0.05:
                     estimate = self._to_baseline(y) - self.base_bias
                     nozzle = self._ring_nozzle(active)
-                    column = self.base_B[:, nozzle]
-                    response = clip(
-                        float(column.dot(estimate))
-                        / max(float(column.dot(column)), 1e-9),
-                        0.002,
-                        1.45,
+                    mapping = [self._ring_nozzle(slot) for slot in range(6)]
+                    self.ring_scan_records.append(
+                        (self.slot_valves.copy(), mapping, estimate.copy())
                     )
-                    self.ring_scan_samples.setdefault(nozzle, []).append(
-                        (float(u[active]), response)
-                    )
+                    self.ring_scan_samples.setdefault(nozzle, []).append(True)
                     self._advance_ring(u, t)
             if (len(self.ring_scan_samples) == 6
-                    and all(len(self.ring_scan_samples[j]) >= 2 for j in range(6))):
-                scales, exponents = [], []
-                for nozzle in range(6):
-                    (d1, r1), (d2, r2) = self.ring_scan_samples[nozzle][:2]
-                    exponent = clip(
-                        math.log(max(r2, 1e-6) / max(r1, 1e-6))
-                        / math.log(d2 / d1),
-                        0.40,
-                        2.10,
-                    )
-                    scale = clip(r1 / (d1 ** exponent), 0.05, 1.45)
-                    scales.append(scale)
-                    exponents.append(exponent)
-                self.ring_scales = np.asarray(scales)
-                self.ring_exponents = np.asarray(exponents)
+                    and all(len(self.ring_scan_samples[j]) >= 3 for j in range(6))):
+                self._fit_ring_plant()
                 order = np.argsort(self.ring_scales)
                 self.ring_bad_nozzle = int(order[0])
                 self.ring_secondary_nozzle = int(order[1])
@@ -436,9 +498,9 @@ class Controller:
         if (self.ring_cycle is not None and self.ring_orientation is not None
                 and self.ring_phase is not None):
             B, bias = self._plant()
-            residual = y - (B.dot(u) + bias)
+            residual = y - (B.dot(self._delivered_action()) + bias)
             informative = float(np.max(u)) > 0.12
-            if informative and float(np.linalg.norm(residual)) > 0.110:
+            if informative and float(np.linalg.norm(residual)) > 0.280:
                 self.bad_residuals += 1
             else:
                 self.bad_residuals = max(0, self.bad_residuals - 1)
@@ -603,6 +665,36 @@ class Controller:
             momentum = next_momentum
         return u
 
+    def _allocate_stateful(self, B, bias, desired, start):
+        weights = np.diag([1.0, 1.0, 1.45])
+        exponents = np.array([
+            max(float(self.ring_exponents[self._ring_nozzle(slot)]), 0.20)
+            for slot in range(6)
+        ])
+        memory = self.ring_valve_memory
+        u = np.clip(np.asarray(start, dtype=float), 0.0, 1.0)
+        best = (float("inf"), u.copy())
+        for _ in range(70):
+            valves = np.clip(
+                memory * self.slot_valves + (1.0 - memory) * u,
+                1e-6, 1.0,
+            )
+            realized = valves ** exponents
+            error = weights.dot(B.dot(realized) + bias - desired)
+            score = float(error.dot(error) + 0.0015 * u.dot(u))
+            if score < best[0]:
+                best = (score, u.copy())
+            derivative = (
+                (1.0 - memory) * exponents * valves ** (exponents - 1.0)
+            )
+            jacobian = B * derivative[np.newaxis, :]
+            weighted_jacobian = weights.dot(jacobian)
+            gradient = weighted_jacobian.T.dot(error) + 0.0015 * u
+            lipschitz = max(
+                0.012, float(np.linalg.norm(weighted_jacobian, 2) ** 2 + 0.0015)
+            )
+            u = np.clip(u - gradient / lipschitz, 0.0, 1.0)
+        return best[1]
     def _guidance(self, t, obs):
         x, y, vx, vy, yaw, omega = [float(v) for v in self.state]
         phase = self.goal_phase
@@ -660,22 +752,21 @@ class Controller:
         body_x, body_y = clip(body_x, -0.28, 0.28), clip(body_y, -0.28, 0.28)
         desired = self._body_to_imu(body_x, body_y, clip(alpha, -0.22, 0.22))
         B, bias = self._plant()
-        virtual_action = self._allocate(B, bias, desired, self.last_alloc)
+        identified = (
+            self.ring_cycle is not None and self.ring_orientation is not None
+            and self.ring_phase is not None and self.ring_identifications > 0
+        )
+        if identified:
+            action = self._allocate_stateful(B, bias, desired, self.last_action)
+        else:
+            action = self._allocate(B, bias, desired, self.last_alloc)
 
         # Persistent, tiny probing keeps every column observable after the hidden loss.
         goal_distance = math.hypot(x - PORT_RADIUS * port_c, y - PORT_RADIUS * port_s)
         if t > 24 and goal_distance > 0.28:
             slot = (t // 2) % 6
-            virtual_action[slot] = min(1.0, virtual_action[slot] + 0.060)
-        self.last_alloc = virtual_action.copy()
-        action = virtual_action.copy()
-        if (self.ring_cycle is not None and self.ring_orientation is not None
-                and self.ring_phase is not None and self.ring_identifications > 0):
-            for slot in range(6):
-                nozzle = self._ring_nozzle(slot)
-                action[slot] = virtual_action[slot] ** (
-                    1.0 / max(float(self.ring_exponents[nozzle]), 0.20)
-                )
+            action[slot] = min(1.0, action[slot] + 0.060)
+        self.last_alloc = action.copy()
         return action
 
     def act(self, t, obs):
@@ -704,8 +795,12 @@ class Controller:
         calibration = self._calibration(t)
         if calibration is not None:
             action = calibration
+        elif (self.ring_flush_until is not None
+              and t < self.ring_flush_until):
+            action = np.zeros(6)
         elif (self.ring_probe_start is not None
               and self.ring_cycle is None
+              and t >= self.ring_probe_start
               and t < self.ring_probe_start + 7):
             action = np.zeros(6)
             action[0] = 0.45
@@ -714,15 +809,16 @@ class Controller:
             action[1] = 0.45
         elif (self.ring_scan_start is not None
               and (len(self.ring_scan_samples) < 6
-                   or any(len(self.ring_scan_samples.get(j, [])) < 2
+                   or any(len(self.ring_scan_samples.get(j, [])) < 3
                           for j in range(6)))):
             nozzle = next(
                 j for j in range(6)
-                if len(self.ring_scan_samples.get(j, [])) < 2
+                if len(self.ring_scan_samples.get(j, [])) < 3
             )
             slot = self._ring_slot(nozzle)
             action = np.zeros(6)
-            action[slot] = (0.35 if nozzle not in self.ring_scan_samples else 0.70)
+            count = len(self.ring_scan_samples.get(nozzle, []))
+            action[slot] = (0.25, 0.50, 0.75)[count]
         elif (self.ring_commission_pending
               and self.ring_bad_nozzle is not None):
             action = np.zeros(6)
@@ -735,7 +831,7 @@ class Controller:
         self.close_mode = saved_close
         self.last_alloc = saved_alloc
 
-        action = np.asarray(action, dtype=float)
+        action = np.clip(np.asarray(action, dtype=float), 0.0, 1.0)
         if score < self.pending_score:
             self.pending_score = score
             self.pending_action = action.copy()
