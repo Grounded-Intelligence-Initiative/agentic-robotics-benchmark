@@ -409,6 +409,13 @@ def _read_failure_codes(validation_path: Path) -> list[str]:
 # --------------------------------------------------------------------------- #
 # orchestrator
 # --------------------------------------------------------------------------- #
+#: What follows a green gate: validation proves the task runs, not that it is hard.
+_DIFFICULTY_STEP = (
+    "measure difficulty: run frontier models with `ale run <task_dir> --agent <harness> "
+    "--model <model>` and read each verdict's `reward`; the target is roughly below 0.5. "
+    "Raise the engineering or perception challenge if a model saturates it, and rule out the "
+    "pinned claude-code harness's two defects first (docs/contributing-a-task.md section 7)."
+)
 _NEXT_STEPS = [
     "Write image/Dockerfile: the simulator and every stable dependency, final stage FROM "
     "an official ALE base, python3 >= 3.12 world-traversable — or declare a prebuilt "
@@ -572,6 +579,7 @@ def run_gates(*, task: str, task_dir: Path, repo: Path, runs_dir: Path,
             status="built",
             detail=f"verified: untouched all-zero and oracle all-one "
                    f"({metric} = {measured}, ratio = {metrics.get('ratio')}).",
+            next_steps=[_DIFFICULTY_STEP],
             **common,
         )
     return OnboardResult(

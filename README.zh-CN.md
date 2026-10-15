@@ -61,7 +61,7 @@ reward = clamp(ratio / full_at, 0, 1)         # 唯一受闸门约束的 reward 
 
 ## 贡献一个任务
 
-贡献就是向本仓库提交一个 pull request，把任务文件夹加在 `tasks/<platform>/<name>/`，其中
+贡献就是向本仓库提交一个 pull request，把一个任务文件夹加在 `tasks/<platform>/<name>/`，其中
 `<name>` 是 manifest 的 `name`（任务登记的名称），`<platform>` 是它的 `metadata.platform`。
 报名、职责分工、任务各阶段与贡献计分见项目的贡献指南：[中文](https://docs.google.com/document/d/1gX8v-w-idIPLjzoWgRskT0llE7cKXqg9sVLB0cWfZk0/view)、[English](https://docs.google.com/document/d/1s1E3ymIBLujWf2l7rhu4g9Nl4orBfooK0aDWOdum7-Y/view)。
 
@@ -116,7 +116,7 @@ cd shared && python3 -m robotics_grader.selftest
 
 # 用真 agent 跑一个任务（难度测试；verdict 在 <runs> 里）
 cd vendor/ale && VIRTUAL_ENV= DOCKER_HOST=unix:///var/run/docker.sock \
-    uv run ale run ../../tasks/<platform>/<slug> --agent claude-code --runs-dir <runs>
+    uv run ale run ../../tasks/<platform>/<slug> --agent claude-code --model <model> --runs-dir <runs>
 
 # 任务 registry（任务身份来自引擎 loader；工作树不干净则拒绝；契约见
 # schemas/task-registry.schema.json）。platforms 来自 tasks/platforms.json；
@@ -127,7 +127,7 @@ cd vendor/ale && VIRTUAL_ENV= uv run python ../../scripts/export_registry.py \
 uv run pytest -q
 ```
 
-模板和完整示例任务都能在一分钟内 validate 完。
+模板和完整示例任务都远不到一分钟就能 validate 完。
 
 ## 访问
 

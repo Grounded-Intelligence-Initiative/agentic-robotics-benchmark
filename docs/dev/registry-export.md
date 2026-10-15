@@ -64,12 +64,15 @@ either hash of a task differs from its newest record, the new pair is prepended 
 `since = generated_at`; a pair appears at most once (a revert drops the older duplicate so the
 current identity is always `[0]`), and nothing else is removed automatically. When a change is
 genuinely breaking (new grader semantics, a new anchor), prune the stale records by hand so that
-runs made against the old task stop matching `engine:task_identity`. The file is validated on
-load (a JSON list of objects with string `slug`, `spec_hash`, `content_digest`, `since`); a typo
-made while pruning is reported as `error: ...`, not a traceback.
+results recorded against the old task no longer match a registered identity. The file is
+validated on load (a JSON list of objects with string `slug`, `spec_hash`, `content_digest`,
+`since`, the hashes `sha256:<64 hex>` and `since` an ISO-8601 UTC timestamp, as the schema
+requires); a typo made while pruning is reported as `error: ...`, not a traceback.
 
-CI (`engine-lint` job) re-exports the tree into throwaway paths and checks that every task the
-history knows has `identities[0]` equal to its first committed record, so a tree that drifted
-from its registered identity is caught before a run against it lands as
-`task_unknown_version`. A slug the history does not know yet is a new task arriving by pull
-request: CI prints a notice, and the maintainer's export after the merge records it.
+CI (`engine-lint` job) re-exports the tree into throwaway paths, validates the document against
+`schemas/task-registry.schema.json`, and checks that every task the history knows has
+`identities[0]` equal to its first committed record, so a tree that drifted from its registered
+identity is caught before results are recorded against it. A slug the history does not know yet
+is a new task arriving by pull request: CI prints a notice, and the maintainer's export after the
+merge records it. `provenance.tasks_repo` is the `origin` remote's `owner/name`: export from a
+clone whose `origin` is the canonical repository, not a fork.

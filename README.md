@@ -129,7 +129,7 @@ cd shared && python3 -m robotics_grader.selftest
 
 # run a task with a real agent (the difficulty test; the verdicts are in <runs>)
 cd vendor/ale && VIRTUAL_ENV= DOCKER_HOST=unix:///var/run/docker.sock \
-    uv run ale run ../../tasks/<platform>/<slug> --agent claude-code --runs-dir <runs>
+    uv run ale run ../../tasks/<platform>/<slug> --agent claude-code --model <model> --runs-dir <runs>
 
 # the task registry (task identity from the engine loader; refuses a dirty tree; contract in
 # schemas/task-registry.schema.json). platforms come from tasks/platforms.json; the website

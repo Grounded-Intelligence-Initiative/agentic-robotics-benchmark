@@ -63,6 +63,8 @@ jobs:
           cd vendor/ale
           VIRTUAL_ENV= uv run python ../../scripts/export_registry.py \
             --tasks ../../tasks --history /tmp/h.json --allow-dirty --out /tmp/r.json
+          # The real export against the registry's contract (the engine venv has jsonschema).
+          VIRTUAL_ENV= uv run python -c 'import json, jsonschema; jsonschema.validate(json.load(open("/tmp/r.json")), json.load(open("../../schemas/task-registry.schema.json"))); print("registry export matches schemas/task-registry.schema.json")'
           cd ../..
           python3 - <<'PY'
           import json, sys

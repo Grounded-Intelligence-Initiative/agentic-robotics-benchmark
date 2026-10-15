@@ -176,6 +176,9 @@ def read_anchor(task_dir: Path, score_cap: float) -> dict[str, Any]:
         raise RegistryError(
             f"{path}: full_at must lie in (0, {score_cap}] (score_cap), got {full_at!r}"
         )
+    for key in ("source", "image_identity"):
+        if anchor.get(key) is not None and not isinstance(anchor.get(key), str):
+            raise RegistryError(f"{path}: {key} must be a string or null, got {anchor.get(key)!r}")
     return {
         "anchor": None if value is None else float(value),
         "anchor_full_at": float(full_at),
@@ -256,6 +259,12 @@ def task_entry(
 # identity history (§4): outside every task folder so it never feeds the digest
 # --------------------------------------------------------------------------- #
 _HISTORY_KEYS = ("slug", "spec_hash", "content_digest", "since")
+#: What schemas/task-registry.schema.json requires of an identity's fields.
+_HISTORY_PATTERNS = {
+    "spec_hash": re.compile(r"^sha256:[0-9a-f]{64}$"),
+    "content_digest": re.compile(r"^sha256:[0-9a-f]{64}$"),
+    "since": re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"),
+}
 
 
 def load_history(path: Path) -> list[dict[str, Any]]:
@@ -279,6 +288,12 @@ def load_history(path: Path) -> list[dict[str, Any]]:
             if not isinstance(record.get(key), str) or not record[key]:
                 raise RegistryError(
                     f"{path}: record {index} must carry a non-empty string {key!r}"
+                )
+        for key, pattern in _HISTORY_PATTERNS.items():
+            if not pattern.match(record[key]):
+                raise RegistryError(
+                    f"{path}: record {index} {key} {record[key]!r} does not match "
+                    f"{pattern.pattern} (schemas/task-registry.schema.json)"
                 )
     return loaded
 
@@ -425,6 +440,8 @@ def load_platforms(path: Path = PLATFORMS_FILE) -> list[dict[str, str]]:
 
 def release_block(name: str, version: str, task_set: list[str]) -> dict[str, Any]:
     """The release policy: macro mean over *every* active task, missing scored as zero."""
+    if not name or not version:
+        raise RegistryError("the release needs a non-empty name and version")
     return {
         "name": name,
         "version": version,

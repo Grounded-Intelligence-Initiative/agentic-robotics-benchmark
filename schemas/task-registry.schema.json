@@ -15,7 +15,7 @@
       "properties": {
         "source": {"const": "engine_task_loader"},
         "tasks_repo": {"type": "string", "minLength": 1, "description": "owner/name of the repository the tasks came from"},
-        "source_commit": {"type": "string", "pattern": "^[0-9a-f]{7,40}(-dirty)?$"},
+        "source_commit": {"type": "string", "pattern": "^[0-9a-f]{7,64}(-dirty)?$"},
         "generated_at": {"$ref": "#/definitions/timestamp"},
         "engine": {
           "type": "object",

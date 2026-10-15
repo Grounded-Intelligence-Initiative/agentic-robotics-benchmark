@@ -21,8 +21,8 @@ under a declared artifact path, normally `/home/user/submission/`.
 
 Nothing here is a harness of our own. The **upstream ALE engine** (submodule `vendor/ale`)
 builds the sandbox, runs the agent, captures the artifact, and runs the task's grader; this
-repository owns the **tasks**, the **authoring gate**, and the **bridge** that turns engine
-run records into leaderboard submissions.
+repository owns the **tasks**, the **authoring gate** and the **task registry** it
+publishes.
 
 ## 2. The task folder
 
@@ -94,7 +94,7 @@ two and rejects a mismatch.
 - `rewards` — only the gated key, `reward ∈ [0, 1]`. Under validate every key here must be
   exactly 0 (untouched) and exactly 1 (oracle).
 - `metrics` — everything worth keeping but never gated: the raw metric (e.g.
-  `mean_episode_reward`), the capped `ratio` (the leaderboard number), `match_lock_ok`,
+  `mean_docking_quality`), the capped `ratio` (reported alongside the reward), `match_lock_ok`,
   `anchor_recorded`, probe and abort counts.
 
 The engine persists one episode directory `runs/<run_id>/<task.name>-<hex8>/`:
@@ -104,7 +104,7 @@ The engine persists one episode directory `runs/<run_id>/<task.name>-<hex8>/`:
 | `lock.json` | `task.{name,variant,spec_hash,content_digest}`, `framework.{commit,version}`, `agent.{harness,model,version,family}`, `image.*`, `resources.effective`, `ale_verify.content_hash` |
 | `result.json` | `episode_id`, `status` (`completed`, `agent_error`, `timeout`, …), `rewards{}` (only when completed), `metrics{}`, `phases[]`, `failure{}` |
 | `verification.json` | the `ale_verify` record: criteria, stats, aggregates, diagnostics |
-| `trajectory.json`, `trace.execution.jsonl`, `artifacts/snapshot.json` | agent transcript, engine trace, artifact identity — opaque to the leaderboard |
+| `trajectory.json`, `trace.execution.jsonl`, `artifacts/snapshot.json` | agent transcript, engine trace, artifact identity |
 
 Run level: `ledger.db` (the only enumeration that also lists interrupted episodes) and, for
 `ale validate`, `validation.json`.

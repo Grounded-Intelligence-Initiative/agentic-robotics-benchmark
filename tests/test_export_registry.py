@@ -304,6 +304,34 @@ def test_platforms_come_from_this_repository(tmp_path):
             xr.load_platforms(bad)
 
 
+@pytest.mark.parametrize("field, value", [("source", 474), ("source", ["a"]),
+                                          ("image_identity", {"ref": "x"})])
+def test_anchor_text_fields_must_be_strings_or_null(tmp_path, field, value):
+    root = _task_dir(tmp_path, anchor=dict(_METRIC, value=1.0, **{field: value}))
+    with pytest.raises(xr.RegistryError, match=field):
+        xr.read_anchor(root, 1.5)
+
+
+@pytest.mark.parametrize("key, value", [
+    ("since", "2026-09-02"),                       # a date alone is not the schema's timestamp
+    ("spec_hash", "sha256:" + "A" * 64),           # uppercase hex
+    ("content_digest", "sha256:abc"),              # too short
+])
+def test_load_history_holds_records_to_the_schema_patterns(tmp_path, key, value):
+    record = {"slug": "some_task", "spec_hash": HASH_A, "content_digest": HASH_B, "since": NOW}
+    record[key] = value
+    path = tmp_path / "h.json"
+    path.write_text(json.dumps([record]), encoding="utf-8")
+    with pytest.raises(xr.RegistryError, match=key):
+        xr.load_history(path)
+
+
+def test_release_block_needs_a_name_and_version():
+    for name, version in (("", "v0.5"), ("Agentic Robotics Benchmark", "")):
+        with pytest.raises(xr.RegistryError, match="non-empty"):
+            xr.release_block(name, version, ["some_task"])
+
+
 def test_release_block_policy():
     block = xr.release_block("Agentic Robotics Benchmark", "v0.5", ["drone_hover"])
     assert block == {

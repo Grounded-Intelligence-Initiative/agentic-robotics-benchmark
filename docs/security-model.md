@@ -23,8 +23,8 @@ The adversary is the **tested agent**: arbitrary code running for hours as the s
 agent account, and again — through the solver it leaves behind — while the grader runs. It
 may try to inflate its metric, echo canned output, pre-create or overwrite the verdict, read
 the grader, or predict the hidden seeds. We do **not** defend against a compromised host or a
-malicious operator: a result is only as trustworthy as whoever ran the episodes, which is why
-the formal benchmarking runs are the maintainers' own.
+malicious operator: a result is only as trustworthy as whoever ran the episodes (the
+guidelines' Agent Benchmarking role says who runs formal evaluations and what they record).
 
 ## 2. What stage isolation hides
 
@@ -39,7 +39,7 @@ stage protocol; the task only has to respect it.
 | **Verdict path** | The reward map is written to `ALE_VERDICT_PATH`, inside the root-only tree, through `ale_verify`'s atomic write; the agent can neither pre-create nor overwrite it. The engine cross-checks the reward file against `verification.json`. | engine + kit |
 | **Seeds in memory** | The grader draws hidden seeds from OS entropy inside its own process (`seed_rng`); they never touch disk. The practice grader the agent gets uses different, visible seeds and prints the raw metric only. | kit + `scripts/lint_domain.py` |
 | **No self-reported numbers** | The metric is computed from the grader's own simulator state. Nothing the solver prints is parsed as a score; the wire carries observations and actions only. | kit |
-| **Network** | `network.mode: block` during the agent phase; the agent cannot fetch anything, including the public mirror. | engine |
+| **Network** | `network.mode: block` during the agent phase; the agent cannot fetch anything, including this repository. | engine |
 | **Image hygiene** | The task image may not `COPY` `verify/`, `oracle/`, the anchor or the manifest — an image layer is readable by anyone who can run the image. | `scripts/lint_domain.py` |
 
 Real-run evidence for the first four rows: [`evidence/isolation-audit.md`](evidence/isolation-audit.md)
@@ -76,17 +76,20 @@ result can be matched to the exact committed tree it ran against.
 
 - **The host.** An episode record is a recording made on whoever's machine ran it, not proof
   that it happened under controlled conditions. Trust the runs whose operator you trust.
-- **Network during verify.** The engine opens egress before the verify stage, and a
-  closed_loop task runs the agent's solver during that stage. The solver therefore has
-  network access while it is being scored; the hidden seeds never leave the grader's memory,
-  but a task must not assume the verify stage is offline.
+- **Network during verify (an engine issue, not yet fixed upstream).** The engine opens egress
+  before the verify stage, and a closed_loop task runs the agent's solver during that stage.
+  The solver can therefore reach the internet while it is being scored, and download anything
+  public, this repository's `oracle/` included. The hidden seeds never leave the grader's
+  memory, but a solver that fetches the reference controller can play it. Until the engine
+  keeps the verify stage offline for the solver, check formal runs' submissions and traces
+  for network use.
 - **The probe lock is not a proof of honesty.** It catches a policy that ignores its input;
   a solver that notices a repeated `t` can vary its answer on purpose. Isolation, not the
   lock, keeps a score honest.
 - **Public anchors.** Because the repository is public and complete, the target value is
-  public knowledge outside the sandbox. The benchmark measures what the agent does inside a
-  blocked-network sandbox that does not contain it; it does not measure what a human who read
-  the repository could type into an instruction.
+  public knowledge outside the sandbox. The agent phase runs in a blocked-network sandbox that
+  does not contain it; the benchmark does not measure what a human who read the repository
+  could type into an instruction.
 - **A simulator the agent holds.** When a task gives the agent a copy of its simulator, the
   episode seed is the only secret: seed it with 64 bits (`rng.seed(bits=64)`) and draw every
   hidden value through a generator whose outputs reveal nothing (a keyed hash), or the first

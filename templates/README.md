@@ -184,8 +184,8 @@ One template; the pattern is an authoring choice inside `verify.py`, not a manif
 ## Turning it into your task
 
 1. Name. `task.yaml`'s `name` must be a collection-unique slug (`^[a-z0-9][a-z0-9_-]*$`).
-   Do it first: it is the Task Name registered in the project's sheet, and the domain lint
-   compares it with the folder name. `metadata.platform`
+   Do it first: it is the Task Name registered in the project's sheet, and once the task sits
+   under `tasks/` the domain lint checks that the folder carries the same name. `metadata.platform`
    is one of the benchmark's platforms (`tasks/platforms.json`, listed in the manifest's
    comment) and names the `tasks/<platform>/` folder the task lands in. A new key needs a
    maintainer.

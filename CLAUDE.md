@@ -124,7 +124,7 @@ reward = clamp(ratio / full_at, 0, 1)           # the single gated reward key
 - Metric must be an **outcome on a positive scale**; never wall-clock time / throughput / FPS
   / frequency. A negative reward becomes a positive cost with the anchor's `direction` lower; the kit
   refuses a non-positive anchor.
-- `rewards` carries only `reward`; the raw metric, capped `ratio` (the reported score),
+- `rewards` carries only `reward` (the task's score, 0 to 1); the raw metric, capped `ratio`,
   `match_lock_ok`, `anchor_recorded`, probe counts ride in the verdict's `metrics`.
 
 ## Kit vendoring rule
@@ -144,15 +144,17 @@ task after it lands, so the copy a maintainer validated is the copy that scores.
   [English](https://docs.google.com/document/d/1s1E3ymIBLujWf2l7rhu4g9Nl4orBfooK0aDWOdum7-Y/view)
   and [中文](https://docs.google.com/document/d/1gX8v-w-idIPLjzoWgRskT0llE7cKXqg9sVLB0cWfZk0/view).
   Link them as `/view` URLs, never `/edit`. This repository documents what happens here.
-- The sheet's Task Name, the folder name and `task.yaml`'s `name` are one string. Contributors
-  get write access after signing up, push a branch (here or on a fork) adding
+- The sheet's Task Name, the folder name and `task.yaml`'s `name` are one string (preferably
+  `snake_case`). Contributors get write access from the project initiator after signing up,
+  push a branch (here or on a fork) adding
   `tasks/<platform>/<name>/`, and open the pull request; CI
   (`.github/workflows/pr-checks.yml`: no secrets, so fork pull requests run it) is the same
   for everyone. No staging area, no promote step, no public mirror: the repository is public.
 - Before the pull request a contributor runs `ale lint` + `ale validate` and measures
-  difficulty with frontier models (`ale run`); the target is a frontier-model score roughly
+  difficulty with frontier models (`ale run`); the target is a frontier-model `reward` roughly
   below 0.5, reached by raising the engineering or perception challenge, never by arbitrary
-  penalties.
+  penalties. Check runs for the two pinned-harness defects first (300 s stream cut-off; the
+  agent's `PATH` without `/opt/venv/bin`; `docs/contributing-a-task.md` §7).
 - Maintainer flow: read `verify/` and `oracle/`, check out the branch, re-run `ale lint` +
   `ale validate` from `vendor/ale`, fix the anchor on the branch if the measurement
   disagrees, merge, then export the registry (`scripts/export_registry.py`) and commit
@@ -207,9 +209,10 @@ uv run pytest -q
 - No secrets in the repo (`.env`, tokens, keys). No hardware-dependent scored metric. No
   100 MB+ blobs in git.
 - `tasks/space/fault_adaptive_spacecraft_docking` (contributed in #1, merged 2026-10-15 after
-  a maintainer pass) is the worked example of a complete task. The dummy `uav_hover` (formerly
-  `drone_hover`) was removed on 2026-10-15: a task frontier models solve trivially is neither
-  a real example nor a task anyone could submit (owner decision).
+  a maintainer pass) is the worked example of a complete task. Its difficulty is being
+  re-measured: on its previous version, Opus 5.5 and Fable 5.1 scored 1.0. The dummy
+  `uav_hover` (formerly `drone_hover`) was removed on 2026-10-15: a task frontier models solve
+  trivially is neither a real example nor a task anyone could submit (owner decision).
 
 ## Gotchas (details in PROGRESS.md)
 

@@ -10,26 +10,28 @@ This page covers what happens in this repository.
 
 ## Before you start
 
-1. Sign up in the project's coordination sheet (linked from the guidelines) and send your
-   GitHub ID to the project initiator, who gives you write access to this repository.
-2. Register the task in the sheet. Its Task Name is the task's permanent `name`: a short
-   `snake_case` string (lowercase letters, digits, underscores) that is identical in the
-   sheet, in the folder name and in `name` in `task.yaml`. A retired task keeps its name;
-   never reuse one.
+1. Sign up in the project's coordination sheet (linked from the guidelines) and tell the
+   project initiator your GitHub ID; they give you write access to this repository (the sheet
+   alone does not).
+2. Register the task in the sheet. Its Task Name is the task's permanent `name`, identical in
+   the sheet, in the folder name and in `name` in `task.yaml`: preferably a short `snake_case`
+   string (lowercase letters, digits, underscores; the lint accepts `^[a-z0-9][a-z0-9_-]*$`).
+   A retired task keeps its name; never reuse one.
 3. Pick its platform, one of the keys in [`tasks/platforms.json`](tasks/platforms.json):
    `arm`, `hand`, `quadruped`, `humanoid`, `uav`, `driving`, `underwater`, `space`, `soft`,
    `surgical`, `swarm`, `subsystems`. A task that fits none needs a maintainer first.
 
-You need the ALE engine and Docker. The engine repository is public and not on PyPI:
+You need Docker and the ALE engine at the commit this repository pins: the `vendor/ale`
+submodule (upstream `main` moves on; a task is gated on the pinned commit). Clone with the
+submodule (or run `git submodule update --init vendor/ale` in an existing clone):
 
 ```bash
-git clone https://github.com/AgentsLastExam/ale.git && cd ale
+git clone --recurse-submodules https://github.com/Grounded-Intelligence-Initiative/agentic-robotics-benchmark.git
+cd agentic-robotics-benchmark/vendor/ale  # the pinned engine; run every `ale` command from here
 just bootstrap                          # needs uv and just (uv tool install rust-just)
 uv run ale --help
 images/build.sh container-ubuntu22      # the sandbox base image; once per machine
 ```
-
-Use the engine commit this repository pins: the `vendor/ale` submodule.
 
 ## Build and test it
 
@@ -39,7 +41,7 @@ robotics domain requires beyond the engine's own specs, is in
 [`templates/README.md`](templates/README.md). The long form of the whole path, including the
 anchor bootstrap, is [`docs/contributing-a-task.md`](docs/contributing-a-task.md).
 
-Gate it from the engine checkout until both lines are green:
+Gate it from `vendor/ale` until both lines are green:
 
 ```bash
 uv run ale lint <task_dir>
@@ -48,10 +50,13 @@ uv run ale validate <task_dir> --runs-dir <runs>     # untouched all-zero, oracl
 
 Validation shows that the task runs; it says nothing about difficulty. Measure that with a
 frontier model (`uv run ale run <task_dir> --agent <harness> --model <model>`) and iterate:
-with a top score of 1.0, current frontier models should stay roughly below 0.5 under the
-agreed configuration and budget. Raise the engineering or perception challenge rather than
-adding arbitrary penalties, and fix environment failures, missing dependencies and unclear
-instructions before reading a failed run as a model limitation. Keep the run instructions
+the task's score is the verdict's `reward` (0 to 1), and current frontier models should stay
+roughly below 0.5 under the agreed configuration and budget. Raise the engineering or
+perception challenge rather than adding arbitrary penalties, and fix environment failures,
+missing dependencies and unclear instructions before reading a failed run as a model
+limitation. The pinned `claude-code` harness has two such defects (a model stream silent for
+300 s is cut off; the agent's `PATH` drops `/opt/venv/bin`); see
+[`docs/contributing-a-task.md`](docs/contributing-a-task.md) §7. Keep the run instructions
 and the results of both.
 
 ## Open the pull request
@@ -61,7 +66,8 @@ and the results of both.
    `task.yaml` and `<name>` its `name`. Nothing else goes in the pull request.
 2. Open the pull request. Its template asks for the `ok` line of your `ale validate` run,
    your frontier-model results and a few confirmations.
-3. Once CI passes, hand the task to its validator, as the guidelines describe.
+3. Once CI passes, hand the task version (the branch and its commit) to the task's validator,
+   as the guidelines describe.
 
 ## What CI checks on every pull request
 

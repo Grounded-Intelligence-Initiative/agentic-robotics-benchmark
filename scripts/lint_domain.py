@@ -264,7 +264,8 @@ def _lint_anchor(task_dir: Path, rel: str) -> list[str]:
         except (TypeError, ValueError):
             problems.append(f"{rel}: anchor full_at {full_at!r} is not a number")
 
-    source = str(anchor.get("source", ""))
+    source = anchor.get("source")
+    source = source.strip() if isinstance(source, str) else ""
     if not source or source.startswith("TODO"):
         problems.append(f"{rel}: anchor has no `source` — an unattributed denominator cannot "
                         f"be audited")

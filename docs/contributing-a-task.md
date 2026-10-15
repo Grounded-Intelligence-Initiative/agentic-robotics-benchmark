@@ -2,8 +2,8 @@
 
 The path: get the engine, start from the template, build the task locally, validate it,
 measure its difficulty with a frontier model, then open a pull request that adds your folder
-at `tasks/<platform>/<name>/`. Sign-up, roles, the task stages after the merge and how
-contributions are credited are in the project's contribution guidelines
+at `tasks/<platform>/<name>/`. Sign-up, roles, the task stages (expert validation, formal
+benchmarking) and how contributions are credited are in the project's contribution guidelines
 ([English](https://docs.google.com/document/d/1s1E3ymIBLujWf2l7rhu4g9Nl4orBfooK0aDWOdum7-Y/view),
 [中文](https://docs.google.com/document/d/1gX8v-w-idIPLjzoWgRskT0llE7cKXqg9sVLB0cWfZk0/view));
 the short version of this page is the repository's [`CONTRIBUTING.md`](../CONTRIBUTING.md).
@@ -26,12 +26,15 @@ untouched sandbox scores an exact zero and the reference artifact scores an exac
 
 ## 1. Prerequisites
 
-You need the ALE engine and Docker. The engine repository is public; it is not on PyPI.
-`uv` and `just` (`uv tool install rust-just`) drive it:
+You need Docker and the ALE engine at the commit this repository pins, the `vendor/ale`
+submodule; upstream `main` moves on, and a task is gated on the pinned commit. `uv` and
+`just` (`uv tool install rust-just`) drive it. Clone this repository with its submodule (or
+run `git submodule update --init vendor/ale` in an existing clone) and run every `ale` command
+from `vendor/ale`:
 
 ```bash
-git clone https://github.com/AgentsLastExam/ale.git
-cd ale
+git clone --recurse-submodules https://github.com/Grounded-Intelligence-Initiative/agentic-robotics-benchmark.git
+cd agentic-robotics-benchmark/vendor/ale
 just bootstrap
 uv run ale --help
 images/build.sh container-ubuntu22     # the sandbox base image; build it once, it takes a while
@@ -39,15 +42,14 @@ images/build.sh container-ubuntu22     # the sandbox base image; build it once, 
 
 The base image on ghcr.io refuses anonymous pulls, so build it locally from the checkout. If
 your reference method trains, plan for a single GPU of 24 GB or less; training happens only
-in the oracle phase, never during scoring. Use the engine commit this repository pins (the
-`vendor/ale` submodule), and a checkout of this repository for the template.
+in the oracle phase, never during scoring.
 
 ## 2. Get the template
 
-Copy [`templates/task/`](../templates/task/) from a checkout of this repository to wherever
-you work. Its name in the project's sheet, the folder name and `name` in `task.yaml` are one
-string: a short `snake_case` name (lowercase letters, digits, underscores) that stays the
-task's identity for good.
+Copy [`templates/task/`](../templates/task/) from your checkout to wherever you work. Its
+name in the project's sheet, the folder name and `name` in `task.yaml` are one string that
+stays the task's identity for good: preferably a short `snake_case` name (lowercase letters,
+digits, underscores; the lint accepts `^[a-z0-9][a-z0-9_-]*$`).
 
 Rename the folder to that name first and set `name` in `task.yaml` to the same string. If
 your copy does not keep Unix permissions (Windows, some GUI tools), run
@@ -101,8 +103,8 @@ every reward key (`oracle_not_full` otherwise).
 Nothing you print to stdout is a scoring input. The grader computes the metric under its own
 physics and writes the verdict through a channel your solution cannot pre-create or overwrite.
 
-If you have this repository, `uv run python scripts/lint_domain.py <task_dir>` runs the
-domain lint the pull request CI runs (section 5, plus placement once the folder sits under
+From the repository root, `uv run python scripts/lint_domain.py <task_dir>` runs the domain
+lint the pull request CI runs (section 5, plus placement once the folder sits under
 `tasks/`).
 
 ## 4. What the agent sees, and what it must not
@@ -165,20 +167,34 @@ printed elsewhere. You cannot know it until you run, so:
 `ale validate` proves the task runs and scores honestly; it says nothing about difficulty.
 Run frontier models on it with the engine's `ale run` (for example
 `uv run ale run <task_dir> --agent claude-code --model <model> --runs-dir <runs>`) and read
-the verdicts. With a top score of 1.0, current frontier models should stay roughly below 0.5
-under the agreed configuration and run budget. When a model saturates the task, raise the
+the verdicts. The task's score is the verdict's `reward` (0 to 1; the capped `ratio` rides
+along in `metrics`), and current frontier models should stay roughly below 0.5 under the
+agreed configuration and run budget. When a model saturates the task, raise the
 engineering or perception challenge and test again; do not suppress scores with arbitrary
 penalties, and keep the task completable by a human expert under the stated conditions.
 Before reading a failed run as a model limitation, fix what is not the task: environment
 failures, missing dependencies, unclear instructions. Keep the run instructions and the
 results for the pull request.
 
+Two defects of the `claude-code` harness at the pinned engine commit lower scores without
+any error. Check for both before trusting a run:
+
+- A model stream that is silent for 300 s is cut off, and the episode ends as
+  `API Error: The operation timed out`. For evaluation runs, add
+  `ENV BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800 CLAUDE_STREAM_IDLE_TIMEOUT_MS=1800000` to a copy of
+  the task's `image/Dockerfile` (the variables only reach the harness).
+- The harness sets the agent's `PATH` to its own directories plus `/usr/local/bin:/usr/bin:/bin`,
+  so `/opt/venv/bin` is gone and the agent's `python3` lacks the venv's packages. Say in
+  `instruction.md` that the venv's interpreter is `/opt/venv/bin/python3`, and check the
+  agent's transcript for `ModuleNotFoundError`.
+
 ## 8. Submit
 
 Open a pull request into this repository that adds exactly one folder,
 `tasks/<platform>/<name>/`, where `<platform>` is `metadata.platform` from your `task.yaml`
 (one of the keys in `tasks/platforms.json`) and `<name>` its `name`. Push the branch to this
-repository (contributors get write access when they sign up) or to a fork. The pull request
+repository (the project initiator grants write access after you sign up and send your GitHub
+ID) or to a fork. The pull request
 template asks for the `ok` line of your `ale validate` run, your frontier-model results and a
 few confirmations. Nothing else belongs in the pull request: no notes, no `__pycache__/`, no
 `.ale-cache/`, no `assets/`. To revise the task under review, push to the same branch.
@@ -194,7 +210,8 @@ A maintainer then reads `verify/` and `oracle/`, re-runs `ale lint` and `ale val
 your branch, corrects the anchor on the branch if the measurement disagrees, and merges. The
 task is live at its path from that moment and enters the registry at the maintainers' next
 export; the website displays the registry once that export is installed there. Expert
-validation and the formal benchmarking runs follow, as the guidelines describe.
+validation works from a task version (the pull request's branch and commit); the guidelines
+describe that stage and the formal benchmarking runs.
 
 ## Common pitfalls
 

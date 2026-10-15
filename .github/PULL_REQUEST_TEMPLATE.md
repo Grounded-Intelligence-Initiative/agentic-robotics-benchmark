@@ -34,7 +34,8 @@ has to leave in `/home/user/submission/`.
 
 ## Frontier-model results
 
-Model, harness, run budget, reward and the run's `ratio` for each run.
+For each run: the task commit it ran on, model, harness, run budget, `reward` and the run's
+`ratio`.
 
 ## Notes for the maintainers
 

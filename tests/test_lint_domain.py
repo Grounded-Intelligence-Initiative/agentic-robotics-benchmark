@@ -170,6 +170,13 @@ def test_a_missing_full_at_names_the_engine_gate(tmp_path):
     assert "oracle_not_full" in problems[0] and "domain policy" not in problems[0]
 
 
+@pytest.mark.parametrize("source", [None, 474, ["oracle run"], "", "   "])
+def test_an_anchor_source_that_is_not_text_is_refused(tmp_path, source):
+    """str(None) is "None": a null, numeric or list source must not pass as attribution."""
+    problems = lint_domain.lint_task(_task(tmp_path, anchor=dict(_ANCHOR, source=source)))
+    assert any("no `source`" in p for p in problems), problems
+
+
 def test_an_anchor_quoting_a_published_figure_is_still_refused(tmp_path):
     anchor = dict(_ANCHOR, source="the paper reports 474")
     problems = lint_domain.lint_task(_task(tmp_path, anchor=anchor))
