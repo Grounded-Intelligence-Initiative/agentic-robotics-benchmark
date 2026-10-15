@@ -258,8 +258,8 @@ def test_a_pdf_in_the_image_is_no_longer_hidden_surface(tmp_path):
 
 def test_full_at_is_bounded_by_the_task_own_scoring_cap(tmp_path):
     """The cap comes from verify/grader_config.json (1.5 by default), read exactly as the
-    kit and the website precheck read it — a task the server
-    accepts must never go red in PR CI over a hardcoded 1.5."""
+    kit reads it — a task its own grader accepts must never go red in PR CI over a
+    hardcoded 1.5."""
     over_default = _task(tmp_path / "a", anchor=dict(_ANCHOR, full_at=1.8))
     problems = lint_domain.lint_task(over_default)
     assert len(problems) == 1 and "full_at" in problems[0] and "(0, 1.5]" in problems[0], problems

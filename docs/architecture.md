@@ -1,10 +1,10 @@
-# Architecture — how a task runs and how a run reaches the leaderboard
+# Architecture — how a task runs and what the repository publishes
 
 > Audience: maintainers and contributors. The task contract is
 > [`templates/README.md`](../templates/README.md); the trust boundary is
-> [`security-model.md`](security-model.md); the bundle is
-> [`submission-format.md`](submission-format.md); the design record is
-> [`dev/20260902-engine-run-submission.md`](dev/20260902-engine-run-submission.md).
+> [`security-model.md`](security-model.md); the design record is
+> [`dev/20260902-engine-run-submission.md`](dev/20260902-engine-run-submission.md) (dated: its
+> leaderboard bridge is retired).
 > The engine's own normative specs live in `vendor/ale/docs/specs/` (`task-authoring.md`,
 > `standard-environment.md`, `verification.md`). Where this page and the engine disagree,
 > the engine wins.
@@ -139,58 +139,44 @@ The canonical kit is `shared/robotics_grader/` (`Solver`, `ProbeLock`, `seed_rng
 byte-identical copy under `verify/robotics_grader/` because the engine stages exactly the
 `verify/` folder and nothing else.
 
-## 6. The bridge: from tasks and runs to the leaderboard
+## 6. What the repository publishes: the task registry
 
 ```
  tasks/<platform>/<slug>/                      (this repo, committed, clean tree)
      │
      ├─ ale lint / ale validate  ──►  harness/ale_onboard.py  ──►  built | needs_anchor | …
      │
-     ├─ scripts/export_registry.py  (engine loader: spec_hash, content_digest;
-     │        verify/anchor.json: metric, direction, anchor, full_at; grader_config: cap;
-     │        tasks/platforms.json: platforms; identity-history)
-     │        ──►  registry.json  (ale-robotics-task-registry/v2)  ──►  website seed
-     │                                                                   (Task rows: identities,
-     │                                                                    anchor, full_at, cap)
-     └─ (the repository itself is public: every task folder is here whole, oracle/ + verify/
-              included; there is no separate mirror)
-
- ale run <task> --agent <harness>  ──►  runs/<run_id>/<episode>/{lock,result,verification}.json
+     ├─ ale run <task> --agent <harness> --model <model>  ──►  runs/<run_id>/<episode>/…
+     │        (the difficulty test and the formal benchmarking runs; the engine's own records)
      │
-     └─ ale-export (harness/export_run.py)  ──►  <name>.ale-engine-run.tar.zst.age
-              agent tuple from the locks; value-pattern redaction; member hashes;
-              + <name>.receipt.json (encrypted_sha256 = evidence for `verified`)
-                       │
-                       ▼  upload (/submit with a challenge, or /submit/direct as maintainer)
-            website engine_bundle ingest: member hashes, manifest/verification consistency,
-            task identity vs registry, recompute ratio from the registry anchor
-                       │
-                       ▼
-            rejected (no rows) | received | validated  ──maintainer attestation──►  verified
+     └─ scripts/export_registry.py  (engine loader: spec_hash, content_digest;
+              verify/anchor.json: metric, direction, anchor, full_at; grader_config: cap;
+              tasks/platforms.json: platforms; identity-history)
+              ──►  registry.json  (ale-robotics-task-registry/v2,
+                                   contract: schemas/task-registry.schema.json)
+              ──►  the website installs it and displays the tasks
 ```
 
-Trust levels follow who ran the episodes and who attests, not the format:
-`validated` is a consistency badge the server can compute; `verified` is a maintainer
-attestation with `evidence_hash` pointing at an organisation re-run's receipt. See
-[`security-model.md`](security-model.md) §4 and [`submission-format.md`](submission-format.md).
+The repository is public: every task folder is here whole, `oracle/` and `verify/` included,
+and there is no separate mirror. The website is a display-only front end (owner decision
+2026-10-15): it shows the tasks from the registry and links the contribution guidelines. It
+takes no uploads and no run or score submissions, has no leaderboard, and nothing here reads
+from it. A result is the engine's own episode record (`lock.json`, `result.json`,
+`verification.json`) for a task identity the registry names.
 
 ## 7. Repository components
 
 ```
 vendor/ale/                  the engine (submodule, pinned) — never reimplemented here
 tasks/  templates/task/      the tasks and the one template (flat layout); identity-history.json at the root
+tasks/platforms.json         the platform vocabulary (metadata.platform keys and labels)
 shared/robotics_grader/      canonical verify-stage kit (stdlib-only)
 harness/ale_onboard.py       ale-onboard: instantiate + gate (lint -> validate -> outcome)
-harness/export_run.py        ale-export: engine episodes -> ale-engine-run/v1 bundle
-harness/bundle_crypto.py     tar -> zstd -> age packaging; receipt; decrypt for the verifier
-harness/redact.py            value-pattern credential redaction
-harness/trajectory.py        canonical JSON bytes + sha256 (used by hashing everywhere)
-harness/integrity.py         Merkle root helpers over member hashes
 scripts/export_registry.py   registry v2 (engine loader identity; dirty-tree refusal)
 scripts/lint_domain.py       domain lint (what `ale lint` cannot know)
-scripts/build_template_zip.py     the website's template download (zip + GETTING-STARTED.md)
+schemas/                     the registry's JSON Schema (owned here; the export is tested against it)
 skills/onboard-*/            agent-facing onboarding skills
-tests/                       pytest; fixtures from a real `ale validate` run (see tests/fixtures/engine_run/README.md)
+tests/                       pytest
 ```
 
 ## 8. Operational notes

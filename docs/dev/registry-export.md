@@ -1,9 +1,10 @@
 # Exporting the task registry (`ale-robotics-task-registry/v2`)
 
-`scripts/export_registry.py` turns the committed `tasks/` tree into the
-`registry.json` the website ingests (design: `20260902-engine-run-submission.md` §4). Task
-identity — `spec_hash` and `content_digest` — comes from the pinned engine's own loader, so
-the numbers the server compares against a run's `lock.json` are exactly what the engine
+`scripts/export_registry.py` turns the committed `tasks/` tree into `registry.json`, the
+document this repository publishes and the website displays. Its contract is
+`schemas/task-registry.schema.json`, owned here; the tests hold the export to it, so change
+both in one commit. Task identity — `spec_hash` and `content_digest` — comes from the pinned
+engine's own loader, so a run's `lock.json` can be matched against exactly what the engine
 computes; nothing here re-implements them.
 
 ## Run it
@@ -21,12 +22,10 @@ cd vendor/ale && VIRTUAL_ENV= uv run python ../../scripts/export_registry.py \
 `uv run python scripts/export_registry.py ...` from this repo's own venv also works: the
 script notices `ale` is not importable and re-executes itself via `uv run --project vendor/ale`.
 
-Then install it in the website with `node scripts/sync-benchmark.mjs --manifest /tmp/registry.json`
-and commit `identity-history.json` here. The document carries the benchmark's own taxonomy:
-`platforms` is `tasks/platforms.json` verbatim and there are no directions, so the website only
-displays what it is given. (Until the website's sync takes `platforms` from the export and stops
-requiring directions, installing this export fails closed: nothing is written. PROGRESS.md,
-Open items.)
+Then commit `identity-history.json` here. The website installs the export with its own sync
+script, validating it against this repository's schema; it only displays what it is given.
+The document carries the benchmark's own taxonomy: `platforms` is `tasks/platforms.json`
+verbatim and there are no directions.
 
 | flag | meaning |
 |---|---|

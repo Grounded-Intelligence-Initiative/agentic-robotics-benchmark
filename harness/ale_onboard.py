@@ -1,8 +1,8 @@
 """ale-onboard — build an ALE-shaped robotics task and gate it on the real engine.
 
 The orchestrator behind the onboarding skills, rebuilt on upstream ALE. It is deliberately
-a thin, importable core (`onboard(...)` returns a structured `OnboardResult`) so the website
-runner and a contributor's CLI drive exactly the same code.
+a thin, importable core (`onboard(...)` returns a structured `OnboardResult`) so an agent
+and a contributor's CLI drive exactly the same code.
 
 What it does:
 
@@ -166,7 +166,7 @@ def _record_metric(anchor_path: Path, spec: dict[str, Any]) -> None:
     """Write the spec's metric name and direction into the copied verify/anchor.json.
 
     The anchor is the one place a task declares its metric: the grader reads `direction`
-    there, and the registry export copies both for the server's recompute. The contributor's
+    there, and the registry export publishes both. The contributor's
     grader must report that metric. `value` stays null: only a real `ale validate` fills it.
     """
     metric = spec.get("metric") or {}
@@ -269,7 +269,7 @@ def instantiate(spec: dict[str, Any], *, repo: Path, force: bool = False) -> Pat
         dockerfile = target / "image" / "Dockerfile"
         if dockerfile.is_file():
             dockerfile.unlink()
-    # copytree preserves modes, but a bundle that travelled through a zip may not have.
+    # copytree preserves modes, but a template copied through a zip or a Windows checkout may not have.
     for entry in ("setup/run.sh", "verify/run.sh", "oracle/run.sh"):
         path = target / entry
         if path.is_file():
@@ -540,8 +540,7 @@ def run_gates(*, task: str, task_dir: Path, repo: Path, runs_dir: Path,
             detail=(f"verify/anchor.json names the metric {declared!r}, but the grader "
                     f"reported {reported}. Set `metric_name=` in verify/verify.py to the "
                     f"anchor's metric, or fix the anchor: the anchor's name is what the "
-                    f"registry export publishes and what the server's recompute looks up in "
-                    f"every submission."),
+                    f"registry export publishes for this task."),
             next_steps=list(_NEXT_STEPS),
             **common,
         )
