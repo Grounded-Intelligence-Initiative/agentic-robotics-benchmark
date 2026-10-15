@@ -77,7 +77,8 @@ def run_episodes(config, rng):
 
     env = TemplateReach()
     costs, aborted = [], 0
-    solver = Solver(step_timeout=config.get("step_timeout_s", 30))  # raises SolverMissing
+    # Raises SolverMissing (no run.sh) or SolverAborted (it never comes up); main() scores both 0.
+    solver = Solver(step_timeout=config.get("step_timeout_s", 30))
     try:
         for episode in range(episodes):
             seed = rng.seed()          # hidden; in memory only
@@ -121,10 +122,11 @@ def main():
 
     try:
         costs, aborted, lock = run_episodes(config, rng)
-    except SolverMissing as exc:
+    except (SolverMissing, SolverAborted) as exc:
         # An untouched sandbox is a real, gradeable outcome: `ale validate` fails the run
         # unless it yields an all-zero verdict, so a missing submission scores 0 instead
-        # of crashing.
+        # of crashing. So does a submission that never comes up (no READY, or it exits
+        # at once): `Solver(...)` raises SolverAborted before the first episode.
         # A crash here would read as a broken task, which this is not.
         write_verdict(zero_verdict(reason=str(exc), anchored=anchor is not None))
         return
