@@ -24,7 +24,7 @@ import struct
 __all__ = ["FaultAdaptiveDocking"]
 
 DT = 0.12
-STEPS = 300
+STEPS = 400
 PORT_RADIUS = 1.14
 BODY_RADIUS = 0.82
 MAX_RADIUS = 6.2
@@ -142,6 +142,9 @@ class FaultAdaptiveDocking(object):
         self.failure_scale = self.rng.uniform(0.35, 0.50)
         self.secondary_failure_scale = self.rng.uniform(0.55, 0.70)
         self.failure_exponents = [self.rng.uniform(0.65, 1.60) for _ in range(6)]
+        self.failure_valve_memory = [
+            self.rng.uniform(0.145 + 0.02 * i, 0.155 + 0.02 * i) for i in range(6)
+        ]
         self.rekey_earliest = max(
             self.failure_step + 25,
             self.rng.integer(108, 126),
@@ -150,7 +153,7 @@ class FaultAdaptiveDocking(object):
             self.rekey_earliest + 18,
             self.rng.integer(148, 166),
         )
-        self.rekey_proximity = self.rng.uniform(0.88, 0.98)
+        self.rekey_proximity = self.rng.uniform(1.18, 1.30)
         self.rekey_blackout_duration = 30 + (
             (self.failure_step + self.rekey_deadline) % 13
         )
@@ -166,7 +169,12 @@ class FaultAdaptiveDocking(object):
         self.rekey_failure_scale = self.rng.uniform(0.45, 0.60)
         self.rekey_secondary_failure_scale = self.rng.uniform(0.65, 0.80)
         self.rekey_exponents = [self.rng.uniform(0.65, 1.60) for _ in range(6)]
+        self.rekey_valve_memory = [
+            self.rng.uniform(0.235 + 0.025 * i, 0.245 + 0.025 * i) for i in range(6)
+        ]
         self.nozzle_exponents = [1.0] * 6
+        self.valve_memory = [0.0] * 6
+        self.slot_valves = [0.0] * 6
         next_speed = self.rng.uniform(0.020, 0.045)
         self.rekey_phase_rate = -next_speed if self.phase_rate > 0.0 else next_speed
         self.rekey_active = False
@@ -315,10 +323,14 @@ class FaultAdaptiveDocking(object):
             self.failure_scale = self.rekey_failure_scale
             self.secondary_failure_scale = self.rekey_secondary_failure_scale
             self.nozzle_exponents = list(self.rekey_exponents)
+            self.valve_memory = list(self.rekey_valve_memory)
+            self.slot_valves = [0.0] * 6
             self.phase_rate = self.rekey_phase_rate
         if not self.routing_active and self.steps >= self.failure_step:
             self.routing_active = True
             self.nozzle_exponents = list(self.failure_exponents)
+            self.valve_memory = list(self.failure_valve_memory)
+            self.slot_valves = [0.0] * 6
             self.routing_phase = (
                 self.routing_direction * self.routing_initial_shift
             ) % 6
@@ -340,6 +352,15 @@ class FaultAdaptiveDocking(object):
             if command[trigger_slot] > 0.78 and self.routing_relay_armed:
                 reverse_after_step = True
                 self.routing_relay_armed = False
+        # Each command channel drives a first-order valve.  The state belongs to
+        # the electrical slot, not the physical nozzle currently routed to it;
+        # relay, stride and fuel still use the requested command.  Bus events
+        # replace the valve constant and clear all six states.
+        for i, duty in enumerate(command):
+            self.slot_valves[i] = (
+                self.valve_memory[i] * self.slot_valves[i]
+                + (1.0 - self.valve_memory[i]) * duty
+            )
         for i, duty in enumerate(command):
             nozzle = (
                 self.routing_order[(i + routing_shift) % 6]
@@ -355,7 +376,7 @@ class FaultAdaptiveDocking(object):
                 scale = self.secondary_failure_scale
             else:
                 scale = 1.0
-            realized_duty = duty ** self.nozzle_exponents[nozzle]
+            realized_duty = self.slot_valves[i] ** self.nozzle_exponents[nozzle]
             column = self.columns[nozzle]
             body_ax += column[0] * scale * realized_duty
             body_ay += column[1] * scale * realized_duty

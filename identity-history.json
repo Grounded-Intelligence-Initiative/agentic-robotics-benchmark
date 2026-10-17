@@ -1,5 +1,11 @@
 [
   {
+    "content_digest": "sha256:1bf281ab7fea90ff18957ab9feb792744c0b7669ca76f84b19b1c071544f76f6",
+    "since": "2026-10-15T22:35:40Z",
+    "slug": "fault_adaptive_spacecraft_docking",
+    "spec_hash": "sha256:fdae3d352300a6f2fe5f2328f611779ba565fd2199644fb77beda8b75bdce5e4"
+  },
+  {
     "content_digest": "sha256:c4d1a7fae8c25d1d729103665ee9ba0d76d586292a2cb18c0e3cf0eead690662",
     "since": "2026-09-02T06:45:32Z",
     "slug": "drone_hover",
