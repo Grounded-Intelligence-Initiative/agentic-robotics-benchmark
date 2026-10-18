@@ -11,7 +11,8 @@ and the search must preserve the original organization of the storage space, bot
 runs and after it ends. This task is that chore, done by a robot, continuously.
 
 You control a Franka Panda arm at a desk in NVIDIA Isaac Sim. The desk carries four KLT
-bins, and new objects keep landing on the free desk surface around them for the whole
+bins in a loose row (their exact positions and headings vary a little from episode to
+episode), and new objects keep landing on the free desk surface around them for the whole
 episode. Your job has three parts:
 
 - place every object in the bin of its class: class **A** → the **gray** bin, class **B** →

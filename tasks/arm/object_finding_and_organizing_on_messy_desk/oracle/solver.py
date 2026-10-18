@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 """Reference controller for object_finding_and_organizing_on_messy_desk.
 
-Works from the observation only (the two static RGB-D cameras, proprioception, the request
-text). Pipeline per decision:
+Works from the observation only (two static RGB-D cameras, the hand camera, proprioception,
+the request text). Per decision:
 
-  depth back-projection (both static cameras) -> drop desk, bin walls, bin floors, robot
-  -> voxel 26-connectivity clustering -> per-cluster colour histogram + sorted extents
-  -> nearest reference (refs.json, built from the practice simulator's `lab` command)
-  -> plan: sort loose objects into their class bins; on a request, deliver the named object
-     (unpacking its class bin, then the other bins, onto the desk when it is not loose) and
-     mark 1; mark 2 only after every bin has been unpacked and the model was never seen.
+  depth back-projection (both static cameras) -> bins located from their rim band (pose
+  varies per episode) -> desk / bin walls / bin floors / robot removed -> voxel
+  connected-component clustering -> per-cluster colour histogram + sorted extents vs the
+  static references -> hover and confirm with the hand camera (dense cloud, its own
+  references) -> grasp yaw chosen so that the 0.2 m wide hand clears every bin wall and the
+  fingers close across a dimension under the 8 cm opening -> top-down pinch, carry, drop near
+  the bin's centre.
 
-Closed-loop Cartesian control: every step commands the clipped delta towards the current
-goal, so a stale or perturbed proprioceptive reading only costs one step.
+Requests: deliver the named object to the red bin (searching loose objects first, then
+unpacking its class bin, then the other bins onto the desk) and mark 1 after the hand camera
+confirms the drop; mark 2 only once every bin is empty and every loose object has been seen.
+
+Every call recomputes its action from the observation it is given (closed-loop servo), so a
+repeated query of the same step with perturbed proprioception answers differently.
 """
 import base64
 import io
@@ -20,7 +25,6 @@ import json
 import math
 import os
 import sys
-import time
 from collections import deque
 
 import numpy as np
@@ -29,11 +33,12 @@ from PIL import Image
 # ----------------------------------------------------------------------------------------
 # Task geometry (task_card.md)
 # ----------------------------------------------------------------------------------------
-BIN_X = 0.46
-BIN_YS = {"gray": -0.375, "lightblue": -0.125, "blue": 0.125, "red": 0.375}
+BIN_X = 0.44
+BIN_YS = {"gray": -0.39, "lightblue": -0.13, "blue": 0.13, "red": 0.39}
+BIN_Z_SCALE = 1.3
 BIN_INNER_HALF = (0.135, 0.085)
-BIN_OUTER = (0.297, 0.198, 0.146)
-BIN_FLOOR_Z, BIN_RIM_Z = 0.012, 0.146
+BIN_OUTER = (0.297, 0.198, 0.146 * BIN_Z_SCALE)
+BIN_FLOOR_Z, BIN_RIM_Z = 0.012 * BIN_Z_SCALE, 0.146 * BIN_Z_SCALE
 BIN_OF_CLASS = {"A": "gray", "B": "lightblue", "C": "blue"}
 CLASS_OF_BIN = {v: k for k, v in BIN_OF_CLASS.items()}
 CLASSES = {
@@ -53,14 +58,19 @@ CAMS = {
 POS_STEP_MAX, ROT_STEP_MAX = 0.05, 0.25
 GRIPPER_OPEN_W = 0.08
 
+# hand geometry (Franka hand, fingers open): half width across the fingers, half thickness
+HAND_HALF_W, HAND_HALF_T = 0.105, 0.035
+GRASP_MAX_WIDTH = 0.072
+
 # controller tunables
 OBSERVE_POS = (0.30, 0.0, 0.55)
-TRAVEL_Z = 0.30
+TRAVEL_Z = 0.32
 VOXEL = 0.012
-Z_ROBOT = 0.28
-GRASP_BELOW_TOP = 0.025
-GRASP_MIN_ABOVE_FLOOR = 0.016
-DROP_ABOVE_RIM = 0.05
+Z_ROBOT = 0.30
+GRASP_BELOW_TOP = 0.03
+GRASP_MIN_ABOVE_FLOOR = 0.032
+DROP_ABOVE_RIM = 0.035
+HOVER_ABOVE_TOP = 0.16
 LOG = os.environ.get("MESSY_DESK_SOLVER_LOG", "")
 
 
@@ -78,17 +88,6 @@ def quat_to_mat(q):
                      [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
 
 
-def quat_mul(a, b):
-    w1, x1, y1, z1 = a
-    w2, x2, y2, z2 = b
-    return np.array([w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2, w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
-                     w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2, w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2])
-
-
-def quat_conj(q):
-    return np.array([q[0], -q[1], -q[2], -q[3]])
-
-
 def wrap(a):
     return (a + math.pi) % (2 * math.pi) - math.pi
 
@@ -96,6 +95,81 @@ def wrap(a):
 def wrap_half(a):
     """Wrap to (-pi/2, pi/2]: a gripper yaw is only defined modulo pi."""
     return (a + math.pi / 2) % math.pi - math.pi / 2
+
+
+def rotvec(R):
+    c = max(-1.0, min(1.0, (np.trace(R) - 1.0) / 2.0))
+    ang = math.acos(c)
+    if ang < 1e-6:
+        return np.zeros(3)
+    if ang > math.pi - 1e-3:
+        d = np.sqrt(np.maximum(np.diag(R) + 1.0, 0.0) / 2.0)
+        return d / max(np.linalg.norm(d), 1e-9) * ang
+    v = np.array([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]]) / (2.0 * math.sin(ang))
+    return v * ang
+
+
+def rot_z(a):
+    c, s = math.cos(a), math.sin(a)
+    return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+
+
+# ----------------------------------------------------------------------------------------
+# Bins (pose varies per episode: centre x, y and yaw of the long side)
+# ----------------------------------------------------------------------------------------
+def nominal_bins():
+    return {n: (BIN_X, y, 0.0) for n, y in BIN_YS.items()}
+
+
+def bin_local(b, x, y):
+    """Desk xy -> coordinates in bin b's frame (x along its long side). Vectorised."""
+    bx, by, yaw = b
+    c, s = math.cos(yaw), math.sin(yaw)
+    dx, dy = x - bx, y - by
+    return c * dx + s * dy, -s * dx + c * dy
+
+
+def bin_point(b, lx, ly):
+    bx, by, yaw = b
+    c, s = math.cos(yaw), math.sin(yaw)
+    return bx + c * lx - s * ly, by + s * lx + c * ly
+
+
+def bin_of_xy(bins, x, y, shrink=0.0):
+    for name, b in bins.items():
+        lx, ly = bin_local(b, x, y)
+        if abs(lx) <= BIN_INNER_HALF[0] - shrink and abs(ly) <= BIN_INNER_HALF[1] - shrink:
+            return name
+    return None
+
+
+def hand_corners(x, y, yaw, margin=0.0):
+    """Corners + edge midpoints of the open hand's footprint (finger axis = home +y turned by yaw)."""
+    u = np.array([-math.sin(yaw), math.cos(yaw)])        # across the fingers
+    v = np.array([math.cos(yaw), math.sin(yaw)])          # hand thickness
+    hw, ht = HAND_HALF_W + margin, HAND_HALF_T + margin
+    pts = []
+    for a in (-1.0, -0.5, 0.0, 0.5, 1.0):
+        for bb in (-1.0, 0.0, 1.0):
+            pts.append((x + a * hw * u[0] + bb * ht * v[0], y + a * hw * u[1] + bb * ht * v[1]))
+    return pts
+
+
+def hand_fits(bins, x, y, yaw, inside=None):
+    """Open hand lowered at (x, y) with `yaw`: outside every bin's outer footprint, or (when
+    `inside` names a bin) entirely within that bin's interior."""
+    pts = hand_corners(x, y, yaw, 0.008)
+    ox, oy = BIN_OUTER[0] / 2, BIN_OUTER[1] / 2
+    ix, iy = BIN_INNER_HALF
+    for name, b in bins.items():
+        for px, py in pts:
+            lx, ly = bin_local(b, px, py)
+            if name == inside:
+                if abs(lx) > ix - 0.006 or abs(ly) > iy - 0.006:
+                    return False
+            elif abs(lx) <= ox + 0.004 and abs(ly) <= oy + 0.004:
+                return False
+    return True
 
 
 # ----------------------------------------------------------------------------------------
@@ -129,57 +203,6 @@ def backproject_rt(depth_mm, rgb, f, c, R, t, max_depth=1.5):
     return pts @ R.T + np.asarray(t), rgb[valid].astype(np.float32) / 255.0
 
 
-def perceive_eih(rgb, depth, R_cam, t_cam, expected_xy, floor, top_hint, radius=0.09, voxel=0.006):
-    """Dense cluster of the object under the hand camera. Points above the desk / bin floor,
-    within `radius` of the expected position, below the fingers, not bin wall."""
-    pts, col = backproject_rt(depth, rgb, CAMS["agentview"]["f"], CAMS["agentview"]["c"], R_cam, t_cam)
-    x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
-    keep = (z > floor + 0.010) & (z < top_hint + 0.06) & (np.hypot(x - expected_xy[0], y - expected_xy[1]) < radius)
-    ox, oy, oz = BIN_OUTER
-    ix, iy = BIN_INNER_HALF
-    for by in BIN_YS.values():
-        in_outer = (np.abs(x - BIN_X) <= ox / 2 + 0.012) & (np.abs(y - by) <= oy / 2 + 0.012)
-        in_inner = (np.abs(x - BIN_X) <= ix - 0.006) & (np.abs(y - by) <= iy - 0.006)
-        keep &= ~(in_outer & ~in_inner & (z < oz + 0.02))
-    pts, col = pts[keep], col[keep]
-    if len(pts) < 30:
-        return None
-    lo = pts.min(0) - voxel
-    idx = np.floor((pts - lo) / voxel).astype(int)
-    labels, n = label_components(idx)
-    best, bestn = None, 0
-    for k in range(n):
-        m = labels == k
-        if m.sum() > bestn:
-            best, bestn = m, int(m.sum())
-    if bestn < 30:
-        return None
-    c = cluster_features(pts[best], col[best])
-    c["floor"] = floor
-    c["dims"] = sorted([c["len_major"], c["len_minor"], c["top_z"] - floor])
-    return c
-
-
-def bin_of_xy(x, y, shrink=0.0):
-    for name, by in BIN_YS.items():
-        if abs(x - BIN_X) <= BIN_INNER_HALF[0] - shrink and abs(y - by) <= BIN_INNER_HALF[1] - shrink:
-            return name
-    return None
-
-
-def scene_mask(pts):
-    x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
-    keep = (x > DESK_X[0]) & (x < 0.76) & (y > DESK_Y[0]) & (y < DESK_Y[1]) & (z > 0.02) & (z < Z_ROBOT)
-    ox, oy, oz = BIN_OUTER
-    ix, iy = BIN_INNER_HALF
-    for by in BIN_YS.values():
-        in_outer = (np.abs(x - BIN_X) <= ox / 2 + 0.012) & (np.abs(y - by) <= oy / 2 + 0.012)
-        in_inner = (np.abs(x - BIN_X) <= ix - 0.008) & (np.abs(y - by) <= iy - 0.008)
-        keep &= ~(in_outer & ~in_inner & (z < oz + 0.02))
-        keep &= ~(in_inner & (z < BIN_FLOOR_Z + 0.015))
-    return keep
-
-
 def label_components(idx):
     """26-connectivity labels for integer voxel coordinates (N,3) -> labels (N,) 0-based, count."""
     keys = {}
@@ -203,6 +226,67 @@ def label_components(idx):
                     dq.append(n)
         comp += 1
     return labels, comp
+
+
+def detect_bins(pts, col):
+    """Bin poses from the rim band of the fused cloud (the upper walls, above every object).
+    Each ring's centroid is the bin centre, its principal axis the long side. Rings are
+    assigned to the nominal row order; a missing ring keeps the nominal pose."""
+    x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
+    band = (z > BIN_RIM_Z - 0.06) & (z < BIN_RIM_Z + 0.02) & (x > DESK_X[0]) & (x < 0.76) & (np.abs(y) < 0.6)
+    bins = nominal_bins()
+    if band.sum() < 40:
+        return bins, []
+    p = pts[band][:, :2]
+    idx = np.floor((p - p.min(0) + 0.02) / 0.02).astype(int)
+    idx3 = np.concatenate([idx, np.zeros((len(idx), 1), int)], 1)
+    labels, n = label_components(idx3)
+    rings = []
+    for k in range(n):
+        m = labels == k
+        if m.sum() < 40:
+            continue
+        q = p[m]
+        cen = q.mean(0)
+        d = q - cen
+        cov = d.T @ d / len(q)
+        evals, evecs = np.linalg.eigh(cov)
+        major = evecs[:, 1]
+        ext = np.percentile(d @ evecs, 97, axis=0) - np.percentile(d @ evecs, 3, axis=0)
+        if ext[1] < 0.17 or ext[1] > 0.40 or ext[0] < 0.08:
+            continue
+        yaw = math.atan2(major[1], major[0])
+        yaw = (yaw + math.pi / 2) % math.pi - math.pi / 2          # long side ~ along x
+        rings.append({"centre": cen, "yaw": float(yaw), "n": int(m.sum()), "ext": [float(ext[1]), float(ext[0])]})
+    used = set()
+    for name in sorted(bins, key=lambda nm: BIN_YS[nm]):
+        bx, by, _ = bins[name]
+        best, bd = None, 0.14
+        for i, r in enumerate(rings):
+            if i in used:
+                continue
+            dd = math.hypot(r["centre"][0] - bx, r["centre"][1] - by)
+            if dd < bd:
+                best, bd = i, dd
+        if best is not None:
+            used.add(best)
+            r = rings[best]
+            bins[name] = (float(r["centre"][0]), float(r["centre"][1]), r["yaw"])
+    return bins, rings
+
+
+def scene_mask(pts, bins):
+    x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
+    keep = (x > DESK_X[0]) & (x < 0.76) & (y > DESK_Y[0]) & (y < DESK_Y[1]) & (z > 0.02) & (z < Z_ROBOT)
+    ox, oy, oz = BIN_OUTER
+    ix, iy = BIN_INNER_HALF
+    for b in bins.values():
+        lx, ly = bin_local(b, x, y)
+        in_outer = (np.abs(lx) <= ox / 2 + 0.014) & (np.abs(ly) <= oy / 2 + 0.014)
+        in_inner = (np.abs(lx) <= ix - 0.010) & (np.abs(ly) <= iy - 0.010)
+        keep &= ~(in_outer & ~in_inner & (z < oz + 0.025))
+        keep &= ~(in_inner & (z < BIN_FLOOR_Z + 0.015))
+    return keep
 
 
 def rgb_to_hsv(c):
@@ -238,7 +322,14 @@ def hist_dist(a, b):
     return float(0.5 * np.sum((a - b) ** 2 / (a + b + 1e-6)))
 
 
-def cluster_features(p, c):
+def extent_along(p, yaw):
+    """Extent of points across the fingers (the finger axis = home +y turned by yaw)."""
+    u = np.array([-math.sin(yaw), math.cos(yaw)])
+    proj = p[:, :2] @ u
+    return float(np.percentile(proj, 97) - np.percentile(proj, 3))
+
+
+def cluster_features(p, c, bins):
     cen = p.mean(0)
     top = float(np.percentile(p[:, 2], 97))
     xy = p[:, :2] - cen[:2]
@@ -248,49 +339,87 @@ def cluster_features(p, c):
     yaw = float(np.arctan2(major[1], major[0]))
     proj = xy @ evecs
     ext = np.percentile(proj, 97, axis=0) - np.percentile(proj, 3, axis=0)
-    b = bin_of_xy(cen[0], cen[1])
+    b = bin_of_xy(bins, cen[0], cen[1])
     floor = BIN_FLOOR_Z if b else 0.0
-    # grasp point: the xy centroid of the top slab (more reliable than the full centroid for
-    # leaning or partially seen objects)
     slab = p[p[:, 2] > top - 0.03]
     gxy = slab[:, :2].mean(0) if len(slab) >= 5 else cen[:2]
+    slab_yaw = yaw
+    if len(slab) >= 12:
+        sxy = slab[:, :2] - slab[:, :2].mean(0)
+        sev, svec = np.linalg.eigh(sxy.T @ sxy / len(slab))
+        slab_yaw = float(np.arctan2(svec[1, 1], svec[0, 1]))
     return {"n": int(len(p)), "centroid": cen.tolist(), "grasp_xy": [float(gxy[0]), float(gxy[1])],
-            "top_z": top, "floor": floor, "bin": b, "yaw": yaw,
+            "top_z": top, "floor": floor, "bin": b, "yaw": yaw, "slab_yaw": slab_yaw,
             "len_major": float(ext[1]), "len_minor": float(ext[0]),
             "dims": sorted([float(ext[1]), float(ext[0]), float(top - floor)]),
-            "mean_rgb": c.mean(0).tolist(), "hist": colour_hist(rgb_to_hsv(c)).tolist()}
+            "mean_rgb": c.mean(0).tolist(), "hist": colour_hist(rgb_to_hsv(c)).tolist(), "pts": p}
 
 
-def perceive(images, voxel=VOXEL, min_pts=12):
-    """images: {cam: (rgb uint8, depth uint16)} for the static cameras -> cluster list."""
+def perceive(images, bins=None, voxel=VOXEL, min_pts=12):
+    """images: {cam: (rgb uint8, depth uint16)} for the static cameras -> (clusters, bins)."""
     P, C = [], []
     for cam in CAMS:
         rgb, d = images[cam]
         pts, col = backproject(d, rgb, CAMS[cam])
-        m = scene_mask(pts)
-        P.append(pts[m])
-        C.append(col[m])
-    pts, col = np.concatenate(P), np.concatenate(C)
+        P.append(pts)
+        C.append(col)
+    allp, allc = np.concatenate(P), np.concatenate(C)
+    if bins is None:
+        bins, _ = detect_bins(allp, allc)
+    m = scene_mask(allp, bins)
+    pts, col = allp[m], allc[m]
     if len(pts) == 0:
-        return []
+        return [], bins
     lo = pts.min(0) - voxel
     idx = np.floor((pts - lo) / voxel).astype(int)
     labels, n = label_components(idx)
     out = []
     for k in range(n):
-        m = labels == k
-        if m.sum() < min_pts:
+        mm = labels == k
+        if mm.sum() < min_pts:
             continue
-        out.append(cluster_features(pts[m], col[m]))
-    return out
+        out.append(cluster_features(pts[mm], col[mm], bins))
+    return out, bins
+
+
+def perceive_eih(rgb, depth, R_cam, t_cam, expected_xy, floor, top_hint, bins, radius=0.13, voxel=0.006):
+    """Dense cluster of the object under the hand camera."""
+    pts, col = backproject_rt(depth, rgb, CAMS["agentview"]["f"], CAMS["agentview"]["c"], R_cam, t_cam)
+    x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
+    keep = (z > floor + 0.010) & (z < top_hint + 0.06) & (np.hypot(x - expected_xy[0], y - expected_xy[1]) < radius)
+    ox, oy, oz = BIN_OUTER
+    ix, iy = BIN_INNER_HALF
+    for b in bins.values():
+        lx, ly = bin_local(b, x, y)
+        in_outer = (np.abs(lx) <= ox / 2 + 0.014) & (np.abs(ly) <= oy / 2 + 0.014)
+        in_inner = (np.abs(lx) <= ix - 0.008) & (np.abs(ly) <= iy - 0.008)
+        keep &= ~(in_outer & ~in_inner & (z < oz + 0.025))
+    pts, col = pts[keep], col[keep]
+    if len(pts) < 30:
+        return None
+    lo = pts.min(0) - voxel
+    idx = np.floor((pts - lo) / voxel).astype(int)
+    labels, n = label_components(idx)
+    best, bestn = None, 0
+    for k in range(n):
+        m = labels == k
+        if m.sum() > bestn:
+            best, bestn = m, int(m.sum())
+    if bestn < 30:
+        return None
+    c = cluster_features(pts[best], col[best], bins)
+    c["floor"] = floor
+    c["dims"] = sorted([c["len_major"], c["len_minor"], c["top_z"] - floor])
+    return c
 
 
 class Classifier(object):
-    def __init__(self, refs):
+    def __init__(self, refs, w_dims=8.0):
         self.refs = refs
+        self.w_dims = w_dims
 
     def dist(self, cl, r):
-        return hist_dist(cl["hist"], r["hist"]) + 8.0 * float(np.abs(np.array(cl["dims"]) - np.array(r["dims"])).sum())
+        return hist_dist(cl["hist"], r["hist"]) + self.w_dims * float(np.abs(np.array(cl["dims"]) - np.array(r["dims"])).sum())
 
     def __call__(self, cl):
         best = {}
@@ -298,6 +427,8 @@ class Classifier(object):
             d = self.dist(cl, r)
             if r["model"] not in best or d < best[r["model"]]:
                 best[r["model"]] = d
+        if not best:
+            return {"model": "?", "cls": "C", "d": 9.0, "class_margin": -1.0, "ranked": []}
         ranked = sorted(best.items(), key=lambda t: t[1])
         model, d0 = ranked[0]
         cls = CLASS_OF[model]
@@ -307,14 +438,14 @@ class Classifier(object):
 
 
 # ----------------------------------------------------------------------------------------
-# Controller (generator based: `yield action` receives the next observation)
+# Controller (generator based: `yield policy` where policy(obs) -> action)
 # ----------------------------------------------------------------------------------------
 class Controller(object):
     def __init__(self, refs):
-        if isinstance(refs, list):            # legacy flat reference list
+        if isinstance(refs, list):
             refs = {"static": refs}
         self.classify = Classifier(refs.get("static", []))
-        self.classify_eih = Classifier(refs.get("eih", []))
+        self.classify_eih = Classifier(refs.get("eih", []), w_dims=12.0)
         rel = refs.get("eih_rel")
         self.eih_R = np.array(rel["R"], float) if rel else np.eye(3)
         self.eih_t = np.array(rel["t"], float) if rel else np.zeros(3)
@@ -325,24 +456,17 @@ class Controller(object):
         self.q_home = None
         self.gen = None
         self.last_t, self.policy = None, None
-        self.seen_models = set()
-        self.unpacked = set()
+        self.bins = nominal_bins()
         self.request_text = None
         self.request_state = None
         self.drop_slot = {b: 0 for b in BIN_YS}
-        self.spots_used = {}
         self.skip_list = []
         self.last_perceive_t = -999
-        self.n_marks = 0
 
     # -- wire entry -------------------------------------------------------------------------
     def act(self, t, obs):
-        """The behaviour generator advances once per step index; every call (including a
-        repeated query of the same t) recomputes the action from the observation it was
-        given, so the answer genuinely depends on the input."""
         if self.q_home is None:
-            self.obs = obs
-            self.q_home = np.array(obs["ee_pose"][3:7], float)
+            self.set_home(obs)
             self.gen = self.run()
             self.policy = next(self.gen)
         elif t != self.last_t:
@@ -351,14 +475,26 @@ class Controller(object):
         self.last_t = t
         return [float(x) for x in self.policy(obs)]
 
+    def set_home(self, obs):
+        """The first observation of an episode defines the home orientation (tool straight
+        down, fingers along +y) that every later orientation target is expressed against."""
+        self.obs = obs
+        self.q_home = np.array(obs["ee_pose"][3:7], float)
+        self.R_home = quat_to_mat(self.q_home)
+
     # -- proprio helpers ------------------------------------------------------------------
     def ee(self):
         return np.array(self.obs["ee_pose"][:3], float)
 
     def yaw(self, obs=None):
-        q = np.array((obs or self.obs)["ee_pose"][3:7], float)
-        rel = quat_mul(q, quat_conj(self.q_home))
-        return wrap(2.0 * math.atan2(rel[3], rel[0]))
+        R = quat_to_mat(np.array((obs or self.obs)["ee_pose"][3:7], float))
+        y_axis = R[:, 1]
+        return wrap(math.atan2(y_axis[1], y_axis[0]) - math.pi / 2)
+
+    def orient_error(self, yaw, obs=None):
+        R_cur = quat_to_mat(np.array((obs or self.obs)["ee_pose"][3:7], float))
+        R_des = rot_z(yaw) @ self.R_home
+        return rotvec(R_des @ R_cur.T)
 
     def width(self):
         return float(self.obs["gripper_width"])
@@ -370,41 +506,37 @@ class Controller(object):
         return self.obs.get("request")
 
     # -- motion primitives --------------------------------------------------------------------
-    def servo(self, pos, yaw, grip, mark=0):
-        """A per-step policy: the clipped Cartesian delta from the observed tool pose to the
-        goal (recomputed from whatever observation it is applied to)."""
+    def servo(self, pos, yaw, grip, mark=0, step_max=POS_STEP_MAX):
         pos = np.asarray(pos, float)
 
         def policy(o):
             err = pos - np.array(o["ee_pose"][:3], float)
-            d = np.clip(err, -POS_STEP_MAX, POS_STEP_MAX)
-            r = float(np.clip(wrap(yaw - self.yaw(o)), -ROT_STEP_MAX, ROT_STEP_MAX))
-            return [d[0], d[1], d[2], 0.0, 0.0, r, grip, mark]
+            d = np.clip(err, -step_max, step_max)
+            r = np.clip(self.orient_error(yaw, o), -ROT_STEP_MAX, ROT_STEP_MAX)
+            return [d[0], d[1], d[2], r[0], r[1], r[2], grip, mark]
         return policy
 
-    def goto(self, pos, yaw=0.0, grip=0.0, tol=0.01, yaw_tol=0.04, max_steps=60, mark=0):
+    def goto(self, pos, yaw=0.0, grip=0.0, tol=0.01, yaw_tol=0.04, max_steps=60, mark=0, step_max=POS_STEP_MAX):
         pos = np.asarray(pos, float)
         for i in range(max_steps):
             err = pos - self.ee()
-            dyaw = wrap(yaw - self.yaw())
-            if np.linalg.norm(err) < tol and abs(dyaw) < yaw_tol:
+            if np.linalg.norm(err) < tol and np.linalg.norm(self.orient_error(yaw)) < yaw_tol:
                 return True
-            yield self.servo(pos, yaw, grip, mark)
+            yield self.servo(pos, yaw, grip, mark, step_max)
             mark = 0
         return False
 
     def hold(self, steps, grip, mark=0):
-        """Stay where we are (servoing on the pose at entry) for `steps` steps."""
         pos, yaw = self.ee(), self.yaw()
         for i in range(steps):
             yield self.servo(pos, yaw, grip, mark)
             mark = 0
 
     def gripper_closed_on_object(self):
-        return 0.006 < self.width() < 0.075
+        return 0.006 < self.width() < 0.077
 
     def pick(self, xy, yaw, top_z, floor):
-        """Top-down pinch grasp. Returns True when something is held after lifting."""
+        """Top-down pinch grasp at `yaw`. Returns True when something is held after lifting."""
         x, y = xy
         yaw = wrap_half(yaw)
         z_pre = max(top_z + 0.10, floor + 0.12)
@@ -412,40 +544,41 @@ class Controller(object):
         yield from self.goto((x, y, z_travel), yaw, grip=0.0, tol=0.015)
         yield from self.goto((x, y, z_pre), yaw, grip=0.0, tol=0.008, max_steps=30)
         z_g = max(top_z - GRASP_BELOW_TOP, floor + GRASP_MIN_ABOVE_FLOOR)
-        yield from self.goto((x, y, z_g), yaw, grip=0.0, tol=0.006, max_steps=25)
-        yield from self.hold(6, grip=1.0)
+        yield from self.goto((x, y, z_g), yaw, grip=0.0, tol=0.006, max_steps=25, step_max=0.02)
+        yield from self.hold(5, grip=1.0)
         held = self.gripper_closed_on_object()
-        yield from self.goto((x, y, z_travel), yaw, grip=1.0, tol=0.015, max_steps=30)
+        yield from self.goto((x, y, z_travel), yaw, grip=1.0, tol=0.015, max_steps=30, step_max=0.03)
         yield from self.hold(2, grip=1.0)
         held = held and self.gripper_closed_on_object()
         return held
 
     def place_in_bin(self, name):
-        """Carry the held object over bin `name`, lower, release. Cycles three drop slots."""
+        """Carry the held object over bin `name`, lower to just above the rim near its centre,
+        release. The hand's wide axis runs along the bin's long side."""
+        b = self.bins[name]
         slot = self.drop_slot[name] % 3
         self.drop_slot[name] += 1
-        x = BIN_X + (-0.07, 0.0, 0.07)[slot]
-        y = BIN_YS[name] + (0.0, 0.03, -0.03)[slot]
+        x, y = bin_point(b, (-0.035, 0.0, 0.035)[slot], (0.0, 0.02, -0.02)[slot])
+        yaw = wrap_half(math.pi / 2 + b[2])
         z_rel = BIN_RIM_Z + DROP_ABOVE_RIM
-        yaw = math.pi / 2 if name != "red" else 0.0     # fingers along the bin's long side
         yield from self.goto((x, y, TRAVEL_Z), yaw, grip=1.0, tol=0.015)
         yield from self.goto((x, y, z_rel), yaw, grip=1.0, tol=0.01, max_steps=30)
         yield from self.hold(4, grip=0.0)
         yield from self.goto((x, y, TRAVEL_Z), yaw, grip=0.0, tol=0.02, max_steps=30)
 
-    def place_on_desk(self, xy):
+    def place_on_desk(self, xy, yaw=0.0):
         x, y = xy
-        yield from self.goto((x, y, TRAVEL_Z), 0.0, grip=1.0, tol=0.015)
-        yield from self.goto((x, y, 0.09), 0.0, grip=1.0, tol=0.01, max_steps=30)
+        yield from self.goto((x, y, TRAVEL_Z), yaw, grip=1.0, tol=0.015)
+        yield from self.goto((x, y, 0.09), yaw, grip=1.0, tol=0.01, max_steps=30)
         yield from self.hold(4, grip=0.0)
-        yield from self.goto((x, y, TRAVEL_Z), 0.0, grip=0.0, tol=0.02, max_steps=30)
+        yield from self.goto((x, y, TRAVEL_Z), yaw, grip=0.0, tol=0.02, max_steps=30)
 
     def observe(self, settle=2):
         yield from self.goto(OBSERVE_POS, 0.0, grip=0.0, tol=0.02)
         yield from self.hold(settle, grip=0.0)
-        imgs = {cam: (decode_png(self.obs["rgb"][cam], "RGB"), decode_png(self.obs["depth"][cam]))
-                for cam in CAMS}
-        clusters = perceive(imgs)
+        imgs = {cam: (decode_png(self.obs["rgb"][cam], "RGB"), decode_png(self.obs["depth"][cam])) for cam in CAMS}
+        clusters, bins = perceive(imgs)
+        self.bins = bins
         for c in clusters:
             c["cls_info"] = self.classify(c) if (c["bin"] is None or c["n"] < 600) else None
         self.last_perceive_t = self.t()
@@ -453,7 +586,6 @@ class Controller(object):
         return clusters
 
     def dump(self, tag, rgb, clusters):
-        """Optional development trace (MESSY_DESK_SOLVER_LOG=<dir>): image + cluster summary."""
         if not LOG:
             return
         try:
@@ -467,12 +599,11 @@ class Controller(object):
                              "model": info["model"] if info else None, "d": round(info["d"], 3) if info else None,
                              "margin": round(info["class_margin"], 3) if info else None})
             with open(os.path.join(LOG, "t%06d_%s.json" % (self.t(), tag)), "w") as f:
-                json.dump({"t": self.t(), "request": self.request(), "clusters": rows}, f)
+                json.dump({"t": self.t(), "request": self.request(), "bins": {k: [round(v, 3) for v in b] for k, b in self.bins.items()}, "clusters": rows}, f)
         except Exception as exc:  # noqa: BLE001
             log("dump failed: %r" % exc)
 
     def cam_pose(self):
-        """World pose of the hand camera from the tool pose and the fixed ee->camera transform."""
         q = np.array(self.obs["ee_pose"][3:7], float)
         R_e = quat_to_mat(q)
         t_e = self.ee()
@@ -481,13 +612,13 @@ class Controller(object):
     def inspect(self, c):
         """Hover over a cluster and classify it from the hand camera (dense cloud)."""
         x, y = c["grasp_xy"]
-        yield from self.goto((x, y, max(TRAVEL_Z, c["top_z"] + 0.13)), 0.0, grip=0.0, tol=0.015)
-        yield from self.goto((x, y, c["top_z"] + 0.13), 0.0, grip=0.0, tol=0.006, yaw_tol=0.03, max_steps=40)
+        yield from self.goto((x, y, max(TRAVEL_Z, c["top_z"] + HOVER_ABOVE_TOP)), 0.0, grip=0.0, tol=0.015)
+        yield from self.goto((x, y, c["top_z"] + HOVER_ABOVE_TOP), 0.0, grip=0.0, tol=0.006, yaw_tol=0.03, max_steps=40)
         yield from self.hold(3, grip=0.0)
         R_cam, t_cam = self.cam_pose()
         rgb = decode_png(self.obs["rgb"]["eye_in_hand"], "RGB")
         dep = decode_png(self.obs["depth"]["eye_in_hand"])
-        d = perceive_eih(rgb, dep, R_cam, t_cam, (x, y), c["floor"], c["top_z"])
+        d = perceive_eih(rgb, dep, R_cam, t_cam, (x, y), c["floor"], c["top_z"], self.bins)
         if d is None:
             log("t=%d inspect: nothing under the hand camera" % self.t())
             self.dump("inspect_none", rgb, [])
@@ -497,26 +628,56 @@ class Controller(object):
         self.dump("inspect", rgb, [d])
         return d
 
-    # -- planning helpers ---------------------------------------------------------------------
+    # -- grasp planning -------------------------------------------------------------------------
+    def choose_yaw(self, c, inside=None):
+        """A hand yaw for cluster c: fingers across its narrow side when possible, never
+        colliding with a bin wall, grasped width under the opening. None when impossible."""
+        x, y = c["grasp_xy"]
+        p = c.get("pts")
+        pref = wrap_half(c.get("slab_yaw", c["yaw"]))
+        cands = [pref] + [wrap_half(pref + s * d) for d in (0.26, 0.52, 0.79, 1.05, 1.31, 1.57) for s in (1, -1)]
+        for yaw in cands:
+            if not hand_fits(self.bins, x, y, yaw, inside=inside):
+                continue
+            if p is not None and len(p) >= 10:
+                slab = p[p[:, 2] > c["top_z"] - 0.05]
+                if len(slab) >= 10 and extent_along(slab, yaw) > GRASP_MAX_WIDTH:
+                    continue
+            return yaw
+        return None
+
     def free_spot(self, clusters):
-        cands = [(0.66, 0.0), (0.66, -0.2), (0.66, 0.2), (0.66, -0.4), (0.66, 0.4),
-                 (0.26, -0.15), (0.26, 0.15), (0.26, -0.35), (0.26, 0.35),
-                 (0.40, -0.56), (0.52, -0.56), (0.40, 0.56), (0.52, 0.56)]
+        cands = [(0.68, 0.0), (0.68, -0.2), (0.68, 0.2), (0.68, -0.4), (0.68, 0.4), (0.70, -0.3), (0.70, 0.3),
+                 (0.25, -0.15), (0.25, 0.15), (0.26, -0.35), (0.26, 0.35), (0.42, -0.58), (0.42, 0.58), (0.56, -0.58), (0.56, 0.58)]
         occ = [c["centroid"][:2] for c in clusters]
         for x, y in cands:
-            if math.hypot(x, y) > REACH - 0.06:
+            if math.hypot(x, y) > REACH - 0.06 or math.hypot(x, y) < BASE_CLEAR + 0.03:
                 continue
             if any(math.hypot(x - ox, y - oy) < 0.11 for ox, oy in occ):
+                continue
+            if not (hand_fits(self.bins, x, y, 0.0) or hand_fits(self.bins, x, y, math.pi / 2)):
                 continue
             return (x, y)
         return None
 
+    def spot_yaw(self, xy):
+        return 0.0 if hand_fits(self.bins, xy[0], xy[1], 0.0) else math.pi / 2
+
     def loose(self, clusters):
         return [c for c in clusters if c["bin"] is None and c["cls_info"] is not None]
 
-    def grasp_yaw(self, c):
-        """Fingers close across the minor axis: rotate the hand by the major-axis angle."""
-        return wrap_half(c["yaw"])
+    @staticmethod
+    def _near_any(c, points, r=0.05):
+        return any(math.hypot(c["centroid"][0] - x, c["centroid"][1] - y) < r for x, y in points)
+
+    def skipped(self, c):
+        for (x, y, t) in self.skip_list:
+            if math.hypot(x - c["centroid"][0], y - c["centroid"][1]) < 0.05 and self.t() - t < 600:
+                return True
+        return False
+
+    def skip(self, c):
+        self.skip_list.append((c["centroid"][0], c["centroid"][1], self.t()))
 
     # -- main behaviour -----------------------------------------------------------------------
     def run(self):
@@ -539,23 +700,7 @@ class Controller(object):
                     continue
             yield from self.hold(10, grip=0.0)
 
-    @staticmethod
-    def _near_any(c, points, r=0.05):
-        return any(math.hypot(c["centroid"][0] - x, c["centroid"][1] - y) < r for x, y in points)
-
-    def skipped(self, c):
-        """Recently inspected and left alone (ambiguous): do not loop on it."""
-        for (x, y, t) in self.skip_list:
-            if math.hypot(x - c["centroid"][0], y - c["centroid"][1]) < 0.05 and self.t() - t < 600:
-                return True
-        return False
-
-    def skip(self, c):
-        self.skip_list.append((c["centroid"][0], c["centroid"][1], self.t()))
-
     def tidy(self, clusters):
-        """One sorting action: inspect the most confident loose object with the hand camera and
-        put it in its class bin; otherwise fix a visibly misplaced object in a bin."""
         loose = [c for c in self.loose(clusters) if not self.skipped(c)]
         loose.sort(key=lambda c: -c["cls_info"]["class_margin"])
         for c in loose:
@@ -564,20 +709,20 @@ class Controller(object):
                 self.skip(c)
                 return True
             info = d["cls_info"]
-            log("t=%d loose %s (%s d=%.2f margin=%.2f; static %s) at (%.2f,%.2f) top=%.3f dims=%s" % (
+            yaw = self.choose_yaw(d)
+            log("t=%d loose %s (%s d=%.2f margin=%.2f; static %s) at (%.2f,%.2f) top=%.3f dims=%s yaw=%s" % (
                 self.t(), info["model"], info["cls"], info["d"], info["class_margin"], c["cls_info"]["model"],
-                d["grasp_xy"][0], d["grasp_xy"][1], d["top_z"], [round(v, 3) for v in d["dims"]]))
-            if info["class_margin"] < 0.08:
+                d["grasp_xy"][0], d["grasp_xy"][1], d["top_z"], [round(v, 3) for v in d["dims"]], None if yaw is None else round(yaw, 2)))
+            if info["class_margin"] < 0.08 or yaw is None:
                 self.skip(c)
                 return True
-            held = yield from self.pick(d["grasp_xy"], self.grasp_yaw(d), d["top_z"], d["floor"])
+            held = yield from self.pick(d["grasp_xy"], yaw, d["top_z"], d["floor"])
             if held:
                 yield from self.place_in_bin(BIN_OF_CLASS[info["cls"]])
             else:
                 log("t=%d grasp failed" % self.t())
                 self.skip(c)
             return True
-        # a small isolated cluster in a class bin that does not belong there (disturbance)
         for c in clusters:
             if c["bin"] in CLASS_OF_BIN and c["cls_info"] is not None and not self.skipped(c) \
                     and c["cls_info"]["cls"] != CLASS_OF_BIN[c["bin"]] and c["cls_info"]["class_margin"] > 0.15:
@@ -585,8 +730,12 @@ class Controller(object):
                 if d is None or d["cls_info"]["cls"] == CLASS_OF_BIN[c["bin"]] or d["cls_info"]["class_margin"] < 0.15:
                     self.skip(c)
                     return True
-                log("t=%d misplaced %s in %s" % (self.t(), d["cls_info"]["model"], c["bin"]))
-                held = yield from self.pick(d["grasp_xy"], math.pi / 2, d["top_z"], d["floor"])
+                yaw = self.choose_yaw(d, inside=c["bin"])
+                log("t=%d misplaced %s in %s yaw=%s" % (self.t(), d["cls_info"]["model"], c["bin"], None if yaw is None else round(yaw, 2)))
+                if yaw is None:
+                    self.skip(c)
+                    return True
+                held = yield from self.pick(d["grasp_xy"], yaw, d["top_z"], d["floor"])
                 if held:
                     yield from self.place_in_bin(BIN_OF_CLASS[d["cls_info"]["cls"]])
                 else:
@@ -598,8 +747,7 @@ class Controller(object):
         rs = self.request_state
         model = rs["model"]
         cls = CLASS_OF.get(model)
-        loose = [c for c in self.loose(clusters)]
-        # 1. loose candidates, most similar first (static view), confirmed by the hand camera
+        loose = self.loose(clusters)
         cands = sorted(loose, key=lambda c: min([d for m, d in c["cls_info"]["ranked"] if m == model] or [9.0]))
         for c in cands:
             if self._near_any(c, rs["inspected"]):
@@ -612,7 +760,11 @@ class Controller(object):
             info = d["cls_info"]
             log("t=%d request check: %s (d=%.2f) vs wanted %s" % (self.t(), info["model"], info["d"], model))
             if info["model"] == model:
-                held = yield from self.pick(d["grasp_xy"], self.grasp_yaw(d), d["top_z"], d["floor"])
+                yaw = self.choose_yaw(d)
+                if yaw is None:
+                    log("t=%d target not graspable where it lies" % self.t())
+                    return True
+                held = yield from self.pick(d["grasp_xy"], yaw, d["top_z"], d["floor"])
                 if held:
                     yield from self.place_in_bin("red")
                     yield from self.hold(8, grip=0.0)
@@ -627,9 +779,7 @@ class Controller(object):
                 else:
                     log("t=%d grasp of the target failed; retrying" % self.t())
                     rs["inspected"].remove(key)
-                return True
             return True
-        # 2. unpack: class bin first, then the others
         order = [BIN_OF_CLASS[cls]] if cls else []
         order += [b for b in ("gray", "lightblue", "blue") if b not in order]
         for b in order:
@@ -641,17 +791,23 @@ class Controller(object):
             if spot is None:
                 log("t=%d no free desk spot" % self.t())
                 return False
-            log("t=%d unpack %s: cluster n=%d top=%.3f -> (%.2f,%.2f)" % (self.t(), b, c["n"], c["top_z"], spot[0], spot[1]))
-            held = yield from self.pick(c["grasp_xy"], math.pi / 2, c["top_z"], c["floor"])
+            yaw = self.choose_yaw(c, inside=b)
+            log("t=%d unpack %s: cluster n=%d top=%.3f at (%.2f,%.2f) yaw=%s -> (%.2f,%.2f)" % (
+                self.t(), b, c["n"], c["top_z"], c["grasp_xy"][0], c["grasp_xy"][1], None if yaw is None else round(yaw, 2), spot[0], spot[1]))
+            if yaw is None:
+                rs["unpack_failures"] = rs.get("unpack_failures", 0) + 1
+                if rs["unpack_failures"] > 6:
+                    return False
+                return True
+            held = yield from self.pick(c["grasp_xy"], yaw, c["top_z"], c["floor"])
             if held:
-                yield from self.place_on_desk(spot)
+                yield from self.place_on_desk(spot, self.spot_yaw(spot))
             else:
                 rs["unpack_failures"] = rs.get("unpack_failures", 0) + 1
                 if rs["unpack_failures"] > 6:
                     log("t=%d giving up unpacking %s" % (self.t(), b))
                     return False
             return True
-        # 3. every bin is empty and every loose object was inspected: the object is absent
         if any(not self._near_any(c, rs["inspected"]) for c in loose):
             return True
         log("t=%d declare absent: %s" % (self.t(), model))
@@ -660,16 +816,16 @@ class Controller(object):
         return True
 
     def confirm_red(self):
-        """After the drop: does the hand camera see an object resting inside the red bin?"""
-        x, y = BIN_X, BIN_YS["red"]
+        b = self.bins["red"]
+        x, y = b[0], b[1]
         yield from self.goto((x, y, BIN_RIM_Z + 0.16), 0.0, grip=0.0, tol=0.01, max_steps=30)
         yield from self.hold(2, grip=0.0)
         R_cam, t_cam = self.cam_pose()
         rgb = decode_png(self.obs["rgb"]["eye_in_hand"], "RGB")
         dep = decode_png(self.obs["depth"]["eye_in_hand"])
-        d = perceive_eih(rgb, dep, R_cam, t_cam, (x, y), BIN_FLOOR_Z, BIN_RIM_Z, radius=0.12)
+        d = perceive_eih(rgb, dep, R_cam, t_cam, (x, y), BIN_FLOOR_Z, BIN_RIM_Z, self.bins, radius=0.14)
         self.dump("confirm_red", rgb, [d] if d else [])
-        return d is not None and bin_of_xy(d["centroid"][0], d["centroid"][1]) == "red"
+        return d is not None and bin_of_xy(self.bins, d["centroid"][0], d["centroid"][1]) == "red"
 
 
 # ----------------------------------------------------------------------------------------

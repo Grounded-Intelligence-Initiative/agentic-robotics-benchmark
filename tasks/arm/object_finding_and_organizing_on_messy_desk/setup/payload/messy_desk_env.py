@@ -51,11 +51,15 @@ DISPLAY_NAME = {m: " ".join(m.split("_")[1:]) for m in CLASS_OF}
 BIN_OF_CLASS = {"A": "gray", "B": "lightblue", "C": "blue"}
 BIN_COLORS = {"gray": (0.45, 0.45, 0.45), "lightblue": (0.62, 0.82, 1.0),
               "blue": (0.08, 0.20, 0.85), "red": (0.85, 0.08, 0.08)}
-# bins in a row in front of the robot, long side along x (KLT outer 0.297 x 0.198 x 0.146)
-BIN_X, BIN_YS = 0.46, {"gray": -0.375, "lightblue": -0.125, "blue": 0.125, "red": 0.375}
-BIN_OUTER = (0.297, 0.198, 0.146)
+# bins in a loose row in front of the robot, long side roughly along x. KLT outer footprint
+# 0.297 x 0.198, walls stretched to 1.3x height. Every episode jitters each bin's pose
+# (BIN_JITTER: x, y in metres, yaw in radians) around its nominal centre.
+BIN_Z_SCALE = 1.3
+BIN_X, BIN_YS = 0.44, {"gray": -0.39, "lightblue": -0.13, "blue": 0.13, "red": 0.39}
+BIN_JITTER = (0.04, 0.01, math.radians(7.0))
+BIN_OUTER = (0.297, 0.198, 0.146 * BIN_Z_SCALE)
 BIN_INNER_HALF = (0.135, 0.085)          # interior half extents (x, y)
-BIN_FLOOR_Z, BIN_RIM_Z = 0.012, 0.146
+BIN_FLOOR_Z, BIN_RIM_Z = 0.012 * BIN_Z_SCALE, 0.146 * BIN_Z_SCALE
 DESK_X, DESK_Y = (0.15, 0.78), (-0.62, 0.62)
 REACH, BASE_CLEAR = 0.80, 0.22
 HORIZON_DEFAULT = 20000
@@ -80,6 +84,9 @@ RESET_WARMUP_FRAMES = 20
 READY_Q = [0.0, -math.pi / 4, 0.0, -3 * math.pi / 4, 0.0, math.pi / 2, math.pi / 4]   # Franka 'ready': tool straight down
 HOME_POS = (0.46, 0.0, 0.39)
 IK_JUMP_MAX = 0.8                                     # rad: larger joint jumps are branch flips
+TCP_Z_MIN = 0.028                                     # open fingertips touch the desk at TCP z ~ 0.027
+FINGER_KP, FINGER_KD, FINGER_EFFORT = 2.0e4, 1.0e3, 100.0   # both finger drives (N/m, N s/m, N)
+FREECAM = os.environ.get("MESSY_DESK_FREECAM", "")   # e.g. "800x500": extra free-flying camera for the dev portal
 
 
 def _park_slot(k):
@@ -147,10 +154,22 @@ class MessyDeskEnv:
         self.franka.set_joint_positions(self._home_q)
         self.franka.set_joint_velocities(np.zeros_like(self._home_q))
         self.franka.apply_action(self.ArticulationAction(joint_positions=self._home_q))
+        # The stock asset drives only one finger (7 N, the other finger has no drive at all):
+        # objects get pushed instead of squeezed. Drive both fingers like the real hand.
+        ctrl = self.franka.get_articulation_controller()
+        kps, kds = ctrl.get_gains()
+        kps, kds = np.array(kps, dtype=float), np.array(kds, dtype=float)
+        kps[-2:], kds[-2:] = FINGER_KP, FINGER_KD
+        ctrl.set_gains(kps=kps, kds=kds)
+        eff = np.array(ctrl.get_max_efforts(), dtype=float)
+        eff[-2:] = FINGER_EFFORT
+        ctrl.set_max_efforts(eff)
         self._probe_views("after KinematicsSolver")
         for c in self.cams.values():
             c.initialize()
             c.add_distance_to_image_plane_to_frame()
+        if self.freecam is not None:
+            self.freecam.initialize()
         self._probe_views("after cameras")
         self.world.step(render=True)
         self._probe_views("after first step")
@@ -169,7 +188,7 @@ class MessyDeskEnv:
     # -- scene construction ------------------------------------------------------------
     def _build_bins(self):
         Gf, UsdGeom, Usd, UsdPhysics = self.Gf, self.UsdGeom, self.Usd, self.UsdPhysics
-        self.bins = {}
+        self.bins, self.bin_rp = {}, {}
         for name, y in BIN_YS.items():
             path = "/World/Bins/" + name
             self.add_reference_to_stage(ASSET_ROOT + "/Isaac/Props/KLT_Bin/small_KLT.usd", path)
@@ -178,8 +197,10 @@ class MessyDeskEnv:
             xf.ClearXformOpOrder()
             xf.AddTranslateOp().Set(Gf.Vec3d(BIN_X, y, 0.0))
             xf.AddRotateZOp().Set(90.0)   # long side along x
+            xf.AddScaleOp().Set(Gf.Vec3f(1.0, 1.0, float(BIN_Z_SCALE)))
             rb = UsdPhysics.RigidBodyAPI.Apply(prim)
             rb.CreateKinematicEnabledAttr(True)
+            self.bin_rp[name] = self.SingleRigidPrim(prim_path=path, name="bin_" + name)
             # The KLT asset ships one shared textured material (magenta); the RTX renderer
             # ignores displayColor, so each bin gets its own flat-coloured material bound
             # with the strongest binding strength over every mesh.
@@ -195,7 +216,30 @@ class MessyDeskEnv:
                 if m.IsA(UsdGeom.Mesh):
                     binding = UsdShade.MaterialBindingAPI.Apply(m)
                     binding.Bind(mat, UsdShade.Tokens.strongerThanDescendants)
-            self.bins[name] = (BIN_X, y)
+            self.bins[name] = (BIN_X, y, 0.0)
+
+    def _place_bins(self):
+        """Per-episode bin poses: nominal row + seeded jitter (position and yaw)."""
+        np, rng = self.np, self.rng
+        for name, y0 in BIN_YS.items():
+            x = BIN_X + rng.uniform(-BIN_JITTER[0], BIN_JITTER[0])
+            y = y0 + rng.uniform(-BIN_JITTER[1], BIN_JITTER[1])
+            yaw = rng.uniform(-BIN_JITTER[2], BIN_JITTER[2])
+            a = math.pi / 2 + yaw               # the asset's long side is its local y
+            self.bin_rp[name].set_world_pose(position=np.array([x, y, 0.0]), orientation=np.array([math.cos(a / 2), 0.0, 0.0, math.sin(a / 2)]))
+            self.bins[name] = (x, y, yaw)
+
+    def _bin_local(self, name, x, y):
+        """Desk point -> coordinates in the bin's own frame (x along its long side)."""
+        bx, by, yaw = self.bins[name]
+        dx, dy = x - bx, y - by
+        c, s = math.cos(yaw), math.sin(yaw)
+        return c * dx + s * dy, -s * dx + c * dy
+
+    def _bin_point(self, name, lx, ly):
+        bx, by, yaw = self.bins[name]
+        c, s = math.cos(yaw), math.sin(yaw)
+        return bx + c * lx - s * ly, by + s * lx + c * ly
 
     def _build_parking(self):
         # Parked objects are ordinary dynamic bodies resting on a hidden floor 3 m below the
@@ -275,11 +319,36 @@ class MessyDeskEnv:
         for c in self.cams.values():
             c.set_clipping_range(0.05, 6.0)
             c.set_focal_length(1.6)          # wider field of view than the 2.4 cm default
+        self.freecam = None
+        if FREECAM:
+            w, h = (int(v) for v in FREECAM.lower().split("x"))
+            self.freecam = Camera(prim_path="/World/Cameras/free", frequency=CONTROL_HZ, resolution=(w, h))
+            self.freecam.set_clipping_range(0.05, 10.0)
+            self.freecam.set_focal_length(1.8)
+            self.set_freecam([1.3, -0.9, 0.9], math.atan2(0.9, -0.85), -0.5)
+
+    def set_freecam(self, pos, yaw, pitch):
+        """Free camera pose: position + heading (yaw about z) and pitch (positive = up)."""
+        np = self.np
+        fwd = [math.cos(yaw) * math.cos(pitch), math.sin(yaw) * math.cos(pitch), math.sin(pitch)]
+        target = [pos[i] + fwd[i] for i in range(3)]
+        self.freecam.set_world_pose(position=np.array(pos, dtype=float), orientation=np.array(_look_at_wxyz(pos, target)), camera_axes="world")
+
+    def freecam_jpeg(self, quality=80):
+        np = self.np
+        img = self.freecam.get_rgba()
+        if img is None or img.size == 0:
+            return None
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.fromarray(np.ascontiguousarray(img[..., :3]).astype(np.uint8), "RGB").save(buf, format="JPEG", quality=quality)
+        return base64.b64encode(buf.getvalue()).decode("ascii")
 
     # -- geometry helpers ------------------------------------------------------------------
     def _bin_of_point(self, p):
-        for name, (bx, by) in self.bins.items():
-            if abs(p[0] - bx) <= BIN_INNER_HALF[0] and abs(p[1] - by) <= BIN_INNER_HALF[1] and BIN_FLOOR_Z - 0.02 <= p[2] <= BIN_RIM_Z + 0.12:
+        for name in self.bins:
+            lx, ly = self._bin_local(name, float(p[0]), float(p[1]))
+            if abs(lx) <= BIN_INNER_HALF[0] and abs(ly) <= BIN_INNER_HALF[1] and BIN_FLOOR_Z - 0.02 <= p[2] <= BIN_RIM_Z + 0.12:
                 return name
         return None
 
@@ -291,7 +360,8 @@ class MessyDeskEnv:
             y = rng.uniform(*DESK_Y)
             if math.hypot(x, y) > REACH - 0.05 or math.hypot(x, y) < BASE_CLEAR:
                 continue
-            if any(abs(x - bx) <= BIN_OUTER[0] / 2 + margin and abs(y - by) <= BIN_OUTER[1] / 2 + margin for bx, by in self.bins.values()):
+            if any(abs(lx) <= BIN_OUTER[0] / 2 + margin and abs(ly) <= BIN_OUTER[1] / 2 + margin
+                   for lx, ly in (self._bin_local(n, x, y) for n in self.bins)):
                 continue
             if any(math.hypot(x - ox, y - oy) < 0.09 for ox, oy in occupied):
                 continue
@@ -340,17 +410,18 @@ class MessyDeskEnv:
         for o in self.objects:
             o["removed"], o["frozen"] = False, 0
             self._park(o)
+        self._place_bins()
         # initial piles: A in gray, B in lightblue; a few loose C and A on the desk
         for cls, name in (("A", "gray"), ("B", "lightblue")):
             models = list(CLASSES[cls])
             self.rng.shuffle(models)
             n = int(self.rng.integers(4, 7))
-            bx, by = self.bins[name]
             for i in range(n):
                 o = self._free_instance(models[i % len(models)])
                 if o is None:
                     continue
-                self._spawn(o, (bx + self.rng.uniform(-0.07, 0.07), by + self.rng.uniform(-0.04, 0.04), 0.12 + 0.07 * i))
+                px, py = self._bin_point(name, self.rng.uniform(-0.045, 0.045), self.rng.uniform(-0.03, 0.03))
+                self._spawn(o, (px, py, 0.14 + 0.07 * i))
                 self._settle(12)
         loose = [m for m in self.rng.permutation(CLASSES["C"])[: int(self.rng.integers(2, 5))]]
         loose += [m for m in self.rng.permutation(CLASSES["A"])[: int(self.rng.integers(0, 3))]]
@@ -428,7 +499,7 @@ class MessyDeskEnv:
         np = self.np
         pos, quat = self._ee_pose()
         target = pos + dpos
-        target[0] = float(np.clip(target[0], -0.1, 0.85)); target[1] = float(np.clip(target[1], -0.75, 0.75)); target[2] = float(np.clip(target[2], 0.01, 0.9))
+        target[0] = float(np.clip(target[0], -0.1, 0.85)); target[1] = float(np.clip(target[1], -0.75, 0.75)); target[2] = float(np.clip(target[2], TCP_Z_MIN, 0.9))
         tq = np.array(_quat_mul(_rpy_to_quat(*drot), [float(x) for x in quat]), dtype=float)
         tq /= max(float(np.linalg.norm(tq)), 1e-9)
         act, ok = self.ik.compute_inverse_kinematics(target_position=np.asarray(target, dtype=float), target_orientation=tq)
@@ -549,8 +620,8 @@ class MessyDeskEnv:
                 if rng.random() < 0.5:
                     wrong = [b for b in ("gray", "lightblue", "blue") if b != BIN_OF_CLASS[o["cls"]]]
                     b = wrong[int(rng.integers(len(wrong)))]
-                    bx, by = self.bins[b]
-                    self._spawn(o, (bx + rng.uniform(-0.05, 0.05), by + rng.uniform(-0.03, 0.03), 0.25))
+                    px, py = self._bin_point(b, rng.uniform(-0.03, 0.03), rng.uniform(-0.02, 0.02))
+                    self._spawn(o, (px, py, 0.30))
                     ev.append({"t": self.t, "event": "disturb_misplaced", "object": o["id"], "bin": b})
                 else:
                     o["rp"].set_linear_velocity(self.np.array([rng.uniform(-0.6, 0.6), rng.uniform(-0.6, 0.6), 0.3]))
@@ -595,6 +666,27 @@ class MessyDeskEnv:
             self.world.step(render=True)
         self._update_states()
         return self.observe(), self.privileged()
+
+    def gains(self, new=None):
+        """Development aid: read (and optionally set) the finger drive gains and max efforts.
+        `new` = {"finger_kp": .., "finger_kd": .., "finger_effort": ..}."""
+        np = self.np
+        ctrl = self.franka.get_articulation_controller()
+        n = self.franka.num_dof
+        if new:
+            kps, kds = ctrl.get_gains()
+            kps, kds = np.array(kps, dtype=float), np.array(kds, dtype=float)
+            for j in (n - 2, n - 1):
+                if "finger_kp" in new: kps[j] = float(new["finger_kp"])
+                if "finger_kd" in new: kds[j] = float(new["finger_kd"])
+            ctrl.set_gains(kps=kps, kds=kds)
+            if "finger_effort" in new:
+                eff = np.array(ctrl.get_max_efforts(), dtype=float)
+                eff[n - 2:] = float(new["finger_effort"])
+                ctrl.set_max_efforts(eff)
+        kps, kds = ctrl.get_gains()
+        return {"kps": [float(x) for x in kps], "kds": [float(x) for x in kds], "max_efforts": [float(x) for x in ctrl.get_max_efforts()],
+                "dof_names": list(self.franka.dof_names)}
 
     # -- outputs -------------------------------------------------------------------------------
     def observe(self):
@@ -644,9 +736,11 @@ class MessyDeskEnv:
                           "attached_to": "/World/Franka/panda_hand" if name == "eye_in_hand" else "world"}
         return {"control_hz": CONTROL_HZ, "image_size": IMAGE_SIZE, "action_dim": ACTION_DIM,
                 "pos_step_max": POS_STEP_MAX, "rot_step_max": ROT_STEP_MAX, "horizon": self.horizon,
-                "bins": {n: {"center_xy": list(c), "inner_half_xy": list(BIN_INNER_HALF), "floor_z": BIN_FLOOR_Z,
+                "bins": {n: {"center_xy": [c[0], c[1]], "yaw": c[2], "nominal_center_xy": [BIN_X, BIN_YS[n]],
+                             "inner_half_xy": list(BIN_INNER_HALF), "floor_z": BIN_FLOOR_Z,
                              "rim_z": BIN_RIM_Z, "outer_xyz": list(BIN_OUTER), "class": next((k for k, v in BIN_OF_CLASS.items() if v == n), "requested")}
                          for n, c in self.bins.items()},
+                "bin_jitter_xy_yaw": list(BIN_JITTER),
                 "desk": {"x": list(DESK_X), "y": list(DESK_Y), "surface_z": 0.0, "robot_base_xyz": [0, 0, 0]},
                 "classes": {k: [DISPLAY_NAME[m] for m in v] for k, v in CLASSES.items()},
                 "cameras": cams}
@@ -754,6 +848,15 @@ def serve():
             elif cmd == "lab":
                 obs, state = env.lab(msg.get("model"), msg.get("instance", 0), msg.get("pose"), msg.get("clear", True))
                 reply = {"ok": True, "obs": obs, "state": state}
+            elif cmd == "gains":
+                reply = {"ok": True, "gains": env.gains(msg.get("set"))}
+            elif cmd == "freecam":
+                if env.freecam is None:
+                    reply = {"ok": False, "error": "start with MESSY_DESK_FREECAM=WxH"}
+                else:
+                    if msg.get("pos") is not None:
+                        env.set_freecam(msg["pos"], float(msg.get("yaw", 0.0)), float(msg.get("pitch", 0.0)))
+                    reply = {"ok": True, "jpeg": env.freecam_jpeg() if msg.get("frame", True) else None}
             elif cmd == "close":
                 out.write(json.dumps({"ok": True}) + "\n"); out.flush()
                 break

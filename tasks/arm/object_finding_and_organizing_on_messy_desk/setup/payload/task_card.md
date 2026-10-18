@@ -7,16 +7,20 @@ Fixed for the task; identical on every seed. Units: metres, radians, seconds.
   surface; the desk surface is the plane z = 0 (x in [-1.59, 1.59], y in [-0.81, 0.81]).
 - Objects arrive on the reachable desk area x in [0.15, 0.78], y in [-0.62, 0.62], outside
   the bins and at least 0.22 m from the base.
-- Four KLT bins (outer 0.297 x 0.198 x 0.146, long side along x), centres at x = 0.46:
+- Four KLT bins (outer footprint 0.297 x 0.198, walls 0.19 tall, long side roughly along x)
+  in a loose row. Nominal centres are at x = 0.44; every episode jitters each bin by up to
+  +/-0.04 in x, +/-0.01 in y and +/-7 degrees of yaw (seeded), so localise them from the
+  cameras (the `info` command of the practice simulator reports the current poses):
 
-| bin | colour | centre y | class |
+| bin | colour | nominal centre y | class |
 |---|---|---|---|
-| gray | gray | -0.375 | A |
-| lightblue | light blue | -0.125 | B |
-| blue | blue | 0.125 | C |
-| red | red | 0.375 | requested objects |
+| gray | gray | -0.39 | A |
+| lightblue | light blue | -0.13 | B |
+| blue | blue | 0.13 | C |
+| red | red | 0.39 | requested objects |
 
-  Interior half extents (x, y) = (0.135, 0.085); floor at z = 0.012; rim at z = 0.146.
+  Interior half extents (x, y) = (0.135, 0.085) in the bin's own frame; floor at z = 0.0156;
+  rim at z = 0.19.
   "Inside a bin" for scoring: the object's centre within the interior footprint and its
   height between the floor and 0.12 above the rim, at rest (speed < 0.02 m/s).
 
@@ -51,7 +55,11 @@ exactly one instance present, or one with none (an absent request).
   branch (a joint jump above 0.8 rad), is refused: the arm stays where it is for that step
   (the simulator's privileged state shows `ik_ok: false`). Stay inside the workspace box and
   move in small steps near its edges.
-- Reachable workspace for the tool centre point: x in [-0.1, 0.85], y in [-0.75, 0.75], z in [0.01, 0.9].
+- Reachable workspace for the tool centre point: x in [-0.1, 0.85], y in [-0.75, 0.75], z in [0.028, 0.9]
+  (the tool centre point sits between the finger pads; with the fingers open their tips touch the
+  desk at z = 0.027, so z is floored there and commanding lower only presses the hand into the desk).
+- Every episode starts with the tool centre point at (0.46, 0.0, 0.39), pointing straight down,
+  fingers opening along the base y axis; `dyaw` rotates the hand about the world z axis.
 
 ## Running the simulator yourself
     /opt/isaac/bin/python3 /home/user/messy_desk_env.py
