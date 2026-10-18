@@ -20,12 +20,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libglu1-mesa libxt6 libxrandr2 libxinerama1 libxcursor1 libxi6 libgl1 libvulkan1 \
     && rm -rf /var/lib/apt/lists/*
 
-# The verify-stage interpreter (py3.12), world-readable, agent-usable.
-COPY requirements.txt /tmp/requirements.txt
-RUN uv venv /opt/venv --python 3.12 \
-    && uv pip install --python /opt/venv -r /tmp/requirements.txt \
-    && chmod -R a+rX /opt/venv
-
 # The simulator interpreter (py3.10) with Isaac Sim 4.5 from NVIDIA's index.
 COPY requirements-isaac.txt /tmp/requirements-isaac.txt
 # Permissions are fixed inside the same layer: a later `chmod -R` over 15 GB of files
@@ -45,6 +39,14 @@ RUN uv venv /opt/isaac --python 3.10 \
 COPY mirror_assets.py /tmp/mirror_assets.py
 RUN python3 -I /tmp/mirror_assets.py /opt/isaac_assets && mkdir -p /opt/isaac_assets/NVIDIA \
     && chmod -R a+rX /opt/isaac_assets
+
+# The verify-stage interpreter (py3.12), world-readable, agent-usable. It comes after the
+# heavy Isaac and asset layers so that a change to its small requirement list rebuilds
+# only this layer.
+COPY requirements.txt /tmp/requirements.txt
+RUN uv venv /opt/venv --python 3.12 \
+    && uv pip install --python /opt/venv -r /tmp/requirements.txt \
+    && chmod -R a+rX /opt/venv
 
 # Isaac's Kit runtime writes shader and material caches next to its own packages (the
 # world-writable omni/cache above). Every identity (root in verify, the agent account in
