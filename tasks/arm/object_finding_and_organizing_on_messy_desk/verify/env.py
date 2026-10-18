@@ -124,15 +124,27 @@ class MessyDeskEnv:
         # World again later would invalidate PhysX's tensor views, so an episode reset only
         # teleports objects and re-homes the arm while the simulation keeps playing.
         self.world.reset()
+        self._probe_views("after world.reset")
         self.ik = KinematicsSolver(self.franka)
         self._home_q = np.array(self.franka.get_joints_default_state().positions, dtype=float)
+        self._probe_views("after KinematicsSolver")
         for c in self.cams.values():
             c.initialize()
             c.add_distance_to_image_plane_to_frame()
+        self._probe_views("after cameras")
+        self.world.step(render=True)
+        self._probe_views("after first step")
         self.horizon = HORIZON_DEFAULT
         self.rng = None
         self.t = 0
         _log("ready")
+
+    def _probe_views(self, label):
+        try:
+            p, _ = self.objects[0]["rp"].get_world_pose()
+            _log("views ok %s (obj0 at %s)" % (label, [round(float(x), 2) for x in p]))
+        except Exception as exc:  # noqa: BLE001
+            _log("views BROKEN %s: %s" % (label, exc))
 
     # -- scene construction ------------------------------------------------------------
     def _build_bins(self):
@@ -175,6 +187,10 @@ class MessyDeskEnv:
                 UsdPhysics.RigidBodyAPI.Apply(prim)
                 mass = UsdPhysics.MassAPI.Apply(prim)
                 mass.CreateMassAttr(0.2)
+                # contact reporting is declared here, before the simulation starts: applying
+                # physics APIs once PhysX is playing re-parses the scene and invalidates every
+                # tensor view already created.
+                PhysxSchema.PhysxContactReportAPI.Apply(prim).CreateThresholdAttr(0.0)
                 for m in Usd.PrimRange(prim):
                     if m.IsA(UsdGeom.Mesh):
                         UsdPhysics.CollisionAPI.Apply(m)
@@ -196,9 +212,12 @@ class MessyDeskEnv:
         self._contacts = None
         try:
             from isaacsim.core.prims import RigidPrim
+            for f in ("/World/Franka/panda_leftfinger", "/World/Franka/panda_rightfinger"):
+                PhysxSchema.PhysxContactReportAPI.Apply(self.get_prim_at_path(f)).CreateThresholdAttr(0.0)
             self._contacts = RigidPrim(prim_paths_expr="/World/Objects/o*", name="objects_view",
                                        contact_filter_prim_paths_expr=["/World/Franka/panda_leftfinger",
                                                                        "/World/Franka/panda_rightfinger"],
+                                       prepare_contact_sensors=False,
                                        max_contact_count=len(self.objects) * 2 * 8)
             self.world.scene.add(self._contacts)
         except Exception as exc:  # noqa: BLE001
