@@ -75,6 +75,11 @@ ACTION_DIM = 8
 POS_STEP_MAX, ROT_STEP_MAX = 0.05, 0.25
 GRIPPER_OPEN, GRIPPER_CLOSED = 0.04, 0.0
 REST_SPEED = 0.02
+PARK_Z = -3.0
+
+
+def _park_slot(k):
+    return (-1.2 + 0.3 * (k % 9), -1.2 + 0.3 * (k // 9), PARK_Z + 0.1)
 
 
 def _log(msg):
@@ -111,11 +116,16 @@ class MessyDeskEnv:
         self.franka = self.world.scene.add(Franka(prim_path="/World/Franka", name="franka",
                                                   usd_path=ASSET_ROOT + "/Isaac/Robots/Franka/franka.usd"))
         self._build_bins()
+        self._build_parking()
         self._build_objects()
         self._build_cameras()
+        # One World.reset() for the life of the process: it starts the simulation and
+        # initialises every scene object (robot, rigid prims, contact view). Resetting the
+        # World again later would invalidate PhysX's tensor views, so an episode reset only
+        # teleports objects and re-homes the arm while the simulation keeps playing.
         self.world.reset()
-        self.franka.initialize()
         self.ik = KinematicsSolver(self.franka)
+        self._home_q = np.array(self.franka.get_joints_default_state().positions, dtype=float)
         for c in self.cams.values():
             c.initialize()
             c.add_distance_to_image_plane_to_frame()
@@ -143,9 +153,17 @@ class MessyDeskEnv:
                     UsdGeom.Gprim(m).CreateDisplayColorAttr().Set([Gf.Vec3f(*BIN_COLORS[name])])
             self.bins[name] = (BIN_X, y)
 
+    def _build_parking(self):
+        # Parked objects are ordinary dynamic bodies resting on a hidden floor 3 m below the
+        # room, out of every camera's view. Toggling bodies between kinematic and dynamic at
+        # run time invalidates PhysX's tensor views, so nothing here ever changes body type.
+        from isaacsim.core.api.objects import GroundPlane
+        self.world.scene.add(GroundPlane(prim_path="/World/ParkingFloor", name="parking_floor",
+                                         z_position=PARK_Z - 0.05, visible=False))
+
     def _build_objects(self):
-        """Every instance that can ever appear exists from the start, parked below the desk
-        with physics off; spawning is a teleport. Convex decomposition is cooked once."""
+        """Every instance that can ever appear exists from the start, parked far below the
+        desk; spawning and removal are teleports. Convex decomposition is cooked once."""
         Gf, UsdGeom, Usd, UsdPhysics, PhysxSchema = self.Gf, self.UsdGeom, self.Usd, self.UsdPhysics, self.PhysxSchema
         self.objects = []          # list of dicts, index = object id
         k = 0
@@ -164,14 +182,14 @@ class MessyDeskEnv:
                         PhysxSchema.PhysxCollisionAPI.Apply(m)
                 xf = UsdGeom.Xformable(prim)
                 xf.ClearXformOpOrder()
-                xf.AddTranslateOp().Set(Gf.Vec3d(-1.0 + 0.25 * (k % 8), -1.5 + 0.25 * (k // 8), -1.5))
+                xf.AddTranslateOp().Set(Gf.Vec3d(*_park_slot(k)))
                 xf.AddOrientOp().Set(Gf.Quatf(1, 0, 0, 0))
                 sc = xf.AddScaleOp()
                 sc.Set(Gf.Vec3f(BASE_SCALE.get(model, 1.0)))
                 rp = self.SingleRigidPrim(prim_path=path, name="obj%02d" % k)
                 self.world.scene.add(rp)
                 self.objects.append(dict(id=k, model=model, cls=CLASS_OF[model], prim=prim, rp=rp, scale_op=sc,
-                                         park=(-1.0 + 0.25 * (k % 8), -1.5 + 0.25 * (k // 8), -1.5),
+                                         park=_park_slot(k),
                                          present=False, removed=False, scale=BASE_SCALE.get(model, 1.0)))
                 k += 1
         # contact tracking between every object and the two finger links (first-contact bonus)
@@ -226,20 +244,19 @@ class MessyDeskEnv:
         return None
 
     # -- object lifecycle --------------------------------------------------------------------
-    def _spawn(self, obj, xyz, yaw=None):
-        np, Gf = self.np, self.Gf
-        yaw = self.rng.uniform(-math.pi, math.pi) if yaw is None else yaw
-        q = np.array([math.cos(yaw / 2), 0.0, 0.0, math.sin(yaw / 2)])
-        obj["rp"].set_world_pose(position=np.array(xyz, dtype=float), orientation=q)
+    def _teleport(self, obj, xyz, quat):
+        np = self.np
+        obj["rp"].set_world_pose(position=np.array(xyz, dtype=float), orientation=np.array(quat, dtype=float))
         obj["rp"].set_linear_velocity(np.zeros(3))
         obj["rp"].set_angular_velocity(np.zeros(3))
-        obj["rp"].enable_rigid_body_physics()
+
+    def _spawn(self, obj, xyz, yaw=None):
+        yaw = self.rng.uniform(-math.pi, math.pi) if yaw is None else yaw
+        self._teleport(obj, xyz, [math.cos(yaw / 2), 0.0, 0.0, math.sin(yaw / 2)])
         obj["present"], obj["removed"] = True, False
 
     def _park(self, obj):
-        np = self.np
-        obj["rp"].disable_rigid_body_physics()
-        obj["rp"].set_world_pose(position=np.array(obj["park"], dtype=float), orientation=np.array([1.0, 0, 0, 0]))
+        self._teleport(obj, obj["park"], [1.0, 0.0, 0.0, 0.0])
         obj["present"] = False
 
     def _free_instance(self, model):
@@ -261,8 +278,8 @@ class MessyDeskEnv:
         self.request = None
         self.requests_done = []
         self.touched = set()
-        self.world.reset()
-        self.franka.initialize()
+        self.franka.set_joint_positions(self._home_q)
+        self.franka.set_joint_velocities(np.zeros_like(self._home_q))
         self.franka.gripper.open()
         for o in self.objects:
             o["scale"] = BASE_SCALE.get(o["model"], 1.0) * self.rng.uniform(0.85, 1.15)
@@ -310,14 +327,14 @@ class MessyDeskEnv:
         dpos = np.clip(a[:3], -POS_STEP_MAX, POS_STEP_MAX)
         drot = np.clip(a[3:6], -ROT_STEP_MAX, ROT_STEP_MAX)
         grip = float(np.clip(a[6], 0.0, 1.0))
-        absent = a[7] > 0.5
+        mark = int(round(a[7]))          # 0 none, 1 "done: delivered", 2 "done: no such object"
         self._apply_arm(dpos, drot, grip)
         for _ in range(SUBSTEPS - 1):
             self.world.step(render=False)
         self.world.step(render=True)
         self.t += 1
         self._update_states()
-        self._world_events(absent)
+        self._world_events(mark)
         return self.observe(), self.privileged()
 
     def _apply_arm(self, dpos, drot, grip):
@@ -376,19 +393,24 @@ class MessyDeskEnv:
             home = "red"
         return 1 if o["in_bin"] == home else -1
 
-    def _world_events(self, absent_flag):
+    def _world_events(self, mark):
         rng = self.rng
         ev = self.events
-        # requests
+        # requests: the agent closes one by marking it (1 = delivered, 2 = no such object);
+        # the grader then checks the physical truth. Nothing closes a request automatically
+        # except its deadline.
         if self.request and self.request["status"] == "open":
             r = self.request
             tgt = self.objects[r["object"]] if r["object"] is not None else None
-            if tgt is not None and tgt["present"] and tgt["in_bin"] == "red" and tgt["resting"]:
-                r["status"], r["closed_t"] = "delivered", self.t
-                tgt["frozen"] = 1
-                self._park(tgt); tgt["removed"] = True
-                ev.append({"t": self.t, "event": "request_delivered", "request": r["id"]})
-            elif absent_flag:
+            if mark == 1:
+                delivered = tgt is not None and tgt["present"] and tgt["in_bin"] == "red" and tgt["resting"]
+                r["status"], r["closed_t"] = ("delivered" if delivered else "claim_wrong"), self.t
+                if delivered:
+                    tgt["frozen"] = 1
+                    self.baseline[tgt["id"]] = 0      # a retrieved object keeps earning
+                    self._park(tgt); tgt["removed"] = True
+                ev.append({"t": self.t, "event": "request_" + r["status"], "request": r["id"]})
+            elif mark == 2:
                 r["status"], r["closed_t"] = ("absent_correct" if tgt is None else "absent_wrong"), self.t
                 ev.append({"t": self.t, "event": "request_" + r["status"], "request": r["id"]})
             elif self.t >= r["deadline_t"]:

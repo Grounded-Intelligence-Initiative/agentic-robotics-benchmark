@@ -38,9 +38,12 @@ An episode runs a fixed `${horizon}` control steps at 10 Hz and never ends early
 2. **Requests.** At random times a request opens: the observation carries a short text
    description of one specific object (for example `the yellow mustard bottle`). Most
    requested objects are somewhere on the desk or in a bin; some are not present at all.
-   The request closes when the object rests in the red bin (success), when you declare it
-   absent (success if it is really absent, failure otherwise), or when its deadline passes
-   (failure). At most one request is open at a time.
+   You close a request yourself with a *mark* in your action: **done: delivered** or **done:
+   no such object**. The grader checks the physical truth at that moment: a delivered mark
+   is right only if the requested object rests in the red bin; a no-such-object mark is
+   right only if the object is not on the desk. A right mark earns a large bonus, a wrong
+   mark costs the same amount, and a request whose deadline passes without a mark earns
+   nothing. At most one request is open at a time.
 3. **Bin service.** When a bin is full, or a requested object has been delivered to the red
    bin, a worker empties that bin: its objects disappear from the scene.
 4. **Disturbances.** Occasionally the world misplaces one object into a wrong bin, or nudges
@@ -58,7 +61,7 @@ with **no network access**, and talks to it over stdin/stdout, one JSON object p
 ```
 READY                                                     <- your first stdout line, within 120 s
 {"type": "reset"}                        -> {"ok": true}
-{"type": "act", "t": 0, "obs": {...}}    -> {"action": [dx, dy, dz, droll, dpitch, dyaw, grip, absent]}
+{"type": "act", "t": 0, "obs": {...}}    -> {"action": [dx, dy, dz, droll, dpitch, dyaw, grip, mark]}
 {"type": "close"}                        -> {"ok": true}, then exit
 ```
 
@@ -93,9 +96,11 @@ change between seeds.
 
 `action` is eight numbers: a Cartesian delta for the tool centre point in the robot base
 frame (metres and radians, clipped to ±0.05 m and ±0.25 rad per step), a gripper command in
-`[0, 1]` (0 = open, 1 = closed), and an `absent` flag: send `1` to declare that the currently
-requested object is not on the desk (ignored when no request is open; `0` otherwise). Inverse
-kinematics and joint limits are handled by the environment.
+`[0, 1]` (0 = open, 1 = closed), and a `mark` for the open request: `0` = nothing, `1` =
+**done: delivered** (you claim the requested object rests in the red bin), `2` = **done: no
+such object** (you claim it is not on the desk). A mark is ignored while no request is open,
+and a request accepts one mark only. Inverse kinematics and joint limits are handled by the
+environment.
 
 ## Scoring
 
@@ -113,11 +118,13 @@ your controller prints is a scoring input. Each object `o` gets a value `v_o(t)`
 
 **Target object** (the one named by the open request): the same three states, but its own
 bin is the **red** bin while the request is open, every step counts **double**, and the first
-contact between the gripper fingers and it earns a one-time bonus. When the request closes it
-is a non-target object again.
+contact between the gripper fingers and it earns a one-time bonus of `0.05 · horizon`. When
+the request closes it is a non-target object again; a correctly delivered object is taken away
+by the worker and keeps earning +1 per step for the rest of the episode.
 
-**Absent requests:** declaring the requested object absent earns a one-time bonus when it is
-really absent and costs the same amount when it is not.
+**Marks:** a right mark (delivered and the object really rests in the red bin; no such object
+and it really is absent) earns `+0.5 · horizon` once. A wrong mark of either kind costs
+`0.5 · horizon`. A request that expires unmarked earns nothing.
 
 The episode's raw score is
 
