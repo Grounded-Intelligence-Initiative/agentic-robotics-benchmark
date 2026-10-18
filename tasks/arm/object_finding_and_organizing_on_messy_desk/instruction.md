@@ -1,0 +1,123 @@
+# Find-and-organize on a messy desk
+
+> **Draft v0.2 (2026-10-18).** The simulator, oracle and grader for this task are being built.
+> The contract below (scene, wire, observation, action, scoring) is the intended one and is
+> frozen only when the task reaches *Ready for Validation*.
+
+You control a Franka Panda arm at a desk in NVIDIA Isaac Sim. The desk carries four KLT
+bins and a staging area where new objects keep arriving for the whole episode. Your job is a
+sustained sorting loop with on-demand retrieval:
+
+- keep every object in the bin of its class: class **A** → the **gray** bin, class **B** →
+  the **light-blue** bin, class **C** → the **blue** bin;
+- whenever a *request* names a specific object, find it (it may be buried under other
+  objects), and place it in the **red** bin before the request's deadline;
+- never leave objects in the wrong bin; an object you dig out while searching goes back to
+  its own bin.
+
+Two bins start full (A objects in gray, B objects in light-blue), the red and blue bins start
+empty, and a few loose objects (mostly C, some A) lie on the desk. Classes are visual
+categories of everyday objects (boxes, cans and bottles, tools and kitchenware), rendered
+with per-episode colour and scale variation. There is no segmentation, no object pose and no
+object list in the observation: you work from the cameras.
+
+## Episode dynamics
+
+An episode runs a fixed `${horizon}` control steps at 10 Hz and never ends early. During it:
+
+1. **Arrivals.** New objects drop onto the staging area at random intervals. When the staging
+   area holds too many objects, arrivals pause until you clear some.
+2. **Requests.** At random times a request opens: the observation carries a short text
+   description of one specific object on the desk (for example `the yellow mustard bottle`).
+   The request closes when that object rests in the red bin (success) or when its deadline
+   passes (failure). At most one request is open at a time.
+3. **Bin service.** When a bin is full, or a requested object has been delivered to the red
+   bin, a worker empties that bin: its objects disappear from the scene.
+4. **Disturbances.** Occasionally the world misplaces one object into a wrong bin, or knocks
+   one off the staging area. Correcting these is part of the job.
+
+Every event is drawn from a hidden per-episode seed; the practice environment exposes the
+same dynamics on visible seeds.
+
+## What you must deliver
+
+Leave a controller at `/home/user/submission/run.sh`. The grader launches it as
+`bash run.sh` with the working directory `/home/user/submission`, as your own user account,
+with **no network access**, and talks to it over stdin/stdout, one JSON object per line:
+
+```
+READY                                                     <- your first stdout line, within 120 s
+{"type": "reset"}                        -> {"ok": true}
+{"type": "act", "t": 0, "obs": {...}}    -> {"action": [dx, dy, dz, droll, dpitch, dyaw, grip]}
+{"type": "close"}                        -> {"ok": true}, then exit
+```
+
+- `t` is the step index inside the episode, owned by the grader and restarting at 0 after
+  every `reset`. **A step may be queried more than once with the same `t`**; repeated queries
+  do not advance the episode. Count steps by `t`, not by requests, and answer every request
+  from the observation it carries.
+- Every reply is due within 30 s. A missed deadline, a crash, non-JSON output or a reply
+  without `action` aborts the episode; the next `reset` restarts `run.sh` (at most 3 restarts
+  per run), so your controller must survive being started again.
+- An aborted episode scores 0; it is never dropped.
+
+## Observation
+
+`obs` is a JSON object:
+
+| key | content |
+|---|---|
+| `t` | step index |
+| `request` | `null`, or `{"text": "...", "deadline_t": int}` while a request is open |
+| `rgb` | `{"agentview": png_b64, "eye_in_hand": png_b64, "left_view": png_b64}` — 8-bit RGB PNG, base64 |
+| `depth` | same three keys — 16-bit PNG in millimetres, base64 |
+| `joint_pos`, `joint_vel` | 7 arm joints, radians and rad/s |
+| `gripper_width` | metres |
+| `ee_pose` | `[x, y, z, qw, qx, qy, qz]` of the tool centre point in the robot base frame |
+
+Camera intrinsics and extrinsics, the bin footprints and the robot base pose are fixed for
+the task and documented in `/home/user/task_card.md` in the practice environment; they do not
+change between seeds.
+
+## Action
+
+`action` is seven numbers: a Cartesian delta for the tool centre point in the robot base
+frame (metres and radians, clipped to ±0.05 m and ±0.25 rad per step) followed by a gripper
+command in `[0, 1]` (0 = open, 1 = closed). Inverse kinematics and joint limits are handled
+by the environment.
+
+## Scoring
+
+The grader owns the simulator and evaluates the physical state at **every** step; nothing
+your controller prints is a scoring input. For each object `o` and step `t`, a value `v_o(t)`:
+
+| state | value |
+|---|---|
+| resting inside the bin of its class (or the red bin while it is the requested object) | +1 |
+| on the desk, in the staging area, in the gripper, or in flight | 0 |
+| resting inside any other bin | −1 |
+| removed by bin service | frozen at its value when removed |
+
+The requested object counts double while its request is open, and the first contact between
+the gripper fingers and a requested object earns a one-time bonus. The episode's raw score is
+
+```
+score = max(0, Σ_o Σ_t w_o · (v_o(t) − v_o(0))) / horizon
+```
+
+The subtraction of `v_o(0)` means an untouched scene scores exactly 0: objects that start in
+their own bin earn nothing until you disturb them, and cost you if you leave them elsewhere.
+Sustained tidiness pays every step; a last-minute clean-up does not.
+
+The task's reported metric is `mean_episode_score`, the mean raw score over the hidden
+seeds. The reward you are judged on is that mean relative to a hidden reference value.
+
+## Practice material
+
+- `/home/user/messy_desk_env.py` — the same environment the grader runs, usable on your own seeds;
+- `/home/user/practice_grader/grade.py` — drives your `run.sh` over the real wire on visible
+  seeds and prints the raw score, nothing else;
+- `/home/user/task_card.md` — camera calibration, bin geometry, class catalogue.
+
+The simulator runs headless on the GPU in this sandbox. Start it once and keep it alive;
+each launch costs about two minutes.
