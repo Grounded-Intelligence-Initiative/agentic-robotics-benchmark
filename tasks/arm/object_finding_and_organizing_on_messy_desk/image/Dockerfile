@@ -23,30 +23,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # The verify-stage interpreter (py3.12), world-readable, agent-usable.
 COPY requirements.txt /tmp/requirements.txt
 RUN uv venv /opt/venv --python 3.12 \
-    && uv pip install --python /opt/venv -r /tmp/requirements.txt
+    && uv pip install --python /opt/venv -r /tmp/requirements.txt \
+    && chmod -R a+rX /opt/venv
 
 # The simulator interpreter (py3.10) with Isaac Sim 4.5 from NVIDIA's index.
 COPY requirements-isaac.txt /tmp/requirements-isaac.txt
+# Permissions are fixed inside the same layer: a later `chmod -R` over 15 GB of files
+# would copy every one of them up into a new layer and double the image.
 RUN uv venv /opt/isaac --python 3.10 \
     && UV_HTTP_TIMEOUT=900 UV_CONCURRENT_DOWNLOADS=4 uv pip install --python /opt/isaac \
-         -r /tmp/requirements-isaac.txt --extra-index-url https://pypi.nvidia.com
+         -r /tmp/requirements-isaac.txt --extra-index-url https://pypi.nvidia.com \
+    && mkdir -p /opt/isaac/lib/python3.10/site-packages/omni/cache \
+    && chmod -R a+rX /opt/isaac \
+    && chmod -R a+rwX /opt/isaac/lib/python3.10/site-packages/omni/cache \
+    && { [ ! -d /opt/uv-python ] || chmod -R a+rX /opt/uv-python; }
 
 # Stock Isaac assets (Franka, KLT bin, YCB, Simple Room, materials; NVIDIA Omniverse asset
 # licence), mirrored from NVIDIA's public bucket at build time so that every stage runs
 # with the network blocked. `NVIDIA/` exists so that Isaac's asset-root probe accepts the
 # folder; the task only uses `Isaac/`.
 COPY mirror_assets.py /tmp/mirror_assets.py
-RUN python3 -I /tmp/mirror_assets.py /opt/isaac_assets && mkdir -p /opt/isaac_assets/NVIDIA
+RUN python3 -I /tmp/mirror_assets.py /opt/isaac_assets && mkdir -p /opt/isaac_assets/NVIDIA \
+    && chmod -R a+rX /opt/isaac_assets
 
-# Isaac's Kit runtime writes shader and material caches next to its own packages. Every
-# identity (root in verify, the agent account in the agent and oracle phases) must be able
-# to, or Kit stalls silently at start-up.
+# Isaac's Kit runtime writes shader and material caches next to its own packages (the
+# world-writable omni/cache above). Every identity (root in verify, the agent account in
+# the agent and oracle phases) must be able to, or Kit stalls silently at start-up.
 ENV ACCEPT_EULA=Y
 ENV OMNI_KIT_ACCEPT_EULA=YES
-RUN chmod -R a+rX /opt/venv /opt/isaac /opt/isaac_assets \
-    && { [ ! -d /opt/uv-python ] || chmod -R a+rX /opt/uv-python; } \
-    && mkdir -p /opt/isaac/lib/python3.10/site-packages/omni/cache \
-    && chmod -R a+rwX /opt/isaac/lib/python3.10/site-packages/omni/cache
 
 # The declared artifact path must exist even when nobody works.
 RUN mkdir -p /home/user/submission && chown -R user:user /home/user

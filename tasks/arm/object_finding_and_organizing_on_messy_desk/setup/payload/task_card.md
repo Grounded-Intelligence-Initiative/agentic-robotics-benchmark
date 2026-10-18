@@ -20,7 +20,7 @@ Fixed for the task; identical on every seed. Units: metres, radians, seconds.
   "Inside a bin" for scoring: the object's centre within the interior footprint and its
   height between the floor and 0.12 above the rim, at rest (speed < 0.02 m/s).
 
-## Classes (YCB models; per-episode scale jitter of +/-15 %)
+## Classes (YCB models; the two instances of a model are scaled 0.9x and 1.1x of its base size)
 - A: cracker box, sugar box, pudding box, gelatin box, wood block, foam brick
 - B: master chef can, tomato soup can, tuna fish can, potted meat can, mustard bottle, bleach cleanser
 - C: banana, bowl, mug, power drill, scissors, large marker, large clamp, extra large clamp, pitcher base

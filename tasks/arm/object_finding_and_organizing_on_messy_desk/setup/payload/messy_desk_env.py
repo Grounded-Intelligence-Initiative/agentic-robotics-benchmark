@@ -200,13 +200,15 @@ class MessyDeskEnv:
                 xf.ClearXformOpOrder()
                 xf.AddTranslateOp().Set(Gf.Vec3d(*_park_slot(k)))
                 xf.AddOrientOp().Set(Gf.Quatf(1, 0, 0, 0))
-                sc = xf.AddScaleOp()
-                sc.Set(Gf.Vec3f(BASE_SCALE.get(model, 1.0)))
+                # Scale is fixed per instance (the two instances of a model differ by 20 %):
+                # editing a rigid body's scale while PhysX plays re-parses the scene and
+                # invalidates every tensor view, so it is never touched after construction.
+                scale = BASE_SCALE.get(model, 1.0) * (0.9 if inst == 0 else 1.1)
+                xf.AddScaleOp().Set(Gf.Vec3f(float(scale)))
                 rp = self.SingleRigidPrim(prim_path=path, name="obj%02d" % k)
                 self.world.scene.add(rp)
-                self.objects.append(dict(id=k, model=model, cls=CLASS_OF[model], prim=prim, rp=rp, scale_op=sc,
-                                         park=_park_slot(k),
-                                         present=False, removed=False, scale=BASE_SCALE.get(model, 1.0)))
+                self.objects.append(dict(id=k, model=model, cls=CLASS_OF[model], prim=prim, rp=rp,
+                                         park=_park_slot(k), present=False, removed=False, scale=scale))
                 k += 1
         # contact tracking between every object and the two finger links (first-contact bonus)
         self._contacts = None
@@ -301,8 +303,7 @@ class MessyDeskEnv:
         self.franka.set_joint_velocities(np.zeros_like(self._home_q))
         self.franka.gripper.open()
         for o in self.objects:
-            o["scale"] = BASE_SCALE.get(o["model"], 1.0) * self.rng.uniform(0.85, 1.15)
-            o["scale_op"].Set(self.Gf.Vec3f(float(o["scale"])))
+            o["removed"], o["frozen"] = False, 0
             self._park(o)
         # initial piles: A in gray, B in lightblue; a few loose C and A on the desk
         for cls, name in (("A", "gray"), ("B", "lightblue")):

@@ -27,8 +27,7 @@ episode. Your job has three parts:
 
 Two bins start full (A objects in gray, B objects in light-blue), the red and blue bins start
 empty, and a few loose objects (mostly C, some A) lie on the desk. Classes are visual
-categories of everyday objects (boxes, cans and bottles, tools and kitchenware), rendered
-with per-episode colour and scale variation. There is no segmentation, no object pose and no
+categories of everyday objects (boxes, cans and bottles, tools and kitchenware), of which at most two instances (at slightly different sizes) are on the desk at once. There is no segmentation, no object pose and no
 object list in the observation: you work from the cameras.
 
 ## Episode dynamics
