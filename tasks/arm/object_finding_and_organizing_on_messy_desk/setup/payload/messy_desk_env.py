@@ -329,7 +329,8 @@ class MessyDeskEnv:
         self.next_arrival = int(self.rng.exponential(ARRIVAL_MEAN_STEPS))
         self.next_request = int(self.rng.exponential(REQUEST_MEAN_STEPS)) + 200
         self.next_disturb = int(self.rng.exponential(DISTURB_MEAN_STEPS)) + 500
-        self.world.step(render=True)
+        for _ in range(3):                 # the render products need a few frames to deliver
+            self.world.step(render=True)
         self._update_states()
         self.baseline = {o["id"]: self._value(o) for o in self.objects}
         return self.observe(), self.privileged()
@@ -362,8 +363,9 @@ class MessyDeskEnv:
         pos, quat = self.franka.end_effector.get_world_pose()
         target = pos + dpos
         target[0] = float(np.clip(target[0], -0.1, 0.85)); target[1] = float(np.clip(target[1], -0.75, 0.75)); target[2] = float(np.clip(target[2], 0.01, 0.9))
-        tq = _quat_mul(_rpy_to_quat(*drot), quat)
-        act, ok = self.ik.compute_inverse_kinematics(target_position=target, target_orientation=tq)
+        tq = np.array(_quat_mul(_rpy_to_quat(*drot), [float(x) for x in quat]), dtype=float)
+        tq /= max(float(np.linalg.norm(tq)), 1e-9)
+        act, ok = self.ik.compute_inverse_kinematics(target_position=np.asarray(target, dtype=float), target_orientation=tq)
         if ok:
             self.franka.apply_action(act)
         w = GRIPPER_OPEN * (1.0 - grip) + GRIPPER_CLOSED * grip
