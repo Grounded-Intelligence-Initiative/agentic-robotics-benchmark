@@ -32,7 +32,7 @@ ASSET_ROOT = os.environ.get("MESSY_DESK_ASSETS", "/opt/isaac_assets")
 PHYSICS_HZ = 60
 CONTROL_HZ = 10
 SUBSTEPS = PHYSICS_HZ // CONTROL_HZ
-IMAGE_SIZE = 224
+IMAGE_SIZE = 320
 
 CLASSES = {
     "A": ["003_cracker_box", "004_sugar_box", "008_pudding_box", "009_gelatin_box",
@@ -51,15 +51,19 @@ DISPLAY_NAME = {m: " ".join(m.split("_")[1:]) for m in CLASS_OF}
 BIN_OF_CLASS = {"A": "gray", "B": "lightblue", "C": "blue"}
 BIN_COLORS = {"gray": (0.45, 0.45, 0.45), "lightblue": (0.62, 0.82, 1.0),
               "blue": (0.08, 0.20, 0.85), "red": (0.85, 0.08, 0.08)}
-# bins in a loose row in front of the robot, long side roughly along x. KLT outer footprint
-# 0.297 x 0.198, walls stretched to 1.3x height. Every episode jitters each bin's pose
-# (BIN_JITTER: x, y in metres, yaw in radians) around its nominal centre.
-BIN_Z_SCALE = 1.3
-BIN_X, BIN_YS = 0.44, {"gray": -0.39, "lightblue": -0.13, "blue": 0.13, "red": 0.39}
-BIN_JITTER = (0.04, 0.01, math.radians(7.0))
-BIN_OUTER = (0.297, 0.198, 0.146 * BIN_Z_SCALE)
-BIN_INNER_HALF = (0.135, 0.085)          # interior half extents (x, y)
-BIN_FLOOR_Z, BIN_RIM_Z = 0.012 * BIN_Z_SCALE, 0.146 * BIN_Z_SCALE
+# bins in a loose row in front of the robot, long side roughly along x. The stock small_KLT
+# asset is 0.297 x 0.198 x 0.146 with its origin at mid-height; it is stretched by BIN_SCALE
+# (long side, short side, height) and set down so that it stands on the desk. Every episode
+# jitters each bin's pose (BIN_JITTER: x, y in metres, yaw in radians) around its nominal centre.
+KLT_HALF = (0.1483, 0.0989, 0.0732)                    # stock half extents (long, short, height)
+BIN_SCALE = (1.10, 1.25, 1.30)
+BIN_X, BIN_YS = 0.44, {"gray": -0.45, "lightblue": -0.15, "blue": 0.15, "red": 0.45}
+BIN_JITTER = (0.04, 0.008, math.radians(5.0))
+BIN_OUTER = tuple(2.0 * h * k for h, k in zip(KLT_HALF, BIN_SCALE))     # 0.326 x 0.247 x 0.190
+BIN_INNER_HALF = (0.127 * BIN_SCALE[0], 0.0875 * BIN_SCALE[1])          # interior half extents (x, y)
+BIN_Z0 = KLT_HALF[2] * BIN_SCALE[2] + 0.0005                             # origin height: bottom on the desk
+BIN_FLOOR_Z = 0.0005 + 0.0023 * BIN_SCALE[2]                             # inner floor top (ribs along the long walls reach 0.012 * scale)
+BIN_RIM_Z = BIN_OUTER[2] + 0.0005
 DESK_X, DESK_Y = (0.15, 0.78), (-0.62, 0.62)
 REACH, BASE_CLEAR = 0.80, 0.22
 HORIZON_DEFAULT = 20000
@@ -195,9 +199,10 @@ class MessyDeskEnv:
             prim = self.get_prim_at_path(path)
             xf = UsdGeom.Xformable(prim)
             xf.ClearXformOpOrder()
-            xf.AddTranslateOp().Set(Gf.Vec3d(BIN_X, y, 0.0))
+            xf.AddTranslateOp().Set(Gf.Vec3d(BIN_X, y, BIN_Z0))
             xf.AddRotateZOp().Set(90.0)   # long side along x
-            xf.AddScaleOp().Set(Gf.Vec3f(1.0, 1.0, float(BIN_Z_SCALE)))
+            # scale is applied in the asset's own frame (short side x, long side y)
+            xf.AddScaleOp().Set(Gf.Vec3f(float(BIN_SCALE[1]), float(BIN_SCALE[0]), float(BIN_SCALE[2])))
             rb = UsdPhysics.RigidBodyAPI.Apply(prim)
             rb.CreateKinematicEnabledAttr(True)
             self.bin_rp[name] = self.SingleRigidPrim(prim_path=path, name="bin_" + name)
@@ -226,7 +231,7 @@ class MessyDeskEnv:
             y = y0 + rng.uniform(-BIN_JITTER[1], BIN_JITTER[1])
             yaw = rng.uniform(-BIN_JITTER[2], BIN_JITTER[2])
             a = math.pi / 2 + yaw               # the asset's long side is its local y
-            self.bin_rp[name].set_world_pose(position=np.array([x, y, 0.0]), orientation=np.array([math.cos(a / 2), 0.0, 0.0, math.sin(a / 2)]))
+            self.bin_rp[name].set_world_pose(position=np.array([x, y, BIN_Z0]), orientation=np.array([math.cos(a / 2), 0.0, 0.0, math.sin(a / 2)]))
             self.bins[name] = (x, y, yaw)
 
     def _bin_local(self, name, x, y):
@@ -306,7 +311,7 @@ class MessyDeskEnv:
         """Three RGB-D cameras. Poses use Isaac's "world" camera axes (+X forward, +Z up)."""
         np, Camera = self.np, self.Camera
         self.cams = {}
-        fixed = {"agentview": ([1.10, 0.0, 0.70], [0.42, 0.0, 0.05]),
+        fixed = {"agentview": ([1.35, 0.0, 0.95], [0.42, 0.0, 0.05]),
                  "left_view": ([0.45, -1.15, 0.75], [0.45, 0.0, 0.05])}
         for name, (pos, target) in fixed.items():
             cam = Camera(prim_path="/World/Cameras/" + name, frequency=CONTROL_HZ, resolution=(IMAGE_SIZE, IMAGE_SIZE))
@@ -421,7 +426,7 @@ class MessyDeskEnv:
                 if o is None:
                     continue
                 px, py = self._bin_point(name, self.rng.uniform(-0.045, 0.045), self.rng.uniform(-0.03, 0.03))
-                self._spawn(o, (px, py, 0.14 + 0.07 * i))
+                self._spawn(o, (px, py, BIN_RIM_Z + 0.06 + 0.08 * i))
                 self._settle(12)
         loose = [m for m in self.rng.permutation(CLASSES["C"])[: int(self.rng.integers(2, 5))]]
         loose += [m for m in self.rng.permutation(CLASSES["A"])[: int(self.rng.integers(0, 3))]]
@@ -621,7 +626,7 @@ class MessyDeskEnv:
                     wrong = [b for b in ("gray", "lightblue", "blue") if b != BIN_OF_CLASS[o["cls"]]]
                     b = wrong[int(rng.integers(len(wrong)))]
                     px, py = self._bin_point(b, rng.uniform(-0.03, 0.03), rng.uniform(-0.02, 0.02))
-                    self._spawn(o, (px, py, 0.30))
+                    self._spawn(o, (px, py, BIN_RIM_Z + 0.12))
                     ev.append({"t": self.t, "event": "disturb_misplaced", "object": o["id"], "bin": b})
                 else:
                     o["rp"].set_linear_velocity(self.np.array([rng.uniform(-0.6, 0.6), rng.uniform(-0.6, 0.6), 0.3]))
@@ -699,9 +704,13 @@ class MessyDeskEnv:
                 img = np.zeros((IMAGE_SIZE, IMAGE_SIZE, 4), np.uint8)
             if d is None or d.size == 0:
                 d = np.zeros((IMAGE_SIZE, IMAGE_SIZE), np.float32)
-            rgb[name] = _png_b64(np.ascontiguousarray(img[..., :3]).astype(np.uint8), "RGB")
+            rgb[name] = np.ascontiguousarray(img[..., :3]).astype(np.uint8)
             dm = np.nan_to_num(d, nan=0.0, posinf=0.0, neginf=0.0) * 1000.0
-            depth[name] = _png_b64(np.clip(dm, 0, 65535).astype(np.uint16), "I;16")
+            depth[name] = np.clip(dm, 0, 65535).astype(np.uint16)
+        # the six PNG encodes run in parallel (PIL releases the GIL while compressing)
+        jobs = [(name, "rgb", rgb[name], "RGB") for name in rgb] + [(name, "depth", depth[name], "I;16") for name in depth]
+        for (name, kind, _, _), b64 in zip(jobs, _ENCODER.map(lambda j: _png_b64(j[2], j[3]), jobs)):
+            (rgb if kind == "rgb" else depth)[name] = b64
         jp = self.franka.get_joint_positions()
         jv = self.franka.get_joint_velocities()
         pos, quat = self._ee_pose()
@@ -740,7 +749,7 @@ class MessyDeskEnv:
                              "inner_half_xy": list(BIN_INNER_HALF), "floor_z": BIN_FLOOR_Z,
                              "rim_z": BIN_RIM_Z, "outer_xyz": list(BIN_OUTER), "class": next((k for k, v in BIN_OF_CLASS.items() if v == n), "requested")}
                          for n, c in self.bins.items()},
-                "bin_jitter_xy_yaw": list(BIN_JITTER),
+                "bin_jitter_xy_yaw": list(BIN_JITTER), "bin_scale_xyz": list(BIN_SCALE),
                 "desk": {"x": list(DESK_X), "y": list(DESK_Y), "surface_z": 0.0, "robot_base_xyz": [0, 0, 0]},
                 "classes": {k: [DISPLAY_NAME[m] for m in v] for k, v in CLASSES.items()},
                 "cameras": cams}
@@ -752,6 +761,10 @@ class MessyDeskEnv:
 # ---------------------------------------------------------------------------------------
 # helpers (no Isaac imports)
 # ---------------------------------------------------------------------------------------
+from concurrent.futures import ThreadPoolExecutor
+_ENCODER = ThreadPoolExecutor(max_workers=6)
+
+
 def _png_b64(arr, mode):
     from PIL import Image
     buf = io.BytesIO()

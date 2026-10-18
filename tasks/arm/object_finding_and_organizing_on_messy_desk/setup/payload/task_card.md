@@ -7,20 +7,24 @@ Fixed for the task; identical on every seed. Units: metres, radians, seconds.
   surface; the desk surface is the plane z = 0 (x in [-1.59, 1.59], y in [-0.81, 0.81]).
 - Objects arrive on the reachable desk area x in [0.15, 0.78], y in [-0.62, 0.62], outside
   the bins and at least 0.22 m from the base.
-- Four KLT bins (outer footprint 0.297 x 0.198, walls 0.19 tall, long side roughly along x)
-  in a loose row. Nominal centres are at x = 0.44; every episode jitters each bin by up to
-  +/-0.04 in x, +/-0.01 in y and +/-7 degrees of yaw (seeded), so localise them from the
-  cameras (the `info` command of the practice simulator reports the current poses):
+- Four KLT bins (outer footprint 0.326 x 0.247, walls 0.19 tall, long side roughly along x)
+  standing on the desk in a loose row. Nominal centres are at x = 0.44; every episode jitters
+  each bin by up to +/-0.04 in x, +/-0.008 in y and +/-5 degrees of yaw (seeded), so localise
+  them from the cameras (the `info` command of the practice simulator reports the current poses):
 
 | bin | colour | nominal centre y | class |
 |---|---|---|---|
-| gray | gray | -0.39 | A |
-| lightblue | light blue | -0.13 | B |
-| blue | blue | 0.13 | C |
-| red | red | 0.39 | requested objects |
+| gray | gray | -0.45 | A |
+| lightblue | light blue | -0.15 | B |
+| blue | blue | 0.15 | C |
+| red | red | 0.45 | requested objects |
 
-  Interior half extents (x, y) = (0.135, 0.085) in the bin's own frame; floor at z = 0.0156;
-  rim at z = 0.19.
+  Interior half extents (x, y) = (0.140, 0.109) in the bin's own frame; inner floor at
+  z = 0.0035 (a 1.5 cm rib runs along the base of each long wall); rim at z = 0.19.
+  The open Franka hand is 0.205 m wide across the fingers and 0.063 m thick, and the underside
+  of the hand body is 0.138 m above the fingertips (the fingertips are 0.027 m below the tool
+  centre point), so a hand reaching the floor of a bin only fits with its finger axis along
+  the bin's long side.
   "Inside a bin" for scoring: the object's centre within the interior footprint and its
   height between the floor and 0.12 above the rim, at rest (speed < 0.02 m/s).
 
@@ -33,13 +37,13 @@ Requests name a model as "the <model name>" (for example `the tomato soup can`).
 two instances of a model are on the desk at once; a request only ever names a model with
 exactly one instance present, or one with none (an absent request).
 
-## Cameras (224 x 224, RGB 8-bit PNG and depth 16-bit PNG in millimetres)
-- agentview: world pose xyz (1.10, 0.0, 0.70), looking at the bins from the far side of the desk.
+## Cameras (320 x 320, RGB 8-bit PNG and depth 16-bit PNG in millimetres)
+- agentview: world pose xyz (1.35, 0.0, 0.95), looking down at the bins from the far side of the desk.
 - left_view: world pose xyz (0.45, -1.15, 0.75), looking across the desk from the left.
 - eye_in_hand: attached to /World/Franka/panda_hand, offset (0.05, 0, 0.03) in the hand frame.
-- Intrinsics (all three): focal 171.03 px, principal point (112, 112). Static poses as xyz + quaternion
+- Intrinsics (all three): focal 244.33 px, principal point (160, 160). Static poses as xyz + quaternion
   (w, x, y, z) in Isaac's world camera axes (+X forward, +Y left, +Z up): agentview
-  (1.10, 0.0, 0.70 | 0.0, -0.3722, 0.0, 0.9281), left_view (0.45, -1.15, 0.75 | 0.6808, -0.1909, 0.1909, 0.6808).
+  (1.35, 0.0, 0.95 | 0.0, -0.3751, 0.0, 0.9270), left_view (0.45, -1.15, 0.75 | 0.6808, -0.1909, 0.1909, 0.6808).
   Depth PNGs hold z-depth along the optical axis in millimetres. `{"cmd": "info"}` on the simulator
   (see below) returns the same matrices and poses.
 

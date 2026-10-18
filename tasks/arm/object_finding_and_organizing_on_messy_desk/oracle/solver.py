@@ -34,11 +34,10 @@ from PIL import Image
 # Task geometry (task_card.md)
 # ----------------------------------------------------------------------------------------
 BIN_X = 0.44
-BIN_YS = {"gray": -0.39, "lightblue": -0.13, "blue": 0.13, "red": 0.39}
-BIN_Z_SCALE = 1.3
-BIN_INNER_HALF = (0.135, 0.085)
-BIN_OUTER = (0.297, 0.198, 0.146 * BIN_Z_SCALE)
-BIN_FLOOR_Z, BIN_RIM_Z = 0.012 * BIN_Z_SCALE, 0.146 * BIN_Z_SCALE
+BIN_YS = {"gray": -0.45, "lightblue": -0.15, "blue": 0.15, "red": 0.45}
+BIN_OUTER = (0.326, 0.247, 0.190)          # outer footprint x (long), y (short), wall height
+BIN_INNER_HALF = (0.140, 0.109)
+BIN_FLOOR_Z, BIN_RIM_Z = 0.0035, 0.191
 BIN_OF_CLASS = {"A": "gray", "B": "lightblue", "C": "blue"}
 CLASS_OF_BIN = {v: k for k, v in BIN_OF_CLASS.items()}
 CLASSES = {
@@ -49,17 +48,24 @@ CLASSES = {
 CLASS_OF = {m: c for c, ms in CLASSES.items() for m in ms}
 DESK_X, DESK_Y = (0.15, 0.78), (-0.62, 0.62)
 REACH, BASE_CLEAR = 0.80, 0.22
+IMG = 320                                   # task cameras are IMG x IMG; focal scales with the width
+F_PX, C_PX = 171.03317 * IMG / 224.0, IMG / 2.0
 CAMS = {
-    "agentview": {"f": 171.03317, "c": 112.0,
-                  "pose": [1.1, 0.0, 0.7, 0.0, -0.37224140238349257, 0.0, 0.9281359482056336]},
-    "left_view": {"f": 171.03317, "c": 112.0,
+    "agentview": {"f": F_PX, "c": C_PX,
+                  "pose": [1.35, 0.0, 0.95, 0.0, -0.375099, 0.0, 0.926985]},
+    "left_view": {"f": F_PX, "c": C_PX,
                   "pose": [0.45, -1.15, 0.75, 0.6808448119669411, -0.19091972663321244, 0.19091972663321244, 0.6808448119669411]},
 }
+
+
+def intrinsics(w):
+    """Focal and principal point for a w x w frame of the task cameras."""
+    return F_PX * w / IMG, w / 2.0
 POS_STEP_MAX, ROT_STEP_MAX = 0.05, 0.25
 GRIPPER_OPEN_W = 0.08
 
 # hand geometry (Franka hand, fingers open): half width across the fingers, half thickness
-HAND_HALF_W, HAND_HALF_T = 0.105, 0.035
+HAND_HALF_W, HAND_HALF_T = 0.1025, 0.0315      # measured on the Franka USD (body 0.205 x 0.063)
 GRASP_MAX_WIDTH = 0.072
 
 # controller tunables
@@ -183,9 +189,9 @@ def decode_png(b64, mode=None):
 
 
 def backproject(depth_mm, rgb, cam, max_depth=3.0):
-    f, c = cam["f"], cam["c"]
     z = depth_mm.astype(np.float32) / 1000.0
     h, w = z.shape
+    f, c = intrinsics(w)
     v, u = np.mgrid[0:h, 0:w]
     valid = (z > 0.05) & (z < max_depth)
     pts = np.stack([z[valid], -(u[valid] - c) / f * z[valid], -(v[valid] - c) / f * z[valid]], 1)
@@ -197,6 +203,7 @@ def backproject(depth_mm, rgb, cam, max_depth=3.0):
 def backproject_rt(depth_mm, rgb, f, c, R, t, max_depth=1.5):
     z = depth_mm.astype(np.float32) / 1000.0
     h, w = z.shape
+    f, c = intrinsics(w)
     v, u = np.mgrid[0:h, 0:w]
     valid = (z > 0.02) & (z < max_depth)
     pts = np.stack([z[valid], -(u[valid] - c) / f * z[valid], -(v[valid] - c) / f * z[valid]], 1)
@@ -228,56 +235,66 @@ def label_components(idx):
     return labels, comp
 
 
+def fit_bin(p, cx, cy, yaw0=0.0):
+    """Refine one bin's pose from rim-band points near its nominal centre: coarse-to-fine grid
+    search over (x, y, yaw) maximising the number of points on the outline of the known outer
+    footprint. Robust to partial rings (a bin seen from one side only)."""
+    ox, oy = BIN_OUTER[0] / 2, BIN_OUTER[1] / 2
+    q = p[np.hypot(p[:, 0] - cx, p[:, 1] - cy) < 0.32]
+    if len(q) < 30:
+        return None
+    qx, qy = q[:, 0], q[:, 1]
+
+    def score(x, y, yaw):
+        c, sn = math.cos(yaw), math.sin(yaw)
+        lx = (qx - x) * c + (qy - y) * sn
+        ly = -(qx - x) * sn + (qy - y) * c
+        on_long = (np.abs(np.abs(ly) - oy) < 0.02) & (np.abs(lx) < ox + 0.02)
+        on_short = (np.abs(np.abs(lx) - ox) < 0.02) & (np.abs(ly) < oy + 0.02)
+        return int((on_long | on_short).sum())
+
+    best = (-1, cx, cy, yaw0)
+    for yaw in yaw0 + np.radians(np.arange(-12, 12.1, 2.0)):
+        for dx in np.arange(-0.06, 0.061, 0.02):
+            for dy in np.arange(-0.03, 0.031, 0.015):
+                sc = score(cx + dx, cy + dy, yaw)
+                if sc > best[0]:
+                    best = (sc, cx + dx, cy + dy, yaw)
+    _, bx, by, byaw = best
+    for yaw in byaw + np.radians(np.arange(-2.5, 2.51, 0.5)):
+        for dx in np.arange(-0.02, 0.021, 0.005):
+            for dy in np.arange(-0.015, 0.0151, 0.005):
+                sc = score(bx + dx, by + dy, yaw)
+                if sc > best[0]:
+                    best = (sc, bx + dx, by + dy, yaw)
+    return best
+
+
 def detect_bins(pts, col):
-    """Bin poses from the rim band of the fused cloud (the upper walls, above every object).
-    Each ring's centroid is the bin centre, its principal axis the long side. Rings are
-    assigned to the nominal row order; a missing ring keeps the nominal pose."""
+    """Bin poses from the rim band of the fused cloud (the upper walls, above most objects):
+    each bin is fitted around its nominal pose with the known footprint. A bin with too few
+    band points keeps its nominal pose."""
     x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
-    band = (z > BIN_RIM_Z - 0.06) & (z < BIN_RIM_Z + 0.02) & (x > DESK_X[0]) & (x < 0.76) & (np.abs(y) < 0.6)
+    band = (z > BIN_RIM_Z - 0.07) & (z < BIN_RIM_Z + 0.02) & (x > DESK_X[0]) & (x < 0.80) & (np.abs(y) < 0.65)
     bins = nominal_bins()
+    fits = []
     if band.sum() < 40:
-        return bins, []
+        return bins, fits
     p = pts[band][:, :2]
-    idx = np.floor((p - p.min(0) + 0.02) / 0.02).astype(int)
-    idx3 = np.concatenate([idx, np.zeros((len(idx), 1), int)], 1)
-    labels, n = label_components(idx3)
-    rings = []
-    for k in range(n):
-        m = labels == k
-        if m.sum() < 40:
+    for name, (bx, by, _) in list(bins.items()):
+        r = fit_bin(p, bx, by)
+        if r is None or r[0] < 40:
             continue
-        q = p[m]
-        cen = q.mean(0)
-        d = q - cen
-        cov = d.T @ d / len(q)
-        evals, evecs = np.linalg.eigh(cov)
-        major = evecs[:, 1]
-        ext = np.percentile(d @ evecs, 97, axis=0) - np.percentile(d @ evecs, 3, axis=0)
-        if ext[1] < 0.17 or ext[1] > 0.40 or ext[0] < 0.08:
-            continue
-        yaw = math.atan2(major[1], major[0])
-        yaw = (yaw + math.pi / 2) % math.pi - math.pi / 2          # long side ~ along x
-        rings.append({"centre": cen, "yaw": float(yaw), "n": int(m.sum()), "ext": [float(ext[1]), float(ext[0])]})
-    used = set()
-    for name in sorted(bins, key=lambda nm: BIN_YS[nm]):
-        bx, by, _ = bins[name]
-        best, bd = None, 0.14
-        for i, r in enumerate(rings):
-            if i in used:
-                continue
-            dd = math.hypot(r["centre"][0] - bx, r["centre"][1] - by)
-            if dd < bd:
-                best, bd = i, dd
-        if best is not None:
-            used.add(best)
-            r = rings[best]
-            bins[name] = (float(r["centre"][0]), float(r["centre"][1]), r["yaw"])
-    return bins, rings
+        sc, fx, fy, fyaw = r
+        bins[name] = (float(fx), float(fy), float(fyaw))
+        fits.append({"name": name, "score": sc, "centre": [float(fx), float(fy)], "yaw": float(fyaw)})
+    return bins, fits
 
 
 def scene_mask(pts, bins):
     x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
-    keep = (x > DESK_X[0]) & (x < 0.76) & (y > DESK_Y[0]) & (y < DESK_Y[1]) & (z > 0.02) & (z < Z_ROBOT)
+    # the whole desk top except the robot's base column; objects can slide past the arrival area
+    keep = (x > 0.08) & (x < 0.80) & (np.abs(y) < 0.70) & (np.hypot(x, y) > 0.20) & (z > 0.02) & (z < Z_ROBOT)
     ox, oy, oz = BIN_OUTER
     ix, iy = BIN_INNER_HALF
     for b in bins.values():
@@ -355,12 +372,17 @@ def cluster_features(p, c, bins):
             "mean_rgb": c.mean(0).tolist(), "hist": colour_hist(rgb_to_hsv(c)).tolist(), "pts": p}
 
 
-def perceive(images, bins=None, voxel=VOXEL, min_pts=12):
-    """images: {cam: (rgb uint8, depth uint16)} for the static cameras -> (clusters, bins)."""
+def perceive(images, bins=None, voxel=VOXEL, min_pts=12, extra=()):
+    """images: {cam: (rgb uint8, depth uint16)} for the static cameras, plus optional extra
+    views as (rgb, depth, R_cam, t_cam) -> (clusters, bins)."""
     P, C = [], []
     for cam in CAMS:
         rgb, d = images[cam]
         pts, col = backproject(d, rgb, CAMS[cam])
+        P.append(pts)
+        C.append(col)
+    for rgb, d, R, t in extra:
+        pts, col = backproject_rt(d, rgb, None, None, R, t)
         P.append(pts)
         C.append(col)
     allp, allc = np.concatenate(P), np.concatenate(C)
@@ -577,7 +599,10 @@ class Controller(object):
         yield from self.goto(OBSERVE_POS, 0.0, grip=0.0, tol=0.02)
         yield from self.hold(settle, grip=0.0)
         imgs = {cam: (decode_png(self.obs["rgb"][cam], "RGB"), decode_png(self.obs["depth"][cam])) for cam in CAMS}
-        clusters, bins = perceive(imgs)
+        # the hand camera at the observe pose looks straight down on the strip between the
+        # robot and the bins, which the bin walls hide from the static cameras
+        eih = (decode_png(self.obs["rgb"]["eye_in_hand"], "RGB"), decode_png(self.obs["depth"]["eye_in_hand"]))
+        clusters, bins = perceive(imgs, extra=[(eih[0], eih[1]) + self.cam_pose()])
         self.bins = bins
         for c in clusters:
             c["cls_info"] = self.classify(c) if (c["bin"] is None or c["n"] < 600) else None
