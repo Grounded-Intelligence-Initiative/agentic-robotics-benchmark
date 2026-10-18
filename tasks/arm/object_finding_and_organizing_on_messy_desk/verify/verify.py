@@ -1,139 +1,124 @@
-"""The grader. Runs as ROOT in the verify stage, after the agent is gone.
+"""The grader. Runs as ROOT in the verify stage, after the agent is gone (closed_loop).
 
-This is the closed_loop pattern: the grader owns the simulator and drives the agent's
-policy step by step. The three properties that make the resulting number trustworthy:
+The grader owns the simulator (an Isaac Sim process it launches from this folder's env.py)
+and drives the agent's run.sh step by step over the ALE wire. The score is computed from
+the simulator's privileged state only; nothing the solver prints is a scoring input.
 
-* `verify/` is absent from the sandbox while the agent works, so nothing here — this file,
-  the anchor, the config — was ever readable by the agent.
-* The solver runs at the AGENT's UID (`robotics_grader.Solver` spawns it through
-  `runuser`), so the agent's code cannot read this process, its environment, or /opt/ale,
-  and cannot write the verdict.
-* Seeds are drawn from OS entropy inside this process and never touch disk, and the metric
-  is computed from this process's own simulator state. Nothing the solver prints is an
-  input to the score.
-
-To turn this into your task: replace `TemplateReach` with your environment (imported from
-the image), and adjust `run_episodes` to your task's stepping. Leave the structure alone —
-the abort handling, the probe lock, and the scoring are the parts that must not vary.
-
-The wire is keyed by the step index `t`, which this loop owns. A probed step is asked
-twice with the same `t` (`lock.probe`) — real and perturbed, in a hidden order — and only
-the real reply reaches the simulator; nothing on the wire marks the probe.
-
-For the other two patterns:
-
-* **open_loop** — delete the `Solver`. The agent's problems and answers already exist on
-  disk from the agent phase; read its answers, re-simulate them under your own dynamics,
-  and reject any answer that does not match the state it claims to start from.
-* **artifact_rollout** — delete the `Solver` too. Load the agent's frozen artifact inside
-  `robotics_grader.deprivileged` (deserializing as root hands the grader over), then roll
-  it out yourself on hidden seeds. No wire means no probe lock is needed.
+Hidden seeds come from OS entropy inside this process. A probed step is asked twice with
+the same `t` (real and perturbed proprioception/pixels, hidden order); only the real reply
+reaches the simulator. An aborted episode (deadline, crash, malformed action) scores 0 and
+is never dropped. An episode that exhausts its wall-clock budget is cut short: the steps
+it never ran earn nothing.
 """
 
+import json
 import math
 import os
 import sys
+import time
 
-# Sibling files — env.py and the vendored robotics_grader/ package — import from this
-# stage folder. The canonical robotics_grader lives at the repo root (shared/); the copy
-# here is byte-identical, CI-checked, and travels with the task, because the engine
-# stages exactly this folder and nothing else.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from env import TemplateReach  # noqa: E402
+from messy_desk_score import EpisodeScorer  # noqa: E402
 from robotics_grader import (  # noqa: E402
     ProbeLock,
     Solver,
     SolverAborted,
     SolverMissing,
+    fail,
     ratio_rewards,
     read_anchor,
     seed_rng,
     stage_config,
+    stage_dir,
     write_verdict,
     zero_verdict,
 )
+from sim_client import SimClient, SimError  # noqa: E402
+
+ACTION_DIM = 8
 
 
-def run_episodes(config, rng):
-    """Drive the agent's solver through every scored episode.
+def _action(reply):
+    try:
+        a = [float(v) for v in reply]
+    except (TypeError, ValueError, OverflowError):
+        raise SolverAborted("malformed action: {!r}".format(reply)[:160])
+    if len(a) != ACTION_DIM or not all(math.isfinite(v) for v in a):
+        raise SolverAborted("action must be {} finite numbers".format(ACTION_DIM))
+    return a
 
-    Returns the mean per-step distance to the goal — a COST, on a positive scale, where 0
-    is perfect. The environment's own reward is the negative of that distance, and scoring
-    the negative directly would invert the ratio: with a negative anchor a better policy
-    scores lower, silently. Report the cost and declare `direction: lower` instead. The kit
-    refuses a non-positive anchor for exactly this reason.
 
-    An episode that aborts (solver crash, stalled step, protocol violation, malformed
-    action) is charged what standing still would cost: its starting distance to the goal,
-    for every step. Dropping it instead would let a weak policy abort the episodes it would
-    do badly in and average only the ones it does well in; charged like this, aborting can
-    never beat trying.
-    """
-    episodes = int(config.get("episodes", 10))
-    lock = ProbeLock(
-        rng,
-        rate=config.get("probe_rate", 0.1),
-        pass_fraction=config.get("probe_pass_fraction", 0.5),
-        dims=2,  # perturb the position components of [x, y, vx, vy, gx, gy]
-    )
+def _perturbed(obs, rng):
+    """A copy of the observation that an input-reading policy must answer differently:
+    proprioception shifted, pixels untouched (re-encoding every frame would cost more
+    than it proves). The step index stays the same."""
+    p = dict(obs)
+    p["joint_pos"] = [v + rng.uniform(-0.15, 0.15) for v in obs["joint_pos"]]
+    ee = list(obs["ee_pose"])
+    for i in range(3):
+        ee[i] += rng.uniform(-0.04, 0.04)
+    p["ee_pose"] = ee
+    p["gripper_width"] = max(0.0, obs["gripper_width"] + rng.uniform(-0.02, 0.02))
+    return p
 
-    env = TemplateReach()
-    costs, aborted = [], 0
-    # Raises SolverMissing (no run.sh) or SolverAborted (it never comes up); main() scores both 0.
-    solver = Solver(step_timeout=config.get("step_timeout_s", 30))
+
+def run_episodes(config, rng, solver):
+    episodes = int(config.get("episodes", 3))
+    horizon = int(config.get("horizon", 20000))
+    wall_budget = float(config.get("episode_wall_s", 2700))
+    lock = ProbeLock(rng, rate=config.get("probe_rate", 0.01),
+                     pass_fraction=config.get("probe_pass_fraction", 0.2))
+    env_script = os.path.join(stage_dir(), "env.py")
+    try:
+        sim = SimClient(env_script, ready_timeout=float(config.get("sim_ready_timeout_s", 900)),
+                        log_path=os.path.join(stage_dir(), "sim.log"))
+    except SimError as exc:
+        fail("simulator failed to start: {}".format(exc))
+    print("[grader] simulator up in {:.0f}s".format(sim.startup_s), file=sys.stderr, flush=True)
+
+    scores, summaries, aborted, cut = [], [], 0, 0
     try:
         for episode in range(episodes):
-            # Hidden, in memory only. 64 bits: the agent holds a copy of this simulator, and
-            # a 31-bit seed can be brute-forced from the first observation. (Here the seed
-            # decides only what that observation already shows; in a task with hidden
-            # parameters it decides everything.)
             seed = rng.seed(bits=64)
-            total, steps = 0.0, 0
-            obs = env.reset(seed)
-            standing_still = math.hypot(obs[0] - obs[4], obs[1] - obs[5])
+            try:
+                obs, state = sim.reset(seed, horizon)
+            except SimError as exc:
+                fail("simulator reset failed: {}".format(exc))
+            scorer = EpisodeScorer(horizon)
+            started = time.time()
             try:
                 solver.reset()
-                for t in range(env.max_steps):
+                for t in range(horizon):
                     if lock.due():
-                        # Ask this step twice with the same t — the real observation and
-                        # a perturbed copy, in a hidden order — and apply only the real
-                        # reply; the perturbed one is compared and thrown away. On the
-                        # wire the probe is indistinguishable from any repeated query.
-                        action = lock.probe(solver, t, obs)
+                        action = lock.probe(solver, t, obs, perturbed=_perturbed(obs, rng))
                     else:
                         action = solver.act(t, obs)
-                    obs, reward, done = env.step(_two_numbers(action))
-                    total += -reward     # reward is the negative distance; accumulate cost
-                    steps += 1
-                    if done:
+                    action = _action(action)
+                    try:
+                        obs, state = sim.step(action)
+                    except SimError as exc:
+                        fail("simulator step failed: {}".format(exc))
+                    scorer.add_step(state)
+                    if time.time() - started > wall_budget:
+                        cut += 1
+                        print("[grader] episode {} cut at t={} (wall budget {:.0f}s)".format(
+                            episode, t + 1, wall_budget), file=sys.stderr, flush=True)
                         break
             except SolverAborted as exc:
                 aborted += 1
-                costs.append(standing_still)
-                print("[grader] episode {} aborted ({}); charged {:.4f}".format(
-                    episode, exc, standing_still), file=sys.stderr, flush=True)
+                scores.append(0.0)
+                summaries.append({"aborted": str(exc)[:160], "steps": scorer.steps})
+                print("[grader] episode {} aborted at t={} ({}); scored 0".format(
+                    episode, scorer.steps, exc), file=sys.stderr, flush=True)
                 continue
-            cost = total / steps if steps else float("inf")
-            costs.append(cost)
-            print("[grader] episode {}: mean_distance={:.4f}".format(episode, cost),
-                  file=sys.stderr, flush=True)
+            scores.append(scorer.score())
+            summaries.append(scorer.summary())
+            print("[grader] episode {}: score={:.4f} {}".format(episode, scorer.score(),
+                  json.dumps(scorer.summary(), sort_keys=True)), file=sys.stderr, flush=True)
     finally:
-        solver.close()
-
-    return costs, aborted, lock
-
-
-def _two_numbers(action):
-    """The solver's action as two finite floats, or a protocol error (the episode aborts;
-    a malformed reply must never crash the grader into a task error)."""
-    try:
-        ax, ay = (float(value) for value in action)
-    except (TypeError, ValueError, OverflowError):
-        raise SolverAborted("malformed action: {!r}".format(action)[:160])
-    if not (math.isfinite(ax) and math.isfinite(ay)):
-        raise SolverAborted("non-finite action")
-    return [ax, ay]
+        sim.close()
+    return scores, summaries, aborted, cut, lock
 
 
 def main():
@@ -142,38 +127,32 @@ def main():
     anchor, anchor_meta = read_anchor()
 
     try:
-        costs, aborted, lock = run_episodes(config, rng)
+        solver = Solver(step_timeout=config.get("step_timeout_s", 30))
     except (SolverMissing, SolverAborted) as exc:
-        # An untouched sandbox is a real, gradeable outcome: `ale validate` fails the run
-        # unless it yields an all-zero verdict, so a missing submission scores 0 instead
-        # of crashing. So does a submission that never comes up (no READY, or it exits
-        # at once): `Solver(...)` raises SolverAborted before the first episode.
-        # A crash here would read as a broken task, which this is not.
+        # An untouched sandbox, or a submission that never comes up, is a real all-zero
+        # verdict, not a task error; and no simulator is launched for it.
         write_verdict(zero_verdict(reason=str(exc), anchored=anchor is not None))
         return
 
-    # No usable episode is the worst outcome, not a free zero-cost win — and on a
-    # lower-is-better metric a measured 0 would otherwise score full marks.
-    measured = sum(costs) / len(costs) if costs else float("inf")
+    try:
+        scores, summaries, aborted, cut, lock = run_episodes(config, rng, solver)
+    finally:
+        solver.close()
 
-    verdict = ratio_rewards(
-        measured,
-        anchor,
-        cap=config.get("scoring_cap", 1.5),
-        higher_is_better=anchor_meta.get("direction", "higher") == "higher",
-        metric_name="mean_goal_distance",
-        locks_ok=lock.ok,
-        extra=dict(lock.rewards(), episodes_aborted=aborted),
-        # Where the reward saturates to 1.0, in ratio units: the tolerance that lets an
-        # honest oracle land on exactly 1.0 under fresh seeds. The engine fails validation
-        # (`oracle_not_full`) when any oracle reward is below 1.0.
-        full_at=anchor_meta.get("full_at", 1.0),
-    )
+    measured = sum(scores) / len(scores) if scores else 0.0
+    extra = dict(lock.rewards(), episodes_aborted=float(aborted), episodes_cut=float(cut))
+    for i, s in enumerate(scores):
+        extra["episode_{}_score".format(i)] = float(s)
+    for key in ("requests_delivered", "requests_expired", "absent_correct", "absent_wrong", "first_contacts"):
+        extra["total_" + key] = float(sum(s.get(key, 0) for s in summaries))
+    verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5),
+                            higher_is_better=anchor_meta.get("direction", "higher") == "higher",
+                            metric_name="mean_episode_score", locks_ok=lock.ok, extra=extra,
+                            full_at=anchor_meta.get("full_at", 1.0))
     write_verdict(verdict)
-    print("[grader] measured={:.3f} anchor={} ratio={:.3f} reward={:.3f} "
-          "lock={} aborted={}".format(measured, anchor, verdict["metrics"]["ratio"],
-                                      verdict["rewards"]["reward"], lock.ok, aborted),
-          file=sys.stderr, flush=True)
+    print("[grader] measured={:.4f} anchor={} ratio={:.3f} reward={:.3f} lock={} aborted={} cut={}".format(
+        measured, anchor, verdict["metrics"]["ratio"], verdict["rewards"]["reward"], lock.ok, aborted, cut),
+        file=sys.stderr, flush=True)
 
 
 if __name__ == "__main__":

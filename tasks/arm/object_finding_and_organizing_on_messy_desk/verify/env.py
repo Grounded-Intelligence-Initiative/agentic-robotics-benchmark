@@ -1,80 +1,576 @@
-"""TemplateReach — the toy simulator this template scores against.
+"""messy_desk_env — the task's simulator (NVIDIA Isaac Sim 4.5) and its stdio server.
 
-Stands in for whatever your task's real environment is. In a real task the simulator comes
-from the image (a pinned upstream repo installed at build time) and this file disappears;
-what stays is the shape: the grader constructs the environment itself, steps it itself, and
-computes the metric from its own state.
+This file is the environment the grader runs; the copy staged into the agent home is
+byte-identical. It runs under the Isaac interpreter (/opt/isaac/bin/python3, Python 3.10),
+never under the task's py3.12 `python3`.
 
-Two byte-identical copies ship, and a test in the tasks repository holds them identical:
-the grader's own copy, staged only when scoring runs and never on a path the agent can
-reach, and the agent's development copy at /home/user/template_env.py. The agent may edit
-its copy freely — that changes what it develops against, not what it is scored on. A
-metric computed from code the agent can reach is not a metric.
+Run as a script it serves one JSON object per line on stdin/stdout:
+
+    {"cmd": "info"}                          -> {"ok": true, "info": {...}}      task card data
+    {"cmd": "reset", "seed": <int>}          -> {"ok": true, "obs": {...}, "state": {...}}
+    {"cmd": "step", "action": [8 floats]}    -> {"ok": true, "obs": {...}, "state": {...}}
+    {"cmd": "close"}                         -> {"ok": true}, then exit
+
+`obs` is exactly what the tested agent receives over the ALE wire. `state` is privileged:
+object classes, poses, bin membership, the truth behind the open request. The graders use
+it to score; the ALE wire never carries it. Everything an episode does is a deterministic
+function of its 64-bit seed (arrivals, requests, bin service, disturbances, scales).
 """
 
+import base64
+import io
+import json
 import math
+import os
+import sys
+import time
 
-__all__ = ["TemplateReach"]
+# ---------------------------------------------------------------------------------------
+# Task constants (the public contract; the task card is generated from these)
+# ---------------------------------------------------------------------------------------
+ASSET_ROOT = os.environ.get("MESSY_DESK_ASSETS", "/opt/isaac_assets")
+PHYSICS_HZ = 60
+CONTROL_HZ = 10
+SUBSTEPS = PHYSICS_HZ // CONTROL_HZ
+IMAGE_SIZE = 224
 
-STEPS = 200
-DT = 0.05
-DAMPING = 0.98
-ARENA = 1.0
+CLASSES = {
+    "A": ["003_cracker_box", "004_sugar_box", "008_pudding_box", "009_gelatin_box",
+          "036_wood_block", "061_foam_brick"],
+    "B": ["002_master_chef_can", "005_tomato_soup_can", "007_tuna_fish_can",
+          "010_potted_meat_can", "006_mustard_bottle", "021_bleach_cleanser"],
+    "C": ["011_banana", "024_bowl", "025_mug", "035_power_drill", "037_scissors",
+          "040_large_marker", "051_large_clamp", "052_extra_large_clamp", "019_pitcher_base"],
+}
+CLASS_OF = {m: c for c, ms in CLASSES.items() for m in ms}
+# base scale per model so that everything fits a KLT bin and a 8 cm gripper
+BASE_SCALE = {"003_cracker_box": 0.6, "036_wood_block": 0.6, "021_bleach_cleanser": 0.55,
+              "024_bowl": 0.6, "035_power_drill": 0.55, "019_pitcher_base": 0.5,
+              "052_extra_large_clamp": 0.8, "002_master_chef_can": 0.8}
+DISPLAY_NAME = {m: " ".join(m.split("_")[1:]) for m in CLASS_OF}
+BIN_OF_CLASS = {"A": "gray", "B": "lightblue", "C": "blue"}
+BIN_COLORS = {"gray": (0.45, 0.45, 0.45), "lightblue": (0.62, 0.82, 1.0),
+              "blue": (0.08, 0.20, 0.85), "red": (0.85, 0.08, 0.08)}
+# bins in a row in front of the robot, long side along x (KLT outer 0.297 x 0.198 x 0.146)
+BIN_X, BIN_YS = 0.46, {"gray": -0.375, "lightblue": -0.125, "blue": 0.125, "red": 0.375}
+BIN_OUTER = (0.297, 0.198, 0.146)
+BIN_INNER_HALF = (0.135, 0.085)          # interior half extents (x, y)
+BIN_FLOOR_Z, BIN_RIM_Z = 0.012, 0.146
+DESK_X, DESK_Y = (0.15, 0.78), (-0.62, 0.62)
+REACH, BASE_CLEAR = 0.80, 0.22
+HORIZON_DEFAULT = 20000
 
-_MASK = (1 << 64) - 1
+# world state machine parameters (per control step)
+ARRIVAL_MEAN_STEPS = 500
+LOOSE_CAP = 6
+PRESENT_CAP = 18
+BIN_CAP = 7
+REQUEST_MEAN_STEPS = 1500
+REQUEST_DEADLINE_STEPS = 1200
+REQUEST_ABSENT_P = 0.2
+DISTURB_MEAN_STEPS = 2500
+MAX_INSTANCES_PER_MODEL = 2
+
+ACTION_DIM = 8
+POS_STEP_MAX, ROT_STEP_MAX = 0.05, 0.25
+GRIPPER_OPEN, GRIPPER_CLOSED = 0.04, 0.0
+REST_SPEED = 0.02
 
 
-def _lcg(state):
-    """One step of a 64-bit LCG. Stdlib-only and identical on every interpreter, so an
-    episode is defined by its seed alone — which is what makes hidden seeds meaningful.
-
-    An LCG is fine HERE only because the seed decides nothing the first observation does not
-    already show (start and goal). If your simulator draws hidden parameters, an agent that
-    holds its source can recover them from an LCG's outputs: draw them from a keyed hash
-    (e.g. `hashlib.blake2b(counter, key=seed)`) and seed with 64 bits."""
-    return (state * 6364136223846793005 + 1442695040888963407) & _MASK
+def _log(msg):
+    print("[env] " + msg, file=sys.stderr, flush=True)
 
 
-class TemplateReach(object):
-    """A damped 2-D point mass that has to reach a goal and stay on it."""
+# ---------------------------------------------------------------------------------------
+# Isaac side
+# ---------------------------------------------------------------------------------------
+class MessyDeskEnv:
+    def __init__(self, headless=True):
+        sys.argv += ["--/rtx/verifyDriverVersion/enabled=false",
+                     "--/persistent/isaac/asset_root/default=" + ASSET_ROOT]
+        from isaacsim import SimulationApp
+        self.app = SimulationApp({"headless": headless, "renderer": "RayTracedLighting",
+                                  "width": IMAGE_SIZE, "height": IMAGE_SIZE})
+        import numpy as np
+        from pxr import Gf, PhysxSchema, Usd, UsdGeom, UsdPhysics
+        import omni.usd
+        from isaacsim.core.api import World
+        from isaacsim.core.prims import SingleRigidPrim
+        from isaacsim.core.utils.prims import get_prim_at_path
+        from isaacsim.core.utils.stage import add_reference_to_stage
+        from isaacsim.core.utils.types import ArticulationAction
+        from isaacsim.robot.manipulators.examples.franka import Franka, KinematicsSolver
+        from isaacsim.sensors.camera import Camera
+        self.np, self.Gf, self.Usd, self.UsdGeom, self.UsdPhysics, self.PhysxSchema = np, Gf, Usd, UsdGeom, UsdPhysics, PhysxSchema
+        self.ArticulationAction, self.SingleRigidPrim, self.Camera = ArticulationAction, SingleRigidPrim, Camera
+        self.get_prim_at_path, self.add_reference_to_stage = get_prim_at_path, add_reference_to_stage
 
-    obs_size = 6
-    action_size = 2
-    max_steps = STEPS
+        self.world = World(stage_units_in_meters=1.0, physics_dt=1.0 / PHYSICS_HZ, rendering_dt=1.0 / PHYSICS_HZ)
+        self.stage = omni.usd.get_context().get_stage()
+        add_reference_to_stage(ASSET_ROOT + "/Isaac/Environments/Simple_Room/simple_room.usd", "/World/Room")
+        self.franka = self.world.scene.add(Franka(prim_path="/World/Franka", name="franka",
+                                                  usd_path=ASSET_ROOT + "/Isaac/Robots/Franka/franka.usd"))
+        self._build_bins()
+        self._build_objects()
+        self._build_cameras()
+        self.world.reset()
+        self.franka.initialize()
+        self.ik = KinematicsSolver(self.franka)
+        for c in self.cams.values():
+            c.initialize()
+            c.add_distance_to_image_plane_to_frame()
+        self.horizon = HORIZON_DEFAULT
+        self.rng = None
+        self.t = 0
+        _log("ready")
 
-    def __init__(self):
-        self.x = self.y = self.vx = self.vy = 0.0
-        self.gx = self.gy = 0.0
-        self.steps = 0
+    # -- scene construction ------------------------------------------------------------
+    def _build_bins(self):
+        Gf, UsdGeom, Usd, UsdPhysics = self.Gf, self.UsdGeom, self.Usd, self.UsdPhysics
+        self.bins = {}
+        for name, y in BIN_YS.items():
+            path = "/World/Bins/" + name
+            self.add_reference_to_stage(ASSET_ROOT + "/Isaac/Props/KLT_Bin/small_KLT.usd", path)
+            prim = self.get_prim_at_path(path)
+            xf = UsdGeom.Xformable(prim)
+            xf.ClearXformOpOrder()
+            xf.AddTranslateOp().Set(Gf.Vec3d(BIN_X, y, 0.0))
+            xf.AddRotateZOp().Set(90.0)   # long side along x
+            rb = UsdPhysics.RigidBodyAPI.Apply(prim)
+            rb.CreateKinematicEnabledAttr(True)
+            for m in Usd.PrimRange(prim):
+                if m.IsA(UsdGeom.Mesh):
+                    UsdGeom.Gprim(m).CreateDisplayColorAttr().Set([Gf.Vec3f(*BIN_COLORS[name])])
+            self.bins[name] = (BIN_X, y)
 
-    def reset(self, seed):
-        state = _lcg(int(seed) & _MASK)
-        values = []
-        for _ in range(4):
-            state = _lcg(state)
-            values.append(((state >> 33) / float(1 << 30)) - 1.0)  # in [-1, 1)
-        self.gx = values[0] * ARENA * 0.8
-        self.gy = values[1] * ARENA * 0.8
-        self.x = values[2] * ARENA * 0.5
-        self.y = values[3] * ARENA * 0.5
-        self.vx = self.vy = 0.0
-        self.steps = 0
-        return self.observation()
+    def _build_objects(self):
+        """Every instance that can ever appear exists from the start, parked below the desk
+        with physics off; spawning is a teleport. Convex decomposition is cooked once."""
+        Gf, UsdGeom, Usd, UsdPhysics, PhysxSchema = self.Gf, self.UsdGeom, self.Usd, self.UsdPhysics, self.PhysxSchema
+        self.objects = []          # list of dicts, index = object id
+        k = 0
+        for model in CLASS_OF:
+            for inst in range(MAX_INSTANCES_PER_MODEL):
+                path = "/World/Objects/o%02d" % k
+                self.add_reference_to_stage(ASSET_ROOT + "/Isaac/Props/YCB/Axis_Aligned/%s.usd" % model, path)
+                prim = self.get_prim_at_path(path)
+                UsdPhysics.RigidBodyAPI.Apply(prim)
+                mass = UsdPhysics.MassAPI.Apply(prim)
+                mass.CreateMassAttr(0.2)
+                for m in Usd.PrimRange(prim):
+                    if m.IsA(UsdGeom.Mesh):
+                        UsdPhysics.CollisionAPI.Apply(m)
+                        UsdPhysics.MeshCollisionAPI.Apply(m).CreateApproximationAttr().Set("convexDecomposition")
+                        PhysxSchema.PhysxCollisionAPI.Apply(m)
+                xf = UsdGeom.Xformable(prim)
+                xf.ClearXformOpOrder()
+                xf.AddTranslateOp().Set(Gf.Vec3d(-1.0 + 0.25 * (k % 8), -1.5 + 0.25 * (k // 8), -1.5))
+                xf.AddOrientOp().Set(Gf.Quatf(1, 0, 0, 0))
+                sc = xf.AddScaleOp()
+                sc.Set(Gf.Vec3f(BASE_SCALE.get(model, 1.0)))
+                rp = self.SingleRigidPrim(prim_path=path, name="obj%02d" % k)
+                self.world.scene.add(rp)
+                self.objects.append(dict(id=k, model=model, cls=CLASS_OF[model], prim=prim, rp=rp, scale_op=sc,
+                                         park=(-1.0 + 0.25 * (k % 8), -1.5 + 0.25 * (k // 8), -1.5),
+                                         present=False, removed=False, scale=BASE_SCALE.get(model, 1.0)))
+                k += 1
+        # contact tracking between every object and the two finger links (first-contact bonus)
+        self._contacts = None
+        try:
+            from isaacsim.core.prims import RigidPrim
+            self._contacts = RigidPrim(prim_paths_expr="/World/Objects/o*", name="objects_view",
+                                       contact_filter_prim_paths_expr=["/World/Franka/panda_leftfinger",
+                                                                       "/World/Franka/panda_rightfinger"],
+                                       max_contact_count=len(self.objects) * 2 * 8)
+            self.world.scene.add(self._contacts)
+        except Exception as exc:  # noqa: BLE001
+            _log("contact view unavailable (%s); using the distance proxy" % exc)
+            self._contacts = None
 
-    def observation(self):
-        return [self.x, self.y, self.vx, self.vy, self.gx, self.gy]
+    def _build_cameras(self):
+        np, Camera = self.np, self.Camera
+        self.cams = {
+            "agentview": Camera(prim_path="/World/Cameras/agentview", position=np.array([1.35, 0.0, 0.85]),
+                                orientation=np.array([0.9239, 0.0, 0.3827, 0.0]), frequency=CONTROL_HZ,
+                                resolution=(IMAGE_SIZE, IMAGE_SIZE)),
+            "left_view": Camera(prim_path="/World/Cameras/left_view", position=np.array([0.45, -1.15, 0.75]),
+                                orientation=np.array([0.6830, 0.1830, 0.1830, 0.6830]), frequency=CONTROL_HZ,
+                                resolution=(IMAGE_SIZE, IMAGE_SIZE)),
+            "eye_in_hand": Camera(prim_path="/World/Franka/panda_hand/eye_in_hand", translation=np.array([0.05, 0.0, 0.04]),
+                                  orientation=np.array([0.0, 0.7071, 0.0, 0.7071]), frequency=CONTROL_HZ,
+                                  resolution=(IMAGE_SIZE, IMAGE_SIZE)),
+        }
+        for c in self.cams.values():
+            c.set_clipping_range(0.05, 6.0)
 
+    # -- geometry helpers ------------------------------------------------------------------
+    def _bin_of_point(self, p):
+        for name, (bx, by) in self.bins.items():
+            if abs(p[0] - bx) <= BIN_INNER_HALF[0] and abs(p[1] - by) <= BIN_INNER_HALF[1] and BIN_FLOOR_Z - 0.02 <= p[2] <= BIN_RIM_Z + 0.12:
+                return name
+        return None
+
+    def _random_desk_spot(self, margin=0.06, tries=200):
+        rng = self.rng
+        occupied = [tuple(o["rp"].get_world_pose()[0][:2]) for o in self.objects if o["present"]]
+        for _ in range(tries):
+            x = rng.uniform(*DESK_X)
+            y = rng.uniform(*DESK_Y)
+            if math.hypot(x, y) > REACH - 0.05 or math.hypot(x, y) < BASE_CLEAR:
+                continue
+            if any(abs(x - bx) <= BIN_OUTER[0] / 2 + margin and abs(y - by) <= BIN_OUTER[1] / 2 + margin for bx, by in self.bins.values()):
+                continue
+            if any(math.hypot(x - ox, y - oy) < 0.09 for ox, oy in occupied):
+                continue
+            return x, y
+        return None
+
+    # -- object lifecycle --------------------------------------------------------------------
+    def _spawn(self, obj, xyz, yaw=None):
+        np, Gf = self.np, self.Gf
+        yaw = self.rng.uniform(-math.pi, math.pi) if yaw is None else yaw
+        q = np.array([math.cos(yaw / 2), 0.0, 0.0, math.sin(yaw / 2)])
+        obj["rp"].set_world_pose(position=np.array(xyz, dtype=float), orientation=q)
+        obj["rp"].set_linear_velocity(np.zeros(3))
+        obj["rp"].set_angular_velocity(np.zeros(3))
+        obj["rp"].enable_rigid_body_physics()
+        obj["present"], obj["removed"] = True, False
+
+    def _park(self, obj):
+        np = self.np
+        obj["rp"].disable_rigid_body_physics()
+        obj["rp"].set_world_pose(position=np.array(obj["park"], dtype=float), orientation=np.array([1.0, 0, 0, 0]))
+        obj["present"] = False
+
+    def _free_instance(self, model):
+        for o in self.objects:
+            if o["model"] == model and not o["present"]:
+                return o
+        return None
+
+    def _present_count(self, model):
+        return sum(1 for o in self.objects if o["model"] == model and o["present"])
+
+    # -- episode -------------------------------------------------------------------------------
+    def reset(self, seed, horizon=None):
+        np = self.np
+        self.rng = np.random.default_rng(int(seed) & ((1 << 64) - 1))
+        self.horizon = int(horizon or HORIZON_DEFAULT)
+        self.t = 0
+        self.events = []
+        self.request = None
+        self.requests_done = []
+        self.touched = set()
+        self.world.reset()
+        self.franka.initialize()
+        self.franka.gripper.open()
+        for o in self.objects:
+            o["scale"] = BASE_SCALE.get(o["model"], 1.0) * self.rng.uniform(0.85, 1.15)
+            o["scale_op"].Set(self.Gf.Vec3f(float(o["scale"])))
+            self._park(o)
+        # initial piles: A in gray, B in lightblue; a few loose C and A on the desk
+        for cls, name in (("A", "gray"), ("B", "lightblue")):
+            models = list(CLASSES[cls])
+            self.rng.shuffle(models)
+            n = int(self.rng.integers(4, 7))
+            bx, by = self.bins[name]
+            for i in range(n):
+                o = self._free_instance(models[i % len(models)])
+                if o is None:
+                    continue
+                self._spawn(o, (bx + self.rng.uniform(-0.07, 0.07), by + self.rng.uniform(-0.04, 0.04), 0.12 + 0.07 * i))
+                self._settle(12)
+        loose = [m for m in self.rng.permutation(CLASSES["C"])[: int(self.rng.integers(2, 5))]]
+        loose += [m for m in self.rng.permutation(CLASSES["A"])[: int(self.rng.integers(0, 3))]]
+        for m in loose:
+            o = self._free_instance(m)
+            spot = self._random_desk_spot()
+            if o is None or spot is None or self._present_count(m) >= MAX_INSTANCES_PER_MODEL:
+                continue
+            self._spawn(o, (spot[0], spot[1], 0.08))
+        self._settle(90)
+        self.next_arrival = int(self.rng.exponential(ARRIVAL_MEAN_STEPS))
+        self.next_request = int(self.rng.exponential(REQUEST_MEAN_STEPS)) + 200
+        self.next_disturb = int(self.rng.exponential(DISTURB_MEAN_STEPS)) + 500
+        self.world.step(render=True)
+        self._update_states()
+        self.baseline = {o["id"]: self._value(o) for o in self.objects}
+        return self.observe(), self.privileged()
+
+    def _settle(self, n):
+        for _ in range(n):
+            self.world.step(render=False)
+
+    # -- stepping ------------------------------------------------------------------------------
     def step(self, action):
-        ax = _clip(float(action[0]), -1.0, 1.0)
-        ay = _clip(float(action[1]), -1.0, 1.0)
-        self.vx = (self.vx + ax * DT) * DAMPING
-        self.vy = (self.vy + ay * DT) * DAMPING
-        self.x = _clip(self.x + self.vx * DT, -ARENA, ARENA)
-        self.y = _clip(self.y + self.vy * DT, -ARENA, ARENA)
-        self.steps += 1
-        distance = math.sqrt((self.x - self.gx) ** 2 + (self.y - self.gy) ** 2)
-        return self.observation(), -distance, self.steps >= STEPS
+        np = self.np
+        a = np.asarray(action, dtype=float).reshape(-1)
+        if a.shape[0] != ACTION_DIM or not np.all(np.isfinite(a)):
+            raise ValueError("action must be %d finite numbers" % ACTION_DIM)
+        dpos = np.clip(a[:3], -POS_STEP_MAX, POS_STEP_MAX)
+        drot = np.clip(a[3:6], -ROT_STEP_MAX, ROT_STEP_MAX)
+        grip = float(np.clip(a[6], 0.0, 1.0))
+        absent = a[7] > 0.5
+        self._apply_arm(dpos, drot, grip)
+        for _ in range(SUBSTEPS - 1):
+            self.world.step(render=False)
+        self.world.step(render=True)
+        self.t += 1
+        self._update_states()
+        self._world_events(absent)
+        return self.observe(), self.privileged()
+
+    def _apply_arm(self, dpos, drot, grip):
+        np = self.np
+        pos, quat = self.franka.end_effector.get_world_pose()
+        target = pos + dpos
+        target[0] = float(np.clip(target[0], -0.1, 0.85)); target[1] = float(np.clip(target[1], -0.75, 0.75)); target[2] = float(np.clip(target[2], 0.01, 0.9))
+        tq = _quat_mul(_rpy_to_quat(*drot), quat)
+        act, ok = self.ik.compute_inverse_kinematics(target_position=target, target_orientation=tq)
+        if ok:
+            self.franka.apply_action(act)
+        w = GRIPPER_OPEN * (1.0 - grip) + GRIPPER_CLOSED * grip
+        self.franka.gripper.apply_action(self.ArticulationAction(joint_positions=np.array([w, w])))
+        self._ik_ok = bool(ok)
+
+    # -- state ---------------------------------------------------------------------------------
+    def _update_states(self):
+        np = self.np
+        forces = None
+        if self._contacts is not None:
+            try:
+                forces = self._contacts.get_contact_force_matrix()   # (N, 2, 3)
+            except Exception:  # noqa: BLE001
+                forces = None
+        ee_pos = self.franka.end_effector.get_world_pose()[0]
+        for o in self.objects:
+            if not o["present"]:
+                o.update(pos=None, in_bin=None, resting=False, contact=False)
+                continue
+            p, q = o["rp"].get_world_pose()
+            v = o["rp"].get_linear_velocity()
+            o["pos"], o["quat"] = [float(x) for x in p], [float(x) for x in q]
+            o["speed"] = float(np.linalg.norm(v))
+            o["resting"] = o["speed"] < REST_SPEED
+            o["in_bin"] = self._bin_of_point(p)
+            if p[2] < -0.2:            # fell off the desk: gone for good
+                self._park(o)
+                o["removed"] = True
+                self.events.append({"t": self.t, "event": "fell_off_desk", "object": o["id"]})
+                continue
+            if forces is not None:
+                o["contact"] = bool(np.abs(forces[o["id"]]).sum() > 1e-4)
+            else:
+                o["contact"] = bool(np.linalg.norm(p - ee_pos) < 0.06)
+            if o["contact"]:
+                self.touched.add(o["id"])
+
+    def _value(self, o):
+        """v_o(t): +1 in own bin, -1 in a wrong bin, 0 otherwise. Removed objects keep their last value."""
+        if o["removed"]:
+            return o.get("frozen", 0)
+        if not o["present"] or not o.get("resting") or o.get("in_bin") is None:
+            return 0
+        home = BIN_OF_CLASS[o["cls"]]
+        if self.request and self.request.get("object") == o["id"] and self.request["status"] == "open":
+            home = "red"
+        return 1 if o["in_bin"] == home else -1
+
+    def _world_events(self, absent_flag):
+        rng = self.rng
+        ev = self.events
+        # requests
+        if self.request and self.request["status"] == "open":
+            r = self.request
+            tgt = self.objects[r["object"]] if r["object"] is not None else None
+            if tgt is not None and tgt["present"] and tgt["in_bin"] == "red" and tgt["resting"]:
+                r["status"], r["closed_t"] = "delivered", self.t
+                tgt["frozen"] = 1
+                self._park(tgt); tgt["removed"] = True
+                ev.append({"t": self.t, "event": "request_delivered", "request": r["id"]})
+            elif absent_flag:
+                r["status"], r["closed_t"] = ("absent_correct" if tgt is None else "absent_wrong"), self.t
+                ev.append({"t": self.t, "event": "request_" + r["status"], "request": r["id"]})
+            elif self.t >= r["deadline_t"]:
+                r["status"], r["closed_t"] = "expired", self.t
+                ev.append({"t": self.t, "event": "request_expired", "request": r["id"]})
+            if r["status"] != "open":
+                self.requests_done.append(r)
+            if tgt is not None and r["status"] == "open" and tgt["id"] in self.touched and not r.get("touched_t"):
+                r["touched_t"] = self.t
+                ev.append({"t": self.t, "event": "request_first_contact", "request": r["id"]})
+        if (self.request is None or self.request["status"] != "open") and self.t >= self.next_request:
+            self._open_request()
+            self.next_request = self.t + REQUEST_DEADLINE_STEPS + int(rng.exponential(REQUEST_MEAN_STEPS))
+        # arrivals
+        if self.t >= self.next_arrival:
+            self.next_arrival = self.t + int(rng.exponential(ARRIVAL_MEAN_STEPS)) + 50
+            loose = sum(1 for o in self.objects if o["present"] and o["in_bin"] is None)
+            present = sum(1 for o in self.objects if o["present"])
+            if loose < LOOSE_CAP and present < PRESENT_CAP:
+                models = [m for m in CLASS_OF if self._present_count(m) < MAX_INSTANCES_PER_MODEL]
+                m = rng.choice(models)
+                o, spot = self._free_instance(m), self._random_desk_spot()
+                if o is not None and spot is not None:
+                    self._spawn(o, (spot[0], spot[1], 0.15))
+                    ev.append({"t": self.t, "event": "arrival", "object": o["id"], "model": m})
+        # bin service: a full class bin is emptied by the worker
+        for name in ("gray", "lightblue", "blue"):
+            inside = [o for o in self.objects if o["present"] and o["in_bin"] == name and o["resting"]]
+            if len(inside) >= BIN_CAP:
+                for o in inside:
+                    o["frozen"] = self._value(o)
+                    self._park(o); o["removed"] = True
+                ev.append({"t": self.t, "event": "bin_cleared", "bin": name, "count": len(inside)})
+        # disturbances
+        if self.t >= self.next_disturb:
+            self.next_disturb = self.t + int(rng.exponential(DISTURB_MEAN_STEPS)) + 300
+            cands = [o for o in self.objects if o["present"] and o["resting"] and (self.request is None or self.request.get("object") != o["id"])]
+            if cands:
+                o = cands[int(rng.integers(len(cands)))]
+                if rng.random() < 0.5:
+                    wrong = [b for b in ("gray", "lightblue", "blue") if b != BIN_OF_CLASS[o["cls"]]]
+                    b = wrong[int(rng.integers(len(wrong)))]
+                    bx, by = self.bins[b]
+                    self._spawn(o, (bx + rng.uniform(-0.05, 0.05), by + rng.uniform(-0.03, 0.03), 0.25))
+                    ev.append({"t": self.t, "event": "disturb_misplaced", "object": o["id"], "bin": b})
+                else:
+                    o["rp"].set_linear_velocity(self.np.array([rng.uniform(-0.6, 0.6), rng.uniform(-0.6, 0.6), 0.3]))
+                    ev.append({"t": self.t, "event": "disturb_nudged", "object": o["id"]})
+
+    def _open_request(self):
+        rng = self.rng
+        present = [o for o in self.objects if o["present"]]
+        unique = [o for o in present if self._present_count(o["model"]) == 1]
+        absent_models = [m for m in CLASS_OF if self._present_count(m) == 0]
+        if (rng.random() < REQUEST_ABSENT_P or not unique) and absent_models:
+            m, obj = absent_models[int(rng.integers(len(absent_models)))], None
+        else:
+            o = unique[int(rng.integers(len(unique)))]
+            m, obj = o["model"], o["id"]
+        self.request = {"id": len(self.requests_done) + 1, "text": "the " + DISPLAY_NAME[m], "model": m,
+                        "object": obj, "opened_t": self.t, "deadline_t": self.t + REQUEST_DEADLINE_STEPS, "status": "open"}
+        self.events.append({"t": self.t, "event": "request_opened", "request": self.request["id"], "absent": obj is None})
+
+    # -- outputs -------------------------------------------------------------------------------
+    def observe(self):
+        np = self.np
+        rgb, depth = {}, {}
+        for name, c in self.cams.items():
+            img = c.get_rgba()
+            d = c.get_depth()
+            if img is None or img.size == 0:
+                img = np.zeros((IMAGE_SIZE, IMAGE_SIZE, 4), np.uint8)
+            if d is None or d.size == 0:
+                d = np.zeros((IMAGE_SIZE, IMAGE_SIZE), np.float32)
+            rgb[name] = _png_b64(np.ascontiguousarray(img[..., :3]).astype(np.uint8), "RGB")
+            dm = np.nan_to_num(d, nan=0.0, posinf=0.0, neginf=0.0) * 1000.0
+            depth[name] = _png_b64(np.clip(dm, 0, 65535).astype(np.uint16), "I;16")
+        jp = self.franka.get_joint_positions()
+        jv = self.franka.get_joint_velocities()
+        pos, quat = self.franka.end_effector.get_world_pose()
+        req = None
+        if self.request and self.request["status"] == "open":
+            req = {"text": self.request["text"], "deadline_t": self.request["deadline_t"]}
+        return {"t": self.t, "request": req, "rgb": rgb, "depth": depth,
+                "joint_pos": [float(x) for x in jp[:7]], "joint_vel": [float(x) for x in jv[:7]],
+                "gripper_width": float(jp[7] + jp[8]),
+                "ee_pose": [float(x) for x in pos] + [float(x) for x in quat]}
+
+    def privileged(self):
+        objs = []
+        for o in self.objects:
+            if not o["present"] and not o["removed"]:
+                continue
+            objs.append({"id": o["id"], "model": o["model"], "cls": o["cls"], "present": o["present"],
+                         "removed": o["removed"], "pos": o.get("pos"), "quat": o.get("quat"), "scale": o["scale"],
+                         "in_bin": o.get("in_bin"), "resting": bool(o.get("resting")), "contact": bool(o.get("contact")),
+                         "value": self._value(o), "baseline": self.baseline.get(o["id"], 0)})
+        ev, self.events = self.events, []
+        return {"t": self.t, "horizon": self.horizon, "objects": objs, "request": self.request,
+                "requests_done": self.requests_done[-3:], "events": ev, "ik_ok": getattr(self, "_ik_ok", True)}
+
+    def info(self):
+        np = self.np
+        cams = {}
+        for name, c in self.cams.items():
+            p, q = c.get_world_pose()
+            cams[name] = {"intrinsics": c.get_intrinsics_matrix().tolist(), "resolution": [IMAGE_SIZE, IMAGE_SIZE],
+                          "world_pose_xyz_wxyz": [float(x) for x in p] + [float(x) for x in q],
+                          "attached_to": "/World/Franka/panda_hand" if name == "eye_in_hand" else "world"}
+        return {"control_hz": CONTROL_HZ, "image_size": IMAGE_SIZE, "action_dim": ACTION_DIM,
+                "pos_step_max": POS_STEP_MAX, "rot_step_max": ROT_STEP_MAX, "horizon": self.horizon,
+                "bins": {n: {"center_xy": list(c), "inner_half_xy": list(BIN_INNER_HALF), "floor_z": BIN_FLOOR_Z,
+                             "rim_z": BIN_RIM_Z, "outer_xyz": list(BIN_OUTER), "class": next((k for k, v in BIN_OF_CLASS.items() if v == n), "requested")}
+                         for n, c in self.bins.items()},
+                "desk": {"x": list(DESK_X), "y": list(DESK_Y), "surface_z": 0.0, "robot_base_xyz": [0, 0, 0]},
+                "classes": {k: [DISPLAY_NAME[m] for m in v] for k, v in CLASSES.items()},
+                "cameras": cams}
+
+    def close(self):
+        self.app.close()
 
 
-def _clip(value, low, high):
-    return low if value < low else (high if value > high else value)
+# ---------------------------------------------------------------------------------------
+# helpers (no Isaac imports)
+# ---------------------------------------------------------------------------------------
+def _png_b64(arr, mode):
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.fromarray(arr, mode=mode).save(buf, format="PNG", compress_level=1)
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def _rpy_to_quat(r, p, y):
+    cr, sr, cp, sp, cy, sy = math.cos(r / 2), math.sin(r / 2), math.cos(p / 2), math.sin(p / 2), math.cos(y / 2), math.sin(y / 2)
+    return [cr * cp * cy + sr * sp * sy, sr * cp * cy - cr * sp * sy, cr * sp * cy + sr * cp * sy, cr * cp * sy - sr * sp * cy]
+
+
+def _quat_mul(a, b):
+    w1, x1, y1, z1 = a
+    w2, x2, y2, z2 = b
+    return [w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2, w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+            w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2, w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2]
+
+
+# ---------------------------------------------------------------------------------------
+# stdio server
+# ---------------------------------------------------------------------------------------
+def serve():
+    # Kit writes its own log lines to file descriptor 1 at the C level, so redirecting
+    # sys.stdout is not enough: move the wire to a private descriptor and point fd 1 at
+    # stderr before Isaac starts. Clients still skip any line that is not a JSON object.
+    wire_fd = os.dup(1)
+    os.dup2(2, 1)
+    sys.stdout = sys.stderr
+    out = os.fdopen(wire_fd, "w", buffering=1)
+    env = MessyDeskEnv(headless=True)
+    out.write(json.dumps({"ok": True, "ready": True}) + "\n"); out.flush()
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+            cmd = msg.get("cmd")
+            if cmd == "info":
+                reply = {"ok": True, "info": env.info()}
+            elif cmd == "reset":
+                obs, state = env.reset(msg.get("seed", 0), msg.get("horizon"))
+                reply = {"ok": True, "obs": obs, "state": state}
+            elif cmd == "step":
+                obs, state = env.step(msg["action"])
+                reply = {"ok": True, "obs": obs, "state": state}
+            elif cmd == "close":
+                out.write(json.dumps({"ok": True}) + "\n"); out.flush()
+                break
+            else:
+                reply = {"ok": False, "error": "unknown cmd %r" % cmd}
+        except Exception as exc:  # noqa: BLE001
+            reply = {"ok": False, "error": "%s: %s" % (type(exc).__name__, exc)}
+        out.write(json.dumps(reply) + "\n"); out.flush()
+    env.close()
+
+
+if __name__ == "__main__":
+    serve()
