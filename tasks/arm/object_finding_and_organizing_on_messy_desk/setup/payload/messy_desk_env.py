@@ -74,7 +74,7 @@ MAX_INSTANCES_PER_MODEL = 2
 ACTION_DIM = 8
 POS_STEP_MAX, ROT_STEP_MAX = 0.05, 0.25
 GRIPPER_OPEN, GRIPPER_CLOSED = 0.04, 0.0
-REST_SPEED = 0.02
+REST_SPEED = 0.08          # piles of convex-decomposed meshes jitter at a few cm/s
 PARK_Z = -3.0
 RESET_WARMUP_FRAMES = 20
 
@@ -161,9 +161,21 @@ class MessyDeskEnv:
             xf.AddRotateZOp().Set(90.0)   # long side along x
             rb = UsdPhysics.RigidBodyAPI.Apply(prim)
             rb.CreateKinematicEnabledAttr(True)
+            # The KLT asset ships one shared textured material (magenta); the RTX renderer
+            # ignores displayColor, so each bin gets its own flat-coloured material bound
+            # with the strongest binding strength over every mesh.
+            from pxr import Sdf, UsdShade
+            mat = UsdShade.Material.Define(self.stage, "/World/Looks/bin_" + name)
+            shader = UsdShade.Shader.Define(self.stage, "/World/Looks/bin_" + name + "/Shader")
+            shader.CreateIdAttr("UsdPreviewSurface")
+            shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*BIN_COLORS[name]))
+            shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.6)
+            shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
+            mat.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
             for m in Usd.PrimRange(prim):
                 if m.IsA(UsdGeom.Mesh):
-                    UsdGeom.Gprim(m).CreateDisplayColorAttr().Set([Gf.Vec3f(*BIN_COLORS[name])])
+                    binding = UsdShade.MaterialBindingAPI.Apply(m)
+                    binding.Bind(mat, UsdShade.Tokens.strongerThanDescendants)
             self.bins[name] = (BIN_X, y)
 
     def _build_parking(self):
@@ -231,7 +243,7 @@ class MessyDeskEnv:
         """Three RGB-D cameras. Poses use Isaac's "world" camera axes (+X forward, +Z up)."""
         np, Camera = self.np, self.Camera
         self.cams = {}
-        fixed = {"agentview": ([1.35, 0.0, 0.85], [0.40, 0.0, 0.05]),
+        fixed = {"agentview": ([1.10, 0.0, 0.70], [0.42, 0.0, 0.05]),
                  "left_view": ([0.45, -1.15, 0.75], [0.45, 0.0, 0.05])}
         for name, (pos, target) in fixed.items():
             cam = Camera(prim_path="/World/Cameras/" + name, frequency=CONTROL_HZ, resolution=(IMAGE_SIZE, IMAGE_SIZE))
@@ -335,7 +347,12 @@ class MessyDeskEnv:
         for _ in range(RESET_WARMUP_FRAMES):   # the RTX renderer needs frames to converge
             self.world.step(render=True)
         self._update_states()
-        self.baseline = {o["id"]: self._value(o) for o in self.objects}
+        # v(0): bin membership only. Nothing is held at reset, so "resting" is not required
+        # here; demanding it would let a pile that is still jittering drift upward later.
+        self.baseline = {o["id"]: self._value(o, require_rest=False) for o in self.objects}
+        _log("reset seed=%d settled_steps=%d present=%d max_speed=%.3f" % (
+            int(seed) & 0xFFFF, self._settled_steps, sum(o["present"] for o in self.objects),
+            max([o.get("speed", 0.0) for o in self.objects if o["present"]] or [0.0])))
         return self.observe(), self.privileged()
 
     def _settle(self, n):
@@ -348,7 +365,8 @@ class MessyDeskEnv:
         untouched episode cannot drift upward on its own."""
         np = self.np
         still = 0
-        for _ in range(max_steps):
+        self._settled_steps = max_steps
+        for i in range(max_steps):
             self.world.step(render=False)
             moving = False
             for o in self.objects:
@@ -357,6 +375,7 @@ class MessyDeskEnv:
                     break
             still = 0 if moving else still + 1
             if still >= quiet:
+                self._settled_steps = i + 1
                 break
 
     # -- stepping ------------------------------------------------------------------------------
@@ -378,9 +397,17 @@ class MessyDeskEnv:
         self._world_events(mark)
         return self.observe(), self.privileged()
 
+    def _ee_pose(self):
+        """Tool-centre-point pose in the base frame, from the kinematics solver's own
+        end-effector frame (`right_gripper`, between the fingertips): the same frame the IK
+        targets refer to, so a delta applied to it is consistent."""
+        np = self.np
+        pos, rot = self.ik.compute_end_effector_pose()
+        return np.asarray(pos, dtype=float), np.asarray(_mat_to_wxyz(rot), dtype=float)
+
     def _apply_arm(self, dpos, drot, grip):
         np = self.np
-        pos, quat = self.franka.end_effector.get_world_pose()
+        pos, quat = self._ee_pose()
         target = pos + dpos
         target[0] = float(np.clip(target[0], -0.1, 0.85)); target[1] = float(np.clip(target[1], -0.75, 0.75)); target[2] = float(np.clip(target[2], 0.01, 0.9))
         tq = np.array(_quat_mul(_rpy_to_quat(*drot), [float(x) for x in quat]), dtype=float)
@@ -401,7 +428,7 @@ class MessyDeskEnv:
                 forces = self._contacts.get_contact_force_matrix()   # (N, 2, 3)
             except Exception:  # noqa: BLE001
                 forces = None
-        ee_pos = self.franka.end_effector.get_world_pose()[0]
+        ee_pos = self._ee_pose()[0]
         for o in self.objects:
             if not o["present"]:
                 o.update(pos=None, in_bin=None, resting=False, contact=False)
@@ -424,11 +451,11 @@ class MessyDeskEnv:
             if o["contact"]:
                 self.touched.add(o["id"])
 
-    def _value(self, o):
+    def _value(self, o, require_rest=True):
         """v_o(t): +1 in own bin, -1 in a wrong bin, 0 otherwise. Removed objects keep their last value."""
         if o["removed"]:
             return o.get("frozen", 0)
-        if not o["present"] or not o.get("resting") or o.get("in_bin") is None:
+        if not o["present"] or (require_rest and not o.get("resting")) or o.get("in_bin") is None:
             return 0
         home = BIN_OF_CLASS[o["cls"]]
         if self.request and self.request.get("object") == o["id"] and self.request["status"] == "open":
@@ -532,7 +559,7 @@ class MessyDeskEnv:
             depth[name] = _png_b64(np.clip(dm, 0, 65535).astype(np.uint16), "I;16")
         jp = self.franka.get_joint_positions()
         jv = self.franka.get_joint_velocities()
-        pos, quat = self.franka.end_effector.get_world_pose()
+        pos, quat = self._ee_pose()
         req = None
         if self.request and self.request["status"] == "open":
             req = {"text": self.request["text"], "deadline_t": self.request["deadline_t"]}
@@ -598,6 +625,25 @@ def _look_at_wxyz(pos, target, up=(0.0, 0.0, 1.0)):
     m00, m01, m02 = f[0], l[0], u[0]
     m10, m11, m12 = f[1], l[1], u[1]
     m20, m21, m22 = f[2], l[2], u[2]
+    tr = m00 + m11 + m22
+    if tr > 0:
+        sq = math.sqrt(tr + 1.0) * 2
+        return [0.25 * sq, (m21 - m12) / sq, (m02 - m20) / sq, (m10 - m01) / sq]
+    if m00 > m11 and m00 > m22:
+        sq = math.sqrt(1.0 + m00 - m11 - m22) * 2
+        return [(m21 - m12) / sq, 0.25 * sq, (m01 + m10) / sq, (m02 + m20) / sq]
+    if m11 > m22:
+        sq = math.sqrt(1.0 + m11 - m00 - m22) * 2
+        return [(m02 - m20) / sq, (m01 + m10) / sq, 0.25 * sq, (m12 + m21) / sq]
+    sq = math.sqrt(1.0 + m22 - m00 - m11) * 2
+    return [(m10 - m01) / sq, (m02 + m20) / sq, (m12 + m21) / sq, 0.25 * sq]
+
+
+def _mat_to_wxyz(m):
+    """3x3 rotation matrix (row-major, indexable) to a unit quaternion (w, x, y, z)."""
+    m00, m01, m02 = float(m[0][0]), float(m[0][1]), float(m[0][2])
+    m10, m11, m12 = float(m[1][0]), float(m[1][1]), float(m[1][2])
+    m20, m21, m22 = float(m[2][0]), float(m[2][1]), float(m[2][2])
     tr = m00 + m11 + m22
     if tr > 0:
         sq = math.sqrt(tr + 1.0) * 2

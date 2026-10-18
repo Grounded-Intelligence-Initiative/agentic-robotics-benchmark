@@ -30,7 +30,7 @@ two instances of a model are on the desk at once; a request only ever names a mo
 exactly one instance present, or one with none (an absent request).
 
 ## Cameras (224 x 224, RGB 8-bit PNG and depth 16-bit PNG in millimetres)
-- agentview: world pose xyz (1.35, 0.0, 0.85), looking at the desk from the far side.
+- agentview: world pose xyz (1.10, 0.0, 0.70), looking at the bins from the far side of the desk.
 - left_view: world pose xyz (0.45, -1.15, 0.75), looking across the desk from the left.
 - eye_in_hand: attached to /World/Franka/panda_hand, offset (0.05, 0, 0.04) in the hand frame.
 - Intrinsics: `{"cmd": "info"}` on the simulator (see below) returns the 3x3 matrices.
