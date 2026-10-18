@@ -543,6 +543,32 @@ class MessyDeskEnv:
                         "object": obj, "opened_t": self.t, "deadline_t": self.t + REQUEST_DEADLINE_STEPS, "status": "open"}
         self.events.append({"t": self.t, "event": "request_opened", "request": self.request["id"], "absent": obj is None})
 
+    def lab(self, model, instance=0, pose=None, clear=True):
+        """Development aid, available to everyone who runs this file: optionally clear the
+        desk, then place one instance of `model` at `pose` (x, y, z[, yaw]) and let it settle.
+        The world state machine is paused (no arrivals, requests or disturbances) until the
+        next `reset`. Returns an observation and the privileged state like `step`."""
+        if self.rng is None:
+            self.reset(0)
+        if clear:
+            for o in self.objects:
+                if o["present"]:
+                    self._park(o)
+        self.request = None
+        self.next_arrival = self.next_request = self.next_disturb = 10 ** 12
+        if model is not None:
+            cands = [o for o in self.objects if o["model"] == model]
+            if not cands:
+                raise ValueError("unknown model %r" % model)
+            o = cands[min(int(instance), len(cands) - 1)]
+            pose = pose or [0.5, 0.0, 0.06, 0.0]
+            self._spawn(o, pose[:3], yaw=(pose[3] if len(pose) > 3 else 0.0))
+        self._settle_until_rest()
+        for _ in range(6):
+            self.world.step(render=True)
+        self._update_states()
+        return self.observe(), self.privileged()
+
     # -- outputs -------------------------------------------------------------------------------
     def observe(self):
         np = self.np
@@ -697,6 +723,9 @@ def serve():
                 reply = {"ok": True, "obs": obs, "state": state}
             elif cmd == "step":
                 obs, state = env.step(msg["action"])
+                reply = {"ok": True, "obs": obs, "state": state}
+            elif cmd == "lab":
+                obs, state = env.lab(msg.get("model"), msg.get("instance", 0), msg.get("pose"), msg.get("clear", True))
                 reply = {"ok": True, "obs": obs, "state": state}
             elif cmd == "close":
                 out.write(json.dumps({"ok": True}) + "\n"); out.flush()

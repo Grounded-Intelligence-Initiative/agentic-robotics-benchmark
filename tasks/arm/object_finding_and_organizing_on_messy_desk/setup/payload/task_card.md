@@ -47,6 +47,6 @@ exactly one instance present, or one with none (an absent request).
 ## Running the simulator yourself
     /opt/isaac/bin/python3 /home/user/messy_desk_env.py
 speaks JSON lines on stdin/stdout: `{"cmd":"info"}`, `{"cmd":"reset","seed":11,"horizon":2000}`,
-`{"cmd":"step","action":[...]}`, `{"cmd":"close"}`. Replies carry `obs` (what your controller
+`{"cmd":"step","action":[...]}`, `{"cmd":"lab","model":"006_mustard_bottle","instance":0,"pose":[0.5,0.0,0.06,0.0]}` (clear the desk and place one object; the world state machine pauses until the next reset), `{"cmd":"close"}`. Replies carry `obs` (what your controller
 will receive) and `state` (privileged ground truth for your own development only; the real
 grader never sends it over the wire). `/home/user/sim_client.py` wraps this.
