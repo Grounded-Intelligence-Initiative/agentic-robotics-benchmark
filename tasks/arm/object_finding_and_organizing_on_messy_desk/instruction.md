@@ -14,8 +14,10 @@ You control a Franka Panda arm at a desk in NVIDIA Isaac Sim. The desk carries f
 bins, and new objects keep landing on the free desk surface around them for the whole
 episode. Your job has three parts:
 
-- keep every object in the bin of its class: class **A** → the **gray** bin, class **B** →
-  the **light-blue** bin, class **C** → the **blue** bin;
+- place every object in the bin of its class: class **A** → the **gray** bin, class **B** →
+  the **light-blue** bin, class **C** → the **blue** bin. The desk must be organized when a
+  task is finished (each request closed, and the end of the episode); it may be temporarily
+  disorganized while you work, but every step spent disorganized costs score;
 - whenever a *request* names a specific object, find it (it may be buried under other
   objects) and place it in the **red** bin before the request's deadline; if the object is
   not on the desk at all, **declare it absent** instead;
