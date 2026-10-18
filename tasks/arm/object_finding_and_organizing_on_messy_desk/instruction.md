@@ -98,19 +98,26 @@ kinematics and joint limits are handled by the environment.
 ## Scoring
 
 The grader owns the simulator and evaluates the physical state at **every** step; nothing
-your controller prints is a scoring input. For each object `o` and step `t`, a value `v_o(t)`:
+your controller prints is a scoring input. Each object `o` gets a value `v_o(t)` per step:
+
+**Non-target objects** (every object without an open request):
 
 | state | value |
 |---|---|
-| resting inside the bin of its class (or the red bin while it is the requested object) | +1 |
+| resting inside the bin of its class | +1 |
 | on the desk, in the gripper, or in flight | 0 |
 | resting inside any other bin | −1 |
 | removed by bin service | frozen at its value when removed |
 
-The requested object counts double while its request is open, and the first contact between
-the gripper fingers and a requested object earns a one-time bonus. Declaring a request's object
-absent earns a one-time bonus when it is really absent and costs the same amount when it is
-not. The episode's raw score is
+**Target object** (the one named by the open request): the same three states, but its own
+bin is the **red** bin while the request is open, every step counts **double**, and the first
+contact between the gripper fingers and it earns a one-time bonus. When the request closes it
+is a non-target object again.
+
+**Absent requests:** declaring the requested object absent earns a one-time bonus when it is
+really absent and costs the same amount when it is not.
+
+The episode's raw score is
 
 ```
 score = max(0, Σ_o Σ_t w_o · (v_o(t) − v_o(0))) / horizon
