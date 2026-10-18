@@ -45,6 +45,7 @@ ENV ACCEPT_EULA=Y
 ENV OMNI_KIT_ACCEPT_EULA=YES
 RUN chmod -R a+rX /opt/venv /opt/isaac /opt/isaac_assets \
     && { [ ! -d /opt/uv-python ] || chmod -R a+rX /opt/uv-python; } \
+    && mkdir -p /opt/isaac/lib/python3.10/site-packages/omni/cache \
     && chmod -R a+rwX /opt/isaac/lib/python3.10/site-packages/omni/cache
 
 # The declared artifact path must exist even when nobody works.
