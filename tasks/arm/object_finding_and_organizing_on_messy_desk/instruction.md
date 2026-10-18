@@ -5,7 +5,8 @@
 > frozen only when the task reaches *Ready for Validation*.
 
 You control a Franka Panda arm at a desk in NVIDIA Isaac Sim. The desk carries four KLT
-bins and a staging area where new objects keep arriving for the whole episode. Your job is a
+bins, and new objects keep landing on the free desk surface around them for the whole
+episode. Your job is a
 sustained sorting loop with on-demand retrieval:
 
 - keep every object in the bin of its class: class **A** → the **gray** bin, class **B** →
@@ -25,16 +26,17 @@ object list in the observation: you work from the cameras.
 
 An episode runs a fixed `${horizon}` control steps at 10 Hz and never ends early. During it:
 
-1. **Arrivals.** New objects drop onto the staging area at random intervals. When the staging
-   area holds too many objects, arrivals pause until you clear some.
+1. **Arrivals.** New objects drop at random free spots on the desk surface (never inside a
+   bin) at random intervals, within the arm's reach. When too many objects are loose on the
+   desk, arrivals pause until you clear some.
 2. **Requests.** At random times a request opens: the observation carries a short text
    description of one specific object on the desk (for example `the yellow mustard bottle`).
    The request closes when that object rests in the red bin (success) or when its deadline
    passes (failure). At most one request is open at a time.
 3. **Bin service.** When a bin is full, or a requested object has been delivered to the red
    bin, a worker empties that bin: its objects disappear from the scene.
-4. **Disturbances.** Occasionally the world misplaces one object into a wrong bin, or knocks
-   one off the staging area. Correcting these is part of the job.
+4. **Disturbances.** Occasionally the world misplaces one object into a wrong bin, or nudges
+   a loose object across the desk. Correcting these is part of the job.
 
 Every event is drawn from a hidden per-episode seed; the practice environment exposes the
 same dynamics on visible seeds.
@@ -75,7 +77,7 @@ READY                                                     <- your first stdout l
 | `gripper_width` | metres |
 | `ee_pose` | `[x, y, z, qw, qx, qy, qz]` of the tool centre point in the robot base frame |
 
-Camera intrinsics and extrinsics, the bin footprints and the robot base pose are fixed for
+Camera intrinsics and extrinsics, the desk and bin footprints and the robot base pose are fixed for
 the task and documented in `/home/user/task_card.md` in the practice environment; they do not
 change between seeds.
 
@@ -94,7 +96,7 @@ your controller prints is a scoring input. For each object `o` and step `t`, a v
 | state | value |
 |---|---|
 | resting inside the bin of its class (or the red bin while it is the requested object) | +1 |
-| on the desk, in the staging area, in the gripper, or in flight | 0 |
+| on the desk, in the gripper, or in flight | 0 |
 | resting inside any other bin | −1 |
 | removed by bin service | frozen at its value when removed |
 
