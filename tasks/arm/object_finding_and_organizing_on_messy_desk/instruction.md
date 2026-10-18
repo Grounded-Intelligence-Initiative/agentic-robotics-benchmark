@@ -12,7 +12,7 @@ runs and after it ends. This task is that chore, done by a robot, continuously.
 
 You control a Franka Panda arm at a desk in NVIDIA Isaac Sim. The desk carries four KLT
 bins, and new objects keep landing on the free desk surface around them for the whole
-episode. Your job has three parts:
+episode. Your job has two parts:
 
 - place every object in the bin of its class: class **A** → the **gray** bin, class **B** →
   the **light-blue** bin, class **C** → the **blue** bin. The desk must be organized when a
@@ -21,8 +21,6 @@ episode. Your job has three parts:
 - whenever a *request* names a specific object, find it (it may be buried under other
   objects) and place it in the **red** bin before the request's deadline; if the object is
   not on the desk at all, **declare it absent** instead;
-- leave the storage logic intact: an object you dig out while searching goes back to its own
-  bin, and nothing may end up in a wrong bin.
 
 Two bins start full (A objects in gray, B objects in light-blue), the red and blue bins start
 empty, and a few loose objects (mostly C, some A) lie on the desk. Classes are visual
