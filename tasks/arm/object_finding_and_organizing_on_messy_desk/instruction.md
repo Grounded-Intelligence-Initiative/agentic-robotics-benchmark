@@ -4,9 +4,11 @@
 > The contract below (scene, wire, observation, action, scoring) is the intended one and is
 > frozen only when the task reaches *Ready for Validation*.
 
-When things get tossed straight into storage boxes, finding one item later is hard: it may
-not be there at all, it is usually hidden under other things, and digging for it tends to wreck
-the order that made the boxes useful. This task is that chore, done by a robot, continuously.
+During moving or everyday home storage, objects are often placed into boxes without
+carefully tracking their locations. Retrieving a specific item later is hard: it may not be
+present at all; if it is, it may be buried beneath other objects and has to be searched for;
+and the search must preserve the original organization of the storage space, both while it
+runs and after it ends. This task is that chore, done by a robot, continuously.
 
 You control a Franka Panda arm at a desk in NVIDIA Isaac Sim. The desk carries four KLT
 bins, and new objects keep landing on the free desk surface around them for the whole
