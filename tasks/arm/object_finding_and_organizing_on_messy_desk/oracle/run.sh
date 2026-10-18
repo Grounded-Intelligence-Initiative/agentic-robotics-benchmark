@@ -18,6 +18,7 @@ mkdir -p "$SUB"
 # The template's reference policy is analytic, so there is nothing to train.
 
 cp "$(dirname "$0")/solver.py" "$SUB/solver.py"
+cp "$(dirname "$0")/refs.json" "$SUB/refs.json"
 
 cat > "$SUB/run.sh" <<'SH'
 #!/usr/bin/env bash

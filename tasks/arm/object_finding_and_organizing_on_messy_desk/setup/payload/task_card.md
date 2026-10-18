@@ -20,7 +20,7 @@ Fixed for the task; identical on every seed. Units: metres, radians, seconds.
   "Inside a bin" for scoring: the object's centre within the interior footprint and its
   height between the floor and 0.12 above the rim, at rest (speed < 0.02 m/s).
 
-## Classes (YCB models; the two instances of a model are scaled 0.9x and 1.1x of its base size)
+## Classes (YCB models; the two instances of a model are scaled 0.95x and 1.05x of its base size)
 - A: cracker box, sugar box, pudding box, gelatin box, wood block, foam brick
 - B: master chef can, tomato soup can, tuna fish can, potted meat can, mustard bottle, bleach cleanser
 - C: banana, bowl, mug, power drill, scissors, large marker, large clamp, extra large clamp, pitcher base
@@ -32,8 +32,12 @@ exactly one instance present, or one with none (an absent request).
 ## Cameras (224 x 224, RGB 8-bit PNG and depth 16-bit PNG in millimetres)
 - agentview: world pose xyz (1.10, 0.0, 0.70), looking at the bins from the far side of the desk.
 - left_view: world pose xyz (0.45, -1.15, 0.75), looking across the desk from the left.
-- eye_in_hand: attached to /World/Franka/panda_hand, offset (0.05, 0, 0.04) in the hand frame.
-- Intrinsics: `{"cmd": "info"}` on the simulator (see below) returns the 3x3 matrices.
+- eye_in_hand: attached to /World/Franka/panda_hand, offset (0.05, 0, 0.03) in the hand frame.
+- Intrinsics (all three): focal 171.03 px, principal point (112, 112). Static poses as xyz + quaternion
+  (w, x, y, z) in Isaac's world camera axes (+X forward, +Y left, +Z up): agentview
+  (1.10, 0.0, 0.70 | 0.0, -0.3722, 0.0, 0.9281), left_view (0.45, -1.15, 0.75 | 0.6808, -0.1909, 0.1909, 0.6808).
+  Depth PNGs hold z-depth along the optical axis in millimetres. `{"cmd": "info"}` on the simulator
+  (see below) returns the same matrices and poses.
 
 ## Control
 - 10 Hz control, 60 Hz physics (6 substeps per action).

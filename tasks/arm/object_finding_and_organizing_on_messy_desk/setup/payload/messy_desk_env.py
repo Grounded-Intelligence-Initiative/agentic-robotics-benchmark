@@ -46,7 +46,7 @@ CLASS_OF = {m: c for c, ms in CLASSES.items() for m in ms}
 # base scale per model so that everything fits a KLT bin and a 8 cm gripper
 BASE_SCALE = {"003_cracker_box": 0.6, "036_wood_block": 0.6, "021_bleach_cleanser": 0.55,
               "024_bowl": 0.6, "035_power_drill": 0.55, "019_pitcher_base": 0.5,
-              "052_extra_large_clamp": 0.8, "002_master_chef_can": 0.8}
+              "052_extra_large_clamp": 1.0, "002_master_chef_can": 0.8}
 DISPLAY_NAME = {m: " ".join(m.split("_")[1:]) for m in CLASS_OF}
 BIN_OF_CLASS = {"A": "gray", "B": "lightblue", "C": "blue"}
 BIN_COLORS = {"gray": (0.45, 0.45, 0.45), "lightblue": (0.62, 0.82, 1.0),
@@ -216,7 +216,7 @@ class MessyDeskEnv:
                 # Scale is fixed per instance (the two instances of a model differ by 20 %):
                 # editing a rigid body's scale while PhysX plays re-parses the scene and
                 # invalidates every tensor view, so it is never touched after construction.
-                scale = BASE_SCALE.get(model, 1.0) * (0.9 if inst == 0 else 1.1)
+                scale = BASE_SCALE.get(model, 1.0) * (0.95 if inst == 0 else 1.05)
                 xf.AddScaleOp().Set(Gf.Vec3f(float(scale)))
                 rp = self.SingleRigidPrim(prim_path=path, name="obj%02d" % k)
                 self.world.scene.add(rp)
@@ -415,6 +415,7 @@ class MessyDeskEnv:
         act, ok = self.ik.compute_inverse_kinematics(target_position=np.asarray(target, dtype=float), target_orientation=tq)
         if ok:
             self.franka.apply_action(act)
+            self._ik_q = [float(x) for x in np.asarray(act.joint_positions).reshape(-1)]
         w = GRIPPER_OPEN * (1.0 - grip) + GRIPPER_CLOSED * grip
         self.franka.gripper.apply_action(self.ArticulationAction(joint_positions=np.array([w, w])))
         self._ik_ok = bool(ok)
@@ -564,7 +565,7 @@ class MessyDeskEnv:
             pose = pose or [0.5, 0.0, 0.06, 0.0]
             self._spawn(o, pose[:3], yaw=(pose[3] if len(pose) > 3 else 0.0))
         self._settle_until_rest()
-        for _ in range(6):
+        for _ in range(RESET_WARMUP_FRAMES):   # RTX needs frames to converge after a teleport
             self.world.step(render=True)
         self._update_states()
         return self.observe(), self.privileged()
@@ -605,7 +606,7 @@ class MessyDeskEnv:
                          "value": self._value(o), "baseline": self.baseline.get(o["id"], 0)})
         ev, self.events = self.events, []
         return {"t": self.t, "horizon": self.horizon, "objects": objs, "request": self.request,
-                "requests_done": self.requests_done[-3:], "events": ev, "ik_ok": getattr(self, "_ik_ok", True)}
+                "requests_done": self.requests_done[-3:], "events": ev, "ik_ok": getattr(self, "_ik_ok", True), "ik_q": getattr(self, "_ik_q", None)}
 
     def info(self):
         np = self.np
