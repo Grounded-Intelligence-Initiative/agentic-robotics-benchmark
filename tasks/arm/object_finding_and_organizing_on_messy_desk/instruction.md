@@ -4,17 +4,21 @@
 > The contract below (scene, wire, observation, action, scoring) is the intended one and is
 > frozen only when the task reaches *Ready for Validation*.
 
+When things get tossed straight into storage boxes, finding one item later is hard: it may
+not be there at all, it is usually hidden under other things, and digging for it tends to wreck
+the order that made the boxes useful. This task is that chore, done by a robot, continuously.
+
 You control a Franka Panda arm at a desk in NVIDIA Isaac Sim. The desk carries four KLT
 bins, and new objects keep landing on the free desk surface around them for the whole
-episode. Your job is a
-sustained sorting loop with on-demand retrieval:
+episode. Your job has three parts:
 
 - keep every object in the bin of its class: class **A** → the **gray** bin, class **B** →
   the **light-blue** bin, class **C** → the **blue** bin;
 - whenever a *request* names a specific object, find it (it may be buried under other
-  objects), and place it in the **red** bin before the request's deadline;
-- never leave objects in the wrong bin; an object you dig out while searching goes back to
-  its own bin.
+  objects) and place it in the **red** bin before the request's deadline; if the object is
+  not on the desk at all, **declare it absent** instead;
+- leave the storage logic intact: an object you dig out while searching goes back to its own
+  bin, and nothing may end up in a wrong bin.
 
 Two bins start full (A objects in gray, B objects in light-blue), the red and blue bins start
 empty, and a few loose objects (mostly C, some A) lie on the desk. Classes are visual
@@ -30,9 +34,11 @@ An episode runs a fixed `${horizon}` control steps at 10 Hz and never ends early
    bin) at random intervals, within the arm's reach. When too many objects are loose on the
    desk, arrivals pause until you clear some.
 2. **Requests.** At random times a request opens: the observation carries a short text
-   description of one specific object on the desk (for example `the yellow mustard bottle`).
-   The request closes when that object rests in the red bin (success) or when its deadline
-   passes (failure). At most one request is open at a time.
+   description of one specific object (for example `the yellow mustard bottle`). Most
+   requested objects are somewhere on the desk or in a bin; some are not present at all.
+   The request closes when the object rests in the red bin (success), when you declare it
+   absent (success if it is really absent, failure otherwise), or when its deadline passes
+   (failure). At most one request is open at a time.
 3. **Bin service.** When a bin is full, or a requested object has been delivered to the red
    bin, a worker empties that bin: its objects disappear from the scene.
 4. **Disturbances.** Occasionally the world misplaces one object into a wrong bin, or nudges
@@ -50,7 +56,7 @@ with **no network access**, and talks to it over stdin/stdout, one JSON object p
 ```
 READY                                                     <- your first stdout line, within 120 s
 {"type": "reset"}                        -> {"ok": true}
-{"type": "act", "t": 0, "obs": {...}}    -> {"action": [dx, dy, dz, droll, dpitch, dyaw, grip]}
+{"type": "act", "t": 0, "obs": {...}}    -> {"action": [dx, dy, dz, droll, dpitch, dyaw, grip, absent]}
 {"type": "close"}                        -> {"ok": true}, then exit
 ```
 
@@ -83,10 +89,11 @@ change between seeds.
 
 ## Action
 
-`action` is seven numbers: a Cartesian delta for the tool centre point in the robot base
-frame (metres and radians, clipped to ±0.05 m and ±0.25 rad per step) followed by a gripper
-command in `[0, 1]` (0 = open, 1 = closed). Inverse kinematics and joint limits are handled
-by the environment.
+`action` is eight numbers: a Cartesian delta for the tool centre point in the robot base
+frame (metres and radians, clipped to ±0.05 m and ±0.25 rad per step), a gripper command in
+`[0, 1]` (0 = open, 1 = closed), and an `absent` flag: send `1` to declare that the currently
+requested object is not on the desk (ignored when no request is open; `0` otherwise). Inverse
+kinematics and joint limits are handled by the environment.
 
 ## Scoring
 
@@ -101,7 +108,9 @@ your controller prints is a scoring input. For each object `o` and step `t`, a v
 | removed by bin service | frozen at its value when removed |
 
 The requested object counts double while its request is open, and the first contact between
-the gripper fingers and a requested object earns a one-time bonus. The episode's raw score is
+the gripper fingers and a requested object earns a one-time bonus. Declaring a request's object
+absent earns a one-time bonus when it is really absent and costs the same amount when it is
+not. The episode's raw score is
 
 ```
 score = max(0, Σ_o Σ_t w_o · (v_o(t) − v_o(0))) / horizon
