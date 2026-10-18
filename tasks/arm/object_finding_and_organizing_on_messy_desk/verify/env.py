@@ -76,6 +76,7 @@ POS_STEP_MAX, ROT_STEP_MAX = 0.05, 0.25
 GRIPPER_OPEN, GRIPPER_CLOSED = 0.04, 0.0
 REST_SPEED = 0.02
 PARK_Z = -3.0
+RESET_WARMUP_FRAMES = 20
 
 
 def _park_slot(k):
@@ -227,20 +228,22 @@ class MessyDeskEnv:
             self._contacts = None
 
     def _build_cameras(self):
+        """Three RGB-D cameras. Poses use Isaac's "world" camera axes (+X forward, +Z up)."""
         np, Camera = self.np, self.Camera
-        self.cams = {
-            "agentview": Camera(prim_path="/World/Cameras/agentview", position=np.array([1.35, 0.0, 0.85]),
-                                orientation=np.array([0.9239, 0.0, 0.3827, 0.0]), frequency=CONTROL_HZ,
-                                resolution=(IMAGE_SIZE, IMAGE_SIZE)),
-            "left_view": Camera(prim_path="/World/Cameras/left_view", position=np.array([0.45, -1.15, 0.75]),
-                                orientation=np.array([0.6830, 0.1830, 0.1830, 0.6830]), frequency=CONTROL_HZ,
-                                resolution=(IMAGE_SIZE, IMAGE_SIZE)),
-            "eye_in_hand": Camera(prim_path="/World/Franka/panda_hand/eye_in_hand", translation=np.array([0.05, 0.0, 0.04]),
-                                  orientation=np.array([0.0, 0.7071, 0.0, 0.7071]), frequency=CONTROL_HZ,
-                                  resolution=(IMAGE_SIZE, IMAGE_SIZE)),
-        }
+        self.cams = {}
+        fixed = {"agentview": ([1.35, 0.0, 0.85], [0.40, 0.0, 0.05]),
+                 "left_view": ([0.45, -1.15, 0.75], [0.45, 0.0, 0.05])}
+        for name, (pos, target) in fixed.items():
+            cam = Camera(prim_path="/World/Cameras/" + name, frequency=CONTROL_HZ, resolution=(IMAGE_SIZE, IMAGE_SIZE))
+            cam.set_world_pose(position=np.array(pos), orientation=np.array(_look_at_wxyz(pos, target)), camera_axes="world")
+            self.cams[name] = cam
+        eih = Camera(prim_path="/World/Franka/panda_hand/eye_in_hand", frequency=CONTROL_HZ, resolution=(IMAGE_SIZE, IMAGE_SIZE))
+        # forward (+X in world camera axes) along the hand's +Z, i.e. out between the fingers
+        eih.set_local_pose(translation=np.array([0.05, 0.0, 0.03]), orientation=np.array([0.7071068, 0.0, -0.7071068, 0.0]), camera_axes="world")
+        self.cams["eye_in_hand"] = eih
         for c in self.cams.values():
             c.set_clipping_range(0.05, 6.0)
+            c.set_focal_length(1.6)          # wider field of view than the 2.4 cm default
 
     # -- geometry helpers ------------------------------------------------------------------
     def _bin_of_point(self, p):
@@ -325,11 +328,11 @@ class MessyDeskEnv:
             if o is None or spot is None or self._present_count(m) >= MAX_INSTANCES_PER_MODEL:
                 continue
             self._spawn(o, (spot[0], spot[1], 0.08))
-        self._settle(90)
+        self._settle_until_rest()
         self.next_arrival = int(self.rng.exponential(ARRIVAL_MEAN_STEPS))
         self.next_request = int(self.rng.exponential(REQUEST_MEAN_STEPS)) + 200
         self.next_disturb = int(self.rng.exponential(DISTURB_MEAN_STEPS)) + 500
-        for _ in range(3):                 # the render products need a few frames to deliver
+        for _ in range(RESET_WARMUP_FRAMES):   # the RTX renderer needs frames to converge
             self.world.step(render=True)
         self._update_states()
         self.baseline = {o["id"]: self._value(o) for o in self.objects}
@@ -338,6 +341,23 @@ class MessyDeskEnv:
     def _settle(self, n):
         for _ in range(n):
             self.world.step(render=False)
+
+    def _settle_until_rest(self, max_steps=600, quiet=12):
+        """Run physics until every present object has been at rest for `quiet` consecutive
+        steps (or `max_steps`), so that the baseline v(0) is taken on a settled scene and an
+        untouched episode cannot drift upward on its own."""
+        np = self.np
+        still = 0
+        for _ in range(max_steps):
+            self.world.step(render=False)
+            moving = False
+            for o in self.objects:
+                if o["present"] and float(np.linalg.norm(o["rp"].get_linear_velocity())) >= REST_SPEED:
+                    moving = True
+                    break
+            still = 0 if moving else still + 1
+            if still >= quiet:
+                break
 
     # -- stepping ------------------------------------------------------------------------------
     def step(self, action):
@@ -563,6 +583,33 @@ def _png_b64(arr, mode):
     buf = io.BytesIO()
     Image.fromarray(arr, mode=mode).save(buf, format="PNG", compress_level=1)
     return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def _look_at_wxyz(pos, target, up=(0.0, 0.0, 1.0)):
+    """Quaternion (w, x, y, z) that points Isaac's world-axes camera (+X forward, +Y left,
+    +Z up) from `pos` at `target`."""
+    f = [t - p for t, p in zip(target, pos)]
+    n = math.sqrt(sum(v * v for v in f)) or 1.0
+    f = [v / n for v in f]
+    l = [up[1] * f[2] - up[2] * f[1], up[2] * f[0] - up[0] * f[2], up[0] * f[1] - up[1] * f[0]]
+    n = math.sqrt(sum(v * v for v in l)) or 1.0
+    l = [v / n for v in l]
+    u = [f[1] * l[2] - f[2] * l[1], f[2] * l[0] - f[0] * l[2], f[0] * l[1] - f[1] * l[0]]
+    m00, m01, m02 = f[0], l[0], u[0]
+    m10, m11, m12 = f[1], l[1], u[1]
+    m20, m21, m22 = f[2], l[2], u[2]
+    tr = m00 + m11 + m22
+    if tr > 0:
+        sq = math.sqrt(tr + 1.0) * 2
+        return [0.25 * sq, (m21 - m12) / sq, (m02 - m20) / sq, (m10 - m01) / sq]
+    if m00 > m11 and m00 > m22:
+        sq = math.sqrt(1.0 + m00 - m11 - m22) * 2
+        return [(m21 - m12) / sq, 0.25 * sq, (m01 + m10) / sq, (m02 + m20) / sq]
+    if m11 > m22:
+        sq = math.sqrt(1.0 + m11 - m00 - m22) * 2
+        return [(m02 - m20) / sq, (m01 + m10) / sq, 0.25 * sq, (m12 + m21) / sq]
+    sq = math.sqrt(1.0 + m22 - m00 - m11) * 2
+    return [(m10 - m01) / sq, (m02 + m20) / sq, (m12 + m21) / sq, 0.25 * sq]
 
 
 def _rpy_to_quat(r, p, y):
