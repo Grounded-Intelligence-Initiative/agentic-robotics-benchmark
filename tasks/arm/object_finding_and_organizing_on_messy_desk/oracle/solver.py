@@ -331,6 +331,7 @@ class Controller(object):
         self.request_state = None
         self.drop_slot = {b: 0 for b in BIN_YS}
         self.spots_used = {}
+        self.skip_list = []
         self.last_perceive_t = -999
         self.n_marks = 0
 
@@ -448,7 +449,27 @@ class Controller(object):
         for c in clusters:
             c["cls_info"] = self.classify(c) if (c["bin"] is None or c["n"] < 600) else None
         self.last_perceive_t = self.t()
+        self.dump("observe", imgs["agentview"][0], clusters)
         return clusters
+
+    def dump(self, tag, rgb, clusters):
+        """Optional development trace (MESSY_DESK_SOLVER_LOG=<dir>): image + cluster summary."""
+        if not LOG:
+            return
+        try:
+            os.makedirs(LOG, exist_ok=True)
+            Image.fromarray(rgb).save(os.path.join(LOG, "t%06d_%s.png" % (self.t(), tag)))
+            rows = []
+            for c in clusters:
+                info = c.get("cls_info")
+                rows.append({"n": c["n"], "centroid": [round(v, 3) for v in c["centroid"]], "top_z": round(c["top_z"], 3),
+                             "bin": c["bin"], "dims": [round(v, 3) for v in c["dims"]], "yaw": round(c["yaw"], 2),
+                             "model": info["model"] if info else None, "d": round(info["d"], 3) if info else None,
+                             "margin": round(info["class_margin"], 3) if info else None})
+            with open(os.path.join(LOG, "t%06d_%s.json" % (self.t(), tag)), "w") as f:
+                json.dump({"t": self.t(), "request": self.request(), "clusters": rows}, f)
+        except Exception as exc:  # noqa: BLE001
+            log("dump failed: %r" % exc)
 
     def cam_pose(self):
         """World pose of the hand camera from the tool pose and the fixed ee->camera transform."""
@@ -469,9 +490,11 @@ class Controller(object):
         d = perceive_eih(rgb, dep, R_cam, t_cam, (x, y), c["floor"], c["top_z"])
         if d is None:
             log("t=%d inspect: nothing under the hand camera" % self.t())
+            self.dump("inspect_none", rgb, [])
             return None
         d["cls_info"] = self.classify_eih(d)
         d["bin"] = c["bin"]
+        self.dump("inspect", rgb, [d])
         return d
 
     # -- planning helpers ---------------------------------------------------------------------
@@ -504,7 +527,7 @@ class Controller(object):
                 self.request_state = None
             elif req["text"] != self.request_text or self.request_state is None:
                 self.request_text = req["text"]
-                self.request_state = {"model": req["text"].replace("the ", "", 1), "unpacked": [], "deadline": req["deadline_t"]}
+                self.request_state = {"model": req["text"].replace("the ", "", 1), "inspected": [], "deadline": req["deadline_t"]}
                 log("t=%d request %r deadline %d" % (self.t(), self.request_text, req["deadline_t"]))
             if self.request_state is not None:
                 done = yield from self.serve_request(clusters)
@@ -516,30 +539,58 @@ class Controller(object):
                     continue
             yield from self.hold(10, grip=0.0)
 
+    @staticmethod
+    def _near_any(c, points, r=0.05):
+        return any(math.hypot(c["centroid"][0] - x, c["centroid"][1] - y) < r for x, y in points)
+
+    def skipped(self, c):
+        """Recently inspected and left alone (ambiguous): do not loop on it."""
+        for (x, y, t) in self.skip_list:
+            if math.hypot(x - c["centroid"][0], y - c["centroid"][1]) < 0.05 and self.t() - t < 600:
+                return True
+        return False
+
+    def skip(self, c):
+        self.skip_list.append((c["centroid"][0], c["centroid"][1], self.t()))
+
     def tidy(self, clusters):
-        """One sorting action: a loose object to its class bin, or a visibly misplaced object."""
-        loose = sorted(self.loose(clusters), key=lambda c: -c["cls_info"]["class_margin"])
+        """One sorting action: inspect the most confident loose object with the hand camera and
+        put it in its class bin; otherwise fix a visibly misplaced object in a bin."""
+        loose = [c for c in self.loose(clusters) if not self.skipped(c)]
+        loose.sort(key=lambda c: -c["cls_info"]["class_margin"])
         for c in loose:
-            info = c["cls_info"]
-            if info["class_margin"] < 0.0:
-                continue
-            log("t=%d sort %s (%s, d=%.2f, margin=%.2f) at (%.2f,%.2f) top=%.3f" % (
-                self.t(), info["model"], info["cls"], info["d"], info["class_margin"], c["grasp_xy"][0], c["grasp_xy"][1], c["top_z"]))
-            held = yield from self.pick(c["grasp_xy"], self.grasp_yaw(c), c["top_z"], c["floor"])
+            d = yield from self.inspect(c)
+            if d is None:
+                self.skip(c)
+                return True
+            info = d["cls_info"]
+            log("t=%d loose %s (%s d=%.2f margin=%.2f; static %s) at (%.2f,%.2f) top=%.3f dims=%s" % (
+                self.t(), info["model"], info["cls"], info["d"], info["class_margin"], c["cls_info"]["model"],
+                d["grasp_xy"][0], d["grasp_xy"][1], d["top_z"], [round(v, 3) for v in d["dims"]]))
+            if info["class_margin"] < 0.08:
+                self.skip(c)
+                return True
+            held = yield from self.pick(d["grasp_xy"], self.grasp_yaw(d), d["top_z"], d["floor"])
             if held:
                 yield from self.place_in_bin(BIN_OF_CLASS[info["cls"]])
             else:
-                yield from self.hold(1, grip=0.0)
                 log("t=%d grasp failed" % self.t())
+                self.skip(c)
             return True
-        # misplaced object visible in a bin (small, isolated cluster)
+        # a small isolated cluster in a class bin that does not belong there (disturbance)
         for c in clusters:
-            if c["bin"] in CLASS_OF_BIN and c["cls_info"] is not None and c["cls_info"]["class_margin"] > 0.25 \
-                    and c["cls_info"]["cls"] != CLASS_OF_BIN[c["bin"]]:
-                log("t=%d misplaced %s in %s" % (self.t(), c["cls_info"]["model"], c["bin"]))
-                held = yield from self.pick(c["grasp_xy"], self.grasp_yaw(c), c["top_z"], c["floor"])
+            if c["bin"] in CLASS_OF_BIN and c["cls_info"] is not None and not self.skipped(c) \
+                    and c["cls_info"]["cls"] != CLASS_OF_BIN[c["bin"]] and c["cls_info"]["class_margin"] > 0.15:
+                d = yield from self.inspect(c)
+                if d is None or d["cls_info"]["cls"] == CLASS_OF_BIN[c["bin"]] or d["cls_info"]["class_margin"] < 0.15:
+                    self.skip(c)
+                    return True
+                log("t=%d misplaced %s in %s" % (self.t(), d["cls_info"]["model"], c["bin"]))
+                held = yield from self.pick(d["grasp_xy"], math.pi / 2, d["top_z"], d["floor"])
                 if held:
-                    yield from self.place_in_bin(BIN_OF_CLASS[c["cls_info"]["cls"]])
+                    yield from self.place_in_bin(BIN_OF_CLASS[d["cls_info"]["cls"]])
+                else:
+                    self.skip(c)
                 return True
         return False
 
@@ -547,18 +598,36 @@ class Controller(object):
         rs = self.request_state
         model = rs["model"]
         cls = CLASS_OF.get(model)
-        # 1. the named object among the loose ones?
-        cands = [c for c in self.loose(clusters) if c["cls_info"]["model"] == model]
-        if cands:
-            c = min(cands, key=lambda c: c["cls_info"]["d"])
-            log("t=%d deliver %s d=%.2f" % (self.t(), model, c["cls_info"]["d"]))
-            held = yield from self.pick(c["grasp_xy"], self.grasp_yaw(c), c["top_z"], c["floor"])
-            if held:
-                yield from self.place_in_bin("red")
-                yield from self.hold(8, grip=0.0)
-                yield from self.hold(1, grip=0.0, mark=1)
-                log("t=%d marked delivered" % self.t())
-                self.request_state = None
+        loose = [c for c in self.loose(clusters)]
+        # 1. loose candidates, most similar first (static view), confirmed by the hand camera
+        cands = sorted(loose, key=lambda c: min([d for m, d in c["cls_info"]["ranked"] if m == model] or [9.0]))
+        for c in cands:
+            if self._near_any(c, rs["inspected"]):
+                continue
+            key = (c["centroid"][0], c["centroid"][1])
+            rs["inspected"].append(key)
+            d = yield from self.inspect(c)
+            if d is None:
+                return True
+            info = d["cls_info"]
+            log("t=%d request check: %s (d=%.2f) vs wanted %s" % (self.t(), info["model"], info["d"], model))
+            if info["model"] == model:
+                held = yield from self.pick(d["grasp_xy"], self.grasp_yaw(d), d["top_z"], d["floor"])
+                if held:
+                    yield from self.place_in_bin("red")
+                    yield from self.hold(8, grip=0.0)
+                    ok = yield from self.confirm_red()
+                    if ok:
+                        yield from self.hold(1, grip=0.0, mark=1)
+                        log("t=%d marked delivered" % self.t())
+                        self.request_state = None
+                    else:
+                        log("t=%d red bin check failed; retrying" % self.t())
+                        rs["inspected"].remove(key)
+                else:
+                    log("t=%d grasp of the target failed; retrying" % self.t())
+                    rs["inspected"].remove(key)
+                return True
             return True
         # 2. unpack: class bin first, then the others
         order = [BIN_OF_CLASS[cls]] if cls else []
@@ -576,12 +645,31 @@ class Controller(object):
             held = yield from self.pick(c["grasp_xy"], math.pi / 2, c["top_z"], c["floor"])
             if held:
                 yield from self.place_on_desk(spot)
+            else:
+                rs["unpack_failures"] = rs.get("unpack_failures", 0) + 1
+                if rs["unpack_failures"] > 6:
+                    log("t=%d giving up unpacking %s" % (self.t(), b))
+                    return False
             return True
-        # 3. everything is on the desk and the model was not seen: absent
+        # 3. every bin is empty and every loose object was inspected: the object is absent
+        if any(not self._near_any(c, rs["inspected"]) for c in loose):
+            return True
         log("t=%d declare absent: %s" % (self.t(), model))
         yield from self.hold(1, grip=0.0, mark=2)
         self.request_state = None
         return True
+
+    def confirm_red(self):
+        """After the drop: does the hand camera see an object resting inside the red bin?"""
+        x, y = BIN_X, BIN_YS["red"]
+        yield from self.goto((x, y, BIN_RIM_Z + 0.16), 0.0, grip=0.0, tol=0.01, max_steps=30)
+        yield from self.hold(2, grip=0.0)
+        R_cam, t_cam = self.cam_pose()
+        rgb = decode_png(self.obs["rgb"]["eye_in_hand"], "RGB")
+        dep = decode_png(self.obs["depth"]["eye_in_hand"])
+        d = perceive_eih(rgb, dep, R_cam, t_cam, (x, y), BIN_FLOOR_Z, BIN_RIM_Z, radius=0.12)
+        self.dump("confirm_red", rgb, [d] if d else [])
+        return d is not None and bin_of_xy(d["centroid"][0], d["centroid"][1]) == "red"
 
 
 # ----------------------------------------------------------------------------------------

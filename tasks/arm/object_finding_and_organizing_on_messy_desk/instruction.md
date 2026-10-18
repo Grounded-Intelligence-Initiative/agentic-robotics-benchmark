@@ -101,8 +101,10 @@ frame (metres and radians, clipped to ±0.05 m and ±0.25 rad per step), a gripp
 `[0, 1]` (0 = open, 1 = closed), and a `mark` for the open request: `0` = nothing, `1` =
 **done: delivered** (you claim the requested object rests in the red bin), `2` = **done: no
 such object** (you claim it is not on the desk). A mark is ignored while no request is open,
-and a request accepts one mark only. Inverse kinematics and joint limits are handled by the
-environment.
+and a request accepts one mark only. The environment turns the delta into joint targets
+through inverse kinematics (a 5 cm step completes within the step inside the workspace); a
+delta that is unreachable or would flip the arm to another joint-space branch is refused and
+the arm simply stays put for that step.
 
 ## Scoring
 

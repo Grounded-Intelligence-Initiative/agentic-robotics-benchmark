@@ -42,10 +42,15 @@ exactly one instance present, or one with none (an absent request).
 ## Control
 - 10 Hz control, 60 Hz physics (6 substeps per action).
 - action = [dx, dy, dz, droll, dpitch, dyaw, grip, mark]; position deltas clipped to
-  +/-0.05 m, rotation deltas to +/-0.25 rad, applied to the tool centre point in the base
-  frame through inverse kinematics; grip in [0, 1] maps to finger width 0.04 m (open) .. 0 (closed);
-  mark: 0 nothing, 1 "done: delivered", 2 "done: no such object" (one mark per request,
-  ignored while no request is open).
+  +/-0.05 m, rotation deltas to +/-0.25 rad (world-axis roll/pitch/yaw), applied to the
+  tool centre point's current pose and tracked through inverse kinematics within the step
+  (a 5 cm delta is completed in one step inside the workspace); grip in [0, 1] maps to
+  finger width 0.04 m (open) .. 0 (closed); mark: 0 nothing, 1 "done: delivered",
+  2 "done: no such object" (one mark per request, ignored while no request is open).
+- A delta whose IK solution is unreachable, or would flip the arm to another joint-space
+  branch (a joint jump above 0.8 rad), is refused: the arm stays where it is for that step
+  (the simulator's privileged state shows `ik_ok: false`). Stay inside the workspace box and
+  move in small steps near its edges.
 - Reachable workspace for the tool centre point: x in [-0.1, 0.85], y in [-0.75, 0.75], z in [0.01, 0.9].
 
 ## Running the simulator yourself

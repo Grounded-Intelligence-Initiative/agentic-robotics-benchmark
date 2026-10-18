@@ -77,6 +77,9 @@ GRIPPER_OPEN, GRIPPER_CLOSED = 0.04, 0.0
 REST_SPEED = 0.08          # piles of convex-decomposed meshes jitter at a few cm/s
 PARK_Z = -3.0
 RESET_WARMUP_FRAMES = 20
+READY_Q = [0.0, -math.pi / 4, 0.0, -3 * math.pi / 4, 0.0, math.pi / 2, math.pi / 4]   # Franka 'ready': tool straight down
+HOME_POS = (0.46, 0.0, 0.39)
+IK_JUMP_MAX = 0.8                                     # rad: larger joint jumps are branch flips
 
 
 def _park_slot(k):
@@ -126,8 +129,24 @@ class MessyDeskEnv:
         # teleports objects and re-homes the arm while the simulation keeps playing.
         self.world.reset()
         self._probe_views("after world.reset")
-        self.ik = KinematicsSolver(self.franka)
+        self.ik = KinematicsSolver(self.franka)      # Lula kinematics of the `right_gripper` frame
         self._home_q = np.array(self.franka.get_joints_default_state().positions, dtype=float)
+        # Isaac's default Franka posture points the tool 45 degrees forward-down and folds the
+        # elbow (q4 ~ -2.8, q6 ~ 3.0): descending from it runs q6 into its limit near z = 0.2
+        # and the IK flips branch. Home is instead the classic "ready" orientation (tool straight
+        # down, fingers opening along y) at HOME_POS, solved from the ready posture; from there
+        # the whole desk is reachable with small joint motions, and every later IK is
+        # warm-started from the current joints so it stays on this branch.
+        _, hr = self.ik._kinematics_solver.compute_forward_kinematics(self.ik._ee_frame, np.array(READY_Q, dtype=float))
+        hq = np.array(_mat_to_wxyz(hr), dtype=float)
+        q7, ok = self.ik._kinematics_solver.compute_inverse_kinematics(
+            self.ik._ee_frame, np.array(HOME_POS, dtype=float), hq, warm_start=np.array(READY_Q, dtype=float))
+        if ok:
+            self._home_q[:7] = np.asarray(q7, dtype=float)
+        _log("home posture ok=%s q=%s" % (ok, np.round(self._home_q[:7], 3).tolist()))
+        self.franka.set_joint_positions(self._home_q)
+        self.franka.set_joint_velocities(np.zeros_like(self._home_q))
+        self.franka.apply_action(self.ArticulationAction(joint_positions=self._home_q))
         self._probe_views("after KinematicsSolver")
         for c in self.cams.values():
             c.initialize()
@@ -316,6 +335,7 @@ class MessyDeskEnv:
         self.touched = set()
         self.franka.set_joint_positions(self._home_q)
         self.franka.set_joint_velocities(np.zeros_like(self._home_q))
+        self.franka.apply_action(self.ArticulationAction(joint_positions=self._home_q))
         self.franka.gripper.open()
         for o in self.objects:
             o["removed"], o["frozen"] = False, 0
@@ -389,9 +409,8 @@ class MessyDeskEnv:
         grip = float(np.clip(a[6], 0.0, 1.0))
         mark = int(round(a[7]))          # 0 none, 1 "done: delivered", 2 "done: no such object"
         self._apply_arm(dpos, drot, grip)
-        for _ in range(SUBSTEPS - 1):
-            self.world.step(render=False)
-        self.world.step(render=True)
+        for i in range(SUBSTEPS):
+            self.world.step(render=(i == SUBSTEPS - 1))
         self.t += 1
         self._update_states()
         self._world_events(mark)
@@ -414,8 +433,15 @@ class MessyDeskEnv:
         tq /= max(float(np.linalg.norm(tq)), 1e-9)
         act, ok = self.ik.compute_inverse_kinematics(target_position=np.asarray(target, dtype=float), target_orientation=tq)
         if ok:
+            q_new = np.asarray(act.joint_positions, dtype=float).reshape(-1)
+            q_cur = np.asarray(self.franka.get_joint_positions(), dtype=float)[: q_new.shape[0]]
+            # A solution on another branch (a joint flip) would whip the arm across the desk:
+            # refuse it and stay put; the agent sees no motion and ik_ok = False.
+            if float(np.max(np.abs(q_new - q_cur))) > IK_JUMP_MAX:
+                ok = False
+        if ok:
             self.franka.apply_action(act)
-            self._ik_q = [float(x) for x in np.asarray(act.joint_positions).reshape(-1)]
+            self._ik_q = [float(x) for x in q_new]
         w = GRIPPER_OPEN * (1.0 - grip) + GRIPPER_CLOSED * grip
         self.franka.gripper.apply_action(self.ArticulationAction(joint_positions=np.array([w, w])))
         self._ik_ok = bool(ok)
