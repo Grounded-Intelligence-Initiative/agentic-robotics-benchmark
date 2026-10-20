@@ -1,4 +1,4 @@
-# replica_requirements_from_photos's environment image (information tier, requirements stage).
+# arm_replica_requirements_from_photos's environment image (information tier, requirements stage).
 #
 # `image/` is the sole build context and the final stage derives DIRECTLY from the official ALE base (`ale lint`
 # rejects any other final FROM). The block below is the chain's shared base `shared/images/arb-base-mujoco/Dockerfile`
@@ -55,7 +55,7 @@ RUN python3 -c "import mujoco, mink, pinocchio, coacd, trimesh, manifold3d, gymn
     && python3 -c "import mujoco; m = mujoco.MjModel.from_xml_string('<mujoco><worldbody><light pos=\"0 0 1\"/><geom type=\"box\" size=\"0.1 0.1 0.1\"/></worldbody></mujoco>'); r = mujoco.Renderer(m, 64, 64); d = mujoco.MjData(m); mujoco.mj_forward(m, d); r.update_scene(d); px = r.render(); print('[arb-base-mujoco] OSMesa render OK', px.shape, int(px.max()))" \
     && runuser -u user -- python3 -c "import mujoco, mink, cadquery, coacd; print('[arb-base-mujoco] agent-UID import OK')"
 
-# ---- task-specific layers (replica_requirements_from_photos) ------------------------------------------------
+# ---- task-specific layers (arm_replica_requirements_from_photos) ------------------------------------------------
 # Photogrammetry / image tools for the agent (T17, requirements.md Q-R6): OpenCV (headless) and scikit-image, pinned
 # against the base's numpy 2.5.3.
 # Only the NEW files are touched after the install (a chmod -R over the whole venv would copy the base's 2 GB venv

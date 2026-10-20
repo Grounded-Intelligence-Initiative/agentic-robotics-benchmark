@@ -7,7 +7,7 @@ one `<sha256>  <relative path>` line per file, as `sha256sum` writes them:
 
     # repo: grounded-intelligence-initiative/agentic-robotics-last-exam
     # revision: <40-hex commit of the dataset repository>
-    # prefix: tasks/arm/replica_requirements_from_photos/payload
+    # prefix: tasks/arm/arm_replica_requirements_from_photos/payload
     <sha256>  photos/PH-01.jpg
 
 Every file is downloaded from `<prefix>/<relative path>` at that commit and written to `<dest_dir>/<relative path>`

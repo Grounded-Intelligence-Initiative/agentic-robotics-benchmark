@@ -1,6 +1,6 @@
 # repo: grounded-intelligence-initiative/agentic-robotics-last-exam
-# revision: 64ab48158653f45df00185dcc9c2e33f426e8d18
-# prefix: tasks/arm/replica_requirements_from_photos/payload
+# revision: 3e68b0acfe4c7bc4b260230276c7a76ec68000b3
+# prefix: tasks/arm/arm_replica_requirements_from_photos/payload
 8234bfd6878876b7fa95e0d7a92b6b3abd650232d7eec7ff5cd7b69111e5ccab  datasheets/DS-AD-485-ADP.png
 2a0068d1d7968ce907a7b0df971c72058ada1b91323dda374c883723966becc2  datasheets/DS-AD-C10-12.png
 751f7d8ded192ae709a31af7edf1caea6effcb7031e39c0d21d3125939c968a8  datasheets/DS-AD-H25-12.png
