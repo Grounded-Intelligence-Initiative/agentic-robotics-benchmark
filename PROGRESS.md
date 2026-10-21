@@ -7,9 +7,8 @@
 > before every hand-off. Where it disagrees with the code or `git log`, the code wins: fix
 > this file.
 >
-> Last updated: 2026-10-15, later the same day (§6: the website is display-only; the
-> spacecraft task is the worked example and `uav_hover` is gone; `ale-export` and the template
-> download are retired; the registry's schema lives here).
+> Last updated: 2026-10-21 (§7: PR #10 hardens the spacecraft task with hybrid wake cells,
+> a telescoping port and an encoder-polarity mux; fresh GPT-6.1 Sol no longer saturates it).
 
 ## 0. 2026-09-07 — created by the rebrand from "ALE Robotics"
 
@@ -237,6 +236,31 @@ and `verify/` included.
   - Conclusion: the task does not stump frontier models; its difficulty must go up (results
     posted on #1 for its author). About $104 at list prices.
 
+## 7. 2026-10-21 — spacecraft hardening validated on PR #10
+
+- PR #10 (`hardening/fault-adaptive-spacecraft-docking-stateful-valves`) now composes three
+  terminal-estimation challenges without extending the 400-step horizon: six physical-nozzle
+  shroud vortex cells with public hybrid load integrators and one hidden common initial parity;
+  a radially oscillating docking boom whose current extension must be tracked; and a redundant
+  boom encoder whose displacement polarity is hidden initially and independently re-selected
+  at the blackout-producing re-key. The camera can identify the polarity only after aligning
+  its delayed timestamp, so the blackout requires an explicit unresolved sensor hypothesis.
+- Capture tolerances are 0.085 m position, 0.060 m/s velocity, 0.020 rad yaw and 0.015 rad/s
+  yaw rate for 30 consecutive steps. The episode remains 400 steps; failures and collisions
+  are genuine closed-loop outcomes, not time-budget or malformed-output penalties.
+- The reference controller identifies the mux from timestamp-aligned camera/radius samples,
+  tracks the six hybrid wake modes, predicts their transitions inside its allocator, and uses
+  the measured boom radius plus differentiated radial rate. Four fresh oracle calibrations
+  measured 0.4432074102, 0.3634887656, 0.5031788493 and 0.5221913496 (mean 0.4580165937,
+  population sd 0.0618725521). The anchor uses that mean and `full_at: 0.75`; a final
+  `ale validate` passed with untouched reward 0 and oracle reward 1 (23/48, raw 0.4824985816).
+- A fresh GPT-6.1 Sol interactive trial saw the final specification from the start, explicitly
+  implemented the encoder-polarity calibration, and was recovered after the 30-minute agent
+  budget. Independent hidden replay completed all 48 episodes: 10 docks, 6 target collisions,
+  match lock passed, raw 0.2217035448. A second scored replay produced 12 docks, 7 collisions,
+  raw 0.2625658218, ratio 0.5732670506 and reward 0.7643560675. This no longer saturates the
+  benchmark; its success rate is 21--25%, versus the previous Opus 5.5 46--48/48 result.
+
 ## Open items
 
 - Website, display-only pull request: remove the backend (API, database service, sign-in,
@@ -247,10 +271,10 @@ and `verify/` included.
 - After this merges: export the registry from a clean `main`, commit `identity-history.json`
   (the spacecraft task is new; the `drone_hover` record stays as history), and install the
   export in the website.
-- Raise the spacecraft task's difficulty in a new pull request (Jack or the maintainers):
-  Opus 5.5 saturates it (§6). The guidelines' target is a frontier `reward` roughly below 0.5,
-  from a harder engineering or perception challenge, not penalties. Then re-measure the anchor
-  and re-run the frontier models.
+- Review PR #10's hybrid-wake, telescoping-boom and encoder-mux hardening (§7). The measured
+  GPT-6.1 Sol reward is 0.764 rather than the aspirational sub-0.5 target, but it no longer
+  saturates and only docks 21--25% of hidden episodes. Any further reduction should improve
+  the reference policy or add a new observable capability gap, not tighten penalties.
 - Pull request #4 (`ball_physics_stepper`) must re-vendor the kit from #6 (CI's byte
   comparison), and should move to 64-bit, keyed-hash seeding if its agent holds a simulator
   copy.
