@@ -82,6 +82,8 @@ RUN printf '%s\n' 'export BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800' 'export CLAUDE_STRE
 # The photo set, the datasheet pages and the lot-report scans live in the benchmark's Hugging Face asset repository
 # (tasks/<platform>/<name>/payload/ there). They are fetched at the commit pinned in assets.sha256 and checked file by
 # file against the sha256 recorded there; setup/run.sh stages them into the agent home next to setup/payload/.
+# fetch_assets.py is the benchmark's canonical copy (shared/task_assets/) and the repository named in assets.sha256 is
+# written from the benchmark's task-assets.toml (scripts/task_assets.py sync; docs/task-assets.md).
 COPY fetch_assets.py assets.sha256 /opt/task-assets/
 RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload \
     && chmod -R a+rX /opt/task-assets

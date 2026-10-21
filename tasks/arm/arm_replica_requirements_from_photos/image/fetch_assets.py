@@ -1,25 +1,34 @@
-"""Fetch this task's large agent-visible files from the benchmark's Hugging Face asset repository at image build time.
+"""Fetch a task's large agent-visible files from the benchmark's asset repository at image build time.
 
     python3 fetch_assets.py <assets.sha256> <dest_dir>
 
-`assets.sha256` (in image/, so in the build context) holds a header with the repository and the pinned commit, then
-one `<sha256>  <relative path>` line per file, as `sha256sum` writes them:
+The canonical copy is `shared/task_assets/fetch_assets.py` in the benchmark repository. Every task that has assets
+carries a byte-identical copy in its `image/` (the image's sole build context); `scripts/task_assets.py check`
+enforces the identity.
 
+`assets.sha256` (in image/, so in the build context) holds a header, then one `<sha256>  <relative path>` line per
+file, as `sha256sum` writes them:
+
+    # endpoint: https://huggingface.co
     # repo: grounded-intelligence-initiative/agentic-robotics-last-exam
     # revision: <40-hex commit of the dataset repository>
-    # prefix: tasks/arm/arm_replica_requirements_from_photos/payload
-    <sha256>  photos/PH-01.jpg
+    # prefix: tasks/<platform>/<task name>/payload
+    <sha256>  photos/photo_01.jpg
 
-Every file is downloaded from `<prefix>/<relative path>` at that commit and written to `<dest_dir>/<relative path>`
+`endpoint` and `repo` are written from the repository's `task-assets.toml` by `scripts/task_assets.py sync`: change
+that file, not these lines (an absent `endpoint` means https://huggingface.co). Every file is downloaded from
+`<endpoint>/datasets/<repo>/resolve/<revision>/<prefix>/<relative path>` and written to `<dest_dir>/<relative path>`
 only if its sha256 matches; any mismatch or failed download fails the build. Stdlib only (runs before any venv).
 """
 import hashlib
 import os
 import sys
 import time
+import urllib.parse
 import urllib.request
 
-BASE = "https://huggingface.co/datasets/{repo}/resolve/{rev}/{path}"
+DEFAULT_ENDPOINT = "https://huggingface.co"
+URL = "{endpoint}/datasets/{repo}/resolve/{rev}/{path}"
 
 
 def read_list(path):
@@ -55,10 +64,12 @@ def fetch(url, tries=4):
 def main():
     lst, dest = sys.argv[1], sys.argv[2]
     head, files = read_list(lst)
+    endpoint = (head.get("endpoint") or DEFAULT_ENDPOINT).rstrip("/")
     for digest, rel in files:
         if os.path.isabs(rel) or ".." in rel.split("/"):
             sys.exit("unsafe path in assets list: %s" % rel)
-        data = fetch(BASE.format(repo=head["repo"], rev=head["revision"], path=head["prefix"] + "/" + rel))
+        path = urllib.parse.quote(head["prefix"] + "/" + rel)
+        data = fetch(URL.format(endpoint=endpoint, repo=head["repo"], rev=head["revision"], path=path))
         got = hashlib.sha256(data).hexdigest()
         if got != digest:
             sys.exit("sha256 mismatch for %s: %s != %s" % (rel, got, digest))
@@ -66,7 +77,8 @@ def main():
         os.makedirs(os.path.dirname(out), exist_ok=True)
         with open(out, "wb") as fh:
             fh.write(data)
-    print("[assets] %d file(s) from %s@%s verified into %s" % (len(files), head["repo"], head["revision"][:12], dest))
+    print("[assets] %d file(s) from %s/%s@%s verified into %s" % (len(files), endpoint, head["repo"],
+                                                                 head["revision"][:12], dest))
 
 
 if __name__ == "__main__":

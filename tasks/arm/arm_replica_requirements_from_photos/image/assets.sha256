@@ -1,3 +1,4 @@
+# endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/agentic-robotics-last-exam
 # revision: 3e68b0acfe4c7bc4b260230276c7a76ec68000b3
 # prefix: tasks/arm/arm_replica_requirements_from_photos/payload
