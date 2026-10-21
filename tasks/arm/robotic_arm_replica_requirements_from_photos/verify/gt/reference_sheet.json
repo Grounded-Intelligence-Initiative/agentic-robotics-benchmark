@@ -14,7 +14,7 @@
   },
   {
    "band": "brief",
-   "bound": 0.272,
+   "bound": 0.268,
    "comparator": "<=",
    "id": "REQ-PAYLOAD-MAX",
    "quantity": "payload_mass_max",
@@ -59,7 +59,7 @@
   },
   {
    "band": "brief",
-   "bound": 0.88,
+   "bound": 0.91,
    "comparator": "<=",
    "id": "REQ-MOVE",
    "quantity": "move_time",
@@ -70,7 +70,7 @@
   },
   {
    "band": "brief",
-   "bound": 0.8,
+   "bound": 1.0,
    "comparator": ">=",
    "id": "REQ-HOLD",
    "quantity": "dwell_time",
@@ -125,7 +125,7 @@
   },
   {
    "band": "brief",
-   "bound": 191.0,
+   "bound": 156.0,
    "comparator": "<=",
    "id": "REQ-COST",
    "quantity": "total_cost",
@@ -136,7 +136,7 @@
   },
   {
    "band": "brief",
-   "bound": 25.0,
+   "bound": 12.0,
    "comparator": "==",
    "id": "REQ-ECO",
    "quantity": "eco_cost",
@@ -192,7 +192,7 @@
   },
   {
    "band": "photo",
-   "bound": 0.3212350171948513,
+   "bound": 0.32011675503902,
    "comparator": "<=",
    "id": "REQ-RMIN",
    "quantity": "reach_radius_min",
@@ -204,7 +204,7 @@
   },
   {
    "band": "photo",
-   "bound": 0.3597020058345742,
+   "bound": 0.3585793678114324,
    "comparator": ">=",
    "id": "REQ-RMAX",
    "quantity": "reach_radius_max",
@@ -216,7 +216,7 @@
   },
   {
    "band": "angle",
-   "bound": -1.0092935437793527,
+   "bound": -0.7353469097772122,
    "comparator": "<=",
    "id": "REQ-AZMIN",
    "quantity": "workspace_azimuth_min",
@@ -228,7 +228,7 @@
   },
   {
    "band": "angle",
-   "bound": 1.0884855883486022,
+   "bound": 1.0273371142251455,
    "comparator": ">=",
    "id": "REQ-AZMAX",
    "quantity": "workspace_azimuth_max",
@@ -240,7 +240,7 @@
   },
   {
    "band": "photo",
-   "bound": 0.06379764765648278,
+   "bound": 0.06347715197416211,
    "comparator": ">=",
    "id": "REQ-HMAX",
    "quantity": "workspace_height_max",
@@ -252,7 +252,7 @@
   },
   {
    "band": "photo",
-   "bound": 0.07950291454607886,
+   "bound": 0.08583799292038258,
    "comparator": ">=",
    "id": "REQ-OPEN",
    "quantity": "gripper_opening_min",

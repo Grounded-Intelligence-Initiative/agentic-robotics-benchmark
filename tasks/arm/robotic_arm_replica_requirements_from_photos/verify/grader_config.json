@@ -51,9 +51,9 @@
    "mode": "all"
   },
   "c5": {
-   "band_usd": 25.0
+   "band_usd": 12.0
   },
-  "eco_usd": 25.0,
+  "eco_usd": 12.0,
   "g0": {
    "links_tol_m": 0.001
   },

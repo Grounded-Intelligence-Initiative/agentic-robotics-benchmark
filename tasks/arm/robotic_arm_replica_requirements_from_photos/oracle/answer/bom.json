@@ -5,7 +5,7 @@
   {
    "count": 1,
    "joint": "base_yaw",
-   "part_id": "KM-B40-12",
+   "part_id": "KM-S30-12",
    "role": "servo"
   },
   {
@@ -49,5 +49,5 @@
    "role": "psu"
   }
  ],
- "total_cost_usd": 159.6
+ "total_cost_usd": 131.0
 }

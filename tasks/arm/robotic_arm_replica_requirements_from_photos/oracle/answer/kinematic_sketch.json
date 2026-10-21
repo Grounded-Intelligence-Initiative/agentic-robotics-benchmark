@@ -55,7 +55,7 @@
  "joints": {
   "base_yaw": {
    "body_class": "standard",
-   "servo_id": "KM-B40-12"
+   "servo_id": "KM-S30-12"
   },
   "elbow_pitch": {
    "body_class": "standard",

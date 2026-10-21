@@ -25,8 +25,8 @@ roll 0.
 object, which the customer put on a kitchen scale for photo PH-31 (read the mass off the scale's display); the bottom of
 the band is 0.19 kg. Centre of mass up to 25 mm beyond the TCP along the tool (+z) axis.
 
-[B-07] Motion. Every move between two targets takes 0.88 s (joint-space trapezoid with equal thirds: accelerate,
-cruise, decelerate); the arm holds 0.8 s at every target; the duty is continuous (an endless sequence of one move and
+[B-07] Motion. Every move between two targets takes 0.91 s (joint-space trapezoid with equal thirds: accelerate,
+cruise, decelerate); the arm holds 1.0 s at every target; the duty is continuous (an endless sequence of one move and
 one hold, no rest).
 
 [B-08] Proof test. 1.25 x the top of the payload band is held at every target with the arm stationary.
@@ -44,9 +44,9 @@ and rated torque, on the datasheet's straight-line torque-speed characteristic.
 [B-11] Power. One bus at either 7.5 V or 12 V; one power supply (PSU) per unit; the harness voltage drop of BL-03 applies
 at every servo; no current limiting during any acceptance move.
 
-[B-12] Cost. At most 191 USD per unit for servos + bus boards + PSU at the 10-99 pcs list price (price_list.md).
+[B-12] Cost. At most 156 USD per unit for servos + bus boards + PSU at the 10-99 pcs list price (price_list.md).
 
-[B-13] Engineering change. Any BOM line changed after the pilot acceptance costs 25 USD per unit (rework and
+[B-13] Engineering change. Any BOM line changed after the pilot acceptance costs 12 USD per unit (rework and
 re-qualification).
 
 [B-14] Acceptance procedure (the customer runs it on a pilot unit; public, verbatim):

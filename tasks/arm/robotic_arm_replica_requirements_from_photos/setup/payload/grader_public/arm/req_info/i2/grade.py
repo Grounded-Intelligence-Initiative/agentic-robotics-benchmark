@@ -27,13 +27,13 @@ DEFAULT_CFG = {
     "weights": {"kinematic_replication": 0.30, "requirements_sheet": 0.10, "derived_requirements": 0.20,
                 "bom_acceptance": 0.10, "bom_economy": 0.30},
     "c4": {"mode": "all"},
-    "c5": {"band_usd": 25.0},
+    "c5": {"band_usd": 12.0},
     "c1": {"group_weights": {"lengths": 0.55, "stops": 0.30, "gripper": 0.10, "body_classes": 0.05},
            "length_mm": [0.5, 4.0], "stop_deg": [1.0, 6.0], "gripper_mm": [0.5, 3.0]},
     "c2": {"brief_rel": [0.02, 0.04], "photo_rel": [0.01, 0.06], "angle_deg": [1.5, 6.0], "clause_weight": 0.5},
     "c3": {"rel": [0.03, 0.15], "floors": {"N.m": 0.05, "rad/s": 0.2, "A": 0.2, "kg": 0.01}},
     "g0": {"links_tol_m": 0.001},
-    "eco_usd": 25.0,
+    "eco_usd": 12.0,
 }
 
 
@@ -358,7 +358,7 @@ def grade(docs, gt, cat, cfg=None, acc=None, optimum_mode="check"):
                                                              and best["bom"]["servos"] == stored["bom"]["servos"]) else 0.0
     rp = RP.repair(acc, bom, lot, cat, brief, eco_usd=cfg["eco_usd"])
     ceiling = float(gt["layer"]["brief"]["ceiling"])
-    c5 = RP.economy(J_star, rp["J_eff"], ceiling, band_usd=(cfg.get("c5") or {}).get("band_usd", 25.0))
+    c5 = RP.economy(J_star, rp["J_eff"], ceiling, band_usd=(cfg.get("c5") or {}).get("band_usd", 12.0))
     out["criteria"]["bom_economy"] = c5
     raw = (J_star / rp["J_eff"]) if (math.isfinite(rp["J_eff"]) and rp["J_eff"] > 0) else 0.0
     out["stats"].update({"J": rp["J"], "J_eff": rp["J_eff"] if math.isfinite(rp["J_eff"]) else -1.0, "J_star": J_star,

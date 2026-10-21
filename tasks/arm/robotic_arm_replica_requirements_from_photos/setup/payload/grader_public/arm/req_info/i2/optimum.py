@@ -33,7 +33,7 @@ def joint_trace(acc, j, masses, payload):
         if jj in acc.mvb:
             mv += m * acc.mvb[jj][:, k]
             hd += m * acc.hdb[jj][:, k]
-    pr = hd + acc.layer.get("proof", 1.25) * payload * acc.hdb["payload"][:, k]
+    pr = hd + acc.layer["proof"] * payload * acc.hdb["payload"][:, k]
     mv = mv + payload * acc.mvb["payload"][:, k]
     hd = hd + payload * acc.hdb["payload"][:, k]
     return mv, hd, pr

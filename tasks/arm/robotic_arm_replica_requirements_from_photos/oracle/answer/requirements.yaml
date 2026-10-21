@@ -12,7 +12,7 @@ requirements:
 - id: REQ-PAYLOAD-MAX
   quantity: payload_mass_max
   comparator: <=
-  bound: 0.272
+  bound: 0.268
   unit: kg
   source_id: PH-31
   source_clause: PH-31
@@ -40,14 +40,14 @@ requirements:
 - id: REQ-MOVE
   quantity: move_time
   comparator: <=
-  bound: 0.88
+  bound: 0.91
   unit: s
   source_id: B-07
   source_clause: B-07
 - id: REQ-HOLD
   quantity: dwell_time
   comparator: '>='
-  bound: 0.8
+  bound: 1.0
   unit: s
   source_id: B-07
   source_clause: B-07
@@ -82,14 +82,14 @@ requirements:
 - id: REQ-COST
   quantity: total_cost
   comparator: <=
-  bound: 191.0
+  bound: 156.0
   unit: USD
   source_id: B-12
   source_clause: B-12
 - id: REQ-ECO
   quantity: eco_cost
   comparator: ==
-  bound: 25.0
+  bound: 12.0
   unit: USD
   source_id: B-13
   source_clause: B-13
@@ -124,49 +124,49 @@ requirements:
 - id: REQ-RMIN
   quantity: reach_radius_min
   comparator: <=
-  bound: 0.3212350171948513
+  bound: 0.32011675503902
   unit: m
   source_id: PH-29
   source_clause: PH-29
 - id: REQ-RMAX
   quantity: reach_radius_max
   comparator: '>='
-  bound: 0.3597020058345742
+  bound: 0.3585793678114324
   unit: m
   source_id: PH-29
   source_clause: PH-29
 - id: REQ-AZMIN
   quantity: workspace_azimuth_min
   comparator: <=
-  bound: -1.0092935437793527
+  bound: -0.7353469097772122
   unit: rad
   source_id: PH-29
   source_clause: PH-29
 - id: REQ-AZMAX
   quantity: workspace_azimuth_max
   comparator: '>='
-  bound: 1.0884855883486022
+  bound: 1.0273371142251455
   unit: rad
   source_id: PH-29
   source_clause: PH-29
 - id: REQ-HMAX
   quantity: workspace_height_max
   comparator: '>='
-  bound: 0.06379764765648278
+  bound: 0.06347715197416211
   unit: m
   source_id: PH-29
   source_clause: PH-29
 - id: REQ-OPEN
   quantity: gripper_opening_min
   comparator: '>='
-  bound: 0.07950291454607886
+  bound: 0.08583799292038258
   unit: m
   source_id: PH-30
   source_clause: PH-30
 - id: REQ-D01
   quantity: joint_peak_torque:base_yaw
   comparator: ==
-  bound: 0.9404709024976637
+  bound: 0.7276688941140989
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -174,7 +174,7 @@ requirements:
 - id: REQ-D02
   quantity: joint_peak_torque:shoulder_pitch
   comparator: ==
-  bound: 1.830512872758968
+  bound: 1.8017976734512233
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -182,7 +182,7 @@ requirements:
 - id: REQ-D03
   quantity: joint_peak_torque:elbow_pitch
   comparator: ==
-  bound: 1.3196467833089627
+  bound: 1.3033172868848455
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -190,7 +190,7 @@ requirements:
 - id: REQ-D04
   quantity: joint_peak_torque:wrist_pitch
   comparator: ==
-  bound: 0.5737067472198192
+  bound: 0.5627891339496296
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -198,7 +198,7 @@ requirements:
 - id: REQ-D05
   quantity: joint_rms_torque:base_yaw
   comparator: ==
-  bound: 0.5543794468215769
+  bound: 0.4088643231954859
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -206,7 +206,7 @@ requirements:
 - id: REQ-D06
   quantity: joint_rms_torque:shoulder_pitch
   comparator: ==
-  bound: 1.7223448284892613
+  bound: 1.7048665186214542
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -214,7 +214,7 @@ requirements:
 - id: REQ-D07
   quantity: joint_rms_torque:elbow_pitch
   comparator: ==
-  bound: 1.2867174132307577
+  bound: 1.274008612716874
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -222,7 +222,7 @@ requirements:
 - id: REQ-D08
   quantity: joint_rms_torque:wrist_pitch
   comparator: ==
-  bound: 0.5293902899499213
+  bound: 0.522575163266594
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -230,7 +230,7 @@ requirements:
 - id: REQ-D09
   quantity: joint_peak_speed:base_yaw
   comparator: ==
-  bound: 3.5759846009793153
+  bound: 2.905741841879457
   unit: rad/s
   source_id: derived
   source_clause: B-16
@@ -238,7 +238,7 @@ requirements:
 - id: REQ-D10
   quantity: joint_peak_speed:shoulder_pitch
   comparator: ==
-  bound: 0.8656648835381263
+  bound: 0.8310645518319209
   unit: rad/s
   source_id: derived
   source_clause: B-16
@@ -246,7 +246,7 @@ requirements:
 - id: REQ-D11
   quantity: joint_peak_speed:elbow_pitch
   comparator: ==
-  bound: 1.3820825351937118
+  bound: 1.3074321528633202
   unit: rad/s
   source_id: derived
   source_clause: B-16
@@ -254,7 +254,7 @@ requirements:
 - id: REQ-D12
   quantity: joint_peak_speed:wrist_pitch
   comparator: ==
-  bound: 0.7661666853606387
+  bound: 0.7270217025373291
   unit: rad/s
   source_id: derived
   source_clause: B-16
@@ -262,7 +262,7 @@ requirements:
 - id: REQ-D13
   quantity: grip_torque
   comparator: ==
-  bound: 0.5147959500718805
+  bound: 0.5061276149522675
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -270,7 +270,7 @@ requirements:
 - id: REQ-D14
   quantity: supply_peak_current
   comparator: ==
-  bound: 6.006248589865584
+  bound: 6.434224176067219
   unit: A
   source_id: derived
   source_clause: B-16

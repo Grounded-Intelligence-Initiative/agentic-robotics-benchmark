@@ -19,12 +19,12 @@ stood still while the three photos of a pose were taken. The phone refocuses for
 design), lower and upper, with the other joints at whatever pose they were in; photos.json names the joint and the stop.
 The jaw's open stop is in PH-23 and PH-25, closed in PH-24; PH-23..PH-25 show the arm in one and the same pose (only the
 jaw moved for PH-24), PH-23 from the front and PH-25 from the side. PH-26..PH-28: the servo pockets (shoulder and elbow;
-wrist roll; jaw). Servo fit as I assembled it: the base, shoulder, elbow and wrist-pitch servos' cases sit directly against their pocket walls; the wrist-roll pocket is cut to the same size as the wrist-pitch pocket, and three blocks printed in one piece with the wrist part fill it around the wrist-roll servo's case; the jaw servo's case sits directly against the pocket walls of the gripper part.
+wrist roll; jaw). Servo fit as I assembled it: the base, shoulder, elbow and wrist-pitch servos' cases sit directly against their pocket walls; the wrist-roll servo sits between three blocks printed in one piece with the wrist part, which fill the pocket around its case; the jaw servo's case sits directly against the pocket walls of the gripper part.
 
 [BL-06] Things of known size. The arm stands directly on the oak bench top (no mat); the bench top is the mounting plane.
-I laid a 300 mm steel rule (1 / 5 / 10 mm ticks) next to the arm for PH-01, PH-03 and PH-29 only, an ID-1 card
-(85.60 x 53.98 mm) for PH-02, PH-23 and PH-25 only, and stood a beverage can (66 mm diameter, 122 mm tall) on the bench
-for PH-05, PH-09 and PH-30 only; the kitchen scale with a 150 mm steel rule in front of it is only in PH-31. The servo cases
+I laid a 300 mm steel rule (1 / 5 / 10 mm ticks) next to the arm for PH-03 and PH-29 only, an ID-1 card
+(85.60 x 53.98 mm) for PH-23 only, and stood a beverage can (66 mm diameter, 122 mm tall) on the bench
+for PH-05 and PH-30 only; the kitchen scale with a 150 mm steel rule in front of it is only in PH-31. The servo cases
 are the vendor's (outline drawings on the datasheet pages).
 
 [BL-07] Orientation. The white arrow sticker on the bench in front of the base marks yaw 0 (the arm's forward direction).
@@ -37,3 +37,5 @@ parts were never inspected here.
 display resolution, tared) with the 150 mm rule in front of it.
 
 [BL-10] Repair (2026-05-08). The wrist part cracked at a screw boss during the endurance runs; before the photo session I reprinted it in PETG from another spool (4 perimeters, 45 % gyroid infill, otherwise as BL-01): it is the darker, glossier part in the photos. The new part weighed 1.39 x the original one on the lab scale. BL-02 is the weight of the original ten parts.
+
+[BL-11] Forearm revision. The CAD drawing of the arm (rev A, 2025-11-03) dimensions the forearm at 148.0 mm between the elbow and wrist-pitch axes. On 2026-02-14 I printed and fitted a longer forearm (rev B, for the reach an earlier customer asked for); the drawing was never updated. The unit in the photos has the rev B forearm, and the weight in BL-02 is with it.

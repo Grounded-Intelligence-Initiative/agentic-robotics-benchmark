@@ -2,18 +2,18 @@
  "alt_bus_cost": null,
  "binding": [
   {
+   "chosen": "KM-S30-12",
+   "joint": "base_yaw",
+   "next": "KM-S25-12",
+   "next_util": 1.0455453328207125,
+   "util": 0.9218469305386534
+  },
+  {
    "chosen": "KM-S45-12",
    "joint": "shoulder_pitch",
    "next": "KM-S40-12",
-   "next_util": 1.0916007079592795,
-   "util": 0.9348276792155583
-  },
-  {
-   "chosen": "KM-S35-12",
-   "joint": "elbow_pitch",
-   "next": "KM-S30-12",
-   "next_util": 1.104194522292871,
-   "util": 0.9392760282671464
+   "next_util": 1.0242748466602258,
+   "util": 0.9678533272567426
   }
  ],
  "bom": {
@@ -23,7 +23,7 @@
   "bus_voltage_v": 12.0,
   "psu": "PSU-12V-10A",
   "servos": {
-   "base_yaw": "KM-B40-12",
+   "base_yaw": "KM-S30-12",
    "elbow_pitch": "KM-S35-12",
    "jaw": "KM-S25-12",
    "shoulder_pitch": "KM-S45-12",
@@ -32,7 +32,7 @@
   }
  },
  "bus_voltage_v": 12.0,
- "cost": 159.6,
+ "cost": 131.0,
  "format": "req-i2-optimum/1",
- "peak_current_a": 6.006248589865584
+ "peak_current_a": 6.434224176067219
 }

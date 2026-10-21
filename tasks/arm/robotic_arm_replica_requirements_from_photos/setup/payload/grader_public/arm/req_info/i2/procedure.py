@@ -542,7 +542,7 @@ class Acceptance:
                 hd += mk * self.hdb[j]
         mvp = mv + payload_kg * self.mvb["payload"]
         hdp = hd + payload_kg * self.hdb["payload"]
-        proof = hd + self.layer.get("proof", 1.25) * payload_kg * self.hdb["payload"]
+        proof = hd + self.layer["proof"] * payload_kg * self.hdb["payload"]
         return mvp, hdp, proof
 
     def grip_torque(self):
