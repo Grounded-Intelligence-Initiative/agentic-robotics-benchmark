@@ -24,8 +24,8 @@ An asset list looks like this:
 ```text
 # endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/agentic-robotics-last-exam
-# revision: 3e68b0acfe4c7bc4b260230276c7a76ec68000b3
-# prefix: tasks/arm/arm_replica_requirements_from_photos/payload
+# revision: d2a07b8c123c6cf0d500d1c8737802c50e3240c9
+# prefix: tasks/arm/robotic_arm_replica_requirements_from_photos/payload
 cf8cb99a7adf0631aff2d5f99cb966cf91c0c8d78c363c09f54eccd09104ec3e  photos/PH-01.jpg
 ...
 ```
