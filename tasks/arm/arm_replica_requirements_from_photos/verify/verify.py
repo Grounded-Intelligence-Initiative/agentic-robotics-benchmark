@@ -141,11 +141,11 @@ def write_verdict(rewards, weights, stats, diagnostics):
     verdict = ratio_rewards(overall, anchor, higher_is_better=meta.get("direction", "higher") == "higher",
                             metric_name=meta.get("metric", "requirements_score"), extra=extra,
                             full_at=meta.get("full_at", 1.0))
-    text = "; ".join("%s %.4f: %s" % (c, float(rewards[c]), str(diagnostics.get(c, ""))[:600]) for c in CRITERIA)
+    text = "; ".join("%s %.4f: %s" % (c, float(rewards[c]), str(diagnostics.get(c, ""))[:380]) for c in CRITERIA)
     if os.environ.get("ALE_VERIFICATION_PATH"):
         from ale_verify import CheckResult, Verification
         rec = Verification()
-        rec.check("reward", CheckResult(float(verdict["rewards"]["reward"]), text[:4000]))
+        rec.check("reward", CheckResult(float(verdict["rewards"]["reward"]), text[:2000]))  # ale_verify's diagnostic cap
         for k, v in sorted(verdict["metrics"].items()):
             try:
                 rec.stat(k, float(v))
