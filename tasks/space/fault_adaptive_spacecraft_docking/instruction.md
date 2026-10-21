@@ -49,6 +49,12 @@ Episode randomization is fixed to these ranges:
 - initial target angular speed: 0.060 to 0.125 rad/s in either direction;
 - at the second bus event the target reverses direction with a fresh speed of
   0.020 to 0.045 rad/s;
+- the docking boom simultaneously oscillates radially about 1.14 m with a hidden
+  amplitude from 0.10 to 0.16 m, angular frequency from 0.18 to 0.28 rad/s, and
+  initial phase in [-pi, pi]; its motion is continuous across both bus events;
+- its redundant radius encoder reports displacement about 1.14 m with an unknown
+  polarity, so the reported value is either `r` or `2*1.14-r`; the re-key independently
+  selects either polarity while its camera blackout begins, with no mux flag;
 - fixed pose latency: 1 to 3 simulator steps, reported in each observation;
 - nominal per-nozzle effectiveness multiplier: 0.70 to 1.28;
 - nozzle installation angle error: at most 0.18 rad;
@@ -106,11 +112,15 @@ At each step the grader supplies this flat 16-element observation:
      delayed_port_x, delayed_port_y,
      cos(delayed_port_yaw), sin(delayed_port_yaw),
      current_imu_ax, current_imu_ay, current_imu_yaw_accel,
-     fuel, pose_age_steps, pose_valid, episode_fraction, port_radius]
+     fuel, pose_age_steps, pose_valid, episode_fraction, encoded_port_radius]
 
 When `pose_valid` is 0, the eight pose/port fields hold the last valid delayed sample
-and `pose_age_steps` continues increasing. IMU, fuel, age, validity, and time remain
-current. The IMU reports the wrench realized during the preceding simulator step, including
+and `pose_age_steps` continues increasing. IMU, fuel, age, validity, time, and the docking
+boom's independently sensed encoded radius remain current. The encoder does not directly
+report radial velocity or its active polarity. Its polarity can be calibrated against a
+time-aligned valid camera port radius; after the silent re-key, both polarity hypotheses
+must be handled until a fresh camera pose returns. The IMU
+reports the wrench realized during the preceding simulator step, including
 constant bias and sensor noise, in its own hidden mounting coordinates. Its linear
 reading equals an unknown 2D rotation applied after an optional axis reflection; the
 yaw-acceleration sign is independently unknown. Camera pose/yaw stays in the documented
@@ -124,12 +134,40 @@ errors, the bias, both rotor orderings with their offsets and directions, both d
 pairs and their scales, both exponent sets, all twelve valve-memory coefficients, the first
 event's step, the re-key's arming step, proximity threshold and deadline, the target's
 slew speed after the re-key, both IMU
-mountings, and the blackout schedule. The bus supplies no explicit event flag.
+mountings, both boom-encoder polarities, and the blackout schedule. The bus supplies no
+explicit event flag.
 
-The circular target body has radius 0.82 m and the docking port is at radius 1.14 m.
+Terminal approach also invalidates a static far-field inverse model. Each physical
+nozzle's exhaust points opposite its translational force vector. When the spacecraft's
+surface gap from the circular target falls below 0.65 m,
+target-body plume impingement redirects exhaust aimed at the target. Let `g` be surface
+gap, `g_d = current_port_radius - body_radius`, `a = max(0, dot(exhaust_unit,
+direction_to_target))`, onset `g_o = 0.65`, and strength `s = 0.82`. The
+lost fraction is `loss = s * clamp((g_o - g)/(g_o - g_d), 0, 1) *
+(0.35 + 0.65*a**4)`. The 0.35 baseline represents the shared docking-port shroud wake;
+direct impingement adds the angle-dependent part. If the
+far-field body column is `(fx, fy, torque)`, its near-field value is
+`((1-loss)*fx - swirl_i*loss*fy, (1-loss)*fy + swirl_i*loss*fx,
+(1-loss)*torque)`. Each physical nozzle `i` feeds an independent passive vortex cell.
+For physical nozzle indices 0 through 5 the swirl magnitudes are exactly
+`[0.92, 0.98, 1.04, 1.10, 1.16, 1.20]` and the nominal signs alternate
+`[+, -, +, -, +, -]`; one hidden episode-wide parity bit either preserves or reverses
+all six initial signs. The cell follows the physical nozzle through rotor remapping, not
+the electrical action slot. Each cell is bistable and action-dependent: all six load
+accumulators start at zero, and their thresholds are exactly
+`threshold_i = 0.24 + 0.028*i`. After a command, cell `i` adds
+`0.12 * field * (0.35 + 0.65*a_i**4) * realized_duty_i`. On reaching its threshold,
+the accumulator retains the excess and only that cell's swirl sign flips. The next
+observation's IMU makes the aggregate transition observable, but simultaneous nozzle
+firings do not identify which cell changed without maintaining plant hypotheses. The
+effect changes continuously with range and attitude; it does not change fuel burn, valve
+state, relay logic, or rotor stride. Only the common initial parity is hidden; the onset,
+strength, six magnitudes, thresholds, and zero initial accumulator states are public.
+
+The circular target body has radius 0.82 m and the docking port's mean radius is 1.14 m.
 Entering the body or leaving the radius-6.2 m operating region terminates the episode with zero
-quality. Successful docking requires position error < 0.105 m, translational velocity
-error < 0.075 m/s, yaw error < 0.025 rad, and yaw-rate error < 0.020 rad/s for twenty
+quality. Successful docking requires position error < 0.085 m, translational velocity
+error < 0.060 m/s, yaw error < 0.020 rad, and yaw-rate error < 0.015 rad/s for thirty
 consecutive steps after the re-key has occurred. In addition, the relay must have
 reversed the rotor at least once after each bus event (it starts armed, so the first
 trigger counts); merely capping duty below the trigger and bypassing the documented

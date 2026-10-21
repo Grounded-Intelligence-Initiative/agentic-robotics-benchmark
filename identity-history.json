@@ -1,5 +1,11 @@
 [
   {
+    "content_digest": "sha256:66f3d46659f60217b6c52c31eff6f25162b69c433addcc3f16cd35bb6443e617",
+    "since": "2026-10-21T04:00:00Z",
+    "slug": "fault_adaptive_spacecraft_docking",
+    "spec_hash": "sha256:45d3bb0c1dec67fea35bc421835b5ef5d59994962ebe346065f0b15b2fea7805"
+  },
+  {
     "content_digest": "sha256:1bf281ab7fea90ff18957ab9feb792744c0b7669ca76f84b19b1c071544f76f6",
     "since": "2026-10-15T22:35:40Z",
     "slug": "fault_adaptive_spacecraft_docking",

@@ -1,9 +1,9 @@
 {
   "metric": "mean_docking_quality",
   "direction": "higher",
-  "value": 0.34098286218445034,
-  "full_at": 0.65,
-  "source": "Mean of four fresh 48-episode oracle calibration batches with the final per-slot valve-memory dynamics and exact 6% repeated-t probe path on 2026-10-15",
-  "reference_commit": "stateful-valve-memory hardening (ALE 90a7c1c)",
-  "note": "The four batches measured 0.2355-0.4763 (11-23 docks of 48), mean 0.3410 and standard deviation 0.0890. Probe pass fractions were 0.648-0.672. The worst measured ratio was 0.691; full_at 0.65 leaves margin for fresh-seed variance while preserving continuous score below the oracle band."
+  "value": 0.45801659366359293,
+  "full_at": 0.75,
+  "source": "mean of 4 fresh ALE Engine oracle validations on 2026-10-21",
+  "reference_commit": "hardening/fault-adaptive-spacecraft-docking-stateful-valves",
+  "note": "Oracle raw values: 0.4432074102, 0.3634887656, 0.5031788493, 0.5221913496 (population sd 0.0618725521)."
 }
