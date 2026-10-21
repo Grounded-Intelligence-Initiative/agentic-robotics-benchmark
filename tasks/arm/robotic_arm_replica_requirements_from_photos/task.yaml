@@ -1,4 +1,4 @@
-# arm_replica_requirements_from_photos: the requirements stage of the robotic-arm full-stack workflow (an atomic task). The
+# robotic_arm_replica_requirements_from_photos: the requirements stage of the robotic-arm full-stack workflow (an atomic task). The
 # agent specifies ten upgraded replicas of a six-servo desktop arm that is no longer on the bench, known only from one
 # fixed photo set (31 photos rendered with Blender Cycles in a lab room, sparse physical scale references), a build log,
 # a customer brief with a public acceptance procedure, vendor datasheet pages and two servo-lot reports (images only)
@@ -12,7 +12,7 @@
 
 spec_type: core/v1
 
-name: arm_replica_requirements_from_photos
+name: robotic_arm_replica_requirements_from_photos
 
 image: {kind: container}
 
