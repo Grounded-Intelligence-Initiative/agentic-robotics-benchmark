@@ -1,4 +1,4 @@
-# arm_cad_design_from_photos: the hardware-design (CAD) stage of the robotic-arm full-stack workflow (an atomic
+# robotic_arm_cad_design_from_photos: the hardware-design (CAD) stage of the robotic-arm full-stack workflow (an atomic
 # task). A mechanical designer re-creates the lost CAD of a modified six-servo desktop arm in FreeCAD 1.1, known only
 # from one fixed photo set (80 photos rendered with Blender Cycles in a lab room: the ten printed parts on a cutting
 # mat, both sides, close-ups, the re-assembled unit in three poses, the gripper) and the bought servo's datasheet,
@@ -18,7 +18,7 @@
 
 spec_type: core/v1
 
-name: arm_cad_design_from_photos
+name: robotic_arm_cad_design_from_photos
 
 image: {kind: container}
 

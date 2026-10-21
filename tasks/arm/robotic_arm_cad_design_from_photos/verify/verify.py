@@ -1,4 +1,4 @@
-"""Grader of arm_cad_design_from_photos (information tier, hardware-design stage, FreeCAD MCP version). Root,
+"""Grader of robotic_arm_cad_design_from_photos (information tier, hardware-design stage, FreeCAD MCP version). Root,
 verify stage, agent gone.
 
   0. FIRST THING, stdlib only (`_early_lockdown`, as in the predecessor task): record when the engine began uploading this
