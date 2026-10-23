@@ -63,6 +63,20 @@ def _perturbed(obs, rng):
     return p
 
 
+def _request_log(state):
+    """The request events of one step, for the per-episode diagnostic line on the grader's own
+    stderr (the solver never sees it): when each request opened, what it asked for, how it closed."""
+    out = []
+    for e in state.get("events") or []:
+        kind = e.get("event", "")
+        if kind.startswith("request_"):
+            item = {"t": e.get("t"), "id": e.get("request"), "event": kind[len("request_"):]}
+            if kind == "request_opened":
+                item.update(text=(state.get("request") or {}).get("text"), absent=e.get("absent"))
+            out.append(item)
+    return out
+
+
 def run_episodes(config, rng, solver):
     episodes = int(config.get("episodes", 3))
     horizon = int(config.get("horizon", 20000))
@@ -89,6 +103,7 @@ def run_episodes(config, rng, solver):
                 fail("simulator reset failed: {}".format(exc))
             scorer = EpisodeScorer(horizon)
             started = time.time()
+            requests = []
             try:
                 solver.reset()
                 for t in range(horizon):
@@ -102,6 +117,7 @@ def run_episodes(config, rng, solver):
                     except SimError as exc:
                         fail("simulator step failed: {}".format(exc))
                     scorer.add_step(state)
+                    requests += _request_log(state)
                     if time.time() - started > wall_budget:
                         cut += 1
                         print("[grader] episode {} cut at t={} (wall budget {:.0f}s)".format(
@@ -118,6 +134,9 @@ def run_episodes(config, rng, solver):
             summaries.append(scorer.summary())
             print("[grader] episode {}: score={:.4f} {}".format(episode, scorer.score(),
                   json.dumps(scorer.summary(), sort_keys=True)), file=sys.stderr, flush=True)
+            # Printed after the episode ends, so a failed hidden episode can be replayed offline.
+            print("[grader] episode {}: seed={} requests={}".format(episode, seed, json.dumps(requests)),
+                  file=sys.stderr, flush=True)
     finally:
         sim.close()
     return scores, summaries, aborted, cut, lock
