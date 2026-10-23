@@ -53,10 +53,10 @@ same dynamics on visible seeds.
 
 ## What you must deliver
 
-Your session has a hard limit of **4 hours** of wall-clock time from the moment it starts (run
+Your session has a hard limit of **1 hour** of wall-clock time from the moment it starts (run
 `date` now and keep track). A session that is still running at the limit is cut off and **not
 graded at all**, so keep a working controller in place as you go and end the session yourself,
-with at least 15 minutes to spare. Whatever is in `/home/user/submission` when you end it is
+with at least 10 minutes to spare. Whatever is in `/home/user/submission` when you end it is
 what the grader runs.
 
 Leave a controller at `/home/user/submission/run.sh`. The grader launches it as

@@ -19,7 +19,7 @@ network: {mode: block}
 
 # setup: staging the agent-visible material. agent: the agent's whole budget, including
 # training. verify: the scoring run — closed_loop needs room for every episode plus probes.
-timeouts: {setup: 300, agent: 14400, verify: 10800}
+timeouts: {setup: 300, agent: 3600, verify: 10800}
 
 # Where the agent leaves its work.
 artifacts: [/home/user/submission]
