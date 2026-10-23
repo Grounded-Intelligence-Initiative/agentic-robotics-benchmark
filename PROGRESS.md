@@ -272,6 +272,9 @@ and `verify/` included.
   reuse are omitted explicitly. The request diagram groups the two successful outcomes
   and the incorrect-claim / expiry outcomes. No simulator or scoring behavior changed.
 - Checked Mermaid parsing and rendered both diagrams locally; task lint passes.
+- Follow-up: publish tightly cropped, opaque white PNGs with editable Mermaid sources
+  to keep the backgrounds stable in dark mode. Keep the object layout; compact the
+  request diagram vertically with Idle above the new-request transition and no Closed node.
 - Validation remains pending: stabilize oracle grasping, measure its anchor, run
   `ale validate`, and measure frontier-model difficulty before marking the PR ready.
 

@@ -1,0 +1,20 @@
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "fontSize": "16px", "lineColor": "#64748b", "primaryTextColor": "#0f172a", "edgeLabelBackground": "#ffffff", "clusterBkg": "#f8fafc", "clusterBorder": "#cbd5e1"}, "flowchart": {"curve": "basis", "nodeSpacing": 24, "rankSpacing": 26, "htmlLabels": true}}}%%
+flowchart TB
+    I(["<b>Idle</b>"])
+    O("<b>Open request</b>")
+    S("<b>Success</b><br/>Delivered / absent")
+    F("<b>Failure</b><br/>Wrong claim / timeout")
+    I -->|new request| O
+    O -->|verified| S
+    O -->|rejected / expired| F
+    S -.-> I
+    F -.-> I
+
+    classDef neutral fill:#eff6ff,stroke:#3b82f6,color:#1e3a8a,stroke-width:1.5px;
+    classDef active fill:#eef2ff,stroke:#6366f1,color:#312e81,stroke-width:2px;
+    classDef success fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px;
+    classDef failure fill:#fff1f2,stroke:#e11d48,color:#881337,stroke-width:2px;
+    class I neutral;
+    class O active;
+    class S success;
+    class F failure;

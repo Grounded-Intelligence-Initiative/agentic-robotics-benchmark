@@ -30,32 +30,11 @@ both byte-identical copies of the files under `verify/` (this folder).
 
 Key object states; node values are $v_o(t)$.
 
-```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "fontSize": "16px", "lineColor": "#64748b", "primaryTextColor": "#0f172a", "edgeLabelBackground": "#ffffff", "clusterBkg": "#f8fafc", "clusterBorder": "#cbd5e1"}, "flowchart": {"curve": "basis", "nodeSpacing": 32, "rankSpacing": 32, "htmlLabels": true}}}%%
-flowchart LR
-    subgraph ACTIVE["ACTIVE"]
-        T("<b>On table</b><br/>v = 0")
-        H("<b>Held</b><br/>v = 0")
-        C("<b>In container</b><br/>v = +1 right · −1 wrong")
-        T -->|contact| H
-        H -->|place| T
-        H -->|place| C
-        C -->|contact| H
-    end
-    C -->|remove| R("<b>Removed</b><br/>v frozen")
-    ACTIVE -->|falls off| L("<b>Lost</b><br/>v = −1")
+<p align="center">
+  <img src="figures/object-automaton.png" width="700" alt="Object automaton" />
+</p>
 
-    classDef neutral fill:#eff6ff,stroke:#3b82f6,color:#1e3a8a,stroke-width:1.5px;
-    classDef moving fill:#fffbeb,stroke:#d97706,color:#78350f,stroke-width:1.5px;
-    classDef placed fill:#eef2ff,stroke:#6366f1,color:#312e81,stroke-width:2px;
-    classDef retired fill:#f1f5f9,stroke:#64748b,color:#334155,stroke-width:1.5px;
-    classDef failure fill:#fff1f2,stroke:#e11d48,color:#881337,stroke-width:2px;
-    class T neutral;
-    class H moving;
-    class C placed;
-    class R retired;
-    class L failure;
-```
+<!-- Editable source: figures/object-automaton.mmd -->
 
 “Place” means released and resting. A right container is the class container, or red for the requested object. Removal by container service or confirmed delivery freezes the value; loss keeps −1. Transit ($v=0$), arrivals, disturbances and instance reuse are omitted for clarity.
 
@@ -63,32 +42,11 @@ flowchart LR
 
 Each request closes as a success or failure.
 
-```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "fontSize": "16px", "lineColor": "#64748b", "primaryTextColor": "#0f172a", "edgeLabelBackground": "#ffffff", "clusterBkg": "#f8fafc", "clusterBorder": "#cbd5e1"}, "flowchart": {"curve": "basis", "nodeSpacing": 30, "rankSpacing": 42, "htmlLabels": true}}}%%
-flowchart LR
-    I(["<b>Idle</b>"])
-    O("<b>Open request</b>")
-    S("<b>Success</b><br/>Delivered or absent")
-    F("<b>Failure</b><br/>Wrong claim or timeout")
-    C(["<b>Closed</b>"])
-    I -->|new request| O
-    O -->|verified| S
-    O -->|rejected / expired| F
-    S --> C
-    F --> C
-    C -.->|next request| O
+<p align="center">
+  <img src="figures/request-automaton.png" width="400" alt="Request automaton" />
+</p>
 
-    classDef neutral fill:#eff6ff,stroke:#3b82f6,color:#1e3a8a,stroke-width:1.5px;
-    classDef active fill:#eef2ff,stroke:#6366f1,color:#312e81,stroke-width:2px;
-    classDef success fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px;
-    classDef failure fill:#fff1f2,stroke:#e11d48,color:#881337,stroke-width:2px;
-    classDef retired fill:#f1f5f9,stroke:#64748b,color:#334155,stroke-width:1.5px;
-    class I neutral;
-    class O active;
-    class S success;
-    class F failure;
-    class C retired;
-```
+<!-- Editable source: figures/request-automaton.mmd -->
 
 Success means a verified delivery or a correct absence declaration. Both outcomes count toward $N_{\mathrm{success}}$; every closed request counts toward $N_{\mathrm{closed}}$, so $R=N_{\mathrm{success}}/N_{\mathrm{closed}}$. The next request starts a new cycle.
 
