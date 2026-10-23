@@ -703,9 +703,12 @@ class MessyDeskEnv:
         obj = next((o["id"] for o in self.objects if o["present"] and o["model"] == model), None)
         self.request = {"id": len(self.requests_done) + 1, "text": "the " + DISPLAY_NAME[model], "model": model,
                         "object": obj, "opened_t": self.t, "deadline_t": self.t + REQUEST_DEADLINE_STEPS, "status": "open"}
-        self.events.append({"t": self.t, "event": "request_opened", "request": self.request["id"], "absent": obj is None, "forced": True})
+        ev = {"t": self.t, "event": "request_opened", "request": self.request["id"], "absent": obj is None, "forced": True}
+        self.events.append(ev)
         self._update_states()
-        return self.observe(), self.privileged()
+        obs, state = self.observe(), self.privileged()
+        self.events.append(ev)        # the next `step` carries it too: that is where scorers read events
+        return obs, state
 
     def lab(self, model, instance=0, pose=None, clear=True):
         """Development aid, available to everyone who runs this file: optionally clear the
@@ -718,7 +721,7 @@ class MessyDeskEnv:
             for o in self.objects:
                 if o["present"]:
                     self._park(o)
-        self.request = None
+            self.request = None           # a request stays open when only one object is placed
         self.next_arrival = self.next_request = self.next_disturb = 10 ** 12
         if model is not None:
             cands = [o for o in self.objects if o["model"] == model]

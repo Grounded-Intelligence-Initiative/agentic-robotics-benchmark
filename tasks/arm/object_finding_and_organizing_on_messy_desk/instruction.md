@@ -172,6 +172,9 @@ reward you are judged on is that mean relative to a hidden reference value.
 - `/home/user/practice_grader/grade.py` — drives your `run.sh` over the real wire on visible
   seeds and prints the raw score, nothing else; `--live N` prints the running score every N
   steps and `--score-file PATH` writes it as JSON for your own tooling;
+- `/home/user/example_controller/` — a complete, policy-free controller (`run.sh` + one Python
+  file: READY, the reply loop, camera decoding, where the action goes). Copy it to
+  `/home/user/submission/` and replace the policy; as shipped it holds still and scores 0;
 - `/home/user/task_card.md` — camera calibration, container geometry, class catalogue.
 
 The simulator runs headless on the GPU in this sandbox. Start it once and keep it alive;
