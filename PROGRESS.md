@@ -294,6 +294,25 @@ and `verify/` included.
 - Focused request-credit tests cover deduplication, completion, failure, absence, current
   holds and copy parity. Full Isaac rollout validation and anchor measurement remain pending.
 
+## 9. 2026-10-23 — messy desk: dev-wire live score, exact depth, oracle grasping (Claude session)
+
+- Practice tools: every `step`/`reset` reply of the simulator carries the running score (the same
+  `EpisodeScorer`), `{"cmd": "score"}` adds per-object value/baseline, `{"cmd": "request", ...}`
+  opens a request on demand; `practice_grader/grade.py --live N --score-file PATH`. Verified end
+  to end with a dummy wire agent (obs keys as documented, untouched = 0, marks: claim_wrong /
+  absent_correct / ignored without a request). Known gap: a request opened by the dev command
+  is not counted by the dev scorer until the next `step` (its event rides the `request` reply).
+- Simulator: `anti_aliasing: 0`. The default DLSS accumulated previous frames into the depth
+  images: ghost depth under moving fingers and a skirt of floating points around every object,
+  which inflated measured widths by ~2 cm and hid flat objects. `BASE_SCALE` master chef can
+  0.62, tuna can 0.72 (both exceeded the 8 cm hand); instance factors 0.92 / 1.00.
+- Oracle: containers are fitted from the static cameras only (the clipped hand-camera rim view
+  biased the red container's fit and leaked its walls as loose clusters); `plan_grasp` = pinch,
+  else rim grasp for hollow wide objects; `pick` re-centres from the hand camera 10 cm above the
+  object; silhouette pixels dropped before back-projection. Grasp validation on single objects
+  is running; refs.json must be rebuilt from `calib_collect2.py` output once grasps are stable.
+- Frontier run decided: Opus 5.5, claude-code harness, subscription auth, 1 episode first.
+
 ## Gotchas
 
 - `export_registry.py` refuses a dirty tree on purpose: `content_digest` covers every

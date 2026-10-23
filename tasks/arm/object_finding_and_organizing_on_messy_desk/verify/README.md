@@ -11,7 +11,7 @@ both byte-identical copies of the files under `verify/` (this folder).
 |---|---|---|
 | robot | Franka Panda arm and two-finger gripper | no |
 | table | the desk top, the plane z = 0 | no (support surface) |
-| container | four KLT containers: gray (class A), light-blue (class B), blue (class C), red (deliveries) | no (they define "in container") |
+| container | four KLT containers: gray (class A: boxes and blocks), light-blue (class B: cans and bottles), blue (class C: tools and kitchenware), red (deliveries); the class catalogue is in the task card | no (they define "in container") |
 | target object | the object named by the open request | yes |
 | non-target object | every other YCB object in the scene | yes |
 
