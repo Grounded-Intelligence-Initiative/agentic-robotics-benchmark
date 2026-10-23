@@ -394,3 +394,8 @@ commit 2278f3f until that run is scored; the changes below live in `setup/payloa
   `harness/ale_onboard.py` reads that as `needs_anchor` with the measured value.
 - A task that hands the agent a copy of its simulator must seed episodes with 64 bits and
   draw hidden values through a keyed hash; an LCG or a 31-bit seed gives the episode away.
+
+### 2026-10-23 — provisional anchor
+- Oracle a5c3982 measured through the task's verify stage (task image, network off): episode 0 S = 0.641 (O 0.72, R 0.56); episodes 1–2 running. Anchor recorded as 0.641058, full_at 0.8 (template default), marked provisional.
+- Opus 5.5 run 1 (old env build, timed out): submission graded offline on practice seed 11, 20000 steps: S = 0.353 (O 0.61, R 0.10). Run 2 on the current build in progress.
+- Open: full_at from the 3-episode spread; official `ale validate` once the GPU is free.
