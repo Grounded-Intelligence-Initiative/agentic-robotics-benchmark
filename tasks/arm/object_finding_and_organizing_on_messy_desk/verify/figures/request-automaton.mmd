@@ -1,9 +1,9 @@
 %%{init: {"theme": "base", "themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "fontSize": "16px", "lineColor": "#64748b", "primaryTextColor": "#0f172a", "edgeLabelBackground": "transparent", "clusterBkg": "#f8fafc", "clusterBorder": "#cbd5e1"}, "flowchart": {"curve": "basis", "nodeSpacing": 24, "rankSpacing": 26, "htmlLabels": true}, "themeCSS": ".edgeLabel, .edgeLabel p, .edgeLabel span { background: transparent !important; background-color: transparent !important; } .edgeLabels span { font-size: 13px !important; color: #475569 !important; } .edgeLabels > g:nth-child(1) > g { translate: -14px -20px; } .edgeLabels > g:nth-child(2) > g { translate: -32px 0px; } .edgeLabels > g:nth-child(3) > g { translate: 12px -20px; } "}}%%
 flowchart TB
     I(["<b>Idle</b>"])
-    O("<b>Open request</b>")
-    S("<b>Success</b><br/>Delivered / absent")
-    F("<b>Failure</b><br/>Wrong claim / timeout")
+    O("<b>Open request</b><br/>First target hold: 50%")
+    S("<b>Success</b><br/>Delivered / absent<br/>100% credit")
+    F("<b>Failure</b><br/>Wrong claim / timeout<br/>0% or 50% credit")
     I -->|new request| O
     O -->|verified| S
     O -->|rejected / expired| F

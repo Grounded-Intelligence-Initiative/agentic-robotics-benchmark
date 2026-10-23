@@ -600,6 +600,11 @@ class MessyDeskEnv:
         if self.request and self.request["status"] == "open":
             r = self.request
             tgt = self.objects[r["object"]] if r["object"] is not None else None
+            # Award the retrieval milestone only for a current hold, never for a
+            # contact remembered from before this request. Each request gets it once.
+            if tgt is not None and tgt["present"] and tgt["state"] == "held" and "held_t" not in r:
+                r["held_t"] = self.t
+                ev.append({"t": self.t, "event": "request_first_hold", "request": r["id"]})
             if mark == 1:
                 delivered = tgt is not None and tgt["present"] and tgt["state"] == "in_container" and tgt["in_container"] == "red"
                 r["status"], r["closed_t"] = ("delivered" if delivered else "claim_wrong"), self.t
@@ -615,9 +620,6 @@ class MessyDeskEnv:
                 ev.append({"t": self.t, "event": "request_expired", "request": r["id"]})
             if r["status"] != "open":
                 self.requests_done.append(r)
-            if tgt is not None and r["status"] == "open" and tgt["id"] in self.touched and not r.get("touched_t"):
-                r["touched_t"] = self.t
-                ev.append({"t": self.t, "event": "request_first_contact", "request": r["id"]})
         if (self.request is None or self.request["status"] != "open") and self.t >= self.next_request:
             self._open_request()
             self.next_request = self.t + REQUEST_DEADLINE_STEPS + int(rng.exponential(REQUEST_MEAN_STEPS))

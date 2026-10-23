@@ -280,6 +280,20 @@ and `verify/` included.
 - Validation remains pending: stabilize oracle grasping, measure its anchor, run
   `ale validate`, and measure frontier-model difficulty before marking the PR ready.
 
+## 8. 2026-10-23 — first-target-hold request credit
+
+- Request progress now awards 0.5 for the first current target hold per request, topped
+  up to 1.0 by verified delivery; a correct absence declaration also earns 1.0. Repeated
+  holds add nothing, and failure/expiry preserves only the first-hold credit already earned.
+- R averages these credits over all opened requests, including an ongoing request, so
+  partial credit is immediate. The separate request success-rate diagnostic remains available.
+- Updated the environment event, hidden/practice scorer copies, instructions, formula and
+  diagrams. Historical contact is insufficient; the target must currently be in held state.
+  The existing loss predicate remains centre z < -0.2 m; diagrams explicitly say falls off
+  table. Releases onto the table or into a container are not loss events.
+- Focused request-credit tests cover deduplication, completion, failure, absence, current
+  holds and copy parity. Full Isaac rollout validation and anchor measurement remain pending.
+
 ## Gotchas
 
 - `export_registry.py` refuses a dirty tree on purpose: `content_digest` covers every

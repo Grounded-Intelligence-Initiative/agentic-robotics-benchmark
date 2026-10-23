@@ -144,9 +144,9 @@ def main():
     for i, s in enumerate(scores):
         extra["episode_{}_score".format(i)] = float(s)
     for key in ("requests_success", "requests_failed", "requests_delivered", "requests_expired", "absent_correct",
-                "absent_wrong", "first_contacts", "objects_lost"):
+                "absent_wrong", "first_holds", "objects_lost"):
         extra["total_" + key] = float(sum(s.get(key, 0) for s in summaries))
-    for key in ("organization", "request_rate"):
+    for key in ("organization", "request_rate", "request_progress"):
         vals = [s[key] for s in summaries if key in s]
         extra["mean_" + key] = float(sum(vals) / len(vals)) if vals else 0.0
     verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5),

@@ -10,9 +10,10 @@ available, sum_t sum_o max(0, 1 - b_o), then clipped to [0, 1]. An untouched sce
 exactly 0. Removed objects keep their last value (container service, delivery) or -1 (lost
 off the table) for the rest of the episode, also when their instance is reused.
 
-R, requests: closed requests that ended right (the object placed in the red container and
-released when the "delivered" mark came; "no such object" when it really was absent) over all
-closed requests. A wrong mark or an expired deadline is a failure; no closed request gives 0.
+R, request progress: mean credit over all opened requests, including an ongoing one.
+The first hold of the requested target earns 0.5 once; a verified delivery or correct
+absence declaration brings that request to 1.0. Repeated holds earn nothing more.
+A wrong mark or expiry keeps any first-hold credit but adds none. No requests gives 0.
 
 Stdlib-only; shared byte-identically by the verify stage and the practice grader.
 """
@@ -30,9 +31,11 @@ class EpisodeScorer(object):
         self.den = 0.0            # sum of the gain available, max(0, 1 - b)
         self.ghosts = []          # (value, baseline) of removed incarnations whose instance was reused
         self.prev = {}            # id -> (present, removed, value, baseline) at the previous step
+        self.request_credits = {}  # request id -> 0, 0.5 (first hold), or 1 (success)
+        self.held_requests = set()
         self.counts = {"requests_opened": 0, "requests_success": 0, "requests_failed": 0,
                        "requests_delivered": 0, "absent_correct": 0, "claims_wrong": 0, "absent_wrong": 0,
-                       "requests_expired": 0, "first_contacts": 0, "arrivals": 0, "containers_cleared": 0,
+                       "requests_expired": 0, "first_holds": 0, "arrivals": 0, "containers_cleared": 0,
                        "disturbances": 0, "objects_lost": 0}
 
     def add_step(self, state):
@@ -50,6 +53,16 @@ class EpisodeScorer(object):
             self.den += max(0.0, 1.0 - b)
         for e in state.get("events", []):
             kind = e.get("event", "")
+            if kind == "request_opened" or kind == "request_first_hold" or kind in SUCCESS_EVENTS or kind in FAILURE_EVENTS:
+                rid = e["request"]
+                self.request_credits.setdefault(rid, 0.0)
+                if kind == "request_first_hold":
+                    self.request_credits[rid] = max(self.request_credits[rid], 0.5)
+                    if rid not in self.held_requests:
+                        self.held_requests.add(rid)
+                        self.counts["first_holds"] += 1
+                elif kind in SUCCESS_EVENTS:
+                    self.request_credits[rid] = 1.0
             if kind in SUCCESS_EVENTS:
                 self.counts["requests_success"] += 1
             elif kind in FAILURE_EVENTS:
@@ -66,8 +79,6 @@ class EpisodeScorer(object):
                 self.counts["requests_expired"] += 1
             elif kind == "request_opened":
                 self.counts["requests_opened"] += 1
-            elif kind == "request_first_contact":
-                self.counts["first_contacts"] += 1
             elif kind == "arrival":
                 self.counts["arrivals"] += 1
             elif kind == "container_cleared":
@@ -87,8 +98,12 @@ class EpisodeScorer(object):
         closed = self.counts["requests_success"] + self.counts["requests_failed"]
         return self.counts["requests_success"] / float(closed) if closed else 0.0
 
+    def request_progress(self):
+        opened = len(self.request_credits)
+        return sum(self.request_credits.values()) / float(opened) if opened else 0.0
+
     def score(self):
-        s = W_ORG * self.organization() + W_REQ * self.request_rate()
+        s = W_ORG * self.organization() + W_REQ * self.request_progress()
         if self.steps < self.horizon:                    # cut short: the steps never run earn nothing
             s *= self.steps / self.horizon
         return s
@@ -96,5 +111,6 @@ class EpisodeScorer(object):
     def summary(self):
         d = dict(self.counts)
         d.update(score=self.score(), organization=self.organization(), request_rate=self.request_rate(),
+                 request_progress=self.request_progress(),
                  org_num=self.num, org_den=self.den, steps=self.steps)
         return d

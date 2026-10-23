@@ -133,13 +133,23 @@ Requests end as a **success** (`done: delivered` while the requested object is p
 container; `done: no such object` when it really is absent) or a **failure** (either mark when
 the truth is the opposite, or the deadline passes unmarked).
 
+Each request earns credit in two stages: the first time its target is in `held` state earns
+0.5, once per request; a verified delivery raises its credit to 1.0. Correctly declaring
+absence also earns 1.0. Repeated holds add nothing. A failed or expired request keeps
+any first-hold credit already earned, but gains no completion credit. Merely having
+touched the object before the request opened does not count.
+
 The episode score is
 
 ```
 S = 1/2 · O + 1/2 · R
 O = clip( Σ_t Σ_o (v_o(t) − b_o)  /  Σ_t Σ_o max(0, 1 − b_o) , 0, 1 )
-R = successful requests / closed requests        (0 when no request closed)
+R = sum of request credits / opened requests     (0 when no request opened)
 ```
+
+`R` includes the ongoing request, so its first hold earns partial credit immediately.
+A release onto the table or into a container is not a loss; only falling off the table
+(centre below z = −0.2 m) triggers the permanent lost value.
 
 `O` is the share of the sorting work that was available over the episode that you actually
 did, counted every step: sustained tidiness pays, a last-minute clean-up does not, and an
