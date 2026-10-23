@@ -196,6 +196,102 @@ def hand_fits(containers, x, y, yaw, inside=None):
     return True
 
 
+HAND_BODY_ABOVE_TCP = 0.034     # the hand body's underside above the tool centre point (measured)
+FINGER_BELOW_TCP = 0.028        # open fingertips below the tool centre point (measured)
+RIM_CLEAR = 0.012               # a hand point this far above a rim passes over that container
+# hand tilts tried when the straight-down hand does not fit: (lean along the finger axis, lean
+# along the thickness axis), radians; the wrist leans the opposite way, away from the near wall
+TILTS = [(0.0, 0.0)] + [(sg * a, 0.0) for a in (0.30, 0.45, 0.60) for sg in (1, -1)] \
+    + [(0.0, sg * b) for b in (0.30, 0.45) for sg in (1, -1)] \
+    + [(sa * a, sb * 0.30) for a in (0.35, 0.55) for sa in (1, -1) for sb in (1, -1)]
+
+
+def _hand_points():
+    """Sample points of the open hand in its own frame (finger axis, thickness axis, up), metres
+    from the tool centre point: the body, the two fingers, the wrist above."""
+    pts = []
+    for su in (-1.0, -0.5, 0.0, 0.5, 1.0):
+        for sv in (-1.0, 0.0, 1.0):
+            for h in (HAND_BODY_ABOVE_TCP, HAND_BODY_ABOVE_TCP + 0.04, HAND_BODY_ABOVE_TCP + 0.08):
+                pts.append((su * HAND_HALF_W, sv * HAND_HALF_T, h))
+    for su in (-1.0, 1.0):
+        for sv in (-1.0, 1.0):
+            for h in (-FINGER_BELOW_TCP, 0.0, HAND_BODY_ABOVE_TCP):
+                pts.append((su * (GRIPPER_OPEN_W / 2 + 0.008), sv * 0.011, h))
+    for su in (-1.0, 0.0, 1.0):
+        pts.append((su * 0.045, 0.0, 0.17))
+    return np.array(pts)
+
+
+HAND_PTS = _hand_points()
+
+
+def axis_rot(axis, a):
+    k = np.asarray(axis, float)
+    k = k / np.linalg.norm(k)
+    K = np.array([[0.0, -k[2], k[1]], [k[2], 0.0, -k[0]], [-k[1], k[0], 0.0]])
+    return np.eye(3) + math.sin(a) * K + (1.0 - math.cos(a)) * K @ K
+
+
+def tilt_rot(yaw, tilt):
+    """World rotation on top of the straight-down hand at `yaw`: tilt[0] > 0 leans the fingertips
+    toward +finger axis, tilt[1] > 0 toward -thickness axis (the wrist leans the other way)."""
+    u = np.array([-math.sin(yaw), math.cos(yaw), 0.0])
+    v = np.array([math.cos(yaw), math.sin(yaw), 0.0])
+    return axis_rot(v, tilt[0]) @ axis_rot(u, tilt[1])
+
+
+def is_tilted(tilt):
+    return tilt is not None and (abs(tilt[0]) > 1e-3 or abs(tilt[1]) > 1e-3)
+
+
+def hand_fits3d(containers, p, yaw, tilt=(0.0, 0.0), inside=None):
+    """The open hand with its tool centre point at p (x, y, z), `yaw` and `tilt`: every hand point
+    below a container's rim must be clear of that container's walls (inside its interior when it
+    is the container `inside`, outside its footprint otherwise). Points above the rims are free,
+    which is what lets a hand reach an object high in a pile, or near a wall when tilted."""
+    u = np.array([-math.sin(yaw), math.cos(yaw), 0.0])
+    v = np.array([math.cos(yaw), math.sin(yaw), 0.0])
+    B = np.stack([u, v, np.array([0.0, 0.0, 1.0])], 1)
+    R = tilt_rot(yaw, tilt) if is_tilted(tilt) else np.eye(3)
+    W = np.asarray(p, float) + (R @ B @ HAND_PTS.T).T
+    ox, oy = CONTAINER_OUTER[0] / 2, CONTAINER_OUTER[1] / 2
+    ix, iy = CONTAINER_INNER_HALF
+    below = W[:, 2] < CONTAINER_RIM_Z + RIM_CLEAR
+    for name, b in containers.items():
+        lx, ly = container_local(b, W[:, 0], W[:, 1])
+        in_outer = (np.abs(lx) <= ox + 0.004) & (np.abs(ly) <= oy + 0.004)
+        if name == inside:
+            # the hand comes in from above: below the rim, all of it is inside the interior
+            in_inner = (np.abs(lx) <= ix - 0.004) & (np.abs(ly) <= iy - 0.004)
+            if np.any(below & ~in_inner):
+                return False
+        elif np.any(below & in_outer):
+            return False
+    return bool(np.all(W[:, 2] > -0.004))
+
+
+def fmt_tilt(tilt):
+    return "%+.2f/%+.2f" % (tilt[0], tilt[1]) if is_tilted(tilt) else "0"
+
+
+def fmt_plans(g):
+    return [(round(x[1], 2), round(x[2], 3), fmt_tilt(x[3] if len(x) > 3 else None)) for x in g]
+
+
+def approach_dir(yaw, tilt):
+    """Unit vector from the wrist toward the fingertips."""
+    R = tilt_rot(yaw, tilt) if is_tilted(tilt) else np.eye(3)
+    return -(R @ np.array([0.0, 0.0, 1.0]))
+
+
+def fits_with_approach(containers, p, yaw, tilt, inside):
+    """The final grasp pose fits, and so does the pose 4 cm back along the approach."""
+    if not hand_fits3d(containers, p, yaw, tilt, inside):
+        return False
+    return hand_fits3d(containers, np.asarray(p, float) - 0.04 * approach_dir(yaw, tilt), yaw, tilt, inside)
+
+
 # ----------------------------------------------------------------------------------------
 # Perception
 # ----------------------------------------------------------------------------------------
@@ -653,9 +749,11 @@ class Controller(object):
         y_axis = R[:, 1]
         return wrap(math.atan2(y_axis[1], y_axis[0]) - math.pi / 2)
 
-    def orient_error(self, yaw, obs=None):
+    def orient_error(self, yaw, obs=None, tilt=None):
         R_cur = quat_to_mat(np.array((obs or self.obs)["ee_pose"][3:7], float))
         R_des = rot_z(yaw) @ self.R_home
+        if is_tilted(tilt):
+            R_des = tilt_rot(yaw, tilt) @ R_des
         return rotvec(R_des @ R_cur.T)
 
     def width(self):
@@ -668,30 +766,31 @@ class Controller(object):
         return self.obs.get("request")
 
     # -- motion primitives --------------------------------------------------------------------
-    def servo(self, pos, yaw, grip, mark=0, step_max=POS_STEP_MAX):
+    def servo(self, pos, yaw, grip, mark=0, step_max=POS_STEP_MAX, tilt=None):
         pos = np.asarray(pos, float)
 
         def policy(o):
             err = pos - np.array(o["ee_pose"][:3], float)
             d = np.clip(err, -step_max, step_max)
-            r = np.clip(self.orient_error(yaw, o), -ROT_STEP_MAX, ROT_STEP_MAX)
+            r = np.clip(self.orient_error(yaw, o, tilt), -ROT_STEP_MAX, ROT_STEP_MAX)
             return [d[0], d[1], d[2], r[0], r[1], r[2], grip, mark]
         return policy
 
-    def goto(self, pos, yaw=0.0, grip=0.0, tol=0.01, yaw_tol=0.04, max_steps=60, mark=0, step_max=POS_STEP_MAX):
+    def goto(self, pos, yaw=0.0, grip=0.0, tol=0.01, yaw_tol=0.04, max_steps=60, mark=0, step_max=POS_STEP_MAX, tilt=None):
         pos = np.asarray(pos, float)
         for i in range(max_steps):
             err = pos - self.ee()
-            if np.linalg.norm(err) < tol and np.linalg.norm(self.orient_error(yaw)) < yaw_tol:
+            if np.linalg.norm(err) < tol and np.linalg.norm(self.orient_error(yaw, tilt=tilt)) < yaw_tol:
                 return True
-            yield self.servo(pos, yaw, grip, mark, step_max)
+            yield self.servo(pos, yaw, grip, mark, step_max, tilt)
             mark = 0
         return False
 
-    def hold(self, steps, grip, mark=0):
-        pos, yaw = self.ee(), self.yaw()
+    def hold(self, steps, grip, mark=0, yaw=None, tilt=None):
+        pos = self.ee()
+        yaw = self.yaw() if yaw is None else yaw
         for i in range(steps):
-            yield self.servo(pos, yaw, grip, mark)
+            yield self.servo(pos, yaw, grip, mark, tilt=tilt)
             mark = 0
 
     def gripper_closed_on_object(self):
@@ -726,7 +825,7 @@ class Controller(object):
         log("t=%d refine: shift (%+.3f,%+.3f) from %d top points" % (self.t(), dx, dy, len(slab)))
         return (xy[0] + dx, xy[1] + dy)
 
-    def pick(self, xy, yaw, top_z, floor, below_top=GRASP_BELOW_TOP, anchor_xy=None):
+    def pick(self, xy, yaw, top_z, floor, below_top=GRASP_BELOW_TOP, anchor_xy=None, tilt=None):
         """Top-down pinch grasp at `yaw`, fingers `below_top` under the object's top (a rim grasp
         uses a shallow depth). The grasp point is refined from the hand camera 10 cm above the
         object before the final descent. Returns True when something is held after lifting."""
@@ -741,11 +840,24 @@ class Controller(object):
         x, y = self.refine_xy((x, y), anchor_xy or (x, y), floor, top_z)
         z_g = max(top_z - below_top, floor + GRASP_MIN_ABOVE_FLOOR)
         self.last_grasp = (x, y, z_g, yaw)
-        yield from self.goto((x, y, z_g), yaw, grip=0.0, tol=0.006, max_steps=25, step_max=0.02)
-        self.last_grasp_actual = [float(v) for v in self.ee()]
-        yield from self.hold(5, grip=1.0)
-        held = self.gripper_closed_on_object()
-        yield from self.goto((x, y, z_travel), yaw, grip=1.0, tol=0.015, max_steps=30, step_max=0.03)
+        if is_tilted(tilt):
+            # lean the hand away from the near wall above the rim, then go in along the fingers
+            a = approach_dir(yaw, tilt)
+            back = max(0.06, (CONTAINER_RIM_Z + 0.06 - z_g) / max(-a[2], 0.3))
+            p_pre = np.array([x, y, z_g]) - a * back
+            yield from self.goto(p_pre, yaw, grip=0.0, tol=0.01, yaw_tol=0.06, max_steps=40, tilt=tilt)
+            yield from self.goto((x, y, z_g), yaw, grip=0.0, tol=0.006, yaw_tol=0.06, max_steps=30, step_max=0.02, tilt=tilt)
+            self.last_grasp_actual = [float(v) for v in self.ee()]
+            yield from self.hold(5, grip=1.0, yaw=yaw, tilt=tilt)
+            held = self.gripper_closed_on_object()
+            yield from self.goto(p_pre, yaw, grip=1.0, tol=0.015, yaw_tol=0.08, max_steps=30, step_max=0.03, tilt=tilt)
+            yield from self.goto((p_pre[0], p_pre[1], z_travel), yaw, grip=1.0, tol=0.015, max_steps=30, step_max=0.03)
+        else:
+            yield from self.goto((x, y, z_g), yaw, grip=0.0, tol=0.006, max_steps=25, step_max=0.02)
+            self.last_grasp_actual = [float(v) for v in self.ee()]
+            yield from self.hold(5, grip=1.0)
+            held = self.gripper_closed_on_object()
+            yield from self.goto((x, y, z_travel), yaw, grip=1.0, tol=0.015, max_steps=30, step_max=0.03)
         yield from self.hold(2, grip=1.0)
         held = held and self.gripper_closed_on_object()
         return held
@@ -910,22 +1022,30 @@ class Controller(object):
         return d
 
     # -- grasp planning -------------------------------------------------------------------------
-    def choose_yaw(self, c, inside=None, band=None):
-        """-> (xy, yaw) for a pinch of cluster c, or None: fingers across its narrowest side, the
-        grasped width under the opening, and the hand clear of every container wall. The hand need
-        not be centred on the object along the finger axis: the open fingers are 8 cm apart and the
-        first one to touch pushes the object to the middle as they close, so near a wall the hand
-        may sit up to ~3 cm off the object (inside a container its body fits only near the centre
-        line). `band` = the points the fingers will close on (default: the top rim)."""
+    def choose_yaw(self, c, inside=None, band=None, below_top=GRASP_BELOW_TOP):
+        """-> (xy, yaw, tilt) for a pinch of cluster c, or None: fingers across its narrowest side, the
+        grasped width under the opening, and the hand clear of every container wall at the grasp
+        height (a hand point above a rim is free; where the straight-down hand hits a wall the hand
+        leans away from it, TILTS). The hand need not be centred on the object along the finger
+        axis: the open fingers are 8 cm apart and the first one to touch pushes the object to the
+        middle as they close, so the hand may sit up to ~3 cm off the object. `band` = the points
+        the fingers will close on (default: the top rim)."""
         x, y = c["grasp_xy"]
+        z_g = max(c["top_z"] - below_top, c["floor"] + GRASP_MIN_ABOVE_FLOOR)
         p = c.get("pts")
         pref = wrap_half(c.get("slab_yaw", c["yaw"]))
         cands = [pref] + [wrap_half(pref + s * d) for d in (0.26, 0.52, 0.79, 1.05, 1.31) for s in (1, -1)] + [wrap_half(pref + 1.57)]
+
+        def fit(hx, hy, yaw):
+            return next((t for t in TILTS if fits_with_approach(self.containers, (hx, hy, z_g), yaw, t, inside)), None)
         if band is None and p is not None:
             band = p[p[:, 2] > c["top_z"] - 0.015]      # the top rim only: side walls seen obliquely inflate deeper slabs
         if band is None or len(band) < 10:
-            yaw = next((yaw for yaw in cands if hand_fits(self.containers, x, y, yaw, inside=inside)), None)
-            return None if yaw is None else ((x, y), yaw)
+            for yaw in cands:
+                tilt = fit(x, y, yaw)
+                if tilt is not None:
+                    return (x, y), yaw, tilt
+            return None
         half_open = GRASP_MAX_WIDTH / 2 - WIDTH_MARGIN / 2
         best = None
         for k, yaw in enumerate(cands):
@@ -944,12 +1064,14 @@ class Controller(object):
             span = half_open - w / 2
             for off in sorted(np.arange(-span, span + 1e-9, 0.005), key=lambda o: abs(o)):
                 hx, hy = x + (centre + off) * u[0], y + (centre + off) * u[1]
-                if hand_fits(self.containers, hx, hy, yaw, inside=inside):
-                    cost = w + 0.2 * abs(off) + 0.0005 * k      # narrow first, then centred, ties to the earlier
+                tilt = fit(hx, hy, yaw)
+                if tilt is not None:
+                    # narrow first, then centred and upright, ties to the earlier
+                    cost = w + 0.2 * abs(off) + 0.0005 * k + 0.02 * (abs(tilt[0]) + abs(tilt[1]))
                     if best is None or cost < best[0]:
-                        best = (cost, (float(hx), float(hy)), yaw)
+                        best = (cost, (float(hx), float(hy)), yaw, tilt)
                     break
-        return None if best is None else (best[1], best[2])
+        return None if best is None else (best[1], best[2], best[3])
 
     def search_pinch(self, c, inside=None, band=None):
         """When the pinch at the centroid is too wide (a clamp across its jaw, scissors across the
@@ -965,6 +1087,7 @@ class Controller(object):
         if len(band) < 20:
             return None
         cx, cy = c["grasp_xy"]
+        z_g = max(c["top_z"] - GRASP_BELOW_TOP, c["floor"] + GRASP_MIN_ABOVE_FLOOR)
         lo, hi = band[:, :2].min(0), band[:, :2].max(0)
         best = None
         yaws = [k * math.pi / 12 - math.pi / 2 for k in range(12)]
@@ -990,10 +1113,11 @@ class Controller(object):
                     cost = width + 0.5 * dist
                     if best is not None and cost >= best[0]:
                         continue
-                    if not hand_fits(self.containers, gx, gy, yaw, inside=inside):
+                    tilt = next((t for t in TILTS if fits_with_approach(self.containers, (gx, gy, z_g), yaw, t, inside)), None)
+                    if tilt is None:
                         continue
-                    best = (cost, (float(gx), float(gy)), wrap_half(yaw))
-        return None if best is None else (best[1], best[2])
+                    best = (cost + 0.02 * (abs(tilt[0]) + abs(tilt[1])), (float(gx), float(gy)), wrap_half(yaw), tilt)
+        return None if best is None else (best[1], best[2], best[3])
 
     @staticmethod
     def widens_below_top(c):
@@ -1047,16 +1171,16 @@ class Controller(object):
         height = c["top_z"] - c["floor"]
         rim = self.rim_grasp(c, inside=inside)
         pick = self.choose_yaw(c, inside=inside)
-        shallow = [(pick[0], pick[1], GRASP_BELOW_TOP)] if pick is not None else []
+        shallow = [(pick[0], pick[1], GRASP_BELOW_TOP, pick[2])] if pick is not None else []
         if rim is not None and (not shallow or c["len_minor"] > 0.055):
             # hollow and wide (bowl, mug, pitcher): the rim grasp, one finger inside, is the plan.
             # A pinch across it only "fits" when the hand camera saw half of it, and then a finger
             # lands on the rim and pushes it away
-            return [(rim[0], rim[1], RIM_GRASP_BELOW_TOP)]
+            return [(rim[0], rim[1], RIM_GRASP_BELOW_TOP, None)]
         if not shallow:
             alt = self.search_pinch(c, inside=inside)
             if alt is not None:
-                shallow = [(alt[0], alt[1], GRASP_BELOW_TOP)]
+                shallow = [(alt[0], alt[1], GRASP_BELOW_TOP, alt[2])]
         deep = []
         if height > 0.08 and c.get("pts") is not None:
             # around the middle of the body, checked against the body's own width
@@ -1065,23 +1189,25 @@ class Controller(object):
             band = p[(p[:, 2] > c["top_z"] - depth - 0.015) & (p[:, 2] < c["top_z"] - depth + 0.015)]
             if len(band) < 10:
                 band = p[p[:, 2] > c["floor"] + 0.02]
-            pick_d = self.choose_yaw(c, inside=inside, band=band)
+            pick_d = self.choose_yaw(c, inside=inside, band=band, below_top=depth)
             if pick_d is not None:
-                deep = [(pick_d[0], pick_d[1], depth)]
+                deep = [(pick_d[0], pick_d[1], depth, pick_d[2])]
         # a bottle held by its cap slips out in transit (and still reads as held), so bottle-like
         # objects try the body first; everything else the top first, the body as the fallback
         out += (deep + shallow) if self.widens_below_top(c) else (shallow + deep)
         if rim is not None:
-            out.append((rim[0], rim[1], RIM_GRASP_BELOW_TOP))
+            out.append((rim[0], rim[1], RIM_GRASP_BELOW_TOP, None))
         return out
 
     def try_grasps(self, plans, top_z, floor, anchor_xy):
         """Attempt the planned grasps in order; stop at the first that holds."""
-        for xy, yaw, below in plans:
-            held = yield from self.pick(xy, yaw, top_z, floor, below_top=below, anchor_xy=anchor_xy)
+        for plan in plans:
+            xy, yaw, below = plan[0], plan[1], plan[2]
+            tilt = plan[3] if len(plan) > 3 else None
+            held = yield from self.pick(xy, yaw, top_z, floor, below_top=below, anchor_xy=anchor_xy, tilt=tilt)
             if held:
                 return True
-            log("t=%d grasp (yaw %.2f, depth %.3f) failed" % (self.t(), yaw, below))
+            log("t=%d grasp (yaw %.2f, depth %.3f, tilt %s) failed" % (self.t(), yaw, below, fmt_tilt(tilt)))
         return False
 
     def free_spot(self, clusters, near=None):
@@ -1178,7 +1304,7 @@ class Controller(object):
             g = self.plan_grasps(d)
             log("t=%d loose %s (%s d=%.2f margin=%.2f; static %s) at (%.2f,%.2f) top=%.3f dims=%s grasps=%s" % (
                 self.t(), info["model"], info["cls"], info["d"], info["class_margin"], c["cls_info"]["model"],
-                d["grasp_xy"][0], d["grasp_xy"][1], d["top_z"], [round(v, 3) for v in d["dims"]], [(round(x[1], 2), x[2]) for x in g]))
+                d["grasp_xy"][0], d["grasp_xy"][1], d["top_z"], [round(v, 3) for v in d["dims"]], fmt_plans(g)))
             if info["class_margin"] < 0.08 or not g:
                 self.skip(c)
                 return True
@@ -1199,7 +1325,7 @@ class Controller(object):
                     self.skip(c)
                     return True
                 g = self.plan_grasps(d, inside=c["container"])
-                log("t=%d misplaced %s in %s grasps=%s" % (self.t(), d["cls_info"]["model"], c["container"], [(round(x[1], 2), x[2]) for x in g]))
+                log("t=%d misplaced %s in %s grasps=%s" % (self.t(), d["cls_info"]["model"], c["container"], fmt_plans(g)))
                 if not g:
                     self.skip(c)
                     return True
@@ -1229,7 +1355,7 @@ class Controller(object):
                 if info["cls"] == CLASS_OF_CONTAINER[b] or info["class_margin"] < 0.4 or info.get("model_margin", 0.0) < 0.3:
                     continue
                 g = self.plan_grasps(d, inside=b)
-                log("t=%d patrol: %s misfiled in %s grasps=%s" % (self.t(), info["model"], b, [(round(x[1], 2), x[2]) for x in g]))
+                log("t=%d patrol: %s misfiled in %s grasps=%s" % (self.t(), info["model"], b, fmt_plans(g)))
                 if not g:
                     continue
                 held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
@@ -1401,7 +1527,7 @@ class Controller(object):
             info = d["cls_info"]
             log("t=%d unpack %s: top %s (d=%.2f, model margin %.2f) at (%.2f,%.2f) top=%.3f grasps=%s" % (
                 self.t(), b, info["model"], info["d"], info.get("model_margin", 0.0), d["grasp_xy"][0], d["grasp_xy"][1],
-                d["top_z"], [(round(x[1], 2), x[2]) for x in g]))
+                d["top_z"], fmt_plans(g)))
             if not g:
                 continue
             is_target = (info["model"] == model and info.get("model_margin", 0.0) > 0.3) or (is_model(info, model, 0.15) and info["model"] != model)
