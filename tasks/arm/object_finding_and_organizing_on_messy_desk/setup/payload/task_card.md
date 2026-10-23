@@ -31,7 +31,16 @@ Fixed for the task; identical on every seed. Units: metres, radians, seconds.
   simulator's contact report). "On the table": not inside any container, centre below 0.16,
   placed. Below z = −0.2 an object is lost for the rest of the episode.
 
+## Desk surface
+The desk top is flat at z = -0.0014 for x < 0.809 (the whole reachable desk). Beyond that the
+table's rounded rim rises 1.2 cm (z = +0.0104 for x in 0.839-0.854) and falls away past x = 0.90.
+Along y the desk is flat out to |y| = 0.676.
+
 ## Classes (YCB models; the two instances of a model are scaled 0.92x and 1.00x of its base size)
+Every model is scaled so that, in any resting pose, it offers a pinch of at most about 6.8 cm,
+under the hand's 8 cm opening. Objects arrive standing upright on the desk (the scissors, the
+marker and the clamps lying flat), their long side pointing away from the nearest container wall
+within about 35 degrees; the piles in the containers are dropped in and lie as they fell.
 - A: cracker box, sugar box, pudding box, gelatin box, wood block, foam brick
 - B: master chef can, tomato soup can, tuna fish can, potted meat can, mustard bottle, bleach cleanser
 - C: banana, bowl, mug, power drill, scissors, large marker, large clamp, extra large clamp, pitcher base

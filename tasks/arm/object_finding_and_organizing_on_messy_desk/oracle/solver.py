@@ -66,7 +66,8 @@ GRIPPER_OPEN_W = 0.08
 
 # hand geometry (Franka hand, fingers open): half width across the fingers, half thickness
 HAND_HALF_W, HAND_HALF_T = 0.1025, 0.0315      # measured on the Franka USD (body 0.205 x 0.063)
-GRASP_MAX_WIDTH = 0.072
+GRASP_MAX_WIDTH = 0.080     # the hand's opening
+WIDTH_MARGIN = 0.014        # the hand-camera cloud loses ~7 mm per side at an object's silhouette
 
 # controller tunables
 OBSERVE_POS = (0.30, 0.0, 0.55)
@@ -74,7 +75,7 @@ TRAVEL_Z = 0.32
 VOXEL = 0.012
 Z_ROBOT = 0.30
 GRASP_BELOW_TOP = 0.03
-RIM_GRASP_BELOW_TOP = 0.012     # wide hollow objects (bowl, mug, pitcher): straddle the wall at the rim
+RIM_GRASP_BELOW_TOP = 0.022     # wide hollow objects (bowl, mug, pitcher): straddle the wall at the rim
 RIM_MIN_RADIUS, RIM_MIN_DEPTH = 0.035, 0.012
 REFINE_RADIUS, REFINE_MAX_SHIFT = 0.07, 0.04    # hand-camera re-centring just before the descent
 GRASP_MIN_ABOVE_FLOOR = 0.032
@@ -312,10 +313,22 @@ def detect_containers(pts, col):
     return containers, fits
 
 
+# The bare desk top (the stock table): flat at z = -0.0014 out to x = 0.809, then its rounded rim
+# rises 1.2 cm (z = +0.0104 at x = 0.839-0.854) and falls away past x = 0.90 (task card).
+DESK_PROFILE_X = (0.0, 0.809, 0.839, 0.854, 0.872, 0.884, 0.896, 0.907, 0.918, 0.929, 0.940, 0.950)
+DESK_PROFILE_Z = (-0.0014, -0.0014, 0.0104, 0.0104, 0.0094, 0.0075, 0.0047, 0.0011, -0.0035, -0.0089, -0.0152, -0.0223)
+
+
+def desk_top_z(x):
+    return np.interp(np.abs(x), DESK_PROFILE_X, DESK_PROFILE_Z)
+
+
 def scene_mask(pts, containers):
     x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
-    # the whole desk top except the robot's base column; objects can slide past the arrival area
-    keep = (x > 0.08) & (x < 0.80) & (np.abs(y) < 0.70) & (np.hypot(x, y) > 0.20) & (z > 0.02) & (z < Z_ROBOT)
+    # the whole desk top except the robot's base column; objects can slide past the arrival area.
+    # Heights are taken above the desk's own profile, so its raised rim is not an object.
+    h = z - desk_top_z(x)
+    keep = (x > 0.08) & (x < 0.80) & (np.abs(y) < 0.70) & (np.hypot(x, y) > 0.20) & (h > 0.012) & (z < Z_ROBOT)
     ox, oy, oz = CONTAINER_OUTER
     ix, iy = CONTAINER_INNER_HALF
     for b in containers.values():
@@ -360,9 +373,16 @@ def hist_dist(a, b):
     return float(0.5 * np.sum((a - b) ** 2 / (a + b + 1e-6)))
 
 
-def extent_along(p, yaw):
-    """Extent of points across the fingers (the finger axis = home +y turned by yaw)."""
+def extent_along(p, yaw, center=None, strip=0.02):
+    """Extent of points across the fingers (the finger axis = home +y turned by yaw). With
+    `center`, only the strip the finger pads close on (|offset along the hand's thickness| <
+    `strip`) counts: a long or curved object is only as wide as its cross-section there."""
     u = np.array([-math.sin(yaw), math.cos(yaw)])
+    if center is not None:
+        v = np.array([math.cos(yaw), math.sin(yaw)])
+        sel = np.abs((p[:, :2] - np.asarray(center[:2])) @ v) < strip
+        if sel.sum() >= 8:
+            p = p[sel]
     proj = p[:, :2] @ u
     return float(np.percentile(proj, 97) - np.percentile(proj, 3))
 
@@ -378,7 +398,7 @@ def cluster_features(p, c, containers):
     proj = xy @ evecs
     ext = np.percentile(proj, 97, axis=0) - np.percentile(proj, 3, axis=0)
     b = container_of_xy(containers, cen[0], cen[1])
-    floor = CONTAINER_FLOOR_Z if b else 0.0
+    floor = CONTAINER_FLOOR_Z if b else float(desk_top_z(cen[0]))
     slab = p[p[:, 2] > top - 0.03]
     gxy = slab[:, :2].mean(0) if len(slab) >= 5 else cen[:2]
     slab_yaw = yaw
@@ -435,7 +455,13 @@ def perceive_eih(rgb, depth, R_cam, t_cam, expected_xy, floor, top_hint, contain
     """Dense cluster of the object under the hand camera."""
     pts, col = backproject_rt(depth, rgb, CAMS["agentview"]["f"], CAMS["agentview"]["c"], R_cam, t_cam)
     x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
-    keep = (z > floor + 0.010) & (z < top_hint + 0.06) & (np.hypot(x - expected_xy[0], y - expected_xy[1]) < radius)
+    # height above whatever the point stands on: the container floor inside a container, else the desk profile
+    inside = np.zeros(len(pts), bool)
+    for b in containers.values():
+        lx, ly = container_local(b, x, y)
+        inside |= (np.abs(lx) <= CONTAINER_INNER_HALF[0]) & (np.abs(ly) <= CONTAINER_INNER_HALF[1])
+    base = np.where(inside, CONTAINER_FLOOR_Z, desk_top_z(x))
+    keep = (z - base > 0.008) & (z < top_hint + 0.06) & (np.hypot(x - expected_xy[0], y - expected_xy[1]) < radius)
     ox, oy, oz = CONTAINER_OUTER
     ix, iy = CONTAINER_INNER_HALF
     for b in containers.values():
@@ -449,16 +475,23 @@ def perceive_eih(rgb, depth, R_cam, t_cam, expected_xy, floor, top_hint, contain
     lo = pts.min(0) - voxel
     idx = np.floor((pts - lo) / voxel).astype(int)
     labels, n = label_components(idx)
-    best, bestn = None, 0
+    # the object under the camera: a large component near the expected position (a neighbour
+    # half inside the radius is large too, but far off)
+    best, best_score = None, 0.0
     for k in range(n):
         m = labels == k
-        if m.sum() > bestn:
-            best, bestn = m, int(m.sum())
-    if bestn < 30:
+        cnt = int(m.sum())
+        if cnt < 30:
+            continue
+        d = math.hypot(float(pts[m, 0].mean()) - expected_xy[0], float(pts[m, 1].mean()) - expected_xy[1])
+        sc = cnt * math.exp(-(d / 0.06) ** 2)
+        if sc > best_score:
+            best, best_score = m, sc
+    if best is None:
         return None
     c = cluster_features(pts[best], col[best], containers)
-    c["floor"] = floor
-    c["dims"] = sorted([c["len_major"], c["len_minor"], c["top_z"] - floor])
+    c["floor"] = floor if c["container"] else float(desk_top_z(c["centroid"][0]))
+    c["dims"] = sorted([c["len_major"], c["len_minor"], c["top_z"] - c["floor"]])
     return c
 
 
@@ -521,7 +554,18 @@ class Controller(object):
             self.policy = next(self.gen)
         elif t != self.last_t:
             self.obs = obs
-            self.policy = self.gen.send(obs)
+            try:
+                self.policy = self.gen.send(obs)
+            except Exception as exc:  # noqa: BLE001 - one failed behaviour must not end the episode
+                log("t=%d behaviour failed (%r); starting over from the observe pose" % (t, exc))
+                self.carry_hang = 0.0
+                self.gen = self.run()
+                try:
+                    self.policy = next(self.gen)
+                except Exception as exc2:  # noqa: BLE001
+                    log("t=%d restart failed too (%r); holding still" % (t, exc2))
+                    self.q_home = None          # rebuild everything on the next step
+                    self.policy = lambda o: [0.0] * 8
         self.last_t = t
         return [float(x) for x in self.policy(obs)]
 
@@ -651,9 +695,11 @@ class Controller(object):
         yield from self.goto((x, y, TRAVEL_Z), yaw, grip=0.0, tol=0.02, max_steps=30)
 
     def place_on_desk(self, xy, yaw=0.0):
+        """Set the held object down on the desk, its bottom ~2 cm above the top (tall objects
+        dropped from higher topple)."""
         x, y = xy
         yield from self.goto((x, y, self.travel_z()), yaw, grip=1.0, tol=0.015)
-        yield from self.goto((x, y, 0.09 + self.carry_hang), yaw, grip=1.0, tol=0.01, max_steps=30)
+        yield from self.goto((x, y, 0.02 + self.carry_hang), yaw, grip=1.0, tol=0.01, max_steps=30)
         yield from self.hold(4, grip=0.0)
         self.carry_hang = 0.0
         yield from self.goto((x, y, TRAVEL_Z), yaw, grip=0.0, tol=0.02, max_steps=30)
@@ -717,22 +763,39 @@ class Controller(object):
         return d
 
     # -- grasp planning -------------------------------------------------------------------------
-    def choose_yaw(self, c, inside=None):
+    def choose_yaw(self, c, inside=None, band=None):
         """A hand yaw for cluster c: fingers across its narrow side when possible, never
-        colliding with a container wall, grasped width under the opening. None when impossible."""
+        colliding with a container wall, grasped width under the opening. `band` = the points the
+        fingers will close on (default: the top rim). None when impossible."""
         x, y = c["grasp_xy"]
         p = c.get("pts")
         pref = wrap_half(c.get("slab_yaw", c["yaw"]))
         cands = [pref] + [wrap_half(pref + s * d) for d in (0.26, 0.52, 0.79, 1.05, 1.31, 1.57) for s in (1, -1)]
+        if band is None and p is not None:
+            band = p[p[:, 2] > c["top_z"] - 0.015]      # the top rim only: side walls seen obliquely inflate deeper slabs
         for yaw in cands:
             if not hand_fits(self.containers, x, y, yaw, inside=inside):
                 continue
-            if p is not None and len(p) >= 10:
-                slab = p[p[:, 2] > c["top_z"] - 0.05]
-                if len(slab) >= 10 and extent_along(slab, yaw) > GRASP_MAX_WIDTH:
-                    continue
+            if band is not None and len(band) >= 10 and extent_along(band, yaw, center=(x, y)) + WIDTH_MARGIN > GRASP_MAX_WIDTH:
+                continue
             return yaw
         return None
+
+    @staticmethod
+    def widens_below_top(c):
+        """Bottle-like: seen from above, the body shows as a ring around a narrower top (cap, neck)."""
+        p = c.get("pts")
+        if p is None or len(p) < 40:
+            return False
+        top, floor = c["top_z"], c["floor"]
+        slab = p[p[:, 2] > top - 0.015]
+        body = p[(p[:, 2] < top - 0.04) & (p[:, 2] > floor + 0.02)]
+        if len(slab) < 10 or len(body) < 30:
+            return False
+        cen = slab[:, :2].mean(0)
+        r_top = float(np.percentile(np.hypot(slab[:, 0] - cen[0], slab[:, 1] - cen[1]), 90))
+        r_body = float(np.percentile(np.hypot(body[:, 0] - cen[0], body[:, 1] - cen[1]), 90))
+        return r_body > r_top + 0.008
 
     def rim_grasp(self, c, inside=None):
         """Wide hollow object (bowl, mug, pitcher): one finger inside, one outside, straddling the wall
@@ -762,30 +825,63 @@ class Controller(object):
             return (float(wx), float(wy)), yaw
         return None
 
-    def plan_grasp(self, c, inside=None):
-        """-> (xy, yaw, below_top) for cluster c: a pinch across its narrow side when it fits the
-        hand, else a rim grasp when the object is hollow, else None."""
+    def plan_grasps(self, c, inside=None):
+        """-> [(xy, yaw, below_top), ...] for cluster c, best first: a pinch across its narrow
+        side when it fits the hand, then a rim grasp when the object is hollow. Empty = skip."""
+        out = []
+        xy = (c["grasp_xy"][0], c["grasp_xy"][1])
+        height = c["top_z"] - c["floor"]
         yaw = self.choose_yaw(c, inside=inside)
-        if yaw is not None:
-            return (c["grasp_xy"][0], c["grasp_xy"][1]), yaw, GRASP_BELOW_TOP
+        shallow = [(xy, yaw, GRASP_BELOW_TOP)] if yaw is not None else []
+        deep = []
+        if height > 0.08 and c.get("pts") is not None:
+            # around the middle of the body, checked against the body's own width
+            p = c["pts"]
+            depth = float(np.clip(0.45 * height, GRASP_BELOW_TOP + 0.015, 0.065))
+            band = p[(p[:, 2] > c["top_z"] - depth - 0.015) & (p[:, 2] < c["top_z"] - depth + 0.015)]
+            if len(band) < 10:
+                band = p[p[:, 2] > c["floor"] + 0.02]
+            yaw_d = self.choose_yaw(c, inside=inside, band=band)
+            if yaw_d is not None:
+                deep = [(xy, yaw_d, depth)]
+        # a bottle held by its cap slips out in transit (and still reads as held), so bottle-like
+        # objects try the body first; everything else the top first, the body as the fallback
+        out += (deep + shallow) if self.widens_below_top(c) else (shallow + deep)
         rim = self.rim_grasp(c, inside=inside)
         if rim is not None:
-            return rim[0], rim[1], RIM_GRASP_BELOW_TOP
-        return None
+            out.append((rim[0], rim[1], RIM_GRASP_BELOW_TOP))
+        return out
 
-    def free_spot(self, clusters):
-        cands = [(0.68, 0.0), (0.68, -0.2), (0.68, 0.2), (0.68, -0.4), (0.68, 0.4), (0.70, -0.3), (0.70, 0.3),
-                 (0.25, -0.15), (0.25, 0.15), (0.26, -0.35), (0.26, 0.35), (0.42, -0.58), (0.42, 0.58), (0.56, -0.58), (0.56, 0.58)]
+    def try_grasps(self, plans, top_z, floor, anchor_xy):
+        """Attempt the planned grasps in order; stop at the first that holds."""
+        for xy, yaw, below in plans:
+            held = yield from self.pick(xy, yaw, top_z, floor, below_top=below, anchor_xy=anchor_xy)
+            if held:
+                return True
+            log("t=%d grasp (yaw %.2f, depth %.3f) failed" % (self.t(), yaw, below))
+        return False
+
+    def free_spot(self, clusters, near=None):
+        """A free desk spot for setting an object down: reachable, clear of the robot base and
+        of other objects, and one where the open hand fits (to put it down and to take it back).
+        The spot closest to `near` (x, y) wins."""
         occ = [c["centroid"][:2] for c in clusters]
-        for x, y in cands:
-            if math.hypot(x, y) > REACH - 0.06 or math.hypot(x, y) < BASE_CLEAR + 0.03:
-                continue
-            if any(math.hypot(x - ox, y - oy) < 0.11 for ox, oy in occ):
-                continue
-            if not (hand_fits(self.containers, x, y, 0.0) or hand_fits(self.containers, x, y, math.pi / 2)):
-                continue
-            return (x, y)
-        return None
+        best = None
+        for x in np.arange(0.17, 0.761, 0.02):
+            for y in np.arange(-0.62, 0.621, 0.03):
+                r = math.hypot(x, y)
+                if r > REACH - 0.06 or r < BASE_CLEAR + 0.04:
+                    continue
+                if any(math.hypot(x - ox, y - oy) < 0.11 for ox, oy in occ):
+                    continue
+                if container_of_xy(self.containers, x, y, shrink=-0.06) is not None:
+                    continue
+                if not (hand_fits(self.containers, x, y, 0.0) or hand_fits(self.containers, x, y, math.pi / 2)):
+                    continue
+                d = math.hypot(x - near[0], y - near[1]) if near is not None else r
+                if best is None or d < best[0]:
+                    best = (d, (float(x), float(y)))
+        return best[1] if best else None
 
     def spot_yaw(self, xy):
         return 0.0 if hand_fits(self.containers, xy[0], xy[1], 0.0) else math.pi / 2
@@ -821,10 +917,11 @@ class Controller(object):
                 done = yield from self.serve_request(clusters)
                 if done:
                     continue
-            else:
-                did = yield from self.tidy(clusters)
-                if did:
-                    continue
+            # no request, or a request that is stuck (nothing left to inspect or unpack): keep the
+            # desk organized meanwhile instead of idling until the deadline
+            did = yield from self.tidy(clusters)
+            if did:
+                continue
             yield from self.hold(10, grip=0.0)
 
     def tidy(self, clusters):
@@ -836,14 +933,14 @@ class Controller(object):
                 self.skip(c)
                 return True
             info = d["cls_info"]
-            g = self.plan_grasp(d)
-            log("t=%d loose %s (%s d=%.2f margin=%.2f; static %s) at (%.2f,%.2f) top=%.3f dims=%s grasp=%s" % (
+            g = self.plan_grasps(d)
+            log("t=%d loose %s (%s d=%.2f margin=%.2f; static %s) at (%.2f,%.2f) top=%.3f dims=%s grasps=%s" % (
                 self.t(), info["model"], info["cls"], info["d"], info["class_margin"], c["cls_info"]["model"],
-                d["grasp_xy"][0], d["grasp_xy"][1], d["top_z"], [round(v, 3) for v in d["dims"]], None if g is None else (round(g[0][0], 3), round(g[0][1], 3), round(g[1], 2), g[2])))
-            if info["class_margin"] < 0.08 or g is None:
+                d["grasp_xy"][0], d["grasp_xy"][1], d["top_z"], [round(v, 3) for v in d["dims"]], [(round(x[1], 2), x[2]) for x in g]))
+            if info["class_margin"] < 0.08 or not g:
                 self.skip(c)
                 return True
-            held = yield from self.pick(g[0], g[1], d["top_z"], d["floor"], below_top=g[2], anchor_xy=tuple(d["grasp_xy"]))
+            held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
             if held:
                 yield from self.place_in_container(CONTAINER_OF_CLASS[info["cls"]])
             else:
@@ -857,12 +954,12 @@ class Controller(object):
                 if d is None or d["cls_info"]["cls"] == CLASS_OF_CONTAINER[c["container"]] or d["cls_info"]["class_margin"] < 0.15:
                     self.skip(c)
                     return True
-                g = self.plan_grasp(d, inside=c["container"])
-                log("t=%d misplaced %s in %s grasp=%s" % (self.t(), d["cls_info"]["model"], c["container"], None if g is None else (round(g[1], 2), g[2])))
-                if g is None:
+                g = self.plan_grasps(d, inside=c["container"])
+                log("t=%d misplaced %s in %s grasps=%s" % (self.t(), d["cls_info"]["model"], c["container"], [(round(x[1], 2), x[2]) for x in g]))
+                if not g:
                     self.skip(c)
                     return True
-                held = yield from self.pick(g[0], g[1], d["top_z"], d["floor"], below_top=g[2], anchor_xy=tuple(d["grasp_xy"]))
+                held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
                 if held:
                     yield from self.place_in_container(CONTAINER_OF_CLASS[d["cls_info"]["cls"]])
                 else:
@@ -887,11 +984,11 @@ class Controller(object):
             info = d["cls_info"]
             log("t=%d request check: %s (d=%.2f) vs wanted %s" % (self.t(), info["model"], info["d"], model))
             if info["model"] == model:
-                g = self.plan_grasp(d)
-                if g is None:
+                g = self.plan_grasps(d)
+                if not g:
                     log("t=%d target not graspable where it lies" % self.t())
                     return True
-                held = yield from self.pick(g[0], g[1], d["top_z"], d["floor"], below_top=g[2], anchor_xy=tuple(d["grasp_xy"]))
+                held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
                 if held:
                     yield from self.place_in_container("red")
                     yield from self.hold(8, grip=0.0)
@@ -914,19 +1011,19 @@ class Controller(object):
             if not inside:
                 continue
             c = max(inside, key=lambda c: c["top_z"])
-            spot = self.free_spot(clusters)
+            spot = self.free_spot(clusters, near=(c["centroid"][0], c["centroid"][1]))
             if spot is None:
                 log("t=%d no free desk spot" % self.t())
                 return False
-            g = self.plan_grasp(c, inside=b)
-            log("t=%d unpack %s: cluster n=%d top=%.3f at (%.2f,%.2f) grasp=%s -> (%.2f,%.2f)" % (
-                self.t(), b, c["n"], c["top_z"], c["grasp_xy"][0], c["grasp_xy"][1], None if g is None else (round(g[1], 2), g[2]), spot[0], spot[1]))
-            if g is None:
+            g = self.plan_grasps(c, inside=b)
+            log("t=%d unpack %s: cluster n=%d top=%.3f at (%.2f,%.2f) grasps=%s -> (%.2f,%.2f)" % (
+                self.t(), b, c["n"], c["top_z"], c["grasp_xy"][0], c["grasp_xy"][1], [(round(x[1], 2), x[2]) for x in g], spot[0], spot[1]))
+            if not g:
                 rs["unpack_failures"] = rs.get("unpack_failures", 0) + 1
                 if rs["unpack_failures"] > 6:
                     return False
                 return True
-            held = yield from self.pick(g[0], g[1], c["top_z"], c["floor"], below_top=g[2], anchor_xy=tuple(c["grasp_xy"]))
+            held = yield from self.try_grasps(g, c["top_z"], c["floor"], tuple(c["grasp_xy"]))
             if held:
                 yield from self.place_on_desk(spot, self.spot_yaw(spot))
             else:

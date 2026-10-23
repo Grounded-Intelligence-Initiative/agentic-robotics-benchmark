@@ -21,26 +21,55 @@ class SimError(Exception):
 
 
 class SimClient(object):
-    def __init__(self, env_script, python=None, ready_timeout=900.0, step_timeout=120.0, log_path=None):
+    """`ready_timeout` bounds one start attempt. Isaac's renderer occasionally deadlocks on the
+    very first frame of a fresh process (the process sits idle forever before announcing
+    readiness); such an attempt is killed and the simulator started again, `attempts` times."""
+
+    def __init__(self, env_script, python=None, ready_timeout=480.0, step_timeout=120.0, log_path=None, attempts=3):
         self.python = python or ISAAC_PYTHON
         self.env_script = env_script
         self.step_timeout = float(step_timeout)
         self._log = open(log_path, "a") if log_path else subprocess.DEVNULL
-        self.proc = subprocess.Popen([self.python, env_script], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        t0 = time.time()
+        error = None
+        for attempt in range(1, max(1, int(attempts)) + 1):
+            self._launch()
+            try:
+                hello = self._read(ready_timeout)
+                if hello.get("ready"):
+                    self.startup_s, self.start_attempts = time.time() - t0, attempt
+                    return
+                error = SimError("simulator did not announce readiness: %r" % (hello,))
+            except SimError as exc:
+                error = exc
+            self._kill()
+            if self._log is not subprocess.DEVNULL:
+                self._log.write("\n[sim_client] start attempt %d failed (%s); restarting\n" % (attempt, error))
+                self._log.flush()
+        raise SimError("simulator did not start in %d attempts: %s" % (attempt, error))
+
+    def _launch(self):
+        self.proc = subprocess.Popen([self.python, self.env_script], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                      stderr=self._log, universal_newlines=True, bufsize=1,
                                      start_new_session=True)
         self._lines = queue.Queue()
-        threading.Thread(target=self._pump, daemon=True).start()
-        t0 = time.time()
-        hello = self._read(ready_timeout)
-        if not hello.get("ready"):
-            raise SimError("simulator did not announce readiness: %r" % (hello,))
-        self.startup_s = time.time() - t0
+        threading.Thread(target=self._pump, args=(self.proc, self._lines), daemon=True).start()
 
-    def _pump(self):
-        for line in self.proc.stdout:
-            self._lines.put(line)
-        self._lines.put(None)
+    def _kill(self):
+        try:
+            os.killpg(self.proc.pid, 9)
+        except OSError:
+            pass
+        try:
+            self.proc.wait(timeout=30)
+        except Exception:  # noqa: BLE001
+            pass
+
+    @staticmethod
+    def _pump(proc, lines):
+        for line in proc.stdout:
+            lines.put(line)
+        lines.put(None)
 
     def _read(self, timeout):
         deadline = time.time() + timeout

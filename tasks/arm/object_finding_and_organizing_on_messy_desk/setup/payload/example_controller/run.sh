@@ -3,4 +3,4 @@
 # to start from a working skeleton; replace controller.py with your own policy.
 set -euo pipefail
 cd "$(dirname "$0")"
-exec python3 controller.py
+exec /opt/venv/bin/python3 controller.py

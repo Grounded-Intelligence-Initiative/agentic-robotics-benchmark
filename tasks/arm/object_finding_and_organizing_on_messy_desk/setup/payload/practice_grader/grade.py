@@ -6,12 +6,12 @@ perturbed proprioception) on VISIBLE practice seeds, and prints the raw episode 
 It deliberately tells you less than the real grader: practice seeds, the raw metric only,
 no reference value. "My controller works and roughly how well", not "what I will be scored".
 
-    python3 /home/user/practice_grader/grade.py [--episodes 1] [--horizon 2000] [--seed 11] [--live 500] [--score-file PATH]
+    /opt/venv/bin/python3 /home/user/practice_grader/grade.py [--episodes 1] [--horizon 2000] [--seed 11] [--live 500] [--score-file PATH]
 
 The simulator takes about two minutes to start; keep --horizon small while iterating.
 `--live N` prints the running score (S if cut now, the unscaled 1/2 O + 1/2 R, O, R, closed
 requests) every N steps on stderr; `--score-file` also writes it as JSON for your own tooling.
-Driving the simulator yourself (`python3 /home/user/messy_desk_env.py`, stdio JSON): every
+Driving the simulator yourself (`/opt/isaac/bin/python3 /home/user/messy_desk_env.py`, stdio JSON): every
 `step` reply carries the same `score` dict, `{"cmd": "score"}` adds every object's value and
 baseline, and `{"cmd": "request", "model": "005_tomato_soup_can"}` (or `"absent": true`)
 opens a request on demand so you can rehearse marks.
@@ -126,8 +126,8 @@ def _perturbed(obs, rng):
 
 def _live_line(seed, t, scorer):
     d = scorer.live()
-    return "[practice] seed={} t={} score_now={:.4f} (running {:.4f})  O={:.4f} R={:.4f} ({}/{} requests)  org {:+.0f}/{:.0f}".format(
-        seed, t, d["score"], d["score_running"], d["organization"], d["request_rate"], d["requests_success"], d["requests_closed"], d["org_num"], d["org_den"])
+    return "[practice] seed={} t={} score_now={:.4f} (running {:.4f})  O={:.4f} R={:.4f} ({}/{} requests won)  org {:+.0f}/{:.0f}".format(
+        seed, t, d["score"], d["score_running"], d["organization"], d["request_progress"], d["requests_success"], d["requests_closed"], d["org_num"], d["org_den"])
 
 
 def _episode(wire, sim, seed, horizon, rng, stats, verbose, live=0, score_file=None):

@@ -71,11 +71,13 @@ def run_episodes(config, rng, solver):
                      pass_fraction=config.get("probe_pass_fraction", 0.2))
     env_script = os.path.join(stage_dir(), "env.py")
     try:
-        sim = SimClient(env_script, ready_timeout=float(config.get("sim_ready_timeout_s", 900)),
+        sim = SimClient(env_script, ready_timeout=float(config.get("sim_ready_timeout_s", 480)),
+                        attempts=int(config.get("sim_start_attempts", 3)),
                         log_path=os.path.join(stage_dir(), "sim.log"))
     except SimError as exc:
         fail("simulator failed to start: {}".format(exc))
-    print("[grader] simulator up in {:.0f}s".format(sim.startup_s), file=sys.stderr, flush=True)
+    print("[grader] simulator up in {:.0f}s ({} start attempt(s))".format(sim.startup_s, sim.start_attempts),
+          file=sys.stderr, flush=True)
 
     scores, summaries, aborted, cut = [], [], 0, 0
     try:

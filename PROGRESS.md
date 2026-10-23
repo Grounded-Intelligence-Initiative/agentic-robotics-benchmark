@@ -313,6 +313,33 @@ and `verify/` included.
   is running; refs.json must be rebuilt from `calib_collect2.py` output once grasps are stable.
 - Frontier run decided: Opus 5.5, claude-code harness, subscription auth, 1 episode first.
 
+## 10. 2026-10-23 — messy desk: scene physics fixes found while debugging the oracle (Claude session)
+
+- Every YCB object used to spawn lying on its side: the stock `Axis_Aligned` meshes are authored
+  with their height along local Y and `_spawn` only applied a yaw. Desk arrivals now stand
+  upright (Rx(-90)); scissors, marker and both clamps (local Y = their length) lie flat. Desk
+  spawns are set down 4 mm above the desk (`half_h` from the USD bound) instead of dropped.
+- The stock table is flat only for |x| < 0.709 and then rises into a 1.2 cm rim, which tipped
+  over objects that arrived at x > 0.71 and appeared as a 15 cm "object" strip in the hand camera.
+  The room is now shifted +0.10 m in x (`ROOM_OFFSET_X`): the whole reachable desk is flat.
+- Scales: every model offers a pinch of at most ~6.8-7.2 cm in any resting pose (cracker box
+  0.42, sugar 0.73, pudding 0.63, gelatin 0.80, potted meat 0.70, mustard 0.71, foam brick 0.92,
+  tomato soup can 0.92: at 6.8 cm the 8 cm hand kept only 6 mm per side and missed).
+- Measured: the open fingertips stop on the desk at TCP z = 0.028 (TCP_Z_MIN unchanged); the
+  visual finger mesh suggests 1.2 cm, the collision geometry is longer. Thin objects lying flat
+  (marker, scissors) are pinched with the fingertips at the desk; a pinch along a long object
+  wedges it between the fingers instead (lifted with the hand open).
+- Desk arrivals point their long side away from the nearest container wall (+-0.6 rad): with the
+  20 cm Franka hand, a long object lying along a wall could not be pinched in place (Monte Carlo:
+  81 % -> 95 % pinchable).
+- `sim_client`: a start attempt that hangs (Isaac's renderer occasionally deadlocks on the first
+  frame of a fresh process, seen twice today) is killed and retried, 3 x 480 s.
+- Instruction: draft banner removed; interpreters stated by absolute path (the claude-code harness
+  hard-codes PATH without /opt/venv/bin); request example matches the env's text.
+- Oracle: perception subtracts the desk profile; hand-camera component chosen by size x proximity;
+  width check keeps a 14 mm margin (the hand-camera cloud loses ~7 mm per side); tall objects are
+  grasped mid-body; rim grasps go 22 mm deep; the behaviour loop restarts after any exception.
+
 ## Gotchas
 
 - `export_registry.py` refuses a dirty tree on purpose: `content_digest` covers every

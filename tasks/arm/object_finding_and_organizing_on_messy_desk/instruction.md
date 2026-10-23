@@ -1,9 +1,5 @@
 # Find-and-organize on a messy desk
 
-> **Draft v0.2 (2026-10-18).** The simulator, oracle and grader for this task are being built.
-> The contract below (scene, wire, observation, action, scoring) is the intended one and is
-> frozen only when the task reaches *Ready for Validation*.
-
 During moving or everyday home storage, objects are often placed into boxes without
 carefully tracking their locations. Retrieving a specific item later is hard: it may not be
 present at all; if it is, it may be buried beneath other objects and has to be searched for;
@@ -39,7 +35,7 @@ An episode runs a fixed `${horizon}` control steps at 10 Hz and never ends early
    container) at random intervals, within the arm's reach. When too many objects are loose on the
    desk, arrivals pause until you clear some.
 2. **Requests.** At random times a request opens: the observation carries a short text
-   description of one specific object (for example `the yellow mustard bottle`). Most
+   description of one specific object (for example `the mustard bottle`). Most
    requested objects are somewhere on the desk or in a container; some are not present at all.
    You close a request yourself with a *mark* in your action: **done: delivered** or **done:
    no such object**. The grader checks the physical truth at that moment: a delivered mark
@@ -59,7 +55,10 @@ same dynamics on visible seeds.
 
 Leave a controller at `/home/user/submission/run.sh`. The grader launches it as
 `bash run.sh` with the working directory `/home/user/submission`, as your own user account,
-with **no network access**, and talks to it over stdin/stdout, one JSON object per line:
+with **no network access**, and talks to it over stdin/stdout, one JSON object per line.
+Call interpreters by absolute path in `run.sh`: `/opt/venv/bin/python3` is Python 3.12 with
+NumPy, Pillow and SciPy (the bare `python3` on your shell's `PATH` may be a different one), and
+the simulator runs under `/opt/isaac/bin/python3`.
 
 ```
 READY                                                     <- your first stdout line, within 120 s
