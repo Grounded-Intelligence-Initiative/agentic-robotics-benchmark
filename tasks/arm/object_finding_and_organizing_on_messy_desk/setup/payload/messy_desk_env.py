@@ -1092,6 +1092,11 @@ def serve():
                 else:
                     if msg.get("pos") is not None:
                         env.set_freecam(msg["pos"], float(msg.get("yaw", 0.0)), float(msg.get("pitch", 0.0)))
+                        if msg.get("frame", True):
+                            # the camera renders on the next frame: render now (no physics step) so
+                            # the picture is taken from the new pose, not the previous one
+                            for _ in range(3):
+                                env.world.render()
                     reply = {"ok": True, "jpeg": env.freecam_jpeg() if msg.get("frame", True) else None}
             elif cmd == "close":
                 out.write(json.dumps({"ok": True}) + "\n"); out.flush()
