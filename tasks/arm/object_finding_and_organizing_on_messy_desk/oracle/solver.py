@@ -4,17 +4,17 @@
 Works from the observation only (two static RGB-D cameras, the hand camera, proprioception,
 the request text). Per decision:
 
-  depth back-projection (both static cameras) -> bins located from their rim band (pose
-  varies per episode) -> desk / bin walls / bin floors / robot removed -> voxel
+  depth back-projection (both static cameras) -> containers located from their rim band (pose
+  varies per episode) -> desk / container walls / container floors / robot removed -> voxel
   connected-component clustering -> per-cluster colour histogram + sorted extents vs the
   static references -> hover and confirm with the hand camera (dense cloud, its own
-  references) -> grasp yaw chosen so that the 0.2 m wide hand clears every bin wall and the
+  references) -> grasp yaw chosen so that the 0.2 m wide hand clears every container wall and the
   fingers close across a dimension under the 8 cm opening -> top-down pinch, carry, drop near
-  the bin's centre.
+  the container's centre.
 
-Requests: deliver the named object to the red bin (searching loose objects first, then
-unpacking its class bin, then the other bins onto the desk) and mark 1 after the hand camera
-confirms the drop; mark 2 only once every bin is empty and every loose object has been seen.
+Requests: deliver the named object to the red container (searching loose objects first, then
+unpacking its class container, then the other containers onto the desk) and mark 1 after the hand camera
+confirms the drop; mark 2 only once every container is empty and every loose object has been seen.
 
 Every call recomputes its action from the observation it is given (closed-loop servo), so a
 repeated query of the same step with perturbed proprioception answers differently.
@@ -33,13 +33,13 @@ from PIL import Image
 # ----------------------------------------------------------------------------------------
 # Task geometry (task_card.md)
 # ----------------------------------------------------------------------------------------
-BIN_X = 0.44
-BIN_YS = {"gray": -0.45, "lightblue": -0.15, "blue": 0.15, "red": 0.45}
-BIN_OUTER = (0.326, 0.247, 0.190)          # outer footprint x (long), y (short), wall height
-BIN_INNER_HALF = (0.140, 0.109)
-BIN_FLOOR_Z, BIN_RIM_Z = 0.0035, 0.191
-BIN_OF_CLASS = {"A": "gray", "B": "lightblue", "C": "blue"}
-CLASS_OF_BIN = {v: k for k, v in BIN_OF_CLASS.items()}
+CONTAINER_X = 0.44
+CONTAINER_YS = {"gray": -0.45, "lightblue": -0.15, "blue": 0.15, "red": 0.45}
+CONTAINER_OUTER = (0.326, 0.247, 0.190)          # outer footprint x (long), y (short), wall height
+CONTAINER_INNER_HALF = (0.140, 0.109)
+CONTAINER_FLOOR_Z, CONTAINER_RIM_Z = 0.0035, 0.191
+CONTAINER_OF_CLASS = {"A": "gray", "B": "lightblue", "C": "blue"}
+CLASS_OF_CONTAINER = {v: k for k, v in CONTAINER_OF_CLASS.items()}
 CLASSES = {
     "A": ["cracker box", "sugar box", "pudding box", "gelatin box", "wood block", "foam brick"],
     "B": ["master chef can", "tomato soup can", "tuna fish can", "potted meat can", "mustard bottle", "bleach cleanser"],
@@ -121,30 +121,30 @@ def rot_z(a):
 
 
 # ----------------------------------------------------------------------------------------
-# Bins (pose varies per episode: centre x, y and yaw of the long side)
+# Containers (pose varies per episode: centre x, y and yaw of the long side)
 # ----------------------------------------------------------------------------------------
-def nominal_bins():
-    return {n: (BIN_X, y, 0.0) for n, y in BIN_YS.items()}
+def nominal_containers():
+    return {n: (CONTAINER_X, y, 0.0) for n, y in CONTAINER_YS.items()}
 
 
-def bin_local(b, x, y):
-    """Desk xy -> coordinates in bin b's frame (x along its long side). Vectorised."""
+def container_local(b, x, y):
+    """Desk xy -> coordinates in container b's frame (x along its long side). Vectorised."""
     bx, by, yaw = b
     c, s = math.cos(yaw), math.sin(yaw)
     dx, dy = x - bx, y - by
     return c * dx + s * dy, -s * dx + c * dy
 
 
-def bin_point(b, lx, ly):
+def container_point(b, lx, ly):
     bx, by, yaw = b
     c, s = math.cos(yaw), math.sin(yaw)
     return bx + c * lx - s * ly, by + s * lx + c * ly
 
 
-def bin_of_xy(bins, x, y, shrink=0.0):
-    for name, b in bins.items():
-        lx, ly = bin_local(b, x, y)
-        if abs(lx) <= BIN_INNER_HALF[0] - shrink and abs(ly) <= BIN_INNER_HALF[1] - shrink:
+def container_of_xy(containers, x, y, shrink=0.0):
+    for name, b in containers.items():
+        lx, ly = container_local(b, x, y)
+        if abs(lx) <= CONTAINER_INNER_HALF[0] - shrink and abs(ly) <= CONTAINER_INNER_HALF[1] - shrink:
             return name
     return None
 
@@ -161,15 +161,15 @@ def hand_corners(x, y, yaw, margin=0.0):
     return pts
 
 
-def hand_fits(bins, x, y, yaw, inside=None):
-    """Open hand lowered at (x, y) with `yaw`: outside every bin's outer footprint, or (when
-    `inside` names a bin) entirely within that bin's interior."""
+def hand_fits(containers, x, y, yaw, inside=None):
+    """Open hand lowered at (x, y) with `yaw`: outside every container's outer footprint, or (when
+    `inside` names a container) entirely within that container's interior."""
     pts = hand_corners(x, y, yaw, 0.008)
-    ox, oy = BIN_OUTER[0] / 2, BIN_OUTER[1] / 2
-    ix, iy = BIN_INNER_HALF
-    for name, b in bins.items():
+    ox, oy = CONTAINER_OUTER[0] / 2, CONTAINER_OUTER[1] / 2
+    ix, iy = CONTAINER_INNER_HALF
+    for name, b in containers.items():
         for px, py in pts:
-            lx, ly = bin_local(b, px, py)
+            lx, ly = container_local(b, px, py)
             if name == inside:
                 if abs(lx) > ix - 0.006 or abs(ly) > iy - 0.006:
                     return False
@@ -235,11 +235,11 @@ def label_components(idx):
     return labels, comp
 
 
-def fit_bin(p, cx, cy, yaw0=0.0):
-    """Refine one bin's pose from rim-band points near its nominal centre: coarse-to-fine grid
+def fit_container(p, cx, cy, yaw0=0.0):
+    """Refine one container's pose from rim-band points near its nominal centre: coarse-to-fine grid
     search over (x, y, yaw) maximising the number of points on the outline of the known outer
-    footprint. Robust to partial rings (a bin seen from one side only)."""
-    ox, oy = BIN_OUTER[0] / 2, BIN_OUTER[1] / 2
+    footprint. Robust to partial rings (a container seen from one side only)."""
+    ox, oy = CONTAINER_OUTER[0] / 2, CONTAINER_OUTER[1] / 2
     q = p[np.hypot(p[:, 0] - cx, p[:, 1] - cy) < 0.32]
     if len(q) < 30:
         return None
@@ -270,39 +270,39 @@ def fit_bin(p, cx, cy, yaw0=0.0):
     return best
 
 
-def detect_bins(pts, col):
-    """Bin poses from the rim band of the fused cloud (the upper walls, above most objects):
-    each bin is fitted around its nominal pose with the known footprint. A bin with too few
+def detect_containers(pts, col):
+    """Container poses from the rim band of the fused cloud (the upper walls, above most objects):
+    each container is fitted around its nominal pose with the known footprint. A container with too few
     band points keeps its nominal pose."""
     x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
-    band = (z > BIN_RIM_Z - 0.07) & (z < BIN_RIM_Z + 0.02) & (x > DESK_X[0]) & (x < 0.80) & (np.abs(y) < 0.65)
-    bins = nominal_bins()
+    band = (z > CONTAINER_RIM_Z - 0.07) & (z < CONTAINER_RIM_Z + 0.02) & (x > DESK_X[0]) & (x < 0.80) & (np.abs(y) < 0.65)
+    containers = nominal_containers()
     fits = []
     if band.sum() < 40:
-        return bins, fits
+        return containers, fits
     p = pts[band][:, :2]
-    for name, (bx, by, _) in list(bins.items()):
-        r = fit_bin(p, bx, by)
+    for name, (bx, by, _) in list(containers.items()):
+        r = fit_container(p, bx, by)
         if r is None or r[0] < 40:
             continue
         sc, fx, fy, fyaw = r
-        bins[name] = (float(fx), float(fy), float(fyaw))
+        containers[name] = (float(fx), float(fy), float(fyaw))
         fits.append({"name": name, "score": sc, "centre": [float(fx), float(fy)], "yaw": float(fyaw)})
-    return bins, fits
+    return containers, fits
 
 
-def scene_mask(pts, bins):
+def scene_mask(pts, containers):
     x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
     # the whole desk top except the robot's base column; objects can slide past the arrival area
     keep = (x > 0.08) & (x < 0.80) & (np.abs(y) < 0.70) & (np.hypot(x, y) > 0.20) & (z > 0.02) & (z < Z_ROBOT)
-    ox, oy, oz = BIN_OUTER
-    ix, iy = BIN_INNER_HALF
-    for b in bins.values():
-        lx, ly = bin_local(b, x, y)
+    ox, oy, oz = CONTAINER_OUTER
+    ix, iy = CONTAINER_INNER_HALF
+    for b in containers.values():
+        lx, ly = container_local(b, x, y)
         in_outer = (np.abs(lx) <= ox / 2 + 0.014) & (np.abs(ly) <= oy / 2 + 0.014)
         in_inner = (np.abs(lx) <= ix - 0.010) & (np.abs(ly) <= iy - 0.010)
         keep &= ~(in_outer & ~in_inner & (z < oz + 0.025))
-        keep &= ~(in_inner & (z < BIN_FLOOR_Z + 0.015))
+        keep &= ~(in_inner & (z < CONTAINER_FLOOR_Z + 0.015))
     return keep
 
 
@@ -346,7 +346,7 @@ def extent_along(p, yaw):
     return float(np.percentile(proj, 97) - np.percentile(proj, 3))
 
 
-def cluster_features(p, c, bins):
+def cluster_features(p, c, containers):
     cen = p.mean(0)
     top = float(np.percentile(p[:, 2], 97))
     xy = p[:, :2] - cen[:2]
@@ -356,8 +356,8 @@ def cluster_features(p, c, bins):
     yaw = float(np.arctan2(major[1], major[0]))
     proj = xy @ evecs
     ext = np.percentile(proj, 97, axis=0) - np.percentile(proj, 3, axis=0)
-    b = bin_of_xy(bins, cen[0], cen[1])
-    floor = BIN_FLOOR_Z if b else 0.0
+    b = container_of_xy(containers, cen[0], cen[1])
+    floor = CONTAINER_FLOOR_Z if b else 0.0
     slab = p[p[:, 2] > top - 0.03]
     gxy = slab[:, :2].mean(0) if len(slab) >= 5 else cen[:2]
     slab_yaw = yaw
@@ -366,15 +366,15 @@ def cluster_features(p, c, bins):
         sev, svec = np.linalg.eigh(sxy.T @ sxy / len(slab))
         slab_yaw = float(np.arctan2(svec[1, 1], svec[0, 1]))
     return {"n": int(len(p)), "centroid": cen.tolist(), "grasp_xy": [float(gxy[0]), float(gxy[1])],
-            "top_z": top, "floor": floor, "bin": b, "yaw": yaw, "slab_yaw": slab_yaw,
+            "top_z": top, "floor": floor, "container": b, "yaw": yaw, "slab_yaw": slab_yaw,
             "len_major": float(ext[1]), "len_minor": float(ext[0]),
             "dims": sorted([float(ext[1]), float(ext[0]), float(top - floor)]),
             "mean_rgb": c.mean(0).tolist(), "hist": colour_hist(rgb_to_hsv(c)).tolist(), "pts": p}
 
 
-def perceive(images, bins=None, voxel=VOXEL, min_pts=12, extra=()):
+def perceive(images, containers=None, voxel=VOXEL, min_pts=12, extra=()):
     """images: {cam: (rgb uint8, depth uint16)} for the static cameras, plus optional extra
-    views as (rgb, depth, R_cam, t_cam) -> (clusters, bins)."""
+    views as (rgb, depth, R_cam, t_cam) -> (clusters, containers)."""
     P, C = [], []
     for cam in CAMS:
         rgb, d = images[cam]
@@ -386,12 +386,12 @@ def perceive(images, bins=None, voxel=VOXEL, min_pts=12, extra=()):
         P.append(pts)
         C.append(col)
     allp, allc = np.concatenate(P), np.concatenate(C)
-    if bins is None:
-        bins, _ = detect_bins(allp, allc)
-    m = scene_mask(allp, bins)
+    if containers is None:
+        containers, _ = detect_containers(allp, allc)
+    m = scene_mask(allp, containers)
     pts, col = allp[m], allc[m]
     if len(pts) == 0:
-        return [], bins
+        return [], containers
     lo = pts.min(0) - voxel
     idx = np.floor((pts - lo) / voxel).astype(int)
     labels, n = label_components(idx)
@@ -400,19 +400,19 @@ def perceive(images, bins=None, voxel=VOXEL, min_pts=12, extra=()):
         mm = labels == k
         if mm.sum() < min_pts:
             continue
-        out.append(cluster_features(pts[mm], col[mm], bins))
-    return out, bins
+        out.append(cluster_features(pts[mm], col[mm], containers))
+    return out, containers
 
 
-def perceive_eih(rgb, depth, R_cam, t_cam, expected_xy, floor, top_hint, bins, radius=0.13, voxel=0.006):
+def perceive_eih(rgb, depth, R_cam, t_cam, expected_xy, floor, top_hint, containers, radius=0.13, voxel=0.006):
     """Dense cluster of the object under the hand camera."""
     pts, col = backproject_rt(depth, rgb, CAMS["agentview"]["f"], CAMS["agentview"]["c"], R_cam, t_cam)
     x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
     keep = (z > floor + 0.010) & (z < top_hint + 0.06) & (np.hypot(x - expected_xy[0], y - expected_xy[1]) < radius)
-    ox, oy, oz = BIN_OUTER
-    ix, iy = BIN_INNER_HALF
-    for b in bins.values():
-        lx, ly = bin_local(b, x, y)
+    ox, oy, oz = CONTAINER_OUTER
+    ix, iy = CONTAINER_INNER_HALF
+    for b in containers.values():
+        lx, ly = container_local(b, x, y)
         in_outer = (np.abs(lx) <= ox / 2 + 0.014) & (np.abs(ly) <= oy / 2 + 0.014)
         in_inner = (np.abs(lx) <= ix - 0.008) & (np.abs(ly) <= iy - 0.008)
         keep &= ~(in_outer & ~in_inner & (z < oz + 0.025))
@@ -429,7 +429,7 @@ def perceive_eih(rgb, depth, R_cam, t_cam, expected_xy, floor, top_hint, bins, r
             best, bestn = m, int(m.sum())
     if bestn < 30:
         return None
-    c = cluster_features(pts[best], col[best], bins)
+    c = cluster_features(pts[best], col[best], containers)
     c["floor"] = floor
     c["dims"] = sorted([c["len_major"], c["len_minor"], c["top_z"] - floor])
     return c
@@ -478,10 +478,10 @@ class Controller(object):
         self.q_home = None
         self.gen = None
         self.last_t, self.policy = None, None
-        self.bins = nominal_bins()
+        self.containers = nominal_containers()
         self.request_text = None
         self.request_state = None
-        self.drop_slot = {b: 0 for b in BIN_YS}
+        self.drop_slot = {b: 0 for b in CONTAINER_YS}
         self.skip_list = []
         self.last_perceive_t = -999
 
@@ -574,15 +574,15 @@ class Controller(object):
         held = held and self.gripper_closed_on_object()
         return held
 
-    def place_in_bin(self, name):
-        """Carry the held object over bin `name`, lower to just above the rim near its centre,
-        release. The hand's wide axis runs along the bin's long side."""
-        b = self.bins[name]
+    def place_in_container(self, name):
+        """Carry the held object over container `name`, lower to just above the rim near its centre,
+        release. The hand's wide axis runs along the container's long side."""
+        b = self.containers[name]
         slot = self.drop_slot[name] % 3
         self.drop_slot[name] += 1
-        x, y = bin_point(b, (-0.035, 0.0, 0.035)[slot], (0.0, 0.02, -0.02)[slot])
+        x, y = container_point(b, (-0.035, 0.0, 0.035)[slot], (0.0, 0.02, -0.02)[slot])
         yaw = wrap_half(math.pi / 2 + b[2])
-        z_rel = BIN_RIM_Z + DROP_ABOVE_RIM
+        z_rel = CONTAINER_RIM_Z + DROP_ABOVE_RIM
         yield from self.goto((x, y, TRAVEL_Z), yaw, grip=1.0, tol=0.015)
         yield from self.goto((x, y, z_rel), yaw, grip=1.0, tol=0.01, max_steps=30)
         yield from self.hold(4, grip=0.0)
@@ -600,12 +600,12 @@ class Controller(object):
         yield from self.hold(settle, grip=0.0)
         imgs = {cam: (decode_png(self.obs["rgb"][cam], "RGB"), decode_png(self.obs["depth"][cam])) for cam in CAMS}
         # the hand camera at the observe pose looks straight down on the strip between the
-        # robot and the bins, which the bin walls hide from the static cameras
+        # robot and the containers, which the container walls hide from the static cameras
         eih = (decode_png(self.obs["rgb"]["eye_in_hand"], "RGB"), decode_png(self.obs["depth"]["eye_in_hand"]))
-        clusters, bins = perceive(imgs, extra=[(eih[0], eih[1]) + self.cam_pose()])
-        self.bins = bins
+        clusters, containers = perceive(imgs, extra=[(eih[0], eih[1]) + self.cam_pose()])
+        self.containers = containers
         for c in clusters:
-            c["cls_info"] = self.classify(c) if (c["bin"] is None or c["n"] < 600) else None
+            c["cls_info"] = self.classify(c) if (c["container"] is None or c["n"] < 600) else None
         self.last_perceive_t = self.t()
         self.dump("observe", imgs["agentview"][0], clusters)
         return clusters
@@ -620,11 +620,11 @@ class Controller(object):
             for c in clusters:
                 info = c.get("cls_info")
                 rows.append({"n": c["n"], "centroid": [round(v, 3) for v in c["centroid"]], "top_z": round(c["top_z"], 3),
-                             "bin": c["bin"], "dims": [round(v, 3) for v in c["dims"]], "yaw": round(c["yaw"], 2),
+                             "container": c["container"], "dims": [round(v, 3) for v in c["dims"]], "yaw": round(c["yaw"], 2),
                              "model": info["model"] if info else None, "d": round(info["d"], 3) if info else None,
                              "margin": round(info["class_margin"], 3) if info else None})
             with open(os.path.join(LOG, "t%06d_%s.json" % (self.t(), tag)), "w") as f:
-                json.dump({"t": self.t(), "request": self.request(), "bins": {k: [round(v, 3) for v in b] for k, b in self.bins.items()}, "clusters": rows}, f)
+                json.dump({"t": self.t(), "request": self.request(), "containers": {k: [round(v, 3) for v in b] for k, b in self.containers.items()}, "clusters": rows}, f)
         except Exception as exc:  # noqa: BLE001
             log("dump failed: %r" % exc)
 
@@ -643,26 +643,26 @@ class Controller(object):
         R_cam, t_cam = self.cam_pose()
         rgb = decode_png(self.obs["rgb"]["eye_in_hand"], "RGB")
         dep = decode_png(self.obs["depth"]["eye_in_hand"])
-        d = perceive_eih(rgb, dep, R_cam, t_cam, (x, y), c["floor"], c["top_z"], self.bins)
+        d = perceive_eih(rgb, dep, R_cam, t_cam, (x, y), c["floor"], c["top_z"], self.containers)
         if d is None:
             log("t=%d inspect: nothing under the hand camera" % self.t())
             self.dump("inspect_none", rgb, [])
             return None
         d["cls_info"] = self.classify_eih(d)
-        d["bin"] = c["bin"]
+        d["container"] = c["container"]
         self.dump("inspect", rgb, [d])
         return d
 
     # -- grasp planning -------------------------------------------------------------------------
     def choose_yaw(self, c, inside=None):
         """A hand yaw for cluster c: fingers across its narrow side when possible, never
-        colliding with a bin wall, grasped width under the opening. None when impossible."""
+        colliding with a container wall, grasped width under the opening. None when impossible."""
         x, y = c["grasp_xy"]
         p = c.get("pts")
         pref = wrap_half(c.get("slab_yaw", c["yaw"]))
         cands = [pref] + [wrap_half(pref + s * d) for d in (0.26, 0.52, 0.79, 1.05, 1.31, 1.57) for s in (1, -1)]
         for yaw in cands:
-            if not hand_fits(self.bins, x, y, yaw, inside=inside):
+            if not hand_fits(self.containers, x, y, yaw, inside=inside):
                 continue
             if p is not None and len(p) >= 10:
                 slab = p[p[:, 2] > c["top_z"] - 0.05]
@@ -680,16 +680,16 @@ class Controller(object):
                 continue
             if any(math.hypot(x - ox, y - oy) < 0.11 for ox, oy in occ):
                 continue
-            if not (hand_fits(self.bins, x, y, 0.0) or hand_fits(self.bins, x, y, math.pi / 2)):
+            if not (hand_fits(self.containers, x, y, 0.0) or hand_fits(self.containers, x, y, math.pi / 2)):
                 continue
             return (x, y)
         return None
 
     def spot_yaw(self, xy):
-        return 0.0 if hand_fits(self.bins, xy[0], xy[1], 0.0) else math.pi / 2
+        return 0.0 if hand_fits(self.containers, xy[0], xy[1], 0.0) else math.pi / 2
 
     def loose(self, clusters):
-        return [c for c in clusters if c["bin"] is None and c["cls_info"] is not None]
+        return [c for c in clusters if c["container"] is None and c["cls_info"] is not None]
 
     @staticmethod
     def _near_any(c, points, r=0.05):
@@ -743,26 +743,26 @@ class Controller(object):
                 return True
             held = yield from self.pick(d["grasp_xy"], yaw, d["top_z"], d["floor"])
             if held:
-                yield from self.place_in_bin(BIN_OF_CLASS[info["cls"]])
+                yield from self.place_in_container(CONTAINER_OF_CLASS[info["cls"]])
             else:
                 log("t=%d grasp failed" % self.t())
                 self.skip(c)
             return True
         for c in clusters:
-            if c["bin"] in CLASS_OF_BIN and c["cls_info"] is not None and not self.skipped(c) \
-                    and c["cls_info"]["cls"] != CLASS_OF_BIN[c["bin"]] and c["cls_info"]["class_margin"] > 0.15:
+            if c["container"] in CLASS_OF_CONTAINER and c["cls_info"] is not None and not self.skipped(c) \
+                    and c["cls_info"]["cls"] != CLASS_OF_CONTAINER[c["container"]] and c["cls_info"]["class_margin"] > 0.15:
                 d = yield from self.inspect(c)
-                if d is None or d["cls_info"]["cls"] == CLASS_OF_BIN[c["bin"]] or d["cls_info"]["class_margin"] < 0.15:
+                if d is None or d["cls_info"]["cls"] == CLASS_OF_CONTAINER[c["container"]] or d["cls_info"]["class_margin"] < 0.15:
                     self.skip(c)
                     return True
-                yaw = self.choose_yaw(d, inside=c["bin"])
-                log("t=%d misplaced %s in %s yaw=%s" % (self.t(), d["cls_info"]["model"], c["bin"], None if yaw is None else round(yaw, 2)))
+                yaw = self.choose_yaw(d, inside=c["container"])
+                log("t=%d misplaced %s in %s yaw=%s" % (self.t(), d["cls_info"]["model"], c["container"], None if yaw is None else round(yaw, 2)))
                 if yaw is None:
                     self.skip(c)
                     return True
                 held = yield from self.pick(d["grasp_xy"], yaw, d["top_z"], d["floor"])
                 if held:
-                    yield from self.place_in_bin(BIN_OF_CLASS[d["cls_info"]["cls"]])
+                    yield from self.place_in_container(CONTAINER_OF_CLASS[d["cls_info"]["cls"]])
                 else:
                     self.skip(c)
                 return True
@@ -791,7 +791,7 @@ class Controller(object):
                     return True
                 held = yield from self.pick(d["grasp_xy"], yaw, d["top_z"], d["floor"])
                 if held:
-                    yield from self.place_in_bin("red")
+                    yield from self.place_in_container("red")
                     yield from self.hold(8, grip=0.0)
                     ok = yield from self.confirm_red()
                     if ok:
@@ -799,16 +799,16 @@ class Controller(object):
                         log("t=%d marked delivered" % self.t())
                         self.request_state = None
                     else:
-                        log("t=%d red bin check failed; retrying" % self.t())
+                        log("t=%d red container check failed; retrying" % self.t())
                         rs["inspected"].remove(key)
                 else:
                     log("t=%d grasp of the target failed; retrying" % self.t())
                     rs["inspected"].remove(key)
             return True
-        order = [BIN_OF_CLASS[cls]] if cls else []
+        order = [CONTAINER_OF_CLASS[cls]] if cls else []
         order += [b for b in ("gray", "lightblue", "blue") if b not in order]
         for b in order:
-            inside = [c for c in clusters if c["bin"] == b]
+            inside = [c for c in clusters if c["container"] == b]
             if not inside:
                 continue
             c = max(inside, key=lambda c: c["top_z"])
@@ -841,16 +841,16 @@ class Controller(object):
         return True
 
     def confirm_red(self):
-        b = self.bins["red"]
+        b = self.containers["red"]
         x, y = b[0], b[1]
-        yield from self.goto((x, y, BIN_RIM_Z + 0.16), 0.0, grip=0.0, tol=0.01, max_steps=30)
+        yield from self.goto((x, y, CONTAINER_RIM_Z + 0.16), 0.0, grip=0.0, tol=0.01, max_steps=30)
         yield from self.hold(2, grip=0.0)
         R_cam, t_cam = self.cam_pose()
         rgb = decode_png(self.obs["rgb"]["eye_in_hand"], "RGB")
         dep = decode_png(self.obs["depth"]["eye_in_hand"])
-        d = perceive_eih(rgb, dep, R_cam, t_cam, (x, y), BIN_FLOOR_Z, BIN_RIM_Z, self.bins, radius=0.14)
+        d = perceive_eih(rgb, dep, R_cam, t_cam, (x, y), CONTAINER_FLOOR_Z, CONTAINER_RIM_Z, self.containers, radius=0.14)
         self.dump("confirm_red", rgb, [d] if d else [])
-        return d is not None and bin_of_xy(self.bins, d["centroid"][0], d["centroid"][1]) == "red"
+        return d is not None and container_of_xy(self.containers, d["centroid"][0], d["centroid"][1]) == "red"
 
 
 # ----------------------------------------------------------------------------------------

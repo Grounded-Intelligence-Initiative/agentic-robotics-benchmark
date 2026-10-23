@@ -11,22 +11,22 @@ and the search must preserve the original organization of the storage space, bot
 runs and after it ends. This task is that chore, done by a robot, continuously.
 
 You control a Franka Panda arm at a desk in NVIDIA Isaac Sim. The desk carries four KLT
-bins in a loose row (their exact positions and headings vary a little from episode to
+containers in a loose row (their exact positions and headings vary a little from episode to
 episode), and new objects keep landing on the free desk surface around them for the whole
 episode. Your job has three parts:
 
-- place every object in the bin of its class: class **A** → the **gray** bin, class **B** →
-  the **light-blue** bin, class **C** → the **blue** bin. The desk must be organized when a
+- place every object in the container of its class: class **A** → the **gray** container, class **B** →
+  the **light-blue** container, class **C** → the **blue** container. The desk must be organized when a
   task is finished (each request closed, and the end of the episode); it may be temporarily
   disorganized while you work, but every step spent disorganized costs score;
 - whenever a *request* names a specific object, find it (it may be buried under other
-  objects) and place it in the **red** bin before the request's deadline; if the object is
+  objects) and place it in the **red** container before the request's deadline; if the object is
   not on the desk at all, **declare it absent** instead;
 - keep going: the environment never stands still. New objects keep arriving, objects get
   taken away, and a new request can open while you are still tidying up after the last one.
   Every object's state is scored at every step, and each request is judged on its own.
 
-Two bins start full (A objects in gray, B objects in light-blue), the red and blue bins start
+Two containers start full (A objects in gray, B objects in light-blue), the red and blue containers start
 empty, and a few loose objects (mostly C, some A) lie on the desk. Classes are visual
 categories of everyday objects (boxes, cans and bottles, tools and kitchenware), of which at most two instances (at slightly different sizes) are on the desk at once. There is no segmentation, no object pose and no
 object list in the observation: you work from the cameras.
@@ -36,20 +36,20 @@ object list in the observation: you work from the cameras.
 An episode runs a fixed `${horizon}` control steps at 10 Hz and never ends early. During it:
 
 1. **Arrivals.** New objects drop at random free spots on the desk surface (never inside a
-   bin) at random intervals, within the arm's reach. When too many objects are loose on the
+   container) at random intervals, within the arm's reach. When too many objects are loose on the
    desk, arrivals pause until you clear some.
 2. **Requests.** At random times a request opens: the observation carries a short text
    description of one specific object (for example `the yellow mustard bottle`). Most
-   requested objects are somewhere on the desk or in a bin; some are not present at all.
+   requested objects are somewhere on the desk or in a container; some are not present at all.
    You close a request yourself with a *mark* in your action: **done: delivered** or **done:
    no such object**. The grader checks the physical truth at that moment: a delivered mark
-   is right only if the requested object rests in the red bin; a no-such-object mark is
+   is right only if the requested object rests in the red container; a no-such-object mark is
    right only if the object is not on the desk. A right mark earns a large bonus, a wrong
    mark costs the same amount, and a request whose deadline passes without a mark earns
    nothing. At most one request is open at a time.
-3. **Bin service.** When a bin is full, or a requested object has been delivered to the red
-   bin, a worker empties that bin: its objects disappear from the scene.
-4. **Disturbances.** Occasionally the world misplaces one object into a wrong bin, or nudges
+3. **Container service.** When a container is full, or a requested object has been delivered to the red
+   container, a worker empties that container: its objects disappear from the scene.
+4. **Disturbances.** Occasionally the world misplaces one object into a wrong container, or nudges
    a loose object across the desk. Correcting these is part of the job.
 
 Every event is drawn from a hidden per-episode seed; the practice environment exposes the
@@ -91,7 +91,7 @@ READY                                                     <- your first stdout l
 | `gripper_width` | metres |
 | `ee_pose` | `[x, y, z, qw, qx, qy, qz]` of the tool centre point in the robot base frame |
 
-Camera intrinsics and extrinsics, the desk and bin footprints and the robot base pose are fixed for
+Camera intrinsics and extrinsics, the desk and container footprints and the robot base pose are fixed for
 the task and documented in `/home/user/task_card.md` in the practice environment; they do not
 change between seeds.
 
@@ -100,7 +100,7 @@ change between seeds.
 `action` is eight numbers: a Cartesian delta for the tool centre point in the robot base
 frame (metres and radians, clipped to ±0.05 m and ±0.25 rad per step), a gripper command in
 `[0, 1]` (0 = open, 1 = closed), and a `mark` for the open request: `0` = nothing, `1` =
-**done: delivered** (you claim the requested object rests in the red bin), `2` = **done: no
+**done: delivered** (you claim the requested object rests in the red container), `2` = **done: no
 such object** (you claim it is not on the desk). A mark is ignored while no request is open,
 and a request accepts one mark only. The environment turns the delta into joint targets
 through inverse kinematics (a 5 cm step completes within the step inside the workspace); a
@@ -110,46 +110,52 @@ the arm simply stays put for that step.
 ## Scoring
 
 The grader owns the simulator and evaluates the physical state at **every** step; nothing
-your controller prints is a scoring input. Each object `o` gets a value `v_o(t)` per step:
+your controller prints is a scoring input. Three detectors feed it: finger **contact** with an
+object (physics contact report), **in container** (the object's centre inside a container's
+interior, in that container's own frame), and **on table** (not in any container, resting,
+not touched). An object counts as *placed* only when it rests and no finger touches it.
 
-**Non-target objects** (every object without an open request):
+Each object `o` has a value `v_o(t)` per step:
 
 | state | value |
 |---|---|
-| resting inside the bin of its class | +1 |
-| on the desk, in the gripper, or in flight | 0 |
-| resting inside any other bin | −1 |
-| removed by bin service | frozen at its value when removed |
+| placed inside a right container (its class container; for the requested object also the red container) | +1 |
+| on the table, in the gripper, or in flight | 0 |
+| placed inside any other container | −1 |
+| knocked off the table | −1 for the rest of the episode |
+| removed by container service or delivered | frozen at its value when removed |
 
-**Target object** (the one named by the open request): the same three states, but its own
-bin is the **red** bin while the request is open, every step counts **double**, and the first
-contact between the gripper fingers and it earns a one-time bonus of `0.05 · horizon`. When
-the request closes it is a non-target object again; a correctly delivered object is taken away
-by the worker and keeps earning +1 per step for the rest of the episode.
+Every object also has a baseline `b_o`: its value when it entered the scene (0 for an arrival,
++1 for an object that starts in its pile) or when the world last moved it (−1 after the world
+misplaces it). Only your net effect `v_o(t) − b_o` counts.
 
-**Marks:** a right mark (delivered and the object really rests in the red bin; no such object
-and it really is absent) earns `+0.5 · horizon` once. A wrong mark of either kind costs
-`0.5 · horizon`. A request that expires unmarked earns nothing.
+Requests end as a **success** (`done: delivered` while the requested object is placed in the red
+container; `done: no such object` when it really is absent) or a **failure** (either mark when
+the truth is the opposite, or the deadline passes unmarked).
 
-The episode's raw score is
+The episode score is
 
 ```
-score = max(0, Σ_o Σ_t w_o · (v_o(t) − v_o(0))) / horizon
+S = 1/2 · O + 1/2 · R
+O = clip( Σ_t Σ_o (v_o(t) − b_o)  /  Σ_t Σ_o max(0, 1 − b_o) , 0, 1 )
+R = successful requests / closed requests        (0 when no request closed)
 ```
 
-The subtraction of `v_o(0)` means an untouched scene scores exactly 0: objects that start in
-their own bin earn nothing until you disturb them, and cost you if you leave them elsewhere.
-Sustained tidiness pays every step; a last-minute clean-up does not.
+`O` is the share of the sorting work that was available over the episode that you actually
+did, counted every step: sustained tidiness pays, a last-minute clean-up does not, and an
+untouched scene scores exactly 0. An episode the grader cuts short for exhausting its
+wall-clock budget keeps what it earned so far, scaled by the fraction of the horizon that ran;
+an aborted episode (protocol error, step deadline, malformed action) scores 0.
 
-The task's reported metric is `mean_episode_score`, the mean raw score over the hidden
-seeds. The reward you are judged on is that mean relative to a hidden reference value.
+The task's reported metric is `mean_episode_score`, the mean of `S` over the hidden seeds. The
+reward you are judged on is that mean relative to a hidden reference value.
 
 ## Practice material
 
 - `/home/user/messy_desk_env.py` — the same environment the grader runs, usable on your own seeds;
 - `/home/user/practice_grader/grade.py` — drives your `run.sh` over the real wire on visible
   seeds and prints the raw score, nothing else;
-- `/home/user/task_card.md` — camera calibration, bin geometry, class catalogue.
+- `/home/user/task_card.md` — camera calibration, container geometry, class catalogue.
 
 The simulator runs headless on the GPU in this sandbox. Start it once and keep it alive;
 each launch costs about two minutes.

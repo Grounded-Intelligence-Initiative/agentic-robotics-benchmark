@@ -12,9 +12,9 @@ Run as a script it serves one JSON object per line on stdin/stdout:
     {"cmd": "close"}                         -> {"ok": true}, then exit
 
 `obs` is exactly what the tested agent receives over the ALE wire. `state` is privileged:
-object classes, poses, bin membership, the truth behind the open request. The graders use
+object classes, poses, container membership, the truth behind the open request. The graders use
 it to score; the ALE wire never carries it. Everything an episode does is a deterministic
-function of its 64-bit seed (arrivals, requests, bin service, disturbances, scales).
+function of its 64-bit seed (arrivals, requests, container service, disturbances, scales).
 """
 
 import base64
@@ -43,27 +43,27 @@ CLASSES = {
           "040_large_marker", "051_large_clamp", "052_extra_large_clamp", "019_pitcher_base"],
 }
 CLASS_OF = {m: c for c, ms in CLASSES.items() for m in ms}
-# base scale per model so that everything fits a KLT bin and a 8 cm gripper
+# base scale per model so that everything fits a KLT container and a 8 cm gripper
 BASE_SCALE = {"003_cracker_box": 0.6, "036_wood_block": 0.6, "021_bleach_cleanser": 0.55,
               "024_bowl": 0.6, "035_power_drill": 0.55, "019_pitcher_base": 0.5,
               "052_extra_large_clamp": 1.0, "002_master_chef_can": 0.8}
 DISPLAY_NAME = {m: " ".join(m.split("_")[1:]) for m in CLASS_OF}
-BIN_OF_CLASS = {"A": "gray", "B": "lightblue", "C": "blue"}
-BIN_COLORS = {"gray": (0.45, 0.45, 0.45), "lightblue": (0.62, 0.82, 1.0),
+CONTAINER_OF_CLASS = {"A": "gray", "B": "lightblue", "C": "blue"}
+CONTAINER_COLORS = {"gray": (0.45, 0.45, 0.45), "lightblue": (0.62, 0.82, 1.0),
               "blue": (0.08, 0.20, 0.85), "red": (0.85, 0.08, 0.08)}
-# bins in a loose row in front of the robot, long side roughly along x. The stock small_KLT
-# asset is 0.297 x 0.198 x 0.146 with its origin at mid-height; it is stretched by BIN_SCALE
+# containers in a loose row in front of the robot, long side roughly along x. The stock small_KLT
+# asset is 0.297 x 0.198 x 0.146 with its origin at mid-height; it is stretched by CONTAINER_SCALE
 # (long side, short side, height) and set down so that it stands on the desk. Every episode
-# jitters each bin's pose (BIN_JITTER: x, y in metres, yaw in radians) around its nominal centre.
+# jitters each container's pose (CONTAINER_JITTER: x, y in metres, yaw in radians) around its nominal centre.
 KLT_HALF = (0.1483, 0.0989, 0.0732)                    # stock half extents (long, short, height)
-BIN_SCALE = (1.10, 1.25, 1.30)
-BIN_X, BIN_YS = 0.44, {"gray": -0.45, "lightblue": -0.15, "blue": 0.15, "red": 0.45}
-BIN_JITTER = (0.04, 0.008, math.radians(5.0))
-BIN_OUTER = tuple(2.0 * h * k for h, k in zip(KLT_HALF, BIN_SCALE))     # 0.326 x 0.247 x 0.190
-BIN_INNER_HALF = (0.127 * BIN_SCALE[0], 0.0875 * BIN_SCALE[1])          # interior half extents (x, y)
-BIN_Z0 = KLT_HALF[2] * BIN_SCALE[2] + 0.0005                             # origin height: bottom on the desk
-BIN_FLOOR_Z = 0.0005 + 0.0023 * BIN_SCALE[2]                             # inner floor top (ribs along the long walls reach 0.012 * scale)
-BIN_RIM_Z = BIN_OUTER[2] + 0.0005
+CONTAINER_SCALE = (1.10, 1.25, 1.30)
+CONTAINER_X, CONTAINER_YS = 0.44, {"gray": -0.45, "lightblue": -0.15, "blue": 0.15, "red": 0.45}
+CONTAINER_JITTER = (0.04, 0.008, math.radians(5.0))
+CONTAINER_OUTER = tuple(2.0 * h * k for h, k in zip(KLT_HALF, CONTAINER_SCALE))     # 0.326 x 0.247 x 0.190
+CONTAINER_INNER_HALF = (0.127 * CONTAINER_SCALE[0], 0.0875 * CONTAINER_SCALE[1])          # interior half extents (x, y)
+CONTAINER_Z0 = KLT_HALF[2] * CONTAINER_SCALE[2] + 0.0005                             # origin height: bottom on the desk
+CONTAINER_FLOOR_Z = 0.0005 + 0.0023 * CONTAINER_SCALE[2]                             # inner floor top (ribs along the long walls reach 0.012 * scale)
+CONTAINER_RIM_Z = CONTAINER_OUTER[2] + 0.0005
 DESK_X, DESK_Y = (0.15, 0.78), (-0.62, 0.62)
 REACH, BASE_CLEAR = 0.80, 0.22
 HORIZON_DEFAULT = 20000
@@ -72,7 +72,7 @@ HORIZON_DEFAULT = 20000
 ARRIVAL_MEAN_STEPS = 500
 LOOSE_CAP = 6
 PRESENT_CAP = 18
-BIN_CAP = 7
+CONTAINER_CAP = 7
 REQUEST_MEAN_STEPS = 1500
 REQUEST_DEADLINE_STEPS = 1200
 REQUEST_ABSENT_P = 0.2
@@ -83,6 +83,9 @@ ACTION_DIM = 8
 POS_STEP_MAX, ROT_STEP_MAX = 0.05, 0.25
 GRIPPER_OPEN, GRIPPER_CLOSED = 0.04, 0.0
 REST_SPEED = 0.08          # piles of convex-decomposed meshes jitter at a few cm/s
+ON_TABLE_Z_MAX = 0.16      # centre height of anything resting on the table top (tallest YCB upright ~0.25)
+LOST_VALUE = -1            # an object knocked off the table counts as misfiled for the rest of the episode
+REBASE_TIMEOUT = 100       # steps a nudged object may keep moving before its baseline is re-read anyway
 PARK_Z = -3.0
 RESET_WARMUP_FRAMES = 20
 READY_Q = [0.0, -math.pi / 4, 0.0, -3 * math.pi / 4, 0.0, math.pi / 2, math.pi / 4]   # Franka 'ready': tool straight down
@@ -130,7 +133,7 @@ class MessyDeskEnv:
         add_reference_to_stage(ASSET_ROOT + "/Isaac/Environments/Simple_Room/simple_room.usd", "/World/Room")
         self.franka = self.world.scene.add(Franka(prim_path="/World/Franka", name="franka",
                                                   usd_path=ASSET_ROOT + "/Isaac/Robots/Franka/franka.usd"))
-        self._build_bins()
+        self._build_containers()
         self._build_parking()
         self._build_objects()
         self._build_cameras()
@@ -190,30 +193,30 @@ class MessyDeskEnv:
             _log("views BROKEN %s: %s" % (label, exc))
 
     # -- scene construction ------------------------------------------------------------
-    def _build_bins(self):
+    def _build_containers(self):
         Gf, UsdGeom, Usd, UsdPhysics = self.Gf, self.UsdGeom, self.Usd, self.UsdPhysics
-        self.bins, self.bin_rp = {}, {}
-        for name, y in BIN_YS.items():
-            path = "/World/Bins/" + name
+        self.containers, self.container_rp = {}, {}
+        for name, y in CONTAINER_YS.items():
+            path = "/World/Containers/" + name
             self.add_reference_to_stage(ASSET_ROOT + "/Isaac/Props/KLT_Bin/small_KLT.usd", path)
             prim = self.get_prim_at_path(path)
             xf = UsdGeom.Xformable(prim)
             xf.ClearXformOpOrder()
-            xf.AddTranslateOp().Set(Gf.Vec3d(BIN_X, y, BIN_Z0))
+            xf.AddTranslateOp().Set(Gf.Vec3d(CONTAINER_X, y, CONTAINER_Z0))
             xf.AddRotateZOp().Set(90.0)   # long side along x
             # scale is applied in the asset's own frame (short side x, long side y)
-            xf.AddScaleOp().Set(Gf.Vec3f(float(BIN_SCALE[1]), float(BIN_SCALE[0]), float(BIN_SCALE[2])))
+            xf.AddScaleOp().Set(Gf.Vec3f(float(CONTAINER_SCALE[1]), float(CONTAINER_SCALE[0]), float(CONTAINER_SCALE[2])))
             rb = UsdPhysics.RigidBodyAPI.Apply(prim)
             rb.CreateKinematicEnabledAttr(True)
-            self.bin_rp[name] = self.SingleRigidPrim(prim_path=path, name="bin_" + name)
+            self.container_rp[name] = self.SingleRigidPrim(prim_path=path, name="container_" + name)
             # The KLT asset ships one shared textured material (magenta); the RTX renderer
-            # ignores displayColor, so each bin gets its own flat-coloured material bound
+            # ignores displayColor, so each container gets its own flat-coloured material bound
             # with the strongest binding strength over every mesh.
             from pxr import Sdf, UsdShade
             mat = UsdShade.Material.Define(self.stage, "/World/Looks/bin_" + name)
             shader = UsdShade.Shader.Define(self.stage, "/World/Looks/bin_" + name + "/Shader")
             shader.CreateIdAttr("UsdPreviewSurface")
-            shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*BIN_COLORS[name]))
+            shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*CONTAINER_COLORS[name]))
             shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.6)
             shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
             mat.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
@@ -221,28 +224,28 @@ class MessyDeskEnv:
                 if m.IsA(UsdGeom.Mesh):
                     binding = UsdShade.MaterialBindingAPI.Apply(m)
                     binding.Bind(mat, UsdShade.Tokens.strongerThanDescendants)
-            self.bins[name] = (BIN_X, y, 0.0)
+            self.containers[name] = (CONTAINER_X, y, 0.0)
 
-    def _place_bins(self):
-        """Per-episode bin poses: nominal row + seeded jitter (position and yaw)."""
+    def _place_containers(self):
+        """Per-episode container poses: nominal row + seeded jitter (position and yaw)."""
         np, rng = self.np, self.rng
-        for name, y0 in BIN_YS.items():
-            x = BIN_X + rng.uniform(-BIN_JITTER[0], BIN_JITTER[0])
-            y = y0 + rng.uniform(-BIN_JITTER[1], BIN_JITTER[1])
-            yaw = rng.uniform(-BIN_JITTER[2], BIN_JITTER[2])
+        for name, y0 in CONTAINER_YS.items():
+            x = CONTAINER_X + rng.uniform(-CONTAINER_JITTER[0], CONTAINER_JITTER[0])
+            y = y0 + rng.uniform(-CONTAINER_JITTER[1], CONTAINER_JITTER[1])
+            yaw = rng.uniform(-CONTAINER_JITTER[2], CONTAINER_JITTER[2])
             a = math.pi / 2 + yaw               # the asset's long side is its local y
-            self.bin_rp[name].set_world_pose(position=np.array([x, y, BIN_Z0]), orientation=np.array([math.cos(a / 2), 0.0, 0.0, math.sin(a / 2)]))
-            self.bins[name] = (x, y, yaw)
+            self.container_rp[name].set_world_pose(position=np.array([x, y, CONTAINER_Z0]), orientation=np.array([math.cos(a / 2), 0.0, 0.0, math.sin(a / 2)]))
+            self.containers[name] = (x, y, yaw)
 
-    def _bin_local(self, name, x, y):
-        """Desk point -> coordinates in the bin's own frame (x along its long side)."""
-        bx, by, yaw = self.bins[name]
+    def _container_local(self, name, x, y):
+        """Desk point -> coordinates in the container's own frame (x along its long side)."""
+        bx, by, yaw = self.containers[name]
         dx, dy = x - bx, y - by
         c, s = math.cos(yaw), math.sin(yaw)
         return c * dx + s * dy, -s * dx + c * dy
 
-    def _bin_point(self, name, lx, ly):
-        bx, by, yaw = self.bins[name]
+    def _container_point(self, name, lx, ly):
+        bx, by, yaw = self.containers[name]
         c, s = math.cos(yaw), math.sin(yaw)
         return bx + c * lx - s * ly, by + s * lx + c * ly
 
@@ -350,10 +353,10 @@ class MessyDeskEnv:
         return base64.b64encode(buf.getvalue()).decode("ascii")
 
     # -- geometry helpers ------------------------------------------------------------------
-    def _bin_of_point(self, p):
-        for name in self.bins:
-            lx, ly = self._bin_local(name, float(p[0]), float(p[1]))
-            if abs(lx) <= BIN_INNER_HALF[0] and abs(ly) <= BIN_INNER_HALF[1] and BIN_FLOOR_Z - 0.02 <= p[2] <= BIN_RIM_Z + 0.12:
+    def _container_of_point(self, p):
+        for name in self.containers:
+            lx, ly = self._container_local(name, float(p[0]), float(p[1]))
+            if abs(lx) <= CONTAINER_INNER_HALF[0] and abs(ly) <= CONTAINER_INNER_HALF[1] and CONTAINER_FLOOR_Z - 0.02 <= p[2] <= CONTAINER_RIM_Z + 0.12:
                 return name
         return None
 
@@ -365,8 +368,8 @@ class MessyDeskEnv:
             y = rng.uniform(*DESK_Y)
             if math.hypot(x, y) > REACH - 0.05 or math.hypot(x, y) < BASE_CLEAR:
                 continue
-            if any(abs(lx) <= BIN_OUTER[0] / 2 + margin and abs(ly) <= BIN_OUTER[1] / 2 + margin
-                   for lx, ly in (self._bin_local(n, x, y) for n in self.bins)):
+            if any(abs(lx) <= CONTAINER_OUTER[0] / 2 + margin and abs(ly) <= CONTAINER_OUTER[1] / 2 + margin
+                   for lx, ly in (self._container_local(n, x, y) for n in self.containers)):
                 continue
             if any(math.hypot(x - ox, y - oy) < 0.09 for ox, oy in occupied):
                 continue
@@ -383,7 +386,9 @@ class MessyDeskEnv:
     def _spawn(self, obj, xyz, yaw=None):
         yaw = self.rng.uniform(-math.pi, math.pi) if yaw is None else yaw
         self._teleport(obj, xyz, [math.cos(yaw / 2), 0.0, 0.0, math.sin(yaw / 2)])
-        obj["present"], obj["removed"] = True, False
+        obj["present"], obj["removed"], obj["frozen"], obj["rebase_t"] = True, False, 0, None
+        if getattr(self, "baseline", None) is not None:
+            self.baseline[obj["id"]] = 0
 
     def _park(self, obj):
         self._teleport(obj, obj["park"], [1.0, 0.0, 0.0, 0.0])
@@ -413,9 +418,9 @@ class MessyDeskEnv:
         self.franka.apply_action(self.ArticulationAction(joint_positions=self._home_q))
         self.franka.gripper.open()
         for o in self.objects:
-            o["removed"], o["frozen"] = False, 0
+            o["removed"], o["frozen"], o["state"], o["on_table"], o["rebase_t"] = False, 0, "absent", False, None
             self._park(o)
-        self._place_bins()
+        self._place_containers()
         # initial piles: A in gray, B in lightblue; a few loose C and A on the desk
         for cls, name in (("A", "gray"), ("B", "lightblue")):
             models = list(CLASSES[cls])
@@ -425,8 +430,8 @@ class MessyDeskEnv:
                 o = self._free_instance(models[i % len(models)])
                 if o is None:
                     continue
-                px, py = self._bin_point(name, self.rng.uniform(-0.045, 0.045), self.rng.uniform(-0.03, 0.03))
-                self._spawn(o, (px, py, BIN_RIM_Z + 0.06 + 0.08 * i))
+                px, py = self._container_point(name, self.rng.uniform(-0.045, 0.045), self.rng.uniform(-0.03, 0.03))
+                self._spawn(o, (px, py, CONTAINER_RIM_Z + 0.06 + 0.08 * i))
                 self._settle(12)
         loose = [m for m in self.rng.permutation(CLASSES["C"])[: int(self.rng.integers(2, 5))]]
         loose += [m for m in self.rng.permutation(CLASSES["A"])[: int(self.rng.integers(0, 3))]]
@@ -443,7 +448,7 @@ class MessyDeskEnv:
         for _ in range(RESET_WARMUP_FRAMES):   # the RTX renderer needs frames to converge
             self.world.step(render=True)
         self._update_states()
-        # v(0): bin membership only. Nothing is held at reset, so "resting" is not required
+        # v(0): container membership only. Nothing is held at reset, so "resting" is not required
         # here; demanding it would let a pile that is still jittering drift upward later.
         self.baseline = {o["id"]: self._value(o, require_rest=False) for o in self.objects}
         _log("reset seed=%d settled_steps=%d present=%d max_speed=%.3f" % (
@@ -534,36 +539,57 @@ class MessyDeskEnv:
         ee_pos = self._ee_pose()[0]
         for o in self.objects:
             if not o["present"]:
-                o.update(pos=None, in_bin=None, resting=False, contact=False)
+                o.update(pos=None, in_container=None, resting=False, contact=False, on_table=False,
+                         state=("lost" if o.get("state") == "lost" else ("removed" if o["removed"] else "absent")))
                 continue
             p, q = o["rp"].get_world_pose()
             v = o["rp"].get_linear_velocity()
             o["pos"], o["quat"] = [float(x) for x in p], [float(x) for x in q]
             o["speed"] = float(np.linalg.norm(v))
             o["resting"] = o["speed"] < REST_SPEED
-            o["in_bin"] = self._bin_of_point(p)
-            if p[2] < -0.2:            # fell off the desk: gone for good
+            o["in_container"] = self._container_of_point(p)
+            if p[2] < -0.2:            # fell off the table: lost for good
                 self._park(o)
-                o["removed"] = True
+                o["removed"], o["frozen"], o["state"] = True, LOST_VALUE, "lost"
+                o.update(in_container=None, on_table=False, contact=False)
                 self.events.append({"t": self.t, "event": "fell_off_desk", "object": o["id"]})
                 continue
+            # the three detectors: finger contact (PhysX contact report), inside a container
+            # (geometric, container frame), resting on the table top
             if forces is not None:
                 o["contact"] = bool(np.abs(forces[o["id"]]).sum() > 1e-4)
             else:
                 o["contact"] = bool(np.linalg.norm(p - ee_pos) < 0.06)
             if o["contact"]:
                 self.touched.add(o["id"])
+            placed = o["resting"] and not o["contact"]          # released and still
+            o["on_table"] = bool(placed and o["in_container"] is None and p[2] < ON_TABLE_Z_MAX)
+            if o["in_container"] is not None and placed:
+                o["state"] = "in_container"
+            elif o["on_table"]:
+                o["state"] = "on_table"
+            elif o["contact"]:
+                o["state"] = "held"
+            else:
+                o["state"] = "transit"
+            if o.get("rebase_t") is not None and (placed or self.t - o["rebase_t"] >= REBASE_TIMEOUT):
+                self.baseline[o["id"]] = self._value(o, require_rest=False)
+                o["rebase_t"] = None
 
     def _value(self, o, require_rest=True):
-        """v_o(t): +1 in own bin, -1 in a wrong bin, 0 otherwise. Removed objects keep their last value."""
+        """v_o(t): +1 placed in its own container, -1 placed in a wrong one, 0 on the table, held
+        or in flight. "Placed" = resting and not touched by the fingers. Removed objects keep
+        their last value; a lost object (off the table) is LOST_VALUE for the rest of the episode."""
         if o["removed"]:
             return o.get("frozen", 0)
-        if not o["present"] or (require_rest and not o.get("resting")) or o.get("in_bin") is None:
+        if not o["present"] or o.get("in_container") is None:
             return 0
-        home = BIN_OF_CLASS[o["cls"]]
-        if self.request and self.request.get("object") == o["id"] and self.request["status"] == "open":
-            home = "red"
-        return 1 if o["in_bin"] == home else -1
+        if require_rest and (not o.get("resting") or o.get("contact")):
+            return 0
+        homes = {CONTAINER_OF_CLASS[o["cls"]]}
+        if self.request and self.request.get("object") == o["id"]:
+            homes.add("red")          # the requested object is also right in the red container
+        return 1 if o["in_container"] in homes else -1
 
     def _world_events(self, mark):
         rng = self.rng
@@ -575,11 +601,10 @@ class MessyDeskEnv:
             r = self.request
             tgt = self.objects[r["object"]] if r["object"] is not None else None
             if mark == 1:
-                delivered = tgt is not None and tgt["present"] and tgt["in_bin"] == "red" and tgt["resting"]
+                delivered = tgt is not None and tgt["present"] and tgt["state"] == "in_container" and tgt["in_container"] == "red"
                 r["status"], r["closed_t"] = ("delivered" if delivered else "claim_wrong"), self.t
                 if delivered:
-                    tgt["frozen"] = 1
-                    self.baseline[tgt["id"]] = 0      # a retrieved object keeps earning
+                    tgt["frozen"] = 1                 # keeps its value for the rest of the episode
                     self._park(tgt); tgt["removed"] = True
                 ev.append({"t": self.t, "event": "request_" + r["status"], "request": r["id"]})
             elif mark == 2:
@@ -599,7 +624,7 @@ class MessyDeskEnv:
         # arrivals
         if self.t >= self.next_arrival:
             self.next_arrival = self.t + int(rng.exponential(ARRIVAL_MEAN_STEPS)) + 50
-            loose = sum(1 for o in self.objects if o["present"] and o["in_bin"] is None)
+            loose = sum(1 for o in self.objects if o["present"] and o["in_container"] is None)
             present = sum(1 for o in self.objects if o["present"])
             if loose < LOOSE_CAP and present < PRESENT_CAP:
                 models = [m for m in CLASS_OF if self._present_count(m) < MAX_INSTANCES_PER_MODEL]
@@ -608,14 +633,14 @@ class MessyDeskEnv:
                 if o is not None and spot is not None:
                     self._spawn(o, (spot[0], spot[1], 0.15))
                     ev.append({"t": self.t, "event": "arrival", "object": o["id"], "model": m})
-        # bin service: a full class bin is emptied by the worker
+        # container service: a full class container is emptied by the worker
         for name in ("gray", "lightblue", "blue"):
-            inside = [o for o in self.objects if o["present"] and o["in_bin"] == name and o["resting"]]
-            if len(inside) >= BIN_CAP:
+            inside = [o for o in self.objects if o["present"] and o["state"] == "in_container" and o["in_container"] == name]
+            if len(inside) >= CONTAINER_CAP:
                 for o in inside:
                     o["frozen"] = self._value(o)
                     self._park(o); o["removed"] = True
-                ev.append({"t": self.t, "event": "bin_cleared", "bin": name, "count": len(inside)})
+                ev.append({"t": self.t, "event": "container_cleared", "container": name, "count": len(inside)})
         # disturbances
         if self.t >= self.next_disturb:
             self.next_disturb = self.t + int(rng.exponential(DISTURB_MEAN_STEPS)) + 300
@@ -623,13 +648,15 @@ class MessyDeskEnv:
             if cands:
                 o = cands[int(rng.integers(len(cands)))]
                 if rng.random() < 0.5:
-                    wrong = [b for b in ("gray", "lightblue", "blue") if b != BIN_OF_CLASS[o["cls"]]]
+                    wrong = [b for b in ("gray", "lightblue", "blue") if b != CONTAINER_OF_CLASS[o["cls"]]]
                     b = wrong[int(rng.integers(len(wrong)))]
-                    px, py = self._bin_point(b, rng.uniform(-0.03, 0.03), rng.uniform(-0.02, 0.02))
-                    self._spawn(o, (px, py, BIN_RIM_Z + 0.12))
-                    ev.append({"t": self.t, "event": "disturb_misplaced", "object": o["id"], "bin": b})
+                    px, py = self._container_point(b, rng.uniform(-0.03, 0.03), rng.uniform(-0.02, 0.02))
+                    self._spawn(o, (px, py, CONTAINER_RIM_Z + 0.12))
+                    self.baseline[o["id"]] = -1       # it will rest misfiled; fixing it is the gain available
+                    ev.append({"t": self.t, "event": "disturb_misplaced", "object": o["id"], "container": b})
                 else:
                     o["rp"].set_linear_velocity(self.np.array([rng.uniform(-0.6, 0.6), rng.uniform(-0.6, 0.6), 0.3]))
+                    o["rebase_t"] = self.t            # baseline re-read once it comes to rest
                     ev.append({"t": self.t, "event": "disturb_nudged", "object": o["id"]})
 
     def _open_request(self):
@@ -727,9 +754,12 @@ class MessyDeskEnv:
         for o in self.objects:
             if not o["present"] and not o["removed"]:
                 continue
+            target = bool(self.request and self.request["status"] == "open" and self.request.get("object") == o["id"])
             objs.append({"id": o["id"], "model": o["model"], "cls": o["cls"], "present": o["present"],
                          "removed": o["removed"], "pos": o.get("pos"), "quat": o.get("quat"), "scale": o["scale"],
-                         "in_bin": o.get("in_bin"), "resting": bool(o.get("resting")), "contact": bool(o.get("contact")),
+                         "role": "target" if target else "non_target", "state": o.get("state", "absent"),
+                         "contact": bool(o.get("contact")), "in_container": o.get("in_container"), "on_table": bool(o.get("on_table")),
+                         "resting": bool(o.get("resting")),
                          "value": self._value(o), "baseline": self.baseline.get(o["id"], 0)})
         ev, self.events = self.events, []
         return {"t": self.t, "horizon": self.horizon, "objects": objs, "request": self.request,
@@ -745,11 +775,11 @@ class MessyDeskEnv:
                           "attached_to": "/World/Franka/panda_hand" if name == "eye_in_hand" else "world"}
         return {"control_hz": CONTROL_HZ, "image_size": IMAGE_SIZE, "action_dim": ACTION_DIM,
                 "pos_step_max": POS_STEP_MAX, "rot_step_max": ROT_STEP_MAX, "horizon": self.horizon,
-                "bins": {n: {"center_xy": [c[0], c[1]], "yaw": c[2], "nominal_center_xy": [BIN_X, BIN_YS[n]],
-                             "inner_half_xy": list(BIN_INNER_HALF), "floor_z": BIN_FLOOR_Z,
-                             "rim_z": BIN_RIM_Z, "outer_xyz": list(BIN_OUTER), "class": next((k for k, v in BIN_OF_CLASS.items() if v == n), "requested")}
-                         for n, c in self.bins.items()},
-                "bin_jitter_xy_yaw": list(BIN_JITTER), "bin_scale_xyz": list(BIN_SCALE),
+                "containers": {n: {"center_xy": [c[0], c[1]], "yaw": c[2], "nominal_center_xy": [CONTAINER_X, CONTAINER_YS[n]],
+                             "inner_half_xy": list(CONTAINER_INNER_HALF), "floor_z": CONTAINER_FLOOR_Z,
+                             "rim_z": CONTAINER_RIM_Z, "outer_xyz": list(CONTAINER_OUTER), "class": next((k for k, v in CONTAINER_OF_CLASS.items() if v == n), "requested")}
+                         for n, c in self.containers.items()},
+                "container_jitter_xy_yaw": list(CONTAINER_JITTER), "container_scale_xyz": list(CONTAINER_SCALE),
                 "desk": {"x": list(DESK_X), "y": list(DESK_Y), "surface_z": 0.0, "robot_base_xyz": [0, 0, 0]},
                 "classes": {k: [DISPLAY_NAME[m] for m in v] for k, v in CLASSES.items()},
                 "cameras": cams}

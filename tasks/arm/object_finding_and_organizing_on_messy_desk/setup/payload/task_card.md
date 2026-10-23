@@ -6,27 +6,30 @@ Fixed for the task; identical on every seed. Units: metres, radians, seconds.
 - Robot base frame = world frame. The Franka Panda base sits at the origin on the desk
   surface; the desk surface is the plane z = 0 (x in [-1.59, 1.59], y in [-0.81, 0.81]).
 - Objects arrive on the reachable desk area x in [0.15, 0.78], y in [-0.62, 0.62], outside
-  the bins and at least 0.22 m from the base.
-- Four KLT bins (outer footprint 0.326 x 0.247, walls 0.19 tall, long side roughly along x)
+  the containers and at least 0.22 m from the base.
+- Four KLT containers (outer footprint 0.326 x 0.247, walls 0.19 tall, long side roughly along x)
   standing on the desk in a loose row. Nominal centres are at x = 0.44; every episode jitters
-  each bin by up to +/-0.04 in x, +/-0.008 in y and +/-5 degrees of yaw (seeded), so localise
+  each container by up to +/-0.04 in x, +/-0.008 in y and +/-5 degrees of yaw (seeded), so localise
   them from the cameras (the `info` command of the practice simulator reports the current poses):
 
-| bin | colour | nominal centre y | class |
+| container | colour | nominal centre y | class |
 |---|---|---|---|
 | gray | gray | -0.45 | A |
 | lightblue | light blue | -0.15 | B |
 | blue | blue | 0.15 | C |
 | red | red | 0.45 | requested objects |
 
-  Interior half extents (x, y) = (0.140, 0.109) in the bin's own frame; inner floor at
+  Interior half extents (x, y) = (0.140, 0.109) in the container's own frame; inner floor at
   z = 0.0035 (a 1.5 cm rib runs along the base of each long wall); rim at z = 0.19.
   The open Franka hand is 0.205 m wide across the fingers and 0.063 m thick, and the underside
   of the hand body is 0.138 m above the fingertips (the fingertips are 0.027 m below the tool
-  centre point), so a hand reaching the floor of a bin only fits with its finger axis along
-  the bin's long side.
-  "Inside a bin" for scoring: the object's centre within the interior footprint and its
-  height between the floor and 0.12 above the rim, at rest (speed < 0.02 m/s).
+  centre point), so a hand reaching the floor of a container only fits with its finger axis along
+  the container's long side.
+  "Inside a container" for scoring: the object's centre within the interior footprint (in the
+  container's own frame) and its height between the floor − 0.02 and the rim + 0.12. "Placed"
+  additionally needs the object at rest (speed < 0.08 m/s) and no finger touching it (the
+  simulator's contact report). "On the table": not inside any container, centre below 0.16,
+  placed. Below z = −0.2 an object is lost for the rest of the episode.
 
 ## Classes (YCB models; the two instances of a model are scaled 0.95x and 1.05x of its base size)
 - A: cracker box, sugar box, pudding box, gelatin box, wood block, foam brick
@@ -38,7 +41,7 @@ two instances of a model are on the desk at once; a request only ever names a mo
 exactly one instance present, or one with none (an absent request).
 
 ## Cameras (320 x 320, RGB 8-bit PNG and depth 16-bit PNG in millimetres)
-- agentview: world pose xyz (1.35, 0.0, 0.95), looking down at the bins from the far side of the desk.
+- agentview: world pose xyz (1.35, 0.0, 0.95), looking down at the containers from the far side of the desk.
 - left_view: world pose xyz (0.45, -1.15, 0.75), looking across the desk from the left.
 - eye_in_hand: attached to /World/Franka/panda_hand, offset (0.05, 0, 0.03) in the hand frame.
 - Intrinsics (all three): focal 244.33 px, principal point (160, 160). Static poses as xyz + quaternion
