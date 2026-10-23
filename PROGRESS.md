@@ -340,6 +340,40 @@ and `verify/` included.
   width check keeps a 14 mm margin (the hand-camera cloud loses ~7 mm per side); tall objects are
   grasped mid-body; rim grasps go 22 mm deep; the behaviour loop restarts after any exception.
 
+## 11. 2026-10-23 — messy desk: arm motion, reach, piles, oracle search (Claude session)
+
+Opus 5.5 frontier run in flight (`ale run ... --agent claude-code --model claude-opus-5-5 --set
+agent.version=2.1.309`; the harness default 2.1.227 is rejected by the model). `ale run` uploads
+the task's `verify/` folder from the local path when the verify stage starts, so `verify/` stays at
+commit 2278f3f until that run is scored; the changes below live in `setup/payload/` and `oracle/`.
+
+- Arm motion (env): each step's IK joint targets are interpolated over the 6 physics substeps.
+  Applied at once, the stiff drives covered the delta in 1-2 substeps and the jerk flung held
+  objects out of the fingers (12 of 42 test grasps dropped in transit, e.g. the sugar box slid
+  3.7 cm during a 3 cm/step lift). A 5 cm delta now completes ~96 % within the step.
+- Reach (env): the arm cannot reach down at r < ~0.25 m around |y| = 0.15 (IK refuses every
+  step); arrivals keep 0.26 m from the base (was 0.22). At x = 0.19-0.22 a hand turned 90 degrees
+  hits the container walls.
+- Initial piles (env): objects are set down on top of the pile near the container's centre line
+  and settled one by one (were thrown in from 0.25-0.65 m and rolled to the ends). A top-down
+  Franka hand (0.205 m wide) fits inside a 0.28 m container only within +-2-3 cm of its centre
+  line: 20 % of pile objects were reachable, now 36 % (1.3x longer containers would give 47 %,
+  not worth shrinking the desk strips).
+- `lab` with a null yaw sets an object down the way arrivals are (dev aid, task card updated).
+- Oracle: references rebuilt for the current scales (161 static, 166 hand-camera views; the old
+  LOO split was buggy: "_p" in "potted"/"pitcher" excluded whole models); hand-camera + 0.7 x
+  static distances fused (LOO class 166/166); narrowest-pinch yaw; a pinch-position search for
+  clamps/scissors; gentle placing near the centre line; container inventory (what it put where,
+  which initial piles are still unseen); request search digs the reachable top object, delivers it
+  straight to red when it is the target, and never claims absence while a container is blocked.
+- Grasp test (42 arrival-like spawns, both instances of every model): 18/42 -> 33/42.
+- Frontier run 1 (Opus 5.5, old env, `be35f322`): the agent was still debugging at the 4 h limit
+  (569 tool calls) and the engine does not verify a timed-out agent phase (status `timeout`, no
+  metrics). The instruction now states the hard 4 h limit and that a cut-off session is not graded.
+  Its last submission is kept in the run's `artifacts/submission`.
+- Domain lint: the practice grader's live line no longer reads a `"score"` key (the lint's
+  leaky-output pattern); only the two expected null-anchor problems remain.
+
 ## Gotchas
 
 - `export_registry.py` refuses a dirty tree on purpose: `content_digest` covers every

@@ -6,7 +6,7 @@ Fixed for the task; identical on every seed. Units: metres, radians, seconds.
 - Robot base frame = world frame. The Franka Panda base sits at the origin on the desk
   surface; the desk surface is the plane z = 0 (x in [-1.59, 1.59], y in [-0.81, 0.81]).
 - Objects arrive on the reachable desk area x in [0.15, 0.78], y in [-0.62, 0.62], outside
-  the containers and at least 0.22 m from the base.
+  the containers and at least 0.26 m from the base (closer in, the arm cannot reach down to the desk).
 - Four KLT containers (outer footprint 0.326 x 0.247, walls 0.19 tall, long side roughly along x)
   standing on the desk in a loose row. Nominal centres are at x = 0.44; every episode jitters
   each container by up to +/-0.04 in x, +/-0.008 in y and +/-5 degrees of yaw (seeded), so localise
@@ -21,10 +21,12 @@ Fixed for the task; identical on every seed. Units: metres, radians, seconds.
 
   Interior half extents (x, y) = (0.140, 0.109) in the container's own frame; inner floor at
   z = 0.0035 (a 1.5 cm rib runs along the base of each long wall); rim at z = 0.19.
-  The open Franka hand is 0.205 m wide across the fingers and 0.063 m thick, and the underside
-  of the hand body is 0.138 m above the fingertips (the fingertips are 0.027 m below the tool
-  centre point), so a hand reaching the floor of a container only fits with its finger axis along
-  the container's long side.
+  The open Franka hand is 0.205 m wide across the fingers and 0.063 m thick; the underside of the
+  hand body is about 0.06 m above the fingertips (0.034 m above the tool centre point; the
+  fingertips are 0.027 m below it). Below about 0.15 m inside a container the hand body is within
+  the walls, so it fits only with its finger axis along the container's long side and its centre
+  within about 3 cm of the container's centre line; the open fingers are 8 cm apart, so the
+  object itself may sit a little further out.
   "Inside a container" for scoring: the object's centre within the interior footprint (in the
   container's own frame) and its height between the floor − 0.02 and the rim + 0.12. "Placed"
   additionally needs the object at rest (speed < 0.08 m/s) and no finger touching it (the
@@ -40,7 +42,9 @@ Along y the desk is flat out to |y| = 0.676.
 Every model is scaled so that, in any resting pose, it offers a pinch of at most about 6.8 cm,
 under the hand's 8 cm opening. Objects arrive standing upright on the desk (the scissors, the
 marker and the clamps lying flat), their long side pointing away from the nearest container wall
-within about 35 degrees; the piles in the containers are dropped in and lie as they fell.
+within about 35 degrees. The initial piles are packed one object at a time on top of each other
+near the container's centre line: the cans standing, everything else lying on its largest face, or on
+its long edge when it is too wide to pinch lying flat (the larger cracker box).
 - A: cracker box, sugar box, pudding box, gelatin box, wood block, foam brick
 - B: master chef can, tomato soup can, tuna fish can, potted meat can, mustard bottle, bleach cleanser
 - C: banana, bowl, mug, power drill, scissors, large marker, large clamp, extra large clamp, pitcher base
@@ -64,7 +68,8 @@ exactly one instance present, or one with none (an absent request).
 - action = [dx, dy, dz, droll, dpitch, dyaw, grip, mark]; position deltas clipped to
   +/-0.05 m, rotation deltas to +/-0.25 rad (world-axis roll/pitch/yaw), applied to the
   tool centre point's current pose and tracked through inverse kinematics within the step
-  (a 5 cm delta is completed in one step inside the workspace); grip in [0, 1] maps to
+  (the joint set points are interpolated over the step's six physics substeps, so a 5 cm delta
+  completes about 96% within the step, the rest in the next one); grip in [0, 1] maps to
   finger width 0.04 m (open) .. 0 (closed); mark: 0 nothing, 1 "done: delivered",
   2 "done: no such object" (one mark per request, ignored while no request is open).
 - A delta whose IK solution is unreachable, or would flip the arm to another joint-space
@@ -80,6 +85,6 @@ exactly one instance present, or one with none (an absent request).
 ## Running the simulator yourself
     /opt/isaac/bin/python3 /home/user/messy_desk_env.py
 speaks JSON lines on stdin/stdout: `{"cmd":"info"}`, `{"cmd":"reset","seed":11,"horizon":2000}`,
-`{"cmd":"step","action":[...]}`, `{"cmd":"lab","model":"006_mustard_bottle","instance":0,"pose":[0.5,0.0,0.06,0.0]}` (clear the desk and place one object; the world state machine pauses until the next reset), `{"cmd":"close"}`. Replies carry `obs` (what your controller
+`{"cmd":"step","action":[...]}`, `{"cmd":"lab","model":"006_mustard_bottle","instance":0,"pose":[0.5,0.0,0.06,0.0]}` (clear the desk and place one object; a `null` yaw sets it down the way arrivals are; the world state machine pauses until the next reset), `{"cmd":"close"}`. Replies carry `obs` (what your controller
 will receive) and `state` (privileged ground truth for your own development only; the real
 grader never sends it over the wire). `/home/user/sim_client.py` wraps this.

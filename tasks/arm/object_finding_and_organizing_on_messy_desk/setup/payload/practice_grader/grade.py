@@ -12,7 +12,7 @@ The simulator takes about two minutes to start; keep --horizon small while itera
 `--live N` prints the running score (S if cut now, the unscaled 1/2 O + 1/2 R, O, R, closed
 requests) every N steps on stderr; `--score-file` also writes it as JSON for your own tooling.
 Driving the simulator yourself (`/opt/isaac/bin/python3 /home/user/messy_desk_env.py`, stdio JSON): every
-`step` reply carries the same `score` dict, `{"cmd": "score"}` adds every object's value and
+`step` reply carries the same live dict, the simulator's `score` command adds every object's value and
 baseline, and `{"cmd": "request", "model": "005_tomato_soup_can"}` (or `"absent": true`)
 opens a request on demand so you can rehearse marks.
 """
@@ -125,9 +125,11 @@ def _perturbed(obs, rng):
 
 
 def _live_line(seed, t, scorer):
+    # the raw metric only (S, its parts O and R): the same quantities the final JSON reports
     d = scorer.live()
-    return "[practice] seed={} t={} score_now={:.4f} (running {:.4f})  O={:.4f} R={:.4f} ({}/{} requests won)  org {:+.0f}/{:.0f}".format(
-        seed, t, d["score"], d["score_running"], d["organization"], d["request_progress"], d["requests_success"], d["requests_closed"], d["org_num"], d["org_den"])
+    return "[practice] seed={} t={} S_now={:.4f} (running {:.4f})  O={:.4f} R={:.4f} ({}/{} requests won)  org {:+.0f}/{:.0f}".format(
+        seed, t, scorer.score(), d["score_running"], scorer.organization(), scorer.request_progress(),
+        d["requests_success"], d["requests_closed"], d["org_num"], d["org_den"])
 
 
 def _episode(wire, sim, seed, horizon, rng, stats, verbose, live=0, score_file=None):

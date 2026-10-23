@@ -60,6 +60,9 @@ INSTANCE_SCALE = (0.92, 1.00)       # the two instances of a model differ in siz
 # rest as authored, lying flat. Arrivals are set down in these resting poses.
 UPRIGHT_QUAT = (math.cos(-math.pi / 4), math.sin(-math.pi / 4), 0.0, 0.0)    # Rx(-90 deg), w x y z
 FLAT_MODELS = ("037_scissors", "040_large_marker", "051_large_clamp", "052_extra_large_clamp")
+# In the initial piles the cylinders stand (lying, they roll to the container's ends); everything
+# else lies on its largest face, or stands on its long edge when lying flat it is too wide to pinch.
+PILE_UPRIGHT = ("002_master_chef_can", "005_tomato_soup_can", "007_tuna_fish_can")
 # Objects set down on the desk lie with their long side pointing away from the nearest container
 # wall, within this many radians: the desk strips between the containers and the desk's edges are
 # narrow, and a hand straddling an object lying along a wall would hit that wall.
@@ -83,7 +86,7 @@ CONTAINER_FLOOR_Z = 0.0005 + 0.0023 * CONTAINER_SCALE[2]                        
 CONTAINER_RIM_Z = CONTAINER_OUTER[2] + 0.0005
 DESK_X, DESK_Y = (0.15, 0.78), (-0.62, 0.62)
 ROOM_OFFSET_X = 0.10       # the stock room (table included) is moved this far along +x, see __init__
-REACH, BASE_CLEAR = 0.80, 0.22
+REACH, BASE_CLEAR = 0.80, 0.26   # closer than 0.26 m to the base, at |y| ~ 0.15, the arm cannot reach down (measured)
 HORIZON_DEFAULT = 20000
 
 # world state machine parameters (per control step)
@@ -322,10 +325,24 @@ class MessyDeskEnv:
                 half_h = float(max(abs(lo_b[axis]), abs(hi_b[axis]))) * scale
                 # footprint in the resting pose, before the yaw: (along world x, along world y)
                 foot = (float(hi_b[0] - lo_b[0]) * scale, float(hi_b[1 if model in FLAT_MODELS else 2] - lo_b[1 if model in FLAT_MODELS else 2]) * scale)
+                # resting pose in a pile: lying on its largest face when the hand can still pinch
+                # it across its narrower side from above (at most 6.4 cm in the 8 cm opening), else
+                # standing on its long edge like a book (the larger cracker box: 6.9 cm wide lying
+                # flat, 3 cm on edge). Edge-standing boxes tip and slide, so only when needed.
+                halves = [float(max(abs(lo_b[i]), abs(hi_b[i]))) * scale for i in range(3)]
+                ext = [float(hi_b[i] - lo_b[i]) * scale for i in range(3)]
+                if model in PILE_UPRIGHT:
+                    pile_rest, pile_half = list(UPRIGHT_QUAT), halves[1]
+                else:
+                    order = sorted(range(3), key=lambda i: ext[i])
+                    ax = order[0] if ext[order[1]] <= 0.064 else order[1]      # 1.6 cm of clearance or more
+                    pile_rest = ([math.cos(math.pi / 4), 0.0, math.sin(math.pi / 4), 0.0], list(UPRIGHT_QUAT), [1.0, 0.0, 0.0, 0.0])[ax]
+                    pile_half = halves[ax]
                 rp = self.SingleRigidPrim(prim_path=path, name="obj%02d" % k)
                 self.world.scene.add(rp)
                 self.objects.append(dict(id=k, model=model, cls=CLASS_OF[model], prim=prim, rp=rp,
-                                         park=_park_slot(k), present=False, removed=False, scale=scale, half_h=half_h, foot=foot))
+                                         park=_park_slot(k), present=False, removed=False, scale=scale, half_h=half_h, foot=foot,
+                                         pile_rest=pile_rest, pile_half=pile_half))
                 k += 1
         # contact tracking between every object and the two finger links (first-contact bonus)
         self._contacts = None
@@ -432,13 +449,14 @@ class MessyDeskEnv:
         return normal - (0.0 if long_is_x else math.pi / 2) + self.rng.uniform(-DESK_YAW_JITTER, DESK_YAW_JITTER) \
             + (math.pi if self.rng.random() < 0.5 else 0.0)
 
-    def _spawn(self, obj, xyz, yaw=None, on_desk=False):
+    def _spawn(self, obj, xyz, yaw=None, on_desk=False, rest=None):
         """Place an object in its resting pose (upright, or flat for the flat tools) turned by
         `yaw` about z. `on_desk`: set it down on the desk top, its bottom 4 mm above it, oriented
         by `_desk_yaw` unless a yaw is given."""
         if yaw is None:
             yaw = self._desk_yaw(obj, xyz[0], xyz[1]) if on_desk else self.rng.uniform(-math.pi, math.pi)
-        rest = [1.0, 0.0, 0.0, 0.0] if obj["model"] in FLAT_MODELS else list(UPRIGHT_QUAT)
+        if rest is None:
+            rest = [1.0, 0.0, 0.0, 0.0] if obj["model"] in FLAT_MODELS else list(UPRIGHT_QUAT)
         if on_desk:
             xyz = (xyz[0], xyz[1], obj["half_h"] + 0.004)
         self._teleport(obj, xyz, _quat_mul([math.cos(yaw / 2), 0.0, 0.0, math.sin(yaw / 2)], rest))
@@ -482,13 +500,19 @@ class MessyDeskEnv:
             models = list(CLASSES[cls])
             self.rng.shuffle(models)
             n = int(self.rng.integers(4, 7))
+            pile_top = CONTAINER_FLOOR_Z
             for i in range(n):
                 o = self._free_instance(models[i % len(models)])
                 if o is None:
                     continue
-                px, py = self._container_point(name, self.rng.uniform(-0.045, 0.045), self.rng.uniform(-0.03, 0.03))
-                self._spawn(o, (px, py, CONTAINER_RIM_Z + 0.06 + 0.08 * i))
-                self._settle(12)
+                # each object is set down on top of the pile near the container's centre line, the
+                # way a person fills a box; thrown in from above the rim they rolled to the ends,
+                # where no top-down hand (0.205 m wide in a 0.28 m container) can reach them
+                px, py = self._container_point(name, self.rng.uniform(-0.015, 0.015), self.rng.uniform(-0.03, 0.03))
+                self._spawn(o, (px, py, pile_top + o["pile_half"] + 0.01), rest=o["pile_rest"])
+                self._settle_until_rest(max_steps=150, quiet=6)
+                z = float(o["rp"].get_world_pose()[0][2])
+                pile_top = max(pile_top, z + o["pile_half"])
         loose = [m for m in self.rng.permutation(CLASSES["C"])[: int(self.rng.integers(2, 5))]]
         loose += [m for m in self.rng.permutation(CLASSES["A"])[: int(self.rng.integers(0, 3))]]
         for m in loose:
@@ -547,6 +571,14 @@ class MessyDeskEnv:
         mark = int(round(a[7]))          # 0 none, 1 "done: delivered", 2 "done: no such object"
         self._apply_arm(dpos, drot, grip)
         for i in range(SUBSTEPS):
+            if self._arm_plan is not None:
+                # the step's joint targets are spread over its physics substeps, like a real
+                # arm controller interpolating a set point: applied all at once, the stiff joint
+                # drives cover the whole delta within a substep or two and the jerk flings a
+                # held object out of the fingers
+                q0, q1, idx = self._arm_plan
+                self.franka.apply_action(self.ArticulationAction(joint_positions=q0 + (q1 - q0) * ((i + 1.0) / SUBSTEPS),
+                                                                 joint_indices=idx))
             self.world.step(render=(i == SUBSTEPS - 1))
         self.t += 1
         self._update_states()
@@ -569,6 +601,7 @@ class MessyDeskEnv:
         tq = np.array(_quat_mul(_rpy_to_quat(*drot), [float(x) for x in quat]), dtype=float)
         tq /= max(float(np.linalg.norm(tq)), 1e-9)
         act, ok = self.ik.compute_inverse_kinematics(target_position=np.asarray(target, dtype=float), target_orientation=tq)
+        self._arm_plan = None
         if ok:
             q_new = np.asarray(act.joint_positions, dtype=float).reshape(-1)
             q_cur = np.asarray(self.franka.get_joint_positions(), dtype=float)[: q_new.shape[0]]
@@ -577,7 +610,7 @@ class MessyDeskEnv:
             if float(np.max(np.abs(q_new - q_cur))) > IK_JUMP_MAX:
                 ok = False
         if ok:
-            self.franka.apply_action(act)
+            self._arm_plan = (q_cur, q_new, act.joint_indices)
             self._ik_q = [float(x) for x in q_new]
         w = GRIPPER_OPEN * (1.0 - grip) + GRIPPER_CLOSED * grip
         self.franka.gripper.apply_action(self.ArticulationAction(joint_positions=np.array([w, w])))
@@ -761,7 +794,8 @@ class MessyDeskEnv:
 
     def lab(self, model, instance=0, pose=None, clear=True):
         """Development aid, available to everyone who runs this file: optionally clear the
-        desk, then place one instance of `model` at `pose` (x, y, z[, yaw]) and let it settle.
+        desk, then place one instance of `model` at `pose` (x, y, z[, yaw]) and let it settle; a
+        yaw of null sets it down the way an arrival is (resting pose and yaw rule of `_desk_yaw`).
         The world state machine is paused (no arrivals, requests or disturbances) until the
         next `reset`. Returns an observation and the privileged state like `step`."""
         if self.rng is None:
@@ -780,7 +814,8 @@ class MessyDeskEnv:
             pose = pose or [0.5, 0.0, 0.06, 0.0]
             # never below the resting height: a centre lower than the half height starts the
             # object inside the desk, and PhysX throws it out
-            self._spawn(o, (pose[0], pose[1], max(float(pose[2]), o["half_h"] + 0.004)), yaw=(pose[3] if len(pose) > 3 else 0.0))
+            yaw = pose[3] if len(pose) > 3 else 0.0
+            self._spawn(o, (pose[0], pose[1], max(float(pose[2]), o["half_h"] + 0.004)), yaw=yaw, on_desk=yaw is None)
         self._settle_until_rest()
         for _ in range(RESET_WARMUP_FRAMES):   # RTX needs frames to converge after a teleport
             self.world.step(render=True)

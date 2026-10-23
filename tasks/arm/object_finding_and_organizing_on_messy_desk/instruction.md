@@ -53,6 +53,12 @@ same dynamics on visible seeds.
 
 ## What you must deliver
 
+Your session has a hard limit of **4 hours** of wall-clock time from the moment it starts (run
+`date` now and keep track). A session that is still running at the limit is cut off and **not
+graded at all**, so keep a working controller in place as you go and end the session yourself,
+with at least 15 minutes to spare. Whatever is in `/home/user/submission` when you end it is
+what the grader runs.
+
 Leave a controller at `/home/user/submission/run.sh`. The grader launches it as
 `bash run.sh` with the working directory `/home/user/submission`, as your own user account,
 with **no network access**, and talks to it over stdin/stdout, one JSON object per line.
@@ -102,7 +108,7 @@ frame (metres and radians, clipped to ±0.05 m and ±0.25 rad per step), a gripp
 **done: delivered** (you claim the requested object rests in the red container), `2` = **done: no
 such object** (you claim it is not on the desk). A mark is ignored while no request is open,
 and a request accepts one mark only. The environment turns the delta into joint targets
-through inverse kinematics (a 5 cm step completes within the step inside the workspace); a
+through inverse kinematics, interpolated over the step (a 5 cm step completes about 96% within it); a
 delta that is unreachable or would flip the arm to another joint-space branch is refused and
 the arm simply stays put for that step.
 

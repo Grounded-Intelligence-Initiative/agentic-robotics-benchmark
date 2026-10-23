@@ -46,8 +46,17 @@ CLASSES = {
     "C": ["banana", "bowl", "mug", "power drill", "scissors", "large marker", "large clamp", "extra large clamp", "pitcher base"],
 }
 CLASS_OF = {m: c for c, ms in CLASSES.items() for m in ms}
+# look-alike pairs the classifiers confuse (same colours, a size apart): either may be the other
+TWIN = {"large clamp": "extra large clamp", "extra large clamp": "large clamp", "pudding box": "gelatin box", "gelatin box": "pudding box"}
+
+
+def is_model(info, model, slack=0.25):
+    """The classification `info` names `model`, or its look-alike twin with `model` close behind."""
+    if info["model"] == model:
+        return True
+    return TWIN.get(info["model"]) == model and info.get("all", {}).get(model, 9.0) - info["d"] < slack
 DESK_X, DESK_Y = (0.15, 0.78), (-0.62, 0.62)
-REACH, BASE_CLEAR = 0.80, 0.22
+REACH, BASE_CLEAR = 0.80, 0.26
 IMG = 320                                   # task cameras are IMG x IMG; focal scales with the width
 F_PX, C_PX = 171.03317 * IMG / 224.0, IMG / 2.0
 CAMS = {
@@ -168,14 +177,16 @@ def hand_corners(x, y, yaw, margin=0.0):
 def hand_fits(containers, x, y, yaw, inside=None):
     """Open hand lowered at (x, y) with `yaw`: outside every container's outer footprint, or (when
     `inside` names a container) entirely within that container's interior."""
-    pts = hand_corners(x, y, yaw, 0.008)
+    pts = hand_corners(x, y, yaw, 0.005)
     ox, oy = CONTAINER_OUTER[0] / 2, CONTAINER_OUTER[1] / 2
     ix, iy = CONTAINER_INNER_HALF
     for name, b in containers.items():
         for px, py in pts:
             lx, ly = container_local(b, px, py)
             if name == inside:
-                if abs(lx) > ix - 0.006 or abs(ly) > iy - 0.006:
+                # inside a container the hand body (0.205 x 0.063) fits only near the centre line:
+                # every millimetre of margin counts (the containers are kinematic and do not yield)
+                if abs(lx) > ix - 0.004 or abs(ly) > iy - 0.004:
                     return False
             elif abs(lx) <= ox + 0.004 and abs(ly) <= oy + 0.004:
                 return False
@@ -490,6 +501,15 @@ def perceive_eih(rgb, depth, R_cam, t_cam, expected_xy, floor, top_hint, contain
     if best is None:
         return None
     c = cluster_features(pts[best], col[best], containers)
+    # two objects that touch merge into one component; the grasp point comes from the top
+    # surface around the expected position only, so a neighbour does not drag it aside
+    p = pts[best]
+    near = p[np.hypot(p[:, 0] - expected_xy[0], p[:, 1] - expected_xy[1]) < 0.06]
+    if c["len_major"] > 0.12 and len(near) >= 30:
+        top_near = float(np.percentile(near[:, 2], 97))
+        slab = near[near[:, 2] > top_near - 0.03]
+        if len(slab) >= 10:
+            c["grasp_xy"] = [float(slab[:, 0].mean()), float(slab[:, 1].mean())]
     c["floor"] = floor if c["container"] else float(desk_top_z(c["centroid"][0]))
     c["dims"] = sorted([c["len_major"], c["len_minor"], c["top_z"] - c["floor"]])
     return c
@@ -509,14 +529,33 @@ class Classifier(object):
             d = self.dist(cl, r)
             if r["model"] not in best or d < best[r["model"]]:
                 best[r["model"]] = d
-        if not best:
-            return {"model": "?", "cls": "C", "d": 9.0, "class_margin": -1.0, "ranked": []}
-        ranked = sorted(best.items(), key=lambda t: t[1])
-        model, d0 = ranked[0]
-        cls = CLASS_OF[model]
-        other = [d for m, d in ranked if CLASS_OF[m] != cls]
-        margin = (other[0] - d0) if other else 1.0
-        return {"model": model, "cls": cls, "d": d0, "class_margin": margin, "ranked": ranked[:3]}
+        return decide(best)
+
+
+def decide(best):
+    """Per-model distances {model: d} -> the decision: nearest model, its class, and the margin
+    to the nearest model of another class."""
+    if not best:
+        return {"model": "?", "cls": "C", "d": 9.0, "class_margin": -1.0, "ranked": [], "all": {}}
+    ranked = sorted(best.items(), key=lambda t: t[1])
+    model, d0 = ranked[0]
+    cls = CLASS_OF[model]
+    other = [d for m, d in ranked if CLASS_OF[m] != cls]
+    margin = (other[0] - d0) if other else 1.0
+    model_margin = (ranked[1][1] - d0) if len(ranked) > 1 else 1.0
+    return {"model": model, "cls": cls, "d": d0, "class_margin": margin, "model_margin": model_margin,
+            "ranked": ranked[:3], "all": dict(best)}
+
+
+STATIC_WEIGHT = 0.7     # hand-camera + 0.7 x static distance: either view alone confuses a few look-alikes
+
+
+def combine(eih_info, static_info, w=STATIC_WEIGHT):
+    """Fuse the hand camera's per-model distances with the static cameras' for the same object."""
+    if not static_info or not static_info.get("all"):
+        return eih_info
+    e, s = eih_info["all"], static_info["all"]
+    return decide({m: e.get(m, 9.0) + w * s.get(m, 9.0) for m in set(e) | set(s)})
 
 
 # ----------------------------------------------------------------------------------------
@@ -544,7 +583,13 @@ class Controller(object):
         self.drop_slot = {b: 0 for b in CONTAINER_YS}
         self.skip_list = []
         self.last_perceive_t = -999
+        self.last_clusters = []
         self.carry_hang = 0.0
+        # what the controller knows about the class containers' contents: the models it put in
+        # itself (bottom -> top), and whether an initial pile of unseen objects may still lie
+        # under them (the instruction: A objects start in gray, B objects in light-blue)
+        self.inventory = {b: [] for b in CLASS_OF_CONTAINER}
+        self.pile_unknown = {"gray": True, "lightblue": True, "blue": False}
 
     # -- wire entry -------------------------------------------------------------------------
     def act(self, t, obs):
@@ -653,8 +698,9 @@ class Controller(object):
         cx, cy = slab[:, :2].mean(0)
         dx, dy = float(cx - anchor_xy[0]), float(cy - anchor_xy[1])
         if math.hypot(dx, dy) > REFINE_MAX_SHIFT:
-            log("refine: shift %.3f too large, ignored" % math.hypot(dx, dy))
+            log("t=%d refine: shift %.3f too large, ignored" % (self.t(), math.hypot(dx, dy)))
             return xy
+        log("t=%d refine: shift (%+.3f,%+.3f) from %d top points" % (self.t(), dx, dy, len(slab)))
         return (xy[0] + dx, xy[1] + dy)
 
     def pick(self, xy, yaw, top_z, floor, below_top=GRASP_BELOW_TOP, anchor_xy=None):
@@ -671,7 +717,9 @@ class Controller(object):
         yield from self.hold(1, grip=0.0)
         x, y = self.refine_xy((x, y), anchor_xy or (x, y), floor, top_z)
         z_g = max(top_z - below_top, floor + GRASP_MIN_ABOVE_FLOOR)
+        self.last_grasp = (x, y, z_g, yaw)
         yield from self.goto((x, y, z_g), yaw, grip=0.0, tol=0.006, max_steps=25, step_max=0.02)
+        self.last_grasp_actual = [float(v) for v in self.ee()]
         yield from self.hold(5, grip=1.0)
         held = self.gripper_closed_on_object()
         yield from self.goto((x, y, z_travel), yaw, grip=1.0, tol=0.015, max_steps=30, step_max=0.03)
@@ -679,17 +727,25 @@ class Controller(object):
         held = held and self.gripper_closed_on_object()
         return held
 
-    def place_in_container(self, name):
+    def place_in_container(self, name, model=None):
         """Carry the held object over container `name`, lower to just above the rim near its centre,
-        release. The hand's wide axis runs along the container's long side."""
+        release. The hand's wide axis runs along the container's long side. `model` (when known)
+        goes on the container's inventory."""
+        if model is not None and name in self.inventory:
+            self.inventory[name].append(model)
         b = self.containers[name]
         slot = self.drop_slot[name] % 3
         self.drop_slot[name] += 1
-        x, y = container_point(b, (-0.035, 0.0, 0.035)[slot], (0.0, 0.02, -0.02)[slot])
+        # near the centre line, where a top-down hand fits to take it out again later
+        x, y = container_point(b, (-0.01, 0.0, 0.01)[slot], (0.0, 0.025, -0.025)[slot])
         yaw = wrap_half(math.pi / 2 + b[2])
-        z_rel = CONTAINER_RIM_Z + DROP_ABOVE_RIM + self.carry_hang
+        # lowered to just above the pile (not dropped from the rim: objects roll to the ends)
+        pile_top = max([c["top_z"] for c in self.last_clusters if c["container"] == name] or [CONTAINER_FLOOR_Z])
+        z_rel = min(CONTAINER_RIM_Z + DROP_ABOVE_RIM, pile_top + 0.03) + self.carry_hang
+        if not hand_fits(self.containers, x, y, yaw, inside=name) and z_rel < CONTAINER_RIM_Z + 0.02:
+            z_rel = CONTAINER_RIM_Z + DROP_ABOVE_RIM + self.carry_hang
         yield from self.goto((x, y, self.travel_z()), yaw, grip=1.0, tol=0.015)
-        yield from self.goto((x, y, z_rel), yaw, grip=1.0, tol=0.01, max_steps=30)
+        yield from self.goto((x, y, z_rel), yaw, grip=1.0, tol=0.01, max_steps=40, step_max=0.03)
         yield from self.hold(4, grip=0.0)
         self.carry_hang = 0.0
         yield from self.goto((x, y, TRAVEL_Z), yaw, grip=0.0, tol=0.02, max_steps=30)
@@ -704,20 +760,56 @@ class Controller(object):
         self.carry_hang = 0.0
         yield from self.goto((x, y, TRAVEL_Z), yaw, grip=0.0, tol=0.02, max_steps=30)
 
-    def observe(self, settle=2):
+    def observe(self, settle=2, sweep=False):
+        """Fused perception from the observe pose. The hand camera there looks straight down on the
+        strip between the robot and the containers, which the container walls hide from the static
+        cameras, except its two ends; `sweep` also looks at those from above (a low object at the
+        +y end is invisible to every camera otherwise)."""
+        extra = []
+        if sweep:
+            for y_end in (0.47, -0.47):
+                yield from self.goto((0.21, y_end, 0.42), 0.0, grip=0.0, tol=0.02, max_steps=40)
+                yield from self.hold(2, grip=0.0)
+                extra.append((decode_png(self.obs["rgb"]["eye_in_hand"], "RGB"), decode_png(self.obs["depth"]["eye_in_hand"])) + self.cam_pose())
+            self.last_sweep_t = self.t()
         yield from self.goto(OBSERVE_POS, 0.0, grip=0.0, tol=0.02)
         yield from self.hold(settle, grip=0.0)
         imgs = {cam: (decode_png(self.obs["rgb"][cam], "RGB"), decode_png(self.obs["depth"][cam])) for cam in CAMS}
-        # the hand camera at the observe pose looks straight down on the strip between the
-        # robot and the containers, which the container walls hide from the static cameras
         eih = (decode_png(self.obs["rgb"]["eye_in_hand"], "RGB"), decode_png(self.obs["depth"]["eye_in_hand"]))
-        clusters, containers = perceive(imgs, extra=[(eih[0], eih[1]) + self.cam_pose()])
+        clusters, containers = perceive(imgs, extra=[(eih[0], eih[1]) + self.cam_pose()] + extra)
         self.containers = containers
         for c in clusters:
             c["cls_info"] = self.classify(c) if (c["container"] is None or c["n"] < 600) else None
         self.last_perceive_t = self.t()
+        self.last_clusters = clusters
+        # a container that looks empty to the static cameras may only hide a low object behind
+        # its 19 cm walls: the hand camera checks from above before the inventory is dropped
+        self.maybe_empty = [b for b in self.inventory if sum(c["n"] for c in clusters if c["container"] == b) < 15
+                            and (self.inventory[b] or self.pile_unknown[b])]
         self.dump("observe", imgs["agentview"][0], clusters)
         return clusters
+
+    def verify_empty(self, b):
+        """Look into container b from above with the hand camera; True (and the inventory
+        dropped) when nothing stands on its floor."""
+        cb = self.containers[b]
+        yield from self.goto((cb[0], cb[1], CONTAINER_RIM_Z + 0.24), 0.0, grip=0.0, tol=0.01, max_steps=40)
+        yield from self.hold(2, grip=0.0)
+        R_cam, t_cam = self.cam_pose()
+        rgb = decode_png(self.obs["rgb"]["eye_in_hand"], "RGB")
+        dep = decode_png(self.obs["depth"]["eye_in_hand"])
+        pts, _ = backproject_rt(dep, rgb, None, None, R_cam, t_cam)
+        lx, ly = container_local(cb, pts[:, 0], pts[:, 1])
+        inside = (np.abs(lx) < CONTAINER_INNER_HALF[0] - 0.01) & (np.abs(ly) < CONTAINER_INNER_HALF[1] - 0.01) \
+            & (pts[:, 2] > CONTAINER_FLOOR_Z + 0.012) & (pts[:, 2] < CONTAINER_RIM_Z)
+        n = int(inside.sum())
+        if n < 40:
+            log("t=%d %s container is empty" % (self.t(), b))
+            self.inventory[b] = []
+            self.pile_unknown[b] = False
+            return True
+        log("t=%d %s container only looked empty (%d points on its floor)" % (self.t(), b, n))
+        return False
 
     def dump(self, tag, rgb, clusters):
         if not LOG:
@@ -757,29 +849,96 @@ class Controller(object):
             log("t=%d inspect: nothing under the hand camera" % self.t())
             self.dump("inspect_none", rgb, [])
             return None
-        d["cls_info"] = self.classify_eih(d)
+        d["cls_info"] = combine(self.classify_eih(d), c.get("cls_info"))
         d["container"] = c["container"]
         self.dump("inspect", rgb, [d])
         return d
 
     # -- grasp planning -------------------------------------------------------------------------
     def choose_yaw(self, c, inside=None, band=None):
-        """A hand yaw for cluster c: fingers across its narrow side when possible, never
-        colliding with a container wall, grasped width under the opening. `band` = the points the
-        fingers will close on (default: the top rim). None when impossible."""
+        """-> (xy, yaw) for a pinch of cluster c, or None: fingers across its narrowest side, the
+        grasped width under the opening, and the hand clear of every container wall. The hand need
+        not be centred on the object along the finger axis: the open fingers are 8 cm apart and the
+        first one to touch pushes the object to the middle as they close, so near a wall the hand
+        may sit up to ~3 cm off the object (inside a container its body fits only near the centre
+        line). `band` = the points the fingers will close on (default: the top rim)."""
         x, y = c["grasp_xy"]
         p = c.get("pts")
         pref = wrap_half(c.get("slab_yaw", c["yaw"]))
-        cands = [pref] + [wrap_half(pref + s * d) for d in (0.26, 0.52, 0.79, 1.05, 1.31, 1.57) for s in (1, -1)]
+        cands = [pref] + [wrap_half(pref + s * d) for d in (0.26, 0.52, 0.79, 1.05, 1.31) for s in (1, -1)] + [wrap_half(pref + 1.57)]
         if band is None and p is not None:
             band = p[p[:, 2] > c["top_z"] - 0.015]      # the top rim only: side walls seen obliquely inflate deeper slabs
-        for yaw in cands:
-            if not hand_fits(self.containers, x, y, yaw, inside=inside):
+        if band is None or len(band) < 10:
+            yaw = next((yaw for yaw in cands if hand_fits(self.containers, x, y, yaw, inside=inside)), None)
+            return None if yaw is None else ((x, y), yaw)
+        half_open = GRASP_MAX_WIDTH / 2 - WIDTH_MARGIN / 2
+        best = None
+        for k, yaw in enumerate(cands):
+            u = np.array([-math.sin(yaw), math.cos(yaw)])
+            v = np.array([math.cos(yaw), math.sin(yaw)])
+            sel = np.abs((band[:, :2] - (x, y)) @ v) < 0.02
+            q = band[sel] if sel.sum() >= 8 else band
+            proj = (q[:, :2] - (x, y)) @ u
+            lo, hi = float(np.percentile(proj, 3)), float(np.percentile(proj, 97))
+            w = hi - lo
+            if w + WIDTH_MARGIN > GRASP_MAX_WIDTH:
                 continue
-            if band is not None and len(band) >= 10 and extent_along(band, yaw, center=(x, y)) + WIDTH_MARGIN > GRASP_MAX_WIDTH:
-                continue
-            return yaw
-        return None
+            # hand offsets along the finger axis that keep the object between the open fingers,
+            # nearest to centred first
+            centre = (lo + hi) / 2
+            span = half_open - w / 2
+            for off in sorted(np.arange(-span, span + 1e-9, 0.005), key=lambda o: abs(o)):
+                hx, hy = x + (centre + off) * u[0], y + (centre + off) * u[1]
+                if hand_fits(self.containers, hx, hy, yaw, inside=inside):
+                    cost = w + 0.2 * abs(off) + 0.0005 * k      # narrow first, then centred, ties to the earlier
+                    if best is None or cost < best[0]:
+                        best = (cost, (float(hx), float(hy)), yaw)
+                    break
+        return None if best is None else (best[1], best[2])
+
+    def search_pinch(self, c, inside=None, band=None):
+        """When the pinch at the centroid is too wide (a clamp across its jaw, scissors across the
+        blades), look for one elsewhere on the object: candidate centres on a 1.2 cm grid over the
+        top slab, every yaw; feasible = narrower than the opening with margin and enough of the
+        object between the fingers; cost = width + 0.5 x distance from the centroid (torque).
+        -> ((x, y), yaw) or None."""
+        p = c.get("pts")
+        if p is None or len(p) < 40:
+            return None
+        if band is None:
+            band = p[p[:, 2] > c["top_z"] - 0.015]
+        if len(band) < 20:
+            return None
+        cx, cy = c["grasp_xy"]
+        lo, hi = band[:, :2].min(0), band[:, :2].max(0)
+        best = None
+        yaws = [k * math.pi / 12 - math.pi / 2 for k in range(12)]
+        for gx in np.arange(lo[0], hi[0] + 1e-6, 0.012):
+            for gy in np.arange(lo[1], hi[1] + 1e-6, 0.012):
+                near = np.hypot(band[:, 0] - gx, band[:, 1] - gy)
+                if near.min() > 0.008:                 # not on the object
+                    continue
+                dist = math.hypot(gx - cx, gy - cy)
+                if dist > 0.045:                       # a pinch far out on a handle swings the object off
+                    continue
+                for yaw in yaws:
+                    v = np.array([math.cos(yaw), math.sin(yaw)])
+                    sel = np.abs((band[:, :2] - (gx, gy)) @ v) < 0.02
+                    if sel.sum() < 15:
+                        continue
+                    u = np.array([-math.sin(yaw), math.cos(yaw)])
+                    proj = (band[sel, :2] - (gx, gy)) @ u
+                    lo_u, hi_u = np.percentile(proj, 3), np.percentile(proj, 97)
+                    width = float(hi_u - lo_u)
+                    if width + WIDTH_MARGIN > GRASP_MAX_WIDTH or abs(lo_u + hi_u) / 2 > 0.012:
+                        continue                         # too wide, or the fingers would close off-centre
+                    cost = width + 0.5 * dist
+                    if best is not None and cost >= best[0]:
+                        continue
+                    if not hand_fits(self.containers, gx, gy, yaw, inside=inside):
+                        continue
+                    best = (cost, (float(gx), float(gy)), wrap_half(yaw))
+        return None if best is None else (best[1], best[2])
 
     @staticmethod
     def widens_below_top(c):
@@ -831,8 +990,18 @@ class Controller(object):
         out = []
         xy = (c["grasp_xy"][0], c["grasp_xy"][1])
         height = c["top_z"] - c["floor"]
-        yaw = self.choose_yaw(c, inside=inside)
-        shallow = [(xy, yaw, GRASP_BELOW_TOP)] if yaw is not None else []
+        rim = self.rim_grasp(c, inside=inside)
+        pick = self.choose_yaw(c, inside=inside)
+        shallow = [(pick[0], pick[1], GRASP_BELOW_TOP)] if pick is not None else []
+        if rim is not None and (not shallow or c["len_minor"] > 0.055):
+            # hollow and wide (bowl, mug, pitcher): the rim grasp, one finger inside, is the plan.
+            # A pinch across it only "fits" when the hand camera saw half of it, and then a finger
+            # lands on the rim and pushes it away
+            return [(rim[0], rim[1], RIM_GRASP_BELOW_TOP)]
+        if not shallow:
+            alt = self.search_pinch(c, inside=inside)
+            if alt is not None:
+                shallow = [(alt[0], alt[1], GRASP_BELOW_TOP)]
         deep = []
         if height > 0.08 and c.get("pts") is not None:
             # around the middle of the body, checked against the body's own width
@@ -841,13 +1010,12 @@ class Controller(object):
             band = p[(p[:, 2] > c["top_z"] - depth - 0.015) & (p[:, 2] < c["top_z"] - depth + 0.015)]
             if len(band) < 10:
                 band = p[p[:, 2] > c["floor"] + 0.02]
-            yaw_d = self.choose_yaw(c, inside=inside, band=band)
-            if yaw_d is not None:
-                deep = [(xy, yaw_d, depth)]
+            pick_d = self.choose_yaw(c, inside=inside, band=band)
+            if pick_d is not None:
+                deep = [(pick_d[0], pick_d[1], depth)]
         # a bottle held by its cap slips out in transit (and still reads as held), so bottle-like
         # objects try the body first; everything else the top first, the body as the fallback
         out += (deep + shallow) if self.widens_below_top(c) else (shallow + deep)
-        rim = self.rim_grasp(c, inside=inside)
         if rim is not None:
             out.append((rim[0], rim[1], RIM_GRASP_BELOW_TOP))
         return out
@@ -894,18 +1062,25 @@ class Controller(object):
         return any(math.hypot(c["centroid"][0] - x, c["centroid"][1] - y) < r for x, y in points)
 
     def skipped(self, c):
-        for (x, y, t) in self.skip_list:
-            if math.hypot(x - c["centroid"][0], y - c["centroid"][1]) < 0.05 and self.t() - t < 600:
+        for (x, y, t, dur) in self.skip_list:
+            if math.hypot(x - c["centroid"][0], y - c["centroid"][1]) < 0.05 and self.t() - t < dur:
                 return True
         return False
 
-    def skip(self, c):
-        self.skip_list.append((c["centroid"][0], c["centroid"][1], self.t()))
+    def skip(self, c, dur=600):
+        """Leave this spot alone for `dur` steps; a spot that keeps failing is left alone for longer
+        (an object wedged between two containers is not worth a visit every few hundred steps)."""
+        x, y = c["centroid"][0], c["centroid"][1]
+        fails = sum(1 for (px, py, t, d) in self.skip_list if math.hypot(px - x, py - y) < 0.05 and d >= 600)
+        self.skip_list.append((x, y, self.t(), dur * (1 + fails) ** 2 if dur >= 600 else dur))
 
     # -- main behaviour -----------------------------------------------------------------------
     def run(self):
+        self.last_sweep_t = -10 ** 9
         while True:
-            clusters = yield from self.observe()
+            clusters = yield from self.observe(sweep=self.t() - self.last_sweep_t > 1000)
+            for b in list(getattr(self, "maybe_empty", [])):
+                yield from self.verify_empty(b)
             req = self.request()
             if req is None:
                 self.request_state = None
@@ -924,8 +1099,14 @@ class Controller(object):
                 continue
             yield from self.hold(10, grip=0.0)
 
+    def held_back(self, c):
+        """Something a request dug out of a container waits on the desk until the request closes
+        (put back, it would be dug out again)."""
+        rs = self.request_state
+        return bool(rs) and self._near_any(c, rs.get("dug", []), r=0.07)
+
     def tidy(self, clusters):
-        loose = [c for c in self.loose(clusters) if not self.skipped(c)]
+        loose = [c for c in self.loose(clusters) if not self.skipped(c) and not self.held_back(c)]
         loose.sort(key=lambda c: -c["cls_info"]["class_margin"])
         for c in loose:
             d = yield from self.inspect(c)
@@ -942,16 +1123,18 @@ class Controller(object):
                 return True
             held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
             if held:
-                yield from self.place_in_container(CONTAINER_OF_CLASS[info["cls"]])
+                self.forget(info["model"])
+                yield from self.place_in_container(CONTAINER_OF_CLASS[info["cls"]], info["model"])
             else:
                 log("t=%d grasp failed" % self.t())
                 self.skip(c)
             return True
         for c in clusters:
             if c["container"] in CLASS_OF_CONTAINER and c["cls_info"] is not None and not self.skipped(c) \
-                    and c["cls_info"]["cls"] != CLASS_OF_CONTAINER[c["container"]] and c["cls_info"]["class_margin"] > 0.15:
+                    and c["cls_info"]["cls"] != CLASS_OF_CONTAINER[c["container"]] and c["cls_info"]["class_margin"] > 0.4:
                 d = yield from self.inspect(c)
-                if d is None or d["cls_info"]["cls"] == CLASS_OF_CONTAINER[c["container"]] or d["cls_info"]["class_margin"] < 0.15:
+                if d is None or d["cls_info"]["cls"] == CLASS_OF_CONTAINER[c["container"]] or d["cls_info"]["class_margin"] < 0.4 \
+                        or d["cls_info"].get("model_margin", 0.0) < 0.3:
                     self.skip(c)
                     return True
                 g = self.plan_grasps(d, inside=c["container"])
@@ -961,82 +1144,196 @@ class Controller(object):
                     return True
                 held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
                 if held:
-                    yield from self.place_in_container(CONTAINER_OF_CLASS[d["cls_info"]["cls"]])
+                    self.forget(d["cls_info"]["model"])
+                    yield from self.place_in_container(CONTAINER_OF_CLASS[d["cls_info"]["cls"]], d["cls_info"]["model"])
                 else:
                     self.skip(c)
                 return True
         return False
 
+    def forget(self, model):
+        """`model` is out on the desk or in the hand: drop its latest inventory entry (an object
+        that was dug out of a container is still listed there until it is sorted again)."""
+        for b in sorted(self.inventory, key=lambda b: -len(self.inventory[b])):
+            if model in self.inventory[b]:
+                lst = self.inventory[b]
+                del lst[len(lst) - 1 - lst[::-1].index(model)]
+                return
+
+    def could_be(self, c, model, slack):
+        """Static-camera gate: is `model` within `slack` of this loose cluster's best match?"""
+        info = c.get("cls_info") or {}
+        if not info.get("all"):
+            return True
+        return info["all"].get(model, 9.0) - info["d"] < slack
+
+    def search_order(self, model):
+        """Containers that may hold `model`, most likely first: those the controller put an
+        instance into (latest first), then its class container while an initial pile of unseen
+        objects may still lie there."""
+        names = (model, TWIN.get(model))
+        order = [b for b in sorted(self.inventory, key=lambda b: -max([i for i, m in enumerate(self.inventory[b]) if m in names] or [-1]))
+                 if any(m in names for m in self.inventory[b])]
+        home = CONTAINER_OF_CLASS.get(CLASS_OF.get(model))
+        if home and self.pile_unknown.get(home) and home not in order:
+            order.append(home)
+        return order
+
     def serve_request(self, clusters):
+        """One step of serving the open request; returns False when there is nothing left to try
+        (the caller tidies meanwhile). Order: loose objects that look like the target (static
+        gate) -> containers that may hold it, digging from the top -> loose objects that looked
+        unlike it -> the containers the controller had no reason to search -> declare absent."""
         rs = self.request_state
         model = rs["model"]
-        cls = CLASS_OF.get(model)
         loose = self.loose(clusters)
-        cands = sorted(loose, key=lambda c: min([d for m, d in c["cls_info"]["ranked"] if m == model] or [9.0]))
-        for c in cands:
-            if self._near_any(c, rs["inspected"]):
-                continue
-            key = (c["centroid"][0], c["centroid"][1])
-            rs["inspected"].append(key)
-            d = yield from self.inspect(c)
-            if d is None:
-                return True
-            info = d["cls_info"]
-            log("t=%d request check: %s (d=%.2f) vs wanted %s" % (self.t(), info["model"], info["d"], model))
-            if info["model"] == model:
-                g = self.plan_grasps(d)
-                if not g:
-                    log("t=%d target not graspable where it lies" % self.t())
-                    return True
-                held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
-                if held:
-                    yield from self.place_in_container("red")
-                    yield from self.hold(8, grip=0.0)
-                    ok = yield from self.confirm_red()
-                    if ok:
-                        yield from self.hold(1, grip=0.0, mark=1)
-                        log("t=%d marked delivered" % self.t())
-                        self.request_state = None
-                    else:
-                        log("t=%d red container check failed; retrying" % self.t())
-                        rs["inspected"].remove(key)
-                else:
-                    log("t=%d grasp of the target failed; retrying" % self.t())
-                    rs["inspected"].remove(key)
-            return True
-        order = [CONTAINER_OF_CLASS[cls]] if cls else []
-        order += [b for b in ("gray", "lightblue", "blue") if b not in order]
+
+        def fresh(slack):
+            cs = [c for c in loose if not self._near_any(c, rs["inspected"]) and self.could_be(c, model, slack)]
+            return sorted(cs, key=lambda c: (c["cls_info"].get("all") or {}).get(model, 9.0))
+
+        cands = fresh(0.5)
+        if cands:
+            done = yield from self.check_candidate(cands[0])
+            return done
+        order = self.search_order(model)
+        expected = rs.setdefault("expected", list(order))
+        searched = rs.setdefault("searched", [])
+        if expected and all(b in searched for b in expected):
+            # it was known to be in there but is not: the world moved it; look everywhere
+            order += [b for b in ("gray", "lightblue", "blue") if b not in order]
+        blocked = rs.setdefault("blocked", {})
         for b in order:
-            inside = [c for c in clusters if c["container"] == b]
-            if not inside:
+            if b in searched or self.t() - blocked.get(b, -999) < 150:
                 continue
-            c = max(inside, key=lambda c: c["top_z"])
-            spot = self.free_spot(clusters, near=(c["centroid"][0], c["centroid"][1]))
-            if spot is None:
-                log("t=%d no free desk spot" % self.t())
-                return False
-            g = self.plan_grasps(c, inside=b)
-            log("t=%d unpack %s: cluster n=%d top=%.3f at (%.2f,%.2f) grasps=%s -> (%.2f,%.2f)" % (
-                self.t(), b, c["n"], c["top_z"], c["grasp_xy"][0], c["grasp_xy"][1], [(round(x[1], 2), x[2]) for x in g], spot[0], spot[1]))
-            if not g:
-                rs["unpack_failures"] = rs.get("unpack_failures", 0) + 1
-                if rs["unpack_failures"] > 6:
-                    return False
-                return True
-            held = yield from self.try_grasps(g, c["top_z"], c["floor"], tuple(c["grasp_xy"]))
-            if held:
-                yield from self.place_on_desk(spot, self.spot_yaw(spot))
-            else:
-                rs["unpack_failures"] = rs.get("unpack_failures", 0) + 1
-                if rs["unpack_failures"] > 6:
-                    log("t=%d giving up unpacking %s" % (self.t(), b))
-                    return False
+            inside = [c for c in clusters if c["container"] == b]
+            if sum(c["n"] for c in inside) < 15:
+                empty = yield from self.verify_empty(b)
+                if empty:
+                    searched.append(b)
+                    continue
+                # something low the static cameras cannot see over the walls: look from above
+                cb = self.containers[b]
+                inside = [{"grasp_xy": [cb[0], cb[1]], "top_z": CONTAINER_RIM_Z - 0.06, "floor": CONTAINER_FLOOR_Z,
+                           "container": b, "n": 0, "centroid": [cb[0], cb[1], 0.05], "cls_info": None}]
+            done = yield from self.unpack_one(b, inside, clusters)
+            return done
+        cands = fresh(1.0)
+        if cands:
+            done = yield from self.check_candidate(cands[0])
+            return done
+        if any(b not in searched for b in order) or rs.get("seen_target") or rs.get("out_of_reach"):
+            # a container that may hold it could not be dug out (nothing in reach), or the target
+            # was seen but not taken: never claim absence on a guess; tidy meanwhile, try again
+            return False
+        if not rs.get("swept"):
+            rs["swept"] = True              # look into the blind ends of the near strip first
+            self.last_sweep_t = -10 ** 9
             return True
-        if any(not self._near_any(c, rs["inspected"]) for c in loose):
-            return True
-        log("t=%d declare absent: %s" % (self.t(), model))
+        log("t=%d declare absent: %s (searched %s)" % (self.t(), model, rs.get("searched")))
         yield from self.hold(1, grip=0.0, mark=2)
         self.request_state = None
+        return True
+
+    def check_candidate(self, c):
+        """Inspect a loose cluster from the hand camera; deliver it when it is the target."""
+        rs = self.request_state
+        model = rs["model"]
+        key = (c["centroid"][0], c["centroid"][1])
+        rs["inspected"].append(key)
+        d = yield from self.inspect(c)
+        if d is None:
+            return True
+        info = d["cls_info"]
+        log("t=%d request check: %s (d=%.2f) vs wanted %s" % (self.t(), info["model"], info["d"], model))
+        if not is_model(info, model):
+            return True
+        rs["seen_target"] = True            # it is here: absence is never claimed for this request
+        g = self.plan_grasps(d)
+        if not g:
+            log("t=%d target not graspable where it lies" % self.t())
+            return True
+        held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
+        if not held:
+            log("t=%d grasp of the target failed; retrying" % self.t())
+            rs["inspected"].remove(key)
+            return True
+        self.forget(model)
+        yield from self.place_in_container("red")
+        yield from self.hold(8, grip=0.0)
+        ok = yield from self.confirm_red()
+        if ok:
+            yield from self.hold(1, grip=0.0, mark=1)
+            log("t=%d marked delivered" % self.t())
+            self.request_state = None
+        else:
+            log("t=%d red container check failed; retrying" % self.t())
+            rs["inspected"].remove(key)
+        return True
+
+    def unpack_one(self, b, inside, clusters):
+        """Dig one object out of container b: the highest cluster with a grasp the hand fits inside
+        the container, re-measured from above with the hand camera. The target itself goes
+        straight to the red container; anything else is set down on a free desk spot nearby,
+        where the next observation tells what it is."""
+        rs = self.request_state
+        model = rs["model"]
+        # the static clusters of a pile are coarse and merged: look at the top from above first
+        for c in sorted(inside, key=lambda c: -c["top_z"])[:2]:
+            d = yield from self.inspect(c)
+            if d is None:
+                continue
+            g = self.plan_grasps(d, inside=b)
+            info = d["cls_info"]
+            log("t=%d unpack %s: top %s (d=%.2f, model margin %.2f) at (%.2f,%.2f) top=%.3f grasps=%s" % (
+                self.t(), b, info["model"], info["d"], info.get("model_margin", 0.0), d["grasp_xy"][0], d["grasp_xy"][1],
+                d["top_z"], [(round(x[1], 2), x[2]) for x in g]))
+            if not g:
+                continue
+            is_target = (info["model"] == model and info.get("model_margin", 0.0) > 0.3) or (is_model(info, model, 0.15) and info["model"] != model)
+            spot = None if is_target else self.free_spot(clusters, near=(d["centroid"][0], d["centroid"][1]))
+            if not is_target and spot is None:
+                log("t=%d no free desk spot" % self.t())
+                return False
+            held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
+            if not held:
+                break
+            if is_target:
+                self.forget(model)
+                yield from self.place_in_container("red")
+                yield from self.hold(8, grip=0.0)
+                ok = yield from self.confirm_red()
+                if ok:
+                    yield from self.hold(1, grip=0.0, mark=1)
+                    log("t=%d marked delivered (dug out of %s)" % (self.t(), b))
+                    self.request_state = None
+                return True
+            yield from self.place_on_desk(spot, self.spot_yaw(spot))
+            rs.setdefault("dug", []).append(spot)
+            return True
+        # nothing in reach: what is left is exposed now; identify it from above. Absence can be
+        # claimed once every object left in the container is known and none is the target.
+        if not rs.setdefault("identified", {}).get(b):
+            rs["identified"][b] = True
+            ids, sure = [], True
+            for c in sorted(inside, key=lambda c: -c["n"])[:4]:
+                d = yield from self.inspect(c)
+                if d is None:
+                    continue
+                info = d["cls_info"]
+                ids.append(info["model"])
+                if info["model"] == model or TWIN.get(info["model"]) == model or info.get("model_margin", 0.0) < 0.15:
+                    sure = False
+            log("t=%d %s: left out of reach %s (%s)" % (self.t(), b, ids, "no target" if sure else "maybe the target"))
+            if sure:
+                self.inventory[b] = list(ids)        # what was dug out is re-listed when it is put back
+                self.pile_unknown[b] = False
+                rs.setdefault("searched", []).append(b)
+                return True
+            if model in ids or any(TWIN.get(m) == model for m in ids):
+                rs["out_of_reach"] = b
+        rs.setdefault("blocked", {})[b] = self.t()
+        log("t=%d nothing in reach in %s for now" % (self.t(), b))
         return True
 
     def confirm_red(self):
