@@ -275,6 +275,8 @@ and `verify/` included.
 - Follow-up: publish tightly cropped, opaque white PNGs with editable Mermaid sources
   to keep the backgrounds stable in dark mode. Keep the object layout; compact the
   request diagram vertically with Idle above the new-request transition and no Closed node.
+- Moved transition labels beside the arrows, removed opaque label backgrounds, and
+  reduced label emphasis so the arrow paths remain continuous and unobstructed.
 - Validation remains pending: stabilize oracle grasping, measure its anchor, run
   `ale validate`, and measure frontier-model difficulty before marking the PR ready.
 
