@@ -10,9 +10,9 @@ available, sum_t sum_o max(0, 1 - b_o), then clipped to [0, 1]. An untouched sce
 exactly 0. Removed objects keep their last value (container service, delivery) or -1 (lost
 off the table) for the rest of the episode, also when their instance is reused.
 
-R, request progress: mean credit over all opened requests, including an ongoing one.
-The first hold of the requested target earns 0.5 once; a verified delivery or correct
-absence declaration brings that request to 1.0. Repeated holds earn nothing more.
+R, request progress: points divided by twice the number of opened requests, including an ongoing one.
+The first hold of the requested target earns 1 point once; a verified delivery or correct
+absence declaration brings that request to 2 points. Repeated holds earn nothing more.
 A wrong mark or expiry keeps any first-hold credit but adds none. No requests gives 0.
 
 Stdlib-only; shared byte-identically by the verify stage and the practice grader.
@@ -31,7 +31,7 @@ class EpisodeScorer(object):
         self.den = 0.0            # sum of the gain available, max(0, 1 - b)
         self.ghosts = []          # (value, baseline) of removed incarnations whose instance was reused
         self.prev = {}            # id -> (present, removed, value, baseline) at the previous step
-        self.request_credits = {}  # request id -> 0, 0.5 (first hold), or 1 (success)
+        self.request_points = {}  # request id -> 0, 1 (first hold), or 2 (success)
         self.held_requests = set()
         self.counts = {"requests_opened": 0, "requests_success": 0, "requests_failed": 0,
                        "requests_delivered": 0, "absent_correct": 0, "claims_wrong": 0, "absent_wrong": 0,
@@ -55,14 +55,14 @@ class EpisodeScorer(object):
             kind = e.get("event", "")
             if kind == "request_opened" or kind == "request_first_hold" or kind in SUCCESS_EVENTS or kind in FAILURE_EVENTS:
                 rid = e["request"]
-                self.request_credits.setdefault(rid, 0.0)
+                self.request_points.setdefault(rid, 0.0)
                 if kind == "request_first_hold":
-                    self.request_credits[rid] = max(self.request_credits[rid], 0.5)
+                    self.request_points[rid] = max(self.request_points[rid], 1.0)
                     if rid not in self.held_requests:
                         self.held_requests.add(rid)
                         self.counts["first_holds"] += 1
                 elif kind in SUCCESS_EVENTS:
-                    self.request_credits[rid] = 1.0
+                    self.request_points[rid] = 2.0
             if kind in SUCCESS_EVENTS:
                 self.counts["requests_success"] += 1
             elif kind in FAILURE_EVENTS:
@@ -99,8 +99,8 @@ class EpisodeScorer(object):
         return self.counts["requests_success"] / float(closed) if closed else 0.0
 
     def request_progress(self):
-        opened = len(self.request_credits)
-        return sum(self.request_credits.values()) / float(opened) if opened else 0.0
+        opened = len(self.request_points)
+        return sum(self.request_points.values()) / (2.0 * opened) if opened else 0.0
 
     def score(self):
         s = W_ORG * self.organization() + W_REQ * self.request_progress()

@@ -32,7 +32,8 @@ class RequestCreditTests(unittest.TestCase):
         self.assertEqual(self.scorer.score(), 0)
         self.event("request_first_hold")
         self.assertEqual(self.scorer.request_progress(), 0.5)
-        self.assertEqual(self.scorer.score(), 0.25)  # R has half the episode weight.
+        self.assertEqual(self.scorer.request_points[0], 1)
+        self.assertEqual(self.scorer.score(), 0.25)  # One of two request points; R has half the weight.
         for _ in range(10):
             self.event("request_first_hold")
         self.assertEqual(self.scorer.request_progress(), 0.5)
@@ -40,6 +41,7 @@ class RequestCreditTests(unittest.TestCase):
         self.event("request_delivered")
         self.assertEqual(self.scorer.request_progress(), 1)
         self.assertEqual(self.scorer.score(), 0.5)
+        self.assertEqual(self.scorer.request_points[0], 2)
         self.event("request_first_hold")
         self.assertEqual(self.scorer.request_progress(), 1)
 

@@ -36,7 +36,7 @@ Key object states; node values are $v_o(t)$. First-hold credit belongs to $R$, n
 
 <!-- Editable source: figures/object-automaton.mmd -->
 
-The first hold of the requested target earns 50% request credit once; repeated holds add nothing. “Place” means released and resting. A right container is the class container, or red for the requested object. Removal by container service or confirmed delivery freezes the value; only falling off the table triggers `Lost` and keeps −1. A release onto the table or into a container is not a loss. Transit ($v=0$), arrivals, disturbances and instance reuse are omitted for clarity.
+The first hold of the requested target earns +1 request point once; repeated holds add nothing. “Place” means released and resting. A right container is the class container, or red for the requested object. Removal by container service or confirmed delivery freezes the value; only falling off the table triggers `Lost` and keeps −1. A release onto the table or into a container is not a loss. Transit ($v=0$), arrivals, disturbances and instance reuse are omitted for clarity.
 
 ## Request automaton
 
@@ -48,17 +48,17 @@ Each request earns partial credit on its first target hold, then closes as a suc
 
 <!-- Editable source: figures/request-automaton.mmd -->
 
-A first target hold earns 50% credit; verified delivery or correct absence earns 100%. Failure or expiry keeps any first-hold credit but adds no completion credit. $R$ averages credit over all opened requests, including the ongoing one. The next request starts a new cycle.
+A first target hold earns +1 point; delivery adds +1 for a total of 2. Correct absence also earns 2 points. Failure or expiry keeps any first-hold credit but adds no completion credit. $R$ divides total request points by twice the number of opened requests, including the ongoing one. The next request starts a new cycle.
 
 ## Score
 
 $$
 S = \frac{1}{2}\, O + \frac{1}{2}\, R, \qquad
 O = \mathrm{clip}\left( \frac{\sum_{t=1}^{T} \sum_{o} \left( v_o(t) - b_o \right)}{\sum_{t=1}^{T} \sum_{o} \max\left( 0,\, 1 - b_o \right)},\ 0,\ 1 \right), \qquad
-R = \frac{\sum_{j=1}^{N_{\mathrm{opened}}} q_j}{N_{\mathrm{opened}}}
+R = \frac{\sum_{j=1}^{N_{\mathrm{opened}}} q_j}{2N_{\mathrm{opened}}}
 $$
 
-where $q_j = 1$ for a verified delivery or correct absence declaration, $q_j = 1/2$
+where $q_j = 2$ for a verified delivery or correct absence declaration, $q_j = 1$
 for a request whose target was held at least once but has not been successfully completed,
 and $q_j = 0$ otherwise. Repeated holds do not accumulate credit. $R = 0$ when no request
 has opened. A first hold is recorded only while the request is open and its target is
@@ -70,13 +70,13 @@ When the episode was cut after $T < H$ steps, $S \leftarrow S \cdot T / H$.
 |---|---|
 | $S$ | the episode score in $[0, 1]$; the task metric `mean_episode_score` is its mean over the hidden seeds |
 | $O$ | organization: how much of the sorting work that was available over the episode was done, every step counted (anytime) |
-| $R$ | request progress: mean credit across all opened requests, including an ongoing one |
+| $R$ | request progress: total points divided by twice the number of opened requests, including an ongoing one |
 | $v_o(t)$ | value of object $o$ at step $t$: +1 placed in a right container, −1 placed in a wrong one, 0 on the table / held / in flight, −1 for ever once lost, last value once removed |
 | $b_o$ | baseline of object $o$: its value when it entered the scene (0 for an arrival, +1 for an object that starts in its pile) or when the world last moved it (−1 after a misplacement; re-read once a nudged object rests again) |
 | $v_o(t) - b_o$ | the agent's net effect on object $o$: untouched objects contribute 0 |
 | $\max(0, 1 - b_o)$ | the gain that was available for $o$: 1 per step for a loose object, 2 for one the world misfiled, 0 for one already in place |
 | $T$, $H$ | steps actually run and the horizon (20000); an episode the grader cuts for exhausting its wall-clock budget keeps what it earned, scaled by $T/H$ |
-| $q_j$, $N_{\mathrm{opened}}$ | credit for request $j$ (0, 0.5, or 1), and the number of requests opened; $R = 0$ when none opened |
+| $q_j$, $N_{\mathrm{opened}}$ | points for request $j$ (0, 1, or 2), and the number of requests opened; $R = 0$ when none opened |
 
 Properties: an untouched scene scores exactly 0 (every $v_o = b_o$, no successful request);
 holding an object inside a container is not "placed", so it earns no organization credit;

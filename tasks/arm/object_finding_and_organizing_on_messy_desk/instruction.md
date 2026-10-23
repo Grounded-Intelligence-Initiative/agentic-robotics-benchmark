@@ -133,9 +133,9 @@ Requests end as a **success** (`done: delivered` while the requested object is p
 container; `done: no such object` when it really is absent) or a **failure** (either mark when
 the truth is the opposite, or the deadline passes unmarked).
 
-Each request earns credit in two stages: the first time its target is in `held` state earns
-0.5, once per request; a verified delivery raises its credit to 1.0. Correctly declaring
-absence also earns 1.0. Repeated holds add nothing. A failed or expired request keeps
+Each request earns points in two stages: the first time its target is in `held` state earns
+1 point, once per request; verified delivery adds the second point for a total of 2.
+Correctly declaring absence also earns 2 points. Repeated holds add nothing. A failed or expired request keeps
 any first-hold credit already earned, but gains no completion credit. Merely having
 touched the object before the request opened does not count.
 
@@ -144,7 +144,7 @@ The episode score is
 ```
 S = 1/2 · O + 1/2 · R
 O = clip( Σ_t Σ_o (v_o(t) − b_o)  /  Σ_t Σ_o max(0, 1 − b_o) , 0, 1 )
-R = sum of request credits / opened requests     (0 when no request opened)
+R = sum of request points / (2 · opened requests)   (0 when no request opened)
 ```
 
 `R` includes the ongoing request, so its first hold earns partial credit immediately.

@@ -2,7 +2,7 @@
 flowchart LR
     subgraph ACTIVE["ACTIVE"]
         T("<b>On table</b><br/>v = 0")
-        H("<b>Held</b><br/>v = 0<br/>Target: first hold → 50%")
+        H("<b>Held</b><br/>v = 0<br/>Target: first hold +1")
         C("<b>In container</b><br/>v = +1 right · −1 wrong")
         T -->|contact| H
         H -->|place| T
