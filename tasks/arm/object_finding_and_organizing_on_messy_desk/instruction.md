@@ -162,9 +162,16 @@ reward you are judged on is that mean relative to a hidden reference value.
 
 ## Practice material
 
-- `/home/user/messy_desk_env.py` — the same environment the grader runs, usable on your own seeds;
+- `/home/user/messy_desk_env.py` — the same environment the grader runs, usable on your own seeds
+  (stdio JSON: `reset`, `step`, `info`, `close`). Every `step` reply also carries the running
+  `score` (S if the episode were cut now, the unscaled ½·O + ½·R, O, R, requests closed and won),
+  `{"cmd": "score"}` adds every object's current value and baseline, and
+  `{"cmd": "request", "model": "005_tomato_soup_can"}` (or `"absent": true`) opens a request on
+  demand so you can rehearse marks. None of this reaches your controller's observation; the
+  hidden grader's wire is the one in **What you must deliver**;
 - `/home/user/practice_grader/grade.py` — drives your `run.sh` over the real wire on visible
-  seeds and prints the raw score, nothing else;
+  seeds and prints the raw score, nothing else; `--live N` prints the running score every N
+  steps and `--score-file PATH` writes it as JSON for your own tooling;
 - `/home/user/task_card.md` — camera calibration, container geometry, class catalogue.
 
 The simulator runs headless on the GPU in this sandbox. Start it once and keep it alive;

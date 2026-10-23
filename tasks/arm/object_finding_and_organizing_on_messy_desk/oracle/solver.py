@@ -74,6 +74,9 @@ TRAVEL_Z = 0.32
 VOXEL = 0.012
 Z_ROBOT = 0.30
 GRASP_BELOW_TOP = 0.03
+RIM_GRASP_BELOW_TOP = 0.012     # wide hollow objects (bowl, mug, pitcher): straddle the wall at the rim
+RIM_MIN_RADIUS, RIM_MIN_DEPTH = 0.035, 0.012
+REFINE_RADIUS, REFINE_MAX_SHIFT = 0.07, 0.04    # hand-camera re-centring just before the descent
 GRASP_MIN_ABOVE_FLOOR = 0.032
 DROP_ABOVE_RIM = 0.035
 HOVER_ABOVE_TOP = 0.16
@@ -188,12 +191,30 @@ def decode_png(b64, mode=None):
     return np.array(im)
 
 
+EDGE_TAU = 0.012     # depth jump to a 4-neighbour (m) that marks an anti-aliased silhouette pixel
+
+
+def depth_edges(z, tau=EDGE_TAU):
+    """Silhouette pixels: the renderer anti-aliases depth, so pixels on an object's outline carry
+    a depth between the object and what lies behind it and back-project into a 'skirt' of flying
+    points hanging from the rim down to the desk (2-4 cm around every object, and long strips
+    under the fingers). Drop every pixel whose depth differs from any 4-neighbour by more than `tau`."""
+    e = np.zeros(z.shape, dtype=bool)
+    d = np.abs(np.diff(z, axis=0)) > tau
+    e[:-1, :] |= d
+    e[1:, :] |= d
+    d = np.abs(np.diff(z, axis=1)) > tau
+    e[:, :-1] |= d
+    e[:, 1:] |= d
+    return e
+
+
 def backproject(depth_mm, rgb, cam, max_depth=3.0):
     z = depth_mm.astype(np.float32) / 1000.0
     h, w = z.shape
     f, c = intrinsics(w)
     v, u = np.mgrid[0:h, 0:w]
-    valid = (z > 0.05) & (z < max_depth)
+    valid = (z > 0.05) & (z < max_depth) & ~depth_edges(z)
     pts = np.stack([z[valid], -(u[valid] - c) / f * z[valid], -(v[valid] - c) / f * z[valid]], 1)
     pose = cam["pose"]
     world = pts @ quat_to_mat(pose[3:7]).T + np.asarray(pose[:3])
@@ -205,7 +226,7 @@ def backproject_rt(depth_mm, rgb, f, c, R, t, max_depth=1.5):
     h, w = z.shape
     f, c = intrinsics(w)
     v, u = np.mgrid[0:h, 0:w]
-    valid = (z > 0.02) & (z < max_depth)
+    valid = (z > 0.02) & (z < max_depth) & ~depth_edges(z)
     pts = np.stack([z[valid], -(u[valid] - c) / f * z[valid], -(v[valid] - c) / f * z[valid]], 1)
     return pts @ R.T + np.asarray(t), rgb[valid].astype(np.float32) / 255.0
 
@@ -381,13 +402,19 @@ def perceive(images, containers=None, voxel=VOXEL, min_pts=12, extra=()):
         pts, col = backproject(d, rgb, CAMS[cam])
         P.append(pts)
         C.append(col)
-    for rgb, d, R, t in extra:
-        pts, col = backproject_rt(d, rgb, None, None, R, t)
-        P.append(pts)
-        C.append(col)
     allp, allc = np.concatenate(P), np.concatenate(C)
     if containers is None:
+        # container poses from the static cameras only: they see all four rims completely,
+        # while a hand-camera view clips them at its edge and biases the fit
         containers, _ = detect_containers(allp, allc)
+    for rgb, d, R, t in extra:
+        pts, col = backproject_rt(d, rgb, None, None, R, t)
+        # extra (hand-camera) views only fill the strip between the robot and the containers,
+        # the one place the static cameras cannot see; elsewhere they add nothing but noise
+        keep = pts[:, 0] < CONTAINER_X - CONTAINER_OUTER[0] / 2 - 0.02
+        P.append(pts[keep])
+        C.append(col[keep])
+    allp, allc = np.concatenate(P), np.concatenate(C)
     m = scene_mask(allp, containers)
     pts, col = allp[m], allc[m]
     if len(pts) == 0:
@@ -484,6 +511,7 @@ class Controller(object):
         self.drop_slot = {b: 0 for b in CONTAINER_YS}
         self.skip_list = []
         self.last_perceive_t = -999
+        self.carry_hang = 0.0
 
     # -- wire entry -------------------------------------------------------------------------
     def act(self, t, obs):
@@ -557,15 +585,48 @@ class Controller(object):
     def gripper_closed_on_object(self):
         return 0.006 < self.width() < 0.077
 
-    def pick(self, xy, yaw, top_z, floor):
-        """Top-down pinch grasp at `yaw`. Returns True when something is held after lifting."""
+    def travel_z(self):
+        """Carry height: the held object's bottom clears the container rims."""
+        return max(TRAVEL_Z, CONTAINER_RIM_Z + 0.04 + self.carry_hang)
+
+    def refine_xy(self, xy, anchor_xy, floor, top_z):
+        """Hovering 10 cm above the object with the hand camera: re-measure the object's top
+        centroid and shift the grasp point by how far it moved from the planned anchor."""
+        try:
+            R_cam, t_cam = self.cam_pose()
+            rgb = decode_png(self.obs["rgb"]["eye_in_hand"], "RGB")
+            dep = decode_png(self.obs["depth"]["eye_in_hand"])
+            d = perceive_eih(rgb, dep, R_cam, t_cam, anchor_xy, floor, top_z, self.containers, radius=REFINE_RADIUS)
+        except Exception as exc:  # noqa: BLE001
+            log("refine failed: %r" % exc)
+            return xy
+        if d is None:
+            return xy
+        p = d["pts"]
+        slab = p[p[:, 2] > d["top_z"] - 0.02]
+        if len(slab) < 15:
+            return xy
+        cx, cy = slab[:, :2].mean(0)
+        dx, dy = float(cx - anchor_xy[0]), float(cy - anchor_xy[1])
+        if math.hypot(dx, dy) > REFINE_MAX_SHIFT:
+            log("refine: shift %.3f too large, ignored" % math.hypot(dx, dy))
+            return xy
+        return (xy[0] + dx, xy[1] + dy)
+
+    def pick(self, xy, yaw, top_z, floor, below_top=GRASP_BELOW_TOP, anchor_xy=None):
+        """Top-down pinch grasp at `yaw`, fingers `below_top` under the object's top (a rim grasp
+        uses a shallow depth). The grasp point is refined from the hand camera 10 cm above the
+        object before the final descent. Returns True when something is held after lifting."""
         x, y = xy
         yaw = wrap_half(yaw)
         z_pre = max(top_z + 0.10, floor + 0.12)
-        z_travel = max(TRAVEL_Z, z_pre)
+        self.carry_hang = max(0.0, (top_z - floor) - below_top)     # how far the object hangs below the fingertips
+        z_travel = max(self.travel_z(), z_pre)
         yield from self.goto((x, y, z_travel), yaw, grip=0.0, tol=0.015)
         yield from self.goto((x, y, z_pre), yaw, grip=0.0, tol=0.008, max_steps=30)
-        z_g = max(top_z - GRASP_BELOW_TOP, floor + GRASP_MIN_ABOVE_FLOOR)
+        yield from self.hold(1, grip=0.0)
+        x, y = self.refine_xy((x, y), anchor_xy or (x, y), floor, top_z)
+        z_g = max(top_z - below_top, floor + GRASP_MIN_ABOVE_FLOOR)
         yield from self.goto((x, y, z_g), yaw, grip=0.0, tol=0.006, max_steps=25, step_max=0.02)
         yield from self.hold(5, grip=1.0)
         held = self.gripper_closed_on_object()
@@ -582,17 +643,19 @@ class Controller(object):
         self.drop_slot[name] += 1
         x, y = container_point(b, (-0.035, 0.0, 0.035)[slot], (0.0, 0.02, -0.02)[slot])
         yaw = wrap_half(math.pi / 2 + b[2])
-        z_rel = CONTAINER_RIM_Z + DROP_ABOVE_RIM
-        yield from self.goto((x, y, TRAVEL_Z), yaw, grip=1.0, tol=0.015)
+        z_rel = CONTAINER_RIM_Z + DROP_ABOVE_RIM + self.carry_hang
+        yield from self.goto((x, y, self.travel_z()), yaw, grip=1.0, tol=0.015)
         yield from self.goto((x, y, z_rel), yaw, grip=1.0, tol=0.01, max_steps=30)
         yield from self.hold(4, grip=0.0)
+        self.carry_hang = 0.0
         yield from self.goto((x, y, TRAVEL_Z), yaw, grip=0.0, tol=0.02, max_steps=30)
 
     def place_on_desk(self, xy, yaw=0.0):
         x, y = xy
-        yield from self.goto((x, y, TRAVEL_Z), yaw, grip=1.0, tol=0.015)
-        yield from self.goto((x, y, 0.09), yaw, grip=1.0, tol=0.01, max_steps=30)
+        yield from self.goto((x, y, self.travel_z()), yaw, grip=1.0, tol=0.015)
+        yield from self.goto((x, y, 0.09 + self.carry_hang), yaw, grip=1.0, tol=0.01, max_steps=30)
         yield from self.hold(4, grip=0.0)
+        self.carry_hang = 0.0
         yield from self.goto((x, y, TRAVEL_Z), yaw, grip=0.0, tol=0.02, max_steps=30)
 
     def observe(self, settle=2):
@@ -671,6 +734,45 @@ class Controller(object):
             return yaw
         return None
 
+    def rim_grasp(self, c, inside=None):
+        """Wide hollow object (bowl, mug, pitcher): one finger inside, one outside, straddling the wall
+        at the rim. Hollow = the cloud dips at least RIM_MIN_DEPTH below the rim around its centre.
+        -> ((x, y), yaw) with the finger axis along the radius, or None."""
+        p = c.get("pts")
+        top = c["top_z"]
+        if p is None or len(p) < 40:
+            return None
+        slab = p[p[:, 2] > top - 0.03]
+        if len(slab) < 20:
+            return None
+        cen = slab[:, :2].mean(0)
+        radius = float(np.percentile(np.hypot(slab[:, 0] - cen[0], slab[:, 1] - cen[1]), 90))
+        inner = p[np.hypot(p[:, 0] - cen[0], p[:, 1] - cen[1]) < 0.4 * radius]
+        depth = top - (float(np.median(inner[:, 2])) if len(inner) >= 5 else top)
+        if radius < RIM_MIN_RADIUS or depth < RIM_MIN_DEPTH:
+            return None
+        for k in range(12):
+            th = k * math.pi / 6
+            wx, wy = cen[0] + radius * math.cos(th), cen[1] + radius * math.sin(th)
+            yaw = wrap_half(th - math.pi / 2)             # finger axis (-sin yaw, cos yaw) = radial
+            if math.hypot(wx, wy) > REACH - 0.04 or math.hypot(wx, wy) < BASE_CLEAR + 0.02:
+                continue
+            if not hand_fits(self.containers, wx, wy, yaw, inside=inside):
+                continue
+            return (float(wx), float(wy)), yaw
+        return None
+
+    def plan_grasp(self, c, inside=None):
+        """-> (xy, yaw, below_top) for cluster c: a pinch across its narrow side when it fits the
+        hand, else a rim grasp when the object is hollow, else None."""
+        yaw = self.choose_yaw(c, inside=inside)
+        if yaw is not None:
+            return (c["grasp_xy"][0], c["grasp_xy"][1]), yaw, GRASP_BELOW_TOP
+        rim = self.rim_grasp(c, inside=inside)
+        if rim is not None:
+            return rim[0], rim[1], RIM_GRASP_BELOW_TOP
+        return None
+
     def free_spot(self, clusters):
         cands = [(0.68, 0.0), (0.68, -0.2), (0.68, 0.2), (0.68, -0.4), (0.68, 0.4), (0.70, -0.3), (0.70, 0.3),
                  (0.25, -0.15), (0.25, 0.15), (0.26, -0.35), (0.26, 0.35), (0.42, -0.58), (0.42, 0.58), (0.56, -0.58), (0.56, 0.58)]
@@ -734,14 +836,14 @@ class Controller(object):
                 self.skip(c)
                 return True
             info = d["cls_info"]
-            yaw = self.choose_yaw(d)
-            log("t=%d loose %s (%s d=%.2f margin=%.2f; static %s) at (%.2f,%.2f) top=%.3f dims=%s yaw=%s" % (
+            g = self.plan_grasp(d)
+            log("t=%d loose %s (%s d=%.2f margin=%.2f; static %s) at (%.2f,%.2f) top=%.3f dims=%s grasp=%s" % (
                 self.t(), info["model"], info["cls"], info["d"], info["class_margin"], c["cls_info"]["model"],
-                d["grasp_xy"][0], d["grasp_xy"][1], d["top_z"], [round(v, 3) for v in d["dims"]], None if yaw is None else round(yaw, 2)))
-            if info["class_margin"] < 0.08 or yaw is None:
+                d["grasp_xy"][0], d["grasp_xy"][1], d["top_z"], [round(v, 3) for v in d["dims"]], None if g is None else (round(g[0][0], 3), round(g[0][1], 3), round(g[1], 2), g[2])))
+            if info["class_margin"] < 0.08 or g is None:
                 self.skip(c)
                 return True
-            held = yield from self.pick(d["grasp_xy"], yaw, d["top_z"], d["floor"])
+            held = yield from self.pick(g[0], g[1], d["top_z"], d["floor"], below_top=g[2], anchor_xy=tuple(d["grasp_xy"]))
             if held:
                 yield from self.place_in_container(CONTAINER_OF_CLASS[info["cls"]])
             else:
@@ -755,12 +857,12 @@ class Controller(object):
                 if d is None or d["cls_info"]["cls"] == CLASS_OF_CONTAINER[c["container"]] or d["cls_info"]["class_margin"] < 0.15:
                     self.skip(c)
                     return True
-                yaw = self.choose_yaw(d, inside=c["container"])
-                log("t=%d misplaced %s in %s yaw=%s" % (self.t(), d["cls_info"]["model"], c["container"], None if yaw is None else round(yaw, 2)))
-                if yaw is None:
+                g = self.plan_grasp(d, inside=c["container"])
+                log("t=%d misplaced %s in %s grasp=%s" % (self.t(), d["cls_info"]["model"], c["container"], None if g is None else (round(g[1], 2), g[2])))
+                if g is None:
                     self.skip(c)
                     return True
-                held = yield from self.pick(d["grasp_xy"], yaw, d["top_z"], d["floor"])
+                held = yield from self.pick(g[0], g[1], d["top_z"], d["floor"], below_top=g[2], anchor_xy=tuple(d["grasp_xy"]))
                 if held:
                     yield from self.place_in_container(CONTAINER_OF_CLASS[d["cls_info"]["cls"]])
                 else:
@@ -785,11 +887,11 @@ class Controller(object):
             info = d["cls_info"]
             log("t=%d request check: %s (d=%.2f) vs wanted %s" % (self.t(), info["model"], info["d"], model))
             if info["model"] == model:
-                yaw = self.choose_yaw(d)
-                if yaw is None:
+                g = self.plan_grasp(d)
+                if g is None:
                     log("t=%d target not graspable where it lies" % self.t())
                     return True
-                held = yield from self.pick(d["grasp_xy"], yaw, d["top_z"], d["floor"])
+                held = yield from self.pick(g[0], g[1], d["top_z"], d["floor"], below_top=g[2], anchor_xy=tuple(d["grasp_xy"]))
                 if held:
                     yield from self.place_in_container("red")
                     yield from self.hold(8, grip=0.0)
@@ -816,15 +918,15 @@ class Controller(object):
             if spot is None:
                 log("t=%d no free desk spot" % self.t())
                 return False
-            yaw = self.choose_yaw(c, inside=b)
-            log("t=%d unpack %s: cluster n=%d top=%.3f at (%.2f,%.2f) yaw=%s -> (%.2f,%.2f)" % (
-                self.t(), b, c["n"], c["top_z"], c["grasp_xy"][0], c["grasp_xy"][1], None if yaw is None else round(yaw, 2), spot[0], spot[1]))
-            if yaw is None:
+            g = self.plan_grasp(c, inside=b)
+            log("t=%d unpack %s: cluster n=%d top=%.3f at (%.2f,%.2f) grasp=%s -> (%.2f,%.2f)" % (
+                self.t(), b, c["n"], c["top_z"], c["grasp_xy"][0], c["grasp_xy"][1], None if g is None else (round(g[1], 2), g[2]), spot[0], spot[1]))
+            if g is None:
                 rs["unpack_failures"] = rs.get("unpack_failures", 0) + 1
                 if rs["unpack_failures"] > 6:
                     return False
                 return True
-            held = yield from self.pick(c["grasp_xy"], yaw, c["top_z"], c["floor"])
+            held = yield from self.pick(g[0], g[1], c["top_z"], c["floor"], below_top=g[2], anchor_xy=tuple(c["grasp_xy"]))
             if held:
                 yield from self.place_on_desk(spot, self.spot_yaw(spot))
             else:

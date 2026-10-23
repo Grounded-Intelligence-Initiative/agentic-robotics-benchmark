@@ -6,9 +6,15 @@ perturbed proprioception) on VISIBLE practice seeds, and prints the raw episode 
 It deliberately tells you less than the real grader: practice seeds, the raw metric only,
 no reference value. "My controller works and roughly how well", not "what I will be scored".
 
-    python3 /home/user/practice_grader/grade.py [--episodes 1] [--horizon 2000] [--seed 11]
+    python3 /home/user/practice_grader/grade.py [--episodes 1] [--horizon 2000] [--seed 11] [--live 500] [--score-file PATH]
 
 The simulator takes about two minutes to start; keep --horizon small while iterating.
+`--live N` prints the running score (S if cut now, the unscaled 1/2 O + 1/2 R, O, R, closed
+requests) every N steps on stderr; `--score-file` also writes it as JSON for your own tooling.
+Driving the simulator yourself (`python3 /home/user/messy_desk_env.py`, stdio JSON): every
+`step` reply carries the same `score` dict, `{"cmd": "score"}` adds every object's value and
+baseline, and `{"cmd": "request", "model": "005_tomato_soup_can"}` (or `"absent": true`)
+opens a request on demand so you can rehearse marks.
 """
 
 import argparse
@@ -118,7 +124,13 @@ def _perturbed(obs, rng):
     return p
 
 
-def _episode(wire, sim, seed, horizon, rng, stats, verbose):
+def _live_line(seed, t, scorer):
+    d = scorer.live()
+    return "[practice] seed={} t={} score_now={:.4f} (running {:.4f})  O={:.4f} R={:.4f} ({}/{} requests)  org {:+.0f}/{:.0f}".format(
+        seed, t, d["score"], d["score_running"], d["organization"], d["request_rate"], d["requests_success"], d["requests_closed"], d["org_num"], d["org_den"])
+
+
+def _episode(wire, sim, seed, horizon, rng, stats, verbose, live=0, score_file=None):
     obs, state = sim.reset(seed, horizon)
     wire.request({"type": "reset"})
     scorer = EpisodeScorer(horizon)
@@ -141,6 +153,14 @@ def _episode(wire, sim, seed, horizon, rng, stats, verbose):
         if verbose:
             for e in state.get("events", []):
                 print("[practice] t={} {}".format(e.get("t"), json.dumps(e)), file=sys.stderr, flush=True)
+        if live and (t + 1) % live == 0:
+            print(_live_line(seed, t + 1, scorer), file=sys.stderr, flush=True)
+            if score_file:
+                d = scorer.live(); d.update(seed=seed, t=t + 1)
+                tmp = score_file + ".tmp"
+                with open(tmp, "w") as f:
+                    json.dump(d, f)
+                os.replace(tmp, score_file)
     stats["wall_s_per_1000_steps"] = round((time.time() - t0) / max(horizon, 1) * 1000.0, 1)
     return scorer
 
@@ -153,6 +173,10 @@ def main():
     parser.add_argument("--seed", type=int, default=None, help="one specific practice seed")
     parser.add_argument("--env", default="/home/user/messy_desk_env.py")
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--live", type=int, default=500, metavar="N",
+                        help="print the running score every N steps (0 = off); the same numbers the final JSON reports")
+    parser.add_argument("--score-file", default=None, metavar="PATH",
+                        help="also write the running score as JSON to PATH every --live steps (poll it from your own tooling)")
     args = parser.parse_args()
 
     entry = os.path.join(args.submission, "run.sh")
@@ -174,7 +198,7 @@ def main():
     try:
         wire.await_ready()
         for seed in seeds:
-            scorers.append(_episode(wire, sim, seed, args.horizon, rng, stats, not args.quiet))
+            scorers.append(_episode(wire, sim, seed, args.horizon, rng, stats, not args.quiet, args.live, args.score_file))
     except WireError as exc:
         print("[practice] {}".format(exc))
         return 1

@@ -31,7 +31,7 @@ Fixed for the task; identical on every seed. Units: metres, radians, seconds.
   simulator's contact report). "On the table": not inside any container, centre below 0.16,
   placed. Below z = −0.2 an object is lost for the rest of the episode.
 
-## Classes (YCB models; the two instances of a model are scaled 0.95x and 1.05x of its base size)
+## Classes (YCB models; the two instances of a model are scaled 0.92x and 1.00x of its base size)
 - A: cracker box, sugar box, pudding box, gelatin box, wood block, foam brick
 - B: master chef can, tomato soup can, tuna fish can, potted meat can, mustard bottle, bleach cleanser
 - C: banana, bowl, mug, power drill, scissors, large marker, large clamp, extra large clamp, pitcher base

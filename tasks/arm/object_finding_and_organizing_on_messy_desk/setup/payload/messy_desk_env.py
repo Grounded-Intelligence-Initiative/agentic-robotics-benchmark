@@ -44,9 +44,13 @@ CLASSES = {
 }
 CLASS_OF = {m: c for c, ms in CLASSES.items() for m in ms}
 # base scale per model so that everything fits a KLT container and a 8 cm gripper
+# Per-model base scale: the stock YCB meshes are sized so that every object offers at least one
+# pinch narrower than the Franka hand's 8 cm opening (master chef can 10.2 cm -> 6.3 cm,
+# tuna can 8.6 cm -> 6.2 cm) and the big ones fit a container.
 BASE_SCALE = {"003_cracker_box": 0.6, "036_wood_block": 0.6, "021_bleach_cleanser": 0.55,
               "024_bowl": 0.6, "035_power_drill": 0.55, "019_pitcher_base": 0.5,
-              "052_extra_large_clamp": 1.0, "002_master_chef_can": 0.8}
+              "052_extra_large_clamp": 1.0, "002_master_chef_can": 0.62, "007_tuna_fish_can": 0.72}
+INSTANCE_SCALE = (0.92, 1.00)       # the two instances of a model differ in size
 DISPLAY_NAME = {m: " ".join(m.split("_")[1:]) for m in CLASS_OF}
 CONTAINER_OF_CLASS = {"A": "gray", "B": "lightblue", "C": "blue"}
 CONTAINER_COLORS = {"gray": (0.45, 0.45, 0.45), "lightblue": (0.62, 0.82, 1.0),
@@ -112,8 +116,11 @@ class MessyDeskEnv:
         sys.argv += ["--/rtx/verifyDriverVersion/enabled=false",
                      "--/persistent/isaac/asset_root/default=" + ASSET_ROOT]
         from isaacsim import SimulationApp
+        # anti_aliasing 0: the default (DLSS, temporal) accumulates previous frames, which leaves
+        # ghost depth under anything that moved (the fingers, a swinging object): floating points
+        # 1-2 cm above the desk and a 'skirt' around every object. Depth must be geometry.
         self.app = SimulationApp({"headless": headless, "renderer": "RayTracedLighting",
-                                  "width": IMAGE_SIZE, "height": IMAGE_SIZE})
+                                  "width": IMAGE_SIZE, "height": IMAGE_SIZE, "anti_aliasing": 0})
         import numpy as np
         from pxr import Gf, PhysxSchema, Usd, UsdGeom, UsdPhysics
         import omni.usd
@@ -287,7 +294,7 @@ class MessyDeskEnv:
                 # Scale is fixed per instance (the two instances of a model differ by 20 %):
                 # editing a rigid body's scale while PhysX plays re-parses the scene and
                 # invalidates every tensor view, so it is never touched after construction.
-                scale = BASE_SCALE.get(model, 1.0) * (0.95 if inst == 0 else 1.05)
+                scale = BASE_SCALE.get(model, 1.0) * INSTANCE_SCALE[inst]
                 xf.AddScaleOp().Set(Gf.Vec3f(float(scale)))
                 rp = self.SingleRigidPrim(prim_path=path, name="obj%02d" % k)
                 self.world.scene.add(rp)
@@ -675,6 +682,31 @@ class MessyDeskEnv:
                         "object": obj, "opened_t": self.t, "deadline_t": self.t + REQUEST_DEADLINE_STEPS, "status": "open"}
         self.events.append({"t": self.t, "event": "request_opened", "request": self.request["id"], "absent": obj is None})
 
+    def force_request(self, model=None, absent=False):
+        """Development aid: open a request now. `model` names the YCB model (default: a random
+        present unique one, or a random absent one when `absent`). Marks and the deadline then
+        behave exactly as in a real episode; the next random request waits its normal time."""
+        if self.rng is None:
+            self.reset(0)
+        if self.request is not None and self.request["status"] == "open":
+            raise ValueError("a request is already open")
+        present_models = {o["model"] for o in self.objects if o["present"]}
+        if model is None:
+            pool = [m for m in CLASS_OF if (m not in present_models) == bool(absent)]
+            if absent is False:
+                pool = [m for m in pool if self._present_count(m) == 1]
+            if not pool:
+                raise ValueError("no suitable model")
+            model = pool[int(self.rng.integers(len(pool)))]
+        if model not in CLASS_OF:
+            raise ValueError("unknown model %r" % model)
+        obj = next((o["id"] for o in self.objects if o["present"] and o["model"] == model), None)
+        self.request = {"id": len(self.requests_done) + 1, "text": "the " + DISPLAY_NAME[model], "model": model,
+                        "object": obj, "opened_t": self.t, "deadline_t": self.t + REQUEST_DEADLINE_STEPS, "status": "open"}
+        self.events.append({"t": self.t, "event": "request_opened", "request": self.request["id"], "absent": obj is None, "forced": True})
+        self._update_states()
+        return self.observe(), self.privileged()
+
     def lab(self, model, instance=0, pose=None, clear=True):
         """Development aid, available to everyone who runs this file: optionally clear the
         desk, then place one instance of `model` at `pose` (x, y, z[, yaw]) and let it settle.
@@ -874,6 +906,18 @@ def serve():
     sys.stdout = sys.stderr
     out = os.fdopen(wire_fd, "w", buffering=1)
     env = MessyDeskEnv(headless=True)
+    # Live score for the practice tools (the same EpisodeScorer the graders use); every `step`
+    # and `reset` reply carries `score`, and `{"cmd": "score"}` adds the per-object values.
+    # The agent's observation never carries it: this is the privileged side of the wire.
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from messy_desk_score import EpisodeScorer
+    except Exception:  # noqa: BLE001 - the simulator works without the scorer next to it
+        EpisodeScorer = None
+    scorer = [None]
+
+    def live():
+        return scorer[0].live() if scorer[0] is not None else None
     out.write(json.dumps({"ok": True, "ready": True}) + "\n"); out.flush()
     for line in sys.stdin:
         line = line.strip()
@@ -886,13 +930,23 @@ def serve():
                 reply = {"ok": True, "info": env.info()}
             elif cmd == "reset":
                 obs, state = env.reset(msg.get("seed", 0), msg.get("horizon"))
-                reply = {"ok": True, "obs": obs, "state": state}
+                scorer[0] = EpisodeScorer(env.horizon) if EpisodeScorer else None
+                reply = {"ok": True, "obs": obs, "state": state, "score": live()}
             elif cmd == "step":
                 obs, state = env.step(msg["action"])
-                reply = {"ok": True, "obs": obs, "state": state}
+                if scorer[0] is not None:
+                    scorer[0].add_step(state)
+                reply = {"ok": True, "obs": obs, "state": state, "score": live()}
             elif cmd == "lab":
                 obs, state = env.lab(msg.get("model"), msg.get("instance", 0), msg.get("pose"), msg.get("clear", True))
-                reply = {"ok": True, "obs": obs, "state": state}
+                reply = {"ok": True, "obs": obs, "state": state, "score": live()}
+            elif cmd == "request":
+                obs, state = env.force_request(msg.get("model"), bool(msg.get("absent", False)))
+                reply = {"ok": True, "obs": obs, "state": state, "score": live()}
+            elif cmd == "score":
+                objs = [{"id": o["id"], "model": o["model"], "role": o.get("role"), "state": o.get("state"), "in_container": o.get("in_container"),
+                         "value": o.get("value"), "baseline": o.get("baseline")} for o in env.privileged()["objects"] if o.get("present") or o.get("removed")]
+                reply = {"ok": True, "score": live(), "objects": objs, "request": env.request}
             elif cmd == "gains":
                 reply = {"ok": True, "gains": env.gains(msg.get("set"))}
             elif cmd == "freecam":

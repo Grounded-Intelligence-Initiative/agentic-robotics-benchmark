@@ -108,6 +108,17 @@ class EpisodeScorer(object):
             s *= self.steps / self.horizon
         return s
 
+    def live(self):
+        """Compact running view for the practice tools: `score` is what the episode would score if
+        it were cut now (steps/H scaling included), `score_running` the unscaled 1/2 O + 1/2 R."""
+        closed = self.counts["requests_success"] + self.counts["requests_failed"]
+        return {"score": round(self.score(), 5), "score_running": round(W_ORG * self.organization() + W_REQ * self.request_progress(), 5),
+                "organization": round(self.organization(), 5), "request_rate": round(self.request_rate(), 5),
+                "request_progress": round(self.request_progress(), 5),
+                "org_num": round(self.num, 1), "org_den": round(self.den, 1),
+                "requests_success": self.counts["requests_success"], "requests_closed": closed,
+                "requests_open": self.counts["requests_opened"] - closed, "steps": self.steps, "horizon": int(self.horizon)}
+
     def summary(self):
         d = dict(self.counts)
         d.update(score=self.score(), organization=self.organization(), request_rate=self.request_rate(),
