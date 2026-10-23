@@ -458,8 +458,25 @@ def perceive(images, containers=None, voxel=VOXEL, min_pts=12, extra=()):
         mm = labels == k
         if mm.sum() < min_pts:
             continue
-        out.append(cluster_features(pts[mm], col[mm], containers))
+        c = cluster_features(pts[mm], col[mm], containers)
+        if is_wall_sliver(c, containers):
+            continue
+        out.append(c)
     return out, containers
+
+
+def is_wall_sliver(c, containers):
+    """A thin vertical plate as tall as the container walls, standing on a container's outline: a
+    wall left over by a container pose that is off by a centimetre or two, not an object."""
+    if c["len_minor"] > 0.02 or c["top_z"] < CONTAINER_RIM_Z - 0.03:
+        return False
+    x, y = c["centroid"][0], c["centroid"][1]
+    ox, oy = CONTAINER_OUTER[0] / 2, CONTAINER_OUTER[1] / 2
+    for b in containers.values():
+        lx, ly = container_local(b, x, y)
+        if abs(lx) < ox + 0.04 and abs(ly) < oy + 0.04 and (abs(abs(lx) - ox) < 0.04 or abs(abs(ly) - oy) < 0.04):
+            return True
+    return False
 
 
 def perceive_eih(rgb, depth, R_cam, t_cam, expected_xy, floor, top_hint, containers, radius=0.13, voxel=0.006):
@@ -584,6 +601,7 @@ class Controller(object):
         self.skip_list = []
         self.last_perceive_t = -999
         self.last_clusters = []
+        self.not_empty_t = {}
         self.carry_hang = 0.0
         # what the controller knows about the class containers' contents: the models it put in
         # itself (bottom -> top), and whether an initial pile of unseen objects may still lie
@@ -785,9 +803,40 @@ class Controller(object):
         # a container that looks empty to the static cameras may only hide a low object behind
         # its 19 cm walls: the hand camera checks from above before the inventory is dropped
         self.maybe_empty = [b for b in self.inventory if sum(c["n"] for c in clusters if c["container"] == b) < 15
-                            and (self.inventory[b] or self.pile_unknown[b])]
+                            and (self.inventory[b] or self.pile_unknown[b])
+                            and self.t() - self.not_empty_t.get(b, -10 ** 9) > 300]
         self.dump("observe", imgs["agentview"][0], clusters)
         return clusters
+
+    def container_components(self, b):
+        """Everything standing on container b's floor, seen from straight above with the hand
+        camera (the static cameras miss low objects behind the walls): pseudo-clusters to inspect."""
+        cb = self.containers[b]
+        yield from self.goto((cb[0], cb[1], CONTAINER_RIM_Z + 0.24), 0.0, grip=0.0, tol=0.01, max_steps=40)
+        yield from self.hold(2, grip=0.0)
+        R_cam, t_cam = self.cam_pose()
+        rgb = decode_png(self.obs["rgb"]["eye_in_hand"], "RGB")
+        dep = decode_png(self.obs["depth"]["eye_in_hand"])
+        pts, _ = backproject_rt(dep, rgb, None, None, R_cam, t_cam)
+        lx, ly = container_local(cb, pts[:, 0], pts[:, 1])
+        keep = (np.abs(lx) < CONTAINER_INNER_HALF[0] - 0.008) & (np.abs(ly) < CONTAINER_INNER_HALF[1] - 0.008) \
+            & (pts[:, 2] > CONTAINER_FLOOR_Z + 0.012) & (pts[:, 2] < CONTAINER_RIM_Z + 0.1)
+        q = pts[keep]
+        out = []
+        if len(q) < 40:
+            return out
+        lo = q.min(0) - 0.008
+        labels, n = label_components(np.floor((q - lo) / 0.008).astype(int))
+        for k in range(n):
+            m = labels == k
+            if m.sum() < 40:
+                continue
+            top = float(np.percentile(q[m, 2], 97))
+            slab = q[m][q[m][:, 2] > top - 0.02]
+            gx, gy = (slab[:, :2].mean(0) if len(slab) >= 5 else q[m, :2].mean(0))
+            out.append({"grasp_xy": [float(gx), float(gy)], "top_z": top, "floor": CONTAINER_FLOOR_Z, "container": b,
+                        "n": int(m.sum()), "centroid": [float(gx), float(gy), float(q[m, 2].mean())], "cls_info": None})
+        return sorted(out, key=lambda c: -c["n"])
 
     def verify_empty(self, b):
         """Look into container b from above with the hand camera; True (and the inventory
@@ -809,6 +858,7 @@ class Controller(object):
             self.pile_unknown[b] = False
             return True
         log("t=%d %s container only looked empty (%d points on its floor)" % (self.t(), b, n))
+        self.not_empty_t[b] = self.t()
         return False
 
     def dump(self, tag, rgb, clusters):
@@ -1230,13 +1280,23 @@ class Controller(object):
             rs["swept"] = True              # look into the blind ends of the near strip first
             self.last_sweep_t = -10 ** 9
             return True
+        if rs.get("best_gap", 9.0) < 0.4 and not rs.get("tried_best"):
+            # a loose object that looked a lot like the target: more likely the target misread than
+            # an absent one (one request in five names an absent object)
+            rs["tried_best"] = True
+            near = [c for c in loose if math.hypot(c["centroid"][0] - rs["best_key"][0], c["centroid"][1] - rs["best_key"][1]) < 0.06]
+            if near:
+                rs["inspected"] = [k for k in rs["inspected"] if math.hypot(k[0] - rs["best_key"][0], k[1] - rs["best_key"][1]) >= 0.06]
+                done = yield from self.check_candidate(near[0], force=True)
+                return done
         log("t=%d declare absent: %s (searched %s)" % (self.t(), model, rs.get("searched")))
         yield from self.hold(1, grip=0.0, mark=2)
         self.request_state = None
         return True
 
-    def check_candidate(self, c):
-        """Inspect a loose cluster from the hand camera; deliver it when it is the target."""
+    def check_candidate(self, c, force=False):
+        """Inspect a loose cluster from the hand camera; deliver it when it is the target (or when
+        `force`d: the closest look-alike once nothing else is left)."""
         rs = self.request_state
         model = rs["model"]
         key = (c["centroid"][0], c["centroid"][1])
@@ -1245,8 +1305,11 @@ class Controller(object):
         if d is None:
             return True
         info = d["cls_info"]
-        log("t=%d request check: %s (d=%.2f) vs wanted %s" % (self.t(), info["model"], info["d"], model))
-        if not is_model(info, model):
+        log("t=%d request check: %s (d=%.2f) vs wanted %s%s" % (self.t(), info["model"], info["d"], model, " (closest look-alike)" if force else ""))
+        if not force and not is_model(info, model):
+            gap = info.get("all", {}).get(model, 9.0) - info["d"]
+            if gap < rs.get("best_gap", 9.0):
+                rs["best_gap"], rs["best_key"] = gap, key
             return True
         rs["seen_target"] = True            # it is here: absence is never claimed for this request
         g = self.plan_grasps(d)
@@ -1299,6 +1362,7 @@ class Controller(object):
             if not held:
                 break
             if is_target:
+                rs["seen_target"] = True
                 self.forget(model)
                 yield from self.place_in_container("red")
                 yield from self.hold(8, grip=0.0)
@@ -1316,13 +1380,15 @@ class Controller(object):
         if not rs.setdefault("identified", {}).get(b):
             rs["identified"][b] = True
             ids, sure = [], True
-            for c in sorted(inside, key=lambda c: -c["n"])[:4]:
+            comps = yield from self.container_components(b)
+            for c in (comps or sorted(inside, key=lambda c: -c["n"]))[:5]:
                 d = yield from self.inspect(c)
                 if d is None:
                     continue
                 info = d["cls_info"]
                 ids.append(info["model"])
-                if info["model"] == model or TWIN.get(info["model"]) == model or info.get("model_margin", 0.0) < 0.15:
+                gap = info.get("all", {}).get(model, 9.0) - info["d"]
+                if info["model"] == model or TWIN.get(info["model"]) == model or info.get("model_margin", 0.0) < 0.35 or gap < 0.5:
                     sure = False
             log("t=%d %s: left out of reach %s (%s)" % (self.t(), b, ids, "no target" if sure else "maybe the target"))
             if sure:
