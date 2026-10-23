@@ -486,6 +486,7 @@ class MessyDeskEnv:
         self.events = []
         self.request = None
         self.requests_done = []
+        self.finished = False
         self.touched = set()
         self.franka.set_joint_positions(self._home_q)
         self.franka.set_joint_velocities(np.zeros_like(self._home_q))
@@ -569,7 +570,7 @@ class MessyDeskEnv:
         dpos = np.clip(a[:3], -POS_STEP_MAX, POS_STEP_MAX)
         drot = np.clip(a[3:6], -ROT_STEP_MAX, ROT_STEP_MAX)
         grip = float(np.clip(a[6], 0.0, 1.0))
-        mark = int(round(a[7]))          # 0 none, 1 "done: delivered", 2 "done: no such object"
+        mark = int(round(a[7]))          # 0 none, 1 "done: delivered", 2 "done: no such object", 3 "done: episode"
         self._apply_arm(dpos, drot, grip)
         for i in range(SUBSTEPS):
             if self._arm_plan is not None:
@@ -584,7 +585,18 @@ class MessyDeskEnv:
         self.t += 1
         self._update_states()
         self._world_events(mark)
+        if mark == 3:
+            # the controller ends the episode; accepted only once the episode's last request has
+            # closed (no request open, none left to open before the horizon), ignored before
+            if self.no_requests_left():
+                self.finished = True
+                self.events.append({"t": self.t, "event": "episode_done"})
+            else:
+                self.events.append({"t": self.t, "event": "done_ignored"})
         return self.observe(), self.privileged()
+
+    def no_requests_left(self):
+        return (self.request is None or self.request["status"] != "open") and self.next_request >= self.horizon
 
     def _ee_pose(self):
         """Tool-centre-point pose in the base frame, from the kinematics solver's own
@@ -892,7 +904,7 @@ class MessyDeskEnv:
                          "resting": bool(o.get("resting")),
                          "value": self._value(o), "baseline": self.baseline.get(o["id"], 0)})
         ev, self.events = self.events, []
-        return {"t": self.t, "horizon": self.horizon, "objects": objs, "request": self.request,
+        return {"t": self.t, "horizon": self.horizon, "objects": objs, "request": self.request, "finished": self.finished,
                 "requests_done": self.requests_done[-3:], "events": ev, "ik_ok": getattr(self, "_ik_ok", True), "ik_q": getattr(self, "_ik_q", None)}
 
     def info(self):

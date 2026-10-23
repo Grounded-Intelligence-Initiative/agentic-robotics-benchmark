@@ -163,7 +163,9 @@ def _episode(wire, sim, seed, horizon, rng, stats, verbose, live=0, score_file=N
                 with open(tmp, "w") as f:
                     json.dump(d, f)
                 os.replace(tmp, score_file)
-    stats["wall_s_per_1000_steps"] = round((time.time() - t0) / max(horizon, 1) * 1000.0, 1)
+        if state.get("finished"):
+            break                              # your done mark was accepted: the episode ends here
+    stats["wall_s_per_1000_steps"] = round((time.time() - t0) / max(scorer.steps, 1) * 1000.0, 1)
     return scorer
 
 

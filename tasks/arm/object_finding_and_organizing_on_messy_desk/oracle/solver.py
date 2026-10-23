@@ -90,6 +90,7 @@ REFINE_RADIUS, REFINE_MAX_SHIFT = 0.07, 0.04    # hand-camera re-centring just b
 GRASP_MIN_ABOVE_FLOOR = 0.032
 DROP_ABOVE_RIM = 0.035
 HOVER_ABOVE_TOP = 0.16
+REQUESTS_PER_EPISODE = 4      # one request in each 5000-step window of the 20000-step episode
 LOG = os.environ.get("MESSY_DESK_SOLVER_LOG", "")
 
 
@@ -1127,6 +1128,7 @@ class Controller(object):
     # -- main behaviour -----------------------------------------------------------------------
     def run(self):
         self.last_sweep_t = -10 ** 9
+        self.requests_seen = 0
         while True:
             clusters = yield from self.observe(sweep=self.t() - self.last_sweep_t > 1000)
             for b in list(getattr(self, "maybe_empty", [])):
@@ -1137,6 +1139,7 @@ class Controller(object):
             elif req["text"] != self.request_text or self.request_state is None:
                 self.request_text = req["text"]
                 self.request_state = {"model": req["text"].replace("the ", "", 1), "inspected": [], "deadline": req["deadline_t"]}
+                self.requests_seen += 1
                 log("t=%d request %r deadline %d" % (self.t(), self.request_text, req["deadline_t"]))
             if self.request_state is not None:
                 done = yield from self.serve_request(clusters)
@@ -1147,6 +1150,11 @@ class Controller(object):
             did = yield from self.tidy(clusters)
             if did:
                 continue
+            if req is None and self.requests_seen >= REQUESTS_PER_EPISODE:
+                # the episode's last request is closed and nothing is left to sort: end the episode
+                # on this state (the score is the final state; later arrivals would only add work)
+                log("t=%d done: episode" % self.t())
+                yield from self.hold(1, grip=0.0, mark=3)
             yield from self.hold(10, grip=0.0)
 
     def held_back(self, c):

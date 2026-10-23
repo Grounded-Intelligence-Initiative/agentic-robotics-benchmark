@@ -1,14 +1,17 @@
 """messy_desk_score — the episode score, computed from the simulator's privileged state.
 
-    S = 1/2 * O + 1/2 * R          (scaled by steps/H when the episode was cut short)
+    S = 1/2 * O + 1/2 * R          (scaled by steps/H when the grader cut the episode short)
 
-O, organization (anytime): every step, every object contributes v_o(t) - b_o, where v is +1
-placed in a right container, -1 placed in a wrong container, 0 on the table / held / in flight,
-and b_o is the object's baseline, the value it had when it entered the scene or when the
-world last moved it. Summed over objects and steps and divided by the gain that was
-available, sum_t sum_o max(0, 1 - b_o), then clipped to [0, 1]. An untouched scene scores
-exactly 0. Removed objects keep their last value (container service, delivery) or -1 (lost
-off the table) for the rest of the episode, also when their instance is reused.
+The episode ends at the controller's done mark (accepted once the episode's last request has
+closed) or at the horizon; both are scored on the state at that final step T.
+
+O, organization of the final state: every object that was ever in the scene contributes
+v_o(T) - b_o, where v is +1 placed in a right container, -1 placed in a wrong container, 0 on
+the table / held / in flight, and b_o is the object's baseline, the value it had when it
+entered the scene or when the world last moved it. Summed over objects and divided by the
+gain that was available, sum_o max(0, 1 - b_o), then clipped to [0, 1]. An untouched scene
+scores exactly 0. Removed objects keep their last value (container service, delivery) or -1
+(lost off the table), also when their instance is reused.
 
 R, request progress: points divided by twice the number of opened requests, including an ongoing one.
 The first hold of the requested target earns 1 point once; a verified delivery or correct
@@ -27,10 +30,9 @@ class EpisodeScorer(object):
     def __init__(self, horizon):
         self.horizon = float(horizon)
         self.steps = 0
-        self.num = 0.0            # sum of (v - b)
-        self.den = 0.0            # sum of the gain available, max(0, 1 - b)
+        self.finished = False     # the controller ended the episode with an accepted done mark
         self.ghosts = []          # (value, baseline) of removed incarnations whose instance was reused
-        self.prev = {}            # id -> (present, removed, value, baseline) at the previous step
+        self.prev = {}            # id -> (present, removed, value, baseline) at the latest step
         self.request_points = {}  # request id -> 0, 1 (first hold), or 2 (success)
         self.held_requests = set()
         self.counts = {"requests_opened": 0, "requests_success": 0, "requests_failed": 0,
@@ -46,11 +48,8 @@ class EpisodeScorer(object):
             if was is not None and was[1] and o.get("present") and not o.get("removed"):
                 self.ghosts.append((was[2], was[3]))       # the removed incarnation keeps counting
             self.prev[oid] = (bool(o.get("present")), bool(o.get("removed")), v, b)
-            self.num += v - b
-            self.den += max(0.0, 1.0 - b)
-        for v, b in self.ghosts:
-            self.num += v - b
-            self.den += max(0.0, 1.0 - b)
+        if state.get("finished"):
+            self.finished = True
         for e in state.get("events", []):
             kind = e.get("event", "")
             if kind == "request_opened" or kind == "request_first_hold" or kind in SUCCESS_EVENTS or kind in FAILURE_EVENTS:
@@ -89,10 +88,16 @@ class EpisodeScorer(object):
                 self.counts["objects_lost"] += 1
         self.steps += 1
 
+    def _final(self):
+        """(sum of v - b, sum of max(0, 1 - b)) over every incarnation, at the latest step."""
+        vb = [(v, b) for (_, _, v, b) in self.prev.values()] + self.ghosts
+        return sum(v - b for v, b in vb), sum(max(0.0, 1.0 - b) for v, b in vb)
+
     def organization(self):
-        if self.den <= 0:
+        num, den = self._final()
+        if den <= 0:
             return 0.0
-        return min(1.0, max(0.0, self.num / self.den))
+        return min(1.0, max(0.0, num / den))
 
     def request_rate(self):
         closed = self.counts["requests_success"] + self.counts["requests_failed"]
@@ -104,24 +109,28 @@ class EpisodeScorer(object):
 
     def score(self):
         s = W_ORG * self.organization() + W_REQ * self.request_progress()
-        if self.steps < self.horizon:                    # cut short: the steps never run earn nothing
+        if self.steps < self.horizon and not self.finished:   # cut short by the grader: the steps never run earn nothing
             s *= self.steps / self.horizon
         return s
 
     def live(self):
         """Compact running view for the practice tools: `score` is what the episode would score if
-        it were cut now (steps/H scaling included), `score_running` the unscaled 1/2 O + 1/2 R."""
+        the grader cut it now (steps/H scaling included), `score_running` what it would score if it
+        ended now (the unscaled 1/2 O + 1/2 R of the current state)."""
         closed = self.counts["requests_success"] + self.counts["requests_failed"]
+        num, den = self._final()
         return {"score": round(self.score(), 5), "score_running": round(W_ORG * self.organization() + W_REQ * self.request_progress(), 5),
                 "organization": round(self.organization(), 5), "request_rate": round(self.request_rate(), 5),
                 "request_progress": round(self.request_progress(), 5),
-                "org_num": round(self.num, 1), "org_den": round(self.den, 1),
+                "org_num": round(num, 1), "org_den": round(den, 1),
                 "requests_success": self.counts["requests_success"], "requests_closed": closed,
-                "requests_open": self.counts["requests_opened"] - closed, "steps": self.steps, "horizon": int(self.horizon)}
+                "requests_open": self.counts["requests_opened"] - closed, "steps": self.steps, "horizon": int(self.horizon),
+                "finished": self.finished}
 
     def summary(self):
         d = dict(self.counts)
+        num, den = self._final()
         d.update(score=self.score(), organization=self.organization(), request_rate=self.request_rate(),
                  request_progress=self.request_progress(),
-                 org_num=self.num, org_den=self.den, steps=self.steps)
+                 org_num=num, org_den=den, steps=self.steps, finished=self.finished)
         return d

@@ -7,8 +7,9 @@ the simulator's privileged state only; nothing the solver prints is a scoring in
 Hidden seeds come from OS entropy inside this process. A probed step is asked twice with
 the same `t` (real and perturbed proprioception/pixels, hidden order); only the real reply
 reaches the simulator. An aborted episode (deadline, crash, malformed action) scores 0 and
-is never dropped. An episode that exhausts its wall-clock budget is cut short: the steps
-it never ran earn nothing.
+is never dropped. An episode ends at the solver's accepted done mark or at the horizon and
+is scored on its final state; one that exhausts its wall-clock budget is cut short: the
+steps it never ran earn nothing.
 """
 
 import json
@@ -102,6 +103,8 @@ def run_episodes(config, rng, solver):
                     except SimError as exc:
                         fail("simulator step failed: {}".format(exc))
                     scorer.add_step(state)
+                    if state.get("finished"):
+                        break                      # the solver ended the episode (accepted done mark)
                     if time.time() - started > wall_budget:
                         cut += 1
                         print("[grader] episode {} cut at t={} (wall budget {:.0f}s)".format(
