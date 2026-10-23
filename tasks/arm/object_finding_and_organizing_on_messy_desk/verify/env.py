@@ -486,7 +486,6 @@ class MessyDeskEnv:
         self.events = []
         self.request = None
         self.requests_done = []
-        self.finished = False
         self.touched = set()
         self.franka.set_joint_positions(self._home_q)
         self.franka.set_joint_velocities(np.zeros_like(self._home_q))
@@ -570,7 +569,7 @@ class MessyDeskEnv:
         dpos = np.clip(a[:3], -POS_STEP_MAX, POS_STEP_MAX)
         drot = np.clip(a[3:6], -ROT_STEP_MAX, ROT_STEP_MAX)
         grip = float(np.clip(a[6], 0.0, 1.0))
-        mark = int(round(a[7]))          # 0 none, 1 "done: delivered", 2 "done: no such object", 3 "done: episode"
+        mark = int(round(a[7]))          # 0 none, 1 "done: delivered", 2 "done: no such object"
         self._apply_arm(dpos, drot, grip)
         for i in range(SUBSTEPS):
             if self._arm_plan is not None:
@@ -585,18 +584,7 @@ class MessyDeskEnv:
         self.t += 1
         self._update_states()
         self._world_events(mark)
-        if mark == 3:
-            # the controller ends the episode; accepted only once the episode's last request has
-            # closed (no request open, none left to open before the horizon), ignored before
-            if self.no_requests_left():
-                self.finished = True
-                self.events.append({"t": self.t, "event": "episode_done"})
-            else:
-                self.events.append({"t": self.t, "event": "done_ignored"})
         return self.observe(), self.privileged()
-
-    def no_requests_left(self):
-        return (self.request is None or self.request["status"] != "open") and self.next_request >= self.horizon
 
     def _ee_pose(self):
         """Tool-centre-point pose in the base frame, from the kinematics solver's own
@@ -678,20 +666,28 @@ class MessyDeskEnv:
                 self.baseline[o["id"]] = self._value(o, require_rest=False)
                 o["rebase_t"] = None
 
+    def _is_target(self, o):
+        """The requested object, from the step its request opens through the step it closes."""
+        r = self.request
+        return bool(r and r.get("object") == o["id"] and (r["status"] == "open" or r.get("closed_t") == self.t))
+
     def _value(self, o, require_rest=True):
         """v_o(t): +1 placed in its own container, -1 placed in a wrong one, 0 on the table, held
-        or in flight. "Placed" = resting and not touched by the fingers. Removed objects keep
-        their last value; a lost object (off the table) is LOST_VALUE for the rest of the episode."""
+        or in flight. The requested object belongs to the red container only: +1 placed in red or
+        held by the fingers, -1 placed in any other container, 0 on the table or in flight.
+        "Placed" = resting and not touched by the fingers. Removed objects keep their last value;
+        a lost object (off the table) is LOST_VALUE for the rest of the episode."""
         if o["removed"]:
             return o.get("frozen", 0)
+        target = self._is_target(o)
+        if target and o["present"] and o.get("contact"):
+            return 1
         if not o["present"] or o.get("in_container") is None:
             return 0
         if require_rest and (not o.get("resting") or o.get("contact")):
             return 0
-        homes = {CONTAINER_OF_CLASS[o["cls"]]}
-        if self.request and self.request.get("object") == o["id"]:
-            homes.add("red")          # the requested object is also right in the red container
-        return 1 if o["in_container"] in homes else -1
+        home = "red" if target else CONTAINER_OF_CLASS[o["cls"]]
+        return 1 if o["in_container"] == home else -1
 
     def _world_events(self, mark):
         rng = self.rng
@@ -699,6 +695,13 @@ class MessyDeskEnv:
         # requests: the agent closes one by marking it (1 = delivered, 2 = no such object);
         # the grader then checks the physical truth. Nothing closes a request automatically
         # except its deadline.
+        r = self.request
+        if r and r["status"] != "open" and not r.get("restored") and r.get("closed_t", self.t) < self.t:
+            # the step after a request closed, its object is an ordinary object again: back to the
+            # baseline it had before the request named it
+            r["restored"] = True
+            if r["object"] is not None and "b_pre" in r:
+                self.baseline[r["object"]] = r["b_pre"]
         if self.request and self.request["status"] == "open":
             r = self.request
             tgt = self.objects[r["object"]] if r["object"] is not None else None
@@ -782,6 +785,17 @@ class MessyDeskEnv:
         self.request = {"id": len(self.requests_done) + 1, "text": "the " + DISPLAY_NAME[m], "model": m,
                         "object": obj, "opened_t": self.t, "deadline_t": self.t + REQUEST_DEADLINE_STEPS, "status": "open"}
         self.events.append({"t": self.t, "event": "request_opened", "request": self.request["id"], "absent": obj is None})
+        self._rebase_target()
+
+    def _rebase_target(self):
+        """A request changes its object's home to the red container: its baseline becomes its value
+        under that rule (e.g. -1 resting in its class pile), so an untouched scene still scores 0;
+        the previous baseline returns the step after the request closes."""
+        r = self.request
+        if r and r["object"] is not None:
+            o = self.objects[r["object"]]
+            r["b_pre"] = self.baseline.get(o["id"], 0)
+            self.baseline[o["id"]] = self._value(o, require_rest=False)
 
     def force_request(self, model=None, absent=False):
         """Development aid: open a request now. `model` names the YCB model (default: a random
@@ -807,6 +821,7 @@ class MessyDeskEnv:
         ev = {"t": self.t, "event": "request_opened", "request": self.request["id"], "absent": obj is None, "forced": True}
         self.events.append(ev)
         self._update_states()
+        self._rebase_target()
         obs, state = self.observe(), self.privileged()
         self.events.append(ev)        # the next `step` carries it too: that is where scorers read events
         return obs, state
@@ -904,7 +919,7 @@ class MessyDeskEnv:
                          "resting": bool(o.get("resting")),
                          "value": self._value(o), "baseline": self.baseline.get(o["id"], 0)})
         ev, self.events = self.events, []
-        return {"t": self.t, "horizon": self.horizon, "objects": objs, "request": self.request, "finished": self.finished,
+        return {"t": self.t, "horizon": self.horizon, "objects": objs, "request": self.request,
                 "requests_done": self.requests_done[-3:], "events": ev, "ik_ok": getattr(self, "_ik_ok", True), "ik_q": getattr(self, "_ik_q", None)}
 
     def info(self):

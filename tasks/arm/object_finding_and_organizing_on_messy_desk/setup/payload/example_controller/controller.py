@@ -44,8 +44,7 @@ def policy(t, obs):
     ([x, y, z, qw, qx, qy, qz] of the tool centre point in the robot base frame).
     action: Cartesian delta of the tool centre point (m, rad; clipped to 0.05 / 0.25 per
     step), grip in [0, 1] (0 open, 1 closed), mark (0 none, 1 "done: delivered",
-    2 "done: no such object", 3 "done: episode", accepted once the episode's last request
-    has closed and scored on the state at that step)."""
+    2 "done: no such object"; the request is judged, and the desk scored, at that step)."""
     if np is not None and t == 0:
         rgb = decode_rgb(obs["rgb"]["agentview"])
         depth = decode_depth(obs["depth"]["agentview"])

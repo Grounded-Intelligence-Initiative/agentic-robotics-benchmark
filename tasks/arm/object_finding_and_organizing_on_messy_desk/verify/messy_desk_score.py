@@ -2,14 +2,15 @@
 
     S = 1/2 * O + 1/2 * R          (scaled by steps/H when the grader cut the episode short)
 
-The episode ends at the controller's done mark (accepted once the episode's last request has
-closed) or at the horizon; both are scored on the state at that final step T.
+Each request is a task (find + organize) judged when it closes: at its mark or its deadline.
 
-O, organization of the final state: every object that was ever in the scene contributes
-v_o(T) - b_o, where v is +1 placed in a right container, -1 placed in a wrong container, 0 on
-the table / held / in flight, and b_o is the object's baseline, the value it had when it
-entered the scene or when the world last moved it. Summed over objects and divided by the
-gain that was available, sum_o max(0, 1 - b_o), then clipped to [0, 1]. An untouched scene
+O, organization: the mean of snapshots O(t) taken at every step a request closes and at the
+episode's last step. O(t): every object that was ever in the scene contributes v_o(t) - b_o(t),
+where v is +1 placed in a right container, -1 placed in a wrong container, 0 on the table /
+held / in flight (the requested object belongs to the red container only, and holding it
+counts +1), and b_o(t) is the object's baseline: its value when it entered the scene, when
+the world last moved it, or when a request named it. Summed over objects and divided by the
+gain that was available, sum_o max(0, 1 - b_o(t)), then clipped to [0, 1]. An untouched scene
 scores exactly 0. Removed objects keep their last value (container service, delivery) or -1
 (lost off the table), also when their instance is reused.
 
@@ -30,7 +31,7 @@ class EpisodeScorer(object):
     def __init__(self, horizon):
         self.horizon = float(horizon)
         self.steps = 0
-        self.finished = False     # the controller ended the episode with an accepted done mark
+        self.snapshots = []       # O(t) at every step a request closed
         self.ghosts = []          # (value, baseline) of removed incarnations whose instance was reused
         self.prev = {}            # id -> (present, removed, value, baseline) at the latest step
         self.request_points = {}  # request id -> 0, 1 (first hold), or 2 (success)
@@ -48,8 +49,8 @@ class EpisodeScorer(object):
             if was is not None and was[1] and o.get("present") and not o.get("removed"):
                 self.ghosts.append((was[2], was[3]))       # the removed incarnation keeps counting
             self.prev[oid] = (bool(o.get("present")), bool(o.get("removed")), v, b)
-        if state.get("finished"):
-            self.finished = True
+        if any(e.get("event", "") in SUCCESS_EVENTS or e.get("event", "") in FAILURE_EVENTS for e in state.get("events", [])):
+            self.snapshots.append(self._snapshot())
         for e in state.get("events", []):
             kind = e.get("event", "")
             if kind == "request_opened" or kind == "request_first_hold" or kind in SUCCESS_EVENTS or kind in FAILURE_EVENTS:
@@ -93,11 +94,15 @@ class EpisodeScorer(object):
         vb = [(v, b) for (_, _, v, b) in self.prev.values()] + self.ghosts
         return sum(v - b for v, b in vb), sum(max(0.0, 1.0 - b) for v, b in vb)
 
-    def organization(self):
+    def _snapshot(self):
         num, den = self._final()
-        if den <= 0:
-            return 0.0
-        return min(1.0, max(0.0, num / den))
+        return min(1.0, max(0.0, num / den)) if den > 0 else 0.0
+
+    def organization(self):
+        """Mean of the request-close snapshots and the latest step (the episode's last step once
+        it has ended)."""
+        snaps = self.snapshots + [self._snapshot()]
+        return sum(snaps) / len(snaps)
 
     def request_rate(self):
         closed = self.counts["requests_success"] + self.counts["requests_failed"]
@@ -109,14 +114,14 @@ class EpisodeScorer(object):
 
     def score(self):
         s = W_ORG * self.organization() + W_REQ * self.request_progress()
-        if self.steps < self.horizon and not self.finished:   # cut short by the grader: the steps never run earn nothing
+        if self.steps < self.horizon:                    # cut short by the grader: the steps never run earn nothing
             s *= self.steps / self.horizon
         return s
 
     def live(self):
         """Compact running view for the practice tools: `score` is what the episode would score if
-        the grader cut it now (steps/H scaling included), `score_running` what it would score if it
-        ended now (the unscaled 1/2 O + 1/2 R of the current state)."""
+        the grader cut it now (steps/H scaling included), `score_running` the unscaled 1/2 O + 1/2 R
+        with the current state as the last snapshot, `organization_now` that snapshot alone."""
         closed = self.counts["requests_success"] + self.counts["requests_failed"]
         num, den = self._final()
         return {"score": round(self.score(), 5), "score_running": round(W_ORG * self.organization() + W_REQ * self.request_progress(), 5),
@@ -125,12 +130,12 @@ class EpisodeScorer(object):
                 "org_num": round(num, 1), "org_den": round(den, 1),
                 "requests_success": self.counts["requests_success"], "requests_closed": closed,
                 "requests_open": self.counts["requests_opened"] - closed, "steps": self.steps, "horizon": int(self.horizon),
-                "finished": self.finished}
+                "organization_now": round(self._snapshot(), 5), "snapshots": [round(x, 4) for x in self.snapshots]}
 
     def summary(self):
         d = dict(self.counts)
         num, den = self._final()
         d.update(score=self.score(), organization=self.organization(), request_rate=self.request_rate(),
                  request_progress=self.request_progress(),
-                 org_num=num, org_den=den, steps=self.steps, finished=self.finished)
+                 org_num=num, org_den=den, steps=self.steps, snapshots=[round(x, 4) for x in self.snapshots])
         return d

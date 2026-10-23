@@ -90,7 +90,7 @@ REFINE_RADIUS, REFINE_MAX_SHIFT = 0.07, 0.04    # hand-camera re-centring just b
 GRASP_MIN_ABOVE_FLOOR = 0.032
 DROP_ABOVE_RIM = 0.035
 HOVER_ABOVE_TOP = 0.16
-REQUESTS_PER_EPISODE = 4      # one request in each 5000-step window of the 20000-step episode
+FINISH_MARGIN = 350           # steps one more tidy action may take before a request's deadline
 LOG = os.environ.get("MESSY_DESK_SOLVER_LOG", "")
 
 
@@ -1128,7 +1128,6 @@ class Controller(object):
     # -- main behaviour -----------------------------------------------------------------------
     def run(self):
         self.last_sweep_t = -10 ** 9
-        self.requests_seen = 0
         while True:
             clusters = yield from self.observe(sweep=self.t() - self.last_sweep_t > 1000)
             for b in list(getattr(self, "maybe_empty", [])):
@@ -1139,7 +1138,6 @@ class Controller(object):
             elif req["text"] != self.request_text or self.request_state is None:
                 self.request_text = req["text"]
                 self.request_state = {"model": req["text"].replace("the ", "", 1), "inspected": [], "deadline": req["deadline_t"]}
-                self.requests_seen += 1
                 log("t=%d request %r deadline %d" % (self.t(), self.request_text, req["deadline_t"]))
             if self.request_state is not None:
                 done = yield from self.serve_request(clusters)
@@ -1150,18 +1148,16 @@ class Controller(object):
             did = yield from self.tidy(clusters)
             if did:
                 continue
-            if req is None and self.requests_seen >= REQUESTS_PER_EPISODE:
-                # the episode's last request is closed and nothing is left to sort: end the episode
-                # on this state (the score is the final state; later arrivals would only add work)
-                log("t=%d done: episode" % self.t())
-                yield from self.hold(1, grip=0.0, mark=3)
             yield from self.hold(10, grip=0.0)
 
     def held_back(self, c):
-        """Something a request dug out of a container waits on the desk until the request closes
-        (put back, it would be dug out again)."""
+        """Something a request dug out of a container waits on the desk while the search goes on
+        (put back, it would be dug out again); once the target is in red, or absence is settled,
+        it goes back before the request is marked."""
         rs = self.request_state
-        return bool(rs) and self._near_any(c, rs.get("dug", []), r=0.07)
+        if not rs or rs.get("in_red") or rs.get("absent_ready"):
+            return False
+        return self._near_any(c, rs.get("dug", []), r=0.07)
 
     def tidy(self, clusters):
         loose = [c for c in self.loose(clusters) if not self.skipped(c) and not self.held_back(c)]
@@ -1245,6 +1241,18 @@ class Controller(object):
         rs = self.request_state
         model = rs["model"]
         loose = self.loose(clusters)
+        if rs.get("in_red") or rs.get("absent_ready"):
+            # the request is judged together with the desk when it is marked: put back what the
+            # search dug out and sort what is loose first, as long as the deadline allows
+            if rs["deadline"] - self.t() > FINISH_MARGIN:
+                did = yield from self.tidy(clusters)
+                if did:
+                    return True
+            mark = 1 if rs.get("in_red") else 2
+            yield from self.hold(1, grip=0.0, mark=mark)
+            log("t=%d marked %s" % (self.t(), "delivered" if mark == 1 else "absent"))
+            self.request_state = None
+            return True
 
         def fresh(slack):
             cs = [c for c in loose if not self._near_any(c, rs["inspected"]) and self.could_be(c, model, slack)]
@@ -1297,9 +1305,8 @@ class Controller(object):
                 rs["inspected"] = [k for k in rs["inspected"] if math.hypot(k[0] - rs["best_key"][0], k[1] - rs["best_key"][1]) >= 0.06]
                 done = yield from self.check_candidate(near[0], force=True)
                 return done
-        log("t=%d declare absent: %s (searched %s)" % (self.t(), model, rs.get("searched")))
-        yield from self.hold(1, grip=0.0, mark=2)
-        self.request_state = None
+        log("t=%d absent: %s (searched %s); tidying before the mark" % (self.t(), model, rs.get("searched")))
+        rs["absent_ready"] = True
         return True
 
     def check_candidate(self, c, force=False):
@@ -1334,9 +1341,8 @@ class Controller(object):
         yield from self.hold(8, grip=0.0)
         ok = yield from self.confirm_red()
         if ok:
-            yield from self.hold(1, grip=0.0, mark=1)
-            log("t=%d marked delivered" % self.t())
-            self.request_state = None
+            rs["in_red"] = True
+            log("t=%d target in red; tidying before the mark" % self.t())
         else:
             log("t=%d red container check failed; retrying" % self.t())
             rs["inspected"].remove(key)
@@ -1376,9 +1382,8 @@ class Controller(object):
                 yield from self.hold(8, grip=0.0)
                 ok = yield from self.confirm_red()
                 if ok:
-                    yield from self.hold(1, grip=0.0, mark=1)
-                    log("t=%d marked delivered (dug out of %s)" % (self.t(), b))
-                    self.request_state = None
+                    rs["in_red"] = True
+                    log("t=%d target in red (dug out of %s); tidying before the mark" % (self.t(), b))
                 return True
             yield from self.place_on_desk(spot, self.spot_yaw(spot))
             rs.setdefault("dug", []).append(spot)

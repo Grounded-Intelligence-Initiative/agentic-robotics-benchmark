@@ -12,15 +12,16 @@ episode), and new objects keep landing on the free desk surface around them for 
 episode. Your job has three parts:
 
 - place every object in the container of its class: class **A** → the **gray** container, class **B** →
-  the **light-blue** container, class **C** → the **blue** container. The desk is judged by its
-  state when the episode ends; it may be temporarily disorganized while you work, but everything
-  has to be back in place by then;
+  the **light-blue** container, class **C** → the **blue** container. The desk is judged each
+  time a request closes and when the episode ends; it may be temporarily disorganized while you
+  work, but it should be back in order by then;
 - whenever a *request* names a specific object, find it (it may be buried under other
   objects) and place it in the **red** container before the request's deadline; if the object is
   not on the desk at all, **declare it absent** instead;
 - keep going: the environment never stands still. New objects keep arriving, objects get
   taken away, and a new request can open while you are still tidying up after the last one.
-  Each request is judged on its own, and the desk is judged when the episode ends.
+  Each request is a task, find plus organize, judged when it closes: at your mark, or at its
+  deadline.
 
 Two containers start full (A objects in gray, B objects in light-blue), the red and blue containers start
 empty, and a few loose objects (mostly C, some A) lie on the desk. Classes are visual
@@ -29,9 +30,7 @@ object list in the observation: you work from the cameras.
 
 ## Episode dynamics
 
-An episode runs up to `${horizon}` control steps at 10 Hz. It ends at that horizon, or earlier
-when you end it yourself with a **done: episode** mark once its last request has closed (see
-Action). During it:
+An episode runs a fixed `${horizon}` control steps at 10 Hz. During it:
 
 1. **Arrivals.** New objects drop at random free spots on the desk surface (never inside a
    container) at random intervals, within the arm's reach. When too many objects are loose on the
@@ -109,11 +108,9 @@ change between seeds.
 frame (metres and radians, clipped to ±0.05 m and ±0.25 rad per step), a gripper command in
 `[0, 1]` (0 = open, 1 = closed), and a `mark` for the open request: `0` = nothing, `1` =
 **done: delivered** (you claim the requested object rests in the red container), `2` = **done: no
-such object** (you claim it is not on the desk), `3` = **done: episode** (you end the episode;
-it is scored on the state at that step). Marks `1` and `2` are ignored while no request is
-open, and a request accepts one mark only. Mark `3` is accepted only once the episode's last
-request has closed (no request open and none left to open before the horizon); before that it
-is ignored and the episode goes on. The environment turns the delta into joint targets
+such object** (you claim it is not on the desk). A mark is ignored while no request is open,
+and a request accepts one mark only; the request, and the desk with it, are judged at the
+step of the mark. The environment turns the delta into joint targets
 through inverse kinematics, interpolated over the step (a 5 cm step completes about 96% within it); a
 delta that is unreachable or would flip the arm to another joint-space branch is refused and
 the arm simply stays put for that step.
@@ -130,15 +127,21 @@ Each object `o` has a value `v_o(t)` at step `t`:
 
 | state | value |
 |---|---|
-| placed inside a right container (its class container; for the requested object also the red container) | +1 |
+| placed inside its class container | +1 |
 | on the table, in the gripper, or in flight | 0 |
 | placed inside any other container | −1 |
 | knocked off the table | −1 for the rest of the episode |
 | removed by container service or delivered | frozen at its value when removed |
 
-Every object also has a baseline `b_o`: its value when it entered the scene (0 for an arrival,
-+1 for an object that starts in its pile) or when the world last moved it (−1 after the world
-misplaces it). Only your net effect `v_o(t) − b_o` counts.
+While a request is open, its object belongs to the **red** container only: +1 placed in red
+or held in the gripper, −1 placed in any other container (its class container included), 0 on
+the table or in flight.
+
+Every object also has a baseline `b_o(t)`: its value when it entered the scene (0 for an
+arrival, +1 for an object that starts in its pile), when the world last moved it (−1 after the
+world misplaces it), or when a request named it (its value under the red-only rule at that
+moment; the previous baseline returns once the request has closed). Only your net effect
+`v_o(t) − b_o(t)` counts.
 
 Requests end as a **success** (`done: delivered` while the requested object is placed in the red
 container; `done: no such object` when it really is absent) or a **failure** (either mark when
@@ -154,7 +157,8 @@ The episode score is
 
 ```
 S = 1/2 · O + 1/2 · R
-O = clip( Σ_o (v_o(T) − b_o)  /  Σ_o max(0, 1 − b_o) , 0, 1 )      T = the episode's last step
+O = mean of O(t) over the steps t at which a request closes, and the episode's last step
+O(t) = clip( Σ_o (v_o(t) − b_o(t))  /  Σ_o max(0, 1 − b_o(t)) , 0, 1 )
 R = sum of request points / (2 · opened requests)   (0 when no request opened)
 ```
 
@@ -162,13 +166,14 @@ R = sum of request points / (2 · opened requests)   (0 when no request opened)
 A release onto the table or into a container is not a loss; only falling off the table
 (centre below z = −0.2 m) triggers the permanent lost value.
 
-`O` is the share of the sorting work the episode brought (every object that was ever in the
-scene) that is done in its final state, at your accepted done mark or at the horizon: an
-object dug out of its container and not put back, or an arrival left loose, counts against
-you then, and an untouched scene scores exactly 0. An episode the grader cuts short for
-exhausting its wall-clock budget is scored on the state it reached, scaled by the fraction
-of the horizon that ran; an aborted episode (protocol error, step deadline, malformed
-action) scores 0.
+`O(t)` is the share of the sorting work the episode has brought so far (every object that was
+ever in the scene) that is done at step `t`. A request is a task, find plus organize: it
+scores fully only when its object is delivered (or its absence declared) and the desk is in
+order at the mark, so an object dug out of its container and not put back, or an arrival left
+loose, counts against you then. An untouched scene scores exactly 0. An episode the grader
+cuts short for exhausting its wall-clock budget is scored on the state it reached, scaled by
+the fraction of the horizon that ran; an aborted episode (protocol error, step deadline,
+malformed action) scores 0.
 
 The task's reported metric is `mean_episode_score`, the mean of `S` over the hidden seeds. The
 reward you are judged on is that mean relative to a hidden reference value.

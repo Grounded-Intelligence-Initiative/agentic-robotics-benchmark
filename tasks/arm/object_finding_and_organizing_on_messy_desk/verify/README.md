@@ -36,7 +36,7 @@ Key object states; node values are $v_o(t)$. First-hold credit belongs to $R$, n
 
 <!-- Editable source: figures/object-automaton.mmd -->
 
-The first hold of the requested target earns +1 request point once; repeated holds add nothing. “Place” means released and resting. A right container is the class container, or red for the requested object. Removal by container service or confirmed delivery freezes the value; only falling off the table triggers `Lost` and keeps −1. A release onto the table or into a container is not a loss. Transit ($v=0$), arrivals, disturbances and instance reuse are omitted for clarity.
+The first hold of the requested target earns +1 request point once; repeated holds add nothing. “Place” means released and resting. A right container is the class container; while a request is open its object has red as its only right container, and holding it counts +1. Removal by container service or confirmed delivery freezes the value; only falling off the table triggers `Lost` and keeps −1. A release onto the table or into a container is not a loss. Transit ($v=0$), arrivals, disturbances and instance reuse are omitted for clarity.
 
 ## Request automaton
 
@@ -54,7 +54,8 @@ A first target hold earns +1 point; delivery adds +1 for a total of 2. Correct a
 
 $$
 S = \frac{1}{2}\, O + \frac{1}{2}\, R, \qquad
-O = \mathrm{clip}\left( \frac{\sum_{o} \left( v_o(T) - b_o \right)}{\sum_{o} \max\left( 0,\, 1 - b_o \right)},\ 0,\ 1 \right), \qquad
+O = \frac{1}{K} \sum_{k=1}^{K} O(t_k), \qquad
+O(t) = \mathrm{clip}\left( \frac{\sum_{o} \left( v_o(t) - b_o(t) \right)}{\sum_{o} \max\left( 0,\, 1 - b_o(t) \right)},\ 0,\ 1 \right), \qquad
 R = \frac{\sum_{j=1}^{N_{\mathrm{opened}}} q_j}{2N_{\mathrm{opened}}}
 $$
 
@@ -64,20 +65,22 @@ and $q_j = 0$ otherwise. Repeated holds do not accumulate credit. $R = 0$ when n
 has opened. A first hold is recorded only while the request is open and its target is
 currently in `held` state; historical contacts do not count.
 
-The episode ends at the controller's accepted done mark (mark 3, accepted once the episode's last
-request has closed) or at the horizon $H$; $T$ is its last step and the score reads the state
-there. When the grader cuts an episode for exhausting its wall-clock budget, $S \leftarrow S \cdot T / H$.
+where $t_1, \dots, t_K$ are the steps at which a request closes (its mark or its deadline) and
+the episode's last step $T$: each request is a task, find plus organize, judged with the desk
+when it closes. When the grader cuts an episode for exhausting its wall-clock budget,
+$S \leftarrow S \cdot T / H$.
 
 | term | meaning |
 |---|---|
 | $S$ | the episode score in $[0, 1]$; the task metric `mean_episode_score` is its mean over the hidden seeds |
-| $O$ | organization of the final state: how much of the sorting work the episode brought (every object ever in the scene) is done at its last step $T$ |
+| $O$ | organization: the mean of the snapshots $O(t_k)$, how much of the sorting work the episode has brought (every object ever in the scene) is done when each request closes and at the last step |
 | $R$ | request progress: total points divided by twice the number of opened requests, including an ongoing one |
-| $v_o(t)$ | value of object $o$ at step $t$: +1 placed in a right container, −1 placed in a wrong one, 0 on the table / held / in flight, −1 for ever once lost, last value once removed |
-| $b_o$ | baseline of object $o$: its value when it entered the scene (0 for an arrival, +1 for an object that starts in its pile) or when the world last moved it (−1 after a misplacement; re-read once a nudged object rests again) |
-| $v_o(t) - b_o$ | the agent's net effect on object $o$: untouched objects contribute 0 |
-| $\max(0, 1 - b_o)$ | the gain that was available for $o$: 1 for a loose object, 2 for one the world misfiled, 0 for one already in place |
-| $T$, $H$ | the episode's last step (accepted done mark, horizon, or wall-budget cut) and the horizon (20000); an episode the grader cuts for exhausting its wall-clock budget is scaled by $T/H$ |
+| $v_o(t)$ | value of object $o$ at step $t$: +1 placed in its class container, −1 placed in another one, 0 on the table / held / in flight; while a request is open its object belongs to the red container only (+1 placed in red or held, −1 in any other container, 0 on the table or in flight); −1 for ever once lost, last value once removed |
+| $b_o(t)$ | baseline of object $o$: its value when it entered the scene (0 for an arrival, +1 for an object that starts in its pile), when a request named it (its red-only value then; the previous baseline returns after the request closes), or when the world last moved it (−1 after a misplacement; re-read once a nudged object rests again) |
+| $v_o(t) - b_o(t)$ | the agent's net effect on object $o$: untouched objects contribute 0 |
+| $\max(0, 1 - b_o(t))$ | the gain that was available for $o$: 1 for a loose object, 2 for one the world misfiled, 0 for one already in place |
+| $t_k$, $K$ | the steps at which a request closes plus the last step $T$, and their number (5 in a full episode) |
+| $T$, $H$ | the episode's last step and the horizon (20000); an episode the grader cuts for exhausting its wall-clock budget is scaled by $T/H$ |
 | $q_j$, $N_{\mathrm{opened}}$ | points for request $j$ (0, 1, or 2), and the number of requests opened; $R = 0$ when none opened |
 
 Properties: an untouched scene scores exactly 0 (every $v_o = b_o$, no successful request);
