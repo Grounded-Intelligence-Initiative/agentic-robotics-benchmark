@@ -28,54 +28,69 @@ both byte-identical copies of the files under `verify/` (this folder).
 
 ## Object automaton
 
-Every object runs this automaton; its state and the detector values are exported each step
-(`state`, `contact`, `in_container`, `on_table`, `resting`, `role`). The node labels carry the
-value `v_o(t)`. A released object is `transit` (value 0) until it rests; `transit` and the
-reuse of a removed instance for a later arrival are left out of the picture.
+Key object states; node values are $v_o(t)$.
 
 ```mermaid
-%%{init: {"theme": "neutral", "themeVariables": {"fontFamily": "Helvetica, Arial, sans-serif", "fontSize": "14px"}}}%%
-stateDiagram-v2
-    direction LR
-    state "on table · 0" as T
-    state "held · 0" as H
-    state "in container · +1 right / −1 wrong" as C
-    state "lost · −1" as L
-    state "removed · frozen" as R
-    [*] --> T : arrival
-    [*] --> C : world misfiles
-    T --> H : grasp
-    C --> H : grasp
-    H --> T : release on the desk
-    H --> C : release in a container
-    T --> L : pushed off
-    C --> R : service / delivered
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "fontSize": "16px", "lineColor": "#64748b", "primaryTextColor": "#0f172a", "edgeLabelBackground": "#ffffff", "clusterBkg": "#f8fafc", "clusterBorder": "#cbd5e1"}, "flowchart": {"curve": "basis", "nodeSpacing": 32, "rankSpacing": 32, "htmlLabels": true}}}%%
+flowchart LR
+    subgraph ACTIVE["ACTIVE"]
+        T("<b>On table</b><br/>v = 0")
+        H("<b>Held</b><br/>v = 0")
+        C("<b>In container</b><br/>v = +1 right · −1 wrong")
+        T -->|contact| H
+        H -->|place| T
+        H -->|place| C
+        C -->|contact| H
+    end
+    C -->|remove| R("<b>Removed</b><br/>v frozen")
+    ACTIVE -->|falls off| L("<b>Lost</b><br/>v = −1")
+
+    classDef neutral fill:#eff6ff,stroke:#3b82f6,color:#1e3a8a,stroke-width:1.5px;
+    classDef moving fill:#fffbeb,stroke:#d97706,color:#78350f,stroke-width:1.5px;
+    classDef placed fill:#eef2ff,stroke:#6366f1,color:#312e81,stroke-width:2px;
+    classDef retired fill:#f1f5f9,stroke:#64748b,color:#334155,stroke-width:1.5px;
+    classDef failure fill:#fff1f2,stroke:#e11d48,color:#881337,stroke-width:2px;
+    class T neutral;
+    class H moving;
+    class C placed;
+    class R retired;
+    class L failure;
 ```
 
-A right container is the object's class container, and for the requested object the red
-container as well. `lost` keeps −1 for the rest of the episode; `removed` keeps the value the
-object had when it was taken away.
+“Place” means released and resting. A right container is the class container, or red for the requested object. Removal by container service or confirmed delivery freezes the value; loss keeps −1. Transit ($v=0$), arrivals, disturbances and instance reuse are omitted for clarity.
 
 ## Request automaton
 
+Each request closes as a success or failure.
+
 ```mermaid
-%%{init: {"theme": "neutral", "themeVariables": {"fontFamily": "Helvetica, Arial, sans-serif", "fontSize": "14px"}}}%%
-stateDiagram-v2
-    direction LR
-    state "success" as S
-    state "failure" as F
-    [*] --> idle
-    idle --> open : world names an object
-    open --> S : mark delivered, target in red
-    open --> S : mark absent, none exists
-    open --> F : wrong mark
-    open --> F : 1200 steps, no mark
-    S --> idle
-    F --> idle
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Arial, Helvetica, sans-serif", "fontSize": "16px", "lineColor": "#64748b", "primaryTextColor": "#0f172a", "edgeLabelBackground": "#ffffff", "clusterBkg": "#f8fafc", "clusterBorder": "#cbd5e1"}, "flowchart": {"curve": "basis", "nodeSpacing": 30, "rankSpacing": 42, "htmlLabels": true}}}%%
+flowchart LR
+    I(["<b>Idle</b>"])
+    O("<b>Open request</b>")
+    S("<b>Success</b><br/>Delivered or absent")
+    F("<b>Failure</b><br/>Wrong claim or timeout")
+    C(["<b>Closed</b>"])
+    I -->|new request| O
+    O -->|verified| S
+    O -->|rejected / expired| F
+    S --> C
+    F --> C
+    C -.->|next request| O
+
+    classDef neutral fill:#eff6ff,stroke:#3b82f6,color:#1e3a8a,stroke-width:1.5px;
+    classDef active fill:#eef2ff,stroke:#6366f1,color:#312e81,stroke-width:2px;
+    classDef success fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px;
+    classDef failure fill:#fff1f2,stroke:#e11d48,color:#881337,stroke-width:2px;
+    classDef retired fill:#f1f5f9,stroke:#64748b,color:#334155,stroke-width:1.5px;
+    class I neutral;
+    class O active;
+    class S success;
+    class F failure;
+    class C retired;
 ```
 
-`delivered` and `absent_correct` are successes, the other three outcomes are failures. A
-delivered object is taken away by the worker (state `removed`, value frozen at +1).
+Success means a verified delivery or a correct absence declaration. Both outcomes count toward $N_{\mathrm{success}}$; every closed request counts toward $N_{\mathrm{closed}}$, so $R=N_{\mathrm{success}}/N_{\mathrm{closed}}$. The next request starts a new cycle.
 
 ## Score
 

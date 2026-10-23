@@ -263,6 +263,18 @@ and `verify/` included.
     (`gateway/server.py`), which leaves long-thinking models with empty turns;
   - egress is opened before verify while a closed_loop solver runs.
 
+## 7. 2026-10-23 — messy-desk PR #12 diagram refinement
+
+- Redrew the object and request automata as compact, color-coded Mermaid flowcharts
+  in the task's scoring README and PR description. Kept state names, object values,
+  outcome branches and request cycling visible; moved qualifications into captions.
+- The object diagram is a lifecycle overview: transit, arrivals, disturbances and instance
+  reuse are omitted explicitly. The request diagram groups the two successful outcomes
+  and the incorrect-claim / expiry outcomes. No simulator or scoring behavior changed.
+- Checked Mermaid parsing and rendered both diagrams locally; task lint passes.
+- Validation remains pending: stabilize oracle grasping, measure its anchor, run
+  `ale validate`, and measure frontier-model difficulty before marking the PR ready.
+
 ## Gotchas
 
 - `export_registry.py` refuses a dirty tree on purpose: `content_digest` covers every
