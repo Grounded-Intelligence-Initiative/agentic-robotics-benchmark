@@ -94,7 +94,7 @@ ARRIVAL_MEAN_STEPS = 500
 LOOSE_CAP = 6
 PRESENT_CAP = 18
 CONTAINER_CAP = 7
-REQUEST_MEAN_STEPS = 1500
+REQUEST_SLOT_STEPS = 5000    # one request opens at a random time in each 5000-step window (4 per 20000-step episode)
 REQUEST_DEADLINE_STEPS = 1200
 REQUEST_ABSENT_P = 0.2
 DISTURB_MEAN_STEPS = 2500
@@ -523,7 +523,8 @@ class MessyDeskEnv:
             self._spawn(o, (spot[0], spot[1], 0.0), on_desk=True)
         self._settle_until_rest()
         self.next_arrival = int(self.rng.exponential(ARRIVAL_MEAN_STEPS))
-        self.next_request = int(self.rng.exponential(REQUEST_MEAN_STEPS)) + 200
+        self.request_slot = 0
+        self.next_request = self._request_time(0)
         self.next_disturb = int(self.rng.exponential(DISTURB_MEAN_STEPS)) + 500
         for _ in range(RESET_WARMUP_FRAMES):   # the RTX renderer needs frames to converge
             self.world.step(render=True)
@@ -711,7 +712,8 @@ class MessyDeskEnv:
                 self.requests_done.append(r)
         if (self.request is None or self.request["status"] != "open") and self.t >= self.next_request:
             self._open_request()
-            self.next_request = self.t + REQUEST_DEADLINE_STEPS + int(rng.exponential(REQUEST_MEAN_STEPS))
+            self.request_slot += 1
+            self.next_request = self._request_time(self.request_slot)
         # arrivals
         if self.t >= self.next_arrival:
             self.next_arrival = self.t + int(rng.exponential(ARRIVAL_MEAN_STEPS)) + 50
@@ -749,6 +751,11 @@ class MessyDeskEnv:
                     o["rp"].set_linear_velocity(self.np.array([rng.uniform(-0.6, 0.6), rng.uniform(-0.6, 0.6), 0.3]))
                     o["rebase_t"] = self.t            # baseline re-read once it comes to rest
                     ev.append({"t": self.t, "event": "disturb_nudged", "object": o["id"]})
+
+    def _request_time(self, k):
+        """Opening step of the k-th request: a random time in its window, early enough that its
+        deadline passes before the next window starts."""
+        return k * REQUEST_SLOT_STEPS + 200 + int(self.rng.integers(0, REQUEST_SLOT_STEPS - REQUEST_DEADLINE_STEPS - 400 + 1))
 
     def _open_request(self):
         rng = self.rng

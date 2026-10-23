@@ -34,7 +34,8 @@ An episode runs a fixed `${horizon}` control steps at 10 Hz and never ends early
 1. **Arrivals.** New objects drop at random free spots on the desk surface (never inside a
    container) at random intervals, within the arm's reach. When too many objects are loose on the
    desk, arrivals pause until you clear some.
-2. **Requests.** At random times a request opens: the observation carries a short text
+2. **Requests.** Once in every 5000 steps, at a random time, a request opens (four per
+   20000-step episode; each has a 1200-step deadline): the observation carries a short text
    description of one specific object (for example `the mustard bottle`). Most
    requested objects are somewhere on the desk or in a container; some are not present at all.
    You close a request yourself with a *mark* in your action: **done: delivered** or **done:
