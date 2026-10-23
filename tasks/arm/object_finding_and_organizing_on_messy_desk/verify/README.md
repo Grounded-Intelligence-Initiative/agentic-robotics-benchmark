@@ -29,49 +29,49 @@ both byte-identical copies of the files under `verify/` (this folder).
 ## Object automaton
 
 Every object runs this automaton; its state and the detector values are exported each step
-(`state`, `contact`, `in_container`, `on_table`, `resting`, `role`).
+(`state`, `contact`, `in_container`, `on_table`, `resting`, `role`). The node labels carry the
+value `v_o(t)`. A released object is `transit` (value 0) until it rests; `transit` and the
+reuse of a removed instance for a later arrival are left out of the picture.
 
 ```mermaid
+%%{init: {"theme": "neutral", "themeVariables": {"fontFamily": "Helvetica, Arial, sans-serif", "fontSize": "14px"}}}%%
 stateDiagram-v2
-    [*] --> absent
-    absent --> transit : arrival, or the world drops it into a wrong container
-    transit --> on_table : placed, outside every container
-    transit --> in_container : placed inside a container
-    on_table --> held : finger contact
-    in_container --> held : finger contact
-    held --> transit : released while moving
-    held --> on_table : released, still, on the table
-    held --> in_container : released, still, inside a container
-    on_table --> transit : nudged or pushed
-    in_container --> transit : nudged
-    on_table --> lost : pushed off the table
-    transit --> lost : falls off the table
-    in_container --> removed : container service (7 placed objects), or delivered and marked
-    removed --> absent : the instance is reused for a later arrival
-    lost --> [*]
+    direction LR
+    state "on table · 0" as T
+    state "held · 0" as H
+    state "in container · +1 right / −1 wrong" as C
+    state "lost · −1" as L
+    state "removed · frozen" as R
+    [*] --> T : arrival
+    [*] --> C : world misfiles
+    T --> H : grasp
+    C --> H : grasp
+    H --> T : release on the desk
+    H --> C : release in a container
+    T --> L : pushed off
+    C --> R : service / delivered
 ```
 
-Value of an object in each state (`v_o(t)`): `in_container` +1 when the container is right
-for it (its class container; for the requested object the red container as well), −1 when it
-is a wrong one; `on_table`, `held`, `transit` 0; `lost` −1 for the rest of the episode;
-`removed` keeps the value it had when it was taken away.
+A right container is the object's class container, and for the requested object the red
+container as well. `lost` keeps −1 for the rest of the episode; `removed` keeps the value the
+object had when it was taken away.
 
 ## Request automaton
 
 ```mermaid
+%%{init: {"theme": "neutral", "themeVariables": {"fontFamily": "Helvetica, Arial, sans-serif", "fontSize": "14px"}}}%%
 stateDiagram-v2
+    direction LR
+    state "success" as S
+    state "failure" as F
     [*] --> idle
-    idle --> open : the world names an object (present and unique, or absent with p = 0.2)
-    open --> delivered : mark 1 while the target is placed in the red container
-    open --> claim_wrong : mark 1 otherwise
-    open --> absent_correct : mark 2 and no such object exists
-    open --> absent_wrong : mark 2 but the object exists
-    open --> expired : 1200 steps without a mark
-    delivered --> idle
-    claim_wrong --> idle
-    absent_correct --> idle
-    absent_wrong --> idle
-    expired --> idle
+    idle --> open : world names an object
+    open --> S : mark delivered, target in red
+    open --> S : mark absent, none exists
+    open --> F : wrong mark
+    open --> F : 1200 steps, no mark
+    S --> idle
+    F --> idle
 ```
 
 `delivered` and `absent_correct` are successes, the other three outcomes are failures. A
@@ -80,13 +80,9 @@ delivered object is taken away by the worker (state `removed`, value frozen at +
 ## Score
 
 $$
-S \;=\; \tfrac{1}{2}\,O \;+\; \tfrac{1}{2}\,R,
-\qquad
-O \;=\; \operatorname{clip}\!\left(
-\frac{\sum_{t=1}^{T}\sum_{o}\bigl(v_o(t) - b_o\bigr)}
-     {\sum_{t=1}^{T}\sum_{o}\max\bigl(0,\;1 - b_o\bigr)},\;0,\;1\right),
-\qquad
-R \;=\; \frac{N_{\mathrm{success}}}{N_{\mathrm{closed}}}
+S = \frac{1}{2}\, O + \frac{1}{2}\, R, \qquad
+O = \mathrm{clip}\left( \frac{\sum_{t=1}^{T} \sum_{o} \left( v_o(t) - b_o \right)}{\sum_{t=1}^{T} \sum_{o} \max\left( 0,\, 1 - b_o \right)},\ 0,\ 1 \right), \qquad
+R = \frac{N_{\mathrm{success}}}{N_{\mathrm{closed}}}
 $$
 
 and when the episode was cut after $T < H$ steps, $S \leftarrow S \cdot T / H$.

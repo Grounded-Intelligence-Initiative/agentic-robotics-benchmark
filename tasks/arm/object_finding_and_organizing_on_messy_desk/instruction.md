@@ -44,9 +44,9 @@ An episode runs a fixed `${horizon}` control steps at 10 Hz and never ends early
    You close a request yourself with a *mark* in your action: **done: delivered** or **done:
    no such object**. The grader checks the physical truth at that moment: a delivered mark
    is right only if the requested object rests in the red container; a no-such-object mark is
-   right only if the object is not on the desk. A right mark earns a large bonus, a wrong
-   mark costs the same amount, and a request whose deadline passes without a mark earns
-   nothing. At most one request is open at a time.
+   right only if the object is not on the desk. A right mark closes the request as a success,
+   a wrong mark as a failure, and a request whose deadline passes without a mark is a failure
+   too. At most one request is open at a time.
 3. **Container service.** When a container is full, or a requested object has been delivered to the red
    container, a worker empties that container: its objects disappear from the scene.
 4. **Disturbances.** Occasionally the world misplaces one object into a wrong container, or nudges
