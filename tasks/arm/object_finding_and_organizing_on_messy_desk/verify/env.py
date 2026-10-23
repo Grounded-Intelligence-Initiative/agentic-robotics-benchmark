@@ -410,7 +410,15 @@ class MessyDeskEnv:
                 return name
         return None
 
-    def _random_desk_spot(self, margin=0.06, tries=200):
+    def _footprint_dist(self, name, x, y):
+        """Distance from (x, y) to container `name`'s outer footprint (0 inside it)."""
+        lx, ly = self._container_local(name, x, y)
+        return math.hypot(max(abs(lx) - CONTAINER_OUTER[0] / 2, 0.0), max(abs(ly) - CONTAINER_OUTER[1] / 2, 0.0))
+
+    def _random_desk_spot(self, margin=0.06, gap_clear=0.12, tries=200):
+        """A free desk spot within reach, `margin` clear of every container and never in or at the
+        mouth of the narrow gap between two containers (`gap_clear` from the second-nearest one):
+        an object there cannot be reached by a hand that has to fit between two walls."""
         rng = self.rng
         occupied = [tuple(o["rp"].get_world_pose()[0][:2]) for o in self.objects if o["present"]]
         for _ in range(tries):
@@ -418,8 +426,8 @@ class MessyDeskEnv:
             y = rng.uniform(*DESK_Y)
             if math.hypot(x, y) > REACH - 0.05 or math.hypot(x, y) < BASE_CLEAR:
                 continue
-            if any(abs(lx) <= CONTAINER_OUTER[0] / 2 + margin and abs(ly) <= CONTAINER_OUTER[1] / 2 + margin
-                   for lx, ly in (self._container_local(n, x, y) for n in self.containers)):
+            d = sorted(self._footprint_dist(n, x, y) for n in self.containers)
+            if d[0] < margin or (len(d) > 1 and d[1] < gap_clear):
                 continue
             if any(math.hypot(x - ox, y - oy) < 0.09 for ox, oy in occupied):
                 continue
@@ -763,9 +771,15 @@ class MessyDeskEnv:
                     self.baseline[o["id"]] = -1       # it will rest misfiled; fixing it is the gain available
                     ev.append({"t": self.t, "event": "disturb_misplaced", "object": o["id"], "container": b})
                 else:
-                    o["rp"].set_linear_velocity(self.np.array([rng.uniform(-0.6, 0.6), rng.uniform(-0.6, 0.6), 0.3]))
-                    o["rebase_t"] = self.t            # baseline re-read once it comes to rest
-                    ev.append({"t": self.t, "event": "disturb_nudged", "object": o["id"]})
+                    # moved across the desk to another free spot (never into a gap between two
+                    # containers, where no hand fits), set down the way arrivals are
+                    loose = [c for c in cands if c["in_container"] is None]
+                    o = loose[int(rng.integers(len(loose)))] if loose else None
+                    spot = self._random_desk_spot() if o is not None else None
+                    if spot is not None:
+                        self._spawn(o, (spot[0], spot[1], 0.0), on_desk=True)
+                        o["rebase_t"] = self.t        # baseline re-read once it comes to rest
+                        ev.append({"t": self.t, "event": "disturb_nudged", "object": o["id"]})
 
     def _request_time(self, k):
         """Opening step of the k-th request: a random time in its window, early enough that its

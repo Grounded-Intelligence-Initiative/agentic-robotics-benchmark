@@ -90,6 +90,8 @@ REFINE_RADIUS, REFINE_MAX_SHIFT = 0.07, 0.04    # hand-camera re-centring just b
 GRASP_MIN_ABOVE_FLOOR = 0.032
 DROP_ABOVE_RIM = 0.035
 HOVER_ABOVE_TOP = 0.16
+PATROL_EVERY = 1200          # idle steps between looks into the class containers (world misplacements)
+SEARCH_ALL_MARGIN = 500      # steps left before a deadline that still allow digging in an unlikely container
 FINISH_MARGIN = 350           # steps one more tidy action may take before a request's deadline
 LOG = os.environ.get("MESSY_DESK_SOLVER_LOG", "")
 
@@ -609,6 +611,8 @@ class Controller(object):
         # under them (the instruction: A objects start in gray, B objects in light-blue)
         self.inventory = {b: [] for b in CLASS_OF_CONTAINER}
         self.pile_unknown = {"gray": True, "lightblue": True, "blue": False}
+        self.seen_in = {b: set() for b in CLASS_OF_CONTAINER}     # models seen on top of a pile by a patrol
+        self.last_patrol_t = -10 ** 9
 
     # -- wire entry -------------------------------------------------------------------------
     def act(self, t, obs):
@@ -1148,6 +1152,9 @@ class Controller(object):
             did = yield from self.tidy(clusters)
             if did:
                 continue
+            if self.request_state is None and self.t() - self.last_patrol_t > PATROL_EVERY:
+                yield from self.patrol()
+                continue
             yield from self.hold(10, grip=0.0)
 
     def held_back(self, c):
@@ -1205,6 +1212,34 @@ class Controller(object):
                 return True
         return False
 
+    def patrol(self):
+        """Look into each class container from above and inspect the top of its pile: the world
+        sometimes drops an object into a wrong container, and once other objects land on it, it is
+        buried. A misfiled object found on top goes to its own container right away."""
+        self.last_patrol_t = self.t()
+        for b in ("gray", "lightblue", "blue"):
+            comps = yield from self.container_components(b)
+            for c in sorted(comps, key=lambda c: -c["top_z"])[:2]:
+                d = yield from self.inspect(c)
+                if d is None:
+                    continue
+                info = d["cls_info"]
+                if info.get("model_margin", 0.0) > 0.3:
+                    self.seen_in[b].add(info["model"])
+                if info["cls"] == CLASS_OF_CONTAINER[b] or info["class_margin"] < 0.4 or info.get("model_margin", 0.0) < 0.3:
+                    continue
+                g = self.plan_grasps(d, inside=b)
+                log("t=%d patrol: %s misfiled in %s grasps=%s" % (self.t(), info["model"], b, [(round(x[1], 2), x[2]) for x in g]))
+                if not g:
+                    continue
+                held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
+                if held:
+                    self.forget(info["model"])
+                    self.seen_in[b].discard(info["model"])
+                    yield from self.place_in_container(CONTAINER_OF_CLASS[info["cls"]], info["model"])
+                    self.last_patrol_t = -10 ** 9          # look again soon: more may lie under it
+                return
+
     def forget(self, model):
         """`model` is out on the desk or in the hand: drop its latest inventory entry (an object
         that was dug out of a container is still listed there until it is sorted again)."""
@@ -1228,6 +1263,7 @@ class Controller(object):
         names = (model, TWIN.get(model))
         order = [b for b in sorted(self.inventory, key=lambda b: -max([i for i, m in enumerate(self.inventory[b]) if m in names] or [-1]))
                  if any(m in names for m in self.inventory[b])]
+        order = [b for b in CLASS_OF_CONTAINER if any(m in names for m in self.seen_in[b]) and b not in order] + order
         home = CONTAINER_OF_CLASS.get(CLASS_OF.get(model))
         if home and self.pile_unknown.get(home) and home not in order:
             order.append(home)
@@ -1265,8 +1301,9 @@ class Controller(object):
         order = self.search_order(model)
         expected = rs.setdefault("expected", list(order))
         searched = rs.setdefault("searched", [])
-        if expected and all(b in searched for b in expected):
-            # it was known to be in there but is not: the world moved it; look everywhere
+        if (not expected or all(b in searched for b in expected)) and rs["deadline"] - self.t() > SEARCH_ALL_MARGIN:
+            # not where it was expected (or nowhere expected): the world may have dropped it into
+            # another container and buried it; dig there too while the deadline allows
             order += [b for b in ("gray", "lightblue", "blue") if b not in order]
         blocked = rs.setdefault("blocked", {})
         for b in order:
