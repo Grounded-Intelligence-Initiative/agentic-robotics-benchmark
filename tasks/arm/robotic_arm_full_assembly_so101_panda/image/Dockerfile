@@ -1,4 +1,4 @@
-# robotic_arm_full_assembly_panda's environment image (information tier, assembly stage: the whole arm from loose parts).
+# robotic_arm_full_assembly_so101_panda's environment image (information tier, assembly stage: the whole arm from loose parts).
 #
 # `image/` is the sole build context and the final stage derives DIRECTLY from the official ALE base (`ale lint`
 # rejects any other final FROM). The block below is the chain's shared base `shared/images/arb-base-mujoco/Dockerfile`
@@ -79,7 +79,7 @@ RUN python3 -c "import mujoco._render_filament as F, mujoco.experimental.studio.
 # ---- task assets ---------------------------------------------------------------------------------------------------
 # The picture manual, the printed parts' STL files, the Panda model and the scenery of the agent cameras' renderer
 # (render/: the factory hall, the bench top's wood maps) live in the benchmark's Hugging Face asset repository
-# (tasks/arm/robotic_arm_full_assembly_panda/payload/ there). They are fetched at the commit pinned in
+# (tasks/arm/robotic_arm_full_assembly_so101_panda/payload/ there). They are fetched at the commit pinned in
 # assets.sha256 and checked file by file against the sha256 recorded there; setup/run.sh stages them into the agent home
 # and into the grader's root-owned copy next to setup/payload/. fetch_assets.py is the benchmark's canonical copy
 # (shared/task_assets/) and the repository named in assets.sha256 is written from the benchmark's task-assets.toml

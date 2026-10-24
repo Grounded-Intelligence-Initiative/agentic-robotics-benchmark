@@ -1,4 +1,4 @@
-"""Grader of robotic_arm_full_assembly_panda (the whole arm from loose parts, camera-only): runs as ROOT in the verify stage.
+"""Grader of robotic_arm_full_assembly_so101_panda (the whole arm from loose parts, camera-only): runs as ROOT in the verify stage.
 
 The agent left /home/user/submission/assemble.py (solve(cell): a camera-only program that assembles the hidden kit's
 whole arm with the Panda). This grader:

@@ -1,4 +1,4 @@
-# robotic_arm_full_assembly_panda (information tier I1, assembly stage, the WHOLE arm from loose parts; built 2026-10-22
+# robotic_arm_full_assembly_so101_panda (information tier I1, assembly stage, the WHOLE arm from loose parts; built 2026-10-22
 # from arm_assemble_six_servo_from_manual_panda_np on the owner's request: assemble the arm from the base with the
 # Panda, physically: unpowered free joints, a coupling state machine, every part placed by the robot).
 #
@@ -13,7 +13,7 @@
 # on the bench plan's nominal layout. Grader knobs live in verify/grader_config.json.
 
 spec_type: core/v1
-name: robotic_arm_full_assembly_panda
+name: robotic_arm_full_assembly_so101_panda
 image: {kind: container}
 resources: {cpus: 8, memory_mb: 16384}
 network: {mode: block}

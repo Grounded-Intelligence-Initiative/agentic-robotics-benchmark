@@ -1,7 +1,7 @@
 # endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/agentic-robotics-last-exam
-# revision: ee80559df2fe532308c65be124c38832cdf35fab
-# prefix: tasks/arm/robotic_arm_full_assembly_panda/payload
+# revision: 33bb1eb0a87b0aaf3f29875898d03dc35078c6ae
+# prefix: tasks/arm/robotic_arm_full_assembly_so101_panda/payload
 b546bbdc4972079c26fa7f3b67ef7da6160e6989f638fc4bce802103fd64e35c  given/manual/photo_01.jpg
 694d66e7b9d521a02dbe5d40f0fffc8d4bfee9dacd07204c42750da36ef62217  given/manual/photo_02.jpg
 43734b534623efc9df25bd94340ddb8907b617e87fd841fac7b36cef35132ca5  given/manual/photo_03.jpg
