@@ -502,6 +502,9 @@ class ColourJitterSpec(_Spec):
     hue_deg: float = 0.0      # rotation of the chroma plane (YIQ) in [-h, h]
     gamma: float = 0.0        # x ** [1 - g, 1 + g]
     tint: float = 0.0         # per-channel gains in [1 - t, 1 + t]
+    # a fixed seed: the same draw for every request and view (one camera unit's colour response, constant over a run of
+    # live frames); None = drawn per view from the request seed (independent photos)
+    seed: Optional[int] = None
 
 
 @dataclass

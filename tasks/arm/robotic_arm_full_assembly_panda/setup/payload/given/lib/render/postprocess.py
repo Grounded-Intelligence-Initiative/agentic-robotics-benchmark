@@ -18,7 +18,8 @@ here, in numpy, deterministically from (request seed, view index):
            reflect padding
         7. sensor noise N(0, shot * I + read^2) per channel and pixel (linear light), clip to [0, 1]
         8. linear -> sRGB
-        9. colour jitter (brightness, contrast, saturation, hue, gamma, tint), per view from the seed
+        9. colour jitter (brightness, contrast, saturation, hue, gamma, tint), per view from the seed (or one fixed draw:
+           ColourJitterSpec.seed)
        10. quantise (round half to even) to uint8
        11. encode PNG (zlib level PhotoSpec.png_compress_level, default 6, no metadata) or JPEG (quality / subsampling,
            baseline, no EXIF) and DECODE again:
@@ -258,7 +259,10 @@ _YIQ_INV = np.linalg.inv(_YIQ)
 
 
 def jitter_values(photo: PhotoSpec, seed: int, view_index: int):
-    r = rng(seed, "view", view_index, "jitter")
+    if photo.colour_jitter.seed is not None:           # a camera unit's fixed colour response (ColourJitterSpec.seed)
+        r = rng(int(photo.colour_jitter.seed), "unit", "jitter")
+    else:
+        r = rng(seed, "view", view_index, "jitter")
     u = r.uniform(-1.0, 1.0, size=8)
     cj = photo.colour_jitter
     return {"brightness": 1 + cj.brightness * u[0], "contrast": 1 + cj.contrast * u[1], "saturation": 1 + cj.saturation * u[2],

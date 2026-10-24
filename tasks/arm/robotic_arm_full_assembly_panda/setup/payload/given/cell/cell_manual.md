@@ -53,7 +53,8 @@ the descriptions above; the units are swapped and re-mounted between runs. The d
 colour pixels (depth along the optical axis, 1 mm steps, range 0.1-4 m, no reading on depth edges and on about 3 % of
 the pixels); its noise is about 0.5 mm + 4 mm per m^2 x z^2 for the top camera and about 0.2 mm + 3 mm per m^2 x z^2
 for the wrist camera, plus unit-specific systematic errors of up to about a millimetre that do not average away. The
-hall's brightness varies by up to about 20 % between runs. The images come from a physically based renderer of the hall
+hall's brightness varies by up to about 20 % between runs, and each camera unit has its own slight colour response
+(gain and tint within a few per cent), constant during a run; the image noise is new in every frame. The images come from a physically based renderer of the hall
 (soft shadows, reflections on metal and plastic); the given render layer (`~/given/lib/render`,
 `arm.assembly_info.cell_render`) draws the cell with MuJoCo's classic renderer instead (same geometry and camera model,
 plainer shading, no hall).

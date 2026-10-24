@@ -238,6 +238,15 @@ class FullArmInfoServer(InfoCellServer):
             self.log("[cell] %s render session opened in %.1f s" % (self.renderer, time.time() - t))
         return self.session
 
+    def photo_spec(self, name):
+        """The information tier's photo pipeline with the colour jitter drawn once per camera unit and episode: a live
+        camera's gain / tint does not change from frame to frame (drawn per frame, the agent's frames flickered by about
+        4 % in brightness); the sensor noise stays per frame."""
+        import dataclasses
+        from render.spec import derive_seed
+        p = super().photo_spec(name)
+        return dataclasses.replace(p, colour_jitter=dataclasses.replace(p.colour_jitter, seed=derive_seed(self.ep_seed, "colour_unit", name)))
+
     def get_camera(self, name="top", depth=True):
         if str(name) not in self.camera_names:
             return {"error": "unknown camera (cameras: %s)" % ", ".join(self.camera_names)}
