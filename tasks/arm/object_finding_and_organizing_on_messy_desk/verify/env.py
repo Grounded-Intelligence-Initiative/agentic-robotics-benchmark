@@ -8,7 +8,7 @@ Run as a script it serves one JSON object per line on stdin/stdout:
 
     {"cmd": "info"}                          -> {"ok": true, "info": {...}}      task card data
     {"cmd": "reset", "seed": <int>}          -> {"ok": true, "obs": {...}, "state": {...}}
-    {"cmd": "step", "action": [8 floats]}    -> {"ok": true, "obs": {...}, "state": {...}}
+    {"cmd": "step", "action": [8 floats, optional 9th: hi-res bitmask]}    -> {"ok": true, "obs": {...}, "state": {...}}
     {"cmd": "close"}                         -> {"ok": true}, then exit
 
 `obs` is exactly what the tested agent receives over the ALE wire. `state` is privileged:
@@ -33,6 +33,14 @@ PHYSICS_HZ = 60
 CONTROL_HZ = 10
 SUBSTEPS = PHYSICS_HZ // CONTROL_HZ
 IMAGE_SIZE = 320
+# Optional high-resolution frames: an agent that asks for them (ninth action element, a bitmask
+# of HIRES_CAMERAS) gets 1920x1080 RGB-D of those cameras in the same observation, at the cost
+# of the PNG encoding and transfer (about 0.1 s wall clock per camera): the agent chooses
+# between picture quality and wall-clock time step by step. The hi-res render products render
+# every frame (switching a product off and on again stops it for good in this Isaac build); the
+# three idle 1920x1080 products cost about 9 ms per step.
+HIRES_SIZE = (1920, 1080)
+HIRES_CAMERAS = {"agentview": 1, "left_view": 2, "eye_in_hand": 4, "oblique": 8}
 
 CLASSES = {
     "A": ["003_cracker_box", "004_sugar_box", "008_pudding_box", "009_gelatin_box",
@@ -71,22 +79,30 @@ DISPLAY_NAME = {m: " ".join(m.split("_")[1:]) for m in CLASS_OF}
 CONTAINER_OF_CLASS = {"A": "gray", "B": "lightblue", "C": "blue"}
 CONTAINER_COLORS = {"gray": (0.45, 0.45, 0.45), "lightblue": (0.62, 0.82, 1.0),
               "blue": (0.08, 0.20, 0.85), "red": (0.85, 0.08, 0.08)}
-# containers in a loose row in front of the robot, long side roughly along x. The stock small_KLT
-# asset is 0.297 x 0.198 x 0.146 with its origin at mid-height; it is stretched by CONTAINER_SCALE
-# (long side, short side, height) and set down so that it stands on the desk. Every episode
-# jitters each container's pose (CONTAINER_JITTER: x, y in metres, yaw in radians) around its nominal centre.
+# containers: the red delivery container right in front of the robot base, the three class
+# containers behind it, long sides roughly along x. The stock small_KLT asset is 0.297 x 0.198 x
+# 0.146 with its origin at mid-height; it is stretched per container (CONTAINER_SCALES: long side,
+# short side, height) and set down so that it stands on the desk. Every episode jitters each
+# container's pose (CONTAINER_JITTER: x, y in metres, yaw in radians) around its nominal centre.
 KLT_HALF = (0.1483, 0.0989, 0.0732)                    # stock half extents (long, short, height)
-CONTAINER_SCALE = (1.10, 1.25, 1.30)
-CONTAINER_X, CONTAINER_YS = 0.44, {"gray": -0.45, "lightblue": -0.15, "blue": 0.15, "red": 0.45}
-CONTAINER_JITTER = (0.04, 0.008, math.radians(5.0))
-CONTAINER_OUTER = tuple(2.0 * h * k for h, k in zip(KLT_HALF, CONTAINER_SCALE))     # 0.326 x 0.247 x 0.190
-CONTAINER_INNER_HALF = (0.127 * CONTAINER_SCALE[0], 0.0875 * CONTAINER_SCALE[1])          # interior half extents (x, y)
+CONTAINER_SCALE = (1.10, 1.375, 0.82)     # class containers: short side widened to 24 cm inside (the open hand is 20.5 cm), walls 12 cm
+RED_SCALE = (0.80, 1.375, 0.82)           # the delivery container, in front of the base: shorter along x so the class containers stay in reach
+CONTAINER_SCALES = {"gray": CONTAINER_SCALE, "lightblue": CONTAINER_SCALE, "blue": CONTAINER_SCALE, "red": RED_SCALE}
+# nominal centres: red in front of the base, the three class containers behind it; the middle one
+# sits back behind red, the outer two forward so that all of their floor stays within the arm's reach
+CONTAINER_NOMINAL = {"gray": (0.44, -0.31), "lightblue": (0.575, 0.0), "blue": (0.44, 0.31), "red": (0.25, 0.0)}
+CONTAINER_JITTER = (0.02, 0.008, math.radians(5.0))   # x jitter +-2 cm: the middle container's far wall sits near the arm's reach
+CONTAINER_OUTERS = {n: tuple(2.0 * h * k for h, k in zip(KLT_HALF, sc)) for n, sc in CONTAINER_SCALES.items()}   # 0.326 x 0.272 x 0.120; red 0.238 x 0.272 x 0.120
+CONTAINER_INNER_HALVES = {n: (0.127 * sc[0], 0.0875 * sc[1]) for n, sc in CONTAINER_SCALES.items()}           # interior half extents (x, y)
+CONTAINER_OUTER = CONTAINER_OUTERS["gray"]                                               # the class containers' (the height is shared by all)
 CONTAINER_Z0 = KLT_HALF[2] * CONTAINER_SCALE[2] + 0.0005                             # origin height: bottom on the desk
 CONTAINER_FLOOR_Z = 0.0005 + 0.0023 * CONTAINER_SCALE[2]                             # inner floor top (ribs along the long walls reach 0.012 * scale)
 CONTAINER_RIM_Z = CONTAINER_OUTER[2] + 0.0005
 DESK_X, DESK_Y = (0.15, 0.78), (-0.62, 0.62)
 ROOM_OFFSET_X = 0.10       # the stock room (table included) is moved this far along +x, see __init__
-REACH, BASE_CLEAR = 0.80, 0.26   # closer than 0.26 m to the base, at |y| ~ 0.15, the arm cannot reach down (measured)
+REACH, BASE_CLEAR = 0.80, 0.36   # arrivals and nudges land no nearer than 0.36 m to the base: nearer, a straight-down hand stops above the desk (measured)
+BASE_RESCUE = 0.26         # nearer than this nothing reaches or sees an object: the world sets it back on the desk
+BASE_ZONE_REST_STEPS = 20    # steps at rest beside the base before the world sets an object back on the desk
 HORIZON_DEFAULT = 20000
 
 # world state machine parameters (per control step)
@@ -204,6 +220,9 @@ class MessyDeskEnv:
         for c in self.cams.values():
             c.initialize()
             c.add_distance_to_image_plane_to_frame()
+        for c in self.hcams.values():
+            c.initialize()
+            c.add_distance_to_image_plane_to_frame()
         if self.freecam is not None:
             self.freecam.initialize()
         self._probe_views("after cameras")
@@ -225,16 +244,17 @@ class MessyDeskEnv:
     def _build_containers(self):
         Gf, UsdGeom, Usd, UsdPhysics = self.Gf, self.UsdGeom, self.Usd, self.UsdPhysics
         self.containers, self.container_rp = {}, {}
-        for name, y in CONTAINER_YS.items():
+        for name, (x0, y0) in CONTAINER_NOMINAL.items():
             path = "/World/Containers/" + name
             self.add_reference_to_stage(ASSET_ROOT + "/Isaac/Props/KLT_Bin/small_KLT.usd", path)
             prim = self.get_prim_at_path(path)
             xf = UsdGeom.Xformable(prim)
             xf.ClearXformOpOrder()
-            xf.AddTranslateOp().Set(Gf.Vec3d(CONTAINER_X, y, CONTAINER_Z0))
+            xf.AddTranslateOp().Set(Gf.Vec3d(x0, y0, CONTAINER_Z0))
             xf.AddRotateZOp().Set(90.0)   # long side along x
             # scale is applied in the asset's own frame (short side x, long side y)
-            xf.AddScaleOp().Set(Gf.Vec3f(float(CONTAINER_SCALE[1]), float(CONTAINER_SCALE[0]), float(CONTAINER_SCALE[2])))
+            sc = CONTAINER_SCALES[name]
+            xf.AddScaleOp().Set(Gf.Vec3f(float(sc[1]), float(sc[0]), float(sc[2])))
             rb = UsdPhysics.RigidBodyAPI.Apply(prim)
             rb.CreateKinematicEnabledAttr(True)
             self.container_rp[name] = self.SingleRigidPrim(prim_path=path, name="container_" + name)
@@ -253,13 +273,13 @@ class MessyDeskEnv:
                 if m.IsA(UsdGeom.Mesh):
                     binding = UsdShade.MaterialBindingAPI.Apply(m)
                     binding.Bind(mat, UsdShade.Tokens.strongerThanDescendants)
-            self.containers[name] = (CONTAINER_X, y, 0.0)
+            self.containers[name] = (x0, y0, 0.0)
 
     def _place_containers(self):
-        """Per-episode container poses: nominal row + seeded jitter (position and yaw)."""
+        """Per-episode container poses: nominal layout + seeded jitter (position and yaw)."""
         np, rng = self.np, self.rng
-        for name, y0 in CONTAINER_YS.items():
-            x = CONTAINER_X + rng.uniform(-CONTAINER_JITTER[0], CONTAINER_JITTER[0])
+        for name, (x0, y0) in CONTAINER_NOMINAL.items():
+            x = x0 + rng.uniform(-CONTAINER_JITTER[0], CONTAINER_JITTER[0])
             y = y0 + rng.uniform(-CONTAINER_JITTER[1], CONTAINER_JITTER[1])
             yaw = rng.uniform(-CONTAINER_JITTER[2], CONTAINER_JITTER[2])
             a = math.pi / 2 + yaw               # the asset's long side is its local y
@@ -361,11 +381,13 @@ class MessyDeskEnv:
             self._contacts = None
 
     def _build_cameras(self):
-        """Three RGB-D cameras. Poses use Isaac's "world" camera axes (+X forward, +Z up)."""
+        """Four RGB-D cameras: three fixed (front, left, oblique front-left) and one in the hand.
+        Poses use Isaac's "world" camera axes (+X forward, +Z up)."""
         np, Camera = self.np, self.Camera
         self.cams = {}
         fixed = {"agentview": ([1.35, 0.0, 0.95], [0.42, 0.0, 0.05]),
-                 "left_view": ([0.45, -1.15, 0.75], [0.45, 0.0, 0.05])}
+                 "left_view": ([0.45, -1.15, 0.75], [0.45, 0.0, 0.05]),
+                 "oblique": ([1.25, -0.95, 0.85], [0.42, 0.0, 0.08])}
         for name, (pos, target) in fixed.items():
             cam = Camera(prim_path="/World/Cameras/" + name, frequency=CONTROL_HZ, resolution=(IMAGE_SIZE, IMAGE_SIZE))
             cam.set_world_pose(position=np.array(pos), orientation=np.array(_look_at_wxyz(pos, target)), camera_axes="world")
@@ -374,9 +396,21 @@ class MessyDeskEnv:
         # forward (+X in world camera axes) along the hand's +Z, i.e. out between the fingers
         eih.set_local_pose(translation=np.array([0.05, 0.0, 0.03]), orientation=np.array([0.7071068, 0.0, -0.7071068, 0.0]), camera_axes="world")
         self.cams["eye_in_hand"] = eih
-        for c in self.cams.values():
+        # the same four views again at HIRES_SIZE (encoded and sent only when an action asks for them)
+        self.hcams = {}
+        for name, (pos, target) in fixed.items():
+            # acquisition at the render rate: a camera at the control rate only takes a frame once the
+            # simulated clock has advanced 0.1 s, and the extra render after switching on does not advance it
+            cam = Camera(prim_path="/World/Cameras/" + name + "_hires", frequency=PHYSICS_HZ, resolution=HIRES_SIZE)
+            cam.set_world_pose(position=np.array(pos), orientation=np.array(_look_at_wxyz(pos, target)), camera_axes="world")
+            self.hcams[name] = cam
+        heih = Camera(prim_path="/World/Franka/panda_hand/eye_in_hand_hires", frequency=PHYSICS_HZ, resolution=HIRES_SIZE)
+        heih.set_local_pose(translation=np.array([0.05, 0.0, 0.03]), orientation=np.array([0.7071068, 0.0, -0.7071068, 0.0]), camera_axes="world")
+        self.hcams["eye_in_hand"] = heih
+        for c in list(self.cams.values()) + list(self.hcams.values()):
             c.set_clipping_range(0.05, 6.0)
             c.set_focal_length(1.6)          # wider field of view than the 2.4 cm default
+        self._hires_pending = {}
         self.freecam = None
         if FREECAM:
             w, h = (int(v) for v in FREECAM.lower().split("x"))
@@ -384,6 +418,22 @@ class MessyDeskEnv:
             self.freecam.set_clipping_range(0.05, 10.0)
             self.freecam.set_focal_length(1.8)
             self.set_freecam([1.3, -0.9, 0.9], math.atan2(0.9, -0.85), -0.5)
+
+    def _hires_capture(self, names):
+        """This step's frames of the requested hi-res cameras (they render every frame, acquired
+        at the render rate). -> {name: (rgb uint8 HxWx3, depth_mm uint16 HxW)}"""
+        np = self.np
+        out = {}
+        for name in names:
+            cam = self.hcams[name]
+            img, d = cam.get_rgba(), cam.get_depth()
+            if img is None or img.size == 0:
+                img = np.zeros((HIRES_SIZE[1], HIRES_SIZE[0], 4), np.uint8)
+            if d is None or d.size == 0:
+                d = np.zeros((HIRES_SIZE[1], HIRES_SIZE[0]), np.float32)
+            dm = np.nan_to_num(d, nan=0.0, posinf=0.0, neginf=0.0) * 1000.0
+            out[name] = (np.ascontiguousarray(img[..., :3]).astype(np.uint8), np.clip(dm, 0, 65535).astype(np.uint16))
+        return out
 
     def set_freecam(self, pos, yaw, pitch):
         """Free camera pose: position + heading (yaw about z) and pitch (positive = up)."""
@@ -406,14 +456,16 @@ class MessyDeskEnv:
     def _container_of_point(self, p):
         for name in self.containers:
             lx, ly = self._container_local(name, float(p[0]), float(p[1]))
-            if abs(lx) <= CONTAINER_INNER_HALF[0] and abs(ly) <= CONTAINER_INNER_HALF[1] and CONTAINER_FLOOR_Z - 0.02 <= p[2] <= CONTAINER_RIM_Z + 0.12:
+            ix, iy = CONTAINER_INNER_HALVES[name]
+            if abs(lx) <= ix and abs(ly) <= iy and CONTAINER_FLOOR_Z - 0.02 <= p[2] <= CONTAINER_RIM_Z + 0.12:
                 return name
         return None
 
     def _footprint_dist(self, name, x, y):
         """Distance from (x, y) to container `name`'s outer footprint (0 inside it)."""
         lx, ly = self._container_local(name, x, y)
-        return math.hypot(max(abs(lx) - CONTAINER_OUTER[0] / 2, 0.0), max(abs(ly) - CONTAINER_OUTER[1] / 2, 0.0))
+        ox, oy = CONTAINER_OUTERS[name][0] / 2, CONTAINER_OUTERS[name][1] / 2
+        return math.hypot(max(abs(lx) - ox, 0.0), max(abs(ly) - oy, 0.0))
 
     def _random_desk_spot(self, margin=0.06, gap_clear=0.12, tries=200):
         """A free desk spot within reach, `margin` clear of every container and never in or at the
@@ -445,8 +497,8 @@ class MessyDeskEnv:
         """Yaw for an object set down at (x, y): its long side along the outward normal of the
         nearest container wall, +- DESK_YAW_JITTER, either way round."""
         best = None
-        ox, oy = CONTAINER_OUTER[0] / 2, CONTAINER_OUTER[1] / 2
         for name in self.containers:
+            ox, oy = CONTAINER_OUTERS[name][0] / 2, CONTAINER_OUTERS[name][1] / 2
             lx, ly = self._container_local(name, x, y)
             dx, dy = max(abs(lx) - ox, 0.0), max(abs(ly) - oy, 0.0)
             d = math.hypot(dx, dy)
@@ -572,8 +624,10 @@ class MessyDeskEnv:
     def step(self, action):
         np = self.np
         a = np.asarray(action, dtype=float).reshape(-1)
-        if a.shape[0] != ACTION_DIM or not np.all(np.isfinite(a)):
-            raise ValueError("action must be %d finite numbers" % ACTION_DIM)
+        if a.shape[0] not in (ACTION_DIM, ACTION_DIM + 1) or not np.all(np.isfinite(a)):
+            raise ValueError("action must be %d finite numbers, plus an optional hi-res bitmask" % ACTION_DIM)
+        hires_mask = int(round(a[ACTION_DIM])) if a.shape[0] > ACTION_DIM else 0
+        hires = [n for n, bit in HIRES_CAMERAS.items() if hires_mask & bit]
         dpos = np.clip(a[:3], -POS_STEP_MAX, POS_STEP_MAX)
         drot = np.clip(a[3:6], -ROT_STEP_MAX, ROT_STEP_MAX)
         grip = float(np.clip(a[6], 0.0, 1.0))
@@ -592,7 +646,7 @@ class MessyDeskEnv:
         self.t += 1
         self._update_states()
         self._world_events(mark)
-        return self.observe(), self.privileged()
+        return self.observe(hires=self._hires_capture(hires)), self.privileged()
 
     def _ee_pose(self):
         """Tool-centre-point pose in the base frame, from the kinematics solver's own
@@ -670,6 +724,21 @@ class MessyDeskEnv:
                 o["state"] = "held"
             else:
                 o["state"] = "transit"
+            if o["on_table"] and (math.hypot(p[0], p[1]) < BASE_RESCUE or p[0] < DESK_X[0] - 0.02):
+                # knocked to where no camera sees it and no hand reaches (beside the robot's base
+                # or past the front edge of the reachable area): after a moment at rest the world
+                # sets it back down on a free spot, like a nudge; its baseline is re-read once it rests
+                o["base_zone_steps"] = o.get("base_zone_steps", 0) + 1
+                if o["base_zone_steps"] >= BASE_ZONE_REST_STEPS:
+                    spot = self._random_desk_spot()
+                    if spot is not None:
+                        self._spawn(o, (spot[0], spot[1], 0.0), on_desk=True)
+                        o["rebase_t"] = self.t
+                        o["base_zone_steps"] = 0
+                        self.events.append({"t": self.t, "event": "disturb_nudged", "object": o["id"], "reason": "beside the base"})
+                        continue
+            else:
+                o["base_zone_steps"] = 0
             if o.get("rebase_t") is not None and (placed or self.t - o["rebase_t"] >= REBASE_TIMEOUT):
                 self.baseline[o["id"]] = self._value(o, require_rest=False)
                 o["rebase_t"] = None
@@ -743,7 +812,11 @@ class MessyDeskEnv:
             loose = sum(1 for o in self.objects if o["present"] and o["in_container"] is None)
             present = sum(1 for o in self.objects if o["present"])
             if loose < LOOSE_CAP and present < PRESENT_CAP:
-                models = [m for m in CLASS_OF if self._present_count(m) < MAX_INSTANCES_PER_MODEL]
+                # never the model of the open request: a second instance would make "the X"
+                # ambiguous, and an arrival of a model requested as absent would turn that
+                # request wrong on its own
+                req = self.request["model"] if (self.request and self.request["status"] == "open") else None
+                models = [m for m in CLASS_OF if self._present_count(m) < MAX_INSTANCES_PER_MODEL and m != req]
                 m = rng.choice(models)
                 o, spot = self._free_instance(m), self._random_desk_spot()
                 if o is not None and spot is not None:
@@ -892,7 +965,7 @@ class MessyDeskEnv:
                 "dof_names": list(self.franka.dof_names)}
 
     # -- outputs -------------------------------------------------------------------------------
-    def observe(self):
+    def observe(self, hires=None):
         np = self.np
         rgb, depth = {}, {}
         for name, c in self.cams.items():
@@ -907,18 +980,24 @@ class MessyDeskEnv:
             depth[name] = np.clip(dm, 0, 65535).astype(np.uint16)
         # the six PNG encodes run in parallel (PIL releases the GIL while compressing)
         jobs = [(name, "rgb", rgb[name], "RGB") for name in rgb] + [(name, "depth", depth[name], "I;16") for name in depth]
+        hrgb, hdepth = {}, {}
+        for name, (img, dm) in (hires or {}).items():
+            jobs += [(name, "hrgb", img, "RGB"), (name, "hdepth", dm, "I;16")]
         for (name, kind, _, _), b64 in zip(jobs, _ENCODER.map(lambda j: _png_b64(j[2], j[3]), jobs)):
-            (rgb if kind == "rgb" else depth)[name] = b64
+            {"rgb": rgb, "depth": depth, "hrgb": hrgb, "hdepth": hdepth}[kind][name] = b64
         jp = self.franka.get_joint_positions()
         jv = self.franka.get_joint_velocities()
         pos, quat = self._ee_pose()
         req = None
         if self.request and self.request["status"] == "open":
             req = {"text": self.request["text"], "deadline_t": self.request["deadline_t"]}
-        return {"t": self.t, "request": req, "rgb": rgb, "depth": depth,
-                "joint_pos": [float(x) for x in jp[:7]], "joint_vel": [float(x) for x in jv[:7]],
-                "gripper_width": float(jp[7] + jp[8]),
-                "ee_pose": [float(x) for x in pos] + [float(x) for x in quat]}
+        obs = {"t": self.t, "request": req, "rgb": rgb, "depth": depth,
+               "joint_pos": [float(x) for x in jp[:7]], "joint_vel": [float(x) for x in jv[:7]],
+               "gripper_width": float(jp[7] + jp[8]),
+               "ee_pose": [float(x) for x in pos] + [float(x) for x in quat]}
+        if hrgb:
+            obs["rgb_hires"], obs["depth_hires"] = hrgb, hdepth
+        return obs
 
     def privileged(self):
         objs = []
@@ -944,11 +1023,15 @@ class MessyDeskEnv:
             cams[name] = {"intrinsics": c.get_intrinsics_matrix().tolist(), "resolution": [IMAGE_SIZE, IMAGE_SIZE],
                           "world_pose_xyz_wxyz": [float(x) for x in p] + [float(x) for x in q],
                           "attached_to": "/World/Franka/panda_hand" if name == "eye_in_hand" else "world"}
+        hcams = {name: {"intrinsics": c.get_intrinsics_matrix().tolist(), "resolution": list(HIRES_SIZE), "action_bit": HIRES_CAMERAS[name]}
+                 for name, c in self.hcams.items()}
         return {"control_hz": CONTROL_HZ, "image_size": IMAGE_SIZE, "action_dim": ACTION_DIM,
+                "hires": {"resolution": list(HIRES_SIZE), "action_index": ACTION_DIM, "cameras": hcams},
                 "pos_step_max": POS_STEP_MAX, "rot_step_max": ROT_STEP_MAX, "horizon": self.horizon,
-                "containers": {n: {"center_xy": [c[0], c[1]], "yaw": c[2], "nominal_center_xy": [CONTAINER_X, CONTAINER_YS[n]],
-                             "inner_half_xy": list(CONTAINER_INNER_HALF), "floor_z": CONTAINER_FLOOR_Z,
-                             "rim_z": CONTAINER_RIM_Z, "outer_xyz": list(CONTAINER_OUTER), "class": next((k for k, v in CONTAINER_OF_CLASS.items() if v == n), "requested")}
+                "containers": {n: {"center_xy": [c[0], c[1]], "yaw": c[2], "nominal_center_xy": list(CONTAINER_NOMINAL[n]),
+                             "inner_half_xy": list(CONTAINER_INNER_HALVES[n]), "floor_z": CONTAINER_FLOOR_Z,
+                             "rim_z": CONTAINER_RIM_Z, "outer_xyz": list(CONTAINER_OUTERS[n]), "scale_xyz": list(CONTAINER_SCALES[n]),
+                             "class": next((k for k, v in CONTAINER_OF_CLASS.items() if v == n), "requested")}
                          for n, c in self.containers.items()},
                 "container_jitter_xy_yaw": list(CONTAINER_JITTER), "container_scale_xyz": list(CONTAINER_SCALE),
                 "desk": {"x": list(DESK_X), "y": list(DESK_Y), "surface_z": 0.0, "robot_base_xyz": [0, 0, 0]},

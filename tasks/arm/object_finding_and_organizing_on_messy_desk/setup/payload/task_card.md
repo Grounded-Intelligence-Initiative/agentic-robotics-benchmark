@@ -6,27 +6,32 @@ Fixed for the task; identical on every seed. Units: metres, radians, seconds.
 - Robot base frame = world frame. The Franka Panda base sits at the origin on the desk
   surface; the desk surface is the plane z = 0 (x in [-1.59, 1.59], y in [-0.81, 0.81]).
 - Objects arrive on the reachable desk area x in [0.15, 0.78], y in [-0.62, 0.62], outside
-  the containers and at least 0.26 m from the base (closer in, the arm cannot reach down to the desk).
-- Four KLT containers (outer footprint 0.326 x 0.247, walls 0.19 tall, long side roughly along x)
-  standing on the desk in a loose row. Nominal centres are at x = 0.44; every episode jitters
-  each container by up to +/-0.04 in x, +/-0.008 in y and +/-5 degrees of yaw (seeded), so localise
-  them from the cameras (the `info` command of the practice simulator reports the current poses):
+  the containers and at least 0.36 m from the base (nearer in, a straight-down hand stops short of the desk).
+  While a request is open, no instance of the object it names arrives.
+- Four KLT containers standing on the desk, walls 0.12 tall, long side roughly along x. The red
+  delivery container sits right in front of the robot base; the three class containers stand
+  behind it, the middle one set back behind red and the outer two further forward. Every episode
+  jitters each container by up to +/-0.02 in x, +/-0.008 in y and +/-5 degrees of yaw (seeded), so
+  localise them from the cameras (the `info` command of the practice simulator reports the
+  current poses):
 
-| container | colour | nominal centre y | class |
-|---|---|---|---|
-| gray | gray | -0.45 | A |
-| lightblue | light blue | -0.15 | B |
-| blue | blue | 0.15 | C |
-| red | red | 0.45 | requested objects |
+| container | colour | nominal centre (x, y) | outer footprint (x, y) | interior half extents (x, y) | class |
+|---|---|---|---|---|---|
+| gray | gray | (0.44, -0.31) | 0.326 x 0.272 | (0.140, 0.120) | A |
+| lightblue | light blue | (0.575, 0.0) | 0.326 x 0.272 | (0.140, 0.120) | B |
+| blue | blue | (0.44, 0.31) | 0.326 x 0.272 | (0.140, 0.120) | C |
+| red | red | (0.25, 0.0) | 0.237 x 0.272 | (0.102, 0.120) | requested objects |
 
-  Interior half extents (x, y) = (0.140, 0.109) in the container's own frame; inner floor at
-  z = 0.0035 (a 1.5 cm rib runs along the base of each long wall); rim at z = 0.19.
+  Interior half extents are in the container's own frame; inner floor at z = 0.0024 (a 1 cm rib
+  runs along the base of each long wall); rim at z = 0.12.
   The open Franka hand is 0.205 m wide across the fingers and 0.063 m thick; the underside of the
   hand body is about 0.06 m above the fingertips (0.034 m above the tool centre point; the
-  fingertips are 0.027 m below it). Below about 0.15 m inside a container the hand body is within
-  the walls, so it fits only with its finger axis along the container's long side and its centre
-  within about 3 cm of the container's centre line; the open fingers are 8 cm apart, so the
-  object itself may sit a little further out.
+  fingertips are 0.027 m below it). With the tool centre point below about 0.10 m inside a
+  container the hand body is within the walls: with its finger axis along the container's long
+  side it fits with its centre within about 3.4 cm of the container's centre line, and turned
+  across the long side with about 1.3 cm of slack per side; a hand leaning away from the near
+  wall, or a grasp high enough for the body to pass over the rim, reaches the rest of the floor.
+  The open fingers are 8 cm apart, so the object itself may sit a little further out.
   "Inside a container" for scoring: the object's centre within the interior footprint (in the
   container's own frame) and its height between the floor − 0.02 and the rim + 0.12. "Placed"
   additionally needs the object at rest (speed < 0.08 m/s) and no finger touching it (the
@@ -53,19 +58,29 @@ Requests name a model as "the <model name>" (for example `the tomato soup can`).
 two instances of a model are on the desk at once; a request only ever names a model with
 exactly one instance present, or one with none (an absent request).
 
-## Cameras (320 x 320, RGB 8-bit PNG and depth 16-bit PNG in millimetres)
+## Cameras (four, 320 x 320, RGB 8-bit PNG and depth 16-bit PNG in millimetres)
 - agentview: world pose xyz (1.35, 0.0, 0.95), looking down at the containers from the far side of the desk.
 - left_view: world pose xyz (0.45, -1.15, 0.75), looking across the desk from the left.
+- oblique: world pose xyz (1.25, -0.95, 0.85), looking at the containers from the front-left corner of the desk.
 - eye_in_hand: attached to /World/Franka/panda_hand, offset (0.05, 0, 0.03) in the hand frame.
-- Intrinsics (all three): focal 244.33 px, principal point (160, 160). Static poses as xyz + quaternion
+- Intrinsics (all four): focal 244.33 px, principal point (160, 160). Static poses as xyz + quaternion
   (w, x, y, z) in Isaac's world camera axes (+X forward, +Y left, +Z up): agentview
-  (1.35, 0.0, 0.95 | 0.0, -0.3751, 0.0, 0.9270), left_view (0.45, -1.15, 0.75 | 0.6808, -0.1909, 0.1909, 0.6808).
+  (1.35, 0.0, 0.95 | 0.0, -0.3751, 0.0, 0.9270), left_view (0.45, -1.15, 0.75 | 0.6808, -0.1909, 0.1909, 0.6808),
+  oblique (1.25, -0.95, 0.85 | 0.3981, -0.2464, 0.1119, 0.8765).
   Depth PNGs hold z-depth along the optical axis in millimetres. `{"cmd": "info"}` on the simulator
   (see below) returns the same matrices and poses.
+- Hi-res on demand: a ninth action element (bitmask 1 = agentview, 2 = left_view, 4 = eye_in_hand,
+  8 = oblique; 15 = all) adds `rgb_hires` / `depth_hires` to that step's observation: the same
+  cameras at 1920 x 1080 (same poses and focal length, horizontal field of view unchanged, the
+  vertical one cropped to 16:9; focal 1466 px, principal point (960, 540); `info` -> `hires` lists
+  the matrices). The hi-res frames are rendered every step anyway and only encoded and sent when
+  asked for, so the plain 10 Hz step is unaffected; a request costs about 0.1 s of extra
+  wall-clock time per camera asked for (PNG encoding and transfer: about 3 MB per camera).
 
 ## Control
 - 10 Hz control, 60 Hz physics (6 substeps per action).
-- action = [dx, dy, dz, droll, dpitch, dyaw, grip, mark]; position deltas clipped to
+- action = [dx, dy, dz, droll, dpitch, dyaw, grip, mark] (+ an optional ninth element, the hi-res
+  camera bitmask, see Cameras); position deltas clipped to
   +/-0.05 m, rotation deltas to +/-0.25 rad (world-axis roll/pitch/yaw), applied to the
   tool centre point's current pose and tracked through inverse kinematics within the step
   (the joint set points are interpolated over the step's six physics substeps, so a 5 cm delta

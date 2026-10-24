@@ -33,11 +33,16 @@ from PIL import Image
 # ----------------------------------------------------------------------------------------
 # Task geometry (task_card.md)
 # ----------------------------------------------------------------------------------------
-CONTAINER_X = 0.44
-CONTAINER_YS = {"gray": -0.45, "lightblue": -0.15, "blue": 0.15, "red": 0.45}
-CONTAINER_OUTER = (0.326, 0.247, 0.190)          # outer footprint x (long), y (short), wall height
-CONTAINER_INNER_HALF = (0.140, 0.109)
-CONTAINER_FLOOR_Z, CONTAINER_RIM_Z = 0.0035, 0.191
+# nominal centres (task card): red in front of the base, the class containers behind it, the middle
+# one set back behind red and the outer two forward (all of their floor within the arm's reach)
+CONTAINER_NOMINAL = {"gray": (0.44, -0.31), "lightblue": (0.575, 0.0), "blue": (0.44, 0.31), "red": (0.25, 0.0)}
+CONTAINER_OUTER = (0.326, 0.272, 0.120)          # class containers: outer footprint x (long), y (short), wall height
+RED_OUTER = (0.237, 0.272, 0.120)                # the delivery container is shorter along x
+CONTAINER_OUTERS = {n: (RED_OUTER if n == "red" else CONTAINER_OUTER) for n in CONTAINER_NOMINAL}
+CONTAINER_INNER_HALF = (0.140, 0.120)
+CONTAINER_INNER_HALVES = {n: ((0.102, 0.120) if n == "red" else CONTAINER_INNER_HALF) for n in CONTAINER_NOMINAL}
+CONTAINER_FLOOR_Z, CONTAINER_RIM_Z = 0.0024, 0.1206
+NEAR_STRIP_X = 0.27            # in front of this x the hand camera's views add to the static ones (the strip at the base)
 CONTAINER_OF_CLASS = {"A": "gray", "B": "lightblue", "C": "blue"}
 CLASS_OF_CONTAINER = {v: k for k, v in CONTAINER_OF_CLASS.items()}
 CLASSES = {
@@ -50,13 +55,35 @@ CLASS_OF = {m: c for c, ms in CLASSES.items() for m in ms}
 TWIN = {"large clamp": "extra large clamp", "extra large clamp": "large clamp", "pudding box": "gelatin box", "gelatin box": "pudding box"}
 
 
+CLAMPS = ("large clamp", "extra large clamp")
+CLAMP_SPLIT = 0.14      # longest extent (m) seen by the hand camera: the large clamp reads about 0.125, the extra large 0.155-0.19
+
+
 def is_model(info, model, slack=0.25):
-    """The classification `info` names `model`, or its look-alike twin with `model` close behind."""
+    """The classification `info` names `model`, or its look-alike twin with `model` close behind
+    (not for the clamps: those are told apart by size in clamp_by_size)."""
     if info["model"] == model:
         return True
+    if info["model"] in CLAMPS:
+        return False
     return TWIN.get(info["model"]) == model and info.get("all", {}).get(model, 9.0) - info["d"] < slack
+
+
+def clamp_by_size(info, dims):
+    """The two clamps are one shape at two sizes and their per-model distances barely differ, so
+    when the nearest model is a clamp the hand camera's longest extent names it, and the model
+    margin is taken against the nearest non-clamp model. (An extra large clamp delivered for a
+    requested large one was a wrong claim.)"""
+    if not info or info.get("model") not in CLAMPS:
+        return info
+    info = dict(info)
+    info["model"] = "extra large clamp" if max(dims) > CLAMP_SPLIT else "large clamp"
+    others = [d for m, d in info.get("all", {}).items() if m not in CLAMPS]
+    if others:
+        info["model_margin"] = min(others) - info["d"]
+    return info
 DESK_X, DESK_Y = (0.15, 0.78), (-0.62, 0.62)
-REACH, BASE_CLEAR = 0.80, 0.26
+REACH, BASE_CLEAR = 0.80, 0.36
 IMG = 320                                   # task cameras are IMG x IMG; focal scales with the width
 F_PX, C_PX = 171.03317 * IMG / 224.0, IMG / 2.0
 CAMS = {
@@ -64,6 +91,8 @@ CAMS = {
                   "pose": [1.35, 0.0, 0.95, 0.0, -0.375099, 0.0, 0.926985]},
     "left_view": {"f": F_PX, "c": C_PX,
                   "pose": [0.45, -1.15, 0.75, 0.6808448119669411, -0.19091972663321244, 0.19091972663321244, 0.6808448119669411]},
+    "oblique": {"f": F_PX, "c": C_PX,          # front-left corner of the desk, looking at the containers
+                "pose": [1.25, -0.95, 0.85, 0.3981, -0.2464, 0.1119, 0.8765]},
 }
 
 
@@ -80,19 +109,29 @@ WIDTH_MARGIN = 0.014        # the hand-camera cloud loses ~7 mm per side at an o
 
 # controller tunables
 OBSERVE_POS = (0.30, 0.0, 0.55)
-TRAVEL_Z = 0.32
+TRAVEL_Z = 0.38               # carry height: well above the walls and whatever stands in a pile
 VOXEL = 0.012
 Z_ROBOT = 0.30
 GRASP_BELOW_TOP = 0.03
 RIM_GRASP_BELOW_TOP = 0.022     # wide hollow objects (bowl, mug, pitcher): straddle the wall at the rim
 RIM_MIN_RADIUS, RIM_MIN_DEPTH = 0.035, 0.012
 REFINE_RADIUS, REFINE_MAX_SHIFT = 0.07, 0.04    # hand-camera re-centring just before the descent
+REFINE_NEAR = 0.05           # the re-centring looks at the top around the anchor only, not a touching neighbour's
+TOP_UNDER_RADIUS = 0.025     # the top that sets the finger height: right under the grasp point
+TOP_DROP_MIN = 0.015         # ... used when it lies this far below the planned top
 GRASP_MIN_ABOVE_FLOOR = 0.032
 DROP_ABOVE_RIM = 0.035
 HOVER_ABOVE_TOP = 0.16
 PATROL_EVERY = 1200          # idle steps between looks into the class containers (world misplacements)
 SEARCH_ALL_MARGIN = 500      # steps left before a deadline that still allow digging in an unlikely container
 FINISH_MARGIN = 350           # steps one more tidy action may take before a request's deadline
+RETRY_MAX, RETRY_JITTER, RETRY_YAW = 1, 0.012, 0.15   # grasp attempts per object (a shifted retry rescued 0 of 23 failed grasps in the lab and the episode logs, so one), shift across the fingers (m), turn (rad)
+MARK_LAST = 20                # steps before a request's deadline at which the mark goes out whatever the arm is doing
+DESCENT_SHORT = 0.015         # a final descent that stops this far from the grasp point does not close
+STUCK_ERR, STUCK_AFTER = 0.10, 4   # moves ending this far off, this many in a row: the arm is folded up, recover (a descent that stops 3-4 cm short at the edge of reach is not that)
+TIDY_R = (0.40, 0.76)         # loose objects nearer the base or farther out than this are left alone: a straight-down hand there stops short of the desk (measured: 0 of 5 grasps at r < 0.40, under half beyond 0.76), and every attempt costs a stuck-arm recovery; one episode spent its second half in that loop over a clamp pushed to r = 0.80
+UNPACK_FAILS_MAX = 2          # failed grasps at one spot of a container within one request before the dig moves on
+STALL_ROUNDS = 2              # rounds of "nothing in reach" in a container before the other containers are dug as well
 LOG = os.environ.get("MESSY_DESK_SOLVER_LOG", "")
 
 
@@ -140,7 +179,16 @@ def rot_z(a):
 # Containers (pose varies per episode: centre x, y and yaw of the long side)
 # ----------------------------------------------------------------------------------------
 def nominal_containers():
-    return {n: (CONTAINER_X, y, 0.0) for n, y in CONTAINER_YS.items()}
+    return {n: (x, y, 0.0) for n, (x, y) in CONTAINER_NOMINAL.items()}
+
+
+def outer_half(name):
+    o = CONTAINER_OUTERS.get(name, CONTAINER_OUTER)
+    return o[0] / 2, o[1] / 2
+
+
+def inner_half(name):
+    return CONTAINER_INNER_HALVES.get(name, CONTAINER_INNER_HALF)
 
 
 def container_local(b, x, y):
@@ -160,7 +208,8 @@ def container_point(b, lx, ly):
 def container_of_xy(containers, x, y, shrink=0.0):
     for name, b in containers.items():
         lx, ly = container_local(b, x, y)
-        if abs(lx) <= CONTAINER_INNER_HALF[0] - shrink and abs(ly) <= CONTAINER_INNER_HALF[1] - shrink:
+        ix, iy = inner_half(name)
+        if abs(lx) <= ix - shrink and abs(ly) <= iy - shrink:
             return name
     return None
 
@@ -181,9 +230,9 @@ def hand_fits(containers, x, y, yaw, inside=None):
     """Open hand lowered at (x, y) with `yaw`: outside every container's outer footprint, or (when
     `inside` names a container) entirely within that container's interior."""
     pts = hand_corners(x, y, yaw, 0.005)
-    ox, oy = CONTAINER_OUTER[0] / 2, CONTAINER_OUTER[1] / 2
-    ix, iy = CONTAINER_INNER_HALF
     for name, b in containers.items():
+        ox, oy = outer_half(name)
+        ix, iy = inner_half(name)
         for px, py in pts:
             lx, ly = container_local(b, px, py)
             if name == inside:
@@ -201,7 +250,7 @@ FINGER_BELOW_TCP = 0.028        # open fingertips below the tool centre point (m
 RIM_CLEAR = 0.012               # a hand point this far above a rim passes over that container
 # hand tilts tried when the straight-down hand does not fit: (lean along the finger axis, lean
 # along the thickness axis), radians; the wrist leans the opposite way, away from the near wall
-TILTS = [(0.0, 0.0)] + [(sg * a, 0.0) for a in (0.30, 0.45, 0.60) for sg in (1, -1)] \
+TILTS = [(0.0, 0.0)] + [(sg * a, 0.0) for a in (0.30, 0.45) for sg in (1, -1)] \
     + [(0.0, sg * b) for b in (0.30, 0.45) for sg in (1, -1)] \
     + [(sa * a, sb * 0.30) for a in (0.35, 0.55) for sa in (1, -1) for sb in (1, -1)]
 
@@ -218,7 +267,7 @@ def _hand_points():
         for sv in (-1.0, 1.0):
             for h in (-FINGER_BELOW_TCP, 0.0, HAND_BODY_ABOVE_TCP):
                 pts.append((su * (GRIPPER_OPEN_W / 2 + 0.008), sv * 0.011, h))
-    for su in (-1.0, 0.0, 1.0):
+    for su in (-1.0, 0.0, 1.0):          # the wrist, last three points (hand_fits3d relies on that)
         pts.append((su * 0.045, 0.0, 0.17))
     return np.array(pts)
 
@@ -255,16 +304,24 @@ def hand_fits3d(containers, p, yaw, tilt=(0.0, 0.0), inside=None):
     B = np.stack([u, v, np.array([0.0, 0.0, 1.0])], 1)
     R = tilt_rot(yaw, tilt) if is_tilted(tilt) else np.eye(3)
     W = np.asarray(p, float) + (R @ B @ HAND_PTS.T).T
-    ox, oy = CONTAINER_OUTER[0] / 2, CONTAINER_OUTER[1] / 2
-    ix, iy = CONTAINER_INNER_HALF
     below = W[:, 2] < CONTAINER_RIM_Z + RIM_CLEAR
     for name, b in containers.items():
+        ox, oy = outer_half(name)
+        ix, iy = inner_half(name)
         lx, ly = container_local(b, W[:, 0], W[:, 1])
         in_outer = (np.abs(lx) <= ox + 0.004) & (np.abs(ly) <= oy + 0.004)
         if name == inside:
             # the hand comes in from above: below the rim, all of it is inside the interior
             in_inner = (np.abs(lx) <= ix - 0.004) & (np.abs(ly) <= iy - 0.004)
             if np.any(below & ~in_inner):
+                return False
+            # and it may only lean toward the container's middle: the wrist (and the forearm
+            # above it, which the point model does not carry) stays over the interior. A hand
+            # leaning out over a wall clears the point model above the rim but lands its wrist
+            # on the rim, where it hangs 6-8 cm short of the grasp
+            wl = lx[-3:]
+            wy = ly[-3:]
+            if np.any(np.abs(wl) > ix) or np.any(np.abs(wy) > iy):
                 return False
         elif np.any(below & in_outer):
             return False
@@ -367,11 +424,11 @@ def label_components(idx):
     return labels, comp
 
 
-def fit_container(p, cx, cy, yaw0=0.0):
+def fit_container(p, cx, cy, yaw0=0.0, name=None):
     """Refine one container's pose from rim-band points near its nominal centre: coarse-to-fine grid
     search over (x, y, yaw) maximising the number of points on the outline of the known outer
     footprint. Robust to partial rings (a container seen from one side only)."""
-    ox, oy = CONTAINER_OUTER[0] / 2, CONTAINER_OUTER[1] / 2
+    ox, oy = outer_half(name)
     q = p[np.hypot(p[:, 0] - cx, p[:, 1] - cy) < 0.32]
     if len(q) < 30:
         return None
@@ -383,19 +440,25 @@ def fit_container(p, cx, cy, yaw0=0.0):
         ly = -(qx - x) * sn + (qy - y) * c
         on_long = (np.abs(np.abs(ly) - oy) < 0.02) & (np.abs(lx) < ox + 0.02)
         on_short = (np.abs(np.abs(lx) - ox) < 0.02) & (np.abs(ly) < oy + 0.02)
-        return int((on_long | on_short).sum())
+        # rim-height points well inside the outline belong to a wall the outline has swallowed
+        # (a neighbour's, 3 cm away), or to a tall object: a mild penalty breaks the tie
+        inside = (np.abs(lx) < ox - 0.035) & (np.abs(ly) < oy - 0.035)
+        return float((on_long | on_short).sum()) - 0.5 * float(inside.sum())
 
-    best = (-1, cx, cy, yaw0)
-    for yaw in yaw0 + np.radians(np.arange(-12, 12.1, 2.0)):
-        for dx in np.arange(-0.06, 0.061, 0.02):
-            for dy in np.arange(-0.03, 0.031, 0.015):
+    # the search stays within the poses the task card allows (jitter x +-0.02, y +-0.008, yaw +-5
+    # degrees, plus a little slack): a wider search snapped the outline onto the next container's
+    # wall and left that wall standing inside this container as a phantom object
+    best = (-1e9, cx, cy, yaw0)
+    for yaw in yaw0 + np.radians(np.arange(-7, 7.1, 1.0)):
+        for dx in np.arange(-0.03, 0.031, 0.01):
+            for dy in np.arange(-0.012, 0.0121, 0.004):
                 sc = score(cx + dx, cy + dy, yaw)
                 if sc > best[0]:
                     best = (sc, cx + dx, cy + dy, yaw)
     _, bx, by, byaw = best
-    for yaw in byaw + np.radians(np.arange(-2.5, 2.51, 0.5)):
-        for dx in np.arange(-0.02, 0.021, 0.005):
-            for dy in np.arange(-0.015, 0.0151, 0.005):
+    for yaw in byaw + np.radians(np.arange(-1.0, 1.01, 0.25)):
+        for dx in np.arange(-0.006, 0.0061, 0.002):
+            for dy in np.arange(-0.004, 0.0041, 0.002):
                 sc = score(bx + dx, by + dy, yaw)
                 if sc > best[0]:
                     best = (sc, bx + dx, by + dy, yaw)
@@ -407,14 +470,14 @@ def detect_containers(pts, col):
     each container is fitted around its nominal pose with the known footprint. A container with too few
     band points keeps its nominal pose."""
     x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
-    band = (z > CONTAINER_RIM_Z - 0.07) & (z < CONTAINER_RIM_Z + 0.02) & (x > DESK_X[0]) & (x < 0.80) & (np.abs(y) < 0.65)
+    band = (z > CONTAINER_RIM_Z - 0.05) & (z < CONTAINER_RIM_Z + 0.02) & (x > 0.10) & (x < 0.80) & (np.abs(y) < 0.65)
     containers = nominal_containers()
     fits = []
     if band.sum() < 40:
         return containers, fits
     p = pts[band][:, :2]
     for name, (bx, by, _) in list(containers.items()):
-        r = fit_container(p, bx, by)
+        r = fit_container(p, bx, by, name=name)
         if r is None or r[0] < 40:
             continue
         sc, fx, fy, fyaw = r
@@ -439,11 +502,12 @@ def scene_mask(pts, containers):
     # Heights are taken above the desk's own profile, so its raised rim is not an object.
     h = z - desk_top_z(x)
     keep = (x > 0.08) & (x < 0.80) & (np.abs(y) < 0.70) & (np.hypot(x, y) > 0.20) & (h > 0.012) & (z < Z_ROBOT)
-    ox, oy, oz = CONTAINER_OUTER
-    ix, iy = CONTAINER_INNER_HALF
-    for b in containers.values():
+    oz = CONTAINER_OUTER[2]
+    for name, b in containers.items():
+        ox, oy = outer_half(name)
+        ix, iy = inner_half(name)
         lx, ly = container_local(b, x, y)
-        in_outer = (np.abs(lx) <= ox / 2 + 0.014) & (np.abs(ly) <= oy / 2 + 0.014)
+        in_outer = (np.abs(lx) <= ox + 0.014) & (np.abs(ly) <= oy + 0.014)
         in_inner = (np.abs(lx) <= ix - 0.010) & (np.abs(ly) <= iy - 0.010)
         keep &= ~(in_outer & ~in_inner & (z < oz + 0.025))
         keep &= ~(in_inner & (z < CONTAINER_FLOOR_Z + 0.015))
@@ -541,7 +605,7 @@ def perceive(images, containers=None, voxel=VOXEL, min_pts=12, extra=()):
         pts, col = backproject_rt(d, rgb, None, None, R, t)
         # extra (hand-camera) views only fill the strip between the robot and the containers,
         # the one place the static cameras cannot see; elsewhere they add nothing but noise
-        keep = pts[:, 0] < CONTAINER_X - CONTAINER_OUTER[0] / 2 - 0.02
+        keep = pts[:, 0] < NEAR_STRIP_X
         P.append(pts[keep])
         C.append(col[keep])
     allp, allc = np.concatenate(P), np.concatenate(C)
@@ -567,13 +631,20 @@ def perceive(images, containers=None, voxel=VOXEL, min_pts=12, extra=()):
 def is_wall_sliver(c, containers):
     """A thin vertical plate as tall as the container walls, standing on a container's outline: a
     wall left over by a container pose that is off by a centimetre or two, not an object."""
-    if c["len_minor"] > 0.02 or c["top_z"] < CONTAINER_RIM_Z - 0.03:
+    if c["top_z"] < CONTAINER_RIM_Z - 0.03:
         return False
     x, y = c["centroid"][0], c["centroid"][1]
-    ox, oy = CONTAINER_OUTER[0] / 2, CONTAINER_OUTER[1] / 2
-    for b in containers.values():
+    for name, b in containers.items():
+        ox, oy = outer_half(name)
         lx, ly = container_local(b, x, y)
-        if abs(lx) < ox + 0.04 and abs(ly) < oy + 0.04 and (abs(abs(lx) - ox) < 0.04 or abs(abs(ly) - oy) < 0.04):
+        on_line = abs(lx) < ox + 0.04 and abs(ly) < oy + 0.04 and (abs(abs(lx) - ox) < 0.04 or abs(abs(ly) - oy) < 0.04)
+        if on_line and c["len_minor"] <= 0.02:
+            return True
+        # a somewhat wider blob whose top is the rim itself, centred within 3 cm of the wall line
+        # and still thin: a wall segment merged with its rim, not an object (with 12 cm walls many
+        # objects reach rim height, so only a thin blob counts; an object standing against the
+        # inner wall has its centre at least 5 cm from the outer wall line)
+        if c["top_z"] >= CONTAINER_RIM_Z - 0.015 and c["len_minor"] <= 0.035 and abs(lx) < ox + 0.03 and abs(ly) < oy + 0.03 and (abs(abs(lx) - ox) < 0.03 or abs(abs(ly) - oy) < 0.03):
             return True
     return False
 
@@ -584,16 +655,18 @@ def perceive_eih(rgb, depth, R_cam, t_cam, expected_xy, floor, top_hint, contain
     x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
     # height above whatever the point stands on: the container floor inside a container, else the desk profile
     inside = np.zeros(len(pts), bool)
-    for b in containers.values():
+    for name, b in containers.items():
+        ix, iy = inner_half(name)
         lx, ly = container_local(b, x, y)
-        inside |= (np.abs(lx) <= CONTAINER_INNER_HALF[0]) & (np.abs(ly) <= CONTAINER_INNER_HALF[1])
+        inside |= (np.abs(lx) <= ix) & (np.abs(ly) <= iy)
     base = np.where(inside, CONTAINER_FLOOR_Z, desk_top_z(x))
     keep = (z - base > 0.008) & (z < top_hint + 0.06) & (np.hypot(x - expected_xy[0], y - expected_xy[1]) < radius)
-    ox, oy, oz = CONTAINER_OUTER
-    ix, iy = CONTAINER_INNER_HALF
-    for b in containers.values():
+    oz = CONTAINER_OUTER[2]
+    for name, b in containers.items():
+        ox, oy = outer_half(name)
+        ix, iy = inner_half(name)
         lx, ly = container_local(b, x, y)
-        in_outer = (np.abs(lx) <= ox / 2 + 0.014) & (np.abs(ly) <= oy / 2 + 0.014)
+        in_outer = (np.abs(lx) <= ox + 0.014) & (np.abs(ly) <= oy + 0.014)
         in_inner = (np.abs(lx) <= ix - 0.008) & (np.abs(ly) <= iy - 0.008)
         keep &= ~(in_outer & ~in_inner & (z < oz + 0.025))
     pts, col = pts[keep], col[keep]
@@ -696,12 +769,14 @@ class Controller(object):
         self.containers = nominal_containers()
         self.request_text = None
         self.request_state = None
-        self.drop_slot = {b: 0 for b in CONTAINER_YS}
+        self.drop_slot = {b: 0 for b in CONTAINER_NOMINAL}
         self.skip_list = []
         self.last_perceive_t = -999
         self.last_clusters = []
         self.not_empty_t = {}
         self.carry_hang = 0.0
+        self.last_descent_short = False
+        self.stuck_count, self.recovering, self.stuck_recovered = 0, False, False
         # what the controller knows about the class containers' contents: the models it put in
         # itself (bottom -> top), and whether an initial pile of unseen objects may still lie
         # under them (the instruction: A objects start in gray, B objects in light-blue)
@@ -731,7 +806,23 @@ class Controller(object):
                     self.q_home = None          # rebuild everything on the next step
                     self.policy = lambda o: [0.0] * 8
         self.last_t = t
-        return [float(x) for x in self.policy(obs)]
+        return self.mark_before_deadline([float(x) for x in self.policy(obs)], obs)
+
+    def mark_before_deadline(self, a, obs):
+        """The mark goes out before the deadline whatever the behaviour is in the middle of (a
+        tidy grasp the arm got stuck in once carried a delivered request past its deadline). With
+        MARK_LAST steps left: delivered when the target went into red, else absent, since an
+        expiry scores like a wrong mark and absent may be right. The behaviour sees `marked` and
+        drops the request on its next step."""
+        rs, req = self.request_state, obs.get("request")
+        if rs is None or req is None or rs.get("marked") or a[7] != 0 or req["text"] != self.request_text:
+            return a
+        if req["deadline_t"] - int(obs["t"]) > MARK_LAST:
+            return a
+        a[7] = 1.0 if (rs.get("in_red") or rs.get("placed_red")) else 2.0
+        rs["marked"] = True
+        log("t=%d deadline in %d steps; marking %s now" % (int(obs["t"]), req["deadline_t"] - int(obs["t"]), "delivered" if a[7] == 1.0 else "absent"))
+        return a
 
     def set_home(self, obs):
         """The first observation of an episode defines the home orientation (tool straight
@@ -781,9 +872,26 @@ class Controller(object):
         for i in range(max_steps):
             err = pos - self.ee()
             if np.linalg.norm(err) < tol and np.linalg.norm(self.orient_error(yaw, tilt=tilt)) < yaw_tol:
+                self.stuck_count = 0
                 return True
             yield self.servo(pos, yaw, grip, mark, step_max, tilt)
             mark = 0
+        # An arm that keeps ending far from where it was sent has folded into a configuration the
+        # Cartesian servo cannot leave (a joint at its limit): a few straight lifts to the
+        # observe height unfold it. Without this, every later move of the episode failed too.
+        if np.linalg.norm(pos - self.ee()) > STUCK_ERR and not self.recovering:
+            self.stuck_count += 1
+            if self.stuck_count >= STUCK_AFTER:
+                log("t=%d arm stuck (%d moves ended far off); recovering through the observe pose" % (self.t(), self.stuck_count))
+                self.recovering = True
+                try:
+                    cur = self.ee()
+                    yield from self.goto((cur[0], cur[1], 0.45), 0.0, grip=grip, tol=0.03, yaw_tol=0.3, max_steps=40)
+                    yield from self.goto(OBSERVE_POS, 0.0, grip=grip, tol=0.02, yaw_tol=0.1, max_steps=80)
+                finally:
+                    self.recovering = False
+                    self.stuck_count = 0
+                    self.stuck_recovered = True       # the current grasp gives up (try_grasps, pick)
         return False
 
     def hold(self, steps, grip, mark=0, yaw=None, tilt=None):
@@ -801,8 +909,11 @@ class Controller(object):
         return max(TRAVEL_Z, CONTAINER_RIM_Z + 0.04 + self.carry_hang)
 
     def refine_xy(self, xy, anchor_xy, floor, top_z):
-        """Hovering 10 cm above the object with the hand camera: re-measure the object's top
-        centroid and shift the grasp point by how far it moved from the planned anchor."""
+        """Hovering 10 cm above the object with the hand camera: re-measure the top centroid
+        around the planned anchor and shift the grasp point by how far it moved; also measure
+        the top right under the grasp point. Two touching objects merge into one component
+        whose top is the taller one's, so the component's top drags the grasp point toward the
+        neighbour and sets the fingers above the object. -> (xy, local top z or None)"""
         try:
             R_cam, t_cam = self.cam_pose()
             rgb = decode_png(self.obs["rgb"]["eye_in_hand"], "RGB")
@@ -810,20 +921,27 @@ class Controller(object):
             d = perceive_eih(rgb, dep, R_cam, t_cam, anchor_xy, floor, top_z, self.containers, radius=REFINE_RADIUS)
         except Exception as exc:  # noqa: BLE001
             log("refine failed: %r" % exc)
-            return xy
+            return xy, None
         if d is None:
-            return xy
+            return xy, None
         p = d["pts"]
-        slab = p[p[:, 2] > d["top_z"] - 0.02]
+        near = p[np.hypot(p[:, 0] - anchor_xy[0], p[:, 1] - anchor_xy[1]) < REFINE_NEAR]
+        if len(near) < 15:
+            return xy, None
+        slab = near[near[:, 2] > float(np.percentile(near[:, 2], 97)) - 0.02]
         if len(slab) < 15:
-            return xy
+            return xy, None
         cx, cy = slab[:, :2].mean(0)
         dx, dy = float(cx - anchor_xy[0]), float(cy - anchor_xy[1])
         if math.hypot(dx, dy) > REFINE_MAX_SHIFT:
             log("t=%d refine: shift %.3f too large, ignored" % (self.t(), math.hypot(dx, dy)))
-            return xy
-        log("t=%d refine: shift (%+.3f,%+.3f) from %d top points" % (self.t(), dx, dy, len(slab)))
-        return (xy[0] + dx, xy[1] + dy)
+            dx = dy = 0.0
+        g = (xy[0] + dx, xy[1] + dy)
+        under = p[np.hypot(p[:, 0] - g[0], p[:, 1] - g[1]) < TOP_UNDER_RADIUS]
+        top_local = float(np.percentile(under[:, 2], 97)) if len(under) >= 10 else None
+        log("t=%d refine: shift (%+.3f,%+.3f) from %d top points, top under the grasp %s (planned %.3f)" % (
+            self.t(), dx, dy, len(slab), "%.3f" % top_local if top_local is not None else "-", top_z))
+        return g, top_local
 
     def pick(self, xy, yaw, top_z, floor, below_top=GRASP_BELOW_TOP, anchor_xy=None, tilt=None):
         """Top-down pinch grasp at `yaw`, fingers `below_top` under the object's top (a rim grasp
@@ -836,18 +954,35 @@ class Controller(object):
         z_travel = max(self.travel_z(), z_pre)
         yield from self.goto((x, y, z_travel), yaw, grip=0.0, tol=0.015)
         yield from self.goto((x, y, z_pre), yaw, grip=0.0, tol=0.008, max_steps=30)
+        if self.stuck_recovered:
+            return False            # the arm folded up on the way and is back at the observe pose
         yield from self.hold(1, grip=0.0)
-        x, y = self.refine_xy((x, y), anchor_xy or (x, y), floor, top_z)
+        (x, y), top_local = self.refine_xy((x, y), anchor_xy or (x, y), floor, top_z)
+        if top_local is not None and top_local < top_z - TOP_DROP_MIN:
+            top_z = top_local       # the planned top was a taller neighbour's
+            self.carry_hang = max(0.0, (top_z - floor) - below_top)
         z_g = max(top_z - below_top, floor + GRASP_MIN_ABOVE_FLOOR)
         self.last_grasp = (x, y, z_g, yaw)
         if is_tilted(tilt):
-            # lean the hand away from the near wall above the rim, then go in along the fingers
+            # lean the hand away from the near wall above the rim, then go in along the fingers.
+            # The tool centre point sits FINGER_BELOW_TCP above the fingertips, so a tilted hand
+            # puts its fingertips 0.8-1.6 cm to the side of the TCP: the TCP is sent that much the
+            # other way, so that the fingertips, not the TCP, land on the object (uncompensated,
+            # tilted grasps lifted 2 of 16 in the episode logs: one finger came down on the object)
             a = approach_dir(yaw, tilt)
+            x, y = x - FINGER_BELOW_TCP * a[0], y - FINGER_BELOW_TCP * a[1]
+            self.last_grasp = (x, y, z_g, yaw)
             back = max(0.06, (CONTAINER_RIM_Z + 0.06 - z_g) / max(-a[2], 0.3))
             p_pre = np.array([x, y, z_g]) - a * back
             yield from self.goto(p_pre, yaw, grip=0.0, tol=0.01, yaw_tol=0.06, max_steps=40, tilt=tilt)
             yield from self.goto((x, y, z_g), yaw, grip=0.0, tol=0.006, yaw_tol=0.06, max_steps=30, step_max=0.02, tilt=tilt)
             self.last_grasp_actual = [float(v) for v in self.ee()]
+            self.last_descent_short = float(np.linalg.norm(self.ee() - np.array([x, y, z_g]))) > DESCENT_SHORT
+            if self.last_descent_short:
+                log("t=%d descent stopped %.3f m short of the grasp point; not closing" % (self.t(), float(np.linalg.norm(self.ee() - np.array([x, y, z_g])))))
+                yield from self.goto(p_pre, yaw, grip=0.0, tol=0.015, yaw_tol=0.08, max_steps=30, step_max=0.03, tilt=tilt)
+                yield from self.goto((p_pre[0], p_pre[1], z_travel), yaw, grip=0.0, tol=0.015, max_steps=30, step_max=0.03)
+                return False
             yield from self.hold(5, grip=1.0, yaw=yaw, tilt=tilt)
             held = self.gripper_closed_on_object()
             yield from self.goto(p_pre, yaw, grip=1.0, tol=0.015, yaw_tol=0.08, max_steps=30, step_max=0.03, tilt=tilt)
@@ -855,6 +990,11 @@ class Controller(object):
         else:
             yield from self.goto((x, y, z_g), yaw, grip=0.0, tol=0.006, max_steps=25, step_max=0.02)
             self.last_grasp_actual = [float(v) for v in self.ee()]
+            self.last_descent_short = float(np.linalg.norm(self.ee() - np.array([x, y, z_g]))) > DESCENT_SHORT
+            if self.last_descent_short:
+                log("t=%d descent stopped %.3f m short of the grasp point; not closing" % (self.t(), float(np.linalg.norm(self.ee() - np.array([x, y, z_g])))))
+                yield from self.goto((x, y, z_travel), yaw, grip=0.0, tol=0.015, max_steps=30, step_max=0.03)
+                return False
             yield from self.hold(5, grip=1.0)
             held = self.gripper_closed_on_object()
             yield from self.goto((x, y, z_travel), yaw, grip=1.0, tol=0.015, max_steps=30, step_max=0.03)
@@ -918,7 +1058,7 @@ class Controller(object):
         self.last_perceive_t = self.t()
         self.last_clusters = clusters
         # a container that looks empty to the static cameras may only hide a low object behind
-        # its 19 cm walls: the hand camera checks from above before the inventory is dropped
+        # its 12 cm walls: the hand camera checks from above before the inventory is dropped
         self.maybe_empty = [b for b in self.inventory if sum(c["n"] for c in clusters if c["container"] == b) < 15
                             and (self.inventory[b] or self.pile_unknown[b])
                             and self.t() - self.not_empty_t.get(b, -10 ** 9) > 300]
@@ -936,7 +1076,8 @@ class Controller(object):
         dep = decode_png(self.obs["depth"]["eye_in_hand"])
         pts, _ = backproject_rt(dep, rgb, None, None, R_cam, t_cam)
         lx, ly = container_local(cb, pts[:, 0], pts[:, 1])
-        keep = (np.abs(lx) < CONTAINER_INNER_HALF[0] - 0.008) & (np.abs(ly) < CONTAINER_INNER_HALF[1] - 0.008) \
+        ix, iy = inner_half(b)
+        keep = (np.abs(lx) < ix - 0.008) & (np.abs(ly) < iy - 0.008) \
             & (pts[:, 2] > CONTAINER_FLOOR_Z + 0.012) & (pts[:, 2] < CONTAINER_RIM_Z + 0.1)
         q = pts[keep]
         out = []
@@ -966,7 +1107,8 @@ class Controller(object):
         dep = decode_png(self.obs["depth"]["eye_in_hand"])
         pts, _ = backproject_rt(dep, rgb, None, None, R_cam, t_cam)
         lx, ly = container_local(cb, pts[:, 0], pts[:, 1])
-        inside = (np.abs(lx) < CONTAINER_INNER_HALF[0] - 0.01) & (np.abs(ly) < CONTAINER_INNER_HALF[1] - 0.01) \
+        ix, iy = inner_half(b)
+        inside = (np.abs(lx) < ix - 0.01) & (np.abs(ly) < iy - 0.01) \
             & (pts[:, 2] > CONTAINER_FLOOR_Z + 0.012) & (pts[:, 2] < CONTAINER_RIM_Z)
         n = int(inside.sum())
         if n < 40:
@@ -1016,7 +1158,7 @@ class Controller(object):
             log("t=%d inspect: nothing under the hand camera" % self.t())
             self.dump("inspect_none", rgb, [])
             return None
-        d["cls_info"] = combine(self.classify_eih(d), c.get("cls_info"))
+        d["cls_info"] = clamp_by_size(combine(self.classify_eih(d), c.get("cls_info")), d["dims"])
         d["container"] = c["container"]
         self.dump("inspect", rgb, [d])
         return d
@@ -1181,33 +1323,45 @@ class Controller(object):
             alt = self.search_pinch(c, inside=inside)
             if alt is not None:
                 shallow = [(alt[0], alt[1], GRASP_BELOW_TOP, alt[2])]
-        deep = []
-        if height > 0.08 and c.get("pts") is not None:
-            # around the middle of the body, checked against the body's own width
-            p = c["pts"]
-            depth = float(np.clip(0.45 * height, GRASP_BELOW_TOP + 0.015, 0.065))
-            band = p[(p[:, 2] > c["top_z"] - depth - 0.015) & (p[:, 2] < c["top_z"] - depth + 0.015)]
-            if len(band) < 10:
-                band = p[p[:, 2] > c["floor"] + 0.02]
-            pick_d = self.choose_yaw(c, inside=inside, band=band, below_top=depth)
-            if pick_d is not None:
-                deep = [(pick_d[0], pick_d[1], depth, pick_d[2])]
-        # a bottle held by its cap slips out in transit (and still reads as held), so bottle-like
-        # objects try the body first; everything else the top first, the body as the fallback
-        out += (deep + shallow) if self.widens_below_top(c) else (shallow + deep)
+        # No grasp deeper than the hand body allows: the body's underside is HAND_BODY_ABOVE_TCP
+        # (3.4 cm) above the tool centre point, so fingers more than ~3 cm below an object's top
+        # put the body onto the object and push it over instead of closing on it. Grasps planned
+        # 4-6.5 cm below the top lifted 16 of 110 tries in the episode logs; 3 cm lifted 58%.
+        out += shallow
         if rim is not None:
             out.append((rim[0], rim[1], RIM_GRASP_BELOW_TOP, None))
         return out
 
     def try_grasps(self, plans, top_z, floor, anchor_xy):
-        """Attempt the planned grasps in order; stop at the first that holds."""
+        """Attempt the planned grasps in order; stop at the first that holds. A plan that closed
+        on nothing is tried once more shifted RETRY_JITTER across the fingers (the direction a
+        1-2 cm perception error turns into a fingertip landing on the object) and turned a
+        little; at most RETRY_MAX attempts in all, so a hopeless object does not eat the deadline."""
+        attempts = 0
         for plan in plans:
             xy, yaw, below = plan[0], plan[1], plan[2]
             tilt = plan[3] if len(plan) > 3 else None
-            held = yield from self.pick(xy, yaw, top_z, floor, below_top=below, anchor_xy=anchor_xy, tilt=tilt)
-            if held:
-                return True
-            log("t=%d grasp (yaw %.2f, depth %.3f, tilt %s) failed" % (self.t(), yaw, below, fmt_tilt(tilt)))
+            for k in range(2):
+                if attempts >= RETRY_MAX:
+                    return False
+                if k == 1:
+                    v = (-math.sin(yaw), math.cos(yaw))        # across the fingers
+                    sg = 1.0 if (attempts % 2 == 0) else -1.0
+                    xy = (plan[0][0] + sg * RETRY_JITTER * v[0], plan[0][1] + sg * RETRY_JITTER * v[1])
+                    yaw = wrap_half(plan[1] + sg * RETRY_YAW)
+                attempts += 1
+                held = yield from self.pick(xy, yaw, top_z, floor, below_top=below, anchor_xy=anchor_xy, tilt=tilt)
+                if held:
+                    return True
+                log("t=%d grasp (yaw %.2f, depth %.3f, tilt %s%s) failed" % (self.t(), yaw, below, fmt_tilt(tilt), ", retry" if k else ""))
+                if self.stuck_recovered:
+                    # the arm folded up going there: the next plan for this object would too,
+                    # and three recoveries in a row once ran a request past its deadline
+                    self.stuck_recovered = False
+                    log("t=%d leaving this object after the stuck-arm recovery" % self.t())
+                    return False
+                if self.last_descent_short:
+                    break           # the hand never got there: a shifted retry will not either
         return False
 
     def free_spot(self, clusters, near=None):
@@ -1237,6 +1391,12 @@ class Controller(object):
 
     def loose(self, clusters):
         return [c for c in clusters if c["container"] is None and c["cls_info"] is not None]
+
+    @staticmethod
+    def within_reach(c):
+        """A loose object a straight-down hand can get to (TIDY_R): nearer the base the hand stops
+        above the desk, farther out the arm is at full stretch and folds up."""
+        return TIDY_R[0] <= math.hypot(c["grasp_xy"][0], c["grasp_xy"][1]) <= TIDY_R[1]
 
     @staticmethod
     def _near_any(c, points, r=0.05):
@@ -1293,7 +1453,7 @@ class Controller(object):
         return self._near_any(c, rs.get("dug", []), r=0.07)
 
     def tidy(self, clusters):
-        loose = [c for c in self.loose(clusters) if not self.skipped(c) and not self.held_back(c)]
+        loose = [c for c in self.loose(clusters) if not self.skipped(c) and not self.held_back(c) and self.within_reach(c)]
         loose.sort(key=lambda c: -c["cls_info"]["class_margin"])
         for c in loose:
             d = yield from self.inspect(c)
@@ -1403,6 +1563,23 @@ class Controller(object):
         rs = self.request_state
         model = rs["model"]
         loose = self.loose(clusters)
+        if rs.get("marked"):
+            # marked at the last moment by mark_before_deadline: nothing more to do for it, and
+            # no second mark (it would close the next request)
+            self.request_state = None
+            return False
+        if rs.get("placed_red") and not rs.get("in_red") and rs["deadline"] - self.t() <= FINISH_MARGIN:
+            # the target went into red but the hand camera never confirmed it there: a delivered
+            # mark that turns out wrong costs nothing over letting the request expire
+            log("t=%d the target went into red unconfirmed; marking delivered" % self.t())
+            rs["in_red"] = True
+        if not rs.get("in_red") and not rs.get("absent_ready") and rs["deadline"] - self.t() <= FINISH_MARGIN:
+            # out of time without the object in red: a request that expires scores like a wrong
+            # mark, so the better guess is marked. Absent when nothing that looked like the target
+            # was seen (one request in five names an absent object), else nothing to gain either way
+            log("t=%d out of time for %s (seen %s); marking absent rather than expiring" % (
+                self.t(), model, bool(rs.get("seen_target"))))
+            rs["absent_ready"] = True
         if rs.get("in_red") or rs.get("absent_ready"):
             # the request is judged together with the desk when it is marked: put back what the
             # search dug out and sort what is loose first, as long as the deadline allows
@@ -1417,7 +1594,7 @@ class Controller(object):
             return True
 
         def fresh(slack):
-            cs = [c for c in loose if not self._near_any(c, rs["inspected"]) and self.could_be(c, model, slack)]
+            cs = [c for c in loose if not self._near_any(c, rs["inspected"]) and self.could_be(c, model, slack) and self.within_reach(c)]
             return sorted(cs, key=lambda c: (c["cls_info"].get("all") or {}).get(model, 9.0))
 
         cands = fresh(0.5)
@@ -1427,12 +1604,16 @@ class Controller(object):
         order = self.search_order(model)
         expected = rs.setdefault("expected", list(order))
         searched = rs.setdefault("searched", [])
-        if (not expected or all(b in searched for b in expected)) and rs["deadline"] - self.t() > SEARCH_ALL_MARGIN:
-            # not where it was expected (or nowhere expected): the world may have dropped it into
-            # another container and buried it; dig there too while the deadline allows
+        stalled = rs.setdefault("stalled", {})           # container -> rounds that found nothing in reach
+        exhausted = [b for b in expected if b in searched or stalled.get(b, 0) >= STALL_ROUNDS]
+        if len(exhausted) == len(expected) and rs["deadline"] - self.t() > SEARCH_ALL_MARGIN:
+            # not where it was expected (or nowhere expected), or the expected pile cannot be dug
+            # any further (an ungraspable object on top kept one request on the class container
+            # for its whole deadline while the target lay misfiled next door): the world may have
+            # dropped it into another container; dig there too while the deadline allows
             order += [b for b in ("gray", "lightblue", "blue") if b not in order]
         blocked = rs.setdefault("blocked", {})
-        for b in order:
+        for b in sorted(order, key=lambda b: stalled.get(b, 0) >= STALL_ROUNDS):     # stalled piles last
             if b in searched or self.t() - blocked.get(b, -999) < 150:
                 continue
             inside = [c for c in clusters if c["container"] == b]
@@ -1501,6 +1682,7 @@ class Controller(object):
             return True
         self.forget(model)
         yield from self.place_in_container("red")
+        rs["placed_red"] = True
         yield from self.hold(8, grip=0.0)
         ok = yield from self.confirm_red()
         if ok:
@@ -1519,7 +1701,7 @@ class Controller(object):
         rs = self.request_state
         model = rs["model"]
         # the static clusters of a pile are coarse and merged: look at the top from above first
-        for c in sorted(inside, key=lambda c: -c["top_z"])[:2]:
+        for c in sorted(inside, key=lambda c: -c["top_z"])[:3]:
             d = yield from self.inspect(c)
             if d is None:
                 continue
@@ -1530,6 +1712,13 @@ class Controller(object):
                 d["top_z"], fmt_plans(g)))
             if not g:
                 continue
+            fails = sum(1 for (fb, fx, fy) in rs.get("failed", []) if fb == b and math.hypot(fx - d["grasp_xy"][0], fy - d["grasp_xy"][1]) < 0.04)
+            if fails >= UNPACK_FAILS_MAX:
+                # the same grasp failed twice already this request (one standing clamp took six
+                # identical tries of one request): the time is better spent on the next container
+                log("t=%d unpack %s: the grasp at (%.2f,%.2f) failed %d times this request; leaving it" % (
+                    self.t(), b, d["grasp_xy"][0], d["grasp_xy"][1], fails))
+                continue
             is_target = (info["model"] == model and info.get("model_margin", 0.0) > 0.3) or (is_model(info, model, 0.15) and info["model"] != model)
             spot = None if is_target else self.free_spot(clusters, near=(d["centroid"][0], d["centroid"][1]))
             if not is_target and spot is None:
@@ -1537,16 +1726,20 @@ class Controller(object):
                 return False
             held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
             if not held:
+                rs.setdefault("failed", []).append((b, d["grasp_xy"][0], d["grasp_xy"][1]))
                 break
             if is_target:
                 rs["seen_target"] = True
                 self.forget(model)
                 yield from self.place_in_container("red")
+                rs["placed_red"] = True
                 yield from self.hold(8, grip=0.0)
                 ok = yield from self.confirm_red()
                 if ok:
                     rs["in_red"] = True
                     log("t=%d target in red (dug out of %s); tidying before the mark" % (self.t(), b))
+                else:
+                    log("t=%d red container check failed after digging the target out of %s" % (self.t(), b))
                 return True
             yield from self.place_on_desk(spot, self.spot_yaw(spot))
             rs.setdefault("dug", []).append(spot)
@@ -1575,6 +1768,7 @@ class Controller(object):
             if model in ids or any(TWIN.get(m) == model for m in ids):
                 rs["out_of_reach"] = b
         rs.setdefault("blocked", {})[b] = self.t()
+        rs.setdefault("stalled", {})[b] = rs["stalled"].get(b, 0) + 1
         log("t=%d nothing in reach in %s for now" % (self.t(), b))
         return True
 

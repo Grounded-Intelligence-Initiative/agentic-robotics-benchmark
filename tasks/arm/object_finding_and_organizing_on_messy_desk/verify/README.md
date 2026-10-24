@@ -20,7 +20,7 @@ both byte-identical copies of the files under `verify/` (this folder).
 | detector | definition |
 |---|---|
 | `contact(o)` | PhysX contact report between object `o` and either finger link (summed contact force > 1e-4 N); if the contact view is unavailable, the fallback is centre within 6 cm of the tool centre point |
-| `in_container(o)` | the object's centre lies inside a container's interior footprint in that container's own frame (\|x\| ≤ 0.140, \|y\| ≤ 0.109 m) and its height is between the floor − 0.02 and the rim + 0.12 m |
+| `in_container(o)` | the object's centre lies inside a container's interior footprint in that container's own frame (\|x\| ≤ 0.140, \|y\| ≤ 0.120 m for the class containers; \|x\| ≤ 0.102 for the red one) and its height is between the floor − 0.02 and the rim + 0.12 m |
 | `on_table(o)` | not inside any container, centre below 0.16 m, placed |
 | `resting(o)` | speed < 0.08 m/s |
 | `placed(o)` | `resting(o)` and not `contact(o)`: released by the gripper and still |

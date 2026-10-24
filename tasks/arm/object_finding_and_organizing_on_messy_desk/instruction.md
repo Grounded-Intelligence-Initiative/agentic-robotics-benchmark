@@ -7,7 +7,8 @@ and the search must preserve the original organization of the storage space, bot
 runs and after it ends. This task is that chore, done by a robot, continuously.
 
 You control a Franka Panda arm at a desk in NVIDIA Isaac Sim. The desk carries four KLT
-containers in a loose row (their exact positions and headings vary a little from episode to
+containers: the red delivery container right in front of the robot base and the three class
+containers behind it (their exact positions and headings vary a little from episode to
 episode), and new objects keep landing on the free desk surface around them for the whole
 episode. Your job has three parts:
 
@@ -34,7 +35,8 @@ An episode runs a fixed `${horizon}` control steps at 10 Hz. During it:
 
 1. **Arrivals.** New objects drop at random free spots on the desk surface (never inside a
    container) at random intervals, within the arm's reach. When too many objects are loose on the
-   desk, arrivals pause until you clear some.
+   desk, arrivals pause until you clear some. While a request is open, no instance of the object
+   it names arrives.
 2. **Requests.** Once in every 5000 steps, at a random time, a request opens (four per
    20000-step episode; each has a 1200-step deadline): the observation carries a short text
    description of one specific object (for example `the mustard bottle`). Most
@@ -48,7 +50,9 @@ An episode runs a fixed `${horizon}` control steps at 10 Hz. During it:
 3. **Container service.** When a container is full, or a requested object has been delivered to the red
    container, a worker empties that container: its objects disappear from the scene.
 4. **Disturbances.** Occasionally the world misplaces one object into a wrong container, or nudges
-   a loose object across the desk. Correcting these is part of the job.
+   a loose object across the desk. Correcting these is part of the job. An object that comes to
+   rest beside the robot's base (closer than 0.26 m, where no camera sees it and no hand reaches)
+   is set back down on a free desk spot by the world a couple of seconds later, like a nudge.
 
 Every event is drawn from a hidden per-episode seed; the practice environment exposes the
 same dynamics on visible seeds.
@@ -71,7 +75,7 @@ the simulator runs under `/opt/isaac/bin/python3`.
 ```
 READY                                                     <- your first stdout line, within 120 s
 {"type": "reset"}                        -> {"ok": true}
-{"type": "act", "t": 0, "obs": {...}}    -> {"action": [dx, dy, dz, droll, dpitch, dyaw, grip, mark]}
+{"type": "act", "t": 0, "obs": {...}}    -> {"action": [dx, dy, dz, droll, dpitch, dyaw, grip, mark]}   (an optional ninth number asks for hi-res frames, see Action)
 {"type": "close"}                        -> {"ok": true}, then exit
 ```
 
@@ -92,8 +96,9 @@ READY                                                     <- your first stdout l
 |---|---|
 | `t` | step index |
 | `request` | `null`, or `{"text": "...", "deadline_t": int}` while a request is open |
-| `rgb` | `{"agentview": png_b64, "eye_in_hand": png_b64, "left_view": png_b64}` — 8-bit RGB PNG, base64 |
-| `depth` | same three keys — 16-bit PNG in millimetres, base64 |
+| `rgb` | `{"agentview": png_b64, "left_view": png_b64, "oblique": png_b64, "eye_in_hand": png_b64}` — 8-bit RGB PNG, base64; three fixed cameras (front, left, oblique front-left) and the hand camera |
+| `depth` | same four keys — 16-bit PNG in millimetres, base64 |
+| `rgb_hires`, `depth_hires` | only in the step after an action asked for them (see Action): the same cameras at 1920 x 1080, RGB and depth PNGs, keyed by camera name |
 | `joint_pos`, `joint_vel` | 7 arm joints, radians and rad/s |
 | `gripper_width` | metres |
 | `ee_pose` | `[x, y, z, qw, qx, qy, qz]` of the tool centre point in the robot base frame |
@@ -104,11 +109,17 @@ change between seeds.
 
 ## Action
 
-`action` is eight numbers: a Cartesian delta for the tool centre point in the robot base
-frame (metres and radians, clipped to ±0.05 m and ±0.25 rad per step), a gripper command in
-`[0, 1]` (0 = open, 1 = closed), and a `mark` for the open request: `0` = nothing, `1` =
+`action` is eight numbers, plus an optional ninth: a Cartesian delta for the tool centre point in
+the robot base frame (metres and radians, clipped to ±0.05 m and ±0.25 rad per step), a gripper
+command in `[0, 1]` (0 = open, 1 = closed), and a `mark` for the open request: `0` = nothing, `1` =
 **done: delivered** (you claim the requested object rests in the red container), `2` = **done: no
-such object** (you claim it is not on the desk). A mark is ignored while no request is open,
+such object** (you claim it is not on the desk). The optional ninth number is a **hi-res request**:
+a bitmask of cameras (1 = agentview, 2 = left_view, 4 = eye_in_hand, 8 = oblique; 15 = all four)
+whose 1920 x 1080 RGB and depth frames come back in that step's observation as `rgb_hires` /
+`depth_hires`. The 320 x 320 frames always arrive at 10 Hz; a hi-res request costs about 0.1 s of
+extra wall-clock time per camera asked for (PNG encoding and transfer, about 3 MB per camera; your
+controller's decoding time comes on top), so you choose, step by step, between picture quality and
+time. Nothing else about the step changes. A mark is ignored while no request is open,
 and a request accepts one mark only; the request, and the desk with it, are judged at the
 step of the mark. The environment turns the delta into joint targets
 through inverse kinematics, interpolated over the step (a 5 cm step completes about 96% within it); a
