@@ -108,8 +108,8 @@ HORIZON_DEFAULT = 20000
 # world state machine parameters (per control step)
 ARRIVAL_MEAN_STEPS = 500
 LOOSE_CAP = 6
-PRESENT_CAP = 18
-CONTAINER_CAP = 7
+PRESENT_CAP = 22
+CONTAINER_CAP = 9
 REQUEST_SLOT_STEPS = 5000    # one request opens at a random time in each 5000-step window (4 per 20000-step episode)
 REQUEST_DEADLINE_STEPS = 1200
 REQUEST_ABSENT_P = 0.2
@@ -128,6 +128,7 @@ RESET_WARMUP_FRAMES = 20
 READY_Q = [0.0, -math.pi / 4, 0.0, -3 * math.pi / 4, 0.0, math.pi / 2, math.pi / 4]   # Franka 'ready': tool straight down
 HOME_POS = (0.46, 0.0, 0.39)
 IK_JUMP_MAX = 0.8                                     # rad: larger joint jumps are branch flips
+IK_UNWIND_STEP = 0.3                                  # rad per step toward a solution beyond that jump
 TCP_Z_MIN = 0.028                                     # open fingertips touch the desk at TCP z ~ 0.028 (measured)
 FINGER_KP, FINGER_KD, FINGER_EFFORT = 2.0e4, 1.0e3, 100.0   # both finger drives (N/m, N s/m, N)
 FREECAM = os.environ.get("MESSY_DESK_FREECAM", "")   # e.g. "800x500": extra free-flying camera for the dev portal
@@ -559,9 +560,9 @@ class MessyDeskEnv:
         for cls, name in (("A", "gray"), ("B", "lightblue")):
             models = list(CLASSES[cls])
             self.rng.shuffle(models)
-            n = int(self.rng.integers(4, 7))
+            n = int(self.rng.integers(4, 7))         # five to seven objects per initial pile
             pile_top = CONTAINER_FLOOR_Z
-            for i in range(n):
+            for i in range(n + 1):
                 o = self._free_instance(models[i % len(models)])
                 if o is None:
                     continue
@@ -569,7 +570,14 @@ class MessyDeskEnv:
                 # way a person fills a box; thrown in from above the rim they rolled to the ends,
                 # where no top-down hand (0.205 m wide in a 0.28 m container) can reach them
                 px, py = self._container_point(name, self.rng.uniform(-0.015, 0.015), self.rng.uniform(-0.03, 0.03))
-                self._spawn(o, (px, py, pile_top + o["pile_half"] + 0.01), rest=o["pile_rest"])
+                rest = o["pile_rest"]
+                if i == n:
+                    # the last one is tossed on top, tilted: it comes to rest leaning on its
+                    # neighbours (a box does not stay flat-packed; the pile has to be dug)
+                    tilt = self.rng.uniform(math.radians(35), math.radians(60))
+                    rest = _quat_mul(_rpy_to_quat(tilt, 0.0, 0.0), list(rest))
+                    px, py = self._container_point(name, self.rng.uniform(-0.03, 0.03), self.rng.uniform(-0.04, 0.04))
+                self._spawn(o, (px, py, pile_top + o["pile_half"] + (0.03 if i == n else 0.01)), rest=rest)
                 self._settle_until_rest(max_steps=150, quiet=6)
                 z = float(o["rp"].get_world_pose()[0][2])
                 pile_top = max(pile_top, z + o["pile_half"])
@@ -663,21 +671,90 @@ class MessyDeskEnv:
         target[0] = float(np.clip(target[0], -0.1, 0.85)); target[1] = float(np.clip(target[1], -0.75, 0.75)); target[2] = float(np.clip(target[2], TCP_Z_MIN, 0.9))
         tq = np.array(_quat_mul(_rpy_to_quat(*drot), [float(x) for x in quat]), dtype=float)
         tq /= max(float(np.linalg.norm(tq)), 1e-9)
-        act, ok = self.ik.compute_inverse_kinematics(target_position=np.asarray(target, dtype=float), target_orientation=tq)
+        q_cur = np.asarray(self.franka.get_joint_positions(), dtype=float)[:7]
+        q_new, idx, ok = self._solve_ik(np.asarray(target, dtype=float), tq, q_cur)
         self._arm_plan = None
-        if ok:
-            q_new = np.asarray(act.joint_positions, dtype=float).reshape(-1)
-            q_cur = np.asarray(self.franka.get_joint_positions(), dtype=float)[: q_new.shape[0]]
-            # A solution on another branch (a joint flip) would whip the arm across the desk:
-            # refuse it and stay put; the agent sees no motion and ik_ok = False.
-            if float(np.max(np.abs(q_new - q_cur))) > IK_JUMP_MAX:
-                ok = False
-        if ok:
-            self._arm_plan = (q_cur, q_new, act.joint_indices)
+        if q_new is not None:
+            self._arm_plan = (q_cur, q_new, idx)
             self._ik_q = [float(x) for x in q_new]
         w = GRIPPER_OPEN * (1.0 - grip) + GRIPPER_CLOSED * grip
         self.franka.gripper.apply_action(self.ArticulationAction(joint_positions=np.array([w, w])))
         self._ik_ok = bool(ok)
+
+    def _solve_ik(self, target, tq, q_cur):
+        """Joint targets for a tool pose. One candidate is warm-started from the current joints,
+        the way a tracking controller solves; three more are seeded from the 'ready' posture turned
+        toward the target (base joint at the target's azimuth, forearm and wrist roll at zero, the
+        hand twist as it is now / as the target yaw asks for, either sign). With seven joints and
+        no posture term, a numerical IK followed over a long chain of small deltas lets the base
+        and the forearm wind up (the base 150 degrees from the target's azimuth, the forearm roll
+        at its limit) until every further delta is a branch flip and the arm is stuck. Of the
+        candidates within the per-step jump limit (a solution on another branch would whip the arm
+        across the desk), the one nearest the unwound posture is taken, so the arm unwinds whenever
+        it can. When every solution is beyond that limit the arm steps toward the best one at
+        IK_UNWIND_STEP per step instead of standing still (an arm wound to a joint limit could
+        otherwise refuse every move for the rest of the episode); ik_ok is False until the pose is
+        reached. A pose with no solution at all is refused and the arm stays put. -> (q, joint indices, ok)"""
+        np = self.np
+        act, ok = self.ik.compute_inverse_kinematics(target_position=target, target_orientation=tq)
+        if ok and getattr(self, "_arm_idx", None) is None:
+            self._arm_idx = act.joint_indices
+        idx = getattr(self, "_arm_idx", None)
+        if idx is None:
+            idx = np.arange(7)
+        cands, sols = [], []
+        if ok:
+            q_a = np.asarray(act.joint_positions, dtype=float).reshape(-1)[:7]
+            sols.append(q_a)
+            if float(np.max(np.abs(q_a - q_cur))) <= IK_JUMP_MAX:
+                cands.append(q_a)
+        phi = math.atan2(float(target[1]), float(target[0]))
+        R = _quat_to_mat(tq)
+        psi = math.atan2(R[1][1], R[0][1]) - math.pi / 2      # hand yaw: the fingers open along +y at yaw 0
+        d = _wrap(psi - phi)
+        seeds = []
+        for q7 in (float(q_cur[6]), math.pi / 4 + d, math.pi / 4 - d):
+            seed = np.array(READY_Q, dtype=float)
+            seed[0] = float(np.clip(phi, -2.85, 2.85))
+            seed[6] = float(np.clip(q7, -2.85, 2.85))
+            seeds.append(seed)
+        for seed in seeds:
+            try:
+                q_b, okb = self.ik._kinematics_solver.compute_inverse_kinematics(self.ik._ee_frame, target, tq, warm_start=seed)
+            except Exception:  # noqa: BLE001
+                okb = False
+            if okb:
+                q_b = np.asarray(q_b, dtype=float).reshape(-1)[:7]
+                sols.append(q_b)
+                if float(np.max(np.abs(q_b - q_cur))) <= IK_JUMP_MAX:
+                    cands.append(q_b)
+        partial = not cands
+        if partial:
+            if not sols:
+                return None, idx, False
+            cands = sols
+        Rt = np.asarray(R, dtype=float)
+
+        def accurate(q):
+            """Does the candidate reach the pose within 4 mm / 0.03 rad? At the rim of the
+            workspace the unwound posture may fall short where a wound one still reaches: the
+            solver's closest-feasible answer is then not good enough and the other candidate wins."""
+            try:
+                fp, fr = self.ik._kinematics_solver.compute_forward_kinematics(self.ik._ee_frame, np.asarray(q, dtype=float))
+            except Exception:  # noqa: BLE001
+                return True
+            fr = np.asarray(fr, dtype=float)
+            ang = math.acos(max(-1.0, min(1.0, (float(np.trace(fr.T @ Rt)) - 1.0) / 2.0)))
+            return float(np.linalg.norm(np.asarray(fp, dtype=float) - target)) < 0.004 and ang < 0.03
+
+        def wound(q):
+            return abs(_wrap(float(q[0]) - phi)) + abs(float(q[2])) + 0.5 * abs(float(q[4]))
+
+        best = min(cands, key=lambda q: (not accurate(q), wound(q)))
+        if partial:
+            delta = best - q_cur
+            return q_cur + delta * min(1.0, IK_UNWIND_STEP / max(float(np.max(np.abs(delta))), 1e-9)), idx, False
+        return best, idx, True
 
     # -- state ---------------------------------------------------------------------------------
     def _update_states(self):
@@ -1112,6 +1189,17 @@ def _quat_mul(a, b):
     w2, x2, y2, z2 = b
     return [w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2, w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
             w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2, w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2]
+
+
+def _wrap(a):
+    return (a + math.pi) % (2 * math.pi) - math.pi
+
+
+def _quat_to_mat(q):
+    w, x, y, z = [float(v) for v in q]
+    return [[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+            [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+            [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]]
 
 
 # ---------------------------------------------------------------------------------------

@@ -47,9 +47,12 @@ Along y the desk is flat out to |y| = 0.676.
 Every model is scaled so that, in any resting pose, it offers a pinch of at most about 6.8 cm,
 under the hand's 8 cm opening. Objects arrive standing upright on the desk (the scissors, the
 marker and the clamps lying flat), their long side pointing away from the nearest container wall
-within about 35 degrees. The initial piles are packed one object at a time on top of each other
-near the container's centre line: the cans standing, everything else lying on its largest face, or on
-its long edge when it is too wide to pinch lying flat (the larger cracker box).
+within about 35 degrees. The initial piles (five to seven objects in the gray and in the lightblue container) are packed
+one object at a time on top of each other near the container's centre line: the cans standing,
+everything else lying on its largest face, or on its long edge when it is too wide to pinch lying
+flat (the larger cracker box). The last object of each pile is tossed in tilted (35-60 degrees) and
+comes to rest leaning on its neighbours, so every pile starts with at least one object on top of
+another. A class container holding nine or more objects is emptied by the worker.
 - A: cracker box, sugar box, pudding box, gelatin box, wood block, foam brick
 - B: master chef can, tomato soup can, tuna fish can, potted meat can, mustard bottle, bleach cleanser
 - C: banana, bowl, mug, power drill, scissors, large marker, large clamp, extra large clamp, pitcher base
@@ -87,10 +90,14 @@ exactly one instance present, or one with none (an absent request).
   completes about 96% within the step, the rest in the next one); grip in [0, 1] maps to
   finger width 0.04 m (open) .. 0 (closed); mark: 0 nothing, 1 "done: delivered",
   2 "done: no such object" (one mark per request, ignored while no request is open).
-- A delta whose IK solution is unreachable, or would flip the arm to another joint-space
-  branch (a joint jump above 0.8 rad), is refused: the arm stays where it is for that step
-  (the simulator's privileged state shows `ik_ok: false`). Stay inside the workspace box and
-  move in small steps near its edges.
+- A delta with no IK solution at all is refused: the arm stays where it is for that step
+  (the simulator's privileged state shows `ik_ok: false`). Among the solutions within one
+  step's joint jump (0.8 rad; a larger jump is a branch flip that would whip the arm across the
+  desk) the controller prefers the unwound posture (base joint toward the target, forearm roll
+  near zero), so a long chain of small deltas does not wind the arm up; when every solution is
+  beyond that jump the arm moves toward the best one at 0.3 rad per step instead of standing
+  still and reaches the pose over a few steps (`ik_ok` stays false until it does). Stay inside
+  the workspace box and move in small steps near its edges.
 - Reachable workspace for the tool centre point: x in [-0.1, 0.85], y in [-0.75, 0.75], z in [0.028, 0.9]
   (the tool centre point sits between the finger pads; with the fingers open their tips touch the
   desk at z = 0.027, so z is floored there and commanding lower only presses the hand into the desk).

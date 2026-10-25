@@ -27,6 +27,12 @@ import os
 import sys
 from collections import deque
 
+# Single-threaded BLAS before numpy loads: the controller's arrays are small, and OpenBLAS's
+# worker pool (one thread per host core, inside a container allowed fewer) once dead-locked a
+# matrix-vector product, which froze the controller for the rest of the episode.
+for _v in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ.setdefault(_v, "1")
+
 import numpy as np
 from PIL import Image
 
@@ -106,6 +112,14 @@ GRIPPER_OPEN_W = 0.08
 HAND_HALF_W, HAND_HALF_T = 0.1025, 0.0315      # measured on the Franka USD (body 0.205 x 0.063)
 GRASP_MAX_WIDTH = 0.080     # the hand's opening
 WIDTH_MARGIN = 0.014        # the hand-camera cloud loses ~7 mm per side at an object's silhouette
+GRIP_SETTLE_MAX = 12        # steps to wait for the fingers to stop after the close command
+DRAG_BAND_X, DRAG_BAND_Y = 0.03, 0.012   # container-local half widths of the cross where a straight pinch fits a floor object
+DRAG_STEP = 0.015           # one dragging move
+DRAG_OVERSHOOT = 0.02       # dragged this much past the band's edge
+DRAG_PRESS = 0.012          # fingertips commanded this far below the object's top: the position servo presses
+DRAG_MIN = 0.015            # shorter drags are not worth a cycle
+DRAG_TRIES_MAX = 2          # drags of one spot per request
+DRAG_ENABLED = False        # press-and-drag: the fingertip on a can's top rim tips it or pushes the finger shut (lab, 2026-10-24); kept for later work
 
 # controller tunables
 OBSERVE_POS = (0.30, 0.0, 0.55)
@@ -129,6 +143,8 @@ RETRY_MAX, RETRY_JITTER, RETRY_YAW = 1, 0.012, 0.15   # grasp attempts per objec
 MARK_LAST = 20                # steps before a request's deadline at which the mark goes out whatever the arm is doing
 DESCENT_SHORT = 0.015         # a final descent that stops this far from the grasp point does not close
 STUCK_ERR, STUCK_AFTER = 0.10, 4   # moves ending this far off, this many in a row: the arm is folded up, recover (a descent that stops 3-4 cm short at the edge of reach is not that)
+HOLLOW = ("bowl", "mug", "pitcher base")
+RED_REACH_X = 0.27            # an object in the red container nearer the base than this is left alone (the hand stops above it)
 TIDY_R = (0.40, 0.76)         # loose objects nearer the base or farther out than this are left alone: a straight-down hand there stops short of the desk (measured: 0 of 5 grasps at r < 0.40, under half beyond 0.76), and every attempt costs a stuck-arm recovery; one episode spent its second half in that loop over a clamp pushed to r = 0.80
 UNPACK_FAILS_MAX = 2          # failed grasps at one spot of a container within one request before the dig moves on
 STALL_ROUNDS = 2              # rounds of "nothing in reach" in a container before the other containers are dug as well
@@ -156,6 +172,19 @@ def wrap(a):
 def wrap_half(a):
     """Wrap to (-pi/2, pi/2]: a gripper yaw is only defined modulo pi."""
     return (a + math.pi / 2) % math.pi - math.pi / 2
+
+
+def yaw_branch(xy, yaw, tilt=None):
+    """Of the two hand yaws that are the same grasp for the symmetric hand (yaw and yaw + pi),
+    the one that keeps the wrist's twist small relative to the arm's azimuth toward (x, y). On
+    the +y side of the desk a hand turned to -90 degrees ran a joint into its limit (the descent
+    stopped short or the arm folded up in 19 of 34 grasps in the episode logs; turned to +90
+    degrees, 1 of 7). The lean, defined in the hand's frame, flips with the half turn."""
+    phi = math.atan2(xy[1], xy[0])
+    y2 = wrap(phi + wrap_half(yaw - phi))
+    if is_tilted(tilt) and abs(wrap(y2 - yaw)) > 1.0:
+        tilt = (-tilt[0], -tilt[1])
+    return y2, tilt
 
 
 def rotvec(R):
@@ -246,7 +275,8 @@ def hand_fits(containers, x, y, yaw, inside=None):
 
 
 HAND_BODY_ABOVE_TCP = 0.034     # the hand body's underside above the tool centre point (measured)
-FINGER_BELOW_TCP = 0.028        # open fingertips below the tool centre point (measured)
+FINGER_BELOW_TCP = 0.009        # open fingertips below the tool centre point (contact probe: a can's top meets the
+                                # finger with the tool centre 0.9 cm above it; the earlier 0.028 was wrong)
 RIM_CLEAR = 0.012               # a hand point this far above a rim passes over that container
 # hand tilts tried when the straight-down hand does not fit: (lean along the finger axis, lean
 # along the thickness axis), radians; the wrist leans the opposite way, away from the near wall
@@ -689,10 +719,21 @@ def perceive_eih(rgb, depth, R_cam, t_cam, expected_xy, floor, top_hint, contain
             best, best_score = m, sc
     if best is None:
         return None
-    c = cluster_features(pts[best], col[best], containers)
+    p, pc = pts[best], col[best]
+    blocker, note = None, None
+    sp = stack_split(p, expected_xy)
+    if sp is not None:
+        own, tidx, note = sp
+        if tidx is not None and len(tidx) >= 30:
+            blocker = cluster_features(p[tidx], pc[tidx], containers)
+            blocker["floor"] = floor if blocker["container"] else float(desk_top_z(blocker["centroid"][0]))
+            blocker["dims"] = sorted([blocker["len_major"], blocker["len_minor"], blocker["top_z"] - blocker["floor"]])
+        if len(own) >= 30:
+            p, pc = p[own], pc[own]
+    c = cluster_features(p, pc, containers)
+    c["blocker"], c["stack_note"] = blocker, note
     # two objects that touch merge into one component; the grasp point comes from the top
     # surface around the expected position only, so a neighbour does not drag it aside
-    p = pts[best]
     near = p[np.hypot(p[:, 0] - expected_xy[0], p[:, 1] - expected_xy[1]) < 0.06]
     if c["len_major"] > 0.12 and len(near) >= 30:
         top_near = float(np.percentile(near[:, 2], 97))
@@ -702,6 +743,211 @@ def perceive_eih(rgb, depth, R_cam, t_cam, expected_xy, floor, top_hint, contain
     c["floor"] = floor if c["container"] else float(desk_top_z(c["centroid"][0]))
     c["dims"] = sorted([c["len_major"], c["len_minor"], c["top_z"] - c["floor"]])
     return c
+
+
+# ----------------------------------------------------------------------------------------
+# Stacking: what rests on what, inferred from the hand camera's cloud. Objects that touch
+# merge into one connected component; the component is cut into plateaus (cells of a 1 cm
+# height map that connect where the top height changes by less than STACK_STEP). A plateau
+# whose boundary mostly drops onto another plateau sits on it; a tilted plateau (a leaning
+# object) whose high end borders a lower plateau leans on it. Whatever rests on the object the
+# controller wants comes off first.
+# ----------------------------------------------------------------------------------------
+STACK_CELL = 0.01
+STACK_STEP = 0.02
+STACK_MIN_CELLS = 15      # smaller plateaus (a cap, a handle, noise) never count as a resting object
+STACK_DROP = 0.015        # a neighbouring cell this much lower is "below" the boundary
+STACK_ON_FRAC = 0.4       # share of the boundary that must drop onto one plateau to rest on it
+STACK_RAMP = 0.04         # height spread that makes a plateau a tilted object
+STACK_ENCLOSED = 0.85     # a lower plateau whose outside is this much one other plateau is that object's hollow (a mug's inside), not something under it
+STACK_ON_HULL = 0.4       # share of a resting plateau's cells that must lie over the footprint (convex hull) of the plateau it rests on: a plateau merely beside a lower one (a lying mug's ridge next to its own flank, a tall can next to a short one) is not on it
+STACK_LEAN_HULL = 0.15    # the same for a leaning plateau: its high end must reach over the supporting footprint
+
+
+def plateaus(p, cell=STACK_CELL, step=STACK_STEP, min_cells=STACK_MIN_CELLS):
+    """-> (cells {(i,j): [point idx]}, hmax {(i,j): top z}, label {(i,j): plateau}, members [[cells]])
+    Plateaus smaller than `min_cells` are merged into the neighbour they touch most."""
+    cells = {}
+    ij = np.floor(p[:, :2] / cell).astype(int)
+    for k in range(len(p)):
+        cells.setdefault((int(ij[k, 0]), int(ij[k, 1])), []).append(k)
+    hmax = {c: float(p[idx, 2].max()) for c, idx in cells.items()}
+    label, members = {}, []
+    for c0 in sorted(cells, key=lambda c: -hmax[c]):
+        if c0 in label:
+            continue
+        lab = len(members)
+        label[c0] = lab
+        stack, mem = [c0], [c0]
+        while stack:
+            c = stack.pop()
+            for di in (-1, 0, 1):
+                for dj in (-1, 0, 1):
+                    nb = (c[0] + di, c[1] + dj)
+                    if nb in cells and nb not in label and abs(hmax[nb] - hmax[c]) < step:
+                        label[nb] = lab
+                        stack.append(nb)
+                        mem.append(nb)
+        members.append(mem)
+    for lab in sorted(range(len(members)), key=lambda l: len(members[l])):
+        mem = members[lab]
+        if not mem or len(mem) >= min_cells:
+            continue
+        touch = {}
+        for c in mem:
+            for di in (-1, 0, 1):
+                for dj in (-1, 0, 1):
+                    nb = (c[0] + di, c[1] + dj)
+                    ol = label.get(nb)
+                    if ol is not None and ol != lab:
+                        touch[ol] = touch.get(ol, 0) + 1
+        if touch:
+            to = max(touch, key=touch.get)
+            for c in mem:
+                label[c] = to
+            members[to].extend(mem)
+            members[lab] = []
+    return cells, hmax, label, members
+
+
+def _hull(points):
+    """Convex hull of 2-D points (monotone chain) -> vertices counter-clockwise."""
+    pts = sorted(set(tuple(p) for p in points))
+    if len(pts) <= 2:
+        return pts
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    lower = []
+    for q in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], q) <= 0:
+            lower.pop()
+        lower.append(q)
+    upper = []
+    for q in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], q) <= 0:
+            upper.pop()
+        upper.append(q)
+    return lower[:-1] + upper[:-1]
+
+
+def inside_hull_frac(cells_a, cells_b, margin=1.0):
+    """Share of the cells `cells_a` that lie within the convex hull of `cells_b` grown by `margin`
+    cells (all in cell coordinates); a degenerate hull (a line) counts as its bounding box."""
+    if not cells_a or not cells_b:
+        return 0.0
+    hull = _hull(cells_b)
+    if len(hull) < 3:
+        xs, ys = [c[0] for c in cells_b], [c[1] for c in cells_b]
+        x0, x1, y0, y1 = min(xs) - margin, max(xs) + margin, min(ys) - margin, max(ys) + margin
+        return sum(1 for c in cells_a if x0 <= c[0] <= x1 and y0 <= c[1] <= y1) / float(len(cells_a))
+    n = 0
+    for c in cells_a:
+        ok = True
+        for i in range(len(hull)):
+            a, b = hull[i], hull[(i + 1) % len(hull)]
+            ex, ey = b[0] - a[0], b[1] - a[1]
+            if (ex * (c[1] - a[1]) - ey * (c[0] - a[0])) / max(math.hypot(ex, ey), 1e-9) < -margin:
+                ok = False
+                break
+        n += ok
+    return n / float(len(cells_a))
+
+
+def stack_relations(p, cells, hmax, label, members):
+    """-> {plateau: {"on": {other: share}, "leans": {other: cells}, "top", "bottom", "n_cells"}}
+    A plateau enclosed by the one above it (its outside is almost only that plateau) is the hollow
+    of one object (a mug's or bowl's inside seen from above), never something under it; and a
+    plateau rests or leans on another only when it reaches over that plateau's footprint, so the
+    two sides of one lying object (its ridge and its lower flank) or two objects side by side are
+    not read as a stack."""
+    stats = {}
+    for lab, mem in enumerate(members):
+        if not mem:
+            continue
+        zs = p[[k for c in mem for k in cells[c]], 2]
+        top = float(np.percentile(zs, 97))
+        border, over, high_over, outside = 0, {}, {}, {}
+        for c in mem:
+            lower, is_border = set(), False
+            for di in (-1, 0, 1):
+                for dj in (-1, 0, 1):
+                    nb = (c[0] + di, c[1] + dj)
+                    if nb == c:
+                        continue
+                    ol = label.get(nb)
+                    if ol == lab:
+                        continue
+                    is_border = True
+                    outside[ol] = outside.get(ol, 0) + 1      # ol None: empty cell (desk, unseen)
+                    if ol is not None and hmax[nb] < hmax[c] - STACK_DROP:
+                        lower.add(ol)
+            if is_border:
+                border += 1
+            for ol in lower:
+                over[ol] = over.get(ol, 0) + 1
+                if hmax[c] > top - 0.03:
+                    high_over[ol] = high_over.get(ol, 0) + 1
+        stats[lab] = (top, float(np.percentile(zs, 3)), border, over, high_over, outside)
+
+    def enclosed_by(low, high):
+        """Is the lower plateau the hollow of the higher one? Either its outside is almost only
+        that plateau, or it lies within that plateau's footprint (a mug's inner wall seen from
+        above borders the rim on one side and, where the floor is too low to count, nothing on
+        the other)."""
+        outside = stats[low][5]
+        total = sum(outside.values())
+        if total > 0 and outside.get(high, 0) >= STACK_ENCLOSED * total:
+            return True
+        return inside_hull_frac(members[low], members[high], margin=0.5) >= STACK_ENCLOSED
+
+    out = {}
+    for lab, (top, bottom, border, over, high_over, outside) in stats.items():
+        rel = {"top": top, "bottom": bottom, "n_cells": len(members[lab]), "on": {}, "leans": {}}
+        if len(members[lab]) >= STACK_MIN_CELLS and border:
+            for ol, cnt in over.items():
+                if cnt >= STACK_ON_FRAC * border and not enclosed_by(ol, lab) and inside_hull_frac(members[lab], members[ol]) >= STACK_ON_HULL:
+                    rel["on"][ol] = cnt / float(border)
+            if top - bottom >= STACK_RAMP:
+                for ol, cnt in high_over.items():
+                    if cnt >= 3 and ol not in rel["on"] and not enclosed_by(ol, lab) and inside_hull_frac(members[lab], members[ol]) >= STACK_LEAN_HULL:
+                        rel["leans"][ol] = cnt
+        out[lab] = rel
+    return out
+
+
+def stack_split(p, expected_xy, cell=STACK_CELL):
+    """The object at `expected_xy` inside the merged cloud `p` and whatever rests on it.
+    -> None (nothing rests on anything here: keep the cloud whole), or
+       (own point idx, topper point idx or None, note) where the topper is the largest plateau
+       resting or leaning on the object's plateau; own = the object's plateau alone when it is
+       itself a topper or carries one."""
+    if len(p) < 60:
+        return None
+    cells, hmax, label, members = plateaus(p, cell)
+    live = [lab for lab, mem in enumerate(members) if mem]
+    if len(live) < 2:
+        return None
+    rels = stack_relations(p, cells, hmax, label, members)
+    # the plateau under the expected position: the nearest cell, the higher plateau on a tie
+    ci, cj = int(math.floor(expected_xy[0] / cell)), int(math.floor(expected_xy[1] / cell))
+    target = min(cells, key=lambda c: (max(abs(c[0] - ci), abs(c[1] - cj)), -hmax[c]))
+    mine = label[target]
+    toppers = [lab for lab in live if lab != mine and (mine in rels[lab]["on"] or mine in rels[lab]["leans"])]
+    carried = [lab for lab in live if lab != mine and (lab in rels[mine]["on"] or lab in rels[mine]["leans"])]
+    if not toppers and not carried:
+        return None
+    own = [k for c in members[mine] for k in cells[c]]
+    if toppers:
+        tl = max(toppers, key=lambda lab: rels[lab]["n_cells"])
+        tidx = [k for c in members[tl] for k in cells[c]]
+        how = "on" if mine in rels[tl]["on"] else "leaning on"
+        note = "%d-cell plateau (top %.3f) %s the %d-cell one (top %.3f)" % (
+            rels[tl]["n_cells"], rels[tl]["top"], how, rels[mine]["n_cells"], rels[mine]["top"])
+        return own, tidx, note
+    note = "it is the topper: %d cells (top %.3f) resting on %s" % (
+        rels[mine]["n_cells"], rels[mine]["top"], ["%d cells" % rels[l]["n_cells"] for l in carried])
+    return own, None, note
 
 
 class Classifier(object):
@@ -776,6 +1022,9 @@ class Controller(object):
         self.not_empty_t = {}
         self.carry_hang = 0.0
         self.last_descent_short = False
+        self.last_grasp_unreachable = False
+        self.stuck_strikes = 0
+        self._dragged_free = []
         self.stuck_count, self.recovering, self.stuck_recovered = 0, False, False
         # what the controller knows about the class containers' contents: the models it put in
         # itself (bottom -> top), and whether an initial pile of unseen objects may still lie
@@ -902,18 +1151,25 @@ class Controller(object):
             mark = 0
 
     def gripper_closed_on_object(self):
-        return 0.006 < self.width() < 0.077
+        # fully shut reads 0.0000-0.0005; a power drill held by its trigger reads 4 mm; fully open
+        # reads 0.0800, and a large clamp pinched across its jaws reads 0.077-0.078 (four lifts of
+        # one clamp were dropped again at the 0.077 bound)
+        return 0.002 < self.width() < 0.0792
 
     def travel_z(self):
         """Carry height: the held object's bottom clears the container rims."""
         return max(TRAVEL_Z, CONTAINER_RIM_Z + 0.04 + self.carry_hang)
 
-    def refine_xy(self, xy, anchor_xy, floor, top_z):
+    def refine_xy(self, xy, anchor_xy, floor, top_z, yaw=0.0):
         """Hovering 10 cm above the object with the hand camera: re-measure the top centroid
         around the planned anchor and shift the grasp point by how far it moved; also measure
-        the top right under the grasp point. Two touching objects merge into one component
-        whose top is the taller one's, so the component's top drags the grasp point toward the
-        neighbour and sets the fingers above the object. -> (xy, local top z or None)"""
+        the top within the strip the fingers sweep (the finger span along the closing axis, a
+        finger's width across). Two touching objects merge into one component whose top is the
+        taller one's, so the component's top drags the grasp point toward the neighbour and sets
+        the fingers above the object; the strip, not the point under the tool centre, is what
+        the fingers meet, so a hollow object's rim (the pitcher's, under a grasp planned over its
+        opening) or an object the hand sits beside along the finger axis keeps its real top.
+        -> (xy, local top z or None)"""
         try:
             R_cam, t_cam = self.cam_pose()
             rgb = decode_png(self.obs["rgb"]["eye_in_hand"], "RGB")
@@ -937,18 +1193,23 @@ class Controller(object):
             log("t=%d refine: shift %.3f too large, ignored" % (self.t(), math.hypot(dx, dy)))
             dx = dy = 0.0
         g = (xy[0] + dx, xy[1] + dy)
-        under = p[np.hypot(p[:, 0] - g[0], p[:, 1] - g[1]) < TOP_UNDER_RADIUS]
-        top_local = float(np.percentile(under[:, 2], 97)) if len(under) >= 10 else None
-        log("t=%d refine: shift (%+.3f,%+.3f) from %d top points, top under the grasp %s (planned %.3f)" % (
-            self.t(), dx, dy, len(slab), "%.3f" % top_local if top_local is not None else "-", top_z))
+        u, v = np.array([-math.sin(yaw), math.cos(yaw)]), np.array([math.cos(yaw), math.sin(yaw)])
+        rel = p[:, :2] - g
+        under = p[(np.abs(rel @ u) < GRASP_MAX_WIDTH / 2) & (np.abs(rel @ v) < TOP_UNDER_RADIUS)]
+        # the highest few points, not a percentile: the strip over a hollow pitcher or a thin tall
+        # box is mostly its inside or its sides, and the 97th percentile sat 5 cm under the rim
+        top_local = float(np.percentile(under[:, 2], 99.5)) if len(under) >= 10 else None
+        log("t=%d refine: shift (%+.3f,%+.3f) from %d top points, top under the grasp %s (planned %.3f)%s" % (
+            self.t(), dx, dy, len(slab), "%.3f" % top_local if top_local is not None else "-", top_z,
+            "; stack: " + d["stack_note"] if d.get("stack_note") else ""))
         return g, top_local
 
-    def pick(self, xy, yaw, top_z, floor, below_top=GRASP_BELOW_TOP, anchor_xy=None, tilt=None):
+    def pick(self, xy, yaw, top_z, floor, below_top=GRASP_BELOW_TOP, anchor_xy=None, tilt=None, keep_top=False):
         """Top-down pinch grasp at `yaw`, fingers `below_top` under the object's top (a rim grasp
         uses a shallow depth). The grasp point is refined from the hand camera 10 cm above the
         object before the final descent. Returns True when something is held after lifting."""
         x, y = xy
-        yaw = wrap_half(yaw)
+        yaw, tilt = yaw_branch((x, y), wrap_half(yaw), tilt)
         z_pre = max(top_z + 0.10, floor + 0.12)
         self.carry_hang = max(0.0, (top_z - floor) - below_top)     # how far the object hangs below the fingertips
         z_travel = max(self.travel_z(), z_pre)
@@ -957,8 +1218,8 @@ class Controller(object):
         if self.stuck_recovered:
             return False            # the arm folded up on the way and is back at the observe pose
         yield from self.hold(1, grip=0.0)
-        (x, y), top_local = self.refine_xy((x, y), anchor_xy or (x, y), floor, top_z)
-        if top_local is not None and top_local < top_z - TOP_DROP_MIN:
+        (x, y), top_local = self.refine_xy((x, y), anchor_xy or (x, y), floor, top_z, yaw=yaw)
+        if top_local is not None and top_local < top_z - TOP_DROP_MIN and not keep_top:
             top_z = top_local       # the planned top was a taller neighbour's
             self.carry_hang = max(0.0, (top_z - floor) - below_top)
         z_g = max(top_z - below_top, floor + GRASP_MIN_ABOVE_FLOOR)
@@ -970,6 +1231,9 @@ class Controller(object):
             # other way, so that the fingertips, not the TCP, land on the object (uncompensated,
             # tilted grasps lifted 2 of 16 in the episode logs: one finger came down on the object)
             a = approach_dir(yaw, tilt)
+            log("t=%d tilted grasp: plan (%.3f,%.3f) anchor (%.3f,%.3f) yaw %.2f tilt %s approach (%.2f,%.2f,%.2f) -> tcp (%.3f,%.3f) z %.3f" % (
+                self.t(), x, y, (anchor_xy or (x, y))[0], (anchor_xy or (x, y))[1], yaw, fmt_tilt(tilt), a[0], a[1], a[2],
+                x - FINGER_BELOW_TCP * a[0], y - FINGER_BELOW_TCP * a[1], z_g))
             x, y = x - FINGER_BELOW_TCP * a[0], y - FINGER_BELOW_TCP * a[1]
             self.last_grasp = (x, y, z_g, yaw)
             back = max(0.06, (CONTAINER_RIM_Z + 0.06 - z_g) / max(-a[2], 0.3))
@@ -983,8 +1247,7 @@ class Controller(object):
                 yield from self.goto(p_pre, yaw, grip=0.0, tol=0.015, yaw_tol=0.08, max_steps=30, step_max=0.03, tilt=tilt)
                 yield from self.goto((p_pre[0], p_pre[1], z_travel), yaw, grip=0.0, tol=0.015, max_steps=30, step_max=0.03)
                 return False
-            yield from self.hold(5, grip=1.0, yaw=yaw, tilt=tilt)
-            held = self.gripper_closed_on_object()
+            yield from self.close_fingers(yaw=yaw, tilt=tilt)
             yield from self.goto(p_pre, yaw, grip=1.0, tol=0.015, yaw_tol=0.08, max_steps=30, step_max=0.03, tilt=tilt)
             yield from self.goto((p_pre[0], p_pre[1], z_travel), yaw, grip=1.0, tol=0.015, max_steps=30, step_max=0.03)
         else:
@@ -995,12 +1258,115 @@ class Controller(object):
                 log("t=%d descent stopped %.3f m short of the grasp point; not closing" % (self.t(), float(np.linalg.norm(self.ee() - np.array([x, y, z_g])))))
                 yield from self.goto((x, y, z_travel), yaw, grip=0.0, tol=0.015, max_steps=30, step_max=0.03)
                 return False
-            yield from self.hold(5, grip=1.0)
-            held = self.gripper_closed_on_object()
+            yield from self.close_fingers()
             yield from self.goto((x, y, z_travel), yaw, grip=1.0, tol=0.015, max_steps=30, step_max=0.03)
         yield from self.hold(2, grip=1.0)
-        held = held and self.gripper_closed_on_object()
-        return held
+        # judged after the lift only: a width read right after the close command, while the
+        # fingers were still travelling to a wide object, called a pitcher in the hand "nothing",
+        # and the object went back down from the carry height
+        return self.gripper_closed_on_object()
+
+    def close_fingers(self, yaw=None, tilt=None):
+        """Command the fingers shut and wait until they stop moving (at least three, at most
+        GRIP_SETTLE_MAX steps): the drive takes several steps to meet a wide object."""
+        last = self.width()
+        for i in range(GRIP_SETTLE_MAX):
+            yield from self.hold(1, grip=1.0, yaw=yaw, tilt=tilt)
+            w = self.width()
+            if i >= 2 and abs(w - last) < 0.0015:
+                break
+            last = w
+
+    def maybe_drag(self, d, b):
+        """Drag an unreachable object toward the middle at most DRAG_TRIES_MAX times per spot and
+        request (the bookkeeping lives on the request state; outside a request, once)."""
+        if not DRAG_ENABLED:
+            return False
+        rs = self.request_state or {}
+        done = rs.setdefault("dragged", []) if self.request_state else self._dragged_free
+        n = sum(1 for (fb, fx, fy) in done if fb == b and math.hypot(fx - d["grasp_xy"][0], fy - d["grasp_xy"][1]) < 0.05)
+        if n >= (DRAG_TRIES_MAX if self.request_state else 1):
+            return False
+        ok = yield from self.drag_to_middle(d, b)
+        if ok:
+            done.append((b, d["grasp_xy"][0], d["grasp_xy"][1]))
+        return ok
+
+    def drag_to_middle(self, d, b):
+        """An object inside container b that no top-down pinch can reach where it lies (the hand
+        body would be on a wall): press one open fingertip onto its top and slide it toward the
+        container's middle, into the band where a straight pinch fits, then let the caller look
+        again and dig it. The hand stays straight down with its body over the interior; the
+        fingertip is 4.4 cm out from the tool centre along the finger axis, which is what reaches
+        past where the body may go. -> True when a drag was made."""
+        cb = self.containers[b]
+        x, y = d["grasp_xy"]
+        lx, ly = container_local(cb, x, y)
+        cands = [(max(-DRAG_BAND_X, min(DRAG_BAND_X, lx)), ly), (lx, max(-DRAG_BAND_Y, min(DRAG_BAND_Y, ly)))]
+        tl = min(cands, key=lambda c: math.hypot(c[0] - lx, c[1] - ly))
+        dist = math.hypot(tl[0] - lx, tl[1] - ly)
+        if dist < DRAG_MIN:
+            return False
+        tx, ty = container_point(cb, tl[0], tl[1])
+        dvec = np.array([tx - x, ty - y]); dvec /= max(float(np.linalg.norm(dvec)), 1e-9)
+        dist += DRAG_OVERSHOOT
+        top = d["top_z"]
+        z_press = top + FINGER_BELOW_TCP - DRAG_PRESS      # for the fit test only; the press height comes from contact
+        z_hover = top + FINGER_BELOW_TCP + 0.03
+        # fingertip on the object: the tool centre 4.4 cm away along the finger axis, on the side of the
+        # middle (u along the drag) or beside it (u across the drag); whichever pose the body fits
+        plan = None
+        for ang in (0.0, math.pi / 2, -math.pi / 2):
+            ux, uy = math.cos(ang) * dvec[0] - math.sin(ang) * dvec[1], math.sin(ang) * dvec[0] + math.cos(ang) * dvec[1]
+            yaw = wrap_half(math.atan2(-ux, uy))          # finger axis u = (-sin yaw, cos yaw) = (ux, uy)
+            for s_ in (1.0, -1.0):
+                tcp = (x + s_ * (GRIPPER_OPEN_W / 2 + 0.004) * ux, y + s_ * (GRIPPER_OPEN_W / 2 + 0.004) * uy)
+                ok = all(hand_fits3d(self.containers, (tcp[0] + k * dvec[0], tcp[1] + k * dvec[1], z_press), yaw, (0.0, 0.0), inside=b)
+                         for k in (0.0, dist / 2, dist))
+                if ok:
+                    plan = (tcp, yaw)
+                    break
+            if plan:
+                break
+        if plan is None:
+            log("t=%d drag %s: no press pose fits for the %s at local (%.2f,%.2f)" % (self.t(), b, d["cls_info"]["model"] if d.get("cls_info") else "object", lx, ly))
+            return False
+        (px, py), yaw = plan
+        yaw, _ = yaw_branch((px, py), yaw, None)
+        log("t=%d drag %s: %s at local (%.2f,%.2f) top=%.3f -> %.1f cm toward the middle, press from (%.2f,%.2f) yaw %.2f" % (
+            self.t(), b, d["cls_info"]["model"] if d.get("cls_info") else "object", lx, ly, top, 100 * dist, px, py, yaw))
+        yield from self.goto((px, py, self.travel_z()), yaw, grip=0.0, tol=0.015)
+        yield from self.goto((px, py, z_hover), yaw, grip=0.0, tol=0.006, yaw_tol=0.04, max_steps=40)
+        # descend until the fingertip meets the object (the tool centre stops sinking): the fingertip's
+        # true height under the tool centre is not trusted here, contact is
+        z_floor = max(top - 0.05, d["floor"] + 0.01)
+        z_last = float(self.ee()[2]); z_contact = None
+        for _ in range(14):
+            yield from self.goto((px, py, z_floor), yaw, grip=0.0, tol=0.003, max_steps=1, step_max=0.008)
+            z_now = float(self.ee()[2])
+            if z_last - z_now < 0.002:
+                z_contact = z_now
+                break
+            z_last = z_now
+            if z_now <= z_floor + 0.004:
+                break
+        if z_contact is None or z_contact < top - 0.03:
+            log("t=%d drag: no contact above the object (tool centre sank to %.3f, top %.3f); giving up" % (self.t(), float(self.ee()[2]), top))
+            yield from self.goto((px, py, self.travel_z()), yaw, grip=0.0, tol=0.02, max_steps=30)
+            return False
+        z_press = z_contact - 0.004
+        log("t=%d drag: contact at tool centre z %.3f (top %.3f: fingertip %.3f under the tool centre); pressing at %.3f" % (
+            self.t(), z_contact, top, z_contact - top, z_press))
+        n = int(math.ceil(dist / DRAG_STEP))
+        for k in range(1, n + 1):
+            f = min(1.0, k * DRAG_STEP / dist)
+            yield from self.goto((px + f * dist * dvec[0], py + f * dist * dvec[1], z_press), yaw, grip=0.0, tol=0.005, max_steps=6, step_max=DRAG_STEP)
+            ee = self.ee()
+            log("t=%d drag step %d/%d: tool centre (%.3f,%.3f,%.3f)" % (self.t(), k, n, ee[0], ee[1], ee[2]))
+        ee = self.ee()
+        yield from self.goto((ee[0], ee[1], self.travel_z()), yaw, grip=0.0, tol=0.02, max_steps=30)
+        log("t=%d drag done; hand ended at (%.2f,%.2f)" % (self.t(), ee[0], ee[1]))
+        return True
 
     def place_in_container(self, name, model=None):
         """Carry the held object over container `name`, lower to just above the rim near its centre,
@@ -1013,7 +1379,7 @@ class Controller(object):
         self.drop_slot[name] += 1
         # near the centre line, where a top-down hand fits to take it out again later
         x, y = container_point(b, (-0.01, 0.0, 0.01)[slot], (0.0, 0.025, -0.025)[slot])
-        yaw = wrap_half(math.pi / 2 + b[2])
+        yaw = yaw_branch((x, y), wrap_half(math.pi / 2 + b[2]))[0]
         # lowered to just above the pile (not dropped from the rim: objects roll to the ends)
         pile_top = max([c["top_z"] for c in self.last_clusters if c["container"] == name] or [CONTAINER_FLOOR_Z])
         z_rel = min(CONTAINER_RIM_Z + DROP_ABOVE_RIM, pile_top + 0.03) + self.carry_hang
@@ -1029,6 +1395,7 @@ class Controller(object):
         """Set the held object down on the desk, its bottom ~2 cm above the top (tall objects
         dropped from higher topple)."""
         x, y = xy
+        yaw = yaw_branch((x, y), yaw)[0]
         yield from self.goto((x, y, self.travel_z()), yaw, grip=1.0, tol=0.015)
         yield from self.goto((x, y, 0.02 + self.carry_hang), yaw, grip=1.0, tol=0.01, max_steps=30)
         yield from self.hold(4, grip=0.0)
@@ -1160,7 +1527,16 @@ class Controller(object):
             return None
         d["cls_info"] = clamp_by_size(combine(self.classify_eih(d), c.get("cls_info")), d["dims"])
         d["container"] = c["container"]
-        self.dump("inspect", rgb, [d])
+        if d.get("stack_note"):
+            log("t=%d stack: %s" % (self.t(), d["stack_note"]))
+        if d.get("blocker"):
+            blk = d["blocker"]
+            blk["cls_info"] = clamp_by_size(self.classify_eih(blk), blk["dims"])
+            blk["container"] = c["container"]
+            log("t=%d stack: %s (d=%.2f) rests on the inspected %s at (%.2f,%.2f) top=%.3f; it comes off first" % (
+                self.t(), blk["cls_info"]["model"], blk["cls_info"]["d"], d["cls_info"]["model"],
+                blk["grasp_xy"][0], blk["grasp_xy"][1], blk["top_z"]))
+        self.dump("inspect", rgb, [d] + ([d["blocker"]] if d.get("blocker") else []))
         return d
 
     # -- grasp planning -------------------------------------------------------------------------
@@ -1312,6 +1688,8 @@ class Controller(object):
         xy = (c["grasp_xy"][0], c["grasp_xy"][1])
         height = c["top_z"] - c["floor"]
         rim = self.rim_grasp(c, inside=inside)
+        if rim is not None and inside is not None and (c.get("cls_info") or {}).get("model") not in HOLLOW:
+            rim = None      # inside a container two objects with a gap between them look hollow
         pick = self.choose_yaw(c, inside=inside)
         shallow = [(pick[0], pick[1], GRASP_BELOW_TOP, pick[2])] if pick is not None else []
         if rim is not None and (not shallow or c["len_minor"] > 0.055):
@@ -1332,7 +1710,7 @@ class Controller(object):
             out.append((rim[0], rim[1], RIM_GRASP_BELOW_TOP, None))
         return out
 
-    def try_grasps(self, plans, top_z, floor, anchor_xy):
+    def try_grasps(self, plans, top_z, floor, anchor_xy, keep_top=False):
         """Attempt the planned grasps in order; stop at the first that holds. A plan that closed
         on nothing is tried once more shifted RETRY_JITTER across the fingers (the direction a
         1-2 cm perception error turns into a fingertip landing on the object) and turned a
@@ -1350,17 +1728,25 @@ class Controller(object):
                     xy = (plan[0][0] + sg * RETRY_JITTER * v[0], plan[0][1] + sg * RETRY_JITTER * v[1])
                     yaw = wrap_half(plan[1] + sg * RETRY_YAW)
                 attempts += 1
-                held = yield from self.pick(xy, yaw, top_z, floor, below_top=below, anchor_xy=anchor_xy, tilt=tilt)
+                self.last_grasp_unreachable = False
+                held = yield from self.pick(xy, yaw, top_z, floor, below_top=below, anchor_xy=anchor_xy, tilt=tilt, keep_top=keep_top)
                 if held:
                     return True
                 log("t=%d grasp (yaw %.2f, depth %.3f, tilt %s%s) failed" % (self.t(), yaw, below, fmt_tilt(tilt), ", retry" if k else ""))
                 if self.stuck_recovered:
-                    # the arm folded up going there: the next plan for this object would too,
-                    # and three recoveries in a row once ran a request past its deadline
+                    # the arm folded up going there: leave the object for now. Only a second
+                    # recovery on the way to the same request's target writes it off (three
+                    # recoveries in a row once ran a request past its deadline; one, with the
+                    # posture-regularised IK, is a hiccup, and giving the target up on it lost
+                    # a request whose object was in plain sight)
                     self.stuck_recovered = False
-                    log("t=%d leaving this object after the stuck-arm recovery" % self.t())
+                    self.stuck_strikes += 1
+                    self.last_grasp_unreachable = self.stuck_strikes >= 2
+                    log("t=%d leaving this object after the stuck-arm recovery%s" % (
+                        self.t(), " (second time: written off)" if self.last_grasp_unreachable else ""))
                     return False
                 if self.last_descent_short:
+                    self.last_grasp_unreachable = True
                     break           # the hand never got there: a shifted retry will not either
         return False
 
@@ -1428,6 +1814,7 @@ class Controller(object):
             elif req["text"] != self.request_text or self.request_state is None:
                 self.request_text = req["text"]
                 self.request_state = {"model": req["text"].replace("the ", "", 1), "inspected": [], "deadline": req["deadline_t"]}
+                self.stuck_strikes = 0
                 log("t=%d request %r deadline %d" % (self.t(), self.request_text, req["deadline_t"]))
             if self.request_state is not None:
                 done = yield from self.serve_request(clusters)
@@ -1465,6 +1852,10 @@ class Controller(object):
             log("t=%d loose %s (%s d=%.2f margin=%.2f; static %s) at (%.2f,%.2f) top=%.3f dims=%s grasps=%s" % (
                 self.t(), info["model"], info["cls"], info["d"], info["class_margin"], c["cls_info"]["model"],
                 d["grasp_xy"][0], d["grasp_xy"][1], d["top_z"], [round(v, 3) for v in d["dims"]], fmt_plans(g)))
+            if d.get("blocker") and info["class_margin"] >= 0.08:
+                acted = yield from self.clear_blocker(d, None, clusters)
+                if acted:
+                    return True
             if info["class_margin"] < 0.08 or not g:
                 self.skip(c)
                 return True
@@ -1476,16 +1867,28 @@ class Controller(object):
                 log("t=%d grasp failed" % self.t())
                 self.skip(c)
             return True
+        rs = self.request_state
         for c in clusters:
-            if c["container"] in CLASS_OF_CONTAINER and c["cls_info"] is not None and not self.skipped(c) \
-                    and c["cls_info"]["cls"] != CLASS_OF_CONTAINER[c["container"]] and c["cls_info"]["class_margin"] > 0.4:
+            if c["cls_info"] is None or self.skipped(c):
+                continue
+            misfiled = c["container"] in CLASS_OF_CONTAINER \
+                and c["cls_info"]["cls"] != CLASS_OF_CONTAINER[c["container"]] and c["cls_info"]["class_margin"] > 0.4
+            # an object in red that no open request put there is misfiled too (dropped on the
+            # way over it); only its far half is within the hand's reach
+            in_red = c["container"] == "red" and c["n"] >= 15 and c["grasp_xy"][0] >= RED_REACH_X \
+                and not (rs and (rs.get("placed_red") or rs.get("in_red")))
+            if misfiled or in_red:
                 d = yield from self.inspect(c)
-                if d is None or d["cls_info"]["cls"] == CLASS_OF_CONTAINER[c["container"]] or d["cls_info"]["class_margin"] < 0.4 \
-                        or d["cls_info"].get("model_margin", 0.0) < 0.3:
+                if d is None or d["cls_info"]["class_margin"] < (0.4 if misfiled else 0.3) or d["cls_info"].get("model_margin", 0.0) < 0.3 \
+                        or (misfiled and d["cls_info"]["cls"] == CLASS_OF_CONTAINER[c["container"]]):
                     self.skip(c)
                     return True
                 g = self.plan_grasps(d, inside=c["container"])
                 log("t=%d misplaced %s in %s grasps=%s" % (self.t(), d["cls_info"]["model"], c["container"], fmt_plans(g)))
+                if d.get("blocker"):
+                    acted = yield from self.clear_blocker(d, c["container"], clusters)
+                    if acted:
+                        return True
                 if not g:
                     self.skip(c)
                     return True
@@ -1516,6 +1919,11 @@ class Controller(object):
                     continue
                 g = self.plan_grasps(d, inside=b)
                 log("t=%d patrol: %s misfiled in %s grasps=%s" % (self.t(), info["model"], b, fmt_plans(g)))
+                if d.get("blocker"):
+                    acted = yield from self.clear_blocker(d, b, self.last_clusters)
+                    if acted:
+                        self.last_patrol_t = -10 ** 9      # the misfiled object is exposed now: come back
+                        return
                 if not g:
                     continue
                 held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
@@ -1597,6 +2005,19 @@ class Controller(object):
             cs = [c for c in loose if not self._near_any(c, rs["inspected"]) and self.could_be(c, model, slack) and self.within_reach(c)]
             return sorted(cs, key=lambda c: (c["cls_info"].get("all") or {}).get(model, 9.0))
 
+        if not rs.get("red_checked"):
+            # an object dropped into red on the way to its container (it stands under the carry
+            # path): when it is the target, delivered is right away; one request was marked
+            # absent with its object lying in red
+            rs["red_checked"] = True
+            red = sorted([c for c in clusters if c["container"] == "red" and c["n"] >= 15], key=lambda c: -c["top_z"])
+            if red:
+                d = yield from self.inspect(red[0])
+                if d is not None and is_model(d["cls_info"], model):
+                    log("t=%d the target (%s, d=%.2f) is already in the red container" % (self.t(), d["cls_info"]["model"], d["cls_info"]["d"]))
+                    rs["seen_target"] = True
+                    rs["in_red"] = True
+                return True
         cands = fresh(0.5)
         if cands:
             done = yield from self.check_candidate(cands[0])
@@ -1640,9 +2061,10 @@ class Controller(object):
             rs["swept"] = True              # look into the blind ends of the near strip first
             self.last_sweep_t = -10 ** 9
             return True
-        if rs.get("best_gap", 9.0) < 0.4 and not rs.get("tried_best"):
-            # a loose object that looked a lot like the target: more likely the target misread than
-            # an absent one (one request in five names an absent object)
+        if rs.get("best_gap", 9.0) < 0.3 and CLASS_OF.get(rs.get("best_model")) == CLASS_OF.get(model) and not rs.get("tried_best"):
+            # a loose object of the target's class that looked a lot like it: more likely the
+            # target misread than an absent one (one request in five names an absent object; a
+            # pudding box once went to red for an absent tuna fish can at a gap of 0.35)
             rs["tried_best"] = True
             near = [c for c in loose if math.hypot(c["centroid"][0] - rs["best_key"][0], c["centroid"][1] - rs["best_key"][1]) < 0.06]
             if near:
@@ -1668,15 +2090,26 @@ class Controller(object):
         if not force and not is_model(info, model):
             gap = info.get("all", {}).get(model, 9.0) - info["d"]
             if gap < rs.get("best_gap", 9.0):
-                rs["best_gap"], rs["best_key"] = gap, key
+                rs["best_gap"], rs["best_key"], rs["best_model"] = gap, key, info["model"]
             return True
         rs["seen_target"] = True            # it is here: absence is never claimed for this request
         g = self.plan_grasps(d)
+        if d.get("blocker"):
+            acted = yield from self.clear_blocker(d, None, self.last_clusters)
+            if acted:
+                rs["inspected"].remove(key)     # look at it again once the top is off
+                return True
         if not g:
             log("t=%d target not graspable where it lies" % self.t())
             return True
         held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
         if not held:
+            if self.last_grasp_unreachable:
+                # the arm cannot get down to it where it lies (three identical tries once ate a
+                # whole request): leave it; absence is never claimed for a seen target
+                log("t=%d the target is out of the hand's reach where it lies; leaving it" % self.t())
+                rs["out_of_reach"] = "desk"
+                return True
             log("t=%d grasp of the target failed; retrying" % self.t())
             rs["inspected"].remove(key)
             return True
@@ -1691,6 +2124,55 @@ class Controller(object):
         else:
             log("t=%d red container check failed; retrying" % self.t())
             rs["inspected"].remove(key)
+        return True
+
+    def clear_blocker(self, d, b, clusters):
+        """Something rests on the object the controller wants (d["blocker"]): take it off first.
+        A request's target goes straight to red; anything else waits on a free desk spot (a
+        request puts it back before the mark, the tidying sorts it otherwise). -> True when the
+        arm did something (the caller re-observes), False when the blocker cannot be moved now
+        (the caller goes on with `d` as it lies)."""
+        blk = d["blocker"]
+        info = blk["cls_info"]
+        rs = self.request_state
+        model = rs["model"] if rs else None
+        g = self.plan_grasps(blk, inside=b)
+        log("t=%d stack: taking %s off %s in %s first; grasps=%s" % (
+            self.t(), info["model"], d["cls_info"]["model"], b or "the desk", fmt_plans(g)))
+        if not g:
+            return False
+        if rs:
+            fails = sum(1 for (fb, fx, fy) in rs.get("failed", []) if fb == b and math.hypot(fx - blk["grasp_xy"][0], fy - blk["grasp_xy"][1]) < 0.06)
+            if fails >= UNPACK_FAILS_MAX:
+                return False
+        is_target = bool(rs) and ((info["model"] == model and info.get("model_margin", 0.0) > 0.3) or (is_model(info, model, 0.15) and info["model"] != model))
+        spot = None if is_target else self.free_spot(clusters, near=(blk["centroid"][0], blk["centroid"][1]))
+        if not is_target and spot is None:
+            log("t=%d no free desk spot for the blocker" % self.t())
+            return False
+        # the planned top is the topper's own (a tilted object's top is the only part of it the
+        # fingers can close on); the refine's "taller neighbour" correction is for flat piles
+        held = yield from self.try_grasps(g, blk["top_z"], blk["floor"], tuple(blk["grasp_xy"]), keep_top=True)
+        if not held:
+            if rs:
+                # a descent that never got there counts double: the same approach 300 steps later
+                # stops just as short (two such tries once cost a request its deadline)
+                rs.setdefault("failed", []).extend([(b, blk["grasp_xy"][0], blk["grasp_xy"][1])] * (2 if self.last_grasp_unreachable else 1))
+            return True
+        if is_target:
+            rs["seen_target"] = True
+            self.forget(model)
+            yield from self.place_in_container("red")
+            rs["placed_red"] = True
+            yield from self.hold(8, grip=0.0)
+            ok = yield from self.confirm_red()
+            if ok:
+                rs["in_red"] = True
+                log("t=%d target in red (it was the topper in %s); tidying before the mark" % (self.t(), b))
+            return True
+        yield from self.place_on_desk(spot, self.spot_yaw(spot))
+        if rs:
+            rs.setdefault("dug", []).append(spot)
         return True
 
     def unpack_one(self, b, inside, clusters):
@@ -1710,9 +2192,15 @@ class Controller(object):
             log("t=%d unpack %s: top %s (d=%.2f, model margin %.2f) at (%.2f,%.2f) top=%.3f grasps=%s" % (
                 self.t(), b, info["model"], info["d"], info.get("model_margin", 0.0), d["grasp_xy"][0], d["grasp_xy"][1],
                 d["top_z"], fmt_plans(g)))
+            if d.get("blocker"):
+                acted = yield from self.clear_blocker(d, b, clusters)
+                if acted:
+                    return True
             if not g:
+                if (yield from self.maybe_drag(d, b)):
+                    return True
                 continue
-            fails = sum(1 for (fb, fx, fy) in rs.get("failed", []) if fb == b and math.hypot(fx - d["grasp_xy"][0], fy - d["grasp_xy"][1]) < 0.04)
+            fails = sum(1 for (fb, fx, fy) in rs.get("failed", []) if fb == b and math.hypot(fx - d["grasp_xy"][0], fy - d["grasp_xy"][1]) < 0.06)
             if fails >= UNPACK_FAILS_MAX:
                 # the same grasp failed twice already this request (one standing clamp took six
                 # identical tries of one request): the time is better spent on the next container
@@ -1726,8 +2214,12 @@ class Controller(object):
                 return False
             held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
             if not held:
-                rs.setdefault("failed", []).append((b, d["grasp_xy"][0], d["grasp_xy"][1]))
-                break
+                # the pile has moved: the caller observes again and the dig goes on here with the
+                # next cluster (this spot is skipped after UNPACK_FAILS_MAX). Leaving the
+                # container after one failed grasp cost a from-above identification pass and a
+                # 150-step ban each time, one grasp attempt per visit, and every buried target
+                rs.setdefault("failed", []).extend([(b, d["grasp_xy"][0], d["grasp_xy"][1])] * (2 if self.last_grasp_unreachable else 1))
+                return True
             if is_target:
                 rs["seen_target"] = True
                 self.forget(model)
@@ -1755,6 +2247,38 @@ class Controller(object):
                 if d is None:
                     continue
                 info = d["cls_info"]
+                g = self.plan_grasps(d, inside=b)
+                fails = sum(1 for (fb, fx, fy) in rs.get("failed", []) if fb == b and math.hypot(fx - d["grasp_xy"][0], fy - d["grasp_xy"][1]) < 0.06)
+                if g and fails < UNPACK_FAILS_MAX:
+                    # seen from above, this one can be taken after all: dig it now (the pass to
+                    # identify what is left comes back once nothing has a grasp)
+                    rs["identified"][b] = False
+                    log("t=%d unpack %s (from above): %s (d=%.2f) at (%.2f,%.2f) top=%.3f grasps=%s" % (
+                        self.t(), b, info["model"], info["d"], d["grasp_xy"][0], d["grasp_xy"][1], d["top_z"], fmt_plans(g)))
+                    is_target = (info["model"] == model and info.get("model_margin", 0.0) > 0.3) or (is_model(info, model, 0.15) and info["model"] != model)
+                    spot = None if is_target else self.free_spot(clusters, near=(d["centroid"][0], d["centroid"][1]))
+                    if not is_target and spot is None:
+                        continue
+                    held = yield from self.try_grasps(g, d["top_z"], d["floor"], tuple(d["grasp_xy"]))
+                    if not held:
+                        rs.setdefault("failed", []).extend([(b, d["grasp_xy"][0], d["grasp_xy"][1])] * (2 if self.last_grasp_unreachable else 1))
+                        return True
+                    if is_target:
+                        rs["seen_target"] = True
+                        self.forget(model)
+                        yield from self.place_in_container("red")
+                        rs["placed_red"] = True
+                        yield from self.hold(8, grip=0.0)
+                        if (yield from self.confirm_red()):
+                            rs["in_red"] = True
+                            log("t=%d target in red (dug out of %s from above); tidying before the mark" % (self.t(), b))
+                        return True
+                    yield from self.place_on_desk(spot, self.spot_yaw(spot))
+                    rs.setdefault("dug", []).append(spot)
+                    return True
+                if not g and (yield from self.maybe_drag(d, b)):
+                    rs["identified"][b] = False
+                    return True
                 ids.append(info["model"])
                 gap = info.get("all", {}).get(model, 9.0) - info["d"]
                 if info["model"] == model or TWIN.get(info["model"]) == model or info.get("model_margin", 0.0) < 0.35 or gap < 0.5:

@@ -24,6 +24,7 @@ cat > "$SUB/run.sh" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
+export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
 exec /opt/venv/bin/python3 solver.py
 SH
 chmod +x "$SUB/run.sh"

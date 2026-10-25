@@ -47,8 +47,9 @@ An episode runs a fixed `${horizon}` control steps at 10 Hz. During it:
    right only if the object is not on the desk. A right mark closes the request as a success,
    a wrong mark as a failure, and a request whose deadline passes without a mark is a failure
    too. At most one request is open at a time.
-3. **Container service.** When a container is full, or a requested object has been delivered to the red
-   container, a worker empties that container: its objects disappear from the scene.
+3. **Container service.** When a class container is full (nine objects or more), or a requested object
+   has been delivered to the red container, a worker empties that container: its objects disappear
+   from the scene.
 4. **Disturbances.** Occasionally the world misplaces one object into a wrong container, or nudges
    a loose object across the desk. Correcting these is part of the job. An object that comes to
    rest beside the robot's base (closer than 0.26 m, where no camera sees it and no hand reaches)
@@ -123,8 +124,8 @@ time. Nothing else about the step changes. A mark is ignored while no request is
 and a request accepts one mark only; the request, and the desk with it, are judged at the
 step of the mark. The environment turns the delta into joint targets
 through inverse kinematics, interpolated over the step (a 5 cm step completes about 96% within it); a
-delta that is unreachable or would flip the arm to another joint-space branch is refused and
-the arm simply stays put for that step.
+delta with no solution is refused and the arm simply stays put for that step, and one whose
+joint solution is more than a step away is approached over the next few steps rather than jumped to.
 
 ## Scoring
 
