@@ -1,0 +1,7 @@
+{
+  "metric": "success_rate",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 1,
+  "source": "Measured with pinned ALE 90a7c1cfa649c5dbf1078714773f99840e44cba3 on 2026-10-26. Oracle episodes visual_low_level_flight_control-oracle-52e57748 and visual_low_level_flight_control-oracle-70658109 each evaluated four fresh private scenes; both measured success_rate=1.0. Observed run-to-run band [1.0,1.0], so anchor=1.0 and full_at=1.0. The first run used the intentional null-anchor bootstrap and therefore emitted reward zero while recording the raw success metric. Source: each episode's verification.json and trace.execution.jsonl. GPU count=0; public-image scripted solution, not a model result."
+}
