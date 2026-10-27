@@ -1,0 +1,9 @@
+spec_type: core/v1
+name: unmanned_aerial_vehicle_requirements_replica_from_photos
+image: {kind: container}
+resources: {cpus: 4, memory_mb: 8192}
+network: {mode: block}
+timeouts: {setup: 300, agent: 14400, verify: 900}
+artifacts: [/home/user/submission]
+metadata:
+  platform: uav

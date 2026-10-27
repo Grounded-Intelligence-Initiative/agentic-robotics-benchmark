@@ -1,0 +1,11 @@
+{
+  "motors": {
+    "FL": "VM-28",
+    "FR": "VM-28",
+    "RL": "VM-23",
+    "RR": "VM-28"
+  },
+  "propeller": "VP-51",
+  "esc": "VE-28",
+  "battery": "VB-42"
+}

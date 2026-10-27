@@ -1,0 +1,239 @@
+facets:
+- id: replica_count
+  value: 8
+  unit: count
+  sources:
+  - B-01
+- id: core_policy
+  value: retain
+  unit: text
+  sources:
+  - B-01
+- id: control_stack
+  value: PX4/ROS2
+  unit: text
+  sources:
+  - B-01
+- id: payload_mass
+  value: 0.359
+  unit: kg
+  sources:
+  - PH-12
+- id: mission_duration
+  value: 422
+  unit: s
+  sources:
+  - B-07
+- id: auxiliary_power
+  value: 38
+  unit: W
+  sources:
+  - B-07
+- id: tip_clearance
+  value: 2
+  unit: mm
+  sources:
+  - B-05
+- id: reserve_fraction
+  value: 0.2
+  unit: '1'
+  sources:
+  - B-07
+- id: delivered_lot
+  value: B
+  unit: text
+  sources:
+  - Q-01
+  - LR-B
+- id: battery_series
+  value: 6
+  unit: count
+  sources:
+  - B-03
+- id: motor_mount
+  value: 16
+  unit: mm
+  sources:
+  - BL-03
+  - B-05
+- id: old_envelope_status
+  value: superseded
+  unit: text
+  sources:
+  - BL-02
+derived:
+  all_up_mass_kg:
+    value: 2.0694
+    unit: kg
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  cg_x_mm:
+    value: 8.678555580563433
+    unit: mm
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  cg_y_mm:
+    value: 1.5246414018997538
+    unit: mm
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  cg_z_mm:
+    value: 7.406769472104075
+    unit: mm
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  battery_peak_a:
+    value: 48.09984677215066
+    unit: A
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  minimum_voltage_v:
+    value: 20.314486006531695
+    unit: V
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  mission_energy_wh:
+    value: 55.764873011804156
+    unit: Wh
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  usable_energy_wh:
+    value: 70.71321599999999
+    unit: Wh
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  inertia_xx_kg_m2:
+    value: 0.023816203116704557
+    unit: kg.m2
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  inertia_xy_kg_m2:
+    value: -0.0004611706729218504
+    unit: kg.m2
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  inertia_xz_kg_m2:
+    value: -0.0020626639708816977
+    unit: kg.m2
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  moment_peak_x_nm:
+    value: 0.6765419140099408
+    unit: N.m
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  inertia_yy_kg_m2:
+    value: 0.020920377727315292
+    unit: kg.m2
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  inertia_yz_kg_m2:
+    value: -0.0008281106524496385
+    unit: kg.m2
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  moment_peak_y_nm:
+    value: 1.0877038014349798
+    unit: N.m
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  inertia_zz_kg_m2:
+    value: 0.030839539510117527
+    unit: kg.m2
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  moment_peak_z_nm:
+    value: 0.28468960343923233
+    unit: N.m
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  thrust_peak_FL_n:
+    value: 12.522505435966037
+    unit: N
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  esc_rms_FL_a:
+    value: 5.973157323376554
+    unit: A
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  thrust_peak_FR_n:
+    value: 14.751752639068414
+    unit: N
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  esc_rms_FR_a:
+    value: 6.158045053087862
+    unit: A
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  thrust_peak_RL_n:
+    value: 8.063727728305945
+    unit: N
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  esc_rms_RL_a:
+    value: 5.160239794580318
+    unit: A
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  thrust_peak_RR_n:
+    value: 13.297066364358344
+    unit: N
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
+  esc_rms_RR_a:
+    value: 4.846108209956371
+    unit: A
+    sources:
+    - B-09
+    - LR-B
+    - PH-02
