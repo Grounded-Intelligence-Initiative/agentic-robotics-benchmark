@@ -249,8 +249,9 @@ works). Renaming the dataset = edit `task-assets.toml`, run `sync`, commit; ever
 assets then gets a new content digest (re-export the registry after the merge). Usage:
 `docs/task-assets.md`.
 
-- Next: #13 adopts the canonical fetcher and the `endpoint` header; the FreeCAD CAD task
-  (`arm_links_from_photos_in_freecad`) arrives with them.
+- Uses: `robotic_arm_cad_design_from_photos` (#15, merged; dataset commit `ccf1b9b`) and the open #13
+  (`robotic_arm_replica_requirements_from_photos`), both on the canonical fetcher and the synced header.
+- Next: export the registry for #15's new slug (`identity-history.json`).
 
 ## Open items
 
