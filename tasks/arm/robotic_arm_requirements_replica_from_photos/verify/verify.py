@@ -1,4 +1,4 @@
-"""Grader of robotic_arm_replica_requirements_from_photos (info tier, requirements stage, rung I2). Root, verify stage, agent gone.
+"""Grader of robotic_arm_requirements_replica_from_photos (info tier, requirements stage, rung I2). Root, verify stage, agent gone.
 
   0. FIRST THING, stdlib only (`_early_lockdown`; run.sh has already chmod 0700 the stage and its parent): record when
      the engine began uploading this folder (earliest ctime of its files), freeze and kill every process of the agent
