@@ -13,6 +13,8 @@ You receive:
 
 Your program runs separately on three fresh workcells. Parts have new bench locations and yaws; fixture position and camera commissioning also vary. Use the top and wrist RGB-D cameras, robot joint encoders and wrist wrench. No object poses, camera calibration, segmentation labels, coupling events or assembly progress are supplied. There is no trial workcell during programming. You may inspect the supplied CAD and write your own offline geometric and kinematic tools.
 
+Before physical settling, each part is staged in the rest orientation published in `given/kit/kit.json` (`rest_rotation`, or the identity matrix when absent), then rotated by an unknown angle in [-0.2, 0.2] radians about world +z. In matrix notation, `R_world = Rz(theta) @ R_rest`; this is a world-axis rotation. This staging prior disambiguates the initial orientation of visually symmetric purchased envelopes after you calibrate the world frame. Parts remain free to settle and move under contact, so estimate and track their actual poses from observations.
+
 The connection provides:
 
 ```python

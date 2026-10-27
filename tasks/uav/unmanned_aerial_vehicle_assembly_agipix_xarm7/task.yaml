@@ -17,4 +17,4 @@ metadata:
   render_backend: filament
   tags: [agipix, xarm7, mujoco, assembly, rgbd, contact, planning]
   source_platform: AGiPix-derived mechanical assembly kit
-  development_status: reference-and-frontier-validation-pending
+  development_status: reference-calibrated-frontier-pending

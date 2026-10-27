@@ -1,9 +1,9 @@
 {
   "metric": "assembly_score",
   "direction": "higher",
-  "value": null,
+  "value": 1.0,
   "full_at": 1.0,
-  "source": "Pending actual ALE reference measurement; no successful full assembly has been claimed.",
-  "reference_commit": "development",
-  "note": "Linear completed-mate fraction. Populate only from actual physically executed reference validation; no difficulty-driven renormalization."
+  "source": "Actual ALE bootstrap validate-7f39ea5a, oracle episode unmanned_aerial_vehicle_assembly_agipix_xarm7-oracle-649221f9, engine 90a7c1cfa649c5dbf1078714773f99840e44cba3: measured assembly_score 1.0 over three physical episodes, each 23/23 with no safety failure and 1071.22 simulated seconds. Measured on 2026-10-27.",
+  "reference_commit": "65b34af2b052accaa2aac53b24c78206b922f745",
+  "note": "Linear completed-mate fraction: each valid connection contributes 1/23. The privileged physical reference uses the configured nominal layout; submitted programs use randomized workcells. No difficulty-driven renormalization."
 }
