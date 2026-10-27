@@ -16,5 +16,17 @@
     "since": "2026-10-27T17:31:33Z",
     "slug": "robotic_arm_cad_design_from_photos",
     "spec_hash": "sha256:10b7f2f5c18dabb35baf33d00b0a851c5d55253e35db11f705d28bd4fa1585d7"
+  },
+  {
+    "content_digest": "sha256:515acf5c9a41e09bf7702de62579df115734b46f9eb8ce10f808f333f9f13c89",
+    "since": "2026-10-27T19:49:28Z",
+    "slug": "robotic_arm_full_assembly_so101_panda",
+    "spec_hash": "sha256:d86b078a68c6455a35bb80ff3f80a622ab08e85391aadf161eb44517f7bc9e41"
+  },
+  {
+    "content_digest": "sha256:c01165f1221c9c7de191cfa6234bb53121ac6c6a1a53db24c02b795008deb1d6",
+    "since": "2026-10-27T19:49:28Z",
+    "slug": "robotic_arm_requirements_replica_from_photos",
+    "spec_hash": "sha256:58d88f2534d367fe47af9c59fae8dc46e1fa52d56a5bed83dedc828b5e33ae89"
   }
 ]
