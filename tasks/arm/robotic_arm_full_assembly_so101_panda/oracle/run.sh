@@ -6,7 +6,7 @@
 set -euo pipefail
 HOME_DIR="${ALE_HOME:-/home/user}"
 SUB="$HOME_DIR/submission"
-A="$(dirname "$0")/assets"
+A="$(dirname "$0")/reference"
 mkdir -p "$SUB"
 cp "$A/assemble.py" "$SUB/"
 cp "$A/oracle_token" "$SUB/.oracle_token"
