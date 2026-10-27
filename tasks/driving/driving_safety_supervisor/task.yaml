@@ -1,0 +1,29 @@
+spec_type: core/v1
+
+# A safety supervisor for an automated vehicle in CARLA: the agent builds a process that,
+# every 0.1 s, watches the front camera and a nominal planner (CARLA's stock BehaviorAgent)
+# and either lets its control through or overrides it, across procedurally generated
+# long-tail scenarios on hidden seeds, most of them in forms practice never shows.
+name: driving_safety_supervisor
+
+image: {kind: container}
+
+# One GPU renders CARLA (offscreen Vulkan) and runs whatever models the supervisor uses.
+resources: {cpus: 8, memory_mb: 32768, gpus: 1}
+network: {mode: block}
+
+# verify: 25 episodes of up to ~50 s driving (plus excused waits) at 10 Hz, plus CARLA
+# start-up and town loads.
+timeouts: {setup: 300, agent: 3600, verify: 10800}
+
+artifacts: [/home/user/submission]
+
+# A fresh sandbox for grading (only the submission is restored), on the same image: the
+# secret is the episode seeds, but nothing the agent left running in its own sandbox may
+# reach CARLA during the grading run.
+verify:
+  environment_mode: separate
+  resources: {cpus: 8, memory_mb: 32768, storage_mb: null, gpus: 1}
+
+metadata:
+  platform: driving
