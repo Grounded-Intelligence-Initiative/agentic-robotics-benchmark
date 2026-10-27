@@ -5,8 +5,8 @@ The mesh source is `cad/model_exports/agipix/body.stl`; rotor placement comes fr
 The upstream BOM and hardware-assembly guide establish the carbon-fibre / printed-adapter construction,
 four motors, four-in-one ESC, 6S power and PX4/companion-computer architecture.
 
-This is a procedurally rendered lab-built derivative. The obsolete battery volume fused into the source body
-export is removed before fitting the new open cage. Core geometry is scaled during fabrication; the installed
+This is a procedurally rendered lab-built derivative. The obsolete battery and motor-shell volumes fused into
+the source body export are removed before fitting the open cage and M-2 survey motors. Core geometry is scaled during fabrication; the installed
 battery cage, ballast pod and scanner are benchmark fixtures. No upstream performance claim is an acceptance
 value. Vesper Motion products, lot measurements, masses, procurement prices and customer clauses are synthetic.
 The reduced-order mass and bench-power model in B-09 is the contractual acceptance model, not flight certification.

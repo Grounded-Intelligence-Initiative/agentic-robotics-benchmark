@@ -8,8 +8,8 @@ BL-02. Carbon-fibre plates and TPU adapters follow the AgiPix construction; this
 The initial traveller copied the upstream envelope 438 x 372 mm. That traveller predates fabrication; see the survey.
 The four shaft centres form a rectangle. Do not infer a square wheelbase from the four guard loops.
 
-BL-03. Installed old survey propellers have no legible pitch marking. The reference motor case diameter is 28.2 mm;
-case height 14 mm, shaft diameter 5 mm. Those case dimensions are unchanged by the fabricated-core scaling.
+BL-03. Installed old survey propellers have no legible pitch marking. Reference motor body: M-2, mounting envelope
+28.2 mm diameter x 14 mm height, shaft diameter 5 mm (mechanical outline on DS-01). This purchased body is unscaled.
 The motor mounting pattern is 16 mm. The photographed propellers do not determine the new BOM selection.
 
 BL-04. The battery cage has a rear stop, side stops and upper retention rails. Internal dimensions are measured
@@ -21,9 +21,12 @@ The first installation note says 'battery under centre'; it was moved aft before
 BL-05. Scanner package: DS-08. Its centre lies on y=0. The ballast pod sits on a raised asymmetric bracket, as surveyed.
 No balance measurement was retained. Use the visible box centres and component weights.
 
-BL-06. The 150 mm steel rule appears in PH-08 only. It has 1 mm ticks. The ID-1 card (85.60 x 53.98 mm)
-appears in PH-05 only. The scale display in PH-12 is the complete payload mass; its tare is zero.
+BL-06. The 150 mm steel rule appears on a separate gauge stand in PH-08 only. It has 1 mm ticks.
+The ID-1 card (85.60 x 53.98 mm) leans on a desk block in PH-05 only.
+The scale display in PH-12 is the complete payload mass; its tare is zero.
 These reference objects were removed from the other shots. There is no photogrammetry calibration file.
+These are unrectified compact-camera images; lens distortion is present. Manufactured straight edges and
+the documented reference outlines can be used to estimate the imaging geometry.
 
 BL-07. Motor supplier preliminary sheet DS-01 accompanied the first quote. DS-07 supersedes the stated coefficient.
 Incoming reports LR-A and LR-B cover separate shipments; Q-01 binds the order to the latter. No upstream motor
