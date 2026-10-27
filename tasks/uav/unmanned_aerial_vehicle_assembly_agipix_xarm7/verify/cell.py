@@ -66,6 +66,9 @@ def default_layout(graph, kit, seed, jitter=True):
         if any(r in late for r in mate["requires"]):
             late.add(mate["id"])
     late_parts = {m["part"] for m in graph["mates"] if m["id"] in late and m["part"] != "guard"}
+    # Keep propellers accessible regardless of the chosen assembly order. The
+    # guard is not a mechanical prerequisite for mounting a propeller.
+    late_parts.update(n for n, p in graph["instances"].items() if p["kind"].startswith("prop_"))
     shadow = np.asarray(kit["parts"]["guard_deck"]["bounds_m"])[:, :2] + np.asarray(graph["fixture_pos_m"][:2])
     shadow += [[-.05, -.05], [.05, .05]]
     for attempt in range(100):
@@ -208,9 +211,9 @@ class Cell:
         bb = np.array(p["bounds_m"])
         sz = bb[1] - bb[0]
         inertia = p["mass_kg"] / 12 * np.array([sz[1]**2+sz[2]**2, sz[0]**2+sz[2]**2, sz[0]**2+sz[1]**2])
-        if kind.startswith("prop_"):
-            # A three-bladed propeller's bounding-box centre is far from its hub.
-            # Use the true uniform-material volume distribution, not that box.
+        if kind.startswith("prop_") or kind in ("sensor_cap", "sensor_cheek"):
+            # Homogeneous manufactured parts use their actual material volume.
+            # A box centre is especially misleading for a C plate or propeller.
             import trimesh
             volume = trimesh.load_mesh(self.assets/"given/kit/meshes"/p["mesh"])
             volume.merge_vertices(digits_vertex=7)
@@ -218,7 +221,7 @@ class Cell:
             volume.update_faces(volume.nondegenerate_faces())
             volume.remove_unreferenced_vertices()
             if not volume.is_volume:
-                raise RuntimeError("Propeller mass-property mesh is not a closed volume")
+                raise RuntimeError(f"{kind} mass-property mesh is not a closed volume")
             inertia = volume.moment_inertia * p["mass_kg"] / volume.volume
             ET.SubElement(b,"inertial",mass=str(p["mass_kg"]),pos=text(volume.center_mass),
                           fullinertia=text(inertia[[0,1,2,0,0,1],[0,1,2,1,2,2]]))
@@ -315,10 +318,11 @@ class Cell:
         achieved = [n for n, s in self.coupling.state.items() if s == "LOCKED"]
         score = sum(m["weight"] for m in self.graph["mates"] if m["id"] in achieved) / self.graph["total_weight"]
         return dict(score=score if not self.violations else 0, raw_score=score, achieved=achieved,
-                    states=self.coupling.state, safety_ok=not self.violations, violations=self.violations[:50],
+                    states=dict(self.coupling.state), safety_ok=not self.violations, violations=self.violations[:50],
                     sim_time_s=float(self.d.time), max_force_N=self.max_force,
-                    max_nonpad_robot_force_N=self.max_nonpad_force, nonpad_contact_evidence=self.nonpad_contacts,
-                    pad_contact_evidence=self.pad_contacts)
+                    max_nonpad_robot_force_N=self.max_nonpad_force,
+                    nonpad_contact_evidence={k: dict(v) for k, v in self.nonpad_contacts.items()},
+                    pad_contact_evidence={k: dict(v) for k, v in self.pad_contacts.items()})
 
 
 class Coupling:

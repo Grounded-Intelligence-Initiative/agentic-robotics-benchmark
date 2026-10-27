@@ -308,6 +308,23 @@
   },
   "mates": [
     {
+      "id": "mount_esc",
+      "part": "esc",
+      "carrier": "base",
+      "requires": [],
+      "insertion_axis": [
+        0,
+        0,
+        -1
+      ],
+      "position_tolerance_m": 0.0015,
+      "angle_tolerance_deg": 3,
+      "capture_m": 0.003,
+      "hold_s": 0.5,
+      "weight": 1,
+      "axial_symmetry": 1
+    },
+    {
       "id": "mount_leg_1",
       "part": "leg_1",
       "carrier": "base",
@@ -452,10 +469,88 @@
       "axial_symmetry": 0
     },
     {
-      "id": "mount_esc",
-      "part": "esc",
+      "id": "mount_prop_1",
+      "part": "prop_1",
+      "carrier": "motor_1/rotor",
+      "requires": [
+        "mount_motor_1"
+      ],
+      "insertion_axis": [
+        0,
+        0,
+        -1
+      ],
+      "position_tolerance_m": 0.0015,
+      "angle_tolerance_deg": 3,
+      "capture_m": 0.003,
+      "hold_s": 0.5,
+      "weight": 1,
+      "axial_symmetry": 0
+    },
+    {
+      "id": "mount_prop_2",
+      "part": "prop_2",
+      "carrier": "motor_2/rotor",
+      "requires": [
+        "mount_motor_2"
+      ],
+      "insertion_axis": [
+        0,
+        0,
+        -1
+      ],
+      "position_tolerance_m": 0.0015,
+      "angle_tolerance_deg": 3,
+      "capture_m": 0.003,
+      "hold_s": 0.5,
+      "weight": 1,
+      "axial_symmetry": 0
+    },
+    {
+      "id": "mount_prop_3",
+      "part": "prop_3",
+      "carrier": "motor_3/rotor",
+      "requires": [
+        "mount_motor_3"
+      ],
+      "insertion_axis": [
+        0,
+        0,
+        -1
+      ],
+      "position_tolerance_m": 0.0015,
+      "angle_tolerance_deg": 3,
+      "capture_m": 0.003,
+      "hold_s": 0.5,
+      "weight": 1,
+      "axial_symmetry": 0
+    },
+    {
+      "id": "mount_prop_4",
+      "part": "prop_4",
+      "carrier": "motor_4/rotor",
+      "requires": [
+        "mount_motor_4"
+      ],
+      "insertion_axis": [
+        0,
+        0,
+        -1
+      ],
+      "position_tolerance_m": 0.0015,
+      "angle_tolerance_deg": 3,
+      "capture_m": 0.003,
+      "hold_s": 0.5,
+      "weight": 1,
+      "axial_symmetry": 0
+    },
+    {
+      "id": "mount_guard",
+      "part": "guard",
       "carrier": "base",
-      "requires": [],
+      "requires": [
+        "mount_esc"
+      ],
       "insertion_axis": [
         0,
         0,
@@ -469,11 +564,11 @@
       "axial_symmetry": 1
     },
     {
-      "id": "mount_guard",
-      "part": "guard",
-      "carrier": "base",
+      "id": "mount_camera",
+      "part": "camera",
+      "carrier": "guard",
       "requires": [
-        "mount_esc"
+        "mount_guard"
       ],
       "insertion_axis": [
         0,
@@ -640,105 +735,6 @@
       "hold_s": 0.5,
       "weight": 1,
       "axial_symmetry": 1
-    },
-    {
-      "id": "mount_camera",
-      "part": "camera",
-      "carrier": "guard",
-      "requires": [
-        "mount_guard"
-      ],
-      "insertion_axis": [
-        0,
-        0,
-        -1
-      ],
-      "position_tolerance_m": 0.0015,
-      "angle_tolerance_deg": 3,
-      "capture_m": 0.003,
-      "hold_s": 0.5,
-      "weight": 1,
-      "axial_symmetry": 1
-    },
-    {
-      "id": "mount_prop_1",
-      "part": "prop_1",
-      "carrier": "motor_1/rotor",
-      "requires": [
-        "mount_motor_1",
-        "mount_guard"
-      ],
-      "insertion_axis": [
-        0,
-        0,
-        -1
-      ],
-      "position_tolerance_m": 0.0015,
-      "angle_tolerance_deg": 3,
-      "capture_m": 0.003,
-      "hold_s": 0.5,
-      "weight": 1,
-      "axial_symmetry": 0
-    },
-    {
-      "id": "mount_prop_2",
-      "part": "prop_2",
-      "carrier": "motor_2/rotor",
-      "requires": [
-        "mount_motor_2",
-        "mount_guard"
-      ],
-      "insertion_axis": [
-        0,
-        0,
-        -1
-      ],
-      "position_tolerance_m": 0.0015,
-      "angle_tolerance_deg": 3,
-      "capture_m": 0.003,
-      "hold_s": 0.5,
-      "weight": 1,
-      "axial_symmetry": 0
-    },
-    {
-      "id": "mount_prop_3",
-      "part": "prop_3",
-      "carrier": "motor_3/rotor",
-      "requires": [
-        "mount_motor_3",
-        "mount_guard"
-      ],
-      "insertion_axis": [
-        0,
-        0,
-        -1
-      ],
-      "position_tolerance_m": 0.0015,
-      "angle_tolerance_deg": 3,
-      "capture_m": 0.003,
-      "hold_s": 0.5,
-      "weight": 1,
-      "axial_symmetry": 0
-    },
-    {
-      "id": "mount_prop_4",
-      "part": "prop_4",
-      "carrier": "motor_4/rotor",
-      "requires": [
-        "mount_motor_4",
-        "mount_guard"
-      ],
-      "insertion_axis": [
-        0,
-        0,
-        -1
-      ],
-      "position_tolerance_m": 0.0015,
-      "angle_tolerance_deg": 3,
-      "capture_m": 0.003,
-      "hold_s": 0.5,
-      "weight": 1,
-      "axial_symmetry": 0
     }
   ],
   "total_weight": 23,
