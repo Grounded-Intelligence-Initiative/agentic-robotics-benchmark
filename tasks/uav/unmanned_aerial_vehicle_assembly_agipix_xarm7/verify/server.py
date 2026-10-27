@@ -17,6 +17,9 @@ class RequestError(Exception):
 class Server:
     def __init__(self, cell, config, privileged=False):
         self.cell, self.cfg, self.privileged = cell, config, privileged
+        # The physical tick also enforces this limit, so the privileged planner
+        # cannot bypass the submitted program's simulation budget.
+        cell.sim_cap_s = config["sim_cap_s"]
         self.target = cell.d.qpos[cell.arm_qadr].copy()
         self.command_q = self.target.copy()
         self.width = .085
@@ -54,7 +57,7 @@ class Server:
                         math.atan2(.042039, .035465), 0, .85)
         c.d.ctrl[c.m.actuator("gripper").id] = float(np.clip(theta * 100 / .333, 0, 255))
         c.tick()
-        if c.d.time >= self.cfg["sim_cap_s"] or c.violations:
+        if c.tick_count * DT >= self.cfg["sim_cap_s"] - 1e-8 or c.violations:
             self.done = True
 
     def handle(self, request):
@@ -124,7 +127,7 @@ class Server:
             from reference import assemble
             # Hidden state aids planning only. The reference uses the same c.tick
             # and safety watch; no success setter or object teleport exists here.
-            assemble(self.cell)
+            assemble(self.cell, wall_cap_s=max(0., self.cfg["reference_wall_cap_s"] - (time.monotonic()-self.start)))
             return self.state()
 
     def close(self):

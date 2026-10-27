@@ -22,6 +22,8 @@ class Grasp:
     width: float
     label: str
     target_yaw: float = 0.
+    squeeze: float = .006
+    settle_s: float = .5
 
 
 def _log(*args):
@@ -39,6 +41,18 @@ def grasps(cell, name):
     part = cell.kit["parts"][kind]
     bb = np.asarray(part["bounds_m"])
     center = (bb[0]+bb[1])/2
+    if kind in ("prop_cw", "prop_ccw"):
+        # Pinch the pitched blade across its thickness, away from the three
+        # roots and hub. CCW is the source mesh's reflected CW geometry.
+        mirror = 1. if kind == "prop_cw" else -1.
+        R = Rotation.from_euler("z",240 if mirror > 0 else 120,degrees=True).as_matrix()
+        R = R @ Rotation.from_euler("x",45*mirror,degrees=True).as_matrix() @ DOWN
+        p = np.array([-.023529567724055858,-.026829716583874622*mirror,.013179790526569504])
+        for target_yaw in (0.,math.pi/2,-math.pi/2,math.pi):
+            for yaw in (0.,120.,240.):
+                symmetry=Rotation.from_euler("z",yaw,degrees=True).as_matrix()
+                yield Grasp(symmetry @ p,symmetry @ R,.00586788925370038,
+                            f"pitched-blade-normal-{yaw:.0f}",target_yaw=target_yaw,settle_s=1.)
     if kind == "landing_strut":
         # The hull's stable rest includes a harmless axial twist. Derive the
         # radial grasp from that measured rest instead of assuming a box face.
@@ -64,6 +78,14 @@ def grasps(cell, name):
             z = bb[1,2]-engagement+_tip(width)-.158
             yield Grasp(np.array([center[0],center[1],z]), Rz @ DOWN, width, f"top-{yaw:.2f}")
         return
+    if kind == "sensor_cap":
+        # The full 30 mm pad touches the outer arc at its center and the
+        # inner arc near both ends. Its effective span is about 10 mm;
+        # a single center ray incorrectly predicts a 4.8 mm strip at x=-20 mm.
+        for yaw in (math.pi/2,-math.pi/2):
+            R=Rotation.from_euler("z",yaw).as_matrix() @ DOWN
+            yield Grasp(np.array([-.0175,0.,_tip(.010)-.158-.003]),R,.010,
+                        f"pad-footprint-arc-{yaw:.2f}",squeeze=.003,settle_s=2.)
     if kind == "sensor_cheek":
         # A measured straight section of the actual upper rim fits the stock
         # 30 mm pads and keeps the wrist above the installed guard.
@@ -146,7 +168,7 @@ def _gripped(cell, name):
     return min(_grip_forces(cell,name).values())>.05
 
 
-def _preinsert(motion, pre_p, goal_p, R, body, *, retreat=None, open_width=None, attempts=64, clearance=True, transport_clearance=None):
+def _preinsert(motion, pre_p, goal_p, R, body, *, retreat=None, open_width=None, attempts=64, clearance=True, transport_clearance=None, speed=.25):
     """Choose an IK branch for a complete straight approach and optional exit."""
     if transport_clearance is None:
         transport_clearance=clearance
@@ -172,7 +194,7 @@ def _preinsert(motion, pre_p, goal_p, R, body, *, retreat=None, open_width=None,
             try:
                 for u in np.linspace(0,1,32)[1:]:
                     q=motion._ik_one(np.asarray(goal_p)+u*np.asarray(retreat),R,prev,width=open_width)
-                    if q is None or not motion.segment_free(prev,q,width=open_width,allow_pad_body=body,clearance=True):
+                    if q is None or not motion.segment_free(prev,q,width=open_width,allow_pad_body=body,clearance=clearance):
                         ok=False;break
                     prev=q
             finally:
@@ -180,7 +202,7 @@ def _preinsert(motion, pre_p, goal_p, R, body, *, retreat=None, open_width=None,
             if not ok:
                 continue
         try:
-            motion.move_joints(candidate,width=motion.width(),allow_pad_body=body,speed=.25,clearance=transport_clearance)
+            motion.move_joints(candidate,width=motion.width(),allow_pad_body=body,speed=speed,clearance=transport_clearance)
             return
         except PlanningError as e:
             errors.append(str(e))
@@ -213,6 +235,9 @@ def _prepare_width(motion, width):
 def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
     name, body = mate["part"], "part_"+mate["part"]
     kind=cell.graph["instances"][name]["kind"]
+    is_prop = kind in ("prop_cw","prop_ccw")
+    pre_distance=.040 if kind == "lidar" else .065
+    retreat_distance=.040 if kind == "lidar" else .080
     T = cell.pose(name)
     carrier=cell.coupling.carrier(mate)
     contact_carriers=["part_"+carrier]
@@ -227,6 +252,8 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
     ins = cell.pose(carrier)[:3,:3] @ nominal_R.T @ np.asarray(mate["insertion_axis"],float)
     selected = None
     count = 0
+    pick_prepared = False
+    pickup_errors = []
     for i,g in enumerate(grasps(cell,name)):
         if time.monotonic() > wall_deadline:
             raise TimeoutError("reference wall cap during grasp search")
@@ -238,7 +265,7 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
         # held part after pickup. Final insertion is checked outside-in.
         if not motion.ik(p,R,width=width,attempts=10,max_solutions=1,clearance=False):
             continue
-        if not motion.ik(gp-ins*.06,gR,width=g.width,attempts=10,max_solutions=1,allow_pad_body=body):
+        if not motion.ik(gp-ins*pre_distance,gR,width=g.width,attempts=10,max_solutions=1,allow_pad_body=body):
             continue
         if not motion.ik(gp,gR,width=g.width,attempts=10,max_solutions=1,allow_pad_body=body,clearance=False):
             continue
@@ -246,21 +273,42 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
             continue
         if count < choice:
             count += 1; continue
+        if is_prop:
+            # A blade's endpoints can be clear while its oblique pickup path
+            # clips a neighbouring staged component. Try the equivalent blade
+            # before touching the prop, with the actual settled jaw aperture.
+            try:
+                _prepare_width(motion,width)
+                motion.set_width(width)
+                motion.wait(1.5)
+                width=motion.width()
+                _preinsert(motion,p-R[:,2]*.10,p,R,None,clearance=False,
+                           transport_clearance=True,attempts=128)
+            except PlanningError as error:
+                if cell.violations:
+                    raise
+                pickup_errors.append(str(error))
+                _log("reject pickup path",name,g.label,str(error))
+                continue
+            pick_prepared=True
         selected=(i,g,p,R,gp,gR,width);break
     if selected is None:
-        raise PlanningError(f"no pick+preinsert grasp for {name}; last contacts {motion.last_contacts[:3]}")
+        raise PlanningError(f"no pick+preinsert grasp for {name}; pickup failures {pickup_errors[:3]}; last contacts {motion.last_contacts[:3]}")
     i,g,p,R,gp,gR,width=selected
     _log("pick",name,"candidate",i,g.label,"width",round(g.width,4),"pose",np.round(p,4))
-    _prepare_width(motion,width)
-    motion.set_width(width)
-    if kind == "sensor_cap" and g.width>.020:
+    if not pick_prepared:
+        _prepare_width(motion,width)
+        motion.set_width(width)
+        # Large opening changes continue moving after the command ramp.
         motion.wait(1.5)
-    width=motion.width()
+        width=motion.width()
+    _log("preshape",name,"measured_gap",round(width,4))
     approach = R[:,2]
-    _preinsert(motion,p-approach*.10,p,R,None,clearance=False,transport_clearance=True)
+    if not pick_prepared:
+        _preinsert(motion,p-approach*.10,p,R,None,clearance=False,transport_clearance=True)
     motion.line(p,R,width=width,clearance=False,speed=.025)
-    motion.close(g.width,squeeze=.006)
-    motion.wait(1.0 if kind in ("prop_cw","prop_ccw") else .5)
+    motion.close(g.width,squeeze=g.squeeze)
+    motion.wait(max(g.settle_s,1.0 if kind in ("prop_cw","prop_ccw") else .5))
     _log("clamp",name,"gap",round(motion.width(),4),"forces",_grip_forces(cell,name))
     if not _gripped(cell,name):
         raise PlanningError(f"two-sided pad contact missing for {name}")
@@ -274,14 +322,16 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
     for yaw in ((base_yaw,base_yaw+math.pi/2,base_yaw-math.pi/2,base_yaw+math.pi) if free_yaw else (base_yaw,)):
         g.target_yaw=yaw
         target = _target(cell,mate,g)
-        pre = target[:3,3]-ins*.065
+        pre = target[:3,3]-ins*pre_distance
         pp,rr=motion.body_goal(pre,target[:3,:3],body)
         goal_p,goal_R=motion.body_goal(target[:3,3],target[:3,:3],body)
         motion.set_mate_contact(contact_carriers,target[:3,3],target[:3,:3])
         _log("transport",name,"pre",np.round(pre,4),"yaw",round(yaw,3))
-        retreat=-goal_R[:,2]*(.06 if cell.graph["instances"][name]["kind"] == "landing_strut" else .08)
+        retreat=-goal_R[:,2]*(.06 if kind == "landing_strut" else retreat_distance)
         try:
-            _preinsert(motion,pp,goal_p,goal_R,body,retreat=retreat,open_width=min(.085,g.width+.012))
+            _preinsert(motion,pp,goal_p,goal_R,body,retreat=retreat,open_width=min(.085,g.width+.012),
+                       clearance=not is_prop,transport_clearance=True,
+                       attempts=96 if is_prop else 64,speed=.65 if is_prop else .25)
             break
         except PlanningError as error:
             transport_errors.append(str(error))
@@ -291,36 +341,56 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
         raise PlanningError(f"lost grip on {name} during transport")
     target=_target(cell,mate,g)
     motion.set_mate_contact(contact_carriers,target[:3,3],target[:3,:3])
+    if is_prop:
+        # The thin pitched blade can creep in the pads during transport.
+        # Refresh the measured grasp at the hover before the final descent.
+        motion.align_body(target[:3,3]-ins*pre_distance,target[:3,:3],body=body,
+                          tolerance=.0015,angle=.01,max_passes=10)
     pp,rr=motion.body_goal(target[:3,3],target[:3,:3],body)
     motion.line(pp,rr,allow_pad_body=body,clearance=False,speed=.015)
     if cell.coupling.state[mate["id"]] not in ("LOCKED","LOCKED_OFF"):
-        motion.align_body(target[:3,3],target[:3,:3],body=body,tolerance=.0005,angle=.01)
+        motion.align_body(target[:3,3],target[:3,:3],body=body,
+                          tolerance=.0007 if is_prop else .0005,angle=.01,
+                          max_passes=15 if is_prop else 8)
     q=motion.q
-    for _ in range(80):
+    for step in range(600 if is_prop else 80):
         if time.monotonic()>wall_deadline:
             raise TimeoutError("reference wall cap during seat hold")
         motion._drive(q);cell.tick()
+        if is_prop:
+            if cell.coupling.state[mate["id"]] in ("LOCKED","LOCKED_OFF"):
+                break
+            if step == 149:
+                # Hold the measured thin-section aperture instead of leaving
+                # the jaws commanded fully shut while the fastening settles.
+                motion.set_width(max(0.,motion.width()-.001),seconds=.3)
     state=cell.coupling.state[mate["id"]]
     _log("seat",name,state,"error_mm",1000*np.linalg.norm(cell.pose(name)[:3,3]-target[:3,3]))
     if state != "LOCKED":
         raise PlanningError(f"{name} did not fasten correctly ({state})")
     motion.hold_body(None)
-    motion.set_width(min(.085,g.width+.012))
+    released_width=min(.085,g.width+.012)
+    motion.set_width(released_width)
+    if is_prop:
+        # Linkage motion continues after the opening ramp; check the retreat
+        # at its final aperture so a widening knuckle cannot graze a neighbour.
+        motion.wait(1.5)
     pp,rr=motion.tool_pose()
-    if cell.graph["instances"][name]["kind"] == "landing_strut":
-        # A long straight back-out can fold the wrist into the upper arm.
-        # Precheck successively shorter escapes, then let RRT plan the next move.
+    if kind == "landing_strut" or is_prop:
+        # A long back-out can fold into the arm or approach another propeller.
+        # Precheck shorter escapes, then let RRT plan the next free-space move.
         errors=[]
-        for distance in (.08,.06,.04):
+        for distance in ((.08,.06,.04,.03,.02) if is_prop else (.08,.06,.04)):
             try:
-                motion.line(pp-rr[:,2]*distance,rr,allow_pad_body=body,clearance=True,speed=.03)
+                motion.line(pp-rr[:,2]*distance,rr,width=max(released_width,motion.width()) if is_prop else None,
+                            allow_pad_body=body,clearance=not is_prop,speed=.03)
                 break
             except PlanningError as e:
                 errors.append(str(e))
         else:
             raise PlanningError(f"cannot retract from {name}: {errors}")
     else:
-        motion.line(pp-rr[:,2]*.08,rr,allow_pad_body=body,clearance=False,speed=.03)
+        motion.line(pp-rr[:,2]*retreat_distance,rr,allow_pad_body=body,clearance=False,speed=.03)
     if cell.violations:
         raise PlanningError(f"safety failure after {name}: {cell.violations[:2]}")
     return dict(part=name,grasp=g.label,candidate=i,sim_time_s=float(cell.d.time),state=state)
@@ -332,8 +402,9 @@ def assemble(cell, *, only=None, choices=None, wall_cap_s=7200):
     choices=choices or {}
     mates={m["part"]:m for m in cell.graph["mates"]}
     order = ["esc"] + [n for i in range(1,5) for n in (f"leg_{i}",f"motor_{i}")] + [
-        "guard","flight_controller","compute","compute_cover","battery",
-        "cheek_left","cheek_right","sensor_cap","lidar","camera"] + [f"prop_{i}" for i in range(1,5)]
+        f"prop_{i}" for i in range(1,5)] + [
+        "guard","camera","flight_controller","compute","compute_cover","battery",
+        "cheek_left","cheek_right","sensor_cap","lidar"]
     if only is not None:
         order = list(only)
     results=[]

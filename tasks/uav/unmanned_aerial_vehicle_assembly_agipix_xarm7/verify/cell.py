@@ -197,6 +197,7 @@ class Cell:
         self.ft_bias = self.rng.normal(0, .15, 6)
         self.start_time = time.monotonic()
         self.tick_count = 0
+        self.sim_cap_s = math.inf
         # Every initialization settle tick is physical; exclude startup transients
         # from safety, but do not permit couplings to activate during settling.
         for _ in range(300):
@@ -243,6 +244,8 @@ class Cell:
         return body_pose(self.d, self.ids[name])
 
     def tick(self):
+        if self.tick_count * DT >= self.sim_cap_s - 1e-8:
+            raise TimeoutError("Simulation budget exhausted")
         for _ in range(5):
             mujoco.mj_step(self.m, self.d)
         self.tick_count += 1
@@ -322,7 +325,8 @@ class Cell:
                     sim_time_s=float(self.d.time), max_force_N=self.max_force,
                     max_nonpad_robot_force_N=self.max_nonpad_force,
                     nonpad_contact_evidence={k: dict(v) for k, v in self.nonpad_contacts.items()},
-                    pad_contact_evidence={k: dict(v) for k, v in self.pad_contacts.items()})
+                    pad_contact_evidence={k: dict(v) for k, v in self.pad_contacts.items()},
+                    coupling_events=[dict(event) for event in self.events])
 
 
 class Coupling:
@@ -368,14 +372,24 @@ class Coupling:
                 angle = math.acos(float(np.clip(rot[2, 2], -1, 1)))
             else:
                 angle = Rotation.from_matrix(rot).magnitude()
-            j = c.m.joint("free_" + physical).id
-            v = c.d.qvel[c.m.jnt_dofadr[j]:c.m.jnt_dofadr[j]+6]
-            carrier_v = np.zeros(6)
-            mujoco.mj_objectVelocity(c.m, c.d, mujoco.mjtObj.mjOBJ_BODY, c.ids[self.carrier(m)], carrier_v, 0)
-            still = np.linalg.norm(v[:3]-carrier_v[3:]) < .005 and np.linalg.norm(v[3:]-carrier_v[:3]) < math.radians(2)
             if error > m["capture_m"] or angle > math.radians(8):
                 self.state[key], self.hold[key] = "FREE", 0
-            elif error > m["position_tolerance_m"] or not still:
+                continue
+            if error > m["position_tolerance_m"]:
+                self.state[key], self.hold[key] = "ENGAGED", 0
+                continue
+            # Free-joint angular qvel is body-local. Compare both velocities in
+            # world axes at body-frame origins, including the carrier's rigid
+            # rotational velocity at the part's location (not its own COM).
+            part_v, carrier_v = np.zeros(6), np.zeros(6)
+            carrier_id = c.ids[self.carrier(m)]
+            mujoco.mj_objectVelocity(c.m, c.d, mujoco.mjtObj.mjOBJ_XBODY, c.ids[physical], part_v, 0)
+            mujoco.mj_objectVelocity(c.m, c.d, mujoco.mjtObj.mjOBJ_XBODY, carrier_id, carrier_v, 0)
+            offset = actual[:3, 3] - c.d.xpos[carrier_id]
+            relative_speed = np.linalg.norm(part_v[3:] - carrier_v[3:] - np.cross(carrier_v[:3], offset))
+            relative_angular_speed = np.linalg.norm(part_v[:3] - carrier_v[:3])
+            still = relative_speed < .005 and relative_angular_speed < math.radians(2)
+            if not still:
                 self.state[key], self.hold[key] = "ENGAGED", 0
             else:
                 self.state[key] = "HOLDING"
@@ -390,4 +404,6 @@ class Coupling:
                     c.d.eq_active[e] = 1
                     self.assigned[key] = physical
                     self.state[key] = "LOCKED" if angle <= math.radians(m["angle_tolerance_deg"]) else "LOCKED_OFF"
-                    c.events.append(dict(t=float(c.d.time), mate=key, state=self.state[key], error_m=float(error)))
+                    c.events.append(dict(t=float(c.d.time), mate=key, state=self.state[key], error_m=float(error),
+                                         angle_deg=math.degrees(float(angle)), relative_speed_m_s=float(relative_speed),
+                                         relative_angular_speed_deg_s=math.degrees(float(relative_angular_speed))))
