@@ -1,0 +1,20 @@
+spec_type: core/v1
+name: unmanned_aerial_vehicle_assembly_agipix_xarm7
+image: {kind: container}
+resources: {cpus: 8, memory_mb: 16384}
+network: {mode: block}
+timeouts: {setup: 600, agent: 21600, verify: 21600}
+artifacts: [/home/user/submission]
+metadata:
+  platform: uav
+  stage: assembly
+  mode: atomic
+  route: code-as-policy
+  agent_role: [assembly engineer, workcell programmer]
+  artifact_kind: [program]
+  compute: cpu
+  observation_tier: camera-only
+  render_backend: filament
+  tags: [agipix, xarm7, mujoco, assembly, rgbd, contact, planning]
+  source_platform: AGiPix-derived mechanical assembly kit
+  development_status: reference-and-frontier-validation-pending
