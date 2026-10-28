@@ -23,8 +23,14 @@ Why the result can be trusted:
   camera, so a supervisor that does not look at its camera fails the lock and scores 0.
 * The episode score (`episode_score`) lives only here; the practice grader reports what
   happened in an episode, not how it scores.
+
+Oracle token: a submission whose `.oracle_token` hashes to `oracle_token.sha256` (next to
+this file; the token itself lives only in `oracle/`, which is absent while the agent works)
+runs in privileged mode: the bridge adds a ground-truth block to every observation. Any
+other token is ignored and reported as `oracle_token_mismatch`.
 """
 
+import hashlib
 import os
 import shutil
 import subprocess
@@ -101,6 +107,23 @@ def readable_bridge(sim_user):
     return os.path.join(folder, "drive_bridge.py")
 
 
+def token_state():
+    """(privileged, mismatch): the submission's .oracle_token against oracle_token.sha256."""
+    path = os.path.join(agent_home(), "submission", ".oracle_token")
+    want_path = os.path.join(HERE, "oracle_token.sha256")
+    if not os.path.isfile(path) or os.path.islink(path) or not os.path.isfile(want_path):
+        return False, False
+    try:
+        with open(path, "rb") as handle:
+            token = handle.read().strip()
+        with open(want_path) as handle:
+            want = handle.read().strip()
+    except OSError:
+        return False, False
+    got = hashlib.sha256(token).hexdigest()
+    return got == want, got != want
+
+
 def main():
     config = stage_config()
     rng = seed_rng()
@@ -115,6 +138,11 @@ def main():
     towns = list(config.get("towns", ["Town04", "Town05", "Town10HD"]))
     specs = graded_specs(rng, towns)
     log("{} hidden episodes over {} towns".format(len(specs), len(towns)))
+    privileged, mismatch = token_state()
+    if privileged:
+        log("oracle token matched: privileged mode")
+        for spec in specs:
+            spec["privileged"] = True
 
     folder = guarded_entry(config.get("guard_python", "/opt/venv/bin/python3"))
     log("supervisor runs as {} under netguard".format(agent_user()))
@@ -125,7 +153,8 @@ def main():
     sim_user = config.get("sim_user") or None
     sim_log = os.path.join(tempfile.mkdtemp(prefix="drive-simlog-"), "sim.log")
     sim_args = ["--image-size", str(config.get("image_size", 512)),
-                "--background", str(config.get("background_vehicles", 6))]
+                "--background", str(config.get("background_vehicles", 20)),
+                "--walkers", str(config.get("background_walkers", 20))]
     try:
         sim = SimClient(backend=backend, extra_args=sim_args, log_path=sim_log,
                         bridge=readable_bridge(sim_user), run_as=sim_user,
@@ -174,6 +203,8 @@ def main():
     extra = dict(metrics)
     extra.update(lock.rewards())
     extra["episodes_aborted"] = float(aborted)
+    extra["privileged_mode"] = 1.0 if privileged else 0.0
+    extra["oracle_token_mismatch"] = 1.0 if mismatch else 0.0
     verdict = ratio_rewards(
         measured, anchor,
         cap=config.get("scoring_cap", 1.5),

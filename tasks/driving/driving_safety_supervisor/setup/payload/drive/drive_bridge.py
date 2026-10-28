@@ -13,6 +13,11 @@ the nominal control), a pre-rendered probe frame, and a privileged `truth` block
 completion, infractions, pace, termination) that the grading side keeps to itself
 (drive_protocol.agent_observation filters it out).
 
+A spec with `"privileged": true` (the grader sets it only for a submission that carries the
+oracle token) adds a `privileged` block to every state: the true position, velocity and size
+of every road user and prop near the car, and the route's lane geometry ahead, all in the
+car's frame. The probe then also reports the road user it pasted into the probe frame.
+
 A spec may name a `variant`: a different staging of its kind, defined in `drive_variants`
 next to this file. The practice copy ships without that module and stages every kind in
 its standard form.
@@ -40,6 +45,7 @@ import struct
 import subprocess
 import sys
 import time
+import traceback
 import zlib
 
 CAM_X, CAM_Z = 1.5, 1.6   # front camera: 1.5 m ahead of the centre, 1.6 m up, level, 90 deg
@@ -506,11 +512,25 @@ class CarlaBackend(object):
                                   distractors=int(spec.get("distractors", 0)))
         route, ego_tf = builder.build()
         hazard_ids = [a.id for a in builder.hazards]
+        self.privileged = bool(spec.get("privileged"))
+        self._seen = {}              # actor id -> (x, y, time): velocity of moved-by-script actors
+        self.route_wps = [wp for wp, _ in route]
+        self.probe_actor = None
         self.ego = self._spawn("vehicle.lincoln.mkz_2020", ego_tf, role="hero")
         self._attach_sensors()
         self.nominal = BehaviorAgent(self.ego, behavior="normal")
-        self.nominal.set_global_plan(route, stop_waypoint_creation=True, clean_queue=True)
+        # the planner gets the road on past the route's end, so it never runs out of plan
+        beyond, last = [], route[-1][0]
+        for _ in range(20):
+            nxt = last.next(2.0)
+            if not nxt:
+                break
+            last = nxt[0]
+            beyond.append((last, RoadOption.LANEFOLLOW))
+        self.nominal.set_global_plan(route + beyond, stop_waypoint_creation=True, clean_queue=True)
         self._background_traffic(rng, route)
+        if not getattr(builder, "quiet", False):
+            self._background_walkers(rng, route)
         self.route_xy = [(wp.transform.location.x, wp.transform.location.y) for wp, _ in route]
         self.options = junction_commands(self.route_xy, [wp.is_junction for wp, _ in route])
         self.tracker = Tracker(self.route_xy, spec["kind"], spec.get("variant"), hazard_ids)
@@ -520,7 +540,7 @@ class CarlaBackend(object):
         for _ in range(10):          # settle the vehicle and fill the sensor queues
             self.ego.apply_control(carla.VehicleControl(brake=1.0))
             self.world.tick()
-        self._nominal_control = self.nominal.run_step()
+        self._nominal_control = self._nominal_step()
         return self._state()
 
     def _spawn(self, blueprint, transform, role=None, physics=True):
@@ -564,10 +584,75 @@ class CarlaBackend(object):
                     "vehicle" if type_id.startswith("vehicle") else "static")
         self.tracker.collision(category, getattr(other, "id", 0))
 
+    def _background_walkers(self, rng, route):
+        """People walking along the pavements on both sides of the route. They are scripted
+        to follow the pavement and never step onto the road (CARLA's own pedestrian AI
+        stops on crossings)."""
+        if not self.args.walkers:
+            return
+        carla = self.carla
+        Driving, Sidewalk = carla.LaneType.Driving, carla.LaneType.Sidewalk
+
+        def pavement(wp, side):
+            """The pavement lane on one side of the road at wp, or None."""
+            w = wp
+            for _ in range(6):
+                same = (w.lane_id > 0) == (wp.lane_id > 0)
+                nxt = (w.get_right_lane() if same else w.get_left_lane()) if side > 0 else \
+                    (w.get_left_lane() if same else w.get_right_lane())
+                if nxt is None:
+                    return None
+                if nxt.lane_type == Sidewalk:
+                    return nxt
+                if nxt.lane_type not in (Driving, carla.LaneType.Parking, carla.LaneType.Shoulder,
+                                         carla.LaneType.Biking, carla.LaneType.Border):
+                    return None
+                w = nxt
+            return None
+
+        lib = self.world.get_blueprint_library().filter("walker.pedestrian.*")
+        spots = [wp for wp, _ in route[2::3] if not wp.is_junction]
+        rng.shuffle(spots)
+        people = []
+        for wp in spots:
+            if len(people) >= self.args.walkers:
+                break
+            side = rng.choice((1, -1))
+            pave = pavement(wp, side)
+            if pave is None:
+                continue
+            r = pave.transform.get_right_vector()
+            shift = rng.uniform(-0.4, 0.4)
+            loc = pave.transform.location + carla.Location(r.x * shift, r.y * shift, 1.0)
+            bp = rng.choice(lib)
+            if bp.has_attribute("is_invincible"):
+                bp.set_attribute("is_invincible", "false")
+            walker = self.world.try_spawn_actor(bp, carla.Transform(loc, pave.transform.rotation))
+            if walker is None:
+                continue
+            self.actors.append(walker)
+            people.append((walker, rng.choice((1.0, -1.0)), rng.uniform(0.9, 1.5)))
+
+        def hook():
+            for walker, sense, speed in people:
+                here = self.map.get_waypoint(walker.get_location(), project_to_road=True,
+                                             lane_type=Sidewalk)
+                if here is None:
+                    walker.apply_control(carla.WalkerControl(speed=0.0))
+                    continue
+                f = here.transform.get_forward_vector()
+                walker.apply_control(carla.WalkerControl(
+                    direction=carla.Vector3D(f.x * sense, f.y * sense, 0.0), speed=speed))
+        self.scripted.append(hook)
+
     def _background_traffic(self, rng, route):
+        # spawn points near the route (but clear of the car's start), so the traffic is
+        # traffic the car meets
         start = route[0][0].transform.location
-        points = [p for p in self.map.get_spawn_points() if p.location.distance(start) > 40]
+        near = [wp.transform.location for wp, _ in route[::5]]
+        points = [p for p in self.map.get_spawn_points() if p.location.distance(start) > 30]
         rng.shuffle(points)
+        points.sort(key=lambda p: min(p.location.distance(q) for q in near) > 120.0)
         lib = self.world.get_blueprint_library().filter("vehicle.*")
         cars = [bp for bp in lib if int(bp.get_attribute("number_of_wheels")) == 4]
         for tf in points[:self.args.background]:
@@ -596,8 +681,16 @@ class CarlaBackend(object):
             self.prev_speed = speed
             if self.tracker.termination:
                 break
-        self._nominal_control = self.nominal.run_step()
+        self._nominal_control = self._nominal_step()
         return self._state()
+
+    def _nominal_step(self):
+        try:
+            return self.nominal.run_step()
+        except AttributeError:
+            # BehaviorAgent dereferences its next waypoint unchecked once its plan is used up
+            # (or the car has left it): the planner then asks to stop
+            return self.carla.VehicleControl(throttle=0.0, brake=0.5)
 
     @staticmethod
     def _control_tuple(vc):
@@ -626,7 +719,8 @@ class CarlaBackend(object):
             at_red = bool(self.nominal.traffic_light_manager())
         if self.red_candidate:
             light, seen = self.red_candidate
-            if speed > 0.5 and self.map.get_waypoint(loc).is_junction:
+            here = self.map.get_waypoint(loc)
+            if speed > 0.5 and here is not None and here.is_junction:
                 if light.get_state() == carla.TrafficLightState.Red:
                     self.tracker.red_lights += 1
                 self.red_candidate = None
@@ -658,9 +752,13 @@ class CarlaBackend(object):
         dist = rng.uniform(8.0, 25.0)
         lateral = rng.uniform(-1.5, 1.5)
         out = bgr.copy()
+        self.probe_actor = {"type": "walker", "x": round(CAM_X + dist, 2), "y": round(lateral, 2),
+                            "yaw": 0.0, "vx": 0.0, "vy": 0.0, "length": 0.6, "width": 0.6}
         if self._sprites:
             name, sprite = rng.choice(self._sprites)
             metres = 1.5 if name.startswith("vehicle") else 1.75     # sprite height in metres
+            if name.startswith("vehicle"):
+                self.probe_actor.update(type="vehicle", length=4.5, width=1.9)
             ph = max(4, int(f * metres / dist))
             pw = max(2, int(sprite.shape[1] * ph / float(sprite.shape[0])))
             sprite = cv2.resize(sprite, (pw, ph), interpolation=cv2.INTER_AREA)
@@ -688,7 +786,7 @@ class CarlaBackend(object):
         tf = self.ego.get_transform()
         nav = navigation(self.route_xy, self.options, self.tracker.index, tf.location.x,
                          tf.location.y, math.radians(tf.rotation.yaw))
-        return {
+        state = {
             "frame": {"image": encode(bgr)},
             "probe": {"image": encode(self._probe_frame(bgr))},
             "ego": {"speed": round(self._speed(), 3), "applied": [round(v, 3) for v in self.applied]},
@@ -696,6 +794,89 @@ class CarlaBackend(object):
             "nominal": {"control": [round(v, 3) for v in self._control_tuple(self._nominal_control)]},
             "truth": self.tracker.truth(),
         }
+        if self.privileged:
+            state["privileged"] = self._privileged(tf)
+            state["probe"]["actor"] = self.probe_actor
+        return state
+
+    def _privileged(self, tf, radius=80.0):
+        """Ground truth in the car's frame (x forward, y right, metres, from the car's centre):
+        every vehicle, walker and prop within `radius`, and the route ahead with its lane
+        width, the driving lanes to its left (nearest first, until one that is not a driving
+        lane) with their centre and direction, and the lanes to its right as far as the kerb
+        (driving, shoulder, parking or bike lanes) with their centre and type."""
+        yaw = math.radians(tf.rotation.yaw)
+        c, s = math.cos(yaw), math.sin(yaw)
+        ox, oy = tf.location.x, tf.location.y
+
+        def local(x, y):
+            dx, dy = x - ox, y - oy
+            return round(dx * c + dy * s, 2), round(-dx * s + dy * c, 2)
+
+        actors = []
+        for actor in self.world.get_actors():
+            type_id = actor.type_id
+            kind = ("vehicle" if type_id.startswith("vehicle.") else
+                    "walker" if type_id.startswith("walker.") else
+                    "prop" if type_id.startswith("static.prop.") else None)
+            if kind is None or actor.id == self.ego.id:
+                continue
+            atf = actor.get_transform()
+            loc = atf.location
+            if loc.distance(tf.location) > radius:
+                continue
+            box = actor.bounding_box
+            centre = atf.transform(box.location)
+            x, y = local(centre.x, centre.y)
+            v = actor.get_velocity()
+            now, last = self.tracker.time, self._seen.get(actor.id)
+            self._seen[actor.id] = (loc.x, loc.y, now)
+            if last is not None and now > last[2] and abs(v.x) + abs(v.y) < 0.05:
+                # staged actors moved by set_transform report no velocity: difference it
+                v = self.carla.Vector3D((loc.x - last[0]) / (now - last[2]),
+                                        (loc.y - last[1]) / (now - last[2]), 0.0)
+            ext = box.extent
+            actors.append({"id": actor.id, "type": kind, "blueprint": type_id, "x": x, "y": y,
+                           "z": round(centre.z - tf.location.z, 2),
+                           "yaw": round(math.degrees(_wrap(math.radians(atf.rotation.yaw) - yaw)), 1),
+                           "vx": round(v.x * c + v.y * s, 2), "vy": round(-v.x * s + v.y * c, 2),
+                           "length": round(2 * ext.x, 2), "width": round(2 * ext.y, 2),
+                           "height": round(2 * ext.z, 2)})
+        lanes = []
+        LaneType = self.carla.LaneType
+        passable = (LaneType.Driving, LaneType.Shoulder, LaneType.Parking, LaneType.Biking)
+        for wp in self.route_wps[max(0, self.tracker.index - 5):self.tracker.index + 45]:
+            loc = wp.transform.location
+            x, y = local(loc.x, loc.y)
+            lefts, w = [], wp
+            for _ in range(4):
+                # beyond the centre line, CARLA's "left" of an oncoming lane points back
+                # across the road: walk outward from the car's side instead
+                nxt = w.get_left_lane() if (w.lane_id > 0) == (wp.lane_id > 0) else w.get_right_lane()
+                if nxt is None or nxt.lane_type != self.carla.LaneType.Driving:
+                    break
+                lx, ly = local(nxt.transform.location.x, nxt.transform.location.y)
+                lefts.append({"x": lx, "y": ly, "width": round(nxt.lane_width, 2),
+                              "same_direction": (nxt.lane_id > 0) == (wp.lane_id > 0)})
+                w = nxt
+            rights, w = [], wp
+            for _ in range(3):
+                # to the kerb: driving lanes, then shoulder / parking / bike lane, not pavement
+                nxt = w.get_right_lane()
+                if nxt is None or nxt.lane_type not in passable:
+                    break
+                rx, ry = local(nxt.transform.location.x, nxt.transform.location.y)
+                rights.append({"x": rx, "y": ry, "width": round(nxt.lane_width, 2),
+                               "type": str(nxt.lane_type)})
+                w = nxt
+            lanes.append({"x": x, "y": y, "width": round(wp.lane_width, 2),
+                          "junction": wp.is_junction, "left": lefts[0] if lefts else None,
+                          "lefts": lefts, "rights": rights})
+        light = self.ego.get_traffic_light() if self.ego.is_at_traffic_light() else None
+        return {"actors": actors, "route": lanes,
+                "red_light": bool(light is not None and light.get_state() in (
+                    self.carla.TrafficLightState.Red, self.carla.TrafficLightState.Yellow)),
+                "speed_limit": round((self.ego.get_speed_limit() or 30.0) / 3.6, 2)}
 
     def close(self):
         try:
@@ -719,8 +900,9 @@ class ScenarioBuilder(object):
     does not fit is redrawn (bounded). A variant (see the module docstring) restages the
     kind through `drive_variants.stage(builder, route, junction)`."""
 
-    ROUTE_M = 180.0
-    HAZARD_M = (55.0, 80.0)
+    ROUTE_M = 120.0           # laid out this long, then cut TAIL_M past the hazard
+    HAZARD_M = (35.0, 55.0)
+    TAIL_M = (25.0, 35.0)     # past a junction hazard, counted from where the junction ends
 
     def __init__(self, backend, rng, kind, variant=None, distractors=0):
         self.b, self.rng, self.kind, self.variant = backend, rng, kind, variant
@@ -750,9 +932,24 @@ class ScenarioBuilder(object):
                 self.b.scripted = []
                 continue
             if result is not None:
-                return result
+                return self._trim(*result)
         raise RuntimeError("no placement for {} in {} after 80 draws".format(
             self.kind, self.b.town))
+
+    def _trim(self, route, ego_tf):
+        """End the route a little past the hazard (past its junction, for a junction hazard):
+        once the car is through the situation the episode is over."""
+        index = getattr(self, "hazard_index", None)
+        if index is None:
+            return route, ego_tf
+        while index < len(route) - 1 and route[index][0].is_junction:
+            index += 1
+        tail, run = self.rng.uniform(*self.TAIL_M), 0.0
+        for i in range(index + 1, len(route)):
+            run += route[i][0].transform.location.distance(route[i - 1][0].transform.location)
+            if run >= tail:
+                return route[:i + 1], ego_tf
+        return route, ego_tf
 
     def _discard(self, actors):
         if actors:
@@ -820,14 +1017,17 @@ class ScenarioBuilder(object):
         want = {"red_light_runner": "straight", "oncoming_left_turn": "left"}.get(self.kind)
         if self.variants is not None:
             want = self.variants.junction_wanted(self.variant, want)
-        route, junction = self._route(want)
+        # a variant that needs a particular kind of road may lay out the route itself
+        planned = self.variants.route(self, want) if self.variants is not None else None
+        route, junction = planned if planned is not None else self._route(want)
         ego_tf = route[0][0].transform
         ego_tf = carla.Transform(ego_tf.location + carla.Location(z=0.5), ego_tf.rotation)
+        self.hazard_index = None
         if self.variants is not None:
-            self.variants.stage(self, route, junction)
+            self.hazard_index = self.variants.stage(self, route, junction)
             return route, ego_tf
         if self.kind in ("construction_zone", "broken_down_vehicle", "occluded_pedestrian"):
-            _, hwp = self._at_distance(route, rng.uniform(*self.HAZARD_M))
+            self.hazard_index, hwp = self._at_distance(route, rng.uniform(*self.HAZARD_M))
             if hwp.is_junction or any(w.is_junction for w in hwp.previous(12.0) + hwp.next(12.0)):
                 raise _Redraw()
             if self.kind != "occluded_pedestrian" and not self._passable(hwp):
@@ -835,6 +1035,7 @@ class ScenarioBuilder(object):
             getattr(self, "_stage_" + self.kind)(hwp)
             return route, ego_tf
         index, entry = junction
+        self.hazard_index = index
         getattr(self, "_stage_" + self.kind)(route, index, entry)
         return route, ego_tf
 
@@ -1012,8 +1213,10 @@ def main():
                         help="camera width in pixels; height is half of it")
     # Low crashes CARLA 0.9.15 (signal 11) right after a town load on recent drivers.
     parser.add_argument("--quality", default="Epic", choices=("Low", "Epic"))
-    parser.add_argument("--background", type=int, default=6,
+    parser.add_argument("--background", type=int, default=20,
                         help="background traffic vehicles (CARLA backend)")
+    parser.add_argument("--walkers", type=int, default=20,
+                        help="pedestrians on the pavements near the route (CARLA backend)")
     args = parser.parse_args()
 
     reply_fd = os.dup(1)
@@ -1044,7 +1247,7 @@ def main():
                 else:
                     _emit({"error": "unknown command {!r}".format(cmd)})
             except Exception as exc:  # noqa: BLE001
-                _log("error: {}: {}".format(type(exc).__name__, exc))
+                _log("error: {}: {}\n{}".format(type(exc).__name__, exc, traceback.format_exc()))
                 _emit({"error": "{}: {}".format(type(exc).__name__, exc)})
     finally:
         backend.close()

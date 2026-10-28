@@ -9,7 +9,7 @@ delay.
 Leave it runnable at `/home/user/submission/run.sh`.
 
 The simulator is CARLA 0.9.15 (synchronous, 20 Hz); the planner is CARLA's stock
-`BehaviorAgent` (`normal` profile). The grader drives 25 hidden episodes on towns, seeds and
+`BehaviorAgent` (`normal` profile). The grader drives 24 hidden episodes on towns, seeds and
 situations you will not see during practice.
 
 ## Interface

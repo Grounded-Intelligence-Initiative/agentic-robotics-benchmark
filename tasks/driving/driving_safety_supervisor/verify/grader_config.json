@@ -7,11 +7,12 @@
     "Town10HD"
   ],
   "image_size": 512,
-  "background_vehicles": 6,
+  "background_vehicles": 20,
   "probe_rate": 0.02,
   "probe_pass_fraction": 0.25,
   "step_timeout_s": 10,
   "sim_step_timeout_s": 120,
   "guard_python": "/opt/venv/bin/python3",
-  "scoring_cap": 1.5
+  "scoring_cap": 1.5,
+  "background_walkers": 20
 }

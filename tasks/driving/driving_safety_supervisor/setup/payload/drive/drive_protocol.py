@@ -84,9 +84,10 @@ def make_specs(rng, towns, per_kind, kinds=KINDS):
 
 def agent_observation(state, t):
     """What the supervisor sees: the front camera, its speed, where the route goes next and
-    what the nominal planner wants to do. The privileged block (`truth`) never reaches the
-    wire."""
-    return {
+    what the nominal planner wants to do. The scoring block (`truth`) never reaches the
+    wire; the ground-truth block (`privileged`) does only when the grader asked the bridge
+    for it, which it does for the oracle token alone."""
+    obs = {
         "t": int(t),
         "image": state["frame"]["image"],
         "speed": round(float(state["ego"]["speed"]), 3),
@@ -94,13 +95,21 @@ def agent_observation(state, t):
         "command": state["navigation"]["command"],
         "nominal": [round(float(v), 3) for v in state["nominal"]["control"]],
     }
+    if "privileged" in state:
+        obs["privileged"] = state["privileged"]
+    return obs
 
 
 def probe_observation(obs, state):
     """The probe's perturbed copy: the bridge pre-renders the same frame with a road user
-    pasted into the front camera ahead of the car; the rest is unchanged."""
+    pasted into the front camera ahead of the car; the rest is unchanged, except that a
+    ground-truth block lists the pasted road user too."""
     perturbed = dict(obs)
     perturbed["image"] = state["probe"]["image"]
+    if "privileged" in obs and state["probe"].get("actor"):
+        privileged = dict(obs["privileged"])
+        privileged["actors"] = list(privileged["actors"]) + [dict(state["probe"]["actor"], id=-1)]
+        perturbed["privileged"] = privileged
     return perturbed
 
 

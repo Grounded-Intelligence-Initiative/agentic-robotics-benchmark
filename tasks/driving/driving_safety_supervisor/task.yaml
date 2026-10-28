@@ -12,7 +12,7 @@ image: {kind: container}
 resources: {cpus: 8, memory_mb: 32768, gpus: 1}
 network: {mode: block}
 
-# verify: 25 episodes of up to ~50 s driving (plus excused waits) at 10 Hz, plus CARLA
+# verify: 24 episodes of up to ~35 s driving (plus excused waits) at 10 Hz, plus CARLA
 # start-up and town loads.
 timeouts: {setup: 300, agent: 3600, verify: 10800}
 
@@ -27,3 +27,7 @@ verify:
 
 metadata:
   platform: driving
+  # The oracle submits the oracle token (oracle/reference/oracle_token; its sha256 is
+  # verify/oracle_token.sha256): the grader then adds the simulator's ground truth to its
+  # observations, and the reference expert drives from that.
+  oracle_kind: token-privileged
