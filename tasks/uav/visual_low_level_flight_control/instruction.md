@@ -1,10 +1,13 @@
 # Visual Low-Level Flight Control
 
 Develop a controller from RGB images. Take off with a Crazyflie 2, pass through
-the **yellow, green, then magenta** gates in that order, moving in positive world
-x through each aperture. Finish by hovering 1.3 m above the blue ground disk.
-Start, gate positions/heights and goal vary between scenes. Choose your own
-controller architecture. No state vector or scene file is available.
+the **yellow, green, magenta, then cyan** gates in that order. Each gate has a
+**white floor arrow indicating its required crossing direction**. Follow that
+arrow through the aperture, not around the frame. The course turns and doubles
+back; flying monotonically in one world direction cannot complete it. Finish
+by hovering 1.3 m above the blue ground disk.
+Start, gate positions/heights/orientations and goal vary between scenes. Choose
+your own controller architecture. No state vector or scene file is available.
 
 ## Actions and observations
 
@@ -30,8 +33,10 @@ advance physics. The service accepts at most 2048 requests in total. Reset and
 phase changes are not available; reconnecting cannot restore a budget.
 The same per-episode action limit applies during verification.
 
-To count as success, the robot must cross all three gates with full-body clearance,
-then remain within 0.22 m of the hover target at linear speed <0.25 m/s and angular
+To count as success, the robot must cross all four gates with full-body clearance,
+in the specified order and direction. Reverse or out-of-order crossings earn no
+credit; the next required gate remains unchanged. After the final gate, remain
+within 0.22 m of the hover target at linear speed <0.25 m/s and angular
 speed <0.5 rad/s for two continuous simulated seconds. Any contact after takeoff
 (including landing), or any gate/wall contact, fails the episode. Initial floor
 contact before reaching 0.2 m altitude is allowed. Leaving |x| or |y| <=3.8 m,

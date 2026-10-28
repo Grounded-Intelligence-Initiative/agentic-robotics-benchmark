@@ -9,15 +9,20 @@ not to operate the drone solely through an in-context conversation.
 The agent sees two calibrated RGB cameras and remaining budget, explores using
 collective thrust and attitude commands, and submits an executable `run.sh`.
 The verifier runs it on four fresh private scenes. Success requires ordered
-yellow/green/magenta gate crossings, no collisions and two seconds of stable
+yellow/green/magenta/cyan gate crossings in the direction of each white floor
+arrow, no collisions and two seconds of stable
 hover above the goal. The score is normalized completion rate; speed is simulated
 time, never host execution speed.
 
 `oracle/run.sh` constructs an actual successful submission and records its live
 interaction. `oracle/policy.py` is an image-only scripted solution: color tracking,
-pixel calibration and feedback control. It never imports the private world or
+pixel calibration, visual gate/arrow orientation and feedback control. It never imports the private world or
 reads scene parameters. The known-camera/color setting is deliberate for a first
-reviewable task. It may be too easy for frontier agents; measure that before merge.
+reviewable task. The four-gate course now requires turns and return travel; it
+randomizes gate positions, heights and yaw. Reverse and out-of-order crossings
+do not count, and merely reaching the goal does not count. This is a genuine
+spatial constraint, but may still be too easy for frontier agents; measure that
+before merge.
 
 ## Reproduce
 
@@ -53,6 +58,11 @@ python "$TASK/tools/check_security.py" --ale "$(command -v ale)" --out runs/craz
 The preview/poster is a real simulator render. Its third-person reviewer camera
 is not an additional agent observation. The video runs at five frames per second,
 one frame per 0.2-second action, except a terminal action may finish early.
+`route.png` shows the measured trajectory with reviewer-only labels over the
+actual initial top image. `actions.json` includes privileged positions only for
+reviewer visualization; the solution itself only receives the public observation.
+Contract tests include rotated gate geometry, reverse/out-of-order crossings,
+aperture clearance, visible directions and a 32-layout check for return travel.
 Development seeds above are not sealed benchmark test seeds. Keep run products
 outside the task; do not commit videos, caches, fetched meshes or experiment logs.
 
@@ -65,7 +75,7 @@ source MJCF and visual/collision meshes. SHA-256 checks are mandatory.
 The model is derived upstream from `whoenig/crazyflie_ros`.
 
 We retain the nominal 0.027 kg mass, inertias and collision meshes. We add an
-original three-gate course, cameras, a small tracking sticker and a bounded
+original four-gate return course, cameras, a small tracking sticker and a bounded
 attitude servo. Thrust/torque limits are benchmark abstractions, not measured
 hardware limits. There is no firmware, rotor-speed, battery or real-world
 validation claim. No geometry, textures or trajectories are copied from a

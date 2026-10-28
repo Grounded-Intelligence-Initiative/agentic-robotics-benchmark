@@ -3,5 +3,5 @@
   "direction": "higher",
   "value": 1.0,
   "full_at": 1,
-  "source": "Measured with pinned ALE 90a7c1cfa649c5dbf1078714773f99840e44cba3 on 2026-10-26. Oracle episodes visual_low_level_flight_control-oracle-52e57748 and visual_low_level_flight_control-oracle-70658109 each evaluated four fresh private scenes; both measured success_rate=1.0. Observed run-to-run band [1.0,1.0], so anchor=1.0 and full_at=1.0. The first run used the intentional null-anchor bootstrap and therefore emitted reward zero while recording the raw success metric. Source: each episode's verification.json and trace.execution.jsonl. GPU count=0; public-image scripted solution, not a model result."
+  "source": "Measured on the four-gate directional return course with pinned ALE 90a7c1cfa649c5dbf1078714773f99840e44cba3 on 2026-10-28. Bootstrap validate-dea3f020, oracle episode visual_low_level_flight_control-oracle-eaf736e1: raw success_rate=1.0 on four fresh private scenes, zero collisions, four gates passed per scene, 55/55 observation probes passed. Source: verification.json and trace.execution.jsonl in that episode. The intentional null-anchor bootstrap emitted reward zero while recording these raw metrics; value=1.0 and full_at=1.0 are now measured full completion, not the old three-gate course's calibration. GPU count=0; public-image scripted solution, not a frontier-model result."
 }

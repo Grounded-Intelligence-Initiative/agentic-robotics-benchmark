@@ -19,7 +19,8 @@ LIMITS = {"flight": 300}
 MASS = .027
 THRUST_MAX = .35
 GATE_HALF = .45
-GATE_COLORS = ((1., .72, .04, 1.), (.04, .78, .18, 1.), (.85, .04, .85, 1.))
+GATE_COLORS = ((1., .72, .04, 1.), (.04, .78, .18, 1.),
+               (.85, .04, .85, 1.), (.04, .85, .95, 1.))
 
 
 def png(image):
@@ -39,16 +40,19 @@ def asset_root():
     return path
 
 
-def crossed_gate(previous, current, center):
-    if not previous[0] < center[0] <= current[0]:
+def crossed_gate(previous, current, center, normal):
+    before, after = np.dot(previous-center, normal), np.dot(current-center, normal)
+    if not before < 0 <= after:
         return False
-    fraction = (center[0]-previous[0])/(current[0]-previous[0])
+    fraction = -before/(after-before)
     crossing = previous + fraction*(current-previous)
+    tangent = np.array([-normal[1], normal[0], 0.])
     # Clearance is for the whole nominal rotor span, not just its center.
-    return bool(np.all(np.abs(crossing[1:]-center[1:]) < GATE_HALF-.09))
+    return bool(abs(np.dot(crossing-center, tangent)) < GATE_HALF-.09
+                and abs(crossing[2]-center[2]) < GATE_HALF-.09)
 
 
-def scene(gates, goal):
+def scene(gates, normals, goal):
     source = asset_root()/"bitcraze_crazyflie_2/cf2.xml"
     root = ET.parse(source).getroot()
     root.set("model", "crazyflie_visual_gate_flight")
@@ -65,6 +69,9 @@ def scene(gates, goal):
     ET.SubElement(visual, "quality", shadowsize="2048")
     ET.SubElement(visual, "headlight", ambient=".5 .5 .5", diffuse=".3 .3 .3")
     ET.SubElement(root.find("asset"), "material", name="floor_mat", rgba=".52 .55 .57 1", specular=".15")
+    ET.SubElement(root.find("asset"), "mesh", name="direction_head",
+                  vertex=".08 -.24 0 .55 0 0 .08 .24 0 .08 -.24 .003 .55 0 .003 .08 .24 .003",
+                  face="0 2 1 3 4 5 0 1 4 0 4 3 1 2 5 1 5 4 2 0 3 2 3 5")
     world = root.find("worldbody")
     body = world.find("body")
     body.set("name", "agent")
@@ -81,18 +88,24 @@ def scene(gates, goal):
                   orthographic="true", fovy="8")
     ET.SubElement(world, "geom", name="floor", type="plane", size="8 8 .1", material="floor_mat")
 
-    def box(name, pos, size, color, collision=True):
-        ET.SubElement(world, "geom", name=name, type="box", pos=numbers(pos), size=numbers(size),
+    def box(name, pos, size, color, collision=True, parent=None):
+        ET.SubElement(world if parent is None else parent, "geom", name=name, type="box", pos=numbers(pos), size=numbers(size),
                       rgba=numbers(color), contype=str(int(collision)), conaffinity=str(int(collision)))
 
     for i, (x, y, z) in enumerate(gates):
         color = GATE_COLORS[i]
+        yaw = math.atan2(normals[i, 1], normals[i, 0])
+        gate = ET.SubElement(world, "body", name=f"gate_{i}", pos=numbers((x, y, 0)),
+                             quat=numbers((math.cos(yaw/2), 0, 0, math.sin(yaw/2))))
         for side in (-1, 1):
-            box(f"gate_{i}_post_{side}", (x, y+side*(GATE_HALF+.03), z), (.035, .03, GATE_HALF+.06), color)
-            box(f"gate_{i}_bar_{side}", (x, y, z+side*(GATE_HALF+.03)), (.035, GATE_HALF, .03), color)
-            box(f"gate_{i}_leg_{side}", (x, y+side*(GATE_HALF+.03), (z-GATE_HALF)/2),
-                (.022, .022, (z-GATE_HALF)/2), (.17, .2, .22, 1))
-            box(f"gate_{i}_foot_{side}", (x, y+side*(GATE_HALF+.03), .025), (.18, .10, .025), (.17, .2, .22, 1))
+            box(f"gate_{i}_post_{side}", (0, side*(GATE_HALF+.03), z), (.035, .03, GATE_HALF+.06), color, parent=gate)
+            box(f"gate_{i}_bar_{side}", (0, 0, z+side*(GATE_HALF+.03)), (.035, GATE_HALF, .03), color, parent=gate)
+            box(f"gate_{i}_leg_{side}", (0, side*(GATE_HALF+.03), (z-GATE_HALF)/2),
+                (.022, .022, (z-GATE_HALF)/2), (.17, .2, .22, 1), parent=gate)
+            box(f"gate_{i}_foot_{side}", (0, side*(GATE_HALF+.03), .025), (.18, .10, .025), (.17, .2, .22, 1), parent=gate)
+        box(f"gate_{i}_arrow_tail", (-.20, 0, .004), (.30, .035, .003), (1, 1, 1, 1), False, gate)
+        ET.SubElement(gate, "geom", name=f"gate_{i}_arrow_head", type="mesh", mesh="direction_head",
+                      pos="0 0 .004", rgba="1 1 1 1", contype="0", conaffinity="0")
     ET.SubElement(world, "geom", name="goal", type="cylinder", pos=numbers([*goal[:2], .008]),
                   size=".22 .008", rgba=".025 .10 1 1", contype="0", conaffinity="0")
     for x in (-4.2, 4.2):
@@ -109,16 +122,21 @@ class World:
             raise ValueError("this task only implements flight")
         self.kind, self.seed = kind, int(seed)
         rng = np.random.default_rng(self.seed)
-        self.gates = np.column_stack((np.array([-1.45, 0., 1.45])+rng.uniform(-.1, .1, 3),
-                                      rng.uniform(-.55, .55, 3), rng.uniform(1.05, 1.6, 3)))
-        self.start = np.array([rng.uniform(-2.95, -2.6), rng.uniform(-.65, .65), .055])
-        self.goal = np.array([rng.uniform(2.5, 2.9), rng.uniform(-.7, .7), 1.3])
+        yaw = rng.uniform(-.18, .18)
+        rotation = np.array([[math.cos(yaw), -math.sin(yaw)], [math.sin(yaw), math.cos(yaw)]])
+        xy = np.array([[-1.25, -1.1], [1.45, -.1], [.2, 1.5], [-1.8, .2]])
+        xy = (xy+rng.uniform(-.12, .12, (4, 2)))@rotation.T
+        self.gates = np.column_stack((xy, rng.uniform(1.05, 1.65, 4)))
+        directions = np.arange(4)*np.pi/2+yaw+rng.uniform(-.12, .12, 4)
+        self.gate_normals = np.column_stack((np.cos(directions), np.sin(directions), np.zeros(4)))
+        self.start = np.r_[(np.array([-2.7, -1.1])+rng.uniform(-.1, .1, 2))@rotation.T, .055]
+        self.goal = np.r_[(np.array([-2.7, -1.8])+rng.uniform(-.1, .1, 2))@rotation.T, 1.3]
         self.steps = self.collisions = self.damage = self.phase = self.frame_id = 0
         self.passed_gates = self.hover_ticks = 0
         self.done = self.success = self.airborne = False
         self.failure_reason = None
         self._contacts = set()
-        self.model = mujoco.MjModel.from_xml_string(scene(self.gates, self.goal))
+        self.model = mujoco.MjModel.from_xml_string(scene(self.gates, self.gate_normals, self.goal))
         self.data = mujoco.MjData(self.model)
         self.agent_id = self.model.body("agent").id
         self.data.qpos[:3] = self.start
@@ -180,7 +198,8 @@ class World:
                 contacts.add(tuple(sorted(ids)))
             self.collisions += len(contacts-self._contacts)
             self._contacts = contacts
-            if self.passed_gates < len(self.gates) and crossed_gate(previous, p, self.gates[self.passed_gates]):
+            if self.passed_gates < len(self.gates) and crossed_gate(
+                    previous, p, self.gates[self.passed_gates], self.gate_normals[self.passed_gates]):
                 self.passed_gates += 1
             stable = (self.passed_gates == len(self.gates) and np.linalg.norm(p-self.goal) < .22
                       and np.linalg.norm(self.data.qvel[:3]) < .25

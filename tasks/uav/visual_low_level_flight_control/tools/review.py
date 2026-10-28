@@ -33,7 +33,7 @@ class Camera:
         self.renderer = mujoco.Renderer(world.model, height, width)
         self.camera = mujoco.MjvCamera()
         self.camera.lookat[:] = [0, 0, .8]
-        self.camera.distance, self.camera.azimuth, self.camera.elevation = 7.2, 125, -25
+        self.camera.distance, self.camera.azimuth, self.camera.elevation = 7.8, 120, -43
 
     def frame(self):
         option = mujoco.MjvOption()
@@ -61,7 +61,7 @@ def poster(world, obs, output):
     normal = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
     bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
     draw.text((32, 20), "Crazyflie / Visual Flight Control", font=ImageFont.truetype(bold, 36), fill="#f4f5f6")
-    draw.text((32, 74), "Camera images > controller > three gates > stable hover",
+    draw.text((32, 74), "Four directed gates > turns and return flight > stable hover",
               font=ImageFont.truetype(normal, 23), fill="#bdc9cd")
     canvas.paste(closeup, (32, 640))
     draw.rectangle((31, 639, 433, 921), outline="#9caab0", width=2)
@@ -77,6 +77,37 @@ def poster(world, obs, output):
     camera.close()
 
 
+def route_overview(world, initial_image, records, output):
+    """Reviewer-only labels and the measured flight path over an actual camera image."""
+    canvas = Image.new("RGB", (960, 1080), "#161a1d")
+    canvas.paste(Image.fromarray(initial_image).resize((960, 960)), (0, 80))
+    draw = ImageDraw.Draw(canvas)
+    normal = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    draw.text((24, 18), "Four-gate return course", font=ImageFont.truetype(bold, 30), fill="white")
+
+    def pixel(p):
+        return ((p[0]+4)*120, 80+(4-p[1])*120)
+
+    points = [pixel(world.start)]+[pixel(row["position"]) for row in records]
+    if len(points) > 1:
+        draw.line(points, fill="#263441", width=9)
+        draw.line(points, fill="#ff8866", width=4)
+    colors = ("#ffc42b", "#46da67", "#ee71eb", "#48e2ed")
+    for i, center in enumerate(world.gates):
+        x, y = pixel(center)
+        x, y = x+34, y-44
+        draw.ellipse((x-20, y-20, x+20, y+20), fill=colors[i], outline="#161a1d", width=2)
+        draw.text((x, y-1), str(i+1), anchor="mm", font=ImageFont.truetype(bold, 24), fill="#161a1d")
+    for label, point in (("START", world.start), ("FINISH", world.goal)):
+        x, y = pixel(point)
+        draw.text((x-20, y+22), label, font=ImageFont.truetype(bold, 19), fill="#10171c",
+                  stroke_width=2, stroke_fill="#e9eff0")
+    draw.text((24, 1047), "Actual top camera + reviewer labels / measured path; white arrows set crossing direction.",
+              font=ImageFont.truetype(normal, 17), fill="#c6d1d5")
+    canvas.save(output/"route.png")
+
+
 def run(seed, output, video=False, mode="reference"):
     output.mkdir(parents=True, exist_ok=True)
     world = World("flight", seed)
@@ -90,6 +121,7 @@ def run(seed, output, video=False, mode="reference"):
     rng = np.random.default_rng(seed ^ 0x971)
     try:
         obs = world.observe()
+        initial_image = decode(obs)
         Image.fromarray(np.concatenate(world.images(), axis=1)).save(output/"initial-agent-view.png")
         while not world.done:
             if mode == "reference":
@@ -99,18 +131,23 @@ def run(seed, output, video=False, mode="reference"):
             else:
                 action = rng.uniform(-1, 1, 4).tolist()
             obs = world.act(action)
-            records.append({"action": action, "frame_id": obs["frame_id"], **world.metrics()})
+            records.append({"action": action, "frame_id": obs["frame_id"],
+                            "position": world.position().tolist(), **world.metrics()})
             if world.steps == 26:
                 poster(world, obs, output)
                 Image.fromarray(np.concatenate(world.images(), axis=1)).save(output/"agent-view.png")
             if writer is not None:
                 frame = camera.frame()
                 draw = ImageDraw.Draw(frame)
+                frame.paste(Image.fromarray(decode(obs)).resize((240, 240)), (704, 12))
+                draw.text((714, 258), "Agent top camera", font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 17),
+                          fill="white", stroke_width=2, stroke_fill="#161a1d")
                 draw.rectangle((0, 556, 960, 600), fill="#161a1d")
-                draw.text((16, 566), f"{world.data.time:.1f}s  |  Gates: {world.passed_gates}/3  |  Contacts: {world.collisions}  |  Reviewer view",
+                draw.text((16, 566), f"{world.data.time:.1f}s  |  Gates: {world.passed_gates}/4  |  Contacts: {world.collisions}  |  Reviewer view",
                           font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18), fill="white")
                 writer.append_data(np.asarray(frame))
         Image.fromarray(np.concatenate(world.images(), axis=1)).save(output/"final-agent-view.png")
+        route_overview(world, initial_image, records, output)
         result = {"seed": seed, "mode": mode, "task_sha256": digest(), **world.metrics()}
         (output/"result.json").write_text(json.dumps(result, indent=2)+"\n")
         (output/"actions.json").write_text(json.dumps(records, indent=2)+"\n")
