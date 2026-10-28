@@ -1,0 +1,8 @@
+{
+  "metric": "geolocation_score",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 0.95,
+  "source": "Mean geolocation_score of 2 reference-oracle runs through the engine (`ale validate` / `ale run --agent oracle`, engine 90a7c1c, RTX 4090, driver 570.211): 1.0000, 1.0000. full_at is the worst run's ratio to that mean, rounded down to 0.05.",
+  "note": "geolocation_score is the mean mission score over the run, clamped at 0 once. A mission scores the mean of its per-target credit (located within 3 m: 1, falling linearly to 0 at 10 m; a decoy declared absent: 1; a present target declared absent: -1), times an energy factor (1 - 0.2 * min(1, path / budget)) and 0.5 after a collision when positive; aborted missions score 0. The reference is the token-privileged expert (oracle/): it reports every placed object at its true position and every decoy as absent, turning in place without moving, so it measures the metric's ceiling."
+}
