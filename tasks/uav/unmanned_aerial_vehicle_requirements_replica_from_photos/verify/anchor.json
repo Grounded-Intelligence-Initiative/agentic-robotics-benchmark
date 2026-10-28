@@ -3,5 +3,5 @@
   "direction": "higher",
   "value": 1.0,
   "full_at": 1.0,
-  "source": "R6 public ALE validate-50fab45d, pinned engine 90a7c1cfa649c5dbf1078714773f99840e44cba3, 2026-10-28 UTC: oracle 6fc2d845 requirements_score=1.0 (all five criteria full), untouched 410ff243=0.0; both given_files_unchanged=1.0. HF revision 0365bc23e77015b4197f089ce259ece3d3829e12. Only provenance wording changed after validation; scoring and normalization unchanged."
+  "source": "R7 public ALE validate-8142ea84, pinned engine 90a7c1cfa649c5dbf1078714773f99840e44cba3, 2026-10-28 UTC: oracle afe4b1e0 requirements_score=1.0 (all five criteria full), untouched ee4ed221=0.0; both given_files_unchanged=1.0. HF revision e18c87c6b46a2fea24b81906ee8aabf7c39583eb. Only provenance wording changed after validation; scoring and normalization unchanged."
 }

@@ -78,6 +78,8 @@ Dimension definitions:
 To call `procedure.evaluate(bom, geometry, catalogue, duty)`, reconstruct the numeric inputs from the evidence.
 Geometry consists of `dimensions_mm` (plain numbers; add esc_x_mm=0, esc_y_mm=0, esc_z_mm=-8), `payload_mass_kg`,
 and `fixed_components`, a list of `{name,mass_kg,position_mm:[x,y,z],box_mm:[x,y,z]}` for dry_core and sensor.
+Reconstruct the final dry_core mass from BL-01 before calling the procedure; the calibration master is not the
+photographed unit.
 Catalogue keys: motors, props, escs, batteries, lots, battery_lot, esc_lot. Each product dictionary is indexed by SKU.
 Product keys and SI units are named explicitly in the public Python function; vendor pages supply all values.
 Catalogue `usd` is the unit price from Q-01. Lot dictionaries contain the retained factors computed by B-06.

@@ -43,6 +43,7 @@
     },
     "propeller": {
       "enum": [
+        "VP-48H",
         "VP-51",
         "VP-525"
       ]

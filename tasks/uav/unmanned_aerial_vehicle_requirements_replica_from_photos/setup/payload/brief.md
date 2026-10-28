@@ -43,7 +43,8 @@ k has units W/N^(3/2). Divide by ESC efficiency to obtain battery-side motor pow
 At end-of-mission test open-circuit voltage, solve V=Voc-R*P/V using the HIGH-voltage root. No real root is failure.
 Total battery current is P/V; each ESC-channel current excludes auxiliary current.
 
-B-09. Contractual rigid-body reduction: use the BL-01 dry core as a uniform box centred at (0,0,-4 mm), the scanner
+B-09. Contractual rigid-body reduction: reconstruct the final dry-core mass using BL-01, then use it as
+a uniform box centred at (0,0,-4 mm). Use the scanner
 as a uniform box with its photographed extents and centre (mass from DS-08), the payload as the B-02 box,
 and the chosen battery/ESC as
 their datasheet boxes. The ESC centre is (0,0,-8 mm). Motors plus propellers are point masses at the four shafts.
