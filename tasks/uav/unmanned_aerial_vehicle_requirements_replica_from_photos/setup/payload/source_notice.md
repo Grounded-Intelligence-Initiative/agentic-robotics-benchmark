@@ -6,7 +6,7 @@ The upstream BOM and hardware-assembly guide establish the carbon-fibre / printe
 four motors, four-in-one ESC, 6S power and PX4/companion-computer architecture.
 
 This is a procedurally rendered lab-built derivative. The obsolete battery and motor-shell volumes fused into
-the source body export are removed before fitting the open cage and M-2 survey motors. Core geometry is scaled during fabrication; the installed
+the source body export are removed before fitting the open cage and retired survey motors. Core geometry is scaled during fabrication; the installed
 battery cage, ballast pod and scanner are benchmark fixtures. No upstream performance claim is an acceptance
 value. Vesper Motion products, lot measurements, masses, procurement prices and customer clauses are synthetic.
 The reduced-order mass and bench-power model in B-09 is the contractual acceptance model, not flight certification.

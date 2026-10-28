@@ -1,8 +1,8 @@
 {
   "motors": {
-    "FL": "VM-28",
+    "FL": "VM-25",
     "FR": "VM-28",
-    "RL": "VM-25",
+    "RL": "VM-23",
     "RR": "VM-28"
   },
   "propeller": "VP-51",

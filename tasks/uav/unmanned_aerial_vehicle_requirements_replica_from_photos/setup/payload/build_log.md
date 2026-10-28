@@ -8,9 +8,10 @@ BL-02. Carbon-fibre plates and TPU adapters follow the AgiPix construction; this
 The initial traveller copied the upstream envelope 438 x 372 mm. That traveller predates fabrication; see the survey.
 The four shaft centres form a rectangle. Do not infer a square wheelbase from the four guard loops.
 
-BL-03. Installed old survey propellers have no legible pitch marking. Reference motor body: M-2, mounting envelope
-28.2 mm diameter x 14 mm height, shaft diameter 5 mm (mechanical outline on DS-01). This purchased body is unscaled.
-The motor mounting pattern is 16 mm. The photographed propellers do not determine the new BOM selection.
+BL-03. The photographed motors and propellers were carried over from the retired demonstrator, before Vesper
+qualification. Their purchase IDs and dimensional records were not retained. The motor mounting interface is
+16 mm; DS-01 describes the newly qualified VM procurement family. The old propellers have no legible pitch mark
+and do not determine the new BOM selection.
 
 BL-04. The battery cage has a rear stop, side stops and upper retention rails. Internal dimensions are measured
 between the inner faces, excluding screw heads. PH-07..PH-09 were taken in an inspection cradle with the battery
@@ -23,6 +24,8 @@ No balance measurement was retained. Use the visible box centres and component w
 
 BL-06. The 150 mm steel rule appears on a separate gauge stand in PH-08 only. It has 1 mm ticks.
 The ID-1 card (85.60 x 53.98 mm) leans on a desk block in PH-05 only.
+Its lower long edge and the vehicle's feet rest on the same level, planar tabletop in that view.
+The rectangular tabletop's two edge directions are aligned with the vehicle's longitudinal and lateral axes.
 The scale display in PH-12 is the complete payload mass; its tare is zero.
 These reference objects were removed from the other shots. There is no photogrammetry calibration file.
 These are unrectified compact-camera images; lens distortion is present. Manufactured straight edges and
