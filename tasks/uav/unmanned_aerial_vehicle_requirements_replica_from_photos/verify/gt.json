@@ -1,41 +1,41 @@
 {
   "source_commit": "147a736b9fea7ac0e8d08c9a5fb0b90e5baa224a",
-  "seed": 20261029,
-  "attempt": 13,
+  "seed": 20261030,
+  "attempt": 34,
   "scale": [
-    1.0192482174306479,
-    1.013412174525226,
-    0.9718152434304772
+    1.0119464444694213,
+    1.0303851072122023,
+    0.9966400772329889
   ],
   "geometry": {
     "dimensions_mm": {
-      "motor_x_mm": 100.45710224682918,
-      "motor_y_mm": 133.2637067488582,
-      "frame_x_mm": 379.8456276226259,
-      "frame_y_mm": 443.5262964394457,
-      "frame_z_mm": 126.54706910860494,
-      "guard_inner_mm": 136.54527025897812,
+      "motor_x_mm": 99.73743951855074,
+      "motor_y_mm": 135.49564749431548,
+      "frame_x_mm": 377.1244587397343,
+      "frame_y_mm": 450.95460859476134,
+      "frame_z_mm": 129.77968969163535,
+      "guard_inner_mm": 135.8854942363645,
       "motor_mount_mm": 16.0,
       "battery_bay_x_mm": 148.0,
       "battery_bay_y_mm": 47.5,
       "battery_bay_z_mm": 44.5,
-      "battery_x_mm": -25.374430243734285,
-      "battery_y_mm": 2.9262758459665594,
-      "battery_z_mm": -50.53439265838482,
-      "payload_x_mm": 28.841248445376557,
-      "payload_y_mm": 18.29505491329942,
-      "payload_z_mm": 106.96917296561492,
+      "battery_x_mm": -22.348694767933743,
+      "battery_y_mm": -3.435642225940322,
+      "battery_z_mm": -51.82528401611542,
+      "payload_x_mm": 33.248197910530884,
+      "payload_y_mm": 16.55835202818,
+      "payload_z_mm": 104.57907693868322,
       "esc_x_mm": 0.0,
       "esc_y_mm": 0.0,
       "esc_z_mm": -8.0,
-      "sensor_x_mm": 81.0302332857365,
-      "sensor_z_mm": 31.38963236280441,
-      "payload_box_x_mm": 75.54,
-      "payload_box_y_mm": 58.38,
-      "payload_box_z_mm": 44.87,
-      "sensor_box_x_mm": 47.27,
-      "sensor_box_y_mm": 47.0,
-      "sensor_box_z_mm": 52.38
+      "sensor_x_mm": 80.44974233531899,
+      "sensor_z_mm": 32.19147449462554,
+      "payload_box_x_mm": 71.97,
+      "payload_box_y_mm": 61.46,
+      "payload_box_z_mm": 45.32,
+      "sensor_box_x_mm": 46.9,
+      "sensor_box_y_mm": 44.39,
+      "sensor_box_z_mm": 50.42
     },
     "fixed_components": [
       {
@@ -47,27 +47,27 @@
           -4
         ],
         "box_mm": [
-          379.8456276226259,
-          443.5262964394457,
-          126.54706910860494
+          377.1244587397343,
+          450.95460859476134,
+          129.77968969163535
         ]
       },
       {
         "name": "sensor",
         "mass_kg": 0.185,
         "position_mm": [
-          81.0302332857365,
+          80.44974233531899,
           0,
-          31.38963236280441
+          32.19147449462554
         ],
         "box_mm": [
-          47.27,
-          47.0,
-          52.38
+          46.9,
+          44.39,
+          50.42
         ]
       }
     ],
-    "payload_mass_kg": 0.327
+    "payload_mass_kg": 0.373
   },
   "catalogue": {
     "motors": {
@@ -447,14 +447,14 @@
   },
   "optimum": {
     "motors": {
-      "FL": "VM-25",
+      "FL": "VM-28",
       "FR": "VM-28",
       "RL": "VM-23",
       "RR": "VM-28"
     },
     "propeller": "VP-51",
     "esc": "VE-28",
-    "battery": "VB-42"
+    "battery": "VB-36"
   },
   "optimum_report": {
     "pass": true,
@@ -471,49 +471,60 @@
       "energy": true
     },
     "derived": {
-      "all_up_mass_kg": 2.0264,
-      "cg_x_mm": 5.987550745378621,
-      "cg_y_mm": 1.7844890910318303,
-      "cg_z_mm": 5.738448729659429,
-      "battery_peak_a": 48.03884011902145,
-      "minimum_voltage_v": 20.316877467334358,
-      "mission_energy_wh": 55.024979736053226,
-      "usable_energy_wh": 70.71321599999999,
-      "inertia_xx_kg_m2": 0.023138381475107432,
-      "inertia_xy_kg_m2": -0.00020658444126842685,
-      "inertia_xz_kg_m2": -0.0020662874150507216,
-      "moment_peak_x_nm": 0.6825991084150578,
-      "inertia_yy_kg_m2": 0.020661027175898194,
-      "inertia_yz_kg_m2": -0.000543477197395884,
-      "moment_peak_y_nm": 1.0128532271413304,
-      "inertia_zz_kg_m2": 0.030995050303141414,
-      "moment_peak_z_nm": 0.2725303487045729,
-      "thrust_peak_FL_n": 11.964448862296234,
-      "esc_rms_FL_a": 5.94351456830972,
-      "thrust_peak_FR_n": 14.17859137398156,
-      "esc_rms_FR_a": 5.7324119570428875,
-      "thrust_peak_RL_n": 8.264059472104696,
-      "esc_rms_RL_a": 5.240730561254988,
-      "thrust_peak_RR_n": 13.14209519147856,
-      "esc_rms_RR_a": 4.850775669409922
+      "all_up_mass_kg": 2.0164,
+      "cg_x_mm": 9.489627500627568,
+      "cg_y_mm": 1.0952602961069324,
+      "cg_z_mm": 9.232873979598892,
+      "battery_peak_a": 47.71362617694096,
+      "minimum_voltage_v": 19.70934871356368,
+      "mission_energy_wh": 53.784495003914614,
+      "usable_energy_wh": 59.588352000000015,
+      "inertia_xx_kg_m2": 0.0240617142847301,
+      "inertia_xy_kg_m2": -0.00046181185576211136,
+      "inertia_xz_kg_m2": -0.0021147990254233814,
+      "moment_peak_x_nm": 0.6449415255125195,
+      "inertia_yy_kg_m2": 0.020502244352949048,
+      "inertia_yz_kg_m2": -0.0007047511254320016,
+      "moment_peak_y_nm": 1.0647657594833662,
+      "inertia_zz_kg_m2": 0.03141910888262597,
+      "moment_peak_z_nm": 0.2778968728968062,
+      "thrust_peak_FL_n": 12.278439594169383,
+      "esc_rms_FL_a": 5.871356243866528,
+      "thrust_peak_FR_n": 14.192956634482583,
+      "esc_rms_FR_a": 6.062123244332899,
+      "thrust_peak_RL_n": 8.20940762541699,
+      "esc_rms_RL_a": 4.960219251906373,
+      "thrust_peak_RR_n": 12.94488312345756,
+      "esc_rms_RR_a": 4.680872648548452
     },
     "thrust_utilization": [
-      0.9794074482070909,
-      0.9474682753912304,
-      0.7727184798181053,
-      0.9137676000471453
+      0.9071595985984342,
+      0.9971878555825966,
+      0.8105126498977342,
+      0.9563979924416287
     ],
-    "esc_peak_utilization": 0.8735825075866401,
-    "price": 239.2
+    "esc_peak_utilization": 0.8971186195608958,
+    "price": 240.2
   },
-  "passing_count": 27,
+  "passing_count": 18,
   "binding": [
     "FL",
-    "FR",
     "RR"
   ],
   "rejected": [
     "no binding guard clearance",
+    "no passing configuration",
+    "no heterogeneous optimum",
+    "no passing configuration",
+    "no binding guard clearance",
+    "no binding guard clearance",
+    "no binding guard clearance",
+    "no binding guard clearance",
+    "no binding guard clearance",
+    "no binding guard clearance",
+    "no binding guard clearance",
+    "no binding guard clearance",
+    "no binding guard clearance",
     "no binding guard clearance",
     "no binding guard clearance",
     "no binding guard clearance",
@@ -524,9 +535,63 @@
     "no passing configuration",
     "no binding guard clearance",
     "no binding guard clearance",
+    "no binding guard clearance",
+    "no binding guard clearance",
+    "no binding guard clearance",
+    "no binding guard clearance",
     "no passing configuration",
+    "no binding guard clearance",
+    "no binding guard clearance",
+    "no binding guard clearance",
+    "no binding guard clearance",
+    "no binding guard clearance",
     "no binding guard clearance"
   ],
+  "survey_history": {
+    "earlier_photos": [
+      2,
+      5,
+      11
+    ],
+    "earlier_scale": [
+      1.133380017805752,
+      1.0303851072122023,
+      1.2159008942242464
+    ],
+    "earlier_dimensions_mm": {
+      "motor_x_mm": 111.70593226077685,
+      "motor_y_mm": 135.49564749431548,
+      "frame_x_mm": 422.37939378850245,
+      "frame_y_mm": 450.95460859476134,
+      "frame_z_mm": 158.33122142379514,
+      "guard_inner_mm": 138.93477699412358,
+      "motor_mount_mm": 16.0,
+      "battery_bay_x_mm": 148.0,
+      "battery_bay_y_mm": 47.5,
+      "battery_bay_z_mm": 44.5,
+      "battery_x_mm": 15.0,
+      "battery_y_mm": -5.0,
+      "battery_z_mm": -63.226846499660816,
+      "payload_x_mm": -30.0,
+      "payload_y_mm": -25.0,
+      "payload_z_mm": 120.0,
+      "esc_x_mm": 0.0,
+      "esc_y_mm": 0.0,
+      "esc_z_mm": -8.0,
+      "sensor_x_mm": 90.10371141555729,
+      "sensor_z_mm": 39.27359888344316,
+      "payload_box_x_mm": 71.97,
+      "payload_box_y_mm": 61.46,
+      "payload_box_z_mm": 45.32,
+      "sensor_box_x_mm": 46.9,
+      "sensor_box_y_mm": 44.39,
+      "sensor_box_z_mm": 50.42
+    },
+    "unchanged_boxes": [
+      "sensor_box",
+      "payload_box"
+    ]
+  },
   "facets": [
     {
       "id": "replica_count",
@@ -557,7 +622,7 @@
     },
     {
       "id": "payload_mass",
-      "value": 0.327,
+      "value": 0.373,
       "unit": "kg",
       "sources": [
         "PH-12"

@@ -1,7 +1,7 @@
 {
   "dimensions_mm": {
     "motor_x_mm": {
-      "nominal": 100.45710224682918,
+      "nominal": 99.73743951855074,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -9,7 +9,7 @@
       ]
     },
     "motor_y_mm": {
-      "nominal": 133.2637067488582,
+      "nominal": 135.49564749431548,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -17,7 +17,7 @@
       ]
     },
     "frame_x_mm": {
-      "nominal": 379.8456276226259,
+      "nominal": 377.1244587397343,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -25,7 +25,7 @@
       ]
     },
     "frame_y_mm": {
-      "nominal": 443.5262964394457,
+      "nominal": 450.95460859476134,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -33,7 +33,7 @@
       ]
     },
     "frame_z_mm": {
-      "nominal": 126.54706910860494,
+      "nominal": 129.77968969163535,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -41,7 +41,7 @@
       ]
     },
     "guard_inner_mm": {
-      "nominal": 136.54527025897812,
+      "nominal": 135.8854942363645,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -81,7 +81,7 @@
       ]
     },
     "battery_x_mm": {
-      "nominal": -25.374430243734285,
+      "nominal": -22.348694767933743,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -89,7 +89,7 @@
       ]
     },
     "battery_y_mm": {
-      "nominal": 2.9262758459665594,
+      "nominal": -3.435642225940322,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -97,7 +97,7 @@
       ]
     },
     "battery_z_mm": {
-      "nominal": -50.53439265838482,
+      "nominal": -51.82528401611542,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -105,7 +105,7 @@
       ]
     },
     "payload_x_mm": {
-      "nominal": 28.841248445376557,
+      "nominal": 33.248197910530884,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -113,7 +113,7 @@
       ]
     },
     "payload_y_mm": {
-      "nominal": 18.29505491329942,
+      "nominal": 16.55835202818,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -121,7 +121,7 @@
       ]
     },
     "payload_z_mm": {
-      "nominal": 106.96917296561492,
+      "nominal": 104.57907693868322,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -129,7 +129,7 @@
       ]
     },
     "sensor_x_mm": {
-      "nominal": 81.0302332857365,
+      "nominal": 80.44974233531899,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -137,7 +137,7 @@
       ]
     },
     "sensor_z_mm": {
-      "nominal": 31.38963236280441,
+      "nominal": 32.19147449462554,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -145,7 +145,7 @@
       ]
     },
     "payload_box_x_mm": {
-      "nominal": 75.54,
+      "nominal": 71.97,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -153,7 +153,7 @@
       ]
     },
     "payload_box_y_mm": {
-      "nominal": 58.38,
+      "nominal": 61.46,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -161,7 +161,7 @@
       ]
     },
     "payload_box_z_mm": {
-      "nominal": 44.87,
+      "nominal": 45.32,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -169,7 +169,7 @@
       ]
     },
     "sensor_box_x_mm": {
-      "nominal": 47.27,
+      "nominal": 46.9,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -177,7 +177,7 @@
       ]
     },
     "sensor_box_y_mm": {
-      "nominal": 47.0,
+      "nominal": 44.39,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -185,7 +185,7 @@
       ]
     },
     "sensor_box_z_mm": {
-      "nominal": 52.38,
+      "nominal": 50.42,
       "tolerance": 0.5,
       "sources": [
         "PH-02",

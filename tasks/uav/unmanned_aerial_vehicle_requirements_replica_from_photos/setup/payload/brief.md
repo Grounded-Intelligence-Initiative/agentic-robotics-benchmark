@@ -1,10 +1,12 @@
 # Customer brief / revision C
 
-B-01. Supply eight replicas. Retain this unit's fabricated guarded core, mounting positions, battery cage and
+B-01. Supply eight replicas of U-17 in its final configuration after the 25 September rebuild and subsequent survey.
+Retain that configuration's fabricated guarded core, mounting positions, battery cage and
 ballast-pod position. Retain the PX4 / ROS 2 split, sensors and compute. Purchase only the seven BOM lines in B-03.
 
 B-02. Fly with the replacement ballast pod shown on the scale in PH-12. The display is grams, tare zero.
-PH-01..PH-09 show its installed position and box extents; its centre of mass is its box centre.
+Use the survey register and build history to establish its final installed position and box extents;
+its centre of mass is its box centre. The photographs span more than one build stage.
 The pod and scanner box edges are parallel to the vehicle axes. Their external outlines must be measured.
 Every replica carries this mass throughout the duty. The old shipping note's 250 g is obsolete.
 

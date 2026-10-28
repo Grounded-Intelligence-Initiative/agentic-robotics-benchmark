@@ -8,6 +8,7 @@ four motors, four-in-one ESC, 6S power and PX4/companion-computer architecture.
 This is a procedurally rendered lab-built derivative. The obsolete battery and motor-shell volumes fused into
 the source body export are removed before fitting the open cage and retired survey motors. Core geometry is scaled during fabrication; the installed
 battery cage, ballast pod and scanner are benchmark fixtures. No upstream performance claim is an acceptance
-value. Vesper Motion products, lot measurements, masses, procurement prices and customer clauses are synthetic.
+value. Vesper Motion products, lot measurements, masses, procurement prices, dates and customer clauses are synthetic.
 The reduced-order mass and bench-power model in B-09 is the contractual acceptance model, not flight certification.
-The images are Blender Cycles renders of the same fixture whose geometry is used for acceptance.
+The images are Blender Cycles renders of two dated build stages. Acceptance uses the final stage;
+earlier-stage photographs supply historical evidence and views of the explicitly reused components.

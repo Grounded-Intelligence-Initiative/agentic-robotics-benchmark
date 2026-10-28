@@ -3,5 +3,5 @@
   "direction": "higher",
   "value": 1.0,
   "full_at": 1.0,
-  "source": "Measured reference requirements_score=1.0 (all five criteria full) in pinned ALE validate-ead1801b, oracle episode 2767cb41, 2026-10-28 UTC. Public task image fetched HF revision 9435878114aff0c96cbbf4762c485b9f872d8e8f; untouched episode 0a2d66c7 scored 0.0; both had given_files_unchanged=1.0. Build-only DNS workaround, no task-byte or runtime-network change. Deterministic static reference; provenance wording updated after measurement."
+  "source": "R5 public ALE validate-a8fd38b7, pinned engine 90a7c1cfa649c5dbf1078714773f99840e44cba3, 2026-10-28 UTC: oracle 1108f65b requirements_score=1.0 (all five criteria full), untouched 2d034c20=0.0; both given_files_unchanged=1.0. HF revision a58ca9ba96f5d0c29ad529f87a55f54c85e43ac0. Only provenance wording changed after this validation; scoring and normalization unchanged."
 }
