@@ -48,6 +48,10 @@ def grade(docs, truth):
         err = abs(cell["nominal"]-geometry["dimensions_mm"][k])
         metrics[f"geometry_error_mm:{k}"] = err
         values.append(ramp(err, .5, 3.5))
+    for station,cell in sketch["rotor_cant_deg"].items():
+        err=abs(cell["nominal"]-geometry["rotor_cant_deg"][station])
+        metrics[f"geometry_error_deg:rotor_cant_{station}"]=err
+        values.append(ramp(err,1.,4.))
     spin = sum(sketch["spin"][s] == v for s, v in truth["spin"].items()) / 4
     c1 = .95*sum(values)/len(values)+.05*spin
     by_id = {r["id"]: r for r in sheet["facets"]}
@@ -64,7 +68,8 @@ def grade(docs, truth):
     c2 = 2*credit / (len(truth["facets"])+len(sheet["facets"]))
     result = evaluate(bom, geometry, cat, duty)
     derived_credit = []
-    for k, expected in result["derived"].items():
+    for k in truth["derived_specs"]:
+        expected=result["derived"][k]
         sub = sheet["derived"].get(k)
         error = 1.0
         if sub:

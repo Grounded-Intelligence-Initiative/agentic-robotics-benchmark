@@ -1,7 +1,7 @@
-# Customer brief / revision C
+# Customer brief / revision D
 
 B-01. Supply eight replicas of U-17 in its final configuration after the 25 September rebuild and subsequent survey.
-Retain that configuration's fabricated guarded core, mounting positions, battery cage and
+Retain that configuration's fabricated guarded core, mounting positions and individual motor-axis orientations, battery cage and
 ballast-pod position. Retain the PX4 / ROS 2 split, sensors and compute. Purchase only the seven BOM lines in B-03.
 
 B-02. Fly with the replacement ballast pod shown on the scale in PH-12. The display is grams, tare zero.
@@ -14,15 +14,22 @@ B-03. Four independent motor lines, stations FL/FR/RL/RR, one shared propeller l
 one 4-in-1 ESC line, one 6S battery line. No stacking batteries, mixed propeller types or modification of the core.
 Prices and delivery lot are fixed by Q-01. All quoted options may be evaluated, even if one cannot fit this unit.
 
-B-04. Coordinates: x forward (toward scanner), y left, z up. Origin is the midpoint of the four rotor shafts in
-the plane of the upper flat circular faces of the reference motor cases, excluding propeller hubs and nuts.
-This is the contractual thrust plane. FL is x positive/y positive; FR positive/negative; RL negative/positive; RR negative/negative.
-Spin is viewed from above. The body yaw-reaction signs in this station order are -1,+1,+1,-1.
-Install CCW propellers at FL/RR and CW at FR/RL. Full-row shaft spacing is twice the corresponding half-span.
+B-04. Coordinates: x forward (toward scanner), y left, z up along the retained core's vertical direction.
+The centres of the four upper circular motor-case faces are coplanar. Their midpoint is the origin and their
+centre plane is z=0; the tilted circular faces themselves are not parallel. Exclude propeller hubs and nuts.
+FL is x positive/y positive; FR positive/negative; RL negative/positive; RR negative/negative.
+Spin is viewed toward each motor from its positive shaft axis. Reaction signs s in this order are -1,+1,+1,-1.
+Install CCW propellers at FL/RR and CW at FR/RL. Full-row centre spacing is twice the corresponding half-span.
+For station r=(x,y,0), u=r/|r| points radially outward and t=ez cross u. Its measured cant theta rotates the
+motor and square adapter top land about u by the right-handed angle s*theta. Before this rotation, top-land
+edges align with body x/y. Thus the positive thrust axis is n=cos(theta)*ez-s*sin(theta)*t. Recover each theta
+independently from the final survey; no equality between stations is prescribed.
 
-B-05. Propeller swept diameter plus 2 mm clearance at EACH tip must fit the smallest shaft-centred inscribed
-circle in any guard. The guard aperture can be offset from its shaft; use the limiting shaft-to-inner-edge distance,
-not the guard outer diameter. Battery boxes must fit the cage's internal x/y/z dimensions without rotation.
+B-05. Use the conservative projected swept-disc corridor: propeller diameter plus twice [2 mm tip clearance
++ max_i(h*abs(sin(theta_i)))] must fit the smallest shaft-centred inscribed circle in any guard. Here h is the
+qualified propeller-plane offset along its shaft from the upper motor-face centre (DS-02). The offset shifts
+its projected centre; the full diameter bounds the tilted ellipse. Guard apertures can be offset from their
+shaft centres; use the limiting shaft-to-inner-edge distance, not the guard outer diameter. Battery boxes must fit the cage's internal x/y/z dimensions without rotation.
 Motors must share this unit's 16 mm mounting-hole pitch. Frame or cage rework is disallowed.
 
 B-06. Use the delivered lot B. Lot A is retained for comparison only. For each motor SKU, retained thrust multiplier
@@ -33,7 +40,7 @@ erratum takes precedence over the preliminary page. Apply lot factors once, afte
 
 B-07. Evaluate a 390 s hover and all eight 4 s manoeuvre states: az=3.1 m/s^2, ax=5.4 m/s^2;
 omega=(s*2.2,p*2.7,y*1.8) rad/s and alpha=(s*8.2,p*10.7,y*1.2) rad/s^2 for every s,p,y in {-1,+1}.
-Each manoeuvre includes a prescribed lateral gust G=(-s*6,p*4,0) N acting at the payload box centre.
+Each manoeuvre includes a prescribed lateral gust G=(-s*1.5,p*1,0) N acting at the payload box centre.
 Hover has zero acceleration/rate and zero gust. No takeoff, cruise or reserve time is silently added.
 Auxiliary battery-side power is 38 W throughout; g=9.80665 m/s^2. Energy reserve is 20% of retained battery energy.
 
@@ -44,16 +51,21 @@ At end-of-mission test open-circuit voltage, solve V=Voc-R*P/V using the HIGH-vo
 Total battery current is P/V; each ESC-channel current excludes auxiliary current.
 
 B-09. Contractual rigid-body reduction: reconstruct the final dry-core mass using BL-01, then use it as
-a uniform box centred at (0,0,-4 mm). Use the scanner
+a uniform box centred at (0,0,-12 mm). Use the scanner
 as a uniform box with its photographed extents and centre (mass from DS-08), the payload as the B-02 box,
 and the chosen battery/ESC as
-their datasheet boxes. The ESC centre is (0,0,-8 mm). Motors plus propellers are point masses at the four shafts.
+their datasheet boxes. The ESC centre is (0,0,-16 mm). Motors plus propellers are point masses at the four shafts.
 Compute the combined CoM and full inertia tensor ABOUT THAT CoM, including parallel-axis terms.
-For each duty state, total thrust F=sqrt((m*(g+az))^2+(m*ax-Gx)^2+Gy^2). The required rotor moment
-about the shaft midpoint is I*alpha + omega cross (I*omega) + CoM cross (0,0,F)
-- (payload_centre-CoM) cross G. Forces and moments in this envelope are expressed in the vehicle axes.
-Solve the four-rotor allocation with rows [1], [y_i], [-x_i], [reaction_sign_i*propeller_reaction_arm].
-This prescribes the sizing envelope; aerodynamic drag and detailed CAD density are outside this contract.
+For each state, prescribe resultant force magnitude F=sqrt((m*(g+az))^2+(m*ax-Gx)^2+Gy^2) and angular demand
+M=I*alpha + omega cross (I*omega) - (payload_centre-CoM) cross G. Use the B-04 thrust axes n_i. The moment
+column for unit thrust at station i is (r_i-CoM) cross n_i + s_i*propeller_reaction_arm*n_i. The latter is
+propeller reaction torque along the tilted shaft. Form A with first row n_i,z and the three moment rows.
+Let a=A^-1*[0,M] and b=A^-1*[1,0,0,0]. With N having rows n_i, solve |N^T*(a+Fz*b)|^2=F^2 for Fz using
+the plus-square-root quadratic branch, and set individual thrusts to a+Fz*b. A singular matrix, negative
+discriminant, nonpositive Fz or negative individual thrust is failure. Shifting a thrust application point
+along its own shaft to the propeller plane adds no moment. All vectors are expressed in the vehicle axes.
+This four-input bench reduction constrains resultant magnitude and three moments, not an arbitrary six-axis
+wrench. Aerodynamic drag, detailed CAD density and closed-loop flight stability are outside this contract.
 
 B-10. Every allocated thrust must be nonnegative and below its retained voltage-dependent capacity. Check motor
 current and ESC peak channel, time-weighted RMS channel and sum-of-channels board limits, applying the ESC lot

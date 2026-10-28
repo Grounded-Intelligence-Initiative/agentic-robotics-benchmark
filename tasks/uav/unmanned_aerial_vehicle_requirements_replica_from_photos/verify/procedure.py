@@ -59,7 +59,18 @@ def evaluate(bom, geometry, cat, duty):
         inertia += np.diag(m / 12 * (np.sum(box * box) - box * box))
     spins = np.array(duty["reaction_signs"])
     arm = prop["reaction_arm_m"]
-    allocation = np.array([np.ones(4), positions[:, 1], -positions[:, 0], spins * arm])
+    radii = np.linalg.norm(positions[:, :2], axis=1)
+    tangent = np.column_stack((-positions[:, 1]/radii, positions[:, 0]/radii, np.zeros(4)))
+    angles = np.radians([geometry['rotor_cant_deg'][station] for station in STATIONS])
+    normals = -spins[:, None]*np.sin(angles)[:, None]*tangent
+    normals[:, 2] = np.cos(angles)
+    moment_map = (np.cross(positions-cg, normals) + spins[:, None]*arm*normals).T
+    allocation = np.vstack((normals[:, 2], moment_map))
+    scaled_allocation = allocation.copy()
+    scaled_allocation[1:] /= radii.mean()
+    allocation_condition = float(np.linalg.cond(scaled_allocation))
+    unit_z_thrust = np.linalg.solve(allocation, [1., 0., 0., 0.])
+    unit_force = normals.T @ unit_z_thrust
     times, thrusts, currents, volts, powers, moments = [], [], [], [], [], []
     feasible = True
     for state in duty["states"]:
@@ -68,9 +79,19 @@ def evaluate(bom, geometry, cat, duty):
                           + (mass*state["ax_m_s2"]-gust[0])**2 + gust[1]**2)
         omega, alpha = np.array(state["omega_rad_s"]), np.array(state["alpha_rad_s2"])
         gust_point = np.array([d[f"payload_{axis}_mm"] for axis in "xyz"])/1000
-        torque = (inertia @ alpha + np.cross(omega, inertia @ omega) + np.cross(cg, [0, 0, force])
-                  - np.cross(gust_point-cg, gust))
-        thrust = np.linalg.solve(allocation, np.r_[force, torque])
+        angular_demand = inertia @ alpha + np.cross(omega, inertia @ omega) - np.cross(gust_point-cg, gust)
+        particular_thrust = np.linalg.solve(allocation, np.r_[0., angular_demand])
+        particular_force = normals.T @ particular_thrust
+        qa = float(unit_force @ unit_force)
+        qb = float(2 * particular_force @ unit_force)
+        qc = float(particular_force @ particular_force - force**2)
+        force_discriminant = qb*qb - 4*qa*qc
+        feasible &= force_discriminant >= 0
+        body_z_force = (-qb + math.sqrt(max(force_discriminant, 0.))) / (2*qa)
+        feasible &= body_z_force > 0
+        thrust = particular_thrust + body_z_force*unit_z_thrust
+        body_force = normals.T @ thrust
+        torque = angular_demand + np.cross(cg, body_force)
         feasible &= bool(np.all(thrust >= 0))
         # Documented bench fit; input power at ESC output, then ESC loss and auxiliary load.
         motor_power = np.array([m["power_coeff"] * cat["lots"][bom["motors"][s]]["power_factor"]
@@ -93,7 +114,11 @@ def evaluate(bom, geometry, cat, duty):
     capacity = (v[:, None] / duty["reference_voltage_v"]) ** 2 * capacity
     energy = float(np.dot(w, times) / 3600)
     usable = battery["energy_wh"] * cat["battery_lot"][bom["battery"]]["capacity_factor"] * duty["usable_fraction"]
-    fit = (prop["diameter_mm"] + 2 * duty["tip_clearance_mm"] <= d["guard_inner_mm"]
+    # Conservative disk-cylinder fit: its plan projection is contained in
+    # a radius-D/2 circle shifted from the station by the shaft-axis offset.
+    # This explicit vendor datum is independent of the retired survey prop.
+    disk_centre_shift_mm = prop["plane_offset_mm"] * float(np.linalg.norm(normals[:, :2], axis=1).max())
+    fit = (prop["diameter_mm"] + 2 * (duty["tip_clearance_mm"] + disk_centre_shift_mm) <= d["guard_inner_mm"]
            and all(x <= d[f"battery_bay_{axis}_mm"] for x, axis in zip(battery["box_mm"], "xyz"))
            and all(m["mount_mm"] == d["motor_mount_mm"] for m in motors))
     checks = {
@@ -115,10 +140,14 @@ def evaluate(bom, geometry, cat, duty):
         for k in range(j,3):
             derived[f"inertia_{axis}{'xyz'[k]}_kg_m2"] = float(inertia[j,k])
         derived[f"moment_peak_{axis}_nm"] = float(np.abs(np.array(moments)[:,j]).max())
+    hover_index = next(j for j,state in enumerate(duty["states"]) if state["name"] == "hover")
     for j, s in enumerate(STATIONS):
+        derived[f"thrust_hover_{s}_n"] = float(t[hover_index,j])
+        derived[f"esc_peak_{s}_a"] = float(a[:,j].max())
         derived[f"thrust_peak_{s}_n"] = float(t[:, j].max())
         derived[f"esc_rms_{s}_a"] = float(np.sqrt(np.average(a[:, j] ** 2, weights=times)))
     return {"pass": all(checks.values()), "checks": checks, "derived": derived,
+            "minimum_individual_thrust_n": float(t.min()), "allocation_condition": allocation_condition,
             "thrust_utilization": (t / capacity).max(axis=0).tolist(),
             "esc_peak_utilization": float(a.max() / (esc["peak_channel_a"] * cat["esc_lot"][bom["esc"]])),
             "price": price(bom, cat)}

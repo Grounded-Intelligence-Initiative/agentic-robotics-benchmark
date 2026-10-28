@@ -5,7 +5,7 @@ recipe; every fabricated coordinate, including thickness, follows the common thr
 fabricated mass scales by the product of the three retained-core envelope ratios. The master is a separate
 calibration article, not either of the photographed cores. No assembled final-core weigh-in survives.
 A separate final-configuration parts ledger totals 180 g for wiring, flight controller, compute/electronics,
-transferred cage panels and mounting hardware. These items are outside the fabricated-core affine scale;
+transferred cage panels and mounting hardware, including the final filled-polymer motor adapters. These items are outside the fabricated-core affine scale;
 this ledger does not assert an identical hardware mass in the earlier build.
 For final retained-core extents X, Y, Z in mm, use dry-core mass = 0.180 + 0.570*(X/360)*(Y/420)*(Z/120) kg.
 This sum excludes four motors, four propellers, ESC, battery, scanner and ballast pod. For customer sizing,
@@ -18,6 +18,10 @@ The four shaft centres form a rectangle. Do not infer a square wheelbase from th
 On 25 September 2026 the fabricated core and its spacers were replaced by a newly dimensioned fabrication.
 The battery cage and ballast pod were remounted at different positions. The same scanner enclosure, sealed
 ballast-pod box, cage panels, survey motor cases and propellers were transferred without dimensional alteration.
+Four individually machined filled-polymer adapters were added during that rebuild. Their top lands are square;
+their orientations follow B-04. No machining drawing or angle inspection survives. Their sides and the retained
+box edges remain visible in the survey. The earlier motor mounts were level. The final motor-face centres sit
+8 mm higher relative to the retained core; all final positions must use the B-04 datum.
 No dimensional inspection record for either surveyed core survived. BL-01 describes a separate fabrication master.
 
 BL-03. The photographed motors and propellers were carried over from the retired demonstrator, before Vesper

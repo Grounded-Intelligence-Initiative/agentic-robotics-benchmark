@@ -24,48 +24,46 @@ against the required facets, so extra unsupported facets reduce precision. Numer
 0.001 kg; mission 0.1 s; auxiliary power 0.1 W; clearance 0.01 mm; reserve 0.001; mount 0.1 mm; counts exact.
 
 Required derived IDs (evaluate on YOUR chosen BOM):
-- `all_up_mass_kg` (kg)
-- `cg_x_mm` (mm)
-- `cg_y_mm` (mm)
-- `cg_z_mm` (mm)
+- `thrust_hover_FL_n` (N)
+- `thrust_hover_FR_n` (N)
+- `thrust_hover_RL_n` (N)
+- `thrust_hover_RR_n` (N)
+- `thrust_peak_FL_n` (N)
+- `thrust_peak_FR_n` (N)
+- `thrust_peak_RL_n` (N)
+- `thrust_peak_RR_n` (N)
+- `esc_peak_FL_a` (A)
+- `esc_peak_FR_a` (A)
+- `esc_peak_RL_a` (A)
+- `esc_peak_RR_a` (A)
+- `esc_rms_FL_a` (A)
+- `esc_rms_FR_a` (A)
+- `esc_rms_RL_a` (A)
+- `esc_rms_RR_a` (A)
 - `battery_peak_a` (A)
 - `minimum_voltage_v` (V)
 - `mission_energy_wh` (Wh)
-- `usable_energy_wh` (Wh)
-- `inertia_xx_kg_m2` (kg.m2)
-- `inertia_xy_kg_m2` (kg.m2)
-- `inertia_xz_kg_m2` (kg.m2)
-- `moment_peak_x_nm` (N.m)
-- `inertia_yy_kg_m2` (kg.m2)
-- `inertia_yz_kg_m2` (kg.m2)
-- `moment_peak_y_nm` (N.m)
-- `inertia_zz_kg_m2` (kg.m2)
-- `moment_peak_z_nm` (N.m)
-- `thrust_peak_FL_n` (N)
-- `esc_rms_FL_a` (A)
-- `thrust_peak_FR_n` (N)
-- `esc_rms_FR_a` (A)
-- `thrust_peak_RL_n` (N)
-- `esc_rms_RL_a` (A)
-- `thrust_peak_RR_n` (N)
-- `esc_rms_RR_a` (A)
 Missing derived quantities receive zero credit for that quantity. Compare each against the actual unit with your
-BOM; relative error <=3% receives full credit, >=15% receives zero, linear between. Denominator floors are 5 mm
-for CoM, 0.00001 kg.m2 for inertia, 0.01 N.m for moments and 0.2 in the stated unit for other quantities.
-Inertia quantities are signed entries of the complete CoM inertia matrix (off-diagonal entries include the minus
-sign), not unsigned products of inertia. Moment quantities are the maximum absolute required rotor moment about
-the shaft midpoint over the complete duty, including gust and offset-CoM terms.
+BOM; relative error <=3% receives full credit, >=15% receives zero, linear between. The denominator floor is
+0.2 in each stated unit. C3 is the equal mean over these 19 propulsion sizing quantities. Hover thrust means
+the trim allocation in the single hover state. Peak thrust and peak channel current use all nine states;
+RMS channel current is time weighted over all nine states. Channel currents exclude auxiliary current.
+The public procedure also returns intermediate mass, CoM, inertia and aggregate moment audit values. Those
+are not submission fields or C3 targets in this contract; they support reproducing the sizing calculation.
 
 `bom.json` has `motors` mapping FL/FR/RL/RR to SKUs, plus `propeller`, `esc`, `battery` SKU strings.
 `kinematic_sketch.json` has `dimensions_mm`, mapping each required key to `{nominal, tolerance, sources}`,
-and `spin`, mapping FL/FR/RL/RR to CW/CCW. Tolerance must be 0.1..3 mm. It documents the fabrication intent;
-credit compares nominal to truth (<=0.5 mm full, >=3.5 mm zero, linear between), so broad tolerances earn no shortcut.
-Dimensions contribute 95% of sketch credit, spin mapping the remaining 5%.
+`rotor_cant_deg`, mapping FL/FR/RL/RR to `{nominal,tolerance,sources}`, and `spin`, mapping stations to CW/CCW.
+Linear tolerances are 0.1..3 mm; angle tolerances are 0.1..3 degrees. They document fabrication intent.
+Nominal dimensional errors <=0.5 mm receive full credit and >=3.5 mm zero; angle errors <=1 degree receive
+full credit and >=4 degrees zero, with linear interpolation. Broad tolerances earn no shortcut.
+The equal mean over all dimensional and angular measurements contributes 95% of sketch credit; spin supplies 5%.
+Angles are signed as B-04 defines and belong to the final individual adapters.
 
 Dimension definitions:
 - motor_x_mm, motor_y_mm: positive half-spans of the shaft rectangle, NOT diagonal wheelbase.
 - frame_x_mm, frame_y_mm, frame_z_mm: bounding extents of the retained core only, including its original guards
-  and feet; excluding the added cage, scanner, ballast pod, and stand-off posts. See BL-01/02.
+  and feet; excluding the added cage, scanner, ballast pod, canted adapters and stand-off posts. See BL-01/02.
 - guard_inner_mm: diameter of the smallest shaft-centred circle wholly inside every guard's inner opening.
 - motor_mount_mm: hole-to-hole pitch in the square mount.
 - battery_bay_x_mm, battery_bay_y_mm, battery_bay_z_mm: internal clear cage dimensions in vehicle axes.
@@ -76,10 +74,10 @@ Dimension definitions:
 - sensor_box_x_mm, sensor_box_y_mm, sensor_box_z_mm: external scanner box extents.
 
 To call `procedure.evaluate(bom, geometry, catalogue, duty)`, reconstruct the numeric inputs from the evidence.
-Geometry consists of `dimensions_mm` (plain numbers; add esc_x_mm=0, esc_y_mm=0, esc_z_mm=-8), `payload_mass_kg`,
+Geometry consists of `dimensions_mm` (plain numbers; add esc_x_mm=0, esc_y_mm=0, esc_z_mm=-16), `payload_mass_kg`, `rotor_cant_deg` (station-to-angle mapping in degrees),
 and `fixed_components`, a list of `{name,mass_kg,position_mm:[x,y,z],box_mm:[x,y,z]}` for dry_core and sensor.
 Reconstruct the final dry_core mass from BL-01 before calling the procedure; the calibration master is not the
-photographed unit.
+photographed unit. Qualified propeller `plane_offset_mm` is supplied by DS-02.
 Catalogue keys: motors, props, escs, batteries, lots, battery_lot, esc_lot. Each product dictionary is indexed by SKU.
 Product keys and SI units are named explicitly in the public Python function; vendor pages supply all values.
 Catalogue `usd` is the unit price from Q-01. Lot dictionaries contain the retained factors computed by B-06.

@@ -44,7 +44,7 @@
       "derived": {
         "type": "object",
         "properties": {
-          "all_up_mass_kg": {
+          "thrust_hover_FL_n": {
             "type": "object",
             "properties": {
               "value": {
@@ -71,7 +71,7 @@
             ],
             "additionalProperties": false
           },
-          "cg_x_mm": {
+          "thrust_hover_FR_n": {
             "type": "object",
             "properties": {
               "value": {
@@ -98,7 +98,7 @@
             ],
             "additionalProperties": false
           },
-          "cg_y_mm": {
+          "thrust_hover_RL_n": {
             "type": "object",
             "properties": {
               "value": {
@@ -125,7 +125,331 @@
             ],
             "additionalProperties": false
           },
-          "cg_z_mm": {
+          "thrust_hover_RR_n": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "unit",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "thrust_peak_FL_n": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "unit",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "thrust_peak_FR_n": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "unit",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "thrust_peak_RL_n": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "unit",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "thrust_peak_RR_n": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "unit",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "esc_peak_FL_a": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "unit",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "esc_peak_FR_a": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "unit",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "esc_peak_RL_a": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "unit",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "esc_peak_RR_a": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "unit",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "esc_rms_FL_a": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "unit",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "esc_rms_FR_a": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "unit",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "esc_rms_RL_a": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "unit",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "esc_rms_RR_a": {
             "type": "object",
             "properties": {
               "value": {
@@ -207,492 +531,6 @@
             "additionalProperties": false
           },
           "mission_energy_wh": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "usable_energy_wh": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "inertia_xx_kg_m2": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "inertia_xy_kg_m2": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "inertia_xz_kg_m2": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "moment_peak_x_nm": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "inertia_yy_kg_m2": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "inertia_yz_kg_m2": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "moment_peak_y_nm": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "inertia_zz_kg_m2": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "moment_peak_z_nm": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "thrust_peak_FL_n": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "esc_rms_FL_a": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "thrust_peak_FR_n": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "esc_rms_FR_a": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "thrust_peak_RL_n": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "esc_rms_RL_a": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "thrust_peak_RR_n": {
-            "type": "object",
-            "properties": {
-              "value": {
-                "type": "number"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "sources": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 12,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
-                }
-              }
-            },
-            "required": [
-              "value",
-              "unit",
-              "sources"
-            ],
-            "additionalProperties": false
-          },
-          "esc_rms_RR_a": {
             "type": "object",
             "properties": {
               "value": {
@@ -1534,6 +1372,134 @@
         ],
         "additionalProperties": false
       },
+      "rotor_cant_deg": {
+        "type": "object",
+        "properties": {
+          "FL": {
+            "type": "object",
+            "properties": {
+              "nominal": {
+                "type": "number"
+              },
+              "tolerance": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 3
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "nominal",
+              "tolerance",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "FR": {
+            "type": "object",
+            "properties": {
+              "nominal": {
+                "type": "number"
+              },
+              "tolerance": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 3
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "nominal",
+              "tolerance",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "RL": {
+            "type": "object",
+            "properties": {
+              "nominal": {
+                "type": "number"
+              },
+              "tolerance": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 3
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "nominal",
+              "tolerance",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "RR": {
+            "type": "object",
+            "properties": {
+              "nominal": {
+                "type": "number"
+              },
+              "tolerance": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 3
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "nominal",
+              "tolerance",
+              "sources"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "FL",
+          "FR",
+          "RL",
+          "RR"
+        ],
+        "additionalProperties": false
+      },
       "spin": {
         "type": "object",
         "properties": {
@@ -1573,6 +1539,7 @@
     },
     "required": [
       "dimensions_mm",
+      "rotor_cant_deg",
       "spin"
     ],
     "additionalProperties": false

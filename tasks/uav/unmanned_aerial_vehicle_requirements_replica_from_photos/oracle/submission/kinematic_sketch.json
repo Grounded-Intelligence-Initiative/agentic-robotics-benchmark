@@ -1,7 +1,7 @@
 {
   "dimensions_mm": {
     "motor_x_mm": {
-      "nominal": 99.79215395254322,
+      "nominal": 102.03454760379181,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -9,7 +9,7 @@
       ]
     },
     "motor_y_mm": {
-      "nominal": 132.44166428948284,
+      "nominal": 133.89547279740523,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -17,7 +17,7 @@
       ]
     },
     "frame_x_mm": {
-      "nominal": 377.3313434502729,
+      "nominal": 385.8102205508952,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -25,7 +25,7 @@
       ]
     },
     "frame_y_mm": {
-      "nominal": 440.7903868927464,
+      "nominal": 445.6289308518015,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -33,7 +33,7 @@
       ]
     },
     "frame_z_mm": {
-      "nominal": 133.9191580599433,
+      "nominal": 126.5318926935041,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -41,7 +41,7 @@
       ]
     },
     "guard_inner_mm": {
-      "nominal": 135.69456638025247,
+      "nominal": 137.2606491353576,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -81,7 +81,7 @@
       ]
     },
     "battery_x_mm": {
-      "nominal": -23.080411454683237,
+      "nominal": -17.22710114891603,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -89,7 +89,7 @@
       ]
     },
     "battery_y_mm": {
-      "nominal": 2.6632301069910405,
+      "nominal": 1.3544529121700055,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -97,7 +97,7 @@
       ]
     },
     "battery_z_mm": {
-      "nominal": -53.47830941918904,
+      "nominal": -58.5283322183821,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -105,7 +105,7 @@
       ]
     },
     "payload_x_mm": {
-      "nominal": 28.5036158034631,
+      "nominal": 43.00711226535073,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -113,7 +113,7 @@
       ]
     },
     "payload_y_mm": {
-      "nominal": 17.365050752755373,
+      "nominal": 21.315809265915682,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -121,7 +121,7 @@
       ]
     },
     "payload_z_mm": {
-      "nominal": 104.09405786933388,
+      "nominal": 102.4823759993674,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -129,7 +129,7 @@
       ]
     },
     "sensor_x_mm": {
-      "nominal": 80.49387583361177,
+      "nominal": 82.30262480820069,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -137,7 +137,7 @@
       ]
     },
     "sensor_z_mm": {
-      "nominal": 33.21825758153472,
+      "nominal": 23.385867897187335,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -145,7 +145,7 @@
       ]
     },
     "payload_box_x_mm": {
-      "nominal": 68.87,
+      "nominal": 74.66,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -153,7 +153,7 @@
       ]
     },
     "payload_box_y_mm": {
-      "nominal": 61.2,
+      "nominal": 58.54,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -161,7 +161,7 @@
       ]
     },
     "payload_box_z_mm": {
-      "nominal": 45.24,
+      "nominal": 44.78,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -169,7 +169,7 @@
       ]
     },
     "sensor_box_x_mm": {
-      "nominal": 44.91,
+      "nominal": 47.61,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -177,7 +177,7 @@
       ]
     },
     "sensor_box_y_mm": {
-      "nominal": 45.75,
+      "nominal": 46.76,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -185,11 +185,53 @@
       ]
     },
     "sensor_box_z_mm": {
-      "nominal": 52.09,
+      "nominal": 48.61,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
         "PH-08"
+      ]
+    }
+  },
+  "rotor_cant_deg": {
+    "FL": {
+      "nominal": 8.4258621455409,
+      "tolerance": 0.5,
+      "sources": [
+        "PH-01",
+        "PH-04",
+        "PH-10",
+        "BL-02"
+      ]
+    },
+    "FR": {
+      "nominal": 9.2604804530196,
+      "tolerance": 0.5,
+      "sources": [
+        "PH-01",
+        "PH-04",
+        "PH-10",
+        "BL-02"
+      ]
+    },
+    "RL": {
+      "nominal": 9.031299822101623,
+      "tolerance": 0.5,
+      "sources": [
+        "PH-01",
+        "PH-04",
+        "PH-10",
+        "BL-02"
+      ]
+    },
+    "RR": {
+      "nominal": 8.684366508404121,
+      "tolerance": 0.5,
+      "sources": [
+        "PH-01",
+        "PH-04",
+        "PH-10",
+        "BL-02"
       ]
     }
   },
