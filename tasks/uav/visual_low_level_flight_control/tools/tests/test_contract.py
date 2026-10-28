@@ -9,9 +9,8 @@ sys.path[:0] = [str(TASK/"verify"), str(TASK/"oracle")]
 import mujoco
 import numpy as np
 from PIL import Image
-from world import World, crossed_gate, LIMITS, MASS
+from world import World, crossed_gate, LIMITS, MASS, CAMERA_FOV, CAMERA_TILT
 from grader import counterfactual_observation
-from policy import location, gate_direction
 
 
 class FlightContract(unittest.TestCase):
@@ -25,7 +24,7 @@ class FlightContract(unittest.TestCase):
         w = self.world
         self.assertAlmostEqual(w.model.body_mass[w.agent_id], MASS)
         np.testing.assert_allclose(w.model.body_inertia[w.agent_id], [2.3951e-5, 2.3951e-5, 3.2347e-5])
-        self.assertGreaterEqual(sum(w.model.geom_bodyid == w.agent_id), 40)
+        self.assertGreaterEqual(sum(w.model.geom_bodyid == w.agent_id), 39)
         np.testing.assert_allclose(w.model.mesh_scale, 1)
 
     def test_hover_physics(self):
@@ -101,9 +100,24 @@ class FlightContract(unittest.TestCase):
         self.assertFalse(w.success)
         self.assertEqual(w.passed_gates, 0)
 
+    def test_partial_progress_is_not_full_success(self):
+        self.cross(0)
+        self.cross(1)
+        metrics = self.world.metrics()
+        self.assertEqual(metrics["gates_passed"], 2)
+        self.assertEqual(metrics["gate_completion_fraction"], .5)
+        self.assertEqual(metrics["success"], 0)
+
+    def test_goal_panel_defines_visible_hover_target(self):
+        w = self.world
+        panel = w.model.body("goal_beacon").id
+        forward = w.data.xmat[panel].reshape(3, 3)[:, 0]
+        np.testing.assert_allclose(w.data.xpos[panel]-.65*forward, w.goal, atol=1e-7)
+
     def test_hover_requires_two_continuous_seconds(self):
         w = self.world
         w.data.qpos[:3] = w.goal
+        w.data.qpos[3:7] = [1, 0, 0, 0]
         w.passed_gates = 4
         mujoco.mj_forward(w.model, w.data)
         for _ in range(9):
@@ -139,26 +153,71 @@ class FlightContract(unittest.TestCase):
 
 
 class Images(unittest.TestCase):
-    def test_all_gate_directions_are_visually_identifiable(self):
-        for seed in (101, 102, 103, 104, 105, 106):
-            w = World("flight", seed)
-            try:
-                top, side = w.images()
-                for index, color in enumerate(("yellow", "green", "magenta", "cyan")):
-                    with self.subTest(seed=seed, color=color):
-                        xy, xz = location(top, color), location(side, color)
-                        self.assertIsNotNone(xy)
-                        self.assertIsNotNone(xz)
-                        np.testing.assert_allclose(xy, w.gates[index, :2], atol=.05)
-                        self.assertAlmostEqual(xz[1]+2, w.gates[index, 2], delta=.08)
-                        self.assertGreater(np.dot(gate_direction(top, color, xy), w.gate_normals[index]), .98)
-            finally:
-                w.close()
+    def test_only_rigid_onboard_camera(self):
+        w = World("flight", 101, render=False)
+        try:
+            self.assertEqual(w.model.ncam, 1)
+            camera = w.model.camera("onboard")
+            self.assertEqual(w.model.cam_bodyid[camera.id], w.agent_id)
+            self.assertEqual(float(camera.fovy[0]), CAMERA_FOV)
+            np.testing.assert_allclose(w.model.cam_pos[camera.id], [.06, 0, .015])
+            for yaw in (-2.8, -.5, 0, 1.8, 2.9):
+                w.data.qpos[3:7] = [np.cos(yaw/2), 0, 0, np.sin(yaw/2)]
+                mujoco.mj_forward(w.model, w.data)
+                optical_axis = -w.data.cam_xmat[camera.id].reshape(3, 3)[:, 2]
+                np.testing.assert_allclose(optical_axis, [np.cos(yaw)*np.cos(CAMERA_TILT),
+                    np.sin(yaw)*np.cos(CAMERA_TILT), -np.sin(CAMERA_TILT)], atol=1e-7)
+        finally:
+            w.close()
+
+    def test_yaw_command_supports_looking_back(self):
+        w = World("flight", 101, render=False)
+        try:
+            w.data.qpos[2] = 2.9
+            mujoco.mj_forward(w.model, w.data)
+            for _ in range(12):
+                w.act([MASS*9.81/.175-1, 0, 0, .8])
+            rotation = w.data.xmat[w.agent_id].reshape(3, 3)
+            self.assertAlmostEqual(np.arctan2(rotation[1, 0], rotation[0, 0]), .8*np.pi, delta=.01)
+            self.assertFalse(w.done)
+        finally:
+            w.close()
+
+    def test_entry_face_markings_and_solid_occluder(self):
+        w = World("flight", 101, render=False)
+        try:
+            self.assertEqual(w.model.geom("occluder_core").contype[0], 1)
+            for index in range(4):
+                for side in (-1, 1):
+                    back = w.model.geom(f"gate_{index}_back_post_{side}")
+                    self.assertGreater(back.pos[0], 0)
+                    for vertical in (-1, 1):
+                        corner = w.model.geom(f"gate_{index}_entry_corner_{side}_{vertical}")
+                        self.assertLess(corner.pos[0], 0)
+                        np.testing.assert_allclose(corner.rgba, 1)
+        finally:
+            w.close()
+
+    def test_camera_changes_with_motion_not_global_map(self):
+        w = World("flight", 101)
+        try:
+            w.data.qpos[2] = 1.3
+            mujoco.mj_forward(w.model, w.data)
+            initial = w.images()
+            self.assertEqual(len(initial), 1)
+            self.assertGreater(initial[0].std(), 20)
+            w.data.qpos[3:7] = [0, 0, 0, 1]
+            mujoco.mj_forward(w.model, w.data)
+            turned = w.images()[0]
+            self.assertGreater(np.mean(np.abs(turned.astype(float)-initial[0])), 20)
+        finally:
+            w.close()
 
     def test_public_images_and_probe_noninterference(self):
         w = World("flight", 101)
         try:
             obs = w.observe()
+            self.assertEqual(len(obs["images"]), 1)
             self.assertEqual(set(obs), {"images", "frame_id", "phase", "done", "completed_stages", "steps_remaining", "damage_remaining"})
             self.assertEqual(Image.open(io.BytesIO(base64.b64decode(obs["images"][0]))).size, (512, 512))
             before = w.data.qpos.copy()

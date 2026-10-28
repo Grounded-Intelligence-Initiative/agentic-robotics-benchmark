@@ -4,7 +4,7 @@ import sys
 from client import Client
 
 TOOLS = [
-    {"name": "robot_observe", "description": "Observe two RGB cameras and remaining budgets.",
+    {"name": "robot_observe", "description": "Observe the single forward-facing onboard RGB camera and remaining budgets.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
     {"name": "robot_act", "description": "Apply one bounded action. It consumes simulation budget.",
      "inputSchema": {"type": "object", "properties": {"action": {"type": "array", "minItems": 4, "maxItems": 4,

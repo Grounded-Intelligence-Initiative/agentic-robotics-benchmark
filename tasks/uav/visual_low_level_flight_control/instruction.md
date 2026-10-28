@@ -1,26 +1,37 @@
 # Visual Low-Level Flight Control
 
-Develop a controller from RGB images. Take off with a Crazyflie 2, pass through
+Develop a controller from a single onboard RGB camera. Take off with a Crazyflie 2, pass through
 the **yellow, green, magenta, then cyan** gates in that order. Each gate has a
-**white floor arrow indicating its required crossing direction**. Follow that
-arrow through the aperture, not around the frame. The course turns and doubles
+**colored entry face with four white corner squares**; the reverse face is gray.
+A white floor arrow also indicates its required crossing direction. Cross from
+the colored side through the aperture, not around the frame. The course turns and doubles
 back; flying monotonically in one world direction cannot complete it. Finish
-by hovering 1.3 m above the blue ground disk.
+by hovering 1.3 m above the blue ground disk, 0.65 m in front of the blue square
+panel and level with its center. A tall central equipment cabinet obstructs both
+vision and motion. Later gates may be out of view or hidden behind it; use flight
+history and changes in viewpoint to find a safe route.
 Start, gate positions/heights/orientations and goal vary between scenes. Choose
 your own controller architecture. No state vector or scene file is available.
 
 ## Actions and observations
 
-`robot_observe` returns two base64 PNG `images`, `frame_id`, `done`, and
+`robot_observe` returns one base64 PNG in `images`, `frame_id`, `done`, and
 `steps_remaining`. The other envelope fields are fixed compatibility metadata.
-The robot has a small red tracking sticker. The MCP endpoint also displays the images.
+The MCP endpoint also displays the image. There are no external tracking cameras,
+depth maps, segmentation masks, positions, velocities or orientation readouts.
 
-- `images[0]`: calibrated 512 x 512 orthographic top view. Pixel center (u,v)
-  maps to x = (u+0.5)/64 - 4, y = 4 - (v+0.5)/64, in metres.
-- `images[1]`: orthographic side view, same x calibration; z = 6 - (v+0.5)/64.
+- `images[0]`: 512 x 512 perspective RGB, vertical field of view 100 degrees.
+  The camera is rigidly attached at body position (0.06, 0, 0.015) m, looking
+  along body +x tilted down 8 degrees. Image right is body -y. Its view rotates
+  with the drone; there is no pixel-to-world coordinate conversion.
+- Each gate has a 0.9 x 0.9 m aperture and 0.06 m wide bars. Entry corner squares
+  have centers 0.96 m apart horizontally and vertically. The final blue panel is
+  0.6 x 0.6 m, with white corner centers 0.54 m apart. These are visual dimensions,
+  not a supplied map. The panel is a solid obstacle, not a fifth gate.
 - `robot_act({"action":[thrust,roll,pitch,yaw]})`: four finite values in [-1,1].
   Thrust maps linearly to 0..0.35 N. Roll/pitch are absolute attitude targets
-  in +/-0.3 rad; yaw is an absolute heading target in +/-0.4 rad. Positive roll
+  in +/-0.3 rad; yaw is an absolute heading target in +/-pi rad, with shortest-angle
+  wrapping. The full yaw range allows looking around. Positive roll
   accelerates toward -y, positive pitch toward +x when heading is zero.
 - An attitude servo tracks these targets. MuJoCo simulates translation, rotation,
   gravity and contact. This is **not** a position/velocity waypoint command.
@@ -48,6 +59,8 @@ Leave an executable `/home/user/submission/run.sh` and its dependencies. The
 verifier executes your controller on **four fresh private scenes** as the
 unprivileged agent user. Maximize collision-free completion rate across all four.
 A crashed or malformed episode scores zero and stays in the average.
+The report also records ordered gates passed and their fraction of the four-gate
+course, so partial progress remains visible even when full completion is zero.
 
 Your program prints `READY`, then accepts JSON lines on stdin:
 

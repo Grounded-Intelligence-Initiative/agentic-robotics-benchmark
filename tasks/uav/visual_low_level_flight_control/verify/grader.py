@@ -101,6 +101,7 @@ def main():
                   "episodes_aborted": sum(r["aborted"] for r in results),
                   "mean_collisions": np.mean([r["collisions"] for r in results]),
                   "mean_actions": np.mean([r["steps"] for r in results]),
+                  "mean_gate_completion_fraction": np.mean([r["gate_completion_fraction"] for r in results]),
                   "mean_gates_passed": np.mean([r["gates_passed"] for r in results])})
     write_verdict(ratio_rewards(success, anchor, metric_name=calibration["metric"], extra=extra,
                                locks_ok=bool(extra["match_lock_ok"]), full_at=calibration["full_at"]))

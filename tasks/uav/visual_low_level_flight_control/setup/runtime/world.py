@@ -19,6 +19,8 @@ LIMITS = {"flight": 300}
 MASS = .027
 THRUST_MAX = .35
 GATE_HALF = .45
+CAMERA_FOV = 100.
+CAMERA_TILT = math.radians(8)
 GATE_COLORS = ((1., .72, .04, 1.), (.04, .78, .18, 1.),
                (.85, .04, .85, 1.), (.04, .85, .95, 1.))
 
@@ -52,7 +54,7 @@ def crossed_gate(previous, current, center, normal):
                 and abs(crossing[2]-center[2]) < GATE_HALF-.09)
 
 
-def scene(gates, normals, goal):
+def scene(gates, normals, goal, course_yaw):
     source = asset_root()/"bitcraze_crazyflie_2/cf2.xml"
     root = ET.parse(source).getroot()
     root.set("model", "crazyflie_visual_gate_flight")
@@ -78,19 +80,27 @@ def scene(gates, normals, goal):
     body.set("pos", "0 0 0")
     for camera in list(body.findall("camera")):
         body.remove(camera)
-    ET.SubElement(body, "geom", name="tracking_marker", type="ellipsoid",
-                  pos="0 0 .017", size=".023 .017 .008", rgba="1 .015 .02 1",
-                  contype="0", conaffinity="0", mass="0", group="2")
+    ET.SubElement(body, "camera", name="onboard", pos=".06 0 .015",
+                  xyaxes=numbers((0, -1, 0, math.sin(CAMERA_TILT), 0, math.cos(CAMERA_TILT))),
+                  fovy=str(CAMERA_FOV))
     ET.SubElement(world, "light", pos="-3 -4 7", dir=".2 .4 -1", diffuse=".65 .65 .65")
     ET.SubElement(world, "light", pos="4 3 6", dir="-.3 -.2 -1", diffuse=".3 .3 .3", castshadow="false")
-    ET.SubElement(world, "camera", name="top", pos="0 0 12", orthographic="true", fovy="8")
-    ET.SubElement(world, "camera", name="side", pos="0 -12 2", xyaxes="1 0 0 0 0 1",
-                  orthographic="true", fovy="8")
     ET.SubElement(world, "geom", name="floor", type="plane", size="8 8 .1", material="floor_mat")
 
     def box(name, pos, size, color, collision=True, parent=None):
         ET.SubElement(world if parent is None else parent, "geom", name=name, type="box", pos=numbers(pos), size=numbers(size),
                       rgba=numbers(color), contype=str(int(collision)), conaffinity=str(int(collision)))
+
+    # This opaque, collidable cabinet hides later gates; it is not a scoring penalty.
+    obstacle = ET.SubElement(world, "body", name="occluder", pos=".05 0 0",
+                             quat=numbers((math.cos(course_yaw/2), 0, 0, math.sin(course_yaw/2))))
+    box("occluder_core", (0, 0, 1.35), (.6, .6, 1.35), (.31, .35, .38, 1), parent=obstacle)
+    for side in (-1, 1):
+        box(f"cabinet_edge_{side}", (side*.59, -.61, 1.35), (.015, .012, 1.35),
+            (.61, .65, .67, 1), False, obstacle)
+    for x in np.arange(-3.5, 4., .5):
+        box(f"floor_line_x_{x}", (x, 0, .001), (.003, 4, .001), (.4, .43, .45, 1), False)
+        box(f"floor_line_y_{x}", (0, x, .001), (4, .003, .001), (.4, .43, .45, 1), False)
 
     for i, (x, y, z) in enumerate(gates):
         color = GATE_COLORS[i]
@@ -106,8 +116,28 @@ def scene(gates, normals, goal):
         box(f"gate_{i}_arrow_tail", (-.20, 0, .004), (.30, .035, .003), (1, 1, 1, 1), False, gate)
         ET.SubElement(gate, "geom", name=f"gate_{i}_arrow_head", type="mesh", mesh="direction_head",
                       pos="0 0 .004", rgba="1 1 1 1", contype="0", conaffinity="0")
+        for side in (-1, 1):
+            # The neutral back face distinguishes reverse approaches in first person.
+            box(f"gate_{i}_back_post_{side}", (.037, side*.48, z), (.002, .03, .51),
+                (.15, .17, .18, 1), False, gate)
+            box(f"gate_{i}_back_bar_{side}", (.037, 0, z+side*.48), (.002, .45, .03),
+                (.15, .17, .18, 1), False, gate)
+            for vertical in (-1, 1):
+                box(f"gate_{i}_entry_corner_{side}_{vertical}", (-.039, side*.48, z+vertical*.48),
+                    (.002, .025, .025), (1, 1, 1, 1), False, gate)
     ET.SubElement(world, "geom", name="goal", type="cylinder", pos=numbers([*goal[:2], .008]),
                   size=".22 .008", rgba=".025 .10 1 1", contype="0", conaffinity="0")
+    south = np.array([math.sin(course_yaw), -math.cos(course_yaw), 0.])
+    sign_yaw = course_yaw-math.pi/2
+    sign = ET.SubElement(world, "body", name="goal_beacon", pos=numbers(goal+.65*south),
+                         quat=numbers((math.cos(sign_yaw/2), 0, 0, math.sin(sign_yaw/2))))
+    box("goal_panel", (0, 0, 0), (.015, .30, .30), (.025, .10, 1, 1), parent=sign)
+    box("goal_panel_leg", (.015, 0, -goal[2]/2), (.02, .02, goal[2]/2),
+        (.17, .2, .22, 1), parent=sign)
+    for horizontal in (-1, 1):
+        for vertical in (-1, 1):
+            box(f"goal_corner_{horizontal}_{vertical}", (-.018, horizontal*.27, vertical*.27),
+                (.002, .02, .02), (1, 1, 1, 1), False, sign)
     for x in (-4.2, 4.2):
         box(f"hall_side{x}", (x, .5, 1.7), (.10, 4, 1.7), (.42, .46, .49, 1))
     box("hall_back", (0, 4.3, 1.7), (4.3, .10, 1.7), (.37, .41, .43, 1))
@@ -122,7 +152,7 @@ class World:
             raise ValueError("this task only implements flight")
         self.kind, self.seed = kind, int(seed)
         rng = np.random.default_rng(self.seed)
-        yaw = rng.uniform(-.18, .18)
+        yaw = self.course_yaw = rng.uniform(-.18, .18)
         rotation = np.array([[math.cos(yaw), -math.sin(yaw)], [math.sin(yaw), math.cos(yaw)]])
         xy = np.array([[-1.25, -1.1], [1.45, -.1], [.2, 1.5], [-1.8, .2]])
         xy = (xy+rng.uniform(-.12, .12, (4, 2)))@rotation.T
@@ -136,10 +166,11 @@ class World:
         self.done = self.success = self.airborne = False
         self.failure_reason = None
         self._contacts = set()
-        self.model = mujoco.MjModel.from_xml_string(scene(self.gates, self.gate_normals, self.goal))
+        self.model = mujoco.MjModel.from_xml_string(scene(self.gates, self.gate_normals, self.goal, yaw))
         self.data = mujoco.MjData(self.model)
         self.agent_id = self.model.body("agent").id
         self.data.qpos[:3] = self.start
+        self.data.qpos[3:7] = [math.cos(yaw/2), 0, 0, math.sin(yaw/2)]
         mujoco.mj_forward(self.model, self.data)
         self.renderer = mujoco.Renderer(self.model, SIZE, SIZE) if render else None
 
@@ -150,7 +181,7 @@ class World:
         option = mujoco.MjvOption()
         option.geomgroup[3] = 0
         result = []
-        for camera in ("top", "side"):
+        for camera in ("onboard",):
             self.renderer.update_scene(self.data, camera=camera, scene_option=option)
             self.renderer.scene.flags[mujoco.mjtRndFlag.mjRND_SHADOW] = False
             result.append(self.renderer.render().copy())
@@ -170,7 +201,7 @@ class World:
                     not math.isfinite(v) or abs(v) > 1 for v in action)):
             raise ValueError("four finite numeric actions in [-1, 1] required")
         self.steps += 1
-        desired = np.array(action[1:])*[.3, .3, .4]
+        desired = np.array(action[1:])*[.3, .3, math.pi]
         for _ in range(round(DT/self.model.opt.timestep)):
             previous = self.position()
             rotation = self.data.xmat[self.agent_id].reshape(3, 3)
@@ -226,6 +257,7 @@ class World:
     def metrics(self):
         return {"success": float(self.success), "steps": self.steps, "collisions": self.collisions,
                 "damage_cost": 0, "gates_passed": self.passed_gates,
+                "gate_completion_fraction": self.passed_gates/len(self.gates),
                 "hover_seconds": self.hover_ticks*self.model.opt.timestep,
                 "simulation_seconds": float(self.data.time), "failure_reason": self.failure_reason}
 

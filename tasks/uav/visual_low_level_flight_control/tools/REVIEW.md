@@ -1,28 +1,40 @@
 # Reviewer Guide
 
-This is a local feasibility prototype submitted for review, **not yet qualified
-for frontier-model difficulty**. It asks an agent to implement an image controller,
-not to operate the drone solely through an in-context conversation.
+**Draft: onboard-camera difficulty upgrade, not yet qualified for admission.**
+Version 5's two calibrated external cameras were solved by an unassisted
+Astra-authored controller on 4/4 hidden scenes. That result is not evidence for
+this version's difficulty or validation. The task requires an image controller,
+not operation solely through an in-context conversation.
 
 ## Input, Output and Success
 
-The agent sees two calibrated RGB cameras and remaining budget, explores using
+The agent sees one forward-facing onboard RGB camera and remaining budget, explores using
 collective thrust and attitude commands, and submits an executable `run.sh`.
 The verifier runs it on four fresh private scenes. Success requires ordered
-yellow/green/magenta/cyan gate crossings in the direction of each white floor
-arrow, no collisions and two seconds of stable
+yellow/green/magenta/cyan gate crossings from their colored entry faces (also
+indicated by white floor arrows), no collisions and two seconds of stable
 hover above the goal. The score is normalized completion rate; speed is simulated
-time, never host execution speed.
+time, never host execution speed. `mean_gates_passed` and
+`mean_gate_completion_fraction` expose partial progress separately from full
+success, collisions, aborts and the canonical observation-dependence probes.
 
-`oracle/run.sh` constructs an actual successful submission and records its live
-interaction. `oracle/policy.py` is an image-only scripted solution: color tracking,
-pixel calibration, visual gate/arrow orientation and feedback control. It never imports the private world or
-reads scene parameters. The known-camera/color setting is deliberate for a first
-reviewable task. The four-gate course now requires turns and return travel; it
-randomizes gate positions, heights and yaw. Reverse and out-of-order crossings
-do not count, and merely reaching the goal does not count. This is a genuine
-spatial constraint, but may still be too easy for frontier agents; measure that
-before merge.
+The camera moves and rotates with the drone. There are no external views, depth,
+pose, velocity, supplied map or world-coordinate pixel calibration. A tall,
+collidable cabinet occludes later gates and obstructs direct motion. Full-circle
+yaw allows looking around. Gate positions, heights and orientations vary by seed;
+reverse/out-of-order crossings and goal-only shortcuts do not count. The blue
+goal panel makes the final hover observable without a second camera.
+
+The original 300-action / 60-simulated-second budget and 1800-second authoring
+timeout are unchanged. Difficulty is not created by shrinking budgets.
+`tools/privileged_reference.py` is explicitly a privileged state-feedback
+feasibility check, never copied into a submission. It completed development
+seeds 101-116 with zero collisions in 29.86-30.73 simulated seconds. This is not
+an image-only solution, frontier result or substitute for `ale validate`.
+The separate reference in `oracle/` uses only images at runtime but has disclosed
+author-supplied design priors. It passed real-protocol calibration on 4/4 fresh
+scenes with zero collisions/aborts and 30/39 observation probes (ALE run
+`validate-fe67b0c7`, oracle `2f6c67e2`). No version-5 calibration is reused.
 
 ## Reproduce
 
@@ -50,6 +62,8 @@ python "$TASK/image/fetch_visual_assets.py" "$TASK/image/visual_assets.json" run
 export MUJOCO_GL=osmesa LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1
 export VISUAL_ROBOTICS_ASSETS="$PWD/runs/crazyflie-assets"
 python -m unittest discover -s "$TASK/tools/tests" -v
+python "$TASK/tools/privileged_reference.py" --out runs/crazyflie-physical-check
+python "$TASK/tools/review.py" --out runs/crazyflie-fpv-media --seeds 101 --mode privileged --video
 python "$TASK/tools/review.py" --out runs/crazyflie-demo --seeds 101 102 103 --video
 python "$TASK/tools/review.py" --out runs/crazyflie-random --seeds 101 102 103 --mode random
 python "$TASK/tools/check_security.py" --ale "$(command -v ale)" --out runs/crazyflie-security
@@ -58,11 +72,13 @@ python "$TASK/tools/check_security.py" --ale "$(command -v ale)" --out runs/craz
 The preview/poster is a real simulator render. Its third-person reviewer camera
 is not an additional agent observation. The video runs at five frames per second,
 one frame per 0.2-second action, except a terminal action may finish early.
-`route.png` shows the measured trajectory with reviewer-only labels over the
-actual initial top image. `actions.json` includes privileged positions only for
-reviewer visualization; the solution itself only receives the public observation.
+`route.png` shows the measured trajectory with reviewer-only labels over an
+overhead capture unavailable to the agent. The inset is the true onboard image.
+`actions.json` includes privileged positions for reviewers. `--mode privileged`
+explicitly uses state; the ordinary reference mode only receives public observations.
 Contract tests include rotated gate geometry, reverse/out-of-order crossings,
-aperture clearance, visible directions and a 32-layout check for return travel.
+aperture clearance, camera attachment/viewpoint changes, full yaw, directional
+markings, and a 32-layout check for return travel.
 Development seeds above are not sealed benchmark test seeds. Keep run products
 outside the task; do not commit videos, caches, fetched meshes or experiment logs.
 
@@ -75,7 +91,7 @@ source MJCF and visual/collision meshes. SHA-256 checks are mandatory.
 The model is derived upstream from `whoenig/crazyflie_ros`.
 
 We retain the nominal 0.027 kg mass, inertias and collision meshes. We add an
-original four-gate return course, cameras, a small tracking sticker and a bounded
+original occluded four-gate return course, one onboard camera and a bounded
 attitude servo. Thrust/torque limits are benchmark abstractions, not measured
 hardware limits. There is no firmware, rotor-speed, battery or real-world
 validation claim. No geometry, textures or trajectories are copied from a
@@ -91,5 +107,6 @@ canonical `robotics_grader` and its observation-dependence check are unmodified.
 
 Before admission: register/confirm the task in the coordination sheet, agree on
 the exact frontier model and harness, measure its scores with adequate reasoning
-budget, and tune genuine task challenges if it proves too easy. Do not interpret
+budget, and tune genuine task challenges if it proves too easy. Keep the PR Draft
+until the user explicitly requests otherwise. Do not interpret
 environment/protocol failures as model inability.

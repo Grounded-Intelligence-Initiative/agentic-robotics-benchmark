@@ -45,7 +45,7 @@ def main():
     assert {t["name"] for t in messages[1]["result"]["tools"]} == {"robot_observe", "robot_act"}
     print("PASS MCP initialization and tool list", flush=True)
     content = messages[2]["result"]["content"]
-    assert [item["type"] for item in content] == ["text", "image", "image"]
+    assert [item["type"] for item in content] == ["text", "image"]
     assert json.loads(content[0]["text"])["steps_remaining"] == start-1
     assert all(item["mimeType"] == "image/png" and len(item["data"]) > 100 for item in content[1:])
     print("PASS MCP camera images do not consume action budget", flush=True)

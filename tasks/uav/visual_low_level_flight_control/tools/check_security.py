@@ -30,9 +30,10 @@ def main():
             continue
         trace = (path.parent/"trace.execution.jsonl").read_text()
         checks = trace.count("PASS ")
-        passed = result["status"] == "completed" and result["rewards"] == {"reward": 0.0} and checks >= 16
+        rewards = result.get("rewards")
+        passed = result["status"] == "completed" and rewards == {"reward": 0.0} and checks >= 16
         rows.append({"episode": result["episode_id"], "checks": checks,
-                     "forged_reward": result["rewards"], "passed": passed})
+                     "forged_reward": rewards, "status": result["status"], "passed": passed})
     summary = {"ale_returncode_expected_nonzero": process.returncode, "checks": rows,
                "passed": bool(rows) and all(row["passed"] for row in rows)}
     (out/"summary.json").write_text(json.dumps(summary, indent=2)+"\n")
