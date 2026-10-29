@@ -154,13 +154,14 @@ class World:
         rng = np.random.default_rng(self.seed)
         yaw = self.course_yaw = rng.uniform(-.18, .18)
         rotation = np.array([[math.cos(yaw), -math.sin(yaw)], [math.sin(yaw), math.cos(yaw)]])
-        xy = np.array([[-1.25, -1.1], [1.45, -.1], [.2, 1.5], [-1.8, .2]])
+        xy = np.array([[-1.4, -1.5], [1.65, .05], [-.1, 1.9], [-1.9, .45]])
         xy = (xy+rng.uniform(-.12, .12, (4, 2)))@rotation.T
-        self.gates = np.column_stack((xy, rng.uniform(1.05, 1.65, 4)))
-        directions = np.arange(4)*np.pi/2+yaw+rng.uniform(-.12, .12, 4)
+        heights = rng.uniform([1.05, 1.75, .85, 1.45], [1.35, 2.05, 1.15, 1.75])
+        self.gates = np.column_stack((xy, heights))
+        directions = np.array([0., np.pi, np.pi/2, 0.])+yaw+rng.uniform(-.12, .12, 4)
         self.gate_normals = np.column_stack((np.cos(directions), np.sin(directions), np.zeros(4)))
-        self.start = np.r_[(np.array([-2.7, -1.1])+rng.uniform(-.1, .1, 2))@rotation.T, .055]
-        self.goal = np.r_[(np.array([-2.7, -1.8])+rng.uniform(-.1, .1, 2))@rotation.T, 1.3]
+        self.start = np.r_[(np.array([-2.9, -1.5])+rng.uniform(-.1, .1, 2))@rotation.T, .055]
+        self.goal = np.r_[(np.array([-2.8, -2.3])+rng.uniform(-.1, .1, 2))@rotation.T, 1.3]
         self.steps = self.collisions = self.damage = self.phase = self.frame_id = 0
         self.passed_gates = self.hover_ticks = 0
         self.done = self.success = self.airborne = False

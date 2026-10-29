@@ -10,7 +10,7 @@ network:
   mode: block
 timeouts:
   setup: 120
-  agent: 1800
+  agent: 3600
   verify: 900
 artifacts:
 - /home/user/submission

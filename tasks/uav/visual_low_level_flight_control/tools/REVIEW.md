@@ -1,10 +1,12 @@
 # Reviewer Guide
 
-**Draft: onboard-camera difficulty upgrade, not yet qualified for admission.**
-Version 5's two calibrated external cameras were solved by an unassisted
-Astra-authored controller on 4/4 hidden scenes. That result is not evidence for
-this version's difficulty or validation. The task requires an image controller,
-not operation solely through an in-context conversation.
+**Draft: v7 onboard-camera switchback course, not yet qualified for admission.**
+Version 5's external views were solved by Astra on 4/4 hidden scenes. Version 6's
+onboard-only attempt timed out during authoring; its unchanged collected controller
+then completed 3/4 fresh scenes in post-timeout replay. That replay is not a
+completed native model run. Version 7 changes the route to require reversed
+approaches and alternating heights. The task requires an image controller, not
+operation solely through an in-context conversation.
 
 ## Input, Output and Success
 
@@ -21,20 +23,42 @@ success, collisions, aborts and the canonical observation-dependence probes.
 The camera moves and rotates with the drone. There are no external views, depth,
 pose, velocity, supplied map or world-coordinate pixel calibration. A tall,
 collidable cabinet occludes later gates and obstructs direct motion. Full-circle
-yaw allows looking around. Gate positions, heights and orientations vary by seed;
+yaw allows looking around. This is not a circular lap: the second gate faces
+opposite to the first, followed by different headings and low/high passages.
+Gate positions, heights and orientations vary by seed;
 reverse/out-of-order crossings and goal-only shortcuts do not count. The blue
 goal panel makes the final hover observable without a second camera.
 
-The original 300-action / 60-simulated-second budget and 1800-second authoring
-timeout are unchanged. Difficulty is not created by shrinking budgets.
+The original 300-action / 60-simulated-second flight budget is unchanged. The
+authoring timeout increases from 1800 to 3600 seconds to reduce timeout confounding.
+Difficulty is not created by shrinking budgets.
 `tools/privileged_reference.py` is explicitly a privileged state-feedback
 feasibility check, never copied into a submission. It completed development
-seeds 101-116 with zero collisions in 29.86-30.73 simulated seconds. This is not
+seeds 101-116 with zero collisions in 49.03-51.51 simulated seconds. This is not
 an image-only solution, frontier result or substitute for `ale validate`.
 The separate reference in `oracle/` uses only images at runtime but has disclosed
-author-supplied design priors. It passed real-protocol calibration on 4/4 fresh
-scenes with zero collisions/aborts and 30/39 observation probes (ALE run
-`validate-fe67b0c7`, oracle `2f6c67e2`). No version-5 calibration is reused.
+author-supplied design priors, including nominal route topology and safe transit
+waypoints. It completed 26 development/regression/holdout scenes without collision.
+Canonical calibration `validate-2f68303c`, oracle `c48dafab`, completed 4/4 new
+scenes with no collisions/aborts and 70/92 aggregate observation probes. One
+scene was 11/23, below half; the aggregate lock still passed. See
+`verify/anchor.json` for provenance. No earlier-version result is reused.
+
+## Interpretation Limits
+
+- Canonical probes use the same live controller for real and counterfactual
+  observations. A false observation may alter a stateful controller's later
+  decisions. This task does not silently fork the shared grader; compare native
+  scores with clearly labelled no-probe, matched-seed diagnostic replays before
+  attributing a failure to physical difficulty. V6 replay improved from 3/4 with
+  probes to 4/4 without them. A no-probe replay is not an official score.
+- The verify stage has a 900-second aggregate wall-clock cap in addition to the
+  10-second per-response deadline. Slow controllers may exhaust the aggregate
+  cap. Shared Solver also restarts its read timeout on blank output; such hangs
+  are protocol/robustness failures, not valid completed-scene difficulty evidence.
+- Gate centers alternate heights, but their aperture ranges may overlap. The
+  geometry does not prove that every seed requires altitude changes. The nominal
+  reference uses them; difficulty claims must come from measured behavior.
 
 ## Reproduce
 
@@ -91,7 +115,7 @@ source MJCF and visual/collision meshes. SHA-256 checks are mandatory.
 The model is derived upstream from `whoenig/crazyflie_ros`.
 
 We retain the nominal 0.027 kg mass, inertias and collision meshes. We add an
-original occluded four-gate return course, one onboard camera and a bounded
+original occluded four-gate switchback course, one onboard camera and a bounded
 attitude servo. Thrust/torque limits are benchmark abstractions, not measured
 hardware limits. There is no firmware, rotor-speed, battery or real-world
 validation claim. No geometry, textures or trajectories are copied from a

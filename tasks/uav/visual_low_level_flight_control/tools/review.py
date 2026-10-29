@@ -77,7 +77,7 @@ def poster(world, obs, output, mode):
     normal = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
     bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
     draw.text((32, 20), "Crazyflie / Visual Flight Control", font=ImageFont.truetype(bold, 36), fill="#f4f5f6")
-    draw.text((32, 74), "Onboard vision > occluded turns > four directed gates > stable hover",
+    draw.text((32, 74), "Onboard vision > switchbacks and altitude changes > four gates > hover",
               font=ImageFont.truetype(normal, 23), fill="#bdc9cd")
     canvas.paste(closeup, (32, 640))
     draw.rectangle((31, 639, 433, 921), outline="#9caab0", width=2)
@@ -101,7 +101,7 @@ def route_overview(world, initial_image, records, output):
     draw = ImageDraw.Draw(canvas)
     normal = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
     bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-    draw.text((24, 18), "Occluded four-gate return course", font=ImageFont.truetype(bold, 30), fill="white")
+    draw.text((24, 18), "Occluded four-gate switchback course", font=ImageFont.truetype(bold, 30), fill="white")
 
     def pixel(p):
         return ((p[0]+4)*120, 80+(4-p[1])*120)

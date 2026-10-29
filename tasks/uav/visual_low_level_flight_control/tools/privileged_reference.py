@@ -17,9 +17,23 @@ class PrivilegedController:
         self.world = world
         self.targets = [np.r_[world.start[:2], world.gates[0, 2]]]
         self.headings = [world.course_yaw]
-        for gate, normal in zip(world.gates, world.gate_normals):
+        yaw = world.course_yaw
+        rotation = np.array([[math.cos(yaw), -math.sin(yaw)], [math.sin(yaw), math.cos(yaw)]])
+        transits = {
+            1: [(2.65, -1.55), (2.65, .05)],
+            2: [(1.0, 1.25), (-.1, 1.15)],
+            3: [(-2.7, 2.3), (-2.7, .45)],
+        }
+        for index, (gate, normal) in enumerate(zip(world.gates, world.gate_normals)):
+            heading = math.atan2(normal[1], normal[0])
+            for point in transits.get(index, []):
+                self.targets.append(np.r_[rotation@point, gate[2]])
+                self.headings.append(heading)
             self.targets.extend([gate-.70*normal, gate+.65*normal])
-            self.headings.extend([math.atan2(normal[1], normal[0])]*2)
+            self.headings.extend([heading]*2)
+        for point in ((-1.15, -.75), (-2.7, -.75)):
+            self.targets.append(np.r_[rotation@point, world.goal[2]])
+            self.headings.append(world.course_yaw-math.pi/2)
         self.targets.append(world.goal.copy())
         self.headings.append(world.course_yaw-math.pi/2)
         self.phase = 0

@@ -84,7 +84,11 @@ class FlightContract(unittest.TestCase):
                 self.assertGreater(np.ptp(w.gates[:, 1]), 2)
                 self.assertGreater(w.gates[1, 0]-w.gates[0, 0], 2)
                 self.assertLess(w.gates[3, 0]-w.gates[1, 0], -2.5)
-                self.assertLess(np.dot(w.gate_normals[0], w.gate_normals[2]), -.9)
+                self.assertLess(np.dot(w.gate_normals[0], w.gate_normals[1]), -.9)
+                self.assertGreater(np.dot(w.gate_normals[0], w.gate_normals[3]), .9)
+                self.assertGreater(w.gates[1, 2]-w.gates[0, 2], .39)
+                self.assertGreater(w.gates[1, 2]-w.gates[2, 2], .59)
+                self.assertGreater(w.gates[3, 2]-w.gates[2, 2], .29)
                 for index in range(4):
                     actual = w.data.xmat[w.model.body(f"gate_{index}").id].reshape(3, 3)[:, 0]
                     np.testing.assert_allclose(actual, w.gate_normals[index], atol=1e-7)

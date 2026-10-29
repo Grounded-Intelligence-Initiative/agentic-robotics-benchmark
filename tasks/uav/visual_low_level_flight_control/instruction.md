@@ -4,8 +4,10 @@ Develop a controller from a single onboard RGB camera. Take off with a Crazyflie
 the **yellow, green, magenta, then cyan** gates in that order. Each gate has a
 **colored entry face with four white corner squares**; the reverse face is gray.
 A white floor arrow also indicates its required crossing direction. Cross from
-the colored side through the aperture, not around the frame. The course turns and doubles
-back; flying monotonically in one world direction cannot complete it. Finish
+the colored side through the aperture, not around the frame. This is a switchback
+course, not a circular lap: entry directions reverse, and gate heights alternate
+between higher and lower passages. You may need to go around a gate to reach its
+entry side. Flying monotonically or always turning the same way cannot complete it. Finish
 by hovering 1.3 m above the blue ground disk, 0.65 m in front of the blue square
 panel and level with its center. A tall central equipment cabinet obstructs both
 vision and motion. Later gates may be out of view or hidden behind it; use flight
@@ -54,6 +56,9 @@ contact before reaching 0.2 m altitude is allowed. Leaving |x| or |y| <=3.8 m,
 or rising above 3.5 m, also fails. Reaching the goal without the gates does not count.
 
 ## Submission
+
+The authoring phase allows up to 60 minutes of wall-clock time to explore and
+develop your submission. This is separate from the simulated-time flight budget.
 
 Leave an executable `/home/user/submission/run.sh` and its dependencies. The
 verifier executes your controller on **four fresh private scenes** as the
