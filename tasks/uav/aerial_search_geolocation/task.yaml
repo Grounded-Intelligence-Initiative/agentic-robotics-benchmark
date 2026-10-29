@@ -11,7 +11,7 @@ image: {kind: container}
 resources: {cpus: 8, memory_mb: 32768, gpus: 1}
 network: {mode: block}
 
-# verify: 24 missions of up to 150 actions each, with scene start-up and up to 30 s per reply.
+# verify: 24 missions of up to 1000 actions each, with scene start-up and up to 30 s per reply.
 timeouts: {setup: 300, agent: 3600, verify: 14400}
 
 artifacts: [/home/user/submission]

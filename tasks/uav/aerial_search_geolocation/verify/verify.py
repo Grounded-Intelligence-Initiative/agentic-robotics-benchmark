@@ -23,7 +23,7 @@ Why the result can be trusted:
 
 Oracle token. A submission whose `.oracle_token` hashes to `hidden/oracle_token.sha256`
 runs in privileged mode: every observation also carries the placed objects' true positions
-(`sar_protocol.privileged_view`). That is how the reference expert (oracle/) is graded; the
+and how far each move could go before touching geometry (`sar_protocol.privileged_view`). That is how the reference expert (oracle/) is graded; the
 token exists only in oracle/, which is absent from the sandbox while the agent works. A
 wrong token is ignored and recorded (`oracle_token_mismatch`).
 """
@@ -133,7 +133,7 @@ def main():
     config = stage_config()
     rng = seed_rng()
     anchor, anchor_meta = read_anchor()
-    budget = int(config.get("action_budget", 150))
+    budget = int(config.get("action_budget", 1000))
 
     entry = os.path.join(agent_home(), "submission", "run.sh")
     if not os.path.isfile(entry):

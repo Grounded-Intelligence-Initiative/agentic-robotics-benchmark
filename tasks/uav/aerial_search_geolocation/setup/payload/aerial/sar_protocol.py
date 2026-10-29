@@ -9,7 +9,10 @@ A mission: the drone starts at a pose above a scene and is given the description
 three targets. Some are in the scene; possibly one is not (a decoy). The drone flies, and
 with every reply it also carries its current report for each target: not yet located, found
 at a position (in the mission's start frame), or declared absent. The mission ends on Stop,
-on a collision, or when the action budget is spent; the last report received is final.
+on a collision, or when the action budget is spent; the last report received is final. A
+present target earns credit only if the drone went and looked at it: at some point of the
+mission it was within VISIT_RADIUS_M of the target horizontally, at most VISIT_HEIGHT_M above
+it, and with the target inside the down camera's view (see `visits`).
 
 stdlib only, 3.8-compatible syntax.
 """
@@ -34,6 +37,14 @@ DECOY_CREDIT = 1.0        # a decoy correctly declared absent: as much as a loca
                           # so a perfect run scores 1
 FALSE_ABSENT = -1.0       # a present target declared absent (decoys are ~1 target in 6, so
                           # random absence claims still lose on average)
+VISIT_RADIUS_M = 3.0      # a present target counts only once the drone has been this close
+VISIT_HEIGHT_M = 6.0      # ... horizontally, at most this high above it, and with the target
+CAMERA_DROP_M = 1.0       # ... in the down camera's 90 degree view (the camera hangs 1 m low)
+# Mission geometry: targets this far from the start horizontally, apart from each other by
+# MIN_SPACING_M..MAX_SPACING_M and spread around the start by at least MIN_BEARING_DEG.
+MIN_TARGET_M, MAX_TARGET_M = 40.0, 120.0
+MIN_SPACING_M, MAX_SPACING_M = 25.0, 160.0
+MIN_BEARING_DEG = 40.0
 ENERGY_WEIGHT = 0.2       # up to 20 % off for flying the whole budget
 COLLISION_FACTOR = 0.5    # a crash halves the mission
 
@@ -133,7 +144,9 @@ def agent_observation(frame, mission, start_pose, steps_used, budget):
 def privileged_view(mission, start_pose):
     """Ground truth for the grader's privileged mode only (a valid oracle token): every
     object placed in the scene, by description, in the start frame. It describes the scene,
-    not the request, so a probe's other descriptions get other answers from it."""
+    not the request, so a probe's other descriptions get other answers from it. `run_mission`
+    adds, per step, the simulator's `clearance`: how far each move could go before touching
+    geometry."""
     return {"objects": [{"description": t["description"],
                          "position": [round(v, 4) for v in world_to_start_frame(t["position"], start_pose)]}
                         for t in mission["targets"] if t["position"] is not None]}
@@ -175,36 +188,59 @@ def _pick(rng, items, k, key=None):
     return chosen
 
 
-def _start_candidates(rng, slots, min_dist, max_dist, count, tries=200):
-    """Start points from which every slot lies min_dist..max_dist m away horizontally, with
-    a random heading, at rising heights above the highest slot (10-16 m for the first, up
-    to 34-40 m for the last), so that in a street canyon a later, higher one can clear the
-    buildings."""
-    cx = sum(s[0] for s in slots) / len(slots)
-    cy = sum(s[1] for s in slots) / len(slots)
+def _bearing_gap(centre, a, b):
+    ba = math.atan2(a[1] - centre[1], a[0] - centre[0])
+    bb = math.atan2(b[1] - centre[1], b[0] - centre[0])
+    return abs((ba - bb + math.pi) % (2.0 * math.pi) - math.pi)
+
+
+def _spread(rng, slots, centre, k, min_dist, max_dist):
+    """k slots min_dist..max_dist m from `centre`, MIN_SPACING_M..MAX_SPACING_M apart and at
+    least MIN_BEARING_DEG apart as seen from `centre` (so they lie in different directions,
+    and usually not all in view from the start)."""
+    near = [s for s in slots if min_dist <= _hdist(s, centre) <= max_dist]
+    chosen = []
+    for s in _pick(rng, near, len(near)):
+        if all(MIN_SPACING_M <= _hdist(s, t) <= MAX_SPACING_M and
+               _bearing_gap(centre, s, t) >= math.radians(MIN_BEARING_DEG) for t in chosen):
+            chosen.append(s)
+            if len(chosen) == k:
+                break
+    return chosen
+
+
+def _start_candidates(rng, slots, centre, min_dist, max_dist, count, tries=200):
+    """Start points near `centre` (the first on it, the others within 30 m) from which every
+    slot still lies min_dist..max_dist m away horizontally, with a random heading, at rising
+    heights above the highest slot (10-16 m for the first, up to 34-40 m for the last), so
+    that in a street canyon a later, higher one can clear the buildings. The simulator takes
+    the first with free space around it, raised by up to 30 m if none has."""
     top = min(s[2] for s in slots)                    # NED: the highest has the smallest z
     found = []
     for _ in range(tries):
         if len(found) >= count:
             break
         angle = rng.random() * 2.0 * math.pi
-        radius = min_dist + rng.random() * (max_dist - min_dist)
-        x, y = cx + radius * math.cos(angle), cy + radius * math.sin(angle)
+        radius = 30.0 * rng.random() if found else 0.0
+        x, y = centre[0] + radius * math.cos(angle), centre[1] + radius * math.sin(angle)
         if all(min_dist <= _hdist((x, y), s) <= max_dist for s in slots):
             rise = 10.0 + 24.0 * len(found) / max(1, count - 1) + 6.0 * rng.random()
             found.append([x, y, top - rise, (rng.random() * 2.0 - 1.0) * math.pi])
     return found
 
 
-def assemble_missions(pool, rng, per_map, n_targets=3, min_dist=12.0, max_dist=35.0,
-                      absent_probability=0.5, n_starts=6, max_tries=400):
+def assemble_missions(pool, rng, per_map, n_targets=3, min_dist=MIN_TARGET_M,
+                      max_dist=MAX_TARGET_M, absent_probability=0.5, n_starts=12, max_tries=400):
     """Missions drawn from the pool with `rng` (anything with random() and choice()).
 
-    Per mission, in one map: target kinds of distinct categories are put on slots that all
-    lie `min_dist`..`max_dist` m (horizontally) from the start, so reporting the start
-    position earns nothing. With `absent_probability` one target is a decoy: a kind whose
+    Per mission, in one map: a start point is drawn over a random slot (open ground, so not
+    inside a building), and target kinds of distinct categories (the map's own catalogue)
+    are put on slots that lie `min_dist`..`max_dist` m (horizontally) from it, spread apart
+    (`_spread`). With
+    `absent_probability` one target is a decoy: a kind of the same map's catalogue whose
     category is not in the mission, so it is nowhere in the scene. The start is one of up to
-    `n_starts` candidates; the simulator takes the first with free space around it."""
+    `n_starts` candidates near the drawn point; the simulator takes the first with free space
+    around it."""
     missions = []
     for map_name in sorted(pool["maps"]):
         slots = pool["maps"][map_name]["slots"]
@@ -214,12 +250,12 @@ def assemble_missions(pool, rng, per_map, n_targets=3, min_dist=12.0, max_dist=3
             if made >= per_map:
                 break
             n_absent = 1 if rng.random() < absent_probability else 0
-            seed_slot = rng.choice(slots)
-            near = [s for s in slots if _hdist(s, seed_slot) <= max_dist - min_dist + 8.0]
-            placed = _pick(rng, near, n_targets - n_absent)
+            below = rng.choice(slots)
+            centre = (below[0], below[1])
+            placed = _spread(rng, slots, centre, n_targets - n_absent, min_dist, max_dist)
             if len(placed) < n_targets - n_absent:
                 continue
-            starts = _start_candidates(rng, placed, min_dist, max_dist, n_starts)
+            starts = _start_candidates(rng, placed, centre, min_dist, max_dist, n_starts)
             if not starts:
                 continue
             picked = _pick(rng, kinds, n_targets, key=lambda k: k["category"])
@@ -248,9 +284,10 @@ def _quat_xyzw(yaw):
     return [0.0, 0.0, math.sin(yaw / 2.0), math.cos(yaw / 2.0)]
 
 
-def _sim_episode(mission):
+def _sim_episode(mission, clearance=False):
     """What the simulator bridge needs: the objects to place, the candidate starts and some
-    goal point for the environment's own bookkeeping (unused by the mission's scoring)."""
+    goal point for the environment's own bookkeeping (unused by the mission's scoring);
+    `clearance` asks it for each move's free distance with every state (privileged mode)."""
     present = [t for t in mission["targets"] if t["position"] is not None]
     first = mission["start_candidates"][0]
     goal = present[0]["position"] if present else [first[0] + 1000.0, first[1], first[2]]
@@ -264,14 +301,16 @@ def _sim_episode(mission):
         "description": mission["targets"][0]["description"],
         "mock_targets": [{"position": t["position"], "description": t["description"]}
                          for t in present],
+        "clearance": bool(clearance),
     }
 
 
 # --------------------------------------------------------------------------- scoring
 class MissionOutcome(object):
     def __init__(self, target_scores, collision, path_length, budget, steps, termination,
-                 errors=None, aborted=False):
+                 errors=None, aborted=False, visited=None):
         self.target_scores = list(target_scores)
+        self.visited = list(visited or [])
         self.collision = bool(collision)
         self.path_length = float(path_length)
         self.budget = int(budget)
@@ -304,15 +343,34 @@ class MissionOutcome(object):
         return {"mission_score": round(self.mission_score, 4),
                 "targets": [round(s, 3) for s in self.target_scores],
                 "errors_m": [None if e is None else round(e, 2) for e in self.errors],
+                "visited": self.visited,
                 "collision": self.collision, "aborted": self.aborted,
                 "termination": self.termination, "steps": self.steps,
                 "path_length_m": round(self.path_length, 2)}
 
 
-def score_targets(mission, reports, start_pose):
-    """Per-target credit and, for located targets, the error in metres."""
+def visits(mission, pose, visited):
+    """Mark the present targets the drone at world `pose` is visiting (in place; decoys
+    stay None): within VISIT_RADIUS_M horizontally, at most VISIT_HEIGHT_M above the target,
+    and close enough below it that the target is inside the down camera's 90 degree view
+    (horizontal distance at most the camera's height above the target)."""
+    for i, target in enumerate(mission["targets"]):
+        where = target["position"]
+        if where is None or visited[i]:
+            continue
+        above = where[2] - pose[2]                 # NED: the drone's height over the target
+        near = _hdist(pose, where)
+        if near <= VISIT_RADIUS_M and above <= VISIT_HEIGHT_M and near <= above - CAMERA_DROP_M:
+            visited[i] = True
+
+
+def score_targets(mission, reports, start_pose, visited=None):
+    """Per-target credit and, for located targets, the error in metres. A present target
+    the drone never visited earns nothing for its report (`visited` None: no such rule)."""
     scores, errors = [], []
-    for target, (status, point) in zip(mission["targets"], reports):
+    if visited is None:
+        visited = [True] * len(mission["targets"])
+    for target, (status, point), went in zip(mission["targets"], reports, visited):
         if target["position"] is None:                       # a decoy
             scores.append(DECOY_CREDIT if status == ABSENT else 0.0)
             errors.append(None)
@@ -324,7 +382,9 @@ def score_targets(mission, reports, start_pose):
             world = start_frame_to_world(point, start_pose)
             error = math.sqrt(sum((a - b) ** 2 for a, b in zip(world, target["position"])))
             errors.append(error)
-            if error <= FULL_CREDIT_M:
+            if not went:
+                scores.append(0.0)
+            elif error <= FULL_CREDIT_M:
                 scores.append(1.0)
             elif error >= ZERO_CREDIT_M:
                 scores.append(0.0)
@@ -342,16 +402,20 @@ def run_mission(sim, mission, ask, budget, probe=None, privileged=False):
     grader's oracle-token mode) every observation also carries `privileged_view`. Wire
     failures and ProtocolError propagate (the caller charges an aborted mission)."""
     n = len(mission["targets"])
-    episode = _sim_episode(mission)
+    episode = _sim_episode(mission, clearance=privileged)
     state = sim.reset(episode, budget=budget, success_radius=3.0)
-    start_pose = list(episode["start_candidates"][int(state.get("start_index", 0))])
+    # the start frame is where the drone actually starts: the simulator may have raised the
+    # candidate start to find free space around it
+    start_pose = [float(v) for v in state["frame"]["pose"]]
     reports = [(UNKNOWN, None)] * n
+    visited = [False if t["position"] is not None else None for t in mission["targets"]]
+    visits(mission, state["frame"]["pose"], visited)
     truth = privileged_view(mission, start_pose) if privileged else None
     t = 0
     while not state["done"]:
         obs = agent_observation(state["frame"], mission, start_pose, state["step"], budget)
         if truth is not None:
-            obs["privileged"] = truth
+            obs["privileged"] = dict(truth, clearance=state.get("clearance"))
         raw = probe(t, obs) if probe is not None else None
         if raw is None:
             raw = ask(t, obs)
@@ -359,12 +423,13 @@ def run_mission(sim, mission, ask, budget, probe=None, privileged=False):
         if isinstance(raw, (list, tuple)) and len(raw) > 1:
             reports = new_reports
         state = sim.step(ACTIONS[move])
+        visits(mission, state["frame"]["pose"], visited)
         t += 1
         if t > 4 * budget + 8:
             raise RuntimeError("mission did not terminate; simulator state machine broken")
-    scores, errors = score_targets(mission, reports, start_pose)
+    scores, errors = score_targets(mission, reports, start_pose, visited)
     return MissionOutcome(scores, state["collision"], state["move_distance"], budget,
-                          state["step"], state["termination"], errors)
+                          state["step"], state["termination"], errors, visited=visited)
 
 
 def aggregate(outcomes):
@@ -379,6 +444,8 @@ def aggregate(outcomes):
         "geolocation_score": max(0.0, mean([o.mission_score for o in outcomes])),
         "target_credit": sum(max(0.0, s) for s in located) / max(1, len(located)),
         "full_credit_targets": sum(1 for s in located if s >= 1.0) / float(max(1, len(located))),
+        "visited_targets": sum(1 for o in outcomes for v in o.visited if v) / float(max(1, sum(
+            1 for o in outcomes for v in o.visited if v is not None))),
         "collision_rate": mean([1.0 if o.collision else 0.0 for o in outcomes]),
         "mean_path_m": mean([o.path_length for o in outcomes]),
         "missions_scored": float(n),

@@ -4,7 +4,7 @@ Runs as a child of the grader (or of the practice grader / the agent's own tools
 simulator interpreter, `/opt/aerialsim/venv/bin/python` (Python 3.10). Speaks JSON lines:
 
     <- {"ready": true, "backend": ...}
-    {"cmd": "reset", "episode": {...}, "budget": 150, "success_radius": 3.0} -> state
+    {"cmd": "reset", "episode": {...}, "budget": 1000, "success_radius": 3.0} -> state
     {"cmd": "step", "action": "forward"}                                    -> state
     {"cmd": "close"}                                                        -> {"ok": true}
 
@@ -16,6 +16,10 @@ candidate start poses, and `state` is
      "distance_to_goal": m, "move_distance": m, "step": n, "done": bool, "success": bool,
      "collision": bool, "oracle_success": bool, "termination": "stop"|"collision"|"max_steps"|"",
      "start_index": the candidate start used}
+
+and, when the episode asks for it (`"clearance": true`, the grader's privileged mode only),
+`"clearance": {move: metres}`: how far each level or vertical move could go from the current
+pose before touching geometry, swept the way a move is, up to CLEAR_REACH_M.
 
 `state` is privileged: only `frame` (minus `pose`) and odometry derived from `pose` reach the
 agent's controller, and that filtering happens on the grader side (`sar_protocol`).
@@ -84,6 +88,10 @@ class AirSimRpc(object):
         self.next_id += 1
         self.sock.sendall(self.msgpack.packb([0, self.next_id, method, list(args)],
                                              use_bin_type=True))
+        return self.answer(method)
+
+    def answer(self, method):
+        """The answer to the last call; after a timeout, it can be waited for again."""
         while True:
             for kind, rid, error, result in self.unpacker:
                 if kind == 1 and rid == self.next_id:
@@ -121,6 +129,7 @@ class AirSimBackend(object):
     mission as a collision. Targets are spawned assets; nothing is drawn for the decoys."""
 
     DRONE = "Drone_1"
+    CLEAR_REACH_M = 4.0
     SCRIPT = {"ModernCityMap": "ModernCityMap"}
     SUBSTEPS = 4
     # Cameras hang 1 m under the airframe, so neither props nor arms are in view: three
@@ -137,6 +146,7 @@ class AirSimBackend(object):
         self._private = tempfile.mkdtemp(prefix="airsim-")     # 0700
         self.ue = self.rpc = self.map = None
         self.spawned = []
+        self.stale = None
         self.spawn_count = 0        # names are never reused: re-spawning a name can crash AirSim
 
     # -- scene lifecycle ----------------------------------------------------------
@@ -178,7 +188,7 @@ class AirSimBackend(object):
                 if time.time() > deadline:
                     raise RuntimeError("scene {} did not answer within 300 s".format(map_name))
                 time.sleep(1.0)
-        self.rpc, self.map, self.spawned = rpc, map_name, []
+        self.rpc, self.map, self.spawned, self.port = rpc, map_name, [], port
         _log("scene {} up on port {}".format(map_name, port))
 
     def _stop_scene(self):
@@ -208,44 +218,149 @@ class AirSimBackend(object):
                            _airsim_pose(obj["position"], [x, y, z, w]),
                            {"x_val": 1.0, "y_val": 1.0, "z_val": 1.0}, False, False)
             self.spawned.append(got or name)
-        index = self._choose_start(episode["start_candidates"])
+        index, lift = self._choose_start(episode["start_candidates"])
         start = episode["start_candidates"][index]
-        x, y, z = start[:3]
+        x, y, z = start[0], start[1], start[2] - lift
         self.goal = [float(v) for v in episode["goal_position"]]
         self.budget, self.radius = int(budget), float(success_radius)
         self.s = dict(x=x, y=y, z=z, yaw=_yaw_of(start[3:7]), step=0, move=0.0, done=False,
                       success=False, collision=False, term="", start_index=index)
-        self._place(self.s)
+        self._settle(self.s)
         self.s["oracle"] = _distance((x, y, z), self.goal) <= self.radius
-        self.last_hit = self.rpc.call("simGetCollisionInfo", self.DRONE)["time_stamp"]
+        self.clearance = bool(episode.get("clearance"))
         return self._state()
 
+    LIFTS = (0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0)
+
     def _choose_start(self, candidates):
-        """The first candidate with free space around it (2 m sideways, 4 m below)."""
-        for index, start in enumerate(candidates):
-            self._place(dict(x=start[0], y=start[1], z=start[2], yaw=_yaw_of(start[3:7])))
-            depth = self._images()[1]
-            sides = min(float(self.np.percentile(depth[c], 1)) for c in ("front", "left", "right"))
-            below = float(self.np.percentile(depth["down"], 1))
-            if sides > 2.0 and below > 4.0:
-                return index
-            _log("start {} blocked: {:.1f} m to the sides, {:.1f} m below".format(index, sides, below))
-        _log("no candidate start is clear; using the first")
-        return 0
+        """(index, lift): the first candidate, raised by the smallest lift that leaves free
+        space around it: 2 m sideways and 4 m below in the depth images, no geometry on a
+        swept 6 m in any level direction, 40 m up (open sky, not a floor or a roof a
+        storey up) or 4 m down, and 20 m clear in at least one level direction (a way
+        out, not a courtyard or a light well). The sweep finds what depth does not (glass),
+        and a candidate that fell inside a building, whose floors and walls are never that
+        far away."""
+        for lift in self.LIFTS:
+            for index, start in enumerate(candidates):
+                s = dict(x=start[0], y=start[1], z=start[2] - lift, yaw=_yaw_of(start[3:7]))
+                self._place(s)
+                depth = self._images()[1]
+                sides = min(float(self.np.percentile(depth[c], 1)) for c in ("front", "left", "right"))
+                below = float(self.np.percentile(depth["down"], 1))
+                if sides > 2.0 and below > 4.0 and self._free(s):
+                    if lift:
+                        _log("start {} raised by {:.0f} m".format(index, lift))
+                    return index, lift
+        _log("no candidate start is clear even raised; using the first")
+        return 0, 0.0
+
+    def _free(self, s, level=6.0, up=40.0, down=4.0, out=20.0):
+        """Whether swept moves from s stay clear: `level` m in each of eight level
+        directions, `up` m up and `down` m down, and `out` m in at least one level
+        direction, in half-metre steps."""
+        r = 0.7071
+        levels = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0),
+                  (r, r, 0), (r, -r, 0), (-r, r, 0), (-r, -r, 0)]
+        for d, reach in [(d, level) for d in levels] + [((0, 0, -1), up), ((0, 0, 1), down)]:
+            if not self._sweep(s, d, reach):
+                return False
+        return any(self._sweep(s, d, out) for d in levels)
+
+    def _sweep(self, s, d, reach):
+        """Whether a swept move of `reach` m from s along d stays clear."""
+        clear = True
+        steps = int(reach * 2)
+        for k in range(1, steps + 1):
+            f = reach * k / steps
+            p = (s["x"] + d[0] * f, s["y"] + d[1] * f, s["z"] + d[2] * f)
+            self._place(dict(x=p[0], y=p[1], z=p[2], yaw=s["yaw"]), collide=True)
+            if self._hit(p):
+                clear = False
+                break
+        self._settle(s)
+        return clear
+
+    def _contact(self):
+        """The collision record AirSim holds, as (flag, where the drone was, object)."""
+        info = self.rpc.call("simGetCollisionInfo", self.DRONE)
+        at = info["position"]
+        return bool(info["has_collided"]), (at["x_val"], at["y_val"], at["z_val"]), info.get("object_name")
+
+    def _settle(self, s):
+        """Put the drone back at s after sweeps that were not moves (start search,
+        clearances), with collisions on: a placement that touches nothing is what clears
+        AirSim's record, which otherwise keeps the sweep's last contact, and a later contact
+        at the very same pose would read as that old one. Were s itself in contact, the
+        record is remembered so it does not count against the next move."""
+        self._place(s, collide=True)
+        flag, at, _ = self._contact()
+        self.stale = at if flag else None
+
+    def _hit(self, want):
+        """Whether the swept placement to `want` (x, y, z) touched geometry: a fresh collision
+        record with the drone at most a sub-step short of `want` (a blocked sweep stops at
+        the contact). The record's time stamp is no use, as the scene's clock stands still
+        between the frames we ask for."""
+        flag, at, self.hit_name = self._contact()
+        return flag and at != self.stale and _distance(at, want) <= 0.6
 
     def _place(self, s, collide=False):
         self.rpc.call("simSetVehiclePose",
                       _airsim_pose((s["x"], s["y"], s["z"]), _yaw_quat(s["yaw"])),
                       not collide, self.DRONE)
-        self.rpc.call("simContinueForFrames", 1)
+        self._frame()
+
+    FRAME_TIMEOUT = 10.0
+
+    def _frame(self):
+        """Advance the scene one frame. Now and then (about once in 50,000 calls) AirSim
+        misses the frame it was to pause after: the scene runs on unpaused and the call
+        never returns. Pausing the scene from a second connection lets it return; the
+        stalled connection is kept open until it has, as AirSim crashes answering a call
+        on a connection that is gone. The scene ran on meanwhile, so the frame was had."""
+        self.rpc.sock.settimeout(self.FRAME_TIMEOUT)
+        try:
+            self.rpc.call("simContinueForFrames", 1)
+        except socket.timeout:
+            _log("frame call stalled; pausing the scene from a second connection")
+            side = AirSimRpc(self.port, timeout=self.FRAME_TIMEOUT)
+            try:
+                side.call("simPause", True)
+            finally:
+                side.close()
+            self.rpc.answer("simContinueForFrames")
+        finally:
+            self.rpc.sock.settimeout(60.0)
+
+    @staticmethod
+    def _deltas(yaw):
+        c, n = math.cos(yaw), math.sin(yaw)
+        return {"forward": (c, n, 0.0), "left": (n, -c, 0.0), "right": (-n, c, 0.0),
+                "ascend": (0.0, 0.0, -1.0), "descend": (0.0, 0.0, 1.0)}
+
+    def _clearances(self):
+        """{move: free metres}: each move swept from the current pose in the same sub-steps
+        as a real move, up to CLEAR_REACH_M. The drone is put back afterwards."""
+        s, out = self.s, {}
+        for move, d in self._deltas(s["yaw"]).items():
+            self._settle(s)
+            free = self.CLEAR_REACH_M
+            for k in range(1, int(self.CLEAR_REACH_M * self.SUBSTEPS) + 1):
+                f = float(k) / self.SUBSTEPS
+                p = (s["x"] + d[0] * f, s["y"] + d[1] * f, s["z"] + d[2] * f)
+                self._place(dict(x=p[0], y=p[1], z=p[2], yaw=s["yaw"]), collide=True)
+                if self._hit(p):
+                    free = float(k - 1) / self.SUBSTEPS
+                    break
+            out[move] = free
+        self._settle(s)
+        return out
 
     def step(self, action):
         s = self.s
         if s["done"]:
             return self._state()
-        c, n = math.cos(s["yaw"]), math.sin(s["yaw"])
-        delta = {"forward": (c, n, 0.0), "left": (n, -c, 0.0), "right": (-n, c, 0.0),
-                 "ascend": (0.0, 0.0, -1.0), "descend": (0.0, 0.0, 1.0)}.get(action)
+        delta = self._deltas(s["yaw"]).get(action)
         if action == "rotl":
             s["yaw"] -= math.radians(15)
             self._place(s)
@@ -259,10 +374,9 @@ class AirSimBackend(object):
                 s["z"] += delta[2] / self.SUBSTEPS
                 s["move"] += 1.0 / self.SUBSTEPS
                 self._place(s, collide=True)
-                info = self.rpc.call("simGetCollisionInfo", self.DRONE)
-                if info["has_collided"] and info["time_stamp"] != self.last_hit:
+                if self._hit((s["x"], s["y"], s["z"])):
                     _log("collision with {} at ({:.1f}, {:.1f}, {:.1f})".format(
-                        info.get("object_name"), s["x"], s["y"], s["z"]))
+                        self.hit_name, s["x"], s["y"], s["z"]))
                     s.update(collision=True, success=False, oracle=False, done=True,
                              term="collision")
                     break
@@ -316,6 +430,7 @@ class AirSimBackend(object):
             "success": s["success"], "collision": s["collision"],
             "oracle_success": s["oracle"], "termination": s["term"],
             "start_index": s["start_index"],
+            "clearance": self._clearances() if self.clearance and not s["done"] else None,
         }
 
     def close(self):
@@ -387,6 +502,7 @@ class MockBackend(object):
                           self.COLOURS["red"])
             self.targets.append(([float(v) for v in item["position"]], colour))
         self.budget, self.radius = int(budget), float(success_radius)
+        self.clearance = bool(episode.get("clearance"))
         d = _distance([x, y, z], self.goal)
         self.s = dict(x=x, y=y, z=z, yaw=yaw, step=0, move=0.0, done=False, success=False,
                       collision=False, oracle=d <= self.radius, term="")
@@ -475,6 +591,9 @@ class MockBackend(object):
             "move_distance": s["move"], "step": s["step"], "done": s["done"],
             "success": s["success"], "collision": s["collision"],
             "oracle_success": s["oracle"], "termination": s["term"], "start_index": 0,
+            "clearance": ({"forward": 4.0, "left": 4.0, "right": 4.0, "ascend": 4.0,
+                           "descend": max(0.0, min(4.0, -s["z"] - 0.5))}
+                          if self.clearance else None),
         }
 
     def close(self):

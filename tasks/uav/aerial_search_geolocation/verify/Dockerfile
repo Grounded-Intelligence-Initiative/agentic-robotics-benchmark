@@ -36,10 +36,12 @@ RUN uv venv /opt/aerialsim/venv --python 3.10 \
     && /opt/aerialsim/venv/bin/python -c "import cv2, msgpack, numpy; print('[image] sim stack OK')"
 
 # ---- held-out scenes and the hidden pool ----
-COPY fetch_assets.py build_episode_pool.py targets.json /tmp/
+COPY fetch_assets.py /tmp/
 RUN uv run --no-project --python 3.12 --with huggingface_hub==0.36.0 python /tmp/fetch_assets.py \
         scenes --repo "$SCENES_DATASET" --revision "$SCENES_REVISION" --maps $HELDOUT_MAPS \
         --out /opt/aerialsim/scenes
+# the catalogue and pool builder come after the scenes: editing them rebuilds only the pool
+COPY build_episode_pool.py targets.json /tmp/
 RUN python3 /tmp/fetch_assets.py spawn-areas --url "$SPAWN_AREAS_URL" \
         --sha256 "$SPAWN_AREAS_SHA256" --out /tmp/map_spawnarea_info.json \
     && mkdir -p /opt/aerialsim/hidden \

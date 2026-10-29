@@ -2,9 +2,9 @@
 
 A ground team sends a quadrotor ahead with a short list of things to look for in the area
 around it, for example *"a red fire truck"*, *"a round hay bale"*, *"a brown and white
-horse"*. The drone does not need to land next to them; it needs to find each one and send
-back where it is, so the team can go straight there. Some items on the list may not be in
-the area at all, and saying so confidently is useful too.
+horse"*. The drone has to fly out to each one, close enough to confirm it from right above
+it, and send back where it is, so the team can go straight there. Some items on the list
+may not be in the area at all, and saying so confidently is useful too.
 
 Build a controller that flies these missions and leave it runnable at:
 
@@ -19,28 +19,39 @@ and where the drone starts are drawn at random at grading time; memorising this 
 scenes does not help.
 
 Each mission gives you **three target descriptions**, each of a different kind of thing.
-Each target is either in the scene, standing on the ground between 12 and 35 m
-(horizontally) from where you start, or it is a **decoy** that is not in the scene at all.
-A mission has at most one decoy, and about half of the missions have none. Targets are
-vehicles, animals and objects that the scene does not otherwise contain, so a description
-fits only the target. You start in open air 10 to 40 m above the highest of the targets.
+Each target is either in the scene, standing on the ground **40 to 120 m** (horizontally)
+from where you start, or it is a **decoy** that is not in the scene at all. The targets of
+a mission lie in different directions from the start (at least 40 degrees apart as seen
+from it) and 25 to 160 m from each other, so they are seldom all in view at once and
+buildings or trees may hide them. A mission has at most one decoy, and about half of the
+missions have none. Targets fit the scene: street vehicles, scooters, street furniture and
+dogs in the city scenes; tents, a beach table, two-wheelers and farm animals on the island.
+Each is a kind of thing the scene does not otherwise contain, so a description fits only
+the target, and a decoy is a kind from the same scene's list. You start in open air at
+least 10 m (usually 10 to 40 m) above the highest of the targets.
 
 A mission ends when your controller sends **Stop**, when the drone **collides** with
-anything (including the ground), or when it has spent its **budget of 150 actions** (Stop
+anything (including the ground), or when it has spent its **budget of 1000 actions** (Stop
 is free). Your **last report** for each target when the mission ends is final.
+
+A target in the scene counts only if the drone **went down and looked at it**: at some point
+during the mission the drone was within **3 m of it horizontally, no more than 6 m above
+it**, and with the target in the down camera's view, that is, no farther from it
+horizontally than the down camera (1 m under the drone) is above it. The grader measures
+this from the true positions. Spotting it from afar is not enough.
 
 Each target earns:
 
-| your final report | target in the scene | decoy |
-|---|---|---|
-| found, within 3 m of it | 1 | 0 |
-| found, 3 to 10 m from it | falls linearly from 1 to 0 | 0 |
-| found, 10 m or more from it | 0 | 0 |
-| declared absent | **-1** | 1 |
-| no report | 0 | 0 |
+| your final report | target in the scene, visited | in the scene, not visited | decoy |
+|---|---|---|---|
+| found, within 3 m of it | 1 | 0 | 0 |
+| found, 3 to 10 m from it | falls linearly from 1 to 0 | 0 | 0 |
+| found, 10 m or more from it | 0 | 0 | 0 |
+| declared absent | **-1** | **-1** | 1 |
+| no report | 0 | 0 | 0 |
 
 A mission scores the mean of its three targets. If that is positive, it is multiplied by
-`1 - 0.2 * min(1, metres flown / 150)` (energy), and halved if the drone collided. A
+`1 - 0.2 * min(1, metres flown / 1000)` (energy), and halved if the drone collided. A
 negative mission score is kept as it is. Your metric is the mean over the 24 missions
 (floored at 0 for the whole run), compared with a reference controller's measured value
 on the same kind of hidden missions (the reference value is not disclosed; full credit is
@@ -119,7 +130,7 @@ Keep stdout clean; it is the wire. Send diagnostics to stderr.
 | `rgb` | `{"front", "left", "right", "down"}`: base64 PNG, 8-bit RGB, 256 x 256 |
 | `depth` | the same four keys: base64 PNG, 16-bit single channel, **centimetres** along the pixel's ray (0 = no return) |
 | `odom` | `{"position": [forward, right, down], "yaw": rad}`: your pose in the mission start frame (yaw clockwise-positive, 0 = the starting heading) |
-| `steps_used`, `budget` | moves spent so far (Stop excluded) and the budget, 150 |
+| `steps_used`, `budget` | moves spent so far (Stop excluded) and the budget, 1000 |
 
 The true positions of the drone and of the targets are never part of the observation.
 
@@ -147,8 +158,9 @@ The body frame is forward / right / down; the drone flies level (moves never til
   with `from_pretrained(<path>)`. You may use them, combine them, or do without them.
 - **Practice scenes.** `/opt/aerialsim/practice/pool.json` lists, for the two practice
   scenes, the points where targets may stand and the kinds of target (with their
-  descriptions) used there. The held-out scenes use the same kinds; the island adds
-  animals and tents.
+  descriptions) used there. The held-out city scenes use city kinds from the same list
+  (minus any kind their own scenery already has); the island uses tents, a beach table,
+  two-wheelers, a pickup, a camper van and farm animals.
 - **The simulator and the mission rules, for your own experiments.**
   `/home/user/aerial/sim_client.py` runs the same simulator the grader uses, with the
   ground truth visible; `/home/user/aerial/sar_protocol.py` holds the mission rules
@@ -162,7 +174,7 @@ The body frame is forward / right / down; the drone flies level (moves never til
   pool = load_pool("/opt/aerialsim/practice/pool.json")
   missions = assemble_missions(pool, random.Random(0), per_map=2)
   with SimClient(log_path="/home/user/sim.log") as sim:   # starts Unreal (slow, once)
-      outcome = run_mission(sim, missions[0], my_controller_fn, budget=150)
+      outcome = run_mission(sim, missions[0], my_controller_fn, budget=1000)
       print(outcome.record())
   ```
 

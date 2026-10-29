@@ -46,7 +46,7 @@ from sim_client import SimClient  # noqa: E402
 STEP_TIMEOUT_S = 30.0
 READY_TIMEOUT_S = 4 * STEP_TIMEOUT_S
 REPEAT_STEPS = (2, 25, 70)
-BUDGET = 150
+BUDGET = 1000
 
 
 class WireError(Exception):
