@@ -1,0 +1,46 @@
+# bimanual_cad_design_from_photos: the hardware-design (CAD) stage of the robotic-arm full-stack workflow for a two-arm
+# unit (an atomic task). A mechanical designer re-creates the lost CAD of a modified dual-arm unit (a column on a base
+# plate carrying two seven-joint arms with two-finger gripper modules; the arms modified differently) in FreeCAD 1.1,
+# known only from one fixed photo set (153 photos rendered with Blender Cycles in a lab room: the 29 made parts on a
+# cutting mat, both sides, close-ups, the re-assembled unit in three poses, the grippers closed and open) and the bought
+# parts' datasheets, drawings and STEP files. No topology, no templates, no practice units. It delivers one FreeCAD
+# document, /home/user/submission/unit.FCStd: 29 PartDesign Bodies labelled with the part tags, the bought parts placed,
+# one Assembly with Grounded / Fixed / Revolute joints (a closed four-bar loop per arm) and limits, saved in
+# configuration Z.
+#
+# The agent drives the FreeCAD GUI session through the task's MCP server (tools/mcp/freecad.toml; its execute_code
+# runs Python inside the session); the instruction asks for it, the harness's own tools stay available, and verify
+# records the tool use as statistics only.
+#
+# Grading (verify/verify.py; every number in verify/cad_tree/rules.json; no agent code runs): headless FreeCAD reads the
+# document as an unprivileged account, the mechanism (a tree with loops) is inferred and matched to the unit's by the
+# links each joint connects, the torso aligned onto the unit's, then per arm: the arm gate cad_json_consistent x
+# kinematic_fidelity 0.30, feature_fidelity 0.25, shape_fidelity 0.25, mass_properties 0.10, component_fit 0.05,
+# interference_free 0.05 (within the arm and between the arms), with shape / tool-point floors; an arm whose mechanism
+# differs (a link not found, a missing or extra joint) scores 0, the other arm is still scored; a part fixed to another
+# link than the unit's is graded where it is, an actuator case on the other side of its joint is reported.
+# design_score = the mean of the arm scores x the unit gates cad_valid and public_model_reuse; reward = design_score
+# (verify/anchor.json).
+
+spec_type: core/v1
+
+name: bimanual_cad_design_from_photos
+
+image: {kind: container}
+
+resources: {cpus: 8, memory_mb: 16384}
+network: {mode: block}
+
+# setup: stage the photo set and the bought parts' documents (< 30 s). agent: re-model the unit in FreeCAD (6 h).
+# verify: lockdown, the FreeCAD document read by headless FreeCAD, the conversion and the grade (oracle about 2 min on
+# 8 CPUs).
+timeouts: {setup: 300, agent: 21600, verify: 1800}
+
+artifacts: [/home/user/submission]
+
+tools:
+  mcp_servers:
+    - path: tools/mcp/freecad.toml
+
+metadata:
+  platform: arm
