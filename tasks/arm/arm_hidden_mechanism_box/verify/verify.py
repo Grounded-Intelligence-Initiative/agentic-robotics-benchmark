@@ -2,8 +2,9 @@
 
 Runs as root in a SEPARATE verifier sandbox (SPEC 14.10: no lab and no agent process exist there;
 the engine restores only the declared artifact /home/user/submission). It never talks to the lab.
-Defensively it still stops any lab or agent-UID process first (rev-leak R14, SPEC L3), then copies
-the submission (symlinks copied as links, size-capped) into a fresh agent-owned work folder. It owns its own copy of
+Defensively it still stops any lab or agent-UID process first (rev-leak R14, SPEC L3), then hands the
+restored submission (size-capped) to the agent account in place, at /home/user/submission, the folder the
+instruction names (ownership changes never follow a symlink). It owns its own copy of
 the robot environment (box_env.py, byte-identical to the agent's dev sim) and builds the hidden boxes
 from verify/ref/boxes.json with mech.py, draws 64-bit episode seeds from OS entropy (kit `seed_rng`:
 box placement jitter and sensor noise), drives the agent's controller over the kit wire at the agent's
@@ -49,7 +50,6 @@ from robotics_grader import (  # noqa: E402
 )
 
 STAGE = os.path.dirname(os.path.abspath(__file__))
-WORK_ROOT = "/var/lib/boxm_grade"
 MAX_SUBMISSION_BYTES = 200 * 1024 * 1024
 MAX_SUBMISSION_FILES = 5000
 NONET = os.path.join(STAGE, "nonet_exec.py")
@@ -196,10 +196,11 @@ def stop_lab():
 
 
 def stage_submission(uid, gid):
-    """Copy the restored submission into WORK_ROOT/submission owned by the agent account.
-    Symlinks are copied as links (root never follows them); size and file count are capped.
-    Returns the work path, or None if there is no usable submission."""
-    import shutil
+    """Make the restored submission the agent account's own folder, in place at ~user/submission: the
+    folder the instruction names, where run.sh is started and where the controller may write, as it can in
+    the lab and the practice grader. Ownership changes never follow a symlink (lchown, a walk that does not
+    follow links); size and file count are capped. Returns the path, or None if there is no usable
+    submission."""
     src = os.path.join(os.path.expanduser("~" + agent_user()), "submission")
     if not os.path.isdir(src) or os.path.islink(src):
         return None
@@ -215,18 +216,12 @@ def stage_submission(uid, gid):
                     pass
         if files > MAX_SUBMISSION_FILES or total > MAX_SUBMISSION_BYTES:
             return None
-    if os.path.lexists(WORK_ROOT):
-        shutil.rmtree(WORK_ROOT, ignore_errors=True)
-    os.makedirs(WORK_ROOT, mode=0o711)
-    os.chmod(WORK_ROOT, 0o711)
-    dst = os.path.join(WORK_ROOT, "submission")
-    shutil.copytree(src, dst, symlinks=True)
-    for dp, dns, fns in os.walk(dst, followlinks=False):
+    for dp, dns, fns in os.walk(src, followlinks=False):
         for name in dns + fns:
             os.lchown(os.path.join(dp, name), uid, gid)
-    os.lchown(dst, uid, gid)
-    os.chmod(dst, 0o700)
-    return dst
+    os.lchown(src, uid, gid)
+    os.chmod(src, 0o700)
+    return src
 
 
 def episode_plan(config, rng, ids):

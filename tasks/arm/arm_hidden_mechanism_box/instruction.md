@@ -24,8 +24,10 @@ the time is up.
 | `helpers/lab_bridge.py` | Optional boilerplate: runs your controller (`run.sh`) for one lab trial and logs every observation and action. |
 | `helpers/wire_skeleton.py` | Optional boilerplate for the grading wire (READY / reset / act / close, repeated step indices). |
 
-Run Python as `/opt/venv/bin/python3` (it is not on your `PATH`). `box_env.py` renders offscreen
-with `MUJOCO_GL=egl` (the default it sets); `env.gt()` gives the practice box's ground truth.
+Run Python as `/opt/venv/bin/python3` (it is not on your `PATH`). `box_env.py` renders its cameras
+with MuJoCo's Filament renderer (physically based) on the CPU; the first image of a process takes
+several seconds while the renderer compiles its shaders. `env.gt()` gives the practice box's ground
+truth.
 
 ## The boxes (what is known about all four)
 
@@ -97,8 +99,8 @@ trial ends when its episode ends, when you start a new trial or close the connec
 of wall time or after 900 s without a request; a step cap of 2600 requests (rejected actions
 included) applies. Each trial draws a fresh box placement and fresh sensor noise (from OS entropy);
 otherwise the boxes behave deterministically. Lab episodes never end early, and the lab never
-reports scores, stages or part positions: only observations. A step with images takes roughly
-0.05 to 0.15 s; one with all three images returns about 0.8 MB. When the budget is used up,
+reports scores, stages or part positions: only observations. A step takes about 0.01 s plus about
+0.07 s per image; one with all three images returns about 0.8 MB. When the budget is used up,
 `reset` answers `budget_exhausted`. The lab boxes are exactly the boxes you are scored on. The lab
 is gone when grading starts.
 
@@ -106,33 +108,40 @@ is gone when grading starts.
 
 Leave a controller in `/home/user/submission/` with an executable `run.sh` (started as `bash
 run.sh` with that folder as working directory, as your user, with no network: only AF_UNIX
-sockets work). Everything it needs must be inside that folder; nothing else of your home is
+sockets work). Everything it needs must be inside that folder (at most 5000 files and 200 MiB; a
+larger folder scores 0), and the controller may write there; nothing else of your home is
 available when it is graded. Protocol (one JSON object per line on stdin/stdout; stdout carries
 only protocol messages, use stderr for logs): print `READY` within 120 s; then answer
 `{"type": "reset"}` with `{"ok": true}`, `{"type": "act", "t": T, "obs": {...}}` with
 `{"action": [8 numbers]}` within 30 s, and `{"type": "close"}` with `{"ok": true}` before exiting.
-Occasionally the grader asks the same `t` twice, once with the real observation and once with a
-slightly perturbed copy (joint readings), in a hidden order, and applies only the reply to the real
-one; a controller that ignores its input fails this check and scores 0.
+At about 1 % of the steps the grader asks the same `t` twice, once with the real observation and
+once with a slightly perturbed copy (joint readings, gripper and wrist-camera pose, wrench; the
+images are unchanged), in a hidden order, and applies only the reply to the real one. If fewer than
+10 % of these pairs get two replies that differ (by more than 1e-4 in some number), the whole run
+scores 0: a controller that ignores its input, or answers a repeated `t` from a cache, fails.
 
 The grader runs 8 episodes: 2 on each box with fresh hidden placements, in a hidden order (the
 observation names the box). An episode ends after 2500 steps or as soon as all of the box's stages
 are done. **The stages of a box** are: every part that must be operated to open it (the parts on its
 interlock chain, plus any cover plate that hides one of them) and the opening itself (lid at least
 60 degrees open, or drawer at least 56 mm out). The **credit position** of a part is at least 80 %
-of its travel (knob: 72 degrees), or inside its release window if it has one; that of the opening
-is the lid at least 60 degrees open or the drawer at least 56 mm out. A stage counts once it has been
-in its credit position for 3 consecutive steps **while every part upstream of it in the chain (the
-parts that block it, the parts that block those, and so on) was in its own credit position** during
-those steps (chain rule: for example, a part whose window blocker has been moved out of its window
-earns nothing until the blocker is back inside, and neither does anything downstream of it). A
-counted stage stays counted. Decoys never count. Each box has 3 or 4 part stages. The episode score is 0.5 x (fraction
+of its travel (knob: 72 degrees), or inside its release window if it has one (within 0.02 mm of
+either edge; knob: 0.05 degrees); that of the opening is the lid at least 60 degrees open or the
+drawer at least 56 mm out. A stage **reaches** its credit position once it has been there for 3
+consecutive steps **while every part upstream of it in the chain (the parts that block it, the
+parts that block those, and so on) was in its own credit position** during those steps (chain rule:
+for example, a part whose window blocker has been moved out of its window reaches nothing until the
+blocker is back inside, and neither does anything downstream of it). The opening and a part without
+a release window count once they reach their credit position. A part with a release window counts
+only once a part it blocks reaches its credit position (by the chain rule it was then inside its
+window): moving it into or through its window counts nothing by itself. A counted stage stays
+counted. Decoys never count. Each box has 3 or 4 part stages. The episode score is 0.5 x (fraction
 of the box's part stages done) + 0.5 x (1 if the opening is done, else 0); your result is the mean
 over the 8 episodes. An episode in which the controller crashes, answers late or malformed, or makes the simulation unstable (any arm
 joint faster than 8 rad/s or any box part faster than 30 units/s) scores 0; after 3 restarts of
 your controller the remaining episodes score 0. The whole grading run must finish within 6000 s
-(budget it at about 750 s per episode including your controller's thinking time); episodes left
-when it runs out score 0. Your controller is one process for the whole grading run (it is started
+(budget it at about 750 s per episode including your controller's thinking time); the episode under
+way when it runs out, and the episodes after it, score 0. Your controller is one process for the whole grading run (it is started
 again only after a crash), so it may carry what it learned about a box in one episode into later
 episodes on the same box: online adaptation during execution is allowed and intended. Only the
 final controller is scored; trial usage is not.

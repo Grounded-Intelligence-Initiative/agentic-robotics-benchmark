@@ -31,6 +31,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends libegl1 libgl1 
     && rm -rf /var/lib/apt/lists/*
 ENV MUJOCO_GL=egl PYOPENGL_PLATFORM=egl MPLBACKEND=Agg OMP_NUM_THREADS=1 LP_NUM_THREADS=2
 
+# The cameras' renderer (box_env.py): MuJoCo's Filament module (in the mujoco wheel) on Vulkan; Mesa's lavapipe is the
+# CPU Vulkan driver (the task has no GPU). Proved at build: a Filament context on lavapipe.
+RUN apt-get update && apt-get install -y --no-install-recommends mesa-vulkan-drivers libvulkan1 \
+    && rm -rf /var/lib/apt/lists/*
+RUN python3 -c "import mujoco._render_filament as F, mujoco.experimental.studio.window; F.Context(F.ContextConfig(graphics_api=F.GraphicsApi.GRAPHICS_API_VULKAN)); print('[image] Filament on Vulkan OK')"
+
+# ---- task assets: fetched at the dataset commit pinned in assets.sha256, checked file by file (docs/task-assets.md):
+# render/ibl.ktx, the image light of the cameras' renderer (box_env.py reads /opt/task-assets/payload/render)
+COPY fetch_assets.py assets.sha256 /opt/task-assets/
+RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload \
+    && chmod -R a+rX /opt/task-assets
+
 # The declared artifact path exists even when nobody works.
 RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
 

@@ -30,17 +30,32 @@ Action (a list of 8 numbers):
               (1 = left, 2 = right, 4 = wrist; 0 = none). Images cost wall time.
 """
 
+import atexit
+import gc
 import json
 import math
 import os
+import queue
 import threading
+import weakref
 
 import numpy as np
 
-os.environ.setdefault("MUJOCO_GL", "egl")
-os.environ.setdefault("PYOPENGL_PLATFORM", "egl")
-import mujoco  # noqa: E402
+import mujoco
 
+
+def _cap_malloc_arenas():
+    """The renderer's job threads would each get a glibc malloc arena, and the process then grows by gigabytes over
+    episodes. Two arenas are plenty (M_ARENA_MAX); glibc only honours the cap before other threads allocate, hence
+    at import."""
+    try:
+        import ctypes
+        ctypes.CDLL("libc.so.6").mallopt(-8, 2)
+    except (OSError, AttributeError):
+        pass
+
+
+_cap_malloc_arenas()
 # ----------------------------------------------------------------------------------------------
 # Public constants
 # ----------------------------------------------------------------------------------------------
@@ -59,7 +74,10 @@ BOX_JITTER_XY = np.array([0.04, 0.05])  # uniform +- per episode
 BOX_JITTER_YAW = math.radians(25.0)     # uniform +- per episode (yaw 0: the box front faces -x)
 HOLD_STEPS = 3                   # a stage (and its blockers) must stay unlocked this many control steps
 FINAL_HOLD_STEPS = 3
-RGB_NOISE = 2.0                  # 8-bit sigma
+WINDOW_TOL = 2e-5                # m: a release window credits within this distance of either edge
+WINDOW_TOL_KNOB = math.radians(0.05)
+RGB_NOISE = 2.0                  # 8-bit sigma (the renderer's temporal dithering and anti-aliasing add up to about
+                                 # one level, a few levels on edges, from one image to the next)
 WRENCH_NOISE = 0.3               # N (torque: 0.03 N m)
 INSTAB_ROBOT_QVEL = 8.0          # rad/s: an episode with faster robot joints ends as a fault
 INSTAB_PART_QVEL = 30.0          # rad/s or m/s on any box joint
@@ -79,17 +97,21 @@ class EnvError(Exception):
     pass
 
 
-_GL_LOCK = threading.RLock()
-
-
-def _gl_release():
-    """Release the shared offscreen GL context from this thread (EGL), so any thread can render next."""
-    if os.environ.get("MUJOCO_GL", "egl").lower() != "egl":
-        return
-    import mujoco.egl as mjegl
-    from mujoco.egl import egl_ext as EGL
-    if mjegl.EGL_DISPLAY is not None:
-        EGL.eglMakeCurrent(mjegl.EGL_DISPLAY, EGL.EGL_NO_SURFACE, EGL.EGL_NO_SURFACE, EGL.EGL_NO_CONTEXT)
+# The cameras' renderer: MuJoCo's Filament renderer (physically based) on Vulkan, which is Mesa's lavapipe on the
+# CPU in the task image. The room's image light was distilled from a path-traced (OVRTX) render of this scene; the
+# MuJoCo lights are placed where that render's lights are. Physical units: the image light in Filament's units, the
+# ceiling light in candela, the key light in lux.
+RENDER_DIR = os.environ.get("BOX_ENV_RENDER_DIR", "/opt/task-assets/payload/render")
+IBL_FILE = "ibl.ktx"
+IBL_INTENSITY = 20000.0
+CEILING_LIGHT = "light1"         # LIBERO's spot light, moved over the table: soft, casts shadows
+CEILING_CD = 300000.0
+KEY_LIGHT = "light_kitchen"      # LIBERO's directional light: the key from the front left
+KEY_LUX = 3000.0
+UNUSED_LIGHTS = ("light2",)
+ROUGHNESS = (("r_", 0.35), ("b_", 0.55))   # untextured materials (robot, box); textured ones keep Filament's default
+CAM_NEAR, CAM_FAR = 0.01, 20.0   # m
+CALL_TIMEOUT = 300.0             # s
 
 
 class ActionError(ValueError):
@@ -252,14 +274,15 @@ def build_model(box_spec, box_pose):
         '<mujoco><compiler angle="radian" autolimits="true"/><worldbody>{}</worldbody></mujoco>'.format(box_spec["xml"]))
     x, y, yaw = box_pose
     wb.add_frame(pos=[x, y, TABLE_Z], quat=list(box_quat(yaw))).attach_body(bx.body("box"), "b_", "")
-    return spec.compile()
+    m = spec.compile()
+    _look(m)
+    return m
 
 
 # ----------------------------------------------------------------------------------------------
 # Environment
 # ----------------------------------------------------------------------------------------------
 class BoxEnv(object):
-    _gl = None
 
     def __init__(self, box_spec, render=True, max_steps=MAX_STEPS, box_id="practice", early_end=True):
         self.box_spec = box_spec
@@ -269,7 +292,7 @@ class BoxEnv(object):
         self.render_enabled = render
         self.max_steps = int(max_steps)
         self.model = None
-        self._con = None
+        self._view = None
 
     # ------------------------------------------------------------------ episode
     def reset(self, seed):
@@ -291,6 +314,7 @@ class BoxEnv(object):
         self.fault = None
         self.achieved = [False] * len(self.stages)
         self.hold = [0] * len(self.stages)
+        self.reached = [False] * len(self.stages)
         self.max_q = [0.0] * len(self.stages)
         self.render_next = ("left", "right", "wrist")
         if self.render_enabled:
@@ -318,6 +342,7 @@ class BoxEnv(object):
             self.stages.append((s, int(j.qposadr[0])))
         ids = [s["id"] for s, _qa in self.stages]
         self.stage_blockers = [[ids.index(b) for b in s.get("blockers", []) if b in ids] for s, _qa in self.stages]
+        self.stage_dependents = [[j for j, bl in enumerate(self.stage_blockers) if i in bl] for i in range(len(ids))]
         self.box_dofs = np.array([int(m.joint("b_" + jn).dofadr[0]) for jn in self.meta["joints"]])
         self.box_qadr = np.array([int(m.joint("b_" + jn).qposadr[0]) for jn in self.meta["joints"]])
 
@@ -417,15 +442,24 @@ class BoxEnv(object):
         for i, (s, qa) in enumerate(self.stages):
             q = float(d.qpos[qa])
             self.max_q[i] = max(self.max_q[i], q)
-            # chain-aware credit: a stage counts only while it and every part upstream of it in the chain
-            # (its blockers, their blockers, ...) are in their own credit positions
+            # chain-aware: a stage reaches its credit position only while it and every part upstream of it in
+            # the chain (its blockers, their blockers, ...) are in their own credit positions
             if ok[i]:
                 self.hold[i] += 1
                 need = FINAL_HOLD_STEPS if s["id"] == "final" else HOLD_STEPS
                 if self.hold[i] >= need:
-                    self.achieved[i] = True
+                    self.reached[i] = True
             else:
                 self.hold[i] = 0
+        # a part without a release window counts once it has reached its credit position; a part with one
+        # counts once a part it blocks has reached its own (which needed the window part inside its window):
+        # sweeping a part through its window counts nothing by itself
+        for i, (s, _qa) in enumerate(self.stages):
+            deps = self.stage_dependents[i]
+            if s.get("window") and deps:
+                self.achieved[i] = self.achieved[i] or any(self.reached[j] for j in deps)
+            else:
+                self.achieved[i] = self.achieved[i] or self.reached[i]
         if (self.early_end and all(self.achieved)) or self.t >= self.max_steps:
             self.done = True
 
@@ -445,14 +479,18 @@ class BoxEnv(object):
     @staticmethod
     def _in_release(s, q):
         win = s.get("window")
-        return (win[0] <= q <= win[1]) if win else (q >= s["threshold"])
+        if not win:
+            return q >= s["threshold"]
+        tol = WINDOW_TOL_KNOB if s.get("kind") == "knob" else WINDOW_TOL
+        return win[0] - tol <= q <= win[1] + tol
 
     def episode_score(self):
         """Credit of the episode (0 after a fault): half for the box's part stages (fraction done),
-        half for the opening (lid / drawer) itself. A stage is done once it has stayed in its unlocked
-        position for HOLD_STEPS control steps while every part upstream of it in the chain (its blockers,
-        their blockers, ...) stayed in that part's own unlocked position (window parts inside their window,
-        other parts past their threshold)."""
+        half for the opening (lid / drawer) itself. A stage reaches its unlocked position once it has stayed
+        there for HOLD_STEPS control steps while every part upstream of it in the chain (its blockers, their
+        blockers, ...) stayed in that part's own unlocked position (window parts inside their window, within
+        WINDOW_TOL, other parts past their threshold). A part without a release window is done when it
+        reaches its unlocked position; a part with one is done when a part it blocks reaches its own."""
         if self.fault is not None:
             return 0.0
         parts = [a for (s, _q), a in zip(self.stages, self.achieved) if s["id"] != "final"]
@@ -467,56 +505,25 @@ class BoxEnv(object):
 
     # ------------------------------------------------------------------ sensing
     def _init_render(self):
-        m = self.model
-        with _GL_LOCK:
-            if BoxEnv._gl is None:
-                BoxEnv._gl = mujoco.GLContext(320, 240)
-            BoxEnv._gl.make_current()
-            try:
-                if self._con is not None:
-                    self._con.free()
-                self._con = mujoco.MjrContext(m, mujoco.mjtFontScale.mjFONTSCALE_100)
-                mujoco.mjr_setBuffer(mujoco.mjtFramebuffer.mjFB_OFFSCREEN, self._con)
-            finally:
-                _gl_release()
-        self._scn = mujoco.MjvScene(m, maxgeom=4000)
-        self._opt = mujoco.MjvOption()
-        self._opt.sitegroup[:] = 0
-        self._opt.geomgroup[:] = 0
-        self._opt.geomgroup[1] = 1
-        self._pert = mujoco.MjvPerturb()
-        self._cam = mujoco.MjvCamera()
-        self._cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+        self.close()
+        self._view = _Filament.instance().open(self.model)
 
     def close(self):
-        if self._con is not None:
-            with _GL_LOCK:
-                BoxEnv._gl.make_current()
-                try:
-                    self._con.free()
-                finally:
-                    _gl_release()
-            self._con = None
+        """Free the episode's renderer resources (also done when the environment is garbage-collected)."""
+        if self._view is not None:
+            self._view.close()
+            self._view = None
 
     def render(self, cam):
-        m, d = self.model, self.data
+        d = self.data
         if cam == "wrist":
-            W, H, cid = WRIST["width"], WRIST["height"], self.wrist_cam
+            fovy, W, H = WRIST["fovy"], WRIST["width"], WRIST["height"]
+            Rc = d.cam_xmat[self.wrist_cam].reshape(3, 3)
+            pos = d.cam_xpos[self.wrist_cam]
         else:
-            W, H, cid = CAMERAS[cam][3], CAMERAS[cam][4], self.cam_id[cam]
-        self._cam.fixedcamid = cid
-        vp = mujoco.MjrRect(0, 0, W, H)
-        rgb = np.zeros((H, W, 3), np.uint8)
-        mujoco.mjv_updateScene(m, d, self._opt, self._pert, self._cam, mujoco.mjtCatBit.mjCAT_ALL, self._scn)
-        with _GL_LOCK:
-            BoxEnv._gl.make_current()
-            try:
-                mujoco.mjr_setBuffer(mujoco.mjtFramebuffer.mjFB_OFFSCREEN, self._con)
-                mujoco.mjr_render(vp, self._scn, self._con)
-                mujoco.mjr_readPixels(rgb, None, vp, self._con)
-            finally:
-                _gl_release()
-        rgb = rgb[::-1]
+            pos, tgt, fovy, W, H = CAMERAS[cam]
+            Rc = look_at(pos, tgt)
+        rgb = self._view.render(d, pos, -Rc[:, 2], Rc[:, 1], fovy, W, H)
         noise = self.rng.normal(0.0, RGB_NOISE, rgb.shape)
         return np.clip(rgb.astype(np.float32) + noise, 0, 255).astype(np.uint8)
 
@@ -580,3 +587,236 @@ class BoxEnv(object):
                             "achieved": a} for (s, qa), a in zip(self.stages, self.achieved)],
                 "joints": {jn: float(d.qpos[qa]) for jn, qa in zip(self.meta["joints"], self.box_qadr)},
                 "t": self.t, "fault": self.fault}
+
+
+# ----------------------------------------------------------------------------------------------
+# The Filament renderer
+# ----------------------------------------------------------------------------------------------
+def _look(m):
+    """The render-only fields of the compiled scene (no effect on the physics): the textures' colour space, PBR terms
+    of the untextured materials (no metal anywhere) and the light rig."""
+    # Filament reads a texture with colorspace "auto" (MuJoCo's default) as linear data: the scene's sRGB image files
+    # would come out washed out
+    m.tex_colorspace[:] = int(mujoco.mjtColorSpace.mjCOLORSPACE_SRGB)
+    for i in range(m.nmat):
+        if (m.mat_texid[i] >= 0).any():
+            continue            # PBR terms on textured materials crash MuJoCo 3.16's Filament renderer
+        r = 0.5
+        for prefix, val in ROUGHNESS:
+            if m.mat(i).name.startswith(prefix):
+                r = val
+                break
+        m.mat_metallic[i] = 0.0
+        m.mat_roughness[i] = r
+    for i in range(m.nlight):
+        m.light_intensity[i] = 0.0
+        m.light_castshadow[i] = 0
+    for name in UNUSED_LIGHTS:
+        m.light(name)                                       # raises if the scene's lights changed
+    i = m.light(CEILING_LIGHT).id
+    m.light_pos[i] = m.light_pos0[i] = [-0.25, 0.0, 2.7]
+    m.light_dir[i] = m.light_dir0[i] = np.array([0.25, 0.0, -1.9]) / np.linalg.norm([0.25, 0.0, -1.9])
+    m.light_cutoff[i] = 70.0
+    m.light_intensity[i] = CEILING_CD
+    m.light_bulbradius[i] = 0.45
+    m.light_castshadow[i] = 1
+    m.light_diffuse[i] = [1.0, 0.97, 0.92]
+    i = m.light(KEY_LIGHT).id
+    m.light_dir[i] = m.light_dir0[i] = np.array([1.2, 1.4, -1.0]) / np.linalg.norm([1.2, 1.4, -1.0])
+    m.light_intensity[i] = KEY_LUX
+    m.light_diffuse[i] = [1.0, 0.98, 0.95]
+
+
+class _View(object):
+    """One episode model in the process's renderer; the Filament objects stay in the renderer's thread."""
+
+    def __init__(self, fil, model):
+        self._fil = fil
+        self._sid = fil.call(fil.new_session, model)
+        self._finalizer = weakref.finalize(self, fil.post, fil.free_session, self._sid)
+
+    def render(self, data, pos, forward, up, fovy, width, height):
+        return self._fil.call(self._fil.draw, self._sid, data, pos, forward, up, fovy, width, height)
+
+    def close(self):
+        if self._finalizer.detach() is not None:
+            self._fil.call(self._fil.free_session, self._sid)
+
+
+class _Filament(object):
+    """The process's Filament renderer. Filament is driven from one thread: a dedicated thread owns the context and
+    every Filament object, and callers on any thread post jobs to it and wait. A forked child starts its own.
+
+    MuJoCo 3.16's Filament module serves one model's resources at a time per context (a second model's renderables
+    fail while the first one's resources exist), so only the model rendered last is live: rendering another model
+    first frees the live one's Filament objects (about 0.1 s to rebuild, 0.3 s for its first image)."""
+
+    _inst = None
+    _guard = threading.Lock()
+
+    @classmethod
+    def instance(cls):
+        with cls._guard:
+            if cls._inst is None or cls._inst.pid != os.getpid():
+                cls._inst = cls()
+            return cls._inst
+
+    def __init__(self):
+        self.pid = os.getpid()
+        self.jobs = queue.Queue()
+        self.models = {}         # session id -> its model
+        self.active = None       # the session whose Filament objects are live
+        self.live = []
+        self.targets = {}
+        self.next_sid = 0
+        self.thread = threading.Thread(target=self._loop, name="box_env-filament", daemon=True)
+        self.thread.start()
+        self.call(self._start)
+
+    def open(self, model):
+        return _View(self, model)
+
+    # -- any thread
+    def call(self, fn, *args):
+        done = threading.Event()
+        out = []
+        self.jobs.put((fn, args, done, out))
+        if not done.wait(CALL_TIMEOUT):
+            raise EnvError("the renderer did not answer within {:.0f} s".format(CALL_TIMEOUT))
+        ok, val = out[0]
+        if not ok:
+            raise val
+        return val
+
+    def post(self, fn, *args):
+        if self.pid == os.getpid() and self.thread.is_alive():
+            self.jobs.put((fn, args, None, None))
+
+    def stop(self, timeout=30.0):
+        if self.pid == os.getpid() and self.thread.is_alive():
+            self.jobs.put((None, (), None, None))
+            self.thread.join(timeout)
+
+    def _loop(self):
+        while True:
+            fn, args, done, out = self.jobs.get()
+            if fn is None:
+                self._shutdown()
+                return
+            try:
+                res = (True, fn(*args))
+            except BaseException as exc:  # noqa: BLE001 - handed to the caller, without the traceback: its frames
+                res = (False, EnvError("renderer: {}: {}".format(type(exc).__name__, exc)))   # hold Filament objects
+            if done is not None:
+                out.append(res)
+                done.set()
+
+    # -- the renderer's thread only
+    def _start(self):
+        # offscreen: Filament's resource providers would connect to an X display if one were named
+        for k in ("DISPLAY", "WAYLAND_DISPLAY"):
+            os.environ.pop(k, None)
+        import mujoco._render_filament as F
+        from mujoco.experimental.studio import window  # noqa: F401  registers Filament's resource providers
+        self.F = F
+        path = os.path.join(RENDER_DIR, IBL_FILE)
+        if not os.path.isfile(path):
+            raise EnvError("render asset missing: " + path)
+        self.ctx = F.Context(F.ContextConfig(graphics_api=F.GraphicsApi.GRAPHICS_API_VULKAN))
+        self.ctx.set_clear_color([0.0, 0.0, 0.0])
+        with open(path, "rb") as fh:
+            raw = fh.read()
+        tc = F.TextureConfig()
+        tc.width, tc.height, tc.format = len(raw), 0, F.PixelFormat.PIXEL_FORMAT_KTX
+        tc.sampler_type, tc.color_space = F.SamplerType.TEXTURE_CUBE, F.ColorSpace.COLORSPACE_LINEAR
+        self.ibl_tex = self.ctx.create_texture(tc)
+        td = F.TextureData()
+        td.set_image(raw)
+        self.ibl_tex.upload(td)
+        self.opt = mujoco.MjvOption()      # what the cameras show: visual geom group 1, no sites
+        self.opt.geomgroup[:] = 0
+        self.opt.geomgroup[1] = 1
+        self.opt.sitegroup[:] = 0
+
+    def new_session(self, model):
+        sid = self.next_sid
+        self.next_sid += 1
+        self.models[sid] = model
+        return sid
+
+    def free_session(self, sid):
+        self.models.pop(sid, None)
+        if self.active == sid:
+            self._evict()
+
+    def _evict(self):
+        while self.live:
+            self.live.pop(0)   # renderables and lights, the image light, the scene, then the model resources
+        gc.collect()
+        self.active = None
+
+    def _activate(self, sid):
+        if self.active == sid:
+            return
+        model = self.models[sid]
+        self._evict()
+        F = self.F
+        res = F.ModelResources(self.ctx, model)
+        scn = self.ctx.create_scene(F.SceneParams())
+        scn.configure_from_model(model)
+        lights = F.ModelLights(scn, res)
+        rends = F.ModelRenderables(scn, res)
+        rends.set_options(self.opt)
+        lp = F.LightParams()
+        lp.type, lp.texture, lp.color, lp.intensity = F.LightType.LIGHT_IMAGE, self.ibl_tex, [1.0, 1.0, 1.0], IBL_INTENSITY
+        ibl = self.ctx.create_light(lp)
+        scn.add_light(ibl)
+        self.live = [rends, lights, ibl, scn, res]
+        self.active = sid
+
+    def _target(self, width, height):
+        F = self.F
+        key = (width, height)
+        if key not in self.targets:
+            buf = np.zeros((height, width, 3), np.uint8)
+            tgt = self.ctx.create_render_target(F.RenderTargetConfig(color_format=F.PixelFormat.PIXEL_FORMAT_RGB8))
+            tgt.resize(width, height)
+            read = F.ReadRequest()
+            read.target = tgt
+            read.set_buffer(buf)
+            self.targets[key] = (tgt, read, buf)
+        return self.targets[key]
+
+    def draw(self, sid, data, pos, forward, up, fovy, width, height):
+        """RGB (rows top-down) of the session's scene in the state `data`, from an exact pinhole camera."""
+        F = self.F
+        self._activate(sid)
+        rends, lights, _ibl, scn, _res = self.live
+        lights.update(data)
+        rends.update(data)
+        tgt, read, buf = self._target(width, height)
+        top = CAM_NEAR * math.tan(math.radians(fovy) / 2.0)
+        cam = F.Camera(pos=np.asarray(pos, np.float32), forward=np.asarray(forward, np.float32),
+                       up=np.asarray(up, np.float32), frustum_center=0.0, frustum_width=top * width / height,
+                       frustum_bottom=-top, frustum_top=top, frustum_near=CAM_NEAR, frustum_far=CAM_FAR)
+        req = F.RenderRequest(camera=cam, draw_mode=F.DrawMode.DRAW_MODE_DEFAULT)
+        req.scene, req.target = scn, tgt
+        req.viewport.left, req.viewport.bottom, req.viewport.width, req.viewport.height = 0, 0, width, height
+        self.ctx.wait_for_frame(self.ctx.render([req], [read]))
+        return buf.copy()
+
+    def _shutdown(self):
+        """Every Filament object before the context (destroying the context first panics)."""
+        self.models.clear()
+        self._evict()
+        self.targets.clear()
+        self.ibl_tex = None
+        gc.collect()
+        self.ctx = None
+        gc.collect()
+
+
+@atexit.register
+def _stop_renderer():
+    if _Filament._inst is not None:
+        _Filament._inst.stop()
