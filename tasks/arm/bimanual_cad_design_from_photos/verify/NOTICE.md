@@ -13,7 +13,7 @@ The photographed unit `H_bcad` of this task (its ground truth in `reference/`, t
   is distributed under the same licence; its design files are the files of this task (`reference/parts/*.brep`, the
   stand-in STEP files, `../oracle/reference/unit.FCStd`).
 - modifications (generator `chain/shared/arm/cad_openarm/` of the development workspace: family `openarm_pair_cad_v1`,
-  generator `openarm-cad/1.0.0`, build `openarm-cad-build/3`):
+  generator `openarm-cad/1.0.0`, build `bimanual-cad-build/3`, the `build` of `reference/gt.json`):
   - the made parts of the torso and both arms were grouped into 29 parts (touching source parts fused into one solid
     each; covers, cable holders and fasteners left out), re-expressed in a base frame at the STEP's design pose;
   - band stretches of links (shoulder, shoulder offset, upper arm, forearm and wrist sections) by different amounts

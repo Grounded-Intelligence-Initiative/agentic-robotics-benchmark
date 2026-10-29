@@ -157,9 +157,11 @@ unit's in `component_fit`.
 
 **Gates** (each 0 or 1, multiplied into every score):
 
-- `cad_valid` (the unit): the document opens; 29 bodies labelled T01, L01 ... L14, R01 ... R14, each one valid watertight
-  solid; the bought parts of the purchase list (the actuators counted together); a grounded torso holding the base plate
-  and the column stand; the document was not written after the session ended.
+- `cad_valid` (the unit): the document opens; 29 bodies labelled T01, L01 ... L14, R01 ... R14, T01 one valid
+  watertight solid (an arm part that is not one valid watertight solid scores its arm 0); every Fixed and Revolute joint
+  readable and joining two of the Assembly's parts; the bought parts of the purchase list (the actuators counted
+  together); a grounded torso holding the base plate and the column stand; the document was not written after the
+  session ended.
 - `public_model_reuse` (the unit): no part is a published model.
 - `cad_json_consistent` (per arm, multiplied into that arm's score): each actuator-driven joint's axis lies on its
   actuator's output axis, each finger's axis on its module's hinge, within 1 deg and 0.5 mm; the linkage's pins are
@@ -169,9 +171,9 @@ unit's in `component_fit`.
 |e| >= zero, linear between.
 
 - `kinematic_fidelity` (0.30): each joint axis (0.3 / 3 mm off the unit's axis, 0.5 / 5 deg), the arm's key lengths
-  between its joint axes (0.3 / 3 mm), the tool point and both fingertips over 64 random poses inside the unit's ranges
-  (median 0.5 / 8 mm, 90th percentile 1 / 15 mm), and how well your joint limits match the unit's ranges (overlap over
-  union, per joint).
+  between its joint axes, the output faces of its 1st, 5th and 7th actuators and its tool point (0.3 / 3 mm), the tool
+  point and both fingertips over 64 random poses inside the unit's ranges (median 0.5 / 8 mm, 90th percentile 1 / 15 mm),
+  and how well your joint limits match the unit's ranges (overlap over union, per joint).
 - `feature_fidelity` (0.25): cut-outs (position 0.3 / 3 mm, area 10 / 50 %), the spacer ring's thickness (0.3 / 3 mm),
   each part's extents (0.3 / 3 mm).
 - `shape_fidelity` (0.25): each part against the unit's after a rigid alignment: 90th-percentile surface distance

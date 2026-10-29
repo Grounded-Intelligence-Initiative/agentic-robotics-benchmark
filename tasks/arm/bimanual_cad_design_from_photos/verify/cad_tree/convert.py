@@ -39,7 +39,8 @@ Per-arm validity: an arm is valid when every reference link and joint of it is f
 bought pieces (motors counted as motors, whatever their type) and its motors sit on their joints; else the reasons are
 recorded and the grader scores the arm 0, the other arm unaffected. A part fixed to another link than the reference's
 (link_membership "majority") and a motor case on the other side of its joint (case_side "reported"; the motors are then
-left out of the per-link bought check) are reported in the arm's `misplaced` / `case_flipped`, not errors. Unit-wide errors (no readable document, a missing
+left out of the per-link bought check) are reported in the arm's `misplaced` / `case_flipped`, not errors; a part on a
+rigid link that matches none of the reference's links is an error (a link the unit does not have). Unit-wide errors (no readable document, a missing
 tag, wrong bought counts (motors counted together), no grounded torso holding the
 shared parts and the column) set ok = False (cad_valid 0). Consistency per arm (each joint's axis on its motor's axis,
 a finger's on the module's hinge, the pins parallel to the crank, both joint frames coincident at the saved pose:
@@ -489,7 +490,10 @@ def _convert(extract_dir, ref_dir, out_dir, R, classes, res):
     for arm in arms:                                   # links by tag set
         errs, m = AE[arm], out_arms[arm]["links"]
         if membership == "majority":
-            _links_by_share(arm, S, parts, uf, groups, g0, m, taken, errs, misplaced[arm], desc)
+            partless = set(S["occ"][b["id"]]["class"] for ln in S["arm_links"][arm] if not S["links"][ln]["parts"]
+                           for b in S["links"][ln]["bought"])
+            modules = set(g for g in groups if any(r["class"] in partless for r in groups[g]["bought"]))
+            _links_by_share(arm, S, parts, uf, groups, g0, m, taken, errs, desc, modules)
             continue
         for t in S["arm_torso_tags"][arm]:
             if t in parts and uf.find(parts[t]["component"]) != g0:
@@ -528,7 +532,7 @@ def _convert(extract_dir, ref_dir, out_dir, R, classes, res):
                 for key in rev_by_pair:
                     if gp in key and len(key) == 2:
                         (oth,) = tuple(key - {gp})
-                        if oth in taken or groups[oth]["tags"]:
+                        if oth in taken or (groups[oth]["tags"] and membership != "majority"):
                             continue
                         if held(collections.Counter(r["class"] for r in groups[oth]["bought"])) == want_c:
                             cands.add(oth)
@@ -544,6 +548,20 @@ def _convert(extract_dir, ref_dir, out_dir, R, classes, res):
             want_c = collections.Counter(S["occ"][b["id"]]["class"] for b in L["bought"])
             errs.append("no link holding %s hangs from %s by a revolute joint (the unit's %s)" % (
                 _fmt_counts(want_c), desc(m[par[0]]) if par and par[0] in m else (par[0] if par else "?"), ln))
+    if membership == "majority":                       # every link matched: where each part ended up
+        linked = set(g for arm in arms for g in out_arms[arm]["links"].values())
+        for arm in arms:
+            at = {g: ln for ln, g in out_arms[arm]["links"].items()}
+            home = {t: S["root"] for t in S["arm_torso_tags"][arm]}
+            home.update({t: ln for ln in S["arm_links"][arm] for t in S["links"][ln]["parts"]})
+            for t in sorted(home):
+                if t not in parts:
+                    continue
+                g = uf.find(parts[t]["component"])
+                if g not in linked:
+                    AE[arm].append("%s is on a link the unit does not have (%s)" % (t, desc(g)))
+                elif at.get(g) != home[t]:
+                    misplaced[arm].append("%s (the unit's %s) is in %s" % (t, home[t], at.get(g) or desc(g)))
     arm_of_group = {g: arm for arm in arms for ln, g in out_arms[arm]["links"].items() if ln != S["root"]}
     used_j = set()
     for arm in arms:                                   # bought classes per link, joints
@@ -821,11 +839,12 @@ def _convert(extract_dir, ref_dir, out_dir, R, classes, res):
     res["ok"] = not E
 
 
-def _links_by_share(arm, S, parts, uf, groups, g0, m, taken, errs, misplaced, desc):
-    """rules.json tolerances.link_membership = "majority": each of the arm's reference links is the rigid link holding the
-    largest share of its parts' volume (every rigid link taken once, the largest shares first; never the torso). A part
-    fixed to another link than the unit's is graded where it is and reported in `misplaced`; a reference link whose
-    parts give it no rigid link of its own is an error."""
+def _links_by_share(arm, S, parts, uf, groups, g0, m, taken, errs, desc, modules=()):
+    """rules.json tolerances.link_membership = "majority": each of the arm's reference links with parts is the rigid link
+    holding the largest share of its parts' volume (every rigid link taken once, the largest shares first; never the
+    torso, nor a rigid link holding a gripper piece of the arm: `modules`, matched afterwards as the part-less links).
+    A reference link whose parts give it no rigid link of its own is an error; where each part ended up is reported
+    by the caller once every link is matched."""
     share = []
     for ln in S["arm_links"][arm]:
         L = S["links"][ln]
@@ -834,7 +853,7 @@ def _links_by_share(arm, S, parts, uf, groups, g0, m, taken, errs, misplaced, de
         vol = collections.defaultdict(float)
         for t in L["parts"]:
             vol[uf.find(parts[t]["component"])] += float(parts[t].get("volume") or 0.0)
-        share += [(-v, ln, g) for g, v in vol.items() if g != g0]
+        share += [(-v, ln, g) for g, v in vol.items() if g != g0 and g not in modules]
     for _v, ln, g in sorted(share):
         if ln not in m and g not in taken:
             m[ln] = g
@@ -844,15 +863,6 @@ def _links_by_share(arm, S, parts, uf, groups, g0, m, taken, errs, misplaced, de
         if L["parts"] and ln not in m and all(t in parts for t in L["parts"]):
             errs.append("no rigid link of its own holds the parts of %s (%s): %s" % (
                 ln, ", ".join(L["parts"]), "; ".join(desc(g) for g in sorted(set(uf.find(parts[t]["component"]) for t in L["parts"])))))
-    at = {g: ln for ln, g in m.items()}
-    home = {t: S["root"] for t in S["arm_torso_tags"][arm]}
-    home.update({t: ln for ln in S["arm_links"][arm] for t in S["links"][ln]["parts"]})
-    for t in sorted(home):
-        if t not in parts:
-            continue
-        g = uf.find(parts[t]["component"])
-        if at.get(g) != home[t]:
-            misplaced.append("%s (the unit's %s) is in %s" % (t, home[t], at.get(g) or desc(g)))
 
 
 def _piece_on(group, S, link):

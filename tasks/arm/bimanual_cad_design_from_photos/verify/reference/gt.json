@@ -1,5 +1,5 @@
 {
- "build": "openarm-cad-build/3",
+ "build": "bimanual-cad-build/3",
  "features": [
   {
    "arm": "left",
