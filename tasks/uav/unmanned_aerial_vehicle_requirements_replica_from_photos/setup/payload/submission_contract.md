@@ -24,10 +24,10 @@ against the required facets, so extra unsupported facets reduce precision. Numer
 0.001 kg; mission 0.1 s; auxiliary power 0.1 W; clearance 0.01 mm; reserve 0.001; mount 0.1 mm; counts exact.
 
 Required derived IDs (evaluate on YOUR chosen BOM):
-- `thrust_hover_FL_n` (N)
-- `thrust_hover_FR_n` (N)
-- `thrust_hover_RL_n` (N)
-- `thrust_hover_RR_n` (N)
+- `thrust_min_FL_n` (N)
+- `thrust_min_FR_n` (N)
+- `thrust_min_RL_n` (N)
+- `thrust_min_RR_n` (N)
 - `thrust_peak_FL_n` (N)
 - `thrust_peak_FR_n` (N)
 - `thrust_peak_RL_n` (N)
@@ -45,15 +45,15 @@ Required derived IDs (evaluate on YOUR chosen BOM):
 - `mission_energy_wh` (Wh)
 Missing derived quantities receive zero credit for that quantity. Compare each against the actual unit with your
 BOM; relative error <=3% receives full credit, >=15% receives zero, linear between. The denominator floor is
-0.2 in each stated unit. C3 is the equal mean over these 19 propulsion sizing quantities. Hover thrust means
-the trim allocation in the single hover state. Peak thrust and peak channel current use all nine states;
-RMS channel current is time weighted over all nine states. Channel currents exclude auxiliary current.
-The public procedure also returns intermediate mass, CoM, inertia and aggregate moment audit values. Those
+0.2 in each stated unit. C3 is the equal mean over these 19 propulsion sizing quantities. Minimum thrust is the smallest individual allocated thrust over all 65 states.
+Peak thrust and peak channel current also use all 65 states;
+RMS channel current is time weighted over all 65 states. Channel currents exclude auxiliary current.
+The public procedure also returns hover thrust and intermediate mass, CoM, inertia and aggregate moment audit values. Those
 are not submission fields or C3 targets in this contract; they support reproducing the sizing calculation.
 
 `bom.json` has `motors` mapping FL/FR/RL/RR to SKUs, plus `propeller`, `esc`, `battery` SKU strings.
 `kinematic_sketch.json` has `dimensions_mm`, mapping each required key to `{nominal, tolerance, sources}`,
-`rotor_cant_deg`, mapping FL/FR/RL/RR to `{nominal,tolerance,sources}`, and `spin`, mapping stations to CW/CCW.
+`rotor_cant_deg` and `rotor_radial_tilt_deg`, each mapping FL/FR/RL/RR to `{nominal,tolerance,sources}`, and `spin`, mapping stations to CW/CCW.
 Linear tolerances are 0.1..3 mm; angle tolerances are 0.1..3 degrees. They document fabrication intent.
 Nominal dimensional errors <=0.5 mm receive full credit and >=3.5 mm zero; angle errors <=1 degree receive
 full credit and >=4 degrees zero, with linear interpolation. Broad tolerances earn no shortcut.
@@ -74,7 +74,7 @@ Dimension definitions:
 - sensor_box_x_mm, sensor_box_y_mm, sensor_box_z_mm: external scanner box extents.
 
 To call `procedure.evaluate(bom, geometry, catalogue, duty)`, reconstruct the numeric inputs from the evidence.
-Geometry consists of `dimensions_mm` (plain numbers; add esc_x_mm=0, esc_y_mm=0, esc_z_mm=-16), `payload_mass_kg`, `rotor_cant_deg` (station-to-angle mapping in degrees),
+Geometry consists of `dimensions_mm` (plain numbers; add esc_x_mm=0, esc_y_mm=0, esc_z_mm=-22), `payload_mass_kg`, `rotor_cant_deg` and `rotor_radial_tilt_deg` (station-to-angle mappings in degrees),
 and `fixed_components`, a list of `{name,mass_kg,position_mm:[x,y,z],box_mm:[x,y,z]}` for dry_core and sensor.
 Reconstruct the final dry_core mass from BL-01 before calling the procedure; the calibration master is not the
 photographed unit. Qualified propeller `plane_offset_mm` is supplied by DS-02.

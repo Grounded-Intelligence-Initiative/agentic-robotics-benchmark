@@ -1,7 +1,7 @@
 {
   "dimensions_mm": {
     "motor_x_mm": {
-      "nominal": 102.03454760379181,
+      "nominal": 101.41600963299555,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -9,7 +9,7 @@
       ]
     },
     "motor_y_mm": {
-      "nominal": 133.89547279740523,
+      "nominal": 134.41963154893696,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -17,7 +17,7 @@
       ]
     },
     "frame_x_mm": {
-      "nominal": 385.8102205508952,
+      "nominal": 383.47142181520957,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -25,7 +25,7 @@
       ]
     },
     "frame_y_mm": {
-      "nominal": 445.6289308518015,
+      "nominal": 447.37342825086694,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -33,7 +33,7 @@
       ]
     },
     "frame_z_mm": {
-      "nominal": 126.5318926935041,
+      "nominal": 131.5988154230227,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -41,7 +41,7 @@
       ]
     },
     "guard_inner_mm": {
-      "nominal": 137.2606491353576,
+      "nominal": 137.7433755916383,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -81,7 +81,7 @@
       ]
     },
     "battery_x_mm": {
-      "nominal": -17.22710114891603,
+      "nominal": -16.72371659354249,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -89,7 +89,7 @@
       ]
     },
     "battery_y_mm": {
-      "nominal": 1.3544529121700055,
+      "nominal": -5.8394516274226,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -97,7 +97,7 @@
       ]
     },
     "battery_z_mm": {
-      "nominal": -58.5283322183821,
+      "nominal": -66.55172054801173,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -105,7 +105,7 @@
       ]
     },
     "payload_x_mm": {
-      "nominal": 43.00711226535073,
+      "nominal": 32.8407004272965,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -113,7 +113,7 @@
       ]
     },
     "payload_y_mm": {
-      "nominal": 21.315809265915682,
+      "nominal": 26.807480222391312,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -121,7 +121,7 @@
       ]
     },
     "payload_z_mm": {
-      "nominal": 102.4823759993674,
+      "nominal": 90.977033187262,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -129,7 +129,7 @@
       ]
     },
     "sensor_x_mm": {
-      "nominal": 82.30262480820069,
+      "nominal": 81.80370263198105,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -137,7 +137,7 @@
       ]
     },
     "sensor_z_mm": {
-      "nominal": 23.385867897187335,
+      "nominal": 18.6427033403996,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -145,7 +145,7 @@
       ]
     },
     "payload_box_x_mm": {
-      "nominal": 74.66,
+      "nominal": 67.9,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -153,7 +153,7 @@
       ]
     },
     "payload_box_y_mm": {
-      "nominal": 58.54,
+      "nominal": 55.48,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -161,7 +161,7 @@
       ]
     },
     "payload_box_z_mm": {
-      "nominal": 44.78,
+      "nominal": 42.87,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -169,7 +169,7 @@
       ]
     },
     "sensor_box_x_mm": {
-      "nominal": 47.61,
+      "nominal": 46.82,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -177,7 +177,7 @@
       ]
     },
     "sensor_box_y_mm": {
-      "nominal": 46.76,
+      "nominal": 46.08,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -185,7 +185,7 @@
       ]
     },
     "sensor_box_z_mm": {
-      "nominal": 48.61,
+      "nominal": 48.23,
       "tolerance": 0.5,
       "sources": [
         "PH-02",
@@ -195,7 +195,7 @@
   },
   "rotor_cant_deg": {
     "FL": {
-      "nominal": 8.4258621455409,
+      "nominal": 9.819214582041283,
       "tolerance": 0.5,
       "sources": [
         "PH-01",
@@ -205,7 +205,7 @@
       ]
     },
     "FR": {
-      "nominal": 9.2604804530196,
+      "nominal": 10.08119048264546,
       "tolerance": 0.5,
       "sources": [
         "PH-01",
@@ -215,7 +215,7 @@
       ]
     },
     "RL": {
-      "nominal": 9.031299822101623,
+      "nominal": 8.737126923447502,
       "tolerance": 0.5,
       "sources": [
         "PH-01",
@@ -225,7 +225,49 @@
       ]
     },
     "RR": {
-      "nominal": 8.684366508404121,
+      "nominal": 7.770854776613213,
+      "tolerance": 0.5,
+      "sources": [
+        "PH-01",
+        "PH-04",
+        "PH-10",
+        "BL-02"
+      ]
+    }
+  },
+  "rotor_radial_tilt_deg": {
+    "FL": {
+      "nominal": -1.0537242737645034,
+      "tolerance": 0.5,
+      "sources": [
+        "PH-01",
+        "PH-04",
+        "PH-10",
+        "BL-02"
+      ]
+    },
+    "FR": {
+      "nominal": 1.6403053902998046,
+      "tolerance": 0.5,
+      "sources": [
+        "PH-01",
+        "PH-04",
+        "PH-10",
+        "BL-02"
+      ]
+    },
+    "RL": {
+      "nominal": -8.588346846625134,
+      "tolerance": 0.5,
+      "sources": [
+        "PH-01",
+        "PH-04",
+        "PH-10",
+        "BL-02"
+      ]
+    },
+    "RR": {
+      "nominal": -5.943653732687134,
       "tolerance": 0.5,
       "sources": [
         "PH-01",

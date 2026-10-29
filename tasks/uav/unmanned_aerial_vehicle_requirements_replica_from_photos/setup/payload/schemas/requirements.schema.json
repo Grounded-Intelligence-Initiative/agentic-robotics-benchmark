@@ -43,7 +43,7 @@
     "derived": {
       "type": "object",
       "properties": {
-        "thrust_hover_FL_n": {
+        "thrust_min_FL_n": {
           "type": "object",
           "properties": {
             "value": {
@@ -70,7 +70,7 @@
           ],
           "additionalProperties": false
         },
-        "thrust_hover_FR_n": {
+        "thrust_min_FR_n": {
           "type": "object",
           "properties": {
             "value": {
@@ -97,7 +97,7 @@
           ],
           "additionalProperties": false
         },
-        "thrust_hover_RL_n": {
+        "thrust_min_RL_n": {
           "type": "object",
           "properties": {
             "value": {
@@ -124,7 +124,7 @@
           ],
           "additionalProperties": false
         },
-        "thrust_hover_RR_n": {
+        "thrust_min_RR_n": {
           "type": "object",
           "properties": {
             "value": {

@@ -13,7 +13,7 @@ Write exactly these deliverables under `/home/user/submission/`:
 * `requirements.yaml`: the traced requirement facets and derived sizing quantities, with values, units and sources.
 * `bom.json`: one motor at each of FL/FR/RL/RR, one common propeller type (two CW and two CCW), one four-channel ESC,
   and one battery. Quantities are implicit; prices are per vehicle.
-* `kinematic_sketch.json`: dimensions with tolerances, their evidence sources, and propeller spin directions.
+* `kinematic_sketch.json`: dimensions and individual motor angles with tolerances, their evidence sources, and propeller spin directions.
 
 Use the JSON schemas in `schemas/`. `/opt/venv/bin/python3 schema_check.py submission` checks structure only.
 `procedure.py` is the exact public acceptance calculation, parameterized by your reconstructed geometry, catalogue

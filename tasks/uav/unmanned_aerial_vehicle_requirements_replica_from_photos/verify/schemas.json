@@ -44,7 +44,7 @@
       "derived": {
         "type": "object",
         "properties": {
-          "thrust_hover_FL_n": {
+          "thrust_min_FL_n": {
             "type": "object",
             "properties": {
               "value": {
@@ -71,7 +71,7 @@
             ],
             "additionalProperties": false
           },
-          "thrust_hover_FR_n": {
+          "thrust_min_FR_n": {
             "type": "object",
             "properties": {
               "value": {
@@ -98,7 +98,7 @@
             ],
             "additionalProperties": false
           },
-          "thrust_hover_RL_n": {
+          "thrust_min_RL_n": {
             "type": "object",
             "properties": {
               "value": {
@@ -125,7 +125,7 @@
             ],
             "additionalProperties": false
           },
-          "thrust_hover_RR_n": {
+          "thrust_min_RR_n": {
             "type": "object",
             "properties": {
               "value": {
@@ -578,28 +578,32 @@
             "enum": [
               "VM-23",
               "VM-25",
-              "VM-28"
+              "VM-28",
+              "VM-32"
             ]
           },
           "FR": {
             "enum": [
               "VM-23",
               "VM-25",
-              "VM-28"
+              "VM-28",
+              "VM-32"
             ]
           },
           "RL": {
             "enum": [
               "VM-23",
               "VM-25",
-              "VM-28"
+              "VM-28",
+              "VM-32"
             ]
           },
           "RR": {
             "enum": [
               "VM-23",
               "VM-25",
-              "VM-28"
+              "VM-28",
+              "VM-32"
             ]
           }
         },
@@ -1500,6 +1504,134 @@
         ],
         "additionalProperties": false
       },
+      "rotor_radial_tilt_deg": {
+        "type": "object",
+        "properties": {
+          "FL": {
+            "type": "object",
+            "properties": {
+              "nominal": {
+                "type": "number"
+              },
+              "tolerance": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 3
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "nominal",
+              "tolerance",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "FR": {
+            "type": "object",
+            "properties": {
+              "nominal": {
+                "type": "number"
+              },
+              "tolerance": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 3
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "nominal",
+              "tolerance",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "RL": {
+            "type": "object",
+            "properties": {
+              "nominal": {
+                "type": "number"
+              },
+              "tolerance": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 3
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "nominal",
+              "tolerance",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "RR": {
+            "type": "object",
+            "properties": {
+              "nominal": {
+                "type": "number"
+              },
+              "tolerance": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 3
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^(B-0?[1-9]|B-1[0-2]|BL-0[1-8]|PH-(0[1-9]|1[0-2])|DS-0[1-8]|LR-[AB]|Q-01)$"
+                }
+              }
+            },
+            "required": [
+              "nominal",
+              "tolerance",
+              "sources"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "FL",
+          "FR",
+          "RL",
+          "RR"
+        ],
+        "additionalProperties": false
+      },
       "spin": {
         "type": "object",
         "properties": {
@@ -1540,6 +1672,7 @@
     "required": [
       "dimensions_mm",
       "rotor_cant_deg",
+      "rotor_radial_tilt_deg",
       "spin"
     ],
     "additionalProperties": false
