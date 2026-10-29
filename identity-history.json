@@ -6,6 +6,12 @@
     "spec_hash": "sha256:81cc7d0d26fbb49b34a7db7ef108961fd788433cf63d2646a1368aa9b986e18b"
   },
   {
+    "content_digest": "sha256:9eafe38d6e68e53ba75674757d6e5d0255a60990f7dfc1b5f54b07fb1372874c",
+    "since": "2026-10-29T17:32:38Z",
+    "slug": "arm_hidden_mechanism_box",
+    "spec_hash": "sha256:472d0e693dc5010a5d406716d9f5158cd1bcacc1493d3bad88e468e72ac6a5d5"
+  },
+  {
     "content_digest": "sha256:cd46084918fc5abc3e64c8a67e7f73722a4297f03f9923f5109c96519c32417e",
     "since": "2026-10-15T15:24:22Z",
     "slug": "fault_adaptive_spacecraft_docking",
