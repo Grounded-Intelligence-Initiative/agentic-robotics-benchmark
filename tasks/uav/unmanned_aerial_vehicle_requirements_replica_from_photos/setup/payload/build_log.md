@@ -45,10 +45,12 @@ In PH-05 the rectangular tabletop's two edge directions align with that photogra
 and lateral axes. This alignment is not a constraint on the other survey setups.
 The scale display in PH-12 is the complete payload mass; its tare is zero.
 These reference objects were removed from the other shots. There is no photogrammetry calibration file.
-These are unrectified compact-camera images; lens distortion is present. The lab batch export resized
-mixed still/video frame formats to one common raster without preserving the original aspect ratios.
-Capture-specific resolution/EXIF metadata was discarded; displayed pixels describe only the final export.
-Manufactured straight edges and documented reference outlines can be used to estimate the imaging geometry.
+These are unrectified compact-camera images with orthogonal native sensor axes and lens distortion.
+The surviving report archive cropped pictures individually, applied horizontal shear during page layout,
+and resized mixed still/video formats unequally to one common raster. Original crop sizes, shear values,
+resolution and EXIF were discarded. Displayed pixel axes and familiar camera aspect ratios describe neither
+an undistorted view nor the original sensor geometry. Manufactured straight edges, square adapter lands
+and documented reference outlines provide the geometric constraints for interpreting these exports.
 
 BL-07. Motor supplier preliminary sheet DS-01 accompanied the first quote. DS-07 supersedes the stated coefficient.
 Incoming reports LR-A and LR-B cover separate shipments; Q-01 binds the order to the latter. No upstream motor

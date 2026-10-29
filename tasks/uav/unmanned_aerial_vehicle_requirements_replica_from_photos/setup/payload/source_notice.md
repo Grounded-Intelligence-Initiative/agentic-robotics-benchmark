@@ -11,5 +11,5 @@ battery cage, ballast pod, scanner and canted polymer motor adapters are benchma
 value. Vesper Motion products, lot measurements, masses, procurement prices, dates and customer clauses are synthetic.
 The reduced-order mass and bench-power model in B-09 is the contractual acceptance model, not flight certification.
 The images are fixed-raster lab exports of Blender Cycles renders of two dated build stages.
-The mixed capture formats and export procedure are recorded in BL-06. Acceptance uses the final stage;
+The archive encoding conditions are recorded in BL-06. Acceptance uses the final stage;
 earlier-stage photographs supply historical evidence and views of the explicitly reused components.
