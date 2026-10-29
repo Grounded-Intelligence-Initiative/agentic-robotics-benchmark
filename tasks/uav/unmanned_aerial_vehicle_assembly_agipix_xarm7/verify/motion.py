@@ -29,6 +29,30 @@ def _quat(R):
     return np.r_[q[3], q[:3]]
 
 
+def body_subtree(model, body):
+    """The selected physical assembly only, including its passive children."""
+    root=model.body(body).id if isinstance(body,str) else int(body)
+    result={root}
+    for child in range(root+1,model.nbody):
+        if int(model.body_parentid[child]) in result:
+            result.add(child)
+    return frozenset(result)
+
+
+def axis_aligned_rotation(current, target):
+    """Align local Z while retaining the measured, unconstrained axial spin."""
+    a,b=np.asarray(current)[:,2],np.asarray(target)[:,2]
+    cross=np.cross(a,b);sine=float(np.linalg.norm(cross));cosine=float(np.clip(a@b,-1,1))
+    angle=math.atan2(sine,cosine)
+    if sine>1e-10:
+        axis=cross/sine
+    elif cosine<0:
+        axis=np.asarray(current)[:,0]
+    else:
+        return np.asarray(current).copy(),0.
+    return Rotation.from_rotvec(axis*angle).as_matrix() @ current,angle
+
+
 class Motion:
     def __init__(self, cell, *, grasp_offset=(0., 0., .158), seed=512,
                  arm_clearance=.004, finger_clearance=.001, held_clearance=.002):
@@ -73,6 +97,7 @@ class Motion:
         self.jacp = np.zeros((3, self.m.nv))
         self.jacr = np.zeros((3, self.m.nv))
         self.held = None
+        self._body_groups = {}
         self.mate_contact = None
         self.allow_pad_body = None
         self.last_contacts = []
@@ -139,9 +164,20 @@ class Motion:
         p = R.T @ (self.d.xpos[b]-self.d.xpos[self.hand])
         rel = R.T @ self.d.xmat[b].reshape(3, 3)
         self.held = (b, int(self.m.jnt_qposadr[j]), p.copy(), rel.copy())
+        members=self.body_group(b)
         for g in range(self.m.ngeom):
-            if self.m.geom_bodyid[g] == b:
+            if self.m.geom_bodyid[g] in members:
                 self.pm.geom_margin[g] = max(self.m.geom_margin[g], self.held_clearance+self._margin_max)
+
+    def body_group(self, body):
+        if body is None:
+            return frozenset()
+        if isinstance(body,(tuple,list,set,frozenset)):
+            return frozenset().union(*(self.body_group(b) for b in body))
+        bid=self.m.body(body).id if isinstance(body,str) else int(body)
+        if bid not in self._body_groups:
+            self._body_groups[bid]=body_subtree(self.m,bid)
+        return self._body_groups[bid]
 
     def body_goal(self, pos, R, body=None):
         """Tool pose for a desired part pose, using its current measured grasp.
@@ -160,7 +196,7 @@ class Motion:
         tool_p = np.asarray(pos, float) + hand_R @ (self.offset-p)
         return tool_p, hand_R
 
-    def set_mate_contact(self, carrier=None, pos=None, R=None, *, distance=.003, angle=.14):
+    def set_mate_contact(self, carrier=None, pos=None, R=None, *, distance=.003, angle=.14, axis_only=False):
         """Permit an intended held-part/carrier contact only near its seat.
 
         Other part pairs and every robot contact remain checked. This affects
@@ -171,10 +207,10 @@ class Motion:
             return
         carriers=carrier if isinstance(carrier,(list,tuple,set,frozenset)) else (carrier,)
         bodies=frozenset(self.m.body(b).id if isinstance(b,str) else int(b) for b in carriers)
-        self.mate_contact = (bodies, np.asarray(pos, float), np.asarray(R, float), float(distance), float(angle))
+        self.mate_contact = (bodies, np.asarray(pos, float), np.asarray(R, float), float(distance), float(angle),bool(axis_only))
 
     def align_body(self, pos, R, *, body=None, tolerance=.0003, angle=.003,
-                   max_passes=5, speed=.01, clearance=False):
+                   max_passes=5, speed=.01, clearance=False, axis_only=False):
         """Iteratively correct transport slip with measured live part poses."""
         if body is not None:
             self.hold_body(body)
@@ -184,14 +220,14 @@ class Motion:
         for _ in range(max_passes):
             p_now, r_now = self.body_pose(b)
             ep = float(np.linalg.norm(np.asarray(pos)-p_now))
-            er = float(np.linalg.norm(Rotation.from_matrix(np.asarray(R) @ r_now.T).as_rotvec()))
+            desired,er=axis_aligned_rotation(r_now,R) if axis_only else (np.asarray(R),float(np.linalg.norm(Rotation.from_matrix(np.asarray(R) @ r_now.T).as_rotvec())))
             if ep <= tolerance and er <= angle:
                 return {"position_error_m": ep, "angle_error_rad": er}
-            p, r = self.body_goal(pos, R, b)
+            p, r = self.body_goal(pos, desired, b)
             self.line(p, r, speed=speed, clearance=clearance, allow_pad_body=b)
         p_now, r_now = self.body_pose(b)
         ep = float(np.linalg.norm(np.asarray(pos)-p_now))
-        er = float(np.linalg.norm(Rotation.from_matrix(np.asarray(R) @ r_now.T).as_rotvec()))
+        er = axis_aligned_rotation(r_now,R)[1] if axis_only else float(np.linalg.norm(Rotation.from_matrix(np.asarray(R) @ r_now.T).as_rotvec()))
         if ep > tolerance or er > angle:
             raise PlanningError(f"part alignment did not converge: {ep*1000:.3f} mm, {math.degrees(er):.3f} deg")
         return {"position_error_m": ep, "angle_error_rad": er}
@@ -214,8 +250,9 @@ class Motion:
         self._fk(q, width)
         mujoco.mj_collision(self.pm, self.pd)
         allowed = self.allow_pad_body if allow_pad_body is None else allow_pad_body
-        allowed = self.m.body(allowed).id if isinstance(allowed, str) else allowed
+        allowed_bodies=self.body_group(allowed)
         held_body = None if self.held is None else self.held[0]
+        held_bodies=self.body_group(held_body)
         bad = []
         for c in self.pd.contact:
             g, h = int(c.geom1), int(c.geom2)
@@ -227,21 +264,27 @@ class Motion:
                 # The bolted robot base itself is allowed to contact its support.
                 if (a == self.base and b not in self.robot_bodies) or (b == self.base and a not in self.robot_bodies):
                     continue
-            relevant = g in self.robot_geoms or h in self.robot_geoms or a == held_body or b == held_body
+            relevant = g in self.robot_geoms or h in self.robot_geoms or a in held_bodies or b in held_bodies
             if not relevant:
                 continue
-            if ((g in self.pad_geoms and b in (allowed, held_body)) or
-                    (h in self.pad_geoms and a in (allowed, held_body))):
+            if ((g in self.pad_geoms and b in allowed_bodies|held_bodies) or
+                    (h in self.pad_geoms and a in allowed_bodies|held_bodies)):
                 continue
+            if a in held_bodies and b in held_bodies and (
+                    a==b or self.pm.body_parentid[a]==b or self.pm.body_parentid[b]==a):
+                continue  # internal joint interface of this selected assembly
             if self.mate_contact is not None and held_body is not None:
-                carriers, target_p, target_R, distance, angle = self.mate_contact
+                carriers, target_p, target_R, distance, angle, axis_only = self.mate_contact
+                # The stator mounts to the leg; its passive rotor is not an
+                # additional mating surface even though it travels with it.
                 if (a == held_body and b in carriers) or (b == held_body and a in carriers):
                     p, R = self.body_pose(held_body, self.pd)
+                    error=axis_aligned_rotation(R,target_R)[1] if axis_only else np.linalg.norm(Rotation.from_matrix(target_R @ R.T).as_rotvec())
                     if (np.linalg.norm(p-target_p) <= distance and
-                            np.linalg.norm(Rotation.from_matrix(target_R @ R.T).as_rotvec()) <= angle):
+                            error <= angle):
                         continue
             limit = (self.margin[g]+self.margin[h]) if clearance else 0.
-            if held_body is not None and (a == held_body or b == held_body):
+            if held_body is not None and (a in held_bodies or b in held_bodies):
                 limit += self.held_clearance if clearance else 0.
             if c.dist < limit - 2e-5:
                 bad.append((self.m.body(a).name, self.m.body(b).name, float(c.dist)))

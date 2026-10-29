@@ -38,21 +38,32 @@ def body_pose(d, bid):
     return transform(d.xpos[bid], d.xmat[bid].reshape(3, 3))
 
 
-def fixture_targets(graph):
+def orientation_error(rot, symmetry):
+    """Smallest mating error for the documented physical axial symmetry."""
+    if symmetry == 0:
+        return math.acos(float(np.clip(rot[2, 2], -1, 1)))
+    return min(Rotation.from_matrix(
+        Rotation.from_euler("z", -2*math.pi*k/symmetry).as_matrix() @ rot
+    ).magnitude() for k in range(symmetry))
+
+
+def fixture_targets(graph, kit):
     root = transform(graph["fixture_pos_m"])
     poses = {"base": root}
     for name, p in graph["instances"].items():
         poses[name] = root @ transform(p["target_pos_m"], Rotation.from_euler(
             "xyz", p["target_euler_xyz_deg"], degrees=True).as_matrix())
         if p["kind"] == "motor":
-            poses[name + "/rotor"] = poses[name] @ transform([0, 0, .018])
+            rotor = kit["parts"]["motor"]["rotor"]
+            poses[name + "/rotor"] = poses[name] @ transform(rotor["hinge_pos_m"])
     return poses
 
 
 def default_layout(graph, kit, seed, jitter=True):
     """Draw the WHOLE layout again on overlap. No per-part fallback collisions."""
     rng = np.random.default_rng(seed)
-    large = {"guard": [-.15, -.40], "compute_cover": [-.24, .42], "battery": [-.07, .46]}
+    large = {"guard": [-.15, -.40], "compute_cover": [-.24, .42], "battery": [-.07, .46],
+             "lidar": [-.48, .42]}
     large.update({f"leg_{i+1}": [.08, -.25-.05*i] for i in range(4)})
     small = sorted([n for n in graph["instances"] if n not in large], key=lambda n:
                    -float(np.prod(np.ptp(kit["parts"][graph["instances"][n]["kind"]]["bounds_m"],axis=0)[:2])))
@@ -71,7 +82,9 @@ def default_layout(graph, kit, seed, jitter=True):
     late_parts.update(n for n, p in graph["instances"].items() if p["kind"].startswith("prop_"))
     shadow = np.asarray(kit["parts"]["guard_deck"]["bounds_m"])[:, :2] + np.asarray(graph["fixture_pos_m"][:2])
     shadow += [[-.05, -.05], [.05, .05]]
-    for attempt in range(100):
+    # The intact sensor cable and source-sized electronics occupy more of the
+    # bench. Retry complete randomized packings; never accept an overlap.
+    for attempt in range(512):
         layout, bounds = {}, []
         for name in list(large) + small:
             inst = graph["instances"][name]
@@ -111,7 +124,7 @@ class Cell:
         if jitter:
             self.graph["fixture_pos_m"][:2] = (np.asarray(self.graph["fixture_pos_m"][:2]) + setup_rng.uniform(-.01, .01, 2)).tolist()
         self.kit = json.loads((self.assets / "given/kit/kit.json").read_text())
-        self.nominal = fixture_targets(self.graph)
+        self.nominal = fixture_targets(self.graph, self.kit)
         self.layout = layout or default_layout(self.graph, self.kit, seed, jitter)
         root = ET.parse(self.assets / "given/xarm7/xarm7.xml").getroot()
         root.find("compiler").set("meshdir", str(self.assets / "given/xarm7/assets"))
@@ -128,7 +141,7 @@ class Cell:
         ET.SubElement(world, "geom", name="table", type="box", size=".8 .75 .025", pos="0 0 -.025",
                       rgba=".6 .46 .3 1", friction=".8 .01 .001")
         ET.SubElement(world, "geom", name="fixture", type="box", size=".025 .025 .09", pos=text([*self.graph["fixture_pos_m"][:2], .09]),
-                      rgba=".28 .3 .34 1")
+                      rgba=".62 .72 .8 1")
         ET.SubElement(world, "camera", name="top", pos="-.04 0 1.65", xyaxes="1 0 0 0 1 0", fovy="55")
         ET.SubElement(world, "camera", name="review", pos="1.05 -1.4 1.1", xyaxes=".8 .6 0 -.3 .4 .866", fovy="50")
         hand = world.find(".//body[@name='xarm_gripper_base_link']")
@@ -141,9 +154,16 @@ class Cell:
         for i in range(11):
             ET.SubElement(world, "geom", type="box", size=".01 .01 .0003", pos=f"{-.34+i*.02} .62 .0003",
                           rgba=".05 .05 .05 1" if i % 2 else ".95 .95 .95 1", contype="0", conaffinity="0")
+        render_components = dict(self.kit["parts"])
         for name, p in self.kit["parts"].items():
-            ET.SubElement(asset, "mesh", name="vis_" + name,
-                          file=str(self.assets / "given/kit/meshes" / p["mesh"]))
+            if "rotor" in p:
+                render_components[name+"_rotor"] = p["rotor"]
+        for name, p in render_components.items():
+            for i, visual in enumerate(p.get("visual_parts", [{"mesh": p["mesh"]}])):
+                # A material region is an open surface, not a mass volume.
+                # Dynamics uses the explicit body inertia and convex colliders.
+                ET.SubElement(asset, "mesh", name=f"vis_{name}_{i}",
+                              file=str(self.assets / "given/kit/meshes" / visual["mesh"]), inertia="shell")
             for i, fn in enumerate(p["collision"]):
                 ET.SubElement(asset, "mesh", name=f"col_{name}_{i}", file=str(self.assets / "given/kit/collision" / fn))
         self._body_xml(world, "base", "base", self.graph["fixture_pos_m"], [1, 0, 0, 0], fixed=True)
@@ -212,7 +232,15 @@ class Cell:
         bb = np.array(p["bounds_m"])
         sz = bb[1] - bb[0]
         inertia = p["mass_kg"] / 12 * np.array([sz[1]**2+sz[2]**2, sz[0]**2+sz[2]**2, sz[0]**2+sz[1]**2])
-        if kind.startswith("prop_") or kind in ("sensor_cap", "sensor_cheek"):
+        if "inertial" in p:
+            properties = p["inertial"]
+            inertia = np.asarray(properties["inertia_kg_m2"], dtype=float)
+            if inertia.shape != (3, 3) or not np.all(np.linalg.eigvalsh(inertia) > 0):
+                raise ValueError(f"{kind} has invalid imported inertia")
+            ET.SubElement(b, "inertial", mass=str(p["mass_kg"]),
+                          pos=text(properties["center_m"]),
+                          fullinertia=text(inertia[[0,1,2,0,0,1],[0,1,2,1,2,2]]))
+        elif kind.startswith("prop_") or kind in ("sensor_cap", "sensor_cheek"):
             # Homogeneous manufactured parts use their actual material volume.
             # A box centre is especially misleading for a C plate or propeller.
             import trimesh
@@ -228,16 +256,28 @@ class Cell:
                           fullinertia=text(inertia[[0,1,2,0,0,1],[0,1,2,1,2,2]]))
         else:
             ET.SubElement(b, "inertial", mass=str(p["mass_kg"]), pos=text(bb.mean(0)), diaginertia=text(np.maximum(inertia, 1e-7)))
-        ET.SubElement(b, "geom", name="visual_" + name, type="mesh", mesh="vis_"+kind, rgba=text(p["rgba"]),
-                      contype="0", conaffinity="0", group="2")
+        for i, visual in enumerate(p.get("visual_parts", [{"mesh": p["mesh"], "rgba": p["rgba"]}])):
+            ET.SubElement(b, "geom", name=f"visual_{name}_{i}", type="mesh", mesh=f"vis_{kind}_{i}",
+                          rgba=text(visual.get("rgba", p["rgba"])),
+                          contype="0", conaffinity="0", group="2")
         for i, _ in enumerate(p["collision"]):
             ET.SubElement(b, "geom", name=f"collision_{name}_{i}", type="mesh", mesh=f"col_{kind}_{i}",
                           rgba=text(p["rgba"]), group="3", friction=".8 .02 .002", solref=".004 1", condim="4")
         if kind == "motor":
-            rotor = ET.SubElement(b, "body", name="part_"+name+"/rotor", pos="0 0 .018")
+            definition = p["rotor"]
+            rotor = ET.SubElement(b, "body", name="part_"+name+"/rotor",
+                                  pos=text(definition["hinge_pos_m"]))
             ET.SubElement(rotor, "joint", name="rotor_"+name, type="hinge", axis="0 0 1", damping=".0002", frictionloss=".001")
-            ET.SubElement(rotor, "geom", type="cylinder", size=".0125 .003", pos="0 0 .003", mass=".012",
-                          rgba=".78 .78 .8 1")
+            inertia = np.asarray(definition["inertial"]["inertia_kg_m2"])
+            ET.SubElement(rotor, "inertial", mass=str(definition["mass_kg"]),
+                          pos=text(definition["inertial"]["center_m"]),
+                          fullinertia=text(inertia[[0,1,2,0,0,1],[0,1,2,1,2,2]]))
+            for i, visual in enumerate(definition["visual_parts"]):
+                ET.SubElement(rotor, "geom", name=f"visual_{name}_rotor_{i}", type="mesh", mesh=f"vis_motor_rotor_{i}",
+                              rgba=text(visual["rgba"]), contype="0", conaffinity="0", group="2")
+            for i, _ in enumerate(definition["collision"]):
+                ET.SubElement(rotor, "geom", name=f"collision_{name}_rotor_{i}", type="mesh", mesh=f"col_motor_rotor_{i}",
+                              rgba=text(definition["rgba"]), group="3", friction=".8 .02 .002", solref=".004 1", condim="4")
         return b
 
     def pose(self, name):
@@ -368,10 +408,7 @@ class Coupling:
             actual = c.pose(physical)
             error = np.linalg.norm(actual[:3, 3] - target[:3, 3])
             rot = target[:3, :3].T @ actual[:3, :3]
-            if m["axial_symmetry"] == 0:
-                angle = math.acos(float(np.clip(rot[2, 2], -1, 1)))
-            else:
-                angle = Rotation.from_matrix(rot).magnitude()
+            angle = orientation_error(rot, m["axial_symmetry"])
             if error > m["capture_m"] or angle > math.radians(8):
                 self.state[key], self.hold[key] = "FREE", 0
                 continue

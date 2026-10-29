@@ -103,10 +103,23 @@ def _make_model(cell, render_dir):
         else:
             light.range = 40.
     look = Look(name="agipix-factory", version="1")
-    look.materials = [
+    # Preserve the imported component's material regions in both human and
+    # agent views. Mesh and contact geometry remain independent.
+    look.materials = []
+    for name, inst in {"base": {"kind": "base"}, **cell.graph["instances"]}.items():
+        part = cell.kit["parts"][inst["kind"]]
+        for i, visual in enumerate(part.get("visual_parts", [])):
+            look.materials.append((f"visual_{name}_{i}", None,
+                                   dict(roughness=visual.get("roughness", .52),
+                                        metallic=visual.get("metallic", 0.))))
+        for i, visual in enumerate(part.get("rotor", {}).get("visual_parts", [])):
+            look.materials.append((f"visual_{name}_rotor_{i}", None,
+                                   dict(roughness=visual.get("roughness", .38),
+                                        metallic=visual.get("metallic", .6))))
+    look.materials += [
         ("visual_prop_*", None, dict(roughness=.38, metallic=0.)),
         ("visual_*", None, dict(roughness=.52, metallic=0.)),
-        ("fixture", None, dict(roughness=.38, metallic=.7)),
+        ("fixture", None, dict(roughness=.45, metallic=.15)),
         ("support_*", None, dict(roughness=.4, metallic=.7)),
         (None, "render_table_oak", dict(roughness=1., metallic=0.)),
         (None, "render_bench_steel", dict(roughness=.4, metallic=.7)),

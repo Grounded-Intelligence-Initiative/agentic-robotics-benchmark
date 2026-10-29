@@ -12,7 +12,7 @@ import numpy as np
 import mujoco
 from scipy.spatial.transform import Rotation
 
-from motion import Motion, PlanningError, DOWN
+from motion import Motion, PlanningError, DOWN, body_subtree
 
 
 @dataclass
@@ -35,10 +35,127 @@ def _tip(width):
     return .059098 + math.sin(a)*.035465 + math.cos(a)*.042039 + .0595
 
 
+def surface_grasps(cell, name):
+    """Antipodal candidates on the imported surface in the settled pick frame.
+
+    A protruding cable or lens must not move a grasp to the bounding-box centre.
+    Endpoint normals and finite jaw width are measured from actual mesh rays;
+    the planner subsequently checks the complete stock gripper and held part.
+    """
+    import trimesh
+    kind = cell.graph["instances"][name]["kind"]
+    part = cell.kit["parts"][kind]
+    mesh = trimesh.load_mesh(cell.assets / "given/kit/meshes" / part["mesh"])
+    top = cell.pose(name)[:3, :3].T @ DOWN
+    candidates = []
+    # Collision decomposition can slightly enlarge a fin or connector. Measure
+    # its actual envelope too, so a command based only on one source ray does
+    # not drive the pad several millimetres into a neighbouring feature.
+    proxy_pieces = [
+        trimesh.load_mesh(cell.assets / "given/kit/collision" / fn)
+        for fn in part["collision"]]
+    # The motor's grasp surface is its passive bell child. Its aggregate
+    # source mesh already includes the child at the nominal hinge offset;
+    # the collision footprint must use that same physical assembly.
+    if part.get("rotor"):
+        rotor=part["rotor"]
+        for fn in rotor["collision"]:
+            piece=trimesh.load_mesh(cell.assets / "given/kit/collision" / fn)
+            piece.apply_translation(rotor["hinge_pos_m"])
+            proxy_pieces.append(piece)
+    proxy = trimesh.util.concatenate(proxy_pieces)
+
+    def footprint(contact, R):
+        # Stock pad_2 is 30 x 19 mm. The candidate contact denotes its distal
+        # tip, so its material extends back towards the wrist along -tool Z.
+        # Keep the complete pad envelope, with finer central rays for a
+        # small curved lens or bell whose tangent patch is only a few mm wide.
+        offsets=np.array([[x,0.,z] for z in (0.,-.002,-.004,-.006,-.008,-.010,-.012,-.014,-.016,-.018)
+                          for x in (-.014,-.010,-.005,-.004,-.002,0.,.002,.004,.005,.010,.014)])
+        centers=contact+offsets@R.T
+        origins=centers-R[:,1]*.15
+        directions=np.tile(R[:,1],(len(origins),1))
+        source_hits,source_rays,source_faces=mesh.ray.intersects_location(origins,directions,multiple_hits=True)
+        proxy_hits,proxy_rays,_=proxy.ray.intersects_location(origins,directions,multiple_hits=True)
+        if not len(proxy_hits):return None
+        sides=[];normals=[]
+        for k in range(len(origins)):
+            use=np.flatnonzero(source_rays==k)
+            if len(use)<2:continue
+            use=use[np.argsort(source_hits[use]@R[:,1])]
+            a,b=use[0],use[-1]
+            sides.append([source_hits[a]@R[:,1],source_hits[b]@R[:,1]])
+            normals.append([-mesh.face_normals[source_faces[a]]@R[:,1],
+                            mesh.face_normals[source_faces[b]]@R[:,1]])
+        if len(sides)<8:return None
+        sides=np.asarray(sides);normals=np.asarray(normals)
+        envelope=np.array([min(proxy_hits@R[:,1]),max(proxy_hits@R[:,1])])
+        width=float(envelope[1]-envelope[0])
+        if not .006<=width<=.078:return None
+        # Require a finite patch near each supporting outside plane, rather
+        # than one opposing normal at a small connector or corner.
+        near=(np.abs(sides-envelope)<.0012)&(normals>math.cos(math.radians(30)))
+        support=near.sum(0)
+        # A cylindrical motor bell meets a flat pad along a narrow axial
+        # strip, so four supported rays can describe a valid finite strip.
+        if min(support)<(4 if part.get("rotor") else 6):return None
+        contact=contact+R[:,1]*(envelope.mean()-contact@R[:,1])
+        return contact,width,int(min(support))
+    for yaw in (0., math.pi/2, math.pi, -math.pi/2):
+        R = top @ Rotation.from_euler("z", yaw).as_matrix()
+        points_in_hand = mesh.vertices @ R
+        low, high = points_in_hand.min(0), points_in_hand.max(0)
+        # Sample the upper half of the physical part, with several depths for
+        # stepped housings. Source geometry determines available material.
+        zs = low[2] + np.array([.2, .35, .5, .65, .70, .73, .8]) * (high[2]-low[2])
+        xs = np.linspace(low[0]+.002, high[0]-.002, 15)
+        grid = np.array([[x, low[1]-.01, z] for z in zs for x in xs])
+        origins = grid @ R.T
+        hits, rays, faces = mesh.ray.intersects_location(
+            origins, np.tile(R[:, 1], (len(origins), 1)), multiple_hits=True)
+        for i in range(len(grid)):
+            use = np.flatnonzero(rays == i)
+            if len(use) < 2:
+                continue
+            ordered = use[np.argsort(hits[use] @ R[:, 1])]
+            # Outermost hits span the whole part on this ray: inner recesses
+            # are not falsely treated as the two outside gripping surfaces.
+            a, b = ordered[0], ordered[-1]
+            width = float((hits[b]-hits[a]) @ R[:, 1])
+            if not .006 <= width <= .075:
+                continue
+            normal_a, normal_b = mesh.face_normals[faces[a]], mesh.face_normals[faces[b]]
+            limit = math.cos(math.radians(25))
+            if normal_a @ R[:, 1] > -limit or normal_b @ R[:, 1] < limit:
+                continue
+            measured=footprint((hits[a]+hits[b])*.5,R)
+            if measured is None:continue
+            contact,width,support=measured
+            p = contact - R[:, 2]*(_tip(width)-.158)
+            # Prefer broad surfaces near the source's main solid instead of
+            # thin cable segments. This is a candidate rank, not a pose write.
+            pad_center=contact-R[:,2]*.0095
+            delta=(pad_center-np.asarray(part.get("inertial",{}).get("center_m",mesh.center_mass)))@R
+            # Keep the COM near the pad's long-axis centre. A wide patch at
+            # the far end of a board can still roll out under its own weight.
+            priority = 2.*abs(delta[0]) + .05*abs(delta[1]) + .5*abs(delta[2]) - .00003*support
+            label = f"surface-{yaw:.2f}-{i}"
+            candidates.append((priority, Grasp(p, R, width, label, squeeze=.004)))
+    seen = set()
+    for _, candidate in sorted(candidates, key=lambda x: x[0]):
+        key = tuple(np.round(candidate.p/.003).astype(int)) + tuple(np.round(candidate.R[:, 1], 2))
+        if key not in seen:
+            seen.add(key)
+            yield candidate
+
+
 def grasps(cell, name):
     """Antipodal box/cylinder grasps, followed by collision-mesh ray candidates."""
     kind = cell.graph["instances"][name]["kind"]
     part = cell.kit["parts"][kind]
+    if part.get("grasp_mode") == "surface":
+        yield from surface_grasps(cell, name)
+        return
     bb = np.asarray(part["bounds_m"])
     center = (bb[0]+bb[1])/2
     if kind in ("prop_cw", "prop_ccw"):
@@ -54,19 +171,53 @@ def grasps(cell, name):
                 yield Grasp(symmetry @ p,symmetry @ R,.00586788925370038,
                             f"pitched-blade-normal-{yaw:.0f}",target_yaw=target_yaw,settle_s=1.)
     if kind == "landing_strut":
-        # The hull's stable rest includes a harmless axial twist. Derive the
-        # radial grasp from that measured rest instead of assuming a box face.
-        Rtop = cell.pose(name)[:3,:3].T @ DOWN
+        import trimesh
+        shaft_mesh=trimesh.load_mesh(cell.assets/"given/kit/meshes"/part["mesh"])
+        def shaft_grasp(R,height,label,target_yaw=0.):
+            # Measure the actual shaft over the pad's longitudinal footprint;
+            # the native aluminium shaft is narrower than the old 8 mm proxy.
+            centerline=np.array([center[0],center[1],height])
+            centers=[centerline+offset*R[:,0] for offset in (-.012,0.,.012)]
+            origins=np.asarray(centers)-R[:,1]*.05
+            hits,rays,faces=shaft_mesh.ray.intersects_location(origins,np.tile(R[:,1],(3,1)),multiple_hits=True)
+            mids=[];spans=[]
+            for k in range(3):
+                use=np.flatnonzero(rays==k)
+                if len(use)<2:return None
+                use=use[np.argsort(hits[use]@R[:,1])];a,b=use[0],use[-1]
+                if shaft_mesh.face_normals[faces[a]]@R[:,1]>-math.cos(math.radians(25)) or shaft_mesh.face_normals[faces[b]]@R[:,1]<math.cos(math.radians(25)):
+                    return None
+                spans.append(float((hits[b]-hits[a])@R[:,1]));mids.append((hits[a]+hits[b])/2)
+            width=max(spans)
+            if not .004<=width<=.020:return None
+            # Centre the real shaft in pad_2's 19 mm height. The old fixed
+            # 8 mm tool offset put this narrower shaft near the distal tip;
+            # its initial 6 mm slip then rolled it out during reorientation.
+            pad_center_offset=_tip(width)-.158-.0095
+            return Grasp(np.mean(mids,axis=0)-R[:,2]*pad_center_offset,R,width,label,
+                         target_yaw,squeeze=.004,settle_s=1.)
+        # Align the long pad dimension with the settled shaft's horizontal
+        # projection; a valid resting pose need not point along world X.
+        body_R=cell.pose(name)[:3,:3]
+        shaft_horizontal=body_R[:,2].copy();shaft_horizontal[2]=0.
+        if np.linalg.norm(shaft_horizontal)<1e-6:
+            shaft_horizontal=np.array([1.,0.,0.])
+        else:
+            shaft_horizontal/=np.linalg.norm(shaft_horizontal)
+        downward=np.array([0.,0.,-1.])
+        world_hand=np.column_stack([shaft_horizontal,np.cross(downward,shaft_horizontal),downward])
+        Rtop = body_R.T @ world_hand
         for target_yaw in (0.,math.pi/2,-math.pi/2,math.pi):
             for height in (.040,.035,.045):
-                yield Grasp(np.array([0.,0.,height])-Rtop[:,2]*.008,Rtop,.008,
-                            f"stable-top-{height:.3f}-yaw{target_yaw:.2f}",target_yaw)
-        # Grasp the 8 mm shaft beneath the upper flange. A horizontal hand can
+                candidate=shaft_grasp(Rtop,height,f"stable-top-{height:.3f}-yaw{target_yaw:.2f}",target_yaw)
+                if candidate is not None:yield candidate
+        # Grasp the measured shaft beneath the upper flange. A horizontal hand can
         # reach under the fixed base and insert the upright leg from below.
         for yaw in (-math.pi/2, 0, math.pi/2, math.pi):
             R = Rotation.from_euler("z", yaw).as_matrix() @ np.array([[0,0,1],[0,-1,0],[1,0,0.]])
             for height in (.040, .045, .035, .030):
-                yield Grasp(np.array([0.,0.,height])-R[:,2]*.008, R, .008, f"shaft-side-{yaw:.2f}-{height:.3f}")
+                candidate=shaft_grasp(R,height,f"shaft-side-{yaw:.2f}-{height:.3f}")
+                if candidate is not None:yield candidate
         return
     if kind in ("esc", "flight_controller", "compute", "battery", "lidar", "camera", "motor"):
         for yaw in (0, math.pi/2, math.pi, -math.pi/2):
@@ -152,12 +303,12 @@ def _target(cell,mate,grasp):
 
 
 def _grip_forces(cell, name):
-    bid = cell.ids[name]
+    members = body_subtree(cell.m,cell.ids[name])
     sides={"left":0.,"right":0.}
     for i,c in enumerate(cell.d.contact):
         for g,h in ((c.geom1,c.geom2),(c.geom2,c.geom1)):
             gn = cell.m.geom(int(g)).name or ""
-            if cell.m.geom_bodyid[h] == bid and "finger_pad" in gn:
+            if cell.m.geom_bodyid[h] in members and "finger_pad" in gn:
                 force=np.zeros(6)
                 mujoco.mj_contactForce(cell.m,cell.d,i,force)
                 sides[gn.split("_")[0]]+=max(0.,float(force[0]))
@@ -317,15 +468,22 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
     if not _gripped(cell,name):
         raise PlanningError(f"lost grip on {name} after lift")
     base_yaw=g.target_yaw
-    free_yaw=cell.graph["instances"][name]["kind"] in ("landing_strut","motor","prop_cw","prop_ccw")
+    symmetry=int(mate.get("axial_symmetry",1))
+    free_yaw=symmetry==0
+    if free_yaw:
+        target_yaws=(base_yaw,base_yaw+math.pi/2,base_yaw-math.pi/2,base_yaw+math.pi)
+    elif symmetry>1:
+        target_yaws=tuple(base_yaw+2*math.pi*k/symmetry for k in range(symmetry))
+    else:
+        target_yaws=(base_yaw,)
     transport_errors=[]
-    for yaw in ((base_yaw,base_yaw+math.pi/2,base_yaw-math.pi/2,base_yaw+math.pi) if free_yaw else (base_yaw,)):
+    for yaw in target_yaws:
         g.target_yaw=yaw
         target = _target(cell,mate,g)
         pre = target[:3,3]-ins*pre_distance
         pp,rr=motion.body_goal(pre,target[:3,:3],body)
         goal_p,goal_R=motion.body_goal(target[:3,3],target[:3,:3],body)
-        motion.set_mate_contact(contact_carriers,target[:3,3],target[:3,:3])
+        motion.set_mate_contact(contact_carriers,target[:3,3],target[:3,:3],axis_only=free_yaw)
         _log("transport",name,"pre",np.round(pre,4),"yaw",round(yaw,3))
         retreat=-goal_R[:,2]*(.06 if kind == "landing_strut" else retreat_distance)
         try:
@@ -340,18 +498,21 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
     if not _gripped(cell,name):
         raise PlanningError(f"lost grip on {name} during transport")
     target=_target(cell,mate,g)
-    motion.set_mate_contact(contact_carriers,target[:3,3],target[:3,:3])
-    if is_prop:
-        # The thin pitched blade can creep in the pads during transport.
-        # Refresh the measured grasp at the hover before the final descent.
+    motion.set_mate_contact(contact_carriers,target[:3,3],target[:3,:3],axis_only=free_yaw)
+    if is_prop or kind == "landing_strut" or cell.kit["parts"][kind].get("grasp_mode") == "surface":
+        # Real contact grasps can creep during transport. Correct the full
+        # measured pose while still clear of the receiving surface, rather
+        # than trying to rotate a misaligned flange after it touches the base.
         motion.align_body(target[:3,3]-ins*pre_distance,target[:3,:3],body=body,
-                          tolerance=.0015,angle=.01,max_passes=10)
+                          tolerance=.0015 if is_prop else .0007,angle=.01,max_passes=10,axis_only=free_yaw)
+        if not _gripped(cell,name):
+            raise PlanningError(f"lost grip on {name} during hover alignment")
     pp,rr=motion.body_goal(target[:3,3],target[:3,:3],body)
     motion.line(pp,rr,allow_pad_body=body,clearance=False,speed=.015)
     if cell.coupling.state[mate["id"]] not in ("LOCKED","LOCKED_OFF"):
         motion.align_body(target[:3,3],target[:3,:3],body=body,
                           tolerance=.0007 if is_prop else .0005,angle=.01,
-                          max_passes=15 if is_prop else 8)
+                          max_passes=15 if is_prop else 8,axis_only=free_yaw)
     q=motion.q
     for step in range(600 if is_prop else 80):
         if time.monotonic()>wall_deadline:

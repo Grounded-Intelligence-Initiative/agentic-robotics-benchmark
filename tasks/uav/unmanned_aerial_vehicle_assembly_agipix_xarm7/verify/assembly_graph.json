@@ -11,7 +11,7 @@
       "target_pos_m": [
         -0.09884,
         -0.1315,
-        -0.064
+        -0.066
       ],
       "target_euler_xyz_deg": [
         0,
@@ -37,7 +37,7 @@
       "target_pos_m": [
         -0.09884,
         0.1315,
-        -0.064
+        -0.066
       ],
       "target_euler_xyz_deg": [
         0,
@@ -63,7 +63,7 @@
       "target_pos_m": [
         0.09884,
         -0.1315,
-        -0.064
+        -0.066
       ],
       "target_euler_xyz_deg": [
         0,
@@ -89,7 +89,7 @@
       "target_pos_m": [
         0.09884,
         0.1315,
-        -0.064
+        -0.066
       ],
       "target_euler_xyz_deg": [
         0,
@@ -115,7 +115,7 @@
       "target_pos_m": [
         0,
         0,
-        0.007
+        0.004
       ],
       "target_euler_xyz_deg": [
         0,
@@ -167,7 +167,7 @@
       "target_pos_m": [
         -0.045,
         0,
-        0.075
+        0.085
       ],
       "target_euler_xyz_deg": [
         0,
@@ -180,7 +180,7 @@
       "target_pos_m": [
         -0.045,
         0,
-        0.079
+        0.089
       ],
       "target_euler_xyz_deg": [
         0,
@@ -237,7 +237,7 @@
       "target_euler_xyz_deg": [
         0,
         0,
-        0
+        180
       ]
     },
     "camera": {
@@ -258,7 +258,7 @@
       "target_pos_m": [
         -0.09884,
         -0.1315,
-        0.029
+        0.021877145513892172
       ],
       "target_euler_xyz_deg": [
         0,
@@ -271,7 +271,7 @@
       "target_pos_m": [
         -0.09884,
         0.1315,
-        0.029
+        0.021877145513892172
       ],
       "target_euler_xyz_deg": [
         0,
@@ -284,7 +284,7 @@
       "target_pos_m": [
         0.09884,
         -0.1315,
-        0.029
+        0.021877145513892172
       ],
       "target_euler_xyz_deg": [
         0,
@@ -297,7 +297,7 @@
       "target_pos_m": [
         0.09884,
         0.1315,
-        0.029
+        0.021877145513892172
       ],
       "target_euler_xyz_deg": [
         0,
@@ -339,7 +339,7 @@
       "capture_m": 0.003,
       "hold_s": 0.5,
       "weight": 1,
-      "axial_symmetry": 0
+      "axial_symmetry": 4
     },
     {
       "id": "mount_motor_1",
@@ -358,7 +358,7 @@
       "capture_m": 0.003,
       "hold_s": 0.5,
       "weight": 1,
-      "axial_symmetry": 0
+      "axial_symmetry": 4
     },
     {
       "id": "mount_leg_2",
@@ -375,7 +375,7 @@
       "capture_m": 0.003,
       "hold_s": 0.5,
       "weight": 1,
-      "axial_symmetry": 0
+      "axial_symmetry": 4
     },
     {
       "id": "mount_motor_2",
@@ -394,7 +394,7 @@
       "capture_m": 0.003,
       "hold_s": 0.5,
       "weight": 1,
-      "axial_symmetry": 0
+      "axial_symmetry": 4
     },
     {
       "id": "mount_leg_3",
@@ -411,7 +411,7 @@
       "capture_m": 0.003,
       "hold_s": 0.5,
       "weight": 1,
-      "axial_symmetry": 0
+      "axial_symmetry": 4
     },
     {
       "id": "mount_motor_3",
@@ -430,7 +430,7 @@
       "capture_m": 0.003,
       "hold_s": 0.5,
       "weight": 1,
-      "axial_symmetry": 0
+      "axial_symmetry": 4
     },
     {
       "id": "mount_leg_4",
@@ -447,7 +447,7 @@
       "capture_m": 0.003,
       "hold_s": 0.5,
       "weight": 1,
-      "axial_symmetry": 0
+      "axial_symmetry": 4
     },
     {
       "id": "mount_motor_4",
@@ -466,7 +466,7 @@
       "capture_m": 0.003,
       "hold_s": 0.5,
       "weight": 1,
-      "axial_symmetry": 0
+      "axial_symmetry": 4
     },
     {
       "id": "mount_prop_1",
