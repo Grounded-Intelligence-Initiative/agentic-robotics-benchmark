@@ -1,0 +1,8 @@
+{
+  "metric": "safety_drive_score",
+  "direction": "higher",
+  "value": 0.8266,
+  "full_at": 0.95,
+  "source": "Mean safety_drive_score of 2 reference-oracle runs through the engine (`ale validate` / `ale run --agent oracle`, engine 90a7c1c, RTX 4090, driver 570.211): 0.8330, 0.8202. full_at is the worst run's ratio to that mean, rounded down to 0.05.",
+  "note": "safety_drive_score is the mean episode score over 24 hidden episodes drawn from eight graded variants (GRADED_MIX in verify/drive_variants.py) on Town04, Town05 and Town10HD, scored by verify/episode_score.py."
+}
