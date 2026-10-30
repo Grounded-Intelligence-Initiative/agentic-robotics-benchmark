@@ -20,6 +20,12 @@ RUN uv venv /opt/venv --python 3.12 \
 RUN apt-get update && apt-get install -y --no-install-recommends libosmesa6 libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
+# ---- task assets: fetched at the dataset commit pinned in assets.sha256, checked file by file (docs/task-assets.md):
+# the 120 input videos and 80 data arrays of data/objects/ (the agent-visible recordings; the JSON files stay in setup/payload)
+COPY fetch_assets.py assets.sha256 /opt/task-assets/
+RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload \
+    && chmod -R a+rX /opt/task-assets
+
 RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
 
 ENV MPLBACKEND=Agg OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa LP_NUM_THREADS=4

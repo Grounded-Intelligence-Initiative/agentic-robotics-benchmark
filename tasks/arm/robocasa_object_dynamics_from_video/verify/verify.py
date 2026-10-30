@@ -105,8 +105,9 @@ def main():
             extra["q_%s_%s" % (k, f)] = round(v, 4)
         if info.get("unscored"):
             extra["unscored_" + k] = info["unscored"]
-        if info.get("invalid"):
-            extra["invalid_" + k] = str(info["invalid"])[:120]
+        if info.get("invalid"):             # metrics are numbers only: the flag here, the reason on stderr
+            extra["invalid_" + k] = 1.0
+            print("[grader] object %s scores 0: %s" % (k, str(info["invalid"])[:200]), file=sys.stderr)
     verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5), higher_is_better=True,
                             metric_name="object_dynamics_score", extra=extra, full_at=meta.get("full_at", 1.0))
     write_verdict(verdict)

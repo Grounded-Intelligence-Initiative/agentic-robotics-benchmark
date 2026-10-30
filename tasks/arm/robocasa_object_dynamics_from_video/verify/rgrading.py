@@ -131,7 +131,10 @@ def score_object(ref_o, entry, deadline=None):
     mu = float(np.clip(entry["mu"], *MU_RANGE))
     sub = dict(mass=gt["mass"], com=c, I=Ib, mu=mu)
     gw = T.World(geom, gt)
-    sw = T.World(geom, sub)
+    try:                # MuJoCo's own inertia checks are the last word (exact triangle inequality, mjMINVAL)
+        sw = T.World(geom, sub)
+    except Exception as exc:
+        return 0.0, {"invalid": "the submitted inertial does not compile in MuJoCo (%s)" % str(exc).splitlines()[0][:120]}
     fam_q = {f: [] for f in FAMS}
     unscored = 0
     for t in ref_o["tests"]:
