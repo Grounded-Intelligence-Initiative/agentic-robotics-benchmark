@@ -18,6 +18,12 @@
     "spec_hash": "sha256:95b824570ebf68cda4aa08382f7d95b3e4ee0110eefc03191a9cccd1eda8dc7e"
   },
   {
+    "content_digest": "sha256:e7641ba44f5a53e77c9e1dedcb78d944dc8ebc5c7da6828d21636717faaf6e38",
+    "since": "2026-10-30T11:55:32Z",
+    "slug": "robocasa_object_dynamics_from_video",
+    "spec_hash": "sha256:731d35a62337ae85950a7f5d4af15848626bd52cb6692d1a878b6f502f51dbbe"
+  },
+  {
     "content_digest": "sha256:3bd3dea0795c7e65940ae07822500e6e74cbaadcf2b772142d05863b1e3a55c8",
     "since": "2026-10-27T17:31:33Z",
     "slug": "robotic_arm_cad_design_from_photos",
