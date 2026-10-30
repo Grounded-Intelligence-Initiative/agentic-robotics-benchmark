@@ -1,0 +1,53 @@
+{
+ "c1": {
+  "appendix_d": {
+   "foot_radius": 0.026499,
+   "hip_spacer": 0.011752,
+   "leg_offset": 0.076829,
+   "pitch_axis_drop": 0.010974,
+   "pitch_axis_spacing": 0.44955,
+   "roll_axis_spacing": 0.213705,
+   "shank_length": 0.178381,
+   "thigh_length": 0.193017
+  },
+  "housing_class": {
+   "hip_pitch": "R38",
+   "hip_roll": "R52",
+   "knee": "R52"
+  },
+  "pack_bay": "nose_box",
+  "spacer_legs": [
+   "fl",
+   "rr"
+  ],
+  "stops": {
+   "hip_pitch": [
+    -0.6972590361717347,
+    1.9750145815567832
+   ],
+   "hip_roll": [
+    -0.718377520120866,
+    1.0944959739256441
+   ],
+   "knee": [
+    0.38746309394274114,
+    2.6520277984053835
+   ]
+  },
+  "stops_deg": {
+   "hip_pitch": [
+    -39.95,
+    113.16
+   ],
+   "hip_roll": [
+    -41.16,
+    62.71
+   ],
+   "knee": [
+    22.2,
+    151.95
+   ]
+  }
+ },
+ "format": "quad-key-quantities/1"
+}
