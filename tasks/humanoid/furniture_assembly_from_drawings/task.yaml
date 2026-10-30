@@ -1,0 +1,36 @@
+# furniture_assembly_from_drawings (Physical Execution, humanoid; built 2026-10-30 by Yuanfang Peng).
+#
+# A furniture-assembly service on site: two Unitree G1 humanoids (29 DoF, Dex3-1 hands) must build the B930 flat-pack
+# bookcase (two side panels, top, bottom, fixed shelf and a hardboard back, joined by dowels) exactly as its drawings
+# show and stand it where the drawings' floor plan puts it. The parts lie as unpacked, in different places and
+# orientations every episode; the manufacturer's drawing set (parts list, part drawings, wordless assembly steps, floor
+# plan) is the only description of the furniture, and two-person steps need both robots. The agent delivers
+# assemble.py (solve(cell): a camera-only program; two ceiling RGB-D cameras and a head RGB-D camera per robot, noisy
+# localisation, joint encoders and tactile load; no part poses, no part identities, no joint states on the wire), run
+# as an unprivileged account on hidden-seed episodes of the grader's MuJoCo cell over a JSON-lines RPC. Score = the
+# mean over the episodes of the bookcase's credited weight / 9 (the six dowel joints, the back panel, the placement),
+# an episode with a safety violation scoring 0. During the agent phase a practice lab serves practice episodes of the
+# same cell (never privileged, budget-limited) on a Unix socket. The oracle submits the privileged reference assembler
+# with a token. Grader knobs live in verify/grader_config.json.
+
+spec_type: core/v1
+name: furniture_assembly_from_drawings
+image: {kind: container}
+resources: {cpus: 8, memory_mb: 16384}
+network: {mode: block}
+
+# setup: the givens, the grader's root-owned copy and the practice lab (its server builds one cell as a self-test before
+# it listens; well under a minute). agent: 4 h, practice included. verify: the import check, then 3 hidden episodes,
+# each a cell build plus the program within its 3000 s wall-clock cap; the oracle's episodes run the reference
+# assembler inside one privileged call.
+timeouts: {setup: 900, agent: 14400, verify: 14400}
+
+# Where the agent leaves its work (assemble.py and its helper modules).
+artifacts: [/home/user/submission]
+
+metadata:
+  # One of the benchmark's platform keys (tasks/platforms.json); the folder lives at tasks/humanoid/<name>/. The metric
+  # (assembly_score, higher) lives in verify/anchor.json.
+  platform: humanoid
+  tags: [assembly, furniture, flat-pack, assembly-drawings, humanoid, unitree-g1, multi-robot, bimanual,
+         mobile-manipulation, mujoco, code-as-policy, camera-only, rgbd, practice-lab, hidden-seed]

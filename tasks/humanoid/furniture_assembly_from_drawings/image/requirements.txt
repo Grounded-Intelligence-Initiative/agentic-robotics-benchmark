@@ -1,0 +1,12 @@
+# furniture_assembly_from_drawings: the ONE list of Python dependencies of the task image (/opt/venv, Python 3.12).
+# Pinned to the versions the furniture cell was developed and tested against (2026-10-30), which are also the arm
+# chain's pins where they overlap (shared base: mujoco, numpy, scipy, pillow, matplotlib; photo layer: OpenCV).
+#
+# physics and rendering (the grader's cell and the practice lab; the agent may use them too)
+mujoco==3.14.0
+numpy==2.5.3
+# the agent's own tools: geometry, image processing (calibration, detection), plotting
+scipy==1.18.1
+pillow==12.3.0
+opencv-python-headless==5.0.0.93
+matplotlib==3.11.2

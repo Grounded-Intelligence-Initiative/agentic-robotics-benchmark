@@ -1,0 +1,306 @@
+"""One episode of the furniture cell: model, controllers, physical rules, cameras, budgets and the episode's score.
+
+The public surface (what a program can learn) is `describe`, `get_state`, `command`, `step`, `get_camera`, `finish`;
+everything else here is the grader's (the true part poses, the joints' states, the score).
+"""
+
+from __future__ import annotations
+
+import math
+import time
+
+import mujoco
+import numpy as np
+
+from . import furniture as F
+from . import layout as LAYOUT
+from . import room as RM
+from .control import TICK, V_MAX, RobotController
+from .physics import Bodies, Coupling, Grips, Safety
+from .render import CameraRig, camera_pose_world, encode_frame, intrinsics
+from .robot import (ARM_HOME, ARM_JOINTS, D435_PITCH, D435_POS, GRASP_SITE_POS, HAND_JOINTS, HEAD_CAM, PELVIS_HEIGHT,
+                    SIDES, STAND_RANGE, WAIST_JOINTS, robot_index)
+from .scene import ROBOTS, build
+
+MM = 1e-3
+SUBSTEPS = 5                               # 5 x 2 ms physics per 10 ms control tick
+LOC_NOISE = (0.003, math.radians(0.2))     # localisation noise (m, rad), per reading
+FT_NOISE = 0.4                             # N, wrist force noise per reading
+PUBLIC_CAMERAS = ("ceiling_west", "ceiling_east", "a/head", "b/head")
+
+
+def _cam_mjname(name: str) -> str:
+    return name.replace("/head", "/head_cam") if name.endswith("/head") else name
+
+
+class Cell:
+    def __init__(self, seed: int, *, nominal: bool = False, render: bool = True, config: dict | None = None):
+        cfg = config or {}
+        self.seed = int(seed)
+        self.cfg = cfg
+        self.layout = LAYOUT.draw(self.seed, nominal=nominal)
+        self.spec = build(self.layout)
+        self.m = self.spec.compile()
+        self.d = mujoco.MjData(self.m)
+        self.robots = {n: robot_index(self.m, n) for n in ROBOTS}
+        self.ctrl = {n: RobotController(self.m, r) for n, r in self.robots.items()}
+        self.bodies = Bodies(self.m, self.robots)
+        self.grips = Grips(self.m, self.d, self.bodies)
+        self.coupling = Coupling(self.m, self.d, self.bodies)
+        self.safety = Safety(self.m, self.d, self.bodies)
+        self.rng = np.random.default_rng((self.seed * 2654435761 + 97) & ((1 << 64) - 1))
+        sizes = {n: RM.CEILING_CAMERAS[n]["size"] for n in RM.CEILING_CAMERAS}
+        sizes.update({f"{n}/head_cam": HEAD_CAM["size"] for n in ROBOTS})
+        self.cams = CameraRig(self.m, sizes, np.random.default_rng(self.rng.integers(1 << 62))) if render else None
+        self.sim_cap = float(cfg.get("sim_cap_s", 1500.0))
+        self.frame_budget = int(cfg.get("camera_budget_frames", 900))
+        self.max_ticks = int(cfg.get("max_ticks_per_step", 500))
+        self.frames = {}
+        self.frames_total = 0
+        self.render_wall = 0.0
+        self.ticks = 0
+        self.done = False
+        self.done_reason = None
+        self.calls = {}
+        self.illegal = 0
+        self.notes = []
+        self._reset()
+
+    # ------------------------------------------------------------------------------------------------ setup
+    def _reset(self):
+        m, d = self.m, self.d
+        mujoco.mj_resetData(m, d)
+        for n, r in self.robots.items():
+            x, y, yaw = self.layout["robots"][n]
+            d.qpos[r.base_q[:3]] = (x, y, yaw)
+            d.qpos[r.base_q[3]] = 0.0
+            for s in SIDES:
+                d.qpos[r.arm_q[s]] = ARM_HOME[s]
+        for key, (pos, quat) in self.layout["parts"].items():
+            jid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, f"part_{key}_free")
+            a = m.jnt_qposadr[jid]
+            d.qpos[a:a + 3] = pos
+            d.qpos[a + 3:a + 7] = quat
+        mujoco.mj_forward(m, d)
+        for n, c in self.ctrl.items():
+            c.reset_targets(d)
+        # settle: let the parts come to rest on their supports (not part of the episode's time)
+        for _ in range(int(float(self.cfg.get("settle_s", 0.5)) / TICK)):
+            self._tick(record=False)
+        self.ticks = 0
+        self.t0 = float(d.time)
+        self.safety.violations.clear()
+        self.safety.count.clear()
+        for k in self.safety.peaks:
+            self.safety.peaks[k] = 0.0
+        self.safety.peak_who.clear()
+
+    @property
+    def sim_time(self) -> float:
+        return self.ticks * TICK
+
+    def _tick(self, record: bool = True):
+        m, d = self.m, self.d
+        for c in self.ctrl.values():
+            c.tick(d)
+        for _ in range(SUBSTEPS):
+            mujoco.mj_step(m, d)
+        t = self.sim_time
+        self.grips.tick(t)
+        held = {st["part"] for st in self.grips.state.values() if st["part"]}
+        self.coupling.tick(t, held)
+        if record:
+            self.safety.tick(t)
+            self.ticks += 1
+
+    # ------------------------------------------------------------------------------------------------ public API
+    def describe(self) -> dict:
+        r0 = self.robots["a"]
+        joints = {"waist": [f"{w}_joint" for w in WAIST_JOINTS],
+                  "left_arm": [f"left_{w}_joint" for w in ARM_JOINTS],
+                  "right_arm": [f"right_{w}_joint" for w in ARM_JOINTS],
+                  "left_hand": [f"left_hand_{w}_joint" for w in HAND_JOINTS],
+                  "right_hand": [f"right_hand_{w}_joint" for w in HAND_JOINTS]}
+        ranges = {}
+        for group, names in joints.items():
+            for jn in names:
+                j = mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_JOINT, "a/" + jn)
+                ranges[jn] = [float(self.m.jnt_range[j, 0]), float(self.m.jnt_range[j, 1])]
+        cams = {}
+        for n, c in RM.CEILING_CAMERAS.items():
+            cid = mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_CAMERA, n)
+            p, R = camera_pose_world(self.m, self.d, cid)
+            cams[n] = {"intrinsics": intrinsics(c["size"][0], c["size"][1], c["fovy"]),
+                       "pose_in_room": {"position": [float(v) for v in p], "rotation": R.tolist()},
+                       "depth_min_m": 0.40}
+        for n in ROBOTS:
+            cams[f"{n}/head"] = {"intrinsics": intrinsics(HEAD_CAM["size"][0], HEAD_CAM["size"][1], HEAD_CAM["fovy"]),
+                                 "mount": {"body": "torso_link", "position": list(D435_POS),
+                                           "pitch_down_rad": D435_PITCH, "optical_axis": "body +x pitched down"},
+                                 "depth_min_m": 0.28,
+                                 "note": "every head frame carries the camera's pose in the room at capture time"}
+        _ = r0
+        return {
+            "api": "furniture-cell/1.0",
+            "robots": {n: {"model": "unitree_g1_29dof_dex3 (cell variant, ~/given/robot/g1_cell.xml)",
+                           "start_hint": "near the south wall"} for n in ROBOTS},
+            "joints": joints, "joint_ranges": ranges,
+            "control": {"tick_s": TICK, "max_ticks_per_step": self.max_ticks,
+                        "base_velocity_max": list(V_MAX), "stand_height_range": list(STAND_RANGE),
+                        "stand_height_nominal": PELVIS_HEIGHT,
+                        "arm_joint_rate_rad_s": 1.5, "waist_rate_rad_s": 0.8,
+                        "grasp_site": {"body": "<side>_wrist_yaw_link", "position": {s: list(GRASP_SITE_POS[s]) for s in SIDES},
+                                       "axes": "x = approach (along the fingers), y = pinch axis, z = x cross y"}},
+            "grip": {"max_force_N": 30.0, "max_torque_Nm": 3.0,
+                     "rule": "closing a hand whose grasp site straddles a board's edge (thickness along the pinch "
+                             "axis within 35 deg, the edge at most 45 mm inside the hand, the grasp site within 15 mm "
+                             "of the board's slab) holds that board until the hand opens or the hold exceeds a limit"},
+            "cameras": cams,
+            "camera_budget_frames": self.frame_budget,
+            "room": {"size": [RM.ROOM_X, RM.ROOM_Y, RM.WALL_H], "door_x": list(RM.DOOR_X),
+                     "window_y": list(RM.WINDOW_Y),
+                     "sideboard": {"center": list(RM.SIDEBOARD["center"]), "size": list(RM.SIDEBOARD["size"])},
+                     "kitting_table": {"center": list(RM.TABLE["center"]), "size": list(RM.TABLE["size"]),
+                                       "height": RM.TABLE["height"], "battens": {"height": RM.TABLE["batten_h"],
+                                                                                 "width": RM.TABLE["batten_w"],
+                                                                                 "offsets_y": [-RM.TABLE["batten_dy"],
+                                                                                               RM.TABLE["batten_dy"]]}}},
+            "items": "the bookcase's parts as unpacked: the tall boards lean against the west wall, the other boards "
+                     "lie flat on the kitting table's battens; nothing else is in the room",
+            "budgets": {"sim_cap_s": self.sim_cap, "wall_cap_s": float(self.cfg.get("wall_cap_s", 3000.0)),
+                        "silence_s": float(self.cfg.get("silence_s", 120.0))},
+            "safety": {"robot_contact_N": 150.0, "robot_robot_N": 80.0, "part_speed_m_s": 3.0,
+                       "part_force_N": 400.0},
+        }
+
+    def _localised(self, r):
+        x, y, yaw = (float(v) for v in self.d.qpos[r.base_q[:3]])
+        return (x + float(self.rng.normal(0, LOC_NOISE[0])), y + float(self.rng.normal(0, LOC_NOISE[0])),
+                yaw + float(self.rng.normal(0, LOC_NOISE[1])))
+
+    def _site_pose(self, sid):
+        q = np.zeros(4)
+        mujoco.mju_mat2Quat(q, self.d.site_xmat[sid])
+        return [float(v) for v in self.d.site_xpos[sid]] + [float(v) for v in q]
+
+    def get_state(self) -> dict:
+        d = self.d
+        out = {"sim_time": round(self.sim_time, 4), "done": self.done, "robots": {}}
+        for n, r in self.robots.items():
+            c = self.ctrl[n]
+            q = {}
+            for s in SIDES:
+                for jn, qa in zip(ARM_JOINTS, r.arm_q[s]):
+                    q[f"{s}_{jn}_joint"] = float(d.qpos[qa])
+                for jn, qa in zip(HAND_JOINTS, r.hand_q[s]):
+                    q[f"{s}_hand_{jn}_joint"] = float(d.qpos[qa])
+            for jn, qa in zip(WAIST_JOINTS, r.waist_q):
+                q[f"{jn}_joint"] = float(d.qpos[qa])
+            hands = {}
+            for s in SIDES:
+                hands[s] = {"closed": c.hand_cmd[s] == "close", "tactile_N": round(self.grips.tactile(n, s), 2),
+                            "grasp_pose_in_robot": self._grasp_in_base(r, s),
+                            "ik_residual": [round(c.arm_ik_err[s][0], 5), round(c.arm_ik_err[s][1], 5)]
+                            if c.arm_mode[s] == "pose" else None}
+            out["robots"][n] = {
+                "base_pose": [round(v, 5) for v in self._localised(r)],
+                "stand_height": round(PELVIS_HEIGHT + float(d.qpos[r.base_q[3]]), 4),
+                "base_moving": bool(np.linalg.norm(c.vel) > 1e-4),
+                "q": {k: round(v, 5) for k, v in q.items()},
+                "hands": hands,
+            }
+        return out
+
+    def _grasp_in_base(self, r, side):
+        """The grasp site's pose in the robot's base frame (exact kinematics): x, y, z, qw, qx, qy, qz."""
+        d = self.d
+        x, y, yaw = (float(v) for v in d.qpos[r.base_q[:3]])
+        c, s = math.cos(yaw), math.sin(yaw)
+        Rb = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+        sid = r.grasp_site[side]
+        p = Rb.T @ (d.site_xpos[sid] - np.array([x, y, 0.0]))
+        Rs = Rb.T @ d.site_xmat[sid].reshape(3, 3)
+        q = np.zeros(4)
+        mujoco.mju_mat2Quat(q, Rs.reshape(-1))
+        return [round(float(v), 5) for v in p] + [round(float(v), 6) for v in q]
+
+    def command(self, robot: str, cmd: dict) -> dict:
+        if robot not in self.robots:
+            return {"error": "bad_params"}
+        notes = self.ctrl[robot].command(cmd)
+        for s in SIDES:
+            h = cmd.get(f"{s}_hand")
+            if h in ("open", "close"):
+                self.grips.command(robot, s, h == "close", self.sim_time)
+        return {"ok": True, "notes": notes}
+
+    def step(self, n_ticks: int) -> dict:
+        events = []
+        n_viol = len(self.safety.violations)
+        for _ in range(int(n_ticks)):
+            if self.done:
+                break
+            self._tick()
+            if self.sim_time >= self.sim_cap - 1e-9:
+                self._end("sim_cap")
+                events.append("episode_over")
+                break
+        for v in self.safety.violations[n_viol:]:
+            events.append("safety:" + v["what"])
+        return {"sim_time": round(self.sim_time, 4), "done": self.done, "events": events}
+
+    def get_camera(self, name: str, depth: bool = True) -> dict:
+        if name not in PUBLIC_CAMERAS:
+            return {"error": "bad_params"}
+        if self.frames_total >= self.frame_budget:
+            return {"error": "camera_budget"}
+        self.frames_total += 1
+        self.frames[name] = self.frames.get(name, 0) + 1
+        t = time.time()
+        mjname = _cam_mjname(name)
+        rgb, dep = self.cams.render(self.d, mjname, depth=depth, kind="head" if "head" in name else "ceiling")
+        self.render_wall += time.time() - t
+        if "head" in name:
+            w, h = HEAD_CAM["size"]
+            intr = intrinsics(w, h, HEAD_CAM["fovy"])
+        else:
+            c = RM.CEILING_CAMERAS[name]
+            intr = intrinsics(c["size"][0], c["size"][1], c["fovy"])
+        out = encode_frame(name, self.frames[name] - 1, rgb, dep, intr)
+        if "head" in name:
+            r = self.robots[name.split("/")[0]]
+            cid = mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_CAMERA, mjname)
+            p, R = camera_pose_world(self.m, self.d, cid)
+            # composed with the localised base pose (the same noise model as get_state)
+            x, y, yaw = (float(v) for v in self.d.qpos[r.base_q[:3]])
+            lx, ly, lyaw = self._localised(r)
+            dyaw = lyaw - yaw
+            cz, sz = math.cos(dyaw), math.sin(dyaw)
+            Rz = np.array([[cz, -sz, 0.0], [sz, cz, 0.0], [0.0, 0.0, 1.0]])
+            p2 = Rz @ (p - np.array([x, y, 0.0])) + np.array([lx, ly, 0.0])
+            out["pose_in_room"] = {"position": [float(v) for v in p2], "rotation": (Rz @ R).tolist()}
+        else:
+            cid = mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_CAMERA, name)
+            p, R = camera_pose_world(self.m, self.d, cid)
+            out["pose_in_room"] = {"position": [float(v) for v in p], "rotation": R.tolist()}
+        out["sim_time"] = round(self.sim_time, 4)
+        return out
+
+    def finish(self) -> dict:
+        if not self.done:
+            self._end("finish")
+        return {"ok": True}
+
+    def _end(self, reason: str):
+        self.done = True
+        self.done_reason = reason
+
+    # ------------------------------------------------------------------------------------------------ grader side
+    def part_pose(self, key: str):
+        b = self.bodies.part[key]
+        return self.d.xpos[b].copy(), self.d.xmat[b].reshape(3, 3).copy()
+
+    def score(self) -> dict:
+        """The episode's assembly score and its record (grader only)."""
+        from .scoring import score_cell
+        return score_cell(self)
