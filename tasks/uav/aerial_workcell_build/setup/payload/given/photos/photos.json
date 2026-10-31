@@ -1,0 +1,28 @@
+{
+ "photos": {
+  "P01_overview_front.jpg": "The cell from the front (the robots' side).",
+  "P02_overview_left.jpg": "The cell from the front left.",
+  "P03_overview_right.jpg": "The cell from the front right.",
+  "P04_from_above.jpg": "From high above the front edge.",
+  "P05_back.jpg": "From behind the bin.",
+  "P06_bin_front.jpg": "The bin and the button post, lid closed.",
+  "P07_bin_side.jpg": "The bin from its right side, lid closed.",
+  "P08_handle.jpg": "The lid's handle.",
+  "P09_button.jpg": "The button on its post.",
+  "P10_table_a.jpg": "Table A and its objects.",
+  "P11_table_b.jpg": "Table B and its objects.",
+  "P12_robots.jpg": "The two robots on their stands.",
+  "P13_robot_large.jpg": "The larger robot.",
+  "P14_robot_small.jpg": "The smaller robot.",
+  "P15_small_arm.jpg": "The smaller robot's arm, from below its frame.",
+  "P16_mat.jpg": "The calibration mat on the floor.",
+  "P19_camera_large.jpg": "What the larger robot's camera sees on its stand.",
+  "P20_camera_small.jpg": "What the smaller robot's camera sees on its stand.",
+  "P17_bin_open_front.jpg": "The bin with its lid open (after the button).",
+  "P18_bin_open_side.jpg": "The open lid from the bin's right side."
+ },
+ "resolution": [
+  1600,
+  1200
+ ]
+}

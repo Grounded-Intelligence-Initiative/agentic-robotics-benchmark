@@ -1,0 +1,11 @@
+{
+  "probe_timeout_s": 900,
+  "scoring_cap": 1.5,
+  "spec": {
+    "lift_force_N": 3.2,
+    "open_deg": 105.0,
+    "soft_close_s": [3.0, 30.0],
+    "soft_close_max_dps": 30.0,
+    "button_open_s": 20.0
+  }
+}

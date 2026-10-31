@@ -1,0 +1,400 @@
+{
+ "scan": {
+  "ok": true,
+  "errors": [],
+  "notes": [],
+  "facts": {
+   "items": {
+    "cracker_box": [
+     "../Axis_Aligned/003_cracker_box.usd",
+     "/opt/assets/isaac/Isaac/Props/YCB/Axis_Aligned_Physics/003_cracker_box.usd"
+    ],
+    "mustard_bottle": [
+     "../Axis_Aligned/006_mustard_bottle.usd",
+     "/opt/assets/isaac/Isaac/Props/YCB/Axis_Aligned_Physics/006_mustard_bottle.usd"
+    ],
+    "sugar_box": [
+     "../Axis_Aligned/004_sugar_box.usd",
+     "/opt/assets/isaac/Isaac/Props/YCB/Axis_Aligned_Physics/004_sugar_box.usd"
+    ],
+    "soup_can": [
+     "../Axis_Aligned/005_tomato_soup_can.usd",
+     "/opt/assets/isaac/Isaac/Props/YCB/Axis_Aligned_Physics/005_tomato_soup_can.usd"
+    ],
+    "power_drill": [
+     "/opt/assets/isaac/Isaac/Props/YCB/Axis_Aligned/035_power_drill.usd"
+    ],
+    "mug": [
+     "/opt/assets/isaac/Isaac/Props/YCB/Axis_Aligned/025_mug.usd"
+    ]
+   },
+   "robots": {
+    "Drone_L": {
+     "articulation_root": "/World/Robots/Drone_L/Frame",
+     "assets": [
+      "/opt/assets/isaac/Isaac/Robots/RobotStudio/so101_new_calib/so101_new_calib.usd",
+      "configuration/so101_new_calib_physics.usd",
+      "configuration/so101_new_calib_robot.usd",
+      "configuration/so101_new_calib_sensor.usd"
+     ],
+     "cameras": [
+      "/World/Robots/Drone_L/Frame/Camera"
+     ]
+    },
+    "Drone_S": {
+     "articulation_root": "/World/Robots/Drone_S/Airframe/base_link",
+     "assets": [
+      "/opt/assets/isaac/Isaac/Robots/NTNU/ARL-Robot-1/arl_robot_1.usd",
+      "/opt/assets/isaac/Isaac/Robots/RobotStudio/so101_new_calib/so101_new_calib.usd",
+      "configuration/arl_robot_1_physics.usd",
+      "configuration/arl_robot_1_robot.usd",
+      "configuration/arl_robot_1_sensor.usd",
+      "configuration/so101_new_calib_physics.usd",
+      "configuration/so101_new_calib_robot.usd",
+      "configuration/so101_new_calib_sensor.usd"
+     ],
+     "cameras": [
+      "/World/Robots/Drone_S/Airframe/base_link/Camera"
+     ]
+    }
+   },
+   "graph_nodes": 103
+  }
+ },
+ "groups": {
+  "layout": {
+   "Table_A": {
+    "center": [
+     -1.3,
+     0.7
+    ],
+    "extent": [
+     1.2,
+     0.6
+    ],
+    "top": 0.75
+   },
+   "Table_B": {
+    "center": [
+     1.45,
+     0.55
+    ],
+    "extent": [
+     0.957,
+     0.8374
+    ],
+    "top": 0.45
+   },
+   "bin_body": {
+    "center": [
+     -0.085,
+     1.205
+    ],
+    "extent": [
+     0.81,
+     1.05
+    ],
+    "top": 0.5
+   },
+   "bin_lid": {
+    "center": [
+     0.1,
+     1.466
+    ],
+    "extent": [
+     0.44,
+     0.468
+    ],
+    "top": 0.353
+   },
+   "handle": [
+    0.1,
+    1.271,
+    0.3345
+   ],
+   "button": {
+    "center": [
+     -0.45,
+     0.72,
+     0.51
+    ],
+    "top": 0.52
+   },
+   "robots": {
+    "Drone_L": {
+     "center": [
+      -0.75,
+      -1.45,
+      0.5524
+     ],
+     "extent": [
+      1.02,
+      1.02,
+      0.4973
+     ]
+    },
+    "Drone_S": {
+     "center": [
+      0.8393,
+      -1.3895,
+      0.5472
+     ],
+     "extent": [
+      0.5156,
+      0.6447,
+      0.5688
+     ]
+    }
+   },
+   "cameras": {
+    "Drone_L": {
+     "base": "/World/Robots/Drone_L/Frame",
+     "cameras": [
+      {
+       "path": "/World/Robots/Drone_L/Frame/Camera",
+       "pos_in_base": [
+        0.0,
+        0.17,
+        -0.03
+       ],
+       "look_in_base": [
+        0.0,
+        0.866,
+        -0.5
+       ],
+       "pitch_down_deg": 30.0,
+       "hfov_deg": 60.41
+      }
+     ]
+    },
+    "Drone_S": {
+     "base": "/World/Robots/Drone_S/Airframe/base_link",
+     "cameras": [
+      {
+       "path": "/World/Robots/Drone_S/Airframe/base_link/Camera",
+       "pos_in_base": [
+        0.0,
+        0.11,
+        -0.05
+       ],
+       "look_in_base": [
+        0.0,
+        0.766,
+        -0.6428
+       ],
+       "pitch_down_deg": 40.0,
+       "hfov_deg": 82.25
+      }
+     ]
+    }
+   },
+   "wall_s": 0.3
+  },
+  "settle": {
+   "moved": {
+    "/World/Bin/Body": 0.0,
+    "/World/Bin/Lid": 0.0,
+    "/World/Bin/Button": 0.0002,
+    "/World/Items/cracker_box": 0.0062,
+    "/World/Items/mustard_bottle": 0.0003,
+    "/World/Items/sugar_box": 0.0044,
+    "/World/Items/soup_can": 0.0021,
+    "/World/Items/power_drill": 0.0007,
+    "/World/Items/mug": 0.0,
+    "/World/Robots/Drone_S/Airframe/base_link": 0.0,
+    "/World/Robots/Drone_S/Airframe/back_left_prop": 0.0,
+    "/World/Robots/Drone_S/Airframe/back_right_prop": 0.0,
+    "/World/Robots/Drone_S/Airframe/front_left_prop": 0.0,
+    "/World/Robots/Drone_S/Airframe/front_right_prop": 0.0,
+    "/World/Robots/Drone_S/Arm/base": 0.0,
+    "/World/Robots/Drone_S/Arm/shoulder": 0.0,
+    "/World/Robots/Drone_S/Arm/upper_arm": 0.0,
+    "/World/Robots/Drone_S/Arm/lower_arm": 0.0003,
+    "/World/Robots/Drone_S/Arm/wrist": 0.0007,
+    "/World/Robots/Drone_S/Arm/gripper": 0.0009,
+    "/World/Robots/Drone_S/Arm/moving_jaw_so101_v1": 0.0011,
+    "/World/Robots/Drone_L/Frame": 0.001,
+    "/World/Robots/Drone_L/Arm/base": 0.001,
+    "/World/Robots/Drone_L/Arm/shoulder": 0.001,
+    "/World/Robots/Drone_L/Arm/upper_arm": 0.001,
+    "/World/Robots/Drone_L/Arm/lower_arm": 0.0012,
+    "/World/Robots/Drone_L/Arm/wrist": 0.0019,
+    "/World/Robots/Drone_L/Arm/gripper": 0.0023,
+    "/World/Robots/Drone_L/Arm/moving_jaw_so101_v1": 0.0025
+   },
+   "items": {
+    "cracker_box": {
+     "center": [
+      -1.6193,
+      0.6143,
+      0.8563
+     ],
+     "size": [
+      0.0718,
+      0.164,
+      0.2134
+     ],
+     "mass": 0.411,
+     "moved": 0.0062
+    },
+    "mustard_bottle": {
+     "center": [
+      -1.18,
+      0.8,
+      0.8474
+     ],
+     "size": [
+      0.0582,
+      0.096,
+      0.1913
+     ],
+     "mass": 0.603,
+     "moved": 0.0003
+    },
+    "sugar_box": {
+     "center": [
+      -0.8986,
+      0.5768,
+      0.8374
+     ],
+     "size": [
+      0.0451,
+      0.0927,
+      0.1763
+     ],
+     "mass": 0.514,
+     "moved": 0.0044
+    },
+    "soup_can": {
+     "center": [
+      1.2998,
+      0.5,
+      0.5008
+     ],
+     "size": [
+      0.0677,
+      0.0677,
+      0.1019
+     ],
+     "mass": 0.349,
+     "moved": 0.0021
+    },
+    "power_drill": {
+     "center": [
+      1.62,
+      0.66,
+      0.5461
+     ],
+     "size": [
+      0.0572,
+      0.1844,
+      0.1868
+     ],
+     "mass": 0.895,
+     "moved": 0.0007
+    },
+    "mug": {
+     "center": [
+      1.42,
+      0.34,
+      0.4927
+     ],
+     "size": [
+      0.0813,
+      0.0931,
+      0.117
+     ],
+     "mass": 0.118,
+     "moved": 0.0
+    }
+   },
+   "robots": {
+    "Drone_L": {
+     "base": "/World/Robots/Drone_L/Frame",
+     "mass": 3.832,
+     "links": 8,
+     "dofs": 6,
+     "dof_types": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "fixed_base": false,
+     "position": [
+      -0.75,
+      -1.45,
+      0.69
+     ],
+     "yaw": 0.0
+    },
+    "Drone_S": {
+     "base": "/World/Robots/Drone_S/Airframe/base_link",
+     "mass": 1.872,
+     "links": 12,
+     "dofs": 6,
+     "dof_types": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "fixed_base": false,
+     "position": [
+      0.85,
+      -1.45,
+      0.68
+     ],
+     "yaw": 0.0
+    }
+   },
+   "wall_s": 11.1
+  },
+  "bin_lift": {
+   "rest_deg": 0.04,
+   "hold_1N_max_deg": 0.06,
+   "lift_threshold_N": 3.23,
+   "after_release_deg": 0.0,
+   "lifted_to_20": 20.04,
+   "fall_back_deg": 0.04,
+   "wall_s": 53.9
+  },
+  "bin_open": {
+   "lifted_to_35": 35.51,
+   "open_after_8s_deg": 105.0,
+   "stay_drift_deg": 0.0,
+   "pulled_back_to": 93.96,
+   "soft_close_end_deg": 0.0,
+   "soft_close_s": 5.94,
+   "soft_close_max_rate_dps": 19.05,
+   "wall_s": 26.0
+  },
+  "bin_button": {
+   "button_travel_mm": 6.87,
+   "open_3s": 85.36,
+   "open_6s": 104.86,
+   "open_15s": 105.0,
+   "open_19s": 105.0,
+   "open_25s": 0.0,
+   "open_30s": 0.04,
+   "open_max": 105.0,
+   "open_duration_s": 20.09,
+   "second_press_open_6s": 105.0,
+   "wall_s": 20.7
+  },
+  "bin_drop": {
+   "open_before_drop_deg": 103.22,
+   "cube_end": [
+    0.1,
+    1.466,
+    0.04
+   ],
+   "cube_inside": true,
+   "wall_s": 8.3
+  }
+ }
+}
