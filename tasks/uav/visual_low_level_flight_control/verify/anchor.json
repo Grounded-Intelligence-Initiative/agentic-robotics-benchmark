@@ -1,0 +1,7 @@
+{
+  "metric": "success_rate",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 1,
+  "source": "Measured v7 onboard-camera switchback course using pinned ALE 90a7c1cfa649c5dbf1078714773f99840e44cba3. Calibration validate-2f68303c, oracle visual_low_level_flight_control-oracle-c48dafab, 2026-10-28: raw success_rate=1.0 on four fresh private scenes, zero collisions/aborts, 43.706-44.792 simulated seconds. Aggregate observation probes 70/92; one scene was 11/23, below the per-scene threshold, while the task's aggregate lock passed. Reference policy SHA256 748dba8b308d0a4b86b145b62d6398395b9fa442c716ffe0a36af26d89d9459f; calibration task digest sha256:d364edb8a9cd3f5812d48394d2f25e708ee81624fdb95ee8a0fb93b5983fb282. Evidence: verification.json and trace stdout blob under runs/fpv-v7-2026-10-28/calibration. Runtime observations are image-only; author-supplied nominal route, transit and calibration priors are disclosed. Not an uninformed Astra or privileged-state result. Shared stateful-probe limitations are documented in tools/REVIEW.md. GPU count=0."
+}
