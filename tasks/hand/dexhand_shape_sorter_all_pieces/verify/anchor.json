@@ -1,0 +1,7 @@
+{
+ "metric": "fraction_pieces_passed",
+ "direction": "higher",
+ "value": 0.8409090909090909,
+ "full_at": 0.85,
+ "source": "privileged oracle plans (oracle/ref/plans; GT-state planner, round r7: true hidden start state, true hidden physics and true hidden calibration error (compensated), search over grasp families, piece orders and continuations, within the wrist orientation and finger direction limits, no refinement backend), measured in 10 fresh oracle episodes: 10/10 = 0.8409090909090909 (37/44 pieces; deterministic replay); full_at pre-registered 0.85"
+}
