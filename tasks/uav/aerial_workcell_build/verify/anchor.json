@@ -1,0 +1,9 @@
+{
+  "metric": "acceptance_score",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 0.97,
+  "source": "The reference build's (oracle/reference/build_scene.py) own acceptance_score from ale validate through the pinned engine (90a7c1c, locally patched for GPU graphics/ngx capabilities and an extra seccomp profile on the authoring host), validate-346ffe61, 2026-10-30.",
+  "reference_commit": "local-uncommitted",
+  "note": "full_at sized from repeated oracle runs (see the pull request); the score is a weighted fraction of checks, the reference passing all of them."
+}

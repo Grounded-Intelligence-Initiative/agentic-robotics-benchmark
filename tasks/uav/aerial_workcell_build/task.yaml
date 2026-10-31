@@ -1,0 +1,23 @@
+# aerial_workcell_build: rebuild a real aerial-manipulation workcell in NVIDIA Isaac Sim from photographs and a site
+# brief. The agent delivers one USD stage (geometry, physics, OmniGraph logic for the bin's lid and button, the two
+# flying robots with their arms and cameras); the grader runs none of the agent's code: it opens the stage in its own
+# Isaac Sim process as an unprivileged account and measures it (layout against the real cell, the bin's mechanism
+# by pushing it from outside, masses, the robots' identity, structure and cameras). Needs one NVIDIA RTX GPU.
+
+spec_type: core/v1
+
+name: aerial_workcell_build
+
+image: {kind: container}
+
+resources: {cpus: 8, memory_mb: 32768, gpus: 1}
+network: {mode: block}
+
+# setup: stage ~/given (< 1 min). agent: 8 h. verify: the scan, then six probe groups, each in a fresh Isaac Sim
+# process (the oracle's verify takes about 10 min, most of it Isaac start-up and shader compilation).
+timeouts: {setup: 600, agent: 28800, verify: 3600}
+
+artifacts: [/home/user/submission]
+
+metadata:
+  platform: uav
