@@ -1,0 +1,23 @@
+{
+  "profile": "preserve-original-design",
+  "owner_instruction_date": "2026-10-29",
+  "curation_status": "original-cad-restored-task-rebuild-pending",
+  "superseded_task_commit": "af9395428a4a202ec2177155d485916643819b08",
+  "source": {
+    "upstream_repository_commit": "147a736b9fea7ac0e8d08c9a5fb0b90e5baa224a",
+    "link_origin": "cad/README.md",
+    "share_url": "https://a360.co/4gY1h8M",
+    "share_title": "Agipix_v2",
+    "share_version": "2",
+    "file": "Agipix_v2_original.stp",
+    "bytes": 106421450,
+    "sha256": "f13c51d63c1372c830553803be94ee616bfabfc8cfd1cc4d19981156e7ec878f",
+    "valid_closed_leaf_solids": 132,
+    "native_save_reopen_checked": true
+  },
+  "geometry_changes_allowed": false,
+  "fictional_component_substitutes_allowed": false,
+  "mix_manufacturing_and_simulation_versions": false,
+  "difficulty_target_measured_for_original": false,
+  "reference_evidence_url": "https://drive.google.com/drive/folders/1CydqUXWpm8wf0XxpoUpmpKkzSyf1LVGT"
+}
