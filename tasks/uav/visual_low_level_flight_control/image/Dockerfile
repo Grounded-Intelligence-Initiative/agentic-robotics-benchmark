@@ -17,10 +17,13 @@ RUN runuser -u user -- python3 -c "import mujoco; m=mujoco.MjModel.from_xml_stri
 RUN apt-get update && apt-get install -y --no-install-recommends mesa-vulkan-drivers libvulkan1 \
     && rm -rf /var/lib/apt/lists/*
 RUN env -u DISPLAY /opt/venv/bin/python3 -c "import mujoco._render_filament as F, mujoco.experimental.studio.window; F.Context(F.ContextConfig(graphics_api=F.GraphicsApi.GRAPHICS_API_VULKAN)); print('[image] Filament on Vulkan OK')"
-# LOCAL TEST ONLY (replaced by the task-assets fetch block before the push): the hall's scenery and image light.
-COPY render/ /opt/visual_robotics/render/
-RUN chmod -R a+rX /opt/visual_robotics/render
-ENV VISUAL_ROBOTICS_RENDER=/opt/visual_robotics/render
+# ---- task assets: fetched at the dataset commit pinned in assets.sha256, checked file by file (docs/task-assets.md):
+# render/, the onboard camera's scenery (the warehouse hall, the course's textures) and its image light and sky maps;
+# fil_render.py reads /opt/task-assets/payload/render (root-owned, not staged into the agent home)
+COPY fetch_assets.py assets.sha256 /opt/task-assets/
+RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload \
+    && chmod -R a+rX /opt/task-assets
+ENV VISUAL_ROBOTICS_RENDER=/opt/task-assets/payload/render
 COPY visual_assets.json fetch_visual_assets.py /tmp/visual_assets/
 RUN /opt/venv/bin/python3 /tmp/visual_assets/fetch_visual_assets.py /tmp/visual_assets/visual_assets.json /opt/visual_robotics/assets \
     && chmod -R a+rX /opt/visual_robotics/assets
