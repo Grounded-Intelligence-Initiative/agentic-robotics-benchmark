@@ -19,7 +19,12 @@ network: {mode: block}
 
 # setup: staging the agent-visible material. agent: the agent's whole budget, including
 # training. verify: the scoring run — closed_loop needs room for every episode plus probes.
-timeouts: {setup: 300, agent: 3600, verify: 10800}
+# Here: 3 episodes x 20000 steps of simulator time (about 0.2 s a step on an 8-CPU RTX 4090
+# host, 4000 s an episode) plus each episode's controller budget (controller_budget_s in
+# verify/grader_config.json, 3000 s) plus the hi-res frames that budget can buy (about 3000 s
+# more simulator time at most), plus the simulator's start attempts: about 34000 s at worst.
+# A typical run takes 4-5 hours; the score never depends on how long it takes.
+timeouts: {setup: 300, agent: 3600, verify: 36000}
 
 # Where the agent leaves its work.
 artifacts: [/home/user/submission]

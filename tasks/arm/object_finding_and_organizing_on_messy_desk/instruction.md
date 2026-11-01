@@ -44,12 +44,15 @@ An episode runs a fixed `${horizon}` control steps at 10 Hz. During it:
    You close a request yourself with a *mark* in your action: **done: delivered** or **done:
    no such object**. The grader checks the physical truth at that moment: a delivered mark
    is right only if the requested object rests in the red container; a no-such-object mark is
-   right only if the object is not on the desk. A right mark closes the request as a success,
-   a wrong mark as a failure, and a request whose deadline passes without a mark is a failure
-   too. At most one request is open at a time.
+   right only if no such object was on the desk or in a container when the request opened
+   (while it is open the world neither brings one nor takes it away). A right mark closes the
+   request as a success, a wrong mark as a failure that also costs a point (see Scoring), and a
+   request whose deadline passes without a mark is a failure too. At most one request is open at
+   a time.
 3. **Container service.** When a class container is full (nine objects or more), or a requested object
    has been delivered to the red container, a worker empties that container: its objects disappear
-   from the scene.
+   from the scene. A class container that holds the open request's object is emptied only after
+   the request closes.
 4. **Disturbances.** Occasionally the world misplaces one object into a wrong container, or nudges
    a loose object across the desk. Correcting these is part of the job. An object that comes to
    rest beside the robot's base (closer than 0.26 m, where no camera sees it and no hand reaches)
@@ -88,6 +91,11 @@ READY                                                     <- your first stdout l
   without `action` aborts the episode; the next `reset` restarts `run.sh` (at most 3 restarts
   per run), so your controller must survive being started again.
 - An aborted episode scores 0; it is never dropped.
+- Your controller has a **time budget of 3000 s per episode**: the time the grader spends
+  waiting for your replies, summed over the episode, plus 0.1 s for every hi-res camera frame
+  you ask for (see Action). The simulator's own time is not counted, so a slow machine does not
+  cost you anything. An episode whose controller uses up its budget is cut at that step and
+  scored on the state it reached, scaled by the fraction of the horizon that ran (see Scoring).
 
 ## Observation
 
@@ -117,37 +125,40 @@ command in `[0, 1]` (0 = open, 1 = closed), and a `mark` for the open request: `
 such object** (you claim it is not on the desk). The optional ninth number is a **hi-res request**:
 a bitmask of cameras (1 = agentview, 2 = left_view, 4 = eye_in_hand, 8 = oblique; 15 = all four)
 whose 1920 x 1080 RGB and depth frames come back in that step's observation as `rgb_hires` /
-`depth_hires`. The 320 x 320 frames always arrive at 10 Hz; a hi-res request costs about 0.1 s of
-extra wall-clock time per camera asked for (PNG encoding and transfer, about 3 MB per camera; your
-controller's decoding time comes on top), so you choose, step by step, between picture quality and
-time. Nothing else about the step changes. A mark is ignored while no request is open,
-and a request accepts one mark only; the request, and the desk with it, are judged at the
-step of the mark. The environment turns the delta into joint targets
-through inverse kinematics, interpolated over the step (a 5 cm step completes about 96% within it); a
-delta with no solution is refused and the arm simply stays put for that step, and one whose
-joint solution is more than a step away is approached over the next few steps rather than jumped to.
+`depth_hires`. The 320 x 320 frames always arrive at 10 Hz; every hi-res camera frame you ask for
+is charged 0.1 s against your controller's time budget (the simulator's PNG encoding, at a fixed
+price), and receiving and decoding it (about 3 MB per camera) is your controller's own time on top,
+so you choose, step by step, between picture quality and time. Nothing else about the step
+changes. A mark is ignored while no request is open, and a request accepts one mark only; the
+request, and the desk with it, are judged at the step of the mark. The environment turns the delta
+into joint targets through inverse kinematics, interpolated over the step (a 5 cm step completes
+about 96% within it); a delta with no solution is refused and the arm simply stays put for that
+step, and one whose joint solution is more than a step away is approached over the next few steps
+rather than jumped to.
 
 ## Scoring
 
 The grader owns the simulator and tracks the physical state at every step; nothing your
-controller prints is a scoring input. Three detectors feed it: finger **contact** with an
-object (physics contact report), **in container** (the object's centre inside a container's
-interior, in that container's own frame), and **on table** (not in any container, resting,
-not touched). An object counts as *placed* only when it rests and no finger touches it.
+controller prints is a scoring input. Its detectors: finger **contact** with an object (physics
+contact report), **held** (a real grasp: both fingers touch the object and it has been lifted,
+its centre at least 3 cm above where it last rested; a finger brushing or pushing an object does
+not hold it), **in container** (the object's centre inside a container's interior, in that
+container's own frame), and **on table** (not in any container, resting, not touched). An
+object counts as *placed* only when it rests and no finger touches it.
 
 Each object `o` has a value `v_o(t)` at step `t`:
 
 | state | value |
 |---|---|
 | placed inside its class container | +1 |
-| on the table, in the gripper, or in flight | 0 |
+| on the table, held, touched, or in flight | 0 |
 | placed inside any other container | −1 |
 | knocked off the table | −1 for the rest of the episode |
 | removed by container service or delivered | frozen at its value when removed |
 
 While a request is open, its object belongs to the **red** container only: +1 placed in red
-or held in the gripper, −1 placed in any other container (its class container included), 0 on
-the table or in flight.
+or held, −1 placed in any other container (its class container included), 0 on the table,
+touched or in flight.
 
 Every object also has a baseline `b_o(t)`: its value when it entered the scene (0 for an
 arrival, +1 for an object that starts in its pile), when the world last moved it (−1 after the
@@ -159,11 +170,17 @@ Requests end as a **success** (`done: delivered` while the requested object is p
 container; `done: no such object` when it really is absent) or a **failure** (either mark when
 the truth is the opposite, or the deadline passes unmarked).
 
-Each request earns points in two stages: the first time its target is in `held` state earns
-1 point, once per request; verified delivery adds the second point for a total of 2.
-Correctly declaring absence also earns 2 points. Repeated holds add nothing. A failed or expired request keeps
-any first-hold credit already earned, but gains no completion credit. Merely having
-touched the object before the request opened does not count.
+Each request earns points in two stages: the first time its target is **held** (both fingers on
+it and lifted clear of its support, see the detectors) earns 1 point, once per request; verified
+delivery adds the second point for a total of 2. Correctly declaring absence also earns 2 points.
+Repeated holds add nothing, and merely having held the object before the request opened does not
+count. An expired request keeps any first-hold credit already earned but gains no completion
+credit. A **wrong mark costs a point**: the request keeps its first-hold credit minus 1, so it ends
+at 0 or −1. This closes a loophole: without the cost a mark would be free to guess (one request
+in five names an absent object, so "no such object" on every request would earn points for
+nothing); with it, a guessed mark loses on average. A mark is worth sending only when you are
+fairly sure: "no such object" pays above one chance in three of being right, "delivered" after
+the first hold is banked above one chance in two.
 
 The episode score is
 
@@ -171,7 +188,7 @@ The episode score is
 S = 1/2 · O + 1/2 · R
 O = mean of O(t) over the steps t at which a request closes, and the episode's last step
 O(t) = clip( Σ_o (v_o(t) − b_o(t))  /  Σ_o max(0, 1 − b_o(t)) , 0, 1 )
-R = sum of request points / (2 · opened requests)   (0 when no request opened)
+R = max(0, sum of request points / (2 · opened requests))   (0 when no request opened)
 ```
 
 `R` includes the ongoing request, so its first hold earns partial credit immediately.
@@ -183,9 +200,9 @@ ever in the scene) that is done at step `t`. A request is a task, find plus orga
 scores fully only when its object is delivered (or its absence declared) and the desk is in
 order at the mark, so an object dug out of its container and not put back, or an arrival left
 loose, counts against you then. An untouched scene scores exactly 0. An episode the grader
-cuts short for exhausting its wall-clock budget is scored on the state it reached, scaled by
-the fraction of the horizon that ran; an aborted episode (protocol error, step deadline,
-malformed action) scores 0.
+cuts short because your controller used up its time budget is scored on the state it reached,
+scaled by the fraction of the horizon that ran; an aborted episode (protocol error, step
+deadline, malformed action) scores 0.
 
 The task's reported metric is `mean_episode_score`, the mean of `S` over the hidden seeds. The
 reward you are judged on is that mean relative to a hidden reference value.
@@ -200,7 +217,8 @@ reward you are judged on is that mean relative to a hidden reference value.
   demand so you can rehearse marks. None of this reaches your controller's observation; the
   hidden grader's wire is the one in **What you must deliver**;
 - `/home/user/practice_grader/grade.py` — drives your `run.sh` over the real wire on visible
-  seeds and prints the raw score, nothing else; `--live N` prints the running score every N
+  seeds (the same action rule and time budget) and prints the raw score and the controller time
+  each episode used, nothing else; `--live N` prints the running score every N
   steps and `--score-file PATH` writes it as JSON for your own tooling;
 - `/home/user/example_controller/` — a complete, policy-free controller (`run.sh` + one Python
   file: READY, the reply loop, camera decoding, where the action goes). Copy it to

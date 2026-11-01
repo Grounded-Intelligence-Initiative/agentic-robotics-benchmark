@@ -20,6 +20,7 @@ both byte-identical copies of the files under `verify/` (this folder).
 | detector | definition |
 |---|---|
 | `contact(o)` | PhysX contact report between object `o` and either finger link (summed contact force > 1e-4 N); if the contact view is unavailable, the fallback is centre within 6 cm of the tool centre point |
+| `held(o)` | a real grasp: contact with **both** finger links and the object lifted clear of its support, its centre at least `HOLD_LIFT` = 0.03 m above its height when it last was `placed` (a finger brushing or pushing an object does not hold it; with the distance fallback, contact alone) |
 | `in_container(o)` | the object's centre lies inside a container's interior footprint in that container's own frame (\|x\| ≤ 0.140, \|y\| ≤ 0.120 m for the class containers; \|x\| ≤ 0.102 for the red one) and its height is between the floor − 0.02 and the rim + 0.12 m |
 | `on_table(o)` | not inside any container, centre below 0.16 m, placed |
 | `resting(o)` | speed < 0.08 m/s |
@@ -36,7 +37,7 @@ Key object states; node values are $v_o(t)$. First-hold credit belongs to $R$, n
 
 <!-- Editable source: figures/object-automaton.mmd -->
 
-The first hold of the requested target earns +1 request point once; repeated holds add nothing. “Place” means released and resting. A right container is the class container; while a request is open its object has red as its only right container, and holding it counts +1. Removal by container service or confirmed delivery freezes the value; only falling off the table triggers `Lost` and keeps −1. A release onto the table or into a container is not a loss. Transit ($v=0$), arrivals, disturbances and instance reuse are omitted for clarity.
+The first hold (`held`, not a mere touch) of the requested target earns +1 request point once; repeated holds add nothing. “Place” means released and resting. A right container is the class container; while a request is open its object has red as its only right container, and holding it counts +1. Removal by container service or confirmed delivery freezes the value; only falling off the table triggers `Lost` and keeps −1. A release onto the table or into a container is not a loss. Transit ($v=0$), arrivals, disturbances and instance reuse are omitted for clarity.
 
 ## Request automaton
 
@@ -48,7 +49,11 @@ Each request earns partial credit on its first target hold, then closes as a suc
 
 <!-- Editable source: figures/request-automaton.mmd -->
 
-A first target hold earns +1 point; delivery adds +1 for a total of 2. Correct absence also earns 2 points. Failure or expiry keeps any first-hold credit but adds no completion credit. $R$ divides total request points by twice the number of opened requests, including the ongoing one. The next request starts a new cycle.
+A first target hold earns +1 point; delivery adds +1 for a total of 2. Correct absence also earns 2 points. Expiry keeps any first-hold credit but adds no completion credit; a wrong mark (delivered while the target is not placed in red, absent while it is on the desk) costs a point on top, so it ends at 0 or −1. $R$ divides total request points by twice the number of opened requests, including the ongoing one, floored at 0. The next request starts a new cycle.
+
+Why a wrong mark costs a point: without it a mark is free to guess. One request in five names an absent object (`REQUEST_ABSENT_P`), so a controller that answers "no such object" to every request the moment it opens would earn 0.4 points per request with no search at all (the reviewer's estimate: S ≈ 0.10 for no work beyond holding the probe lock). With the cost the same strategy scores 0.2 · 2 − 0.8 · 1 = −0.4 points per request, and a mark pays only above one chance in three of being right (a "delivered" mark after the first hold, above one in two). An expiry still costs nothing: a controller that is not sure can let the deadline pass.
+
+Why the container service waits for the open request: the worker used to empty a full class container even when it held the object the open request names. The object was then gone, delivery was impossible, and "no such object" was still wrong (the grader judges it against the object named at the opening), so the request had no right answer. The worker now leaves such a container until the request closes, then empties it.
 
 ## Score
 
@@ -56,19 +61,25 @@ $$
 S = \frac{1}{2}\, O + \frac{1}{2}\, R, \qquad
 O = \frac{1}{K} \sum_{k=1}^{K} O(t_k), \qquad
 O(t) = \mathrm{clip}\left( \frac{\sum_{o} \left( v_o(t) - b_o(t) \right)}{\sum_{o} \max\left( 0,\, 1 - b_o(t) \right)},\ 0,\ 1 \right), \qquad
-R = \frac{\sum_{j=1}^{N_{\mathrm{opened}}} q_j}{2N_{\mathrm{opened}}}
+R = \max\left(0,\ \frac{\sum_{j=1}^{N_{\mathrm{opened}}} q_j}{2N_{\mathrm{opened}}}\right)
 $$
 
-where $q_j = 2$ for a verified delivery or correct absence declaration, $q_j = 1$
-for a request whose target was held at least once but has not been successfully completed,
-and $q_j = 0$ otherwise. Repeated holds do not accumulate credit. $R = 0$ when no request
-has opened. A first hold is recorded only while the request is open and its target is
-currently in `held` state; historical contacts do not count.
+where $q_j = 2$ for a verified delivery or correct absence declaration; otherwise $q_j$ is
+1 when the target was held at least once while the request was open and 0 when it was not,
+minus 1 when the request closed on a wrong mark (so $q_j \in \{-1, 0, 1, 2\}$; an expiry or a
+still open request costs nothing). Repeated holds do not accumulate credit. $R = 0$ when no
+request has opened. A first hold is recorded only while the request is open and its target is
+currently in `held` state; historical holds and mere contacts do not count.
 
 where $t_1, \dots, t_K$ are the steps at which a request closes (its mark or its deadline) and
 the episode's last step $T$: each request is a task, find plus organize, judged with the desk
-when it closes. When the grader cuts an episode for exhausting its wall-clock budget,
-$S \leftarrow S \cdot T / H$.
+when it closes. When the grader cuts an episode because the controller used up its time
+budget, $S \leftarrow S \cdot T / H$. The budget (`controller_budget_s` in
+`grader_config.json`, per episode) counts the controller's time only: the grader's wait for
+every reply plus a fixed `hires_charge_s` per hi-res camera frame asked for (the simulator's
+PNG encoding at a nominal price). The simulator's own time never counts, so a slower machine
+makes a run longer but never changes its score; `task.yaml`'s `timeouts.verify` is sized for
+three full episodes of simulator time plus three spent budgets.
 
 | term | meaning |
 |---|---|
@@ -80,12 +91,13 @@ $S \leftarrow S \cdot T / H$.
 | $v_o(t) - b_o(t)$ | the agent's net effect on object $o$: untouched objects contribute 0 |
 | $\max(0, 1 - b_o(t))$ | the gain that was available for $o$: 1 for a loose object, 2 for one the world misfiled, 0 for one already in place |
 | $t_k$, $K$ | the steps at which a request closes plus the last step $T$, and their number (5 in a full episode) |
-| $T$, $H$ | the episode's last step and the horizon (20000); an episode the grader cuts for exhausting its wall-clock budget is scaled by $T/H$ |
-| $q_j$, $N_{\mathrm{opened}}$ | points for request $j$ (0, 1, or 2), and the number of requests opened; $R = 0$ when none opened |
+| $T$, $H$ | the episode's last step and the horizon (20000); an episode the grader cuts because its controller used up its time budget is scaled by $T/H$ |
+| $q_j$, $N_{\mathrm{opened}}$ | points for request $j$ (−1, 0, 1 or 2), and the number of requests opened; $R = 0$ when none opened |
 
 Properties: an untouched scene scores exactly 0 (every $v_o = b_o$, no successful request);
 holding an object inside a container is not "placed", so it earns no organization credit;
-the first target hold can still earn request credit; knocking an object
+the first target hold can still earn request credit, but only a real grasp (both fingers, lifted)
+counts, never a brush of a finger; a guessed mark loses on average; knocking an object
 off the table is as bad as misfiling it and cannot be undone; an aborted episode (protocol
 error, step deadline, malformed action) scores 0 and stays in the mean. The grader scales the
 measured mean by the oracle's anchor and `full_at` (see `verify/anchor.json`); nothing the

@@ -36,7 +36,9 @@ Fixed for the task; identical on every seed. Units: metres, radians, seconds.
   container's own frame) and its height between the floor − 0.02 and the rim + 0.12. "Placed"
   additionally needs the object at rest (speed < 0.08 m/s) and no finger touching it (the
   simulator's contact report). "On the table": not inside any container, centre below 0.16,
-  placed. Below z = −0.2 an object is lost for the rest of the episode.
+  placed. "Held": both fingers touching the object and its centre at least 0.03 above where it
+  last rested (lifted clear of its support; a touch or a push is not a hold). Below z = −0.2 an
+  object is lost for the rest of the episode.
 
 ## Desk surface
 The desk top is flat at z = -0.0014 for x < 0.809 (the whole reachable desk). Beyond that the
@@ -52,7 +54,8 @@ one object at a time on top of each other near the container's centre line: the 
 everything else lying on its largest face, or on its long edge when it is too wide to pinch lying
 flat (the larger cracker box). The last object of each pile is tossed in tilted (35-60 degrees) and
 comes to rest leaning on its neighbours, so every pile starts with at least one object on top of
-another. A class container holding nine or more objects is emptied by the worker.
+another. A class container holding nine or more objects is emptied by the worker (one that holds
+the open request's object only after that request closes).
 - A: cracker box, sugar box, pudding box, gelatin box, wood block, foam brick
 - B: master chef can, tomato soup can, tuna fish can, potted meat can, mustard bottle, bleach cleanser
 - C: banana, bowl, mug, power drill, scissors, large marker, large clamp, extra large clamp, pitcher base
@@ -77,8 +80,10 @@ exactly one instance present, or one with none (an absent request).
   cameras at 1920 x 1080 (same poses and focal length, horizontal field of view unchanged, the
   vertical one cropped to 16:9; focal 1466 px, principal point (960, 540); `info` -> `hires` lists
   the matrices). The hi-res frames are rendered every step anyway and only encoded and sent when
-  asked for, so the plain 10 Hz step is unaffected; a request costs about 0.1 s of extra
-  wall-clock time per camera asked for (PNG encoding and transfer: about 3 MB per camera).
+  asked for, so the plain 10 Hz step is unaffected; every hi-res camera frame asked for is
+  charged 0.1 s against the controller's time budget (the simulator's PNG encoding, at a fixed
+  price; the budget is in the instruction), and receiving and decoding it (about 3 MB per
+  camera) is the controller's own time on top.
 
 ## Control
 - 10 Hz control, 60 Hz physics (6 substeps per action).

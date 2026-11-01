@@ -1,6 +1,7 @@
 """messy_desk_score — the episode score, computed from the simulator's privileged state.
 
-    S = 1/2 * O + 1/2 * R          (scaled by steps/H when the grader cut the episode short)
+    S = 1/2 * O + 1/2 * R          (scaled by steps/H when the grader cut the episode short:
+                                    the controller exhausted its time budget)
 
 Each request is a task (find + organize) judged when it closes: at its mark or its deadline.
 
@@ -14,10 +15,12 @@ gain that was available, sum_o max(0, 1 - b_o(t)), then clipped to [0, 1]. An un
 scores exactly 0. Removed objects keep their last value (container service, delivery) or -1
 (lost off the table), also when their instance is reused.
 
-R, request progress: points divided by twice the number of opened requests, including an ongoing one.
-The first hold of the requested target earns 1 point once; a verified delivery or correct
-absence declaration brings that request to 2 points. Repeated holds earn nothing more.
-A wrong mark or expiry keeps any first-hold credit but adds none. No requests gives 0.
+R, request progress: points divided by twice the number of opened requests, including an ongoing one,
+and floored at 0. The first hold of the requested target (both fingers on it, lifted clear of its
+support) earns 1 point once; a verified delivery or correct absence declaration brings that request
+to 2 points. Repeated holds earn nothing more. An expiry keeps any first-hold credit; a wrong mark
+(delivered while the object is not placed in red, or absent while it is on the desk) costs
+WRONG_MARK_COST on top, so a guessed mark has a negative expected value. No requests gives 0.
 
 Stdlib-only; shared byte-identically by the verify stage and the practice grader.
 """
@@ -25,6 +28,12 @@ Stdlib-only; shared byte-identically by the verify stage and the practice grader
 W_ORG, W_REQ = 0.5, 0.5
 SUCCESS_EVENTS = ("request_delivered", "request_absent_correct")
 FAILURE_EVENTS = ("request_claim_wrong", "request_absent_wrong", "request_expired")
+WRONG_MARK_EVENTS = ("request_claim_wrong", "request_absent_wrong")
+# A wrong mark costs a point; an expired request costs nothing. Without the cost a mark would be
+# free to guess: one request in five names an absent object, so "no such object" on every request
+# would earn 0.4 points per request for nothing. With it, a guess below 1/3 confidence loses
+# (below 1/2 for a "delivered" mark once the first hold is banked).
+WRONG_MARK_COST = 1.0
 
 
 class EpisodeScorer(object):
@@ -34,7 +43,7 @@ class EpisodeScorer(object):
         self.snapshots = []       # O(t) at every step a request closed
         self.ghosts = []          # (value, baseline) of removed incarnations whose instance was reused
         self.prev = {}            # id -> (present, removed, value, baseline) at the latest step
-        self.request_points = {}  # request id -> 0, 1 (first hold), or 2 (success)
+        self.request_points = {}  # request id -> 0, 1 (first hold) or 2 (success), minus WRONG_MARK_COST after a wrong mark
         self.held_requests = set()
         self.counts = {"requests_opened": 0, "requests_success": 0, "requests_failed": 0,
                        "requests_delivered": 0, "absent_correct": 0, "claims_wrong": 0, "absent_wrong": 0,
@@ -63,6 +72,8 @@ class EpisodeScorer(object):
                         self.counts["first_holds"] += 1
                 elif kind in SUCCESS_EVENTS:
                     self.request_points[rid] = 2.0
+                elif kind in WRONG_MARK_EVENTS:
+                    self.request_points[rid] -= WRONG_MARK_COST
             if kind in SUCCESS_EVENTS:
                 self.counts["requests_success"] += 1
             elif kind in FAILURE_EVENTS:
@@ -110,7 +121,7 @@ class EpisodeScorer(object):
 
     def request_progress(self):
         opened = len(self.request_points)
-        return sum(self.request_points.values()) / (2.0 * opened) if opened else 0.0
+        return max(0.0, sum(self.request_points.values()) / (2.0 * opened)) if opened else 0.0
 
     def score(self):
         s = W_ORG * self.organization() + W_REQ * self.request_progress()

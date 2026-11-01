@@ -120,6 +120,7 @@ ACTION_DIM = 8
 POS_STEP_MAX, ROT_STEP_MAX = 0.05, 0.25
 GRIPPER_OPEN, GRIPPER_CLOSED = 0.04, 0.0
 REST_SPEED = 0.08          # piles of convex-decomposed meshes jitter at a few cm/s
+HOLD_LIFT = 0.03           # "held": both fingers on the object and its centre this far above where it last rested
 ON_TABLE_Z_MAX = 0.16      # centre height of anything resting on the table top (tallest YCB upright ~0.25)
 LOST_VALUE = -1            # an object knocked off the table counts as misfiled for the rest of the episode
 REBASE_TIMEOUT = 100       # steps a nudged object may keep moving before its baseline is re-read anyway
@@ -522,6 +523,7 @@ class MessyDeskEnv:
             xyz = (xyz[0], xyz[1], obj["half_h"] + 0.004)
         self._teleport(obj, xyz, _quat_mul([math.cos(yaw / 2), 0.0, 0.0, math.sin(yaw / 2)], rest))
         obj["present"], obj["removed"], obj["frozen"], obj["rebase_t"] = True, False, 0, None
+        obj["rest_z"] = float(xyz[2])      # re-read once it rests (see HOLD_LIFT)
         if getattr(self, "baseline", None) is not None:
             self.baseline[obj["id"]] = 0
 
@@ -768,7 +770,7 @@ class MessyDeskEnv:
         ee_pos = self._ee_pose()[0]
         for o in self.objects:
             if not o["present"]:
-                o.update(pos=None, in_container=None, resting=False, contact=False, on_table=False,
+                o.update(pos=None, in_container=None, resting=False, contact=False, held=False, on_table=False,
                          state=("lost" if o.get("state") == "lost" else ("removed" if o["removed"] else "absent")))
                 continue
             p, q = o["rp"].get_world_pose()
@@ -780,24 +782,33 @@ class MessyDeskEnv:
             if p[2] < -0.2:            # fell off the table: lost for good
                 self._park(o)
                 o["removed"], o["frozen"], o["state"] = True, LOST_VALUE, "lost"
-                o.update(in_container=None, on_table=False, contact=False)
+                o.update(in_container=None, on_table=False, contact=False, held=False)
                 self.events.append({"t": self.t, "event": "fell_off_desk", "object": o["id"]})
                 continue
             # the three detectors: finger contact (PhysX contact report), inside a container
             # (geometric, container frame), resting on the table top
             if forces is not None:
-                o["contact"] = bool(np.abs(forces[o["id"]]).sum() > 1e-4)
+                per_finger = np.abs(forces[o["id"]]).reshape(2, -1).sum(axis=1)     # left, right finger link
+                o["contact"] = bool(per_finger.sum() > 1e-4)
+                pinched = bool(per_finger[0] > 1e-4 and per_finger[1] > 1e-4)
             else:
                 o["contact"] = bool(np.linalg.norm(p - ee_pos) < 0.06)
+                pinched = o["contact"]
             if o["contact"]:
                 self.touched.add(o["id"])
             placed = o["resting"] and not o["contact"]          # released and still
+            if placed:
+                o["rest_z"] = float(p[2])
+            # held: a real grasp, not a touch. Both fingers on the object and the object lifted
+            # clear of its support, its centre at least HOLD_LIFT above where it last rested; a
+            # finger brushing or pushing an object leaves it "transit"
+            o["held"] = bool(pinched and o.get("rest_z") is not None and float(p[2]) - o["rest_z"] >= HOLD_LIFT)
             o["on_table"] = bool(placed and o["in_container"] is None and p[2] < ON_TABLE_Z_MAX)
             if o["in_container"] is not None and placed:
                 o["state"] = "in_container"
             elif o["on_table"]:
                 o["state"] = "on_table"
-            elif o["contact"]:
+            elif o["held"]:
                 o["state"] = "held"
             else:
                 o["state"] = "transit"
@@ -828,13 +839,14 @@ class MessyDeskEnv:
     def _value(self, o, require_rest=True):
         """v_o(t): +1 placed in its own container, -1 placed in a wrong one, 0 on the table, held
         or in flight. The requested object belongs to the red container only: +1 placed in red or
-        held by the fingers, -1 placed in any other container, 0 on the table or in flight.
-        "Placed" = resting and not touched by the fingers. Removed objects keep their last value;
-        a lost object (off the table) is LOST_VALUE for the rest of the episode."""
+        held (both fingers on it, lifted clear of its support), -1 placed in any other container, 0
+        on the table or in flight. "Placed" = resting and not touched by the fingers. Removed
+        objects keep their last value; a lost object (off the table) is LOST_VALUE for the rest of
+        the episode."""
         if o["removed"]:
             return o.get("frozen", 0)
         target = self._is_target(o)
-        if target and o["present"] and o.get("contact"):
+        if target and o["present"] and o.get("held"):
             return 1
         if not o["present"] or o.get("in_container") is None:
             return 0
@@ -899,9 +911,14 @@ class MessyDeskEnv:
                 if o is not None and spot is not None:
                     self._spawn(o, (spot[0], spot[1], 0.0), on_desk=True)
                     ev.append({"t": self.t, "event": "arrival", "object": o["id"], "model": m})
-        # container service: a full class container is emptied by the worker
+        # container service: a full class container is emptied by the worker, but not while it holds
+        # the open request's object (that would leave the request without a right answer: the object
+        # is gone, yet "no such object" is wrong for a request that named a present object)
+        req_obj = self.request["object"] if (self.request and self.request["status"] == "open") else None
         for name in ("gray", "lightblue", "blue"):
             inside = [o for o in self.objects if o["present"] and o["state"] == "in_container" and o["in_container"] == name]
+            if req_obj is not None and any(o["id"] == req_obj for o in inside):
+                continue
             if len(inside) >= CONTAINER_CAP:
                 for o in inside:
                     o["frozen"] = self._value(o)
@@ -1085,7 +1102,7 @@ class MessyDeskEnv:
             objs.append({"id": o["id"], "model": o["model"], "cls": o["cls"], "present": o["present"],
                          "removed": o["removed"], "pos": o.get("pos"), "quat": o.get("quat"), "scale": o["scale"],
                          "role": "target" if target else "non_target", "state": o.get("state", "absent"),
-                         "contact": bool(o.get("contact")), "in_container": o.get("in_container"), "on_table": bool(o.get("on_table")),
+                         "contact": bool(o.get("contact")), "held": bool(o.get("held")), "in_container": o.get("in_container"), "on_table": bool(o.get("on_table")),
                          "resting": bool(o.get("resting")),
                          "value": self._value(o), "baseline": self.baseline.get(o["id"], 0)})
         ev, self.events = self.events, []

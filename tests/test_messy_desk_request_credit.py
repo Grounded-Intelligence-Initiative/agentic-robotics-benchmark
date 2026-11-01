@@ -1,4 +1,4 @@
-"""Request milestones must not reward repeated holds or historical contact."""
+"""Request milestones must not reward repeated holds, historical contact, a mere touch or a guessed mark."""
 import importlib.util
 import math
 from pathlib import Path
@@ -45,17 +45,43 @@ class RequestCreditTests(unittest.TestCase):
         self.event("request_first_hold")
         self.assertEqual(self.scorer.request_progress(), 1)
 
-    def test_failure_retains_only_earned_progress(self):
-        for failure in score.FAILURE_EVENTS:
+    def test_expiry_retains_only_earned_progress(self):
+        for held in (False, True):
+            with self.subTest(held=held):
+                self.setUp()
+                self.event("request_opened")
+                if held:
+                    self.event("request_first_hold")
+                self.event("request_expired")
+                self.assertEqual(self.scorer.request_points[0], 1 if held else 0)
+                self.assertEqual(self.scorer.request_progress(), 0.5 if held else 0)
+                self.assertEqual(self.scorer.request_rate(), 0)
+
+    def test_wrong_mark_costs_a_point(self):
+        for wrong in score.WRONG_MARK_EVENTS:
             for held in (False, True):
-                with self.subTest(failure=failure, held=held):
+                with self.subTest(wrong=wrong, held=held):
                     self.setUp()
                     self.event("request_opened")
                     if held:
                         self.event("request_first_hold")
-                    self.event(failure)
-                    self.assertEqual(self.scorer.request_progress(), 0.5 if held else 0)
+                    self.event(wrong)
+                    self.assertEqual(self.scorer.request_points[0], (1 if held else 0) - score.WRONG_MARK_COST)
+                    self.assertEqual(self.scorer.request_progress(), 0)   # floored at 0
                     self.assertEqual(self.scorer.request_rate(), 0)
+
+    def test_guessing_absent_does_not_pay(self):
+        # one correct and four wrong "no such object" marks: the one-in-five absent rate
+        for rid, kind in enumerate(["request_absent_correct"] + ["request_absent_wrong"] * 4):
+            self.event("request_opened", rid)
+            self.event(kind, rid)
+        self.assertEqual(self.scorer.request_progress(), 0)
+        self.setUp()
+        self.event("request_opened", 0)
+        self.event("request_delivered", 0)
+        self.event("request_opened", 1)
+        self.event("request_absent_wrong", 1)
+        self.assertEqual(self.scorer.request_progress(), 0.25)   # (2 - 1) / 4
 
     def test_absence_and_open_requests_use_one_bounded_average(self):
         self.event("request_opened", 0)
@@ -106,7 +132,20 @@ class RequestCreditTests(unittest.TestCase):
         self.assertEqual([e["event"] for e in world.events],
                          ["request_first_hold", "request_claim_wrong"])
         self.scorer.add_step({"objects": [], "events": world.events})
-        self.assertEqual(self.scorer.request_progress(), 0.5)
+        self.assertEqual(self.scorer.request_points[0], 0)   # the hold's point, minus the wrong mark
+        self.assertEqual(self.scorer.request_progress(), 0)
+
+    def test_a_touch_is_not_a_hold(self):
+        world = SimpleNamespace(t=10, request={"id": 0, "object": 0, "status": "open", "deadline_t": 100})
+        world._is_target = lambda o: env.MessyDeskEnv._is_target(world, o)
+        touched = {"id": 0, "cls": "A", "present": True, "removed": False, "contact": True, "held": False,
+                   "resting": True, "in_container": None}
+        self.assertEqual(env.MessyDeskEnv._value(world, touched), 0)
+        lifted = dict(touched, held=True, resting=False)
+        self.assertEqual(env.MessyDeskEnv._value(world, lifted), 1)
+        in_pile = dict(touched, in_container="gray")             # touched where it lies: not placed, not held
+        self.assertEqual(env.MessyDeskEnv._value(world, in_pile), 0)
+        self.assertEqual(env.MessyDeskEnv._value(world, dict(in_pile, contact=False)), -1)
 
     def test_practice_and_hidden_copies_match(self):
         for hidden, practice in [("env.py", "messy_desk_env.py"),

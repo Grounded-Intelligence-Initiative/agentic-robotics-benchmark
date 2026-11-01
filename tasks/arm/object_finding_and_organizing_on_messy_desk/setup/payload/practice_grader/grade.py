@@ -1,8 +1,9 @@
 """Practice grader — a self-test you can run while you work.
 
 Drives your submission over the same wire the real grader uses (same request shape, same
-deadlines: READY within 120 s of launch, each reply within 30 s, repeated-`t` queries with
-perturbed proprioception) on VISIBLE practice seeds, and prints the raw episode score.
+deadlines: READY within 120 s of launch, each reply within 30 s, the same action rule and
+controller time budget, repeated-`t` queries with perturbed proprioception) on VISIBLE
+practice seeds, and prints the raw episode score and the controller time each episode used.
 It deliberately tells you less than the real grader: practice seeds, the raw metric only,
 no reference value. "My controller works and roughly how well", not "what I will be scored".
 
@@ -19,6 +20,7 @@ opens a request on demand so you can rehearse marks.
 
 import argparse
 import json
+import math
 import os
 import queue
 import random
@@ -37,6 +39,13 @@ STEP_TIMEOUT_S = 30.0
 READY_TIMEOUT_S = 4 * STEP_TIMEOUT_S
 MAX_PRE_READY_LINES = 200
 PROBE_EVERY = 97          # the real grader draws probed steps at random; here every 97th step
+ACTION_DIM = 8            # plus an optional ninth element, the hi-res camera bitmask
+# The controller's time budget per episode, as in the real grader: the time spent waiting for your
+# replies plus HIRES_CHARGE_S for every hi-res camera frame you ask for. The simulator's own time
+# never counts. Scaled to the horizon, so a short practice episode gets its share of the budget.
+CONTROLLER_BUDGET_S = 3000.0
+BUDGET_HORIZON = 20000
+HIRES_CHARGE_S = 0.1
 
 
 class WireError(Exception):
@@ -108,6 +117,25 @@ class Wire(object):
             self.proc.kill()
 
 
+def _checked(action):
+    """The real grader's action rule: eight finite numbers, plus an optional ninth (the hi-res
+    camera bitmask). Anything else aborts the episode there."""
+    try:
+        a = [float(v) for v in action] if isinstance(action, (list, tuple)) else None
+    except (TypeError, ValueError, OverflowError):
+        a = None
+    if a is None or len(a) not in (ACTION_DIM, ACTION_DIM + 1) or not all(math.isfinite(v) for v in a):
+        raise WireError("malformed action {!r}: eight finite numbers plus an optional ninth; the real "
+                        "grader aborts the episode here".format(action)[:200])
+    return a
+
+
+def _hires_frames(action):
+    if len(action) <= ACTION_DIM:
+        return 0
+    return bin(int(round(action[ACTION_DIM])) & 15).count("1")
+
+
 def _differs(a, b, tolerance=1e-4):
     fa = [float(x) for x in a]
     fb = [float(x) for x in b]
@@ -137,21 +165,34 @@ def _episode(wire, sim, seed, horizon, rng, stats, verbose, live=0, score_file=N
     wire.request({"type": "reset"})
     scorer = EpisodeScorer(horizon)
     t0 = time.time()
+    budget = CONTROLLER_BUDGET_S * horizon / float(BUDGET_HORIZON)
+    spent = 0.0
     for t in range(horizon):
         if t % PROBE_EVERY == PROBE_EVERY - 1:
+            perturbed = _perturbed(obs, rng)
+            asked = time.monotonic()
             if rng.random() < 0.5:
-                other = wire.act(t, _perturbed(obs, rng))
+                other = wire.act(t, perturbed)
                 action = wire.act(t, obs)
             else:
                 action = wire.act(t, obs)
-                other = wire.act(t, _perturbed(obs, rng))
+                other = wire.act(t, perturbed)
+            spent += time.monotonic() - asked
             stats["repeated_t_queries"] += 1
             if _differs(action, other):
                 stats["repeated_t_answers_differed"] += 1
         else:
+            asked = time.monotonic()
             action = wire.act(t, obs)
+            spent += time.monotonic() - asked
+        action = _checked(action)
+        spent += HIRES_CHARGE_S * _hires_frames(action)
         obs, state = sim.step(action)      # only the reply to the real obs is applied
         scorer.add_step(state)
+        if spent > budget:
+            print("[practice] seed={} cut at t={}: your controller used up its time budget ({:.0f} s for {} steps); "
+                  "the real grader cuts the episode here too".format(seed, t + 1, budget, horizon), file=sys.stderr, flush=True)
+            break
         if verbose:
             for e in state.get("events", []):
                 print("[practice] t={} {}".format(e.get("t"), json.dumps(e)), file=sys.stderr, flush=True)
@@ -164,6 +205,8 @@ def _episode(wire, sim, seed, horizon, rng, stats, verbose, live=0, score_file=N
                     json.dump(d, f)
                 os.replace(tmp, score_file)
     stats["wall_s_per_1000_steps"] = round((time.time() - t0) / max(scorer.steps, 1) * 1000.0, 1)
+    stats.setdefault("controller_s", []).append(round(spent, 1))
+    stats["controller_budget_s"] = round(budget, 1)
     return scorer
 
 

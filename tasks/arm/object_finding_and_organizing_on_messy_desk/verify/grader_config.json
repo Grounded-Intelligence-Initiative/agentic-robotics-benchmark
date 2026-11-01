@@ -1,7 +1,8 @@
 {
   "episodes": 3,
   "horizon": 20000,
-  "episode_wall_s": 2700,
+  "controller_budget_s": 3000,
+  "hires_charge_s": 0.1,
   "sim_ready_timeout_s": 480,
   "sim_start_attempts": 3,
   "probe_rate": 0.01,

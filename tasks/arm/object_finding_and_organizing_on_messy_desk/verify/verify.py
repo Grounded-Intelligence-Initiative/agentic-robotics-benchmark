@@ -7,8 +7,14 @@ the simulator's privileged state only; nothing the solver prints is a scoring in
 Hidden seeds come from OS entropy inside this process. A probed step is asked twice with
 the same `t` (real and perturbed proprioception/pixels, hidden order); only the real reply
 reaches the simulator. An aborted episode (deadline, crash, malformed action) scores 0 and
-is never dropped. An episode that exhausts its wall-clock budget is cut short: the steps
-it never ran earn nothing.
+is never dropped.
+
+The time budget is the controller's own, never the simulator's: per episode the grader sums
+the time it waits for the controller's replies plus a fixed charge per hi-res camera frame
+asked for (the simulator's PNG encoding of that frame, at a nominal cost, so that the charge
+does not depend on the machine either). An episode whose controller exhausts the budget is cut
+there: the steps it never ran earn nothing. A slower simulator therefore only makes the run
+longer; it never changes a score.
 """
 
 import json
@@ -36,17 +42,28 @@ from robotics_grader import (  # noqa: E402
 )
 from sim_client import SimClient, SimError  # noqa: E402
 
-ACTION_DIM = 8
+ACTION_DIM = 8          # plus an optional ninth element: the hi-res camera bitmask
+HIRES_BITS = 15         # 1 agentview, 2 left_view, 4 eye_in_hand, 8 oblique (the env reads these four bits)
 
 
 def _action(reply):
+    if not isinstance(reply, (list, tuple)):
+        raise SolverAborted("malformed action: {!r}".format(reply)[:160])
     try:
         a = [float(v) for v in reply]
     except (TypeError, ValueError, OverflowError):
         raise SolverAborted("malformed action: {!r}".format(reply)[:160])
-    if len(a) != ACTION_DIM or not all(math.isfinite(v) for v in a):
-        raise SolverAborted("action must be {} finite numbers".format(ACTION_DIM))
+    if len(a) not in (ACTION_DIM, ACTION_DIM + 1) or not all(math.isfinite(v) for v in a):
+        raise SolverAborted("action must be {} finite numbers, plus an optional ninth (the hi-res "
+                            "camera bitmask)".format(ACTION_DIM))
     return a
+
+
+def _hires_frames(action):
+    """How many hi-res camera frames the action's optional ninth element asks for."""
+    if len(action) <= ACTION_DIM:
+        return 0
+    return bin(int(round(action[ACTION_DIM])) & HIRES_BITS).count("1")
 
 
 def _perturbed(obs, rng):
@@ -80,7 +97,8 @@ def _request_log(state):
 def run_episodes(config, rng, solver):
     episodes = int(config.get("episodes", 3))
     horizon = int(config.get("horizon", 20000))
-    wall_budget = float(config.get("episode_wall_s", 2700))
+    budget = float(config.get("controller_budget_s", 3000))
+    hires_charge = float(config.get("hires_charge_s", 0.1))
     lock = ProbeLock(rng, rate=config.get("probe_rate", 0.01),
                      pass_fraction=config.get("probe_pass_fraction", 0.2))
     env_script = os.path.join(stage_dir(), "env.py")
@@ -102,36 +120,46 @@ def run_episodes(config, rng, solver):
             except SimError as exc:
                 fail("simulator reset failed: {}".format(exc))
             scorer = EpisodeScorer(horizon)
-            started = time.time()
+            started = time.monotonic()
+            spent = 0.0          # the controller's time this episode: its replies plus the hi-res charge
+            hires_frames = 0
             requests = []
             try:
                 solver.reset()
                 for t in range(horizon):
                     if lock.due():
-                        action = lock.probe(solver, t, obs, perturbed=_perturbed(obs, rng))
+                        perturbed = _perturbed(obs, rng)
+                        asked = time.monotonic()
+                        action = lock.probe(solver, t, obs, perturbed=perturbed)
                     else:
+                        asked = time.monotonic()
                         action = solver.act(t, obs)
+                    spent += time.monotonic() - asked
                     action = _action(action)
+                    frames = _hires_frames(action)
+                    hires_frames += frames
+                    spent += hires_charge * frames
                     try:
                         obs, state = sim.step(action)
                     except SimError as exc:
                         fail("simulator step failed: {}".format(exc))
                     scorer.add_step(state)
                     requests += _request_log(state)
-                    if time.time() - started > wall_budget:
+                    if spent > budget:
                         cut += 1
-                        print("[grader] episode {} cut at t={} (wall budget {:.0f}s)".format(
-                            episode, t + 1, wall_budget), file=sys.stderr, flush=True)
+                        print("[grader] episode {} cut at t={} (controller budget {:.0f}s used up)".format(
+                            episode, t + 1, budget), file=sys.stderr, flush=True)
                         break
             except SolverAborted as exc:
                 aborted += 1
                 scores.append(0.0)
-                summaries.append({"aborted": str(exc)[:160], "steps": scorer.steps})
+                summaries.append({"aborted": str(exc)[:160], "steps": scorer.steps, "controller_s": round(spent, 1)})
                 print("[grader] episode {} aborted at t={} ({}); scored 0".format(
                     episode, scorer.steps, exc), file=sys.stderr, flush=True)
                 continue
             scores.append(scorer.score())
-            summaries.append(scorer.summary())
+            summaries.append(dict(scorer.summary(), controller_s=round(spent, 1), hires_frames=hires_frames,
+                                  episode_wall_s=round(time.monotonic() - started, 1)))
             print("[grader] episode {}: score={:.4f} {}".format(episode, scorer.score(),
                   json.dumps(scorer.summary(), sort_keys=True)), file=sys.stderr, flush=True)
             # Printed after the episode ends, so a failed hidden episode can be replayed offline.
@@ -164,8 +192,10 @@ def main():
     extra = dict(lock.rewards(), episodes_aborted=float(aborted), episodes_cut=float(cut))
     for i, s in enumerate(scores):
         extra["episode_{}_score".format(i)] = float(s)
+    for i, s in enumerate(summaries):
+        extra["episode_{}_controller_s".format(i)] = float(s.get("controller_s", 0.0))
     for key in ("requests_success", "requests_failed", "requests_delivered", "requests_expired", "absent_correct",
-                "absent_wrong", "first_holds", "objects_lost"):
+                "absent_wrong", "claims_wrong", "first_holds", "objects_lost"):
         extra["total_" + key] = float(sum(s.get(key, 0) for s in summaries))
     for key in ("organization", "request_rate", "request_progress"):
         vals = [s[key] for s in summaries if key in s]
