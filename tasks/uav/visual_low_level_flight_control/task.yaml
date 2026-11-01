@@ -11,7 +11,7 @@ network:
 timeouts:
   setup: 120
   agent: 3600
-  verify: 900
+  verify: 5400
 artifacts:
 - /home/user/submission
 tools:

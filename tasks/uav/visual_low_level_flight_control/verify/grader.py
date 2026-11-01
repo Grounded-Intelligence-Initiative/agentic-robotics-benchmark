@@ -1,9 +1,11 @@
 """Evaluate an immutable image controller at the agent UID on fresh private scenes."""
 import json
+import math
 import os
 from pathlib import Path
 import secrets
 import signal
+import time
 
 import mujoco
 import numpy as np
@@ -11,7 +13,7 @@ import numpy as np
 from submission_snapshot import snapshot_submission
 from robotics_grader import (
     Solver, SolverAborted, SolverMissing, ratio_rewards, read_anchor, require,
-    write_verdict, zero_verdict, ProbeLock, seed_rng,
+    write_verdict, zero_verdict, ProbeLock, seed_rng, stage_config,
 )
 from world import World, png
 
@@ -19,13 +21,18 @@ SUBMISSION = "/opt/visual_robotics/evaluation/submission"
 
 
 def counterfactual_observation(world, observation, rng):
+    """The same step seen from a nearby viewpoint: 3-6 cm away horizontally, 1.5-3 cm vertically, turned by
+    1-3 degrees. A controller that reads its image answers differently; a small viewpoint change keeps a
+    controller that also folds the probe image into its state close to its true state."""
     original = world.data
     alternate = mujoco.MjData(world.model)
     alternate.qpos[:] = original.qpos
     alternate.qvel[:] = original.qvel
-    alternate.qpos[:2] += [rng.uniform(.5, .8)*rng.choice((-1, 1)) for _ in range(2)]
-    alternate.qpos[:2] = np.clip(alternate.qpos[:2], -3., 3.)
-    alternate.qpos[2] = np.clip(alternate.qpos[2]+rng.uniform(.3, .6), .4, 2.)
+    bearing = rng.uniform(-math.pi, math.pi)
+    alternate.qpos[:2] += rng.uniform(.03, .06)*np.array([math.cos(bearing), math.sin(bearing)])
+    alternate.qpos[2] += rng.uniform(.015, .03)*rng.choice((-1, 1))
+    turn = math.radians(rng.uniform(1., 3.))*rng.choice((-1, 1))
+    mujoco.mju_mulQuat(alternate.qpos[3:7], np.array([math.cos(turn/2), 0., 0., math.sin(turn/2)]), original.qpos[3:7].copy())
     try:
         mujoco.mj_forward(world.model, alternate)
         world.data = alternate
@@ -34,13 +41,38 @@ def counterfactual_observation(world, observation, rng):
         world.data = original
 
 
-def evaluate_controller(seeds):
+class BudgetExhausted(Exception):
+    pass
+
+
+class TimedSolver(Solver):
+    """Solver whose replies draw on one shared budget of controller wall time for the whole evaluation."""
+    budget_s = 1.0e9
+    used_s = 0.0
+
+    def act(self, t, obs):
+        if TimedSolver.used_s > TimedSolver.budget_s:
+            raise BudgetExhausted("controller time budget used up")
+        start = time.monotonic()
+        try:
+            return super().act(t, obs)
+        finally:
+            TimedSolver.used_s += time.monotonic()-start
+
+
+def evaluate_controller(seeds, config):
     results = []
-    with Solver(step_timeout=10, max_restarts=3, submission=SUBMISSION) as solver:
+    TimedSolver.budget_s = float(config.get("controller_budget_s", 1500))
+    TimedSolver.used_s = 0.0
+    exhausted = False
+    with TimedSolver(step_timeout=float(config.get("step_timeout_s", 10)), max_restarts=3, submission=SUBMISSION) as solver:
         for seed in seeds:
             world = World("flight", seed)
-            lock = ProbeLock(seed_rng(), rate=.1, pass_fraction=.5)
+            lock = ProbeLock(seed_rng(), rate=float(config.get("probe_rate", .1)),
+                             pass_fraction=float(config.get("probe_pass_fraction", .25)))
             try:
+                if exhausted:
+                    raise BudgetExhausted("controller time budget used up")
                 solver.reset()
                 obs = world.observe()
                 while not obs["done"]:
@@ -50,9 +82,13 @@ def evaluate_controller(seeds):
                     else:
                         action = solver.act(world.steps, obs)
                     obs = world.act(action)
-                results.append({**world.metrics(), **lock.rewards(), "aborted": 0})
+                results.append({**world.metrics(), **lock.rewards(), "aborted": 0, "budget_exhausted": 0})
+            except BudgetExhausted as exc:
+                exhausted = True
+                results.append({**world.metrics(), **lock.rewards(), "success": 0., "aborted": 1, "budget_exhausted": 1})
+                print(f"[controller-episode-aborted] {exc}", flush=True)
             except (SolverAborted, ValueError, TypeError, OverflowError) as exc:
-                results.append({**world.metrics(), **lock.rewards(), "success": 0., "aborted": 1})
+                results.append({**world.metrics(), **lock.rewards(), "success": 0., "aborted": 1, "budget_exhausted": 0})
                 print(f"[controller-episode-aborted] {exc}", flush=True)
             finally:
                 world.close()
@@ -84,9 +120,10 @@ def main():
     if not (Path(SUBMISSION)/"run.sh").is_file():
         write_verdict(zero_verdict("missing deliverables", anchored=anchor is not None))
         return
-    seeds = [secrets.randbits(64) for _ in range(4)]
+    config = stage_config()
+    seeds = [secrets.randbits(64) for _ in range(int(config.get("scenes", 8)))]
     try:
-        results = evaluate_controller(seeds)
+        results = evaluate_controller(seeds, config)
     except (SolverMissing, SolverAborted, ValueError, TypeError) as exc:
         write_verdict(zero_verdict(f"controller protocol failure: {exc}", anchored=anchor is not None))
         return
@@ -95,8 +132,11 @@ def main():
     success = float(np.mean([r["success"] for r in results]))
     probes = sum(r["probes_total"] for r in results)
     passed = sum(r["probes_passed"] for r in results)
+    pass_fraction = float(config.get("probe_pass_fraction", .25))
     extra.update({"success_rate": success, "probes_total": probes, "probes_passed": passed,
-                  "match_lock_ok": float(probes == 0 or passed/probes >= .5),
+                  "match_lock_ok": float(probes == 0 or passed/probes >= pass_fraction),
+                  "controller_seconds": round(TimedSolver.used_s, 1),
+                  "budget_exhausted": float(any(r["budget_exhausted"] for r in results)),
                   "evaluation_episodes": len(results),
                   "episodes_aborted": sum(r["aborted"] for r in results),
                   "mean_collisions": np.mean([r["collisions"] for r in results]),

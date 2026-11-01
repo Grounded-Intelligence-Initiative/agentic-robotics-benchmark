@@ -52,9 +52,9 @@ class FlightContract(unittest.TestCase):
                 self.assertTrue(crossed_gate(start, end, center, normal))
                 self.assertFalse(crossed_gate(end, start, center, normal))
                 self.assertFalse(crossed_gate(start, start, center, normal))
-                self.assertTrue(crossed_gate(start+.35*tangent, end+.35*tangent, center, normal))
-                self.assertFalse(crossed_gate(start+.37*tangent, end+.37*tangent, center, normal))
-                self.assertFalse(crossed_gate(start+[0, 0, .37], end+[0, 0, .37], center, normal))
+                self.assertTrue(crossed_gate(start+.25*tangent, end+.25*tangent, center, normal))
+                self.assertFalse(crossed_gate(start+.27*tangent, end+.27*tangent, center, normal))
+                self.assertFalse(crossed_gate(start+[0, 0, .27], end+[0, 0, .27], center, normal))
 
     def cross(self, index, reverse=False):
         w = self.world
@@ -81,9 +81,12 @@ class FlightContract(unittest.TestCase):
             w = World("flight", seed, render=False)
             try:
                 self.assertEqual(len(w.gates), 4)
-                self.assertGreater(np.ptp(w.gates[:, 1]), 2)
-                self.assertGreater(w.gates[1, 0]-w.gates[0, 0], 2)
-                self.assertLess(w.gates[3, 0]-w.gates[1, 0], -2.5)
+                # in the course frame (the whole course turns by a multiple of 90 degrees plus jitter)
+                c, s = np.cos(w.course_yaw), np.sin(w.course_yaw)
+                local = w.gates[:, :2]@np.array([[c, -s], [s, c]])
+                self.assertGreater(np.ptp(local[:, 1]), 2)
+                self.assertGreater(local[1, 0]-local[0, 0], 2)
+                self.assertLess(local[3, 0]-local[1, 0], -2.5)
                 self.assertLess(np.dot(w.gate_normals[0], w.gate_normals[1]), -.9)
                 self.assertGreater(np.dot(w.gate_normals[0], w.gate_normals[3]), .9)
                 self.assertGreater(w.gates[1, 2]-w.gates[0, 2], .39)

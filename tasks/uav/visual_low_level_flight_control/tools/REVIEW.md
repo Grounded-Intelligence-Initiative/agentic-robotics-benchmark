@@ -1,5 +1,31 @@
 # Reviewer Guide
 
+> **Maintainer changes, 2026-10-29 (v8).** The task as reviewed (v7) had four problems: the probe perturbation (a
+> view from 0.5-1.4 m away) zeroed honest controllers that fly short stretches from memory and contaminated stateful
+> ones; the scene randomization was narrower than the gate tolerance, so a recorded flight replayed open-loop passed
+> 83-99 % of fresh scenes; the verify stage had an unstated 900 s cap; four binary scenes gave a coarse score. v8:
+> gates 0.7 m (crossing window 0.26 m); the whole course turned by a random multiple of 90 degrees plus up to
+> 0.18 rad, gates moved by up to 0.25 m and turned by up to 0.2 rad, the start moved by up to 0.25 m and its heading
+> drawn within 90 degrees (layouts too close to the cabinet are redrawn); eight scenes; probes from a viewpoint
+> 3-6 cm and 1-3 degrees away, at least a quarter of them must change the action; a stated 1500 s budget of controller
+> reply time (`timeouts.verify` 5400 s: up to 2,640 onboard frames at about 0.55 s each on the task's two CPUs, plus
+> the full budget); the oracle searches for the first gate and uses the new marker size. Measured:
+> a recorded oracle flight replayed on 128 fresh scenes completes 0 (0 of 96 with the same quarter turn); the oracle
+> completed 24/24 scenes in three `ale validate` runs and 63/64 offline. The v7 notes below are historical.
+>
+> **Maintainer changes, 2026-10-30/31 (the onboard view).** The course now stands in the main hall of the Unity Asset
+> Store pack "Warehouse - Abandoned Factory District 1.1" (ScansFactory), cleared around the flight volume (render-only
+> scenery: no collision, no effect on the physics). The onboard camera is rendered by MuJoCo 3.16's Filament module on
+> the CPU (Mesa lavapipe), lit by an image light distilled from an OVRTX path-traced light probe of the hall plus the
+> sun, with per-class gains calibrated against OVRTX renders of the onboard view on the recorded oracle flight
+> (`verify/fil_render.py`, byte-identical to `setup/runtime/fil_render.py`). The gates keep the task's colours, with
+> worn-paint textures and twice the glow, so their colour cues hold under the hall's light. The scenery (meshes and
+> 256 px textures), the course's textures and the two KTX maps (image light, sky) are fetched at image build from the
+> benchmark's Hugging Face dataset, pinned in `image/assets.sha256`, into the root-owned `/opt/task-assets/payload/render`.
+> A frame takes about 0.54 s on the task's two CPUs; the verify process peaks at about 1.3 GB (textures at 256 px, the
+> heap trimmed after every scene). Measured: `ale validate` validate-aeacedc0, the oracle completed 7 of 8 fresh scenes
+> (ratio 0.875, at or above `full_at` 0.85: reward 1.0), verify 22.9 min, zero collisions and aborts; the task's own tests pass.
+
 **Draft: v7 onboard-camera switchback course, not yet qualified for admission.**
 Version 5's external views were solved by Astra on 4/4 hidden scenes. Version 6's
 onboard-only attempt timed out during authoring; its unchanged collected controller

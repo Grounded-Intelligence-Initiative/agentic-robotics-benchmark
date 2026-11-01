@@ -102,7 +102,7 @@ def corners(image, color):
 
 
 def marker_points(index):
-    half = .27 if index == 4 else .48
+    half = .27 if index == 4 else .38
     face = -.020 if index == 4 else -.041
     return np.array([[face, half, half], [face, -half, half],
                      [face, half, -half], [face, -half, -half]])
@@ -291,7 +291,13 @@ class Controller:
             if self.steps >= 12 and abs(self.p[2]-height) < .16 and 0 in self.landmarks:
                 self.mode = "entry"
                 self.register_course(0)
-            return goal, 0.
+            if 0 in self.landmarks:
+                center = self.landmarks[0][0]
+                self.heading = math.atan2(center[1]-self.p[1], center[0]-self.p[0])
+            elif self.steps >= 6:
+                # the course may lie in any direction: turn on the spot until the first gate is in view
+                self.heading = wrap(self.heading+.2)
+            return goal, self.heading
         if self.mode == "transit":
             goal = self.route[self.route_index]
             target = self.landmarks[self.index][0] if self.index in self.landmarks else self.course_point(NOMINAL[self.index])
