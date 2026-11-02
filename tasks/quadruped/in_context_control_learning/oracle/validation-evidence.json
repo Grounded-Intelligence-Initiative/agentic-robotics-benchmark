@@ -1,0 +1,250 @@
+{
+  "engine_commit": "90a7c1cfa649c5dbf1078714773f99840e44cba3",
+  "scope": "CPU scripted feasibility and integrity checks, not frontier-model difficulty",
+  "evaluation_protocol": {
+    "seed_file_sha256": "d51d6b678b7c919ad049526b3ba7c21fc688bf0599f6a0d6c817f290c006cb7b",
+    "episodes_per_condition": 8,
+    "scoring_uses_wall_clock": false,
+    "model_calls": 0,
+    "gpu_devices": [],
+    "random_search_baseline": "Random actions with the same visual detection/reporting rule as the reference.",
+    "interpretation": "Scripted comparators; clear_context is a policy-memory ablation, not an LLM experiment."
+  },
+  "reference_cases": [
+    {
+      "kind": "icl",
+      "mode": "reference",
+      "case": 0,
+      "success": 1.0,
+      "steps": 175,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 4,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 47,
+      "stage_1_actions": 43,
+      "stage_2_actions": 43,
+      "stage_3_actions": 42,
+      "authoring_wall_seconds": 26.77
+    },
+    {
+      "kind": "icl",
+      "mode": "reference",
+      "case": 1,
+      "success": 1.0,
+      "steps": 204,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 4,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 81,
+      "stage_1_actions": 42,
+      "stage_2_actions": 40,
+      "stage_3_actions": 41,
+      "authoring_wall_seconds": 21.329
+    },
+    {
+      "kind": "icl",
+      "mode": "reference",
+      "case": 2,
+      "success": 1.0,
+      "steps": 234,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 4,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 91,
+      "stage_1_actions": 50,
+      "stage_2_actions": 46,
+      "stage_3_actions": 47,
+      "authoring_wall_seconds": 38.821
+    },
+    {
+      "kind": "icl",
+      "mode": "reference",
+      "case": 3,
+      "success": 1.0,
+      "steps": 194,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 4,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 50,
+      "stage_1_actions": 49,
+      "stage_2_actions": 46,
+      "stage_3_actions": 49,
+      "authoring_wall_seconds": 32.3
+    },
+    {
+      "kind": "icl",
+      "mode": "reference",
+      "case": 4,
+      "success": 1.0,
+      "steps": 221,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 4,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 86,
+      "stage_1_actions": 45,
+      "stage_2_actions": 45,
+      "stage_3_actions": 45,
+      "authoring_wall_seconds": 27.642
+    },
+    {
+      "kind": "icl",
+      "mode": "reference",
+      "case": 5,
+      "success": 1.0,
+      "steps": 196,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 4,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 53,
+      "stage_1_actions": 47,
+      "stage_2_actions": 48,
+      "stage_3_actions": 48,
+      "authoring_wall_seconds": 19.701
+    },
+    {
+      "kind": "icl",
+      "mode": "reference",
+      "case": 6,
+      "success": 1.0,
+      "steps": 232,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 4,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 93,
+      "stage_1_actions": 46,
+      "stage_2_actions": 46,
+      "stage_3_actions": 47,
+      "authoring_wall_seconds": 25.627
+    },
+    {
+      "kind": "icl",
+      "mode": "reference",
+      "case": 7,
+      "success": 1.0,
+      "steps": 215,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 4,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 84,
+      "stage_1_actions": 44,
+      "stage_2_actions": 43,
+      "stage_3_actions": 44,
+      "authoring_wall_seconds": 34.703
+    }
+  ],
+  "reference_scope": "Image-only scripted policy under the task action budget, not a frontier model.",
+  "failure_feasibility_witnesses": [],
+  "randomization": {
+    "seeds": [
+      101,
+      102,
+      103,
+      104,
+      105,
+      106
+    ],
+    "passed": true
+  },
+  "security_probe": {
+    "ale_returncode_expected_nonzero": 2,
+    "checks": [
+      {
+        "episode_id": "bridge_damage_inspection-oracle-f69b9058",
+        "permission_checks": 14,
+        "forged_success_reward": {
+          "reward": 0.0
+        },
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "security_scope": "The shared service boundary was probed through the bridge task in real ALE.",
+  "ale_gate": [
+    {
+      "episode_id": "in_context_control_learning-untouched-1be4be40",
+      "status": "completed",
+      "rewards": {
+        "reward": 0.0
+      },
+      "metrics": {
+        "anchor_recorded": 1.0,
+        "ratio": 0.0
+      }
+    },
+    {
+      "episode_id": "in_context_control_learning-oracle-8a2cb6ea",
+      "status": "completed",
+      "rewards": {
+        "reward": 1.0
+      },
+      "metrics": {
+        "anchor_recorded": 1.0,
+        "collisions": 0.0,
+        "completed_stages": 4.0,
+        "damage_cost": 0.0,
+        "exploration_collisions": 0.0,
+        "exploration_completed_stages": 4.0,
+        "exploration_damage_cost": 0.0,
+        "exploration_hover_seconds": 0.0,
+        "exploration_post_switch_actions": 0.0,
+        "exploration_reports": 0.0,
+        "exploration_scout_actions": 0.0,
+        "exploration_stage_0_actions": 74.0,
+        "exploration_stage_1_actions": 40.0,
+        "exploration_stage_2_actions": 38.0,
+        "exploration_stage_3_actions": 39.0,
+        "exploration_steps": 191.0,
+        "exploration_success": 1.0,
+        "hover_seconds": 0.0,
+        "model_tool_audit_passed": 0.0,
+        "post_switch_actions": 0.0,
+        "ratio": 1.0,
+        "reports": 0.0,
+        "scout_actions": 0.0,
+        "scripted_oracle": 1.0,
+        "simulation_seconds": 38.2,
+        "stage_0_actions": 74.0,
+        "stage_1_actions": 40.0,
+        "stage_2_actions": 38.0,
+        "stage_3_actions": 39.0,
+        "steps": 191.0,
+        "success": 1.0,
+        "success_rate": 1.0,
+        "trusted_requests": 195.0
+      }
+    }
+  ]
+}
