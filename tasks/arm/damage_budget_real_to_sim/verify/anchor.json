@@ -1,15 +1,21 @@
 {
   "metric": "quality_adjusted_success",
   "direction": "higher",
-  "value": 0.9751455631222002,
-  "full_at": 0.99,
-  "source": "Measured local ALE oracle quality_adjusted_success; 2 run(s), range [0.967119375, 0.983171751]. The saturation band is the measured lower ratio, rounded down to 0.01.",
+  "value": 0.9796982110694876,
+  "full_at": 0.98,
+  "source": "Measured local ALE oracle quality_adjusted_success; 5 run(s), range [0.967540173, 0.990686034]. The saturation band is the measured lower ratio, rounded down to 0.01.",
   "measurements": [
-    0.9671193750391732,
-    0.9831717512052273
+    0.990686033758739,
+    0.9820129234531575,
+    0.9682859086364088,
+    0.9899660165464305,
+    0.9675401729527021
   ],
   "evidence_episode_ids": [
-    "damage_budget_real_to_sim-oracle-05011b7f",
-    "damage_budget_real_to_sim-oracle-73e2bbcd"
+    "damage_budget_real_to_sim-oracle-a3b4c73d",
+    "damage_budget_real_to_sim-oracle-4b84a449",
+    "damage_budget_real_to_sim-oracle-49b48241",
+    "damage_budget_real_to_sim-oracle-4c729ac2",
+    "damage_budget_real_to_sim-oracle-c39e6187"
   ]
 }
