@@ -2,67 +2,69 @@
 
 **Draft task candidate.** Explore an unknown workcell using two RGB views, reconstruct a MuJoCo scene, and deliver a controller that transfers a fragile object to a tray.
 
-![Actual simulator capture, with reviewer and agent views](preview.jpg)
+![Actual CPU simulator capture](preview.jpg)
 
-The large image is a reviewer view. The inset and [agent-view.png](agent-view.png)
-show the actual restricted observation; the agent never receives the reviewer camera.
-Robot meshes and textured scenery are present in the live simulator, not a marketing mockup.
+The large image is a reviewer camera. The inset and [agent-view.png](agent-view.png)
+show the actual restricted observation. Both use the same PBR scene, not a marketing mockup.
 
-## Scene randomization
+## Visual refresh
+
+MuJoCo 3.16 Filament runs on CPU Vulkan (lavapipe), with no GPU fallback.
+The scenes include CC0 industrial scans, correctly scaled surface UVs, normal/roughness
+maps, fixed-exposure lighting, and spatial supersampling. Temporal post-processing is
+disabled so an unchanged scene produces identical camera pixels. Tracking stickers
+remain visible; no semantic overlays or privileged state are added to observations.
+
+Original action semantics, calibrated cameras, collision proxies, scoring and budgets
+are retained. Detailed scenery has zero mass and contact response. This is a visual
+upgrade of a lightweight simulation, not a claim of hardware-accurate dynamics.
+
+## Randomization
 
 Object, tray and obstacle positions; three independent hidden actuator gains; lighting and workcell details. Gains remain fixed throughout exploration and reconstruction of that scene.
 
-The trusted service draws a private scene seed per episode. A repeated seed reproduces
-the scene. Reconnecting does not resample it or refund budgets. The environment varies
-between episodes, not arbitrarily between steps of the same learning problem.
+The private seed persists throughout an episode. Reconnecting does not resample the
+scene or restore budgets. Six-seed determinism/variation/phase checks passed.
 
-## Local validation
+## Validation
 
-- Pinned ALE engine: `90a7c1cfa649c5dbf1078714773f99840e44cba3`; CPU only, no model API calls.
-- Image-based scripted reference: **8/8** randomized validation scenes. Control-only transfer checks in these eight scenes; reconstruction prediction is evaluated separately by the real ALE gate.
-- Successful development example: seed 101, 70 actions, 0 collisions.
-- Six-seed determinism, variation and applicable phase-persistence checks passed.
-- Fourteen shared service permission/forgery checks passed through the bridge-task ALE sandbox;
-  forged success scored zero. This does not constitute a complete security audit.
-- Anchor `quality_adjusted_success` measured from 2 real ALE oracle runs;
-  final gate repeated separately after calibration.
+- Image-only scripted reference: **3/3** private randomized validation scenes.
+- Development demonstration: seed 101, 70 actions, 0 contacts.
+- Real ALE gate: **untouched 0.0 / oracle 1.0**, after measuring the new anchor.
+- Anchor `quality_adjusted_success`: 0.979698211, from 5 actual oracle runs.
+- CPU only; no Astra/frontier-model calls. Pinned engine `90a7c1cfa649c5dbf1078714773f99840e44cba3`.
+- Shared-service security probe: 14 permission/forgery checks, forged success scored zero.
 
-```text
-ok    damage_budget_real_to_sim: untouched={'reward': 0.0}, oracle={'reward': 1.0}
-```
+Arm random reference cases test control only; its ALE gate separately verifies model predictions and four controller transfers. The numbers above are feasibility checks, not model difficulty measurements
+or a sealed benchmark test set.
 
-Raw per-case outcomes, real gate episode IDs and metrics are in
-[validation-evidence.json](validation-evidence.json). The successful run is in
-[success-example.json](success-example.json), with its [interaction log](success-interaction.json).
-These are validation scenes, not an untouched benchmark test set or model results.
+[Raw evidence](validation-evidence.json) · [Success example](success-example.json) ·
+[Interaction log](success-interaction.json)
 
 ## Reproduce
 
-From the repository's pinned `vendor/ale` directory:
+From `vendor/ale`:
 
 ```bash
 uv run ale lint ../../tasks/arm/damage_budget_real_to_sim
-uv run ale validate ../../tasks/arm/damage_budget_real_to_sim --runs-dir /tmp/damage_budget_real_to_sim-validation
+uv run ale validate ../../tasks/arm/damage_budget_real_to_sim
 ```
 
-For reviewer-only scene checks, run `tools/check_randomization.py` and
-`tools/review_task.py --out /tmp/damage_budget_real_to_sim-review --seeds 101 102 103`
-in the task image, with `VISUAL_ROBOTICS_ASSETS=/opt/visual_robotics/assets`.
-The latter saves real scene images, interactions and per-seed outcomes.
+Inside the task image, `tools/check_randomization.py` checks six scenes and
+`tools/review_task.py --out /tmp/review --seeds 101 102 103` captures reviewer evidence.
 
-## Limits and merge blockers
+## Limits
 
 A three-axis Cartesian suction gantry, not an articulated Panda arm. This is hidden-simulation reconstruction, not a hardware real-to-sim-to-real claim. Evaluation tests unseen action sequences against the reconstructed scene and controller performance separately.
 
-
-
-Frontier/Astra benchmarking has **not** been run on this revision. Passing the oracle
-gate proves implementation feasibility, not the benchmark's desired difficulty.
-Keep this PR in Draft until model evaluation, independent review and coordination-sheet
-registration are confirmed. The task must be strengthened if frontier scores are too high.
+Keep this PR in **Draft**. Independent review, task registration and frontier-model
+difficulty evaluation remain pending. Scanned props do not make a task difficult by
+themselves. Earlier failures and pilot images are retained in the author's local logs.
 
 ## Assets
 
-Licensed Menagerie Crazyflie/Go1 meshes, CC0 Poly Haven textures and authored scene geometry.
-Sources, pinned hashes and full notices are under `image/visual_assets.json` and
-`image/LICENSE.*`. No proprietary warehouse or lab scene has been copied.
+Powered by Poly Haven: CC0 scanned utility cabinet, generator, concrete barrier and
+surface textures. Menagerie Crazyflie/Go1 visual meshes retain their original licenses.
+The lighting probe ships with the Apache-2.0 MuJoCo package. Pinned URLs, SHA256 hashes
+and notices are in `image/visual_assets.json` and `image/LICENSE.*`. No commercial
+warehouse pack, private laboratory scene or generated marketing image is included.

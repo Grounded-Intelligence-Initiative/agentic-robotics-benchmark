@@ -1,176 +1,22 @@
 {
+  "revision": "PBR realism refresh 2026-11-02",
   "engine_commit": "90a7c1cfa649c5dbf1078714773f99840e44cba3",
-  "scope": "CPU scripted feasibility and integrity checks, not frontier-model difficulty",
-  "evaluation_protocol": {
-    "seed_file_sha256": "d51d6b678b7c919ad049526b3ba7c21fc688bf0599f6a0d6c817f290c006cb7b",
-    "episodes_per_condition": 8,
-    "scoring_uses_wall_clock": false,
-    "model_calls": 0,
-    "gpu_devices": [],
-    "random_search_baseline": "Random actions with the same visual detection/reporting rule as the reference.",
-    "interpretation": "Scripted comparators; clear_context is a policy-memory ablation, not an LLM experiment."
-  },
-  "reference_cases": [
-    {
-      "kind": "arm",
-      "mode": "reference",
-      "case": 0,
-      "success": 1.0,
-      "steps": 55,
-      "collisions": 0,
-      "damage_cost": 0,
-      "completed_stages": 0,
-      "reports": 0,
-      "hover_seconds": 0.0,
-      "scout_actions": 0,
-      "post_switch_actions": 0,
-      "stage_0_actions": 55,
-      "authoring_wall_seconds": 2.407
-    },
-    {
-      "kind": "arm",
-      "mode": "reference",
-      "case": 1,
-      "success": 1.0,
-      "steps": 48,
-      "collisions": 0,
-      "damage_cost": 0,
-      "completed_stages": 0,
-      "reports": 0,
-      "hover_seconds": 0.0,
-      "scout_actions": 0,
-      "post_switch_actions": 0,
-      "stage_0_actions": 48,
-      "authoring_wall_seconds": 2.105
-    },
-    {
-      "kind": "arm",
-      "mode": "reference",
-      "case": 2,
-      "success": 1.0,
-      "steps": 48,
-      "collisions": 0,
-      "damage_cost": 0,
-      "completed_stages": 0,
-      "reports": 0,
-      "hover_seconds": 0.0,
-      "scout_actions": 0,
-      "post_switch_actions": 0,
-      "stage_0_actions": 48,
-      "authoring_wall_seconds": 2.122
-    },
-    {
-      "kind": "arm",
-      "mode": "reference",
-      "case": 3,
-      "success": 1.0,
-      "steps": 52,
-      "collisions": 0,
-      "damage_cost": 0,
-      "completed_stages": 0,
-      "reports": 0,
-      "hover_seconds": 0.0,
-      "scout_actions": 0,
-      "post_switch_actions": 0,
-      "stage_0_actions": 52,
-      "authoring_wall_seconds": 2.283
-    },
-    {
-      "kind": "arm",
-      "mode": "reference",
-      "case": 4,
-      "success": 1.0,
-      "steps": 51,
-      "collisions": 0,
-      "damage_cost": 0,
-      "completed_stages": 0,
-      "reports": 0,
-      "hover_seconds": 0.0,
-      "scout_actions": 0,
-      "post_switch_actions": 0,
-      "stage_0_actions": 51,
-      "authoring_wall_seconds": 2.259
-    },
-    {
-      "kind": "arm",
-      "mode": "reference",
-      "case": 5,
-      "success": 1.0,
-      "steps": 50,
-      "collisions": 0,
-      "damage_cost": 0,
-      "completed_stages": 0,
-      "reports": 0,
-      "hover_seconds": 0.0,
-      "scout_actions": 0,
-      "post_switch_actions": 0,
-      "stage_0_actions": 50,
-      "authoring_wall_seconds": 2.204
-    },
-    {
-      "kind": "arm",
-      "mode": "reference",
-      "case": 6,
-      "success": 1.0,
-      "steps": 47,
-      "collisions": 0,
-      "damage_cost": 0,
-      "completed_stages": 0,
-      "reports": 0,
-      "hover_seconds": 0.0,
-      "scout_actions": 0,
-      "post_switch_actions": 0,
-      "stage_0_actions": 47,
-      "authoring_wall_seconds": 2.125
-    },
-    {
-      "kind": "arm",
-      "mode": "reference",
-      "case": 7,
-      "success": 1.0,
-      "steps": 48,
-      "collisions": 0,
-      "damage_cost": 0,
-      "completed_stages": 0,
-      "reports": 0,
-      "hover_seconds": 0.0,
-      "scout_actions": 0,
-      "post_switch_actions": 0,
-      "stage_0_actions": 48,
-      "authoring_wall_seconds": 2.103
-    }
-  ],
-  "reference_scope": "Control-only transfer checks in these eight scenes; reconstruction prediction is evaluated separately by the real ALE gate.",
-  "failure_feasibility_witnesses": [],
-  "randomization": {
-    "seeds": [
-      101,
-      102,
-      103,
-      104,
-      105,
-      106
-    ],
-    "passed": true
-  },
-  "security_probe": {
-    "ale_returncode_expected_nonzero": 2,
-    "checks": [
-      {
-        "episode_id": "bridge_damage_inspection-oracle-f69b9058",
-        "permission_checks": 14,
-        "forged_success_reward": {
-          "reward": 0.0
-        },
-        "passed": true
-      }
-    ],
-    "passed": true
-  },
-  "security_scope": "The shared service boundary was probed through the bridge task in real ALE.",
+  "rendering": "MuJoCo 3.16 Filament, CPU Vulkan, fixed exposure, spatial supersampling",
+  "source_sha256": "5b5d1238c48a09bf1db65f438e9f988c7f8606e60020895075bb111f4e12fa62",
   "ale_gate": [
     {
-      "episode_id": "damage_budget_real_to_sim-oracle-15ea5c66",
+      "episode_id": "damage_budget_real_to_sim-untouched-7fea7202",
+      "status": "completed",
+      "rewards": {
+        "reward": 0.0
+      },
+      "metrics": {
+        "anchor_recorded": 1.0,
+        "ratio": 0.0
+      }
+    },
+    {
+      "episode_id": "damage_budget_real_to_sim-oracle-667035b4",
       "status": "completed",
       "rewards": {
         "reward": 1.0
@@ -187,34 +33,160 @@
         "exploration_post_switch_actions": 0.0,
         "exploration_reports": 0.0,
         "exploration_scout_actions": 0.0,
-        "exploration_stage_0_actions": 78.0,
-        "exploration_steps": 78.0,
+        "exploration_stage_0_actions": 67.0,
+        "exploration_steps": 67.0,
         "exploration_success": 1.0,
         "match_lock_ok": 1.0,
-        "mean_actions": 55.0,
+        "mean_actions": 50.25,
         "mean_collisions": 0.0,
-        "prediction_rmse": 0.002961518371300583,
+        "prediction_rmse": 0.0016009962332788042,
         "predictor_scene_disagreement": 0.0,
-        "probes_passed": 15.0,
-        "probes_total": 18.0,
-        "quality_adjusted_success": 0.9804501698413491,
-        "ratio": 1.0054398101368218,
-        "reconstruction_quality": 0.9804501698413491,
-        "scene_rollout_rmse": 0.002961518371300583,
+        "probes_passed": 19.0,
+        "probes_total": 24.0,
+        "quality_adjusted_success": 0.9893834494222531,
+        "ratio": 1.0098859406328737,
+        "reconstruction_quality": 0.9893834494222531,
+        "scene_rollout_rmse": 0.0016009962332788042,
         "success_rate": 1.0,
-        "trusted_requests": 79.0
-      }
-    },
-    {
-      "episode_id": "damage_budget_real_to_sim-untouched-8166aba1",
-      "status": "completed",
-      "rewards": {
-        "reward": 0.0
-      },
-      "metrics": {
-        "anchor_recorded": 1.0,
-        "ratio": 0.0
+        "trusted_requests": 68.0
       }
     }
-  ]
+  ],
+  "reference_cases": [
+    {
+      "kind": "arm",
+      "mode": "reference",
+      "case": 0,
+      "success": 1.0,
+      "steps": 46,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 46,
+      "authoring_wall_seconds": 14.349
+    },
+    {
+      "kind": "arm",
+      "mode": "reference",
+      "case": 1,
+      "success": 1.0,
+      "steps": 54,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 54,
+      "authoring_wall_seconds": 18.493
+    },
+    {
+      "kind": "arm",
+      "mode": "reference",
+      "case": 2,
+      "success": 1.0,
+      "steps": 53,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 53,
+      "authoring_wall_seconds": 19.999
+    }
+  ],
+  "randomization_checks": [
+    {
+      "kind": "arm",
+      "check": "randomization",
+      "returncode": 0
+    },
+    {
+      "kind": "arm",
+      "check": "demo",
+      "returncode": 0
+    }
+  ],
+  "protocol": {
+    "seed_file_sha256": "f9362ba0c692eef536a57654433dc1498e9f6efa9c5fd5921e8541cc0dc51971",
+    "episodes_per_condition": 3,
+    "scoring_uses_wall_clock": false,
+    "model_calls": 0,
+    "gpu_devices": [],
+    "random_search_baseline": "Random actions with the same visual detection/reporting rule as the reference.",
+    "interpretation": "Scripted comparators; clear_context is a policy-memory ablation, not an LLM experiment."
+  },
+  "model_calls": 0,
+  "gpu_devices": [],
+  "regression_tests": {
+    "unit.xml": {
+      "tests": 88,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "repo-tests.xml": {
+      "tests": 178,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "security_checks": {
+    "ale_returncode_expected_nonzero": 2,
+    "checks": [
+      {
+        "episode_id": "bridge_damage_inspection-oracle-414acee1",
+        "permission_checks": 14,
+        "forged_success_reward": {
+          "reward": 0.0
+        },
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "media_checks": [
+    {
+      "kind": "arm",
+      "images": {
+        "poster.png": {
+          "shape": [
+            1100,
+            1440,
+            3
+          ],
+          "std": 59.78542624247928
+        },
+        "scene.png": {
+          "shape": [
+            900,
+            1440,
+            3
+          ],
+          "std": 44.32997318276266
+        },
+        "agent-view.png": {
+          "shape": [
+            256,
+            512,
+            3
+          ],
+          "std": 37.75452974762636
+        }
+      },
+      "frames": 25,
+      "mean_motion": 6.280323660714286
+    }
+  ],
+  "build_order_equivalence": "20 initial camera hashes identical before/after deterministic glTF node sorting.",
+  "security_scope": "14 protected-service checks in a disposable Bridge task; shared protocol, not a full security audit.",
+  "reference_scope": "Arm randomized reference cases are control-only; ALE also tests reconstruction and four transfers."
 }
