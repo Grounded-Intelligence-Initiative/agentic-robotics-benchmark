@@ -1,0 +1,270 @@
+[
+  {
+    "method": "observe",
+    "params": {},
+    "observation": {
+      "frame_id": 1,
+      "steps_remaining": 160,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        1.0,
+        0.012683823529412885
+      ]
+    },
+    "observation": {
+      "frame_id": 2,
+      "steps_remaining": 159,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        1.0,
+        -0.009375000000000133
+      ]
+    },
+    "observation": {
+      "frame_id": 3,
+      "steps_remaining": 158,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        1.0,
+        -0.009375000000000133
+      ]
+    },
+    "observation": {
+      "frame_id": 4,
+      "steps_remaining": 157,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        1.0,
+        0.012683823529412885
+      ]
+    },
+    "observation": {
+      "frame_id": 5,
+      "steps_remaining": 156,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        1.0,
+        -0.009375000000000133
+      ]
+    },
+    "observation": {
+      "frame_id": 6,
+      "steps_remaining": 155,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        1.0,
+        0.012683823529412885
+      ]
+    },
+    "observation": {
+      "frame_id": 7,
+      "steps_remaining": 154,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        1.0,
+        -0.009375000000000133
+      ]
+    },
+    "observation": {
+      "frame_id": 8,
+      "steps_remaining": 153,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        1.0,
+        0.0010416666666668295
+      ]
+    },
+    "observation": {
+      "frame_id": 9,
+      "steps_remaining": 152,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        1.0,
+        0.0010416666666668295
+      ]
+    },
+    "observation": {
+      "frame_id": 10,
+      "steps_remaining": 151,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        0.375,
+        1.0
+      ]
+    },
+    "observation": {
+      "frame_id": 11,
+      "steps_remaining": 150,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        0.14236111111111072,
+        1.0
+      ]
+    },
+    "observation": {
+      "frame_id": 12,
+      "steps_remaining": 149,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        0.0588235294117645,
+        1.0
+      ]
+    },
+    "observation": {
+      "frame_id": 13,
+      "steps_remaining": 148,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        0.029166666666666785,
+        1.0
+      ]
+    },
+    "observation": {
+      "frame_id": 14,
+      "steps_remaining": 147,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "act",
+    "params": {
+      "action": [
+        0.0,
+        1.0
+      ]
+    },
+    "observation": {
+      "frame_id": 15,
+      "steps_remaining": 146,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": false,
+      "completed_stages": 0
+    }
+  },
+  {
+    "method": "report",
+    "params": {
+      "frame_id": 15,
+      "point": [
+        -0.109375,
+        -0.078125
+      ]
+    },
+    "observation": {
+      "frame_id": 16,
+      "steps_remaining": 146,
+      "damage_remaining": 40,
+      "phase": 0,
+      "done": true,
+      "completed_stages": 0
+    }
+  }
+]

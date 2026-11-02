@@ -1,0 +1,218 @@
+{
+  "engine_commit": "90a7c1cfa649c5dbf1078714773f99840e44cba3",
+  "scope": "CPU scripted feasibility and integrity checks, not frontier-model difficulty",
+  "evaluation_protocol": {
+    "seed_file_sha256": "d51d6b678b7c919ad049526b3ba7c21fc688bf0599f6a0d6c817f290c006cb7b",
+    "episodes_per_condition": 8,
+    "scoring_uses_wall_clock": false,
+    "model_calls": 0,
+    "gpu_devices": [],
+    "random_search_baseline": "Random actions with the same visual detection/reporting rule as the reference.",
+    "interpretation": "Scripted comparators; clear_context is a policy-memory ablation, not an LLM experiment."
+  },
+  "reference_cases": [
+    {
+      "kind": "bridge",
+      "mode": "reference",
+      "case": 0,
+      "success": 1.0,
+      "steps": 16,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 1,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 16,
+      "authoring_wall_seconds": 0.677
+    },
+    {
+      "kind": "bridge",
+      "mode": "reference",
+      "case": 1,
+      "success": 1.0,
+      "steps": 13,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 1,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 13,
+      "authoring_wall_seconds": 0.586
+    },
+    {
+      "kind": "bridge",
+      "mode": "reference",
+      "case": 2,
+      "success": 1.0,
+      "steps": 35,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 1,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 35,
+      "authoring_wall_seconds": 1.355
+    },
+    {
+      "kind": "bridge",
+      "mode": "reference",
+      "case": 3,
+      "success": 1.0,
+      "steps": 20,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 1,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 20,
+      "authoring_wall_seconds": 0.822
+    },
+    {
+      "kind": "bridge",
+      "mode": "reference",
+      "case": 4,
+      "success": 1.0,
+      "steps": 19,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 1,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 19,
+      "authoring_wall_seconds": 0.786
+    },
+    {
+      "kind": "bridge",
+      "mode": "reference",
+      "case": 5,
+      "success": 1.0,
+      "steps": 18,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 1,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 18,
+      "authoring_wall_seconds": 0.786
+    },
+    {
+      "kind": "bridge",
+      "mode": "reference",
+      "case": 6,
+      "success": 1.0,
+      "steps": 11,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 1,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 11,
+      "authoring_wall_seconds": 0.518
+    },
+    {
+      "kind": "bridge",
+      "mode": "reference",
+      "case": 7,
+      "success": 1.0,
+      "steps": 37,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 1,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 37,
+      "authoring_wall_seconds": 1.396
+    }
+  ],
+  "reference_scope": "Image-only scripted policy under the task action budget, not a frontier model.",
+  "failure_feasibility_witnesses": [],
+  "randomization": {
+    "seeds": [
+      101,
+      102,
+      103,
+      104,
+      105,
+      106
+    ],
+    "passed": true
+  },
+  "security_probe": {
+    "ale_returncode_expected_nonzero": 2,
+    "checks": [
+      {
+        "episode_id": "bridge_damage_inspection-oracle-f69b9058",
+        "permission_checks": 14,
+        "forged_success_reward": {
+          "reward": 0.0
+        },
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "security_scope": "The shared service boundary was probed through the bridge task in real ALE.",
+  "ale_gate": [
+    {
+      "episode_id": "bridge_damage_inspection-untouched-9aa60832",
+      "status": "completed",
+      "rewards": {
+        "reward": 0.0
+      },
+      "metrics": {
+        "anchor_recorded": 1.0,
+        "ratio": 0.0
+      }
+    },
+    {
+      "episode_id": "bridge_damage_inspection-oracle-8847c44d",
+      "status": "completed",
+      "rewards": {
+        "reward": 1.0
+      },
+      "metrics": {
+        "anchor_recorded": 1.0,
+        "collisions": 0.0,
+        "completed_stages": 0.0,
+        "damage_cost": 0.0,
+        "exploration_collisions": 0.0,
+        "exploration_completed_stages": 0.0,
+        "exploration_damage_cost": 0.0,
+        "exploration_hover_seconds": 0.0,
+        "exploration_post_switch_actions": 0.0,
+        "exploration_reports": 1.0,
+        "exploration_scout_actions": 0.0,
+        "exploration_stage_0_actions": 15.0,
+        "exploration_steps": 15.0,
+        "exploration_success": 1.0,
+        "hover_seconds": 0.0,
+        "post_switch_actions": 0.0,
+        "ratio": 1.0,
+        "reports": 1.0,
+        "scout_actions": 0.0,
+        "simulation_seconds": 3.0,
+        "stage_0_actions": 15.0,
+        "steps": 15.0,
+        "success": 1.0,
+        "success_rate": 1.0,
+        "trusted_requests": 17.0
+      }
+    }
+  ]
+}
