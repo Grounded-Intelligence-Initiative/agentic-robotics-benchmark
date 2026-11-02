@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 
 import mujoco
 import numpy as np
+from pbr_scene import upgrade
 
 
 def asset_root():
@@ -90,7 +91,7 @@ def robot_meshes(root, body, kind, radius=.13):
              mesh=mesh_name, quat=vec(row["quat"]))
     if kind == "ground":
         geom(body, "robot_marker", pos=(0, 0, upper[2]*scale+z_shift+.004),
-             size=(radius*.64, radius*.64, .008), rgba=(.95, .025, .035, 1))
+             size=(radius*.64, radius*.25, .004), rgba=(.95, .025, .035, 1))
     else:
         # A visible tracking sticker, not a privileged state overlay.
         geom(body, "robot_marker", "ellipsoid", pos=(0, 0, .05), size=(.09, .07, .045), rgba=(.95, .025, .035, 1))
@@ -213,24 +214,26 @@ def site_context(world, kind, rng):
 def texture_box_faces(root):
     """Give each textured box face metric UVs instead of MuJoCo's stretched box projection."""
     asset = root.find("asset")
-    tiles = {"brick_mat": 3., "rust_mat": 1., "floor_mat": 2., "road_mat": 2.}
+    tiles = {"brick_mat": 2., "rust_mat": 1., "floor_mat": 3., "road_mat": 3.}
     for parent in list(root.find("worldbody").iter()):
         for g in list(parent.findall("geom")):
             material = g.get("material")
-            if g.get("type") != "box" or material not in tiles:
+            if g.get("type") != "box" or material not in tiles or g.get("group") == "3":
                 continue
             half = np.fromstring(g.get("size"), sep=" ")
             vertices, uv, faces = [], [], []
             for axis in range(3):
                 for sign in (-1, 1):
                     normal = np.eye(3)[axis]*sign
-                    u = np.eye(3)[(axis+1) % 3]
+                    # Wall U runs horizontally, not vertically. Keep V upright.
+                    u = (np.array([0., sign, 0.]) if axis == 0 else
+                         np.array([-sign, 0., 0.]) if axis == 1 else np.array([1., 0., 0.]))
                     v = np.cross(normal, u)
-                    du, dv = half[(axis+1) % 3], half[(axis+2) % 3]
+                    du, dv = float(np.abs(u)@half), float(np.abs(v)@half)
                     start = len(vertices)
                     for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
                         vertices.append(normal*half[axis]+u*a*du+v*b*dv)
-                        uv.append((a*du/tiles[material], b*dv/tiles[material]))
+                        uv.append((a*du/tiles[material], 1-b*dv/tiles[material]))
                     faces.extend(((start, start+1, start+2), (start, start+2, start+3)))
             name = g.get("name")+"_textured"
             ET.SubElement(asset, "mesh", name=name, vertex=vec(np.ravel(vertices)),
@@ -345,6 +348,7 @@ def decorate(xml, kind, radius=.13, seed=0):
             for attr in ("pos", "size", "fromto"):
                 if g.get(attr):
                     g.set(attr, vec(np.array(list(map(float, g.get(attr).split())))*1.65))
+    upgrade(root, kind, asset_root(), rng)
     texture_box_faces(root)
     return ET.tostring(root, encoding="unicode")
 
