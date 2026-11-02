@@ -1,0 +1,220 @@
+{
+  "engine_commit": "90a7c1cfa649c5dbf1078714773f99840e44cba3",
+  "scope": "CPU scripted feasibility and integrity checks, not frontier-model difficulty",
+  "evaluation_protocol": {
+    "seed_file_sha256": "d51d6b678b7c919ad049526b3ba7c21fc688bf0599f6a0d6c817f290c006cb7b",
+    "episodes_per_condition": 8,
+    "scoring_uses_wall_clock": false,
+    "model_calls": 0,
+    "gpu_devices": [],
+    "random_search_baseline": "Random actions with the same visual detection/reporting rule as the reference.",
+    "interpretation": "Scripted comparators; clear_context is a policy-memory ablation, not an LLM experiment."
+  },
+  "reference_cases": [
+    {
+      "kind": "arm",
+      "mode": "reference",
+      "case": 0,
+      "success": 1.0,
+      "steps": 55,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 55,
+      "authoring_wall_seconds": 2.407
+    },
+    {
+      "kind": "arm",
+      "mode": "reference",
+      "case": 1,
+      "success": 1.0,
+      "steps": 48,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 48,
+      "authoring_wall_seconds": 2.105
+    },
+    {
+      "kind": "arm",
+      "mode": "reference",
+      "case": 2,
+      "success": 1.0,
+      "steps": 48,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 48,
+      "authoring_wall_seconds": 2.122
+    },
+    {
+      "kind": "arm",
+      "mode": "reference",
+      "case": 3,
+      "success": 1.0,
+      "steps": 52,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 52,
+      "authoring_wall_seconds": 2.283
+    },
+    {
+      "kind": "arm",
+      "mode": "reference",
+      "case": 4,
+      "success": 1.0,
+      "steps": 51,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 51,
+      "authoring_wall_seconds": 2.259
+    },
+    {
+      "kind": "arm",
+      "mode": "reference",
+      "case": 5,
+      "success": 1.0,
+      "steps": 50,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 50,
+      "authoring_wall_seconds": 2.204
+    },
+    {
+      "kind": "arm",
+      "mode": "reference",
+      "case": 6,
+      "success": 1.0,
+      "steps": 47,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 47,
+      "authoring_wall_seconds": 2.125
+    },
+    {
+      "kind": "arm",
+      "mode": "reference",
+      "case": 7,
+      "success": 1.0,
+      "steps": 48,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 0,
+      "post_switch_actions": 0,
+      "stage_0_actions": 48,
+      "authoring_wall_seconds": 2.103
+    }
+  ],
+  "reference_scope": "Control-only transfer checks in these eight scenes; reconstruction prediction is evaluated separately by the real ALE gate.",
+  "failure_feasibility_witnesses": [],
+  "randomization": {
+    "seeds": [
+      101,
+      102,
+      103,
+      104,
+      105,
+      106
+    ],
+    "passed": true
+  },
+  "security_probe": {
+    "ale_returncode_expected_nonzero": 2,
+    "checks": [
+      {
+        "episode_id": "bridge_damage_inspection-oracle-f69b9058",
+        "permission_checks": 14,
+        "forged_success_reward": {
+          "reward": 0.0
+        },
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "security_scope": "The shared service boundary was probed through the bridge task in real ALE.",
+  "ale_gate": [
+    {
+      "episode_id": "damage_budget_real_to_sim-oracle-15ea5c66",
+      "status": "completed",
+      "rewards": {
+        "reward": 1.0
+      },
+      "metrics": {
+        "anchor_recorded": 1.0,
+        "cumulative_damage_cost": 0.0,
+        "episodes_aborted": 0.0,
+        "evaluation_episodes": 4.0,
+        "exploration_collisions": 0.0,
+        "exploration_completed_stages": 0.0,
+        "exploration_damage_cost": 0.0,
+        "exploration_hover_seconds": 0.0,
+        "exploration_post_switch_actions": 0.0,
+        "exploration_reports": 0.0,
+        "exploration_scout_actions": 0.0,
+        "exploration_stage_0_actions": 78.0,
+        "exploration_steps": 78.0,
+        "exploration_success": 1.0,
+        "match_lock_ok": 1.0,
+        "mean_actions": 55.0,
+        "mean_collisions": 0.0,
+        "prediction_rmse": 0.002961518371300583,
+        "predictor_scene_disagreement": 0.0,
+        "probes_passed": 15.0,
+        "probes_total": 18.0,
+        "quality_adjusted_success": 0.9804501698413491,
+        "ratio": 1.0054398101368218,
+        "reconstruction_quality": 0.9804501698413491,
+        "scene_rollout_rmse": 0.002961518371300583,
+        "success_rate": 1.0,
+        "trusted_requests": 79.0
+      }
+    },
+    {
+      "episode_id": "damage_budget_real_to_sim-untouched-8166aba1",
+      "status": "completed",
+      "rewards": {
+        "reward": 0.0
+      },
+      "metrics": {
+        "anchor_recorded": 1.0,
+        "ratio": 0.0
+      }
+    }
+  ]
+}
