@@ -36,7 +36,8 @@ map, or target answer is exposed. Use the `robot_observe`, `robot_act`,
 base64 PNG `images`, a `frame_id`, `phase`, `done`, `completed_stages`,
 `steps_remaining`, and `damage_remaining`. The MCP tools also display the images.
 The red tracking marker is attached to your robot. Ground navigation goals and the arm tray are blue.
-The live environment contains licensed nominal robot meshes and a detailed workcell,
+The live environment uses CPU Filament PBR rendering, CC0 industrial scans, normal
+and roughness maps, and nominal robot meshes in a detailed workcell,
 not just reviewer-only decoration. Flight uses scaled Crazyflie geometry with the
 stated benchmark dynamics; ground robots use scaled Go1 meshes with stabilized planar
 control, not a learned walking policy. The arm is a three-axis industrial Cartesian

@@ -1,6 +1,6 @@
 FROM ghcr.io/agentslastexam/container-ubuntu22-base:latest
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends libosmesa6 \
+RUN apt-get update && apt-get install -y --no-install-recommends libosmesa6 mesa-vulkan-drivers libvulkan1 \
     && rm -rf /var/lib/apt/lists/*
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH=/opt/venv/bin:$PATH

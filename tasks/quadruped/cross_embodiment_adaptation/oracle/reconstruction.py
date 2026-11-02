@@ -7,7 +7,9 @@ from coordinates import pixel_to_world
 
 def create_scene(top, block, tray, gains=(120., 120., 120.)):
     # Isolate the neutral obstacle, not the cool-tinted workbench or overhead rails.
-    gray = (top.max(axis=2)-top.min(axis=2) < 10) & (top.mean(axis=2) > 160)
+    # PBR daylight gives the matte white block a slight warm cast. The metallic
+    # workbench is darker; do not classify it by neutral hue alone.
+    gray = (top.max(axis=2)-top.min(axis=2) < 35) & (top.mean(axis=2) > 215)
     gray[:51, :] = gray[205:, :] = False
     gray[:, :51] = gray[:, 205:] = False
     labels, count = label(gray)

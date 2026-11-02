@@ -12,9 +12,9 @@ def header():
     <default><geom friction="0.8 0.02 0.002" solref="0.02 1"/></default>
     <worldbody>
     <light pos="0 0 8" dir="0 0 -1" diffuse="0.4 0.4 0.4" castshadow="false"/>
-    <camera name="top" pos="0 0 4.5" orthographic="true" fovy="8"/>
+    <camera name="top" pos="0 0 4.5" projection="orthographic" fovy="8"/>
     <camera name="side" pos="0 -12 2" xyaxes="1 0 0 0 0 1"
-        orthographic="true" fovy="8"/>
+        projection="orthographic" fovy="8"/>
     <geom name="floor" type="plane" size="8 8 .1" rgba=".16 .18 .20 1"/>
     """
 

@@ -95,7 +95,7 @@
     "method": "act",
     "params": {
       "action": [
-        0.0
+        0.6666666666666666
       ]
     },
     "observation": {
@@ -111,7 +111,7 @@
     "method": "act",
     "params": {
       "action": [
-        0.6666666666666666
+        0.0
       ]
     },
     "observation": {
@@ -911,7 +911,7 @@
     "method": "act",
     "params": {
       "action": [
-        0.0
+        1.0
       ]
     },
     "observation": {
@@ -927,7 +927,7 @@
     "method": "act",
     "params": {
       "action": [
-        1.0
+        0.0
       ]
     },
     "observation": {
@@ -943,7 +943,7 @@
     "method": "act",
     "params": {
       "action": [
-        0.6666666666666666
+        0.0
       ]
     },
     "observation": {
@@ -975,7 +975,7 @@
     "method": "act",
     "params": {
       "action": [
-        0.0
+        0.6666666666666666
       ]
     },
     "observation": {
@@ -1087,7 +1087,7 @@
     "method": "act",
     "params": {
       "action": [
-        0.0
+        0.6666666666666666
       ]
     },
     "observation": {
@@ -1103,7 +1103,7 @@
     "method": "act",
     "params": {
       "action": [
-        0.6666666666666666
+        0.0
       ]
     },
     "observation": {
@@ -1499,7 +1499,7 @@
     "method": "act",
     "params": {
       "action": [
-        0.6666666666666666
+        0.0
       ]
     },
     "observation": {
@@ -1547,7 +1547,7 @@
     "method": "act",
     "params": {
       "action": [
-        0.0
+        0.6666666666666666
       ]
     },
     "observation": {

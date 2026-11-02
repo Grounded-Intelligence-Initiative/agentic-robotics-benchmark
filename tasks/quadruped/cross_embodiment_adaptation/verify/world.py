@@ -13,6 +13,7 @@ from PIL import Image
 
 from geometry import SIZE, arm_scene, box, header
 from scene_assets import decorate, sync_visuals
+from pbr_renderer import Renderer
 
 KINDS = ("flight", "arm", "icl", "cross", "bridge", "rescue")
 LIMITS = {"flight": 220, "arm": 180, "icl": 500, "cross": 320,
@@ -200,7 +201,7 @@ class World:
             self.data.qpos[:2] = self.nav_starts[self.phase] if self.kind in ("icl", "cross") else [-2.8, -1.8]
         mujoco.mj_forward(self.model, self.data)
         self._contacts = set()
-        self.renderer = mujoco.Renderer(self.model, SIZE, SIZE) if self.render_enabled else None
+        self.renderer = Renderer(self.model, SIZE, SIZE) if self.render_enabled else None
 
     def position(self):
         return self.data.xpos[self.agent_id].copy()
@@ -215,9 +216,6 @@ class World:
             option = mujoco.MjvOption()
             option.geomgroup[3] = 0
             self.renderer.update_scene(self.data, camera=camera, scene_option=option)
-            # Fixed diffuse instrument lighting keeps CPU observations affordable;
-            # reviewer cameras may additionally render soft scene shadows.
-            self.renderer.scene.flags[mujoco.mjtRndFlag.mjRND_SHADOW] = False
             im = self.renderer.render().copy()
             if camera == "top" and self.kind in ("icl", "cross", "bridge", "rescue"):
                 xx = (np.arange(SIZE) + .5) / SIZE * 8 - 4
@@ -358,7 +356,7 @@ class World:
             self.mapping = self.rng.permutation(4).tolist()
             self.gain = float(self.rng.uniform(.7, .9))
         self._build()
-        return self.observe()
+        return self.observe() if self.render_enabled else {}
 
     def report(self, frame_id, point):
         if (self.kind not in ("bridge", "rescue") or self.success or self.reports >= 3

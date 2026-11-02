@@ -3,13 +3,11 @@
   "direction": "higher",
   "value": 1.0,
   "full_at": 1.0,
-  "source": "Measured local ALE oracle success_rate; 2 run(s), range [1.000000000, 1.000000000]. The saturation band is the measured lower ratio, rounded down to 0.01.",
+  "source": "Measured local ALE oracle success_rate; 1 run(s), range [1.000000000, 1.000000000]. The saturation band is the measured lower ratio, rounded down to 0.01.",
   "measurements": [
-    1.0,
     1.0
   ],
   "evidence_episode_ids": [
-    "cross_embodiment_adaptation-oracle-98b50267",
-    "cross_embodiment_adaptation-oracle-134b70c9"
+    "cross_embodiment_adaptation-oracle-fe081e1a"
   ]
 }
