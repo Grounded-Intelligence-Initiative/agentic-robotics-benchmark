@@ -71,7 +71,19 @@ def xyz(obs, color="red", fallback=None):
 def search_detection(im, kind):
     """Visual reporter shared by coverage-search and random-motion comparators."""
     if kind == "rescue":
-        return location(im, "orange")
+        selected = mask(im, "orange")
+        labels, count = ndimage.label(selected)
+        candidates = []
+        for index in range(1, count+1):
+            yy, xx = np.where(labels == index)
+            width, height = np.ptp(xx)+1, np.ptp(yy)+1
+            # Painted safety lines are long thin components, not a human torso.
+            if len(xx) >= 10 and min(width, height) >= 3 and max(width, height)/min(width, height) < 4:
+                candidates.append((len(xx), xx.mean(), yy.mean()))
+        if not candidates:
+            return None
+        _, x, y = max(candidates)
+        return np.array(pixel_to_world(x, y))
     r, g, b = (im[:, :, i].astype(float) for i in range(3))
     water = (b > 100) & (b > 1.1*g) & (b > 1.5*r)
     # The shifted bridge axis is estimated from observed asphalt, never from the
@@ -269,8 +281,9 @@ def solve(client, kind, mode="reference", artifacts=None):
             # brightness cutoff either loses shaded wall tips or marks the floor.
             tint = im[:, :, 2].astype(float)-im[:, :, 0].astype(float)
             green_tint = im[:, :, 1].astype(float)-im[:, :, 0].astype(float)
-            gray = ((tint > 20) & (tint < 80) & (im.mean(axis=2) > 100)
-                    & (green_tint > .3*tint) & (green_tint < .7*tint))
+            gray = ((tint > 15) & (tint < 140) & (im.mean(axis=2) > 70)
+                    & (green_tint > .15*tint) & (green_tint < .8*tint)
+                    & ~mask(im, "blue"))
             yy, xx = np.mgrid[:SIZE, :SIZE]
             gx, gy = (p[0]+4)*32, (4-p[1])*32
             body_pixels = (max_radius+.07)*32
