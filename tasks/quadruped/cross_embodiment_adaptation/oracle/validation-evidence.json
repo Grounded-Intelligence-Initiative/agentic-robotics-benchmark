@@ -1,0 +1,246 @@
+{
+  "engine_commit": "90a7c1cfa649c5dbf1078714773f99840e44cba3",
+  "scope": "CPU scripted feasibility and integrity checks, not frontier-model difficulty",
+  "evaluation_protocol": {
+    "seed_file_sha256": "d51d6b678b7c919ad049526b3ba7c21fc688bf0599f6a0d6c817f290c006cb7b",
+    "episodes_per_condition": 8,
+    "scoring_uses_wall_clock": false,
+    "model_calls": 0,
+    "gpu_devices": [],
+    "random_search_baseline": "Random actions with the same visual detection/reporting rule as the reference.",
+    "interpretation": "Scripted comparators; clear_context is a policy-memory ablation, not an LLM experiment."
+  },
+  "reference_cases": [
+    {
+      "kind": "cross",
+      "mode": "reference",
+      "case": 0,
+      "success": 1.0,
+      "steps": 150,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 2,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 74,
+      "post_switch_actions": 76,
+      "stage_0_actions": 74,
+      "stage_1_actions": 76,
+      "authoring_wall_seconds": 13.462
+    },
+    {
+      "kind": "cross",
+      "mode": "reference",
+      "case": 1,
+      "success": 1.0,
+      "steps": 183,
+      "collisions": 1,
+      "damage_cost": 0,
+      "completed_stages": 2,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 111,
+      "post_switch_actions": 72,
+      "stage_0_actions": 111,
+      "stage_1_actions": 72,
+      "authoring_wall_seconds": 16.096
+    },
+    {
+      "kind": "cross",
+      "mode": "reference",
+      "case": 2,
+      "success": 1.0,
+      "steps": 205,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 2,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 126,
+      "post_switch_actions": 79,
+      "stage_0_actions": 126,
+      "stage_1_actions": 79,
+      "authoring_wall_seconds": 18.086
+    },
+    {
+      "kind": "cross",
+      "mode": "reference",
+      "case": 3,
+      "success": 1.0,
+      "steps": 192,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 1,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 124,
+      "post_switch_actions": 68,
+      "stage_0_actions": 124,
+      "stage_1_actions": 68,
+      "authoring_wall_seconds": 17.068
+    },
+    {
+      "kind": "cross",
+      "mode": "reference",
+      "case": 4,
+      "success": 1.0,
+      "steps": 185,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 1,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 118,
+      "post_switch_actions": 67,
+      "stage_0_actions": 118,
+      "stage_1_actions": 67,
+      "authoring_wall_seconds": 16.281
+    },
+    {
+      "kind": "cross",
+      "mode": "reference",
+      "case": 5,
+      "success": 0.0,
+      "steps": 320,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 0,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 81,
+      "post_switch_actions": 239,
+      "stage_0_actions": 81,
+      "stage_1_actions": 239,
+      "authoring_wall_seconds": 28.771
+    },
+    {
+      "kind": "cross",
+      "mode": "reference",
+      "case": 6,
+      "success": 1.0,
+      "steps": 185,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 1,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 122,
+      "post_switch_actions": 63,
+      "stage_0_actions": 122,
+      "stage_1_actions": 63,
+      "authoring_wall_seconds": 15.819
+    },
+    {
+      "kind": "cross",
+      "mode": "reference",
+      "case": 7,
+      "success": 1.0,
+      "steps": 191,
+      "collisions": 0,
+      "damage_cost": 0,
+      "completed_stages": 2,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 115,
+      "post_switch_actions": 76,
+      "stage_0_actions": 115,
+      "stage_1_actions": 76,
+      "authoring_wall_seconds": 16.187
+    }
+  ],
+  "reference_scope": "Image-only scripted policy under the task action budget, not a frontier model.",
+  "failure_feasibility_witnesses": [
+    {
+      "kind": "cross",
+      "mode": "privileged_expert",
+      "case": 5,
+      "success": 1.0,
+      "steps": 72,
+      "collisions": 1,
+      "damage_cost": 0,
+      "completed_stages": 1,
+      "reports": 0,
+      "hover_seconds": 0.0,
+      "scout_actions": 12,
+      "post_switch_actions": 60,
+      "stage_0_actions": 12,
+      "stage_1_actions": 60,
+      "authoring_wall_seconds": 6.979
+    }
+  ],
+  "randomization": {
+    "seeds": [
+      101,
+      102,
+      103,
+      104,
+      105,
+      106
+    ],
+    "passed": true
+  },
+  "security_probe": {
+    "ale_returncode_expected_nonzero": 2,
+    "checks": [
+      {
+        "episode_id": "bridge_damage_inspection-oracle-f69b9058",
+        "permission_checks": 14,
+        "forged_success_reward": {
+          "reward": 0.0
+        },
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "security_scope": "The shared service boundary was probed through the bridge task in real ALE.",
+  "ale_gate": [
+    {
+      "episode_id": "cross_embodiment_adaptation-untouched-f9e9839b",
+      "status": "completed",
+      "rewards": {
+        "reward": 0.0
+      },
+      "metrics": {
+        "anchor_recorded": 1.0,
+        "ratio": 0.0
+      }
+    },
+    {
+      "episode_id": "cross_embodiment_adaptation-oracle-e4b63894",
+      "status": "completed",
+      "rewards": {
+        "reward": 1.0
+      },
+      "metrics": {
+        "anchor_recorded": 1.0,
+        "collisions": 0.0,
+        "completed_stages": 2.0,
+        "damage_cost": 0.0,
+        "exploration_collisions": 0.0,
+        "exploration_completed_stages": 2.0,
+        "exploration_damage_cost": 0.0,
+        "exploration_hover_seconds": 0.0,
+        "exploration_post_switch_actions": 67.0,
+        "exploration_reports": 0.0,
+        "exploration_scout_actions": 76.0,
+        "exploration_stage_0_actions": 76.0,
+        "exploration_stage_1_actions": 67.0,
+        "exploration_steps": 143.0,
+        "exploration_success": 1.0,
+        "hover_seconds": 0.0,
+        "post_switch_actions": 67.0,
+        "ratio": 1.0,
+        "reports": 0.0,
+        "scout_actions": 76.0,
+        "simulation_seconds": 28.6,
+        "stage_0_actions": 76.0,
+        "stage_1_actions": 67.0,
+        "steps": 143.0,
+        "success": 1.0,
+        "success_rate": 1.0,
+        "trusted_requests": 145.0
+      }
+    }
+  ]
+}
