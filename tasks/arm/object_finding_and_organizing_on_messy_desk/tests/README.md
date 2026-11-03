@@ -1,9 +1,10 @@
 # object_finding_and_organizing_on_messy_desk — scoring and world state machine
 
 Design notes for maintainers and reviewers. The agent-facing rules are in `instruction.md`;
-the geometry in `setup/payload/task_card.md`. The code is `setup/payload/messy_desk_env.py`
-(the simulator and its state machine) and `setup/payload/messy_desk_score.py` (the score),
-both byte-identical copies of the files under `verify/` (this folder).
+the geometry in `environment/setup/payload/task_card.md`. The code is
+`environment/setup/payload/messy_desk_env.py` (the simulator and its state machine) and
+`environment/setup/payload/messy_desk_score.py` (the score), both byte-identical copies of the
+files under `tests/` (this folder).
 
 ## Entities
 
@@ -78,8 +79,8 @@ budget, $S \leftarrow S \cdot T / H$. The budget (`controller_budget_s` in
 `grader_config.json`, per episode) counts the controller's time only: the grader's wait for
 every reply plus a fixed `hires_charge_s` per hi-res camera frame asked for (the simulator's
 PNG encoding at a nominal price). The simulator's own time never counts, so a slower machine
-makes a run longer but never changes its score; `task.yaml`'s `timeouts.verify` is sized for
-three full episodes of simulator time plus three spent budgets.
+makes a run longer but never changes its score; `task.toml`'s `[verifier].timeout_sec` is sized
+for three full episodes of simulator time plus three spent budgets.
 
 | term | meaning |
 |---|---|
@@ -100,5 +101,5 @@ the first target hold can still earn request credit, but only a real grasp (both
 counts, never a brush of a finger; a guessed mark loses on average; knocking an object
 off the table is as bad as misfiling it and cannot be undone; an aborted episode (protocol
 error, step deadline, malformed action) scores 0 and stays in the mean. The grader scales the
-measured mean by the oracle's anchor and `full_at` (see `verify/anchor.json`); nothing the
+measured mean by the oracle's anchor and `full_at` (see `tests/anchor.json`); nothing the
 controller prints is a scoring input.

@@ -31,7 +31,7 @@ object list in the observation: you work from the cameras.
 
 ## Episode dynamics
 
-An episode runs a fixed `${horizon}` control steps at 10 Hz. During it:
+An episode runs a fixed `20000` control steps at 10 Hz. During it:
 
 1. **Arrivals.** New objects drop at random free spots on the desk surface (never inside a
    container) at random intervals, within the arm's reach. When too many objects are loose on the

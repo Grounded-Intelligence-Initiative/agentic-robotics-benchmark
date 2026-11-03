@@ -1,5 +1,6 @@
-# The task's environment image. `image/` is the sole build context, and the final stage
-# must derive directly from an official ALE base. Nothing from verify/ or oracle/ is here.
+# The task's environment image. `environment/` (less its `setup/`) is the sole build context,
+# and the final stage must derive directly from an official ALE base, at an exact version.
+# Nothing from tests/ or solution/ is here.
 #
 # Two interpreters, on purpose:
 #   /opt/venv   py3.12  answers `python3`; the verify stage, the practice grader and the

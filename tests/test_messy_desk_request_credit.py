@@ -10,7 +10,7 @@ TASK = Path(__file__).resolve().parents[1] / "tasks/arm/object_finding_and_organ
 
 
 def load(name, filename):
-    spec = importlib.util.spec_from_file_location(name, TASK / "verify" / filename)
+    spec = importlib.util.spec_from_file_location(name, TASK / "tests" / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -150,8 +150,8 @@ class RequestCreditTests(unittest.TestCase):
     def test_practice_and_hidden_copies_match(self):
         for hidden, practice in [("env.py", "messy_desk_env.py"),
                                  ("messy_desk_score.py", "messy_desk_score.py")]:
-            self.assertEqual((TASK / "verify" / hidden).read_bytes(),
-                             (TASK / "setup/payload" / practice).read_bytes())
+            self.assertEqual((TASK / "tests" / hidden).read_bytes(),
+                             (TASK / "environment/setup/payload" / practice).read_bytes())
 
 
 if __name__ == "__main__":
