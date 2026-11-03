@@ -1,0 +1,1 @@
+{"metric": "success_rate", "direction": "higher", "value": null, "full_at": 1.0, "source": "bootstrap; measure reference policy in ALE validate"}

@@ -1,0 +1,4 @@
+numpy==1.26.4
+mujoco==3.3.7
+robosuite==1.5.2
+Pillow==11.0.0
