@@ -1,6 +1,6 @@
 """Privileged reference expert for aerial_search_geolocation.
 
-Graded with the oracle token (see verify/verify.py), every observation carries
+Graded with the oracle token (see tests/verify.py), every observation carries
 `privileged`: the objects placed in the scene, by description, in the mission start frame,
 and `clearance`, how far each move could go from where the drone is before it touches
 anything. Decoys (asked descriptions no placed object has) are declared absent from the

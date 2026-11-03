@@ -9,7 +9,7 @@ placed target points, never from anything the controller says about its own succ
 
 Why the result can be trusted:
 
-* Separate verification. The verify image (verify/Dockerfile) carries the held-out scenes
+* Separate verification. The verify image (tests/Dockerfile) carries the held-out scenes
   and their hidden placement pool; the agent's image has neither, so no target position
   can have been memorised.
 * The controller runs at the agent's UID (`robotics_grader.Solver`) and, through `netguard`,
@@ -23,8 +23,8 @@ Why the result can be trusted:
 
 Oracle token. A submission whose `.oracle_token` hashes to `hidden/oracle_token.sha256`
 runs in privileged mode: every observation also carries the placed objects' true positions
-and how far each move could go before touching geometry (`sar_protocol.privileged_view`). That is how the reference expert (oracle/) is graded; the
-token exists only in oracle/, which is absent from the sandbox while the agent works. A
+and how far each move could go before touching geometry (`sar_protocol.privileged_view`). That is how the reference expert (solution/) is graded; the
+token exists only in solution/, which is absent from the sandbox while the agent works. A
 wrong token is ignored and recorded (`oracle_token_mismatch`).
 """
 

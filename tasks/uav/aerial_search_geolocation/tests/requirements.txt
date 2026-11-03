@@ -1,5 +1,5 @@
 # The controller's Python (3.12, /opt/venv): what the reference controller imports and
-# what an agent's controller may use. Installed by image/Dockerfile (and, identically, by
+# what an agent's controller may use. Installed by environment/Dockerfile (and, identically, by
 # the separate verification image, which runs the submitted controller).
 numpy>=1.26,<3
 pillow>=10

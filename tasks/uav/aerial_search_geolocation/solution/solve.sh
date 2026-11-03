@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The reference expert, run in place of the agent by `ale validate` as the same unprivileged
 # account. It installs expert.py and the 256-bit oracle token as .oracle_token; the grader
-# compares the token's sha256 with verify/hidden/oracle_token.sha256 and, on a match, adds
+# compares the token's sha256 with tests/hidden/oracle_token.sha256 and, on a match, adds
 # the placed objects' true positions to every observation (privileged mode). It leaves a
 # self-contained /home/user/submission/ that the verify stage drives.
 set -euo pipefail
