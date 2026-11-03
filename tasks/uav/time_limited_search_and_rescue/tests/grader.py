@@ -304,7 +304,7 @@ def main():
             require(path is not None, "engine trajectory is required for direct-model evaluation")
             trajectory = json.loads(Path(path).read_text())
             # This identity comes from the engine-staged, root-only ATIF file.
-            # Never use a user-writable marker or the existence of ~/.ale-oracle.
+            # Never use a user-writable marker or the existence of ~/.ale-solution.
             oracle = trajectory.get("agent", {}).get("name") == "oracle"
             if not oracle:
                 require(trajectory.get("schema_version") == "ATIF-v1.7"

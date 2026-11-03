@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
-exec python3 grader.py
+exec "$ALE_VERIFY_PYTHON" grader.py
