@@ -2,7 +2,7 @@ Scene geometry is authored for this task under the repository's Apache-2.0 licen
 No commercial warehouse pack or private research-lab environment is redistributed.
 
 Photo textures: Poly Haven, CC0-1.0 (https://polyhaven.com/license).
-The pinned URLs and SHA-256 hashes are in image/visual_assets.json:
+The pinned URLs and SHA-256 hashes are in environment/visual_assets.json:
 https://polyhaven.com/a/concrete_floor_02
 https://polyhaven.com/a/asphalt_02
 https://polyhaven.com/a/brick_wall_001
@@ -12,7 +12,7 @@ https://polyhaven.com/a/portable_generator
 https://polyhaven.com/a/concrete_road_barrier
 Powered by Poly Haven. Discovery uses its public API only at authoring time;
 container builds use pinned URLs and SHA-256 hashes. Mesh/texture conversion is
-reproducible with image/fetch_visual_assets.py and its pinned dependencies.
+reproducible with environment/fetch_visual_assets.py and its pinned dependencies.
 
 CPU PBR rendering uses MuJoCo 3.16.0 Filament and the lighting probe distributed
 inside that Apache-2.0 package. No probe from a commercial environment is copied.

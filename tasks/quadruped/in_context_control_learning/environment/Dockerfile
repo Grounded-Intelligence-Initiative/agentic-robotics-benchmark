@@ -1,4 +1,4 @@
-FROM ghcr.io/agentslastexam/container-ubuntu22-base:latest
+FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends libosmesa6 mesa-vulkan-drivers libvulkan1 \
     && rm -rf /var/lib/apt/lists/*
