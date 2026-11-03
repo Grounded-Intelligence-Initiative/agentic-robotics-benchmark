@@ -5,7 +5,7 @@ wordless assembly steps (exploded axonometric views with arrows, the two-person 
 customer's floor plan with the bookcase's place. Every number on a sheet comes from `furniture` / `room`, so the
 drawings and the physics cell cannot disagree.
 
-    python -m furniture_cell.drawings OUT_DIR      (from the verify/ folder; authoring tool, not run by the grader)
+    python -m furniture_cell.drawings OUT_DIR      (from the tests/ folder; authoring tool, not run by the grader)
 """
 
 from __future__ import annotations

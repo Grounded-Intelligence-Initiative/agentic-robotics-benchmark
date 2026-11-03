@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Oracle: the privileged reference assembler, run in place of the agent by `ale validate` as the same unprivileged
 # account. It installs assemble.py (camera frames, then one privileged call) and the 256-bit oracle token as
-# .oracle_token; the grader compares the token's sha256 with verify/hidden/oracle_token.sha256 and, on a match, gives
+# .oracle_token; the grader compares the token's sha256 with tests/hidden/oracle_token.sha256 and, on a match, gives
 # this submission's cells the nominal layout and the privileged call `reference_assemble` (the reference assembler
 # inside the cell: true part poses, the two robots driven through the cell's own controllers, safety watch and joints).
 set -euo pipefail

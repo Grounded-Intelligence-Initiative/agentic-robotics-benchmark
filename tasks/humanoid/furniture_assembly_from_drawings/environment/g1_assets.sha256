@@ -1,5 +1,5 @@
 # The Unitree G1 robot model (MuJoCo Menagerie, folder unitree_g1; BSD-3-Clause, LICENSE inside), pinned file by file.
-# image/Dockerfile fetches the folder at this commit into /opt/arb-assets/unitree_g1 and fails the build on any
+# environment/Dockerfile fetches the folder at this commit into /opt/arb-assets/unitree_g1 and fails the build on any
 # difference: a missing, extra or changed file. Generated with `sha256sum` from a checkout at the commit.
 # repo: https://github.com/google-deepmind/mujoco_menagerie.git
 # commit: f3b6013629c7b94f8ee93fd977b161fa8350f9bc

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """The practice lab of furniture_assembly_from_drawings: practice episodes of the furniture cell on a Unix socket.
 
-setup/run.sh installs this folder at /opt/arb-lab (owner: the lab account `arbcell`, mode 0700, so the agent can read
-neither this code, nor the lab's copy of the cell, nor the lab's state) and starts this server as that account:
+environment/setup/setup.sh installs this folder at /opt/arb-lab (owner: the lab account `arbcell`, mode 0700, so the
+agent can read neither this code, nor the lab's copy of the cell, nor the lab's state) and starts this server as that
+account:
 
     python3 -s -B lab_server.py --socket /run/furniture-cell/practice.sock --allow-user user --log <file>
 

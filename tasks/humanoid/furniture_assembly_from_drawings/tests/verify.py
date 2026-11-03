@@ -4,7 +4,7 @@ camera-only): runs as ROOT in the verify stage.
 The agent left /home/user/submission/assemble.py (solve(cell): a camera-only program that drives the cell's two G1
 humanoids through the furniture cell's JSON-lines API to build the bookcase where the drawings' floor plan puts it).
 This grader:
-  0. FIRST, stdlib only (`_early_lockdown`; verify/run.sh closed the stage folder already): records the upload time,
+  0. FIRST, stdlib only (`_early_lockdown`; tests/test.sh closed the stage folder already): records the upload time,
      freezes and kills every process of the agent account and of the practice lab's account (`lab_account`) and keeps
      both stopped until the verdict is written (cellkit.verify_freeze), locks the stage, snapshots the submission
      root-owned, gates late writes, quarantines late entries elsewhere;
@@ -183,7 +183,7 @@ PROGRAM = "assemble"
 CRITERIA = ["assembly_score"]
 GATES = ["contract_ok"]
 SUSPICIOUS = ("/opt/ale", "ALE_STAGE_DIR", "ALE_VERIFICATION", "hidden/seeds", "oracle_token", "reference_assemble",
-              "furniture_cell", "/opt/arb/runs")
+              "furniture_cell", "/opt/arb/runs", "ALE_VERIFY", "/opt/ale/tests", ".ale-solution")
 HOLE_GROUPS = ("L.top", "L.shelf", "L.bottom", "R.top", "R.shelf", "R.bottom")
 END_REASONS = ("finish", "eof", "sim_cap", "program_time_cap", "silence", "stalled", "protocol", "internal_error", "done")
 
@@ -223,7 +223,7 @@ def root_payload_ok(expected):
     problems = []
     owner = 0 if os.getuid() == 0 else os.getuid()
     if not os.path.isdir(ROOT_PAYLOAD):
-        return False, ["%s missing (setup/run.sh installs it)" % ROOT_PAYLOAD]
+        return False, ["%s missing (environment/setup/setup.sh installs it)" % ROOT_PAYLOAD]
     if not expected:
         return False, ["given_hashes.json lists no file"]
     for rel, digest in expected.items():
@@ -471,8 +471,12 @@ def run_episode(cfg, seed, rn, privileged, tag):
 
 def write_verdict(rewards, metrics):
     """One gated `reward` in the benchmark kit's envelope (robotics_grader.ratio_rewards against the recorded reference
-    value); the gate, the criterion and every statistic go to `metrics`."""
+    value); the gate, the criterion and every statistic go to `metrics`. In the engine (`ALE_VERIFY_PYTHON` set) the kit
+    writes reward.json and verification.json, the criteria text as the `diagnostic`; the metrics keep the names and the
+    filter of this grader's records on the earlier engine API (finite numbers only, '.' and '/' in a name replaced by
+    '_'). Elsewhere the envelope goes to verdict.local.json in the stage folder."""
     from robotics_grader import ratio_rewards, read_anchor
+    from robotics_grader import write_verdict as kit_write_verdict
     overall = float(rewards["assembly_score"])
     anchor, meta = read_anchor()
     extra = {}
@@ -490,19 +494,18 @@ def write_verdict(rewards, metrics):
             "cell; no late write, no surviving process); assembly_score %.4f (episode mean of the cell's stage score: the "
             "credited dowel joints, the back panel's seat and the carcass's placement over the bookcase's total weight, on "
             "the hidden episodes, an episode with a safety violation scoring 0)") % (rewards["contract_ok"], rewards["assembly_score"])
-    if os.environ.get("ALE_VERIFICATION_PATH"):
-        from ale_verify import CheckResult, Verification
-        rec = Verification()
-        rec.check("reward", CheckResult(float(verdict["rewards"]["reward"]), text))
+    if os.environ.get("ALE_VERIFY_PYTHON"):
+        recorded = {}
         for k, v in sorted(verdict["metrics"].items()):
             try:
-                rec.stat(k.replace(".", "_").replace("/", "_"), float(v))
+                v = float(v)
             except (TypeError, ValueError):
-                pass
-        rec.write()
+                continue
+            if v == v and abs(v) != float("inf"):
+                recorded[k.replace(".", "_").replace("/", "_")] = v
+        kit_write_verdict({"rewards": verdict["rewards"], "metrics": recorded}, diagnostic=text)
         return overall
-    with open(os.environ.get("ALE_VERDICT_PATH", os.path.join(STAGE_DIR, "verdict.local.json")), "w") as fh:
-        json.dump(verdict, fh, indent=1, default=str)
+    kit_write_verdict(verdict, path=os.path.join(STAGE_DIR, "verdict.local.json"))
     return overall
 
 

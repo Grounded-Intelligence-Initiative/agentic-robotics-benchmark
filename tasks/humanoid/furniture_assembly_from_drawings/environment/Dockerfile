@@ -1,11 +1,12 @@
 # furniture_assembly_from_drawings's environment image: MuJoCo with CPU (OSMesa) rendering, the agent's image tools and
 # the Unitree G1 robot model.
 #
-# `image/` is the sole build context and the final stage derives DIRECTLY from the official ALE base (`ale lint` rejects
-# any other final FROM). Nothing hidden is here: the furniture cell's code, the grader and the reference program live in
-# verify/ and oracle/ (absent from the image); the givens and the practice lab are staged by setup/run.sh. The layout
-# follows the arm chain's images (tasks/arm/*/image/Dockerfile), leaner: no CAD or mesh toolchain.
-FROM ghcr.io/agentslastexam/container-ubuntu22-base:latest
+# `environment/` (less its `setup/`) is the sole build context and the final stage derives DIRECTLY from the official
+# ALE base, at an exact version. Nothing hidden is here: the furniture cell's code, the grader and the reference program
+# live in tests/ and solution/ (absent from the image); the givens and the practice lab are staged by
+# environment/setup/setup.sh. The layout follows the arm chain's images (tasks/arm/*/environment/Dockerfile), leaner: no
+# CAD or mesh toolchain.
+FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1
 
 COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /usr/local/bin/uv
 
@@ -41,8 +42,8 @@ RUN export HOME=/root UV_CACHE_DIR=/tmp/uv-cache \
 # The robot model: MuJoCo Menagerie's Unitree G1 (folder unitree_g1, BSD-3-Clause, LICENSE inside), fetched at the commit
 # pinned in g1_assets.sha256 (a sparse, blob-filtered fetch: only that folder's files are downloaded) and checked file
 # by file against the sha256 recorded there; a missing, extra or changed file fails the build. The cell compiles its
-# robots from this copy (ARB_G1_DIR); setup/run.sh stages copies into the agent home (~/given/robot/unitree_g1) and into
-# the grader's root-owned copy of the givens (/opt/arb/given/robot/unitree_g1).
+# robots from this copy (ARB_G1_DIR); environment/setup/setup.sh stages copies into the agent home
+# (~/given/robot/unitree_g1) and into the grader's root-owned copy of the givens (/opt/arb/given/robot/unitree_g1).
 COPY g1_assets.sha256 /opt/arb-assets/g1_assets.sha256
 RUN set -eu; \
     list=/opt/arb-assets/g1_assets.sha256; \
@@ -74,8 +75,8 @@ RUN set -eu; \
     echo "[image] $folder @ $commit: $(find . -type f | wc -l) files verified"
 ENV ARB_G1_DIR=/opt/arb-assets/unitree_g1
 
-# The practice lab's account (setup/run.sh starts the lab server as it): a system account with no login shell and no
-# home, so the lab's cell and its state stay out of the agent's reach.
+# The practice lab's account (environment/setup/setup.sh starts the lab server as it): a system account with no login
+# shell and no home, so the lab's cell and its state stay out of the agent's reach.
 RUN useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin arbcell
 
 # The declared artifact path must exist even when nobody works (the engine captures declared artifacts after every

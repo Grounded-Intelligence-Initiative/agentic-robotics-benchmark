@@ -9,7 +9,7 @@
 #      by the lab account `arbcell` with mode 0700 (the agent can read neither the cell's code nor the lab's state),
 #      and the lab server started as that account. It serves practice episodes of the cell, never privileged, on the
 #      Unix socket /run/furniture-cell/practice.sock; setup waits (at most 60 s) until the socket is up.
-# Dynamic-only: packages and the robot model live in image/Dockerfile.
+# Dynamic-only: packages and the robot model live in environment/Dockerfile.
 set -euo pipefail
 HOME_DIR="${ALE_HOME:-/home/user}"
 AGENT_USER="$(basename "$HOME_DIR")"
