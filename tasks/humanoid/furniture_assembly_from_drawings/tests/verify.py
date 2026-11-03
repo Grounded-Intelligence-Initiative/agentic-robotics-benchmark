@@ -34,7 +34,8 @@ This grader:
      rendering (cellkit.wire), so the budget does not depend on how fast the grading machine simulates and renders.
 Untouched sandbox: no assemble.py -> contract_ok 0 -> 0.
 Oracle: the token + reference_assemble (the privileged reference assembler inside the cell, nominal layout) -> 1.
-Records: out/episodes.json (every episode's record) and logs/<tag>.log (the program's stderr) under the stage folder.
+Records: out/episodes.json (every episode's record) and logs/<tag>.log (the program's stderr) under the root-only
+/opt/arb-verify (outside /opt/ale, which the engine clears before it keeps a sandbox).
 """
 
 import ast
@@ -177,8 +178,19 @@ from furniture_cell.server import CellServer  # noqa: E402
 from robotics_grader import seed_rng  # noqa: E402
 
 HIDDEN = os.path.join(STAGE_DIR, "hidden")
-LOGS = os.path.join(STAGE_DIR, "logs")
-OUT = os.path.join(STAGE_DIR, "out")
+# The maintainers' record (the program's stderr, episodes.json) lives outside /opt/ale: the engine deletes its stage
+# folders before it keeps a sandbox, and the record is read from a kept one. Root-only (0700).
+RECORD_ROOT = os.environ.get("ARB_RECORD_ROOT", "/opt/arb-verify")
+LOGS = os.path.join(RECORD_ROOT, "logs")
+OUT = os.path.join(RECORD_ROOT, "out")
+
+
+def record_dir(path):
+    """`path` under the root-only record root, created on demand; never a scoring input."""
+    os.makedirs(RECORD_ROOT, exist_ok=True)
+    os.chmod(RECORD_ROOT, 0o700)
+    os.makedirs(path, exist_ok=True)
+    return path
 PROGRAM = "assemble"
 CRITERIA = ["assembly_score"]
 GATES = ["contract_ok"]
@@ -429,7 +441,7 @@ def run_episode(cfg, seed, rn, privileged, tag):
                         else cfg.get("program_time_cap_s", 3000.0))
     silence = float(cfg.get("silence_s", 120.0))
     proc = dirs = before = None
-    os.makedirs(LOGS, exist_ok=True)
+    record_dir(LOGS)
     sampler = netaudit.SocketSampler(uid=rn.uid if rn.acct else None, pids_fn=None if rn.acct else (lambda: []),
                                      period_s=float(cfg.get("socket_sample_s", 0.5)))
     counters = netaudit.NetCounters()
@@ -660,7 +672,7 @@ def _main_locked(cfg, rewards, metrics):
     metrics["step_calls"] = float(step_calls)
     episode_metrics(agent, metrics)
     try:
-        os.makedirs(OUT, exist_ok=True)
+        record_dir(OUT)
         with open(os.path.join(OUT, "episodes.json"), "w") as f:
             json.dump(agent, f, indent=1, default=str)
     except (OSError, TypeError, ValueError) as e:

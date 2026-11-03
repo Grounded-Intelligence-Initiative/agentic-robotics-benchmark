@@ -20,4 +20,4 @@ fi
 export HOME=/root PYTHONNOUSERSITE=1 XDG_CONFIG_HOME=/root/.config XDG_CACHE_HOME=/root/.cache \
   MPLCONFIGDIR=/root/.config/matplotlib
 export MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa
-exec "$ALE_VERIFY_PYTHON" -s verify.py
+exec "${ALE_VERIFY_PYTHON:-python3}" -s verify.py
