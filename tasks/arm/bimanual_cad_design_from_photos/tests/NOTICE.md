@@ -1,7 +1,7 @@
-# NOTICE - source of the ground truth of this task (verify / -dev only; never shown to the agent)
+# NOTICE - source of the ground truth of this task (tests / -dev only; never shown to the agent)
 
 The photographed unit `H_bcad` of this task (its ground truth in `reference/`, the oracle document in
-`../oracle/reference/`) is a **modified derivative** of the open-hardware **OpenArm 2.0** bimanual arm published by
+`../solution/reference/`) is a **modified derivative** of the open-hardware **OpenArm 2.0** bimanual arm published by
 **Enactic, Inc.**:
 
 - hardware repository: https://github.com/enactic/openarm_hardware, commit `eefc9fa5509562e5e4d630db9a52027afdbc6af1`;
@@ -11,7 +11,7 @@ The photographed unit `H_bcad` of this task (its ground truth in `reference/`, t
   This notice is the attribution and the statement of modifications the licence asks for. The derived design (the
   reference parts, the bought-part stand-ins derived from source parts, the oracle document and the photographed unit)
   is distributed under the same licence; its design files are the files of this task (`reference/parts/*.brep`, the
-  stand-in STEP files, `../oracle/reference/unit.FCStd`).
+  stand-in STEP files, `../solution/reference/unit.FCStd`).
 - modifications (generator `chain/shared/arm/cad_openarm/` of the development workspace: family `openarm_pair_cad_v1`,
   generator `openarm-cad/1.0.0`, build `bimanual-cad-build/3`, the `build` of `reference/gt.json`):
   - the made parts of the torso and both arms were grouped into 29 parts (touching source parts fused into one solid
@@ -39,4 +39,4 @@ The photographed unit `H_bcad` of this task (its ground truth in `reference/`, t
   the base frame (those identical to a part of the photographed unit left out); it contains no geometry.
 - FreeCAD 1.1.4 (LGPL-2.0-or-later, https://github.com/FreeCAD/FreeCAD) is installed unmodified in the task image from its
   release AppImage, with the FreeCAD MCP server neka-nat/freecad-mcp @ `78bf023` (MIT, https://github.com/neka-nat/freecad-mcp)
-  vendored unmodified (`image/vendor/freecad-mcp/`).
+  vendored unmodified (`environment/vendor/freecad-mcp/`).

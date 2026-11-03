@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Setup: trusted root, cwd = this staged folder, before the agent phase. Stages the givens (the photo set of the unit and
 # the bought parts' documents and STEP files) into the agent home, owned by the agent: from the image's task assets
-# (/opt/task-assets/payload, fetched from the benchmark's asset repository: image/assets.sha256, docs/task-assets.md)
-# and from setup/payload/ next to this script, whichever is present. Nothing hidden is among them: the photographed
-# unit's ground truth lives in verify/ (absent during the agent phase).
+# (/opt/task-assets/payload, fetched from the benchmark's asset repository: environment/assets.sha256,
+# docs/task-assets.md) and from environment/setup/payload/ next to this script, whichever is present. Nothing hidden is
+# among them: the photographed unit's ground truth lives in tests/ (absent during the agent phase).
 set -euo pipefail
 HOME_DIR="${ALE_HOME:-/home/user}"
 AGENT_USER="$(basename "$HOME_DIR")"
@@ -17,6 +17,6 @@ for SRC in /opt/task-assets/payload "$(dirname "$0")/payload"; do
   done
   staged=1
 done
-[ "$staged" = 1 ] || { echo "[setup] no givens found (neither /opt/task-assets/payload nor setup/payload)" >&2; exit 1; }
+[ "$staged" = 1 ] || { echo "[setup] no givens found (neither /opt/task-assets/payload nor environment/setup/payload)" >&2; exit 1; }
 mkdir -p "$HOME_DIR/submission" "$HOME_DIR/work" && chown "$AGENT_USER:$AGENT_USER" "$HOME_DIR/submission" "$HOME_DIR/work"
 echo "[setup] givens staged in $HOME_DIR (owner $AGENT_USER)" >&2
