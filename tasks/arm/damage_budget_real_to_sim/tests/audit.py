@@ -8,7 +8,7 @@ METHODS = {"robot_observe": "observe", "robot_act": "act",
 
 def audit_trajectory(path, events):
     payload = json.loads(Path(path).read_text())
-    if payload.get("schema_version") != "ATIF-v1.7":
+    if payload.get("schema_version") != "ATIF-v1.8":
         return False
     model = payload.get("agent", {}).get("model_name")
     if not model or payload.get("subagent_trajectories"):
