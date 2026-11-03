@@ -25,8 +25,13 @@ This grader:
      drawn from the seed; camera-only API) as `nobody` from a read-only copy under an opaque run tag;
   5. criterion: assembly_score = the episode mean of the cell's stage score (furniture_cell.scoring: the credited dowel
      joints, the back panel's seat and the carcass's placement over the bookcase's total weight), an episode with a
-     safety violation scoring 0, times the gates. Any exception inside an episode scores that episode 0 (stat
-     episode_errors); the grader itself never crashes on an episode.
+     safety violation scoring 0, times the gates. A failure on the grader's side of an episode (the cell's build,
+     the program's launch, the wire, the cleanup, the scoring) ends the run as a TASK ERROR (robotics_grader.fail:
+     a zero says the agent failed, a task error says the grading broke); a program that crashes, hangs or
+     misbehaves ends its own episode, which is scored as it stands, and so does an internal error of the cell while
+     it answers one of the program's requests (the program may have caused it).
+     Each episode caps the program's own time (`program_time_cap_s`): the wall clock minus the cell's simulation and
+     rendering (cellkit.wire), so the budget does not depend on how fast the grading machine simulates and renders.
 Untouched sandbox: no assemble.py -> contract_ok 0 -> 0.
 Oracle: the token + reference_assemble (the privileged reference assembler inside the cell, nominal layout) -> 1.
 Records: out/episodes.json (every episode's record) and logs/<tag>.log (the program's stderr) under the stage folder.
@@ -180,8 +185,7 @@ GATES = ["contract_ok"]
 SUSPICIOUS = ("/opt/ale", "ALE_STAGE_DIR", "ALE_VERIFICATION", "hidden/seeds", "oracle_token", "reference_assemble",
               "furniture_cell", "/opt/arb/runs")
 HOLE_GROUPS = ("L.top", "L.shelf", "L.bottom", "R.top", "R.shelf", "R.bottom")
-END_REASONS = ("finish", "eof", "sim_cap", "wall_cap", "silence", "stalled", "protocol", "wire_error", "internal_error",
-               "episode_error")
+END_REASONS = ("finish", "eof", "sim_cap", "program_time_cap", "silence", "stalled", "protocol", "internal_error", "done")
 
 
 def program_source():
@@ -300,7 +304,7 @@ class Runner(object):
         self.acct = runner.runner_account(cfg.get("runner_account", "nobody"), AGENT_USER)
         self.name, self.uid, self.gid = self.acct if self.acct else (None, None, None)
         self.lib_dirs, self.lib_files = library_entries()
-        self.cpu_s = float(cfg.get("cpu_cap_factor", 4.0)) * float(cfg.get("wall_cap_s", 3000.0))
+        self.cpu_s = float(cfg.get("cpu_cap_factor", 4.0)) * float(cfg.get("program_time_cap_s", 3000.0))
         self.killed = self.left = self.unclean_runs = self.stray_files = self.symlinks_skipped = 0
         os.makedirs(RUNS_ROOT, exist_ok=True)
         os.chmod(RUNS_ROOT, 0o755)
@@ -410,74 +414,58 @@ def episode_seeds(n):
     return seed_rng().seeds(n, bits=63), False
 
 
-def failed_summary(seed, privileged, why):
-    """The record of an episode that could not be run or scored: it scores 0."""
-    return {"stage_score": 0.0, "credit": 0.0, "groups": {}, "back_panel": None, "placement": {"ok": False},
-            "n_locked": 0, "safety_ok": True, "violations": [], "safety_peaks": {}, "sim_time_s": 0.0,
-            "camera_frames": {}, "camera_frames_total": 0, "render_wall_s": 0.0, "done_reason": None,
-            "seed": int(seed), "privileged_mode": bool(privileged), "calls": {}, "illegal_call_count": 0,
-            "bad_param_calls": 0, "step_calls": 0, "internal_errors": 0, "render_errors": 0, "wall_time_s": 0.0,
-            "episode_error": why}
-
-
 def run_episode(cfg, seed, rn, privileged, tag):
-    """One graded episode: a fresh cell, the program on the wire as the runner account, the cell's record. Never raises."""
+    """One graded episode: a fresh cell, the program on the wire as the runner account, the cell's record. A failure on
+    the grader's side (the cell's build, the program's launch, the wire, the cleanup, the scoring) is a task error
+    (`fail`), never the agent's zero; whatever the program does ends at most its own episode."""
     t0 = time.time()
     try:
         server = CellServer(seed, privileged=privileged, nominal=privileged, config=cfg, log=log)
-    except Exception:  # noqa: BLE001 - an episode that cannot be built scores 0 (stat episode_errors)
-        log("[grader] %s: the cell could not be built\n%s" % (tag, traceback.format_exc()))
-        out = failed_summary(seed, privileged, "cell_build_error")
-        out.update(episode_wall_s=time.time() - t0, end_reason="episode_error")
-        return out
-    # the privileged reference assembler runs inside one call (reference_assemble): its own, longer wall-clock cap
-    wall_cap = float(cfg.get("privileged_wall_cap_s", 7200.0) if privileged else cfg.get("wall_cap_s", 3000.0))
+    except Exception:  # noqa: BLE001 - the cell depends on the seed only: a build failure is the task's
+        fail("%s: the cell could not be built\n%s" % (tag, traceback.format_exc()))
+    # the program's own time (the wall clock minus the cell's simulation and rendering, cellkit.wire); the privileged
+    # reference assembler runs inside one call (reference_assemble) and has its own cap
+    program_cap = float(cfg.get("privileged_program_time_cap_s", 7200.0) if privileged
+                        else cfg.get("program_time_cap_s", 3000.0))
     silence = float(cfg.get("silence_s", 120.0))
-    proc = dirs = before = sampler = counters = None
-    wire_error = None
-    reason = "wire_error"
-    try:
-        os.makedirs(LOGS, exist_ok=True)
-        sampler = netaudit.SocketSampler(uid=rn.uid if rn.acct else None, pids_fn=None if rn.acct else (lambda: []),
-                                         period_s=float(cfg.get("socket_sample_s", 0.5)))
-        counters = netaudit.NetCounters()
-        with counters, sampler:
+    proc = dirs = before = None
+    os.makedirs(LOGS, exist_ok=True)
+    sampler = netaudit.SocketSampler(uid=rn.uid if rn.acct else None, pids_fn=None if rn.acct else (lambda: []),
+                                     period_s=float(cfg.get("socket_sample_s", 0.5)))
+    counters = netaudit.NetCounters()
+    with counters, sampler:
+        try:
             try:
                 dirs = rn.prepare(tag, program_source())      # an opaque tag: the hidden seed never reaches a path the program sees
                 before = rn.snapshot((dirs["root"],)) if rn.acct else None
                 argv = runner.launcher_argv(sys.executable, dirs["lib"], dirs["program"], PROGRAM)
                 proc = wire.AgentProcess(argv, cwd=dirs["program"], user=rn.name, env=rn.env(dirs), cpu_s=rn.cpu_s,
                                          stderr_path=os.path.join(LOGS, "%s.log" % tag))
-                reason = wire.serve_episode(server, proc, wall_cap, silence, log=log)
-            finally:
-                if proc is not None:
-                    proc.terminate()
-                if dirs is not None:
-                    rn.cleanup(dirs, before)              # every process of the runner account is gone before the counters are read
-    except Exception:  # noqa: BLE001
-        wire_error = traceback.format_exc()
-        reason = "wire_error"
-    if wire_error:
-        log("[grader] %s: wire error\n%s" % (tag, wire_error))
+            except Exception:  # noqa: BLE001
+                fail("%s: the program could not be launched\n%s" % (tag, traceback.format_exc()))
+            try:
+                reason = wire.serve_episode(server, proc, program_cap, silence, log=log)
+            except Exception:  # noqa: BLE001 - the wire turns everything the program does into an end reason
+                fail("%s: the wire failed\n%s" % (tag, traceback.format_exc()))
+        finally:
+            if proc is not None:
+                proc.terminate()
+            if dirs is not None:
+                rn.cleanup(dirs, before)              # every process of the runner account is gone before the counters are read
     try:
         if not server.done:
             server._end(reason)
         summary = server.finalize()
-    except Exception:  # noqa: BLE001 - finalize() does not raise by design; belt and braces
-        log("[grader] %s: the episode could not be scored\n%s" % (tag, traceback.format_exc()))
-        summary = failed_summary(seed, privileged, "finalize_error")
-        try:
-            server.close()
-        except Exception:  # noqa: BLE001
-            pass
+    except Exception:  # noqa: BLE001 - finalize() does not raise by design
+        fail("%s: the episode could not be scored\n%s" % (tag, traceback.format_exc()))
     if summary.get("score_error"):
-        summary["episode_error"] = "score_error"
+        fail("%s: the episode could not be scored: %s" % (tag, summary["score_error"]))
     summary["episode_wall_s"] = time.time() - t0
     summary["end_reason"] = reason
-    summary["remote_sockets_seen"] = int(sampler.max_seen) if sampler is not None else 0
-    summary["socket_samples"] = int(sampler.samples) if sampler is not None else 0
-    summary["net_outbound"] = int(counters.total) if counters is not None else 0
-    summary["net_delta"] = dict(counters.delta) if counters is not None else {}
+    summary["remote_sockets_seen"] = int(sampler.max_seen)
+    summary["socket_samples"] = int(sampler.samples)
+    summary["net_outbound"] = int(counters.total)
+    summary["net_delta"] = dict(counters.delta)
     return summary
 
 
@@ -540,8 +528,8 @@ def main():
     metrics = {"grader_exception": 0.0, "episodes": float(cfg.get("episodes", 3)),
                "root_payload_ok": 0.0, "agent_deprivileged": 0.0, "runner_uid": -1.0, "privileged_mode": 0.0, "oracle_token_mismatch": 0.0,
                "runner_processes_killed": 0.0, "runner_processes_left": 0.0, "runner_unclean_runs": 0.0,
-               "stray_files_removed": 0.0, "suspicious_lines": 0.0, "agent_wire_errors": 0.0, "remote_sockets_seen": 0.0, "net_outbound_events": 0.0,
-               "network_imports": 0.0, "illegal_call_count": 0.0, "step_calls": 0.0, "episode_errors": 0.0, "seeds_pinned": 0.0}
+               "stray_files_removed": 0.0, "suspicious_lines": 0.0, "remote_sockets_seen": 0.0, "net_outbound_events": 0.0,
+               "network_imports": 0.0, "illegal_call_count": 0.0, "step_calls": 0.0, "seeds_pinned": 0.0}
     for k in ("stage_locked", "stage_parent_locked", "stage_lock_latency_ms", "agent_processes_killed", "agent_processes_left",
               "lab_account_present", "lab_processes_killed", "lab_processes_left",
               "submission_late_writes", "late_writes_quarantined", "late_write_gate_active", "submission_snapshot"):
@@ -574,7 +562,7 @@ def episode_metrics(agent, metrics):
     metrics["locked_joints_mean"] = _mean(s.get("n_locked", 0) for s in agent)
     for g in HOLE_GROUPS:
         metrics["group_rate." + g] = _mean(((s.get("groups") or {}).get(g) or {}).get("credit", 0.0) for s in agent)
-    metrics["back_panel_rate"] = _mean(1.0 if (s.get("back_panel") or {}).get("white_face_front") else 0.0 for s in agent)
+    metrics["back_panel_rate"] = _mean(1.0 if (s.get("back_panel") or {}).get("credited") else 0.0 for s in agent)
     metrics["placement_rate"] = _mean(1.0 if (s.get("placement") or {}).get("ok") else 0.0 for s in agent)
     metrics["safety_violation_rate"] = _mean(0.0 if s.get("safety_ok", True) else 1.0 for s in agent)
     metrics["mean_sim_time_s"] = _mean(s.get("sim_time_s", 0.0) for s in agent)
@@ -583,6 +571,8 @@ def episode_metrics(agent, metrics):
     for cam in sorted(set(k for s in agent for k in (s.get("camera_frames") or {}))):
         metrics["camera_frames_mean." + cam] = _mean((s.get("camera_frames") or {}).get(cam, 0) for s in agent)
     metrics["render_wall_s_mean"] = _mean(s.get("render_wall_s", 0.0) for s in agent)
+    metrics["program_time_s_mean"] = _mean(s.get("program_time_s", 0.0) for s in agent)
+    metrics["cell_work_s_mean"] = _mean(s.get("cell_work_s", 0.0) for s in agent)
     metrics["bad_param_calls"] = float(sum(int(s.get("bad_param_calls", 0)) for s in agent))
     metrics["cell_internal_errors"] = float(sum(int(s.get("internal_errors", 0)) for s in agent))
     metrics["render_errors"] = float(sum(int(s.get("render_errors", 0)) for s in agent))
@@ -629,29 +619,22 @@ def _main_locked(cfg, rewards, metrics):
     for i, seed in enumerate(ep_seeds):
         tag = "ep%02d" % (i + 1)
         log("[grader] episode %d/%d" % (i + 1, len(ep_seeds)))
-        try:
-            s_a = run_episode(cfg, seed, rn, privileged, tag)
-        except Exception:  # noqa: BLE001 - run_episode does not raise by design; belt and braces
-            log("[grader] %s: episode error\n%s" % (tag, traceback.format_exc()))
-            s_a = failed_summary(seed, privileged, "episode_error")
-            s_a.update(episode_wall_s=0.0, end_reason="episode_error", remote_sockets_seen=0, net_outbound=0, net_delta={})
+        s_a = run_episode(cfg, seed, rn, privileged, tag)    # a grader-side failure inside is a task error
         s_a["tag"] = tag
-        log("[grader]   stage score %.3f (credit %.2f, %d joints locked) safety %s sim %.1f s wall %.1f s frames %d end %s "
-            "calls %s illegal %d bad params %d violations %s%s" % (
+        log("[grader]   stage score %.3f (credit %.2f, %d joints locked) safety %s sim %.1f s wall %.1f s (program %.1f s, "
+            "cell %.1f s) frames %d end %s calls %s illegal %d bad params %d violations %s" % (
                 float(s_a.get("stage_score", 0.0)), float(s_a.get("credit", 0.0)), int(s_a.get("n_locked", 0)),
                 s_a.get("safety_ok"), float(s_a.get("sim_time_s", 0.0)), float(s_a.get("episode_wall_s", 0.0)),
+                float(s_a.get("program_time_s", 0.0)), float(s_a.get("cell_work_s", 0.0)),
                 int(s_a.get("camera_frames_total", 0)), s_a.get("end_reason"), s_a.get("calls"),
                 int(s_a.get("illegal_call_count", 0)), int(s_a.get("bad_param_calls", 0)),
-                [v.get("what") for v in (s_a.get("violations") or [])][:3],
-                (" EPISODE ERROR %s" % s_a["episode_error"]) if s_a.get("episode_error") else ""))
+                [v.get("what") for v in (s_a.get("violations") or [])][:3]))
         agent.append(s_a)
         # the privileged reference assembler steps the cell inside its one call; without the token that call was refused
         # (an illegal call) and must not pass the steps gate
         ref_calls = int((s_a.get("calls") or {}).get("reference_assemble", 0)) if privileged else 0
         step_calls += int(s_a.get("step_calls", 0)) + ref_calls
         illegal += int(s_a.get("illegal_call_count", 0))
-        metrics["episode_errors"] += 1.0 if s_a.get("episode_error") else 0.0
-        metrics["agent_wire_errors"] += 1.0 if s_a.get("end_reason") == "wire_error" else 0.0
         metrics["remote_sockets_seen"] = max(metrics["remote_sockets_seen"], float(s_a.get("remote_sockets_seen", 0)))
         metrics["net_outbound_events"] += float(s_a.get("net_outbound", 0))
         for ck, cv in (s_a.get("net_delta") or {}).items():

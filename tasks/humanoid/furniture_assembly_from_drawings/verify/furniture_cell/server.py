@@ -24,6 +24,7 @@ illegal call like any unknown method):
 command / reference_assemble it also ends the episode, whose state is then scored as it stands).
 
 The attributes cellkit.wire.serve_episode relies on: done, done_reason, _end(reason), wall_start, wall_used,
+work_wall (the cell's own time inside step / get_camera, not charged to the program), program_used,
 steps_after_done. finalize() returns the episode's record: Cell.score() plus the call counts.
 """
 
@@ -172,7 +173,8 @@ class CellServer:
         self.internal_errors = 0
         self.render_errors = 0
         self.wall_start = None             # set by cellkit.wire.serve_episode
-        self.wall_used = 0.0
+        self.wall_used = 0.0               # the episode's wall clock (set by the wire)
+        self.program_used = 0.0            # its program time: the wall clock minus the cell's work_wall (set by the wire)
         self.steps_after_done = 0
         self.reference_report = None
         self._closed = False
@@ -185,6 +187,11 @@ class CellServer:
     @property
     def done_reason(self):
         return self.cell.done_reason
+
+    @property
+    def work_wall(self) -> float:
+        """Seconds the cell has spent simulating (step) and producing camera frames (get_camera) so far."""
+        return float(self.cell.work_wall)
 
     def _end(self, reason: str) -> None:
         if not self.cell.done:
@@ -355,6 +362,8 @@ class CellServer:
             "render_errors": int(self.render_errors),
             "steps_after_done": int(self.steps_after_done),
             "wall_time_s": float(self.wall_used or 0.0),
+            "program_time_s": float(self.program_used or 0.0),
+            "cell_work_s": float(self.cell.work_wall),
             "reference": self.reference_report,
         })
         rec.setdefault("sim_time_s", float(self.cell.sim_time))

@@ -17,8 +17,9 @@ The server
   * answers "status" at any time with {"episodes_used", "episodes_max"}; status never starts an episode, nor does a
     `finish` sent before one (answered {"ok": true}, then the connection is closed);
   * ends an episode on `finish`, on disconnect, at the simulated-time cap (as the grader's wire does, a few more calls
-    are answered first), at the wall-clock cap, after `silence_s` without a request or on a malformed request, and
-    then closes the connection;
+    are answered first), at the program-time cap (the wall clock minus the cell's simulation and rendering, as the
+    grader's wire counts it), after `silence_s` without a request or on a malformed request, and then closes the
+    connection;
   * counts the episodes in a persisted counter (<state>/episodes_used.json) and refuses new ones once
     `practice_episodes_max` are used: {"error": "practice_budget"};
   * runs every episode in a forked child: a crash or a hang of an episode costs that episode, never the server. The
@@ -27,8 +28,8 @@ The server
 
 What reaches the client is the cell's public replies and short error codes: never a traceback, the seed, a score or
 any other hidden state. The server's and the cell's log lines go to the server's log file (the lab account's), stray
-output to the daemon's stderr. Episode budgets (sim_cap_s, camera_budget_frames, max_ticks_per_step, settle_s, wall_cap_s,
-silence_s) come from lab_config.json next to this file and equal the grading run's. Stdlib + numpy (+ the cell).
+output to the daemon's stderr. Episode budgets (sim_cap_s, camera_budget_frames, max_ticks_per_step, settle_s,
+program_time_cap_s, silence_s) come from lab_config.json next to this file and equal the grading run's. Stdlib + numpy (+ the cell).
 """
 
 import argparse
@@ -58,7 +59,10 @@ PRE_LINE = 64 * 1024                    # a request before the episode starts (s
 MAX_CONNECTIONS = 16                    # open connections (idle + waiting); more are refused with "busy"
 SIM_CAP_GRACE_STEPS = 50                # the grader's wire: step calls answered after the sim cap before the end
 REQUEST_CAP_S = 300.0                   # one request (or the cell's build) longer than this is a hang: SIGALRM
-BACKSTOP_S = 2 * REQUEST_CAP_S          # the parent kills an episode this long after its wall-clock cap
+BACKSTOP_S = 2 * REQUEST_CAP_S          # the parent kills an episode this long after its longest legitimate run
+# the cell's own work (not charged to the program) is bounded by the sim cap and the frame budget; the parent's backstop
+# allows this much wall clock for it per simulated second and per frame (several times what a slow machine needs)
+WORK_S_PER_SIM_S, WORK_S_PER_FRAME = 1.5, 5.0
 SELFTEST_TIMEOUT_S = 50.0
 EXIT_OK, EXIT_ERROR, EXIT_BUILD_FAILED = 0, 1, 3
 # the grader-only calls of the cell (with the server module's PRIVILEGED_METHODS, added at start-up), refused here
@@ -96,7 +100,7 @@ def load_config(path):
     if not isinstance(raw, dict):
         raise ValueError("%s is not a JSON object" % path)
     cfg = {k: v for k, v in raw.items() if not k.startswith("_") and k != "note"}
-    for key in ("sim_cap_s", "camera_budget_frames", "max_ticks_per_step", "settle_s", "wall_cap_s", "silence_s",
+    for key in ("sim_cap_s", "camera_budget_frames", "max_ticks_per_step", "settle_s", "program_time_cap_s", "silence_s",
                 "practice_episodes_max"):
         if key not in cfg:
             raise ValueError("%s has no %r" % (path, key))
@@ -322,7 +326,7 @@ def parse_request(line):
 def run_episode(conn, pending, seed, number, cfg, status, CellServer):
     """Serve one episode on `conn` (blocking). Returns the child's exit code."""
     silence = float(cfg["silence_s"])
-    wall_cap = float(cfg["wall_cap_s"])
+    program_cap = float(cfg["program_time_cap_s"])
     reader = LineReader(conn, pending)
     t_build = time.monotonic()
 
@@ -358,16 +362,20 @@ def run_episode(conn, pending, seed, number, cfg, status, CellServer):
     t0_wall, t0 = time.time(), time.monotonic()
     build_s = t0 - t_build
     srv.wall_start = t0_wall
+
+    def program_time():                                 # the grader's wire: the wall clock minus the cell's own work
+        return (time.monotonic() - t0) - float(getattr(srv, "work_wall", 0.0))
+
     n_req, reason = 0, None
     while True:
-        remaining = wall_cap - (time.monotonic() - t0)
+        remaining = program_cap - program_time()
         if remaining <= 0:
-            reason = "wall_cap"
+            reason = "program_time_cap"
             break
         try:
             line = reader.readline(min(silence, remaining))
         except TimeoutError:
-            reason = "wall_cap" if time.monotonic() - t0 >= wall_cap else "silence"
+            reason = "program_time_cap" if program_time() >= program_cap else "silence"
             break
         except LineTooLong:
             send({"id": None, "error": "protocol"})
@@ -419,6 +427,7 @@ def run_episode(conn, pending, seed, number, cfg, status, CellServer):
                 reason = "sim_cap"
                 break
     srv.wall_used = time.time() - t0_wall
+    srv.program_used = program_time()
     try:
         conn.shutdown(socket.SHUT_RDWR)
     except OSError:
@@ -457,7 +466,9 @@ class Lab(object):
         self.cfg = cfg
         self.CellServer = CellServer
         self.silence = float(cfg["silence_s"])
-        self.wall_cap = float(cfg["wall_cap_s"])
+        # the longest legitimate episode: the program's time cap plus the cell's own work at its bounds
+        self.episode_wall_max = (float(cfg["program_time_cap_s"]) + WORK_S_PER_SIM_S * float(cfg["sim_cap_s"])
+                         + WORK_S_PER_FRAME * float(cfg["camera_budget_frames"]))
         self.budget = Budget(args.state, cfg["practice_episodes_max"])
         self.allowed = None
         if args.allow_user:
@@ -662,8 +673,8 @@ class Lab(object):
         except ChildProcessError:
             pid, status = a["pid"], 0
         if pid == 0:
-            if time.monotonic() - a["t0"] > self.wall_cap + BACKSTOP_S and not a.get("killed"):
-                LOG("episode %d: past its wall-clock cap, killed" % a["number"])
+            if time.monotonic() - a["t0"] > self.episode_wall_max + BACKSTOP_S and not a.get("killed"):
+                LOG("episode %d: past its longest legitimate run, killed" % a["number"])
                 try:
                     os.kill(a["pid"], signal.SIGKILL)
                 except OSError:

@@ -58,6 +58,9 @@ class Cell:
         self.frames = {}
         self.frames_total = 0
         self.render_wall = 0.0
+        # the cell's own work, not charged to the program's time budget: the simulation inside step() and the frame
+        # production inside get_camera() (rendering, encoding); both are bounded by the sim cap and the frame budget
+        self.work_wall = 0.0
         self.ticks = 0
         self.done = False
         self.done_reason = None
@@ -167,7 +170,10 @@ class Cell:
                                                                                                RM.TABLE["batten_dy"]]}}},
             "items": "the bookcase's parts as unpacked: the tall boards lean against the west wall, the other boards "
                      "lie flat on the kitting table's battens; nothing else is in the room",
-            "budgets": {"sim_cap_s": self.sim_cap, "wall_cap_s": float(self.cfg.get("wall_cap_s", 3000.0)),
+            "budgets": {"sim_cap_s": self.sim_cap,
+                        "program_time_cap_s": float(self.cfg.get("program_time_cap_s", 3000.0)),
+                        "program_time": "the episode's wall clock minus the cell's own time inside step (simulation) "
+                                        "and get_camera (rendering)",
                         "silence_s": float(self.cfg.get("silence_s", 120.0))},
             "safety": {"robot_contact_N": 150.0, "robot_robot_N": 80.0, "part_speed_m_s": 3.0,
                        "part_force_N": 400.0},
@@ -237,14 +243,18 @@ class Cell:
     def step(self, n_ticks: int) -> dict:
         events = []
         n_viol = len(self.safety.violations)
-        for _ in range(int(n_ticks)):
-            if self.done:
-                break
-            self._tick()
-            if self.sim_time >= self.sim_cap - 1e-9:
-                self._end("sim_cap")
-                events.append("episode_over")
-                break
+        t = time.time()
+        try:
+            for _ in range(int(n_ticks)):
+                if self.done:
+                    break
+                self._tick()
+                if self.sim_time >= self.sim_cap - 1e-9:
+                    self._end("sim_cap")
+                    events.append("episode_over")
+                    break
+        finally:
+            self.work_wall += time.time() - t
         for v in self.safety.violations[n_viol:]:
             events.append("safety:" + v["what"])
         return {"sim_time": round(self.sim_time, 4), "done": self.done, "events": events}
@@ -256,6 +266,13 @@ class Cell:
             return {"error": "camera_budget"}
         self.frames_total += 1
         self.frames[name] = self.frames.get(name, 0) + 1
+        t_frame = time.time()
+        try:
+            return self._frame(name, depth)
+        finally:
+            self.work_wall += time.time() - t_frame
+
+    def _frame(self, name: str, depth: bool) -> dict:
         t = time.time()
         mjname = _cam_mjname(name)
         rgb, dep = self.cams.render(self.d, mjname, depth=depth, kind="head" if "head" in name else "ceiling")

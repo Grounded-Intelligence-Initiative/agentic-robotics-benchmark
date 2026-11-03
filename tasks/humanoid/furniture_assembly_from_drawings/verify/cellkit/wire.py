@@ -5,14 +5,18 @@ stdin:  {"id": n, "method": "step", "params": {"n_ticks": 10}}  ->  {"id": n, "r
 {"id": n, "error": "forbidden"} (an error may carry a human-readable "detail": {"id": n, "error": "bad_params",
 "detail": "n_ticks must be ..."}). A server answer that is a dict whose only keys are "error" (and "detail") is sent
 as an error, anything else as the result. The grader spawns the program with `runuser -u <runner account>` (F2),
-keeps a per-request silence deadline, a wall-clock cap for the whole episode, and never trusts
+keeps a per-request silence deadline, a cap on the program's time for the whole episode, and never trusts
 anything on the wire as a scoring input (F1). The child's stderr goes to a log file.
+
+Program time = the episode's wall clock minus the server's `work_wall` (the cell's own simulation and rendering, which
+the sim cap and the frame budget bound): the budget then measures the program, not how fast the grading machine
+simulates and renders (a cap on the plain wall clock made the same program score differently on another machine).
 
 Adapted from the arm tasks' copy: error replies may carry "detail"; replies are written with a deadline (a program that
 stops reading its megabyte camera reply ends the episode as "stalled" instead of blocking the grader); request lines
 are read with a bounded length; and once the episode is over (sim cap, cell error) the program gets at most
 AFTER_DONE_MAX_STEPS steps / AFTER_DONE_MAX_REQUESTS requests / AFTER_DONE_MAX_S seconds more.
-End reasons: finish, eof, silence, stalled, protocol, wall_cap, or the cell's own (sim_cap, internal_error).
+End reasons: finish, eof, silence, stalled, protocol, program_time_cap, or the cell's own (sim_cap, internal_error).
 """
 
 import io
@@ -159,24 +163,31 @@ class AgentProcess(object):
                 pass
 
 
-def serve_episode(server, proc, wall_cap_s, silence_s, log=None):
-    """Answer the agent's requests until the episode ends. Returns the end reason."""
+def serve_episode(server, proc, program_cap_s, silence_s, log=None):
+    """Answer the agent's requests until the episode ends. Returns the end reason.
+
+    `program_cap_s` caps the program time (module docstring); `silence_s` caps the time from a reply to the next
+    request."""
     log = log or (lambda s: None)
     t0 = time.time()
     server.wall_start = t0
+
+    def program_time():
+        return (time.time() - t0) - float(getattr(server, "work_wall", 0.0))
+
     reason = None
     n_req = 0
     after_done = 0
     done_since = None
     while True:
-        remaining = wall_cap_s - (time.time() - t0)
+        remaining = program_cap_s - program_time()
         if remaining <= 0:
-            reason = "wall_cap"
+            reason = "program_time_cap"
             break
         try:
             kind, obj = proc.next_request(min(silence_s, remaining))
         except queue.Empty:
-            reason = "wall_cap" if time.time() - t0 >= wall_cap_s else "silence"
+            reason = "program_time_cap" if program_time() >= program_cap_s else "silence"
             break
         if kind == "eof":
             reason = "eof"
@@ -198,8 +209,8 @@ def serve_episode(server, proc, wall_cap_s, silence_s, log=None):
                 msg["detail"] = result["detail"]
         else:
             msg = {"id": rid, "result": result}
-        # the program must take its reply within the silence deadline too (and within the episode's wall cap)
-        ok = proc.reply(msg, timeout=max(1.0, min(silence_s, wall_cap_s - (time.time() - t0))))
+        # the program must take its reply within the silence deadline too (and within its time cap)
+        ok = proc.reply(msg, timeout=max(1.0, min(silence_s, program_cap_s - program_time())))
         if not ok:
             reason = "stalled" if getattr(proc, "stalled", False) else "eof"
             if reason == "stalled":
@@ -210,7 +221,7 @@ def serve_episode(server, proc, wall_cap_s, silence_s, log=None):
             break
         if server.done:
             # the episode is over (sim cap, or an error inside the cell) and nothing changes any more: the program may
-            # still read its state and finish gracefully, but it cannot keep the grader busy until the wall cap
+            # still read its state and finish gracefully, but it cannot keep the grader busy until its time cap
             if done_since is None:
                 done_since = time.time()
             after_done += 1
@@ -221,6 +232,7 @@ def serve_episode(server, proc, wall_cap_s, silence_s, log=None):
                 reason = server.done_reason or "done"
                 break
     server.wall_used = time.time() - t0
+    server.program_used = program_time()
     if not server.done:
         server._end(reason)
     return reason

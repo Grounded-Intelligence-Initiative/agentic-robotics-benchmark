@@ -101,7 +101,7 @@ load (0 when it holds nothing).
   Depth is along the optical axis, registered to the colour pixels, 1 mm quantisation, noise sigma 1.5 mm +
   2.5 mm/m^2 z^2, invalid (0) below 0.28 m (head) / 0.40 m (ceiling), beyond 6 m, on depth discontinuities and on 2 %
   of the pixels at random. Colour carries a per-episode white balance / brightness draw and pixel noise.
-  **At most 900 frames per episode** over all cameras; rendering costs wall-clock time.
+  **At most 900 frames per episode** over all cameras; rendering is the cell's time, not your program's (section 9).
 
 ## 7. How the bookcase holds together (the cell's fastening rules; never reported)
 
@@ -124,5 +124,6 @@ load (0 when it holds nothing).
 
 ## 9. Budgets per episode
 
-1500 s of simulated time; 3000 s of wall-clock time (rendering included); 120 s of silence between two requests ends
-the episode; 900 camera frames; at most 500 ticks per `step` call.
+1500 s of simulated time; 3000 s of program time (the episode's wall clock minus the cell's own time inside `step`,
+simulating, and inside `get_camera`, rendering: your program's computation and all its other requests count); 120 s
+from a reply to the next request (silence) ends the episode; 900 camera frames; at most 500 ticks per `step` call.

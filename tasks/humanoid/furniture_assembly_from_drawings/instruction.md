@@ -15,8 +15,10 @@ the camera images. The parts lie in different places and orientations in every e
 
 `assemble.py` exposing `solve(cell) -> None` (plus any helper modules, optional `run.sh`). The grader runs it once
 per hidden episode (**3 episodes**) in its own physics cell; the program talks to the cell through `cell` (API in
-`~/given/cell/cell_api.md`). Per episode: 1500 s of simulated time, 3000 s of wall clock (camera rendering counts),
-120 s of silence at most between two requests, 900 camera frames in total.
+`~/given/cell/cell_api.md`). Per episode: 1500 s of simulated time; 3000 s of program time, which is the episode's wall
+clock minus the time the cell spends simulating (inside `step`) and rendering (inside `get_camera`), so it measures your
+program's own computation and its other requests; at most 120 s from a reply to your next request; 900 camera frames
+in total.
 
 How the program is run: a fresh process under a dedicated unprivileged account that is not yours, from a per-run
 directory with a read-only copy of your submission folder (regular files only), an empty writable HOME / TMPDIR, a
@@ -57,7 +59,7 @@ non-literal) and start no other program; nothing of the submission was written a
 `assembly_score` = the mean over the episodes of the bookcase's credited weight / 9:
 * each of the six dowel joints of the carcass (the top, the fixed shelf and the bottom in each side panel): 1.0 when the
   right board is locked in the right group of holes the right way round, as the drawings show;
-* the back panel locked in the rabbets the right way round: 1.5;
+* the back panel locked in the rabbets of both side panels the right way round: 1.5;
 * the bookcase in its place, 1.5: all six dowel joints credited and the carcass standing where the floor plan puts it
   (within 30 mm and 3 deg, upright within 3 deg).
 

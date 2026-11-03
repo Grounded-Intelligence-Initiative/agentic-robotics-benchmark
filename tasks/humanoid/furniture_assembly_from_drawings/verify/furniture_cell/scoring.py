@@ -4,7 +4,8 @@ Credit, out of furniture.TOTAL_WEIGHT = 9:
   * each of the six hole groups of the side panels (top, fixed shelf, bottom; left and right): 1.0 when a part of the
     right kind (a top/bottom panel in a top or bottom group, the fixed shelf in a shelf group) is LOCKED in it with its
     banded edge to the front of that side panel (front-preserving relative orientation, 3 deg);
-  * the back panel LOCKED in a side panel's rabbet with its white face to the front: 1.5;
+  * the back panel LOCKED in the rabbets of both side panels with its white face to the front: 1.5 (one side panel's
+    rabbet alone earns nothing);
   * placement, 1.5: all six dowel joints credited, and the carcass stands where the floor plan puts it (the left side
     panel within 30 mm and 3 deg of its place on the sideboard, upright within 3 deg).
 A safety violation zeroes the episode (the grader applies it).
@@ -52,16 +53,13 @@ def score_cell(cell) -> dict:
     for h in ("L", "R"):
         for name in ("top", "shelf", "bottom"):
             groups[f"{h}.{name}"] = {"credit": 0.0, "guest": None, "front_ok": None}
-    k_credit, k_rec = 0.0, None
+    k_front = {}                                    # side panel -> white face to the front, for each rabbet K is LOCKED in
     for (h, g), st in co.state.items():
         if st["state"] != "LOCKED":
             continue
         p_t, R_t = st["target"]
         if g == "K":
-            ok = _front_ok(R_t)
-            k_rec = {"host": h, "white_face_front": ok}
-            if ok:
-                k_credit = max(k_credit, 1.5)
+            k_front[h] = bool(_front_ok(R_t))
             continue
         hg = st["match"][0]
         kind_ok = F.PARTS[g].letter == GROUP_KIND[hg.split(".")[1]]
@@ -70,6 +68,9 @@ def score_cell(cell) -> dict:
         rec.update(guest=g, front_ok=bool(_front_ok(R_t)), kind_ok=bool(kind_ok))
         if ok:
             rec["credit"] = 1.0
+    k_ok = all(k_front.get(h) is True for h in ("L", "R"))
+    k_credit = 1.5 if k_ok else 0.0
+    k_rec = {"locked_in": sorted(k_front), "white_face_front": dict(k_front), "credited": k_ok} if k_front else None
     dowel = sum(r["credit"] for r in groups.values())
     place = placement_error(cell)
     placed = (dowel >= 6.0 - 1e-9 and place["dist_xy"] <= PLACE_POS and abs(place["dz"]) <= PLACE_POS
