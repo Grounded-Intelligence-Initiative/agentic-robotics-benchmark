@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 import sys
 
-TASK = Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(TASK/"verify"), str(TASK/"oracle")]
+TASK = Path(__file__).resolve().parents[2]
+sys.path[:0] = [str(TASK/"tests"), str(TASK/"solution")]
 import mujoco
 import numpy as np
 from PIL import Image
@@ -41,7 +41,7 @@ def main():
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--seeds", nargs="+", type=int, default=[101, 102, 103])
     args = p.parse_args()
-    kind = json.loads((TASK/"verify/grader_config.json").read_text())["kind"]
+    kind = json.loads((TASK/"tests/grader_config.json").read_text())["kind"]
     rows = []
     for seed in args.seeds:
         folder = args.out/str(seed)
