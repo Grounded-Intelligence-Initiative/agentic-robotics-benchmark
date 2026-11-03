@@ -661,11 +661,13 @@ class Reference:
         self.park("a")
         return ok
 
-    PARK = {"a": (5.0, 4.4, math.pi / 2)}
+    # in front of the couch: the parked robot's legs stay 0.2 m clear of its seat (x >= 5.09), and the corner of the
+    # other robot's way round the cabinet's north side, (4.16, 3.84), stays outside this robot's routing footprint
+    PARK = {"a": (4.70, 4.50, math.pi / 2)}
 
     def park(self, rob):
-        """Walk (arms tucked) to the robot's parking spot in the empty north-east corner, out of the other robot's
-        routes (between the cart, the table and the cabinet every spot blocks one of them)."""
+        """Walk (arms tucked) to the robot's parking spot in the north-east corner, in front of the couch, out of the
+        other robot's routes (between the cart, the table and the cabinet every spot blocks one of them)."""
         x, y, yaw = self.PARK[rob]
         self.tuck(rob)
         self.walk_path(rob, self.route(rob, x, y), stand=0.79)
