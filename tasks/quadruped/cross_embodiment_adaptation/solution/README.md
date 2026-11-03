@@ -50,8 +50,8 @@ uv run ale lint ../../tasks/quadruped/cross_embodiment_adaptation
 uv run ale validate ../../tasks/quadruped/cross_embodiment_adaptation
 ```
 
-Inside the task image, `tools/check_randomization.py` checks six scenes and
-`tools/review_task.py --out /tmp/review --seeds 101 102 103` captures reviewer evidence.
+Inside the task image, `tests/review/check_randomization.py` checks six scenes and
+`tests/review/review_task.py --out /tmp/review --seeds 101 102 103` captures reviewer evidence.
 
 ## Limits
 
@@ -66,5 +66,5 @@ themselves. Earlier failures and pilot images are retained in the author's local
 Powered by Poly Haven: CC0 scanned utility cabinet, generator, concrete barrier and
 surface textures. Menagerie Crazyflie/Go1 visual meshes retain their original licenses.
 The lighting probe ships with the Apache-2.0 MuJoCo package. Pinned URLs, SHA256 hashes
-and notices are in `image/visual_assets.json` and `image/LICENSE.*`. No commercial
+and notices are in `environment/visual_assets.json` and `environment/LICENSE.*`. No commercial
 warehouse pack, private laboratory scene or generated marketing image is included.

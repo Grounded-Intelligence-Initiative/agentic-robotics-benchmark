@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 import sys
 
-TASK = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(TASK/"verify"))
+TASK = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(TASK/"tests"))
 import numpy as np
 from world import World
 
@@ -20,7 +20,7 @@ def signature(w):
 
 
 def main():
-    kind = json.loads((TASK/"verify/grader_config.json").read_text())["kind"]
+    kind = json.loads((TASK/"tests/grader_config.json").read_text())["kind"]
     signatures = []
     for seed in (101, 102, 103, 104, 105, 106):
         w, same = World(kind, seed), World(kind, seed, render=False)
