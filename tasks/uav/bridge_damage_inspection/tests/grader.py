@@ -307,7 +307,7 @@ def main():
             # Never use a user-writable marker or the existence of ~/.ale-solution.
             oracle = trajectory.get("agent", {}).get("name") == "oracle"
             if not oracle:
-                require(trajectory.get("schema_version") == "ATIF-v1.7"
+                require(trajectory.get("schema_version") == "ATIF-v1.8"
                         and trajectory.get("agent", {}).get("model_name"),
                         "unsupported/missing trusted model trace; do not count this as a model failure")
             try:
