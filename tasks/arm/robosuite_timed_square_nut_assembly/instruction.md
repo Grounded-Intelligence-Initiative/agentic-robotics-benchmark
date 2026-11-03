@@ -3,7 +3,7 @@
 Write a closed-loop controller for a Panda arm in robosuite's unmodified
 `NutAssemblySquare` scene. Pick up the square nut by its handle, align its hole
 with the square peg, lower it onto the peg, and release it before the time limit. Success requires
-robosuite's native `_check_success()` to hold for 10 consecutive physics steps.
+robosuite's native `_check_success()` to hold for 10 consecutive control steps.
 
 The simulator is robosuite 1.5.2 with MuJoCo 3.3.7. You have 170 actions at 20 Hz.
 Each action is a seven-dimensional normalized OSC pose and gripper command vector.

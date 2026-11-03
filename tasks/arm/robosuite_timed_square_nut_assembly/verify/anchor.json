@@ -1,1 +1,1 @@
-{"metric": "success_rate", "direction": "higher", "value": null, "full_at": 1.0, "source": "bootstrap; measure reference policy in ALE validate"}
+{"metric": "success_rate", "direction": "higher", "value": 0.675, "full_at": 1.0, "source": "ALE native 40-scene reference measurement, workflow run 41738422433"}
