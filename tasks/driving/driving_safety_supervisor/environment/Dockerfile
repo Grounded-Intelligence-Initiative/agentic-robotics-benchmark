@@ -1,5 +1,5 @@
 # The environment for driving_safety_supervisor, used by the agent phase AND by the
-# separate verification sandbox (task.yaml reuses this image there). Nothing in it is
+# separate verification sandbox (task.toml reuses this image there). Nothing in it is
 # secret: the grading run's secret is its episode seeds, drawn in the grader's memory.
 #
 #   * CARLA 0.9.15 (packaged release; simulator code MIT, assets CC-BY; Unreal Engine 4 under

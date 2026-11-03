@@ -1,5 +1,5 @@
 # The supervisor's Python (3.12, /opt/venv): what the reference supervisor imports and what
-# an agent's supervisor may use. Installed by image/Dockerfile. (The CARLA client lives in
+# an agent's supervisor may use. Installed by environment/Dockerfile. (The CARLA client lives in
 # its own 3.10 interpreter: requirements-sim.txt.)
 numpy>=1.26,<3
 pillow>=10

@@ -25,7 +25,7 @@ Why the result can be trusted:
   happened in an episode, not how it scores.
 
 Oracle token: a submission whose `.oracle_token` hashes to `oracle_token.sha256` (next to
-this file; the token itself lives only in `oracle/`, which is absent while the agent works)
+this file; the token itself lives only in `solution/`, which is absent while the agent works)
 runs in privileged mode: the bridge adds a ground-truth block to every observation. Any
 other token is ignored and reported as `oracle_token_mismatch`.
 """
