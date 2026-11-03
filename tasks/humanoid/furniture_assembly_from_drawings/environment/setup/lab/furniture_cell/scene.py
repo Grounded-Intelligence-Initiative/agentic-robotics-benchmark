@@ -1,5 +1,6 @@
-"""Build the cell's MuJoCo model: the room, the sideboard, the kitting table, the bookcase parts as free bodies, two
-G1 humanoids, the inactive weld pool (hand grips, dowel joints, the back panel's seat) and the cameras.
+"""Build the cell's MuJoCo model: the room, the sideboard, the kitting table, the panel cart, the customer's couch,
+plant and rug, the bookcase parts as free bodies, two G1 humanoids, the inactive weld pool (hand grips, dowel joints,
+the back panel's seat) and the cameras.
 
 Collision bits: 1 = static world and parts, 2 = robot a, 4 = robot b, 8 = floor. Parts touch everything; robots
 touch the world, the parts and each other, never the floor (the locomotion abstraction carries them) or themselves.
@@ -141,6 +142,11 @@ def build(layout: dict, *, offscreen=(960, 720)) -> mujoco.MjSpec:
     s.add_material(name="wall_mat", rgba=[0.86, 0.85, 0.82, 1.0])
     s.add_material(name="sideboard_mat", rgba=[0.30, 0.31, 0.33, 1.0])
     s.add_material(name="table_mat", rgba=[0.55, 0.40, 0.26, 1.0])
+    s.add_material(name="couch_mat", rgba=[0.15, 0.14, 0.13, 1.0])            # dark brown leather
+    s.add_material(name="couch_leg_mat", rgba=[0.68, 0.69, 0.70, 1.0])        # brushed metal
+    s.add_material(name="plant_pot_mat", rgba=[0.17, 0.15, 0.15, 1.0])        # charcoal pot
+    s.add_material(name="plant_foliage_mat", rgba=[0.34, 0.42, 0.15, 1.0])    # leaves
+    s.add_material(name="rug_mat", rgba=[0.33, 0.34, 0.35, 1.0])              # grey wool
     # lights: two ceiling lamps
     for i, (lx, ly) in enumerate(((1.8, 2.0), (4.0, 2.2))):
         wb.add_light(name=f"lamp{i}", pos=[lx, ly, RM.WALL_H - 0.05], dir=[0.0, 0.0, -1.0],
@@ -203,6 +209,26 @@ def build(layout: dict, *, offscreen=(960, 720)) -> mujoco.MjSpec:
                         pos=[pc["x"], ys + sgn * (gap / 2 + pc["rail_w"] / 2), pc["bed_h"] + pc["rail_h"] / 2],
                         rgba=[0.35, 0.33, 0.30, 1.0], contype=OBJ, conaffinity=OBJ | ROBOT_BITS["a"] | ROBOT_BITS["b"],
                         friction=[0.05, 0.005, 0.0001], priority=1)   # felt-lined rails: their friction wins
+    # the customer's couch and plant (static obstacles, like the sideboard) and rug (drawn only: no contact)
+    still = dict(contype=OBJ, conaffinity=OBJ | ROBOT_BITS["a"] | ROBOT_BITS["b"], friction=[0.6, 0.005, 0.0001])
+    for name, (x0, y0, z0, x1, y1, z1) in RM.COUCH["boxes"].items():
+        wb.add_geom(name=f"couch_{name}", type=mujoco.mjtGeom.mjGEOM_BOX,
+                    size=[(x1 - x0) / 2, (y1 - y0) / 2, (z1 - z0) / 2],
+                    pos=[(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2], material="couch_mat", **still)
+    legs = RM.COUCH["legs"]
+    for i, (cx, cy) in enumerate(legs["centers"]):
+        wb.add_geom(name=f"couch_leg{i}", type=mujoco.mjtGeom.mjGEOM_BOX,
+                    size=[legs["side"] / 2, legs["side"] / 2, legs["height"] / 2], pos=[cx, cy, legs["height"] / 2],
+                    material="couch_leg_mat", **still)
+    for name, cyl in RM.PLANT.items():
+        z0, z1 = cyl["z"]
+        wb.add_geom(name=f"plant_{name}", type=mujoco.mjtGeom.mjGEOM_CYLINDER, size=[cyl["radius"], (z1 - z0) / 2, 0.0],
+                    pos=[cyl["center"][0], cyl["center"][1], (z0 + z1) / 2], material=f"plant_{name}_mat", **still)
+    rug = RM.RUG
+    wb.add_geom(name="rug", type=mujoco.mjtGeom.mjGEOM_BOX,
+                size=[rug["size"][0] / 2, rug["size"][1] / 2, rug["thickness"] / 2],
+                pos=[rug["center"][0], rug["center"][1], rug["thickness"] / 2], material="rug_mat",
+                contype=0, conaffinity=0, group=1)
     # parts
     for key, part in F.PARTS.items():
         pos, quat = layout["parts"][key]

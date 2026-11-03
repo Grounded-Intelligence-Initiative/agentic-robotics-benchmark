@@ -167,9 +167,22 @@ class Cell:
                                        "height": RM.TABLE["height"], "battens": {"height": RM.TABLE["batten_h"],
                                                                                  "width": RM.TABLE["batten_w"],
                                                                                  "offsets_y": [-RM.TABLE["batten_dy"],
-                                                                                               RM.TABLE["batten_dy"]]}}},
-            "items": "the bookcase's parts as unpacked: the tall boards lean against the west wall, the other boards "
-                     "lie flat on the kitting table's battens; nothing else is in the room",
+                                                                                               RM.TABLE["batten_dy"]]}},
+                     "couch": {"footprint_xy": list(RM.COUCH["footprint"]),
+                               "boxes": {k: list(v) for k, v in RM.COUCH["boxes"].items()},
+                               "legs": {"centers": [list(c) for c in RM.COUCH["legs"]["centers"]],
+                                        "side": RM.COUCH["legs"]["side"], "height": RM.COUCH["legs"]["height"]},
+                               "note": "fixed obstacle against the east wall, seat towards the west; boxes are "
+                                       "[x0, y0, z0, x1, y1, z1], legs square, standing on the floor"},
+                     "plant": {k: {"center": list(v["center"]), "radius": v["radius"], "z": list(v["z"])}
+                               for k, v in RM.PLANT.items()} | {"note": "fixed obstacle in the north-west corner: "
+                                                                        "two upright cylinders"},
+                     "rug": {"center": list(RM.RUG["center"]), "size": list(RM.RUG["size"]),
+                             "thickness": RM.RUG["thickness"],
+                             "note": "flat on the floor in front of the couch, drawn only: no obstacle, no support"}},
+            "items": "the bookcase's parts as unpacked: the tall boards stand upright in the panel cart's grooves, the "
+                     "other boards lie flat on the kitting table's battens; nothing else in the room is loose (the "
+                     "couch, the plant and the rug are the customer's and stay where they are)",
             "budgets": {"sim_cap_s": self.sim_cap,
                         "program_time_cap_s": float(self.cfg.get("program_time_cap_s", 3000.0)),
                         "program_time": "the episode's wall clock minus the cell's own time inside step (simulation) "

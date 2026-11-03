@@ -15,14 +15,18 @@ Room frame: origin at the south-west floor corner, **x east, y north, z up**, me
 | base cabinet (the customer's, fixed) | a box, centre of its footprint (3.40, 3.30), size 0.80 (x) x 0.36 (y) x 0.45 (z): it spans 3.00 <= x <= 3.80, 3.12 <= y <= 3.48, 0 <= z <= 0.45 |
 | panel cart (fixed) | three grooves running east-west, centred at y = 1.15, 2.15 and 3.15, each on its own bed block 0.90 (x) x 0.16 (y) x 0.45 (z) centred at x = 1.05; each groove is two rails 0.90 x 0.03 x 0.05 m on the bed, the gap between them = the board's thickness + 4 mm |
 | kitting table (fixed) | top centre (4.20, 1.60), 2.50 (x) x 0.50 (y), top surface at z = 0.72; two battens along x on the top, 0.04 m wide and 0.05 m high, centred at y = 1.565 and y = 1.635 |
+| couch (the customer's, fixed) | against the east wall, seat towards the west, within 5.09 <= x <= 5.95, 3.36 <= y <= 4.94; four boxes on four legs: seat 5.09 <= x <= 5.75, 3.49 <= y <= 4.81, 0.16 <= z <= 0.48; back 5.75 <= x <= 5.95, 3.49 <= y <= 4.81, 0.16 <= z <= 0.94; arms 5.09 <= x <= 5.95, 0.16 <= z <= 0.72, one for 3.36 <= y <= 3.49, one for 4.81 <= y <= 4.94; legs 0.035 x 0.035 x 0.16 m centred at (5.12, 3.39), (5.12, 4.91), (5.93, 3.39) and (5.93, 4.91) |
+| plant (the customer's, fixed) | in the north-west corner, two upright cylinders: the pot, radius 0.13, axis at (0.51, 4.51), 0 <= z <= 0.25; the foliage, radius 0.40, axis at (0.45, 4.55), 0.25 <= z <= 1.62 |
+| rug (the customer's) | flat on the floor in front of the couch, 1.27 (x) x 1.52 (y) x 0.01 m centred at (4.85, 4.15): 4.215 <= x <= 5.485, 3.39 <= y <= 4.91; drawn only, it is no obstacle and supports nothing (whatever is put on it rests on the floor) |
 
 The drawings' floor plan shows the bookcase's place.
 
 ## 2. The flat-pack as delivered
 
-The bookcase's parts are in the room, unpacked, and nothing else is: the **tall boards** stand upright in the panel
-cart's grooves, one per groove, each on its bottom edge, its long horizontal side along the groove; which board
-stands in which groove and which of its faces looks north vary per episode, and a board may lean slightly in its groove.
+The bookcase's parts are in the room, unpacked, and apart from the fixed items of section 1 nothing else is: the
+**tall boards** stand upright in the panel cart's grooves, one per groove, each on its bottom edge, its long horizontal
+side along the groove; which board stands in which groove and which of its faces looks north vary per episode, and a
+board may lean slightly in its groove.
 The **other boards** lie flat on the kitting table's battens, spread along the table, a front edge towards the north or
 the south, positions and headings varying by a few centimetres / degrees per episode.
 

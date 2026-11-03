@@ -3,7 +3,8 @@
 Room frame: origin at the south-west floor corner, x east, y north, z up. The bookcase is built on the customer's base
 cabinet (a low cabinet standing free in the room, as wide and as deep as the bookcase); the drawings' floor plan shows
 the cabinet and the bookcase's place on it. The flat-pack arrives unpacked: the tall panels stand on a panel cart, the horizontal panels lie
-on two battens on a long kitting table.
+on two battens on a long kitting table. The customer's couch, plant and rug stay where they are, in the north-east and
+north-west corners.
 """
 
 from __future__ import annotations
@@ -33,6 +34,24 @@ PANEL_CART = {"x": 1.05, "slots_y": (1.15, 2.15, 3.15), "bed_h": 0.45, "bed_w": 
 TABLE = {"center": (4.20, 1.60), "size": (2.50, 0.50), "height": 0.72, "batten_h": 0.050, "batten_w": 0.04,
          "batten_dy": 0.035}
 TABLE_SLOTS_X = (-0.82, 0.0, 0.82)       # panel centres along the table, relative to its centre
+
+# the customer's own furniture, out of the assembly's way (static): a two-seat couch against the east wall in the
+# north-east corner, seat towards the west, and a potted plant in the north-west corner (both obstacles), and a rug
+# in front of the couch (flat on the floor, drawn only: not an obstacle). Boxes are (x0, y0, z0, x1, y1, z1), metres.
+COUCH = {
+    "footprint": (5.09, 3.36, 5.95, 4.94),
+    "boxes": {                                       # the upholstered body on four legs
+        "seat": (5.09, 3.49, 0.16, 5.75, 4.81, 0.48),
+        "back": (5.75, 3.49, 0.16, 5.95, 4.81, 0.94),
+        "arm_s": (5.09, 3.36, 0.16, 5.95, 3.49, 0.72),
+        "arm_n": (5.09, 4.81, 0.16, 5.95, 4.94, 0.72),
+    },
+    "legs": {"centers": ((5.12, 3.39), (5.12, 4.91), (5.93, 3.39), (5.93, 4.91)), "side": 0.035, "height": 0.16},
+}
+# cylinders: centre (x, y), radius, (z0, z1)
+PLANT = {"pot": {"center": (0.51, 4.51), "radius": 0.13, "z": (0.0, 0.25)},
+         "foliage": {"center": (0.45, 4.55), "radius": 0.40, "z": (0.25, 1.62)}}
+RUG = {"center": (4.85, 4.15), "size": (1.27, 1.52), "thickness": 0.01}
 
 # robots' start poses (x, y, yaw) before the per-episode draw
 ROBOT_HOME = {"a": (1.90, 0.55, math.pi / 2), "b": (3.20, 0.55, math.pi / 2)}
