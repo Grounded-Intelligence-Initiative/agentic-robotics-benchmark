@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Setup: trusted root, cwd = this staged folder, before the agent phase. Three jobs:
+# Setup: trusted root, cwd = this staged folder, before the agent phase. Two jobs:
 #   1. the givens: payload/ into the agent home, owned by the agent, plus the robot model the image holds
 #      (/opt/arb-assets/unitree_g1 -> ~/given/robot/unitree_g1);
-#   2. a ROOT-OWNED read-only copy of the same givens at /opt/arb: the grader's runner takes the cell's client library
-#      from it (/opt/arb/given/lib) and the programs get it as ARB_GIVEN_DIR during verify, so nothing the agent can
-#      write is ever an input of the grader;
-#   3. the practice lab: lab/ (the lab server and its own copy of the furniture cell) installed at /opt/arb-lab, owned
+#   2. the practice lab: lab/ (the lab server and its own copy of the furniture cell) installed at /opt/arb-lab, owned
 #      by the lab account `arbcell` with mode 0700 (the agent can read neither the cell's code nor the lab's state),
 #      and the lab server started as that account. It serves practice episodes of the cell, never privileged, on the
 #      Unix socket /run/furniture-cell/practice.sock; setup waits (at most 60 s) until the socket is up.
+# The grader never reads anything set up here: verification is separate (task.toml), and tests/test.sh builds the
+# grader's own ROOT-OWNED read-only copy of the givens (/opt/arb) in the fresh verifier sandbox, from
+# tests/setup_payload/ (a byte copy of payload/ here: change both together, then tests/given_hashes.json) and the
+# image's robot model.
 # Dynamic-only: packages and the robot model live in environment/Dockerfile.
 set -euo pipefail
 HOME_DIR="${ALE_HOME:-/home/user}"
 AGENT_USER="$(basename "$HOME_DIR")"
-ROOT_PAYLOAD="${ARB_ROOT_PAYLOAD:-/opt/arb}"
 G1_DIR="${ARB_G1_DIR:-/opt/arb-assets/unitree_g1}"
 LAB_DIR="${ARB_LAB_DIR:-/opt/arb-lab}"
 LAB_USER=arbcell
@@ -36,15 +36,7 @@ cp -r "$G1_DIR" "$HOME_DIR/given/robot/unitree_g1"
 chown -R "$AGENT_USER:$AGENT_USER" "$HOME_DIR/given"
 mkdir -p "$HOME_DIR/submission" && chown "$AGENT_USER:$AGENT_USER" "$HOME_DIR/submission"
 
-# ---- 2. the grader's root-owned copy of the givens ----------------------------------------------------------------------
-rm -rf "$ROOT_PAYLOAD"
-mkdir -p "$ROOT_PAYLOAD/given/robot"
-cp -r payload/. "$ROOT_PAYLOAD/"
-cp -r "$G1_DIR" "$ROOT_PAYLOAD/given/robot/unitree_g1"
-chown -R root:root "$ROOT_PAYLOAD"
-chmod -R u+rwX,go+rX,go-w "$ROOT_PAYLOAD"
-
-# ---- 3. the practice lab ----------------------------------------------------------------------------------------------
+# ---- 2. the practice lab ----------------------------------------------------------------------------------------------
 id -u "$LAB_USER" >/dev/null                         # the account comes with the image
 [ -f lab/lab_server.py ] && [ -f lab/lab_config.json ] && [ -f lab/furniture_cell/server.py ] || {
   echo "[setup] lab/ is incomplete: lab_server.py, lab_config.json and furniture_cell/ are required" >&2
@@ -92,4 +84,4 @@ if [ ! -S "$SOCK" ]; then
   pkill -KILL -u "$LAB_USER" 2>/dev/null || true
   exit 1
 fi
-echo "[setup] givens staged in $HOME_DIR (owner $AGENT_USER) and $ROOT_PAYLOAD (root, read-only); practice lab on $SOCK" >&2
+echo "[setup] givens staged in $HOME_DIR (owner $AGENT_USER); practice lab on $SOCK" >&2

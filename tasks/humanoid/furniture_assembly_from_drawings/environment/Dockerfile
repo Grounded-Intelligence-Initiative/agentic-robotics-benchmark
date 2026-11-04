@@ -45,8 +45,9 @@ RUN export HOME=/root UV_CACHE_DIR=/tmp/uv-cache \
 # The robot model: MuJoCo Menagerie's Unitree G1 (folder unitree_g1, BSD-3-Clause, LICENSE inside), fetched at the commit
 # pinned in g1_assets.sha256 (a sparse, blob-filtered fetch: only that folder's files are downloaded) and checked file
 # by file against the sha256 recorded there; a missing, extra or changed file fails the build. The cell compiles its
-# robots from this copy (ARB_G1_DIR); environment/setup/setup.sh stages copies into the agent home
-# (~/given/robot/unitree_g1) and into the grader's root-owned copy of the givens (/opt/arb/given/robot/unitree_g1).
+# robots from this copy (ARB_G1_DIR); environment/setup/setup.sh stages a copy into the agent home
+# (~/given/robot/unitree_g1), and the verify stage (tests/test.sh, in its separate verifier sandbox started from this
+# image) one into the grader's root-owned copy of the givens (/opt/arb/given/robot/unitree_g1).
 COPY g1_assets.sha256 /opt/arb-assets/g1_assets.sha256
 RUN set -eu; \
     list=/opt/arb-assets/g1_assets.sha256; \

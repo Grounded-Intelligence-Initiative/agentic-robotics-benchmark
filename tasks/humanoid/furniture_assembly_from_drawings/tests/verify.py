@@ -3,13 +3,17 @@ camera-only): runs as ROOT in the verify stage.
 
 The agent left /home/user/submission/assemble.py (solve(cell): a camera-only program that drives the cell's two G1
 humanoids through the furniture cell's JSON-lines API to build the bookcase where the drawings' floor plan puts it).
-This grader:
+Verification is separate (task.toml): this runs in a fresh verifier sandbox from the task image, into which the engine
+restored only the submission (root-owned); nothing else of the agent's sandbox is here (no ~/given, no practice lab, no
+process the agent started). This grader:
   0. FIRST, stdlib only (`_early_lockdown`; tests/test.sh closed the stage folder already): records the upload time,
-     freezes and kills every process of the agent account and of the practice lab's account (`lab_account`) and keeps
-     both stopped until the verdict is written (cellkit.verify_freeze), locks the stage, snapshots the submission
-     root-owned, gates late writes, quarantines late entries elsewhere;
-  1. checks the root-owned copy of the givens at /opt/arb against given_hashes.json (the cell client library the program
-     runs with comes from it; a mismatch is a task error); `no_collateral` is a stat;
+     freezes and kills every process of the agent account and keeps it stopped until the verdict is written
+     (cellkit.verify_freeze), locks the stage, snapshots the submission root-owned, gates late writes, quarantines late
+     entries elsewhere (written for a verify in the agent's own sandbox; in the separate verifier they stop the image's
+     own desktop session of the agent account, started with the sandbox, and set aside the files that session writes);
+  1. checks the root-owned copy of the givens at /opt/arb against given_hashes.json (tests/test.sh builds it from
+     tests/setup_payload/ and the image's robot model; the cell client library the program runs with comes from it; a
+     mismatch is a task error);
   2. gates: contract_ok = assemble.py is a regular file that parses and defines solve, the route gate (no weight files,
      no training calls, size cap), the network audit (static: no networking import, no computed import; runtime: no
      outbound network activity while the program runs), the module imports under the run regime, >= 1 step call, no
@@ -22,7 +26,8 @@ This grader:
   4. draws `episodes` hidden 63-bit episode seeds from OS entropy (robotics_grader.seed_rng; an optional
      hidden/seeds.json {"seeds": [...]} pins them for re-verification) and runs the program per episode on a fresh cell
      (furniture_cell.server.CellServer: the parts' places and facings, the robots' start poses and the sensor noise are
-     drawn from the seed; camera-only API) as `nobody` from a read-only copy under an opaque run tag;
+     drawn from the seed; camera-only API) as `nobody` from a read-only copy under an opaque run tag (world-readable
+     files copied from the snapshot, so the runner account reads a submission the engine restored root-owned);
   5. criterion: assembly_score = the episode mean of the cell's stage score (furniture_cell.scoring: the credited dowel
      joints, the back panel's seat and the carcass's placement over the bookcase's total weight), an episode with a
      safety violation scoring 0, times the gates. A failure on the grader's side of an episode (the cell's build,
@@ -71,19 +76,10 @@ CLIENT_PACKAGE = "furniture_client"
 from cellkit import lockdown, runner, verify_freeze  # noqa: E402  (stdlib only)
 
 FREEZER = [None]        # the agent account's verify_freeze.AgentFreezer: started by _early_lockdown, stopped after the verdict
-LAB_FREEZER = [None]    # the same for the practice lab's account
 
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
-
-
-def _config_value(key, default):
-    try:
-        with open(CONFIG) as fh:
-            return json.load(fh).get(key, default)
-    except (OSError, ValueError, AttributeError):
-        return default
 
 
 def _uid_of(name):
@@ -94,8 +90,7 @@ def _uid_of(name):
 
 
 def _early_lockdown():
-    out = {"agent_processes_killed": 0.0, "agent_processes_left": 0.0, "lab_account_present": 0.0,
-           "lab_processes_killed": 0.0, "lab_processes_left": 0.0, "stage_locked": 0.0, "stage_parent_locked": 0.0,
+    out = {"agent_processes_killed": 0.0, "agent_processes_left": 0.0, "stage_locked": 0.0, "stage_parent_locked": 0.0,
            "stage_lock_latency_ms": -1.0, "submission_late_writes": 0.0, "late_writes_quarantined": 0.0,
            "late_write_gate_active": 0.0, "submission_snapshot": 0.0, "saved": None, "parent": None, "t_ref": None,
            "late": [], "reasons": []}
@@ -111,19 +106,9 @@ def _early_lockdown():
             out["reasons"].append("%d process(es) of the agent account survived the kill at verify start" % left)
     # the image's init respawns the agent account's desktop within seconds of the kill, and the respawned session runs
     # the account's autostart entries: every process of the account stays SIGSTOPped (polled every 0.1 s) until the
-    # verdict is written
+    # verdict is written. (The practice lab and its account's processes are not here: setup.sh, which starts the lab,
+    # does not run in the separate verifier.)
     FREEZER[0] = verify_freeze.AgentFreezer.for_user(AGENT_USER).start()
-    # the practice lab (a cell server of its own account, reachable over a socket while the agent worked) is not part of
-    # the graded run: killed before anything runs, and kept stopped like the agent account
-    lab = _config_value("lab_account", "arbcell")
-    lab_uid = _uid_of(lab) if lab else None
-    if lab_uid is not None and lab_uid not in (0, uid):
-        out["lab_account_present"] = 1.0
-        killed, left = lockdown.stop_and_kill_uid(lab_uid, grace_s=8.0)
-        out["lab_processes_killed"], out["lab_processes_left"] = float(killed), float(left)
-        if left:
-            log("[grader] %d process(es) of the lab account %s survived the kill at verify start" % (left, lab))
-        LAB_FREEZER[0] = verify_freeze.AgentFreezer.for_user(lab).start()
     out["saved"] = runner.lock_stage(STAGE_DIR)
     out["stage_locked"] = 1.0 if out["saved"] is not None else 0.0
     parent = os.path.dirname(os.path.abspath(STAGE_DIR))
@@ -222,20 +207,11 @@ def load_json(p):
         return json.load(f)
 
 
-def no_collateral(expected):
-    """1 when the agent's own copies of the givens (~/given/...) are unchanged (a stat only)."""
-    for rel, digest in expected.items():
-        p = os.path.join(HOME, rel)
-        if not os.path.isfile(p) or sha256_file(p) != digest:
-            return 0.0
-    return 1.0
-
-
 def root_payload_ok(expected):
     problems = []
     owner = 0 if os.getuid() == 0 else os.getuid()
     if not os.path.isdir(ROOT_PAYLOAD):
-        return False, ["%s missing (environment/setup/setup.sh installs it)" % ROOT_PAYLOAD]
+        return False, ["%s missing (tests/test.sh builds it)" % ROOT_PAYLOAD]
     if not expected:
         return False, ["given_hashes.json lists no file"]
     for rel, digest in expected.items():
@@ -546,7 +522,6 @@ def main():
                "stray_files_removed": 0.0, "suspicious_lines": 0.0, "remote_sockets_seen": 0.0, "net_outbound_events": 0.0,
                "network_imports": 0.0, "illegal_call_count": 0.0, "step_calls": 0.0, "seeds_pinned": 0.0}
     for k in ("stage_locked", "stage_parent_locked", "stage_lock_latency_ms", "agent_processes_killed", "agent_processes_left",
-              "lab_account_present", "lab_processes_killed", "lab_processes_left",
               "submission_late_writes", "late_writes_quarantined", "late_write_gate_active", "submission_snapshot"):
         metrics[k] = float(EARLY.get(k, -1.0 if k == "stage_lock_latency_ms" else 0.0))
     try:
@@ -560,9 +535,8 @@ def main():
             raise
     finally:
         _restore_modes()
-        for fr in (FREEZER[0], LAB_FREEZER[0]):
-            if fr is not None:
-                fr.stop()                           # after the verdict (written by _main_locked); the frozen stay stopped
+        if FREEZER[0] is not None:
+            FREEZER[0].stop()                   # after the verdict (written by _main_locked); the frozen stay stopped
 
 
 def _mean(xs):
@@ -604,7 +578,6 @@ def _main_locked(cfg, rewards, metrics):
     metrics["root_payload_ok"] = 1.0 if ok_root else 0.0
     if not ok_root:
         fail("the root-owned copy of the givens at %s is unusable: %s" % (ROOT_PAYLOAD, "; ".join(problems[:5])))
-    metrics["no_collateral"] = no_collateral(expected)
     rn = Runner(cfg)
     if FREEZER[0] is not None and rn.acct and rn.uid == FREEZER[0].uid:
         FREEZER[0].stop()        # no `nobody` in the image: the runner fell back to the agent account, whose programs must run
@@ -689,7 +662,6 @@ def _finish_stats(rn, metrics, t_start):
     metrics["stray_files_removed"] = float(rn.stray_files)
     metrics["submission_symlinks_skipped"] = float(rn.symlinks_skipped)
     metrics["agent_processes_frozen"] = float(len(FREEZER[0].frozen)) if FREEZER[0] is not None else 0.0
-    metrics["lab_processes_frozen"] = float(len(LAB_FREEZER[0].frozen)) if LAB_FREEZER[0] is not None else 0.0
     metrics["verify_wall_s"] = time.time() - t_start
     shutil.rmtree(RUNS_ROOT, ignore_errors=True)
 
