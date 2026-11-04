@@ -44,11 +44,23 @@ HIDDEN_GROUP = 3                       # geom group no camera draws (the robots'
 # planes, which the depth images use, are relative to the extent; the Filament renderer fits the sun's shadow map
 # around the centre; the decor's street view reaches 100 m out and would move both)
 ROOM_EXTENT, ROOM_CENTER = 11.970811909470342, (3.0, 2.76998941488475, 1.3)
-# the lights (render.py's look gives them their intensities): the morning sun through the east window (its light
-# travels west, slightly south, 27 deg down) and the two ceiling panels where the lamps hang, each as a part that
-# casts shadows and a soft rest that does not
+# the lights (render.py's look gives them their intensities and colours): the morning sun through the east window
+# (its light travels west, slightly south, 27 deg down); the two ceiling panels where the lamps hang, each as a spot
+# that casts soft shadows; and the light the sunlit patches throw back up into the room
 SUN_DIR = (-0.8715359, -0.1852507, -0.4539905)
 PANELS = ((1.8, 2.0), (4.0, 2.2))
+# the sunlit patches (where the sun through the window lands in the empty room, ray cast in this model: 1.37 m2 of floor
+# around and west of the kitting table, 0.60 m2 of its top) as cells of 0.10-0.31 m2: per cell its centre and the
+# depth below it of its upward spot light (the radius of a disc of the cell's area, so the light just above the cell
+# is about what the patch gives off). The sunlit floor under the table's top is left out (the top takes its light).
+BOUNCE = (("floor0", (2.45, 1.88, 0.00), 0.29),
+          ("floor1", (2.53, 0.99, 0.00), 0.18),
+          ("floor2", (2.95, 1.96, 0.00), 0.30),
+          ("floor3", (3.40, 2.01, 0.00), 0.31),
+          ("floor4", (3.90, 2.17, 0.00), 0.28),
+          ("table0", (3.90, 1.57, 0.72), 0.26),
+          ("table1", (4.49, 1.61, 0.72), 0.27),
+          ("table2", (5.10, 1.69, 0.72), 0.23))
 
 
 def _quat_z(yaw: float) -> list[float]:
@@ -218,15 +230,19 @@ def build(layout: dict, *, offscreen=(960, 720), decor: bool = True) -> mujoco.M
     s.add_material(name="plant_pot_mat", rgba=[0.17, 0.15, 0.15, 1.0])        # charcoal pot
     s.add_material(name="plant_foliage_mat", rgba=[0.34, 0.42, 0.15, 1.0])    # leaves
     s.add_material(name="rug_mat", rgba=[0.33, 0.34, 0.35, 1.0])              # grey wool
-    # lights: the sun through the east window, the two ceiling panels (a shadow-casting part and a soft rest each)
+    # lights: the sun through the east window; the two ceiling panels (a spot that casts soft shadows each); below
+    # each sunlit cell of the floor and the table's top an upward shadow-free spot (50 deg: most of a matte patch's
+    # light goes up; the image light carries the rest)
     wb.add_light(name="sun", type=mujoco.mjtLightType.mjLIGHT_DIRECTIONAL, pos=[9.0, 3.0, 4.0], dir=list(SUN_DIR),
                  castshadow=True, diffuse=[0.6, 0.57, 0.52], specular=[0.1, 0.1, 0.1])
     for i, (lx, ly) in enumerate(PANELS):
-        for part, shadow in (("", True), ("_soft", False)):
-            wb.add_light(name=f"panel{i}{part}", type=mujoco.mjtLightType.mjLIGHT_SPOT,
-                         pos=[lx, ly, RM.WALL_H - 0.03], dir=[0.0, 0.0, -1.0], cutoff=85.0, exponent=1.0,
-                         castshadow=shadow, diffuse=[0.25, 0.24, 0.22], specular=[0.03, 0.03, 0.03],
-                         attenuation=[1.0, 0.0, 0.0])
+        wb.add_light(name=f"panel{i}", type=mujoco.mjtLightType.mjLIGHT_SPOT, pos=[lx, ly, RM.WALL_H - 0.03],
+                     dir=[0.0, 0.0, -1.0], cutoff=75.0, exponent=1.0, castshadow=True, diffuse=[0.25, 0.24, 0.22],
+                     specular=[0.03, 0.03, 0.03], attenuation=[1.0, 0.0, 0.0])
+    for name, (bx, by, bz), depth in BOUNCE:
+        wb.add_light(name=f"bounce_{name}", type=mujoco.mjtLightType.mjLIGHT_SPOT, pos=[bx, by, bz - depth],
+                     dir=[0.0, 0.0, 1.0], cutoff=50.0, exponent=1.0, castshadow=False, diffuse=[0.0, 0.0, 0.0],
+                     specular=[0.0, 0.0, 0.0], attenuation=[1.0, 0.0, 0.0])
     # floor and walls
     wb.add_geom(name="floor", type=mujoco.mjtGeom.mjGEOM_PLANE, size=[RM.ROOM_X, RM.ROOM_Y, 0.05],
                 pos=[RM.ROOM_X / 2, RM.ROOM_Y / 2, 0.0], material="floor_mat", contype=FLOOR, conaffinity=OBJ,

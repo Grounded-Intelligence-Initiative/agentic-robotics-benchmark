@@ -114,10 +114,10 @@ load (0 when it holds nothing).
   2.5 mm/m^2 z^2, invalid (0) below 0.28 m (head) / 0.40 m (ceiling), beyond 6 m, on depth discontinuities and on 2 %
   of the pixels at random. Colour is rendered physically based (MuJoCo's Filament renderer) in the room as section 1
   describes it, the same light in every episode: the morning sun shines in through the east window (sharp shadows,
-  bright patches on the kitting table and the floor west of the window), the two ceiling panels light the room from
-  above (soft shadows) and the light the room's surfaces reflect fills in. Colour carries a per-episode white balance /
-  brightness draw and pixel noise. Colour and depth draw the robots' legs as section 3 says (stepping while a base
-  moves).
+  bright patches on the kitting table and the floor west of the window, which throw a warm light back up into the
+  room), the two ceiling panels light the room from above (soft shadows) and the light the room's surfaces reflect
+  fills in. Colour carries a per-episode white balance / brightness draw and pixel noise. Colour and depth draw the
+  robots' legs as section 3 says (stepping while a base moves).
   **At most 900 frames per episode** over all cameras; rendering is the cell's time, not your program's (section 9).
 
 ## 7. How the bookcase holds together (the cell's fastening rules; never reported)

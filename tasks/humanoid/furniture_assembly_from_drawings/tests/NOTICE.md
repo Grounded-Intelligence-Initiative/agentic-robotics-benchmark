@@ -17,12 +17,13 @@ the buildings across the street), is drawn from meshes and textures of two Unity
 owner licensed for redistribution, "Office and Police Station Pack" and "Office With Conference Room": the props as
 the packs model them, re-placed in this room, and the shell (walls, ceiling, skirting, window) built for this room
 from the packs' textures. The base maps are downsized to 512 px. The image light (`ibl.ktx`) is the mean of three light
-probes of the same room path-traced with NVIDIA OVRTX, prefiltered with Filament's cmgen. The decor ships in the image
-(`environment/assets/room_decor`, the engine's asset root, pinned file by file in `environment/room_decor.sha256`),
-not in git. The cameras' colour renderer is MuJoCo's Filament module (Apache-2.0, part of the mujoco wheel). The
-robots' legs as the cameras draw them while a robot moves (`furniture_cell/walk_core.py`: footsteps planned from the
-base motion, leg inverse kinematics on the G1 model's own leg chain) are original to this task: no motion-capture or
-third-party animation data.
+probes of the same room path-traced with NVIDIA OVRTX, the sunlit patches and the lamps' emissive surfaces painted out
+(the cameras' renderer draws their light with lights of its own), prefiltered with Filament's cmgen. The decor ships in
+the image (`environment/assets/room_decor`, the engine's asset root, pinned file by file in
+`environment/room_decor.sha256`), not in git. The cameras' colour renderer is MuJoCo's Filament module (Apache-2.0,
+part of the mujoco wheel). The robots' legs as the cameras draw them while a robot moves (`furniture_cell/walk_core.py`:
+footsteps planned from the base motion, leg inverse kinematics on the G1 model's own leg chain) are original to this
+task: no motion-capture or third-party animation data.
 Prior art the task was designed against (none of it reused): the Humanoid IKEA Assembly Challenge (IROS 2026, one G1,
 IKEA UTTER table, learned policies), EmbodiedSWE-Bench (coding agents with privileged simulator state), Manual2Skill /
 Manual2Skill++ (VLM-read IKEA manuals, fixed-base arms) and IKEA-Manual / IKEA Furniture Assembly environments.

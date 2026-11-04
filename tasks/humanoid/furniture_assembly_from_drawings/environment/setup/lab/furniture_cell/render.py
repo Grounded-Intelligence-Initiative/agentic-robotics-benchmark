@@ -3,13 +3,14 @@ the CPU in the sandbox), depth from MuJoCo's classic renderer (OSMesa) on the sa
 model.
 
 RGB: pinhole, no distortion; the decorated room lit by the morning sun through the east window, the two ceiling
-panels and an image light distilled from a path-traced (OVRTX) render of the same room (look.json next to this file:
-the lights in physical units, the image light, the materials' PBR terms and calibrated colour gains); per-episode
-white-balance / brightness draw, per-pixel noise. Depth (metres along the optical axis, registered to the RGB pixels):
-noise sigma 1.5 mm + 2.5 mm/m^2 z^2, 1 mm quantisation, invalid (0) below the minimum range, beyond 6 m, on depth
-discontinuities and on 2 % random pixels. Intrinsics are exact and published (fx = fy = (H / 2) / tan(fovy / 2),
-principal point at the image centre). Colour and depth are drawn from the state the cell hands over (Cell.render_state:
-the physics state with the robots' legs as walk_core draws them, stepping while a robot moves).
+panels, the light the sunlit patches of the floor and the kitting table throw back up, and an image light distilled
+from path-traced (OVRTX) renders of the same room (look.json next to this file: the lights in physical units, the image
+light, the materials' PBR terms and calibrated colour gains); per-episode white-balance / brightness draw, per-pixel
+noise. Depth (metres along the optical axis, registered to the RGB pixels): noise sigma 1.5 mm + 2.5 mm/m^2 z^2, 1 mm
+quantisation, invalid (0) below the minimum range, beyond 6 m, on depth discontinuities and on 2 % random pixels.
+Intrinsics are exact and published (fx = fy = (H / 2) / tan(fovy / 2), principal point at the image centre). Colour
+and depth are drawn from the state the cell hands over (Cell.render_state: the physics state with the robots' legs as
+walk_core draws them, stepping while a robot moves).
 
 Filament facts this relies on (MuJoCo 3.16): one context serves one model's resources at a time, so only the model
 rendered last is live (rendering another model first frees the live one's Filament objects); the engine is bound to
@@ -104,7 +105,8 @@ def apply_look(m: mujoco.MjModel, look: dict = LOOK) -> dict:
     renderer's depth): sRGB textures, the untextured materials' PBR terms (or legacy specular), every material's
     calibrated colour gain (per channel, on the linear albedo: the colour of an untextured material, the texture data
     of a textured one; each decor material has a texture of its own) and the lights in physical units (spot lights in
-    candela, the sun in lux). Returns a record of what was set."""
+    candela, the sun in lux; a light's own shadow map size, `shadow_map`, is set where the renderer builds its lights).
+    Returns a record of what was set."""
     m.tex_colorspace[:] = int(mujoco.mjtColorSpace.mjCOLORSPACE_SRGB)
     m.vis.headlight.active = 0
     rgb_role = int(mujoco.mjtTextureRole.mjTEXROLE_RGB)
@@ -313,6 +315,10 @@ class _Filament:
         scn = self.ctx.create_scene(F.SceneParams())
         scn.configure_from_model(model)
         lights = F.ModelLights(scn, res)
+        for name, L in LOOK.get("lights", {}).items():     # a light's own shadow map size (else the view's map_size)
+            i = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_LIGHT, name)
+            if i >= 0 and "shadow_map" in L:
+                lights.get_light(i).set_shadow_map_size(int(L["shadow_map"]))
         rends = F.ModelRenderables(scn, res)
         rends.set_options(self.opt)
         lp = F.LightParams()

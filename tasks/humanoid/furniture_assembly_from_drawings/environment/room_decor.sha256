@@ -1,10 +1,11 @@
 # The room's decor (drawn only: what the cameras see of the room), pinned file by file. environment/Dockerfile copies
 # environment/assets/room_decor (the engine's asset root, not in git) into /opt/arb-assets/room_decor and fails the build
 # on any difference: a missing, extra or changed file. Made from the task demo's furnished room bundle (the owner's
-# Unity packs office_police_text and office_conf; base maps at most 512 px) and OVRTX light probes of it (ibl.ktx).
+# Unity packs office_police_text and office_conf; base maps at most 512 px) and OVRTX light probes of it (ibl.ktx: the
+# sunlit patches and the lamps' emissive surfaces painted out).
 # Generated with sha256sum in that folder.
 7b9089dbfbe82935756befd69481d56bd15fe90a44ad00f0c04793f96a850391  decor.json
-97751a197e9556979eece8e074e33d415ccd95bc419071133618575cc506ee81  ibl.ktx
+236dff63d94645d625091dde6b94270587677b9251b99fea14d888c335b729da  ibl.ktx
 d5620d1c3783c5316cf03c047d26901550fb67f3e2c163ffe33ea9d85c16bc8b  meshes/BG_Building_6a775b.npz
 92e8a4670ae8b14902d1a6a25c453fdd2a39fec5ade36c5f0376b1b1fb9a0aea  meshes/Carpets_373494.npz
 a30c2b28eab15868aa359ba34813f15a66f4b42d257fa1b9988b68d11468753d  meshes/CeilingLamp_0609c7.npz
