@@ -1,0 +1,7 @@
+{
+  "metric": "success_rate",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 0.75,
+  "source": "Visual-only reference controller measured 5/5 successful visible-seed practice episodes (seeds 11,22,33,44,55) within 160 steps on 2026-11-03."
+}
