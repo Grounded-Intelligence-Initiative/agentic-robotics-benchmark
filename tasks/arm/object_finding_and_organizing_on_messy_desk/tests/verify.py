@@ -15,11 +15,20 @@ asked for (the simulator's PNG encoding of that frame, at a nominal cost, so tha
 does not depend on the machine either). An episode whose controller exhausts the budget is cut
 there: the steps it never ran earn nothing. A slower simulator therefore only makes the run
 longer; it never changes a score.
+
+The reference program's channel: a submission whose `.oracle_token` (a regular file, not a
+link) hashes to oracle_token.sha256 in this folder gets the simulator's ground truth in every
+observation (`privileged`: every object's identity, pose and state, the containers' poses, the
+open request's object, the true proprioception). It exists only to show that the episodes can
+be done; nothing else about the run changes, and the metrics record `privileged_mode` and
+`oracle_token_mismatch`.
 """
 
+import hashlib
 import json
 import math
 import os
+import stat
 import sys
 import time
 
@@ -40,10 +49,16 @@ from robotics_grader import (  # noqa: E402
     write_verdict,
     zero_verdict,
 )
+from robotics_grader.stage import agent_home  # noqa: E402
 from sim_client import SimClient, SimError  # noqa: E402
 
 ACTION_DIM = 8          # plus an optional ninth element: the hi-res camera bitmask
 HIRES_BITS = 15         # 1 agentview, 2 left_view, 4 eye_in_hand, 8 oblique (the env reads these four bits)
+TOKEN_FILE = ".oracle_token"
+TOKEN_MAX_BYTES = 4096
+# what of each object the privileged block carries (the simulator's own state, as scored)
+OBJECT_KEYS = ("id", "model", "cls", "pos", "quat", "scale", "state", "in_container", "on_table", "held",
+               "contact", "resting")
 
 
 def _action(reply):
@@ -94,7 +109,56 @@ def _request_log(state):
     return out
 
 
-def run_episodes(config, rng, solver):
+def token_state(submission, digest_path=None):
+    """(privileged, mismatch) for the submission's .oracle_token against oracle_token.sha256.
+
+    Only a regular file counts (opened without following a link, at most TOKEN_MAX_BYTES); a
+    token that is there but does not match is recorded as a mismatch and otherwise ignored."""
+    digest_path = digest_path or os.path.join(stage_dir(), "oracle_token.sha256")
+    path = os.path.join(submission, TOKEN_FILE)
+    try:
+        with open(digest_path) as f:
+            want = f.read().split()[0].strip().lower()
+    except (IOError, OSError, IndexError):
+        return False, False
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
+    except OSError:
+        return False, os.path.lexists(path)
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_size > TOKEN_MAX_BYTES:
+            return False, True
+        data = os.read(fd, TOKEN_MAX_BYTES + 1)
+    finally:
+        os.close(fd)
+    ok = hashlib.sha256(data.strip()).hexdigest() == want
+    return ok, not ok
+
+
+def privileged_block(state, containers, obs):
+    """The ground truth the reference program plans with: every present object as the simulator
+    scores it, the containers' poses this episode, the open request with its object (None when the
+    named model is absent), and the true proprioception (the perturbed copy of a probed step keeps
+    this block, so a program that reads its proprioception from here plans the same either way)."""
+    req = state.get("request") or None
+    request = None
+    if req and req.get("status") == "open":
+        request = {k: req.get(k) for k in ("id", "model", "object", "text", "opened_t", "deadline_t")}
+    # an object the world set down during this step has no pose yet (the simulator reads poses before its events)
+    objects = [{k: o.get(k) for k in OBJECT_KEYS} for o in state.get("objects") or []
+               if o.get("present") and o.get("pos") is not None]
+    return {"t": state.get("t"), "objects": objects, "request": request, "containers": containers,
+            "ee_pose": list(obs["ee_pose"]), "joint_pos": list(obs["joint_pos"]),
+            "gripper_width": obs["gripper_width"], "ik_ok": state.get("ik_ok")}
+
+
+def _containers(info):
+    return {n: {"xy": [float(c["center_xy"][0]), float(c["center_xy"][1])], "yaw": float(c["yaw"])}
+            for n, c in (info.get("containers") or {}).items()}
+
+
+def run_episodes(config, rng, solver, privileged=False):
     episodes = int(config.get("episodes", 3))
     horizon = int(config.get("horizon", 20000))
     budget = float(config.get("controller_budget_s", 3000))
@@ -117,6 +181,7 @@ def run_episodes(config, rng, solver):
             seed = rng.seed(bits=64)
             try:
                 obs, state = sim.reset(seed, horizon)
+                containers = _containers(sim.info()) if privileged else None
             except SimError as exc:
                 fail("simulator reset failed: {}".format(exc))
             scorer = EpisodeScorer(horizon)
@@ -127,6 +192,8 @@ def run_episodes(config, rng, solver):
             try:
                 solver.reset()
                 for t in range(horizon):
+                    if privileged:
+                        obs["privileged"] = privileged_block(state, containers, obs)
                     if lock.due():
                         perturbed = _perturbed(obs, rng)
                         asked = time.monotonic()
@@ -175,21 +242,29 @@ def main():
     rng = seed_rng()
     anchor, anchor_meta = read_anchor()
 
+    submission = os.path.join(agent_home(), "submission")
+    # read before any of the submission's code runs
+    privileged, mismatch = token_state(submission)
+    if privileged or mismatch:
+        print("[grader] {}".format("privileged mode (oracle token)" if privileged else "oracle token mismatch: ignored"),
+              file=sys.stderr, flush=True)
+    flags = {"privileged_mode": float(privileged), "oracle_token_mismatch": float(mismatch)}
+
     try:
-        solver = Solver(step_timeout=config.get("step_timeout_s", 30))
+        solver = Solver(step_timeout=config.get("step_timeout_s", 30), submission=submission)
     except (SolverMissing, SolverAborted) as exc:
         # An untouched sandbox, or a submission that never comes up, is a real all-zero
         # verdict, not a task error; and no simulator is launched for it.
-        write_verdict(zero_verdict(reason=str(exc), anchored=anchor is not None))
+        write_verdict(zero_verdict(reason=str(exc), anchored=anchor is not None, extra=flags))
         return
 
     try:
-        scores, summaries, aborted, cut, lock = run_episodes(config, rng, solver)
+        scores, summaries, aborted, cut, lock = run_episodes(config, rng, solver, privileged=privileged)
     finally:
         solver.close()
 
     measured = sum(scores) / len(scores) if scores else 0.0
-    extra = dict(lock.rewards(), episodes_aborted=float(aborted), episodes_cut=float(cut))
+    extra = dict(lock.rewards(), episodes_aborted=float(aborted), episodes_cut=float(cut), **flags)
     for i, s in enumerate(scores):
         extra["episode_{}_score".format(i)] = float(s)
     for i, s in enumerate(summaries):
@@ -205,9 +280,9 @@ def main():
                             metric_name="mean_episode_score", locks_ok=lock.ok, extra=extra,
                             full_at=anchor_meta.get("full_at", 1.0))
     write_verdict(verdict)
-    print("[grader] measured={:.4f} anchor={} ratio={:.3f} reward={:.3f} lock={} aborted={} cut={}".format(
-        measured, anchor, verdict["metrics"]["ratio"], verdict["rewards"]["reward"], lock.ok, aborted, cut),
-        file=sys.stderr, flush=True)
+    print("[grader] measured={:.4f} anchor={} ratio={:.3f} reward={:.3f} lock={} aborted={} cut={} privileged={}".format(
+        measured, anchor, verdict["metrics"]["ratio"], verdict["rewards"]["reward"], lock.ok, aborted, cut,
+        privileged), file=sys.stderr, flush=True)
 
 
 if __name__ == "__main__":
