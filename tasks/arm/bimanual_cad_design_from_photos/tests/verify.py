@@ -1,6 +1,14 @@
 """Grader of bimanual_cad_design_from_photos (information tier, hardware-design stage, FreeCAD MCP version). Root, verify
 stage, agent gone.
 
+Where it runs: a separate verifier sandbox (task.toml `environment_mode = "separate"`), started fresh from the task image.
+The engine restores only the declared artifact /home/user/submission into it (written by root, before this folder is
+uploaded), so nothing the agent left anywhere else is present. setup.sh does not run there and nothing it staged is read:
+the bought parts the grader uses are this folder's own copies (given/bought/). The lockdown below works the same in a
+shared sandbox. In the verifier, the agent account's processes are the image's own desktop, and the restored submission
+is root-owned and older than the stage upload, so the late-write gate has nothing to flag there (the engine copied the
+submission when the agent phase ended).
+
   0. FIRST THING, stdlib only (`_early_lockdown`, as in robotic_arm_cad_design_from_photos): record when the engine began
      uploading this folder, freeze and kill every process of the agent account (a survivor voids the run: task error),
      lock the stage, take a root-owned 0700 snapshot of the submission that every later read uses, and zero the score
@@ -323,28 +331,9 @@ def write_verdict(overall, rewards, stats, details):
         # text[:2000]: the diagnostic cap of the earlier ale_verify API, kept so the recorded text is unchanged
         kit_write(recorded, diagnostic=text[:2000])
         return
-    kit_write(verdict, path=os.environ.get("ROBOTICS_GRADER_VERDICT_PATH") or os.path.join(STAGE_DIR, "verdict.local.json"),
+    kit_write(dict(verdict, diagnostics=details),
+              path=os.environ.get("ROBOTICS_GRADER_VERDICT_PATH") or os.path.join(STAGE_DIR, "verdict.local.json"),
               diagnostic=text)
-
-
-def _hashes_match(expected_path, root):
-    import hashlib
-    try:
-        with open(expected_path) as f:
-            expected = json.load(f)
-    except (OSError, ValueError):
-        return 0.0
-    for rel, digest in expected.items():
-        p = os.path.join(root, rel)
-        if not os.path.isfile(p):
-            return 0.0
-        h = hashlib.sha256()
-        with open(p, "rb") as f:
-            for chunk in iter(lambda: f.read(1 << 20), b""):
-                h.update(chunk)
-        if h.hexdigest() != digest:
-            return 0.0
-    return 1.0
 
 
 def main():
@@ -369,7 +358,6 @@ def main():
         else:
             seeds = (int.from_bytes(os.urandom(4), "big"), int.from_bytes(os.urandom(4), "big"))
         stats["hidden_seed_hi"], stats["hidden_seed_lo"] = float(seeds[0]), float(seeds[1])
-        stats["no_collateral"] = _hashes_match(os.path.join(STAGE_DIR, "given_hashes.json"), HOME)
         stats["grader_exception"] = 0.0
         doc, note = find_document(sub_dir)
         if doc is None:

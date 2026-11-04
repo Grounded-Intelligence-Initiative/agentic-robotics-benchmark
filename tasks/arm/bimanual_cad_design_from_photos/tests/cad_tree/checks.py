@@ -1,7 +1,7 @@
 """Geometry and scoring helpers of the tree grader: transforms, B-rep reading and moving, watertight tessellation,
 manifold booleans, per-part rigid alignment (point-to-plane ICP), band scores, vertex fingerprints, quasi-random draws.
 
-Vendored with the rest of cad_tree into the task's tests/ folder, so it imports only the standard library, numpy,
+Vendored with the rest of cad_tree into the task's grader folder (tests/), so it imports only the standard library, numpy,
 scipy, trimesh, manifold3d and cadquery / OCP. Lengths mm, angles rad unless a name says otherwise.
 
 Provenance (copied, then adapted where noted):
