@@ -16,7 +16,7 @@ from . import furniture as F
 from . import layout as LAYOUT
 from . import room as RM
 from .control import TICK, V_MAX, RobotController
-from .physics import Bodies, Coupling, Grips, Safety
+from .physics import GRIP_MAX_FORCE, GRIP_MAX_TORQUE, Bodies, Coupling, Grips, Safety
 from .render import CameraRig, camera_pose_world, encode_frame, intrinsics
 from .robot import (ARM_HOME, ARM_JOINTS, D435_PITCH, D435_POS, GRASP_SITE_POS, HAND_JOINTS, HEAD_CAM, PELVIS_HEIGHT,
                     SIDES, STAND_RANGE, WAIST_JOINTS, robot_index)
@@ -196,7 +196,7 @@ class Cell:
                         "arm_joint_rate_rad_s": 1.5, "waist_rate_rad_s": 0.8,
                         "grasp_site": {"body": "<side>_wrist_yaw_link", "position": {s: list(GRASP_SITE_POS[s]) for s in SIDES},
                                        "axes": "x = approach (along the fingers), y = pinch axis, z = x cross y"}},
-            "grip": {"max_force_N": 30.0, "max_torque_Nm": 3.0,
+            "grip": {"max_force_N": GRIP_MAX_FORCE, "max_torque_Nm": GRIP_MAX_TORQUE,
                      "rule": "closing a hand whose grasp site straddles a board's edge (thickness along the pinch "
                              "axis within 35 deg, the edge at most 45 mm inside the hand, the grasp site within 15 mm "
                              "of the board's slab) holds that board until the hand opens or the hold exceeds a limit"},
