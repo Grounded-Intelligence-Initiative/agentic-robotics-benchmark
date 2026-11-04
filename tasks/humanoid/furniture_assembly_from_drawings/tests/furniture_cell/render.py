@@ -8,7 +8,8 @@ the lights in physical units, the image light, the materials' PBR terms and cali
 white-balance / brightness draw, per-pixel noise. Depth (metres along the optical axis, registered to the RGB pixels):
 noise sigma 1.5 mm + 2.5 mm/m^2 z^2, 1 mm quantisation, invalid (0) below the minimum range, beyond 6 m, on depth
 discontinuities and on 2 % random pixels. Intrinsics are exact and published (fx = fy = (H / 2) / tan(fovy / 2),
-principal point at the image centre).
+principal point at the image centre). Colour and depth are drawn from the state the cell hands over (Cell.render_state:
+the physics state with the robots' legs as walk_core draws them, stepping while a robot moves).
 
 Filament facts this relies on (MuJoCo 3.16): one context serves one model's resources at a time, so only the model
 rendered last is live (rendering another model first frees the live one's Filament objects); the engine is bound to

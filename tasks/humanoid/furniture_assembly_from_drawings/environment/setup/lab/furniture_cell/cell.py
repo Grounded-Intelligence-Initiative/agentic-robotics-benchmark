@@ -21,6 +21,7 @@ from .render import CameraRig, camera_pose_world, encode_frame, intrinsics
 from .robot import (ARM_HOME, ARM_JOINTS, D435_PITCH, D435_POS, GRASP_SITE_POS, HAND_JOINTS, HEAD_CAM, PELVIS_HEIGHT,
                     SIDES, STAND_RANGE, WAIST_JOINTS, robot_index)
 from .scene import ROBOTS, build
+from .walk_core import LegWalker, support_from_geom
 
 MM = 1e-3
 SUBSTEPS = 5                               # 5 x 2 ms physics per 10 ms control tick
@@ -31,6 +32,30 @@ PUBLIC_CAMERAS = ("ceiling_west", "ceiling_east", "a/head", "b/head")
 
 def _cam_mjname(name: str) -> str:
     return name.replace("/head", "/head_cam") if name.endswith("/head") else name
+
+
+def _drawn_supports(m: mujoco.MjModel) -> list:
+    """What the drawn feet stand on rather than in: the rug as the cameras draw it (the decor's flat mesh over the
+    surveyed rug; without the decor, the room's own rug box)."""
+    G = mujoco.mjtObj.mjOBJ_GEOM
+    (cx, cy), (sx, sy) = RM.RUG["center"], RM.RUG["size"]
+    d = mujoco.MjData(m)
+    mujoco.mj_kinematics(m, d)
+    out = []
+    for g in range(m.ngeom):
+        if not (mujoco.mj_id2name(m, G, g) or "").startswith("decor_") or m.geom_type[g] != mujoco.mjtGeom.mjGEOM_MESH:
+            continue
+        mid = int(m.geom_dataid[g])
+        V = m.mesh_vert[m.mesh_vertadr[mid]:m.mesh_vertadr[mid] + m.mesh_vertnum[mid]].astype(np.float64)
+        V = V @ d.geom_xmat[g].reshape(3, 3).T + d.geom_xpos[g]
+        c = V[:, :2].mean(axis=0)
+        if V[:, 2].min() > -0.005 and V[:, 2].max() < 0.03 and abs(c[0] - cx) < sx / 2 and abs(c[1] - cy) < sy / 2:
+            out.append(support_from_geom(m, g))
+    if not out:
+        g = mujoco.mj_name2id(m, G, "rug")
+        if g >= 0:
+            out.append(support_from_geom(m, g))
+    return out
 
 
 class Cell:
@@ -52,6 +77,12 @@ class Cell:
         sizes = {n: RM.CEILING_CAMERAS[n]["size"] for n in RM.CEILING_CAMERAS}
         sizes.update({f"{n}/head_cam": HEAD_CAM["size"] for n in ROBOTS})
         self.cams = CameraRig(self.m, sizes, np.random.default_rng(self.rng.integers(1 << 62))) if render else None
+        # the legs the cameras draw: stepping while a robot moves (walk_core; drawn only, the physics keeps its posed
+        # legs). Stepped every control tick, so the drawn legs follow the motion whatever the cameras do.
+        sup = _drawn_supports(self.m) if render else []
+        self.walkers = {n: LegWalker(self.m, f"{n}/", supports=sup) for n in ROBOTS} if render else {}
+        self._q_kin = None                         # the qpos the physics state's kinematics belong to
+        self._rd = None                            # the state the cameras draw
         self.sim_cap = float(cfg.get("sim_cap_s", 1500.0))
         self.frame_budget = int(cfg.get("camera_budget_frames", 900))
         self.max_ticks = int(cfg.get("max_ticks_per_step", 500))
@@ -85,6 +116,8 @@ class Cell:
             d.qpos[a:a + 3] = pos
             d.qpos[a + 3:a + 7] = quat
         mujoco.mj_forward(m, d)
+        if self.walkers:
+            self._q_kin = d.qpos.copy()
         for n, c in self.ctrl.items():
             c.reset_targets(d)
         # settle: let the parts come to rest on their supports (not part of the episode's time)
@@ -97,6 +130,8 @@ class Cell:
         for k in self.safety.peaks:
             self.safety.peaks[k] = 0.0
         self.safety.peak_who.clear()
+        for w in self.walkers.values():
+            w.reset(self.sim_time, d.qpos[w.base_adr])
 
     @property
     def sim_time(self) -> float:
@@ -106,7 +141,9 @@ class Cell:
         m, d = self.m, self.d
         for c in self.ctrl.values():
             c.tick(d)
-        for _ in range(SUBSTEPS):
+        for i in range(SUBSTEPS):
+            if i == SUBSTEPS - 1 and self.walkers:
+                self._q_kin[:] = d.qpos            # mj_step leaves d's kinematics at the qpos it started from
             mujoco.mj_step(m, d)
         t = self.sim_time
         self.grips.tick(t)
@@ -115,6 +152,8 @@ class Cell:
         if record:
             self.safety.tick(t)
             self.ticks += 1
+            for w in self.walkers.values():
+                w.step(self.sim_time, d.qpos[w.base_adr])
 
     # ------------------------------------------------------------------------------------------------ public API
     def describe(self) -> dict:
@@ -146,7 +185,10 @@ class Cell:
         return {
             "api": "furniture-cell/1.0",
             "robots": {n: {"model": "unitree_g1_29dof_dex3 (cell variant, ~/given/robot/g1_cell.xml)",
-                           "start_hint": "near the south wall"} for n in ROBOTS},
+                           "start_hint": "near the south wall",
+                           "legs_in_images": "the cameras draw the legs stepping while the base moves (an animation, "
+                                             "drawn only: the legs' colliders stay as posed, the drawn legs collide "
+                                             "with nothing)"} for n in ROBOTS},
             "joints": joints, "joint_ranges": ranges,
             "control": {"tick_s": TICK, "max_ticks_per_step": self.max_ticks,
                         "base_velocity_max": list(V_MAX), "stand_height_range": list(STAND_RANGE),
@@ -291,7 +333,8 @@ class Cell:
     def _frame(self, name: str, depth: bool) -> dict:
         t = time.time()
         mjname = _cam_mjname(name)
-        rgb, dep = self.cams.render(self.d, mjname, depth=depth, kind="head" if "head" in name else "ceiling")
+        kind = "head" if "head" in name else "ceiling"
+        rgb, dep = self.cams.render(self.render_state(), mjname, depth=depth, kind=kind)
         self.render_wall += time.time() - t
         if "head" in name:
             w, h = HEAD_CAM["size"]
@@ -323,6 +366,24 @@ class Cell:
         if not self.done:
             self._end("finish")
         return {"ok": True}
+
+    def render_state(self) -> mujoco.MjData:
+        """The state every camera image is drawn from (colour, depth): the physics state's kinematics (of the qpos
+        its last substep started from) with each robot's 12 leg joints as its walker draws them now. Everything above
+        the hips, the parts and the room are the physics' own, bit for bit; the physics state is not touched."""
+        if not self.walkers:
+            return self.d
+        if self._rd is None:
+            self._rd = mujoco.MjData(self.m)
+        rd = self._rd
+        rd.qpos[:] = self._q_kin
+        rd.time = self.d.time
+        for w in self.walkers.values():
+            rd.qpos[w.qpos_adr] = w.pose_at(self.sim_time, self._q_kin[w.base_adr])
+        mujoco.mj_kinematics(self.m, rd)
+        mujoco.mj_comPos(self.m, rd)
+        mujoco.mj_camlight(self.m, rd)
+        return rd
 
     def _end(self, reason: str):
         self.done = True

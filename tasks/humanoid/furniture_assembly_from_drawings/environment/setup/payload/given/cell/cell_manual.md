@@ -46,6 +46,13 @@ Two Unitree G1 humanoids (29 DoF with Dex3-1 hands), named **`a`** and **`b`**, 
   commands; the legs are posed from the stand height and do not touch the floor (no balance falls are simulated). You
   command the base by velocity or by a goal pose (section 5). A robot obstructed by furniture stops; its controller
   does not wind up beyond 5 cm / 0.1 rad.
+* **Legs in the camera images.** The cameras draw each robot's legs stepping while its base moves: a walking
+  animation that follows the base (the feet are set down and stay put while the pelvis passes over them; a foot the
+  leg cannot reach flat rolls over its heel or toe), standing with the feet flat on the floor (or on the rug) when the
+  base stops. The animation is drawn only, in the colour and the depth images alike; nothing above the hips changes in
+  them (the pelvis, the torso, the arms, the head and the head camera are where the physics has them). The physics
+  keeps the posed legs: their colliders stay as posed and the drawn legs touch nothing (while a robot walks, a drawn
+  foot can be up to about 25 cm from its collider), and nothing the program reads changes.
 * **Stand height** (pelvis height above the floor) 0.48 - 0.80 m, nominal 0.793 m; lower means a squat (the knees go
   forward).
 * Every robot body is gravity-compensated; payloads are not: a held board loads the arms, the waist and the base.
@@ -109,7 +116,8 @@ load (0 when it holds nothing).
   describes it, the same light in every episode: the morning sun shines in through the east window (sharp shadows,
   bright patches on the kitting table and the floor west of the window), the two ceiling panels light the room from
   above (soft shadows) and the light the room's surfaces reflect fills in. Colour carries a per-episode white balance /
-  brightness draw and pixel noise.
+  brightness draw and pixel noise. Colour and depth draw the robots' legs as section 3 says (stepping while a base
+  moves).
   **At most 900 frames per episode** over all cameras; rendering is the cell's time, not your program's (section 9).
 
 ## 7. How the bookcase holds together (the cell's fastening rules; never reported)
