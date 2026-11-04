@@ -10,9 +10,9 @@ genuinely good run lands in:
     reward = clamp(ratio / full_at, 0, 1)              (the framework's primary)
 
 `full_at` is the task's own declaration of "as good as the reference", sized by the
-measured seed-to-seed spread of the metric (`verify/anchor.json`). It exists because of
-the validate double pass: an untouched sandbox must score exactly 0 and the oracle exactly 1
-(the engine fails the run otherwise: `untouched_nonzero`, `oracle_not_full`), and an oracle
+measured seed-to-seed spread of the metric (`tests/anchor.json`). It exists because of
+the validate double pass: an untouched sandbox must score 0.0 and the oracle 1.0 on `reward`,
+after the engine's half-up rounding to two decimals (validation fails otherwise), and an oracle
 re-run on fresh hidden seeds does not reproduce its anchor to the digit —
 with the template's measured 1.16x spread over 12 runs, an honest oracle lands anywhere in
 ratio ~0.86–1.16. Saturating at `full_at` makes "inside the reference band" an exact 1.0
@@ -47,16 +47,15 @@ DEFAULT_CAP = 1.5
 
 
 def stage_config(name="grader_config.json", default=None):
-    """Grader knobs, read from the stage folder.
+    """Grader knobs, read from the stage folder (`tests/grader_config.json`).
 
-    Deliberately not `params:` in task.yaml: parameters are rendered into the instruction
-    and checked strictly both ways, so a knob the prompt does not mention is a lint error
-    there. Episode counts, probe rates and deadlines are the grader's business anyway.
+    Deliberately not in task.toml: its `[metadata]` has no runtime behavior, and episode
+    counts, probe rates and deadlines are the grader's business anyway.
 
-    NOT `config.json` — the engine writes its own verification config (judge settings)
-    to `<stage>/config.json` at verify time, silently replacing any file the task shipped
-    under that name. `instruction.md`, `parameters.json`, `params.json`,
-    `trajectory.json` and `agent-judge.jsonl` are reserved the same way.
+    NOT `config.json` — the engine writes its own verification config (Judge settings)
+    to `tests/config.json` at verify time (`ALE_VERIFY_CONFIG_PATH`), silently replacing
+    any file the task shipped under that name. `instruction.md`, `trajectory.json`,
+    `llm-judge.jsonl` and `agent-judge.jsonl` are reserved the same way.
     """
     path = os.path.join(stage_dir(), name)
     try:
@@ -146,16 +145,16 @@ def ratio_rewards(measured, anchor, cap=DEFAULT_CAP, higher_is_better=True,
     measured value.
 
     `rewards` carries only the gated score: `reward = clamp(ratio / full_at, 0, 1)`.
-    Every reward key must be exactly 0 from an untouched sandbox and exactly 1 from the
-    oracle (the engine fails the run otherwise: `untouched_nonzero`, `oracle_not_full`),
-    so anything that is not that score — the raw metric, the capped ratio, the lock
-    outcomes — goes in `metrics`, where the engine records it without judging it.
+    `reward`, rounded half-up to two decimals, must be 0.0 from an untouched sandbox and
+    1.0 from the oracle (validation fails otherwise), so anything that is not that score —
+    the raw metric, the capped ratio, the lock outcomes — goes in `metrics`, which
+    verification.json records and nothing gates.
 
     `full_at` is where the reward saturates, in ratio units: the worst ratio a genuinely
     on-reference run can land on under fresh hidden seeds. Size it from a real measured
     spread (run the oracle several times), not from hope — too high and an honest oracle
     fails its own gate by luck; too low and a mediocre solution reads as perfect. It is
-    part of `verify/anchor.json` because it is calibration data with the same provenance
+    part of `tests/anchor.json` because it is calibration data with the same provenance
     obligations as the anchor.
 
     `locks_ok=False` zeroes the score outright. A failed match lock does not mean "scored
@@ -173,7 +172,7 @@ def ratio_rewards(measured, anchor, cap=DEFAULT_CAP, higher_is_better=True,
     if anchor is None:
         value = 0.0
         print("[grader] anchor is null — this run MEASURED {} = {}. Record it in "
-              "verify/anchor.json and re-run; scoring 0 until then.".format(
+              "tests/anchor.json and re-run; scoring 0 until then.".format(
                   metric_name, measured), file=sys.stderr, flush=True)
     else:
         value = ratio(measured, anchor, cap=cap, higher_is_better=higher_is_better)
@@ -199,10 +198,10 @@ def ratio_rewards(measured, anchor, cap=DEFAULT_CAP, higher_is_better=True,
 def zero_verdict(reason=None, anchored=False, extra=None):
     """The honest zero: the verdict an absent or unusable submission earns.
 
-    Under `ale validate`, an untouched sandbox must produce a real verdict of exactly 0 —
+    Under `ale validate`, an untouched sandbox must produce a real verdict of reward 0.0 —
     a crash would read as a broken task, not as an agent that did nothing. The reward
-    keys match `ratio_rewards`' exactly, because the engine also requires the two
-    validation passes to expose the same names.
+    keys match `ratio_rewards`' exactly, and the reason rides along as the verdict's
+    `diagnostic`, which `write_verdict` records in `verification.json`.
 
     Deliberately reports NO raw metric: nothing was measured, and a fabricated 0.0 would
     read as a perfect run on any lower-is-better metric. `anchored` states the truth about
@@ -213,4 +212,7 @@ def zero_verdict(reason=None, anchored=False, extra=None):
     metrics = {"ratio": 0.0, "anchor_recorded": 1.0 if anchored else 0.0}
     if extra:
         metrics.update({k: float(v) for k, v in extra.items()})
-    return {"rewards": {"reward": 0.0}, "metrics": metrics}
+    verdict = {"rewards": {"reward": 0.0}, "metrics": metrics}
+    if reason:
+        verdict["diagnostic"] = "scoring 0: {}".format(reason)
+    return verdict

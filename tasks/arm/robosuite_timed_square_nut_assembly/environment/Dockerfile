@@ -1,4 +1,4 @@
-FROM ghcr.io/agentslastexam/container-ubuntu22-base:latest
+FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1
 COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /usr/local/bin/uv
 ENV UV_PYTHON_INSTALL_DIR=/opt/uv-python
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv

@@ -1,8 +1,0 @@
-spec_type: core/v1
-name: robosuite_timed_square_nut_assembly
-image: {kind: container}
-resources: {cpus: 2, memory_mb: 4096, gpus: 0}
-network: {mode: block}
-timeouts: {setup: 120, agent: 3600, verify: 900}
-artifacts: [/home/user/submission]
-metadata: {platform: arm}
