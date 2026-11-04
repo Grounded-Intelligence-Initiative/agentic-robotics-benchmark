@@ -79,6 +79,9 @@ HAND_BODY_ABOVE_TCP = 0.034
 FINGER_TIP_BELOW_TCP = 0.0123
 FINGER_BELOW_TCP = FINGER_TIP_BELOW_TCP   # (tilted grasps: the TCP is shifted against the lean by this much)
 FINGER_HALF_WIDTH, FINGER_THICK = 0.0105, 0.0264
+# the finger's profile (its collision mesh in franka.usd): 1.57 cm thick from the inner face over its lower 2 cm
+# (the tip up to 6.7 mm above the tool centre), 2.64 cm only at its base near the hand
+FINGER_TIP_THICK, FINGER_TIP_TOP = 0.0157, 0.0067
 OPEN_W = 0.080
 WIDTH_MARGIN = 0.010                 # the grasped width stays this far under the opening
 GRASP_BELOW_TOP = 0.030              # the tool centre never deeper than this under the top (the palm lands on it)
@@ -219,8 +222,10 @@ def _hand_points():
                 pts.append((su * HAND_HALF_W, sv * HAND_HALF_T, h))
     for su in (-1.0, 1.0):
         for sv in (-1.0, 1.0):
-            for h in (-FINGER_BELOW_TCP, 0.0, HAND_BODY_ABOVE_TCP):
-                pts.append((su * (OPEN_W / 2 + 0.008), sv * 0.011, h))
+            for h in (-FINGER_TIP_BELOW_TCP, -0.003, FINGER_TIP_TOP):
+                pts.append((su * (OPEN_W / 2 + FINGER_TIP_THICK), sv * FINGER_HALF_WIDTH, h))
+            for h in (0.02, HAND_BODY_ABOVE_TCP):
+                pts.append((su * (OPEN_W / 2 + FINGER_THICK), sv * FINGER_HALF_WIDTH, h))
     for su in (-1.0, 0.0, 1.0):
         pts.append((su * 0.045, 0.0, 0.17))
     return np.array(pts)
@@ -367,7 +372,8 @@ def hand_hits(Q, hx, hy, yaw, z_g):
     pu, pv = rel @ u, rel @ v
     au, av = np.abs(pu), np.abs(pv)
     tip = z_g - FINGER_TIP_BELOW_TCP
-    fingers = (av < FINGER_HALF_WIDTH + 0.004) & (au > OPEN_W / 2 - 0.004) & (au < OPEN_W / 2 + FINGER_THICK + 0.004) \
+    thick = np.where(Q[:, 2] < z_g + FINGER_TIP_TOP + 0.005, FINGER_TIP_THICK, FINGER_THICK)
+    fingers = (av < FINGER_HALF_WIDTH + 0.004) & (au > OPEN_W / 2 - 0.004) & (au < OPEN_W / 2 + thick + 0.004) \
         & (Q[:, 2] > tip - 0.002)
     palm = (au < HAND_HALF_W + 0.004) & (av < HAND_HALF_T + 0.004) & (Q[:, 2] > z_g + HAND_BODY_ABOVE_TCP - 0.004)
     gap = (au <= OPEN_W / 2 - 0.004) & (av < FINGER_HALF_WIDTH + 0.004) & (Q[:, 2] > tip - 0.002) \
@@ -437,6 +443,14 @@ def plan_grasps(w, oid, fails=0, ignore_others=False, why=None, avoid_yaws=()):
     wide_hollow = upright_hollow and o["model"] in WIDE_HOLLOW
     z0 = grasp_height(top, bottom, ground)
     heights = [z0] + [z for z in (top - 0.020, top - 0.012) if z > z0 + 0.004]
+    # the yaws: the object's own footprint axes first (a box's edges, exactly: 10 degrees off, a 6.3 x 8.3 cm box is
+    # 7.6 cm across the fingers), then a 10-degree grid
+    C = np.cov((P[:, :2] - P[:, :2].mean(0)).T)
+    evals, evecs = np.linalg.eigh(C)
+    a_major = math.atan2(evecs[1, 1], evecs[0, 1])
+    yaws = [wrap_half(a_major), wrap_half(a_major + math.pi / 2)]
+    yaws += [y for y in (k * math.pi / 18 - math.pi / 2 for k in range(18))
+             if all(abs(wrap_half(y - a)) > 0.03 for a in yaws)]
     plans = []
     for shallow, z_g in enumerate(heights):
         if shallow and plans:
@@ -444,8 +458,7 @@ def plan_grasps(w, oid, fails=0, ignore_others=False, why=None, avoid_yaws=()):
         span = _span(P, z_g)
         if len(span) < 6:
             span = P
-        for k in range(18):
-            yaw = k * math.pi / 18 - math.pi / 2
+        for k, yaw in enumerate(yaws):
             if any(abs(wrap_half(yaw - a)) < 0.30 for a in avoid_yaws):
                 continue                 # the arm could not get the hand down this way here
             plan = _plan_at_yaw(w, P, top, bottom, cen, z_g, span, Q, owner, inside, yaw, k, round_, wide_hollow,
@@ -485,19 +498,32 @@ def _plan_at_yaw(w, P, top, bottom, cen, z_g, span, Q, owner, inside, yaw, k, ro
             if any(e is not None and abs((e[1] - e[0]) - width) > 0.012 for e in side):
                 _count(why, "chord")
                 continue
-        uc = (ulo + uhi) / 2.0
+        span_off = max(0.0, (OPEN_W / 2 - 0.003) - width / 2.0)     # how far the hand may sit off the middle
+        offs = [0.0] + [sg * d for d in np.arange(0.005, span_off + 1e-9, 0.005) for sg in (1.0, -1.0)]
+        for off in offs:
+            plan = _plan_at_offset(w, P, top, bottom, cen, z_g, Q, owner, inside, yaw, k, u, v, ulo, uhi, voff, off,
+                                   width, wide_hollow, fails, ignore_others, why, shallow)
+            if plan is not None:
+                return plan
+    return None
+
+
+def _plan_at_offset(w, P, top, bottom, cen, z_g, Q, owner, inside, yaw, k, u, v, ulo, uhi, voff, off, width,
+                    wide_hollow, fails, ignore_others, why, shallow):
+    if True:
+        uc = (ulo + uhi) / 2.0 + off
         hx, hy = cen + uc * u + voff * v
         hx, hy = float(hx), float(hy)
         if not reachable_xy(hx, hy):
             _count(why, "reach")
-            continue
+            return None
         # what lies under the finger columns (the object below in a stack, a neighbour beside it) sets how
         # low the fingertips may go; enough of the object's side must stay between the fingers
         zg = z_g
         if len(Q):
             rel = Q[:, :2] - (hx, hy)
             au, av = np.abs(rel @ u), np.abs(rel @ v)
-            col = (av < FINGER_HALF_WIDTH + 0.004) & (au > OPEN_W / 2 - 0.004) & (au < OPEN_W / 2 + FINGER_THICK + 0.004)
+            col = (av < FINGER_HALF_WIDTH + 0.004) & (au > OPEN_W / 2 - 0.004) & (au < OPEN_W / 2 + FINGER_TIP_THICK + 0.004)
             if col.any():
                 zr = float(Q[col, 2].max()) + FINGER_TIP_BELOW_TCP + TIP_CLEAR
                 if zr > zg + 1e-4:
@@ -510,26 +536,26 @@ def _plan_at_yaw(w, P, top, bottom, cen, z_g, span, Q, owner, inside, yaw, k, ro
         own &= ~(np.abs((P[:, :2] - (hx, hy)) @ u) <= OPEN_W / 2 - 0.004)    # what lies between the fingers is the grasp
         if own.sum() > 2:
             _count(why, "own")
-            continue
+            return None
         tilt = next((t for t in TILTS if fits_with_approach(w.containers, (hx, hy, zg), yaw, t, inside)), None)
         if tilt is None:
             _count(why, "walls")
-            continue
+            return None
         blockers = ()
         if len(Q):
             hit = hand_hits(Q, hx, hy, yaw, zg)
             if hit.sum() > 2:
                 if not ignore_others:
                     _count(why, "others")
-                    continue
+                    return None
                 blockers = tuple(sorted(set(int(x) for x in owner[hit])))
         cost = width + 1.5 * math.hypot(hx - cen[0], hy - cen[1]) + 0.002 * k \
             + (0.05 + 0.03 * (abs(tilt[0]) + abs(tilt[1])) if is_tilted(tilt) else 0.0) \
             + (0.10 if wide_hollow else 0.0) + 2.0 * max(0.0, zg - z_g) + 0.03 * shallow
         if fails and (k + fails) % 3 == 0:
             cost -= 0.01                # a retry after a failure prefers another yaw
+        cost += 0.3 * abs(off)
         return Plan((hx, hy), yaw, zg, tilt, cost, "pinch", width, blockers)
-    return None
 
 
 def rim_plans(w, oid, P, top, inside, Q, owner, ignore_others):
