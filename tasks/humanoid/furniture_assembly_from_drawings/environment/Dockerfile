@@ -1,6 +1,6 @@
 # furniture_assembly_from_drawings's environment image: MuJoCo with CPU rendering (the cameras' colour through MuJoCo's
 # Filament renderer on Mesa's lavapipe, their depth through OSMesa), the agent's image tools, the Unitree G1 robot model
-# and the room's decor.
+# (from MuJoCo Menagerie) and the room's decor (from the benchmark's asset dataset).
 #
 # `environment/` (less its `setup/`) is the sole build context and the final stage derives DIRECTLY from the official
 # ALE base, at an exact version. Nothing hidden is here: the furniture cell's code, the grader and the reference program
@@ -79,19 +79,19 @@ RUN set -eu; \
     echo "[image] $folder @ $commit: $(find . -type f | wc -l) files verified"
 ENV ARB_G1_DIR=/opt/arb-assets/unitree_g1
 
-# The room's decor (what the cameras see of the room: textured meshes of the furnished room of the task's demo, made
-# from the owner's Unity packs, base maps at most 512 px, and the image light distilled from a path-traced render of
-# it): the build context's assets/room_decor, the engine's asset root (not in git), checked file by file against
-# room_decor.sha256; a missing, extra or changed file fails the build. The cell reads it from ARB_ROOM_DECOR_DIR.
-COPY room_decor.sha256 /opt/arb-assets/room_decor.sha256
-COPY assets/room_decor /opt/arb-assets/room_decor
-RUN set -eu; \
-    cd /opt/arb-assets/room_decor; \
-    grep -v '^#' /opt/arb-assets/room_decor.sha256 | sha256sum --check --strict --quiet; \
-    test "$(find . -type f | wc -l)" -eq "$(grep -vc '^#' /opt/arb-assets/room_decor.sha256)"; \
-    chown -R root:root /opt/arb-assets/room_decor /opt/arb-assets/room_decor.sha256; \
-    chmod -R u+rwX,go+rX,go-w /opt/arb-assets/room_decor /opt/arb-assets/room_decor.sha256; \
-    echo "[image] room decor: $(find . -type f | wc -l) files verified"
+# ---- task assets: fetched at the dataset commit pinned in assets.sha256, checked file by file (docs/task-assets.md):
+# render/room_decor, the room's decor (what the cameras see of the room: textured meshes of the furnished room of the
+# task's demo, made from the owner's Unity packs, base maps at most 512 px, and the image light distilled from a
+# path-traced render of it). It is moved to the root-owned /opt/arb-assets/room_decor, where the cell reads it
+# (ARB_ROOM_DECOR_DIR, also the cell's default), and is not staged into the agent home; the list holds nothing else,
+# so the emptied payload folder is removed.
+COPY fetch_assets.py assets.sha256 /opt/task-assets/
+RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload \
+    && mv /opt/task-assets/payload/render/room_decor /opt/arb-assets/room_decor \
+    && rmdir /opt/task-assets/payload/render /opt/task-assets/payload \
+    && chown -R root:root /opt/task-assets /opt/arb-assets/room_decor \
+    && chmod -R u+rwX,go+rX,go-w /opt/task-assets /opt/arb-assets/room_decor \
+    && echo "[image] room decor: $(find /opt/arb-assets/room_decor -type f | wc -l) files in /opt/arb-assets/room_decor"
 ENV ARB_ROOM_DECOR_DIR=/opt/arb-assets/room_decor
 
 # The practice lab's account (environment/setup/setup.sh starts the lab server as it): a system account with no login
