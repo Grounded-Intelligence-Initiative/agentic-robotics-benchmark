@@ -1,7 +1,7 @@
 {
   "metric": "success_rate",
   "direction": "higher",
-  "value": 0.75,
+  "value": 0.8333333333333334,
   "full_at": 0.75,
-  "source": "Camera-based reference controller measured 9/12 successful fresh 64-bit-seed trajectories within 115 simulator steps on 2026-11-03; the 12 raw trajectories are recorded in the pull request."
+  "source": "Camera-based reference controller measured 10/12 successful fresh 64-bit-seed trajectories within 112 simulator steps on 2026-11-03; the 12 raw trajectories are recorded in the pull request."
 }
