@@ -1,0 +1,7 @@
+{
+  "metric": "mean_assembly_progress",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 1.0,
+  "source": "Privileged reference solution (solution/, token-gated ground truth) on the 16 fixed hidden episodes of tests/ref/episodes.json: 16 of 16 seated through the verify episode loop locally (2026-11-04); to be confirmed by ale validate on the pinned engine 1cdbc02"
+}

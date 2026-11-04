@@ -1,0 +1,85 @@
+{
+ "note": "fixed hidden grading episodes: nut id, target peg (band count) and the layout/noise seed",
+ "episodes": [
+  {
+   "nut": "N0",
+   "peg_bands": 1,
+   "seed": 2921699502556841654
+  },
+  {
+   "nut": "N1",
+   "peg_bands": 2,
+   "seed": 5488747301558894573
+  },
+  {
+   "nut": "N2",
+   "peg_bands": 3,
+   "seed": 9794864318516197503
+  },
+  {
+   "nut": "N3",
+   "peg_bands": 1,
+   "seed": 11880754234100402635
+  },
+  {
+   "nut": "N0",
+   "peg_bands": 2,
+   "seed": 17875543444325513877
+  },
+  {
+   "nut": "N1",
+   "peg_bands": 3,
+   "seed": 7420851569582345800
+  },
+  {
+   "nut": "N2",
+   "peg_bands": 1,
+   "seed": 8327778345590701110
+  },
+  {
+   "nut": "N3",
+   "peg_bands": 2,
+   "seed": 12051829806963112611
+  },
+  {
+   "nut": "N0",
+   "peg_bands": 3,
+   "seed": 10816521981964880149
+  },
+  {
+   "nut": "N1",
+   "peg_bands": 1,
+   "seed": 16493872982720072619
+  },
+  {
+   "nut": "N2",
+   "peg_bands": 2,
+   "seed": 10359526967521254495
+  },
+  {
+   "nut": "N3",
+   "peg_bands": 3,
+   "seed": 10242335409591305430
+  },
+  {
+   "nut": "N0",
+   "peg_bands": 2,
+   "seed": 9601375702269358434
+  },
+  {
+   "nut": "N1",
+   "peg_bands": 3,
+   "seed": 816918805640369894
+  },
+  {
+   "nut": "N2",
+   "peg_bands": 1,
+   "seed": 15247777977867748479
+  },
+  {
+   "nut": "N3",
+   "peg_bands": 2,
+   "seed": 14385342014989366772
+  }
+ ]
+}
