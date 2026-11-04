@@ -6,8 +6,9 @@
 # snapshots the submission, gates late writes and locks every file).
 #
 # The grader runs as root with nothing of the agent home on its import or configuration paths: HOME and the XDG /
-# matplotlib folders point at root's own, PYTHONNOUSERSITE=1 and `-s` keep any user site-packages out, and the cell
-# renders through OSMesa (the agents' cameras use the same path in the practice lab).
+# matplotlib folders point at root's own, PYTHONNOUSERSITE=1 and `-s` keep any user site-packages out, and the cell's
+# cameras render their depth through OSMesa and their colour with MuJoCo's Filament renderer on lavapipe (the same
+# paths as in the practice lab).
 set -euo pipefail
 STAGE="$(pwd -P)"
 export ARB_STAGE_MODE="$(stat -c %a "$STAGE")"

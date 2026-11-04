@@ -45,7 +45,7 @@ same public calls and nothing else. There is no answer key and no checker: you j
 cameras, like on site.
 
 Tools: Python 3.12 at **`/opt/venv/bin/python3`** (use this path; the plain `python3` on your PATH may lack the
-packages) with numpy, scipy, OpenCV (`cv2`, headless), Pillow, matplotlib and MuJoCo 3.14. No network in your session.
+packages) with numpy, scipy, OpenCV (`cv2`, headless), Pillow, matplotlib and MuJoCo 3.16. No network in your session.
 
 ## How you are graded (3 hidden episodes)
 

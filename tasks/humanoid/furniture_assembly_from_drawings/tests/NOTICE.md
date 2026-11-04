@@ -7,8 +7,19 @@ gravity compensation) and uses the primitive colliders of Menagerie's `g1_mjlab.
 builds it with MjSpec at cell start. The agent gets the unmodified folder in `~/given/robot/unitree_g1/`.
 
 The B930 bookcase, its drawing set (`tests/furniture_cell/drawings.py`, rendered with matplotlib), the room and its
-fixed furniture (the base cabinet, the couch, the plant and the rug, built from primitive shapes), the panel cart and
-the kitting table are original to this task. No third-party furniture model, drawing or dataset is used.
+fixed furniture as the physics knows them (the base cabinet, the couch, the plant and the rug, built from primitive
+shapes), the panel cart and the kitting table are original to this task. No third-party furniture model, drawing or
+dataset is part of the physics or the drawings.
+
+What the cameras see of the room, its decor (the oak floor, the plaster walls and ceiling, the skirting, the window's
+frame, glass and board, the door leaf, the pictures, the clock, the ceiling panels, the couch, the plants, the rug and
+the buildings across the street), is drawn from meshes and textures of two Unity Asset Store packs that the benchmark's
+owner licensed for redistribution, "Office and Police Station Pack" and "Office With Conference Room": the props as
+the packs model them, re-placed in this room, and the shell (walls, ceiling, skirting, window) built for this room
+from the packs' textures. The base maps are downsized to 512 px. The image light (`ibl.ktx`) is the mean of three light
+probes of the same room path-traced with NVIDIA OVRTX, prefiltered with Filament's cmgen. The decor ships in the image
+(`environment/assets/room_decor`, the engine's asset root, pinned file by file in `environment/room_decor.sha256`),
+not in git. The cameras' colour renderer is MuJoCo's Filament module (Apache-2.0, part of the mujoco wheel).
 Prior art the task was designed against (none of it reused): the Humanoid IKEA Assembly Challenge (IROS 2026, one G1,
 IKEA UTTER table, learned policies), EmbodiedSWE-Bench (coding agents with privileged simulator state), Manual2Skill /
 Manual2Skill++ (VLM-read IKEA manuals, fixed-base arms) and IKEA-Manual / IKEA Furniture Assembly environments.

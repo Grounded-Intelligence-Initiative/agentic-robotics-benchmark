@@ -1,5 +1,6 @@
-# furniture_assembly_from_drawings's environment image: MuJoCo with CPU (OSMesa) rendering, the agent's image tools and
-# the Unitree G1 robot model.
+# furniture_assembly_from_drawings's environment image: MuJoCo with CPU rendering (the cameras' colour through MuJoCo's
+# Filament renderer on Mesa's lavapipe, their depth through OSMesa), the agent's image tools, the Unitree G1 robot model
+# and the room's decor.
 #
 # `environment/` (less its `setup/`) is the sole build context and the final stage derives DIRECTLY from the official
 # ALE base, at an exact version. Nothing hidden is here: the furniture cell's code, the grader and the reference program
@@ -10,11 +11,13 @@ FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1
 
 COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /usr/local/bin/uv
 
-# OSMesa for software rendering (no GPU in the task's resources; EGL enumerates no device in the sandbox), the GL / X
-# client libraries MuJoCo and OpenCV link even when headless, fontconfig / freetype for matplotlib, libgomp for the
-# numerical libraries' threads.
+# OSMesa for software rendering (no GPU in the task's resources; EGL enumerates no device in the sandbox), Mesa's Vulkan
+# drivers (lavapipe: the CPU Vulkan device MuJoCo's Filament renderer draws the cameras' colour on), the GL / X client
+# libraries MuJoCo and OpenCV link even when headless, fontconfig / freetype for matplotlib, libgomp for the numerical
+# libraries' threads.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libosmesa6 libgl1 libglu1-mesa libglew2.2 libxrender1 libxext6 libsm6 libxi6 \
+        mesa-vulkan-drivers libvulkan1 \
         libfontconfig1 libfreetype6 libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -75,6 +78,21 @@ RUN set -eu; \
     echo "[image] $folder @ $commit: $(find . -type f | wc -l) files verified"
 ENV ARB_G1_DIR=/opt/arb-assets/unitree_g1
 
+# The room's decor (what the cameras see of the room: textured meshes of the furnished room of the task's demo, made
+# from the owner's Unity packs, base maps at most 512 px, and the image light distilled from a path-traced render of
+# it): the build context's assets/room_decor, the engine's asset root (not in git), checked file by file against
+# room_decor.sha256; a missing, extra or changed file fails the build. The cell reads it from ARB_ROOM_DECOR_DIR.
+COPY room_decor.sha256 /opt/arb-assets/room_decor.sha256
+COPY assets/room_decor /opt/arb-assets/room_decor
+RUN set -eu; \
+    cd /opt/arb-assets/room_decor; \
+    grep -v '^#' /opt/arb-assets/room_decor.sha256 | sha256sum --check --strict --quiet; \
+    test "$(find . -type f | wc -l)" -eq "$(grep -vc '^#' /opt/arb-assets/room_decor.sha256)"; \
+    chown -R root:root /opt/arb-assets/room_decor /opt/arb-assets/room_decor.sha256; \
+    chmod -R u+rwX,go+rX,go-w /opt/arb-assets/room_decor /opt/arb-assets/room_decor.sha256; \
+    echo "[image] room decor: $(find . -type f | wc -l) files verified"
+ENV ARB_ROOM_DECOR_DIR=/opt/arb-assets/room_decor
+
 # The practice lab's account (environment/setup/setup.sh starts the lab server as it): a system account with no login
 # shell and no home, so the lab's cell and its state stay out of the agent's reach.
 RUN useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin arbcell
@@ -83,7 +101,8 @@ RUN useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/
 # episode, untouched validation passes included).
 RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
 
-# Headless defaults: every render goes through OSMesa.
+# Headless defaults: the classic renderer (the cameras' depth) goes through OSMesa; the Filament renderer needs no
+# display (furniture_cell/render.py drops DISPLAY before it starts).
 ENV MPLBACKEND=Agg
 ENV MUJOCO_GL=osmesa
 ENV PYOPENGL_PLATFORM=osmesa
@@ -104,6 +123,7 @@ RUN printf '%s\n' \
 RUN export HOME=/root MPLCONFIGDIR=/tmp/mpl-build \
     && python3 -c "import sys; assert sys.version_info >= (3, 12), sys.version; import mujoco, numpy, scipy, PIL, cv2, matplotlib; print('[image] import OK mujoco', mujoco.__version__, 'numpy', numpy.__version__, 'cv2', cv2.__version__, 'matplotlib', matplotlib.__version__)" \
     && python3 -c "import mujoco; m = mujoco.MjModel.from_xml_string('<mujoco><worldbody><light pos=\"0 0 1\"/><geom type=\"box\" size=\"0.1 0.1 0.1\"/></worldbody></mujoco>'); r = mujoco.Renderer(m, 64, 64); d = mujoco.MjData(m); mujoco.mj_forward(m, d); r.update_scene(d); px = r.render(); assert int(px.max()) > 0; print('[image] OSMesa render OK', px.shape, int(px.max()))" \
+    && python3 -c "import mujoco._render_filament as F, mujoco.experimental.studio.window; c = F.Context(F.ContextConfig(graphics_api=F.GraphicsApi.GRAPHICS_API_VULKAN)); print('[image] Filament on Vulkan (lavapipe) OK')" \
     && python3 -c "import os, mujoco; ms = [mujoco.MjModel.from_xml_path(os.path.join(os.environ['ARB_G1_DIR'], f)) for f in ('g1_with_hands.xml', 'g1_mjlab.xml')]; print('[image] G1 models compile, nbody', [m.nbody for m in ms])" \
     && runuser -u user -- env -u MPLCONFIGDIR /opt/venv/bin/python3 -c "import os, mujoco, numpy, scipy, PIL, cv2, matplotlib; m = mujoco.MjModel.from_xml_path(os.path.join(os.environ['ARB_G1_DIR'], 'g1_with_hands.xml')); print('[image] agent-UID import OK, G1 nbody', m.nbody)" \
     && runuser -u arbcell -- env MPLCONFIGDIR=/tmp/mpl-lab /opt/venv/bin/python3 -c "import os, mujoco, numpy, PIL, matplotlib; m = mujoco.MjModel.from_xml_path(os.path.join(os.environ['ARB_G1_DIR'], 'g1_mjlab.xml')); print('[image] lab-UID import OK, G1 nbody', m.nbody)" \

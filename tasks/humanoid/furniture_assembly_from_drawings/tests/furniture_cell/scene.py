@@ -1,30 +1,54 @@
 """Build the cell's MuJoCo model: the room, the sideboard, the kitting table, the panel cart, the customer's couch,
 plant and rug, the bookcase parts as free bodies, two G1 humanoids, the inactive weld pool (hand grips, dowel joints,
-the back panel's seat) and the cameras.
+the back panel's seat), the cameras, the lights and the room's decor.
 
 Collision bits: 1 = static world and parts, 2 = robot a, 4 = robot b, 8 = floor. Parts touch everything; robots
 touch the world, the parts and each other, never the floor (the locomotion abstraction carries them) or themselves.
+
+What the cameras see of the room is its decor (`add_decor`): textured meshes of the furnished room the task's demo
+shows (oak floor, plaster walls and ceiling, skirting, the window's frame, glass and board, the view of the street,
+the door leaf, paintings, a clock, ceiling panels, the couch, the plants, the rug), drawn only. The room's own floor,
+walls, window pane, couch, plant and rug geoms are its colliders: exactly as surveyed, hidden from the cameras (geom
+group 3) where the decor draws them.
 """
 
 from __future__ import annotations
 
+import json
 import math
+import os
 
 import mujoco
 import numpy as np
 
 from . import furniture as F
 from . import room as RM
+from .render import filament_view_keys
 from .robot import FLOOR, OBJ, ROBOT_BITS, g1_spec
 
 MM = 1e-3
 PART_FRICTION = [0.55, 0.005, 0.0001]
-RAW = [0.66, 0.55, 0.42, 1.0]          # raw particleboard edge
+# sRGB colours of the cell's own surfaces (untextured materials; render.py adds the cameras' look)
+RAW = [0.74, 0.60, 0.44, 1.0]          # raw particleboard edge
 WHITE = [0.93, 0.93, 0.91, 1.0]        # melamine face / edge banding
-HARDBOARD = [0.47, 0.33, 0.22, 1.0]    # raw hardboard
-HOLE = [0.12, 0.10, 0.08, 1.0]
-DOWEL = [0.80, 0.68, 0.48, 1.0]
+HARDBOARD = [0.47, 0.34, 0.22, 1.0]    # raw hardboard
+HOLE = [0.10, 0.08, 0.07, 1.0]
+DOWEL = [0.80, 0.66, 0.46, 1.0]
 ROBOTS = ("a", "b")
+
+# the image's folder of the room's decor (drawn only): decor.json (its meshes, materials and base maps) and the files
+DECOR_DIR = os.environ.get("ARB_ROOM_DECOR_DIR", "/opt/arb-assets/room_decor")
+DECOR_REPLACES = ("floor", "wall_", "window", "couch_", "plant_", "rug")   # geom names (prefixes) the decor draws
+HIDDEN_GROUP = 3                       # geom group no camera draws (the robots' collision capsules are there too)
+# the model's extent and centre as MuJoCo computes them for the cell without the decor (the classic renderer's clip
+# planes, which the depth images use, are relative to the extent; the Filament renderer fits the sun's shadow map
+# around the centre; the decor's street view reaches 100 m out and would move both)
+ROOM_EXTENT, ROOM_CENTER = 11.970811909470342, (3.0, 2.76998941488475, 1.3)
+# the lights (render.py's look gives them their intensities): the morning sun through the east window (its light
+# travels west, slightly south, 27 deg down) and the two ceiling panels where the lamps hang, each as a part that
+# casts shadows and a soft rest that does not
+SUN_DIR = (-0.8715359, -0.1852507, -0.4539905)
+PANELS = ((1.8, 2.0), (4.0, 2.2))
 
 
 def _quat_z(yaw: float) -> list[float]:
@@ -44,11 +68,9 @@ def _look_at_quat(pos, target) -> list[float]:
     return list(q)
 
 
-def _box(body, name, center_mm, half_mm, rgba, *, collide: bool, mass=None, material=None):
+def _box(body, name, center_mm, half_mm, material, *, collide: bool, mass=None):
     kw = dict(name=name, type=mujoco.mjtGeom.mjGEOM_BOX, size=[h * MM for h in half_mm],
-              pos=[c * MM for c in center_mm], rgba=rgba)
-    if material:
-        kw["material"] = material
+              pos=[c * MM for c in center_mm], material=material)
     if collide:
         kw.update(contype=OBJ, conaffinity=OBJ | ROBOT_BITS["a"] | ROBOT_BITS["b"] | FLOOR,
                   friction=PART_FRICTION, condim=3, group=0)
@@ -65,7 +87,7 @@ def add_part(spec: mujoco.MjSpec, part: F.Part, pos, quat) -> None:
     b = spec.worldbody.add_body(name=f"part_{part.key}", pos=list(pos), quat=list(quat))
     b.add_freejoint(name=f"part_{part.key}_free")
     total = sum(8 * bx.half[0] * bx.half[1] * bx.half[2] for bx in part.boxes)
-    raw = HARDBOARD if part.material == "hardboard" else RAW
+    raw = "hardboard_mat" if part.material == "hardboard" else "raw_edge_mat"
     for i, bx in enumerate(part.boxes):
         vol = 8 * bx.half[0] * bx.half[1] * bx.half[2]
         _box(b, f"part_{part.key}_c{i}", bx.center, bx.half, raw, collide=True, mass=part.mass_kg * vol / total)
@@ -81,7 +103,7 @@ def add_part(spec: mujoco.MjSpec, part: F.Part, pos, quat) -> None:
             if part.key in ("L", "R") and ((sgn > 0) == (part.key == "L")):
                 # the inner face stops at the rabbet
                 c[1], h[1] = -F.RABBET_W / 2, hy - F.RABBET_W / 2
-            _box(b, f"part_{part.key}_face{sgn:+d}", c, h, WHITE, collide=False)
+            _box(b, f"part_{part.key}_face{sgn:+d}", c, h, "melamine_mat", collide=False)
     if part.banded_face:
         ax = "xyz".index(part.banded_face[1])
         sgn = -1 if part.banded_face[0] == "-" else 1
@@ -89,7 +111,7 @@ def add_part(spec: mujoco.MjSpec, part: F.Part, pos, quat) -> None:
         h = [hx + skin, hy + skin, hz + skin]
         c[ax] = sgn * (part.half[ax] + skin)
         h[ax] = skin
-        _box(b, f"part_{part.key}_band", c, h, WHITE, collide=False)
+        _box(b, f"part_{part.key}_band", c, h, "melamine_mat", collide=False)
     if part.finished_face:
         ax = "xyz".index(part.finished_face[1])
         sgn = -1 if part.finished_face[0] == "-" else 1
@@ -97,14 +119,14 @@ def add_part(spec: mujoco.MjSpec, part: F.Part, pos, quat) -> None:
         h = [hx, hy, hz]
         c[ax] = sgn * (part.half[ax] + skin)
         h[ax] = skin
-        _box(b, f"part_{part.key}_white", c, h, WHITE, collide=False)
+        _box(b, f"part_{part.key}_white", c, h, "melamine_mat", collide=False)
     for i, hole in enumerate(part.holes):
         a = np.array(hole.axis)
         p = np.array(hole.pos) - a * (skin * 2.5)        # just proud of the face skin
         q = np.zeros(4)
         mujoco.mju_quatZ2Vec(q, a)
         b.add_geom(name=f"part_{part.key}_hole{i}", type=mujoco.mjtGeom.mjGEOM_CYLINDER,
-                   size=[F.DOWEL_D / 2 * MM, 0.4 * MM, 0], pos=list(p * MM), quat=list(q), rgba=HOLE,
+                   size=[F.DOWEL_D / 2 * MM, 0.4 * MM, 0], pos=list(p * MM), quat=list(q), material="hole_mat",
                    contype=0, conaffinity=0, group=1, mass=0.0)
     for i, dw in enumerate(part.dowels):
         a = np.array(dw.axis)
@@ -112,12 +134,49 @@ def add_part(spec: mujoco.MjSpec, part: F.Part, pos, quat) -> None:
         q = np.zeros(4)
         mujoco.mju_quatZ2Vec(q, a)
         b.add_geom(name=f"part_{part.key}_dowel{i}", type=mujoco.mjtGeom.mjGEOM_CYLINDER,
-                   size=[F.DOWEL_D / 2 * MM, F.DOWEL_OUT / 2 * MM, 0], pos=list(p * MM), quat=list(q), rgba=DOWEL,
-                   contype=0, conaffinity=0, group=1, mass=0.0)
+                   size=[F.DOWEL_D / 2 * MM, F.DOWEL_OUT / 2 * MM, 0], pos=list(p * MM), quat=list(q),
+                   material="dowel_mat", contype=0, conaffinity=0, group=1, mass=0.0)
 
 
-def build(layout: dict, *, offscreen=(960, 720)) -> mujoco.MjSpec:
-    """The cell spec for one episode layout: {"parts": {key: (pos, quat)}, "robots": {name: (x, y, yaw)}}."""
+def add_decor(s: mujoco.MjSpec, decor_dir: str = DECOR_DIR) -> None:
+    """The room's decor (decor.json: meshes in the room frame, their materials and base maps) as drawn-only geoms of
+    one static body `room_decor`, added after everything else, so every other body, geom, mesh, material and texture
+    keeps its id; the geoms it draws instead are moved to the hidden group. Raises when the decor is missing."""
+    path = os.path.join(decor_dir, "decor.json")
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"the room's decor is missing: {path} (ARB_ROOM_DECOR_DIR)")
+    with open(path) as f:
+        decor = json.load(f)
+    for g in s.worldbody.geoms:
+        if (g.name or "").startswith(DECOR_REPLACES):
+            g.group = HIDDEN_GROUP
+    s.stat.extent, s.stat.center = ROOM_EXTENT, list(ROOM_CENTER)
+    for name, rec in decor["materials"].items():
+        roles = []
+        if rec.get("texture"):
+            tex = s.add_texture(name=f"decor_{name}", type=mujoco.mjtTexture.mjTEXTURE_2D,
+                                file=os.path.join(decor_dir, rec["texture"]),
+                                colorspace=mujoco.mjtColorSpace.mjCOLORSPACE_SRGB)
+            roles = ["", tex.name]                     # mjTEXROLE_RGB
+        s.add_material(name=f"decor_{name}", rgba=list(rec["rgba"]), textures=roles,
+                       emission=float(rec.get("emission", 0.0)))
+    body = s.worldbody.add_body(name="room_decor")
+    for rec in decor["meshes"]:
+        z = np.load(os.path.join(decor_dir, rec["file"]))
+        uv = np.asarray(z["uv"], np.float64).copy()
+        uv[:, 1] = 1.0 - uv[:, 1]                      # the bundle's v runs up the image, MuJoCo's down
+        mesh = s.add_mesh(name=f"decor_{rec['name']}", inertia=mujoco.mjtMeshInertia.mjMESH_INERTIA_SHELL)
+        mesh.uservert = np.asarray(z["v"], np.float64).ravel()
+        mesh.usernormal = np.asarray(z["n"], np.float64).ravel()
+        mesh.usertexcoord = uv.ravel()
+        mesh.userface = np.asarray(z["f"], np.int32).ravel()
+        body.add_geom(name=f"decor_{rec['name']}", type=mujoco.mjtGeom.mjGEOM_MESH, meshname=mesh.name,
+                      material=f"decor_{rec['material']}", contype=0, conaffinity=0, group=1, mass=0.0)
+
+
+def build(layout: dict, *, offscreen=(960, 720), decor: bool = True) -> mujoco.MjSpec:
+    """The cell spec for one episode layout: {"parts": {key: (pos, quat)}, "robots": {name: (x, y, yaw)}}. decor=False
+    leaves the room's decor out (the room's own geoms then stay drawn)."""
     s = mujoco.MjSpec()
     s.modelname = "furniture_cell"
     o = s.option
@@ -134,24 +193,40 @@ def build(layout: dict, *, offscreen=(960, 720)) -> mujoco.MjSpec:
     s.visual.headlight.diffuse = [0.35, 0.35, 0.35]
     s.visual.headlight.specular = [0.0, 0.0, 0.0]
     s.visual.map.znear = 0.01
+    numeric, text = filament_view_keys()          # the cameras' renderer reads its view options from the model
+    for key, value in sorted(numeric.items()):
+        s.add_numeric(name=key, data=[value])
+    for key, value in sorted(text.items()):
+        s.add_text(name=key, data=value)
     wb = s.worldbody
-    # materials
-    s.add_texture(name="floor_tex", type=mujoco.mjtTexture.mjTEXTURE_2D, builtin=mujoco.mjtBuiltin.mjBUILTIN_CHECKER,
-                  rgb1=[0.62, 0.58, 0.52], rgb2=[0.58, 0.54, 0.48], width=512, height=512)
-    s.add_material(name="floor_mat", textures=["", "floor_tex"], texrepeat=[12, 10], reflectance=0.0)
+    # materials (sRGB colours; the floor, walls, window, couch, plant and rug materials colour the room's own geoms,
+    # which the decor replaces in the cameras' images)
+    s.add_material(name="floor_mat", rgba=[0.55, 0.40, 0.27, 1.0])
     s.add_material(name="wall_mat", rgba=[0.86, 0.85, 0.82, 1.0])
-    s.add_material(name="sideboard_mat", rgba=[0.30, 0.31, 0.33, 1.0])
-    s.add_material(name="table_mat", rgba=[0.55, 0.40, 0.26, 1.0])
+    s.add_material(name="window_mat", rgba=[0.70, 0.82, 0.92, 1.0])
+    s.add_material(name="sideboard_mat", rgba=[0.33, 0.21, 0.13, 1.0])        # walnut
+    s.add_material(name="table_mat", rgba=[0.70, 0.55, 0.38, 1.0])            # oak top
+    s.add_material(name="table_leg_mat", rgba=[0.08, 0.08, 0.08, 1.0])        # black steel
+    s.add_material(name="batten_mat", rgba=[0.36, 0.36, 0.34, 1.0])           # felt-covered battens
+    s.add_material(name="cart_bed_mat", rgba=[0.23, 0.29, 0.37, 1.0])         # blue-grey steel
+    s.add_material(name="cart_rail_mat", rgba=[0.30, 0.28, 0.25, 1.0])        # felt-lined rails
+    for name, rgba in (("melamine_mat", WHITE), ("raw_edge_mat", RAW), ("hardboard_mat", HARDBOARD),
+                       ("hole_mat", HOLE), ("dowel_mat", DOWEL)):
+        s.add_material(name=name, rgba=rgba)
     s.add_material(name="couch_mat", rgba=[0.15, 0.14, 0.13, 1.0])            # dark brown leather
     s.add_material(name="couch_leg_mat", rgba=[0.68, 0.69, 0.70, 1.0])        # brushed metal
     s.add_material(name="plant_pot_mat", rgba=[0.17, 0.15, 0.15, 1.0])        # charcoal pot
     s.add_material(name="plant_foliage_mat", rgba=[0.34, 0.42, 0.15, 1.0])    # leaves
     s.add_material(name="rug_mat", rgba=[0.33, 0.34, 0.35, 1.0])              # grey wool
-    # lights: two ceiling lamps
-    for i, (lx, ly) in enumerate(((1.8, 2.0), (4.0, 2.2))):
-        wb.add_light(name=f"lamp{i}", pos=[lx, ly, RM.WALL_H - 0.05], dir=[0.0, 0.0, -1.0],
-                     type=mujoco.mjtLightType.mjLIGHT_SPOT, cutoff=75.0, exponent=1.0, castshadow=(i == 0),
-                     diffuse=[0.55, 0.55, 0.52], specular=[0.05, 0.05, 0.05], attenuation=[1.0, 0.0, 0.0])
+    # lights: the sun through the east window, the two ceiling panels (a shadow-casting part and a soft rest each)
+    wb.add_light(name="sun", type=mujoco.mjtLightType.mjLIGHT_DIRECTIONAL, pos=[9.0, 3.0, 4.0], dir=list(SUN_DIR),
+                 castshadow=True, diffuse=[0.6, 0.57, 0.52], specular=[0.1, 0.1, 0.1])
+    for i, (lx, ly) in enumerate(PANELS):
+        for part, shadow in (("", True), ("_soft", False)):
+            wb.add_light(name=f"panel{i}{part}", type=mujoco.mjtLightType.mjLIGHT_SPOT,
+                         pos=[lx, ly, RM.WALL_H - 0.03], dir=[0.0, 0.0, -1.0], cutoff=85.0, exponent=1.0,
+                         castshadow=shadow, diffuse=[0.25, 0.24, 0.22], specular=[0.03, 0.03, 0.03],
+                         attenuation=[1.0, 0.0, 0.0])
     # floor and walls
     wb.add_geom(name="floor", type=mujoco.mjtGeom.mjGEOM_PLANE, size=[RM.ROOM_X, RM.ROOM_Y, 0.05],
                 pos=[RM.ROOM_X / 2, RM.ROOM_Y / 2, 0.0], material="floor_mat", contype=FLOOR, conaffinity=OBJ,
@@ -171,7 +246,7 @@ def build(layout: dict, *, offscreen=(960, 720)) -> mujoco.MjSpec:
                     conaffinity=OBJ | ROBOT_BITS["a"] | ROBOT_BITS["b"], friction=[0.4, 0.005, 0.0001])
     w0, w1 = RM.WINDOW_Y
     wb.add_geom(name="window", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.005, (w1 - w0) / 2, 0.6],
-                pos=[RM.ROOM_X - 0.004, (w0 + w1) / 2, 1.5], rgba=[0.70, 0.82, 0.92, 1.0], contype=0, conaffinity=0)
+                pos=[RM.ROOM_X - 0.004, (w0 + w1) / 2, 1.5], material="window_mat", contype=0, conaffinity=0)
     # sideboard
     sb = RM.SIDEBOARD
     sx, sy, sz = sb["size"]
@@ -189,25 +264,25 @@ def build(layout: dict, *, offscreen=(960, 720)) -> mujoco.MjSpec:
     for i, (sxl, syl) in enumerate(((-1, -1), (-1, 1), (1, -1), (1, 1))):
         wb.add_geom(name=f"table_leg{i}", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.025, 0.025, (th - 0.03) / 2],
                     pos=[tx + sxl * (lx / 2 - 0.05), ty + syl * (ly / 2 - 0.05), (th - 0.03) / 2],
-                    rgba=[0.25, 0.25, 0.25, 1.0], contype=OBJ, conaffinity=OBJ | ROBOT_BITS["a"] | ROBOT_BITS["b"])
+                    material="table_leg_mat", contype=OBJ, conaffinity=OBJ | ROBOT_BITS["a"] | ROBOT_BITS["b"])
     for i, sgn in enumerate((-1, 1)):
         wb.add_geom(name=f"table_batten{i}", type=mujoco.mjtGeom.mjGEOM_BOX,
                     size=[lx / 2 - 0.02, tb["batten_w"] / 2, tb["batten_h"] / 2],
-                    pos=[tx, ty + sgn * tb["batten_dy"], th + tb["batten_h"] / 2], rgba=[0.42, 0.42, 0.40, 1.0],
+                    pos=[tx, ty + sgn * tb["batten_dy"], th + tb["batten_h"] / 2], material="batten_mat",
                     contype=OBJ, conaffinity=OBJ | ROBOT_BITS["a"] | ROBOT_BITS["b"], friction=[0.6, 0.005, 0.0001])
     # panel cart: a bed block per groove, two rails on it
     pc = RM.PANEL_CART
     for i, ys in enumerate(pc["slots_y"]):
         wb.add_geom(name=f"cart_bed{i}", type=mujoco.mjtGeom.mjGEOM_BOX,
                     size=[pc["rail_len"] / 2, pc["bed_w"] / 2, pc["bed_h"] / 2], pos=[pc["x"], ys, pc["bed_h"] / 2],
-                    rgba=[0.24, 0.30, 0.38, 1.0], contype=OBJ, conaffinity=OBJ | ROBOT_BITS["a"] | ROBOT_BITS["b"],
+                    material="cart_bed_mat", contype=OBJ, conaffinity=OBJ | ROBOT_BITS["a"] | ROBOT_BITS["b"],
                     friction=[0.5, 0.005, 0.0001])
         gap = layout.get("groove_gap", {}).get(i, 0.020)
         for j, sgn in enumerate((-1, 1)):
             wb.add_geom(name=f"cart_rail{i}{j}", type=mujoco.mjtGeom.mjGEOM_BOX,
                         size=[pc["rail_len"] / 2, pc["rail_w"] / 2, pc["rail_h"] / 2],
                         pos=[pc["x"], ys + sgn * (gap / 2 + pc["rail_w"] / 2), pc["bed_h"] + pc["rail_h"] / 2],
-                        rgba=[0.35, 0.33, 0.30, 1.0], contype=OBJ, conaffinity=OBJ | ROBOT_BITS["a"] | ROBOT_BITS["b"],
+                        material="cart_rail_mat", contype=OBJ, conaffinity=OBJ | ROBOT_BITS["a"] | ROBOT_BITS["b"],
                         friction=[0.05, 0.005, 0.0001], priority=1)   # felt-lined rails: their friction wins
     # the customer's couch and plant (static obstacles, like the sideboard) and rug (drawn only: no contact)
     still = dict(contype=OBJ, conaffinity=OBJ | ROBOT_BITS["a"] | ROBOT_BITS["b"], friction=[0.6, 0.005, 0.0001])
@@ -255,4 +330,6 @@ def build(layout: dict, *, offscreen=(960, 720)) -> mujoco.MjSpec:
         for guest in ("T", "C", "D"):
             s.add_equality(name=f"joint_{host}_{guest}", name1=f"part_{host}", name2=f"part_{guest}", **weld)
         s.add_equality(name=f"joint_{host}_K", name1=f"part_{host}", name2="part_K", **weld)
+    if decor:
+        add_decor(s)
     return s

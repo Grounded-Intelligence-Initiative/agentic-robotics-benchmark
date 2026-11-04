@@ -172,11 +172,14 @@ class Cell:
                                "boxes": {k: list(v) for k, v in RM.COUCH["boxes"].items()},
                                "legs": {"centers": [list(c) for c in RM.COUCH["legs"]["centers"]],
                                         "side": RM.COUCH["legs"]["side"], "height": RM.COUCH["legs"]["height"]},
-                               "note": "fixed obstacle against the east wall, seat towards the west; boxes are "
-                                       "[x0, y0, z0, x1, y1, z1], legs square, standing on the floor"},
+                               "note": "fixed obstacle against the east wall, seat towards the west; the boxes are "
+                                       "its collision envelope, [x0, y0, z0, x1, y1, z1], legs square, standing on "
+                                       "the floor; the drawn couch lies within the footprint to 2 mm"},
                      "plant": {k: {"center": list(v["center"]), "radius": v["radius"], "z": list(v["z"])}
                                for k, v in RM.PLANT.items()} | {"note": "fixed obstacle in the north-west corner: "
-                                                                        "two upright cylinders"},
+                                                                        "two upright cylinders, its collision "
+                                                                        "envelope (the drawn leaves reach up to 8 cm "
+                                                                        "beyond it)"},
                      "rug": {"center": list(RM.RUG["center"]), "size": list(RM.RUG["size"]),
                              "thickness": RM.RUG["thickness"],
                              "note": "flat on the floor in front of the couch, drawn only: no obstacle, no support"}},
