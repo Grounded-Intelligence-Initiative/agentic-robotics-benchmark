@@ -1102,7 +1102,10 @@ class Controller(object):
             if bid is not None:
                 log("t=%d object %d (%s): no free grasp; moving %d (%s) out of the way first" % (
                     self.t(), oid, o["model"], bid, self.w.objs[bid]["model"]))
-                yield from self.move_aside(bid, avoid=oid if avoid is None else avoid)
+                # for a request's object, what is in the way goes out onto the desk (put back in the same container
+                # it can end up in the way again); the tidy loop brings it home before the mark
+                yield from self.move_aside(bid, avoid=oid if avoid is None else avoid,
+                                           to_desk=oid == self.w.target_id())
                 return False
             if bid is None and self.wall_side(oid) is not None:
                 did = yield from self.drag_from_wall(oid)
@@ -1133,7 +1136,7 @@ class Controller(object):
         self.fails.pop(oid, None)
         return True
 
-    def move_aside(self, bid, avoid, desk_ok=True):
+    def move_aside(self, bid, avoid, desk_ok=True, to_desk=False):
         """Take object `bid` out of the way of `avoid`: into its home container when that is not where it lies
         (or the home is red's target), else to another place in the same container off `avoid`'s footprint, else
         onto the desk (the tidy loop puts it back later; with desk_ok False the best place in the container)."""
@@ -1152,6 +1155,9 @@ class Controller(object):
             return False
         home = self.w.home_of(bid)
         here = self.w.where(avoid) if avoid in self.w.objs else None
+        if to_desk and self.desk_spot(bid, near=self.ee()[:2]) is not None:
+            ok = yield from self.put_away(bid, None)
+            return ok
         if home != here:
             ok = yield from self.put_away(bid, home)
             return ok
