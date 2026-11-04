@@ -88,14 +88,14 @@ class Policy:
             target = obj + [0., 0., .025]
             if np.linalg.norm(target - eef) < .015 or age > 30:
                 self.switch("close", t)
-            return move(target, -1., .8)
+            return move(target, -1., .9)
         if self.stage == "close":
-            if age >= 8:
+            if age >= 6:
                 self.grasp_offset = eef - obj
                 self.switch("lift", t)
             return move(eef, 1.)
         if self.stage == "lift":
-            if eef[2] > .96 or age > 25:
+            if eef[2] > .94 or age > 25:
                 self.switch("carry", t)
             return move(eef + [0., 0., .12], 1.)
         if self.stage == "carry":
@@ -110,7 +110,7 @@ class Policy:
                 self.switch("release", t)
             return move(target, 1., .7)
         if self.stage == "release":
-            if age >= 8:
+            if age >= 5:
                 self.switch("retreat", t)
             return move(eef, -1.)
         return move(eef + [0., 0., .12], -1.)
