@@ -63,3 +63,15 @@ network_mode = "no-network"
 # measured seed-to-seed spread. See that file.
 [verifier]
 timeout_sec = 36000
+# Separate verification (2026-11-04): a fresh verifier sandbox from the same image, which the agent never touched;
+# only the declared artifact (/home/user/submission) is restored into it. In a shared sandbox, programs the agent
+# leaves earlier on root's PATH (the base image's /usr/local/bin is the agent's) would run as root at verify. The
+# grader needs nothing else from the agent's sandbox: tests/ brings env.py, sim_client.py and the scorer, the image
+# brings Isaac Sim and the stock assets, and setup.sh only stages the agent's practice material.
+environment_mode = "separate"
+
+# The verifier runs the simulator on the GPU, as the agent's sandbox does: the same resources.
+[verifier.environment]
+cpus = 8
+memory_mb = 32768
+gpus = 1

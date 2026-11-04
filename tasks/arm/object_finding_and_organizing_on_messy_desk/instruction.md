@@ -72,6 +72,10 @@ what the grader runs.
 Leave a controller at `/home/user/submission/run.sh`. The grader launches it as
 `bash run.sh` with the working directory `/home/user/submission`, as your own user account,
 with **no network access**, and talks to it over stdin/stdout, one JSON object per line.
+Grading runs in a fresh copy of this machine into which only `/home/user/submission` is
+carried over: the rest of your home (the practice simulator, `sim_client.py`, the task card,
+anything you saved elsewhere) is not there, so everything the controller imports or reads
+must be inside that folder.
 Call interpreters by absolute path in `run.sh`: `/opt/venv/bin/python3` is Python 3.12 with
 NumPy, Pillow and SciPy (the bare `python3` on your shell's `PATH` may be a different one), and
 the simulator runs under `/opt/isaac/bin/python3`.
