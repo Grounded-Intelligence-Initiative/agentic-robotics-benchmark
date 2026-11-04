@@ -46,13 +46,15 @@ Two Unitree G1 humanoids (29 DoF with Dex3-1 hands), named **`a`** and **`b`**, 
   commands; the legs are posed from the stand height and do not touch the floor (no balance falls are simulated). You
   command the base by velocity or by a goal pose (section 5). A robot obstructed by furniture stops; its controller
   does not wind up beyond 5 cm / 0.1 rad.
-* **Legs in the camera images.** The cameras draw each robot's legs stepping while its base moves: a walking
-  animation that follows the base (the feet are set down and stay put while the pelvis passes over them; a foot the
-  leg cannot reach flat rolls over its heel or toe), standing with the feet flat on the floor (or on the rug) when the
-  base stops. The animation is drawn only, in the colour and the depth images alike; nothing above the hips changes in
-  them (the pelvis, the torso, the arms, the head and the head camera are where the physics has them). The physics
-  keeps the posed legs: their colliders stay as posed and the drawn legs touch nothing (while a robot walks, a drawn
-  foot can be up to about 25 cm from its collider), and nothing the program reads changes.
+* **Legs in the camera images.** The cameras draw each robot's legs stepping while its base travels or turns: a
+  walking animation that follows the base (the feet are set down and stay put while the pelvis passes over them,
+  rolling heel to toe; a foot the leg cannot reach flat rolls over its heel or toe). Small base moves (a few
+  centimetres, a turn of up to about 20 degrees) are taken up by the planted legs without a step, and a robot that
+  stops stands on the feet where they last stepped, on the floor (or on the rug). The animation is drawn only, in the
+  colour and the depth images alike; nothing above the hips changes in them (the pelvis, the torso, the arms, the head
+  and the head camera are where the physics has them). The physics keeps the posed legs: their colliders stay as posed
+  and the drawn legs touch nothing (while a robot walks, a drawn foot can be up to about 35 cm from its collider), and
+  nothing the program reads changes.
 * **Stand height** (pelvis height above the floor) 0.48 - 0.80 m, nominal 0.793 m; lower means a squat (the knees go
   forward).
 * Every robot body is gravity-compensated; payloads are not: a held board loads the arms, the waist and the base.
