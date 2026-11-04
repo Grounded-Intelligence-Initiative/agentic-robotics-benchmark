@@ -9,7 +9,7 @@ from PIL import Image
 from contact_overlay import contact_heatmap, render_contact_overlay
 
 CONTROL_HZ = 20
-MAX_STEPS = 160
+MAX_STEPS = 115
 CAMERA_SIZE = 128
 
 

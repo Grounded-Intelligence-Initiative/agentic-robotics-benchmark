@@ -3,9 +3,10 @@
 Write a closed-loop controller for the Panda arm in robosuite 1.5.2's native
 `PickPlaceCan` scene. Move the red can from the source bin into its designated
 quadrant of the destination bin, release it, and move the gripper clear. The
-simulator uses MuJoCo 3.3.7. The task deadline is **160 actions at 20 Hz**
-(8 seconds of simulated time). This limit follows a reference controller that
-completed 20 sampled scenes in 4.6–7.05 seconds; the stock Panda setup did not
+simulator uses MuJoCo 3.3.7. The task deadline is **115 actions at 20 Hz**
+(5.75 seconds of simulated time). A stock-scene reference timing probe completed
+20 sampled scenes in 4.6–7.05 seconds, and a camera-based controller completed
+9 of 12 fresh-seed scenes within 115 steps. The stock Panda setup did not
 support a reliable 3-second deadline. Only simulated steps count toward the
 deadline, so machine load does not alter the result.
 
