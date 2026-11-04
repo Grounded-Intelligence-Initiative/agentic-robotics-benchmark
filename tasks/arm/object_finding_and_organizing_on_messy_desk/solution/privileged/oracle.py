@@ -1334,12 +1334,14 @@ class Controller(object):
         yield from self.hold(8, grip=0.0)
         return True
 
-    def tidy_one(self, exclude=()):
-        """Put one object where it belongs. -> True when the arm did something."""
+    def tidy_one(self, exclude=(), avoid_home=None):
+        """Put one object where it belongs (not into `avoid_home`). -> True when the arm did something."""
         for oid in self.todo(exclude=exclude):
             if self.cooling(oid):
                 continue
             if self.moving(oid):
+                continue
+            if avoid_home is not None and CONTAINER_OF_CLASS[self.w.objs[oid]["cls"]] == avoid_home:
                 continue
             dest = CONTAINER_OF_CLASS[self.w.objs[oid]["cls"]]
             yield from self.move_object(oid, dest)
@@ -1387,15 +1389,18 @@ class Controller(object):
         if o.get("in_container") == "red" or self.moving(tgt):
             yield from self.hold(3, grip=0.0)      # settling in red (or anywhere)
             return
+        # while the object is still being dug for, nothing goes back into its container (it would bury it again);
+        # after three failures it is given up and the desk is tidied as usual
+        bury = self.w.where(tgt) if self.nfails(tgt) < 3 else None
         if self.cooling(tgt):
-            did = yield from self.tidy_one(exclude=(tgt,))
+            did = yield from self.tidy_one(exclude=(tgt,), avoid_home=bury)
             if not did:
                 yield from self.hold(5, grip=0.0)
             return
         ok = yield from self.move_object(tgt, "red")
-        if not ok and not self.cooling(tgt) and self.nfails(tgt) and tgt in self.w.objs and not self.w.done(tgt):
+        if not ok and self.nfails(tgt) and tgt in self.w.objs and not self.w.done(tgt):
             n, t0, _ = self.fails[tgt]
-            self.fails[tgt] = (n, t0, 40 * n)       # the target is tried again soon
+            self.fails[tgt] = (n, t0, 40 * n)       # a request's object is tried again soon, not after 250 x n steps
 
     def run(self):
         # a first step at the start pose (the probe lock compares replies; nothing to decide yet)
