@@ -1,0 +1,9 @@
+{
+  "metric": "assembly_score",
+  "direction": "higher",
+  "value": null,
+  "full_at": 1.0,
+  "source": "Native-mesh development checkpoint: a new complete physical reference and public ALE bootstrap have not been completed.",
+  "reference_commit": null,
+  "note": "Previous simplified-kit anchor1 belonged to commit05f65cacfe0350677ebd949180f760c094951a52. Never reuse it as evidence for this geometry. Scoring formula and1/23connection weights are unchanged."
+}

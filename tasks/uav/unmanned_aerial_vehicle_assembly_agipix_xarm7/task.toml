@@ -1,0 +1,30 @@
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/unmanned_aerial_vehicle_assembly_agipix_xarm7"
+
+[metadata]
+platform = "uav"
+stage = "assembly"
+mode = "atomic"
+route = "code-as-policy"
+agent_role = ["assembly engineer", "workcell programmer"]
+artifact_kind = ["program"]
+compute = "cpu"
+observation_tier = "camera-only"
+render_backend = "filament"
+tags = ["agipix", "xarm7", "mujoco", "assembly", "rgbd", "contact", "planning"]
+source_platform = "AGiPix-derived mechanical assembly kit"
+development_status = "native-mesh-reference-validation-pending"
+
+[environment]
+cpus = 8
+memory_mb = 16384
+
+[agent]
+timeout_sec = 21600
+network_mode = "no-network"
+
+[verifier]
+timeout_sec = 21600

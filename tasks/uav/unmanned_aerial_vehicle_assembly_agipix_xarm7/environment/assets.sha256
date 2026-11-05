@@ -1,0 +1,6 @@
+# endpoint: https://huggingface.co
+# repo: grounded-intelligence-initiative/agentic-robotics-last-exam
+# revision: ba7c0b30192bec5ce181b441e6c77208f5796af4
+# prefix: tasks/uav/unmanned_aerial_vehicle_assembly_agipix_xarm7/payload
+bb7ce6a1980b0a5047fc29abe42d1cfee8b864346b794d2a48ae530c7fd26f42  manual.tar.gz
+c9ef49ba198fff4a08081ee487d53b388e426ebce650fa8dd0a920a833bdd83a  payload.tar.gz
