@@ -33,13 +33,35 @@ stronger occlusion design before that claim is established.
 ## Validation, 2026-11-04
 - Six development scenes, all three layouts and lengths: **6/6 reference successes**.
 - Reference effort: 119-221 actions; all three defect reports correct, no false reports.
-- Ten evidence/budget/anti-forgery regressions passed.
+- Ten evidence/budget regressions and nine independent-replay integrity tests passed.
 - Six-seed repeat-image, randomization and close-up reachability checks passed;
-  all 255 repository tests passed.
+  all 256 repository tests passed after updating to upstream `17bef3a`.
 - Pinned ALE `1cdbc02a1f3390e704747b33946304911f3105ad`: calibration measured
-  F1=1.0; an independent confirmation passed **untouched 0 / oracle 1**.
-- Astra evaluation is pending on this revision. Reference success is not a
-  frontier-model difficulty measurement. These seeds are development checks.
+  F1=1.0; both the original gate and a fresh, isolated-verifier confirmation passed
+  **untouched 0 / oracle 1**. The latter independently replays the private ledger.
+- **Astra (`gpt-6-astra`, `xhigh`): F1=1.0, 3/3 defects, no false reports,
+  112 actions, 56 simulated seconds, 475.5 s wall time.** This single pilot used a
+  72 m maintenance scene. It completed normally, with no environment failure.
+
+**This version is not yet frontier-hard.** Astra created a two-sided scan route,
+saved images and an external inspection record, then submitted all three findings
+after completing the survey. Repeated spans and more distance alone did not defeat
+that strategy. Under-deck/behind-member defects and multi-view confirmation are
+next design candidates, not implemented or validated claims.
+
+The Astra pilot tested task commit `d5d27b7` with the shared-verifier transport.
+Subsequent isolation hardening did not change the scene, prompt, actions or F1
+definition. It was checked with the ALE oracle, not another Astra run. These are
+development checks, not a sealed benchmark, general success-rate estimate or
+controlled memory ablation.
+
+## Verification boundary
+The agent cannot read or edit the root-owned world service, ledger or evidence
+directory. ALE captures that private state after the agent exits and restores it
+in a **fresh verifier sandbox**. The verifier replays the actions, checks the
+reported frame IDs and image hashes, and recomputes the score. It never accepts a
+self-reported success or ledger from `/home/user/submission`. The current kit is
+byte-identical to the upstream canonical copy.
 
 [Validation evidence](validation-evidence.json) · [Successful example](success-example.json) ·
 [Actual interaction](success-interaction.json).
@@ -58,6 +80,7 @@ VIRTUAL_ENV= DOCKER_HOST=unix:///var/run/docker.sock uv run ale validate ../../t
 
 Inside the task image with the task mounted, use `/opt/venv/bin/python3`:
 `tests/review/test_long_bridge.py -v`,
+`tests/review/test_bridge_replay.py -v`,
 `tests/review/check_randomization.py`, or
 `tests/review/review_task.py --out /tmp/bridge-review --seeds 101 102 103 104 105 106`.
 

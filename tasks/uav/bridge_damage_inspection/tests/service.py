@@ -1,10 +1,12 @@
 """Single-threaded, root-owned world service with an append-only private event log."""
 import argparse
 import base64
+import hashlib
 import json
 import os
 from pathlib import Path
 import secrets
+import shutil
 import socketserver
 
 from world import World
@@ -20,6 +22,7 @@ class Runtime:
         self.count = 0
         self.events = []
         (self.directory/"frames").mkdir(exist_ok=True, mode=0o700)
+        (self.directory/"evidence").mkdir(exist_ok=True, mode=0o700)
         self.flush()
 
     def flush(self):
@@ -44,6 +47,12 @@ class Runtime:
         try:
             result = self.dispatch(method, params)
             event["frame_id"] = result["frame_id"]
+            if method == "report":
+                source = self.directory/"frames"/f'{params["frame_id"]:04d}-0.png'
+                if source.is_file():
+                    destination = self.directory/"evidence"/source.name
+                    shutil.copyfile(source, destination)
+                    event["evidence_sha256"] = hashlib.sha256(destination.read_bytes()).hexdigest()
             return result
         except (ValueError, TypeError, KeyError, OverflowError) as exc:
             event["error"] = str(exc)

@@ -15,3 +15,7 @@ RUN runuser -u user -- python3 -c "import mujoco; m=mujoco.MjModel.from_xml_stri
 COPY visual_assets.json fetch_visual_assets.py /tmp/visual_assets/
 RUN /opt/venv/bin/python3 /tmp/visual_assets/fetch_visual_assets.py /tmp/visual_assets/visual_assets.json /opt/visual_robotics/assets \
     && chmod -R a+rX /opt/visual_robotics/assets
+# ALE collects root-owned evidence after the agent exits. Do not let the agent
+# shadow the framework's executable names through a writable PATH directory.
+RUN chown root:root /usr/local/bin /usr/local/sbin /opt/venv/bin \
+    && chmod 0755 /usr/local/bin /usr/local/sbin /opt/venv/bin
