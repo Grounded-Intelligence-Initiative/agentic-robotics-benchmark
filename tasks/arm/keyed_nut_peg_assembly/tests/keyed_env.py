@@ -1,4 +1,4 @@
-"""Keyed nut-on-peg assembly: the task's robot environment (scene, robot, controller, sensors, credit).
+"""Keyed (bayonet-groove) nut-on-peg assembly: the task's robot environment (scene, robot, controller, sensors, credit).
 
 This file is byte-identical in your dev sim, in the lab service and in the grader. What differs
 between them is only the NUT that is loaded (a nut spec, see `NUT_SPEC_KEYS`). Your dev sim ships
@@ -30,23 +30,41 @@ Action (a list of 8 numbers):
 
 Scene
 -----
-Three pegs stand on the table. Each peg: a 50 x 50 x 10 mm collar (base), on it a 22 x 22 mm
-square shaft 90 mm tall, and one key ridge on one face of the shaft (6 mm wide,
-protruding 6 mm, from the collar top up to 11.5 mm above it). The pegs look alike except for 1, 2 or 3 dark bands
-near the shaft top. Every episode draws the peg positions and yaws anew.
+Three pegs stand on the table. Each peg: a 50 x 50 x 10 mm collar (base), on it a round shaft of
+radius 11 mm, 65 mm tall, carrying one pin: a small block on the shaft surface (3 mm wide, 4 mm
+tall, reaching 15.5 mm from the shaft axis) centred 37.5 mm above the collar top, on the peg's
+local +x side. The pegs look alike except for 1, 2 or 3 dark bands near the shaft top. Every
+episode draws the peg positions and yaws anew.
 
-The nut: a 60 x 60 x 24 mm block with a 24 x 24 mm square through-hole (1 mm clearance per side
-on the shaft) and a handle bar (50 mm long, 16 mm wide, 16 mm tall, centred 12 mm above the nut's
-bottom face) along the nut's local +x axis. A keyway slot (8 mm wide, 7 mm deep) is cut into ONE
-face of the hole, in the LOWER 12 mm of the nut only; from above the hole looks plain square.
-The keyway's direction relative to the handle (`key_deg` in the nut spec: 0, 90, 180 or 270
-degrees counter-clockwise about the nut's z axis, 0 = towards the handle) differs between nuts.
-A nut slides down to the collar only when its keyway faces the peg's ridge; otherwise it comes to
-rest on top of the ridge, about 11.5 mm above the collar. Every episode places the nut flat on the
-table at a fresh position and yaw: the yaw is the nut's azimuth seen from the robot base
-(atan2(y - 0, x + 0.56)) plus 135 degrees plus a uniform offset within +-60 degrees.
+The nut: a ring 45 mm tall (outer radius 28 mm, a 24-sided polygon) whose hole (inscribed radius
+12.7 mm) fits over the shaft, with a handle bar (16 mm wide, 16 mm tall, from 25 to 41 mm above the
+nut's bottom face) reaching 98 mm from the hole axis along the nut's local +x axis. The ring is
+built from 24 sectors (15 degrees each; sector s spans [15 s, 15 (s + 1)] degrees counter-clockwise
+from the handle) x 9 layers (5 mm each, layer 0 at the bottom). In each cell the inner part of the
+wall (radius 12.7 to 17 mm) is either solid or cut away; the cut cells form a hidden GROOVE in the
+hole wall, through which the pin must travel for the nut to come down. The top layer is always
+solid, so the groove cannot be seen from above. The groove family (identical for every nut):
 
-Nut spec (a dict): {"id": str, "key_deg": 0|90|180|270, "mass": kg (0.05-0.15), "friction":
+  * channels are 2 sectors (30 degrees) wide;
+  * an ENTRANCE riser: layers 0-1 at sectors (e, e + 1);
+  * a first TURN: layers 1-2, running k1 sectors from sector e (k1 = 2..4 sectors either way:
+    counter-clockwise for k1 > 0), then a riser in layers 2-4 at the new sector;
+  * a second TURN: layers 4-5, k2 sectors (2..4, either way), then a riser in layers 5-7;
+  * optional DEAD ENDS: a turn channel can also continue 1-3 sectors the other way and stop;
+  * optional FALSE ENTRANCES (0 to 2): risers in layers 0-2 at other sectors that lead nowhere.
+
+The pin enters the groove from below. With the nut resting on the pin, the nut's bottom is 39.5
+mm above the collar. The nut comes down to 24.5 mm above the collar once the pin is in the
+entrance riser (or a false entrance), to 9.5 mm once it has passed the first turn and riser, and
+to the collar once it has passed the second. Passing a turn means rotating the nut about the shaft
+while the pin is in the turn channel; the nut turns by -15 degrees per sector the pin advances
+counter-clockwise in the nut frame. Which entrance, which turns and which decoys a nut has differs
+between nuts (the nut spec's `groove`). Every episode places the nut flat on the table at a fresh
+position and yaw: the yaw is the nut's azimuth seen from the robot base (atan2(y - 0, x + 0.56))
+plus 135 degrees plus a uniform offset within +-60 degrees.
+
+Nut spec (a dict): {"id": str, "groove": {"entrance": 0..23, "turns": [k1, k2], "dead_ends":
+[n1, n2] (sectors, 0 = none), "false_entrances": [sectors]}, "mass": kg (0.05-0.15), "friction":
 sliding friction of the nut surfaces (0.6-1.0), "rgba": [r, g, b, 1]}.
 """
 
@@ -64,7 +82,7 @@ import mujoco
 TIMESTEP = 0.002
 SUBSTEPS = 50                    # -> 10 Hz control
 CONTROL_DT = TIMESTEP * SUBSTEPS
-MAX_STEPS = 900                  # control steps per episode (90 s simulated)
+MAX_STEPS = 1200                 # control steps per episode (120 s simulated)
 MAX_DPOS = 0.02
 MAX_DROT = 0.15
 TABLE_Z = 0.80
@@ -74,25 +92,31 @@ WORKSPACE_LO = np.array([-0.45, -0.45, TABLE_Z + 0.002])
 WORKSPACE_HI = np.array([0.45, 0.45, TABLE_Z + 0.55])
 
 # geometry (m)
-HOLE = 0.012          # hole half width
-NUT_OUT = 0.030       # nut outer half width
-NUT_T = 0.024         # nut thickness
-SLOT_W = 0.004        # keyway half width
-SLOT_X = 0.019        # keyway bottom, from the hole axis
-HANDLE_LEN = 0.050
+NSEC = 24             # angular sectors of the nut ring (15 degrees each)
+LAYER = 0.005         # layer height of the nut ring
+NLAYER = 9            # nut height 45 mm
+R_HOLE = 0.0128       # hole radius (inscribed 12.7 mm on the 24-gon; shaft 11 mm)
+R_GROOVE = 0.017      # groove floor radius
+R_NUT = 0.028         # nut outer radius
+NUT_H = NLAYER * LAYER
+HANDLE_LEN = 0.070
 HANDLE_W = 0.008      # half width
-HANDLE_Z = (0.004, 0.020)
-PEG = 0.011           # shaft half width
-PEG_H = 0.090
+HANDLE_Z = (0.025, 0.041)
+SHAFT_R = 0.011
+PEG_H = 0.065
 COLLAR = 0.025        # collar half width
 COLLAR_H = 0.010
-RIDGE_X = 0.017
-RIDGE_W = 0.003
-RIDGE_H = 0.0115
+PIN_Z = 0.0375        # pin centre above the collar top
+PIN_R = 0.0155        # pin tip radius
+PIN_W = 0.0015        # pin half width (tangential)
+PIN_HH = 0.002        # pin half height
+# groove schedule (layers): entrance channel 0-1, first turn 1-2, riser 2-4, second turn 4-5, riser 5-7
+TURN_LAYERS = ((1, 2), (4, 5))
+RISERS = ((0, 1), (2, 4), (5, 7))
 
 # layout ranges (uniform per episode)
 PEG_REGION = ((-0.02, 0.15), (-0.21, 0.21))
-PEG_MIN_SPACING = 0.11
+PEG_MIN_SPACING = 0.13
 NUT_REGION = ((-0.20, -0.07), (-0.20, 0.20))
 NUT_PEG_MIN_DIST = 0.13
 NUT_YAW_CENTER = math.radians(135.0)   # nut yaw = azimuth of the nut from the robot base + this +- spread
@@ -105,6 +129,9 @@ SEAT_TOL = 0.003             # nut bottom within this height of the collar top (
 SEAT_TILT = math.radians(5.0)
 RELEASE_OPEN = 0.06          # finger opening (m) counted as released
 RELEASE_STEPS = 10
+GROOVE_TOP = 0.0395          # nut bottom above the collar when it rests on the pin (pin top)
+CREDIT_ON_PEG = 0.35
+CREDIT_DEPTH = 0.80
 
 GRIP_KP = 3000.0             # finger position gain (N/m); the finger force is capped at 20 N
 RGB_NOISE = 2.0              # 8-bit sigma
@@ -122,7 +149,7 @@ CAMERAS = {
 }
 WRIST = {"fovy": 75.0, "width": 256, "height": 192}
 CAMERA_NAMES = ("left", "right", "wrist")
-NUT_SPEC_KEYS = ("id", "key_deg", "mass", "friction", "rgba")
+NUT_SPEC_KEYS = ("id", "groove", "mass", "friction", "rgba")
 OBS_KEYS = ("t", "nut", "peg_bands", "q", "dq", "ee_pos", "ee_quat", "gripper", "wrench", "T_world_wrist",
             "left", "right", "wrist")
 
@@ -253,9 +280,36 @@ def to_wire(obs):
 def check_nut_spec(spec):
     if not isinstance(spec, dict) or any(k not in spec for k in NUT_SPEC_KEYS):
         raise EnvError("nut spec needs keys " + ", ".join(NUT_SPEC_KEYS))
-    if int(spec["key_deg"]) not in (0, 90, 180, 270):
-        raise EnvError("key_deg must be 0, 90, 180 or 270")
+    g = spec["groove"]
+    if (not isinstance(g, dict) or int(g["entrance"]) not in range(NSEC) or len(g["turns"]) != 2
+            or any(not 1 <= abs(int(k)) <= 6 for k in g["turns"])):
+        raise EnvError("groove needs entrance 0-23 and two turns of 1-6 sectors")
     return spec
+
+
+def groove_cells(groove):
+    """The (sector, layer) cells cut out of the ring's inner part. Channels are 2 sectors wide;
+    sector s spans [15 s, 15 (s + 1)] degrees counter-clockwise from the handle (nut +x)."""
+    cells = set()
+
+    def chan(sec, layers):
+        for lay in layers:
+            cells.update({(sec % NSEC, lay), ((sec + 1) % NSEC, lay)})
+
+    s = int(groove["entrance"])
+    for i, (lo, hi) in enumerate(RISERS):
+        chan(s, range(lo, hi + 1))
+        if i < 2:
+            k = int(groove["turns"][i])
+            step = 1 if k > 0 else -1
+            for j in range(0, k + step, step):
+                chan(s + j, TURN_LAYERS[i])
+            for j in range(1, int(groove.get("dead_ends", [0, 0])[i]) + 1):    # dead end, opposite way
+                chan(s - step * j, TURN_LAYERS[i])
+            s = s + k
+    for f in groove.get("false_entrances", []):                                # blind risers
+        chan(int(f), range(0, TURN_LAYERS[0][1] + 1))
+    return cells
 
 
 # ----------------------------------------------------------------------------------------------
@@ -266,47 +320,46 @@ def _box(x0, x1, y0, y1, z0, z1, attrs):
         (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, (x1 - x0) / 2, (y1 - y0) / 2, (z1 - z0) / 2, attrs)
 
 
-def _rot90(boxes, deg):
-    c, s = round(math.cos(math.radians(deg))), round(math.sin(math.radians(deg)))
-    out = []
-    for (x0, x1, y0, y1, z0, z1) in boxes:
-        pts = [(c * x - s * y, s * x + c * y) for x in (x0, x1) for y in (y0, y1)]
-        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
-        out.append((min(xs), max(xs), min(ys), max(ys), z0, z1))
-    return out
-
-
 def nut_body_xml(spec):
-    """The nut as an MJCF body (origin: hole axis on the bottom face; handle along local +x)."""
-    hz = NUT_T / 2
-    walls = [(-NUT_OUT, -HOLE, -NUT_OUT, NUT_OUT, 0, NUT_T),
-             (-HOLE, HOLE, HOLE, NUT_OUT, 0, NUT_T),
-             (-HOLE, HOLE, -NUT_OUT, -HOLE, 0, NUT_T),
-             (HOLE, NUT_OUT, -NUT_OUT, NUT_OUT, hz, NUT_T),
-             (SLOT_X, NUT_OUT, -NUT_OUT, NUT_OUT, 0, hz),
-             (HOLE, SLOT_X, SLOT_W, NUT_OUT, 0, hz),
-             (HOLE, SLOT_X, -NUT_OUT, -SLOT_W, 0, hz)]
+    """The nut as an MJCF body (origin: hole axis on the bottom face; handle along local +x). The ring is
+    NSEC x NLAYER cells, each an inner block (R_HOLE..R_GROOVE) and an outer block (R_GROOVE..R_NUT);
+    groove cells have no inner block."""
+    cells = groove_cells(spec["groove"])
     rgba = " ".join("{:.3f}".format(float(c)) for c in spec["rgba"])
     attrs = 'rgba="{}" condim="4" friction="{:.4f} 0.01 0.0001"'.format(rgba, float(spec["friction"]))
-    g = "".join(_box(*b, attrs=attrs) for b in _rot90(walls, int(spec["key_deg"])))
-    g += _box(NUT_OUT, NUT_OUT + HANDLE_LEN, -HANDLE_W, HANDLE_W, HANDLE_Z[0], HANDLE_Z[1], attrs=attrs)
+    da = 2 * math.pi / NSEC
+    g = []
+    for sec in range(NSEC):
+        a = (sec + 0.5) * da
+        c, sn = math.cos(a), math.sin(a)
+        quat = "{:.6f} 0 0 {:.6f}".format(math.cos(a / 2), math.sin(a / 2))
+        for lay in range(NLAYER):
+            z = (lay + 0.5) * LAYER
+            for (r0, r1, inner) in ((R_HOLE, R_GROOVE, True), (R_GROOVE, R_NUT, False)):
+                if inner and (sec, lay) in cells:
+                    continue
+                rc = (r0 + r1) / 2
+                ht = r1 * math.tan(da / 2) + 0.0002
+                g.append('<geom type="box" pos="{:.6f} {:.6f} {:.6f}" quat="{}" size="{:.6f} {:.6f} {:.6f}" {}/>'.format(
+                    rc * c, rc * sn, z, quat, (r1 - r0) / 2, ht, LAYER / 2, attrs))
+    g.append(_box(R_NUT - 0.002, R_NUT + HANDLE_LEN, -HANDLE_W, HANDLE_W, HANDLE_Z[0], HANDLE_Z[1], attrs))
     m = float(spec["mass"])
     return ('<body name="nut"><freejoint name="nut_free"/>'
-            '<inertial pos="0.010 0 0.012" mass="{m:.5f}" diaginertia="{a:.3e} {b:.3e} {c:.3e}"/>{g}</body>').format(
-        m=m, a=m * 3.5e-4, b=m * 6.5e-4, c=m * 9.0e-4, g=g)
+            '<inertial pos="0.015 0 0.018" mass="{m:.5f}" diaginertia="{a:.3e} {b:.3e} {c:.3e}"/>{g}</body>').format(
+        m=m, a=m * 6.0e-4, b=m * 9.0e-4, c=m * 1.1e-3, g="".join(g))
 
 
 def peg_body_xml(i, bands):
     shaft = 'rgba="0.62 0.64 0.67 1"'
     g = _box(-COLLAR, COLLAR, -COLLAR, COLLAR, 0, COLLAR_H, 'rgba="0.30 0.31 0.34 1"')
-    g += _box(-PEG, PEG, -PEG, PEG, COLLAR_H, COLLAR_H + PEG_H, shaft)
-    g += _box(PEG, RIDGE_X, -RIDGE_W, RIDGE_W, COLLAR_H, COLLAR_H + RIDGE_H, shaft)
+    g += '<geom type="cylinder" pos="0 0 {:.4f}" size="{:.4f} {:.4f}" {}/>'.format(
+        COLLAR_H + PEG_H / 2, SHAFT_R, PEG_H / 2, shaft)
+    g += _box(SHAFT_R - 0.0005, PIN_R, -PIN_W, PIN_W, COLLAR_H + PIN_Z - PIN_HH, COLLAR_H + PIN_Z + PIN_HH, shaft)
     top = COLLAR_H + PEG_H
-    e = PEG + 0.0004
     for k in range(bands):
         z = top - 0.010 - 0.013 * k
-        g += _box(-e, e, -e, e, z - 0.0035, z + 0.0035,
-                  'rgba="0.07 0.07 0.09 1" contype="0" conaffinity="0" group="1" mass="0"')
+        g += ('<geom type="cylinder" pos="0 0 {:.4f}" size="{:.4f} 0.0035" rgba="0.07 0.07 0.09 1" contype="0" '
+              'conaffinity="0" group="1" mass="0"/>').format(z, SHAFT_R + 0.0004)
     return '<body name="peg{}">{}</body>'.format(i, g)
 
 
@@ -568,14 +621,18 @@ class NutEnv(object):
         return bodies
 
     def stage_now(self):
-        """Instantaneous stage: 0 none, 1 lifted while held, 2 engaged on the target peg, 3 seated on it."""
+        """Instantaneous stage: 0 none, 1 lifted while held, 2 on the target peg (then self.depth_now is
+        the fraction of the groove travelled), 3 seated on it."""
         p, R = self.nut_state()
         px, py, pyaw = self.peg_poses[self.target_peg]
         dxy = math.hypot(p[0] - px, p[1] - py)
         tilt = math.acos(max(-1.0, min(1.0, R[2, 2])))
         top = TABLE_Z + COLLAR_H + PEG_H
+        self.depth_now = 0.0
         if dxy <= ENGAGE_XY and p[2] < top - 0.005 and p[2] > TABLE_Z:
-            if p[2] - (TABLE_Z + COLLAR_H) <= SEAT_TOL and tilt <= SEAT_TILT:
+            h = p[2] - (TABLE_Z + COLLAR_H)
+            self.depth_now = max(0.0, min(1.0, (GROOVE_TOP - h) / GROOVE_TOP))
+            if h <= SEAT_TOL and tilt <= SEAT_TILT:
                 return 3
             return 2
         held = len(self.finger_bodies_touching()) >= 2
@@ -597,7 +654,7 @@ class NutEnv(object):
         if st >= 1:
             self.credit = max(self.credit, 0.25)
         if st >= 2:
-            self.credit = max(self.credit, 0.5)
+            self.credit = max(self.credit, CREDIT_ON_PEG + (CREDIT_DEPTH - CREDIT_ON_PEG) * self.depth_now)
         opening = float(d.qpos[self.gq[0]] - d.qpos[self.gq[1]])
         if st == 3 and opening >= RELEASE_OPEN and self.finger_contacts() == 0:
             self.release_count += 1
@@ -611,7 +668,9 @@ class NutEnv(object):
     def episode_score(self):
         """Credit of the episode (0 after a fault), the best stage reached:
         0.25 the nut was lifted LIFT_HEIGHT above the table while both fingers held it;
-        0.5  the nut's hole was around the TARGET peg's shaft (axis within ENGAGE_XY, nut below the shaft top);
+        0.35 + 0.45 x d  the nut's hole was around the TARGET peg's shaft (axis within ENGAGE_XY, nut below the
+             shaft top), d = how far its bottom has come down from resting on the pin (GROOVE_TOP above the collar,
+             d = 0) towards the collar (d = 1); the best d of the episode counts;
         1.0  the nut sat on the target peg's collar (within SEAT_TOL, tilt below 5 degrees) for RELEASE_STEPS
              consecutive steps with the fingers open at least RELEASE_OPEN and not touching the nut."""
         if self.fault is not None:
@@ -707,7 +766,7 @@ class NutEnv(object):
     # ------------------------------------------------------------------ ground truth (dev only)
     def gt(self):
         p, R = self.nut_state()
-        return {"nut_pos": p.tolist(), "nut_quat": quat_from_mat(R).tolist(), "key_deg": int(self.spec["key_deg"]),
+        return {"nut_pos": p.tolist(), "nut_quat": quat_from_mat(R).tolist(), "groove": self.spec["groove"],
                 "pegs": [list(pp) for pp in self.peg_poses], "target_peg": self.target_peg,
                 "stage": self.stage_now(), "credit": self.credit, "t": self.t, "fault": self.fault}
 

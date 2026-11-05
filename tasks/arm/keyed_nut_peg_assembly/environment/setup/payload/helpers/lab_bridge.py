@@ -5,7 +5,7 @@
 
 It costs one trial (the lab charges it when the trial starts). It starts `bash run.sh` in the
 submission directory exactly like the grader does (READY, reset, act, close; same observation
-dict), feeds it the lab's observations step by step until the episode ends (900 steps), and writes one JSON
+dict), feeds it the lab's observations step by step until the episode ends (1200 steps), and writes one JSON
 line per step ({"t", "obs", "action"}) to --log (images included whenever the controller asked
 for them). It reports nothing about scores; evaluate the logged observations yourself. Use
 --steps to stop earlier (the trial is still charged).
