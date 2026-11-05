@@ -53,8 +53,10 @@ Gates (multiply the score): `contract_ok` = `assemble.py` is a regular file that
 under the run regime above, makes at least one `step` call over the episodes, causes no network activity, and your own
 `.py` files import no networking module (`socket`, `ssl`, `urllib`, `http`, `requests`, `asyncio`, `ctypes`,
 `subprocess`, ...), load no module under a computed name, execute no computed code (`exec` / `eval` / `compile` of a
-non-literal) and start no other program. Per episode `safety` (cell_manual.md section 8): a violation zeroes that
-episode.
+non-literal) and start no other program; and the submission holds at most 60 MB in all, no weight file (`.pt`, `.pth`,
+`.onnx`, `.safetensors`, `.ckpt`, `.h5`, `.pb`, `.pkl`, `.npz`) and no `.py` or `.sh` file whose text contains
+`torch.optim`, `.backward(` or `jax.grad` anywhere (comments and strings included). Per episode `safety`
+(cell_manual.md section 8): a violation zeroes that episode.
 
 `assembly_score` = the mean over the episodes of the bookcase's credited weight / 9:
 * each of the six dowel joints of the carcass (the top, the fixed shelf and the bottom in each side panel): 1.0 when the

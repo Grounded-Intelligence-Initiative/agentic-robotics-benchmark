@@ -94,9 +94,14 @@ class AgentProcess(object):
         self._q.put(("eof", None))
 
     def next_request(self, timeout):
-        """(kind, obj): kind in {"req", "eof", "bad"}; raises queue.Empty on silence."""
+        """(kind, obj): kind in {"req", "eof", "bad"}; raises queue.Empty on silence. One deadline for the whole wait:
+        blank lines are skipped, but they do not restart it (a program cannot hold an episode open with them)."""
+        deadline = time.time() + float(timeout)
         while True:
-            kind, line = self._q.get(timeout=timeout)
+            wait = deadline - time.time()
+            if wait <= 0:
+                raise queue.Empty
+            kind, line = self._q.get(timeout=wait)
             if kind == "eof":
                 return "eof", None
             if kind == "toolong":
