@@ -1,5 +1,4 @@
 {
-  "episodes": 48,
   "probe_rate": 0.06,
   "probe_pass_fraction": 0.35,
   "step_timeout_s": 30,
