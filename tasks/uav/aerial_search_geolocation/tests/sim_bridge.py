@@ -12,7 +12,7 @@ where `episode` names the map, the objects to place (asset, position, rotation) 
 candidate start poses, and `state` is
 
     {"frame": {"rgb": {cam: b64 PNG}, "depth": {cam: b64 16-bit PNG, centimetres},
-               "pose": [x, y, z, qx, qy, qz, qw]},
+               "pose": [x, y, z, qx, qy, qz, qw]},     # the drone, in the scene frame
      "distance_to_goal": m, "move_distance": m, "step": n, "done": bool, "success": bool,
      "collision": bool, "oracle_success": bool, "termination": "stop"|"collision"|"max_steps"|"",
      "start_index": the candidate start used}
@@ -23,6 +23,10 @@ pose before touching geometry, swept the way a move is, up to CLEAR_REACH_M.
 
 `state` is privileged: only `frame` (minus `pose`) and odometry derived from `pose` reach the
 agent's controller, and that filtering happens on the grader side (`sar_protocol`).
+
+Positions in and out (the objects, the start candidates, the goal, `pose`) are in one frame,
+the scene frame: NED metres in which the objects are placed, the frame of the placement
+pool's points (see `AirSimBackend` for how the drone is kept in it).
 
 Two backends:
 
@@ -126,7 +130,18 @@ class AirSimBackend(object):
     """TravelUAV's packaged Unreal scenes with the AirSim plugin. One scene runs at a time
     (missions arrive grouped by map). The drone is kinematic: every move is a teleport,
     swept in quarter-metre sub-steps, and the first sub-step that touches geometry ends the
-    mission as a collision. Targets are spawned assets; nothing is drawn for the decoys."""
+    mission as a collision. Targets are spawned assets; nothing is drawn for the decoys.
+
+    Frames. AirSim keeps two NED frames that differ by a translation. Objects are spawned
+    and read back (simSpawnObject, simGetObjectPose) in the scene's global frame, whose
+    origin is the level's player start: the placement pool's points are in it. A vehicle's
+    pose (simSetVehiclePose, simGetVehiclePose and the position in simGetCollisionInfo) is
+    relative to where the vehicle spawned instead: the settings' X, Y, Z less half the
+    airframe's height, moved by however Unreal pushed the spawn out of geometry, so the
+    difference is the scene's. The bridge keeps the drone's state in the scene frame and
+    converts at those vehicle calls (`_place`, `_contact`), with the vehicle frame's origin
+    read from AirSim itself at every reset (`_vehicle_origin`): the scored target points,
+    the visit test and the drone's true pose then share the frame of what the cameras see."""
 
     DRONE = "Drone_1"
     CLEAR_REACH_M = 4.0
@@ -147,6 +162,7 @@ class AirSimBackend(object):
         self.ue = self.rpc = self.map = None
         self.spawned = []
         self.stale = None
+        self.origin = None          # the vehicle frame's origin in the scene frame (per scene)
         self.spawn_count = 0        # names are never reused: re-spawning a name can crash AirSim
 
     # -- scene lifecycle ----------------------------------------------------------
@@ -200,7 +216,7 @@ class AirSimBackend(object):
             except OSError:
                 pass
             self.ue.wait()
-        self.ue = self.rpc = self.map = None
+        self.ue = self.rpc = self.map = self.origin = None
 
     # -- episode ------------------------------------------------------------------
     def reset(self, episode, budget, success_radius):
@@ -218,6 +234,11 @@ class AirSimBackend(object):
                            _airsim_pose(obj["position"], [x, y, z, w]),
                            {"x_val": 1.0, "y_val": 1.0, "z_val": 1.0}, False, False)
             self.spawned.append(got or name)
+        origin = self._vehicle_origin()
+        if self.origin is None or _distance(origin, self.origin) > 0.01:
+            _log("vehicle frame origin in the scene frame: ({:.3f}, {:.3f}, {:.3f}) m".format(
+                *origin))
+            self.origin = origin        # kept while it holds, so the frame is the same each mission
         index, lift = self._choose_start(episode["start_candidates"])
         start = episode["start_candidates"][index]
         x, y, z = start[0], start[1], start[2] - lift
@@ -229,6 +250,30 @@ class AirSimBackend(object):
         self.s["oracle"] = _distance((x, y, z), self.goal) <= self.radius
         self.clearance = bool(episode.get("clearance"))
         return self._state()
+
+    def _vehicle_origin(self):
+        """Where the vehicle frame has its origin in the scene frame, as AirSim reports it:
+        the drone actor's scene position less its vehicle pose, read back to back wherever
+        the drone is (nothing is moved or rendered for it), and taken only when a second
+        read of the vehicle pose shows the drone did not move in between."""
+        for _ in range(5):
+            vehicle = self._drone_position("simGetVehiclePose")
+            actor = self._drone_position("simGetObjectPose")
+            again = self._drone_position("simGetVehiclePose")
+            if _distance(again, vehicle) <= 0.001:
+                break
+            time.sleep(0.1)
+        origin = [a - v for a, v in zip(actor, vehicle)]
+        if not all(math.isfinite(v) for v in origin) or _distance(again, vehicle) > 0.001:
+            raise RuntimeError("cannot relate the vehicle frame to the scene frame: vehicle "
+                               "pose {} (then {}), drone actor at {}".format(vehicle, again, actor))
+        return origin
+
+    def _drone_position(self, method):
+        """The drone's position from simGetVehiclePose (vehicle frame) or simGetObjectPose
+        (scene frame)."""
+        p = self.rpc.call(method, self.DRONE)["position"]
+        return [float(p[a]) for a in ("x_val", "y_val", "z_val")]
 
     LIFTS = (0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0)
 
@@ -281,10 +326,13 @@ class AirSimBackend(object):
         return clear
 
     def _contact(self):
-        """The collision record AirSim holds, as (flag, where the drone was, object)."""
+        """The collision record AirSim holds, as (flag, where the drone was in the scene
+        frame, object)."""
         info = self.rpc.call("simGetCollisionInfo", self.DRONE)
-        at = info["position"]
-        return bool(info["has_collided"]), (at["x_val"], at["y_val"], at["z_val"]), info.get("object_name")
+        at, o = info["position"], self.origin
+        return (bool(info["has_collided"]),
+                (at["x_val"] + o[0], at["y_val"] + o[1], at["z_val"] + o[2]),
+                info.get("object_name"))
 
     def _settle(self, s):
         """Put the drone back at s after sweeps that were not moves (start search,
@@ -305,8 +353,11 @@ class AirSimBackend(object):
         return flag and at != self.stale and _distance(at, want) <= 0.6
 
     def _place(self, s, collide=False):
+        """The drone to s (scene frame), set in the vehicle frame AirSim poses it in."""
+        o = self.origin
         self.rpc.call("simSetVehiclePose",
-                      _airsim_pose((s["x"], s["y"], s["z"]), _yaw_quat(s["yaw"])),
+                      _airsim_pose((s["x"] - o[0], s["y"] - o[1], s["z"] - o[2]),
+                                   _yaw_quat(s["yaw"])),
                       not collide, self.DRONE)
         self._frame()
 
