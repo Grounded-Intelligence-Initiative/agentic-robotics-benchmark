@@ -21,11 +21,15 @@ network_mode = "no-network"
 # does NOT run, so the agent's home (the dev copy of the simulator, the practice grader) and
 # anything the agent left outside the submission are absent. This closes the shared-mode hole
 # where a file the agent planted on root's PATH would run as root at verify. The grader is
-# self-contained from tests/ (env.py, anchor.json, grader_config.json, robotics_grader/) plus
-# the image's /opt/venv; it re-owns the restored submission to the agent account and drives
-# the live controller over the kit Solver (deprivileged, which reclaims root's PATH before any
-# agent code runs). The timeout is unchanged: the oracle verifies in well under a minute, so
-# the one extra sandbox start is far inside the 1800 s budget.
+# self-contained from tests/ (env.py, the fixed hidden set in hidden/, anchor.json,
+# grader_config.json, nonet_exec.py, robotics_grader/) plus the image's /opt/venv; it re-owns
+# the restored submission to the agent account and drives the live controller over the kit
+# Solver, started through nonet_exec.py: the agent account, a fixed environment and no
+# internet sockets (a self-test decides before episode 0 that the seccomp filter holds; where
+# it cannot, the grader watches the account's sockets and any found zeroes the reward). Every
+# submission meets the same 48 hidden episodes. The privileged reference verifies in about
+# 30 s on 2 CPUs (about 14,000 requests); a controller that spends the whole average reply
+# budget of about 0.09 s per request on 48 x 400 steps needs most of the 1800 s.
 [verifier]
 timeout_sec = 1800
 environment_mode = "separate"

@@ -102,7 +102,8 @@ source is the complete statement of every range this list summarizes.
 
 The episode lasts at most 400 steps at 0.12 simulated seconds per step. This bounded
 horizon is deliberate: difficulty should come from identification and closed-loop
-reasoning, not from a long rollout. There is no network access while you work.
+reasoning, not from a long rollout. There is no network access while you work, and none
+while your controller is graded.
 
 ## Observation and action
 
@@ -181,13 +182,13 @@ A failed but safe approach can earn at most 0.03 from progress. A successful epi
 earns 0.94 plus small terms for remaining fuel and completion in fewer simulation steps,
 up to 1.0. Thus robust docking dominates cosmetic efficiency improvements.
 
-The hidden grader runs 48 fresh hidden episodes and averages their quality. An episode
-that aborts (a missed deadline, a protocol error, or a malformed action) scores 0 and
-still counts in the mean. Your score compares that mean with a reference controller's
-real measured value on hidden seeds. Full credit is reached somewhat below the
-reference's level, where the reward saturates, which leaves room for seed-to-seed
-variance; the verdict also records the plain ratio to the reference, capped at 1.5. The
-reference value itself is not disclosed. The grader also checks that your
+The hidden grader runs 48 hidden episodes, drawn once from the ranges above and kept
+hidden: every submission meets the same 48. It averages their quality. An episode that
+aborts (a missed deadline, a protocol error, or a malformed action) scores 0 and still
+counts in the mean. Your score compares that mean with a reference controller's measured
+value on the same episodes. Full credit is reached just below the reference's level; the
+verdict also records the plain ratio to the reference, capped at 1.5. The reference value
+itself is not disclosed. The grader also checks that your
 actions depend on the observation they were given: if fewer than 35% of the repeated-`t`
 answer pairs (see the wire contract) differ by more than 1e-4, the score is 0 regardless
 of the metric.
@@ -209,10 +210,12 @@ more than once with different observations in a hidden order; only the reply to 
 observation is applied. Always calculate the action from the observation in that
 request; repeated queries do not advance the simulation.
 
-If an episode aborts, the grader stops the process (and everything it started) and runs
-`bash run.sh` again before the next episode; it must print READY again within 120 seconds.
-If it cannot, or after three such restarts, every remaining episode aborts. So `run.sh`
-has to work when started a second time: no fixed ports, PID files or locks left behind.
+If an episode aborts on a missed deadline, a crash or a protocol error, the grader stops
+the process (and everything it started) and runs `bash run.sh` again before the next
+episode; it must print READY again within 120 seconds. If it cannot, or after three such
+restarts, every remaining episode aborts. A malformed action scores its episode 0 without
+a restart. So `run.sh` has to work when started a second time: no fixed ports, PID files
+or locks left behind.
 
 Grading happens in a fresh sandbox that holds only `/home/user/submission/`. The
 development copy of the simulator at `/home/user/spacecraft_docking_env.py`, the practice
@@ -220,11 +223,14 @@ grader, and anything else you leave elsewhere in your home are not present then,
 everything `run.sh` needs inside `/home/user/submission/` (you may copy the simulator
 source into that folder). `/opt/venv/bin/python3` with numpy is part of the image and is
 still available. The controller runs as you from that folder and may read and write inside
-it.
+it. Its environment holds only `PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin`,
+`HOME=/home/user` and `LANG=C.UTF-8`. Pipes and Unix sockets work; internet sockets, even
+to localhost, are refused.
 
-The whole grading run has 30 minutes for all 48 episodes, about 15,000 requests, restarts
-included, so answer in well under 0.1 s per request on average. A controller that runs out
-that time scores 0, even if every single reply met its 30-second limit.
+The whole grading run has 30 minutes for all 48 episodes: at most 48 x 400 steps plus
+repeated queries, about 20,400 requests, restarts included; answer in well under 0.09 s
+per request on average. A grading run that goes past 30 minutes is stopped and earns no
+reward, even if every reply met its 30-second limit.
 
 ## Development check
 
