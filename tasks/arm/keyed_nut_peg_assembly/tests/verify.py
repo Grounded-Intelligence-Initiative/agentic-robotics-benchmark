@@ -255,32 +255,35 @@ def oracle_access(workdir):
 SCRUB_ROOTS = ("/tmp", "/var/tmp", "/dev/shm", "/usr/local", "/run", "/var/lock")
 
 
-def scrub_agent_files(uid, home):
-    """Remove every file or directory the agent account owns under the writable roots and the agent
-    home (the submission folder is replaced separately). Never follows a symlink."""
-    roots = list(SCRUB_ROOTS) + [home]
-    for root in roots:
+def _agent_entries(uid, home):
+    """Paths the agent account owns under the writable roots and its home (never following a symlink),
+    except the submission folder and what is inside it."""
+    sub = os.path.join(home, "submission")
+    found = set()
+    for root in list(SCRUB_ROOTS) + [home]:
         for dp, dns, fns in os.walk(root, topdown=True, followlinks=False):
-            keep = []
+            dns[:] = [d for d in dns if os.path.join(dp, d) != sub]
             for name in dns + fns:
                 path = os.path.join(dp, name)
-                if os.path.abspath(path) == os.path.join(home, "submission"):
-                    continue
                 try:
-                    st = os.lstat(path)
+                    if os.lstat(path).st_uid == uid:
+                        found.add(path)
                 except OSError:
                     continue
-                if st.st_uid == uid:
-                    try:
-                        if os.path.isdir(path) and not os.path.islink(path):
-                            shutil.rmtree(path, ignore_errors=True)
-                        else:
-                            os.unlink(path)
-                    except OSError:
-                        pass
-                elif name in dns:
-                    keep.append(name)
-            dns[:] = [d for d in dns if d in keep]
+    return found
+
+
+def scrub_agent_files(uid, home, baseline):
+    """Remove every file or directory the agent account owns there that was not there before grading
+    started (`baseline`): what the image ships is never touched."""
+    for path in sorted(_agent_entries(uid, home) - baseline, key=len):
+        try:
+            if os.path.isdir(path) and not os.path.islink(path):
+                shutil.rmtree(path, ignore_errors=True)
+            elif os.path.lexists(path):
+                os.unlink(path)
+        except OSError:
+            pass
 
 
 def fresh_submission(pristine, workdir, uid, gid):
@@ -294,7 +297,8 @@ def fresh_submission(pristine, workdir, uid, gid):
     os.chmod(workdir, 0o700)
 
 
-def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt, pristine=None, gid=None):
+def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt, pristine=None, gid=None,
+                 baseline=None):
     budget = float(config.get("grader_budget_s", 6000))
     lock = ProbeLock(rng, rate=config.get("probe_rate", 0.01),
                      pass_fraction=config.get("probe_pass_fraction", 0.1), tolerance=1e-4)
@@ -315,7 +319,7 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
                     pass
             if pristine is not None:
                 kill_agent_processes(uid)
-                scrub_agent_files(uid, os.path.dirname(workdir))
+                scrub_agent_files(uid, os.path.dirname(workdir), baseline or set())
                 fresh_submission(pristine, workdir, uid, gid)
             solver = None
             nut = item["nut"]
@@ -416,6 +420,7 @@ def main():
         log("copying the submission failed: {}".format(type(exc).__name__))
         write_verdict(zero_verdict(reason="no usable submission", anchored=anchor is not None))
         return
+    baseline = _agent_entries(uid, os.path.dirname(workdir))      # before any controller has run
     with_gt = oracle_access(workdir)
     if with_gt:
         log("reference-solution token present: observations carry _gt")
@@ -424,7 +429,7 @@ def main():
     try:
         (scores, aborted, faults, per_nut, per_stage, egress_hits, budget_exhausted,
          lock) = run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt,
-                              pristine=pristine, gid=gid)
+                              pristine=pristine, gid=gid, baseline=baseline)
     except (SolverMissing, SolverAborted) as exc:
         kill_agent_processes(uid)
         write_verdict(zero_verdict(reason=str(exc)[:200], anchored=anchor is not None))
