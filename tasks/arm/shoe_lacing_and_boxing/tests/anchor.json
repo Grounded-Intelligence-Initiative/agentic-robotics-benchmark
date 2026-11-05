@@ -1,0 +1,8 @@
+{
+ "direction": "higher",
+ "full_at": 0.5,
+ "metric": "work_score",
+ "note": "work_score is the episode mean of the accepted work over the work order (per pair: lacing of each shoe 0.30 + 0.30, box erected 0.12, and pair packed 0.13, lid closed 0.10, shipped 0.05 each times the fraction of the pair's shoes laced through every row; a safety violation voids the pair at work), already on [0, 1]; ratio = score / value, reward = clamp(ratio / full_at, 0, 1).",
+ "source": "reference controller (tests/reference, reference_lacing=true) measured 2026-11-05 on the host with the grader's configuration on seeds 1-64, one episode each (the same reference_run call verify makes): work_score mean 0.695 (both shoes laced in 30 episodes, one in 26, none in 4, 4 voided by a sustained contact, 0 physics faults). value = that mean. full_at = 0.50: the verify statistic is the mean over 6 episodes; the four validate runs voided 5 of 24 reference episodes (the host: 4 of 64), and with a void rate of 12-21 % the 6-episode mean falls below 0.50 x the value in 1.8-6.1 % of verify runs (bootstrap of these episodes); the last validate read ratio 0.94. Erecting every box without lacing reads 0.35",
+ "value": 0.695
+}
