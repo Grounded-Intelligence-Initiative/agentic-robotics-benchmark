@@ -1106,6 +1106,8 @@ class Controller(object):
                 # it can end up in the way again); the tidy loop brings it home before the mark
                 yield from self.move_aside(bid, avoid=oid if avoid is None else avoid,
                                            to_desk=oid == self.w.target_id())
+                if oid != self.w.target_id():
+                    self.fail(oid)          # a tidy job digs one layer at a time, between the easy ones
                 return False
             if bid is None and self.wall_side(oid) is not None:
                 did = yield from self.drag_from_wall(oid)
@@ -1334,14 +1336,17 @@ class Controller(object):
         yield from self.hold(8, grip=0.0)
         return True
 
-    def tidy_one(self, exclude=(), avoid_home=None):
-        """Put one object where it belongs (not into `avoid_home`). -> True when the arm did something."""
+    def tidy_one(self, exclude=(), avoid_home=None, easy_only=False):
+        """Put one object where it belongs (not into `avoid_home`; with easy_only, only one that a hand can take
+        right now, no dig). -> True when the arm did something."""
         for oid in self.todo(exclude=exclude):
             if self.cooling(oid):
                 continue
             if self.moving(oid):
                 continue
             if avoid_home is not None and CONTAINER_OF_CLASS[self.w.objs[oid]["cls"]] == avoid_home:
+                continue
+            if easy_only and not plan_grasps(self.w, oid, fails=self.nfails(oid), avoid_yaws=self.bad_yaws.get(oid, ())):
                 continue
             dest = CONTAINER_OF_CLASS[self.w.objs[oid]["cls"]]
             yield from self.move_object(oid, dest)
@@ -1355,14 +1360,13 @@ class Controller(object):
         left = int(r["deadline_t"]) - self.t()
         tgt = self.w.target_id()
         if tgt is None:
-            if left < MARK_MARGIN or not TIDY_BEFORE_MARK or self.desk_in_order():
+            # the desk in order first (what a hand can take right now: a dig would only delay the mark), then the mark
+            did = False
+            if left >= MARK_MARGIN and TIDY_BEFORE_MARK:
+                did = yield from self.tidy_one(easy_only=True)
+            if not did:
                 log("t=%d request %d (%s): no such object (desk %s)" % (self.t(), rid, r.get("text"),
                                                                        "in order" if self.desk_in_order() else "not in order"))
-                self.marked.add(rid)
-                yield from self.mark(2)
-                return
-            did = yield from self.tidy_one()
-            if not did:
                 self.marked.add(rid)
                 yield from self.mark(2)
             return
@@ -1370,18 +1374,13 @@ class Controller(object):
             yield from self.hold(2, grip=0.0)
             return
         if self.w.done(tgt):
-            # in red and at rest: what the dig took out goes back, the desk in order, then the mark
-            if left < MARK_MARGIN or self.desk_in_order(exclude=(tgt,)):
-                log("t=%d request %d (%s): delivered" % (self.t(), rid, r.get("text")))
-                self.marked.add(rid)
-                yield from self.mark(1)
-                return
-            if left < 150:
-                self.marked.add(rid)
-                yield from self.mark(1)
-                return
-            did = yield from self.tidy_one(exclude=(tgt,))
+            # in red and at rest: what the dig took out goes back, the desk in order (what a hand can take right
+            # now), then the mark
+            did = False
+            if left >= 150:
+                did = yield from self.tidy_one(exclude=(tgt,), easy_only=True)
             if not did:
+                log("t=%d request %d (%s): delivered" % (self.t(), rid, r.get("text")))
                 self.marked.add(rid)
                 yield from self.mark(1)
             return
