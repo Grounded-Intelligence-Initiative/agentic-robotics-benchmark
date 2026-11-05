@@ -1,0 +1,7 @@
+{
+  "metric": "design_score",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 1.0,
+  "source": "Measured native design_score=1.0 in ale validate bootstrap validate-f797b4f9, oracle ea745af5 (2026-10-27). Untouched measured design_score=0.0. Deterministic reference; full_at=1.0."
+}

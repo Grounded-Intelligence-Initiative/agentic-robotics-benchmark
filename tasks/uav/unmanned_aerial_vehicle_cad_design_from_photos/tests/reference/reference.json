@@ -1,0 +1,1102 @@
+{
+  "format": "uav-cad-reference/1",
+  "instance": "H_uav_cad_01",
+  "units": "mm",
+  "parts": {
+    "P01": {
+      "volume_mm3": 68144.9594069754,
+      "center_mm": [
+        -7.912358757485581,
+        0.06039900325666597,
+        1.9999999999999991
+      ],
+      "bounds_mm": [
+        [
+          -118.07802099999999,
+          -143.32936046,
+          0.0
+        ],
+        [
+          118.07802099999999,
+          143.32936046,
+          4.0
+        ]
+      ],
+      "faces": 655,
+      "step_sha256": "54e44676c4eabc37748ca4bec191b2e86b3a45ea8176b6e4fce3d9662258b2a2",
+      "density_g_mm3": 0.0016,
+      "material": "carbon",
+      "file": "parts/P01.brep",
+      "stock_mm": 4
+    },
+    "P02": {
+      "volume_mm3": 142564.28270802292,
+      "center_mm": [
+        -10.313661698063056,
+        0.13656493601067832,
+        38.549999999999955
+      ],
+      "bounds_mm": [
+        [
+          -193.88739429999998,
+          -212.21958836000002,
+          37.29999999999998
+        ],
+        [
+          193.8782379,
+          212.21958836000002,
+          39.80000000000001
+        ]
+      ],
+      "faces": 750,
+      "step_sha256": "804722856842a075a7e402af403dc0f3baad5a4ea5a608a4b7f99d68e38bc8e8",
+      "density_g_mm3": 0.0016,
+      "material": "carbon",
+      "file": "parts/P02.brep",
+      "stock_mm": 2.5
+    },
+    "P03": {
+      "volume_mm3": 15453.934235116969,
+      "center_mm": [
+        -41.06971148239713,
+        -0.04857121243937048,
+        74.04999999999998
+      ],
+      "bounds_mm": [
+        [
+          -104.50646735,
+          -54.17584042,
+          72.8
+        ],
+        [
+          22.149123499999998,
+          54.17584042,
+          75.30000000000001
+        ]
+      ],
+      "faces": 164,
+      "step_sha256": "e05c0178c44ba2bf3c67a6d7edf8531c03bcfbfbc063e5512c6624048fbb3c43",
+      "density_g_mm3": 0.0016,
+      "material": "carbon",
+      "file": "parts/P03.brep",
+      "stock_mm": 2.5
+    },
+    "P04": {
+      "volume_mm3": 25373.049566773505,
+      "center_mm": [
+        -14.509627417818907,
+        5.735185748985752e-16,
+        -40.19826252142646
+      ],
+      "bounds_mm": [
+        [
+          -83.0,
+          -29.0,
+          -42.0
+        ],
+        [
+          62.0,
+          29.0,
+          -31.0
+        ]
+      ],
+      "faces": 20,
+      "step_sha256": "c72ee572e048338395bedd1306d9713700a86a1e9fe50280fd1edcbc02fae712",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P04.brep",
+      "stock_mm": null
+    },
+    "P05": {
+      "volume_mm3": 15629.538187130345,
+      "center_mm": [
+        59.41977156921674,
+        0.0,
+        17.308629109709813
+      ],
+      "bounds_mm": [
+        [
+          30.0,
+          -24.0,
+          8.0
+        ],
+        [
+          73.0,
+          24.0,
+          43.0
+        ]
+      ],
+      "faces": 23,
+      "step_sha256": "dee67cb5e3f487d505312cbd67975ae9f014d65256f226e9e22a64bada859a4b",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P05.brep",
+      "stock_mm": null
+    },
+    "P06": {
+      "volume_mm3": 31310.810638590687,
+      "center_mm": [
+        -45.0,
+        -5.797181158380144e-16,
+        78.49646266557252
+      ],
+      "bounds_mm": [
+        [
+          -81.0,
+          -36.0,
+          75.3
+        ],
+        [
+          -9.0,
+          36.0,
+          82.30000000000001
+        ]
+      ],
+      "faces": 15,
+      "step_sha256": "eb5e42ba2828983a4796cda5d2b62b8bf94a54f82ae8f3764925ee335bdf8cd5",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P06.brep",
+      "stock_mm": null
+    },
+    "P07": {
+      "volume_mm3": 9194.761895592957,
+      "center_mm": [
+        -40.5795,
+        3.9565775040193194e-16,
+        17.250691842278062
+      ],
+      "bounds_mm": [
+        [
+          -48.579499999999996,
+          -47.2014,
+          4.0
+        ],
+        [
+          -32.579499999999996,
+          47.2014,
+          37.30000000000001
+        ]
+      ],
+      "faces": 30,
+      "step_sha256": "660c40ec7b457db4eb0e3ccb8a13f4fd23a02f295e8e3910b758e0d4b1f96040",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P07.brep",
+      "stock_mm": null
+    },
+    "P08": {
+      "volume_mm3": 9194.761895592957,
+      "center_mm": [
+        40.57949999999998,
+        -7.913155008038639e-16,
+        17.25069184227806
+      ],
+      "bounds_mm": [
+        [
+          32.579499999999996,
+          -47.2014,
+          4.0
+        ],
+        [
+          48.579499999999996,
+          47.2014,
+          37.30000000000001
+        ]
+      ],
+      "faces": 30,
+      "step_sha256": "7f7685c809ab13f045b1ff7cef76a437a5e329c53f87321910bc7a4c435f6424",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P08.brep",
+      "stock_mm": null
+    },
+    "P09": {
+      "volume_mm3": 22847.04956677351,
+      "center_mm": [
+        -44.97448465144163,
+        2.5477101865318698e-15,
+        42.46286349895427
+      ],
+      "bounds_mm": [
+        [
+          -87.0,
+          -39.0,
+          39.8
+        ],
+        [
+          -5.0,
+          39.0,
+          51.8
+        ]
+      ],
+      "faces": 18,
+      "step_sha256": "b39ff81beb8fbf4223b009b1f1c0c323d0583831340c091d081742a00a3324a4",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P09.brep",
+      "stock_mm": null
+    },
+    "P10": {
+      "volume_mm3": 3838.099133547012,
+      "center_mm": [
+        58.18109213508802,
+        2.9620610037904717e-16,
+        -33.0
+      ],
+      "bounds_mm": [
+        [
+          55.0,
+          -29.0,
+          -39.0
+        ],
+        [
+          62.0,
+          29.0,
+          -27.0
+        ]
+      ],
+      "faces": 13,
+      "step_sha256": "986344c23982a817c7ddb0ba1d5fab3a92fed0befc4b13faa7e9020051a5c234",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P10.brep",
+      "stock_mm": null
+    },
+    "P11": {
+      "volume_mm3": 1632.3715428052567,
+      "center_mm": [
+        -103.00950000000002,
+        -127.04379999999996,
+        5.000000000000002
+      ],
+      "bounds_mm": [
+        [
+          -120.0095,
+          -144.0438,
+          4.0
+        ],
+        [
+          -86.0095,
+          -110.0438,
+          6.0
+        ]
+      ],
+      "faces": 8,
+      "step_sha256": "a426a07804b8c04a21cc4e2ad69762a6fedd32dc86b59de1eb942634a7b2c9dc",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P11.brep",
+      "stock_mm": null
+    },
+    "P12": {
+      "volume_mm3": 1632.3715428052567,
+      "center_mm": [
+        103.00950000000002,
+        -127.04379999999996,
+        5.000000000000002
+      ],
+      "bounds_mm": [
+        [
+          86.0095,
+          -144.0438,
+          4.0
+        ],
+        [
+          120.0095,
+          -110.0438,
+          6.0
+        ]
+      ],
+      "faces": 8,
+      "step_sha256": "a58800ee20789b7e5e5bb3f028697598ef0394ee801bd47d6b938b43ed836ab2",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P12.brep",
+      "stock_mm": null
+    },
+    "P13": {
+      "volume_mm3": 1632.3715428052567,
+      "center_mm": [
+        103.0095,
+        127.04379999999995,
+        4.999999999999999
+      ],
+      "bounds_mm": [
+        [
+          86.0095,
+          110.0438,
+          4.0
+        ],
+        [
+          120.0095,
+          144.0438,
+          6.0
+        ]
+      ],
+      "faces": 8,
+      "step_sha256": "568da0e5f05408eeb43da2944ac58cfb1983419cb731a0460f3a47c18038ded2",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P13.brep",
+      "stock_mm": null
+    },
+    "P14": {
+      "volume_mm3": 1632.3715428052567,
+      "center_mm": [
+        -103.00950000000002,
+        127.04379999999996,
+        5.000000000000002
+      ],
+      "bounds_mm": [
+        [
+          -120.0095,
+          110.0438,
+          4.0
+        ],
+        [
+          -86.0095,
+          144.0438,
+          6.0
+        ]
+      ],
+      "faces": 8,
+      "step_sha256": "9a61eaf283b0aa4ffd09b594c9de34043f2914150b9f05823ef096978aa53027",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P14.brep",
+      "stock_mm": null
+    },
+    "P15": {
+      "volume_mm3": 2123.6831889245013,
+      "center_mm": [
+        -72.0,
+        -25.0,
+        -19.200734932057795
+      ],
+      "bounds_mm": [
+        [
+          -78.0,
+          -29.0,
+          -39.0
+        ],
+        [
+          -66.0,
+          -21.0,
+          0.0
+        ]
+      ],
+      "faces": 18,
+      "step_sha256": "0edf85a5723f92a6684109f37443cfcccc656cb0df31188323104d0e00b2449c",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P15.brep",
+      "stock_mm": null
+    },
+    "P16": {
+      "volume_mm3": 2123.6831889245013,
+      "center_mm": [
+        -72.0,
+        25.0,
+        -19.200734932057795
+      ],
+      "bounds_mm": [
+        [
+          -78.0,
+          21.0,
+          -39.0
+        ],
+        [
+          -66.0,
+          29.0,
+          0.0
+        ]
+      ],
+      "faces": 18,
+      "step_sha256": "ede3436064d9de131a4eb2c45a07ea10725dd3058ff7e026dbe0bf59467d6686",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P16.brep",
+      "stock_mm": null
+    },
+    "P17": {
+      "volume_mm3": 2276.7623916933762,
+      "center_mm": [
+        42.44959628666935,
+        -25.0,
+        -20.423119188084264
+      ],
+      "bounds_mm": [
+        [
+          36.0,
+          -29.0,
+          -39.0
+        ],
+        [
+          54.0,
+          -21.0,
+          0.0
+        ]
+      ],
+      "faces": 17,
+      "step_sha256": "3f441dbec4cfe14c5f8d5e9f50239acd78c27cb44dcb2e379529fd77c09cb4c7",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P17.brep",
+      "stock_mm": null
+    },
+    "P18": {
+      "volume_mm3": 2276.7623916933762,
+      "center_mm": [
+        42.44959628666935,
+        25.0,
+        -20.423119188084264
+      ],
+      "bounds_mm": [
+        [
+          36.0,
+          21.0,
+          -39.0
+        ],
+        [
+          54.0,
+          29.0,
+          0.0
+        ]
+      ],
+      "faces": 17,
+      "step_sha256": "32996f94465c4d5956b62fed1440a6bd8301744bb0e364b1c035d98cec09539d",
+      "density_g_mm3": 0.00124,
+      "material": "PLA",
+      "file": "parts/P18.brep",
+      "stock_mm": null
+    }
+  },
+  "purchased": {
+    "MTR-29": {
+      "volume_mm3": 11952.974648745763,
+      "center_mm": [
+        -9.641954001164183e-16,
+        -5.040922930325047e-16,
+        9.265819041986989
+      ],
+      "bounds_mm": [
+        [
+          -14.5,
+          -14.5,
+          0.0
+        ],
+        [
+          14.5,
+          14.5,
+          27.0
+        ]
+      ],
+      "faces": 13,
+      "step_sha256": "5d387e4c3197d35f0161faa074b184863525e2dc0ef798a960d8102849931a2b",
+      "mass_g": 31.0,
+      "notes": "four M3 blind holes, 16 x 16 mm; shaft +z; rotor disc at z=26 mm, radius 65 mm",
+      "file": "purchased/MTR-29.brep"
+    },
+    "LDR-60": {
+      "volume_mm3": 168866.62833058846,
+      "center_mm": [
+        -0.03297276705909982,
+        -2.8027593194034937e-16,
+        23.526108208005496
+      ],
+      "bounds_mm": [
+        [
+          -30.0,
+          -30.0,
+          0.0
+        ],
+        [
+          30.0,
+          30.0,
+          47.0
+        ]
+      ],
+      "faces": 19,
+      "step_sha256": "898076587659a49a7382ad09ecb39d41a32241b993809168d222cd4ad7891124",
+      "mass_g": 265.0,
+      "notes": "four M3 blind holes, 46 x 46 mm; sensing origin (0,0,30), forward +x; forward identified by connector recess",
+      "file": "purchased/LDR-60.brep"
+    },
+    "CAM-38": {
+      "volume_mm3": 23529.247628885925,
+      "center_mm": [
+        8.598190642698404,
+        4.621097915140092e-17,
+        -9.735924480977671e-16
+      ],
+      "bounds_mm": [
+        [
+          0.0,
+          -19.0,
+          -19.0
+        ],
+        [
+          25.0,
+          19.0,
+          19.0
+        ]
+      ],
+      "faces": 16,
+      "step_sha256": "ad094672f5660bb24867b748794cc1ea5ca75fa99de402b1f7c23c813da27411",
+      "mass_g": 25.0,
+      "notes": "mount plane x=0, optical axis +x, lens centre (25,0,0); M3 blind holes at y=\u00b115, z=\u00b112 mm",
+      "file": "purchased/CAM-38.brep"
+    },
+    "CPU-70": {
+      "volume_mm3": 67200.0,
+      "center_mm": [
+        -8.733754460384564e-16,
+        4.872293045212116e-16,
+        7.5
+      ],
+      "bounds_mm": [
+        [
+          -35.0,
+          -32.0,
+          0.0
+        ],
+        [
+          35.0,
+          32.0,
+          15.0
+        ]
+      ],
+      "faces": 6,
+      "step_sha256": "a059340910f59368637eb9863aa81de0c2454b348f57dc86764383e6eaa2c8b3",
+      "mass_g": 115.0,
+      "notes": "mount plane z=0; connector access on -x side",
+      "file": "purchased/CPU-70.brep"
+    },
+    "BAT-130": {
+      "volume_mm3": 185640.0,
+      "center_mm": [
+        -2.4132578910619647e-16,
+        -2.5721004009415392e-17,
+        17.0
+      ],
+      "bounds_mm": [
+        [
+          -65.0,
+          -21.0,
+          0.0
+        ],
+        [
+          65.0,
+          21.0,
+          34.0
+        ]
+      ],
+      "faces": 6,
+      "step_sha256": "4a40a77dee695e430b01eb0665f2d9bd5c056c525577e80570b9e2325faa92c5",
+      "mass_g": 620.0,
+      "notes": "mount plane z=0; retain using the photographed tray and straps",
+      "file": "purchased/BAT-130.brep"
+    },
+    "POST-D": {
+      "volume_mm3": 1393.359173720145,
+      "center_mm": [
+        -6.476357937243332e-16,
+        1.568628364990146e-16,
+        16.499999999999996
+      ],
+      "bounds_mm": [
+        [
+          -4.0,
+          -4.0,
+          0.0
+        ],
+        [
+          4.0,
+          4.0,
+          33.0
+        ]
+      ],
+      "faces": 4,
+      "step_sha256": "7efbb688872c66836b0ab0e25598d5a0a105fa55f1d44e6b4607dc0ae9e41f45",
+      "mass_g": 3.2,
+      "notes": "M3 spacer; mounting faces at z=0 and full height",
+      "file": "purchased/POST-D.brep"
+    }
+  },
+  "placements": [
+    {
+      "id": "M1",
+      "model": "MTR-29",
+      "xyz_mm": [
+        -103.0095,
+        -127.0438,
+        6
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "M2",
+      "model": "MTR-29",
+      "xyz_mm": [
+        103.0095,
+        -127.0438,
+        6
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "M3",
+      "model": "MTR-29",
+      "xyz_mm": [
+        103.0095,
+        127.0438,
+        6
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "M4",
+      "model": "MTR-29",
+      "xyz_mm": [
+        -103.0095,
+        127.0438,
+        6
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "L1",
+      "model": "LDR-60",
+      "xyz_mm": [
+        -45,
+        0,
+        82.3
+      ]
+    },
+    {
+      "id": "C1",
+      "model": "CAM-38",
+      "xyz_mm": [
+        73,
+        0,
+        28
+      ]
+    },
+    {
+      "id": "U1",
+      "model": "CPU-70",
+      "xyz_mm": [
+        -46,
+        0,
+        42.8
+      ]
+    },
+    {
+      "id": "B1",
+      "model": "BAT-130",
+      "xyz_mm": [
+        -15,
+        0,
+        -39
+      ]
+    },
+    {
+      "id": "S1",
+      "model": "POST-D",
+      "xyz_mm": [
+        -98.8475,
+        -48.49,
+        39.8
+      ]
+    },
+    {
+      "id": "S2",
+      "model": "POST-D",
+      "xyz_mm": [
+        -98.8475,
+        48.49,
+        39.8
+      ]
+    },
+    {
+      "id": "S3",
+      "model": "POST-D",
+      "xyz_mm": [
+        15.6075,
+        -48.49,
+        39.8
+      ]
+    },
+    {
+      "id": "S4",
+      "model": "POST-D",
+      "xyz_mm": [
+        15.6075,
+        48.49,
+        39.8
+      ]
+    }
+  ],
+  "features": [
+    {
+      "part": "P01",
+      "kind": "mount_hole",
+      "center_mm": [
+        -40.579499999999996,
+        -41.7014,
+        2
+      ],
+      "size_mm": [
+        12,
+        12,
+        8
+      ]
+    },
+    {
+      "part": "P01",
+      "kind": "mount_hole",
+      "center_mm": [
+        -40.579499999999996,
+        41.7014,
+        2
+      ],
+      "size_mm": [
+        12,
+        12,
+        8
+      ]
+    },
+    {
+      "part": "P01",
+      "kind": "mount_hole",
+      "center_mm": [
+        40.579499999999996,
+        -41.7014,
+        2
+      ],
+      "size_mm": [
+        12,
+        12,
+        8
+      ]
+    },
+    {
+      "part": "P01",
+      "kind": "mount_hole",
+      "center_mm": [
+        40.579499999999996,
+        41.7014,
+        2
+      ],
+      "size_mm": [
+        12,
+        12,
+        8
+      ]
+    },
+    {
+      "part": "P02",
+      "kind": "mount_hole",
+      "center_mm": [
+        -40.579499999999996,
+        -41.7014,
+        38.55
+      ],
+      "size_mm": [
+        12,
+        12,
+        8
+      ]
+    },
+    {
+      "part": "P02",
+      "kind": "mount_hole",
+      "center_mm": [
+        -40.579499999999996,
+        41.7014,
+        38.55
+      ],
+      "size_mm": [
+        12,
+        12,
+        8
+      ]
+    },
+    {
+      "part": "P02",
+      "kind": "mount_hole",
+      "center_mm": [
+        40.579499999999996,
+        -41.7014,
+        38.55
+      ],
+      "size_mm": [
+        12,
+        12,
+        8
+      ]
+    },
+    {
+      "part": "P02",
+      "kind": "mount_hole",
+      "center_mm": [
+        40.579499999999996,
+        41.7014,
+        38.55
+      ],
+      "size_mm": [
+        12,
+        12,
+        8
+      ]
+    },
+    {
+      "part": "P11",
+      "kind": "motor_bores",
+      "center_mm": [
+        -103.0095,
+        -127.0438,
+        5
+      ],
+      "size_mm": [
+        30,
+        30,
+        4
+      ]
+    },
+    {
+      "part": "P12",
+      "kind": "motor_bores",
+      "center_mm": [
+        103.0095,
+        -127.0438,
+        5
+      ],
+      "size_mm": [
+        30,
+        30,
+        4
+      ]
+    },
+    {
+      "part": "P13",
+      "kind": "motor_bores",
+      "center_mm": [
+        103.0095,
+        127.0438,
+        5
+      ],
+      "size_mm": [
+        30,
+        30,
+        4
+      ]
+    },
+    {
+      "part": "P14",
+      "kind": "motor_bores",
+      "center_mm": [
+        -103.0095,
+        127.0438,
+        5
+      ],
+      "size_mm": [
+        30,
+        30,
+        4
+      ]
+    },
+    {
+      "part": "P03",
+      "kind": "slots_pockets_or_mounts",
+      "center_mm": [
+        -41.178671924999996,
+        0.0,
+        74.05000000000001
+      ],
+      "size_mm": [
+        128.65559085,
+        110.35168084,
+        4.500000000000014
+      ]
+    },
+    {
+      "part": "P04",
+      "kind": "slots_pockets_or_mounts",
+      "center_mm": [
+        -10.5,
+        0.0,
+        -36.5
+      ],
+      "size_mm": [
+        147.0,
+        60.0,
+        13.0
+      ]
+    },
+    {
+      "part": "P05",
+      "kind": "slots_pockets_or_mounts",
+      "center_mm": [
+        51.5,
+        0.0,
+        25.5
+      ],
+      "size_mm": [
+        45.0,
+        50.0,
+        37.0
+      ]
+    },
+    {
+      "part": "P06",
+      "kind": "slots_pockets_or_mounts",
+      "center_mm": [
+        -45.0,
+        0.0,
+        78.80000000000001
+      ],
+      "size_mm": [
+        74.0,
+        74.0,
+        9.000000000000014
+      ]
+    },
+    {
+      "part": "P07",
+      "kind": "slots_pockets_or_mounts",
+      "center_mm": [
+        -40.579499999999996,
+        0.0,
+        20.650000000000006
+      ],
+      "size_mm": [
+        18.0,
+        96.4028,
+        35.30000000000001
+      ]
+    },
+    {
+      "part": "P08",
+      "kind": "slots_pockets_or_mounts",
+      "center_mm": [
+        40.579499999999996,
+        0.0,
+        20.650000000000006
+      ],
+      "size_mm": [
+        18.0,
+        96.4028,
+        35.30000000000001
+      ]
+    },
+    {
+      "part": "P09",
+      "kind": "slots_pockets_or_mounts",
+      "center_mm": [
+        -46.0,
+        0.0,
+        45.8
+      ],
+      "size_mm": [
+        84.0,
+        80.0,
+        14.0
+      ]
+    },
+    {
+      "part": "P10",
+      "kind": "slots_pockets_or_mounts",
+      "center_mm": [
+        58.5,
+        0.0,
+        -33.0
+      ],
+      "size_mm": [
+        9.0,
+        60.0,
+        14.0
+      ]
+    },
+    {
+      "part": "P15",
+      "kind": "slots_pockets_or_mounts",
+      "center_mm": [
+        -72.0,
+        -25.0,
+        -19.5
+      ],
+      "size_mm": [
+        14.0,
+        10.0,
+        41.0
+      ]
+    },
+    {
+      "part": "P16",
+      "kind": "slots_pockets_or_mounts",
+      "center_mm": [
+        -72.0,
+        25.0,
+        -19.5
+      ],
+      "size_mm": [
+        14.0,
+        10.0,
+        41.0
+      ]
+    },
+    {
+      "part": "P17",
+      "kind": "slots_pockets_or_mounts",
+      "center_mm": [
+        45.0,
+        -25.0,
+        -19.5
+      ],
+      "size_mm": [
+        20.0,
+        10.0,
+        41.0
+      ]
+    },
+    {
+      "part": "P18",
+      "kind": "slots_pockets_or_mounts",
+      "center_mm": [
+        45.0,
+        25.0,
+        -19.5
+      ],
+      "size_mm": [
+        20.0,
+        10.0,
+        41.0
+      ]
+    }
+  ],
+  "propeller": {
+    "radius_mm": 65.0,
+    "height_from_motor_origin_mm": 26.0,
+    "half_thickness_mm": 2.0
+  },
+  "upstream_commit": "147a736b9fea7ac0e8d08c9a5fb0b90e5baa224a",
+  "hidden_draw_sha256": "9464be26c8b1c3eacba678215540e6a21005aafb5a4287dc0d06209508023b79"
+}
