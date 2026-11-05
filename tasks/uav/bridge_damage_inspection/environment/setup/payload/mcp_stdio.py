@@ -4,14 +4,14 @@ import sys
 from client import Client
 
 TOOLS = [
-    {"name": "robot_observe", "description": "Observe two RGB cameras and remaining budgets.",
+    {"name": "robot_observe", "description": "Observe the onboard RGB camera and remaining budgets.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
     {"name": "robot_act", "description": "Apply one bounded action. It consumes simulation budget.",
      "inputSchema": {"type": "object", "properties": {"action": {"type": "array", "items": {"type": "number"}}},
                      "required": ["action"], "additionalProperties": False}},
-    {"name": "robot_advance", "description": "Advance to the next permitted task phase, without restoring budgets.",
+    {"name": "robot_advance", "description": "Finalize the inspection after submitting all evidence. This is irreversible.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "robot_report", "description": "Report a target using an observed frame ID and world XY.",
+    {"name": "robot_report", "description": "Record one suspected damaged slab using an earlier frame ID and world XY. No correctness feedback.",
      "inputSchema": {"type": "object", "properties": {"frame_id": {"type": "integer"},
                      "point": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}},
                      "required": ["frame_id", "point"], "additionalProperties": False}},

@@ -1,70 +1,66 @@
-# UAV Bridge Inspection
+# Long-Bridge UAV Inspection
 
-**Draft task candidate.** Use a UAV's local RGB view to find a missing bridge-deck section and submit its position with an authentic observed frame ID.
+**Inspect a 72-120 m bridge through a local onboard camera, retain an inspection
+record, and submit three correctly localized, image-supported defects.**
 
-![Actual CPU simulator capture](preview.jpg)
+![Actual simulator, reviewer overview](preview.png)
 
-The large image is a reviewer camera. The inset and [agent-view.png](agent-view.png)
-show the actual restricted observation. Both use the same PBR scene, not a marketing mockup.
+[Bridge detail](bridge-detail.png) · [Onboard damage image](agent-view.png) ·
+[Intact repair patch](repair-view.png). Overviews are reviewer-only; the agent sees
+one moving 384x384 perspective camera. All pictures are actual MuJoCo renders.
 
-## Visual refresh
+## What changed
+The old 6 m, one-gap, globally calibrated masked camera is replaced by a long
+two-sided bridge with repeated bays, trusses, piers, railings and normal repair
+patches. Three randomized layouts cover concrete viaducts, steel through-trusses
+and maintenance structures. Length is 72, 96 or 120 m; defects vary within episodes'
+early, middle and far portions. No current pose or global camera is exposed.
 
-MuJoCo 3.16 Filament runs on CPU Vulkan (lavapipe), with no GPU fallback.
-The scenes include CC0 industrial scans, correctly scaled surface UVs, normal/roughness
-maps, fixed-exposure lighting, and spatial supersampling. Temporal post-processing is
-disabled so an unchanged scene produces identical camera pixels. Tracking stickers
-remain visible; no semantic overlays or privileged state are added to observations.
+The motivation is **active inspection plus long-horizon coverage and evidence
+memory**. The agent must retain frame/location associations across the route.
+Reports give no correctness feedback before finalization. Detection F1 gives
+partial credit and counts duplicate/unsubstantiated reports as false positives.
+External notes and scripts are allowed: this does not isolate neural context
+memory from mapping, programming or perception.
 
-Original action semantics, calibrated cameras, collision proxies, scoring and budgets
-are retained. Detailed scenery has zero mass and contact response. This is a visual
-upgrade of a lightweight simulation, not a claim of hardware-accurate dynamics.
+UAV Search and Rescue remains a separate task (#39). Its intended challenge is
+occlusion-driven spatial reasoning and active viewpoint selection, not this
+bridge's long inspection inventory. The existing rescue pilot still needs a
+stronger occlusion design before that claim is established.
 
-## Randomization
+## Validation, 2026-11-04
+- Six development scenes, all three layouts and lengths: **6/6 reference successes**.
+- Reference effort: 119-221 actions; all three defect reports correct, no false reports.
+- Ten evidence/budget/anti-forgery regressions passed.
+- Pinned ALE `1cdbc02a1f3390e704747b33946304911f3105ad`: calibration measured
+  F1=1.0; an independent confirmation passed **untouched 0 / oracle 1**.
+- Astra evaluation is pending on this revision. Reference success is not a
+  frontier-model difficulty measurement. These seeds are development checks.
 
-Damage position, gap width, bridge lateral offset and deck width; lighting and surrounding details. The defect remains physically visible and reachable within the inspection footprint.
+[Validation evidence](validation-evidence.json) · [Successful example](success-example.json) ·
+[Actual interaction](success-interaction.json).
 
-The private seed persists throughout an episode. Reconnecting does not resample the
-scene or restore budgets. Six-seed determinism/variation/phase checks passed.
-
-## Validation
-
-- Image-only scripted reference: **3/3** private randomized validation scenes.
-- Development demonstration: seed 101, 14 actions, 0 contacts.
-- Real ALE gate: **untouched 0.0 / oracle 1.0**, after measuring the new anchor.
-- Anchor `success_rate`: 1.000000000, from 1 actual oracle runs.
-- CPU only; no Astra/frontier-model calls. Pinned engine `90a7c1cfa649c5dbf1078714773f99840e44cba3`.
-- Shared-service security probe: 14 permission/forgery checks, forged success scored zero.
-
-The numbers above are feasibility checks, not model difficulty measurements
-or a sealed benchmark test set.
-
-[Raw evidence](validation-evidence.json) · [Success example](success-example.json) ·
-[Interaction log](success-interaction.json)
+The successful reference uses RGB to detect apertures and retains all findings.
+It has **privileged, exact actuator calibration** for navigation, but no defect
+list or seed. It is a feasibility upper bound, not a matched agent baseline.
 
 ## Reproduce
-
-From `vendor/ale`:
+From the pinned `vendor/ale` (see the repository contribution setup):
 
 ```bash
-uv run ale lint ../../tasks/uav/bridge_damage_inspection
-uv run ale validate ../../tasks/uav/bridge_damage_inspection
+VIRTUAL_ENV= uv run ale lint ../../tasks/uav/bridge_damage_inspection
+VIRTUAL_ENV= DOCKER_HOST=unix:///var/run/docker.sock uv run ale validate ../../tasks/uav/bridge_damage_inspection --runs-dir /tmp/long-bridge-gate
 ```
 
-Inside the task image, `tests/review/check_randomization.py` checks six scenes and
-`tests/review/review_task.py --out /tmp/review --seeds 101 102 103` captures reviewer evidence.
+Inside the task image with the task mounted, use `/opt/venv/bin/python3`:
+`tests/review/test_long_bridge.py -v`,
+`tests/review/check_randomization.py`, or
+`tests/review/review_task.py --out /tmp/bridge-review --seeds 101 102 103 104 105 106`.
 
-## Limits
-
-Altitude-stabilized planar UAV motion and a missing deck segment, not subtle crack recognition or full flight control. The local view is calibrated orthographic imaging, not a perspective onboard camera. This first variant may be too easy for a frontier model.
-
-Keep this PR in **Draft**. Independent review, task registration and frontier-model
-difficulty evaluation remain pending. Scanned props do not make a task difficult by
-themselves. Earlier failures and pilot images are retained in the author's local logs.
-
-## Assets
-
-Powered by Poly Haven: CC0 scanned utility cabinet, generator, concrete barrier and
-surface textures. Menagerie Crazyflie/Go1 visual meshes retain their original licenses.
-The lighting probe ships with the Apache-2.0 MuJoCo package. Pinned URLs, SHA256 hashes
-and notices are in `environment/visual_assets.json` and `environment/LICENSE.*`. No commercial
-warehouse pack, private laboratory scene or generated marketing image is included.
+## Scope and assets
+Stabilized planar flight, visible slab openings, and simulation only. Not subtle
+fatigue diagnosis, articulated drone flight or a hardware-validated digital twin.
+Scene geometry is authored here. Poly Haven CC0 textures/scans, licensed Menagerie
+Crazyflie geometry, and MuJoCo's lighting probe retain the pinned URLs, hashes and
+notices in `environment/visual_assets.json` and `environment/LICENSE.*`.
+No private lab scene or generated promotional image is used.

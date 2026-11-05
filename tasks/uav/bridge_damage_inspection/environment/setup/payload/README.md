@@ -1,10 +1,6 @@
-# Robot service
+# Inspection client
 
-Use the declared MCP tools for direct image interaction.
-For tasks allowing programs, import `Client` from `client.py` and call
-`observe()`, `act(action)`, `advance()`, or `report(frame_id, point)`.
-Run code with `/opt/venv/bin/python3`; do not rely on the harness's PATH.
-The endpoint is `/run/visual_robotics/world.sock`.
-The first two methods return base64 PNG images and remaining budgets.
-There is no reset, state inspection, file-read or code-execution operation.
-Keep deliverables only under `/home/user/submission`.
+Use `Client.observe()`, `Client.act([vx,vy])`, `Client.report(frame_id,[x,y])`,
+then `Client.advance()` to finalize. One onboard RGB camera is returned.
+No reset, state query or correctness-feedback endpoint is provided.
+See the task instruction for construction dimensions, budgets and evidence rules.

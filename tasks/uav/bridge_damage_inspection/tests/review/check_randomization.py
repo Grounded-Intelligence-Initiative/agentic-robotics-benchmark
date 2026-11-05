@@ -1,53 +1,46 @@
-"""Reviewer-only determinism, persistence and random-scene checks; no model API."""
+"""Determinism, scene coverage and aperture visibility, without a model API."""
+import hashlib
 import json
 from pathlib import Path
 import sys
 
 TASK = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(TASK/"tests"))
-import numpy as np
-from world import World
+sys.path.insert(0, str(TASK/"environment/setup/runtime"))
+import mujoco
+from long_bridge import BridgeWorld
 
 
-def signature(w):
-    return json.dumps({
-        "mapping": w.mapping, "gain": w.gain, "walls": w.walls,
-        "block": w.block.tolist(), "tray": w.tray.tolist(), "gains": w.arm_gains.tolist(),
-        "target": w.target.tolist(), "gap": w.bridge_half_gap,
-        "width": w.bridge_half_width, "buildings": w.buildings,
-        "starts": [p.tolist() for p in w.nav_starts], "radius": w.large_radius,
-    }, sort_keys=True)
+def signature(world):
+    return (world.scenario, world.spans, tuple(world.defects), tuple(world.repairs))
 
 
 def main():
-    kind = json.loads((TASK/"tests/grader_config.json").read_text())["kind"]
-    signatures = []
-    for seed in (101, 102, 103, 104, 105, 106):
-        w, same = World(kind, seed), World(kind, seed, render=False)
+    signatures, scenarios, lengths = set(), set(), set()
+    for seed in range(101, 107):
+        w, same = BridgeWorld(seed), BridgeWorld(seed, render=False)
         try:
-            assert signature(w) == signature(same), "same seed changed the task"
-            signatures.append(signature(w))
-            if kind in ("icl", "cross"):
-                walls, mapping = list(w.walls), list(w.mapping)
-                w.steps = 12
-                w.completed.add(0)
-                w.advance()
-                assert w.walls == walls, "map changed across the phase transition"
-                assert w.steps == 12, "phase switch restored action budget"
-                if kind == "icl":
-                    assert w.mapping == mapping, "ICL mapping changed mid-conversation"
-                else:
-                    assert .26 <= w.radius <= .32
-            if kind == "rescue":
-                assert all(abs(w.target[0]-x) > sx+.95 or abs(w.target[1]-y) > sy+.95
-                           for x, y, sx, sy, _ in w.buildings)
-            assert all(np.isfinite(w.data.qpos)), "invalid initial configuration"
+            assert signature(w) == signature(same)
+            before = w.images()[0].tobytes()
+            assert before == w.images()[0].tobytes(), "unchanged observation is nondeterministic"
+            signatures.add(signature(w))
+            scenarios.add(w.scenario)
+            lengths.add(w.length)
+            assert not w._visible_defects(), "initial image exposes an answer"
+            for defect in w.defects:
+                w.data.qpos[:2] = w.component_point(*defect)
+                mujoco.mj_forward(w.model, w.data)
+                assert defect in w._visible_defects(), "uninspectable sampled damage"
+            w.act([0, 0])
+            steps = w.steps
+            w.advance()
+            assert w.steps == steps and w.done
         finally:
             w.close()
             same.close()
-    assert len(set(signatures)) == len(signatures), "different seeds gave identical scenes"
-    print(json.dumps({"kind": kind, "seeds": 6, "determinism": "pass", "variation": "pass",
-                      "phase_persistence": "pass" if kind in ("icl", "cross") else "not_applicable"}))
+    assert len(signatures) == 6 and len(scenarios) == 3 and lengths == {72, 96, 120}
+    print(json.dumps({"seeds": 6, "determinism": "pass", "repeat_image": "pass",
+                      "distinct_scenes": 6, "scenario_types": 3, "reachable_defects": 18,
+                      "lengths_m": sorted(lengths), "finalization_budget": "pass"}))
 
 
 if __name__ == "__main__":

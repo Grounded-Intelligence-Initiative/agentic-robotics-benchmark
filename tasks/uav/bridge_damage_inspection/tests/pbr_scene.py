@@ -46,7 +46,7 @@ def prop(root, assets, name, instance, pos, size=None, yaw=0):
         add(body, meshname, (0, 0, 0), (), material, type="mesh", mesh=meshname)
 
 
-def upgrade(root, kind, assets, rng):
+def surface_materials(root, assets):
     asset, world = root.find("asset"), root.find("worldbody")
     # Explicit colour spaces and maps prevent linear-space photo textures from
     # washing out; roughness/normal maps are data, never sRGB colour images.
@@ -87,6 +87,11 @@ def upgrade(root, kind, assets, rng):
         material = asset.find(f"material[@name='{name}']")
         material.set("roughness", str(rough))
         material.set("metallic", str(metal))
+
+
+def upgrade(root, kind, assets, rng):
+    surface_materials(root, assets)
+    asset, world = root.find("asset"), root.find("worldbody")
     # One coherent building, not two nested walls and floating oversized beams.
     for item in list(world):
         if item.tag == "light" or item.get("name", "").startswith(("hall_", "site_", "back_window")):

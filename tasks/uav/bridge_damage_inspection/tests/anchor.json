@@ -1,13 +1,9 @@
 {
-  "metric": "success_rate",
+  "metric": "inspection_f1",
   "direction": "higher",
   "value": 1.0,
   "full_at": 1.0,
-  "source": "Measured local ALE oracle success_rate; 1 run(s), range [1.000000000, 1.000000000]. The saturation band is the measured lower ratio, rounded down to 0.01.",
-  "measurements": [
-    1.0
-  ],
-  "evidence_episode_ids": [
-    "bridge_damage_inspection-oracle-9584a3b5"
-  ]
+  "source": "Measured inspection_f1=1.0 in the long-bridge calibration on pinned ALE 1cdbc02a, 2026-11-04. All three image-supported reports correct, 191 actions, 120m concrete viaduct. No saturation relaxation.",
+  "measurements": [1.0],
+  "evidence_episode_ids": ["grounded-intelligence-initiative.bridge_damage_inspection-oracle-79b38b46"]
 }

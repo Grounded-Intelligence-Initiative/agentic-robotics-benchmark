@@ -37,6 +37,12 @@ def png(image):
 
 
 class World:
+    def __new__(cls, kind, seed, render=True):
+        if kind == "bridge":
+            from long_bridge import BridgeWorld
+            return BridgeWorld(seed, render=render)
+        return super().__new__(cls)
+
     def __init__(self, kind, seed, render=True):
         if kind not in KINDS:
             raise ValueError("unknown task")

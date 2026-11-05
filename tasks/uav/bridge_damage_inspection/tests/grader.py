@@ -320,9 +320,9 @@ def main():
                 write_verdict(zero_verdict("direct-tool audit failed",
                                           anchored=anchor is not None, extra=extra))
                 return
-        measured = metrics["success"]
+        measured = metrics["inspection_quality"] if kind == "bridge" else metrics["success"]
         extra.update(metrics)
-        extra["simulation_seconds"] = metrics["steps"] * .2
+        extra["simulation_seconds"] = metrics["steps"] * (.5 if kind == "bridge" else .2)
     write_verdict(ratio_rewards(
         measured, anchor, metric_name=calibration["metric"], extra=extra, locks_ok=locks_ok,
         full_at=calibration["full_at"],

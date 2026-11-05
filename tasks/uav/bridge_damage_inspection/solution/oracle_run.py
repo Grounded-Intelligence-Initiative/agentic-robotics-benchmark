@@ -6,7 +6,7 @@ import shutil
 import sys
 
 from client import Client
-from policy import solve
+from bridge_policy import solve
 
 
 class RecordedClient(Client):
