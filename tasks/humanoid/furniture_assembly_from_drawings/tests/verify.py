@@ -3,13 +3,18 @@ camera-only): runs as ROOT in the verify stage.
 
 The agent left /home/user/submission/assemble.py (solve(cell): a camera-only program that drives the cell's two G1
 humanoids through the furniture cell's JSON-lines API to build the bookcase where the drawings' floor plan puts it).
+Verification is separate (task.toml): this runs in a fresh verifier sandbox from the task image, into which the engine
+restored only the submission (root-owned); nothing else of the agent's sandbox is here, the practice lab included.
 This grader:
   0. FIRST, stdlib only (`_early_lockdown`; tests/test.sh closed the stage folder already): records the upload time,
      freezes and kills every process of the agent account and of the practice lab's account (`lab_account`) and keeps
      both stopped until the verdict is written (cellkit.verify_freeze), locks the stage, snapshots the submission
-     root-owned, gates late writes, quarantines late entries elsewhere;
-  1. checks the root-owned copy of the givens at /opt/arb against given_hashes.json (the cell client library the program
-     runs with comes from it; a mismatch is a task error); `no_collateral` is a stat;
+     root-owned, gates late writes, quarantines late entries elsewhere (written for a verify in the agent's own
+     sandbox; in the separate verifier nothing of the agent and no lab process is left, and they stop the image's own
+     desktop session of the agent account, started with the sandbox, and set aside the files that session writes);
+  1. checks the root-owned copy of the givens at /opt/arb against given_hashes.json (tests/test.sh builds it from
+     tests/setup_payload/ and the image's robot model; the cell client library the program runs with comes from it; a
+     mismatch is a task error);
   2. gates: contract_ok = assemble.py is a regular file that parses and defines solve, the route gate (no weight files,
      no training calls, size cap), the network audit (static: no networking import, no computed import; runtime: no
      outbound network activity while the program runs), the module imports under the run regime, >= 1 step call, no
@@ -35,7 +40,8 @@ This grader:
 Untouched sandbox: no assemble.py -> contract_ok 0 -> 0.
 Oracle: the token + reference_assemble (the privileged reference assembler inside the cell, nominal layout) -> 1.
 Records: out/episodes.json (every episode's record) and logs/<tag>.log (the program's stderr) under the root-only
-/opt/arb-verify (outside /opt/ale, which the engine clears before it keeps a sandbox).
+/opt/arb-verify (outside /opt/ale, which the engine clears before it keeps a sandbox; the record is in the verifier
+sandbox, which a run keeps with `[sandbox_retention] verifier = "keep"`).
 """
 
 import ast
@@ -179,7 +185,8 @@ from robotics_grader import seed_rng  # noqa: E402
 
 HIDDEN = os.path.join(STAGE_DIR, "hidden")
 # The maintainers' record (the program's stderr, episodes.json) lives outside /opt/ale: the engine deletes its stage
-# folders before it keeps a sandbox, and the record is read from a kept one. Root-only (0700).
+# folders before it keeps a sandbox, and the record is read from a kept one (the verifier sandbox: run with
+# `[sandbox_retention] verifier = "keep"`). Root-only (0700).
 RECORD_ROOT = os.environ.get("ARB_RECORD_ROOT", "/opt/arb-verify")
 LOGS = os.path.join(RECORD_ROOT, "logs")
 OUT = os.path.join(RECORD_ROOT, "out")
@@ -222,20 +229,11 @@ def load_json(p):
         return json.load(f)
 
 
-def no_collateral(expected):
-    """1 when the agent's own copies of the givens (~/given/...) are unchanged (a stat only)."""
-    for rel, digest in expected.items():
-        p = os.path.join(HOME, rel)
-        if not os.path.isfile(p) or sha256_file(p) != digest:
-            return 0.0
-    return 1.0
-
-
 def root_payload_ok(expected):
     problems = []
     owner = 0 if os.getuid() == 0 else os.getuid()
     if not os.path.isdir(ROOT_PAYLOAD):
-        return False, ["%s missing (environment/setup/setup.sh installs it)" % ROOT_PAYLOAD]
+        return False, ["%s missing (tests/test.sh builds it)" % ROOT_PAYLOAD]
     if not expected:
         return False, ["given_hashes.json lists no file"]
     for rel, digest in expected.items():
@@ -604,7 +602,6 @@ def _main_locked(cfg, rewards, metrics):
     metrics["root_payload_ok"] = 1.0 if ok_root else 0.0
     if not ok_root:
         fail("the root-owned copy of the givens at %s is unusable: %s" % (ROOT_PAYLOAD, "; ".join(problems[:5])))
-    metrics["no_collateral"] = no_collateral(expected)
     rn = Runner(cfg)
     if FREEZER[0] is not None and rn.acct and rn.uid == FREEZER[0].uid:
         FREEZER[0].stop()        # no `nobody` in the image: the runner fell back to the agent account, whose programs must run

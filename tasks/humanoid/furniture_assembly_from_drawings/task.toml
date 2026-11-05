@@ -31,16 +31,27 @@ tags = ["assembly", "furniture", "flat-pack", "assembly-drawings", "humanoid", "
 cpus = 8
 memory_mb = 16384
 
-# setup (no field: the engine bounds it at a fixed 1800 s): the givens, the grader's root-owned copy and the practice
-# lab (its server builds one cell as a self-test before it listens; well under a minute). [agent] timeout_sec: 4 h,
-# practice included. [verifier] timeout_sec: the import check, then 3 hidden episodes, each a cell build plus the
-# program within its 3000 s program-time cap, which does not count the cell's simulation (1500 s simulated at most) and
-# rendering (900 frames at most); at the bounds an episode takes about 4300 s of wall clock here and up to about 5800 s
-# on a machine that renders at 2.3 s per frame, hence 6 h for the three. The oracle's episodes run the reference
-# assembler inside one privileged call (about 5 min each).
+# setup (no field: the engine bounds it at a fixed 1800 s): the givens and the practice lab (its server builds one cell
+# as a self-test before it listens; well under a minute). [agent] timeout_sec: 4 h, practice included. [verifier]
+# timeout_sec: the import check, then 3 hidden episodes, each a cell build plus the program within its 3000 s
+# program-time cap, which does not count the cell's simulation (1500 s simulated at most) and rendering (900 frames at
+# most); at the bounds an episode takes about 4300 s of wall clock here and up to about 5800 s on a machine that renders
+# at 2.3 s per frame, hence 6 h for the three. The oracle's episodes run the reference assembler inside one privileged
+# call (about 5 min each). The verifier sandbox's start and tests/test.sh's copy of the givens count against it too.
 [agent]
 timeout_sec = 14400
 network_mode = "no-network"
 
+# Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
+# touched, with only the declared artifact (the submission) restored into it, so nothing else the agent left (a file,
+# a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there, so neither the
+# agent's givens nor the practice lab exist in it: tests/test.sh builds the grader's root-owned copy of the givens
+# itself. The agent's program runs during verify, so the verifier gets the agent's resources (CPU rendering: no GPU).
 [verifier]
 timeout_sec = 21600
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 8
+memory_mb = 16384
+gpus = 0
