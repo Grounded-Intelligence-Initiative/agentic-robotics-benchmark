@@ -1,0 +1,7 @@
+{
+  "metric": "requirements_score",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 1.0,
+  "source": "R10 public ALE validate-cc5767e0, pinned engine 90a7c1cfa649c5dbf1078714773f99840e44cba3, 2026-10-29 UTC: oracle d82bdaa6 requirements_score=1.0 (all five criteria full), untouched 43258490=0.0; both given_files_unchanged=1.0. HF revision b428115217e2d288b4e5c4f33b5e7fe50d7149aa. Only provenance wording changed after validation; scoring and normalization unchanged."
+}
