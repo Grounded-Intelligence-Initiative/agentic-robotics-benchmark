@@ -1,270 +1,4987 @@
 [
   {
     "method": "observe",
-    "params": {},
-    "observation": {
-      "frame_id": 1,
-      "steps_remaining": 160,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
+    "arguments": {},
+    "frame_id": 1,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 0,
+    "simulation_seconds": 0.0,
+    "reports": 0,
+    "coverage_fraction": 0.0,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
   },
   {
     "method": "act",
-    "params": {
-      "action": [
+    "arguments": [
+      [
         1.0,
-        0.009374999999998801
-      ]
-    },
-    "observation": {
-      "frame_id": 2,
-      "steps_remaining": 159,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
-  },
-  {
-    "method": "act",
-    "params": {
-      "action": [
-        1.0,
-        -0.016071428571429847
-      ]
-    },
-    "observation": {
-      "frame_id": 3,
-      "steps_remaining": 158,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
-  },
-  {
-    "method": "act",
-    "params": {
-      "action": [
-        1.0,
-        0.0023437499999998668
-      ]
-    },
-    "observation": {
-      "frame_id": 4,
-      "steps_remaining": 157,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
-  },
-  {
-    "method": "act",
-    "params": {
-      "action": [
-        1.0,
-        0.0023437499999998668
-      ]
-    },
-    "observation": {
-      "frame_id": 5,
-      "steps_remaining": 156,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
-  },
-  {
-    "method": "act",
-    "params": {
-      "action": [
-        1.0,
-        0.0023437499999998668
-      ]
-    },
-    "observation": {
-      "frame_id": 6,
-      "steps_remaining": 155,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
-  },
-  {
-    "method": "act",
-    "params": {
-      "action": [
-        1.0,
-        0.009374999999998801
-      ]
-    },
-    "observation": {
-      "frame_id": 7,
-      "steps_remaining": 154,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
-  },
-  {
-    "method": "act",
-    "params": {
-      "action": [
-        1.0,
-        -0.009375000000000133
-      ]
-    },
-    "observation": {
-      "frame_id": 8,
-      "steps_remaining": 153,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
-  },
-  {
-    "method": "act",
-    "params": {
-      "action": [
-        1.0,
-        0.009374999999998801
-      ]
-    },
-    "observation": {
-      "frame_id": 9,
-      "steps_remaining": 152,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
-  },
-  {
-    "method": "act",
-    "params": {
-      "action": [
-        1.0,
-        -0.009375000000000133
-      ]
-    },
-    "observation": {
-      "frame_id": 10,
-      "steps_remaining": 151,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
-  },
-  {
-    "method": "act",
-    "params": {
-      "action": [
-        0.36160714285714324,
         1.0
       ]
-    },
-    "observation": {
-      "frame_id": 11,
-      "steps_remaining": 150,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
+    ],
+    "frame_id": 2,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 1,
+    "simulation_seconds": 0.5,
+    "reports": 0,
+    "coverage_fraction": 0.0,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
   },
   {
     "method": "act",
-    "params": {
-      "action": [
-        0.125,
-        1.0
+    "arguments": [
+      [
+        1.0,
+        0.5665859374990959
       ]
-    },
-    "observation": {
-      "frame_id": 12,
-      "steps_remaining": 149,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
+    ],
+    "frame_id": 3,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 2,
+    "simulation_seconds": 1.0,
+    "reports": 0,
+    "coverage_fraction": 0.0,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
   },
   {
     "method": "act",
-    "params": {
-      "action": [
-        0.04910714285714324,
-        1.0
+    "arguments": [
+      [
+        1.0,
+        0.14741341363627786
       ]
-    },
-    "observation": {
-      "frame_id": 13,
-      "steps_remaining": 148,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
+    ],
+    "frame_id": 4,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 3,
+    "simulation_seconds": 1.5,
+    "reports": 0,
+    "coverage_fraction": 0.025,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
   },
   {
     "method": "act",
-    "params": {
-      "action": [
-        0.005208333333333037,
-        1.0
+    "arguments": [
+      [
+        0.607835937499998,
+        0.031165175283513105
       ]
-    },
-    "observation": {
-      "frame_id": 14,
-      "steps_remaining": 147,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
+    ],
+    "frame_id": 5,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 4,
+    "simulation_seconds": 2.0,
+    "reports": 0,
+    "coverage_fraction": 0.025,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
   },
   {
     "method": "act",
-    "params": {
-      "action": [
-        0.02840909090909083,
+    "arguments": [
+      [
+        0.15985383355748206,
+        0.005940521720973791
+      ]
+    ],
+    "frame_id": 6,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 5,
+    "simulation_seconds": 2.5,
+    "reports": 0,
+    "coverage_fraction": 0.025,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.03394926731651191,
         1.0
       ]
-    },
-    "observation": {
-      "frame_id": 15,
-      "steps_remaining": 146,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": false,
-      "completed_stages": 0
-    }
+    ],
+    "frame_id": 7,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 6,
+    "simulation_seconds": 3.0,
+    "reports": 0,
+    "coverage_fraction": 0.025,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.006488300812570258,
+        1.0
+      ]
+    ],
+    "frame_id": 8,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 7,
+    "simulation_seconds": 3.5,
+    "reports": 0,
+    "coverage_fraction": 0.025,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0011602986445693687,
+        1.0
+      ]
+    ],
+    "frame_id": 9,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 8,
+    "simulation_seconds": 4.0,
+    "reports": 0,
+    "coverage_fraction": 0.025,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.00019770813463675376,
+        1.0
+      ]
+    ],
+    "frame_id": 10,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 9,
+    "simulation_seconds": 4.5,
+    "reports": 0,
+    "coverage_fraction": 0.05,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.240429915054577e-05,
+        0.6568819808740365
+      ]
+    ],
+    "frame_id": 11,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 10,
+    "simulation_seconds": 5.0,
+    "reports": 0,
+    "coverage_fraction": 0.05,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        5.13426274741935e-06,
+        0.17464543052906403
+      ]
+    ],
+    "frame_id": 12,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 11,
+    "simulation_seconds": 5.5,
+    "reports": 0,
+    "coverage_fraction": 0.05,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.03725953879816235
+      ]
+    ],
+    "frame_id": 13,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 12,
+    "simulation_seconds": 6.0,
+    "reports": 0,
+    "coverage_fraction": 0.05,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.007139607408646876
+      ]
+    ],
+    "frame_id": 14,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 13,
+    "simulation_seconds": 6.5,
+    "reports": 0,
+    "coverage_fraction": 0.05,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.001279061482599442
+      ]
+    ],
+    "frame_id": 15,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 14,
+    "simulation_seconds": 7.0,
+    "reports": 0,
+    "coverage_fraction": 0.05,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.00021824507313898957
+      ]
+    ],
+    "frame_id": 16,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 15,
+    "simulation_seconds": 7.5,
+    "reports": 0,
+    "coverage_fraction": 0.075,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.43596160523158606,
+        3.581166348114451e-05
+      ]
+    ],
+    "frame_id": 17,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 16,
+    "simulation_seconds": 8.0,
+    "reports": 0,
+    "coverage_fraction": 0.075,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801895192828646,
+        5.680060083279593e-06
+      ]
+    ],
+    "frame_id": 18,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 17,
+    "simulation_seconds": 8.5,
+    "reports": 0,
+    "coverage_fraction": 0.075,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348928912103275,
+        -1.0
+      ]
+    ],
+    "frame_id": 19,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 18,
+    "simulation_seconds": 9.0,
+    "reports": 0,
+    "coverage_fraction": 0.075,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.004205896797852483,
+        -1.0
+      ]
+    ],
+    "frame_id": 20,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 19,
+    "simulation_seconds": 9.5,
+    "reports": 0,
+    "coverage_fraction": 0.075,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441125043450293,
+        -1.0
+      ]
+    ],
+    "frame_id": 21,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 20,
+    "simulation_seconds": 10.0,
+    "reports": 0,
+    "coverage_fraction": 0.075,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0001257395853082599,
+        -1.0
+      ]
+    ],
+    "frame_id": 22,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 21,
+    "simulation_seconds": 10.5,
+    "reports": 0,
+    "coverage_fraction": 0.1,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.046371375890033e-05,
+        -0.6559601979084859
+      ]
+    ],
+    "frame_id": 23,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 22,
+    "simulation_seconds": 11.0,
+    "reports": 0,
+    "coverage_fraction": 0.1,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215997454621005e-06,
+        -0.1743674337492273
+      ]
+    ],
+    "frame_id": 24,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 23,
+    "simulation_seconds": 11.5,
+    "reports": 0,
+    "coverage_fraction": 0.1,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.03719732477123636
+      ]
+    ],
+    "frame_id": 25,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 24,
+    "simulation_seconds": 12.0,
+    "reports": 0,
+    "coverage_fraction": 0.1,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.007127366598087348
+      ]
+    ],
+    "frame_id": 26,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 25,
+    "simulation_seconds": 12.5,
+    "reports": 0,
+    "coverage_fraction": 0.1,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0012768294256684243
+      ]
+    ],
+    "frame_id": 27,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 26,
+    "simulation_seconds": 13.0,
+    "reports": 0,
+    "coverage_fraction": 0.1,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.00021785909704878927
+      ]
+    ],
+    "frame_id": 28,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 27,
+    "simulation_seconds": 13.5,
+    "reports": 0,
+    "coverage_fraction": 0.125,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.4359613534095754,
+        -3.5747624668669434e-05
+      ]
+    ],
+    "frame_id": 29,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 28,
+    "simulation_seconds": 14.0,
+    "reports": 0,
+    "coverage_fraction": 0.125,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598230371,
+        -5.6698022387724485e-06
+      ]
+    ],
+    "frame_id": 30,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 29,
+    "simulation_seconds": 14.5,
+    "reports": 0,
+    "coverage_fraction": 0.125,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915844472,
+        1.0
+      ]
+    ],
+    "frame_id": 31,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 30,
+    "simulation_seconds": 15.0,
+    "reports": 0,
+    "coverage_fraction": 0.125,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0042058934537818615,
+        1.0
+      ]
+    ],
+    "frame_id": 32,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 31,
+    "simulation_seconds": 15.5,
+    "reports": 0,
+    "coverage_fraction": 0.125,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945743064,
+        1.0
+      ]
+    ],
+    "frame_id": 33,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 32,
+    "simulation_seconds": 16.0,
+    "reports": 0,
+    "coverage_fraction": 0.125,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.00012573947986300739,
+        1.0
+      ]
+    ],
+    "frame_id": 34,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 33,
+    "simulation_seconds": 16.5,
+    "reports": 0,
+    "coverage_fraction": 0.15,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.046369625894329e-05,
+        0.6559601992590384
+      ]
+    ],
+    "frame_id": 35,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 34,
+    "simulation_seconds": 17.0,
+    "reports": 0,
+    "coverage_fraction": 0.15,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969405058334e-06,
+        0.17436743415653583
+      ]
+    ],
+    "frame_id": 36,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 35,
+    "simulation_seconds": 17.5,
+    "reports": 0,
+    "coverage_fraction": 0.15,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.037197324862390115
+      ]
+    ],
+    "frame_id": 37,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 36,
+    "simulation_seconds": 18.0,
+    "reports": 0,
+    "coverage_fraction": 0.15,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0071273666160223135
+      ]
+    ],
+    "frame_id": 38,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 37,
+    "simulation_seconds": 18.5,
+    "reports": 0,
+    "coverage_fraction": 0.15,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.001276829428938675
+      ]
+    ],
+    "frame_id": 39,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 38,
+    "simulation_seconds": 19.0,
+    "reports": 0,
+    "coverage_fraction": 0.15,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0002178590976139816
+      ]
+    ],
+    "frame_id": 40,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 39,
+    "simulation_seconds": 19.5,
+    "reports": 0,
+    "coverage_fraction": 0.175,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.4359613534090674,
+        3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 41,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 40,
+    "simulation_seconds": 20.0,
+    "reports": 0,
+    "coverage_fraction": 0.175,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598215228,
+        5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 42,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 41,
+    "simulation_seconds": 20.5,
+    "reports": 0,
+    "coverage_fraction": 0.175,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915822004,
+        -1.0
+      ]
+    ],
+    "frame_id": 43,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 42,
+    "simulation_seconds": 21.0,
+    "reports": 0,
+    "coverage_fraction": 0.175,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.004205893453777954,
+        -1.0
+      ]
+    ],
+    "frame_id": 44,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 43,
+    "simulation_seconds": 21.5,
+    "reports": 0,
+    "coverage_fraction": 0.175,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945694215,
+        -1.0
+      ]
+    ],
+    "frame_id": 45,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 44,
+    "simulation_seconds": 22.0,
+    "reports": 0,
+    "coverage_fraction": 0.175,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.00012573947987473135,
+        -1.0
+      ]
+    ],
+    "frame_id": 46,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 45,
+    "simulation_seconds": 22.5,
+    "reports": 0,
+    "coverage_fraction": 0.2,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696260897282e-05,
+        -0.6559601992590361
+      ]
+    ],
+    "frame_id": 47,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 46,
+    "simulation_seconds": 23.0,
+    "reports": 0,
+    "coverage_fraction": 0.2,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969424598257e-06,
+        -0.1743674341565351
+      ]
+    ],
+    "frame_id": 48,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 47,
+    "simulation_seconds": 23.5,
+    "reports": 0,
+    "coverage_fraction": 0.2,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.03719732486238963
+      ]
+    ],
+    "frame_id": 49,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 48,
+    "simulation_seconds": 24.0,
+    "reports": 0,
+    "coverage_fraction": 0.2,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0071273666160223135
+      ]
+    ],
+    "frame_id": 50,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 49,
+    "simulation_seconds": 24.5,
+    "reports": 0,
+    "coverage_fraction": 0.2,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.001276829428938675
+      ]
+    ],
+    "frame_id": 51,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 50,
+    "simulation_seconds": 25.0,
+    "reports": 0,
+    "coverage_fraction": 0.2,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0002178590976139816
+      ]
+    ],
+    "frame_id": 52,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 51,
+    "simulation_seconds": 25.5,
+    "reports": 0,
+    "coverage_fraction": 0.225,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.4359613534090713,
+        -3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 53,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 52,
+    "simulation_seconds": 26.0,
+    "reports": 0,
+    "coverage_fraction": 0.225,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598215228,
+        -5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 54,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 53,
+    "simulation_seconds": 26.5,
+    "reports": 0,
+    "coverage_fraction": 0.225,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915822004,
+        1.0
+      ]
+    ],
+    "frame_id": 55,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 54,
+    "simulation_seconds": 27.0,
+    "reports": 0,
+    "coverage_fraction": 0.225,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.004205893453777954,
+        1.0
+      ]
+    ],
+    "frame_id": 56,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 55,
+    "simulation_seconds": 27.5,
+    "reports": 0,
+    "coverage_fraction": 0.225,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945694215,
+        1.0
+      ]
+    ],
+    "frame_id": 57,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 56,
+    "simulation_seconds": 28.0,
+    "reports": 0,
+    "coverage_fraction": 0.225,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.00012573947987473135,
+        1.0
+      ]
+    ],
+    "frame_id": 58,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 57,
+    "simulation_seconds": 28.5,
+    "reports": 0,
+    "coverage_fraction": 0.25,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696260897282e-05,
+        0.6559601992590361
+      ]
+    ],
+    "frame_id": 59,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 58,
+    "simulation_seconds": 29.0,
+    "reports": 0,
+    "coverage_fraction": 0.25,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969424598257e-06,
+        0.1743674341565351
+      ]
+    ],
+    "frame_id": 60,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 59,
+    "simulation_seconds": 29.5,
+    "reports": 0,
+    "coverage_fraction": 0.25,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.03719732486238963
+      ]
+    ],
+    "frame_id": 61,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 60,
+    "simulation_seconds": 30.0,
+    "reports": 0,
+    "coverage_fraction": 0.25,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0071273666160223135
+      ]
+    ],
+    "frame_id": 62,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 61,
+    "simulation_seconds": 30.5,
+    "reports": 0,
+    "coverage_fraction": 0.25,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.001276829428938675
+      ]
+    ],
+    "frame_id": 63,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 62,
+    "simulation_seconds": 31.0,
+    "reports": 0,
+    "coverage_fraction": 0.25,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0002178590976139816
+      ]
+    ],
+    "frame_id": 64,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 63,
+    "simulation_seconds": 31.5,
+    "reports": 0,
+    "coverage_fraction": 0.275,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.4359613534090869,
+        3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 65,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 64,
+    "simulation_seconds": 32.0,
+    "reports": 0,
+    "coverage_fraction": 0.275,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598216596,
+        5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 66,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 65,
+    "simulation_seconds": 32.5,
+    "reports": 0,
+    "coverage_fraction": 0.275,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915829817,
+        -1.0
+      ]
+    ],
+    "frame_id": 67,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 66,
+    "simulation_seconds": 33.0,
+    "reports": 0,
+    "coverage_fraction": 0.275,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.004205893453779908,
+        -1.0
+      ]
+    ],
+    "frame_id": 68,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 67,
+    "simulation_seconds": 33.5,
+    "reports": 0,
+    "coverage_fraction": 0.275,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945830994,
+        -1.0
+      ]
+    ],
+    "frame_id": 69,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 68,
+    "simulation_seconds": 34.0,
+    "reports": 0,
+    "coverage_fraction": 0.275,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.00012573947987277735,
+        -1.0
+      ]
+    ],
+    "frame_id": 70,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 69,
+    "simulation_seconds": 34.5,
+    "reports": 0,
+    "coverage_fraction": 0.3,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696270667245e-05,
+        -0.6559601992590361
+      ]
+    ],
+    "frame_id": 71,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 70,
+    "simulation_seconds": 35.0,
+    "reports": 0,
+    "coverage_fraction": 0.3,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969444138185e-06,
+        -0.1743674341565351
+      ]
+    ],
+    "frame_id": 72,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 71,
+    "simulation_seconds": 35.5,
+    "reports": 0,
+    "coverage_fraction": 0.3,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.03719732486238963
+      ]
+    ],
+    "frame_id": 73,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 72,
+    "simulation_seconds": 36.0,
+    "reports": 0,
+    "coverage_fraction": 0.3,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0071273666160223135
+      ]
+    ],
+    "frame_id": 74,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 73,
+    "simulation_seconds": 36.5,
+    "reports": 0,
+    "coverage_fraction": 0.3,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.001276829428938675
+      ]
+    ],
+    "frame_id": 75,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 74,
+    "simulation_seconds": 37.0,
+    "reports": 0,
+    "coverage_fraction": 0.3,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0002178590976139816
+      ]
+    ],
+    "frame_id": 76,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 75,
+    "simulation_seconds": 37.5,
+    "reports": 0,
+    "coverage_fraction": 0.325,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.43596135340935266,
+        -3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 77,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 76,
+    "simulation_seconds": 38.0,
+    "reports": 0,
+    "coverage_fraction": 0.325,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598224412,
+        -5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 78,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 77,
+    "simulation_seconds": 38.5,
+    "reports": 0,
+    "coverage_fraction": 0.325,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915837634,
+        1.0
+      ]
+    ],
+    "frame_id": 79,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 78,
+    "simulation_seconds": 39.0,
+    "reports": 0,
+    "coverage_fraction": 0.325,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.004205893453776,
+        1.0
+      ]
+    ],
+    "frame_id": 80,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 79,
+    "simulation_seconds": 39.5,
+    "reports": 0,
+    "coverage_fraction": 0.325,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945791914,
+        1.0
+      ]
+    ],
+    "frame_id": 81,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 80,
+    "simulation_seconds": 40.0,
+    "reports": 0,
+    "coverage_fraction": 0.325,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.00012573947987668533,
+        1.0
+      ]
+    ],
+    "frame_id": 82,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 81,
+    "simulation_seconds": 40.5,
+    "reports": 0,
+    "coverage_fraction": 0.35,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696274575228e-05,
+        0.6559601992590361
+      ]
+    ],
+    "frame_id": 83,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 82,
+    "simulation_seconds": 41.0,
+    "reports": 0,
+    "coverage_fraction": 0.35,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969405058334e-06,
+        0.1743674341565351
+      ]
+    ],
+    "frame_id": 84,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 83,
+    "simulation_seconds": 41.5,
+    "reports": 0,
+    "coverage_fraction": 0.35,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.03719732486238963
+      ]
+    ],
+    "frame_id": 85,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 84,
+    "simulation_seconds": 42.0,
+    "reports": 0,
+    "coverage_fraction": 0.35,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0071273666160223135
+      ]
+    ],
+    "frame_id": 86,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 85,
+    "simulation_seconds": 42.5,
+    "reports": 0,
+    "coverage_fraction": 0.35,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.001276829428938675
+      ]
+    ],
+    "frame_id": 87,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 86,
+    "simulation_seconds": 43.0,
+    "reports": 0,
+    "coverage_fraction": 0.35,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0002178590976139816
+      ]
+    ],
+    "frame_id": 88,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 87,
+    "simulation_seconds": 43.5,
+    "reports": 0,
+    "coverage_fraction": 0.375,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.4359613534093488,
+        3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 89,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 88,
+    "simulation_seconds": 44.0,
+    "reports": 0,
+    "coverage_fraction": 0.375,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598224412,
+        5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 90,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 89,
+    "simulation_seconds": 44.5,
+    "reports": 0,
+    "coverage_fraction": 0.375,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915837634,
+        -1.0
+      ]
+    ],
+    "frame_id": 91,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 90,
+    "simulation_seconds": 45.0,
+    "reports": 0,
+    "coverage_fraction": 0.375,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.004205893453776,
+        -1.0
+      ]
+    ],
+    "frame_id": 92,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 91,
+    "simulation_seconds": 45.5,
+    "reports": 0,
+    "coverage_fraction": 0.375,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945791914,
+        -1.0
+      ]
+    ],
+    "frame_id": 93,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 92,
+    "simulation_seconds": 46.0,
+    "reports": 0,
+    "coverage_fraction": 0.375,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.00012573947987668533,
+        -1.0
+      ]
+    ],
+    "frame_id": 94,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 93,
+    "simulation_seconds": 46.5,
+    "reports": 0,
+    "coverage_fraction": 0.4,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696274575228e-05,
+        -0.6559601992590361
+      ]
+    ],
+    "frame_id": 95,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 94,
+    "simulation_seconds": 47.0,
+    "reports": 0,
+    "coverage_fraction": 0.4,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969405058334e-06,
+        -0.1743674341565351
+      ]
+    ],
+    "frame_id": 96,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 95,
+    "simulation_seconds": 47.5,
+    "reports": 0,
+    "coverage_fraction": 0.4,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.03719732486238963
+      ]
+    ],
+    "frame_id": 97,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 96,
+    "simulation_seconds": 48.0,
+    "reports": 0,
+    "coverage_fraction": 0.4,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0071273666160223135
+      ]
+    ],
+    "frame_id": 98,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 97,
+    "simulation_seconds": 48.5,
+    "reports": 0,
+    "coverage_fraction": 0.4,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.001276829428938675
+      ]
+    ],
+    "frame_id": 99,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 98,
+    "simulation_seconds": 49.0,
+    "reports": 0,
+    "coverage_fraction": 0.4,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0002178590976139816
+      ]
+    ],
+    "frame_id": 100,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 99,
+    "simulation_seconds": 49.5,
+    "reports": 0,
+    "coverage_fraction": 0.425,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.4359613534093488,
+        -3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 101,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 100,
+    "simulation_seconds": 50.0,
+    "reports": 0,
+    "coverage_fraction": 0.425,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598224412,
+        -5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 102,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 101,
+    "simulation_seconds": 50.5,
+    "reports": 0,
+    "coverage_fraction": 0.425,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915837634,
+        1.0
+      ]
+    ],
+    "frame_id": 103,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 102,
+    "simulation_seconds": 51.0,
+    "reports": 0,
+    "coverage_fraction": 0.425,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.004205893453776,
+        1.0
+      ]
+    ],
+    "frame_id": 104,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 103,
+    "simulation_seconds": 51.5,
+    "reports": 0,
+    "coverage_fraction": 0.425,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945791914,
+        1.0
+      ]
+    ],
+    "frame_id": 105,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 104,
+    "simulation_seconds": 52.0,
+    "reports": 0,
+    "coverage_fraction": 0.425,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.00012573947987668533,
+        1.0
+      ]
+    ],
+    "frame_id": 106,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 105,
+    "simulation_seconds": 52.5,
+    "reports": 0,
+    "coverage_fraction": 0.45,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696274575228e-05,
+        0.6559601992590361
+      ]
+    ],
+    "frame_id": 107,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 106,
+    "simulation_seconds": 53.0,
+    "reports": 0,
+    "coverage_fraction": 0.45,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969405058334e-06,
+        0.1743674341565351
+      ]
+    ],
+    "frame_id": 108,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 107,
+    "simulation_seconds": 53.5,
+    "reports": 0,
+    "coverage_fraction": 0.45,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.03719732486238963
+      ]
+    ],
+    "frame_id": 109,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 108,
+    "simulation_seconds": 54.0,
+    "reports": 0,
+    "coverage_fraction": 0.45,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0071273666160223135
+      ]
+    ],
+    "frame_id": 110,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 109,
+    "simulation_seconds": 54.5,
+    "reports": 0,
+    "coverage_fraction": 0.45,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.001276829428938675
+      ]
+    ],
+    "frame_id": 111,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 110,
+    "simulation_seconds": 55.0,
+    "reports": 0,
+    "coverage_fraction": 0.45,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0002178590976139816
+      ]
+    ],
+    "frame_id": 112,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 111,
+    "simulation_seconds": 55.5,
+    "reports": 0,
+    "coverage_fraction": 0.475,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.4359613534093488,
+        3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 113,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 112,
+    "simulation_seconds": 56.0,
+    "reports": 0,
+    "coverage_fraction": 0.475,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598224412,
+        5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 114,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 113,
+    "simulation_seconds": 56.5,
+    "reports": 0,
+    "coverage_fraction": 0.475,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915837634,
+        -1.0
+      ]
+    ],
+    "frame_id": 115,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 114,
+    "simulation_seconds": 57.0,
+    "reports": 0,
+    "coverage_fraction": 0.475,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.004205893453776,
+        -1.0
+      ]
+    ],
+    "frame_id": 116,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 115,
+    "simulation_seconds": 57.5,
+    "reports": 0,
+    "coverage_fraction": 0.475,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945791914,
+        -1.0
+      ]
+    ],
+    "frame_id": 117,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 116,
+    "simulation_seconds": 58.0,
+    "reports": 0,
+    "coverage_fraction": 0.475,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.00012573947987668533,
+        -1.0
+      ]
+    ],
+    "frame_id": 118,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 117,
+    "simulation_seconds": 58.5,
+    "reports": 0,
+    "coverage_fraction": 0.5,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696274575228e-05,
+        -0.6559601992590361
+      ]
+    ],
+    "frame_id": 119,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 118,
+    "simulation_seconds": 59.0,
+    "reports": 0,
+    "coverage_fraction": 0.5,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969405058334e-06,
+        -0.1743674341565351
+      ]
+    ],
+    "frame_id": 120,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 119,
+    "simulation_seconds": 59.5,
+    "reports": 0,
+    "coverage_fraction": 0.5,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.03719732486238963
+      ]
+    ],
+    "frame_id": 121,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 120,
+    "simulation_seconds": 60.0,
+    "reports": 0,
+    "coverage_fraction": 0.5,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0071273666160223135
+      ]
+    ],
+    "frame_id": 122,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 121,
+    "simulation_seconds": 60.5,
+    "reports": 0,
+    "coverage_fraction": 0.5,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.001276829428938675
+      ]
+    ],
+    "frame_id": 123,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 122,
+    "simulation_seconds": 61.0,
+    "reports": 0,
+    "coverage_fraction": 0.5,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0002178590976139816
+      ]
+    ],
+    "frame_id": 124,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 123,
+    "simulation_seconds": 61.5,
+    "reports": 0,
+    "coverage_fraction": 0.525,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.4359613534093488,
+        -3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 125,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 124,
+    "simulation_seconds": 62.0,
+    "reports": 0,
+    "coverage_fraction": 0.525,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598224412,
+        -5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 126,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 125,
+    "simulation_seconds": 62.5,
+    "reports": 0,
+    "coverage_fraction": 0.525,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915837634,
+        1.0
+      ]
+    ],
+    "frame_id": 127,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 126,
+    "simulation_seconds": 63.0,
+    "reports": 0,
+    "coverage_fraction": 0.525,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.004205893453776,
+        1.0
+      ]
+    ],
+    "frame_id": 128,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 127,
+    "simulation_seconds": 63.5,
+    "reports": 0,
+    "coverage_fraction": 0.525,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945791914,
+        1.0
+      ]
+    ],
+    "frame_id": 129,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 128,
+    "simulation_seconds": 64.0,
+    "reports": 0,
+    "coverage_fraction": 0.525,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.00012573947987668533,
+        1.0
+      ]
+    ],
+    "frame_id": 130,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 129,
+    "simulation_seconds": 64.5,
+    "reports": 0,
+    "coverage_fraction": 0.55,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696274575228e-05,
+        0.6559601992590361
+      ]
+    ],
+    "frame_id": 131,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 130,
+    "simulation_seconds": 65.0,
+    "reports": 0,
+    "coverage_fraction": 0.55,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969405058334e-06,
+        0.1743674341565351
+      ]
+    ],
+    "frame_id": 132,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 131,
+    "simulation_seconds": 65.5,
+    "reports": 0,
+    "coverage_fraction": 0.55,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.03719732486238963
+      ]
+    ],
+    "frame_id": 133,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 132,
+    "simulation_seconds": 66.0,
+    "reports": 0,
+    "coverage_fraction": 0.55,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0071273666160223135
+      ]
+    ],
+    "frame_id": 134,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 133,
+    "simulation_seconds": 66.5,
+    "reports": 0,
+    "coverage_fraction": 0.55,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.001276829428938675
+      ]
+    ],
+    "frame_id": 135,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 134,
+    "simulation_seconds": 67.0,
+    "reports": 0,
+    "coverage_fraction": 0.55,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0002178590976139816
+      ]
+    ],
+    "frame_id": 136,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 135,
+    "simulation_seconds": 67.5,
+    "reports": 0,
+    "coverage_fraction": 0.575,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.43596135340880554,
+        3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 137,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 136,
+    "simulation_seconds": 68.0,
+    "reports": 0,
+    "coverage_fraction": 0.575,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598207217,
+        5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 138,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 137,
+    "simulation_seconds": 68.5,
+    "reports": 0,
+    "coverage_fraction": 0.575,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915794648,
+        -1.0
+      ]
+    ],
+    "frame_id": 139,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 138,
+    "simulation_seconds": 69.0,
+    "reports": 0,
+    "coverage_fraction": 0.575,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0042058934537720916,
+        -1.0
+      ]
+    ],
+    "frame_id": 140,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 139,
+    "simulation_seconds": 69.5,
+    "reports": 0,
+    "coverage_fraction": 0.575,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945713754,
+        -1.0
+      ]
+    ],
+    "frame_id": 141,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 140,
+    "simulation_seconds": 70.0,
+    "reports": 0,
+    "coverage_fraction": 0.575,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0001257394798571454,
+        -1.0
+      ]
+    ],
+    "frame_id": 142,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 141,
+    "simulation_seconds": 70.5,
+    "reports": 0,
+    "coverage_fraction": 0.6,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696262851272e-05,
+        -0.6559601992590361
+      ]
+    ],
+    "frame_id": 143,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 142,
+    "simulation_seconds": 71.0,
+    "reports": 0,
+    "coverage_fraction": 0.6,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969405058334e-06,
+        -0.1743674341565351
+      ]
+    ],
+    "frame_id": 144,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 143,
+    "simulation_seconds": 71.5,
+    "reports": 0,
+    "coverage_fraction": 0.6,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.03719732486238963
+      ]
+    ],
+    "frame_id": 145,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 144,
+    "simulation_seconds": 72.0,
+    "reports": 0,
+    "coverage_fraction": 0.6,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0071273666160223135
+      ]
+    ],
+    "frame_id": 146,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 145,
+    "simulation_seconds": 72.5,
+    "reports": 0,
+    "coverage_fraction": 0.6,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.001276829428938675
+      ]
+    ],
+    "frame_id": 147,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 146,
+    "simulation_seconds": 73.0,
+    "reports": 0,
+    "coverage_fraction": 0.6,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0002178590976139816
+      ]
+    ],
+    "frame_id": 148,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 147,
+    "simulation_seconds": 73.5,
+    "reports": 0,
+    "coverage_fraction": 0.625,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.43596135340875863,
+        -3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 149,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 148,
+    "simulation_seconds": 74.0,
+    "reports": 0,
+    "coverage_fraction": 0.625,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598205653,
+        -5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 150,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 149,
+    "simulation_seconds": 74.5,
+    "reports": 0,
+    "coverage_fraction": 0.625,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915779014,
+        1.0
+      ]
+    ],
+    "frame_id": 151,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 150,
+    "simulation_seconds": 75.0,
+    "reports": 0,
+    "coverage_fraction": 0.625,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0042058934537720916,
+        1.0
+      ]
+    ],
+    "frame_id": 152,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 151,
+    "simulation_seconds": 75.5,
+    "reports": 0,
+    "coverage_fraction": 0.625,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945713754,
+        1.0
+      ]
+    ],
+    "frame_id": 153,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 152,
+    "simulation_seconds": 76.0,
+    "reports": 0,
+    "coverage_fraction": 0.625,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0001257394798571454,
+        1.0
+      ]
+    ],
+    "frame_id": 154,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 153,
+    "simulation_seconds": 76.5,
+    "reports": 0,
+    "coverage_fraction": 0.65,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696262851272e-05,
+        0.6559601992590361
+      ]
+    ],
+    "frame_id": 155,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 154,
+    "simulation_seconds": 77.0,
+    "reports": 0,
+    "coverage_fraction": 0.65,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969405058334e-06,
+        0.1743674341565351
+      ]
+    ],
+    "frame_id": 156,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 155,
+    "simulation_seconds": 77.5,
+    "reports": 0,
+    "coverage_fraction": 0.65,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.03719732486238963
+      ]
+    ],
+    "frame_id": 157,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 156,
+    "simulation_seconds": 78.0,
+    "reports": 0,
+    "coverage_fraction": 0.65,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0071273666160223135
+      ]
+    ],
+    "frame_id": 158,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 157,
+    "simulation_seconds": 78.5,
+    "reports": 0,
+    "coverage_fraction": 0.65,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.001276829428938675
+      ]
+    ],
+    "frame_id": 159,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 158,
+    "simulation_seconds": 79.0,
+    "reports": 0,
+    "coverage_fraction": 0.65,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0002178590976139816
+      ]
+    ],
+    "frame_id": 160,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 159,
+    "simulation_seconds": 79.5,
+    "reports": 0,
+    "coverage_fraction": 0.675,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.43596135340875863,
+        3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 161,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 160,
+    "simulation_seconds": 80.0,
+    "reports": 0,
+    "coverage_fraction": 0.675,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598205653,
+        5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 162,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 161,
+    "simulation_seconds": 80.5,
+    "reports": 0,
+    "coverage_fraction": 0.675,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915779014,
+        -1.0
+      ]
+    ],
+    "frame_id": 163,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 162,
+    "simulation_seconds": 81.0,
+    "reports": 0,
+    "coverage_fraction": 0.675,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0042058934537720916,
+        -1.0
+      ]
+    ],
+    "frame_id": 164,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 163,
+    "simulation_seconds": 81.5,
+    "reports": 0,
+    "coverage_fraction": 0.675,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945713754,
+        -1.0
+      ]
+    ],
+    "frame_id": 165,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 164,
+    "simulation_seconds": 82.0,
+    "reports": 0,
+    "coverage_fraction": 0.675,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0001257394798571454,
+        -1.0
+      ]
+    ],
+    "frame_id": 166,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 165,
+    "simulation_seconds": 82.5,
+    "reports": 0,
+    "coverage_fraction": 0.7,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696262851272e-05,
+        -0.6559601992590361
+      ]
+    ],
+    "frame_id": 167,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 166,
+    "simulation_seconds": 83.0,
+    "reports": 0,
+    "coverage_fraction": 0.7,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969405058334e-06,
+        -0.1743674341565351
+      ]
+    ],
+    "frame_id": 168,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 167,
+    "simulation_seconds": 83.5,
+    "reports": 0,
+    "coverage_fraction": 0.7,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.03719732486238963
+      ]
+    ],
+    "frame_id": 169,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 168,
+    "simulation_seconds": 84.0,
+    "reports": 0,
+    "coverage_fraction": 0.7,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0071273666160223135
+      ]
+    ],
+    "frame_id": 170,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 169,
+    "simulation_seconds": 84.5,
+    "reports": 0,
+    "coverage_fraction": 0.7,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.001276829428938675
+      ]
+    ],
+    "frame_id": 171,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 170,
+    "simulation_seconds": 85.0,
+    "reports": 0,
+    "coverage_fraction": 0.7,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0002178590976139816
+      ]
+    ],
+    "frame_id": 172,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 171,
+    "simulation_seconds": 85.5,
+    "reports": 0,
+    "coverage_fraction": 0.725,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.43596135340875863,
+        -3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 173,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 172,
+    "simulation_seconds": 86.0,
+    "reports": 0,
+    "coverage_fraction": 0.725,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598205653,
+        -5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 174,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 173,
+    "simulation_seconds": 86.5,
+    "reports": 0,
+    "coverage_fraction": 0.725,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915779014,
+        1.0
+      ]
+    ],
+    "frame_id": 175,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 174,
+    "simulation_seconds": 87.0,
+    "reports": 0,
+    "coverage_fraction": 0.725,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0042058934537720916,
+        1.0
+      ]
+    ],
+    "frame_id": 176,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 175,
+    "simulation_seconds": 87.5,
+    "reports": 0,
+    "coverage_fraction": 0.725,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945713754,
+        1.0
+      ]
+    ],
+    "frame_id": 177,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 176,
+    "simulation_seconds": 88.0,
+    "reports": 0,
+    "coverage_fraction": 0.725,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0001257394798571454,
+        1.0
+      ]
+    ],
+    "frame_id": 178,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 177,
+    "simulation_seconds": 88.5,
+    "reports": 0,
+    "coverage_fraction": 0.75,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696262851272e-05,
+        0.6559601992590361
+      ]
+    ],
+    "frame_id": 179,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 178,
+    "simulation_seconds": 89.0,
+    "reports": 0,
+    "coverage_fraction": 0.75,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969405058334e-06,
+        0.1743674341565351
+      ]
+    ],
+    "frame_id": 180,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 179,
+    "simulation_seconds": 89.5,
+    "reports": 0,
+    "coverage_fraction": 0.75,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.03719732486238963
+      ]
+    ],
+    "frame_id": 181,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 180,
+    "simulation_seconds": 90.0,
+    "reports": 0,
+    "coverage_fraction": 0.75,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0071273666160223135
+      ]
+    ],
+    "frame_id": 182,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 181,
+    "simulation_seconds": 90.5,
+    "reports": 0,
+    "coverage_fraction": 0.75,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.001276829428938675
+      ]
+    ],
+    "frame_id": 183,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 182,
+    "simulation_seconds": 91.0,
+    "reports": 0,
+    "coverage_fraction": 0.75,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        0.0002178590976139816
+      ]
+    ],
+    "frame_id": 184,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 183,
+    "simulation_seconds": 91.5,
+    "reports": 0,
+    "coverage_fraction": 0.775,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.43596135340875863,
+        3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 185,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 184,
+    "simulation_seconds": 92.0,
+    "reports": 0,
+    "coverage_fraction": 0.775,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598205653,
+        5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 186,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 185,
+    "simulation_seconds": 92.5,
+    "reports": 0,
+    "coverage_fraction": 0.775,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915779014,
+        -1.0
+      ]
+    ],
+    "frame_id": 187,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 186,
+    "simulation_seconds": 93.0,
+    "reports": 0,
+    "coverage_fraction": 0.775,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0042058934537720916,
+        -1.0
+      ]
+    ],
+    "frame_id": 188,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 187,
+    "simulation_seconds": 93.5,
+    "reports": 0,
+    "coverage_fraction": 0.775,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945713754,
+        -1.0
+      ]
+    ],
+    "frame_id": 189,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 188,
+    "simulation_seconds": 94.0,
+    "reports": 0,
+    "coverage_fraction": 0.775,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0001257394798571454,
+        -1.0
+      ]
+    ],
+    "frame_id": 190,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 189,
+    "simulation_seconds": 94.5,
+    "reports": 0,
+    "coverage_fraction": 0.8,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696262851272e-05,
+        -0.6559601992590361
+      ]
+    ],
+    "frame_id": 191,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 190,
+    "simulation_seconds": 95.0,
+    "reports": 0,
+    "coverage_fraction": 0.8,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969405058334e-06,
+        -0.1743674341565351
+      ]
+    ],
+    "frame_id": 192,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 191,
+    "simulation_seconds": 95.5,
+    "reports": 0,
+    "coverage_fraction": 0.8,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.03719732486238963
+      ]
+    ],
+    "frame_id": 193,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 192,
+    "simulation_seconds": 96.0,
+    "reports": 0,
+    "coverage_fraction": 0.8,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0071273666160223135
+      ]
+    ],
+    "frame_id": 194,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 193,
+    "simulation_seconds": 96.5,
+    "reports": 0,
+    "coverage_fraction": 0.8,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.001276829428938675
+      ]
+    ],
+    "frame_id": 195,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 194,
+    "simulation_seconds": 97.0,
+    "reports": 0,
+    "coverage_fraction": 0.8,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        1.0,
+        -0.0002178590976139816
+      ]
+    ],
+    "frame_id": 196,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 195,
+    "simulation_seconds": 97.5,
+    "reports": 0,
+    "coverage_fraction": 0.825,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.43596135340875863,
+        -3.5747624760751334e-05
+      ]
+    ],
+    "frame_id": 197,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 196,
+    "simulation_seconds": 98.0,
+    "reports": 0,
+    "coverage_fraction": 0.825,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.10801887598205653,
+        -5.669802252938894e-06
+      ]
+    ],
+    "frame_id": 198,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 197,
+    "simulation_seconds": 98.5,
+    "reports": 0,
+    "coverage_fraction": 0.825,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.022348911915779014,
+        1.0
+      ]
+    ],
+    "frame_id": 199,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 198,
+    "simulation_seconds": 99.0,
+    "reports": 0,
+    "coverage_fraction": 0.825,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0042058934537720916,
+        1.0
+      ]
+    ],
+    "frame_id": 200,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 199,
+    "simulation_seconds": 99.5,
+    "reports": 0,
+    "coverage_fraction": 0.825,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0007441118945713754,
+        1.0
+      ]
+    ],
+    "frame_id": 201,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 200,
+    "simulation_seconds": 100.0,
+    "reports": 0,
+    "coverage_fraction": 0.825,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        0.0001257394798571454,
+        1.0
+      ]
+    ],
+    "frame_id": 202,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 201,
+    "simulation_seconds": 100.5,
+    "reports": 0,
+    "coverage_fraction": 0.85,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        2.0463696262851272e-05,
+        0.6559601992590361
+      ]
+    ],
+    "frame_id": 203,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 202,
+    "simulation_seconds": 101.0,
+    "reports": 0,
+    "coverage_fraction": 0.85,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "act",
+    "arguments": [
+      [
+        3.2215969405058334e-06,
+        0.1743674341565351
+      ]
+    ],
+    "frame_id": 204,
+    "inspection_f1": 0.0,
+    "true_reports": 0,
+    "false_reports": 0,
+    "missed_defects": 3,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 203,
+    "simulation_seconds": 101.5,
+    "reports": 0,
+    "coverage_fraction": 0.85,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
   },
   {
     "method": "report",
-    "params": {
-      "frame_id": 15,
-      "point": [
-        -0.125,
-        -0.078125
+    "arguments": [
+      54,
+      [
+        27.0,
+        -3.2
       ]
-    },
-    "observation": {
-      "frame_id": 16,
-      "steps_remaining": 146,
-      "damage_remaining": 40,
-      "phase": 0,
-      "done": true,
-      "completed_stages": 0
-    }
+    ],
+    "frame_id": 205,
+    "inspection_f1": 0.5,
+    "true_reports": 1,
+    "false_reports": 0,
+    "missed_defects": 2,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 203,
+    "simulation_seconds": 101.5,
+    "reports": 1,
+    "coverage_fraction": 0.85,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "report",
+    "arguments": [
+      90,
+      [
+        45.0,
+        3.2
+      ]
+    ],
+    "frame_id": 206,
+    "inspection_f1": 0.8,
+    "true_reports": 2,
+    "false_reports": 0,
+    "missed_defects": 1,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 203,
+    "simulation_seconds": 101.5,
+    "reports": 2,
+    "coverage_fraction": 0.85,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "report",
+    "arguments": [
+      204,
+      [
+        99.0,
+        3.2
+      ]
+    ],
+    "frame_id": 207,
+    "inspection_f1": 1.0,
+    "true_reports": 3,
+    "false_reports": 0,
+    "missed_defects": 0,
+    "inspection_quality": 0.0,
+    "success": 0.0,
+    "steps": 203,
+    "simulation_seconds": 101.5,
+    "reports": 3,
+    "coverage_fraction": 0.85,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
+  },
+  {
+    "method": "advance",
+    "arguments": {},
+    "frame_id": 208,
+    "inspection_f1": 1.0,
+    "true_reports": 3,
+    "false_reports": 0,
+    "missed_defects": 0,
+    "inspection_quality": 1.0,
+    "success": 1.0,
+    "steps": 203,
+    "simulation_seconds": 101.5,
+    "reports": 3,
+    "coverage_fraction": 0.85,
+    "bridge_length_m": 120.0,
+    "scenario_id": 0,
+    "collisions": 0,
+    "damage_cost": 0.0
   }
 ]

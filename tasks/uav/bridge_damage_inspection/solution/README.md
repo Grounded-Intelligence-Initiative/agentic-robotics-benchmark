@@ -6,7 +6,9 @@ record, and submit three correctly localized, image-supported defects.**
 ![Actual simulator, reviewer overview](preview.png)
 
 [Bridge detail](bridge-detail.png) · [Onboard damage image](agent-view.png) ·
-[Intact repair patch](repair-view.png). Overviews are reviewer-only; the agent sees
+[Intact repair patch](repair-view.png) · [Successful inspection video](inspection-flight.mp4).
+[Steel truss](steel-overview.png) · [Maintenance layout](maintenance-overview.png).
+Overviews are reviewer-only; the agent sees
 one moving 384x384 perspective camera. All pictures are actual MuJoCo renders.
 
 ## What changed
@@ -32,6 +34,8 @@ stronger occlusion design before that claim is established.
 - Six development scenes, all three layouts and lengths: **6/6 reference successes**.
 - Reference effort: 119-221 actions; all three defect reports correct, no false reports.
 - Ten evidence/budget/anti-forgery regressions passed.
+- Six-seed repeat-image, randomization and close-up reachability checks passed;
+  all 255 repository tests passed.
 - Pinned ALE `1cdbc02a1f3390e704747b33946304911f3105ad`: calibration measured
   F1=1.0; an independent confirmation passed **untouched 0 / oracle 1**.
 - Astra evaluation is pending on this revision. Reference success is not a

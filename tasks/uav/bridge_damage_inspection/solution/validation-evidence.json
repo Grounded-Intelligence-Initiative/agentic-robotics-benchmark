@@ -1,190 +1,183 @@
 {
-  "revision": "PBR realism refresh 2026-11-02",
-  "engine_commit": "90a7c1cfa649c5dbf1078714773f99840e44cba3",
-  "rendering": "MuJoCo 3.16 Filament, CPU Vulkan, fixed exposure, spatial supersampling",
-  "source_sha256": "5b5d1238c48a09bf1db65f438e9f988c7f8606e60020895075bb111f4e12fa62",
-  "ale_gate": [
+  "revision": "long-bridge-2026-11-04",
+  "reference_advantage": "exact actuator calibration",
+  "reference_scenes": [
     {
-      "episode_id": "bridge_damage_inspection-oracle-dee2376c",
-      "status": "completed",
-      "rewards": {
-        "reward": 1.0
-      },
-      "metrics": {
-        "anchor_recorded": 1.0,
-        "collisions": 0.0,
-        "completed_stages": 0.0,
-        "damage_cost": 0.0,
-        "exploration_collisions": 0.0,
-        "exploration_completed_stages": 0.0,
-        "exploration_damage_cost": 0.0,
-        "exploration_hover_seconds": 0.0,
-        "exploration_post_switch_actions": 0.0,
-        "exploration_reports": 1.0,
-        "exploration_scout_actions": 0.0,
-        "exploration_stage_0_actions": 14.0,
-        "exploration_steps": 14.0,
-        "exploration_success": 1.0,
-        "hover_seconds": 0.0,
-        "post_switch_actions": 0.0,
-        "ratio": 1.0,
-        "reports": 1.0,
-        "scout_actions": 0.0,
-        "simulation_seconds": 2.8000000000000003,
-        "stage_0_actions": 14.0,
-        "steps": 14.0,
-        "success": 1.0,
-        "success_rate": 1.0,
-        "trusted_requests": 16.0
-      }
+      "seed": 101,
+      "scenario": "concrete_viaduct",
+      "reference": "RGB detector with privileged actuator calibration",
+      "preview_only": false,
+      "inspection_f1": 1.0,
+      "true_reports": 3,
+      "false_reports": 0,
+      "missed_defects": 0,
+      "inspection_quality": 1.0,
+      "success": 1.0,
+      "steps": 203,
+      "simulation_seconds": 101.5,
+      "reports": 3,
+      "coverage_fraction": 0.85,
+      "bridge_length_m": 120.0,
+      "scenario_id": 0,
+      "collisions": 0,
+      "damage_cost": 0.0
     },
     {
-      "episode_id": "bridge_damage_inspection-untouched-26d53166",
-      "status": "completed",
-      "rewards": {
-        "reward": 0.0
-      },
-      "metrics": {
-        "anchor_recorded": 1.0,
-        "ratio": 0.0
-      }
+      "seed": 102,
+      "scenario": "steel_through_truss",
+      "reference": "RGB detector with privileged actuator calibration",
+      "preview_only": false,
+      "inspection_f1": 1.0,
+      "true_reports": 3,
+      "false_reports": 0,
+      "missed_defects": 0,
+      "inspection_quality": 1.0,
+      "success": 1.0,
+      "steps": 119,
+      "simulation_seconds": 59.5,
+      "reports": 3,
+      "coverage_fraction": 0.8333333333333334,
+      "bridge_length_m": 72.0,
+      "scenario_id": 1,
+      "collisions": 0,
+      "damage_cost": 0.0
+    },
+    {
+      "seed": 103,
+      "scenario": "steel_through_truss",
+      "reference": "RGB detector with privileged actuator calibration",
+      "preview_only": false,
+      "inspection_f1": 1.0,
+      "true_reports": 3,
+      "false_reports": 0,
+      "missed_defects": 0,
+      "inspection_quality": 1.0,
+      "success": 1.0,
+      "steps": 131,
+      "simulation_seconds": 65.5,
+      "reports": 3,
+      "coverage_fraction": 0.9166666666666666,
+      "bridge_length_m": 72.0,
+      "scenario_id": 1,
+      "collisions": 0,
+      "damage_cost": 0.0
+    },
+    {
+      "seed": 104,
+      "scenario": "mixed_maintenance",
+      "reference": "RGB detector with privileged actuator calibration",
+      "preview_only": false,
+      "inspection_f1": 1.0,
+      "true_reports": 3,
+      "false_reports": 0,
+      "missed_defects": 0,
+      "inspection_quality": 1.0,
+      "success": 1.0,
+      "steps": 191,
+      "simulation_seconds": 95.5,
+      "reports": 3,
+      "coverage_fraction": 0.8,
+      "bridge_length_m": 120.0,
+      "scenario_id": 2,
+      "collisions": 0,
+      "damage_cost": 0.0
+    },
+    {
+      "seed": 105,
+      "scenario": "concrete_viaduct",
+      "reference": "RGB detector with privileged actuator calibration",
+      "preview_only": false,
+      "inspection_f1": 1.0,
+      "true_reports": 3,
+      "false_reports": 0,
+      "missed_defects": 0,
+      "inspection_quality": 1.0,
+      "success": 1.0,
+      "steps": 179,
+      "simulation_seconds": 89.5,
+      "reports": 3,
+      "coverage_fraction": 0.9375,
+      "bridge_length_m": 96.0,
+      "scenario_id": 0,
+      "collisions": 0,
+      "damage_cost": 0.0
+    },
+    {
+      "seed": 106,
+      "scenario": "steel_through_truss",
+      "reference": "RGB detector with privileged actuator calibration",
+      "preview_only": false,
+      "inspection_f1": 1.0,
+      "true_reports": 3,
+      "false_reports": 0,
+      "missed_defects": 0,
+      "inspection_quality": 1.0,
+      "success": 1.0,
+      "steps": 221,
+      "simulation_seconds": 110.5,
+      "reports": 3,
+      "coverage_fraction": 0.925,
+      "bridge_length_m": 120.0,
+      "scenario_id": 1,
+      "collisions": 0,
+      "damage_cost": 0.0
     }
   ],
-  "reference_cases": [
-    {
-      "kind": "bridge",
-      "mode": "reference",
-      "case": 0,
-      "success": 1.0,
-      "steps": 14,
-      "collisions": 0,
-      "damage_cost": 0,
-      "completed_stages": 0,
-      "reports": 1,
-      "hover_seconds": 0.0,
-      "scout_actions": 0,
-      "post_switch_actions": 0,
-      "stage_0_actions": 14,
-      "authoring_wall_seconds": 7.942
+  "ale_gate": {
+    "engine": {
+      "commit": "1cdbc02a1f3390e704747b33946304911f3105ad",
+      "version": "0.1.1"
     },
-    {
-      "kind": "bridge",
-      "mode": "reference",
-      "case": 1,
-      "success": 1.0,
-      "steps": 17,
-      "collisions": 0,
-      "damage_cost": 0,
-      "completed_stages": 0,
-      "reports": 1,
-      "hover_seconds": 0.0,
-      "scout_actions": 0,
-      "post_switch_actions": 0,
-      "stage_0_actions": 17,
-      "authoring_wall_seconds": 8.896
-    },
-    {
-      "kind": "bridge",
-      "mode": "reference",
-      "case": 2,
-      "success": 1.0,
-      "steps": 16,
-      "collisions": 0,
-      "damage_cost": 0,
-      "completed_stages": 0,
-      "reports": 1,
-      "hover_seconds": 0.0,
-      "scout_actions": 0,
-      "post_switch_actions": 0,
-      "stage_0_actions": 16,
-      "authoring_wall_seconds": 8.236
-    }
-  ],
-  "randomization_checks": [
-    {
-      "kind": "bridge",
-      "check": "randomization",
-      "returncode": 0
-    },
-    {
-      "kind": "bridge",
-      "check": "demo",
-      "returncode": 0
-    }
-  ],
-  "protocol": {
-    "seed_file_sha256": "f9362ba0c692eef536a57654433dc1498e9f6efa9c5fd5921e8541cc0dc51971",
-    "episodes_per_condition": 3,
-    "scoring_uses_wall_clock": false,
-    "model_calls": 0,
-    "gpu_devices": [],
-    "random_search_baseline": "Random actions with the same visual detection/reporting rule as the reference.",
-    "interpretation": "Scripted comparators; clear_context is a policy-memory ablation, not an LLM experiment."
-  },
-  "model_calls": 0,
-  "gpu_devices": [],
-  "regression_tests": {
-    "unit.xml": {
-      "tests": 88,
-      "failures": 0,
-      "errors": 0,
-      "skipped": 0
-    },
-    "repo-tests.xml": {
-      "tests": 178,
-      "failures": 0,
-      "errors": 0,
-      "skipped": 0
-    }
-  },
-  "security_checks": {
-    "ale_returncode_expected_nonzero": 2,
-    "checks": [
+    "run_id": "validate-186fae03",
+    "schema_version": 1,
+    "tasks": [
       {
-        "episode_id": "bridge_damage_inspection-oracle-414acee1",
-        "permission_checks": 14,
-        "forged_success_reward": {
-          "reward": 0.0
+        "failures": [],
+        "name": "grounded-intelligence-initiative/bridge_damage_inspection",
+        "oracle": {
+          "episode_id": "grounded-intelligence-initiative.bridge_damage_inspection-oracle-f1aad830",
+          "lock_digest": "sha256:d24ae5d3528611d30b2cc3b006c1d53f1959c32285f44c4f62db593906abca4c",
+          "lock_path": "grounded-intelligence-initiative.bridge_damage_inspection-oracle-f1aad830/lock.json",
+          "result_path": "grounded-intelligence-initiative.bridge_damage_inspection-oracle-f1aad830/result.json",
+          "rewards": {
+            "reward": 1.0
+          },
+          "status": "completed"
         },
-        "passed": true
+        "passed": true,
+        "reward_names": [
+          "reward"
+        ],
+        "spec_hash": "sha256:372a7e3eb126de43cc5d0896649dd6e79d378d8501d086b680f1b101307fc4b8",
+        "untouched": {
+          "episode_id": "grounded-intelligence-initiative.bridge_damage_inspection-untouched-9ae61543",
+          "lock_digest": "sha256:ddb36834942f2c3b4936c0345c919682d6234dcf9e1c82791986ab8dd74fd64a",
+          "lock_path": "grounded-intelligence-initiative.bridge_damage_inspection-untouched-9ae61543/lock.json",
+          "result_path": "grounded-intelligence-initiative.bridge_damage_inspection-untouched-9ae61543/result.json",
+          "rewards": {
+            "reward": 0.0
+          },
+          "status": "completed"
+        },
+        "warnings": []
       }
-    ],
-    "passed": true
+    ]
   },
-  "media_checks": [
-    {
-      "kind": "bridge",
-      "images": {
-        "poster.png": {
-          "shape": [
-            1100,
-            1440,
-            3
-          ],
-          "std": 66.37579921893953
-        },
-        "scene.png": {
-          "shape": [
-            900,
-            1440,
-            3
-          ],
-          "std": 44.906444670816576
-        },
-        "agent-view.png": {
-          "shape": [
-            256,
-            512,
-            3
-          ],
-          "std": 32.91149104694096
-        }
-      },
-      "frames": 7,
-      "mean_motion": 0.5337251984126984
-    }
-  ],
-  "build_order_equivalence": "20 initial camera hashes identical before/after deterministic glTF node sorting.",
-  "security_scope": "14 protected-service checks in a disposable Bridge task; shared protocol, not a full security audit.",
-  "reference_scope": "Arm randomized reference cases are control-only; ALE also tests reconstruction and four transfers."
+  "source_sha256": {
+    "environment/setup/payload/client.py": "6570ed6b94d685d00fcaf47f47d464afd378cfeddfb33ed227c740bc9e70fe4b",
+    "environment/setup/payload/mcp_stdio.py": "9918aed77a0b54e9fd0d6b28f37a7053e461c48f8dad08c49afcddec06d9f92e",
+    "environment/setup/runtime/geometry.py": "cf4db0fac7a4131c9fe29872f4ab243cb67d00393109cd10935d18b2be3e17c4",
+    "environment/setup/runtime/long_bridge.py": "c1a671e55ff23f3ea2f65560bcbc065292288fb1e1ffbee0515c8d61b072262b",
+    "environment/setup/runtime/pbr_renderer.py": "9d73722325be6264b3b4a9aa80627b4a3a43049d8a7546569ffbed9e04c43eae",
+    "environment/setup/runtime/pbr_scene.py": "ae8a4a75dac3779fad0af53a2803267e359ef376afef5982242ab2c24a802044",
+    "environment/setup/runtime/scene_assets.py": "7898a97e8db8229bbec0015d43374faab674cdb4ca56b17c3091fbd77e4c7b13",
+    "environment/setup/runtime/service.py": "74dec1d39c087ef011b6200d121f7691caa11b8e7a2ef77a9af7507feb2c0fbf",
+    "environment/setup/runtime/world.py": "6edecce9d56a7a1b5d6b5b4396510b428116516f4ed606be07f297189fb5c8b7",
+    "environment/setup/setup_runtime.py": "48e67467f3f6d93d999d54530b4ac7d0a522569978395982bfb51dc9b0e5c371",
+    "instruction.md": "6e39c4e0e6bcc9011d71b7284277afd73b2161c701242a740fe651575e65a14d"
+  },
+  "claims": "Development feasibility, not a sealed frontier benchmark or causal memory study.",
+  "astra_pilot": {
+    "status": "pending"
+  }
 }

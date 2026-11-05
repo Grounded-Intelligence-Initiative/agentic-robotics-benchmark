@@ -1,5 +1,4 @@
 """Determinism, scene coverage and aperture visibility, without a model API."""
-import hashlib
 import json
 from pathlib import Path
 import sys
