@@ -8,8 +8,8 @@ nut (or any nut spec file you pass with --nut, e.g. a replica you built); the ta
 through 1, 2, 3 bands. It speaks the same wire
 as the hidden grader: READY within 120 s, each reply within 30 s, repeated step indices with
 perturbed observations (only the reply to the real observation is applied), an aborted episode
-scores 0 and the controller is restarted (at most 3 restarts), replies longer than 64 KiB abort the
-episode, and the controller runs with only AF_UNIX sockets (the same seccomp filter as at grading
+scores 0, every episode runs a NEW controller process from a fresh copy of the submission (nothing
+carries over between episodes), replies longer than 64 KiB abort the episode, and the controller runs with only AF_UNIX sockets (the same seccomp filter as at grading
 time). It reports whether the run stayed inside the grading time budget (6000 s for 16 episodes).
 It never touches the hidden nuts, does not know the reference value and prints no score.
 """
@@ -20,9 +20,11 @@ import math
 import os
 import queue
 import random
+import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 
@@ -187,43 +189,44 @@ def main():
     pairs = differed = 0
     results = []
     t0 = time.monotonic()
-    try:
-        wire = Wire(a.submission)
-    except WireError as exc:
-        print(json.dumps({"error": str(exc)}))
-        return 1
-    try:
-        for i, seed in enumerate(seeds):
-            env = E.NutEnv(spec, early_end=True)
-            bands = 1 + i % 3
-            try:
-                obs = env.reset(seed, bands)
-                wire.reset()
-                for t in range(env.max_steps):
-                    wobs = E.to_wire(obs)
-                    if rng.random() < PROBE_RATE:
-                        other = E.to_wire(env.perturbed_observation(obs, rng))
-                        if rng.random() < 0.5:
-                            b = wire.act(t, other)
-                            act = wire.act(t, wobs)
-                        else:
-                            act = wire.act(t, wobs)
-                            b = wire.act(t, other)
-                        pairs += 1
-                        differed += int(differ(act, b))
+    for i, seed in enumerate(seeds):
+        env = E.NutEnv(spec, early_end=True)
+        bands = 1 + i % 3
+        # like the grader: every episode runs a new controller process from a fresh copy of the submission
+        tmp = tempfile.mkdtemp(prefix="practice-")
+        work = os.path.join(tmp, "submission")
+        shutil.copytree(a.submission, work, symlinks=True)
+        wire = None
+        try:
+            obs = env.reset(seed, bands)
+            wire = Wire(work)
+            wire.reset()
+            for t in range(env.max_steps):
+                wobs = E.to_wire(obs)
+                if rng.random() < PROBE_RATE:
+                    other = E.to_wire(env.perturbed_observation(obs, rng))
+                    if rng.random() < 0.5:
+                        b = wire.act(t, other)
+                        act = wire.act(t, wobs)
                     else:
                         act = wire.act(t, wobs)
-                    obs, done, info = env.step(act)
-                    if done:
-                        break
-                results.append({"seed": seed, "peg_bands": bands, "episode_score": round(env.episode_score(), 5),
-                                "steps": env.t, "sim_fault": env.fault})
-            except (WireError, E.ActionError, ValueError, TypeError) as exc:
-                results.append({"seed": seed, "peg_bands": bands, "episode_score": 0.0, "aborted": str(exc)[:200]})
-            finally:
-                env.close()
-    finally:
-        wire.close()
+                        b = wire.act(t, other)
+                    pairs += 1
+                    differed += int(differ(act, b))
+                else:
+                    act = wire.act(t, wobs)
+                obs, done, info = env.step(act)
+                if done:
+                    break
+            results.append({"seed": seed, "peg_bands": bands, "episode_score": round(env.episode_score(), 5),
+                            "steps": env.t, "sim_fault": env.fault})
+        except (WireError, E.ActionError, ValueError, TypeError) as exc:
+            results.append({"seed": seed, "peg_bands": bands, "episode_score": 0.0, "aborted": str(exc)[:200]})
+        finally:
+            env.close()
+            if wire is not None:
+                wire.close()
+            shutil.rmtree(tmp, ignore_errors=True)
     wall = time.monotonic() - t0
     mean = sum(r["episode_score"] for r in results) / len(results) if results else 0.0
     print(json.dumps({

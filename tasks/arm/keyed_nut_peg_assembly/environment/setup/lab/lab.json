@@ -1,7 +1,7 @@
 {
  "plugin": "nut_plugin.py",
  "instances": "../ref/nuts.json",
- "budget": 12,
+ "budget": 4,
  "trial_step_cap": 1300,
  "trial_wall_s": 3600.0,
  "idle_timeout_s": 900,

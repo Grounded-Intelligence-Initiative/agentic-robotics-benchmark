@@ -90,7 +90,7 @@ steps (120 s simulated).
 
 `labclient.py` talks to a service on `/run/ale-lab/lab.sock` (JSON lines; `python3 labclient.py
 --help`). A **trial** is one episode with one nut: `reset` with the nut id starts it and charges
-1 trial. You have **12 trials in total**, shared by all nuts and never refunded. `step` with an
+1 trial. You have **4 trials in total**, shared by all nuts and never refunded. `step` with an
 action returns the next observation (steps are free) until the episode reaches 1200 steps. Each
 trial draws a fresh layout, fresh sensor noise (from OS entropy) and a target peg (`peg_bands`)
 at random. A trial ends when its episode ends, when you start a new trial or close the
@@ -121,10 +121,15 @@ Deadlines: print `READY` within 120 s of launch, and answer every request within
 is a single budget per request, timed from when the request is sent: blank or partial lines count
 against the same 30 s and do not buy more time, so emit nothing but your one JSON reply. A missed
 deadline, a reply that is not one JSON object with an `action` of 8 numbers, or a crash aborts the
-episode, which then scores 0. After an aborted episode the grader stops your process and launches
-`bash run.sh` again for the next one (it must print `READY` again); after three such restarts
-every remaining episode scores 0. So `run.sh` has to work when started a second time: no fixed
-ports, PID files or locks that the first run leaves behind.
+episode, which then scores 0.
+
+**Every episode is graded from scratch.** Before each episode the grader stops every process of
+your account, deletes every file your account owns outside the submission folder (in `/tmp`,
+`/var/tmp`, `/dev/shm`, `/run`, `/usr/local`, your home), replaces the submission folder with a
+fresh copy of the one you left, and launches `bash run.sh` again (it must print `READY` again).
+Nothing your controller writes or learns during one graded episode is available in the next one:
+whatever it should know about the nuts has to be in the submission you leave. So `run.sh` has to
+work when started again: no fixed ports, PID files or locks that an earlier run leaves behind.
 
 `t` is the step index within the episode, starting at 0 after each `reset`. A step may be queried
 more than once with the same `t`; answer each request from the observation it carries. Repeated
@@ -133,8 +138,8 @@ the steps the grader asks the same `t` twice, once with the real observation and
 slightly perturbed copy (joint readings, gripper and wrist-camera pose, wrench; the images are
 unchanged), in a hidden order, and applies only the reply to the real one. The grader records
 whether the two replies differ; this record does not change your score. Your controller may keep
-state between steps and between episodes (`helpers/wire_skeleton.py` shows one way to do that
-safely with repeated `t`).
+state between the steps of an episode (`helpers/wire_skeleton.py` shows one way to do that safely
+with repeated `t`).
 
 The grader runs **16 episodes**, 4 with each nut, in a fixed hidden order, each with its own hidden
 layout and target peg. The episode score is the best of these stages reached during the episode:
@@ -154,15 +159,14 @@ answers late or malformed, or makes the simulation unstable (any arm joint faste
 the nut faster than 5 m/s) scores 0. The whole grading run must finish within **6000 s** of wall
 time, simulation and rendering included: budget it at about 375 s per episode, that is about
 0.3 s per step on average including your controller's own time. On the grader a simulation step
-takes about 0.02 s and each requested image about 0.2 s. The episode under way when the budget
-runs out, and the episodes after it, score 0. Your controller is one process for the whole grading
-run (it is started again only after a crash), so it may carry what it learned about a nut in one
-episode into later episodes with the same nut. Only the final controller is scored; trial usage is
-not.
+takes about 0.02 s and each requested image about 0.2 s. The budget includes your controller's start-up in
+every episode. The episode under way when the budget runs out, and the episodes after it, score 0.
+Only the final controller is scored; trial usage is not.
 
 ## Checking your work
 
 `/opt/venv/bin/python3 /home/user/practice_grader/grade.py` runs your controller against the
 practice nut in your dev sim on visible practice seeds over the same wire: same request shape,
-same deadlines, a few repeated-`t` queries, the same restart rule and network filter. It prints
+same deadlines, a few repeated-`t` queries, a new controller process from a fresh copy of the
+submission for every episode, and the same network filter. It prints
 the raw progress it observes and whether the run kept within the time budget. It reports no score.

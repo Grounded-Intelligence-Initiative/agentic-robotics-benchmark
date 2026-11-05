@@ -14,6 +14,10 @@ Reference-solution access: if the submission holds a file `oracle_token` whose S
 tests/oracle_token.sha256, every observation also carries `_gt` (the ground-truth scene state). Only
 solution/ has the token; the hash is useless without it. The probe lock is recorded, never gating.
 
+No memory between episodes: every episode starts a new controller process from a fresh copy of the
+submission as restored (kept root-only), after every agent-UID process has been stopped and every
+file the agent account owns in the writable places outside the submission has been removed.
+
 Additions to the kit wire (the vendored kit stays byte-identical):
   * GuardedSolver: the solver is started through nonet_exec.py, which installs a seccomp filter
     (only AF_UNIX sockets), drops to the agent account and execs `bash run.sh` with a whitelist
@@ -30,9 +34,11 @@ import json
 import math
 import os
 import pwd
+import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -246,7 +252,49 @@ def oracle_access(workdir):
     return hashlib.sha256(tok).hexdigest() == want
 
 
-def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt):
+SCRUB_ROOTS = ("/tmp", "/var/tmp", "/dev/shm", "/usr/local", "/run", "/var/lock")
+
+
+def scrub_agent_files(uid, home):
+    """Remove every file or directory the agent account owns under the writable roots and the agent
+    home (the submission folder is replaced separately). Never follows a symlink."""
+    roots = list(SCRUB_ROOTS) + [home]
+    for root in roots:
+        for dp, dns, fns in os.walk(root, topdown=True, followlinks=False):
+            keep = []
+            for name in dns + fns:
+                path = os.path.join(dp, name)
+                if os.path.abspath(path) == os.path.join(home, "submission"):
+                    continue
+                try:
+                    st = os.lstat(path)
+                except OSError:
+                    continue
+                if st.st_uid == uid:
+                    try:
+                        if os.path.isdir(path) and not os.path.islink(path):
+                            shutil.rmtree(path, ignore_errors=True)
+                        else:
+                            os.unlink(path)
+                    except OSError:
+                        pass
+                elif name in dns:
+                    keep.append(name)
+            dns[:] = [d for d in dns if d in keep]
+
+
+def fresh_submission(pristine, workdir, uid, gid):
+    """Replace the submission folder with a fresh copy of the restored one, owned by the agent."""
+    shutil.rmtree(workdir, ignore_errors=True)
+    shutil.copytree(pristine, workdir, symlinks=True)
+    for dp, dns, fns in os.walk(workdir, followlinks=False):
+        for name in dns + fns:
+            os.lchown(os.path.join(dp, name), uid, gid)
+    os.lchown(workdir, uid, gid)
+    os.chmod(workdir, 0o700)
+
+
+def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt, pristine=None, gid=None):
     budget = float(config.get("grader_budget_s", 6000))
     lock = ProbeLock(rng, rate=config.get("probe_rate", 0.01),
                      pass_fraction=config.get("probe_pass_fraction", 0.1), tolerance=1e-4)
@@ -257,9 +305,19 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
     budget_exhausted = False
     GuardedSolver.guard = egress_mode == "seccomp"
     GuardedSolver.nproc = int(config.get("solver_nproc_limit", 0))
-    solver = GuardedSolver(step_timeout=config.get("step_timeout_s", 30), submission=workdir)
+    solver = None
     try:
         for ep, item in enumerate(plan):
+            if solver is not None:
+                try:
+                    solver.close()
+                except Exception:  # noqa: BLE001 - closing a broken solver must not crash the grader
+                    pass
+            if pristine is not None:
+                kill_agent_processes(uid)
+                scrub_agent_files(uid, os.path.dirname(workdir))
+                fresh_submission(pristine, workdir, uid, gid)
+            solver = None
             nut = item["nut"]
             if time.monotonic() - t_start > budget:
                 budget_exhausted = True
@@ -271,6 +329,8 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
             reason = "ok"
             try:
                 obs = env.reset(int(item["seed"]), int(item["peg_bands"]))
+                solver = GuardedSolver(step_timeout=config.get("step_timeout_s", 30), submission=workdir,
+                                       max_restarts=0)
                 solver.reset()
                 for t in range(env.max_steps):
                     if time.monotonic() - t_start > budget:
@@ -297,7 +357,7 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
                     score = 0.0
                 else:
                     score = env.episode_score()
-            except (SolverAborted, E.ActionError, ValueError, TypeError, OverflowError, KeyError,
+            except (SolverAborted, SolverMissing, E.ActionError, ValueError, TypeError, OverflowError, KeyError,
                     AttributeError, RecursionError) as exc:
                 aborted += 1
                 score = 0.0
@@ -314,7 +374,8 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
                 ep, nut, item["peg_bands"], score, getattr(env, "t", 0), reason))
     finally:
         try:
-            solver.close()
+            if solver is not None:
+                solver.close()
         except Exception:  # noqa: BLE001 - closing a broken solver must not crash the grader
             pass
     return scores, aborted, faults, per_nut, per_stage, egress_hits, budget_exhausted, lock
@@ -344,7 +405,15 @@ def main():
     except OSError as exc:
         log("staging the submission failed: {}".format(type(exc).__name__))
         workdir = None
-    if workdir is None:
+    if workdir is None or not os.path.isfile(os.path.join(workdir, "run.sh")):
+        write_verdict(zero_verdict(reason="no usable submission", anchored=anchor is not None))
+        return
+    pristine = os.path.join(tempfile.mkdtemp(prefix="keyed-pristine-"), "submission")   # root-only (umask 077)
+    try:
+        shutil.copytree(workdir, pristine, symlinks=True)
+        os.chmod(pristine, 0o700)
+    except OSError as exc:
+        log("copying the submission failed: {}".format(type(exc).__name__))
         write_verdict(zero_verdict(reason="no usable submission", anchored=anchor is not None))
         return
     with_gt = oracle_access(workdir)
@@ -354,7 +423,8 @@ def main():
     log("egress guard: " + egress_mode)
     try:
         (scores, aborted, faults, per_nut, per_stage, egress_hits, budget_exhausted,
-         lock) = run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt)
+         lock) = run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt,
+                              pristine=pristine, gid=gid)
     except (SolverMissing, SolverAborted) as exc:
         kill_agent_processes(uid)
         write_verdict(zero_verdict(reason=str(exc)[:200], anchored=anchor is not None))
