@@ -8,7 +8,9 @@ instruction names (ownership changes never follow a symlink). It owns its own co
 the robot environment (keyed_env.py, byte-identical to the agent's dev sim), loads the hidden nuts
 from tests/ref/nuts.json and plays the fixed hidden episodes of tests/ref/episodes.json (nut, target
 peg, layout and noise seed) in order, drives the agent's controller over the kit wire at the agent's
-UID, and scores every episode from its own simulator state (`NutEnv.episode_score`).
+UID, and scores every episode from its own simulator state (`NutEnv.episode_score`: 1 if the nut was
+assembled on the target peg, else 0). The metric is the fraction of assembled episodes; the staged
+`NutEnv.progress` is reported as a diagnostic only.
 
 Reference-solution access: if the submission holds a file `oracle_token` whose SHA-256 equals
 tests/oracle_token.sha256, every observation also carries `_gt` (the ground-truth scene state). Only
@@ -305,6 +307,7 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
     scores, aborted, faults = [], 0, 0
     per_nut = {}
     per_stage = {}
+    progress = []
     egress_hits = 0
     budget_exhausted = False
     GuardedSolver.guard = egress_mode == "seccomp"
@@ -330,6 +333,7 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
                 continue
             env = E.NutEnv(specs[nut], early_end=True)
             score = 0.0
+            prog = 0.0
             reason = "ok"
             try:
                 obs = env.reset(int(item["seed"]), int(item["peg_bands"]))
@@ -361,6 +365,7 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
                     score = 0.0
                 else:
                     score = env.episode_score()
+                    prog = env.progress()
             except (SolverAborted, SolverMissing, E.ActionError, ValueError, TypeError, OverflowError, KeyError,
                     AttributeError, RecursionError) as exc:
                 aborted += 1
@@ -372,17 +377,18 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
                 score = 0.0
             scores.append(score)
             per_nut.setdefault(nut, []).append(score)
-            for name, level in (("lifted", 0.25), ("engaged", 0.5), ("seated", 1.0)):
-                per_stage.setdefault(name, []).append(1.0 if score >= level else 0.0)
-            log("episode {} ({}, {} bands): score={:.4f} steps={} {}".format(
-                ep, nut, item["peg_bands"], score, getattr(env, "t", 0), reason))
+            progress.append(prog)
+            for name, level in (("lifted", 0.25), ("on_target_peg", 0.35), ("assembled", 1.0)):
+                per_stage.setdefault(name, []).append(1.0 if prog >= level else 0.0)
+            log("episode {} ({}, {} bands): assembled={:.0f} progress={:.3f} steps={} {}".format(
+                ep, nut, item["peg_bands"], score, prog, getattr(env, "t", 0), reason))
     finally:
         try:
             if solver is not None:
                 solver.close()
         except Exception:  # noqa: BLE001 - closing a broken solver must not crash the grader
             pass
-    return scores, aborted, faults, per_nut, per_stage, egress_hits, budget_exhausted, lock
+    return scores, aborted, faults, per_nut, per_stage, egress_hits, budget_exhausted, lock, progress
 
 
 def main():
@@ -428,7 +434,7 @@ def main():
     log("egress guard: " + egress_mode)
     try:
         (scores, aborted, faults, per_nut, per_stage, egress_hits, budget_exhausted,
-         lock) = run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt,
+         lock, progress) = run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt,
                               pristine=pristine, gid=gid, baseline=baseline)
     except (SolverMissing, SolverAborted) as exc:
         kill_agent_processes(uid)
@@ -448,13 +454,14 @@ def main():
                  lab_stopped=1.0 if lab_stopped else 0.0,
                  budget_exhausted=1.0 if budget_exhausted else 0.0,
                  probe_lock_ok=1.0 if lock.ok else 0.0,
-                 reference_token=1.0 if with_gt else 0.0)
+                 reference_token=1.0 if with_gt else 0.0,
+                 mean_progress=sum(progress) / len(progress) if progress else 0.0)
     for nut, vals in sorted(per_nut.items()):
         extra["score_" + nut] = sum(vals) / len(vals)
     for key, vals in sorted(per_stage.items()):
         extra["stage_" + key] = sum(vals) / len(vals)
     verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5), higher_is_better=True,
-                            metric_name="mean_assembly_progress", locks_ok=True, extra=extra,
+                            metric_name="assembly_success_rate", locks_ok=True, extra=extra,
                             full_at=meta.get("full_at", 1.0))
     write_verdict(verdict)
     log("measured={:.5f} anchor={} ratio={:.3f} reward={:.3f} lock={} aborted={} faults={} egress={}".format(

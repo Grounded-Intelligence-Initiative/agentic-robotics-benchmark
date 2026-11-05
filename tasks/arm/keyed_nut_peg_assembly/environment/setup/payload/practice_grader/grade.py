@@ -218,19 +218,21 @@ def main():
                 obs, done, info = env.step(act)
                 if done:
                     break
-            results.append({"seed": seed, "peg_bands": bands, "episode_score": round(env.episode_score(), 5),
+            results.append({"seed": seed, "peg_bands": bands, "assembled": env.episode_score(),
+                            "progress": round(env.progress(), 4),
                             "steps": env.t, "sim_fault": env.fault})
         except (WireError, E.ActionError, ValueError, TypeError) as exc:
-            results.append({"seed": seed, "peg_bands": bands, "episode_score": 0.0, "aborted": str(exc)[:200]})
+            results.append({"seed": seed, "peg_bands": bands, "assembled": 0.0, "progress": 0.0,
+                            "aborted": str(exc)[:200]})
         finally:
             env.close()
             if wire is not None:
                 wire.close()
             shutil.rmtree(tmp, ignore_errors=True)
     wall = time.monotonic() - t0
-    mean = sum(r["episode_score"] for r in results) / len(results) if results else 0.0
+    mean = sum(r["assembled"] for r in results) / len(results) if results else 0.0
     print(json.dumps({
-        "metric": "mean_assembly_progress (dev sim, {})".format(os.path.basename(a.nut)),
+        "metric": "assembly_success_rate (dev sim, {})".format(os.path.basename(a.nut)),
         "raw_value": round(mean, 5),
         "episodes": results,
         "repeated_t_pairs": pairs,

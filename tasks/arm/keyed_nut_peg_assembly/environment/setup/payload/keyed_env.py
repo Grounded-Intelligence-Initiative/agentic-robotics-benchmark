@@ -15,7 +15,8 @@ Main entry points
     env = NutEnv(nut_spec)                  # nut_spec = json.load(open("practice_nut.json"))
     obs = env.reset(seed, peg_bands)        # any int seed: layout + sensor noise; peg_bands in 1..3
     obs, done, info = env.step(action)      # 10 Hz
-    env.episode_score()                     # credit of the episode so far (see `episode_score`)
+    env.episode_score()                     # 1.0 if the nut is assembled, else 0.0 (see `episode_score`)
+    env.progress()                          # diagnostic progress of the episode (not scored)
     env.gt()                                # ground truth (dev use only)
 
 Action (a list of 8 numbers):
@@ -702,7 +703,15 @@ class NutEnv(object):
             self.done = True
 
     def episode_score(self):
-        """Credit of the episode (0 after a fault), the best stage reached:
+        """Score of the episode: 1.0 if the nut was assembled (seated on the TARGET peg's collar, within SEAT_TOL
+        and tilt below 5 degrees, for RELEASE_STEPS consecutive steps with the fingers open at least RELEASE_OPEN
+        and not touching it, the nut not ruined), else 0.0 (also after a fault)."""
+        if self.fault is not None:
+            return 0.0
+        return 1.0 if self.credit >= 1.0 else 0.0
+
+    def progress(self):
+        """Diagnostic only (not scored): the best stage reached during the episode (0 after a fault):
         0.25 the nut was lifted LIFT_HEIGHT above the table while both fingers held it;
         0.35 + 0.45 x d  the nut's hole was around the TARGET peg's shaft (axis within ENGAGE_XY, nut below the
              shaft top), d = how far its bottom has come down from resting on the pin (GROOVE_TOP above the collar,
@@ -710,7 +719,7 @@ class NutEnv(object):
         1.0  the nut sat on the target peg's collar (within SEAT_TOL, tilt below 5 degrees) for RELEASE_STEPS
              consecutive steps with the fingers open at least RELEASE_OPEN and not touching the nut.
         Forcing the pin through the groove wall (`pin_in_wall` for FORCE_STEPS consecutive steps while the nut
-        is on the target peg) ruins the nut: the credit stays at its value from before."""
+        is on the target peg) ruins the nut: the progress stays at its value from before."""
         if self.fault is not None:
             return 0.0
         return float(self.credit)

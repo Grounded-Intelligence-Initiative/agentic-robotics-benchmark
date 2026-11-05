@@ -23,7 +23,7 @@ do not start many in parallel.
 |---|---|
 | `keyed_env.py` | The complete robot environment: table, Panda arm and gripper (robosuite 1.5.2 models), the operational-space controller, the pegs, the nut model, cameras, sensor noise and the credit rule. The lab and the grader run this exact file; only the nut spec they load differs. Read its docstrings: frames, units, geometry, action and observation formats, camera matrices. |
 | `practice_nut.json` | A practice nut `P` (a nut spec with its groove, for `NutEnv(json.load(open(...)))`). It is not one of the four scored nuts. `env.gt()` gives the dev sim's ground truth (nut pose, its groove, the peg poses). You can write nut specs of your own to practise on. |
-| `practice_grader/grade.py` | Runs your controller over the grading wire against the practice nut (or any nut spec you pass with `--nut`) on visible seeds and prints the raw progress. |
+| `practice_grader/grade.py` | Runs your controller over the grading wire against the practice nut (or any nut spec you pass with `--nut`) on visible seeds and prints which episodes were assembled and how far each got. |
 | `labclient.py` | Client for the lab (library and command line). |
 | `helpers/lab_bridge.py` | Optional boilerplate: runs your controller (`run.sh`) for one lab trial and logs every observation and action. |
 | `helpers/wire_skeleton.py` | Optional boilerplate for the grading wire (READY / reset / act / close, repeated step indices). |
@@ -142,22 +142,15 @@ state between the steps of an episode (`helpers/wire_skeleton.py` shows one way 
 with repeated `t`).
 
 The grader runs **16 episodes**, 4 with each nut, in a fixed hidden order, each with its own hidden
-layout and target peg. The episode score is the best of these stages reached during the episode:
-
-- **0.25**: the nut was 30 mm or more above the table while both fingers touched it;
-- **0.35 + 0.45 x d**: the nut's hole was around the **target** peg's shaft (hole axis within 5 mm
-  of the shaft axis, nut bottom below the shaft top), where d is how far the nut's bottom came down
-  from resting on the pin (39.5 mm above the collar, d = 0) towards the collar (d = 1); the
-  lowest point of the episode counts;
-- **1.0**: the nut sat on the target peg's collar (bottom within 3 mm of the collar top, tilt
-  below 5 degrees) for 10 consecutive steps with the fingers open at least 60 mm and not touching
-  the nut.
-
-A nut on the wrong peg gets at most 0.25. The groove walls are solid: forcing the pin through them
-(its centre more than 5 degrees sideways or 1.5 mm up or down inside a solid part of the wall, for 3
-consecutive steps, while the nut is on the target peg) ruins the nut, ends the episode and keeps
-the credit it had before. The episode ends at 1200 steps or as soon as it scores
-1.0. Your result is the mean over the 16 episodes. An episode in which the controller crashes,
+layout and target peg. An episode counts as **assembled** when the nut sits on the **target** peg's
+collar (its bottom within 3 mm of the collar top, tilt below 5 degrees) for 10 consecutive steps
+with the fingers open at least 60 mm and not touching the nut. A nut on the wrong peg, a nut left
+partway down the groove or still held, or a ruined nut is not assembled. The groove walls are
+solid: forcing the pin through them (its centre more than 5 degrees sideways or 1.5 mm up or down
+inside a solid part of the wall, for 3 consecutive steps, while the nut is on the target peg) ruins
+the nut and ends the episode. The episode ends at 1200 steps or as soon as the nut is assembled.
+Your result is the **fraction of the 16 episodes assembled**. (The grader also records how far each
+episode got, for diagnosis only; it does not count.) An episode in which the controller crashes,
 answers late or malformed, or makes the simulation unstable (any arm joint faster than 8 rad/s or
 the nut faster than 5 m/s) scores 0. The whole grading run must finish within **6000 s** of wall
 time, simulation and rendering included: budget it at about 375 s per episode, that is about
@@ -172,4 +165,5 @@ Only the final controller is scored; trial usage is not.
 practice nut in your dev sim on visible practice seeds over the same wire: same request shape,
 same deadlines, a few repeated-`t` queries, a new controller process from a fresh copy of the
 submission for every episode, and the same network filter. It prints
-the raw progress it observes and whether the run kept within the time budget. It reports no score.
+which episodes it saw assembled, how far each got, and whether the run kept within the time
+budget.
