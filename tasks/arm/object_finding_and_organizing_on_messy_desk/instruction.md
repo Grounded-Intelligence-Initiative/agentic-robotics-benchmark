@@ -229,5 +229,6 @@ reward you are judged on is that mean relative to a hidden reference value.
   `/home/user/submission/` and replace the policy; as shipped it holds still and scores 0;
 - `/home/user/task_card.md` — camera calibration, container geometry, class catalogue.
 
-The simulator runs headless on the GPU in this sandbox. Start it once and keep it alive;
-each launch costs about two minutes.
+The simulator runs headless on the GPU in this sandbox. Its first launch in a fresh sandbox
+compiles the renderer's shaders and takes about ten minutes; later launches take seconds.
+Start it early and keep it alive.

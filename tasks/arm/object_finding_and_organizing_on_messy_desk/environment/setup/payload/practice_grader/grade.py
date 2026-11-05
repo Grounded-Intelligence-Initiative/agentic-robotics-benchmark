@@ -9,7 +9,8 @@ no reference value. "My controller works and roughly how well", not "what I will
 
     /opt/venv/bin/python3 /home/user/practice_grader/grade.py [--episodes 1] [--horizon 2000] [--seed 11] [--live 500] [--score-file PATH]
 
-The simulator takes about two minutes to start; keep --horizon small while iterating.
+The simulator's first start in a fresh sandbox compiles the renderer's shaders (about ten minutes);
+later starts take seconds. Keep --horizon small while iterating.
 `--live N` prints the running score (S if cut now, the unscaled 1/2 O + 1/2 R, O, R, closed
 requests) every N steps on stderr; `--score-file` also writes it as JSON for your own tooling.
 Driving the simulator yourself (`/opt/isaac/bin/python3 /home/user/messy_desk_env.py`, stdio JSON): every
@@ -232,7 +233,8 @@ def main():
 
     rng = random.Random(2024)
     stats = {"repeated_t_queries": 0, "repeated_t_answers_differed": 0}
-    print("[practice] starting the simulator (about two minutes)...", file=sys.stderr, flush=True)
+    print("[practice] starting the simulator (the first start in a fresh sandbox compiles the renderer's shaders, "
+          "about ten minutes; later starts take seconds)...", file=sys.stderr, flush=True)
     try:
         sim = SimClient(args.env, log_path=os.path.expanduser("~/practice_sim.log"))
     except SimError as exc:

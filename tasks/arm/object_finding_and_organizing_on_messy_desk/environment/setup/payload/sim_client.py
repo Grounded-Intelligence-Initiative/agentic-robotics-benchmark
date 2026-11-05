@@ -23,9 +23,12 @@ class SimError(Exception):
 class SimClient(object):
     """`ready_timeout` bounds one start attempt. Isaac's renderer occasionally deadlocks on the
     very first frame of a fresh process (the process sits idle forever before announcing
-    readiness); such an attempt is killed and the simulator started again, `attempts` times."""
+    readiness); such an attempt is killed and the simulator started again, `attempts` times.
+    The first start in a fresh sandbox compiles the renderer's shaders: 547-621 s measured on an
+    RTX 4090 (driver 580.178); a start with that cache in place takes 5-15 s. The default leaves
+    room for the cold start on a slower GPU."""
 
-    def __init__(self, env_script, python=None, ready_timeout=480.0, step_timeout=120.0, log_path=None, attempts=3):
+    def __init__(self, env_script, python=None, ready_timeout=1500.0, step_timeout=120.0, log_path=None, attempts=3):
         self.python = python or ISAAC_PYTHON
         self.env_script = env_script
         self.step_timeout = float(step_timeout)

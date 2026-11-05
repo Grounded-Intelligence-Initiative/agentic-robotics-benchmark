@@ -1,10 +1,14 @@
-"""object_finding_and_organizing_on_messy_desk: the privileged reference channel.
+"""object_finding_and_organizing_on_messy_desk: the privileged reference channel and the fixed hidden episode set.
 
 The grader hands the simulator's ground truth only to a submission whose .oracle_token (a regular file, never a
-link) hashes to tests/oracle_token.sha256, and nothing agent-visible names the channel.
+link) hashes to tests/oracle_token.sha256; nothing agent-visible names the channel; the hidden episodes are a fixed
+set of distinct 64-bit seeds that are not practice seeds; and an episode's probe stream depends only on the set's key
+and the episode's seed.
 """
+import ast
 import hashlib
 import importlib.util
+import json
 import os
 import sys
 import tempfile
@@ -81,11 +85,39 @@ class TokenTests(unittest.TestCase):
     def test_nothing_agent_visible_names_the_channel(self):
         token = (TASK / "solution/privileged/oracle_token").read_text().strip()
         digest = (TASK / "tests/oracle_token.sha256").read_text().split()[0]
+        seeds = [str(s) for s in json.loads((TASK / "tests/episodes.json").read_text())["seeds"]]
         visible = [TASK / "instruction.md"] + [p for p in (TASK / "environment").rglob("*") if p.is_file()]
         for p in visible:
             text = p.read_text(errors="replace")
-            for needle in [token, digest, ".oracle_token", "oracle_token", "privileged_mode", '"privileged"']:
+            for needle in [token, digest, ".oracle_token", "oracle_token", "privileged_mode", '"privileged"'] + seeds:
                 self.assertNotIn(needle, text, "{} mentions {}".format(p.relative_to(TASK), needle[:16]))
+
+
+class EpisodeSetTests(unittest.TestCase):
+    def practice_seeds(self):
+        tree = ast.parse((TASK / "environment/setup/payload/practice_grader/grade.py").read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign) and any(getattr(t, "id", "") == "PRACTICE_SEEDS" for t in node.targets):
+                return set(ast.literal_eval(node.value))
+        self.fail("no PRACTICE_SEEDS in the practice grader")
+
+    def test_fixed_set_is_distinct_64_bit_and_not_practice(self):
+        seeds, key = verify.load_episodes(str(TASK / "tests/episodes.json"))
+        self.assertGreaterEqual(len(seeds), 1)
+        self.assertEqual(len(set(seeds)), len(seeds))
+        self.assertTrue(all(2 ** 32 <= s < 2 ** 64 for s in seeds))
+        self.assertFalse(set(seeds) & self.practice_seeds())
+        self.assertTrue(0 < key < 2 ** 64)
+
+    def test_probe_stream_depends_on_key_and_seed_only(self):
+        seeds, key = verify.load_episodes(str(TASK / "tests/episodes.json"))
+        a = verify.seed_rng(entropy=(key << 64) | seeds[0])
+        b = verify.seed_rng(entropy=(key << 64) | seeds[0])
+        self.assertEqual([a.random() for _ in range(50)], [b.random() for _ in range(50)])
+        if len(seeds) > 1:
+            c = verify.seed_rng(entropy=(key << 64) | seeds[1])
+            d = verify.seed_rng(entropy=(key << 64) | seeds[0])
+            self.assertNotEqual([c.random() for _ in range(5)], [d.random() for _ in range(5)])
 
 
 class PrivilegedBlockTests(unittest.TestCase):

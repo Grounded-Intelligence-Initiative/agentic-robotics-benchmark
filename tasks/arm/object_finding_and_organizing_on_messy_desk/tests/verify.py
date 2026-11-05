@@ -1,13 +1,18 @@
-"""The grader. Runs as ROOT in the verify stage, after the agent is gone (closed_loop).
+"""The grader. Runs as ROOT in the verify stage, in a fresh verifier sandbox that holds only the
+submission (closed_loop).
 
 The grader owns the simulator (an Isaac Sim process it launches from this folder's env.py)
 and drives the agent's run.sh step by step over the ALE wire. The score is computed from
 the simulator's privileged state only; nothing the solver prints is a scoring input.
 
-Hidden seeds come from OS entropy inside this process. A probed step is asked twice with
-the same `t` (real and perturbed proprioception/pixels, hidden order); only the real reply
-reaches the simulator. An aborted episode (deadline, crash, malformed action) scores 0 and
-is never dropped.
+The hidden episodes are a fixed set (episodes.json in this folder): the same 64-bit seeds,
+in the same order, for every submission, none of them a practice seed. Each episode runs in
+a simulator process of its own, so an episode's world does not depend on the ones before it,
+and its probe schedule comes from a stream keyed by the set's hidden key and the episode's
+seed, so the same submission meets the same probes every time. A probed step is asked twice with the same
+`t` (real and perturbed proprioception, hidden order); only the real reply reaches the
+simulator. An aborted episode (deadline, crash, malformed action) scores 0 and is never
+dropped.
 
 The time budget is the controller's own, never the simulator's: per episode the grader sums
 the time it waits for the controller's replies plus a fixed charge per hi-res camera frame
@@ -109,6 +114,21 @@ def _request_log(state):
     return out
 
 
+def load_episodes(path=None):
+    """The fixed hidden episode set: (seeds, probe key). A missing or malformed set is a task error."""
+    path = path or os.path.join(stage_dir(), "episodes.json")
+    try:
+        with open(path) as f:
+            spec = json.load(f)
+        seeds = [int(s) for s in spec["seeds"]]
+        key = int(spec["probe_key"])
+    except (IOError, OSError, ValueError, KeyError, TypeError) as exc:
+        fail("cannot read the hidden episode set {}: {}".format(path, exc))
+    if not seeds or any(not 0 <= s < (1 << 64) for s in seeds) or len(set(seeds)) != len(seeds):
+        fail("the hidden episode set must hold distinct 64-bit seeds")
+    return seeds, key
+
+
 def token_state(submission, digest_path=None):
     """(privileged, mismatch) for the submission's .oracle_token against oracle_token.sha256.
 
@@ -158,27 +178,34 @@ def _containers(info):
             for n, c in (info.get("containers") or {}).items()}
 
 
-def run_episodes(config, rng, solver, privileged=False):
-    episodes = int(config.get("episodes", 3))
-    horizon = int(config.get("horizon", 20000))
-    budget = float(config.get("controller_budget_s", 3000))
-    hires_charge = float(config.get("hires_charge_s", 0.1))
-    lock = ProbeLock(rng, rate=config.get("probe_rate", 0.01),
-                     pass_fraction=config.get("probe_pass_fraction", 0.2))
+def _start_sim(config):
     env_script = os.path.join(stage_dir(), "env.py")
     try:
-        sim = SimClient(env_script, ready_timeout=float(config.get("sim_ready_timeout_s", 480)),
+        sim = SimClient(env_script, ready_timeout=float(config.get("sim_ready_timeout_s", 1500)),
                         attempts=int(config.get("sim_start_attempts", 3)),
                         log_path=os.path.join(stage_dir(), "sim.log"))
     except SimError as exc:
         fail("simulator failed to start: {}".format(exc))
     print("[grader] simulator up in {:.0f}s ({} start attempt(s))".format(sim.startup_s, sim.start_attempts),
           file=sys.stderr, flush=True)
+    return sim
+
+
+def run_episodes(config, seeds, probe_key, solver, privileged=False):
+    horizon = int(config.get("horizon", 20000))
+    budget = float(config.get("controller_budget_s", 3000))
+    hires_charge = float(config.get("hires_charge_s", 0.1))
+    lock = ProbeLock(None, rate=config.get("probe_rate", 0.01),
+                     pass_fraction=config.get("probe_pass_fraction", 0.2))
 
     scores, summaries, aborted, cut = [], [], 0, 0
-    try:
-        for episode in range(episodes):
-            seed = rng.seed(bits=64)
+    for episode, seed in enumerate(seeds):
+        # one probe stream per episode, keyed by the set's hidden key and the episode's seed: the same
+        # probes for the same submission every time, whatever ran before and in whatever order
+        rng = seed_rng(entropy=(probe_key << 64) | seed)
+        lock.rng = rng
+        sim = _start_sim(config)
+        try:
             try:
                 obs, state = sim.reset(seed, horizon)
                 containers = _containers(sim.info()) if privileged else None
@@ -230,18 +257,17 @@ def run_episodes(config, rng, solver, privileged=False):
             print("[grader] episode {}: score={:.4f} {}".format(episode, scorer.score(),
                   json.dumps(scorer.summary(), sort_keys=True)), file=sys.stderr, flush=True)
             # Printed after the episode ends, so a failed hidden episode can be replayed offline.
-            print("[grader] episode {}: seed={} requests={}".format(episode, seed, json.dumps(requests)),
+            print("[grader] episode {}: requests={}".format(episode, json.dumps(requests)),
                   file=sys.stderr, flush=True)
-    finally:
-        sim.close()
+        finally:
+            sim.close()
     return scores, summaries, aborted, cut, lock
 
 
 def main():
     config = stage_config()
-    rng = seed_rng()
     anchor, anchor_meta = read_anchor()
-
+    seeds, probe_key = load_episodes()
     submission = os.path.join(agent_home(), "submission")
     # read before any of the submission's code runs
     privileged, mismatch = token_state(submission)
@@ -259,7 +285,7 @@ def main():
         return
 
     try:
-        scores, summaries, aborted, cut, lock = run_episodes(config, rng, solver, privileged=privileged)
+        scores, summaries, aborted, cut, lock = run_episodes(config, seeds, probe_key, solver, privileged=privileged)
     finally:
         solver.close()
 
