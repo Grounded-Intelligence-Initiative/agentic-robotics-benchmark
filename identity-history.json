@@ -24,6 +24,18 @@
     "spec_hash": "sha256:472d0e693dc5010a5d406716d9f5158cd1bcacc1493d3bad88e468e72ac6a5d5"
   },
   {
+    "content_digest": "sha256:2d8234ea7647ba9f2dc80242ad9408140ff473d8b86ae2e3a9c0c626539c1130",
+    "since": "2026-11-04T16:43:07Z",
+    "slug": "bimanual_cad_design_from_photos",
+    "spec_hash": "sha256:ee4abc6bffe5e48ea067f47fb4dd99e5b496198df89fa7b9ed577f7ffa4b5d7e"
+  },
+  {
+    "content_digest": "sha256:dad0860f7fce006e3c98d112da8eec11cb98f51b531bc8f7959b51808466e38f",
+    "since": "2026-11-04T17:56:00Z",
+    "slug": "bimanual_requirements_replica_from_photos",
+    "spec_hash": "sha256:6f50e78650ad63dcb90181ebb568da7f2cfcf336edbd672226d5cf9c648b77e8"
+  },
+  {
     "content_digest": "sha256:6e96572478e441f637ccb8ccc3552cce57a20b97e677c7e2d5e7c52447a25442",
     "since": "2026-11-04T10:13:10Z",
     "slug": "dexhand_shape_sorter_all_pieces",
@@ -124,6 +136,12 @@
     "since": "2026-10-27T17:31:33Z",
     "slug": "robotic_arm_cad_design_from_photos",
     "spec_hash": "sha256:10b7f2f5c18dabb35baf33d00b0a851c5d55253e35db11f705d28bd4fa1585d7"
+  },
+  {
+    "content_digest": "sha256:a45b9217f174daa2e991ead1bf8aee55b0cdf4e2188c267ff44aaa50800f6248",
+    "since": "2026-11-04T19:28:23Z",
+    "slug": "robotic_arm_full_assembly_openarm_panda",
+    "spec_hash": "sha256:809b28ae4780240219598f47f9ec850600052bee3a4aeae0d4d78a5317561fa8"
   },
   {
     "content_digest": "sha256:a05f58b602d754fd6747edfc763b78ee0649835e2d0bc00dc29319f10423095a",
