@@ -1,0 +1,71 @@
+{
+ "bom": {
+  "battery_family": "6S",
+  "format": "bom-quad/1",
+  "parts": [
+   {
+    "count": 4,
+    "joint_type": "hip_roll",
+    "part_id": "WD-R52-48",
+    "role": "actuator"
+   },
+   {
+    "count": 4,
+    "joint_type": "hip_pitch",
+    "part_id": "WD-R38-30",
+    "role": "actuator"
+   },
+   {
+    "count": 4,
+    "joint_type": "knee",
+    "part_id": "WD-R52-82",
+    "role": "actuator"
+   },
+   {
+    "count": 1,
+    "part_id": "AC-6S-60",
+    "role": "battery"
+   },
+   {
+    "count": 6,
+    "part_id": "TK-2C14",
+    "role": "driver"
+   },
+   {
+    "count": 1,
+    "part_id": "TK-HB6",
+    "role": "hub"
+   }
+  ],
+  "total_cost_usd": 1367.0
+ },
+ "cost": 1367.0,
+ "family": "6S",
+ "format": "quad-optimum/1",
+ "items_util": {
+  "battery": 0.9451872665640733,
+  "budget": 0.8453927025355596,
+  "drivers": 0.8730147259634428,
+  "fl_hip_pitch": 0.9336961551219963,
+  "fl_hip_roll": 0.927231552854414,
+  "fl_knee": 0.9281537349194928,
+  "fr_hip_pitch": 0.9332038446875726,
+  "fr_hip_roll": 0.8938901370553816,
+  "fr_knee": 0.9257117007251673,
+  "hub": 1.0,
+  "rl_hip_pitch": 0.9353747183743256,
+  "rl_hip_roll": 0.8740323610952438,
+  "rl_knee": 0.4431324551068803,
+  "rr_hip_pitch": 0.9578489037863704,
+  "rr_hip_roll": 0.9514474051376176,
+  "rr_knee": 0.4477570328231661
+ },
+ "knife_edge_min": 0.00021903058097172412,
+ "n_kept": {
+  "hip_pitch": 4,
+  "hip_roll": 11,
+  "knee": 4
+ },
+ "n_leaves": 172,
+ "node_cap": 20000
+}

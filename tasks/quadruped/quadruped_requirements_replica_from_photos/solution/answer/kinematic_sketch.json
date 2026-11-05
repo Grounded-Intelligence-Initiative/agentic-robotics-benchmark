@@ -1,0 +1,70 @@
+{
+ "format": "sketch-quad/1",
+ "geometry": {
+  "foot_radius": {
+   "nominal": 0.026499,
+   "tol": 0.001
+  },
+  "hip_spacer": {
+   "nominal": 0.011752,
+   "tol": 0.001
+  },
+  "leg_offset": {
+   "nominal": 0.076829,
+   "tol": 0.001
+  },
+  "pitch_axis_drop": {
+   "nominal": 0.010974,
+   "tol": 0.001
+  },
+  "pitch_axis_spacing": {
+   "nominal": 0.44955,
+   "tol": 0.001
+  },
+  "roll_axis_spacing": {
+   "nominal": 0.213705,
+   "tol": 0.001
+  },
+  "shank_length": {
+   "nominal": 0.178381,
+   "tol": 0.001
+  },
+  "thigh_length": {
+   "nominal": 0.193017,
+   "tol": 0.001
+  }
+ },
+ "housing_class": {
+  "hip_pitch": "R38",
+  "hip_roll": "R52",
+  "knee": "R52"
+ },
+ "modules": {
+  "hip_pitch": "WD-R38-30",
+  "hip_roll": "WD-R52-48",
+  "knee": "WD-R52-82"
+ },
+ "pack_bay": "nose_box",
+ "spacer_legs": [
+  "fl",
+  "rr"
+ ],
+ "stops": {
+  "hip_pitch": [
+   -0.6972590361717347,
+   1.9750145815567832
+  ],
+  "hip_roll": [
+   -0.718377520120866,
+   1.0944959739256441
+  ],
+  "knee": [
+   0.38746309394274114,
+   2.6520277984053835
+  ]
+ },
+ "units": {
+  "angle": "rad",
+  "length": "m"
+ }
+}
