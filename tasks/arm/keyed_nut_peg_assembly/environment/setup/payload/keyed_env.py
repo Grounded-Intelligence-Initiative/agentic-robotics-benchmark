@@ -32,7 +32,7 @@ Scene
 -----
 Three pegs stand on the table. Each peg: a 50 x 50 x 10 mm collar (base), on it a round shaft of
 radius 11 mm, 65 mm tall, carrying one pin: a small block on the shaft surface (3 mm wide, 4 mm
-tall, reaching 15.5 mm from the shaft axis) centred 37.5 mm above the collar top, on the peg's
+tall, reaching 17.2 mm from the shaft axis) centred 37.5 mm above the collar top, on the peg's
 local +x side. The pegs look alike except for 1, 2 or 3 dark bands near the shaft top. Every
 episode draws the peg positions and yaws anew.
 
@@ -41,7 +41,7 @@ The nut: a ring 45 mm tall (outer radius 28 mm, a 24-sided polygon) whose hole (
 nut's bottom face) reaching 98 mm from the hole axis along the nut's local +x axis. The ring is
 built from 24 sectors (15 degrees each; sector s spans [15 s, 15 (s + 1)] degrees counter-clockwise
 from the handle) x 9 layers (5 mm each, layer 0 at the bottom). In each cell the inner part of the
-wall (radius 12.7 to 17 mm) is either solid or cut away; the cut cells form a hidden GROOVE in the
+wall (radius 12.7 to 19 mm) is either solid or cut away; the cut cells form a hidden GROOVE in the
 hole wall, through which the pin must travel for the nut to come down. The top layer is always
 solid, so the groove cannot be seen from above. The groove family (identical for every nut):
 
@@ -96,7 +96,7 @@ NSEC = 24             # angular sectors of the nut ring (15 degrees each)
 LAYER = 0.005         # layer height of the nut ring
 NLAYER = 9            # nut height 45 mm
 R_HOLE = 0.0128       # hole radius (inscribed 12.7 mm on the 24-gon; shaft 11 mm)
-R_GROOVE = 0.017      # groove floor radius
+R_GROOVE = 0.019      # groove floor radius
 R_NUT = 0.028         # nut outer radius
 NUT_H = NLAYER * LAYER
 HANDLE_LEN = 0.070
@@ -107,7 +107,7 @@ PEG_H = 0.065
 COLLAR = 0.025        # collar half width
 COLLAR_H = 0.010
 PIN_Z = 0.0375        # pin centre above the collar top
-PIN_R = 0.0155        # pin tip radius
+PIN_R = 0.0172        # pin tip radius
 PIN_W = 0.0015        # pin half width (tangential)
 PIN_HH = 0.002        # pin half height
 # groove schedule (layers): entrance channel 0-1, first turn 1-2, riser 2-4, second turn 4-5, riser 5-7
@@ -130,6 +130,9 @@ SEAT_TILT = math.radians(5.0)
 RELEASE_OPEN = 0.06          # finger opening (m) counted as released
 RELEASE_STEPS = 10
 GROOVE_TOP = 0.0395          # nut bottom above the collar when it rests on the pin (pin top)
+FORCE_ANGLE_TOL = 5.0        # deg: pin centre this far inside a solid wall cell (sideways) breaks the nut
+FORCE_Z_TOL = 0.0015         # m: ... or this far (up or down)
+FORCE_STEPS = 3              # consecutive control steps
 CREDIT_ON_PEG = 0.35
 CREDIT_DEPTH = 0.80
 
@@ -326,7 +329,7 @@ def nut_body_xml(spec):
     groove cells have no inner block."""
     cells = groove_cells(spec["groove"])
     rgba = " ".join("{:.3f}".format(float(c)) for c in spec["rgba"])
-    attrs = 'rgba="{}" condim="4" friction="{:.4f} 0.01 0.0001"'.format(rgba, float(spec["friction"]))
+    attrs = 'rgba="{}" condim="4" solref="0.002 1" friction="{:.4f} 0.01 0.0001"'.format(rgba, float(spec["friction"]))
     da = 2 * math.pi / NSEC
     g = []
     for sec in range(NSEC):
@@ -479,6 +482,8 @@ class NutEnv(object):
         self.fault = None
         self.credit = 0.0
         self.release_count = 0
+        self.broken = False
+        self.force_count = 0
         self.render_next = CAMERA_NAMES
         return self.observation()
 
@@ -506,6 +511,7 @@ class NutEnv(object):
         self.finger_geoms = set(int(i) for i in np.where(np.isin(m.geom_bodyid, list(fingers)))[0])
         self.target_peg = self.peg_bands - 1          # peg body i carries i + 1 bands
         self.peg_poses = [tuple(p) for p in self.layout["pegs"]]
+        self.cells = groove_cells(self.spec["groove"])
         self._jp, self._jr = np.zeros((3, m.nv)), np.zeros((3, m.nv))
         self._M = np.zeros((m.nv, m.nv))
 
@@ -620,6 +626,27 @@ class NutEnv(object):
                 bodies.add(int(m.geom_bodyid[g1]))
         return bodies
 
+    def pin_in_wall(self):
+        """True if the centre of the target peg's pin lies inside a solid cell of the nut's wall, more than
+        FORCE_ANGLE_TOL sideways or FORCE_Z_TOL up/down from every groove cell of the same layer/sector."""
+        p, R = self.nut_state()
+        px, py, pyaw = self.peg_poses[self.target_peg]
+        rc = (SHAFT_R + PIN_R) / 2
+        pin = np.array([px + rc * math.cos(pyaw), py + rc * math.sin(pyaw), TABLE_Z + COLLAR_H + PIN_Z])
+        q = R.T @ (pin - p)
+        z = float(q[2])
+        if not 0.0 < z < NUT_H or math.hypot(q[0], q[1]) > R_GROOVE:
+            return False
+        ang = math.degrees(math.atan2(q[1], q[0])) % 360.0
+        da = 360.0 / NSEC
+        for dz in (0.0, FORCE_Z_TOL, -FORCE_Z_TOL):
+            lay = int(math.floor((z + dz) / LAYER))
+            for dang in (0.0, FORCE_ANGLE_TOL, -FORCE_ANGLE_TOL):
+                sec = int(math.floor(((ang + dang) % 360.0) / da))
+                if (sec, lay) in self.cells or lay < 0:
+                    return False
+        return True
+
     def stage_now(self):
         """Instantaneous stage: 0 none, 1 lifted while held, 2 on the target peg (then self.depth_now is
         the fraction of the groove travelled), 3 seated on it."""
@@ -651,6 +678,15 @@ class NutEnv(object):
             self.done = True
             return
         st = self.stage_now()
+        if st >= 2 and not self.broken:
+            self.force_count = self.force_count + 1 if self.pin_in_wall() else 0
+            if self.force_count >= FORCE_STEPS:
+                self.broken = True
+        if self.broken:
+            # the pin was forced through the groove wall: the nut is ruined, the credit stays where it was
+            if self.early_end or self.t >= self.max_steps:
+                self.done = True
+            return
         if st >= 1:
             self.credit = max(self.credit, 0.25)
         if st >= 2:
@@ -672,7 +708,9 @@ class NutEnv(object):
              shaft top), d = how far its bottom has come down from resting on the pin (GROOVE_TOP above the collar,
              d = 0) towards the collar (d = 1); the best d of the episode counts;
         1.0  the nut sat on the target peg's collar (within SEAT_TOL, tilt below 5 degrees) for RELEASE_STEPS
-             consecutive steps with the fingers open at least RELEASE_OPEN and not touching the nut."""
+             consecutive steps with the fingers open at least RELEASE_OPEN and not touching the nut.
+        Forcing the pin through the groove wall (`pin_in_wall` for FORCE_STEPS consecutive steps while the nut
+        is on the target peg) ruins the nut: the credit stays at its value from before."""
         if self.fault is not None:
             return 0.0
         return float(self.credit)
@@ -768,7 +806,7 @@ class NutEnv(object):
         p, R = self.nut_state()
         return {"nut_pos": p.tolist(), "nut_quat": quat_from_mat(R).tolist(), "groove": self.spec["groove"],
                 "pegs": [list(pp) for pp in self.peg_poses], "target_peg": self.target_peg,
-                "stage": self.stage_now(), "credit": self.credit, "t": self.t, "fault": self.fault}
+                "stage": self.stage_now(), "credit": self.credit, "broken": self.broken, "t": self.t, "fault": self.fault}
 
 
 def load_spec(path):

@@ -38,7 +38,7 @@ cameras offscreen on the CPU (`MUJOCO_GL=egl`, already set).
   (-0.56, 0, 0.80) facing +x. Quaternions are (w, x, y, z).
 - **Pegs.** Three pegs stand on the table. Each has a 50 x 50 x 10 mm base collar and on it a round
   shaft of radius 11 mm, 65 mm tall, with one **pin**: a small block on the shaft surface, 3 mm
-  wide and 4 mm tall, reaching 15.5 mm from the shaft axis, centred 37.5 mm above the collar top.
+  wide and 4 mm tall, reaching 17.2 mm from the shaft axis, centred 37.5 mm above the collar top.
   The pegs are identical except for 1, 2 or 3 dark bands near the top of the shaft. Each episode
   draws the peg positions (centres with x in [-0.02, 0.15], y in [-0.21, 0.21], at least 0.13 m
   apart) and their yaws (uniform over the full circle, which turns the pin with the peg) anew.
@@ -46,7 +46,7 @@ cameras offscreen on the CPU (`MUJOCO_GL=egl`, already set).
   the shaft, with a handle bar (16 mm wide, from 25 to 41 mm above the nut's bottom face) reaching
   98 mm from the hole axis. The ring is 24 sectors (15 degrees each, counted counter-clockwise from
   the handle) by 9 layers (5 mm each). The groove is cut into the inner part of the hole wall (out
-  to 17 mm from the axis); its top layer is always solid and its entrance is on the bottom face, so
+  to 19 mm from the axis); its top layer is always solid and its entrance is on the bottom face, so
   it cannot be seen. Every nut's groove belongs to the same family, documented exactly in
   `keyed_env.py`: an entrance riser at the bottom, a first turn of 2 to 4 sectors either way, a
   riser, a second turn of 2 to 4 sectors either way and a last riser, all 2 sectors wide; turn
@@ -153,7 +153,10 @@ layout and target peg. The episode score is the best of these stages reached dur
   below 5 degrees) for 10 consecutive steps with the fingers open at least 60 mm and not touching
   the nut.
 
-A nut on the wrong peg gets at most 0.25. The episode ends at 1200 steps or as soon as it scores
+A nut on the wrong peg gets at most 0.25. The groove walls are solid: forcing the pin through them
+(its centre more than 5 degrees sideways or 1.5 mm up or down inside a solid part of the wall, for 3
+consecutive steps, while the nut is on the target peg) ruins the nut, ends the episode and keeps
+the credit it had before. The episode ends at 1200 steps or as soon as it scores
 1.0. Your result is the mean over the 16 episodes. An episode in which the controller crashes,
 answers late or malformed, or makes the simulation unstable (any arm joint faster than 8 rad/s or
 the nut faster than 5 m/s) scores 0. The whole grading run must finish within **6000 s** of wall
