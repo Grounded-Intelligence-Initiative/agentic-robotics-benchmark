@@ -1840,7 +1840,8 @@ def _drop_in(rig, s, which, row, side, geo, F, ref_row, ref_side):
         _wait(rig, 0.2)
         _, c, ax = _aglet(rig, s, which)
         cl = F.l(c)
-        in_hole = cl[2] < geo.z_f + 0.004
+        ring_l = geo.ring(row, side)
+        in_hole = cl[2] < geo.z_f + 0.004 and math.hypot(cl[0] - ring_l[0], cl[1] - ring_l[1]) < 0.0035
         _log(rig, "IN drop row %d: aglet centre offset from ring %s mm, %.1f mm above the flap, axis %s, in hole %s" % (
             row, np.round(1000 * (c[:2] - e[:2]), 1), 1000 * (cl[2] - geo.z_f), np.round(ax, 2), in_hole))
         if not in_hole and aligned:
@@ -1850,7 +1851,7 @@ def _drop_in(rig, s, which, row, side, geo, F, ref_row, ref_side):
             _wait(rig, 0.2)
             _, c, ax = _aglet(rig, s, which)
             cl = F.l(c)
-            in_hole = cl[2] < geo.z_f + 0.004
+            in_hole = cl[2] < geo.z_f + 0.004 and math.hypot(cl[0] - ring_l[0], cl[1] - ring_l[1]) < 0.0035
         if not in_hole:
             _log(rig, "IN drop row %d: aglet not in the hole (%.1f mm above the flap), lifting and retrying" % (row, 1000 * (cl[2] - geo.z_f)))
             rig.lift("left", 0.06, timeout=1.5)
@@ -2436,7 +2437,7 @@ def _relay_spot(rig, s, which, geo, F):
         p = foot + u * max(0.08, free - 0.02)
         d_l = float(np.linalg.norm(p[:2] - LEFT_BASE))
         d_r = float(np.linalg.norm(p[:2] - RIGHT_BASE))
-        if 0.30 < d_l < 0.60 and HOOK_ZONE[0] + 0.03 < d_r < HOOK_ZONE[1] - 0.03:
+        if 0.30 < d_l < 0.55 and HOOK_ZONE[0] + 0.03 < d_r < HOOK_ZONE[1] - 0.03:     # (it still creeps ~5 cm out)
             best = np.array([p[0], p[1], 0.0])
             break
     if best is None:
@@ -2461,7 +2462,7 @@ def _pick_with_relay(rig, s, which, geo, F):
 
 
 TAIL_TRIES = 4            # passes tried per tail; each starts from where the aglet lies and the lace runs now
-LACE_TIME_LEFT = (420.0, 640.0)   # no new try of a tail of shoe 0 / shoe 1 after this sim time: the second shoe and the
+LACE_TIME_LEFT = (400.0, 580.0)   # no new try of a tail of shoe 0 / shoe 1 after this sim time: the second shoe and the
 #                                   box (about 150 s) must fit in the 900 s window
 
 
