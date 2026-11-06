@@ -842,6 +842,14 @@ def erect_box(rig):
             press = getattr(rig, "box_press", None)
             if press is not None and "lid" in press[1][1]:
                 avoid.append(tag)                          # that handle put the hand on the lid: another one
+                if w in (walls["px"], walls["mx"]):
+                    # a short wall: its hand and the forearm come in from the tray's side, over the lid lying near the
+                    # box; the blank 3 cm further from the tray
+                    fp, _, _ = _floor_frame(rig)
+                    dy = max(LID_DRAG_Y_MIN, float(fp[1]) - 0.03) - float(fp[1])
+                    if dy < -0.004:
+                        _log(rig, "wall %s: the hand met the lid tray; dragging the blank by %.3f m in y" % (w, dy))
+                        _drag_blank(rig, 0.0, dy, "c")
             _log(rig, "wall %s not locked (attempt %d)" % (w, attempt + 1))
         return False
 
@@ -911,6 +919,9 @@ def erect_box(rig):
     _log(rig, "erected %s angles %s floor %s t=%.1f" % (st["erected"], {k: round(v, 1) for k, v in st["wall_angles_deg"].items()}, np.round(st["floor_pos"], 3), rig.time))
     _left_up(rig, 0.2)
     return bool(st["erected"])
+
+
+LID_DRAG_Y_MIN = -0.175     # a short-wall fold stopped on the lid tray moves the blank away from the tray, not beyond this
 
 
 def _plan_fold(rig, w, alpha_deg, tag=None):
