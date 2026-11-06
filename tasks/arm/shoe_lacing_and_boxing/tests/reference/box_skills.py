@@ -25,7 +25,7 @@ import math
 
 import numpy as np
 
-from primitives import IK_REF_OFFSETS, EpisodeOver, down_quat, rot_quat  # noqa: F401
+from primitives import IK_REF_OFFSETS, EpisodeOver, down_quat, link_press, rot_quat  # noqa: F401
 from shoecell.control import RATE_LIMIT_RAD_S, SEED_OFFSETS, arm_collisions, ik_solve, mat_to_quat, orientation_error, quat_mul, quat_to_mat
 
 __all__ = ["erect_box", "pack_pair", "put_lid", "ship_box", "park_hook_arm"]
@@ -159,10 +159,33 @@ def _footprint_margins(rig, p_tcp, R_tcp, width):
     return hand, fing
 
 
-def _glide(rig, name, pos, quat, speed=0.08, tol=0.0015, rot_tol=0.01, timeout=6.0, settle=0.0, stall_s=None):
+def _pressed(rig, name, where, ignore=()):
+    """Per-tick guard: an arm link pressing something above LINK_STOP_N (pads PAD_STOP_N). On a press the arm is
+    re-targeted 5 mm up from where it is (the position controller stops pressing) and the press is returned."""
+    hit = link_press(rig, name, ignore=ignore)
+    if hit is None:
+        return None
+    arm = rig.sc.arms[name]
+    p, R = arm.tcp_actual()
+    away = np.array([0.0, 0.0, 1.0])
+    n = getattr(rig, "press_normal", None)
+    if n is not None and np.linalg.norm(n) > 0.5:
+        away = np.asarray(n, float) + np.array([0.0, 0.0, 0.3])
+        away /= np.linalg.norm(away)
+    arm.command_cartesian(p + away * 0.008, mat_to_quat(R))
+    for _ in range(5):
+        rig.tick()
+    _log(rig, "%s arm: %s presses %s with %.0f N %s: stopped and backed off" % (name, hit[0], hit[1], hit[2], where))
+    rig.box_press = (rig.time, hit)
+    return hit
+
+
+def _glide(rig, name, pos, quat, speed=0.08, tol=0.0015, rot_tol=0.01, timeout=6.0, settle=0.0, stall_s=None, guard=True, ignore=()):
     """Straight-line Cartesian motion of `name`'s tcp at `speed` (the target is streamed every tick), then wait until
     the measured tcp is within `tol` / `rot_tol` of the goal.  Returns the final position error (m).  With `stall_s`,
-    the wait ends early once the tcp has not moved 1 mm over `stall_s` seconds (an arm stuck at a joint limit)."""
+    the wait ends early once the tcp has not moved 1 mm over `stall_s` seconds (an arm stuck at a joint limit). With
+    `guard`, an arm link pressing anything (but bodies named `ignore`) stops the motion (_pressed): the error is then
+    returned as 1 m."""
     arm = rig.sc.arms[name]
     if arm.mode != "cartesian":
         arm.set_mode("cartesian")
@@ -173,11 +196,15 @@ def _glide(rig, name, pos, quat, speed=0.08, tol=0.0015, rot_tol=0.01, timeout=6
     for i in range(n):
         arm.command_cartesian(p0 + (p1 - p0) * (i + 1) / n, quat)
         rig.tick()
+        if guard and _pressed(rig, name, "on a glide to %s" % np.round(p1, 3), ignore):
+            return 1.0
     Rg = quat_to_mat(quat)
     hist = []
     n_stall = None if stall_s is None else int(round(stall_s / rig.s.tick_s))
     for _ in range(int(timeout / rig.s.tick_s)):
         rig.tick()
+        if guard and _pressed(rig, name, "on a glide to %s" % np.round(p1, 3), ignore):
+            return 1.0
         p, R = arm.tcp_actual()
         if float(np.linalg.norm(p1 - p)) <= tol and _rot_err(Rg, R) <= rot_tol:
             break
@@ -248,6 +275,13 @@ def _move_joint_line(rig, q_to, timeout=6.0, tol=0.01):
     for k in range(n):
         arm.command_joint(qa + (q_to - qa) * (k + 1) / n)
         rig.tick()
+        hit = link_press(rig, "left")
+        if hit is not None:
+            arm.command_joint(arm.q().copy())
+            _log(rig, "joint line: %s presses %s with %.0f N, stopped" % hit)
+            for _ in range(3):
+                rig.tick()
+            return False
     for _ in range(int(round(timeout / rig.s.tick_s))):
         if float(np.max(np.abs(arm.q() - q_to))) <= tol:
             return True
@@ -391,6 +425,18 @@ def _arc_poses(crease, axis, tcp0, R0, th_end, steps):
     return out
 
 
+def _arc_hits(arm, q):
+    """Kinematic check of a fold-arc configuration: an arm body (but the hand and the fingers, which hold the folding
+    wall) through the lid tray or a shoe (penetration > 1 mm)."""
+    for b1, b2, pen in arm_collisions(arm, q):
+        mine, other = (b1, b2) if b1.startswith("left/") else (b2, b1)
+        if mine in ("left/hand", "left/left_finger", "left/right_finger"):
+            continue
+        if other.startswith(("lid", "shoe")):
+            return True
+    return False
+
+
 def _plan_arc(rig, pre, tcp0, q0, crease, axis, th_end):
     """A joint configuration for the pre-grasp pose `pre` from which the local Cartesian controller can follow the
     descent to tcp0 and the whole fold arc without stalling (checked by IK continuation), or None."""
@@ -417,9 +463,14 @@ def _plan_arc_margin(rig, pre, tcp0, q0, crease, axis, th_end, good_margin=0.5):
             q = q_pre
             margin = _margin(rig, q_pre)
             good = True
-            for (p, R) in poses[1:]:
+            for k, (p, R) in enumerate(poses[1:]):
                 q2, ep, er, ok = ik_solve(arm, p, R, q0=q, iters=200)
                 if not ok or float(np.max(np.abs(q2 - q))) > 1.2:
+                    good = False
+                    break
+                if k >= 1 and _arc_hits(arm, q2):
+                    # an arm link through the lid tray, a shoe or the bench on the way (a forearm on the lid at a
+                    # 60 deg fold voided a pair): another branch, or the corrective drag
                     good = False
                     break
                 q = q2
@@ -658,6 +709,11 @@ def _fold_wall(rig, w, alpha_deg, q_pre=None):
         tgt = crease + quat_to_mat(qr) @ (pa - crease)
         arm.command_cartesian(tgt, quat_mul(qr, qa))
         rig.tick()
+        hit = link_press(rig, "left")
+        if hit is not None:
+            stalled = True
+            _log(rig, "wall %s: arc stopped at %.0f deg: %s presses %s with %.0f N" % (w, math.degrees(th), hit[0], hit[1], hit[2]))
+            break
         if i % 10 == 0:
             pc, _ = arm.tcp_actual()
             if float(np.linalg.norm(pc - tgt)) > 0.05:
@@ -1100,10 +1156,14 @@ def _grasp_shoe(rig, i, heading_des=None, pos_des=None, pos_des_toe=None):
                                 (np.array([tcp[0], tcp[1], carry_z]), Rg, 0.15), (np.array([tcp_f[0], tcp_f[1], carry_z]), Rf, 0.2),
                                 (hover_f, Rf, 0.12), (tcp_f, Rf, 0.04)]
                         errs, blocked = _dry_run(rig, q0, legs, held=i, p_rel=c["p_rel"], R_rel=c["R_rel"], obstacles=obstacles, check_from=2)
-                        # the sweep is advisory only (logged): with the toe 4 mm from the end wall and the two shoes W/2
-                        # apart, the kinematic placement always shows 2-3 mm "penetrations" of the SHOE that the physics
-                        # absorbs; the hand's own clearance is the footprint test above
-                        ok = errs[1] <= 0.003 and errs[-1] <= 0.005
+                        # the sweep is advisory for the placement (logged): with the toe 4 mm from the end wall and the two
+                        # shoes W/2 apart, the kinematic placement always shows 2-3 mm "penetrations" of the SHOE that the
+                        # physics absorbs; the hand's own clearance there is the footprint test above. At the grasp and
+                        # the lift (legs 2-3) a finger or the hand on the OTHER shoe or the lid is real: the finger beyond
+                        # a toe 2-4 cm from its neighbour on the tray pressed it at 32 N (a voided pair)
+                        hard = blocked is not None and blocked.startswith(("leg 2", "leg 3")) and "left/" in blocked \
+                            and ("shoe" in blocked or "lid" in blocked)
+                        ok = errs[1] <= 0.003 and errs[-1] <= 0.005 and not hard
                         _log(rig, "shoe %d dry run %s yaw %.2f (%s, to the %s slot spot) from %s carry z %.2f: hand/finger inset %.1f/%.1f mm, tool tilt %.0f deg, grasp err %.1f mm, destination err %.1f mm, blocked %s -> %s" % (
                             i, key, yw, tier, c["kind"], "home" if from_home else "here", carry_z, min(c["hm"], 9.99) * 1e3, min(c["fm"], 9.99) * 1e3,
                             c["tilt"], errs[1] * 1e3, errs[-1] * 1e3, blocked, "ok" if ok else "no"))
@@ -1148,6 +1208,11 @@ def _grasp_shoe(rig, i, heading_des=None, pos_des=None, pos_des_toe=None):
             rig.gripper(0.05, wait=False)
             _reach(rig, tcp + np.array([0.0, 0.0, hover]), q)
             e = _glide(rig, "left", tcp, q, speed=0.1, tol=0.001, timeout=4.0, settle=0.1)
+            if e > 0.5:
+                # the descent pressed something (a finger on the neighbouring shoe): no grasp here, back up
+                rig.release(0.2)
+                _left_up(rig, tcp[2] + 0.08)
+                break
             name = _grasp(rig, "shoe %d %s" % (i, key), site)
             _log(rig, "shoe %d grasp at %s (err %.2f mm) -> %s" % (i, key, e * 1e3, name))
             if name is not None:
@@ -1521,7 +1586,7 @@ def put_lid(rig):
         high = np.array([p_tcp[0], p_tcp[1], CARRY_Z])
         _carry(rig, high, q_tcp)
         _glide(rig, "left", p_tcp + np.array([0.0, 0.0, 0.04]), q_tcp, speed=0.12, tol=0.0015, timeout=4.0, settle=0.2)
-        e = _glide(rig, "left", p_tcp, q_tcp, speed=0.03, tol=0.0008, timeout=3.0, settle=0.2)
+        e = _glide(rig, "left", p_tcp, q_tcp, speed=0.03, tol=0.0008, timeout=3.0, settle=0.2, ignore=("box",))
         lp2, _ = sc.lid_pose()
         rel = st["_to_floor"](lp2)
         _log(rig, "lid lowered (tcp err %.2f mm): lid origin in floor frame %s (rest %.4f)" % (e * 1e3, np.round(rel, 4), z_rest))
@@ -1655,7 +1720,7 @@ def ship_box(rig):
             _reach(rig, pre, q)
         q_start = arm.q().copy()
         _glide(rig, "left", start, q, speed=0.12, tol=0.002, timeout=3.0, settle=0.1)
-        _glide(rig, "left", start + xw * (PUSH_GAP + 0.003), q, speed=0.03, tol=0.003, timeout=2.0)
+        _glide(rig, "left", start + xw * (PUSH_GAP + 0.003), q, speed=0.03, tol=0.003, timeout=2.0, ignore=("box",))
         p0, _ = arm.tcp_actual()
         target = p0 + xw * dist
         speed = 0.10
@@ -1673,6 +1738,10 @@ def ship_box(rig):
             cmd = p0 + (target - p0) * (i + 1) / n
             arm.command_cartesian(cmd, q)
             rig.tick()
+            hit = link_press(rig, "left", ignore=("box",))
+            if hit is not None:
+                stalled = "%s presses %s with %.0f N" % hit
+                break
             pa, _ = arm.tcp_actual()
             lag = float(np.linalg.norm(pa - cmd))
             lag_max = max(lag_max, lag)
@@ -1719,7 +1788,7 @@ def ship_box(rig):
                 break
             if fp2[0] < goal_x + 0.03 and stalled is None:
                 p1, _ = arm.tcp_actual()
-                _glide(rig, "left", p1 + xw * (goal_x + 0.02 - float(fp2[0])), q, speed=0.06, tol=0.003, timeout=4.0)
+                _glide(rig, "left", p1 + xw * (goal_x + 0.02 - float(fp2[0])), q, speed=0.06, tol=0.003, timeout=4.0, ignore=("box",))
                 shipped = _wait_until(rig, shipped_now, 3.0)
                 fp2, _, st2 = _floor_frame(rig)
                 _log(rig, "box at x %.3f closed %s -> shipped %s t=%.1f" % (fp2[0], st2["closed"], shipped, rig.time))

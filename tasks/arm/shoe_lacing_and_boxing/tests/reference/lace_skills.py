@@ -33,7 +33,7 @@ import mujoco
 import numpy as np
 
 import box_skills
-from primitives import EpisodeOver, down_quat, hook_quat, rot_quat
+from primitives import LINK_STOP_N, PAD_STOP_N, EpisodeOver, down_quat, hook_quat, link_press, rot_quat
 from shoecell.control import ik_solve_seeds, mat_to_quat, quat_mul, quat_to_mat
 
 __all__ = ["seat_shoe", "lace_shoe", "unseat_shoe"]
@@ -52,6 +52,10 @@ LEAN = 0.70              # handover: the gripper approach tilted outward (rad); 
 PHI_SIDE = 1.33          # hook foot angle from the shoe's x toward a side (76 deg): the shaft stays inside the throat and
 #                          the wrist (joint 7, q7 ~ -1.3 - phi at the cradle) stays inside its range for both sides
 AGLET_GRIP_DZ = 0.0085   # the aglet centre this far beyond the tcp when the gripper closes on it (pinch box: <= 12 mm)
+AGLET_BENCH_DZ = 0.0105  # ... for an aglet lying on the bench: as high in the pinch box as the tcp's tracking error allows
+SEAT_CLEAR_DZ = 0.025    # the cell draws a caught aglet into its seat (axis along the approach, tip 24 mm beyond the tcp)
+#                          over 0.3 s: the hand rises this much meanwhile, so the seat never pushes the aglet into the
+#                          bench (grasped at 10.7 mm and seated where the bench was, it was pressed 3 mm into it: 6 N)
 SNUG_RATIO = 1.25
 UNSEAT_OFFSET = (0.0, 0.14)     # where an unseated shoe goes, relative to the cradle seat (shoe 1: a further +0.10 along y)
 
@@ -225,6 +229,47 @@ def _fmt_passes(passes, total):
     return " ".join("%d%s%s@%.3f" % (r, sd, "+" if d > 0 else "-", t * total) for r, sd, d, t in passes)
 
 
+# ---------------------------------------------------------------------------------------------------- tails under the sole
+UNDER_MARGIN = 0.003     # a link whose centre lies within the cord radius (1.5 mm) + 1.5 mm of the sole outline is (or,
+#                          lowered onto, will be) pressed under the sole's edge: the shoe sits on it
+UNDER_Z = 0.005          # ... when it lies below this height in the shoe frame (on the plate or the bench under the sole)
+
+
+def _tack_index(rig, s):
+    """Index of the lace link tacked to the shoe at row 1 (the links before it are tail A, the links after it tail B)."""
+    m = rig.m
+    ids = [int(b) for b in rig.sc.lace_bodies[s]]
+    b = int(m.eq_obj2id[m.equality("tack%d" % s).id])
+    return ids.index(b) if b in ids else len(ids) // 2
+
+
+def _footprint_sdf(dims, x, y):
+    """Signed distance (m) of the shoe-frame point (x, y) from the sole's rounded-rectangle outline (negative inside)."""
+    r = float(dims["heel_corner_radius"] if x < 0.0 else dims["toe_corner_radius"])
+    qx = abs(x) - (float(dims["L"]) / 2 - r)
+    qy = abs(y) - (float(dims["W"]) / 2 - r)
+    return float(math.hypot(max(qx, 0.0), max(qy, 0.0))) + min(max(qx, qy), 0.0) - r
+
+
+def _under_sole(rig, s, which=None, margin=UNDER_MARGIN):
+    """Links of lace s that lie under shoe s's sole (or where it will sit when it is lowered straight down): their centre
+    within `margin` of the outline and below UNDER_Z in the shoe frame. {'a': [...], 'b': [...]} or the list for one
+    tail. Privileged (the exact lace state)."""
+    poly = rig.sc.lace_polyline(s)
+    mids = 0.5 * (poly[:-1] + poly[1:])
+    F = _Frame(rig, s)
+    dims = rig.sc.shoes[s]["dims"]
+    k_t = _tack_index(rig, s)
+    out = {"a": [], "b": []}
+    for k, pm in enumerate(mids):
+        if k == k_t:
+            continue
+        pl = F.l(pm)
+        if pl[2] < UNDER_Z and _footprint_sdf(dims, pl[0], pl[1]) < margin:
+            out["a" if k < k_t else "b"].append(k)
+    return out if which is None else out[which]
+
+
 # ---------------------------------------------------------------------------------------------------- motion
 def _loose(bname):
     return bname.startswith(("shoe", "lace", "box", "lid"))
@@ -257,30 +302,63 @@ def _ik(rig, name, pos, quat, refs=None, rot_tol=math.radians(1.0)):
     return None
 
 
-def _arm_contact_force(rig, name, thr):
-    """The (body, body, force) of the first contact where a link or pad of arm `name` presses on something else
-    with more than `thr` N, else None (the position controller winds up force against an obstacle; the cell flags
-    > 30 N on a link as a safety violation). The arm's own link-link contacts and its tool are ignored."""
-    sc, m, d = rig.sc, rig.m, rig.d
-    gc = sc.geom_class
-    f6 = np.zeros(6)
-    pre = name + "/"
-    for i in range(d.ncon):
-        con = d.contact[i]
-        c1, c2 = gc[con.geom1], gc[con.geom2]
-        if c1 in (1, 2, 3) or c2 in (1, 2, 3):
-            g = con.geom1 if c1 in (1, 2, 3) else con.geom2
-            b1 = m.body(m.geom_bodyid[g]).name
-            if not b1.startswith(pre):
-                continue
-            other = con.geom2 if g == con.geom1 else con.geom1
-            b2 = m.body(m.geom_bodyid[other]).name
-            if b2.startswith(pre):
-                continue                                  # the arm's own geoms (adjacent links, hand/fingers, tool)
-            mujoco.mj_contactForce(m, d, i, f6)
-            if abs(float(f6[0])) > thr:
-                return (b1, b2, float(f6[0]))
+PULL_STOP_N = 4.0       # a held aglet slips out at 6 N of pull held for 30 ms: a move that pulls it harder than this stops
+
+
+def _arm_contact_force(rig, name, thr, pad_thr=None):
+    """The (body, body, force) of the strongest contact where a link (above `thr`) or a pad (above `pad_thr`, default
+    `thr`) of arm `name` presses on something that is not that arm, else None (the position controller winds up force
+    against an obstacle; the cell flags > 30 N on a link for 30 ms as a safety violation)."""
+    return link_press(rig, name, thr, thr if pad_thr is None else pad_thr)
+
+
+def _pull_guard(rig, name):
+    """When the gripper (left) or the hook (right) holds an aglet whose weld pulls harder than PULL_STOP_N for two ticks
+    in a row: the pull (N), else None (privileged: the weld's constraint force)."""
+    key = "_pull_hi_" + name
+    if name == "left":
+        held = rig.holding is not None and rig.holding[1].endswith(("aglet_a", "aglet_b"))
+        f = rig.sc.aglet_pull("left/grasp") if held else None
+    else:
+        f = rig.sc.aglet_pull("right/hook") if rig.hook_loaded else None
+    if f is not None and f > PULL_STOP_N:
+        setattr(rig, key, getattr(rig, key, 0) + 1)
+        if getattr(rig, key) >= 2:
+            return float(f)
+    else:
+        setattr(rig, key, 0)
     return None
+
+
+def _guard_hit(rig, name, where):
+    """Per-tick guard of a Cartesian move: an arm link pressing something (LINK_STOP_N, pads PAD_STOP_N), or the held
+    aglet pulled toward its slip limit (PULL_STOP_N). Logs and records the hit (rig.guard_hit), returns it or None."""
+    hit = _arm_contact_force(rig, name, LINK_STOP_N, PAD_STOP_N)
+    if hit is not None:
+        _log(rig, "%s arm: %s presses %s with %.0f N %s, stopping" % (name, hit[0], hit[1], hit[2], where))
+        rig.guard_hit = ("press", rig.time, hit)
+        return rig.guard_hit
+    pull = _pull_guard(rig, name)
+    if pull is not None:
+        _log(rig, "%s arm: the held aglet is pulled with %.1f N %s, stopping" % (name, pull, where))
+        rig.guard_hit = ("pull", rig.time, pull)
+        return rig.guard_hit
+    return None
+
+
+def _back_off(rig, name, hit, dist=0.010):
+    """After a press: move the tool `dist` away from the pressed body along the contact normal (and a little up), so
+    that the position controller stops pressing."""
+    arm = rig.sc.arms[name]
+    p, R = arm.tcp_actual()
+    d = np.array([0.0, 0.0, 1.0])
+    n = getattr(rig, "press_normal", None)
+    if hit is not None and hit[0] == "press" and n is not None and np.linalg.norm(n) > 0.5:
+        d = np.asarray(n, float) + np.array([0.0, 0.0, 0.3])
+        d /= np.linalg.norm(d)
+    arm.command_cartesian(p + d * dist, mat_to_quat(R))
+    for _ in range(5):
+        rig.tick()
 
 
 def _cart(rig, name, pos, quat, tol, rot_tol, timeout, stall_s=0.6):
@@ -298,11 +376,11 @@ def _cart(rig, name, pos, quat, tol, rot_tol, timeout, stall_s=0.6):
         er = _rot_err(Rg, R)
         if ep <= tol and er <= rot_tol:
             return True
-        if True:
-            hit = _arm_contact_force(rig, name, 12.0)
-            if hit is not None:
-                _log(rig, "%s arm: %s presses %s with %.0f N on the way to %s, backing off" % (name, hit[0], hit[1], hit[2], np.round(pos, 3)))
-                break
+        hit = _guard_hit(rig, name, "on the way to %s" % np.round(pos, 3))
+        if hit is not None:
+            if hit[0] == "press":
+                _back_off(rig, name, hit)
+            break
         m = ep + 0.05 * er
         if best is None or m < best - 0.0003:
             best, stalled = m, 0
@@ -324,7 +402,13 @@ def goto(rig, name, pos, quat, tol=0.003, rot_tol=0.03, timeout=4.0, joint_ok=Tr
     quat = np.asarray(quat, float)
     p_start = rig.tcp(name)[0]
     z_start = float(p_start[2])
+    rig.guard_hit = None
     ok = _cart(rig, name, pos, quat, tol, rot_tol, timeout)
+    if not ok and getattr(rig, "guard_hit", None) is not None and rig.guard_hit[0] == "press":
+        # an arm link touched something on the way: never push on (the retry pressed the seated shoe at 35 N)
+        p, _ = rig.tcp(name)
+        _log(rig, "goto %s: stopped by a press %.1f mm short of %s" % (name, 1000 * np.linalg.norm(p - pos), np.round(pos, 3)))
+        return False
     allow = (joint_ok is True and pos[2] >= 0.17 and z_start >= 0.17) or joint_ok == "free" or \
             (joint_ok == "descend" and z_start >= 0.2 and pos[2] >= 0.11 and np.linalg.norm(pos[:2] - p_start[:2]) < 0.08)
     if not ok and allow:
@@ -372,14 +456,15 @@ def _slow_goto(rig, name, pos, quat, v=0.2, w=0.9, tol=0.004, rot_tol=0.03):
     dist = float(np.linalg.norm(pos - p0))
     ang = _rot_err(quat_to_mat(quat), R0)
     T = max(dist / v, ang / w, 0.05)
-    n = int(math.ceil(T / 0.05))
+    n = int(math.ceil(T / rig.s.tick_s))
     for k in range(1, n + 1):
         u = k / float(n)
         arm.command_cartesian(p0 + u * (pos - p0), _slerp(q0, quat, u))
-        rig.tick(5)
-        hit = _arm_contact_force(rig, name, 12.0)
+        rig.tick()
+        hit = _guard_hit(rig, name, "during a slow move to %s" % np.round(pos, 3))
         if hit is not None:
-            _log(rig, "%s arm: %s presses %s with %.0f N during a slow move to %s, stopping" % (name, hit[0], hit[1], hit[2], np.round(pos, 3)))
+            if hit[0] == "press":
+                _back_off(rig, name, hit)
             p, R = arm.tcp_actual()
             arm.command_cartesian(p, mat_to_quat(R))
             return False
@@ -462,12 +547,47 @@ def _handle_sites(rig, s):
     return {k: (np.asarray(v["pos"], float), float(v["pinch_width"])) for k, v in hs.items()}
 
 
+FINGER_OUT = 0.030       # a finger's outer face lies this far beyond its pad face along the closing axis (+ margin)
+
+
+def _neighbour_gap(rig, s, key, opening):
+    """Clearance (m) between the outer finger of a grasp of shoe s at handle `key` (fingers along the shoe's length,
+    opened to `opening`) and the outline of the other shoe of the pair (inf when that shoe is away). On the infeed tray
+    the two shoes of a long batch lie 2-4 cm end to end: a finger beyond the near end pressed the neighbour at 45 N."""
+    o = 1 - s
+    po, _ = rig.sc.shoe_pose(o)
+    if po[2] < -0.05:
+        return float("inf")
+    Fs, Fo = _Frame(rig, s), _Frame(rig, o)
+    if Fo.R[2, 2] < 0.9 or Fs.R[2, 2] < 0.9:
+        dims_o = None
+    else:
+        dims_o = rig.sc.shoes[o]["dims"]
+    site = _handle_sites(rig, s)[key][0]
+    d = Fs.ex * (1.0 if key == "toe_grip" else -1.0)
+    best = float("inf")
+    for along in (opening / 2, opening / 2 + FINGER_OUT):
+        for across in (-0.011, 0.0, 0.011):
+            pt = site + d * along + Fs.ey * across
+            pl = Fo.l(pt)
+            if dims_o is None:
+                gap = float(np.linalg.norm((pt - Fo.p)[:2])) - 0.5 * float(rig.sc.shoes[o]["dims"]["L"])
+            else:
+                gap = _footprint_sdf(dims_o, pl[0], pl[1])
+            best = min(best, gap)
+    return best
+
+
 def _best_handle(rig, s, exclude=None):
     """The shoe handle (heel or toe counter) at the most comfortable reach of the gripper arm (~0.40 m from its base;
-    closer than ~0.25 m the arm cannot point the tool down)."""
+    closer than ~0.25 m the arm cannot point the tool down) whose outer finger stays clear of the neighbouring shoe."""
     hs = _handle_sites(rig, s)
     cands = [k for k in hs if k != exclude] or list(hs)
-    return min(cands, key=lambda k: abs(np.linalg.norm(hs[k][0][:2] - LEFT_BASE) - 0.40))
+    clear = [k for k in cands if _neighbour_gap(rig, s, k, min(0.08, hs[k][1] + 0.016)) > 0.010]
+    if clear and len(clear) < len(cands):
+        _log(rig, "shoe %d: handle %s has its outer finger within 1 cm of the other shoe, using %s" % (
+            s, [k for k in cands if k not in clear], clear))
+    return min(clear or cands, key=lambda k: abs(np.linalg.norm(hs[k][0][:2] - LEFT_BASE) - 0.40))
 
 
 def _fix_held_contacts(rig):
@@ -576,7 +696,7 @@ def _grasp_handle(rig, s, key, dz, yaw=None, delta=0.0):
     for attempt in range(3):
         P, pinch = _handle_sites(rig, s)[key]
         quat = down_quat(yaw0 + (0.0 if attempt % 2 == 0 else math.pi))
-        rig.gripper(min(0.08, pinch + 0.03), wait=False)
+        rig.gripper(min(0.08, pinch + 0.016), wait=False)
         if not goto(rig, "left", P + Z * 0.10, quat, tol=0.004, timeout=5.0):
             _log(rig, "shoe %d: cannot hover above %s (closing yaw %.2f)" % (s, key, yaw0 + (0.0 if attempt % 2 == 0 else math.pi)))
             continue
@@ -585,7 +705,7 @@ def _grasp_handle(rig, s, key, dz, yaw=None, delta=0.0):
         if margin < 0.5 and attempt < 2:
             _log(rig, "shoe %d: wrist q7 %.2f leaves no room for a %.2f rotation (margin %.2f), other closing yaw" % (s, q7, delta, margin))
             continue
-        rig.gripper(min(0.08, pinch + 0.03))
+        rig.gripper(min(0.08, pinch + 0.016))
         goto(rig, "left", P + Z * (dz + 0.04), quat, tol=0.003, rot_tol=0.03, timeout=3.0, joint_ok=False)
         if not _slow_goto(rig, "left", P + Z * dz, quat, v=0.08, tol=0.002, rot_tol=0.02):
             rig.lift("left", 0.08, timeout=2.0)
@@ -744,11 +864,155 @@ def _patch_cell_bugs(rig):
     _guard(rig)      # (both fixed in the cell)
 
 
+SEAT_FREE_Z = (0.30, 0.25, 0.20)   # sole heights at which the held shoe is carried across to above the cradle: at
+#                          0.30 the tails (0.25-0.31 m from their rings, which sit 0.07 m above the sole) hang nearly free
+#                          of the bench (a tail dragged over the bench by a low sideways move trails under the shoe: tail R
+#                          was under the toe end after nearly every seat of the earlier reference, both tails after a
+#                          righted shoe's; carried at 0.20 with a dip, 14 of 16 seats still sat on a tail); a long shoe held
+#                          by the toe that touches the arm's upper links up there is carried at the next height
+SEAT_SHAKE = math.radians(40.0)   # the held shoe is pitched toe-down this much above the cradle and back: a loop of a tail
+#                                   under the sole (a righted shoe set down on its tails) slides off the toe
+SEAT_TRIES = 3           # lowerings into the cradle before the shoe is seated whatever lies under it
+SEAT_DIPS = (0.15, 0.20, 0.10)    # per lowering: above the seat, the held shoe first dips this far down and back up:
+#                          the tails dragged over the bench by the move across touch down below their rings and hang
+#                          straight again (without the dip tail R lay under the sole after the first lowering in 30 of
+#                          64 seats, with it in none); each lowering lays them out a little differently
+SEAT_SHAKES = (True, True, True)   # per lowering: the toe-down pitch (SEAT_SHAKE) after the dip
+
+GRIP_ZONE = (0.26, 0.68)   # bench distances from the gripper's base at which it picks an aglet pointing straight down
+#                            (closer than ~0.25 m it has no such pose and the leaning grasp often none either)
+HOOK_ZONE = (0.22, 0.52)   # ... from the hook's base at which the hook catches one (it then re-lays it for the gripper)
+
+
+def _aglet_reachable(rig, s, which, margin=0.02):
+    """Aglet `which` lies where one of the arms can pick it up from the bench, with a margin for the slow drift of a
+    loose tail."""
+    _, c, _ = _aglet(rig, s, which)
+    d_l = float(np.linalg.norm(c[:2] - LEFT_BASE))
+    d_r = float(np.linalg.norm(c[:2] - RIGHT_BASE))
+    return GRIP_ZONE[0] + margin < d_l < GRIP_ZONE[1] - margin or HOOK_ZONE[0] + margin < d_r < HOOK_ZONE[1] - margin
+
+
+def _held_clearance(rig, s, p_shoe, R_shoe):
+    """Smallest distance (m) between the held shoe s, moved to (p_shoe, R_shoe) with the hand, and the gripper arm's own
+    links 1-7 (kinematic: IK on the scratch data, mj_geomDistance; 0 when no IK). A held shoe pressing the arm that
+    holds it is a press like any other (a long shoe held by the toe met the upper arm at 30-60 N, carried high)."""
+    from shoecell.control import ik_solve
+    arm = rig.sc.arms["left"]
+    m = rig.m
+    pt, qt = _tcp_for_shoe(rig, s, p_shoe, R_shoe)
+    q, ep, er, ok = ik_solve(arm, pt, quat_to_mat(qt), q0=arm.q(), iters=200)
+    if not ok:
+        return 0.0
+    cache = getattr(rig, "_held_geoms", None)
+    if cache is None:
+        links = [g for g in range(m.ngeom) if m.body(int(m.geom_bodyid[g])).name in ["left/link%d" % k for k in range(1, 8)]
+                 and (m.geom_contype[g] or m.geom_conaffinity[g])]
+        shoes = [[g for g in range(m.ngeom) if int(m.geom_bodyid[g]) == int(rig.sc.shoe_body[i])] for i in range(2)]
+        cache = rig._held_geoms = (links, shoes)
+    links, shoes = cache
+    sd = arm.scratch
+    sd.qpos[:] = rig.d.qpos
+    sd.qpos[arm.qadr] = q
+    adr = m.jnt_qposadr[m.body_jntadr[rig.sc.shoe_body[s]]]
+    sd.qpos[adr:adr + 3] = p_shoe
+    sd.qpos[adr + 3:adr + 7] = mat_to_quat(R_shoe)
+    mujoco.mj_kinematics(m, sd)
+    best = float("inf")
+    for gs in shoes[s]:
+        for gl in links:
+            best = min(best, float(mujoco.mj_geomDistance(m, sd, gs, gl, 0.1, None)))
+    return best
+
+
+def _hang_tails(rig, s, seat_p, seat_R, dip=0.08, shake=True):
+    """Held shoe (toe grasp): straight up to SEAT_FREE_Z, across to above the seat at that height, a dip of `dip`, with
+    `shake` pitched toe-down and back about the tcp; then the tails hang straight down from their row-1 rings and
+    nothing wraps the sole."""
+    F = _Frame(rig, s)
+    zf = SEAT_FREE_Z[-1]
+    for z in SEAT_FREE_Z:
+        # the highest carry whose path (straight up, then across to above the seat) keeps the held shoe 3 cm off the
+        # arm's own links
+        pts = [(np.array([F.p[0], F.p[1], z]), F.R)] + [
+            (np.array([F.p[0], F.p[1], z]) + u * (seat_p + Z * z - np.array([F.p[0], F.p[1], z])), seat_R if u > 0.5 else F.R)
+            for u in (0.25, 0.5, 0.75, 1.0)]
+        clear = min(_held_clearance(rig, s, p, R) for p, R in pts)
+        if clear >= 0.03:
+            zf = z
+            break
+        _log(rig, "shoe %d: carried at %.2f m it would come %.0f mm from the arm's links, lower" % (s, z, 1000 * clear))
+    _move_shoe(rig, s, np.array([F.p[0], F.p[1], zf]), F.R, tol=0.008, timeout=5.0, v=0.10)
+    above = seat_p + Z * zf
+    _move_shoe(rig, s, above, seat_R, tol=0.008, timeout=6.0, v=0.12)
+    if dip > 0.0:
+        # the tails dragged over the bench by the move across touch down below their rings and are picked up again
+        _move_shoe(rig, s, above - Z * dip, seat_R, tol=0.008, timeout=5.0, v=0.10)
+        _wait(rig, 0.5)
+        _move_shoe(rig, s, above, seat_R, tol=0.008, timeout=5.0, v=0.10)
+    if shake:
+        F = _Frame(rig, s)
+        pt, _ = rig.tcp("left")
+        Rp = quat_to_mat(rot_quat(F.ey, SEAT_SHAKE))          # about the shoe's y: its toe (+x) goes down
+        _move_shoe(rig, s, pt + Rp @ (F.p - pt), Rp @ F.R, tol=0.01, timeout=4.0, v=0.08)
+        _wait(rig, 0.8)
+        _move_shoe(rig, s, F.p, F.R, tol=0.008, timeout=4.0, v=0.08)
+    _wait(rig, 1.0)                                         # the hanging tails stop swinging
+
+
+def _lower_into_cradle(rig, s, seat_p, seat_R, hover=0.04, final=0.006, corrections=3):
+    """Lower the held shoe straight down onto the seat: slowly (the hanging tails touch down below their rings, beside
+    the shoe), with the closed-loop pose correction at hover height, to `final` above the seat. Returns the tail links
+    that lie under the sole there (_under_sole)."""
+    target = seat_p + Z * hover
+    corr = np.zeros(3)
+    dyaw = 0.0
+    _move_shoe(rig, s, target, seat_R, tol=0.006, timeout=10.0, v=0.05)
+    for k in range(corrections):
+        _move_shoe(rig, s, target + corr, _rotz(dyaw) @ seat_R, tol=0.003, timeout=4.0, v=0.04)
+        rig.wait(0.2)
+        F = _Frame(rig, s)
+        e = F.p - target
+        ey = _wrap(_yaw_of(seat_R) - F.yaw)
+        _log(rig, "shoe %d hover: xy err %.1f mm, yaw err %.1f deg" % (s, 1000 * np.linalg.norm(e[:2]), math.degrees(ey)))
+        if np.linalg.norm(e[:2]) < 0.0015 and abs(ey) < math.radians(1.0):
+            break
+        if np.linalg.norm(e[:2]) > 0.02 or abs(ey) > math.radians(8.0):
+            # the hand did not get there (a guard stop): no correction from a reading that far off
+            return None
+        corr[:2] -= e[:2]
+        dyaw += ey
+    _move_shoe(rig, s, seat_p + Z * final + corr, _rotz(dyaw) @ seat_R, tol=0.002, timeout=3.0, v=0.03)
+    rig.wait(0.3)
+    return _under_sole(rig, s)
+
+
+def _seat_from_above(rig, s, seat_p, seat_R):
+    """The held shoe (toe grasp) into the cradle without sitting on its own tails: hang the tails free above the seat,
+    lower the shoe straight down and look under the sole before letting go; with a tail under it, back up and again
+    (SEAT_TRIES lowerings). Then release, retreat, wait for the clamp."""
+    for attempt in range(SEAT_TRIES):
+        k = min(attempt, len(SEAT_DIPS) - 1)
+        _hang_tails(rig, s, seat_p, seat_R, dip=SEAT_DIPS[k], shake=SEAT_SHAKES[min(attempt, len(SEAT_SHAKES) - 1)])
+        under = _lower_into_cradle(rig, s, seat_p, seat_R)
+        if under is None:
+            _log(rig, "shoe %d: the lowering did not reach the hover pose (try %d)" % (s, attempt + 1))
+            continue
+        far = [w for w in ("a", "b") if not _aglet_reachable(rig, s, w)]
+        if not under["a"] and not under["b"] and not far:
+            break
+        _log(rig, "shoe %d: lowered onto its tails (links under the sole: A %s, B %s; aglets out of reach %s)%s" % (
+            s, under["a"], under["b"], far, ", lifting and lowering again" if attempt < SEAT_TRIES - 1 else ", seating it anyway"))
+    rig.release(0.5)
+    rig.lift("left", 0.10, timeout=2.0)
+    return _settle_seated(rig, s)
+
+
 def _carry_to_cradle_and_seat(rig, s, seat_p, seat_R):
     for attempt in range(3):
-        _place_shoe(rig, s, seat_p, seat_R)
-        if _settle_seated(rig, s):
-            _log(rig, "shoe %d seated and clamped (t=%.1f)" % (s, rig.time))
+        if _seat_from_above(rig, s, seat_p, seat_R):
+            u = _under_sole(rig, s)
+            _log(rig, "shoe %d seated and clamped (t=%.1f); tail links under the sole: A %s, B %s" % (s, rig.time, u["a"], u["b"]))
             return True
         F = _Frame(rig, s)
         _log(rig, "shoe %d not seated: pos err %s mm yaw err %.1f deg, tilt z %.3f; retry %d" % (
@@ -853,9 +1117,6 @@ def seat_shoe(rig, s, _retry=0):
         return seat_shoe(rig, s, _retry + 1)
     F = _Frame(rig, s)
     _move_shoe(rig, s, np.array([F.p[0], F.p[1], 0.20]), _rotz(yaw_c), tol=0.006, timeout=3.0)
-    _move_shoe(rig, s, seat_p + np.array([0.26, 0.0, 0.20]), seat_R, tol=0.008, timeout=6.0)
-    _move_shoe(rig, s, seat_p + Z * 0.20, seat_R, tol=0.008, timeout=6.0, v=0.08)       # the tails hang free, then trail toward +x
-    _move_shoe(rig, s, seat_p + Z * 0.11, seat_R, tol=0.008, timeout=4.0, v=0.06)
     return _carry_to_cradle_and_seat(rig, s, seat_p, seat_R)
 
 
@@ -1118,20 +1379,24 @@ def _acquire_aglet(rig, s, which, geo, F):
         _, c, _ = _aglet(rig, s, which)
         d_r = float(np.linalg.norm(c[:2] - RIGHT_BASE))
         d_l = float(np.linalg.norm(c[:2] - LEFT_BASE))
-        if 0.15 < d_l < 0.50 and attempt < 4:
+        if 0.15 < d_l < GRIP_ZONE[1] and attempt < 4:
             if d_l >= 0.18 and _grasp_aglet(rig, s, which, geo, F):
                 return True
             if d_l < 0.28 and _grasp_aglet_lean(rig, s, which, geo, F):
                 return True
-        elif 0.21 < d_r < 0.53:
-            if _hook_catch_free(rig, s, which, geo, F) and _handover_free(rig, s, which, geo, F):
-                return True
+        elif HOOK_ZONE[0] < d_r < HOOK_ZONE[1]:
+            # in the hook's zone only: the hook re-lays it in the gripper's zone, beside the shoe toward the heel, and
+            # the gripper picks it from the bench (the hand-to-hook handover in the air beside the seated shoe put
+            # the gripper's wrist on the shoe)
+            if _hook_relay(rig, s, which, geo, F, _relay_spot(rig, s, which, geo, F)):
+                continue
             if rig.hook_loaded:
                 rig.hook(False)
             _park_hook(rig, near=F.p[:2])
         else:
-            _log(rig, "aglet %s at %s is in neither arm's zone (%.2f from the hook base, %.2f from the gripper base); waiting" % (which, np.round(c, 3), d_r, d_l))
-            rig.wait(1.5)
+            _log(rig, "aglet %s at %s is in neither arm's zone (%.2f from the hook base, %.2f from the gripper base)" % (which, np.round(c, 3), d_r, d_l))
+            rig.wait(1.0)
+            break
     return False
 
 
@@ -1192,8 +1457,8 @@ def _grasp_aglet(rig, s, which, geo, F):
                 yaw = F.yaw
             yaw += (math.pi / 2) * attempt
         quat = down_quat(yaw)
-        if not 0.17 < np.linalg.norm(c[:2] - LEFT_BASE) < 0.50:
-            _log(rig, "aglet %s at %s is outside the gripper's safe bench zone" % (which, np.round(c, 3)))
+        if not 0.17 < np.linalg.norm(c[:2] - LEFT_BASE) < GRIP_ZONE[1]:
+            _log(rig, "aglet %s at %s is outside the gripper's bench zone" % (which, np.round(c, 3)))
             return False
         if not goto(rig, "left", np.array([c[0] + shift[0], c[1] + shift[1], 0.20]), quat, tol=0.006, timeout=4.0, joint_ok=(not rig.hook_loaded)):
             continue
@@ -1205,7 +1470,7 @@ def _grasp_aglet(rig, s, which, geo, F):
         c2 = c
         for k in range(3):
             c, vel = _aglet_vel(rig, s, which)         # it slides (frictionless): aim a little ahead
-            z = max(c[2] + AGLET_GRIP_DZ, 0.0115)
+            z = c[2] + AGLET_BENCH_DZ
             tgt = np.array([c[0] + 0.25 * vel[0] + shift[0], c[1] + 0.25 * vel[1] + shift[1], z])
             goto(rig, "left", np.array([tgt[0], tgt[1], z + 0.03]), quat, tol=0.0015, rot_tol=0.02, timeout=2.0, joint_ok=False)
             if not goto(rig, "left", tgt, quat, tol=0.0015, rot_tol=0.02, timeout=1.5, joint_ok=False):
@@ -1216,6 +1481,7 @@ def _grasp_aglet(rig, s, which, geo, F):
         pt, Rt = rig.tcp("left")
         dd = Rt.T @ (c2 - pt)
         if _close_until(rig, body, timeout=1.5, probe=lambda: _aglet(rig, s, which)[1]):
+            _seat_clear(rig)
             _log(rig, "aglet %s grasped at %s (tcp-frame offset %s mm, t=%.1f)" % (which, np.round(c2, 3), np.round(1000 * dd, 1), rig.time))
             return True
         _log(rig, "aglet %s: grasp failed (holding %s, offset %s mm, width %.4f), retry %d" % (which, rig.holding, np.round(1000 * dd, 1), rig.sc.arms["left"].width(), attempt + 1))
@@ -1259,6 +1525,7 @@ def _grasp_aglet_lean(rig, s, which, geo, F):
         _, c2, _ = _aglet(rig, s, which)
         dd = Rt.T @ (c2 - pt)
         if _close_until(rig, body, timeout=1.5):
+            _seat_clear(rig)
             _log(rig, "aglet %s grasped leaning at %s (tcp-frame offset %s mm, lean %.2f, t=%.1f)" % (which, np.round(c2, 3), np.round(1000 * dd, 1), lean, rig.time))
             return True
         _log(rig, "lean grasp of aglet %s failed (offset %s mm)" % (which, np.round(1000 * dd, 1)))
@@ -1296,6 +1563,156 @@ def _lift_checked(rig, s, which, z_to, step=0.02):
             return False
 
 
+def _seat_clear(rig, dz=SEAT_CLEAR_DZ, seconds=0.35):
+    """Right after an aglet was caught on the bench: raise the tcp by dz while the cell seats the aglet (0.3 s)."""
+    arm = rig.sc.arms["left"]
+    if arm.mode != "cartesian":
+        arm.set_mode("cartesian")
+    p0, R = arm.tcp_actual()
+    q = mat_to_quat(R)
+    n = max(1, int(round(seconds / rig.s.tick_s)))
+    for k in range(1, n + 1):
+        arm.command_cartesian(p0 + Z * (dz * k / n), q)
+        rig.tick()
+    _wait(rig, 0.1)
+
+
+def _held(rig, body):
+    """The gripper still holds `body` (an aglet): a slip (the 6 N rule) is noticed at once, not after the carry."""
+    h = rig.holding
+    if h is not None and h[0] == body:
+        return True
+    _log(rig, "the gripper no longer holds %s (holding %s)" % (body, None if h is None else h[0]))
+    return False
+
+
+def _tail_side(rig, s, which):
+    """The side (L / R) through which tail `which` leaves row 1, or None."""
+    _, _, _, _, side_a, side_b = _tails(rig, s)
+    return side_a if which == "a" else side_b
+
+
+def _stream_aglet(rig, path, v=0.04, quat=None, unclamp=False):
+    """Stream the gripper's tcp through the waypoints `path` at <= v m/s (orientation `quat`, default: kept), watching
+    the held aglet's pull: above PULL_STOP_N the target waits for the cord to slide (and gives up after 1 s). With
+    `unclamp` the cradle clamp is released every second on the way (the shoe rests in the seat unclamped). Returns
+    "ok", "lost" (the aglet slipped out), "stuck" (the pull stayed high) or "press" (an arm link touched something)."""
+    arm = rig.sc.arms["left"]
+    if arm.mode != "cartesian":
+        arm.set_mode("cartesian")
+    body = rig.holding[0] if rig.holding is not None else None
+    p_prev, R = arm.tcp_actual()
+    q = mat_to_quat(R) if quat is None else np.asarray(quat, float)
+    t_rel = -1e9
+    for wp in path:
+        wp = np.asarray(wp, float)
+        n = max(1, int(math.ceil(float(np.linalg.norm(wp - p_prev)) / v / rig.s.tick_s)))
+        k, waited = 0, 0
+        while k < n:
+            if unclamp and rig.time - t_rel >= 1.0:
+                rig.release_clamp()
+                t_rel = rig.time
+            pull = rig.sc.aglet_pull("left/grasp")
+            if pull is not None and pull > PULL_STOP_N:
+                waited += 1                                   # hold the target: the cord slides meanwhile
+                if waited > 100:
+                    p, Rn = arm.tcp_actual()
+                    arm.command_cartesian(p, mat_to_quat(Rn))
+                    _log(rig, "drawing the tail: the pull stays at %.1f N, stopping" % pull)
+                    return "stuck"
+            else:
+                k += 1
+                waited = 0
+            arm.command_cartesian(p_prev + (wp - p_prev) * (k / float(n)), q)
+            rig.tick()
+            if body is not None and (rig.holding is None or rig.holding[0] != body):
+                return "lost"
+            hit = _arm_contact_force(rig, "left", LINK_STOP_N, PAD_STOP_N)
+            if hit is not None:
+                _log(rig, "left arm: %s presses %s with %.0f N while drawing a tail, backing off" % hit)
+                _back_off(rig, "left", ("press", rig.time, hit))
+                return "press"
+        p_prev = wp
+    return "ok"
+
+
+def _free_tail(rig, s, which, geo, F):
+    """Holding aglet `which` whose tail lies under the seated shoe's sole: release the clamp (kept released) and draw
+    the aglet slowly out to a spot beside the tail's row-1 ring on its own side, low over the bench, round the toe when
+    it lies on the other side: the frictionless cord slides out from under the unclamped shoe, which stays in its
+    seat. Then the clamp engages again and F is refreshed (the shoe may have shifted by a millimetre)."""
+    side = _tail_side(rig, s, which) or ("L" if which == "a" else "R")
+    sg = _sg(side)
+    under = _under_sole(rig, s, which)
+    _, c, _ = _aglet(rig, s, which)
+    cl = F.l(c)
+    z = 0.045                                                # tcp height: the aglet's tip 2 cm above the bench
+    path = []
+    if cl[1] * sg < 0.0:                                     # on the other side: round the toe
+        path.append(F.w((geo.L / 2 + 0.07, cl[1], 0.0)))
+        path.append(F.w((geo.L / 2 + 0.07, sg * (geo.W / 2 + 0.06), 0.0)))
+    path.append(F.w((geo.x_rows[0], sg * (geo.W / 2 + 0.12), 0.0)))
+    path = [np.array([p[0], p[1], z]) for p in path]
+    p0, _ = rig.tcp("left")
+    _log(rig, "tail %s lies under the sole (links %s): drawing it out with the clamp released via %s" % (
+        which, under, [np.round(p[:2], 3).tolist() for p in path]))
+    res = _stream_aglet(rig, [np.array([p0[0], p0[1], max(p0[2], z)])] + path, v=0.04, unclamp=True)
+    t0 = rig.time
+    while rig.time - t0 < 4.0 and rig.s.clamp_engaged != s:
+        rig.tick(5)
+    F.__init__(rig, s)
+    left = _under_sole(rig, s, which)
+    _log(rig, "tail %s drawn out: %s, links under the sole now %s, clamp %s (t=%.1f)" % (
+        which, res, left, rig.s.clamp_engaged == s, rig.time))
+    return res == "ok" and not left
+
+
+def _lift_aglet(rig, s, which, geo, F, target, quat, e_ref, tries=3):
+    """Raise the held aglet from where it was grasped to `target` above the shoe without pulling it out of the pinch.
+    A tail under the sole is first drawn out with the clamp released (_free_tail); the lift is guarded (the pull,
+    PULL_STOP_N): on a stop the hand goes back down 1.5 cm, the tail is looked at again, and the next lift goes first
+    toward the tail's row-1 ring (`e_ref`, the slack side), then up."""
+    body = rig.sc.laces[s]["bodies"][0 if which == "a" else -1]
+    for k in range(tries):
+        if _under_sole(rig, s, which):
+            _free_tail(rig, s, which, geo, F)
+        if not _held(rig, body):
+            return False
+        rig.guard_hit = None
+        # straight up first with the hand's orientation as it is, then turn it in place up there (lifting and turning at
+        # once near the gripper's base swung the hand 13 cm sideways and pulled the tail out of the pinch)
+        _, R_now = rig.tcp("left")
+        up = _slow_goto(rig, "left", target, mat_to_quat(R_now), v=0.08 if k == 0 else 0.05, tol=0.005, rot_tol=0.05)
+        if up and _slow_goto(rig, "left", target, quat, v=0.05, w=0.6, tol=0.005, rot_tol=0.05):
+            return True
+        if not _held(rig, body):
+            return False
+        p, R = rig.tcp("left")
+        hit = getattr(rig, "guard_hit", None)
+        if hit is None and np.linalg.norm(p - target) < 0.02:
+            return True
+        _log(rig, "aglet %s lift stopped at %s (%s): easing it and lifting again (try %d)" % (
+            which, np.round(p, 3), "a guard" if hit is None else hit[0], k + 1))
+        _slow_goto(rig, "left", np.array([p[0], p[1], max(0.035, p[2] - 0.015)]), mat_to_quat(R), v=0.04, tol=0.004, rot_tol=0.05)
+        _wait(rig, 0.4)
+        p, R = rig.tcp("left")
+        mid = p + 0.4 * (np.array([e_ref[0], e_ref[1], p[2]]) - p)
+        _slow_goto(rig, "left", np.array([mid[0], mid[1], max(p[2], 0.06)]), mat_to_quat(R), v=0.04, tol=0.005, rot_tol=0.05)
+    return _held(rig, body) and float(np.linalg.norm(rig.tcp("left")[0] - target)) < 0.02
+
+
+def _in_hole(rig, s, c, geo, F):
+    """The aglet is stuck in a ring hole (its centre within the hole and at most 8 mm above the flap top): it did not
+    drop through, the lace's weight outside holds it; the hook catches it from below the flap."""
+    cl = F.l(c)
+    for r in range(1, geo.n_rows + 1):
+        for side in ("L", "R"):
+            ring = geo.ring(r, side)
+            if math.hypot(cl[0] - ring[0], cl[1] - ring[1]) < 0.0045 and geo.z_f - 0.015 < cl[2] < geo.z_f + 0.008:
+                return True
+    return False
+
+
 def _in_shoe(rig, s, c, geo, F):
     """The aglet is inside the shoe: within the cavity footprint, below the flap tops (on the floor or hanging)."""
     cl = F.l(c)
@@ -1315,6 +1732,8 @@ def _drop_in(rig, s, which, row, side, geo, F, ref_row, ref_side):
     sg = _sg(side)
     out = sg * F.ey                                        # outward on the target side
     for attempt in range(2):
+        if not _held(rig, body):
+            return False
         passes, snug, la, lb, _, _ = _tails(rig, s)
         tail = la if which == "a" else lb
         h = float(np.clip(tail - 0.08, 0.07, 0.20))        # the bight below the hand stays short
@@ -1324,17 +1743,29 @@ def _drop_in(rig, s, which, row, side, geo, F, ref_row, ref_side):
             row, float(np.linalg.norm(c0[:2] - e_ref[:2])), tail, _passes_str(rig, s)))
         z_safe = float(F.p[2] + geo.z_hc_top + 0.074)       # aglet tip (24 mm below the tcp) 5 cm above the heel counter top
         z_h = max(z_safe, e_ref[2] + h)
-        _slow_goto(rig, "left", np.array([p_now[0], p_now[1], z_safe]), quat, v=0.08, tol=0.005, rot_tol=0.05)   # straight up (row 1 is tacked)
+        if not _lift_aglet(rig, s, which, geo, F, np.array([p_now[0], p_now[1], z_safe]), quat, e_ref):   # up (row 1 is tacked)
+            return False
+        # (F may have been refreshed: a tail drawn out from under the unclamped shoe)
+        e = F.w(geo.ring(row, side))
+        e_ref = F.w(geo.ring(ref_row, ref_side)) if ref_row is not None else F.w((geo.x_rows[1], 0.0, geo.z_f))
+        quat = down_quat(F.yaw + math.pi / 2)
+        out = sg * F.ey
         _wait(rig, 0.2)
         if not _slow_goto(rig, "left", np.array([e_ref[0], e_ref[1], z_h]), quat, v=0.08, w=0.6, tol=0.005, rot_tol=0.05):
+            if not _held(rig, body):
+                return False
             p1, _ = rig.tcp("left")
             if np.linalg.norm(p1 - np.array([e_ref[0], e_ref[1], z_h])) > 0.02:
                 _log(rig, "IN drop row %d: cannot reach above the reference point %s" % (row, np.round(e_ref, 3)))
                 return False
         _wait(rig, 0.3)
+        if not _held(rig, body):
+            return False
         _log(rig, "IN drop row %d: passes above the reference point: %s" % (row, _passes_str(rig, s)))
         z_hover = max(z_safe, e[2] + h)
         if not goto(rig, "left", e + Z * (z_hover - e[2]), quat, tol=0.004, timeout=4.0, joint_ok=False):
+            if not _held(rig, body):
+                return False
             p_now, _ = rig.tcp("left")
             if np.linalg.norm(p_now - (e + Z * (z_hover - e[2]))) > 0.02:
                 _log(rig, "IN drop row %d: cannot reach above ring %d%s" % (row, row, side))
@@ -1345,6 +1776,8 @@ def _drop_in(rig, s, which, row, side, geo, F, ref_row, ref_side):
         for k in range(4):
             goto(rig, "left", e + Z * (z_hover - e[2]) + corr, quat, tol=0.0015, rot_tol=0.02, timeout=3.0, joint_ok=False)
             _wait(rig, 0.25)
+            if not _held(rig, body):
+                return False
             _, c, ax = _aglet(rig, s, which)
             err = c[:2] - e[:2]
             if np.linalg.norm(err) < 0.002:
@@ -1428,7 +1861,7 @@ def _drop_in(rig, s, which, row, side, geo, F, ref_row, ref_side):
         if _in_shoe(rig, s, c, geo, F) and F.l(c)[2] > geo.z_f - 0.012:
             _log(rig, "IN drop row %d: aglet hangs in the hole (%.1f mm below the flap top); the hook catches it there" % (row, 1000 * (geo.z_f - F.l(c)[2])))
         rig.lift("left", 0.04, timeout=1.5)
-        ok = _in_shoe(rig, s, c, geo, F)
+        ok = _in_shoe(rig, s, c, geo, F) or _in_hole(rig, s, c, geo, F)
         _log(rig, "IN pass row %d side %s: aglet before release at local %s, after at %s, inside %s (tail %.3f, t=%.1f)" % (
             row, side, np.round(cl, 4), np.round(F.l(c), 3), ok, tail, rig.time))
         if ok:
@@ -1488,9 +1921,11 @@ def _hook_fetch(rig, s, which, row, side, geo, F):
     aglet protrudes above the flap on the hook tip; the hook stays there (the gripper takes over)."""
     body, c, _ = _aglet(rig, s, which)
     cl = F.l(c)
-    if not _in_shoe(rig, s, c, geo, F):
+    if not (_in_shoe(rig, s, c, geo, F) or _in_hole(rig, s, c, geo, F)):
         _log(rig, "hook fetch: aglet %s is not in the shoe (local %s)" % (which, np.round(cl, 3)))
         return False
+    if not _in_shoe(rig, s, c, geo, F):
+        _log(rig, "hook fetch: aglet %s is stuck in a ring hole (local %s): caught from below the flap" % (which, np.round(cl, 3)))
     z_low = geo.z_floor + 0.004
     phi_e = 0.0
     xe = float(np.clip(cl[0], geo.x_hc + 0.02, geo.x_tc - 0.02))
@@ -1638,7 +2073,7 @@ def _hook_exit_throat(rig, s, which, geo, F, xe, z_low, phi_c, snug_row=2, lay="
     d_spot = float(np.linalg.norm(o))
     o = o / max(1e-6, d_spot)
     chain0 = [(r, sd) for r, sd, d, t in _chain(rig, s, which)]
-    for k in range(SLOT_PULL_STEPS):
+    for k in range(SLOT_PULL_STEPS if snug_row is not None else 0):
         ok, arc, allowed = _tail_snug(rig, s, which, geo, snug_row)
         chain = [(r, sd) for r, sd, d, t in _chain(rig, s, which)]
         _log(rig, "slot pull row %d step %d: arc %.3f allowed %.3f ok %s, chain %s" % (snug_row, k, arc, allowed, ok, chain))
@@ -1977,6 +2412,28 @@ def _hook_relay(rig, s, which, geo, F, spot):
     return not rig.sc.inside_cavity(s, c)
 
 
+def _relay_spot(rig, s, which, geo, F):
+    """Where the hook lays an aglet that only it can reach so that the gripper picks it from the bench: beside the seated
+    shoe toward its heel, on the side where the aglet lies (the cord stays outside the shoe), the candidate nearest the
+    aglet that both arms reach well."""
+    _, c, _ = _aglet(rig, s, which)
+    side_now = 1.0 if float(F.l(c)[1]) >= 0.0 else -1.0
+    best = None
+    for sg in (side_now, -side_now):
+        for back, out in ((0.14, 0.06), (0.10, 0.06), (0.17, 0.08), (0.12, 0.10), (0.06, 0.08)):
+            p = F.w((geo.x_rows[0] - back, sg * (geo.W / 2 + out), 0.0))
+            d_l = float(np.linalg.norm(p[:2] - LEFT_BASE))
+            d_r = float(np.linalg.norm(p[:2] - RIGHT_BASE))
+            if 0.30 < d_l < 0.58 and HOOK_ZONE[0] + 0.03 < d_r < HOOK_ZONE[1] - 0.03:
+                cost = float(np.linalg.norm(p[:2] - c[:2])) + (0.0 if sg == side_now else 0.3)
+                if best is None or cost < best[0]:
+                    best = (cost, np.array([p[0], p[1], 0.0]))
+    if best is not None:
+        return best[1]
+    p = F.w((geo.x_rows[0] - 0.14, side_now * (geo.W / 2 + 0.06), 0.0))
+    return np.array([p[0], p[1], 0.0])
+
+
 def _pick_with_relay(rig, s, which, geo, F):
     """Pick the aglet; when no pick pose exists, have the hook re-lay it 4 cm further from the gripper's base."""
     if _acquire_aglet(rig, s, which, geo, F):
@@ -1991,24 +2448,79 @@ def _pick_with_relay(rig, s, which, geo, F):
     return _acquire_aglet(rig, s, which, geo, F)
 
 
+TAIL_TRIES = 4            # passes tried per tail; each starts from where the aglet lies and the lace runs now
+LACE_TIME_LEFT = (420.0, 640.0)   # no new try of a tail of shoe 0 / shoe 1 after this sim time: the second shoe and the
+#                                   box (about 150 s) must fit in the 900 s window
+
+
+def _tail_state(rig, s, which, other, geo, F):
+    """Where tail `which` stands: "done" (IN through row 2 on `other`, the aglet out of the shoe again), "in" (IN through
+    row 2, the aglet still in the cavity or in the ring hole: the hook fetches it), "cavity" (the aglet in the cavity
+    without the row-2 pass: fetched out through the slot first), "out" (no row-2 pass, the aglet outside)."""
+    chain = [(r, sd, d) for r, sd, d, t in _chain(rig, s, which)]
+    _, c, _ = _aglet(rig, s, which)
+    inside = rig.sc.inside_cavity(s, c) or _in_hole(rig, s, c, geo, F)
+    passed = len(chain) >= 1 and chain[0] == (2, other, -1)
+    if passed and len(chain) == 1:
+        return "in" if inside else "done"
+    if inside:
+        return "cavity"
+    return "out"
+
+
 def _lace_tail(rig, s, which, side_own, geo, F):
     """One throat-return pass per tail (n_rows = 2): row 2 IN on the side opposite to the tail's row-1 exit, hook out
-    through the slot, the row-1 -> row-2 diagonal pulled snug, the aglet laid over the side wall of ring 2's column."""
+    through the slot, the row-1 -> row-2 diagonal pulled snug, the aglet laid over the side wall of ring 2's column.
+    Up to TAIL_TRIES tries, each picking up from where the tail is (a slip, a missed hole, a failed fetch)."""
     other = _other(side_own)
-    if not _pick_with_relay(rig, s, which, geo, F):
-        _log(rig, "tail %s: no aglet grasp, giving up this tail" % which)
-        return False
-    if not _drop_in(rig, s, which, 2, other, geo, F, 1, side_own):
-        _log(rig, "tail %s: IN pass at row 2 failed" % which)
-        h = rig.holding
-        if h is not None and h[0] == rig.sc.laces[s]["bodies"][0 if which == "a" else -1]:
-            _set_down_tail(rig, s, which, side_own, geo, F)
-        return False
-    _log(rig, "tail %s after row 2: chain %s (t=%.1f)" % (which, [(r, sd, d) for r, sd, d, t in _chain(rig, s, which)], rig.time))
-    if not _hook_slot_pass(rig, s, which, geo, F, snug_row=2, lay="wall", side=other):
-        _log(rig, "tail %s: slot fetch after row 2 failed" % which)
-        return False
-    return True
+    body = rig.sc.laces[s]["bodies"][0 if which == "a" else -1]
+    for attempt in range(TAIL_TRIES):
+        state = _tail_state(rig, s, which, other, geo, F)
+        _log(rig, "tail %s try %d: %s (chain %s, t=%.1f)" % (which, attempt + 1, state, [(r, sd, d) for r, sd, d, t in _chain(rig, s, which)], rig.time))
+        if state == "done":
+            return True
+        if attempt > 0 and rig.time > LACE_TIME_LEFT[min(s, 1)]:
+            _log(rig, "tail %s: out of time for another try (t=%.1f)" % (which, rig.time))
+            break
+        if rig.holding is not None and rig.holding[0] != body:
+            rig.release(0.3)
+        if state == "cavity":
+            # in the shoe without the ring pass: the hook takes it out through the slot and lays it down outside
+            _hook_slot_pass(rig, s, which, geo, F, snug_row=None, lay="wall", side=side_own)
+            continue
+        if state == "out":
+            if not _pick_with_relay(rig, s, which, geo, F):
+                _log(rig, "tail %s: no aglet grasp (try %d)" % (which, attempt + 1))
+                continue
+            if not _drop_in(rig, s, which, 2, other, geo, F, 1, side_own):
+                _log(rig, "tail %s: IN pass at row 2 failed (try %d)" % (which, attempt + 1))
+                if rig.holding is not None and rig.holding[0] == body:
+                    _set_down_tail(rig, s, which, side_own, geo, F)
+                continue
+            _log(rig, "tail %s after row 2: chain %s (t=%.1f)" % (which, [(r, sd, d) for r, sd, d, t in _chain(rig, s, which)], rig.time))
+            if _tail_state(rig, s, which, other, geo, F) != "in":
+                continue
+        if _hook_slot_pass(rig, s, which, geo, F, snug_row=2, lay="wall", side=other):
+            if _tail_state(rig, s, which, other, geo, F) == "done":
+                return True
+        _log(rig, "tail %s: slot fetch after row 2 failed (try %d)" % (which, attempt + 1))
+    return _tail_state(rig, s, which, other, geo, F) == "done"
+
+
+def _tidy_tails(rig, s, geo, F):
+    """Right after the seat: an aglet that only the hook reaches (straight down from its ring a tail often lies out
+    toward the hook arm, and a loose tail keeps straightening, which carries its aglet further) is re-laid by the hook
+    beside the shoe for the gripper at once, while it is still in the hook's zone."""
+    for which in ("a", "b"):
+        _, c, _ = _aglet(rig, s, which)
+        d_l = float(np.linalg.norm(c[:2] - LEFT_BASE))
+        d_r = float(np.linalg.norm(c[:2] - RIGHT_BASE))
+        if GRIP_ZONE[0] + 0.02 < d_l < GRIP_ZONE[1] - 0.02 or not (HOOK_ZONE[0] < d_r < HOOK_ZONE[1]):
+            continue
+        spot = _relay_spot(rig, s, which, geo, F)
+        _log(rig, "tail %s: aglet at %s only in the hook's zone (%.2f / %.2f m from the bases): the hook re-lays it at %s" % (
+            which, np.round(c[:2], 3), d_l, d_r, np.round(spot[:2], 3)))
+        _hook_relay(rig, s, which, geo, F, spot)
 
 
 def lace_shoe(rig, s):
@@ -2031,6 +2543,7 @@ def lace_shoe(rig, s):
         rig.lift("left", 0.24 - pl[2], timeout=1.5)
     arm_l.set_mode("joint")
     arm_l.command_joint(arm_l.home_q)            # the gripper goes home while the hook stops the lace: the tails slide on
+    _tidy_tails(rig, s, geo, F)
     passes, snug, la, lb, side_a, side_b = _tails(rig, s)
     first = "a" if la <= lb else "b"
     if side_a is not None:
