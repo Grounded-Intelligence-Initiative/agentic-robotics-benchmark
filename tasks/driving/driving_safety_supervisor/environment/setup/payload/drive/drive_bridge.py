@@ -22,7 +22,10 @@ road user it pasted into the probe frame.
 Repeatability: the world is reloaded for every episode, in synchronous mode with fixed
 physics substeps, so an episode's layout (route, staging, traffic and their draws) follows
 from its spec alone; `truth["layout"]` is a digest of it. Collisions and camera frames are
-taken tick by tick on the main thread, one camera frame per simulator tick.
+taken tick by tick on the main thread, one camera frame per simulator tick. If the CARLA
+server dies while an episode is being built, the reply says so (`server_exited`) and the
+bridge exits; sim_client then starts a new bridge, which builds the episode again from its
+spec.
 
 A spec may name a `variant`: a different staging of its kind, defined in `drive_variants`
 next to this file. The practice copy ships without that module and stages every kind in
@@ -51,6 +54,7 @@ import socket
 import struct
 import subprocess
 import sys
+import threading
 import time
 import traceback
 import zlib
@@ -69,7 +73,7 @@ REF_CAP_KMH = 50.0        # ... counting limits above the nominal planner's own 
 NAV_SPACING_M = 30.0      # navigation targets: about every 30 m and where the command changes
 VEHICLE_RADIUS_M, NEAR_RADIUS_M = 250.0, 80.0   # privileged block: vehicles, walkers and props
 FRAME_TIMEOUT_S = 30.0    # a camera frame not arriving this long after its tick is a bridge error
-LOAD_TIMEOUT_S = 600.0    # a town (re)load
+LOAD_TIMEOUT_S = 120.0    # a town (re)load (Town10HD's takes 9-12 s)
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -81,6 +85,10 @@ def _emit(obj):
 def _log(message):
     sys.stderr.write("[drive_bridge] {}\n".format(message))
     sys.stderr.flush()
+
+
+class ServerExited(RuntimeError):
+    """The CARLA server died: this bridge cannot go on (sim_client replaces it)."""
 
 
 def _wrap(angle):
@@ -451,6 +459,7 @@ class CarlaBackend(object):
         except Exception:
             self._kill_server()       # never leave a server running behind a bridge that failed
             raise
+        threading.Thread(target=self._watch_server, daemon=True).start()
         self.world = None
         self.town = None
         self.map = None
@@ -482,6 +491,15 @@ class CarlaBackend(object):
                 if attempt == 2:
                     raise
                 time.sleep(5.0)
+
+    def _watch_server(self):
+        """Once the server has died, every later RPC fails within a second instead of waiting
+        out its time-out (a staging retries its spawns, each one an RPC)."""
+        self.server.wait()
+        try:
+            self.client.set_timeout(1.0)
+        except Exception:  # noqa: BLE001
+            pass
 
     def _kill_server(self):
         if self.server.poll() is None:
@@ -536,6 +554,8 @@ class CarlaBackend(object):
         # Release the Traffic Manager's vehicles before they are destroyed (the reload that
         # follows destroys whatever is left).
         for actor in self.actors:
+            if self.server.poll() is not None:      # not one RPC time-out per car
+                raise RuntimeError("CARLA exited with code {}".format(self.server.returncode))
             if actor.type_id.startswith("vehicle."):
                 try:
                     actor.set_autopilot(False, self.tm.get_port())
@@ -548,6 +568,21 @@ class CarlaBackend(object):
         self.walker_triggers, self.scripted = [], []
 
     def reset(self, spec):
+        # CARLA 0.9.15 can die (signal 11) in a reset after many episodes in one server life
+        # (seen at the 31st). This client's threads then belong to a dead server, so the
+        # bridge does not carry on: it reports the exit, and sim_client starts a new bridge.
+        if self.server.poll() is None:
+            try:
+                return self._reset(spec)
+            except Exception as exc:  # noqa: BLE001
+                try:
+                    self.server.wait(timeout=10.0)   # a crashed server's wrapper exits at once
+                except subprocess.TimeoutExpired:
+                    raise exc                        # the server is alive: a real error
+        raise ServerExited("CARLA exited with code {} while the episode was built".format(
+            self.server.returncode))
+
+    def _reset(self, spec):
         from agents.navigation.behavior_agent import BehaviorAgent
         from agents.navigation.local_planner import RoadOption
         self.RoadOption = RoadOption
@@ -989,7 +1024,7 @@ class CarlaBackend(object):
 
     def close(self):
         try:
-            if self.world is not None:
+            if self.world is not None and self.server.poll() is None:
                 self._cleanup()
                 settings = self.world.get_settings()
                 settings.synchronous_mode = False
@@ -1034,6 +1069,8 @@ class ScenarioBuilder(object):
             try:
                 result = self._attempt()
             except (_Redraw, RuntimeError):   # RuntimeError: a spawn collided; draw again
+                if self.b.server.poll() is not None:
+                    raise                     # no collision: the server is gone
                 self._discard(self.b.actors[spawned:])
                 del self.b.actors[spawned:]
                 self.b.scripted = []
@@ -1345,7 +1382,12 @@ def main():
                 message = json.loads(line)
                 cmd = message.get("cmd")
                 if cmd == "reset":
-                    _emit(backend.reset(message["spec"]))
+                    try:
+                        _emit(backend.reset(message["spec"]))
+                    except ServerExited as exc:
+                        _log("error: {}".format(exc))
+                        _emit({"error": "ServerExited: {}".format(exc), "server_exited": True})
+                        os._exit(3)      # nothing to close: the server is gone, its client threads too
                 elif cmd == "step":
                     _emit(backend.step(int(message["mode"]), message["control"]))
                 elif cmd == "close":

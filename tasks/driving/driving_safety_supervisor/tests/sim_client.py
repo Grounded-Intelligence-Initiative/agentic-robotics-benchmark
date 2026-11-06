@@ -20,7 +20,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 class SimError(Exception):
-    """The simulator failed. A TASK error (or an infrastructure one), never the agent's."""
+    """The simulator failed. A TASK error (or an infrastructure one), never the agent's.
+    `restartable`: the bridge (or its CARLA server) is gone, so a new bridge may try again."""
+
+    def __init__(self, message, restartable=False):
+        Exception.__init__(self, message)
+        self.restartable = restartable
 
 
 class SimClient(object):
@@ -37,23 +42,29 @@ class SimClient(object):
         if run_as:
             argv = ["runuser", "-u", run_as, "--"] + argv
         self._log = open(log_path, "a") if log_path else subprocess.DEVNULL
+        self._argv, self._ready_timeout = argv, float(ready_timeout)
+        self.restarts = 0
+        self._start()
+
+    def _start(self):
         # a fixed string hash, so nothing in the bridge can depend on the process's hash seed
         env = dict(os.environ, PYTHONHASHSEED="0")
-        self.proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        self.proc = subprocess.Popen(self._argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                      stderr=self._log, universal_newlines=True, bufsize=1,
                                      start_new_session=True, env=env)
         self._lines = queue.Queue()
-        threading.Thread(target=self._pump, daemon=True).start()
-        hello = self._read(ready_timeout)
+        threading.Thread(target=self._pump, args=(self.proc, self._lines), daemon=True).start()
+        hello = self._read(self._ready_timeout)
         if not hello.get("ready"):
             self.close()
             raise SimError("simulator bridge did not start: {!r}".format(hello)[:400])
         self.info = hello
 
-    def _pump(self):
-        for line in self.proc.stdout:
-            self._lines.put(line)
-        self._lines.put(None)
+    @staticmethod
+    def _pump(proc, lines):
+        for line in proc.stdout:
+            lines.put(line)
+        lines.put(None)
 
     def _read(self, timeout):
         deadline = time.time() + timeout
@@ -66,7 +77,8 @@ class SimClient(object):
             except queue.Empty:
                 continue
             if line is None:
-                raise SimError("simulator bridge exited (code {})".format(self.proc.poll()))
+                raise SimError("simulator bridge exited (code {})".format(self.proc.poll()),
+                               restartable=True)
             line = line.strip()
             if not line:
                 continue
@@ -80,15 +92,40 @@ class SimClient(object):
             self.proc.stdin.write(json.dumps(message) + "\n")
             self.proc.stdin.flush()
         except (IOError, OSError, ValueError) as exc:
-            raise SimError("simulator bridge stdin closed: {}".format(exc))
+            raise SimError("simulator bridge stdin closed: {}".format(exc), restartable=True)
         reply = self._read(timeout or self.step_timeout)
         if "error" in reply:
-            raise SimError("simulator: {}".format(reply["error"])[:2000])
+            raise SimError("simulator: {}".format(reply["error"])[:2000],
+                           restartable=bool(reply.get("server_exited")))
         return reply
 
     def reset(self, spec):
-        """Build the scenario `spec` (town, kind, seed); may load a town: a long timeout."""
-        return self.call({"cmd": "reset", "spec": spec}, timeout=900.0)
+        """Build the scenario `spec` (town, kind, seed); may load a town: a long timeout.
+
+        CARLA 0.9.15 can crash while it builds an episode after many episodes in one server.
+        When the bridge or its server is gone, a new bridge (and server) builds the same
+        episode again from its spec, once; nothing of the episode has run yet."""
+        message = {"cmd": "reset", "spec": spec}
+        try:
+            return self.call(message, timeout=900.0)
+        except SimError as exc:
+            if not exc.restartable:
+                raise
+        self._replace()
+        return self.call(message, timeout=900.0)
+
+    def _replace(self):
+        """A new bridge in place of one that has gone (or is going)."""
+        old = self.proc
+        try:
+            old.wait(timeout=60)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(old.pid, 9)
+            except OSError:
+                pass
+        self.restarts += 1
+        self._start()
 
     def step(self, mode, control):
         """One control period: mode 0 applies the nominal planner's control, mode 1 the
