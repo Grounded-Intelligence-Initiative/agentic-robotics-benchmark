@@ -83,7 +83,7 @@ import mujoco
 TIMESTEP = 0.002
 SUBSTEPS = 50                    # -> 10 Hz control
 CONTROL_DT = TIMESTEP * SUBSTEPS
-MAX_STEPS = 1200                 # control steps per episode (120 s simulated)
+MAX_STEPS = 800                  # control steps per episode (80 s simulated)
 MAX_DPOS = 0.02
 MAX_DROT = 0.15
 TABLE_Z = 0.80

@@ -83,8 +83,8 @@ any kind.
 Action: a list of 8 numbers `[dx, dy, dz, drx, dry, drz, grip, cams]` at 10 Hz: a gripper-site
 displacement (world frame, clipped to 0.02 m), a world-frame rotation vector (clipped to 0.15
 rad), the gripper command (-1 open ... +1 closed; the finger force is capped at 20 N) and a camera
-bit mask for the next observation (1 = left, 2 = right, 4 = wrist). An episode lasts at most 1200
-steps (120 s simulated).
+bit mask for the next observation (1 = left, 2 = right, 4 = wrist). An episode lasts at most 800
+steps (80 s simulated): that is the cycle time for one assembly.
 
 ## Deliverable and grading
 
@@ -134,13 +134,13 @@ with the fingers open at least 60 mm and not touching the nut. A nut on the wron
 partway down the groove or still held, or a ruined nut is not assembled. The groove walls are
 solid: forcing the pin through them (its centre more than 5 degrees sideways or 1.5 mm up or down
 inside a solid part of the wall, for 3 consecutive steps, while the nut is on the target peg) ruins
-the nut and ends the episode. The episode ends at 1200 steps or as soon as the nut is assembled.
+the nut and ends the episode. The episode ends at 800 steps or as soon as the nut is assembled.
 Your result is the **fraction of the 16 episodes assembled**. (The grader also records how far each
 episode got, for diagnosis only; it does not count.) An episode in which the controller crashes,
 answers late or malformed, or makes the simulation unstable (any arm joint faster than 8 rad/s or
 the nut faster than 5 m/s) scores 0. The whole grading run must finish within **6000 s** of wall
 time, simulation and rendering included: budget it at about 375 s per episode, that is about
-0.3 s per step on average including your controller's own time. On the grader a simulation step
+0.45 s per step on average including your controller's own time. On the grader a simulation step
 takes about 0.02 s and each requested image about 0.2 s. The budget includes your controller's start-up in
 every episode. The episode under way when the budget runs out, and the episodes after it, score 0.
 Only the final controller is scored.
