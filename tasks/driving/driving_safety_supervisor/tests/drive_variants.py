@@ -892,8 +892,25 @@ def _straight(route, i, reach=8, max_turn_deg=5.0):
     return turn <= max_turn_deg
 
 
+def _road_edge(b, wp):
+    """Offset from wp's lane centre to the right edge of the road: half its lane plus every lane
+    to its right a car may use (driving, shoulder, parking, bike lanes)."""
+    LT = b.carla.LaneType
+    edge, w = wp.lane_width / 2.0, wp
+    for _ in range(6):
+        nxt = w.get_right_lane()
+        if nxt is None or nxt.lane_type not in (LT.Driving, LT.Shoulder, LT.Parking, LT.Biking) or \
+                (nxt.lane_id > 0) != (wp.lane_id > 0):
+            break
+        edge += nxt.lane_width
+        w = nxt
+    return edge
+
+
 def _distractors(b, route, hazard_index):
-    """Things beside the route before the hazard that need no reaction."""
+    """Things beside the route before the hazard that need no reaction. People and street
+    furniture stand beyond the road's edge (past any shoulder, parking or bike lane, which can
+    be the way round the hazard), a parked car on the shoulder or parking lane."""
     rng = b.rng
     run, spots = 0.0, []
     for i in range(1, hazard_index):
@@ -920,11 +937,12 @@ def _distractors(b, route, hazard_index):
                                  b._offset(wp, 0.0, kerb + 1.7, 0.3), physics=False)
                 car.set_simulate_physics(False)
             elif kind == "pavement_people":
+                edge = _road_edge(b, wp)
                 for k in range(rng.randint(2, 4)):
-                    _walker(b, b._offset(wp, rng.uniform(-3.0, 3.0), kerb + rng.uniform(2.0, 3.0), 1.0))
+                    _walker(b, b._offset(wp, rng.uniform(-3.0, 3.0), edge + rng.uniform(2.0, 3.0), 1.0))
             elif kind == "kerb_props":
                 props = _available(b, PROPS_KERB)
-                b.b._spawn(rng.choice(props), b._offset(wp, 0.0, kerb + 1.2, 0.1))
+                b.b._spawn(rng.choice(props), b._offset(wp, 0.0, _road_edge(b, wp) + 1.2, 0.1))
             else:
                 left = wp.get_left_lane()
                 if left is None or left.lane_type != b.carla.LaneType.Driving or \

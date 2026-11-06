@@ -137,6 +137,7 @@ class Recorder(object):
                 for key in (kind, "all"):
                     if key in self.min and (self.min[key] is None or gap < self.min[key][0]):
                         self.min[key] = (round(gap, 3), _ident, _bp, truth.get("time_s"))
+        if state.get("privileged"):
             limit = state["privileged"].get("speed_limit")
             if not self.speed_limits or self.speed_limits[-1] != limit:
                 self.speed_limits.append(limit)
