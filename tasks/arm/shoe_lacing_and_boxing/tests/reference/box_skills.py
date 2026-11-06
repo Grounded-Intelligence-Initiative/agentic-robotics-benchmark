@@ -842,11 +842,14 @@ def erect_box(rig):
             press = getattr(rig, "box_press", None)
             if press is not None and "lid" in press[1][1]:
                 avoid.append(tag)                          # that handle put the hand on the lid: another one
-                if w in (walls["px"], walls["mx"]):
-                    # a short wall: its hand and the forearm come in from the tray's side, over the lid lying near the
-                    # box; the blank 3 cm further from the tray
+                if w in (walls["px"], walls["mx"], walls["py"]):
+                    # a short wall or the wall facing the tray: its hand and the forearm come in from the tray's side,
+                    # over the lid lying near the box; the blank 3 cm further from the tray
                     fp, _, _ = _floor_frame(rig)
-                    dy = max(LID_DRAG_Y_MIN, float(fp[1]) - 0.03) - float(fp[1])
+                    if w == walls["py"]:
+                        dy = -0.03                         # the first fold, where the blank was delivered
+                    else:
+                        dy = min(0.0, max(LID_DRAG_Y_MIN, float(fp[1]) - 0.03) - float(fp[1]))
                     if dy < -0.004:
                         _log(rig, "wall %s: the hand met the lid tray; dragging the blank by %.3f m in y" % (w, dy))
                         _drag_blank(rig, 0.0, dy, "c")
@@ -1772,7 +1775,7 @@ def ship_box(rig):
             _reach(rig, pre, q)
         q_start = arm.q().copy()
         _glide(rig, "left", start, q, speed=0.12, tol=0.002, timeout=3.0, settle=0.1)
-        _glide(rig, "left", start + xw * (PUSH_GAP + 0.003), q, speed=0.03, tol=0.003, timeout=2.0, ignore=("box",))
+        _glide(rig, "left", start + xw * (PUSH_GAP + 0.003), q, speed=0.03, tol=0.003, timeout=2.0, ignore=("box", "lid"))
         p0, _ = arm.tcp_actual()
         target = p0 + xw * dist
         speed = 0.10
@@ -1790,7 +1793,7 @@ def ship_box(rig):
             cmd = p0 + (target - p0) * (i + 1) / n
             arm.command_cartesian(cmd, q)
             rig.tick()
-            hit = link_press(rig, "left", ignore=("box",))
+            hit = link_press(rig, "left", ignore=("box", "lid"))     # the closed box and its lid move on together
             if hit is not None:
                 stalled = "%s presses %s with %.0f N" % hit
                 break
@@ -1840,7 +1843,7 @@ def ship_box(rig):
                 break
             if fp2[0] < goal_x + 0.03 and stalled is None:
                 p1, _ = arm.tcp_actual()
-                _glide(rig, "left", p1 + xw * (goal_x + 0.02 - float(fp2[0])), q, speed=0.06, tol=0.003, timeout=4.0, ignore=("box",))
+                _glide(rig, "left", p1 + xw * (goal_x + 0.02 - float(fp2[0])), q, speed=0.06, tol=0.003, timeout=4.0, ignore=("box", "lid"))
                 shipped = _wait_until(rig, shipped_now, 3.0)
                 fp2, _, st2 = _floor_frame(rig)
                 _log(rig, "box at x %.3f closed %s -> shipped %s t=%.1f" % (fp2[0], st2["closed"], shipped, rig.time))
