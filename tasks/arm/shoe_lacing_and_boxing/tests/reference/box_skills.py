@@ -627,7 +627,37 @@ def _edge_y(rig):
     return float(p_py[1] + 0.012 * out_py[1])
 
 
-def _fold_wall(rig, w, alpha_deg, q_pre=None):
+def _lid_gap(rig, w, tag):
+    """Bench-plane clearance (m) between the lid tray's footprint and the hand that grasps wall w at handle `tag` (0.2 m
+    along the edge, leaning out over the free edge)."""
+    lp, lq = rig.sc.lid_pose()
+    Rl = quat_to_mat(np.asarray(lq, float))
+    lo, wo = float(rig.sc.lid["dims"]["Lo"]) / 2, float(rig.sc.lid["dims"]["Wo"]) / 2
+    p, edge, up, out = _wall_frame(rig, w, tag)
+    gap = float("inf")
+    for a in (-0.105, -0.05, 0.0, 0.05, 0.105):
+        for b in (0.0, 0.04, 0.08):
+            q = Rl.T @ (p + edge * a + out * b - np.asarray(lp, float))
+            gap = min(gap, float(math.hypot(max(abs(q[0]) - lo, 0.0), max(abs(q[1]) - wo, 0.0))))
+    return gap
+
+
+def _wall_tag(rig, w, avoid=()):
+    """The handle of wall w to fold it by: the centre, unless the hand there comes within 5 cm of the lid tray lying on
+    the infeed tray (the forearm or the hand on the lid at the +x wall's pitched grasp: a voided pair, or with the
+    guards a wall never folded); then the handle (centre, +-30 % along the edge) farthest from the lid."""
+    tags = [t for t in ("c", "p", "m") if t not in avoid] or ["c"]
+    gaps = {t: _lid_gap(rig, w, t) for t in tags}
+    if "c" in gaps and gaps["c"] >= 0.05:
+        return "c"
+    best = max(tags, key=lambda t: gaps[t])
+    if best != "c":
+        _log(rig, "wall %s: the hand at the centre handle would come %.0f mm from the lid tray; folding it by handle %s (%.0f mm)" % (
+            w, 1000 * gaps.get("c", 0.0), best, 1000 * gaps[best]))
+    return best
+
+
+def _fold_wall(rig, w, alpha_deg, q_pre=None, tag="c"):
     """Grasp wall w at its centre handle with a grasp pitched by alpha_deg, swing it about the crease to ~91 deg, wait
     for the snap-lock, release and retreat.  Returns True when the wall locked.  `q_pre`: an arc-feasible start
     configuration already planned by _plan_fold (else planned here)."""
@@ -635,7 +665,7 @@ def _fold_wall(rig, w, alpha_deg, q_pre=None):
     arm = sc.arms["left"]
     L, W, H, t = _carton(rig)
     alpha = math.radians(alpha_deg)
-    p, edge, up, out = _wall_frame(rig, w)
+    p, edge, up, out = _wall_frame(rig, w, tag)
     crease = p - out * (H - 0.012) + up * (t / 2)          # the point of the hinge axis under the handle
     axis = -edge
     if float((quat_to_mat(rot_quat(axis, math.pi / 2)) @ out) @ up) < 0:
@@ -660,11 +690,16 @@ def _fold_wall(rig, w, alpha_deg, q_pre=None):
     name = None
     corr = np.zeros(3)
     for attempt in range(3):
-        p, edge, up, out = _wall_frame(rig, w)                 # re-read: the blank may have been nudged
+        p, edge, up, out = _wall_frame(rig, w, tag)            # re-read: the blank may have been nudged
         crease = p - out * (H - 0.012) + up * (t / 2)
         q0 = _pitched_quat(edge, up, out, alpha)
         tcp0 = p + up * h + out * u + corr
         e = _glide(rig, "left", tcp0, q0, speed=0.06, tol=0.0008, rot_tol=0.006, timeout=4.0, settle=0.15, stall_s=0.8)
+        if e >= 0.5:
+            # the descent to the handle pressed something (the lid tray beside the wall): this handle is no good
+            _glide(rig, "left", tcp0 + np.array([0.0, 0.0, 0.05]), q0, speed=0.06, timeout=2.0, guard=False)
+            _left_up(rig, APPROACH_Z)
+            return False
         d = _handle_in_tool(rig, p)
         name = None if e > 0.006 else _grasp(rig, "wall %s" % w, p)
         _log(rig, "wall %-5s alpha %2.0f: tcp err %.2f mm, handle in tool frame %s mm -> %s" % (w, alpha_deg, e * 1e3, np.round(d * 1e3, 1), name))
@@ -796,11 +831,17 @@ def erect_box(rig):
         walls, np.round(st["floor_pos"], 3), z["box_x"], z["box_y"], z["tray_edge_y"]))
 
     def fold(w, alpha, q_pre=None):
+        avoid = []
         for attempt in range(3):
             if sc.carton_state()["locked"][w]:
                 return True
-            if _fold_wall(rig, w, alpha if attempt < 2 else alpha + 8.0, q_pre=q_pre if attempt == 0 else None):
+            tag = _wall_tag(rig, w, avoid)
+            rig.box_press = None
+            if _fold_wall(rig, w, alpha if attempt < 2 else alpha + 8.0, q_pre=q_pre if (attempt == 0 and tag == "c") else None, tag=tag):
                 return True
+            press = getattr(rig, "box_press", None)
+            if press is not None and "lid" in press[1][1]:
+                avoid.append(tag)                          # that handle put the hand on the lid: another one
             _log(rig, "wall %s not locked (attempt %d)" % (w, attempt + 1))
         return False
 
@@ -872,12 +913,12 @@ def erect_box(rig):
     return bool(st["erected"])
 
 
-def _plan_fold(rig, w, alpha_deg):
+def _plan_fold(rig, w, alpha_deg, tag=None):
     """(start configuration, min joint margin along the arc) for the fold of wall w with a grasp pitched by alpha_deg,
     (None, -1) when no IK-continuable start configuration exists."""
     L, W, H, t = _carton(rig)
     alpha = math.radians(alpha_deg)
-    p, edge, up, out = _wall_frame(rig, w)
+    p, edge, up, out = _wall_frame(rig, w, tag or _wall_tag(rig, w))
     crease = p - out * (H - 0.012) + up * (t / 2)
     axis = -edge
     if float((quat_to_mat(rot_quat(axis, math.pi / 2)) @ out) @ up) < 0:

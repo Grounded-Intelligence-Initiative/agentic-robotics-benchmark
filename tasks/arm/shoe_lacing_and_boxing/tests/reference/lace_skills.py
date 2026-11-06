@@ -884,7 +884,7 @@ GRIP_ZONE = (0.26, 0.68)   # bench distances from the gripper's base at which it
 HOOK_ZONE = (0.22, 0.52)   # ... from the hook's base at which the hook catches one (it then re-lays it for the gripper)
 
 
-def _aglet_reachable(rig, s, which, margin=0.02):
+def _aglet_reachable(rig, s, which, margin=0.01):
     """Aglet `which` lies where one of the arms can pick it up from the bench, with a margin for the slow drift of a
     loose tail."""
     _, c, _ = _aglet(rig, s, which)
@@ -1001,8 +1001,13 @@ def _seat_from_above(rig, s, seat_p, seat_R):
         far = [w for w in ("a", "b") if not _aglet_reachable(rig, s, w)]
         if not under["a"] and not under["b"] and not far:
             break
+        where = {}
+        for w in far:
+            _, c, _ = _aglet(rig, s, w)
+            where[w] = "%s (%.2f / %.2f m from the bases)" % (np.round(c[:2], 3).tolist(), float(np.linalg.norm(c[:2] - LEFT_BASE)),
+                                                            float(np.linalg.norm(c[:2] - RIGHT_BASE)))
         _log(rig, "shoe %d: lowered onto its tails (links under the sole: A %s, B %s; aglets out of reach %s)%s" % (
-            s, under["a"], under["b"], far, ", lifting and lowering again" if attempt < SEAT_TRIES - 1 else ", seating it anyway"))
+            s, under["a"], under["b"], where, ", lifting and lowering again" if attempt < SEAT_TRIES - 1 else ", seating it anyway"))
     rig.release(0.5)
     rig.lift("left", 0.10, timeout=2.0)
     return _settle_seated(rig, s)
@@ -2413,25 +2418,32 @@ def _hook_relay(rig, s, which, geo, F, spot):
 
 
 def _relay_spot(rig, s, which, geo, F):
-    """Where the hook lays an aglet that only it can reach so that the gripper picks it from the bench: beside the seated
-    shoe toward its heel, on the side where the aglet lies (the cord stays outside the shoe), the candidate nearest the
-    aglet that both arms reach well."""
-    _, c, _ = _aglet(rig, s, which)
-    side_now = 1.0 if float(F.l(c)[1]) >= 0.0 else -1.0
+    """Where the hook lays an aglet that only it can reach so that the gripper picks it from the bench: where the tail
+    ends when it lies STRAIGHT from the foot of its row-1 ring (a loose tail is springy and frictionless: laid with
+    slack it straightens and carries its aglet back out), in the direction closest to straight out from the shoe's side
+    toward its heel at which both arms reach the spot well."""
+    side = _tail_side(rig, s, which) or ("R" if which == "b" else "L")
+    sg = _sg(side)
+    passes, snug, la, lb, _, _ = _tails(rig, s)
+    free = (la if which == "a" else lb) - (geo.z_f + 0.010) - max(0.0, geo.W / 2 - geo.y_e)
+    foot = F.w((geo.x_rows[0], sg * (geo.W / 2 + 0.004), 0.0))
+    o = sg * F.ey
+    back = -F.ex
     best = None
-    for sg in (side_now, -side_now):
-        for back, out in ((0.14, 0.06), (0.10, 0.06), (0.17, 0.08), (0.12, 0.10), (0.06, 0.08)):
-            p = F.w((geo.x_rows[0] - back, sg * (geo.W / 2 + out), 0.0))
-            d_l = float(np.linalg.norm(p[:2] - LEFT_BASE))
-            d_r = float(np.linalg.norm(p[:2] - RIGHT_BASE))
-            if 0.30 < d_l < 0.58 and HOOK_ZONE[0] + 0.03 < d_r < HOOK_ZONE[1] - 0.03:
-                cost = float(np.linalg.norm(p[:2] - c[:2])) + (0.0 if sg == side_now else 0.3)
-                if best is None or cost < best[0]:
-                    best = (cost, np.array([p[0], p[1], 0.0]))
-    if best is not None:
-        return best[1]
-    p = F.w((geo.x_rows[0] - 0.14, side_now * (geo.W / 2 + 0.06), 0.0))
-    return np.array([p[0], p[1], 0.0])
+    for deg in (0, 15, 30, 45, 60, 75, 90):
+        th = math.radians(deg)
+        u = math.cos(th) * o + math.sin(th) * back
+        p = foot + u * max(0.08, free - 0.02)
+        d_l = float(np.linalg.norm(p[:2] - LEFT_BASE))
+        d_r = float(np.linalg.norm(p[:2] - RIGHT_BASE))
+        if 0.30 < d_l < 0.60 and HOOK_ZONE[0] + 0.03 < d_r < HOOK_ZONE[1] - 0.03:
+            best = np.array([p[0], p[1], 0.0])
+            break
+    if best is None:
+        u = math.cos(math.radians(45)) * o + math.sin(math.radians(45)) * back
+        p = foot + u * max(0.08, free - 0.02)
+        best = np.array([p[0], p[1], 0.0])
+    return best
 
 
 def _pick_with_relay(rig, s, which, geo, F):
