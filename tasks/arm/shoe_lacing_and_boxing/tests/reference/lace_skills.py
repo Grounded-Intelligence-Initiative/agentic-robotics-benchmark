@@ -8,21 +8,32 @@ is nearest the toe; the rings sit on the flap tops at z_f; the cavity floor is a
 the flaps is |y| < g/2.
 
 Strategy
-  seat    grasp a shoe handle (heel or toe counter, whichever is nearer the gripper base) from above with the fingers
-          closing along the shoe's length, lift, right an on-side shoe in the air (the weld keeps the shoe fixed to
-          the hand, so a 90 deg roll of the hand about the shoe's length rights it; a close neighbour shoe is kept
-          clear by the other handle and a sideways shift), carry it round the gripper base to the cradle and set it
-          down on the seat with a closed-loop xy/yaw correction read from the true shoe pose. The hook arm stays
-          parked (far heel side) throughout: the tails trail behind the shoe on the gripper's side of the cradle.
-  lace    for each tail in turn (A then B; the sides follow episode._expected_sequence; the throat-return pattern):
-          the gripper picks the aglet from the bench (truth pose; beside the seated shoe the hand's long side is kept
-          parallel to the shoe and the tcp shifted outward, never onto the upper), or the hook fetches it there and
-          hands it over in free space when it lies in the hook arm's zone; the gripper drops it IN through row 2 on
-          the side opposite to that tail's row-1 exit (aligned on the hole with bounded corrections); the hook enters
-          the cavity through the throat, catches the aglet under the flap, rises out through the throat slot and
-          draws the lace until the segment from row 1 is snug (arc <= 1.25 x straight, a 6 mm margin; the scorer
-          allows 1.5 x, the cord bent through the ring springs back 0.5-2.5 cm when the tension drops), then lays the
-          aglet on the bench beside the shoe. One arm works at the cradle at a time; a lost aglet is re-acquired.
+  seat    grasp a shoe handle (heel or toe counter, whichever is nearer the gripper base and whose outer finger stays
+          clear of the neighbouring shoe) from above with the fingers closing along the shoe's length, lift, right an
+          on-side shoe in the air (the weld keeps the shoe fixed to the hand, so a 90 deg roll of the hand about the
+          shoe's length rights it; a close neighbour shoe is kept clear by the other handle and a sideways shift),
+          carry it round the gripper base, re-grasp it at the toe, and carry it high (SEAT_FREE_Z) to above the
+          cradle, so that no low sideways move drags a tail under it; there it dips and comes back up (the tails touch
+          down below their rings and hang straight), pitches toe-down and back (a loop under the sole slides off the
+          toe), and is lowered straight down onto the seat with a closed-loop xy/yaw correction read from the true
+          shoe pose. Before letting go the skill looks under the sole (no tail link may lie within 3 mm of the
+          outline) and at the aglets' reach, and lowers it again otherwise (SEAT_TRIES). Right after the seat an
+          aglet that only the hook reaches is re-laid by the hook where its straight tail ends in the gripper's zone.
+  lace    for each tail in turn (A then B; the sides follow episode._expected_sequence; the throat-return pattern),
+          up to TAIL_TRIES tries, each starting from where the tail is: the gripper picks the aglet from the bench
+          (truth pose; grasped high in the pinch box and raised while the cell seats it, so the seat never pushes it
+          into the bench; beside the seated shoe the hand's long side is kept parallel to the shoe and the tcp
+          shifted outward, never onto the upper), lifts it straight up (a tail under the sole is first drawn out with
+          the clamp released) and drops it IN through row 2 on the side opposite to that tail's row-1 exit (aligned
+          on the hole with bounded corrections, let go only inside the ring); the hook enters the cavity through the
+          throat, catches the aglet under the flap (also one stuck in the ring hole), rises out through the throat
+          slot and draws the lace until the segment from row 1 is snug (arc <= 1.25 x straight, a 6 mm margin; the
+          scorer allows 1.5 x, the cord bent through the ring springs back 0.5-2.5 cm when the tension drops), then
+          lays the aglet on the bench beside the shoe. One arm works at the cradle at a time. An aglet that fell into
+          the cavity beside the ring is taken out through the slot and the pass is tried again.
+  guards  every move of either arm stops and backs off as soon as an arm link presses anything above 8 N (pads 12 N,
+          checked every tick: the safety rule voids the pair at 30 N for 30 ms), and a move that pulls a held aglet
+          above 4 N stops (it slips out at 6 N for 30 ms); a slip is noticed at once.
   unseat  release the clamp, grasp the heel (else the toe) and carry the shoe back to its own arrival spot on the
           infeed tray (the delivery spots are clear of each other and of the lid), sole down, toe along +x.
 """
