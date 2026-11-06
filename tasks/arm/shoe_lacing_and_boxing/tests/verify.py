@@ -20,9 +20,11 @@ sneakers with the cell's two Pandas). This grader:
   3. the oracle token: submission/.oracle_token whose sha256 equals hidden/oracle_token.sha256 switches the cells to the
      privileged mode (the calls get_state_privileged and reference_run; stat privileged_mode); a wrong token is ignored
      (stat oracle_token_mismatch);
-  4. draws `episodes` hidden 63-bit episode seeds from OS entropy (hidden/seeds.json pins them) and runs the agent's
-     program per episode on the cell (shoecell.server.ShoeCellServer, mode hidden: the work order's shoes, laces and
-     blank drawn from the seed; camera-only API) as `nobody` from a read-only copy under an opaque run tag;
+  4. runs the agent's program on the fixed hidden set, the `episodes` 63-bit seeds of hidden/seeds.json in their order
+     (drawn once from os.urandom and selected by a pre-registered rule, hidden/selection.json; every submission meets
+     the same episodes; a missing or malformed set is a task error), one episode per seed on the cell
+     (shoecell.server.ShoeCellServer, mode hidden: the work order's shoes, laces and blank drawn from the seed;
+     camera-only API) as `nobody` from a read-only copy under an opaque run tag;
   5. criterion: work_score = the episode mean of the cell's accepted work over the work order (per pair: lacing of each
      shoe, box erected, pair packed, lid closed, box shipped), an episode with a safety violation scoring 0, times the
      gates. A failure on the grader's side of an episode (the cell's build, the program's launch, the wire, the
@@ -145,7 +147,7 @@ import hashlib  # noqa: E402
 import numpy as np  # noqa: E402
 
 from cellkit import netaudit, wire  # noqa: E402
-from cellkit.seeds import seed_rng  # noqa: E402
+from cellkit.seeds import load_pinned, seed_rng  # noqa: E402
 from shoecell.client import launcher_argv  # noqa: E402
 from shoecell.server import ShoeCellServer  # noqa: E402
 
@@ -336,6 +338,24 @@ def contract_check(cfg, rn):
     return ok, why, suspicious, []
 
 
+def hidden_set(n):
+    """The hidden episodes' seeds: the fixed set of hidden/seeds.json, {"seeds": [...]}, `n` distinct 63-bit seeds run in
+    their order (selected once by the rule of review/select_set.py, recorded in hidden/selection.json; the anchor is the
+    reference's score on them). A pinned list is used as it stands: a pinned stream's derive() would hash it into other
+    seeds. Without the set, or with another count, grading stops as a task error (never a run on other seeds)."""
+    path = os.path.join(HIDDEN, "seeds.json")
+    try:
+        pinned = load_pinned(path)
+    except (OSError, ValueError, TypeError) as e:
+        fail("hidden/seeds.json unreadable: %s" % e)
+    seeds = (pinned or {}).get("seeds")
+    if not seeds:
+        fail("hidden/seeds.json missing or holds no seed list: the hidden episodes are a fixed set")
+    if len(seeds) != n or len(set(seeds)) != n or not all(0 < s < (1 << 63) for s in seeds):
+        fail("hidden/seeds.json holds %d seeds; the grader runs %d distinct 63-bit seeds" % (len(seeds), n))
+    return seeds
+
+
 def token_state():
     """(privileged, mismatch): the submission's .oracle_token against hidden/oracle_token.sha256."""
     p = os.path.join(program_source(), ".oracle_token")
@@ -500,16 +520,14 @@ def _main_locked(cfg, rewards, metrics):
     metrics["suspicious_lines"] = float(suspicious)
     metrics["network_imports"] = float(len(net))
     log("[grader] contract_ok=%s (%s); privileged %s; runner %s; lock latency %.0f ms" % (ok, why, privileged, rn.name or "self", metrics["stage_lock_latency_ms"]))
-    pinned = os.path.join(HIDDEN, "seeds.json")
-    stream = seed_rng(pinned=pinned if os.path.isfile(pinned) else None)
-    metrics.update(stream.stats())
+    n = int(cfg.get("episodes", 3))
+    ep_seeds = hidden_set(n)          # 63-bit: the public draw code cannot be searched over the seed space
+    metrics.update(seed_rng(pinned={"seeds": ep_seeds}).stats())   # hidden_seed_hi / _lo: the set's digest halves
     if not ok:
         rewards["contract_ok"] = 0.0
         _finish_stats(rn, metrics, t_start)
         write_verdict(rewards, metrics)
         return
-    n = int(cfg.get("episodes", 3))
-    ep_seeds = stream.derive("episodes").seeds(n, bits=63)     # 63-bit: the public draw code cannot be searched over the seed space
     agent = []
     step_calls = illegal = 0
     for i, seed in enumerate(ep_seeds):

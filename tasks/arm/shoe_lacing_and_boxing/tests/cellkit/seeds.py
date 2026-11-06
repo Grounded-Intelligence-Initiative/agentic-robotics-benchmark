@@ -1,16 +1,22 @@
-"""Per-run hidden seeds with a logged entropy and an optional pinned stream (CHAIN_PLAN.md D6).
+"""Hidden seeds: this task's fixed set, or a stream from a logged entropy (CHAIN_PLAN.md D6).
 
-The rule of shared/robotics_grader/seeds.py stands: the seeds an episode is scored under are
-sampled fresh, inside the grader process, after the agent is gone, and never reach a path the
-agent's UID can stat. This module adds what the chain needs on top of it:
+This task grades a FIXED hidden set (2026-11-06, the owner's scoring rule for contributed tasks):
+`tests/hidden/seeds.json` (`{"seeds": [...]}`, in the root-only stage folder, never on a path the
+agent's UID can stat) lists the episodes' seeds, which were drawn once from os.urandom and selected
+by a pre-registered rule (`tests/review/select_set.py`, the record in `tests/hidden/selection.json`);
+the task ships it, every submission meets the same episodes, and `verify.py` (`hidden_set`) refuses
+to grade without it. The rule of shared/robotics_grader/seeds.py (seeds sampled fresh inside the
+grader process on every run) is what this task used before. What this module offers:
 
-* the 64-bit OS entropy that seeds the stream is exposed as two 32-bit halves so the verify
-  stage can log them as stats (`hidden_seed_hi`, `hidden_seed_lo`): the whole drawn stream is
-  reproducible from the two numbers (splitmix64 is deterministic), which is what reverification
-  and difficulty rounds need, without a seed file inside the sandbox;
-* `pinned`: an optional `tests/hidden/seeds.json` (root-only stage folder) either pins the
-  entropy (`{"entropy_hi", "entropy_lo"}`) or an explicit seed list (`{"seeds": [...]}`), for
-  reverification and for difficulty rounds only: a published task ships without it;
+* `load_pinned` / `seed_rng(pinned=...)`: a pin file either lists the seeds (`{"seeds": [...]}`:
+  the fixed set; `seed()` / `seeds()` return them in order and refuse to run past the end) or pins
+  the entropy of a stream (`{"entropy_hi", "entropy_lo"}`: the reverification of a run drawn from
+  entropy). A pinned list is not a stream: `derive()` of a pinned stream hashes the list into OTHER
+  seeds, so a consumer of the fixed set reads the list itself (verify.py does);
+* without a pin, a stream from 64 bits of OS entropy, exposed as two 32-bit halves so a verify
+  stage can log them as stats (`hidden_seed_hi`, `hidden_seed_lo`; for a pinned list they are the
+  halves of the list's sha256): the whole drawn stream is reproducible from the two numbers
+  (splitmix64 is deterministic), without a seed file inside the sandbox;
 * `derive(label)`: independent sub-streams per criterion (assembly episodes, kitchen episodes,
   FK configurations ...) from the same logged entropy, so the live anchor (the oracle run on the
   same drawn seeds, section 4.0) and the agent's rollout share exactly the same seed list.
@@ -114,7 +120,7 @@ def load_pinned(path):
 def write_pinned(stream, path, note=None):
     """Write the pin file that reproduces `stream` (entropy halves), for reverification."""
     doc = {"entropy_hi": stream.hi, "entropy_lo": stream.lo, "note": note or
-           "pins the hidden seed stream of one verify run; reverification only, never shipped with a published task"}
+           "pins the seed stream of one run drawn from entropy, for its reverification; not a fixed hidden set"}
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with open(path, "w") as f:
         json.dump(doc, f, indent=2)
@@ -123,10 +129,11 @@ def write_pinned(stream, path, note=None):
 
 
 def seed_rng(entropy=None, pinned=None):
-    """The grader's hidden seed source. Call once per verify run.
+    """A hidden seed source. Call once per run.
 
-    `entropy` is for self-tests. `pinned` is a path to `tests/hidden/seeds.json`, a parsed
-    pin dict, or a list of seeds; absent (the published task) -> os.urandom.
+    `entropy` is for self-tests. `pinned` is a path to a pin file (`tests/hidden/seeds.json`), a
+    parsed pin dict, or a list of seeds; absent -> os.urandom (this task's verify never grades
+    without its fixed set: verify.hidden_set).
     """
     if isinstance(pinned, str):
         pinned = load_pinned(pinned)
