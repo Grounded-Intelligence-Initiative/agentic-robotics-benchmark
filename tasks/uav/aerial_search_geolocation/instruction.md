@@ -19,7 +19,7 @@ and where the drone starts are drawn at random at grading time; memorising this 
 scenes does not help.
 
 Each mission gives you **three target descriptions**, each of a different kind of thing.
-Each target is either in the scene, standing on the ground **40 to 120 m** (horizontally)
+Each target is either in the scene, at ground level **40 to 120 m** (horizontally)
 from where you start, or it is a **decoy** that is not in the scene at all. The targets of
 a mission lie in different directions from the start (at least 40 degrees apart as seen
 from it) and 25 to 160 m from each other, so they are seldom all in view at once and
@@ -28,7 +28,8 @@ missions have none. Targets fit the scene: street vehicles, scooters, street fur
 dogs in the city scenes; tents, a beach table, two-wheelers and farm animals on the island.
 Each is a kind of thing the scene does not otherwise contain, so a description fits only
 the target, and a decoy is a kind from the same scene's list. You start in open air at
-least 10 m (usually 10 to 40 m) above the highest of the targets.
+least 10 m (usually 10 to 40 m) above the highest of the targets. Targets in the scene are
+on the ground or up to about 0.7 m above it.
 
 A mission ends when your controller sends **Stop**, when the drone **collides** with
 anything (including the ground), or when it has spent its **budget of 1000 actions** (Stop
@@ -128,7 +129,7 @@ Keep stdout clean; it is the wire. Send diagnostics to stderr.
 |---|---|
 | `targets` | three `{"description": "..."}`, in natural language, in a fixed order for the mission |
 | `rgb` | `{"front", "left", "right", "down"}`: base64 PNG, 8-bit RGB, 256 x 256 |
-| `depth` | the same four keys: base64 PNG, 16-bit single channel, **centimetres** along the pixel's ray (0 = no return) |
+| `depth` | the same four keys: base64 PNG, 16-bit single channel, **centimetres** along the pixel's ray (65535 = no return, or 655.35 m or more) |
 | `odom` | `{"position": [forward, right, down], "yaw": rad}`: your pose in the mission start frame (yaw clockwise-positive, 0 = the starting heading) |
 | `steps_used`, `budget` | moves spent so far (Stop excluded) and the budget, 1000 |
 

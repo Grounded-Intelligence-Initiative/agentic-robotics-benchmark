@@ -141,7 +141,16 @@ class AirSimBackend(object):
     difference is the scene's. The bridge keeps the drone's state in the scene frame and
     converts at those vehicle calls (`_place`, `_contact`), with the vehicle frame's origin
     read from AirSim itself at every reset (`_vehicle_origin`): the scored target points,
-    the visit test and the drone's true pose then share the frame of what the cameras see."""
+    the visit test and the drone's true pose then share the frame of what the cameras see.
+
+    Placements. AirSim does not always apply a placement in the frame the bridge advances
+    for it. The first teleport after a scene starts (it runs unpaused until the first frame
+    call) often leaves the drone at its spawn point; unchecked, the swept placement after it
+    dragged the drone from there until it met geometry, and the cameras saw from there
+    while the bridge reported the start. Now and then a later teleport or settle is not
+    applied either. So every placement the episode builds on, each teleport and each settle,
+    is read back from AirSim's report of the drone actor and repeated until the drone is
+    there (`_confirm`)."""
 
     DRONE = "Drone_1"
     CLEAR_REACH_M = 4.0
@@ -289,6 +298,7 @@ class AirSimBackend(object):
             for index, start in enumerate(candidates):
                 s = dict(x=start[0], y=start[1], z=start[2] - lift, yaw=_yaw_of(start[3:7]))
                 self._place(s)
+                self._confirm(s, "a start candidate")
                 depth = self._images()[1]
                 sides = min(float(self.np.percentile(depth[c], 1)) for c in ("front", "left", "right"))
                 below = float(self.np.percentile(depth["down"], 1))
@@ -339,10 +349,51 @@ class AirSimBackend(object):
         clearances), with collisions on: a placement that touches nothing is what clears
         AirSim's record, which otherwise keeps the sweep's last contact, and a later contact
         at the very same pose would read as that old one. Were s itself in contact, the
-        record is remembered so it does not count against the next move."""
+        record is remembered so it does not count against the next move. The drone is read
+        back at s before the record is (`_confirm`)."""
         self._place(s, collide=True)
+        self._confirm(s, "a settle")
         flag, at, _ = self._contact()
         self.stale = at if flag else None
+
+    # A placement the episode builds on must leave the drone actor this close to its pose.
+    ARRIVE_M, ARRIVE_DEG = 0.01, 0.5
+    PLACE_READS = 5
+
+    def _confirm(self, s, what):
+        """Make sure the drone actor is at s after a placement (`what`, for the log): read
+        where AirSim has it and, while it is more than ARRIVE_M or ARRIVE_DEG off, wait a
+        little (longer each time, so that a frame AirSim may still be running ends before
+        the next placement), teleport it to s again, advance a frame and read again,
+        PLACE_READS reads in all. A drone that never gets there raises, so the run ends as a
+        task error (the mission would be rendered, swept and scored at a pose that is not
+        the drone's). Returns the reads it took."""
+        for read in range(1, self.PLACE_READS + 1):
+            metres, degrees = self._offset(s)
+            if metres <= self.ARRIVE_M and degrees <= self.ARRIVE_DEG:
+                if read > 1:
+                    _log("drone actor at its pose after {}: {} reads".format(what, read))
+                return read
+            _log("drone actor {:.3f} m and {:.2f} deg off its pose after {} (read {} of {})".format(
+                metres, degrees, what, read, self.PLACE_READS))
+            if read < self.PLACE_READS:
+                time.sleep(0.05 * read)
+                self._place(s)
+        raise RuntimeError("the drone actor does not stay where it is put ({}): {:.3f} m and "
+                           "{:.2f} deg off after {} reads".format(what, metres, degrees, read))
+
+    def _offset(self, s):
+        """(metres, degrees) from s to the drone actor as AirSim reports it (simGetObjectPose,
+        scene frame); infinite when the report is not a pose."""
+        pose = self.rpc.call("simGetObjectPose", self.DRONE)
+        at = [float(pose["position"][a]) for a in ("x_val", "y_val", "z_val")]
+        q = [float(pose["orientation"][a]) for a in ("x_val", "y_val", "z_val", "w_val")]
+        norm = math.sqrt(sum(v * v for v in q))
+        if not all(math.isfinite(v) for v in at + q) or norm < 0.5:
+            return float("inf"), float("inf")
+        dot = abs(sum(a * b for a, b in zip(q, _yaw_quat(s["yaw"])))) / norm
+        return (_distance(at, (s["x"], s["y"], s["z"])),
+                math.degrees(2.0 * math.acos(min(1.0, dot))))
 
     def _hit(self, want):
         """Whether the swept placement to `want` (x, y, z) touched geometry: a fresh collision
@@ -415,9 +466,11 @@ class AirSimBackend(object):
         if action == "rotl":
             s["yaw"] -= math.radians(15)
             self._place(s)
+            self._confirm(s, "a turn")
         elif action == "rotr":
             s["yaw"] += math.radians(15)
             self._place(s)
+            self._confirm(s, "a turn")
         elif delta is not None:
             for _ in range(self.SUBSTEPS):
                 s["x"] += delta[0] / self.SUBSTEPS
@@ -605,7 +658,7 @@ class MockBackend(object):
             ground = int(max(0.0, -s["z"] - 1.0) * 100)
             depth = [[ground] * size for _ in range(size)]
         else:
-            depth = [[0 if r < size // 2 else 2000 for _ in range(size)] for r in range(size)]
+            depth = [[65535 if r < size // 2 else 2000 for _ in range(size)] for r in range(size)]
         c, n = math.cos(s["yaw"]), math.sin(s["yaw"])
         for goal, colour in self.targets:
             dx, dy, dz = goal[0] - s["x"], goal[1] - s["y"], goal[2] - s["z"]
