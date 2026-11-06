@@ -66,7 +66,7 @@ Each episode draws its probes from its own stream (`seed_rng(entropy=lock_key)`)
 
 ## Determinism
 
-- **Bridge.** Synchronous settings are applied before every load. The world is reloaded for every episode. Physics substeps are explicit: 0.01 s, at most 10 per step. Collisions and camera frames are taken tick by tick on the main thread, with exactly one camera frame per tick. The layout digest is computed at every reset. The old code carried state between episodes; this one does not (D2 against D3 in the T2 build report).
+- **Bridge.** Synchronous settings are applied before every load. The world is reloaded for every episode. Physics substeps are explicit: 0.01 s, at most 10 per step. Collisions and camera frames are taken tick by tick on the main thread, with exactly one camera frame per tick. The layout digest is computed at every reset. The old code carried state between episodes: run first and third in one process, the same episode differed from tick 0. This one does not: the two runs differ no earlier than two fresh processes do (`review/determinism.py`).
 - **Residual.** CARLA's vehicle physics splits by one float ulp about 10 ticks into an episode, even in a fresh process, and diverges from there. Verifies are therefore not bit-identical.
   - The selection runs and the anchor verify agree on 11 of 24 episode scores to 4 decimals. The rest differ by at most 0.0252 (mean 0.0072).
   - In development, a repeat of 30 episodes moved scores by a mean of 0.011 and at most 0.080.
@@ -98,7 +98,7 @@ The expert submits the oracle token (`solution/reference/oracle_token`; its sha2
 
 The expert never looks at the camera. It reacts to the probe's pasted road user, which the probe copy of the block lists as id −1, so the probe lock holds.
 
-The expert is pure Python with no randomness and no clock. Its fixes E0 to E10 are listed in the T2 build report:
+The expert is pure Python with no randomness and no clock. Its module docstring and constants describe how it drives:
 - probe bookkeeping that does not depend on the order of a probe pair;
 - a swept-path rollout of the car's lagged bicycle model against measured footprints (`solution/footprints.json`);
 - feasible ramps;
