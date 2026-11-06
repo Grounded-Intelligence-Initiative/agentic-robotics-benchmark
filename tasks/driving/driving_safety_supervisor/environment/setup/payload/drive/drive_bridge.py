@@ -445,6 +445,19 @@ class CarlaBackend(object):
                 "-carla-streaming-port=0"]
         self.server = subprocess.Popen(argv, cwd=root, stdout=sys.stderr, stderr=sys.stderr,
                                        stdin=subprocess.DEVNULL, start_new_session=True)
+        try:
+            self._connect(carla)
+        except Exception:
+            self._kill_server()       # never leave a server running behind a bridge that failed
+            raise
+        self.world = None
+        self.town = None
+        self.map = None
+        self.actors = []
+        self.sensors = []
+        _log("CARLA {} up on port {}".format(self.client.get_server_version(), self.port))
+
+    def _connect(self, carla):
         deadline = time.time() + 300
         while True:
             if self.server.poll() is not None:
@@ -460,13 +473,21 @@ class CarlaBackend(object):
                     raise RuntimeError("CARLA did not answer within 300 s")
                 time.sleep(2.0)
         self.client.set_timeout(60.0)
-        self.tm = self.client.get_trafficmanager(self.port + 50)
-        self.world = None
-        self.town = None
-        self.map = None
-        self.actors = []
-        self.sensors = []
-        _log("CARLA {} up on port {}".format(self.client.get_server_version(), self.port))
+        for attempt in range(3):      # a server still warming up can miss the first request
+            try:
+                self.tm = self.client.get_trafficmanager(self.port + 50)
+                return
+            except RuntimeError:
+                if attempt == 2:
+                    raise
+                time.sleep(5.0)
+
+    def _kill_server(self):
+        if self.server.poll() is None:
+            try:
+                os.killpg(self.server.pid, 9)
+            except OSError:
+                pass
 
     # -- world setup ----------------------------------------------------------
     def _sync(self, world):
@@ -969,11 +990,7 @@ class CarlaBackend(object):
                 self.world.apply_settings(settings)
         except Exception:  # noqa: BLE001
             pass
-        if self.server.poll() is None:
-            try:
-                os.killpg(self.server.pid, 9)
-            except OSError:
-                pass
+        self._kill_server()
 
 
 class ScenarioBuilder(object):
