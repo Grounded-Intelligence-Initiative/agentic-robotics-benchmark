@@ -25,8 +25,9 @@ network_mode = "no-network"
 # grader_config.json, nonet_exec.py, robotics_grader/) plus the image's /opt/venv; it re-owns
 # the restored submission to the agent account and drives the live controller over the kit
 # Solver, started through nonet_exec.py: the agent account, a fixed environment and no
-# internet sockets (a self-test decides before episode 0 that the seccomp filter holds; where
-# it cannot, the grader watches the account's sockets and any found zeroes the reward). Every
+# socket but AF_UNIX (a self-test before episode 0 checks that the seccomp filter holds;
+# where it cannot be installed, the verify ends as a task error and grades nothing, since a
+# controller with the network could fetch the public set). Every
 # submission meets the same 48 hidden episodes. The privileged reference verifies in about
 # 30 s on 2 CPUs (about 14,000 requests); a controller that spends the whole average reply
 # budget of about 0.09 s per request on 48 x 400 steps needs most of the 1800 s.

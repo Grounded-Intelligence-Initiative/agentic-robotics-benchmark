@@ -17,10 +17,9 @@ the mean.
 
 The controller has no network while it is graded: `GuardedSolver` starts it through nonet_exec.py (no_new_privs, a
 seccomp filter under which socket() and socketpair() work for AF_UNIX only, then the agent's account and a fixed
-environment: PATH /opt/venv/bin:/usr/local/bin:/usr/bin:/bin, HOME /home/user, LANG C.UTF-8). A self-test decides before
-episode 0 whether the filter holds here. Where it cannot be installed, the controller starts as the agent's account with
-the same environment, the grader looks at the account's internet sockets every 50 steps, and any found zeroes the
-reward.
+environment: PATH /opt/venv/bin:/usr/local/bin:/usr/bin:/bin, HOME /home/user, LANG C.UTF-8). A self-test before
+episode 0 checks that the filter holds here. Where it cannot be installed, the verify ends as a task error before any
+controller starts: the set is public, so nothing is graded with the network open.
 
 The reference program's channel: a submission whose `.oracle_token` (a regular file, never a link) hashes to
 hidden/oracle_token.sha256 gets, in every observation, the simulator's current truth (`privileged_block`: every quantity
@@ -39,7 +38,6 @@ import math
 import os
 import pwd
 import re
-import shutil
 import stat
 import subprocess
 import sys
@@ -72,7 +70,6 @@ TOKEN_FILE = ".oracle_token"
 TOKEN_DIGEST = os.path.join(HIDDEN, "oracle_token.sha256")
 TOKEN_MAX_BYTES = 4096
 NONET = os.path.join(HERE, "nonet_exec.py")  # (run as root from this root-only folder)
-EGRESS_CHECK_EVERY = 50  # steps between two looks at the agent's sockets, where the filter cannot be installed
 
 # The privileged block: what env.step reads that is in effect now (an AST test checks the lists against env.py).
 PRIV_FORMAT = "fault_adaptive_spacecraft_docking privileged 1"
@@ -255,12 +252,8 @@ class GuardedSolver(Solver):
     """The kit's Solver (the kit stays as it is), its program started through nonet_exec.py: no_new_privs, a seccomp
     filter under which socket() and socketpair() work for AF_UNIX only (io_uring and foreign syscall ABIs refused), then
     the agent's account and a fixed environment (PATH /opt/venv/bin:/usr/local/bin:/usr/bin:/bin, HOME /home/user,
-    LANG C.UTF-8). With `guard` False (the egress self-test said "detect") the program starts as the agent's account
-    with the same environment, and the grader watches its sockets instead."""
-
-    def __init__(self, *args, guard=True, **kwargs):
-        self.guard = bool(guard)
-        super().__init__(*args, **kwargs)
+    LANG C.UTF-8). There is no unguarded way to start it: main() stops with a task error before this class is used
+    where the egress self-test fails."""
 
     def _spawn(self):
         secure_exec_path()  # (as the kit's deprivileged does: nothing agent-writable left on root's PATH)
@@ -268,15 +261,8 @@ class GuardedSolver(Solver):
             uid, gid = agent_ids()
         except KeyError:
             raise SolverAborted("no agent account to run the controller as")
-        prog = ["bash", self.entry]
-        if self.guard:
-            cmd = [sys.executable, "-I", NONET, "--uid", str(uid), "--gid", str(gid), "--cwd", self.submission,
-                   "--"] + prog
-        else:
-            from nonet_exec import WHITELIST_ENV
-            runuser = shutil.which("runuser", path="/usr/sbin:/usr/bin:/sbin:/bin") or "/usr/sbin/runuser"
-            cmd = ([runuser, "-u", agent_user(), "--", "/usr/bin/env", "-i"]
-                   + ["{}={}".format(k, v) for k, v in sorted(WHITELIST_ENV.items())] + prog)
+        cmd = [sys.executable, "-I", NONET, "--uid", str(uid), "--gid", str(gid), "--cwd", self.submission,
+               "--", "bash", self.entry]
         try:
             return subprocess.Popen(cmd, cwd=self.submission, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                     stderr=subprocess.DEVNULL, universal_newlines=True, bufsize=1,
@@ -310,40 +296,20 @@ def egress_self_test(uid, gid):
 
 
 def egress_mode():
-    """Decided once, before episode 0: "seccomp" (the launcher's filter holds) or "detect" (it cannot be installed
-    here: the grader looks at the agent's internet sockets instead)."""
+    """Decided once, before episode 0: "seccomp" (the launcher's filter holds) or "unavailable" (it cannot be installed
+    here, or there is no agent account to test it with). main() grades only under "seccomp": with "unavailable" the
+    verify ends as a task error, because the set is public and a controller with the network could fetch it."""
     secure_exec_path()
     try:
         uid, gid = agent_ids()
     except KeyError:
-        return "detect"
-    return "seccomp" if egress_self_test(uid, gid) else "detect"
-
-
-def agent_inet_sockets(uid):
-    """How many internet sockets the agent's account holds with a peer that is not this machine's loopback."""
-    n = 0
-    for name in ("tcp", "tcp6", "udp", "udp6", "raw", "raw6"):
-        try:
-            with open("/proc/net/" + name) as f:
-                next(f, None)
-                for line in f:
-                    parts = line.split()
-                    if len(parts) < 8 or int(parts[7]) != uid:
-                        continue
-                    rem = parts[2].split(":")[0]
-                    if rem.strip("0") == "" or rem in ("0100007F", "00000000000000000000000001000000"):
-                        continue
-                    n += 1
-        except (OSError, ValueError, StopIteration):
-            continue
-    return n
+        return "unavailable"
+    return "seccomp" if egress_self_test(uid, gid) else "unavailable"
 
 
 # ------------------------------------------------------------------------------------------------ the episodes
-def run_episode(seed, solver, lock, privileged, watch=None):
-    """One hidden episode: (quality, info, steps). `lock.rng` is the episode's own stream; `watch` (detect mode only)
-    looks at the controller's sockets every EGRESS_CHECK_EVERY steps."""
+def run_episode(seed, solver, lock, privileged):
+    """One hidden episode: (quality, info, steps). `lock.rng` is the episode's own stream."""
     env = FaultAdaptiveDocking()
     quality, info = 0.0, {"success": False, "collision": False, "failure_reason": "not_started"}
     try:
@@ -356,8 +322,6 @@ def run_episode(seed, solver, lock, privileged, watch=None):
             else:
                 action = solver.act(t, wire)
             obs, quality, done, info = env.step(action)
-            if watch is not None and t % EGRESS_CHECK_EVERY == EGRESS_CHECK_EVERY - 1:
-                watch()
             if done:
                 break
     except (SolverAborted, ValueError, TypeError, OverflowError) as exc:
@@ -365,7 +329,7 @@ def run_episode(seed, solver, lock, privileged, watch=None):
     return float(quality), info, env.steps
 
 
-def run_episodes(config, seeds, probe_key, solver, privileged, watch=None):
+def run_episodes(config, seeds, probe_key, solver, privileged):
     lock = ProbeLock(
         None,
         rate=config.get("probe_rate", 0.06),
@@ -378,7 +342,7 @@ def run_episodes(config, seeds, probe_key, solver, privileged, watch=None):
         # one probe stream per episode, keyed by the set's hidden key and the episode's seed: the same probes for the
         # same submission every time, whatever ran before
         lock.rng = episode_stream(probe_key, seed)
-        quality, info, steps = run_episode(seed, solver, lock, privileged, watch)
+        quality, info, steps = run_episode(seed, solver, lock, privileged)
         qualities.append(quality)
         successes += int(bool(info.get("success")))
         collisions += int(bool(info.get("collision")))
@@ -407,29 +371,21 @@ def main():
     own_submission(SUBMISSION)
     egress = egress_mode()
     print("[grader] egress guard: {}".format(egress), file=sys.stderr, flush=True)
-    flags["egress_guard_seccomp"] = float(egress == "seccomp")
-    hits = [0]
-
-    def watch():
-        try:
-            uid = agent_ids()[0]
-        except KeyError:
-            return
-        if agent_inet_sockets(uid):
-            hits[0] += 1
-            print("[grader] the controller holds an internet socket (no network while it is graded)",
-                  file=sys.stderr, flush=True)
+    if egress != "seccomp":
+        # Fail closed: the set is public, so a controller with the network could fetch it and replay its episode.
+        fail("the grading environment cannot block the controller's network (the seccomp filter does not hold "
+             "here); nothing is graded with the network open")
+    flags["egress_guard_seccomp"] = 1.0  # (a verdict exists only when the filter held)
 
     try:
         # Raises SolverMissing (no run.sh) or SolverAborted (it never comes up): a real zero, not a broken task.
-        solver = GuardedSolver(step_timeout=config.get("step_timeout_s", 30), submission=SUBMISSION,
-                               guard=egress == "seccomp")
+        solver = GuardedSolver(step_timeout=config.get("step_timeout_s", 30), submission=SUBMISSION)
     except (SolverMissing, SolverAborted) as exc:
-        write_verdict(zero_verdict(reason=str(exc), anchored=anchor is not None, extra=dict(flags, egress_detected=0.0)))
+        write_verdict(zero_verdict(reason=str(exc), anchored=anchor is not None, extra=flags))
         return
     try:
         qualities, successes, collisions, aborted, lock = run_episodes(
-            config, seeds, probe_key, solver, privileged, watch=None if egress == "seccomp" else watch)
+            config, seeds, probe_key, solver, privileged)
     finally:
         solver.close()
 
@@ -441,7 +397,6 @@ def main():
         episodes_aborted=float(aborted),
         docking_successes=float(successes),
         target_collisions=float(collisions),
-        egress_detected=float(hits[0]),
         **flags
     )
     for k, q in enumerate(qualities):
@@ -452,7 +407,7 @@ def main():
         cap=config.get("scoring_cap", 1.5),
         higher_is_better=True,
         metric_name="mean_docking_quality",
-        locks_ok=lock.ok and not hits[0],
+        locks_ok=lock.ok,
         extra=extra,
         full_at=anchor_meta.get("full_at", 1.0),
     )

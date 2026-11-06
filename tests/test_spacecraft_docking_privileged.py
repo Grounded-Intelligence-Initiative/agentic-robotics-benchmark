@@ -1,16 +1,18 @@
-"""fault_adaptive_spacecraft_docking: the privileged reference channel and the fixed hidden episode set.
+"""fault_adaptive_spacecraft_docking: the privileged reference channel, the fixed hidden episode set and the network
+guard.
 
 The grader hands the simulator's current truth only to a submission whose .oracle_token (a regular file, never a
 link) hashes to tests/hidden/oracle_token.sha256; nothing agent-visible names the channel; building the block draws
 nothing and changes nothing; the block carries every quantity env.step reads that is in effect now and nothing drawn
 for the future; a run without the token sends exactly the requests it sent before the channel existed; the hidden
 episodes are a fixed set of 48 distinct 64-bit seeds that are not practice seeds, each pinned by its world digest;
-an episode's probe stream depends only on the set's key and its seed; and the reference reproduces its recorded
-result on the set.
+an episode's probe stream depends only on the set's key and its seed; the reference reproduces its recorded result on
+the set; and a verify that cannot install the network filter is a task error before any controller starts.
 """
 import ast
 import copy
 import hashlib
+import io
 import json
 import math
 import os
@@ -18,6 +20,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 TASK = Path(__file__).resolve().parents[1] / "tasks/space/fault_adaptive_spacecraft_docking"
 MB_NONET = Path(__file__).resolve().parents[1] / "tasks/arm/arm_hidden_mechanism_box/tests/nonet_exec.py"
@@ -352,6 +355,45 @@ class CopyTests(unittest.TestCase):
     def test_the_planning_quota_covers_the_family(self):
         worst = len(oracle.FAMILY) * (oracle.STEPS - 118) + oracle.PLAN_OFFSET  # (t_p >= 108 + 2 + PLAN_OFFSET)
         self.assertGreaterEqual(oracle.PLAN_OFFSET * oracle.QUOTA, worst)
+
+
+class NetworkGuardTests(unittest.TestCase):
+    """The set is public: where the seccomp filter cannot be installed, nothing is graded with the network open."""
+
+    def run_main(self, mode, solver):
+        with tempfile.TemporaryDirectory() as tmp:
+            sub = os.path.join(tmp, "submission")
+            os.makedirs(sub)
+            with open(os.path.join(sub, "run.sh"), "w") as f:
+                f.write("echo READY\n")
+            with mock.patch.object(verify, "egress_mode", return_value=mode), \
+                    mock.patch.object(verify, "GuardedSolver", side_effect=solver) as started, \
+                    mock.patch.object(verify, "write_verdict") as written, \
+                    mock.patch.object(verify, "own_submission"), \
+                    mock.patch.object(verify, "SUBMISSION", sub), \
+                    mock.patch.dict(os.environ, {"ALE_STAGE_DIR": str(TASK / "tests")}), \
+                    mock.patch("sys.stderr", new_callable=io.StringIO) as err:
+                code = None
+                try:
+                    verify.main()
+                except SystemExit as exc:
+                    code = exc.code
+        return code, started, written, err.getvalue()
+
+    def test_without_the_filter_the_verify_is_a_task_error_and_no_controller_starts(self):
+        code, started, written, err = self.run_main("unavailable", AssertionError("a controller started"))
+        self.assertEqual(code, 1)
+        started.assert_not_called()
+        written.assert_not_called()
+        self.assertIn("TASK ERROR: the grading environment cannot block the controller's network", err)
+
+    def test_with_the_filter_the_verdict_records_it(self):
+        code, started, written, _ = self.run_main("seccomp", verify.SolverMissing("no submission"))
+        self.assertIsNone(code)
+        started.assert_called_once()
+        metrics = written.call_args[0][0]["metrics"]
+        self.assertEqual(metrics["egress_guard_seccomp"], 1.0)
+        self.assertNotIn("egress_detected", metrics)
 
 
 class DeterminismCanaryTests(unittest.TestCase):

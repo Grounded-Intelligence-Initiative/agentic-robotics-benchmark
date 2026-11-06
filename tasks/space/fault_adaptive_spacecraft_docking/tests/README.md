@@ -25,7 +25,11 @@ last-bit libm difference on another host cannot fail it, while any change to env
 The selection was pre-registered (`review/select_set.py`, the rule in its docstring):
 
 1. **Freeze.** The reference (`solution/privileged/oracle.py` and its simulator copy, `solution/solve.sh`) and the
-   grader (`verify.py`, `env.py`) were committed first (08ccda6); their sha256 are in the set's `source`.
+   grader (`verify.py`, `env.py`) were committed first (08ccda6); their sha256 are in the set's `source`. Since then
+   only `verify.py` changed, after the set was made: its network guard fails closed (The network guard, below). The
+   episode loop the selection ran is the same in effect, and the reference's verify reproduced the anchor to the last
+   bit afterwards (The anchor). `select_set.py run` and `make` compare against the hashes recorded at the draw, so they
+   refuse to extend this selection: a new selection starts with a new draw.
 2. **Draw.** 64 candidates from `os.urandom` (8 bytes each) and the probe key from `os.urandom(32)`, written to
    `selection.json` before any candidate ran (2026-11-05T16:31:23Z).
 3. **Run.** Every candidate through `verify.run_episode`: a token run of the `solve.sh` submission, a fresh program per
@@ -52,12 +56,13 @@ Each episode's match lock (`ProbeLock`: a probed step with probability 0.06, thr
 order) draws from `seed_rng(entropy=(key << 64) | seed)`: the same probes for the same submission every time, whatever
 ran before. Nothing in a verify draws from OS entropy or the clock (only the per-request deadlines are wall clock).
 
-The privileged reference is deterministic on the set: the selection runs, two fresh-container verifies
-(`review/regrade.sh`) and the in-process replays (`review/oracle_batch.py`) gave the same 48 episode qualities to the
-last bit, mean 0.9835537203921798. It is pure Python (no numpy, so no BLAS kernels and no tie-breaking in
-`argpartition`); on 20 dev seeds its replies under host CPython 3.12.11 and the image's 3.12.14 are identical, and a
-program serving 48 episodes in a row answers exactly as a fresh one per episode. Before 3.12 the builtin
-`sum` is not compensated, so fuel's last bit differs; the grader always runs 3.12 or newer.
+The privileged reference is deterministic on the set: the selection runs, three fresh-container verifies
+(`review/regrade.sh`; the third on 2026-11-06, with the network guard failing closed) and the in-process replays
+(`review/oracle_batch.py`) gave the same 48 episode qualities to the last bit, mean 0.9835537203921798. It is pure
+Python (no numpy, so no BLAS kernels and no tie-breaking in `argpartition`); on 20 dev seeds its replies under host
+CPython 3.12.11 and the image's 3.12.14 are identical, and a program serving 48 episodes in a row answers exactly as a
+fresh one per episode. Before 3.12 the builtin `sum` is not compensated, so fuel's last bit differs; the grader
+always runs 3.12 or newer.
 
 ## What the set fixes, and what it does not
 
@@ -92,11 +97,18 @@ requests are byte for byte what they were before the channel existed (the reposi
 The verifier sandbox is provisioned with open egress, and once the set is public a controller could fetch it and
 identify its episode from the first observation. So the controller runs behind `nonet_exec.py` (byte-identical to the
 mechanism box's): no_new_privs, a seccomp filter under which only AF_UNIX sockets open, the agent account, and a fixed
-environment (PATH, HOME, LANG). A self-test before episode 0 decides that the filter holds (`egress_guard_seccomp`);
-where it cannot be installed, the grader looks at the account's internet sockets every 50 steps and any found zeroes
-the reward (`egress_detected`). Measured with a spy submission in a fresh container: AF_INET and AF_INET6 sockets (even
-to 127.0.0.1) fail with EPERM, AF_UNIX sockets and socketpair work, `/opt/ale` is unreadable, and the environment holds
+environment (PATH, HOME, LANG). A self-test before episode 0 checks that the filter holds. Where it cannot be
+installed, the verify fails closed: a task error ("the grading environment cannot block the controller's network")
+before any controller starts, so nothing is graded with the network open. A verdict therefore always records
+`egress_guard_seccomp` 1. Measured with a spy submission in a fresh container: AF_INET and AF_INET6 sockets (even to
+127.0.0.1) fail with EPERM, AF_UNIX sockets and socketpair work, `/opt/ale` is unreadable, and the environment holds
 only PATH, HOME and LANG (plus what bash adds).
+
+Until 2026-11-06 a detect fallback (inherited from hazard_bay_build and the mechanism box) let a controller run without
+the filter while the grader looked at the account's internet sockets every 50 steps. It never looked before READY, at
+a reset or between episodes, and it skipped closed and unconnected sockets: in a review spy, a controller that fetched
+bytes before READY and closed the socket went unseen. The fallback is gone; a repository test checks that a verify
+without the filter is a task error and that no controller starts.
 
 ## The two references
 
@@ -125,7 +137,8 @@ builds it flipped 7 of 480 outcomes through tie-breaking in `argpartition`.
 by docks on the set, with the anchor's per-episode qualities and the lost episodes the best ones, scored 0: 48 docked
 1.00; 47 0.999 (rounds to 1.00); 46 0.978; 44 0.935; 40 0.850; 36 0.765; 24 0.509; 12 0.254; 0 0. `full_at` 0.98 is the
 margin for one episode flipped by a last-bit libm difference on another host, and no more. Before: 0.4580 with
-`full_at` 0.75 (16 docks of 48 earned full reward).
+`full_at` 0.75 (16 docks of 48 earned full reward). The verify of 2026-11-06, with the guard failing closed, measured
+the anchor again to the last bit (reward 1.0, ratio 1.0, 48 of 48 docked, the lock 777 of 778).
 
 ## What remains undocked even with the truth
 
