@@ -3,8 +3,8 @@
 Submitted with the oracle token, so every observation carries the grader's ground-truth
 block (`obs["privileged"]`): every road user and prop near the car with its true position,
 velocity and size (vehicles to 250 m, with their reversing lights), and the route's lane
-geometry ahead, all in the car's frame (x forward, y right, metres, from the car's centre).
-It does not look at the camera.
+geometry and traffic lights ahead, all in the car's frame (x forward, y right, metres, from
+the car's centre). It does not look at the camera.
 
 Each 0.1 s step it:
 
@@ -14,7 +14,9 @@ Each 0.1 s step it:
 * rolls its own car forward 3 s from where it really is, under its own steering law, with
   the car's measured steering lag (a lagged kinematic bicycle), and caps the speed so that
   the swept path stops short of any actor it would touch;
-* keeps the planner's standing and following gaps behind what is in the lane;
+* keeps the planner's standing and following gaps behind what is in the lane, and stops
+  at the line of a red light on the route ahead (of a yellow one too while it still can
+  gently);
 * when its own lane is blocked by something that stays put (props, a car that has stood
   still away from a queue, a pedestrian walking slowly in the lane, a car backing toward
   it) and a lane to the left (or the shoulder on the right) is clear for the whole
@@ -105,6 +107,10 @@ WALKER_CLEAR_S = 0.5             # a person's path clear this long before the ca
 STUCK_S = 1.0                    # held at zero this long by something new: plan again
 ONCOMING_MARGIN_S = 2.0          # an oncoming car reaches the manoeuvre's end this long after it
 EXTRAPOLATE_M = 5.0              # projections past the route block's ends are trusted this far
+# a light on the route ahead: the stop it gets (m/s^2), the most a yellow one is stopped with
+# when it turns yellow, the most a red one is, and how far short of its stop point the front
+# bumper stays (m; the stop then lies where the planner sees the light too)
+LIGHT_DECEL, LIGHT_YELLOW_DECEL, LIGHT_RED_DECEL, LIGHT_MARGIN = 3.0, 5.0, 8.0, 1.0
 # an actor this far above or below the car (plus a 12 % grade over the distance to it) is on
 # another road: a bridge over the route or a road under it
 OTHER_LEVEL_M, OTHER_LEVEL_GRADE = 3.0, 0.12
@@ -315,7 +321,7 @@ class Expert(object):
         self.mem = {"still": {}, "back": {}, "vprev": {}, "moved": {}, "pass": None, "odo": 0.0,
                     "behind": 0.0, "thr_i": 0.45,
                     "recover": False, "gap_static": GAP_STATIC, "nudge": 0.0, "wheel": 0.0,
-                    "walk_clear": 99.0, "stuck": 0.0, "aborted_at": None}
+                    "walk_clear": 99.0, "stuck": 0.0, "aborted_at": None, "lights": {}}
         self.s0, self.red, self.ahead, self.path = 0.0, False, 0, None
         self.last_t, self.start, self.after_real = None, None, None
         self.roll = []
@@ -1084,6 +1090,11 @@ class Expert(object):
         self.roll = [path.project(x, y) for _t, x, y, _yaw, _tr in roll]
         v_cap, worst, room = self._limit(path, actors, v)
         target = min(cruise, v_cap)
+        # a red (or yellow) light on the route ahead: the planner sees one only a few metres
+        # before its line, too late at this pace, so the car slows for it from further out
+        light_room = self._light_room(path, priv.get("lights") or (), v)
+        if light_room is not None and math.sqrt(2.0 * LIGHT_DECEL * light_room) < target:
+            target, room = math.sqrt(2.0 * LIGHT_DECEL * light_room), min(room, light_room)
         executed = self._rollout(path, v, target, own, nominal[1])
         contact, who = self._first_contact(path, actors, executed)
         if DEBUG and len(executed) >= 20:
@@ -1171,8 +1182,9 @@ class Expert(object):
                     worst["type"], worst["id"], worst["s"] - s0, worst["d"], worst["speed"]),
                 None if not passing else "%.1f/%.1f/%.1f/%.1f off %.2f" % tuple(
                     [p[k] - self.mem["odo"] for k in "abce"] + [p["off"]]),
-                nominal) + " d0=%.2f red=%d contact=%s" % (
-                    path.d0, self.red, None if contact is None else round(contact, 1)))
+                nominal) + " d0=%.2f red=%d contact=%s light=%s" % (
+                    path.d0, self.red, None if contact is None else round(contact, 1),
+                    None if light_room is None else round(light_room, 1)))
         # back in the lane before the planner gets the wheel again
         if passing or self.mem["nudge"] > 0.0:
             self.mem["recover"] = False
@@ -1209,6 +1221,32 @@ class Expert(object):
         self.mem["wheel"] = self.mem["wheel"] + (action[2] - self.mem["wheel"]) * (
             1.0 - math.exp(-DT / LAG_TAU))
         return action
+
+    def _light_room(self, path, lights, v):
+        """Metres from the front bumper to LIGHT_MARGIN short of the stop point of the nearest
+        red or yellow light on the route ahead that the car stops for, or None. Whether it
+        stops is decided when the light is first seen in that colour, and kept: for a red one
+        if it can stop short of it at LIGHT_RED_DECEL, for a yellow one if LIGHT_YELLOW_DECEL
+        is enough (otherwise it goes on through)."""
+        best, decided = None, {}
+        for light in lights:
+            state = light.get("state")
+            if state not in ("red", "yellow"):
+                continue
+            room = path.project(light["x"], light["y"])[0] - path.s0 - HALF_L - LIGHT_MARGIN
+            if room < -1.5:
+                continue                 # at the line already, or past it
+            room = max(0.0, room)
+            key = str(light.get("id"))
+            stop = self.mem["lights"].get(key)
+            if stop is None or stop[0] != state:
+                most = LIGHT_YELLOW_DECEL if state == "yellow" else LIGHT_RED_DECEL
+                stop = [state, v <= 1.0 or v * v / (2.0 * max(room, 0.1)) <= most]
+            decided[key] = stop
+            if stop[1]:
+                best = room if best is None else min(best, room)
+        self.mem["lights"] = decided
+        return best
 
     def _curve_speed(self, path):
         """Speed that keeps the lateral acceleration in the coming bends below LAT_ACCEL."""

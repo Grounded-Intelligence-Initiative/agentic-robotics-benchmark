@@ -15,9 +15,9 @@ grading side keeps to itself (drive_protocol.agent_observation filters it out).
 
 A spec with `"privileged": true` adds a `privileged` block to every state: the true position,
 velocity and size of every road user and prop near the car, and the route's lane geometry
-ahead, all in the car's frame. The bridge adds it only when the spec asks for it, as a
-practice aid; graded runs do not give it to your supervisor. The probe then also reports the
-road user it pasted into the probe frame.
+and traffic lights ahead, all in the car's frame. The bridge adds it only when the spec asks
+for it, as a practice aid; graded runs do not give it to your supervisor. The probe then also
+reports the road user it pasted into the probe frame.
 
 Repeatability: the world is reloaded for every episode, in synchronous mode with fixed
 physics substeps, so an episode's layout (route, staging, traffic and their draws) follows
@@ -628,9 +628,12 @@ class CarlaBackend(object):
         self.tracker.layout = layout_digest(
             spec["town"], [[wp.road_id, wp.section_id, wp.lane_id, round(wp.s, 1)] for wp, _ in route],
             [a.type_id for a in self.actors], rng)
+        # the traffic lights whose stop line lies on the route (listed in the privileged block)
+        self.route_lights = self._route_lights() if self.privileged else []
         self.applied = [0.0, 0.0, 0.0]
         self.prev_speed = 0.0
         self.red_candidate = None
+        self.red_counted = None      # the light this crossing has already counted as run
         for _ in range(10):          # settle the vehicle and fill the sensor queues
             self.ego.apply_control(carla.VehicleControl(brake=1.0))
             self._frame_time[self._tick()] = 0.0
@@ -832,10 +835,12 @@ class CarlaBackend(object):
         """Count red lights run; return whether the car is held at a red (or yellow) light.
 
         A light counts as run when the car enters the junction while that light is red, so
-        pulling away the moment it turns green is not an infraction."""
+        pulling away the moment it turns green is not an infraction. It counts once for the
+        crossing, however many ticks the car then moves through the junction."""
         carla = self.carla
         at_red = False
-        if self.ego.is_at_traffic_light():
+        at_light = self.ego.is_at_traffic_light()
+        if at_light:
             light = self.ego.get_traffic_light()
             if light is not None:
                 self.red_candidate = (light, self.tracker.time)
@@ -845,15 +850,21 @@ class CarlaBackend(object):
             # The planner looks ahead and stops for a red before the car reaches the light's
             # trigger volume; that wait is just as legitimate.
             at_red = bool(self.nominal.traffic_light_manager())
+        here = None
         if self.red_candidate:
             light, seen = self.red_candidate
             here = self.map.get_waypoint(loc)
             if speed > 0.5 and here is not None and here.is_junction:
-                if light.get_state() == carla.TrafficLightState.Red:
+                if light.get_state() == carla.TrafficLightState.Red and light.id != self.red_counted:
                     self.tracker.red_lights += 1
+                    self.red_counted = light.id
                 self.red_candidate = None
             elif self.tracker.time - seen >= 3.0:
                 self.red_candidate = None
+        if self.red_counted is not None and not at_light:
+            here = here if here is not None else self.map.get_waypoint(loc)
+            if here is None or not here.is_junction:
+                self.red_counted = None      # out of the junction: that crossing is over
         return at_red
 
     # -- observation -------------------------------------------------------------
@@ -941,7 +952,9 @@ class CarlaBackend(object):
         and every walker and prop within NEAR_RADIUS_M, and the route ahead with its lane
         width, the driving lanes to its left (nearest first, until one that is not a driving
         lane) with their centre and direction, and the lanes to its right as far as the kerb
-        (driving, shoulder, parking or bike lanes) with their centre and type."""
+        (driving, shoulder, parking or bike lanes) with their centre and type; `lights`: the
+        traffic lights whose stop line lies on that stretch of the route, each with its stop
+        point and state (red, yellow, green or off)."""
         yaw = math.radians(tf.rotation.yaw)
         c, s = math.cos(yaw), math.sin(yaw)
         ox, oy = tf.location.x, tf.location.y
@@ -1016,11 +1029,42 @@ class CarlaBackend(object):
             lanes.append({"x": x, "y": y, "width": round(wp.lane_width, 2),
                           "junction": wp.is_junction, "left": lefts[0] if lefts else None,
                           "lefts": lefts, "rights": rights})
+        TLS = self.carla.TrafficLightState
+        lights = []
+        for index, signal, stop in self.route_lights:
+            if max(0, self.tracker.index - 5) <= index < self.tracker.index + 45:
+                x, y = local(stop.x, stop.y)
+                state = signal.get_state()
+                lights.append({"id": signal.id, "x": x, "y": y,
+                               "state": "red" if state == TLS.Red else "yellow" if state == TLS.Yellow
+                               else "green" if state == TLS.Green else "off"})
         light = self.ego.get_traffic_light() if self.ego.is_at_traffic_light() else None
-        return {"actors": actors, "route": lanes,
-                "red_light": bool(light is not None and light.get_state() in (
-                    self.carla.TrafficLightState.Red, self.carla.TrafficLightState.Yellow)),
+        return {"actors": actors, "route": lanes, "lights": lights,
+                "red_light": bool(light is not None and light.get_state() in (TLS.Red, TLS.Yellow)),
                 "speed_limit": round((self.ego.get_speed_limit() or 30.0) / 3.6, 2)}
+
+    def _route_lights(self):
+        """[(route index, light, stop location)]: every traffic light with a stop waypoint in a
+        lane of the route (within 3 m of one of its points), at the route point nearest that
+        stop, in route order."""
+        by_lane = {}
+        for i, wp in enumerate(self.route_wps):
+            by_lane.setdefault((wp.road_id, wp.lane_id), []).append(i)
+        found = {}
+        for light in self.world.get_actors().filter("traffic.traffic_light*"):
+            try:
+                stops = light.get_stop_waypoints()
+            except RuntimeError:
+                continue
+            for stop in stops:
+                loc, best = stop.transform.location, None
+                for i in by_lane.get((stop.road_id, stop.lane_id), ()):
+                    gap = self.route_wps[i].transform.location.distance(loc)
+                    if gap < 3.0 and (best is None or gap < best[0]):
+                        best = (gap, i)
+                if best is not None and (light.id not in found or best[1] < found[light.id][0]):
+                    found[light.id] = (best[1], light, loc)
+        return sorted(found.values(), key=lambda item: (item[0], item[1].id))
 
     def close(self):
         try:
