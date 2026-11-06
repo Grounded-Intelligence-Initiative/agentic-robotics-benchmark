@@ -180,6 +180,10 @@ def report(args):
                                             t.get("pace"), t.get("steps"),
                                             r["clearance"]["all"][0] if r["clearance"].get("all") else None,
                                             r.get("note")))
+    for r in rows:
+        if r.get("walker_launch"):
+            print("- {} {} {}: a walker near the car over 4 m/s {} (fastest {})".format(
+                r["id"], r["spec"]["town"], r["spec"]["variant"], r["walker_launch"], r.get("walker_fast")))
     replies = [r["max_reply_s"] for r in rows]
     if replies:
         print("\nslowest reply {:.2f} s; {} episodes".format(max(replies), len(rows)))

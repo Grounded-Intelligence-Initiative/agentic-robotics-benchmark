@@ -1,13 +1,17 @@
 """Pre-registered selection of the fixed hidden set (a maintainer's tool; the grader never runs it).
 
-The rule, fixed before any candidate ran (written 2026-11-06 and committed with the freeze):
+The rule, fixed before any candidate ran (written 2026-11-06 and committed with the freeze; clause 4's walker
+screen and the numbering of a selection that supersedes another were added, with the second freeze, before that
+selection's draw):
 
 1. Freeze. The files that decide an episode and the reference's run (FROZEN below: the bridge in both copies,
    drive_protocol, drive_variants, episode_score, verify, sim_client, the expert, its footprints, solve.sh) are
    committed first. `draw` refuses to start unless every one of them equals HEAD, and records their sha256, the
    commit and the task image; `run` and `make` refuse to go on when any of them differs from that record.
 2. Draw. Batch 1 is 96 candidates: four rounds of the 24 graded cells (drive_variants.graded_cells over
-   grader_config's towns, in grading order), ids c<round * 24 + cell, three digits>. Each is drawn from os.urandom:
+   grader_config's towns, in grading order), ids c<round * 24 + cell, three digits>; the rounds start at 0, and a
+   selection that supersedes another goes on from the round after the other's last (`--first-round`), so no id
+   names two candidates. Each is drawn from os.urandom:
    seed = int.from_bytes(8 bytes, "little") % 2**62, drawn again while below 2**32 or equal to an earlier seed;
    distractors = one byte % 3 (a byte of 255 is drawn again); lock_key = 32 bytes, hex. selection.json is written,
    and committed, before any candidate runs.
@@ -19,8 +23,12 @@ The rule, fixed before any candidate ran (written 2026-11-06 and committed with 
 4. Keep. A candidate is kept when its run has: termination "completed"; no abort; walker, vehicle and static
    collisions 0 and hazard_collisions 0; red_lights 0; the smallest box-to-box clearance from the car to any actor
    of the ground-truth block (real requests only; an actor's size is the larger of its box and
-   solution/footprints.json) at least 0.15 m; and the timeout's clock (time_s - excused_s) at most 0.85 of the
-   episode's time limit (route_length_m / 5 + 15 s). Pace, harsh brakes and the score are not part of the rule.
+   solution/footprints.json) at least 0.15 m; the timeout's clock (time_s - excused_s) at most 0.85 of the
+   episode's time limit (route_length_m / 5 + 15 s); and no walker within 25 m of the car faster than 4 m/s over the
+   ground (the block's velocity) on two consecutive real steps. People walk at 0.9-1.7 m/s in every staging: one that
+   fast has been launched by the physics, which could hit a car a few metres further on through no fault of its
+   driver; a single step can be the staging putting a person back on their spot by hand. Pace, harsh brakes and the
+   score are not part of the rule.
    A cell's first kept candidate is its episode, and the layout digest of that run (truth["layout"]) is the set's
    layout_sha256 for it.
 5. A cell with no kept candidate after its four rounds gets four more (`draw --batch 2`) once batch 1 has run.
@@ -35,7 +43,7 @@ The rule, fixed before any candidate ran (written 2026-11-06 and committed with 
    cell that is kept (run in drawn order as in 3). A second such failure anywhere is a robustness defect of the
    expert: fix it, freeze again, draw a new selection.
 
-    python3 -B select_set.py draw --selection SEL.json [--batch 1]
+    python3 -B select_set.py draw --selection SEL.json [--batch 1] [--first-round R --supersedes OLD.json --why TEXT]
     python3 -B select_set.py run --selection SEL.json --round R --out DIR [--gpus 0,1] [--cpus 16-23,24-31]
     python3 -B select_set.py make --selection SEL.json --out EPISODES.json [--causes CAUSES.json]
     python3 -B select_set.py report --selection SEL.json
@@ -73,12 +81,14 @@ ROUNDS_PER_BATCH = 4
 SEED_RANGE = (1 << 32, 1 << 62)
 MIN_CLEARANCE_M = 0.15
 TIME_FRACTION = 0.85
+LAUNCH_STEPS = 2          # consecutive real steps of one walker near the car above run_episode.FAST_WALKER_MPS
 DROP_SHARE = 1.0 / 3.0
 # the ranges drive_variants draws from (for the hollowing check; the staging record holds the values drawn)
 RANGES = {
     "debris": {"props.n": "2-4", "props[].1": "0-4 m ahead", "props[].2": "lateral -1.2..1.2"},
     "walking_in_lane": {"lateral": "-0.3..0.8", "speed": "0.9..1.6"},
-    "shoulder_pass": {"wrecks[].1": "-0.9..-0.7", "sign_lateral": "-0.9..-0.7", "shoulder_width": ">= 2.4"},
+    "shoulder_pass": {"wrecks[].1": "-0.9..-0.7", "sign_lateral": "0 (-0.9..-0.7 if sign_room < 1.0)",
+                      "sign_room": "centred sign", "shoulder_width": ">= 2.4"},
     "spinning_car": {"spin": "+-(180..270)", "v_car": "9..11", "slide_m": "9..13", "slide_s": "1.6..2.2"},
     "overtaking_oncoming": {"intrusion": "0.8..1.1", "v_car": "9..11", "v_bike": "3..4.5", "release_m": "55..70"},
     "reversing_car": {"lead_kmh": "22..30", "back_speed": "0.8..1.2"},
@@ -172,6 +182,16 @@ def cmd_draw(a):
     if a.batch == 1:
         if os.path.exists(a.selection):
             raise SystemExit("{} exists: batch 1 starts a selection".format(a.selection))
+        supersedes = None
+        if a.supersedes:
+            old = load(a.supersedes)
+            supersedes = {"file": os.path.relpath(os.path.abspath(a.supersedes), TASK),
+                          "sha256": sha256_file(a.supersedes), "frozen_commit": old.get("frozen_commit"),
+                          "last_round": max(c["round"] for c in old["candidates"]),
+                          "episodes_sha256": (old.get("set") or {}).get("episodes_sha256"), "why": a.why}
+            if a.first_round <= supersedes["last_round"]:
+                raise SystemExit("--first-round must come after the superseded selection's last round ({})".format(
+                    supersedes["last_round"]))
         if not frozen_committed():
             raise SystemExit("the frozen files are not committed as they are: commit the freeze first")
         head = git("rev-parse", "HEAD")
@@ -179,8 +199,10 @@ def cmd_draw(a):
                "tools": hashes(TOOLS), "image": a.image, "image_id": image_id(a.image),
                "rule": "tests/review/select_set.py (module docstring)", "cells": [list(c) for c in cells],
                "batches": [], "candidates": []}
+        if supersedes:
+            sel["supersedes"] = supersedes
         want = list(range(len(cells)))
-        first_round = 0
+        first_round = a.first_round
     else:
         sel = load(a.selection)
         check_frozen(sel)
@@ -193,6 +215,9 @@ def cmd_draw(a):
         first_round = 1 + max(c["round"] for c in sel["candidates"])
     seen = {c["seed"] for c in sel["candidates"]}
     keys = {c["lock_key"] for c in sel["candidates"]}
+    if a.batch == 1 and a.supersedes:          # nor any seed or key of the selection this one replaces
+        seen |= {c["seed"] for c in old["candidates"]}
+        keys |= {c["lock_key"] for c in old["candidates"]}
     redrawn, count = 0, 0
     for r in range(first_round, first_round + ROUNDS_PER_BATCH):
         for k in want:
@@ -236,6 +261,12 @@ def keep_clauses(c):
         failed.append("hazard collisions {}".format(t["hazard_collisions"]))
     if t.get("red_lights", 0):
         failed.append("red lights {}".format(t["red_lights"]))
+    if "walker_launch" not in run:
+        failed.append("no record of the walkers' speeds")
+    elif run["walker_launch"] and run["walker_launch"][0] >= LAUNCH_STEPS:
+        steps, peak, ident, bp, dist, when = run["walker_launch"][:6]
+        failed.append("walker {} ({}) at {:.1f} m/s, {:.1f} m from the car, {} steps at t={}".format(
+            ident, bp, peak, dist, steps, when))
     least = (run.get("clearance") or {}).get("all")
     if least is None or least[0] < MIN_CLEARANCE_M:
         failed.append("clearance {}".format("-" if least is None else "{:.3f} m to {} {}".format(*least[:3])))
@@ -291,7 +322,8 @@ def cmd_run(a):
         if not row.get("privileged"):
             raise SystemExit("{} ran without the reference token".format(c["id"]))
         c["run"] = {key: row.get(key) for key in ("truth", "staging", "score", "layout", "probes", "clearance",
-                                                  "speed_limits", "max_reply_s", "wall_s", "aborted", "note")}
+                                                  "walker_fast", "walker_launch", "speed_limits", "max_reply_s",
+                                                  "wall_s", "aborted", "note")}
         c["run"]["dir"] = out
         c["failed"] = keep_clauses(c)
         c["keep"] = not c["failed"]
@@ -368,13 +400,17 @@ def cmd_make(a):
         "({image_id}). Every candidate ran once, exactly as graded (review/run_episode.py: verify.grade_episode, a "
         "token run of the solve.sh submission through netguard, its own lock key); round r ran only the cells "
         "without a kept candidate. Kept: the first candidate of each cell whose run completed with no abort, no "
-        "collision, no hazard hit and no red light, at least {clear} m of box clearance and at most {frac} of the "
-        "time limit. Kept: {kept}. Dropped: {drops}. Not run: {not_run} candidates. Every candidate with its run: "
-        "selection.json.").format(
+        "collision, no hazard hit and no red light, at least {clear} m of box clearance, at most {frac} of the "
+        "time limit, and no walker near the car launched by the physics (over 4 m/s within 25 m on {launch} "
+        "consecutive steps). Kept: {kept}. Dropped: {drops}. Not run: {not_run} candidates.{supersedes} Every "
+        "candidate with its run: selection.json.").format(
             made=utc_now()[:10], batches=batches, commit=(sel.get("frozen_commit") or "?")[:12], frozen=frozen,
             image=sel.get("image"), image_id=(sel.get("image_id") or "?")[:19], clear=MIN_CLEARANCE_M,
-            frac=TIME_FRACTION, kept=", ".join(kept[k]["id"] for k in range(len(sel["cells"]))), drops=drops,
-            not_run=len(not_run))
+            frac=TIME_FRACTION, launch=LAUNCH_STEPS, kept=", ".join(kept[k]["id"] for k in range(len(sel["cells"]))),
+            drops=drops, not_run=len(not_run),
+            supersedes=" It supersedes the selection in {} (frozen at {}): {}".format(
+                sel["supersedes"]["file"], (sel["supersedes"].get("frozen_commit") or "?")[:12],
+                sel["supersedes"]["why"]) if sel.get("supersedes") else "")
     with open(a.out, "w") as handle:
         json.dump({"format": SET_FORMAT, "episodes": episodes, "source": source}, handle, indent=1)
         handle.write("\n")
@@ -449,6 +485,10 @@ def cmd_report(a):
             print("  drop {} {} seed={} d={}: {}{}".format(c["id"], c["town"], c["seed"], c["distractors"],
                                                           "; ".join(c["failed"]),
                                                           " -- " + c["cause"] if c.get("cause") else ""))
+        for c in run_v:
+            fast, launch = c["run"].get("walker_fast"), c["run"].get("walker_launch")
+            if launch or (fast and fast[0] > 2.0):
+                print("  walkers {}: fastest near the car {}, longest fast run {}".format(c["id"], fast, launch))
         knum, kcat = _merge([c["run"]["staging"] for c in kept_v])
         rnum, rcat = _merge([c["run"]["staging"] for c in run_v])
         dnum, dcat = _merge([c["run"]["staging"] for c in drop_v])
@@ -480,6 +520,9 @@ def main():
     p = sub.add_parser("draw")
     p.add_argument("--selection", required=True)
     p.add_argument("--batch", type=int, default=1)
+    p.add_argument("--first-round", type=int, default=0)
+    p.add_argument("--supersedes", help="the selection this one replaces (batch 1 only)")
+    p.add_argument("--why", default="", help="why it is replaced")
     p.add_argument("--image", default=dev_batch.IMAGE)
     p.set_defaults(fn=cmd_draw)
     p = sub.add_parser("run")

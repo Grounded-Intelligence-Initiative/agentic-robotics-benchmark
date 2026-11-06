@@ -10,14 +10,18 @@ layout digest is recorded, not checked.
 
 What it adds, on the grading side only: a recorder around the simulator (per step: the ego's speed, the applied
 control, the truth so far, and, in a token run, the smallest box-to-box clearance from the ego to every actor of the
-privileged block, sized as the expert sizes them: the larger of the box and solution/footprints.json), the time of
-every reply, and one result line per episode.
+privileged block, sized as the expert sizes them: the larger of the box and solution/footprints.json, and the
+walkers within FAST_RADIUS_M of the car that move faster than FAST_WALKER_MPS over the ground), the time of every
+reply, and one result line per episode.
 
     ALE_STAGE_DIR=/opt/ale/tests ALE_HOME=/home/user python3 -B review/run_episode.py --specs SPECS.json --out DIR
         [--footprints /task/solution/footprints.json] [--steps]
 
 DIR/results.jsonl: per episode its spec, truth, score, steps, layout, staging, probes (pairs, moved), the smallest
-clearance overall / to props / to vehicles / to walkers (m, real requests only), the slowest reply (s), wall time.
+clearance overall / to props / to vehicles / to walkers (m, real requests only), the fastest walker near the car
+(`walker_fast`: [m/s, id, blueprint, distance m, time s]) and the longest run of consecutive steps one walker near the
+car moved faster than FAST_WALKER_MPS (`walker_launch`: [steps, peak m/s, id, blueprint, distance m at the peak,
+time s at the peak], or None), the slowest reply (s), wall time.
 DIR/steps_<id>.jsonl.gz (with --steps): the per-step record.
 """
 
@@ -40,6 +44,9 @@ from robotics_grader import ProbeLock, Solver, SolverAborted, SolverMissing, sta
 from robotics_grader.stage import agent_home, secure_exec_path  # noqa: E402
 
 EGO_HALF_L, EGO_HALF_W = 2.45, 0.92
+#: People walk at 0.9-1.7 m/s in every staging; one near the car going faster than this over the ground has been
+#: launched by the physics (a crowd member another walked into, say). Its speed is the block's (vx, vy).
+FAST_WALKER_MPS, FAST_RADIUS_M = 4.0, 25.0
 
 
 def load_footprints(path):
@@ -104,6 +111,40 @@ class Recorder(object):
         self.steps = []
         self.min = {"all": None, "prop": None, "vehicle": None, "walker": None}
         self.speed_limits = []
+        self.walker_fast = None      # [m/s, id, blueprint, distance, time]: the fastest walker near the car
+        self.walker_launch = None    # [steps, peak m/s, id, blueprint, distance, time]: the longest fast run
+        self._fast = {}              # walker id -> its current run of fast steps
+
+    def _walkers(self, state, now):
+        """Walkers within FAST_RADIUS_M of the car: the fastest, and runs of consecutive steps faster than
+        FAST_WALKER_MPS per walker (real requests only: the probe's pasted road user is not in this block)."""
+        priv = state.get("privileged")
+        if not priv:
+            return None
+        fast, top = set(), None
+        for a in priv.get("actors", ()):
+            if a.get("type") != "walker":
+                continue
+            dist = math.hypot(a["x"], a["y"])
+            if dist > FAST_RADIUS_M:
+                continue
+            speed = math.hypot(a.get("vx", 0.0), a.get("vy", 0.0))
+            if top is None or speed > top[0]:
+                top = [round(speed, 2), a["id"], round(dist, 2)]
+            if self.walker_fast is None or speed > self.walker_fast[0]:
+                self.walker_fast = [round(speed, 2), a["id"], a.get("blueprint"), round(dist, 2), now]
+            if speed <= FAST_WALKER_MPS:
+                continue
+            fast.add(a["id"])
+            run = self._fast.setdefault(a["id"], [0, 0.0, a["id"], a.get("blueprint"), None, None])
+            run[0] += 1
+            if speed > run[1]:
+                run[1], run[4], run[5] = round(speed, 2), round(dist, 2), now
+            if self.walker_launch is None or (run[0], run[1]) > (self.walker_launch[0], self.walker_launch[1]):
+                self.walker_launch = list(run)
+        for ident in [i for i in self._fast if i not in fast]:
+            del self._fast[ident]
+        return top
 
     def _clearances(self, state):
         priv = state.get("privileged")
@@ -137,6 +178,7 @@ class Recorder(object):
                 for key in (kind, "all"):
                     if key in self.min and (self.min[key] is None or gap < self.min[key][0]):
                         self.min[key] = (round(gap, 3), _ident, _bp, truth.get("time_s"))
+        walker = self._walkers(state, truth.get("time_s"))
         if state.get("privileged"):
             limit = state["privileged"].get("speed_limit")
             if not self.speed_limits or self.speed_limits[-1] != limit:
@@ -147,7 +189,8 @@ class Recorder(object):
                                "collisions": truth.get("collisions"), "hazard": truth.get("hazard_collisions"),
                                "harsh": truth.get("harsh_brakes"), "red": truth.get("red_lights"),
                                "red_light": (state.get("privileged") or {}).get("red_light"),
-                               "gaps": {k: [round(v[0], 3), v[1]] for k, v in (gaps or {}).items()}})
+                               "gaps": {k: [round(v[0], 3), v[1]] for k, v in (gaps or {}).items()},
+                               "walker": walker})
 
     def reset(self, spec):
         state = self.sim.reset(spec)
@@ -222,6 +265,7 @@ def main():
                         "staging": truth.get("staging"), "score": round(score(outcome), 6),
                         "layout": layout, "probes": [lock.total - total0, lock.passed - passed0],
                         "clearance": {k: v for k, v in rec.min.items()},
+                        "walker_fast": rec.walker_fast, "walker_launch": rec.walker_launch,
                         "speed_limits": rec.speed_limits, "max_reply_s": round(solver.max_s, 3),
                         "wall_s": round(time.time() - t1, 1), "privileged": privileged}
                 results.write(json.dumps(line) + "\n")

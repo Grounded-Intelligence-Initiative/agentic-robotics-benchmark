@@ -56,6 +56,14 @@ PROPS_CARGO = ("static.prop.box01", "static.prop.box02", "static.prop.box03")  #
 BIKES = ("vehicle.bh.crossbike", "vehicle.diamondback.century", "vehicle.gazelle.omafiets")
 TRUCKS = ("vehicle.carlamotors.carlacola", "vehicle.carlamotors.european_hgv",
           "vehicle.mercedes.sprinter")
+#: shoulder_pass's warning signs, each with its right half-width (metres across the lane from
+#: its origin: the larger of CARLA's box and the collision footprint that
+#: review/measure_footprints.py measured, solution/footprints.json), and the car's width (the
+#: box of vehicle.lincoln.mkz_2020). A sign keeps the author's place at the lane centre wherever
+#: that leaves the car SIGN_SPARE_M of spare width to pass it on the shoulder.
+SIGN_HALF_RIGHT_M = {"static.prop.warningaccident": 0.663, "static.prop.trafficwarning": 1.436}
+EGO_WIDTH_M = 1.836
+SIGN_SPARE_M = 1.0
 
 
 #: Variants that need a road some towns lack, and the towns that have it (Town10HD's
@@ -117,7 +125,11 @@ def route(b, want):
         cache = (b.map, {})
         b.b._variant_spots = cache
     if b.variant not in cache[1]:
-        cache[1][b.variant] = [wp for wp in b.map.generate_waypoints(4.0) if fits(b, wp)]
+        spots = [wp for wp in b.map.generate_waypoints(4.0) if fits(b, wp)]
+        if b.variant == "shoulder_pass":
+            standing = _map_obstacles(b)
+            spots = [wp for wp in spots if _shoulder_clear(b, wp, standing)]
+        cache[1][b.variant] = spots
     spots = cache[1][b.variant]
     if not spots:
         raise RuntimeError("no road for {} in this town".format(b.variant))
@@ -189,7 +201,8 @@ def _two_lane_straight(b, wp):
 
 def _shoulder_fits(b, wp):
     """The car's lane is the rightmost driving lane, with a shoulder or parking lane at least
-    2.4 m wide to its right from 30 m before to 25 m after, and no junction within 12 m."""
+    2.4 m wide to its right from 30 m before to 25 m after, and no junction within 12 m
+    (route() also wants that shoulder clear of the map's poles and signs: _shoulder_clear)."""
     kinds = (b.carla.LaneType.Shoulder, b.carla.LaneType.Parking)
     if wp.is_junction or any(w.is_junction for w in wp.previous(12.0) + wp.next(12.0)):
         return False
@@ -201,6 +214,60 @@ def _shoulder_fits(b, wp):
         right = w.get_right_lane()
         if w.is_junction or right is None or right.lane_type not in kinds or right.lane_width < 2.4:
             return False
+    return True
+
+
+def _obstacle_grid(points):
+    """(x, y, radius) points in 10 m cells, for _shoulder_clear."""
+    grid = {}
+    for x, y, radius in points:
+        grid.setdefault((int(x // 10.0), int(y // 10.0)), []).append((x, y, radius))
+    return grid
+
+
+def _map_obstacles(b):
+    """Where the map's poles, traffic signs and traffic lights stand at a car's height, as an
+    _obstacle_grid: CARLA keeps them as map objects (and traffic.* actors), which no ground-truth
+    block lists. Town05 has speed-limit signs standing on its shoulders."""
+    carla, points = b.carla, []
+    for label in (carla.CityObjectLabel.Poles, carla.CityObjectLabel.TrafficSigns,
+                  carla.CityObjectLabel.TrafficLight):
+        for thing in b.world.get_environment_objects(label):
+            c, e = thing.bounding_box.location, thing.bounding_box.extent
+            ground = b.map.get_waypoint(c, project_to_road=True, lane_type=carla.LaneType.Any)
+            z = ground.transform.location.z if ground is not None else c.z
+            if c.z + e.z - z < 0.05 or c.z - e.z - z > 1.8:
+                continue                          # above or below a car
+            points.append((c.x, c.y, math.hypot(e.x, e.y)))
+    for actor in b.world.get_actors().filter("traffic.*"):
+        loc = actor.get_location()
+        points.append((loc.x, loc.y, 0.1))
+    return _obstacle_grid(points)
+
+
+def _shoulder_clear(b, wp, standing):
+    """Nothing of the map stands in the shoulder (or parking lane) beside the stretch a pass
+    round a closure at `wp` uses, from 30 m before it to 40 m after, short of the 0.3 m along
+    its outer edge (signs on the kerb line): there the shoulder is the way past."""
+    kinds = (b.carla.LaneType.Shoulder, b.carla.LaneType.Parking)
+    stretch = [w for d in range(2, 31, 2) for w in wp.previous(float(d))[:1]] + [wp] + \
+        [w for d in range(2, 41, 2) for w in wp.next(float(d))[:1]]
+    for w in stretch:
+        right = w.get_right_lane()
+        if right is None or right.lane_type not in kinds:
+            continue
+        tf = w.transform
+        f, r = tf.get_forward_vector(), tf.get_right_vector()
+        cx, cy = int(tf.location.x // 10.0), int(tf.location.y // 10.0)
+        for i in (cx - 1, cx, cx + 1):
+            for j in (cy - 1, cy, cy + 1):
+                for x, y, radius in standing.get((i, j), ()):
+                    dx, dy = x - tf.location.x, y - tf.location.y
+                    across = dx * r.x + dy * r.y
+                    if abs(dx * f.x + dy * f.y) <= 1.0 + radius and \
+                            w.lane_width / 2.0 - radius <= across <= \
+                            w.lane_width / 2.0 + right.lane_width - 0.3 + radius:
+                        return False
     return True
 
 
@@ -357,10 +424,25 @@ def _walking_in_lane(b, route, index, wp):
     b.b.scripted.append(hook)
 
 
+def _room_beside(b, loc, half_right):
+    """The spare width beside a prop standing at `loc` in the car's lane, for the car to pass it
+    on the right: from the prop's right side to the outer edge of the shoulder or parking lane
+    next to that lane (none there: the lane's own edge), less the car's width."""
+    here = b.map.get_waypoint(loc)
+    right = here.get_right_lane()
+    kinds = (b.carla.LaneType.Shoulder, b.carla.LaneType.Parking)
+    shoulder = right.lane_width if right is not None and right.lane_type in kinds else 0.0
+    r = here.transform.get_right_vector()
+    across = (loc.x - here.transform.location.x) * r.x + (loc.y - here.transform.location.y) * r.y
+    return here.lane_width / 2.0 + shoulder - (across + half_right) - EGO_WIDTH_M
+
+
 def _shoulder_pass(b, route, index, wp):
     """A crash: two cars stopped askew in the car's lane, every lane to its left closed at
-    the same place (barriers), a warning sign before it. The shoulder (or parking lane) on
-    the right is the only way past."""
+    the same place (barriers), a warning sign 8 m before it at the lane centre. The shoulder
+    (or parking lane) on the right is the only way past. Where a centred sign would leave the
+    car less than SIGN_SPARE_M of spare width beside it, the sign stands on the lane's left
+    like the wrecks instead (no spot in Town05 is that narrow)."""
     carla, rng = b.carla, b.rng
     Driving = carla.LaneType.Driving
     cars = _small_cars(b)
@@ -384,9 +466,12 @@ def _shoulder_pass(b, route, index, wp):
                                         b._offset(nxt, 0.0, lateral, 0.1)))
         w, closed = nxt, closed + 1
     sign = _available(b, ("static.prop.warningaccident", "static.prop.trafficwarning"))
-    # the warning sign stands on the lane's left like the wrecks, so the shoulder pass that
-    # the closure demands has room beside it too
-    sign_name, sign_lat = rng.choice(sign), rng.uniform(-0.9, -0.7)
+    # The sign keeps the author's place at the lane centre, unless the shoulder beside it is
+    # too narrow for the car to pass with SIGN_SPARE_M to spare. The left lateral is drawn
+    # either way, so no later draw depends on the choice.
+    sign_name, left_lat = rng.choice(sign), rng.uniform(-0.9, -0.7)
+    room = _room_beside(b, b._offset(wp, -8.0, 0.0, 0.1).location, SIGN_HALF_RIGHT_M[sign_name])
+    sign_lat = 0.0 if room >= SIGN_SPARE_M else left_lat
     b.hazards.append(b.b._spawn(sign_name, b._offset(wp, -8.0, sign_lat, 0.1)))
     right = wp.get_right_lane()
     b.staging.update(
@@ -395,7 +480,8 @@ def _shoulder_pass(b, route, index, wp):
         lane_width=round(wp.lane_width, 2), lanes_closed=closed,
         wrecks=[[w_.type_id, round(lat, 2), round(yaw, 1)] for w_, lat, yaw in
                 zip(wrecks, (lat1, lat2), (yaw1, yaw2))],
-        wreck_gap=round(ahead2, 2), sign=sign_name, sign_lateral=round(sign_lat, 2))
+        wreck_gap=round(ahead2, 2), sign=sign_name, sign_lateral=round(sign_lat, 2),
+        sign_room=round(room, 2))
 
 
 def _lead(b, route, wp, blueprints, speed_kmh):

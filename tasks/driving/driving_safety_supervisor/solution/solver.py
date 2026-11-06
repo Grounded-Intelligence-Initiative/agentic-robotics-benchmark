@@ -274,6 +274,11 @@ class Path(object):
     def side_offset(self, station, k, side):
         return self.left_offset(station, k) if side < 0 else self.right_offset(station, k)
 
+    def right_type(self, station, k=0):
+        """Type of the k-th lane to the right ("Driving", "Shoulder", "Parking", "Biking"), or None."""
+        rights = self.lane(station).get("rights") or []
+        return rights[k].get("type") if k < len(rights) else None
+
     def kerbs(self, station):
         """(left edge, right edge) of the drivable road at a station, as offsets."""
         key = int(station)
@@ -850,13 +855,19 @@ class Expert(object):
         need = -side * self._need(group, side=side)
         # on the right that lane is often a shoulder against a kerb or a rail: keep clear of
         # its outer edge
+        stations = (start - 10.0, start, end, end + 6.0)
         limit = max(offs) - (BEYOND_CENTRE if side < 0 else 0.0)
         if side > 0:
-            outer = min(path.kerbs(s)[1] for s in (start - 10.0, start, end, end + 6.0))
+            outer = min(path.kerbs(s)[1] for s in stations)
             limit = max(limit, -(outer - HALF_W - SHOULDER_EDGE))
         tight = False
         settled = all(a["still"] >= 3.0 for a in group)    # nothing still sliding or rolling
-        if k == 0 and need < limit and kinds == {"prop"} and settled and \
+        # a slow, tight pass: of props; and on a shoulder or parking lane (the way round a
+        # closure) also of cars stopped there and not backing, such as a crash with its sign
+        shoulder = side > 0 and kinds <= {"prop", "vehicle"} and \
+            not any(a["backing"] for a in group) and \
+            all(path.right_type(s, k) in ("Shoulder", "Parking") for s in stations)
+        if k == 0 and need < limit and (kinds == {"prop"} or shoulder) and settled and \
                 -side * self._need(group, True, side) >= limit:
             tight, need = True, -side * self._need(group, True, side)   # slowly, with less room
         off = max(limit, min(-0.5, need))
