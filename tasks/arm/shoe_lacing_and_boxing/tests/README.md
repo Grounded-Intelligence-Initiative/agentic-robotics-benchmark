@@ -112,6 +112,22 @@ runs (bootstrap of these episodes; the last validate read ratio 0.94). Six
 episodes rather than four because with four the same risk needs a much lower full_at. A run that erects every box but
 laces nothing reads 0.12 per episode, i.e. reward 0.35; lacing about one shoe per pair and boxing it reads full.
 
+**State on 2026-11-06 (the reference reworked by the maintainers after the review of PR #48).** The seat carries the
+shoe high to above the cradle, lets the tails hang straight and lowers it straight down, looking under the sole before
+it lets go (the earlier sideways approach left a tail under the sole after every upright seat); a slip is noticed at
+once and each tail gets up to four tries, each from where the tail lies; a bench aglet is grasped high in the pinch box
+while the hand rises as the cell seats it; every move of either arm stops and backs off at 8 N on a link (12 N on a
+finger pad), checked every tick; the shift of a righted shoe on the infeed tray, the shoe grasps and the wall folds are
+planned clear of the tray, the neighbour shoe and the lid (a guard cannot stop a link that meets something at speed); a
+lid tray lying in the way of a wall fold is lifted back onto the infeed tray; the box is pushed only with its lid
+closed. Measured as above (the reference of `2e9191d`; one queue of `2eed6f9` and seed 1004, the one episode whose path
+`2e9191d` changes, again), seeds 1-64: mean work_score 0.993, 63 of 64 episodes at 1.0, both shoes laced in 63, one in
+1, none in 0, 0 voided, 0 physics faults; seeds 1001-1064: mean 0.968, 60 of 64 at 1.0, 0 voided, 0 physics faults. Per
+shoe the lacing succeeds in 184 of 187 upright and 67 of 69 side-lying arrivals; an episode takes 423-608 s simulated
+and 678-1568 s of wall clock on one core of the host (mean 942 s). The anchor (`tests/anchor.json`, above) is still the
+2026-11-05 measurement: with the reworked reference its value and full_at are to be measured again (an owner decision;
+not done here).
+
 ## 5. Known limitations of version 0.2
 
 * The shoe is rigid; "snug" is a lace-slack criterion, not throat closure.
@@ -135,17 +151,29 @@ laces nothing reads 0.12 per episode, i.e. reward 0.35; lacing about one shoe pe
   delivered row on 4 of 5 seeds), and the "uneven tails" fault that relied on sliding through row 1 is retired.
 * The lid is a separate rigid tray (a one-piece hinged-lid blank was tried: its flat footprint, 0.94 x 0.43 m, is
   out of a bench-mounted Panda's reach).
-* The oracle's sequence is scripted and conservative; its timing sets the pairs-per-window budget. Hidden episodes
-  are expensive (15-20 min of wall clock each for the reference), so `grader_config.json` keeps the episode count
-  at six, the least that keeps `full_at` well above the boxing-only level (section 4).
-* The reference's weak spot is a shoe that arrives on its side: righting it drags its tails under the sole when it is
-  seated, so the aglets lie close to the shoe and the lace is pinned under the clamped sole; lifting such an aglet
-  over the shoe can exceed the 6 N slip limit (the pass is then retried, and a tail is given up after two tries).
-  Sliding the shoe onto the seat sideways or toe first, catching such aglets with the hook, and a lace-transparent
-  cradle were all tried and made the reference worse (2026-11-04).
-* The reference's voids (about 6 % of its episodes on the host, 5 of 24 in the validate runs) come from four contacts:
-  the forearm on the lid while a wall next to it is folded at a 60 degree pitch, a finger on the shoe while re-picking
-  an aglet left on the flap, the hand on the shoe while picking an aglet close beside it, and the forearm on the infeed
-  tray when a shoe that arrived on its side at the far delivery spot is righted and shifted 7 cm further out before it
-  is set down (12-14 N and backed off on the host, a sustained 67 N once in the engine).
+* The oracle's sequence is scripted and conservative; its timing sets the pairs-per-window budget. Hidden episodes are
+  expensive (11-26 min of wall clock each for the reference, 16 on average), so `grader_config.json` keeps the episode
+  count at six, the least that keeps `full_at` well above the boxing-only level (section 4).
+* The reference's weak spot (2026-11-06) is a tail that comes to rest where neither arm can pick it up. With the toe
+  toward the hook arm, the tail that leaves a seated shoe on its R side can end within 0.22 m of the hook arm's base
+  (the hook arm cannot reach the bench that close to itself) and more than 0.68 m from the gripper's base (beyond its
+  top-down reach), and a hook-only aglet re-laid toward the gripper can end inside the gripper's 0.26 m. The seat lowers
+  the shoe again up to three times while an aglet lies out of reach, a tail gets four tries and an aglet only the hook
+  reaches is re-laid in the gripper's zone, but an aglet in that dead zone stays there: 4 of the 128 episodes of
+  2026-11-06 lost a shoe (one lost both) this way. Until 2026-11-05 the weak spot was the side-lying shoe (its tails
+  were dragged under the sole by the sideways seat); the reworked seat laces side-lying arrivals as often as upright
+  ones (67 of 69 and 184 of 187).
+* The reference's voids: none in the 128 episodes of 2026-11-06. Every move stops and backs off at 8 N on a link,
+  checked every tick, but a link that meets something at speed builds its press within one 10 ms tick, so the contacts
+  found (the forearm on the lid at a pitched wall fold, a finger on the shoe while re-picking an aglet, the hand on the
+  shoe beside an aglet, the forearm on the infeed tray and the hand on the neighbour after a righted shoe's shift) are
+  avoided by planning, and a box is pushed only with its lid closed (pushed from where a failed packing had left it,
+  near the gripper's base, the hand met the bench at 295 N). The closest call: a finger on the lid tray at 32 N for 2
+  ticks (the rule voids at 3) in the joint-space line home from above the infeed tray after a righted shoe was set down
+  beside the lid (seed 48, `box_skills._go_home`; that line is checked kinematically, but it runs even when the check
+  finds it blocked at both lift heights).
+* The lid tray's delivery spot (tray centre y - 0.14 +- 0.012) puts its near wall over the infeed tray's rim at y =
+  0.02: of the 128 seeds above, 45 lids rest tilted 3-4 degrees on the rim and 4 are pushed off the tray at reset, 12 cm
+  toward the blank, in the way of the wall folds (the reference lifts such a lid back onto the tray). Drawing the lid at
+  y - 0.12 would keep every lid flat on the plate (a delivery change, not made).
 * Three-row batches need a longer lace (section 2).
