@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Setup — runs as trusted root, cwd = this staged folder (/opt/ale/setup, root-only), before the agent
-# phase. (1) Stage the agent-visible payload into the agent home. (2) Start the lab service that holds
-# the hidden boxes: it reads ref/boxes.json as root, drops to the dedicated `alelab` account and
-# serves /run/ale-lab/lab.sock (fixed argv, clean environment, no hidden value outside this folder).
+# phase: stage the agent-visible payload into the agent home.
 set -euo pipefail
 umask 022
 export HOME=/root PYTHONNOUSERSITE=1
@@ -20,7 +18,3 @@ for entry in payload/* payload/.[!.]*; do
 done
 mkdir -p "$HOME_DIR/submission" && chown "$AGENT_USER:$AGENT_USER" "$HOME_DIR/submission"
 
-umask 077
-# Returns once the lab serves (the daemon is detached, stdio on /dev/null) or fails setup.
-env -i PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 HOME=/nonexistent \
-  python3 -I -B "$PWD/lab/alelab/server.py" --config "$PWD/lab/lab.json" </dev/null >/dev/null 2>&1

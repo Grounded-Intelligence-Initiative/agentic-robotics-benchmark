@@ -1,9 +1,9 @@
 """Keyed (bayonet-groove) nut-on-peg assembly: the task's robot environment (scene, robot, controller, sensors, credit).
 
-This file is byte-identical in your dev sim, in the lab service and in the grader. What differs
-between them is only the NUT that is loaded (a nut spec, see `NUT_SPEC_KEYS`). Your dev sim ships
-one practice nut (`practice_nut.json`); the lab and the grader load the hidden nuts N0-N3, whose
-specs you never see.
+This file is byte-identical in your dev sim and in the grader. What differs between them is only the
+NUT that is loaded (a nut spec, see `NUT_SPEC_KEYS`). Your dev sim ships one practice nut
+(`practice_nut.json`), and `sample_nut_spec` draws more from the nut family; every graded episode
+loads its own nut, drawn with `sample_nut_spec` from a seed you never see.
 
 Frames and units
 ----------------
@@ -816,6 +816,35 @@ class NutEnv(object):
         return {"nut_pos": p.tolist(), "nut_quat": quat_from_mat(R).tolist(), "groove": self.spec["groove"],
                 "pegs": [list(pp) for pp in self.peg_poses], "target_peg": self.target_peg,
                 "stage": self.stage_now(), "credit": self.credit, "broken": self.broken, "t": self.t, "fault": self.fault}
+
+
+NUT_COLOURS = ([0.16, 0.36, 0.78, 1], [0.20, 0.62, 0.30, 1], [0.78, 0.18, 0.16, 1], [0.86, 0.74, 0.16, 1],
+               [0.85, 0.45, 0.12, 1], [0.55, 0.25, 0.70, 1], [0.15, 0.65, 0.68, 1], [0.80, 0.35, 0.55, 1])
+
+
+def sample_nut_spec(rng, nut_id="N"):
+    """A random nut from the task's nut family (the hidden graded nuts are drawn with this exact function):
+    entrance uniform over the 24 sectors; each turn 2, 3 or 4 sectors, either way; each turn channel continues
+    into a dead end of 0-3 sectors the other way; 0, 1 or 2 false entrances at sectors at least 2 sectors clear
+    of every cell of the true path and of each other; mass uniform 0.05-0.15 kg; friction uniform 0.6-1.0;
+    colour from NUT_COLOURS. `rng` is a numpy Generator."""
+    g = {"entrance": int(rng.integers(NSEC)),
+         "turns": [int(rng.choice([2, 3, 4])) * int(rng.choice([-1, 1])) for _ in range(2)],
+         "dead_ends": [int(rng.integers(4)) for _ in range(2)],
+         "false_entrances": []}
+    # sectors the true path and its first dead end occupy in the bottom layers (entrance riser and first turn)
+    busy = {sec for (sec, lay) in groove_cells(g) if lay <= TURN_LAYERS[0][1]}
+    for _ in range(int(rng.integers(3))):
+        free = [f for f in range(NSEC)
+                if all(min((f + d - b) % NSEC, (b - f - d) % NSEC) >= 2 for b in busy for d in (0, 1))]
+        if not free:
+            break
+        f = int(rng.choice(free))
+        g["false_entrances"].append(f)
+        busy.update({f % NSEC, (f + 1) % NSEC})
+    return check_nut_spec({"id": nut_id, "groove": g, "mass": round(float(rng.uniform(0.05, 0.15)), 4),
+                           "friction": round(float(rng.uniform(0.6, 1.0)), 4),
+                           "rgba": list(NUT_COLOURS[int(rng.integers(len(NUT_COLOURS)))])})
 
 
 def load_spec(path):

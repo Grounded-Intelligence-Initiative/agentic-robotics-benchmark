@@ -3,8 +3,8 @@
 # (nut pose and keyway angle, peg poses). The grader attaches that state to the observations only
 # for a submission carrying solution/oracle_token, whose SHA-256 alone is staged with the grader;
 # the agent never sees the token. The solution only shows that every hidden episode can be done
-# with the public robot, controller and step budget. Runs as the agent account; spends no lab
-# trials; reads nothing outside solution/.
+# with the public robot, controller and step budget. Runs as the agent account; reads nothing
+# outside solution/.
 set -euo pipefail
 SUB="${ALE_HOME:-/home/user}/submission"
 HERE="$(cd "$(dirname "$0")" && pwd)"

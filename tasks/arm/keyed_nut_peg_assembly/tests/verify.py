@@ -1,13 +1,13 @@
 """Hidden grader for keyed_nut_peg_assembly (closed loop, hidden nuts, fixed hidden episodes).
 
-Runs as root in a SEPARATE verifier sandbox (SPEC 14.10: no lab and no agent process exist there;
-the engine restores only the declared artifact /home/user/submission). It never talks to the lab.
-Defensively it still stops any lab or agent-UID process first (rev-leak R14, SPEC L3), then hands the
+Runs as root in a SEPARATE verifier sandbox (SPEC 14.10: no agent process exists there; the engine
+restores only the declared artifact /home/user/submission). Defensively it still stops any agent-UID
+process first (rev-leak R14, SPEC L3), then hands the
 restored submission (size-capped) to the agent account in place, at /home/user/submission, the folder the
 instruction names (ownership changes never follow a symlink). It owns its own copy of
-the robot environment (keyed_env.py, byte-identical to the agent's dev sim), loads the hidden nuts
-from tests/ref/nuts.json and plays the fixed hidden episodes of tests/ref/episodes.json (nut, target
-peg, layout and noise seed) in order, drives the agent's controller over the kit wire at the agent's
+the robot environment (keyed_env.py, byte-identical to the agent's dev sim) and plays the fixed hidden
+episodes of tests/ref/episodes.json in order (each: a nut drawn with the public `sample_nut_spec` from a
+secret seed, the target peg, the layout and noise seed), drives the agent's controller over the kit wire at the agent's
 UID, and scores every episode from its own simulator state (`NutEnv.episode_score`: 1 if the nut was
 assembled on the target peg, else 0). The metric is the fraction of assembled episodes; the staged
 `NutEnv.progress` is reported as a diagnostic only.
@@ -66,7 +66,6 @@ STAGE = os.path.dirname(os.path.abspath(__file__))
 MAX_SUBMISSION_BYTES = 200 * 1024 * 1024
 MAX_SUBMISSION_FILES = 5000
 NONET = os.path.join(STAGE, "nonet_exec.py")
-NUTS = os.path.join(STAGE, "ref", "nuts.json")
 EPISODES = os.path.join(STAGE, "ref", "episodes.json")
 TOKEN_HASH = os.path.join(STAGE, "oracle_token.sha256")
 MAX_LINE = 65536
@@ -199,21 +198,10 @@ def agent_inet_sockets(uid):
     return n
 
 
-def stop_lab():
-    """Stop the lab service (rev-leak R14) before anything else; True when it is gone."""
-    try:
-        from alelab_stop import stop_all
-        stop_all(agent_user=agent_user())
-        return True
-    except Exception as exc:  # noqa: BLE001 - a failed stop is recorded, the agent kill still runs
-        log("lab stop: {}".format(type(exc).__name__))
-        return False
-
-
 def stage_submission(uid, gid):
     """Make the restored submission the agent account's own folder, in place at ~user/submission: the
     folder the instruction names, where run.sh is started and where the controller may write, as it can in
-    the lab and the practice grader. Ownership changes never follow a symlink (lchown, a walk that does not
+    the practice grader. Ownership changes never follow a symlink (lchown, a walk that does not
     follow links); size and file count are capped. Returns the path, or None if there is no usable
     submission."""
     src = os.path.join(os.path.expanduser("~" + agent_user()), "submission")
@@ -394,7 +382,6 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
 def main():
     t_start = time.monotonic()
     config = stage_config()
-    lab_stopped = stop_lab()
     rng = seed_rng()
     anchor, meta = read_anchor()
     try:
@@ -406,10 +393,13 @@ def main():
         write_verdict(zero_verdict(reason="agent processes could not be stopped (cleanup_failed)",
                                    anchored=anchor is not None))
         return
-    with open(NUTS) as fh:
-        specs = {nid: E.check_nut_spec(spec) for nid, spec in json.load(fh).items()}
     with open(EPISODES) as fh:
         plan = json.load(fh)["episodes"]
+    specs = {}
+    for item in plan:
+        spec = E.check_nut_spec(item["nut"])
+        specs[spec["id"]] = spec
+        item["nut"] = spec["id"]
     try:
         workdir = stage_submission(uid, gid)
     except OSError as exc:
@@ -451,7 +441,6 @@ def main():
                  egress_guard_seccomp=1.0 if egress_mode == "seccomp" else 0.0,
                  egress_detected=float(egress_hits),
                  cleanup_failed=0.0 if cleanup_ok else 1.0,
-                 lab_stopped=1.0 if lab_stopped else 0.0,
                  budget_exhausted=1.0 if budget_exhausted else 0.0,
                  probe_lock_ok=1.0 if lock.ok else 0.0,
                  reference_token=1.0 if with_gt else 0.0,

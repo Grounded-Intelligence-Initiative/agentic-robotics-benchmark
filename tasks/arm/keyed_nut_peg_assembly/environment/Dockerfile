@@ -1,5 +1,5 @@
 # Environment image for keyed_nut_peg_assembly. Final stage derives from the official ALE base.
-# Contains only the simulator stack and the public robot assets; tests/, solution/, the hidden nuts
+# Contains only the simulator stack and the public robot assets; tests/, solution/, the hidden episodes
 # and the anchor are never copied into the image (the build context is environment/ less setup/).
 FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1
 
@@ -23,10 +23,6 @@ ENV MUJOCO_GL=egl PYOPENGL_PLATFORM=egl MPLBACKEND=Agg OMP_NUM_THREADS=1 LP_NUM_
 
 # The declared artifact path exists even when nobody works.
 RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
-
-# The lab service's dedicated account: the lab never runs as root or as the agent while it serves
-# the hidden nuts.
-RUN useradd --system --user-group --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin alelab
 
 # No job scheduler may run agent-scheduled work outside the graded solver tree.
 RUN (apt-get purge -y cron anacron at >/dev/null 2>&1 || true) \
