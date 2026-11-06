@@ -841,11 +841,15 @@ def erect_box(rig):
                 return True
             press = getattr(rig, "box_press", None)
             if press is not None and "lid" in press[1][1]:
-                # the hand or the forearm met the lid tray lying next to the box (a lid jittered toward the blank: no
-                # handle of the +x wall was clear of it): the lid goes to the bench beside the free cradle, then again
-                if not getattr(rig, "lid_parked", False) and _park_lid(rig):
-                    continue
                 avoid.append(tag)                          # that handle put the hand on the lid: another one
+                if w in (walls["px"], walls["mx"]):
+                    # a short wall: its hand and the forearm come in from the tray's side, over the lid lying near the
+                    # box; the blank 3 cm further from the tray
+                    fp, _, _ = _floor_frame(rig)
+                    dy = max(LID_DRAG_Y_MIN, float(fp[1]) - 0.03) - float(fp[1])
+                    if dy < -0.004:
+                        _log(rig, "wall %s: the hand met the lid tray; dragging the blank by %.3f m in y" % (w, dy))
+                        _drag_blank(rig, 0.0, dy, "c")
             _log(rig, "wall %s not locked (attempt %d)" % (w, attempt + 1))
         return False
 
@@ -917,50 +921,7 @@ def erect_box(rig):
     return bool(st["erected"])
 
 
-LID_PARK = (-0.57, 0.10)    # bench spot (lid centre) beside the cradle, on the hook arm's side: no box motion goes there
-
-
-def _park_lid(rig):
-    """Move the lid tray from the infeed tray to LID_PARK (long side along y, printed side up), where it waits for put_lid
-    (which fetches it from wherever it lies). Returns True when it lies there."""
-    sc = rig.sc
-    _log(rig, "lid: in the way of a wall fold, parking it on the bench at %s" % (LID_PARK,))
-    rig.lid_parked = True
-    _left_up(rig, APPROACH_Z)
-    if not _grasp_lid(rig):
-        _log(rig, "lid: no grasp, not parked")
-        return False
-    arm = sc.arms["left"]
-    lp, lq = sc.lid_pose()
-    Rl = quat_to_mat(lq)
-    pa, Ra = arm.tcp_actual()
-    R_rel = Ra.T @ Rl
-    p_rel = Ra.T @ (np.asarray(lp, float) - pa)
-    yaw_lid = _yaw_of(Rl[:, 0])
-    yaw_des = min((math.pi / 2, -math.pi / 2), key=lambda y: abs(_wrap(y - yaw_lid)))     # its long side along y
-    R_des = _rotz(yaw_des)
-    pos_des = np.array([LID_PARK[0], LID_PARK[1], LID_WALL_REST])
-    R_tcp = R_des @ R_rel.T
-    q_tcp = mat_to_quat(R_tcp)
-    p_tcp = pos_des - R_tcp @ p_rel
-    # round the arm's base at 0.48 m in front of it (a straight line would bring the lid past the base column)
-    for ang in (-80.0, -130.0):
-        a = math.radians(ang)
-        w = np.array([LEFT_BASE[0] + 0.48 * math.cos(a), LEFT_BASE[1] + 0.48 * math.sin(a), CARRY_Z])
-        _carry(rig, w, q_tcp, speed=0.15)
-    _carry(rig, np.array([p_tcp[0], p_tcp[1], CARRY_Z]), q_tcp, speed=0.15)
-    _glide(rig, "left", p_tcp + np.array([0.0, 0.0, 0.04]), q_tcp, speed=0.12, tol=0.002, timeout=4.0, settle=0.2)
-    _glide(rig, "left", p_tcp + np.array([0.0, 0.0, 0.004]), q_tcp, speed=0.03, tol=0.001, timeout=3.0, settle=0.2)
-    rig.release(0.5)
-    _glide(rig, "left", p_tcp + np.array([0.0, 0.0, 0.10]), q_tcp, speed=0.2, tol=0.005, timeout=3.0)
-    _left_up(rig, APPROACH_Z)
-    lp2, _ = sc.lid_pose()
-    ok = float(np.linalg.norm(np.asarray(lp2[:2], float) - np.asarray(LID_PARK))) < 0.03 and abs(float(lp2[2]) - LID_WALL_REST) < 0.01
-    _log(rig, "lid parked at %s: %s (t=%.1f)" % (np.round(lp2, 3), ok, rig.time))
-    return ok
-
-
-LID_WALL_REST = 0.027       # the lid tray's origin height resting on its walls on the bench
+LID_DRAG_Y_MIN = -0.175     # a short-wall fold stopped on the lid tray moves the blank away from the tray, not beyond this
 
 
 def _plan_fold(rig, w, alpha_deg, tag=None):
