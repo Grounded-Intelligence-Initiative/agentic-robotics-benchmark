@@ -930,8 +930,9 @@ LID_DRAG_Y_MIN = -0.175     # a short-wall fold stopped on the lid tray moves th
 LID_SHIFT_MAX = 0.06        # a lid tray in the way of a wall fold slides this far toward +y on the infeed tray, or back
                             # onto the tray when it lies off it (LID_TRAY_IN inside the tray's near edge) ...
 LID_SHOE_CLEAR = 0.02       # ... keeping this much from the shoes lying there
-LID_TRAY_IN = 0.012         # the cell delivers some lids onto the tray's near rim, and about one in twenty of those is
-                            # pushed off the tray at reset, 12 cm toward the blank (seeds 1014, 1034, 1039 and 1046)
+LID_TRAY_IN = 0.012         # the cell delivers the lid with its near wall over the tray's near rim: of 128 seeds, 45 lids
+                            # rest tilted on the rim and 4 are pushed off the tray at reset, 12 cm toward the blank
+                            # (seeds 1014, 1034, 1039 and 1046)
 LID_LIFT = 0.035            # carried this high over the tray's rim (18 mm)
 
 
@@ -1822,9 +1823,14 @@ def ship_box(rig):
     lag of the settled stroke (measured 0.5-1.0 s into it, the first 0.5 s of acceleration discarded): a settled lag
     above PUSH_BAD_LAG means a bad branch (lift, re-home, re-plan avoiding that branch), and a later lag 15 mm above
     the settled one, or the box not moving for 1 s, is a stall (lift, re-home, re-approach, push again).  At most 5
-    strokes.  The box ships once it rests beyond the line with the lid closed."""
+    strokes.  The box ships once it rests beyond the line with the lid closed: without the lid closed there is nothing
+    to ship and nothing is pushed (pushing such a box from wherever a failed packing left it, near the gripper's base,
+    put the hand on the bench at 295 N, seed 1004), nor is a stroke for which no branch can be planned."""
     sc = rig.sc
     arm = sc.arms["left"]
+    if not _floor_frame(rig)[2]["closed"]:
+        _log(rig, "ship: the lid is not closed, nothing to ship: no push (t=%.1f)" % rig.time)
+        return False
     _left_up(rig, 0.18)
     park_hook_arm(rig)
     outfeed = float(sc.layout["outfeed_x"])
@@ -1854,6 +1860,9 @@ def ship_box(rig):
         q_pre, margin = _plan_stroke(rig, pre, start, start + xw * dist_full, q, avoid=avoid)
         _log(rig, "stroke %d: box at %s, push %.3f m%s along %s; planned branch margin %.2f rad (%s)" % (
             stroke + 1, np.round(fp, 3), dist, " (first of two)" if partial else "", np.round(xw, 2), margin, None if q_pre is None else np.round(q_pre, 2)))
+        if q_pre is None:
+            _log(rig, "stroke %d: no branch can be planned from here, not pushing" % (stroke + 1))
+            break
         rig.gripper(0.0, wait=False)
         if q_pre is not None and float(np.max(np.abs(q_pre - arm.q()))) > 0.15:
             _reconfigure(rig, pre, q, q_pre)
