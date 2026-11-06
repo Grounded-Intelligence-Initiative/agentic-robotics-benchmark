@@ -841,6 +841,8 @@ def erect_box(rig):
                 return True
             press = getattr(rig, "box_press", None)
             if press is not None and "lid" in press[1][1]:
+                if not getattr(rig, "lid_shifted", False) and _shift_lid_away(rig):
+                    continue                               # the lid slid away from the box: the same wall again
                 avoid.append(tag)                          # that handle put the hand on the lid: another one
                 if w in (walls["px"], walls["mx"], walls["py"]):
                     # a short wall or the wall facing the tray: its hand and the forearm come in from the tray's side,
@@ -925,6 +927,76 @@ def erect_box(rig):
 
 
 LID_DRAG_Y_MIN = -0.175     # a short-wall fold stopped on the lid tray moves the blank away from the tray, not beyond this
+LID_SHIFT_MAX = 0.06        # a lid tray in the way of a wall fold slides at most this far toward +y on the infeed tray
+LID_SHOE_CLEAR = 0.02       # ... keeping this much from the shoes lying there
+
+
+def _shift_lid_away(rig):
+    """The lid tray lies so close to the blank that a wall fold's hand met it (a lid jittered toward the box): grasp it
+    at the middle of its wall that faces the arm across the tray's length (away from the shoes), slide it toward +y on
+    the infeed tray by up to LID_SHIFT_MAX (LID_SHOE_CLEAR from the shoes lying there), set it down, let go. Returns
+    True when it moved by 1.5 cm or more."""
+    sc = rig.sc
+    rig.lid_shifted = True
+    lp, lq = sc.lid_pose()
+    lp = np.asarray(lp, float)
+    Rl = quat_to_mat(np.asarray(lq, float))
+    lo, wo = float(sc.lid["dims"]["Lo"]) / 2, float(sc.lid["dims"]["Wo"]) / 2
+    lid_max_y = max(float((lp + Rl @ np.array([sx * lo, sy * wo, 0.0]))[1]) for sx in (-1, 1) for sy in (-1, 1))
+    shoe_min_y = float("inf")
+    rec = rig.s.work.current
+    for i in (rec["shoe_ids"] if rec is not None else (0, 1)):
+        p, R = _shoe_frame(rig, i)
+        d = sc.shoes[i]["dims"]
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                q = p + R @ np.array([sx * d["L"] / 2, sy * d["W"] / 2, 0.0])
+                if abs(float(q[0]) - float(lp[0])) < lo + 0.05:
+                    shoe_min_y = min(shoe_min_y, float(q[1]))
+    dy = min(LID_SHIFT_MAX, shoe_min_y - LID_SHOE_CLEAR - lid_max_y)
+    if dy < 0.015:
+        _log(rig, "lid: in the way of a wall fold, but no room to slide it away (%.0f mm)" % (1000 * max(dy, 0.0)))
+        return False
+    hs = sc.carton_handles()
+    cands = []
+    for key, sn in sc.lid["sites"].items():
+        hp = np.array(hs[sn]["pos"], float)
+        if abs(float(hp[1]) - float(lp[1])) < 0.5 * wo:          # a wall across the tray's length (its middle at the lid's y)
+            cands.append((float(np.linalg.norm(hp[:2] - LEFT_BASE[:2])), key, sn))
+    cands.sort()
+    _log(rig, "lid: in the way of a wall fold, sliding it %.0f mm toward +y on the tray (handles %s)" % (1000 * dy, [c[1] for c in cands]))
+    for _, key, sn in cands:
+        h = hs[sn]
+        p = np.array(h["pos"], float)
+        R = quat_to_mat(np.array(h["quat"], float))
+        normal = _unit([R[0, 1], R[1, 1], 0.0])
+        for yaw in (_yaw_of(normal), _yaw_of(normal) + math.pi):
+            q = down_quat(yaw)
+            tcp = p + np.array([0.0, 0.0, PINCH_Z_HI - ATTACH_MARGIN - 0.0005])
+            if _ik_any(rig, tcp, q) is None or _ik_any(rig, tcp + np.array([0.0, 0.03, 0.025]) + np.array([0.0, dy, 0.0]), q) is None:
+                continue
+            rig.gripper(0.03, wait=False)
+            _left_up(rig, APPROACH_Z)
+            _reach(rig, np.array([tcp[0], tcp[1], APPROACH_Z]), q)
+            if _glide(rig, "left", tcp, q, speed=0.1, tol=0.001, timeout=4.0, settle=0.1, stall_s=0.8) > 0.004:
+                _left_up(rig, APPROACH_Z)
+                continue
+            if _grasp(rig, "lid %s (to slide it)" % key, p) is None:
+                rig.release(0.2)
+                _left_up(rig, APPROACH_Z)
+                continue
+            _glide(rig, "left", tcp + np.array([0.0, 0.0, 0.025]), q, speed=0.04, tol=0.002, timeout=3.0)
+            _glide(rig, "left", tcp + np.array([0.0, dy, 0.025]), q, speed=0.03, tol=0.002, timeout=4.0)
+            _glide(rig, "left", tcp + np.array([0.0, dy, 0.002]), q, speed=0.02, tol=0.0015, timeout=3.0, settle=0.2)
+            rig.release(0.4)
+            _glide(rig, "left", tcp + np.array([0.0, dy, 0.10]), q, speed=0.15, tol=0.005, timeout=3.0)
+            _left_up(rig, APPROACH_Z)
+            lp2, _ = sc.lid_pose()
+            moved = float(lp2[1]) - float(lp[1])
+            _log(rig, "lid slid by %.0f mm in y to %s (t=%.1f)" % (1000 * moved, np.round(lp2, 3), rig.time))
+            return moved >= 0.015
+    _log(rig, "lid: could not grasp it to slide it away")
+    return False
 
 
 def _plan_fold(rig, w, alpha_deg, tag=None):
