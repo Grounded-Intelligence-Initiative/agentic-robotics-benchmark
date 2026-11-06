@@ -50,8 +50,8 @@ cameras offscreen on the CPU (`MUJOCO_GL=egl`, already set).
   riser, a second turn of 2 to 4 sectors either way and a last riser, all 2 sectors wide; turn
   channels may continue 1 to 3 sectors the other way into a dead end; and there may be up to two
   false entrances (risers as deep as the real one that lead nowhere). A channel is 30 degrees wide,
-but the pin's centre has only about +-7 degrees of play in it (less when the nut sits off-centre on
-the shaft, which the 1.7 mm clearance allows). Resting on the pin, the nut's
+but the solid cells beside it narrow the opening near the shaft: a nut resting on the pin drops
+into a riser only while the riser is within about +-4 degrees of the pin. Resting on the pin, the nut's
   bottom is 39.5 mm above the collar; it can come down to 24.5 mm in an entrance riser, to 9.5 mm
   after the first turn and riser, and to the collar after the second. Each episode places the nut
   flat on the table with its centre at x in [-0.20, -0.07], y in [-0.20, 0.20] and its yaw
