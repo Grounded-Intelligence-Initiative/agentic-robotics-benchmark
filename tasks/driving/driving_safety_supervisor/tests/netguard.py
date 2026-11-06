@@ -1,12 +1,11 @@
 """netguard - start the agent's controller with no IP networking, loopback included.
 
-Why this exists. The simulator (Unreal Engine + ProjectAirSim) is driven over TCP on the
-sandbox's loopback interface, and its API can read the drone's true pose, list scene
-objects and teleport the drone. The agent's controller runs at the agent's UID inside the
-same sandbox, so a socket to 127.0.0.1 would be a direct line to the ground truth the task
-is about. ProjectAirSim's optional client authorization does not close this: the server
-keeps one global "authorized until" time, so once the grader authorizes, every client is
-authorized. The verify sandbox also has no NET_ADMIN, so iptables owner rules are out.
+Why this exists. The simulator (CARLA, on Unreal Engine) serves its RPC API over TCP on the
+sandbox's loopback interface, and that API reads every actor's true state and moves any
+actor, the car included. The agent's controller runs at the agent's UID inside the same
+sandbox, so a socket to 127.0.0.1 would be a direct line to the ground truth the task is
+about, and CARLA asks its clients for no credentials. The sandbox also has no NET_ADMIN, so
+iptables owner rules are out.
 
 What it does. Before exec'ing the controller it installs a seccomp filter (no privilege
 needed: PR_SET_NO_NEW_PRIVS first) that makes `socket(AF_INET|AF_INET6, ...)` fail with

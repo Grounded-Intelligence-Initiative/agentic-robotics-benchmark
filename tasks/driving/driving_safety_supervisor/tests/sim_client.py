@@ -37,9 +37,11 @@ class SimClient(object):
         if run_as:
             argv = ["runuser", "-u", run_as, "--"] + argv
         self._log = open(log_path, "a") if log_path else subprocess.DEVNULL
+        # a fixed string hash, so nothing in the bridge can depend on the process's hash seed
+        env = dict(os.environ, PYTHONHASHSEED="0")
         self.proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                      stderr=self._log, universal_newlines=True, bufsize=1,
-                                     start_new_session=True)
+                                     start_new_session=True, env=env)
         self._lines = queue.Queue()
         threading.Thread(target=self._pump, daemon=True).start()
         hello = self._read(ready_timeout)

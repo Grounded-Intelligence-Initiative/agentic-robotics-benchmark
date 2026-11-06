@@ -29,8 +29,8 @@ network_mode = "no-network"
 # secret is the episode seeds, but nothing the agent left running in its own sandbox may
 # reach CARLA during the grading run.
 [verifier]
-# 24 episodes of up to ~35 s driving (plus excused waits) at 10 Hz, plus CARLA start-up
-# and town loads.
+# 24 episodes of up to ~35 s driving (plus up to 90 s each held at red lights) at 10 Hz,
+# plus CARLA start-up and town loads.
 timeout_sec = 10800
 environment_mode = "separate"
 

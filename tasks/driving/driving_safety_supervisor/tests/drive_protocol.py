@@ -85,8 +85,8 @@ def make_specs(rng, towns, per_kind, kinds=KINDS):
 def agent_observation(state, t):
     """What the supervisor sees: the front camera, its speed, where the route goes next and
     what the nominal planner wants to do. The scoring block (`truth`) never reaches the
-    wire; the ground-truth block (`privileged`) does only when the grader asked the bridge
-    for it, which it does for the oracle token alone."""
+    wire; the ground-truth block (`privileged`) does only when the episode's spec asked the
+    bridge for it (a practice aid; graded runs do not give it to your supervisor)."""
     obs = {
         "t": int(t),
         "image": state["frame"]["image"],

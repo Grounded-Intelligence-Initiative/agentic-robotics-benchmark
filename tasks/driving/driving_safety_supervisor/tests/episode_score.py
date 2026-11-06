@@ -16,9 +16,9 @@ or for an aborted episode.
 Pace: `truth["pace"]` is the distance the car made good along its route divided by the
 distance it would have covered at the reference pace (0.85 x the road's speed limit,
 limits above 50 km/h counted as 50 km/h, the nominal planner's own cap) over the time it
-was not excused. Time stopped at a red or yellow light and time held by a blockage the
-scenario requires waiting for are excused. A pace of 0.8 or better keeps the full score;
-below that the factor falls linearly to 0.5 at a standstill.
+was not excused. Only time stopped at a red or yellow light is excused (up to 90 s an
+episode); every other wait counts. A pace of 0.8 or better keeps the full score; below that
+the factor falls linearly to 0.5 at a standstill.
 """
 
 PENALTY = {"vehicle": 0.5, "static": 0.6, "red_light": 0.7}

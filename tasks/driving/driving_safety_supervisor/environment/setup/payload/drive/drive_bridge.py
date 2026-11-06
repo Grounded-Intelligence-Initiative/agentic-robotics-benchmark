@@ -10,13 +10,19 @@ CARLA client interpreter, `/opt/carla/venv/bin/python` (Python 3.10). JSON lines
 
 `state` holds what the supervisor may see (the front camera frame, ego speed, navigation,
 the nominal control), a pre-rendered probe frame, and a privileged `truth` block (route
-completion, infractions, pace, termination) that the grading side keeps to itself
-(drive_protocol.agent_observation filters it out).
+completion, infractions, pace, termination, a digest of the episode's layout) that the
+grading side keeps to itself (drive_protocol.agent_observation filters it out).
 
-A spec with `"privileged": true` (the grader sets it only for a submission that carries the
-oracle token) adds a `privileged` block to every state: the true position, velocity and size
-of every road user and prop near the car, and the route's lane geometry ahead, all in the
-car's frame. The probe then also reports the road user it pasted into the probe frame.
+A spec with `"privileged": true` adds a `privileged` block to every state: the true position,
+velocity and size of every road user and prop near the car, and the route's lane geometry
+ahead, all in the car's frame. The bridge adds it only when the spec asks for it, as a
+practice aid; graded runs do not give it to your supervisor. The probe then also reports the
+road user it pasted into the probe frame.
+
+Repeatability: the world is reloaded for every episode, in synchronous mode with fixed
+physics substeps, so an episode's layout (route, staging, traffic and their draws) follows
+from its spec alone; `truth["layout"]` is a digest of it. Collisions and camera frames are
+taken tick by tick on the main thread, one camera frame per simulator tick.
 
 A spec may name a `variant`: a different staging of its kind, defined in `drive_variants`
 next to this file. The practice copy ships without that module and stages every kind in
@@ -36,6 +42,7 @@ Shared byte-identically by the grading stage and the agent payload.
 
 import argparse
 import base64
+import hashlib
 import json
 import math
 import os
@@ -50,15 +57,18 @@ import zlib
 
 CAM_X, CAM_Z = 1.5, 1.6   # front camera: 1.5 m ahead of the centre, 1.6 m up, level, 90 deg
 DT = 0.05                 # simulator step
+SUBSTEP_DT, MAX_SUBSTEPS = 0.01, 10   # physics substeps inside one simulator step
 TICKS_PER_STEP = 2        # control period 0.1 s
 HARSH_DECEL = 7.0         # m/s^2
 BLOCKED_S = 25.0
-MAX_EXCUSED_S = 90.0      # waiting excused per episode (red lights, required waits)
+MAX_EXCUSED_S = 90.0      # waiting excused per episode (held at a red or yellow light)
 OFF_ROUTE_M = 15.0
 TIME_PER_M, TIME_EXTRA_S = 1 / 5.0, 15.0   # time limit: route length / 5 m/s + 15 s
 REF_FRACTION = 0.85       # reference pace: this fraction of the speed limit ...
 REF_CAP_KMH = 50.0        # ... counting limits above the nominal planner's own cap as the cap
 NAV_SPACING_M = 30.0      # navigation targets: about every 30 m and where the command changes
+VEHICLE_RADIUS_M, NEAR_RADIUS_M = 250.0, 80.0   # privileged block: vehicles, walkers and props
+FRAME_TIMEOUT_S = 30.0    # a camera frame not arriving this long after its tick is a bridge error
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -74,6 +84,15 @@ def _log(message):
 
 def _wrap(angle):
     return (angle + math.pi) % (2 * math.pi) - math.pi
+
+
+def layout_digest(town, route, actors, rng):
+    """sha256 of what an episode's reset laid out: the town, the route's lane keys, the actors
+    spawned (blueprint ids in spawn order) and the scenario generator's state after every draw
+    of the reset. The same spec gives the same digest on the same build."""
+    payload = {"town": town, "route": route, "actors": actors, "rng": repr(rng.getstate())}
+    return hashlib.sha256(json.dumps(payload, sort_keys=True,
+                                     separators=(",", ":")).encode("ascii")).hexdigest()
 
 
 class Tracker(object):
@@ -94,18 +113,23 @@ class Tracker(object):
         self.harsh = 0
         self._harsh_active = False
         self._still = 0.0
-        self.excused = 0.0       # time held at a red light or a required wait: no blame
+        self.excused = 0.0       # time held at a red or yellow light: no blame
         self.reference_m = 0.0   # distance at the reference pace over the unexcused time
         self.travelled = 0.0
         self._last_xy = None
         self._last_hit = {}
         self.termination = ""
+        self.layout = ""         # layout_digest of the reset that built this episode
+        self.staging = {}        # what the staging drew (grading side only, like all of truth)
 
-    def collision(self, category, other_id):
-        if self.time - self._last_hit.get(other_id, -10.0) < 1.0:
-            self._last_hit[other_id] = self.time
+    def collision(self, category, other_id, when=None):
+        """One contact with `other_id`; contacts with the same actor within 1 s (episode time,
+        `when` if given) count once."""
+        now = self.time if when is None else when
+        if now - self._last_hit.get(other_id, -10.0) < 1.0:
+            self._last_hit[other_id] = now
             return
-        self._last_hit[other_id] = self.time
+        self._last_hit[other_id] = now
         self.collisions[category] += 1
         if other_id in self.hazard_ids:
             self.hazard_hits += 1
@@ -165,7 +189,8 @@ class Tracker(object):
                 "hazard_collisions": self.hazard_hits,
                 "harsh_brakes": self.harsh, "time_s": round(self.time, 2),
                 "excused_s": round(self.excused, 2), "pace": round(self.pace, 4),
-                "mean_speed": round(self.travelled / max(self.time, 1e-6), 2)}
+                "mean_speed": round(self.travelled / max(self.time, 1e-6), 2),
+                "layout": self.layout, "staging": dict(self.staging)}
 
 
 def junction_commands(route_xy, in_junction):
@@ -277,6 +302,9 @@ class MockBackend(object):
             self.options[int(h):int(h) + 12] = ["straight"] * 12
         self.tracker = Tracker(self.route, self.kind, spec.get("variant"),
                                [b["id"] for b in self.boxes if b["hazard"]])
+        self.tracker.layout = layout_digest(
+            spec.get("town", ""), [len(self.route), self.options.count("lanefollow")],
+            [[b["cat"], b["x"], b["y"], b["hx"], b["hy"], b["trigger"]] for b in self.boxes], rng)
         self._still_nominal = 0.0
         return self._state()
 
@@ -435,35 +463,39 @@ class CarlaBackend(object):
         self.tm = self.client.get_trafficmanager(self.port + 50)
         self.world = None
         self.town = None
+        self.map = None
         self.actors = []
         self.sensors = []
         _log("CARLA {} up on port {}".format(self.client.get_server_version(), self.port))
 
     # -- world setup ----------------------------------------------------------
-    def _load(self, town):
-        carla = self.carla
-        if self.town != town:
-            self.world = self.client.load_world(town)
-            self.town = town
-            self.light_times = {light.id: (light.get_green_time(), light.get_yellow_time(),
-                                           light.get_red_time())
-                                for light in self.world.get_actors().filter("traffic.traffic_light")}
-        else:
-            self.world = self.client.get_world()
-        settings = self.world.get_settings()
+    def _sync(self, world):
+        """Synchronous mode at DT with fixed physics substeps, rendering on."""
+        settings = world.get_settings()
         settings.synchronous_mode = True
         settings.fixed_delta_seconds = DT
+        settings.substepping = True
+        settings.max_substep_delta_time = SUBSTEP_DT
+        settings.max_substeps = MAX_SUBSTEPS
         settings.no_rendering_mode = False
-        self.world.apply_settings(settings)
+        world.apply_settings(settings)
         self.tm.set_synchronous_mode(True)
-        self.map = self.world.get_map()
-        # A staged scenario stretches some lights' phases; restore the town's own timing.
-        for light in self.world.get_actors().filter("traffic.traffic_light"):
-            green, yellow, red = self.light_times.get(light.id, (None, None, None))
-            if green is not None:
-                light.set_green_time(green)
-                light.set_yellow_time(yellow)
-                light.set_red_time(red)
+
+    def _load(self, town):
+        """A fresh world for every episode: the town loaded (or the current one reloaded) with
+        synchronous mode already on, so nothing runs between episodes and no actor, physics
+        state or traffic light phase carries over from the previous one."""
+        carla = self.carla
+        self._sync(self.world if self.world is not None else self.client.get_world())
+        if self.town != town:
+            self.world = self.client.load_world(town, reset_settings=False)
+            self.town = town
+            self.map = None
+        else:
+            self.world = self.client.reload_world(reset_settings=False)
+        self._sync(self.world)
+        if self.map is None:
+            self.map = self.world.get_map()     # the same town's road network: kept across reloads
         self.world.reset_all_traffic_lights()
         self.world.tick()
         return carla
@@ -474,19 +506,14 @@ class CarlaBackend(object):
                 sensor.stop()
             except RuntimeError:
                 pass
-        # Destroying Traffic Manager vehicles in synchronous mode can deadlock the server:
-        # release them and leave synchronous mode first (`_load` turns it back on).
+        # Release the Traffic Manager's vehicles before they are destroyed (the reload that
+        # follows destroys whatever is left).
         for actor in self.actors:
             if actor.type_id.startswith("vehicle."):
                 try:
                     actor.set_autopilot(False, self.tm.get_port())
                 except RuntimeError:
                     pass
-        settings = self.world.get_settings()
-        settings.synchronous_mode = False
-        settings.fixed_delta_seconds = None
-        self.world.apply_settings(settings)
-        self.tm.set_synchronous_mode(False)
         ids = [a.id for a in self.sensors + self.actors]
         if ids:
             self.client.apply_batch_sync([self.carla.command.DestroyActor(i) for i in ids], False)
@@ -504,10 +531,10 @@ class CarlaBackend(object):
         self.probe_rng = random.Random(spec["seed"] ^ 0x5EED)
         self.tm.set_random_device_seed(spec["seed"] & 0x7FFFFFFF)
         self.walker_triggers, self.scripted = [], []
-        self.excused = lambda: False          # a staged required wait replaces this
         weathers = ["ClearNoon", "CloudyNoon", "WetNoon", "ClearSunset", "WetCloudyNoon",
                     "SoftRainNoon"]
-        self.world.set_weather(getattr(carla.WeatherParameters, rng.choice(weathers)))
+        weather = rng.choice(weathers)
+        self.world.set_weather(getattr(carla.WeatherParameters, weather))
         builder = ScenarioBuilder(self, rng, spec["kind"], spec.get("variant"),
                                   distractors=int(spec.get("distractors", 0)))
         route, ego_tf = builder.build()
@@ -534,14 +561,43 @@ class CarlaBackend(object):
         self.route_xy = [(wp.transform.location.x, wp.transform.location.y) for wp, _ in route]
         self.options = junction_commands(self.route_xy, [wp.is_junction for wp, _ in route])
         self.tracker = Tracker(self.route_xy, spec["kind"], spec.get("variant"), hazard_ids)
+        builder.staging["weather"] = weather
+        self.tracker.staging = builder.staging      # the variant's hooks may add to it later
+        self.tracker.layout = layout_digest(
+            spec["town"], [[wp.road_id, wp.section_id, wp.lane_id, round(wp.s, 1)] for wp, _ in route],
+            [a.type_id for a in self.actors], rng)
         self.applied = [0.0, 0.0, 0.0]
         self.prev_speed = 0.0
         self.red_candidate = None
         for _ in range(10):          # settle the vehicle and fill the sensor queues
             self.ego.apply_control(carla.VehicleControl(brake=1.0))
-            self.world.tick()
+            self._frame_time[self._tick()] = 0.0
+        image = self._frames()
+        self._apply_hits()
         self._nominal_control = self._nominal_step()
-        return self._state()
+        return self._state(image)
+
+    def _tick(self):
+        """One simulator tick; the front camera owes one frame for every tick."""
+        frame = self.world.tick()
+        self._owed_frames += 1
+        return frame
+
+    def _apply_hits(self):
+        """Contacts the collision sensor queued so far, in the order of the frames they happened
+        in, applied here on the main thread."""
+        hits = []
+        while True:
+            try:
+                hits.append(self._hits.get_nowait())
+            except Exception:  # noqa: BLE001 - queue.Empty
+                break
+        for frame, other_id, category in sorted(hits, key=lambda h: (h[0], h[1], h[2])):
+            when = self._frame_time.get(frame)
+            if when is None:
+                earlier = [t for f, t in self._frame_time.items() if f <= frame]
+                when = max(earlier) if earlier else 0.0
+            self.tracker.collision(category, other_id, when=when)
 
     def _spawn(self, blueprint, transform, role=None, physics=True):
         bp = self.world.get_blueprint_library().find(blueprint)
@@ -572,17 +628,25 @@ class CarlaBackend(object):
         sensor.listen(q.put)
         self.sensors.append(sensor)
         self.queues["front"] = q
+        self._owed_frames = 0
+        self._frame_time = {}
+        # Contacts arrive on the sensor's own thread: queue them (with the frame they happened
+        # in) for the main thread. Each episode has its own queue, so a late report from the
+        # previous episode's sensor cannot land in this one.
+        hits = queue.Queue()
+        self._hits = hits
         bp = lib.find("sensor.other.collision")
         collision = self.world.spawn_actor(bp, carla.Transform(), attach_to=self.ego)
-        collision.listen(self._on_collision)
+        collision.listen(lambda event: hits.put(self._contact(event)))
         self.sensors.append(collision)
 
-    def _on_collision(self, event):
+    @staticmethod
+    def _contact(event):
         other = event.other_actor
         type_id = getattr(other, "type_id", "") or ""
         category = ("walker" if type_id.startswith("walker") else
                     "vehicle" if type_id.startswith("vehicle") else "static")
-        self.tracker.collision(category, getattr(other, "id", 0))
+        return int(event.frame), int(getattr(other, "id", 0) or 0), category
 
     def _background_walkers(self, rng, route):
         """People walking along the pavements on both sides of the route. They are scripted
@@ -671,18 +735,20 @@ class CarlaBackend(object):
             for hook in self.scripted:
                 hook()
             self.ego.apply_control(vc)
-            self.world.tick()
+            frame = self._tick()
             speed = self._speed()
             loc = self.ego.get_location()
             at_red = self._red_light_check(loc, speed)
             self.tracker.update(loc.x, loc.y, speed, self.prev_speed, DT,
-                                limit_kmh=self.ego.get_speed_limit() or 30.0,
-                                excused=at_red or self.excused())
+                                limit_kmh=self.ego.get_speed_limit() or 30.0, excused=at_red)
+            self._frame_time[frame] = self.tracker.time
             self.prev_speed = speed
             if self.tracker.termination:
                 break
+        image = self._frames()       # this step's camera frames: by then its contacts are in too
+        self._apply_hits()
         self._nominal_control = self._nominal_step()
-        return self._state()
+        return self._state(image)
 
     def _nominal_step(self):
         try:
@@ -729,12 +795,21 @@ class CarlaBackend(object):
         return at_red
 
     # -- observation -------------------------------------------------------------
-    def _latest(self, key):
-        q, item = self.queues[key], None
-        while not q.empty():
-            item = q.get_nowait()
+    def _frames(self):
+        """The front camera's frames owed for the ticks since the last call, one per tick, in
+        arrival order: the last one is the current view. A frame missing for FRAME_TIMEOUT_S
+        is a bridge error."""
+        import queue
+        q, item = self.queues["front"], None
+        owed, self._owed_frames = self._owed_frames, 0
+        for _ in range(owed):
+            try:
+                item = q.get(timeout=FRAME_TIMEOUT_S)
+            except queue.Empty:
+                raise RuntimeError("the front camera sent no frame within {:.0f} s of its "
+                                   "tick".format(FRAME_TIMEOUT_S))
         if item is None:
-            item = q.get(timeout=5.0)
+            raise RuntimeError("no simulator tick since the last camera frame")
         return item
 
     def _probe_frame(self, bgr):
@@ -778,9 +853,8 @@ class CarlaBackend(object):
         out[y0:y1, x0:x1] = (alpha * part[:, :, :3] + (1.0 - alpha) * region).astype(np.uint8)
         return out
 
-    def _state(self):
+    def _state(self, image):
         np, cv2 = self.np, self.cv2
-        image = self._latest("front")
         bgr = np.frombuffer(image.raw_data, dtype=np.uint8).reshape(image.height, image.width, 4)[:, :, :3]
         encode = lambda img: base64.b64encode(cv2.imencode(".png", img)[1].tobytes()).decode("ascii")  # noqa: E731
         tf = self.ego.get_transform()
@@ -799,15 +873,17 @@ class CarlaBackend(object):
             state["probe"]["actor"] = self.probe_actor
         return state
 
-    def _privileged(self, tf, radius=80.0):
+    def _privileged(self, tf):
         """Ground truth in the car's frame (x forward, y right, metres, from the car's centre):
-        every vehicle, walker and prop within `radius`, and the route ahead with its lane
+        every vehicle within VEHICLE_RADIUS_M (with `reverse`: its reversing lights are on)
+        and every walker and prop within NEAR_RADIUS_M, and the route ahead with its lane
         width, the driving lanes to its left (nearest first, until one that is not a driving
         lane) with their centre and direction, and the lanes to its right as far as the kerb
         (driving, shoulder, parking or bike lanes) with their centre and type."""
         yaw = math.radians(tf.rotation.yaw)
         c, s = math.cos(yaw), math.sin(yaw)
         ox, oy = tf.location.x, tf.location.y
+        reverse_light = int(self.carla.VehicleLightState.Reverse)
 
         def local(x, y):
             dx, dy = x - ox, y - oy
@@ -823,7 +899,7 @@ class CarlaBackend(object):
                 continue
             atf = actor.get_transform()
             loc = atf.location
-            if loc.distance(tf.location) > radius:
+            if loc.distance(tf.location) > (VEHICLE_RADIUS_M if kind == "vehicle" else NEAR_RADIUS_M):
                 continue
             box = actor.bounding_box
             centre = atf.transform(box.location)
@@ -836,12 +912,18 @@ class CarlaBackend(object):
                 v = self.carla.Vector3D((loc.x - last[0]) / (now - last[2]),
                                         (loc.y - last[1]) / (now - last[2]), 0.0)
             ext = box.extent
-            actors.append({"id": actor.id, "type": kind, "blueprint": type_id, "x": x, "y": y,
-                           "z": round(centre.z - tf.location.z, 2),
-                           "yaw": round(math.degrees(_wrap(math.radians(atf.rotation.yaw) - yaw)), 1),
-                           "vx": round(v.x * c + v.y * s, 2), "vy": round(-v.x * s + v.y * c, 2),
-                           "length": round(2 * ext.x, 2), "width": round(2 * ext.y, 2),
-                           "height": round(2 * ext.z, 2)})
+            entry = {"id": actor.id, "type": kind, "blueprint": type_id, "x": x, "y": y,
+                     "z": round(centre.z - tf.location.z, 2),
+                     "yaw": round(math.degrees(_wrap(math.radians(atf.rotation.yaw) - yaw)), 1),
+                     "vx": round(v.x * c + v.y * s, 2), "vy": round(-v.x * s + v.y * c, 2),
+                     "length": round(2 * ext.x, 2), "width": round(2 * ext.y, 2),
+                     "height": round(2 * ext.z, 2)}
+            if kind == "vehicle":
+                try:
+                    entry["reverse"] = bool(int(actor.get_light_state()) & reverse_light)
+                except (RuntimeError, AttributeError, TypeError):
+                    entry["reverse"] = False
+            actors.append(entry)
         lanes = []
         LaneType = self.carla.LaneType
         passable = (LaneType.Driving, LaneType.Shoulder, LaneType.Parking, LaneType.Biking)
@@ -910,6 +992,7 @@ class ScenarioBuilder(object):
         self.carla, self.map, self.world = backend.carla, backend.map, backend.world
         self.RoadOption = backend.RoadOption
         self.hazards = []       # the staged actors; colliding with one zeroes the episode
+        self.staging = {}       # what the staging drew, for the grading side's records
         self.variants = None
         if variant:
             try:
@@ -923,6 +1006,7 @@ class ScenarioBuilder(object):
     def build(self):
         for attempt in range(80):
             self.hazards = []
+            self.staging = {}
             spawned = len(self.b.actors)
             try:
                 result = self._attempt()
@@ -1209,7 +1293,7 @@ def main():
     parser.add_argument("--backend", choices=("carla", "mock"), default="carla")
     parser.add_argument("--carla-root", default="/opt/carla/server")
     parser.add_argument("--port", type=int, default=0)
-    parser.add_argument("--image-size", type=int, default=320,
+    parser.add_argument("--image-size", type=int, default=512,
                         help="camera width in pixels; height is half of it")
     # Low crashes CARLA 0.9.15 (signal 11) right after a town load on recent drivers.
     parser.add_argument("--quality", default="Epic", choices=("Low", "Epic"))
