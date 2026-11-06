@@ -10,7 +10,8 @@ os.urandom), so nothing tuned here can be a hidden episode.
 `make`: per graded variant `--per-variant` episodes, towns cycled as the grader cycles them (graded_cells; a variant
 limited to some towns cycles over those), each with a seed below 2**32, a distractor count and a lock key from
 random.Random(--rng); grouped by town.
-`run` (host): one container of the task image per GPU (named pr24t2-dev-<n>, no network, 32 GB, the given cores,
+`run` (host; `--solver FILE` swaps the submission's solver.py, e.g. for the expert before this work): one
+container of the task image per GPU (named pr24t2-dev-<n>, no network, 32 GB, the given cores,
 NVIDIA_DRIVER_CAPABILITIES with graphics), each started only once its GPU has 8 GB free, running a share of the
 episodes (whole towns) through review/run_episode.py exactly as the grader would: tests/ staged root-only at
 /opt/ale/tests, solution/solve.sh run as the agent account, the submission then left root-owned as the engine
@@ -72,7 +73,7 @@ find /opt/ale/tests -name __pycache__ -prune -exec rm -rf {{}} +
 chown -R root:root /opt/ale/tests && chmod -R go-rwx /opt/ale/tests && chmod 700 /opt/ale
 rm -rf /home/user/submission && mkdir -p /home/user/submission && chown user:user /home/user/submission
 runuser -u user -- env ALE_HOME=/home/user bash /task/solution/solve.sh
-chown -R root:root /home/user/submission
+{swap}chown -R root:root /home/user/submission
 mkdir -p /out/logs && chmod 777 /out/logs
 cd /opt/ale/tests
 ALE_STAGE_DIR=/opt/ale/tests ALE_HOME=/home/user SUP_DEBUG=1 SUP_LOG=/out/logs/expert_{shard}.log \
@@ -88,6 +89,9 @@ def run(args):
     os.makedirs(out, exist_ok=True)
     os.chmod(out, 0o777)
     gpus = [int(g) for g in args.gpus.split(",")]
+    if args.solver:      # another expert in the same submission (e.g. the one before this work)
+        import shutil
+        shutil.copy(args.solver, os.path.join(out, "solver_override.py"))
     cpus = args.cpus.split(",")
     # contiguous chunks of the town-ordered list, one per container (each loads a town or two)
     specs = sorted(specs, key=lambda s: TOWNS.index(s["town"]))
@@ -108,7 +112,8 @@ def run(args):
                "-e", "NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics", "--cpuset-cpus", cpu,
                "--memory", "32g", "--shm-size", "8g", "--network", "none", "--user", "root",
                "-v", "{}:/task:ro".format(TASK), "-v", "{}:/out".format(out), args.image,
-               "bash", "-c", CONTAINER_SCRIPT.format(shard=n)]
+               "bash", "-c", CONTAINER_SCRIPT.format(
+                   shard=n, swap="cp /out/solver_override.py /home/user/submission/solver.py\n" if args.solver else "")]
         sys.stderr.write("[dev] {} on GPU {} ({} MiB free), cpus {}: {} episodes\n".format(
             name, gpu, gpu_free_mib(gpu), cpu, len(shard)))
         procs.append((name, subprocess.Popen(cmd)))
@@ -241,6 +246,7 @@ def main():
     p.add_argument("--gpus", default="0,1")
     p.add_argument("--cpus", default="16-23,24-31")
     p.add_argument("--image", default=IMAGE)
+    p.add_argument("--solver", help="run this solver.py in place of solution/solver.py")
     p = sub.add_parser("report")
     p.add_argument("dirs", nargs="+")
     args = parser.parse_args()

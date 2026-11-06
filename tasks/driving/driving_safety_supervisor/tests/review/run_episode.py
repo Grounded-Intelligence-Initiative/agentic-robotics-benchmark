@@ -145,7 +145,8 @@ class Recorder(object):
             self.steps.append({"time_s": truth.get("time_s"), "speed": state["ego"]["speed"],
                                "mode": mode, "control": control, "completion": truth.get("route_completion"),
                                "collisions": truth.get("collisions"), "hazard": truth.get("hazard_collisions"),
-                               "harsh": truth.get("harsh_brakes"),
+                               "harsh": truth.get("harsh_brakes"), "red": truth.get("red_lights"),
+                               "red_light": (state.get("privileged") or {}).get("red_light"),
                                "gaps": {k: [round(v[0], 3), v[1]] for k, v in (gaps or {}).items()}})
 
     def reset(self, spec):

@@ -11,9 +11,13 @@ staging, distractors, traffic, walkers, and pieces spawned later), as repr float
 
 Who drives:
   * `--driver planner` (D1-D5): `[0]` at every step, the nominal planner alone;
-  * `--driver expert --expert <solver.py>` (D6): the reference expert in process, with the privileged block, asked
+  * `--driver expert --expert <solver.py>`: the reference expert in process, with the privileged block, asked
     twice at a fixed schedule of steps (every `--probe-every` steps from `--probe-from`), the perturbed copy first
-    (`--order probe-first`) or second (`--order real-first`); only the real reply is applied.
+    (`--order probe-first`) or second (`--order real-first`); only the real reply is applied;
+  * `--driver expert-ab --expert <solver.py>` (D6): two instances of the expert see the same observations every
+    step, one asked probe-first and one real-first at the probe schedule; the first one drives. Any difference in
+    their real replies (recorded per episode as `ab_first_diff`) is the probe order leaking into the expert's
+    memory, independent of the simulator's own noise.
 
     /opt/carla/venv/bin/python -B determinism.py --bridge-dir DIR --out FILE.jsonl.gz --specs SPECS.json
         [--driver planner|expert] [--expert solver.py] [--order probe-first|real-first] [--background 20]
@@ -56,14 +60,16 @@ def run(args):
     sys.path.insert(0, os.path.abspath(args.bridge_dir))
     import drive_bridge as DB  # noqa: E402
     from drive_protocol import agent_observation, parse_action, probe_observation  # noqa: E402
-    expert = None
-    if args.driver == "expert":
+    expert = twin = None
+    if args.driver in ("expert", "expert-ab"):
         sys.path.insert(0, os.path.dirname(os.path.abspath(args.expert)))
         import importlib.util
         spec = importlib.util.spec_from_file_location("expert_solver", args.expert)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         expert = module.Expert()
+        if args.driver == "expert-ab":
+            twin = module.Expert()
     with open(args.specs) as handle:
         jobs = json.load(handle)
     ns = argparse.Namespace(carla_root="/opt/carla/server", port=0, image_size=args.image_size,
@@ -74,7 +80,7 @@ def run(args):
     out = gzip.open(args.out, "wt")
     try:
         for name, spec in jobs:
-            if args.driver == "expert":
+            if args.driver in ("expert", "expert-ab"):
                 spec = dict(spec, privileged=True)
             t1 = time.time()
             state = backend.reset(spec)
@@ -86,7 +92,9 @@ def run(args):
             backend.scripted.append(hook)
             if expert is not None:
                 expert.reset()
-            t, replies = 0, []
+            if twin is not None:
+                twin.reset()
+            t, replies, ab_first_diff = 0, [], None
             while not state["truth"]["done"]:
                 obs = json.loads(json.dumps(agent_observation(state, t)))
                 if expert is None:
@@ -101,8 +109,16 @@ def run(args):
                         else:
                             raw = expert.act(t, obs)
                             expert.act(t, fake)
+                        if twin is not None:            # the other order, same observations
+                            other = twin.act(t, obs)
+                            twin.act(t, fake)
                     else:
                         raw = expert.act(t, obs)
+                        if twin is not None:
+                            other = twin.act(t, obs)
+                    if twin is not None and ab_first_diff is None and \
+                            [float(v) for v in other] != [float(v) for v in raw]:
+                        ab_first_diff = t
                     raw = [float(v) for v in raw]
                     if raw[0] == 0 or not all(math.isfinite(v) for v in raw):
                         raw = [0]
@@ -116,7 +132,7 @@ def run(args):
                 if t > 3000:
                     raise RuntimeError("episode did not terminate")
             ticks.append(snapshot(backend))
-            record = {"name": name, "spec": spec, "truth": state["truth"], "steps": t,
+            record = {"name": name, "spec": spec, "truth": state["truth"], "steps": t, "ab_first_diff": ab_first_diff,
                       "ego_index": backend.actors.index(backend.ego),
                       "reset_s": round(reset_s, 2), "wall_s": round(time.time() - t1, 1),
                       "ticks": ticks, "replies": replies}
@@ -196,7 +212,7 @@ def main():
     parser.add_argument("--bridge-dir", required=True)
     parser.add_argument("--specs", required=True)
     parser.add_argument("--out", required=True)
-    parser.add_argument("--driver", choices=("planner", "expert"), default="planner")
+    parser.add_argument("--driver", choices=("planner", "expert", "expert-ab"), default="planner")
     parser.add_argument("--expert")
     parser.add_argument("--order", choices=("probe-first", "real-first"), default="probe-first")
     parser.add_argument("--probe-from", type=int, default=20)
