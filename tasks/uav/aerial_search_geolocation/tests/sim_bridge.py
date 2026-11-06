@@ -147,10 +147,20 @@ class AirSimBackend(object):
     for it. The first teleport after a scene starts (it runs unpaused until the first frame
     call) often leaves the drone at its spawn point; unchecked, the swept placement after it
     dragged the drone from there until it met geometry, and the cameras saw from there
-    while the bridge reported the start. Now and then a later teleport or settle is not
-    applied either. So every placement the episode builds on, each teleport and each settle,
-    is read back from AirSim's report of the drone actor and repeated until the drone is
-    there (`_confirm`)."""
+    while the bridge reported the start. Later placements of every kind are missed now and
+    then as well (a teleport, a settle, a sub-step of a sweep): the drone stays where it
+    was, with a clear collision record, until a later frame applies whatever placement is
+    pending by then. Unchecked, a missed sub-step merged into the next one, and a merged
+    sweep longer than `_hit` allows for (one missed half-metre start-search step, or two
+    missed quarter-metre ones in a row) let a contact go unrecorded; a move's missed last
+    sub-step was crossed by the next turn's teleport. So every placement is read back from
+    AirSim's report of the drone actor. A teleport or a settle is repeated until the drone
+    is there (`_confirm`). Each sub-step of a move, of a start-search sweep and of a
+    clearance sweep must touch geometry or leave the drone at its pose; one that does
+    neither is swept again from where it began (`_swept`). So every stretch of a move or a
+    sweep is swept with collisions on, one sub-step at a time, and after a move that
+    touches nothing the drone is at the pose the bridge reports, where the next placement,
+    a turn included, starts."""
 
     DRONE = "Drone_1"
     CLEAR_REACH_M = 4.0
@@ -322,16 +332,17 @@ class AirSimBackend(object):
         return any(self._sweep(s, d, out) for d in levels)
 
     def _sweep(self, s, d, reach):
-        """Whether a swept move of `reach` m from s along d stays clear."""
-        clear = True
+        """Whether a swept move of `reach` m from s along d stays clear, each half-metre
+        step read back (`_swept`)."""
+        clear, at = True, s
         steps = int(reach * 2)
         for k in range(1, steps + 1):
             f = reach * k / steps
-            p = (s["x"] + d[0] * f, s["y"] + d[1] * f, s["z"] + d[2] * f)
-            self._place(dict(x=p[0], y=p[1], z=p[2], yaw=s["yaw"]), collide=True)
-            if self._hit(p):
+            p = dict(x=s["x"] + d[0] * f, y=s["y"] + d[1] * f, z=s["z"] + d[2] * f, yaw=s["yaw"])
+            if self._swept(at, p, "a start-search step"):
                 clear = False
                 break
+            at = p
         self._settle(s)
         return clear
 
@@ -350,7 +361,9 @@ class AirSimBackend(object):
         AirSim's record, which otherwise keeps the sweep's last contact, and a later contact
         at the very same pose would read as that old one. Were s itself in contact, the
         record is remembered so it does not count against the next move. The drone is read
-        back at s before the record is (`_confirm`)."""
+        back at s before the record is (`_confirm`). A settle after a sweep goes back along
+        the stretch the sweep has just covered, so one that a teleport has to complete
+        crosses nothing new."""
         self._place(s, collide=True)
         self._confirm(s, "a settle")
         flag, at, _ = self._contact()
@@ -381,6 +394,41 @@ class AirSimBackend(object):
                 self._place(s)
         raise RuntimeError("the drone actor does not stay where it is put ({}): {:.3f} m and "
                            "{:.2f} deg off after {} reads".format(what, metres, degrees, read))
+
+    def _swept(self, at, to, what):
+        """One swept sub-step (`what`, for the log) from `at`, where the drone actor is, to
+        `to`, with collisions on: whether it touched geometry (`_hit`). A sub-step that
+        neither touches anything nor leaves the drone at `to` (ARRIVE_M, ARRIVE_DEG) was not
+        applied: after a short wait the drone is put back at `at` if it is not there
+        (`_confirm`) and the sub-step swept again, PLACE_READS sweeps in all, so that its
+        stretch is swept on its own, from where it begins. A drone still short of `to` then
+        is blocked if AirSim records, where the drone is, the one contact `_hit` discounts
+        (the one it was settled in, `_settle`): a hit. Otherwise it does not follow
+        placements, which raises as in `_confirm`."""
+        want = (to["x"], to["y"], to["z"])
+        for sweep in range(1, self.PLACE_READS + 1):
+            self._place(to, collide=True)
+            if self._hit(want):
+                return True
+            metres, degrees = self._offset(to)
+            if metres <= self.ARRIVE_M and degrees <= self.ARRIVE_DEG:
+                if sweep > 1:
+                    _log("drone actor at its pose after {}: {} sweeps".format(what, sweep))
+                return False
+            _log("drone actor {:.3f} m and {:.2f} deg off its pose after {}, no contact "
+                 "(sweep {} of {})".format(metres, degrees, what, sweep, self.PLACE_READS))
+            if sweep < self.PLACE_READS:
+                time.sleep(0.05 * sweep)
+                self._confirm(at, "a return to the start of " + what)
+        flag, where, _ = self._contact()
+        if flag and where == self.stale and _distance(where, want) <= 0.6 and self._offset(
+                dict(x=where[0], y=where[1], z=where[2], yaw=to["yaw"]))[0] <= self.ARRIVE_M:
+            _log("drone actor held at its settled contact after {} sweeps of {}: a hit".format(
+                sweep, what))
+            return True
+        raise RuntimeError("the drone actor does not follow a swept placement ({}): {:.3f} m "
+                           "and {:.2f} deg off after {} sweeps, no contact".format(
+                               what, metres, degrees, sweep))
 
     def _offset(self, s):
         """(metres, degrees) from s to the drone actor as AirSim reports it (simGetObjectPose,
@@ -442,18 +490,20 @@ class AirSimBackend(object):
 
     def _clearances(self):
         """{move: free metres}: each move swept from the current pose in the same sub-steps
-        as a real move, up to CLEAR_REACH_M. The drone is put back afterwards."""
+        as a real move, each read back (`_swept`), up to CLEAR_REACH_M. The drone is put
+        back afterwards."""
         s, out = self.s, {}
         for move, d in self._deltas(s["yaw"]).items():
             self._settle(s)
-            free = self.CLEAR_REACH_M
+            free, at = self.CLEAR_REACH_M, s
             for k in range(1, int(self.CLEAR_REACH_M * self.SUBSTEPS) + 1):
                 f = float(k) / self.SUBSTEPS
-                p = (s["x"] + d[0] * f, s["y"] + d[1] * f, s["z"] + d[2] * f)
-                self._place(dict(x=p[0], y=p[1], z=p[2], yaw=s["yaw"]), collide=True)
-                if self._hit(p):
+                p = dict(x=s["x"] + d[0] * f, y=s["y"] + d[1] * f, z=s["z"] + d[2] * f,
+                         yaw=s["yaw"])
+                if self._swept(at, p, "a clearance step"):
                     free = float(k - 1) / self.SUBSTEPS
                     break
+                at = p
             out[move] = free
         self._settle(s)
         return out
@@ -473,12 +523,12 @@ class AirSimBackend(object):
             self._confirm(s, "a turn")
         elif delta is not None:
             for _ in range(self.SUBSTEPS):
+                at = dict(x=s["x"], y=s["y"], z=s["z"], yaw=s["yaw"])
                 s["x"] += delta[0] / self.SUBSTEPS
                 s["y"] += delta[1] / self.SUBSTEPS
                 s["z"] += delta[2] / self.SUBSTEPS
                 s["move"] += 1.0 / self.SUBSTEPS
-                self._place(s, collide=True)
-                if self._hit((s["x"], s["y"], s["z"])):
+                if self._swept(at, s, "a move sub-step"):
                     _log("collision with {} at ({:.1f}, {:.1f}, {:.1f})".format(
                         self.hit_name, s["x"], s["y"], s["z"]))
                     s.update(collision=True, success=False, oracle=False, done=True,
