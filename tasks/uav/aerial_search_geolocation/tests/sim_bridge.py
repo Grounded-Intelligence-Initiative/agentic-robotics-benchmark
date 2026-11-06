@@ -147,20 +147,25 @@ class AirSimBackend(object):
     for it. The first teleport after a scene starts (it runs unpaused until the first frame
     call) often leaves the drone at its spawn point; unchecked, the swept placement after it
     dragged the drone from there until it met geometry, and the cameras saw from there
-    while the bridge reported the start. Later placements of every kind are missed now and
-    then as well (a teleport, a settle, a sub-step of a sweep): the drone stays where it
-    was, with a clear collision record, until a later frame applies whatever placement is
-    pending by then. Unchecked, a missed sub-step merged into the next one, and a merged
-    sweep longer than `_hit` allows for (one missed half-metre start-search step, or two
-    missed quarter-metre ones in a row) let a contact go unrecorded; a move's missed last
-    sub-step was crossed by the next turn's teleport. So every placement is read back from
-    AirSim's report of the drone actor. A teleport or a settle is repeated until the drone
-    is there (`_confirm`). Each sub-step of a move, of a start-search sweep and of a
-    clearance sweep must touch geometry or leave the drone at its pose; one that does
-    neither is swept again from where it began (`_swept`). So every stretch of a move or a
-    sweep is swept with collisions on, one sub-step at a time, and after a move that
-    touches nothing the drone is at the pose the bridge reports, where the next placement,
-    a turn included, starts."""
+    while the bridge reported the start. Later placements of every kind (a teleport, a
+    settle, a sub-step of a sweep) are now and then not applied by the frame call either.
+    Mostly no frame applies them: the drone stays where it was, and the collision record
+    as it was, until a later frame applies whatever placement is pending by then. But the
+    frame can also land late, after the call has returned, while the bridge reads or
+    waits. simGetObjectPose waits for the game thread, so it sees the drone before or
+    after such a frame; simGetCollisionInfo does not, so a sweep's record can be read
+    before the frame has set it. Unchecked, a missed sub-step merged into the next one,
+    and a merged sweep longer than `_hit` allows for (one missed half-metre start-search
+    step, or two missed quarter-metre ones in a row) let a contact go unrecorded; a move's
+    missed last sub-step was crossed by the next turn's teleport. So every placement is
+    read back from AirSim's report of the drone actor, and a sweep's collision record is
+    read again after it. A teleport or a settle is repeated until the drone is there
+    (`_confirm`). Each sub-step of a move, of a start-search sweep and of a clearance
+    sweep must touch geometry or leave the drone at its pose; one that does neither is
+    swept again from where it began (`_swept`). So every stretch of a move or a sweep is
+    swept with collisions on, one sub-step at a time, and after a move that touches
+    nothing the drone is at the pose the bridge reports, where the next placement, a turn
+    included, starts."""
 
     DRONE = "Drone_1"
     CLEAR_REACH_M = 4.0
@@ -372,6 +377,9 @@ class AirSimBackend(object):
     # A placement the episode builds on must leave the drone actor this close to its pose.
     ARRIVE_M, ARRIVE_DEG = 0.01, 0.5
     PLACE_READS = 5
+    # A swept sub-step is swept again after waits of 0.05 s, 0.10 s, ... as long as they add
+    # up to no more than this: ten sweeps and 2.25 s of waits.
+    SWEEP_WAIT_S = 2.5
 
     def _confirm(self, s, what):
         """Make sure the drone actor is at s after a placement (`what`, for the log): read
@@ -397,38 +405,53 @@ class AirSimBackend(object):
 
     def _swept(self, at, to, what):
         """One swept sub-step (`what`, for the log) from `at`, where the drone actor is, to
-        `to`, with collisions on: whether it touched geometry (`_hit`). A sub-step that
-        neither touches anything nor leaves the drone at `to` (ARRIVE_M, ARRIVE_DEG) was not
-        applied: after a short wait the drone is put back at `at` if it is not there
-        (`_confirm`) and the sub-step swept again, PLACE_READS sweeps in all, so that its
-        stretch is swept on its own, from where it begins. A drone still short of `to` then
-        is blocked if AirSim records, where the drone is, the one contact `_hit` discounts
-        (the one it was settled in, `_settle`): a hit. Otherwise it does not follow
-        placements, which raises as in `_confirm`."""
+        `to`, with collisions on: whether it touched geometry (`_hit`, asked before the
+        actor is read and again after it, for a frame that landed in between). A sub-step
+        that neither touches anything nor leaves the drone at `to` (ARRIVE_M, ARRIVE_DEG)
+        was not applied: after a wait the drone is put back at `at` if it is not there
+        (`_confirm`) and the sub-step swept again, the waits longer each time and at most
+        SWEEP_WAIT_S in all, so that its stretch is swept on its own, from where it begins.
+        A drone still short of `to` then may be blocked: AirSim records, where the drone
+        is, the one contact `_hit` discounts (the one it was settled in, `_settle`). Frames
+        that do not tick leave that record too, so this counts as a hit only once the drone
+        has followed a teleport to `to` and one back (`_confirm`, which raises if it does
+        not). Otherwise the drone does not follow placements, which raises as in
+        `_confirm`."""
         want = (to["x"], to["y"], to["z"])
-        for sweep in range(1, self.PLACE_READS + 1):
+        sweep, waited = 0, 0.0
+        while True:
+            sweep += 1
             self._place(to, collide=True)
             if self._hit(want):
                 return True
             metres, degrees = self._offset(to)
+            if self._hit(want):
+                return True
             if metres <= self.ARRIVE_M and degrees <= self.ARRIVE_DEG:
                 if sweep > 1:
                     _log("drone actor at its pose after {}: {} sweeps".format(what, sweep))
                 return False
             _log("drone actor {:.3f} m and {:.2f} deg off its pose after {}, no contact "
-                 "(sweep {} of {})".format(metres, degrees, what, sweep, self.PLACE_READS))
-            if sweep < self.PLACE_READS:
-                time.sleep(0.05 * sweep)
-                self._confirm(at, "a return to the start of " + what)
+                 "(sweep {}, {:.2f} s waited)".format(metres, degrees, what, sweep, waited))
+            pause = 0.05 * sweep
+            if waited + pause > self.SWEEP_WAIT_S:
+                break
+            time.sleep(pause)
+            waited += pause
+            self._confirm(at, "a return to the start of " + what)
         flag, where, _ = self._contact()
         if flag and where == self.stale and _distance(where, want) <= 0.6 and self._offset(
                 dict(x=where[0], y=where[1], z=where[2], yaw=to["yaw"]))[0] <= self.ARRIVE_M:
-            _log("drone actor held at its settled contact after {} sweeps of {}: a hit".format(
-                sweep, what))
+            self._place(to)
+            self._confirm(to, "a teleport to the end of " + what)
+            self._place(at)
+            self._confirm(at, "a teleport back to the start of " + what)
+            _log("drone actor held at its settled contact after {} sweeps of {}, though it "
+                 "follows teleports: a hit".format(sweep, what))
             return True
         raise RuntimeError("the drone actor does not follow a swept placement ({}): {:.3f} m "
-                           "and {:.2f} deg off after {} sweeps, no contact".format(
-                               what, metres, degrees, sweep))
+                           "and {:.2f} deg off after {} sweeps and {:.2f} s of waits, no "
+                           "contact".format(what, metres, degrees, sweep, waited))
 
     def _offset(self, s):
         """(metres, degrees) from s to the drone actor as AirSim reports it (simGetObjectPose,
