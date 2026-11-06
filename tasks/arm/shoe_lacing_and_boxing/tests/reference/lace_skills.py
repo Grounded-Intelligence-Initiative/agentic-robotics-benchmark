@@ -491,14 +491,22 @@ def _park_hook(rig, near=None):
     q_park[0] += 0.9                    # swung toward -x: tool at ~(-0.88, -0.04, 0.33), clear of the cradle and of both lay-down spots
     if float(np.max(np.abs(arm.q() - q_park))) < 0.02:
         return
-    p, R = rig.tcp("right")
-    if p[2] < 0.18:
-        goto(rig, "right", np.array([p[0], p[1], 0.20]), mat_to_quat(R), tol=0.01, rot_tol=0.2, timeout=2.5, joint_ok=False)
-    rig.move_joint("right", q_park, timeout=6.0)
-    for _ in range(80):                       # settle within 0.02 rad before the gripper is allowed to move
-        if float(np.max(np.abs(arm.q() - q_park))) < 0.02:
-            break
-        rig.tick(10)
+    for k in range(3):
+        p, R = rig.tcp("right")
+        if p[2] < 0.18:
+            goto(rig, "right", np.array([p[0], p[1], 0.20]), mat_to_quat(R), tol=0.01, rot_tol=0.2, timeout=2.5, joint_ok=False)
+        rig.move_joint("right", q_park, timeout=6.0)
+        for _ in range(80):                       # settle within 0.02 rad before the gripper is allowed to move
+            if float(np.max(np.abs(arm.q() - q_park))) < 0.02:
+                break
+            rig.tick(10)
+        if float(np.max(np.abs(arm.q() - q_park))) < 0.05:
+            return
+        # stopped on the way by a guard (never leave it out there: the gripper would come into it)
+        p, R = rig.tcp("right")
+        _log(rig, "hook arm not parked (stopped at %s), lifting and again" % np.round(p, 3))
+        _slow_goto(rig, "right", p + Z * 0.08, mat_to_quat(R), v=0.05, tol=0.01, rot_tol=0.1)
+    raise RuntimeError("the hook arm cannot get to its park posture")
 
 
 def _hook_wait(rig, seat_p):
@@ -519,19 +527,28 @@ def _gripper_aside(rig, near):
 
 def _gripper_home(rig):
     arm = rig.sc.arms["left"]
-    p, _ = rig.tcp("left")
-    if p[0] > 0.10:
-        # out over the infeed tray (a shoe set down or righted there): the joint mode clips each joint's step
-        # separately and swept the hand down onto the lid tray on the way home; lift, then a checked straight line
-        box_skills._go_home(rig)
-    else:
-        if p[2] < 0.22:
-            rig.lift("left", 0.24 - p[2], timeout=2.0)
-        rig.move_joint("left", arm.home_q, timeout=6.0)
-    for _ in range(80):                       # settle within 0.02 rad before the hook is allowed to move
-        if float(np.max(np.abs(arm.q() - arm.home_q))) < 0.02:
-            break
-        rig.tick(10)
+    for k in range(3):
+        p, _ = rig.tcp("left")
+        if p[0] > 0.10:
+            # out over the infeed tray (a shoe set down or righted there): the joint mode clips each joint's step
+            # separately and swept the hand down onto the lid tray on the way home; lift, then a checked straight line
+            box_skills._go_home(rig)
+        else:
+            if p[2] < 0.22:
+                rig.lift("left", 0.24 - p[2], timeout=2.0)
+            rig.move_joint("left", arm.home_q, timeout=6.0)
+        for _ in range(80):                       # settle within 0.02 rad before the hook is allowed to move
+            if float(np.max(np.abs(arm.q() - arm.home_q))) < 0.02:
+                break
+            rig.tick(10)
+        if float(np.max(np.abs(arm.q() - arm.home_q))) < 0.05:
+            return
+        # stopped on the way by a guard (a finger on the shoe): never leave the gripper out there, the hook arm would
+        # come into it (a gripper left beside the cradle met the hook arm's wrist at 200 N)
+        p, R = rig.tcp("left")
+        _log(rig, "gripper not home (stopped at %s), lifting and again" % np.round(p, 3))
+        _slow_goto(rig, "left", p + Z * 0.08, mat_to_quat(R), v=0.05, tol=0.01, rot_tol=0.1)
+    raise RuntimeError("the gripper cannot get home")
 
 
 # ---------------------------------------------------------------------------------------------------- shoe handling
@@ -895,13 +912,25 @@ GRIP_ZONE = (0.26, 0.68)   # bench distances from the gripper's base at which it
 HOOK_ZONE = (0.22, 0.52)   # ... from the hook's base at which the hook catches one (it then re-lays it for the gripper)
 
 
+HOOK_BASE_KEEPOUT = 0.20   # the gripper never goes for an aglet this close to the hook arm's base (its wrist met the
+#                            hook arm's base link at 200 N there)
+
+
+def _gripper_may(c):
+    """The gripper may pick an aglet at bench point c."""
+    d_l = float(np.linalg.norm(np.asarray(c)[:2] - LEFT_BASE))
+    d_r = float(np.linalg.norm(np.asarray(c)[:2] - RIGHT_BASE))
+    return 0.15 < d_l < GRIP_ZONE[1] and d_r >= HOOK_BASE_KEEPOUT
+
+
 def _aglet_reachable(rig, s, which, margin=0.01):
     """Aglet `which` lies where one of the arms can pick it up from the bench, with a margin for the slow drift of a
     loose tail."""
     _, c, _ = _aglet(rig, s, which)
     d_l = float(np.linalg.norm(c[:2] - LEFT_BASE))
     d_r = float(np.linalg.norm(c[:2] - RIGHT_BASE))
-    return GRIP_ZONE[0] + margin < d_l < GRIP_ZONE[1] - margin or HOOK_ZONE[0] + margin < d_r < HOOK_ZONE[1] - margin
+    return (GRIP_ZONE[0] + margin < d_l < GRIP_ZONE[1] - margin and d_r >= HOOK_BASE_KEEPOUT + margin) or \
+        HOOK_ZONE[0] + margin < d_r < HOOK_ZONE[1] - margin
 
 
 def _held_clearance(rig, s, p_shoe, R_shoe):
@@ -1395,7 +1424,7 @@ def _acquire_aglet(rig, s, which, geo, F):
         _, c, _ = _aglet(rig, s, which)
         d_r = float(np.linalg.norm(c[:2] - RIGHT_BASE))
         d_l = float(np.linalg.norm(c[:2] - LEFT_BASE))
-        if 0.15 < d_l < GRIP_ZONE[1] and attempt < 4:
+        if 0.15 < d_l < GRIP_ZONE[1] and d_r >= HOOK_BASE_KEEPOUT and attempt < 4:
             if d_l >= 0.18 and _grasp_aglet(rig, s, which, geo, F):
                 return True
             if d_l < 0.28 and _grasp_aglet_lean(rig, s, which, geo, F):
@@ -1473,7 +1502,7 @@ def _grasp_aglet(rig, s, which, geo, F):
                 yaw = F.yaw
             yaw += (math.pi / 2) * attempt
         quat = down_quat(yaw)
-        if not 0.17 < np.linalg.norm(c[:2] - LEFT_BASE) < GRIP_ZONE[1]:
+        if not 0.17 < np.linalg.norm(c[:2] - LEFT_BASE) < GRIP_ZONE[1] or not _gripper_may(c):
             _log(rig, "aglet %s at %s is outside the gripper's bench zone" % (which, np.round(c, 3)))
             return False
         if not goto(rig, "left", np.array([c[0] + shift[0], c[1] + shift[1], 0.20]), quat, tol=0.006, timeout=4.0, joint_ok=(not rig.hook_loaded)):

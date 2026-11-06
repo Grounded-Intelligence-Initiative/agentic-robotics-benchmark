@@ -162,7 +162,7 @@ class Rig(object):
             self.tick()
             if float(np.max(np.abs(arm.q() - np.asarray(q, float)))) <= tol:
                 return True
-            hit = link_press(self, name)
+            hit = link_press(self, name, JOINT_STOP_N, JOINT_STOP_N)
             if hit is not None:
                 arm.command_joint(arm.q().copy())
                 self.log("[ref] %s arm: %s presses %s with %.0f N on a joint move, stopped" % (name, hit[0], hit[1], hit[2]))
@@ -279,6 +279,8 @@ LINK_STOP_N = 8.0       # a guarded move stops (and backs off) as soon as an arm
 #                         acts every tick and far below the limit (the guards that backed off at 12 N, checked every 5th
 #                         tick, left the voided presses of 18-50 N)
 PAD_STOP_N = 12.0       # the finger pads (outside the safety rule) may push harder
+JOINT_STOP_N = 15.0     # a joint-space move (free travel, home / park) stops on a press above this: a finger brushing a
+#                         shoe on the way home (8-18 N) must not leave the gripper beside the cradle
 
 
 def link_press(rig, name, thr=LINK_STOP_N, pad_thr=PAD_STOP_N, ignore=()):
