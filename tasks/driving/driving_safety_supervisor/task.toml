@@ -30,9 +30,9 @@ network_mode = "no-network"
 # secret is the fixed set (its seeds, lock keys and layout digests), and nothing the agent
 # left running in its own sandbox may reach CARLA during the grading run.
 [verifier]
-# The set's 24 episodes allow at most 7,369 control steps of 0.1 s in all (each its route
+# The set's 24 episodes allow at most 7,537 control steps of 0.1 s in all (each its route
 # length / 5 m/s + 15 s), plus up to 90 s each held at a red or yellow light, plus CARLA
-# start-up and town loads; the reference's verify took 377 s (2026-11-06).
+# start-up and town loads; the reference's verify took 435 s (2026-11-06).
 timeout_sec = 10800
 environment_mode = "separate"
 

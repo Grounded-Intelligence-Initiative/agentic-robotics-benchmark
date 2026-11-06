@@ -48,7 +48,7 @@ One `act` per 0.1 s of simulated time. `[0]` lets the planner's control through;
   non-JSON output or an invalid action aborts the episode (it scores 0). The grader then
   relaunches `bash run.sh` for the next episode; after three relaunches every remaining
   episode aborts.
-- Grading drives at most about 7,400 steps, plus up to 900 per episode while your car stands
+- Grading drives at most about 7,600 steps, plus up to 900 per episode while your car stands
   at a red or yellow light. The grading run is stopped after 3 hours and then earns nothing,
   even if every reply met its 10 s limit: keep your average reply well under 1 s.
 - A step may be asked more than once with the same `t`; count steps by `t`, and answer each
