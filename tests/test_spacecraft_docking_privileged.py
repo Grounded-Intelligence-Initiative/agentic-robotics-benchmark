@@ -7,10 +7,13 @@ nothing and changes nothing; the block carries every quantity env.step reads tha
 for the future; a run without the token sends exactly the requests it sent before the channel existed; the hidden
 episodes are a fixed set of 48 distinct 64-bit seeds, each pinned by its world digest; an episode's probe stream
 depends only on the set's key and its seed; the reference reproduces its recorded result on the set; a verify that
-cannot install the network filter is a task error before any controller starts; and the agent gets the plant model
-as a document, with no copy of the simulator and nothing that grades a controller.
+cannot install the network filter is a task error before any controller starts; the agent gets the plant model
+as a document, with no copy of the simulator and nothing that grades a controller; and that document states env.py's
+model exactly: a plant written from it alone, given the same draws, noise numbers and commands, equals env.py in every
+state and observation field after every step.
 """
 import ast
+import collections
 import copy
 import hashlib
 import io
@@ -36,13 +39,15 @@ def _load():
         import oracle  # noqa: E402
         import oracle_batch  # noqa: E402
         import verify  # noqa: E402
-        return verify, oracle, oracle_batch
+        import docplant  # noqa: E402
+        import doc_vs_env  # noqa: E402
+        return verify, oracle, oracle_batch, docplant, doc_vs_env
     finally:
         sys.path[:] = saved_path
         sys.dont_write_bytecode = saved_flag
 
 
-verify, oracle, oracle_batch = _load()
+verify, oracle, oracle_batch, docplant, doc_vs_env = _load()
 SET = json.loads((TASK / "tests/hidden/episodes.json").read_text())
 SELECTION = json.loads((TASK / "tests/hidden/selection.json").read_text())
 
@@ -388,6 +393,70 @@ class AgentVisibleTests(unittest.TestCase):
                          "(0.92, 0.98, 1.04, 1.10, 1.16, 1.20)", "U{58..103}", "U{108..125}", "U{148..165}",
                          "U(1.18, 1.30)", "U{48..81}", "U{7..13}", "U{112..157}", "U{10..18}", "U{1..3}"):
             self.assertIn(constant, text)
+
+
+class PagePlantTests(unittest.TestCase):
+    """The page states env.py's model exactly. tests/review/docplant.py is a plant written from given/model.md alone;
+    tests/review/doc_vs_env.py steps it beside env.py with the same draws (read off the numbers env.py's reset drew,
+    with the page's ranges), the same raw noise numbers and the same commands, and compares every attribute of env.py's
+    simulator, every observation field and every step's quality and end with == after every step. Here: ten
+    open-loop dev episodes (all five kinds of scripted commands, half moved inside the plume's field), two of the
+    reference's own and the page's example request, about a second in all. The pins fail this test as soon as the page
+    or env.py changes, until the full check (doc_vs_env.py open, reference, draws, act) has been run again and the
+    pins moved."""
+
+    OPEN = range(10)
+    REFERENCE_SEEDS = 2
+
+    def reference_seeds(self):
+        return oracle_batch.dev_seeds(self.REFERENCE_SEEDS, doc_vs_env.REFERENCE_RNG)
+
+    def test_the_page_and_the_simulator_are_the_checked_pair(self):
+        self.assertEqual(Path(docplant.PAGE), TASK / "environment/setup/payload/given/model.md")
+        self.assertEqual(docplant.page_sha256(), docplant.PAGE_SHA256,
+                         "given/model.md changed: check tests/review/docplant.py against it, run doc_vs_env.py's "
+                         "checks and move docplant.PAGE_SHA256")
+        self.assertEqual(doc_vs_env.sha256_file(doc_vs_env.ENV_FILE), doc_vs_env.ENV_SHA256,
+                         "tests/env.py changed: run doc_vs_env.py's checks and move doc_vs_env.ENV_SHA256")
+
+    def test_the_page_plant_imports_nothing_of_the_task(self):
+        tree = ast.parse(Path(docplant.__file__).read_text())
+        imported = {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names}
+        imported |= {node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
+        self.assertEqual(imported, {"hashlib", "math", "os"})
+
+    def test_the_episodes_are_dev_episodes(self):
+        seeds = [doc_vs_env.open_seed(j) for j in self.OPEN] + self.reference_seeds() + [doc_vs_env.ACT_SEED]
+        self.assertFalse(set(seeds) & doc_vs_env.hidden_seeds())
+        self.assertTrue(all(2 ** 32 <= s < 2 ** 64 for s in seeds))
+
+    def test_scripted_episodes_equal_env_py_in_every_field_after_every_step(self):
+        covered = collections.Counter()
+        for j in self.OPEN:
+            twin = doc_vs_env.open_episode(j)
+            self.assertIsNone(twin.difference, "open-loop episode {} (seed {})".format(j, twin.seed))
+            self.assertEqual(twin.compared, twin.counts["steps"])
+            covered.update(twin.counts)
+        for what in ("steps in the plume's field", "swirl flips", "reversals of the first rotor",
+                     "reversals of the second rotor", "two-slot strides", "proximity re-keys", "deadline re-keys",
+                     "dropouts", "observations in a blackout", "end target_collision", "end escaped_operating_region",
+                     "end timeout"):
+            self.assertGreater(covered[what], 0, "the scripted episodes no longer cover: " + what)
+
+    def test_the_reference_s_episodes_equal_env_py_in_every_field_after_every_step(self):
+        covered = collections.Counter()
+        for seed in self.reference_seeds():
+            twin, _, _, steps = doc_vs_env.reference_episode(seed)
+            self.assertIsNone(twin.difference, "the reference's episode on seed {}".format(seed))
+            self.assertEqual(twin.compared, steps)
+            covered.update(twin.counts)
+        self.assertEqual(covered["end docked"], self.REFERENCE_SEEDS)
+        self.assertGreater(covered["swirl flips"], 0)
+
+    def test_the_page_s_example_request_is_env_py_s(self):
+        line, twin = doc_vs_env.act_line()
+        self.assertIsNone(twin.difference)
+        self.assertIn(line, (TASK / "environment/setup/payload/given/model.md").read_text().splitlines())
 
 
 class NetworkGuardTests(unittest.TestCase):

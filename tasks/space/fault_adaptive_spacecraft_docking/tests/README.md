@@ -49,13 +49,18 @@ and its world (the hidden draws below).
 
 **Hollowing check.** The kept 48 span every hidden range of `instruction.md`: the first event at steps 59-103
 (range 58-103), the re-key's earliest step 108-128 (108-128) and deadline 148-165 (148-165), its proximity 1.181-1.299 m
-(1.18-1.30), all four degraded scales across their ranges, the boom's amplitude 0.100-0.157 m (0.10-0.16) and
-frequency 0.182-0.278 rad/s (0.18-0.28), the start radius 2.870-3.648 m (2.85-3.65) and bearing from the port
--1.444..1.414 rad (+-1.45), both slew rates to within 0.002 rad/s of their limits. The outward authority the re-keyed
-plant has at the docking pose in the initial swirl pattern (the largest outward acceleration with no tangential and no
-yaw acceleration, the bias included) runs from -0.045 to 0.228 m/s^2 in the kept set (negative in 9 kept draws and
-undefined in one, all of which dock), and 38 to 64 of the 64 swirl patterns have outward authority. The one drop lies
-inside all of these ranges, so none of them tells it apart (`review/select_set.py report`).
+(1.18-1.30), the four degraded scales 0.352-0.497 (0.35-0.50), 0.561-0.697 (0.55-0.70), 0.457-0.596 (0.45-0.60) and
+0.651-0.796 (0.65-0.80), the boom's amplitude 0.100-0.157 m (0.10-0.16) and frequency 0.182-0.278 rad/s (0.18-0.28),
+the start radius 2.870-3.648 m (2.85-3.65) and bearing from the port -1.444..1.414 rad (+-1.45), the target's slew rate
+before the re-key -0.1229..0.1228 rad/s (+-0.125: 0.0021 and 0.0022 rad/s short of the two limits) and after it
+-0.0437..0.0446 rad/s (+-0.045: 0.0013 and 0.0004 rad/s short), with the smallest speeds 0.0612 and 0.0203 rad/s
+(0.060 and 0.020). The outward authority the re-keyed plant has at the docking pose in the initial swirl pattern (the
+largest outward acceleration with no tangential and no yaw acceleration, the bias included) runs from -0.045 to
+0.228 m/s^2 in the kept set (negative in 9 kept draws and undefined in one, all of which dock), and 38 to 64 of the 64
+swirl patterns have outward authority. The one drop lies inside all of these ranges but one: its moderate scale of
+the first event (`secondary_failure_scale`, 0.551) is below the kept 0.561-0.697, though inside its range 0.55-0.70;
+that scale acts from the first event (step 89 in draw 29) until the re-key replaces it (step 115), before the
+reference's planning state. None of the other quantities tells the drop apart (`review/select_set.py report`).
 
 ## One lock stream per episode; determinism
 
@@ -175,17 +180,25 @@ wire (the probe copy, one verbatim `act` line from a dev seed). It names no seed
 and it names the two builtins whose rounding matters (`hypot` for a length, the builtin `sum` of the six duties), so
 a simulator that follows the page literally computes env.py's numbers.
 
-Checked on 2026-11-06 with a plant written from the page alone (scratch), given each episode's draws named as the page
-names them (read off the random numbers env.py's `reset` consumed) and each observation's raw noise numbers, and
-stepped beside `env.py` with the same commands. Over 400 open-loop dev episodes (half started inside the plume's
-field: 1100 swirl flips, 1194 and 1308 reversals of the two rotors, 29 proximity and 180 deadline re-keys, 46
-timeouts, 129 collisions, 225 escapes) and the reference's own episodes on 100 dev seeds (random.Random(20261106),
-the dev lock key: 94 docked, 6 timed out), every state quantity and every observation field agreed to the last bit
-after every step, and so did every end, step count and quality. The page's table of draws matches env.py's worlds: on
-two sets of 50,000 seeds against as many samples of the page's table, every integer, sign and permutation has
-env.py's support, every continuous draw's two-sample Kolmogorov-Smirnov distance stays below the 1% critical value
-(0.0103), and every discrete draw's total-variation distance is of the size two independent samples of the page show.
-The page's `act` line is env.py's, regenerated from its dev seed (not a candidate of the selection).
+The check is in `review/`. `docplant.py` is a plant written from the page alone (it imports nothing of the task, and
+`PAGE_SHA256` pins the page it was written from). `doc_vs_env.py` steps it beside `env.py` with the same commands,
+given each episode's draws named as the page names them (read off the numbers env.py's `reset` drew, through the
+page's ranges, so a range that differs shows) and each observation's raw noise numbers, and compares every attribute
+of env.py's simulator, every observation field and every step's quality, end and errors with `==` after every step.
+Run on 2026-11-06 (CPython 3.12.11): over 400 open-loop dev episodes (`open`: five kinds of scripted commands, half
+moved inside the plume's field; 72,696 steps with 1136 swirl flips, 1194 and 1308 reversals of the two rotors, 5995
+two-slot strides, 29 proximity and 180 deadline re-keys, 2143 dropouts, 46 timeouts, 129 collisions and 225 escapes)
+and the reference's own episodes on 100 dev seeds (`reference`: random.Random(20261106), the dev lock key; 27,853
+steps, 94 docked and 6 timed out), every field agreed to the last bit after every step, so every end came at the same
+step with the same quality. The page's table of draws has the distributions of env.py's worlds (`draws`): on two sets
+of 50,000 dev worlds against as many episodes drawn from the table with `random.Random`, all 92 tests (a two-sample
+Kolmogorov-Smirnov test for each of the 63 continuous draws, a chi-square homogeneity test for each of the 29 discrete
+ones that take more than one value) pass at a family-wise 1% (the smallest p-values 0.0019 and 0.017, the Bonferroni
+line 0.00011), and every discrete draw takes the same values on both sides. The page's `act` line is env.py's
+(`act`; its dev seed is not a candidate of the selection). The repository test (`PagePlantTests`) runs ten of the
+open-loop episodes, two of the reference's and the `act` line on every pull request, and fails as soon as the page or
+`env.py` changes, until the check has been run again and the pins (`docplant.PAGE_SHA256`, `doc_vs_env.ENV_SHA256`)
+moved.
 
 `env.py`'s own text still describes the agent's copy (the module docstring's "An identical development copy is staged
 for the agent" and "this source can be shared with the agent", `_RNG`'s "The agent holds this code"): the file is
@@ -199,3 +212,6 @@ account.
   in-process comparison and a one-process mode (reset hygiene).
 - `select_set.py`: the pre-registered selection (`draw`, `run`, `make`, `report`).
 - `regrade.sh`: one verify in a fresh CPU container of the task image, the separate verifier's layout, no network.
+- `docplant.py`: a plant written from `given/model.md` alone: the page's table of draws, the plant, the observation.
+- `doc_vs_env.py`: that plant beside `env.py`, compared with `==` after every step (`open`, `reference`, `act`), and
+  the page's table of draws against env.py's worlds (`draws`) (The agent's documents).
