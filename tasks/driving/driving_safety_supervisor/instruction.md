@@ -9,13 +9,17 @@ delay.
 Leave it runnable at `/home/user/submission/run.sh`.
 
 The simulator is CARLA 0.9.15 (synchronous, 20 Hz); the planner is CARLA's stock
-`BehaviorAgent` (`normal` profile). The grader drives 24 hidden episodes on towns, seeds and
-situations you will not see during practice.
+`BehaviorAgent` (`normal` profile). The grader drives 24 hidden episodes, chosen once and kept
+hidden: every submission meets the same 24, on towns the practice grader does not use, in forms
+of the situations that practice never shows.
 
 ## Interface
 
 `run.sh` starts a long-lived process that speaks one JSON object per line on stdin/stdout.
 The grader launches it as `bash run.sh` in `/home/user/submission`, under your account.
+Only `/home/user/submission` reaches grading: a fresh sandbox holds that folder, yours as you
+left it, and nothing else of your home (no `/home/user/drive`, no practice grader). Your stderr
+is discarded.
 
 ```
                                        <- READY   (your first stdout line, within 40 s)
@@ -44,6 +48,9 @@ One `act` per 0.1 s of simulated time. `[0]` lets the planner's control through;
   non-JSON output or an invalid action aborts the episode (it scores 0). The grader then
   relaunches `bash run.sh` for the next episode; after three relaunches every remaining
   episode aborts.
+- Grading drives at most about 7,400 steps, plus up to 900 per episode while your car stands
+  at a red or yellow light. The grading run is stopped after 3 hours and then earns nothing,
+  even if every reply met its 10 s limit: keep your average reply well under 1 s.
 - A step may be asked more than once with the same `t`; count steps by `t`, and answer each
   request from the observation it carries. On about 2 % of steps the grader asks twice, once
   with a road user pasted onto the road in `image`, in a hidden order, and keeps only the
@@ -62,7 +69,8 @@ One `act` per 0.1 s of simulated time. `[0]` lets the planner's control through;
 - `/home/user/drive/`: the simulator bridge and protocol; `sim_client.py` starts CARLA and
   steps practice episodes.
 - `/opt/venv/bin/python3 /home/user/practice_grader/grade.py --help`: runs your submission
-  over the real wire on practice towns and reports what happened in each episode.
+  over the real wire on the practice towns Town01-Town03 and reports what happened in each
+  episode.
 
 ## Time
 

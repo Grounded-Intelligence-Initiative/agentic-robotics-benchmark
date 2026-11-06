@@ -15,8 +15,9 @@ What is the same as the real run:
 
 What is different:
 
-* practice towns (Town01/02/03), visible seeds, and every scenario in its plain form; the
-  real run uses other towns, hidden seeds and situations practice does not show;
+* the practice towns Town01-Town03, visible seeds, and every scenario in its plain form; the
+  real run uses a fixed hidden set of 24 episodes on other towns, staged in forms practice
+  does not show;
 * it reports what happened in each episode (how it ended, how far the car got,
   collisions, red lights, harsh braking, mean speed), not a score.
 
@@ -41,6 +42,8 @@ from sim_client import SimClient  # noqa: E402
 STEP_TIMEOUT_S = 10.0
 READY_TIMEOUT_S = 4 * STEP_TIMEOUT_S
 REPEAT_EVERY = 97
+# The towns practice drives in; the real run uses others.
+PRACTICE_TOWNS = ("Town01", "Town02", "Town03")
 # Town01 and Town02 have no four-way junction, so red_light_runner cannot be staged there.
 NO_CROSS_TRAFFIC = ("Town01", "Town02")
 
@@ -141,7 +144,7 @@ def main():
     parser.add_argument("--submission", default="/home/user/submission")
     parser.add_argument("--per-kind", type=int, default=1)
     parser.add_argument("--kinds", nargs="+", default=list(KINDS), choices=list(KINDS))
-    parser.add_argument("--towns", nargs="+", default=["Town01", "Town02", "Town03"])
+    parser.add_argument("--towns", nargs="+", default=list(PRACTICE_TOWNS), choices=PRACTICE_TOWNS)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--backend", default="carla", choices=("carla", "mock"))
     parser.add_argument("--image-size", type=int, default=512)

@@ -3,8 +3,9 @@ artifacts = ["/home/user/submission"]
 
 # A safety supervisor for an automated vehicle in CARLA: the agent builds a process that,
 # every 0.1 s, watches the front camera and a nominal planner (CARLA's stock BehaviorAgent)
-# and either lets its control through or overrides it, across procedurally generated
-# long-tail scenarios on hidden seeds, most of them in forms practice never shows.
+# and either lets its control through or overrides it, on a fixed hidden set of 24
+# procedurally staged long-tail episodes (tests/hidden/episodes.json, selected once by a
+# pre-registered rule; tests/README.md), in forms practice never shows.
 [task]
 name = "grounded-intelligence-initiative/driving_safety_supervisor"
 
@@ -26,11 +27,12 @@ timeout_sec = 3600
 network_mode = "no-network"
 
 # A fresh sandbox for grading (only the submission is restored), on the same image: the
-# secret is the episode seeds, but nothing the agent left running in its own sandbox may
-# reach CARLA during the grading run.
+# secret is the fixed set (its seeds, lock keys and layout digests), and nothing the agent
+# left running in its own sandbox may reach CARLA during the grading run.
 [verifier]
-# 24 episodes of up to ~35 s driving (plus up to 90 s each held at red lights) at 10 Hz,
-# plus CARLA start-up and town loads.
+# The set's 24 episodes allow at most 7,369 control steps of 0.1 s in all (each its route
+# length / 5 m/s + 15 s), plus up to 90 s each held at a red or yellow light, plus CARLA
+# start-up and town loads; the reference's verify took 377 s (2026-11-06).
 timeout_sec = 10800
 environment_mode = "separate"
 
