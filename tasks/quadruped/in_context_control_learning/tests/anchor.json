@@ -1,0 +1,13 @@
+{
+  "metric": "success_rate",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 1.0,
+  "source": "Measured local ALE oracle success_rate; 1 run(s), range [1.000000000, 1.000000000]. The saturation band is the measured lower ratio, rounded down to 0.01.",
+  "measurements": [
+    1.0
+  ],
+  "evidence_episode_ids": [
+    "in_context_control_learning-oracle-07cefc29"
+  ]
+}
