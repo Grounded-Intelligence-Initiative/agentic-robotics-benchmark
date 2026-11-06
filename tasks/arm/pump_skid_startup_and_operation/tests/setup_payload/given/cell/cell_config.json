@@ -1,0 +1,34 @@
+{
+ "camera_budget_frames": 900,
+ "cpu_cap_factor": 4.0,
+ "episodes": 4,
+ "max_ticks_per_step": 1000,
+ "note": "the cell's configuration as far as it is public (the grader's runner settings are not)",
+ "program_time_cap_s": 2400.0,
+ "route_gate": {
+  "forbidden_calls": [
+   "torch.optim",
+   ".backward(",
+   "jax.grad"
+  ],
+  "forbidden_extensions": [
+   ".pt",
+   ".pth",
+   ".onnx",
+   ".safetensors",
+   ".ckpt",
+   ".h5",
+   ".pb",
+   ".pkl",
+   ".npz"
+  ],
+  "max_submission_mb": 60
+ },
+ "safety": {
+  "device_force_N": 150.0,
+  "press_ticks": 3,
+  "robot_force_N": 40.0
+ },
+ "silence_s": 180.0,
+ "sim_cap_s": 1800.0
+}

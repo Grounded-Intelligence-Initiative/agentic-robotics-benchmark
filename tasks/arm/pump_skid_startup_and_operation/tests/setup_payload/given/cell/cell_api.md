@@ -1,0 +1,43 @@
+# Skid cell API (`cell`), version pump-skid-cell/0.2.0
+
+Your program `/home/user/submission/operate.py` exposes `solve(cell) -> None`. The grader runs it once per hidden
+episode in a fresh process under a dedicated unprivileged account, from a per-run directory holding a root-owned
+READ-ONLY copy of your submission folder (regular files only: symbolic links and `__pycache__` are not copied), with an
+empty writable `$HOME` / `$TMPDIR`, a minimal environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `MUJOCO_GL=osmesa`,
+`PYTHONPATH` = a read-only copy of `~/given/lib`, `ARB_GIVEN_DIR` = a read-only copy of `~/given`, BLAS threads 2) and
+the launcher `python3 -B -E -s -c <bootstrap> <lib> operate` (the bootstrap puts `<lib>` on `sys.path` and calls
+`skidcell.client.main`, which imports `operate` from the current directory), or `bash run.sh` when you ship one.
+`cell` is a proxy (`skidcell.client.Cell`): every method is one JSON-lines request on the process's original stdout,
+answered on stdin by the grader's cell; `print()` goes to stderr. A reply carrying `error` raises
+`skidcell.client.CellError`.
+
+Units: metres, radians, seconds, quaternions `wxyz`; the world frame is the skid's frame (`cell_manual.md` section 1).
+The robot's own state is exact on the wire; **nothing about the skid is**: no valve position, no gauge, lamp, level
+or display reading, no device pose, not even which device the gripper holds. You see the skid through the cameras. The
+one document on the wire is the site's equipment list (`describe()["site"]`).
+
+| call | returns | notes |
+|---|---|---|
+| `describe()` | `cell_version`, `units`, `robot` (joints and ranges, home posture, tcp, gripper), `rail` (axis, ranges, speeds), `control` (tick, rate limits, stiffness range, modes, the Cartesian frame), `grip_rule`, `cameras` (size, exact intrinsics, the fixed cameras' poses, the wrist camera's mount), `skid` (front plane, extent), `site` {`name`, `equipment`: one entry per device {`series_tag`, `site_tag`, `service`, and for the valves `startup_position`}, `log_sheet`: the site tags to log}, `schedule` (startup deadline, shift end, sim cap, the bands), `budgets`, `safety` | static for the episode |
+| `get_state()` | `sim_time`, `done`, `arm` {`q`[7], `dq`[7], `cmd_q`[7], `tcp_pos`[3], `tcp_quat`[4], `mode`, `stiffness_scale`, `gripper_width`, `holding`, `wrist_load` {`force_N`, `torque_Nm`}}, `rail` {`x`, `lift`, `x_goal`, `lift_goal`}, `horn` | `holding`: the gripper holds a handle (the grip rule engaged); `wrist_load`: the grip's load while holding (0 otherwise); `horn`: an alarm sounds (which one: the panel's lamps and the instruments) |
+| `set_control(mode, stiffness_scale)` | ok | `mode` in `joint`, `cartesian`; `stiffness_scale` in [0.2, 1.0] scales the seven joints' position gains and damping |
+| `command(q=[7])` or `command(tcp_pos=[3], tcp_quat=[4])`, optional `width` | ok / error | targets are held until the next command; joint targets are clamped to the ranges and rate-limited to 1.5 rad/s; Cartesian targets (world frame) go through the cell's damped-least-squares differential IK on the `panda/tcp` site (<= 0.5 m/s, 1.5 rad/s, the joint rate limit); `width` (m, 0..0.08) ramps at 0.05 m/s; closing on a handle engages the grip rule, opening wider releases it |
+| `command_rail(x=None, lift=None)` | ok, `x_goal`, `lift_goal` | the carriage's goal along the rail (x) and the lift's height (the Panda base's z); clamped to the ranges, ramped at 0.30 m/s and 0.15 m/s |
+| `step(n_ticks)` | `sim_time`, `done`, `events[]` | advances n x 10 ms (5 x 2 ms physics steps each) of the cell AND the process; nothing moves and no time passes outside `step`; n <= 1000 per call; events: `grasped` / `released` / `slipped` (the grip rule; the hand feels the grip, it does not know the device), `horn_on` / `horn_off`, `window_open` (600 s), `shift_end` (1500 s), `safety:<what>`, `physics_fault`, `episode_over` |
+| `get_camera(name, depth=True)` | `camera`, `frame_index`, `sim_time`, `width`, `height`, `format` (`png`), `rgb_png_b64`, with depth `depth_u16_mm_b64`, `depth_unit_m` (0.001), `depth_invalid_value` (0); for `wrist` also `T_world_cam` (4x4, OpenCV convention) | one frame of `overview` or `wrist` at the current state; at most `budgets.camera_frames` frames per episode over all cameras, then `{"error": "camera_budget"}`; rendering takes about 0.2-1 s of wall clock per frame (not charged to your program time) |
+| `log_reading(tag, value, unit)` | ok, `tag`, `sim_time`, `in_window` | one entry on the operator's log sheet (`sop.md` 2.3): `tag` the SITE tag of one of PI-101, PI-103, PDI-111, FI-105, LG-201, AI-201 (`describe()["site"]["log_sheet"]`); `unit` one of bar, psi, kPa, m3/h, L/min, %, mg/L; the reply does not say whether the value is right |
+| `finish()` | ok | ends the episode; the grader then scores the episode's record |
+
+`skidcell.client.decode_frame(reply)` returns `(rgb uint8 H x W x 3, depth float32 H x W metres, NaN = no reading)`.
+
+Errors: a malformed request answers `bad_params: ...`; a call outside the list answers `forbidden` (counted as an
+illegal call); `episode_over` after the episode ended (`step` still answers, nothing moves). An internal error of the
+cell while it answers a call that changes the cell ends the episode, which is scored as it stands.
+
+Budgets per episode (`describe()["budgets"]`): 1800 s of simulated time; 2400 s of **program time** (the wall clock
+minus the cell's own time inside `step` and `get_camera`), 4x that in CPU seconds; 900 camera frames; 180 s of
+silence (no request) ends the episode. After the episode is over the program may still read state and must finish.
+
+Practice only (the practice service: `skidcell.client.connect_practice(seed)`, `~/practice/grade.py`; `cell_manual.md`
+section 7): `reset(seed)` (a fresh shift on the site of that seed) and `debrief()` (the shift's score breakdown, once
+the episode is over). The graded cell answers them `forbidden`. No call returns ground truth.
