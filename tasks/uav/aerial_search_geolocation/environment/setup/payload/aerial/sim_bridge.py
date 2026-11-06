@@ -376,32 +376,38 @@ class AirSimBackend(object):
 
     # A placement the episode builds on must leave the drone actor this close to its pose.
     ARRIVE_M, ARRIVE_DEG = 0.01, 0.5
-    PLACE_READS = 5
-    # A swept sub-step is swept again after waits of 0.05 s, 0.10 s, ... as long as they add
-    # up to no more than this: ten sweeps and 2.25 s of waits.
+    # A placement that has not taken (`_confirm`) and a swept sub-step that was not applied
+    # (`_swept`) are tried again after waits of 0.05 s, 0.10 s, ... as long as they add up to
+    # no more than this: ten tries and 2.25 s of waits.
     SWEEP_WAIT_S = 2.5
 
     def _confirm(self, s, what):
         """Make sure the drone actor is at s after a placement (`what`, for the log): read
         where AirSim has it and, while it is more than ARRIVE_M or ARRIVE_DEG off, wait a
         little (longer each time, so that a frame AirSim may still be running ends before
-        the next placement), teleport it to s again, advance a frame and read again,
-        PLACE_READS reads in all. A drone that never gets there raises, so the run ends as a
-        task error (the mission would be rendered, swept and scored at a pose that is not
-        the drone's). Returns the reads it took."""
-        for read in range(1, self.PLACE_READS + 1):
+        the next placement), teleport it to s again, advance a frame and read again, the
+        waits at most SWEEP_WAIT_S in all (ten reads). A drone that never gets there raises,
+        so the run ends as a task error (the mission would be rendered, swept and scored at
+        a pose that is not the drone's). Returns the reads it took."""
+        read, waited = 0, 0.0
+        while True:
+            read += 1
             metres, degrees = self._offset(s)
             if metres <= self.ARRIVE_M and degrees <= self.ARRIVE_DEG:
                 if read > 1:
                     _log("drone actor at its pose after {}: {} reads".format(what, read))
                 return read
-            _log("drone actor {:.3f} m and {:.2f} deg off its pose after {} (read {} of {})".format(
-                metres, degrees, what, read, self.PLACE_READS))
-            if read < self.PLACE_READS:
-                time.sleep(0.05 * read)
-                self._place(s)
+            _log("drone actor {:.3f} m and {:.2f} deg off its pose after {} (read {}, {:.2f} s "
+                 "waited)".format(metres, degrees, what, read, waited))
+            pause = 0.05 * read
+            if waited + pause > self.SWEEP_WAIT_S:
+                break
+            time.sleep(pause)
+            waited += pause
+            self._place(s)
         raise RuntimeError("the drone actor does not stay where it is put ({}): {:.3f} m and "
-                           "{:.2f} deg off after {} reads".format(what, metres, degrees, read))
+                           "{:.2f} deg off after {} reads and {:.2f} s of waits".format(
+                               what, metres, degrees, read, waited))
 
     def _swept(self, at, to, what):
         """One swept sub-step (`what`, for the log) from `at`, where the drone actor is, to
