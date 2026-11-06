@@ -196,33 +196,54 @@ def fidelity(dirs):
     """The swept path's prediction against what happened, on passes: at each step with a plan, the expert's debug
     line `pred t= odo= d0= plan= path=` (real requests only) holds the rollout's (metres travelled, offset) every
     0.5 s; 10 and 20 steps later, under the same plan, the car has travelled odo' - odo and stands at offset d0'.
-    The error is |d0' - the predicted offset at that distance|; p95 over all such pairs, at +1 s and +2 s."""
-    e1, e2 = [], []
+    The error is |d0' - the predicted offset at that distance|; p95 over all such pairs, at +1 s and +2 s.
+
+    "Same plan" is checked twice: by the plan's start and offset (`plan=`), and strictly, with its way back too
+    (the `t=` line's pass=a/b/c/e, metres from the car, made absolute with odo): a way back that moved on in
+    between (the car waits until its rear is past someone walking on) changes where the car goes without the
+    rollout being wrong, so only the strict pairs measure the vehicle model alone."""
+    import re
+    e1, e2, s1, s2 = [], [], [], []
     for d in dirs:
         for path in sorted(glob.glob(os.path.join(d, "logs", "expert_*.log"))):
             episodes, cur = [], None
             with open(path) as handle:
                 for line in handle:
                     if line.startswith("[expert] reset"):
-                        cur = {}
+                        cur = {"pred": {}, "plan": {}}
                         episodes.append(cur)
                     elif line.startswith("[expert] pred ") and cur is not None:
-                        f = dict(kv.split("=", 1) for kv in line.split()[2:])
+                        f = dict(kv.split("=", 1) for kv in line.split()[2:] if "=" in kv)
+                        if "path" not in f:      # an expert older than the rollout's log line
+                            continue
                         samples = [tuple(float(x) for x in pt.split(",")) for pt in f["path"].split(";") if pt]
-                        cur[int(f["t"])] = (float(f["odo"]), float(f["d0"]), f["plan"], samples)
+                        cur["pred"][int(f["t"])] = (float(f["odo"]), float(f["d0"]), f["plan"], samples)
+                    elif line.startswith("[expert] t=") and cur is not None:
+                        m = re.match(r"\[expert\] t=(\d+) .* pass=(\S+)", line)
+                        if m and m.group(2) != "None":
+                            cur["plan"][int(m.group(1))] = [float(x) for x in m.group(2).split("/")]
             for ep in episodes:
-                for t, (odo, _d0, plan, samples) in ep.items():
+                pred, plans = ep["pred"], ep["plan"]
+
+                def geometry(t):
+                    rel = plans.get(t)
+                    return None if rel is None or t not in pred else [r + pred[t][0] for r in rel]
+                for t, (odo, _d0, plan, samples) in pred.items():
                     if plan == "-" or not samples:
                         continue
-                    for lag, sink in ((10, e1), (20, e2)):
-                        later = ep.get(t + lag)
+                    for lag, sink, strict in ((10, e1, s1), (20, e2, s2)):
+                        later = pred.get(t + lag)
                         if later is None or later[2] != plan:
                             continue
                         run = later[0] - odo
-                        pts = [(0.0, ep[t][1])] + samples
+                        pts = [(0.0, pred[t][1])] + samples
                         for (r0, y0), (r1, y1) in zip(pts, pts[1:]):
                             if r0 <= run <= r1 and r1 > r0:
-                                sink.append(abs(later[1] - (y0 + (y1 - y0) * (run - r0) / (r1 - r0))))
+                                err = abs(later[1] - (y0 + (y1 - y0) * (run - r0) / (r1 - r0)))
+                                sink.append(err)
+                                g0, g1 = geometry(t), geometry(t + lag)
+                                if g0 and g1 and all(abs(a - b) <= 0.15 for a, b in zip(g0, g1)):
+                                    strict.append(err)
                                 break
 
     def p95(xs):
@@ -230,6 +251,8 @@ def fidelity(dirs):
         return xs[min(len(xs) - 1, int(0.95 * len(xs)))] if xs else float("nan")
     print("swept-path fidelity on passes: +1 s p95 {:.3f} m (n={}), +2 s p95 {:.3f} m (n={}); gate 0.15 m".format(
         p95(e1), len(e1), p95(e2), len(e2)))
+    print("  the same plan with its way back unchanged: +1 s p95 {:.3f} m (n={}), +2 s p95 {:.3f} m (n={})".format(
+        p95(s1), len(s1), p95(s2), len(s2)))
 
 
 def main():
