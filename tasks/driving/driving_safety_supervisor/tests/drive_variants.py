@@ -1,8 +1,8 @@
 """drive_variants - graded stagings of the scenario kinds that practice never shows.
 
-Grading stage only (the practice copy of drive_bridge has no such module). The grader gives
-every hidden episode a `variant` and a number of `distractors`; drive_bridge's
-ScenarioBuilder hands staging to `stage()` here.
+Grading stage only (the practice copy of drive_bridge has no such module). Every hidden
+episode names a `variant` and a number of `distractors`; drive_bridge's ScenarioBuilder hands
+staging to `stage()` here.
 
 Variants, by kind (`standard` is the practice staging):
 
@@ -24,9 +24,14 @@ Distractors need no reaction: a car parked on the shoulder, people standing on t
 pavement, street furniture at the kerb, cones in the oncoming lane well before the hazard.
 Hitting one counts like any other collision; braking or swerving for one only costs pace.
 
+Every staging records what it drew in `b.staging` (the bridge puts it in `truth["staging"]`,
+which never reaches the wire), so the grading side can see the range its episodes cover.
+
 The variant table and `graded_specs` are plain Python (the grader imports them); everything that
 touches CARLA runs inside the bridge.
 """
+
+import math
 
 VARIANTS = {
     "broken_down_vehicle": ("debris", "reversing_car", "dropped_cargo", "shoulder_pass",
@@ -59,10 +64,24 @@ TRUCKS = ("vehicle.carlamotors.carlacola", "vehicle.carlamotors.european_hgv",
 TOWNS_FOR = {"shoulder_pass": ("Town05",)}
 
 
+def graded_cells(towns):
+    """The graded episodes' (town, variant) cells in grading order: GRADED_MIX over `towns`
+    (cycled; a variant listed in TOWNS_FOR cycles over the ones it allows), grouped by town so
+    each town loads once. The fixed hidden set holds one episode per cell, in this order."""
+    cells, index = [], 0
+    for variant, count in GRADED_MIX:
+        allowed = [t for t in towns if t in TOWNS_FOR.get(variant, towns)] or towns
+        for k in range(count):
+            cells.append((towns[index % len(towns)] if variant not in TOWNS_FOR else
+                          allowed[k % len(allowed)], variant))
+            index += 1
+    cells.sort(key=lambda c: towns.index(c[0]))
+    return cells
+
+
 def graded_specs(rng, towns):
-    """The hidden episode specs: GRADED_MIX over `towns` (cycled; a variant listed in
-    TOWNS_FOR cycles over the ones it allows), each with a fresh 62-bit seed and a distractor
-    count from `rng`, grouped by town so each town loads once."""
+    """Episode specs over graded_cells(towns), each with a 62-bit seed and a distractor count
+    from `rng` (a maintainer's generator: the grader itself runs the fixed hidden set)."""
     kind_of = {v: kind for kind, variants in VARIANTS.items() for v in variants}
     specs, index = [], 0
     for variant, count in GRADED_MIX:
@@ -277,12 +296,19 @@ def _walker(b, transform):
 def _debris(b, route, index, wp):
     rng = b.rng
     props = _available(b, PROPS_DEBRIS)
+    drawn = []
     for _ in range(rng.randint(2, 4)):
-        b.hazards.append(b.b._spawn(rng.choice(props),
-                                    _yawed(b, b._offset(wp, rng.uniform(0.0, 4.0),
-                                                        rng.uniform(-1.2, 1.2), 0.1),
-                                           rng.uniform(0, 360))))
-    b.hazards.append(b.b._spawn(rng.choice(props), b._offset(wp, 2.0, 0.0, 0.1)))
+        name, ahead, lateral = rng.choice(props), rng.uniform(0.0, 4.0), rng.uniform(-1.2, 1.2)
+        yaw = rng.uniform(0, 360)
+        b.hazards.append(b.b._spawn(name, _yawed(b, b._offset(wp, ahead, lateral, 0.1), yaw)))
+        drawn.append([name, round(ahead, 2), round(lateral, 2), round(yaw, 1)])
+    name = rng.choice(props)
+    b.hazards.append(b.b._spawn(name, b._offset(wp, 2.0, 0.0, 0.1)))
+    drawn.append([name, 2.0, 0.0, 0.0])
+    left = wp.get_left_lane()
+    b.staging.update(props=drawn, lane_width=round(wp.lane_width, 2),
+                     passing_lane=None if left is None else
+                     ("same" if (left.lane_id > 0) == (wp.lane_id > 0) else "oncoming"))
 
 
 def _carriageway(b, wp):
@@ -311,9 +337,15 @@ def _carriageway(b, wp):
 def _walking_in_lane(b, route, index, wp):
     """A pedestrian walking ahead in the car's lane, in the car's direction."""
     carla, rng = b.carla, b.rng
-    walker = _walker(b, b._offset(wp, 0.0, rng.uniform(-0.3, 0.8), 1.0))
+    lateral = rng.uniform(-0.3, 0.8)
+    walker = _walker(b, b._offset(wp, 0.0, lateral, 1.0))
     b.hazards.append(walker)
     speed = rng.uniform(0.9, 1.6)
+    left = wp.get_left_lane()
+    b.staging.update(walker=walker.type_id, lateral=round(lateral, 2), speed=round(speed, 2),
+                     lane_width=round(wp.lane_width, 2),
+                     passing_lane=None if left is None else
+                     ("same" if (left.lane_id > 0) == (wp.lane_id > 0) else "oncoming"))
     plan = [w for w, _ in route[index:index + 40]]
 
     def hook():
@@ -333,15 +365,15 @@ def _shoulder_pass(b, route, index, wp):
     Driving = carla.LaneType.Driving
     cars = _small_cars(b)
     # askew, but kept to the lane's left side so the shoulder stays wide enough to pass
-    wrecks = [
-        b.b._spawn(rng.choice(cars), _yawed(
-            b, b._offset(wp, 0.0, rng.uniform(-0.9, -0.7), 0.3), rng.uniform(5.0, 15.0))),
-        b.b._spawn(rng.choice(cars), _yawed(
-            b, b._offset(wp, rng.uniform(5.0, 6.5), rng.uniform(-0.9, -0.7), 0.3), rng.uniform(-15.0, -5.0)))]
+    car1, lat1, yaw1 = rng.choice(cars), rng.uniform(-0.9, -0.7), rng.uniform(5.0, 15.0)
+    wreck1 = b.b._spawn(car1, _yawed(b, b._offset(wp, 0.0, lat1, 0.3), yaw1))
+    car2, ahead2, lat2 = rng.choice(cars), rng.uniform(5.0, 6.5), rng.uniform(-0.9, -0.7)
+    yaw2 = rng.uniform(-15.0, -5.0)
+    wrecks = [wreck1, b.b._spawn(car2, _yawed(b, b._offset(wp, ahead2, lat2, 0.3), yaw2))]
     for wreck in wrecks:        # on their wheels (physics on), handbrake set
         wreck.apply_control(carla.VehicleControl(hand_brake=True, brake=1.0))
     b.hazards.extend(wrecks)
-    w = wp
+    w, closed = wp, 0
     for _ in range(4):
         # walk outward from the car's side, across the centre line if need be
         nxt = w.get_left_lane() if (w.lane_id > 0) == (wp.lane_id > 0) else w.get_right_lane()
@@ -350,9 +382,20 @@ def _shoulder_pass(b, route, index, wp):
         for lateral in (-nxt.lane_width / 4.0, nxt.lane_width / 4.0):
             b.hazards.append(b.b._spawn("static.prop.streetbarrier",
                                         b._offset(nxt, 0.0, lateral, 0.1)))
-        w = nxt
+        w, closed = nxt, closed + 1
     sign = _available(b, ("static.prop.warningaccident", "static.prop.trafficwarning"))
-    b.hazards.append(b.b._spawn(rng.choice(sign), b._offset(wp, -8.0, 0.0, 0.1)))
+    # the warning sign stands on the lane's left like the wrecks, so the shoulder pass that
+    # the closure demands has room beside it too
+    sign_name, sign_lat = rng.choice(sign), rng.uniform(-0.9, -0.7)
+    b.hazards.append(b.b._spawn(sign_name, b._offset(wp, -8.0, sign_lat, 0.1)))
+    right = wp.get_right_lane()
+    b.staging.update(
+        shoulder_width=round(right.lane_width, 2) if right is not None else None,
+        shoulder_type=str(right.lane_type) if right is not None else None,
+        lane_width=round(wp.lane_width, 2), lanes_closed=closed,
+        wrecks=[[w_.type_id, round(lat, 2), round(yaw, 1)] for w_, lat, yaw in
+                zip(wrecks, (lat1, lat2), (yaw1, yaw2))],
+        wreck_gap=round(ahead2, 2), sign=sign_name, sign_lateral=round(sign_lat, 2))
 
 
 def _lead(b, route, wp, blueprints, speed_kmh):
@@ -364,6 +407,7 @@ def _lead(b, route, wp, blueprints, speed_kmh):
     tf = start_wp.transform
     car = b.b._spawn(rng.choice(blueprints),
                      carla.Transform(tf.location + carla.Location(z=0.5), tf.rotation))
+    car.apply_control(carla.VehicleControl(hand_brake=True, brake=1.0))   # held while it settles
     b.hazards.append(car)
     agent = BasicAgent(car, target_speed=speed_kmh,
                        opt_dict={"ignore_traffic_lights": True, "ignore_vehicles": True})
@@ -385,30 +429,59 @@ def _reversing_car(b, route, index, wp):
     a driver backing up to a space they passed. Waiting behind it ends in a collision; the way
     out is the lane to the left."""
     carla, rng = b.carla, b.rng
-    car, agent = _lead(b, route, wp, _small_cars(b), rng.uniform(22.0, 30.0))
+    lead_kmh = rng.uniform(22.0, 30.0)
+    car, agent = _lead(b, route, wp, _small_cars(b), lead_kmh)
     stop_at = wp.transform.location
     back_m = 35.0
     speed_back = rng.uniform(0.8, 1.2)
     dt = b.world.get_settings().fixed_delta_seconds or 0.05
     lights = carla.VehicleLightState
     state = {"go": False, "phase": "drive", "since": 0.0, "from": None}
+    b.staging.update(lead=car.type_id, lead_kmh=round(lead_kmh, 2), back_speed=round(speed_back, 2),
+                     reverse_started=False)
+
+    def lane_walk(start, along, metres):
+        """Points of one lane from `start`, `metres` along its own direction (along=+1) or
+        against it (-1), every 2 m, across road ids."""
+        out, w, run = [], start, 0.0
+        while run < metres:
+            nxt = w.next(2.0) if along > 0 else w.previous(2.0)
+            if not nxt:
+                break
+            run += nxt[0].transform.location.distance(w.transform.location)
+            w = nxt[0]
+            out.append((w, run))
+        return out
 
     def left_free():
-        ego = b.b.ego.get_location()
-        left = b.map.get_waypoint(ego).get_left_lane()
-        if left is None:
+        """The way out is open: the lane to the car's left holds no other vehicle from 60 m
+        behind the car to 30 m ahead of it (walked along the lane, across road ids), and, when
+        it is an oncoming lane, no vehicle in it would reach that stretch within 8 s."""
+        ego_wp = b.map.get_waypoint(b.b.ego.get_location())
+        if ego_wp is None:
             return True
+        left = ego_wp.get_left_lane()
+        if left is None or left.lane_type != carla.LaneType.Driving:
+            return True
+        oncoming = (left.lane_id > 0) != (ego_wp.lane_id > 0)
+        # the car's forward is the left lane's direction, or against it for an oncoming lane
+        ahead = lane_walk(left, -1 if oncoming else 1, 30.0 + (8.0 * 16.0 if oncoming else 0.0))
+        behind = lane_walk(left, 1 if oncoming else -1, 60.0)
+        stretch = [(left, 0.0)] + [(w, run) for w, run in ahead] + [(w, -run) for w, run in behind]
+        width = left.lane_width / 2.0 + 0.5
         for other in b.world.get_actors().filter("vehicle.*"):
             if other.id in (car.id, b.b.ego.id):
                 continue
             loc = other.get_location()
-            if loc.distance(ego) > 60.0:
+            near = min(stretch, key=lambda p: p[0].transform.location.distance(loc))
+            if near[0].transform.location.distance(loc) > width:
                 continue
-            f = b.b.ego.get_transform().get_forward_vector()
-            if (loc.x - ego.x) * f.x + (loc.y - ego.y) * f.y > 30.0:
-                continue
-            here = b.map.get_waypoint(loc)
-            if here is not None and here.road_id == left.road_id and here.lane_id == left.lane_id:
+            if near[1] <= 30.0:
+                return False                    # in the lane, beside or close to the car
+            v = other.get_velocity()
+            f = near[0].transform.get_forward_vector()
+            toward = v.x * f.x + v.y * f.y      # ahead of the car an oncoming lane runs toward it
+            if toward > 0.1 and near[1] / toward < 8.0:
                 return False
         return True
 
@@ -440,6 +513,7 @@ def _reversing_car(b, route, index, wp):
                 state.update(phase="reverse", since=now, moved=0.0, tf=tf)
                 car.set_simulate_physics(False)
                 car.set_light_state(lights(lights.Reverse))
+                b.staging.update(reverse_started=True, reverse_at_s=round(now, 2))
             return
         if phase == "reverse":
             state["moved"] = min(back_m, state["moved"] + speed_back * dt)
@@ -461,45 +535,117 @@ def _reversing_car(b, route, index, wp):
 
 def _dropped_cargo(b, route, index, wp):
     """A truck ahead in the car's lane sheds two to four pieces of its load as it passes the
-    hazard point; they fall from its tail, tumble and come to rest in the lane."""
+    hazard point; they fall from its tail and come to rest in the car's lane, the next lane
+    left open.
+
+    The truck stands on its handbrake until it has stood still for a second and the car is
+    within 30 m. Every piece is drawn here, at staging: its blueprint, where it comes to rest
+    (1.5-4.0 m plus 1.2 m per piece behind the hazard point, its centre 0.3 m left to 0.9 m
+    right of the lane centre with its footprint inside the lane), its final yaw and its spin.
+    The fall is scripted (physics off: free fall from the tail, a decaying slide and tumble
+    that never outruns the truck), so where the load lies follows from the seed."""
     carla, rng = b.carla, b.rng
-    truck, agent = _lead(b, route, wp, _available(b, TRUCKS), rng.uniform(25.0, 32.0))
+    truck_kmh = rng.uniform(25.0, 32.0)
+    truck, agent = _lead(b, route, wp, _available(b, TRUCKS), truck_kmh)
     cargo = _available(b, PROPS_CARGO)
     drop_at = wp.transform.location
-    pieces = rng.randint(2, 4)
-    state = {"go": False, "dropped": False}
+    dt = b.world.get_settings().fixed_delta_seconds or 0.05
+    plan = []
+    for k in range(rng.randint(2, 4)):
+        name, back = rng.choice(cargo), rng.uniform(1.5, 4.0) + 1.2 * k
+        lateral, yaw = rng.uniform(-0.3, 0.9), rng.uniform(0.0, 360.0)
+        spin = rng.choice((1.0, -1.0)) * rng.uniform(90.0, 360.0)
+        tumble = rng.uniform(15.0, 45.0)
+        rest_wp = (wp.previous(back) or [wp])[0]
+        plan.append({"name": name, "back": back, "lateral": lateral, "yaw": yaw, "spin": spin,
+                     "tumble": tumble, "rest_wp": rest_wp, "k": k})
+    state = {"go": False, "dropped": False, "stood": 0.0}
+    falling = []
+    b.staging.update(truck=truck.type_id, truck_kmh=round(truck_kmh, 2), pieces=len(plan),
+                     lane_width=round(wp.lane_width, 2),
+                     planned=[[p["name"], round(p["back"], 2), round(p["lateral"], 2),
+                               round(p["yaw"], 1)] for p in plan])
+
+    def rest_transform(prop, p):
+        """Where the piece comes to rest: flat on the road, inside the car's lane."""
+        box = prop.bounding_box
+        rel = math.radians(p["yaw"])
+        half = abs(box.extent.x * math.sin(rel)) + abs(box.extent.y * math.cos(rel))
+        room = max(0.0, p["rest_wp"].lane_width / 2.0 - half - 0.05)
+        lateral = max(-min(0.3, room), min(min(0.9, room), p["lateral"]))
+        tf = b._offset(p["rest_wp"], 0.0, lateral, 0.0)
+        tf.location.z = _ground(b, tf.location) - box.location.z + box.extent.z
+        p["rest_lateral"] = lateral
+        return carla.Transform(tf.location, carla.Rotation(yaw=tf.rotation.yaw + p["yaw"]))
 
     def drop():
         tf = truck.get_transform()
         f, r = tf.get_forward_vector(), tf.get_right_vector()
-        back = truck.bounding_box.extent.x + 0.9
+        tail = truck.bounding_box.extent.x + 0.9
         v = truck.get_velocity()
+        speed = max(1.0, math.sqrt(v.x * v.x + v.y * v.y))
         lib = b.world.get_blueprint_library()
-        for k in range(pieces):
-            lateral = rng.uniform(-0.2, 0.7)       # off the tail's kerb side: the next lane stays open
-            loc = tf.location + carla.Location(-f.x * back + r.x * lateral, -f.y * back + r.y * lateral,
-                                               1.4 + 0.5 * k)
-            prop = b.world.try_spawn_actor(lib.find(rng.choice(cargo)),
-                                           carla.Transform(loc, carla.Rotation(yaw=rng.uniform(0, 360))))
+        for p in plan:
+            prop = None
+            for lift in range(5):           # a deterministic sequence of release heights
+                loc = tf.location + carla.Location(-f.x * tail + r.x * p["lateral"],
+                                                   -f.y * tail + r.y * p["lateral"],
+                                                   1.4 + 0.5 * p["k"] + 0.6 * lift)
+                start = carla.Transform(loc, carla.Rotation(yaw=tf.rotation.yaw + p["yaw"] - p["spin"]))
+                prop = b.world.try_spawn_actor(lib.find(p["name"]), start)
+                if prop is not None:
+                    break
             if prop is None:
+                p["spawned"] = False
                 continue
-            prop.set_simulate_physics(True)
-            keep, side = rng.uniform(0.1, 0.25), rng.uniform(0.0, 0.6)
-            prop.set_target_velocity(carla.Vector3D(v.x * keep + r.x * side, v.y * keep + r.y * side, 0.0))
-            prop.set_target_angular_velocity(carla.Vector3D(rng.uniform(-90, 90), rng.uniform(-90, 90),
-                                                            rng.uniform(-90, 90)))
+            prop.set_simulate_physics(False)
             b.b.actors.append(prop)
+            b.hazards.append(prop)
             b.b.tracker.hazard_ids.add(prop.id)     # hitting the load counts like the hazard
+            rest = rest_transform(prop, p)
+            height = max(0.2, start.location.z - rest.location.z)
+            t_fall = math.sqrt(2.0 * height / 9.81)
+            run = math.hypot(rest.location.x - start.location.x, rest.location.y - start.location.y)
+            # the slide never starts faster than the truck goes, and ends no earlier than the fall
+            p.update(spawned=True, prop=prop, start=start, rest=rest, t=0.0, t_fall=t_fall,
+                     t_end=max(t_fall, 2.0 * run / speed), height=height)
+            falling.append(p)
+        b.staging["landed"] = [[p["name"], round(p["back"], 2), round(p.get("rest_lateral", p["lateral"]), 2)]
+                               for p in plan if p.get("spawned")]
+
+    def move(p):
+        p["t"] = min(p["t_end"], p["t"] + dt)
+        u = p["t"] / p["t_end"]
+        ease = 1.0 - (1.0 - u) ** 2                    # decelerating slide
+        a, c = p["start"].location, p["rest"].location
+        fall = min(p["t"], p["t_fall"])
+        z = max(c.z, a.z - 0.5 * 9.81 * fall * fall)
+        settle = (1.0 - u) ** 2                        # the tumble dies out as it comes to rest
+        rot = carla.Rotation(pitch=p["tumble"] * math.sin(3.0 * math.pi * u) * settle,
+                             yaw=p["rest"].rotation.yaw - p["spin"] * (1.0 - ease),
+                             roll=0.6 * p["tumble"] * math.sin(2.0 * math.pi * u) * settle)
+        loc = carla.Location(a.x + (c.x - a.x) * ease, a.y + (c.y - a.y) * ease, z)
+        p["prop"].set_transform(carla.Transform(loc, rot) if u < 1.0 else p["rest"])
 
     def hook():
+        for p in list(falling):
+            move(p)
+            if p["t"] >= p["t_end"]:
+                falling.remove(p)
         if not state["go"]:
-            if truck.get_location().distance(b.b.ego.get_location()) < 30.0:
+            v = truck.get_velocity()
+            still = math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z) < 0.1
+            state["stood"] = state["stood"] + dt if still else 0.0
+            near = truck.get_location().distance(b.b.ego.get_location()) < 30.0
+            if state["stood"] >= 1.0 and near:
                 state["go"] = True
+                b.staging["released_at_s"] = round(b.b.tracker.time, 2)
             else:
                 truck.apply_control(carla.VehicleControl(hand_brake=True, brake=1.0))
                 return
         if not state["dropped"] and truck.get_location().distance(drop_at) < 3.0:
             state["dropped"] = True
+            b.staging["dropped_at_s"] = round(b.b.tracker.time, 2)
             drop()
         truck.apply_control(agent.run_step())
     b.b.scripted.append(hook)
@@ -508,7 +654,9 @@ def _dropped_cargo(b, route, index, wp):
 def _crowd_against_light(b, route, index, entry):
     """The car has a green light straight across a junction; four to eight people step off
     the kerb on the car's right into the crossing just past the stop line, against their
-    light, a little apart. One or two of them stop in the car's lane and turn back."""
+    light, a little apart. One or two of them stop in the car's lane and turn back. A person
+    walking back who has not reached the pavement within the time the way out took plus 2 s
+    is put back on their spot, where they stay."""
     carla, rng = b.carla, b.rng
     lights = b.world.get_traffic_lights_from_waypoint(entry, 40.0)
     if not lights:
@@ -536,6 +684,11 @@ def _crowd_against_light(b, route, index, entry):
         p["stop_at"] = kerb + rng.uniform(0.5, 2.0)     # metres in from the kerb: the car's lane
     b.hazards.extend(p["walker"] for p in people)
     state = {"t0": None}
+    b.staging.update(group=len(people), turners=sum(1 for p in people if p["turn"]),
+                     lane_width=round(entry.lane_width, 2),
+                     people=[[round(p["delay"], 2), round(p["speed"], 2),
+                              round(p["start"].distance(entry.transform.location), 2),
+                              round(p["stop_at"], 2) if p["turn"] else None] for p in people])
 
     def hook():
         ego = b.b.ego.get_location()
@@ -552,15 +705,22 @@ def _crowd_against_light(b, route, index, entry):
             if p["turn"]:
                 phase = p.setdefault("phase", "out")
                 if phase == "out" and moved >= p["stop_at"]:
-                    p.update(phase="wait", since=elapsed)
+                    p.update(phase="wait", since=elapsed, out=moved)
                 if phase == "wait" and elapsed - p["since"] > 1.5:
-                    p["phase"] = "back"
-                if p["phase"] == "back" and moved < 0.5:
-                    p["phase"] = "done"
+                    p.update(phase="back", since=elapsed)
+                if p["phase"] == "back":
+                    if moved < 0.5:
+                        p["phase"] = "done"
+                    elif elapsed - p["since"] > p["out"] / p["speed"] + 2.0:
+                        # stuck on the way back (a kerb, a car): back on the spot it came from
+                        w.set_transform(carla.Transform(p["start"], w.get_transform().rotation))
+                        p["phase"] = "done"
+                        b.staging["returned_by_hand"] = b.staging.get("returned_by_hand", 0) + 1
                 direction, speed = {"out": (toward, p["speed"]), "wait": (toward, 0.0),
                                     "back": (back, p["speed"]), "done": (back, 0.0)}[p["phase"]]
             else:
-                direction, speed = toward, (p["speed"] if moved < crossing else 0.0)
+                p["done"] = p.get("done") or moved >= crossing
+                direction, speed = toward, (0.0 if p["done"] else p["speed"])
             w.apply_control(carla.WalkerControl(direction=direction, speed=speed))
     b.b.scripted.append(hook)
 
@@ -609,6 +769,9 @@ def _overtaking_oncoming(b, route, index, wp):
     kerb_side = -(opposite.lane_width / 2.0 - 0.8)     # the cyclist keeps to its kerb
     release = rng.uniform(55.0, 70.0)
     state = {"go": False, "u": 0.0, "w": 0.0, "side": 0.0, "passed": False}
+    b.staging.update(car=car.type_id, bike=bike.type_id, intrusion=round(intrusion, 2),
+                     v_car=round(v_car, 2), v_bike=round(v_bike, 2), release_m=round(release, 1),
+                     lane_width=round(wp.lane_width, 2), oncoming_width=round(opposite.lane_width, 2))
 
     def place(actor, points, u, side):
         i = min(int(u), len(points) - 2)
@@ -678,6 +841,10 @@ def _spinning_car(b, route, index, wp):
     v_car = rng.uniform(9.0, 11.0)
     slide_m, slide_s = rng.uniform(9.0, 13.0), rng.uniform(1.6, 2.2)
     state = {"go": False, "u": 0.0, "t": None}
+    b.staging.update(car=car.type_id, spin=round(spin, 1), v_car=round(v_car, 2),
+                     slide_m=round(slide_m, 2), slide_s=round(slide_s, 2),
+                     rest_lateral=round(across - left.transform.location.distance(wp.transform.location), 2),
+                     lane_width=round(wp.lane_width, 2))
 
     def pose(u, side, yaw_extra):
         i = min(int(u), len(points) - 2)
@@ -737,10 +904,12 @@ def _distractors(b, route, hazard_index):
     if not spots:
         return
     kinds = ["parked_car", "pavement_people", "kerb_props", "oncoming_cones"]
+    placed = b.staging.setdefault("distractors", [])
     for _ in range(b.distractors):
         wp = rng.choice(spots)
         kind = rng.choice(kinds)
         kerb = wp.lane_width / 2.0
+        placed.append(kind)
         try:
             if kind == "parked_car":
                 right = wp.get_right_lane()
