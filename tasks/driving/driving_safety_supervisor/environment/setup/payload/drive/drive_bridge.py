@@ -69,6 +69,7 @@ REF_CAP_KMH = 50.0        # ... counting limits above the nominal planner's own 
 NAV_SPACING_M = 30.0      # navigation targets: about every 30 m and where the command changes
 VEHICLE_RADIUS_M, NEAR_RADIUS_M = 250.0, 80.0   # privileged block: vehicles, walkers and props
 FRAME_TIMEOUT_S = 30.0    # a camera frame not arriving this long after its tick is a bridge error
+LOAD_TIMEOUT_S = 600.0    # a town (re)load
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -508,12 +509,17 @@ class CarlaBackend(object):
         state or traffic light phase carries over from the previous one."""
         carla = self.carla
         self._sync(self.world if self.world is not None else self.client.get_world())
-        if self.town != town:
-            self.world = self.client.load_world(town, reset_settings=False)
-            self.town = town
-            self.map = None
-        else:
-            self.world = self.client.reload_world(reset_settings=False)
+        # a (re)load of a large town can take minutes on a busy host: wait for it
+        self.client.set_timeout(LOAD_TIMEOUT_S)
+        try:
+            if self.town != town:
+                self.world = self.client.load_world(town, reset_settings=False)
+                self.town = town
+                self.map = None
+            else:
+                self.world = self.client.reload_world(reset_settings=False)
+        finally:
+            self.client.set_timeout(60.0)
         self._sync(self.world)
         if self.map is None:
             self.map = self.world.get_map()     # the same town's road network: kept across reloads
