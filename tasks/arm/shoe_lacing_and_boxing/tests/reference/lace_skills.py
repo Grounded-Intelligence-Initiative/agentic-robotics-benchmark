@@ -11,7 +11,9 @@ Strategy
   seat    grasp a shoe handle (heel or toe counter, whichever is nearer the gripper base and whose outer finger stays
           clear of the neighbouring shoe) from above with the fingers closing along the shoe's length, lift, right an
           on-side shoe in the air (the weld keeps the shoe fixed to the hand, so a 90 deg roll of the hand about the
-          shoe's length rights it; a close neighbour shoe is kept clear by the other handle and a sideways shift),
+          shoe's length rights it; a close neighbour shoe is kept clear by the other handle and a shift before the
+          set-down whose direction is planned on the kinematics: the arm clear of the tray and the hand of the
+          neighbour),
           carry it round the gripper base, re-grasp it at the toe, and carry it high (SEAT_FREE_Z) to above the
           cradle, so that no low sideways move drags a tail under it; there it dips and comes back up (the tails touch
           down below their rings and hang straight), pitches toe-down and back (a loop under the sole slides off the
@@ -965,6 +967,119 @@ def _held_clearance(rig, s, p_shoe, R_shoe):
     return best
 
 
+SHIFT_LEN = 0.07          # a righted shoe set down near its neighbour is first moved this far away from it, straight away
+SHIFT_TURNS = (0, 30, -30, 60, -60, 90, -90, 120, -120)    # or turned by these angles (deg) when the arm needs that
+SHIFT_CLEAR = 0.025       # the move keeps the gripper arm this far from the cell, the other arm and the loose objects
+SHIFT_SET_CLEAR = 0.020   # the set-down (straight down) keeps the arm's links this far from everything: set down 7 cm
+                          # further out at the far delivery spot the forearm went 11 mm into the infeed tray (59-148 N before
+                          # the per-tick guard could stop it, seeds 1040 and 1057 of an earlier version)
+SHIFT_HAND_NB = 0.020     # and its hand and fingers this far from the neighbour shoe (the hand is wide along the shoe's
+                          # length: set down straight away from the neighbour it came within 2 mm of it, seed 1049)
+SHIFT_V = 0.10
+
+
+def _shift_geoms(rig, s):
+    """Geom ids for the shift check of held shoe s: (the gripper arm's geoms, its links 1-7, its hand and fingers, the
+    obstacles (the cell, the other arm, the loose objects but laces and the held shoe), the neighbour shoe, the static
+    cell, the held shoe)."""
+    cache = getattr(rig, "_shift_geoms_cache", None)
+    if cache is None:
+        cache = rig._shift_geoms_cache = {}
+    if s not in cache:
+        m, sc = rig.m, rig.sc
+        gc, ga = np.asarray(sc.geom_class, int), np.asarray(sc.geom_arm, int)
+        body = np.asarray(m.geom_bodyid, int)
+        coll = (np.asarray(m.geom_contype) != 0) | (np.asarray(m.geom_conaffinity) != 0)
+        lace = set(int(b) for ids in sc.lace_bodies for b in ids)
+        link_names = set("left/link%d" % k for k in range(1, 8))
+        names = [m.body(int(b)).name for b in body]
+        # the arm's moving geoms (not its base link, which stands on its pedestal)
+        arm = [g for g in range(m.ngeom) if coll[g] and ga[g] == 1 and gc[g] in (1, 2, 3) and names[g] != "left/link0"]
+        links = [g for g in arm if names[g] in link_names]
+        hand = [g for g in arm if g not in links]
+        held = [g for g in range(m.ngeom) if body[g] == int(sc.shoe_body[s])]
+        nb = [g for g in range(m.ngeom) if body[g] == int(sc.shoe_body[1 - s]) and coll[g]]
+        env = [g for g in range(m.ngeom) if coll[g] and gc[g] == 5]
+        obst = [g for g in range(m.ngeom) if coll[g] and ga[g] != 1 and int(body[g]) not in lace and body[g] != int(sc.shoe_body[s])
+                and not m.geom(g).name.startswith("pedestal_left/")]
+        cache[s] = (arm, links, hand, obst, nb, env, held)
+    return cache[s]
+
+
+def _gap(m, d, ga, gb, cap=0.10):
+    """Smallest distance (m, at most `cap`) between a geom of `ga` and one of `gb` on data d."""
+    if not ga or not gb:
+        return cap
+    A, B = np.asarray(ga, int), np.asarray(gb, int)
+    near = np.linalg.norm(d.geom_xpos[A][:, None, :] - d.geom_xpos[B][None, :, :], axis=2) \
+        - m.geom_rbound[A][:, None] - m.geom_rbound[B][None, :]
+    near[:, m.geom_type[B] == mujoco.mjtGeom.mjGEOM_PLANE] = -1.0
+    best = cap
+    for i, j in sorted(zip(*np.nonzero(near < cap)), key=lambda ij: near[ij[0], ij[1]]):
+        if near[i, j] >= best:
+            break
+        best = min(best, float(mujoco.mj_geomDistance(m, d, int(A[i]), int(B[j]), best, None)))
+    return best
+
+
+def _shift_score(rig, s, tgt, R, clearance=0.008):
+    """(margin, parts) of moving the held shoe s (orientation R) straight to `tgt` and lowering it there until its
+    lowest point is `clearance` above the bench (kinematic: IK on the scratch data, mj_geomDistance): the worst, over
+    the half-way point and the end of the move, of the gripper arm's geoms to the obstacles (SHIFT_CLEAR) and its links
+    to the held shoe (2 cm), and, at the set-down, of its links to everything (SHIFT_SET_CLEAR), its hand and fingers to
+    the neighbour (SHIFT_HAND_NB) and to the bench and tray (2 mm). margin < 0: too close; -1 without IK."""
+    from shoecell.control import ik_solve
+    m, arm = rig.m, rig.sc.arms["left"]
+    armg, links, hand, obst, nb, env, held = _shift_geoms(rig, s)
+    F = _Frame(rig, s)
+    sd = arm.scratch
+    adr = m.jnt_qposadr[m.body_jntadr[rig.sc.shoe_body[s]]]
+    p_set = np.array([tgt[0], tgt[1], clearance - _shoe_low_z(rig, s, R)])
+    q = arm.q()
+    parts = []
+    for k, p in enumerate((F.p + 0.5 * (np.asarray(tgt, float) - F.p), np.asarray(tgt, float), p_set)):
+        pt, qt = _tcp_for_shoe(rig, s, p, R)
+        q, ep, er, ok = ik_solve(arm, pt, quat_to_mat(qt), q0=q, iters=200)
+        if not ok:
+            return -1.0, "no IK at point %d" % k
+        sd.qpos[:] = rig.d.qpos
+        sd.qpos[arm.qadr] = q
+        sd.qpos[adr:adr + 3] = p
+        sd.qpos[adr + 3:adr + 7] = mat_to_quat(R)
+        mujoco.mj_kinematics(m, sd)
+        if k < 2:
+            parts += [("arm-cell%d" % k, _gap(m, sd, armg, obst), SHIFT_CLEAR), ("links-shoe%d" % k, _gap(m, sd, links, held), 0.02)]
+        else:
+            parts += [("set links", _gap(m, sd, links, obst + held), SHIFT_SET_CLEAR), ("set hand-nb", _gap(m, sd, hand, nb), SHIFT_HAND_NB),
+                      ("set hand-bench", _gap(m, sd, hand, env), 0.002)]
+    margin = min(g - thr for _, g, thr in parts)
+    return margin, " ".join("%s %.0f" % (n, 1000 * g) for n, g, _ in parts)
+
+
+def _plan_shift(rig, s, away):
+    """Where the righted shoe s (held in the air) goes before it is set down near its neighbour: SHIFT_LEN straight
+    `away` from it when that move and the set-down there keep the arm clear (_shift_score), else in the first of the
+    turned directions that does, else in the clearest of them or (when clearer still) nowhere.
+    Returns (target, turn in deg or None for no shift, margin, parts)."""
+    F = _Frame(rig, s)
+    best = None
+    for turn in SHIFT_TURNS:
+        a = math.radians(turn)
+        u = np.array([math.cos(a) * away[0] - math.sin(a) * away[1], math.sin(a) * away[0] + math.cos(a) * away[1], 0.0])
+        tgt = F.p + u * SHIFT_LEN
+        margin, parts = _shift_score(rig, s, tgt, F.R)
+        if turn == 0 and margin < 0.0:
+            _log(rig, "shoe %d: straight away from the neighbour the arm would come too close (mm: %s)" % (s, parts))
+        if margin >= 0.0:
+            return tgt, turn, margin, parts
+        if best is None or margin > best[2]:
+            best = (tgt, turn, margin, parts)
+    margin, parts = _shift_score(rig, s, F.p.copy(), F.R)
+    if margin >= best[2]:
+        return F.p.copy(), None, margin, parts
+    return best
+
+
 def _hang_tails(rig, s, seat_p, seat_R, dip=0.08, shake=True):
     """Held shoe (toe grasp): straight up to SEAT_FREE_Z, across to above the seat at that height, a dip of `dip`, with
     `shake` pitched toe-down and back about the tcp; then the tails hang straight down from their row-1 rings and
@@ -1120,11 +1235,18 @@ def seat_shoe(rig, s, _retry=0):
         away = F1.p[:2] - other[:2]
         if other[2] > -0.1 and np.linalg.norm(away) < 0.32:
             # the neighbour shoe is close: set the righted shoe down a little further away from it (the hand is wide
-            # along the shoe's length and would press the neighbour on the way down)
+            # along the shoe's length and would press the neighbour on the way down), along a path that keeps the arm
+            # clear of the tray, the bench and the neighbour (_plan_shift)
             away = away / max(1e-6, np.linalg.norm(away))
-            tgt = F1.p + np.array([away[0], away[1], 0.0]) * 0.07
-            _log(rig, "shoe %d: neighbour %.2f m away, shifting the righted shoe by 7 cm before setting it down" % (s, np.linalg.norm(F1.p[:2] - other[:2])))
-            _move_shoe(rig, s, tgt, F1.R, tol=0.008, timeout=4.0)
+            dist = np.linalg.norm(F1.p[:2] - other[:2])
+            tgt, turn, margin, parts = _plan_shift(rig, s, away)
+            if turn is None:
+                _log(rig, "shoe %d: neighbour %.2f m away, no shift keeps the arm clearer than setting it down in place (margin %.0f mm; %s)" % (
+                    s, dist, 1000 * margin, parts))
+            else:
+                _log(rig, "shoe %d: neighbour %.2f m away, shifting the righted shoe by 7 cm (%+d deg off straight away; margin %.0f mm) before setting it down" % (
+                    s, dist, turn, 1000 * margin))
+                _move_shoe(rig, s, tgt, F1.R, tol=0.008, timeout=4.0, v=SHIFT_V)
         if nz < math.cos(math.radians(35)):
             # not rolled far enough to fall onto its sole: put it back on its side and try again from scratch
             _log(rig, "shoe %d: roll insufficient (sole normal z %.2f), putting it back" % (s, nz))
