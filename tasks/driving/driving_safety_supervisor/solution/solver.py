@@ -66,7 +66,7 @@ MARGIN_STATIC, MARGIN_ALONG, MARGIN_ONCOMING = 0.3, 0.4, 0.2
 MARGIN_WALKER, MARGIN_WALKER_KERB, WALKER_PAD_PER_S = 0.8, 0.5, 0.3
 V_PASS, V_PASS_FAST = 7.0, 7.8   # m/s while driving around a blocker (fast: 0.6 m to spare)
 V_LIMIT_MAX = 50.0 / 3.6         # the planner's own cap; the expert cruises at the posted limit
-# This car's automatic gearbox (measured, tests/review: gear sweeps) shifts up from 2nd near
+# This car's automatic gearbox (measured in CARLA 0.9.15 with speed sweeps) shifts up from 2nd near
 # 8.2 m/s and down from 3rd near 9.2 m/s and from 2nd near 6.75 m/s; a downshift with the
 # throttle shut (or the brake on) decelerates it by more than 7 m/s^2 for a tick, a harsh
 # brake, while a light throttle (0.15) keeps the jerk under 6.5 m/s^2. So at the town limit
@@ -486,7 +486,7 @@ class Expert(object):
 
     def _queued(self, path, actors, car):
         """A stopped car that is waiting its turn: another vehicle close ahead of it in its
-        lane, or a junction or a red light just ahead of it."""
+        lane, a red light near it, or a junction just ahead of its front."""
         for other in actors:
             if other is car or other["type"] != "vehicle" or other["beyond"]:
                 continue
@@ -495,7 +495,8 @@ class Expert(object):
                 return True
         if self.red and car["s"] - path.s0 < 30.0:
             return True
-        return path.junction_between(car["s"], car["s"] + car["hl"] + 20.0)
+        # a car waiting to enter a junction stands at its edge, not well short of it
+        return path.junction_between(car["s"], car["s"] + car["hl"] + 8.0)
 
     def _limit(self, path, actors, v):
         """Speed cap from everything on, or coming onto, the path ahead, with the actor
@@ -534,8 +535,11 @@ class Expert(object):
                     gap0 += 4.0 + 2.0 * -a["vs"]        # backing (or driving) toward the car
                 gap = a["s"] - a["hl"] - s0 - HALF_L - gap0 + lead * lead / (2 * LEAD_DECEL)
                 cap = math.sqrt(2 * DECEL * gap) if gap > 0 else 0.0
-                if walk > 0.0 and gap > -1.0:
-                    cap = max(cap, walk * min(1.0, 1.0 + gap))   # keep pace with them, no closer
+                if walk > 0.0:
+                    # behind someone walking along the lane: settle at their pace at the standing
+                    # gap (a gentle approach; stop-and-go there locks the wheels every time)
+                    follow = walk + 0.5 * gap
+                    cap = max(0.0, min(cap, follow) if gap > 0.0 else follow)
                 if cap < v_cap:
                     v_cap, worst, room = cap, a, gap
                 continue
@@ -786,7 +790,9 @@ class Expert(object):
         # stop far enough back to pull out round it: as far behind as the way round is wide
         need = max(abs(self._need(group, side=-1)), 3.0)
         self.mem["gap_static"] = max(self.mem["gap_static"], GAP_STATIC, 2.5 * need + 3.0)
-        if start - s0 - HALF_L > PLAN_WITHIN + (5.0 if backing else 0.0):
+        # within 25 m, or as far out as the move out at this speed needs (2.5 s of travel)
+        within = max(PLAN_WITHIN, RAMP_PER_MS * v + OUT_BEFORE + 3.0)
+        if start - s0 - HALF_L > within + (5.0 if backing else 0.0):
             return None
         if kinds == {"vehicle"} and not backing:
             # a car queued at a light or a junction is not passed; one parked askew or off
