@@ -1775,7 +1775,7 @@ def ship_box(rig):
             _reach(rig, pre, q)
         q_start = arm.q().copy()
         _glide(rig, "left", start, q, speed=0.12, tol=0.002, timeout=3.0, settle=0.1)
-        _glide(rig, "left", start + xw * (PUSH_GAP + 0.003), q, speed=0.03, tol=0.003, timeout=2.0, ignore=("box", "lid"))
+        _glide(rig, "left", start + xw * (PUSH_GAP + 0.003), q, speed=0.03, tol=0.003, timeout=2.0, ignore=("box",))
         p0, _ = arm.tcp_actual()
         target = p0 + xw * dist
         speed = 0.10
@@ -1793,7 +1793,7 @@ def ship_box(rig):
             cmd = p0 + (target - p0) * (i + 1) / n
             arm.command_cartesian(cmd, q)
             rig.tick()
-            hit = link_press(rig, "left", ignore=("box", "lid"))     # the closed box and its lid move on together
+            hit = link_press(rig, "left", ignore=("box",))     # the fingers push the box; a link on the lid is a press
             if hit is not None:
                 stalled = "%s presses %s with %.0f N" % hit
                 break
@@ -1843,7 +1843,7 @@ def ship_box(rig):
                 break
             if fp2[0] < goal_x + 0.03 and stalled is None:
                 p1, _ = arm.tcp_actual()
-                _glide(rig, "left", p1 + xw * (goal_x + 0.02 - float(fp2[0])), q, speed=0.06, tol=0.003, timeout=4.0, ignore=("box", "lid"))
+                _glide(rig, "left", p1 + xw * (goal_x + 0.02 - float(fp2[0])), q, speed=0.06, tol=0.003, timeout=4.0, ignore=("box",))
                 shipped = _wait_until(rig, shipped_now, 3.0)
                 fp2, _, st2 = _floor_frame(rig)
                 _log(rig, "box at x %.3f closed %s -> shipped %s t=%.1f" % (fp2[0], st2["closed"], shipped, rig.time))
