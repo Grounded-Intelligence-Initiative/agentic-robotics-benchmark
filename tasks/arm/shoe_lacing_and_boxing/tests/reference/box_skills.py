@@ -927,15 +927,20 @@ def erect_box(rig):
 
 
 LID_DRAG_Y_MIN = -0.175     # a short-wall fold stopped on the lid tray moves the blank away from the tray, not beyond this
-LID_SHIFT_MAX = 0.06        # a lid tray in the way of a wall fold slides at most this far toward +y on the infeed tray
+LID_SHIFT_MAX = 0.06        # a lid tray in the way of a wall fold slides this far toward +y on the infeed tray, or back
+                            # onto the tray when it lies off it (LID_TRAY_IN inside the tray's near edge) ...
 LID_SHOE_CLEAR = 0.02       # ... keeping this much from the shoes lying there
+LID_TRAY_IN = 0.012         # the cell delivers some lids onto the tray's near rim, and about one in twenty of those is
+                            # pushed off the tray at reset, 12 cm toward the blank (seeds 1014, 1034, 1039 and 1046)
+LID_LIFT = 0.035            # carried this high over the tray's rim (18 mm)
 
 
 def _shift_lid_away(rig):
-    """The lid tray lies so close to the blank that a wall fold's hand met it (a lid jittered toward the box): grasp it
-    at the middle of its wall that faces the arm across the tray's length (away from the shoes), slide it toward +y on
-    the infeed tray by up to LID_SHIFT_MAX (LID_SHOE_CLEAR from the shoes lying there), set it down, let go. Returns
-    True when it moved by 1.5 cm or more."""
+    """The lid tray lies so close to the blank that a wall fold's hand met it (a lid jittered toward the box or pushed
+    off the infeed tray): grasp it at the middle of its wall that faces the arm across the tray's length (away from the
+    shoes), lift it over the tray's rim and slide it toward +y by LID_SHIFT_MAX, or more when that leaves it off the
+    tray (until its near edge is LID_TRAY_IN inside), but never closer than LID_SHOE_CLEAR to the shoes lying there,
+    set it down, let go. Returns True when it moved by 1.5 cm or more."""
     sc = rig.sc
     rig.lid_shifted = True
     lp, lq = sc.lid_pose()
@@ -953,7 +958,16 @@ def _shift_lid_away(rig):
                 q = p + R @ np.array([sx * d["L"] / 2, sy * d["W"] / 2, 0.0])
                 if abs(float(q[0]) - float(lp[0])) < lo + 0.05:
                     shoe_min_y = min(shoe_min_y, float(q[1]))
-    dy = min(LID_SHIFT_MAX, shoe_min_y - LID_SHOE_CLEAR - lid_max_y)
+    corners = [lp + Rl @ np.array([sx * lo, sy * wo, sz], float) for sx in (-1, 1) for sy in (-1, 1)
+               for sz in (0.0, -float(sc.lid["dims"]["wall_h"]))]
+    lid_min_y = min(float(c[1]) for c in corners)
+    lid_low_z = min(float(c[2]) for c in corners)
+    cy, hy = sc.layout["infeed"]["centre"][1], sc.layout["infeed"]["half"][1]
+    dy_tray = (cy - hy + LID_TRAY_IN) - lid_min_y            # back onto the tray: the near edge inside its rim
+    dy = min(max(LID_SHIFT_MAX, dy_tray), shoe_min_y - LID_SHOE_CLEAR - lid_max_y)
+    # where it lands: on the tray plate when its near edge ends inside the rim, else on the bench
+    land_z = (sc.infeed_top_z if lid_min_y + dy > cy - hy + 0.004 else 0.0) + 0.002
+    dz_land = land_z - lid_low_z
     if dy < 0.015:
         _log(rig, "lid: in the way of a wall fold, but no room to slide it away (%.0f mm)" % (1000 * max(dy, 0.0)))
         return False
@@ -973,7 +987,7 @@ def _shift_lid_away(rig):
         for yaw in (_yaw_of(normal), _yaw_of(normal) + math.pi):
             q = down_quat(yaw)
             tcp = p + np.array([0.0, 0.0, PINCH_Z_HI - ATTACH_MARGIN - 0.0005])
-            if _ik_any(rig, tcp, q) is None or _ik_any(rig, tcp + np.array([0.0, 0.03, 0.025]) + np.array([0.0, dy, 0.0]), q) is None:
+            if _ik_any(rig, tcp, q) is None or _ik_any(rig, tcp + np.array([0.0, 0.03, LID_LIFT]) + np.array([0.0, dy, 0.0]), q) is None:
                 continue
             rig.gripper(0.03, wait=False)
             _left_up(rig, APPROACH_Z)
@@ -985,9 +999,9 @@ def _shift_lid_away(rig):
                 rig.release(0.2)
                 _left_up(rig, APPROACH_Z)
                 continue
-            _glide(rig, "left", tcp + np.array([0.0, 0.0, 0.025]), q, speed=0.04, tol=0.002, timeout=3.0)
-            _glide(rig, "left", tcp + np.array([0.0, dy, 0.025]), q, speed=0.03, tol=0.002, timeout=4.0)
-            _glide(rig, "left", tcp + np.array([0.0, dy, 0.002]), q, speed=0.02, tol=0.0015, timeout=3.0, settle=0.2)
+            _glide(rig, "left", tcp + np.array([0.0, 0.0, LID_LIFT]), q, speed=0.04, tol=0.002, timeout=3.0)
+            _glide(rig, "left", tcp + np.array([0.0, dy, LID_LIFT]), q, speed=0.03, tol=0.002, timeout=3.0 + dy / 0.03)
+            _glide(rig, "left", tcp + np.array([0.0, dy, max(dz_land, 0.0) + 0.002]), q, speed=0.02, tol=0.0015, timeout=3.0, settle=0.2)
             rig.release(0.4)
             _glide(rig, "left", tcp + np.array([0.0, dy, 0.10]), q, speed=0.15, tol=0.005, timeout=3.0)
             _left_up(rig, APPROACH_Z)
