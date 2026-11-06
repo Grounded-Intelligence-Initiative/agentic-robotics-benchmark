@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Setup — runs as trusted root, cwd = this staged folder, before the agent phase.
 #
-# One job here: put the agent-visible material (the practice grader, the agent's own
-# editable copy of the environment) into the agent home, owned by the agent. Keep this
-# stage dynamic-only: package installation and fixed downloads belong in environment/Dockerfile,
+# One job here: put the agent-visible material (today the plant model the instruction
+# points to, given/model.md) into the agent home as the agent's own writable copy. The
+# agent gets no simulator and nothing that grades a controller. Keep this stage
+# dynamic-only: package installation and fixed downloads belong in environment/Dockerfile,
 # and lint rejects them here.
 #
 # Everything under payload/ is staged, whatever it is called — add, rename or remove

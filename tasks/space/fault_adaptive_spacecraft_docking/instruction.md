@@ -49,7 +49,7 @@ Episode randomization is fixed to these ranges:
 - initial target angular speed: 0.060 to 0.125 rad/s in either direction;
 - at the second bus event the target reverses direction with a fresh speed of
   0.020 to 0.045 rad/s;
-- the docking boom simultaneously oscillates radially about 1.14 m with a hidden
+- throughout the episode the docking boom oscillates radially about 1.14 m with a hidden
   amplitude from 0.10 to 0.16 m, angular frequency from 0.18 to 0.28 rad/s, and
   initial phase in [-pi, pi]; its motion is continuous across both bus events;
 - its redundant radius encoder reports displacement about 1.14 m with an unknown
@@ -96,9 +96,10 @@ Episode randomization is fixed to these ranges:
   initially be detected and survived without a fresh camera pose; the blackout does
   not add steps to the 400-step episode.
 
-The practice simulator (see "Development check") is the model the hidden grader runs:
-the same dynamics, ranges, noise levels and dropout rate, with different seeds. Its
-source is the complete statement of every range this list summarizes.
+`/home/user/given/model.md` states the model the hidden grader runs, in full: the
+dynamics in the order the grader computes them, every constant, every range above with
+its distribution, the noise levels and the dropout rate. It is the complete statement of
+every range this list summarizes.
 
 The episode lasts at most 400 steps at 0.12 simulated seconds per step. This bounded
 horizon is deliberate: difficulty should come from identification and closed-loop
@@ -128,15 +129,15 @@ yaw-acceleration sign is independently unknown. Camera pose/yaw stays in the doc
 inertial frame, so these conventions are observable from active motion.
 
 Return six normalized duty cycles `[u0, u1, u2, u3, u4, u5]`. Each is clipped to
-[0, 1]. Thrusters are unidirectional: negative commands are not available. The practice
-simulator's source documents the nominal six nozzle geometries and every randomization
-range, but each episode's values are hidden: the initial wiring, the continuous column
-errors, the bias, both rotor orderings with their offsets and directions, both degraded
-pairs and their scales, both exponent sets, all twelve valve-memory coefficients, the first
-event's step, the re-key's arming step, proximity threshold and deadline, the target's
-slew speed after the re-key, both IMU
-mountings, both boom-encoder polarities, and the blackout schedule. The bus supplies no
-explicit event flag.
+[0, 1]. Thrusters are unidirectional: negative commands are not available.
+`given/model.md` states the nominal six nozzle geometries and every randomization range,
+but each episode's values are hidden: the initial wiring, the continuous column errors,
+the bias, both rotor orderings with their offsets and directions, both degraded pairs and
+their scales, both exponent sets, all twelve valve-memory coefficients, the first event's
+step, the re-key's arming step, proximity threshold and deadline, the target's slew speed
+after the re-key, both IMU mountings, both boom-encoder polarities, the blackout schedule,
+the boom's amplitude, frequency and phase, and the swirl parity; the start state shows
+only through the observation. The bus supplies no explicit event flag.
 
 Terminal approach also invalidates a static far-field inverse model. Each physical
 nozzle's exhaust points opposite its translational force vector. When the spacecraft's
@@ -157,10 +158,12 @@ all six initial signs. The cell follows the physical nozzle through rotor remapp
 the electrical action slot. Each cell is bistable and action-dependent: all six load
 accumulators start at zero, and their thresholds are exactly
 `threshold_i = 0.24 + 0.028*i`. After a command, cell `i` adds
-`0.12 * field * (0.35 + 0.65*a_i**4) * realized_duty_i`. On reaching its threshold,
-the accumulator retains the excess and only that cell's swirl sign flips. The next
-observation's IMU makes the aggregate transition observable, but simultaneous nozzle
-firings do not identify which cell changed without maintaining plant hypotheses. The
+`0.12 * field * (0.35 + 0.65*a_i**4) * realized_duty_i`, where `realized_duty_i` is the
+nozzle's valve state raised to its exponent, before its degradation scale. On reaching
+its threshold, the accumulator retains the excess and only that cell's swirl sign flips.
+The flipped sign acts from the next command on, and the IMU reading that follows that
+command makes the aggregate transition observable, but simultaneous nozzle firings do not
+identify which cell changed without maintaining plant hypotheses. The
 effect changes continuously with range and attitude; it does not change fuel burn, valve
 state, relay logic, or rotor stride. Only the common initial parity is hidden; the onset,
 strength, six magnitudes, thresholds, and zero initial accumulator states are public.
@@ -205,10 +208,13 @@ Running `bash run.sh` in the submission directory must start a long-lived proces
 ```
 
 Print only protocol messages to stdout; diagnostics belong on stderr. Print READY within
-120 seconds and answer each request within 30 seconds. The same step `t` can be queried
-more than once with different observations in a hidden order; only the reply to the true
-observation is applied. Always calculate the action from the observation in that
-request; repeated queries do not advance the simulation.
+120 seconds and answer each request within 30 seconds. Each step is queried twice with
+probability 0.06, with the same `t` and in a hidden order: once with the true observation
+and once with a copy whose delayed position (fields 0 and 1) is shifted by up to 0.28 m
+along each axis and whose delayed yaw (fields 2 and 3) is turned by up to 0.18 rad, the
+other twelve fields unchanged; only the reply to the true observation is applied. Always
+calculate the action from the observation in that request; repeated queries do not
+advance the simulation.
 
 If an episode aborts on a missed deadline, a crash or a protocol error, the grader stops
 the process (and everything it started) and runs `bash run.sh` again before the next
@@ -217,28 +223,23 @@ restarts, every remaining episode aborts. A malformed action scores its episode 
 a restart. So `run.sh` has to work when started a second time: no fixed ports, PID files
 or locks left behind.
 
-Grading happens in a fresh sandbox that holds only `/home/user/submission/`. The
-development copy of the simulator at `/home/user/spacecraft_docking_env.py`, the practice
-grader, and anything else you leave elsewhere in your home are not present then, so put
-everything `run.sh` needs inside `/home/user/submission/` (you may copy the simulator
-source into that folder). `/opt/venv/bin/python3` with numpy is part of the image and is
-still available. The controller runs as you from that folder and may read and write inside
-it. Its environment holds only `PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin`,
-`HOME=/home/user` and `LANG=C.UTF-8`. Pipes and Unix sockets work; internet sockets, even
-to localhost, are refused.
+Grading happens in a fresh sandbox that holds only `/home/user/submission/`:
+`/home/user/given/` and anything else you leave elsewhere in your home are not present
+then, so put everything `run.sh` needs inside `/home/user/submission/`.
+`/opt/venv/bin/python3` with numpy is part of the image and is still available. The
+controller runs as you from that folder and may read and write inside it. Its environment
+holds only `PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin`, `HOME=/home/user` and
+`LANG=C.UTF-8`. Pipes and Unix-domain sockets work; no other socket can be opened, not
+even an internet socket to localhost.
 
 The whole grading run has 30 minutes for all 48 episodes: at most 48 x 400 steps plus
 repeated queries, about 20,400 requests, restarts included; answer in well under 0.09 s
 per request on average. A grading run that goes past 30 minutes is stopped and earns no
 reward, even if every reply met its 30-second limit.
 
-## Development check
+## Rehearsing
 
-Your copy of the simulator, the same model the grader runs, is
-`/home/user/spacecraft_docking_env.py`. Python 3.12 with numpy is
-`/opt/venv/bin/python3`; call it by that path in `run.sh`. Run:
-
-    python3 /home/user/practice_grader/grade.py
-
-It uses visible practice seeds and prints raw metric values only. It does not reveal the
-anchor or hidden grading seeds.
+Nothing in your home simulates the plant or grades a controller. Rehearse with a simulator
+and a harness of your own, built from `/home/user/given/model.md`, which states the
+grader's model precisely enough for that. Python 3.12 with numpy is
+`/opt/venv/bin/python3`; call it by that path in `run.sh`.

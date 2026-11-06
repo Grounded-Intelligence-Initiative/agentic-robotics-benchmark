@@ -1,13 +1,14 @@
-"""fault_adaptive_spacecraft_docking: the privileged reference channel, the fixed hidden episode set and the network
-guard.
+"""fault_adaptive_spacecraft_docking: the privileged reference channel, the fixed hidden episode set, the network
+guard and what the agent is given.
 
 The grader hands the simulator's current truth only to a submission whose .oracle_token (a regular file, never a
 link) hashes to tests/hidden/oracle_token.sha256; nothing agent-visible names the channel; building the block draws
 nothing and changes nothing; the block carries every quantity env.step reads that is in effect now and nothing drawn
 for the future; a run without the token sends exactly the requests it sent before the channel existed; the hidden
-episodes are a fixed set of 48 distinct 64-bit seeds that are not practice seeds, each pinned by its world digest;
-an episode's probe stream depends only on the set's key and its seed; the reference reproduces its recorded result on
-the set; and a verify that cannot install the network filter is a task error before any controller starts.
+episodes are a fixed set of 48 distinct 64-bit seeds, each pinned by its world digest; an episode's probe stream
+depends only on the set's key and its seed; the reference reproduces its recorded result on the set; a verify that
+cannot install the network filter is a task error before any controller starts; and the agent gets the plant model
+as a document, with no copy of the simulator and nothing that grades a controller.
 """
 import ast
 import copy
@@ -129,19 +130,11 @@ class TokenTests(unittest.TestCase):
 
 
 class EpisodeSetTests(unittest.TestCase):
-    def practice_seeds(self):
-        tree = ast.parse((TASK / "environment/setup/payload/practice_grader/grade.py").read_text())
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Assign) and any(getattr(t, "id", "") == "PRACTICE_SEEDS" for t in node.targets):
-                return set(ast.literal_eval(node.value))
-        self.fail("no PRACTICE_SEEDS in the practice grader")
-
-    def test_fixed_set_is_48_distinct_64_bit_seeds_not_practice(self):
+    def test_fixed_set_is_48_distinct_64_bit_seeds(self):
         seeds, key = verify.load_episodes(str(TASK / "tests/hidden/episodes.json"))
         self.assertEqual(len(seeds), 48)  # instruction.md: "48 hidden episodes"
         self.assertEqual(len(set(seeds)), len(seeds))
         self.assertTrue(all(2 ** 32 <= s < 2 ** 64 for s in seeds))
-        self.assertFalse(set(seeds) & self.practice_seeds())
         self.assertTrue(0 < key < 2 ** 256)
         self.assertEqual(SET["format"], verify.SET_FORMAT)
         for e in SET["episodes"]:
@@ -344,10 +337,9 @@ class ProbeCopyTests(unittest.TestCase):
 
 
 class CopyTests(unittest.TestCase):
-    def test_the_simulator_copies_are_byte_identical(self):
-        grader = (TASK / "tests/env.py").read_bytes()
-        self.assertEqual(grader, (TASK / "environment/setup/payload/spacecraft_docking_env.py").read_bytes())
-        self.assertEqual(grader, (TASK / "solution/privileged/spacecraft_docking_env.py").read_bytes())
+    def test_the_reference_s_simulator_copy_is_the_grader_s(self):
+        self.assertEqual((TASK / "tests/env.py").read_bytes(),
+                         (TASK / "solution/privileged/spacecraft_docking_env.py").read_bytes())
 
     def test_the_launcher_is_the_mechanism_box_one(self):
         self.assertEqual((TASK / "tests/nonet_exec.py").read_bytes(), MB_NONET.read_bytes())
@@ -355,6 +347,47 @@ class CopyTests(unittest.TestCase):
     def test_the_planning_quota_covers_the_family(self):
         worst = len(oracle.FAMILY) * (oracle.STEPS - 118) + oracle.PLAN_OFFSET  # (t_p >= 108 + 2 + PLAN_OFFSET)
         self.assertGreaterEqual(oracle.PLAN_OFFSET * oracle.QUOTA, worst)
+
+
+class AgentVisibleTests(unittest.TestCase):
+    """The agent is docked zero-shot (the owner, 2026-11-05): it gets the plant model as a document, not the grader's
+    simulator and not a grader of its own on visible episodes."""
+
+    PAYLOAD = TASK / "environment/setup/payload"
+    MODEL = PAYLOAD / "given/model.md"
+
+    def visible(self):
+        return [TASK / "instruction.md"] + sorted(p for p in (TASK / "environment").rglob("*") if p.is_file())
+
+    def test_the_payload_is_the_model_document_and_the_instruction_points_to_it(self):
+        files = sorted(p for p in self.PAYLOAD.rglob("*") if p.is_file())
+        self.assertIn(self.MODEL, files)
+        for p in files:  # documents only: nothing in the agent's home runs the plant or grades a controller
+            self.assertEqual(p.suffix, ".md", "{} is not a document".format(p.relative_to(TASK)))
+        self.assertIn("/home/user/given/model.md", (TASK / "instruction.md").read_text())
+
+    def test_no_agent_visible_file_carries_the_simulator_or_a_practice_grader(self):
+        code = sorted({line.strip() for line in (TASK / "tests/env.py").read_text().splitlines()
+                       if "self." in line and len(line.strip()) >= 20})
+        self.assertGreater(len(code), 150)
+        names = ("FaultAdaptiveDocking", "spacecraft_docking_env", "practice", "grade.py", "env.py", "_RNG",
+                 "blake2b")
+        for p in self.visible():
+            text = p.read_text(errors="replace")
+            where = p.relative_to(TASK)
+            for name in names:
+                self.assertNotIn(name.lower(), text.lower(), "{} names {}".format(where, name))
+            for line in code:
+                self.assertNotIn(line, text, "{} carries the simulator's line {!r}".format(where, line))
+
+    def test_the_model_states_the_plant_s_constants(self):
+        text = self.MODEL.read_text()
+        for constant in ("0.235", "0.205", "0.132", "0.148", "0.998", "0.996", "0.00034", "0.035", "0.012", "0.008",
+                         "0.007", "0.006", "0.004", "0.28", "0.18", "1.35", "0.78", "0.12", "0.65", "0.82", "1.14",
+                         "6.2", "0.085", "0.060", "0.020", "0.015", "30 + ((K1 + D) mod 13)", "0.24 + 0.028 n",
+                         "(0.92, 0.98, 1.04, 1.10, 1.16, 1.20)", "U{58..103}", "U{108..125}", "U{148..165}",
+                         "U(1.18, 1.30)", "U{48..81}", "U{7..13}", "U{112..157}", "U{10..18}", "U{1..3}"):
+            self.assertIn(constant, text)
 
 
 class NetworkGuardTests(unittest.TestCase):

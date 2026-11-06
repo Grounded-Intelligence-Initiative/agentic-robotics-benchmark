@@ -1,22 +1,27 @@
 # fault_adaptive_spacecraft_docking: grading notes
 
-Notes for maintainers and reviewers. The agent-facing rules are in `instruction.md`; the simulator is `env.py` in
-this folder, byte-identical to the agent's development copy (`environment/setup/payload/spacecraft_docking_env.py`)
-and to the reference's copy (`solution/privileged/spacecraft_docking_env.py`). This folder is the verify stage: it is
-absent while the agent works and root-only at verify time.
+Notes for maintainers and reviewers. The agent-facing rules are in `instruction.md` and in the plant model it points
+to (`environment/setup/payload/given/model.md`, staged at `/home/user/given/model.md`); the simulator is `env.py` in
+this folder, byte-identical to the reference's copy (`solution/privileged/spacecraft_docking_env.py`). The agent gets
+no copy of it. This folder is the verify stage: it is absent while the agent works and root-only at verify time.
 
 ## The owner's direction (2026-11-05)
 
 The anchor is the measured score of a reference that plans from ground truth the agent never gets, on a fixed set of
 hidden episodes it completes, so that the anchor sits near full and a controller that identifies the plant from its
 observation has real headroom. The task author's identifying controller stays as the non-privileged reference. What
-the agent sees and must do is unchanged, apart from the instruction's account of the fixed set, the network and the
-time budget.
+the agent must do is unchanged, apart from the instruction's account of the fixed set, the network and the time budget.
+
+The same day the owner removed the practice tools, by the rule applied to PR #31's round 3: a spacecraft with unknown
+faults is docked zero-shot, so the agent gets neither the grader's simulator nor a practice grader on visible seeds of
+the graded distribution. Until then the payload held a byte-identical copy of `env.py` and `practice_grader/grade.py`
+(five visible seeds), and the instruction called the simulator's source the complete statement of every range. Now
+the payload holds one document, `given/model.md` (The agent's documents, below).
 
 ## The fixed episode set and how it was selected
 
-`hidden/episodes.json` holds the hidden episodes: 48 seeds of 64 bits (each at least 2^32, so none is a practice
-seed: those are below 2^13), each with the sha256 of the world `env.reset(seed)` builds, and the hidden key of the
+`hidden/episodes.json` holds the hidden episodes: 48 seeds of 64 bits (each at least 2^32; the former practice seeds
+were below 2^13), each with the sha256 of the world `env.reset(seed)` builds, and the hidden key of the
 match-lock streams. The same 48 seeds run in the same order for every submission. `verify.load_episodes` checks the
 format, the key, the seeds and every world digest before anything else runs; any defect is a task error whose message
 names no value of the set. The digest formats every float with 13 significant digits (`format(v, ".12e")`), so a
@@ -155,6 +160,37 @@ Draw 29 of the selection: undocked by all 266 policies from its planning state, 
 About 3% of random draws are undocked the same way: on 57 of the 2000 dev seeds none of the policies docks from the
 planning state, although the re-key fires at its arming step in all 57; they have not been examined one by one.
 Whether another controller could dock them is not known.
+
+## The agent's documents
+
+The agent gets `instruction.md` and `given/model.md`, nothing else: no simulator, no grader of its own, no visible
+episode. `given/model.md` states the model `env.py` simulates, for a capable agent to write the controller and to
+rebuild a faithful simulator for rehearsal from the text alone: what an episode draws (every distribution, as env.py
+draws it), the thrusters (the nominal geometries and the installation errors), the bus (routing, both events, the
+relay, the valves, the stride), the target, the boom and the port, the plume (the field, the swirl cells and their
+thresholds), one step in env.py's order of operations, the observation (all 16 fields, the delay, the noise, the
+dropouts and the blackouts, the IMU's mounting and remount), docking, the end and the quality, and an episode on the
+wire (the probe copy, one verbatim `act` line from a dev seed). It names no seed of the set and nothing of the channel
+(the repository test checks every agent-visible file). Its formulas are written in the order env.py evaluates them,
+and it names the two builtins whose rounding matters (`hypot` for a length, the builtin `sum` of the six duties), so
+a simulator that follows the page literally computes env.py's numbers.
+
+Checked on 2026-11-06 with a plant written from the page alone (scratch), given each episode's draws named as the page
+names them (read off the random numbers env.py's `reset` consumed) and each observation's raw noise numbers, and
+stepped beside `env.py` with the same commands. Over 400 open-loop dev episodes (half started inside the plume's
+field: 1100 swirl flips, 1194 and 1308 reversals of the two rotors, 29 proximity and 180 deadline re-keys, 46
+timeouts, 129 collisions, 225 escapes) and the reference's own episodes on 100 dev seeds (random.Random(20261106),
+the dev lock key: 94 docked, 6 timed out), every state quantity and every observation field agreed to the last bit
+after every step, and so did every end, step count and quality. The page's table of draws matches env.py's worlds: on
+two sets of 50,000 seeds against as many samples of the page's table, every integer, sign and permutation has
+env.py's support, every continuous draw's two-sample Kolmogorov-Smirnov distance stays below the 1% critical value
+(0.0103), and every discrete draw's total-variation distance is of the size two independent samples of the page show.
+The page's `act` line is env.py's, regenerated from its dev seed (not a candidate of the selection).
+
+`env.py`'s own text still describes the agent's copy (the module docstring's "An identical development copy is staged
+for the agent" and "this source can be shared with the agent", `_RNG`'s "The agent holds this code"): the file is
+frozen (its sha256 pins the set and the reference's copy), so those lines stay, and this README is the current
+account.
 
 ## Review tools (`review/`, never run by the grader)
 

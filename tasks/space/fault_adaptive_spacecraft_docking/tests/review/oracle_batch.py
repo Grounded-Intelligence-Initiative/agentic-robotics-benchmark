@@ -3,7 +3,7 @@
 The grader's own episode loop (`verify.run_episode`, a token run) with the reference (solution/privileged/oracle.py)
 served in this process: every message goes through a JSON round trip, as on the wire; the match lock is real, each
 episode's stream keyed by a dev key and the episode's seed (`verify.episode_stream`). The seeds are dev seeds, never
-the hidden set's: 64-bit draws of random.Random(--rng), each >= 2**32 (so never a practice seed).
+the hidden set's: 64-bit draws of random.Random(--rng), each >= 2**32.
 
     python3 -B oracle_batch.py --out results.jsonl [--count 2000] [--rng 20261105] [--workers 8] [--key HEX]
     python3 -B oracle_batch.py --out results.jsonl --seeds 4294967296,18446744073709551557

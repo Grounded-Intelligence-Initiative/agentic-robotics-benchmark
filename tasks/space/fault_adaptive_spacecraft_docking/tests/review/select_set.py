@@ -6,9 +6,10 @@ The rule, fixed before any candidate ran:
    (tests/verify.py, tests/env.py) are committed first: `draw` refuses to start while any of them differs from the
    commit it records, and records their sha256; `run` and `make` refuse to go on when any of them, or the
    submission's copy of the reference, differs.
-2. Draw. `draw` takes the candidate seeds from os.urandom (8 bytes each, little-endian; a draw below 2**32, a
-   duplicate or a practice seed is drawn again) and, with the first batch, the set's probe key (os.urandom(32), hex),
-   and writes selection.json before anything runs. Batch 1 is 64 candidates.
+2. Draw. `draw` takes the candidate seeds from os.urandom (8 bytes each, little-endian; a draw below 2**32 or a
+   duplicate is drawn again) and, with the first batch, the set's probe key (os.urandom(32), hex), and writes
+   selection.json before anything runs. Batch 1 is 64 candidates. (The draw of 2026-11-05 also redrew the practice
+   grader's seeds, as its record says; those were all below 2**13, and the practice tools are gone since.)
 3. Run. Every candidate, in drawn order, goes through the grader's own episode loop (verify.run_episode): a token run
    of a submission that solution/solve.sh installed, a fresh program per candidate (run_episode.HostSolver), the
    candidate's own match-lock stream (verify.episode_stream: the set's key and its seed), the full 400-step horizon.
@@ -30,7 +31,6 @@ are found from this file, so it runs from any checkout.
 """
 
 import argparse
-import ast
 import datetime
 import hashlib
 import itertools
@@ -68,15 +68,6 @@ def sha256_file(path):
 
 def frozen_hashes():
     return {p: sha256_file(os.path.join(TASK, p)) for p in FROZEN}
-
-
-def practice_seeds():
-    path = os.path.join(TASK, "environment/setup/payload/practice_grader/grade.py")
-    tree = ast.parse(open(path).read())
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Assign) and any(getattr(t, "id", "") == "PRACTICE_SEEDS" for t in node.targets):
-            return set(ast.literal_eval(node.value))
-    raise SystemExit("no PRACTICE_SEEDS in the practice grader")
 
 
 def load(path):
@@ -215,7 +206,6 @@ def _run_candidate(args):
 
 
 def cmd_draw(a):
-    practice = practice_seeds()
     if a.batch == 1:
         if os.path.exists(a.selection):
             raise SystemExit("{} exists: batch 1 starts a selection".format(a.selection))
@@ -235,7 +225,7 @@ def cmd_draw(a):
     redrawn, new = 0, []
     while len(new) < count:
         s = int.from_bytes(os.urandom(8), "little")
-        if s < (1 << 32) or s in seen or s in practice:
+        if s < (1 << 32) or s in seen:
             redrawn += 1
             continue
         seen.add(s)
@@ -311,8 +301,8 @@ def cmd_make(a):
     drops = "; ".join("draw {} ({}, step {}, quality {:.4f})".format(c["draw"], c["reason"], c["steps"], c["quality"])
                       for c in dropped) or "none"
     source = (
-        "Selected {}. Candidates: {}, from os.urandom (8 bytes per seed, little-endian; a draw below 2**32, a duplicate "
-        "or a practice seed drawn again), with the probe key (os.urandom(32)), written to selection.json before any "
+        "Selected {}. Candidates: {}, from os.urandom (8 bytes per seed, little-endian; a draw below 2**32 or a "
+        "duplicate drawn again), with the probe key (os.urandom(32)), written to selection.json before any "
         "candidate ran. Frozen before the draw (sha256; commit {}): {}. Rule (tests/review/select_set.py): "
         "every candidate in drawn order through verify.run_episode, a token run of the solve.sh submission, a fresh "
         "program per candidate, its own lock stream (the key and its seed), the full 400-step horizon; kept if it "

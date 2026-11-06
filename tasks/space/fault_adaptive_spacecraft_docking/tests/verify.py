@@ -1,13 +1,13 @@
 """Hidden grader for fault-adaptive spacecraft docking.
 
-Runs as root in the separate verifier sandbox (task.toml), from this folder. It owns the simulator (env.py,
-byte-identical to the agent's development copy), drives the agent's controller (`bash run.sh` in
-/home/user/submission) over the kit's wire, and scores every episode from its own simulator state; nothing the
-controller prints is a scoring input.
+Runs as root in the separate verifier sandbox (task.toml), from this folder. It owns the simulator (env.py; the agent
+gets no copy of it, only the model in prose, environment/setup/payload/given/model.md), drives the agent's controller
+(`bash run.sh` in /home/user/submission) over the kit's wire, and scores every episode from its own simulator state;
+nothing the controller prints is a scoring input.
 
 The hidden episodes are a fixed set (hidden/episodes.json): the same 48 seeds of 64 bits, in the same order, for every
-submission, none of them a practice seed. A seed fixes every hidden parameter of its episode (env.py draws them all in
-`reset`), and `load_episodes` recomputes each world's digest, so a change to env.py's draws is a task error instead of a
+submission. A seed fixes every hidden parameter of its episode (env.py draws them all in `reset`), and
+`load_episodes` recomputes each world's digest, so a change to env.py's draws is a task error instead of a
 silently different set. Each episode's match lock draws from its own stream, keyed by the set's hidden key and the
 episode's seed (the kit's `seed_rng` with explicit entropy), so a submission meets the same probes every time, whatever
 ran before it; nothing in a verify draws from OS entropy. A probed step is asked twice with the same `t` (the real
