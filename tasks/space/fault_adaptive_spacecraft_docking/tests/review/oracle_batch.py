@@ -11,8 +11,16 @@ the hidden set's: 64-bit draws of random.Random(--rng), each >= 2**32 (so never 
 Run it with Python 3.12 or newer, as the grader is (3.11's builtin sum differs in fuel's last bit). One JSON line per
 episode, in seed order: quality, success, reason, steps; the first event's step, the re-key's step and its window;
 t_ready, the policy chosen, every policy rolled out (docked, steps, quality); simulated planning steps; the slowest
-request (wall seconds on this machine); probes total and passed; planned vs executed; steps after t_ready with no
-verified request. The summary goes to stdout. Paths are found from this file, so it runs from any checkout.
+request (wall seconds on this machine); probes total and passed; the planned and the executed outcome; steps after
+t_ready with no verified request. The summary goes to stdout. Paths are found from this file, so it runs from any
+checkout.
+
+The planner's invariant is that a planned dock is an executed dock: when the policy the reference commits docks in its
+rollout, the episode docks at the same step with the same quality, and when no policy docks, the episode does not dock
+either (`planned_equals_executed`). It says nothing more about an episode without a planned dock: the reference then
+keeps the policy with the best quality among rollouts that stop as soon as a dock can no longer be completed in time
+(at about step 371), so that fallback's last steps are never simulated, and the episode can still end in a collision
+or an escape that its rollout did not reach.
 """
 
 import argparse
@@ -116,6 +124,8 @@ def run_one(seed, key_hex=DEV_KEY, oracle=None, record=False):
     executed = [bool(info.get("success")), steps, quality]
     same = None
     if planned is not None:
+        # A planned dock is an executed dock (the same step, the same quality), and a plan without a dock does not
+        # dock. A plan without a dock is not compared further: its rollout was cut short (module docstring).
         same = planned[0] == executed[0] and (not planned[0] or planned[1:] == executed[1:])
     out = {
         "seed": seed, "quality": quality, "success": bool(info.get("success")),
@@ -160,7 +170,7 @@ def summarize(rows):
     lines.append("probes {} passed {} ({:.4f}); per-episode pass fraction min {:.3f}".format(
         probes, passed, passed / max(probes, 1), per[0] if per else float("nan")))
     pv = [r for r in rows if r["planned_equals_executed"] is not None]
-    lines.append("planned == executed: {} / {} (no plan: {})".format(
+    lines.append("a planned dock is an executed dock, and no unplanned dock: {} / {} (no plan: {})".format(
         sum(1 for r in pv if r["planned_equals_executed"]), len(pv), n - len(pv)))
     lines.append("steps after t_ready with no verified request: {}".format(
         sum(r["steps_unverified_after_ready"] for r in rows)))

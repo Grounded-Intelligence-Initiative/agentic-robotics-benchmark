@@ -36,10 +36,11 @@ The selection was pre-registered (`review/select_set.py`, the rule in its docstr
    candidate, its own lock stream, the full 400 steps, in a CPU container of the task image.
 4. **Keep.** A candidate is kept when it docked without an abort; the first 48 kept, in drawn order, are the set.
 
-62 of 64 docked. Kept: draws 0-28 and 30-48. Dropped: draw 29 (a collision at step 395). Draws 49-63 ran after the
-cutoff and are not used (draw 58 among them timed out). `hidden/selection.json` records every candidate: its outcome,
-the policy the reference chose, how many of the reference's 266 policies dock from its planning state, and its world
-(the hidden draws below).
+62 of 64 docked. Kept: draws 0-28 and 30-48. Dropped: draw 29, undocked by all 266 policies from its planning state,
+re-key on time; cause not identified (its episode ended in a collision at step 395: The two references). Draws 49-63
+ran after the cutoff and are not used (draw 58 among them timed out). `hidden/selection.json` records every candidate:
+its outcome, the policy the reference chose, how many of the reference's 266 policies dock from its planning state,
+and its world (the hidden draws below).
 
 **Hollowing check.** The kept 48 span every hidden range of `instruction.md`: the first event at steps 59-103
 (range 58-103), the re-key's earliest step 108-128 (108-128) and deadline 148-165 (148-165), its proximity 1.181-1.299 m
@@ -47,8 +48,9 @@ the policy the reference chose, how many of the reference's 266 policies dock fr
 frequency 0.182-0.278 rad/s (0.18-0.28), the start radius 2.870-3.648 m (2.85-3.65) and bearing from the port
 -1.444..1.414 rad (+-1.45), both slew rates to within 0.002 rad/s of their limits. The outward authority the re-keyed
 plant has at the docking pose in the initial swirl pattern (the largest outward acceleration with no tangential and no
-yaw acceleration, the bias included) runs from -0.045 to 0.228 m/s^2 in the kept set, and 38 to 64 of the 64 swirl
-patterns have outward authority. The one drop lies inside all of these ranges (`review/select_set.py report`).
+yaw acceleration, the bias included) runs from -0.045 to 0.228 m/s^2 in the kept set (negative in 9 kept draws and
+undefined in one, all of which dock), and 38 to 64 of the 64 swirl patterns have outward authority. The one drop lies
+inside all of these ranges, so none of them tells it apart (`review/select_set.py report`).
 
 ## One lock stream per episode; determinism
 
@@ -118,11 +120,18 @@ probe copy by exact prediction (only a verified request commits anything, so the
 pose and never touches the plan), stages at r = 1.60 m on the port's radial line before the re-key, pins the relay
 trigger once per event, and allocates the wrench exactly on the next step's true plant. Two steps after the re-key it
 starts simulating, from the state eight steps ahead, a fixed family of 266 policies (descent delay, hold gap, speed, a
-load penalty on one nozzle, a relative-speed cap, a yaw offset) to the episode's end, and commits the first that docks. Planned and executed outcomes are the same
-computation. On 2000 dev seeds (`review/oracle_batch.py`, random.Random(20261105)) it docks 1943 (97.15%), the probes
-pass at 0.9998, planned equals executed in all 2000, and its slowest request (a plan) took 5.1 s on a loaded host and
-2.9 s in a 2-CPU container. The prototypes' 80 policies alone dock 95.45% of those seeds; a 0.6 rad waypoint in the
-far field (the prototypes') let 96 of 2000 re-keys fire late.
+load penalty on one nozzle, a relative-speed cap, a yaw offset) to the episode's end, and commits the first that docks.
+Its invariant is that a planned dock is an executed dock: the planned rollout and the episode are the same
+computation, so a committed policy that docks in its rollout docks in the episode at the same step with the same
+quality. When no policy docks, the reference keeps the one with the best quality among rollouts that stop as soon as
+a dock can no longer be completed in time (about step 371): that fallback's last steps are never simulated, and the
+episode can still end in a collision or an escape. On 2000 dev seeds (`review/oracle_batch.py`,
+random.Random(20261105)) it docks 1943 (97.15%): every planned dock was executed at the planned step with the planned
+quality, none of the 57 episodes without a planned dock docked, and 15 of those 57 ended in a collision or an escape
+(draw 29 of the selection ended so too: fallback policy 112, a collision at step 395). The probes pass at 0.9998, and
+its slowest request (a plan) took 5.1 s on a loaded host and 2.9 s in a 2-CPU container. The prototypes' 80 policies
+alone dock 95.45% of those seeds; a 0.6 rad waypoint in the far field (the prototypes') let 96 of 2000 re-keys fire
+late.
 
 **The non-privileged reference** (`solution/reference/solver.py`, the task author's controller, bytes unchanged)
 works from the observation alone. `solution/reference/install.sh [dir]` installs it. On the fixed set in a fresh
@@ -140,14 +149,12 @@ margin for one episode flipped by a last-bit libm difference on another host, an
 `full_at` 0.75 (16 docks of 48 earned full reward). The verify of 2026-11-06, with the guard failing closed, measured
 the anchor again to the last bit (reward 1.0, ratio 1.0, 48 of 48 docked, the lock 777 of 778).
 
-## What remains undocked even with the truth
+## What the reference does not dock
 
-Draw 29 of the selection, and about 3% of random draws (57 of 2000 dev seeds): none of the 266 policies docks from the
-planning state, although the re-key fires on time. These are near-field failures: inside r = 1.47 m the plume
-attenuates the nozzles that push outward and turns most of their thrust into a swirl side force, the hold's own loads
-charge the swirl cells and can flip one mid-hold, and in some swirl patterns the re-keyed plant cannot produce outward
-acceleration at the docking pose at all (draw 29's initial pattern: -0.006 m/s^2). Whether some controller could dock
-them (a planner that programs the cells' flips, say) is not proven.
+Draw 29 of the selection: undocked by all 266 policies from its planning state, re-key on time; cause not identified.
+About 3% of random draws are undocked the same way: on 57 of the 2000 dev seeds none of the policies docks from the
+planning state, although the re-key fires at its arming step in all 57; they have not been examined one by one.
+Whether another controller could dock them is not known.
 
 ## Review tools (`review/`, never run by the grader)
 
