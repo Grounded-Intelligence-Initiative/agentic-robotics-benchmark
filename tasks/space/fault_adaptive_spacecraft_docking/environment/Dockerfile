@@ -50,13 +50,13 @@ RUN env -u DISPLAY python3 -c "import mujoco._render_filament as F, mujoco.exper
 # build_camera_bundle.py: the target's and the craft's meshes, their maps, the light); it goes to
 # /opt/fault-docking-render, root's alone (mode 0700): with it an agent could render the grader's frames, so the agent
 # gets the target's interface document and sample frames instead. The rest of payload/ (given/frames/: the sample
-# frames) goes to /opt/task-assets/payload, which environment/setup/setup.sh stages into the agent home.
-# Until the owner approves the upload to the benchmark's Hugging Face dataset the files are staged locally in
-# environment/assets/payload/ (gitignored); then this COPY becomes the fetch of docs/task-assets.md section 2
-# (COPY fetch_assets.py assets.sha256 /opt/task-assets/ and RUN python3 /opt/task-assets/fetch_assets.py
-# /opt/task-assets/assets.sha256 /opt/task-assets/payload), and the RUN below stays.
-COPY assets/payload /opt/task-assets/payload
-RUN mv /opt/task-assets/payload/render /opt/fault-docking-render \
+# frames) goes to /opt/task-assets/payload, which environment/setup/setup.sh stages into the agent home. The files
+# live in the benchmark's Hugging Face dataset (tasks/space/fault_adaptive_spacecraft_docking/payload/) and are
+# fetched at the commit pinned in assets.sha256, each checked against its sha256 (fetch_assets.py is the benchmark's
+# canonical copy, shared/task_assets/).
+COPY fetch_assets.py assets.sha256 /opt/task-assets/
+RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload \
+    && mv /opt/task-assets/payload/render /opt/fault-docking-render \
     && chown -R root:root /opt/fault-docking-render /opt/task-assets \
     && chmod -R go-rwx /opt/fault-docking-render && chmod 700 /opt/fault-docking-render \
     && chmod -R a+rX /opt/task-assets \
