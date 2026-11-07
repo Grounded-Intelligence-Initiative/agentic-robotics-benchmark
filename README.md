@@ -115,7 +115,7 @@ scripts/
   export_registry.py            registry v2 from the engine's own loader (task identity)
   lint_domain.py                domain lint (what `ale lint` cannot know), placement included
   task_assets.py                every task's asset list against task-assets.toml (check / sync)
-  trajectories.py               model runs' trajectories: inventory, curate, export, scan, upload, sample, tasklog, hf-upload
+  trajectories.py               model runs' trajectories: inventory, curate, export, scan, sample, tasklog
 schemas/task-registry.schema.json   the registry's contract (owned here; the export is tested against it)
 skills/onboard-*/SKILL.md       agent-facing onboarding skills (router + one per verify pattern)
 skills/agent-trajectory-archiving/SKILL.md   recording model runs' trajectories (scripts/trajectories.py)

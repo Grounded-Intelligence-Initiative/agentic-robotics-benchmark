@@ -99,7 +99,7 @@ scripts/
   export_registry.py            用引擎自己的 loader 导出 registry v2（任务身份）
   lint_domain.py                领域 lint（`ale lint` 不知道的规则），含落地路径检查
   task_assets.py                逐个任务核对 asset 清单与 task-assets.toml（check / sync）
-  trajectories.py               模型运行的 trajectory：inventory、curate、export、scan、upload、sample、tasklog、hf-upload
+  trajectories.py               模型运行的 trajectory：inventory、curate、export、scan、sample、tasklog
 schemas/task-registry.schema.json   registry 的契约（归本仓库所有；导出结果按它测试）
 skills/onboard-*/SKILL.md       面向 agent 的 onboarding skill（路由 + 每种 verify 模式一个）
 skills/agent-trajectory-archiving/SKILL.md   记录模型运行的 trajectory（scripts/trajectories.py）

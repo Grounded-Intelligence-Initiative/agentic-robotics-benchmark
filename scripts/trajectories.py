@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
-"""Agent trajectories of `ale run` episodes: list them, keep one per task and agent, export, scan and upload them.
+"""Agent trajectories of `ale run` episodes: list them, keep one per task and agent, export and secret-scan them.
 
     python3 scripts/trajectories.py inventory --runs-dir RUNS --out inventory.jsonl
     python3 scripts/trajectories.py curate inventory.jsonl --out index.csv
     python3 scripts/trajectories.py export --runs-dir RUNS --index index.csv --archive ARCHIVE
     python3 scripts/trajectories.py scan ARCHIVE --secrets-from vendor/ale/.env
-    python3 scripts/trajectories.py upload --archive ARCHIVE --dest REMOTE:PATH --secrets-from vendor/ale/.env
     python3 scripts/trajectories.py sample --run-dir RUNS/RUN_ID --parent PID        # beside `ale run`
-    python3 scripts/trajectories.py tasklog --runs-dir RUNS --out DATASET --ref origin/main [--episode RUN]
-    python3 scripts/trajectories.py hf-upload --dataset DATASET --repo OWNER/NAME [--path PLATFORM/TASK/AGENT]
+    python3 scripts/trajectories.py tasklog --runs-dir RUNS --out TASK_LOGS --ref origin/main [--episode RUN]
 
 inventory  every model episode under a runs directory, one JSON line each (validation runs and the engine's own
            oracle and nop harnesses are left out).
@@ -19,22 +17,18 @@ export     each kept episode's folder as the engine wrote it, plus run.json (sum
            task text, a per-step digest), trajectory.jsonl.gz, steps.bin (the pictures the agent saw), poster.jpg,
            replays when given, and the root index (index.json, index/<platform>.json, index.csv).
 scan       configured secrets and token patterns in any folder; exit status 1 on a hit.
-upload     rclone copy of the archive to any rclone destination, scanned first and checked after; deletes nothing
-           unless --prune.
 sample     resource samples of one run's own episode containers (docker stats, nvidia-smi) into
            <run dir>/resources.jsonl; export turns them into the peak_* fields.
 tasklog    one task log per task x agent that counts, the latest scored episode, into
-           <dataset>/<platform>/<task>/<agent>/ (agent = <model>-<harness>-<effort>, e.g.
+           <task-log folder>/<platform>/<task>/<agent>/ (agent = <model>-<harness>-<effort>, e.g.
            claude_opus55-claude_code-high): run.json, trajectory.json (+ trajectory.jsonl.gz), steps.bin, poster,
            results/ (result, verification, lock), verifier/ (the verify stage's stdout and stderr, the diagnostic),
-           stages/, traces/, blobs/, artifacts/, a README.md; and the root index.jsonl and dataset card README.md.
+           stages/, traces/, blobs/, artifacts/, a README.md; and the root index.jsonl and README.md.
            Machine-specific details of the engine's records are scrubbed, every folder is secret-scanned.
-hf-upload  the dataset to a Hugging Face dataset repository (huggingface_hub): the given folders replaced in one
-           commit, or everything in one commit per platform; remote files the tree no longer has are deleted.
 
-Every machine path, remote and run directory is a parameter; the environment variables ARB_RUNS_DIR,
-ARB_TRAJECTORIES, ARB_TRAJECTORIES_DEST, ARB_TASK_LOGS, ARB_TASK_LOG_REPO and ARB_SECRET_FILES give defaults.
-Stdlib only; Pillow, ffmpeg, rclone and huggingface_hub (hf-upload) are used when present. Field guide: skills/agent-trajectory-archiving/SKILL.md.
+Every machine path and run directory is a parameter; the environment variables ARB_RUNS_DIR,
+ARB_TRAJECTORIES, ARB_TASK_LOGS and ARB_SECRET_FILES give defaults. Everything stays on the local disk.
+Stdlib only; Pillow and ffmpeg are used when present. Field guide: skills/agent-trajectory-archiving/SKILL.md.
 """
 
 from __future__ import annotations
@@ -73,10 +67,9 @@ REPO = Path(__file__).resolve().parent.parent
 TOOL = "scripts/trajectories.py"
 FORMAT = 3  # the version of run.json's layout
 INDEX_VERSION = 3  # the version of index.json's layout
-ENV_RUNS, ENV_ARCHIVE, ENV_DEST, ENV_SECRETS = (
+ENV_RUNS, ENV_ARCHIVE, ENV_SECRETS = (
     "ARB_RUNS_DIR",
     "ARB_TRAJECTORIES",
-    "ARB_TRAJECTORIES_DEST",
     "ARB_SECRET_FILES",
 )
 #: The engine's own harnesses: `ale validate` runs them (the oracle and the untouched sandbox); no model acts.
@@ -1639,7 +1632,7 @@ CHUNK, OVERLAP = 16 << 20, 4096
 
 
 def configured_secrets(files=(), env_names=()):
-    """Values to search for: in dotenv / ini / rclone.conf files, every value whose key names a key, token, secret,
+    """Values to search for: in dotenv and ini files, every value whose key names a key, token, secret,
     password or credential (and the string values of such keys inside a JSON value); and named environment
     variables. Only values of 16 characters or more."""
     found = set()
@@ -2335,7 +2328,7 @@ def export_episode(row, runs_dir, archive, ctx):
         "artifacts/": "the submission the grader scored",
     }
     if ctx.derived_only:
-        files["note"] = "exported with --derived-only: the episode's own records are uploaded beside these files"
+        files["note"] = "exported with --derived-only: the episode's own records are kept separately"
     if steps_bin:
         files["steps.bin"] = "the pictures the agent saw (byte ranges)"
     if peaks:
@@ -2634,7 +2627,7 @@ def cmd_export(a):
 
 # ------------------------------------------------------------------------------------------------ task logs
 TASKLOG_LAYOUT = 1  # the version of a task-log folder's layout
-ENV_TASKLOGS, ENV_HF_REPO = "ARB_TASK_LOGS", "ARB_TASK_LOG_REPO"
+ENV_TASKLOGS = "ARB_TASK_LOGS"
 TASKLOG_MAX_FILE = 100 * 1000 * 1000  # single files over this size stay out of artifacts/ and blobs/ (listed)
 #: Files of a task log that this script writes from the engine's records (scrubbed); the rest are the agent's own.
 TASKLOG_OURS = re.compile(r"^(?:run\.json|README\.md|results/|verifier/|stages/|traces/)")
@@ -2920,7 +2913,7 @@ def tasklog_readme(doc, row):
     lines += [f"- `{k}`: {v}" for k, v in doc["tasklog"]["files"].items()]
     if doc["tasklog"]["left_out"]:
         lines += ["", "Left out: " + "; ".join(f"`{x['file']}` ({x['why']})" for x in doc["tasklog"]["left_out"])]
-    lines += ["", "The dataset card at the root describes every field.", ""]
+    lines += ["", "README.md at the root of the task-log folder describes every field.", ""]
     return "\n".join(lines)
 
 
@@ -3038,7 +3031,7 @@ def build_task_log(sel, place, runs_dir, out_root, ctx, scrub, max_bytes=TASKLOG
 
     # run.json: re-pointed at this layout
     files = {
-        "run.json": "the run summary and a per-step digest (described in the dataset card)",
+        "run.json": "the run summary and a per-step digest (described in the root README.md)",
         "README.md": "this task log in brief",
     }
     if (dst / "trajectory.json").is_file():
@@ -3175,7 +3168,7 @@ def read_tasklog_index(root):
 
 
 def write_tasklog_root(root, rows, title, intro=None):
-    """index.jsonl (one row per task x agent) and README.md (the dataset card)."""
+    """index.jsonl (one row per task x agent) and README.md (what the folder holds)."""
     root = Path(root)
     rows = sorted(rows, key=lambda r: (str(r.get("platform")), str(r.get("task")), str(r.get("agent"))))
     with open(root / "index.jsonl", "w", encoding="utf-8") as f:
@@ -3220,7 +3213,7 @@ configs:
 # {title}
 
 {intro}A **task log** is one episode of one agent on one task, recorded by the ALE engine: the agent's full
-trajectory, the results and the verifier's log, with the agent's submission. The dataset keeps **one task log per
+trajectory, the results and the verifier's log, with the agent's submission. This folder keeps **one task log per
 task and agent: the latest scored episode**; a newer scored episode of the same agent on the same task replaces it.
 
 {n} task logs. Platforms: {platforms}. Agents: {agents}. Last updated {updated}.
@@ -3377,7 +3370,7 @@ def cmd_tasklog(a):
     forbid = [re.compile(x) for x in a.forbid]
     secrets = configured_secrets(secret_files(a), a.secret_env)
     out_root.mkdir(parents=True, exist_ok=True)
-    staging = out_root / ".staging"  # a task log is built here and replaces the dataset's folder only when clean
+    staging = out_root / ".staging"  # a task log is built here and replaces the task log's folder only when clean
     if staging.exists():
         shutil.rmtree(staging)
     rows, blocked = [], []
@@ -3404,7 +3397,7 @@ def cmd_tasklog(a):
             shutil.rmtree(folder)
             blocked.append((row["path"], {"secrets": [(Path(p).name, k) for p, k, _, _ in hits], "metadata": ours}))
             print(
-                f"    BLOCKED (the dataset's folder, if any, is left as it was): {len(hits)} secret hit(s), "
+                f"    BLOCKED (its existing folder, if any, is left as it was): {len(hits)} secret hit(s), "
                 f"metadata hits {ours}"
             )
             continue
@@ -3436,195 +3429,6 @@ def cmd_tasklog(a):
     return 1 if blocked else 0
 
 
-def hf_plan(root, remote, add_scope, del_scope):
-    """(adds, deletes): the local files under add_scope (None = all) plus index.jsonl and README.md, and the remote
-    files under del_scope (None = all) the local tree no longer has."""
-    root = Path(root)
-    local = sorted(
-        rel
-        for rel in (p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file() and not p.is_symlink())
-        if not any(part.startswith(".") for part in rel.split("/"))
-    )
-
-    def within(p, scope):
-        return scope is None or any(p == s.rstrip("/") or p.startswith(s.rstrip("/") + "/") for s in scope)
-
-    adds = [p for p in local if p in ("index.jsonl", "README.md") or within(p, add_scope)]
-    have = set(local)
-    deletes = sorted(p for p in remote if p not in have and p != ".gitattributes" and within(p, del_scope))
-    return adds, deletes
-
-
-def cmd_hf_upload(a):
-    root = Path(need(a.dataset, "--dataset", ENV_TASKLOGS))
-    repo = need(a.repo, "--repo", ENV_HF_REPO)
-    if not (root / "index.jsonl").is_file():
-        raise SystemExit(f"{root}: no index.jsonl (run tasklog first)")
-    secrets = configured_secrets(secret_files(a), a.secret_env)
-    scope = [safe_rel(p).as_posix() for p in a.path] or None
-    hits = scan_paths([root / p for p in scope] if scope else [root], secrets, include_media=True)
-    hits = [h for h in hits if Path(h[0]).relative_to(root).as_posix() not in set(a.accept)]
-    if hits:
-        for path, kind, off, _ in hits:
-            print(f"HIT {path} {kind} at byte {off}")
-        print("not uploaded: secret scan hits (look at them; --accept PATH for one that is not a secret)")
-        return 1
-    try:
-        from huggingface_hub import CommitOperationAdd, CommitOperationDelete, HfApi
-    except ImportError:
-        raise SystemExit("hf-upload needs huggingface_hub (for example: uv run --with huggingface_hub python3 ...)")
-    api = HfApi(endpoint=a.endpoint) if a.endpoint else HfApi()
-    if a.create:
-        api.create_repo(repo, repo_type="dataset", private=a.private, exist_ok=True)
-    remote = set(api.list_repo_files(repo, repo_type="dataset"))
-    if scope:  # these folders: replaced in one commit
-        batches = [(scope, scope, a.message or "Task logs: " + ", ".join(scope))]
-    else:  # everything: one commit per platform, then the root and the removal of what the tree no longer has
-        plats = sorted({p.parent.parent.parent.name for p in root.glob("*/*/*/run.json")})
-        batches = [([p + "/"], [p + "/"], (a.message or "Task logs") + f": {p}") for p in plats]
-        batches.append(([], None, (a.message or "Task logs") + ": index"))
-    commits = []
-    for add_scope, del_scope, msg in batches:
-        adds, deletes = hf_plan(root, remote, add_scope, del_scope)
-        print(f"{msg}: {len(adds)} file(s) to add, {len(deletes)} to delete", flush=True)
-        if a.dry_run:
-            continue
-        ops = [CommitOperationDelete(path_in_repo=p) for p in deletes] + [
-            CommitOperationAdd(path_in_repo=p, path_or_fileobj=str(root / p)) for p in adds
-        ]
-        info = api.create_commit(repo_id=repo, repo_type="dataset", operations=ops, commit_message=msg)
-        commits.append(getattr(info, "oid", None))
-        print(f"  commit {getattr(info, 'oid', None)} {getattr(info, 'commit_url', '')}", flush=True)
-    if not a.dry_run:
-        after = set(api.list_repo_files(repo, repo_type="dataset"))
-        expect = set(hf_plan(root, set(), scope, None)[0])
-        missing = sorted(expect - after)
-        print(
-            f"checked: {len(expect) - len(missing)} of {len(expect)} file(s) on {repo}"
-            + (f"; MISSING {missing[:10]}" if missing else "")
-        )
-        if missing:
-            return 1
-    return 0
-
-
-# ------------------------------------------------------------------------------------------------ upload
-def join_dest(dest, rel):
-    return dest + rel if dest.endswith(":") else dest.rstrip("/") + "/" + rel
-
-
-def rclone(args, dry_run=False, check=True):
-    argv = (
-        ["rclone"] + list(args) + (["--dry-run"] if dry_run and args[0] in ("copy", "copyto", "purge", "rmdir") else [])
-    )
-    r = subprocess.run(argv, capture_output=True, text=True, check=False)
-    if check and r.returncode != 0:
-        raise RuntimeError("rclone {}: {}".format(" ".join(args[:1]), (r.stderr or "").strip()[-400:]))
-    return r
-
-
-def upload_index(a, archive, dest, rows, common):
-    """The root index files, then (--prune) the destination folders index.csv no longer lists."""
-    for p in ("index.json", "index.csv"):
-        if (archive / p).is_file():
-            rclone(["copyto", str(archive / p), join_dest(dest, p)] + a.rclone_arg, a.dry_run)
-    if (archive / "index").is_dir():
-        rclone(["copy", str(archive / "index"), join_dest(dest, "index")] + common, a.dry_run)
-    print("index uploaded" + (" (dry run)" if a.dry_run else ""))
-    if not a.prune:
-        return
-    listed = {safe_rel(r["folder"]).as_posix() for r in rows}
-    listing = rclone(["lsf", "--dirs-only", "-R", "--max-depth", "3", dest] + a.rclone_arg).stdout.split("\n")
-    for d in sorted(x.rstrip("/") for x in listing if x.count("/") == 3):
-        # only the archive's own <task>/<agent>/<run>__<episode> folders, never index/ or anything else
-        if d in listed or d.split("/")[0] == "index" or not re.search(r"_effort-[^/]+$", d.rsplit("/", 1)[0]):
-            continue
-        print("{} {} (not in index.csv)".format("would remove" if a.dry_run else "removed", d), flush=True)
-        if not a.dry_run:
-            rclone(["purge", join_dest(dest, d)] + a.rclone_arg)
-            for parent in (d.rsplit("/", 1)[0], d.split("/")[0]):  # its <task>/<agent> and <task>, when empty
-                rclone(["rmdir", join_dest(dest, parent)] + a.rclone_arg, check=False)
-
-
-def cmd_upload(a):
-    archive = Path(need(a.archive, "--archive", ENV_ARCHIVE))
-    dest = need(a.dest, "--dest", ENV_DEST)
-    if not shutil.which("rclone"):
-        raise SystemExit("rclone is not on PATH")
-    rows = read_index(archive / "index.csv")
-    chosen = [r for r in rows if not a.only or r["task"] in a.only]
-    folders, missing = [], []
-    for r in chosen:
-        (folders if (archive / safe_rel(r["folder"]) / "run.json").is_file() else missing).append(r["folder"])
-    if missing:
-        print("not exported (run export first): {}".format(", ".join(missing)))
-        return 1
-    roots = [archive / f for f in folders] + [
-        p for p in (archive / "index.json", archive / "index.csv", archive / "index") if p.exists()
-    ]
-    secrets = configured_secrets(secret_files(a), a.secret_env)
-    hits = scan_paths(roots, secrets)
-    accepted = {Path(x).as_posix() for x in a.accept}
-    blocking = [h for h in hits if Path(h[0]).resolve().relative_to(archive.resolve()).as_posix() not in accepted]
-    for path, kind, off, _ in hits:
-        rel = Path(path).resolve().relative_to(archive.resolve()).as_posix()
-        print(f"{'accepted' if rel in accepted else 'HIT'} {rel} {kind} at byte {off}")
-    if blocking:
-        print(
-            f"upload refused: {len(blocking)} secret-scan hit(s); look at each (`scan --context 60`), and pass "
-            "--accept PATH only for a hit that is not a secret"
-        )
-        return 1
-    print(f"secret scan: no hit blocks; {len(secrets)} configured secret(s), {len(TOKEN_RX)} pattern(s)")
-    common = [
-        "--transfers",
-        str(a.transfers),
-        "--checkers",
-        str(a.transfers),
-        "--exclude",
-        "__pycache__/**",
-    ] + a.rclone_arg
-    failed = []
-    for f in folders:
-        try:
-            rclone(["copy", str(archive / f), join_dest(dest, f)] + common, a.dry_run)
-            if not a.dry_run:
-                chk = rclone(
-                    [
-                        "check",
-                        "--one-way",
-                        "--size-only",
-                        "--exclude",
-                        "__pycache__/**",
-                        str(archive / f),
-                        join_dest(dest, f),
-                    ]
-                    + a.rclone_arg,
-                    check=False,
-                )
-                if chk.returncode != 0:
-                    raise RuntimeError(f"check: {chk.stderr.strip()[-300:]}")
-            print(f"ok   {f}", flush=True)
-        except RuntimeError as e:
-            print(f"FAIL {f}: {e}", flush=True)
-            failed.append(f)
-    if not a.only and not failed:
-        try:
-            upload_index(a, archive, dest, rows, common)
-        except RuntimeError as e:
-            print(f"FAIL index: {e}", flush=True)
-            failed.append("index")
-    elif a.only:
-        print("index left alone (--only)")
-    else:
-        print("index not uploaded: a folder failed")
-    print(
-        f"{len(folders) - len(failed)} folder(s) uploaded{' (dry run)' if a.dry_run else ''}, {len(failed)} failed "
-        f"{failed or ''}"
-    )
-    return 1 if failed else 0
-
-
 # ------------------------------------------------------------------------------------------------ command line
 def add_secret_args(p):
     p.add_argument(
@@ -3632,7 +3436,7 @@ def add_secret_args(p):
         action="append",
         default=[],
         metavar="FILE",
-        help="a dotenv, ini or rclone.conf file: every value whose key names a key, token, secret, password "
+        help="a dotenv or ini file: every value whose key names a key, token, secret, password "
         f"or credential is searched for (also ${ENV_SECRETS}, separated by {os.pathsep!r})",
     )
     p.add_argument(
@@ -3733,7 +3537,7 @@ def build_parser():
     s.add_argument(
         "--derived-only",
         action="store_true",
-        help="write only the files this script derives; the episode's own records go up separately",
+        help="write only the files this script derives; the episode's own records are kept separately",
     )
     s.add_argument("--prune", action="store_true", help="remove archive folders index.csv no longer lists")
     s.set_defaults(func=cmd_export)
@@ -3745,37 +3549,9 @@ def build_parser():
     s.add_argument("--include-media", action="store_true", help="also pictures, videos and steps.bin")
     s.set_defaults(func=cmd_scan)
 
-    s = sub.add_parser("upload", help="rclone copy of the archive, scanned first and checked after")
-    s.add_argument("--archive", default=os.environ.get(ENV_ARCHIVE), help=archive_help)
-    s.add_argument(
-        "--dest",
-        default=os.environ.get(ENV_DEST),
-        help=f"any rclone destination, REMOTE:PATH or a local path (default ${ENV_DEST})",
-    )
-    s.add_argument("--only", nargs="+", metavar="TASK", help="upload these tasks only (the root index is left alone)")
-    s.add_argument("--prune", action="store_true", help="then remove destination folders index.csv no longer lists")
-    s.add_argument("--dry-run", action="store_true", help="show what would be copied and removed")
-    s.add_argument(
-        "--accept",
-        action="append",
-        default=[],
-        metavar="PATH",
-        help="a file (relative to the archive) whose scan hit was looked at and is not a secret",
-    )
-    s.add_argument("--transfers", type=int, default=8)
-    s.add_argument(
-        "--rclone-arg",
-        action="append",
-        default=[],
-        metavar="ARG",
-        help="one more argument for rclone (for example --rclone-arg=--drive-chunk-size=64M)",
-    )
-    add_secret_args(s)
-    s.set_defaults(func=cmd_upload)
-
     s = sub.add_parser("tasklog", help="one task log per task x agent that counts (the latest scored episode)")
     s.add_argument("--runs-dir", default=os.environ.get(ENV_RUNS), help=runs_help)
-    s.add_argument("--out", default=os.environ.get(ENV_TASKLOGS), help=f"the dataset folder (default ${ENV_TASKLOGS})")
+    s.add_argument("--out", default=os.environ.get(ENV_TASKLOGS), help=f"the task-log folder (default ${ENV_TASKLOGS})")
     s.add_argument(
         "--repo",
         default=str(REPO),
@@ -3837,41 +3613,13 @@ def build_parser():
         help="must not appear in the files this script writes (a task log with a hit is not kept); hits in the "
         "agents' own logs are reported",
     )
-    s.add_argument("--title", default="Task logs", help="the dataset card's title")
-    s.add_argument("--intro", metavar="FILE", help="a Markdown paragraph for the top of the dataset card")
+    s.add_argument("--title", default="Task logs", help="the root README.md's title")
+    s.add_argument("--intro", metavar="FILE", help="a Markdown paragraph for the top of the root README.md")
     s.add_argument("--prices", metavar="FILE", help="JSON price table (as export)")
     s.add_argument("--extras", metavar="FILE", help="JSON replays, stills and robot rules (as export)")
     s.add_argument("--robot", action="append", default=[], metavar="TASK=REGEX", help="as export")
     add_secret_args(s)
     s.set_defaults(func=cmd_tasklog)
-
-    s = sub.add_parser("hf-upload", help="the task-log dataset to a Hugging Face dataset repository")
-    s.add_argument(
-        "--dataset", default=os.environ.get(ENV_TASKLOGS), help=f"the dataset folder (default ${ENV_TASKLOGS})"
-    )
-    s.add_argument("--repo", default=os.environ.get(ENV_HF_REPO), help=f"OWNER/NAME (default ${ENV_HF_REPO})")
-    s.add_argument(
-        "--path",
-        action="append",
-        default=[],
-        metavar="PLATFORM/TASK/AGENT",
-        help="replace these folders only (one commit, with index.jsonl and README.md); default: everything, one "
-        "commit per platform, then the root",
-    )
-    s.add_argument("--message", help="the commit message")
-    s.add_argument("--create", action="store_true", help="create the repository when it does not exist")
-    s.add_argument("--private", action="store_true", help="with --create: a private repository")
-    s.add_argument("--endpoint", help="a Hugging Face endpoint other than the default")
-    s.add_argument("--dry-run", action="store_true", help="show what each commit would add and delete")
-    s.add_argument(
-        "--accept",
-        action="append",
-        default=[],
-        metavar="PATH",
-        help="a file (relative to the dataset) whose scan hit was looked at and is not a secret",
-    )
-    add_secret_args(s)
-    s.set_defaults(func=cmd_hf_upload)
 
     s = sub.add_parser("sample", help="resource samples of one run's own episode containers (start beside ale run)")
     s.add_argument("--run-dir", required=True, help="<runs dir>/<run id> of the run to sample")

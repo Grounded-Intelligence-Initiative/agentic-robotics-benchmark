@@ -1,8 +1,8 @@
-"""scripts/trajectories.py: inventory, curate, export, scan and upload on a synthetic runs directory.
+"""scripts/trajectories.py: inventory, curate, export, scan and tasklog on a synthetic runs directory.
 
 The episodes here are written by hand in the engine's record shapes (vendor/ale/docs/specs/trace.md): lock.json,
 result.json, verification.json, an ATIF trajectory.json with a picture in blobs/, the transport and execution traces,
-and a run-level resources.jsonl from the sampler. No engine, docker or network is needed; rclone is replaced by a fake.
+and a run-level resources.jsonl from the sampler. No engine, docker or network is needed.
 """
 
 from __future__ import annotations
@@ -279,44 +279,6 @@ def test_scan_reports_configured_secrets_and_token_patterns(tmp_path, capsys):
     assert TR.main(["scan", str(tree), "--secrets-from", str(env)]) == 0
 
 
-class FakeRclone:
-    """Records rclone calls; `lsf` lists what `listing` holds."""
-
-    def __init__(self, listing=""):
-        self.calls, self.listing = [], listing
-
-    def __call__(self, args, dry_run=False, check=True):
-        self.calls.append(list(args))
-
-        class Result:
-            returncode, stdout, stderr = 0, (self.listing if args[0] == "lsf" else ""), ""
-        return Result()
-
-
-def test_upload_refuses_a_secret_and_copies_checks_and_prunes(tmp_path, monkeypatch):
-    archive, folder, _ = export(tmp_path)
-    monkeypatch.setattr(TR.shutil, "which", lambda name: "/usr/bin/" + name)
-    rel = folder.relative_to(archive).as_posix()
-    stale = "demo_task/claude-code_claude-opus-5-5_effort-high/opus-r0__gii.demo_task-00000000/"
-    fake = FakeRclone(listing=f"demo_task/\ndemo_task/claude-code_claude-opus-5-5_effort-high/\n{rel}/\n{stale}\n"
-                              "index/\n")
-    monkeypatch.setattr(TR, "rclone", fake)
-    (folder / "artifacts").mkdir(exist_ok=True)
-    (folder / "artifacts" / "leak.txt").write_text(f"export KEY={FAKE_ANTHROPIC}\n")
-    args = ["upload", "--archive", str(archive), "--dest", "remote:trajectories"]
-    assert TR.main(args) == 1 and fake.calls == []                       # refused before any copy
-    assert TR.main(args + ["--accept", f"{rel}/artifacts/leak.txt"]) == 0
-    (folder / "artifacts" / "leak.txt").unlink()
-    fake.calls.clear()
-    assert TR.main(args + ["--prune"]) == 0
-    verbs = [(c[0], c[2] if len(c) > 2 and c[0] in ("copy", "copyto") else c[1]) for c in fake.calls]
-    assert ("copy", f"remote:trajectories/{rel}") in verbs
-    assert ("check", "--one-way") in verbs
-    assert ("copyto", "remote:trajectories/index.json") in verbs
-    purged = [c[1] for c in fake.calls if c[0] == "purge"]
-    assert purged == ["remote:trajectories/" + stale.rstrip("/")]        # only the folder index.csv no longer lists
-
-
 def test_index_csv_round_trip_and_unsafe_folders(tmp_path):
     rows = [{"task": "t", "agent": "a", "score": 0.5, "status": "completed", "run_date": "2026-11-01",
              "task_commit": "", "run": "r", "episode": "e", "regrade": "", "notes": "", "folder": "t/a/r__e"}]
@@ -338,13 +300,18 @@ def test_helpers():
     assert TR.cap("x" * 100, 40).count("characters left out") == 1
 
 
-def test_the_script_holds_no_machine_path_remote_or_key():
-    """Every machine path, remote and destination is a parameter: none is written into the script."""
+def test_the_script_holds_no_machine_path_or_key():
+    """Every machine path is a parameter: none is written into the script."""
     text = (ROOT / "scripts" / "trajectories.py").read_text(encoding="utf-8")
-    assert not re.search(r"/home/(?!user\b)|/data/|/mnt/|root_folder_id|\.config/rclone", text)
-    assert not re.search(r"\b[a-z0-9_]+_drive:|\bgdrive:", text)
+    assert not re.search(r"/home/(?!user\b)|/data/|/mnt/", text)
     for pattern in TR.TOKEN_RX.values():
         assert not pattern.search(text.encode())
+
+
+def test_the_script_records_locally_and_uploads_nothing():
+    """The script records, selects, exports and scans on the local disk; it has no command that sends anything."""
+    sub = next(a for a in TR.build_parser()._actions if a.dest == "cmd")
+    assert set(sub.choices) == {"inventory", "curate", "export", "scan", "sample", "tasklog"}
 
 
 # ------------------------------------------------------------------------------------------------ task logs
@@ -463,60 +430,3 @@ def test_tasklog_blocks_a_secret_or_a_forbidden_word_and_keeps_other_rows(tmp_pa
     assert tasks == ["demo_task", "other_task"]                         # the agent's own text is only reported
     assert run_tasklog(tmp_path, repo, runs, "--episode", "r1") == 0     # not the latest: nothing changes
     assert json.loads((folder / "run.json").read_text())["ale"]["run_id"] == "r2"
-
-
-class FakeHub:
-    """huggingface_hub's HfApi, CommitOperationAdd and CommitOperationDelete, recording commits."""
-
-    def __init__(self, files):
-        self.files, self.commits = set(files), []
-        hub = self
-
-        class Add:
-            def __init__(self, path_in_repo, path_or_fileobj):
-                self.path_in_repo, self.src = path_in_repo, path_or_fileobj
-
-        class Delete:
-            def __init__(self, path_in_repo):
-                self.path_in_repo = path_in_repo
-
-        class Api:
-            def __init__(self, endpoint=None):
-                pass
-
-            def list_repo_files(self, repo, repo_type):
-                return sorted(hub.files)
-
-            def create_commit(self, repo_id, repo_type, operations, commit_message):
-                hub.commits.append((commit_message, operations))
-                for op in operations:
-                    (hub.files.add if isinstance(op, Add) else hub.files.discard)(op.path_in_repo)
-
-                class Info:
-                    oid, commit_url = f"c{len(hub.commits)}", ""
-                return Info()
-
-        self.module = type(sys)("huggingface_hub")
-        self.module.HfApi, self.module.CommitOperationAdd, self.module.CommitOperationDelete = Api, Add, Delete
-
-
-def test_hf_upload_replaces_folders_and_refuses_a_secret(tmp_path, monkeypatch):
-    repo, runs = tasklog_setup(tmp_path)
-    assert run_tasklog(tmp_path, repo, runs) == 0
-    root = tmp_path / "dataset"
-    rel = "swarm/demo_task/claude_opus55-claude_code-high"
-    hub = FakeHub({".gitattributes", f"{rel}/old.txt", "arm/gone/a-b-c/run.json"})
-    monkeypatch.setitem(sys.modules, "huggingface_hub", hub.module)
-    args = ["hf-upload", "--dataset", str(root), "--repo", "owner/name"]
-    assert TR.main(args + ["--path", rel]) == 0
-    ops = hub.commits[0][1]
-    deleted = [o.path_in_repo for o in ops if not hasattr(o, "src")]
-    added = {o.path_in_repo for o in ops if hasattr(o, "src")}
-    assert deleted == [f"{rel}/old.txt"] and {"index.jsonl", "README.md", f"{rel}/run.json"} <= added
-    assert "arm/gone/a-b-c/run.json" in hub.files                       # outside --path: left alone
-    assert TR.main(args) == 0                                            # everything: one commit per platform + root
-    assert [m for m, _ in hub.commits[1:]] == ["Task logs: swarm", "Task logs: index"]
-    assert "arm/gone/a-b-c/run.json" not in hub.files and ".gitattributes" in hub.files
-    (root / rel / "artifacts" / "leak.txt").write_text(f"token {FAKE_ANTHROPIC}\n")
-    n = len(hub.commits)
-    assert TR.main(args) == 1 and len(hub.commits) == n                  # refused before any commit
