@@ -14,18 +14,23 @@ down the skid by the operating procedure, with the cell's Panda). This grader:
      Panda) against given_hashes.json (the cell library and the robot model the grader compiles come from it; a mismatch
      is a task error);
   2. gates: contract_ok = operate.py is a regular file that parses and defines solve, the route gate (no weight files, no
-     training calls, size cap), the network audit (static: no networking import, no computed import; runtime: no
-     outbound network activity while the program runs), the module imports under the run regime, >= 1 step call, no
-     late write, no surviving process; before the first episode it waits until the frozen desktop is quiet
-     (`_settle_desktop`), so a respawned desktop process's loopback connection is not counted as the program's;
+     training calls, size cap), the network audit (static: no networking import, no computed import; runtime: every
+     process of the program -- the import check and the episodes -- runs under the no-network seccomp filter
+     (cellkit.nonet: no inet socket at all), and the runner account's remote inet sockets are sampled; the namespace's
+     outbound counters are kept as statistics only, since they also count loopback and other accounts' traffic), the
+     module imports under the run regime (120 s, 120 CPU-s), >= 1 step call, no late write, no surviving process;
+     before the first episode it waits until the frozen desktop is quiet (`_settle_desktop`) and proves the filter
+     works (`nonet.selftest`, a failure is a task error);
   3. the oracle token: submission/.oracle_token whose sha256 equals hidden/oracle_token.sha256 switches the cells to the
      privileged mode (the calls get_state_privileged and reference_run; stat privileged_mode); a wrong token is ignored
      (stat oracle_token_mismatch);
-  4. draws `episodes` hidden 63-bit episode seeds from OS entropy (hidden/seeds.json pins them) and runs the agent's
+  4. takes the `episodes` hidden 63-bit episode seeds pinned in hidden/seeds.json (v0.5: a fixed hidden set, selected
+     by the pre-registered rule of hidden/selection.json; a missing or short file is a task error) and runs the agent's
      program per episode on the cell (skidcell.server.SkidCellServer, mode hidden: the site and its tags, the skid's
      arrangement and valve builds, gauges, the previous shift's leftovers, the process and the window's events drawn
-     from the seed; camera-only API)
-     as `nobody` from a read-only copy under an opaque run tag;
+     from the seed; camera-only API) as `nobody` from a read-only copy under an opaque run tag; an episode in which
+     the cell failed (an internal error, a physics fault, a frame it could not render) is run once more from scratch,
+     and the second run counts (`_episode_with_retry`; a render failure that repeats is a task error);
   5. criterion: operation_score = the mean over the episodes of the procedure's checks (skidcell.episode: startup 0.20,
      operation 0.25, events 0.25, shutdown 0.15, operator log 0.15; a void -- the pump deadheaded or damaged by
      cavitation, a tank overflowing, the emergency stop, a robot safety violation -- scores the episode 0),
@@ -147,7 +152,8 @@ import hashlib  # noqa: E402
 
 import numpy as np  # noqa: E402
 
-from cellkit import netaudit, wire  # noqa: E402
+from cellkit import netaudit, nonet, wire  # noqa: E402
+from cellkit.seeds import load_pinned  # noqa: E402
 from cellkit.seeds import seed_rng  # noqa: E402
 from skidcell.client import launcher_argv  # noqa: E402
 from skidcell.server import SkidCellServer  # noqa: E402
@@ -162,6 +168,8 @@ OUT = os.path.join(RECORD_ROOT, "out")
 PROGRAM = "operate"
 CRITERIA = ["operation_score"]
 GATES = ["contract_ok"]
+IMPORT_WALL_S = 120          # the import check's limits (instruction.md, cell_api.md): wall seconds and CPU seconds
+IMPORT_CPU_S = 120
 SUSPICIOUS = ("/opt/ale", "ALE_STAGE_DIR", "ALE_VERIFICATION", "hidden/seeds", "oracle_token", "reference_run", "get_state_privileged",
               "ALE_VERIFY", "/opt/ale/tests", ".ale-solution")
 
@@ -328,12 +336,14 @@ def contract_check(cfg, rn):
     before = rn.snapshot((dirs["root"],)) if rn.acct else None
     code = ("import sys, importlib; sys.path.insert(0, sys.argv[1]); sys.path.insert(0, sys.argv[2]); "
             "m = importlib.import_module('%s'); assert callable(m.solve)" % PROGRAM)
-    argv = runner.wrap_limits([sys.executable] + runner.PYTHON_FLAGS + ["-c", code, dirs["lib"], dirs["program"]], cpu_s=120, user=rn.name)
+    argv = runner.wrap_limits([sys.executable] + runner.PYTHON_FLAGS + ["-c", code, dirs["lib"], dirs["program"]], cpu_s=IMPORT_CPU_S,
+                              user=rn.name, nonet=True)
     try:
-        r = subprocess.run(argv, cwd=dirs["program"], env=rn.env(dirs), capture_output=True, text=True, timeout=120, start_new_session=True)
+        r = subprocess.run(argv, cwd=dirs["program"], env=rn.env(dirs), capture_output=True, text=True, timeout=IMPORT_WALL_S,
+                           start_new_session=True)
         ok, why = r.returncode == 0, ("ok" if r.returncode == 0 else "importing %s.py failed: " % PROGRAM + (r.stderr.strip().splitlines() or ["?"])[-1][:300])
     except subprocess.TimeoutExpired:
-        ok, why = False, "importing %s.py took more than 120 s" % PROGRAM
+        ok, why = False, "importing %s.py took more than %d s" % (PROGRAM, IMPORT_WALL_S)
     finally:
         rn.cleanup(dirs, before)
     return ok, why, suspicious, []
@@ -405,7 +415,7 @@ def run_episode(cfg, seed, rn, privileged, tag):
         try:
             try:
                 proc = wire.AgentProcess(argv, cwd=dirs["program"], user=user, env=rn.env(dirs, None), cpu_s=rn.cpu_s,
-                                         stderr_path=os.path.join(LOGS, "%s.log" % tag))
+                                         stderr_path=os.path.join(LOGS, "%s.log" % tag), nonet=True)
             except Exception:  # noqa: BLE001
                 fail("%s: the program could not be launched\n%s" % (tag, traceback.format_exc()))
             try:
@@ -429,6 +439,37 @@ def run_episode(cfg, seed, rn, privileged, tag):
     summary["net_outbound"] = int(counters.total)
     summary["net_delta"] = dict(counters.delta)
     return summary
+
+
+def _cell_failed(s):
+    """What went wrong on the cell's side of an episode (not the program's doing): [] when nothing."""
+    out = []
+    if int(s.get("internal_errors", 0)) > 0:
+        out.append("internal_error")
+    if s.get("done_reason") == "physics_fault" or s.get("end_reason") == "physics_fault":
+        out.append("physics_fault")
+    if int(s.get("frames_lost", 0)) > 0:
+        out.append("render_failure")
+    return out
+
+
+def _episode_with_retry(cfg, seed, rn, privileged, tag, metrics):
+    """One episode; when the cell failed in it (53-scoring-11) it is run once more from scratch (a fresh cell, a fresh
+    program) and the second run counts. A render failure that repeats is the grader's (a task error); an internal
+    error or a physics fault that repeats with the same program is scored as it stands (the program's requests
+    reproduce it)."""
+    s_a = run_episode(cfg, seed, rn, privileged, tag=tag)
+    why = _cell_failed(s_a)
+    if not why:
+        return s_a
+    log("[grader]   %s: the cell failed (%s): the episode is run once more" % (tag, ", ".join(why)))
+    metrics["episode_retries"] = metrics.get("episode_retries", 0.0) + 1.0
+    s_b = run_episode(cfg, seed, rn, privileged, tag=tag + "r")
+    why_b = _cell_failed(s_b)
+    if "render_failure" in why_b:
+        fail("%s: the cell could not render frames in two runs of the episode" % tag)
+    s_b["retried_after"] = why
+    return s_b
 
 
 def write_verdict(rewards, metrics):
@@ -528,8 +569,16 @@ def _main_locked(cfg, rewards, metrics):
     metrics["suspicious_lines"] = float(suspicious)
     metrics["network_imports"] = float(len(net))
     log("[grader] contract_ok=%s (%s); privileged %s; runner %s; lock latency %.0f ms" % (ok, why, privileged, rn.name or "self", metrics["stage_lock_latency_ms"]))
-    pinned = os.path.join(HIDDEN, "seeds.json")
-    stream = seed_rng(pinned=pinned if os.path.isfile(pinned) else None)
+    n = int(cfg.get("episodes", 8))
+    pinned_path = os.path.join(HIDDEN, "seeds.json")
+    try:
+        pinned = load_pinned(pinned_path)
+    except (OSError, ValueError) as e:
+        fail("hidden/seeds.json is unreadable: %s" % e)
+    if not pinned or len(pinned.get("seeds", [])) < n:
+        fail("hidden/seeds.json must pin the %d hidden episodes (the fixed hidden set)" % n)
+    ep_seeds = [int(x) for x in pinned["seeds"][:n]]
+    stream = seed_rng(pinned=ep_seeds)
     metrics.update(stream.stats())
     if not ok:
         rewards["contract_ok"] = 0.0
@@ -542,13 +591,17 @@ def _main_locked(cfg, rewards, metrics):
     if settle_s > 0.0:
         log("[grader] the frozen desktop settled in %.1f s (%d outbound counter increments meanwhile, before any episode)" % (
             settle_s, settle_seen))
-    n = int(cfg.get("episodes", 3))
-    ep_seeds = stream.derive("episodes").seeds(n, bits=63)     # 63-bit: the public draw code cannot be searched over the seed space
+    nn_ok, nn_why = nonet.selftest(wrap=lambda a: runner.wrap_limits(a, cpu_s=60, user=rn.name),
+                                   env=runner.child_env("/tmp", "/tmp", "/nonexistent", ROOT_GIVEN))
+    metrics["nonet_selftest_ok"] = 1.0 if nn_ok else 0.0
+    if not nn_ok:
+        fail("the no-network filter for the program does not work here: " + nn_why)
     agent = []
     step_calls = illegal = 0
+    metrics["episode_retries"] = 0.0
     for i, seed in enumerate(ep_seeds):
         log("[grader] episode %d/%d" % (i + 1, n))
-        s_a = run_episode(cfg, seed, rn, privileged, tag="ep%02d" % (i + 1))
+        s_a = _episode_with_retry(cfg, seed, rn, privileged, "ep%02d" % (i + 1), metrics)
         log("[grader]   score %.3f parts %s voids %s sim %.1f s wall %.1f s (program %.1f s, cell %.1f s) frames %d end %s" % (
             s_a["episode_score"], s_a["parts"], [v["what"] for v in s_a["voids"]][:3], s_a["sim_time_s"], s_a["episode_wall_s"],
             s_a["program_time_s"], s_a["cell_work_s"], s_a["camera_frames_total"], s_a["end_reason"]))
@@ -562,12 +615,16 @@ def _main_locked(cfg, rewards, metrics):
     vals = [float(s["episode_score"]) for s in agent]          # a void already scored its episode 0 (episode.py)
     steps_gate = 1.0 if step_calls > 0 else 0.0
     clean_gate = 1.0 if rn.unclean_runs == 0 else 0.0
-    net_gate = 1.0 if (metrics["remote_sockets_seen"] <= 0 and metrics["net_outbound_events"] <= 0) else 0.0
+    # v0.5: the gate counts only what belongs to the runner account (its remote inet sockets; under the seccomp filter
+    # it cannot open one); the namespace's counters (loopback and every account included) stay statistics
+    net_gate = 1.0 if metrics["remote_sockets_seen"] <= 0 else 0.0
     gate = steps_gate * clean_gate * net_gate
     rewards["contract_ok"] = gate
     if not net_gate:
-        log("[grader] contract_ok 0: network activity during an episode (%d outbound events, %d remote sockets seen)" % (
-            metrics["net_outbound_events"], metrics["remote_sockets_seen"]))
+        log("[grader] contract_ok 0: the program held a remote inet socket during an episode (%d seen)" % metrics["remote_sockets_seen"])
+    elif metrics["net_outbound_events"] > 0:
+        log("[grader] note: %d namespace-wide outbound counter increments during the episodes (statistic only: loopback and "
+            "other accounts count too; the program runs under the no-network filter)" % metrics["net_outbound_events"])
     rewards["operation_score"] = float(max(0.0, min(1.0, gate * float(np.mean(vals)))))
     metrics["raw_score_mean"] = float(np.mean([s["raw_score"] for s in agent]))
     metrics["void_rate"] = float(np.mean([1.0 if s["voided"] else 0.0 for s in agent]))

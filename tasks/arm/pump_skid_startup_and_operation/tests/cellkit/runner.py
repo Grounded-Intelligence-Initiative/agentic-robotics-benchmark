@@ -50,10 +50,14 @@ def launcher_argv(python, lib_dir, program_dir, module="assemble"):
     return [python] + PYTHON_FLAGS + ["-c", BOOTSTRAP, lib_dir, module]
 
 
-def wrap_limits(argv, cpu_s=None, user=None):
+def wrap_limits(argv, cpu_s=None, user=None, nonet=False):
     """`prlimit --cpu=<s> --core=0` (when available and cpu_s is given) and `runuser -p -u <user> --` (when a user
-    is given and the caller is root)."""
+    is given and the caller is root); nonet=True runs argv under the no-network seccomp filter (cellkit.nonet), inside
+    the account switch and the limits."""
     wrapped = list(argv)
+    if nonet:
+        from .nonet import nonet_argv
+        wrapped = nonet_argv(wrapped)
     if cpu_s is not None and shutil.which("prlimit"):
         wrapped = ["prlimit", "--cpu={}".format(int(cpu_s)), "--core=0", "--"] + wrapped
     if user and os.getuid() == 0 and shutil.which("runuser"):

@@ -1,5 +1,5 @@
-"""The skid of one episode, drawn from its seed (cell internals, run by the grader and the practice service; the practice service and the grader draw the same way; only
-the seeds differ).
+"""The skid of one episode, drawn from its seed (cell internals, run by the grader only; the hidden episodes' seeds are
+pinned in tests/hidden/seeds.json).
 
 Every skid of the series has the same process (the P&ID, `pid.png`) and is described with the series tags (V-101,
 P-101, ...); each site builds and numbers its skid its own way. What a seed draws:
@@ -12,11 +12,12 @@ P-101, ...); each site builds and numbers its skid its own way. What a seed draw
   with a lever, the minimum-flow valve a ball valve or a small gate valve, the vents small ball valves or needle valves;
   handwheel sizes, spokes, turns, frictions, lever lengths, colours;
 * the gauges' types (range and unit) at PI-101, PI-103, PDI-111 and FI-105 (textures.GAUGE_KINDS);
-* the shutdown state the previous shift left: one or two valves are not where the operating procedure expects them;
+* the shutdown state the previous shift left: two or three valves are not where the operating procedure expects them;
 * the process parameters (pump curve, tank levels, residual chlorine, the consumer's demand, filter fouling, the
-  dosing pump, the drums) and the operating window's events (always a change of the consumer's demand, plus two or
-  three faults out of: a debris slug on the strainer, a stuck float valve on the supply tank, an air lock in the dosing
-  pump, the duty dosing drum running dry, a trip of the transfer pump) with their hidden times.
+  dosing pump, the drums, the strainer chambers' fouling) and the operating window's events (always a change of the
+  consumer's demand, plus three faults out of: a debris slug on the strainer, a stuck float valve on the supply tank,
+  an air lock in the dosing pump, the duty dosing drum running dry, a trip of the transfer pump) with their hidden
+  times.
 
 Every length is in metres; the floor is z = 0 and the skid's front plane y = 0 (cell_manual.md).
 """
@@ -39,6 +40,7 @@ WINDOW = (STARTUP_DEADLINE_S, SHIFT_END_S)
 LEVEL_BAND = (55.0, 75.0)         # % of LG-201 to hold through the window
 CONC_BAND = (1.8, 2.6)            # mg/L of AI-201 to hold through the window
 FAULT_TYPES = ("filter_slug", "supply_loss", "dosing_airlock", "drum_empty", "pump_trip")
+EVENT_GAP_S = 120.0               # the window's events are at least this far apart (v0.5; 150 s before)
 LOG_SERIES = ("PI-101", "PI-103", "PDI-111", "FI-105", "LG-201", "AI-201")
 
 WHEEL_RGBA = {"red": (0.72, 0.09, 0.07, 1), "black": (0.12, 0.12, 0.13, 1), "blue": (0.10, 0.25, 0.62, 1)}
@@ -251,7 +253,7 @@ def draw_layout(seed, cfg=None):
     initial = {"V-101": 0.0, "V-102": 0.0, "V-103": 0.0, "V-104": 0.0, "V-105": 0.0, "V-106": 0.0, "V-107": 0.0, "V-111": 0.0,
                "V-112": 0.0, "V-301": _u(rng, 0.25, 0.75), "V-302": 0.0, "V-303": 0.0, "HS-101": "OFF"}
     wrong_pool = ["V-103", "V-105", "V-102", "V-112", "V-104", "V-106", "V-107", "V-303"]
-    n_wrong = int(rng.choice([1, 2]))
+    n_wrong = int(rng.choice([2, 3]))
     wrong = [str(w) for w in rng.choice(wrong_pool, size=n_wrong, replace=False)]
     for wtag in wrong:
         if wtag == "V-303":
@@ -263,49 +265,65 @@ def draw_layout(seed, cfg=None):
     # process parameters
     proc = {
         "H0_m": _u(rng, 34.0, 40.0), "Qmax_m3h": 6.0,
-        "h101_frac": _u(rng, 0.62, 0.74), "h201_frac": _u(rng, 0.38, 0.48), "c201_mgL": _u(rng, 1.15, 1.6),
-        "demand_m3h": _u(rng, 2.0, 2.6), "foul_rate": _u(rng, 0.004, 0.010), "dose_cap_Lh": _u(rng, 5.5, 7.0),
-        "stock_mgL": _u(rng, 1350.0, 1650.0), "ai_lag_s": 20.0, "supply_dp_bar": _u(rng, 1.8, 2.2),
+        "h101_frac": _u(rng, 0.55, 0.80), "h201_frac": _u(rng, 0.36, 0.50), "c201_mgL": _u(rng, 1.10, 1.65),
+        "demand_m3h": _u(rng, 1.9, 2.6), "foul_rate": _u(rng, 0.004, 0.010), "dose_cap_Lh": _u(rng, 5.5, 7.2),
+        "stock_mgL": _u(rng, 1300.0, 1700.0), "ai_lag_s": 20.0, "supply_dp_bar": _u(rng, 1.8, 2.2),
         "drumA_frac": _u(rng, 0.45, 0.85), "drumB_frac": _u(rng, 0.75, 0.95), "stockB_factor": _u(rng, 0.92, 1.08),
+        "foulA0": _u(rng, 0.10, 0.40), "foulB0": _u(rng, 0.10, 0.30),
     }
-    # the operating window's events: the demand step always, plus two or three faults; at least 150 s apart
-    events = []
-    times = []
-
-    def draw_time(lo, hi):
-        for _ in range(400):
-            t = _u(rng, lo, hi)
-            if all(abs(t - s) >= 150.0 for s in times):
-                times.append(t)
-                return t
-        t = hi
-        times.append(t)
-        return t
-
-    n_faults = 2 if rng.random() < 0.5 else 3
+    # the operating window's events (v0.5): the demand step always, plus three of the five faults; at least
+    # EVENT_GAP_S apart, and each drawn early enough that its judgement (AOP-2 360 s, AOP-3 / -4 / -6 300 s, AOP-1 240 s
+    # after the alarm) falls inside the window: a schedule that does not fit is drawn again (the same rng:
+    # deterministic per seed)
+    windows = {"filter_slug": (630.0, 1050.0), "supply_loss": (620.0, 980.0), "drum_empty": (640.0, 1200.0),
+               "pump_trip": (640.0, 1200.0), "dosing_airlock": (630.0, 1200.0), "demand_step": (640.0, 1140.0)}
+    n_faults = 3
     faults = [str(f) for f in rng.choice(FAULT_TYPES, size=n_faults, replace=False)]
     # the faults whose consequences take longest to show get their times first
     order = {"supply_loss": 0, "filter_slug": 1, "drum_empty": 2, "pump_trip": 3, "dosing_airlock": 4}
-    for f in sorted(faults, key=lambda f: order[f]):
+    ev_kinds = sorted(faults, key=lambda f: order[f]) + ["demand_step"]
+    # rejection sampling of the whole schedule (one uniform draw per event in its window; the same rng, so the draw is
+    # deterministic per seed)
+    times = None
+    for _attempt in range(20000):
+        cand = [_u(rng, *windows[f]) for f in ev_kinds]
+        srt = sorted(cand)
+        if any(b - a < EVENT_GAP_S for a, b in zip(srt, srt[1:])):
+            continue
+        # a trip of P-101 inside the 360 s that judge the demand step would judge the trip instead (no operator
+        # could hold the level through both): such a schedule is drawn again
+        t_d = cand[ev_kinds.index("demand_step")]
+        if any(f == "pump_trip" and t_d < t <= t_d + 360.0 for f, t in zip(ev_kinds, cand)):
+            continue
+        # with both dosing faults on one shift the air lock comes after drum A ran dry: an air lock while drum A is in
+        # its last few percent would look like AOP-4 on every instrument (sop.md section 3 tells them apart by the drum)
+        if "drum_empty" in ev_kinds and "dosing_airlock" in ev_kinds and \
+                cand[ev_kinds.index("dosing_airlock")] < cand[ev_kinds.index("drum_empty")]:
+            continue
+        times = cand
+        break
+    if times is None:
+        raise RuntimeError("no event schedule fits (seed %d)" % int(seed))
+    events = []
+    for f, t in zip(ev_kinds, times):
         if f == "filter_slug":
-            events.append({"type": f, "t": draw_time(660.0, 1050.0), "jump": _u(rng, 2.6, 3.4), "rate": _u(rng, 0.016, 0.024)})
-        elif f == "supply_loss":
-            events.append({"type": f, "t": draw_time(640.0, 980.0)})
+            events.append({"type": f, "t": t, "jump": _u(rng, 2.6, 3.4), "rate": _u(rng, 0.016, 0.024)})
         elif f == "drum_empty":
-            t = draw_time(700.0, 1300.0)
             proc["drumA_frac"] = _u(rng, 0.10, 0.22)
             events.append({"type": f, "t": t})
-        elif f == "pump_trip":
-            events.append({"type": f, "t": draw_time(700.0, 1300.0)})
-        elif f == "dosing_airlock":
-            events.append({"type": f, "t": draw_time(660.0, 1320.0)})
-    d0 = proc["demand_m3h"]
-    step = _u(rng, 0.55, 0.85) * (1 if rng.random() < 0.5 else -1)
-    if d0 + step > 3.3 or d0 + step < 1.6:
-        step = -step
-    events.append({"type": "demand_step", "t": draw_time(720.0, 1300.0), "delta_m3h": step})
+        elif f == "demand_step":
+            d0 = proc["demand_m3h"]
+            step = _u(rng, 0.6, 1.0) * (1 if rng.random() < 0.5 else -1)
+            room = {1: 3.1 - d0, -1: d0 - 1.4}             # the new draw stays in 1.4-3.1 m3/h
+            sgn = 1 if step > 0 else -1
+            if room[sgn] < abs(step):
+                sgn = -sgn if room[-sgn] >= abs(step) else max(room, key=room.get)
+            step = sgn * min(abs(step), room[sgn])
+            events.append({"type": f, "t": t, "delta_m3h": step})
+        else:
+            events.append({"type": f, "t": t})
     events.sort(key=lambda e: e["t"])
-    light = _u(rng, 0.85, 1.15)
+    light = _u(rng, 0.80, 1.20)
     equipment = []
     for s in ("V-101", "V-102", "V-103", "V-104", "V-105", "V-106", "V-107", "V-111", "V-112", "V-301", "V-302", "V-303",
               "P-101", "P-301", "T-101", "T-201", "T-301", "T-302", "F-101", "PI-101", "PI-103", "PDI-111", "FI-105", "LG-101",

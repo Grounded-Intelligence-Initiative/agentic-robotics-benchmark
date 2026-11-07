@@ -14,11 +14,11 @@
  "given/catalog/scale_LG_0_100_pct.png": "2b2d9666a64ec0164f0b3235b0a93f0385a7e534138863354a85ba960e660972",
  "given/catalog/tag_plate_HV-2317.png": "f7b573c9215391352d2dc9f58fb5a5c2b41973d693f8b2b2c1932158bad2a395",
  "given/catalog/tag_plate_PI-2342.png": "d41e16d3a51f2e5729a9097cb4b0d1d1732ea62478f4498bfeb4eab873108996",
- "given/cell/cell_api.md": "b4360c873b6024215c9cdf9b25d1c01051e26f987c8088f217ef0c91449bab28",
- "given/cell/cell_config.json": "da23e8c76f782732cc6d32898a45464971a6abb291642aaaef8e948907230247",
+ "given/cell/cell_api.md": "6f403f64f07256a72de4bb979339ca8c35b80f05b6a3e02f4ed687850ce89fa7",
+ "given/cell/cell_config.json": "78fa5cf63b3e6086d97f65676f02a088153519a1e5d490f42aeb5bab4a5de483",
  "given/cell/cell_manual.md": "3de7a6d9c383780147e455fcf37076fe0481e2354350c4c4c3f8d1cee06a7f86",
- "given/equipment_manual.md": "9286b001be2d3b63326a28c86afb9b9d1dfc6eb57a48703d1d7246110dcf6cce",
- "given/lib/skidcell/__init__.py": "f4c2cf23f518d62326d6266c963b344dc7ee6fd35968c73cfb2a5b0700696733",
+ "given/equipment_manual.md": "d2c676a53d534a064e6d60fe218577b6a36f543ec4b5ceefe34991e2a7506a91",
+ "given/lib/skidcell/__init__.py": "f80e7ea6db50b35eb67a959b6841c4d0c13dcedfe60fde7477646d1f9f9fa290",
  "given/lib/skidcell/client.py": "d9239f3cadfd0778f2bb5e9cc5f390734229ebe5a9ebc9f98b6f1bb6de30a42b",
  "given/panda/LICENSE": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
  "given/panda/README.md": "e12684556d0154bdf2a9e77e7009ed680cd06ca89904f9e6303050f9fe59300c",
@@ -91,5 +91,5 @@
  "given/panda/panda.xml": "e129b7e5d3fed9118495c8c5dad5ad5e9246f9790c38d9466f2fbef3254fff0c",
  "given/panda/panda_nohand.xml": "b8c78e49758ad023cd7cdb543fbd62dcddceea9a505015e139535632412e1fcb",
  "given/pid.png": "f2aca8785341267a043ea283bc0735ee952383fb05f568c31540c28ea84c53a1",
- "given/sop.md": "fd2328b1f20fad4d9bc0c7c2606661cc283ab44311d368ad38d792b8459ea6bb"
+ "given/sop.md": "da46fe202b6bebf72f3df2f91de0b45ee3437eed250e0d84716fef22e57db0be"
 }

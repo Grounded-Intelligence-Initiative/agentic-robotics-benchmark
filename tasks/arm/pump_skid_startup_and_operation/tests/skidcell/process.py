@@ -11,7 +11,8 @@ joint angles, the selector, button presses) and advances:
   deadheading (running with no flow path), dry running (running with V-101 shut or T-101 nearly empty: the motor
   protection trips);
 * the duplex filter: chamber A in service, B standby (drained: fill and vent it through V-112 before switching to
-  it); fouling raises the differential pressure; the changeover lever V-111 turns 180 degrees from A to B;
+  it); fouling raises the differential pressure; the changeover lever V-111 turns 180 degrees from A to B; a debris
+  slug lands in the chamber in service when it comes; a chamber taken out of service stays full;
 * the tanks: T-101 (fed by the plant's supply through a float valve that holds its level; the make-up valve V-106
   bypasses the float valve), T-201 (drawn off by the consumer at the demand from the moment the operating window
   opens), the residual chlorine in T-201 (a well-mixed tank; the dosing pump P-301 meters stock solution from the drum
@@ -69,11 +70,14 @@ class Process(object):
         self.c201 = float(p["c201_mgL"])
         self.c_disp = self.c201
         self.demand = float(p["demand_m3h"])
-        self.foul = {"A": 0.20, "B": 0.15}
+        self.foul = {"A": float(p.get("foulA0", 0.20)), "B": float(p.get("foulB0", 0.15))}
         self.foul_rate = float(p["foul_rate"]) * 1e-3          # per second at 2.5 m3/h (slow drift)
         self.slug_rate = 0.0
+        self.slug_chamber = None         # the chamber the debris slug landed in (the one in service when it came)
         self.casing_air = 1.0            # drained before the shift
-        self.chamber_b_air = 1.0         # the standby chamber was cleaned and left drained
+        self.chamber_air = {"A": 0.0, "B": 1.0}   # A in service (full); the standby B was cleaned and left drained
+        self.changeovers = []            # (t, from, to, air in the incoming chamber when it came into service)
+        self.fa, self.fb = 1.0, 0.0
         self.airlock = 0.0               # 1 while the dosing pump is air-locked
         self.dosing_vent_s = 0.0
         self.run101 = False
@@ -255,7 +259,12 @@ class Process(object):
             if e["type"] == "demand_step":
                 self.demand = _clip(self.demand + float(e["delta_m3h"]), 1.2, 3.6)
             elif e["type"] == "filter_slug":
-                self.foul["A"] += float(e.get("jump", 3.0))
+                # the debris lands in the chamber in service when it comes (v0.5: a chamber changed over to before the
+                # slug catches it just the same)
+                ch = "A" if self.fa >= self.fb else "B"
+                self.slug_chamber = ch
+                e["chamber"] = ch
+                self.foul[ch] += float(e.get("jump", 3.0))
                 self.slug_rate = float(e["rate"])
             elif e["type"] == "dosing_airlock":
                 self.airlock = 1.0
@@ -276,11 +285,17 @@ class Process(object):
         self.t += dt
         self._events()
         prev_air = self.casing_air
-        # the changeover: switching to a drained chamber pushes its air into the pump
-        if getattr(self, "fb", 0.0) < 0.5 <= self._filter_kv()[2] and self.chamber_b_air > 0.05:
-            self.casing_air = _clip(self.casing_air + 0.9 * self.chamber_b_air, 0.0, 1.0)
-            self.log.append((self.t, "air from filter chamber B into the pump"))
-            self.chamber_b_air = 0.0
+        # the changeover: the chamber coming into service (its share of the flow passing one half) pushes the air it
+        # holds into the pump; the record keeps that air as it was before the push (53-scoring-3)
+        _kv, fa_new, fb_new = self._filter_kv()
+        for ch, old, new, frm in (("B", self.fb, fb_new, "A"), ("A", self.fa, fa_new, "B")):
+            if old < 0.5 <= new:
+                air = self.chamber_air[ch]
+                self.changeovers.append((self.t, frm, ch, air))
+                if air > 0.05:
+                    self.casing_air = _clip(self.casing_air + 0.9 * air, 0.0, 1.0)
+                    self.log.append((self.t, "air from filter chamber %s into the pump" % ch))
+                self.chamber_air[ch] = 0.0
         self._solve()
         # venting: the casing through V-102 needs the suction open (liquid pushes the air out)
         suction_head = self.u["V-101"] > 0.3 and self.h101 > 0.15
@@ -289,7 +304,7 @@ class Process(object):
         if self.run101 and self.casing_air > 0.0 and self.Q > 0.3 and prev_air < 0.5:
             self.casing_air = max(0.0, self.casing_air - dt / 25.0)        # small pockets are swept away
         if self.u["V-112"] > 0.4:
-            self.chamber_b_air = max(0.0, self.chamber_b_air - dt * self.u["V-112"] / VENT_TIME_S)
+            self.chamber_air["B"] = max(0.0, self.chamber_air["B"] - dt * self.u["V-112"] / VENT_TIME_S)
         self.airbound = 1.0 if (self.run101 and self.casing_air > 0.3) else 0.0
         # protection
         if self.run101:
@@ -319,9 +334,11 @@ class Process(object):
             self.run301 = False
         # fouling of the chamber in service
         q = self.Q
-        # the slow fouling follows the throughput; a debris slug keeps blinding the screen at its own rate
-        self.foul["A"] += dt * (self.foul_rate * (q / 2.5) + self.slug_rate) * self.fa
-        self.foul["B"] += dt * self.foul_rate * self.fb * (q / 2.5)
+        # the slow fouling follows the throughput; a debris slug keeps blinding the screen it landed on at its own rate
+        sa = self.slug_rate if self.slug_chamber == "A" else 0.0
+        sb = self.slug_rate if self.slug_chamber == "B" else 0.0
+        self.foul["A"] += dt * (self.foul_rate * (q / 2.5) + sa) * self.fa
+        self.foul["B"] += dt * (self.foul_rate * (q / 2.5) + sb) * self.fb
         # tanks
         a1, a2 = TANKS["T-101"]["area_m2"], TANKS["T-201"]["area_m2"]
         self.q_float = 0.0 if self.float_stuck else _clip(30.0 * (self.h101_set - self.h101), 0.0, 6.0)
@@ -396,13 +413,14 @@ class Process(object):
         return {"RUN-101": self.run101, "FAULT-101": self.fault101, "RUN-301": self.run301, "ALM": self.common_alarm()}
 
     def sights(self):
-        return {"VS-102": self.casing_air < 0.1, "VS-112": self.chamber_b_air < 0.1}
+        return {"VS-102": self.casing_air < 0.1, "VS-112": self.chamber_air["B"] < 0.1}
 
     def state(self):
         """Everything (development / the grader's record)."""
         return {"t": self.t, "run101": self.run101, "run301": self.run301, "fault101": self.fault101, "fault_reason": self.fault_reason,
                 "selector": self.selector, "estop": self.estop, "Q": self.Q, "Qm": self.Qm, "Qr": self.Qr, "Ps": self.Ps, "Pd": self.Pd,
-                "dPf": self.dPf, "foul": dict(self.foul), "casing_air": self.casing_air, "chamber_b_air": self.chamber_b_air,
+                "dPf": self.dPf, "foul": dict(self.foul), "casing_air": self.casing_air, "chamber_air": dict(self.chamber_air),
+                "chamber_b_air": self.chamber_air["B"], "slug_chamber": self.slug_chamber, "changeovers": list(self.changeovers),
                 "cav": self.cav, "cav_s": self.cav_s, "airbound": self.airbound, "deadhead_s": self.deadhead_s, "h101_pct": self.level_pct("T-101"),
                 "h201_pct": self.level_pct("T-201"), "c201": self.c201, "c_disp": self.c_disp, "demand": self.demand, "q_dose": self.q_dose,
                 "airlock": self.airlock, "alarms": dict(self.alarms), "horn": self.horn, "u": dict(self.u), "voids": list(self.voids),

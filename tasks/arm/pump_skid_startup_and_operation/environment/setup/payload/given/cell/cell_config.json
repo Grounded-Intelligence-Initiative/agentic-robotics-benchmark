@@ -1,10 +1,10 @@
 {
- "camera_budget_frames": 900,
+ "camera_budget_frames": 600,
  "cpu_cap_factor": 4.0,
- "episodes": 4,
+ "episodes": 8,
  "max_ticks_per_step": 1000,
  "note": "the cell's configuration as far as it is public (the grader's runner settings are not)",
- "program_time_cap_s": 2400.0,
+ "program_time_cap_s": 1200.0,
  "route_gate": {
   "forbidden_calls": [
    "torch.optim",

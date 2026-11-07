@@ -40,7 +40,7 @@ shift may have left some of them elsewhere.
 | V-302 | P-301 head vent | closed |
 | V-303 | dosing suction selector | drum A |
 
-1.2 **Prime P-101.** The pump casing was drained during maintenance. With V-101 open, open V-102: air escapes until
+1.2 **Prime P-101.** The pump casing was drained during maintenance. With V-101 open, open V-102 fully: air escapes until
 liquid stands in the sight glass VS-102 (about 12 s with V-102 fully open). Then close V-102. A pump started with air
 in its casing is air-bound: it delivers little and its gauges' needles flutter; stop it, vent it and start it again.
 
@@ -64,11 +64,13 @@ re-set V-105 when the level trends away. Never let T-201 reach 95 % (it overflow
 2.2 Hold the residual chlorine **AI-201 between 1.8 and 2.6 mg/L** (aim at 2.2): re-set V-301. AI-201 lags the tank by
 about 20 s, and T-201 mixes over minutes: change V-301 in small steps and wait.
 
-2.3 **Log sheet.** During the window, with P-101 running, record each instrument on the site's log sheet
+2.3 **Log sheet.** The sheet has two rounds: the first from 600 s to 1050 s, the second from 1050 s to the shift's end
+at 1500 s. In each round, with P-101 running, record each instrument on the site's log sheet
 (`describe()["site"]["log_sheet"]`: the site tags of PI-101, PI-103, PDI-111, FI-105, LG-201 and AI-201) once with
 `log_reading(site_tag, value, unit)`, reading the value and the unit off the instrument itself. The first entry of each
-tag in the window is the one on the sheet; it is checked against the instrument's true value at that moment (tolerance:
-3 % of the instrument's span; LG-201 3 %; AI-201 0.05 mg/L). Units: bar, psi, kPa, m3/h, L/min, %, mg/L.
+tag in a round, made while P-101 runs, is the one on the sheet; it is checked against the instrument's true value at
+that moment (tolerance: 2 % of the instrument's span; LG-201 2 %; AI-201 0.05 mg/L). Units: bar, psi, kPa, m3/h,
+L/min, %, mg/L.
 
 2.4 **Alarms.** The control station has one **COMMON ALARM** lamp: it lights while any of these lasts, and the horn
 sounds (`get_state()["horn"]`) until RESET / ACK is pressed:
@@ -96,12 +98,17 @@ the higher the transfer).
 | AI-201 falling while P-301 runs | drum A's level at the bottom (with V-303 at A)? | yes: AOP-4; no: AOP-3 |
 | P-101 FAULT lamp, horn, no flow | | AOP-6 |
 
-**AOP-1  Strainer differential pressure high** (PDI-111 above 0.6 bar). Within 240 s of the alarm:
-1. fill and vent the standby chamber B: open V-112 until the sight glass VS-112 shows liquid (about 12 s), then close V-112;
-2. turn the changeover V-111 from A to B (half a turn: its lever ends pointing at chamber B);
+**AOP-1  Strainer differential pressure high** (PDI-111 above 0.6 bar). Within 240 s of the alarm, change over from the
+chamber in service (the one V-111's lever points at; A on a normal shift) to the other one:
+1. if you change to chamber B, which was left drained after cleaning, fill and vent it first: open V-112 fully until the
+   sight glass VS-112 shows liquid (about 12 s), then close V-112 (a chamber taken out of service stays full of water and
+   needs no venting);
+2. turn the changeover V-111 to the other chamber (half a turn: its lever ends pointing at that chamber);
 3. press RESET / ACK.
 
-Switching to an unvented chamber pushes its air into the pump (air-bound). A clogged strainer starves the pump: it
+Switching to an unvented chamber pushes its air into the pump (air-bound). A debris slug lands in whichever chamber is
+in service when it comes: a chamber changed over to beforehand is clogged the same way, and only a change-over away
+from the clogged chamber helps. A clogged strainer starves the pump: it
 cavitates (the suction gauge PI-101 falls, the pressure needles flutter, the flow drops); 300 s of cavitation in all
 damages the pump.
 
@@ -111,7 +118,7 @@ or up to 1 m3/h above (below) it while the level is being brought back up (down)
 
 **AOP-3  Metering pump air-locked** (P-301 runs, drum A or B has liquid, but AI-201 keeps falling). Within 300 s:
 1. press STOP (P-301);
-2. open V-302 and keep it open at least 8 s;
+2. open V-302 fully and keep it open at least 8 s;
 3. close V-302;
 4. press START (P-301).
 
@@ -129,8 +136,10 @@ wastes the standby drum. Changing over in that last 5 %, before drum A runs dry,
 **AOP-5  Supply tank level low** (LG-101 below 30 %; T-101's float valve has stuck shut and the plant's supply no longer
 refills T-101). Open the make-up valve V-106 (it bypasses the float valve) and hold T-101 between 40 and 80 % with it:
 open it about as far as the transfer needs and re-set it as LG-101 trends. Act before T-101 runs down to about 8 %:
-P-101 then trips on dry running. Never open V-106 while the float valve works: T-101 then overfills, and at 95 % it
-overflows (the episode is void). When P-101 stops at the shift's end, close V-106.
+P-101 then trips on dry running. Never open V-106 while the float valve works: the float valve then shuts, and once the
+make-up passes more than the transfer T-101 overfills (at 95 % it overflows: the episode is void); a make-up valve that
+is already open when the float valve sticks is not this procedure and earns nothing. When P-101 stops at the shift's
+end, close V-106.
 
 **AOP-6  P-101 tripped** (P-101 FAULT lamp, the horn; a dip of the plant's power supply). P-301 stops with it. Within
 180 s of the trip:
@@ -168,6 +177,6 @@ cause, press RESET / ACK, start again. The selector at OFF or AUTO stops P-101 (
 |---|---|---|
 | start-up | 0.20 | at the first start of P-101: the line-up of 1.1 (0.05) and a primed casing (0.04); a clean start: no trip and no deadheading in its first 120 s, still running then (0.04); V-103 fully open within 240 s of the start and before 600 s (0.04); P-301 dosing at 600 s (0.03) |
 | operation | 0.25 | the fraction of the window with LG-201 in 55-75 % (0.125) and with AI-201 in 1.8-2.6 mg/L (0.125) |
-| events | 0.25 | split equally between the window's events, the abnormal situations of section 3 that happen on the shift. AOP-2: in band and matched (or recovering towards 65 %) 360 s after the change. AOP-1: changed over within 240 s of the alarm (0.5 of the event), chamber B vented before (0.3), RESET after (0.2) (a slug that never raises the alarm in the window is not judged; changing over on the trend before the alarm counts as on time). AOP-3: dosing again within 300 s, from the drum that was lined up when the pump air-locked. AOP-4: V-303 turned to drum B once drum A was below 5 % (or dry), and dosing from drum B within 300 s of drum A running dry. AOP-5: V-106 opened before P-101 trips on dry running and no such trip until the shift ends (not judged if T-101 never reaches its low alarm). AOP-6: P-101 running again within 180 s (0.5), restarted with V-103 closed (0.25), dosing again within 300 s (0.25) |
+| events | 0.25 | split equally between the window's events, the abnormal situations of section 3 that happen on the shift. AOP-2: in band and matched (or recovering towards 65 %) 360 s after the change. AOP-1: changed over from the clogged chamber to the other one within 240 s of the alarm (0.5 of the event), the chamber changed to free of air when it came into service (0.3), RESET after (0.2) (a slug that never raises the alarm in the window is not judged; changing over on the trend, after the slug came and before the alarm, counts as on time). AOP-3: dosing again within 300 s, from the drum that was lined up when the pump air-locked. AOP-4: V-303 turned to drum B once drum A was below 5 % (or dry), and dosing from drum B within 300 s of drum A running dry. AOP-5: V-106 opened after the float valve stuck (it was closed then) and before P-101 trips on dry running, and no such trip until the shift ends (not judged if T-101 never reaches its low alarm with V-106 closed; a V-106 already open when the float valve stuck earns nothing). AOP-6: P-101 running again within 180 s (0.5), restarted with V-103 closed (0.25), dosing again within 300 s (0.25) |
 | shutdown | 0.15 | after 1500 s: P-301 stopped before P-101 (0.03), V-103 closed before P-101 stops (0.04), P-101 stopped (0.03), V-101 closed at the end (0.03), HS-101 at OFF at the end (0.02) |
-| log sheet | 0.15 | 0.025 for each of the six instruments of 2.3 recorded correctly |
+| log sheet | 0.15 | 0.0125 for each of the six instruments of 2.3 recorded correctly in each of the two rounds |

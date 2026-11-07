@@ -14,4 +14,4 @@ Modules
     server      the cell API served over the wire (public calls; privileged calls for the reference program)
 """
 
-CELL_VERSION = "pump-skid-cell/0.3.0"
+CELL_VERSION = "pump-skid-cell/0.5.0"

@@ -51,6 +51,8 @@ Each valve's service is fixed by the series; how it is built is the site's choic
   beside the end positions; A -> B is half a turn counter-clockwise. Below 90 degrees drum A is lined up, above it drum B.
 * **Needle valves** (V-301; the vents when so built): a black knob with a white index mark on its face;
   counter-clockwise opens.
+* **Vents** (V-102, V-112, V-302) pass air and liquid only once they are open past about 40 % of their travel (V-302:
+  past half of it); a vent cracked open less does nothing you can see. Open a vent fully to vent.
 * Every valve has a hard stop at each end of its travel. A valve stays where it was left.
 
 ## 3. The local control station

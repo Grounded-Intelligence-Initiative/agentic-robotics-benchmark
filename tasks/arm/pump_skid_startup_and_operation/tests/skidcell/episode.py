@@ -1,5 +1,4 @@
-"""The operating procedure's checks and the episode score (cell internals: the practice service's debrief shows the same breakdown
-the hidden grader computes).
+"""The operating procedure's checks and the episode score (cell internals, run by the grader only).
 
 The episode runs on the simulated clock: the startup until STARTUP_DEADLINE_S (600 s), the operating window until
 SHIFT_END_S (1500 s), then the shutdown until the end of the episode (the sim cap, 1800 s, or `finish`). The score is
@@ -12,10 +11,14 @@ the sum of five parts (the operating procedure, sop.md, says what each step is):
   events 0.25    split equally between the episode's events:
                  the consumer's demand step: 360 s after it, level in band and the transfer matched to the new demand
                    (within 0.35 m3/h, or within 1 m3/h on the side that brings the level back towards 65 %);
-                 a debris slug on the strainer: switched to chamber B within 240 s of the alarm 0.5, chamber B vented
-                   before the switch 0.3, the alarm reset after the switch 0.2 (not judged if it never raises the alarm);
-                 T-101's float valve sticking shut: the make-up valve V-106 opened before the pump trips on dry running,
-                   and no such trip until the shift ends (not judged if T-101 never reaches its low alarm);
+                 a debris slug on the strainer (it lands in the chamber in service when it comes): changed over from
+                   that chamber to the other one within 240 s of the alarm 0.5, the chamber changed to free of air
+                   (vented) when it came into service 0.3, the alarm reset after the changeover 0.2 (not judged if it
+                   never raises the alarm);
+                 T-101's float valve sticking shut: the make-up valve V-106 opened after the float valve stuck (closed
+                   when it stuck) and before the pump trips on dry running, and no such trip until the shift ends (not
+                   judged if T-101 never reaches its low alarm and V-106 was closed when it stuck; a V-106 already open
+                   when the float valve stuck is not the procedure and earns nothing);
                  an air lock in the dosing pump: vented with the pump stopped and dosing again within 300 s, from the drum
                    lined up when it air-locked;
                  drum A running dry: V-303 turned to drum B once drum A was below 5 % (or dry), and dosing from drum B
@@ -24,8 +27,9 @@ the sum of five parts (the operating procedure, sop.md, says what each step is):
                    dosing again within 300 s of the trip 0.25 (not judged if P-101 was not running)
   shutdown 0.15  after the shift ends: P-301 stopped before P-101 0.03, V-103 closed before P-101 stops 0.04, P-101
                  stopped 0.03, V-101 closed after it 0.03, HS-101 at OFF at the end 0.02
-  log 0.15       0.025 for each of PI-101, PI-103, PDI-111, FI-105, LG-201 and AI-201 whose first reading logged in the
-                 window is within the tolerance of the instrument's true value at that moment
+  log 0.15       two rounds (600-1050 s and 1050-1500 s, P-101 running): 0.0125 for each of PI-101, PI-103, PDI-111,
+                 FI-105, LG-201 and AI-201 whose first reading logged in the round is within the tolerance of the
+                 instrument's true value at that moment (2 % of the instrument's span; AI-201 0.05 mg/L)
 
 A void (the pump deadheaded for 30 s, cavitation damage, T-201 overflowing, the emergency stop pressed, a safety
 violation of the robot) makes the episode score 0.
@@ -37,7 +41,7 @@ from .layout import CONC_BAND, LEVEL_BAND, SHIFT_END_S, STARTUP_DEADLINE_S
 from .process import DRUM_L
 from .textures import GAUGE_KINDS
 
-__all__ = ["Monitor", "WEIGHTS", "LOG_TAGS", "UNITS", "tolerance"]
+__all__ = ["Monitor", "WEIGHTS", "LOG_TAGS", "UNITS", "tolerance", "log_round", "LOG_ROUNDS"]
 
 WEIGHTS = {
     "startup": {"lineup": 0.05, "primed": 0.04, "clean_start": 0.04, "discharge_open": 0.04, "dosing_on": 0.03},
@@ -55,6 +59,8 @@ UNITS = {"bar": ("pressure", 1.0), "psi": ("pressure", 1.0 / 14.5037738), "kpa":
 QUANTITY = {"PI-101": "pressure", "PI-103": "pressure", "PDI-111": "pressure", "FI-105": "flow", "LG-201": "level",
             "AI-201": "concentration"}
 DEMAND_EVAL_S = 360.0
+LOG_ROUNDS = ((600.0, 1050.0), (1050.0, 1500.0))   # [lo, hi) and [lo, hi]: the log sheet's two rounds
+LOG_TOL_FRAC = 0.02                  # of the instrument's span (v0.5; 3 % before)
 SLUG_SWITCH_S = 240.0
 AIRLOCK_FIX_S = 300.0
 DEMAND_MATCH_M3H = 0.35
@@ -70,13 +76,22 @@ LINEUP = {"V-101": (">=", 0.9), "V-103": ("<=", 0.05), "V-104": (">=", 0.9), "V-
 
 
 def tolerance(tag, kinds):
-    """The logging tolerance of `tag` in its base unit: 3 % of the instrument's span (AI-201: 0.05 mg/L)."""
+    """The logging tolerance of `tag` in its base unit: 2 % of the instrument's span (AI-201: 0.05 mg/L)."""
     if tag == "AI-201":
         return 0.05
     if tag == "LG-201":
-        return 3.0
+        return 100.0 * LOG_TOL_FRAC
     k = GAUGE_KINDS[kinds[tag]]
-    return 0.03 * (k["hi"] - k["lo"]) * k["scale"]
+    return LOG_TOL_FRAC * (k["hi"] - k["lo"]) * k["scale"]
+
+
+def log_round(t):
+    """The log sheet's round of the clock time t: 1, 2 or None (outside the window)."""
+    if LOG_ROUNDS[0][0] <= t < LOG_ROUNDS[0][1]:
+        return 1
+    if LOG_ROUNDS[1][0] <= t <= LOG_ROUNDS[1][1]:
+        return 2
+    return None
 
 
 class Monitor(object):
@@ -100,7 +115,7 @@ class Monitor(object):
             self.ev.append({"type": e["type"], "t": float(e["t"]), "credit": 0.0, "detail": {}, "done": False})
         self.presses = []                     # (t, button)
         self.logs = []                        # accepted log calls (t, tag, value, unit, true, ok)
-        self.first_log = {}
+        self.first_log = {}                   # (round, series tag) -> the entry on the sheet
         self.stop101_after_shift = None
         self.stop301_after_shift = None
         self.prev_run101 = False
@@ -129,11 +144,13 @@ class Monitor(object):
         q, f = UNITS[u]
         true = float(proc.values()[tag])
         ok = (q == QUANTITY[tag]) and abs(v * f - true) <= tolerance(tag, self.kinds)
+        rnd = log_round(t)
+        # the reply tells the program only what the clock says (53-isolation-2: whether P-101 runs stays internal)
         rec = {"t": float(t), "tag": site_tag, "series_tag": tag, "value": v, "unit": unit, "true_base": true, "ok": bool(ok),
-               "in_window": STARTUP_DEADLINE_S <= t <= SHIFT_END_S and bool(proc.run101)}
+               "round": rnd, "in_window": rnd is not None, "counts": rnd is not None and bool(proc.run101)}
         self.logs.append(rec)
-        if rec["in_window"] and tag not in self.first_log:
-            self.first_log[tag] = rec
+        if rec["counts"] and (rnd, tag) not in self.first_log:
+            self.first_log[(rnd, tag)] = rec
         return rec
 
     # ------------------------------------------------------------------ every tick
@@ -187,7 +204,7 @@ class Monitor(object):
                 continue
             d = e["detail"]
             if e["type"] == "demand_step":
-                t_eval = min(e["t"] + DEMAND_EVAL_S, SHIFT_END_S)
+                t_eval = e["t"] + DEMAND_EVAL_S       # the generator draws the step early enough (layout.py)
                 if t >= t_eval:
                     lev = proc.level_pct("T-201")
                     gap = proc.Qm - proc.demand
@@ -197,13 +214,23 @@ class Monitor(object):
                     d.update({"level_pct": round(lev, 1), "transfer_m3h": round(proc.Qm, 3), "demand_m3h": round(proc.demand, 3)})
                     e["done"] = True
             elif e["type"] == "filter_slug":
+                # 53-scoring-2 / -3: the slug lands in the chamber in service (process.py); the changeover that counts
+                # takes the lever from that chamber's end to the other end after the slug came, and "vented" is the
+                # air the incoming chamber held when it came into service, before it went into the pump
+                if "chamber" not in d:
+                    if proc.slug_chamber is None:
+                        continue                      # the process has not taken the slug in yet (same tick)
+                    d["chamber"] = proc.slug_chamber
+                    d["n_changeovers_before"] = len(proc.changeovers)
                 if "alarm_t" not in d and proc.alarms["PDI-111"]:
                     d["alarm_t"] = t
-                if "switch_t" not in d and u["V-111"] >= 0.9 * math.pi:
-                    d["switch_t"] = t
-                    d["vented_before_switch"] = bool(proc.chamber_b_air < 0.1 or d.get("b_vented", False))
-                if proc.chamber_b_air < 0.1:
-                    d["b_vented"] = True
+                other = "B" if d["chamber"] == "A" else "A"
+                at_other_end = (u["V-111"] >= 0.9 * math.pi) if other == "B" else (u["V-111"] <= 0.1 * math.pi)
+                if "switch_t" not in d and at_other_end:
+                    came = [c for c in proc.changeovers[d["n_changeovers_before"]:] if c[2] == other]
+                    if came:
+                        d["switch_t"] = t
+                        d["vented_before_switch"] = bool(came[-1][3] < 0.1)
                 if "switch_t" in d and "reset_t" not in d:
                     if "alarm_t" not in d or any(b == "RESET" and tp >= d["switch_t"] for tp, b in self.presses):
                         d["reset_t"] = t
@@ -243,14 +270,18 @@ class Monitor(object):
                     e["credit"] = 1.0 if fixed and t <= deadline else 0.0
                     e["done"] = True
             elif e["type"] == "supply_loss":
+                # 53-scoring-4: the make-up counts only when opened after the float valve stuck (sop.md AOP-5: never
+                # open V-106 while the float valve works)
+                if "open_at_fault" not in d:
+                    d["open_at_fault"] = bool(u["V-106"] > 0.05)
                 if "alarm_t" not in d and proc.alarms["LG-101"]:
                     d["alarm_t"] = t
-                if "opened_t" not in d and u["V-106"] >= 0.15:
+                if "opened_t" not in d and u["V-106"] >= 0.15 and not d["open_at_fault"]:
                     d["opened_t"] = t
                 if proc.fault101 and proc.fault_reason == "dry running" and "dry_trip_t" not in d:
                     d["dry_trip_t"] = t
                 if t >= SHIFT_END_S:
-                    if "alarm_t" not in d and "opened_t" not in d:
+                    if "alarm_t" not in d and "opened_t" not in d and not d["open_at_fault"]:
                         e["excluded"] = True          # T-101 never reached its low alarm: nothing to judge
                     else:
                         ok = "opened_t" in d and "dry_trip_t" not in d
@@ -297,8 +328,8 @@ class Monitor(object):
             sd["suction_closed"] = self.last_u.get("V-101", 1.0) <= 0.05 if hasattr(self, "last_u") else False
         sd["selector_off"] = bool(sd["pump_stopped"] and getattr(self, "last_selector", "OFF") == "OFF")
         parts["shutdown"] = sum(W["shutdown"][k] for k, v in sd.items() if v)
-        log_ok = {t: bool(self.first_log.get(t, {}).get("ok", False)) for t in LOG_TAGS}
-        parts["log"] = W["log"] * sum(1 for v in log_ok.values() if v) / len(LOG_TAGS)
+        log_ok = {"%s@%d" % (t, r): bool(self.first_log.get((r, t), {}).get("ok", False)) for r in (1, 2) for t in LOG_TAGS}
+        parts["log"] = W["log"] * sum(1 for v in log_ok.values() if v) / len(log_ok)
         raw = sum(parts.values())
         voided = len(voids) > 0
         return {"score": 0.0 if voided else float(min(1.0, max(0.0, raw))), "raw_score": float(raw), "voided": voided,

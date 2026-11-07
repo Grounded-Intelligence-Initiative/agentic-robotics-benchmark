@@ -17,8 +17,8 @@ Each episode is one shift on a skid of the series, following the operating proce
    start the chlorine dosing.
 2. **Operation** (600-1500 s): the consumer draws from T-201 at a rate no instrument shows. Hold T-201's level
    (LG-201) in 55-75 % and the residual chlorine (AI-201) in 1.8-2.6 mg/L, record six instrument readings on the log
-   sheet, and handle whatever happens on the shift by the SOP's procedures: the consumer's draw may change, and any of
-   the abnormal situations of the SOP may occur (a debris slug clogging the strainer, the supply tank's float valve
+   sheet in each of its two rounds (600-1050 s and 1050-1500 s), and handle whatever happens on the shift by the SOP's procedures: the consumer's draw may change, and several of
+   the abnormal situations of the SOP may occur on one shift (a debris slug clogging the strainer, the supply tank's float valve
    sticking shut, an air lock in the dosing pump, the duty dosing drum running dry, a trip of the transfer pump), none
    announced. One common alarm lamp serves
    several faults, and some faults share their first symptoms: tell them apart on the instruments (`sop.md` section 3)
@@ -38,21 +38,26 @@ levels, the consumer's draw, the drums) and what goes wrong, and when. The tag p
 ## What you produce (in `/home/user/submission/`)
 
 `operate.py` exposing `solve(cell) -> None` (plus any helper modules, optional `run.sh`). The grader runs it once per
-hidden episode (4 episodes) in its own cell. It talks to the cell through `cell` (API in `~/given/cell/cell_api.md`):
+hidden episode (8 episodes, eight sites of the series) in its own cell. It talks to the cell through `cell` (API in `~/given/cell/cell_api.md`):
 the robot's own state (joints, tool pose, gripper width and grip signal, the wrist load, the rail and the lift), the
 horn, the two RGB-D cameras (`overview`, `wrist`), the site's equipment list, and `log_reading` for the log sheet (site
 tags); nothing else about the skid. Per episode: 1800 s of
-simulated time (the clock advances only inside `step`); 2400 s of program time, which is the episode's wall clock minus
+simulated time (the clock advances only inside `step`); 1200 s of program time, which is the episode's wall clock minus
 the time the cell spends simulating (inside `step`) and rendering (inside `get_camera`), so it measures your program's
-own computation and its other requests; at most 180 s from a reply to your next request; 900 camera frames in total.
+own computation and its other requests, and 4x that in CPU seconds (all threads together); at most 180 s from a reply
+to your next request; 600 camera frames in total.
 
 How the program is run: a fresh process under a dedicated unprivileged account that is not yours, from a per-run
 directory with a read-only copy of your submission folder (regular files only), an empty writable HOME / TMPDIR, a
 minimal environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `MUJOCO_GL`, `PYTHONPATH` = the given library `~/given/lib`,
 `ARB_GIVEN_DIR` = a read-only copy of `~/given`) and the launcher `python3 -B -E -s -c <bootstrap> <lib> operate` (or
-`bash run.sh`). Resolve given files through `os.environ.get("ARB_GIVEN_DIR", os.path.expanduser("~/given"))`, write only
+`bash run.sh`), with no network (a seccomp filter refuses every socket but a Unix-domain one, for the program and
+everything it starts). Before the first episode the grader imports your module once under this regime to check that it
+defines `solve`: the import must finish within 120 s of wall clock and 120 CPU seconds (all threads together), or every
+episode scores 0; do heavy precomputation inside `solve`, not at module level. Resolve given files through `os.environ.get("ARB_GIVEN_DIR", os.path.expanduser("~/given"))`, write only
 under the run's HOME / TMPDIR. A program that crashes ends that episode with what it achieved; the other episodes still
-run. Your submission must be final when your session ends: the submission folder is then copied out of your sandbox
+run. An episode in which the cell itself failed (an internal error, a physics fault, a frame it could not render) is run
+once more from scratch, and the second run counts. Your submission must be final when your session ends: the submission folder is then copied out of your sandbox
 and graded in a fresh sandbox that holds nothing else of yours (no other file, no process you started), and a
 surviving process of the run account voids the contract gate.
 
@@ -74,19 +79,19 @@ surviving process of the run account voids the contract gate.
 Tools: Python 3.12 (`/opt/venv/bin/python3`; call it by that path, the bare `python3` on your shell's `PATH` may be
 another interpreter) with numpy, scipy, OpenCV (`cv2`, headless), Pillow, MuJoCo 3.14. No network in your session.
 
-## How you are graded (verify runs 4 hidden episodes)
+## How you are graded (verify runs 8 hidden episodes)
 
 Gates (multiply the score): `contract_ok` = `operate.py` is a regular file that parses and defines `solve`, passes the
-route gate (no weight files, no training calls, submission <= 60 MB), imports under the run regime above, makes at
-least one `step` call over the episodes, causes no network activity during any episode, and your own `.py` files
+route gate (no weight files, no training calls, submission <= 60 MB), imports under the run regime above (the import check), makes at
+least one `step` call over the episodes, holds no network socket during any episode, and your own `.py` files
 import no networking module (`socket`, `ssl`, `urllib`, `http`, `requests`, `asyncio`, `ctypes`, `subprocess`, ...),
 load no module under a computed name, execute no computed code (`exec` / `eval` / `compile` of a non-literal) and start
 no other program (`os.system`, `os.exec*`, `os.spawn*`, ...).
 
 `operation_score` = the mean over the episodes of the shift's score, `sop.md` section 6: start-up 0.20, operation in
 band 0.25, the window's events 0.25, shutdown 0.15, the log sheet 0.15, judged on the cell's own state and the
-process's true values. An episode in which the pump is deadheaded for 30 s or damaged by 300 s of cavitation, T-201
-overflows, the emergency stop is pressed, or the robot presses on the skid harder than the safety limits (more than
+process's true values. An episode in which the pump is deadheaded for 30 s or damaged by 300 s of cavitation, T-201 or
+T-101 overflows, the emergency stop is pressed, or the robot presses on the skid harder than the safety limits (more than
 40 N for 30 ms on anything but a handle or a button, more than 150 N on a handle or a button) scores 0. The reward you
 are judged on is `operation_score` relative to a hidden reference value. Stats (not scored): the parts' means, event
 credits, frames per camera, sim / wall / program time, illegal calls, safety events.

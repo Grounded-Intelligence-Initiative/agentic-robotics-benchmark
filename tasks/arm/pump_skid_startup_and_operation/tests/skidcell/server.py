@@ -1,5 +1,6 @@
-"""SkidCellServer: the grader-owned physics, the process and the skid cell's API (cell internals: the practice service runs this
-class in `practice` mode; the hidden grader is this class in `hidden` mode on hidden seeds).
+"""SkidCellServer: the grader-owned physics, the process and the skid cell's API (cell internals: the hidden grader runs this
+class in `hidden` mode on the pinned hidden seeds; `practice` mode is a maintainers' development mode that nothing in the
+image runs).
 
 The server owns the MuJoCo model and data and the process model, steps both only inside `step`, evaluates every check
 from its own state, applies the grip rule, reads the panel's buttons and selector, watches safety and writes the
@@ -136,6 +137,7 @@ class SkidCellServer(object):
         self.frames_by_camera = dict((c, 0) for c in CAMERA_NAMES)
         self.render_wall_s = 0.0
         self.render_failures = 0
+        self.frames_lost = 0                 # frames not rendered after the retry (camera_unavailable)
         self._closing = False
         self._slip = 0
         self._btn_down = dict((b, False) for b in BUTTONS)
@@ -271,19 +273,30 @@ class SkidCellServer(object):
         self.frames_by_camera[name] += 1
         t_frame = time.time()
         try:
-            return self._frame(name, k, depth)
+            out = self._frame(name, k, depth)
+            if isinstance(out, dict) and out.get("error") == "camera_unavailable":
+                # a frame the cell failed to render is not charged to the budget (53-scoring-11); the grader retries
+                # an episode with render failures (verify.py)
+                self.frames_used -= 1
+                self.frames_by_camera[name] -= 1
+            return out
         finally:
             self.work_wall += time.time() - t_frame
 
     def _frame(self, name, k, depth):
         t = time.time()
         sc = self.scene
-        try:
-            sc.update_visuals(self.proc, float(sc.data.time))
-            rgb, dep = sc.cameras.render(sc.data, name)
-        except Exception as e:  # noqa: BLE001 - a renderer failure never takes the cell down
-            self.log("[cell] %s frame %d not rendered: %s" % (name, k, type(e).__name__))
-            self.render_failures += 1
+        rgb = dep = None
+        for attempt in range(2):                     # one retry: a transient renderer failure is the cell's
+            try:
+                sc.update_visuals(self.proc, float(sc.data.time))
+                rgb, dep = sc.cameras.render(sc.data, name)
+                break
+            except Exception as e:  # noqa: BLE001 - a renderer failure never takes the cell down
+                self.log("[cell] %s frame %d not rendered (attempt %d): %s" % (name, k, attempt + 1, type(e).__name__))
+                self.render_failures += 1
+        if rgb is None:
+            self.frames_lost += 1
             self.render_wall_s += time.time() - t
             return {"error": "camera_unavailable"}
         from PIL import Image
@@ -317,7 +330,8 @@ class SkidCellServer(object):
             return {"ok": False, "error": "episode_over"}
         rec = self.monitor.on_log(float(self.scene.data.time), tag, value, unit, self.proc)
         self._event("logged:%s" % rec["tag"])
-        return {"ok": True, "tag": rec["tag"], "sim_time": rec["t"], "in_window": rec["in_window"]}
+        # the clock's round only: nothing in the reply depends on the skid's state (53-isolation-2)
+        return {"ok": True, "tag": rec["tag"], "sim_time": rec["t"], "round": rec["round"], "in_window": rec["in_window"]}
 
     def finish(self):
         self._end("finish")
@@ -527,7 +541,7 @@ class SkidCellServer(object):
             "illegal_call_count": int(self.illegal_calls), "internal_errors": int(self.internal_errors), "calls": dict(self.calls),
             "step_calls": int(self.step_calls), "program_time_s": float(self.program_used), "cell_work_s": float(self.work_wall),
             "camera_frames_total": int(self.frames_used), "camera_frames": dict(self.frames_by_camera),
-            "render_wall_s": float(self.render_wall_s), "render_failures": int(self.render_failures), "build_wall_s": float(self.build_wall_s),
+            "render_wall_s": float(self.render_wall_s), "render_failures": int(self.render_failures), "frames_lost": int(self.frames_lost), "build_wall_s": float(self.build_wall_s),
             "process_log": [[round(t, 2), e] for t, e in self.proc.log], "events_log": [[round(t, 2), e] for t, e in self.events_log
                                                                                           if not e.startswith("logged:")][:4000],
             "layout": {"mirror": self.layout["mirror"], "wrong_at_start": self.layout["wrong_at_start"], "gauge_kinds": self.layout["gauge_kinds"],

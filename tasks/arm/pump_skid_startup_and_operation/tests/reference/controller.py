@@ -21,6 +21,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from skidcell.episode import log_round  # noqa: E402  (the log sheet's two rounds: sop.md 2.3)
 from skidcell.layout import CONC_BAND, SHIFT_END_S, STARTUP_DEADLINE_S  # noqa: E402
 from skidcell.process import TANKS  # noqa: E402  (the tanks' geometry: a series fact, the same on every site)
 from skills import Skills, Stop  # noqa: E402
@@ -293,6 +294,19 @@ class Reference(object):
             if e.opening(tag) < 0.98:
                 self.note("line-up: open %s" % tag)
                 sk.set_opening(tag, 1.0)
+        # an operator checks the line-up before the start (sop.md 1.1): a valve a stroke did not bring home is set again
+        for _ in range(2):
+            off = [t for t in ("V-102", "V-112", "V-302", "V-103", "V-105", "V-106", "V-107") if e.opening(t) > 0.03]
+            off += [t for t in ("V-111", "V-303") if e.opening(t) > 0.08]
+            off += [t for t in ("V-101", "V-104") if e.opening(t) < 0.95]
+            if not off:
+                break
+            for tag in off:
+                self.note("line-up check: %s at %.3f, set again" % (tag, e.opening(tag)))
+                if tag in ("V-111", "V-303"):
+                    sk.set_device(tag, 0.0)
+                else:
+                    sk.set_opening(tag, 1.0 if tag in ("V-101", "V-104") else 0.0)
         self.note("prime: vent the casing through V-102 until VS-102 shows liquid")
         sk.set_opening("V-102", 1.0)
         while not e.sight("VS-102"):
@@ -316,23 +330,28 @@ class Reference(object):
         self.set_flow(force=True)
 
     def log_all(self):
+        """The log sheet's round now (sop.md 2.3: each instrument once in each of the two rounds, P-101 running)."""
         t = self.sk.t()
-        if not (STARTUP_DEADLINE_S <= t <= SHIFT_END_S) or not self.eyes.lamp("RUN-101"):
+        rnd = log_round(t)
+        if rnd is None or not self.eyes.lamp("RUN-101"):
             return
         for tag, unit in LOG_UNITS.items():
-            if tag in self.logged:
+            if (rnd, tag) in self.logged:
                 continue
             self.S.log_reading(self.ST[tag], round(self.eyes.value(tag), 3), unit)
-            self.logged.add(tag)
+            self.logged.add((rnd, tag))
 
     def aop_filter(self):
         sk, e = self.sk, self.eyes
-        self.note("AOP-1: PDI-111 %.2f bar: vent chamber B, change over, reset" % e.value("PDI-111"))
-        sk.set_opening("V-112", 1.0)
-        while not e.sight("VS-112"):
-            sk.step(20)
-        sk.set_opening("V-112", 0.0)
-        sk.set_device("V-111", math.pi)
+        on_b = e.opening("V-111") > 0.5 * math.pi          # the lever points at the chamber in service
+        self.note("AOP-1: PDI-111 %.2f bar: %s, reset" % (e.value("PDI-111"), "change back to chamber A (full)" if on_b else
+                                                           "vent chamber B, change over"))
+        if not on_b and not e.sight("VS-112"):
+            sk.set_opening("V-112", 1.0)
+            while not e.sight("VS-112"):
+                sk.step(20)
+            sk.set_opening("V-112", 0.0)
+        sk.set_device("V-111", 0.0 if on_b else math.pi)
         self.flow_changed_t = sk.t()             # the clean chamber gives the pump its flow back
         sk.press("RESET")
         self.filter_done = True
@@ -501,7 +520,7 @@ class Reference(object):
         sk.home()
 
     def report(self):
-        return {"notes": self.notes[-60:], "logged": sorted(self.logged), "t_end": self.sk.t()}
+        return {"notes": self.notes[-60:], "logged": sorted("%s@%d" % (tag, r) for r, tag in self.logged), "t_end": self.sk.t()}
 
 
 def run(server):

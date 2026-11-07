@@ -36,4 +36,8 @@ chmod -R u+rwX,go+rX,go-w "$ROOT_PAYLOAD"
 export HOME=/root PYTHONNOUSERSITE=1 XDG_CONFIG_HOME=/root/.config XDG_CACHE_HOME=/root/.cache \
   MPLCONFIGDIR=/root/.config/matplotlib
 export MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa
+# the cell's and the reference program's numerics the same on every x86-64 CPU (v0.5): OpenBLAS otherwise picks its
+# kernels per CPU (Haswell, SkylakeX, Zen ...) and numpy its SIMD paths, and the reference's IK then rounds differently;
+# the program under test keeps its own minimal environment (cellkit.runner.child_env)
+export OPENBLAS_CORETYPE=Haswell NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR"
 exec "${ALE_VERIFY_PYTHON:-python3}" -s verify.py

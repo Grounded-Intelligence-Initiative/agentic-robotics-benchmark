@@ -60,7 +60,7 @@ class SolverMissing(Exception):
 
 
 class AgentProcess(object):
-    def __init__(self, argv, cwd, user=None, env=None, stderr_path=None, cpu_s=None):
+    def __init__(self, argv, cwd, user=None, env=None, stderr_path=None, cpu_s=None, nonet=False):
         """`argv` as given; `user` -> `runuser -u <user> --` (root only), `cpu_s` -> `prlimit --cpu` (see runner.wrap_limits).
         The child starts its own session so the whole process group can be killed at the end of the episode.
 
@@ -68,7 +68,7 @@ class AgentProcess(object):
         frame is megabytes, far above a pipe's buffer, and a program that asks for one and then stops reading must not
         hold the grader past its caps. Requests are read with a bounded line length (no unbounded line in memory)."""
         from .runner import wrap_limits
-        cmd = wrap_limits(list(argv), cpu_s=cpu_s, user=user)
+        cmd = wrap_limits(list(argv), cpu_s=cpu_s, user=user, nonet=nonet)
         self.stderr_file = open(stderr_path, "ab") if stderr_path else subprocess.DEVNULL
         self.proc = subprocess.Popen(cmd, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,   # noqa: S603
                                      stderr=self.stderr_file, env=env, start_new_session=True)

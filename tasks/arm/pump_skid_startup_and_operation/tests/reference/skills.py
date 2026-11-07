@@ -201,9 +201,9 @@ class Skills(object):
         c = np.asarray(self.sc.dev[tag]["centre"], float)
         return float(np.clip(c[0], RAIL["x_lo"], RAIL["x_hi"])), self.lift_for(c[2])
 
-    def plan_grip(self, tag, turn_by=0.0, local=False):
+    def plan_grip(self, tag, turn_by=0.0, local=False, exclude=()):
         """The best handle and closing sign of device `tag` for turning it by `turn_by` radians (0: just reach it).
-        local=True plans for the carriage where it stands (a re-grip)."""
+        local=True plans for the carriage where it stands (a re-grip); `exclude`: handles whose grip slipped at once."""
         dev = self.sc.dev[tag]
         self._planning_tag = tag
         hs = self.sc.handles_world(tag)
@@ -221,6 +221,8 @@ class Skills(object):
         # spokes / levers first: they turn about a short radius; the rim only when nothing else works
         order = sorted(hs, key=lambda h: (1 if "/rim" in h[0] else 0))
         for name, hp, pinch, appr, width in order:
+            if name in exclude:
+                continue
             rolls = (0.0, math.pi / 2, -math.pi / 2, math.pi) if pinch is None else (False, True)
             for roll in rolls:
                 R0 = self._orientation(appr, pinch, roll)
@@ -307,12 +309,16 @@ class Skills(object):
         lo, hi = self.sc.jrange[tag]
         target_q = float(np.clip(target_q, lo + 1e-4, hi - 1e-4))
         local = False
+        slipped = set()                  # handles whose grip slipped before the device moved (v0.5: try another one)
         for cyc in range(max_cycles):
             q = float(self.sc.data.qpos[self.sc.jq[tag]])
             need = target_q - q
             if abs(need) <= tol:
                 break
-            plan = self.plan_grip(tag, need, local=local)
+            plan = self.plan_grip(tag, need, local=local, exclude=slipped)
+            if (plan is None or plan["stroke"] < math.radians(3.0)) and slipped:
+                slipped = set()
+                plan = self.plan_grip(tag, need, local=local)
             if plan is None or plan["stroke"] < math.radians(3.0):
                 if local:
                     self.home()
@@ -327,6 +333,8 @@ class Skills(object):
                 continue
             stroke = math.copysign(min(abs(need), plan["stroke"]), need)
             got = self.turn_held(stroke)
+            if abs(got) < math.radians(0.5) and self.sc.held != tag:
+                slipped.add(plan["handle"])
             if self.debug:
                 self.log("[ref]   %s cycle %d: %s stroke %.1f turned %.1f (need %.1f) held %s" % (
                     tag, cyc, plan["handle"], math.degrees(stroke), math.degrees(got), math.degrees(need), self.sc.held))
