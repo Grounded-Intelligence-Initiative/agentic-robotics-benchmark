@@ -19,6 +19,8 @@ D = RM.DINING
 
 
 def views():
+    if os.environ.get("CV_VIEWS"):
+        return [tuple(v) for v in json.loads(os.environ["CV_VIEWS"])]
     out = []
     for x in np.arange(dx - 0.75, dx + 0.751, 0.25):
         out.append((float(x), dy - ly / 2 - 0.42, math.pi / 2))          # south side, facing north

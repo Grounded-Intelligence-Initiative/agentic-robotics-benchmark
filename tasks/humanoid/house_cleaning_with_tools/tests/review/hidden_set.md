@@ -77,3 +77,49 @@ e88f7bc29cc3bdf8cffd1ed17e854295e0b73f25164982b0a11682c0719d1038  tests/grader_c
 | 14 | 18184323288814303 |
 | 15 | 6438526276579322594 |
 | 16 | 2636808825281067254 |
+
+## Results (each candidate run once, 2026-11-07 21:26-21:55Z, apollo, image built from this commit's environment/)
+
+| # | seed | stage score | crumbs binned | sim s | wall s | result | why |
+|---|---|---|---|---|---|---|---|
+| 1 | 6790790475345571576 | 0.9537 | 0.733 | 3462 | 1531 | fail | safety: robot_contact:a/right_wrist_pitch_link/kitchen |
+| 2 | 3125492756787262100 | 0.9120 | 0.583 | 3307 | 1542 | pass (kept) |  |
+| 3 | 7022738416721159354 | 0.8759 | 0.583 | 2754 | 1310 | fail | safety: robot_contact:a/right_wrist_pitch_link/kitchen; short: grease 2.44/2.5, sponge 0.00/0.3 |
+| 4 | 4089632381925228296 | 0.8357 | 0.417 | 3824 | 1554 | fail | short: tools 0.00/0.3; crumbs binned 0.42 |
+| 5 | 6569624632418969883 | 0.6250 | 0.000 | 3379 | 1325 | fail | short: books 0.50/1, tools 0.00/0.3, lids 0.00/0.2; crumbs binned 0.00 |
+| 6 | 4920960843796068851 | 0.7100 | 0.000 | 2861 | 1117 | fail | safety: robot_contact:a/right_wrist_pitch_link/dining, robot_contact:a/right_wrist_pitch_link/dining; short: tools 0.00/0.3, lids 0.10/0.2; crumbs binned 0.00 |
+| 7 | 7640796830471677594 | 0.9444 | 0.700 | 3277 | 1608 | fail | safety: robot_contact:a/right_wrist_pitch_link/kitchen |
+| 8 | 7981839151774950588 | 0.7200 | 0.000 | 3863 | 1586 | fail | short: tools 0.00/0.3; crumbs binned 0.00 |
+| 9 | 4745791118675327858 | 0.9019 | 0.817 | 3170 | 1531 | fail | short: books 0.50/1 |
+| 10 | 376632851020783183 | 0.9213 | 0.617 | 3504 | 1385 | fail | safety: robot_contact:a/right_wrist_pitch_link/kitchen |
+| 11 | 3945038779305284334 | 0.8816 | 0.667 | 2762 | 1083 | fail | short: trash 1.71/2 |
+| 12 | 4387728151438419368 | 0.9352 | 0.667 | 3319 | 1387 | pass (kept) |  |
+| 13 | 6432759289746745107 | 0.9398 | 0.683 | 3730 | 1643 | pass (kept) |  |
+| 14 | 18184323288814303 | 0.6250 | 0.000 | 3252 | 1760 | fail | short: books 0.50/1, tools 0.00/0.3, lids 0.00/0.2; crumbs binned 0.00 |
+| 15 | 6438526276579322594 | 0.9398 | 0.683 | 3461 | 1335 | pass |  |
+| 16 | 2636808825281067254 | 0.6750 | 0.000 | 3426 | 1763 | fail | short: dishes 0.75/1, tools 0.00/0.3, lids 0.00/0.2; crumbs binned 0.00 |
+
+4 of the 16 pass. The failures are the reference's own (a candidate can fail for several reasons): a safety
+violation in 5 (a wrist pressed on the counter at the soap pump in 1, 3, 7 and 10, on the dining table in 6); the floor
+less than half swept in 6 (4, 5, 6, 8, 14, 16: the dustpan or the broom stuck; the lids also left open in 5, 14 and
+16); an item left in 5 (a book in 5, 9 and 14, the water bottle in 11, a glass in 16). Per-candidate
+records: `selection/seed_<seed>.json`.
+
+**The hidden set** (`tests/hidden/seeds.json`): candidates 2, 12 and 13, stage scores 0.9120, 0.9352 and 0.9398 (mean
+0.9290). Candidate 15 also passed; it is not used (the rule keeps the first three).
+
+## Hollowing check (`selection/features.json`)
+
+| feature | kept 2 / 12 / 13 | all 16 candidates |
+|---|---|---|
+| recycling bin in the north slot | yes / no / yes | 7 of 16 |
+| the glasses' distance from the nearer long edge of the table (m), nearer / farther glass | 0.287, 0.306 / 0.105, 0.196 / 0.165, 0.187 | 0.084-0.287 / 0.116-0.315 |
+| the can's distance from the nearer long edge (m) | 0.096 / 0.257 / 0.200 | 0.079-0.266 |
+| grease at the start (units) | 43.8 / 36.9 / 41.3 | 17.7-62.8 (mean 41.2) |
+| floor crumbs south / north of the table | 22, 24 / 23, 23 / 24, 22 | 2-44 / 2-44 |
+
+The kept scenes cover the candidates' range in the bins' order, the glasses' and the can's reach and the amount of
+grease. One feature is narrowed: all three have their floor crumbs split about evenly between the two sides of the
+table (two patches to sweep), where the candidates range from nearly all on one side to an even split; the
+reference's broom fails more often when one large group lies along one side. For an agent this is not an easier
+floor: it has two patches to find and sweep instead of one.

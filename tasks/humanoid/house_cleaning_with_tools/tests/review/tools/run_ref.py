@@ -24,6 +24,6 @@ rec["harness_wall_s"] = time.time() - t0
 keep = {k: rec.get(k) for k in ("seed", "stage_score", "credit", "credit_by_part", "grease_removed_fraction",
         "crumbs_binned_fraction", "safety_ok", "violations", "safety_peaks", "safety_peak_who", "sim_time_s", "broken",
         "items", "process", "tools_clipped", "lid_angles", "bins", "render_errors", "internal_errors", "reference",
-        "harness_wall_s", "camera_frames_total", "faucet_off", "sponge")}
+        "harness_wall_s", "camera_frames_total", "faucet_off", "sponge", "damage", "penalty", "credit_earned")}
 json.dump(keep, open(out, "w"), indent=1, default=str)
 print("seed %d score %.4f safety %s wall %.0f" % (seed, rec["stage_score"], rec["safety_ok"], rec["harness_wall_s"]))
