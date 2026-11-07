@@ -80,7 +80,7 @@ RUN set -eu; \
 RUN apt-get update && apt-get install -y --no-install-recommends mesa-vulkan-drivers libvulkan1 \
     && rm -rf /var/lib/apt/lists/*
 
-# ---- task assets: the agent cameras' render bundle (render/shoecell_render_v1.tar in the benchmark's Hugging Face asset
+# ---- task assets: the agent cameras' render bundle (render/shoecell_render_v2.tar in the benchmark's Hugging Face asset
 # repository: the factory hall and its props from the approved OVRTX scene, the sneaker skin template, the cell's
 # textures, the image light; one tar, as one request per file runs into the Hub's rate limit), fetched at the dataset
 # commit pinned in assets.sha256 and checked by its sha256 (docs/task-assets.md; fetch_assets.py is the benchmark's
@@ -91,7 +91,7 @@ COPY fetch_assets.py assets.sha256 /opt/task-assets/
 RUN set -eu; \
     python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload; \
     mkdir -p /opt/task-assets/render; \
-    tar -xf /opt/task-assets/payload/render/shoecell_render_v1.tar -C /opt/task-assets/render --no-same-owner; \
+    tar -xf /opt/task-assets/payload/render/shoecell_render_v2.tar -C /opt/task-assets/render --no-same-owner; \
     rm -rf /opt/task-assets/payload; \
     chown -R root:root /opt/task-assets/render; \
     chmod -R u+rwX,go+rX,go-w /opt/task-assets/render; \

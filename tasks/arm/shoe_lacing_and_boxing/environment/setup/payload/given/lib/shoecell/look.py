@@ -71,9 +71,14 @@ LOOK = {
     "view": {"numeric": {"filament.ao.enabled": 0, "filament.shadows.type": 3, "filament.shadows.map_size": 1024},
              "text": {"filament.cg.tone_mapping": "filmic"}},
     "ibl": {"file": "ibl.ktx", "intensity": 150000.0},
-    "lamps": [{"name": "cell_lamp", "pos": [-0.05, 0.0, 2.04], "dir": [0.0, 0.0, -1.0], "intensity": 93000.0,
-               "color": [1.0, 0.745, 0.57], "cutoff": 85.0, "exponent": 1.0, "bulb_m": 0.35, "range": 30.0,
-               "shadow": True}],
+    # the LED panel (1.23 x 0.30 m, 4800 K): 93 000 cd fitted, split into a shadow-casting part (45 %) and a shadow-free
+    # rest, as a panel's soft shadow is about half as deep as a spot's
+    "lamps": [{"name": "cell_lamp", "pos": [-0.05, 0.0, 2.04], "dir": [0.0, 0.0, -1.0], "intensity": 41850.0,
+               "color": [1.0, 0.745, 0.57], "cutoff": 85.0, "exponent": 1.0, "bulb_m": 0.5, "range": 30.0,
+               "shadow": True},
+              {"name": "cell_lamp_fill", "pos": [-0.05, 0.0, 2.04], "dir": [0.0, 0.0, -1.0], "intensity": 51150.0,
+               "color": [1.0, 0.745, 0.57], "cutoff": 85.0, "exponent": 1.0, "bulb_m": 0.5, "range": 30.0,
+               "shadow": False}],
     "classes": {
         "panda_white": {"rgb": [0.92, 0.92, 0.91], "roughness": 0.36},
         "panda_offwhite": {"rgb": [0.84, 0.85, 0.85], "roughness": 0.40},
