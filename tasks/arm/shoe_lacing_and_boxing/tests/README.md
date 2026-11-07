@@ -140,45 +140,55 @@ candidates (all 1.0 with the old cell) and 8 development seeds, the four whose l
 shoe at 38.6 N for 2 ticks, seed 5385); seed 2644 was voided: an aglet that had slid under a lid wall dragged the lid
 off the tray when its shoe was lifted (section 5).
 
-**Scoring since 2026-11-06: the fixed hidden set and the anchor.** The owner's rule for contributed tasks (2026-11-04):
-the oracle may use ground truth the agent cannot see, unlocked by the token whose sha256 lives only in `tests/hidden/`;
-a random task grades a fixed hidden set of configurations that the oracle completes; the anchor is the oracle's full or
-near-full score with `full_at` near 1. Here:
+**Scoring since 2026-11-06: the fixed hidden set and the anchor** (the second set, 2026-11-07). The owner's rule for
+contributed tasks (2026-11-04): the oracle may use ground truth the agent cannot see, unlocked by the token whose sha256
+lives only in `tests/hidden/`; a random task grades a fixed hidden set of configurations that the oracle completes; the
+anchor is the oracle's full or near-full score with `full_at` near 1. Here:
 
 * The set, `tests/hidden/seeds.json`: six 63-bit seeds, run in their order by `verify.py` (`hidden_set`; a missing or
   malformed set is a task error, never a run on other seeds). Before `e1f9b27` verify drew `stream.derive("episodes")`,
   which hashes a pinned seed list into other seeds: a pinned set would never have run.
-* Its selection, `tests/hidden/selection.json` (the rule in `tests/review/select_set.py`): the reference, the cell, the
-  grader and the image's inputs were frozen first (38 sha256s and the image `pr48fix-task:fdec188`,
-  `sha256:42897dfdf249...`, built once from `environment/`; `e1f9b27`); 24 candidates were then drawn from `os.urandom`
-  and committed before any ran (`a6847d8`); each ran once (a test runs once: the owner, 2026-11-06) in its own container
-  of that image with no network, through `verify.run_episode` with the `solve.sh` submission; the first six in drawn
-  order that score 1.0 are the set (`00af2a3`). All 24 scored 1.0 (0 voids, 0 slips, 0 physics faults; 447-543 s
-  simulated, 773-1355 s of wall clock each), so nothing was dropped and the set is draws 0-5, the first six as they
-  came. The hollowing check (the kept scenes against all candidates): side-lying arrivals per pair 0 / 1 in 2 / 4 kept
-  scenes, 11 / 13 candidates, none with two; the kept shoes are 171.5-190.8 mm long (the candidates 171.5-209.9 mm, the
-  batch draw 170-210 mm); the side-lying shoe is A in all four kept (the candidates A 8, B 5); upper colours black,
-  purple and teal (seven among the candidates); the lid lies flat in 4 kept scenes, tilted on the infeed tray's rim in 1
-  and off the tray in 1 (draw 4; section 5). The rule calls a set hollow when a count of side-lying arrivals per pair
-  that a candidate has is missing from it: not hollow.
-* Determinism: on four development seeds (17, 30, 1001, 1040) the image reproduced the host venv's runs of the oracle
-  report exactly: work score, simulated time, every event and the final qpos sha256 (CPython 3.12.14 against 3.12.11,
-  OpenBLAS with 2 threads against 1, the wire and two camera frames against an in-process call). In the verify each of
-  the six episodes repeated its selection run (the same score, simulated time, ticks and per-pair detail).
+* Its selection, `tests/hidden/selection.json` (format "selection 2", the rule in `tests/review/select_set.py`). The
+  first selection (2026-11-06, `e1f9b27`-`85fa776`: 24 candidates, all 1.0, draws 0-5 kept, anchor 1.0 / 0.98) was
+  superseded by the lid fix: its scene 4 started with the lid tray jammed on the infeed tray's rim (section 5). The
+  second, on the fixed cell: the reference, the cell, the grader and the image's inputs frozen first (38 sha256s; against
+  the first freeze only `tests/shoecell/episode.py`, `physics.py` and `given_hashes.json` differ, the reference is
+  byte-identical; the image `pr48fix-task:fdec188`, `sha256:42897dfdf249...`, built once from `environment/` without its
+  `setup/`, whose files did not change; `52bee23`); 24 candidates drawn from `os.urandom` at 2026-11-07T04:17:57Z and
+  committed before any ran (`779d2d6`); each ran once in its own container of that image with no network, through
+  `verify.run_episode` with the `solve.sh` submission (04:18-04:44Z); a candidate passes with work_score 1.0 and a
+  physical start (the start-state check, added to the rule before this draw: no contact deeper than 1 mm, the lid tray
+  flat and inside the rim, no lace inside the lid tray, nothing moving more than 2 mm in 1 s idle); the first six in
+  drawn order that pass are the set (`8f876cc`). 23 of 24 passed (0 voids, 1 slip, 0 physics faults; 440-542 s
+  simulated, 643-1124 s of wall clock; every start state physical: the lid 8.3-25.3 mm inside the rim, flat, the largest
+  move in 1 s idle 0.12 mm); draw 1 was dropped (work_score 0.56: one tail came to rest in the reference's dead zone,
+  below), so the set is draws 0, 2, 3, 4, 5, 6. The hollowing check (the kept scenes against all candidates):
+  side-lying arrivals per pair 0 / 1 / 2 in 2 / 3 / 1 kept scenes, 12 / 9 / 3 candidates: not hollow (the rule calls a
+  set hollow when a count a candidate has is missing from it). Narrower by the cutoff and the one drop: the kept shoes
+  are 174.9-187.9 mm long (the candidates 171.2-208.7 mm; the dropped draw 1 is 202.3 mm), the side-lying shoe is A 3 /
+  B 2 (candidates A 7 / B 8), upper colours black, navy, orange and teal (eight among the candidates).
+* Determinism: the image and the engine are those of the first selection, where on four development seeds (17, 30,
+  1001, 1040) the image reproduced the host venv's runs of the oracle report exactly (work score, simulated time, every
+  event and the final qpos sha256; CPython 3.12.14 against 3.12.11, OpenBLAS with 2 threads against 1, the wire and two
+  camera frames against an in-process call). In the verify each of the six episodes repeated its selection run (the
+  same score, simulated time, ticks and per-pair detail).
 * The anchor, `tests/anchor.json`: one full verify of the `solve.sh` submission in a fresh container of the image laid
   out as the separate verifier (`tests/review/regrade.sh`: tests/ root-only at /opt/ale/tests, only the submission
-  restored, `bash test.sh` as root, no network, 8 CPUs): all six episodes 1.0, work_score 1.0, reward 1.0. `value` 1.0
-  and `full_at` 0.98 (every episode equal to its selection run; the margin for a last-bit difference on another host). A
+  restored, `bash test.sh` as root, no network, 8 CPUs; from the committed tests/ of `8f876cc`): all six episodes 1.0,
+  work_score 1.0, reward 1.0, no violation, no internal error, no network event. `value` 1.0 and `full_at` 0.98 (every
+  episode equal to its selection run; the margin for a last-bit difference on another host). A
   submission needs work_score 0.9751 for reward 1.0 (two decimals); boxing every pair without lacing (0.12 per episode)
   reads reward 0.12, lacing one shoe per pair and boxing it (0.56) 0.57; one shoe lost by the reference in one episode
   (mean 0.927) would read 0.95. The repository test `tests/test_shoe_lacing_and_boxing_hidden_set.py` pins the set to
-  the selection, the frozen files to their sha256 and the anchor to the lowest recorded verify.
+  the selection, the start state of every candidate, the frozen files to their sha256, the cell's three copies to each
+  other and to `given_hashes.json`, the lid spot's worst case, and the anchor to the lowest recorded verify.
 * What the agent sees: `instruction.md` says the hidden episodes use other seeds and that the cell builds their scenes
   with the same code (it said "fresh seeds of the same distribution" before; a selected set is neither). Nothing
   agent-visible names the set, its selection or the token (the repository test); the cell library's own mentions of
   its privileged calls (`server.py`, `client.py`, `cell_api.md`; the PR's, byte-identical to the grader's copy) are
   pinned there as they are.
-* Time: the verify took 4644 s of wall clock (622-940 s per episode; the first beside 12 episodes of the selection).
+* Time: the verify took 4009 s of wall clock (610-760 s per episode; its first 80 s beside the end of a
+  camera-only localisation run of the maintainers). The first set's verify took 4644 s.
 
 ## 5. Known limitations of version 0.2
 
@@ -213,11 +223,14 @@ near-full score with `full_at` near 1. Here:
   top-down reach), and a hook-only aglet re-laid toward the gripper can end inside the gripper's 0.26 m. The seat lowers
   the shoe again up to three times while an aglet lies out of reach, a tail gets four tries and an aglet only the hook
   reaches is re-laid in the gripper's zone, but an aglet in that dead zone stays there: 4 of the 128 episodes of
-  2026-11-06 lost a shoe (one lost both) this way; none of the 24 candidates of the hidden set's selection did
-  (section 4). Until 2026-11-05 the weak spot was the side-lying shoe (its tails were dragged under the sole by the
-  sideways seat); the reworked seat laces side-lying arrivals as often as upright ones (67 of 69 and 184 of 187).
-* The reference's voids: none in the 128 episodes of 2026-11-06. Every move stops and backs off at 8 N on a link,
-  checked every tick, but a link that meets something at speed builds its press within one 10 ms tick, so the contacts
+  2026-11-06 lost a shoe (one lost both) this way; none of the first selection's 24 candidates did, one of the
+  second's did (draw 1, 0.67 m from the gripper's base and 0.12 m from the hook's: dropped; section 4). Until
+  2026-11-05 the weak spot was the side-lying shoe (its tails were dragged under the sole by the sideways seat); the
+  reworked seat laces side-lying arrivals as often as upright ones (67 of 69 and 184 of 187).
+* The reference's voids: none in the 128 episodes of 2026-11-06, none in the 48 candidates of the two selections; one
+  in the 32 development episodes with the fixed lid delivery (seed 2644: a lid an aglet had dragged off the tray, in
+  the lid bullet below). Every move stops and backs off at 8 N on a link, checked every tick, but a link that meets
+  something at speed builds its press within one 10 ms tick, so the contacts
   found (the forearm on the lid at a pitched wall fold, a finger on the shoe while re-picking an aglet, the hand on the
   shoe beside an aglet, the forearm on the infeed tray and the hand on the neighbour after a righted shoe's shift) are
   avoided by planning, and a box is pushed only with its lid closed (pushed from where a failed packing had left it,

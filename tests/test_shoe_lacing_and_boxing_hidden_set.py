@@ -151,6 +151,14 @@ class HiddenSetTests(unittest.TestCase):
             self.assertEqual(r["image_id"], SELECTION["image"]["id"])
         self.assertEqual(sum(b["count"] for b in SELECTION["batches"]), len(cands))
 
+    def test_the_rule_is_the_one_recorded_at_the_draw(self):
+        """select_set.py (the rule, its pass criterion included) and run_candidate.sh as they were when the candidates were
+        drawn: their sha256 in every batch of the selection record."""
+        for b in SELECTION["batches"]:
+            self.assertEqual(sorted(b["tool_sha256"]), sorted(select_set.TOOL))
+            for rel, digest in b["tool_sha256"].items():
+                self.assertEqual(sha256(TASK / rel), digest, "{} changed since batch {} was drawn".format(rel, b["batch"]))
+
     def test_the_pinned_list_is_run_as_it_stands(self):
         """verify.py reads the list itself (hidden_set); a pinned stream's derive() would hash it into other seeds."""
         tree = ast.parse((TASK / "tests/verify.py").read_text())
