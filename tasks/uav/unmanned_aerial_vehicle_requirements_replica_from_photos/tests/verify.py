@@ -1,5 +1,18 @@
-"""Root-only static verifier. Lock down and snapshot before loading truth or scientific packages."""
-import hashlib
+"""Root-only static verifier. Lock down and snapshot before loading truth or scientific packages.
+
+Separate verification (task.toml: [verifier] environment_mode = "separate"). The engine releases the agent's sandbox,
+starts a fresh verifier sandbox from the task image and restores into it only the declared artifact
+/home/user/submission (regular files and directories, owned by root; links and special files are never copied), then
+uploads this folder. Everything read here is in this folder (gt.json, schemas.json, anchor.json, grade.py,
+procedure.py, the kit), in the image (/opt/venv) or in that restored submission. environment/setup/setup.sh
+does not run in the verifier, so the givens it stages into the agent home are not there, and none of the agent's files
+besides the submission is read. given_hashes.json stays in this folder as the maintainers' pin of the givens; this
+grader does not read it. In the separate verifier nothing the agent started is running: the freeze and kill stop only
+the image's own desktop session, which the base image's supervisord runs as the agent account and which this grader
+does not use. The engine restores the submission before it uploads this folder, so no restored entry is late; the
+lockdown, the snapshot and gate G1 stay as defence in depth. A submission root that is not a directory still fails G1;
+a symbolic-link root is not restored at all (the engine copies no link), so G0 then finds the three files missing.
+"""
 import json
 import os
 from pathlib import Path
@@ -90,14 +103,6 @@ def main():
             diagnostic='G0: '+str(exc)[:1600]
         else:value,more=grade.grade(docs,truth);metrics.update(more)
     else:diagnostic='G1: submission was linked, special, oversized, or changed after the agent phase.'
-    expected=json.loads((STAGE/'given_hashes.json').read_text());same=0
-    for rel,item in expected.items():
-        p=HOME/rel
-        try:
-            st=p.lstat()
-            if stat.S_ISREG(st.st_mode) and st.st_size==item['size'] and hashlib.sha256(p.read_bytes()).hexdigest()==item['sha256']:same+=1
-        except OSError:pass
-    metrics['given_files_unchanged']=same/len(expected)
     denominator,meta=read_anchor()
     verdict=ratio_rewards(value,denominator,metric_name='requirements_score',extra=metrics,full_at=meta['full_at'])
     # reward.json and verification.json through the kit and the engine's ale_verify. diagnostic[:2000] is the earlier
