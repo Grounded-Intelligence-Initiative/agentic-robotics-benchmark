@@ -45,11 +45,15 @@ timeout_sec = 3600
 network_mode = "no-network"
 
 # [verifier] timeout_sec: the scoring run — closed_loop needs room for every episode plus probes.
-# Here: 3 episodes x 20000 steps of simulator time (about 0.2 s a step on an 8-CPU RTX 4090
-# host, 4000 s an episode) plus each episode's controller budget (controller_budget_s in
+# Here: the 3 hidden episodes (tests/episodes.json), each in a simulator of its own: 20000 steps of
+# simulator time (0.13-0.16 s a step measured on an RTX 4090 host, under 4000 s an episode on a
+# slower one) plus the episode's controller budget (controller_budget_s in
 # tests/grader_config.json, 3000 s) plus the hi-res frames that budget can buy (about 3000 s
-# more simulator time at most), plus the simulator's start attempts: about 34000 s at worst.
-# A typical run takes 4-5 hours; the score never depends on how long it takes.
+# more simulator time at most); plus the starts: the separate verifier is always a fresh
+# sandbox, so its first simulator start compiles the renderer's shaders (547-621 s measured,
+# sim_ready_timeout_s 1500 per attempt, 3 attempts) and the later ones take seconds. About
+# 3 x 10000 + 4500 = 34500 s at worst; a frugal controller's run takes about 2.5 hours. The
+# score never depends on how long it takes.
 #
 # Grader knobs live in tests/grader_config.json, never in this file: [metadata] has no
 # runtime behavior, and episode counts are the grader's business anyway. Not
@@ -58,9 +62,9 @@ network_mode = "no-network"
 # There is no admission bar in this file. `ale validate` runs the task twice: an untouched
 # sandbox must score reward 0.0, and the oracle, run in place of the agent, must score 1.0,
 # both after the engine rounds `reward` to two decimals. Either miss fails validation
-# (`untouched_nonzero`, `oracle_not_full`). The tolerance that lets an honest oracle land on
-# 1.0 under fresh hidden seeds is `full_at` in tests/anchor.json, sized from the metric's
-# measured seed-to-seed spread. See that file.
+# (`untouched_nonzero`, `oracle_not_full`). The tolerance that lets the reference land on 1.0
+# on the fixed hidden episodes is `full_at` in tests/anchor.json, sized from its measured
+# run-to-run spread. See that file.
 [verifier]
 timeout_sec = 36000
 # Separate verification (2026-11-04): a fresh verifier sandbox from the same image, which the agent never touched;

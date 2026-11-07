@@ -103,3 +103,82 @@ off the table is as bad as misfiling it and cannot be undone; an aborted episode
 error, step deadline, malformed action) scores 0 and stays in the mean. The grader scales the
 measured mean by the oracle's anchor and `full_at` (see `tests/anchor.json`); nothing the
 controller prints is a scoring input.
+
+## Hidden episodes, the privileged reference and the anchor (2026-11-04)
+
+The owner's direction for this task: the reference shows that the episodes can be done by planning from
+ground truth the agent never gets, on a fixed set of hidden episodes it completes; the anchor is its own
+near-full score there, so that a perception-based controller has real headroom. What the agent sees and must
+do is unchanged.
+
+**The fixed episode set.** `episodes.json` holds the hidden episodes: three seeds drawn once (64-bit, OS
+entropy; none is a practice seed, the practice grader uses 11, 22, 33, 44, 55) and the hidden key of their probe
+streams. The same seeds run in the same order for every submission. They were chosen as follows. 40 seeds were
+drawn (in three batches, each before any of its seeds ran). The privileged reference ran them in drawn order, each in
+a simulator process of its own over the full 20000 steps; a seed was kept if the reference scored at least 0.90 (the
+maximum is 1.0), and its run was stopped as soon as it no longer could (a request closed at 0 points caps R at 0.75
+and S at 0.875). 14 ran: draws 3, 10 and 14 were kept (S = 0.9098, 0.9487, 1.0000), the other 11 dropped at a request
+that closed at 0 points, nine because the named object lay in a container against a wall or in a corner where no
+pinch fits (five of them objects of the initial piles), two because its grasps kept failing (a can leaning against a
+wall, the pitcher base). Draws 15-40 were not run. `episodes.json`'s `source` lists them.
+
+**One simulator per episode.** Each episode runs in a simulator process of its own, so its world never depends on
+the episodes before it, and its probe schedule (which steps are asked twice, in which order, how the
+proprioception is perturbed) comes from a stream keyed by the set's key and the episode's seed: nothing in verify
+draws from the clock or from OS entropy any more. The simulator's CPU physics is deterministic: the privileged
+reference's three episodes came out 0.9097910810 / 0.9487288311 / 1.0000000000 in all three measurements (the
+selection runs, the controller in-process in a long-lived container with 16 cores; a verify run in a fresh
+container; ale validate run validate-5b3a7b17, the engine's own sandbox under an 8-CPU quota). That controller reads
+no pixels; whether the renderer repeats its images exactly, which a controller working from the cameras would also
+need, was not measured.
+
+**What the set fixes, and what it does not.** An episode's initial state (the containers' poses, the piles, the
+loose objects) and its random stream are fixed, so the same submission meets the same episode every time. The world
+draws its later events from that stream inside branches that depend on what the controller did (an arrival draws its
+model only while fewer than six objects are loose, a desk spot by rejection sampling around the objects present, a
+disturbance and a request among the objects at rest or present), so a different controller's episode diverges from
+the reference's at its first different action. The selection therefore vouches for the reference's own episodes;
+another controller can meet a request the reference never met.
+
+**The simulator's cold start.** In a fresh sandbox the first start compiles the renderer's shaders: 229-621 s in
+four fresh containers on an RTX 4090 (driver 580.178); later starts in the same sandbox take 5-22 s. The separate
+verifier is always fresh, so its first episode pays this. `sim_ready_timeout_s` is 1500 (about 2.4x the slowest
+measured start), and `sim_client.py`'s default is the same, so that the practice grader does not kill a cold start
+either.
+
+**The privileged reference.** `solution/solve.sh` installs `solution/privileged/oracle.py` and the reference token
+(`.oracle_token`; this folder keeps only its sha256, `oracle_token.sha256`). `verify.py` reads the token before
+any submission code runs (a regular file, opened without following a link, at most 4 KB) and, on a match, adds a
+`privileged` block to every observation: every present object as the simulator scores it (identity, pose, scale,
+state, container, held, contact, resting), the episode's container poses, the open request with its object (null
+when the named model is absent) and the true proprioception (a probed step's perturbed copy keeps the true block).
+A token that is present but wrong is ignored. The metrics record `privileged_mode` and `oracle_token_mismatch`;
+nothing agent-visible names the channel. The controller plans pinch grasps on each object's stock mesh at its true
+pose (`geometry.json`), puts objects only where it can grasp them again, digs out what a request names by taking
+off whatever is in its way, marks "no such object" only for an absent model and "delivered" only for an object at
+rest in red, and puts the desk in order before each mark. It relies on three measurements of this simulator: the
+table's collider top is at z = 0.0153 (a raycast; the task card says -0.0014), the containers stand sunk into it
+(their effective floor is the same height), and the open fingertips are 1.23 cm below the tool centre (the finger
+meshes on the stage; the task card says 2.7 cm).
+
+**The non-privileged reference.** `solution/reference_v17/` is oracle v17, the reference that works from the
+observation alone (cameras, proprioception, the request text). It shows what a controller limited to the agent's
+observation reaches; `solve.sh` does not use it, and `install.sh` there puts it into a submission folder for a
+re-measurement. On the fixed set with this grader (a fresh container, 2026-11-05) it scored 0.3887 / 0.4729 /
+0.4516, mean 0.4378, which the anchor turns into reward 0.484 (0.48 after the engine's rounding). It won 2 of the 12
+requests, both "no such object" marks, and let the other 10 expire (8 of them named an object that was there); its
+mean organization was 0.667 (the privileged reference's 0.947). It passed the probe lock (607 of 620 probes) and
+used 185-276 s of controller time an episode. On fresh random seeds with the old grader it had averaged 0.4877
+(validate-7aa73977), the old anchor.
+
+**The anchor** is the privileged reference's measured mean on the set; see `anchor.json`. Value 0.9528 (0.9098 /
+0.9487 / 1.0000 on the three episodes), full_at 0.95: the reference earns 1.0, and a submission earns full reward
+from mean_episode_score 0.905 (before: 0.4877 with full_at 0.5, full reward from 0.244).
+
+**What remains infeasible even with the truth** (and why drawn episodes were dropped): an object lying against a
+container wall where no pinch fits between it and the wall (the initial piles collapse that way, and the world's
+misplacements land there too). Sliding it off the wall with the fingertips cannot work in this simulator: the
+containers stand sunk into the table, so their effective floor is the table, whose friction (the PhysX default,
+0.5) equals the fingers'; the fingertips' friction never beats the floor's plus the object's weight (the bins'
+walls are 1.0). Also an object the world misplaces into a container that already holds eight: the worker empties
+that container at once and the object stays misfiled for good.
