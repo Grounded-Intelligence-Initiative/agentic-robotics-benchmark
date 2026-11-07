@@ -57,6 +57,8 @@ FX = FY = 320.0
 CX, CY = (WIDTH - 1) / 2.0, (HEIGHT - 1) / 2.0
 LENS_BODY = (-0.082, 0.0, -0.115)   # body frame: on the -x face (at -0.078), 0.115 m below the probe axis
 NEAR, FAR = 0.004, 60.0             # m
+SUN_RADIUS = math.radians(0.53 / 2.0)   # the sun's disc, saturated where it is in the field and not behind the drum
+DRUM_OCCLUDER = (0.835, -1.27, 1.08)      # the drum's bounding cylinder (radius, z range) for the sun's occlusion
 SHADOW_MAP = 2048                   # px, the sun's shadow map (PCF): no pixel differs by more than 8 DN from 4096's
 CRAFT_PROXY = True                  # the craft's bus as one box: it is never in view, it is drawn for its shadow
 LUMA = (0.2126, 0.7152, 0.0722)
@@ -70,17 +72,21 @@ FRAME_BYTES = WIDTH * HEIGHT
 
 # --------------------------------------------------------------------------------------------- the fiducials
 # Port frame: x radially out along the port's bearing (the drum's local +x), y along increasing phase, z up.
-DT_PLATE = {"x_back": 0.8295, "x_front": 0.8325, "y_half": 0.035, "z_center": -0.115, "z_half": 0.030}
+# The docking target: a 50 mm square of flush LEDs centred at the camera's height and a standoff LED 30 mm in front
+# (the spec's first layout, a 40 mm square and a 20 mm standoff, missed the pre-registered phase accuracy E2 and was
+# enlarged as the spec prescribed; tests/README.md, the completability evidence). The backplate's top edge stays 3 mm
+# clear of the docking well's collar (radius 0.075 m round the boom's axis).
+DT_PLATE = {"x_back": 0.8295, "x_front": 0.8325, "y_half": 0.037, "z_center": -0.115, "z_half": 0.037}
 LED_RADIUS = 0.010
 LED_THICK = 0.002
 DT_LEDS = (  # (name, face x, y, z): four flush on the plate, the standoff LED S on a post
-    ("DT1", 0.8345, 0.020, -0.135),
-    ("DT2", 0.8345, -0.020, -0.135),
-    ("DT3", 0.8345, 0.020, -0.095),
-    ("DT4", 0.8345, -0.020, -0.095),
-    ("DTS", 0.8545, 0.000, -0.115),
+    ("DT1", 0.8345, 0.025, -0.140),
+    ("DT2", 0.8345, -0.025, -0.140),
+    ("DT3", 0.8345, 0.025, -0.090),
+    ("DT4", 0.8345, -0.025, -0.090),
+    ("DTS", 0.8645, 0.000, -0.115),
 )
-DT_POST = {"radius": 0.004, "x0": 0.8325, "x1": 0.8525, "y": 0.0, "z": -0.115}
+DT_POST = {"radius": 0.004, "x0": 0.8325, "x1": 0.8625, "y": 0.0, "z": -0.115}
 # Boom tip: in the boomtip frame (x radial outward, origin at the drogue apex, which sits at port_radius - BT_APEX_OFF)
 BT_APEX_OFF = 0.12994285714285714   # craft half section 0.077943 + probe 0.040 + ball 0.012 (bundle parts.json)
 BT_LEDS = (  # (name, face x above the apex, y, z)
@@ -249,6 +255,9 @@ class Camera(object):
     def __init__(self, bundle=None, threads=2):
         bundle = bundle or os.environ.get("FAULT_DOCKING_RENDER", DEFAULT_BUNDLE)
         self.manifest = read_bundle(bundle)
+        sun = [float(v) for v in self.manifest["sun_dir"]]
+        n = math.sqrt(sum(v * v for v in sun))
+        self.sun = [v / n for v in sun]
         icd = next((p for p in LAVAPIPE_ICDS if os.path.isfile(p)), None)
         if icd is None:
             raise CameraError("the camera cannot be rendered here: no lavapipe Vulkan driver ({})".format(
@@ -492,6 +501,32 @@ class Camera(object):
         mj.mj_kinematics(self.model, d)
         mj.mj_camlight(self.model, d)
 
+    def _draw_sun(self, img, x, y, theta):
+        """The sun's disc, saturated (no glare model): the skybox carries no sun, the directional light does not draw
+        one. Occluded by the drum's bounding cylinder."""
+        np = self.np
+        sun = self.sun
+        pos, fwd, up, right = camera_pose(x, y, theta)
+        zc = sum(sun[i] * fwd[i] for i in range(3))
+        if zc <= 0.0:
+            return
+        u = CX + FX * sum(sun[i] * right[i] for i in range(3)) / zc
+        v = CY - FY * sum(sun[i] * up[i] for i in range(3)) / zc
+        r_px = FX * math.tan(SUN_RADIUS) / zc
+        if not (-r_px - 1 <= u <= WIDTH + r_px and -r_px - 1 <= v <= HEIGHT + r_px):
+            return
+        R, z0, z1 = DRUM_OCCLUDER
+        a = sun[0] ** 2 + sun[1] ** 2
+        b = 2.0 * (pos[0] * sun[0] + pos[1] * sun[1])
+        c = pos[0] ** 2 + pos[1] ** 2 - R * R
+        disc = b * b - 4.0 * a * c
+        if a > 0 and disc >= 0:
+            for t in ((-b - math.sqrt(disc)) / (2 * a), (-b + math.sqrt(disc)) / (2 * a)):
+                if t > 0 and z0 <= pos[2] + t * sun[2] <= z1:
+                    return
+        vv, uu = np.mgrid[0:HEIGHT, 0:WIDTH]
+        img[(uu - u) ** 2 + (vv - v) ** 2 <= r_px * r_px] = 255
+
     def render_rgb(self, x, y, theta, phase, port_radius):
         """The linear RGB8 render (H x W x 3, row 0 = top) of the DOCK camera of a craft at (x, y, theta), the target
         at phase `phase` with its port at `port_radius`."""
@@ -508,7 +543,9 @@ class Camera(object):
         req.scene, req.target = self.scn, self.tgt
         req.viewport.left, req.viewport.bottom, req.viewport.width, req.viewport.height = 0, 0, WIDTH, HEIGHT
         self.ctx.wait_for_frame(self.ctx.render([req], [self.read]))
-        return self.buf.copy()
+        img = self.buf.copy()
+        self._draw_sun(img, x, y, theta)
+        return img
 
     def luma(self, rgb):
         np = self.np

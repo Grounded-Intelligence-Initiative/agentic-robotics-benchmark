@@ -29,7 +29,7 @@ coordinates `(X, Y, Z)` (`Z` along the boresight, `X` to the image's right, `Y` 
 
 **Response.** Monochrome and linear in scene radiance (the luma `0.2126 R + 0.7152 G + 0.0722 B` of the scene's
 colour), 8 bits, at a fixed exposure (EV100 15: f/16, 1/125 s, ISO 100; no automatic exposure or gain). A white
-diffuser of albedo 0.8 facing the sun reads about 196 DN; the target's LEDs saturate (255) wherever they are seen; the
+diffuser of albedo 0.8 facing the sun reads about 198 DN; the target's LEDs saturate (255) wherever they are seen; the
 black sky reads 0. A pixel saturated in all colours reads 255.
 
 **Noise.** Per pixel and per frame, independent and Gaussian: `sigma = sqrt(0.8**2 + DN / 39)` DN (read noise

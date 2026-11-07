@@ -33,11 +33,11 @@ wherever their face is seen; everything they are mounted on is black.
 
 - **The docking target (DT)**, fixed to the drum below the port, at the camera's height, the way the camera sits
   below the probe (a docked craft sees it straight ahead at the hold):
-  - a black backplate 70 mm wide (y = -0.035 to 0.035) and 60 mm tall (z = -0.145 to -0.085), its front face at
+  - a black backplate 74 mm wide (y = -0.037 to 0.037) and 74 mm tall (z = -0.152 to -0.078), its front face at
     x = 0.8325 m;
-  - four flush LEDs, their faces at x = 0.8345 m, centred at (y, z) = (+0.020, -0.135), (-0.020, -0.135),
-    (+0.020, -0.095) and (-0.020, -0.095) m;
-  - the standoff LED S, its face at x = 0.8545 m (0.020 m in front of the others), centred at (0, -0.115) m on a black
+  - four flush LEDs in a 50 mm square, their faces at x = 0.8345 m, centred at (y, z) = (+0.025, -0.140),
+    (-0.025, -0.140), (+0.025, -0.090) and (-0.025, -0.090) m;
+  - the standoff LED S, its face at x = 0.8645 m (0.030 m in front of the others), centred at (0, -0.115) m on a black
     post of radius 0.004 m: seen off the docking axis it shifts against the square of flush LEDs, which shows the
     camera's direction to the target.
 - **The boom-tip target (BT)**: three LEDs on black tabs at the drogue's rim, their faces 0.039 m above the drogue's
@@ -64,37 +64,37 @@ wherever their face is seen; everything they are mounted on is black.
   "backplate_m": {
    "x_front": 0.8325,
    "y": [
-    -0.035,
-    0.035
+    -0.037,
+    0.037
    ],
    "z": [
-    -0.145,
-    -0.085
+    -0.152,
+    -0.078
    ]
   },
   "leds_m": {
    "DT1": [
     0.8345,
-    0.02,
-    -0.135
+    0.025,
+    -0.14
    ],
    "DT2": [
     0.8345,
-    -0.02,
-    -0.135
+    -0.025,
+    -0.14
    ],
    "DT3": [
     0.8345,
-    0.02,
-    -0.095
+    0.025,
+    -0.09
    ],
    "DT4": [
     0.8345,
-    -0.02,
-    -0.095
+    -0.025,
+    -0.09
    ],
    "DTS": [
-    0.8545,
+    0.8645,
     0.0,
     -0.115
    ]
@@ -103,7 +103,7 @@ wherever their face is seen; everything they are mounted on is black.
    "radius": 0.004,
    "x": [
     0.8325,
-    0.8525
+    0.8625
    ]
   }
  },

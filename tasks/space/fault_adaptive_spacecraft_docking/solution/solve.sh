@@ -5,11 +5,11 @@
 # digest in tests/hidden/ the simulator's current truth in every observation, and this controller plans from it alone
 # (an exact replica of the plant, simulate-and-select over a fixed policy family). It shows that the hidden episodes
 # can be done; the anchor is its own measured score on them. An agent gets no such block and works from the
-# 16-number observation.
+# chaser's sensors: the docking camera's frames, the star tracker, the IMU, the boom's telemetry, the fuel gauge.
 #
-# The non-privileged reference that works from the observation alone (the task author's identifying controller) is
-# solution/reference/; `bash solution/reference/install.sh [submission dir]` puts it in a submission folder for a
-# re-measurement. This script does not use it.
+# Round 1's non-privileged reference (the task author's identifying controller, which read the numeric delayed pose
+# of round 1's 16-number observation) was removed in round 2: that observation no longer exists. Its round-1 result
+# is in tests/README.md, its code in the repository's history (solution/reference/ before round 2).
 set -euo pipefail
 
 SUB="${ALE_HOME:-/home/user}/submission"

@@ -1,22 +1,99 @@
 # fault_adaptive_spacecraft_docking: grading notes
 
-Notes for maintainers and reviewers. The agent-facing rules are in `instruction.md` and in the plant model it points
-to (`environment/setup/payload/given/model.md`, staged at `/home/user/given/model.md`); the simulator is `env.py` in
-this folder, byte-identical to the reference's copy (`solution/privileged/spacecraft_docking_env.py`). The agent gets
-no copy of it. This folder is the verify stage: it is absent while the agent works and root-only at verify time.
+Notes for maintainers and reviewers. The agent-facing rules are in `instruction.md` and in the documents it points to
+(`environment/setup/payload/given/`, staged at `/home/user/given/`: the plant's datasheet `model.md`, the sensors'
+`camera.md`, the target's `target.md`, and `frames/`, sample camera frames whose PNGs come from the image's task
+assets); the simulator is `env.py` in this folder, byte-identical to the reference's copy
+(`solution/privileged/spacecraft_docking_env.py`), and the docking camera's renderer is `camera.py`. The agent gets no
+copy of either. This folder is the verify stage: it is absent while the agent works and root-only at verify time.
 
 ## The owner's direction (2026-11-05)
 
 The anchor is the measured score of a reference that plans from ground truth the agent never gets, on a fixed set of
 hidden episodes it completes, so that the anchor sits near full and a controller that identifies the plant from its
-observation has real headroom. The task author's identifying controller stays as the non-privileged reference. What
-the agent must do is unchanged, apart from the instruction's account of the fixed set, the network and the time budget.
+observation has real headroom. The task author's identifying controller stayed as the non-privileged reference (until
+round 2, below). What the agent had to do was unchanged, apart from the instruction's account of the fixed set, the
+network and the time budget.
 
 The same day the owner removed the practice tools, by the rule applied to PR #31's round 3: a spacecraft with unknown
 faults is docked zero-shot, so the agent gets neither the grader's simulator nor a practice grader on visible seeds of
 the graded distribution. Until then the payload held a byte-identical copy of `env.py` and `practice_grader/grade.py`
-(five visible seeds), and the instruction called the simulator's source the complete statement of every range. Now
-the payload holds one document, `given/model.md` (The agent's documents, below).
+(five visible seeds), and the instruction called the simulator's source the complete statement of every range. From
+then the payload held one document, `given/model.md`, which stated env.py's model exactly (round 2 replaced it).
+
+## Round 2 (2026-11-07): the chaser's sensors and a datasheet
+
+Opus 5.5 scored 0.60 on round 1 (28 of 48 docks): it rebuilt the simulator from round 1's `model.md` and tuned its
+controller on hundreds of seeds. The owner raised the difficulty two ways: a datasheet-level plant document instead of
+an executable one, and camera images instead of the numeric delayed pose, with the sensors where a real chaser carries
+them for rendezvous and docking. The oracle keeps its ground truth through the token, so its results and the anchor do
+not move; the agent keeps a limited perception, now real sensors; deployment stays zero-shot. The contract is the
+spec in the maintainers' notes (`docs/research/20261107-pr10-difficulty-r2/spec.md` of the dev workspace).
+
+**What stayed byte-identical:** `env.py` (sha256 c2900397), the oracle (`solution/privileged/oracle.py`, 84a75a0b,
+whose docstring still says "the 16-number vector": it reads only the block either way), the fixed set and its lock
+streams, the kit, `nonet_exec.py`. So the world digests, the selection and the reference's flights stand.
+
+**The sensors** (`camera.py`, documented to the agent in `given/camera.md` and `given/target.md`, whose JSON blocks a
+repository test compares with `camera.CAMERA_SPEC` and `camera.TARGET_SPEC`):
+
+- the docking camera DOCK on the docking face, its lens at (-0.082, 0, -0.115) m in the body frame (0.115 m below the
+  probe axis, as Soyuz's TORU camera sits beside its probe), looking along the docking axis: a 640 x 480 pinhole,
+  fx = fy = 320 px (90 x 73.7 degrees), monochrome, linear, 8-bit, at a fixed exposure (EV100 15), read noise 0.8 DN
+  and shot noise at 39 e-/DN; one frame per step, delivered with the episode's fixed 1-3 step latency and its capture
+  stamp;
+- the star tracker: the craft's yaw now, Gaussian noise 2e-4 rad;
+- the IMU, the fuel gauge, the clock and the boom's encoder (now the target's telemetry), env.py's own values;
+- on the target, LED fiducials: the docking target DT (four flush LEDs in a 50 mm square and a standoff LED 30 mm in
+  front, enlarged from the spec's 40 / 20 mm by the evidence's pre-registered rule) on the drum below the port at the
+  camera's height, the way the camera sits below the probe, and three LEDs on the boom tip (BT), 0.144 m apart at the
+  drogue's rim; the sun's disc, composited (the skybox carries none).
+
+**The observation** (`verify.Sensors`): env.py still makes its 16 numbers with all its draws, and the wire carries
+`{"imu", "fuel", "episode_fraction", "boom_encoder", "star_tracker_yaw", "frame"}` instead. The frame is a render of
+the pose record (env.pose_history) env.py's delayed pose came from, at the same stamp; it is `null` exactly when
+env.py's pose was not fresh (B1, B2, the re-key's L - 1 observations, the 3.5 % dropouts), so every blackout keeps its
+bite. The star tracker is `null` exactly during the re-key's restart (the same L - 1 observations), so the re-key's
+29-41 observations remain IMU-only, as in round 1. Nothing here draws from env.py's generator (a repository test steps
+two simulators side by side). Noise: a frame's per-pixel noise is keyed by (the set's key, the seed, the stamp) alone
+(numpy PCG64), the star tracker's by (key, seed, step) (BLAKE2b): no history dependence, and a probe copy has the same
+noise field.
+
+**The probe copy** draws dx, dy and dyaw exactly as round 1 (the lock streams are unchanged) and renders the same
+record with the craft at (x + dx, y + dy, yaw + dyaw), the same noise; the star tracker's copy is turned by dyaw; a
+request without a frame or a star-tracker reading has a copy without it. In a token run the block moves by the same
+draws as before.
+
+**The grader's rendering** (`camera.Camera`): MuJoCo 3.16's Filament on Mesa lavapipe (CPU), post-processing off (linear,
+no temporal dither: the same state renders the same bytes, in one process and across processes), one context and one
+model in verify.py's main thread, glibc's arenas capped at import. The scene is the render-realism step's bundle
+(`review/build_camera_bundle.py` from `pr10_render/bundle_v3`: the NASA Wind drum with its docking well, the boom and
+drogue, textured PBR materials at 512 px with the fitted per-material gains; the e1022 v3 light rig: the sun at
+azimuth 40, elevation 36, 118,422 lux, the OVRTX probe's image light at 0.3772, the Earth skybox), plus the fiducials
+and, for its shadow, the craft's bus as a box with six bells at the nominal geometries' places (never an episode's
+installed ones). The look's +0.5 EV (the demo video's exposure) is not applied: the camera's exposure is its own. No
+plumes (cold gas is close to invisible; a drawn plume would show which nozzle fires). The bundle is 15.3 MB, root-only
+in the image at `/opt/fault-docking-render` (mode 0700): with it and `camera.py` an agent could render the grader's
+frames. Until the owner approves the upload to the benchmark's Hugging Face dataset it is staged locally in
+`environment/assets/payload/render/` (gitignored), with the sample frames in `environment/assets/payload/given/frames/`
+(`review/make_sample_frames.py`: four dev episodes, rendered in the task image).
+
+**Transport and budget.** A frame travels inline, base64 in the request line (a line is 409,671 bytes). The kit's
+`Solver` writes a request before it starts the request's deadline, so a controller that stopped reading could have
+stalled the grader: `verify.BoundedStdin` gives the controller's stdin a 1 MB pipe, a non-blocking descriptor and the
+request's deadline (30 s) for the write, past which the write fails as a closed pipe and the kit aborts the episode.
+`GuardedSolver` sums the controller's reply time from the moment each request's write begins to its reply
+(`reply_s_total`); past `reply_budget_s` (1800 s) that request's episode and every later one abort
+(`reply_budget_spent`). The instruction's "30 minutes" is this rule; the grader's own time (stepping, rendering) is not
+charged.
+
+**The render canary.** Before episode 0 the grader builds the renderer and renders a fixed dev state
+(`camera_canary.json`, recorded in the task image); `camera_canary_match` (whether the RGB render's sha256 equals the
+recorded one) and `camera_canary_s` go into the metrics and never score. A renderer that cannot start is a task error
+("the camera cannot be rendered here"), like the network guard.
+
+**What the agent no longer gets:** the equations, the update order, the noise and dropout laws and the distribution
+families (`given/model.md` is a datasheet: The agent's documents, below), and the numeric pose.
 
 ## The fixed episode set and how it was selected
 
@@ -66,7 +143,9 @@ reference's planning state. None of the other quantities tells the drop apart (`
 
 Each episode's match lock (`ProbeLock`: a probed step with probability 0.06, three draws for the copy and one for the
 order) draws from `seed_rng(entropy=(key << 64) | seed)`: the same probes for the same submission every time, whatever
-ran before. Nothing in a verify draws from OS entropy or the clock (only the per-request deadlines are wall clock).
+ran before. Nothing in a verify draws from OS entropy or the clock (only the per-request deadlines and the reply
+budget are wall clock). The sensors' noise is keyed too (round 2): a frame's by (the set's key, the seed, its stamp), the
+star tracker's by (key, seed, step).
 
 The privileged reference is deterministic on the set: the selection runs, three fresh-container verifies
 (`review/regrade.sh`; the third on 2026-11-06, with the network guard failing closed) and the in-process replays
@@ -80,10 +159,12 @@ always runs 3.12 or newer.
 
 A seed fixes every hidden parameter of its episode: env.py draws them all in `reset`, and `step` never draws. After
 the reset, randomness is only the sensor noise and the dropouts in `_observe`. Before the re-key the blackout
-schedule is fixed by the seed, so every controller meets the same noise; the re-key fires when the controller comes
-close enough, and its own blackout shifts the noise stream, so after the re-key two controllers see different noise on
-the same seed. The selection therefore vouches for the reference's own trajectory: another controller meets the same
-world, not the same episode. The reference reads no observation, so its success does not depend on the noise.
+schedule is fixed by the seed, so every controller meets the same IMU noise and dropouts; the re-key fires when the
+controller comes close enough, and its own blackout shifts env.py's noise stream, so after the re-key two controllers
+see different IMU noise and dropouts on the same seed. The camera's and the star tracker's noise do not depend on
+history (keyed by stamp and step), but a frame shows the controller's own trajectory. The selection therefore vouches
+for the reference's own trajectory: another controller meets the same world, not the same episode. The reference
+reads no observation, so its success does not depend on the noise.
 
 ## The privileged channel
 
@@ -94,15 +175,18 @@ A token that is there but wrong (a wrong value, a link, a directory, a FIFO) is 
 The metrics record `privileged_mode` and `oracle_token_mismatch`; nothing agent-visible names the channel (a repository
 test checks the instruction and every file under `environment/`).
 
-With the token, every observation is `{"vector": <the 16 numbers>, "privileged": {"format": ..., "state": {...}}}`.
+With the token, every observation is the sensors' object with one more key, last:
+`"privileged": {"format": ..., "state": {...}}` (round 1: `{"vector": <the 16 numbers>, "privileged": ...}`; the
+oracle reads only the block, so either shape serves it).
 The block (`verify.privileged_block`) is the simulator's current truth, named as env.py names it: every quantity
 `env.step` reads that is in effect now (`PRIV_STATE`, `PRIV_ROUTING` once the first event has fired, `PRIV_CONSTANTS`).
 It never carries the pre-drawn future (the event times, the re-key's plant, its slew, the encoder polarities) nor
 anything of the observation model; each future value reaches the block when it takes effect, so a perfect identifier
 would know it one step late, as the reference does. Building the block reads attributes only: it draws nothing and
-changes nothing. A probed step's copy shifts the block's true x, y and yaw by the same draws as the camera pose (the
-rule of hazard_bay_build), so a program that reads the block answers the copy on its own. Without the token the
-requests are byte for byte what they were before the channel existed (the repository test replays the old loop).
+changes nothing. A probed step's copy shifts the block's true x, y and yaw by the same draws as the copy's frame and
+star tracker (the rule of hazard_bay_build), so a program that reads the block answers the copy on its own. Apart from
+the block, a token run's requests are those of a run without the token (a repository test compares the two on a set
+episode with a scripted program).
 
 ## The network guard
 
@@ -122,7 +206,7 @@ a reset or between episodes, and it skipped closed and unconnected sockets: in a
 bytes before READY and closed the socket went unseen. The fallback is gone; a repository test checks that a verify
 without the filter is a task error and that no controller starts.
 
-## The two references
+## The reference
 
 **The privileged reference** (`solution/privileged/oracle.py`) plans from the block alone. It rebuilds the plant from
 each block (`Replica`: env.py's own class with no observation and no event to come), tells the real request from a
@@ -143,12 +227,10 @@ its slowest request (a plan) took 5.1 s on a loaded host and 2.9 s in a 2-CPU co
 alone dock 95.45% of those seeds; a 0.6 rad waypoint in the far field (the prototypes') let 96 of 2000 re-keys fire
 late.
 
-**The non-privileged reference** (`solution/reference/solver.py`, the task author's controller, bytes unchanged)
-works from the observation alone. `solution/reference/install.sh [dir]` installs it. On the fixed set in a fresh
-container it scored 0.53997 (26 of 48 docked, 4 collisions; the lock 794 of 1064 probes), ratio 0.549, reward 0.56.
-Its trajectory depends on the probe schedule (it keeps whichever of a repeated step's answers fits its estimate best),
-so its score repeats only with the pinned lock streams and numpy 2.5.4 (`environment/requirements.txt`); across numpy
-builds it flipped 7 of 480 outcomes through tie-breaking in `argpartition`.
+**Round 1's non-privileged reference**, the task author's controller (`solution/reference/solver.py` until round 2),
+worked from the 16-number observation. On the fixed set in a fresh container it scored 0.53997 (26 of 48 docked, 4
+collisions; the lock 794 of 1064 probes), ratio 0.549, reward 0.56. It read the numeric delayed pose, which round 2
+removed, so it was removed with it (its code is in the repository's history).
 
 ## The anchor
 
@@ -168,50 +250,111 @@ Whether another controller could dock them is not known.
 
 ## The agent's documents
 
-The agent gets `instruction.md` and `given/model.md`, nothing else: no simulator, no grader of its own, no visible
-episode. `given/model.md` states the model `env.py` simulates, for a capable agent to write the controller and to
-rebuild a faithful simulator for rehearsal from the text alone: what an episode draws (every distribution, as env.py
-draws it), the thrusters (the nominal geometries and the installation errors), the bus (routing, both events, the
-relay, the valves, the stride), the target, the boom and the port, the plume (the field, the swirl cells and their
-thresholds), one step in env.py's order of operations, the observation (all 16 fields, the delay, the noise, the
-dropouts and the blackouts, the IMU's mounting and remount), docking, the end and the quality, and an episode on the
-wire (the probe copy, one verbatim `act` line from a dev seed). It names no seed of the set and nothing of the channel
-(the repository test checks every agent-visible file). Its formulas are written in the order env.py evaluates them,
-and it names the two builtins whose rounding matters (`hypot` for a length, the builtin `sum` of the six duties), so
-a simulator that follows the page literally computes env.py's numbers.
+The agent gets `instruction.md` and `given/`, nothing else: no simulator, no renderer of the grader's scene, no grader
+of its own. The image has numpy, OpenCV, Pillow and MuJoCo (with Filament on lavapipe), so the agent can build its own
+synthetic views from `target.md`: perception tooling, not a plant simulator.
 
-The check is in `review/`. `docplant.py` is a plant written from the page alone (it imports nothing of the task, and
-`PAGE_SHA256` pins the page it was written from). `doc_vs_env.py` steps it beside `env.py` with the same commands,
-given each episode's draws named as the page names them (read off the numbers env.py's `reset` drew, through the
-page's ranges, so a range that differs shows) and each observation's raw noise numbers, and compares every attribute
-of env.py's simulator, every observation field and every step's quality, end and errors with `==` after every step.
-Run on 2026-11-06 (CPython 3.12.11): over 400 open-loop dev episodes (`open`: five kinds of scripted commands, half
-moved inside the plume's field; 72,696 steps with 1136 swirl flips, 1194 and 1308 reversals of the two rotors, 5995
-two-slot strides, 29 proximity and 180 deadline re-keys, 2143 dropouts, 46 timeouts, 129 collisions and 225 escapes)
-and the reference's own episodes on 100 dev seeds (`reference`: random.Random(20261106), the dev lock key; 27,853
-steps, 94 docked and 6 timed out), every field agreed to the last bit after every step, so every end came at the same
-step with the same quality. The page's table of draws has the distributions of env.py's worlds (`draws`): on two sets
-of 50,000 dev worlds against as many episodes drawn from the table with `random.Random`, all 92 tests (a two-sample
-Kolmogorov-Smirnov test for each of the 63 continuous draws, a chi-square homogeneity test for each of the 29 discrete
-ones that take more than one value) pass at a family-wise 1% (the smallest p-values 0.0019 and 0.017, the Bonferroni
-line 0.00011), and every discrete draw takes the same values on both sides. The page's `act` line is env.py's
-(`act`; its dev seed is not a candidate of the selection). The repository test (`PagePlantTests`) runs ten of the
-open-loop episodes, two of the reference's and the `act` line on every pull request, and fails as soon as the page or
-`env.py` changes, until the check has been run again and the pins (`docplant.PAGE_SHA256`, `doc_vs_env.ENV_SHA256`)
-moved.
+- `given/model.md` is the plant's datasheet (round 2): the frames and units; the six nominal nozzle geometries (exact)
+  with their installation tolerances; the residual damping as a range (1.5-2.0 %/s and 3.0-3.6 %/s, env.py's 1.65 and
+  3.29); the bus (rotor, stride, degraded pairs, relay, valves as first-order lags with time-constant ranges, thrust
+  curves with exponent ranges); the events' windows; the target, the boom and the goal; the plume in words with its
+  ranges (29-82 % loss at the port, swirl 0.9-1.2, flips after 0.24-0.38 s of fully aimed firing); the start's ranges;
+  the docking test, the end and the quality exactly; one example `act` line (a dev seed, its frame cut). It withholds
+  the equations, the update order, the noise and dropout laws and the distribution families, which round 1's page
+  stated so exactly that a plant written from it equalled env.py after every step.
+- `given/camera.md`: the sensors (mount, axes, intrinsics, response, exposure, noise, timing, outages in words and
+  ranges, the frame's format and decoding, the probe copy's meaning) and a JSON block equal to `camera.CAMERA_SPEC`.
+- `given/target.md`: the drum, its surfaces in words, the well, the boom and the drogue, the fiducials' exact places,
+  the light; a JSON block equal to `camera.TARGET_SPEC`.
+- `given/frames/`: `README.md` (in git) and 40 frames with `truth.json` (task assets): four dev episodes (labels A-D,
+  their seeds in `review/make_sample_frames.py`, none in the set or its selection), the privileged reference's flights
+  through the grader's own loop; per episode the start, 3 far-field frames aimed at the drum, 2 mid-range, the first
+  after the re-key's restart, 2 on the final approach and 1 at the hold. Each is the exact frame the grader's camera
+  renders for that pose in the task image, its noise keyed by a dev key (never the set's); `truth.json` names no seed.
+
+The repository test (`DatasheetTests`, which replaced round 1's rebuild-from-text check, `docplant.py` and
+`doc_vs_env.py`, now removed) is inverted: (1) every range or tolerance the page states holds env.py's draws on 20,000
+dev worlds (`random.Random(20261107)`, none in the set or its selection) and env.py's constants (the damping per
+second, the plume's loss at the port and its swirl, the flip thresholds, the fuel burn, the nominal table); (2) the
+page, the instruction and the sensors' documents state none of the withheld formulas, noise laws or exact values
+(round 1's `0.998`, `0.996`, the dropout `0.035`, the pose noise `0.012` and `0.008`, `mod 13`, `U(`, `U{`, `** 4`,
+`z_i <-`, `hypot`, the valve-memory and threshold formulas, the exact swirl magnitudes, among others; numbers matched
+whole); (3) the documents' JSON blocks equal `camera.py`'s constants; (4) the page's example request is the request
+the grader builds for that dev episode (but the frame's bytes, which need the renderer).
 
 `env.py`'s own text still describes the agent's copy (the module docstring's "An identical development copy is staged
 for the agent" and "this source can be shared with the agent", `_RNG`'s "The agent holds this code"): the file is
 frozen (its sha256 pins the set and the reference's copy), so those lines stay, and this README is the current
 account.
 
+## The completability evidence (round 2)
+
+`review/check_perception.py` with `review/estimate_pose.py`, run on 2026-11-07 in containers of the task image (four
+workers, 2 CPUs each). The privileged reference's 48 fixed-set flights were recorded in process (12,816 real requests;
+the same flights as its verify), and at each of their 10,014 fresh stamps the grader's camera rendered the frame twice:
+as flown (the reference's yaw; it ignores the camera) and aimed (the same position, the boresight through the drum's
+centre), 20,028 frames with the grader's own noise. The estimator uses only the frames, the star tracker's readings and
+the numbers of `given/camera.md` and `given/target.md`: LED blobs at 250 DN; the DT found by its symmetry about the
+image's centre row (the camera is at the DT's height); the camera's planar pose from the DT in closed form, then
+Gauss-Newton on the five LEDs; r_port from the BT given that pose; in the far field the BT triangle (0.144 m wide)
+with the encoder's radius, its polarity taken as calibrated (O3). A fix is kept when its reprojection RMS is under
+0.2 px (DT) or 0.3 px (BT) and the camera is in front of the target: the gates were added after the first run, in
+which sun glints on the insulation, saturated like the LEDs, now and then mimicked the pattern (the medians were
+already 4 mm and 4 mrad). The drum's silhouette is no help: at the fixed exposure its unlit side is as dark as the sky
+(about 0.5 DN against 0.3), and the boom stands out past the limb when the port is near it. Frames of fixed-set
+episodes never left the scratch folder; these are the aggregates.
+
+The first layout of the docking target (a 40 mm square, a 20 mm standoff) met E1 (7.3 mm RMS) and O1 but missed E2
+(8.1 mrad RMS, 27.5 p99); as pre-registered, the target was enlarged (a 50 mm square, a 30 mm standoff) and the check
+ran once more. That second run:
+
+| row | condition | pre-registered pass | result | |
+|---|---|---|---|---|
+| E1 the craft's position about the drum's centre | all 5 DT LEDs in frame, the camera within 1.2 m of the DT (7,189 frames) | RMS <= 0.010 m, p99 <= 0.030 m | RMS 0.0054 m, p99 0.018 m, max 0.037 m; a fix in 6,846 (95.2 %) | pass |
+| E2 the target's phase | as E1 | RMS <= 0.004 rad, p99 <= 0.012 rad | RMS 0.0056 rad, p99 0.019 rad, max 0.045 rad | **miss** |
+| E3 the port's radius from the BT | >= 2 BT LEDs in frame (5,852 frames) | RMS <= 0.010 m | RMS 0.0052 m, p99 0.022 m; an estimate in 2,192 (it needs the DT's pose too) | pass |
+| E4 the craft's position, far field | aimed, both drum limbs in frame, 1.2-6.2 m (8,708 frames) | RMS <= 0.05 m | RMS 0.029 m, p99 0.11 m; a fix in 7,365 (85 %; 90 % of those with a fiducial in frame): DT 7,136, BT 229 | pass |
+| O1 the DT in view at the hold | flown; the 30 docked steps and the 17 before | every fresh frame, all 48 episodes | 47 of 48 episodes; 2 of 2,175 frames (episode 44) | **miss** |
+| O2 the drum in view at range | aimed; the lens 1.2 m or more from the drum's axis | the whole width in frame | 8,283 of 8,283 frames (by the craft's centre at 1.2 m: 8,708 of 9,153; the misses have the lens 1.12-1.2 m out) | pass |
+| O3 the encoder's polarity after the restart | flown; >= 2 BT LEDs in frame and \|r_port - 1.14\| >= 3 x E3's RMS | reported | median 48 frames an episode; 45 episodes with 5 or more, 3 (1, 32, 44) with none: the reference flies the rest of those approaches with the BT out of view | reported |
+| O4 the start | flown, t = 0 | reported | the drum's centre in frame in 26 of 48 starts, part of the drum in 32, the largest off-axis angle 118 degrees; a fix at t = 0 in 16 | reported |
+
+- **E2 by range** (the per-frame phase error grows with the range, as a 30 mm standoff's parallax shrinks): RMS
+  0.0019 rad below 0.4 m, 0.0046 at 0.4-0.6 m, 0.0056 at 0.6-0.8 m, 0.011-0.013 beyond 0.8 m. In the hold window
+  (E1's frames among O1's): the phase RMS 0.0023 rad, p99 0.0067, max 0.0115 against the docking tolerance of
+  0.020 rad; the position RMS 0.0022 m, p99 0.0058 m against 0.085 m. Round 1's numeric port yaw had sigma 0.0035 rad at
+  every range. The rule allowed one rerun, so E2 stays a miss beyond 0.4 m; a filter that follows the target's steady
+  slew averages it down over the frames of an approach.
+- **O1's two frames** are episode 44's: 17 steps before its hold the reference slides in 0.185 m to the side of the
+  port's line at 0.28 m from the DT (the standoff LED at the image's right edge, u 642), and at its last docked step it
+  sits 0.048 m off the port at 0.076 m from the DT (u 646). The first layout kept all of them in frame; the enlarged
+  standoff LED sits 1 cm nearer the lens. O1's own remedy (a 100-degree field, fx = 268.5) was not applied: it would
+  cost 16 % of every fix's resolution (E2 already short) and the LEDs' pixel cover beyond about 3.8 m, and a controller
+  that watches its camera holds well inside the 0.085 m tolerance.
+- **Far field, as flown:** the reference ignores the camera, yet a fix (DT or BT) exists in 4,300 of its 6,220 frames
+  beyond 1.47 m.
+
+**Observability statement.** At the hold the docking target is in the camera's field in every fresh frame of 47 of
+the 48 reference holds (2 frames of 2,175 miss, both with the craft more than 4 cm off the port's line), and the
+relative pose comes out of a single frame at 2.2 mm and 2.3 mrad RMS, better than round 1's numeric pose. On the
+approach (0.4-1.2 m) a single frame gives the craft's position at 4-14 mm and the target's phase at 5-13 mrad RMS. In
+the far field the docking target or the boom-tip triangle gives the position at 29 mm RMS in 85 % of the frames of a
+craft that points its docking axis at the drum (O2: the drum's width is always in the field from 1.2 m out); pointing
+is the controller's choice, since every nozzle couples translation and yaw and the six span the wrench space at any
+yaw. The encoder's polarity is decidable from the BT before the re-key and, in 45 of 48 reference approaches, after
+the restart (O3); otherwise from the DT's range at the hold.
+
 ## Review tools (`review/`, never run by the grader)
 
-- `oracle_batch.py`: the dev batch in process (dock rate, probes, planned vs executed, verification failures, timing).
+- `oracle_batch.py`: the dev batch in process (dock rate, probes, planned vs executed, verification failures, timing);
+  black frames (`verify.BlankCamera`) unless a camera is passed: the reference reads none.
 - `run_episode.py`: grader-exact episodes of a submission folder (its run.sh started as the current user), with an
   in-process comparison and a one-process mode (reset hygiene).
 - `select_set.py`: the pre-registered selection (`draw`, `run`, `make`, `report`).
 - `regrade.sh`: one verify in a fresh CPU container of the task image, the separate verifier's layout, no network.
-- `docplant.py`: a plant written from `given/model.md` alone: the page's table of draws, the plant, the observation.
-- `doc_vs_env.py`: that plant beside `env.py`, compared with `==` after every step (`open`, `reference`, `act`), and
-  the page's table of draws against env.py's worlds (`draws`) (The agent's documents).
+- `build_camera_bundle.py`: the camera bundle from the render-realism step's `bundle_v3`, with its manifest and sha256s.
+- `make_sample_frames.py`: the agent's sample frames (`frames`), the render canary (`canary`) and the datasheet's
+  example request (`act`), in a container of the task image.
+- `estimate_pose.py` and `check_perception.py`: the completability evidence (below): a camera-only estimator that uses
+  the agent's documents alone, run on frames of the reference's fixed-set flights; only aggregates leave its scratch
+  folder.
