@@ -294,33 +294,83 @@ class Cell:
         if self.recording and self.tick_count % 4 == 0:
             self.frames.append(self.d.qpos.copy())
 
+    def _watch_tables(self):
+        """Per-geom/body classification for the contact monitor, computed once.
+
+        Only bookkeeping is cached; every tick still inspects every contact.
+        """
+        m = self.m
+        bodies = [m.body(i).name for i in range(m.nbody)]
+        geoms = [m.geom(i).name or "" for i in range(m.ngeom)]
+        parts = sorted({n.partition("/")[0] for n in bodies if n.startswith("part_")})
+        index = {n: i for i, n in enumerate(parts)}
+        self._w = dict(
+            bodies=bodies, geoms=geoms, parts=parts,
+            geom_body=np.asarray(m.geom_bodyid, dtype=np.int64).copy(),
+            body_part=np.array([index[n.partition("/")[0]] if n.startswith("part_") else -1 for n in bodies]),
+            body_arm=np.array([not n.startswith("part_") and n != "world" for n in bodies]),
+            geom_pad=np.array(["finger_pad" in n for n in geoms]),
+            link_base=m.body("link_base").id, world=m.body("world").id,
+            parent=np.asarray(m.body_parentid).copy(),
+            free_dof=np.array([m.jnt_dofadr[m.joint("free_" + n).id] for n in self.graph["instances"]]),
+            instances=list(self.graph["instances"]))
+
     def _watch(self):
-        force = np.zeros(6)
+        w = getattr(self, "_w", None)
+        if w is None:
+            self._watch_tables()
+            w = self._w
         part_forces, robot_forces, self_forces, pad_forces = {}, {}, {}, {}
-        for ci, c in enumerate(self.d.contact):
-            mujoco.mj_contactForce(self.m, self.d, ci, force)
-            f = np.linalg.norm(force[:3])
-            bodies = [self.m.body(self.m.geom_bodyid[g]).name for g in (c.geom1, c.geom2)]
-            geoms = [self.m.geom(g).name or "" for g in (c.geom1, c.geom2)]
-            physical_parts = {n.partition("/")[0] for n in bodies if n.startswith("part_")}
-            for n in physical_parts:
-                part_forces[n] = part_forces.get(n, 0) + f
-            arm = [not n.startswith("part_") and n != "world" for n in bodies]
-            mounted_base = "link_base" in bodies and "world" in bodies
-            for side, other in ((0, 1), (1, 0)):
-                if "finger_pad" in geoms[side] and not arm[other]:
-                    surface = bodies[other] if bodies[other] != "world" else "world:" + geoms[other]
-                    key = geoms[side] + "|" + surface
-                    pad_forces[key] = pad_forces.get(key, 0) + f
-            if any(arm) and not all(arm) and not mounted_base and not any("finger_pad" in n for n in geoms):
-                for n,is_arm in zip(bodies,arm):
-                    if is_arm:
-                        robot_forces[n] = robot_forces.get(n,0)+f
-            if all(arm):
-                a,b = [self.m.body(n).id for n in bodies]
-                if self.m.body_parentid[a] != b and self.m.body_parentid[b] != a and a != b:
-                    pair = tuple(sorted(bodies))
-                    self_forces[pair] = self_forces.get(pair, 0) + f
+        ncon = int(self.d.ncon)
+        if ncon:
+            con = self.d.contact
+            g1 = np.asarray(con.geom1[:ncon], dtype=np.int64)
+            g2 = np.asarray(con.geom2[:ncon], dtype=np.int64)
+            adr = np.asarray(con.efc_address[:ncon], dtype=np.int64)
+            dim = np.asarray(con.dim[:ncon], dtype=np.int64)
+            # mj_contactForce for elliptic cones: the contact-frame force is the
+            # constraint force itself (normal, then tangential components).
+            efc = self.d.efc_force
+            f = np.zeros(ncon)
+            ok = adr >= 0
+            normal = np.where(ok, efc[np.where(ok, adr, 0)], 0.)
+            tangent = ok & (dim >= 3)
+            t1 = np.where(tangent, efc[np.where(tangent, adr+1, 0)], 0.)
+            t2 = np.where(tangent, efc[np.where(tangent, adr+2, 0)], 0.)
+            f = np.sqrt(normal*normal + t1*t1 + t2*t2)
+            b1, b2 = w["geom_body"][g1], w["geom_body"][g2]
+            p1, p2 = w["body_part"][b1], w["body_part"][b2]
+            p2 = np.where(p2 == p1, -1, p2)  # one physical part counts once per contact
+            idx = np.stack([p1, p2], axis=1).ravel()
+            weight = np.repeat(f, 2)
+            use = idx >= 0
+            sums = np.bincount(idx[use], weights=weight[use], minlength=len(w["parts"]))
+            for k in np.flatnonzero(np.bincount(idx[use], minlength=len(w["parts"]))):
+                part_forces[w["parts"][k]] = float(sums[k])
+            arm1, arm2 = w["body_arm"][b1], w["body_arm"][b2]
+            pad1, pad2 = w["geom_pad"][g1], w["geom_pad"][g2]
+            bodies, geoms, parent = w["bodies"], w["geoms"], w["parent"]
+            for ci in np.flatnonzero(arm1 | arm2 | pad1 | pad2):
+                fc = float(f[ci])
+                body_ids = (int(b1[ci]), int(b2[ci]))
+                names = [bodies[b] for b in body_ids]
+                gnames = [geoms[int(g1[ci])], geoms[int(g2[ci])]]
+                arm = [bool(arm1[ci]), bool(arm2[ci])]
+                mounted_base = w["link_base"] in body_ids and w["world"] in body_ids
+                for side, other in ((0, 1), (1, 0)):
+                    if "finger_pad" in gnames[side] and not arm[other]:
+                        surface = names[other] if names[other] != "world" else "world:" + gnames[other]
+                        key = gnames[side] + "|" + surface
+                        pad_forces[key] = pad_forces.get(key, 0) + fc
+                if any(arm) and not all(arm) and not mounted_base and not any("finger_pad" in n for n in gnames):
+                    for n, is_arm in zip(names, arm):
+                        if is_arm:
+                            robot_forces[n] = robot_forces.get(n, 0)+fc
+                if all(arm):
+                    a, b = body_ids
+                    if parent[a] != b and parent[b] != a and a != b:
+                        pair = tuple(sorted(names))
+                        self_forces[pair] = self_forces.get(pair, 0) + fc
         for pair, f in self_forces.items():
             self._contact_evidence("self:" + "|".join(pair), f)
             if f > 30:
@@ -338,11 +388,9 @@ class Cell:
             self.violations.append(dict(t=float(self.d.time), kind="sustained_part_force", force_N=float(part_max)))
         if not np.isfinite(self.d.qpos).all():
             raise RuntimeError("Nonfinite physical state")
-        for n in self.graph["instances"]:
-            j = self.m.joint("free_" + n).id
-            a = self.m.jnt_dofadr[j]
-            if np.linalg.norm(self.d.qvel[a:a+3]) > 3:
-                self.violations.append(dict(t=float(self.d.time), kind="part_speed", part=n))
+        speeds = np.linalg.norm(self.d.qvel[w["free_dof"][:, None] + np.arange(3)], axis=1)
+        for k in np.flatnonzero(speeds > 3):
+            self.violations.append(dict(t=float(self.d.time), kind="part_speed", part=w["instances"][k]))
 
     def _contact_evidence(self, key, force):
         """Owner-only contact evidence; this never changes controls or scoring."""
@@ -407,9 +455,13 @@ class Coupling:
                 self.candidate[key] = physical
             actual = c.pose(physical)
             error = np.linalg.norm(actual[:3, 3] - target[:3, 3])
+            if error > m["capture_m"]:
+                # Outside the capture distance the state is FREE whatever the angle.
+                self.state[key], self.hold[key] = "FREE", 0
+                continue
             rot = target[:3, :3].T @ actual[:3, :3]
             angle = orientation_error(rot, m["axial_symmetry"])
-            if error > m["capture_m"] or angle > math.radians(8):
+            if angle > math.radians(8):
                 self.state[key], self.hold[key] = "FREE", 0
                 continue
             if error > m["position_tolerance_m"]:
