@@ -405,7 +405,7 @@ def test_tasklog_writes_the_layout_scrubs_our_records_and_the_index(tmp_path):
     assert (r["metric"], r["cost_usd"], r["agent_time_s"], r["path"]) == (
         "demo_metric", 4.05, 300, "swarm/demo_task/claude_opus55-claude_code-high/")
     card = (root / "README.md").read_text()
-    assert card.startswith("---\n") and "# Demo task logs" in card and "`claude_opus55-claude_code-high`" in card
+    assert card.startswith("# Demo task logs") and "`claude_opus55-claude_code-high`" in card
 
 
 def test_tasklog_blocks_a_secret_or_a_forbidden_word_and_keeps_other_rows(tmp_path):

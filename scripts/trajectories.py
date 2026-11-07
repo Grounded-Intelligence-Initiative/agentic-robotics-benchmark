@@ -3197,20 +3197,7 @@ def tasklog_card(rows, title, intro=None):
     )
 
 
-TASKLOG_CARD = """---
-license: apache-2.0
-pretty_name: {title}
-tags:
-- robotics
-- agents
-- benchmark
-- trajectories
-configs:
-- config_name: index
-  data_files: index.jsonl
----
-
-# {title}
+TASKLOG_CARD = """# {title}
 
 {intro}A **task log** is one episode of one agent on one task, recorded by the ALE engine: the agent's full
 trajectory, the results and the verifier's log, with the agent's submission. This folder keeps **one task log per
