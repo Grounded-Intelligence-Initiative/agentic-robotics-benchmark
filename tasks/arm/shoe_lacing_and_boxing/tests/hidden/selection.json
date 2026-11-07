@@ -46,5 +46,165 @@
   "id": "sha256:42897dfdf2495639f6066e8953022616928fd1c5ca1dedb617da327f1859129a",
   "built_from": "environment/ (its files are frozen above)"
  },
- "rule": "tests/review/select_set.py (module docstring)"
+ "rule": "tests/review/select_set.py (module docstring)",
+ "frozen_commit": "52bee23cbc00dd23d6ceb28d5200cd7f7b30e4d5",
+ "batches": [
+  {
+   "batch": 1,
+   "drawn_utc": "2026-11-07T04:17:57Z",
+   "count": 24,
+   "redrawn": 0,
+   "source": "os.urandom(8) per seed, little-endian, the top bit cleared (63 bits); a draw below 2**32 or a duplicate drawn again",
+   "tool_sha256": {
+    "tests/review/select_set.py": "aaf3b59f9f219dc35a02936cbf6a6a91add82871c2b72ef3619cad08fd19f2d2",
+    "tests/review/run_candidate.sh": "7133ffcd5999ae72d474f1bc5b1520ad16d802a1e100079f994c6363562ee623"
+   }
+  }
+ ],
+ "candidates": [
+  {
+   "draw": 0,
+   "batch": 1,
+   "seed": 2122884573269676624,
+   "status": "drawn"
+  },
+  {
+   "draw": 1,
+   "batch": 1,
+   "seed": 4817189750285414682,
+   "status": "drawn"
+  },
+  {
+   "draw": 2,
+   "batch": 1,
+   "seed": 4719008913886956474,
+   "status": "drawn"
+  },
+  {
+   "draw": 3,
+   "batch": 1,
+   "seed": 4368013278335071650,
+   "status": "drawn"
+  },
+  {
+   "draw": 4,
+   "batch": 1,
+   "seed": 3827466843397421061,
+   "status": "drawn"
+  },
+  {
+   "draw": 5,
+   "batch": 1,
+   "seed": 3920012241597211682,
+   "status": "drawn"
+  },
+  {
+   "draw": 6,
+   "batch": 1,
+   "seed": 7237323703085341543,
+   "status": "drawn"
+  },
+  {
+   "draw": 7,
+   "batch": 1,
+   "seed": 2871042868485003104,
+   "status": "drawn"
+  },
+  {
+   "draw": 8,
+   "batch": 1,
+   "seed": 8002189469249703128,
+   "status": "drawn"
+  },
+  {
+   "draw": 9,
+   "batch": 1,
+   "seed": 4120012204518049219,
+   "status": "drawn"
+  },
+  {
+   "draw": 10,
+   "batch": 1,
+   "seed": 5050221829154294261,
+   "status": "drawn"
+  },
+  {
+   "draw": 11,
+   "batch": 1,
+   "seed": 8869361316769442715,
+   "status": "drawn"
+  },
+  {
+   "draw": 12,
+   "batch": 1,
+   "seed": 5839128621219627216,
+   "status": "drawn"
+  },
+  {
+   "draw": 13,
+   "batch": 1,
+   "seed": 2549334260819312031,
+   "status": "drawn"
+  },
+  {
+   "draw": 14,
+   "batch": 1,
+   "seed": 2232118297445647364,
+   "status": "drawn"
+  },
+  {
+   "draw": 15,
+   "batch": 1,
+   "seed": 8894036138449180107,
+   "status": "drawn"
+  },
+  {
+   "draw": 16,
+   "batch": 1,
+   "seed": 9086865752718199337,
+   "status": "drawn"
+  },
+  {
+   "draw": 17,
+   "batch": 1,
+   "seed": 4106710539165904282,
+   "status": "drawn"
+  },
+  {
+   "draw": 18,
+   "batch": 1,
+   "seed": 1687601094886790891,
+   "status": "drawn"
+  },
+  {
+   "draw": 19,
+   "batch": 1,
+   "seed": 6999985246297924752,
+   "status": "drawn"
+  },
+  {
+   "draw": 20,
+   "batch": 1,
+   "seed": 5483866023544768705,
+   "status": "drawn"
+  },
+  {
+   "draw": 21,
+   "batch": 1,
+   "seed": 7597512152699986438,
+   "status": "drawn"
+  },
+  {
+   "draw": 22,
+   "batch": 1,
+   "seed": 310618416587761827,
+   "status": "drawn"
+  },
+  {
+   "draw": 23,
+   "batch": 1,
+   "seed": 2350025180672298079,
+   "status": "drawn"
+  }
+ ]
 }
