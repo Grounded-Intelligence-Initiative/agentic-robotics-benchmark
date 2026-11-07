@@ -15,6 +15,9 @@ ends. Credit out of TOTAL = 10:
     below a tenth of what it can take) 0.3, once at least half of the grease is off; the broom and the dustpan each
     hanging in its clip 0.15, once at least half of the crumbs are in the general-waste bin; the faucet off 0.2, once
     the water has run; each bin lid closed 0.1, once the bin holds something that belongs in it.
+Damage is charged (PENALTY): each broken plate or glass costs 0.25 on top of its lost credit, and each of the
+customer's things (a piece of trash, a dish, a book, the sponge) left on the floor at the end (not inside a bin)
+costs 0.25; the episode's credit after the charges is at least 0.
 A safety violation zeroes the episode (the grader applies it).
 """
 
@@ -36,6 +39,8 @@ BOOK_UPRIGHT_COS = math.cos(math.radians(15.0))
 BOOK_SPINE_COS = math.cos(math.radians(35.0))
 LID_CLOSED = 0.08
 SPONGE_RINSED = 0.10
+PENALTY = {"broken": 0.25, "on_floor": 0.25}    # credit charged per broken dish / per thing left on the floor
+FLOOR_Z = 0.15                                  # m: an object whose frame is below this, outside the bins, is on the floor
 
 
 def bin_of(p):
@@ -140,10 +145,22 @@ def score_cell(cell) -> dict:
         if kind == "general" and (st == CL.BIN_GENERAL).any():
             holds[slot] = True
     credit["lids"] = WEIGHTS["lids"] * sum(1 for s_, a in lids.items() if a < LID_CLOSED and holds[s_]) / len(lids)
-    total = float(sum(credit.values()))
+    # damage: broken dishes, the customer's things left on the floor
+    broken = sorted(n for n in O.DISHES if n in cell.fragile.broken)
+    on_floor = []
+    for name in O.TRASH + O.DISHES + O.BOOKS + ("sponge",):
+        p, _ = cell.pose(name)
+        if float(p[2]) < FLOOR_Z and bin_of(p) is None:
+            on_floor.append(name)
+    charge = PENALTY["broken"] * len(broken) + PENALTY["on_floor"] * len(on_floor)
+    earned = float(sum(credit.values()))
+    total = max(0.0, earned - charge)
     return {
         "stage_score": total / TOTAL,
         "credit": total,
+        "credit_earned": earned,
+        "penalty": charge,
+        "damage": {"broken": broken, "on_floor": sorted(on_floor)},
         "credit_by_part": {k: round(v, 4) for k, v in credit.items()},
         "items": items,
         "grease_removed_fraction": round(removed, 4),

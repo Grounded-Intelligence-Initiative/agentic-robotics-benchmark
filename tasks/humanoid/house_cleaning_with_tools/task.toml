@@ -11,11 +11,13 @@
 # and the robot's start pose differ every episode. The agent delivers clean.py (solve(cell): a camera-only program;
 # three ceiling RGB-D cameras and the robot's head RGB-D camera, noisy localisation, joint encoders and tactile load;
 # no object poses, no object identities, no grease, crumb or sponge states on the wire), run as an unprivileged account
-# on 3 hidden-seed episodes of the grader's MuJoCo cell over a JSON-lines RPC, in a separate verifier sandbox that holds
-# the submission and nothing else of the agent's. Score = the mean over the episodes of the checklist's credited weight
-# / 10, an episode with a safety violation scoring 0. During the agent phase a practice lab serves practice episodes of
-# the same cell (never privileged, budget-limited) on a Unix socket. The oracle submits the privileged reference
-# cleaner with a token. Grader knobs live in tests/grader_config.json.
+# on the 3 scenes of a fixed hidden set (tests/hidden/seeds.json) of the grader's MuJoCo cell over a JSON-lines RPC, in
+# a separate verifier sandbox that holds the submission and nothing else of the agent's. Score = the mean over the
+# episodes of the checklist's credited weight less the damage charges (broken dishes, things left on the floor) / 10, an
+# episode with a safety violation scoring 0. There is no practice cell: the agent prepares the program from the manual,
+# the cell's describe() output, survey photos of two other scenes and the robot's model, and it is deployed as it is.
+# The oracle submits the privileged reference cleaner with a token, on the same hidden scenes. Grader knobs live in
+# tests/grader_config.json.
 
 schema_version = "1.4+ale.1"
 # Where the agent leaves its work (clean.py and its helper modules).
@@ -29,22 +31,22 @@ name = "grounded-intelligence-initiative/house_cleaning_with_tools"
 # (cleaning_score, higher) lives in tests/anchor.json.
 platform = "humanoid"
 tags = ["cleaning", "household", "tool-use", "humanoid", "unitree-g1", "mobile-manipulation", "mujoco", "code-as-policy",
-        "camera-only", "rgbd", "practice-lab", "hidden-seed"]
+        "camera-only", "rgbd", "zero-shot", "hidden-set"]
 
 [environment]
 cpus = 8
 memory_mb = 16384
 
-# setup (no field: the engine bounds it at a fixed 1800 s): the agent's givens and the practice lab (its server builds
-# one cell as a self-test before it listens; well under a minute). [agent] timeout_sec: 4 h, practice included.
+# setup (no field: the engine bounds it at a fixed 1800 s): the agent's givens (seconds). [agent] timeout_sec: 4 h.
 # [verifier] timeout_sec: the import check, then 3 hidden episodes, each a cell build (about 5 s) plus the program
 # within its 3600 s program-time cap, which does not count the cell's simulation (4800 s simulated at most) and
 # rendering (1500 frames at most); measured on the development machine (2026-11-06, 8 CPUs, the robot walking) at
 # 0.32 s of wall clock per simulated second and 0.7 to 1.7 s per frame after the first, an episode at the bounds takes
-# about 7700 s of wall clock there and about 8600 s on a machine that renders at 2.3 s per frame, hence 7.5 h for the
-# three. The verifier sandbox's start and tests/test.sh's copy of the givens (seconds) count against it too. The
-# oracle's episodes run the reference cleaner inside one privileged call (its program-time cap is
-# privileged_program_time_cap_s); the three must fit the same 7 h.
+# about 7700 s of wall clock there and about 8600 s on a machine that renders at 2.3 s per frame: 25,800 s for the
+# three. 36,000 s (10 h) leaves 40 % for a slower or loaded grading machine (a timeout gives no score: an
+# infrastructure failure, never the agent's 0). The verifier sandbox's start and tests/test.sh's copy of the givens
+# (seconds) count against it too. The oracle's episodes run the reference cleaner inside one privileged call (its
+# program-time cap is privileged_program_time_cap_s); the three take about 1.2 h.
 [agent]
 timeout_sec = 14400
 network_mode = "no-network"
@@ -52,11 +54,11 @@ network_mode = "no-network"
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
 # touched, with only the declared artifact (the submission, restored root-owned) in it, so nothing else the agent left
 # (a file, a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there (no
-# ~/given, no practice lab): tests/test.sh builds the grader's root-owned copy of the givens (/opt/arb) itself, from
-# tests/setup_payload/ and the image's robot model. The agent's program runs during verify, so the verifier gets the
-# agent's resources (CPU rendering: no GPU).
+# ~/given): tests/test.sh builds the grader's root-owned copy of the givens (/opt/arb) itself, from
+# tests/setup_payload/ and the image's robot model and survey photos. The agent's program runs during verify, so the
+# verifier gets the agent's resources (CPU rendering: no GPU).
 [verifier]
-timeout_sec = 27000
+timeout_sec = 36000
 environment_mode = "separate"
 
 [verifier.environment]

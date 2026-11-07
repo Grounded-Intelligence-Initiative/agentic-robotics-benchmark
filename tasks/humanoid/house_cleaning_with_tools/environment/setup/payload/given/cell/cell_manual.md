@@ -1,9 +1,11 @@
 # The cleaning cell: the customer's studio apartment, one Unitree G1 humanoid, the rules
 
-This is the integrator's description of the robot cell your program drives. Everything stated here as exact is exact;
-everything else (where the litter, the dishes and the books lie, the grease spill, the crumbs, which bin stands where,
-the robot's start pose, sensor noise) must be measured in each episode. The cell never reports the pose or the state of
-anything but the robot itself.
+This is the integrator's description of the robot cell your program drives: the site survey, the robot and its
+controllers, and the fixtures, tools and cleaning products as their data sheets describe them. Everything stated here
+as exact is exact; everything else (where the litter, the dishes and the books lie, the grease spill, the crumbs, which
+bin stands where, the robot's start pose, sensor noise) must be measured in each episode. The cell never reports the
+pose or the state of anything but the robot itself. There is no practice cell: section 11 lists what you have to
+prepare the program with.
 
 ## 1. The apartment (exact survey)
 
@@ -43,7 +45,8 @@ settings; it may run under a plate or a book) and crumbs round the plates; on th
 can, a plastic water bottle, a napkin and an apple core (in its west half). The sponge lies in its tray (damp, no
 soap, clean); the broom and the dustpan hang in their clips; both bin lids are closed; the water is off. The robot
 starts just inside the door (about (5.25, 0.75), facing north). Positions, facings, the spill's shape, the crumbs and
-the bins' order are drawn per episode.
+the bins' order are drawn per episode; the graded episodes are three fixed scenes drawn by these rules (the survey
+photos of section 11 show two other scenes drawn the same way).
 
 Sizes: cans radius 0.033, height 0.122 (30 g); water bottle radius 0.034, 0.205 high plus a cap (32 g); napkins lumps
 of about 0.05 m (12 g); apple core about 0.08 by 0.045 (30 g); plates radius 0.130, 0.022 high (0.45 kg); glasses
@@ -60,7 +63,9 @@ of this benchmark):
 * **Locomotion controller.** The pelvis rides four base joints: `base_x`, `base_y` (room x / y), `base_yaw` and
   `base_z`, driven by force-limited servos (x / y 300 N, yaw 150 N m) that the robot's own locomotion controller
   commands; the legs are posed from the stand height and do not touch the floor (no balance falls are simulated). A
-  robot obstructed by furniture stops; its controller does not wind up beyond 5 cm / 0.1 rad.
+  robot obstructed by furniture stops; its controller does not wind up beyond 5 cm / 0.1 rad, but while it stays
+  obstructed the base keeps pushing against the obstacle with up to its servo limit (300 N): held for 0.2 s, that is
+  a safety violation (section 9). Cancel the goal (or stop the velocity) when the base stops short.
 * **Legs in the camera images.** The cameras draw the legs stepping while the base travels or turns (drawn only: the
   physics keeps the posed legs; nothing above the hips changes in the images).
 * **Stand height** (pelvis height above the floor) 0.48 - 0.80 m, nominal 0.793 m; lower means a squat (the knees go
@@ -161,32 +166,33 @@ it holds nothing).
   lip, on the floor when the pan rests flat; the handle (radius 12 mm, 0.80 long) rises from the back wall's top,
   leaning back by 8 deg, so the dustpan stands on its own on the floor; 0.45 kg.
 
-## 8. The cleaning rules (never reported)
+## 8. The cleaning (what the products and the tools do; never reported)
 
-* **Grease.** The table's top carries a grease film on a grid of 20 mm cells (grease g in [0, 1] per cell; one unit of
-  grease is what a 25 mm square at g = 1 holds, so a full 20 mm cell holds 0.64 units). The sponge pressed flat on the top
-  (its faces within 25 deg of the top) with a normal force N above 2 N, sliding, takes grease off every cell under its
-  face: per tick g -> g exp(-0.8 min(N - 2, 25) ds f), ds the distance it slid (m), f = (scouring pad down 1.0 | foam
-  down 0.35) x (soap in the sponge 1.0 | wet, no soap 0.30 | dry 0.12) x (1 - load / 32). What comes off loads the
-  sponge (in units; it holds 32); a loaded sponge puts grease back on the cells it passes (g rises by
-  0.25 x (load / 32)^3 per sponge length slid): a saturated sponge smears. Soap is used up as grease comes off (1/38 dose
-  per unit).
-* **Rinsing.** The sponge held in the running water (its middle within 45 mm of the stream's axis, between the basin's
-  bottom and the outlet) sheds its load (time constant 0.6 s) and its soap (2.5 s), and is wet.
-* **Crumbs** rest on the highest surface below them; they are moved only as follows. The broom's bristles, flat on the
-  floor (their bottom within 20 mm of it, the head within 35 deg of level) and moving, push the floor crumbs under them
-  out over their leading edge (faster than 1.0 m/s they scatter instead, 0.1-0.4 m ahead); the sponge does the same to
-  the crumbs on the surface it is pressed on, and a crumb pushed over an edge flies on 10-20 cm the way it was pushed and
-  falls. A crumb stops at whatever stands on
-  the floor (the walls, the toe kick, the bins, the legs of the tables, chairs and couch, the plant's pot, the
-  bookshelf). The dustpan resting flat on the floor (its lip within 8 mm of it, the pan within 12 deg of level) takes in
-  the floor crumbs pushed over its lip into the pan (a pan set down on crumbs only covers them); they stay in the pan as
-  it moves unless it is tipped past 55 deg,
-  when they pour out over its lowest edge (the lip; a side past 65 deg; over the back wall only upside down) and fall.
-  A crumb that falls into an open bin stays there; onto a closed lid it stays on the lid.
-* **Dishes.** A plate or a glass breaks when it hits something hard: its speed dropping by more than 1.2 m/s within a
-  tick while it touches something, or a contact force above 60 N (a drop of more than about 7 cm). A broken dish earns
-  nothing.
+The cell simulates the job's cleaning the way the products' and the tools' data sheets describe them; their states are
+never reported, only drawn in the camera images.
+
+* **Grease.** The spill is a film of cooking grease on the table's top, drawn darker and glossier where more of it is
+  left. The sponge takes it off only while it is pressed flat on the top and sliding over it: firmer pressure (it
+  starts to work at a couple of newtons; beyond about 25 N pressing harder adds nothing) and more strokes take more
+  off. The green scouring pad face works several times better than the yellow foam; soap in the sponge makes it work
+  several times better than water alone, and a dry sponge hardly works. Soap is used up as grease comes off. The
+  grease that comes off loads the sponge: a loaded sponge takes less, and one near its capacity smears grease back
+  onto the table where it passes. A whole spill holds more grease than the sponge does: rinse it (and soap it again)
+  on the way.
+* **Rinsing.** Held in the running water (in the stream below the faucet's outlet), the sponge sheds its grease within
+  a second or two and its soap within a few seconds, and is wet.
+* **Crumbs** rest on the highest surface below them and move only when pushed. The broom's bristles, flat on the floor
+  and moving, push the floor crumbs under them ahead of them (swept fast, at about a metre per second or more, they
+  scatter instead); the sponge pressed on a surface does the same to the crumbs on that surface, and a crumb pushed
+  over an edge flies on a little the way it was pushed and falls. A crumb stops at whatever stands on the floor (the
+  walls, the toe kick, the bins, the legs of the tables, chairs and couch, the plant's pot, the bookshelf). The dustpan
+  resting flat on the floor (its lip down on it) takes in the floor crumbs pushed over its lip into the pan (a pan set
+  down on crumbs only covers them); they stay in the pan as it is carried, unless it is tipped steeply (past about
+  55 deg), when they pour out over its lowest edge (normally the lip) and fall. A crumb that falls into an open bin
+  stays there; onto a closed lid it stays on the lid.
+* **Dishes.** The plates and the glasses break when they hit something hard: set them down slowly, never drop them (a
+  fall of a few centimetres onto a hard surface can break them). A broken dish earns nothing, and the customer charges
+  for it (the instruction's scoring).
 
 ## 9. Safety (a violation makes the episode score 0; the episode goes on)
 
@@ -199,3 +205,22 @@ it holds nothing).
 4800 s of simulated time; 3600 s of program time (the episode's wall clock minus the cell's own time inside `step`,
 simulating, and inside `get_camera`, rendering: your program's computation and all its other requests count); 120 s
 from a reply to the next request (silence) ends the episode; 1500 camera frames; at most 500 ticks per `step` call.
+The program's process (all its threads) may use at most 14,400 s of CPU time per episode (4 x the program-time
+budget: the operating system ends it with SIGXCPU beyond that, and the episode is scored as it stands); its numerical
+libraries run with OMP_NUM_THREADS, OPENBLAS_NUM_THREADS and MKL_NUM_THREADS set to 2 (a thread pool of your own, e.g.
+OpenCV's, counts against the CPU budget too: `cv2.setNumThreads` keeps it small).
+
+## 11. Preparing the program (no practice cell)
+
+The program is deployed on the customer's site as it is: nothing in your session runs the cell. You have:
+
+* `describe.json` (this folder): exactly what the cell's `describe()` returns (the robot, joint names and ranges,
+  control limits, grip limits, the cameras' intrinsics and the ceiling cameras' exact poses, the head camera's
+  mount, the room's survey, the budgets, the safety limits);
+* `survey/` (this folder): survey photos of two scenes of the same apartment, drawn by the rules of section 2 but not
+  among the graded ones: per scene the three ceiling cameras and six head-camera frames from the robot standing at the
+  start pose and at the dining table, the coffee table, the bins and the sink (`<camera>.json` holds the frame's
+  metadata as `get_camera` returns it, `<camera>_rgb.png` and `<camera>_depth_mm.png` its colour and 16-bit depth;
+  `house_client.client.load_frame(<camera>.json)` gives the reply that `decode_frame` reads);
+* the robot's MuJoCo model (`~/given/robot/unitree_g1/`), from which the cell's robot is built (section 3), for your
+  own kinematics, reach and collision checks.

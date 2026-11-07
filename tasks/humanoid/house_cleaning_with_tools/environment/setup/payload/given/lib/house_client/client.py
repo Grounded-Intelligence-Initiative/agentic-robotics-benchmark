@@ -16,12 +16,10 @@ Every method is one JSON-lines request ({"id": n, "method": ..., "params": {...}
 ({"id": n, "result": ...} or {"id": n, "error": code, "detail": text}). A reply carrying an error raises CellError
 (its `code` is e.g. "bad_params", "forbidden", "camera_budget"; a "forbidden" call is counted against the program).
 
-Two transports, one protocol:
-  * connect_stdio(): the graded run. The launcher (`main`) starts the program with the cell on its own stdin / stdout;
-    it moves this process's stdout (Python's and the C-level file descriptor 1) to stderr first, so prints never
-    corrupt the wire.
-  * connect_practice(path): the practice lab's cell over a Unix stream socket ($ARB_PRACTICE_SOCKET, default
-    /run/house-cell/practice.sock), for developing the program against the same physics.
+The transport: connect_stdio(), the graded run. The launcher (`main`) starts the program with the cell on its own
+stdin / stdout; it moves this process's stdout (Python's and the C-level file descriptor 1) to stderr first, so prints
+never corrupt the wire. There is no practice cell: Cell(send, recv) takes any pair of line functions (a stand-in of
+your own for testing), and load_frame() reads the survey photos (~/given/cell/survey/) as get_camera replies.
 
 numpy-typed arguments are accepted (sent as plain numbers / lists).
 """
@@ -33,14 +31,13 @@ import os
 import sys
 import traceback
 
-__all__ = ["Cell", "CellError", "decode_frame", "connect_stdio", "connect_practice", "given_dir", "main", "BOOTSTRAP",
-           "PUBLIC_CAMERAS", "PRACTICE_SOCKET"]
+__all__ = ["Cell", "CellError", "decode_frame", "load_frame", "connect_stdio", "given_dir", "main", "BOOTSTRAP",
+           "PUBLIC_CAMERAS"]
 
 # the launcher the graded run starts: `python -B -E -s -c BOOTSTRAP <library dir> clean`
 BOOTSTRAP = ("import sys; sys.path.insert(0, sys.argv[1]); from house_client.client import main; "
              "sys.exit(main(sys.argv[2:]))")
 PUBLIC_CAMERAS = ("ceiling_kitchen", "ceiling_dining", "ceiling_living", "head")
-PRACTICE_SOCKET = "/run/house-cell/practice.sock"
 
 
 class CellError(RuntimeError):
@@ -124,7 +121,7 @@ class Cell(object):
         return self._call("finish")
 
     def close(self):
-        """Close the connection (practice lab); the graded run's launcher handles its own."""
+        """Close the connection (a transport given a close function); the graded run's launcher handles its own."""
         if self._close is not None:
             try:
                 self._close()
@@ -177,40 +174,19 @@ def connect_stdio():
     return Cell(send, recv)
 
 
-def connect_practice(path=None, timeout=None):
-    """The practice lab's cell over a Unix stream socket: `path` (default $ARB_PRACTICE_SOCKET or
-    /run/house-cell/practice.sock). `timeout` (s, optional) bounds every socket operation. Same protocol and methods
-    as the graded cell; close() the returned Cell when done."""
-    import socket
-    if path is None:
-        path = os.environ.get("ARB_PRACTICE_SOCKET", PRACTICE_SOCKET)
-    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    try:
-        if timeout is not None:
-            s.settimeout(float(timeout))
-        s.connect(path)
-    except OSError as e:
-        s.close()
-        raise CellError("unreachable", "cannot reach the practice cell at %s: %s" % (path, e))
-    rf = s.makefile("r", encoding="utf-8", newline="\n")
-    wf = s.makefile("w", encoding="utf-8", newline="\n")
-
-    def send(text):
-        wf.write(text)
-        wf.flush()
-
-    def recv():
-        return rf.readline()
-
-    def close():
-        for f in (wf, rf):
-            try:
-                f.close()
-            except Exception:  # noqa: BLE001
-                pass
-        s.close()
-
-    return Cell(send, recv, close=close)
+def load_frame(path):
+    """A survey photo (~/given/cell/survey/<scene>/<camera>.json with its two PNG files beside it) as the reply
+    get_camera gives for such a frame, so decode_frame() reads it: the same PNG colour, the same 16-bit depth in mm."""
+    folder = os.path.dirname(os.path.abspath(path))
+    with open(path) as f:
+        meta = json.load(f)
+    reply = {k: v for k, v in meta.items() if k != "files"}
+    with open(os.path.join(folder, meta["files"]["rgb"]), "rb") as f:
+        reply["rgb_png_b64"] = base64.b64encode(f.read()).decode("ascii")
+    if meta["files"].get("depth_mm"):
+        with open(os.path.join(folder, meta["files"]["depth_mm"]), "rb") as f:
+            reply["sensor_depth_u16_mm_b64"] = base64.b64encode(f.read()).decode("ascii")
+    return reply
 
 
 def main(argv=None):

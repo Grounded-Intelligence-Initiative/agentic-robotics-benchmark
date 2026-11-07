@@ -376,6 +376,13 @@ class Process:
                               mujoco.mj_name2id(m, G, "coffee_top"): "coffee_top"}
         for k in ("s", "n", "w"):
             self.surface_geoms[mujoco.mj_name2id(m, G, f"counter_{k}")] = "counter"
+        # the other surfaces a crumb can come to rest on (one pushed off the table's end lands on a chair's seat): the
+        # sponge pressed on them pushes their crumbs too
+        for geom, surf in (("chair_west_seat", "chair_west"), ("chair_east_seat", "chair_east"),
+                           ("dish_tray", "dish_tray"), ("shelf_top", "shelf_top")):
+            gid = mujoco.mj_name2id(m, G, geom)
+            if gid >= 0:
+                self.surface_geoms[gid] = surf
         self.head_body = mujoco.mj_name2id(m, B, "broom_head")
         self.bristle_geom = mujoco.mj_name2id(m, G, "broom_bristle_col")
         self.pump_body = mujoco.mj_name2id(m, B, "soap_pump")

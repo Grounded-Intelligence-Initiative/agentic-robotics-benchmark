@@ -204,7 +204,11 @@ class Cell:
                         "program_time_cap_s": float(self.cfg.get("program_time_cap_s", 3600.0)),
                         "program_time": "the episode's wall clock minus the cell's own time inside step (simulation) "
                                         "and get_camera (rendering)",
-                        "silence_s": float(self.cfg.get("silence_s", 120.0))},
+                        "silence_s": float(self.cfg.get("silence_s", 120.0)),
+                        "cpu_time_cap_s": float(self.cfg.get("cpu_cap_factor", 4.0))
+                        * float(self.cfg.get("program_time_cap_s", 3600.0)),
+                        "cpu_time": "the program process's CPU time, all threads (SIGXCPU beyond it); OMP_NUM_THREADS, "
+                                    "OPENBLAS_NUM_THREADS and MKL_NUM_THREADS are 2"},
             "safety": {"robot_contact_N": SAFETY["robot_contact_N"], "robot_contact_s": SAFETY["robot_contact_ticks"]
                        * TICK, "throw_speed_m_s": SAFETY["throw_speed"], "strike_speed_m_s": SAFETY["strike_speed"]},
         }

@@ -7,8 +7,8 @@ and the apple core into the general-waste bin), the dishes to the dish tray, the
 the dining table with the sponge, soap and water, the crumbs swept with the broom and the lobby dustpan into the
 general-waste bin, and the tools put back).
 Verification is separate (task.toml): this runs in a fresh verifier sandbox from the task image, into which the engine
-restored only the submission (root-owned); nothing else of the agent's sandbox is here (no ~/given, no practice lab, no
-process the agent started). This grader:
+restored only the submission (root-owned); nothing else of the agent's sandbox is here (no ~/given, no process the
+agent started; the task has no practice cell). This grader:
   0. FIRST, stdlib only (`_early_lockdown`; tests/test.sh closed the stage folder already): records the upload time,
      freezes and kills every process of the agent account and keeps it stopped until the verdict is written
      (cellkit.verify_freeze), locks the stage, snapshots the submission root-owned, gates late writes, quarantines late
@@ -17,16 +17,18 @@ process the agent started). This grader:
   1. checks the root-owned copy of the givens at /opt/arb against given_hashes.json (tests/test.sh builds it from
      tests/setup_payload/ and the image's robot model; the cell client library the program runs with comes from it; a
      mismatch is a task error);
-  2. gates: contract_ok = clean.py is a regular file that parses and defines solve, the route gate (no weight files,
-     no training calls, size cap), the network audit (static: no networking import, no computed import; runtime: no
-     outbound network activity while the program runs), the module imports under the run regime, >= 1 step call, no
-     late write, no surviving process; per episode the cell's safety watch (house_cell.physics.Safety: the robot's
-     contact forces, objects thrown or struck; the numbers are in the cell manual) zeroes that episode;
+  2. gates: contract_ok = clean.py is a regular file that parses and defines solve, the route gate (no model-weight
+     files by extension, the size cap; grader_config.json route_gate, stated in the instruction), the network audit
+     (static: no networking import, no computed import; runtime: no remote socket of the runner account's processes
+     while the program runs; the namespace's outbound counters, which loopback traffic raises too, are recorded only),
+     the module imports under the run regime, >= 1 step call, no late write, no surviving process; per episode the
+     cell's safety watch (house_cell.physics.Safety: the robot's contact forces, objects thrown or struck; the numbers
+     are in the cell manual) zeroes that episode;
   3. the oracle token: submission/.oracle_token whose sha256 equals hidden/oracle_token.sha256 switches the cells to the
-     privileged mode (the nominal layout and the calls `reference_clean` and `truth`; stat privileged_mode); a wrong
-     token is ignored (stat oracle_token_mismatch);
-  4. draws `episodes` hidden 63-bit episode seeds from OS entropy (robotics_grader.seed_rng; an optional
-     hidden/seeds.json {"seeds": [...]} pins them for re-verification) and runs the program per episode on a fresh cell
+     privileged mode (the calls `reference_clean` and `truth`, on the same hidden layouts; stat privileged_mode); a
+     wrong token is ignored (stat oracle_token_mismatch);
+  4. runs the program once per seed of the FIXED hidden scene set hidden/seeds.json (its selection rule and record:
+     tests/review/hidden_set.md; agents and the oracle get the same scenes) on a fresh cell per episode
      (house_cell.server.CellServer: where every loose object lies and how it faces, the grease stain, the crumbs, which
      bin stands where, the robot's start pose and the sensor noise are drawn from the seed; camera-only API) as
      `nobody` from a read-only copy under an opaque run tag (world-readable files copied from the snapshot, so the
@@ -34,21 +36,23 @@ process the agent started). This grader:
   5. criterion: cleaning_score = the episode mean of the cell's stage score (house_cell.scoring: the customer's
      checklist, credit over its total weight of 10: trash sorted 2, dishes cleared 1, books shelved 1, table
      degreased 2.5, floor swept 2.5, finishing 1 for the sponge rinsed in its tray, the tools in their clips, the
-     faucet off and the lids closed), an episode with a safety violation scoring 0, times the gates. A failure on the
-     grader's side of an episode (the cell's build, the program's launch, the wire, the cleanup, the scoring) ends the
+     faucet off and the lids closed, less the damage charges), an episode with a safety violation scoring 0, times the
+     gates. A failure on the grader's side of an episode (the cell's build, the program's launch, the wire, the
+     cleanup, the scoring, a camera the renderer failed to draw, a score that is not a finite number) ends the
      run as a TASK ERROR (robotics_grader.fail: a zero says the agent failed, a task error says the grading broke); a
      program that crashes, hangs or misbehaves ends its own episode, which is scored as it stands, and so does an
      internal error of the cell while it answers one of the program's requests (the program may have caused it).
      Each episode caps the program's own time (`program_time_cap_s`): the wall clock minus the cell's simulation and
      rendering (cellkit.wire), so the budget does not depend on how fast the grading machine simulates and renders.
 Untouched sandbox: no clean.py -> contract_ok 0 -> 0.
-Oracle: the token + reference_clean (the privileged reference cleaner inside the cell, nominal layout) -> 1.
+Oracle: the token + reference_clean (the privileged reference cleaner inside the cell, on the hidden scenes) -> 1.
 Records: out/episodes.json (every episode's record) and logs/<tag>.log (the program's stderr) under the root-only
 /opt/arb-verify (outside /opt/ale, which the engine clears before it keeps a sandbox).
 """
 
 import ast
 import json
+import math
 import os
 import pwd
 import shutil
@@ -110,8 +114,7 @@ def _early_lockdown():
             out["reasons"].append("%d process(es) of the agent account survived the kill at verify start" % left)
     # the image's init respawns the agent account's desktop within seconds of the kill, and the respawned session runs
     # the account's autostart entries: every process of the account stays SIGSTOPped (polled every 0.1 s) until the
-    # verdict is written. (The practice lab and its account's processes are not here: setup.sh, which starts the lab,
-    # does not run in the separate verifier.)
+    # verdict is written.
     FREEZER[0] = verify_freeze.AgentFreezer.for_user(AGENT_USER).start()
     out["saved"] = runner.lock_stage(STAGE_DIR)
     out["stage_locked"] = 1.0 if out["saved"] is not None else 0.0
@@ -166,7 +169,6 @@ from cellkit import netaudit, wire  # noqa: E402
 from house_cell import objects as HO  # noqa: E402
 from house_cell import scoring as HS  # noqa: E402
 from house_cell.server import CellServer  # noqa: E402
-from robotics_grader import seed_rng  # noqa: E402
 
 HIDDEN = os.path.join(STAGE_DIR, "hidden")
 # The maintainers' record (the program's stderr, episodes.json) lives outside /opt/ale: the engine deletes its stage
@@ -236,9 +238,9 @@ def root_payload_ok(expected):
 
 
 def route_gate(cfg, src):
+    """(problems, suspicious lines): model-weight files by extension (grader_config.json route_gate), the size cap."""
     rg = cfg.get("route_gate", {})
     forb_ext = tuple(rg.get("forbidden_extensions", []))
-    calls = rg.get("forbidden_calls", [])
     total, problems, suspicious = 0, [], 0
     for dp, _, fns in os.walk(src):
         for fn in fns:
@@ -254,9 +256,6 @@ def route_gate(cfg, src):
                     text = open(p, encoding="utf-8", errors="replace").read()
                 except OSError:
                     continue
-                for c in calls:
-                    if c in text:
-                        problems.append("%s uses %s" % (os.path.relpath(p, src), c))
                 suspicious += sum(1 for line in text.splitlines() if any(s in line for s in SUSPICIOUS))
     if total > rg.get("max_submission_mb", 60) * 1024 * 1024:
         problems.append("submission larger than %d MB" % rg.get("max_submission_mb", 60))
@@ -265,7 +264,7 @@ def route_gate(cfg, src):
 
 def library_digests():
     """sha256 of every .py file of the shipped library (a submission may carry byte-identical copies of it, e.g. the cell
-    client, which reaches the practice lab over a Unix socket)."""
+    client)."""
     out = set()
     d = os.path.join(ROOT_GIVEN, "lib")
     for dp, _dn, fns in os.walk(d):
@@ -394,18 +393,16 @@ def token_state():
 
 
 def episode_seeds(n):
-    """(seeds, pinned): `n` fresh 63-bit seeds from OS entropy, or the list of hidden/seeds.json (re-verification only;
-    a published task ships without it)."""
+    """(seeds, pinned): the fixed hidden scene set, hidden/seeds.json {"seeds": [...]} (tests/review/hidden_set.md: how
+    it was selected); `n` episodes, the first n of the list. A missing or unreadable list is a task error."""
     pinned = os.path.join(HIDDEN, "seeds.json")
-    if os.path.isfile(pinned):
-        try:
-            seeds = [int(s) & ((1 << 63) - 1) for s in load_json(pinned)["seeds"]]
-            if seeds:
-                return seeds, True
-        except (OSError, ValueError, KeyError, TypeError):
-            log("[grader] hidden/seeds.json unreadable: fresh seeds")
-    # 63-bit: the public draw code cannot be searched over the seed space
-    return seed_rng().seeds(n, bits=63), False
+    try:
+        seeds = [int(s) & ((1 << 63) - 1) for s in load_json(pinned)["seeds"]]
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        fail("the hidden scene set %s is unreadable: %r" % (pinned, e))
+    if len(seeds) < n:
+        fail("the hidden scene set holds %d scenes, %d episodes are configured" % (len(seeds), n))
+    return seeds[:n], True
 
 
 def run_episode(cfg, seed, rn, privileged, tag):
@@ -414,7 +411,7 @@ def run_episode(cfg, seed, rn, privileged, tag):
     (`fail`), never the agent's zero; whatever the program does ends at most its own episode."""
     t0 = time.time()
     try:
-        server = CellServer(seed, privileged=privileged, nominal=privileged, config=cfg, log=log)
+        server = CellServer(seed, privileged=privileged, nominal=False, config=cfg, log=log)
     except Exception:  # noqa: BLE001 - the cell depends on the seed only: a build failure is the task's
         fail("%s: the cell could not be built\n%s" % (tag, traceback.format_exc()))
     # the program's own time (the wall clock minus the cell's simulation and rendering, cellkit.wire); the privileged
@@ -454,6 +451,17 @@ def run_episode(cfg, seed, rn, privileged, tag):
         fail("%s: the episode could not be scored\n%s" % (tag, traceback.format_exc()))
     if summary.get("score_error"):
         fail("%s: the episode could not be scored: %s" % (tag, summary["score_error"]))
+    if int(summary.get("render_errors", 0) or 0) > 0:
+        # a camera the renderer could not draw (a renderer error or its call timeout) blinded the program: the
+        # grading machine's failure, never the agent's score
+        fail("%s: the renderer failed on %d camera request(s); the episode is not scored" % (
+            tag, int(summary["render_errors"])))
+    try:
+        sc = float(summary.get("stage_score", 0.0))
+    except (TypeError, ValueError):
+        sc = float("nan")
+    if not math.isfinite(sc):
+        fail("%s: the episode's score is not a finite number (%r)" % (tag, summary.get("stage_score")))
     summary["episode_wall_s"] = time.time() - t0
     summary["end_reason"] = reason
     summary["remote_sockets_seen"] = int(sampler.max_seen)
@@ -566,6 +574,9 @@ def episode_metrics(agent, metrics):
         metrics[what + "_ok_mean"] = _mean(sum(1 for n in names if ((s.get("items") or {}).get(n) or {}).get("ok"))
                                            for s in agent)
     metrics["dishes_broken_mean"] = _mean(len(s.get("broken") or {}) for s in agent)
+    metrics["things_on_floor_mean"] = _mean(len((s.get("damage") or {}).get("on_floor") or []) for s in agent)
+    metrics["penalty_mean"] = _mean(s.get("penalty", 0.0) for s in agent)
+    metrics["credit_earned_mean"] = _mean(s.get("credit_earned", s.get("credit", 0.0)) for s in agent)
     metrics["sponge_in_tray_rate"] = _mean(1.0 if (s.get("sponge") or {}).get("in_tray") else 0.0 for s in agent)
     metrics["sponge_rinsed_rate"] = _mean(1.0 if (s.get("sponge") or {}).get("rinsed") else 0.0 for s in agent)
     metrics["sponge_peak_load_mean"] = _mean((s.get("sponge") or {}).get("peak_load", 0.0) for s in agent)
@@ -633,11 +644,13 @@ def _main_locked(cfg, rewards, metrics):
         log("[grader] episode %d/%d" % (i + 1, len(ep_seeds)))
         s_a = run_episode(cfg, seed, rn, privileged, tag)    # a grader-side failure inside is a task error
         s_a["tag"] = tag
-        log("[grader]   stage score %.3f (credit %.2f of %g: %s; grease %.2f removed, crumbs %.2f binned) safety %s sim %.1f s "
+        log("[grader]   stage score %.3f (credit %.2f of %g: %s; less %.2f for damage %s; grease %.2f removed, crumbs %.2f "
+            "binned) safety %s sim %.1f s "
             "wall %.1f s (program %.1f s, cell %.1f s) frames %d end %s calls %s illegal %d bad params %d violations %s" % (
                 float(s_a.get("stage_score", 0.0)), float(s_a.get("credit", 0.0)), HS.TOTAL,
                 ", ".join("%s %.2f" % kv for kv in sorted((s_a.get("credit_by_part") or {}).items())),
-                float(s_a.get("grease_removed_fraction", 0.0)), float(s_a.get("crumbs_binned_fraction", 0.0)),
+                float(s_a.get("penalty", 0.0)), s_a.get("damage"), float(s_a.get("grease_removed_fraction", 0.0)),
+                float(s_a.get("crumbs_binned_fraction", 0.0)),
                 s_a.get("safety_ok"), float(s_a.get("sim_time_s", 0.0)), float(s_a.get("episode_wall_s", 0.0)),
                 float(s_a.get("program_time_s", 0.0)), float(s_a.get("cell_work_s", 0.0)),
                 int(s_a.get("camera_frames_total", 0)), s_a.get("end_reason"), s_a.get("calls"),
@@ -656,7 +669,9 @@ def _main_locked(cfg, rewards, metrics):
     vals = [float(s.get("stage_score", 0.0)) * (1.0 if s.get("safety_ok", False) else 0.0) for s in agent]
     steps_gate = 1.0 if step_calls > 0 else 0.0
     clean_gate = 1.0 if rn.unclean_runs == 0 else 0.0
-    net_gate = 1.0 if (metrics["remote_sockets_seen"] <= 0 and metrics["net_outbound_events"] <= 0) else 0.0
+    # the runner account's remote sockets gate (loopback excluded); the namespace-wide counters (net_*) also count
+    # loopback traffic and the verifier's own services, so they are recorded, not gated
+    net_gate = 1.0 if metrics["remote_sockets_seen"] <= 0 else 0.0
     gate = steps_gate * clean_gate * net_gate
     rewards["contract_ok"] = gate
     if not steps_gate:
@@ -664,8 +679,8 @@ def _main_locked(cfg, rewards, metrics):
     if not clean_gate:
         log("[grader] contract_ok 0: %d run(s) left processes of the runner account behind" % rn.unclean_runs)
     if not net_gate:
-        log("[grader] contract_ok 0: network activity during an episode (%d outbound events, %d remote sockets seen)" % (
-            metrics["net_outbound_events"], metrics["remote_sockets_seen"]))
+        log("[grader] contract_ok 0: network activity during an episode (%d remote sockets seen; %d namespace outbound "
+            "events)" % (metrics["remote_sockets_seen"], metrics["net_outbound_events"]))
     rewards["cleaning_score"] = float(max(0.0, min(1.0, gate * _mean(vals))))
     metrics["illegal_call_count"] = float(illegal)
     metrics["step_calls"] = float(step_calls)

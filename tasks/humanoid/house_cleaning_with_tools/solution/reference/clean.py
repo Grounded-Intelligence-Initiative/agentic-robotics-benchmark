@@ -1,5 +1,5 @@
-"""Oracle of house_cleaning_with_tools: submitted with the oracle token, this program's cells are privileged (the nominal
-layout) and it asks the cell to run the privileged reference cleaner (house_cell.reference: true object poses and
+"""Oracle of house_cleaning_with_tools: submitted with the oracle token, this program's cells are privileged (on the
+same fixed hidden scenes the agents get) and it asks the cell to run the privileged reference cleaner (house_cell.reference: true object poses and
 process states, the G1 driven through the cell's own controller, grip rule, safety watch and cleaning processes) inside
 one call. It first takes one frame of each public camera, so every validation also exercises the agents' camera path
 (a camera that cannot render fails the oracle, and with it the validation)."""

@@ -1,0 +1,48 @@
+{
+ "camera": "head",
+ "frame_index": 1,
+ "width": 640,
+ "height": 480,
+ "format": "png",
+ "intrinsics": {
+  "width": 640,
+  "height": 480,
+  "fx": 432.97146126514167,
+  "fy": 432.97146126514167,
+  "cx": 319.5,
+  "cy": 239.5,
+  "fovy_deg": 58.0,
+  "model": "pinhole, no distortion"
+ },
+ "depth_unit_m": 0.001,
+ "depth_invalid_value": 0,
+ "pose_in_room": {
+  "position": [
+   2.8314581061132316,
+   1.8988900215161992,
+   1.2210491749261336
+  ],
+  "rotation": [
+   [
+    0.999999103463265,
+    -0.001238498025227603,
+    0.0005091122736627581
+   ],
+   [
+    -0.0013390566327258712,
+    -0.9249007789595503,
+    0.3802062019580307
+   ],
+   [
+    -6.291815755532811e-09,
+    -0.3802065428193707,
+    -0.9249016081710213
+   ]
+  ]
+ },
+ "sim_time": 1.5,
+ "files": {
+  "rgb": "head_dining_south_rgb.png",
+  "depth_mm": "head_dining_south_depth_mm.png"
+ }
+}

@@ -4,9 +4,9 @@
 #
 # `environment/` (less its `setup/`) is the sole build context and the final stage derives DIRECTLY from the official
 # ALE base, at an exact version. Nothing hidden is here: the house cell's code, the grader and the reference program
-# live in tests/ and solution/ (absent from the image); the givens and the practice lab are staged by
-# environment/setup/setup.sh. The image is furniture_assembly_from_drawings's (the same room, the same G1 and the same
-# renderer), with the house cell's lab paths: no CAD or mesh toolchain.
+# live in tests/ and solution/ (absent from the image; the agent's session runs no cell, there is no practice lab); the
+# givens are staged by environment/setup/setup.sh. The image is furniture_assembly_from_drawings's (the same room, the
+# same G1 and the same renderer, which the grader's cell uses in the verifier): no CAD or mesh toolchain.
 FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1
 
 COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /usr/local/bin/uv
@@ -21,8 +21,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libfontconfig1 libfreetype6 libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# World-readable venv at /opt/venv: setup (root), the agent (`user`), the oracle (`user`), the practice lab (`arbcell`)
-# and verify (root) all use this one interpreter. UV_PYTHON_INSTALL_DIR must be world-traversable too (the default
+# World-readable venv at /opt/venv: setup (root), the agent (`user`), the oracle (`user`) and verify (root, and the
+# graded program as `nobody`) all use this one interpreter. UV_PYTHON_INSTALL_DIR must be world-traversable too (the default
 # /root/.local/share/uv is not, and the venv then fails for every unprivileged account with a misleading
 # ModuleNotFoundError). Python 3.12: the engine stages `ale_verify` into the `python3` it finds and refuses anything
 # below 3.12. The ALE base ships a standalone CPython 3.12 at /opt/python, so uv links the venv against it.
@@ -101,9 +101,15 @@ RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/decor_assets.sha25
     && echo "[image] room decor: $(find /opt/arb-assets/room_decor -type f | wc -l) files in /opt/arb-assets/room_decor"
 ENV ARB_ROOM_DECOR_DIR=/opt/arb-assets/room_decor
 
-# The practice lab's account (environment/setup/setup.sh starts the lab server as it): a system account with no login
-# shell and no home, so the lab's cell and its state stay out of the agent's reach.
-RUN useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin arbcell
+# The survey photos (survey/: camera frames of two development scenes of the apartment, rendered by the grader's cell
+# from seeds that are not among the graded scenes; tests/review/survey_photos.md says how), root-owned and read-only:
+# environment/setup/setup.sh stages a copy into the agent home (~/given/cell/survey), tests/test.sh one into the
+# grader's copy of the givens (tests/given_hashes.json lists them).
+COPY survey /opt/arb-assets/survey
+RUN chown -R root:root /opt/arb-assets/survey \
+    && chmod -R u+rwX,go+rX,go-w /opt/arb-assets/survey \
+    && echo "[image] survey photos: $(find /opt/arb-assets/survey -type f | wc -l) files"
+ENV ARB_SURVEY_DIR=/opt/arb-assets/survey
 
 # The declared artifact path must exist even when nobody works (the engine captures declared artifacts after every
 # episode, untouched validation passes included).
@@ -125,8 +131,8 @@ RUN printf '%s\n' \
     && chmod 0644 /etc/profile.d/10-arb-venv.sh
 
 # Fail the build early if the toolchain is broken: the imports, an offscreen OSMesa render, the Filament renderer on
-# lavapipe, the robot model compiles from the pinned copy, and the AGENT and LAB accounts can use the venv and read the
-# model (the agent's own run also leaves it a ready matplotlib font cache, owned by the agent); finally, nothing in the
+# lavapipe, the robot model compiles from the pinned copy, and the AGENT account and the graded program's `nobody`
+# can use the venv and read the model (the agent's own run also leaves it a ready matplotlib font cache, owned by the agent); finally, nothing in the
 # agent home is root-owned. One import line per -c: a continuation line starting with `from` reads as a Dockerfile FROM
 # to the final-stage lint.
 RUN export HOME=/root MPLCONFIGDIR=/tmp/mpl-build \
@@ -135,8 +141,8 @@ RUN export HOME=/root MPLCONFIGDIR=/tmp/mpl-build \
     && python3 -c "import mujoco._render_filament as F, mujoco.experimental.studio.window; c = F.Context(F.ContextConfig(graphics_api=F.GraphicsApi.GRAPHICS_API_VULKAN)); print('[image] Filament on Vulkan (lavapipe) OK')" \
     && python3 -c "import os, mujoco; ms = [mujoco.MjModel.from_xml_path(os.path.join(os.environ['ARB_G1_DIR'], f)) for f in ('g1_with_hands.xml', 'g1_mjlab.xml')]; print('[image] G1 models compile, nbody', [m.nbody for m in ms])" \
     && runuser -u user -- env -u MPLCONFIGDIR /opt/venv/bin/python3 -c "import os, mujoco, numpy, scipy, PIL, cv2, matplotlib; m = mujoco.MjModel.from_xml_path(os.path.join(os.environ['ARB_G1_DIR'], 'g1_with_hands.xml')); print('[image] agent-UID import OK, G1 nbody', m.nbody)" \
-    && runuser -u arbcell -- env MPLCONFIGDIR=/tmp/mpl-lab /opt/venv/bin/python3 -c "import os, mujoco, numpy, PIL, matplotlib; m = mujoco.MjModel.from_xml_path(os.path.join(os.environ['ARB_G1_DIR'], 'g1_mjlab.xml')); print('[image] lab-UID import OK, G1 nbody', m.nbody)" \
-    && rm -rf /tmp/mpl-build /tmp/mpl-lab \
+    && runuser -u nobody -- env MPLCONFIGDIR=/tmp/mpl-nobody /opt/venv/bin/python3 -c "import os, mujoco, numpy, PIL, cv2, matplotlib; m = mujoco.MjModel.from_xml_path(os.path.join(os.environ['ARB_G1_DIR'], 'g1_with_hands.xml')); print('[image] nobody-UID import OK, G1 nbody', m.nbody)" \
+    && rm -rf /tmp/mpl-build /tmp/mpl-nobody \
     && test -z "$(find /home/user -user root -print -quit)"
 
 # The claude-code harness aborts a model stream after 300 s without a byte (Bun's HTTP idle timeout and the CLI's

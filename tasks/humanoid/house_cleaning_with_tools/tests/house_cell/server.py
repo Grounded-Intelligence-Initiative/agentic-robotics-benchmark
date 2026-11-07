@@ -1,5 +1,5 @@
 """The house cell's wire surface (grader side): CellServer wraps one Cell episode and answers the JSON-lines requests
-of the program under test (cellkit.wire.serve_episode drives it; the practice lab serves it too).
+of the program under test (cellkit.wire.serve_episode drives it).
 
 Public methods (all a program may call). Every parameter is validated strictly (allowed keys, types, lengths, finite
 numbers within +-1000); a malformed request changes nothing and is answered {"error": "bad_params", "detail": ...}:
@@ -295,7 +295,7 @@ class CellServer:
         t0 = time.time()
         err = None
         try:
-            from .reference import Reference          # grader-side only: the lab's copy of the cell has none
+            from .reference import Reference          # grader-side only
             ok = Reference(self.cell, log=self.log).run()
         except Exception:  # noqa: BLE001 - the reference's failure is reported, the episode is scored as it stands
             ok, err = False, traceback.format_exc()

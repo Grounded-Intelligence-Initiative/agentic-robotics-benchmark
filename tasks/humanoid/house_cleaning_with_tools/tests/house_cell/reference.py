@@ -1621,8 +1621,9 @@ def stance_search(ref, side, poses, base0, heights, pitches, offsets=None, holdi
 
 
 # ================================================================================================ planned skills
-def _nominal(ref, surf, p, side):
-    """(base0, heights, pitches, low) to work at an object on `surf` at p with `side`'s hand."""
+def _nominal(ref, surf, p, side, flip=False):
+    """(base0, heights, pitches, low) to work at an object on `surf` at p with `side`'s hand (`flip`: on the dining
+    table, from the other long side than the nearer one)."""
     lat = 0.12 if side == "left" else -0.12
     if surf == "coffee_top":
         C = RM.COFFEE
@@ -1636,6 +1637,8 @@ def _nominal(ref, surf, p, side):
         if name_of_book(ref, p) is not None:
             _, Rb = ref.pose(name_of_book(ref, p))
             south = float(-Rb[1, 0]) < 0.0           # the spine (body -x) faces south: work from the south side
+        if flip:
+            south = not south
         if south:
             base = (float(np.clip(p[0] + lat, dx - lx / 2 + 0.10, dx + lx / 2 - 0.10)), dy - ly / 2 - 0.20, math.pi / 2)
         else:
@@ -1731,11 +1734,30 @@ def take(ref, name, side, lift=0.12):
     if nom is None:
         ref.log("[ref] take %s: it lies on the %s, out of reach" % (name, surf))
         return False
-    base0, heights, pitches, low = nom
     ref.stow()                                   # plan from the configuration the walk will leave the arm in
     if ref.held[side]:
         ref.log("[ref] take %s: the %s hand still holds %s" % (name, side, ref.held[side]))
         return False
+    qs, why_last = None, None
+    # from the nearer long side of the dining table first, then (a glass or a can far in) from the other one
+    noms = [nom]
+    if surf == "dining_top" and O.LOOSE[name][0] != "book":
+        noms.append(_nominal(ref, surf, p, side, flip=True))
+    for base0, heights, pitches, low in noms:
+        qs = _take_plan(ref, name, side, base0, heights, pitches, lift)
+        if qs is not None:
+            qs, poses_used, g, stance = qs
+            break
+        why_last = ref.take_why
+    if qs is None:
+        ref.log("[ref] take %s: no stance for any grasp (last: %s)" % (name, why_last))
+        return False
+    return _take_go(ref, name, side, qs, poses_used, g, stance, low)
+
+
+def _take_plan(ref, name, side, base0, heights, pitches, lift):
+    """(joints, hand poses, grasp point, stance) of the first grasp of `name` reachable from near base0, or None
+    (the last failure in ref.take_why)."""
     qs, why_last = None, None
     frames = _grasp_frames(ref, name, side, base0)
     for passes in ((False,), (True,)):               # every grasp by the straight approach first
@@ -1755,9 +1777,14 @@ def take(ref, name, side, lift=0.12):
                 break
         if qs is not None:
             break
+    ref.take_why = why_last
     if qs is None:
-        ref.log("[ref] take %s: no stance for any grasp (last: %s)" % (name, why_last))
-        return False
+        return None
+    return qs, poses_used, g, stance
+
+
+def _take_go(ref, name, side, qs, poses_used, g, stance, low):
+    """Walk to the planned stance and take `name` (take())."""
     x, y, yaw, h, pitch = stance
     ref.hand(side, False)
     if low:
@@ -1969,15 +1996,50 @@ def tray_spot(ref, name):
     return np.array([cx + 0.15, cy - 0.075 + 0.15 * k, z0 + 0.001])
 
 
+def tray_spots(ref, name):
+    """tray_spot first; for a glass then the tray's east half's other spot (if no glass stands there) and the top of
+    the plate stack (a dish on a dish on the tray counts)."""
+    out = [tray_spot(ref, name)]
+    if O.LOOSE[name][0] != "glass":
+        return out
+    D = RM.DISH_TRAY
+    (cx, cy) = D["center"]
+    z0 = RM.KITCHEN["top_z"] + D["base_t"]
+    k = 0 if name.endswith("1") else 1
+    other = np.array([cx + 0.15, cy - 0.075 + 0.15 * (1 - k), z0 + 0.001])
+    if all(np.linalg.norm(ref.c.pose(g)[0][:2] - other[:2]) > 0.08 for g in O.DISHES if g != name):
+        out.append(other)
+    top = z0
+    for pl in O.DISHES:
+        if O.LOOSE[pl][0] == "plate":
+            pk, _ = ref.c.pose(pl)
+            if abs(pk[0] - (cx - 0.045)) < 0.06 and abs(pk[1] - cy) < 0.08 and pk[2] < z0 + 0.06:
+                top = max(top, pk[2] + O.PLATE["h"])
+    if top > z0:
+        out.append(np.array([cx - 0.045, cy, top + 0.001]))
+    return out
+
+
 def tray_put(ref, side, name):
-    tgt = tray_spot(ref, name)
     po, Ro = ref.pose(name)
     lat = 0.12 if side == "left" else -0.12
-    above = tgt + np.array([0.0, 0.0, 0.07])
-    targets = [(above, Ro), (tgt + np.array([0.0, 0.0, 0.03]), Ro), (tgt + np.array([0.0, 0.0, 0.008]), Ro)]
     support = ("dish_tray",) + tuple(f"{k}_col" for k in O.DISHES if k != name and O.LOOSE[k][0] == "plate")
-    return put(ref, side, name, targets, (RM.KITCHEN["top_x1"] + 0.16, tgt[1] + lat, math.pi), (0.79,),
-               (0.30, 0.15, 0.45, 0.52), release_settle=40, what="tray", allow=support)
+    ok = False
+    # the planned spot, then (a glass) the others
+    for n, tgt in enumerate(tray_spots(ref, name)):
+        ref.sync_held()
+        if ref.held[side] != name:
+            break
+        if n:
+            ref.log("[ref] tray %s: another spot (%.3f, %.3f, %.3f)" % (name, *tgt))
+            ref.stow()
+        above = tgt + np.array([0.0, 0.0, 0.07])
+        targets = [(above, Ro), (tgt + np.array([0.0, 0.0, 0.03]), Ro), (tgt + np.array([0.0, 0.0, 0.008]), Ro)]
+        ok = put(ref, side, name, targets, (RM.KITCHEN["top_x1"] + 0.16, tgt[1] + lat, math.pi), (0.79,),
+                 (0.30, 0.15, 0.45, 0.52), release_settle=40, what="tray", allow=support)
+        if ok:
+            break
+    return ok
 
 
 def shelf_put(ref, side, name):

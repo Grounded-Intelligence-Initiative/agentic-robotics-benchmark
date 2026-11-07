@@ -11,7 +11,7 @@ Your program `/home/user/submission/clean.py` exposes `solve(cell) -> None`. `ce
 | `get_state()` | `sim_time`, `done`, `robot`: `base_pose` [x, y, yaw] (localised, noisy), `stand_height`, `base_moving`, `q` {joint name: angle} for the waist, arms and hands, `hands: {left/right: {closed, tactile_N, grasp_pose_in_robot [x, y, z, qw, qx, qy, qz], ik_residual}}` | see `cell_manual.md` section 6 |
 | `command(**targets)` | `{"ok": true, "notes": [...]}` | any subset of the targets below; each target is held until replaced |
 | `step(n_ticks)` | `sim_time`, `done`, `events` | advances `n_ticks` x 10 ms (1 <= n_ticks <= 500); `events`: only `safety:<what>` and `episode_over` |
-| `get_camera(name, depth=True)` | `camera`, `frame_index`, `width`, `height`, `format` (`png`), `rgb_png_b64`, `intrinsics`, `pose_in_room` {`position`, `rotation` (3 x 3, columns = the image's x right, y down, z forward axes in the room)}, `sim_time`, and with depth `sensor_depth_u16_mm_b64`, `depth_unit_m` (0.001), `depth_invalid_value` (0) | `name`: `ceiling_kitchen`, `ceiling_dining`, `ceiling_living`, `head`; at most 1500 frames per episode, then `{"error": "camera_budget"}` |
+| `get_camera(name, depth=True)` | `camera`, `frame_index`, `width`, `height`, `format` (`png`), `rgb_png_b64`, `intrinsics`, `pose_in_room` {`position`, `rotation` (3 x 3, columns = the image's x right, y down, z forward axes in the room)}, `sim_time`, and with depth `sensor_depth_u16_mm_b64`, `depth_unit_m` (0.001), `depth_invalid_value` (0) | `name`: `ceiling_kitchen`, `ceiling_dining`, `ceiling_living`, `head`; at most 1500 frames per episode, then `{"error": "camera_budget"}`; `{"error": "camera_unavailable"}` if the renderer fails (the grader then does not score the run: an infrastructure failure, never your score) |
 | `finish()` | `{"ok": true}` | ends the episode; the grader then reads the apartment's state |
 
 `command` targets (cell_manual.md section 5):
@@ -38,23 +38,7 @@ Malformed parameters (a wrong type or shape, an unknown key, a number that is no
 * Graded episodes: the grader launches your program itself (see the instruction): the client's `main()` imports `clean`
   from the current directory and calls `solve(cell)` on a cell connected to the program's stdin / stdout, then calls
   `finish()`. `print()` goes to stderr.
-* Practice: `house_client.client.connect_practice()` connects to the practice cell, a separate service
-  (`/run/house-cell/practice.sock`) that runs one fresh practice episode per connection with exactly the graded rules and
-  budgets (episodes drawn like the graded ones, never the same), at most 60 practice episodes in your session
-  (`cell._call("status")` tells how many are used). Example:
-
-```python
-import sys; sys.path.insert(0, "/home/user/given/lib")
-from house_client.client import connect_practice
-sys.path.insert(0, "/home/user/submission")
-import clean
-cell = connect_practice()
-try:
-    clean.solve(cell)
-finally:
-    cell.finish()
-```
-
-The practice cell answers only the public calls above (and `status`); it never tells you about the objects, the
-grease, the crumbs or the score either. Close the episode with `finish()` (or by closing the connection) before opening
-the next one.
+* There is no practice cell: nothing in your session runs the cell. `describe.json` (this folder) is the reply of
+  `describe()`; the survey photos (`survey/`, cell_manual.md section 11) are camera frames as `get_camera` returns
+  them (`house_client.client.load_frame(path)` rebuilds the reply, `decode_frame` reads it). `Cell(send, recv)`
+  accepts any pair of line functions, so a stand-in cell of your own can drive your program for testing.

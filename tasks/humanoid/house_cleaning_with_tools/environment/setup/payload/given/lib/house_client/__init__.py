@@ -1,12 +1,11 @@
-"""house_client: the program-side library of the house cell (the proxy, frame decoding, the transports).
+"""house_client: the program-side library of the house cell (the proxy, frame decoding, the transport).
 
-    from house_client import Cell, CellError, decode_frame, connect_practice, given_dir
+    from house_client import Cell, CellError, decode_frame, load_frame, given_dir
 
-The graded run hands solve(cell) a connected Cell; the practice lab is reached with connect_practice().
+The graded run hands solve(cell) a connected Cell; load_frame() reads a survey photo as a get_camera reply.
 """
 
-from .client import (BOOTSTRAP, PRACTICE_SOCKET, PUBLIC_CAMERAS, Cell, CellError, connect_practice, connect_stdio,
-                     decode_frame, given_dir, main)
+from .client import BOOTSTRAP, PUBLIC_CAMERAS, Cell, CellError, connect_stdio, decode_frame, given_dir, load_frame, main
 
-__all__ = ["Cell", "CellError", "decode_frame", "connect_stdio", "connect_practice", "given_dir", "main", "BOOTSTRAP",
-           "PUBLIC_CAMERAS", "PRACTICE_SOCKET"]
+__all__ = ["Cell", "CellError", "decode_frame", "load_frame", "connect_stdio", "given_dir", "main", "BOOTSTRAP",
+           "PUBLIC_CAMERAS"]
