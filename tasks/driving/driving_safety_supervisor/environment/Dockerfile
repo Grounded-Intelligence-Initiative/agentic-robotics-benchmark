@@ -63,3 +63,12 @@ RUN python3 -c "import sys; assert sys.version_info >= (3, 12), sys.version; pri
     && runuser -u user -- /opt/venv/bin/python3 -c "import numpy, PIL, torch, torchvision, transformers; print('[image] agent-UID supervisor import OK')" \
     && runuser -u user -- /opt/carla/venv/bin/python -c "import carla; print('[image] agent-UID CARLA client OK')" \
     && runuser -u carlasim -- /opt/carla/venv/bin/python -c "import carla; print('[image] simulator-UID CARLA client OK')"
+
+# The claude-code harness aborts a model stream after 300 s without a byte (Bun's HTTP idle timeout and the CLI's
+# stream watchdog); both timers are raised to the gateway's own 1800 s upstream ceiling. ENV is inherited by every
+# process the guest service starts, and the profile.d file covers the login shell the CLI is launched with (`bash -lc`).
+# Nothing else in this image reads them. Appended after every toolchain layer so the layers above stay cached.
+ENV BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800 CLAUDE_STREAM_IDLE_TIMEOUT_MS=1800000
+RUN printf '%s\n' 'export BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800' 'export CLAUDE_STREAM_IDLE_TIMEOUT_MS=1800000' \
+        > /etc/profile.d/99-ale-idle-timeouts.sh \
+    && chmod 0644 /etc/profile.d/99-ale-idle-timeouts.sh
