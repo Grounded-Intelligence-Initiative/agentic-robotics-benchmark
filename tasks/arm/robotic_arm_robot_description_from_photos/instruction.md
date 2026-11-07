@@ -6,7 +6,7 @@ possibly taller, the shoulder's offset from the yaw axis possibly changed, possi
 fingers longer or shorter, possibly printed spacer blocks in some servo pockets), fitted the servos at arbitrary
 positions and left no dimensions. Like every printed
 arm, this one also carries the small errors of its own build. The arm has been shipped to a partner; before it left, a
-colleague photographed it once on the lab bench while its servos' readings were logged.
+colleague photographed it once in the lab's photo cove while its servos' readings were logged.
 The lab needs the arm's simulation model: the MJCF whose kinematics match the REAL arm (joint axes and positions, the pose
 at each servo reading, the tool points, the gripper, the firmware limits) with sane inertials and collision geometry, in
 the chain's contract, so the control and environment stages can use it.
@@ -27,9 +27,9 @@ grader scores the files you leave behind.
 
 | File | What it is |
 |---|---|
-| `photos/photo_01.jpg` ... `photo_21.jpg`, `photos/photos.json`, `photos/README.md` | the photo session (1600 x 1200 JPEG, one hand-held phone, one lens, not calibrated, camera poses not recorded): 01-18 = six arm poses A-F, three photos each from different sides; 19 / 20 = close-ups of the gripper lowered near the bench, jaw nearly closed (the fingers not touching) / open; 21 = a close-up of the base (the arm in one of the poses A-F). `photos.json`: per photo the group, the arm configuration label, the scale references on the bench, the lens's 35 mm-equivalent focal-length class |
+| `photos/photo_01.jpg` ... `photo_21.jpg`, `photos/photos.json`, `photos/README.md` | the photo session (1600 x 1200 JPEG, one hand-held phone, one lens, not calibrated, camera poses not recorded): 01-18 = six arm poses A-F, three photos each from different sides; 19 / 20 = close-ups of the gripper lowered near the platform, jaw nearly closed (the fingers not touching) / open; 21 = a close-up of the base (the arm in one of the poses A-F). `photos.json`: per photo the group, the arm configuration label, the scale references on the platform, the lens's 35 mm-equivalent focal-length class |
 | `photos/bus_log.json` | per photo the six servo readings logged at the moment of the photo: encoder ticks and the bus angle b = (ticks - 2048) x 2 pi / 4096 rad. Exact (the servos' own encoders) |
-| `scale_refs.md` | the references that were on the bench in some photos: a 300 mm steel rule (flat), a 66 x 122 mm drink can (standing), an ID-1 card (flat); their poses were not recorded. There is no calibration target |
+| `scale_refs.md` | the references that were on the platform in some photos: a 300 mm steel rule (flat), a 66 x 122 mm drink can (standing), an ID-1 card (flat); their poses were not recorded. There is no calibration target |
 | `parts/P01.stl` ... `P10.stl`, `parts/parts.json`, `parts/base_in_world.stl`, `parts/servo.stl` | the PUBLISHED printed parts as printed (mm, each in its own print frame: resting on a face on z = 0, bounding box centred, arbitrary rotation about z; part roles and links in `parts.json`), the published base placed in the world frame, the servo's vendor mesh (mm, vendor frame) |
 | `servo_datasheet.md`, `servo_datasheet.png`, `servo_drawing.png` | the servo BUS-SERVO-12V-A (all six joints): 60 g, 2.94 N m stall at 12 V, 4096-tick encoder, dimensions |
 | `servo_config.json` | the EEPROM dump of the six servos of THIS arm, read off the bus: drive-mode bit (1 = the reading's direction inverted), firmware min / max angle limits in ticks, offset register, torque limit; servo ids 1-6 = base_yaw, shoulder_pitch, elbow_pitch, wrist_pitch, wrist_roll, jaw |
@@ -40,8 +40,8 @@ grader scores the files you leave behind.
 
 ## Frames and conventions (full text: `robot_contract.md`)
 
-- World frame: the frame of `parts/base_in_world.stl` (origin on the table top, the mounting plane, nominally on the
-  base-yaw axis, within the build's errors of about a millimetre), z up, +y = the base's forward direction
+- World frame: the frame of `parts/base_in_world.stl` (origin on the mounting plane, the platform the base is screwed to, nominally
+  on the base-yaw axis, within the build's errors of about a millimetre), z up, +y = the base's forward direction
   (reaching forward is a negative shoulder pitch), +x = the pitch-axis direction at yaw 0. SI units in `robot.xml`;
   `<compiler angle="radian">` stated explicitly.
 - Bodies `base`, `shoulder`, `upper_arm`, `forearm`, `wrist`, `gripper`, `jaw`; hinges `base_yaw`, `shoulder_pitch`,
@@ -105,7 +105,7 @@ scores 1.0 on everything.
 ## Practical notes
 
 - The bus log is exact; the cameras are not known. There is no planar calibration target; the rule, the card and the can
-  have their everyday nominal sizes and are on the bench in a few photos only (`photos.json`). The lens is one lens for
+  have their everyday nominal sizes and are on the platform in a few photos only (`photos.json`). The lens is one lens for
   the whole session; its focal length changes slightly from photo to photo (autofocus) and its distortion is not
   corrected.
 - MuJoCo renders offscreen through OSMesa in this environment (a 800 x 600 frame of the arm takes a fraction of a second).

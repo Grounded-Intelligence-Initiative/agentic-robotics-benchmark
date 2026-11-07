@@ -1,19 +1,18 @@
-# robotic_arm_robot_description_from_photos's environment image (information tier, robot-description stage).
+# robotic_arm_robot_description_from_photos's environment image (the robot-description stage of the robotic-arm workflow).
 #
 # `environment/` without its `setup/` folder is the sole build context and the final stage derives DIRECTLY from the
-# official ALE base. The block below is the chain's shared base `shared/images/arb-base-mujoco/Dockerfile` (in the
-# development workspace) reproduced verbatim (same RUN / COPY / ENV lines, the same pins in requirements.txt). Task
-# layers: opencv-python-headless + scikit-image (a human engineer's photogrammetry tools), the idle-timeout ENV block,
-# then the task-asset fetch. The image carries the agent-visible givens kept in the asset dataset (the photos, the
+# official ALE base. The block below is the arm tasks' common base (the same RUN / COPY / ENV lines and the same pins in
+# requirements.txt as the other arm photo tasks). Task layers: opencv-python-headless + scikit-image (a human engineer's
+# photogrammetry tools), the idle-timeout ENV block, then the task-asset fetch. The image carries the agent-visible givens kept in the asset dataset (the photos, the
 # published parts, the servo pages; /opt/task-assets/payload) and no hidden data: environment/setup/setup.sh stages the
 # givens, the grader lives in tests/ (absent from the image).
 FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1
 
 COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /usr/local/bin/uv
 
-# OSMesa for software rendering (owner decision Q12 / 05 B5: EGL enumerates 0 devices on the
-# host and in Docker, so every sim render of the chain goes through MUJOCO_GL=osmesa); the X /
-# GL client libraries OCP and MuJoCo link even when headless; libgomp for manifold3d / CoACD.
+# OSMesa for software rendering (the image has no GPU, so every MuJoCo render goes through
+# MUJOCO_GL=osmesa); the X / GL client libraries OCP and MuJoCo link even when headless; libgomp
+# for manifold3d / CoACD.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libosmesa6 libgl1 libglu1-mesa libglew2.2 libxrender1 libxext6 libsm6 libxi6 \
         libxcursor1 libxinerama1 libxrandr2 libfontconfig1 libfreetype6 libgomp1 \
@@ -24,15 +23,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # (the default /root/.local/share/uv is untraversable for the agent account).
 #
 # Python 3.12: the engine stages `ale_verify` into the `python3` it finds and refuses anything
-# below 3.12 (engine-facts.md "Verification API"; drone_hover/image/Dockerfile). The ALE base
-# ships a standalone CPython 3.12 at /opt/python, so uv links the venv against it.
+# below 3.12. The ALE base ships a standalone CPython 3.12 at /opt/python, so uv links the venv
+# against it.
 ENV UV_PYTHON_INSTALL_DIR=/opt/uv-python
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH=/opt/venv/bin:$PATH
 COPY requirements.txt /tmp/requirements.txt
-# --no-cache: the wheel cache would otherwise stay inside this layer (~1 GB); the image must
-# stay lean (host / is at 99 %, owner decision Q12: Docker data-root move deferred).
+# --no-cache: the wheel cache would otherwise stay inside this layer (~1 GB).
 RUN uv venv /opt/venv --python 3.12 \
     && uv pip install --no-cache --python /opt/venv -r /tmp/requirements.txt \
     && find /opt/venv -name '__pycache__' -type d -prune -exec rm -rf {} + \
@@ -43,8 +41,8 @@ RUN uv venv /opt/venv --python 3.12 \
 # artifacts after every episode, untouched validation passes included).
 RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
 
-# Headless defaults. MUJOCO_GL=osmesa is the chain's rendering path (CHAIN_PLAN.md section 4.0:
-# "Sim renders through OSMesa inside the image"); a task may override to egl where a GPU exists.
+# Headless defaults: MuJoCo renders through OSMesa inside the image; a task may override to egl
+# where a GPU exists.
 ENV MPLBACKEND=Agg
 ENV MUJOCO_GL=osmesa
 ENV PYOPENGL_PLATFORM=osmesa
@@ -57,8 +55,7 @@ RUN python3 -c "import mujoco, mink, pinocchio, coacd, trimesh, manifold3d, gymn
     && runuser -u user -- python3 -c "import mujoco, mink, cadquery, coacd; print('[arb-base-mujoco] agent-UID import OK')"
 
 # ---- task-specific layers (robotic_arm_robot_description_from_photos) -------------------------------------------------------------
-# Photogrammetry / image tools for the agent (T17, robot_description_and_control.md Q-RC6): OpenCV (headless) and scikit-image, pinned
-# against the base's numpy 2.5.3.
+# Photogrammetry / image tools for the agent: OpenCV (headless) and scikit-image, pinned against the base's numpy 2.5.3.
 # Only the NEW files are touched after the install (a chmod -R over the whole venv would copy the base's 2 GB venv
 # into this layer): the marker file bounds the find.
 COPY requirements-photo.txt /tmp/requirements-photo.txt
@@ -69,13 +66,12 @@ RUN touch /tmp/.before-photo-layer && sleep 1 \
     && rm -f /tmp/.before-photo-layer
 RUN runuser -u user -- python3 -c "import cv2, skimage, numpy, scipy, mujoco, yaml, jsonschema; print('[arm-rd-photos] agent-UID import OK cv2', cv2.__version__, 'skimage', skimage.__version__)"
 
-# CHAIN_PLAN Q15 workaround (2026-09-27; docs/plan/arm/eval/engine-patches/Q15-request-reissue.md section 6). The
-# claude-code harness aborts a model stream after 300 s without a byte (Bun's HTTP idle timeout and the CLI's stream
-# watchdog); both timers are raised to the gateway's own 1800 s upstream ceiling. ENV is inherited by every process
-# the guest service starts, and the profile.d file covers the login shell the CLI is launched with (`bash -lc`).
-# Nothing else in this image reads them. Appended after every toolchain layer so the layers above stay cached.
-# At the pinned engine the harness sets both variables itself (600 s) and its values win over an image ENV
-# (docs/contributing-a-task.md section 7), so this block changes nothing there; it stays as in the sibling photo tasks.
+# Stream idle timers: the claude-code harness of earlier engines aborted a model stream after 300 s without a byte
+# (Bun's HTTP idle timeout and the CLI's stream watchdog); both are raised to the gateway's own 1800 s upstream ceiling.
+# ENV is inherited by every process the guest service starts, and the profile.d file covers the login shell the CLI is
+# launched with (`bash -lc`). Nothing else in this image reads them. At the pinned engine the harness sets both
+# variables itself (600 s) and its values win over an image ENV (docs/contributing-a-task.md section 7), so this block
+# changes nothing there; it stays as in the other arm photo tasks.
 ENV BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800 CLAUDE_STREAM_IDLE_TIMEOUT_MS=1800000
 RUN printf '%s\n' 'export BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800' 'export CLAUDE_STREAM_IDLE_TIMEOUT_MS=1800000' \
         > /etc/profile.d/99-ale-idle-timeouts.sh \

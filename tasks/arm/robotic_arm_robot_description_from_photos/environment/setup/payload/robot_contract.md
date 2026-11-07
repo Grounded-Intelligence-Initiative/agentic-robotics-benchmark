@@ -27,7 +27,7 @@ they must follow this contract exactly. The grader checks every rule of the "gat
 
 ## Frames, angles, calibration
 
-- World frame: the frame of `parts/base_in_world.stl`: origin on the table top (the arm's mounting plane), nominally on
+- World frame: the frame of `parts/base_in_world.stl`: origin on the mounting plane (the platform the base is screwed to), nominally on
   the base-yaw axis (the build's errors of about a millimetre apply to every joint, the yaw axis included), z up, +y = the
   base's forward direction (the direction the arm reaches at design yaw 0; reaching forward is a negative shoulder pitch), +x = the
   pitch-axis direction at yaw 0. SI units everywhere in `robot.xml` (metres, radians, kilograms).

@@ -1,13 +1,13 @@
-# robotic_arm_robot_description_from_photos: the robot-description stage of the robotic-arm full-stack workflow (an atomic
-# task). A lab inherited a customised build of a published six-servo desktop arm (the beams lengthened or shortened, the
-# base and shoulder possibly taller, the shoulder offset possibly changed, possibly a longer or shorter wrist, longer or
-# shorter fingers, possibly printed spacers in servo pockets, the build's own small errors, arbitrary servo calibration,
-# cover plates over the pitch-axis brackets); the arm has been shipped. The
-# engineer has one fixed photo session of it on a lab bench (21 photos path-traced in a lab room, one uncalibrated phone
-# lens, no calibration target, a steel rule, a can and a card in a few photos only) with the exact per-photo servo
-# readings, the published parts, the servo datasheet, the EEPROM dump, slicer masses and the weighed total, qualitative
-# build notes and the contract, and writes the MJCF + calibration of the real arm. No other build of the arm and no
-# checker that knows the real arm.
+# robotic_arm_robot_description_from_photos: the robot-description stage of the robotic-arm full-stack workflow (an
+# atomic task). A lab inherited a customised build of a published six-servo desktop arm (the beams lengthened or
+# shortened, the base and shoulder possibly taller, the shoulder offset possibly changed, possibly a longer or shorter
+# wrist, longer or shorter fingers, possibly printed spacers in servo pockets, the build's own small errors, arbitrary
+# servo calibration, cover plates over the pitch-axis brackets); the arm has been shipped. The engineer has one fixed
+# photo session of it in a photo cove (21 photos path-traced, a seamless grey background, one uncalibrated phone lens,
+# no calibration target, a steel rule, a can and a card in a few photos only) with the exact per-photo servo readings,
+# the published parts, the servo datasheet, the EEPROM dump, slicer masses and the weighed total, qualitative build
+# notes and the contract, and writes the MJCF + calibration of the real arm. No other build of the arm and no checker
+# that knows the real arm.
 #
 # Grading (tests/verify.py; knobs in tests/grader_config.json; static, no agent code runs): gate model_loads (the
 # contract, incl. the verify-start lockdown's late-write rule) x fk_tcp 0.30, fk_axes 0.15, downstream_reach 0.20 (the
