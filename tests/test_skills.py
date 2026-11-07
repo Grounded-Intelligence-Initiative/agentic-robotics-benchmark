@@ -46,7 +46,7 @@ RETIRED_VOCABULARY = (
 
 # The skill that records model runs' trajectories, and the script it drives.
 TRAJECTORY_SKILL = "agent-trajectory-archiving"
-TRAJECTORY_COMMANDS = ("inventory", "curate", "export", "scan", "upload", "sample")
+TRAJECTORY_COMMANDS = ("inventory", "curate", "export", "scan", "upload", "sample", "tasklog", "hf-upload")
 
 
 def _all_skill_files() -> list[Path]:

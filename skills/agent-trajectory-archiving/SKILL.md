@@ -1,6 +1,6 @@
 ---
 name: agent-trajectory-archiving
-description: Record, select, export, secret-scan and upload the trajectories of model runs (`ale run` with a real agent) on this benchmark's tasks with scripts/trajectories.py. One trajectory per task and agent (the task's latest version, its lowest-scoring episode); each kept folder holds the episode as the engine wrote it plus run.json (summary, score, tokens and cost, the task text, a per-step digest), trajectory.jsonl.gz, steps.bin (the pictures the agent saw), a poster and optional replays, under a root index. Every path, remote and run directory is a parameter. Use it right after every model run.
+description: Record, select, export, secret-scan and upload the trajectories of model runs (`ale run` with a real agent) on this benchmark's tasks with scripts/trajectories.py, as task logs (trajectory + results + verifier log, the latest scored episode per task and agent, <platform>/<task>/<model>-<harness>-<effort>/) for a Hugging Face dataset, or as an archive, one trajectory per task and agent (the task's latest version, its lowest-scoring episode), in which each kept folder holds the episode as the engine wrote it plus run.json (summary, score, tokens and cost, the task text, a per-step digest), trajectory.jsonl.gz, steps.bin (the pictures the agent saw), a poster and optional replays, under a root index. Every path, remote and run directory is a parameter. Use it right after every model run.
 ---
 
 # Agent trajectory archiving
@@ -9,7 +9,9 @@ A model run of a task (`ale run` with a real agent, the difficulty test of
 `docs/contributing-a-task.md` §7) leaves one folder per episode under the run's `--runs-dir`. This
 skill turns those folders into an **archive**: one trajectory per task and agent, each readable
 without the engine, with a root index. Everything goes through one script,
-`scripts/trajectories.py` (stdlib only; Pillow, ffmpeg and rclone are used when present):
+`scripts/trajectories.py` (stdlib only; Pillow, ffmpeg, rclone and `huggingface_hub` are used when
+present). The **task log** (section 12) is the public record of a run; the archive (sections 3
+to 9) is the fuller working copy.
 
 | subcommand | does |
 |---|---|
@@ -19,6 +21,8 @@ without the engine, with a root index. Everything goes through one script,
 | `scan` | configured secrets and token patterns; exit status 1 on a hit |
 | `upload` | rclone copy of the archive to any destination, scanned first, checked after |
 | `sample` | resource samples of one run's own episode containers, started beside `ale run` |
+| `tasklog` | one **task log** per task and agent that counts (the latest scored episode) into a dataset folder (section 12) |
+| `hf-upload` | the task-log dataset to a Hugging Face dataset repository, scanned first, checked after |
 
 `python3 scripts/trajectories.py <subcommand> --help` lists every option.
 
@@ -34,6 +38,8 @@ without the engine, with a root index. Everything goes through one script,
 | the benchmark checkout that resolves task commits, anchors and platforms | `--repo` | (this checkout) |
 | list prices, USD per million tokens | `--prices` | (built-in table) |
 | replays, stills and robot rules | `--extras` | |
+| the task-log dataset (a local folder) | `tasklog --out`, `hf-upload --dataset` | `ARB_TASK_LOGS` |
+| the Hugging Face dataset repository, `OWNER/NAME` | `hf-upload --repo` | `ARB_TASK_LOG_REPO` |
 
 The rclone remote (a cloud drive, a bucket, a server) is set up with `rclone config` on the
 machine that uploads; its credentials stay in that machine's `rclone.conf`. Never commit an
@@ -290,3 +296,81 @@ so.
 3. GUI tasks: check that the screenshots are in `blobs/` and referenced by `trajectory.json`.
 4. Delete a run folder only after its upload was checked (`upload` runs `rclone check` per
    folder).
+5. Then update the task log (section 12): `tasklog --episode <run id>` and `hf-upload --path`
+   with the folder it printed.
+
+## 12. Task logs
+
+A **task log** is one episode of one agent on one task: the trajectory, the results and the
+verifier's log, with the submission. A task-log dataset keeps **one per task and agent, the latest
+scored episode**, under `<platform>/<task>/<agent>/`:
+
+- `platform`: the task's `[metadata].platform` (`task.toml`), else its platform folder;
+- `task`: its current name (`--rename OLD=NEW` for a task measured under an earlier name;
+  `measured_as` keeps the old one);
+- `agent`: `<model>-<harness>-<effort>`, short: `claude-opus-5-5` -> `claude_opus55`,
+  `claude-fable-5-1` -> `claude_fable51`, `claude-code` -> `claude_code`, the effort as run
+  (`default` when none was set), e.g. `claude_opus55-claude_code-high`; `--model-name MODEL=SHORT`
+  for a model the rule does not shorten well.
+
+**Which episode**: only the tasks that count: `--tasks-dir` (a checkout's `tasks/`) and `--ref
+REF[=LABEL]` (tasks on a git ref of `--repo`: `origin/main=main`, the head of each open task pull
+request, e.g. `git fetch origin +pull/53/head:refs/remotes/origin-pull/53` then `--ref
+refs/remotes/origin-pull/53="pull request #53"`), `--task NAME`. Per task, the version (content
+digest) of its newest scored episode; per agent, the newest scored episode of that version.
+Scored = a numeric reward and not `env_error`: an episode lost to the infrastructure without a
+score never replaces a scored one. An agent measured only on an earlier version is left out and
+listed. `--exclude-run` drops a run another run superseded; `--overrides` takes the same JSON as
+`curate` (plus `model_names`).
+
+**Layout** of a task log (the dataset card, `README.md` at the root, describes every field; the
+root `index.jsonl` has one row per task log: platform, task, agent, model, harness, effort, run
+and episode id, date, task commit and content digest, where the task lives (`task_location`), status,
+reward, reward_exact, success, the task metric and its value, anchor, full_at, cost at list
+price, tokens, model calls, agent time, steps, pictures, replay, path, notes):
+
+| file | holds |
+|---|---|
+| `run.json` | the run summary of section 7, plus `tasklog` (layout version, path, file map, verifier files, files left out, the index row) and `task_info.location` |
+| `README.md` | the task log in brief |
+| `trajectory.json` | the ATIF trajectory as the engine wrote it |
+| `trajectory.jsonl.gz` | the same, one JSON object per line; the native session log, verbatim, when the conversion failed |
+| `steps.bin`, `pics/`, `poster.jpg` | as in the archive |
+| `results/` | `result.json`, `verification.json`, `lock.json`, `resources.jsonl` when sampled, `regrade/` when one replaced the score |
+| `verifier/` | `stdout.txt`, `stderr.txt` (the grader's log) of the verify stage, `diagnostic.txt` from `verification.json` |
+| `stages/` | stdout and stderr of every other stage command (setup, harness install and launch), `commands.json` (what ran, exit codes, times) |
+| `traces/` | `trace.execution.jsonl`, `trace.transport.jsonl` |
+| `blobs/`, `artifacts/` | the pictures and large texts, and the submission; a single file over `--max-file-mb` (100) stays out and is listed in `run.json` `tasklog.left_out` |
+| `replay.mp4` | a replay from `--extras`, where one exists |
+
+The harness's other native logs are not part of a task log.
+
+**Scrubbing and checks**: in the files the script writes from the engine's records (`run.json`
+except the agent's text, `results/`, `verifier/`, `stages/`, `traces/`), local paths (the home
+folder, the runs directory, the checkout, each `--scrub-path`) become `<local>/<last component>`,
+loopback and private-network URLs `<gateway>`, GPU UUIDs `GPU-<uuid>`, this host's name `<host>`,
+plus each `--scrub REGEX=REPLACEMENT`. The agents' own logs (the trajectory, blobs, artifacts) stay
+as recorded. Each task log is built in `<dataset>/.staging/`, secret-scanned (section 10, media
+included) and checked against each `--forbid REGEX` in the files the script writes; a hit blocks
+it and the dataset's folder stays as it was; a `--forbid` hit in the agents' own logs is printed,
+not blocked.
+
+```bash
+python3 scripts/trajectories.py tasklog --runs-dir "$RUNS" --out "$DATASET" --ref origin/main=main \
+    --ref refs/remotes/origin-pull/53="pull request #53" --secrets-from vendor/ale/.env --select-only
+python3 scripts/trajectories.py tasklog --runs-dir "$RUNS" --out "$DATASET" --ref origin/main=main ... \
+    --secrets-from vendor/ale/.env --title "<dataset title>"                 # every task log, index, card
+python3 scripts/trajectories.py hf-upload --dataset "$DATASET" --repo OWNER/NAME --secrets-from vendor/ale/.env
+# after a new episode: only its task log, and only when it is now the latest scored one
+python3 scripts/trajectories.py tasklog --runs-dir "$RUNS" --out "$DATASET" --ref ... --episode <run id>
+python3 scripts/trajectories.py hf-upload --dataset "$DATASET" --repo OWNER/NAME --path <platform>/<task>/<agent>
+```
+
+`hf-upload` uses `huggingface_hub` (`uv run --with huggingface_hub python3 scripts/trajectories.py
+hf-upload ...`) and its cached token (`hf auth login`). `--path` replaces those folders in one
+commit with `index.jsonl` and `README.md` (remote files the folder no longer has are deleted);
+without `--path` it uploads everything, one commit per platform and one for the root, and deletes
+remote files the dataset no longer has. Large files go through the Hub's storage backend on their
+own. A dataset repository may be public: treat every task log as public. `--dry-run` shows
+each commit's additions and deletions; afterwards it lists the repository and checks that every
+file arrived.

@@ -7,6 +7,8 @@
     python3 scripts/trajectories.py scan ARCHIVE --secrets-from vendor/ale/.env
     python3 scripts/trajectories.py upload --archive ARCHIVE --dest REMOTE:PATH --secrets-from vendor/ale/.env
     python3 scripts/trajectories.py sample --run-dir RUNS/RUN_ID --parent PID        # beside `ale run`
+    python3 scripts/trajectories.py tasklog --runs-dir RUNS --out DATASET --ref origin/main [--episode RUN]
+    python3 scripts/trajectories.py hf-upload --dataset DATASET --repo OWNER/NAME [--path PLATFORM/TASK/AGENT]
 
 inventory  every model episode under a runs directory, one JSON line each (validation runs and the engine's own
            oracle and nop harnesses are left out).
@@ -21,10 +23,18 @@ upload     rclone copy of the archive to any rclone destination, scanned first a
            unless --prune.
 sample     resource samples of one run's own episode containers (docker stats, nvidia-smi) into
            <run dir>/resources.jsonl; export turns them into the peak_* fields.
+tasklog    one task log per task x agent that counts, the latest scored episode, into
+           <dataset>/<platform>/<task>/<agent>/ (agent = <model>-<harness>-<effort>, e.g.
+           claude_opus55-claude_code-high): run.json, trajectory.json (+ trajectory.jsonl.gz), steps.bin, poster,
+           results/ (result, verification, lock), verifier/ (the verify stage's stdout and stderr, the diagnostic),
+           stages/, traces/, blobs/, artifacts/, a README.md; and the root index.jsonl and dataset card README.md.
+           Machine-specific details of the engine's records are scrubbed, every folder is secret-scanned.
+hf-upload  the dataset to a Hugging Face dataset repository (huggingface_hub): the given folders replaced in one
+           commit, or everything in one commit per platform; remote files the tree no longer has are deleted.
 
 Every machine path, remote and run directory is a parameter; the environment variables ARB_RUNS_DIR,
-ARB_TRAJECTORIES, ARB_TRAJECTORIES_DEST and ARB_SECRET_FILES give defaults. Stdlib only; Pillow, ffmpeg and rclone
-are used when present. Field guide: skills/agent-trajectory-archiving/SKILL.md.
+ARB_TRAJECTORIES, ARB_TRAJECTORIES_DEST, ARB_TASK_LOGS, ARB_TASK_LOG_REPO and ARB_SECRET_FILES give defaults.
+Stdlib only; Pillow, ffmpeg, rclone and huggingface_hub (hf-upload) are used when present. Field guide: skills/agent-trajectory-archiving/SKILL.md.
 """
 
 from __future__ import annotations
@@ -43,6 +53,7 @@ import re
 import shlex
 import shutil
 import signal
+import socket
 import struct
 import subprocess
 import sys
@@ -2621,6 +2632,882 @@ def cmd_export(a):
     return 1 if failed else 0
 
 
+# ------------------------------------------------------------------------------------------------ task logs
+TASKLOG_LAYOUT = 1  # the version of a task-log folder's layout
+ENV_TASKLOGS, ENV_HF_REPO = "ARB_TASK_LOGS", "ARB_TASK_LOG_REPO"
+TASKLOG_MAX_FILE = 100 * 1000 * 1000  # single files over this size stay out of artifacts/ and blobs/ (listed)
+#: Files of a task log that this script writes from the engine's records (scrubbed); the rest are the agent's own.
+TASKLOG_OURS = re.compile(r"^(?:run\.json|README\.md|results/|verifier/|stages/|traces/)")
+TASKLOG_AGENT_FIELDS = ("steps", "task_text", "pictures")  # parts of run.json taken from the agent's own logs
+TASKLOG_INDEX_FIELDS = [
+    "platform",
+    "task",
+    "agent",
+    "model",
+    "harness",
+    "effort",
+    "run_id",
+    "episode_id",
+    "date",
+    "started_at",
+    "task_commit",
+    "task_content_digest",
+    "measured_as",
+    "task_location",
+    "status",
+    "reward",
+    "reward_exact",
+    "success",
+    "metric",
+    "metric_value",
+    "metric_direction",
+    "anchor",
+    "full_at",
+    "cost_usd",
+    "tokens_in",
+    "tokens_out",
+    "model_calls",
+    "agent_time_s",
+    "steps",
+    "pictures",
+    "replay",
+    "path",
+    "notes",
+]
+
+
+def model_short(model):
+    """claude-opus-5-5 -> claude_opus55, claude-fable-5-1 -> claude_fable51; other names: [A-Za-z0-9_] only."""
+    m = re.sub(r"^(?:[a-z]{2,6}\.)?anthropic\.", "", str(model or "model"))
+    parts = m.split("-")
+    if (
+        len(parts) >= 3
+        and re.fullmatch(r"[a-z]+", parts[0])
+        and re.fullmatch(r"[a-z]+", parts[1])
+        and all(p.isdigit() for p in parts[2:])
+    ):
+        return "{}_{}{}".format(parts[0], parts[1], "".join(parts[2:]))
+    return re.sub(r"[^A-Za-z0-9]+", "_", m).strip("_") or "model"
+
+
+def tasklog_agent(model, harness, effort, names=None):
+    """<model>-<harness>-<effort>, e.g. claude_opus55-claude_code-high; `names` maps a model to its short name."""
+    short = (names or {}).get(model) or model_short(model)
+    return "{}-{}-{}".format(
+        short, re.sub(r"[^A-Za-z0-9]+", "_", harness or "agent").strip("_"), component(effort or "default")
+    )
+
+
+def toml_platform(text):
+    """[metadata].platform of a task.toml."""
+    if not text:
+        return None
+    if tomllib is not None:
+        try:
+            v = (tomllib.loads(text).get("metadata") or {}).get("platform")
+            return v if isinstance(v, str) and v else None
+        except tomllib.TOMLDecodeError:
+            pass
+    m = re.search(r"^\[metadata\]\s*$(.*?)(?=^\[|\Z)", text, re.MULTILINE | re.DOTALL)
+    v = re.search(r'^platform\s*=\s*"([^"]+)"', m.group(1), re.MULTILINE) if m else None
+    return v.group(1) if v else None
+
+
+def task_locations(repo, tasks_dir=None, refs=(), extra=()):
+    """task -> {platform, where, path, commit}: the folders tasks/<platform>/<task>/ of tasks_dir (the working
+    tree), then of each git ref in order (REF or REF=LABEL, for example origin/main=main and the heads of open pull
+    requests); the first place that has a task wins. `extra` names tasks that count without a folder here."""
+    repo = Path(repo)
+    out = {}
+    if tasks_dir:
+        for toml in sorted(Path(tasks_dir).glob("*/*/task.toml")):
+            task, folder = toml.parent.name, toml.parent
+            try:
+                rel = folder.resolve().relative_to(repo.resolve()).as_posix()
+            except ValueError:
+                rel = None
+            commit = (git(repo, "log", "-1", "--format=%H", "--", rel) or "").strip() if rel else ""
+            out[task] = {
+                "platform": toml_platform(toml.read_text(encoding="utf-8", errors="replace")) or folder.parent.name,
+                "where": "working tree",
+                "path": rel or f"tasks/{folder.parent.name}/{task}",
+                "commit": commit or None,
+            }
+    for spec in refs:
+        ref, _, label = str(spec).partition("=")
+        listing = git(repo, "ls-tree", "-r", "--name-only", ref, "tasks")
+        if listing is None:
+            raise SystemExit(f"--ref {ref}: not a git ref of {repo}")
+        for line in listing.splitlines():
+            m = re.match(r"^tasks/([^/]+)/([^/]+)/task\.toml$", line)
+            if not m or m.group(2) in out:
+                continue
+            path = f"tasks/{m.group(1)}/{m.group(2)}"
+            out[m.group(2)] = {
+                "platform": toml_platform(git(repo, "show", f"{ref}:{path}/task.toml")) or m.group(1),
+                "where": label or ref,
+                "path": path,
+                "commit": (git(repo, "log", "-1", "--format=%H", ref, "--", path) or "").strip() or None,
+            }
+    for task in extra:
+        out.setdefault(task, {"platform": None, "where": "named on the command line", "path": None, "commit": None})
+    return out
+
+
+def select_task_logs(rows, official, rename=None, exclude=(), names=None):
+    """(kept, left_out). Per task: the version (content digest) of its newest scored episode; per agent: the newest
+    scored episode of that version, else its newest episode. Scored = a numeric reward and not an env_error, so an
+    episode lost to the infrastructure without a score never replaces a scored one. An agent measured only on an
+    earlier version is left out (listed)."""
+    rename, exclude = rename or {}, set(exclude)
+
+    def cur(r):
+        return rename.get(short_name(r["task"]), short_name(r["task"]))
+
+    def started(r):
+        return epoch(r.get("started")) or 0.0
+
+    def scored(r):
+        return is_number(r.get("reward")) and r.get("status") != "env_error"
+
+    def agent(r):
+        return tasklog_agent(r.get("model"), r.get("harness"), r.get("effort"), names)
+
+    by = collections.defaultdict(list)
+    for r in rows:
+        if r.get("skip") or not r.get("model") or not r.get("status") or r["run"] in exclude:
+            continue
+        if official is None or cur(r) in official:
+            by[cur(r)].append(r)
+    keep, left = [], []
+    for task in sorted(by):
+        v = by[task]
+        newest = max([r for r in v if scored(r)] or v, key=started)
+        same = [r for r in v if r.get("digest") == newest.get("digest")]
+        for a in sorted({agent(r) for r in v}):
+            cand = [r for r in same if agent(r) == a]
+            if not cand:
+                old = max((r for r in v if agent(r) == a), key=started)
+                left.append(
+                    {
+                        "task": task,
+                        "agent": a,
+                        "why": "measured only on an earlier version of the task (newest: {} / {}, {})".format(
+                            old["run"], old["episode"], str(old.get("started") or "")[:10]
+                        ),
+                    }
+                )
+                continue
+            pick = max([r for r in cand if scored(r)] or cand, key=started)
+            keep.append(dict(pick, current=task, agent_name=a))
+    return keep, left
+
+
+class Scrubber:
+    """Machine-specific details in the engine's records: the given local paths (each replaced by <local>/ and its
+    last component), loopback and private-network URLs (<gateway>), GPU UUIDs, this host's name, and any
+    REGEX=REPLACEMENT rules given. The agents' own logs are never rewritten."""
+
+    def __init__(self, paths=(), rules=(), host=None):
+        self.rules = []
+        for p in sorted(
+            {str(p).rstrip("/") for p in paths if p and len(str(p).rstrip("/")) > 1}, key=len, reverse=True
+        ):
+            self.rules.append((re.compile(re.escape(p) + r"(?:/[^\s\"'<>()\[\]{},;|`]*)?"), self._local))
+        self.rules.append(
+            (
+                re.compile(
+                    r"https?://(?:127\.\d+\.\d+\.\d+|localhost|0\.0\.0\.0|host\.docker\.internal|"
+                    r"10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+)(?::\d+)?[^\s\"']*"
+                ),
+                "<gateway>",
+            )
+        )
+        self.rules.append(
+            (re.compile(r"\bGPU-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b"), "GPU-<uuid>")
+        )
+        if host and len(host) >= 4 and host not in ("localhost", "user", "root", "sandbox"):
+            self.rules.append((re.compile(r"\b" + re.escape(host) + r"\b"), "<host>"))
+        for rx, rep in rules:
+            self.rules.append((re.compile(rx), rep))
+
+    @staticmethod
+    def _local(m):
+        tail = m.group(0).rstrip("/").rsplit("/", 1)[-1]
+        return "<local>/" + tail if tail else "<local>"
+
+    def text(self, s):
+        for rx, rep in self.rules:
+            s = rx.sub(rep, s)
+        return s
+
+    def obj(self, o):
+        if isinstance(o, str):
+            return self.text(o)
+        if isinstance(o, list):
+            return [self.obj(x) for x in o]
+        if isinstance(o, dict):
+            return {k: self.obj(v) for k, v in o.items()}
+        return o
+
+
+def _write_text(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def _write_json(path, obj):
+    _write_text(path, json.dumps(obj, ensure_ascii=False, indent=1) + "\n")
+
+
+def _copy_capped(src, dst, root, left, max_bytes):
+    """src (a file or a folder) into dst; symbolic links and single files over max_bytes are listed in left."""
+    src = Path(src)
+    items = [src] if src.is_file() else sorted(p for p in src.rglob("*") if p.is_file() or p.is_symlink())
+    for p in items:
+        if "__pycache__" in p.parts:
+            continue
+        rel = p.relative_to(root).as_posix()
+        if p.is_symlink():
+            left.append({"file": rel, "why": "a symbolic link"})
+            continue
+        size = p.stat().st_size
+        if size > max_bytes:
+            left.append({"file": rel, "bytes": size, "why": f"a single file over {max_bytes / 1e6:g} MB"})
+            continue
+        q = Path(dst) / (p.relative_to(src) if src.is_dir() else p.name)
+        q.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(p, q)
+
+
+def _stream(ep, s):
+    s = s or {}
+    if s.get("inline"):
+        return s["inline"]
+    if s.get("path"):
+        try:
+            return (Path(ep) / safe_rel(s["path"])).read_text(encoding="utf-8", errors="replace")
+        except (OSError, ValueError):
+            return ""
+    return ""
+
+
+def tasklog_readme(doc, row):
+    sc = doc.get("score") or {}
+    lines = [
+        f"# {row['platform']} / {row['task']} / {row['agent']}",
+        "",
+        (
+            f"One task log: the latest scored episode of `{row['model']}` ({row['harness']}, effort "
+            f"{row['effort']}) on the task `{row['task']}` (platform `{row['platform']}`)."
+        ),
+        "",
+        "| | |",
+        "|---|---|",
+        f"| episode | `{row['episode_id']}` (run `{row['run_id']}`), {row['date']} |",
+        f"| status | {row['status']} |",
+        f"| reward | {row['reward']} (exact {row['reward_exact']}) |",
+        "| task metric | {} = {} (anchor {}, full at {}) |".format(
+            sc.get("metric"), sc.get("measured"), sc.get("anchor"), sc.get("full_at")
+        ),
+        f"| agent time | {row['agent_time_s']} s |",
+        f"| cost at list price | {row['cost_usd']} USD |",
+        f"| task version | commit `{row['task_commit']}`, content digest `{row['task_content_digest']}` |",
+    ]
+    if row.get("measured_as") and row["measured_as"] != row["task"]:
+        lines.append(f"| measured as | `{row['measured_as']}` (an earlier name of the task) |")
+    lines += ["", "Files:", ""]
+    lines += [f"- `{k}`: {v}" for k, v in doc["tasklog"]["files"].items()]
+    if doc["tasklog"]["left_out"]:
+        lines += ["", "Left out: " + "; ".join(f"`{x['file']}` ({x['why']})" for x in doc["tasklog"]["left_out"])]
+    lines += ["", "The dataset card at the root describes every field.", ""]
+    return "\n".join(lines)
+
+
+def build_task_log(sel, place, runs_dir, out_root, ctx, scrub, max_bytes=TASKLOG_MAX_FILE):
+    """One task log at <out_root>/<platform>/<task>/<agent>/ from one episode (see cmd_tasklog); (row, folder)."""
+    task, agent = sel["current"], sel["agent_name"]
+    platform = place.get("platform") or "unknown"
+    rel = f"{component(platform)}/{component(task)}/{agent}"
+    dst = Path(out_root) / rel
+    ep = Path(runs_dir) / sel["run"] / sel["episode"]
+    notes = []
+    if short_name(sel["task"]) != task:
+        notes.append("measured under its earlier name " + short_name(sel["task"]))
+    if sel.get("note"):
+        notes.append(sel["note"])
+    row = {
+        "task": task,
+        "run": sel["run"],
+        "episode": sel["episode"],
+        "regrade": sel.get("regrade") or "",
+        "notes": " | ".join(notes),
+        "folder": f"{task}/{agent}/episode",
+        "score": "",
+    }
+    with tempfile.TemporaryDirectory(prefix="tasklog-") as tmp:
+        derived, ctx.derived_only = ctx.derived_only, True  # the derived files only: the records are read in place
+        try:
+            doc = export_episode(row, runs_dir, tmp, ctx)
+        finally:
+            ctx.derived_only = derived
+        src = Path(tmp) / row["folder"]
+        if dst.exists():
+            shutil.rmtree(dst)
+        dst.mkdir(parents=True)
+        left = []
+        # derived files and the agent's own records, as they are
+        if (ep / "trajectory.json").is_file():
+            _copy_capped(ep / "trajectory.json", dst, ep, left, max_bytes)
+        for name in ("trajectory.jsonl.gz", "steps.bin", "pics"):
+            if (src / name).exists():
+                _copy_capped(src / name, dst / name if (src / name).is_dir() else dst, src, left, max_bytes)
+        if doc.get("poster") and (src / doc["poster"]).is_file():
+            shutil.copy2(src / doc["poster"], dst / doc["poster"])
+        for r in doc.get("replays") or []:
+            for name in (r.get("file"), r.get("readme")):
+                if name and (src / name).is_file():
+                    shutil.copy2(src / name, dst / name)
+        for name in ("blobs", "artifacts"):
+            if (ep / name).is_dir():
+                _copy_capped(ep / name, dst / name, ep, left, max_bytes)
+        # results, traces, the verifier's and the other stages' output: the engine's records, scrubbed
+        for name in ("result.json", "verification.json", "lock.json"):
+            if (ep / name).is_file():
+                _write_json(dst / "results" / name, scrub.obj(load_json(ep / name)))
+        if (src / "resources.jsonl").is_file():
+            _write_text(dst / "results" / "resources.jsonl", scrub.text((src / "resources.jsonl").read_text()))
+        regrade = (doc.get("score") or {}).get("regrade")
+        rbase = None
+        if regrade:
+            rbase = next((b / regrade["folder"] for b in (src, ep) if (b / regrade["folder"]).is_dir()), None)
+        if rbase:
+            for p in sorted(rbase.rglob("*")):
+                if p.is_file() and not p.is_symlink():
+                    q = dst / "results" / "regrade" / p.relative_to(rbase)
+                    q.parent.mkdir(parents=True, exist_ok=True)
+                    if p.suffix in (".json", ".jsonl", ".txt", ".log", ".md"):
+                        q.write_text(scrub.text(p.read_text(encoding="utf-8", errors="replace")), encoding="utf-8")
+                    else:
+                        shutil.copy2(p, q)
+            regrade["folder"] = "results/regrade/"
+    for name in ("trace.execution.jsonl", "trace.transport.jsonl"):
+        if (ep / name).is_file():
+            _write_text(dst / "traces" / name, scrub.text((ep / name).read_text(encoding="utf-8", errors="replace")))
+    execu = read_jsonl(ep / "trace.execution.jsonl")
+    started = {e.get("execution_id"): e for e in execu if e.get("kind") == "command_started"}
+    finished = [e for e in execu if e.get("kind") == "command_finished"]
+    n_verify = sum(1 for e in finished if e.get("phase") == "verify")
+    commands, verifier = [], {"stdout": [], "stderr": [], "diagnostic": "verifier/diagnostic.txt"}
+    for e in finished:
+        xid = component(e.get("execution_id") or "command-{}".format(e.get("seq")))
+        if e.get("phase") == "verify":
+            stem = "verifier/" + ("" if n_verify == 1 else xid + ".")
+        else:
+            stem = f"stages/{xid}."
+        for stream in ("stdout", "stderr"):
+            _write_text(dst / f"{stem}{stream}.txt", scrub.text(_stream(ep, e.get(stream))))
+            if e.get("phase") == "verify":
+                verifier[stream].append(f"{stem}{stream}.txt")
+        st = started.get(e.get("execution_id")) or {}
+        commands.append(
+            scrub.obj(
+                {
+                    "execution_id": xid,
+                    "phase": e.get("phase"),
+                    "component": e.get("component"),
+                    "actor": st.get("actor"),
+                    "argv": st.get("argv"),
+                    "cwd": st.get("cwd"),
+                    "exit_code": e.get("exit_code"),
+                    "outcome": e.get("outcome"),
+                    "started_at": st.get("timestamp"),
+                    "finished_at": e.get("timestamp"),
+                    "duration_s": round((e.get("duration_ms") or 0) / 1000, 3),
+                    "truncated": e.get("truncated"),
+                    "stdout_bytes": (e.get("stdout") or {}).get("size_bytes"),
+                    "stderr_bytes": (e.get("stderr") or {}).get("size_bytes"),
+                    "files": [f"{stem}stdout.txt", f"{stem}stderr.txt"],
+                }
+            )
+        )
+    _write_json(dst / "stages" / "commands.json", commands)
+    diag = (load_json(ep / "verification.json", {}) or {}).get("diagnostic")
+    diag = diag if isinstance(diag, str) else (json.dumps(diag, ensure_ascii=False, indent=1) if diag else "")
+    _write_text(dst / "verifier" / "diagnostic.txt", scrub.text(diag))
+
+    # run.json: re-pointed at this layout
+    files = {
+        "run.json": "the run summary and a per-step digest (described in the dataset card)",
+        "README.md": "this task log in brief",
+    }
+    if (dst / "trajectory.json").is_file():
+        files["trajectory.json"] = "the ATIF trajectory as the engine wrote it (pictures and large texts in blobs/)"
+    if (dst / "trajectory.jsonl.gz").is_file():
+        files["trajectory.jsonl.gz"] = (doc.get("trajectory") or {}).get("layout") or "the trajectory as JSON lines"
+    if (dst / "steps.bin").is_file():
+        files["steps.bin"] = "every distinct picture the agent saw, once, original bytes (see steps_bin, pictures)"
+    if (dst / "pics").is_dir():
+        files["pics/"] = "pictures the agent saw that had no file of their own in the records, decoded"
+    if doc.get("poster") and (dst / doc["poster"]).is_file():
+        files[doc["poster"]] = "a still for the run (see poster_info)"
+    files["results/result.json"] = "the engine's result: status, rewards, phase timings"
+    if (dst / "results" / "verification.json").is_file():
+        files["results/verification.json"] = "the grader's full result: metrics, reward_exact, diagnostic, criteria"
+    files["results/lock.json"] = "provenance: task, image, engine, agent harness, model, effort, limits"
+    if (dst / "results" / "resources.jsonl").is_file():
+        files["results/resources.jsonl"] = "resource samples of the episode's own containers"
+    if regrade:
+        files["results/regrade/"] = "the regrade: the same submission scored again (see score.regrade)"
+    files["verifier/"] = "the verify stage's stdout.txt and stderr.txt (the grader's log), and diagnostic.txt"
+    files["stages/"] = "stdout and stderr of every other stage command, and commands.json (what ran, exit codes, times)"
+    files["traces/"] = "trace.execution.jsonl (engine phases and commands) and trace.transport.jsonl (model calls)"
+    if (dst / "blobs").is_dir():
+        files["blobs/"] = "pictures and large texts the trajectory references"
+    if (dst / "artifacts").is_dir():
+        files["artifacts/"] = "the submission the grader scored, as collected from the sandbox"
+    for r in doc.get("replays") or []:
+        files[r["file"]] = "a replay of this submission on a development episode (see replays)"
+    if (doc.get("resources") or {}).get("file"):
+        doc["resources"]["file"] = "results/resources.jsonl"
+    src_info = (doc.get("digest") or {}).get("source") or {}
+    if str(src_info.get("kind", "")).startswith("native"):
+        src_info["file"] = "trajectory.jsonl.gz (the native session log, verbatim)"
+    for p in doc.get("pictures") or []:
+        if str(p.get("file") or "").startswith("logs/"):
+            p["file"] = None  # the picture is in steps.bin; the native logs are not part of a task log
+    doc.pop("folder", None)
+    doc["files"] = files
+    doc["bench"] = platform
+    ti = doc.setdefault("task_info", {})
+    ti["platform"] = platform
+    ti["location"] = {"where": place.get("where"), "path": place.get("path"), "commit": place.get("commit")}
+    if ti.get("source_kind") == "local":
+        ti["task_path"] = "a local copy of the task (the engine records no commit for it)"
+    sc, tok = doc.get("score") or {}, doc.get("tokens") or {}
+    out = {
+        "platform": platform,
+        "task": task,
+        "agent": agent,
+        "model": sel.get("model"),
+        "harness": sel.get("harness"),
+        "effort": sel.get("effort") or "default",
+        "run_id": sel["run"],
+        "episode_id": sel["episode"],
+        "date": str(sel.get("started") or "")[:10],
+        "started_at": sel.get("started"),
+        "task_commit": ti.get("task_commit"),
+        "task_content_digest": ti.get("content_digest"),
+        "measured_as": short_name(sel["task"]),
+        "task_location": place.get("where"),
+        "status": (doc.get("ale") or {}).get("status"),
+        "reward": (doc.get("reward") or {}).get("reward"),
+        "reward_exact": (doc.get("reward") or {}).get("reward_exact"),
+        "success": doc.get("success"),
+        "metric": sc.get("metric"),
+        "metric_value": sc.get("measured"),
+        "metric_direction": sc.get("direction"),
+        "anchor": sc.get("anchor"),
+        "full_at": sc.get("full_at"),
+        "cost_usd": tok.get("usd"),
+        "tokens_in": tok.get("in"),
+        "tokens_out": tok.get("out"),
+        "model_calls": tok.get("calls"),
+        "agent_time_s": doc.get("wall_s"),
+        "steps": len(doc.get("steps") or []),
+        "pictures": len(doc.get("pictures") or []),
+        "replay": doc.get("replay"),
+        "path": rel + "/",
+        "notes": " | ".join(doc.get("notes") or []),
+    }
+    doc["tasklog"] = {
+        "layout": TASKLOG_LAYOUT,
+        "path": rel + "/",
+        "platform": platform,
+        "task": task,
+        "agent": agent,
+        "selection": "the newest scored episode of this agent on the task's newest scored version (content "
+        "digest); an episode lost to the infrastructure without a score never replaces a scored one",
+        "files": files,
+        "verifier": verifier,
+        "left_out": left,
+        "index_row": out,
+        "exported_by": f"{TOOL} tasklog",
+    }
+    agent_part = {k: doc[k] for k in TASKLOG_AGENT_FIELDS if k in doc}
+    doc = scrub.obj({k: v for k, v in doc.items() if k not in TASKLOG_AGENT_FIELDS})
+    doc.update(agent_part)
+    _write_json(dst / "run.json", doc)
+    _write_text(dst / "README.md", tasklog_readme(doc, out))
+    return out, dst
+
+
+def tasklog_check(folder, forbid):
+    """(metadata hits, agent-log hits) of the `forbid` patterns: our files must have none; the agents' own logs
+    are reported only."""
+    folder = Path(folder)
+    ours, theirs = [], collections.Counter()
+    for p in iter_files(folder, include_media=False):
+        rel = p.relative_to(folder).as_posix()
+        try:
+            text = b"".join(d for _, d in chunks(p)).decode("utf-8", errors="replace")
+        except (OSError, EOFError, gzip.BadGzipFile):
+            continue
+        if rel == "run.json":
+            try:
+                doc = json.loads(text)
+            except ValueError:
+                doc = {}
+            head = json.dumps({k: v for k, v in doc.items() if k not in TASKLOG_AGENT_FIELDS}, ensure_ascii=False)
+            body = json.dumps({k: doc.get(k) for k in TASKLOG_AGENT_FIELDS}, ensure_ascii=False)
+            ours += [(rel, m.group(0)) for rx in forbid for m in rx.finditer(head)]
+            theirs.update((rel + " (agent text)", m.group(0)) for rx in forbid for m in rx.finditer(body))
+        elif TASKLOG_OURS.match(rel):
+            ours += [(rel, m.group(0)) for rx in forbid for m in rx.finditer(text)]
+        else:
+            theirs.update((rel, m.group(0)) for rx in forbid for m in rx.finditer(text))
+    return sorted(set(ours)), theirs
+
+
+def read_tasklog_index(root):
+    p = Path(root) / "index.jsonl"
+    return read_jsonl(p) if p.is_file() else []
+
+
+def write_tasklog_root(root, rows, title, intro=None):
+    """index.jsonl (one row per task x agent) and README.md (the dataset card)."""
+    root = Path(root)
+    rows = sorted(rows, key=lambda r: (str(r.get("platform")), str(r.get("task")), str(r.get("agent"))))
+    with open(root / "index.jsonl", "w", encoding="utf-8") as f:
+        f.writelines(json.dumps({k: r.get(k) for k in TASKLOG_INDEX_FIELDS}, ensure_ascii=False) + "\n" for r in rows)
+    _write_text(root / "README.md", tasklog_card(rows, title, intro))
+    return rows
+
+
+def tasklog_card(rows, title, intro=None):
+    plat = collections.Counter(r.get("platform") for r in rows)
+    agents = collections.Counter(r.get("agent") for r in rows)
+    table = "\n".join(
+        "| `{}` | `{}` | `{}` | {} | {} | {} |".format(
+            r.get("platform"), r.get("task"), r.get("agent"), r.get("reward"), r.get("status"), r.get("date")
+        )
+        for r in rows
+    )
+    return TASKLOG_CARD.format(
+        title=title,
+        intro=(intro.strip() + "\n\n") if intro else "",
+        n=len(rows),
+        platforms=", ".join(f"`{k}` {v}" for k, v in sorted(plat.items())) or "none",
+        agents=", ".join(f"`{k}` {v}" for k, v in sorted(agents.items())) or "none",
+        updated=datetime.date.today().isoformat(),
+        table=table,
+    )
+
+
+TASKLOG_CARD = """---
+license: apache-2.0
+pretty_name: {title}
+tags:
+- robotics
+- agents
+- benchmark
+- trajectories
+configs:
+- config_name: index
+  data_files: index.jsonl
+---
+
+# {title}
+
+{intro}A **task log** is one episode of one agent on one task, recorded by the ALE engine: the agent's full
+trajectory, the results and the verifier's log, with the agent's submission. The dataset keeps **one task log per
+task and agent: the latest scored episode**; a newer scored episode of the same agent on the same task replaces it.
+
+{n} task logs. Platforms: {platforms}. Agents: {agents}. Last updated {updated}.
+
+## Layout
+
+```
+index.jsonl                      one row per task x agent (fields below)
+<platform>/<task>/<agent>/       one task log
+  run.json                       run summary and per-step digest (below)
+  README.md                      this task log in brief
+  trajectory.json                the ATIF trajectory as the engine wrote it
+  trajectory.jsonl.gz            the trajectory, one JSON object per line
+  steps.bin                      every distinct picture the agent saw, once (byte ranges in run.json)
+  pics/                          pictures that had no file of their own in the records, decoded
+  poster.jpg                     a still for the run
+  results/                       result.json, verification.json, lock.json (resources.jsonl when sampled)
+  verifier/                      stdout.txt, stderr.txt (the grader's log), diagnostic.txt
+  stages/                        stdout and stderr of every other stage command, commands.json
+  traces/                        trace.execution.jsonl, trace.transport.jsonl
+  blobs/                         pictures and large texts the trajectory references
+  artifacts/                     the submission the grader scored
+  replay.mp4                     a replay of the submission on a development episode, where one exists
+```
+
+- **platform**: the task's `[metadata].platform` (`arm`, `hand`, `humanoid`, `uav`, `driving`, `space`, `swarm`,
+  `quadruped`, ...).
+- **task**: the task's name (`tasks/<platform>/<task>/`). A task measured under an earlier name is filed under its
+  current name; `measured_as` keeps the old one.
+- **agent**: `<model>-<harness>-<effort>`, e.g. `claude_opus55-claude_code-high` = model `claude-opus-5-5`, harness
+  Claude Code, reasoning effort `high` (`default` when the harness's default was used).
+
+Which episode: per task, the version (content digest) of its newest scored episode; per agent, the newest scored
+episode of that version. An episode lost to an infrastructure failure without a score never replaces a scored one.
+
+## index.jsonl
+
+| field | meaning |
+|---|---|
+| `platform`, `task`, `agent` | as above; `path` is the task log's folder |
+| `model`, `harness`, `effort` | the agent as the engine recorded it |
+| `run_id`, `episode_id` | the engine's run and episode |
+| `date`, `started_at` | when the episode started (UTC) |
+| `task_commit`, `task_content_digest` | the task version that ran: its commit (null when the engine ran a local copy) and the engine's content digest |
+| `measured_as` | the task's name when it was measured |
+| `task_location` | where the task lives now (a branch or the pull request that carries it) |
+| `status` | the engine's status: `completed`, `timeout` (the agent's time ran out; its submission was still graded), `agent_error`, `env_error` |
+| `reward`, `reward_exact` | the score in [0, 1]: rounded half-up to two decimals, and exact |
+| `success` | 1 when the reward reached 1.0 |
+| `metric`, `metric_value`, `metric_direction`, `anchor`, `full_at` | the task's metric, its measured value, whether higher is better, the reference value and the ratio at which the reward saturates: reward = clamp(clamp(value / anchor, 0, 1.5) / full_at, 0, 1), the ratio inverted when lower is better |
+| `cost_usd` | model cost at the list price per token type (input, output, cache read, cache write) times the gateway's token counts |
+| `tokens_in`, `tokens_out`, `model_calls` | gateway totals (`tokens_in` includes cache reads and writes) |
+| `agent_time_s` | the agent phase, seconds |
+| `steps`, `pictures` | model calls in the digest, distinct pictures the agent saw |
+| `replay`, `notes` | the replay file if any; notes |
+
+## run.json
+
+Header: `format` (3), `slug` (`<task>--<episode hex>`), `task`, `bench` (the platform), `mode` (`autonomous`),
+`run` (harness, model and effort), `agent` (the harness), `model`, `effort`, `state` and `success`, `ended_by`
+(`infra` for an infrastructure failure), `reward` (every grader metric plus `reward`, `reward_exact`, `success`,
+`infra_error` and resource fields, null where not recorded), `wall_s` (the agent phase), `tokens` (`in`, `cached`,
+`out`, `usd` and details), `task_text` (the instruction the agent got), `replay`, `poster`, `steps_bin`,
+`trajectory`.
+
+`steps[]`: one entry per model call: `id` (its first ATIF step), `t` (seconds since the agent phase began), `say`
+(the agent's text, in full), `calls[]` (`kind`: `shell`, `edit`, `read`, `look`, `robot` = the task's own simulator,
+robot, CAD or practice tools, `web`, `other`; `label`; `code`, cut in the middle when long), `out` (`text`, cut in
+the middle when long, the full text being in the trajectory; `exit`; `pics` = `[offset, length, mime]` ranges of
+`steps.bin`), `tok` (that call's tokens and USD).
+
+Also: `ale` (run and episode, status, failure, engine commit and version, harness version, phases with timings),
+`score` (metric, direction, measured value, anchor, `full_at`, the rule, the grader's diagnostic and criteria, the
+grader log's tail), `task_info` (the measured version: commit, content digest, name; `location`: where the task is
+now and its latest commit), `tasklog` (layout version, path, the file map, the verifier files, files left out),
+`files`, `replays`, `poster_info`, `resources` (limits; peaks when sampled), `digest` (how the steps were built),
+`pictures` (every picture: sha256, size, mime, file, byte range, the steps that show it), `provenance` (lock.json).
+
+## Formats
+
+- **ATIF** (`trajectory.json`): the Agent Trajectory Interchange Format: steps with the agent's messages and exposed
+  reasoning, tool calls and their results; pictures and large outputs are files in `blobs/` referenced by relative
+  path. When the engine could not convert the harness's native log, `trajectory.json` keeps only the instruction and
+  the final message and `trajectory.jsonl.gz` is the native session log verbatim (`run.json` `digest.source`).
+- **Traces**: `trace.execution.jsonl` (engine events: phases, commands, their output) and `trace.transport.jsonl`
+  (one event per model call: model, token counts, cache reads and writes, latency, retries).
+- **Results**: `result.json` (status, rewards, phase timings, the native session id), `verification.json` (the
+  grader's output), `lock.json` (task, image, engine, agent and limits).
+
+Machine-specific details in the engine's records (local paths, gateway addresses, GPU UUIDs) are replaced by
+placeholders such as `<local>` and `<gateway>`; the agents' own logs are as recorded. Model credentials are never
+exposed to the agents (`lock.json` `credential_exposed_to_agent`).
+
+## Task logs
+
+| platform | task | agent | reward | status | date |
+|---|---|---|---|---|---|
+{table}
+"""
+
+
+def cmd_tasklog(a):
+    runs = Path(need(a.runs_dir, "--runs-dir", ENV_RUNS))
+    out_root = Path(need(a.out, "--out", ENV_TASKLOGS))
+    check_apart(runs, out_root)
+    ov = load_json(a.overrides, None) if a.overrides else {}
+    if not isinstance(ov, dict):
+        raise SystemExit(f"cannot read the overrides file {a.overrides} (a JSON object)")
+    rename = dict(ov.get("rename") or {}, **pairs(a.rename, "--rename"))
+    exclude = set(ov.get("exclude_runs") or []) | set(a.exclude_run)
+    names = dict(ov.get("model_names") or {}, **pairs(a.model_name, "--model-name"))
+    places = task_locations(a.repo, a.tasks_dir, a.ref, list(ov.get("tasks") or []) + a.task)
+    if not places:
+        raise SystemExit("no tasks count: give --tasks-dir, --ref or --task")
+    kept, left = select_task_logs(list(inventory_rows(runs)), set(places), rename, exclude, names)
+    regrades, notes = ov.get("regrades") or {}, ov.get("notes") or {}
+    for s in kept:
+        entry = regrades.get("{}/{}".format(s["run"], s["episode"])) or regrades.get(s["run"])
+        if entry and entry.get("verification"):
+            s["regrade"] = entry["verification"]
+            s["note"] = entry.get("note")
+        s["note"] = " | ".join(x for x in (s.get("note"), notes.get(s["run"])) if x) or None
+    if a.episode:
+        want = set(a.episode)
+        chosen = [s for s in kept if "{}/{}".format(s["run"], s["episode"]) in want or s["run"] in want]
+        missing = want - {"{}/{}".format(s["run"], s["episode"]) for s in chosen} - {s["run"] for s in chosen}
+        for m in sorted(missing):
+            print(f"not exported: {m} is not the latest scored episode of a task x agent that counts")
+        kept = chosen
+    elif a.only:
+        kept = [s for s in kept if s["current"] in a.only]
+    if a.select_only:
+        for s in kept:
+            print(
+                f"{places[s['current']]['platform'] or '?':<10} {s['current']:<48} {s['agent_name']:<36} "
+                f"{s.get('reward')!s:<8} {s.get('status')!s:<10} {s['run']}/{s['episode']}"
+            )
+        for x in left:
+            print(f"left out: {x['task']} {x['agent']}: {x['why']}")
+        return 0
+    prices = dict(PRICES)
+    if a.prices:
+        extra = load_json(a.prices, None)
+        if not isinstance(extra, dict):
+            raise SystemExit(f"cannot read the price table {a.prices}")
+        prices.update(extra)
+    extras = load_extras(a.extras)
+    ctx = Context(a.repo, prices, extras, dict(extras["robot"], **pairs(a.robot, "--robot")), False, False)
+    scrub = Scrubber(
+        paths=[Path.home(), runs.resolve(), Path(a.repo).resolve(), *a.scrub_path],
+        rules=list(pairs(a.scrub, "--scrub").items()),
+        host=socket.gethostname(),
+    )
+    forbid = [re.compile(x) for x in a.forbid]
+    secrets = configured_secrets(secret_files(a), a.secret_env)
+    out_root.mkdir(parents=True, exist_ok=True)
+    staging = out_root / ".staging"  # a task log is built here and replaces the dataset's folder only when clean
+    if staging.exists():
+        shutil.rmtree(staging)
+    rows, blocked = [], []
+    for s in kept:
+        try:
+            row, folder = build_task_log(s, places[s["current"]], runs, staging, ctx, scrub, a.max_file_mb * 1e6)
+        except Exception as e:  # noqa: BLE001 (report it and go on with the next task log)
+            traceback.print_exc()
+            blocked.append((s["current"], s["agent_name"], f"{type(e).__name__}: {e}"))
+            continue
+        hits = scan_paths([folder], secrets, include_media=True)
+        ours, theirs = tasklog_check(folder, forbid)
+        size, nfiles = du(folder), sum(1 for _ in iter_files(folder, True))
+        print(
+            f"{row['path']:<72} reward {row['reward']!s:<5} {row['status']!s:<10} {size / 1e6:7.1f} MB "
+            f"{nfiles:5d} files",
+            flush=True,
+        )
+        for x in json.loads((folder / "run.json").read_text())["tasklog"]["left_out"]:
+            print(f"    left out: {x['file']} ({x['why']})")
+        if theirs:
+            print(f"    in the agent's own logs (left as recorded): {dict(theirs.most_common(6))}")
+        if hits or ours:
+            shutil.rmtree(folder)
+            blocked.append((row["path"], {"secrets": [(Path(p).name, k) for p, k, _, _ in hits], "metadata": ours}))
+            print(
+                f"    BLOCKED (the dataset's folder, if any, is left as it was): {len(hits)} secret hit(s), "
+                f"metadata hits {ours}"
+            )
+            continue
+        final = out_root / row["path"]
+        if final.exists():
+            shutil.rmtree(final)
+        final.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(folder), str(final))
+        rows.append(row)
+    shutil.rmtree(staging, ignore_errors=True)
+    keys = {r["path"] for r in rows}
+    held = {b[0] for b in blocked}
+    old_rows = read_tasklog_index(out_root)
+    if a.only or a.episode:
+        rows = [r for r in old_rows if r.get("path") not in keys] + rows
+    else:
+        rows += [r for r in old_rows if r.get("path") in held and (out_root / r["path"]).is_dir()]
+        listed = {r["path"].rstrip("/") for r in rows}
+        for p in sorted(out_root.glob("*/*/*/run.json")):
+            rel = p.parent.relative_to(out_root).as_posix()
+            if rel not in listed:
+                if a.prune:
+                    shutil.rmtree(p.parent)
+                print("{} {} (no longer selected)".format("removed" if a.prune else "stale", rel))
+    write_tasklog_root(out_root, rows, a.title, Path(a.intro).read_text(encoding="utf-8") if a.intro else None)
+    for x in left:
+        print(f"left out: {x['task']} {x['agent']}: {x['why']}")
+    print(f"index: {len(rows)} task log(s) in {out_root}; {len(blocked)} blocked {blocked or ''}")
+    return 1 if blocked else 0
+
+
+def hf_plan(root, remote, add_scope, del_scope):
+    """(adds, deletes): the local files under add_scope (None = all) plus index.jsonl and README.md, and the remote
+    files under del_scope (None = all) the local tree no longer has."""
+    root = Path(root)
+    local = sorted(
+        rel
+        for rel in (p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file() and not p.is_symlink())
+        if not any(part.startswith(".") for part in rel.split("/"))
+    )
+
+    def within(p, scope):
+        return scope is None or any(p == s.rstrip("/") or p.startswith(s.rstrip("/") + "/") for s in scope)
+
+    adds = [p for p in local if p in ("index.jsonl", "README.md") or within(p, add_scope)]
+    have = set(local)
+    deletes = sorted(p for p in remote if p not in have and p != ".gitattributes" and within(p, del_scope))
+    return adds, deletes
+
+
+def cmd_hf_upload(a):
+    root = Path(need(a.dataset, "--dataset", ENV_TASKLOGS))
+    repo = need(a.repo, "--repo", ENV_HF_REPO)
+    if not (root / "index.jsonl").is_file():
+        raise SystemExit(f"{root}: no index.jsonl (run tasklog first)")
+    secrets = configured_secrets(secret_files(a), a.secret_env)
+    scope = [safe_rel(p).as_posix() for p in a.path] or None
+    hits = scan_paths([root / p for p in scope] if scope else [root], secrets, include_media=True)
+    hits = [h for h in hits if Path(h[0]).relative_to(root).as_posix() not in set(a.accept)]
+    if hits:
+        for path, kind, off, _ in hits:
+            print(f"HIT {path} {kind} at byte {off}")
+        print("not uploaded: secret scan hits (look at them; --accept PATH for one that is not a secret)")
+        return 1
+    try:
+        from huggingface_hub import CommitOperationAdd, CommitOperationDelete, HfApi
+    except ImportError:
+        raise SystemExit("hf-upload needs huggingface_hub (for example: uv run --with huggingface_hub python3 ...)")
+    api = HfApi(endpoint=a.endpoint) if a.endpoint else HfApi()
+    if a.create:
+        api.create_repo(repo, repo_type="dataset", private=a.private, exist_ok=True)
+    remote = set(api.list_repo_files(repo, repo_type="dataset"))
+    if scope:  # these folders: replaced in one commit
+        batches = [(scope, scope, a.message or "Task logs: " + ", ".join(scope))]
+    else:  # everything: one commit per platform, then the root and the removal of what the tree no longer has
+        plats = sorted({p.parent.parent.parent.name for p in root.glob("*/*/*/run.json")})
+        batches = [([p + "/"], [p + "/"], (a.message or "Task logs") + f": {p}") for p in plats]
+        batches.append(([], None, (a.message or "Task logs") + ": index"))
+    commits = []
+    for add_scope, del_scope, msg in batches:
+        adds, deletes = hf_plan(root, remote, add_scope, del_scope)
+        print(f"{msg}: {len(adds)} file(s) to add, {len(deletes)} to delete", flush=True)
+        if a.dry_run:
+            continue
+        ops = [CommitOperationDelete(path_in_repo=p) for p in deletes] + [
+            CommitOperationAdd(path_in_repo=p, path_or_fileobj=str(root / p)) for p in adds
+        ]
+        info = api.create_commit(repo_id=repo, repo_type="dataset", operations=ops, commit_message=msg)
+        commits.append(getattr(info, "oid", None))
+        print(f"  commit {getattr(info, 'oid', None)} {getattr(info, 'commit_url', '')}", flush=True)
+    if not a.dry_run:
+        after = set(api.list_repo_files(repo, repo_type="dataset"))
+        expect = set(hf_plan(root, set(), scope, None)[0])
+        missing = sorted(expect - after)
+        print(
+            f"checked: {len(expect) - len(missing)} of {len(expect)} file(s) on {repo}"
+            + (f"; MISSING {missing[:10]}" if missing else "")
+        )
+        if missing:
+            return 1
+    return 0
+
+
 # ------------------------------------------------------------------------------------------------ upload
 def join_dest(dest, rel):
     return dest + rel if dest.endswith(":") else dest.rstrip("/") + "/" + rel
@@ -2885,6 +3772,106 @@ def build_parser():
     )
     add_secret_args(s)
     s.set_defaults(func=cmd_upload)
+
+    s = sub.add_parser("tasklog", help="one task log per task x agent that counts (the latest scored episode)")
+    s.add_argument("--runs-dir", default=os.environ.get(ENV_RUNS), help=runs_help)
+    s.add_argument("--out", default=os.environ.get(ENV_TASKLOGS), help=f"the dataset folder (default ${ENV_TASKLOGS})")
+    s.add_argument(
+        "--repo",
+        default=str(REPO),
+        help="the benchmark checkout that resolves task commits, anchors and platforms (default: this one)",
+    )
+    s.add_argument(
+        "--tasks-dir",
+        default=None,
+        help="tasks that count: the folders tasks/<platform>/<task>/ here (for example this checkout's tasks)",
+    )
+    s.add_argument(
+        "--ref",
+        action="append",
+        default=[],
+        metavar="REF[=LABEL]",
+        help="tasks that count: those on this git ref of --repo (origin/main=main, a pull request's head with the "
+        "label 'pull request #N'); repeatable, the first place that has a task gives its platform",
+    )
+    s.add_argument("--task", action="append", default=[], metavar="NAME", help="one more task that counts")
+    s.add_argument(
+        "--rename", action="append", default=[], metavar="OLD=NEW", help="a task measured under an earlier name"
+    )
+    s.add_argument("--exclude-run", action="append", default=[], metavar="RUN", help="a run another run superseded")
+    s.add_argument(
+        "--model-name", action="append", default=[], metavar="MODEL=SHORT", help="the agent name's model part"
+    )
+    s.add_argument(
+        "--overrides",
+        metavar="FILE",
+        help='JSON: {"tasks", "rename", "exclude_runs", "model_names", "regrades", "notes"} (as curate)',
+    )
+    s.add_argument("--only", nargs="+", metavar="TASK", help="these tasks only; the other index rows are kept")
+    s.add_argument(
+        "--episode",
+        action="append",
+        default=[],
+        metavar="RUN[/EPISODE]",
+        help="this new episode only, when it is now its task x agent's latest scored one; the other rows are kept",
+    )
+    s.add_argument("--select-only", action="store_true", help="print the selection and stop")
+    s.add_argument("--prune", action="store_true", help="remove task-log folders no longer selected")
+    s.add_argument("--max-file-mb", type=float, default=TASKLOG_MAX_FILE / 1e6, help="larger single files stay out")
+    s.add_argument(
+        "--scrub-path",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="one more local path to replace in the engine's records (the home folder, the runs directory and the "
+        "checkout always are)",
+    )
+    s.add_argument(
+        "--scrub", action="append", default=[], metavar="REGEX=REPLACEMENT", help="one more rewrite of our records"
+    )
+    s.add_argument(
+        "--forbid",
+        action="append",
+        default=[],
+        metavar="REGEX",
+        help="must not appear in the files this script writes (a task log with a hit is not kept); hits in the "
+        "agents' own logs are reported",
+    )
+    s.add_argument("--title", default="Task logs", help="the dataset card's title")
+    s.add_argument("--intro", metavar="FILE", help="a Markdown paragraph for the top of the dataset card")
+    s.add_argument("--prices", metavar="FILE", help="JSON price table (as export)")
+    s.add_argument("--extras", metavar="FILE", help="JSON replays, stills and robot rules (as export)")
+    s.add_argument("--robot", action="append", default=[], metavar="TASK=REGEX", help="as export")
+    add_secret_args(s)
+    s.set_defaults(func=cmd_tasklog)
+
+    s = sub.add_parser("hf-upload", help="the task-log dataset to a Hugging Face dataset repository")
+    s.add_argument(
+        "--dataset", default=os.environ.get(ENV_TASKLOGS), help=f"the dataset folder (default ${ENV_TASKLOGS})"
+    )
+    s.add_argument("--repo", default=os.environ.get(ENV_HF_REPO), help=f"OWNER/NAME (default ${ENV_HF_REPO})")
+    s.add_argument(
+        "--path",
+        action="append",
+        default=[],
+        metavar="PLATFORM/TASK/AGENT",
+        help="replace these folders only (one commit, with index.jsonl and README.md); default: everything, one "
+        "commit per platform, then the root",
+    )
+    s.add_argument("--message", help="the commit message")
+    s.add_argument("--create", action="store_true", help="create the repository when it does not exist")
+    s.add_argument("--private", action="store_true", help="with --create: a private repository")
+    s.add_argument("--endpoint", help="a Hugging Face endpoint other than the default")
+    s.add_argument("--dry-run", action="store_true", help="show what each commit would add and delete")
+    s.add_argument(
+        "--accept",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="a file (relative to the dataset) whose scan hit was looked at and is not a secret",
+    )
+    add_secret_args(s)
+    s.set_defaults(func=cmd_hf_upload)
 
     s = sub.add_parser("sample", help="resource samples of one run's own episode containers (start beside ale run)")
     s.add_argument("--run-dir", required=True, help="<runs dir>/<run id> of the run to sample")
