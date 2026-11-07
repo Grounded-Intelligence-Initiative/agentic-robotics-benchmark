@@ -2,7 +2,8 @@
 
 The agent-facing contract is `instruction.md`; the cell is described in `environment/setup/payload/given/cell/cell_manual.md` and
 its wire in `cell_api.md`. This page records the design decisions, what the grader checks and why, and what is
-known to be rough in version 0.2 (2026-10-30, Yuanfang Peng; reference lacing and the lace physics reworked 2026-11-05).
+known to be rough in version 0.2 (2026-10-30, Yuanfang Peng; reference lacing and the lace physics reworked 2026-11-05;
+the lid tray's delivery spot 2026-11-07).
 
 ## 1. The job and why it is worth measuring
 
@@ -39,7 +40,10 @@ its own perception.
   the hand. Closing the gripper on an aglet that sits on the hook takes it off the hook (the handover).
 * Delivery (`Scene._thread_lace`): the lace path is computed in the world frame from the shoe's actual pose (upright
   or on its side), the tails are laid on the tray plate as a spiral with 90-degree corners that stays 3 cm inside the
-  rim and clear of the lid spot and the other shoe. Row 1 survived the settle on all 28 seeds tried.
+  rim and clear of the lid tray (its footprint where it is set down, plus 1 cm) and the other shoe. Row 1 survived the
+  settle on all 28 seeds tried. The lid tray's centre is drawn within +-3 cm (x) and +-3 mm (y) of (0.40, 0.135), turned
+  at most 0.03 rad either way round, so that even the biggest batch's lid (0.28 x 0.20 m) lies at least 3.8 mm inside
+  the tray's near rim and rests flat on the plate (since 2026-11-07; section 5).
 * Blow-up guard: `Scene.step_physics` flags `physics_fault` when MuJoCo's BADQACC auto-reset fires (time goes
   backwards or the warning counter is set); the server ends the episode (`done_reason physics_fault`) instead of
   crediting a reset world. The safety watch also counts arm-arm contacts above the force limit.
@@ -128,6 +132,14 @@ shoe the lacing succeeds in 184 of 187 upright and 67 of 69 side-lying arrivals;
 and 678-1568 s of wall clock on one core of the host (mean 942 s). The anchor was measured again with this reference, on
 the fixed hidden set (next paragraph).
 
+**The cell change of 2026-11-07** (the lid tray's delivery spot and the tails' keep-out around it; section 5). The
+reference, unchanged, ran again with the fixed cell on 32 episodes (host venv, one core each): the first selection's 24
+candidates (all 1.0 with the old cell) and 8 development seeds, the four whose lid the old cell threw off the tray
+(1014, 1034, 1039, 1046) and the four with the new lid nearest a side-lying shoe (2436, 2644, 4900, 5385). 31 scored
+1.0 (425-614 s simulated, 663-1198 s of wall clock, mean 832 s; one slip, recovered; the closest call a hand on a
+shoe at 38.6 N for 2 ticks, seed 5385); seed 2644 was voided: an aglet that had slid under a lid wall dragged the lid
+off the tray when its shoe was lifted (section 5).
+
 **Scoring since 2026-11-06: the fixed hidden set and the anchor.** The owner's rule for contributed tasks (2026-11-04):
 the oracle may use ground truth the agent cannot see, unlocked by the token whose sha256 lives only in `tests/hidden/`;
 a random task grades a fixed hidden set of configurations that the oracle completes; the anchor is the oracle's full or
@@ -213,11 +225,35 @@ near-full score with `full_at` near 1. Here:
   ticks (the rule voids at 3) in the joint-space line home from above the infeed tray after a righted shoe was set down
   beside the lid (seed 48, `box_skills._go_home`; that line is checked kinematically, but it runs even when the check
   finds it blocked at both lift heights).
-* The lid tray's delivery spot (tray centre y - 0.14 +- 0.012) puts its near wall over the infeed tray's rim at y =
-  0.02: of the 128 seeds above, 45 lids rest tilted 3-4 degrees on the rim and 4 are pushed off the tray at reset, 12 cm
-  toward the blank, in the way of the wall folds (the reference lifts such a lid back onto the tray). Drawing the lid at
-  y - 0.12 would keep every lid flat on the plate (a delivery change, not made). Among the 24 candidates of the hidden
-  set's selection 13 lids rested on the rim and 2 were pushed off; one of the six hidden scenes (draw 4) is such a lid,
-  so there `cell_manual.md`'s infeed-tray row ("the lid tray (near (0.40, 0.12), either way round)") is not true (the
-  reference lifts it back and scores 1.0). The fix is the owner's: it changes the cell, and so the set and the anchor.
+* The lid tray's delivery spot, fixed 2026-11-07 (a cell change, so a new hidden set and anchor: section 4). Until
+  then the lid was drawn at tray centre y - 0.14 +- 0.012, turned +-0.2 rad, and set down 2 mm above the plate: the
+  bigger lids' near wall came down inside the tray's near rim (y = 0.016-0.024). Over 952 seeds (1-64, 1001-1064, the
+  first selection's 24 candidates, 2001-2800; `scan.py` of the maintainers' notes): 758 lids were set down with a wall
+  in the rim, 379 then rested tilted 3-6 degrees on it, 283 were moved more than 3 mm by the reset, and 36 (3.8 %) were
+  thrown off the tray and stayed jammed on its rim: 6 contacts, the deepest 5.0-6.2 mm, carrying 216-222 N against the
+  lid's 0.66 N weight, the lid still sliding at 0.45-0.81 m/s at t = 0. Hidden scene 4 of the first selection was one of
+  them (5.5 mm, 219 N, 0.55 m/s at t = 0; in 20 s idle it slid 9 cm toward the blank and met it), so there the
+  instruction's "fetch the lid tray from the infeed tray", the manual's "the lid tray (near (0.40, 0.12), either way
+  round)" and describe()'s "the lid tray on the infeed tray" were false (the reference lifted it back and scored 1.0).
+  Moving the spot alone does not fit: between the rim and the shoes' side-lying arrivals (a shoe on its side reaches
+  8.8 cm toward the lid) there is about 0.25 m, and the biggest lid turned 0.2 rad needs 0.25 m (y - 0.12: 135 of the
+  952 still set down in the rim, one jammed; y - 0.10: none in the rim, but lids set down 27 mm into side-lying shoes
+  and 9 thrown off). Now the centre is drawn within +-3 mm of y - 0.125 and the turn within +-0.03 rad (the x jitter,
+  +-3 cm, and every other draw of the work order are unchanged: the same uniforms of the same stream), which keeps even
+  the biggest lid at least 3.8 mm inside the rim (pinned by the repository test), and the tails' keep-out box is the
+  lid's footprint at its spot plus 1 cm (it was the nominal spot's plus 3 cm, which the moved lid would have made the
+  start of a side-lying shoe's tail four times as often, and such a tail is laid under its shoe). Over 3952 seeds (the
+  952 and 3001-6000): no lid set down into the rim, none tilted or moved more than 3 mm by the reset, the nearest shoe
+  at least 6.9 mm away; a side-lying shoe's tail laid under it: 21 tails of 3814 over the 952 seeds (50 before). What
+  remains is the frictionless cord sliding in the 0.3 s settle after the delivery: lace touches a lid wall from outside
+  in 109 scenes (at most 0.09 N), and in 6 an aglet ends inside the lid's footprint, under a wall (2 of the 3952 with
+  the old delivery, 4 with a 3 cm keep-out for the tails that start beyond it: not adopted, it changes the tails of most
+  scenes); `cell_manual.md` says so. Such an aglet can drag the lid: in seed 2644 (32 development episodes of the
+  reference with the fixed cell, section 4) lifting its side-lying shoe pulled the lid off the tray onto the bench
+  beside the box, and the reference, carrying the lid from there toward a placement without a joint solution, pressed
+  the forearm on the infeed tray (381 N): the pair was voided (with the old delivery seed 2644 scored 1.0). The
+  hidden set's rule drops a scene that does not start physical, this one included (section 4). A lace pressed more
+  than 1 mm into the plate (2 of 3952) is as before. The reference is unchanged: its lid recovery
+  (`box_skills._shift_lid_away`) stays for a lid a wall fold meets, and its `LID_TRAY_IN` comment still describes the
+  old delivery.
 * Three-row batches need a longer lace (section 2).

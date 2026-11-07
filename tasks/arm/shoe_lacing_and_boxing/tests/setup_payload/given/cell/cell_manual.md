@@ -77,7 +77,7 @@ the episode's frame budget.
 
 | zone | where | what |
 |---|---|---|
-| infeed tray | a grey plate 0.48 x 0.48 m, 6 mm thick, centred at (0.40, 0.26), with a low rim | the two shoes of the pair (centres near x = 0.40 -/+ 0.115, y = 0.36, lying along x either way round, +-0.25 rad; a shoe may lie on its side; each lace's tails lie folded on the plate beside and behind its shoe) and the lid tray (near (0.40, 0.12), either way round) |
+| infeed tray | a grey plate 0.48 x 0.48 m, 6 mm thick, centred at (0.40, 0.26), with a low rim | the two shoes of the pair (centres near x = 0.40 -/+ 0.115, y = 0.36, lying along x either way round, +-0.25 rad; a shoe may lie on its side; each lace's tails lie folded on the plate beside and behind its shoe) and the lid tray (near (0.40, 0.135), either way round) |
 | blank spot | (0.30, -0.22) +- 1.5 cm, yaw 0 or pi (+-0.15 rad) | the flat box blank, inner (light) face up |
 | cradle | nominal centre (-0.36, 0.05), yaw -pi/2 (the seated shoe's toe points along -y, toward the hook arm, so its throat slot runs along y); per episode jittered by +-2 cm and +-0.12 rad | the lacing seat: a plate 8 mm thick sized to the batch's sole with 4 mm of clearance, 12 mm corner bumpers and a heel stop at its -x end |
 | outfeed line | the yellow line at x = 0.55 | a closed box whose floor centre crosses it is shipped |
@@ -101,7 +101,9 @@ a second (it is lightly damped); the eyelet rings have friction (a lace through 
 Delivered threaded through row 1 and tacked there: the lace crosses the cavity under the flaps, is stitched to the
 insole between the two row-1 rings (pulling an end never slides the lace through row 1; each tail keeps its length,
 about 0.27 m from its ring), and both ends leave the shoe outward through the row-1 rings; the tails hang down beside
-the shoe and lie folded on the tray plate alongside and behind it (never across the other shoe or the lid).
+the shoe and lie folded on the tray plate alongside and behind it, laid clear of the other shoe and of the lid tray
+(the frictionless cord may still slide a little before it rests: rarely an aglet ends up under a wall of the lid
+tray).
 
 **Box blank.** One die-cut piece: a floor L_b x W_b with four walls H high on creases (3 mm cardboard; `describe()`
 gives L_b, W_b, H per batch: L_b fits the shoe length + 3.5-5 cm, W_b two shoe widths + 1.2-2 cm, H 9.4-10.4 cm,

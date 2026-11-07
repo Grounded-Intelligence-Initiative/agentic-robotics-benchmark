@@ -83,8 +83,11 @@ def draw_work_order(seed, cfg):
                           "uneven_tails": uneven, "tails": list(tails)})
         blank = {"pos": [bx + float(rng.uniform(-0.015, 0.015)), by + float(rng.uniform(-0.015, 0.015))],
                  "yaw": float(rng.choice([0.0, math.pi]) + rng.uniform(-0.15, 0.15))}
-        lid = {"pos": [tx + float(rng.uniform(-0.03, 0.03)), ty - 0.14 + float(rng.uniform(-0.012, 0.012))],
-               "yaw": float(rng.choice([0.0, math.pi]) + rng.uniform(-0.2, 0.2))}
+        # the lid tray, either way round: its centre within +-3 cm (x) and +-3 mm (y) of (tx, ty - 0.125), turned by at
+        # most 0.03 rad, so that even the biggest batch's lid (0.28 x 0.20 m) lies >= 3.8 mm inside the tray's near rim
+        # (its inner face at y = ty - 0.236) and rests flat on the plate
+        lid = {"pos": [tx + float(rng.uniform(-0.03, 0.03)), ty - 0.125 + float(rng.uniform(-0.003, 0.003))],
+               "yaw": float(rng.choice([0.0, math.pi]) + rng.uniform(-0.03, 0.03))}
         pairs.append({"index": k, "shoes": shoes, "blank": blank, "lid": lid,
                       "upper_rgba": list(upper[1]), "upper_colour": upper[0], "sole_rgba": list(sole[1]), "sole_colour": sole[0],
                       "lace_rgba": list(lace[1]), "lace_colour": lace[0], "logo_rgba": list(logo)})

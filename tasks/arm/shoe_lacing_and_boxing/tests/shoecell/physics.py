@@ -544,7 +544,7 @@ class Scene(object):
                 roll = np.array([math.cos(math.pi / 4), math.sin(math.pi / 4) * (1 if sh.get("side_sign", 1) > 0 else -1), 0.0, 0.0])
                 q = quat_mul(q, roll)
             shoe_mod.set_shoe_pose(m, d, self.shoes[i], pos, q, forward=True)
-            self._thread_lace(i, i, tails=sh.get("tails", (0.5, 0.5)))
+            self._thread_lace(i, i, spec["lid"], tails=sh.get("tails", (0.5, 0.5)))
         # blank: flat, inner face up, at the blank spot
         bl = spec["blank"]
         self._place_carton([bl["pos"][0], bl["pos"][1], 0.0005], bl["yaw"])
@@ -594,8 +594,9 @@ class Scene(object):
             d.qvel[self.carton_hinge_vadr[h]] = 0.0
         self._set_free(self.carton_qadr, self.carton_vadr, pos, yaw_quat(yaw))
 
-    def _thread_lace(self, lace_i, shoe_i, tails=(0.5, 0.5)):
-        """Pose lace `lace_i` threaded through row 1 of shoe `shoe_i` (shoe already placed, kinematics current).
+    def _thread_lace(self, lace_i, shoe_i, lid, tails=(0.5, 0.5)):
+        """Pose lace `lace_i` threaded through row 1 of shoe `shoe_i` (shoe already placed, kinematics current; `lid`:
+        the pair's lid tray spot, where it is set down next).
 
         World path: tail A on the tray -> up beside the shoe -> 3 cm along the left row-1 ring's axis -> through the
         ring into the cavity -> across -> up through the right ring -> 3 cm along its axis -> down beside the shoe
@@ -637,10 +638,13 @@ class Scene(object):
         edge_L, edge_R = exit_point(1.0, mid[0]), exit_point(-1.0, mid[3])
         cx, cy = self.layout["infeed"]["centre"]
         hx, hy = self.layout["infeed"]["half"]
-        # keep-out boxes on the plate: the lid spot and the other shoe's footprint (xy AABBs, with clearance)
-        lid_w = float(self.lid["dims"]["Wo"]) / 2 + 0.03
-        lid_l = float(self.lid["dims"]["Lo"]) / 2 + 0.03
-        boxes = [((cx - lid_l, cy - 0.14 - lid_w), (cx + lid_l, cy - 0.14 + lid_w))]
+        # keep-out boxes on the plate (xy AABBs, with clearance): the lid tray's footprint at its spot (1 cm) and the
+        # other shoe's footprint
+        lid_x, lid_y, lid_yaw = float(lid["pos"][0]), float(lid["pos"][1]), float(lid["yaw"])
+        lid_c, lid_s = abs(math.cos(lid_yaw)), abs(math.sin(lid_yaw))
+        lid_hl, lid_hw = float(self.lid["dims"]["Lo"]) / 2, float(self.lid["dims"]["Wo"]) / 2
+        lid_ex, lid_ey = lid_hl * lid_c + lid_hw * lid_s + 0.01, lid_hl * lid_s + lid_hw * lid_c + 0.01
+        boxes = [((lid_x - lid_ex, lid_y - lid_ey), (lid_x + lid_ex, lid_y + lid_ey))]
         other = self.shoe_centre(1 - shoe_i)
         if other[2] > -0.1:
             boxes.append(((other[0] - L / 2 - 0.03, other[1] - 0.07), (other[0] + L / 2 + 0.03, other[1] + 0.07)))
@@ -669,7 +673,7 @@ class Scene(object):
         def tail(edge, length, margin=0.0):
             """The tail on the tray plate below its exit point: a spiral of up to three legs with 90-degree corners
             (first the free direction with the most room, never toward the shoe), inside the plate and clear of the
-            lid spot and the other shoe."""
+            lid tray and the other shoe."""
             q1 = np.array([edge[0], edge[1], z_s])
             out = left if float((edge - pos) @ left) >= 0.0 else -left
             cands = [(-heading, min(length, run)), (out, length), (heading, length)]

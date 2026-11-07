@@ -19,11 +19,21 @@ note of 2026-11-06 that a test runs once):
    recorded image with no network (review/run_candidate.sh), through the grader's own episode call: verify.run_episode
    with the grader's configuration (tests/grader_config.json), a fresh cell in hidden mode and the submission that
    solution/solve.sh installs (the reference packer and the token, so the cell is privileged), run as the runner
-   account over the wire. The only additions are read-only: the scene after the cell's reset and a sha256 of the final
-   state. Candidates run in parallel; their order is the draw index.
+   account over the wire. The only additions are read-only: the scene after the cell's reset, a sha256 of the final
+   state and, once the episode is over, the start-state check of item 4. Candidates run in parallel; their order is the
+   draw index.
 4. Keep. A candidate passes when its episode scores work_score 1.0 (the pair's two shoes laced through every row and
    snug, the box erected, packed, closed and shipped, no safety violation), with no internal error of the cell and no
-   physics fault. The first 6 that pass, in drawn order (6 = grader_config.json's episodes), are the set, in that
+   physics fault, and when its scene starts physical (`start_state`, read only, on a separate cell instance of the
+   same code after the graded run): at t = 0 no contact deeper than 1 mm between two bodies (lace segments among
+   themselves aside), the lid tray flat on the infeed tray's plate (tilted less than 1 degree, touching no rim, its
+   footprint inside the rim), no lace inside the lid tray (a lace capsule reaching inside its footprint below its top,
+   or touching it inside its walls), and over 1 s with nothing commanded no shoe, the lid or the blank moves more than
+   2 mm. (Added for the second selection, 2026-11-07, before its draw: in the first, hidden scene 4's lid tray had been
+   set down with a wall inside the tray's near rim and started jammed on it, 6 contacts 2.5-5.5 mm deep, 219 N, moving
+   at 0.55 m/s; and in a development episode of the fixed cell an aglet that had slid under a lid wall dragged the lid
+   off the tray when its shoe was lifted. Speed at t = 0 is not the test: a side-lying shoe can read 3-11 cm/s there
+   and stop within 0.1 s, less than 1 mm on.) The first 6 that pass, in drawn order (6 = grader_config.json's episodes), are the set, in that
    order. Every candidate is recorded: kept; dropped, with its outcome and the reason; or ran after the 6th kept and
    not used. With fewer than 6 passing, `draw --batch 2` adds 12 candidates once every candidate of batch 1 has run.
 5. Record and check. Every run's outcome (score, milestones, violations, slips, times, the final state's sha256) and
@@ -64,7 +74,7 @@ TESTS = os.path.dirname(HERE)
 TASK = os.path.dirname(TESTS)
 SELECTION = os.path.join(TESTS, "hidden", "selection.json")
 SEEDS = os.path.join(TESTS, "hidden", "seeds.json")
-SEL_FORMAT = "shoe_lacing_and_boxing selection 1"
+SEL_FORMAT = "shoe_lacing_and_boxing selection 2"
 FROZEN_GLOBS = ("solution/solve.sh", "solution/reference/*", "tests/reference/*.py", "tests/shoecell/*.py",
                 "tests/cellkit/*.py", "tests/verify.py", "tests/test.sh", "tests/grader_config.json",
                 "tests/given_hashes.json", "tests/hidden/oracle_token.sha256", "environment/Dockerfile",
@@ -75,6 +85,10 @@ BATCH_SIZE = {1: 24}
 LATER_BATCH = 12
 SET_SIZE = 6
 MASK63 = (1 << 63) - 1
+START_DEEP_MM = 1.0           # start state (rule item 4): no contact deeper than this at t = 0 (lace-lace aside)
+START_TILT_DEG = 1.0          # the lid tray tilted less than this
+START_IDLE_S = 1.0            # with nothing commanded for this long ...
+START_MOVE_MM = 2.0           # ... no shoe, the lid or the blank moves farther than this
 
 
 def sha256_file(path):
@@ -209,6 +223,102 @@ def scene_features(server):
     }
 
 
+def start_state(seed, cfg, given):
+    """Rule item 4's start-state check: the scene the program meets at t = 0, rebuilt from the seed on a separate cell
+    instance (hidden mode, no reference, no rendering; the graded run is not touched), then START_IDLE_S of control
+    ticks with nothing commanded (the arms hold their home posture). Reads only."""
+    import numpy as np
+    import mujoco
+    from shoecell.server import ShoeCellServer
+
+    s = ShoeCellServer(given, config=cfg, mode="hidden", privileged=False, render=False, log=lambda msg: None)
+    s.reset(int(seed))
+    sc, m, d = s.scene, s.scene.model, s.scene.data
+    f6 = np.zeros(6)
+    lid_geoms = {j for j in range(m.ngeom) if int(m.geom_bodyid[j]) == sc.lid_body}
+    rim_geoms = {j for j in range(m.ngeom) if m.geom(j).name.startswith("infeed/rim")}
+    deep, rim_n = {}, 0.0
+    for i in range(d.ncon):
+        c = d.contact[i]
+        b1, b2 = m.body(int(m.geom_bodyid[c.geom1])).name, m.body(int(m.geom_bodyid[c.geom2])).name
+        if (c.geom1 in lid_geoms and c.geom2 in rim_geoms) or (c.geom2 in lid_geoms and c.geom1 in rim_geoms):
+            mujoco.mj_contactForce(m, d, i, f6)
+            rim_n += abs(float(f6[0]))
+        if c.dist >= -START_DEEP_MM / 1000.0 or (b1.startswith("lace") and b2.startswith("lace")):
+            continue
+        mujoco.mj_contactForce(m, d, i, f6)
+        key = "|".join(sorted(n.split("/")[0] if n.startswith("lace") else n for n in (b1, b2)))
+        e = deep.setdefault(key, {"depth_mm": 0.0, "normal_N": 0.0, "contacts": 0})
+        e["depth_mm"] = min(e["depth_mm"], 1000.0 * float(c.dist))
+        e["normal_N"] += abs(float(f6[0]))
+        e["contacts"] += 1
+    R = np.array(d.xmat[sc.lid_body]).reshape(3, 3)
+    tilt = float(np.degrees(np.arccos(np.clip(abs(R[2, 2]), 0.0, 1.0))))
+    corners = []
+    for j in lid_geoms:
+        if int(m.geom_contype[j]) == 0 and int(m.geom_conaffinity[j]) == 0:
+            continue                                    # (the printed logo: no collision)
+        Rg, sz = d.geom_xmat[j].reshape(3, 3), m.geom_size[j]
+        corners += [d.geom_xpos[j] + Rg @ np.array([sx * sz[0], sy * sz[1], sz[2]]) for sx in (-1, 1) for sy in (-1, 1)]
+    (cx, cy), (hx, hy) = sc.layout["infeed"]["centre"], sc.layout["infeed"]["half"]
+    inner = 0.004                                       # the rim's half thickness (physics.Scene: rim boxes at +-half)
+    inside_mm = 1000.0 * min(min(float(p[0]) - (cx - hx + inner), (cx + hx - inner) - float(p[0]),
+                                 float(p[1]) - (cy - hy + inner), (cy + hy - inner) - float(p[1])) for p in corners)
+    # lace inside the lid tray: a lace capsule (cord or aglet) with a point of its axis inside the tray's outer footprint
+    # below its top plate, or touching it inside the walls' inner faces (an aglet that slid under a wall in the settle
+    # drags the lid along when its tail is pulled)
+    lp, Rl = d.xpos[sc.lid_body].copy(), np.array(d.xmat[sc.lid_body]).reshape(3, 3)
+    dims = sc.lid["dims"]
+    lace_geoms = {}
+    for i, ids in enumerate(sc.lace_bodies):
+        for b in ids:
+            lace_geoms[int(b)] = "lace%d" % i
+    in_lid = {}
+    for g in range(m.ngeom):
+        name = lace_geoms.get(int(m.geom_bodyid[g]))
+        if name is None or int(m.geom_type[g]) != int(mujoco.mjtGeom.mjGEOM_CAPSULE):
+            continue
+        ax = d.geom_xmat[g].reshape(3, 3)[:, 2]
+        for u in np.linspace(-1.0, 1.0, 5):
+            q = Rl.T @ (d.geom_xpos[g] + u * float(m.geom_size[g][1]) * ax - lp)
+            if abs(q[0]) < dims["Lo"] / 2 and abs(q[1]) < dims["Wo"] / 2 and q[2] < 0.0:
+                in_lid[name] = in_lid.get(name, 0) + 1
+                break
+    for i in range(d.ncon):
+        c = d.contact[i]
+        if c.geom1 in lid_geoms or c.geom2 in lid_geoms:
+            name = lace_geoms.get(int(m.geom_bodyid[c.geom2 if c.geom1 in lid_geoms else c.geom1]))
+            q = Rl.T @ (np.asarray(c.pos) - lp)
+            if name and abs(q[0]) <= dims["Li"] / 2 + 0.0005 and abs(q[1]) <= dims["Wi"] / 2 + 0.0005:
+                in_lid[name + " (contact inside the walls)"] = in_lid.get(name + " (contact inside the walls)", 0) + 1
+    bodies = {"shoe%d" % i: b for i, b in enumerate(sc.shoe_body)}
+    bodies.update({"lid": sc.lid_body, "blank": sc.carton_floor_body})
+    vadr = {"shoe%d" % i: a for i, a in enumerate(sc.shoe_vadr)}
+    vadr.update({"lid": sc.lid_vadr, "blank": sc.carton_vadr})
+    p0 = {k: d.xpos[b].copy() for k, b in bodies.items()}
+    speed0 = {k: float(np.linalg.norm(d.qvel[a:a + 3])) for k, a in vadr.items()}
+    for _ in range(int(round(START_IDLE_S / s.tick_s))):
+        s.physics_tick()
+    moved = {k: 1000.0 * float(np.linalg.norm(d.xpos[b] - p0[k])) for k, b in bodies.items()}
+    out = {"deep": deep, "lid_tilt_deg": tilt, "lid_rim_contact_N": rim_n, "lid_inside_rim_mm": inside_mm,
+           "lace_in_lid": in_lid, "idle_s": START_IDLE_S, "moved_mm": moved, "speed_t0_m_s": speed0}
+    why_not = []
+    if deep:
+        why_not.append("contacts deeper than %.0f mm: %s" % (START_DEEP_MM, sorted(deep)))
+    if tilt >= START_TILT_DEG:
+        why_not.append("lid tilted %.1f deg" % tilt)
+    if rim_n > 0.0 or inside_mm <= 0.0:
+        why_not.append("lid on the rim (%.1f N, %.1f mm inside)" % (rim_n, inside_mm))
+    if in_lid:
+        why_not.append("lace inside the lid tray: %s" % sorted(in_lid))
+    far = sorted(k for k, v in moved.items() if v > START_MOVE_MM)
+    if far:
+        why_not.append("moved over %.0f mm in %.0f s idle: %s" % (START_MOVE_MM, START_IDLE_S, far))
+    out["ok"] = not why_not
+    out["why_not"] = why_not
+    return out
+
+
 def cmd_run_one(a):
     sys.path.insert(0, TESTS)
     import numpy as np
@@ -258,6 +368,7 @@ def cmd_run_one(a):
     verify.ShoeCellServer = Recorded
     rn = verify.Runner(cfg)
     summary = verify.run_episode(cfg, int(a.seed), rn, True, tag="ep01")
+    start = start_state(int(a.seed), cfg, verify.ROOT_GIVEN)      # (after the graded run: it cannot touch it)
     events = summary.get("events") or []
     pairs = summary.get("pairs") or []
     res = {
@@ -276,7 +387,7 @@ def cmd_run_one(a):
         "pairs": [{k: p[k] for k in ("credit", "safety_void", "milestones", "detail", "shipped_at")} for p in pairs],
         "slips": sum(1 for _, e in events if str(e).startswith("aglet_slipped")),
         "n_events": len(events), "events_sha256": hashlib.sha256(json.dumps(events).encode()).hexdigest(),
-        "final_qpos_sha256": rec.get("final_qpos_sha256"), "scene": rec.get("scene"),
+        "final_qpos_sha256": rec.get("final_qpos_sha256"), "scene": rec.get("scene"), "start_state": start,
     }
     res["passes"] = passes(res)
     with open(a.out, "w") as f:
@@ -285,19 +396,22 @@ def cmd_run_one(a):
     full = (a.out[:-len(".json")] if a.out.endswith(".json") else a.out) + ".summary.json"
     with open(full, "w") as f:                  # the cell's whole summary, its events included
         json.dump(summary, f, indent=1, default=float)
-    print("seed {} work_score {:.4f} sim {:.2f} s ticks {} slips {} void {} passes {} wall {:.0f} s".format(
+    print("seed {} work_score {:.4f} sim {:.2f} s ticks {} slips {} void {} start {} passes {} wall {:.0f} s".format(
         a.seed, res["work_score"], res["sim_time_s"], res["ticks"], res["slips"], not res["safety_ok"],
-        res["passes"], res["wall_s"]), flush=True)
+        "ok" if start["ok"] else start["why_not"], res["passes"], res["wall_s"]), flush=True)
 
 
 # ------------------------------------------------------------------------------------------------ the rule
 def passes(res):
     return (float(res["work_score"]) == 1.0 and bool(res["safety_ok"]) and int(res["internal_errors"]) == 0
-            and res["done_reason"] != "physics_fault")
+            and res["done_reason"] != "physics_fault" and bool((res.get("start_state") or {}).get("ok")))
 
 
 def why(res):
     """What a run that does not pass lost, from its record."""
+    st = res.get("start_state") or {}
+    if not st.get("ok"):
+        return "start state: " + ("; ".join(st.get("why_not") or []) or "not checked")
     if res["done_reason"] == "physics_fault":
         return "physics fault"
     if int(res["internal_errors"]):
@@ -415,16 +529,24 @@ def cmd_report(a):
     every = kept + dropped + after
     groups = (("kept", kept), ("dropped", dropped), ("after cutoff", after), ("all", every))
     print("kept {}, dropped {}, after the cutoff {}".format(len(kept), len(dropped), len(after)))
-    print("\n| draw | seed | status | work_score | side-lying | shoe L / W (mm) | colours | lid | sim s | slips | wall s |")
-    print("|---|---|---|---|---|---|---|---|---|---|---|")
+    print("\n| draw | seed | status | work_score | start | side-lying | shoe L / W (mm) | colours | lid | sim s | slips | wall s |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|---|")
     for c in every:
         r, sc = c["result"], c["result"]["scene"]
         st = "kept" if c in kept else ("dropped" if c in dropped else "after cutoff")
-        print("| {} | {} | {} | {:.4f} | {} | {:.1f} / {:.1f} | {}/{}/{} | {} | {:.2f} | {} | {:.0f} |".format(
-            c["draw"], c["seed"], st, r["work_score"],
+        ss = r.get("start_state") or {}
+        print("| {} | {} | {} | {:.4f} | {} | {} | {:.1f} / {:.1f} | {}/{}/{} | {} | {:.2f} | {} | {:.0f} |".format(
+            c["draw"], c["seed"], st, r["work_score"], "ok" if ss.get("ok") else "; ".join(ss.get("why_not") or ["-"]),
             "+".join(s["side"] for s in sc["shoes"] if s["on_side"]) or "0", 1000 * sc["batch"]["length"],
             1000 * sc["batch"]["width"], sc["colours"]["upper"], sc["colours"]["sole"], sc["colours"]["lace"],
             sc["lid"]["rest"], r["sim_time_s"], r["slips"], r["wall_s"]))
+    ss = [c["result"].get("start_state") or {} for c in every]
+    if all(ss):
+        print("\nstart state (all candidates): lid inside the rim {:.1f}-{:.1f} mm, tilt <= {:.2f} deg, rim contact <= {:.3f} N; "
+              "largest move in {:.0f} s idle {:.2f} mm; contacts deeper than {:.0f} mm in {} candidates".format(
+                  min(s["lid_inside_rim_mm"] for s in ss), max(s["lid_inside_rim_mm"] for s in ss),
+                  max(s["lid_tilt_deg"] for s in ss), max(s["lid_rim_contact_N"] for s in ss), START_IDLE_S,
+                  max(max(s["moved_mm"].values()) for s in ss), START_DEEP_MM, sum(1 for s in ss if s["deep"])))
     print("\nfeature | " + " | ".join(name for name, _ in groups))
     num = (("shoe length (m)", lambda s: s["batch"]["length"]), ("shoe width (m)", lambda s: s["batch"]["width"]),
            ("row spacing (m)", lambda s: s["batch"]["row_spacing"]), ("throat gap (m)", lambda s: s["batch"]["throat_gap"]),

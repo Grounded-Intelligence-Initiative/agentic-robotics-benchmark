@@ -3,8 +3,11 @@
 The grader gives the privileged calls (the reference controller inside the cell) only to a submission whose
 .oracle_token hashes to tests/hidden/oracle_token.sha256, and that digest lives only there. The hidden episodes are a
 fixed set (tests/hidden/seeds.json): the first 6, in drawn order, of a pre-registered batch of os.urandom seeds on
-which the frozen reference scores 1.0 (tests/hidden/selection.json; the rule in tests/review/select_set.py), and
-verify.py runs that list as it stands. The files the set was selected with (the reference, the cell, the grader, the
+which the frozen reference scores 1.0 and whose scene starts physical (no contact deeper than 1 mm, the lid tray flat
+inside the infeed tray's rim, nothing moving off in 1 s idle; tests/hidden/selection.json, the rule in
+tests/review/select_set.py), and verify.py runs that list as it stands. The cell's three copies (the grader's, the
+agent's givens and the grader's copy of the givens) are byte-identical and pinned by tests/given_hashes.json, and the
+lid tray's delivery spot keeps even the biggest lid inside the rim. The files the set was selected with (the reference, the cell, the grader, the
 image's inputs) are unchanged since: their sha256 in the selection record. The anchor is the lowest work_score of the
 recorded full verifies of the privileged submission on the set, with a full_at under which those verifies still read
 reward 1.0. Nothing the agent sees names the token, the set or its selection; the cell library's own mentions of its
@@ -17,6 +20,7 @@ import ast
 import hashlib
 import importlib.util
 import json
+import math
 import re
 import sys
 import unittest
@@ -104,9 +108,33 @@ class HiddenSetTests(unittest.TestCase):
             self.assertTrue(select_set.passes(r))
             self.assertEqual(r["work_score"], 1.0)
             self.assertTrue(r["safety_ok"])
+            st = r["start_state"]
+            self.assertTrue(st["ok"], st.get("why_not"))
+            self.assertEqual(st["deep"], {})
+            self.assertLess(st["lid_tilt_deg"], select_set.START_TILT_DEG)
+            self.assertEqual(st["lid_rim_contact_N"], 0.0)
+            self.assertGreater(st["lid_inside_rim_mm"], 0.0)
+            self.assertEqual(st["lace_in_lid"], {})
+            self.assertLessEqual(max(st["moved_mm"].values()), select_set.START_MOVE_MM)
         for c in d:
             self.assertFalse(select_set.passes(c["result"]))
             self.assertTrue(c.get("reason"))
+
+    def test_every_candidate_s_start_state_was_checked(self):
+        """Rule item 4: a candidate passes only with work_score 1.0 and a physical start (start_state)."""
+        self.assertEqual(SELECTION["format"], select_set.SEL_FORMAT)
+        for c in SELECTION["candidates"]:
+            r = c["result"]
+            st = r["start_state"]
+            for key in ("deep", "lid_tilt_deg", "lid_rim_contact_N", "lid_inside_rim_mm", "lace_in_lid", "moved_mm", "ok",
+                        "why_not"):
+                self.assertIn(key, st)
+            self.assertEqual(st["idle_s"], select_set.START_IDLE_S)
+            self.assertEqual(set(st["moved_mm"]), {"shoe0", "shoe1", "lid", "blank"})
+            self.assertEqual(st["ok"], not st["why_not"])
+            self.assertEqual(r["passes"], select_set.passes(r))
+            if not st["ok"]:
+                self.assertFalse(select_set.passes(r))
 
     def test_every_candidate_was_drawn_before_any_ran_and_ran_once(self):
         cands = sorted(SELECTION["candidates"], key=lambda c: c["draw"])
@@ -158,6 +186,51 @@ class FrozenTests(unittest.TestCase):
         for rel in ("solution/solve.sh", "tests/verify.py", "tests/test.sh", "tests/grader_config.json",
                     "tests/given_hashes.json", "tests/hidden/oracle_token.sha256", "environment/Dockerfile"):
             self.assertIn(rel, frozen)
+
+
+class CellTests(unittest.TestCase):
+    """The cell the agent practises with is the one the grader runs, and its lid tray is delivered inside the rim."""
+
+    def test_the_three_copies_of_the_cell_are_byte_identical(self):
+        grader = TASK / "tests/shoecell"
+        for copy in (TASK / "environment/setup/payload/given/lib/shoecell", TASK / "tests/setup_payload/given/lib/shoecell"):
+            names = sorted(p.name for p in grader.glob("*.py"))
+            self.assertEqual(sorted(p.name for p in copy.glob("*.py")), names)
+            for n in names:
+                self.assertEqual(sha256(grader / n), sha256(copy / n), "{} differs in {}".format(n, copy.relative_to(TASK)))
+
+    def test_given_hashes_pin_the_grader_s_copy_of_the_givens(self):
+        given = json.loads((TASK / "tests/given_hashes.json").read_text())
+        payload, agent = TASK / "tests/setup_payload", TASK / "environment/setup/payload"
+        files = sorted(p.relative_to(payload).as_posix() for p in payload.rglob("*") if p.is_file())
+        self.assertEqual(files, sorted(p.relative_to(agent).as_posix() for p in agent.rglob("*") if p.is_file()))
+        self.assertEqual(sorted(k for k in given if not k.startswith("given/panda/")), files)
+        for rel in files:
+            self.assertEqual(given[rel], sha256(payload / rel), rel)
+            self.assertEqual(sha256(agent / rel), sha256(payload / rel), rel)
+
+    def test_the_lid_spot_keeps_the_biggest_lid_inside_the_rim(self):
+        """episode.py's lid draw against the infeed tray's near rim (inner face 4 mm in from its edge) for the biggest
+        batch: shoe 0.21 x 0.08 m, box L + 5 cm by 2 W + 2 cm, lid 2 cm larger (board 3 mm, clearance 4 mm and wall
+        3 mm per side); and the cell manual's nominal spot."""
+        src = (TASK / "tests/shoecell/episode.py").read_text()
+        m = re.search(r'lid = \{"pos": \[tx \+ float\(rng\.uniform\(-([0-9.]+), ([0-9.]+)\)\), '
+                      r'ty - ([0-9.]+) \+ float\(rng\.uniform\(-([0-9.]+), ([0-9.]+)\)\)\],\s*'
+                      r'"yaw": float\(rng\.choice\(\[0\.0, math\.pi\]\) \+ rng\.uniform\(-([0-9.]+), ([0-9.]+)\)\)\}', src)
+        self.assertIsNotNone(m, "the lid draw of episode.py changed its form")
+        jx, off, jy, jyaw = float(m.group(1)), float(m.group(3)), float(m.group(4)), float(m.group(6))
+        self.assertEqual((m.group(1), m.group(4), m.group(6)), (m.group(2), m.group(5), m.group(7)))
+        server = (TASK / "tests/shoecell/server.py").read_text()
+        cx, cy, hx, hy = map(float, re.search(r'"infeed": \{"centre": \[([0-9.]+), ([0-9.]+)\], "half": \[([0-9.]+), ([0-9.]+)\]\}',
+                                              server).groups())
+        lo, wo = 0.21 + 0.05 + 0.020, 2 * 0.080 + 0.02 + 0.020
+        reach_y = wo / 2 * math.cos(jyaw) + lo / 2 * math.sin(jyaw)
+        clear_near = (cy - off - jy - reach_y) - (cy - hy + 0.004)
+        self.assertGreaterEqual(clear_near, 0.003)
+        reach_x = lo / 2 * math.cos(jyaw) + wo / 2 * math.sin(jyaw)
+        self.assertGreaterEqual((cx - jx - reach_x) - (cx - hx + 0.004), 0.003)   # (the -x rim; +x is symmetric)
+        manual = (TASK / "environment/setup/payload/given/cell/cell_manual.md").read_text()
+        self.assertIn("the lid tray (near (%.2f, %s), either way round)" % (cx, ("%.3f" % (cy - off)).rstrip("0")), manual)
 
 
 class AnchorTests(unittest.TestCase):
