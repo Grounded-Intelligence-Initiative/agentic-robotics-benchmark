@@ -123,3 +123,11 @@ grease. One feature is narrowed: all three have their floor crumbs split about e
 table (two patches to sweep), where the candidates range from nearly all on one side to an even split; the
 reference's broom fails more often when one large group lies along one side. For an agent this is not an easier
 floor: it has two patches to find and sweep instead of one.
+
+## The anchor's second measurement
+
+`ale validate` from a clean checkout of `ac9820e` (validate-502efd9f, 2026-11-07, apollo, engine 1cdbc02, a separate
+verifier sandbox of 8 CPUs): `ok`, untouched reward 0.0, oracle reward 1.0. The oracle's three episodes scored 0.912,
+0.935 and 0.940 with the same simulated times as their selection runs (3306.7, 3318.9 and 3729.9 s): cleaning_score
+0.9290, ratio 1.00001 to the anchor; verify 4882 s. The scenes replay exactly, so `full_at` 0.98 is only a margin for
+a last-digit difference on another machine.
