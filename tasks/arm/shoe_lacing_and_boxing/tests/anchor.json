@@ -1,8 +1,75 @@
 {
  "direction": "higher",
- "full_at": 0.5,
+ "full_at": 0.98,
  "metric": "work_score",
- "note": "work_score is the episode mean of the accepted work over the work order (per pair: lacing of each shoe 0.30 + 0.30, box erected 0.12, and pair packed 0.13, lid closed 0.10, shipped 0.05 each times the fraction of the pair's shoes laced through every row; a safety violation voids the pair at work), already on [0, 1]; ratio = score / value, reward = clamp(ratio / full_at, 0, 1).",
- "source": "reference controller (tests/reference, reference_lacing=true) measured 2026-11-05 on the host with the grader's configuration on seeds 1-64, one episode each (the same reference_run call verify makes): work_score mean 0.695 (both shoes laced in 30 episodes, one in 26, none in 4, 4 voided by a sustained contact, 0 physics faults). value = that mean. full_at = 0.50: the verify statistic is the mean over 6 episodes; the four validate runs voided 5 of 24 reference episodes (the host: 4 of 64), and with a void rate of 12-21 % the 6-episode mean falls below 0.50 x the value in 1.8-6.1 % of verify runs (bootstrap of these episodes); the last validate read ratio 0.94. Erecting every box without lacing reads 0.35",
- "value": 0.695
+ "note": "work_score is the episode mean of the accepted work over the work order (per pair: lacing of each shoe 0.30 + 0.30, box erected 0.12, and pair packed 0.13, lid closed 0.10, shipped 0.05 each times the fraction of the pair's shoes laced through every row; a safety violation voids the pair at work), already on [0, 1]; ratio = score / value, reward = clamp(ratio / full_at, 0, 1). Measured, not drawn: every submission meets the same 6 episodes (tests/hidden/seeds.json), and the reference repeated each selection run's score to the last bit in the verify (the same simulated time, ticks and per-pair detail in all 6). full_at 0.98 is the margin for a last-bit difference on another host flipping part of an episode: a submission earns reward 1.0 (two decimals) from work_score 0.9751; boxing every pair without lacing (0.12 per episode) reads reward 0.12, lacing one shoe per pair and boxing it (0.56) 0.57. One shoe lost in one episode by the reference itself (0.56 there, mean 0.927) would read 0.95: the set was chosen so that does not happen on this image (24 of 24 candidates at 1.0, the image equal to the host venv to the bit on 4 more seeds).",
+ "source": "Own measurement, 2026-11-06 (local; 2026-11-07 UTC): the privileged reference (solution/solve.sh installs solution/reference/packer.py and the token; tests/reference/ at the freeze e1f9b27) through this build's verify on the fixed hidden set (tests/hidden/seeds.json, sha256 cc74c5be9c8f20c0), in one fresh CPU container of the task image (pr48fix-task:fdec188, sha256:42897dfdf249, CPython 3.12.14; 8 CPUs, 16 GB, no network) laid out as the separate verifier (tests/review/regrade.sh: tests/ root-only at /opt/ale/tests, only the submission restored, bash test.sh as root; run pr48fix-verify-1): the 6 episodes scored 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, work_score 1.0, each equal to its selection run; verify wall 4644 s. value = that verify's work_score (the lowest recorded verify: verifies below). The set: the first 6, in drawn order, of 24 candidates drawn from os.urandom (63 bits) and committed before any ran (a6847d8), each run once in its own container of that image through verify.run_episode with the solve.sh submission, kept when it scored 1.0; all 24 did (tests/hidden/selection.json, the rule in tests/review/select_set.py). Before (2026-11-05): value 0.695 with full_at 0.50, the old reference's mean on host seeds 1-64 with the seeds drawn per verify run.",
+ "value": 1.0,
+ "verifies": [
+  {
+   "container_wall_s": 4646,
+   "episodes": [
+    {
+     "episode_wall_s": 940.3,
+     "equals_selection_run": true,
+     "same_trajectory": true,
+     "seed": 8679705364506268087,
+     "sim_time_s": 501.10000000166457,
+     "ticks": 50110,
+     "work_score": 1.0
+    },
+    {
+     "episode_wall_s": 732.9,
+     "equals_selection_run": true,
+     "same_trajectory": true,
+     "seed": 4345113011515515380,
+     "sim_time_s": 454.75000000144325,
+     "ticks": 45475,
+     "work_score": 1.0
+    },
+    {
+     "episode_wall_s": 792.9,
+     "equals_selection_run": true,
+     "same_trajectory": true,
+     "seed": 7988770447951477699,
+     "sim_time_s": 516.4800000016106,
+     "ticks": 51648,
+     "work_score": 1.0
+    },
+    {
+     "episode_wall_s": 760.5,
+     "equals_selection_run": true,
+     "same_trajectory": true,
+     "seed": 4806454454453224812,
+     "sim_time_s": 501.5300000016666,
+     "ticks": 50153,
+     "work_score": 1.0
+    },
+    {
+     "episode_wall_s": 622.4,
+     "equals_selection_run": true,
+     "same_trajectory": true,
+     "seed": 168040301085517887,
+     "sim_time_s": 474.1100000015357,
+     "ticks": 47411,
+     "work_score": 1.0
+    },
+    {
+     "episode_wall_s": 789.3,
+     "equals_selection_run": true,
+     "same_trajectory": true,
+     "seed": 659595824213247138,
+     "sim_time_s": 534.1800000011921,
+     "ticks": 53418,
+     "work_score": 1.0
+    }
+   ],
+   "image_id": "sha256:42897dfdf2495639f6066e8953022616928fd1c5ca1dedb617da327f1859129a",
+   "run": "pr48fix-verify-1",
+   "seeds_sha256": "cc74c5be9c8f20c0f2c2162c629b1ea112b7798da41dcf53fbc5d5b743b119db",
+   "started_utc": "2026-11-07T00:19:20Z",
+   "verify_wall_s": 4643.7,
+   "work_score": 1.0
+  }
+ ]
 }

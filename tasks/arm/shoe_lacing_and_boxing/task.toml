@@ -34,8 +34,10 @@ memory_mb = 16384
 # within its 1200 s program-time cap, which does not count the cell's simulation (900 s simulated at most) and
 # rendering (450 frames at most); at the bounds an episode takes about 2900 s of wall clock here (up to 1500 s
 # simulating at 0.6x real time, up to 180 s rendering) and about 4600 s on a machine twice as slow, hence 8 h for the
-# six. The oracle's episodes run the reference controller inside one privileged call (15-20 min each here). The
-# verifier sandbox's start and tests/test.sh's copy of the givens count against it too.
+# six. The oracle's episodes run the reference controller inside one privileged call: its verify of the fixed hidden
+# set (tests/hidden/seeds.json) took 4644 s here (622-940 s per episode, in a container with 8 CPUs, the first episode
+# beside 12 other runs of the reference; tests/README.md section 4). The verifier sandbox's start and tests/test.sh's
+# copy of the givens count against it too.
 [agent]
 timeout_sec = 14400
 network_mode = "no-network"
