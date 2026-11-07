@@ -95,8 +95,9 @@ through the cell's own controllers, seeded IK for wrist-flip poses, gripper / ho
 the hook enters the cavity through the throat, catches the aglet under the flap, rises out through the throat slot and
 draws the lace until the row 1 -> row 2 segment is snug, then lays the aglet on the bench; unseat back to the shoe's
 own delivery spot), `box_skills.py` (erect, pack, lid, ship). It obeys the same rate limits, attach rules and physics
-as a submitted program; its measured `work_score` is the anchor. The hidden seeds are drawn from OS entropy per verify
-run (`cellkit/seeds.py`), so `full_at` must cover the oracle's seed-to-seed spread.
+as a submitted program; its measured `work_score` is the anchor. Until 2026-11-06 the hidden seeds were drawn from OS
+entropy per verify run, so `full_at` had to cover the oracle's seed-to-seed spread; since then the hidden episodes are a
+fixed set (`tests/hidden/seeds.json`, the scoring paragraph below), the same six for every verify.
 
 **State on 2026-11-05.** `grader_config.json` runs the full reference (`reference_lacing: true`). Measured on the host
 with the grader's configuration on seeds 1-64 (one episode each, the call verify makes): mean work_score 0.695; both
@@ -107,7 +108,7 @@ shoe the lacing succeeds about 80 % of the time when the shoe arrives upright an
 on its side (section 5). The verify statistic is the mean over 6 episodes. The four validate runs voided 5 of 24
 reference episodes against 4 of 64 here (all by the contacts of section 5; the reference reads no wall clock, so this is
 seed-to-seed spread or a host/engine difference not found), so full_at is sized for a 12-21 % void rate:
-`tests/anchor.json` has value 0.695 and full_at 0.50, below which the 6-episode mean falls in 1.8-6.1 % of verify
+`tests/anchor.json` had value 0.695 and full_at 0.50, below which the 6-episode mean falls in 1.8-6.1 % of verify
 runs (bootstrap of these episodes; the last validate read ratio 0.94). Six
 episodes rather than four because with four the same risk needs a much lower full_at. A run that erects every box but
 laces nothing reads 0.12 per episode, i.e. reward 0.35; lacing about one shoe per pair and boxing it reads full.

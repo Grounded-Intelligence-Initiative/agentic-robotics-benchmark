@@ -118,7 +118,7 @@ safety events.
 
 `LocalCell(seed=...)` and `~/practice/grade.py` give you the same cell on seeds of your choice, with `truth()` (every
 pose, the eyelets, the lace passes, the carton state, the milestones) for development only: the graded cell never
-answers it. The hidden episodes use fresh seeds of the same distribution.
+answers it. The hidden episodes use other seeds; the cell builds their scenes with the same code.
 
 ## Notes
 
