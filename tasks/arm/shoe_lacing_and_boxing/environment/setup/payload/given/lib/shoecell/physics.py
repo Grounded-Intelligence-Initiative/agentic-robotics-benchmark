@@ -340,7 +340,7 @@ class Scene(object):
         for side in ("left", "right"):
             self.arms[side] = Arm(m, d, side + "/", side + "/tcp", gripper=(side == "left"), home_q=self.layout["home_q"][side], tick_s=self.tick_s)
         self.reset_arms_home()
-        self.cameras = CameraRig(m, self.renderer_sizes)
+        self.cameras = CameraRig(m, self.renderer_sizes, scene=self)
         self.tip_site = m.site("right/hook_tip").id
         self.left_tcp = m.site("left/tcp").id
         self.hand_body = m.body("left/hand").id

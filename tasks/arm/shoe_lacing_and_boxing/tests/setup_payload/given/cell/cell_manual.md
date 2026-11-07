@@ -45,6 +45,12 @@ Five RGB-D cameras; pixel (u, v) = (column, row), row 0 at the top; OpenCV camer
 z forward); depth = planar z along the optical axis in metres (the 16-bit PNG holds millimetres, 0 = no reading; the
 sensor adds 1.5 mm of noise, drops 3 % of the pixels, and reads nothing below 0.15 m or beyond 3 m; the colour image
 carries mild noise). Intrinsics for integer pixel indices: cx = W/2 - 0.5, cy = H/2 - 0.5, fx = fy = (H/2)/tan(fovy/2).
+The colour is a physically based render (MuJoCo's Filament renderer) of the cell in the factory hall it stands in, lit
+by an LED panel 2.05 m above the bench and the hall's lamps. Around the cell the cameras see the hall's concrete floor,
+its walls and lamps and, off the bench, the line's other equipment: an outfeed conveyor from x = 1.25 (a steel plate
+bridges the gap from the bench end at the bench top's height, below it), a wire fence with shelving behind the cell,
+cabinets, a table with boxes, carts and pallets. None of it is part of the cell, nothing of it stands on the bench, it
+never moves, and the depth image reads it like any other surface.
 
 | camera | size | fovy | fx = fy | mount |
 |---|---|---|---|---|
@@ -93,7 +99,11 @@ front 45 mm, top at 0.078) and the heel counter (the back 25 mm, top at 0.088); 
 the throat slot. Two eyelet rows: ring eyelets (hole radius 4.5 mm, wire radius 1.2 mm, outer radius 7.4 mm,
 metallic) sitting on the flap tops at |y| = g/2 + 9 mm, at x_k = (L/2 - 0.045) - 0.012 - k s, k = 0..1; row 1 (k = 0)
 is nearest the toe; side L is the shoe's +y side. Mass 0.22 kg. Colours per pair (upper, sole). Grasp handles: the
-heel counter top (pinch 25 mm across the counter, along the shoe's x) and the toe cap top (pinch 45 mm).
+heel counter top (pinch 25 mm across the counter, along the shoe's x) and the toe cap top (pinch 45 mm). In the colour
+images the shell wears a sneaker's skin: a rubber cupsole in the sole colour, knit and leather panels in the upper
+colour with a white side wing, a dark lining, metal grommets at the two eyelet rows (one per ring, round its hole) and
+stitching; the skin follows the shell within a few millimetres (rounded where the shell has corners), and the depth
+image is the shell's.
 
 **Lace.** A cord 0.64 m long, radius 1.5 mm, with two metallic aglets (20 mm, radius 1.8 mm), per pair's colour. It
 slides frictionlessly over the shell, the bench, the tray and the fingers, and a loose lace comes to rest within about
