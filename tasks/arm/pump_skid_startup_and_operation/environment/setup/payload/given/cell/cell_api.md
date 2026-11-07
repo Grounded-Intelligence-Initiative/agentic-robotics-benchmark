@@ -38,6 +38,4 @@ Budgets per episode (`describe()["budgets"]`): 1800 s of simulated time; 2400 s 
 minus the cell's own time inside `step` and `get_camera`), 4x that in CPU seconds; 900 camera frames; 180 s of
 silence (no request) ends the episode. After the episode is over the program may still read state and must finish.
 
-Practice only (the practice service: `skidcell.client.connect_practice(seed)`, `~/practice/grade.py`; `cell_manual.md`
-section 7): `reset(seed)` (a fresh shift on the site of that seed) and `debrief()` (the shift's score breakdown, once
-the episode is over). The graded cell answers them `forbidden`. No call returns ground truth.
+No call returns ground truth.

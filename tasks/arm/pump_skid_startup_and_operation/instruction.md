@@ -66,10 +66,9 @@ surviving process of the run account voids the contract gate.
 | `~/given/cell/cell_manual.md` | the robot cell: frame, robot, rail and lift, control, the grip rule, safety, the cameras with their calibration, time and budgets |
 | `~/given/cell/cell_api.md` | the cell's programming manual (the wire API) |
 | `~/given/cell/cell_config.json` | the cell's configuration as far as it is public |
-| `~/given/lib/skidcell/` | the cell's client: `client` (the proxy, `decode_frame`, the program launcher, `connect_practice`); the cell itself runs in the grader and in the practice service, not in your account |
+| `~/given/lib/skidcell/` | the cell's client: `client` (the proxy, `decode_frame`, the program launcher); the cell itself runs in the grader, not in your account |
 | `~/given/catalog/` | the instrument catalog: every dial face and scale plate the series fits, two sample tag plates (`catalog.md`) |
 | `~/given/panda/` | the robot's MuJoCo model (Apache-2.0) |
-| `~/practice/grade.py` | runs your program over the real wire against the practice service on a site of your choice, the way the grader runs it, and prints the shift's debrief |
 | `~/example/operate.py` | a minimal program (reads frames, moves the carriage, finishes; scores 0): the starting point |
 
 Tools: Python 3.12 (`/opt/venv/bin/python3`; call it by that path, the bare `python3` on your shell's `PATH` may be
@@ -101,16 +100,13 @@ credits, frames per camera, sim / wall / program time, illegal calls, safety eve
 * The process runs only while the cell is stepped; the clock is the cell's `sim_time`.
 * Calls other than the documented public ones answer `{"error": "forbidden"}` and are counted.
 
-## Practice
+## No rehearsal
 
-You develop the way an automation engineer would with a training simulator of the skid series: what an operator would
-not know, you do not get either. The practice service (running in your sandbox under its own account) answers the
-cell's calls on sites of your choice: `skidcell.client.connect_practice(seed)` opens a session (the same `cell` API plus
-`reset(seed)`, a fresh shift on that site, and `debrief()`, the shift's score breakdown once the episode is over), and
-`~/practice/grade.py` runs your whole program against it. It shows you what an operator could see: the camera frames
-(which you may also look at yourself), the robot's state, the debriefs. It answers no ground truth (no device poses, no
-valve positions, no process values) and its code is not readable. The hidden episodes are other sites of the same
-series.
+Like a field operator who takes over a shift on a site of the series, your program works each site for the first time
+in its graded episode: there is no simulator of the skid in your sandbox. What you know before the shift is what the
+documents above say (the procedure, the P&ID, the equipment manual, the instrument catalog, the cell's manuals and
+configuration); the rest your program learns on the shift through the cameras and the robot's state. The robot's own
+model (`~/given/panda/`, MuJoCo) is yours to simulate the arm with.
 
 ## Notes
 

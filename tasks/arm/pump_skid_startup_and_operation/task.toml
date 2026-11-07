@@ -20,8 +20,8 @@
 # oracle submits the reference program with a 256-bit token: it moves the robot with privileged eyes but decides only
 # on what an operator could see (instrument readings, lamps, sight glasses). Grader knobs: tests/grader_config.json.
 # Realism rule: the agent gets what an operator / automation engineer at a real site would have (the documents, the
-# robot model, the cell API, an instrument catalog, a black-box practice service that answers like a training simulator
-# and debriefs each shift) and nothing else: the simulator's code and every ground truth stay out of its sandbox.
+# robot model, the cell API, an instrument catalog) and nothing else; like a field operator it does not rehearse on the
+# site (no simulator of the skid in its sandbox, v0.4): the simulator's code and every ground truth stay out of it.
 
 schema_version = "1.4+ale.1"
 # Where the agent leaves its work (operate.py and its helper modules).

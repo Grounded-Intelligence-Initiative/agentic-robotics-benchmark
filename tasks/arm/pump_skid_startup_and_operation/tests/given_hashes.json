@@ -1,5 +1,5 @@
 {
- "example/operate.py": "03a6cfbe3f746e169a3fbb9303976def880919e882c14b19b3b6e3dc3ac99863",
+ "example/operate.py": "f05fee0c2b554069086baa41f132d84a0ba2392d0c3d3d41d57dae2d65d5a011",
  "given/catalog/catalog.md": "f82700a67633c083bf1342b0803cc4cf023f3c4a7eab8894a41043b2f9d88cbb",
  "given/catalog/dial_PDI-111_d_0_100_kpa.png": "d9f7003dc871a03927a82fa9b7a904371aaa5410ca4d7e8a3d43cb94bac7254e",
  "given/catalog/dial_PDI-111_d_0_1_bar.png": "58a4f4e6bbc0b2320a0831023e98725f4b054232557f249a880501c3f568cfe9",
@@ -14,12 +14,12 @@
  "given/catalog/scale_LG_0_100_pct.png": "2b2d9666a64ec0164f0b3235b0a93f0385a7e534138863354a85ba960e660972",
  "given/catalog/tag_plate_HV-2317.png": "f7b573c9215391352d2dc9f58fb5a5c2b41973d693f8b2b2c1932158bad2a395",
  "given/catalog/tag_plate_PI-2342.png": "d41e16d3a51f2e5729a9097cb4b0d1d1732ea62478f4498bfeb4eab873108996",
- "given/cell/cell_api.md": "ff11ceaa72a04775f8369f62acc3b9b9341badde2ab43d934389e8235464d106",
+ "given/cell/cell_api.md": "b4360c873b6024215c9cdf9b25d1c01051e26f987c8088f217ef0c91449bab28",
  "given/cell/cell_config.json": "da23e8c76f782732cc6d32898a45464971a6abb291642aaaef8e948907230247",
- "given/cell/cell_manual.md": "374d644a842e08f7ac873a9b84245ba3c5be320eb05b4b3a465aecb4ae4a51d8",
+ "given/cell/cell_manual.md": "3de7a6d9c383780147e455fcf37076fe0481e2354350c4c4c3f8d1cee06a7f86",
  "given/equipment_manual.md": "9286b001be2d3b63326a28c86afb9b9d1dfc6eb57a48703d1d7246110dcf6cce",
- "given/lib/skidcell/__init__.py": "d1168fd79cbeb3e0f2f16c6a84f46cfa64512af84676931bc70484da03a14814",
- "given/lib/skidcell/client.py": "62082e458092568f96d4a20c49394448ebed05d5db333aecebfc4c2c0f427d8d",
+ "given/lib/skidcell/__init__.py": "f4c2cf23f518d62326d6266c963b344dc7ee6fd35968c73cfb2a5b0700696733",
+ "given/lib/skidcell/client.py": "d9239f3cadfd0778f2bb5e9cc5f390734229ebe5a9ebc9f98b6f1bb6de30a42b",
  "given/panda/LICENSE": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
  "given/panda/README.md": "e12684556d0154bdf2a9e77e7009ed680cd06ca89904f9e6303050f9fe59300c",
  "given/panda/assets/finger_0.stl": "4d8d678c1351c5d96e7be9e036354932b27d16190f16c83d68ed4862f86d85a3",
@@ -91,6 +91,5 @@
  "given/panda/panda.xml": "e129b7e5d3fed9118495c8c5dad5ad5e9246f9790c38d9466f2fbef3254fff0c",
  "given/panda/panda_nohand.xml": "b8c78e49758ad023cd7cdb543fbd62dcddceea9a505015e139535632412e1fcb",
  "given/pid.png": "f2aca8785341267a043ea283bc0735ee952383fb05f568c31540c28ea84c53a1",
- "given/sop.md": "fd2328b1f20fad4d9bc0c7c2606661cc283ab44311d368ad38d792b8459ea6bb",
- "practice/grade.py": "d616c60ca3cb957a710562db4a039d24a41dfc2fd92b5481a4083d7085b8f9e1"
+ "given/sop.md": "fd2328b1f20fad4d9bc0c7c2606661cc283ab44311d368ad38d792b8459ea6bb"
 }

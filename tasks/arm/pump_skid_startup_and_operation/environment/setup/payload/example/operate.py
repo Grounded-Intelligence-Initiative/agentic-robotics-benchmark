@@ -1,5 +1,5 @@
 """An example program (it starts nothing): it shows the calls a program makes. Copy it to ~/submission/operate.py and
-build from there; ~/practice/grade.py runs it the way the grader does."""
+build from there."""
 
 from skidcell.client import decode_frame
 

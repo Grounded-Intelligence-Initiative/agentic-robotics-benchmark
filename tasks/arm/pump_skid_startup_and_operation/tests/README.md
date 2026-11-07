@@ -8,10 +8,10 @@ records the design decisions, what the grader checks and why, and what is known 
 **Design rule (the owner's, 2026-11-06): the agent gets what an operator or automation engineer at a real site would
 have, and nothing an operator would not.** It gets the site's documents (series P&ID, SOP, equipment manual, the
 site's equipment list), the robot's model, the cell's API and calibration, an instrument catalog (datasheet drawings
-of the dial faces and scales), and a practice service that behaves like a training simulator of the series (the same
-API on sites of its choice, a debrief after each shift). It does not get the simulator's code (the process model, the
-site generator with its fault schedule, the scoring code), any ground truth (device poses, valve positions, process
-values), or how many faults a shift will bring.
+of the dial faces and scales). Like a field operator taking over a shift, it does not rehearse on the site: there is no
+simulator of the skid in its sandbox (version 0.4: the practice service of v0.3 is removed, section 6). It does not get
+the simulator's code (the process model, the site generator with its fault schedule, the scoring code), any ground
+truth (device poses, valve positions, process values), or how many faults a shift will bring.
 
 ## 1. The job and why it is worth measuring
 
@@ -28,20 +28,13 @@ agent's program finds the devices by their tag plates (legible only to the wrist
 reads dial gauges, a rotameter, level gauges, sight glasses, drums, lamps and a 7-segment display from RGB-D frames,
 diagnoses faults that share their first symptoms, and turns handwheels, levers and knobs through a grip rule.
 
-## 2. The cell (`environment/practice_service/skidcell/`, byte-identical to `tests/skidcell/`)
+## 2. The cell (`tests/skidcell/`)
 
-Where it runs: the grader imports `tests/skidcell/` in the verifier; `environment/Dockerfile` installs
-`environment/practice_service/` (this library plus `practiced.py`) under `/opt/skidcell-practice` for the service
-account `skidcell` (mode 700, so the agent account can neither read nor list it; the image build checks both), and
-`environment/setup/setup.sh` starts `practiced.py` under that account before the agent's session, in a loop that
-restarts it should it ever exit: a unix-socket service
-(`/run/skidcell/practice.sock`, one forked session per connection, at most 6 at once) answering the cell's public
-calls plus `reset(seed)` and `debrief()` (the score breakdown and the events that happened, once the episode is over;
-never ground truth; error replies carry no tracebacks). The agent's `~/given/lib/skidcell/` holds only `client.py`
-(the proxy, `decode_frame`, the launcher, `connect_practice`) and its own `__init__.py`; `~/practice/grade.py` runs a
-program the way the grader does with its wire bridged to a practice session. The engine was checked to keep a process
-started by setup running into the agent's session, with its files unreadable to the agent account and its socket
-reachable (2026-11-06, a scratch validate).
+Where it runs: only in the verifier (the grader imports `tests/skidcell/`); nothing of it is in the image or the
+agent's sandbox. The agent's `~/given/lib/skidcell/` holds only `client.py` (the proxy, `decode_frame`, the launcher)
+and its own `__init__.py`; its program meets the cell for the first time in the graded episodes. The grader's
+`tests/skidcell/client.py` keeps the v0.3 client's text (with the practice connection, which the graded cell answers
+`forbidden`); the wire, the bootstrap and the launcher are the same as the given client's.
 
 * `layout.py` draws the episode's skid from its seed: the site (an area number and a random site tag for every
   device; `site["equipment"]` is the equipment list on the wire), the arrangement (left-to-right or mirrored, the flow
@@ -77,7 +70,7 @@ reachable (2026-11-06, a scratch validate).
   friction loss is a soft constraint, and a lever's own weight crept a closed vent valve open over minutes.
 * `episode.py`: the procedure's checks and the score (below); `server.py`: the API, the grip / panel logic in
   `physics_tick`, the camera budget and noise, the safety watch, the summary. `mode="practice"` additionally answers
-  `reset` and `truth` (the practice service's `practiced.py` refuses `truth`: the agent never gets it);
+  `reset` and `truth` (a development mode for maintainers only: since v0.4 nothing in the image runs it);
   `privileged=True` (the oracle token) answers `get_state_privileged` and `reference_run`.
 
 ## 3. What the grader checks (`episode.py`)
@@ -108,9 +101,9 @@ Menagerie servos lag a moving target by about 0.1 s).
 
 The controller decides only on what an operator at the site can see (`Eyes`: the instruments' displays read
 perfectly, the lamps and the horn, the sight glasses, the drums' visible levels, the valves' positions) and on series
-facts that are documented or measured on any practice site (the tanks' volume per percent of their gauges, the
-analyser's 20 s lag, the alarm set points; the consumer's usual draw, a typical dosing gain and valve gains as first
-guesses only). It never reads the process's hidden state (the consumer's draw, the pump's curve, the hypochlorite's
+facts that are documented or measured on the shift itself (the tanks' volume per percent of their gauges, which the
+fill before 600 s shows against FI-105 with no draw yet, the analyser's 20 s lag, the alarm set points; the consumer's
+usual draw, a typical dosing gain and valve gains as first guesses only). It never reads the process's hidden state (the consumer's draw, the pump's curve, the hypochlorite's
 strength, the metering pump's capacity, the supply pressure, the fault flags, the event schedule). So it estimates the
 draw from T-201's balance over the last 40 s (FI-105 in, LG-201's change), sets V-105 by trying against FI-105 (a
 proportional first step, then a secant), learns the dosing gain from AI-201's response, primes and vents until the
@@ -160,3 +153,9 @@ revision the reference read the process's hidden state (section 6).
   quiet (`verify._settle_desktop`): the image's supervisord respawns the agent account's desktop after the verify-start
   kill, and a respawned process opened one loopback TCP connection about a second later, which two validate runs
   counted in their first episode as the program's network activity (contract_ok 0 for a correct oracle).
+* v0.4 (2026-11-07, review): the practice service is removed (environment/practice_service/, the image's `skidcell`
+  account, setup's service loop, `~/practice/grade.py`, the client's `connect_practice` / `reset` / `debrief`, the
+  instruction's Practice section and the manuals' mentions). A field operator of the series is expected to run a shift
+  on a site from the SOP, the P&ID, the equipment manual and the site's equipment list without rehearsing it on a site
+  simulator, and the measured round with the service showed it gave the agent a large advantage. The graded cell, the
+  scoring, the reference and the anchor are unchanged; the givens' hashes follow the edited documents and client.

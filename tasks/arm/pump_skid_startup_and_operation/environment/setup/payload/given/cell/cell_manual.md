@@ -79,22 +79,11 @@ The cell's clock advances only inside `step` (10 ms per tick); the process (flow
 advances with it. Your program's own computing time is not simulated time but is capped per episode (`cell_api.md`).
 The schedule: the window opens at 600 s, the shift ends at 1500 s, the episode ends at 1800 s.
 
-## 7. The client library and the practice service
+## 7. The client library
 
-`~/given/lib/skidcell/client.py` is the one part of the cell your program imports: the proxy (`Cell`), `decode_frame`,
-the program launcher the grader uses, and `connect_practice`. The cell itself (the skid, its process, the robot's
-physics, the scoring) runs in the grader and in the practice service, never in your account.
-
-The **practice service** is a training simulator of the skid series. It runs in your sandbox under its own account,
-behind the socket `/run/skidcell/practice.sock`:
-
-* `cell = skidcell.client.connect_practice(seed=7)` opens a session on the site of seed 7 (any integer is a site); the
-  session answers the graded cell's calls, plus `cell.reset(seed)` (a fresh shift, on that site or another) and
-  `cell.debrief()` once the episode is over (after `finish()` or at its end): the shift's score and its parts, the
-  start-up and shutdown checks, the events that happened with their outcomes, your log entries (in tolerance or not),
-  voids and safety violations. `cell.close()` ends the session. A few sessions may run at once.
-* `~/practice/grade.py --seed 7` runs your submission over the real wire against a session, the way the grader runs it
-  (its environment, its launcher, its caps), and prints the debrief.
-
-It answers no ground truth: what you learn about a skid, you learn through the cameras, the robot's state and the
-debriefs, as an operator would.
+`~/given/lib/skidcell/client.py` is the one part of the cell your program imports: the proxy (`Cell`), `decode_frame`
+and the program launcher the grader uses. The cell itself (the skid, its process, the robot's physics, the scoring)
+runs in the grader, never in your account: there is no simulator of the skid to rehearse on. What you know of a skid
+before the shift is what this manual, `cell_api.md`, `cell_config.json`, the operating procedure, the P&ID, the
+equipment manual and the instrument catalog say; on the shift, your program learns the rest through the cameras and
+the robot's state, as an operator would.

@@ -1,8 +1,7 @@
 # pump_skid_startup_and_operation's environment image. `environment/` (less its `setup/`) is the sole build context and the final
 # stage derives DIRECTLY from the official ALE base, at an exact version. Nothing hidden is here: the givens are staged
 # by environment/setup/setup.sh, the grader, the anchor and the reference program live in tests/ and solution/ (absent
-# from the image). The image does hold the practice service (the skid series' simulator for the agent's practice),
-# readable by its own account only.
+# from the image).
 FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1
 
 COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /usr/local/bin/uv
@@ -80,18 +79,6 @@ RUN set -eu; \
 # episode, untouched validation passes included).
 RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
 
-# The practice service, a training simulator of the skid series (the cell library and the service program,
-# practice_service/), installed for its own account `skidcell` only: mode 700, so the agent account can neither read
-# nor list it. environment/setup/setup.sh starts it before the agent's session (and restarts it should it ever exit).
-RUN useradd --system --no-create-home --home-dir /opt/skidcell-practice --shell /usr/sbin/nologin skidcell
-COPY practice_service /opt/skidcell-practice
-RUN find /opt/skidcell-practice -name '__pycache__' -type d -prune -exec rm -rf {} + \
-    && rm -f /opt/skidcell-practice/practiced.log \
-    && mkdir -p /opt/skidcell-practice/given \
-    && ln -sfn /opt/task-assets/panda /opt/skidcell-practice/given/panda \
-    && chown -R skidcell:skidcell /opt/skidcell-practice \
-    && chmod -R u+rwX,go-rwx /opt/skidcell-practice
-
 # Headless defaults: every render of the cell goes through OSMesa.
 ENV MPLBACKEND=Agg
 ENV MUJOCO_GL=osmesa
@@ -105,6 +92,4 @@ RUN export HOME=/root \
     && python3 -c "import sys; assert sys.version_info >= (3, 12), sys.version; import mujoco, numpy, scipy, PIL, cv2; print('[pump-skid] import OK mujoco', mujoco.__version__, 'numpy', numpy.__version__, 'cv2', cv2.__version__)" \
     && python3 -c "import mujoco; m = mujoco.MjModel.from_xml_path('/opt/task-assets/panda/panda.xml'); r = mujoco.Renderer(m, 64, 64); d = mujoco.MjData(m); mujoco.mj_forward(m, d); r.update_scene(d); px = r.render(); print('[pump-skid] OSMesa render OK', px.shape, int(px.max()), 'panda nbody', m.nbody)" \
     && runuser -u user -- python3 -c "import mujoco, numpy, scipy, PIL, cv2; m = mujoco.MjModel.from_xml_path('/opt/task-assets/panda/panda_nohand.xml'); print('[pump-skid] agent-UID import OK, panda_nohand nbody', m.nbody)" \
-    && runuser -u skidcell -- /opt/venv/bin/python3 -B -s -c "import sys; sys.path.insert(0, '/opt/skidcell-practice'); import skidcell.server; print('[pump-skid] practice service imports OK for its account')" \
-    && ! runuser -u user -- ls /opt/skidcell-practice > /dev/null 2>&1 \
     && test -z "$(find /home/user -user root -print -quit)"
