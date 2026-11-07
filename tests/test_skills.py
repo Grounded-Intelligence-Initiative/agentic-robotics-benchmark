@@ -46,7 +46,7 @@ RETIRED_VOCABULARY = (
 
 # The skill that records model runs' trajectories, and the script it drives.
 TRAJECTORY_SKILL = "agent-trajectory-archiving"
-TRAJECTORY_COMMANDS = ("inventory", "curate", "export", "scan", "upload", "sample")
+TRAJECTORY_COMMANDS = ("inventory", "curate", "export", "scan", "sample", "tasklog")
 
 
 def _all_skill_files() -> list[Path]:
@@ -144,16 +144,17 @@ def test_skills_name_the_engine_oracle_gate():
 def test_trajectory_skill_names_its_script_and_no_retired_vocabulary():
     """The trajectory skill drives scripts/trajectories.py: it names the script, every
     subcommand and the parameters that hold every path, and carries neither the old task
-    shapes' vocabulary nor the archived repositories' (promote, publish, mirror)."""
+    shapes' vocabulary nor the archived repositories' (promote, publish, mirror); it records
+    locally and sends nothing anywhere (no upload)."""
     skill_file = SKILLS_DIR / TRAJECTORY_SKILL / "SKILL.md"
     text = skill_file.read_text(encoding="utf-8")
     assert _frontmatter(text)["name"] == TRAJECTORY_SKILL
     assert "scripts/trajectories.py" in text
     for command in TRAJECTORY_COMMANDS:
         assert f"`{command}`" in text, f"{skill_file}: does not name the {command!r} subcommand"
-    for flag in ("--runs-dir", "--archive", "--dest", "--secrets-from"):
+    for flag in ("--runs-dir", "--archive", "--out", "--secrets-from"):
         assert flag in text, f"{skill_file}: does not name the parameter {flag}"
     lowered = text.lower()
-    for name in RETIRED_VOCABULARY + ("promote", "publish", "mirror"):
+    for name in RETIRED_VOCABULARY + ("promote", "publish", "mirror", "upload", "rclone", "hugging face"):
         found = name in lowered if name.islower() else name in text
         assert not found, f"{skill_file}: cites the retired {name!r}"
