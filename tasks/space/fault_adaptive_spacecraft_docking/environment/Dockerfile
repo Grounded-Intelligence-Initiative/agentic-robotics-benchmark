@@ -75,12 +75,3 @@ ENV MPLBACKEND=Agg
 # which is the exact failure the UV_PYTHON_INSTALL_DIR line above prevents.
 RUN python3 -c "import numpy, mujoco, cv2, PIL; print('[image] numpy', numpy.__version__, 'mujoco', mujoco.__version__, 'cv2', cv2.__version__, 'PIL', PIL.__version__)" \
     && runuser -u user -- python3 -c "import numpy, mujoco, cv2, PIL; print('[image] agent-UID import OK')"
-
-# The claude-code harness aborts a model stream after 300 s without a byte (Bun's HTTP idle timeout and the CLI's
-# stream watchdog); both timers are raised to the gateway's own 1800 s upstream ceiling. ENV is inherited by every
-# process the guest service starts, and the profile.d file covers the login shell the CLI is launched with (`bash -lc`).
-# Nothing else in this image reads them. Appended after every toolchain layer so the layers above stay cached.
-ENV BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800 CLAUDE_STREAM_IDLE_TIMEOUT_MS=1800000
-RUN printf '%s\n' 'export BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800' 'export CLAUDE_STREAM_IDLE_TIMEOUT_MS=1800000' \
-        > /etc/profile.d/99-ale-idle-timeouts.sh \
-    && chmod 0644 /etc/profile.d/99-ale-idle-timeouts.sh
