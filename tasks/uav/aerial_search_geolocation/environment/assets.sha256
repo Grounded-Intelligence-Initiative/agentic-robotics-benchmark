@@ -1,5 +1,5 @@
 # endpoint: https://huggingface.co
-# repo: grounded-intelligence-initiative/agentic-robotics-last-exam
+# repo: grounded-intelligence-initiative/ale-robotics-assets
 # revision: 69bca80b885f595fccb06c762fbf5acf4adebc53
 # prefix: tasks/uav/aerial_search_geolocation/payload
 eaf1c9089a8553c913d27ea66407f8bfc2be9989c80c9f331ddb3d63d4c5e8ad  models/clip-vit-base-patch16/config.json
