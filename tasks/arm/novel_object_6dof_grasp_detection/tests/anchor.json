@@ -1,0 +1,10 @@
+{
+  "metric": "ap_gain",
+  "direction": "higher",
+  "value": 35.5554,
+  "full_at": 0.95,
+  "baseline_mean_ap": 7.866108398398201,
+  "source": "measured by ale validate on the oracle (privileged reference): mean AP 43.42 over the 448 hidden frames, 0 timeouts; an earlier run with a 50 s labelling deadline gave 38.56",
+  "reference_commit": "6ee7a91",
+  "note": "ap_gain = max(0, mean AP - baseline_mean_ap) over the 448 hidden frames. Reference = solution/: grasplib candidates ranked by a gradient-boosted scorer, then the best ~500 per frame are re-ranked with graspnetAPI's own collision and force-closure labels computed from ground truth that the grader exports to a submission carrying the oracle token (see tests/verify.py privileged())."
+}
