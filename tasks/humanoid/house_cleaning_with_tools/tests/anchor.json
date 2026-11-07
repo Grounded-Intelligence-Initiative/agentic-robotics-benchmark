@@ -1,0 +1,8 @@
+{
+ "metric": "cleaning_score",
+ "direction": "higher",
+ "value": 0.845,
+ "full_at": 0.9,
+ "source": "Measured: the privileged reference cleaner (tests/house_cell/reference.py, sha256 355834547a279976...) on the nominal layout, 2026-11-06. A development run of the cell: 0.845 (3559 s simulated, no safety violation; credit trash 2.0, dishes 1.0, books 1.0, table 2.5 (0.985 of the grease removed), floor 1.25 (27 of the 60 crumbs in the general-waste bin, the table's pushed off it first), sponge 0.3, tools 0 (both back in their clips; that credit needs half the crumbs binned), faucet 0.2, lids 0.2). The three oracle episodes of `ale validate` (validate-c0918b20) binned 41, 34 and 41 crumbs: cleaning_score 0.929, no safety violation. The anchor is the lowest of these measurements.",
+ "note": "cleaning_score is already on [0, 1]: the episode mean of the cell's stage score (the checklist's credit over its total weight of 10), an episode with a safety violation scoring 0. The oracle runs the nominal layout in all three episodes. Its sweep varies from run to run (the long simulation amplifies the planner's floating-point differences between processes): measured 0.845 to about 0.94; with the anchor at the lowest and full_at 0.9 the oracle stays at full reward across that spread. The reference sweeps the crumbs it can reach in the open and skips the groups its broom cannot reach without touching a table leg or a chair: the rest of the floor's 2.5 and the tools' 0.3 are credit above the anchor."
+}
