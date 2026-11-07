@@ -108,9 +108,10 @@ The selection was pre-registered (`review/select_set.py`, the rule in its docstr
 
 1. **Freeze.** The reference (`solution/privileged/oracle.py` and its simulator copy, `solution/solve.sh`) and the
    grader (`verify.py`, `env.py`) were committed first (08ccda6); their sha256 are in the set's `source`. Since then
-   only `verify.py` changed, after the set was made: its network guard fails closed (The network guard, below). The
-   episode loop the selection ran is the same in effect, and the reference's verify reproduced the anchor to the last
-   bit afterwards (The anchor). `select_set.py run` and `make` compare against the hashes recorded at the draw, so they
+   only `verify.py` changed, after the set was made: its network guard fails closed (The network guard, below), and
+   round 2 replaced its observation by the sensors' (the lock's draws, env.py's draws and the oracle's input are
+   unchanged). The episode loop the selection ran is the same in effect, and the reference's verify reproduced the
+   anchor to the last bit after each change (The anchor). `select_set.py run` and `make` compare against the hashes recorded at the draw, so they
    refuse to extend this selection: a new selection starts with a new draw.
 2. **Draw.** 64 candidates from `os.urandom` (8 bytes each) and the probe key from `os.urandom(32)`, written to
    `selection.json` before any candidate ran (2026-11-05T16:31:23Z).
@@ -240,6 +241,29 @@ by docks on the set, with the anchor's per-episode qualities and the lost episod
 margin for one episode flipped by a last-bit libm difference on another host, and no more. Before: 0.4580 with
 `full_at` 0.75 (16 docks of 48 earned full reward). The verify of 2026-11-06, with the guard failing closed, measured
 the anchor again to the last bit (reward 1.0, ratio 1.0, 48 of 48 docked, the lock 777 of 778).
+
+Round 2 (2026-11-07): one verify of the `solve.sh` submission in a fresh container of the round-2 task image
+(`review/regrade.sh`, Mesa 23.2.1 lavapipe, CPython 3.12.14, 2 CPUs, 4 GB, no network) measured
+0.9835537203921798 again, 48 of 48 docked, the lock 777 of 778, every episode's quality equal to the selection's to the
+last bit (`anchor.json` `recheck`). The anchor did not move, as it should not: the oracle reads only the block, and
+env.py, the set and the lock streams are unchanged.
+
+## Verify time and limits (round 2)
+
+- **Measured** (the verify above): 969 s wall; the camera ready in 6.4 s (its canary 4.0 s, the first frame's shader
+  compile); 10,651 frames for 12,816 steps (fresh frames and probe copies) at 85.5 ms each (render, luma, noise,
+  base64); the reference's replies 23.5 s in all. Round 1 took about 30 s.
+- **The renderer's cost** in the task image (2 CPUs, `docs/research/.../scripts/cam_bench_image.py` and
+  `cam_variants.py` of the dev workspace): 62 ms mean and 90 ms p95 a render with the 2048 shadow map and the craft's
+  box, 8.6 ms for noise, encoding and JSON; 513 MB resident. A 4096 map and the full craft cost 78 / 105 ms and change
+  no pixel by more than 8 DN but the craft's shadow edge.
+- **The worst case** an agent can cause: every episode to 400 steps, about 16,800 frames; `task.toml`'s
+  `[verifier] timeout_sec` 7200 is 1800 s of replies + 2 x 16,800 x 0.12 s + 480 s of READY handshakes + 300 s, rounded
+  up to 10 minutes (the rule is in the comment there).
+- **The reply budget** (`grader_config.json` `reply_budget_s` 1800) is the controller's own time, summed from the start
+  of each request's write to its reply; the per-request deadline stays the kit's 30 s, and the write of a request is
+  bounded by it too (`BoundedStdin`).
+- **Memory**: the grader with the renderer about 0.5-0.7 GB; the task's 4 GB leave the controller the rest.
 
 ## What the reference does not dock
 
