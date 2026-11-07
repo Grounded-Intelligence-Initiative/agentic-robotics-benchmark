@@ -1,10 +1,17 @@
-"""Writes the four multirotor airframes of the task's own asset folder (pxr only; run at image build time).
+"""Writes the four multirotor airframes of the task's own asset folder (pxr only).
 
     python3 make_airframes.py <out_dir>
 
 Each airframe is one USD file: a rigid body `Body` (hull, arms, motors, propellers, landing gear) with its empty mass
 authored, a payload mount frame `Body/Mount` under the hull and a cargo hook frame `Body/Hook` below it. The take-off
 limits are in the catalog the agent gets (`catalog/airframes.md`), not in the files.
+
+The committed files in `airframes/` are this script's output plus one variant set on each root prim, `look`, added by
+the maintainers for renders (2026-11-07). `proxy`, the default, is exactly what this script writes. `real` sets the
+purpose of the generated shapes to `guide`, so that renders skip them (they still collide; every mass and collider
+stays), and loads `look/<airframe>_look.usda` under `Body/Look`: propellers, motor bells, arms, landing gear and a body
+from the Unity Asset Store pack "Realistic Drones", fitted to these layouts, without physics. The `look/` folder comes
+from the task's asset dataset (`environment/assets.sha256`). Rerunning this script drops the variant set.
 """
 import math
 import os

@@ -233,7 +233,7 @@ def hall_boxes(path, near=12.0, max_extent=7.0):
     st = Usd.Stage.Open(path)
     bb = UsdGeom.BBoxCache(Usd.TimeCode.Default(), [UsdGeom.Tokens.default_, UsdGeom.Tokens.render], useExtentsHint=True)
     out = []
-    for p in st.Traverse():
+    for p in st.Traverse(Usd.TraverseInstanceProxies()):  # (the plant's hall places its props as instances)
         if not p.IsA(UsdGeom.Mesh):
             continue
         r = bb.ComputeWorldBound(p).ComputeAlignedRange()

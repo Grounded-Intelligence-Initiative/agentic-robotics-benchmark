@@ -6,7 +6,12 @@
     upAxis = "Z"
 )
 
-def Xform "arb_quad_450"
+def Xform "arb_quad_450" (
+    variants = {
+        string look = "proxy"
+    }
+    prepend variantSets = "look"
+)
 {
     def "Looks"
     {
@@ -403,6 +408,144 @@ def Xform "arb_quad_450"
                 double3 xformOp:translate = (0, 0, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate"]
             }
+        }
+    }
+    variantSet "look" = {
+        "proxy" {
+
+        }
+        "real" {
+            over "Body"
+            {
+                over "hull"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                over "hull_top"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                over "arm_0"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                over "Rotor_0"
+                {
+                    over "motor"
+                    {
+                        uniform token purpose = "guide"
+                    }
+
+                    over "prop"
+                    {
+                        uniform token purpose = "guide"
+                    }
+                }
+
+                over "arm_1"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                over "Rotor_1"
+                {
+                    over "motor"
+                    {
+                        uniform token purpose = "guide"
+                    }
+
+                    over "prop"
+                    {
+                        uniform token purpose = "guide"
+                    }
+                }
+
+                over "arm_2"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                over "Rotor_2"
+                {
+                    over "motor"
+                    {
+                        uniform token purpose = "guide"
+                    }
+
+                    over "prop"
+                    {
+                        uniform token purpose = "guide"
+                    }
+                }
+
+                over "arm_3"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                over "Rotor_3"
+                {
+                    over "motor"
+                    {
+                        uniform token purpose = "guide"
+                    }
+
+                    over "prop"
+                    {
+                        uniform token purpose = "guide"
+                    }
+                }
+
+                over "gear_skid_0"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                over "gear_strut_00"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                over "gear_strut_01"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                over "gear_brace_0"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                over "gear_skid_1"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                over "gear_strut_10"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                over "gear_strut_11"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                over "gear_brace_1"
+                {
+                    uniform token purpose = "guide"
+                }
+
+                def Xform "Look" (
+                    prepend references = @./look/arb_quad_450_look.usda@
+                )
+                {
+                }
+            }
+
         }
     }
 }

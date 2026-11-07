@@ -262,9 +262,9 @@ renders in the real bay, from the sensor's own pose at the moment of capture, as
 - **What the frames show.** Isaac Sim 6.2's RTX renderer in its "Real-Time Path Tracing" mode with DLSS
   "performance", motion blur and depth of field off, a fixed exposure (every setting in Rehearsing). The photographs
   were path-traced at many samples a pixel; the frames are not, and RGB frames of one state are not exactly alike
-  from one render to the next. Drawn: the real bay as photographed, in the hall round it (NVIDIA's `Simple_Warehouse`,
-  `/opt/assets/isaac/Isaac/Environments/Simple_Warehouse/warehouse.usd`, at the world's origin, with its own two
-  lights), lit also by the photographs' two lights (a dome light of 300 and a distant light of 1800, 4° wide, turned
+  from one render to the next. Drawn: the real bay as photographed, in the plant's hall round it
+  (`/opt/assets/arb/hall/bay_hall.usda`, at the world's origin, with its own 24 ceiling panel lights; it has no
+  colliders), lit also by the photographs' two lights (a dome light of 300 and a distant light of 1800, 4° wide, turned
   35° about z and −50° about x); the parts, the lever, the bucket and the ropes (black) where they are; the gauge's
   needle at the line's pressure (`facts.md`); your four robots as composed, each robot's own body included. Not drawn:
   flames, smoke and steam (the photographs' volumes), the steam plume's hazard box, the water, anything of your scene

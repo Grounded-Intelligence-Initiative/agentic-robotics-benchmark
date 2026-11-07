@@ -96,8 +96,11 @@ def verdict(scene, out_dir, expect_pads=None, extra=None):
         problems.append(f"lights on under the robots: {chk['robot_lights_on'][:4]}")
     if any(chk["rope_geoms_unbound"].values()):
         problems.append(f"rope links not bound for rendering: {chk['rope_geoms_unbound']}")
-    if not dressed["hall_api_removed"]:
-        problems.append("the hall's colliders were not found (its asset did not resolve?)")
+    # the hall resolved (the plant's hall authors no physics, so the dress has nothing of it to remove: count its prims)
+    hall = Usd.Stage.Open(out).GetPrimAtPath(f"{mission_stage.LOOK}/Hall")
+    n_hall = sum(1 for _ in Usd.PrimRange(hall, Usd.TraverseInstanceProxies())) if hall.IsValid() else 0
+    if n_hall < 100:
+        problems.append(f"the hall has {n_hall} prims (its asset did not resolve?)")
     print(json.dumps(dict(scene=scene, pads=info["pads"], shifts=info["shifts"], kept=info["kept_scopes"], dropped=info["dropped"],
                           ropes={r: {k: v for k, v in x.items() if k in ("ring", "chord", "lay", "miss", "filtered_links")} for r, x in info["ropes"].items()},
                           bodies_active=chk["bodies_active"], dress={k: v for k, v in dressed.items() if k != "robot_lights_off"},

@@ -25,10 +25,11 @@ position) to the bucket's ring facing its pad.
 `dress(path, info, look)` then makes the stage what the robots' sensors see (control.md, The sensors), changing
 nothing the simulation reads:
 
-- the hall: Isaac's `Simple_Warehouse` referenced at `/World/Look/Hall` at the identity (as the reference twin does), every
-  physics schema under it removed in the mission layer (its collision API schemas deleted, not switched off); its own
-  two lights come with it, and the photographs' two (a dome light of 300, a distant light of 1800 at 4 degrees) are
-  added under `/World/Look/Lights`;
+- the hall: the plant's hall (`sensors.look.hall`, the task's own `/opt/assets/arb/hall/bay_hall.usda`, visual only: it
+  authors no physics schema) referenced at `/World/Look/Hall` at the identity (as the reference twin does), any physics
+  schema under it removed in the mission layer (API schemas deleted, not switched off); its own 24 panel lights come
+  with it, and the photographs' two (a dome light of 300, a distant light of 1800 at 4 degrees) are added under
+  `/World/Look/Lights`;
 - every light under the robots switched off (intensity 0; a light prim also made invisible): the real bay's lights alone
   light it;
 - the plant's rope links bound to the real bay's black, with the material purpose `full` (render only);

@@ -23,3 +23,10 @@ for entry in payload/* payload/.[!.]*; do
   [ -e "$entry" ] || continue
   chown -R "$AGENT_USER:$AGENT_USER" "$HOME_DIR/$(basename "$entry")"
 done
+
+# The photographs (given/photos/*.jpg) come from the benchmark's asset dataset: the image fetched them into
+# /opt/task-assets/payload (environment/Dockerfile, environment/assets.sha256; docs/task-assets.md).
+if [ -d /opt/task-assets/payload ]; then
+  cp -r /opt/task-assets/payload/. "$HOME_DIR/"
+  for entry in /opt/task-assets/payload/*; do chown -R "$AGENT_USER:$AGENT_USER" "$HOME_DIR/$(basename "$entry")"; done
+fi

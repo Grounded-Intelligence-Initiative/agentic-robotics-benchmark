@@ -665,7 +665,7 @@
       "uav_joint_rad": 0.001
     },
     "look": {
-      "hall": "/opt/assets/isaac/Isaac/Environments/Simple_Warehouse/warehouse.usd",
+      "hall": "/opt/assets/arb/hall/bay_hall.usda",
       "lights": [
         {
           "type": "DomeLight",
