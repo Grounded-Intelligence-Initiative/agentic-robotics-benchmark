@@ -2,8 +2,8 @@
 
 The agent-facing contract is `instruction.md`; the skid is described in `environment/setup/payload/given/sop.md`,
 `equipment_manual.md` and `pid.png`, the cell in `given/cell/cell_manual.md` and its wire in `cell_api.md`. This page
-records the design decisions, what the grader checks and why, and what is known to be rough in version 0.3
-(2026-11-06, Yuanfang Peng; earlier versions are described in section 6).
+records the design decisions, what the grader checks and why, and what is known to be rough in version 0.5
+(2026-11-07; version 0.3 by Yuanfang Peng, 2026-11-06; the versions are described in section 6).
 
 **Design rule (the owner's, 2026-11-06): the agent gets what an operator or automation engineer at a real site would
 have, and nothing an operator would not.** It gets the site's documents (series P&ID, SOP, equipment manual, the
@@ -41,9 +41,14 @@ and its own `__init__.py`; its program meets the cell for the first time in the 
   meter before or after V-105, the control station's pump groups either way round, a few cm of jitter, the suction /
   discharge / make-up line heights), how each valve is built (V-101 / V-103 gate valve with a handwheel or ball valve
   with a lever, V-104 lever or small handwheel, the vents lever or needle valve; handwheel diameter, spokes, turns,
-  frictions; lever lengths), the fitted gauge scales (`textures.GAUGE_KINDS`), the previous shift's leftovers (1-2
-  valves out of their line-up position; the agent's documents say only that some may be), the process parameters and the window's events (always a demand step plus 2
-  or 3 of the five faults filter_slug, supply_loss, dosing_airlock, drum_empty, pump_trip; >= 150 s apart).
+  frictions; lever lengths), the fitted gauge scales (`textures.GAUGE_KINDS`), the previous shift's leftovers (2-3
+  valves out of their line-up position; the agent's documents say only that some may be), the process parameters
+  (including the strainer chambers' fouling at the start and the supply tank's level) and the window's events (v0.5:
+  always a demand step plus 3 of the five faults filter_slug, supply_loss, dosing_airlock, drum_empty, pump_trip). The
+  schedule is drawn as a whole by rejection: the events at least 120 s apart, each early enough that its judgement falls
+  inside the window (the demand step by 1140 s, the 300 s procedures by 1200 s, the slug by 1050 s), no pump trip inside
+  the 360 s that judge the demand step, and with both dosing faults the air lock after drum A ran dry (an air lock in
+  drum A's last few percent would look like AOP-4 on every instrument).
 * `devices.py` / `textures.py`: MjSpec builders; textures drawn with Pillow's built-in font into in-memory MuJoCo
   textures (dial faces, tag plates, scales, labels). Every operable hinge turns about -y (counter-clockwise as the
   operator sees it opens); the instruments' needles, the rotameter float, the rising stems are kinematic bodies set from
@@ -53,7 +58,8 @@ and its own `__init__.py`; its program meets the cell for the first time in the 
   and two discharge branches (the product line with V-105 and its bypass V-107 in parallel; the minimum-flow line with
   its orifice), solved for the total flow by bisection; air in the casing (vent to prime), cavitation (NPSHa < NPSHr:
   head loss, needle flutter, a cumulative timer), deadheading, dry running and motor overload trips, the duplex
-  strainer (fouling, changeover, the standby chamber's air), the tanks (a float-valve supply to T-101 that can stick
+  strainer (fouling, changeover, the standby chamber's air; a debris slug lands in the chamber in service when it
+  comes, and each change-over is recorded with the air the incoming chamber held), the tanks (a float-valve supply to T-101 that can stick
   shut, the make-up bypass V-106, T-101's overflow; the consumer's draw from T-201 from 600 s), the dosing drums (A
   duty, B standby, the selector V-303; an empty drum air-locks the pump, venting needs liquid at the suction), the
   chlorine residual in T-201 (well mixed) and the analyser's 20 s lag; the control station's latches, permissive, the
@@ -80,16 +86,29 @@ eleven valves at the first start, primed casing, a clean start, V-103 open in ti
 (the window's fraction with LG-201 in 55-75 % and with AI-201 in 1.8-2.6 mg/L), events 0.25 (split between the
 episode's events; a slug that never raises the strainer alarm, a supply loss that never reaches T-101's low alarm and
 a trip of a pump that was not running are not judged), shutdown 0.15 (the order of section 4), the log sheet 0.15
-(each of six instruments' first in-window entry, by its site tag, within 3 % of the instrument's span of the true
-value, any of the accepted units). Voids (score 0): deadheading 30 s, 300 s of cavitation, T-201 or T-101 at 95 %, the
+(v0.5: two rounds, 600-1050 s and 1050-1500 s; in each, each of six instruments' first entry made while P-101 runs,
+by its site tag, within 1 % of the instrument's span of the true value (AI-201 0.05 mg/L), any of the accepted units;
+`log_reading`'s reply follows from the clock alone). Voids (score 0): deadheading 30 s, 300 s of cavitation, T-201 or T-101 at 95 %, the
 emergency stop, a safety violation (robot vs skid > 40 N, vs a handle or button > 150 N, for 3 ticks). Every check
 reads the cell's own state and the process's true values; nothing the program sends is scored except its log entries.
 
-Diagnosis is built into the faults' consequences, not into penalties: the strainer slug and the stuck float valve both
-raise the common alarm and pull the suction pressure down, and opening the make-up valve V-106 while the float valve
-works overfills T-101 (a void); the dosing air lock and the empty duty drum both stop the dosing with P-301 running,
-and the SOP's AOP-3 counts only when dosing resumes from the drum that was lined up, AOP-4 only for a changeover made
-once drum A is below 5 % (a blanket "change drums and vent" answers one of them, not both).
+Diagnosis is built into the faults' consequences: the strainer slug and the stuck float valve both raise the common
+alarm and pull the suction pressure down; the dosing air lock and the empty duty drum both stop the dosing with P-301
+running, and the SOP's AOP-3 counts only when dosing resumes from the drum that was lined up, AOP-4 only for a
+changeover made once drum A is below 5 % (a blanket "change drums and vent" answers one of them, not both). Pre-emptive
+moves earn nothing (v0.5, review findings 53-scoring-2 / -4): the slug clogs whichever chamber is in service, so a
+change-over before it is undone by the slug and AOP-1 counts only a change-over away from the clogged chamber after the
+slug came; AOP-5 counts only a V-106 opened after the float valve stuck (the float valve throttles, so a make-up below
+the transfer does not overfill T-101 and opening it beforehand would otherwise be free). AOP-1's "vented" credit reads
+the air the incoming chamber held when it came into service, before it went into the pump (53-scoring-3).
+
+Network (v0.5): every process of the program, the import check included, runs under the seccomp filter of
+`cellkit/nonet.py` (socket() for anything but AF_UNIX fails with EPERM, io_uring and foreign syscall ABIs are refused),
+proven by a self-test before the first episode (a failure is a task error). The gate counts only the runner account's
+remote inet sockets; the namespace-wide counters of `netaudit.NetCounters` (which also count loopback and every other
+account) are kept as statistics. An episode in which the cell failed (an internal error, a physics fault, a frame it
+could not render after one in-call retry; such a frame is not charged to the budget) is run once more from scratch and
+the second run counts; a render failure that repeats is a task error.
 
 ## 4. The reference program and the anchor
 
@@ -119,7 +138,23 @@ time and frames; the anchor is what a perfect-sighted operator achieves under th
 takes about 1.5-2.5 min of wall clock. The anchor's numbers and their source are in `anchor.json`; until the v0.3
 revision the reference read the process's hidden state (section 6).
 
-## 5. Known limitations (version 0.3)
+v0.5 changes to the reference: a grip that slips before the device moved is retried on another handle (a 3-spoke
+handwheel at its closed stop slipped on the same spoke 30 times and never opened, which voided some sites by
+deadheading); the line-up is checked and corrected before the start; both log rounds are logged; AOP-1 changes over
+from whichever chamber is in service.
+
+**The fixed hidden set (v0.5).** `hidden/seeds.json` pins the eight graded sites; `hidden/selection.json` holds the
+rule, written down with the 24 candidate seeds (drawn from `os.urandom`) and the sha256 of every file of the frozen
+reference and cell before any candidate ran, and the selection run: the reference ran each candidate once, as the
+grader drives the oracle; a candidate counts as completed when there is no void, start-up, shutdown and log sheet are
+full and all four events are judged and credited in full (the operation part, the in-band fractions, is what the anchor
+measures). 20 of 24 completed; the hidden set is the first eight (candidates 1-8; candidate 0 was dropped, the demand
+step not matched in time). The eight cover all five faults (air lock 5, slug 5, pump trip 5, drum 5, supply loss 4);
+the hollowing check (selection.json) finds no feature the drops removed. One full verify of the oracle on the set
+(`anchor.json`) reproduced every episode's selection score to four decimals: anchor 0.9779, `full_at` 0.98. A camera
+program's reading of the instruments: `review/observability.md`.
+
+## 5. Known limitations (version 0.5)
 
 * The process is a lumped, quasi-steady model; the instruments show its true values (with flutter under cavitation),
   not sensor dynamics beyond the analyser's lag.
@@ -129,6 +164,16 @@ revision the reference read the process's hidden state (section 6).
 * The fixed overview camera cannot resolve tag plates, dial scales or the analyser's digits (checked on renders: the
   digits are about 4 px tall there); programs read through the wrist camera, which costs time and frames and competes
   with the valve work for the one arm.
+* The float valve throttles: a make-up opened while it works overfills T-101 only when it passes more than the
+  transfer, so AOP-5's rule (an opening before the fault earns nothing) is a procedure rule, not a physical one.
+* A program could still toggle the strainer back and forth blindly; each change-over back into a clogged chamber starves
+  the pump, so this only adds cavitation time (a void at 300 s) and earns nothing a reading of PDI-111 does not.
+* The hidden set is eight sites the reference completes; its in-band fractions (0.65-1.0 of the window) are what the
+  anchor measures.
+* Log entries made at a round's first moment on a calm process are still partly predictable: over the 24 candidates,
+  the best single constant per instrument (fitted on the true values, which no document gives and no practice cell
+  shows) would pass 38-96 % of the first round's entries made at 600 s and 17-38 % of the second round's made at
+  1050 s (about 0.07 of the 0.15 log part in expectation, for a program that knew them; 0.09 at 2 % of span).
 
 ## 6. History
 
@@ -159,3 +204,14 @@ revision the reference read the process's hidden state (section 6).
   on a site from the SOP, the P&ID, the equipment manual and the site's equipment list without rehearsing it on a site
   simulator, and the measured round with the service showed it gave the agent a large advantage. The graded cell, the
   scoring, the reference and the anchor are unchanged; the givens' hashes follow the edited documents and client.
+* v0.5 (2026-11-07, maintainers' review fixes and a harder hidden set; pump-skid-cell/0.5.0). Scoring: the debris slug
+  lands in the chamber in service, AOP-1 counts a change-over away from the clogged chamber and reads "vented" before
+  the air goes into the pump; AOP-5 counts only a make-up opened after the float valve stuck; AOP-2 is always judged
+  360 s after the change and every event's judgement falls inside the window; the log sheet has two rounds at 1 % of
+  span (a camera program reads the dials to a median 0.2-0.6 % of span, `review/observability.md`), and the start-up fouling and supply level vary per site so that constant entries no longer pass;
+  `log_reading`'s reply follows from the clock alone. Isolation: the program (import check and episodes) runs under
+  the no-network seccomp filter, the gate counts only the runner account's sockets, the import check's 120 s / 120
+  CPU-s and the CPU cap are documented; a cell failure reruns the episode once; a frame the cell cannot render is not
+  charged. Harder shifts: three faults on every shift, two or three valves left out of place, wider demand steps (0.6-1.0
+  m3/h) and draws, events at least 120 s apart; 8 hidden episodes (1200 s program time and 600 frames each; verify 6 h)
+  on a fixed set selected as above; anchor 0.9779 / `full_at` 0.98 (was 0.965 / 0.92 on fresh draws).

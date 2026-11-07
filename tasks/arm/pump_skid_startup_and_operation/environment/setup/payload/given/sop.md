@@ -69,7 +69,7 @@ at 1500 s. In each round, with P-101 running, record each instrument on the site
 (`describe()["site"]["log_sheet"]`: the site tags of PI-101, PI-103, PDI-111, FI-105, LG-201 and AI-201) once with
 `log_reading(site_tag, value, unit)`, reading the value and the unit off the instrument itself. The first entry of each
 tag in a round, made while P-101 runs, is the one on the sheet; it is checked against the instrument's true value at
-that moment (tolerance: 2 % of the instrument's span; LG-201 2 %; AI-201 0.05 mg/L). Units: bar, psi, kPa, m3/h,
+that moment (tolerance: 1 % of the instrument's span; LG-201 1 %; AI-201 0.05 mg/L). Units: bar, psi, kPa, m3/h,
 L/min, %, mg/L.
 
 2.4 **Alarms.** The control station has one **COMMON ALARM** lamp: it lights while any of these lasts, and the horn

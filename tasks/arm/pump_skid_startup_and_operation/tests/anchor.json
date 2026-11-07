@@ -1,8 +1,8 @@
 {
  "direction": "higher",
- "full_at": 0.92,
+ "full_at": 0.98,
  "metric": "operation_score",
  "note": "operation_score is the mean over the hidden episodes of the shift's score (skidcell.episode: start-up 0.20, operation in band 0.25, the window's events 0.25, shutdown 0.15, the log sheet 0.15; a void scores the episode 0), already on [0, 1]; ratio = score / value, reward = clamp(ratio / full_at, 0, 1).",
- "source": "reference program (tests/reference: privileged eyes for the robot's motions only; its decisions use what an operator can see, the instruments' readings, lamps, sight glasses and drums, never the process's hidden state) on seeds 1-64 of cell version 0.3.0 (2026-11-06): episode score mean 0.9646, sd 0.038, min 0.813, median 0.974; no voids or safety violations; the strainer slug, supply loss, drum change and pump trip procedures credited on every seed, the dosing air lock on 84 %, the demand step on 94 %. Bootstrap of 4-episode means (the grader's episodes): 0.1 % quantile 0.8878, 0.5 % 0.9033, 5 % 0.9293; full_at 0.92 keeps the oracle's reward at 1.0 down to the 0.1 % quantile (0.8878 / 0.965 / 0.92 = 1.000). Until this revision the reference also read the process's hidden state (anchor 0.968 / 0.94 on cell versions 0.2-0.3); v0.1's anchor was 0.988 / 0.95.",
- "value": 0.965
+ "source": "reference program (tests/reference: privileged eyes for the robot's motions only; its decisions use what an operator can see, the instruments' readings, lamps, sight glasses and drums, never the process's hidden state) on the fixed hidden set of cell version 0.5.0 (tests/hidden/seeds.json: 8 sites selected by the pre-registered rule of tests/hidden/selection.json, 20 of 24 candidates completed): one full verify on 2026-11-07 (tests/test.sh as root in a fresh container of the task image with only the oracle submission restored, apollo) gave operation_score 0.97789 (episodes 0.961, 0.912, 1.000, 1.000, 0.976, 1.000, 0.974, 1.000; no void, no safety event, every event credited), each episode equal to its selection run to four decimals; full_at 0.98 (the episodes reproduce exactly; the margin covers a rounding difference on another CPU). Before v0.5: anchor 0.965 / full_at 0.92 on fresh draws of seeds 1-64 of cell version 0.3.0; v0.1 0.988 / 0.95.",
+ "value": 0.9779
 }

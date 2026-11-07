@@ -42,5 +42,671 @@
   6003520789912242784,
   5421693190584377522,
   8911851412285683029
+ ],
+ "selection_run": {
+  "date": "2026-11-07",
+  "where": "apollo, the task image (environment/Dockerfile), one process per candidate",
+  "runs": [
+   {
+    "i": 0,
+    "seed": 7122925475581344396,
+    "score": 0.8192,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.1317,
+     "events": 0.1875,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "drum_empty",
+     "filter_slug",
+     "pump_trip"
+    ],
+    "kept": false,
+    "complete": false,
+    "drop_reasons": [
+     "demand_step credited 0.00"
+    ]
+   },
+   {
+    "i": 1,
+    "seed": 551563798971541068,
+    "score": 0.9609,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.2109,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "filter_slug",
+     "pump_trip"
+    ],
+    "kept": true,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 2,
+    "seed": 2222850007174235125,
+    "score": 0.9118,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.1618,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "drum_empty",
+     "pump_trip"
+    ],
+    "kept": true,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 3,
+    "seed": 6480879240323771191,
+    "score": 1.0,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.25,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "drum_empty",
+     "filter_slug",
+     "pump_trip"
+    ],
+    "kept": true,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 4,
+    "seed": 8983285256934995579,
+    "score": 1.0,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.25,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "drum_empty",
+     "filter_slug",
+     "supply_loss"
+    ],
+    "kept": true,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 5,
+    "seed": 8508691780359653294,
+    "score": 0.9764,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.2264,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "filter_slug",
+     "supply_loss"
+    ],
+    "kept": true,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 6,
+    "seed": 3412221707657695962,
+    "score": 1.0,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.25,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "drum_empty",
+     "pump_trip",
+     "supply_loss"
+    ],
+    "kept": true,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 7,
+    "seed": 1084668040321652063,
+    "score": 0.9742,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.2242,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "drum_empty",
+     "pump_trip"
+    ],
+    "kept": true,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 8,
+    "seed": 5398795320436455565,
+    "score": 1.0,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.25,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "filter_slug",
+     "supply_loss"
+    ],
+    "kept": true,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 9,
+    "seed": 6032182316816315780,
+    "score": 0.8182,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.1307,
+     "events": 0.1875,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "filter_slug",
+     "pump_trip"
+    ],
+    "kept": false,
+    "complete": false,
+    "drop_reasons": [
+     "demand_step credited 0.00"
+    ]
+   },
+   {
+    "i": 10,
+    "seed": 7092257221440411340,
+    "score": 0.9307,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.1807,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "drum_empty",
+     "filter_slug",
+     "pump_trip"
+    ],
+    "kept": false,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 11,
+    "seed": 4957983229973701566,
+    "score": 0.8677,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.1959,
+     "events": 0.1719,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "pump_trip",
+     "supply_loss"
+    ],
+    "kept": false,
+    "complete": false,
+    "drop_reasons": [
+     "pump_trip credited 0.75",
+     "dosing_airlock credited 0.00"
+    ]
+   },
+   {
+    "i": 12,
+    "seed": 4941533401989581625,
+    "score": 0.9601,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.2101,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "pump_trip",
+     "supply_loss"
+    ],
+    "kept": false,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 13,
+    "seed": 7593668493352801761,
+    "score": 0.9733,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.2233,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "drum_empty",
+     "filter_slug"
+    ],
+    "kept": false,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 14,
+    "seed": 1279390617732370046,
+    "score": 0.9944,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.2444,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "filter_slug",
+     "pump_trip",
+     "supply_loss"
+    ],
+    "kept": false,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 15,
+    "seed": 8799455996881898520,
+    "score": 0.9285,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.1785,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "filter_slug",
+     "pump_trip"
+    ],
+    "kept": false,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 16,
+    "seed": 4144123058496182251,
+    "score": 0.9138,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.1638,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "filter_slug",
+     "supply_loss"
+    ],
+    "kept": false,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 17,
+    "seed": 8044148485052336986,
+    "score": 0.9806,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.2306,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "filter_slug",
+     "supply_loss"
+    ],
+    "kept": false,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 18,
+    "seed": 2389249077177747252,
+    "score": 1.0,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.25,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "filter_slug",
+     "pump_trip",
+     "supply_loss"
+    ],
+    "kept": false,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 19,
+    "seed": 81479117856481482,
+    "score": 0.9716,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.2216,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "filter_slug",
+     "pump_trip",
+     "supply_loss"
+    ],
+    "kept": false,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 20,
+    "seed": 1365010907177760492,
+    "score": 1.0,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.25,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "drum_empty",
+     "filter_slug",
+     "supply_loss"
+    ],
+    "kept": false,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 21,
+    "seed": 6003520789912242784,
+    "score": 0.9227,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.1727,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "filter_slug",
+     "pump_trip"
+    ],
+    "kept": false,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 22,
+    "seed": 5421693190584377522,
+    "score": 0.9587,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.2087,
+     "events": 0.25,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "drum_empty",
+     "filter_slug"
+    ],
+    "kept": false,
+    "complete": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 23,
+    "seed": 8911851412285683029,
+    "score": 0.8307,
+    "parts": {
+     "startup": 0.2,
+     "operation": 0.1901,
+     "events": 0.1406,
+     "shutdown": 0.15,
+     "log": 0.15
+    },
+    "faults": [
+     "dosing_airlock",
+     "drum_empty",
+     "pump_trip"
+    ],
+    "kept": false,
+    "complete": false,
+    "drop_reasons": [
+     "dosing_airlock credited 0.00",
+     "pump_trip credited 0.25"
+    ]
+   }
+  ],
+  "kept": [
+   551563798971541068,
+   2222850007174235125,
+   6480879240323771191,
+   8983285256934995579,
+   8508691780359653294,
+   3412221707657695962,
+   1084668040321652063,
+   5398795320436455565
+  ],
+  "summary": "20 of 24 candidates completed; the hidden set is candidates 1, 2, 3, 4, 5, 6, 7, 8 (the first 8 completed); dropped before the 8th: 0 (demand_step credited 0.00)",
+  "kept_mean_score": 0.9779,
+  "hollowing_check": {
+   "FI-105:f_05_5_m3h": {
+    "kept": 0.625,
+    "all": 0.5
+   },
+   "FI-105:f_10_80_lpm": {
+    "kept": 0.375,
+    "all": 0.5
+   },
+   "PDI-111:d_0_100_kpa": {
+    "kept": 0.5,
+    "all": 0.375
+   },
+   "PDI-111:d_0_1_bar": {
+    "kept": 0.5,
+    "all": 0.625
+   },
+   "PI-101:c_m100_300_kpa": {
+    "kept": 0.25,
+    "all": 0.5
+   },
+   "PI-101:c_m1_3_bar": {
+    "kept": 0.75,
+    "all": 0.5
+   },
+   "PI-103:p_0_100_psi": {
+    "kept": 0.125,
+    "all": 0.292
+   },
+   "PI-103:p_0_10_bar": {
+    "kept": 0.25,
+    "all": 0.25
+   },
+   "PI-103:p_0_600_kpa": {
+    "kept": 0.5,
+    "all": 0.292
+   },
+   "PI-103:p_0_6_bar": {
+    "kept": 0.125,
+    "all": 0.167
+   },
+   "V-101:handwheel": {
+    "kept": 0.75,
+    "all": 0.583
+   },
+   "V-101:lever": {
+    "kept": 0.25,
+    "all": 0.417
+   },
+   "V-102:knob": {
+    "kept": 0.25,
+    "all": 0.375
+   },
+   "V-102:lever": {
+    "kept": 0.75,
+    "all": 0.625
+   },
+   "V-103:handwheel": {
+    "kept": 0.25,
+    "all": 0.375
+   },
+   "V-103:lever": {
+    "kept": 0.75,
+    "all": 0.625
+   },
+   "V-104:handwheel": {
+    "kept": 0.75,
+    "all": 0.5
+   },
+   "V-104:lever": {
+    "kept": 0.25,
+    "all": 0.5
+   },
+   "V-112:knob": {
+    "kept": 0.5,
+    "all": 0.458
+   },
+   "V-112:lever": {
+    "kept": 0.5,
+    "all": 0.542
+   },
+   "V-302:knob": {
+    "kept": 0.375,
+    "all": 0.542
+   },
+   "V-302:lever": {
+    "kept": 0.625,
+    "all": 0.458
+   },
+   "demand_step:down": {
+    "kept": 0.5,
+    "all": 0.583
+   },
+   "demand_step:up": {
+    "kept": 0.5,
+    "all": 0.417
+   },
+   "fault:dosing_airlock": {
+    "kept": 0.625,
+    "all": 0.625
+   },
+   "fault:drum_empty": {
+    "kept": 0.625,
+    "all": 0.458
+   },
+   "fault:filter_slug": {
+    "kept": 0.625,
+    "all": 0.75
+   },
+   "fault:pump_trip": {
+    "kept": 0.625,
+    "all": 0.667
+   },
+   "fault:supply_loss": {
+    "kept": 0.5,
+    "all": 0.5
+   },
+   "meter_first:False": {
+    "kept": 0.375,
+    "all": 0.375
+   },
+   "meter_first:True": {
+    "kept": 0.625,
+    "all": 0.625
+   },
+   "mirror:False": {
+    "kept": 0.5,
+    "all": 0.5
+   },
+   "mirror:True": {
+    "kept": 0.5,
+    "all": 0.5
+   },
+   "panel_p101_left:False": {
+    "kept": 0.375,
+    "all": 0.375
+   },
+   "panel_p101_left:True": {
+    "kept": 0.625,
+    "all": 0.625
+   },
+   "wrong_n:2": {
+    "kept": 0.25,
+    "all": 0.5
+   },
+   "wrong_n:3": {
+    "kept": 0.75,
+    "all": 0.5
+   }
+  }
+ },
+ "post_selection_changes": [
+  {
+   "file": "skidcell/episode.py",
+   "change": "LOG_TOL_FRAC 0.02 -> 0.01 (the log sheet's tolerance, 1 % of the instrument's span), after the selection run and the anchor verify",
+   "effect": "none on the selection or the anchor: the reference logs the instruments' true values, so its log part (0.15) and every completion are the same at any tolerance; the final validate verifies the oracle again",
+   "sha256": "147156a688c90e4054213611d291ca26d4b1ae0aae0f128253cacfdb747d132d"
+  }
  ]
 }

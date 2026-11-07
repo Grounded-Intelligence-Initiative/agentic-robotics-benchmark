@@ -29,7 +29,7 @@ the sum of five parts (the operating procedure, sop.md, says what each step is):
                  stopped 0.03, V-101 closed after it 0.03, HS-101 at OFF at the end 0.02
   log 0.15       two rounds (600-1050 s and 1050-1500 s, P-101 running): 0.0125 for each of PI-101, PI-103, PDI-111,
                  FI-105, LG-201 and AI-201 whose first reading logged in the round is within the tolerance of the
-                 instrument's true value at that moment (2 % of the instrument's span; AI-201 0.05 mg/L)
+                 instrument's true value at that moment (1 % of the instrument's span; AI-201 0.05 mg/L)
 
 A void (the pump deadheaded for 30 s, cavitation damage, T-201 overflowing, the emergency stop pressed, a safety
 violation of the robot) makes the episode score 0.
@@ -60,7 +60,7 @@ QUANTITY = {"PI-101": "pressure", "PI-103": "pressure", "PDI-111": "pressure", "
             "AI-201": "concentration"}
 DEMAND_EVAL_S = 360.0
 LOG_ROUNDS = ((600.0, 1050.0), (1050.0, 1500.0))   # [lo, hi) and [lo, hi]: the log sheet's two rounds
-LOG_TOL_FRAC = 0.02                  # of the instrument's span (v0.5; 3 % before)
+LOG_TOL_FRAC = 0.01                  # of the instrument's span, a process gauge's accuracy class (v0.5; 3 % before)
 SLUG_SWITCH_S = 240.0
 AIRLOCK_FIX_S = 300.0
 DEMAND_MATCH_M3H = 0.35
@@ -76,7 +76,7 @@ LINEUP = {"V-101": (">=", 0.9), "V-103": ("<=", 0.05), "V-104": (">=", 0.9), "V-
 
 
 def tolerance(tag, kinds):
-    """The logging tolerance of `tag` in its base unit: 2 % of the instrument's span (AI-201: 0.05 mg/L)."""
+    """The logging tolerance of `tag` in its base unit: 1 % of the instrument's span (AI-201: 0.05 mg/L)."""
     if tag == "AI-201":
         return 0.05
     if tag == "LG-201":
