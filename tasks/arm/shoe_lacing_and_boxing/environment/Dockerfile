@@ -93,12 +93,3 @@ RUN export HOME=/root \
     && python3 -c "import mujoco; m = mujoco.MjModel.from_xml_path('/opt/task-assets/panda/panda.xml'); r = mujoco.Renderer(m, 64, 64); d = mujoco.MjData(m); mujoco.mj_forward(m, d); r.update_scene(d); px = r.render(); print('[shoe-cell] OSMesa render OK', px.shape, int(px.max()), 'panda nbody', m.nbody)" \
     && runuser -u user -- python3 -c "import mujoco, numpy, scipy, PIL, cv2; m = mujoco.MjModel.from_xml_path('/opt/task-assets/panda/panda_nohand.xml'); print('[shoe-cell] agent-UID import OK, panda_nohand nbody', m.nbody)" \
     && test -z "$(find /home/user -user root -print -quit)"
-
-# The claude-code harness aborts a model stream after 300 s without a byte (Bun's HTTP idle timeout and the CLI's
-# stream watchdog); both timers are raised to the gateway's own 1800 s upstream ceiling. ENV is inherited by every
-# process the guest service starts, and the profile.d file covers the login shell the CLI is launched with (`bash -lc`).
-# Nothing else in this image reads them. Appended after every toolchain layer so the layers above stay cached.
-ENV BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800 CLAUDE_STREAM_IDLE_TIMEOUT_MS=1800000
-RUN printf '%s\n' 'export BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800' 'export CLAUDE_STREAM_IDLE_TIMEOUT_MS=1800000' \
-        > /etc/profile.d/99-ale-idle-timeouts.sh \
-    && chmod 0644 /etc/profile.d/99-ale-idle-timeouts.sh
