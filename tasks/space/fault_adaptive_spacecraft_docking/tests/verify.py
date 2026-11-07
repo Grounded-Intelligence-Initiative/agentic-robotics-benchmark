@@ -1,9 +1,9 @@
 """Hidden grader for fault-adaptive spacecraft docking.
 
 Runs as root in the separate verifier sandbox (task.toml), from this folder. It owns the simulator (env.py; the agent
-gets no copy of it, only the model in prose, environment/setup/payload/given/model.md), drives the agent's controller
-(`bash run.sh` in /home/user/submission) over the kit's wire, and scores every episode from its own simulator state;
-nothing the controller prints is a scoring input.
+gets no copy of it, only the plant's datasheet, environment/setup/payload/given/model.md, and its sensors' documents),
+drives the agent's controller (`bash run.sh` in /home/user/submission) over the kit's wire, and scores every episode
+from its own simulator state; nothing the controller prints is a scoring input.
 
 The hidden episodes are a fixed set (hidden/episodes.json): the same 48 seeds of 64 bits, in the same order, for every
 submission. A seed fixes every hidden parameter of its episode (env.py draws them all in `reset`), and
@@ -11,26 +11,37 @@ submission. A seed fixes every hidden parameter of its episode (env.py draws the
 silently different set. Each episode's match lock draws from its own stream, keyed by the set's hidden key and the
 episode's seed (the kit's `seed_rng` with explicit entropy), so a submission meets the same probes every time, whatever
 ran before it; nothing in a verify draws from OS entropy. A probed step is asked twice with the same `t` (the real
-observation and a copy whose delayed camera pose is shifted, in a hidden order); only the real reply reaches the
-simulator. An aborted episode (a missed deadline, a crash, a protocol error, a malformed action) scores 0 and stays in
-the mean.
+observation and a copy whose camera frame shows the craft displaced, in a hidden order); only the real reply reaches
+the simulator. An aborted episode (a missed deadline, a crash, a protocol error, a malformed action, the reply budget
+spent) scores 0 and stays in the mean.
+
+The observation (round 2, 2026-11-07): the controller sees what the chaser's sensors deliver, never the simulator's
+pose. env.py is unchanged and still makes its 16-number observation (its draws and its pose history are what they were),
+and `Sensors` turns it into the wire's object: the IMU, the fuel gauge, the mission clock and the boom's encoder
+telemetry as before; the star tracker's yaw (camera.star_tracker; none during the re-key's restart); and the docking
+camera's frame (camera.py: the record env.py's delayed pose came from, rendered, with the stamp it was captured at),
+missing exactly when env.py's pose was not fresh. The eight pose numbers, the pose's age and its validity flag are
+gone. The frame travels inline (base64 in the request line, about 410 KB); `GuardedSolver` writes it with the
+request's deadline and charges the controller's reply time against one budget for the run (`reply_budget_s`).
 
 The controller has no network while it is graded: `GuardedSolver` starts it through nonet_exec.py (no_new_privs, a
 seccomp filter under which socket() and socketpair() work for AF_UNIX only, then the agent's account and a fixed
 environment: PATH /opt/venv/bin:/usr/local/bin:/usr/bin:/bin, HOME /home/user, LANG C.UTF-8). A self-test before
 episode 0 checks that the filter holds here. Where it cannot be installed, the verify ends as a task error before any
-controller starts: the set is public, so nothing is graded with the network open.
+controller starts: the set is public, so nothing is graded with the network open. Where the camera cannot be rendered
+(the render canary, before episode 0), the verify ends as a task error too.
 
 The reference program's channel: a submission whose `.oracle_token` (a regular file, never a link) hashes to
 hidden/oracle_token.sha256 gets, in every observation, the simulator's current truth (`privileged_block`: every quantity
 `env.step` reads that is in effect now, named as env.py names it; never a value drawn for the future, never the noise
-stream). Its observation is then {"vector": <the 16 numbers>, "privileged": {"format": PRIV_FORMAT, "state": {...}}};
-every other submission gets the plain 16-number list, exactly as before the channel existed. A probed step's copy
-shifts the block's true x, y and yaw by the same draws as the camera pose, so the probe asks the same question of every
-program. The channel exists to show that the episodes can be done; nothing else about the run changes, and the metrics
-record `privileged_mode` and `oracle_token_mismatch`.
+stream), as one more key, "privileged", after the sensors' keys; every other submission gets the sensors' object
+alone. A probed step's copy shifts the block's true x, y and yaw by the same draws as the copy's frame and star
+tracker, so the probe asks the same question of every program. The channel exists to show that the episodes can be
+done; nothing else about the run changes, and the metrics record `privileged_mode` and `oracle_token_mismatch`.
 """
 
+import base64
+import fcntl
 import hashlib
 import hmac
 import json
@@ -38,13 +49,16 @@ import math
 import os
 import pwd
 import re
+import select
 import stat
 import subprocess
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
+import camera  # noqa: E402  (stdlib at import; the renderer is built in main)
 from env import FaultAdaptiveDocking  # noqa: E402
 from robotics_grader import (  # noqa: E402
     ProbeLock,
@@ -221,25 +235,117 @@ def privileged_block(env):
     return {"format": PRIV_FORMAT, "state": state}
 
 
-def perturbed_observation(obs, rng):
-    """The probed step's copy: the delayed camera x, y and yaw shifted (three draws, in this order). In a token run the
+# ------------------------------------------------------------------------------------------------ the sensors
+OBS_KEYS = ("imu", "fuel", "episode_fraction", "boom_encoder", "star_tracker_yaw", "frame")  # (the wire's order)
+CANARY_PATH = os.path.join(HERE, "camera_canary.json")
+
+
+def restart_active(env):
+    """True during the re-key's restart: the L - 1 observations env.py's camera pose is blacked out after the re-key
+    (its `_is_blackout` event term). The star tracker is out for exactly these. Reads attributes only."""
+    return bool(env.rekey_active and env.rekey_step <= env.steps < env.rekey_step + env.rekey_blackout_duration)
+
+
+class BlankCamera(object):
+    """A stand-in for camera.Camera that renders nothing: every frame is black (the review tools and the repository
+    test, where nothing reads the image). Never used by main()."""
+
+    BLACK = bytes(camera.FRAME_BYTES)
+
+    def frame(self, key, seed, stamp, x, y, theta, phase, port_radius):
+        return self.BLACK
+
+
+class Sensors(object):
+    """One episode's sensors on top of env.py's observation: no draw from env.py's generator, nothing written to env.
+
+    The frame of a fresh observation is the pose record with the stamp env.py's delayed pose came from (the step
+    count minus the pose's age), rendered: the craft at the record's x, y and yaw, the target at its phase, the boom
+    at the record's port radius. Its noise field is keyed by (noise key, seed, stamp) alone. The star tracker reads the
+    craft's yaw now with its own keyed noise, and nothing during the re-key's restart."""
+
+    def __init__(self, cam, noise_key, seed):
+        self.cam = cam
+        self.key = int(noise_key)
+        self.seed = int(seed)
+        self._last = None           # (stamp, encoded data) of the last real frame (t <= d repeats the stamp-0 frame)
+        self.renders = 0
+        self.render_s = 0.0
+
+    def _render(self, stamp, x, y, theta, phase, port_radius):
+        t0 = time.monotonic()
+        try:
+            raw = self.cam.frame(self.key, self.seed, stamp, x, y, theta, phase, port_radius)
+            data = base64.b64encode(raw if isinstance(raw, bytes) else raw.tobytes()).decode("ascii")
+        except Exception as exc:  # noqa: BLE001 - the renderer is the grader's: a failure is a task error, not a score
+            raise camera.CameraError("the camera failed to render: {}: {}".format(type(exc).__name__, exc)[:300])
+        self.renders += 1
+        self.render_s += time.monotonic() - t0
+        return data
+
+    @staticmethod
+    def record(env, stamp):
+        for item in env.pose_history:
+            if item[0] == stamp:
+                return item
+        raise camera.CameraError("no pose record for stamp {}".format(stamp))
+
+    def observe(self, env, obs16):
+        """(the wire's observation, the frame's pose record or None) for env.py's observation `obs16` at env.steps."""
+        rec = None
+        frame = None
+        if obs16[13] == 1.0:
+            stamp = env.steps - int(obs16[12])
+            rec = self.record(env, stamp)
+            if self._last is None or self._last[0] != stamp:
+                _, x, y, th, gx, gy, gyaw = rec
+                self._last = (stamp, self._render(stamp, x, y, th, gyaw, math.hypot(gx, gy)))
+            frame = {"stamp": stamp, "data": self._last[1]}
+        yaw = None if restart_active(env) else camera.star_tracker(env.theta, self.key, self.seed, env.steps)
+        obs = {"imu": [obs16[8], obs16[9], obs16[10]], "fuel": obs16[11], "episode_fraction": obs16[14],
+               "boom_encoder": obs16[15], "star_tracker_yaw": yaw, "frame": frame}
+        return obs, rec
+
+    def shifted(self, rec):
+        """The probe copy's frame: the same record with the craft displaced, the same noise field."""
+        def frame(dx, dy, dyaw):
+            stamp, x, y, th, gx, gy, gyaw = rec
+            th2 = (th + dyaw + math.pi) % (2.0 * math.pi) - math.pi
+            return {"stamp": stamp, "data": self._render(stamp, x + dx, y + dy, th2, gyaw, math.hypot(gx, gy))}
+        return frame
+
+
+def perturbed_observation(obs, rng, shifted_frame=None):
+    """The probed step's copy (three draws, in this order, as in round 1): its frame shows the craft displaced by
+    (dx, dy) and turned by dyaw at the frame's capture, its star-tracker yaw is turned by dyaw; every other sensor reads
+    as in the real request; a field the real request lacks (no frame, no star tracker) stays absent. In a token run the
     block's true x, y and yaw move by the same draws, so a program that reads the block answers the copy on its own."""
-    token = isinstance(obs, dict)
-    changed = list(obs["vector"] if token else obs)
     dx = rng.uniform(-0.28, 0.28)
     dy = rng.uniform(-0.28, 0.28)
-    changed[0] += dx
-    changed[1] += dy
     dyaw = rng.uniform(-0.18, 0.18)
-    yaw = math.atan2(changed[3], changed[2]) + dyaw
-    changed[2], changed[3] = math.cos(yaw), math.sin(yaw)
-    if not token:
-        return changed
-    st = dict(obs["privileged"]["state"])
-    st["x"] += dx
-    st["y"] += dy
-    st["theta"] = (st["theta"] + dyaw + math.pi) % (2.0 * math.pi) - math.pi
-    return {"vector": changed, "privileged": dict(obs["privileged"], state=st)}
+    copy = dict(obs)
+    if obs.get("frame") is not None:
+        copy["frame"] = shifted_frame(dx, dy, dyaw)
+    if obs.get("star_tracker_yaw") is not None:
+        copy["star_tracker_yaw"] = (obs["star_tracker_yaw"] + dyaw + math.pi) % (2.0 * math.pi) - math.pi
+    if "privileged" in obs:
+        st = dict(obs["privileged"]["state"])
+        st["x"] += dx
+        st["y"] += dy
+        st["theta"] = (st["theta"] + dyaw + math.pi) % (2.0 * math.pi) - math.pi
+        copy["privileged"] = dict(obs["privileged"], state=st)
+    return copy
+
+
+def camera_canary(cam):
+    """(match, seconds): one render of a fixed dev state against the hash taken in the task image (camera_canary.json).
+    It never scores: a mismatch says the renderer draws other bytes here than in the image the samples came from."""
+    with open(CANARY_PATH) as f:
+        spec = json.load(f)
+    t0 = time.monotonic()
+    rgb = cam.render_rgb(*spec["state"])
+    seconds = time.monotonic() - t0
+    return float(hashlib.sha256(rgb.tobytes()).hexdigest() == spec["rgb_sha256"]), seconds
 
 
 # ------------------------------------------------------------------------------------------------ the network
@@ -248,12 +354,70 @@ def agent_ids():
     return pw.pw_uid, pw.pw_gid
 
 
+F_SETPIPE_SZ = 1031          # (Linux fcntl)
+PIPE_BYTES = 1 << 20         # a request line is about 410 KB: the controller's stdin pipe holds two
+
+
+class BoundedStdin(object):
+    """The controller's stdin as the kit's Solver writes it. A request line (about 410 KB with its frame) is larger
+    than a default pipe, and a plain write would wait for as long as the controller does not read, outside the kit's
+    per-request deadline. Here the pipe holds 1 MB, the descriptor is non-blocking, and a write that the controller does
+    not take within `timeout` seconds fails as a closed pipe, which the kit charges to the episode (SolverAborted).
+    `started` is when the last write began (after the grader's own serialisation of the line)."""
+
+    def __init__(self, f, timeout):
+        self._f = f
+        self._fd = f.fileno()
+        try:
+            fcntl.fcntl(self._fd, F_SETPIPE_SZ, PIPE_BYTES)
+        except OSError:
+            pass
+        os.set_blocking(self._fd, False)
+        self.timeout = float(timeout)
+        self.started = None
+
+    def write(self, text):
+        self.started = time.monotonic()
+        view = memoryview(text.encode("utf-8"))
+        deadline = self.started + self.timeout
+        while view:
+            try:
+                view = view[os.write(self._fd, view):]
+            except BlockingIOError:
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    raise OSError("the controller did not read its request within {:g} s".format(self.timeout))
+                select.select([], [self._fd], [], left)
+        return len(text)
+
+    def flush(self):
+        pass
+
+    def close(self):
+        try:
+            self._f.close()
+        except (IOError, OSError, ValueError):
+            pass
+
+
 class GuardedSolver(Solver):
     """The kit's Solver (the kit stays as it is), its program started through nonet_exec.py: no_new_privs, a seccomp
     filter under which socket() and socketpair() work for AF_UNIX only (io_uring and foreign syscall ABIs refused), then
     the agent's account and a fixed environment (PATH /opt/venv/bin:/usr/local/bin:/usr/bin:/bin, HOME /home/user,
     LANG C.UTF-8). There is no unguarded way to start it: main() stops with a task error before this class is used
-    where the egress self-test fails."""
+    where the egress self-test fails.
+
+    Its stdin is a BoundedStdin (the request's deadline covers the write of a frame), and the controller's reply time
+    is summed over the run: from the moment a request's write begins to the moment its reply is read (`reply_s`).
+    Once the sum passes `reply_budget` seconds, that request's episode and every later one abort (scored 0); the
+    controller's start-up (READY) is bounded by the kit's handshake deadline instead and is not summed."""
+
+    def __init__(self, *args, **kwargs):
+        budget = kwargs.pop("reply_budget", None)
+        self.reply_budget = None if budget is None else float(budget)
+        self.reply_s = 0.0
+        self.budget_spent = False
+        super(GuardedSolver, self).__init__(*args, **kwargs)
 
     def _spawn(self):
         secure_exec_path()  # (as the kit's deprivileged does: nothing agent-writable left on root's PATH)
@@ -264,11 +428,37 @@ class GuardedSolver(Solver):
         cmd = [sys.executable, "-I", NONET, "--uid", str(uid), "--gid", str(gid), "--cwd", self.submission,
                "--", "bash", self.entry]
         try:
-            return subprocess.Popen(cmd, cwd=self.submission, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            proc = subprocess.Popen(cmd, cwd=self.submission, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                     stderr=subprocess.DEVNULL, universal_newlines=True, bufsize=1,
                                     start_new_session=True, env={"PATH": "/usr/bin:/bin"})
         except OSError as exc:
             raise SolverAborted("the controller could not be started: {}".format(exc))
+        proc.stdin = BoundedStdin(proc.stdin, self.step_timeout)
+        return proc
+
+    def _spent(self):
+        return SolverAborted("the controller's replies took more than the reply budget of {:g} s".format(
+            self.reply_budget))
+
+    def reset(self):
+        if self.budget_spent:
+            raise self._spent()
+        super(GuardedSolver, self).reset()
+
+    def request(self, message):
+        if self.budget_spent:
+            raise self._spent()
+        stdin = self.proc.stdin if self.proc is not None else None
+        try:
+            return super(GuardedSolver, self).request(message)
+        finally:
+            began = getattr(stdin, "started", None)
+            if began is not None:
+                self.reply_s += time.monotonic() - began
+                stdin.started = None
+            if self.reply_budget is not None and self.reply_s > self.reply_budget and not self.budget_spent:
+                self.budget_spent = True
+                raise self._spent()
 
 
 def egress_self_test(uid, gid):
@@ -308,28 +498,33 @@ def egress_mode():
 
 
 # ------------------------------------------------------------------------------------------------ the episodes
-def run_episode(seed, solver, lock, privileged):
-    """One hidden episode: (quality, info, steps). `lock.rng` is the episode's own stream."""
+def run_episode(seed, solver, lock, privileged, cam, noise_key):
+    """One hidden episode: (quality, info, steps, sensors). `lock.rng` is the episode's own stream; `cam` renders the
+    frames (camera.Camera in the grader), `noise_key` keys the sensors' noise (the set's hidden key in the grader)."""
     env = FaultAdaptiveDocking()
+    sensors = Sensors(cam, noise_key, seed)
     quality, info = 0.0, {"success": False, "collision": False, "failure_reason": "not_started"}
     try:
-        obs = env.reset(seed)
+        obs16 = env.reset(seed)
         solver.reset()
         for t in range(env.max_steps):
-            wire = {"vector": obs, "privileged": privileged_block(env)} if privileged else obs
+            wire, rec = sensors.observe(env, obs16)
+            if privileged:
+                wire["privileged"] = privileged_block(env)
             if lock.due():
-                action = lock.probe(solver, t, wire, perturbed=perturbed_observation(wire, lock.rng))
+                action = lock.probe(solver, t, wire,
+                                    perturbed=perturbed_observation(wire, lock.rng, sensors.shifted(rec)))
             else:
                 action = solver.act(t, wire)
-            obs, quality, done, info = env.step(action)
+            obs16, quality, done, info = env.step(action)
             if done:
                 break
     except (SolverAborted, ValueError, TypeError, OverflowError) as exc:
         quality, info = 0.0, {"success": False, "collision": False, "failure_reason": "aborted: {}".format(exc)}
-    return float(quality), info, env.steps
+    return float(quality), info, env.steps, sensors
 
 
-def run_episodes(config, seeds, probe_key, solver, privileged):
+def run_episodes(config, seeds, probe_key, solver, privileged, cam):
     lock = ProbeLock(
         None,
         rate=config.get("probe_rate", 0.06),
@@ -338,23 +533,46 @@ def run_episodes(config, seeds, probe_key, solver, privileged):
     )
     qualities = []
     successes = collisions = aborted = 0
+    renders, render_s = 0, 0.0
     for episode, seed in enumerate(seeds):
         # one probe stream per episode, keyed by the set's hidden key and the episode's seed: the same probes for the
         # same submission every time, whatever ran before
         lock.rng = episode_stream(probe_key, seed)
-        quality, info, steps = run_episode(seed, solver, lock, privileged)
+        quality, info, steps, sensors = run_episode(seed, solver, lock, privileged, cam, probe_key)
         qualities.append(quality)
         successes += int(bool(info.get("success")))
         collisions += int(bool(info.get("collision")))
         aborted += int(str(info.get("failure_reason", "")).startswith("aborted"))
+        renders += sensors.renders
+        render_s += sensors.render_s
         print(
-            "[grader] episode {}: quality={:.4f} success={} steps={} reason={}".format(
-                episode, quality, bool(info.get("success")), steps, info.get("failure_reason", "")
+            "[grader] episode {}: quality={:.4f} success={} steps={} reason={} frames={} reply_s={:.1f}".format(
+                episode, quality, bool(info.get("success")), steps, info.get("failure_reason", ""), sensors.renders,
+                solver.reply_s
             ),
             file=sys.stderr,
             flush=True,
         )
-    return qualities, successes, collisions, aborted, lock
+    stats = {"camera_frames_rendered": float(renders),
+             "camera_frame_ms_mean": 1e3 * render_s / renders if renders else 0.0,
+             "reply_s_total": solver.reply_s, "reply_budget_spent": float(solver.budget_spent)}
+    return qualities, successes, collisions, aborted, lock, stats
+
+
+def start_camera():
+    """The grader's renderer and its canary, before episode 0; a renderer that cannot start is a task error."""
+    t0 = time.monotonic()
+    try:
+        cam = camera.Camera()
+        match, canary_s = camera_canary(cam)
+    except camera.CameraError as exc:
+        fail(str(exc))
+    except (OSError, ValueError, KeyError) as exc:
+        fail("the camera cannot be rendered here: {}: {}".format(type(exc).__name__, exc))
+    print("[grader] camera: ready in {:.1f} s, canary {} ({:.2f} s)".format(
+        time.monotonic() - t0, "matches the task image" if match else "DIFFERS from the task image", canary_s),
+        file=sys.stderr, flush=True)
+    return cam, {"camera_canary_match": match, "camera_canary_s": canary_s, "camera_start_s": time.monotonic() - t0}
 
 
 def main():
@@ -376,18 +594,25 @@ def main():
         fail("the grading environment cannot block the controller's network (the seccomp filter does not hold "
              "here); nothing is graded with the network open")
     flags["egress_guard_seccomp"] = 1.0  # (a verdict exists only when the filter held)
-
+    cam, cam_flags = start_camera()      # (in this thread: the renderer is bound to the thread that made it)
+    flags.update(cam_flags)
     try:
-        # Raises SolverMissing (no run.sh) or SolverAborted (it never comes up): a real zero, not a broken task.
-        solver = GuardedSolver(step_timeout=config.get("step_timeout_s", 30), submission=SUBMISSION)
-    except (SolverMissing, SolverAborted) as exc:
-        write_verdict(zero_verdict(reason=str(exc), anchored=anchor is not None, extra=flags))
-        return
-    try:
-        qualities, successes, collisions, aborted, lock = run_episodes(
-            config, seeds, probe_key, solver, privileged)
+        try:
+            # Raises SolverMissing (no run.sh) or SolverAborted (it never comes up): a real zero, not a broken task.
+            solver = GuardedSolver(step_timeout=config.get("step_timeout_s", 30), submission=SUBMISSION,
+                                   reply_budget=config.get("reply_budget_s", 1800))
+        except (SolverMissing, SolverAborted) as exc:
+            write_verdict(zero_verdict(reason=str(exc), anchored=anchor is not None, extra=flags))
+            return
+        try:
+            qualities, successes, collisions, aborted, lock, stats = run_episodes(
+                config, seeds, probe_key, solver, privileged, cam)
+        except camera.CameraError as exc:
+            fail(str(exc))
+        finally:
+            solver.close()
     finally:
-        solver.close()
+        cam.close()
 
     measured = sum(qualities) / len(qualities) if qualities else 0.0
     extra = dict(
@@ -397,7 +622,7 @@ def main():
         episodes_aborted=float(aborted),
         docking_successes=float(successes),
         target_collisions=float(collisions),
-        **flags
+        **dict(flags, **stats)
     )
     for k, q in enumerate(qualities):
         extra["episode_{}_quality".format(k)] = q
@@ -414,9 +639,10 @@ def main():
     write_verdict(verdict)
     print(
         "[grader] measured={:.5f} anchor={} ratio={:.4f} reward={:.4f} lock={} successes={}/{} aborted={} "
-        "privileged={} egress={}".format(
+        "privileged={} egress={} frames={} frame_ms={:.1f} reply_s={:.1f}".format(
             measured, anchor, verdict["metrics"]["ratio"], verdict["rewards"]["reward"], lock.ok, successes,
-            len(qualities), aborted, privileged, egress
+            len(qualities), aborted, privileged, egress, int(stats["camera_frames_rendered"]),
+            stats["camera_frame_ms_mean"], stats["reply_s_total"]
         ),
         file=sys.stderr,
         flush=True,

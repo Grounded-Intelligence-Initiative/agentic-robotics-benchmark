@@ -71,7 +71,8 @@ def episode(solver, seed, key_hex, privileged):
     first = len(solver.replies)
     solver.max_s = 0.0
     lock = _lock(key_hex, seed)
-    quality, info, steps = verify.run_episode(seed, solver, lock, privileged)
+    quality, info, steps, _ = verify.run_episode(seed, solver, lock, privileged, verify.BlankCamera(),
+                                                 int(key_hex, 16))
     replies = solver.replies[first:]
     return {"seed": seed, "quality": quality, "success": bool(info.get("success")),
             "reason": info.get("failure_reason", ""), "steps": steps, "probes": lock.total,

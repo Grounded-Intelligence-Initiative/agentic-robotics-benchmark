@@ -106,15 +106,17 @@ def dev_seeds(count, rng_seed):
     return out
 
 
-def run_one(seed, key_hex=DEV_KEY, oracle=None, record=False):
-    """One token-run episode of the reference in process: the record described in the module docstring."""
+def run_one(seed, key_hex=DEV_KEY, oracle=None, record=False, cam=None):
+    """One token-run episode of the reference in process: the record described in the module docstring. The frames
+    are black (verify.BlankCamera) unless `cam` renders them: the reference reads none."""
     cfg = config()
     oracle = oracle or O.Oracle()
     solver = InProcess(oracle, record=record)
     lock = ProbeLock(None, rate=cfg.get("probe_rate", 0.06), pass_fraction=cfg.get("probe_pass_fraction", 0.35),
                      tolerance=1e-4)
     lock.rng = verify.episode_stream(int(key_hex, 16), seed)
-    quality, info, steps = verify.run_episode(seed, solver, lock, privileged=True)
+    quality, info, steps, _ = verify.run_episode(seed, solver, lock, True, cam or verify.BlankCamera(),
+                                                 int(key_hex, 16))
     env = RecordingEnv.last
     ep = oracle.episode
     ep.finish()
