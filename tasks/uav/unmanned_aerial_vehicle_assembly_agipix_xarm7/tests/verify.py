@@ -1,4 +1,26 @@
-"""Score physical workcell outcomes across a process/UID boundary."""
+"""Grader of unmanned_aerial_vehicle_assembly_agipix_xarm7: scores physical workcell outcomes across a process/UID
+boundary. Runs as root in the verify stage (tests/test.sh).
+
+Verification is separate (task.toml): this runs in a fresh verifier sandbox started from the task image, into which the
+engine restored only the declared artifact, /home/user/submission (root-owned). Nothing else of the agent's sandbox is
+here, environment/setup/setup.sh never ran, and nothing of the agent's home but that submission is read.
+  1. checks the grader's root-owned copy of the givens (ARB_ASSETS = /opt/arb; tests/test.sh builds it from the image's
+     task assets and tests/setup_payload/) file by file against given_hashes.json, untouched run included: the cell's
+     physics (given/kit, given/xarm7), the cameras' scenery (render/) and the program's runner (cell_runner.py,
+     cell_client.py) come from it, and a mismatch is a task error;
+  2. no regular submission/assemble.py -> zero verdict;
+  3. snapshots the submission into a private temporary folder (regular files only, at most 60 MiB, read-only), keeps
+     the agent account's processes stopped (verify_freeze) and checks the oracle token: a .oracle_token whose sha256
+     equals oracle_token.sha256 runs the privileged reference (reference.py, motion.py) on the nominal layout;
+  4. per episode (grader_config.json `episodes`, a 63-bit seed from OS entropy each): builds the cell (cell.py), runs the
+     snapshot's assemble.py as `nobody` through /opt/arb/cell_runner.py with a minimal environment (HOME = TMPDIR = an
+     empty work folder), serves its requests over stdin/stdout (server.py; camera frames from rendering.py) within the
+     simulated-time, wall, camera-frame and silence budgets, then kills its process group and every process of `nobody`;
+  5. assembly_score = the episode mean of cell.result()'s score (the fastened mates' weight / the total weight; an unsafe
+     episode scores 0), set against tests/anchor.json. The episode records (episode.json, trajectory.npz, program.log)
+     are written root-only to OUT, outside /opt/ale, so that a kept verifier sandbox still holds them; they are never
+     scoring inputs.
+"""
 import hashlib
 import json
 import os
@@ -22,6 +44,9 @@ from verify_freeze import AgentFreezer, uid_processes
 STAGE = Path(os.environ.get("ALE_STAGE_DIR", Path(__file__).parent)).resolve()
 TASK_HOME = Path(os.environ.get("ALE_HOME", "/home/user"))
 ASSETS = Path(os.environ.get("ARB_ASSETS", "/opt/arb"))
+# The episode records: root-only and outside /opt/ale, which the engine deletes before it keeps a verifier sandbox
+# ([sandbox_retention] verifier = "keep").
+OUT = Path(os.environ.get("ARB_VERIFY_OUT", "/opt/arb-verify/out" if os.getuid() == 0 else STAGE / "out"))
 
 
 def snapshot(source, destination):
@@ -193,6 +218,8 @@ def episode(config, seed, program, out, privileged):
 
 def main():
     anchor, meta = read_anchor()
+    # The givens first, whatever was submitted: a verifier whose copy differs from given_hashes.json is a task error.
+    root_assets_check()
     submission = TASK_HOME / "submission"
     if not (submission / "assemble.py").is_file() or (submission / "assemble.py").is_symlink():
         write_verdict(zero_verdict(reason="No regular assemble.py submission", anchored=anchor is not None))
@@ -201,7 +228,6 @@ def main():
         STAGE.chmod(0o700)
     freezer = AgentFreezer.for_user(TASK_HOME.name).start()
     try:
-        root_assets_check()
         config = stage_config()
         # Snapshot and runner working directories are outside the private stage,
         # readable by nobody; the grader/config/poses remain untraversable.
@@ -215,8 +241,8 @@ def main():
                 write_verdict(zero_verdict(reason=str(error), anchored=anchor is not None)); return
             token = program/".oracle_token"
             privileged = token.is_file() and hashlib.sha256(token.read_bytes().strip()).hexdigest() == (STAGE/"oracle_token.sha256").read_text().strip()
-            out = STAGE/"out"
-            out.mkdir(exist_ok=True)
+            out = OUT
+            out.mkdir(mode=0o700, parents=True, exist_ok=True)
             results = []
             for i in range(config["episodes"]):
                 # Public runner data lives outside private evidence path.
@@ -224,7 +250,7 @@ def main():
                 run.mkdir(mode=0o755)
                 result = episode(config, secrets.randbits(63), program, run, privileged)
                 results.append(result)
-                shutil.copytree(run, out/run.name)
+                shutil.copytree(run, out/run.name, dirs_exist_ok=True)
                 print(json.dumps(dict(episode=i, score=result["score"], safety=result["safety_ok"],
                                       sim_s=result["sim_time_s"])), flush=True)
             measured = sum(x["score"] for x in results)/len(results)
