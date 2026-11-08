@@ -33,14 +33,14 @@ class RequestCreditTests(unittest.TestCase):
         self.event("request_first_hold")
         self.assertEqual(self.scorer.request_progress(), 0.5)
         self.assertEqual(self.scorer.request_points[0], 1)
-        self.assertEqual(self.scorer.score(), 0.25)  # One of two request points; R has half the weight.
+        self.assertEqual(self.scorer.score(), 0)  # S = O * R: no sorting work brought, no organization (O = 0).
         for _ in range(10):
             self.event("request_first_hold")
         self.assertEqual(self.scorer.request_progress(), 0.5)
         self.assertEqual(self.scorer.counts["first_holds"], 1)
         self.event("request_delivered")
         self.assertEqual(self.scorer.request_progress(), 1)
-        self.assertEqual(self.scorer.score(), 0.5)
+        self.assertEqual(self.scorer.score(), 0)
         self.assertEqual(self.scorer.request_points[0], 2)
         self.event("request_first_hold")
         self.assertEqual(self.scorer.request_progress(), 1)
@@ -93,11 +93,40 @@ class RequestCreditTests(unittest.TestCase):
         self.event("request_delivered", 1)
         self.assertEqual(self.scorer.request_progress(), 1)
 
-    def test_empty_and_organization_only_remain_unchanged(self):
+    def test_empty_and_organization_only_score_zero(self):
+        # S = O * R (2026-11-08): sorting earns nothing while no request is served.
         self.assertEqual(self.scorer.request_progress(), 0)
         self.scorer.add_step({"objects": [{"id": 0, "present": True, "value": 1, "baseline": 0}]})
         self.assertEqual(self.scorer.organization(), 1)
-        self.assertEqual(self.scorer.score(), 0.5)
+        self.assertEqual(self.scorer.score(), 0)
+
+    def test_score_is_organization_times_request_progress(self):
+        # a sorted arrival (+1 of 1) and an arrival left loose (0 of 1): O(t) = 1/2 at the close and at the end
+        loose = [{"id": 0, "present": True, "value": 1, "baseline": 0}, {"id": 1, "present": True, "value": 0, "baseline": 0}]
+        self.scorer = score.EpisodeScorer(horizon=4)
+        self.scorer.add_step({"objects": loose, "events": [{"event": "request_opened", "request": 0}]})
+        self.scorer.add_step({"objects": loose, "events": [{"event": "request_first_hold", "request": 0}]})
+        self.scorer.add_step({"objects": loose, "events": [{"event": "request_delivered", "request": 0}]})
+        self.scorer.add_step({"objects": loose, "events": [{"event": "request_opened", "request": 1}]})
+        self.assertEqual(self.scorer.organization(), 0.5)
+        self.assertEqual(self.scorer.request_progress(), 0.5)      # (2 + 0) / 4: the second request is open
+        self.assertEqual(self.scorer.score(), 0.25)
+        self.assertEqual(self.scorer.live()["score_running"], 0.25)
+        # a wrong mark lowers R and with it S; with R > 0 a tidier desk always scores more
+        self.scorer.add_step({"objects": loose, "events": [{"event": "request_absent_wrong", "request": 1}]})
+        self.assertEqual(self.scorer.request_progress(), 0.25)
+        tidy = [dict(loose[0]), dict(loose[1], value=1)]
+        before = self.scorer.score()
+        self.scorer.add_step({"objects": tidy, "events": []})
+        self.assertGreater(self.scorer.score(), before)
+
+    def test_a_cut_episode_is_scaled_by_the_steps_that_ran(self):
+        self.scorer = score.EpisodeScorer(horizon=4)
+        sorted_ = [{"id": 0, "present": True, "value": 1, "baseline": 0}]
+        self.scorer.add_step({"objects": sorted_, "events": [{"event": "request_opened", "request": 0}]})
+        self.scorer.add_step({"objects": sorted_, "events": [{"event": "request_absent_correct", "request": 0}]})
+        self.assertEqual(self.scorer.score_unscaled(), 1.0)
+        self.assertEqual(self.scorer.score(), 0.5)                  # 2 of 4 steps ran
 
     def world(self, target_state="held"):
         target = {"id": 0, "present": True, "state": target_state, "in_container": None}

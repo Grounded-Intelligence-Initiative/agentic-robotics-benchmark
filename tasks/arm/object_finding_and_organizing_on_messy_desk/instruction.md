@@ -195,7 +195,7 @@ the first hold is banked above one chance in two.
 The episode score is
 
 ```
-S = 1/2 · O + 1/2 · R
+S = O · R
 O = mean of O(t) over the steps t at which a request closes, and the episode's last step
 O(t) = clip( Σ_o (v_o(t) − b_o(t))  /  Σ_o max(0, 1 − b_o(t)) , 0, 1 )
 R = max(0, sum of request points / (2 · opened requests))   (0 when no request opened)
@@ -209,7 +209,10 @@ A release onto the table or into a container is not a loss; only falling off the
 ever in the scene) that is done at step `t`. A request is a task, find plus organize: it
 scores fully only when its object is delivered (or its absence declared) and the desk is in
 order at the mark, so an object dug out of its container and not put back, or an arrival left
-loose, counts against you then. An untouched scene scores exactly 0. An episode the grader
+loose, counts against you then. The two terms multiply: a tidy desk earns nothing while no
+request is served (an episode in which every request expires scores 0, however well sorted
+the desk), and served requests earn only as much as the desk is in order. An untouched scene
+scores exactly 0. An episode the grader
 cuts short because your controller used up its time budget is scored on the state it reached,
 scaled by the fraction of the horizon that ran; an aborted episode (protocol error, step
 deadline, malformed action) scores 0.

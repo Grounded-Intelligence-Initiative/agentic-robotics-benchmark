@@ -1,9 +1,13 @@
 """messy_desk_score — the episode score, computed from the simulator's privileged state.
 
-    S = 1/2 * O + 1/2 * R          (scaled by steps/H when the grader cut the episode short:
+    S = O * R                      (scaled by steps/H when the grader cut the episode short:
                                     the controller exhausted its time budget)
 
-Each request is a task (find + organize) judged when it closes: at its mark or its deadline.
+Each request is a task (find + organize) judged when it closes: at its mark or its deadline. The
+product makes the retrieval the task (2026-11-08): sorting the desk counts only as far as the
+requests are served, and serving requests counts only as far as the desk stays in order. Until
+then S was 1/2 * O + 1/2 * R, and a controller that only sorted the arrivals and never searched
+for a requested object earned about 0.4 (a measured agent episode of 2026-11-08: O 0.81, R 0.08).
 
 O, organization: the mean of snapshots O(t) taken at every step a request closes and at the
 episode's last step. O(t): every object that was ever in the scene contributes v_o(t) - b_o(t),
@@ -25,7 +29,6 @@ WRONG_MARK_COST on top, so a guessed mark has a negative expected value. No requ
 Stdlib-only; the verify stage's (the agent's sandbox has no copy since 2026-11-07).
 """
 
-W_ORG, W_REQ = 0.5, 0.5
 SUCCESS_EVENTS = ("request_delivered", "request_absent_correct")
 FAILURE_EVENTS = ("request_claim_wrong", "request_absent_wrong", "request_expired")
 WRONG_MARK_EVENTS = ("request_claim_wrong", "request_absent_wrong")
@@ -123,19 +126,23 @@ class EpisodeScorer(object):
         opened = len(self.request_points)
         return max(0.0, sum(self.request_points.values()) / (2.0 * opened)) if opened else 0.0
 
+    def score_unscaled(self):
+        """S = O * R, before the steps/H scaling of an episode the grader cut short."""
+        return self.organization() * self.request_progress()
+
     def score(self):
-        s = W_ORG * self.organization() + W_REQ * self.request_progress()
+        s = self.score_unscaled()
         if self.steps < self.horizon:                    # cut short by the grader: the steps never run earn nothing
             s *= self.steps / self.horizon
         return s
 
     def live(self):
         """Compact running view for the practice tools: `score` is what the episode would score if
-        the grader cut it now (steps/H scaling included), `score_running` the unscaled 1/2 O + 1/2 R
+        the grader cut it now (steps/H scaling included), `score_running` the unscaled O * R
         with the current state as the last snapshot, `organization_now` that snapshot alone."""
         closed = self.counts["requests_success"] + self.counts["requests_failed"]
         num, den = self._final()
-        return {"score": round(self.score(), 5), "score_running": round(W_ORG * self.organization() + W_REQ * self.request_progress(), 5),
+        return {"score": round(self.score(), 5), "score_running": round(self.score_unscaled(), 5),
                 "organization": round(self.organization(), 5), "request_rate": round(self.request_rate(), 5),
                 "request_progress": round(self.request_progress(), 5),
                 "org_num": round(num, 1), "org_den": round(den, 1),
