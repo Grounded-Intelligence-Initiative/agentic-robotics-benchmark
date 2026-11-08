@@ -32,9 +32,9 @@ memory_mb = 16384
 # is built by tests/test.sh in the verifier sandbox). [agent] timeout_sec: 4 h. [verifier] timeout_sec: the import check, then 6 hidden episodes of one pair each (six, not four:
 # the reference's own episode-to-episode spread, see tests/README.md section 4), each a cell build plus the program
 # within its 1200 s program-time cap, which does not count the cell's simulation (900 s simulated at most) and
-# rendering (450 frames at most); at the bounds an episode takes about 2900 s of wall clock here (up to 1500 s
-# simulating at 0.6x real time, up to 180 s rendering) and about 4600 s on a machine twice as slow, hence 8 h for the
-# six. The oracle's episodes run the reference controller inside one privileged call: its verify of the fixed hidden
+# rendering (450 frames at most); at the bounds an episode takes about 3000 s of wall clock here (up to 1500 s
+# simulating at 0.6x real time, up to 250 s rendering: Filament on lavapipe, 0.4-0.6 s a frame on 8 CPUs, plus ~10 s
+# building the render twins) and about 4900 s on a machine twice as slow, hence 9 h for the six. The oracle's episodes run the reference controller inside one privileged call: its verify of the fixed hidden
 # set (tests/hidden/seeds.json) took 4009 s here (610-760 s per episode, in a container with 8 CPUs; tests/README.md
 # section 4). The verifier sandbox's start and tests/test.sh's copy of the givens count against it too.
 [agent]
@@ -42,7 +42,7 @@ timeout_sec = 14400
 network_mode = "no-network"
 
 [verifier]
-timeout_sec = 28800
+timeout_sec = 32400
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
 # touched, with only the declared artifact (the submission) restored into it, so nothing else the agent left (a file,
 # a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there: tests/test.sh

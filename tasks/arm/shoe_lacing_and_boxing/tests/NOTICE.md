@@ -14,3 +14,11 @@ tray, the bench and the infeed tray are original to this task (`tests/shoecell/`
 designed against (none of it reused): UniLace (Unity and Obi rope, a bimanual shoe-lacing simulator), Luo and Demiris
 (RA-L 2024, simulated lacing with a tension limit), LapGym's rope threading (SOFA), RLBench's `put_shoes_in_box`, pi0 /
 RL-100 box folding and EmbodiedSWE-Bench's packing tasks.
+
+The agent cameras' render bundle (`render/shoecell_render_v2.tar` in the benchmark's Hugging Face asset dataset,
+pinned by `environment/assets.sha256`, unpacked to `/opt/task-assets/render`) holds the factory hall and its props
+(CyberneticWalrus' FactoryWarehouse Interior Modular Pack, Warehouse Props Vol 1 and Factory Props Vol 1, Unity Asset
+Store, licensed to the benchmark's owner for redistribution), CC0 textures from ambientCG (leather, knit, rubber,
+paper, cardboard, metal) and Poly Haven (oak_veneer_01) for the cell's parts, the sneaker skin template
+(original to this task, modelled on the task's shoe shell) and an image light rendered with NVIDIA OVRTX from that
+scene.

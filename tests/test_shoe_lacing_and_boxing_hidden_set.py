@@ -8,7 +8,9 @@ inside the infeed tray's rim, nothing moving off in 1 s idle; tests/hidden/selec
 tests/review/select_set.py), and verify.py runs that list as it stands. The cell's three copies (the grader's, the
 agent's givens and the grader's copy of the givens) are byte-identical and pinned by tests/given_hashes.json, and the
 lid tray's delivery spot keeps even the biggest lid inside the rim. The files the set was selected with (the reference, the cell, the grader, the
-image's inputs) are unchanged since: their sha256 in the selection record. The anchor is the lowest work_score of the
+image's inputs) are unchanged since (their sha256 in the selection record), or changed only by a recorded amendment
+that touched the cameras' renderer alone and after which the reference's full verify on the amended image repeated
+every selection run (score, simulated time, ticks and per-pair detail). The anchor is the lowest work_score of the
 recorded full verifies of the privileged submission on the set, with a full_at under which those verifies still read
 reward 1.0. Nothing the agent sees names the token, the set or its selection; the cell library's own mentions of its
 privileged calls (the PR author's public cell code, byte-identical to the grader's) are pinned as they are.
@@ -48,6 +50,19 @@ SELECTION = json.loads((HIDDEN / "selection.json").read_text())
 SEEDS = json.loads((HIDDEN / "seeds.json").read_text())
 ANCHOR = json.loads((TASK / "tests/anchor.json").read_text())
 CONFIG = json.loads((TASK / "tests/grader_config.json").read_text())
+AMENDMENTS = SELECTION.get("amendments", [])
+# what an amendment may change: the cameras' renderer (the colour from a render twin, the depth from a depth twin; the
+# physics model, the reference and the scoring untouched), the given-file pins that follow it, and the image's inputs
+RENDER_ONLY = ("tests/shoecell/cameras.py", "tests/shoecell/physics.py", "tests/shoecell/look.py",
+               "tests/given_hashes.json", "environment/Dockerfile")
+
+
+def current_frozen():
+    return AMENDMENTS[-1]["frozen"] if AMENDMENTS else SELECTION["frozen"]
+
+
+def recorded_images():
+    return [SELECTION["image"]["id"]] + [am["image"]["id"] for am in AMENDMENTS]
 
 
 def sha256(path):
@@ -179,14 +194,31 @@ class HiddenSetTests(unittest.TestCase):
 
 class FrozenTests(unittest.TestCase):
     def test_the_files_the_set_was_selected_with_are_unchanged(self):
-        frozen = SELECTION["frozen"]
+        """... or as the last amendment recorded them (test_every_amendment_...)."""
+        frozen = current_frozen()
         for rel, digest in sorted(frozen.items()):
-            self.assertEqual(sha256(TASK / rel), digest, "{} changed since the selection: the set and the anchor "
-                             "were measured with the frozen file".format(rel))
+            self.assertEqual(sha256(TASK / rel), digest, "{} changed since the selection (or its last amendment): the "
+                             "set and the anchor were measured with the frozen file".format(rel))
         self.assertEqual(sorted(frozen), select_set.frozen_paths(str(TASK)))
 
+    def test_every_amendment_changed_only_the_renderer_and_the_reference_repeated_every_run(self):
+        prev = SELECTION["frozen"]
+        for am in AMENDMENTS:
+            changed = sorted(p for p in set(prev) | set(am["frozen"]) if prev.get(p) != am["frozen"].get(p))
+            self.assertEqual(changed, am["changed"])
+            self.assertTrue(set(changed) <= set(RENDER_ONLY), set(changed) - set(RENDER_ONLY))
+            self.assertTrue(am.get("what"))
+            runs = [v for v in ANCHOR["verifies"] if v["run"] == am["check"]["run"]]
+            self.assertEqual(len(runs), 1, "the amendment's check names one recorded verify")
+            v = runs[0]
+            self.assertEqual(v["image_id"], am["image"]["id"])
+            self.assertEqual([e["seed"] for e in v["episodes"]], SEEDS["seeds"])
+            for e in v["episodes"]:
+                self.assertTrue(e["equals_selection_run"] and e["same_trajectory"], e["seed"])
+            prev = am["frozen"]
+
     def test_every_reference_and_cell_file_is_frozen(self):
-        frozen = set(SELECTION["frozen"])
+        frozen = set(current_frozen())
         for folder in ("tests/reference", "solution/reference", "tests/shoecell", "tests/cellkit"):
             for p in (TASK / folder).iterdir():
                 if p.is_file():
@@ -250,8 +282,9 @@ class AnchorTests(unittest.TestCase):
             self.assertEqual([e["seed"] for e in v["episodes"]], SEEDS["seeds"])
             mean = sum(e["work_score"] for e in v["episodes"]) / len(v["episodes"])
             self.assertAlmostEqual(v["work_score"], mean, places=12)
-            self.assertEqual(v["image_id"], SELECTION["image"]["id"])
+            self.assertIn(v["image_id"], recorded_images())
             self.assertEqual(v["seeds_sha256"], SELECTION["set"]["seeds_sha256"])
+        self.assertIn(recorded_images()[-1], [v["image_id"] for v in verifies])   # a verify on the current image
 
     def test_full_at_follows_the_verifies_against_the_selection_runs(self):
         runs = {c["seed"]: c["result"] for c in SELECTION["candidates"] if c["status"] == "kept"}

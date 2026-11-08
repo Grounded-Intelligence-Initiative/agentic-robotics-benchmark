@@ -54,6 +54,32 @@ its own perception.
 * One batch per episode (shoe model and box size from the seed), two shoe bodies, two laces, one blank and one lid
   re-used from pair to pair (colours change through `geom_rgba`; a shipped pair is parked under the bench and the
   next pair is set down at once). Geometry cannot change at run time, so the batch is what varies between episodes.
+* `cameras.py` + `look.py`: the agent cameras (since 2026-11-07; before, the classic renderer on the physics model
+  with three shadowless lights and a checker floor). Colour: MuJoCo's Filament renderer (on Vulkan: Mesa's lavapipe on
+  the CPU) on a render twin compiled from a copy of the cell's MjSpec at the first frame of an episode (again when a
+  pair's colours change): the same bodies, joints and cameras, so a frame copies the physics qpos and runs forward
+  kinematics only. The twin dresses the cell in the factory hall of the owner-approved OVRTX demo scene (the hall,
+  the conveyor, fence, racks, cabinets, table, carts and boxes as drawn-only meshes; nothing on the bench), PBR
+  materials per part (oak bench top, powder-coated legs, brushed tray, kraft and white-lined board, the Pandas'
+  paint), and a sneaker skin on each shoe body (the demo's skin rebuilt with the task's two eyelet rows only: the
+  demo's three visual-only grommet rows would show eyelets the shoe does not have; warped piecewise linearly in x and
+  |y| onto each batch with unit slope round every ring and over the toe cap and heel block, and its grommets placed
+  at the batch's rings). The shoes' shells, rings and seams, the checker floor and every collision geom are hidden in
+  the twin. Light: the cell's LED panel 2.05 m above the bench as a shadow-casting spot (93 klm-equivalent candela,
+  4800 K) and an image light from an OVRTX probe of the hall at the work area with the cell's live objects hidden
+  (cmgen KTX); the strengths and a luminance gain per material class were fitted in linear units to OVRTX stills of
+  the five agent cameras at 12 states of the seed-1046 reference episode (the final look, OVRTX / Filament in
+  pooled linear luminance: on the fitted states the bench 0.97, the white paint 0.98, the floor 1.00, the shelf 0.94,
+  the blank 0.98, the lid 1.00; on 4 held-out states the main classes within 7 %, while metal reflections (the tray
+  0.54), the cavity lining and the floor behind the fence (0.47), which the probe light cannot occlude, are off by up
+  to 2x and more; section 5). Depth: the classic renderer on a
+  depth twin, the physics model's own geoms (groups 0-2) plus the hall's and the props' meshes within 4.5 m of the
+  bench: on the cell the depth is the physics model's to the bit, the shoe's depth is its shell's (the skin follows
+  it within a few millimetres), and the dressing reads like any surface. The sensor model and the encoding are the
+  server's, unchanged. The render bundle (42 MB, one tar in the asset dataset, pinned by `environment/assets.sha256`)
+  holds the hall, the skin template, the textures and the image light; `look.py` checks it against its manifest. Cost
+  on 8 CPUs: 0.4-0.6 s a frame (front and side most), ~6-16 s to build the twins per episode, RSS 2.2 GB after the
+  first episode and 3.2 GB after seven in one process (peak 3.9 GB) under the task's 16 GB.
 * `episode.py`: the work order (seeded), the faults, the lacing topology check and the milestones.
 * `server.py`: the API, the attach / clamp / lock logic in `physics_tick`, the camera budget and noise, the safety
   watch, the summary. `mode="practice"` additionally answers `reset` and `truth`; `privileged=True` (the oracle token)
@@ -182,6 +208,17 @@ anchor is the oracle's full or near-full score with `full_at` near 1. Here:
   (mean 0.927) would read 0.95. The repository test `tests/test_shoe_lacing_and_boxing_hidden_set.py` pins the set to
   the selection, the start state of every candidate, the frozen files to their sha256, the cell's three copies to each
   other and to `given_hashes.json`, the lid spot's worst case, and the anchor to the lowest recorded verify.
+* The renderer amendment (2026-11-07, `amendments` in `tests/hidden/selection.json`): after the set was selected the
+  agent cameras moved to Filament (section 2). That changed frozen files (`cameras.py`, `physics.py`'s one argument,
+  the new `look.py`, `given_hashes.json` for them and the manual, the Dockerfile's lavapipe and render-bundle layers)
+  but nothing the reference or the scoring computes with: the physics model is never touched (the twins are copies),
+  the reference's privileged run reads its two frames from the twins, and neither the scene's nor the sensor's random
+  generator is drawn differently. The record holds the new frozen hashes, what changed (the repository test allows
+  only these renderer files) and the check: the reference's full verify on the amended image (`pr48fil-task:26749c5`,
+  run `pr48fil-verify-2`, `tests/review/regrade.sh` as before) repeated every kept selection run, the same score,
+  simulated time, ticks and per-pair detail in all six (each 1.00; verify wall 6669 s on a host shared with other
+  runs: the episodes took 1023-1298 s against 610-760 s, the cell's own simulation and frames 5.7-25 s of them). The anchor keeps both verifies; value and
+  full_at are unchanged.
 * What the agent sees: `instruction.md` says the hidden episodes use other seeds and that the cell builds their scenes
   with the same code (it said "fresh seeds of the same distribution" before; a selected set is neither). Nothing
   agent-visible names the set, its selection or the token (the repository test); the cell library's own mentions of
@@ -191,6 +228,13 @@ anchor is the oracle's full or near-full score with `full_at` near 1. Here:
   camera-only localisation run of the maintainers). The first set's verify took 4644 s.
 
 ## 5. Known limitations of version 0.2
+
+* The agent cameras' light is distilled, not path traced: one OVRTX probe at the work area lights everything as
+  distant light, so nothing occludes it (the cavity lining, the floor behind the fence and under the racks, the bench
+  legs read brighter than in the OVRTX demo; per-class gains bring the classes' means to the demo's on the fitted
+  states), metal reflections vary more than the gains can follow (the infeed tray on held-out states 0.54 of OVRTX),
+  and the panel's shadows are a spot's, softened. The skin is a render layer: its rounded edges differ from the depth
+  (the shell's) by up to a few millimetres.
 
 * The shoe is rigid; "snug" is a lace-slack criterion, not throat closure.
 * The lace has no self-collision and no lace-lace collision (speed); a knot is not modelled and not scored.
