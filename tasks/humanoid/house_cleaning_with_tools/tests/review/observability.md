@@ -35,3 +35,20 @@ does not need it, and a broom stroke over the area takes it along.
 
 The grease film changes 5,000-10,600 pixels by more than 30 grey levels in a head frame from the table's side
 (`head_dining_south`), and 580-900 in the dining ceiling camera's frame. Per-crumb records: `evidence/` (`*_dev11`, `*_dev12`: the survey scenes; `*_hidden1-3`: the hidden set in its order).
+
+## Amendment 1 (2026-11-08): the repeated selection's hidden set
+
+The hidden set is now candidates 1, 2 and 3 of `candidates.json` (`hidden_set.md`, amendment 1). Candidate 2 was
+hidden scene 1 above; the other two are new, measured the same way (the cell at `792cbb9`; the crumbs and the
+cameras are unchanged by it):
+
+| scene | crumbs on the floor seen | crumbs on the table seen | pixels changed per crumb (min / median, best stance) |
+|---|---|---|---|
+| hidden scene 1 (candidate 1) | 46 of 46 | 14 of 14 | 3 / 14.5 |
+| hidden scene 2 (candidate 2, hidden scene 1 above) | 46 of 46 | 14 of 14 | 6 / 17 |
+| hidden scene 3 (candidate 3) | 46 of 46 | 14 of 14 (one from a closer stance) | 1 / 14 on the ring; 7 for that crumb |
+
+The crumb of hidden scene 3 that the ring sees by only 1 pixel is a 7 mm crumb on the table's top at (3.24, 2.62):
+standing north of the table at (3.24, 3.10), waist pitch 0.50, the head camera sees it change 7 pixels (6.6 px
+across, 0.47 m away; `evidence/crumb_views_extra_a1_hidden3.json`). Per-crumb records: `evidence/*_a1_hidden1.json`
+and `evidence/*_a1_hidden3.json` (squatting and standing, as above).

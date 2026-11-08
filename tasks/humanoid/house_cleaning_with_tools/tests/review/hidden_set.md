@@ -211,3 +211,10 @@ tray (16); in 14 the floor was also not swept. Per-candidate records: `selection
 The kept scenes cover the candidates' range in the bins' order, the glasses' reach, the grease (the largest stain of
 all 16 is kept) and the floor (two scenes with nearly all crumbs on one side, one even split: the narrowing of the
 first set is gone). The can lies near the edge in two of them.
+
+### The anchor's full-verify measurement (amendment 1)
+
+`ale validate` from a clean checkout of `1d8d2ce` (validate-1f2b6818, 2026-11-08, apollo, engine 1cdbc02, a separate
+verifier sandbox of 8 CPUs): `ok`, untouched reward 0.0, oracle reward 1.0. The oracle's three episodes repeat their
+selection runs to the last digit: cleaning_score 0.93519 (ratio 0.99998 to the anchor), mean simulated time 3468.86 s
+(the selection runs': 3384.19, 3355.63 and 3666.75 s), no safety violation, no broken dish; verify 3354 s.
