@@ -2,8 +2,9 @@
 cell's, same benchmark).
 
 Fixed camera (world frame), looking at the skid's front from behind the rail, image up = world +z:
-* ``overview``: 1280x720, high and centred: the whole skid in one image (too coarse to read a dial, a tag or the
-  analyser's display).
+* ``overview``: 1280x720, high and centred: the whole skid in one image. The analyser's digits are about 4 px tall
+  there (legible in an enlarged crop), FI-105's scale about 67 px long and LG-201's about 245 px; a dial is 22-25 px
+  across and a tag plate about 6 px tall (too small for a pointer or a tag).
 Wrist camera: ``wrist`` on ``panda/hand`` (640x480, fovy 70): 0.05 m behind the tcp along -z and 0.045 m to the +x
 side, looking at the point 0.15 m ahead of the tcp; image up = the finger closing axis (+y of the hand).
 

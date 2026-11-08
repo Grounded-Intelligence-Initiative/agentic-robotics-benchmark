@@ -6,7 +6,8 @@ the skid itself is described in `../equipment_manual.md`, the procedure in `../s
 ## 1. Frame
 
 World frame = the skid's frame: z up, the floor at z = 0, the skid's front plane y = 0 (the skid occupies y >= 0, its
-operable parts protrude towards -y), x along the skid from 0 to 5 m. The robot's rail runs along x at y = -0.70.
+operable parts protrude towards -y), x along the skid from 0 to 5 m. The robot's carriage runs along x with the
+Panda's base on the line y = -0.70; its floor track and lift mast stand behind the base (y = -1.16 to -1.02).
 
 ## 2. The robot
 
@@ -64,7 +65,7 @@ The robot never collides with itself, with the carriage or with a part it holds.
 
 | name | mount | size | fovy |
 |---|---|---|---|
-| `overview` | fixed, behind the rail, high: the whole skid (too coarse to read a dial, a tag plate or the analyser) | 1280 x 720 | 50 |
+| `overview` | fixed, behind the rail, high: the whole skid. In its frame the analyser's digits are about 4 px tall (legible in an enlarged crop), FI-105's scale is about 67 px long and LG-201's about 245 px, so the rotameter's float and LG-201's flap column show where they stand; a dial is 22-25 px across and a tag plate about 6 px tall, too small for a pointer or a tag | 1280 x 720 | 50 |
 | `wrist` | on `panda/hand`: 0.05 m behind the tcp and 0.045 m to the hand's +x side, looking at the point 0.15 m ahead of the tcp; image up = the closing axis | 640 x 480 | 70 |
 
 `describe()["cameras"]` gives the exact intrinsics (fx = fy = (H/2) / tan(fovy/2), cx = W/2 - 0.5, cy = H/2 - 0.5,

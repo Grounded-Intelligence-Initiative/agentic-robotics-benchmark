@@ -432,7 +432,7 @@ def add_sight_glass(b, tag, pos, horizontal=False):
 
 def add_display(b, tag, pos, unit="mg/L", n_digits=3, dp_after=1, title=None, digit_h=0.016):
     """A panel analyser with a red 7-segment readout `d.dd` (n_digits digits, the decimal point after `dp_after`);
-    digit_h: the digits' height (16 mm: legible from close up only)."""
+    digit_h: the digits' height (16 mm: about 4 px in the overview frame, legible there in an enlarged crop)."""
     x, y, z = [float(v) for v in pos]
     w = b.w
     chh = digit_h / 2.0                     # digit half-height of the segment frame

@@ -5,7 +5,8 @@ valve openings, the grip rule, button presses, the selector's detents, the instr
 classes of the safety watch.
 
 World frame: the floor is z = 0, the skid's front plane y = 0 (everything operable faces -y), x along the skid
-(0 .. 4 m); the rail runs along x at y = -0.70 and carries the Panda's base 0.55 m above the floor, facing +y.
+(0 .. 4 m); the carriage runs along x with the Panda's base on y = -0.70 at the lift's height, facing +y (its floor
+track and mast stand behind the base, clear of the arm).
 MuJoCo 3.14, timestep 2 ms, implicitfast, Newton, elliptic cones; a 10 ms control tick = 5 steps.
 """
 
@@ -178,24 +179,44 @@ class Scene(object):
         # the skid
         self.dev = {}
         self._build_skid(b, L)
-        # the rail, the carriage with its lift, and the Panda (its base rides the lift, facing +y)
+        # the rail, the carriage with its lift, and the Panda (its base rides the lift, facing +y). v0.5.2: the floor track,
+        # the sled and the mast stand 0.32-0.46 m behind the base, clear of the arm's elbow (which folds up to about
+        # 0.25 m behind the base), and the platform is cantilevered off a guide plate on the mast's front face (before,
+        # the mast passed through the platform, link0 and the elbow, and a low platform sank into the sled and the
+        # track). These geoms are visual only (contype 0, as before); the two bodies keep the inertials v0.5 compiled
+        # from the old boxes, written out here, so the compiled dynamics are bit-identical to v0.5.
         ry = float(RAIL["y"])
-        w.add_geom(name="rail/track", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.5 * (RAIL["x_hi"] - RAIL["x_lo"]) + 0.15, 0.09, 0.03],
-                   pos=[0.5 * (RAIL["x_lo"] + RAIL["x_hi"]), ry, 0.03], material=b.mats["steel"], contype=0, conaffinity=0, group=1)
+        w.add_geom(name="rail/track", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.5 * (RAIL["x_hi"] - RAIL["x_lo"]) + 0.15, 0.06, 0.03],
+                   pos=[0.5 * (RAIL["x_lo"] + RAIL["x_hi"]), ry - 0.39, 0.03], material=b.mats["steel"], contype=0, conaffinity=0,
+                   group=1)
         x0 = float(np.clip(L.get("rail_start", xt / 2.0), RAIL["x_lo"], RAIL["x_hi"]))
         z0 = float(np.clip(L.get("lift_start", RAIL["lift_start"]), RAIL["lift_lo"], RAIL["lift_hi"]))
         car = w.add_body(name="rail/carriage", pos=[0.0, ry, 0.0])
+        car.explicitinertial = True
+        car.mass = RAIL_DRIVE["carriage_mass"]
+        car.ipos = [0.0, -0.04200000000000001, 0.22549999999999998]
+        car.iquat = [0.703571518318439, 0.07061953420327198, -0.07061953420327198, 0.703571518318439]
+        car.inertia = [3.0109824986275027, 2.8923724999999987, 0.5883900013724965]
         car.add_joint(name="rail/x", type=mujoco.mjtJoint.mjJNT_SLIDE, axis=[1.0, 0.0, 0.0], range=[RAIL["x_lo"], RAIL["x_hi"]],
                       damping=50.0, armature=1.0)
-        car.add_geom(name="rail/sled", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.22, 0.17, 0.035], pos=[0.0, 0.0, 0.065],
-                     material=b.mats["frame"], mass=RAIL_DRIVE["carriage_mass"] * 0.7, contype=0, conaffinity=0)
-        car.add_geom(name="rail/mast", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.07, 0.04, 0.50], pos=[0.0, -0.14, 0.60],
-                     material=b.mats["steel"], mass=RAIL_DRIVE["carriage_mass"] * 0.3, contype=0, conaffinity=0)
+        car.add_geom(name="rail/sled", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.22, 0.07, 0.03], pos=[0.0, -0.39, 0.09],
+                     material=b.mats["frame"], contype=0, conaffinity=0)
+        car.add_geom(name="rail/mast", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.07, 0.04, 0.39], pos=[0.0, -0.36, 0.51],
+                     material=b.mats["steel"], contype=0, conaffinity=0)
         lift = car.add_body(name="rail/lift", pos=[0.0, 0.0, 0.0], gravcomp=1.0)
+        lift.explicitinertial = True
+        lift.mass = 8.0
+        lift.ipos = [0.0, -0.02, -0.02]
+        lift.iquat = [1.0, 0.0, 0.0, 0.0]
+        lift.inertia = [0.061066666666666665, 0.04613333333333334, 0.10506666666666668]
         lift.add_joint(name="rail/z", type=mujoco.mjtJoint.mjJNT_SLIDE, axis=[0.0, 0.0, 1.0], range=[RAIL["lift_lo"], RAIL["lift_hi"]],
                        damping=50.0, armature=1.0)
         lift.add_geom(name="rail/platform", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.13, 0.15, 0.02], pos=[0.0, -0.02, -0.02],
-                      material=b.mats["frame"], mass=8.0, contype=0, conaffinity=0)
+                      material=b.mats["frame"], contype=0, conaffinity=0)
+        lift.add_geom(name="rail/cantilever", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.09, 0.075, 0.02], pos=[0.0, -0.2425, -0.02],
+                      material=b.mats["frame"], contype=0, conaffinity=0)
+        lift.add_geom(name="rail/guide", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.09, 0.007, 0.07], pos=[0.0, -0.3125, 0.03],
+                      material=b.mats["frame"], contype=0, conaffinity=0)
         for jname, aname, lo, hi in (("rail/x", "rail/drive", RAIL["x_lo"], RAIL["x_hi"]), ("rail/z", "rail/lift_drive", RAIL["lift_lo"], RAIL["lift_hi"])):
             act = spec.add_actuator(name=aname, target=jname, trntype=mujoco.mjtTrn.mjTRN_JOINT)
             act.gaintype = mujoco.mjtGain.mjGAIN_FIXED

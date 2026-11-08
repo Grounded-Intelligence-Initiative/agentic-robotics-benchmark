@@ -161,9 +161,12 @@ program's reading of the instruments: `review/observability.md`.
 * Valves are turned by the grip rule (a weld), not by friction between fingers and rim; the gripper's force does not
   matter once the rule engages.
 * The P-301 / P-101 interlock, the trips and the alarms are the minimal set the procedure needs.
-* The fixed overview camera cannot resolve tag plates, dial scales or the analyser's digits (checked on renders: the
-  digits are about 4 px tall there); programs read through the wrist camera, which costs time and frames and competes
-  with the valve work for the one arm.
+* The fixed overview camera cannot resolve tag plates (about 6 px tall there) or a dial's pointer to 1 % of span (a
+  dial is 22-25 px across); programs read those through the wrist camera, which costs time and frames and competes
+  with the valve work for the one arm. The overview does show more than v0.5's manual said (measured on 20
+  development sites, v0.5.2): the analyser's digits are about 4 px tall and legible in an enlarged crop, FI-105's float
+  moves along a scale about 67 px long and LG-201's flap column along one about 245 px long, so a program can follow
+  the chlorine and the product level from the overview alone; the cell manual now says so.
 * The float valve throttles: a make-up opened while it works overfills T-101 only when it passes more than the
   transfer, so AOP-5's rule (an opening before the fault earns nothing) is a procedure rule, not a physical one.
 * A program could still toggle the strainer back and forth blindly; each change-over back into a clogged chamber starves
@@ -219,3 +222,11 @@ program's reading of the instruments: `review/observability.md`.
   frozen, no longer a contract failure. In the separate verifier nothing of the agent's runs, and the image's
   supervisord respawns the account's desktop as fast as it is killed: in the first Opus episode of v0.5 one respawned
   desktop process zeroed the submission before any episode ran (that submission was graded again with this grader).
+* v0.5.2 (2026-11-08, visuals and documents; cell API pump-skid-cell/0.5.0 unchanged): the carriage's lift mast passed
+  through the lift platform, the Panda's link0 and the folded elbow, and a low platform sank into the sled and the floor
+  track. The track, the sled and the mast now stand 0.32-0.46 m behind the base and the platform hangs off a guide
+  plate on the mast (all visual geoms, as before: the carriage collides with nothing); the carriage's and the lift's
+  inertials are written out with v0.5's compiled values, so the compiled dynamics are bit-identical (two development
+  shifts of the reference: the same state hash every 100 ticks and the same score as v0.5; the arm keeps at least
+  66 mm from the mast). The cell manual's camera table now gives what the overview frame resolves (section 5). The
+  hidden set, the anchor and the scoring are those of v0.5.
