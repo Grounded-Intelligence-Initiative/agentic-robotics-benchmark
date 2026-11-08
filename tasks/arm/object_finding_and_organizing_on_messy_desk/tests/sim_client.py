@@ -1,8 +1,8 @@
 """sim_client — talk to the messy-desk simulator process from the task's py3.12 side.
 
-The simulator (messy_desk_env.py) runs under the Isaac interpreter, /opt/isaac/bin/python3.
-This module is stdlib-only, keeps 3.8-compatible syntax, and is shared byte-identically by
-the verify stage and the practice grader.
+The simulator (env.py in this folder) runs under the Isaac interpreter, /opt/isaac/bin/python3.
+This module is stdlib-only and keeps 3.8-compatible syntax; the agent's lab_client.py is the
+same start logic for the desk lab.
 """
 
 import json

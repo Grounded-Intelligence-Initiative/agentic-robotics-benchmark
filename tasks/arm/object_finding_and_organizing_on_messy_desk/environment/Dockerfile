@@ -3,9 +3,10 @@
 # Nothing from tests/ or solution/ is here.
 #
 # Two interpreters, on purpose:
-#   /opt/venv   py3.12  answers `python3`; the verify stage, the practice grader and the
-#                       agent's tooling use it (the engine stages ale_verify into it).
-#   /opt/isaac  py3.10  runs the Isaac Sim 4.5 simulator process (Isaac supports 3.10 only).
+#   /opt/venv   py3.12  answers `python3`; the verify stage and the agent's tooling use it
+#                       (the engine stages ale_verify into it).
+#   /opt/isaac  py3.10  runs the Isaac Sim 4.5 simulator process, the grader's and the agent's
+#                       desk lab (Isaac supports 3.10 only).
 #                       Never on PATH; the environment launches it by absolute path.
 FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1
 

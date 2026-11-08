@@ -40,7 +40,7 @@ def policy(t, obs):
     """Return the 8-number action for this observation. Replace this.
 
     obs keys: t, request (null or {text, deadline_t}), rgb and depth ({agentview, left_view,
-    eye_in_hand}, base64 PNG), joint_pos, joint_vel (7), gripper_width, ee_pose
+    oblique, eye_in_hand}, base64 PNG), joint_pos, joint_vel (7), gripper_width, ee_pose
     ([x, y, z, qw, qx, qy, qz] of the tool centre point in the robot base frame).
     action: Cartesian delta of the tool centre point (m, rad; clipped to 0.05 / 0.25 per
     step), grip in [0, 1] (0 open, 1 closed), mark (0 none, 1 "done: delivered",

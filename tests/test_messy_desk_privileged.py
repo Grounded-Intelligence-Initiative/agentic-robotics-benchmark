@@ -2,10 +2,8 @@
 
 The grader hands the simulator's ground truth only to a submission whose .oracle_token (a regular file, never a
 link) hashes to tests/oracle_token.sha256; nothing agent-visible names the channel; the hidden episodes are a fixed
-set of distinct 64-bit seeds that are not practice seeds; and an episode's probe stream depends only on the set's key
-and the episode's seed.
+set of distinct 64-bit seeds; and an episode's probe stream depends only on the set's key and the episode's seed.
 """
-import ast
 import hashlib
 import importlib.util
 import json
@@ -94,19 +92,11 @@ class TokenTests(unittest.TestCase):
 
 
 class EpisodeSetTests(unittest.TestCase):
-    def practice_seeds(self):
-        tree = ast.parse((TASK / "environment/setup/payload/practice_grader/grade.py").read_text())
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Assign) and any(getattr(t, "id", "") == "PRACTICE_SEEDS" for t in node.targets):
-                return set(ast.literal_eval(node.value))
-        self.fail("no PRACTICE_SEEDS in the practice grader")
-
-    def test_fixed_set_is_distinct_64_bit_and_not_practice(self):
+    def test_fixed_set_is_distinct_64_bit(self):
         seeds, key = verify.load_episodes(str(TASK / "tests/episodes.json"))
         self.assertGreaterEqual(len(seeds), 1)
         self.assertEqual(len(set(seeds)), len(seeds))
-        self.assertTrue(all(2 ** 32 <= s < 2 ** 64 for s in seeds))
-        self.assertFalse(set(seeds) & self.practice_seeds())
+        self.assertTrue(all(2 ** 32 <= s < 2 ** 64 for s in seeds))     # none a seed anyone would type into the lab
         self.assertTrue(0 < key < 2 ** 64)
 
     def test_probe_stream_depends_on_key_and_seed_only(self):

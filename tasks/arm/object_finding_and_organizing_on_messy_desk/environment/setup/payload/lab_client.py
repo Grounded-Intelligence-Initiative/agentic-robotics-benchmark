@@ -1,8 +1,17 @@
-"""sim_client — talk to the messy-desk simulator process from the task's py3.12 side.
+"""lab_client — drive the desk lab (messy_desk_lab.py) from the task's py3.12 side.
 
-The simulator (messy_desk_env.py) runs under the Isaac interpreter, /opt/isaac/bin/python3.
-This module is stdlib-only, keeps 3.8-compatible syntax, and is shared byte-identically by
-the verify stage and the practice grader.
+The lab runs under the Isaac interpreter, /opt/isaac/bin/python3; this module starts it and
+speaks its JSON lines. Stdlib-only, 3.8-compatible syntax.
+
+    from lab_client import LabClient
+    lab = LabClient("/home/user/messy_desk_lab.py", log_path="/home/user/lab.log")
+    obs, robot = lab.reset(7)                     # a starting desk, drawn from seed 7
+    obs, robot = lab.step([0, 0, -0.02, 0, 0, 0, 0, 0])
+    obs, robot = lab.place("025_mug", 0, [0.55, 0.40, 0.05, None], clear=False)
+    lab.close()
+
+Keep one lab process alive and reuse it: its first start in a fresh sandbox compiles the
+renderer's shaders (about ten minutes); later starts take seconds.
 """
 
 import json
@@ -17,10 +26,10 @@ ISAAC_PYTHON = os.environ.get("MESSY_DESK_PYTHON", "/opt/isaac/bin/python3")
 
 
 class SimError(Exception):
-    """The simulator process failed. A TASK error, never the agent's fault."""
+    """The lab process failed or refused a command."""
 
 
-class SimClient(object):
+class LabClient(object):
     """`ready_timeout` bounds one start attempt. Isaac's renderer occasionally deadlocks on the
     very first frame of a fresh process (the process sits idle forever before announcing
     readiness); such an attempt is killed and the simulator started again, `attempts` times.
@@ -47,7 +56,7 @@ class SimClient(object):
                 error = exc
             self._kill()
             if self._log is not subprocess.DEVNULL:
-                self._log.write("\n[sim_client] start attempt %d failed (%s); restarting\n" % (attempt, error))
+                self._log.write("\n[lab_client] start attempt %d failed (%s); restarting\n" % (attempt, error))
                 self._log.flush()
         raise SimError("simulator did not start in %d attempts: %s" % (attempt, error))
 
@@ -108,13 +117,20 @@ class SimClient(object):
     def info(self):
         return self._ask({"cmd": "info"})["info"]
 
-    def reset(self, seed, horizon=None):
-        r = self._ask({"cmd": "reset", "seed": int(seed), "horizon": horizon}, timeout=max(self.step_timeout, 600.0))
-        return r["obs"], r["state"]
+    def reset(self, seed):
+        r = self._ask({"cmd": "reset", "seed": int(seed)}, timeout=max(self.step_timeout, 600.0))
+        return r["obs"], r["robot"]
 
     def step(self, action):
         r = self._ask({"cmd": "step", "action": [float(x) for x in action]})
-        return r["obs"], r["state"]
+        return r["obs"], r["robot"]
+
+    def place(self, model, instance=0, pose=None, clear=True):
+        """Put `model` (a YCB name such as "025_mug") at pose [x, y, z, yaw] (yaw null: set down the
+        way an arrival is); `clear` first takes every object off the desk and out of the containers."""
+        r = self._ask({"cmd": "place", "model": model, "instance": int(instance), "pose": pose, "clear": bool(clear)},
+                      timeout=max(self.step_timeout, 300.0))
+        return r["obs"], r["robot"]
 
     def close(self):
         try:

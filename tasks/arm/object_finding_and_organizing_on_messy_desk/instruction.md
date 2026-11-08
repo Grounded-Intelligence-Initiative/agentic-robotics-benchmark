@@ -58,8 +58,9 @@ An episode runs a fixed `20000` control steps at 10 Hz. During it:
    rest beside the robot's base (closer than 0.26 m, where no camera sees it and no hand reaches)
    is set back down on a free desk spot by the world a couple of seconds later, like a nudge.
 
-Every event is drawn from a hidden per-episode seed; the practice environment exposes the
-same dynamics on visible seeds.
+Every event is drawn from a hidden per-episode seed. Nothing in your sandbox plays an episode:
+the desk lab (see **Your sandbox**) is this desk without one, so your controller meets these
+dynamics, and is scored, for the first time in the graded episodes.
 
 ## What you must deliver
 
@@ -73,8 +74,8 @@ Leave a controller at `/home/user/submission/run.sh`. The grader launches it as
 `bash run.sh` with the working directory `/home/user/submission`, as your own user account,
 with **no network access**, and talks to it over stdin/stdout, one JSON object per line.
 Grading runs in a fresh copy of this machine into which only `/home/user/submission` is
-carried over: the rest of your home (the practice simulator, `sim_client.py`, the task card,
-anything you saved elsewhere) is not there, so everything the controller imports or reads
+carried over: the rest of your home (the desk lab, `lab_client.py`, the task card, anything you
+saved elsewhere) is not there, so everything the controller imports or reads
 must be inside that folder.
 Call interpreters by absolute path in `run.sh`: `/opt/venv/bin/python3` is Python 3.12 with
 NumPy, Pillow and SciPy (the bare `python3` on your shell's `PATH` may be a different one), and
@@ -90,7 +91,9 @@ READY                                                     <- your first stdout l
 - `t` is the step index inside the episode, owned by the grader and restarting at 0 after
   every `reset`. **A step may be queried more than once with the same `t`**; repeated queries
   do not advance the episode. Count steps by `t`, not by requests, and answer every request
-  from the observation it carries.
+  from the observation it carries: a repeated query can carry slightly different
+  proprioception, and the grader uses such pairs to check that your actions depend on what you
+  observe. A controller whose actions do not (a replay, a constant stream) scores 0.
 - Every reply is due within 30 s. A missed deadline, a crash, non-JSON output or a reply
   without `action` aborts the episode; the next `reset` restarts `run.sh` (at most 3 restarts
   per run), so your controller must survive being started again.
@@ -110,15 +113,18 @@ READY                                                     <- your first stdout l
 | `t` | step index |
 | `request` | `null`, or `{"text": "...", "deadline_t": int}` while a request is open |
 | `rgb` | `{"agentview": png_b64, "left_view": png_b64, "oblique": png_b64, "eye_in_hand": png_b64}` — 8-bit RGB PNG, base64; three fixed cameras (front, left, oblique front-left) and the hand camera |
-| `depth` | same four keys — 16-bit PNG in millimetres, base64 |
+| `depth` | same four keys — 16-bit PNG in millimetres, base64; a real sensor's depth (noise, 0 where a pixel has none) |
 | `rgb_hires`, `depth_hires` | only in the step after an action asked for them (see Action): the same cameras at 1920 x 1080, RGB and depth PNGs, keyed by camera name |
 | `joint_pos`, `joint_vel` | 7 arm joints, radians and rad/s |
 | `gripper_width` | metres |
 | `ee_pose` | `[x, y, z, qw, qx, qy, qz]` of the tool centre point in the robot base frame |
 
-Camera intrinsics and extrinsics, the desk and container footprints and the robot base pose are fixed for
-the task and documented in `/home/user/task_card.md` in the practice environment; they do not
-change between seeds.
+Camera intrinsics, the cameras' nominal poses, the desk and container footprints and the robot base pose
+are fixed for the task and documented in `/home/user/task_card.md`. The cameras are real sensors: the
+three fixed ones are mounted within about 1 cm and 1 degree of their nominal poses, differently on every
+desk (constant through an episode; nothing tells you the error), and depth is a stereo sensor's, noisy
+and with missing pixels along object outlines. The hand camera's mount and `ee_pose` are exact. The task
+card gives the figures.
 
 ## Action
 
@@ -211,24 +217,24 @@ deadline, malformed action) scores 0.
 The task's reported metric is `mean_episode_score`, the mean of `S` over the hidden seeds. The
 reward you are judged on is that mean relative to a hidden reference value.
 
-## Practice material
+## Your sandbox
 
-- `/home/user/messy_desk_env.py` — the same environment the grader runs, usable on your own seeds
-  (stdio JSON: `reset`, `step`, `info`, `close`). Every `step` reply also carries the running
-  `score` (S if the episode were cut now, the unscaled ½·O + ½·R, O, R, requests closed and won),
-  `{"cmd": "score"}` adds every object's current value and baseline, and
-  `{"cmd": "request", "model": "005_tomato_soup_can"}` (or `"absent": true`) opens a request on
-  demand so you can rehearse marks. None of this reaches your controller's observation; the
-  hidden grader's wire is the one in **What you must deliver**;
-- `/home/user/practice_grader/grade.py` — drives your `run.sh` over the real wire on visible
-  seeds (the same action rule and time budget) and prints the raw score and the controller time
-  each episode used, nothing else; `--live N` prints the running score every N
-  steps and `--score-file PATH` writes it as JSON for your own tooling;
+- `/home/user/messy_desk_lab.py` — the desk lab: this desk in Isaac Sim, with the same robot,
+  containers, objects, cameras, physics and action rule as the graded episodes, but without the
+  episode. Nothing arrives, no request opens, nothing is misplaced, nudged or emptied, and nothing
+  is scored or reported about the objects: `reset` sets out a starting desk the way an episode
+  starts (the containers with their jitter, the two initial piles, a few loose objects), `place`
+  puts any object of the catalogue anywhere, `step` takes your action, and every reply carries the
+  observation your controller will get plus the arm's own `ik_ok` status. The commands are in
+  the task card; `/home/user/lab_client.py` starts the lab and wraps them. It is where you try
+  your perception and your grasps; the episode itself, its requests and its scoring are the ones
+  described above, and the only run of your controller through them is the graded one;
 - `/home/user/example_controller/` — a complete, policy-free controller (`run.sh` + one Python
   file: READY, the reply loop, camera decoding, where the action goes). Copy it to
   `/home/user/submission/` and replace the policy; as shipped it holds still and scores 0;
-- `/home/user/task_card.md` — camera calibration, container geometry, class catalogue.
+- `/home/user/task_card.md` — camera calibration, desk and container geometry, the hand, the
+  class catalogue, the desk lab's commands.
 
-The simulator runs headless on the GPU in this sandbox. Its first launch in a fresh sandbox
-compiles the renderer's shaders and takes about ten minutes; later launches take seconds.
-Start it early and keep it alive.
+The lab runs headless on the GPU in this sandbox. Its first launch in a fresh sandbox compiles
+the renderer's shaders and takes about ten minutes; later launches take seconds. Start it early
+and keep it alive.

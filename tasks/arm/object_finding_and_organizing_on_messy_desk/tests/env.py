@@ -1,8 +1,11 @@
 """messy_desk_env — the task's simulator (NVIDIA Isaac Sim 4.5) and its stdio server.
 
-This file is the environment the grader runs; the copy staged into the agent home is
-byte-identical. It runs under the Isaac interpreter (/opt/isaac/bin/python3, Python 3.10),
-never under the task's py3.12 `python3`.
+This file is the environment the grader runs; the agent never gets it. Its home has the desk
+lab instead (environment/setup/payload/messy_desk_lab.py), which tests/review/make_lab.py derives
+from this file: the same scene, robot, cameras, physics and action rule, without the episode
+(no arrivals, requests, disturbances or container service, no detectors, values or privileged
+state). It runs under the Isaac interpreter (/opt/isaac/bin/python3, Python 3.10), never under
+the task's py3.12 `python3`.
 
 Run as a script it serves one JSON object per line on stdin/stdout:
 
@@ -41,6 +44,26 @@ IMAGE_SIZE = 320
 # three idle 1920x1080 products cost about 9 ms per step.
 HIRES_SIZE = (1920, 1080)
 HIRES_CAMERAS = {"agentview": 1, "left_view": 2, "eye_in_hand": 4, "oblique": 8}
+# The cameras are real sensors (2026-11-07). The three fixed ones stand at their nominal poses (position, look-at
+# target; the task card's) only to within a mounting error that differs from desk to desk and stays put through
+# an episode: up to CAMERA_MOUNT_ERROR[0] along each world axis and CAMERA_MOUNT_ERROR[1] about each, drawn from a
+# stream of the episode's seed of its own (the world's draws are untouched). The hand camera is fixed to the hand
+# as documented. Depth is an active-stereo sensor's: Gaussian noise of DEPTH_NOISE_1M at 1 m growing with the square
+# of the distance, and a pixel beside a depth discontinuity missing (0) with probability DEPTH_EDGE_DROP, drawn per
+# step and camera from the episode's sensor stream. A discontinuity is a jump of inverse depth (what a stereo pair's
+# disparity measures) of more than DEPTH_EDGE_INV_JUMP between neighbouring pixels: an object's outline against what
+# lies behind it (a 1 cm step at 1 m, 2 cm at 1.4 m), never a smooth surface: a plane at distance c from a camera
+# changes inverse depth by at most 1 / (focal * c) a pixel, under 0.007 for every surface of the scene at the fixed
+# cameras' range (c > 0.6 m). The hand camera, which looks at surfaces a few centimetres away, has the noise only.
+# Neither reaches the physics.
+CAMERA_NOMINAL = {"agentview": ([1.35, 0.0, 0.95], [0.42, 0.0, 0.05]),
+                  "left_view": ([0.45, -1.15, 0.75], [0.45, 0.0, 0.05]),
+                  "oblique": ([1.25, -0.95, 0.85], [0.42, 0.0, 0.08])}
+CAMERA_MOUNT_ERROR = (0.01, math.radians(1.0))
+DEPTH_NOISE_1M = 0.0015
+DEPTH_EDGE_INV_JUMP = 0.01          # 1/m
+DEPTH_EDGE_DROP = 0.5
+SENSOR_STREAM = 0x53454E53          # keys the sensor stream with the episode's seed ("SENS")
 
 CLASSES = {
     "A": ["003_cracker_box", "004_sugar_box", "008_pudding_box", "009_gelatin_box",
@@ -232,6 +255,7 @@ class MessyDeskEnv:
         self._probe_views("after first step")
         self.horizon = HORIZON_DEFAULT
         self.rng = None
+        self._sensor_key = 0
         self.t = 0
         _log("ready")
 
@@ -387,9 +411,7 @@ class MessyDeskEnv:
         Poses use Isaac's "world" camera axes (+X forward, +Z up)."""
         np, Camera = self.np, self.Camera
         self.cams = {}
-        fixed = {"agentview": ([1.35, 0.0, 0.95], [0.42, 0.0, 0.05]),
-                 "left_view": ([0.45, -1.15, 0.75], [0.45, 0.0, 0.05]),
-                 "oblique": ([1.25, -0.95, 0.85], [0.42, 0.0, 0.08])}
+        fixed = CAMERA_NOMINAL
         for name, (pos, target) in fixed.items():
             cam = Camera(prim_path="/World/Cameras/" + name, frequency=CONTROL_HZ, resolution=(IMAGE_SIZE, IMAGE_SIZE))
             cam.set_world_pose(position=np.array(pos), orientation=np.array(_look_at_wxyz(pos, target)), camera_axes="world")
@@ -421,6 +443,40 @@ class MessyDeskEnv:
             self.freecam.set_focal_length(1.8)
             self.set_freecam([1.3, -0.9, 0.9], math.atan2(0.9, -0.85), -0.5)
 
+    def _mount_cameras(self, seed):
+        """This desk's fixed cameras: each nominal pose moved by its mounting error (CAMERA_MOUNT_ERROR), from the
+        sensor stream of `seed`; the hi-res twin of a camera gets the same pose. Never touches the world's stream."""
+        np = self.np
+        self._sensor_key = int(seed) & ((1 << 64) - 1)
+        g = np.random.default_rng([self._sensor_key, SENSOR_STREAM, 0])
+        for name, (pos, target) in CAMERA_NOMINAL.items():
+            dp = g.uniform(-CAMERA_MOUNT_ERROR[0], CAMERA_MOUNT_ERROR[0], 3)
+            dr = g.uniform(-CAMERA_MOUNT_ERROR[1], CAMERA_MOUNT_ERROR[1], 3)
+            q = _quat_mul(_rpy_to_quat(float(dr[0]), float(dr[1]), float(dr[2])), _look_at_wxyz(pos, target))
+            p = np.array(pos, dtype=float) + dp
+            for cam in (self.cams[name], self.hcams[name]):
+                cam.set_world_pose(position=p, orientation=np.array(q, dtype=float), camera_axes="world")
+
+    def _depth_sensor(self, z, k, edges=True):
+        """What the depth sensor reports for the true depth `z` (metres, 0 where nothing is hit): Gaussian noise
+        of DEPTH_NOISE_1M * z^2, and pixels beside a jump of inverse depth of more than DEPTH_EDGE_INV_JUMP missing
+        (0) with probability DEPTH_EDGE_DROP (`edges`: the fixed cameras). Drawn from the episode's sensor stream,
+        keyed by the step and camera `k`."""
+        np = self.np
+        z = np.asarray(z, dtype=np.float32)
+        g = np.random.default_rng([self._sensor_key, SENSOR_STREAM, 1, int(self.t), int(k)])
+        w = np.where(z > 0, 1.0 / np.maximum(z, np.float32(1e-3)), np.float32(0.0))
+        edge = np.zeros(z.shape, dtype=bool)
+        jx = np.abs(np.diff(w, axis=1)) > DEPTH_EDGE_INV_JUMP
+        jy = np.abs(np.diff(w, axis=0)) > DEPTH_EDGE_INV_JUMP
+        edge[:, 1:] |= jx
+        edge[:, :-1] |= jx
+        edge[1:, :] |= jy
+        edge[:-1, :] |= jy
+        out = z + g.standard_normal(z.shape, dtype=np.float32) * (np.float32(DEPTH_NOISE_1M) * z * z)
+        drop = edge & (g.random(z.shape, dtype=np.float32) < DEPTH_EDGE_DROP) & bool(edges)
+        return np.where((z > 0) & ~drop & (out > 0), out, np.float32(0.0))
+
     def _hires_capture(self, names):
         """This step's frames of the requested hi-res cameras (they render every frame, acquired
         at the render rate). -> {name: (rgb uint8 HxWx3, depth_mm uint16 HxW)}"""
@@ -433,7 +489,8 @@ class MessyDeskEnv:
                 img = np.zeros((HIRES_SIZE[1], HIRES_SIZE[0], 4), np.uint8)
             if d is None or d.size == 0:
                 d = np.zeros((HIRES_SIZE[1], HIRES_SIZE[0]), np.float32)
-            dm = np.nan_to_num(d, nan=0.0, posinf=0.0, neginf=0.0) * 1000.0
+            dm = self._depth_sensor(np.nan_to_num(d, nan=0.0, posinf=0.0, neginf=0.0), 10 + list(HIRES_CAMERAS).index(name),
+                                    edges=name in CAMERA_NOMINAL) * 1000.0
             out[name] = (np.ascontiguousarray(img[..., :3]).astype(np.uint8), np.clip(dm, 0, 65535).astype(np.uint16))
         return out
 
@@ -596,6 +653,7 @@ class MessyDeskEnv:
         self.request_slot = 0
         self.next_request = self._request_time(0)
         self.next_disturb = int(self.rng.exponential(DISTURB_MEAN_STEPS)) + 500
+        self._mount_cameras(seed)
         for _ in range(RESET_WARMUP_FRAMES):   # the RTX renderer needs frames to converge
             self.world.step(render=True)
         self._update_states()
@@ -1070,7 +1128,8 @@ class MessyDeskEnv:
             if d is None or d.size == 0:
                 d = np.zeros((IMAGE_SIZE, IMAGE_SIZE), np.float32)
             rgb[name] = np.ascontiguousarray(img[..., :3]).astype(np.uint8)
-            dm = np.nan_to_num(d, nan=0.0, posinf=0.0, neginf=0.0) * 1000.0
+            dm = self._depth_sensor(np.nan_to_num(d, nan=0.0, posinf=0.0, neginf=0.0), list(HIRES_CAMERAS).index(name),
+                                    edges=name in CAMERA_NOMINAL) * 1000.0
             depth[name] = np.clip(dm, 0, 65535).astype(np.uint16)
         # the six PNG encodes run in parallel (PIL releases the GIL while compressing)
         jobs = [(name, "rgb", rgb[name], "RGB") for name in rgb] + [(name, "depth", depth[name], "I;16") for name in depth]
@@ -1113,7 +1172,11 @@ class MessyDeskEnv:
         np = self.np
         cams = {}
         for name, c in self.cams.items():
-            p, q = c.get_world_pose()
+            if name in CAMERA_NOMINAL:          # the documented (nominal) pose, never this desk's mounting error
+                pos, target = CAMERA_NOMINAL[name]
+                p, q = pos, _look_at_wxyz(pos, target)
+            else:
+                p, q = c.get_world_pose()
             cams[name] = {"intrinsics": c.get_intrinsics_matrix().tolist(), "resolution": [IMAGE_SIZE, IMAGE_SIZE],
                           "world_pose_xyz_wxyz": [float(x) for x in p] + [float(x) for x in q],
                           "attached_to": "/World/Franka/panda_hand" if name == "eye_in_hand" else "world"}

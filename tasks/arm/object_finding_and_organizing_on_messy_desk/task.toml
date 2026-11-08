@@ -71,7 +71,7 @@ timeout_sec = 36000
 # only the declared artifact (/home/user/submission) is restored into it. In a shared sandbox, programs the agent
 # leaves earlier on root's PATH (the base image's /usr/local/bin is the agent's) would run as root at verify. The
 # grader needs nothing else from the agent's sandbox: tests/ brings env.py, sim_client.py and the scorer, the image
-# brings Isaac Sim and the stock assets, and setup.sh only stages the agent's practice material.
+# brings Isaac Sim and the stock assets, and setup.sh only stages the agent's material (the desk lab).
 environment_mode = "separate"
 
 # The verifier runs the simulator on the GPU, as the agent's sandbox does: the same resources.

@@ -1,10 +1,9 @@
 # object_finding_and_organizing_on_messy_desk — scoring and world state machine
 
 Design notes for maintainers and reviewers. The agent-facing rules are in `instruction.md`;
-the geometry in `environment/setup/payload/task_card.md`. The code is
-`environment/setup/payload/messy_desk_env.py` (the simulator and its state machine) and
-`environment/setup/payload/messy_desk_score.py` (the score), both byte-identical copies of the
-files under `tests/` (this folder).
+the geometry in `environment/setup/payload/task_card.md`. The code is `env.py` (the simulator and
+its state machine) and `messy_desk_score.py` (the score), both in this folder; the agent has
+neither (see "The desk lab instead of the practice simulator" below).
 
 ## Entities
 
@@ -112,7 +111,7 @@ near-full score there, so that a perception-based controller has real headroom. 
 do is unchanged.
 
 **The fixed episode set.** `episodes.json` holds the hidden episodes: three seeds drawn once (64-bit, OS
-entropy; none is a practice seed, the practice grader uses 11, 22, 33, 44, 55) and the hidden key of their probe
+entropy; none is a practice seed, the practice grader of the time used 11, 22, 33, 44, 55) and the hidden key of their probe
 streams. The same seeds run in the same order for every submission. They were chosen as follows. 40 seeds were
 drawn (in three batches, each before any of its seeds ran). The privileged reference ran them in drawn order, each in
 a simulator process of its own over the full 20000 steps; a seed was kept if the reference scored at least 0.90 (the
@@ -143,8 +142,8 @@ another controller can meet a request the reference never met.
 **The simulator's cold start.** In a fresh sandbox the first start compiles the renderer's shaders: 229-621 s in
 four fresh containers on an RTX 4090 (driver 580.178); later starts in the same sandbox take 5-22 s. The separate
 verifier is always fresh, so its first episode pays this. `sim_ready_timeout_s` is 1500 (about 2.4x the slowest
-measured start), and `sim_client.py`'s default is the same, so that the practice grader does not kill a cold start
-either.
+measured start), and `sim_client.py`'s default is the same (the agent's `lab_client.py` keeps it, so that the
+desk lab's cold start is not killed either).
 
 **The privileged reference.** `solution/solve.sh` installs `solution/privileged/oracle.py` and the reference token
 (`.oracle_token`; this folder keeps only its sha256, `oracle_token.sha256`). `verify.py` reads the token before
@@ -182,3 +181,58 @@ containers stand sunk into the table, so their effective floor is the table, who
 0.5) equals the fingers'; the fingertips' friction never beats the floor's plus the object's weight (the bins'
 walls are 1.0). Also an object the world misplaces into a container that already holds eight: the worker empties
 that container at once and the object stays misfiled for good.
+
+## The desk lab instead of the practice simulator (2026-11-07)
+
+Real deployment is zero-shot (the owner's rule of 2026-11-05: no given simulator or grader that replays the grader's
+own missions). Until 2026-11-07 the agent's home held a byte-identical copy of `env.py` with the whole episode, its
+live score on every step, a `score` command with every object's value and baseline, a `request` command that opened a
+request on demand, the privileged state (every object's model, pose and state) on every reply, and a practice grader
+that drove `run.sh` over the real wire and printed the score. All three Opus 5.5 episodes of 2026-10-31 built their
+perception on that ground truth (feature libraries labelled from the privileged state), rehearsed requests with
+`request`, ran short episodes and the practice grader, and read the constants of the world (`REQUEST_ABSENT_P`,
+`PRESENT_CAP`, `CONTAINER_CAP`) in the source.
+
+The agent now gets the desk lab, `environment/setup/payload/messy_desk_lab.py`: `review/make_lab.py` derives it from
+`env.py` (the same scene, robot, containers, objects, cameras, physics, action rule and IK, byte for byte) and takes
+the episode out: no arrivals, requests, disturbances, container service or base-zone rescue, no detectors, values,
+baselines or privileged state, no finger-gain setter, no score. `reset` sets out a starting desk the way an episode
+starts (the same draws as `env.py`'s reset), `place` puts any object anywhere, `step` takes an action; replies carry
+the observation and the arm's own `ik_ok`. `lab_client.py` replaces the agent's `sim_client.py`; the scorer and the
+practice grader are gone. The repository test `tests/test_messy_desk_request_credit.py` re-derives the lab from
+`env.py` and checks that nothing agent-visible plays or scores an episode.
+
+The instruction now says what the practice grader used to show: a repeated query can carry perturbed
+proprioception, and a controller whose actions do not depend on what it observes scores 0 (the match lock).
+
+**The task card's geometry, corrected.** The earlier round measured two facts the card had wrong (see "The privileged
+reference" above): objects rest on the table's collision surface at z = 0.0153, 1.7 cm above the visible top at
+-0.0014 that the depth images show (inside the containers too: they stand sunk into it), and the open fingertips are
+1.23 cm below the tool centre point, not 2.7 cm (the hand body's underside is then 4.6 cm above them, not 6 cm). The
+card now says so.
+
+**The cameras are real sensors (2026-11-07).** The three Opus controllers of 2026-10-31 (and v17) all build the same
+pipeline: back-project the three fixed cameras' depth with the task card's exact poses into one desk point cloud,
+cut it into blobs, classify each blob by its size and shape, pick it at its centre with a top-down pinch and drop it
+at the container's nominal centre. That works only because the cameras were ideal: their poses exact and their
+depth the geometry itself, so the point cloud was the scene's ground truth to the millimetre. Now:
+- each fixed camera stands at its nominal pose only to within a mounting error, uniform up to 1 cm along and 1
+  degree about each world axis, drawn per desk (`env.py` `_mount_cameras`, CAMERA_MOUNT_ERROR) and constant through
+  the episode; the hi-res twin of a camera shares its pose; the hand camera's mount and `ee_pose` stay exact;
+- depth carries Gaussian noise of 1.5 mm at 1 m growing with the square of the distance (about 2-4 mm across the desk
+  for the fixed cameras), and a pixel beside a depth discontinuity reads 0 half of the time (`_depth_sensor`, drawn
+  per step and camera): a jump of inverse depth, what a stereo pair's disparity measures, of more than 0.01 per metre
+  between neighbouring pixels (a 1 cm step at 1 m, 2 cm at 1.4 m: an object's outline), which a smooth surface never
+  makes at the fixed cameras' range (a plane at distance c changes inverse depth by at most 1 / (focal * c) a pixel,
+  under 0.007 for c > 0.6 m); the hand camera, which sees surfaces a few centimetres away, has the noise only (a first
+  cut on the depth itself dropped a fifth of the side views' pixels, the far desk and floor among them);
+- `info` reports the nominal poses only (in the grader and in the lab).
+The documents give the figures at datasheet level (about 1 cm and 1 degree, about 1.5 mm RMS at 1 m growing with the
+square of the distance, edge pixels often missing); the lab's code, which runs the same sensors, has the details.
+Both draw from a stream keyed by the episode's seed and a constant of their own (`SENSOR_STREAM`), never from the
+world's generator, and neither reaches the physics: every world draw and every physics step of an episode is what
+it was, and the privileged reference, which reads no pixels, meets the same three episodes (ale validate confirms
+its scores). What changes is what a controller that works from the cameras sees, which is the point: it now has to
+calibrate the fixed cameras against something it knows (its own hand at `ee_pose`, the desk plane, the containers'
+rims) or close the last centimetres with the hand camera, as a deployed robot would. The non-privileged reference
+v17's numbers above were measured with the ideal cameras.

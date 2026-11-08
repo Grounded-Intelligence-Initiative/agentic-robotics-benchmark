@@ -147,11 +147,81 @@ class RequestCreditTests(unittest.TestCase):
         self.assertEqual(env.MessyDeskEnv._value(world, in_pile), 0)
         self.assertEqual(env.MessyDeskEnv._value(world, dict(in_pile, contact=False)), -1)
 
-    def test_practice_and_hidden_copies_match(self):
-        for hidden, practice in [("env.py", "messy_desk_env.py"),
-                                 ("messy_desk_score.py", "messy_desk_score.py")]:
-            self.assertEqual((TASK / "tests" / hidden).read_bytes(),
-                             (TASK / "environment/setup/payload" / practice).read_bytes())
+
+
+class DeskLabTests(unittest.TestCase):
+    """The agent gets the desk lab, not the episode (2026-11-07): the lab is tests/review/make_lab.py's derivation of
+    the grader's env.py (the same scene, robot, cameras, physics and action rule), and nothing agent-visible carries
+    the world's state machine, the scorer or a practice grader."""
+
+    def test_the_lab_is_the_derivation_of_the_graders_env(self):
+        import subprocess
+        import sys
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "lab.py"
+            subprocess.run([sys.executable, "-I", str(TASK / "tests/review/make_lab.py"), str(TASK / "tests/env.py"),
+                            str(out)], check=True, capture_output=True)
+            self.assertEqual(out.read_bytes(), (TASK / "environment/setup/payload/messy_desk_lab.py").read_bytes(),
+                             "re-run tests/review/make_lab.py after changing tests/env.py")
+
+    def test_nothing_agent_visible_plays_or_scores_an_episode(self):
+        payload = TASK / "environment/setup/payload"
+        names = sorted(p.relative_to(payload).as_posix() for p in payload.rglob("*") if p.is_file())
+        self.assertEqual(names, ["example_controller/controller.py", "example_controller/run.sh", "lab_client.py",
+                                 "messy_desk_lab.py", "task_card.md"])
+        lab = (payload / "messy_desk_lab.py").read_text()
+        for needle in ("_world_events", "_open_request", "force_request", "EpisodeScorer", "messy_desk_score",
+                       "REQUEST_ABSENT_P", "ARRIVAL_MEAN_STEPS", "DISTURB_MEAN_STEPS", "CONTAINER_CAP", "baseline",
+                       "def privileged", "def _value", "def gains"):
+            self.assertNotIn(needle, lab)
+
+
+class SensorTests(unittest.TestCase):
+    """The cameras are real sensors (2026-11-07): each desk's fixed cameras carry a mounting error and depth is noisy
+    with missing edge pixels. Both are drawn from a stream of the episode's seed of their own, never from the world's
+    generator, so the world (and the privileged reference, which reads no pixels) is the same episode as before."""
+
+    def test_the_sensors_never_draw_from_the_worlds_stream(self):
+        import ast
+        text = (TASK / "tests/env.py").read_text()
+        found = set()
+        for node in ast.walk(ast.parse(text)):
+            if isinstance(node, ast.FunctionDef) and node.name in ("_mount_cameras", "_depth_sensor"):
+                src = ast.get_source_segment(text, node)
+                self.assertNotIn("self.rng", src, node.name)
+                self.assertIn("default_rng([self._sensor_key, SENSOR_STREAM", src, node.name)
+                found.add(node.name)
+        self.assertEqual(found, {"_mount_cameras", "_depth_sensor"})
+        self.assertIn("self._mount_cameras(seed)", text)
+
+    def test_info_reports_the_nominal_poses_only(self):
+        text = (TASK / "tests/env.py").read_text()
+        info = text[text.index("    def info(self):"):text.index("    def close(self):")]
+        self.assertIn("CAMERA_NOMINAL[name]", info)
+
+    @unittest.skipUnless(importlib.util.find_spec("numpy"), "numpy is not installed here")
+    def test_depth_noise_is_deterministic_and_of_the_documented_size(self):
+        import numpy as np
+        fake = SimpleNamespace(np=np, _sensor_key=12345, t=7)
+        z = np.ones((200, 200), np.float32)
+        z[:, 100:] = 1.5                        # a 0.5 m jump down the middle
+        z[:5, :5] = 0.0                         # pixels that see nothing
+        a = env.MessyDeskEnv._depth_sensor(fake, z, 0)
+        b = env.MessyDeskEnv._depth_sensor(fake, z, 0)
+        self.assertTrue(np.array_equal(a, b))
+        self.assertFalse(np.array_equal(a, env.MessyDeskEnv._depth_sensor(fake, z, 1)))
+        self.assertTrue(np.all(a[:5, :5] == 0))
+        interior = a[10:190, 10:90]
+        self.assertAlmostEqual(float(np.std(interior)), env.DEPTH_NOISE_1M, delta=0.2 * env.DEPTH_NOISE_1M)
+        edge = a[:, 99:101]
+        self.assertGreater(float(np.mean(edge == 0)), 0.3)
+        self.assertLess(float(np.mean(edge == 0)), 0.7)
+        # a plane seen at the steepest slope the fixed cameras meet (inverse depth falling 0.006 per metre a pixel,
+        # 0.8 m to 6 m away) loses nothing; with edges off (the hand camera) not even the step does
+        slope = np.tile((1.0 / np.linspace(1.25, 1.25 - 0.006 * 199, 200)).astype(np.float32), (200, 1))
+        self.assertEqual(int(np.sum(env.MessyDeskEnv._depth_sensor(fake, slope, 2) == 0)), 0)
+        self.assertEqual(int(np.sum(env.MessyDeskEnv._depth_sensor(fake, z, 3, edges=False)[5:, 5:] == 0)), 0)
 
 
 if __name__ == "__main__":

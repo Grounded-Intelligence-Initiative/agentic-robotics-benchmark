@@ -22,7 +22,7 @@ to 2 points. Repeated holds earn nothing more. An expiry keeps any first-hold cr
 (delivered while the object is not placed in red, or absent while it is on the desk) costs
 WRONG_MARK_COST on top, so a guessed mark has a negative expected value. No requests gives 0.
 
-Stdlib-only; shared byte-identically by the verify stage and the practice grader.
+Stdlib-only; the verify stage's (the agent's sandbox has no copy since 2026-11-07).
 """
 
 W_ORG, W_REQ = 0.5, 0.5

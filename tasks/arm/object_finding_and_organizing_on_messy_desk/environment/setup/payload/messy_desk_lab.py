@@ -1,20 +1,27 @@
-"""messy_desk_env — the task's simulator (NVIDIA Isaac Sim 4.5) and its stdio server.
+"""messy_desk_lab — the desk lab: the task's scene in NVIDIA Isaac Sim 4.5, with a stdio server.
 
-This file is the environment the grader runs; the copy staged into the agent home is
-byte-identical. It runs under the Isaac interpreter (/opt/isaac/bin/python3, Python 3.10),
-never under the task's py3.12 `python3`.
+The same desk, robot, containers, objects, cameras, physics and action rule as the graded episodes, without the
+episode: nothing arrives, no request opens, nothing is misplaced or nudged, no container is emptied and nothing is
+scored. You lay out the desk yourself (`reset` sets out a starting desk the way an episode starts: the containers
+with their seeded jitter, the two initial piles and a few loose objects; `place` puts any object anywhere) and look
+at it through the observation your controller will get, from the same sensors: each desk's fixed cameras carry
+their own mounting error and the depth is a real sensor's (see the task card). It runs under the Isaac interpreter
+(/opt/isaac/bin/python3, Python 3.10), never under the task's py3.12 `python3`.
 
 Run as a script it serves one JSON object per line on stdin/stdout:
 
-    {"cmd": "info"}                          -> {"ok": true, "info": {...}}      task card data
-    {"cmd": "reset", "seed": <int>}          -> {"ok": true, "obs": {...}, "state": {...}}
-    {"cmd": "step", "action": [8 floats, optional 9th: hi-res bitmask]}    -> {"ok": true, "obs": {...}, "state": {...}}
-    {"cmd": "close"}                         -> {"ok": true}, then exit
+    {"cmd": "info"}                         -> {"ok": true, "info": {...}}  calibration, geometry, this desk's container poses
+    {"cmd": "reset", "seed": <int>}         -> {"ok": true, "obs": {...}, "robot": {...}}
+    {"cmd": "step", "action": [8 floats, optional 9th: hi-res bitmask]}   -> {"ok": true, "obs": {...}, "robot": {...}}
+    {"cmd": "place", "model": "006_mustard_bottle", "instance": 0, "pose": [x, y, z, yaw], "clear": true}
+                                            -> {"ok": true, "obs": {...}, "robot": {...}}
+    {"cmd": "close"}                        -> {"ok": true}, then exit
 
-`obs` is exactly what the tested agent receives over the ALE wire. `state` is privileged:
-object classes, poses, container membership, the truth behind the open request. The graders use
-it to score; the ALE wire never carries it. Everything an episode does is a deterministic
-function of its 64-bit seed (arrivals, requests, container service, disturbances, scales).
+`obs` has exactly the shape a controller receives from the grader; its `request` is always null (the lab opens
+none) and the `mark` element of an action does nothing here. `robot` is the arm's own status: `ik_ok` is false when
+the last delta had no inverse-kinematics solution within one step's joint jump (see the task card's Control).
+With MESSY_DESK_FREECAM=WxH in the environment, `{"cmd": "freecam", "pos": [x, y, z], "yaw": .., "pitch": ..}`
+returns a JPEG from a free camera anywhere in the room, for looking at the desk yourself.
 """
 
 import base64
@@ -41,6 +48,26 @@ IMAGE_SIZE = 320
 # three idle 1920x1080 products cost about 9 ms per step.
 HIRES_SIZE = (1920, 1080)
 HIRES_CAMERAS = {"agentview": 1, "left_view": 2, "eye_in_hand": 4, "oblique": 8}
+# The cameras are real sensors (2026-11-07). The three fixed ones stand at their nominal poses (position, look-at
+# target; the task card's) only to within a mounting error that differs from desk to desk and stays put through
+# an episode: up to CAMERA_MOUNT_ERROR[0] along each world axis and CAMERA_MOUNT_ERROR[1] about each, drawn from a
+# stream of the episode's seed of its own (the world's draws are untouched). The hand camera is fixed to the hand
+# as documented. Depth is an active-stereo sensor's: Gaussian noise of DEPTH_NOISE_1M at 1 m growing with the square
+# of the distance, and a pixel beside a depth discontinuity missing (0) with probability DEPTH_EDGE_DROP, drawn per
+# step and camera from the episode's sensor stream. A discontinuity is a jump of inverse depth (what a stereo pair's
+# disparity measures) of more than DEPTH_EDGE_INV_JUMP between neighbouring pixels: an object's outline against what
+# lies behind it (a 1 cm step at 1 m, 2 cm at 1.4 m), never a smooth surface: a plane at distance c from a camera
+# changes inverse depth by at most 1 / (focal * c) a pixel, under 0.007 for every surface of the scene at the fixed
+# cameras' range (c > 0.6 m). The hand camera, which looks at surfaces a few centimetres away, has the noise only.
+# Neither reaches the physics.
+CAMERA_NOMINAL = {"agentview": ([1.35, 0.0, 0.95], [0.42, 0.0, 0.05]),
+                  "left_view": ([0.45, -1.15, 0.75], [0.45, 0.0, 0.05]),
+                  "oblique": ([1.25, -0.95, 0.85], [0.42, 0.0, 0.08])}
+CAMERA_MOUNT_ERROR = (0.01, math.radians(1.0))
+DEPTH_NOISE_1M = 0.0015
+DEPTH_EDGE_INV_JUMP = 0.01          # 1/m
+DEPTH_EDGE_DROP = 0.5
+SENSOR_STREAM = 0x53454E53          # keys the sensor stream with the episode's seed ("SENS")
 
 CLASSES = {
     "A": ["003_cracker_box", "004_sugar_box", "008_pudding_box", "009_gelatin_box",
@@ -101,29 +128,12 @@ CONTAINER_RIM_Z = CONTAINER_OUTER[2] + 0.0005
 DESK_X, DESK_Y = (0.15, 0.78), (-0.62, 0.62)
 ROOM_OFFSET_X = 0.10       # the stock room (table included) is moved this far along +x, see __init__
 REACH, BASE_CLEAR = 0.80, 0.36   # arrivals and nudges land no nearer than 0.36 m to the base: nearer, a straight-down hand stops above the desk (measured)
-BASE_RESCUE = 0.26         # nearer than this nothing reaches or sees an object: the world sets it back on the desk
-BASE_ZONE_REST_STEPS = 20    # steps at rest beside the base before the world sets an object back on the desk
-HORIZON_DEFAULT = 20000
-
-# world state machine parameters (per control step)
-ARRIVAL_MEAN_STEPS = 500
-LOOSE_CAP = 6
-PRESENT_CAP = 22
-CONTAINER_CAP = 9
-REQUEST_SLOT_STEPS = 5000    # one request opens at a random time in each 5000-step window (4 per 20000-step episode)
-REQUEST_DEADLINE_STEPS = 1200
-REQUEST_ABSENT_P = 0.2
-DISTURB_MEAN_STEPS = 2500
 MAX_INSTANCES_PER_MODEL = 2
 
 ACTION_DIM = 8
 POS_STEP_MAX, ROT_STEP_MAX = 0.05, 0.25
 GRIPPER_OPEN, GRIPPER_CLOSED = 0.04, 0.0
 REST_SPEED = 0.08          # piles of convex-decomposed meshes jitter at a few cm/s
-HOLD_LIFT = 0.03           # "held": both fingers on the object and its centre this far above where it last rested
-ON_TABLE_Z_MAX = 0.16      # centre height of anything resting on the table top (tallest YCB upright ~0.25)
-LOST_VALUE = -1            # an object knocked off the table counts as misfiled for the rest of the episode
-REBASE_TIMEOUT = 100       # steps a nudged object may keep moving before its baseline is re-read anyway
 PARK_Z = -3.0
 RESET_WARMUP_FRAMES = 20
 READY_Q = [0.0, -math.pi / 4, 0.0, -3 * math.pi / 4, 0.0, math.pi / 2, math.pi / 4]   # Franka 'ready': tool straight down
@@ -146,7 +156,7 @@ def _log(msg):
 # ---------------------------------------------------------------------------------------
 # Isaac side
 # ---------------------------------------------------------------------------------------
-class MessyDeskEnv:
+class MessyDeskLab:
     def __init__(self, headless=True):
         sys.argv += ["--/rtx/verifyDriverVersion/enabled=false",
                      "--/persistent/isaac/asset_root/default=" + ASSET_ROOT]
@@ -230,8 +240,8 @@ class MessyDeskEnv:
         self._probe_views("after cameras")
         self.world.step(render=True)
         self._probe_views("after first step")
-        self.horizon = HORIZON_DEFAULT
         self.rng = None
+        self._sensor_key = 0
         self.t = 0
         _log("ready")
 
@@ -387,9 +397,7 @@ class MessyDeskEnv:
         Poses use Isaac's "world" camera axes (+X forward, +Z up)."""
         np, Camera = self.np, self.Camera
         self.cams = {}
-        fixed = {"agentview": ([1.35, 0.0, 0.95], [0.42, 0.0, 0.05]),
-                 "left_view": ([0.45, -1.15, 0.75], [0.45, 0.0, 0.05]),
-                 "oblique": ([1.25, -0.95, 0.85], [0.42, 0.0, 0.08])}
+        fixed = CAMERA_NOMINAL
         for name, (pos, target) in fixed.items():
             cam = Camera(prim_path="/World/Cameras/" + name, frequency=CONTROL_HZ, resolution=(IMAGE_SIZE, IMAGE_SIZE))
             cam.set_world_pose(position=np.array(pos), orientation=np.array(_look_at_wxyz(pos, target)), camera_axes="world")
@@ -421,6 +429,40 @@ class MessyDeskEnv:
             self.freecam.set_focal_length(1.8)
             self.set_freecam([1.3, -0.9, 0.9], math.atan2(0.9, -0.85), -0.5)
 
+    def _mount_cameras(self, seed):
+        """This desk's fixed cameras: each nominal pose moved by its mounting error (CAMERA_MOUNT_ERROR), from the
+        sensor stream of `seed`; the hi-res twin of a camera gets the same pose. Never touches the world's stream."""
+        np = self.np
+        self._sensor_key = int(seed) & ((1 << 64) - 1)
+        g = np.random.default_rng([self._sensor_key, SENSOR_STREAM, 0])
+        for name, (pos, target) in CAMERA_NOMINAL.items():
+            dp = g.uniform(-CAMERA_MOUNT_ERROR[0], CAMERA_MOUNT_ERROR[0], 3)
+            dr = g.uniform(-CAMERA_MOUNT_ERROR[1], CAMERA_MOUNT_ERROR[1], 3)
+            q = _quat_mul(_rpy_to_quat(float(dr[0]), float(dr[1]), float(dr[2])), _look_at_wxyz(pos, target))
+            p = np.array(pos, dtype=float) + dp
+            for cam in (self.cams[name], self.hcams[name]):
+                cam.set_world_pose(position=p, orientation=np.array(q, dtype=float), camera_axes="world")
+
+    def _depth_sensor(self, z, k, edges=True):
+        """What the depth sensor reports for the true depth `z` (metres, 0 where nothing is hit): Gaussian noise
+        of DEPTH_NOISE_1M * z^2, and pixels beside a jump of inverse depth of more than DEPTH_EDGE_INV_JUMP missing
+        (0) with probability DEPTH_EDGE_DROP (`edges`: the fixed cameras). Drawn from the episode's sensor stream,
+        keyed by the step and camera `k`."""
+        np = self.np
+        z = np.asarray(z, dtype=np.float32)
+        g = np.random.default_rng([self._sensor_key, SENSOR_STREAM, 1, int(self.t), int(k)])
+        w = np.where(z > 0, 1.0 / np.maximum(z, np.float32(1e-3)), np.float32(0.0))
+        edge = np.zeros(z.shape, dtype=bool)
+        jx = np.abs(np.diff(w, axis=1)) > DEPTH_EDGE_INV_JUMP
+        jy = np.abs(np.diff(w, axis=0)) > DEPTH_EDGE_INV_JUMP
+        edge[:, 1:] |= jx
+        edge[:, :-1] |= jx
+        edge[1:, :] |= jy
+        edge[:-1, :] |= jy
+        out = z + g.standard_normal(z.shape, dtype=np.float32) * (np.float32(DEPTH_NOISE_1M) * z * z)
+        drop = edge & (g.random(z.shape, dtype=np.float32) < DEPTH_EDGE_DROP) & bool(edges)
+        return np.where((z > 0) & ~drop & (out > 0), out, np.float32(0.0))
+
     def _hires_capture(self, names):
         """This step's frames of the requested hi-res cameras (they render every frame, acquired
         at the render rate). -> {name: (rgb uint8 HxWx3, depth_mm uint16 HxW)}"""
@@ -433,7 +475,8 @@ class MessyDeskEnv:
                 img = np.zeros((HIRES_SIZE[1], HIRES_SIZE[0], 4), np.uint8)
             if d is None or d.size == 0:
                 d = np.zeros((HIRES_SIZE[1], HIRES_SIZE[0]), np.float32)
-            dm = np.nan_to_num(d, nan=0.0, posinf=0.0, neginf=0.0) * 1000.0
+            dm = self._depth_sensor(np.nan_to_num(d, nan=0.0, posinf=0.0, neginf=0.0), 10 + list(HIRES_CAMERAS).index(name),
+                                    edges=name in CAMERA_NOMINAL) * 1000.0
             out[name] = (np.ascontiguousarray(img[..., :3]).astype(np.uint8), np.clip(dm, 0, 65535).astype(np.uint16))
         return out
 
@@ -522,10 +565,7 @@ class MessyDeskEnv:
         if on_desk:
             xyz = (xyz[0], xyz[1], obj["half_h"] + 0.004)
         self._teleport(obj, xyz, _quat_mul([math.cos(yaw / 2), 0.0, 0.0, math.sin(yaw / 2)], rest))
-        obj["present"], obj["removed"], obj["frozen"], obj["rebase_t"] = True, False, 0, None
-        obj["rest_z"] = float(xyz[2])      # re-read once it rests (see HOLD_LIFT)
-        if getattr(self, "baseline", None) is not None:
-            self.baseline[obj["id"]] = 0
+        obj["present"] = True
 
     def _park(self, obj):
         self._teleport(obj, obj["park"], [1.0, 0.0, 0.0, 0.0])
@@ -541,21 +581,16 @@ class MessyDeskEnv:
         return sum(1 for o in self.objects if o["model"] == model and o["present"])
 
     # -- episode -------------------------------------------------------------------------------
-    def reset(self, seed, horizon=None):
+    def reset(self, seed):
+        """A starting desk the way an episode starts (containers, piles, loose objects drawn from `seed`)."""
         np = self.np
         self.rng = np.random.default_rng(int(seed) & ((1 << 64) - 1))
-        self.horizon = int(horizon or HORIZON_DEFAULT)
         self.t = 0
-        self.events = []
-        self.request = None
-        self.requests_done = []
-        self.touched = set()
         self.franka.set_joint_positions(self._home_q)
         self.franka.set_joint_velocities(np.zeros_like(self._home_q))
         self.franka.apply_action(self.ArticulationAction(joint_positions=self._home_q))
         self.franka.gripper.open()
         for o in self.objects:
-            o["removed"], o["frozen"], o["state"], o["on_table"], o["rebase_t"] = False, 0, "absent", False, None
             self._park(o)
         self._place_containers()
         # initial piles: A in gray, B in lightblue; a few loose C and A on the desk
@@ -592,20 +627,11 @@ class MessyDeskEnv:
                 continue
             self._spawn(o, (spot[0], spot[1], 0.0), on_desk=True)
         self._settle_until_rest()
-        self.next_arrival = int(self.rng.exponential(ARRIVAL_MEAN_STEPS))
-        self.request_slot = 0
-        self.next_request = self._request_time(0)
-        self.next_disturb = int(self.rng.exponential(DISTURB_MEAN_STEPS)) + 500
+        self._mount_cameras(seed)
         for _ in range(RESET_WARMUP_FRAMES):   # the RTX renderer needs frames to converge
             self.world.step(render=True)
-        self._update_states()
-        # v(0): container membership only. Nothing is held at reset, so "resting" is not required
-        # here; demanding it would let a pile that is still jittering drift upward later.
-        self.baseline = {o["id"]: self._value(o, require_rest=False) for o in self.objects}
-        _log("reset seed=%d settled_steps=%d present=%d max_speed=%.3f" % (
-            int(seed) & 0xFFFF, self._settled_steps, sum(o["present"] for o in self.objects),
-            max([o.get("speed", 0.0) for o in self.objects if o["present"]] or [0.0])))
-        return self.observe(), self.privileged()
+        _log("reset settled_steps=%d present=%d" % (self._settled_steps, sum(o["present"] for o in self.objects)))
+        return self.observe(), self.robot()
 
     def _settle(self, n):
         for _ in range(n):
@@ -613,8 +639,7 @@ class MessyDeskEnv:
 
     def _settle_until_rest(self, max_steps=600, quiet=12):
         """Run physics until every present object has been at rest for `quiet` consecutive
-        steps (or `max_steps`), so that the baseline v(0) is taken on a settled scene and an
-        untouched episode cannot drift upward on its own."""
+        steps (or `max_steps`)."""
         np = self.np
         still = 0
         self._settled_steps = max_steps
@@ -641,7 +666,7 @@ class MessyDeskEnv:
         dpos = np.clip(a[:3], -POS_STEP_MAX, POS_STEP_MAX)
         drot = np.clip(a[3:6], -ROT_STEP_MAX, ROT_STEP_MAX)
         grip = float(np.clip(a[6], 0.0, 1.0))
-        mark = int(round(a[7]))          # 0 none, 1 "done: delivered", 2 "done: no such object"
+        # a[7], the mark, closes a request in an episode; the lab opens none, so it does nothing here
         self._apply_arm(dpos, drot, grip)
         for i in range(SUBSTEPS):
             if self._arm_plan is not None:
@@ -654,9 +679,7 @@ class MessyDeskEnv:
                                                                  joint_indices=idx))
             self.world.step(render=(i == SUBSTEPS - 1))
         self.t += 1
-        self._update_states()
-        self._world_events(mark)
-        return self.observe(hires=self._hires_capture(hires)), self.privileged()
+        return self.observe(hires=self._hires_capture(hires)), self.robot()
 
     def _ee_pose(self):
         """Tool-centre-point pose in the base frame, from the kinematics solver's own
@@ -758,269 +781,17 @@ class MessyDeskEnv:
             return q_cur + delta * min(1.0, IK_UNWIND_STEP / max(float(np.max(np.abs(delta))), 1e-9)), idx, False
         return best, idx, True
 
-    # -- state ---------------------------------------------------------------------------------
-    def _update_states(self):
-        np = self.np
-        forces = None
-        if self._contacts is not None:
-            try:
-                forces = self._contacts.get_contact_force_matrix()   # (N, 2, 3)
-            except Exception:  # noqa: BLE001
-                forces = None
-        ee_pos = self._ee_pose()[0]
-        for o in self.objects:
-            if not o["present"]:
-                o.update(pos=None, in_container=None, resting=False, contact=False, held=False, on_table=False,
-                         state=("lost" if o.get("state") == "lost" else ("removed" if o["removed"] else "absent")))
-                continue
-            p, q = o["rp"].get_world_pose()
-            v = o["rp"].get_linear_velocity()
-            o["pos"], o["quat"] = [float(x) for x in p], [float(x) for x in q]
-            o["speed"] = float(np.linalg.norm(v))
-            o["resting"] = o["speed"] < REST_SPEED
-            o["in_container"] = self._container_of_point(p)
-            if p[2] < -0.2:            # fell off the table: lost for good
-                self._park(o)
-                o["removed"], o["frozen"], o["state"] = True, LOST_VALUE, "lost"
-                o.update(in_container=None, on_table=False, contact=False, held=False)
-                self.events.append({"t": self.t, "event": "fell_off_desk", "object": o["id"]})
-                continue
-            # the three detectors: finger contact (PhysX contact report), inside a container
-            # (geometric, container frame), resting on the table top
-            if forces is not None:
-                per_finger = np.abs(forces[o["id"]]).reshape(2, -1).sum(axis=1)     # left, right finger link
-                o["contact"] = bool(per_finger.sum() > 1e-4)
-                pinched = bool(per_finger[0] > 1e-4 and per_finger[1] > 1e-4)
-            else:
-                o["contact"] = bool(np.linalg.norm(p - ee_pos) < 0.06)
-                pinched = o["contact"]
-            if o["contact"]:
-                self.touched.add(o["id"])
-            placed = o["resting"] and not o["contact"]          # released and still
-            if placed:
-                o["rest_z"] = float(p[2])
-            # held: a real grasp, not a touch. Both fingers on the object and the object lifted
-            # clear of its support, its centre at least HOLD_LIFT above where it last rested; a
-            # finger brushing or pushing an object leaves it "transit"
-            o["held"] = bool(pinched and o.get("rest_z") is not None and float(p[2]) - o["rest_z"] >= HOLD_LIFT)
-            o["on_table"] = bool(placed and o["in_container"] is None and p[2] < ON_TABLE_Z_MAX)
-            if o["in_container"] is not None and placed:
-                o["state"] = "in_container"
-            elif o["on_table"]:
-                o["state"] = "on_table"
-            elif o["held"]:
-                o["state"] = "held"
-            else:
-                o["state"] = "transit"
-            if o["on_table"] and (math.hypot(p[0], p[1]) < BASE_RESCUE or p[0] < DESK_X[0] - 0.02):
-                # knocked to where no camera sees it and no hand reaches (beside the robot's base
-                # or past the front edge of the reachable area): after a moment at rest the world
-                # sets it back down on a free spot, like a nudge; its baseline is re-read once it rests
-                o["base_zone_steps"] = o.get("base_zone_steps", 0) + 1
-                if o["base_zone_steps"] >= BASE_ZONE_REST_STEPS:
-                    spot = self._random_desk_spot()
-                    if spot is not None:
-                        self._spawn(o, (spot[0], spot[1], 0.0), on_desk=True)
-                        o["rebase_t"] = self.t
-                        o["base_zone_steps"] = 0
-                        self.events.append({"t": self.t, "event": "disturb_nudged", "object": o["id"], "reason": "beside the base"})
-                        continue
-            else:
-                o["base_zone_steps"] = 0
-            if o.get("rebase_t") is not None and (placed or self.t - o["rebase_t"] >= REBASE_TIMEOUT):
-                self.baseline[o["id"]] = self._value(o, require_rest=False)
-                o["rebase_t"] = None
-
-    def _is_target(self, o):
-        """The requested object, from the step its request opens through the step it closes."""
-        r = self.request
-        return bool(r and r.get("object") == o["id"] and (r["status"] == "open" or r.get("closed_t") == self.t))
-
-    def _value(self, o, require_rest=True):
-        """v_o(t): +1 placed in its own container, -1 placed in a wrong one, 0 on the table, held
-        or in flight. The requested object belongs to the red container only: +1 placed in red or
-        held (both fingers on it, lifted clear of its support), -1 placed in any other container, 0
-        on the table or in flight. "Placed" = resting and not touched by the fingers. Removed
-        objects keep their last value; a lost object (off the table) is LOST_VALUE for the rest of
-        the episode."""
-        if o["removed"]:
-            return o.get("frozen", 0)
-        target = self._is_target(o)
-        if target and o["present"] and o.get("held"):
-            return 1
-        if not o["present"] or o.get("in_container") is None:
-            return 0
-        if require_rest and (not o.get("resting") or o.get("contact")):
-            return 0
-        home = "red" if target else CONTAINER_OF_CLASS[o["cls"]]
-        return 1 if o["in_container"] == home else -1
-
-    def _world_events(self, mark):
-        rng = self.rng
-        ev = self.events
-        # requests: the agent closes one by marking it (1 = delivered, 2 = no such object);
-        # the grader then checks the physical truth. Nothing closes a request automatically
-        # except its deadline.
-        r = self.request
-        if r and r["status"] != "open" and not r.get("restored") and r.get("closed_t", self.t) < self.t:
-            # the step after a request closed, its object is an ordinary object again: back to the
-            # baseline it had before the request named it
-            r["restored"] = True
-            if r["object"] is not None and "b_pre" in r:
-                self.baseline[r["object"]] = r["b_pre"]
-        if self.request and self.request["status"] == "open":
-            r = self.request
-            tgt = self.objects[r["object"]] if r["object"] is not None else None
-            # Award the retrieval milestone only for a current hold, never for a
-            # contact remembered from before this request. Each request gets it once.
-            if tgt is not None and tgt["present"] and tgt["state"] == "held" and "held_t" not in r:
-                r["held_t"] = self.t
-                ev.append({"t": self.t, "event": "request_first_hold", "request": r["id"]})
-            if mark == 1:
-                delivered = tgt is not None and tgt["present"] and tgt["state"] == "in_container" and tgt["in_container"] == "red"
-                r["status"], r["closed_t"] = ("delivered" if delivered else "claim_wrong"), self.t
-                if delivered:
-                    tgt["frozen"] = 1                 # keeps its value for the rest of the episode
-                    self._park(tgt); tgt["removed"] = True
-                ev.append({"t": self.t, "event": "request_" + r["status"], "request": r["id"]})
-            elif mark == 2:
-                r["status"], r["closed_t"] = ("absent_correct" if tgt is None else "absent_wrong"), self.t
-                ev.append({"t": self.t, "event": "request_" + r["status"], "request": r["id"]})
-            elif self.t >= r["deadline_t"]:
-                r["status"], r["closed_t"] = "expired", self.t
-                ev.append({"t": self.t, "event": "request_expired", "request": r["id"]})
-            if r["status"] != "open":
-                self.requests_done.append(r)
-        if (self.request is None or self.request["status"] != "open") and self.t >= self.next_request:
-            self._open_request()
-            self.request_slot += 1
-            self.next_request = self._request_time(self.request_slot)
-        # arrivals
-        if self.t >= self.next_arrival:
-            self.next_arrival = self.t + int(rng.exponential(ARRIVAL_MEAN_STEPS)) + 50
-            loose = sum(1 for o in self.objects if o["present"] and o["in_container"] is None)
-            present = sum(1 for o in self.objects if o["present"])
-            if loose < LOOSE_CAP and present < PRESENT_CAP:
-                # never the model of the open request: a second instance would make "the X"
-                # ambiguous, and an arrival of a model requested as absent would turn that
-                # request wrong on its own
-                req = self.request["model"] if (self.request and self.request["status"] == "open") else None
-                models = [m for m in CLASS_OF if self._present_count(m) < MAX_INSTANCES_PER_MODEL and m != req]
-                m = rng.choice(models)
-                o, spot = self._free_instance(m), self._random_desk_spot()
-                if o is not None and spot is not None:
-                    self._spawn(o, (spot[0], spot[1], 0.0), on_desk=True)
-                    ev.append({"t": self.t, "event": "arrival", "object": o["id"], "model": m})
-        # container service: a full class container is emptied by the worker, but not while it holds
-        # the open request's object (that would leave the request without a right answer: the object
-        # is gone, yet "no such object" is wrong for a request that named a present object)
-        req_obj = self.request["object"] if (self.request and self.request["status"] == "open") else None
-        for name in ("gray", "lightblue", "blue"):
-            inside = [o for o in self.objects if o["present"] and o["state"] == "in_container" and o["in_container"] == name]
-            if req_obj is not None and any(o["id"] == req_obj for o in inside):
-                continue
-            if len(inside) >= CONTAINER_CAP:
-                for o in inside:
-                    o["frozen"] = self._value(o)
-                    self._park(o); o["removed"] = True
-                ev.append({"t": self.t, "event": "container_cleared", "container": name, "count": len(inside)})
-        # disturbances
-        if self.t >= self.next_disturb:
-            self.next_disturb = self.t + int(rng.exponential(DISTURB_MEAN_STEPS)) + 300
-            cands = [o for o in self.objects if o["present"] and o["resting"] and (self.request is None or self.request.get("object") != o["id"])]
-            if cands:
-                o = cands[int(rng.integers(len(cands)))]
-                if rng.random() < 0.5:
-                    wrong = [b for b in ("gray", "lightblue", "blue") if b != CONTAINER_OF_CLASS[o["cls"]]]
-                    b = wrong[int(rng.integers(len(wrong)))]
-                    px, py = self._container_point(b, rng.uniform(-0.03, 0.03), rng.uniform(-0.02, 0.02))
-                    self._spawn(o, (px, py, CONTAINER_RIM_Z + 0.12))
-                    self.baseline[o["id"]] = -1       # it will rest misfiled; fixing it is the gain available
-                    ev.append({"t": self.t, "event": "disturb_misplaced", "object": o["id"], "container": b})
-                else:
-                    # moved across the desk to another free spot (never into a gap between two
-                    # containers, where no hand fits), set down the way arrivals are
-                    loose = [c for c in cands if c["in_container"] is None]
-                    o = loose[int(rng.integers(len(loose)))] if loose else None
-                    spot = self._random_desk_spot() if o is not None else None
-                    if spot is not None:
-                        self._spawn(o, (spot[0], spot[1], 0.0), on_desk=True)
-                        o["rebase_t"] = self.t        # baseline re-read once it comes to rest
-                        ev.append({"t": self.t, "event": "disturb_nudged", "object": o["id"]})
-
-    def _request_time(self, k):
-        """Opening step of the k-th request: a random time in its window, early enough that its
-        deadline passes before the next window starts."""
-        return k * REQUEST_SLOT_STEPS + 200 + int(self.rng.integers(0, REQUEST_SLOT_STEPS - REQUEST_DEADLINE_STEPS - 400 + 1))
-
-    def _open_request(self):
-        rng = self.rng
-        present = [o for o in self.objects if o["present"]]
-        unique = [o for o in present if self._present_count(o["model"]) == 1]
-        absent_models = [m for m in CLASS_OF if self._present_count(m) == 0]
-        if (rng.random() < REQUEST_ABSENT_P or not unique) and absent_models:
-            m, obj = absent_models[int(rng.integers(len(absent_models)))], None
-        else:
-            o = unique[int(rng.integers(len(unique)))]
-            m, obj = o["model"], o["id"]
-        self.request = {"id": len(self.requests_done) + 1, "text": "the " + DISPLAY_NAME[m], "model": m,
-                        "object": obj, "opened_t": self.t, "deadline_t": self.t + REQUEST_DEADLINE_STEPS, "status": "open"}
-        self.events.append({"t": self.t, "event": "request_opened", "request": self.request["id"], "absent": obj is None})
-        self._rebase_target()
-
-    def _rebase_target(self):
-        """A request changes its object's home to the red container: its baseline becomes its value
-        under that rule (e.g. -1 resting in its class pile), so an untouched scene still scores 0;
-        the previous baseline returns the step after the request closes."""
-        r = self.request
-        if r and r["object"] is not None:
-            o = self.objects[r["object"]]
-            r["b_pre"] = self.baseline.get(o["id"], 0)
-            self.baseline[o["id"]] = self._value(o, require_rest=False)
-
-    def force_request(self, model=None, absent=False):
-        """Development aid: open a request now. `model` names the YCB model (default: a random
-        present unique one, or a random absent one when `absent`). Marks and the deadline then
-        behave exactly as in a real episode; the next random request waits its normal time."""
-        if self.rng is None:
-            self.reset(0)
-        if self.request is not None and self.request["status"] == "open":
-            raise ValueError("a request is already open")
-        present_models = {o["model"] for o in self.objects if o["present"]}
-        if model is None:
-            pool = [m for m in CLASS_OF if (m not in present_models) == bool(absent)]
-            if absent is False:
-                pool = [m for m in pool if self._present_count(m) == 1]
-            if not pool:
-                raise ValueError("no suitable model")
-            model = pool[int(self.rng.integers(len(pool)))]
-        if model not in CLASS_OF:
-            raise ValueError("unknown model %r" % model)
-        obj = next((o["id"] for o in self.objects if o["present"] and o["model"] == model), None)
-        self.request = {"id": len(self.requests_done) + 1, "text": "the " + DISPLAY_NAME[model], "model": model,
-                        "object": obj, "opened_t": self.t, "deadline_t": self.t + REQUEST_DEADLINE_STEPS, "status": "open"}
-        ev = {"t": self.t, "event": "request_opened", "request": self.request["id"], "absent": obj is None, "forced": True}
-        self.events.append(ev)
-        self._update_states()
-        self._rebase_target()
-        obs, state = self.observe(), self.privileged()
-        self.events.append(ev)        # the next `step` carries it too: that is where scorers read events
-        return obs, state
-
-    def lab(self, model, instance=0, pose=None, clear=True):
-        """Development aid, available to everyone who runs this file: optionally clear the
-        desk, then place one instance of `model` at `pose` (x, y, z[, yaw]) and let it settle; a
-        yaw of null sets it down the way an arrival is (resting pose and yaw rule of `_desk_yaw`).
-        The world state machine is paused (no arrivals, requests or disturbances) until the
-        next `reset`. Returns an observation and the privileged state like `step`."""
+    def place(self, model, instance=0, pose=None, clear=True):
+        """Optionally clear the desk (`clear`), then put instance `instance` (0 or 1, the two sizes) of
+        `model` at `pose` (x, y, z[, yaw]) and let it settle; a yaw of null sets it down the way an
+        arrival is (standing in its resting pose, its long side away from the nearest container
+        wall). A model of null only clears. Returns an observation like `step`."""
         if self.rng is None:
             self.reset(0)
         if clear:
             for o in self.objects:
                 if o["present"]:
                     self._park(o)
-            self.request = None           # a request stays open when only one object is placed
-        self.next_arrival = self.next_request = self.next_disturb = 10 ** 12
         if model is not None:
             cands = [o for o in self.objects if o["model"] == model]
             if not cands:
@@ -1034,29 +805,7 @@ class MessyDeskEnv:
         self._settle_until_rest()
         for _ in range(RESET_WARMUP_FRAMES):   # RTX needs frames to converge after a teleport
             self.world.step(render=True)
-        self._update_states()
-        return self.observe(), self.privileged()
-
-    def gains(self, new=None):
-        """Development aid: read (and optionally set) the finger drive gains and max efforts.
-        `new` = {"finger_kp": .., "finger_kd": .., "finger_effort": ..}."""
-        np = self.np
-        ctrl = self.franka.get_articulation_controller()
-        n = self.franka.num_dof
-        if new:
-            kps, kds = ctrl.get_gains()
-            kps, kds = np.array(kps, dtype=float), np.array(kds, dtype=float)
-            for j in (n - 2, n - 1):
-                if "finger_kp" in new: kps[j] = float(new["finger_kp"])
-                if "finger_kd" in new: kds[j] = float(new["finger_kd"])
-            ctrl.set_gains(kps=kps, kds=kds)
-            if "finger_effort" in new:
-                eff = np.array(ctrl.get_max_efforts(), dtype=float)
-                eff[n - 2:] = float(new["finger_effort"])
-                ctrl.set_max_efforts(eff)
-        kps, kds = ctrl.get_gains()
-        return {"kps": [float(x) for x in kps], "kds": [float(x) for x in kds], "max_efforts": [float(x) for x in ctrl.get_max_efforts()],
-                "dof_names": list(self.franka.dof_names)}
+        return self.observe(), self.robot()
 
     # -- outputs -------------------------------------------------------------------------------
     def observe(self, hires=None):
@@ -1070,7 +819,8 @@ class MessyDeskEnv:
             if d is None or d.size == 0:
                 d = np.zeros((IMAGE_SIZE, IMAGE_SIZE), np.float32)
             rgb[name] = np.ascontiguousarray(img[..., :3]).astype(np.uint8)
-            dm = np.nan_to_num(d, nan=0.0, posinf=0.0, neginf=0.0) * 1000.0
+            dm = self._depth_sensor(np.nan_to_num(d, nan=0.0, posinf=0.0, neginf=0.0), list(HIRES_CAMERAS).index(name),
+                                    edges=name in CAMERA_NOMINAL) * 1000.0
             depth[name] = np.clip(dm, 0, 65535).astype(np.uint16)
         # the six PNG encodes run in parallel (PIL releases the GIL while compressing)
         jobs = [(name, "rgb", rgb[name], "RGB") for name in rgb] + [(name, "depth", depth[name], "I;16") for name in depth]
@@ -1082,10 +832,7 @@ class MessyDeskEnv:
         jp = self.franka.get_joint_positions()
         jv = self.franka.get_joint_velocities()
         pos, quat = self._ee_pose()
-        req = None
-        if self.request and self.request["status"] == "open":
-            req = {"text": self.request["text"], "deadline_t": self.request["deadline_t"]}
-        obs = {"t": self.t, "request": req, "rgb": rgb, "depth": depth,
+        obs = {"t": self.t, "request": None, "rgb": rgb, "depth": depth,
                "joint_pos": [float(x) for x in jp[:7]], "joint_vel": [float(x) for x in jv[:7]],
                "gripper_width": float(jp[7] + jp[8]),
                "ee_pose": [float(x) for x in pos] + [float(x) for x in quat]}
@@ -1093,27 +840,19 @@ class MessyDeskEnv:
             obs["rgb_hires"], obs["depth_hires"] = hrgb, hdepth
         return obs
 
-    def privileged(self):
-        objs = []
-        for o in self.objects:
-            if not o["present"] and not o["removed"]:
-                continue
-            target = bool(self.request and self.request["status"] == "open" and self.request.get("object") == o["id"])
-            objs.append({"id": o["id"], "model": o["model"], "cls": o["cls"], "present": o["present"],
-                         "removed": o["removed"], "pos": o.get("pos"), "quat": o.get("quat"), "scale": o["scale"],
-                         "role": "target" if target else "non_target", "state": o.get("state", "absent"),
-                         "contact": bool(o.get("contact")), "held": bool(o.get("held")), "in_container": o.get("in_container"), "on_table": bool(o.get("on_table")),
-                         "resting": bool(o.get("resting")),
-                         "value": self._value(o), "baseline": self.baseline.get(o["id"], 0)})
-        ev, self.events = self.events, []
-        return {"t": self.t, "horizon": self.horizon, "objects": objs, "request": self.request,
-                "requests_done": self.requests_done[-3:], "events": ev, "ik_ok": getattr(self, "_ik_ok", True), "ik_q": getattr(self, "_ik_q", None)}
+    def robot(self):
+        """The arm's own status (what its controller knows about itself), never the objects'."""
+        return {"t": self.t, "ik_ok": getattr(self, "_ik_ok", True)}
 
     def info(self):
         np = self.np
         cams = {}
         for name, c in self.cams.items():
-            p, q = c.get_world_pose()
+            if name in CAMERA_NOMINAL:          # the documented (nominal) pose, never this desk's mounting error
+                pos, target = CAMERA_NOMINAL[name]
+                p, q = pos, _look_at_wxyz(pos, target)
+            else:
+                p, q = c.get_world_pose()
             cams[name] = {"intrinsics": c.get_intrinsics_matrix().tolist(), "resolution": [IMAGE_SIZE, IMAGE_SIZE],
                           "world_pose_xyz_wxyz": [float(x) for x in p] + [float(x) for x in q],
                           "attached_to": "/World/Franka/panda_hand" if name == "eye_in_hand" else "world"}
@@ -1121,7 +860,7 @@ class MessyDeskEnv:
                  for name, c in self.hcams.items()}
         return {"control_hz": CONTROL_HZ, "image_size": IMAGE_SIZE, "action_dim": ACTION_DIM,
                 "hires": {"resolution": list(HIRES_SIZE), "action_index": ACTION_DIM, "cameras": hcams},
-                "pos_step_max": POS_STEP_MAX, "rot_step_max": ROT_STEP_MAX, "horizon": self.horizon,
+                "pos_step_max": POS_STEP_MAX, "rot_step_max": ROT_STEP_MAX,
                 "containers": {n: {"center_xy": [c[0], c[1]], "yaw": c[2], "nominal_center_xy": list(CONTAINER_NOMINAL[n]),
                              "inner_half_xy": list(CONTAINER_INNER_HALVES[n]), "floor_z": CONTAINER_FLOOR_Z,
                              "rim_z": CONTAINER_RIM_Z, "outer_xyz": list(CONTAINER_OUTERS[n]), "scale_xyz": list(CONTAINER_SCALES[n]),
@@ -1230,19 +969,7 @@ def serve():
     os.dup2(2, 1)
     sys.stdout = sys.stderr
     out = os.fdopen(wire_fd, "w", buffering=1)
-    env = MessyDeskEnv(headless=True)
-    # Live score for the practice tools (the same EpisodeScorer the graders use); every `step`
-    # and `reset` reply carries `score`, and `{"cmd": "score"}` adds the per-object values.
-    # The agent's observation never carries it: this is the privileged side of the wire.
-    try:
-        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-        from messy_desk_score import EpisodeScorer
-    except Exception:  # noqa: BLE001 - the simulator works without the scorer next to it
-        EpisodeScorer = None
-    scorer = [None]
-
-    def live():
-        return scorer[0].live() if scorer[0] is not None else None
+    env = MessyDeskLab(headless=True)
     out.write(json.dumps({"ok": True, "ready": True}) + "\n"); out.flush()
     for line in sys.stdin:
         line = line.strip()
@@ -1254,26 +981,14 @@ def serve():
             if cmd == "info":
                 reply = {"ok": True, "info": env.info()}
             elif cmd == "reset":
-                obs, state = env.reset(msg.get("seed", 0), msg.get("horizon"))
-                scorer[0] = EpisodeScorer(env.horizon) if EpisodeScorer else None
-                reply = {"ok": True, "obs": obs, "state": state, "score": live()}
+                obs, robot = env.reset(msg.get("seed", 0))
+                reply = {"ok": True, "obs": obs, "robot": robot}
             elif cmd == "step":
-                obs, state = env.step(msg["action"])
-                if scorer[0] is not None:
-                    scorer[0].add_step(state)
-                reply = {"ok": True, "obs": obs, "state": state, "score": live()}
-            elif cmd == "lab":
-                obs, state = env.lab(msg.get("model"), msg.get("instance", 0), msg.get("pose"), msg.get("clear", True))
-                reply = {"ok": True, "obs": obs, "state": state, "score": live()}
-            elif cmd == "request":
-                obs, state = env.force_request(msg.get("model"), bool(msg.get("absent", False)))
-                reply = {"ok": True, "obs": obs, "state": state, "score": live()}
-            elif cmd == "score":
-                objs = [{"id": o["id"], "model": o["model"], "role": o.get("role"), "state": o.get("state"), "in_container": o.get("in_container"),
-                         "value": o.get("value"), "baseline": o.get("baseline")} for o in env.privileged()["objects"] if o.get("present") or o.get("removed")]
-                reply = {"ok": True, "score": live(), "objects": objs, "request": env.request}
-            elif cmd == "gains":
-                reply = {"ok": True, "gains": env.gains(msg.get("set"))}
+                obs, robot = env.step(msg["action"])
+                reply = {"ok": True, "obs": obs, "robot": robot}
+            elif cmd == "place":
+                obs, robot = env.place(msg.get("model"), msg.get("instance", 0), msg.get("pose"), msg.get("clear", True))
+                reply = {"ok": True, "obs": obs, "robot": robot}
             elif cmd == "freecam":
                 if env.freecam is None:
                     reply = {"ok": False, "error": "start with MESSY_DESK_FREECAM=WxH"}
