@@ -46,9 +46,6 @@ expert_time_hours = 80
 siblings = ["robotic_arm_full_assembly_so101_panda", "robotic_arm_full_assembly_openarm_panda"]
 tags = ["assembly", "mujoco", "xarm7", "agipix", "quadrotor", "code-as-policy", "camera-only", "rgbd", "calibration", "picture-manual", "contact", "planning", "oracle-token"]
 source_platform = "AGiPix-derived mechanical assembly kit"
-# The privileged physical reference assembles the source-mesh kit 23/23 from a fresh cell; tests/anchor.json's value
-# stays null until `ale validate` measures it.
-development_status = "native-mesh-reference-complete-anchor-pending"
 
 [environment]
 cpus = 8
