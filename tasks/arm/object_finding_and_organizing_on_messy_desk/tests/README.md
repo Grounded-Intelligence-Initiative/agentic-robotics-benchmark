@@ -96,7 +96,7 @@ for three full episodes of simulator time plus three spent budgets.
 
 Properties: an untouched scene scores exactly 0 (every $v_o = b_o$, no successful request);
 an episode in which no request earns a point scores 0 however well the desk is sorted, and
-served requests earn only as much as the desk is in order;
+request points earn only as much as the desk is in order;
 holding an object inside a container is not "placed", so it earns no organization credit;
 the first target hold can still earn request credit, but only a real grasp (both fingers, lifted)
 counts, never a brush of a finger; a guessed mark loses on average; knocking an object
@@ -249,8 +249,8 @@ or on top of a pile, never dug, never marked "no such object" and never correcte
 requests and held no other, R = 0.25 / 0 / 0, but sorted the arrivals well, O = 0.84 / 0.80 / 0.80, and the score
 $\frac{1}{2} O + \frac{1}{2} R$ gave it 0.546 / 0.398 / 0.400, mean 0.448, reward 0.49: half of the reference's
 score for the part of the chore that needs no search. The task is the retrieval ("each request is a task, find plus
-organize", above), so the two terms now multiply: $S = O \cdot R$. Sorting earns nothing while no request is served,
-a served request earns only as much as the desk is in order, and neither term's incentive changes sign: with
+organize", above), so the two terms now multiply: $S = O \cdot R$. Sorting earns nothing while no request has earned
+a point, request points earn only as much as the desk is in order, and neither term's incentive changes sign: with
 $R > 0$ a tidier desk always scores more, with $O > 0$ every request point does, and a wrong mark still costs (the
 guessing thresholds of the request automaton stand, since $S$ is linear in $R$).
 

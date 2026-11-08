@@ -210,12 +210,11 @@ ever in the scene) that is done at step `t`. A request is a task, find plus orga
 scores fully only when its object is delivered (or its absence declared) and the desk is in
 order at the mark, so an object dug out of its container and not put back, or an arrival left
 loose, counts against you then. The two terms multiply: a tidy desk earns nothing while no
-request is served (an episode in which every request expires scores 0, however well sorted
-the desk), and served requests earn only as much as the desk is in order. An untouched scene
-scores exactly 0. An episode the grader
-cuts short because your controller used up its time budget is scored on the state it reached,
-scaled by the fraction of the horizon that ran; an aborted episode (protocol error, step
-deadline, malformed action) scores 0.
+request has earned a point (an episode whose request points add up to 0 or less scores 0,
+however well sorted the desk), and request points earn only as much as the desk is in order.
+An untouched scene scores exactly 0. An episode the grader cuts short because your controller
+used up its time budget is scored on the state it reached, scaled by the fraction of the
+horizon that ran; an aborted episode (protocol error, step deadline, malformed action) scores 0.
 
 The task's reported metric is `mean_episode_score`, the mean of `S` over the hidden seeds. The
 reward you are judged on is that mean relative to a hidden reference value.
