@@ -4,12 +4,22 @@ The planner can inspect ground truth. It cannot move a live free body or fasten 
 mate. All live integration is through ``cell.tick()``, including gripper waits.
 The fixed grasp frame is at z=158 mm in xarm_gripper_base_link; its +z points
 towards the fingers and its y axis is the jaw closing direction.
+
+Finger links. The stock gripper collides only its four pad boxes and the
+knuckles; the two finger link meshes are visual geoms (contype 0). Each finger's
+plate is 1 mm wider than its pads on both sides, ends 1.5 mm beyond their tip
+and has a back and a sloped link towards the knuckle, none of which the physics
+or a copy of the live model can see. The planning copy (``Motion.pm``, never the
+live model) therefore collides each finger link mesh as its convex hull, on its
+own contype bit: the hulls never touch the robot itself or the measured held
+part (a rigid, already-accepted grasp), and against a part whose pad contact is
+permitted only a contact on the pad face counts as a grip (see collision()).
 """
 from __future__ import annotations
 
-import copy
 import math
 import time
+import xml.etree.ElementTree as ET
 
 import mujoco
 import numpy as np
@@ -18,6 +28,14 @@ from scipy.spatial.transform import Rotation
 
 HOME = np.array([0., -.247, 0., .909, 0., 1.15644, 0.])
 DOWN = np.diag([1., -1., -1.])
+# RRT-Connect budget per nominal second of `timeout` (12 s -> 300 extend attempts,
+# about 2-3x the search a loaded 64-core host managed in 12 wall seconds).
+PLAN_EXTENDS_PER_S = 25
+PLAN_HANG_GUARD_S = 900.
+# Finger link bodies of the stock gripper and the planning copy's collision bit
+# for their mesh hulls (every non-robot collidable geom gets this bit too).
+FINGER_LINKS = ("left_finger", "right_finger")
+FINGER_BIT = 2
 
 
 class PlanningError(RuntimeError):
@@ -53,11 +71,60 @@ def axis_aligned_rotation(current, target):
     return Rotation.from_rotvec(axis*angle).as_matrix() @ current,angle
 
 
+def _finger_link_model(cell):
+    """Planning copy of the live model whose finger link meshes are colliders.
+
+    MuJoCo builds a mesh's convex hull and the body's collision BVH only for
+    geoms that are collidable at compile time, so enabling contype on the
+    visual finger geom of a model copy has no effect. Recompile the cell's own
+    XML with exactly those two mesh geoms collidable: every body, joint and
+    geom keeps its index and kinematic parameters (checked below). The hulls
+    get their own contype bit (FINGER_BIT, conaffinity 0) and every non-robot
+    collidable geom gains it, so a hull meets parts and the bench but never the
+    robot links, the other hull or its own pads. Returns (model, hull geoms).
+    """
+    m = cell.m
+    root = ET.fromstring(cell.xml)
+    for body in root.iter("body"):
+        if body.get("name") in FINGER_LINKS:
+            for geom in body.findall("geom"):
+                if geom.get("mesh") is not None:
+                    geom.set("contype", "1")
+                    geom.set("conaffinity", "1")
+    pm = mujoco.MjModel.from_xml_string(ET.tostring(root, encoding="unicode"))
+    same = all(getattr(pm, n) == getattr(m, n) for n in ("nq", "nv", "nu", "nbody", "njnt", "ngeom", "neq"))
+    for n in ("geom_bodyid", "geom_type", "geom_size", "geom_pos", "geom_quat", "body_parentid", "body_pos",
+              "body_quat", "jnt_type", "jnt_qposadr", "jnt_pos", "jnt_axis", "jnt_range", "qpos0"):
+        same = same and np.array_equal(getattr(pm, n), getattr(m, n))
+    if not same:
+        raise PlanningError("finger-link planning model differs from the live model")
+    # Post-compile edits of the live model (couplings, development teleports).
+    for n in ("eq_obj1id", "eq_obj2id", "eq_data", "eq_solref", "eq_solimp"):
+        getattr(pm, n)[:] = getattr(m, n)
+    fingers = {m.body(n).id for n in FINGER_LINKS}
+    hulls = frozenset(g for g in range(m.ngeom)
+                      if int(m.geom_bodyid[g]) in fingers and m.geom_type[g] == mujoco.mjtGeom.mjGEOM_MESH
+                      and not (m.geom_contype[g] or m.geom_conaffinity[g]))
+    robot = body_subtree(m, m.body("link_base").id)
+    for g in range(pm.ngeom):
+        if g in hulls:
+            pm.geom_contype[g], pm.geom_conaffinity[g] = FINGER_BIT, 0
+        elif int(pm.geom_bodyid[g]) not in robot and (pm.geom_contype[g] or pm.geom_conaffinity[g]):
+            pm.geom_contype[g] |= FINGER_BIT
+            pm.geom_conaffinity[g] |= FINGER_BIT
+    for b in range(pm.nbody):
+        members = np.flatnonzero(pm.geom_bodyid == b)
+        pm.body_contype[b] = int(np.bitwise_or.reduce(pm.geom_contype[members])) if len(members) else 0
+        pm.body_conaffinity[b] = int(np.bitwise_or.reduce(pm.geom_conaffinity[members])) if len(members) else 0
+    return pm, hulls
+
+
 class Motion:
     def __init__(self, cell, *, grasp_offset=(0., 0., .158), seed=512,
-                 arm_clearance=.004, finger_clearance=.001, held_clearance=.002):
+                 arm_clearance=.004, finger_clearance=.001, held_clearance=.002,
+                 finger_body_clearance=None, finger_body_tolerance=.0001, pad_face_angle_deg=35.):
         self.cell, self.m, self.d = cell, cell.m, cell.d
-        self.pm = copy.copy(self.m)
+        self.pm, self.finger_hulls = _finger_link_model(cell)
         self.pd = mujoco.MjData(self.pm)
         self.rng = np.random.default_rng(seed)
         self.jids = np.array([self.m.joint(f"joint{i}").id for i in range(1, 8)])
@@ -76,12 +143,29 @@ class Motion:
         self.pad_geoms = {self.m.geom(n).id for n in (
             "left_finger_pad_1", "left_finger_pad_2", "right_finger_pad_1", "right_finger_pad_2")}
         self.finger_bodies = {self.m.geom_bodyid[g] for g in self.pad_geoms}
+        # Pad face of each finger in its body frame: the jaw-side face plane of
+        # the pad boxes (the finger mesh's pad layer lies on it), its outward
+        # normal sign along body y and the x/z rectangle the pads cover.
+        self._pad_faces = {}
+        for f in self.finger_bodies:
+            pads = [g for g in self.pad_geoms if self.m.geom_bodyid[g] == f]
+            pos, size = self.m.geom_pos[pads], self.m.geom_size[pads]
+            sign = float(np.sign(pos[0, 1]))
+            self._pad_faces[int(f)] = (sign, float(np.mean(pos[:, 1]+sign*size[:, 1])),
+                                       float(np.min(pos[:, 0]-size[:, 0])), float(np.max(pos[:, 0]+size[:, 0])),
+                                       float(np.min(pos[:, 2]-size[:, 2])), float(np.max(pos[:, 2]+size[:, 2])))
+        self._pad_face_cos = math.cos(math.radians(pad_face_angle_deg))
+        self.finger_body_tolerance = float(finger_body_tolerance)
         self.robot_geoms = {g for g in range(self.m.ngeom)
                             if self.m.geom_bodyid[g] in self.robot_bodies
-                            and (self.m.geom_contype[g] or self.m.geom_conaffinity[g])}
+                            and (self.pm.geom_contype[g] or self.pm.geom_conaffinity[g])}
+        self._robot_geom_mask = np.zeros(self.m.ngeom, bool)
+        self._robot_geom_mask[list(self.robot_geoms)] = True
         self.margin = np.zeros(self.m.ngeom)
         for g in self.robot_geoms:
             self.margin[g] = finger_clearance if g in self.pad_geoms else arm_clearance
+        for g in self.finger_hulls:
+            self.margin[g] = finger_clearance if finger_body_clearance is None else finger_body_clearance
         self._margin_max = max(arm_clearance, finger_clearance, held_clearance)
         # MuJoCo combines geom contact margins with max/priority, whereas our
         # clearance test uses the sum. Generate a conservatively large contact
@@ -89,7 +173,12 @@ class Motion:
         self._query_margin = self.m.geom_margin.copy()
         for g in self.robot_geoms:
             self._query_margin[g] = max(self._query_margin[g], self.margin[g]+self._margin_max)
+        for g in self.finger_hulls:
+            # A hull meets neither robot geoms nor the held part (FINGER_BIT),
+            # so its largest test distance is its own clearance.
+            self._query_margin[g] = max(self.m.geom_margin[g], self.margin[g]+1e-4)
         self.pm.geom_margin[:] = self._query_margin
+        self._finger_bits = (self.pm.geom_contype.copy(), self.pm.geom_conaffinity.copy())
         self.held_clearance = held_clearance
         self.jaw_names = ("left_driver_joint", "left_finger_joint", "left_inner_knuckle_joint",
                           "right_driver_joint", "right_finger_joint", "right_inner_knuckle_joint")
@@ -150,8 +239,15 @@ class Motion:
             self.pd.qpos[self.jaw_q] = self.angle_for_width(width)
 
     def hold_body(self, body=None):
-        """Track the MEASURED grasp transform only in the planning copy."""
+        """Track the MEASURED grasp transform only in the planning copy.
+
+        The held part travels rigidly with the hand and both finger links, so
+        their hull contacts with it are the same at every configuration of a
+        plan: they are judged once, when the grasp is chosen (the reference's
+        closed-jaw check), and the held part's geoms drop FINGER_BIT here.
+        """
         self.pm.geom_margin[:] = self._query_margin
+        self.pm.geom_contype[:], self.pm.geom_conaffinity[:] = self._finger_bits
         if body is None:
             self.held = None
             self.mate_contact = None
@@ -168,6 +264,8 @@ class Motion:
         for g in range(self.m.ngeom):
             if self.m.geom_bodyid[g] in members:
                 self.pm.geom_margin[g] = max(self.m.geom_margin[g], self.held_clearance+self._margin_max)
+                self.pm.geom_contype[g] &= ~FINGER_BIT
+                self.pm.geom_conaffinity[g] &= ~FINGER_BIT
 
     def body_group(self, body):
         if body is None:
@@ -246,6 +344,34 @@ class Motion:
             mujoco.mj_comPos(self.pm, self.pd)
         return self.tool_pose(self.pd)
 
+    def pad_face_contact(self, hull, pos, frame, hull_first):
+        """True if a finger-hull contact belongs to that finger's pad (a grip).
+
+        The hull's jaw-side face is the pads' contact plane, so a grip (also a
+        pad squeezed into the part) shows as hull contacts (midpoints) on the
+        pad rectangle (+-0.5 mm), at most 1.5 mm behind the face plane, whose
+        normal is within pad_face_angle_deg of the pad normal. The finger mesh
+        steps back 2 mm right at the pad edges (its pad layer ends 0.5 mm
+        inside the pad boxes, its plate lies 2 mm behind the face); the hull
+        bridges that step with a chamfer, so a contact on the rectangle at most
+        1 mm behind the face counts as the pad's whatever its normal: no finger
+        material is there outside the pad layer (a side or tip intrusion into
+        the plate lies ~2 mm behind the face). A side, tip, back or link of the
+        finger inside a part, or a part much wider than the planned jaw gap,
+        does not count.
+        """
+        f = int(self.pm.geom_bodyid[hull])
+        sign, face, x0, x1, z0, z1 = self._pad_faces[f]
+        R = self.pd.xmat[f].reshape(3, 3)
+        p = R.T @ (np.asarray(pos)-self.pd.xpos[f])
+        if not (x0-.0005 <= p[0] <= x1+.0005 and z0-.0005 <= p[2] <= z1+.0005):
+            return False
+        behind = sign*(face-p[1])
+        if -.0005 <= behind <= .001:
+            return True
+        normal = np.asarray(frame[:3]) * (1. if hull_first else -1.)
+        return bool(sign*float(R[:, 1] @ normal) >= self._pad_face_cos and abs(behind) <= .0015)
+
     def collision(self, q, width=None, allow_pad_body=None, clearance=True):
         self._fk(q, width)
         mujoco.mj_collision(self.pm, self.pd)
@@ -254,8 +380,21 @@ class Motion:
         held_body = None if self.held is None else self.held[0]
         held_bodies=self.body_group(held_body)
         bad = []
-        for c in self.pd.contact:
-            g, h = int(c.geom1), int(c.geom2)
+        n = int(self.pd.ncon)
+        contacts = self.pd.contact
+        pairs = np.asarray(contacts.geom).reshape(-1, 2)[:n]
+        dists = np.asarray(contacts.dist)[:n]
+        # Only contacts with a robot geom or the held part matter below; the
+        # parts resting on the bench alone produce over a thousand. Same
+        # contacts in the same order as testing each one.
+        relevant = self._robot_geom_mask[pairs[:, 0]] | self._robot_geom_mask[pairs[:, 1]]
+        if held_bodies:
+            held_geoms = np.isin(self.pm.geom_bodyid[pairs], list(held_bodies))
+            relevant |= held_geoms[:, 0] | held_geoms[:, 1]
+        geometry = None
+        for i in np.flatnonzero(relevant):
+            g, h = int(pairs[i, 0]), int(pairs[i, 1])
+            dist = float(dists[i])
             a, b = int(self.pm.geom_bodyid[g]), int(self.pm.geom_bodyid[h])
             if a in self.robot_bodies and b in self.robot_bodies:
                 if self.pm.body_parentid[a] == b or self.pm.body_parentid[b] == a:
@@ -264,11 +403,20 @@ class Motion:
                 # The bolted robot base itself is allowed to contact its support.
                 if (a == self.base and b not in self.robot_bodies) or (b == self.base and a not in self.robot_bodies):
                     continue
-            relevant = g in self.robot_geoms or h in self.robot_geoms or a in held_bodies or b in held_bodies
-            if not relevant:
-                continue
             if ((g in self.pad_geoms and b in allowed_bodies|held_bodies) or
                     (h in self.pad_geoms and a in allowed_bodies|held_bodies)):
+                continue
+            hull = g if g in self.finger_hulls else h if h in self.finger_hulls else -1
+            if hull >= 0 and (b if hull == g else a) in allowed_bodies:
+                # A part the pads may grip (not yet held, or just released):
+                # pad-face contact is the grip itself; any other finger-link
+                # contact may only graze it (finger_body_tolerance), whatever
+                # the clearance setting.
+                if dist < -self.finger_body_tolerance:
+                    if geometry is None:
+                        geometry = (np.asarray(contacts.pos), np.asarray(contacts.frame))
+                    if not self.pad_face_contact(hull, geometry[0][i], geometry[1][i], hull == g):
+                        bad.append((self.m.body(a).name, self.m.body(b).name, dist))
                 continue
             if a in held_bodies and b in held_bodies and (
                     a==b or self.pm.body_parentid[a]==b or self.pm.body_parentid[b]==a):
@@ -286,8 +434,8 @@ class Motion:
             limit = (self.margin[g]+self.margin[h]) if clearance else 0.
             if held_body is not None and (a in held_bodies or b in held_bodies):
                 limit += self.held_clearance if clearance else 0.
-            if c.dist < limit - 2e-5:
-                bad.append((self.m.body(a).name, self.m.body(b).name, float(c.dist)))
+            if dist < limit - 2e-5:
+                bad.append((self.m.body(a).name, self.m.body(b).name, dist))
         self.last_contacts = bad
         return bool(bad)
 
@@ -397,9 +545,20 @@ class Motion:
             self.last_plan_stats = {"direct": True, "nodes": 2}
             return prefix+[start, goal]
         ts = time.monotonic()
+        # Deterministic search budget: extend attempts, not wall seconds, so
+        # the same start state plans the same path on any host or load. The
+        # `timeout` argument keeps its meaning as a nominal budget (seconds of
+        # search at PLAN_EXTENDS_PER_S); the wall clock is only a hang guard.
+        budget = max(1, int(round(timeout*PLAN_EXTENDS_PER_S)))
+        spent = [0]
+        def searching():
+            if time.monotonic()-ts > PLAN_HANG_GUARD_S:
+                raise PlanningError("RRT-Connect hang guard (wall clock)")
+            return spent[0] < budget
         trees = [([start], [-1]), ([goal], [-1])]
         swapped = False
         def extend(tree, target):
+            spent[0] += 1
             nodes, parents = tree
             near = int(np.argmin([np.linalg.norm(n-target) for n in nodes]))
             delta = target-nodes[near]
@@ -414,7 +573,7 @@ class Motion:
             while index >= 0:
                 out.append(tree[0][index]); index = tree[1][index]
             return out[::-1]
-        while time.monotonic()-ts < timeout:
+        while searching():
             a, b = trees
             if self.rng.random() < .2:
                 sample = b[0][-1]
@@ -424,7 +583,7 @@ class Motion:
                 sample = self.rng.uniform(lo, hi)
             ia, _ = extend(a, sample)
             if ia is not None:
-                while time.monotonic()-ts < timeout:
+                while searching():
                     ib, reached = extend(b, a[0][ia])
                     if ib is None:
                         break
@@ -440,10 +599,10 @@ class Motion:
                             while j > i+1 and not self.segment_free(path[i], path[j], width=width, allow_pad_body=allow_pad_body, clearance=clearance):
                                 j -= 1
                             out.append(path[j]); i = j
-                        self.last_plan_stats = {"direct": False, "nodes": len(a[0])+len(b[0]), "waypoints": len(out), "wall_s": time.monotonic()-ts}
+                        self.last_plan_stats = {"direct": False, "nodes": len(a[0])+len(b[0]), "waypoints": len(out), "extends": spent[0], "budget": budget, "wall_s": time.monotonic()-ts}
                         return prefix+out
             trees.reverse(); swapped = not swapped
-        raise PlanningError("RRT-Connect timed out")
+        raise PlanningError(f"RRT-Connect search budget exhausted ({budget} extends)")
 
     def wait(self, seconds):
         for _ in range(max(0, int(math.ceil(seconds/.01)))):
@@ -501,15 +660,28 @@ class Motion:
         raise PlanningError(f"no feasible motion to {np.round(pos,4)} ({len(solutions)} IK solutions): {errors[:2]}")
 
     def line(self, pos, R=None, *, width=None, allow_pad_body=None, speed=.025,
-             clearance=True, escape_start=True):
-        """Precheck the whole Cartesian segment before physically executing it."""
+             clearance=True, escape_start=True, angular_speed=.3, hold=30, smooth=False,
+             start_q=None, execute=True):
+        """Precheck the whole Cartesian segment before physically executing it.
+
+        With ``start_q`` the segment starts from that planning configuration
+        instead of the live one; ``execute=False`` returns the checked joint
+        chain without moving (both only affect the planning copy).
+        """
         self.sync()
-        p0, r0 = self.tool_pose()
+        if start_q is None:
+            p0, r0 = self.tool_pose()
+            start_q = self.q
+        elif execute:
+            raise ValueError("start_q is only for checking a segment (execute=False)")
+        else:
+            start_q = np.asarray(start_q, float)
+            p0, r0 = self._fk(start_q, width)
         pos = np.asarray(pos, float)
         R = r0 if R is None else np.asarray(R, float)
         rv = Rotation.from_matrix(R @ r0.T).as_rotvec()
         n = max(1, int(math.ceil(np.linalg.norm(pos-p0)/.003)), int(math.ceil(np.linalg.norm(rv)/.025)))
-        qs, prev = [self.q], self.q
+        qs, prev = [start_q], start_q
         # A resting grasp starts at a compliant table contact. Permit only
         # monotonically escaping existing contacts; no new/deeper contact.
         self.collision(prev, width, allow_pad_body, clearance)
@@ -539,14 +711,19 @@ class Motion:
             qs.append(q); prev = q
         if escaping:
             raise PlanningError(f"Cartesian path does not escape initial contact: {escaping}")
-        total_t = max(.2, np.linalg.norm(pos-p0)/speed, np.linalg.norm(rv)/.3)
+        if not execute:
+            return qs
+        total_t = max(.2, np.linalg.norm(pos-p0)/speed, np.linalg.norm(rv)/angular_speed)
         ticks = max(n, int(math.ceil(total_t/.01)))
         for k in range(1, ticks+1):
-            t = k/ticks*n
+            u = k/ticks
+            if smooth:
+                u = u*u*u*(10+u*(-15+6*u))
+            t = u*n
             i = min(int(t), n-1)
             f = t-i
             self._drive((1-f)*qs[i]+f*qs[i+1]); self.cell.tick()
-        for _ in range(30):
+        for _ in range(hold):
             self._drive(qs[-1]); self.cell.tick()
         return self.tool_pose()
 

@@ -141,7 +141,7 @@
       "target_pos_m": [
         0.028,
         0,
-        0.037
+        0.035
       ],
       "target_euler_xyz_deg": [
         0,
@@ -154,7 +154,7 @@
       "target_pos_m": [
         -0.06,
         0,
-        0.037
+        0.035
       ],
       "target_euler_xyz_deg": [
         0,
@@ -180,7 +180,7 @@
       "target_pos_m": [
         -0.045,
         0,
-        0.089
+        0.0865
       ],
       "target_euler_xyz_deg": [
         0,
@@ -193,7 +193,7 @@
       "target_pos_m": [
         0.105,
         0.035,
-        0.0772
+        0.07376
       ],
       "target_euler_xyz_deg": [
         90,
@@ -206,7 +206,7 @@
       "target_pos_m": [
         0.105,
         -0.031,
-        0.0772
+        0.07376
       ],
       "target_euler_xyz_deg": [
         90,
@@ -219,7 +219,7 @@
       "target_pos_m": [
         0.105,
         0,
-        0.12
+        0.1159
       ],
       "target_euler_xyz_deg": [
         0,
@@ -232,7 +232,7 @@
       "target_pos_m": [
         0.105,
         0,
-        0.123
+        0.1174
       ],
       "target_euler_xyz_deg": [
         0,
@@ -243,14 +243,14 @@
     "camera": {
       "kind": "camera",
       "target_pos_m": [
-        0.14,
+        0.143,
         0,
-        0.037
+        0.039
       ],
       "target_euler_xyz_deg": [
         0,
         0,
-        0
+        180
       ]
     },
     "prop_1": {
