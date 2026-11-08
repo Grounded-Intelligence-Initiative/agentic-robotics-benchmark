@@ -215,3 +215,7 @@ program's reading of the instruments: `review/observability.md`.
   charged. Harder shifts: three faults on every shift, two or three valves left out of place, wider demand steps (0.6-1.0
   m3/h) and draws, events at least 120 s apart; 8 hidden episodes (1200 s program time and 600 frames each; verify 6 h)
   on a fixed set selected as above; anchor 0.9779 / `full_at` 0.98 (was 0.965 / 0.92 on fresh draws).
+* v0.5.1 (2026-11-08, grader only): a process of the agent account that outlives the verify-start kill is recorded and
+  frozen, no longer a contract failure. In the separate verifier nothing of the agent's runs, and the image's
+  supervisord respawns the account's desktop as fast as it is killed: in the first Opus episode of v0.5 one respawned
+  desktop process zeroed the submission before any episode ran (that submission was graded again with this grader).

@@ -97,8 +97,14 @@ def _early_lockdown():
     if uid is not None and uid != 0:
         killed, left = lockdown.stop_and_kill_uid(uid, grace_s=8.0)
         out["agent_processes_killed"], out["agent_processes_left"] = float(killed), float(left)
+        # v0.5.1: a survivor is a statistic, not a contract failure. Verification is separate (task.toml): nothing of the
+        # agent's runs in this sandbox, and the image's supervisord respawns the account's desktop as fast as it is
+        # killed, so a process counted here is the image's own (2026-11-08: one respawned desktop process zeroed a
+        # submission before any episode ran). The freezer below keeps every process of the account stopped until the
+        # verdict is written, whatever the count.
         if left:
-            out["reasons"].append("%d process(es) of the agent account survived the kill at verify start" % left)
+            log("[grader] %d process(es) of the agent account (the image's respawned desktop) outlived the kill at verify start: "
+                "frozen until the verdict" % left)
     # the image's init respawns the agent account's desktop within seconds of the kill, and the respawned session runs
     # the account's autostart entries: every process of the account stays SIGSTOPped (polled every 0.1 s) until the
     # verdict is written
