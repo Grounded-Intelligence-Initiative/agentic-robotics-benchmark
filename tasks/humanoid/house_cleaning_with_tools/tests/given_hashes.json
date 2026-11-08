@@ -1,7 +1,7 @@
 {
- "given/cell/cell_api.md": "95c28663174480fe91a20c67fe0e2f022406407ed662e4c9ec3d988afdcba8f2",
- "given/cell/cell_manual.md": "57b55ed77864fc7f7f09177a66074c997839a817a4366d79d9925957072662d3",
- "given/cell/describe.json": "13f026ec43d5290351daa191011c4acd874ef525fb62b07928fcd24fb1bb325c",
+ "given/cell/cell_api.md": "023a965db12e210c147d30791d53184a9360f7eb7ae3af34861b1627c10b0534",
+ "given/cell/cell_manual.md": "219b92de329cdbae81715bdb9b0a4391dce0728ee24e158f4dca731b0f00d67e",
+ "given/cell/describe.json": "e89886ed6c0c1b427333d049317ecefca2d3e7f80bd496c315f18dbb39c9257e",
  "given/cell/survey/README.md": "ea566303e6f8efa0a607de3c478a49d6a87d869c1bcc3a76fc94c76dcc82b62d",
  "given/cell/survey/scene_a/ceiling_dining.json": "9df89d17fa438195a41900f4b089ad39f05015687b3f735822be7c16c1de4537",
  "given/cell/survey/scene_a/ceiling_dining_depth_mm.png": "1f3a144410ae55f153f933d902edc9d23143fbdfab3eb179ba67886e67f2db46",

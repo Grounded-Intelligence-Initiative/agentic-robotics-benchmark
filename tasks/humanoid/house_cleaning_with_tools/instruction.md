@@ -3,11 +3,12 @@
 You are the robot integrator of a home-cleaning service. A customer had a dinner for two in their studio apartment
 and has booked a clean-up; one Unitree G1 humanoid (29 DoF, Dex3-1 hands) is on site, just inside the door. Your job:
 write the program that makes the robot work through the customer's cleaning list below, using only what the robot can
-sense: its head camera, three ceiling cameras of the apartment, its joint encoders, its localisation and its hands'
-tactile load. The apartment's fixed furniture is surveyed exactly (`~/given/cell/cell_manual.md`); nothing else is
-given: where the litter, the dishes and the books lie, where and how big the grease spill is, where the crumbs are,
-which of the two bins is the recycling one, whether a lid is open or the water runs, how much soap or grease the sponge
-holds — all of that has to be seen in the camera images (and remembered). Every episode is a different mess, and
+sense: its head camera, three ceiling cameras of the apartment, its joint encoders and joint torque estimates, its
+localisation and its hands' tactile load. The apartment's fixed furniture is surveyed exactly
+(`~/given/cell/cell_manual.md`); nothing else is given: where the litter, the dishes and the books lie, where and how
+big the grease spill is, where the crumbs are, which of the two bins is the recycling one, whether a lid is open or the
+water runs, how much soap or grease the sponge holds — all of that has to be seen in the camera images (and
+remembered). Every episode is a different mess, and
 there is no practice cell: the program goes to the customer's site as it is, the way a cleaning service's robot does.
 
 ## The cleaning list
@@ -17,8 +18,8 @@ there is no practice cell: the program goes to the customer's site as it is, the
    against the west wall south of the kitchen (which one stands where varies). A lid opens by lifting its front tab;
    lifted past about 55 degrees it stays open, below that it falls shut.
 2. **Dishes to the dish tray.** The two plates and the two glasses from the dining table go onto the grey dish tray on
-   the kitchen counter south of the sink (on the tray or on a dish on it), unbroken: a dish that hits something hard
-   breaks.
+   the kitchen counter south of the sink (on the tray or on a dish on it), unbroken: a dish dropped onto something
+   hard, or crushed, breaks.
 3. **Books back on the shelf.** The two books on the dining table go into the top compartment of the bookshelf's
    west bay (north wall), east of the books already there, standing or lying.
 4. **The dining table degreased.** Take the grease spill off the dining table's top with the kitchen sponge (in its
@@ -108,7 +109,8 @@ your work: the run is then an infrastructure failure.
 
 - Images (camera frames) are meant to be processed by your program; look at the ones you need.
 - The survey of the fixed furniture, the camera calibrations, the robot's kinematics and joint angles are exact; the
-  localisation is slightly noisy; everything about the mess must be measured in each episode.
+  localisation and the joint torque estimates are slightly noisy; everything about the mess must be measured in each
+  episode.
 - Do not modify the given files in your home directory; the grader reads its own copies.
 - Environment facts (harness limits): a single tool call whose input runs above roughly 25-30k tokens is dropped by the
   harness (it is never executed and no error comes back), and a response that reaches the 64k output-token limit is

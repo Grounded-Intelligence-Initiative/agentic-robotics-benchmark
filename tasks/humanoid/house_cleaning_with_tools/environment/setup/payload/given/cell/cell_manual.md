@@ -101,7 +101,10 @@ object's grasp features:
 * **lumps** (napkins, the apple core, the soap pump's head): the grasp site within 12 mm of its bulk (napkins 30 mm,
   the apple core 30 mm, the pump's head 40 mm from its middle).
 
-A loose object is then held rigidly at the relative pose of that instant until the hand opens or the grip slips; a
+The fingers close on what the hand takes hold of and stop where they meet it or what it rests on (into the sponge or a
+napkin they sink a few millimetres); a hand that closes on nothing closes fully. The fingers' joint angles
+(`get_state()`) show the hand's shape. A loose object is then held rigidly at the relative pose of that instant until
+the hand opens or the grip slips; a
 fixture's moving part (a lid's tab, the faucet's lever, the pump's head) is held at that point only (it turns about its
 hinge in the hand). A closed hand that found nothing holds nothing (open and close again). Grip limits: an object held
 by one hand slips when the hand's load exceeds **30 N** or its torque about the grasp site exceeds **5 N m** (**12 N m**
@@ -131,8 +134,18 @@ it holds nothing).
 ## 6. Sensors
 
 * `get_state()`: the localised base pose [x, y, yaw] (independent noise of about 3 mm and 0.2 deg per reading), the
-  stand height, whether the base is moving, all waist, arm and hand joint angles (exact encoders), per hand `closed`,
-  `tactile_N`, the grasp site's pose in the robot's base frame (exact kinematics) and the IK residual of a pose target.
+  stand height, whether the base is moving, all waist, arm and hand joint angles (exact encoders), the waist's and the
+  arms' joint torque estimates (`tau_est`, below), per hand `closed`, `tactile_N`, the grasp site's pose in the robot's
+  base frame (exact kinematics) and the IK residual of a pose target.
+* **Joint torque estimates** (`tau_est`, N m, the joint's sign convention), as the G1's low-level state reports them:
+  each motor's torque estimated from its current, at every reading. It is what the drive delivers: the torque holding
+  the robot's own links up (the gravity feed-forward), the payload, the arm's acceleration, and the load of anything
+  the arm or the torso presses on or is pressed by (a contact far from the joint's axis shows; a push along a link
+  straight through a joint does not). Accuracy, as the motors' data sheet gives it: a calibration offset of up to a few
+  percent of the joint's torque limit and a scale error of up to about 5 %, both constant through an episode (read
+  them at rest), plus reading-to-reading noise of about 0.5 % of the limit. The torque limits are in `describe()`
+  (`robot.tau_est`). The legs' and the hands' motors are not reported (the legs carry no load in the cell; the hands'
+  load is `tactile_N`).
 * Cameras (`get_camera`): `ceiling_kitchen`, `ceiling_dining` and `ceiling_living`, fixed RGB-D cameras 960 x 720
   (vertical field of view 72 deg) whose exact poses and intrinsics `describe()` gives; `head`, 640 x 480 (58 deg), whose
   pose in the room at capture time comes with each frame (composed from the localised base pose and the exact
@@ -190,9 +203,10 @@ never reported, only drawn in the camera images.
   down on crumbs only covers them); they stay in the pan as it is carried, unless it is tipped steeply (past about
   55 deg), when they pour out over its lowest edge (normally the lip) and fall. A crumb that falls into an open bin
   stays there; onto a closed lid it stays on the lid.
-* **Dishes.** The plates and the glasses break when they hit something hard: set them down slowly, never drop them (a
-  fall of a few centimetres onto a hard surface can break them). A broken dish earns nothing, and the customer charges
-  for it (the instruction's scoring).
+* **Dishes.** The plates (porcelain) and the glasses (soda-lime tumblers) are ordinary tableware: one survives a fall
+  onto a hard surface of up to about 30 cm and a steady load of a few hundred newtons (about 600 N on a plate, 400 N
+  on a glass); a harder fall or a heavier load breaks it. A broken dish earns nothing, and the customer charges for it
+  (the instruction's scoring).
 
 ## 9. Safety (a violation makes the episode score 0; the episode goes on)
 

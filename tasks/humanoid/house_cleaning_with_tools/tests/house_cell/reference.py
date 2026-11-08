@@ -8,7 +8,8 @@ order a cleaner works:
      general-waste bin;
   3. clear the dining table: the plates and the glasses onto the dish tray by the sink, the can into the recycling
      bin, the napkins into the general-waste bin, the two books flat into the bookshelf's target compartment;
-  4. degrease the table: the sponge from its tray, the water on, soap from the pump, wipe the stain in rows from
+  4. degrease the table: the sponge from its tray (from the stance where the arm reaches it in its most natural
+     posture: posture_cost), the water on, soap from the pump, wipe the stain in rows from
      both long sides of the table, rinsing and re-soaping as the sponge loads up, until it is clean; rinse the
      sponge; push the crumbs left on the table off its long edges; rinse it again, back into its tray, the water off;
   5. sweep, group of crumbs by group: the dustpan set down by them, the broom from its clip, strokes into the pan,
@@ -840,10 +841,28 @@ class Reference:
         q0 = self.d.qpos[r.arm_q[side]].copy()
         home = np.array(HOME_Q[side])
         sols = []
-        for sq in [q0, home] + [np.array(v, float) for v in REACH_SEEDS[side]]:
-            q, ep, er = st.solve(side, tgt, R, sq, iters=120, quick=40, w_home=0.02)
-            if ep < 0.01 and er < 0.08:
-                sols.append((float(np.linalg.norm(q - home)), q))
+        if name == "sponge":
+            # the sponge (held from above, tilted towards it) in front of the chest may leave the arm raised with the
+            # wrist at its limits: the carry point, as high and as close, in the most natural arm posture of a few
+            # (a little nearer the middle), the sponge turned about the vertical if need be (posture_cost first,
+            # then nearness to home)
+            lat2 = 0.12 if side == "left" else -0.12
+            for fwd, la, zz in ((0.30, lat, z), (0.25, lat2, z), (0.30, lat2, z)):
+                t2 = np.array([b[0], b[1], 0.0]) + _Rz(b[2]) @ np.array([fwd, la, 0.0])
+                t2[2] = zz
+                for dyaw in (0.0, -0.5, 0.5, -1.0, 1.0):
+                    Rt = R if dyaw == 0.0 else _Rz(dyaw) @ R
+                    st.set_state((b[0], b[1], b[2]), h, pitch)
+                    for sq in [q0, home] + [np.array(v, float) for v in REACH_SEEDS[side]]:
+                        q, ep, er = st.solve(side, t2, Rt, sq, iters=120, quick=40, w_home=0.02)
+                        if ep < 0.01 and er < 0.08:
+                            sols.append((round(posture_cost(self, side, q), 2), float(np.linalg.norm(q - home)), q))
+            sols = [(c_ * 10.0 + d_, q) for c_, d_, q in sols]
+        else:
+            for sq in [q0, home] + [np.array(v, float) for v in REACH_SEEDS[side]]:
+                q, ep, er = st.solve(side, tgt, R, sq, iters=120, quick=40, w_home=0.02)
+                if ep < 0.01 and er < 0.08:
+                    sols.append((float(np.linalg.norm(q - home)), q))
         for _, q1 in sorted(sols, key=lambda t: t[0]):
             st.set_state((b[0], b[1], b[2]), h, pitch)
             st.chk.qpos[r.arm_q[side]] = q0
@@ -1481,6 +1500,25 @@ class Stance:
             self._ignore = {(a_, b_) for a_, b_, _ in self.collisions(held=[holding] if holding else None)}
         if not (transit and poses):
             return self._follow(side, poses, q0, holding, grip_rel, allow, iters)
+        # (0) a planner's preferred posture (prefer_seeds): a checked joint-space move to the first pose solved from
+        # it, so the arm keeps that posture's branch
+        for sq in (getattr(self, "prefer_seeds", None) or []):
+            self.set_state(base, h, pitch)
+            self.chk.qpos[r.arm_q[side]] = q0
+            q1, ep, er = self.solve(side, poses[0][0], poses[0][1], np.array(sq, float), iters=150, quick=40)
+            if ep > 0.004 or (poses[0][1] is not None and er > 0.03):
+                continue
+            self.chk.qpos[r.arm_q[side]] = q0
+            path, why = self._joint_line(side, q0, q1, holding, grip_rel, ())
+            if path is None:
+                continue
+            ok, worst2, out, why = self._follow(side, poses[1:], q1, holding, grip_rel, allow, iters,
+                                                prev=(np.asarray(poses[0][0], float), poses[0][1]))
+            if ok:
+                self.n_via = len(path) - 1
+                return True, max(worst2, ep), path + out, None
+            self.set_state(base, h, pitch)
+            self.chk.qpos[r.arm_q[side]] = q0
         # (1) the hand along a straight line (and a steady turn) from where it is to the first pose
         p0, R0 = self.site_pose(side, q0)
         p1, R1 = poses[0]
@@ -1726,6 +1764,83 @@ def _grasp_frames(ref, name, side, base0):
     return out
 
 
+def posture_cost(ref, side, q):
+    """How unnatural an arm posture is (0: fine): joints closer than 0.3 rad to a limit, the elbow raised above the
+    shoulder (the arm reaching over the head)."""
+    r = ref.c.robot
+    lo, hi = r.arm_lo[side], r.arm_hi[side]
+    margin = np.minimum(q - lo, hi - q)
+    cost = 50.0 * float(np.sum(np.maximum(0.0, 0.3 - margin) ** 2))
+    st = ref.stance
+    st.chk.qpos[r.arm_q[side]] = q
+    mujoco.mj_kinematics(st.m, st.chk)
+    B = mujoco.mjtObj.mjOBJ_BODY
+    z_sh = st.chk.xpos[mujoco.mj_name2id(st.m, B, f"{r.name}/{side}_shoulder_roll_link")][2]
+    z_el = st.chk.xpos[mujoco.mj_name2id(st.m, B, f"{r.name}/{side}_elbow_link")][2]
+    return cost + 20.0 * max(0.0, float(z_el - z_sh) + 0.05)
+
+
+def ranked_stances(ref, name, side, base0, frames, pitches=(0.30, 0.45, 0.20, 0.60), heights=(0.79, 0.70)):
+    """(cost, stance (x, y, yaw, h, pitch), frame, arm joints) for taking `name` by the grasp frames from stances
+    beside base0 (the robot up to 24 cm to either side, so the arm can reach straight or across the body), feasible
+    ones only, the most natural arm posture (posture_cost) first."""
+    st, r = ref.stance, ref.c.robot
+    yaw = base0[2]
+    c_, s_ = math.cos(yaw), math.sin(yaw)
+    out = []
+    for lat in (0.0, 0.08, -0.08, 0.16, -0.16, 0.24, -0.24):
+        for pitch in pitches:
+            for h in heights:
+                base = (base0[0] - lat * s_, base0[1] + lat * c_, yaw)
+                st.set_state(base, h, pitch)
+                for g, a, Rh in frames:
+                    best = None
+                    for sq in [np.array(ARM_HOME[side], float)] + [np.array(v, float) for v in REACH_SEEDS[side]]:
+                        q, ep, er = st.solve(side, g, Rh, sq, iters=120, quick=40, w_home=0.02)
+                        if ep > 0.003 or er > 0.03:
+                            continue
+                        cost = posture_cost(ref, side, q)
+                        if best is None or cost < best[0]:
+                            best = (cost, q)
+                    if best is None:
+                        continue
+                    st.chk.qpos[r.arm_q[side]] = best[1]
+                    if st.collisions():
+                        continue
+                    out.append((best[0], (base[0], base[1], base[2], h, pitch), (g, a, Rh), best[1]))
+    out.sort(key=lambda t: t[0])
+    return out
+
+
+def _take_natural(ref, name, side, base0, lift, tries=6):
+    """take() from the stance where the arm reaches the grasp in the most natural posture (ranked_stances): the
+    stance search from each ranked stance in turn, the approach led by that posture (a joint-space move to it first,
+    so the arm keeps its branch; the path from the present arm configuration may otherwise end with the elbow over
+    the head). None when no ranked stance works (take() goes on as before)."""
+    frames = _grasp_frames(ref, name, side, base0)
+    ranked = ranked_stances(ref, name, side, base0, frames)
+    for cost, (x, y, yaw, h, pitch), (g, a, Rh), q_nat in ranked[:tries]:
+        pre = g - a * 0.09 + np.array([0.0, 0.0, 0.03])
+        fwd = np.array([math.cos(yaw), math.sin(yaw), 0.0])
+        poses = [(pre + (g - pre) * k / 3.0, Rh) for k in range(0, 4)]
+        poses += [(g + np.array([0.0, 0.0, lift * k / 3.0]), Rh) for k in range(1, 4)]
+        up = g + np.array([0.0, 0.0, lift])
+        poses += [(up - fwd * 0.05 * k + np.array([0.0, 0.0, 0.02 * k]), Rh) for k in range(1, 3)]
+        ref.stance.prefer_seeds = [q_nat]          # (also for _take_go's re-plan where the robot then stands)
+        try:
+            stance, sol = stance_search(ref, side, poses, (x, y, yaw), (h,), (pitch,),
+                                        offsets=[(0.0, 0.0), (-0.03, 0.0), (0.03, 0.0)], passes=(True,))
+            if stance is not None:
+                ref.log("[ref] take %s: natural posture (cost %.3f), stance (%.2f, %.2f, %.2f) h %.2f pitch %.2f"
+                        % (name, cost, stance[0], stance[1], stance[2], stance[3], stance[4]))
+                return _take_go(ref, name, side, sol, poses, g, stance, False)
+        finally:
+            ref.stance.prefer_seeds = None
+        ref.take_why = sol
+    ref.log("[ref] take %s: no natural posture (%d ranked stances)" % (name, len(ranked)))
+    return None
+
+
 def take(ref, name, side, lift=0.12):
     """Pick `name` up with `side`'s hand from where it lies, by a planned stance. Returns True when held."""
     p, _ = ref.pose(name)
@@ -1739,6 +1854,12 @@ def take(ref, name, side, lift=0.12):
         ref.log("[ref] take %s: the %s hand still holds %s" % (name, side, ref.held[side]))
         return False
     qs, why_last = None, None
+    if name == "sponge" and surf == "counter":
+        # the sponge from its tray: from the stance of the most natural arm posture (the nominal stance in front of the
+        # tray leaves the arm reaching over the head)
+        got = _take_natural(ref, name, side, nom[0], lift)
+        if got is not None:
+            return got
     # from the nearer long side of the dining table first, then (a glass or a can far in) from the other one
     noms = [nom]
     if surf == "dining_top" and O.LOOSE[name][0] != "book":

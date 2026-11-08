@@ -9,7 +9,8 @@
 # of the hands' reach); and the tools go back: the sponge rinsed in its tray, the broom and the dustpan in their wall
 # clips, the faucet off, the lids closed. Where everything lies, the grease stain, the crumbs, which bin stands where
 # and the robot's start pose differ every episode. The agent delivers clean.py (solve(cell): a camera-only program;
-# three ceiling RGB-D cameras and the robot's head RGB-D camera, noisy localisation, joint encoders and tactile load;
+# three ceiling RGB-D cameras and the robot's head RGB-D camera, noisy localisation, joint encoders, joint torque
+# estimates and tactile load;
 # no object poses, no object identities, no grease, crumb or sponge states on the wire), run as an unprivileged account
 # on the 3 scenes of a fixed hidden set (tests/hidden/seeds.json) of the grader's MuJoCo cell over a JSON-lines RPC, in
 # a separate verifier sandbox that holds the submission and nothing else of the agent's. Score = the mean over the

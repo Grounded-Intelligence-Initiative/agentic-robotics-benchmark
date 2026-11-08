@@ -8,7 +8,7 @@ Per robot, each 10 ms control tick:
   * arms: per arm either joint targets or a grasp-site pose target (room frame); a pose target goes through the cell's
     6-DoF damped-least-squares IK every tick from the measured state (a target near the previous one keeps the arm's
     configuration; a far one gets a seeded global solve); joint targets are rate-limited;
-  * hands: open / close synergies.
+  * hands: open / close synergies (a hand that holds something closes on it: physics.Grips.hand_shape).
 """
 
 from __future__ import annotations
@@ -111,6 +111,7 @@ class RobotController:
         self._group = 0
         self.arm_ik_err = {s: (0.0, 0.0) for s in SIDES}
         self.hand_cmd = {s: "open" for s in SIDES}
+        self.hand_shape = {s: None for s in SIDES}     # a holding hand's finger targets (physics.Grips.hand_shape)
         if d is not None:
             for s in SIDES:
                 self.arm[s] = d.qpos[r.arm_q[s]].copy()
@@ -323,4 +324,7 @@ class RobotController:
             self.arm[s], self.arm_vel[s] = approach(self.arm[s], self.arm_cmd[s], self.arm_vel[s], ARM_RATE, ARM_ACC,
                                                     per_axis=True)
             d.ctrl[r.arm_act[s]] = self.arm[s]
-            d.ctrl[r.hand_act[s]] = HAND_CLOSED[s] if self.hand_cmd[s] == "close" else HAND_OPEN[s]
+            if self.hand_cmd[s] == "close":
+                d.ctrl[r.hand_act[s]] = HAND_CLOSED[s] if self.hand_shape[s] is None else self.hand_shape[s]
+            else:
+                d.ctrl[r.hand_act[s]] = HAND_OPEN[s]

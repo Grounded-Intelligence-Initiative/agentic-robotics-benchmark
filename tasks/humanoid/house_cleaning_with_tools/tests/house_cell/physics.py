@@ -25,7 +25,7 @@ import numpy as np
 
 from . import objects as O
 from . import room as RM
-from .robot import FLOOR, HELD, OBJ, WORLD
+from .robot import FLOOR, HAND_CLOSED, HAND_JOINTS, HAND_OPEN, HELD, OBJ, ROBOT, WORLD
 
 TICK = 0.01
 
@@ -41,13 +41,34 @@ GRIP_LUMP = 0.012                  # m: ... of a lump's surface
 GRIP_AXIS_COS = math.cos(math.radians(35.0))
 GRIP_ACROSS_SIN = math.sin(math.radians(35.0))
 
+# the hand's shape on what it holds: each finger (the thumb, the middle and the index finger) closes along the pinch
+# synergy until it meets the held object's surface (into a soft one it sinks by SOFT_INDENT: the sponge's foam, a
+# crumpled napkin) or anything else solid within SHAPE_REACH of the grasp site (the surface the object lies on, a
+# tray's rim), so the fingers rest on surfaces instead of passing through them; a hand that closes on nothing closes
+# fully. The hands carry no contact (the grip rule holds the object): this is their drawn and measured shape.
+FINGERS = {"thumb": ("thumb_1", "thumb_2"), "middle": ("middle_0", "middle_1"), "index": ("index_0", "index_1")}
+SOFT_INDENT = {"sponge": 0.004, "napkin": 0.006}
+RIGID_INDENT = 0.0005
+CLOSE_STEPS = 32
+SHAPE_REACH = 0.25
+
 CLIP_TILT_COS = math.cos(math.radians(12.0))
 CLIP_SOLREF = (0.02, 1.0)
 
 LID_SPRING = 0.35                  # N m: the hold-open spring beyond RM.LID_HOLD
 SAFETY = {"robot_contact_N": 150.0, "robot_contact_ticks": 20, "throw_speed": 1.5, "strike_speed": 4.0,
           "strike_grace_s": 2.0}
-FRAGILE = {"impact_speed": 1.2, "force_N": 60.0}
+# Ordinary tableware (the cell manual's section 8 states it at a data sheet's level): a porcelain dinner plate or a
+# soda-lime tumbler survives a fall onto a hard surface of up to about 30 cm (an impact at up to about 2.5 m/s; a
+# harder one chips or breaks it) and a steady load of several hundred newtons (a stack of 40 plates weighs about 180 N, a person
+# leaning on a plate lying flat about 300 N); beyond either it breaks. An impact is measured by the kinetic energy
+# (moving and turning) the dish loses while it touches something within IMPACT_TICKS (the length of an impact on the
+# cell's contacts), as the speed of a fall that carries that energy: sqrt(2 x energy lost / mass) (a dish striking
+# flat loses its whole fall; one striking with its rim first loses part, and the rest when it slaps down); the load
+# must last LOAD_TICKS (a crush, not the force spike of an impact, which the energy rule judges).
+FRAGILE = {"impact_speed": 2.5, "force_N": {"plate": 600.0, "glass": 400.0}}
+IMPACT_TICKS = 4
+LOAD_TICKS = 5
 
 
 def _set_weld(m, d, eq, relpos, relR, solref, anchor=None):
@@ -149,6 +170,22 @@ class Grips:
                                 and (m.geom_contype[g] or m.geom_conaffinity[g])] for n in self.names if n in O.LOOSE}
         self.saved_bits = {n: (m.geom_contype[gs].copy(), m.geom_conaffinity[gs].copy())
                            for n, gs in self.loose_geoms.items()}
+        # the hand's shape: the fingers' drawn meshes, the colliders of everything a hand can take hold of
+        B = mujoco.mjtObj.mjOBJ_BODY
+        self.finger_geoms, self.finger_idx = {}, {}
+        for sd in ("left", "right"):
+            for f, links in FINGERS.items():
+                bodies = {mujoco.mj_name2id(m, B, f"{robot.name}/{sd}_hand_{w}_link") for w in links}
+                self.finger_geoms[(sd, f)] = [g for g in range(m.ngeom) if int(m.geom_bodyid[g]) in bodies
+                                              and m.geom_type[g] == mujoco.mjtGeom.mjGEOM_MESH]
+                self.finger_idx[f] = [HAND_JOINTS.index(w) for w in links]
+        self.part_geoms = {n: [g for g in range(m.ngeom) if m.geom_bodyid[g] in self._subtree(m, self.body[n])
+                               and (m.geom_contype[g] or m.geom_conaffinity[g])] for n in self.names}
+        self.kind = {n: (O.LOOSE[n][0] if n in O.LOOSE else "fixture") for n in self.names}
+        self.solid = [g for g in range(m.ngeom) if (m.geom_contype[g] or m.geom_conaffinity[g])
+                      and not (m.geom_contype[g] & ROBOT)]
+        self.dk = mujoco.MjData(m)
+        self._fromto = np.zeros(6)
 
     @staticmethod
     def _subtree(m, root):
@@ -224,7 +261,7 @@ class Grips:
             p, R = rel_pose(self.d, hb, bo)
             anchor = self.d.xmat[bo].reshape(3, 3).T @ (site - self.d.xpos[bo])
             _set_weld(self.m, self.d, eq, p, R, GRIP_SOLREF, anchor=anchor)
-        st.update(obj=name, eq=eq, over=0)
+        st.update(obj=name, eq=eq, over=0, shape=self.hand_shape(side, name))
         self._set_held(name, True)
         self.events.append((round(t, 3), side, "grip", name))
         for cb in self.on_engage:
@@ -236,11 +273,70 @@ class Grips:
         if st["eq"] >= 0:
             self.d.eq_active[st["eq"]] = 0
         self.events.append((round(t, 3), side, why, name))
-        st.update(obj=None, eq=-1, over=0, load=0.0)
+        st.update(obj=None, eq=-1, over=0, load=0.0, shape=None)
         if name is not None and name not in self.held():
             self._set_held(name, False)
         for cb in self.on_release:
             cb(side, name, t, why)
+
+    def hand_shape(self, side, name, qpos=None):
+        """The hand's finger targets on `name` (see FINGERS): per finger, the closing fraction at which it first sinks
+        into the object's colliders by more than the object's indentation, or into anything else solid nearby, found
+        on a scratch copy of the present state (or of `qpos`, a planner's); the fingers start from the open hand. A
+        finger that already intersects something open takes the fraction of the least intersection."""
+        m, dk = self.m, self.dk
+        dk.qpos[:] = self.d.qpos if qpos is None else qpos
+        adr = self.r.hand_q[side]
+        qo, qc = np.array(HAND_OPEN[side], float), np.array(HAND_CLOSED[side], float)
+        dk.qpos[adr] = qo
+        mujoco.mj_kinematics(m, dk)
+        site = dk.site_xpos[self.r.grasp_site[side]].copy()
+        out = qc.copy()
+        part = self.part_geoms[name]
+        ps = set(part)
+        near = [g for g in self.solid if g not in ps and (m.geom_type[g] == mujoco.mjtGeom.mjGEOM_PLANE or
+                float(np.linalg.norm(dk.geom_xpos[g] - site)) < float(m.geom_rbound[g]) + SHAPE_REACH)]
+        indent = SOFT_INDENT.get(self.kind[name], RIGID_INDENT)
+        ft = self._fromto
+        for f, idx in self.finger_idx.items():
+            geoms = self.finger_geoms[(side, f)]
+
+            def excess(u):
+                q = qo.copy()
+                q[idx] = qo[idx] + u * (qc[idx] - qo[idx])
+                dk.qpos[adr] = q
+                mujoco.mj_kinematics(m, dk)
+                e = max(-mujoco.mj_geomDistance(m, dk, g, h, 0.05, ft) for g in geoms for h in part) - indent
+                for h in near:
+                    for g in geoms:
+                        e = max(e, -mujoco.mj_geomDistance(m, dk, g, h, 0.05, ft) - RIGID_INDENT)
+                return e
+
+            us = np.linspace(0.0, 1.0, CLOSE_STEPS + 1)
+            e0 = excess(0.0)
+            if e0 > 0.0:
+                es = [e0] + [excess(u) for u in us[1:]]
+                u_stop = float(us[int(np.argmin(es))])
+            else:
+                u_stop = 1.0
+                for k in range(1, len(us)):
+                    if excess(us[k]) > 0.0:
+                        lo, hi = float(us[k - 1]), float(us[k])
+                        for _ in range(6):
+                            mid = 0.5 * (lo + hi)
+                            if excess(mid) > 0.0:
+                                hi = mid
+                            else:
+                                lo = mid
+                        u_stop = lo
+                        break
+            out[idx] = qo[idx] + u_stop * (qc[idx] - qo[idx])
+        return out
+
+    def shape(self, side):
+        """The finger targets of a hand that holds something (None: the plain open / closed synergy)."""
+        st = self.state[side]
+        return st.get("shape") if st["obj"] is not None else None
 
     def holding(self, side):
         return self.state[side]["obj"]
@@ -388,16 +484,31 @@ class Mechanisms:
 
 
 class Fragile:
-    """Plates and glasses break when they hit something hard (a speed drop of 1.2 m/s within a tick while touching
-    something, or a contact force above 60 N)."""
+    """Plates and glasses break when they strike something hard (an impact taking more than the kinetic energy of a
+    fall at 2.5 m/s: about 30 cm) or are crushed (a contact load above their strength for LOAD_TICKS); a held dish is
+    judged once it is let go of."""
 
     def __init__(self, m, d):
         self.m, self.d = m, d
         self.body = {n: mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, n) for n in O.FRAGILE}
         self.of_body = {v: k for k, v in self.body.items()}
-        self.speed = {n: 0.0 for n in O.FRAGILE}
+        self.strength = {n: FRAGILE["force_N"][O.LOOSE[n][0]] for n in O.FRAGILE}
+        self.mass = {n: float(m.body_mass[b]) for n, b in self.body.items()}
+        self.energy = {n: [] for n in O.FRAGILE}         # the kinetic energy (J) of the last IMPACT_TICKS ticks
+        self.loaded = {n: 0 for n in O.FRAGILE}          # consecutive ticks above the dish's strength
         self.broken = {}
         self.peak_force = {n: 0.0 for n in O.FRAGILE}
+        self.peak_impact = {n: 0.0 for n in O.FRAGILE}   # m/s: the hardest impact so far, as a fall speed
+
+    def _kinetic(self, b):
+        m, d = self.m, self.d
+        v6 = np.zeros(6)
+        mujoco.mj_objectVelocity(m, d, mujoco.mjtObj.mjOBJ_BODY, b, v6, 0)
+        w, v0 = v6[:3], v6[3:]
+        vc = v0 + np.cross(w, d.xipos[b] - d.xpos[b])            # the centre of mass's velocity
+        Ri = d.ximat[b].reshape(3, 3)
+        wl = Ri.T @ w
+        return 0.5 * float(m.body_mass[b]) * float(vc @ vc) + 0.5 * float(wl @ (m.body_inertia[b] * wl))
 
     def tick(self, t, held):
         m, d = self.m, self.d
@@ -411,17 +522,29 @@ class Fragile:
                     touching.add(n)
                     mujoco.mj_contactForce(m, d, i, f6)
                     force[n] = force.get(n, 0.0) + abs(float(f6[0]))
-        v = np.zeros(6)
         for n, b in self.body.items():
-            mujoco.mj_objectVelocity(m, d, mujoco.mjtObj.mjOBJ_BODY, b, v, 0)
-            sp = float(np.linalg.norm(v[3:]))
             f = force.get(n, 0.0)
             self.peak_force[n] = max(self.peak_force[n], f)
-            if n not in self.broken and n not in held:
-                if (n in touching and self.speed[n] - sp > FRAGILE["impact_speed"]) or f > FRAGILE["force_N"]:
-                    self.broken[n] = {"t": round(t, 3), "speed_before": round(self.speed[n], 3),
+            hist = self.energy[n]
+            if n in held:
+                hist.clear()
+                self.loaded[n] = 0
+                continue
+            e = self._kinetic(b)
+            self.loaded[n] = self.loaded[n] + 1 if f > self.strength[n] else 0
+            lost = max(0.0, max(hist) - e) if (hist and n in touching) else 0.0
+            v_eq = math.sqrt(2.0 * lost / self.mass[n])
+            self.peak_impact[n] = max(self.peak_impact[n], v_eq)
+            if n not in self.broken:
+                if v_eq > FRAGILE["impact_speed"]:
+                    self.broken[n] = {"t": round(t, 3), "why": "impact", "impact_m_s": round(v_eq, 3),
                                       "force_N": round(f, 1)}
-            self.speed[n] = sp
+                elif self.loaded[n] >= LOAD_TICKS:
+                    self.broken[n] = {"t": round(t, 3), "why": "load", "impact_m_s": round(v_eq, 3),
+                                      "force_N": round(f, 1)}
+            hist.append(e)
+            if len(hist) > IMPACT_TICKS:
+                hist.pop(0)
 
 
 class Safety:

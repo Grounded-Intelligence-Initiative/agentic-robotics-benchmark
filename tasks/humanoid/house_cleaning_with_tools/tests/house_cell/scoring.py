@@ -174,6 +174,8 @@ def score_cell(cell) -> dict:
         "grip_events": [list(e) for e in cell.grips.events][:400],
         "clip_events": [list(e) for e in cell.clips.events][:100],
         "broken": dict(cell.fragile.broken),
+        "dish_peaks": {n: {"impact_m_s": round(cell.fragile.peak_impact[n], 3),
+                           "force_N": round(cell.fragile.peak_force[n], 1)} for n in O.DISHES},
         "safety_ok": cell.safety.ok,
         "violations": list(cell.safety.violations),
         "safety_peaks": dict(cell.safety.peaks),
