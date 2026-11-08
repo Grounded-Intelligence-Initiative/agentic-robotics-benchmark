@@ -1,9 +1,15 @@
 # AGIPIX-derived CAD task
 
 Upstream: https://github.com/SasaKuruppuarachchi/agipix
-Commit: 147a736b9fea7ac0e8d08c9a5fb0b90e5baa224a
+Commit: 147a736b9fea7ac0e8d08c9a5fb0b90e5baa224a (CC0-1.0)
 
-The three principal stock profiles are reconstructed from horizontal faces of the published body.stl (metres converted to mm), then modified. Custom mounts and fictional vendor components are benchmark-authored. This is a modified unit, not a manufacturing-certified replica of the released hardware. The upstream STL is not watertight and is not used as the scoring solid.
+The repository's `cad/README.md` links the public Autodesk share https://a360.co/4gY1h8M (design `Agipix_v2`,
+version 2). Its STEP export, `Agipix_v2_original.stp` (106,421,450 bytes, sha256
+`f13c51d63c1372c830553803be94ee616bfabfc8cfd1cc4d19981156e7ec878f`), is this task's ground truth, unchanged: the reference
+parts (`reference/parts/Pnn.brep`) are its manufactured solids at their original placements, and the purchased
+components' vendor files (the task image's payload, pinned in `reference/purchased_pins.json`) are its purchased solids,
+each type in a local frame. The grouping of the 132 source solids into made parts, purchased modules and out-of-scope
+hardware follows the upstream bill of materials and `cad/Fab`; no geometry was added, removed or redesigned.
 
 Upstream licence follows verbatim:
 

@@ -1,4 +1,5 @@
-"""Verify-start isolation and unprivileged native CAD extraction, adapted from the arm task."""
+"""Verify-start isolation, the unprivileged native CAD extraction and the grading child (stdlib only; adapted from the
+arm tasks: robotic_arm_cad_design_from_photos, bimanual_cad_design_from_photos)."""
 import json
 import os
 import pwd
@@ -19,6 +20,7 @@ SNAP_ROOT = os.environ.get("ARB_SNAPSHOT_ROOT", "/opt/arb-verify")
 SNAPSHOT = os.path.join(SNAP_ROOT, "submission")
 LATE_GATE_MAX_GAP_S = 600.0
 FREECADCMD = os.environ.get("ARB_FREECADCMD", "/opt/freecad/usr/bin/freecadcmd")
+SYSTEM_PATH = "/usr/sbin:/usr/bin:/sbin:/bin"
 EXTRACT_USER = "nobody"
 DOCUMENT = "drone.FCStd"
 MCP_TOOL_PREFIX = "mcp__freecad__"
@@ -82,9 +84,12 @@ def _submission_root_ok():
 
 
 def _early_lockdown(freezer=None):
+    """Record the stage upload time, stop and kill every process of the agent account (in a separate verifier, the
+    image's own desktop), freeze the account, lock the stage, snapshot the submission into a root-only folder and count
+    the entries written after the stage upload began (the late-write gate)."""
     out = {"agent_processes_killed": 0.0, "agent_processes_left": 0.0, "stage_locked": 0.0, "stage_parent_locked": 0.0,
-           "submission_late_writes": 0.0, "late_write_gate_active": 0.0, "submission_snapshot": 0.0, "submission_root_rejected": 0.0,
-           "saved": None, "parent": None, "reasons": [], "t_ref": None}
+           "submission_late_writes": 0.0, "late_write_gate_active": 0.0, "submission_snapshot": 0.0,
+           "submission_root_rejected": 0.0, "saved": None, "parent": None, "reasons": [], "t_ref": None}
     root_ok, why = _submission_root_ok()
     if not root_ok:
         out["submission_root_rejected"] = 1.0
@@ -186,7 +191,8 @@ def find_document(sub_dir):
 
 
 def extract(doc_path, timeout_s, stats):
-    """fcstd_extract.py under freecadcmd as an unprivileged account, in a private work folder; returns that folder."""
+    """fcstd_extract.py under freecadcmd as an unprivileged account, in a private work folder, with a time limit; returns
+    (that folder's output, the reader's last words)."""
     work = tempfile.mkdtemp(prefix="arb_extract_")
     os.makedirs(os.path.join(work, "home"))
     for src, name in ((doc_path, "doc.FCStd"), (os.path.join(STAGE_DIR, "fcstd_extract.py"), "fcstd_extract.py")):
@@ -195,7 +201,7 @@ def extract(doc_path, timeout_s, stats):
         os.path.join(work, "doc.FCStd"), os.path.join(work, "out"), os.path.join(work, "fcstd_extract.py")))
     env = {"HOME": os.path.join(work, "home"), "XDG_CONFIG_HOME": os.path.join(work, "home", ".config"),
            "XDG_CACHE_HOME": os.path.join(work, "home", ".cache"), "XDG_DATA_HOME": os.path.join(work, "home", ".local", "share"),
-           "PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "QT_QPA_PLATFORM": "offscreen"}
+           "PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "QT_QPA_PLATFORM": "offscreen", "OMP_NUM_THREADS": "1"}
     argv = [FREECADCMD, "-c", cmd_py]
     if os.getuid() == 0:
         uid = pwd.getpwnam(EXTRACT_USER)
@@ -203,7 +209,7 @@ def extract(doc_path, timeout_s, stats):
             for n in [dirpath] + [os.path.join(dirpath, f) for f in dirnames + filenames]:
                 os.chown(n, uid.pw_uid, uid.pw_gid)
         os.chmod(work, 0o700)
-        runuser = shutil.which("runuser", path="/usr/sbin:/usr/bin:/sbin:/bin") or "/usr/sbin/runuser"
+        runuser = shutil.which("runuser", path=SYSTEM_PATH) or "/usr/sbin/runuser"
         # runuser resets HOME to the account's (nobody: /nonexistent); FreeCAD needs a writable one for its settings
         argv = [runuser, "-u", EXTRACT_USER, "--", "/usr/bin/env"] + ["%s=%s" % kv for kv in sorted(env.items())] + argv
     t = time.time()
@@ -216,3 +222,29 @@ def extract(doc_path, timeout_s, stats):
         tail = "timed out after %d s" % timeout_s
     stats["extract_s"] = time.time() - t
     return os.path.join(work, "out"), tail
+
+
+def grade_child(extract_dir, purchased_root, cfg, stats):
+    """grade.py in a child process with a time limit (an OCC call that hangs on a broken shape cannot be interrupted
+    from Python): (its result or None, its last words)."""
+    work = tempfile.mkdtemp(prefix="arb_grade_")
+    out = os.path.join(work, "result.json")
+    argv = [sys.executable, "-B", os.path.join(STAGE_DIR, "grade.py"), extract_dir, os.path.join(STAGE_DIR, "reference"),
+            purchased_root, out, "--config", os.path.join(STAGE_DIR, "grader_config.json")]
+    env = dict(os.environ, ARB_GRADER_CPUS=str(int(cfg.get("grader_cpus", 8))), OMP_NUM_THREADS="1",
+               OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
+    timeout = int(cfg.get("grade_timeout_s", 1080))
+    t = time.time()
+    try:
+        r = subprocess.run(argv, cwd=STAGE_DIR, env=env, capture_output=True, text=True, timeout=timeout)
+        stats["grade_child_exit"] = float(r.returncode)
+        tail = (r.stderr or "")[-1500:]
+    except subprocess.TimeoutExpired:
+        stats["grade_child_exit"] = -1.0
+        return None, "the grade did not finish within %d s" % timeout
+    finally:
+        stats["grade_child_s"] = time.time() - t
+    if not os.path.isfile(out):
+        return None, "the grader child wrote no result: " + tail
+    with open(out) as fh:
+        return json.load(fh), tail

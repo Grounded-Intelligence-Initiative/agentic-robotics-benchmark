@@ -1,4 +1,5 @@
 {
+  "note": "sha256 of the public AGIPIX sources an agent could copy into its submission: the upstream repository's model exports and cad/Fab fabrication files at upstream_commit, and the original manufacturing STEP of the Autodesk share the repository links (cad/README.md: https://a360.co/4gY1h8M, design Agipix_v2, version 2). A file of the submission with one of these digests zeroes the design score (verify.py, public_model_reuse).",
   "upstream_commit": "147a736b9fea7ac0e8d08c9a5fb0b90e5baa224a",
   "files": {
     "model_exports/agipix/camera.stl": "5d5600bbbe97b5274482d9bd84d2cd8432a57b64253ecf3c265b46969f77a348",
@@ -67,6 +68,7 @@
     "Fab/CF/4mm/cage_mid_f.dxf": "e0dbb67f863f1c7e079c6eeb66ee4c8f8edc3a254d04ee8bba1c08bd0b1f7d6e",
     "Fab/CF/4mm/prop_grd_x4.dxf": "0a65c71231a98c2118dfbc4c3d2b63af4e2d25ba2b7ee5a5660e4807ddb2eef7",
     "Fab/CF/4mm/base.dxf": "91820201c1a6ef24da4222e55b77c479930864734d8dce67956a60682cd02717",
-    "Fab/Al_fab/OldVersions/landing_gear.0001.dwg": "a632eedac5f0def07f923906b6a09e34467ddca475d8240c51433397befa3a8d"
+    "Fab/Al_fab/OldVersions/landing_gear.0001.dwg": "a632eedac5f0def07f923906b6a09e34467ddca475d8240c51433397befa3a8d",
+    "a360/Agipix_v2_original.stp": "f13c51d63c1372c830553803be94ee616bfabfc8cfd1cc4d19981156e7ec878f"
   }
 }
