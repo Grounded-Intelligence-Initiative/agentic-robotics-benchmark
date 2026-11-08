@@ -131,3 +131,50 @@ verifier sandbox of 8 CPUs): `ok`, untouched reward 0.0, oracle reward 1.0. The 
 0.935 and 0.940 with the same simulated times as their selection runs (3306.7, 3318.9 and 3729.9 s): cleaning_score
 0.9290, ratio 1.00001 to the anchor; verify 4882 s. The scenes replay exactly, so `full_at` 0.98 is only a margin for
 a last-digit difference on another machine.
+
+## Amendment 1 (2026-11-08): the cell and the reference changed; the selection is repeated
+
+The owner's real-world check of the task (2026-11-08) changed the cell and the reference cleaner at commit `792cbb9`:
+the robot state reports joint torque estimates (`tau_est`), the dishes break like ordinary porcelain and glass (an
+impact above a 30 cm fall, a load above 600 N / 400 N), the fingers stop where they meet what the hand holds, and the
+reference takes the sponge from its tray from the stance of its most natural arm posture. The frozen oracle of the
+selection above is therefore gone, and the selection is repeated under the same rule, written here before any run:
+
+1. The oracle is frozen at `792cbb9` (sha256 below).
+2. The candidates are the 16 drawn on 2026-11-07 (`candidates.json`), in the same order; no new draw unless step 5
+   of the rule needs one.
+3. Each candidate runs once, exactly as before (`tools/launch_ref.sh`, `tools/run_ref.py`), in the task image built
+   from `environment/` at `792cbb9`.
+4. The pass criterion is unchanged (no safety violation, no damage, everything but the floor at full credit, at least
+   half of the crumbs binned).
+5. The hidden set is the first three passing candidates in drawn order; fewer than three: 16 more drawn by
+   `tools/draw_candidates.py` and the rule goes on in their order.
+6. Every candidate's result is recorded below (`selection_a1/seed_<seed>.json`), with the hollowing check if the kept
+   set changes. The anchor is the mean of the kept selection runs; `ale validate`'s oracle pass on the final head is
+   its full-verify measurement.
+
+The frozen oracle (`792cbb9`):
+
+```
+4723e7f2818e4949600d4211b971c22128eb517ed8073e9add75e75d455135a9  tests/house_cell/cell.py
+d88e94a34316fa9d9590eedf4e40b7f35ed0b893a0672c08e890f7854f1f762c  tests/house_cell/cleaning.py
+5c9046ada48dc935538340de1eaceab078ae941de25a1bf6fd2b12aa3ffd0572  tests/house_cell/control.py
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  tests/house_cell/__init__.py
+93c439787b73108e64125326aa47a21fbc0cd3009e59a1b9a88a1f56e536f8d1  tests/house_cell/layout.py
+2814c5419023f70edc9e9507029be8583da7475138b9cc5da0fbd8af648ac272  tests/house_cell/objects.py
+5b9a26199f1e692bd6e0d4beb34699ac8fcf110920069dc5736fb01e33f94198  tests/house_cell/physics.py
+03880c6204b6bdd7e3412e93a7b9d85ab501dfe84e6c2b9efce2f3fb44ce0c49  tests/house_cell/props.py
+cd8dec14d0e20b44ef6f1bf1be311622ad2fb2a96af2c8d905e6b97ad49ff90e  tests/house_cell/reference.py
+fa6232f3431683ebb618a68bd202aec66fcc766d66e61007fad8992e89b65581  tests/house_cell/render.py
+223b284fd0ce69c6ed3f6b0d7f2348d67e0bcf150acdd70e567c8e6e0e7198e8  tests/house_cell/robot.py
+59015301eb370fdd8e965d65a26c4ae01af0b7b32b5b9821094399a43a1ff1ed  tests/house_cell/room.py
+3afb3e781ab4649602be28b0a3985f18009b450f11b1a9ac0ce7740e81195477  tests/house_cell/scene.py
+fb9c83456a9275d0555da22f959c35ec44aa5c4909c72fc10e7de9cda5024cc4  tests/house_cell/scoring.py
+3a74be8b8c5a00b00367bb9d71f21e0c5eef0350c6a68e49cffce7f94ced1f36  tests/house_cell/server.py
+dbac8d1a656f5d93bc0354d8748091aab64b7167ed4d85d08b6f4968d5c1f729  tests/house_cell/walk_core.py
+6b660c0ab3e277835736f1371ca27e54c7dcfae061d49974806514a72fac3012  tests/house_cell/look.json
+4f76a26e1fee4147327880b7a41d7e0e16855f7be57a8b8310a1353d80ebddc6  solution/solve.sh
+7e224c2848476398821fce93c03244c0b6e45274dc60a5e32742c574df789e9b  solution/reference/clean.py
+9a4c6c83b2d73f3b2fe5fffb1656ec250edbd11d3aefe5f25084699729208939  solution/reference/oracle_token
+e88f7bc29cc3bdf8cffd1ed17e854295e0b73f25164982b0a11682c0719d1038  tests/grader_config.json
+```
