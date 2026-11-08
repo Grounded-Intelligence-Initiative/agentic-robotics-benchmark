@@ -27,7 +27,7 @@ rgb, depth = frame["rgb"], frame["depth_m"]      # numpy arrays; zero depth inva
 cell.finish()
 ```
 
-Changing a control target does not advance time. You have 1,800 simulated seconds, 3,600 wall seconds and 900 camera frames per workcell. A program silent for 120 wall seconds ends that workcell. Camera calls and computation use wall time. All command values must be finite and within the supplied robot limits. The controller slews joint targets by at most 0.8 rad/s. The clamp is fixed; you cannot command it.
+Changing a control target does not advance time. You have 1,800 simulated seconds, 7,200 wall seconds and 900 camera frames per workcell. A program silent for 120 wall seconds ends that workcell. Camera calls and computation use wall time. All command values must be finite and within the supplied robot limits. The controller slews joint targets by at most 0.8 rad/s. The clamp is fixed; you cannot command it.
 
 Fastening is an at-rest mechanical coupling abstraction for small screws and retainers: bring the correct mating features within 1.5 mm, orient them within 3 degrees and hold still for 0.5 seconds. Engagement is recognized only within 3 mm and 8 degrees; it does not pull the part into place. A fastened component remains at the actual pose you achieved. A seated component fastened at 3–8 degrees can be mechanically fixed but receive no credit. Motor and landing-strut mounts have four equivalent orientations, 90 degrees apart, matching their four mounting slots or holes. Rotationally symmetric propeller mounts do not constrain yaw. Propellers attach to an unpowered rotor hinge; CW and CCW propellers are different components. Identical parts within a listed component kind are interchangeable.
 

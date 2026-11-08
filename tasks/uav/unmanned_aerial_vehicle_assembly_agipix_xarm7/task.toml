@@ -46,17 +46,19 @@ expert_time_hours = 80
 siblings = ["robotic_arm_full_assembly_so101_panda", "robotic_arm_full_assembly_openarm_panda"]
 tags = ["assembly", "mujoco", "xarm7", "agipix", "quadrotor", "code-as-policy", "camera-only", "rgbd", "calibration", "picture-manual", "contact", "planning", "oracle-token"]
 source_platform = "AGiPix-derived mechanical assembly kit"
-# The privileged physical reference is being rebuilt for the source-mesh kit: tests/anchor.json's value stays null and
-# the oracle has not been validated on this geometry yet.
-development_status = "native-mesh-physical-reference-pending"
+# The privileged physical reference assembles the source-mesh kit 23/23 from a fresh cell; tests/anchor.json's value
+# stays null until `ale validate` measures it.
+development_status = "native-mesh-reference-complete-anchor-pending"
 
 [environment]
 cpus = 8
 memory_mb = 16384
 
-# [agent] timeout_sec: 6 h; [verifier] timeout_sec: 3 x (cell and camera session build, under a minute, + program
-# <= 3600 s wall); the oracle's verify: 3 x the privileged reference (<= 7000 s wall each). The verifier sandbox's start
-# and tests/test.sh's copy of the givens count against it too.
+# [agent] timeout_sec: 6 h. [verifier] timeout_sec 25200 s (7 h): an agent's verify is 3 workcells x (the cell build and
+# camera session, under a minute, + the program's <= 7200 s wall cap) = at most ~21800 s; the oracle's is 3 x the
+# privileged reference, ~25-80 min each by host load (a fresh 23/23 run: 1132 s simulated, 1438 s wall on an idle
+# 24-core host, about 3x that on a loaded one), each capped at 10800 s (a cap for one runaway episode, not for three).
+# The verifier sandbox's start and tests/test.sh's copy of the givens count against it too.
 [agent]
 timeout_sec = 21600
 network_mode = "no-network"
@@ -67,7 +69,7 @@ network_mode = "no-network"
 # builds the grader's root-owned copy of the givens itself. The agent's program runs during verify, so the verifier
 # gets the agent's resources (CPU rendering: no GPU).
 [verifier]
-timeout_sec = 21600
+timeout_sec = 25200
 environment_mode = "separate"
 
 [verifier.environment]
