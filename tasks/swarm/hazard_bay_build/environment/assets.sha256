@@ -1,5 +1,5 @@
 # endpoint: https://huggingface.co
-# repo: grounded-intelligence-initiative/agentic-robotics-last-exam
+# repo: grounded-intelligence-initiative/ale-robotics-assets
 # revision: 949adb391e85c348d48507ed87ce299028700304
 # prefix: tasks/swarm/hazard_bay_build/payload
 2533c9d666f709f43d1a1c50c35c6ca12e65991fc50d913102550840203666e8  arb/airframes/look/arb_hex_800_look.usda
