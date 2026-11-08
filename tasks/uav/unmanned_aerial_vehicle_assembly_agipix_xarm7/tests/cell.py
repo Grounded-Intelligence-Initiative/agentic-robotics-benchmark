@@ -59,6 +59,106 @@ def fixture_targets(graph, kit):
     return poses
 
 
+# Staging stands: bench equipment, not kit parts. Each thin part (no captive
+# feet) lies on its own small printed stand, as before 26 mm above the bench so
+# the fingers reach under it: a base plate on the bench with posts and ribs
+# whose flat tops meet the part's collision material at its staged pose. Part
+# frame (m); every stand lies inside its part's bench footprint and keeps clear
+# of the finger paths of the part's bench grasps. Static world geoms, placed
+# with the part's staged pose (incl. its yaw).
+#   plate: ("disc", x, y, radius) or ("box", x, y, half x, half y, corner radius)
+#   posts: (x, y, radius); ribs: (x, y, half x, half y)
+#   collar: width of the printed fillet ring at the foot of each post (2 mm high)
+STAND_RGBA = ".86 .87 .84 1"
+STAND_PLATE_M = .003
+STAND_COLLAR_H_M = .002
+STANDS = {
+    # Pedestal under the flat hub ring (bore stays open); blades free.
+    "prop_cw": dict(plate=("disc", 0., 0., .024), posts=((0., 0., .006),), ribs=(), collar=.002),
+    # C plate: posts under the spine's top and bottom, and a narrow rib under
+    # each arm, between the jaws of a rim pinch across that arm.
+    "sensor_cheek": dict(plate=("box", -.0055, .001, .0205, .0395, .005),
+                         posts=((.010, .0355, .0035), (.00975, -.0315, .0035)),
+                         ribs=((-.015, .03725, .007, .0015), (-.015, -.03475, .007, .0015)), collar=.002),
+    # C arc: both ends and both flanks, clear of a pinch across the arc's middle.
+    "sensor_cap": dict(plate=("box", .002, 0., .017, .0315, .005),
+                       posts=((-.011, .02125, .0022), (-.0115, -.02125, .0022), (.00725, .029, .0022),
+                              (.01575, -.029, .0022)),
+                       ribs=(), collar=.0008),
+}
+# The CCW propeller is the source mesh's mirror image (y -> -y).
+STANDS["prop_ccw"] = dict(plate=STANDS["prop_cw"]["plate"][:2] + (-STANDS["prop_cw"]["plate"][2],) + STANDS["prop_cw"]["plate"][3:],
+                          posts=tuple((x, -y, r) for x, y, r in STANDS["prop_cw"]["posts"]),
+                          ribs=tuple((x, -y, hx, hy) for x, y, hx, hy in STANDS["prop_cw"]["ribs"]),
+                          collar=STANDS["prop_cw"]["collar"])
+_STAND_TOPS = {}
+
+
+def _stand_top(assets, kit, kind, region):
+    """Lowest collision-material height (part frame z) above a support region.
+
+    Vertical rays from below over the region against the union of the part's
+    convex collision pieces: the support's flat top meets the part's lowest
+    point there exactly at the staged pose.
+    """
+    key = (str(assets), kind, region)
+    if key not in _STAND_TOPS:
+        import trimesh
+        part = kit["parts"][kind]
+        mesh = trimesh.util.concatenate([trimesh.load_mesh(Path(assets) / "given/kit/collision" / fn)
+                                         for fn in part["collision"]])
+        if region[0] == "post":
+            _, x, y, r = region
+            samples = [(x, y)] + [(x + f*r*math.cos(a), y + f*r*math.sin(a))
+                                  for f, n in ((1/3, 8), (2/3, 16), (1., 24))
+                                  for a in np.linspace(0, 2*math.pi, n, endpoint=False)]
+        else:
+            _, x, y, hx, hy = region
+            samples = [(x + u, y + v) for u in np.linspace(-hx, hx, 17) for v in np.linspace(-hy, hy, 5)]
+        origins = np.array([[u, v, -.05] for u, v in samples])
+        hits, rays, _ = mesh.ray.intersects_location(origins, np.tile([0., 0., 1.], (len(origins), 1)),
+                                                     multiple_hits=False)
+        if len(set(rays.tolist())) < len(origins) / 2:
+            raise ValueError(f"{kind} stand support {region} is not under the part's material")
+        _STAND_TOPS[key] = float(hits[:, 2].min())
+    return _STAND_TOPS[key]
+
+
+def stand_geoms(assets, kit, kind, pos, q):
+    """World geoms (name suffix, MJCF attributes) of the staging stand under a part at pos/q."""
+    design = STANDS[kind]
+    R = Rotation.from_quat(np.roll(q, -1)).as_matrix()
+    if abs(R[2, 2] - 1) > 1e-9:
+        raise ValueError(f"{kind} stand needs an upright staged part")
+    pos = np.asarray(pos, float)
+    yaw_q = text(quat(R))
+
+    def at(x, y, z):
+        return text([*(pos[:2] + R[:2, :2] @ [x, y]), z])
+    t = STAND_PLATE_M
+    plate = design["plate"]
+    geoms = []
+    if plate[0] == "disc":
+        geoms.append(("plate", dict(type="cylinder", size=text([plate[3], t/2]), pos=at(plate[1], plate[2], t/2))))
+    else:
+        # Rounded rectangle: two crossed boxes and four corner discs.
+        _, x, y, hx, hy, c = plate
+        geoms.append(("plate", dict(type="box", size=text([hx, hy-c, t/2]), pos=at(x, y, t/2), quat=yaw_q)))
+        geoms.append(("plate_x", dict(type="box", size=text([hx-c, hy, t/2]), pos=at(x, y, t/2), quat=yaw_q)))
+        for k, (u, v) in enumerate(((1, 1), (-1, 1), (-1, -1), (1, -1))):
+            geoms.append((f"plate_corner{k}", dict(type="cylinder", size=text([c, t/2]),
+                                                   pos=at(x+u*(hx-c), y+v*(hy-c), t/2))))
+    for k, (x, y, r) in enumerate(design["posts"]):
+        top = pos[2] + _stand_top(assets, kit, kind, ("post", x, y, r))
+        geoms.append((f"post{k}", dict(type="cylinder", size=text([r, (top-t)/2]), pos=at(x, y, (top+t)/2))))
+        h = STAND_COLLAR_H_M
+        geoms.append((f"collar{k}", dict(type="cylinder", size=text([r+design["collar"], h/2]), pos=at(x, y, t+h/2))))
+    for k, (x, y, hx, hy) in enumerate(design["ribs"]):
+        top = pos[2] + _stand_top(assets, kit, kind, ("rib", x, y, hx, hy))
+        geoms.append((f"rib{k}", dict(type="box", size=text([hx, hy, (top-t)/2]), pos=at(x, y, (top+t)/2), quat=yaw_q)))
+    return geoms
+
+
 def default_layout(graph, kit, seed, jitter=True):
     """Draw the WHOLE layout again on overlap. No per-part fallback collisions."""
     rng = np.random.default_rng(seed)
@@ -107,8 +207,8 @@ def default_layout(graph, kit, seed, jitter=True):
             else:
                 break
             bounds.append((low, high))
-            # Thin parts have an ordinary physical three-point staging support.
-            supported = kind in ("sensor_cheek", "sensor_cap", "prop_cw", "prop_ccw")
+            # Thin parts rest on a printed staging stand (STANDS) inside their footprint.
+            supported = kind in STANDS
             z = (.026 if supported else .001) - bb[0, 2]
             layout[name] = dict(pos=[*xy, z], quat=quat(R).tolist(), supported=supported)
         else:
@@ -171,20 +271,9 @@ class Cell:
             rest = self.layout[name]
             self._body_xml(world, name, inst["kind"], rest["pos"], rest["quat"])
             if rest["supported"]:
-                # Physical pins contact actual material, not bounding-box corners.
-                import trimesh
-                mesh = trimesh.load_mesh(self.assets / "given/kit/meshes" / self.kit["parts"][inst["kind"]]["mesh"])
-                v = mesh.vertices
-                v = v[np.abs(v[:, 2] - v[:, 2].min()) < .0001]
-                center = v[:, :2].mean(0)
-                idx = [int(np.argmax((v[:, :2] - center) @ np.array([math.cos(a), math.sin(a)]))) for a in (0, 2.094, 4.189)]
-                points = v[idx].copy()
-                points[:,:2] = .985*points[:,:2] + .015*center
-                R = Rotation.from_quat(np.roll(rest["quat"], -1)).as_matrix()
-                for k, point in enumerate(points):
-                    p = R @ point + rest["pos"]
-                    ET.SubElement(world, "geom", name=f"support_{name}_{k}", type="cylinder",
-                                  size=f".002 {p[2]/2}", pos=text([p[0], p[1], p[2]/2]), rgba=".4 .42 .46 1")
+                # A printed staging stand under the part's actual collision material.
+                for suffix, attributes in stand_geoms(self.assets, self.kit, inst["kind"], rest["pos"], rest["quat"]):
+                    ET.SubElement(world, "geom", name=f"stand_{name}_{suffix}", rgba=STAND_RGBA, **attributes)
         for mate in self.graph["mates"]:
             ET.SubElement(eq, "weld", name=mate["id"], body1="part_" + mate["carrier"],
                           body2="part_" + mate["part"], active="false", solref=".004 1", solimp=".95 .99 .001")

@@ -120,7 +120,7 @@ def _make_model(cell, render_dir):
         ("visual_prop_*", None, dict(roughness=.38, metallic=0.)),
         ("visual_*", None, dict(roughness=.52, metallic=0.)),
         ("fixture", None, dict(roughness=.45, metallic=.15)),
-        ("support_*", None, dict(roughness=.4, metallic=.7)),
+        ("stand_*", None, dict(roughness=.55, metallic=0.)),
         (None, "render_table_oak", dict(roughness=1., metallic=0.)),
         (None, "render_bench_steel", dict(roughness=.4, metallic=.7)),
         (None, "white", dict(roughness=.38, metallic=0.)),
