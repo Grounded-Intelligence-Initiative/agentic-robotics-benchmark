@@ -24,6 +24,9 @@ class Grasp:
     target_yaw: float = 0.
     squeeze: float = .006
     settle_s: float = .5
+    # Camera only: how far the part may slide toward the finger tips before a
+    # pad runs off its contact band (band top minus the pad's lower edge).
+    slide_m: float = math.inf
 
 
 def _log(*args):
@@ -287,6 +290,36 @@ def cheek_rim_grasps(cell, name):
             yield Grasp(np.array([cx, (lo+hi)/2, .012359397152226951]), R, hi-lo, f"rim-x{1000*cx:.1f}-{yaw:.2f}")
 
 
+# Axial-pinch pad-tip heights (camera only). 4 s still-hold creep after the
+# lift: z24 0.094 mm/s 0.067 deg/s,
+# z22 0.093/0.066 (2.7 mm slide during the lift), z16 0.31/0.10,
+# z18 0.78/0.77; z26 falls out of the pads.
+CAMERA_TIP_HEIGHTS_M = (.016, .018, .020, .022, .024)
+CAMERA_TIP_PREFERRED_M = .024
+
+
+def _camera_band_top(proxy, jaw, z_tip, tol, height=.0185):
+    """Top of the shorter pad contact band of a jaw-axis camera pinch (camera only).
+
+    For each jaw side, rays along the jaw in 0.25 mm rows from the pad's lower
+    edge (z_tip) up: the face toward that pad touches it where it lies within
+    tol of its most protruding point. Returns the lower of the two band tops
+    (part frame z): the camera can slide down in the jaws until that edge
+    reaches the pads' lower edge.
+    """
+    zs = np.arange(z_tip, z_tip+height, .00025)
+    ys = np.linspace(-.0145, .0145, 7)
+    tops = []
+    for d in (jaw, -jaw):
+        origins = np.array([[0., y, z] for z in zs for y in ys])-d*.06
+        loc, ray, _ = proxy.ray.intersects_location(origins, np.tile(d, (len(origins), 1)), multiple_hits=False)
+        if not len(loc):
+            return z_tip
+        depth = np.einsum("ij,j->i", loc-origins[ray], d)
+        tops.append(float(loc[depth <= depth.min()+tol][:, 2].max()))
+    return min(tops)
+
+
 def camera_grasps(cell, name):
     """Axial pinch for the board camera (camera only): board front <-> lens front.
 
@@ -322,7 +355,7 @@ def camera_grasps(cell, name):
     for sign in (1., -1.):
         jaw = np.array([sign, 0., 0.])
         R = np.column_stack([np.cross(jaw, approach), jaw, approach])
-        for z_tip in (.016, .018, .020, .022):
+        for z_tip in CAMERA_TIP_HEIGHTS_M:
             width0 = .0244
             p = np.array([0., 0., z_tip])-approach*(_tip(width0)-.158)
             # Both pads' lowest corners stay 2 mm above the table plane (z = 0).
@@ -344,18 +377,80 @@ def camera_grasps(cell, name):
             support = min(int(np.sum(along < low+.0012)), int(np.sum(along > high-.0012)))
             if support < 4:
                 continue
-            # z18 first: the 2 mm lower z16 pinch passed the bench checks on one
-            # host but lost the camera in transport; z18
-            # held in every full run.
-            candidates.append((100*abs(z_tip-.018)-.01*support,
+            slide = _camera_band_top(proxy, jaw, z_tip, .0012)-z_tip
+            # Pads ABOVE the lens-glass apex (z 19 mm) first: there the front pad
+            # bears on the lens ring (pieces 4/5) and the back pad on five board
+            # pieces; at z16/z18 the front pad meets only the glass apex (one
+            # piece, one point) and the camera creeps down/pitches 0.3-0.8 mm/s
+            # in the jaws.
+            # z24 creeps slowly (0.1 mm/s) but its ring band is only 3.8 mm
+            # tall: it ran off in the carry, so the slip check
+            # also compares the expected carry slide with slide_m.
+            candidates.append((100*abs(z_tip-CAMERA_TIP_PREFERRED_M)-.01*support,
                                Grasp(p+jaw*(low+high)/2, R, width,
                                      f"axial-z{1000*z_tip:.0f}-{'+' if sign > 0 else '-'}",
                                      # 12-14 N holds still at the mount
                                      # orientation; at ~35 N the curved lens
                                      # front squeezed out of the pads.
-                                     squeeze=.004, settle_s=1.)))
+                                     squeeze=.004, settle_s=1., slide_m=slide)))
     for _, g in sorted(candidates, key=lambda c: c[0]):
         yield g
+
+
+def camera_board_grasps(cell, name):
+    """Flat-to-flat pinch of the camera board's top band against its mount plate (camera only).
+
+    Jaws along the lens axis (part x) as for the axial pinch, hand DOWN, but
+    with the pads above the lens ring (z > 27.8 mm): the front pad on the
+    board's front face, the back pad on the mount plate behind the board.
+    Both are flat multi-piece contacts with ~10 mm overlap, so in-hand creep
+    neither concentrates on one point nor runs a pad off a 3-4 mm ring strip.
+    Only yielded when the plate exists behind the board (measured jaw span
+    6-12 mm); with the 12 mm tab the span is the bare 1.7 mm board, below
+    what the jaws can squeeze (they close to 1.65 mm at the .85 rad joint
+    limit; probe: 0 N, the camera stays on the bench): none.
+    """
+    import trimesh
+    part = cell.kit["parts"][cell.graph["instances"][name]["kind"]]
+    proxy = trimesh.util.concatenate([
+        trimesh.load_mesh(cell.assets/"given/kit/collision"/fn) for fn in part["collision"]])
+    T = cell.pose(name)
+    approach = np.array([0., 0., -1.])
+    if (T[:3, :3] @ approach)[2] > -math.cos(math.radians(45)):
+        return
+    top = float(proxy.bounds[1][2])
+    candidates = []
+    for sign in (1., -1.):
+        jaw = np.array([sign, 0., 0.])
+        R = np.column_stack([np.cross(jaw, approach), jaw, approach])
+        for z_tip in CAMERA_BOARD_TIP_HEIGHTS_M:
+            zs = np.linspace(z_tip+.0005, min(top-.0005, z_tip+.0185), 8)
+            ys = np.linspace(-.0145, .0145, 11)
+            origins = np.array([[0., y, z] for z in zs for y in ys])-jaw*.06
+            hits, rays, _ = proxy.ray.intersects_location(origins, np.tile(jaw, (len(origins), 1)), multiple_hits=True)
+            if not len(hits):
+                continue
+            along = hits @ jaw
+            low, high = float(along.min()), float(along.max())
+            width = high-low
+            if not .006 <= width <= .012:
+                continue
+            support = min(int(np.sum(along < low+.0006)), int(np.sum(along > high-.0006)))
+            if support < 20:
+                continue
+            slide = _camera_band_top(proxy, jaw, z_tip, .0006)-z_tip
+            contact = np.array([0., 0., z_tip])+jaw*(low+high)/2
+            p = contact-approach*(_tip(width)-.158)
+            candidates.append((1000*abs(z_tip-CAMERA_BOARD_TIP_HEIGHTS_M[0])-.001*support,
+                               Grasp(p, R, width, f"board-z{1000*z_tip:.0f}-{'+' if sign > 0 else '-'}",
+                                     squeeze=.004, settle_s=1., slide_m=slide)))
+    for _, g in sorted(candidates, key=lambda c: c[0]):
+        yield g
+
+
+# Board-top pinch pad-tip heights: above the lens ring top (27.8 mm) with the
+# finger tips (1.5 mm past the pads) clear of the lens barrel (top 25 mm).
+CAMERA_BOARD_TIP_HEIGHTS_M = (.029, .028, .030)
 
 
 def grasps(cell, name):
@@ -366,6 +461,7 @@ def grasps(cell, name):
         yield from lidar_housing_grasps(cell, name)
         return
     if kind == "camera":
+        yield from camera_board_grasps(cell, name)
         yield from camera_grasps(cell, name)
         return
     if part.get("grasp_mode") == "surface":
@@ -573,11 +669,17 @@ def _least_travel_first(cell, motion, mate, candidates, pre_offset, count=4):
     # patches 2 mm apart (surface-1.57-96 / -97) tie to <0.02 rad, and the
     # arm's history then decided between the validated 38.5 mm Cube pinch and a
     # 40.5 mm pinch that slipped out in transport.
-    # Flight controller only; the camera keeps the plain (travel, priority) order.
-    tie = TRAVEL_TIE_RAD if cell.graph["instances"][mate["part"]]["kind"] == "flight_controller" else 0.
+    # Camera too: its +twins at z16..z24 lie within 0.03 rad, so sub-mrad
+    # travel differences (CPU-dependent bench settling) picked z16 on one
+    # host and z18 on another; keep camera_grasps' priority among them.
+    tie = TRAVEL_TIE_RAD if cell.graph["instances"][mate["part"]]["kind"] in ("flight_controller", "camera") else 0.
     best = min((h[0] for h in head), default=0.)
     near = sorted((h for h in head if h[0] <= best+tie), key=lambda h: h[1])
     far = sorted((h for h in head if h[0] > best+tie), key=lambda h: h[:2])
+    if cell.graph["instances"][mate["part"]]["kind"] == "camera":
+        # The whole decision, travel to 1 urad (the "travel" lines round to
+        # 0.01 rad, which hid the z16/z18 near-tie in development).
+        _log("camera order", [(g.label, round(t, 6)) for t, _, g in near+far], "tie window <=", round(best+tie, 6))
     for _, _, g in near+far:
         yield g
     yield from candidates
@@ -684,8 +786,40 @@ def _prop_squeeze(cell, motion, name, *, min_force=1.5, max_s=4.0):
     return history[-1]
 
 
-def _preinsert(motion, pre_p, goal_p, R, body, *, retreat=None, open_width=None, attempts=64, clearance=True, transport_clearance=None, speed=.25):
-    """Choose an IK branch for a complete straight approach and optional exit."""
+class _HeldMargin:
+    """Temporarily enlarge the held part's planning clearance (camera carry).
+
+    Motion.hold_body sizes the held geoms' contact-query margins from
+    held_clearance; enlarge both together and restore them afterwards.
+    None leaves the planner untouched.
+    """
+    def __init__(self, motion, clearance):
+        self.motion, self.clearance = motion, clearance
+
+    def __enter__(self):
+        m = self.motion
+        self.saved = (m.held_clearance, m.pm.geom_margin.copy())
+        if self.clearance is not None and m.held is not None:
+            m.held_clearance = self.clearance
+            members = m.body_group(m.held[0])
+            for g in range(m.m.ngeom):
+                if m.m.geom_bodyid[g] in members:
+                    m.pm.geom_margin[g] = max(m.pm.geom_margin[g], self.clearance+m._margin_max)
+        return self
+
+    def __exit__(self, *exc):
+        self.motion.held_clearance = self.saved[0]
+        self.motion.pm.geom_margin[:] = self.saved[1]
+        return False
+
+
+def _preinsert(motion, pre_p, goal_p, R, body, *, retreat=None, open_width=None, attempts=64, clearance=True, transport_clearance=None, speed=.25,
+               transport_held_clearance=None):
+    """Choose an IK branch for a complete straight approach and optional exit.
+
+    transport_held_clearance (camera only): held-part margin for the transport
+    move to the pre pose; the straight approach keeps the normal margin.
+    """
     if transport_clearance is None:
         transport_clearance=clearance
     solutions=motion.ik(pre_p,R,width=motion.width(),attempts=attempts,max_solutions=16,allow_pad_body=body,clearance=clearance)
@@ -718,7 +852,8 @@ def _preinsert(motion, pre_p, goal_p, R, body, *, retreat=None, open_width=None,
             if not ok:
                 continue
         try:
-            motion.move_joints(candidate,width=motion.width(),allow_pad_body=body,speed=speed,clearance=transport_clearance)
+            with _HeldMargin(motion,transport_held_clearance):
+                motion.move_joints(candidate,width=motion.width(),allow_pad_body=body,speed=speed,clearance=transport_clearance)
             return
         except PlanningError as e:
             errors.append(str(e))
@@ -2027,7 +2162,73 @@ def _place_strut(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
                 lock_error_mm=1000*event.get("error_m", float("nan")), lock_angle_deg=event.get("angle_deg", float("nan")))
 
 
-def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
+# Camera still-hold slip check after the 10 cm lift (camera only): settle,
+# then hold still and measure the camera's motion in the gripper frame. A
+# pinch that creeps faster, or whose expected slide over the carry (slid so
+# far + rate x CAMERA_CARRY_S) would use more than CAMERA_SLIDE_KEEP of its
+# contact band (Grasp.slide_m), is put back and the next candidate is tried;
+# a slipping camera is never carried. Lift to lock took 31-34 s (two runs:
+# 3.2-3.6 mm slide, 1-2 deg about the jaw axis); the carry keeps a larger
+# held-part margin for that in-hand motion.
+CAMERA_SLIP_SETTLE_S = .3
+CAMERA_SLIP_HOLD_S = 1.0
+CAMERA_SLIP_MM_S = .2
+CAMERA_SLIP_DEG_S = .15
+CAMERA_CARRY_S = 40.
+CAMERA_SLIDE_KEEP = .6
+CAMERA_PICK_ATTEMPTS = 3
+CAMERA_CARRY_CLEARANCE_M = .008
+
+
+def _camera_in_hand(cell, motion, name):
+    """Camera pose in the gripper-base frame (measured live)."""
+    Th = np.eye(4)
+    Th[:3,:3] = cell.d.xmat[motion.hand].reshape(3,3)
+    Th[:3,3] = cell.d.xpos[motion.hand]
+    return np.linalg.inv(Th) @ cell.pose(name)
+
+
+def _camera_slip(cell, motion, name, clamped):
+    """Hold the lifted camera still; return its in-hand creep rates (mm/s, deg/s)
+    and how far it has slid in the jaws since the clamp (mm; clamped = the
+    in-hand pose before the lift)."""
+    q=motion.q
+    for _ in range(int(round(CAMERA_SLIP_SETTLE_S/.01))):
+        motion._drive(q);cell.tick()
+    a=_camera_in_hand(cell,motion,name)
+    for _ in range(int(round(CAMERA_SLIP_HOLD_S/.01))):
+        motion._drive(q);cell.tick()
+    b=_camera_in_hand(cell,motion,name)
+    mm=1000*float(np.linalg.norm(b[:3,3]-a[:3,3]))/CAMERA_SLIP_HOLD_S
+    deg=math.degrees(Rotation.from_matrix(a[:3,:3].T @ b[:3,:3]).magnitude())/CAMERA_SLIP_HOLD_S
+    slid=1000*float(np.linalg.norm(b[:3,3]-clamped[:3,3]))
+    return mm,deg,slid
+
+
+def _camera_put_back(cell, motion, name, body, bench_T, R, width):
+    """Set a creeping camera back on its bench pose, open, back off.
+
+    It keeps creeping in the jaws on the way down, so the hand stops 5 mm
+    above the bench pose, re-measures the camera in the jaws and lowers it
+    slowly to 0.3 mm above that pose: the release drops it a few tenths of a
+    millimetre (a 1 mm goal dropped it ~0.6 mm, 0.38 mm impact into the bench).
+    """
+    for above,speed in ((.005,.025),(.0003,.005)):
+        motion.hold_body(body)
+        pp,rr=motion.body_goal(bench_T[:3,3]+np.array([0.,0.,above]),bench_T[:3,:3],body)
+        motion.line(pp,rr,allow_pad_body=body,clearance=False,speed=speed)
+    released_mm=1000*float(cell.pose(name)[2,3]-bench_T[2,3])
+    motion.hold_body(None)
+    motion.set_width(width)
+    motion.wait(1.0)
+    p_now,r_now=motion.tool_pose()
+    motion.line(p_now-r_now[:,2]*.10,r_now,clearance=False,speed=.03)
+    motion.wait(.5)
+    _log("camera put back", "released mm above the bench pose", round(released_mm,2),
+         "bench drift mm", round(1000*float(np.linalg.norm(cell.pose(name)[:3,3]-bench_T[:3,3])),3))
+
+
+def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejected=frozenset()):
     name, body = mate["part"], "part_"+mate["part"]
     kind=cell.graph["instances"][name]["kind"]
     if kind == "landing_strut":
@@ -2058,6 +2259,8 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
     pick_prepared = False
     pickup_errors = []
     candidates = grasps(cell,name)
+    if kind == "camera" and _camera_rejected:
+        candidates = (c for c in candidates if c.label not in _camera_rejected)
     if kind in ("camera", "flight_controller"):
         candidates = _least_travel_first(cell,motion,mate,candidates,-ins*pre_distance)
     for i,g in enumerate(candidates):
@@ -2140,11 +2343,27 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
         _prop_squeeze(cell,motion,name,min_force=1.0,max_s=2.0)
         if not _gripped(cell,name):
             raise PlanningError(f"lost grip on {name} at lift-off")
+    clamped=_camera_in_hand(cell,motion,name) if kind == "camera" else None
     # The pinched blade pivots slowly in the jaws (see _prop_servo); do not
     # linger in the lift.
     motion.line(p-approach*.10,R,allow_pad_body=body,clearance=False,speed=.05 if is_prop else .025)
     if not _gripped(cell,name):
         raise PlanningError(f"lost grip on {name} after lift")
+    if kind == "camera":
+        creep_mm,creep_deg,slid_mm=_camera_slip(cell,motion,name,clamped)
+        carry_mm=slid_mm+creep_mm*CAMERA_CARRY_S
+        held=(creep_mm<=CAMERA_SLIP_MM_S and creep_deg<=CAMERA_SLIP_DEG_S
+              and carry_mm<=CAMERA_SLIDE_KEEP*1000*g.slide_m and _gripped(cell,name))
+        _log("camera slip check",g.label,"creep mm/s",round(creep_mm,3),"deg/s",round(creep_deg,3),
+             "slid mm",round(slid_mm,2),"expected carry slide mm",round(carry_mm,2),"band mm",round(1000*g.slide_m,1),
+             "held" if held else "CREEPS -> put back")
+        if not held:
+            _camera_put_back(cell,motion,name,body,T,R,width)
+            rejected=_camera_rejected|{g.label}
+            if len(rejected)>=CAMERA_PICK_ATTEMPTS:
+                raise PlanningError(f"no camera pinch held still: rejected {sorted(rejected)}")
+            return place(cell,motion,mate,choice=choice,wall_deadline=wall_deadline,_camera_rejected=rejected)
+        motion.hold_body(body)
     base_yaw=g.target_yaw
     symmetry=int(mate.get("axial_symmetry",1))
     free_yaw=symmetry==0
@@ -2178,7 +2397,8 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
                 else:
                     _preinsert(motion,pp,goal_p,goal_R,body,retreat=retreat,open_width=min(.085,g.width+.012),
                                clearance=not is_prop,transport_clearance=True,
-                               attempts=96 if is_prop else 64,speed=.65 if is_prop else .25)
+                               attempts=96 if is_prop else 64,speed=.65 if is_prop else .25,
+                               transport_held_clearance=CAMERA_CARRY_CLEARANCE_M if kind == "camera" else None)
                 break
             except PlanningError as error:
                 transport_errors.append(str(error))
