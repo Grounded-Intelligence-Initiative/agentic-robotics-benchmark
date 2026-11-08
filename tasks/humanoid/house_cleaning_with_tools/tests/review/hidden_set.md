@@ -1,5 +1,9 @@
 # The fixed hidden scene set (tests/hidden/seeds.json)
 
+**Amendment 1 (2026-11-08, at the end):** the cell and the reference changed, the selection was repeated under the
+same rule, and the hidden set is now candidates 1, 2 and 3 (anchor 0.9352). The sections before it record the first
+selection.
+
 The grader runs the three scenes of `tests/hidden/seeds.json`, for agents and the oracle alike (verify.py
 `episode_seeds`; the oracle's privileged cells get the same layouts, not a nominal one). A scene is the cell's draw
 from its seed (house_cell/layout.py: the objects, their facings, the grease stain, the crumbs, which bin stands where,
@@ -178,3 +182,32 @@ dbac8d1a656f5d93bc0354d8748091aab64b7167ed4d85d08b6f4968d5c1f729  tests/house_ce
 9a4c6c83b2d73f3b2fe5fffb1656ec250edbd11d3aefe5f25084699729208939  solution/reference/oracle_token
 e88f7bc29cc3bdf8cffd1ed17e854295e0b73f25164982b0a11682c0719d1038  tests/grader_config.json
 ```
+
+### Results (amendment 1; each candidate run once, 2026-11-08 13:02-13:40Z, apollo, the image built from environment/ at `792cbb9`)
+
+| # | seed | stage score | crumbs binned | sim s | wall s | result | why |
+|---|---|---|---|---|---|---|---|
+| 1 | 6790790475345571576 | 0.9398 | 0.683 | 3384 | 1395 | pass (
+
+11 of the 16 pass (4 did under the first frozen oracle). The reference's safety violations at the soap pump and the
+dining table are gone (the sponge is now taken from a stance beside the tray, which also changes the arm's path to the
+pump), and its broom and dustpan now reach the crumb groups in 15 of 16 scenes. The failures are the reference's own:
+a book left on the floor (5, 9, 14), the water bottle on the floor (11), a glass dropped and broken on the way to the
+tray (16); in 14 the floor was also not swept. Per-candidate records: `selection_a1/seed_<seed>.json`.
+
+**The hidden set** (`tests/hidden/seeds.json`): candidates 1, 2 and 3, stage scores 0.9398, 0.9259 and 0.9398 (mean
+0.9352 = the anchor). Candidate 2 was kept before too; 12 and 13, kept before, pass again but come later in the order.
+
+**Hollowing check** (`selection/features.json`; the layouts are drawn as before):
+
+| feature | kept 1 / 2 / 3 | all 16 candidates |
+|---|---|---|
+| recycling bin in the north slot | no / yes / yes | 7 of 16 |
+| the glasses' distance from the nearer long edge of the table (m), nearer / farther glass | 0.139, 0.280 / 0.287, 0.306 / 0.152, 0.310 | 0.084-0.287 / 0.116-0.315 |
+| the can's distance from the nearer long edge (m) | 0.079 / 0.096 / 0.183 | 0.079-0.266 |
+| grease at the start (units) | 42.6 / 43.8 / 62.8 | 17.7-62.8 (mean 41.2) |
+| floor crumbs south / north of the table | 44, 2 / 22, 24 / 42, 4 | 2-44 / 2-44 |
+
+The kept scenes cover the candidates' range in the bins' order, the glasses' reach, the grease (the largest stain of
+all 16 is kept) and the floor (two scenes with nearly all crumbs on one side, one even split: the narrowing of the
+first set is gone). The can lies near the edge in two of them.

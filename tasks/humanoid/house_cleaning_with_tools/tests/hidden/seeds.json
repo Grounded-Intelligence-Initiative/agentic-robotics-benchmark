@@ -1,8 +1,8 @@
 {
  "seeds": [
+  6790790475345571576,
   3125492756787262100,
-  4387728151438419368,
-  6432759289746745107
+  7022738416721159354
  ],
- "note": "the fixed hidden scene set: the first three of the 16 pre-registered candidates the frozen oracle completed (tests/review/hidden_set.md); agents and the oracle get these scenes"
+ "note": "the fixed hidden scene set: the first three of the 16 pre-registered candidates the frozen oracle completed, selection repeated under amendment 1 (the oracle frozen at 792cbb9; tests/review/hidden_set.md); agents and the oracle get these scenes"
 }
