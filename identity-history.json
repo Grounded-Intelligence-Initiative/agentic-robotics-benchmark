@@ -6,6 +6,12 @@
     "spec_hash": "sha256:81cc7d0d26fbb49b34a7db7ef108961fd788433cf63d2646a1368aa9b986e18b"
   },
   {
+    "content_digest": "sha256:ec39ef722282a604f842a216bcd6d9475925cecf487b9a3078e154d01fb5a009",
+    "since": "2026-11-07T22:06:11Z",
+    "slug": "aerial_search_geolocation",
+    "spec_hash": "sha256:b2e373ac30ce09736a30a916acb250dc84f4c2678f8c012e2dcc6e31aeda7706"
+  },
+  {
     "content_digest": "sha256:83db79374a98f01e09fcf2dbc07fdfbf716f2db8e81662424d0c1a61beddaf79",
     "since": "2026-11-07T16:17:55Z",
     "slug": "aerial_search_geolocation",
@@ -106,6 +112,12 @@
     "since": "2026-11-01T19:12:18Z",
     "slug": "dexhand_shape_sorter_all_pieces",
     "spec_hash": "sha256:6e5220c8e1f23619af7b813d0c474767decdddfcf79f2133b4d1c442f9b581a8"
+  },
+  {
+    "content_digest": "sha256:97acbb34a2cd5dd9480626d05005d673a0c47a8ad9ab9e41e223e1338769469b",
+    "since": "2026-11-07T22:06:11Z",
+    "slug": "driving_safety_supervisor",
+    "spec_hash": "sha256:ed4c38d7cd7e937c8d1e7b66cdcc2915e2c1845d14004dc61afc01f341a8f4b2"
   },
   {
     "content_digest": "sha256:68542f806e97a0a8d13f7558903075955ea5ade7fc635dcf12fbcc12c8b47416",
@@ -352,6 +364,12 @@
     "since": "2026-10-27T19:49:28Z",
     "slug": "robotic_arm_requirements_replica_from_photos",
     "spec_hash": "sha256:58d88f2534d367fe47af9c59fae8dc46e1fa52d56a5bed83dedc828b5e33ae89"
+  },
+  {
+    "content_digest": "sha256:891c22d3035adad18dd7ae36b78a2c1fce0d2f517037d669589984888b24f8fb",
+    "since": "2026-11-08T00:50:14Z",
+    "slug": "unmanned_aerial_vehicle_requirements_replica_from_photos",
+    "spec_hash": "sha256:0666582595f4edfb056b6d64162a915349d51d0fb88d04405fe736614fe59c39"
   },
   {
     "content_digest": "sha256:6833e41cd05462a5cb7ecb2c9d3ad424d2751f5658569faebae80d092b5f0643",
