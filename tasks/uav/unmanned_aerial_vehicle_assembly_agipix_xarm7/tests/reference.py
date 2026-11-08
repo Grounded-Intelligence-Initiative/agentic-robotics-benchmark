@@ -301,7 +301,7 @@ def camera_grasps(cell, name):
     the jaw axis when gravity has a moment about it: the 17.6 mm lens ring
     (one collision piece per pad, 3.4 mm contact) turned freely (88 deg in
     transport) and the board's 2 mm side edges crept 1.2-1.5 deg/s at 18-76 N
-    at the mount orientation (see NOTES). The axial pinch needs the board
+    at the mount orientation. The axial pinch needs the board
     front and the lens free: it is only yielded when the bench pose leaves
     both above the table (the camera leaning on its board edge and lens rim),
     not for the kit's board-down rest.
@@ -344,7 +344,10 @@ def camera_grasps(cell, name):
             support = min(int(np.sum(along < low+.0012)), int(np.sum(along > high-.0012)))
             if support < 4:
                 continue
-            candidates.append((100*abs(z_tip-.016)-.01*support,
+            # z18 first: the 2 mm lower z16 pinch passed the bench checks on one
+            # host but lost the camera in transport; z18
+            # held in every full run.
+            candidates.append((100*abs(z_tip-.018)-.01*support,
                                Grasp(p+jaw*(low+high)/2, R, width,
                                      f"axial-z{1000*z_tip:.0f}-{'+' if sign > 0 else '-'}",
                                      # 12-14 N holds still at the mount
@@ -569,7 +572,7 @@ def _least_travel_first(cell, motion, mate, candidates, pre_offset, count=4):
     # Near-ties (within TRAVEL_TIE_RAD) keep the original grasp priority: two FC
     # patches 2 mm apart (surface-1.57-96 / -97) tie to <0.02 rad, and the
     # arm's history then decided between the validated 38.5 mm Cube pinch and a
-    # 40.5 mm pinch that slipped out in transport (mounts runs/F02).
+    # 40.5 mm pinch that slipped out in transport.
     # Flight controller only; the camera keeps the plain (travel, priority) order.
     tie = TRAVEL_TIE_RAD if cell.graph["instances"][mate["part"]]["kind"] == "flight_controller" else 0.
     best = min((h[0] for h in head), default=0.)
@@ -745,6 +748,244 @@ PROP_REST_M=-.00025
 PROP_FREE_SPEED=.6
 
 
+# Arm self-clearance kept along a propeller insertion (the planning copy's
+# link-link shell is 2 x 4 mm). The in-grasp pivot keeps turning the hand
+# during the servo descent, so a branch must also stay contact-free for a few
+# degrees of pivot either way; the servo swivels the elbow below a 3 mm gap.
+PROP_SELF_SHELL=.008
+PROP_SELF_ACCEPT=.003
+PROP_SERVO_SELF_MIN=.003
+# Servo outer integral (1/s) and its clamp.
+PROP_SERVO_KI=1.5
+PROP_SERVO_BIAS_MAX=.003
+# The prop's final yaw is free: turning it about its own axis at the hover
+# gives the hand (45 deg pitched-blade pinch) a different orientation. Pivot
+# variants: ~12 deg build up during transport, a few more during the descent.
+PROP_YAW_TURNS_DEG=(0.,30.,-30.,60.,-60.,90.,-90.,120.,-120.,150.,-150.,180.)
+PROP_TRANSPORT_PIVOT_DEG=(12.,)
+PROP_HOVER_PIVOT_DEG=(6.,)
+
+
+def _prop_robot_names(motion):
+    """(robot body names, gripper body names): the arm's self-distance ignores
+    pairs inside the gripper (its two fingers sit ~2 mm apart on a blade)."""
+    names=getattr(motion,"_prop_robot_names",None)
+    if names is None:
+        robot=frozenset(motion.m.body(int(b)).name for b in motion.robot_bodies)
+        hand=frozenset(motion.m.body(int(b)).name for b in body_subtree(motion.m,motion.hand))
+        names=motion._prop_robot_names=(robot,hand)
+    return names
+
+
+def _prop_contacts(motion, q, width, body):
+    """One planning query: (contacts that penetrate, arm self-distance).
+
+    Same pair rules as Motion.collision; with clearance on, pairs inside their
+    planning shells are listed with their signed distances, so penetration and
+    the arm's link self-distance (link-link and link-gripper pairs, capped at
+    the 8 mm shell) come from one query."""
+    motion.collision(q,width,body,True)
+    robot,hand=_prop_robot_names(motion)
+    pen=[c for c in motion.last_contacts if c[2]<-2e-5]
+    own=[c[2] for c in motion.last_contacts
+         if c[0] in robot and c[1] in robot and not (c[0] in hand and c[1] in hand)]
+    return pen,(min(own) if own else PROP_SELF_SHELL)
+
+
+def _prop_variant(held, delta, width):
+    """The held transform `held` turned by delta about the jaw axis through
+    the pad contact (the direction the pinched blade pivots in)."""
+    b,adr,p,rel=held
+    if not delta:
+        return held
+    c=np.array([0.,0.,_tip(width)-.005])
+    Ry=Rotation.from_euler("y",delta).as_matrix()
+    return (b,adr,c+Ry@(np.asarray(p)-c),Ry@np.asarray(rel))
+
+
+def _prop_tool(motion, held, pos, R):
+    """Tool pose that puts the held part (transform `held`) at pos/R."""
+    _b,_a,p,rel=held
+    hand_R=np.asarray(R)@np.asarray(rel).T
+    return np.asarray(pos)+hand_R@(motion.offset-np.asarray(p)),hand_R
+
+
+def _prop_branch_check(motion, body, q0, target, desR, width, open_width, *, h_top, h_end, pivots_deg=(6.,)):
+    """Plan-only check of one arm branch for the whole propeller insertion.
+
+    From configuration q0 (at or near the hover) the straight descent of the
+    held prop along its shaft axis, in 3 mm steps, must stay contact-free with
+    the arm's link self-distance >= PROP_SELF_ACCEPT; with the measured grasp
+    turned by +-each of pivots_deg about the jaw axis the same descent must stay
+    contact-free; and from the seat one of the exits of _prop_exit must be
+    clear with the jaws open and the prop left on its seat. Never moves the
+    robot. Returns (ok, min self-distance of the measured-grasp descent capped
+    at the 8 mm shell, reason)."""
+    axis=target[:3,2]
+    saved=motion.held
+    worst=math.inf
+    heights=np.linspace(h_top,h_end,max(2,int(math.ceil((h_top-h_end)/.003))+1))
+    deltas=(0.,)+tuple(math.radians(sign*p) for p in pivots_deg for sign in (1.,-1.))
+    bits=getattr(motion,"_finger_bits",None)
+    try:
+        for delta in deltas:
+            held=_prop_variant(saved,delta,width)
+            motion.held=held
+            margin=PROP_SELF_ACCEPT if not delta else 0.
+            prev=np.asarray(q0,float)
+            for j,hk in enumerate(heights):
+                tp,tR=_prop_tool(motion,held,target[:3,3]+axis*hk,desR)
+                q=motion._ik_one(tp,tR,prev,width=width)
+                if q is None:
+                    return False,worst,f"no IK at {1000*hk:.0f} mm (pivot {math.degrees(delta):+.0f} deg)"
+                if j and np.max(np.abs(q-prev))>.3:
+                    return False,worst,f"branch jump at {1000*hk:.0f} mm (pivot {math.degrees(delta):+.0f} deg)"
+                pen,own=_prop_contacts(motion,q,width,body)
+                if not delta:
+                    worst=min(worst,own)
+                if pen:
+                    return False,worst,f"contact {pen[0][:2]} at {1000*hk:.0f} mm (pivot {math.degrees(delta):+.0f} deg)"
+                if own<margin-1e-6:
+                    return False,worst,f"self-distance {1000*own:.1f} mm at {1000*hk:.0f} mm (pivot {math.degrees(delta):+.0f} deg)"
+                prev=q
+            if not delta:
+                # Exit from the seat: the prop stays where the last held FK put
+                # it; as after release it is an ordinary obstacle again.
+                motion._fk(prev,width)
+                motion.held=None
+                if bits is not None:
+                    ct,ca=motion.pm.geom_contype.copy(),motion.pm.geom_conaffinity.copy()
+                    motion.pm.geom_contype[:],motion.pm.geom_conaffinity[:]=bits
+                try:
+                    pp,rr=motion._fk(prev,open_width)
+                    rr=rr.copy()
+                    exits=[-rr[:,2]*d for d in (.08,.06,.04,.03)]+[rr[:,0]*d for d in (.05,.045)]
+                    exits.append((rr[:,0]-rr[:,2])*(.06/math.sqrt(2)))
+                    clear=any(_prop_line_free(motion,prev,v,open_width) for v in exits)
+                finally:
+                    if bits is not None:
+                        motion.pm.geom_contype[:],motion.pm.geom_conaffinity[:]=ct,ca
+                if not clear:
+                    return False,worst,"no clear exit from the seat"
+        return True,worst,""
+    finally:
+        motion.held=saved
+        motion.sync()
+
+
+def _prop_branch_search(motion, body, target, base_R, h_top, width, open_width, *, pivots_deg, q_ref=None,
+                        yaw_turns=PROP_YAW_TURNS_DEG, ik_per_yaw=6, keep=3):
+    """Hover branches for the held prop that pass _prop_branch_check.
+
+    Candidates are the prop's free-yaw turns about its own axis x the
+    contact-free IK branches of the hover pose, tried nearest to q_ref in joint
+    space first (the shortest arm move). Returns ([(q, yaw_deg, desR,
+    min self-distance, joint distance)], rejection reasons, candidate count)."""
+    axis=target[:3,2]
+    q_ref=motion.q if q_ref is None else np.asarray(q_ref,float)
+    candidates=[]
+    for yaw in yaw_turns:
+        R=Rotation.from_rotvec(axis*math.radians(yaw)).as_matrix()@np.asarray(base_R)
+        tp,tR=_prop_tool(motion,motion.held,target[:3,3]+axis*h_top,R)
+        # Contact-free IK only: the pinched blade sits inside the hand's
+        # planning shell; _prop_branch_check applies the arm's own margin.
+        for qc in motion.ik(tp,tR,width=width,attempts=32,max_solutions=ik_per_yaw,allow_pad_body=body,clearance=False):
+            candidates.append((float(np.linalg.norm(qc-q_ref)),yaw,R,qc))
+    candidates.sort(key=lambda c:c[0])
+    passed,reasons=[],[]
+    for dist,yaw,R,qc in candidates:
+        ok,worst,why=_prop_branch_check(motion,body,qc,target,R,width,open_width,h_top=h_top,
+                                        h_end=PROP_REST_M,pivots_deg=pivots_deg)
+        if not ok:
+            reasons.append(f"yaw {yaw:+.0f}: {why}")
+            continue
+        passed.append((qc,yaw,R,worst,dist))
+        if len(passed)>=keep:
+            break
+    # Prefer the full 8 mm clearance among the nearest passing branches.
+    passed.sort(key=lambda c:(c[3]<PROP_SELF_SHELL-1e-6,c[4]))
+    return passed,reasons,len(candidates)
+
+
+def _prop_preinsert(motion, body, target, pre_distance, open_width, *, speed=.65):
+    """Transport the held prop to a hover branch verified for the whole
+    insertion even after the in-grasp pivot expected during transport
+    (PROP_TRANSPORT_PIVOT_DEG, then PROP_HOVER_PIVOT_DEG if none passes).
+    Returns (yaw turn deg, min self-distance). Raises PlanningError."""
+    width=motion.width()
+    errors=[]
+    for pivots in (PROP_TRANSPORT_PIVOT_DEG,PROP_HOVER_PIVOT_DEG):
+        passed,reasons,n=_prop_branch_search(motion,body,target,target[:3,:3],pre_distance,width,open_width,pivots_deg=pivots)
+        for qc,yaw,R,worst,dist in passed:
+            try:
+                motion.move_joints(qc,width=width,allow_pad_body=body,speed=speed,clearance=True)
+                return yaw,worst,pivots
+            except PlanningError as error:
+                errors.append(str(error)[:100])
+        errors.extend(reasons[:2])
+    raise PlanningError(f"no verified insertion branch at the hover: {errors[:4]}")
+
+
+def _prop_select_branch(cell, motion, mate, name, body, target, open_width):
+    """Re-check the arm branch at the hover with the grasp as it is NOW.
+
+    The pinched blade pivots in the jaws during transport (11-13 deg seen), so
+    the hover alignment turns the hand well away from the planned branch; with
+    the 45 deg pitched-blade hand that can fold the elbow (joint4 ~0.08) so far
+    that link5 meets link2 on the way down, for every IK branch of that hand
+    pose. If the present branch fails _prop_branch_check, move at the hover
+    (planned joint move, prop held) to the nearest branch that passes, turning
+    the prop about its own (free) axis if needed. Returns True if it moved."""
+    motion.hold_body("part_"+name)
+    width=motion.width()
+    P=cell.pose(name)
+    desR,_=axis_aligned_rotation(P[:3,:3],target[:3,:3])
+    axis=target[:3,2]
+    h_top=float((P[:3,3]-target[:3,3])@axis)
+    ok,worst,why=_prop_branch_check(motion,body,motion.q,target,desR,width,open_width,h_top=h_top,
+                                    h_end=PROP_REST_M,pivots_deg=PROP_HOVER_PIVOT_DEG)
+    if ok:
+        _log("prop branch",name,"hover branch ok; min self-distance mm",round(1000*worst,2))
+        return False
+    _log("prop branch",name,"hover branch rejected:",why)
+    q_before=motion.q
+    passed,reasons,n=_prop_branch_search(motion,body,target,desR,h_top,width,open_width,pivots_deg=PROP_HOVER_PIVOT_DEG)
+    for qc,yaw,R,worst,dist in passed:
+        try:
+            motion.move_joints(qc,width=width,allow_pad_body=body,speed=.4,clearance=True)
+        except PlanningError as error:
+            reasons.append(str(error)[:100])
+            continue
+        _log("prop branch",name,"re-configured at the hover: yaw turn deg",yaw,"joint move",round(dist,2),
+             "min self-distance mm",round(1000*worst,2),"dq",np.round(qc-q_before,2))
+        return True
+    # Nothing better reachable: keep the present branch; the servo's elbow
+    # swivel (_prop_swivel) remains the last guard.
+    _log("prop branch",name,"no better hover branch",n,"candidates:",reasons[:3])
+    return False
+
+
+def _prop_swivel(motion, q_goal, tool_p, hand_R, width, body, q_cmd, max_step=.05):
+    """Elbow self-motion for one servo step: same tool pose, joint-3 offset
+    seeds; the solution with the largest arm self-distance that penetrates
+    nothing and stays within max_step of the last command, or None."""
+    best=None
+    for k in range(1,7):
+        for sign in (1.,-1.):
+            seed=np.asarray(q_goal,float).copy();seed[2]+=sign*.015*k
+            q=motion._ik_one(tool_p,hand_R,seed,width=width)
+            if q is None or np.max(np.abs(q-q_cmd))>max_step:
+                continue
+            pen,own=_prop_contacts(motion,q,width,body)
+            if pen:
+                continue
+            if best is None or own>best[1]:
+                best=(q,own)
+        if best is not None and best[1]>=PROP_SELF_SHELL:
+            break
+    return best
+
+
 def _prop_report(cell, mate, name, target, stage):
     lateral,height,tilt=_prop_axis_error(cell,name,target)
     _log("prop insert",name,stage,"lateral_mm",round(1000*lateral,3),"height_mm",round(1000*height,3),
@@ -773,21 +1014,30 @@ def _prop_servo(cell, motion, mate, name, body, target, *, end_h, fast=.025, slo
     # with the measured grasp (the branch transport planning verified for the
     # exit). Seeding only from the last command lets the 7-DOF null space
     # drift over a hundred steps, e.g. into a link2/link5 self-contact.
-    desired_R0,_=axis_aligned_rotation(P[:3,:3],target[:3,:3])
-    branch_h=np.linspace(h_ref,end_h,max(2,int(math.ceil((h_ref-end_h)/.002))+1))
-    branch_q=[q_cmd.copy()]
-    for hk in branch_h[1:]:
-        bp,bR=motion.body_goal(target[:3,3]+axis*hk,desired_R0,body)
-        qk=motion._ik_one(bp,bR,branch_q[-1],width=width)
-        if qk is None:
-            raise PlanningError(f"{name} no straight descent branch at height {1000*hk:.1f} mm")
-        branch_q.append(qk)
-    branch_q=np.asarray(branch_q)
+    def make_branch(q_from,h_from):
+        R0,_=axis_aligned_rotation(cell.pose(name)[:3,:3],target[:3,:3])
+        hs=np.linspace(h_from,end_h,max(2,int(math.ceil((h_from-end_h)/.002))+1))
+        qs=[np.asarray(q_from,float).copy()]
+        for hk in hs[1:]:
+            bp,bR=motion.body_goal(target[:3,3]+axis*hk,R0,body)
+            qk=motion._ik_one(bp,bR,qs[-1],width=width)
+            if qk is None:
+                raise PlanningError(f"{name} no straight descent branch at height {1000*hk:.1f} mm")
+            qs.append(qk)
+        return hs,np.asarray(qs)
+    branch_h,branch_q=make_branch(q_cmd,h_ref)
     def branch_seed(hh):
         return np.array([np.interp(hh,branch_h[::-1],branch_q[::-1,j]) for j in range(7)])
+    swivels=0
     t_end=float(cell.d.time)+max_s
     paused=0
     history=[]
+    # Outer integral on the measured hub's lateral error. While the servo
+    # follows the in-grasp pivot the arm reference keeps moving, which freezes
+    # Motion._drive's own integral, and the joints' friction dead band then
+    # leaves the hand ~0.8 mm short of every command. Frozen once the bore is
+    # on the shaft (the shaft then holds the hub; never push it sideways).
+    bias=np.zeros(3)
     while True:
         if float(cell.d.time)>t_end:
             _prop_report(cell,mate,name,target,"servo-timeout")
@@ -812,8 +1062,13 @@ def _prop_servo(cell, motion, mate, name, body, target, *, end_h, fast=.025, slo
             h_ref=max(end_h,h_ref-step,h-.0015)
         else:
             paused+=1
+        if h>PROP_GATE_M:
+            bias+=PROP_SERVO_KI*.05*(delta-h*axis)
+            norm=float(np.linalg.norm(bias))
+            if norm>PROP_SERVO_BIAS_MAX:
+                bias*=PROP_SERVO_BIAS_MAX/norm
         desired_R,_=axis_aligned_rotation(P[:3,:3],target[:3,:3])
-        tool_p,hand_R=motion.body_goal(target[:3,3]+axis*h_ref,desired_R,body)
+        tool_p,hand_R=motion.body_goal(target[:3,3]+axis*h_ref-bias,desired_R,body)
         # Bound each 50 ms correction (1.5 mm, 0.8 deg) for a smooth command.
         cur_p,cur_R=motion._fk(q_cmd,width)
         dp=tool_p-cur_p
@@ -826,19 +1081,29 @@ def _prop_servo(cell, motion, mate, name, body, target, *, end_h, fast=.025, slo
         q_goal=motion._ik_one(tool_p,hand_R,seed,width=width)
         if q_goal is None:
             raise PlanningError(f"{name} servo IK failed at height {1000*h:.2f} mm")
-        if motion.collision(q_goal,width,allow_pad_body=body,clearance=False):
+        pen,own=_prop_contacts(motion,q_goal,width,body)
+        if pen or own<PROP_SERVO_SELF_MIN:
+            # The arm's own links (e.g. link5 towards link2) are closing in:
+            # swivel the elbow for this step with the tool pose unchanged.
+            alt=_prop_swivel(motion,q_goal,tool_p,hand_R,width,body,q_cmd)
+            if alt is not None and (pen or alt[1]>own):
+                q_goal,own=alt;pen=[]
+                swivels+=1
+                # Re-seed the remaining descent from the swivelled posture.
+                branch_h,branch_q=make_branch(q_goal,max(end_h,h_ref))
+        if pen:
             _prop_report(cell,mate,name,target,"servo-collision")
-            raise PlanningError(f"{name} servo step in collision: {motion.last_contacts[:3]}")
+            raise PlanningError(f"{name} servo step in collision: {pen[:3]}")
         for k in range(1,6):
             motion._drive(q_cmd+(q_goal-q_cmd)*k/5);cell.tick()
         q_cmd=q_goal
         if h_ref<=end_h and h-end_h<.0003 and lateral<.0004:
             break
-    _log("prop servo",name,"paused_cycles",paused)
+    _log("prop servo",name,"paused_cycles",paused,"elbow_swivels",swivels,"lateral_bias_mm",np.round(1000*bias,3))
     return q_cmd
 
 
-def _prop_insert(cell, motion, mate, name, body, target, ins, pre_distance, wall_deadline=math.inf):
+def _prop_insert(cell, motion, mate, name, body, target, ins, pre_distance, wall_deadline=math.inf, open_width=.018):
     """Lower a held propeller's 13-sided bore over its passive rotor shaft.
 
     The bore (inradius 2.43 mm) clears the 2 mm shaft by only ~0.43 mm and
@@ -856,6 +1121,16 @@ def _prop_insert(cell, motion, mate, name, body, target, ins, pre_distance, wall
         _log("prop insert",name,"coarse hover alignment incomplete:",str(error))
     if not _gripped(cell,name):
         raise PlanningError(f"lost grip on {name} during hover alignment")
+    if _prop_select_branch(cell,motion,mate,name,body,target,open_width):
+        try:
+            motion.align_body(target[:3,3]-ins*pre_distance,target[:3,:3],body=body,
+                              tolerance=.0015,angle=.03,max_passes=3,axis_only=True)
+        except PlanningError as error:
+            if "did not converge" not in str(error):
+                raise
+            _log("prop insert",name,"coarse hover alignment incomplete:",str(error))
+        if not _gripped(cell,name):
+            raise PlanningError(f"lost grip on {name} during hover re-configuration")
     _prop_report(cell,mate,name,target,"hover")
     q=_prop_servo(cell,motion,mate,name,body,target,end_h=PROP_REST_M,wall_deadline=wall_deadline)
     _prop_report(cell,mate,name,target,"seated")
@@ -1880,22 +2155,36 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
     else:
         target_yaws=(base_yaw,)
     transport_errors=[]
-    for yaw in target_yaws:
-        g.target_yaw=yaw
-        target = _target(cell,mate,g)
-        pre = target[:3,3]-ins*pre_distance
-        pp,rr=motion.body_goal(pre,target[:3,:3],body)
-        goal_p,goal_R=motion.body_goal(target[:3,3],target[:3,:3],body)
-        motion.set_mate_contact(contact_carriers,target[:3,3],target[:3,:3],axis_only=free_yaw)
-        _log("transport",name,"pre",np.round(pre,4),"yaw",round(yaw,3))
-        retreat=-goal_R[:,2]*(.06 if kind == "landing_strut" else retreat_distance)
-        try:
-            _preinsert(motion,pp,goal_p,goal_R,body,retreat=retreat,open_width=min(.085,g.width+.012),
-                       clearance=not is_prop,transport_clearance=True,
-                       attempts=96 if is_prop else 64,speed=.65 if is_prop else .25)
-            break
-        except PlanningError as error:
-            transport_errors.append(str(error))
+    # Propellers first try only hover branches verified for the whole
+    # insertion (_prop_preinsert); the plain transport is the fallback.
+    for verified in ((True,False) if is_prop else (False,)):
+        # The verified search covers every free-yaw turn itself: run it once.
+        for yaw in (target_yaws[:1] if verified else target_yaws):
+            g.target_yaw=yaw
+            target = _target(cell,mate,g)
+            pre = target[:3,3]-ins*pre_distance
+            pp,rr=motion.body_goal(pre,target[:3,:3],body)
+            goal_p,goal_R=motion.body_goal(target[:3,3],target[:3,:3],body)
+            motion.set_mate_contact(contact_carriers,target[:3,3],target[:3,:3],axis_only=free_yaw)
+            _log("transport",name,"pre",np.round(pre,4),"yaw",round(yaw,3))
+            retreat=-goal_R[:,2]*(.06 if kind == "landing_strut" else retreat_distance)
+            try:
+                if verified:
+                    turn,worst,pivots=_prop_preinsert(motion,body,target,pre_distance,min(.085,g.width+.012),speed=.65)
+                    # The prop's final yaw is free; record the chosen turn.
+                    g.target_yaw=yaw+math.radians(turn)
+                    _log("prop branch",name,"verified transport branch: yaw turn deg",turn,"pivot check deg",pivots,
+                         "min self-distance mm",round(1000*worst,2))
+                else:
+                    _preinsert(motion,pp,goal_p,goal_R,body,retreat=retreat,open_width=min(.085,g.width+.012),
+                               clearance=not is_prop,transport_clearance=True,
+                               attempts=96 if is_prop else 64,speed=.65 if is_prop else .25)
+                break
+            except PlanningError as error:
+                transport_errors.append(str(error))
+        else:
+            continue
+        break
     else:
         raise PlanningError(f"all axial orientations failed for {name}: {transport_errors}")
     if not _gripped(cell,name):
@@ -1903,7 +2192,8 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
     target=_target(cell,mate,g)
     motion.set_mate_contact(contact_carriers,target[:3,3],target[:3,:3],axis_only=free_yaw)
     if is_prop:
-        q=_prop_insert(cell,motion,mate,name,body,target,ins,pre_distance,wall_deadline=wall_deadline)
+        q=_prop_insert(cell,motion,mate,name,body,target,ins,pre_distance,wall_deadline=wall_deadline,
+                       open_width=min(.085,g.width+.012))
         _prop_seat(cell,motion,mate,name,body,q,min(.085,g.width+.012),wall_deadline)
     else:
         if kind == "landing_strut" or cell.kit["parts"][kind].get("grasp_mode") == "surface":
@@ -1918,6 +2208,19 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
             if not _gripped(cell,name):
                 raise PlanningError(f"lost grip on {name} during hover alignment")
         pp,rr=motion.body_goal(target[:3,3],target[:3,:3],body)
+        try:
+            motion.line(pp,rr,allow_pad_body=body,clearance=False,execute=False)
+        except PlanningError as error:
+            # The part moved in the hand during the carry (re-measured by
+            # body_goal): from the transport plan's IK branch the straight
+            # descent to the re-measured seat goal is blocked. Choose again,
+            # as for the transport, an IK branch at the hover whose straight
+            # descent is clear, move there, then descend. Planning-only check
+            # first: a clear descent is executed exactly as before.
+            _log("descent blocked from the transport branch:",name,str(error)[:160])
+            hp,hr=motion.body_goal(target[:3,3]-ins*pre_distance,target[:3,:3],body)
+            _preinsert(motion,hp,pp,rr,body,clearance=False,transport_clearance=True,attempts=96,speed=.25)
+            pp,rr=motion.body_goal(target[:3,3],target[:3,:3],body)
         motion.line(pp,rr,allow_pad_body=body,clearance=False,speed=.015)
         if cell.coupling.state[mate["id"]] not in ("LOCKED","LOCKED_OFF"):
             if kind == "lidar":
