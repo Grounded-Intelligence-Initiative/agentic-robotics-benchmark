@@ -16,7 +16,7 @@ parts of that task's cell, made for that room by Xiatao Sun, are reused here:
     licensed for redistribution, "Office and Police Station Pack" and "Office With Conference Room" (base maps
     downsized to 512 px), and its image light (`ibl.ktx`) is distilled from light probes of the same room path-traced
     with NVIDIA OVRTX and prefiltered with Filament's cmgen. The decor is not in git: its files are in the benchmark's
-    Hugging Face dataset `grounded-intelligence-initiative/agentic-robotics-last-exam` under that task's folder,
+    Hugging Face dataset `grounded-intelligence-initiative/ale-robotics-assets` under that task's folder,
     `tasks/humanoid/furniture_assembly_from_drawings/payload/render/room_decor/`, fetched by this task's image build at
     the commit pinned in `environment/decor_assets.sha256` (a byte copy of that task's `environment/assets.sha256`) and
     checked file by file;
