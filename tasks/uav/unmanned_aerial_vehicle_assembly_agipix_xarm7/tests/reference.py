@@ -192,6 +192,9 @@ def lidar_housing_grasps(cell, name):
     part=cell.kit["parts"]["lidar"]
     proxy=trimesh.util.concatenate([trimesh.load_mesh(cell.assets/"given/kit/collision"/fn)
                                     for fn in part["collision"]])
+    if _lidar_upright(cell, name):
+        yield from _lidar_upright_grasps(proxy)
+        return
     down=cell.pose(name)[:3,:3].T@np.array([0.,0.,-1.])
     for theta in LIDAR_APPROACH_TILTS_DEG:
         for flip in (1.,-1.):
@@ -213,6 +216,52 @@ def lidar_housing_grasps(cell, name):
 
 
 LIDAR_APPROACH_TILTS_DEG=(0.,15.,30.)
+
+# Cable-free kit (mechanical-only scope): the LiDAR stands
+# upright on its flat base on the bench, yawed to its mounting yaw.
+LIDAR_UPRIGHT_MAX_TILT_DEG=20.
+# Pad-tip heights (part z) on the knurled ring (r 25.3-25.7 mm, z 29.4-39.5 mm),
+# preferred first: the held sensor creeps down in the pads at ~0.13 mm/s whatever
+# the squeeze (soft-contact friction), so the ring
+# length below the ring top (39.5 mm) is the carry budget (7.5 mm at 32 mm; the
+# 34 mm tip's 5.5 mm ran out after a 37 s carry). Lower tips put the
+# finger tips (1.5 mm past the pads) onto the base shoulder (top z 29.4 mm).
+LIDAR_UPRIGHT_TIP_Z_M=(.032,.0315,.033,.034)
+LIDAR_UPRIGHT_JAW_DEG=(0.,90.,45.,135.)
+
+
+def _lidar_upright(cell, name):
+    """True when the LiDAR stands upright on the bench (cable-free kit rest)."""
+    return cell.pose(name)[2,2]>math.cos(math.radians(LIDAR_UPRIGHT_MAX_TILT_DEG))
+
+
+def _lidar_upright_grasps(proxy):
+    """Upright LiDAR (cable-free kit): top-down pinch across the knurled ring.
+
+    The jaw line crosses the ring's tangent lines above the COM, so the sensor
+    hangs in its upright mounting attitude from lift-off (zero gravity torque
+    about the jaw line), and the bench yaw equals the mounting yaw: the carry
+    needs no reorientation of the part. The same _lidar_housing_width()
+    footprint check keeps both pads on the round housing only. The jaw
+    orientation (and with it the wrist branch) is chosen by joint travel in
+    place(): a 4.4 rad joint-7 unwinding made a 32 s carry.
+    """
+    approach=np.array([0.,0.,-1.])
+    # Tip height outermost: place() ranks the first four feasible candidates (the
+    # jaw orientations at the preferred tip) by joint travel (_least_travel_first).
+    for tip_z in LIDAR_UPRIGHT_TIP_Z_M:
+        for jaw_deg in LIDAR_UPRIGHT_JAW_DEG:
+            for flip in (1.,-1.):
+                a=math.radians(jaw_deg)
+                jaw=flip*np.array([math.cos(a),math.sin(a),0.])
+                R=np.column_stack([np.cross(jaw,approach),jaw,approach])
+                center=np.array([0.,0.,tip_z+.0095])
+                width=_lidar_housing_width(proxy,R,center)
+                if width is None:
+                    continue
+                tool=center+approach*.0095-approach*(_tip(width)-.158)
+                yield Grasp(tool,R,width,f"ring-top-j{jaw_deg:.0f}-z{tip_z*1000:.1f}-{'+' if flip>0 else '-'}",
+                            squeeze=.004,settle_s=.5)
 
 
 def _lidar_align(motion, pos, R, body, *, tolerance, max_passes):
@@ -254,7 +303,7 @@ CHEEK_RIM_CENTERS_M = (-.012, -.0125, -.0115, -.013, -.011)
 
 
 def cheek_rim_grasps(cell, name):
-    """Sensor cheek (flat 4 mm C plate on bench pins): jaws across its upper arm.
+    """Sensor cheek (flat 4 mm C plate on its staging stand): jaws across its upper arm.
 
     The jaws close across the upper arm (part y) from above, with the inner
     finger in the C opening, which keeps the wrist above the installed guard.
@@ -318,6 +367,104 @@ def _camera_band_top(proxy, jaw, z_tip, tol, height=.0185):
         depth = np.einsum("ij,j->i", loc-origins[ray], d)
         tops.append(float(loc[depth <= depth.min()+tol][:, 2].max()))
     return min(tops)
+
+
+# Cheek seat: the last re-measurement is made this far above the seat, above the
+# guard cradle's hook pocket (~1.8 mm deep), so the cheek is still free of contact.
+CHEEK_NEAR_SEAT_M = .005
+CHEEK_SEAT_HOLD_S = 1.5
+
+
+def _cheek_align(motion, pos, R, body, *, tolerance, angle, max_passes, accept_mm, accept_deg, where):
+    """align_body for the free (not yet seated) cheek; a small residual is accepted."""
+    try:
+        return motion.align_body(pos, R, body=body, tolerance=tolerance, angle=angle, max_passes=max_passes)
+    except PlanningError as error:
+        if "did not converge" not in str(error):
+            raise
+        b = motion.held[0]
+        p_now, r_now = motion.body_pose(b)
+        ep = float(np.linalg.norm(np.asarray(pos)-p_now))
+        er = float(Rotation.from_matrix(np.asarray(R) @ r_now.T).magnitude())
+        if ep > accept_mm/1000 or er > math.radians(accept_deg):
+            raise
+        _log("cheek", where, "alignment residual accepted", round(1000*ep, 3), "mm", round(math.degrees(er), 3), "deg")
+        return {"position_error_m": ep, "angle_error_rad": er}
+
+
+def _cheek_seat(cell, motion, mate, name, body, target, ins, pre_distance, wall_deadline=math.inf):
+    """Sensor cheek only: correct the in-grip pivot just above the seat, descend, hold still.
+
+    The rim grasp holds the cheek by the hook tooth and two short rim contacts, so it keeps
+    turning in the grip about the jaw axis (soft pad friction, no torsional friction),
+    ~0.6 deg/s through the carry (4 -> 20 deg in one run). A goal measured at the
+    65 mm hover is ~2.6 deg and ~1 mm off after the 4.3 s descent. The coupling welds the
+    pose the cheek is held in for 0.5 s within 1.5 mm, and this creep counts as still for
+    it (< 2 deg/s): LOCKED up to 3 deg, irreversibly LOCKED_OFF beyond. Aligning against the
+    cradle only winds the hand around the cheek (full05: 20 -> 36 deg in the grip, no
+    convergence). So: align at the hover, descend to CHEEK_NEAR_SEAT_M above the seat
+    (straight descent checked first, as in place()), align again there while still free,
+    check the last 5 mm from the corrected pose (if the correction or the descent would
+    graze the guard with the arm, re-branch there), make them with the re-measured grasp
+    (~0.4 deg more creep) and hold still until the coupling locks; no alignment against
+    the cradle.
+    """
+    key = mate["id"]
+    _cheek_align(motion, target[:3,3]-ins*pre_distance, target[:3,:3], body, tolerance=.0007, angle=.01,
+                 max_passes=10, accept_mm=1.5, accept_deg=2., where="hover")
+    if not _gripped(cell, name):
+        raise PlanningError(f"lost grip on {name} during hover alignment")
+    near = target[:3,3]-ins*CHEEK_NEAR_SEAT_M
+    np_, nr = motion.body_goal(near, target[:3,:3], body)
+    try:
+        motion.line(np_, nr, allow_pad_body=body, clearance=False, execute=False)
+    except PlanningError as error:
+        _log("descent blocked from the transport branch:", name, str(error)[:160])
+        hp, hr = motion.body_goal(target[:3,3]-ins*pre_distance, target[:3,:3], body)
+        _preinsert(motion, hp, np_, nr, body, clearance=False, transport_clearance=True, attempts=96, speed=.25)
+        np_, nr = motion.body_goal(near, target[:3,:3], body)
+    # Contact-free descent: twice the seat speed, so less pivot builds up before the near-seat check.
+    motion.line(np_, nr, allow_pad_body=body, clearance=False, speed=.03)
+    for attempt in range(3):
+        try:
+            _cheek_align(motion, near, target[:3,:3], body, tolerance=.0004, angle=.008, max_passes=6,
+                         accept_mm=.8, accept_deg=1.2, where="near seat")
+            pp, rr = motion.body_goal(target[:3,3], target[:3,:3], body)
+            motion.line(pp, rr, allow_pad_body=body, clearance=False, execute=False)
+            break
+        except PlanningError as error:
+            # The pivot correction turns the hand; on this IK branch the
+            # correction or the last 5 mm can graze the guard (link5/link7).
+            # Move instead, on a branch whose straight 5 mm descent
+            # is clear (with arm margin if one exists), directly to the
+            # corrected near-seat hand pose; then correct and check again.
+            if attempt == 2 or "Cartesian path" not in str(error):
+                raise
+            _log("cheek near-seat move blocked:", name, str(error)[:120], "- new branch at the near-seat pose")
+            np_, nr = motion.body_goal(near, target[:3,:3], body)
+            pp, rr = motion.body_goal(target[:3,3], target[:3,:3], body)
+            try:
+                _preinsert(motion, np_, pp, rr, body, clearance=True, transport_clearance=False, attempts=96, speed=.15)
+            except PlanningError:
+                _preinsert(motion, np_, pp, rr, body, clearance=False, transport_clearance=False, attempts=96, speed=.15)
+    motion.line(pp, rr, allow_pad_body=body, clearance=False, speed=.015)
+    q = motion.q
+    states = []
+    for _ in range(int(round(CHEEK_SEAT_HOLD_S/.01))):
+        if time.monotonic() > wall_deadline:
+            raise TimeoutError("reference wall cap during cheek seat hold")
+        if cell.coupling.state[key] in ("LOCKED", "LOCKED_OFF"):
+            break
+        motion._drive(q); cell.tick()
+        states.append(cell.coupling.state[key])
+    P = cell.pose(name)
+    err_deg = math.degrees(float(Rotation.from_matrix(target[:3,:3].T @ P[:3,:3]).magnitude()))
+    _log("cheek seat", name, cell.coupling.state[key], "after hold", round(.01*len(states), 2), "s; error",
+         round(1000*float(np.linalg.norm(P[:3,3]-target[:3,3])), 3), "mm", round(err_deg, 3), "deg")
+    for _ in range(80):
+        if time.monotonic() > wall_deadline:
+            raise TimeoutError("reference wall cap during seat hold")
+        motion._drive(q); cell.tick()
 
 
 def camera_grasps(cell, name):
@@ -476,6 +623,9 @@ def grasps(cell, name):
         R = Rotation.from_euler("z",240 if mirror > 0 else 120,degrees=True).as_matrix()
         R = R @ Rotation.from_euler("x",45*mirror,degrees=True).as_matrix() @ DOWN
         p = np.array([-.023529567724055858,-.026829716583874622*mirror,.013179790526569504])
+        # Blade deep in the pads (see PROP_GRASP_DEPTH_M): the tool point
+        # moves along the approach, the pinched blade section stays the same.
+        p = p + R[:,2]*PROP_GRASP_DEPTH_M
         for target_yaw in (0.,math.pi/2,-math.pi/2,math.pi):
             for yaw in (0.,120.,240.):
                 symmetry=Rotation.from_euler("z",yaw,degrees=True).as_matrix()
@@ -640,7 +790,7 @@ def _target(cell,mate,grasp):
 
 
 def _least_travel_first(cell, motion, mate, candidates, pre_offset, count=4):
-    """Camera / flight controller only: order the leading grasps by joint travel.
+    """Camera / flight controller / upright LiDAR only: order the leading grasps by joint travel.
 
     Their best candidates come in mirrored pairs (the same contact patch with
     the jaws swapped) whose priorities tie to ~1e-9, so bench micro-drift used
@@ -672,7 +822,8 @@ def _least_travel_first(cell, motion, mate, candidates, pre_offset, count=4):
     # Camera too: its +twins at z16..z24 lie within 0.03 rad, so sub-mrad
     # travel differences (CPU-dependent bench settling) picked z16 on one
     # host and z18 on another; keep camera_grasps' priority among them.
-    tie = TRAVEL_TIE_RAD if cell.graph["instances"][mate["part"]]["kind"] in ("flight_controller", "camera") else 0.
+    # Upright LiDAR (cable-free kit): the same rule among its jaw orientations.
+    tie = TRAVEL_TIE_RAD if cell.graph["instances"][mate["part"]]["kind"] in ("flight_controller", "camera", "lidar") else 0.
     best = min((h[0] for h in head), default=0.)
     near = sorted((h for h in head if h[0] <= best+tie), key=lambda h: h[1])
     far = sorted((h for h in head if h[0] > best+tie), key=lambda h: h[:2])
@@ -899,6 +1050,18 @@ PROP_SERVO_BIAS_MAX=.003
 PROP_YAW_TURNS_DEG=(0.,30.,-30.,60.,-60.,90.,-90.,120.,-120.,150.,-150.,180.)
 PROP_TRANSPORT_PIVOT_DEG=(12.,)
 PROP_HOVER_PIVOT_DEG=(6.,)
+# How much deeper than the original pitched-blade grasp the blade sits in the
+# pads (along the approach). Originally the blade's chord, which runs nearly
+# along the approach, filled only the distal half of pad_2: with the 45 deg hand
+# the pad plane carries 0.71 g, so the pinched blade crept towards the finger
+# tips at ~1.1 mm/s (MuJoCo soft friction) and a carry of more than ~10 s could
+# end with the blade at the pad edge (one development seed dropped it in
+# transport). With the whole chord inside pad_1 + pad_2 the jaws stop on a
+# wider envelope (3 N instead of 1-1.8 N after the lift) and the blade hardly
+# creeps along the approach (10 and 15 mm deep picks
+# alike; 10 mm keeps the lower finger 8.7 mm above the bench). The staging
+# stand's pedestal leaves room under the blades for the lower finger.
+PROP_GRASP_DEPTH_M=.010
 
 
 def _prop_robot_names(motion):
@@ -933,7 +1096,7 @@ def _prop_variant(held, delta, width):
     b,adr,p,rel=held
     if not delta:
         return held
-    c=np.array([0.,0.,_tip(width)-.005])
+    c=np.array([0.,0.,_tip(width)-.005-PROP_GRASP_DEPTH_M])
     Ry=Rotation.from_euler("y",delta).as_matrix()
     return (b,adr,c+Ry@(np.asarray(p)-c),Ry@np.asarray(rel))
 
@@ -1478,11 +1641,20 @@ def _strut_turn_pose(part_R, p, R, g):
 STRUT_RRT_TIMEOUT = 30.         # RRT-Connect nominal budget for strut moves (x PLAN_EXTENDS_PER_S extends; base default 12)
 
 
-def _strut_goto(motion, targets, *, width, allow_pad_body=None, what="strut move"):
-    """Plan (RRT-Connect, longer timeout) and execute to the first reachable target.
+STRUT_EMPTY_SPEED = .5          # peak joint speed of the empty-hand strut approaches (rad/s; carries .25)
+MOTOR_EXTRA_HOLD_TICKS = 120    # a motor still HOLDING after place()'s fixed 80-tick hold may hold this much longer
 
-    The base planner's 12 s wall-clock budget is short on a loaded host; strut
-    moves try every candidate branch with a longer budget before giving up.
+
+def _strut_goto(motion, targets, *, width, allow_pad_body=None, what="strut move"):
+    """Plan (RRT-Connect, larger budget) and execute an EMPTY-HAND move to the first reachable target.
+
+    The base planner's default budget is short for these moves; every candidate
+    branch is tried with a larger budget before giving up. Only empty-hand moves
+    (pick and regrasp approaches) come here; they run at STRUT_EMPTY_SPEED: the
+    arm then tracks its collision-checked path within 0.3 mm at every link
+    (tools/probe_speed_v7.py, leg_4 approach: 0.16 mm at .25, 0.30 mm at .5;
+    planning clearance 4 mm), and a joint-space approach that unwinds the wrist
+    takes half the time (63 -> 32 s).
     """
     errors = []
     for q in targets:
@@ -1491,16 +1663,19 @@ def _strut_goto(motion, targets, *, width, allow_pad_body=None, what="strut move
         except PlanningError as error:
             errors.append(str(error)[:120])
             continue
-        motion.execute(path, speed=.25)
+        motion.execute(path, speed=STRUT_EMPTY_SPEED)
         return
     raise PlanningError(f"{what}: no path to any of {len(targets)} branches: {errors[:3]}")
 
 
-def _strut_approach_branches(motion, pre_p, goal_p, R, body=None, *, clearance=False, attempts=64):
-    """IK branches at pre_p whose straight approach to goal_p is clear (as in _preinsert)."""
+def _strut_approach_branches(motion, pre_p, goal_p, R, body=None, *, clearance=False, attempts=64, seed=None):
+    """IK branches at pre_p whose straight approach to goal_p is clear (as in _preinsert).
+
+    With ``seed`` (a planned branch) the branches nearest to it come first.
+    """
     out = []
     for candidate in motion.ik(pre_p, R, width=motion.width(), attempts=attempts, max_solutions=16,
-                               allow_pad_body=body, clearance=clearance):
+                               allow_pad_body=body, clearance=clearance, seed=seed):
         prev, ok = candidate, True
         for u in np.linspace(0, 1, 34)[1:]:
             q = motion._ik_one((1-u)*np.asarray(pre_p)+u*np.asarray(goal_p), R, prev, width=motion.width())
@@ -1511,10 +1686,12 @@ def _strut_approach_branches(motion, pre_p, goal_p, R, body=None, *, clearance=F
             prev = q
         if ok:
             out.append(candidate)
+    if seed is not None:
+        out.sort(key=lambda q: float(np.linalg.norm(np.asarray(q)-seed)))
     return out
 
 
-def _strut_pick_branches(cell, motion, name, g, p, R, width, *, prefer_margin=False):
+def _strut_pick_branches(cell, motion, name, g, p, R, width, *, prefer_margin=False, avoid_wound=False):
     """IK branches above the pick whose descent, lift and upright turn are all clear.
 
     The branch the arm arrives on decides where its elbow ends up after the
@@ -1524,10 +1701,16 @@ def _strut_pick_branches(cell, motion, name, g, p, R, width, *, prefer_margin=Fa
     branches are ordered by the joint-limit margin of the arm after the turn
     (a strut that is stood up and regrasped next must be carried with a wrist
     that is not wound up near its limit: final05's leg_4 arrived with joint 2
-    at 1.82 and joint 7 at -5.18 rad and no upright stand carry existed).
+    at 1.82 and joint 7 at -5.18 rad and no upright stand carry existed). With
+    ``avoid_wound`` (direct struts) the IK order is kept except that branches
+    whose +-2 pi joints end the turn within STRUT_WIND_MARGIN of a limit go
+    last (v7 seed 513: leg_2 arrived with joint 7 at -6.283 and no carry
+    existed for any yaw). The full margin order would cost ~35 s of pick
+    approach per strut (v1/v2 runs: leg_1 76 s instead of 40 s), and the
+    tilt-constrained carry RRT copes with the remaining postures.
     """
     turn_p, turn_R, _ = _strut_turn_pose(cell.pose(name)[:3, :3], p, R, g)
-    branches, margins, errors = [], [], []
+    branches, margins, windings, errors = [], [], [], []
     for q in motion.ik(p-R[:, 2]*.10, R, width=width, attempts=48, max_solutions=12):
         try:
             qd = motion.line(p, R, width=width, clearance=False, start_q=q, execute=False)[-1]
@@ -1539,13 +1722,30 @@ def _strut_pick_branches(cell, motion, name, g, p, R, width, *, prefer_margin=Fa
             continue
         branches.append(q)
         margins.append(_joint_margin(motion, qt))
+        windings.append(_joint_winding_margin(motion, qt))
     if not branches:
         raise PlanningError(f"{name}: no pick branch with a clear lift and upright turn: {errors[:2]}")
     if prefer_margin:
         order = sorted(range(len(branches)), key=lambda i: -margins[i])
         _log("pick branches", name, "post-turn joint margins", [round(margins[i], 3) for i in order])
         branches = [branches[i] for i in order]
+    elif avoid_wound:
+        order = sorted(range(len(branches)), key=lambda i: (windings[i] < STRUT_WIND_MARGIN,
+                                                            -windings[i] if windings[i] < STRUT_WIND_MARGIN else i))
+        _log("pick branches", name, "post-turn winding margins", [round(windings[i], 3) for i in order])
+        branches = [branches[i] for i in order]
     return branches
+
+
+STRUT_WIND_MARGIN = .02         # +-2 pi joints after the upright turn: keep >= 2 % of their range (.25 rad) to a limit
+
+
+def _joint_winding_margin(motion, q):
+    """Smallest normalised distance of the +-2 pi joints (1, 3, 5, 7) to their limits."""
+    idx = [0, 2, 4, 6]
+    lo, hi = motion.limits[idx, 0], motion.limits[idx, 1]
+    qq = np.asarray(q, float)[idx]
+    return float(np.min(np.minimum(qq-lo, hi-qq)/(hi-lo)))
 
 
 def _joint_margin(motion, q):
@@ -1554,14 +1754,15 @@ def _joint_margin(motion, q):
     return float(np.min(np.minimum(q-lo, hi-q)/(hi-lo)))
 
 
-def _strut_pick_upright(cell, motion, name, body, g, p, R, width, *, prefer_margin=False):
+def _strut_pick_upright(cell, motion, name, body, g, p, R, width, *, prefer_margin=False, avoid_wound=False):
     """Pick the resting strut from above, lift it and turn it upright, flange up."""
     _prepare_width(motion, width)
     motion.set_width(width)
     motion.wait(1.5)
     width = motion.width()
     _log("preshape", name, "measured_gap", round(width, 4))
-    _strut_goto(motion, _strut_pick_branches(cell, motion, name, g, p, R, width, prefer_margin=prefer_margin),
+    _strut_goto(motion, _strut_pick_branches(cell, motion, name, g, p, R, width, prefer_margin=prefer_margin,
+                                             avoid_wound=avoid_wound),
                 width=width, what=f"{name} pick")
     motion.line(p, R, width=width, clearance=False, speed=.025)
     motion.close(g.width, squeeze=g.squeeze)
@@ -1596,6 +1797,7 @@ STRUT_REGRASP_STATION = .0445   # pad centre station of a side regrasp (pad tops
 STRUT_REGRASP_DEPTH = 0.        # shaft axis at the TCP: 15 mm of pad remain towards the tip
 STRUT_REGRASP_STANDOFF = .06    # straight horizontal approach of the side regrasp
 STRUT_STAND_EXIT = (.06, .04, .025)   # open-hand exits after standing a strut (fingertips clear at 20 mm)
+STRUT_REGRASP_LIFT_CHECK = .05  # the planned regrasp posture must be able to lift this far with clearance
 
 
 def _strut_side_hand(point, theta, station, depth=STRUT_REGRASP_DEPTH):
@@ -1715,67 +1917,84 @@ def _strut_regrasp(cell, motion, mate, name, body, g):
     leg = cell.pose(name)
     psi0 = _strut_yaw(leg[:3, :3])
     plan = None
-    for spot in _strut_stand_spots(cell, name)[:10]:
-        # Side-regrasp directions that reach the standing strut at this spot.
-        with _Detached(motion):
-            free = set()
-            for d in range(0, 360, 15):
-                p2, R2 = _strut_side_hand(spot, math.radians(d), STRUT_REGRASP_STATION)
-                if (motion.ik(p2, R2, width=open_width, attempts=8, max_solutions=1) and
-                        motion.ik(p2-R2[:, 2]*STRUT_REGRASP_STANDOFF, R2, width=open_width,
-                                  attempts=8, max_solutions=1)):
-                    free.add(d)
-        _log("regrasp spot", name, np.round(spot[:2], 3), "side directions", sorted(free))
-        if not free:
-            continue
-        for turn_deg in (0, -15, 15, -30, 30, -45, 45, -60, 60, -75, 75, -90, 90):
-            psi = psi0+math.radians(turn_deg)
-            options = []
-            for theta3 in mounts:
-                for k in range(4):
-                    theta2 = math.degrees(theta3+psi-k*math.pi/2) % 360
-                    if int(round(theta2/15)) % 24*15 in free:
-                        options.append((theta3, k, theta2))
-            if not options:
-                continue
-            # Stand it exactly upright (the hand absorbs any in-hand pivot).
-            stand_R = Rotation.from_euler("z", psi).as_matrix()
-            place_p, place_R = motion.body_goal(spot+np.array([0., 0., .003]), stand_R, body)
-            q_place = motion.ik(place_p, place_R, width=motion.width(), attempts=12, max_solutions=1,
-                                allow_pad_body=body)
-            if not q_place:
-                continue
-            try:
-                # Final 3 mm descent with the strut, then the open hand's exit.
-                q_low = motion.line(place_p-np.array([0., 0., .0028]), place_R, allow_pad_body=body,
-                                    clearance=False, start_q=q_place[0], execute=False)[-1]
+    spots = _strut_stand_spots(cell, name)[:10]
+    free_at = {}
+    # First pass: the regrasp posture must leave room to lift the strut
+    # STRUT_REGRASP_LIFT_CHECK with clearance (v7 seed 515: a posture folded
+    # near the robot base, link1/link_base-link6 inside the 8 mm self-clearance,
+    # refused every lift and the carry). Second pass: the old criterion.
+    for strict in (True, False):
+        for si, spot in enumerate(spots):
+            if si not in free_at:
+                # Side-regrasp directions that reach the standing strut at this spot.
                 with _Detached(motion):
-                    motion.line(place_p-np.array([0., 0., .0028])-place_R[:, 2]*STRUT_STAND_EXIT[-1],
-                                place_R, width=open_width, start_q=q_low, execute=False)
-            except PlanningError:
+                    free = set()
+                    for d in range(0, 360, 15):
+                        p2, R2 = _strut_side_hand(spot, math.radians(d), STRUT_REGRASP_STATION)
+                        if (motion.ik(p2, R2, width=open_width, attempts=8, max_solutions=1) and
+                                motion.ik(p2-R2[:, 2]*STRUT_REGRASP_STANDOFF, R2, width=open_width,
+                                          attempts=8, max_solutions=1)):
+                            free.add(d)
+                free_at[si] = free
+                _log("regrasp spot", name, np.round(spot[:2], 3), "side directions", sorted(free))
+            free = free_at[si]
+            if not free:
                 continue
-            with _Detached(motion):
-                for theta3, k, theta2 in options:
-                    p2, R2 = _strut_side_hand(spot, math.radians(theta2), STRUT_REGRASP_STATION)
-                    q_pre = motion.ik(p2-R2[:, 2]*STRUT_REGRASP_STANDOFF, R2, width=open_width,
-                                      attempts=12, max_solutions=1)
-                    if not q_pre:
-                        continue
-                    try:
-                        motion.line(p2, R2, width=open_width, clearance=False, start_q=q_pre[0], execute=False)
-                    except PlanningError:
-                        continue
-                    plan = (spot, turn_deg, stand_R, theta3, k)
+            for turn_deg in (0, -15, 15, -30, 30, -45, 45, -60, 60, -75, 75, -90, 90):
+                psi = psi0+math.radians(turn_deg)
+                options = []
+                for theta3 in mounts:
+                    for k in range(4):
+                        theta2 = math.degrees(theta3+psi-k*math.pi/2) % 360
+                        if int(round(theta2/15)) % 24*15 in free:
+                            options.append((theta3, k, theta2))
+                if not options:
+                    continue
+                # Stand it exactly upright (the hand absorbs any in-hand pivot).
+                stand_R = Rotation.from_euler("z", psi).as_matrix()
+                place_p, place_R = motion.body_goal(spot+np.array([0., 0., .003]), stand_R, body)
+                q_place = motion.ik(place_p, place_R, width=motion.width(), attempts=12, max_solutions=1,
+                                    allow_pad_body=body)
+                if not q_place:
+                    continue
+                try:
+                    # Final 3 mm descent with the strut, then the open hand's exit.
+                    q_low = motion.line(place_p-np.array([0., 0., .0028]), place_R, allow_pad_body=body,
+                                        clearance=False, start_q=q_place[0], execute=False)[-1]
+                    with _Detached(motion):
+                        motion.line(place_p-np.array([0., 0., .0028])-place_R[:, 2]*STRUT_STAND_EXIT[-1],
+                                    place_R, width=open_width, start_q=q_low, execute=False)
+                except PlanningError:
+                    continue
+                with _Detached(motion):
+                    for theta3, k, theta2 in options:
+                        p2, R2 = _strut_side_hand(spot, math.radians(theta2), STRUT_REGRASP_STATION)
+                        for q_pre in motion.ik(p2-R2[:, 2]*STRUT_REGRASP_STANDOFF, R2, width=open_width,
+                                               attempts=12, max_solutions=4 if strict else 1):
+                            try:
+                                q_reg = motion.line(p2, R2, width=open_width, clearance=False, start_q=q_pre,
+                                                    execute=False)[-1]
+                                if strict:
+                                    motion.line(p2+np.array([0., 0., STRUT_REGRASP_LIFT_CHECK]), R2, width=g.width,
+                                                clearance=True, start_q=q_reg, execute=False)
+                            except PlanningError:
+                                continue
+                            plan = (spot, turn_deg, stand_R, theta3, k, q_pre)
+                            break
+                        if plan:
+                            break
+                if plan:
                     break
             if plan:
                 break
         if plan:
             break
+        _log("regrasp plan", name, "no posture with a clear lift; relaxed search")
     if plan is None:
         raise PlanningError(f"{name}: no stand spot with a side regrasp onto a reachable seat")
-    spot, turn_deg, stand_R, theta3, k = plan
+    spot, turn_deg, stand_R, theta3, k, q_regrasp = plan
     _log("regrasp plan", name, "spot", np.round(spot, 3), "turn_deg", turn_deg, "seat_deg",
-         round(math.degrees(theta3)), "yaw_k", k)
+         round(math.degrees(theta3)), "yaw_k", k, "lift_checked", strict)
     # Set the strut down upright, foot first, with the planned twist.
     touch_p, touch_R = motion.body_goal(spot+np.array([0., 0., .003]), stand_R, body)
     _strut_stand_carry(motion, name, body, spot, stand_R, touch_p, touch_R)
@@ -1812,7 +2031,8 @@ def _strut_regrasp(cell, motion, mate, name, body, g):
     psi = _strut_yaw(leg[:3, :3])
     theta2 = theta3+psi-k*math.pi/2
     p2, R2 = _strut_side_hand(leg[:3, 3], theta2, STRUT_REGRASP_STATION)
-    _strut_goto(motion, _strut_approach_branches(motion, p2-R2[:, 2]*STRUT_REGRASP_STANDOFF, p2, R2),
+    _strut_goto(motion, _strut_approach_branches(motion, p2-R2[:, 2]*STRUT_REGRASP_STANDOFF, p2, R2,
+                                                 seed=q_regrasp),
                 width=motion.width(), what=f"{name} regrasp approach")
     motion.line(p2, R2, width=motion.width(), clearance=False, speed=.025)
     motion.close(g.width, squeeze=g.squeeze)
@@ -1936,26 +2156,118 @@ def _strut_upright_rrt(motion, body, width, goal_p, goal_yaw, *, iterations=STRU
     raise PlanningError(f"upright carry RRT found no path ({len(Q)} nodes, {time.monotonic()-started:.0f} s)")
 
 
+STRUT_TILT_RRT_EXTENDS = 1500   # deterministic extend budget of the tilt-constrained joint-space RRT
+STRUT_TILT_RRT_STEP = .18       # joint-space step (rad, as Motion.plan)
+STRUT_TILT_SHORTCUT = 15.       # shortcuts of a tilt-RRT path keep the strut this upright (deg)
+
+
+def _strut_tilt_rrt(motion, body, width, goals, *, extends=STRUT_TILT_RRT_EXTENDS):
+    """Joint-space RRT-Connect whose every edge keeps the held strut within STRUT_TILT_OK.
+
+    The upright task-space RRT explores only the strut's position and yaw: the
+    arm's elbow swivel and branch follow the start through the IK seeds, so a
+    carry that needs another arm posture is never found (v7 seeds 513/515:
+    leg_2 found nothing for any yaw). Here the trees grow in joint space from
+    the start and from every goal branch; each new node is projected back onto
+    the upright set (IK seeded from the stepped configuration, strut position
+    and yaw kept, tilt zero) and each edge is collision-checked with clearance
+    and tilt-checked. The connect phase stops as soon as a step brings the
+    other tree no closer (the projection can hold it in place, which otherwise
+    spends the whole budget on one target). Deterministic: motion.rng only and
+    a fixed extend budget (the wall clock is only a hang guard).
+    """
+    b, _adr, p_rel, rel = motion.held
+    rng = motion.rng
+    q0 = motion.q
+    goals = [np.asarray(q, float) for q in goals]
+    if not goals:
+        raise PlanningError("tilt RRT: no goal branch")
+    lo = np.maximum(motion.limits[:, 0], np.minimum(q0, np.min(goals, 0))-1.5)
+    hi = np.minimum(motion.limits[:, 1], np.maximum(q0, np.max(goals, 0))+1.5)
+    step = STRUT_TILT_RRT_STEP
+    def project(q):
+        motion._fk(q, width)
+        leg_p = motion.pd.xpos[b].copy()
+        hand_R = Rotation.from_euler("z", _strut_yaw(motion.pd.xmat[b].reshape(3, 3))).as_matrix() @ rel.T
+        return motion._ik_one(leg_p+hand_R @ (motion.offset-p_rel), hand_R, q, width=width, max_iter=40)
+    def edge(qa, qb, limit=STRUT_TILT_OK):
+        return (motion.segment_free(qa, qb, width=width, allow_pad_body=body, clearance=True) and
+                _strut_path_tilt(motion, [qa, qb], width) <= limit)
+    trees = [([q0], [-1]), (list(goals), [-1]*len(goals))]
+    spent, swapped, started = 0, False, time.monotonic()
+    def extend(tree, target):
+        nonlocal spent
+        spent += 1
+        nodes, parents = tree
+        i = int(np.argmin([np.linalg.norm(n-target) for n in nodes]))
+        delta = target-nodes[i]
+        distance = float(np.linalg.norm(delta))
+        if distance <= step:
+            q = np.asarray(target, float)
+        else:
+            q = project(nodes[i]+delta*(step/distance))
+            if q is None or np.linalg.norm(q-nodes[i]) > 2*step:
+                return None, False
+        if not edge(nodes[i], q):
+            return None, False
+        nodes.append(q); parents.append(i)
+        return len(nodes)-1, distance <= step
+    def trace(tree, index):
+        out = []
+        while index >= 0:
+            out.append(tree[0][index]); index = tree[1][index]
+        return out[::-1]
+    while spent < extends and time.monotonic()-started < STRUT_RRT_WALL_CAP:
+        a, other = trees
+        if rng.random() < .2:
+            sample = other[0][-1]
+        else:
+            sample = rng.uniform(lo, hi)
+            projected = project(sample)
+            if projected is not None:
+                sample = projected
+        ia, _ = extend(a, sample)
+        if ia is not None:
+            closest = math.inf
+            while spent < extends:
+                ib, reached = extend(other, a[0][ia])
+                if ib is None:
+                    break
+                gap = float(np.linalg.norm(other[0][ib]-a[0][ia]))
+                if not reached and gap > closest-.01:
+                    break
+                closest = gap
+                if reached:
+                    path = trace(a, ia)+trace(other, ib)[-2::-1]
+                    if swapped:
+                        path.reverse()
+                    out, i = [path[0]], 0
+                    while i < len(path)-1:
+                        j = len(path)-1
+                        while j > i+1 and not edge(path[i], path[j], STRUT_TILT_SHORTCUT):
+                            j -= 1
+                        out.append(path[j]); i = j
+                    return out
+        trees.reverse(); swapped = not swapped
+    raise PlanningError(f"tilt RRT found no path ({len(trees[0][0])+len(trees[1][0])} nodes, "
+                        f"{spent} extends, {time.monotonic()-started:.0f} s)")
+
+
 def _strut_stand_carry(motion, name, body, spot, stand_R, touch_p, touch_R):
     """Carry the upright strut to 25 mm above its stand spot without tipping it.
 
-    Upright task-space RRT first, once more after an 80 mm lift; the joint-space
-    RRT fallback only takes a path whose strut tilt stays within STRUT_TILT_OK
-    (final05: an unchecked fallback path tipped the strut to ~80 deg and it slid
-    out of the pads).
+    Upright task-space RRT first, once more after an 80 mm lift, then the
+    tilt-constrained joint-space RRT; the plain joint-space RRT fallback only
+    takes a path whose strut tilt stays within STRUT_TILT_OK (final05: an
+    unchecked fallback path tipped the strut to ~80 deg and it slid out of the
+    pads).
     """
     goal = spot+np.array([0., 0., .025])
     width = motion.width()
     errors = []
     for attempt in range(2):
-        if attempt:
-            tcp, R = motion.tool_pose()
-            try:
-                motion.line(tcp+np.array([0., 0., .08]), R, allow_pad_body=body, clearance=True,
-                            speed=.03, smooth=True)
-            except PlanningError as error:
-                errors.append(str(error)[:120])
-                break
+        if attempt and not _strut_rise(motion, body, name, (.08, .05)):
+            break
         try:
             path = _strut_upright_rrt(motion, body, width, goal, _strut_yaw(stand_R))
         except PlanningError as error:
@@ -1965,7 +2277,17 @@ def _strut_stand_carry(motion, name, body, spot, stand_R, touch_p, touch_R):
         motion.execute(path, speed=.25)
         return
     above_p, _ = motion.body_goal(goal, stand_R, body)
-    for q in _strut_approach_branches(motion, above_p, touch_p, touch_R, body, attempts=48):
+    branches = _strut_approach_branches(motion, above_p, touch_p, touch_R, body, attempts=48)
+    try:
+        path = _strut_tilt_rrt(motion, body, width, branches)
+        _log("stand carry tilt rrt", name, "waypoints", len(path), "max_tilt_deg",
+             round(_strut_path_tilt(motion, path, width), 1))
+        motion.execute(path, speed=.25)
+        return
+    except PlanningError as error:
+        errors.append(str(error)[:120])
+        _log("stand carry tilt rrt rejected", name, errors[-1])
+    for q in branches:
         try:
             path = motion.plan(q, width=width, allow_pad_body=body, timeout=STRUT_RRT_TIMEOUT)
         except PlanningError as error:
@@ -1990,7 +2312,9 @@ def _strut_carry_once(cell, motion, mate, body, g, ins, yaws):
     corner. A plain joint-space RRT path can tip it far over; while the hand
     points down gravity walks the pinched shaft towards the fingertips (a05: 62
     deg tilt, 5 mm walk, 14 deg pivot), so the carry is planned by a task-space
-    RRT that keeps the strut upright. Yaws needing the least hand turn go first.
+    RRT that keeps the strut upright, then (another arm posture needed) by the
+    tilt-constrained joint-space RRT, and only last by the plain RRT whose path
+    stays within STRUT_TILT_OK. Yaws needing the least hand turn go first.
     """
     width = motion.width()
     leg_now = cell.pose(mate["part"])
@@ -1998,8 +2322,7 @@ def _strut_carry_once(cell, motion, mate, body, g, ins, yaws):
     def turn(yaw):
         g.target_yaw = yaw
         return abs(math.remainder(_strut_yaw(_target(cell, mate, g)[:3, :3])-yaw_now, 2*math.pi))
-    errors = []
-    for yaw in sorted(yaws, key=turn):
+    def goal(yaw):
         g.target_yaw = yaw
         target = _target(cell, mate, g)
         pre = target[:3, 3]-ins*STRUT_HOVER
@@ -2008,6 +2331,34 @@ def _strut_carry_once(cell, motion, mate, body, g, ins, yaws):
         out[2] = 0.
         out /= np.linalg.norm(out)
         motion.set_mate_contact(["part_"+cell.coupling.carrier(mate)], target[:3, 3], target[:3, :3])
+        return target, pre, hover_p, hover_R, out
+    def outside_branches(hover_p, hover_R, out, count):
+        branches = []
+        for q_out in motion.ik(hover_p-out*STRUT_OUTSIDE, hover_R, width=width, attempts=48, max_solutions=count,
+                               allow_pad_body=body):
+            try:
+                motion.line(hover_p, hover_R, allow_pad_body=body, start_q=q_out, execute=False)
+            except PlanningError:
+                continue
+            branches.append(q_out)
+        return branches
+    def go(what, yaw, path, hover_p, hover_R, tilt=None):
+        _log(what, mate["part"], "yaw", round(yaw, 3), "waypoints", len(path), "max_tilt_deg",
+             round(_strut_path_tilt(motion, path, width) if tilt is None else tilt, 1))
+        motion.execute(path, speed=.25)
+        try:
+            motion.line(hover_p, hover_R, allow_pad_body=body, clearance=True, speed=.03, smooth=True)
+        except PlanningError as error:
+            # The straight line-in was checked from the planned end; the tracked
+            # end can sit a fraction of a millimetre off it. Plan it instead.
+            _log("carry line-in replanned", mate["part"], str(error)[:100])
+            hover = motion.ik(hover_p, hover_R, width=width, attempts=24, max_solutions=4, allow_pad_body=body,
+                              seed=motion.q)
+            motion.execute(_strut_tilt_rrt(motion, body, width, hover), speed=.25)
+    order = sorted(yaws, key=turn)
+    errors = []
+    for yaw in order:
+        target, pre, hover_p, hover_R, out = goal(yaw)
         try:
             path = _strut_upright_rrt(motion, body, width, pre-out*STRUT_OUTSIDE, _strut_yaw(target[:3, :3]))
             motion.line(hover_p, hover_R, allow_pad_body=body, start_q=path[-1], execute=False)
@@ -2015,28 +2366,38 @@ def _strut_carry_once(cell, motion, mate, body, g, ins, yaws):
             errors.append(str(error)[:160])
             _log("carry yaw rejected", mate["part"], round(yaw, 3), errors[-1])
             continue
-        _log("carry", mate["part"], "yaw", round(yaw, 3), "waypoints", len(path),
-             "max_tilt_deg", round(_strut_path_tilt(motion, path, width), 1))
-        motion.execute(path, speed=.25)
-        motion.line(hover_p, hover_R, allow_pad_body=body, clearance=True, speed=.03, smooth=True)
-        return
+        return go("carry", yaw, path, hover_p, hover_R)
+    # Joint-space carries are executed at .25 rad/s: try first the yaw whose
+    # outside branches lie closest to the arm (a wound wrist can make one yaw
+    # a 6 rad carry and another a 3 rad one).
+    q_now = motion.q
+    candidates = []
+    for yaw in order:
+        target, pre, hover_p, hover_R, out = goal(yaw)
+        branches = outside_branches(hover_p, hover_R, out, 6)
+        if branches:
+            distance = min(float(np.max(np.abs(q-q_now))) for q in branches)
+            candidates.append((distance, yaw, branches))
+        else:
+            errors.append("tilt RRT: no goal branch")
+            _log("carry tilt rrt rejected", mate["part"], round(yaw, 3), errors[-1])
+    for distance, yaw, branches in sorted(candidates, key=lambda c: c[0]):
+        target, pre, hover_p, hover_R, out = goal(yaw)
+        try:
+            path = _strut_tilt_rrt(motion, body, width, branches)
+        except PlanningError as error:
+            errors.append(str(error)[:160])
+            _log("carry tilt rrt rejected", mate["part"], round(yaw, 3), errors[-1])
+            continue
+        return go("carry tilt rrt", yaw, path, hover_p, hover_R)
     # Last resort: the plain joint-space RRT with the least strut tilt, and only
     # within STRUT_TILT_OK (a tipped strut walks out of the pads: final05 lost one
     # on an unchecked path).
     best = None
-    for yaw in sorted(yaws, key=turn):
-        g.target_yaw = yaw
-        target = _target(cell, mate, g)
-        pre = target[:3, 3]-ins*STRUT_HOVER
-        hover_p, hover_R = motion.body_goal(pre, target[:3, :3], body)
-        out = hover_R[:, 2].copy()
-        out[2] = 0.
-        out /= np.linalg.norm(out)
-        motion.set_mate_contact(["part_"+cell.coupling.carrier(mate)], target[:3, 3], target[:3, :3])
-        for q_out in motion.ik(hover_p-out*STRUT_OUTSIDE, hover_R, width=width, attempts=48, max_solutions=4,
-                               allow_pad_body=body):
+    for yaw in order:
+        target, pre, hover_p, hover_R, out = goal(yaw)
+        for q_out in outside_branches(hover_p, hover_R, out, 4):
             try:
-                motion.line(hover_p, hover_R, allow_pad_body=body, start_q=q_out, execute=False)
                 path = motion.plan(q_out, width=width, allow_pad_body=body, clearance=True,
                                    timeout=STRUT_RRT_TIMEOUT)
             except PlanningError as error:
@@ -2051,12 +2412,8 @@ def _strut_carry_once(cell, motion, mate, body, g, ins, yaws):
     if best is None:
         raise PlanningError(f"no carry path for {mate['part']}: {errors[:3]}")
     tilt, yaw, path, hover_p, hover_R = best
-    g.target_yaw = yaw
-    target = _target(cell, mate, g)
-    motion.set_mate_contact(["part_"+cell.coupling.carrier(mate)], target[:3, 3], target[:3, :3])
-    _log("carry fallback rrt", mate["part"], "yaw", round(yaw, 3), "waypoints", len(path), "max_tilt_deg", round(tilt, 1))
-    motion.execute(path, speed=.25)
-    motion.line(hover_p, hover_R, allow_pad_body=body, clearance=True, speed=.03, smooth=True)
+    goal(yaw)
+    go("carry fallback rrt", yaw, path, hover_p, hover_R, tilt)
 
 
 def _strut_carry(cell, motion, mate, body, g, ins, yaws):
@@ -2065,9 +2422,25 @@ def _strut_carry(cell, motion, mate, body, g, ins, yaws):
         return _strut_carry_once(cell, motion, mate, body, g, ins, yaws)
     except PlanningError as error:
         _log("carry retry after lift", mate["part"], str(error)[:160])
-    tcp, R = motion.tool_pose()
-    motion.line(tcp+np.array([0., 0., .08]), R, allow_pad_body=body, clearance=True, speed=.03, smooth=True)
+    _strut_rise(motion, body, mate["part"], (.08, .05, .025))
     return _strut_carry_once(cell, motion, mate, body, g, ins, yaws)
+
+
+def _strut_rise(motion, body, name, rises):
+    """Lift the held strut straight up by the first clear distance of `rises`.
+
+    Near the robot base a full lift can be refused by the arm's own clearance
+    (v7 seed 515: link_base-link6 at 6.5 mm); a shorter lift, or none, still
+    leaves the next plan its own escape. Returns the distance lifted (0 if none).
+    """
+    tcp, R = motion.tool_pose()
+    for rise in rises:
+        try:
+            motion.line(tcp+np.array([0., 0., rise]), R, allow_pad_body=body, clearance=True, speed=.03, smooth=True)
+            return rise
+        except PlanningError as error:
+            _log("strut lift refused", name, rise, str(error)[:100])
+    return 0.
 
 
 def _place_strut(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
@@ -2102,7 +2475,7 @@ def _place_strut(cell, motion, mate, *, choice=0, wall_deadline=math.inf):
         yaws = yaws[choice % len(yaws):]+yaws[:choice % len(yaws)]
     g = g0
     _log("pick", name, g.label, "width", round(g.width, 4), "pose", np.round(p, 4), "yaws", np.round(yaws, 3))
-    _strut_pick_upright(cell, motion, name, body, g, p, R, width, prefer_margin=not yaws)
+    _strut_pick_upright(cell, motion, name, body, g, p, R, width, prefer_margin=not yaws, avoid_wound=bool(yaws))
     if not yaws:
         # No seat approach exists for the twist the bench pose gives the
         # stable-top grasp: stand the strut up and take it again from the side.
@@ -2261,7 +2634,7 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
     candidates = grasps(cell,name)
     if kind == "camera" and _camera_rejected:
         candidates = (c for c in candidates if c.label not in _camera_rejected)
-    if kind in ("camera", "flight_controller"):
+    if kind in ("camera", "flight_controller") or (kind == "lidar" and _lidar_upright(cell, name)):
         candidates = _least_travel_first(cell,motion,mate,candidates,-ins*pre_distance)
     for i,g in enumerate(candidates):
         if time.monotonic() > wall_deadline:
@@ -2322,8 +2695,8 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
     if not pick_prepared:
         _preinsert(motion,p-approach*.10,p,R,None,clearance=False,transport_clearance=True)
     if is_prop:
-        # Light part on pins: close most of the checked approach briskly and
-        # only the last 20 mm slowly.
+        # Light part on its stand's pedestal: close most of the checked
+        # approach briskly and only the last 20 mm slowly.
         motion.line(p-approach*.02,R,width=width,clearance=False,speed=.06)
     motion.line(p,R,width=width,clearance=False,speed=.025 if not is_prop else .02)
     motion.close(g.width,squeeze=g.squeeze)
@@ -2336,9 +2709,9 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
         raise PlanningError(f"two-sided pad contact missing for {name}")
     motion.hold_body(body)
     if is_prop:
-        # On its pins the blade yields by turning while the jaws creep shut,
-        # so the pad force at lift-off varies (0.1-1.2 N). Lift 3 mm clear of
-        # the pins and let the blade settle into the pads before the full lift.
+        # On its pedestal the blade yields by turning (~8 deg) while the jaws
+        # creep shut, so the pad force at lift-off varies. Lift 3 mm clear of
+        # the stand and let the blade settle into the pads before the full lift.
         motion.line(p-approach*.003,R,allow_pad_body=body,clearance=False,speed=.01)
         _prop_squeeze(cell,motion,name,min_force=1.0,max_s=2.0)
         if not _gripped(cell,name):
@@ -2415,6 +2788,8 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
         q=_prop_insert(cell,motion,mate,name,body,target,ins,pre_distance,wall_deadline=wall_deadline,
                        open_width=min(.085,g.width+.012))
         _prop_seat(cell,motion,mate,name,body,q,min(.085,g.width+.012),wall_deadline)
+    elif kind == "sensor_cheek":
+        _cheek_seat(cell,motion,mate,name,body,target,ins,pre_distance,wall_deadline=wall_deadline)
     else:
         if kind == "landing_strut" or cell.kit["parts"][kind].get("grasp_mode") == "surface":
             # Real contact grasps can creep during transport. Correct the full
@@ -2453,6 +2828,17 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
             if time.monotonic()>wall_deadline:
                 raise TimeoutError("reference wall cap during seat hold")
             motion._drive(q);cell.tick()
+        if kind == "motor":
+            # A motor still HOLDING after the fixed hold is counting its 0.5 s
+            # at-rest window (legs v5, seed 512: motor_4 HOLDING at the end):
+            # keep the same hold until it locks. A motor that already locked
+            # gets no extra tick, so working placements are unchanged.
+            for step in range(MOTOR_EXTRA_HOLD_TICKS):
+                if cell.coupling.state[mate["id"]] in ("LOCKED","LOCKED_OFF"):
+                    break
+                if time.monotonic()>wall_deadline:
+                    raise TimeoutError("reference wall cap during seat hold")
+                motion._drive(q);cell.tick()
     state=cell.coupling.state[mate["id"]]
     _log("seat",name,state,"error_mm",1000*np.linalg.norm(cell.pose(name)[:3,3]-target[:3,3]))
     if state != "LOCKED":
