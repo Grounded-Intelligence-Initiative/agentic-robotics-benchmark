@@ -257,8 +257,8 @@ guessing thresholds of the request automaton stand, since $S$ is linear in $R$).
 Nothing else changed: the world, the fixed set, the probes, the sensors, the lab and the documents' figures are
 those of 2026-11-07, and the privileged reference meets the same three episodes. Its full verify of 2026-11-08
 (ale validate run validate-57b10a4e, the 2026-11-07 grader) logged each episode's $O$ and $R$ to the last digit;
-their products are the anchor's 0.8265 / 0.8975 / 1.0000 (mean 0.90799), and ale validate on this version measured
-it again. Its reruns have always repeated to the last digit, so `full_at` is 0.98, the margin for a deterministic reference
+their products are the anchor's 0.8265 / 0.8975 / 1.0000 (mean 0.90799), and ale validate on this version
+(validate-afd10a26) measured the same three scores to the last digit. Its reruns have always repeated to the last digit, so `full_at` is 0.98, the margin for a deterministic reference
 (it was 0.95).
 
 The same episodes' logs under $S = O \cdot R$ (each submission meets its own episodes, so these are exact):
@@ -269,3 +269,10 @@ The same episodes' logs under $S = O \cdot R$ (each submission meets its own epi
 | Opus 5.5, 2026-11-08 (the 2026-11-07 version) | 2026-11-07 | 0.842 / 0.796 / 0.800 | 0.25 / 0 / 0 | 0.0702 | 0.079 |
 | v17, the non-privileged reference | 2026-11-05 (ideal cameras) | 0.778 / 0.571 / 0.653 | 0 / 0.375 / 0.25 | 0.1258 | 0.141 |
 | Opus 5.5 of 2026-10-31, rerun e1 | 2026-11-07 | 0 / 0.356 / 0.047 | 0 / 0.125 / 0.25 | 0.0188 | 0.021 |
+
+Opus 5.5 on this version (2026-11-08, one episode, effort high, 39 minutes of its hour): 0.0174, reward 0.02. It
+worked from the hand camera only, matched objects against 42 reference views it recorded in the lab, and went for the
+requested object first; it switched its "no such object" marks off and its pile digging did not work in the lab. It
+delivered 1 of the 12 requests (a cracker box) and sent one wrong "delivered" mark; its sorting was weaker
+than the earlier episode's: O = 0.243 / 0.493 / 0.209, R = 0 / 0 / 0.25 (under the old sum it would have scored about
+0.20).
