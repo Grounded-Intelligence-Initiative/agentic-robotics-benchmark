@@ -1,0 +1,67 @@
+{
+ "cells": {
+  "AC": {
+   "delivered": "AC-2026-14",
+   "lots": {
+    "AC-2026-14": {
+     "date": "2026-09-17",
+     "g_mean": 0.9470172958683788,
+     "g_spread": 0.024210119154696855,
+     "report": "LR-2026-0454",
+     "report_seed": 1975612001,
+     "tested_packs": [
+      "AC-6S-40",
+      "AC-6S-40",
+      "AC-6S-60",
+      "AC-6S-60",
+      "AC-8S-50",
+      "AC-8S-50"
+     ]
+    }
+   }
+  }
+ },
+ "format": "quad-lots/1",
+ "modules": {
+  "WD": {
+   "delivered": "WD-2026-W23",
+   "lots": {
+    "WD-2025-W41": {
+     "date": "2025-11-08",
+     "droop": 0.01795994777298373,
+     "f_cont": 1.02,
+     "f_peak": 0.99,
+     "f_speed": 0.9267479397556398,
+     "load_points": false,
+     "report": "LR-2025-1144",
+     "report_seed": 1927102640,
+     "spread": 0.023839521474510433,
+     "tested_skus": [
+      "WD-R52-55",
+      "WD-R52-72",
+      "WD-R38-38"
+     ],
+     "units_per_sku": 5
+    },
+    "WD-2026-W23": {
+     "date": "2026-06-21",
+     "droop": 0.27096743134814816,
+     "f_cont": 0.9952480164075133,
+     "f_peak": 0.8992047675078587,
+     "f_speed": 0.9101301170054965,
+     "load_points": true,
+     "report": "LR-2026-0514",
+     "report_seed": 377446243,
+     "spread": 0.038025909528545496,
+     "tested_skus": [
+      "WD-R52-55",
+      "WD-R52-72",
+      "WD-R38-38"
+     ],
+     "units_per_sku": 8
+    }
+   },
+   "sku_factor": {}
+  }
+ }
+}
