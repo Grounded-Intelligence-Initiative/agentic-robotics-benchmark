@@ -24,8 +24,8 @@ thread that created it, so one thread owns the context and every Filament object
 model's Filament objects are live at a time; its job threads would each get a glibc malloc arena, so the arenas are
 capped at import; textures are marked sRGB (Filament reads MuJoCo's "auto" as linear data); Filament draws every geom
 group, so hidden geoms get alpha 0; a primitive's size is fixed when its Filament object is built, so a changing size is
-drawn as a scaled transform (geom_xmat times the size ratio); a geom's rgba and a material's emission are read at every
-frame.
+drawn as a scaled transform (geom_xmat times the size ratio); a geom with a material is drawn in the material's colour,
+and a material's colour, alpha and emission are read at every frame (so the geoms that switch colour carry their own).
 
 Assets: $SKIDCELL_RENDER_DIR (default /opt/task-assets/render; the task image fetches them, see the Dockerfile):
 manifest.json, decor/ (the room and props: arb-decor/1), tex/ (the cell's textures), ibl.ktx. Runtime dependencies:
@@ -147,8 +147,10 @@ LOOK = {
     "decor_gains": {
         "floor": [1.6372, 1.8053, 1.9220], "props": [0.6476, 0.5558, 0.5700]},
 }
-# the classes of the dynamic geoms (their state is copied from the physics model at every frame)
+# the classes of the dynamic geoms (their state is copied from the physics model at every frame); those that switch
+# colour carry one material each (Filament reads a material's colour, alpha and emission at every frame)
 DYNAMIC = ("lamp", "segment", "glass", "liquid", "flaps")
+OWN_MATERIAL = ("lamp", "segment", "glass")
 MAT_CLASS = {"steel": "steel", "frame": "frame", "pipe": "pipe", "valve": "valve", "dark": "dark", "tank": "tank",
              "pump": "pump", "motor": "motor", "panel": "panel", "rubber": "rubber"}
 PANDA_CLASS = {"white": "panda_white", "off_white": "panda_offwhite", "black": "panda_black", "dark_grey": "panda_black",
@@ -381,7 +383,7 @@ def _tex_lin_mean(rel, img):
     return _TEXMEAN[rel]
 
 
-def _class_material(spec, mats_rgba, name, c, rgb_srgb, gain, tex_px=256):
+def _class_material(spec, mats_rgba, name, c, rgb_srgb, gain, tex_px=256, alpha=None):
     """One material: a colour (the class's, or the cell's own for "own" classes) under the class gain, untextured or
     modulating the class texture (in its data)."""
     lin = _lin(np.asarray(rgb_srgb[:3], float)) * np.asarray(gain, float)
@@ -390,7 +392,9 @@ def _class_material(spec, mats_rgba, name, c, rgb_srgb, gain, tex_px=256):
     mat.metallic = float(c.get("metallic", 0.0))
     mat.specular = 0.5
     mat.reflectance = 0.0
-    alpha = 0.99 if c.get("blend") else 1.0      # below 1: Filament's blended path (the geom's alpha is the cell's)
+    if alpha is None:
+        alpha = 1.0
+    alpha = min(0.99, float(alpha)) if c.get("blend") else 1.0   # below 1: Filament's blended path, with this alpha
     if c.get("tex"):
         img = _png("tex/" + c["tex"], tex_px).astype(np.float64) / 255.0
         k = 1.0 / _tex_lin_mean(c["tex"], img)
@@ -541,17 +545,18 @@ def build_rgb_spec(scene, light=1.0):
             sg.rgba = [1.0, 1.0, 1.0, 1.0]
             sg.material = mn
         else:
-            if cls in ("lamp", "segment"):
-                key = "look_%s_%s" % (cls, name.replace("/", "_"))      # one material per geom (its own glow)
+            if cls in OWN_MATERIAL:
+                key = "look_%s_%s" % (cls, name.replace("/", "_"))      # one material per geom (colour, glow, alpha)
             elif c.get("own"):
                 key = "look_%s_%s" % (cls, "_".join("%.3f" % x for x in own[:3]))
             else:
                 key = "look_" + cls
             if key not in mats:
-                mats[key] = _class_material(spec, mats_rgba, key, c, own if c.get("own") else c["rgb"], gains.get(cls, [1, 1, 1]))
+                mats[key] = _class_material(spec, mats_rgba, key, c, own if c.get("own") else c["rgb"], gains.get(cls, [1, 1, 1]),
+                                            alpha=float(own[3]))
             sg.material = mats[key]
             sg.rgba = list(mats_rgba[mats[key]][:3]) + [float(own[3]) if c.get("own") else float(mats_rgba[mats[key]][3])]
-            if cls in ("lamp", "segment"):
+            if cls in OWN_MATERIAL:
                 rec["dyn_mat"][name] = key
         rec["geom_class"][name] = cls
         rec["classes"][cls] = rec["classes"].get(cls, 0) + 1
@@ -889,7 +894,14 @@ class AgentLook(object):
             dm.geom_rgba[dg] = pm.geom_rgba[pg]
             rm.geom_pos[rg] = pm.geom_pos[pg]
             rgba = tuple(round(float(x), 6) for x in pm.geom_rgba[pg])
-            rm.geom_rgba[rg] = self._look_rgba(rgba, gain)
+            col = self._look_rgba(rgba, gain)
+            rm.geom_rgba[rg] = col
+            if cls in OWN_MATERIAL and mid >= 0:
+                # Filament draws a geom with a material in the material's colour, read at every frame: the geom's own
+                # material follows the cell's colour (and, for the glass, its alpha: the blended path's)
+                rm.mat_rgba[mid][:3] = col[:3]
+                if cls == "glass":
+                    rm.mat_rgba[mid][3] = min(0.99, col[3])
             if on is not None and mid >= 0:
                 lit = bool(np.allclose(rgba[:3], on[:3], atol=1e-4))
                 rm.mat_emission[mid] = emis if lit else 0.0
