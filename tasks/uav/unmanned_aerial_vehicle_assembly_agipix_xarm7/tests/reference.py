@@ -316,10 +316,11 @@ def cheek_rim_grasps(cell, name):
     earlier fixed 7.75 mm straight-rim gap at x -10 put the inner pad 1.9 mm
     inside the prong and the finger plate's side 0.2 mm inside the spine.)
     place()'s closed-jaw finger check (_grip_clear) takes the first clear one.
-    Known limit (physics, not planning): the prong's collision piece face is
-    tilted 4.6 deg, so the squeeze pushes the cheek ~1 N along the pads and it
-    creeps until the pad end meets the spine corner, where the finger plate,
-    1 mm wider than the pad, sits 1 mm inside the spine during the carry.
+    Known limit (physics, not planning): no pinch across this arm is in-plane
+    stable for the stock pads (its width falls as the plate turns and slides
+    along them), so the cheek keeps creeping in the grip; place() keeps the
+    hold short and the cheek upright (see "Cheek carry" below). (The earlier
+    4.6 deg tooth face is corrected in the kit since final_assets_v7.)
     """
     import trimesh
     part = cell.kit["parts"][cell.graph["instances"][name]["kind"]]
@@ -392,6 +393,64 @@ def _cheek_align(motion, pos, R, body, *, tolerance, angle, max_passes, accept_m
         return {"position_error_m": ep, "angle_error_rad": er}
 
 
+def _cheek_rebranch(motion, body, pre_p, goal_p, R, *, clearance, transport_clearance, speed):
+    """_preinsert for the cheek near its seat: a new IK branch at pre_p (same hand pose)
+    whose straight path to goal_p is clear, reached if possible by ONE direct joint move
+    that keeps the approach level (CHEEK_LEVEL_TILT), else on the planned joint path that
+    holds the approach off level least (of the first CHEEK_REBRANCH_PLANS branches that
+    plan) at CHEEK_REBRANCH_SPEED, else by _preinsert as before. (_preinsert's RRT at .25 swung the
+    cheek 18 deg about the jaw axis in 37 s at the hover, runs v10c9.)"""
+    width = motion.width()
+    q0 = motion.q
+    solutions = motion.ik(pre_p, R, width=width, attempts=96, max_solutions=16, allow_pad_body=body,
+                          clearance=clearance)
+    for candidate in sorted(solutions, key=lambda q: float(np.max(np.abs(q-q0)))):
+        prev, ok = candidate, True
+        for u in np.linspace(0, 1, 34)[1:]:
+            q = motion._ik_one((1-u)*np.asarray(pre_p)+u*np.asarray(goal_p), R, prev, width=width)
+            if q is None or not motion.segment_free(prev, q, width=width, allow_pad_body=body, clearance=clearance):
+                ok = False; break
+            prev = q
+        if not ok:
+            continue
+        duration, _exposure, _up, level = _cheek_joint_attitude(motion, q0, candidate, .6)
+        if level <= CHEEK_LEVEL_TILT and motion.segment_free(q0, candidate, width=width, allow_pad_body=body,
+                                                              clearance=transport_clearance):
+            motion.execute([q0, candidate], speed=.6)
+            _log("cheek re-branch: direct level joint move", round(duration, 1), "s, max |approach_z|", round(level, 2))
+            return
+    # Planned joint paths to the branches with a clear straight path: the one that holds
+    # the approach off level least (duration x mean |approach_z|), executed briskly.
+    best, found = None, 0
+    for candidate in sorted(solutions, key=lambda q: float(np.max(np.abs(q-q0)))):
+        prev, ok = candidate, True
+        for u in np.linspace(0, 1, 34)[1:]:
+            q = motion._ik_one((1-u)*np.asarray(pre_p)+u*np.asarray(goal_p), R, prev, width=width)
+            if q is None or not motion.segment_free(prev, q, width=width, allow_pad_body=body, clearance=clearance):
+                ok = False; break
+            prev = q
+        if not ok:
+            continue
+        try:
+            path = motion.plan(candidate, width=width, allow_pad_body=body, clearance=transport_clearance)
+        except PlanningError:
+            continue
+        exposure = sum(_cheek_joint_attitude(motion, path[i], path[i+1], CHEEK_REBRANCH_SPEED)[1]
+                       for i in range(len(path)-1))
+        if best is None or exposure < best[0]:
+            best = (exposure, path)
+        found += 1
+        if found >= CHEEK_REBRANCH_PLANS:
+            break
+    if best is None:
+        _log("cheek re-branch: no planned path either - _preinsert")
+        _preinsert(motion, pre_p, goal_p, R, body, clearance=clearance, transport_clearance=transport_clearance,
+                   attempts=96, speed=speed)
+        return
+    motion.execute(best[1], speed=CHEEK_REBRANCH_SPEED)
+    _log("cheek re-branch: planned joint path,", len(best[1]), "waypoints, approach off level", round(best[0], 2), "s")
+
+
 def _cheek_seat(cell, motion, mate, name, body, target, ins, pre_distance, wall_deadline=math.inf):
     """Sensor cheek only: correct the in-grip pivot just above the seat, descend, hold still.
 
@@ -401,7 +460,7 @@ def _cheek_seat(cell, motion, mate, name, body, target, ins, pre_distance, wall_
     65 mm hover is ~2.6 deg and ~1 mm off after the 4.3 s descent. The coupling welds the
     pose the cheek is held in for 0.5 s within 1.5 mm, and this creep counts as still for
     it (< 2 deg/s): LOCKED up to 3 deg, irreversibly LOCKED_OFF beyond. Aligning against the
-    cradle only winds the hand around the cheek (full05: 20 -> 36 deg in the grip, no
+    cradle only winds the hand around the cheek (one run: 20 -> 36 deg in the grip, no
     convergence). So: align at the hover, descend to CHEEK_NEAR_SEAT_M above the seat
     (straight descent checked first, as in place()), align again there while still free,
     check the last 5 mm from the corrected pose (if the correction or the descent would
@@ -410,6 +469,12 @@ def _cheek_seat(cell, motion, mate, name, body, target, ins, pre_distance, wall_
     the cradle.
     """
     key = mate["id"]
+    held_in_hand = _camera_in_hand(cell, motion, name)
+
+    def grip_kept(where):
+        mm, deg = _in_hand_change(held_in_hand, _camera_in_hand(cell, motion, name))
+        if deg > CHEEK_CARRY_TURN_DEG or not _gripped(cell, name):
+            raise _CheekSlip(f"cheek turned {deg:.2f} deg in the grip in the {where} re-branch")
     _cheek_align(motion, target[:3,3]-ins*pre_distance, target[:3,:3], body, tolerance=.0007, angle=.01,
                  max_passes=10, accept_mm=1.5, accept_deg=2., where="hover")
     if not _gripped(cell, name):
@@ -421,7 +486,8 @@ def _cheek_seat(cell, motion, mate, name, body, target, ins, pre_distance, wall_
     except PlanningError as error:
         _log("descent blocked from the transport branch:", name, str(error)[:160])
         hp, hr = motion.body_goal(target[:3,3]-ins*pre_distance, target[:3,:3], body)
-        _preinsert(motion, hp, np_, nr, body, clearance=False, transport_clearance=True, attempts=96, speed=.25)
+        _cheek_rebranch(motion, body, hp, np_, nr, clearance=False, transport_clearance=True, speed=.25)
+        grip_kept("hover")
         np_, nr = motion.body_goal(near, target[:3,:3], body)
     # Contact-free descent: twice the seat speed, so less pivot builds up before the near-seat check.
     motion.line(np_, nr, allow_pad_body=body, clearance=False, speed=.03)
@@ -444,9 +510,10 @@ def _cheek_seat(cell, motion, mate, name, body, target, ins, pre_distance, wall_
             np_, nr = motion.body_goal(near, target[:3,:3], body)
             pp, rr = motion.body_goal(target[:3,3], target[:3,:3], body)
             try:
-                _preinsert(motion, np_, pp, rr, body, clearance=True, transport_clearance=False, attempts=96, speed=.15)
+                _cheek_rebranch(motion, body, np_, pp, rr, clearance=True, transport_clearance=False, speed=.15)
             except PlanningError:
-                _preinsert(motion, np_, pp, rr, body, clearance=False, transport_clearance=False, attempts=96, speed=.15)
+                _cheek_rebranch(motion, body, np_, pp, rr, clearance=False, transport_clearance=False, speed=.15)
+            grip_kept("near-seat")
     motion.line(pp, rr, allow_pad_body=body, clearance=False, speed=.015)
     q = motion.q
     states = []
@@ -465,6 +532,407 @@ def _cheek_seat(cell, motion, mate, name, body, target, ins, pre_distance, wall_
         if time.monotonic() > wall_deadline:
             raise TimeoutError("reference wall cap during seat hold")
         motion._drive(q); cell.tick()
+
+
+# Cheek carry (cheek only). The rim pinch is not in-plane stable: the pinch width across
+# the upper arm (hook tooth tip and inner rim / r 13 arm-tip arc) falls as the plate turns
+# and slides along the pads, with no local minimum anywhere on the arm for the stock pads
+# (dev probe width_minima), so the squeeze walks it down that valley through the soft pad
+# friction; and gravity turns it about the jaw axis whenever the approach is not level
+# (moment ~ the approach's vertical component: COM 15.6 mm along the arm from the pad
+# centre). Both creeps grow with time and feed each other. Held flat for ~20 s and turned
+# slowly by the joint-space transport it pivoted 22 deg, swung loose and fell; a 45 s carry wound it 15 deg in-plane, ever faster, until the
+# near-seat alignment could not converge. Upright in its mounting
+# attitude (jaw axis vertical, approach level: weight on the lower pad, no moment about the
+# jaw axis) it creeps ~0.05-0.1 deg/s, but even so it slides out of the jaws within a
+# minute (dev probes upright_hold, runs v10c4/c6). So the whole hold is kept short: lift
+# 4 cm briskly, then usually ONE direct joint move to a hover branch with a clear descent
+# (approach off level < 3 s), else an upright turn followed by a level joint move or by
+# straight legs at the mounting attitude (_cheek_turn_plan); hold still and measure the
+# creep; lighter squeeze; seat (_cheek_seat, its re-branches kept level and brisk). A
+# cheek that creeps, slips or cannot be aligned at its seat goes back onto its stand the
+# way it came (_cheek_back_to_stand) for the next pinch; it is never dropped.
+CHEEK_LIFT_SPEED = .05          # m/s off the stand (flat: the worst attitude, keep it short)
+CHEEK_LIFT_M = .04              # lift off the stand before the turning joint move (place(): .10)
+CHEEK_TURN_RISE_M = (.03, .08, .13)  # upright-turn height above the lift pose
+CHEEK_TURN_YAWS_DEG = (0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180)
+CHEEK_TURN_SPEED = 1.           # Motion.execute speed (peak joint rad/s) of the direct turn (2.4 rad: 4.5 s)
+CHEEK_TURN_OPTIONS = 40         # turn configurations tried (least joint travel first)
+CHEEK_PIVOT_EXPOSURE_S = 3.     # a turning joint move may hold the approach this long off level, as
+                                # time x mean |vertical component of the approach| (flat: ~1 deg/s pivot)
+CHEEK_FINGERTIPS_UP = .25       # largest upward component of the approach on any joint move
+CHEEK_LEVEL_TILT = .26          # largest |vertical component of the approach| on an upright joint move
+CHEEK_PIVOT_CHECK_DEG = (3., 5.)  # in-grip turns a preferred hover branch's descent also survives
+CHEEK_REBRANCH_PLANS = 3        # planned re-branch paths compared (least approach-off-level kept)
+CHEEK_REBRANCH_SPEED = .6       # their execution speed (Motion.execute; place()'s re-branch: .25)
+CHEEK_CARRY_M_S = .1            # straight carry legs at the mounting attitude (smooth: peak x1.875)
+CHEEK_CARRY_RAD_S = .5          # their yaw turn about the vertical
+CHEEK_CARRY_QDOT = 1.2          # peak joint speed in a leg (runs v10c5: a leg past a wrist singularity
+                                # spiked j5 to 3.7 rad/s, jerked the hand to 65 deg/s, slid the cheek 7 mm)
+CHEEK_CARRY_MAX_S = 12.         # longest acceptable carry: upright the cheek still creeps, ever faster
+                                # (runs v10c6: a 55 s near-singular leg slid it 23 mm along the pads, out)
+CHEEK_CARRY_SQUEEZE_M = .003    # jaw command below the grasp width while upright (place(): .006);
+                                # ~14 instead of ~25 N per pad, creep ~40% slower (probe upright_hold)
+CHEEK_SETDOWN_M_S = .08         # put-back: lowering from the lift pose (flat: keep it short)
+CHEEK_CARRY_RISE_M = .03        # carry height above the higher of the turn pose and the hover
+CHEEK_SLIP_SETTLE_S = .3
+CHEEK_SLIP_HOLD_S = 1.
+CHEEK_SLIP_DEG_S = .5           # in-hand turn rate upright (probe: ~0.05-0.1 deg/s)
+CHEEK_SLIP_MM_S = 1.            # in-hand slide rate upright (probe: ~0.1-0.2 mm/s)
+CHEEK_SLIP_TURN_DEG = 10.       # in-hand turn since the clamp (4.3 deg clamp seating + the turn: 5-7)
+CHEEK_CARRY_TURN_DEG = 6.       # in-hand turn in the carry (vs the still hold)
+CHEEK_CARRY_SLIDE_MM = 4.       # in-hand slide at the pinch in the carry
+CHEEK_PICK_ATTEMPTS = 3
+
+
+class _CheekSlip(PlanningError):
+    """The cheek turned or slid in the grip beyond the carry limits (it is still held)."""
+
+
+def _in_hand_change(a, b, point=(0., 0., 0.)):
+    """mm (of `point`, part frame) and deg between two in-hand poses (gripper-base frame)."""
+    point = np.asarray(point, float)
+    return (1000*float(np.linalg.norm(b[:3,:3] @ point+b[:3,3]-a[:3,:3] @ point-a[:3,3])),
+            math.degrees(Rotation.from_matrix(b[:3,:3] @ a[:3,:3].T).magnitude()))
+
+
+def _cheek_hold_still(cell, motion, name, seconds):
+    q = motion.q
+    for _ in range(int(round(seconds/.01))):
+        motion._drive(q); cell.tick()
+    return _camera_in_hand(cell, motion, name)
+
+
+def _cheek_pivot_goals(motion, body, g, pre, target, degrees):
+    """Hover and seat hand goals as if the cheek had turned `degrees` more about the jaw
+    axis (gripper-base y) at the pinch, in the direction gravity turns it while the
+    approach points down (its COM lies 15.6 mm along the pads from the pinch): the
+    correction the hover alignment will make after the lift and the turn (~3.7 deg)."""
+    b, _a, p, rel = motion.held
+    pinch = rel @ np.array([g.p[0], g.p[1], .002])+p
+    com = rel @ motion.m.body_ipos[b]+p
+    sign = -1. if com[0] > pinch[0] else 1.
+    out = []
+    for deg in degrees:
+        Ry = Rotation.from_euler("y", sign*deg, degrees=True).as_matrix()
+        rel2, p2 = Ry @ rel, pinch+Ry @ (p-pinch)
+        goals = []
+        for pos in (pre, target[:3,3]):
+            hand_R = target[:3,:3] @ rel2.T
+            goals += [np.asarray(pos)+hand_R @ (motion.offset-p2), hand_R]
+        out.append(tuple(goals))
+    return out
+
+
+def _cheek_branch_ok(motion, body, q, pp, goal_p, goal_R, retreat, open_width, also=()):
+    """As _preinsert, from hover configuration q: the straight approach to the seat goal
+    and the open-gripper exit after it are free of contact (planning copy). Free, not
+    margin-clear: _cheek_seat dry-runs its descents the same way and re-branches near
+    the seat if the alignment there turns the arm onto the guard (on the hover branches
+    nearest the stand link5 passes the guard at ~3.7 mm, inside the 4 mm margin)."""
+    width = motion.width()
+    prev = q
+    for u in np.linspace(0, 1, 34)[1:]:
+        qn = motion._ik_one((1-u)*np.asarray(pp)+u*np.asarray(goal_p), goal_R, prev, width=width)
+        if qn is None or not motion.segment_free(prev, qn, width=width, allow_pad_body=body, clearance=False):
+            return False
+        prev = qn
+    motion._fk(prev, width)
+    saved_held = motion.held
+    motion.held = None
+    try:
+        for u in np.linspace(0, 1, 32)[1:]:
+            qn = motion._ik_one(np.asarray(goal_p)+u*np.asarray(retreat), goal_R, prev, width=open_width)
+            if qn is None or not motion.segment_free(prev, qn, width=open_width, allow_pad_body=body, clearance=False):
+                return False
+            prev = qn
+    finally:
+        motion.held = saved_held
+    # The same branch must also descend free of contact after the hover alignment has
+    # corrected the cheek's in-grip turn (alternative goals, _cheek_pivot_goals).
+    for pp2, rr2, gp2, gr2 in also:
+        prev = motion._ik_one(pp2, rr2, q, width=width)
+        if prev is None:
+            return False
+        for u in np.linspace(0, 1, 34)[1:]:
+            qn = motion._ik_one((1-u)*np.asarray(pp2)+u*np.asarray(gp2), gr2, prev, width=width)
+            if qn is None or not motion.segment_free(prev, qn, width=width, allow_pad_body=body, clearance=False):
+                return False
+            prev = qn
+    return True
+
+
+def _cheek_legs(p0, r0, pp, rr):
+    """Straight carry legs at the mounting attitude, from the turned pose to the hover:
+    up to the carry height, across, down. The yaw about the vertical turns with the move
+    across, while rising, in place before or after, or the long way round (in thirds of
+    the move across): variants for _cheek_turn_plan, which needs only one that is clear
+    and quick (a near-singular stretch makes a leg slow)."""
+    z = max(float(p0[2]), float(pp[2]))+CHEEK_CARRY_RISE_M
+    up, over, pp = np.array([p0[0], p0[1], z]), np.array([pp[0], pp[1], z]), np.asarray(pp, float)
+    r0, rr = np.asarray(r0), np.asarray(rr)
+    rv = Rotation.from_matrix(rr @ r0.T).as_rotvec()
+    angle = float(np.linalg.norm(rv))
+    variants = {"across+yaw": ((up, r0), (over, rr), (pp, rr)),
+                "up+yaw": ((up, rr), (over, rr), (pp, rr)),
+                "yaw over": ((up, r0), (over, r0), (over, rr), (pp, rr)),
+                "yaw first": ((np.asarray(p0, float), rr), (up, rr), (over, rr), (pp, rr)),
+                "yaw at top": ((up, r0), (up, rr), (over, rr), (pp, rr))}
+    if angle > 1e-3:
+        axis = rv/angle
+        longway = angle-2*math.pi
+        legs = [(up, r0)]
+        for k in (1, 2):
+            legs.append((up+(over-up)*k/3, Rotation.from_rotvec(axis*longway*k/3).as_matrix() @ r0))
+        variants["long way"] = tuple(legs+[(over, rr), (pp, rr)])
+    return variants
+
+
+def _cheek_leg_timing(qs, p0, r0, leg_p, leg_R):
+    """Duration, distance and angle of a straight leg (smooth profile): the hand at
+    CHEEK_CARRY_M_S / CHEEK_CARRY_RAD_S on average, no joint above CHEEK_CARRY_QDOT."""
+    dist = float(np.linalg.norm(np.asarray(leg_p)-np.asarray(p0)))
+    angle = float(Rotation.from_matrix(np.asarray(leg_R) @ np.asarray(r0).T).magnitude())
+    steps = np.abs(np.diff(np.asarray(qs), axis=0))
+    q_time = 1.875*len(steps)*float(steps.max())/CHEEK_CARRY_QDOT if len(steps) else 0.
+    return max(.2, dist/CHEEK_CARRY_M_S, angle/CHEEK_CARRY_RAD_S, q_time), dist, angle
+
+
+def _cheek_leg(motion, body, leg_p, leg_R, *, clearance=True):
+    """Execute one straight leg with _cheek_leg_timing."""
+    qs = motion.line(leg_p, leg_R, allow_pad_body=body, clearance=clearance, execute=False)
+    p0, r0 = motion.tool_pose()
+    duration, dist, angle = _cheek_leg_timing(qs, p0, r0, leg_p, leg_R)
+    motion.line(leg_p, leg_R, allow_pad_body=body, clearance=clearance, speed=max(dist/duration, 1e-6),
+                angular_speed=max(angle/duration, 1e-6), smooth=True)
+
+
+def _cheek_legs_end(motion, body, q, p0, r0, legs):
+    """Planning-only run of straight legs from configuration q (pose p0, r0): end
+    configuration and total duration (_cheek_leg_timing), or (None, inf)."""
+    total = 0.
+    try:
+        for leg_p, leg_R in legs:
+            qs = motion.line(leg_p, leg_R, allow_pad_body=body, clearance=True, start_q=q, execute=False)
+            total += _cheek_leg_timing(qs, p0, r0, leg_p, leg_R)[0]
+            q, p0, r0 = qs[-1], leg_p, leg_R
+        return q, total
+    except PlanningError:
+        return None, math.inf
+
+
+def _cheek_joint_attitude(motion, a, b, speed):
+    """Planning copy: (duration, pivot exposure, largest upward and largest absolute
+    vertical component of the approach) of the direct joint move a -> b at `speed`."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    duration = max(.2, float(np.max(np.abs(b-a)))*1.875/speed)
+    vertical = []
+    for u in np.linspace(0, 1, 41):
+        s = u*u*u*(10+u*(-15+6*u))          # Motion.execute's time scaling
+        motion._fk((1-s)*a+s*b, motion.width())
+        vertical.append(float(motion.pd.xmat[motion.hand].reshape(3, 3)[2, 2]))
+    vertical = np.asarray(vertical)
+    return duration, duration*float(np.mean(np.abs(vertical))), float(vertical.max()), float(np.abs(vertical).max())
+
+
+def _cheek_turn_plan(motion, body, up_R, lift_p, pp, rr, goal_p, goal_R, retreat, open_width, also=()):
+    """How the cheek gets from the lift pose to its hover, upright (planning only), in this
+    order: (1) one direct joint move to a hover branch with a clear descent and exit, if
+    it holds the approach off level only briefly (CHEEK_PIVOT_EXPOSURE_S, never far
+    fingertips-up); else an upright turn (rise x yaw about the vertical x IK branch, least
+    joint travel first, direct joint segment, same attitude limits) followed by (2) a
+    direct joint move to a hover branch keeping the approach level (CHEEK_LEVEL_TILT) or
+    (3) straight legs at the mounting attitude (_cheek_legs, <= CHEEK_CARRY_MAX_S).
+    Returns ("direct", q_hover), ("turn+joint", q_turn, q_hover), ("legs", q_turn,
+    variant) or None."""
+    q0 = motion.q
+    width = motion.width()
+    hovers, robust = [], []
+    for q in motion.ik(pp, rr, width=width, attempts=48, max_solutions=12, allow_pad_body=body, clearance=True):
+        if _cheek_branch_ok(motion, body, q, pp, goal_p, goal_R, retreat, open_width):
+            hovers.append(q)
+            if _cheek_branch_ok(motion, body, q, pp, goal_p, goal_R, retreat, open_width, also=also):
+                robust.append(q)
+    # Branches whose descent survives the hover alignment's correction first (no re-branch
+    # near the seat), then the others (_cheek_seat re-branches if it must).
+    key = lambda q: float(np.max(np.abs(q-q0)))
+    hovers = sorted(robust, key=key)+sorted([q for q in hovers if not any(q is r for r in robust)], key=key)
+    for qh in hovers:
+        duration, exposure, up, _level = _cheek_joint_attitude(motion, q0, qh, CHEEK_TURN_SPEED)
+        if (exposure <= CHEEK_PIVOT_EXPOSURE_S and up <= CHEEK_FINGERTIPS_UP
+                and motion.segment_free(q0, qh, width=width, allow_pad_body=body, clearance=True)):
+            _log("cheek to its hover in one joint move", round(duration, 1), "s, approach off level", round(exposure, 2),
+                 "s (of", len(hovers), "hover branches;", "robust" if any(qh is r for r in robust) else "not robust",
+                 "to the alignment's correction)")
+            return ("direct", qh)
+    options = []
+    for rise in CHEEK_TURN_RISE_M:
+        for yaw in CHEEK_TURN_YAWS_DEG:
+            Rz = Rotation.from_euler("z", yaw, degrees=True).as_matrix()
+            for q in motion.ik(np.asarray(lift_p)+np.array([0., 0., rise]), Rz @ up_R, width=width,
+                               attempts=24, max_solutions=6, allow_pad_body=body, clearance=True):
+                options.append((float(np.max(np.abs(q-q0))), yaw, rise, q))
+    options.sort(key=lambda o: o[0])
+    tried = 0
+    for delta, yaw, rise, q in options[:CHEEK_TURN_OPTIONS]:
+        _duration, exposure, up, _level = _cheek_joint_attitude(motion, q0, q, CHEEK_TURN_SPEED)
+        if (exposure > CHEEK_PIVOT_EXPOSURE_S or up > CHEEK_FINGERTIPS_UP
+                or not motion.segment_free(q0, q, width=width, allow_pad_body=body, clearance=True)):
+            continue
+        tried += 1
+        for qh in sorted(hovers, key=lambda h: float(np.max(np.abs(h-q)))):
+            duration, _exposure, _up, level = _cheek_joint_attitude(motion, q, qh, CHEEK_CARRY_QDOT)
+            if (level <= CHEEK_LEVEL_TILT
+                    and motion.segment_free(q, qh, width=width, allow_pad_body=body, clearance=True)):
+                _log("cheek upright turn", round(delta, 3), "rad, yaw", yaw, "deg, rise", rise, "m; joint move to the hover",
+                     round(duration, 1), "s (direct turns tried", tried, "of", len(options), "configurations)")
+                return ("turn+joint", q, qh)
+        p_t, r_t = motion._fk(q, width)
+        for variant, legs in _cheek_legs(p_t, r_t, pp, rr).items():
+            end, duration = _cheek_legs_end(motion, body, q, p_t, r_t, legs)
+            if (end is not None and duration <= CHEEK_CARRY_MAX_S
+                    and _cheek_branch_ok(motion, body, end, pp, goal_p, goal_R, retreat, open_width)):
+                _log("cheek upright turn", round(delta, 3), "rad, yaw", yaw, "deg, rise", rise, "m; straight carry",
+                     variant, round(duration, 1), "s (direct turns tried", tried, "of", len(options), "configurations)")
+                return ("legs", q, variant)
+    return None
+
+
+def _cheek_back_to_stand(cell, motion, name, body, turn, done, stand_T, width, hold_width=None):
+    """Put the cheek back on its stand the way it came: executed carry legs reversed (to
+    the turn pose; a joint move there if that fails), the turn reversed, lowered flat to
+    5 mm then 0.3 mm above its stand pose (or released where it already touches it),
+    released, gripper backed off."""
+    motion.hold_body(body)
+    try:
+        for leg_p, leg_R in reversed(done):
+            _cheek_leg(motion, body, leg_p, leg_R, clearance=False)
+    except PlanningError as error:
+        _log("cheek return legs blocked:", str(error)[:100], "- joint move to the turn pose")
+    if np.max(np.abs(motion.q-turn[-1])) > 2e-3:
+        for clearance in (True, False):
+            try:
+                motion.move_joints(turn[-1], width=motion.width(), allow_pad_body=body, speed=.5, clearance=clearance)
+                break
+            except PlanningError:
+                if not clearance:
+                    raise
+    if hold_width is not None:
+        motion.set_width(hold_width)    # the full pick squeeze again before it is flat
+        motion.hold_body(body)
+    motion.execute([motion.q, turn[0]], speed=CHEEK_TURN_SPEED)
+    for above, speed in ((.005, CHEEK_SETDOWN_M_S), (.0003, .005), (.002, .005)):
+        motion.hold_body(body)
+        pp, rr = motion.body_goal(stand_T[:3,3]+np.array([0., 0., above]), stand_T[:3,:3], body)
+        try:
+            motion.line(pp, rr, allow_pad_body=body, clearance=False, speed=speed, smooth=above > .004)
+            if above < .005:
+                break
+        except PlanningError as error:
+            if above < .005:
+                # It turned a little more in the jaws on the way down and already
+                # touches its stand within a few millimetres: set it down here.
+                _log("cheek set-down", round(1000*above, 1), "mm above the stand blocked:", str(error)[:80])
+                continue
+            # Turned in the grip, the cheek needs a turned hand at its stand pose: the
+            # straight way down from the lift pose can meet the arm's own links.
+            _log("cheek put-back descent blocked:", str(error)[:100], "- joint move to 5 mm above the stand")
+            options = motion.ik(pp, rr, width=motion.width(), attempts=48, max_solutions=8, allow_pad_body=body,
+                                clearance=False)
+            if not options:
+                raise
+            for k, q in enumerate(options):
+                try:
+                    motion.move_joints(q, width=motion.width(), allow_pad_body=body, speed=.25, clearance=False)
+                    break
+                except PlanningError:
+                    if k == len(options)-1:
+                        raise
+    motion.hold_body(None)
+    motion.set_width(width)
+    motion.wait(1.0)
+    p_now, r_now = motion.tool_pose()
+    motion.line(p_now-r_now[:,2]*.10, r_now, clearance=False, speed=.03)
+    motion.wait(.5)
+    _log("cheek put back", name, "stand drift mm",
+         round(1000*float(np.linalg.norm(cell.pose(name)[:3,3]-stand_T[:3,3])), 3))
+
+
+def _cheek_turn_carry(cell, motion, mate, name, body, g, stand_T, width, ins, pre_distance, retreat_distance,
+                      contact_carriers, clamped, last_attempt=False):
+    """Cheek only, right after the lift: to the hover upright (_cheek_turn_plan), a still
+    hold after the turn, a grip check after every further move. Returns ("carried",
+    (turn, legs)) at the hover, ("put back", None) after returning it to its stand (try
+    the next pinch), or ("fallback", None) if on the last attempt no upright way exists
+    (the generic transport follows)."""
+    target = _target(cell, mate, g)
+    pre = target[:3,3]-ins*pre_distance
+    lift_p, _ = motion.tool_pose()
+    motion.hold_body(body)
+
+    def goals():
+        pp, rr = motion.body_goal(pre, target[:3,:3], body)
+        goal_p, goal_R = motion.body_goal(target[:3,3], target[:3,:3], body)
+        return pp, rr, goal_p, goal_R
+    _p, up_R = motion.body_goal(target[:3,3], target[:3,:3], body)
+    pp, rr, goal_p, goal_R = goals()
+    retreat, open_width = -goal_R[:,2]*retreat_distance, min(.085, g.width+.012)
+    motion.set_mate_contact(contact_carriers, target[:3,3], target[:3,:3])
+    also = _cheek_pivot_goals(motion, body, g, pre, target, CHEEK_PIVOT_CHECK_DEG)
+    plan = _cheek_turn_plan(motion, body, up_R, lift_p, pp, rr, goal_p, goal_R, retreat, open_width, also)
+    if plan is None:
+        if last_attempt:
+            _log("cheek: no upright way to the hover from here:", name, "- generic transport")
+            return "fallback", None
+        _log("cheek: no upright way to the hover from here:", name, "- back to the stand, next pinch")
+        _cheek_back_to_stand(cell, motion, name, body, [motion.q, motion.q], [], stand_T, width)
+        return "put back", None
+    turn = [motion.q, plan[1]]
+    motion.execute(turn, speed=CHEEK_TURN_SPEED)
+    # Slide is measured at the pinch (the pad centre line at mid-thickness), not at the
+    # part origin 37 mm away, which every in-hand turn would move as well.
+    pinch = np.array([g.p[0], g.p[1], .002])
+    a = _cheek_hold_still(cell, motion, name, CHEEK_SLIP_SETTLE_S)
+    b = _cheek_hold_still(cell, motion, name, CHEEK_SLIP_HOLD_S)
+    mm, deg = _in_hand_change(a, b, pinch)
+    _turned_mm, turned = _in_hand_change(clamped, b, pinch)
+    rate_mm, rate_deg = mm/CHEEK_SLIP_HOLD_S, deg/CHEEK_SLIP_HOLD_S
+    held = (rate_deg <= CHEEK_SLIP_DEG_S and rate_mm <= CHEEK_SLIP_MM_S and turned <= CHEEK_SLIP_TURN_DEG
+            and _gripped(cell, name))
+    _log("cheek slip check", name, g.label, "upright creep deg/s", round(rate_deg, 3), "mm/s", round(rate_mm, 3),
+         "turned since clamp deg", round(turned, 2), "held" if held else "CREEPS -> put back")
+    if not held:
+        _cheek_back_to_stand(cell, motion, name, body, turn, [], stand_T, width)
+        return "put back", None
+    motion.set_width(g.width-CHEEK_CARRY_SQUEEZE_M)
+    motion.hold_body(body)
+    if plan[0] == "direct":
+        return "carried", (turn, [])
+    pp, rr, goal_p, goal_R = goals()      # with the cheek as it is held now
+    done = []
+    try:
+        if plan[0] == "turn+joint":
+            if not motion.segment_free(motion.q, plan[2], width=motion.width(), allow_pad_body=body, clearance=True):
+                raise PlanningError("upright joint move to the hover no longer clear")
+            motion.execute([motion.q, plan[2]], speed=CHEEK_CARRY_QDOT)
+            checks = [None]
+        else:
+            p0, r0 = motion.tool_pose()
+            checks = _cheek_legs(p0, r0, pp, rr)[plan[2]]
+        for leg in checks:
+            if leg is not None:
+                start = motion.tool_pose()
+                _cheek_leg(motion, body, *leg)
+                done.append(start)
+            mm, deg = _in_hand_change(b, _camera_in_hand(cell, motion, name), pinch)
+            if deg > CHEEK_CARRY_TURN_DEG or mm > CHEEK_CARRY_SLIDE_MM or not _gripped(cell, name):
+                raise _CheekSlip(f"in-hand turn {deg:.2f} deg, slide {mm:.2f} mm")
+    except (PlanningError, _CheekSlip) as error:
+        _log("cheek carry stopped:", name, str(error)[:140], "- back to the stand")
+        _cheek_back_to_stand(cell, motion, name, body, turn, done, stand_T, width, g.width-g.squeeze)
+        return "put back", None
+    _log("cheek at the hover", name, "in-hand turn in the carry deg", round(deg, 2), "slide mm", round(mm, 2))
+    return "carried", (turn, done)
 
 
 def camera_grasps(cell, name):
@@ -610,6 +1078,9 @@ def grasps(cell, name):
     if kind == "camera":
         yield from camera_board_grasps(cell, name)
         yield from camera_grasps(cell, name)
+        return
+    if kind == "battery":
+        yield from battery_grasps(cell, name)
         return
     if part.get("grasp_mode") == "surface":
         yield from surface_grasps(cell, name)
@@ -937,6 +1408,18 @@ def _prop_squeeze(cell, motion, name, *, min_force=1.5, max_s=4.0):
     return history[-1]
 
 
+def _prop_release(motion, body, p, R, width):
+    """Props only: let go of a pinch that did not lock and back out of it.
+
+    Opens the jaws to the preshape width (finger sweep checked), waits for the
+    prop to settle back flat on its pedestal, then retracts along the approach
+    to the pre-grasp (the same checked line as the pick, reversed).
+    """
+    _open_clear(motion,body,width)
+    motion.wait(1.)
+    motion.line(p-R[:,2]*.10,R,width=motion.width(),allow_pad_body=body,clearance=False,speed=.03)
+
+
 class _HeldMargin:
     """Temporarily enlarge the held part's planning clearance (camera carry).
 
@@ -1062,6 +1545,21 @@ PROP_HOVER_PIVOT_DEG=(6.,)
 # alike; 10 mm keeps the lower finger 8.7 mm above the bench). The staging
 # stand's pedestal leaves room under the blades for the lower finger.
 PROP_GRASP_DEPTH_M=.010
+# On its pedestal the deep pitched-blade pinch first holds the blade lightly
+# (~0.05 N per pad) while the jaws creep shut and the prop turns ~9 deg into
+# the four-corner pinch; then it locks (>= 1 N) within a few tenths of a
+# second. For every blade of both prop kinds that happens 3.6-5.1 s after the
+# close. The old fixed 3 s squeeze
+# ended right at that transition, so the clamp read 0.04-0.4 N by chance
+# (one run, prop_2: 0.049/0.039 N -> "two-sided pad contact
+# missing"). Wait for the lock (same exit test as the lift-off squeeze).
+PROP_STAND_SQUEEZE_S=7.
+PROP_STAND_LOCK_N=1.
+# Still below this after the stand squeeze: the pinch has not locked. Release
+# (the prop settles back on its pedestal), back out along the approach and
+# take the next blade; at most PROP_PICK_ATTEMPTS blades.
+PROP_CLAMP_MIN_N=.3
+PROP_PICK_ATTEMPTS=3
 
 
 def _prop_robot_names(motion):
@@ -1704,7 +2202,7 @@ def _strut_pick_branches(cell, motion, name, g, p, R, width, *, prefer_margin=Fa
     at 1.82 and joint 7 at -5.18 rad and no upright stand carry existed). With
     ``avoid_wound`` (direct struts) the IK order is kept except that branches
     whose +-2 pi joints end the turn within STRUT_WIND_MARGIN of a limit go
-    last (v7 seed 513: leg_2 arrived with joint 7 at -6.283 and no carry
+    last (in one run leg_2 arrived with joint 7 at -6.283 and no carry
     existed for any yaw). The full margin order would cost ~35 s of pick
     approach per strut (v1/v2 runs: leg_1 76 s instead of 40 s), and the
     tilt-constrained carry RRT copes with the remaining postures.
@@ -1920,7 +2418,7 @@ def _strut_regrasp(cell, motion, mate, name, body, g):
     spots = _strut_stand_spots(cell, name)[:10]
     free_at = {}
     # First pass: the regrasp posture must leave room to lift the strut
-    # STRUT_REGRASP_LIFT_CHECK with clearance (v7 seed 515: a posture folded
+    # STRUT_REGRASP_LIFT_CHECK with clearance (in one run a posture folded
     # near the robot base, link1/link_base-link6 inside the 8 mm self-clearance,
     # refused every lift and the carry). Second pass: the old criterion.
     for strict in (True, False):
@@ -2166,7 +2664,7 @@ def _strut_tilt_rrt(motion, body, width, goals, *, extends=STRUT_TILT_RRT_EXTEND
 
     The upright task-space RRT explores only the strut's position and yaw: the
     arm's elbow swivel and branch follow the start through the IK seeds, so a
-    carry that needs another arm posture is never found (v7 seeds 513/515:
+    carry that needs another arm posture is never found (two runs:
     leg_2 found nothing for any yaw). Here the trees grow in joint space from
     the start and from every goal branch; each new node is projected back onto
     the upright set (IK seeded from the stepped configuration, strut position
@@ -2430,7 +2928,7 @@ def _strut_rise(motion, body, name, rises):
     """Lift the held strut straight up by the first clear distance of `rises`.
 
     Near the robot base a full lift can be refused by the arm's own clearance
-    (v7 seed 515: link_base-link6 at 6.5 mm); a shorter lift, or none, still
+    (link_base-link6 at 6.5 mm in one run); a shorter lift, or none, still
     leaves the next plan its own escape. Returns the distance lifted (0 if none).
     """
     tcp, R = motion.tool_pose()
@@ -2601,7 +3099,99 @@ def _camera_put_back(cell, motion, name, body, bench_T, R, width):
          "bench drift mm", round(1000*float(np.linalg.norm(cell.pose(name)[:3,3]-bench_T[:3,3])),3))
 
 
-def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejected=frozenset()):
+# Battery (lead-free kit: plain 140 x 45 x 39 mm pack, 0.49 kg). The stock pads
+# close on the top edge of its side faces (the loaded fingers toe in), a line
+# 17.8 mm above the COM; any COM offset along the pack turns it about that line.
+# With the generic 4 mm squeeze (~7 N per pad) it turned at ~0.3 deg/s in the
+# jaws, and the hover alignment, turning the hand under it, wound it to 7-33 deg
+# (three full runs). A 5 mm squeeze gives
+# ~17 N per pad and ~0.025 deg/s (6 mm ~32 N and 8 mm
+# ~50 N creep alike, 0.022 / 0.005 deg/s, but 6 mm already sums to ~115 N of pad
+# contact force on the pack, against the cell's 150 N sustained part-force limit).
+BATTERY_SQUEEZE_M = .005
+BATTERY_SLIP_SETTLE_S = .3
+BATTERY_SLIP_HOLD_S = 1.0
+BATTERY_SLIP_DEG_S = .15        # in-hand turn rate after the lift (still hold)
+BATTERY_SLIP_TURN_DEG = 1.5     # in-hand turn since the clamp
+BATTERY_PICK_ATTEMPTS = 3
+BATTERY_ALIGN_ACCEPT_DEG = 1.5  # residual accepted if the alignment does not converge (mate: 3 deg)
+BATTERY_ALIGN_ACCEPT_TOL = 2.   # x the position tolerance
+
+
+def battery_grasps(cell, name):
+    """Battery: the generic flat-face pinches across the 45 mm width, each moved
+    along its pad axis so the pad centre lies on the measured COM (the jaw
+    midplane already passes through it), with a firm squeeze. Candidates more
+    than 15 mm from the COM are dropped; duplicates after the move are removed."""
+    com = np.asarray(cell.kit["parts"]["battery"]["inertial"]["center_m"])
+    seen = set()
+    for g in surface_grasps(cell, name):
+        pad_c = g.p + g.R[:, 2]*(_tip(g.width)-.158) - g.R[:, 2]*.0095
+        shift = float((com-pad_c) @ g.R[:, 0])
+        if abs(shift) > .015:
+            continue
+        g.p = g.p + shift*g.R[:, 0]
+        key = tuple(np.round(g.p/.001).astype(int)) + tuple(np.round(g.R[:, 1], 2))
+        if key in seen:
+            continue
+        seen.add(key)
+        g.squeeze = BATTERY_SQUEEZE_M
+        g.label += "-com"
+        yield g
+
+
+def _battery_slip(cell, motion, name, clamped):
+    """Hold the lifted battery still; return its in-hand turn rate (deg/s) and
+    its in-hand turn since the clamp (deg)."""
+    q = motion.q
+    for _ in range(int(round(BATTERY_SLIP_SETTLE_S/.01))):
+        motion._drive(q); cell.tick()
+    a = _camera_in_hand(cell, motion, name)
+    for _ in range(int(round(BATTERY_SLIP_HOLD_S/.01))):
+        motion._drive(q); cell.tick()
+    b = _camera_in_hand(cell, motion, name)
+    rate = math.degrees(Rotation.from_matrix(a[:3, :3].T @ b[:3, :3]).magnitude())/BATTERY_SLIP_HOLD_S
+    turned = math.degrees(Rotation.from_matrix(clamped[:3, :3].T @ b[:3, :3]).magnitude())
+    return rate, turned
+
+
+def _battery_put_back(cell, motion, name, body, bench_T, width):
+    """Set a turning battery back on its bench pose (5 mm above, then slowly to
+    0.3 mm above), open, back off 10 cm."""
+    for above, speed in ((.005, .025), (.0003, .005)):
+        motion.hold_body(body)
+        pp, rr = motion.body_goal(bench_T[:3, 3]+np.array([0., 0., above]), bench_T[:3, :3], body)
+        motion.line(pp, rr, allow_pad_body=body, clearance=False, speed=speed)
+    motion.hold_body(None)
+    motion.set_width(width)
+    motion.wait(1.0)
+    p_now, r_now = motion.tool_pose()
+    motion.line(p_now-r_now[:, 2]*.10, r_now, clearance=False, speed=.03)
+    motion.wait(.5)
+    _log("battery put back", "bench drift mm",
+         round(1000*float(np.linalg.norm(cell.pose(name)[:3, 3]-bench_T[:3, 3])), 3))
+
+
+def _battery_align(motion, pos, R, body, *, tolerance, max_passes):
+    """motion.align_body for the battery; a residual within BATTERY_ALIGN_ACCEPT_*
+    (the mate accepts 1.5 mm / 3 deg) is accepted instead of raising, so slow
+    residual creep in the jaws cannot end the placement."""
+    try:
+        return motion.align_body(pos, R, body=body, tolerance=tolerance, angle=.01, max_passes=max_passes)
+    except PlanningError as error:
+        if "did not converge" not in str(error):
+            raise
+        p_now, r_now = motion.body_pose(motion.held[0])
+        ep = float(np.linalg.norm(np.asarray(pos)-p_now))
+        er = float(Rotation.from_matrix(np.asarray(R) @ r_now.T).magnitude())
+        if ep > BATTERY_ALIGN_ACCEPT_TOL*tolerance or er > math.radians(BATTERY_ALIGN_ACCEPT_DEG):
+            raise
+        _log("battery alignment residual accepted", round(ep*1000, 3), "mm", round(math.degrees(er), 3), "deg")
+        return {"position_error_m": ep, "angle_error_rad": er}
+
+
+def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejected=frozenset(),
+          _prop_rejected=frozenset(), _battery_rejected=frozenset(), _cheek_rejected=frozenset()):
     name, body = mate["part"], "part_"+mate["part"]
     kind=cell.graph["instances"][name]["kind"]
     if kind == "landing_strut":
@@ -2634,6 +3224,12 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
     candidates = grasps(cell,name)
     if kind == "camera" and _camera_rejected:
         candidates = (c for c in candidates if c.label not in _camera_rejected)
+    if is_prop and _prop_rejected:
+        candidates = (c for c in candidates if c.label not in _prop_rejected)
+    if kind == "battery" and _battery_rejected:
+        candidates = (c for c in candidates if c.label not in _battery_rejected)
+    if kind == "sensor_cheek" and _cheek_rejected:
+        candidates = (c for c in candidates if c.label not in _cheek_rejected)
     if kind in ("camera", "flight_controller") or (kind == "lidar" and _lidar_upright(cell, name)):
         candidates = _least_travel_first(cell,motion,mate,candidates,-ins*pre_distance)
     for i,g in enumerate(candidates):
@@ -2701,25 +3297,33 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
     motion.line(p,R,width=width,clearance=False,speed=.025 if not is_prop else .02)
     motion.close(g.width,squeeze=g.squeeze)
     if is_prop:
-        _prop_squeeze(cell,motion,name,max_s=3.0)
+        _prop_squeeze(cell,motion,name,min_force=PROP_STAND_LOCK_N,max_s=PROP_STAND_SQUEEZE_S)
     else:
         motion.wait(max(g.settle_s,.5))
     _log("clamp",name,"gap",round(motion.width(),4),"forces",_grip_forces(cell,name))
+    if is_prop and min(_grip_forces(cell,name).values())<PROP_CLAMP_MIN_N:
+        rejected=_prop_rejected|{g.label}
+        _log("prop pinch did not lock",name,g.label,"- release onto the stand, back out, next blade")
+        _prop_release(motion,body,p,R,width)
+        if len(rejected)>=PROP_PICK_ATTEMPTS:
+            raise PlanningError(f"no locked pinch on {name}: rejected {sorted(rejected)}")
+        return place(cell,motion,mate,choice=choice,wall_deadline=wall_deadline,_prop_rejected=rejected)
     if not _gripped(cell,name):
         raise PlanningError(f"two-sided pad contact missing for {name}")
     motion.hold_body(body)
     if is_prop:
-        # On its pedestal the blade yields by turning (~8 deg) while the jaws
-        # creep shut, so the pad force at lift-off varies. Lift 3 mm clear of
-        # the stand and let the blade settle into the pads before the full lift.
+        # The pinch locked on the pedestal (the blade turned ~9-10 deg into it).
+        # Lift 3 mm clear of the stand and let the blade settle into the pads
+        # in the air before the full lift.
         motion.line(p-approach*.003,R,allow_pad_body=body,clearance=False,speed=.01)
         _prop_squeeze(cell,motion,name,min_force=1.0,max_s=2.0)
         if not _gripped(cell,name):
             raise PlanningError(f"lost grip on {name} at lift-off")
-    clamped=_camera_in_hand(cell,motion,name) if kind == "camera" else None
+    clamped=_camera_in_hand(cell,motion,name) if kind in ("camera", "battery", "sensor_cheek") else None
     # The pinched blade pivots slowly in the jaws (see _prop_servo); do not
     # linger in the lift.
-    motion.line(p-approach*.10,R,allow_pad_body=body,clearance=False,speed=.05 if is_prop else .025)
+    motion.line(p-approach*(CHEEK_LIFT_M if kind == "sensor_cheek" else .10),R,allow_pad_body=body,clearance=False,
+                speed=.05 if is_prop else CHEEK_LIFT_SPEED if kind == "sensor_cheek" else .025)
     if not _gripped(cell,name):
         raise PlanningError(f"lost grip on {name} after lift")
     if kind == "camera":
@@ -2737,6 +3341,28 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
                 raise PlanningError(f"no camera pinch held still: rejected {sorted(rejected)}")
             return place(cell,motion,mate,choice=choice,wall_deadline=wall_deadline,_camera_rejected=rejected)
         motion.hold_body(body)
+    if kind == "battery":
+        rate,turned=_battery_slip(cell,motion,name,clamped)
+        held=rate<=BATTERY_SLIP_DEG_S and turned<=BATTERY_SLIP_TURN_DEG and _gripped(cell,name)
+        _log("battery slip check",g.label,"turn deg/s",round(rate,3),"turned since clamp deg",round(turned,3),
+             "held" if held else "TURNS -> put back")
+        if not held:
+            _battery_put_back(cell,motion,name,body,T,width)
+            rejected=_battery_rejected|{g.label}
+            if len(rejected)>=BATTERY_PICK_ATTEMPTS:
+                raise PlanningError(f"no battery pinch held still: rejected {sorted(rejected)}")
+            return place(cell,motion,mate,choice=choice,wall_deadline=wall_deadline,_battery_rejected=rejected)
+        motion.hold_body(body)
+    cheek_turn=None
+    if kind == "sensor_cheek":
+        outcome,cheek_turn=_cheek_turn_carry(cell,motion,mate,name,body,g,T,width,ins,pre_distance,
+                                             retreat_distance,contact_carriers,clamped,
+                                             last_attempt=len(_cheek_rejected)+1>=CHEEK_PICK_ATTEMPTS)
+        if outcome == "put back":
+            rejected=_cheek_rejected|{g.label}
+            if len(rejected)>=CHEEK_PICK_ATTEMPTS:
+                raise PlanningError(f"no cheek rim pinch held: rejected {sorted(rejected)} (cheek back on its stand)")
+            return place(cell,motion,mate,choice=choice,wall_deadline=wall_deadline,_cheek_rejected=rejected)
     base_yaw=g.target_yaw
     symmetry=int(mate.get("axial_symmetry",1))
     free_yaw=symmetry==0
@@ -2749,7 +3375,8 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
     transport_errors=[]
     # Propellers first try only hover branches verified for the whole
     # insertion (_prop_preinsert); the plain transport is the fallback.
-    for verified in ((True,False) if is_prop else (False,)):
+    # A cheek carried upright is already at its hover: no transport.
+    for verified in (() if cheek_turn is not None else (True,False) if is_prop else (False,)):
         # The verified search covers every free-yaw turn itself: run it once.
         for yaw in (target_yaws[:1] if verified else target_yaws):
             g.target_yaw=yaw
@@ -2779,7 +3406,8 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
             continue
         break
     else:
-        raise PlanningError(f"all axial orientations failed for {name}: {transport_errors}")
+        if cheek_turn is None:
+            raise PlanningError(f"all axial orientations failed for {name}: {transport_errors}")
     if not _gripped(cell,name):
         raise PlanningError(f"lost grip on {name} during transport")
     target=_target(cell,mate,g)
@@ -2789,7 +3417,22 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
                        open_width=min(.085,g.width+.012))
         _prop_seat(cell,motion,mate,name,body,q,min(.085,g.width+.012),wall_deadline)
     elif kind == "sensor_cheek":
-        _cheek_seat(cell,motion,mate,name,body,target,ins,pre_distance,wall_deadline=wall_deadline)
+        try:
+            _cheek_seat(cell,motion,mate,name,body,target,ins,pre_distance,wall_deadline=wall_deadline)
+        except PlanningError as error:
+            # Still free above its seat (the coupling has not welded it) and still
+            # in the grip: back onto its stand for the next pinch, never dropped.
+            if (cheek_turn is None or not (isinstance(error,_CheekSlip) or "did not converge" in str(error))
+                    or cell.coupling.state[mate["id"]] in ("LOCKED","LOCKED_OFF") or not _gripped(cell,name)):
+                raise
+            _log("cheek seat not possible:",name,str(error)[:120],"- back to the stand")
+            hp,hr=motion.body_goal(target[:3,3]-ins*pre_distance,target[:3,:3],body)
+            motion.line(hp,hr,allow_pad_body=body,clearance=False,speed=.03)
+            _cheek_back_to_stand(cell,motion,name,body,cheek_turn[0],cheek_turn[1],T,width,g.width-g.squeeze)
+            rejected=_cheek_rejected|{g.label}
+            if len(rejected)>=CHEEK_PICK_ATTEMPTS:
+                raise PlanningError(f"cheek seat did not converge for {sorted(rejected)} (cheek back on its stand)") from error
+            return place(cell,motion,mate,choice=choice,wall_deadline=wall_deadline,_cheek_rejected=rejected)
     else:
         if kind == "landing_strut" or cell.kit["parts"][kind].get("grasp_mode") == "surface":
             # Real contact grasps can creep during transport. Correct the full
@@ -2797,6 +3440,8 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
             # than trying to rotate a misaligned flange after it touches the base.
             if kind == "lidar":
                 _lidar_align(motion,target[:3,3]-ins*pre_distance,target[:3,:3],body,tolerance=.0007,max_passes=10)
+            elif kind == "battery":
+                _battery_align(motion,target[:3,3]-ins*pre_distance,target[:3,:3],body,tolerance=.0007,max_passes=10)
             else:
                 motion.align_body(target[:3,3]-ins*pre_distance,target[:3,:3],body=body,
                                   tolerance=.0007,angle=.01,max_passes=10,axis_only=free_yaw)
@@ -2820,6 +3465,8 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
         if cell.coupling.state[mate["id"]] not in ("LOCKED","LOCKED_OFF"):
             if kind == "lidar":
                 _lidar_align(motion,target[:3,3],target[:3,:3],body,tolerance=.0005,max_passes=8)
+            elif kind == "battery":
+                _battery_align(motion,target[:3,3],target[:3,:3],body,tolerance=.0005,max_passes=8)
             else:
                 motion.align_body(target[:3,3],target[:3,:3],body=body,
                                   tolerance=.0005,angle=.01,max_passes=8,axis_only=free_yaw)
@@ -2830,7 +3477,7 @@ def place(cell, motion, mate, *, choice=0, wall_deadline=math.inf, _camera_rejec
             motion._drive(q);cell.tick()
         if kind == "motor":
             # A motor still HOLDING after the fixed hold is counting its 0.5 s
-            # at-rest window (legs v5, seed 512: motor_4 HOLDING at the end):
+            # at-rest window (one run: motor_4 HOLDING at the end):
             # keep the same hold until it locks. A motor that already locked
             # gets no extra tick, so working placements are unchanged.
             for step in range(MOTOR_EXTRA_HOLD_TICKS):
