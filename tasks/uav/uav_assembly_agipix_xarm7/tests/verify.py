@@ -1,4 +1,4 @@
-"""Grader of unmanned_aerial_vehicle_assembly_agipix_xarm7: scores physical workcell outcomes across a process/UID
+"""Grader of uav_assembly_agipix_xarm7: scores physical workcell outcomes across a process/UID
 boundary. Runs as root in the verify stage (tests/test.sh).
 
 Verification is separate (task.toml): this runs in a fresh verifier sandbox started from the task image, into which the

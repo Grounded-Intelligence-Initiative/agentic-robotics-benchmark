@@ -17,7 +17,7 @@ COPY python3 /usr/local/bin/python3
 RUN chmod 755 /usr/local/bin/python3 && ln -s /usr/local/bin/python3 /usr/local/bin/python && runuser -u user -- env PATH=/usr/local/bin:/usr/bin:/bin python3 -c "import mujoco, numpy, scipy, trimesh, PIL; print('agent sanitized PATH imports OK')"
 RUN timeout 45s env -u DISPLAY -u WAYLAND_DISPLAY python3 -c 'import os,glob,gc; p=sorted(glob.glob("/usr/share/vulkan/icd.d/lvp_icd*.json")); assert p,"lavapipe ICD missing"; os.environ["VK_ICD_FILENAMES"]=p[0]; os.environ["VK_DRIVER_FILES"]=p[0]; import mujoco._render_filament as F, mujoco.experimental.studio.window; c=F.Context(F.ContextConfig(graphics_api=F.GraphicsApi.GRAPHICS_API_VULKAN)); print("Filament CPU Vulkan OK",p[0],flush=True); del c; gc.collect()'
 # Task assets: the kit, the xArm 7 model, the picture manual and the cameras' scenery (render/) live in the benchmark's
-# Hugging Face dataset (tasks/uav/unmanned_aerial_vehicle_assembly_agipix_xarm7/payload/ there) as two archives, fetched
+# Hugging Face dataset (tasks/uav/uav_assembly_agipix_xarm7/payload/ there) as two archives, fetched
 # at the commit pinned in assets.sha256, checked against the sha256 recorded there and unpacked into
 # /opt/task-assets/payload. environment/setup/setup.sh stages them into the agent home, and the verify stage
 # (tests/test.sh, in its separate verifier sandbox started from this image) copies them into the grader's root-owned

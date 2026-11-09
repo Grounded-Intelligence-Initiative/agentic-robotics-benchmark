@@ -1,5 +1,6 @@
-# unmanned_aerial_vehicle_assembly_agipix_xarm7 (assembly stage: a quadrotor airframe from 23 loose components with an
-# xArm 7; built from 2026-10-27, the UAV sibling of the arm assembly tasks; kit moved to the source CAD meshes 2026-10-29).
+# uav_assembly_agipix_xarm7 (assembly stage: a quadrotor airframe from 23 loose components with an xArm 7; built from
+# 2026-10-27, the UAV sibling of the arm assembly tasks; kit moved to the source CAD meshes 2026-10-29; renamed from
+# unmanned_aerial_vehicle_assembly_agipix_xarm7 on 2026-11-09).
 #
 # The agent receives the adapted AGiPix kit (CC0 source: every component's source meshes, the convex collision pieces the
 # cell simulates, quantities, masses, rest orientations and manufacturing notes, given/kit/kit.json), the stock xArm 7 +
@@ -21,7 +22,7 @@ schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission"]
 
 [task]
-name = "grounded-intelligence-initiative/unmanned_aerial_vehicle_assembly_agipix_xarm7"
+name = "grounded-intelligence-initiative/uav_assembly_agipix_xarm7"
 
 [metadata]
 platform = "uav"

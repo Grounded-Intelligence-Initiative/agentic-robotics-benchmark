@@ -1,4 +1,4 @@
-"""unmanned_aerial_vehicle_assembly_agipix_xarm7: the network audit of the submitted program (tests/netaudit.py) and how
+"""uav_assembly_agipix_xarm7: the network audit of the submitted program (tests/netaudit.py) and how
 tests/verify.py applies it.
 
 The program runs during verify, after the engine has opened the network. The static scan flags each forbidden form in
@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-TASK = Path(__file__).resolve().parents[1] / "tasks/uav/unmanned_aerial_vehicle_assembly_agipix_xarm7"
+TASK = Path(__file__).resolve().parents[1] / "tasks/uav/uav_assembly_agipix_xarm7"
 _NAMES = ("netaudit", "verify", "verify_freeze")
 
 
