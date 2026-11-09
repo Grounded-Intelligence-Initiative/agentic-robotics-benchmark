@@ -1,20 +1,36 @@
 """Grader of quadruped_requirements_replica_from_photos (information tier, requirements stage). Root, verify stage, the
 agent gone. No agent code runs here: the submission is three static files (YAML / JSON).
 
+Separate verification (task.toml: [verifier] environment_mode = "separate"). The engine releases the agent's sandbox,
+starts a fresh verifier sandbox from the task image and restores into it only the declared artifact
+/home/user/submission (regular files and directories, owned by root; links and special files are never copied), then
+uploads this folder. Everything read here is in this folder (gt/, grader_config.json, anchor.json, the grading modules
+quad/, stage_lock/, the kit), in the image (/opt/venv) or in that restored submission. environment/setup/setup.sh does
+not run in the verifier, so the givens it stages into the agent home are not there; the grader reads its own truth
+(gt/) and none of the agent's files besides the submission. given_hashes.json stays here as the maintainers' pin of the
+givens; this grader does not read it.
+
   0. FIRST THING, stdlib only (`_early_lockdown`; test.sh has already chmod 0700 the stage and its parent): record when
      the engine began uploading this folder (the earliest ctime of its files), freeze and kill every process of the
-     agent account (a survivor voids the run: task error), lock the stage (0700 / 0600, restored at the end), gate G1
-     (submission integrity): an entry of the submission written at or after the upload began, or a submission ROOT
-     that is a symbolic link, not a directory, or a directory replaced or changed after the agent phase (lstat, never
-     followed), zeroes every criterion, and nothing behind such a root is read. Then a root-owned 0700 snapshot that
-     every later read uses: the three deliverables only (the only files the grader reads), each a regular file opened
-     without following a link and read up to MAX_FILE_BYTES + 1 bytes (a sparse or oversize file costs at most that,
-     and an oversize deliverable still reads as oversize); notes/ and everything else stay behind.
-  1. The given files: the agent's home copies against given_hashes.json (a stat, never a gate).
-  2. G0 structure (grade.load_submission + grade.g0_rules with the truth layer and catalogue): the files parse and
+     agent account (a survivor that cannot be frozen voids the run: task error), lock the stage (0700 / 0600, restored
+     at the end), gate G1 (submission integrity): an entry of the submission written at or after the upload began, or a
+     submission ROOT that is a symbolic link, not a directory, or a directory replaced or changed after the agent phase
+     (lstat, never followed), zeroes every criterion, and nothing behind such a root is read. Then a root-owned 0700
+     snapshot that every later read uses: the three deliverables only (the only files the grader reads), each a regular
+     file opened without following a link and read up to MAX_FILE_BYTES + 1 bytes (a sparse or oversize file costs at
+     most that, and an oversize deliverable still reads as oversize); notes/ and everything else stay behind. In the
+     separate verifier nothing the agent started is running: the kill stops only the image's own desktop session, which
+     the base image's supervisord runs as the agent account (Xvnc, noVNC, PulseAudio, GNOME: about 50 processes) and
+     which this grader does not use. supervisord respawns it as fast as it is killed, so a process that outlives the
+     kill is frozen (SIGSTOP: a stopped process cannot exit, so it is not respawned; stat agent_processes_running counts
+     what is still running after up to 3 s of freezing), and only one still running then voids the run. The engine
+     restores the submission before it uploads this folder, so no restored entry is late. The lockdown stays as defence
+     in depth. A submission root that is not a directory is restored as such and still zeroes G1; a symbolic-link root
+     is not restored at all (the engine copies no link), so G0 then finds the three files missing.
+  1. G0 structure (grade.load_submission + grade.g0_rules with the truth layer and catalogue): the files parse and
      validate, ids unique, units convert, the six BOM lines on the quote with the quote's roles, the battery family,
      the driver count, the sketch. A failure zeroes every criterion.
-  3. The truth of the hidden instance (gt/, CONTRACTS i.1) and the self-tests T1-T12 (CONTRACTS j), on every run, with
+  2. The truth of the hidden instance (gt/, CONTRACTS i.1) and the self-tests T1-T12 (CONTRACTS j), on every run, with
      the tolerances of grader_config.json's selftest block; any failure is a TASK ERROR (never a score):
      T1 the truth model validates and its dynamics MJCF is gt/quad_dynamics.xml byte for byte; T2 the compiled CoM of
      every added body at q = 0, the B-05 stance and the proof poses, and the compiled inertias; T3 the analytic rates
@@ -24,7 +40,7 @@ agent gone. No agent code runs here: the submission is three static files (YAML 
      gt/derived_for_optimal.json; T11 the knife edge (the search's, and every utilisation of J*'s evaluation but the
      hub's and the budget's); T12 the config's consistency (C5 band = the brief's ECO, the weights sum to 1, the repair
      order is a permutation of the BOM lines).
-  4. The criteria (grade.grade with the whole config): kinematic_replication 0.30, requirements_sheet 0.10,
+  3. The criteria (grade.grade with the whole config): kinematic_replication 0.30, requirements_sheet 0.10,
      derived_requirements 0.20, bom_acceptance 0.10, bom_economy 0.30. requirements_score = their weighted mean; the
      verdict's single gated `reward` comes from the benchmark kit (robotics_grader.ratio_rewards against anchor.json:
      value 1.0 = the oracle, full_at 1.0), so reward = requirements_score. The five criteria, the gates, the
@@ -32,11 +48,11 @@ agent gone. No agent code runs here: the submission is three static files (YAML 
      per-criterion diagnostics are cut to 380 characters each and the joined text to 2000.
 Knobs: grader_config.json.
 """
-import hashlib
 import json
 import math
 import os
 import pwd
+import signal
 import stat as statmod
 import sys
 import time
@@ -104,10 +120,39 @@ def _snapshot(src, dst):
     return kept
 
 
+def _proc_state(pid):
+    """The /proc state letter of `pid` ("X" once it is gone)."""
+    try:
+        with open("/proc/%d/status" % pid) as fh:
+            for line in fh:
+                if line.startswith("State:"):
+                    return line.split()[1]
+    except (OSError, IndexError):
+        pass
+    return "X"
+
+
+def _still_running(uid, bound_s=3.0):
+    """SIGSTOP every live process of `uid` until a pass finds none still running (a respawn that appears meanwhile is
+    stopped by the next pass) or `bound_s` elapsed; returns the PIDs still running (empty: every one is stopped)."""
+    deadline = time.time() + float(bound_s)
+    while True:
+        for pid in lockdown.live_uid_processes(uid):
+            try:
+                os.kill(pid, signal.SIGSTOP)
+            except OSError:
+                pass
+        time.sleep(0.05)
+        running = [pid for pid in lockdown.live_uid_processes(uid) if _proc_state(pid) not in ("T", "t", "X")]
+        if not running or time.time() > deadline:
+            return running
+
+
 def _early_lockdown():
-    out = {"agent_processes_killed": 0.0, "agent_processes_left": 0.0, "stage_locked": 0.0, "stage_parent_locked": 0.0,
-           "submission_late_writes": 0.0, "submission_root_violation": 0.0, "late_write_gate_active": 0.0,
-           "submission_snapshot": 0.0, "saved": None, "parent": None, "reasons": [], "t_ref": None}
+    out = {"agent_processes_killed": 0.0, "agent_processes_left": 0.0, "agent_processes_running": 0.0,
+           "stage_locked": 0.0, "stage_parent_locked": 0.0, "submission_late_writes": 0.0,
+           "submission_root_violation": 0.0, "late_write_gate_active": 0.0, "submission_snapshot": 0.0,
+           "saved": None, "parent": None, "reasons": [], "t_ref": None}
     if os.getuid() != 0:
         return out
     t_ref = lockdown.stage_upload_time(STAGE_DIR)
@@ -119,6 +164,14 @@ def _early_lockdown():
     if uid is not None and uid != 0:
         killed, left = lockdown.stop_and_kill_uid(uid, grace_s=8.0)
         out["agent_processes_killed"], out["agent_processes_left"] = float(killed), float(left)
+        if left:
+            # The image's supervisord respawns the account's desktop as fast as it is killed, so in the separate
+            # verifier a process that outlives the kill is the image's own (2026-11-07: one respawned desktop process
+            # outlived this kill and voided a run of another task). It is frozen (a stopped process cannot exit, so it
+            # is not respawned); only one still running once frozen voids the run.
+            out["agent_processes_running"] = float(len(_still_running(uid)))
+            log("%d process(es) of the agent account outlived the kill at verify start, %d still running after the "
+                "freeze" % (left, out["agent_processes_running"]))
     out["saved"] = runner.lock_stage(STAGE_DIR)
     out["stage_locked"] = 1.0 if out["saved"] is not None else 0.0
     parent = os.path.dirname(os.path.abspath(STAGE_DIR))
@@ -188,34 +241,6 @@ def _fin(x):
     except (TypeError, ValueError, OverflowError):
         return -1.0
     return v if math.isfinite(v) else -1.0
-
-
-def given_files_unchanged():
-    """The share of the given files whose home copy still has its pinned sha256 (lstat, regular files only: a symlink
-    counts as changed; a size different from the pinned one counts as changed without reading). -1 on any error (an
-    agent-owned file never breaks the verdict)."""
-    try:
-        with open(os.path.join(STAGE_DIR, "given_hashes.json")) as fh:
-            ghj = json.load(fh)
-        gh, sizes = ghj["files"], ghj.get("sizes", {})
-        ok = 0
-        for rel, dig in gh.items():
-            p = os.path.join(HOME, rel)
-            try:
-                st = os.lstat(p)
-            except OSError:
-                continue
-            if not statmod.S_ISREG(st.st_mode) or (rel in sizes and st.st_size != int(sizes[rel])):
-                continue
-            h = hashlib.sha256()
-            with open(p, "rb") as fh:
-                for blk in iter(lambda: fh.read(1 << 20), b""):
-                    h.update(blk)
-            if h.hexdigest() == dig:
-                ok += 1
-        return ok / max(1, len(gh))
-    except Exception:  # noqa: BLE001  (a stat, never a verdict)
-        return -1.0
 
 
 def _cut(text, n):
@@ -375,16 +400,15 @@ def main():
     stats = {k: v for k, v in early.items() if isinstance(v, float) and k != "t_ref"}
     stats["lockdown_s"] = time.time() - t0
     try:
-        if early["agent_processes_left"] > 0:
-            raise RuntimeError("%d agent process(es) survived the verify-start kill: run void"
-                               % early["agent_processes_left"])
+        if early["agent_processes_running"] > 0:
+            raise RuntimeError("%d agent process(es) survived the verify-start kill and could not be stopped: run void"
+                               % early["agent_processes_running"])
         with open(os.path.join(STAGE_DIR, "grader_config.json")) as fh:
             cfg = json.load(fh)
         weights = cfg["weights"]
         per = int(cfg["grader"]["diagnostics"]["per_criterion_chars"])
         total = int(cfg["grader"]["diagnostics"]["total_chars"])
         sub = SNAPSHOT if early["submission_snapshot"] else SUBMISSION
-        stats["given_files_unchanged"] = given_files_unchanged()
         from quad.req_info.q1 import grade as GR
         from quad.req_info.q1 import optimum as O
         from quad.req_info.q1.catalog import Catalogue

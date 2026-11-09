@@ -1,5 +1,5 @@
 # endpoint: https://huggingface.co
-# repo: grounded-intelligence-initiative/agentic-robotics-last-exam
+# repo: grounded-intelligence-initiative/ale-robotics-assets
 # revision: a652a2d8563deb4815d231d8777d78d60696cf40
 # prefix: tasks/quadruped/quadruped_requirements_replica_from_photos/payload
 e65cc021c0b7a8ee3ab7d36c2d64df806bbae650aac44a2933bb9e94ae5aa441  datasheets/DS-AC-6S-40.png
