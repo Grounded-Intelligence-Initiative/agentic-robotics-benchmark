@@ -166,7 +166,11 @@ measures). 20 of 24 completed; the hidden set is the first eight (candidates 1-8
 step not matched in time). The eight cover all five faults (air lock 5, slug 5, pump trip 5, drum 5, supply loss 4);
 the hollowing check (selection.json) finds no feature the drops removed. One full verify of the oracle on the set
 (`anchor.json`) reproduced every episode's selection score to four decimals: anchor 0.9779, `full_at` 0.98. A camera
-program's reading of the instruments: `review/observability.md`.
+program's reading of the instruments: `review/observability.md`. The frozen files changed after the selection only as
+recorded in `selection.json`: the log tolerance (`post_selection_changes`) and the v0.5.3 amendment (`amendments`: the
+agent cameras' renderer, with v0.5.2's visual-only carriage geometry), whose check, the reference's full verify of the set
+on the amended image, repeated every selection run (score and parts of each episode to four decimals; two runs, bit for
+bit the same).
 
 ## 5. Known limitations (version 0.5)
 
@@ -244,3 +248,17 @@ program's reading of the instruments: `review/observability.md`.
   shifts of the reference: the same state hash every 100 ticks and the same score as v0.5; the arm keeps at least
   66 mm from the mast). The cell manual's camera table now gives what the overview frame resolves (section 5). The
   hidden set, the anchor and the scoring are those of v0.5.
+* v0.5.3 (2026-11-09, the agent cameras; cell API pump-skid-cell/0.5.0 unchanged): the owner approved the OVRTX demo
+  of the shift and asked for its light in the agent's images. The overview and wrist cameras draw their colour with
+  MuJoCo's Filament renderer in the demo's water-treatment room, lit by the two ceiling panels and an image light
+  distilled from an OVRTX probe of the room, with per-class gains fitted to OVRTX stills of both cameras; the depth
+  stays the classic renderer's on the cell's own geometry plus the room (`look.py`, section 2). Intrinsics, extrinsics,
+  noise and encoding are unchanged; on every pixel where the old depth saw the skid, the robot or the wall the new depth
+  is equal (to 1e-4 m), and only room geometry in front of the old floor or background differs (about 11 % of the
+  overview's pixels, 0-8 % of a wrist frame's). What the overview resolves is unchanged (same geometry and camera: the
+  analyser's digits about 4 px tall and legible in an enlarged crop, FI-105's scale about 67 px, LG-201's about
+  245 px); the see-through parts blend with their own alpha, so the rotameter's float, the drums' hypochlorite and the
+  sight glasses' liquid show as before; lit lamps and segments glow. The cell manual's camera section says what the
+  images show. The image adds Mesa's lavapipe and the render bundle (`environment/assets.sha256`). The hidden set's
+  amendment (`hidden/selection.json`) and its check: the reference's full verify on the amended image gave the
+  selection's eight scores (0.9779). The anchor and the scoring are those of v0.5.

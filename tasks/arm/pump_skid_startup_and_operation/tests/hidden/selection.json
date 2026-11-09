@@ -708,5 +708,72 @@
    "effect": "none on the selection or the anchor: the reference logs the instruments' true values, so its log part (0.15) and every completion are the same at any tolerance; the final validate verifies the oracle again",
    "sha256": "147156a688c90e4054213611d291ca26d4b1ae0aae0f128253cacfdb747d132d"
   }
+ ],
+ "amendments": [
+  {
+   "amended_utc": "2026-11-09T15:10:00Z",
+   "commit": "4166c71",
+   "what": "the agent cameras' renderer (render only; the owner's request of 2026-11-09, the OVRTX light baked into Filament, v0.5.3): the colour from MuJoCo's Filament renderer on a render twin of the cell in the dressed water-treatment room (skidcell/look.py, new), the depth from the classic renderer on a depth twin (the cell's own geometry plus the room); the rig gets the scene (physics.py: one argument; cameras.py: the rig routes to the twins); the package docstring names the module (__init__.py); the image adds Mesa's lavapipe and the render bundle (environment/Dockerfile, environment/assets.sha256). The physics model, the reference, the scoring and every random generator are untouched: the reference's privileged run reads two frames. The files changed since the frozen commit also include v0.5.2's visual-only carriage geometry (physics.py, devices.py, cameras.py's docstring: the compiled dynamics bit-identical) and the log tolerance recorded in post_selection_changes (episode.py); this amendment's check covers them all.",
+   "image": {
+    "tag": "pr53fil-task:ee681f0",
+    "id": "sha256:7c7eb6899f69f7430a9ce3689e8f176d330351dc782197f5a70865b599633ba7",
+    "built_from": "environment/ at ee681f0 (unchanged at 4166c71)",
+    "files": {
+     "environment/Dockerfile": "c2509cf7ddcb38d9e978a9d2438735c9ebee34b44dcc2b71c64d081e6b805fae",
+     "environment/assets.sha256": "ccf12657a34a4cf3f4987b1d8778bb2f9278037e9c47ddc0355adb7f2630a516",
+     "environment/fetch_assets.py": "8d16511241caa6aa0a0eb7dce60c0d6efffa4efdbfc222ddfa53722a569d4689",
+     "environment/requirements.txt": "74d90f9d919e2ca53e7b14c569a468eb94b44e2d5aa9baa3a585fb7f3be1d1e2"
+    }
+   },
+   "frozen": {
+    "reference/controller.py": "78e65c813d77436e8adc6033031969b1306fd61a7028f40853f1145a15919691",
+    "reference/skills.py": "65aa18d93c28e4061ef5492327b259d163c98ad8b415db30c23b3a4419c7353d",
+    "skidcell/__init__.py": "2a8ef5ef72b8204d3585152e7ac7d1d23cd03268e9b21a791b356c1b93cd692e",
+    "skidcell/cameras.py": "86e0ed1da983353b319cc6ce4777ab22bdb9aa4659310a3b7963bfe58fd4db9b",
+    "skidcell/client.py": "62082e458092568f96d4a20c49394448ebed05d5db333aecebfc4c2c0f427d8d",
+    "skidcell/control.py": "448e29afbbda04fa1e4df2e16e0c24f8797c807b7891d389b30763a0c62b413d",
+    "skidcell/devices.py": "42ce09826c3ca819936ba906105b145d0aec1c601200ed213691f68061234c4c",
+    "skidcell/episode.py": "147156a688c90e4054213611d291ca26d4b1ae0aae0f128253cacfdb747d132d",
+    "skidcell/grasp.py": "da1d1aefe9ca929a186e62cfd378acbeb19a3d597ee319b3813e0a5778bc0e75",
+    "skidcell/layout.py": "bb25cae68b20ff6a15d297fe6caab5433f06b944c4605b48fe542ca262db0c57",
+    "skidcell/physics.py": "621b8767d2e8e60e8bbc93fe2214717cf032f5d590bfb506f563f9666543281d",
+    "skidcell/process.py": "bd432c256f06945ab86cb03ca75a2e1e84e23968030dc8dde931aa8eaccdadf1",
+    "skidcell/server.py": "459141fefdfb4388ea4a180b3f2673135732d4b37b8006e4da6290d3cba5ea69",
+    "skidcell/textures.py": "7d3bcf092d549ae2a114d7c4225f5d4054cc9ef3cccbc8bd0c9e7f1aa690ee12",
+    "skidcell/look.py": "9a03c97554cca963db06a107182b99fc29d4bc02f0c299182938dad4bf2f4f66"
+   },
+   "changed": [
+    "skidcell/__init__.py",
+    "skidcell/cameras.py",
+    "skidcell/devices.py",
+    "skidcell/episode.py",
+    "skidcell/physics.py",
+    "skidcell/look.py"
+   ],
+   "check": {
+    "runs": [
+     "pr53fil-verify1 (ee681f0)",
+     "pr53fil-verify2 (4166c71)"
+    ],
+    "where": "apollo, a fresh container of the amended image per run (8 CPUs, 16 GB, no network), tests/test.sh as root with only the oracle submission restored",
+    "rule": "the reference's full verify of the fixed set on the amended image repeats every kept selection run: the same score and parts per episode (four decimals)",
+    "result": {
+     "operation_score": 0.9779,
+     "episodes": [
+      0.9609,
+      0.9118,
+      1.0,
+      1.0,
+      0.9764,
+      1.0,
+      0.9742,
+      1.0
+     ],
+     "equal_to_selection": true,
+     "two_runs_identical": "episode scores and ticks bit for bit",
+     "verify_wall_s": 691
+    }
+   }
+  }
  ]
 }
