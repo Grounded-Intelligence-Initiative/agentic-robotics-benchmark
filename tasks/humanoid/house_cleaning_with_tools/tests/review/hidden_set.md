@@ -475,4 +475,8 @@ amendment 1, measured in the old look; amendment 3 for the new look's effect on 
 
 ### The anchor (amendment 3)
 
-0.9213, the mean of the kept selection runs, with `full_at` 0.98. @VALIDATE_A3@
+0.9213, the mean of the kept selection runs, with `full_at` 0.98. `ale validate` from a clean checkout of `6e3fe64`
+(validate-6013fd91, 2026-11-09, apollo, engine 1cdbc02, a separate verifier sandbox of 8 CPUs, the image with the new
+look): `ok`, untouched reward 0.0, oracle reward 1.0. The oracle's three episodes repeat their selection runs to the
+last digit: cleaning_score 0.92130 (ratio 0.99999 to the anchor), mean simulated time 2799.39 s (the selection runs':
+2405.75, 2741.52 and 3250.89 s), no safety violation (peak robot contact 44 N), no broken dish; verify 4323 s.
