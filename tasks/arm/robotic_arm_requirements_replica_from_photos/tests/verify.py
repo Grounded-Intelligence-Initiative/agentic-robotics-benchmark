@@ -1,15 +1,30 @@
 """Grader of robotic_arm_requirements_replica_from_photos (info tier, requirements stage, rung I2). Root, verify stage, agent gone.
 
+Separate verification (task.toml: [verifier] environment_mode = "separate"). The engine releases the agent's sandbox,
+starts a fresh verifier sandbox from the task image and restores into it only the declared artifact
+/home/user/submission (regular files and directories, owned by root; links and special files are never copied), then
+uploads this folder. Everything read here is in this folder (gt/, grader_config.json, anchor.json, the grading modules,
+the kit), in the image (/opt/venv) or in that restored submission. environment/setup/setup.sh does not run in the
+verifier, so the givens it stages into the agent home are not there; the grader reads its own copies (gt/) and none
+of the agent's files besides the submission. given_hashes.json stays here as the maintainers' pin of the givens; this
+grader does not read it.
+
   0. FIRST THING, stdlib only (`_early_lockdown`; test.sh has already chmod 0700 the stage and its parent): record when
      the engine began uploading this folder (earliest ctime of its files), freeze and kill every process of the agent
-     account (stats agent_processes_killed / _left: a survivor voids the run -> task error), lock the stage (0700 / 0600,
+     account (stats agent_processes_killed / _left: a survivor that cannot be frozen voids the run -> task error),
+     lock the stage (0700 / 0600,
      restored at the end; stat stage_locked), take a root-owned 0700 snapshot of the submission that every later read
      uses, and zero every criterion when an entry of the submission was written at or after the stage upload began
      (gate G1 submission_integrity, stat submission_late_writes: the deliverable must be final when the session ends).
      G1 also checks the submission ROOT (lstat, never followed): a symbolic link, a non-directory, or a directory whose
      own ctime / mtime is at or after the upload (a directory renamed into place or edited by a leftover process: a
      rename updates the moved directory's ctime, not its children's) zeroes every criterion (stat
-     submission_root_violation); nothing behind a symlinked root is read.
+     submission_root_violation); nothing behind a symlinked root is read. In the separate verifier nothing the agent
+     started is running: the kill stops only the image's own desktop session, which the base image's supervisord runs
+     as the agent account (Xvnc, noVNC, PulseAudio, GNOME: about 50 processes) and which this grader does not use. The
+     engine restores the submission before it uploads this folder, so no restored entry is late. The lockdown stays as
+     defence in depth. A submission root that is not a directory is restored as such and still zeroes G1; a
+     symbolic-link root is not restored at all (the engine copies no link), so G0 then finds the three files missing.
   1. G0 structure: the three files parse (YAML safe_load, JSON), validate against the v2 schemas, ids unique, one
      servo line with count 1 per joint, one PSU line, quote membership with the quote's role, bus 7.5 / 12 V, links =
      nominal +- tol, sketch servo ids = BOM lines. Failure -> every criterion 0.
@@ -29,6 +44,7 @@ import json
 import math
 import os
 import pwd
+import signal
 import stat as statmod
 import sys
 import time
@@ -53,8 +69,37 @@ def log(msg):
     print("[grader] " + msg, file=sys.stderr, flush=True)
 
 
+def _proc_state(pid):
+    """The /proc state letter of `pid` ("X" once it is gone)."""
+    try:
+        with open("/proc/%d/status" % pid) as fh:
+            for line in fh:
+                if line.startswith("State:"):
+                    return line.split()[1]
+    except (OSError, IndexError):
+        pass
+    return "X"
+
+
+def _still_running(uid, bound_s=3.0):
+    """SIGSTOP every live process of `uid` until a pass finds none still running (a respawn that appears meanwhile is
+    stopped by the next pass) or `bound_s` elapsed; returns the PIDs still running (empty: every one is stopped)."""
+    deadline = time.time() + float(bound_s)
+    while True:
+        for pid in lockdown.live_uid_processes(uid):
+            try:
+                os.kill(pid, signal.SIGSTOP)
+            except OSError:
+                pass
+        time.sleep(0.05)
+        running = [pid for pid in lockdown.live_uid_processes(uid) if _proc_state(pid) not in ("T", "t", "X")]
+        if not running or time.time() > deadline:
+            return running
+
+
 def _early_lockdown():
-    out = {"agent_processes_killed": 0.0, "agent_processes_left": 0.0, "stage_locked": 0.0, "stage_parent_locked": 0.0,
+    out = {"agent_processes_killed": 0.0, "agent_processes_left": 0.0, "agent_processes_running": 0.0,
+           "stage_locked": 0.0, "stage_parent_locked": 0.0,
            "submission_late_writes": 0.0, "submission_root_violation": 0.0, "late_write_gate_active": 0.0,
            "submission_snapshot": 0.0, "saved": None, "parent": None, "reasons": [], "t_ref": None}
     if os.getuid() != 0:
@@ -68,6 +113,14 @@ def _early_lockdown():
     if uid is not None and uid != 0:
         killed, left = lockdown.stop_and_kill_uid(uid, grace_s=8.0)
         out["agent_processes_killed"], out["agent_processes_left"] = float(killed), float(left)
+        if left:
+            # The image's supervisord respawns the account's desktop as fast as it is killed, so in the separate
+            # verifier a process that outlives the kill is the image's own (2026-11-07: one respawned desktop process
+            # outlived this kill and voided a run elsewhere). It is frozen (a stopped process cannot exit, so it is not
+            # respawned); only one still running once frozen voids the run.
+            out["agent_processes_running"] = float(len(_still_running(uid)))
+            log("[grader] %d process(es) of the agent account outlived the kill at verify start, %d still running "
+                "after the freeze" % (left, out["agent_processes_running"]))
     out["saved"] = runner.lock_stage(STAGE_DIR)
     out["stage_locked"] = 1.0 if out["saved"] is not None else 0.0
     parent = os.path.dirname(os.path.abspath(STAGE_DIR))
@@ -176,42 +229,17 @@ def main():
     stats = {k: v for k, v in early.items() if isinstance(v, float)}
     stats["lockdown_s"] = time.time() - t0
     try:
-        if early["agent_processes_left"] > 0:
-            raise RuntimeError("%d agent process(es) survived the verify-start kill: run void" % early["agent_processes_left"])
+        if early["agent_processes_running"] > 0:
+            raise RuntimeError("%d agent process(es) survived the verify-start kill and could not be stopped: run void"
+                               % early["agent_processes_running"])
         with open(os.path.join(STAGE_DIR, "grader_config.json")) as fh:
             cfg = json.load(fh)
         weights = cfg["weights"]
         sub = SNAPSHOT if early["submission_snapshot"] else SUBMISSION
-        import hashlib
         from arm.req_info.i2 import grade as GR
         from arm.req_info.i2.catalog import Catalogue
         diagnostics = {}
         rewards = {c: 0.0 for c in CRITERIA}
-        # given files unchanged (stat only): the agent's home copies vs given_hashes.json. lstat, regular files only
-        # (a symlink counts as changed), a size different from the pinned one counts as changed without reading, the
-        # hash is streamed; any error sets the stat to -1 (an agent-owned file never breaks the verdict)
-        try:
-            with open(os.path.join(STAGE_DIR, "given_hashes.json")) as fh:
-                ghj = json.load(fh)
-            gh, sizes = ghj["files"], ghj.get("sizes", {})
-            ok = 0
-            for rel, dig in gh.items():
-                p = os.path.join(HOME, rel)
-                try:
-                    st = os.lstat(p)
-                except OSError:
-                    continue
-                if not statmod.S_ISREG(st.st_mode) or (rel in sizes and st.st_size != int(sizes[rel])):
-                    continue
-                h = hashlib.sha256()
-                with open(p, "rb") as fh:
-                    for blk in iter(lambda: fh.read(1 << 20), b""):
-                        h.update(blk)
-                if h.hexdigest() == dig:
-                    ok += 1
-            stats["given_files_unchanged"] = ok / max(1, len(gh))
-        except Exception:  # noqa: BLE001  (a stat, never a verdict)
-            stats["given_files_unchanged"] = -1.0
         if early["submission_late_writes"] > 0:
             stats["gate_g1_submission_integrity"] = 0.0
             diagnostics = {c: "G1: " + "; ".join(early["reasons"]) for c in CRITERIA}
