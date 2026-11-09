@@ -390,7 +390,8 @@ def add_pendant(s, b):
     b.prim(body, "pendant_cord", G.mjGEOM_CYLINDER, [0.003, 0.36, 0], (cx, cy, RM.WALL_H - 0.36), visual=True,
            material=cord)
     zt = RM.WALL_H - 0.72
-    b.visual(body, "pendant_shade", P.lathe([(0.02, zt), (0.05, zt - 0.02), (0.17, zt - 0.17), (0.175, zt - 0.175)],
+    # (the profile bottom to top, so the shade's outside faces out: Filament culls back faces)
+    b.visual(body, "pendant_shade", P.lathe([(0.175, zt - 0.175), (0.17, zt - 0.17), (0.05, zt - 0.02), (0.02, zt)],
                                             segments=40), shade)
     b.visual(body, "pendant_inner", P.lathe([(0.168, zt - 0.168), (0.048, zt - 0.025), (0.0, zt - 0.02)],
                                             segments=40), glow)
@@ -483,6 +484,11 @@ def add_lights(s):
     # the strip light under the wall cabinets (warm, soft)
     wb.add_light(name="undercabinet", type=mujoco.mjtLightType.mjLIGHT_SPOT, pos=[0.20, 2.25, RM.UPPER["z0"] - 0.02],
                  dir=[0.15, 0.0, -1.0], cutoff=80.0, exponent=1.0, castshadow=False, diffuse=[0.3, 0.28, 0.24],
+                 specular=[0.0, 0.0, 0.0], attenuation=[1.0, 0.0, 0.0])
+    # the pendant's bulb over the dining table (warm, a downward cone through the shade's opening)
+    (cx, cy) = RM.DINING["center"]
+    wb.add_light(name="pendant", type=mujoco.mjtLightType.mjLIGHT_SPOT, pos=[cx, cy, RM.WALL_H - 0.80],
+                 dir=[0.0, 0.0, -1.0], cutoff=70.0, exponent=1.0, castshadow=True, diffuse=[0.2, 0.18, 0.15],
                  specular=[0.0, 0.0, 0.0], attenuation=[1.0, 0.0, 0.0])
 
 

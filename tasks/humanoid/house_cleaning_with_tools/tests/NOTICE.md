@@ -7,23 +7,27 @@ gravity compensation) and uses the primitive colliders of Menagerie's `g1_mjlab.
 builds it with MjSpec at cell start, as furniture_assembly_from_drawings's cell does (the same modifications; only the
 collision bits differ, one robot here). The agent gets the unmodified folder in `~/given/robot/unitree_g1/`.
 
-The room is furniture_assembly_from_drawings's room (the same walls, door, window, couch, plant and rug), and three
-parts of that task's cell, made for that room by Xiatao Sun, are reused here:
-  * the room's decor, what the cameras see of the room's shell and of the customer's own furniture (the oak floor, the
-    plaster walls and ceiling, the skirting, the window's frame, glass and board, the door leaf, the pictures, the
-    clock, the ceiling panels, the couch, the plants, the rug and the buildings across the street). As that task's
-    NOTICE records, it is drawn from meshes and textures of two Unity Asset Store packs that the benchmark's owner
-    licensed for redistribution, "Office and Police Station Pack" and "Office With Conference Room" (base maps
-    downsized to 512 px), and its image light (`ibl.ktx`) is distilled from light probes of the same room path-traced
-    with NVIDIA OVRTX and prefiltered with Filament's cmgen. The decor is not in git: its files are in the benchmark's
-    Hugging Face dataset `grounded-intelligence-initiative/ale-robotics-assets` under that task's folder,
-    `tasks/humanoid/furniture_assembly_from_drawings/payload/render/room_decor/`, fetched by this task's image build at
-    the commit pinned in `environment/decor_assets.sha256` (a byte copy of that task's `environment/assets.sha256`) and
-    checked file by file;
+The room is furniture_assembly_from_drawings's room (the same walls, door, window, couch, plant and rug). What the
+cameras see of it and how it is lit come from the review's approved path-traced look of this apartment (2026-11-09,
+the maintainers, Xiatao Sun):
+  * the room's decor, what the cameras see of the room's shell and of the customer's own furniture (the parquet floor,
+    the painted walls and ceiling, the skirting, the window's frame, glass and board, the curtains, the door leaf and
+    the intercom, the pictures, the sockets, the ceiling panels, the couch, the plants, the rug and the buildings across
+    the street). It is drawn from meshes and textures of Unity Asset Store packs that the benchmark's owner licensed for
+    redistribution: "ArchVizPRO Interior Vol.8" (the floor, wall and ceiling maps) and "House Props Furniture Vol 2"
+    (curtains, pictures, intercom, sockets), with the couch, plants, rug, door, ceiling panels and street of
+    furniture_assembly_from_drawings's decor ("Office and Police Station Pack" and "Office With Conference Room"); base
+    maps downsized to 512 px (the floor's to 1024 px). Its image light (`ibl.ktx`) is distilled from light probes of
+    the same apartment path-traced with NVIDIA OVRTX and prefiltered with Filament's cmgen. The decor is not in git: its
+    files are in the benchmark's Hugging Face dataset `grounded-intelligence-initiative/ale-robotics-assets` under this
+    task's folder, `tasks/humanoid/house_cleaning_with_tools/payload/render/room_decor/`, fetched by this task's image
+    build at the commit pinned in `environment/assets.sha256` and checked file by file;
   * the cameras' renderer setup: `house_cell/render.py` (colour through MuJoCo's Filament module, Apache-2.0, part of
-    the mujoco wheel, on Mesa's lavapipe; depth through OSMesa; the RealSense-like sensor model; that task's file with
-    only its renderer thread renamed) and `house_cell/look.json` (the lights, the image light, the materials' terms and
-    the colour gains; a byte copy);
+    the mujoco wheel, on Mesa's lavapipe; depth through OSMesa; the RealSense-like sensor model; the renderer of
+    furniture_assembly_from_drawings with its thread renamed, the image light's colour and a material's emission read
+    from the look)
+    and `house_cell/look.json` (the lights, the image light, the materials' terms and the colour gains, fitted to OVRTX
+    stills of the four cameras);
   * the robot's legs as the cameras draw them while it moves (`house_cell/walk_core.py`, a byte copy: footsteps planned
     from the base motion, leg inverse kinematics on the G1 model's own leg chain; no motion-capture or third-party
     animation data).

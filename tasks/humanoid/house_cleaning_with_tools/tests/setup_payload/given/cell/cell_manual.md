@@ -14,8 +14,8 @@ Boxes are given as `[x0, y0, z0, x1, y1, z1]`.
 
 | item | geometry |
 |---|---|
-| floor, walls | floor z = 0 (oak planks); inner wall faces at x = 0, x = 6.0, y = 0, y = 5.0; 2.6 m high, the ceiling at z = 2.6; door opening in the south wall for 4.80 <= x <= 5.70 (2.05 m high, onto a hallway); window in the east wall for 1.60 <= y <= 3.00, 0.90 <= z <= 2.10 |
-| drawn only (no obstacles) | skirting, the window's frame and board and the plant on it, pictures on the walls, a wall clock, two ceiling light panels, the rug in front of the couch (4.215 <= x <= 5.485, 3.39 <= y <= 4.91: it supports nothing, what is put on it rests on the floor) |
+| floor, walls | floor z = 0 (oak parquet); inner wall faces at x = 0, x = 6.0, y = 0, y = 5.0; 2.6 m high, the ceiling at z = 2.6; door opening in the south wall for 4.80 <= x <= 5.70 (2.05 m high, onto a hallway); window in the east wall for 1.60 <= y <= 3.00, 0.90 <= z <= 2.10 |
+| drawn only (no obstacles) | skirting, the window's frame and board and the plant on it, the curtains beside the window, pictures on the walls, an intercom, a light switch and sockets, two ceiling light panels, the rug in front of the couch (4.215 <= x <= 5.485, 3.39 <= y <= 4.91: it supports nothing, what is put on it rests on the floor) |
 | couch (the customer's, fixed) | against the east wall, seat towards the west, within 5.09 <= x <= 5.95, 3.36 <= y <= 4.94; colliders: seat [5.09, 3.49, 0.16, 5.75, 4.81, 0.48], back [5.75, 3.49, 0.16, 5.95, 4.81, 0.94], arms [5.09, 3.36, 0.16, 5.95, 3.49, 0.72] and [5.09, 4.81, 0.16, 5.95, 4.94, 0.72], four legs 0.035 m square, 0.16 m high, at (5.12, 3.39), (5.12, 4.91), (5.93, 3.39), (5.93, 4.91) |
 | plant (fixed) | north-west corner: pot radius 0.13 at (0.51, 4.51), 0 <= z <= 0.25; foliage radius 0.40 at (0.45, 4.55), 0.25 <= z <= 1.62 |
 | kitchenette (fixed) | base cabinets along the west wall [0, 1.15, 0, 0.50, 3.35, 0.86] (toe kick: x <= 0.44 below z = 0.10), quartz top 0.04 thick to z = 0.90, overhanging to x = 0.52; wall cabinets [0, 1.15, 1.52, 0.32, 3.35, 2.22]; an induction hob flush in the top for 0.04 <= x <= 0.48, 1.32 <= y <= 1.90 |
@@ -160,7 +160,8 @@ it holds nothing).
   along the optical axis, registered to the colour pixels, 1 mm quantisation, noise sigma 1.5 mm + 2.5 mm/m^2 z^2, invalid
   (0) below 0.28 m (head) / 0.40 m (ceiling), beyond 6 m, on depth discontinuities and on 2 % of the pixels at random.
   Colour is rendered physically based (MuJoCo's Filament renderer): the morning sun through the east window, the two
-  ceiling panels, a light under the wall cabinets, the light the room reflects; a per-episode white balance / brightness
+  ceiling panels, a light under the wall cabinets, the pendant over the dining table, the light the room reflects (warm
+  indoor light: white surfaces look a little warm); a per-episode white balance / brightness
   draw and pixel noise. The grease film, the crumbs, the water stream, the soap on the sponge and the sponge's colour
   (it darkens as it takes up grease) are drawn as they are. **At most 1500 frames per episode** over all cameras.
 

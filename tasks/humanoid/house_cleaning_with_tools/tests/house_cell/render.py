@@ -2,11 +2,12 @@
 the CPU in the sandbox), depth from MuJoCo's classic renderer (OSMesa) on the same model, plus a RealSense-like sensor
 model.
 
-RGB: pinhole, no distortion; the decorated room lit by the morning sun through the east window, the two ceiling
-panels, the light the sunlit patches of the floor and the kitting table throw back up, and an image light distilled
-from path-traced (OVRTX) renders of the same room (look.json next to this file: the lights in physical units, the image
-light, the materials' PBR terms and calibrated colour gains); per-episode white-balance / brightness draw, per-pixel
-noise. Depth (metres along the optical axis, registered to the RGB pixels): noise sigma 1.5 mm + 2.5 mm/m^2 z^2, 1 mm
+RGB: pinhole, no distortion; the decorated apartment lit by the morning sun through the east window, the two ceiling
+panels, the pendant over the dining table, the strip under the wall cabinets, the light the sunlit patches of the floor
+and the table throw back up, and an image light, all distilled from the path-traced (OVRTX) look of the same apartment
+(look.json next to this file: the lights in physical units with the look's white balance, the image light, the
+materials' PBR terms and per-material colour gains fitted to OVRTX stills of these cameras); per-episode white-balance
+/ brightness draw, per-pixel noise. Depth (metres along the optical axis, registered to the RGB pixels): noise sigma 1.5 mm + 2.5 mm/m^2 z^2, 1 mm
 quantisation, invalid (0) below the minimum range, beyond 6 m, on depth discontinuities and on 2 % random pixels.
 Intrinsics are exact and published (fx = fy = (H / 2) / tan(fovy / 2), principal point at the image centre). Colour
 and depth are drawn from the state the cell hands over (Cell.render_state: the physics state with the robots' legs as
@@ -123,7 +124,8 @@ def apply_look(m: mujoco.MjModel, look: dict = LOOK) -> dict:
             m.mat_metallic[i] = float(p.get("metallic", 0.0))
             rec["pbr"] += 1
         if p is not None:
-            for key, field in (("specular", "mat_specular"), ("shininess", "mat_shininess")):
+            for key, field in (("specular", "mat_specular"), ("shininess", "mat_shininess"),
+                               ("emission", "mat_emission")):
                 if key in p:
                     getattr(m, field)[i] = float(p[key])
         g = gains.get(name)
@@ -322,8 +324,8 @@ class _Filament:
         rends = F.ModelRenderables(scn, res)
         rends.set_options(self.opt)
         lp = F.LightParams()
-        lp.type, lp.texture, lp.color, lp.intensity = F.LightType.LIGHT_IMAGE, self.ibl_tex, [1.0, 1.0, 1.0], \
-            self.ibl_intensity
+        lp.type, lp.texture, lp.color, lp.intensity = F.LightType.LIGHT_IMAGE, self.ibl_tex, \
+            [float(c) for c in LOOK.get("ibl", {}).get("color", (1.0, 1.0, 1.0))], self.ibl_intensity
         ibl = self.ctx.create_light(lp)
         scn.add_light(ibl)
         self.live = [rends, lights, ibl, scn, res]
