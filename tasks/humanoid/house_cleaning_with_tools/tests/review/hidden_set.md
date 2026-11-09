@@ -333,6 +333,9 @@ assumed the north bin were always the recycling one would sort every hidden scen
 
 ### The anchor (amendment 2)
 
-0.9552, the mean of the kept selection runs, with `full_at` 0.98. `ale validate`'s oracle pass on the final head is its
-full-verify measurement (below once run).
+0.9552, the mean of the kept selection runs, with `full_at` 0.98. `ale validate` from a clean checkout of `94ef0d6`
+(validate-9944b842, 2026-11-09, apollo, engine 1cdbc02, a separate verifier sandbox of 8 CPUs): `ok`, untouched reward
+0.0, oracle reward 1.0. The oracle's three episodes repeat their selection runs to the last digit: cleaning_score
+0.95525 (ratio 1.00005 to the anchor), mean simulated time 2909.71 s (the selection runs': 2644.84, 3036.52 and
+3047.76 s), no safety violation (peak robot contact 121 N), no broken dish; verify 4579 s.
 
