@@ -1,9 +1,11 @@
 # The fixed hidden scene set (tests/hidden/seeds.json)
 
 **Amendment 1 (2026-11-08):** the cell and the reference changed, the selection was repeated under the same rule,
-and the hidden set became candidates 1, 2 and 3 (anchor 0.9352). **Amendment 2 (2026-11-09, at the end):** the
-reference's arm postures and the robot state changed; the selection is repeated once more under the same rule. The
-sections before each amendment record the earlier selections.
+and the hidden set became candidates 1, 2 and 3 (anchor 0.9352). **Amendment 2 (2026-11-09):** the reference's arm
+postures and the robot state changed; the selection was repeated under the same rule (candidates 2, 3 and 4, anchor
+0.9552). **Amendment 3 (2026-11-09, at the end):** the reference's arm postures (round 4) and the agent cameras' look
+changed; the selection is repeated with one more rule: the kept scenes may not all share a layout fact a program could
+assume. The sections before each amendment record the earlier selections.
 
 The grader runs the three scenes of `tests/hidden/seeds.json`, for agents and the oracle alike (verify.py
 `episode_seeds`; the oracle's privileged cells get the same layouts, not a nominal one). A scene is the cell's draw
@@ -339,3 +341,87 @@ assumed the north bin were always the recycling one would sort every hidden scen
 0.95525 (ratio 1.00005 to the anchor), mean simulated time 2909.71 s (the selection runs': 2644.84, 3036.52 and
 3047.76 s), no safety violation (peak robot contact 121 N), no broken dish; verify 4579 s.
 
+## Amendment 3 (2026-11-09): natural arm postures (round 4), the agent cameras' look; a fairer selection rule
+
+Two changes since amendment 2, both before any run of this amendment:
+
+* **The reference's arm postures** (`reference.py`, `posture.md` round 4): every joint path the reference executes keeps
+  the planned hand path but resolves the arm's redundancy as a person's (the swivel that puts the elbow down and a
+  little out, the wrist near neutral where the hand's pose allows, the shoulder untwisted), configuration by
+  configuration from the previous one (`Reference.refine_path`); the planner's own choices are unchanged.
+* **The agent cameras' look** (`render.py`, `scene.py`, `look.json`, the room decor and the survey photos on the asset
+  dataset at `3062dead`): the approved path-traced (OVRTX) look of the apartment baked into Filament. It changes the
+  cameras' colour, the depth only where the new decor (pictures, curtains, intercom, sockets) or the pendant's shade
+  (it was inside out) stands; the physics and the reference's privileged run are unaffected by it.
+
+The frozen oracle of amendment 2 is therefore gone, and the selection is repeated, written here before any run:
+
+1. The oracle is frozen at `a7880f3` (sha256 below; `render.py`, `scene.py` and `look.json` are among the frozen
+   files, so the renderer's change is part of this freeze).
+2. The candidates are the 16 drawn on 2026-11-07 (`candidates.json`), in the same order; no new draw unless step 5
+   needs one.
+3. Each candidate runs once, exactly as before (`tools/launch_ref.sh`, `tools/run_ref.py`), in the task image built
+   from `environment/` at `a7880f3`.
+4. The pass criterion is unchanged (no safety violation, no damage, everything but the floor at full credit, at least
+   half of the crumbs binned).
+5. **New: no layout shortcut shared by the whole set.** A program could get a layout fact right by assuming it, without
+   looking, if every hidden scene had the same value. The facts that decide what the job does and that the layout
+   draws from two values are: which bin slot (south or north) holds the recycling bin, and on which side of the dining
+   table (south or north) most of the floor's crumbs lie. (The other discrete draws decide nothing a program could
+   assume: which plate lies on which side, which way round a book lies (shelved either way round), the stain's and
+   the floor groups' counts.) The hidden set is the first three passing candidates, in drawn order, whose layouts do
+   not all share either fact: of all sets of three passing candidates that satisfy this, the one whose drawn
+   positions, sorted, come first lexicographically. If no such set exists among the 16, 16 more are drawn by
+   `tools/draw_candidates.py` and the rule goes on in their order.
+6. Every candidate's result is recorded below (`selection_a3/seed_<seed>.json`), with the hollowing check. No camera
+   frame of a hidden scene is rendered for the record (the maintainers render development scenes only); the look's
+   effect on what the cameras show is measured on the survey's development scenes (`observability.md`,
+   amendment 3). The anchor is the mean of the kept selection runs; `ale validate`'s oracle pass on the final head is
+   its full-verify measurement.
+
+The frozen oracle (`a7880f3`):
+
+```
+f3a03a97db9fbe7697bf711c8c602492fe89d5142b0d1e57be6b9b2bda5752fd  tests/house_cell/cell.py
+d88e94a34316fa9d9590eedf4e40b7f35ed0b893a0672c08e890f7854f1f762c  tests/house_cell/cleaning.py
+5c9046ada48dc935538340de1eaceab078ae941de25a1bf6fd2b12aa3ffd0572  tests/house_cell/control.py
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  tests/house_cell/__init__.py
+93c439787b73108e64125326aa47a21fbc0cd3009e59a1b9a88a1f56e536f8d1  tests/house_cell/layout.py
+2814c5419023f70edc9e9507029be8583da7475138b9cc5da0fbd8af648ac272  tests/house_cell/objects.py
+5b9a26199f1e692bd6e0d4beb34699ac8fcf110920069dc5736fb01e33f94198  tests/house_cell/physics.py
+03880c6204b6bdd7e3412e93a7b9d85ab501dfe84e6c2b9efce2f3fb44ce0c49  tests/house_cell/props.py
+754c6f1323219a7638caa6532e1f0a52a1147f446b2a90759636e5b232ac2734  tests/house_cell/reference.py
+5b231503b38139893a887c541c0bd8fa0cf1f0ee8272f6f6c9e7d80ecdd1cf45  tests/house_cell/render.py
+223b284fd0ce69c6ed3f6b0d7f2348d67e0bcf150acdd70e567c8e6e0e7198e8  tests/house_cell/robot.py
+59015301eb370fdd8e965d65a26c4ae01af0b7b32b5b9821094399a43a1ff1ed  tests/house_cell/room.py
+8f3413807a8547ec05e56d65de6287457195cdf522b8b2c1c59e1538a3f46be8  tests/house_cell/scene.py
+fb9c83456a9275d0555da22f959c35ec44aa5c4909c72fc10e7de9cda5024cc4  tests/house_cell/scoring.py
+3a74be8b8c5a00b00367bb9d71f21e0c5eef0350c6a68e49cffce7f94ced1f36  tests/house_cell/server.py
+dbac8d1a656f5d93bc0354d8748091aab64b7167ed4d85d08b6f4968d5c1f729  tests/house_cell/walk_core.py
+4dcb59ed702796d95e442aafdaffdad191036f3008bc54e1cb783892be9b4fa7  tests/house_cell/look.json
+4f76a26e1fee4147327880b7a41d7e0e16855f7be57a8b8310a1353d80ebddc6  solution/solve.sh
+7e224c2848476398821fce93c03244c0b6e45274dc60a5e32742c574df789e9b  solution/reference/clean.py
+9a4c6c83b2d73f3b2fe5fffb1656ec250edbd11d3aefe5f25084699729208939  solution/reference/oracle_token
+e88f7bc29cc3bdf8cffd1ed17e854295e0b73f25164982b0a11682c0719d1038  tests/grader_config.json
+```
+
+The rule's facts per candidate (from the layout draw alone, `tools/features.py`, before any run):
+
+| # | seed | recycling bin's slot | floor crumbs south / north of the table (most on) |
+|---|---|---|---|
+| 1 | 6790790475345571576 | south | 44 / 2 (south) |
+| 2 | 3125492756787262100 | north | 22 / 24 (north) |
+| 3 | 7022738416721159354 | north | 42 / 4 (south) |
+| 4 | 4089632381925228296 | north | 29 / 17 (south) |
+| 5 | 6569624632418969883 | south | 42 / 4 (south) |
+| 6 | 4920960843796068851 | north | 24 / 22 (south) |
+| 7 | 7640796830471677594 | south | 2 / 44 (north) |
+| 8 | 7981839151774950588 | south | 42 / 4 (south) |
+| 9 | 4745791118675327858 | south | 16 / 30 (north) |
+| 10 | 376632851020783183 | north | 42 / 4 (south) |
+| 11 | 3945038779305284334 | south | 3 / 43 (north) |
+| 12 | 4387728151438419368 | south | 23 / 23 (even) |
+| 13 | 6432759289746745107 | north | 24 / 22 (south) |
+| 14 | 18184323288814303 | north | 21 / 25 (north) |
+| 15 | 6438526276579322594 | south | 23 / 23 (even) |
+| 16 | 2636808825281067254 | south | 5 / 41 (north) |
