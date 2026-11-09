@@ -17,10 +17,13 @@ order a cleaner works:
      general-waste bin (tipped towards the robot) and hung back in its clip;
   6. close both lids.
 
-The arms move as a person's would (NaturalIK, posture_cost): every planned arm configuration is solved with a posture
-term in the arm's redundancy (the elbow kept below the shoulder and beside or in front of the body, the joints off their
-limits, the twisting joints near their middle); a grasp is chosen for the carry it leaves (carry_order), a held item is
-carried in front of the chest in the most natural of a few postures (canonical_carry), and a free arm hangs at home.
+The arms move as a person's would (NaturalIK, posture_cost, Reference.refine_path): every planned arm configuration is
+solved with a posture term in the arm's redundancy (the elbow kept below the shoulder and beside or in front of the body,
+the joints off their limits, the twisting joints near their middle), and every executed joint path keeps the planned
+hand path while its arm configurations are resolved as a person's, from the previous one (the swivel that puts the
+elbow down and a little out, the wrist near neutral where the hand's pose allows, the joints kept off their stops); a
+grasp is chosen for the carry it leaves (carry_order), a held item is carried in front of the chest in the most natural
+of a few postures (canonical_carry), and a free arm hangs at home.
 """
 
 from __future__ import annotations
@@ -283,17 +286,41 @@ class NaturalIK:
     """The arm IK of the reference's plans: the cell's damped least squares (robot.ArmIK: the grasp site's position and
     rotation by the arm's 7 joints, the base, the waist and the legs as given), plus a posture term descended in the
     arm's null space, the redundancy the target leaves (the elbow's swivel about the shoulder-wrist line; with a
-    position-only target the wrist as well). The term (posture_terms) keeps the joints off their limits, the elbow below
-    the shoulder and beside or in front of the body, and the twisting joints (shoulder yaw, wrist roll) near their
-    middle: a target the arm can reach with the elbow up or down is reached the way a person holds the arm. The
-    posture step is capped per iteration, so a path solved waypoint by waypoint (each from the previous solution)
-    drifts towards the natural branch smoothly instead of jumping."""
+    position-only target the wrist as well). The term (terms) resolves the redundancy the way a person holds the arm:
+    the swivel angle that puts the elbow down and a little out (the elbow on its circle about the shoulder-wrist line
+    pulled towards that direction, always, not only past a threshold), the elbow not above the shoulder, not behind the
+    body and not far out beside it, the wrist near its neutral (its sideways bend within 0.3 rad, its flexion within 0.55 rad, its roll within
+    1 rad: the joint limits of the robot's wrist are far wider than a person's), the shoulder's twist within 1 rad, the
+    elbow neither straightened past straight nor folded tight, every joint 0.35 rad off its limits. A target the arm
+    can reach with the elbow up or down is so reached the way a person holds the arm, and posture_cost ranks grasps,
+    stances and carries by the same measure. The posture step is capped per iteration, so a path solved waypoint by
+    waypoint (each from the previous solution) drifts towards the natural posture smoothly instead of jumping."""
 
     LIMIT_MARGIN = 0.35        # rad: a joint closer than this to a limit costs
-    ELBOW_DROP = 0.08          # m: the elbow kept at least this far below the shoulder
+    ELBOW_RAISE = 0.02         # m: the elbow above the shoulder by more than this costs (reaching forward at shoulder
+                               # height a person's elbow is level with the shoulder; above it the arm is raised)
     ELBOW_BACK = 0.05          # m: the elbow behind the shoulder (torso frame) beyond this costs
-    ELBOW_OUT = 0.12           # m: the elbow out to the side beyond this costs
-    W = {"limit": 1.0, "elbow_high": 3.0, "elbow_back": 1.0, "elbow_out": 0.5, "twist": 0.08}
+    ELBOW_OUT = 0.14           # m: the elbow out to the side of the shoulder beyond this costs
+    # the elbow's natural direction about the shoulder-wrist line (torso frame: forward, out to the arm's side, up):
+    # down and a little out and back; for a hand hanging straight below the shoulder, back (the forearm comes forward)
+    SWIVEL_DIR = (-0.10, 0.35, -1.0)
+    SWIVEL_DIR_HANG = (-1.0, 0.30, 0.0)
+    # comfortable joint ranges (rad) beyond which a joint costs (a person's wrist and forearm, the robot's joints):
+    # (joint index, half range, scale)
+    COMFORT = ((5, 0.30, 0.25),     # wrist pitch: the hand bent sideways (radial / ulnar)
+               (6, 0.55, 0.30),     # wrist yaw: the hand bent towards the palm or its back
+               (4, 1.00, 0.40),     # wrist roll: the forearm turned
+               (2, 1.00, 0.40))     # shoulder yaw: the upper arm twisted
+    ELBOW_STRAIGHT = 1.45       # rad: the elbow joint past this is (nearly) straightened through (pi/2 is straight)
+    ELBOW_FOLD = -0.70          # rad: below this the elbow is folded tight (0: a right angle)
+    # (the swivel dominates the comfort terms: with the hand's pose given, a lower elbow often bends the wrist more, and
+    # a raised or winged elbow reads as far more contorted than a bent wrist; the joint limits dominate both, so the
+    # swivel never wrings a wrist against its stop)
+    W = {"limit": 30.0, "elbow_high": 3.0, "elbow_back": 1.0, "elbow_out": 0.5, "swivel": 8.0, "comfort": 0.6,
+         "elbow_straight": 1.5, "elbow_fold": 0.4, "twist": 0.04}
+    # the ranking measure's constants (terms_rank)
+    RANK_ELBOW_DROP, RANK_ELBOW_BACK, RANK_ELBOW_OUT = 0.08, 0.05, 0.12
+    RANK_W = {"limit": 1.0, "elbow_high": 3.0, "elbow_back": 1.0, "elbow_out": 0.5, "twist": 0.08}
 
     def __init__(self, m, r):
         self.m, self.r = m, r
@@ -304,7 +331,32 @@ class NaturalIK:
         B = mujoco.mjtObj.mjOBJ_BODY
         self.elbow = {s: mujoco.mj_name2id(m, B, f"{r.name}/{s}_elbow_link") for s in ("left", "right")}
         self.shoulder = {s: mujoco.mj_name2id(m, B, f"{r.name}/{s}_shoulder_pitch_link") for s in ("left", "right")}
+        self.wrist = {s: mujoco.mj_name2id(m, B, f"{r.name}/{s}_wrist_pitch_link") for s in ("left", "right")}
         self.out = {"left": 1.0, "right": -1.0}
+
+    def natural_elbow(self, side, Rt):
+        """The elbow's natural place (torso frame, relative to the shoulder) on its circle about the shoulder-wrist
+        line at the present wrist, and the circle's radius (m): (point, radius)."""
+        dk = self.dk
+        S = dk.xpos[self.shoulder[side]]
+        E = Rt.T @ (dk.xpos[self.elbow[side]] - S)
+        Wp = Rt.T @ (dk.xpos[self.wrist[side]] - S)
+        d = float(np.linalg.norm(Wp))
+        if d < 1e-6:
+            return E, 0.0
+        n = Wp / d
+        a, b = float(np.linalg.norm(E)), float(np.linalg.norm(Wp - E))
+        x = (a * a - b * b + d * d) / (2.0 * d)
+        rho = math.sqrt(max(0.0, a * a - x * x))
+        o = self.out[side]
+        want = np.array([self.SWIVEL_DIR[0], o * self.SWIVEL_DIR[1], self.SWIVEL_DIR[2]])
+        hang = np.array([self.SWIVEL_DIR_HANG[0], o * self.SWIVEL_DIR_HANG[1], self.SWIVEL_DIR_HANG[2]])
+        w = want - (want @ n) * n
+        w = w + 0.3 * (hang - (hang @ n) * n)
+        nw = float(np.linalg.norm(w))
+        if nw < 1e-6:
+            return E, 0.0
+        return x * n + rho * (w / nw), rho
 
     def terms(self, side, q):
         """The posture term at q (self.dk's kinematics and comPos set) as weighted residuals: (residuals, their
@@ -329,7 +381,7 @@ class NaturalIK:
         v = Rt.T @ (dk.xpos[self.elbow[side]] - dk.xpos[self.shoulder[side]])
         mujoco.mj_jacBody(m, dk, self.je, None, self.elbow[side])
         Jv = Rt.T @ self.je[:, r.arm_v[side]]
-        for name, e, jrow, scale in (("elbow_high", v[2] + self.ELBOW_DROP, Jv[2], self.ELBOW_DROP),
+        for name, e, jrow, scale in (("elbow_high", v[2] - self.ELBOW_RAISE, Jv[2], 0.08),
                                      ("elbow_back", -v[0] - self.ELBOW_BACK, -Jv[0], 0.1),
                                      ("elbow_out", self.out[side] * v[1] - self.ELBOW_OUT, self.out[side] * Jv[1],
                                       0.1)):
@@ -338,7 +390,81 @@ class NaturalIK:
             if e > 0:
                 res.append(w * e)
                 rows_.append(w * jrow)
+        # the swivel: the elbow pulled towards its natural place on its circle (faded out as the arm straightens,
+        # where the swivel no longer moves the elbow)
+        Ep, rho = self.natural_elbow(side, Rt)
+        fade = min(1.0, rho / 0.06)
+        ws = math.sqrt(self.W["swivel"]) / 0.10 * fade
+        dv = v - Ep
+        parts["swivel"] = float(ws * ws * (dv @ dv))
+        if ws > 0:
+            for k in range(3):
+                res.append(ws * dv[k])
+                rows_.append(ws * Jv[k])
+        cc = 0.0
+        for j, half, scale in self.COMFORT:
+            e = abs(q[j]) - half
+            if e > 0:
+                w = math.sqrt(self.W["comfort"]) / scale
+                jr = np.zeros(7)
+                jr[j] = w * (1.0 if q[j] > 0 else -1.0)
+                res.append(w * e)
+                rows_.append(jr)
+                cc += (w * e) ** 2
+        parts["comfort"] = cc
+        for name, e, sg, scale in (("elbow_straight", q[3] - self.ELBOW_STRAIGHT, 1.0, 0.15),
+                                   ("elbow_fold", self.ELBOW_FOLD - q[3], -1.0, 0.30)):
+            w = math.sqrt(self.W[name]) / scale
+            parts[name] = (w * e) ** 2 if e > 0 else 0.0
+            if e > 0:
+                jr = np.zeros(7)
+                jr[3] = w * sg
+                res.append(w * e)
+                rows_.append(jr)
         wt = math.sqrt(self.W["twist"])
+        parts["twist"] = wt * wt * float(q[2] ** 2 + q[4] ** 2 + q[6] ** 2)
+        for j in (2, 4, 6):
+            jr = np.zeros(7)
+            jr[j] = wt
+            res.append(wt * q[j])
+            rows_.append(jr)
+        return np.array(res), np.array(rows_).reshape(-1, 7), parts
+
+    def terms_rank(self, side, q):
+        """The ranking measure of a posture (posture_cost): the joints off their limits, the elbow at least 8 cm below
+        the shoulder, not behind it or far out beside it, the twisting joints near their middle (residuals, Jacobian,
+        {term: cost}). The planner's choices between grasps, carries and stances rank by it, the solver's redundancy
+        resolution (terms) is finer."""
+        r, dk, m = self.r, self.dk, self.m
+        lo, hi = r.arm_lo[side], r.arm_hi[side]
+        mu = self.LIMIT_MARGIN
+        res, rows_, parts = [], [], {}
+        wl = math.sqrt(self.RANK_W["limit"]) / mu
+        c = 0.0
+        for j in range(7):
+            a, b = mu - (q[j] - lo[j]), mu - (hi[j] - q[j])
+            for v_, sg in ((a, -1.0), (b, 1.0)):
+                if v_ > 0:
+                    jr = np.zeros(7)
+                    jr[j] = sg * wl
+                    res.append(wl * v_)
+                    rows_.append(jr)
+                    c += (wl * v_) ** 2
+        parts["limit"] = c
+        Rt = dk.xmat[r.torso].reshape(3, 3)
+        v = Rt.T @ (dk.xpos[self.elbow[side]] - dk.xpos[self.shoulder[side]])
+        mujoco.mj_jacBody(m, dk, self.je, None, self.elbow[side])
+        Jv = Rt.T @ self.je[:, r.arm_v[side]]
+        for name, e, jrow, scale in (("elbow_high", v[2] + self.RANK_ELBOW_DROP, Jv[2], self.RANK_ELBOW_DROP),
+                                     ("elbow_back", -v[0] - self.RANK_ELBOW_BACK, -Jv[0], 0.1),
+                                     ("elbow_out", self.out[side] * v[1] - self.RANK_ELBOW_OUT, self.out[side] * Jv[1],
+                                      0.1)):
+            w = math.sqrt(self.RANK_W[name]) / scale
+            parts[name] = (w * e) ** 2 if e > 0 else 0.0
+            if e > 0:
+                res.append(w * e)
+                rows_.append(w * jrow)
+        wt = math.sqrt(self.RANK_W["twist"])
         parts["twist"] = wt * wt * float(q[2] ** 2 + q[4] ** 2)
         for j in (2, 4):
             jr = np.zeros(7)
@@ -354,10 +480,10 @@ class NaturalIK:
         dk.qpos[self.r.arm_q[side]] = q
         mujoco.mj_kinematics(self.m, dk)
         mujoco.mj_comPos(self.m, dk)
-        return sum(self.terms(side, np.asarray(q, float))[2].values())
+        return sum(self.terms_rank(side, np.asarray(q, float))[2].values())
 
     def solve(self, qpos, side, pos, quat, q_init, iters=30, damping=0.05, w_rot=0.35, null_step=0.04, null_total=None,
-              w_home=None):
+              w_home=None, natural=False):
         """Arm joints putting `side`'s grasp site at pos (world) with orientation quat (wxyz; None: position only),
         the posture term descended in the null space (at most null_step rad per iteration and, if given, null_total
         rad in all: a path's waypoint so changes the arm's posture only gradually). Returns (q, pos_err_m,
@@ -393,7 +519,7 @@ class NaturalIK:
             # (the posture term only once the target is nearly reached: far from it the step is the cell IK's own,
             # so whatever the cell IK reaches this reaches as well)
             near = np.linalg.norm(ep) < 0.02 and np.linalg.norm(er) < 0.2
-            r2, J2, _ = self.terms(side, q)
+            r2, J2, _ = (self.terms if natural else self.terms_rank)(side, q)
             free = np.ones(7, bool)
             for _pass in range(3):
                 # a joint at its limit that the step would push further is held (its column dropped) and the step
@@ -1020,19 +1146,20 @@ class Reference:
                     q, ep, er = st.solve(side, t2, Rt, sq, iters=120, quick=40)
                     if ep > 0.01 or (Rt is not None and er > 0.08):
                         continue
-                    if any(float(np.max(np.abs(q - q_))) < 0.05 for _, q_ in sols):
+                    if any(float(np.max(np.abs(q - s_[1]))) < 0.05 for s_ in sols):
                         continue
                     if name and self.held_near_body(side, q, name):
                         continue
                     sols.append((posture_cost(self, side, q) + 0.1 * abs(dyaw) + 0.05 * float(np.max(np.abs(q - q0))),
-                                 q))
-        for c1, q1 in sorted(sols, key=lambda t: t[0])[:8]:
+                                 q, (fwd, la, zp, dyaw)))
+        for c1, q1, how in sorted(sols, key=lambda t: t[0])[:8]:
             st.set_state((b[0], b[1], b[2]), h, pitch)
             st.chk.qpos[r.arm_q[side]] = q0
             path, why = st._joint_line(side, q0, q1, self.held[side], self.grip_rel.get(side), ())
             if path is not None:
                 if float(np.max(np.abs(q1 - q0))) > 0.02:
-                    self.log("[ref] carry %s: posture cost %.2f" % (name, c1))
+                    self.log("[ref] carry %s: posture cost %.2f (point %.2f %.2f %s, turned %.1f)" % (
+                        name, c1, how[0], how[1], "hip" if how[2] else "chest", how[3]))
                 self.run_path(side, path)
                 return True
         self.log("[ref] carry %s: no natural carry (%d postures)" % (name, len(sols)))
@@ -1159,7 +1286,7 @@ class Reference:
             found = clear(tuple(self.base()))
         if not found:
             self.log("[ref] home %s: no clear move within 0.30 m back" % side)
-        self.run_path(side, [home], tol_end=0.03)
+        self.run_path(side, [home], tol_end=0.03, refine=False)
 
     def wait_arms(self, tol=0.02, timeout=4.0):
         """Until both arms are at their joint targets (and the waist at its)."""
@@ -1199,7 +1326,48 @@ class Reference:
         self.c.command({f"{side}_arm": {"q": [float(v) for v in self.d.qpos[r.arm_q[side]]]}})
         self.step(ticks)
 
-    def run_path(self, side, qs, tol_via=0.05, tol_end=0.01, timeout=2.0, rate=None, accel=None):
+    def refine_path(self, side, qs, qcur):
+        """The planned joint path with the arm's redundancy resolved as a person's (NaturalIK's posture term: the swivel
+        that puts the elbow down and a little out, the wrist near its neutral, the shoulder untwisted), the hand's path
+        unchanged: each planned configuration's grasp-site pose is reached again from the previous refined
+        configuration, the posture drifting towards the natural one by at most 0.15 rad a waypoint (0.45 at the last),
+        so the motion stays smooth. The hand, and what it holds, passes the same poses, so only the arm links can meet
+        something new: a refined configuration that touches the room where the planned one did not, or a move between
+        two that leaves the hand's path by more than the planned one did (+ 4 mm), keeps the planned path. Returns the
+        refined rows or None."""
+        st, r = self.stance, self.c.robot
+        rws = [np.asarray(q, float) for q in rows(qs)]
+        if not rws:
+            return None
+        b = self.base()
+        other = "right" if side == "left" else "left"
+        st.set_state((b[0], b[1], b[2]), float(self.c.ctrl.stand_cmd), float(self.c.ctrl.waist_cmd[2]),
+                     {other: np.asarray(self.c.ctrl.arm_cmd[other], float)})
+        prev = np.asarray(qcur, float)
+        prev_l = prev.copy()
+        prev_p = st.site_pose(side, prev)[0]
+        out = []
+        for k, ql in enumerate(rws):
+            pl, Rl = st.site_pose(side, ql)
+            q, ep, er = st.nik.solve(st.chk.qpos, side, pl, _quat(Rl), prev, iters=60,
+                                     null_total=0.45 if k == len(rws) - 1 else 0.15, natural=True)
+            if ep > 0.002 or er > 0.02:
+                return None
+            st.chk.qpos[r.arm_q[side]] = ql
+            planned = {(a_, b_) for a_, b_, _ in st.collisions()}
+            st.chk.qpos[r.arm_q[side]] = q
+            if any((a_, b_) not in planned for a_, b_, _ in st.collisions()):
+                return None
+            mid = (prev_p + pl) / 2
+            dev_l = float(np.linalg.norm(st.site_pose(side, (prev_l + ql) / 2)[0] - mid))
+            dev_r = float(np.linalg.norm(st.site_pose(side, (prev + q) / 2)[0] - mid))
+            if dev_r > max(0.006, dev_l + 0.004):
+                return None
+            out.append(q)
+            prev, prev_l, prev_p = q, ql, pl
+        return out
+
+    def run_path(self, side, qs, tol_via=0.05, tol_end=0.01, timeout=2.0, rate=None, accel=None, refine=True):
         """Stream a planned joint path (entries of the planner: one row of joints, or several to pass through) along
         the joint-space polyline with a trapezoidal speed profile (at most `rate` rad/s, `accel` rad/s^2, in the
         joints' max norm): all joints move together, a target every 2 ticks. (Given a far joint target the controller
@@ -1213,7 +1381,8 @@ class Reference:
         act = self.d.qpos[r.arm_q[side]]
         if float(np.max(np.abs(act - qcur))) > 0.05:
             qcur = act.copy()
-        pts = [qcur] + [np.asarray(q, float) for q in rows(qs)]
+        ref_rows = self.refine_path(side, qs, qcur) if refine else None
+        pts = [qcur] + (ref_rows if ref_rows is not None else [np.asarray(q, float) for q in rows(qs)])
         seg = np.array([float(np.max(np.abs(pts[k + 1] - pts[k]))) for k in range(len(pts) - 1)])
         L = float(seg.sum())
         q = pts[-1]
@@ -2015,15 +2184,15 @@ def carry_order(ref, name, side, base0, frames):
 
 
 def posture_cost(ref, side, q):
-    """How unnatural an arm posture is (0: fine), in the stance model's state as set: NaturalIK's posture term (joints
-    near a limit, the elbow raised towards or above the shoulder, swung behind the body or out to the side, the
-    twisting joints far from their middle)."""
+    """How unnatural an arm posture is (0: fine), in the stance model's state as set: NaturalIK's ranking measure
+    (terms_rank: joints near a limit, the elbow raised towards or above the shoulder, swung behind the body or out to
+    the side, the twisting joints far from their middle), which the planner's choices rank by."""
     st = ref.stance
     return st.nik.cost(st.chk.qpos, side, np.asarray(q, float))
 
 
 def sponge_work_costs(ref, side, frames):
-    """Per grasp frame of the sponge, the arm posture its grip leaves for the work that follows (posture_cost; 10 for
+    """Per grasp frame of the sponge, the arm posture its grip leaves for the work that follows (posture_cost; 100 for
     a pose out of reach): a wiping stroke's near and far ends on the dining table from its south side (as wipe_side
     stands, the sponge level, the best of its turns about the vertical and two waist pitches) plus half the rinse
     under the faucet (as rinse stands). A grasp is so chosen for the work as well as for the take."""
@@ -2044,7 +2213,7 @@ def sponge_work_costs(ref, side, frames):
 
     def pose_cost(base, pitch, pobj, Robj, pg, Rg):
         st.set_state(base, 0.79, pitch)
-        best = 10.0
+        best = 100.0
         for sq in seeds:
             q, ep, er = st.solve(side, pobj + Robj @ pg, Robj @ Rg, sq, iters=100, quick=30)
             if ep < 0.005 and er < 0.04:
@@ -2054,7 +2223,7 @@ def sponge_work_costs(ref, side, frames):
     out = []
     for g, a, Rh in frames:
         pg, Rg = Ro.T @ (np.asarray(g) - p), Ro.T @ Rh
-        wipe = 20.0
+        wipe = 200.0
         for dyaw in yaws:
             Robj = _Rz(dyaw) @ Rl
             for pitch in (0.45, 0.52):
@@ -2358,13 +2527,10 @@ def go_put(ref, side, name, targets, base0, heights, pitches, what, yaw_offsets=
     dy0 = ref.dy_chosen
     why = None
     # (a target at the edge of the arm's reach may be a few millimetres out once the robot stands there for real: then
-    # 2 and 4 cm closer)
-    for df in (0.0, 0.02, 0.04):
-        if df:
-            if not (isinstance(why, tuple) and why and why[0] == "unreachable"):
-                break
-            ref.goto(x + df * math.cos(yaw), y + df * math.sin(yaw), yaw, tol=0.005)
-            b = ref.base()
+    # 2 and 4 cm closer; the held item, carried in front, may touch what the robot stepped up to once it really stands
+    # there and has bent: then it is lifted 4.5 cm first, once)
+    lifted, closer = False, 0
+    while True:
         for dy in ((dy0, dy0 + 0.3, dy0 - 0.3, dy0 + 0.6, dy0 - 0.6) if O.LOOSE[name][0] in SYMMETRIC else (0.0,)):
             tg = [(p, _turned(ref, name, R, dy, b[2], absolute)) for p, R in targets]
             poses = [ref.hand_for(side, p, R) for p, R in tg]
@@ -2372,6 +2538,18 @@ def go_put(ref, side, name, targets, base0, heights, pitches, what, yaw_offsets=
                                                   grip_rel=ref.grip_rel.get(side), allow=allow)
             if ok:
                 return qs, poses
+        if isinstance(why, tuple) and len(why) > 1 and why[0] == "start collides" and why[1] == name and not lifted:
+            p_, R_ = ref.site(side)
+            ref.track(side, [(p_ + np.array([0.0, 0.0, 0.015 * k]), R_) for k in range(1, 4)], ticks=6)
+            ref.log("[ref] %s %s: lifted clear of what it touched at the stance" % (what, name))
+            lifted = True
+            continue
+        if isinstance(why, tuple) and why and why[0] == "unreachable" and closer < 2:
+            closer += 1
+            ref.goto(x + 0.02 * closer * math.cos(yaw), y + 0.02 * closer * math.sin(yaw), yaw, tol=0.005)
+            b = ref.base()
+            continue
+        break
     ref.log("[ref] %s %s: no path from the stance (%s)" % (what, name, why))
     return None
 
