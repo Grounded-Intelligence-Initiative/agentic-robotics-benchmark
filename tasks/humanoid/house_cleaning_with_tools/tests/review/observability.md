@@ -68,3 +68,25 @@ are measured above (amendment 1's hidden scenes 2 and 3); candidate 4 is new, me
 Per-crumb records of candidate 4: `evidence/crumb_views_squat_a2_hidden3.json` and
 `evidence/crumb_views_stand_a2_hidden3.json`.
 
+
+## Amendment 3 (2026-11-09): the agent cameras' new look
+
+The cameras now draw the approved path-traced look of the apartment (`hidden_set.md`, amendment 3). The crumbs, the
+grease and the cameras are unchanged; what changed is the light and the colours, so the measure above was repeated on
+the survey's development scenes (the survey photos are re-rendered with the new look; `tools/survey_photos.py`, the
+same frames). Crumbs seen (more than zero pixels changed) per frame, old look / new look, and the pixels the grease
+changes by more than 12 grey levels (`evidence/survey_frames_dev1{1,2}.json` before, `evidence/survey_frames_a3_dev1{1,2}.json` now):
+
+| frame | scene 11 (`scene_a`): crumbs | grease px | scene 12 (`scene_b`): crumbs | grease px |
+|---|---|---|---|---|
+| ceiling_kitchen | 8 / 5 of 18 | 521 / 461 | 3 / 0 of 9 | 519 / 448 |
+| ceiling_dining | 22 / 23 of 60 | 1642 / 1782 | 24 / 24 of 59 | 1200 / 1241 |
+| ceiling_living | 8 / 8 of 8 | 156 / 264 | 3 / 3 of 3 | 170 / 266 |
+| head_start | 12 / 12 of 25 | 70 / 72 | 0 / 0 | 57 / 58 |
+| head_dining_south | 15 / 16 of 54 | 15586 / 16915 | 15 / 16 of 44 | 5940 / 6121 |
+| head_floor_south | 46 / 46 of 53 | 2597 / 2705 | 35 / 39 of 50 | 604 / 645 |
+
+The near views (the head camera at the table and over the floor, where a program finds the crumbs and the stain) see
+as many crumbs or more, and the grease changes as many pixels or more; the kitchen's ceiling camera, which sees the
+dining table from farthest away, sees a few distant crumbs less. No frame of a hidden scene was rendered for this
+record.

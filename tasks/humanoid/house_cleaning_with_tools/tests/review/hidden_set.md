@@ -425,3 +425,54 @@ The rule's facts per candidate (from the layout draw alone, `tools/features.py`,
 | 14 | 18184323288814303 | north | 21 / 25 (north) |
 | 15 | 6438526276579322594 | south | 23 / 23 (even) |
 | 16 | 2636808825281067254 | south | 5 / 41 (north) |
+
+### Results (amendment 3; each candidate run once, 2026-11-09 16:08-16:43Z, apollo, the image built from environment/ at `a7880f3`)
+
+| # | seed | stage score | crumbs binned | sim s | wall s | result | why |
+|---|---|---|---|---|---|---|---|
+| 1 | 6790790475345571576 | 0.9167 | 0.600 | 2406 | 1408 | pass (kept) |  |
+| 2 | 3125492756787262100 | 0.9167 | 0.600 | 2742 | 1640 | pass (kept) |  |
+| 3 | 7022738416721159354 | 0.9306 | 0.650 | 3251 | 1370 | pass (kept) |  |
+| 4 | 4089632381925228296 | 0.9306 | 0.650 | 3033 | 1747 | pass |  |
+| 5 | 6569624632418969883 | 0.9352 | 0.667 | 3111 | 1396 | pass |  |
+| 6 | 4920960843796068851 | 0.7200 | 0.000 | 2848 | 1438 | fail | short: tools 0.00/0.3; crumbs binned 0.00 |
+| 7 | 7640796830471677594 | 0.6464 | 0.000 | 2448 | 1530 | fail | damage: {'broken': [], 'on_floor': ['can_red']}; short: trash 1.71/2, tools 0.00/0.3, lids 0.00/0.2; crumbs binned 0.00 |
+| 8 | 7981839151774950588 | 0.9306 | 0.650 | 3151 | 1761 | pass |  |
+| 9 | 4745791118675327858 | 0.9815 | 0.833 | 2873 | 1786 | pass |  |
+| 10 | 376632851020783183 | 0.7200 | 0.000 | 3240 | 1955 | fail | short: tools 0.00/0.3; crumbs binned 0.00 |
+| 11 | 3945038779305284334 | 0.9444 | 0.700 | 2860 | 1308 | pass |  |
+| 12 | 4387728151438419368 | 0.9306 | 0.650 | 2772 | 1475 | pass |  |
+| 13 | 6432759289746745107 | 0.9769 | 0.817 | 3151 | 1963 | pass |  |
+| 14 | 18184323288814303 | 0.7000 | 0.000 | 2705 | 2119 | fail | short: tools 0.00/0.3, lids 0.00/0.2; crumbs binned 0.00 |
+| 15 | 6438526276579322594 | 0.7000 | 0.000 | 2330 | 1175 | fail | short: tools 0.00/0.3, lids 0.00/0.2; crumbs binned 0.00 |
+| 16 | 2636808825281067254 | 0.9444 | 0.700 | 2793 | 1590 | pass |  |
+
+11 of the 16 pass (10 under amendment 2). The failures are the reference's own: in five scenes the crumbs were swept
+into the pan but never reached the bin (6 and 10: no stance to tip the pan into the bin; 7, 14 and 15: the pan could
+not be taken again after the last stroke, then the broom was not clipped back and the walks to the lids failed), and in
+7 a can dropped on the way to its bin. The sponge goes back into its tray in every
+scene now (three scenes of amendment 2 gave that put up). Per-candidate records: `selection_a3/seed_<seed>.json`.
+
+**The hidden set** (`tests/hidden/seeds.json`): candidates 1, 2 and 3, stage scores 0.9167, 0.9167 and 0.9306 (mean
+0.92130 = the anchor 0.9213). The first three passing candidates already satisfy the new rule: the recycling bin
+stands in the south slot in 1 and in the north slot in 2 and 3, and most of the floor's crumbs lie south of the table
+in 1 and 3 and north of it in 2. They are amendment 1's hidden set.
+
+**Hollowing check** (`selection/features.json`; the same as amendment 1's, the same scenes):
+
+| feature | kept 1 / 2 / 3 | all 16 candidates |
+|---|---|---|
+| recycling bin in the north slot | no / yes / yes | 7 of 16 |
+| the glasses' distance from the nearer long edge of the table (m), nearer / farther glass | 0.139, 0.280 / 0.287, 0.306 / 0.152, 0.310 | 0.084-0.287 / 0.116-0.315 |
+| the can's distance from the nearer long edge (m) | 0.079 / 0.096 / 0.183 | 0.079-0.266 |
+| grease at the start (units) | 42.6 / 43.8 / 62.8 | 17.7-62.8 (mean 41.2) |
+| floor crumbs south / north of the table | 44, 2 / 22, 24 / 42, 4 | 2-44 / 2-44 |
+
+The kept scenes cover the candidates' range in the bins' order, the glasses' reach, the grease (the largest stain of
+all 16 is kept) and the floor (two scenes with nearly all crumbs on one side, one even split). The can lies near the
+edge in two of them. Every crumb of these scenes is visible from stances the robot can reach (`observability.md`,
+amendment 1, measured in the old look; amendment 3 for the new look's effect on the development scenes).
+
+### The anchor (amendment 3)
+
+0.9213, the mean of the kept selection runs, with `full_at` 0.98. @VALIDATE_A3@
