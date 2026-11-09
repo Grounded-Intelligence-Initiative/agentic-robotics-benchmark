@@ -238,7 +238,7 @@ it was, and the privileged reference, which reads no pixels, meets the same thre
 its scores). What changes is what a controller that works from the cameras sees, which is the point: it now has to
 calibrate the fixed cameras against something it knows (its own hand at `ee_pose`, the desk plane, the containers'
 rims) or close the last centimetres with the hand camera, as a deployed robot would. The non-privileged reference
-v17's numbers above were measured with the ideal cameras.
+v17's numbers above were measured with the ideal cameras; its run on the real sensors is the last section below.
 
 ## The request is the task: S = O · R (2026-11-08)
 
@@ -268,6 +268,7 @@ The same episodes' logs under $S = O \cdot R$ (each submission meets its own epi
 | privileged reference | 2026-11-07 | 0.945 / 0.897 / 1.000 | 0.875 / 1.000 / 1.000 | 0.9080 | 1.0 |
 | Opus 5.5, 2026-11-08 (the 2026-11-07 version) | 2026-11-07 | 0.842 / 0.796 / 0.800 | 0.25 / 0 / 0 | 0.0702 | 0.079 |
 | v17, the non-privileged reference | 2026-11-05 (ideal cameras) | 0.778 / 0.571 / 0.653 | 0 / 0.375 / 0.25 | 0.1258 | 0.141 |
+| v17, the non-privileged reference | 2026-11-08 (real sensors) | 0.027 / 0.235 / 0.404 | 0.25 / 0 / 0.25 | 0.0359 | 0.040 |
 | Opus 5.5 of 2026-10-31, rerun e1 | 2026-11-07 | 0 / 0.356 / 0.047 | 0 / 0.125 / 0.25 | 0.0188 | 0.021 |
 
 Opus 5.5 on this version (2026-11-08, one episode, effort high, 39 minutes of its hour): 0.0174, reward 0.02. It
@@ -276,3 +277,27 @@ requested object first; it switched its "no such object" marks off and its pile 
 delivered 1 of the 12 requests (a cracker box) and sent one wrong "delivered" mark; its sorting was weaker
 than the earlier episode's: O = 0.243 / 0.493 / 0.209, R = 0 / 0 / 0.25 (under the old sum it would have scored about
 0.20).
+
+## The non-privileged reference on the real sensors (2026-11-09)
+
+v17 (`solution/reference_v17/`, installed by its `install.sh`, unchanged) ran once through this grader on the fixed
+set, as the separate verifier runs a submission: a fresh container from the task image, `bash test.sh` as root, no
+network, an RTX 4090 of its own. It needed no adaptation: the wire is the same (depth in mm with 0 where nothing
+returns, `info` with the nominal camera poses), and v17 already drops pixels without a depth return. The record,
+with the grader's log, is `review/v17_real_sensors.json`.
+
+| episode | $O$ | $R$ | $S$ | requests (opened 4 each) | controller s |
+|---|---|---|---|---|---|
+| 0 | 0.027 | 0.25 | 0.0068 | 4 expired, 2 of them held once (1 absent); 2 objects knocked off the table | 329 |
+| 1 | 0.235 | 0 | 0 | 4 expired (3 named an absent object) | 200 |
+| 2 | 0.404 | 0.25 | 0.1009 | 1 delivered, 3 expired (all absent) | 244 |
+
+mean_episode_score 0.0359, ratio 0.040 to the anchor 0.908, reward 0.040 (full reward from 0.890); the match lock
+held (603 of 620 probes), no episode aborted or cut. With the ideal cameras (its 2026-11-05 run, rescored) it had
+O = 0.778 / 0.571 / 0.653, 2 correct "no such object" marks and mean 0.1258. The likely cause (not traced step by
+step): its pipeline back-projects the fixed cameras' depth with the nominal poses, which the mounting error offsets
+by up to about 1 cm and 1 degree (2 to 3 cm across the desk). Its sorting fell to mean O 0.222, and it marked none of
+the 7 requests that named an absent object (it never marks without being sure). So v17 as written does not show that
+the agent's observation suffices under the real sensors; it shows the gap a controller has to close by calibrating
+its cameras (against its own hand at `ee_pose`, the desk plane or the containers' rims) or by finishing with the hand
+camera. It still scores above Opus 5.5 on this version (0.0174).
