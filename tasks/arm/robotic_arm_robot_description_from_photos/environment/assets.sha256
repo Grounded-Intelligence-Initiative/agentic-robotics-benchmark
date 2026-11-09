@@ -1,5 +1,5 @@
 # endpoint: https://huggingface.co
-# repo: grounded-intelligence-initiative/agentic-robotics-last-exam
+# repo: grounded-intelligence-initiative/ale-robotics-assets
 # revision: acb1ae9d1e9daf57a799160f7ad179523cca857e
 # prefix: tasks/arm/robotic_arm_robot_description_from_photos/payload
 2d956d91f6d4049a05c1f06a822d492f0360c638c3d33e095aa62cf9e53cafa4  contract/tcp_definition.png

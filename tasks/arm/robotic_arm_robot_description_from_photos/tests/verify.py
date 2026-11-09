@@ -5,7 +5,8 @@ gone, setup.sh has not run here.
 
   0. FIRST THING, stdlib only (`_early_lockdown`; test.sh has already chmod 0700 the stage and its parent): record when
      the engine began uploading this folder (earliest ctime of its files), freeze and kill every process of the agent
-     account (a survivor voids the run: task error), keep every process of the account SIGSTOPped until the verdict is
+     account (a survivor that cannot be frozen voids the run: task error), keep every process of the account SIGSTOPped
+     until the verdict is
      written (`verify_freeze.AgentFreezer`: the image's supervisord respawns its desktop services as the agent account
      within seconds of the kill; a stopped process cannot exit, so nothing is respawned), lock the stage (0700 / 0600,
      restored at the end), take a root-owned 0700 snapshot of the submission that every later read uses, and zero the
@@ -32,6 +33,7 @@ import json
 import math
 import os
 import pwd
+import signal
 import stat as statmod
 import sys
 import time
@@ -128,8 +130,37 @@ def _submission_measure(root, max_entries=SUBMISSION_ENTRIES_CAP):
     return n, apparent, allocated
 
 
+def _proc_state(pid):
+    """The /proc state letter of `pid` ("X" once it is gone)."""
+    try:
+        with open("/proc/%d/status" % pid) as fh:
+            for line in fh:
+                if line.startswith("State:"):
+                    return line.split()[1]
+    except (OSError, IndexError):
+        pass
+    return "X"
+
+
+def _still_running(uid, bound_s=3.0):
+    """SIGSTOP every live process of `uid` until a pass finds none still running (a respawn that appears meanwhile is
+    stopped by the next pass) or `bound_s` elapsed; returns the PIDs still running (empty: every one is stopped)."""
+    deadline = time.time() + float(bound_s)
+    while True:
+        for pid in lockdown.live_uid_processes(uid):
+            try:
+                os.kill(pid, signal.SIGSTOP)
+            except OSError:
+                pass
+        time.sleep(0.05)
+        running = [pid for pid in lockdown.live_uid_processes(uid) if _proc_state(pid) not in ("T", "t", "X")]
+        if not running or time.time() > deadline:
+            return running
+
+
 def _early_lockdown():
-    out = {"agent_processes_killed": 0.0, "agent_processes_left": 0.0, "stage_locked": 0.0, "stage_parent_locked": 0.0,
+    out = {"agent_processes_killed": 0.0, "agent_processes_left": 0.0, "agent_processes_running": 0.0,
+           "stage_locked": 0.0, "stage_parent_locked": 0.0,
            "submission_late_writes": 0.0, "late_write_gate_active": 0.0, "submission_snapshot": 0.0, "submission_root_rejected": 0.0,
            "submission_oversize": 0.0, "saved": None, "parent": None, "reasons": [], "t_ref": None}
     root_ok, why = _submission_root_ok()
@@ -151,6 +182,13 @@ def _early_lockdown():
             FREEZER.start()                   # whatever supervisord respawns from here on stays stopped until the verdict
         except Exception:  # noqa: BLE001 - the freezer never takes the verdict down (agent_processes_frozen then reads 0)
             pass
+        if left:
+            # The image's supervisord respawns the account's desktop as fast as it is killed, so in the separate
+            # verifier a process that outlives the kill is the image's own. It is frozen (a stopped process cannot exit,
+            # so it is not respawned); only one still running once frozen voids the run.
+            out["agent_processes_running"] = float(len(_still_running(uid)))
+            log("%d process(es) of the agent account outlived the kill at verify start, %d still running after the "
+                "freeze" % (left, out["agent_processes_running"]))
     out["saved"] = lock_stage(STAGE_DIR)
     out["stage_locked"] = 1.0 if out["saved"] is not None else 0.0
     parent = os.path.dirname(os.path.abspath(STAGE_DIR))
@@ -265,8 +303,9 @@ def main():
     stats = {k: v for k, v in early.items() if isinstance(v, float)}
     stats["lockdown_s"] = time.time() - t0
     try:
-        if early["agent_processes_left"] > 0:
-            raise RuntimeError("%d agent process(es) survived the verify-start kill: run void" % early["agent_processes_left"])
+        if early["agent_processes_running"] > 0:
+            raise RuntimeError("%d agent process(es) survived the verify-start kill and could not be stopped: run void"
+                               % early["agent_processes_running"])
         import numpy as np
         import rd_info_grade as GR
         import rd_info_gate as GT
