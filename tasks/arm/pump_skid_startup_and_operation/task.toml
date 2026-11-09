@@ -48,7 +48,7 @@ memory_mb = 16384
 # is built by tests/test.sh in the verifier sandbox). [agent] timeout_sec: 4 h. [verifier] timeout_sec: the import
 # check (at most 120 s), the desktop settle (at most 60 s), then 8 hidden episodes, each a cell build (under a second)
 # plus the program within its 1200 s program-time cap, which does not count the cell's simulation (1800 s simulated at
-# most, about 1.5-2 min of wall clock here) and rendering (600 frames at most, 0.2-1 s each), plus up to about 80 s of
+# most, about 1.5-2 min of wall clock here) and rendering (600 frames at most, 0.4-1.1 s each: Filament colour on lavapipe plus classic depth, measured on 8 CPUs; an episode's first frame about 3 s), plus up to about 80 s of
 # end and clean-up: at the bounds about 2000 s an episode, 16000 s for the eight, 18000 s with one episode run twice
 # after a cell failure; 6 h leaves 3600 s of margin. The oracle's episodes run the reference program inside one
 # privileged call (about 1.5-3 min each here).

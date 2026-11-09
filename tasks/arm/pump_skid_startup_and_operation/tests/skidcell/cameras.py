@@ -14,7 +14,11 @@ Depth: the PLANAR depth along the optical axis (not the ray length), in metres.
 Intrinsics use integer pixel indices (u = column, v = row, row 0 at the top): a pixel's centre ray is
 x/z = (u - cx) / fx with cx = W/2 - 0.5, cy = H/2 - 0.5, fx = fy = (H/2) / tan(fovy/2).
 
-Runtime dependencies: mujoco + numpy only.
+The cell's rig (built with its scene) draws the colour with MuJoCo's Filament renderer on a render twin of the cell
+in the dressed water-treatment room and the depth with the classic renderer on a depth twin with the cell's geometry and
+the room's meshes (look.py); a rig without a scene draws both with the classic renderer on the model itself.
+
+Runtime dependencies: mujoco + numpy (look.py: Pillow and MuJoCo's Filament module).
 """
 
 import math
@@ -77,11 +81,14 @@ class CameraRig(object):
 
     sizes: {camera name: (width, height)}; one mujoco.Renderer per distinct size.
     The model's visual.global_.offwidth/offheight must be >= every size.
+    scene: the cell's physics.Scene: colour and depth come from its render twins (look.AgentLook).
     """
 
-    def __init__(self, model, sizes=None):
+    def __init__(self, model, sizes=None, scene=None):
         self.model = model
         self.sizes = dict(sizes) if sizes is not None else {k: v["size"] for k, v in CAMERA_SPECS.items()}
+        self.scene = scene
+        self._look = None
         self._renderers = {}
         self._option = mujoco.MjvOption()
         self._option.geomgroup[4] = 0   # hide the marker sites (group 4)
@@ -97,6 +104,11 @@ class CameraRig(object):
 
     def render(self, data, name):
         """(rgb uint8 HxWx3, depth float32 HxW planar z-depth in metres) of camera `name` at the data state."""
+        if self.scene is not None:
+            if self._look is None:
+                from .look import AgentLook
+                self._look = AgentLook(self.scene, self.sizes)
+            return self._look.render(data, name)
         r = self._renderer(name)
         r.disable_depth_rendering()
         r.update_scene(data, camera=name, scene_option=self._option)
@@ -173,7 +185,10 @@ class CameraRig(object):
         return {name: self.extrinsics(data, name).tolist() for name in self.sizes}
 
     def close(self):
-        """Free the GL contexts."""
+        """Free the GL contexts (and the render twins)."""
+        if self._look is not None:
+            self._look.close()
+            self._look = None
         for r in self._renderers.values():
             try:
                 r.close()

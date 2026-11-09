@@ -72,7 +72,11 @@ The robot never collides with itself, with the carriage or with a part it holds.
 pixel (u, v) = (column, row)), the fixed camera's exact pose `T_world_cam` and the wrist camera's mount `T_body_cam`
 (OpenCV convention: x right, y down, z forward). A wrist frame carries its `T_world_cam` at the frame's instant. The
 colour images carry a little sensor noise (sigma 2 levels); depth is the planar distance along the optical axis in
-millimetres (0 = no reading; 2 % dropout, 1.5 mm noise, 0.1-6 m). Lights vary a little from skid to skid.
+millimetres (0 = no reading; 2 % dropout, 1.5 mm noise, 0.1-6 m). The colour images are physically based renders of
+the skid in its water-treatment room: the skid's back wall runs on as the room's lining wall, drums, bagged chemicals
+and other stores stand on the floor beside the skid and the robot's rail, and two ceiling panels over the rail and the
+room's own lamps light the scene; lit lamps and the analyser's lit segments glow. Lights vary a little from skid to
+skid. Depth reads the same surfaces as the colour image, the room included.
 
 ## 6. Time and budgets
 

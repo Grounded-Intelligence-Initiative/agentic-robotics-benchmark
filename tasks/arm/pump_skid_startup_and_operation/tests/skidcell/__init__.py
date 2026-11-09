@@ -10,6 +10,7 @@ Modules
     physics     the scene: the skid, the rail with the Panda, the grip rule, the instruments' visuals
     control     the arm's joint / Cartesian controller (damped least-squares differential IK)
     cameras     RGB-D rendering, intrinsics and extrinsics
+    look        the agent cameras' colour (Filament, the dressed water-treatment room) and depth (classic) render twins
     episode     the operating procedure's checks and the episode score
     server      the cell API served over the wire (public calls; privileged calls for the reference program)
 """

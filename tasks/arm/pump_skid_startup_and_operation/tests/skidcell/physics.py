@@ -465,7 +465,7 @@ class Scene(object):
         self.lift_act = m.actuator("rail/lift_drive").id
         self.tcp = m.site("panda/tcp").id
         self.hand_body = m.body("panda/hand").id
-        self.cameras = CameraRig(m, self.renderer_sizes)
+        self.cameras = CameraRig(m, self.renderer_sizes, scene=self)
         # operable joints
         self.jq, self.jv, self.jrange = {}, {}, {}
         for tag in OPERABLE:

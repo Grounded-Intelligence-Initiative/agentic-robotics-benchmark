@@ -68,6 +68,20 @@ and its own `__init__.py`; its program meets the cell for the first time in the 
   the grip rule (a weld retargeted at run time, as in the shoe cell; slip at 60 N / 6 N m for 30 ms), the button and
   selector readings, the contact classes of the safety watch. MuJoCo 3.14, timestep 2 ms, implicitfast, Newton,
   elliptic cones; a 10 ms tick = 5 steps; about 30x real time without contacts on one core.
+* `cameras.py` / `look.py` (v0.5.3): the agent cameras. The colour comes from MuJoCo's Filament renderer (physically
+  based, Vulkan on Mesa's lavapipe, CPU) on a render twin of the cell compiled from a copy of the cell's MjSpec: the
+  skid with physically based materials and the cell's own colours and plate textures, the skid's back wall carried on
+  as the room's lining wall, the water-treatment room and its props of the approved OVRTX demo scene (static decor
+  meshes, nothing within the skid or the rail), the two ceiling panels as shadow-casting spot lights and an image light
+  distilled from an OVRTX probe of the room; the light strengths and per-class colour gains were fitted in linear light
+  to OVRTX stills of both cameras on 14 states of a development shift (within 1 % on the fitted states for most
+  classes, within 3-10 % on 6 held-out states). Each frame is drawn at twice the camera's size and averaged down in
+  linear light (the analyser's 1.1 mm strokes stay legible in the overview, as with the classic renderer's
+  multisampling). The depth comes from the classic renderer on a depth twin: the cell's own geometry plus the room's
+  meshes within 8 m. Both twins copy the physics qpos and the instruments' changing parts (lamps, segments, sight
+  glasses, flap columns, drum liquids) at every frame; the physics model and every random generator are untouched.
+  The site's light factor scales every light as before. Frame time on 8 CPUs: about 1.0 s for the overview (colour and
+  depth), 0.4 s for the wrist, 3 s for an episode's first frame; eight episodes in one process peak at 2.8 GB.
 * Two decisions came out of failures of the reference program and apply to every program: (1) the Panda's base rides
   a lift (0.05-0.60 m), because with the tool pointing horizontally into the skid the Panda reaches only 0.5-1.1 m
   above its base, and all operable handles sit in a 0.7-1.25 m operator band; (2) the arm controller's damped least

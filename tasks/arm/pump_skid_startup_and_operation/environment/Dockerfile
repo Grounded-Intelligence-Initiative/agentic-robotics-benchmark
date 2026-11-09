@@ -75,21 +75,46 @@ RUN set -eu; \
     chmod -R u+rwX,go+rX,go-w /opt/task-assets; \
     echo "[image] $folder @ $commit: converted, $(find /opt/task-assets/panda -type f | wc -l) files verified"
 
+# The agent cameras' colour images (tests/skidcell/look.py): MuJoCo's Filament renderer (in the mujoco wheel) on Vulkan;
+# Mesa's lavapipe is the CPU Vulkan driver (no GPU in the task's resources). Their depth stays on OSMesa.
+RUN apt-get update && apt-get install -y --no-install-recommends mesa-vulkan-drivers libvulkan1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---- task assets: the agent cameras' render bundle (render/skidcell_render_v1.tar in the benchmark's Hugging Face asset
+# repository: the water-treatment room and its props from the approved OVRTX scene, the cell's textures, the image
+# light; one tar, as one request per file runs into the Hub's rate limit), fetched at the dataset commit pinned in
+# assets.sha256 and checked by its sha256 (docs/task-assets.md; fetch_assets.py is the benchmark's canonical copy,
+# shared/task_assets/), unpacked root-owned and world-readable to /opt/task-assets/render, where the cell's renderer
+# reads it and checks every file against the bundle's manifest. Nothing of it is a given: the grader's cell (in a
+# separate verifier sandbox from this image) reads it.
+COPY fetch_assets.py assets.sha256 /opt/task-assets/
+RUN set -eu; \
+    python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload; \
+    mkdir -p /opt/task-assets/render; \
+    tar -xf /opt/task-assets/payload/render/skidcell_render_v1.tar -C /opt/task-assets/render --no-same-owner; \
+    rm -rf /opt/task-assets/payload; \
+    chown -R root:root /opt/task-assets/render; \
+    chmod -R u+rwX,go+rX,go-w /opt/task-assets/render; \
+    cd /opt/task-assets/render; \
+    python3 -c "import hashlib, json; m = json.load(open('manifest.json')); bad = [p for p, h in m['files'].items() if hashlib.sha256(open(p, 'rb').read()).hexdigest() != h]; assert not bad, bad; print('[image] render bundle:', len(m['files']), 'files verified')"
+
 # The declared artifact path must exist even when nobody works (the engine captures declared artifacts after every
 # episode, untouched validation passes included).
 RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
 
-# Headless defaults: every render of the cell goes through OSMesa.
+# Headless defaults: the classic renders of the cell (the cameras' depth) go through OSMesa.
 ENV MPLBACKEND=Agg
 ENV MUJOCO_GL=osmesa
 ENV PYOPENGL_PLATFORM=osmesa
 ENV OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 LP_NUM_THREADS=2
 
 # Fail the build early if the toolchain is broken, prove the AGENT account can use the venv, prove an offscreen OSMesa
-# render works and that the robot model compiles; finally, nothing in the agent home is root-owned. One import line
+# render works and that the robot model compiles, prove a Filament context on lavapipe; finally, nothing in the agent home
+# is root-owned. One import line
 # per -c: a continuation line starting with `from` reads as a Dockerfile FROM to the final-stage lint.
 RUN export HOME=/root \
     && python3 -c "import sys; assert sys.version_info >= (3, 12), sys.version; import mujoco, numpy, scipy, PIL, cv2; print('[pump-skid] import OK mujoco', mujoco.__version__, 'numpy', numpy.__version__, 'cv2', cv2.__version__)" \
     && python3 -c "import mujoco; m = mujoco.MjModel.from_xml_path('/opt/task-assets/panda/panda.xml'); r = mujoco.Renderer(m, 64, 64); d = mujoco.MjData(m); mujoco.mj_forward(m, d); r.update_scene(d); px = r.render(); print('[pump-skid] OSMesa render OK', px.shape, int(px.max()), 'panda nbody', m.nbody)" \
     && runuser -u user -- python3 -c "import mujoco, numpy, scipy, PIL, cv2; m = mujoco.MjModel.from_xml_path('/opt/task-assets/panda/panda_nohand.xml'); print('[pump-skid] agent-UID import OK, panda_nohand nbody', m.nbody)" \
+    && env -u DISPLAY python3 -c "import mujoco._render_filament as F, mujoco.experimental.studio.window; c = F.Context(F.ContextConfig(graphics_api=F.GraphicsApi.GRAPHICS_API_VULKAN)); print('[pump-skid] Filament on Vulkan (lavapipe) OK')" \
     && test -z "$(find /home/user -user root -print -quit)"
