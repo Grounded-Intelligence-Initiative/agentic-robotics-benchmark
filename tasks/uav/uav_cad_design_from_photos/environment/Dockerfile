@@ -1,4 +1,4 @@
-# unmanned_aerial_vehicle_cad_design_from_photos's environment image (information tier, hardware-design stage, FreeCAD MCP version).
+# uav_cad_design_from_photos's environment image (information tier, hardware-design stage, FreeCAD MCP version).
 #
 # `environment/` without its `setup/` folder is the sole build context and the final stage derives DIRECTLY from the
 # official ALE base. The block down to the venv self-check is the chain's shared base
@@ -36,7 +36,7 @@ RUN python3 -c "import mujoco, mink, pinocchio, coacd, trimesh, manifold3d, gymn
     && python3 -c "import mujoco; m = mujoco.MjModel.from_xml_string('<mujoco><worldbody><light pos=\"0 0 1\"/><geom type=\"box\" size=\"0.1 0.1 0.1\"/></worldbody></mujoco>'); r = mujoco.Renderer(m, 64, 64); d = mujoco.MjData(m); mujoco.mj_forward(m, d); r.update_scene(d); px = r.render(); print('[arb-base-mujoco] OSMesa render OK', px.shape, int(px.max()))" \
     && runuser -u user -- python3 -c "import mujoco, mink, cadquery, coacd; print('[arb-base-mujoco] agent-UID import OK')"
 
-# ---- task-specific layers (unmanned_aerial_vehicle_cad_design_from_photos) -------------------------------------------------------
+# ---- task-specific layers (uav_cad_design_from_photos) ---------------------------------------------------------------
 # FreeCAD 1.1.4, the release AppImage pinned by sha256 and extracted (containers have no FUSE). The GUI is the agent's
 # tool; the same tree's headless `freecadcmd` is the grader's document reader. Workbenches that need the network or
 # external programs (Addon Manager, CAM post-processors, OpenSCAD, Robot, Test, Web, BIM, Plot) are removed; FEM stays
@@ -102,7 +102,7 @@ RUN printf '%s\n' 'export BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800' 'export CLAUDE_STRE
 
 # ---- task assets ---------------------------------------------------------------------------------------------------
 # The photo set and purchased-component documents and STEP files live in the benchmark's Hugging Face asset repository
-# (tasks/uav/unmanned_aerial_vehicle_cad_design_from_photos/payload/ there). They are fetched at the commit pinned in assets.sha256 and
+# (tasks/uav/uav_cad_design_from_photos/payload/ there). They are fetched at the commit pinned in assets.sha256 and
 # checked file by file; environment/setup/setup.sh stages them into the agent home. fetch_assets.py is the benchmark's
 # canonical copy (shared/task_assets/) and the repository named in assets.sha256 is written from task-assets.toml
 # (scripts/task_assets.py sync; docs/task-assets.md).

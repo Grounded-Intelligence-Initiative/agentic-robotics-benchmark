@@ -1,4 +1,4 @@
-"""Grader of unmanned_aerial_vehicle_cad_design_from_photos: the extracted FreeCAD document of the AGIPIX v2 quadrotor
+"""Grader of uav_cad_design_from_photos: the extracted FreeCAD document of the AGIPIX v2 quadrotor
 against the original manufacturing CAD (reference/), in millimetres. Root, verify stage, agent gone; reads data only.
 
     python3 -B grade.py EXTRACT_DIR REF_DIR PURCHASED_ROOT OUT_JSON [--config grader_config.json]

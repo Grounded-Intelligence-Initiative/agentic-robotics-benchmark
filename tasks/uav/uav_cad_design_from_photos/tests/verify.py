@@ -1,4 +1,4 @@
-"""Grader of unmanned_aerial_vehicle_cad_design_from_photos (the original AGIPIX v2 manufacturing CAD as ground truth).
+"""Grader of uav_cad_design_from_photos (the original AGIPIX v2 manufacturing CAD as ground truth).
 Root, verify stage, agent gone.
 
 Where it runs: a separate verifier sandbox (task.toml `environment_mode = "separate"`), started fresh from the task image.
@@ -10,11 +10,11 @@ that is not the one the grader was built for is a task error, not a zero. The lo
 sandbox. In the verifier, the agent account's processes are the image's own desktop.
 
   0. FIRST THING, stdlib only (lockdown_runtime._early_lockdown): record when the engine began uploading this folder,
-     stop and kill every process of the agent account (a survivor voids the run: task error), freeze it, lock the
-     stage, take a root-owned 0700 snapshot of the submission that every later read uses, and zero the score (stat
-     submission_final = 0) when an entry of the submission was written at or after the stage upload began. A submission
-     root that is a symbolic link, or that resolves outside the agent's home, is not read at all. The directories on
-     root's PATH are reclaimed (robotics_grader.stage.secure_exec_path) before anything else runs.
+     stop and kill every process of the agent account (a survivor that cannot be frozen voids the run: task error),
+     freeze it, lock the stage, take a root-owned 0700 snapshot of the submission that every later read uses, and zero
+     the score (stat submission_final = 0) when an entry of the submission was written at or after the stage upload
+     began. A submission root that is a symbolic link, or that resolves outside the agent's home, is not read at all.
+     The directories on root's PATH are reclaimed (robotics_grader.stage.secure_exec_path) before anything else runs.
   1. Tool use from the engine's solver trajectory (ATIF, ALE_TRAJECTORY_PATH), stats only.
   2. The submitted FreeCAD document (snapshot drone.FCStd) is read by FreeCAD's headless interpreter as `nobody`, through
      runuser (absolute path) and /usr/bin/env HOME=..., in a private work folder, with a time limit (fcstd_extract.py):
@@ -111,8 +111,9 @@ def main():
     stats = {k: v for k, v in early.items() if isinstance(v, float)}
     stats["lockdown_s"] = time.time() - t0
     try:
-        if early["agent_processes_left"] > 0:
-            raise RuntimeError("%d agent process(es) survived the verify-start kill: run void" % early["agent_processes_left"])
+        if early["agent_processes_running"] > 0:
+            raise RuntimeError("%d agent process(es) survived the verify-start kill and could not be stopped: run void"
+                               % early["agent_processes_running"])
         from robotics_grader import fail
         from robotics_grader.stage import secure_exec_path
         stats["root_path_dirs_secured"] = float(len(secure_exec_path()))

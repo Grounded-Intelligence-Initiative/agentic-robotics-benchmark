@@ -4,6 +4,7 @@ import json
 import os
 import pwd
 import shutil
+import signal
 import stat as statmod
 import subprocess
 import sys
@@ -83,11 +84,41 @@ def _submission_root_ok():
     return True, None
 
 
+def _proc_state(pid):
+    """The /proc state letter of `pid` ("X" once it is gone)."""
+    try:
+        with open("/proc/%d/status" % pid) as fh:
+            for line in fh:
+                if line.startswith("State:"):
+                    return line.split()[1]
+    except (OSError, IndexError):
+        pass
+    return "X"
+
+
+def _still_running(uid, bound_s=3.0):
+    """SIGSTOP every live process of `uid` until a pass finds none still running (a respawn that appears meanwhile is
+    stopped by the next pass) or `bound_s` elapsed; returns the PIDs still running (empty: every one is stopped)."""
+    deadline = time.time() + float(bound_s)
+    while True:
+        for pid in lockdown.live_uid_processes(uid):
+            try:
+                os.kill(pid, signal.SIGSTOP)
+            except OSError:
+                pass
+        time.sleep(0.05)
+        running = [pid for pid in lockdown.live_uid_processes(uid) if _proc_state(pid) not in ("T", "t", "X")]
+        if not running or time.time() > deadline:
+            return running
+
+
 def _early_lockdown(freezer=None):
     """Record the stage upload time, stop and kill every process of the agent account (in a separate verifier, the
-    image's own desktop), freeze the account, lock the stage, snapshot the submission into a root-only folder and count
-    the entries written after the stage upload began (the late-write gate)."""
-    out = {"agent_processes_killed": 0.0, "agent_processes_left": 0.0, "stage_locked": 0.0, "stage_parent_locked": 0.0,
+    image's own desktop; a survivor is frozen, and only one still running then voids the run), freeze the account,
+    lock the stage, snapshot the submission into a root-only folder and count the entries written after the stage
+    upload began (the late-write gate)."""
+    out = {"agent_processes_killed": 0.0, "agent_processes_left": 0.0, "agent_processes_running": 0.0,
+           "stage_locked": 0.0, "stage_parent_locked": 0.0,
            "submission_late_writes": 0.0, "late_write_gate_active": 0.0, "submission_snapshot": 0.0,
            "submission_root_rejected": 0.0, "saved": None, "parent": None, "reasons": [], "t_ref": None}
     root_ok, why = _submission_root_ok()
@@ -105,6 +136,13 @@ def _early_lockdown(freezer=None):
     if uid is not None and uid != 0:
         killed, left = lockdown.stop_and_kill_uid(uid, grace_s=8.0)
         out["agent_processes_killed"], out["agent_processes_left"] = float(killed), float(left)
+        if left:
+            # The image's supervisord respawns the account's desktop as fast as it is killed, so in the separate
+            # verifier a process that outlives the kill is the image's own. It is frozen (a stopped process cannot exit,
+            # so it is not respawned); only one still running once frozen voids the run.
+            out["agent_processes_running"] = float(len(_still_running(uid)))
+            log("%d process(es) of the agent account outlived the kill at verify start, %d still running after the "
+                "freeze" % (left, out["agent_processes_running"]))
     if freezer is not None:
         freezer.start()
     out["saved"] = lock_stage(STAGE_DIR)

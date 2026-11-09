@@ -1,4 +1,4 @@
-# unmanned_aerial_vehicle_cad_design_from_photos: the hardware-design (CAD) stage for a research quadrotor (an atomic
+# uav_cad_design_from_photos: the hardware-design (CAD) stage for a research quadrotor (an atomic
 # task). A mechanical designer re-creates the lost CAD of one AGIPIX research quadrotor, the original AGIPIX v2 design
 # (carbon plates, 3D-printed mounts, aluminium landing legs; a Livox MID-360 lidar, an Intel RealSense D455, a Jetson
 # Orin NX compute stack, a Cube Orange flight controller), in FreeCAD 1.1 from one fixed photo set (rendered with
@@ -22,7 +22,7 @@ schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission"]
 
 [task]
-name = "grounded-intelligence-initiative/unmanned_aerial_vehicle_cad_design_from_photos"
+name = "grounded-intelligence-initiative/uav_cad_design_from_photos"
 
 [metadata]
 platform = "uav"

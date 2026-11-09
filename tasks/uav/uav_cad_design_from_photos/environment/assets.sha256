@@ -1,7 +1,7 @@
 # endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/ale-robotics-assets
-# revision: 2bf062f701a780732909915af43a9d60b4140ab9
-# prefix: tasks/uav/unmanned_aerial_vehicle_cad_design_from_photos/payload
+# revision: 51e25d9f4f8c2cc01c7f29442a117603f5dee3c0
+# prefix: tasks/uav/uav_cad_design_from_photos/payload
 ebc87a2a577a83bb9a7d89093efeca85febe26a8f44d8a91e98c12dfad4ef5f8  photos/photo_001.jpg
 d897f176d4f12150de4ede2dc59d2e81b16c3489836c990caeaf22afa5c3f09d  photos/photo_002.jpg
 c35375e5e8d6cc9213124c6d73601ff7436cc614f3c8789593935c6a27f50bf3  photos/photo_003.jpg
