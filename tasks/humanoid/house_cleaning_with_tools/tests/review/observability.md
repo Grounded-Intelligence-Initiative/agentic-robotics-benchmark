@@ -52,3 +52,19 @@ The crumb of hidden scene 3 that the ring sees by only 1 pixel is a 7 mm crumb o
 standing north of the table at (3.24, 3.10), waist pitch 0.50, the head camera sees it change 7 pixels (6.6 px
 across, 0.47 m away; `evidence/crumb_views_extra_a1_hidden3.json`). Per-crumb records: `evidence/*_a1_hidden1.json`
 and `evidence/*_a1_hidden3.json` (squatting and standing, as above).
+
+## Amendment 2 (2026-11-09): the hidden set is candidates 2, 3 and 4
+
+The hidden set is now candidates 2, 3 and 4 of `candidates.json` (`hidden_set.md`, amendment 2). Candidates 2 and 3
+are measured above (amendment 1's hidden scenes 2 and 3); candidate 4 is new, measured the same way (the cell at
+`1170d84`; the crumbs and the cameras are unchanged by it):
+
+| scene | crumbs on the floor seen | crumbs on the table seen | pixels changed per crumb (min / median, best stance) |
+|---|---|---|---|
+| hidden scene 1 (candidate 2) | 46 of 46 | 14 of 14 | 6 / 17 |
+| hidden scene 2 (candidate 3) | 46 of 46 | 14 of 14 (one from a closer stance) | 1 / 14 on the ring; 7 for that crumb |
+| hidden scene 3 (candidate 4) | 46 of 46 | 14 of 14 | 5 / 14 |
+
+Per-crumb records of candidate 4: `evidence/crumb_views_squat_a2_hidden3.json` and
+`evidence/crumb_views_stand_a2_hidden3.json`.
+

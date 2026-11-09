@@ -283,3 +283,56 @@ dbac8d1a656f5d93bc0354d8748091aab64b7167ed4d85d08b6f4968d5c1f729  tests/house_ce
 9a4c6c83b2d73f3b2fe5fffb1656ec250edbd11d3aefe5f25084699729208939  solution/reference/oracle_token
 e88f7bc29cc3bdf8cffd1ed17e854295e0b73f25164982b0a11682c0719d1038  tests/grader_config.json
 ```
+
+### Results (amendment 2; each candidate run once, 2026-11-09 05:33-06:20Z, apollo, the image built from environment/ at `1170d84`)
+
+| # | seed | stage score | crumbs binned | sim s | wall s | result | why |
+|---|---|---|---|---|---|---|---|
+| 1 | 6790790475345571576 | 0.8637 | 0.633 | 1971 | 1262 | fail | short: grease 2.18/2.5, sponge 0.00/0.3 |
+| 2 | 3125492756787262100 | 0.9398 | 0.683 | 2645 | 1519 | pass (kept) |  |
+| 3 | 7022738416721159354 | 0.9583 | 0.750 | 3037 | 1506 | pass (kept) |  |
+| 4 | 4089632381925228296 | 0.9676 | 0.783 | 3048 | 1805 | pass (kept) |  |
+| 5 | 6569624632418969883 | 0.9583 | 0.750 | 2703 | 1262 | pass |  |
+| 6 | 4920960843796068851 | 0.9398 | 0.683 | 3106 | 1469 | pass |  |
+| 7 | 7640796830471677594 | 0.8955 | 0.717 | 3000 | 1934 | fail | damage: can_red on the floor; short: trash 1.71/2 |
+| 8 | 7981839151774950588 | 0.9352 | 0.667 | 2898 | 1323 | pass |  |
+| 9 | 4745791118675327858 | 0.9537 | 0.733 | 2508 | 1538 | pass |  |
+| 10 | 376632851020783183 | 0.9398 | 0.683 | 2975 | 1340 | pass |  |
+| 11 | 3945038779305284334 | 0.6700 | 0.000 | 1987 | 946 | fail | short: sponge 0.00/0.3, tools 0.00/0.3, lids 0.00/0.2; crumbs binned 0.00 |
+| 12 | 4387728151438419368 | 0.9259 | 0.633 | 2815 | 1552 | pass |  |
+| 13 | 6432759289746745107 | 0.9583 | 0.750 | 2988 | 1557 | pass |  |
+| 14 | 18184323288814303 | 0.7000 | 0.000 | 2561 | 2114 | fail | short: tools 0.00/0.3, lids 0.00/0.2; crumbs binned 0.00 |
+| 15 | 6438526276579322594 | 0.7530 | 0.317 | 2582 | 1529 | fail | damage: the sponge on the floor; short: sponge 0.00/0.3, tools 0.00/0.3; crumbs binned 0.32 |
+| 16 | 2636808825281067254 | 0.6450 | 0.000 | 2466 | 1143 | fail | damage: the sponge on the floor; short: sponge 0.00/0.3, tools 0.00/0.3, lids 0.00/0.2; crumbs binned 0.00 |
+
+10 of the 16 pass (11 under amendment 1). The failures are the reference's own: the sponge slipped from the hand while
+wiping (1); a can was dropped on the way to its bin (7); the sponge was not set back into its tray (11, 15, 16: leaning
+in, the sponge carried lower than before would touch the counter, so its put was given up; in 15 and 16 the sponge
+ended on the floor), after which the robot, by the dining table, pressed on it on its way to the broom and gave up the floor (11,
+16); in 14 the walks to hang the broom back, to take the dustpan again and to the lids failed (the pan not emptied,
+the lids left open). Per-candidate records: `selection_a2/seed_<seed>.json`.
+
+**The hidden set** (`tests/hidden/seeds.json`): candidates 2, 3 and 4, stage scores 0.9398, 0.9583 and 0.9676 (mean
+0.9552 = the anchor). Candidates 2 and 3 were kept under amendment 1 too; candidate 1 fails now (the sponge slipped).
+
+**Hollowing check** (`selection/features.json`; the layouts are drawn as before):
+
+| feature | kept 2 / 3 / 4 | all 16 candidates |
+|---|---|---|
+| recycling bin in the north slot | yes / yes / yes | 7 of 16 |
+| the glasses' distance from the nearer long edge of the table (m), nearer / farther glass | 0.287, 0.306 / 0.152, 0.310 / 0.130, 0.254 | 0.084-0.287 / 0.116-0.315 |
+| the can's distance from the nearer long edge (m) | 0.096 / 0.183 / 0.222 | 0.079-0.266 |
+| grease at the start (units) | 43.8 / 62.8 / 56.5 | 17.7-62.8 (mean 41.2) |
+| floor crumbs south / north of the table | 22, 24 / 42, 4 / 29, 17 | 2-44 / 2-44 |
+
+The kept scenes cover the candidates' range in the glasses' and the can's reach and the floor (an even split, nearly
+all on one side, in between); their stains are larger than the candidates' mean (the largest of all 16 is kept). One
+feature is narrowed: all three have the recycling bin in the north slot (7 of 16 candidates do). The bins differ in
+colour and the instruction says their order varies, so a program has to tell them apart in its images; one that
+assumed the north bin were always the recycling one would sort every hidden scene right by luck.
+
+### The anchor (amendment 2)
+
+0.9552, the mean of the kept selection runs, with `full_at` 0.98. `ale validate`'s oracle pass on the final head is its
+full-verify measurement (below once run).
+
