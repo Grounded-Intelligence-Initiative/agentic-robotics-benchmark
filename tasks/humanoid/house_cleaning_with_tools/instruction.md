@@ -3,8 +3,8 @@
 You are the robot integrator of a home-cleaning service. A customer had a dinner for two in their studio apartment
 and has booked a clean-up; one Unitree G1 humanoid (29 DoF, Dex3-1 hands) is on site, just inside the door. Your job:
 write the program that makes the robot work through the customer's cleaning list below, using only what the robot can
-sense: its head camera, three ceiling cameras of the apartment, its joint encoders and joint torque estimates, its
-localisation and its hands' tactile load. The apartment's fixed furniture is surveyed exactly
+sense: its head camera, three ceiling cameras of the apartment, its motors' state (joint angles, velocities and torque
+estimates), its localisation and its hands' tactile load. The apartment's fixed furniture is surveyed exactly
 (`~/given/cell/cell_manual.md`); nothing else is given: where the litter, the dishes and the books lie, where and how
 big the grease spill is, where the crumbs are, which of the two bins is the recycling one, whether a lid is open or the
 water runs, how much soap or grease the sponge holds — all of that has to be seen in the camera images (and
@@ -109,8 +109,8 @@ your work: the run is then an infrastructure failure.
 
 - Images (camera frames) are meant to be processed by your program; look at the ones you need.
 - The survey of the fixed furniture, the camera calibrations, the robot's kinematics and joint angles are exact; the
-  localisation and the joint torque estimates are slightly noisy; everything about the mess must be measured in each
-  episode.
+  localisation, the joint velocities and the joint torque estimates are slightly noisy; everything about the mess must
+  be measured in each episode.
 - Do not modify the given files in your home directory; the grader reads its own copies.
 - Environment facts (harness limits): a single tool call whose input runs above roughly 25-30k tokens is dropped by the
   harness (it is never executed and no error comes back), and a response that reaches the 64k output-token limit is

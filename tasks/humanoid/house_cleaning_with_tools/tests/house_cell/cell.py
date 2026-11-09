@@ -29,14 +29,20 @@ from .walk_core import LegWalker, support_from_geom
 
 SUBSTEPS = 5                               # 5 x 2 ms physics per 10 ms control tick
 LOC_NOISE = (0.003, math.radians(0.2))     # localisation noise (m, rad), per reading
-# joint torque estimates (tau_est), as a G1's low-level state reports them from each motor's current: the drive's torque
-# (the servo's plus the gravity feed-forward that holds the robot's own links), read with a calibration error that
-# stays for the episode (a scale error within TAU_GAIN and an offset of TAU_OFFSET x the joint's torque limit, 1 sigma)
-# and reading-to-reading noise (TAU_NOISE x the limit, 1 sigma), quantised to TAU_STEP
+# the motor state get_state reports for every motor a program can read (the waist's 3, the arms' 2 x 7, the hands'
+# 2 x 7), as a G1's low-level state does (the body's LowState and the Dex3-1 hands' HandState, one entry per motor):
+#   q        the joint angle, exact (the encoders' resolution is far below anything the task needs);
+#   dq       the joint velocity, with reading-to-reading noise (DQ_NOISE rad/s, 1 sigma), quantised to DQ_STEP;
+#   tau_est  the joint torque estimated from the motor's current: the drive's torque (the servo's plus the gravity
+#            feed-forward that holds the robot's own links), read with a calibration error that stays for the episode
+#            (a scale error within TAU_GAIN and an offset of TAU_OFFSET x the joint's torque limit, 1 sigma) and
+#            reading-to-reading noise (TAU_NOISE x the limit, 1 sigma), quantised to TAU_STEP
 TAU_GAIN = 0.05
 TAU_OFFSET = 0.015
 TAU_NOISE = 0.005
 TAU_STEP = 0.01
+DQ_NOISE = 0.01
+DQ_STEP = 0.001
 PUBLIC_CAMERAS = ("ceiling_kitchen", "ceiling_dining", "ceiling_living", "head")
 API = "house-cell/1.0"
 
@@ -198,10 +204,13 @@ class Cell:
             "api": API,
             "robot": {"model": "unitree_g1_29dof_dex3 (cell variant)", "start_hint": "just inside the door",
                       "legs_in_images": "the cameras draw the legs stepping while the base moves (drawn only)",
-                      "tau_est": {"joints": list(self.tau_names), "unit": "N m",
-                                  "torque_limits_Nm": {n: float(v) for n, v in zip(self.tau_names, self.tau_limit)},
-                                  "note": "get_state()['robot']['tau_est']: each joint's torque estimated from its motor "
-                                          "current (cell_manual.md section 6)"}},
+                      "motor_state": {"joints": list(self.tau_names),
+                                      "fields": {"q": "rad, exact", "dq": "rad/s, noisy",
+                                                 "tau_est": "N m, estimated from the motor current"},
+                                      "torque_limits_Nm": {n: float(v) for n, v in zip(self.tau_names, self.tau_limit)},
+                                      "note": "get_state()['robot']['q'], ['dq'] and ['tau_est']: {joint name: value} "
+                                              "for every one of these motors, as the G1's low-level state reports "
+                                              "them (cell_manual.md section 6)"}},
             "joints": joints, "joint_ranges": ranges,
             "control": {"tick_s": TICK, "max_ticks_per_step": self.max_ticks, "base_velocity_max": list(V_MAX),
                         "stand_height_range": list(STAND_RANGE), "stand_height_nominal": PELVIS_HEIGHT,
@@ -235,14 +244,17 @@ class Cell:
                 yaw + float(self.rng.normal(0, LOC_NOISE[1])))
 
     def _tau_init(self):
-        """The joints whose torque estimate get_state reports (the waist's and the arms'), their drives' torque limits,
-        and the episode's calibration errors: drawn from a generator of their own (the localisation noise and the
-        scene's draws are untouched)."""
+        """The motors whose state get_state reports (the waist's, the arms' and the hands'), their joints' position and
+        velocity addresses, their drives' torque limits, and the episode's calibration errors: drawn from a generator
+        of their own (the localisation noise and the scene's draws are untouched)."""
         m, r = self.m, self.robot
-        names = [f"{w}_joint" for w in WAIST_JOINTS] + [f"{s}_{w}_joint" for s in SIDES for w in ARM_JOINTS]
-        dofs = list(r.waist_v) + [v for s in SIDES for v in r.arm_v[s]]
-        acts = list(r.waist_act) + [a for s in SIDES for a in r.arm_act[s]]
+        names = [f"{w}_joint" for w in WAIST_JOINTS] + [f"{s}_{w}_joint" for s in SIDES for w in ARM_JOINTS] \
+            + [f"{s}_hand_{w}_joint" for s in SIDES for w in HAND_JOINTS]
+        qadr = list(r.waist_q) + [a for s in SIDES for a in r.arm_q[s]] + [a for s in SIDES for a in r.hand_q[s]]
+        acts = list(r.waist_act) + [a for s in SIDES for a in r.arm_act[s]] + [a for s in SIDES for a in r.hand_act[s]]
+        dofs = [int(m.jnt_dofadr[m.actuator_trnid[a, 0]]) for a in acts]
         self.tau_names = names
+        self.tau_qadr = np.array(qadr, int)
         self.tau_dof = np.array(dofs, int)
         self.tau_act = np.array(acts, int)
         self.tau_limit = np.array([float(m.actuator_forcerange[a, 1]) for a in acts])
@@ -250,6 +262,7 @@ class Cell:
         self.tau_gain = 1.0 + g.uniform(-TAU_GAIN, TAU_GAIN, len(names))
         self.tau_offset = g.normal(0.0, TAU_OFFSET, len(names)) * self.tau_limit
         self.tau_rng = np.random.default_rng(g.integers(1 << 62))
+        self.dq_rng = np.random.default_rng(g.integers(1 << 62))
 
     def tau_true(self) -> np.ndarray:
         """The drives' torques now (N m): the servo's force plus the gravity compensation of the robot's links (the
@@ -262,16 +275,14 @@ class Cell:
         tau = np.round(tau / TAU_STEP) * TAU_STEP
         return {n: round(float(v), 3) for n, v in zip(self.tau_names, tau)}
 
+    def dq_est(self) -> dict:
+        dq = self.d.qvel[self.tau_dof] + self.dq_rng.normal(0.0, DQ_NOISE, len(self.tau_names))
+        dq = np.round(dq / DQ_STEP) * DQ_STEP
+        return {n: round(float(v), 4) for n, v in zip(self.tau_names, dq)}
+
     def get_state(self) -> dict:
         d, r, c = self.d, self.robot, self.ctrl
-        q = {}
-        for s in SIDES:
-            for jn, qa in zip(ARM_JOINTS, r.arm_q[s]):
-                q[f"{s}_{jn}_joint"] = float(d.qpos[qa])
-            for jn, qa in zip(HAND_JOINTS, r.hand_q[s]):
-                q[f"{s}_hand_{jn}_joint"] = float(d.qpos[qa])
-        for jn, qa in zip(WAIST_JOINTS, r.waist_q):
-            q[f"{jn}_joint"] = float(d.qpos[qa])
+        q = {n: float(d.qpos[a]) for n, a in zip(self.tau_names, self.tau_qadr)}
         hands = {}
         for s in SIDES:
             hands[s] = {"closed": c.hand_cmd[s] == "close", "tactile_N": round(self.grips.tactile(s), 2),
@@ -282,7 +293,8 @@ class Cell:
                 "robot": {"base_pose": [round(v, 5) for v in self._localised()],
                           "stand_height": round(PELVIS_HEIGHT + float(d.qpos[r.base_q[3]]), 4),
                           "base_moving": bool(np.linalg.norm(c.vel) > 1e-4),
-                          "q": {k: round(v, 5) for k, v in q.items()}, "tau_est": self.tau_est(), "hands": hands}}
+                          "q": {k: round(v, 5) for k, v in q.items()}, "dq": self.dq_est(), "tau_est": self.tau_est(),
+                          "hands": hands}}
 
     def _grasp_in_base(self, side):
         d, r = self.d, self.robot

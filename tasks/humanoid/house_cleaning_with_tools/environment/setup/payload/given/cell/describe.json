@@ -356,8 +356,12 @@
  "robot": {
   "legs_in_images": "the cameras draw the legs stepping while the base moves (drawn only)",
   "model": "unitree_g1_29dof_dex3 (cell variant)",
-  "start_hint": "just inside the door",
-  "tau_est": {
+  "motor_state": {
+   "fields": {
+    "dq": "rad/s, noisy",
+    "q": "rad, exact",
+    "tau_est": "N m, estimated from the motor current"
+   },
    "joints": [
     "waist_yaw_joint",
     "waist_roll_joint",
@@ -375,11 +379,32 @@
     "right_elbow_joint",
     "right_wrist_roll_joint",
     "right_wrist_pitch_joint",
-    "right_wrist_yaw_joint"
+    "right_wrist_yaw_joint",
+    "left_hand_thumb_0_joint",
+    "left_hand_thumb_1_joint",
+    "left_hand_thumb_2_joint",
+    "left_hand_middle_0_joint",
+    "left_hand_middle_1_joint",
+    "left_hand_index_0_joint",
+    "left_hand_index_1_joint",
+    "right_hand_thumb_0_joint",
+    "right_hand_thumb_1_joint",
+    "right_hand_thumb_2_joint",
+    "right_hand_middle_0_joint",
+    "right_hand_middle_1_joint",
+    "right_hand_index_0_joint",
+    "right_hand_index_1_joint"
    ],
-   "note": "get_state()['robot']['tau_est']: each joint's torque estimated from its motor current (cell_manual.md section 6)",
+   "note": "get_state()['robot']['q'], ['dq'] and ['tau_est']: {joint name: value} for every one of these motors, as the G1's low-level state reports them (cell_manual.md section 6)",
    "torque_limits_Nm": {
     "left_elbow_joint": 25.0,
+    "left_hand_index_0_joint": 1.4,
+    "left_hand_index_1_joint": 1.4,
+    "left_hand_middle_0_joint": 1.4,
+    "left_hand_middle_1_joint": 1.4,
+    "left_hand_thumb_0_joint": 2.45,
+    "left_hand_thumb_1_joint": 1.4,
+    "left_hand_thumb_2_joint": 1.4,
     "left_shoulder_pitch_joint": 25.0,
     "left_shoulder_roll_joint": 25.0,
     "left_shoulder_yaw_joint": 25.0,
@@ -387,6 +412,13 @@
     "left_wrist_roll_joint": 25.0,
     "left_wrist_yaw_joint": 5.0,
     "right_elbow_joint": 25.0,
+    "right_hand_index_0_joint": 1.4,
+    "right_hand_index_1_joint": 1.4,
+    "right_hand_middle_0_joint": 1.4,
+    "right_hand_middle_1_joint": 1.4,
+    "right_hand_thumb_0_joint": 2.45,
+    "right_hand_thumb_1_joint": 1.4,
+    "right_hand_thumb_2_joint": 1.4,
     "right_shoulder_pitch_joint": 25.0,
     "right_shoulder_roll_joint": 25.0,
     "right_shoulder_yaw_joint": 25.0,
@@ -396,9 +428,9 @@
     "waist_pitch_joint": 50.0,
     "waist_roll_joint": 50.0,
     "waist_yaw_joint": 88.0
-   },
-   "unit": "N m"
-  }
+   }
+  },
+  "start_hint": "just inside the door"
  },
  "room": {
   "bins": {

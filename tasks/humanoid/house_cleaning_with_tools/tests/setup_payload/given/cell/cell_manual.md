@@ -134,18 +134,25 @@ it holds nothing).
 ## 6. Sensors
 
 * `get_state()`: the localised base pose [x, y, yaw] (independent noise of about 3 mm and 0.2 deg per reading), the
-  stand height, whether the base is moving, all waist, arm and hand joint angles (exact encoders), the waist's and the
-  arms' joint torque estimates (`tau_est`, below), per hand `closed`, `tactile_N`, the grasp site's pose in the robot's
-  base frame (exact kinematics) and the IK residual of a pose target.
-* **Joint torque estimates** (`tau_est`, N m, the joint's sign convention), as the G1's low-level state reports them:
-  each motor's torque estimated from its current, at every reading. It is what the drive delivers: the torque holding
-  the robot's own links up (the gravity feed-forward), the payload, the arm's acceleration, and the load of anything
-  the arm or the torso presses on or is pressed by (a contact far from the joint's axis shows; a push along a link
-  straight through a joint does not). Accuracy, as the motors' data sheet gives it: a calibration offset of up to a few
-  percent of the joint's torque limit and a scale error of up to about 5 %, both constant through an episode (read
-  them at rest), plus reading-to-reading noise of about 0.5 % of the limit. The torque limits are in `describe()`
-  (`robot.tau_est`). The legs' and the hands' motors are not reported (the legs carry no load in the cell; the hands'
-  load is `tactile_N`).
+  stand height, whether the base is moving, the motor state of the waist, the arms and the hands (`q`, `dq`,
+  `tau_est`, below), per hand `closed`, `tactile_N`, the grasp site's pose in the robot's base frame (exact kinematics)
+  and the IK residual of a pose target.
+* **Motor state** (`q`, `dq`, `tau_est`: one {joint name: value} map each), as the G1's low-level state reports it
+  (the body's `LowState` and the Dex3-1 hands' `HandState`, one entry per motor), for every motor a program can read:
+  the waist's 3, the arms' 2 x 7 and the hands' 2 x 7 (`describe()`: `robot.motor_state` lists them with their torque
+  limits). The legs belong to the locomotion controller (section 5) and are not reported.
+
+  | field | unit | what it is | accuracy |
+  |---|---|---|---|
+  | `q` | rad | the joint angle, from the joint's encoder | exact |
+  | `dq` | rad/s | the joint velocity | reading-to-reading noise of about 0.01 rad/s (1 sigma), quantised to 0.001 rad/s |
+  | `tau_est` | N m (the joint's sign convention) | the joint torque estimated from the motor's current | a calibration offset of up to a few percent of the joint's torque limit (1.5 %, 1 sigma) and a scale error of up to 5 %, both constant through an episode (read them at rest), plus reading-to-reading noise of about 0.5 % of the limit, quantised to 0.01 N m |
+
+  `tau_est` is what the drive delivers: the torque holding the robot's own links up (the gravity feed-forward), the
+  payload, the arm's acceleration, and the load of anything the arm or the torso presses on or is pressed by (a contact
+  far from the joint's axis shows; a push along a link straight through a joint does not). A hand's fingers show their
+  drives' own effort only: holding is the grip rule (section 4), so what a hand holds shows in its `tactile_N` and in
+  the arm's and the waist's torques, not in its fingers'.
 * Cameras (`get_camera`): `ceiling_kitchen`, `ceiling_dining` and `ceiling_living`, fixed RGB-D cameras 960 x 720
   (vertical field of view 72 deg) whose exact poses and intrinsics `describe()` gives; `head`, 640 x 480 (58 deg), whose
   pose in the room at capture time comes with each frame (composed from the localised base pose and the exact

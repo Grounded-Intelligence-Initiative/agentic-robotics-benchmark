@@ -85,13 +85,13 @@ ENV ARB_G1_DIR=/opt/arb-assets/unitree_g1
 # light distilled from a path-traced render of it). It is the decor of furniture_assembly_from_drawings's room: this
 # task's apartment is the same room (the same walls, door, window, couch, plant and rug), so the list is that task's
 # environment/assets.sha256 unchanged and its prefix stays that task's folder in the dataset
-# (tasks/humanoid/furniture_assembly_from_drawings/payload). It is deliberately not this task's assets.sha256: the
-# benchmark's asset check (scripts/task_assets.py) expects a task's own list to name the task's own folder, and this
-# task has no files of its own in the dataset (that script neither checks nor syncs this list: keep it equal to the
-# other task's). A maintainer may move the decor to the dataset's shared/ folder and point both tasks at it. fetch_assets.py is the benchmark's canonical fetcher (shared/task_assets/fetch_assets.py),
-# byte-identical. The decor is moved to the root-owned /opt/arb-assets/room_decor, where the cell reads it
-# (ARB_ROOM_DECOR_DIR, also the cell's default), and is not staged into the agent home; the list holds nothing else,
-# so the emptied payload folder is removed.
+# (tasks/humanoid/furniture_assembly_from_drawings/payload). It is deliberately not this task's assets.sha256 (the
+# survey photos below): the benchmark's asset check (scripts/task_assets.py) expects a task's own list to name the
+# task's own folder, and neither checks nor syncs this list: keep it equal to the other task's. A maintainer may move
+# the decor to the dataset's shared/ folder and point both tasks at it. fetch_assets.py is the benchmark's canonical
+# fetcher (shared/task_assets/fetch_assets.py), byte-identical. The decor is moved to the root-owned
+# /opt/arb-assets/room_decor, where the cell reads it (ARB_ROOM_DECOR_DIR, also the cell's default), and is not staged
+# into the agent home; the list holds nothing else, so the emptied payload folder is removed.
 COPY fetch_assets.py decor_assets.sha256 /opt/task-assets/
 RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/decor_assets.sha256 /opt/task-assets/payload \
     && mv /opt/task-assets/payload/render/room_decor /opt/arb-assets/room_decor \
@@ -101,14 +101,19 @@ RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/decor_assets.sha25
     && echo "[image] room decor: $(find /opt/arb-assets/room_decor -type f | wc -l) files in /opt/arb-assets/room_decor"
 ENV ARB_ROOM_DECOR_DIR=/opt/arb-assets/room_decor
 
-# The survey photos (survey/: camera frames of two development scenes of the apartment, rendered by the grader's cell
-# from seeds that are not among the graded scenes; tests/review/survey_photos.md says how), root-owned and read-only:
-# environment/setup/setup.sh stages a copy into the agent home (~/given/cell/survey), tests/test.sh one into the
-# grader's copy of the givens (tests/given_hashes.json lists them).
-COPY survey /opt/arb-assets/survey
-RUN chown -R root:root /opt/arb-assets/survey \
-    && chmod -R u+rwX,go+rX,go-w /opt/arb-assets/survey \
-    && echo "[image] survey photos: $(find /opt/arb-assets/survey -type f | wc -l) files"
+# ---- the survey photos, this task's own files in the dataset, fetched at the commit pinned in assets.sha256 and
+# checked file by file (docs/task-assets.md): given/cell/survey, camera frames of two development scenes of the
+# apartment, rendered by the grader's cell from seeds that are not among the graded scenes (their README says how).
+# They are moved to the root-owned, read-only /opt/arb-assets/survey: environment/setup/setup.sh stages a copy into the
+# agent home (~/given/cell/survey), tests/test.sh one into the grader's copy of the givens (tests/given_hashes.json
+# lists them); the list holds nothing else, so the emptied payload folder is removed.
+COPY assets.sha256 /opt/task-assets/
+RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload \
+    && mv /opt/task-assets/payload/given/cell/survey /opt/arb-assets/survey \
+    && rmdir /opt/task-assets/payload/given/cell /opt/task-assets/payload/given /opt/task-assets/payload \
+    && chown -R root:root /opt/task-assets /opt/arb-assets/survey \
+    && chmod -R u+rwX,go+rX,go-w /opt/task-assets /opt/arb-assets/survey \
+    && echo "[image] survey photos: $(find /opt/arb-assets/survey -type f | wc -l) files in /opt/arb-assets/survey"
 ENV ARB_SURVEY_DIR=/opt/arb-assets/survey
 
 # The declared artifact path must exist even when nobody works (the engine captures declared artifacts after every
