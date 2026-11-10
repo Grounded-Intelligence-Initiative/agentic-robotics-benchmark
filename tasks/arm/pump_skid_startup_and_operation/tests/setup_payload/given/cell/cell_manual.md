@@ -34,8 +34,9 @@ Panda's base on the line y = -0.70; its floor track and lift mast stand behind t
   upper link shows as the wrench at the tcp that loads the joints the same way) and the load of a held handle; it
   reads with or without a grip. Like the real estimate it is not exact: about 0.3 N and 0.03 N m of noise per reading,
   and an offset of up to about 2 N and 0.2 N m per axis that changes with the arm's posture (the dynamic model's
-  error) and stays put while the arm stands still. Read it with the hand free and still just before a contact and
-  subtract that reading (re-zero), as one does on the real robot.
+  error: it stays put while the arm stands still and moves by up to about 1 N and 0.1 N m while the hand turns a valve
+  through 30 degrees). Read it with the hand free and still just before a contact and subtract that reading (re-zero),
+  as one does on the real robot.
 * **Wrist camera** `wrist` rides on the hand (section 5).
 
 ## 3. The grip rule (how a handle is held)

@@ -92,13 +92,13 @@ no other program (`os.system`, `os.exec*`, `os.spawn*`, ...).
 `operation_score` = the mean over the episodes of the shift's score, `sop.md` section 6: start-up 0.20, operation in
 band 0.25, the window's events 0.25, shutdown 0.15, the log sheet 0.15, judged on the cell's own state and the
 process's true values. An episode in which the pump is deadheaded for 30 s or damaged by 300 s of cavitation, T-201
-overflows, the emergency stop is pressed, or the robot is taken out of service scores 0. The robot presses on the skid
-harder than the safety limits (more than 40 N for 30 ms on anything but a handle or a button, more than 150 N on a
-handle or a button): the cell makes a protective stop (the arm halts for 5 s, then moves again when commanded); a
-contact above 400 N for 30 ms, or a sixth protective stop in the shift, takes it out of service. T-101 overflowing (to
-the drain) costs the start-up's line-up credit. The reward you are judged on is `operation_score` relative to a hidden
-reference value. Stats (not scored): the parts' means, event
-credits, frames per camera, sim / wall / program time, illegal calls, protective stops, safety events.
+overflows, the emergency stop is pressed, or the robot is taken out of service scores 0. When the robot presses on the
+skid harder than the safety limits (more than 40 N for 30 ms on anything but a handle or a button, more than 150 N on a
+handle or a button), the cell makes a protective stop: the arm halts for 5 s, then moves again when commanded. A
+contact above 400 N for 30 ms, or a sixth protective stop in the shift, takes the robot out of service. T-101
+overflowing (to the drain) costs the start-up's line-up credit. The reward you are judged on is `operation_score`
+relative to a hidden reference value. Stats (not scored): the parts' means, event credits, frames per camera, sim /
+wall / program time, illegal calls, protective stops, safety events.
 
 ## Rules of the cell (details in `cell_manual.md` / `cell_api.md`)
 
@@ -129,7 +129,7 @@ sandbox runs the series' cell on 9 development sites (`cell_manual.md` section 8
 * **What it is not.** A rehearsal of the graded shifts or a grader: no development site is a graded site (the graded
   sites have their own numbering, builds, leftovers, faults and timings), and the service answers no ground truth (no
   device pose, valve position or process value), no score and no debrief. How a shift went, you judge from what your
-  program saw and recorded. The simulator's code stays out of your sandbox.
+  program saw and recorded. The simulator's code is not readable from your account.
 * **Its budget.** 12 commissioning shifts in your session, at most 2 at a time, each under the graded episode's budgets
   (1800 s of simulated time, 1200 s of program time, 600 frames, 180 s of silence). Plan them: teach-in and single
   steps first (`skidcell.client.connect_commissioning(site)` in a script of your own), then whole runs of your program

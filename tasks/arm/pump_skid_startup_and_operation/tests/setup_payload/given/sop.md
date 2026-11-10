@@ -140,9 +140,8 @@ refills T-101). Open the make-up valve V-106 (it bypasses the float valve) and h
 open it about as far as the transfer needs and re-set it as LG-101 trends. Act before T-101 runs down to about 8 %:
 P-101 then trips on dry running. Never open V-106 while the float valve works: the float valve then shuts, and once the
 make-up passes more than the transfer T-101 overfills (at 95 % it overflows to the drain: the shift loses its line-up
-credit, section 6); a make-up valve that
-is already open when the float valve sticks is not this procedure and earns nothing. When P-101 stops at the shift's
-end, close V-106.
+credit, section 6); a make-up valve that is already open when the float valve sticks is not this procedure and earns
+nothing. When P-101 stops at the shift's end, close V-106.
 
 **AOP-6  P-101 tripped** (P-101 FAULT lamp, the horn; a dip of the plant's power supply). P-301 stops with it. Within
 180 s of the trip:
