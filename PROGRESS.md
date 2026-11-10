@@ -446,6 +446,20 @@ before it starts. `1cdbc02` refused the key as an unsupported Harbor field.
   uses the base's 1024x768, which the default keeps.
 - AgentsLastExam/ale#111 keeps Daytona sandbox names unique for long task names: before it,
   concurrent episodes of one task on Daytona collided and could delete each other's sandboxes.
+- **RTX PRO 6000** (2026-11-10, the team's RTX PRO 6000 Blackwell Workstation Edition host, `bfb7505`;
+  each task copied with `gpu_types` narrowed to that model, as in #71):
+  - `hazard_bay_build`: `validate-0e73675f`, oracle 1.0. The render canary matched the RTX 5090's
+    (RGB std 74.0 vs 73.1, 8852 hot thermal pixels, depth 0.762, lidar 1.0), and both missions ran
+    with acceptance 0.956, as on the RTX 4090; verify 50 min. Now listed.
+  - `robotic_arm_environment_twin_from_real_photo`: the setup's OVRTX warm-up (471 s of its
+    1440 s) and two OVRTX renders of the oracle's twin from the agent's account (run `c5f4886c`,
+    reward 1.0; bit-identical, 7 s each at 1920x1080 and 64 spp). Now listed, in `[environment]`.
+  - `hot3d_sharpa_retarget` validates there too (`validate-24a8b005`, oracle 1.0, on a GPU shared
+    with other jobs); it names no models.
+  - Not listed: `driving_safety_supervisor` and `aerial_search_geolocation` (the agents' PyTorch
+    has no sm_120 kernels, as on the RTX 5090), and `object_finding_and_organizing_on_messy_desk`
+    (Isaac Sim 4.5 starts, but the RGB cameras come out about 30 % darker than on the RTX 4090, as
+    on the H100).
 - Next: run `hazard_bay_build`'s missions on an H100 on a quiet host, and add `H100` if they
   pass.
 

@@ -27,7 +27,7 @@ platform = "arm"
 cpus = 8
 memory_mb = 32768
 gpus = 1
-gpu_types = ["RTX-4090", "RTX-5090"]
+gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000"]
 
 # setup: stage the givens (< 5 s), then fill OVRTX's shader cache with one warm-up render as the agent account (cold
 # compile measured 621-1371 s; capped at 1440 s, killed 30 s later; it never fails setup, the engine's setup limit is
