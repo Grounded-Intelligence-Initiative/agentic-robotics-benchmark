@@ -264,6 +264,12 @@
     "spec_hash": "sha256:7a19fd2daf742a92fb74ec918545fefe6ce4ccdd6191ca5cc16e79bc6f3a7dda"
   },
   {
+    "content_digest": "sha256:f85020f0f15fc5fa1295c98787c5cacf1d21ce53f76cc6e7d0fa6848c274b52f",
+    "since": "2026-11-10T12:06:44Z",
+    "slug": "quadruped_full_assembly_12dof_ur10e",
+    "spec_hash": "sha256:5cb77cb4f3b29c214b2cfcdb7f1fa96d95bc993ae485bc7083251c003b22281b"
+  },
+  {
     "content_digest": "sha256:f456d8f118ef8558e2c21140559089440cbb6fc4f4b615e3b8e80106bc445680",
     "since": "2026-11-07T21:42:04Z",
     "slug": "robocasa_object_dynamics_from_video",
