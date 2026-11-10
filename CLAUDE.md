@@ -283,6 +283,9 @@ uv run pytest -q
   else the framework's own Python, which lacks the task's packages, and names the one it used
   in `ALE_VERIFY_PYTHON`, set for the verify stage only:
   `tests/test.sh` runs `exec "${ALE_VERIFY_PYTHON:-python3}" verify.py`, never a bare `python3`.
+- The desktop's size is a run setting at `bfb7505` (`desktop_resolution`, default 1024x768):
+  the docker provider overrides an image's `VNC_RESOLUTION`, and a task cannot declare it. The
+  three CAD tasks are 1440x900: run them with `--set desktop_resolution=1440x900`.
 - `reward` is rounded half-up to two decimals before any gate reads it: an oracle at 0.995
   passes as 1.0 and an untouched run at 0.004 reads as 0.0. The unrounded value is
   `metrics.reward_exact` in the episode's `verification.json`.
