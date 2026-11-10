@@ -1,5 +1,6 @@
 # pump_skid_startup_and_operation (Physical Execution, robotic arm; built 2026-11-05 by Yuanfang Peng; v0.3 2026-11-06;
-# v0.5 2026-11-07: maintainers' review fixes and a harder hidden set, tests/README.md section 6).
+# v0.5 2026-11-07: maintainers' review fixes and a harder hidden set; v0.6 2026-11-10: commissioning on the series'
+# sister sites, protective stops, the wrist's 6-D wrench; tests/README.md section 6).
 #
 # A Franka Panda on a rail carriage with a lift is the field operator of a water-treatment transfer and dosing skid
 # (MuJoCo, CPU). Every hidden episode is a different site of the skid series: the site numbers its equipment its own
@@ -19,12 +20,15 @@
 # and the analyser's display are read from a fixed overview RGB-D camera (too coarse for tags, dials or the display) and
 # a wrist camera; valves are turned through a documented grip rule. Score = the mean over the hidden episodes of the
 # procedure's checks (startup 0.20, operation 0.25, events 0.25, shutdown 0.15, the operator log 0.15); a deadheaded
-# pump, cavitation damage, an overflowing tank, the emergency stop or a robot safety violation voids the episode. The
+# pump, cavitation damage, the product tank overflowing, the emergency stop or the robot out of service (damage-level
+# contact or a sixth protective stop; a hard contact is a protective stop) voids the episode. The
 # oracle submits the reference program with a 256-bit token: it moves the robot with privileged eyes but decides only
 # on what an operator could see (instrument readings, lamps, sight glasses). Grader knobs: tests/grader_config.json.
 # Realism rule: the agent gets what an operator / automation engineer at a real site would have (the documents, the
-# robot model, the cell API, an instrument catalog) and nothing else; like a field operator it does not rehearse on the
-# site (no simulator of the skid in its sandbox, v0.4): the simulator's code and every ground truth stay out of it.
+# robot model, the cell API, an instrument catalog) and nothing else. As the automation engineer it commissions its
+# program on sister sites of the series (v0.6: a commissioning service in its sandbox runs the cell on 9 development
+# sites, never a graded one, 12 shifts, the graded episode's budgets, no truth, no score, no debrief); the simulator's
+# code and every ground truth stay out of its reach.
 
 schema_version = "1.4+ale.1"
 # Where the agent leaves its work (operate.py and its helper modules).

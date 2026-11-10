@@ -2,16 +2,18 @@
 
 The agent-facing contract is `instruction.md`; the skid is described in `environment/setup/payload/given/sop.md`,
 `equipment_manual.md` and `pid.png`, the cell in `given/cell/cell_manual.md` and its wire in `cell_api.md`. This page
-records the design decisions, what the grader checks and why, and what is known to be rough in version 0.5
-(2026-11-07; version 0.3 by Yuanfang Peng, 2026-11-06; the versions are described in section 6).
+records the design decisions, what the grader checks and why, and what is known to be rough in version 0.6
+(2026-11-10; version 0.3 by Yuanfang Peng, 2026-11-06; the versions are described in section 6).
 
 **Design rule (the owner's, 2026-11-06): the agent gets what an operator or automation engineer at a real site would
 have, and nothing an operator would not.** It gets the site's documents (series P&ID, SOP, equipment manual, the
 site's equipment list), the robot's model, the cell's API and calibration, an instrument catalog (datasheet drawings
-of the dial faces and scales). Like a field operator taking over a shift, it does not rehearse on the site: there is no
-simulator of the skid in its sandbox (version 0.4: the practice service of v0.3 is removed, section 6). It does not get
-the simulator's code (the process model, the site generator with its fault schedule, the scoring code), any ground
-truth (device poses, valve positions, process values), or how many faults a shift will bring.
+of the dial faces and scales). The agent plays the automation engineer who writes the robot's program, not the
+operator who takes over a shift (the fairness review of 2026-11-10): such a program is commissioned on a sister site of
+the series before it runs sites unattended, so the sandbox has a commissioning cell on development sites (v0.6,
+section 2), and nothing that rehearses the graded sites. It does not get the simulator's code (the process model, the
+site generator with its fault schedule, the scoring code), any ground truth (device poses, valve positions, process
+values), a score or debrief of any shift, or how many faults a shift will bring.
 
 ## 1. The job and why it is worth measuring
 
@@ -30,11 +32,34 @@ diagnoses faults that share their first symptoms, and turns handwheels, levers a
 
 ## 2. The cell (`tests/skidcell/`)
 
-Where it runs: only in the verifier (the grader imports `tests/skidcell/`); nothing of it is in the image or the
-agent's sandbox. The agent's `~/given/lib/skidcell/` holds only `client.py` (the proxy, `decode_frame`, the launcher)
-and its own `__init__.py`; its program meets the cell for the first time in the graded episodes. The grader's
-`tests/skidcell/client.py` keeps the v0.3 client's text (with the practice connection, which the graded cell answers
-`forbidden`); the wire, the bootstrap and the launcher are the same as the given client's.
+Where it runs: in the verifier (the grader imports `tests/skidcell/`) and, since v0.6, in the agent's sandbox as the
+commissioning service (below), from a byte copy that only the service's account can read. The agent's
+`~/given/lib/skidcell/` holds only `client.py` (the proxy, `decode_frame`, the launcher, the commissioning connection)
+and its own `__init__.py`; the grader's `tests/skidcell/client.py` is the same file (the graded cell answers
+`reset` with `forbidden`).
+
+* **The commissioning service (v0.6, `environment/commission_service/`).** The fairness review found that the agent
+  is the automation engineer who writes the robot's program, and that no such program goes to an unmanned site
+  without commissioning on a prototype or a sister site (FAT, teach-in, SAT); v0.4-v0.5 gave it no contact with a skid
+  at all, and every no-practice Opus program was tuned on a mock of the skid the agent wrote itself. The service runs
+  the grader's cell (`skidcell/`, a byte copy of `tests/skidcell/` less the client; `tests/test_pump_skid_commissioning.py`
+  at the repository's root checks the copy) on 9 development sites, seeds 7001-7009: the first seeds from 7001 on that
+  together show every build option of the equipment manual, every gauge scale, every fault type and a demand step up
+  and down (35 features); none is a graded site or a selection candidate. The image installs it for its own account
+  `skidcell` (mode 700) and `environment/setup/setup.sh` starts it (restarted should it exit) on
+  `/run/skidcell/commission.sock`. A connection is one shift: `reset(site)` first, then the public calls, answered by
+  the cell itself (`SkidCellServer` in `hidden` mode, unprivileged; `reset`, `truth` and the privileged calls never
+  reach it). Per shift the graded episode's budgets (the cell's sim cap and frame budget, the wire's program time,
+  silence and after-the-end limits, enforced by the service); over the session a window of 12 shifts, 2 at a time,
+  counted under a lock in the service's own state (it survives a restart). No ground truth, no score, no debrief: the
+  service never calls `truth`, `finalize` or the monitor's summary (the test above checks its syntax tree), and its
+  log records sites, times and end reasons only. The agent gets `skidcell.client.connect_commissioning` and
+  `~/commission/run_shift.py`, which runs a program in a shift as the grader runs it (fresh copy, minimal environment,
+  the launcher, the CPU cap) and prints the end, frames, grips, slips and protective stops the program saw. The
+  starting point was the author's v0.3 practice service (removed in v0.4), minus its debrief (the score's breakdown,
+  ground truth in the events' details), its free choice of seeds (any seed, the hidden ones included) and its open
+  budget. Why 12 shifts: about two days of a site's shifts, room for a few teach-in shifts and several whole runs of a
+  program, while each shift still has to be planned (the v0.3 round used 22 practice shifts with debriefs).
 
 * `layout.py` draws the episode's skid from its seed: the site (an area number and a random site tag for every
   device; `site["equipment"]` is the equipment list on the wire), the arrangement (left-to-right or mirrored, the flow
@@ -42,7 +67,9 @@ and its own `__init__.py`; its program meets the cell for the first time in the 
   discharge / make-up line heights), how each valve is built (V-101 / V-103 gate valve with a handwheel or ball valve
   with a lever, V-104 lever or small handwheel, the vents lever or needle valve; handwheel diameter, spokes, turns,
   frictions; lever lengths), the fitted gauge scales (`textures.GAUGE_KINDS`), the previous shift's leftovers (2-3
-  valves out of their line-up position; the agent's documents say only that some may be), the process parameters
+  valves out of their line-up position; the agent's documents say only that some may be; v0.6: V-104 stands open as
+  the SOP's shutdown leaves it and is shut when it is one of them, where v0.5 started every site with it shut and
+  "out of place" meant open), the process parameters
   (including the strainer chambers' fouling at the start and the supply tank's level) and the window's events (v0.5:
   always a demand step plus 3 of the five faults filter_slug, supply_loss, dosing_airlock, drum_empty, pump_trip). The
   schedule is drawn as a whole by rejection: the events at least 120 s apart, each early enough that its judgement falls
@@ -60,13 +87,25 @@ and its own `__init__.py`; its program meets the cell for the first time in the 
   head loss, needle flutter, a cumulative timer), deadheading, dry running and motor overload trips, the duplex
   strainer (fouling, changeover, the standby chamber's air; a debris slug lands in the chamber in service when it
   comes, and each change-over is recorded with the air the incoming chamber held), the tanks (a float-valve supply to T-101 that can stick
-  shut, the make-up bypass V-106, T-101's overflow; the consumer's draw from T-201 from 600 s), the dosing drums (A
+  shut, the make-up bypass V-106, T-101's overflow to the drain at 95 %, which holds the level there: v0.6; the
+  consumer's draw from T-201 from 600 s), the dosing drums (A
   duty, B standby, the selector V-303; an empty drum air-locks the pump, venting needs liquid at the suction), the
   chlorine residual in T-201 (well mixed) and the analyser's 20 s lag; the control station's latches, permissive, the
   common alarm, the fault lamp and the horn.
 * `physics.py`: the scene (skid, pipes, tanks, the local control station, the Panda on a rail carriage with a lift),
-  the grip rule (a weld retargeted at run time, as in the shoe cell; slip at 60 N / 6 N m for 30 ms), the button and
-  selector readings, the contact classes of the safety watch. MuJoCo 3.14, timestep 2 ms, implicitfast, Newton,
+  the grip rule (a weld retargeted at run time, as in the shoe cell; slip at 60 N or 3 N m about the held part's pivot
+  for 30 ms), the button and selector readings, the contact classes of the safety watch, and (v0.6) the wrist's
+  external wrench estimate (`Scene.external_wrench`: the generalized forces of the robot's contacts with the world and
+  of the grip weld on the arm's seven joints, tau_ext = J_c^T f, mapped to the tcp as a Franka's O_F_ext_hat_K,
+  F = (J J^T)^-1 J tau_ext; the server adds 0.3 N / 0.03 N m of white noise and a posture-dependent offset of up to
+  2 N / 0.2 N m from its own generator). **The factor 2 (review 2026-11-10).** v0.5's `wrist_load` was the grip weld's
+  constraint rows' two norms, and MuJoCo writes a weld's orientation error as a quaternion's vector part, whose rate is
+  half the relative angular velocity: its rotational rows carry twice the moment the weld transmits. On development
+  sites a torque T applied about a held stem raised the rows' norm by 2T (0.80 N m: +1.5-1.53) while the new estimate's
+  moment about the stem read 0.79; in correct turns the rows read 2.0-2.2 times the physical moment, and the physical
+  moment was the valve's documented friction plus its damping (0.01-0.09 N m at the turning speeds used). So the
+  documents were right and the reading was not. The slip rule keeps its input (the rows' norm against
+  `WELD_ROT_ROWS * slip_torque_Nm` = 6.0, bit for bit v0.5's) and the documents now give its physical value, 3 N m. MuJoCo 3.14, timestep 2 ms, implicitfast, Newton,
   elliptic cones; a 10 ms tick = 5 steps; about 30x real time without contacts on one core.
 * `cameras.py` / `look.py` (v0.5.3): the agent cameras. The colour comes from MuJoCo's Filament renderer (physically
   based, Vulkan on Mesa's lavapipe, CPU) on a render twin of the cell compiled from a copy of the cell's MjSpec: the
@@ -89,7 +128,17 @@ and its own `__init__.py`; its program meets the cell for the first time in the 
   speed, so a held lever's weld load grew until it slipped). The operable parts are gravity-compensated: MuJoCo's
   friction loss is a soft constraint, and a lever's own weight crept a closed vent valve open over minutes.
 * `episode.py`: the procedure's checks and the score (below); `server.py`: the API, the grip / panel logic in
-  `physics_tick`, the camera budget and noise, the safety watch, the summary. `mode="practice"` additionally answers
+  `physics_tick`, the camera budget and noise, the safety watch, the summary. **The safety watch (v0.6)** is a
+  collaborative robot's protective stop instead of a void: a press past 40 N (structure, floor) or 150 N (a handle or
+  a button) for 3 ticks halts the arm and the carriage (their targets become the measured pose), refuses motion for
+  5 s, counts the stop and reports `protective_stop:<robot link>:<N>N` (never the device: a v0.5 safety event named
+  the device's series tag, which a program that may survive a contact could have used to probe the skid). A press that
+  was on when a stop came, or during its lock, counts again only after it has dropped below the limit. Damage-level
+  contact (400 N for 3 ticks) or a sixth stop locks the robot out and voids the episode. Why this rule rather than a
+  deduction per stop: a protective stop is a recoverable stop on a real cobot (it stops, holds, and resumes when told;
+  ISO 10218 / ISO/TS 15066 power and force limiting), which costs the shift time and nothing else; what ends a shift is
+  an impact that can damage the plant (a small-bore stub, a sight glass, a gauge) or a robot that keeps stopping, which
+  a remote supervisor takes out of service; a per-stop deduction has no such counterpart. `mode="practice"` additionally answers
   `reset` and `truth` (a development mode for maintainers only: since v0.4 nothing in the image runs it);
   `privileged=True` (the oracle token) answers `get_state_privileged` and `reference_run`.
 
@@ -102,9 +151,13 @@ episode's events; a slug that never raises the strainer alarm, a supply loss tha
 a trip of a pump that was not running are not judged), shutdown 0.15 (the order of section 4), the log sheet 0.15
 (v0.5: two rounds, 600-1050 s and 1050-1500 s; in each, each of six instruments' first entry made while P-101 runs,
 by its site tag, within 1 % of the instrument's span of the true value (AI-201 0.05 mg/L), any of the accepted units;
-`log_reading`'s reply follows from the clock alone). Voids (score 0): deadheading 30 s, 300 s of cavitation, T-201 or T-101 at 95 %, the
-emergency stop, a safety violation (robot vs skid > 40 N, vs a handle or button > 150 N, for 3 ticks). Every check
-reads the cell's own state and the process's true values; nothing the program sends is scored except its log entries.
+`log_reading`'s reply follows from the clock alone). Voids (score 0): deadheading 30 s, 300 s of cavitation, T-201 at
+95 %, the emergency stop, the robot out of service (v0.6: damage-level contact, 400 N for 3 ticks, or a sixth
+protective stop in the shift; a press past 40 N on the structure or 150 N on a handle or button for 3 ticks is a
+protective stop, section 2, no longer a void). T-101 at 95 % runs over to the drain and costs the start-up's line-up
+credit (v0.6; a void before: on the latest round's hidden sites a V-106 the previous shift left open voided two of
+eight shifts within 140-180 s). Every check reads the cell's own state and the process's true values; nothing the
+program sends is scored except its log entries.
 
 Diagnosis is built into the faults' consequences: the strainer slug and the stuck float valve both raise the common
 alarm and pull the suction pressure down; the dosing air lock and the empty duty drum both stop the dosing with P-301
@@ -170,14 +223,31 @@ program's reading of the instruments: `review/observability.md`. The frozen file
 recorded in `selection.json`: the log tolerance (`post_selection_changes`) and the v0.5.3 amendment (`amendments`: the
 agent cameras' renderer, with v0.5.2's visual-only carriage geometry), whose check, the reference's full verify of the set
 on the amended image, repeated every selection run (score and parts of each episode to four decimals; two runs, bit for
-bit the same).
+bit the same); and the v0.6 amendment (2026-11-10: the safety watch, the wrist's wrench, V-104's start state, T-101's
+overflow, the client), which changes what the reference does on most sites (V-104 no longer needs opening), so the
+pre-registered rule was run again on all 24 candidates with `review/select_set.py` (the selection's harness, now in the
+task folder) on apollo and on apollo-pc-2: the same 20 completed with the same four drops, the hidden set is the same
+eight sites, the two machines (Zen 3 and Zen 5) gave the same score, parts and ticks on every candidate and the same
+final physics state. The reference's full verify of the set on the amended image (one per machine) repeated every kept
+run to four decimals: anchor 0.9765 (0.97646; the episodes 0.956, 0.912, 1.000, 1.000, 0.962, 1.000, 0.982, 1.000, no
+protective stop), `full_at` 0.98.
 
-## 5. Known limitations (version 0.5)
+## 5. Known limitations (version 0.6)
 
 * The process is a lumped, quasi-steady model; the instruments show its true values (with flutter under cavitation),
   not sensor dynamics beyond the analyser's lag.
 * Valves are turned by the grip rule (a weld), not by friction between fingers and rim; the gripper's force does not
-  matter once the rule engages.
+  matter once the rule engages. The weld is rigid, so the hand must follow the handle's circle within about 1-2 mm
+  (measured on development sites: with the circle 2 mm off the stem a handwheel slips after 17-30 degrees, at 3 mm
+  after 12-21; `cell_manual.md` section 3 gives the table), where a real gripper's pads slide and comply over a few
+  millimetres. v0.6 takes the review's option 3 (i): the documents state the tolerance and what a normal turn and an
+  end stop read, and the wrist's 6-D wrench shows the error as it grows; a compliant grip (option 3 (ii)) would change
+  the physics the hidden set was selected on and was not made.
+* The wrist's wrench estimate has white noise and a smooth posture-dependent offset; a real joint-torque estimate also
+  errs with the arm's accelerations and its joints' friction, which the cell does not model.
+* The commissioning sites are a fixed nine, and a program may be tuned to them; the graded sites differ in everything
+  the series varies (numbering, builds, arrangement, scales, leftovers, process, faults and their times), so tuning to
+  a development site's particulars earns nothing on a graded one.
 * The P-301 / P-101 interlock, the trips and the alarms are the minimal set the procedure needs.
 * The fixed overview camera cannot resolve tag plates (about 6 px tall there) or a dial's pointer to 1 % of span (a
   dial is 22-25 px across); programs read those through the wrist camera, which costs time and frames and competes
@@ -262,3 +332,21 @@ bit the same).
   images show. The image adds Mesa's lavapipe and the render bundle (`environment/assets.sha256`). The hidden set's
   amendment (`hidden/selection.json`) and its check: the reference's full verify on the amended image gave the
   selection's eight scores (0.9779). The anchor and the scoring are those of v0.5.
+* v0.6 (2026-11-10, the fairness review's changes, approved by the owner; cell pump-skid-cell/0.6.0). The review found
+  that the zero scores of v0.4-v0.5.3 came from conditions stricter than the job: the engineer never saw a skid before
+  the graded shifts, a 30 ms contact voided a whole shift, the turning documents disagreed with the cell by a factor of
+  2, and two start states contradicted the SOP. Commissioning: a service in the agent's sandbox runs the grader's cell
+  on 9 development sites under the graded episode's budgets, with a window of 12 shifts, 2 at a time, and no truth,
+  score or debrief (section 2); the instruction's "No rehearsal" section says what it is and is not. Safety: a press
+  past 40 N / 150 N is a protective stop (5 s, counted, reported to the program, the device not named); only
+  damage-level contact (400 N) or a sixth stop voids. Turning: `wrist_load` is a Franka-like 6-D external wrench at the
+  tcp (world axes, noise and a posture offset); the factor 2 was the weld's rotational rows (section 2), the documents'
+  efforts are physical and now agree with the reading, the grip's limit reads 3 N m (the same slip), and the cell manual
+  gives the turning tolerance and what a normal turn and an end stop read. Consistency: V-104 starts open (the SOP's
+  shutdown leaves it so) and is shut when out of place; T-101's overflow costs the line-up credit instead of the
+  episode; SOP 1.1 says how fast a V-106 left open overflows T-101 (1.5-10 min). Not changed (the review's advice): the
+  fault density, the 1 % log tolerance, the cameras, the absence of SCADA, the SOP's procedure and time windows. The
+  hidden set's v0.6 amendment re-ran the rule (the same set) and the anchor moved to 0.9765 (section 4). On development
+  sites 2001-2008 the r1 program (written with v0.3's practice service) scored 0.681 on the v0.6 rules (0.571 on
+  v0.5.3) when given v0.5's wrist-load format; with the new format it cannot turn a valve (it reads the two old
+  scalars) and scores 0; the latest no-practice program scores 0 on both, now without voids.
