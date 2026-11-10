@@ -1,5 +1,5 @@
-"""Agent-side proxy of the pump skid cell + the program launcher (the one module of the cell the agent gets; the cell
-itself runs in the grader, out of the agent's sight).
+"""Agent-side proxy of the pump skid cell + the program launcher + the commissioning connection (the one module of the
+cell the agent gets; the cell itself runs in the grader and in the commissioning service, out of the agent's sight).
 
     def solve(cell):                                   # in /home/user/submission/operate.py
         info = cell.describe()
@@ -16,6 +16,12 @@ itself runs in the grader, out of the agent's sight).
 Every method is one JSON-lines request on this process's original stdout, answered on stdin by the grader's
 physics server. The launcher rebinds `sys.stdout` to stderr first, so ordinary prints never corrupt the wire.
 A reply carrying "error" raises CellError (a `forbidden` error is counted by the grader as an illegal call).
+
+Commissioning (development only): `connect_commissioning(site)` opens a shift on one of the series' development sites
+(the sister sites the commissioning service runs; never a graded site): the same cell and calls, plus `reset(site)`,
+which starts the shift. One connection is one shift, under the graded episode's budgets; the commissioning window has
+a fixed number of shifts (`cell_manual.md` section 8). `~/commission/run_shift.py` runs a whole program in a shift the
+way the grader runs it.
 """
 
 import base64
@@ -25,11 +31,14 @@ import os
 import sys
 import traceback
 
-__all__ = ["Cell", "CellError", "decode_frame", "connect_stdio", "main", "BOOTSTRAP", "launcher_argv"]
+__all__ = ["Cell", "CellError", "decode_frame", "connect_stdio", "connect_commissioning", "main", "BOOTSTRAP", "launcher_argv",
+           "COMMISSION_SOCKET", "COMMISSION_STATUS"]
 
 BOOTSTRAP = ("import sys; sys.path.insert(0, sys.argv[1]); from skidcell.client import main; "
              "sys.exit(main(sys.argv[2:]))")
 PYTHON_FLAGS = ["-B", "-E", "-s"]
+COMMISSION_SOCKET = "/run/skidcell/commission.sock"
+COMMISSION_STATUS = "/run/skidcell/commission_status.json"
 
 
 class CellError(RuntimeError):
@@ -52,6 +61,8 @@ class Cell(object):
         if not line:
             raise CellError("the cell closed the connection")
         reply = json.loads(line)
+        if reply.get("event") == "shift_over":
+            raise CellError("the commissioning shift is over (%s)" % reply.get("reason"))
         if reply.get("id") != self._id:
             raise CellError("reply id mismatch")
         if "error" in reply:
@@ -109,6 +120,17 @@ class Cell(object):
     def reference_run(self):
         return self._call("reference_run")
 
+    # ---- the commissioning service only (the graded cell answers {"error": "forbidden"})
+    def reset(self, site):
+        """Start this connection's commissioning shift on development site `site` (1 .. the number of sites): the skid
+        as the previous shift left it, at sim_time 0. Once per connection; it uses one shift of the window."""
+        return self._call("reset", site=int(site))
+
+    def close(self):
+        closer = getattr(self, "_close", None)
+        if closer is not None:
+            closer()
+
 
 def decode_frame(reply):
     """(rgb uint8 H x W x 3, depth float32 H x W in metres with NaN where the sensor reported no reading / None when absent)."""
@@ -137,6 +159,48 @@ def connect_stdio():
         return inp.readline()
 
     return Cell(send, recv)
+
+
+def connect_commissioning(site=None, path=None):
+    """A connection to the commissioning service (a Cell): one shift, started by `reset(site)` (done here when `site`
+    is given). The service takes a few connections at a time; the shifts' budget is in COMMISSION_STATUS."""
+    import socket
+    path = path or COMMISSION_SOCKET
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        sock.connect(path)
+    except OSError as e:
+        sock.close()
+        raise CellError("the commissioning service is not reachable at %s (%s)" % (path, e))
+    rf = sock.makefile("r", encoding="utf-8", newline="\n")
+    wf = sock.makefile("w", encoding="utf-8", newline="\n")
+
+    def send(text):
+        try:
+            wf.write(text)
+            wf.flush()
+        except OSError as e:
+            raise CellError("the commissioning service closed the connection (%s)" % e)
+
+    def recv():
+        try:
+            return rf.readline()
+        except OSError:
+            return ""
+
+    def close():
+        for f in (wf, rf):
+            try:
+                f.close()
+            except OSError:
+                pass
+        sock.close()
+
+    cell = Cell(send, recv)
+    cell._close = close
+    if site is not None:
+        cell.reset(site)
+    return cell
 
 
 def launcher_argv(python, lib_dir, program_dir, module="operate"):

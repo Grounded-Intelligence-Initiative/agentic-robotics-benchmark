@@ -33,7 +33,8 @@ down the skid by the operating procedure, with the cell's Panda). This grader:
      and the second run counts (`_episode_with_retry`; a render failure that repeats is a task error);
   5. criterion: operation_score = the mean over the episodes of the procedure's checks (skidcell.episode: startup 0.20,
      operation 0.25, events 0.25, shutdown 0.15, operator log 0.15; a void -- the pump deadheaded or damaged by
-     cavitation, a tank overflowing, the emergency stop, a robot safety violation -- scores the episode 0),
+     cavitation, T-201 overflowing, the emergency stop, the robot out of service (damage-level contact or more than
+     five protective stops, v0.6) -- scores the episode 0; T-101 overflowing costs the line-up credit),
      times the gates. A failure on the grader's side of an episode (the cell's build, the program's launch, the wire,
      the cleanup, the scoring) ends the run as a TASK ERROR (`fail`: a zero says the agent failed, a task error says
      the grading broke); a program that crashes, hangs or misbehaves ends its own episode, which is scored as it stands,
@@ -608,9 +609,10 @@ def _main_locked(cfg, rewards, metrics):
     for i, seed in enumerate(ep_seeds):
         log("[grader] episode %d/%d" % (i + 1, n))
         s_a = _episode_with_retry(cfg, seed, rn, privileged, "ep%02d" % (i + 1), metrics)
-        log("[grader]   score %.3f parts %s voids %s sim %.1f s wall %.1f s (program %.1f s, cell %.1f s) frames %d end %s" % (
-            s_a["episode_score"], s_a["parts"], [v["what"] for v in s_a["voids"]][:3], s_a["sim_time_s"], s_a["episode_wall_s"],
-            s_a["program_time_s"], s_a["cell_work_s"], s_a["camera_frames_total"], s_a["end_reason"]))
+        log("[grader]   score %.3f parts %s voids %s stops %d sim %.1f s wall %.1f s (program %.1f s, cell %.1f s) frames %d end %s" % (
+            s_a["episode_score"], s_a["parts"], [v["what"] for v in s_a["voids"]][:3], int(s_a.get("protective_stop_count", 0)),
+            s_a["sim_time_s"], s_a["episode_wall_s"], s_a["program_time_s"], s_a["cell_work_s"], s_a["camera_frames_total"],
+            s_a["end_reason"]))
         agent.append(s_a)
         step_calls += s_a["step_calls"] + s_a["calls"].get("reference_run", 0)
         illegal += s_a["illegal_call_count"]
@@ -635,6 +637,8 @@ def _main_locked(cfg, rewards, metrics):
     metrics["raw_score_mean"] = float(np.mean([s["raw_score"] for s in agent]))
     metrics["void_rate"] = float(np.mean([1.0 if s["voided"] else 0.0 for s in agent]))
     metrics["safety_violation_rate"] = float(np.mean([0.0 if s["safety_ok"] else 1.0 for s in agent]))
+    metrics["protective_stops_mean"] = float(np.mean([float(s.get("protective_stop_count", 0)) for s in agent]))
+    metrics["t101_overflow_rate"] = float(np.mean([0.0 if s.get("t101_overflow_t") is None else 1.0 for s in agent]))
     for part in ("startup", "operation", "events", "shutdown", "log"):
         metrics["part_mean." + part] = float(np.mean([s["parts"].get(part, 0.0) for s in agent]))
     metrics["window_level_fraction_mean"] = float(np.mean([s["window_fraction"]["level"] for s in agent]))

@@ -23,15 +23,22 @@ from .cameras import CAMERA_SPECS, CameraRig, build_cameras
 from .control import ArmController, mat_to_quat
 from .layout import RAIL
 
-__all__ = ["Scene", "Arm", "PHYS", "HOME_Q", "GRIP", "TCP_FORWARD_QUAT", "OPERABLE", "BUTTONS", "LAMPS"]
+__all__ = ["Scene", "Arm", "PHYS", "HOME_Q", "GRIP", "WELD_ROT_ROWS", "TCP_FORWARD_QUAT", "OPERABLE", "BUTTONS", "LAMPS"]
 
 PHYS = {"timestep": 0.002, "tick_s": 0.01, "weld_solref": (0.004, 1.0), "iterations": 30}
 # the Panda's ready posture: the tool points into the skid (+y) at mid height, the fingers' closing axis vertical
 HOME_Q = [0.0, -0.85, 0.0, -2.35, 0.0, 3.05, -0.785]
 # the tool pointing into the skid (+y world), closing axis +z world: columns x = -x_w, y = +z_w, z = +y_w
 TCP_FORWARD_QUAT = [0.0, 0.0, 0.70710678, 0.70710678]
-GRIP = {"box_x": 0.012, "box_z_lo": -0.012, "box_z_hi": 0.014, "angle_deg": 30.0, "slip_force_N": 60.0, "slip_torque_Nm": 6.0,
+# the grip rule; slip_torque_Nm is the moment about the held part's pivot (v0.6: in physical units, 3 N m; v0.5 wrote 6 N m,
+# the grip weld's rotational constraint rows, which carry twice the moment: see WELD_ROT_ROWS)
+GRIP = {"box_x": 0.012, "box_z_lo": -0.012, "box_z_hi": 0.014, "angle_deg": 30.0, "slip_force_N": 60.0, "slip_torque_Nm": 3.0,
         "slip_ticks": 3}
+# MuJoCo's weld writes its orientation error as a quaternion's vector part, whose rate is half the relative angular
+# velocity: its rotational rows' force is twice the moment the weld transmits (measured on development sites: a torque
+# T applied about a held valve's stem raises the rows' norm by 2T). The slip rule compares the rows' norm with
+# WELD_ROT_ROWS * slip_torque_Nm (= 6.0, the v0.5 cell's number), so it slips exactly where it did.
+WELD_ROT_ROWS = 2.0
 PAD_FRICTION = (1.5, 0.005, 0.0001)
 GRIPPER = {"kp": 2500.0, "kv": 50.0, "max_force": 60.0}
 RAIL_DRIVE = {"kp": 40000.0, "kv": 3500.0, "max_force": 3000.0, "carriage_mass": 30.0}
@@ -526,6 +533,13 @@ class Scene(object):
                 gc[gi] = 0
                 m.geom_contype[gi], m.geom_conaffinity[gi] = 0, 0
         self.geom_class = gc
+        # the external wrench estimate (v0.6): what the robot's joint torques feel of the robot's contacts with the
+        # world and of the grip, mapped to the tcp as a Franka does (tau_ext = J_c^T f; F = (J J^T)^-1 J tau_ext)
+        self.arm_dofs = np.asarray(self.arm.vadr, dtype=int)
+        self.robot_geom = np.isin(gc, (1, 2))
+        self.grip_eq = m.equality("grip").id
+        self._jp = np.zeros((3, m.nv))
+        self._jr = np.zeros((3, m.nv))
         self.physics_fault = False
         self._f6 = np.zeros(6)
         self.reset_state()
@@ -679,7 +693,37 @@ class Scene(object):
         self.held = None
 
     def grip_load(self):
+        """The grip weld's constraint load (force N, rotational rows): the slip rule's input. The rotational rows carry
+        twice the moment the grip transmits (WELD_ROT_ROWS); the reference program paces its turns on these norms."""
         return grasp_mod.weld_load(self.model, self.data, "grip")
+
+    def external_wrench(self):
+        """The external wrench on the robot at the tcp, world axes: (force N (3), moment N m about the tcp (3)), as a
+        Franka's joint-torque estimate gives it (O_F_ext_hat_K): the generalized forces of the robot's contacts with the
+        skid and the floor and of the grip on the arm's seven joints (tau_ext = J_c^T f), mapped to the tcp through the
+        tcp's Jacobian (F = (J J^T)^-1 J tau_ext). Read after a step (the constraint forces of its last substep); the
+        server adds the sensor's noise. Read-only: nothing of the simulation changes."""
+        m, d = self.model, self.data
+        nefc = int(d.nefc)
+        if nefc == 0:
+            return np.zeros(3), np.zeros(3)
+        typ = np.asarray(d.efc_type[:nefc])
+        eid = np.asarray(d.efc_id[:nefc])
+        sel = (typ == mujoco.mjtConstraint.mjCNSTR_EQUALITY) & (eid == self.grip_eq)
+        con = (typ == mujoco.mjtConstraint.mjCNSTR_CONTACT_FRICTIONLESS) | (typ == mujoco.mjtConstraint.mjCNSTR_CONTACT_PYRAMIDAL) | \
+              (typ == mujoco.mjtConstraint.mjCNSTR_CONTACT_ELLIPTIC)
+        if np.any(con) and d.ncon > 0:
+            g = np.asarray(d.contact.geom[:d.ncon])
+            ext = self.robot_geom[g[:, 0]] != self.robot_geom[g[:, 1]]
+            sel |= con & ext[np.clip(eid, 0, d.ncon - 1)]
+        if not np.any(sel):
+            return np.zeros(3), np.zeros(3)
+        J = np.asarray(d.efc_J[:nefc * m.nv]).reshape(nefc, m.nv)
+        tau = J[sel][:, self.arm_dofs].T @ np.asarray(d.efc_force[:nefc])[sel]
+        mujoco.mj_jacSite(m, d, self._jp, self._jr, self.tcp)
+        Jt = np.vstack([self._jp[:, self.arm_dofs], self._jr[:, self.arm_dofs]])
+        w = np.linalg.solve(Jt @ Jt.T + 1e-9 * np.eye(6), Jt @ tau)
+        return w[:3], w[3:]
 
     # ------------------------------------------------------------------ visuals
     def update_visuals(self, proc, t):

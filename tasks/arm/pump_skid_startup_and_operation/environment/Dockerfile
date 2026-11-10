@@ -1,7 +1,8 @@
 # pump_skid_startup_and_operation's environment image. `environment/` (less its `setup/`) is the sole build context and the final
 # stage derives DIRECTLY from the official ALE base, at an exact version. Nothing hidden is here: the givens are staged
-# by environment/setup/setup.sh, the grader, the anchor and the reference program live in tests/ and solution/ (absent
-# from the image).
+# by environment/setup/setup.sh, the grader, the anchor, the hidden sites and the reference program live in tests/ and
+# solution/ (absent from the image). The image does hold the commissioning service (v0.6: the series' cell on its
+# development sites, for the agent's commissioning shifts), readable by its own account only.
 FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1
 
 COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /usr/local/bin/uv
@@ -102,6 +103,21 @@ RUN set -eu; \
 # episode, untouched validation passes included).
 RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
 
+# The commissioning service (v0.6): the series' cell on its development sites, the sister sites an automation engineer
+# commissions a robot program on before it runs a site unattended (commission_service/: the service program, its sites
+# and window, and the cell library skidcell/, a byte copy of the grader's cell), installed for its own account
+# `skidcell` only: mode 700, so the agent account can neither read nor list it. environment/setup/setup.sh starts it
+# before the agent's session (and restarts it should it ever exit); the agent reaches it through a unix socket and gets
+# the cell's public calls and reset(site): no ground truth, no score.
+RUN useradd --system --no-create-home --home-dir /opt/skidcell-commission --shell /usr/sbin/nologin skidcell
+COPY commission_service /opt/skidcell-commission
+RUN find /opt/skidcell-commission -name '__pycache__' -type d -prune -exec rm -rf {} + \
+    && rm -rf /opt/skidcell-commission/state /opt/skidcell-commission/given \
+    && mkdir -p /opt/skidcell-commission/state /opt/skidcell-commission/given \
+    && ln -sfn /opt/task-assets/panda /opt/skidcell-commission/given/panda \
+    && chown -R skidcell:skidcell /opt/skidcell-commission \
+    && chmod -R u+rwX,go-rwx /opt/skidcell-commission
+
 # Headless defaults: the classic renders of the cell (the cameras' depth) go through OSMesa.
 ENV MPLBACKEND=Agg
 ENV MUJOCO_GL=osmesa
@@ -117,4 +133,7 @@ RUN export HOME=/root \
     && python3 -c "import mujoco; m = mujoco.MjModel.from_xml_path('/opt/task-assets/panda/panda.xml'); r = mujoco.Renderer(m, 64, 64); d = mujoco.MjData(m); mujoco.mj_forward(m, d); r.update_scene(d); px = r.render(); print('[pump-skid] OSMesa render OK', px.shape, int(px.max()), 'panda nbody', m.nbody)" \
     && runuser -u user -- python3 -c "import mujoco, numpy, scipy, PIL, cv2; m = mujoco.MjModel.from_xml_path('/opt/task-assets/panda/panda_nohand.xml'); print('[pump-skid] agent-UID import OK, panda_nohand nbody', m.nbody)" \
     && env -u DISPLAY python3 -c "import mujoco._render_filament as F, mujoco.experimental.studio.window; c = F.Context(F.ContextConfig(graphics_api=F.GraphicsApi.GRAPHICS_API_VULKAN)); print('[pump-skid] Filament on Vulkan (lavapipe) OK')" \
+    && runuser -u skidcell -- /opt/venv/bin/python3 -B -s -c "import sys; sys.path.insert(0, '/opt/skidcell-commission'); import skidcell.server; print('[pump-skid] commissioning service imports OK for its account')" \
+    && ! runuser -u user -- ls /opt/skidcell-commission > /dev/null 2>&1 \
+    && ! runuser -u user -- cat /opt/skidcell-commission/sites.json > /dev/null 2>&1 \
     && test -z "$(find /home/user -user root -print -quit)"

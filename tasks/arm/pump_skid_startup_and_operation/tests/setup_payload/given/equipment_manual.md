@@ -36,6 +36,11 @@ Each valve's service is fixed by the series; how it is built is the site's choic
 | V-303 | dosing suction selector (drum A / drum B) | three-way cock with a small lever (80 mm) | half a turn (A -> B) | 0.6-1.0 N m |
 | V-301 | dosing rate | needle valve with a knob (38 mm) | 2 or 3 turns | 0.08-0.15 N m |
 
+* **Turning effort** is the torque about the valve's stem that turns it slowly (the packing's friction; the site's
+  valve has one value in the range). Turning faster adds a viscous part: 0.4 N m per rad/s on the handwheels and
+  levers, 0.05 N m per rad/s on the needle valves. A valve turned at up to 35 degrees a second therefore takes at most
+  its effort plus 0.25 N m, never more than about 2.1 N m on this skid. At each end of its travel a valve meets a hard
+  stop: pushed on, the torque it takes rises steeply while it no longer turns.
 * **Handwheels**: 3 to 5 spokes (13 mm round bar) between a hub (44 mm) and a rim (18 mm round bar); the wheel turns in
   a plane 0.11-0.15 m in front of the pipe. The stem rises out of the hub as the valve opens: flush with the hub when
   closed, 34 mm out when fully open (linear in the valve's travel). The flow through a gate valve rises steeply over
@@ -53,7 +58,8 @@ Each valve's service is fixed by the series; how it is built is the site's choic
   counter-clockwise opens.
 * **Vents** (V-102, V-112, V-302) pass air and liquid only once they are open past about 40 % of their travel (V-302:
   past half of it); a vent cracked open less does nothing you can see. Open a vent fully to vent.
-* Every valve has a hard stop at each end of its travel. A valve stays where it was left.
+* Every valve has a hard stop at each end of its travel. A valve stays where it was left. The minimum-flow return V-104
+  is left open at a shutdown (`sop.md` section 4).
 
 ## 3. The local control station
 
@@ -63,7 +69,8 @@ A grey box on a stand in front of the supply tank T-101, titled `LCS-<area> LOCA
   on the left:
   * P-101's group: the selector **HS-101** (a black wing knob: OFF = pointing up, HAND = 45 degrees counter-clockwise,
     AUTO = 45 degrees clockwise, with a detent at each; the legend HAND OFF AUTO above it), the green **START**
-    button, the red **STOP** button;
+    button, the red **STOP** button; the selector turns against 0.05 N m of friction and a detent spring that pulls it
+    towards the nearest position (1.5 N m per rad, at most 0.45 N m);
   * P-301's group: its **RUN** lamp (green), green **START**, red **STOP**;
 * the middle column, lamps (lit = bright): P-101's **RUN** (green) and **FAULT** (red), the **COMMON ALARM** (amber);
 * the bottom row: the blue **RESET / ACK** button under P-101's group and the **EMERGENCY STOP** (a red mushroom head

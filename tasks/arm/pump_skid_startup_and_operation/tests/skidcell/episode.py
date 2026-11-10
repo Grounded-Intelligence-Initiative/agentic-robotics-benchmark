@@ -4,7 +4,8 @@ The episode runs on the simulated clock: the startup until STARTUP_DEADLINE_S (6
 SHIFT_END_S (1500 s), then the shutdown until the end of the episode (the sim cap, 1800 s, or `finish`). The score is
 the sum of five parts (the operating procedure, sop.md, says what each step is):
 
-  startup 0.20   line-up checked at the first start 0.05, the pump primed (vented) before it 0.04, a clean start (no
+  startup 0.20   line-up checked at the first start 0.05 (lost when T-101 overflows during the shift: v0.6), the pump
+                 primed (vented) before it 0.04, a clean start (no
                  trip, no deadheading, still running 120 s later) 0.04, V-103 fully open within 240 s of the start and
                  before the window opens 0.04, P-301 dosing when the window opens 0.03
   operation 0.25 the fraction of the window with LG-201 in 55-75 % (0.125) and with AI-201 in 1.8-2.6 mg/L (0.125)
@@ -32,7 +33,8 @@ the sum of five parts (the operating procedure, sop.md, says what each step is):
                  instrument's true value at that moment (1 % of the instrument's span; AI-201 0.05 mg/L)
 
 A void (the pump deadheaded for 30 s, cavitation damage, T-201 overflowing, the emergency stop pressed, a safety
-violation of the robot) makes the episode score 0.
+void of the robot: damage-level contact or more than five protective stops, server.py) makes the episode score 0.
+v0.6: T-101 overflowing (to the drain) is no longer a void; it costs the start-up's line-up credit.
 """
 
 import math
@@ -123,6 +125,7 @@ class Monitor(object):
         self.t_last = 0.0
         self.end_state = None
         self.prev_drum = "A" if float(layout["initial"].get("V-303", 0.0)) < 0.5 * math.pi else "B"
+        self.t101_overflow_t = None           # v0.6: T-101 ran over to the drain (the line-up credit is lost)
         self.drum_changes = []                # (t, from, to, drum A's level fraction at that moment)
 
     # ------------------------------------------------------------------ inputs
@@ -185,6 +188,8 @@ class Monitor(object):
             self.drum_changes.append((t, self.prev_drum, drum, proc.drum["A"] / DRUM_L))
             self.prev_drum = drum
         self._events(t, proc, u)
+        if self.t101_overflow_t is None and getattr(proc, "t101_overflow_t", None) is not None:
+            self.t101_overflow_t = float(proc.t101_overflow_t)
         # the shutdown
         if t > SHIFT_END_S:
             if self.prev_run301 and not proc.run301 and proc.run101 and self.stop301_after_shift is None:
@@ -310,7 +315,8 @@ class Monitor(object):
     def summary(self, voids, end_t):
         W = WEIGHTS
         parts = {}
-        st = {"lineup": bool(self.lineup), "primed": bool(self.primed), "clean_start": bool(self.clean_start),
+        # v0.6: an overflow of T-101 (the make-up left open or opened too far) costs the line-up credit
+        st = {"lineup": bool(self.lineup) and self.t101_overflow_t is None, "primed": bool(self.primed), "clean_start": bool(self.clean_start),
               "discharge_open": bool(self.discharge_open), "dosing_on": bool(self.dosing_on)}
         parts["startup"] = sum(W["startup"][k] for k, v in st.items() if v)
         span = SHIFT_END_S - STARTUP_DEADLINE_S
@@ -335,6 +341,7 @@ class Monitor(object):
         return {"score": 0.0 if voided else float(min(1.0, max(0.0, raw))), "raw_score": float(raw), "voided": voided,
                 "voids": list(voids), "parts": {k: round(v, 4) for k, v in parts.items()}, "startup": st,
                 "lineup_at_start": getattr(self, "lineup_detail", None), "first_start_t": self.first_start,
+                "lineup_at_first_start": bool(self.lineup), "t101_overflow_t": self.t101_overflow_t,
                 "window_fraction": {"level": round(lev_f, 4), "conc": round(conc_f, 4)},
                 "events": [{"type": e["type"], "t": round(e["t"], 1), "credit": e["credit"], "excluded": bool(e.get("excluded")),
                             "detail": e["detail"]} for e in self.ev],

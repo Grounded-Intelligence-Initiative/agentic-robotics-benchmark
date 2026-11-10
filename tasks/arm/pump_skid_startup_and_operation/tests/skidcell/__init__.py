@@ -1,5 +1,6 @@
-"""skidcell: the pump skid cell (cell internals: the grader and the practice service run this package, the agent gets only client.py; only
-the seeds, the hidden reference value and the reference program differ).
+"""skidcell: the pump skid cell (cell internals: the grader and the agent's commissioning service run this package, the agent gets
+only client.py; the grader runs the hidden sites, the commissioning service its development sites, and only the grader
+holds the hidden reference value and the reference program).
 
 Modules
     client      the agent-side proxy of the cell and the program launcher (JSON-lines wire on stdio)
@@ -15,4 +16,4 @@ Modules
     server      the cell API served over the wire (public calls; privileged calls for the reference program)
 """
 
-CELL_VERSION = "pump-skid-cell/0.5.0"
+CELL_VERSION = "pump-skid-cell/0.6.0"

@@ -9,7 +9,8 @@ operator log (`log_reading`), which is checked against the instruments' true val
 
 API (metres / rad / wxyz; `cell_api.md` is the agent-facing contract):
   describe()                                  static facts (robot, rail, control, grip rule, cameras, budgets, safety)
-  get_state()                                 sim_time, done, the arm's own state, the rail, the wrist load, the horn
+  get_state()                                 sim_time, done, the arm's own state (the wrist's 6-D external wrench
+                                              estimate, the protective stop), the rail, the horn
   set_control(mode, stiffness_scale)          joint | cartesian; stiffness_scale in [0.2, 1.0]
   command(q | tcp_pos+tcp_quat, width)        targets held until the next command
   command_rail(x, lift)                       the carriage along the rail and the lift's height
@@ -17,8 +18,16 @@ API (metres / rad / wxyz; `cell_api.md` is the agent-facing contract):
   get_camera(name, depth)                     RGB (png b64) + depth (16-bit png, mm)
   log_reading(tag, value, unit)               an entry in the operator's log sheet
   finish()                                    ends the episode
-Practice servers additionally accept reset(seed) and truth(); privileged servers get_state_privileged() and
-reference_run() (the reference program inside the cell).
+Practice servers (a maintainers' development mode) additionally accept reset(seed) and truth(); privileged servers
+get_state_privileged() and reference_run() (the reference program inside the cell). The commissioning service of the
+agent's sandbox (environment/commission_service/commissiond.py, v0.6) runs this class in `hidden` mode on its
+development sites and answers `reset` itself; nothing of truth() or the score reaches its wire.
+
+Safety (v0.6): a press of the robot on the skid past the safety limits for 3 ticks is a PROTECTIVE STOP, as on a
+collaborative robot: the arm and the carriage halt where they are, motion commands are refused for
+safety.stop_lock_s, the stop is counted and reported (`protective_stop:<robot body>:<N>N` in step's events,
+get_state()["arm"]["protective_stop"]). Only damage-level contact (safety.damage_force_N for 3 ticks) or more than
+safety.max_stops stops in a shift void the episode; either locks the robot out for the rest of the shift.
 
 `handle()` never raises: malformed parameters are answered {"error": "bad_params: ..."}, any other exception is logged
 and answered {"error": "internal_error"} (inside a call that changes the cell it also ends the episode, whose state is
@@ -41,10 +50,10 @@ import numpy as np
 from . import CELL_VERSION
 from .episode import Monitor
 from .layout import CONC_BAND, LEVEL_BAND, RAIL, SHIFT_END_S, STARTUP_DEADLINE_S, draw_layout
-from .physics import BUTTONS, GRIP, Scene
+from .physics import BUTTONS, GRIP, WELD_ROT_ROWS, Scene
 from .process import Process
 
-__all__ = ["SkidCellServer", "DEFAULT_CONFIG", "PUBLIC_METHODS", "PRIVILEGED_METHODS"]
+__all__ = ["SkidCellServer", "DEFAULT_CONFIG", "PUBLIC_METHODS", "PRIVILEGED_METHODS", "WRENCH_NOISE"]
 
 PUBLIC_METHODS = ("describe", "get_state", "set_control", "command", "command_rail", "step", "get_camera", "log_reading", "finish")
 PRIVILEGED_METHODS = ("get_state_privileged", "reference_run")
@@ -54,13 +63,18 @@ CAMERA_NAMES = ("overview", "wrist")
 BUTTON_MAP = {"START-101": "START-101", "STOP-101": "STOP-101", "START-301": "START-301", "STOP-301": "STOP-301",
               "RESET": "RESET", "ESTOP": "ESTOP"}
 
+# the wrist's external wrench estimate (v0.6), a Franka-like joint-torque estimate: white noise per reading and a
+# posture-dependent offset (the dynamic model's error: constant while the arm stands still, it changes as the arm moves)
+WRENCH_NOISE = {"sigma_N": 0.3, "sigma_Nm": 0.03, "offset_N": (0.5, 2.0), "offset_Nm": (0.05, 0.2), "offset_rad_per_rad": (0.3, 1.0)}
+
 DEFAULT_CONFIG = {
     "sim_cap_s": 1800.0,
     "program_time_cap_s": 2400.0,
     "silence_s": 180.0,
     "max_ticks_per_step": 1000,
     "camera_budget_frames": 900,
-    "safety": {"robot_force_N": 40.0, "device_force_N": 150.0, "press_ticks": 3},
+    "safety": {"robot_force_N": 40.0, "device_force_N": 150.0, "press_ticks": 3, "stop_lock_s": 5.0, "damage_force_N": 400.0,
+               "max_stops": 5},
     "depth_noise": {"sigma_mm": 1.5, "dropout": 0.02, "min_m": 0.10, "max_m": 6.0},
     "rgb_noise_sigma": 2.0,
 }
@@ -147,6 +161,19 @@ class SkidCellServer(object):
         self._marks = {"window_open": False, "shift_end": False}
         self._noise_rng = np.random.default_rng([self.seed & 0xFFFFFFFF, 0x5C1DCE11])
         self._f6 = np.zeros(6)
+        # v0.6: protective stops; the wrist's wrench estimate's own generator (the cameras' and the cell's draws are
+        # untouched: nothing here feeds back into the simulation)
+        self.stops = []
+        self._stop_until = None
+        self._lockout = False
+        self._latched = set()
+        wr = np.random.default_rng([self.seed & 0xFFFFFFFF, 0x5C1DF7E5])
+        W = WRENCH_NOISE
+        self._ft_rng = wr
+        self._ft_amp = np.concatenate([wr.uniform(*W["offset_N"], size=3), wr.uniform(*W["offset_Nm"], size=3)])
+        self._ft_w = wr.uniform(*W["offset_rad_per_rad"], size=(6, 7)) * wr.choice([-1.0, 1.0], size=(6, 7))
+        self._ft_phase = wr.uniform(0.0, 2.0 * math.pi, size=6)
+        self._ft_sigma = np.array([W["sigma_N"]] * 3 + [W["sigma_Nm"]] * 3)
         return self.describe()
 
     # ------------------------------------------------------------------ API
@@ -170,7 +197,14 @@ class SkidCellServer(object):
                         "cartesian_frame": "world (the skid's frame): the arm alone tracks the target from wherever the carriage stands"},
             "grip_rule": {"pinch_box_m": {"x": GRIP["box_x"], "z": [GRIP["box_z_lo"], GRIP["box_z_hi"]], "y": "half the opening"},
                           "axis_tolerance_deg": GRIP["angle_deg"], "slip_force_N": GRIP["slip_force_N"],
-                          "slip_torque_Nm": GRIP["slip_torque_Nm"], "slip_after_s": GRIP["slip_ticks"] * self.tick_s},
+                          "slip_torque_Nm": GRIP["slip_torque_Nm"],
+                          "slip_torque_about": "the held part's pivot (where its stem's axis meets the handle's plane)",
+                          "slip_after_s": GRIP["slip_ticks"] * self.tick_s},
+            "wrist_load": {"what": "the external wrench on the hand, estimated from the joint torques (as a Franka's O_F_ext_hat_K)",
+                           "frame": "world axes; force_N at the tcp, torque_Nm about the tcp", "sign": "what the surroundings exert on the hand",
+                           "noise": {"sigma_N": WRENCH_NOISE["sigma_N"], "sigma_Nm": WRENCH_NOISE["sigma_Nm"],
+                                     "offset_up_to_N": WRENCH_NOISE["offset_N"][1], "offset_up_to_Nm": WRENCH_NOISE["offset_Nm"][1],
+                                     "offset": "changes with the arm's posture, constant while it stands still"}},
             "cameras": sc.cameras.describe(),
             "skid": {"front_plane_y": 0.0, "x_extent": [0.0, self.layout["x_total"]], "floor_z": 0.0},
             "site": {"name": self.layout["site"]["name"], "equipment": [dict(e) for e in self.layout["site"]["equipment"]],
@@ -188,14 +222,36 @@ class SkidCellServer(object):
         sc = self.scene
         arm = sc.arm
         p, R = arm.tcp_actual()
-        load = sc.grip_load() if sc.held is not None else None
         return {"sim_time": float(sc.data.time), "done": bool(self.done),
                 "arm": {"q": [float(v) for v in arm.q()], "dq": [float(v) for v in arm.dq()], "cmd_q": [float(v) for v in arm.q_cmd],
                         "tcp_pos": [float(v) for v in p], "tcp_quat": [float(v) for v in arm.mat_to_quat(R)], "mode": arm.mode,
                         "stiffness_scale": arm.stiffness_scale, "gripper_width": arm.width(), "holding": sc.held is not None,
-                        "wrist_load": {"force_N": float(load[0]) if load else 0.0, "torque_Nm": float(load[1]) if load else 0.0}},
+                        "wrist_load": self._wrist_load(), "protective_stop": self._stop_state()},
                 "rail": {"x": sc.rail_x(), "lift": sc.lift_z(), "x_goal": sc.rail_goal, "lift_goal": sc.lift_goal},
                 "horn": bool(self.proc.horn)}
+
+    def _wrist_load(self):
+        """The wrist's external wrench estimate (world axes, at the tcp) with the sensor's noise and posture offset."""
+        F, M = self.scene.external_wrench()
+        q = self.scene.arm.q()
+        w = np.concatenate([F, M]) + self._ft_amp * np.sin(self._ft_w @ q + self._ft_phase) + \
+            self._ft_sigma * self._ft_rng.standard_normal(6)
+        return {"force_N": [round(float(v), 4) for v in w[:3]], "torque_Nm": [round(float(v), 5) for v in w[3:]]}
+
+    def _stop_state(self):
+        t = float(self.scene.data.time)
+        left = 0.0 if self._stop_until is None else max(0.0, self._stop_until - t)
+        return {"active": bool(self._lockout or self._stop_until is not None), "remaining_s": round(left, 2),
+                "count": len(self.stops), "locked_out": bool(self._lockout)}
+
+    def _motion_refused(self):
+        """The reply to a motion command while the robot is stopped (None when it may move)."""
+        if self._lockout:
+            return {"ok": False, "error": "locked_out", "protective_stops": len(self.stops)}
+        if self._stop_until is not None:
+            return {"ok": False, "error": "protective_stop",
+                    "remaining_s": round(max(0.0, self._stop_until - float(self.scene.data.time)), 2)}
+        return None
 
     def set_control(self, mode="joint", stiffness_scale=1.0):
         a = self.scene.arm
@@ -207,6 +263,10 @@ class SkidCellServer(object):
         if self.done:
             return {"ok": False, "error": "episode_over"}
         a = self.scene.arm
+        if q is not None or tcp_pos is not None or tcp_quat is not None:
+            refused = self._motion_refused()          # v0.6: no motion while the arm is in a protective stop
+            if refused is not None:
+                return refused
         if q is not None:
             if a.mode != "joint":
                 return {"ok": False, "error": "q target needs joint mode"}
@@ -230,6 +290,10 @@ class SkidCellServer(object):
     def command_rail(self, x=None, lift=None):
         if self.done:
             return {"ok": False, "error": "episode_over"}
+        if x is not None or lift is not None:
+            refused = self._motion_refused()
+            if refused is not None:
+                return refused
         self.scene.command_rail(x=x, lift=lift)
         return {"ok": True, "x_goal": self.scene.rail_goal, "lift_goal": self.scene.lift_goal}
 
@@ -254,7 +318,7 @@ class SkidCellServer(object):
         for e in events:
             if e.startswith(("grasped:", "released:", "slipped:")):
                 ev.append(e.split(":", 1)[0])          # the hand feels a grip; it does not know the device's tag
-            elif e.startswith(("safety:", "horn_", "window_open", "shift_end", "physics_fault")):
+            elif e.startswith(("safety:", "protective_stop", "horn_", "window_open", "shift_end", "physics_fault")):
                 ev.append(e)
         if self.done:
             ev.append("episode_over")
@@ -442,7 +506,7 @@ class SkidCellServer(object):
                 events.append("grasped:%s" % hit["tag"])
         elif sc.held is not None:
             ld = sc.grip_load()
-            if ld is not None and (ld[0] > GRIP["slip_force_N"] or ld[1] > GRIP["slip_torque_Nm"]):
+            if ld is not None and (ld[0] > GRIP["slip_force_N"] or ld[1] > WELD_ROT_ROWS * GRIP["slip_torque_Nm"]):
                 self._slip += 1
                 if self._slip >= GRIP["slip_ticks"]:
                     self._slip = 0
@@ -485,11 +549,22 @@ class SkidCellServer(object):
         return events
 
     def _watch(self):
+        """The safety watch (v0.6): a press of a robot link or finger past the limits for press_ticks ticks is a
+        protective stop (the arm and the carriage halt, motion is refused for stop_lock_s; counted, reported); a press
+        past damage_force_N for press_ticks ticks, or more than max_stops stops in the shift, is a safety void and
+        locks the robot out for the rest of the shift. A press that was on when a stop came, or during its lock, counts
+        again only once its force has fallen below the limit (the program gets the chance to back off)."""
         sc, m, d = self.scene, self.scene.model, self.scene.data
         events = []
-        thr_r = float(self.cfg["safety"]["robot_force_N"])
-        thr_d = float(self.cfg["safety"]["device_force_N"])
-        n_ticks = int(self.cfg["safety"].get("press_ticks", 3))
+        S = self.cfg["safety"]
+        thr_r = float(S["robot_force_N"])
+        thr_d = float(S["device_force_N"])
+        thr_x = float(S.get("damage_force_N", 400.0))
+        n_ticks = int(S.get("press_ticks", 3))
+        t = float(d.time)
+        if self._stop_until is not None and t >= self._stop_until - 1e-9:
+            self._stop_until = None
+            events.append("protective_stop_cleared")
         now = {}
         for i in range(d.ncon):
             con = d.contact[i]
@@ -508,17 +583,58 @@ class SkidCellServer(object):
         for key, fn in now.items():
             thr = thr_d if key[2] == 7 else thr_r
             if fn > thr:
-                cnt, peak = self._press.get(key, (0, 0.0))
-                press[key] = (cnt + 1, max(peak, fn))
+                cnt, peak, cx = self._press.get(key, (0, 0.0, 0))
+                press[key] = (cnt + 1, max(peak, fn), cx + 1 if fn > thr_x else 0)
         self._press = press
-        for key, (cnt, peak) in press.items():
-            if cnt == n_ticks:
-                other = m.body(key[1]).name
-                tag = sc.body_tag.get(key[1])
-                what = "%s:%s:%s:%.0fN" % ("device_force" if key[2] == 7 else "robot_contact", m.body(key[0]).name, tag or other, peak)
-                self.violations.append({"t": float(d.time), "what": what, "force_N": peak})
-                events.append("safety:" + what)
+        self._latched = set(k for k in self._latched if k in press)
+        stopped = self._lockout or self._stop_until is not None
+        if stopped:
+            self._latched |= set(press)
+        for key in sorted(press):
+            cnt, peak, cx = press[key]
+            link = m.body(key[0]).name
+            other = m.body(key[1]).name
+            tag = sc.body_tag.get(key[1])
+            if cx == n_ticks:
+                # damage-level contact: a void, and the robot is taken out of service for the rest of the shift
+                what = "robot_damage:%s:%s:%.0fN" % (link, tag or other, peak)
+                self.violations.append({"t": t, "what": what, "force_N": peak})
+                events.append("safety:damage:%s:%.0fN" % (link, peak))
+                if not self._lockout:
+                    self._lockout = True
+                    self._stop_until = None
+                    self._halt()
+                    events.append("safety:locked_out")
+                stopped = True
+                self._latched |= set(press)
+            if cnt >= n_ticks and key not in self._latched and not stopped:
+                # the protective stop: the event names the robot's link, never the device it pressed on
+                self.stops.append({"t": t, "what": "%s:%s:%.0fN" % (link, tag or other, peak), "link": link, "force_N": peak,
+                                   "class": "device" if key[2] == 7 else "structure"})
+                events.append("protective_stop:%s:%.0fN" % (link, peak))
+                self._halt()
+                stopped = True
+                self._latched |= set(press)
+                if len(self.stops) > int(S.get("max_stops", 5)):
+                    self._lockout = True
+                    self.violations.append({"t": t, "what": "protective_stops:%d" % len(self.stops), "force_N": peak})
+                    events.append("safety:locked_out")
+                else:
+                    self._stop_until = t + float(S.get("stop_lock_s", 5.0))
         return events
+
+    def _halt(self):
+        """Stop the arm and the carriage where they are (a protective stop): their targets become the measured pose."""
+        sc = self.scene
+        a = sc.arm
+        q = np.clip(a.q(), a.lower, a.upper)
+        a.q_cmd = q.copy()
+        a.q_goal = q.copy()
+        if a.mode == "cartesian":
+            a.T_goal = a.fk_cmd()
+        a.write_ctrl()
+        sc.rail_goal = sc.rail_cmd = sc.rail_x()
+        sc.lift_goal = sc.lift_cmd = sc.lift_z()
 
     def _voids(self):
         v = [{"t": float(t), "what": r} for t, r in self.proc.voids]
@@ -538,6 +654,8 @@ class SkidCellServer(object):
             "parts": s["parts"], "startup": s["startup"], "lineup_at_start": s["lineup_at_start"], "first_start_t": s["first_start_t"],
             "window_fraction": s["window_fraction"], "events": s["events"], "shutdown": s["shutdown"], "log": s["log"], "logs": s["logs"],
             "violations": list(self.violations), "safety_ok": len(self.violations) == 0,
+            "protective_stops": list(self.stops), "protective_stop_count": len(self.stops), "locked_out": bool(self._lockout),
+            "t101_overflow_t": s.get("t101_overflow_t"),
             "illegal_call_count": int(self.illegal_calls), "internal_errors": int(self.internal_errors), "calls": dict(self.calls),
             "step_calls": int(self.step_calls), "program_time_s": float(self.program_used), "cell_work_s": float(self.work_wall),
             "camera_frames_total": int(self.frames_used), "camera_frames": dict(self.frames_by_camera),

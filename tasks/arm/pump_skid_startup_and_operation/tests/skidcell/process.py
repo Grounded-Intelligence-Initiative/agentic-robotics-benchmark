@@ -14,7 +14,8 @@ joint angles, the selector, button presses) and advances:
   it); fouling raises the differential pressure; the changeover lever V-111 turns 180 degrees from A to B; a debris
   slug lands in the chamber in service when it comes; a chamber taken out of service stays full;
 * the tanks: T-101 (fed by the plant's supply through a float valve that holds its level; the make-up valve V-106
-  bypasses the float valve), T-201 (drawn off by the consumer at the demand from the moment the operating window
+  bypasses the float valve; at 95 % it overflows to the drain, which holds its level there: v0.6, a record, not a
+  void), T-201 (drawn off by the consumer at the demand from the moment the operating window
   opens), the residual chlorine in T-201 (a well-mixed tank; the dosing pump P-301 meters stock solution from the drum
   the selector V-303 lines up, through the needle valve V-301) and the analyser AI-201 (a 20 s first-order lag);
 * the product line's flow control valve V-105 and its bypass V-107 in parallel;
@@ -96,6 +97,7 @@ class Process(object):
         self.Ps = self.Pd = self.dPf = 0.0
         self.q_dose = 0.0
         self.float_stuck = False         # the float valve on T-101's supply stuck shut (a fault)
+        self.t101_overflow_t = None      # v0.6: when T-101 first ran over to the drain (no void: the start-up's line-up credit)
         self.q_makeup = 0.0
         self.q_float = 0.0
         self.drum = {"A": float(p.get("drumA_frac", 0.7)) * DRUM_L, "B": float(p.get("drumB_frac", 0.9)) * DRUM_L}
@@ -346,8 +348,13 @@ class Process(object):
         self.q_makeup = KV["V-106_max"] * x106 * math.sqrt(max(0.0, float(self.p.get("supply_dp_bar", 2.0))))
         supply = self.q_float + self.q_makeup
         self.h101 = _clip(self.h101 + dt * (supply - self.Qm) / 3600.0 / a1, 0.0, TANKS["T-101"]["height_m"] * 1.02)
-        if self.level_pct("T-101") >= OVERFLOW_PCT and not any(v[1] == "supply_tank_overflow" for v in self.voids):
-            self.voids.append((self.t, "supply_tank_overflow"))
+        if self.level_pct("T-101") >= OVERFLOW_PCT:
+            # v0.6: T-101's overflow runs to the drain and holds the level at the overflow (water wasted, no damage):
+            # recorded, it costs the start-up's line-up credit (episode.py); before v0.6 it voided the episode
+            self.h101 = OVERFLOW_PCT / 100.0 * TANKS["T-101"]["height_m"]
+            if self.t101_overflow_t is None:
+                self.t101_overflow_t = self.t
+                self.log.append((self.t, "T-101 overflowing to the drain"))
         draw = self.demand if (self.h201 > 0.02 and self.t >= DEMAND_FROM_S) else 0.0
         self.h201 = _clip(self.h201 + dt * (self.Qm - draw) / 3600.0 / a2, 0.0, TANKS["T-201"]["height_m"] * 1.02)
         if self.level_pct("T-201") >= OVERFLOW_PCT and not any(v[1] == "product_tank_overflow" for v in self.voids):
@@ -424,6 +431,6 @@ class Process(object):
                 "cav": self.cav, "cav_s": self.cav_s, "airbound": self.airbound, "deadhead_s": self.deadhead_s, "h101_pct": self.level_pct("T-101"),
                 "h201_pct": self.level_pct("T-201"), "c201": self.c201, "c_disp": self.c_disp, "demand": self.demand, "q_dose": self.q_dose,
                 "airlock": self.airlock, "alarms": dict(self.alarms), "horn": self.horn, "u": dict(self.u), "voids": list(self.voids),
-                "spray_301": self.spray_301, "float_stuck": self.float_stuck, "q_makeup": self.q_makeup, "q_float": self.q_float,
+                "spray_301": self.spray_301, "float_stuck": self.float_stuck, "t101_overflow_t": self.t101_overflow_t, "q_makeup": self.q_makeup, "q_float": self.q_float,
                 "h101_set_pct": 100.0 * self.h101_set / TANKS["T-101"]["height_m"], "drum_l": dict(self.drum),
                 "selected_drum": self.selected_drum(), "suction_dry": self.suction_dry, "common_alarm": self.common_alarm()}

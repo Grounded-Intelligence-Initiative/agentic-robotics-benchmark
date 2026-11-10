@@ -12,7 +12,10 @@
  "safety": {
   "robot_force_N": 40.0,
   "device_force_N": 150.0,
-  "press_ticks": 3
+  "press_ticks": 3,
+  "stop_lock_s": 5.0,
+  "damage_force_N": 400.0,
+  "max_stops": 5
  },
  "route_gate": {
   "forbidden_calls": [
@@ -33,5 +36,5 @@
   ],
   "max_submission_mb": 60
  },
- "note": "the grader's cell configuration; cell_config.json in the payload is this file minus the grader-only keys (runner_account, socket_sample_s, privileged_program_time_cap_s). program_time_cap_s caps the program's own time per episode: the wall clock minus the cell's simulation (step) and rendering (get_camera), which the sim cap and the frame budget bound (cellkit.wire); cpu_cap_factor x program_time_cap_s = the program's CPU seconds; privileged_program_time_cap_s caps the oracle's episodes, whose reference program steps the cell inside its one call"
+ "note": "the grader's cell configuration; cell_config.json in the payload is this file minus the grader-only keys (runner_account, socket_sample_s, privileged_program_time_cap_s), plus the commissioning service's window. program_time_cap_s caps the program's own time per episode: the wall clock minus the cell's simulation (step) and rendering (get_camera), which the sim cap and the frame budget bound (cellkit.wire); cpu_cap_factor x program_time_cap_s = the program's CPU seconds; privileged_program_time_cap_s caps the oracle's episodes, whose reference program steps the cell inside its one call"
 }

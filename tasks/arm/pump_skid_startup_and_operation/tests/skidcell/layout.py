@@ -12,7 +12,9 @@ P-101, ...); each site builds and numbers its skid its own way. What a seed draw
   with a lever, the minimum-flow valve a ball valve or a small gate valve, the vents small ball valves or needle valves;
   handwheel sizes, spokes, turns, frictions, lever lengths, colours;
 * the gauges' types (range and unit) at PI-101, PI-103, PDI-111 and FI-105 (textures.GAUGE_KINDS);
-* the shutdown state the previous shift left: two or three valves are not where the operating procedure expects them;
+* the shutdown state the previous shift left: two or three valves are not where the operating procedure expects them
+  (v0.6: the minimum-flow return V-104 stands open after a shutdown by the SOP, which leaves it open, and a V-104 left
+  out of place is shut; before v0.6 every site started with V-104 shut and a V-104 "out of place" stood open);
 * the process parameters (pump curve, tank levels, residual chlorine, the consumer's demand, filter fouling, the
   dosing pump, the drums, the strainer chambers' fouling) and the operating window's events (always a change of the
   consumer's demand, plus three faults out of: a debris slug on the strainer, a stuck float valve on the supply tank,
@@ -249,8 +251,9 @@ def draw_layout(seed, cfg=None):
     dev["P-101"] = {"builder": "pump", "casing": [mx(x["P-101"]), 0.02, 0.44], "direction": side}
     dev["P-301"] = {"builder": "dosing_pump", "pos": [mx(x["P-301"]), 0.0, 0.30], "direction": side}
     dev["F-101"] = {"builder": "filter", "a": [mx(x["F-101A"]), 0.04], "b": [mx(x["F-101B"]), 0.04], "z0": 0.30, "z1": 0.90}
-    # the shutdown state the previous shift left (fractions of full travel; V-111 / V-303: the lever angle, 0 = A)
-    initial = {"V-101": 0.0, "V-102": 0.0, "V-103": 0.0, "V-104": 0.0, "V-105": 0.0, "V-106": 0.0, "V-107": 0.0, "V-111": 0.0,
+    # the shutdown state the previous shift left (fractions of full travel; V-111 / V-303: the lever angle, 0 = A). The
+    # SOP's shutdown (section 4) leaves the minimum-flow return V-104 open, so it stands open (v0.6)
+    initial = {"V-101": 0.0, "V-102": 0.0, "V-103": 0.0, "V-104": 1.0, "V-105": 0.0, "V-106": 0.0, "V-107": 0.0, "V-111": 0.0,
                "V-112": 0.0, "V-301": _u(rng, 0.25, 0.75), "V-302": 0.0, "V-303": 0.0, "HS-101": "OFF"}
     wrong_pool = ["V-103", "V-105", "V-102", "V-112", "V-104", "V-106", "V-107", "V-303"]
     n_wrong = int(rng.choice([2, 3]))
@@ -258,7 +261,13 @@ def draw_layout(seed, cfg=None):
     for wtag in wrong:
         if wtag == "V-303":
             initial[wtag] = math.pi
-        elif styles.get(wtag) in ("lever", "knob") and wtag in ("V-102", "V-112", "V-104"):
+        elif wtag == "V-104":
+            # v0.6: out of place is SHUT (its line-up position is open); a handwheel keeps its draw, so every other
+            # random draw of the site is the one before v0.6
+            if styles.get(wtag) not in ("lever", "knob"):
+                _u(rng, 0.25, 0.6)
+            initial[wtag] = 0.0
+        elif styles.get(wtag) in ("lever", "knob") and wtag in ("V-102", "V-112"):
             initial[wtag] = 1.0
         else:
             initial[wtag] = _u(rng, 0.25, 0.6)

@@ -24,7 +24,9 @@ All times are the cell's simulated clock (`sim_time`, seconds from the start of 
 ## 1. Start-up
 
 1.1 **Line-up.** Before P-101 is started, every valve must be in its line-up position. Check each one: the previous
-shift may have left some of them elsewhere.
+shift may have left some of them elsewhere. Check the make-up valve V-106 first: left open, it fills T-101 to its
+overflow within minutes (in 1.5-10 minutes, typically 2-6, while P-101 stands), since the float valve shuts and the
+make-up keeps coming.
 
 | tag | service | line-up position |
 |---|---|---|
@@ -137,7 +139,8 @@ wastes the standby drum. Changing over in that last 5 %, before drum A runs dry,
 refills T-101). Open the make-up valve V-106 (it bypasses the float valve) and hold T-101 between 40 and 80 % with it:
 open it about as far as the transfer needs and re-set it as LG-101 trends. Act before T-101 runs down to about 8 %:
 P-101 then trips on dry running. Never open V-106 while the float valve works: the float valve then shuts, and once the
-make-up passes more than the transfer T-101 overfills (at 95 % it overflows: the episode is void); a make-up valve that
+make-up passes more than the transfer T-101 overfills (at 95 % it overflows to the drain: the shift loses its line-up
+credit, section 6); a make-up valve that
 is already open when the float valve sticks is not this procedure and earns nothing. When P-101 stops at the shift's
 end, close V-106.
 
@@ -158,15 +161,23 @@ In this order:
 4. close V-101 fully (and V-106 if it was opened in AOP-5);
 5. turn HS-101 to OFF.
 
+The minimum-flow return V-104 stays open: it is the pump's flow path at the next start.
+
 ## 5. Never
 
 Each of these ends the shift badly (the episode scores 0):
 * running P-101 with no flow path (V-103 and V-104 both shut) for 30 s (deadheading: seal damage);
 * 300 s of cavitation in all;
-* T-201 or T-101 reaching 95 % (overflow);
+* T-201 reaching 95 % (it overflows);
 * pressing the EMERGENCY STOP (no situation on this shift calls for it);
-* the robot hitting the skid: more than 40 N for 30 ms on anything but a handle or a button, more than 150 N on a handle
-  or a button.
+* the robot damaging the skid, or being taken out of service. The robot cell stops the arm on a hard contact, as a
+  collaborative robot does: more than 40 N for 30 ms on anything but a handle or a button, or more than 150 N on a
+  handle or a button, is a protective stop (the arm halts for 5 s, `cell_manual.md` section 4), which costs time but
+  not the shift. Contact above 400 N for 30 ms (it can bend a stub or crack a sight glass) or a sixth protective stop
+  in the shift takes the robot out of service for the rest of the shift.
+
+T-101 reaching 95 % overflows to the drain: water is wasted, nothing is damaged, and the shift loses its line-up
+credit (section 6).
 
 Running P-101 with V-101 shut (or T-101 nearly empty) trips the motor protection after 5 s (FAULT lamp): remove the
 cause, press RESET / ACK, start again. The selector at OFF or AUTO stops P-101 (AUTO is not available on this skid).
@@ -175,8 +186,12 @@ cause, press RESET / ACK, start again. The selector at OFF or AUTO stops P-101 (
 
 | part | weight | what counts |
 |---|---|---|
-| start-up | 0.20 | at the first start of P-101: the line-up of 1.1 (0.05) and a primed casing (0.04); a clean start: no trip and no deadheading in its first 120 s, still running then (0.04); V-103 fully open within 240 s of the start and before 600 s (0.04); P-301 dosing at 600 s (0.03) |
+| start-up | 0.20 | at the first start of P-101: the line-up of 1.1 (0.05; lost if T-101 overflows during the shift) and a primed casing (0.04); a clean start: no trip and no deadheading in its first 120 s, still running then (0.04); V-103 fully open within 240 s of the start and before 600 s (0.04); P-301 dosing at 600 s (0.03) |
 | operation | 0.25 | the fraction of the window with LG-201 in 55-75 % (0.125) and with AI-201 in 1.8-2.6 mg/L (0.125) |
 | events | 0.25 | split equally between the window's events, the abnormal situations of section 3 that happen on the shift. AOP-2: in band and matched (or recovering towards 65 %) 360 s after the change. AOP-1: changed over from the clogged chamber to the other one within 240 s of the alarm (0.5 of the event), the chamber changed to free of air when it came into service (0.3), RESET after (0.2) (a slug that never raises the alarm in the window is not judged; changing over on the trend, after the slug came and before the alarm, counts as on time). AOP-3: dosing again within 300 s, from the drum that was lined up when the pump air-locked. AOP-4: V-303 turned to drum B once drum A was below 5 % (or dry), and dosing from drum B within 300 s of drum A running dry. AOP-5: V-106 opened after the float valve stuck (it was closed then) and before P-101 trips on dry running, and no such trip until the shift ends (not judged if T-101 never reaches its low alarm with V-106 closed; a V-106 already open when the float valve stuck earns nothing). AOP-6: P-101 running again within 180 s (0.5), restarted with V-103 closed (0.25), dosing again within 300 s (0.25) |
 | shutdown | 0.15 | after 1500 s: P-301 stopped before P-101 (0.03), V-103 closed before P-101 stops (0.04), P-101 stopped (0.03), V-101 closed at the end (0.03), HS-101 at OFF at the end (0.02) |
 | log sheet | 0.15 | 0.0125 for each of the six instruments of 2.3 recorded correctly in each of the two rounds |
+
+A protective stop of the robot (section 5) costs no credit by itself, only the robot's time; the robot taken out of
+service (contact above 400 N for 30 ms, or a sixth protective stop in the shift) ends the shift badly like the other
+cases of section 5. T-101's overflow costs the line-up credit only.

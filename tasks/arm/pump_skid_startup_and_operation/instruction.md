@@ -39,8 +39,8 @@ levels, the consumer's draw, the drums) and what goes wrong, and when. The tag p
 
 `operate.py` exposing `solve(cell) -> None` (plus any helper modules, optional `run.sh`). The grader runs it once per
 hidden episode (8 episodes, eight sites of the series) in its own cell. It talks to the cell through `cell` (API in `~/given/cell/cell_api.md`):
-the robot's own state (joints, tool pose, gripper width and grip signal, the wrist load, the rail and the lift), the
-horn, the two RGB-D cameras (`overview`, `wrist`), the site's equipment list, and `log_reading` for the log sheet (site
+the robot's own state (joints, tool pose, gripper width and grip signal, the wrist's force-torque estimate, the
+protective stop, the rail and the lift), the horn, the two RGB-D cameras (`overview`, `wrist`), the site's equipment list, and `log_reading` for the log sheet (site
 tags); nothing else about the skid. Per episode: 1800 s of
 simulated time (the clock advances only inside `step`); 1200 s of program time, which is the episode's wall clock minus
 the time the cell spends simulating (inside `step`) and rendering (inside `get_camera`), so it measures your program's
@@ -68,13 +68,14 @@ surviving process of the run account voids the contract gate.
 | `~/given/sop.md` | the operating procedure: start-up, operation, the abnormal-situation procedures, shutdown, what never to do, how the shift is scored |
 | `~/given/pid.png` | the skid's P&ID (process and tags; schematic) |
 | `~/given/equipment_manual.md` | every device: how it is built, operated and read; the gauge scales; what varies between skids |
-| `~/given/cell/cell_manual.md` | the robot cell: frame, robot, rail and lift, control, the grip rule, safety, the cameras with their calibration, time and budgets |
+| `~/given/cell/cell_manual.md` | the robot cell: frame, robot, rail and lift, control, the wrist load, the grip rule and how a turn reads, safety and protective stops, the cameras with their calibration, time and budgets, commissioning |
 | `~/given/cell/cell_api.md` | the cell's programming manual (the wire API) |
 | `~/given/cell/cell_config.json` | the cell's configuration as far as it is public |
-| `~/given/lib/skidcell/` | the cell's client: `client` (the proxy, `decode_frame`, the program launcher); the cell itself runs in the grader, not in your account |
+| `~/given/lib/skidcell/` | the cell's client: `client` (the proxy, `decode_frame`, the program launcher, `connect_commissioning`); the cell itself runs in the grader and in the commissioning service, not in your account |
 | `~/given/catalog/` | the instrument catalog: every dial face and scale plate the series fits, two sample tag plates (`catalog.md`) |
 | `~/given/panda/` | the robot's MuJoCo model (Apache-2.0) |
 | `~/example/operate.py` | a minimal program (reads frames, moves the carriage, finishes; scores 0): the starting point |
+| `~/commission/run_shift.py` | runs your program in one commissioning shift on a development site, the way the grader runs it (below; keep it out of your submission folder: it starts a process) |
 
 Tools: Python 3.12 (`/opt/venv/bin/python3`; call it by that path, the bare `python3` on your shell's `PATH` may be
 another interpreter) with numpy, scipy, OpenCV (`cv2`, headless), Pillow, MuJoCo 3.14. No network in your session.
@@ -90,28 +91,51 @@ no other program (`os.system`, `os.exec*`, `os.spawn*`, ...).
 
 `operation_score` = the mean over the episodes of the shift's score, `sop.md` section 6: start-up 0.20, operation in
 band 0.25, the window's events 0.25, shutdown 0.15, the log sheet 0.15, judged on the cell's own state and the
-process's true values. An episode in which the pump is deadheaded for 30 s or damaged by 300 s of cavitation, T-201 or
-T-101 overflows, the emergency stop is pressed, or the robot presses on the skid harder than the safety limits (more than
-40 N for 30 ms on anything but a handle or a button, more than 150 N on a handle or a button) scores 0. The reward you
-are judged on is `operation_score` relative to a hidden reference value. Stats (not scored): the parts' means, event
-credits, frames per camera, sim / wall / program time, illegal calls, safety events.
+process's true values. An episode in which the pump is deadheaded for 30 s or damaged by 300 s of cavitation, T-201
+overflows, the emergency stop is pressed, or the robot is taken out of service scores 0. The robot presses on the skid
+harder than the safety limits (more than 40 N for 30 ms on anything but a handle or a button, more than 150 N on a
+handle or a button): the cell makes a protective stop (the arm halts for 5 s, then moves again when commanded); a
+contact above 400 N for 30 ms, or a sixth protective stop in the shift, takes it out of service. T-101 overflowing (to
+the drain) costs the start-up's line-up credit. The reward you are judged on is `operation_score` relative to a hidden
+reference value. Stats (not scored): the parts' means, event
+credits, frames per camera, sim / wall / program time, illegal calls, protective stops, safety events.
 
 ## Rules of the cell (details in `cell_manual.md` / `cell_api.md`)
 
 * The gripper holds a handle by the documented grip rule: closing the fingers on a handle (a handwheel's spoke or rim,
   a lever, a needle valve's knob, the selector's wing) that lies in the pinch box, with the tool's approach and
   closing axes within 30 degrees of the handle's, attaches the handle's moving part to the hand; it then moves only as
-  its own joint allows, slips out above 60 N or 6 N m, and opening the fingers releases it. Buttons are pushed.
+  its own joint allows (move the hand on its circle about the stem, within about 1-2 mm), slips out above 60 N or 3 N m
+  (the moment about the held part's pivot), and opening the fingers releases it. Buttons are pushed.
+* The wrist load is the external wrench on the hand estimated from the joint torques, as on a real Franka (force and
+  moment, world axes, at the tcp; noisy, with an offset to re-zero): it feels contacts, button presses and a held
+  handle's load. What a normal turn and an end stop read: `cell_manual.md` section 3.
+* A hard contact with the skid is a protective stop, as on a collaborative robot (`cell_manual.md` section 4).
 * The process runs only while the cell is stepped; the clock is the cell's `sim_time`.
 * Calls other than the documented public ones answer `{"error": "forbidden"}` and are counted.
 
-## No rehearsal
+## Commissioning on the series' sister sites (no rehearsal of the graded sites)
 
-Like a field operator who takes over a shift on a site of the series, your program works each site for the first time
-in its graded episode: there is no simulator of the skid in your sandbox. What you know before the shift is what the
-documents above say (the procedure, the P&ID, the equipment manual, the instrument catalog, the cell's manuals and
-configuration); the rest your program learns on the shift through the cameras and the robot's state. The robot's own
-model (`~/given/panda/`, MuJoCo) is yours to simulate the arm with.
+Your program is graded on eight sites it has never run on, as a robot program goes to sites it runs unattended. Before
+that, like any automation engineer's, it can be commissioned on sister sites: the commissioning service in your
+sandbox runs the series' cell on 9 development sites (`cell_manual.md` section 8).
+
+* **What it is.** The cell of the graded episodes (the same robot and controller, grip rule, wrist load, safety watch,
+  cameras, process and faults) behind the same calls (`cell_api.md`), plus `reset(site)`, which starts a shift on
+  development site 1-9. You see what a commissioning engineer sees on a sister site: the cameras' real frames, the
+  robot's state and wrist load, the grip, slip and protective-stop events, and through the cameras the lamps and the
+  instruments. The development sites are skids of the series built and numbered within the equipment manual; between
+  them they show every build option, gauge scale and abnormal situation the documents describe.
+* **What it is not.** A rehearsal of the graded shifts or a grader: no development site is a graded site (the graded
+  sites have their own numbering, builds, leftovers, faults and timings), and the service answers no ground truth (no
+  device pose, valve position or process value), no score and no debrief. How a shift went, you judge from what your
+  program saw and recorded. The simulator's code stays out of your sandbox.
+* **Its budget.** 12 commissioning shifts in your session, at most 2 at a time, each under the graded episode's budgets
+  (1800 s of simulated time, 1200 s of program time, 600 frames, 180 s of silence). Plan them: teach-in and single
+  steps first (`skidcell.client.connect_commissioning(site)` in a script of your own), then whole runs of your program
+  (`/opt/venv/bin/python3 ~/commission/run_shift.py --site N`). The count: `/run/skidcell/commission_status.json`.
+
+The robot's own model (`~/given/panda/`, MuJoCo) is yours to simulate the arm with.
 
 ## Notes
 
