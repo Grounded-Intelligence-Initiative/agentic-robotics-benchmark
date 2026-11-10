@@ -342,6 +342,12 @@
     "spec_hash": "sha256:7a19fd2daf742a92fb74ec918545fefe6ce4ccdd6191ca5cc16e79bc6f3a7dda"
   },
   {
+    "content_digest": "sha256:778ed906ff500ae6fe957a49f58e137f7031170a02b7e8667668bccdcb8a9f97",
+    "since": "2026-11-10T18:00:20Z",
+    "slug": "pump_skid_startup_and_operation",
+    "spec_hash": "sha256:114468a1264e92078fd1cec94e2e8ea4b2615625ff6fa9122d8e6b0b00c229ba"
+  },
+  {
     "content_digest": "sha256:f85020f0f15fc5fa1295c98787c5cacf1d21ce53f76cc6e7d0fa6848c274b52f",
     "since": "2026-11-10T12:37:39Z",
     "slug": "quadruped_full_assembly_12dof_ur10e",
