@@ -436,6 +436,14 @@ before it starts. `1cdbc02` refused the key as an unsupported Harbor field.
   falls back to the framework's own Python when the image has no 3.12+
   (AgentsLastExam/ale#100), which lacks the task's packages, so a grader that imports them
   still needs the image's own.
+- The desktop's size became a run setting (AgentsLastExam/ale#107): the docker provider starts
+  every desktop at the run's `desktop_resolution` (default 1024x768), whatever the image's
+  `VNC_RESOLUTION` says, and a task cannot declare its own. The three CAD tasks
+  (`robotic_arm_cad_design_from_photos`, `uav_cad_design_from_photos`,
+  `bimanual_cad_design_from_photos`) were designed, validated and measured at 1440x900, and the
+  views their agents get are screenshots of the desktop: run them with
+  `--set desktop_resolution=1440x900` (their `task.toml` says so). Every other desktop task
+  uses the base's 1024x768, which the default keeps.
 - AgentsLastExam/ale#111 keeps Daytona sandbox names unique for long task names: before it,
   concurrent episodes of one task on Daytona collided and could delete each other's sandboxes.
 - Next: run `hazard_bay_build`'s missions on an H100 on a quiet host, and add `H100` if they
