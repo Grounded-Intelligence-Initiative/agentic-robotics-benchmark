@@ -7,7 +7,8 @@
 > before every hand-off. Where it disagrees with the code or `git log`, the code wins: fix
 > this file.
 >
-> Last updated: 2026-11-03 (§8: the tasks move to the Harbor-based engine, `vendor/ale` @
+> Last updated: 2026-11-10 (§11: task cards in `tasks/cards.toml`; the `ground` platform).
+> Before that: 2026-11-03 (§8: the tasks move to the Harbor-based engine, `vendor/ale` @
 > `1cdbc02`). Before that: 2026-10-21 (§7: task assets: `task-assets.toml`; §9: PR #10
 > hardens the spacecraft task with hybrid wake cells, a telescoping port and an
 > encoder-polarity mux; fresh GPT-6.1 Sol no longer saturates it).
@@ -392,6 +393,26 @@ Following section 4 of `docs/task-assets.md`: `task-assets.toml` names the new d
 re-vendored the fetcher (its docstring names the dataset). File lists, hashes and pinned dataset commits
 are unchanged, since a Hub rename keeps the repository's history. Every task with assets has a new
 content digest, so the registry is re-exported after the merge.
+
+## 11. 2026-11-10 — task cards; the `ground` platform
+
+- **Task cards** (`tasks/cards.toml`, rules in `docs/task-cards.md`): each task on main has a
+  card with a readable `title`, a one-sentence `summary`, the `platforms` it involves (the
+  folder's first, then cross-references) and the `stages` it covers (several in workflow
+  order, or `end-to-end` alone). The file is outside every task folder, so cards change no
+  `spec_hash` or `content_digest`. Maintainers add a task's card before its merge; the website
+  reads the file. 23 cards, one per task on main.
+- **`scripts/task_cards.py`** (`check [--strict]`, `todo`, `context TASK`) and
+  `schemas/task-cards.schema.json`; CI runs `check` in static-checks (a task without a card is
+  a warning; `--strict` is the merge gate). `tests/test_task_cards.py`.
+- **`ground`** ("Ground robot (UGV/AMR)") joins `tasks/platforms.json` after `driving`:
+  wheeled and tracked ground robots that are not car-like vehicles driving a road or a track.
+  No task folder moves; `hazard_bay_build` and `robotic_arm_environment_twin_from_real_photo`
+  name it as a cross-reference. The claim order (legged → `quadruped`/`humanoid`; driving
+  tasks → `driving`; other wheeled or tracked → `ground`) is in `CONTRIBUTING.md` step 3 and
+  `docs/task-cards.md`.
+- **Next**: make `task_cards.py check --strict` a required check once branch protection is
+  on, so no task merges without its card.
 
 ## Open items
 
