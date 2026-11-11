@@ -668,5 +668,10 @@ advances throughout, and no planner search needed bounding.
 
 ### The anchor (amendment 4)
 
-0.9306, the mean of the kept selection runs, with `full_at` 0.98 (unchanged). `ale validate`'s oracle pass on the
-final head is its full-verify measurement (below).
+0.9306, the mean of the kept selection runs, with `full_at` 0.98 (unchanged). `ale validate` from a clean checkout of
+`ec3475b` (validate-fad4682d, 2026-11-11, apollo, engine bfb7505, a separate verifier sandbox of 8 CPUs): `ok`,
+untouched reward 0.0, oracle reward 1.0. The oracle's three episodes repeat their selection runs to the last digit:
+cleaning_score 0.93056 (ratio 0.99995 to the anchor), mean simulated time 2840.13 s (the selection runs': 2550.60,
+2874.56 and 3095.24 s), no safety violation (peak robot contact 72 N), no broken dish. The reference's program time
+averaged 2486 s an episode (budget 10800 s); verify 9953 s (budget 36000 s), the three episodes one after another
+on a busy machine.
