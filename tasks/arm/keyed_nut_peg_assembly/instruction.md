@@ -1,14 +1,15 @@
-# Bayonet nut on the right peg
+# Bayonet nut kit
 
-A Franka Panda arm stands at a table with three upright pegs and one nut. Pick up the nut by its
-handle, fit it onto the peg named in the work order, work it down until it sits on the peg's base
-and let go. The difficulty is that each peg carries a pin and each nut has a hidden **groove** in
-the wall of its hole, a small bayonet maze: the nut only comes down while the pin travels along the
-groove, which means lowering it, turning it about the shaft, lowering it again, turning it again.
-Grooves also have dead ends and false entrances. Every episode brings a new nut whose groove you
-have never seen, and nothing about a nut, seen from outside, tells you where its groove runs: your
-controller has to find its way through the groove by feel, with the arm's force/torque sensor and
-the motion of the nut, within the episode.
+A Franka Panda arm stands at a table with three upright pegs and three nuts of different colours: a
+kit. The work order says which nut goes on which peg. Assemble the whole kit: pick up each nut by its
+handle, fit it onto its peg, work it down until it sits on the peg's base and let go. The difficulty
+is that each peg carries a pin and each nut has a hidden **groove** in the wall of its hole, a small
+bayonet maze: a nut only comes down while the pin travels along the groove, which means lowering it,
+turning it about the shaft, lowering it again, turning it again. Grooves also have dead ends and
+false entrances. Every episode brings new nuts whose grooves you have never seen, and nothing about a
+nut, seen from outside, tells you where its groove runs: your controller has to find its way through
+each groove by feel, with the arm's force/torque sensor and the motion of the nut, within the
+episode. A kit counts only when all three nuts are assembled.
 
 Deliver a controller that does the job from camera images, joint readings and the wrist
 force/torque sensor. You have **8 hours** of wall time for the whole job (exploring, building and
@@ -21,9 +22,9 @@ do not start many in parallel.
 
 | Path | What it is |
 |---|---|
-| `keyed_env.py` | The complete robot environment: table, Panda arm and gripper (robosuite 1.5.2 models), the operational-space controller, the pegs, the nut model, cameras, sensor noise and the credit rule. The grader runs this exact file. Read its docstrings: frames, units, geometry, the nut family and its sampler `sample_nut_spec`, action and observation formats, camera matrices. |
-| `practice_nut.json` | A practice nut `P` (a nut spec with its groove, for `NutEnv(json.load(open(...)))`). `keyed_env.sample_nut_spec(numpy.random.default_rng(seed))` draws as many more as you like from the same family as the graded nuts. `env.gt()` gives the dev sim's ground truth (nut pose, its groove, the peg poses). |
-| `practice_grader/grade.py` | Runs your controller over the grading wire against the practice nut (or any nut spec you pass with `--nut`) on visible seeds and prints which episodes were assembled and how far each got. |
+| `keyed_env.py` | The complete robot environment: table, Panda arm and gripper (robosuite 1.5.2 models), the operational-space controller, the pegs, the nut model, cameras, sensor noise and the credit rule. The grader runs this exact file. Read its docstrings: frames, units, geometry, the nut family and the samplers `sample_nut_spec` and `sample_kit`, action and observation formats, camera matrices. |
+| `practice_kit.json` | A practice kit (`keyed_env.load_kit`: three nut specs with their grooves and the work order; `env = NutEnv(kit["nuts"]); env.reset(seed, kit["order"])`). `keyed_env.sample_kit(numpy.random.default_rng(seed))` draws as many more as you like, exactly as the graded kits are drawn. `env.gt()` gives the dev sim's ground truth (nut poses, their grooves, the peg poses). |
+| `practice_grader/grade.py` | Runs your controller over the grading wire on the practice kit (or a kit file you pass with `--kit`, or new kits drawn with `sample_kit` with `--sample SEED`) and prints which kits were complete, how many nuts each got assembled and how far each got. |
 | `helpers/wire_skeleton.py` | Optional boilerplate for the grading wire (READY / reset / act / close, repeated step indices). |
 
 Python 3.12 is `/opt/venv/bin/python3` (NumPy, SciPy, OpenCV (headless), Pillow, MuJoCo 3.16.0 and
@@ -40,7 +41,7 @@ cameras offscreen on the CPU (`MUJOCO_GL=egl`, already set).
   The pegs are identical except for 1, 2 or 3 dark bands near the top of the shaft. Each episode
   draws the peg positions (centres with x in [-0.02, 0.15], y in [-0.21, 0.21], at least 0.13 m
   apart) and their yaws (uniform over the full circle, which turns the pin with the peg) anew.
-- **Nut.** A ring 45 mm tall (outer radius 28 mm) whose hole (inscribed radius 12.7 mm) fits over
+- **Nuts.** Each nut is a ring 45 mm tall (outer radius 28 mm) whose hole (inscribed radius 12.7 mm) fits over
   the shaft, with a handle bar (16 mm wide, from 25 to 41 mm above the nut's bottom face) reaching
   98 mm from the hole axis. The ring is 24 sectors (15 degrees each, counted counter-clockwise from
   the handle) by 9 layers (5 mm each). The groove is cut into the inner part of the hole wall (out
@@ -53,23 +54,24 @@ cameras offscreen on the CPU (`MUJOCO_GL=egl`, already set).
 but the solid cells beside it narrow the opening near the shaft: a nut resting on the pin drops
 into a riser only while the riser is within about +-4 degrees of the pin. Resting on the pin, the nut's
   bottom is 39.5 mm above the collar; it can come down to 24.5 mm in an entrance riser, to 9.5 mm
-  after the first turn and riser, and to the collar after the second. Each episode places the nut
-  flat on the table with its centre at x in [-0.20, -0.07], y in [-0.20, 0.20] and its yaw
-  (direction of the handle) equal to the nut's azimuth seen from the robot base plus 135 degrees
-  plus a uniform offset within +-60 degrees.
+  after the first turn and riser, and to the collar after the second. Each episode places the three
+  nuts flat on the table with their centres at x in [-0.24, -0.06], y in [-0.24, 0.24], at least
+  0.12 m apart, handles clear of the other nuts, each with its yaw (direction of the handle) equal to
+  its azimuth seen from the robot base plus 135 degrees plus a uniform offset within +-60 degrees.
 - The fingers hold the handle by friction only, so a held nut slowly sags about the grip under its
   own weight; the hand is wide enough to touch a neighbouring peg if it passes close to it.
-- Every graded episode has its own nut, drawn with `sample_nut_spec` from a seed you do not know:
-  its groove, its colour, its mass (0.05 to 0.15 kg) and its surface friction coefficient (0.6 to
-  1.0). Everything else (robot, controller, action and observation formats, cameras, sensor noise,
-  physics settings, peg geometry, layout ranges) is the same as in your dev sim.
-- The **work order** of an episode is the target peg's band count (`peg_bands`, 1 to 3), in every
-  observation; `nut` is just a label of the episode's nut.
+- Every graded episode has its own kit, drawn with `sample_kit` from a seed you do not know: three
+  nuts of three different colours (from `NUT_COLOURS`: blue, green, orange, pink, purple, red, teal,
+  yellow), each with its own groove, mass (0.05 to 0.15 kg) and surface friction coefficient (0.6 to
+  1.0), and a random assignment of the nuts to the pegs. Everything else (robot, controller, action
+  and observation formats, cameras, sensor noise, physics settings, peg geometry, layout ranges) is
+  the same as in your dev sim.
+- The **work order** is in every observation as `order`: a list of `{"colour": name, "peg_bands":
+  1 | 2 | 3}`, one entry per nut, each peg used once. You may assemble the nuts in any sequence.
 
 ## Observation and action
 
-Observation (a JSON object): `t` (step index), `nut`,
-`peg_bands`, `q`, `dq` (7 arm joints), `ee_pos` (gripper site, world frame, m), `ee_quat`
+Observation (a JSON object): `t` (step index), `order`, `q`, `dq` (7 arm joints), `ee_pos` (gripper site, world frame, m), `ee_quat`
 (w, x, y, z), `gripper` (finger opening, m), `wrench` (force N and torque N m at the wrist sensor,
 world frame, with noise and a fixed per-episode bias), `T_world_wrist` (4 x 4 pose of the wrist
 camera, OpenCV convention), and the RGB images `left`, `right` (fixed cameras, 320 x 240) and
@@ -83,8 +85,8 @@ any kind.
 Action: a list of 8 numbers `[dx, dy, dz, drx, dry, drz, grip, cams]` at 10 Hz: a gripper-site
 displacement (world frame, clipped to 0.02 m), a world-frame rotation vector (clipped to 0.15
 rad), the gripper command (-1 open ... +1 closed; the finger force is capped at 20 N) and a camera
-bit mask for the next observation (1 = left, 2 = right, 4 = wrist). An episode lasts at most 800
-steps (80 s simulated): that is the cycle time for one assembly.
+bit mask for the next observation (1 = left, 2 = right, 4 = wrist). An episode lasts at most 2400
+steps (240 s simulated): the cycle time for a kit, 80 s per nut.
 
 ## Deliverable and grading
 
@@ -127,29 +129,28 @@ whether the two replies differ; this record does not change your score. Your con
 state between the steps of an episode (`helpers/wire_skeleton.py` shows one way to do that safely
 with repeated `t`).
 
-The grader runs **16 episodes** in a fixed hidden order, each with its own hidden nut, layout and
-target peg. An episode counts as **assembled** when the nut sits on the **target** peg's
-collar (its bottom within 3 mm of the collar top, tilt below 5 degrees) for 10 consecutive steps
-with the fingers open at least 60 mm and not touching the nut. A nut on the wrong peg, a nut left
-partway down the groove or still held, or a ruined nut is not assembled. The groove walls are
-solid: forcing the pin through them (its centre more than 5 degrees sideways or 1.5 mm up or down
-inside a solid part of the wall, for 3 consecutive steps, while the nut is on the target peg) ruins
-the nut and ends the episode. The episode ends at 800 steps or as soon as the nut is assembled.
-Your result is the **fraction of the 16 episodes assembled**. (The grader also records how far each
-episode got, for diagnosis only; it does not count.) An episode in which the controller crashes,
-answers late or malformed, or makes the simulation unstable (any arm joint faster than 8 rad/s or
-the nut faster than 5 m/s) scores 0. The whole grading run must finish within **6000 s** of wall
-time, simulation and rendering included: budget it at about 375 s per episode, that is about
-0.45 s per step on average including your controller's own time. On the grader a simulation step
-takes about 0.02 s and each requested image about 0.2 s. The budget includes your controller's start-up in
-every episode. The episode under way when the budget runs out, and the episodes after it, score 0.
-Only the final controller is scored.
+The grader runs **10 episodes** in a fixed hidden order, each with its own hidden kit and layout. A
+nut counts as **assembled** when it sits on **its** peg's collar (its bottom within 3 mm of the collar
+top, tilt below 5 degrees) for 10 consecutive steps with the fingers open at least 60 mm and not
+touching it, and it still sits there at the end of the episode. A nut on the wrong peg, left partway
+down its groove or still held is not assembled. The groove walls are solid: forcing a pin through
+them (its centre more than 5 degrees sideways or 1.5 mm up or down inside a solid part of the wall,
+for 3 consecutive steps, while the nut is on its peg) ruins the nut and ends the episode. A kit is
+**complete** when all three nuts are assembled; the episode ends at 2400 steps or as soon as the kit
+is complete. Your result is the **fraction of the 10 kits completed**. (The grader also records how
+many nuts each kit got assembled and how far each nut got, for diagnosis only; they do not count.)
+An episode in which the controller crashes, answers late or malformed, or makes the simulation
+unstable (any arm joint faster than 8 rad/s or a nut faster than 5 m/s) scores 0. The whole grading
+run must finish within **7800 s** of wall time, simulation and rendering included: budget it at
+about 780 s per kit, that is about 0.3 s per step on average including your controller's own time.
+On the grader a simulation step takes about 0.04 s and each requested image about 0.2 s. The budget
+includes your controller's start-up in every episode. The episode under way when the budget runs
+out, and the episodes after it, score 0. Only the final controller is scored.
 
 ## Checking your work
 
-`/opt/venv/bin/python3 /home/user/practice_grader/grade.py` runs your controller against the
-practice nut in your dev sim on visible practice seeds over the same wire: same request shape,
-same deadlines, a few repeated-`t` queries, a new controller process from a fresh copy of the
-submission for every episode, and the same network filter. It prints
-which episodes it saw assembled, how far each got, and whether the run kept within the time
-budget.
+`/opt/venv/bin/python3 /home/user/practice_grader/grade.py` runs your controller in your dev sim on
+visible practice seeds over the same wire: same request shape, same deadlines, a few repeated-`t`
+queries, a new controller process from a fresh copy of the submission for every episode, and the
+same network filter. It prints which kits it saw complete, how many nuts each got assembled, how far
+each got, and whether the run kept within the time budget.

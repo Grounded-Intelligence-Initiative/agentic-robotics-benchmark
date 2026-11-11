@@ -26,7 +26,7 @@ def _dist(a, b):
 
 def main():
     out = sys.stdout
-    ctrl = oracle_ctrl.Oracle()
+    ctrl = oracle_ctrl.KitOracle()
     cur_t, snapshot, candidates = None, None, []
     print("READY", file=out, flush=True)
     for line in sys.stdin:
@@ -36,7 +36,7 @@ def main():
         req = json.loads(line)
         kind = req.get("type")
         if kind == "reset":
-            ctrl = oracle_ctrl.Oracle()
+            ctrl = oracle_ctrl.KitOracle()
             cur_t, snapshot, candidates = None, None, []
             print(json.dumps({"ok": True}), file=out, flush=True)
         elif kind == "act":

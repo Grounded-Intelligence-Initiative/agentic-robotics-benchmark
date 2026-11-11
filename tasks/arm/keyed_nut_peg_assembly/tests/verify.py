@@ -6,11 +6,11 @@ process first (rev-leak R14, SPEC L3), then hands the
 restored submission (size-capped) to the agent account in place, at /home/user/submission, the folder the
 instruction names (ownership changes never follow a symlink). It owns its own copy of
 the robot environment (keyed_env.py, byte-identical to the agent's dev sim) and plays the fixed hidden
-episodes of tests/ref/episodes.json in order (each: a nut drawn with the public `sample_nut_spec` from a
-secret seed, the target peg, the layout and noise seed), drives the agent's controller over the kit wire at the agent's
-UID, and scores every episode from its own simulator state (`NutEnv.episode_score`: 1 if the nut was
-assembled on the target peg, else 0). The metric is the fraction of assembled episodes; the staged
-`NutEnv.progress` is reported as a diagnostic only.
+episodes of tests/ref/episodes.json in order (each: a kit of three nuts and its work order, drawn with the
+public `sample_kit` from a secret seed, and the layout and noise seed), drives the agent's controller over the kit wire at the agent's
+UID, and scores every episode from its own simulator state (`NutEnv.episode_score`: 1 if the whole kit
+was assembled, every nut on its own peg, else 0). The metric is the fraction of complete kits; the
+fraction of nuts assembled and the staged `NutEnv.progress` are reported as diagnostics only.
 
 Reference-solution access: if the submission holds a file `oracle_token` whose SHA-256 equals
 tests/oracle_token.sha256, every observation also carries `_gt` (the ground-truth scene state). Only
@@ -296,6 +296,7 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
     per_nut = {}
     per_stage = {}
     progress = []
+    nuts_done = []
     egress_hits = 0
     budget_exhausted = False
     GuardedSolver.guard = egress_mode == "seccomp"
@@ -313,18 +314,19 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
                 scrub_agent_files(uid, os.path.dirname(workdir), baseline or set())
                 fresh_submission(pristine, workdir, uid, gid)
             solver = None
-            nut = item["nut"]
+            nut = item["id"]
             if time.monotonic() - t_start > budget:
                 budget_exhausted = True
                 scores.append(0.0)
                 per_nut.setdefault(nut, []).append(0.0)
                 continue
-            env = E.NutEnv(specs[nut], early_end=True)
+            env = E.NutEnv(specs[nut]["nuts"], early_end=True)
             score = 0.0
             prog = 0.0
+            ndone = 0
             reason = "ok"
             try:
-                obs = env.reset(int(item["seed"]), int(item["peg_bands"]))
+                obs = env.reset(int(item["seed"]), specs[nut]["order"])
                 solver = GuardedSolver(step_timeout=config.get("step_timeout_s", 30), submission=workdir,
                                        max_restarts=0)
                 solver.reset()
@@ -354,6 +356,7 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
                 else:
                     score = env.episode_score()
                     prog = env.progress()
+                    ndone = env.nuts_assembled()
             except (SolverAborted, SolverMissing, E.ActionError, ValueError, TypeError, OverflowError, KeyError,
                     AttributeError, RecursionError) as exc:
                 aborted += 1
@@ -366,16 +369,16 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
             scores.append(score)
             per_nut.setdefault(nut, []).append(score)
             progress.append(prog)
-            for name, level in (("lifted", 0.25), ("on_target_peg", 0.35), ("assembled", 1.0)):
-                per_stage.setdefault(name, []).append(1.0 if prog >= level else 0.0)
-            log("episode {} ({}, {} bands): assembled={:.0f} progress={:.3f} steps={} {}".format(
-                ep, nut, item["peg_bands"], score, prog, getattr(env, "t", 0), reason))
+            nuts_done.append(ndone)
+            log("episode {} ({}): kit_complete={:.0f} nuts_assembled={} progress={:.3f} steps={} {}".format(
+                ep, nut, score, ndone, prog, getattr(env, "t", 0), reason))
     finally:
         try:
             if solver is not None:
                 solver.close()
         except Exception:  # noqa: BLE001 - closing a broken solver must not crash the grader
             pass
+    per_stage["nuts_assembled_fraction"] = [n / float(E.NUTS) for n in nuts_done]
     return scores, aborted, faults, per_nut, per_stage, egress_hits, budget_exhausted, lock, progress
 
 
@@ -397,9 +400,9 @@ def main():
         plan = json.load(fh)["episodes"]
     specs = {}
     for item in plan:
-        spec = E.check_nut_spec(item["nut"])
-        specs[spec["id"]] = spec
-        item["nut"] = spec["id"]
+        kit = item["kit"]
+        specs[item["id"]] = {"nuts": [E.check_nut_spec(sp) for sp in kit["nuts"]],
+                             "order": [int(b) for b in kit["order"]]}
     try:
         workdir = stage_submission(uid, gid)
     except OSError as exc:
@@ -445,12 +448,11 @@ def main():
                  probe_lock_ok=1.0 if lock.ok else 0.0,
                  reference_token=1.0 if with_gt else 0.0,
                  mean_progress=sum(progress) / len(progress) if progress else 0.0)
-    for nut, vals in sorted(per_nut.items()):
-        extra["score_" + nut] = sum(vals) / len(vals)
     for key, vals in sorted(per_stage.items()):
-        extra["stage_" + key] = sum(vals) / len(vals)
+        if vals:
+            extra[key] = sum(vals) / len(vals)
     verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5), higher_is_better=True,
-                            metric_name="assembly_success_rate", locks_ok=True, extra=extra,
+                            metric_name="kit_success_rate", locks_ok=True, extra=extra,
                             full_at=meta.get("full_at", 1.0))
     write_verdict(verdict)
     log("measured={:.5f} anchor={} ratio={:.3f} reward={:.3f} lock={} aborted={} faults={} egress={}".format(

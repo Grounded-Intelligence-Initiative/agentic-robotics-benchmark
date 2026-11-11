@@ -1,0 +1,83 @@
+{
+ "nuts": [
+  {
+   "id": "P-0",
+   "groove": {
+    "entrance": 11,
+    "turns": [
+     -2,
+     -3
+    ],
+    "dead_ends": [
+     3,
+     3
+    ],
+    "false_entrances": [
+     22,
+     17
+    ]
+   },
+   "mass": 0.1153,
+   "friction": 0.7193,
+   "rgba": [
+    0.16,
+    0.36,
+    0.78,
+    1
+   ]
+  },
+  {
+   "id": "P-1",
+   "groove": {
+    "entrance": 4,
+    "turns": [
+     2,
+     4
+    ],
+    "dead_ends": [
+     1,
+     2
+    ],
+    "false_entrances": [
+     20
+    ]
+   },
+   "mass": 0.1015,
+   "friction": 0.9304,
+   "rgba": [
+    0.78,
+    0.18,
+    0.16,
+    1
+   ]
+  },
+  {
+   "id": "P-2",
+   "groove": {
+    "entrance": 15,
+    "turns": [
+     -3,
+     -3
+    ],
+    "dead_ends": [
+     1,
+     0
+    ],
+    "false_entrances": []
+   },
+   "mass": 0.1026,
+   "friction": 0.7724,
+   "rgba": [
+    0.2,
+    0.62,
+    0.3,
+    1
+   ]
+  }
+ ],
+ "order": [
+  2,
+  1,
+  3
+ ]
+}

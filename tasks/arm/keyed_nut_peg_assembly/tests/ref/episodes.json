@@ -1,465 +1,886 @@
 {
- "note": "fixed hidden grading episodes: a nut drawn with keyed_env.sample_nut_spec from a secret seed, the target peg (band count) and the layout/noise seed",
+ "note": "fixed hidden grading episodes: a kit (three nuts and the work order) drawn with keyed_env.sample_kit from a secret seed, and the layout/noise seed",
  "episodes": [
   {
-   "nut": {
-    "id": "E00",
-    "groove": {
-     "entrance": 1,
-     "turns": [
-      -3,
-      2
-     ],
-     "dead_ends": [
-      1,
-      3
-     ],
-     "false_entrances": []
-    },
-    "mass": 0.0979,
-    "friction": 0.7743,
-    "rgba": [
-     0.2,
-     0.62,
-     0.3,
+   "id": "K00",
+   "kit": {
+    "nuts": [
+     {
+      "id": "K00-0",
+      "groove": {
+       "entrance": 10,
+       "turns": [
+        4,
+        -3
+       ],
+       "dead_ends": [
+        3,
+        0
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.1069,
+      "friction": 0.8912,
+      "rgba": [
+       0.85,
+       0.45,
+       0.12,
+       1
+      ]
+     },
+     {
+      "id": "K00-1",
+      "groove": {
+       "entrance": 14,
+       "turns": [
+        4,
+        3
+       ],
+       "dead_ends": [
+        3,
+        1
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.0833,
+      "friction": 0.7456,
+      "rgba": [
+       0.8,
+       0.35,
+       0.55,
+       1
+      ]
+     },
+     {
+      "id": "K00-2",
+      "groove": {
+       "entrance": 17,
+       "turns": [
+        4,
+        -2
+       ],
+       "dead_ends": [
+        1,
+        2
+       ],
+       "false_entrances": [
+        11
+       ]
+      },
+      "mass": 0.0556,
+      "friction": 0.6002,
+      "rgba": [
+       0.78,
+       0.18,
+       0.16,
+       1
+      ]
+     }
+    ],
+    "order": [
+     2,
+     3,
      1
     ]
    },
-   "peg_bands": 1,
-   "seed": 2921699502556841654
+   "seed": 9232298999805987400
   },
   {
-   "nut": {
-    "id": "E01",
-    "groove": {
-     "entrance": 16,
-     "turns": [
-      4,
-      2
-     ],
-     "dead_ends": [
-      0,
-      2
-     ],
-     "false_entrances": [
-      5,
-      13
-     ]
-    },
-    "mass": 0.0931,
-    "friction": 0.9237,
-    "rgba": [
-     0.15,
-     0.65,
-     0.68,
-     1
+   "id": "K01",
+   "kit": {
+    "nuts": [
+     {
+      "id": "K01-0",
+      "groove": {
+       "entrance": 6,
+       "turns": [
+        3,
+        3
+       ],
+       "dead_ends": [
+        1,
+        3
+       ],
+       "false_entrances": [
+        18,
+        15
+       ]
+      },
+      "mass": 0.0563,
+      "friction": 0.6224,
+      "rgba": [
+       0.78,
+       0.18,
+       0.16,
+       1
+      ]
+     },
+     {
+      "id": "K01-1",
+      "groove": {
+       "entrance": 5,
+       "turns": [
+        4,
+        3
+       ],
+       "dead_ends": [
+        2,
+        3
+       ],
+       "false_entrances": [
+        18,
+        14
+       ]
+      },
+      "mass": 0.0771,
+      "friction": 0.9774,
+      "rgba": [
+       0.16,
+       0.36,
+       0.78,
+       1
+      ]
+     },
+     {
+      "id": "K01-2",
+      "groove": {
+       "entrance": 4,
+       "turns": [
+        4,
+        -2
+       ],
+       "dead_ends": [
+        2,
+        1
+       ],
+       "false_entrances": [
+        17,
+        13
+       ]
+      },
+      "mass": 0.0502,
+      "friction": 0.9404,
+      "rgba": [
+       0.2,
+       0.62,
+       0.3,
+       1
+      ]
+     }
+    ],
+    "order": [
+     1,
+     2,
+     3
     ]
    },
-   "peg_bands": 2,
-   "seed": 5488747301558894573
+   "seed": 7049708731990735673
   },
   {
-   "nut": {
-    "id": "E02",
-    "groove": {
-     "entrance": 8,
-     "turns": [
-      -4,
-      4
-     ],
-     "dead_ends": [
-      2,
-      0
-     ],
-     "false_entrances": [
-      14,
-      19
-     ]
-    },
-    "mass": 0.0555,
-    "friction": 0.9262,
-    "rgba": [
-     0.85,
-     0.45,
-     0.12,
+   "id": "K02",
+   "kit": {
+    "nuts": [
+     {
+      "id": "K02-0",
+      "groove": {
+       "entrance": 2,
+       "turns": [
+        3,
+        -4
+       ],
+       "dead_ends": [
+        3,
+        2
+       ],
+       "false_entrances": [
+        16
+       ]
+      },
+      "mass": 0.1238,
+      "friction": 0.6095,
+      "rgba": [
+       0.78,
+       0.18,
+       0.16,
+       1
+      ]
+     },
+     {
+      "id": "K02-1",
+      "groove": {
+       "entrance": 8,
+       "turns": [
+        2,
+        -3
+       ],
+       "dead_ends": [
+        2,
+        3
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.0922,
+      "friction": 0.8302,
+      "rgba": [
+       0.55,
+       0.25,
+       0.7,
+       1
+      ]
+     },
+     {
+      "id": "K02-2",
+      "groove": {
+       "entrance": 4,
+       "turns": [
+        2,
+        4
+       ],
+       "dead_ends": [
+        1,
+        1
+       ],
+       "false_entrances": [
+        21
+       ]
+      },
+      "mass": 0.1258,
+      "friction": 0.7788,
+      "rgba": [
+       0.8,
+       0.35,
+       0.55,
+       1
+      ]
+     }
+    ],
+    "order": [
+     2,
+     3,
      1
     ]
    },
-   "peg_bands": 3,
-   "seed": 9794864318516197503
+   "seed": 3500841398642806794
   },
   {
-   "nut": {
-    "id": "E03",
-    "groove": {
-     "entrance": 3,
-     "turns": [
-      4,
-      2
-     ],
-     "dead_ends": [
-      2,
-      2
-     ],
-     "false_entrances": []
-    },
-    "mass": 0.0868,
-    "friction": 0.8028,
-    "rgba": [
-     0.2,
-     0.62,
-     0.3,
-     1
+   "id": "K03",
+   "kit": {
+    "nuts": [
+     {
+      "id": "K03-0",
+      "groove": {
+       "entrance": 9,
+       "turns": [
+        3,
+        3
+       ],
+       "dead_ends": [
+        2,
+        1
+       ],
+       "false_entrances": [
+        4
+       ]
+      },
+      "mass": 0.073,
+      "friction": 0.797,
+      "rgba": [
+       0.15,
+       0.65,
+       0.68,
+       1
+      ]
+     },
+     {
+      "id": "K03-1",
+      "groove": {
+       "entrance": 16,
+       "turns": [
+        -3,
+        4
+       ],
+       "dead_ends": [
+        3,
+        1
+       ],
+       "false_entrances": [
+        1,
+        5
+       ]
+      },
+      "mass": 0.0808,
+      "friction": 0.8512,
+      "rgba": [
+       0.78,
+       0.18,
+       0.16,
+       1
+      ]
+     },
+     {
+      "id": "K03-2",
+      "groove": {
+       "entrance": 15,
+       "turns": [
+        -3,
+        -2
+       ],
+       "dead_ends": [
+        0,
+        2
+       ],
+       "false_entrances": [
+        21,
+        18
+       ]
+      },
+      "mass": 0.1268,
+      "friction": 0.927,
+      "rgba": [
+       0.86,
+       0.74,
+       0.16,
+       1
+      ]
+     }
+    ],
+    "order": [
+     3,
+     1,
+     2
     ]
    },
-   "peg_bands": 1,
-   "seed": 11880754234100402635
+   "seed": 17060308538148111875
   },
   {
-   "nut": {
-    "id": "E04",
-    "groove": {
-     "entrance": 2,
-     "turns": [
-      -3,
-      3
-     ],
-     "dead_ends": [
-      2,
-      0
-     ],
-     "false_entrances": []
-    },
-    "mass": 0.099,
-    "friction": 0.9489,
-    "rgba": [
-     0.16,
-     0.36,
-     0.78,
-     1
+   "id": "K04",
+   "kit": {
+    "nuts": [
+     {
+      "id": "K04-0",
+      "groove": {
+       "entrance": 3,
+       "turns": [
+        -4,
+        4
+       ],
+       "dead_ends": [
+        1,
+        2
+       ],
+       "false_entrances": [
+        20,
+        15
+       ]
+      },
+      "mass": 0.0943,
+      "friction": 0.703,
+      "rgba": [
+       0.2,
+       0.62,
+       0.3,
+       1
+      ]
+     },
+     {
+      "id": "K04-1",
+      "groove": {
+       "entrance": 5,
+       "turns": [
+        2,
+        2
+       ],
+       "dead_ends": [
+        3,
+        2
+       ],
+       "false_entrances": [
+        19
+       ]
+      },
+      "mass": 0.086,
+      "friction": 0.8435,
+      "rgba": [
+       0.16,
+       0.36,
+       0.78,
+       1
+      ]
+     },
+     {
+      "id": "K04-2",
+      "groove": {
+       "entrance": 20,
+       "turns": [
+        -3,
+        3
+       ],
+       "dead_ends": [
+        0,
+        3
+       ],
+       "false_entrances": [
+        5,
+        1
+       ]
+      },
+      "mass": 0.1491,
+      "friction": 0.6305,
+      "rgba": [
+       0.8,
+       0.35,
+       0.55,
+       1
+      ]
+     }
+    ],
+    "order": [
+     3,
+     1,
+     2
     ]
    },
-   "peg_bands": 2,
-   "seed": 17875543444325513877
+   "seed": 17683851368188255355
   },
   {
-   "nut": {
-    "id": "E05",
-    "groove": {
-     "entrance": 1,
-     "turns": [
-      -4,
-      4
-     ],
-     "dead_ends": [
-      1,
-      2
-     ],
-     "false_entrances": []
-    },
-    "mass": 0.1364,
-    "friction": 0.8613,
-    "rgba": [
-     0.86,
-     0.74,
-     0.16,
-     1
+   "id": "K05",
+   "kit": {
+    "nuts": [
+     {
+      "id": "K05-0",
+      "groove": {
+       "entrance": 1,
+       "turns": [
+        -3,
+        -4
+       ],
+       "dead_ends": [
+        0,
+        1
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.1457,
+      "friction": 0.6306,
+      "rgba": [
+       0.55,
+       0.25,
+       0.7,
+       1
+      ]
+     },
+     {
+      "id": "K05-1",
+      "groove": {
+       "entrance": 12,
+       "turns": [
+        4,
+        4
+       ],
+       "dead_ends": [
+        0,
+        2
+       ],
+       "false_entrances": [
+        19,
+        7
+       ]
+      },
+      "mass": 0.142,
+      "friction": 0.8119,
+      "rgba": [
+       0.16,
+       0.36,
+       0.78,
+       1
+      ]
+     },
+     {
+      "id": "K05-2",
+      "groove": {
+       "entrance": 5,
+       "turns": [
+        4,
+        2
+       ],
+       "dead_ends": [
+        2,
+        1
+       ],
+       "false_entrances": [
+        15
+       ]
+      },
+      "mass": 0.1091,
+      "friction": 0.8151,
+      "rgba": [
+       0.2,
+       0.62,
+       0.3,
+       1
+      ]
+     }
+    ],
+    "order": [
+     1,
+     2,
+     3
     ]
    },
-   "peg_bands": 3,
-   "seed": 7420851569582345800
+   "seed": 965843220281458576
   },
   {
-   "nut": {
-    "id": "E06",
-    "groove": {
-     "entrance": 18,
-     "turns": [
-      -4,
-      -4
-     ],
-     "dead_ends": [
-      3,
-      0
-     ],
-     "false_entrances": [
-      7
-     ]
-    },
-    "mass": 0.0858,
-    "friction": 0.6134,
-    "rgba": [
-     0.86,
-     0.74,
-     0.16,
-     1
+   "id": "K06",
+   "kit": {
+    "nuts": [
+     {
+      "id": "K06-0",
+      "groove": {
+       "entrance": 19,
+       "turns": [
+        -3,
+        2
+       ],
+       "dead_ends": [
+        2,
+        0
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.1265,
+      "friction": 0.8444,
+      "rgba": [
+       0.85,
+       0.45,
+       0.12,
+       1
+      ]
+     },
+     {
+      "id": "K06-1",
+      "groove": {
+       "entrance": 22,
+       "turns": [
+        2,
+        -4
+       ],
+       "dead_ends": [
+        0,
+        0
+       ],
+       "false_entrances": [
+        8
+       ]
+      },
+      "mass": 0.1113,
+      "friction": 0.6031,
+      "rgba": [
+       0.15,
+       0.65,
+       0.68,
+       1
+      ]
+     },
+     {
+      "id": "K06-2",
+      "groove": {
+       "entrance": 4,
+       "turns": [
+        -4,
+        3
+       ],
+       "dead_ends": [
+        1,
+        0
+       ],
+       "false_entrances": [
+        12,
+        16
+       ]
+      },
+      "mass": 0.1175,
+      "friction": 0.719,
+      "rgba": [
+       0.78,
+       0.18,
+       0.16,
+       1
+      ]
+     }
+    ],
+    "order": [
+     2,
+     1,
+     3
     ]
    },
-   "peg_bands": 1,
-   "seed": 8327778345590701110
+   "seed": 5790480576618599023
   },
   {
-   "nut": {
-    "id": "E07",
-    "groove": {
-     "entrance": 1,
-     "turns": [
-      -3,
-      4
-     ],
-     "dead_ends": [
-      0,
-      1
-     ],
-     "false_entrances": [
-      13,
-      9
-     ]
-    },
-    "mass": 0.0702,
-    "friction": 0.6121,
-    "rgba": [
-     0.55,
-     0.25,
-     0.7,
-     1
+   "id": "K07",
+   "kit": {
+    "nuts": [
+     {
+      "id": "K07-0",
+      "groove": {
+       "entrance": 7,
+       "turns": [
+        -3,
+        -3
+       ],
+       "dead_ends": [
+        3,
+        1
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.0654,
+      "friction": 0.6869,
+      "rgba": [
+       0.16,
+       0.36,
+       0.78,
+       1
+      ]
+     },
+     {
+      "id": "K07-1",
+      "groove": {
+       "entrance": 8,
+       "turns": [
+        3,
+        4
+       ],
+       "dead_ends": [
+        3,
+        3
+       ],
+       "false_entrances": [
+        0,
+        16
+       ]
+      },
+      "mass": 0.0592,
+      "friction": 0.6809,
+      "rgba": [
+       0.8,
+       0.35,
+       0.55,
+       1
+      ]
+     },
+     {
+      "id": "K07-2",
+      "groove": {
+       "entrance": 17,
+       "turns": [
+        4,
+        -3
+       ],
+       "dead_ends": [
+        0,
+        1
+       ],
+       "false_entrances": [
+        14
+       ]
+      },
+      "mass": 0.0888,
+      "friction": 0.8757,
+      "rgba": [
+       0.15,
+       0.65,
+       0.68,
+       1
+      ]
+     }
+    ],
+    "order": [
+     1,
+     3,
+     2
     ]
    },
-   "peg_bands": 2,
-   "seed": 12051829806963112611
+   "seed": 15273615874241495340
   },
   {
-   "nut": {
-    "id": "E08",
-    "groove": {
-     "entrance": 6,
-     "turns": [
-      4,
-      -3
-     ],
-     "dead_ends": [
-      3,
-      2
-     ],
-     "false_entrances": []
-    },
-    "mass": 0.0617,
-    "friction": 0.758,
-    "rgba": [
-     0.8,
-     0.35,
-     0.55,
-     1
+   "id": "K08",
+   "kit": {
+    "nuts": [
+     {
+      "id": "K08-0",
+      "groove": {
+       "entrance": 5,
+       "turns": [
+        2,
+        -4
+       ],
+       "dead_ends": [
+        0,
+        3
+       ],
+       "false_entrances": [
+        14
+       ]
+      },
+      "mass": 0.136,
+      "friction": 0.7348,
+      "rgba": [
+       0.15,
+       0.65,
+       0.68,
+       1
+      ]
+     },
+     {
+      "id": "K08-1",
+      "groove": {
+       "entrance": 13,
+       "turns": [
+        -3,
+        2
+       ],
+       "dead_ends": [
+        1,
+        3
+       ],
+       "false_entrances": [
+        20,
+        2
+       ]
+      },
+      "mass": 0.061,
+      "friction": 0.8079,
+      "rgba": [
+       0.78,
+       0.18,
+       0.16,
+       1
+      ]
+     },
+     {
+      "id": "K08-2",
+      "groove": {
+       "entrance": 15,
+       "turns": [
+        -2,
+        -4
+       ],
+       "dead_ends": [
+        2,
+        3
+       ],
+       "false_entrances": [
+        20,
+        23
+       ]
+      },
+      "mass": 0.0603,
+      "friction": 0.792,
+      "rgba": [
+       0.16,
+       0.36,
+       0.78,
+       1
+      ]
+     }
+    ],
+    "order": [
+     1,
+     3,
+     2
     ]
    },
-   "peg_bands": 3,
-   "seed": 10816521981964880149
+   "seed": 14290672785958634706
   },
   {
-   "nut": {
-    "id": "E09",
-    "groove": {
-     "entrance": 12,
-     "turns": [
-      -3,
-      4
-     ],
-     "dead_ends": [
-      3,
-      1
-     ],
-     "false_entrances": [
-      3
-     ]
-    },
-    "mass": 0.1394,
-    "friction": 0.9847,
-    "rgba": [
-     0.55,
-     0.25,
-     0.7,
+   "id": "K09",
+   "kit": {
+    "nuts": [
+     {
+      "id": "K09-0",
+      "groove": {
+       "entrance": 10,
+       "turns": [
+        -4,
+        4
+       ],
+       "dead_ends": [
+        1,
+        3
+       ],
+       "false_entrances": [
+        1,
+        18
+       ]
+      },
+      "mass": 0.149,
+      "friction": 0.6594,
+      "rgba": [
+       0.8,
+       0.35,
+       0.55,
+       1
+      ]
+     },
+     {
+      "id": "K09-1",
+      "groove": {
+       "entrance": 21,
+       "turns": [
+        -4,
+        -4
+       ],
+       "dead_ends": [
+        2,
+        0
+       ],
+       "false_entrances": [
+        3
+       ]
+      },
+      "mass": 0.0502,
+      "friction": 0.9209,
+      "rgba": [
+       0.2,
+       0.62,
+       0.3,
+       1
+      ]
+     },
+     {
+      "id": "K09-2",
+      "groove": {
+       "entrance": 12,
+       "turns": [
+        2,
+        2
+       ],
+       "dead_ends": [
+        1,
+        1
+       ],
+       "false_entrances": [
+        23
+       ]
+      },
+      "mass": 0.0945,
+      "friction": 0.6438,
+      "rgba": [
+       0.78,
+       0.18,
+       0.16,
+       1
+      ]
+     }
+    ],
+    "order": [
+     2,
+     3,
      1
     ]
    },
-   "peg_bands": 1,
-   "seed": 16493872982720072619
-  },
-  {
-   "nut": {
-    "id": "E10",
-    "groove": {
-     "entrance": 4,
-     "turns": [
-      4,
-      4
-     ],
-     "dead_ends": [
-      0,
-      2
-     ],
-     "false_entrances": [
-      21
-     ]
-    },
-    "mass": 0.1361,
-    "friction": 0.6105,
-    "rgba": [
-     0.16,
-     0.36,
-     0.78,
-     1
-    ]
-   },
-   "peg_bands": 2,
-   "seed": 10359526967521254495
-  },
-  {
-   "nut": {
-    "id": "E11",
-    "groove": {
-     "entrance": 17,
-     "turns": [
-      -3,
-      2
-     ],
-     "dead_ends": [
-      1,
-      0
-     ],
-     "false_entrances": [
-      5
-     ]
-    },
-    "mass": 0.0759,
-    "friction": 0.8153,
-    "rgba": [
-     0.85,
-     0.45,
-     0.12,
-     1
-    ]
-   },
-   "peg_bands": 3,
-   "seed": 10242335409591305430
-  },
-  {
-   "nut": {
-    "id": "E12",
-    "groove": {
-     "entrance": 15,
-     "turns": [
-      2,
-      4
-     ],
-     "dead_ends": [
-      0,
-      2
-     ],
-     "false_entrances": [
-      5
-     ]
-    },
-    "mass": 0.062,
-    "friction": 0.7621,
-    "rgba": [
-     0.15,
-     0.65,
-     0.68,
-     1
-    ]
-   },
-   "peg_bands": 2,
-   "seed": 9601375702269358434
-  },
-  {
-   "nut": {
-    "id": "E13",
-    "groove": {
-     "entrance": 2,
-     "turns": [
-      -4,
-      -3
-     ],
-     "dead_ends": [
-      0,
-      0
-     ],
-     "false_entrances": [
-      8,
-      11
-     ]
-    },
-    "mass": 0.1418,
-    "friction": 0.7206,
-    "rgba": [
-     0.2,
-     0.62,
-     0.3,
-     1
-    ]
-   },
-   "peg_bands": 3,
-   "seed": 816918805640369894
-  },
-  {
-   "nut": {
-    "id": "E14",
-    "groove": {
-     "entrance": 12,
-     "turns": [
-      -4,
-      -3
-     ],
-     "dead_ends": [
-      0,
-      3
-     ],
-     "false_entrances": [
-      16,
-      20
-     ]
-    },
-    "mass": 0.1054,
-    "friction": 0.815,
-    "rgba": [
-     0.55,
-     0.25,
-     0.7,
-     1
-    ]
-   },
-   "peg_bands": 1,
-   "seed": 15247777977867748479
-  },
-  {
-   "nut": {
-    "id": "E15",
-    "groove": {
-     "entrance": 23,
-     "turns": [
-      3,
-      3
-     ],
-     "dead_ends": [
-      0,
-      3
-     ],
-     "false_entrances": [
-      12,
-      18
-     ]
-    },
-    "mass": 0.0714,
-    "friction": 0.7897,
-    "rgba": [
-     0.78,
-     0.18,
-     0.16,
-     1
-    ]
-   },
-   "peg_bands": 2,
-   "seed": 14385342014989366772
+   "seed": 6281573202370788086
   }
  ]
 }

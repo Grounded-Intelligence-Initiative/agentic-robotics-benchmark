@@ -1,9 +1,9 @@
-"""Keyed (bayonet-groove) nut-on-peg assembly: the task's robot environment (scene, robot, controller, sensors, credit).
+"""Bayonet nut kit: the task's robot environment (scene, robot, controller, sensors, credit).
 
 This file is byte-identical in your dev sim and in the grader. What differs between them is only the
-NUT that is loaded (a nut spec, see `NUT_SPEC_KEYS`). Your dev sim ships one practice nut
-(`practice_nut.json`), and `sample_nut_spec` draws more from the nut family; every graded episode
-loads its own nut, drawn with `sample_nut_spec` from a seed you never see.
+KIT that is loaded: three nut specs (see `NUT_SPEC_KEYS`) and the work order. Your dev sim ships one
+practice kit (`practice_kit.json`, `load_kit`), and `sample_kit` draws more; every graded episode loads
+its own kit, drawn with `sample_kit` from a seed you never see.
 
 Frames and units
 ----------------
@@ -12,11 +12,12 @@ stands at (-0.56, 0, 0.80) facing +x. Metres, radians, seconds. Quaternions are 
 
 Main entry points
 -----------------
-    env = NutEnv(nut_spec)                  # nut_spec = json.load(open("practice_nut.json"))
-    obs = env.reset(seed, peg_bands)        # any int seed: layout + sensor noise; peg_bands in 1..3
+    kit = load_kit("practice_kit.json")     # or sample_kit(numpy.random.default_rng(seed))
+    env = NutEnv(kit["nuts"])               # three nut specs
+    obs = env.reset(seed, kit["order"])     # any int seed: layout + sensor noise; order[i] = bands of nut i's peg
     obs, done, info = env.step(action)      # 10 Hz
-    env.episode_score()                     # 1.0 if the nut is assembled, else 0.0 (see `episode_score`)
-    env.progress()                          # diagnostic progress of the episode (not scored)
+    env.episode_score()                     # 1.0 if the kit is complete, else 0.0 (see `episode_score`)
+    env.nuts_assembled(), env.progress()    # diagnostics (not scored)
     env.gt()                                # ground truth (dev use only)
 
 Action (a list of 8 numbers):
@@ -60,9 +61,11 @@ entrance riser (or a false entrance), to 9.5 mm once it has passed the first tur
 to the collar once it has passed the second. Passing a turn means rotating the nut about the shaft
 while the pin is in the turn channel; the nut turns by -15 degrees per sector the pin advances
 counter-clockwise in the nut frame. Which entrance, which turns and which decoys a nut has differs
-between nuts (the nut spec's `groove`). Every episode places the nut flat on the table at a fresh
-position and yaw: the yaw is the nut's azimuth seen from the robot base (atan2(y - 0, x + 0.56))
-plus 135 degrees plus a uniform offset within +-60 degrees.
+between nuts (the nut spec's `groove`). A kit has NUTS = 3 nuts. Every episode places them flat on
+the table at fresh positions (NUT_REGION, at least NUT_MIN_SPACING apart, handles clear of the other
+nuts) and yaws: each yaw is the nut's azimuth seen from the robot base (atan2(y - 0, x + 0.56)) plus
+135 degrees plus a uniform offset within +-60 degrees. The work order assigns each nut a different
+peg; nut i goes on the peg with order[i] bands (`work_order` names the nuts by colour, `colour_name`).
 
 Nut spec (a dict): {"id": str, "groove": {"entrance": 0..23, "turns": [k1, k2], "dead_ends":
 [n1, n2] (sectors, 0 = none), "false_entrances": [sectors]}, "mass": kg (0.05-0.15), "friction":
@@ -83,7 +86,9 @@ import mujoco
 TIMESTEP = 0.002
 SUBSTEPS = 50                    # -> 10 Hz control
 CONTROL_DT = TIMESTEP * SUBSTEPS
-MAX_STEPS = 800                  # control steps per episode (80 s simulated)
+NUTS = 3                         # nuts in a kit (one per peg)
+CYCLE_STEPS = 800                # cycle time per nut: 80 s simulated
+MAX_STEPS = NUTS * CYCLE_STEPS   # control steps per episode (one kit, 240 s simulated)
 MAX_DPOS = 0.02
 MAX_DROT = 0.15
 TABLE_Z = 0.80
@@ -118,8 +123,10 @@ RISERS = ((0, 1), (2, 4), (5, 7))
 # layout ranges (uniform per episode)
 PEG_REGION = ((-0.02, 0.15), (-0.21, 0.21))
 PEG_MIN_SPACING = 0.13
-NUT_REGION = ((-0.20, -0.07), (-0.20, 0.20))
+NUT_REGION = ((-0.24, -0.06), (-0.24, 0.24))
 NUT_PEG_MIN_DIST = 0.13
+NUT_MIN_SPACING = 0.12       # between nut centres
+HANDLE_CLEAR = 0.07          # handle centre from any other nut centre
 NUT_YAW_CENTER = math.radians(135.0)   # nut yaw = azimuth of the nut from the robot base + this +- spread
 NUT_YAW_SPREAD = math.radians(60.0)
 
@@ -154,7 +161,7 @@ CAMERAS = {
 WRIST = {"fovy": 75.0, "width": 256, "height": 192}
 CAMERA_NAMES = ("left", "right", "wrist")
 NUT_SPEC_KEYS = ("id", "groove", "mass", "friction", "rgba")
-OBS_KEYS = ("t", "nut", "peg_bands", "q", "dq", "ee_pos", "ee_quat", "gripper", "wrench", "T_world_wrist",
+OBS_KEYS = ("t", "order", "q", "dq", "ee_pos", "ee_quat", "gripper", "wrench", "T_world_wrist",
             "left", "right", "wrist")
 
 
@@ -392,8 +399,8 @@ SCENE_XML = """<mujoco model="keyed_nut">
 </mujoco>"""
 
 
-def build_model(spec, layout):
-    """Compile table + Panda + 3 pegs + nut for a layout {pegs: [(x, y, yaw)]*3, nut: (x, y, yaw)}."""
+def build_model(specs, layout):
+    """Compile table + Panda + 3 pegs + the nuts for a layout {pegs: [(x, y, yaw)]*3, nuts: [(x, y, yaw)]}."""
     root = mujoco.MjSpec.from_string(SCENE_XML.format(dt=TIMESTEP, tz2=TABLE_Z / 2, th=TABLE_HALF, rx=ROBOT_BASE[0]))
     wb = root.worldbody
     for name, (pos, tgt, fovy, _w, _h) in CAMERAS.items():
@@ -413,11 +420,13 @@ def build_model(spec, layout):
     objs = mujoco.MjSpec.from_string(
         '<mujoco><compiler angle="radian" autolimits="true"/>'
         '<worldbody>{}{}</worldbody></mujoco>'.format(
-            "".join(peg_body_xml(i, i + 1) for i in range(3)), nut_body_xml(spec)))
+            "".join(peg_body_xml(i, i + 1) for i in range(3)),
+            "".join(nut_body_xml(sp).replace('<body name="nut">', '<body name="nut%d">' % i, 1)
+                    .replace('name="nut_free"', 'name="nut%d_free"' % i, 1) for i, sp in enumerate(specs))))
     for i, (x, y, yaw) in enumerate(layout["pegs"]):
         wb.add_frame(pos=[x, y, TABLE_Z], quat=list(yaw_quat(yaw))).attach_body(objs.body("peg%d" % i), "o_", "")
-    x, y, yaw = layout["nut"]
-    wb.add_frame(pos=[x, y, TABLE_Z + 0.0005], quat=list(yaw_quat(yaw))).attach_body(objs.body("nut"), "o_", "")
+    for i, (x, y, yaw) in enumerate(layout["nuts"]):
+        wb.add_frame(pos=[x, y, TABLE_Z + 0.0005], quat=list(yaw_quat(yaw))).attach_body(objs.body("nut%d" % i), "o_", "")
     for act in root.actuators:
         if act.name.startswith("r_g_gripper_finger_joint"):
             act.gainprm[0] = GRIP_KP
@@ -427,23 +436,35 @@ def build_model(spec, layout):
     return m
 
 
-def sample_layout(rng):
-    """Peg positions/yaws (peg i has i+1 bands) and the nut placement; rejection-sampled."""
-    for _ in range(10000):
+def sample_layout(rng, nuts=NUTS):
+    """Peg positions/yaws (peg i has i + 1 bands) and the nut placements; rejection-sampled."""
+    for _ in range(20000):
         pegs = []
         while len(pegs) < 3:
             x = rng.uniform(*PEG_REGION[0])
             y = rng.uniform(*PEG_REGION[1])
             if all(math.hypot(x - p[0], y - p[1]) >= PEG_MIN_SPACING for p in pegs):
                 pegs.append((float(x), float(y), float(rng.uniform(-math.pi, math.pi))))
-        nx, ny = rng.uniform(*NUT_REGION[0]), rng.uniform(*NUT_REGION[1])
-        az = math.atan2(ny - ROBOT_BASE[1], nx - ROBOT_BASE[0])
-        nyaw = float(wrap_angle(az + NUT_YAW_CENTER + rng.uniform(-NUT_YAW_SPREAD, NUT_YAW_SPREAD)))
-        hx, hy = nx + 0.055 * math.cos(nyaw), ny + 0.055 * math.sin(nyaw)    # handle centre
-        if all(math.hypot(nx - p[0], ny - p[1]) >= NUT_PEG_MIN_DIST and math.hypot(hx - p[0], hy - p[1]) >= 0.09
-               for p in pegs) and abs(hy) < 0.3 and hx > -0.25:
+        placed = []
+        for _k in range(200):
+            if len(placed) == nuts:
+                break
+            nx, ny = rng.uniform(*NUT_REGION[0]), rng.uniform(*NUT_REGION[1])
+            az = math.atan2(ny - ROBOT_BASE[1], nx - ROBOT_BASE[0])
+            nyaw = float(wrap_angle(az + NUT_YAW_CENTER + rng.uniform(-NUT_YAW_SPREAD, NUT_YAW_SPREAD)))
+            hx, hy = nx + 0.063 * math.cos(nyaw), ny + 0.063 * math.sin(nyaw)    # handle centre
+            ok = all(math.hypot(nx - p[0], ny - p[1]) >= NUT_PEG_MIN_DIST and math.hypot(hx - p[0], hy - p[1]) >= 0.09
+                     for p in pegs) and abs(hy) < 0.3 and hx > -0.28
+            for (ox, oy, oyaw) in placed:
+                ohx, ohy = ox + 0.063 * math.cos(oyaw), oy + 0.063 * math.sin(oyaw)
+                ok = ok and math.hypot(nx - ox, ny - oy) >= NUT_MIN_SPACING \
+                    and math.hypot(hx - ox, hy - oy) >= HANDLE_CLEAR and math.hypot(ohx - nx, ohy - ny) >= HANDLE_CLEAR \
+                    and math.hypot(hx - ohx, hy - ohy) >= 0.05
+            if ok:
+                placed.append((float(nx), float(ny), nyaw))
+        if len(placed) == nuts:
             order = rng.permutation(3)
-            return {"pegs": [pegs[i] for i in order], "nut": (float(nx), float(ny), nyaw)}
+            return {"pegs": [pegs[i] for i in order], "nuts": placed}
     raise EnvError("layout sampling failed")
 
 
@@ -451,10 +472,13 @@ def sample_layout(rng):
 # Environment
 # ----------------------------------------------------------------------------------------------
 class NutEnv(object):
+    """One kit: NUTS nuts on the table, each to be assembled on its own peg (the work order)."""
 
-    def __init__(self, nut_spec, render=True, max_steps=MAX_STEPS, early_end=True):
-        self.spec = check_nut_spec(nut_spec)
-        self.nut_id = str(nut_spec["id"])
+    def __init__(self, nut_specs, render=True, max_steps=MAX_STEPS, early_end=True):
+        if isinstance(nut_specs, dict):
+            nut_specs = [nut_specs]
+        self.specs = [check_nut_spec(sp) for sp in nut_specs]
+        self.n = len(self.specs)
         self.early_end = early_end
         self.render_enabled = render
         self.max_steps = int(max_steps)
@@ -462,16 +486,18 @@ class NutEnv(object):
         self._renderers = {}
 
     # ------------------------------------------------------------------ episode
-    def reset(self, seed, peg_bands):
-        if int(peg_bands) not in (1, 2, 3):
-            raise EnvError("peg_bands must be 1, 2 or 3")
-        self.peg_bands = int(peg_bands)
+    def reset(self, seed, order):
+        """order[i] = band count (1-3) of the peg nut i goes on; with three nuts, a permutation of 1, 2, 3."""
+        order = [int(b) for b in order]
+        if len(order) != self.n or any(b not in (1, 2, 3) for b in order) or len(set(order)) != self.n:
+            raise EnvError("order must give each nut a different peg (band count 1-3)")
+        self.order = order
         self.seed = int(seed) & (2 ** 64 - 1)
         place = np.random.default_rng([self.seed & 0xFFFFFFFF, self.seed >> 32, 7])
         self.rng = np.random.default_rng([self.seed & 0xFFFFFFFF, self.seed >> 32, 11])
-        self.layout = sample_layout(place)
+        self.layout = sample_layout(place, self.n)
         self.close()
-        self.model = build_model(self.spec, self.layout)
+        self.model = build_model(self.specs, self.layout)
         self.data = mujoco.MjData(self.model)
         self.fk = mujoco.MjData(self.model)
         self._index()
@@ -481,10 +507,10 @@ class NutEnv(object):
         self.t = 0
         self.done = False
         self.fault = None
-        self.credit = 0.0
-        self.release_count = 0
-        self.broken = False
-        self.force_count = 0
+        self.credit = [0.0] * self.n
+        self.release_count = [0] * self.n
+        self.broken = [False] * self.n
+        self.force_count = [0] * self.n
         self.render_next = CAMERA_NAMES
         return self.observation()
 
@@ -500,19 +526,23 @@ class NutEnv(object):
         self.ft_torque = m.sensor("r_g_torque_ee").adr[0]
         self.ft_site = m.site("r_g_ft_frame").id
         self.wrist_cam = m.camera("r_eye_in_hand").id
-        self.nut_body = m.body("o_nut").id
-        nj = m.joint("o_nut_free")
-        self.nut_qadr, self.nut_dadr = int(nj.qposadr[0]), int(nj.dofadr[0])
-        self.nut_geoms = set(int(i) for i in np.where(m.geom_bodyid == self.nut_body)[0])
+        self.nut_body, self.nut_qadr, self.nut_dadr, self.nut_geoms = [], [], [], []
+        for i in range(self.n):
+            b = m.body("o_nut%d" % i).id
+            j = m.joint("o_nut%d_free" % i)
+            self.nut_body.append(b)
+            self.nut_qadr.append(int(j.qposadr[0]))
+            self.nut_dadr.append(int(j.dofadr[0]))
+            self.nut_geoms.append(set(int(g) for g in np.where(m.geom_bodyid == b)[0]))
         fingers = set()
         for b in range(m.nbody):
             nm = m.body(b).name
             if nm.startswith("r_g_") and ("finger" in nm):
                 fingers.add(b)
         self.finger_geoms = set(int(i) for i in np.where(np.isin(m.geom_bodyid, list(fingers)))[0])
-        self.target_peg = self.peg_bands - 1          # peg body i carries i + 1 bands
+        self.target_peg = [b - 1 for b in self.order]           # peg body i carries i + 1 bands
         self.peg_poses = [tuple(p) for p in self.layout["pegs"]]
-        self.cells = groove_cells(self.spec["groove"])
+        self.cells = [groove_cells(sp["groove"]) for sp in self.specs]
         self._jp, self._jr = np.zeros((3, m.nv)), np.zeros((3, m.nv))
         self._M = np.zeros((m.nv, m.nv))
 
@@ -597,41 +627,33 @@ class NutEnv(object):
             self.fault = "non-finite state"
 
     # ------------------------------------------------------------------ credit
-    def nut_state(self):
-        """(position of the nut origin = hole axis on its bottom face, rotation matrix)."""
+    def nut_state(self, i=0):
+        """(position of nut i's origin = hole axis on its bottom face, rotation matrix)."""
         d = self.data
-        return d.xpos[self.nut_body].copy(), d.xmat[self.nut_body].reshape(3, 3).copy()
+        b = self.nut_body[i]
+        return d.xpos[b].copy(), d.xmat[b].reshape(3, 3).copy()
 
-    def finger_contacts(self):
-        """Number of distinct finger geoms touching the nut."""
-        d = self.data
-        touching = set()
-        for i in range(d.ncon):
-            c = d.contact[i]
-            g1, g2 = int(c.geom1), int(c.geom2)
-            if g1 in self.nut_geoms and g2 in self.finger_geoms:
-                touching.add(g2)
-            elif g2 in self.nut_geoms and g1 in self.finger_geoms:
-                touching.add(g1)
-        return len(touching)
-
-    def finger_bodies_touching(self):
+    def _finger_touch(self, i):
+        """(finger geoms, finger bodies) touching nut i."""
         d, m = self.data, self.model
-        bodies = set()
-        for i in range(d.ncon):
-            c = d.contact[i]
+        geoms, bodies = set(), set()
+        ng = self.nut_geoms[i]
+        for k in range(d.ncon):
+            c = d.contact[k]
             g1, g2 = int(c.geom1), int(c.geom2)
-            if g1 in self.nut_geoms and g2 in self.finger_geoms:
+            if g1 in ng and g2 in self.finger_geoms:
+                geoms.add(g2)
                 bodies.add(int(m.geom_bodyid[g2]))
-            elif g2 in self.nut_geoms and g1 in self.finger_geoms:
+            elif g2 in ng and g1 in self.finger_geoms:
+                geoms.add(g1)
                 bodies.add(int(m.geom_bodyid[g1]))
-        return bodies
+        return geoms, bodies
 
-    def pin_in_wall(self):
-        """True if the centre of the target peg's pin lies inside a solid cell of the nut's wall, more than
+    def pin_in_wall(self, i=0):
+        """True if the centre of nut i's target peg's pin lies inside a solid cell of the nut's wall, more than
         FORCE_ANGLE_TOL sideways or FORCE_Z_TOL up/down from every groove cell of the same layer/sector."""
-        p, R = self.nut_state()
-        px, py, pyaw = self.peg_poses[self.target_peg]
+        p, R = self.nut_state(i)
+        px, py, pyaw = self.peg_poses[self.target_peg[i]]
         rc = (SHAFT_R + PIN_R) / 2
         pin = np.array([px + rc * math.cos(pyaw), py + rc * math.sin(pyaw), TABLE_Z + COLLAR_H + PIN_Z])
         q = R.T @ (pin - p)
@@ -644,15 +666,15 @@ class NutEnv(object):
             lay = int(math.floor((z + dz) / LAYER))
             for dang in (0.0, FORCE_ANGLE_TOL, -FORCE_ANGLE_TOL):
                 sec = int(math.floor(((ang + dang) % 360.0) / da))
-                if (sec, lay) in self.cells or lay < 0:
+                if (sec, lay) in self.cells[i] or lay < 0:
                     return False
         return True
 
-    def stage_now(self):
-        """Instantaneous stage: 0 none, 1 lifted while held, 2 on the target peg (then self.depth_now is
-        the fraction of the groove travelled), 3 seated on it."""
-        p, R = self.nut_state()
-        px, py, pyaw = self.peg_poses[self.target_peg]
+    def stage_now(self, i=0):
+        """Instantaneous stage of nut i: 0 none, 1 lifted while held, 2 on its target peg (then
+        self.depth_now is the fraction of the groove travelled), 3 seated on it."""
+        p, R = self.nut_state(i)
+        px, py, pyaw = self.peg_poses[self.target_peg[i]]
         dxy = math.hypot(p[0] - px, p[1] - py)
         tilt = math.acos(max(-1.0, min(1.0, R[2, 2])))
         top = TABLE_Z + COLLAR_H + PEG_H
@@ -663,66 +685,76 @@ class NutEnv(object):
             if h <= SEAT_TOL and tilt <= SEAT_TILT:
                 return 3
             return 2
-        held = len(self.finger_bodies_touching()) >= 2
+        held = len(self._finger_touch(i)[1]) >= 2
         if held and p[2] - TABLE_Z >= LIFT_HEIGHT:
             return 1
         return 0
+
+    def assembled(self, i):
+        """Nut i was assembled (credit 1) and still sits on its target peg's collar, not ruined."""
+        return self.credit[i] >= 1.0 and not self.broken[i] and self.stage_now(i) == 3
 
     def _post_step(self):
         d = self.data
         if self.fault is None:
             if np.max(np.abs(d.qvel[self.jv])) > INSTAB_ROBOT_QVEL:
                 self.fault = "robot joint speed"
-            elif np.linalg.norm(d.qvel[self.nut_dadr:self.nut_dadr + 3]) > INSTAB_NUT_VEL:
+            elif any(np.linalg.norm(d.qvel[a:a + 3]) > INSTAB_NUT_VEL for a in self.nut_dadr):
                 self.fault = "nut speed"
         if self.fault is not None:
             self.done = True
             return
-        st = self.stage_now()
-        if st >= 2 and not self.broken:
-            self.force_count = self.force_count + 1 if self.pin_in_wall() else 0
-            if self.force_count >= FORCE_STEPS:
-                self.broken = True
-        if self.broken:
-            # the pin was forced through the groove wall: the nut is ruined, the credit stays where it was
-            if self.early_end or self.t >= self.max_steps:
-                self.done = True
-            return
-        if st >= 1:
-            self.credit = max(self.credit, 0.25)
-        if st >= 2:
-            self.credit = max(self.credit, CREDIT_ON_PEG + (CREDIT_DEPTH - CREDIT_ON_PEG) * self.depth_now)
         opening = float(d.qpos[self.gq[0]] - d.qpos[self.gq[1]])
-        if st == 3 and opening >= RELEASE_OPEN and self.finger_contacts() == 0:
-            self.release_count += 1
-        else:
-            self.release_count = 0
-        if self.release_count >= RELEASE_STEPS:
-            self.credit = 1.0
-        if (self.early_end and self.credit >= 1.0) or self.t >= self.max_steps:
+        for i in range(self.n):
+            st = self.stage_now(i)
+            if st >= 2 and not self.broken[i]:
+                self.force_count[i] = self.force_count[i] + 1 if self.pin_in_wall(i) else 0
+                if self.force_count[i] >= FORCE_STEPS:
+                    self.broken[i] = True
+            if self.broken[i]:
+                continue                  # ruined: its credit stays where it was
+            if st >= 1:
+                self.credit[i] = max(self.credit[i], 0.25)
+            if st >= 2:
+                self.credit[i] = max(self.credit[i], CREDIT_ON_PEG + (CREDIT_DEPTH - CREDIT_ON_PEG) * self.depth_now)
+            if st == 3 and opening >= RELEASE_OPEN and not self._finger_touch(i)[0]:
+                self.release_count[i] += 1
+            else:
+                self.release_count[i] = 0
+            if self.release_count[i] >= RELEASE_STEPS:
+                self.credit[i] = 1.0
+        complete = all(self.assembled(i) for i in range(self.n))
+        if (self.early_end and (complete or any(self.broken))) or self.t >= self.max_steps:
             self.done = True
 
     def episode_score(self):
-        """Score of the episode: 1.0 if the nut was assembled (seated on the TARGET peg's collar, within SEAT_TOL
-        and tilt below 5 degrees, for RELEASE_STEPS consecutive steps with the fingers open at least RELEASE_OPEN
-        and not touching it, the nut not ruined), else 0.0 (also after a fault)."""
+        """Score of the episode: 1.0 if the kit is complete at the end: every nut assembled (seated on ITS target
+        peg's collar, within SEAT_TOL and tilt below 5 degrees, for RELEASE_STEPS consecutive steps with the fingers
+        open at least RELEASE_OPEN and not touching it) and still seated there, and no nut ruined; else 0.0 (also
+        after a fault)."""
         if self.fault is not None:
             return 0.0
-        return 1.0 if self.credit >= 1.0 else 0.0
+        return 1.0 if all(self.assembled(i) for i in range(self.n)) and not any(self.broken) else 0.0
+
+    def nuts_assembled(self):
+        """Diagnostic: number of nuts assembled and still seated on their target pegs."""
+        if self.fault is not None:
+            return 0
+        return sum(1 for i in range(self.n) if self.assembled(i))
 
     def progress(self):
-        """Diagnostic only (not scored): the best stage reached during the episode (0 after a fault):
+        """Diagnostic only (not scored): the mean over the nuts of the best stage each reached (0 after a fault):
         0.25 the nut was lifted LIFT_HEIGHT above the table while both fingers held it;
-        0.35 + 0.45 x d  the nut's hole was around the TARGET peg's shaft (axis within ENGAGE_XY, nut below the
+        0.35 + 0.45 x d  the nut's hole was around ITS target peg's shaft (axis within ENGAGE_XY, nut below the
              shaft top), d = how far its bottom has come down from resting on the pin (GROOVE_TOP above the collar,
              d = 0) towards the collar (d = 1); the best d of the episode counts;
-        1.0  the nut sat on the target peg's collar (within SEAT_TOL, tilt below 5 degrees) for RELEASE_STEPS
-             consecutive steps with the fingers open at least RELEASE_OPEN and not touching the nut.
+        1.0  the nut sat on its target peg's collar (within SEAT_TOL, tilt below 5 degrees) for RELEASE_STEPS
+             consecutive steps with the fingers open at least RELEASE_OPEN and not touching it.
         Forcing the pin through the groove wall (`pin_in_wall` for FORCE_STEPS consecutive steps while the nut
-        is on the target peg) ruins the nut: the progress stays at its value from before."""
+        is on its target peg) ruins the nut: its progress stays at its value from before, and the kit fails."""
         if self.fault is not None:
             return 0.0
-        return float(self.credit)
+        return float(sum(self.credit)) / self.n
 
     def info(self):
         return {"t": self.t, "fault": self.fault}
@@ -765,6 +797,10 @@ class NutEnv(object):
         T[:3, 3] = d.cam_xpos[self.wrist_cam]
         return camera_intrinsics(WRIST["fovy"], WRIST["width"], WRIST["height"]), T
 
+    def work_order(self):
+        """[{"colour": name, "peg_bands": b}] per nut (nut i first)."""
+        return [{"colour": colour_name(sp["rgba"]), "peg_bands": b} for sp, b in zip(self.specs, self.order)]
+
     def observation(self):
         d = self.data
         R = d.site_xmat[self.site].reshape(3, 3)
@@ -773,8 +809,7 @@ class NutEnv(object):
         tq = (Rft @ d.sensordata[self.ft_torque:self.ft_torque + 3] + self.wrench_bias[3:]
               + self.rng.normal(0, WRENCH_NOISE * 0.1, 3))
         obs = {"t": int(self.t),
-               "nut": self.nut_id,
-               "peg_bands": self.peg_bands,
+               "order": self.work_order(),
                "q": np.round(d.qpos[self.jq], 6),
                "dq": np.round(d.qvel[self.jv], 6),
                "ee_pos": np.round(d.site_xpos[self.site], 6),
@@ -812,22 +847,34 @@ class NutEnv(object):
 
     # ------------------------------------------------------------------ ground truth (dev only)
     def gt(self):
-        p, R = self.nut_state()
-        return {"nut_pos": p.tolist(), "nut_quat": quat_from_mat(R).tolist(), "groove": self.spec["groove"],
-                "pegs": [list(pp) for pp in self.peg_poses], "target_peg": self.target_peg,
-                "stage": self.stage_now(), "credit": self.credit, "broken": self.broken, "t": self.t, "fault": self.fault}
+        nuts = []
+        for i in range(self.n):
+            p, R = self.nut_state(i)
+            nuts.append({"nut_pos": p.tolist(), "nut_quat": quat_from_mat(R).tolist(),
+                         "groove": self.specs[i]["groove"], "target_peg": self.target_peg[i],
+                         "colour": colour_name(self.specs[i]["rgba"]), "stage": int(self.stage_now(i)),
+                         "credit": float(self.credit[i]), "broken": bool(self.broken[i]),
+                         "assembled": bool(self.assembled(i))})
+        return {"nuts": nuts, "pegs": [[float(v) for v in pp] for pp in self.peg_poses], "t": int(self.t),
+                "fault": self.fault}
 
 
-NUT_COLOURS = ([0.16, 0.36, 0.78, 1], [0.20, 0.62, 0.30, 1], [0.78, 0.18, 0.16, 1], [0.86, 0.74, 0.16, 1],
-               [0.85, 0.45, 0.12, 1], [0.55, 0.25, 0.70, 1], [0.15, 0.65, 0.68, 1], [0.80, 0.35, 0.55, 1])
+NUT_COLOURS = {"blue": [0.16, 0.36, 0.78, 1], "green": [0.20, 0.62, 0.30, 1], "red": [0.78, 0.18, 0.16, 1],
+               "yellow": [0.86, 0.74, 0.16, 1], "orange": [0.85, 0.45, 0.12, 1], "purple": [0.55, 0.25, 0.70, 1],
+               "teal": [0.15, 0.65, 0.68, 1], "pink": [0.80, 0.35, 0.55, 1]}
 
 
-def sample_nut_spec(rng, nut_id="N"):
+def colour_name(rgba):
+    """The NUT_COLOURS name of an rgba (nearest)."""
+    return min(NUT_COLOURS, key=lambda k: sum((a - b) ** 2 for a, b in zip(NUT_COLOURS[k][:3], rgba[:3])))
+
+
+def sample_nut_spec(rng, nut_id="N", colour=None):
     """A random nut from the task's nut family (the hidden graded nuts are drawn with this exact function):
     entrance uniform over the 24 sectors; each turn 2, 3 or 4 sectors, either way; each turn channel continues
     into a dead end of 0-3 sectors the other way; 0, 1 or 2 false entrances at sectors at least 2 sectors clear
     of every cell of the true path and of each other; mass uniform 0.05-0.15 kg; friction uniform 0.6-1.0;
-    colour from NUT_COLOURS. `rng` is a numpy Generator."""
+    colour from NUT_COLOURS (uniform, unless `colour` names one). `rng` is a numpy Generator."""
     g = {"entrance": int(rng.integers(NSEC)),
          "turns": [int(rng.choice([2, 3, 4])) * int(rng.choice([-1, 1])) for _ in range(2)],
          "dead_ends": [int(rng.integers(4)) for _ in range(2)],
@@ -844,9 +891,28 @@ def sample_nut_spec(rng, nut_id="N"):
         busy.update({f % NSEC, (f + 1) % NSEC})
     return check_nut_spec({"id": nut_id, "groove": g, "mass": round(float(rng.uniform(0.05, 0.15)), 4),
                            "friction": round(float(rng.uniform(0.6, 1.0)), 4),
-                           "rgba": list(NUT_COLOURS[int(rng.integers(len(NUT_COLOURS)))])})
+                           "rgba": list(NUT_COLOURS[colour] if colour else
+                                        NUT_COLOURS[sorted(NUT_COLOURS)[int(rng.integers(len(NUT_COLOURS)))]])})
+
+
+def sample_kit(rng, kit_id="K"):
+    """A random kit as graded (the hidden kits are drawn with this exact function): NUTS nuts drawn with
+    `sample_nut_spec`, of NUTS different colours chosen uniformly, and the work order, a uniformly random
+    assignment of the nuts to the pegs with 1, 2 and 3 bands. Returns {"nuts": [specs], "order": [bands]}."""
+    names = sorted(NUT_COLOURS)
+    cols = [names[int(i)] for i in rng.choice(len(names), NUTS, replace=False)]
+    nuts = [sample_nut_spec(rng, "%s-%d" % (kit_id, i), colour=c) for i, c in enumerate(cols)]
+    order = [int(b) + 1 for b in rng.permutation(3)][:NUTS]
+    return {"nuts": nuts, "order": order}
 
 
 def load_spec(path):
     with open(path) as fh:
         return check_nut_spec(json.load(fh))
+
+
+def load_kit(path):
+    """A kit file: {"nuts": [3 nut specs], "order": [band count per nut]}."""
+    with open(path) as fh:
+        kit = json.load(fh)
+    return {"nuts": [check_nut_spec(sp) for sp in kit["nuts"]], "order": [int(b) for b in kit["order"]]}

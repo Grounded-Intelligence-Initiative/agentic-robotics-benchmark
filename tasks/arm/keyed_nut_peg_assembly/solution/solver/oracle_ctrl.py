@@ -22,7 +22,9 @@ SECTOR = math.pi / 12          # groove sector (15 deg)
 GROOVE_TOP = 0.0395           # nut bottom above the collar when resting on the pin
 STALLS = (0.0245, 0.0095, 0.0)   # nut bottom above the collar at the two turns and when seated
 GRASP_Z = TABLE_Z + 0.036     # gripper site height while grasping the handle
-Q7_LIMIT = 2.7                # planning bound on |joint 7| (hard limit 2.897)
+Q7_LIMIT = 2.45               # planning bound on |joint 7| (hard limit 2.897)
+MAX_REGRASPS = 3              # per nut
+Q7_REGRASP = 2.75             # regrasp the handle when joint 7 gets this close to its limit while turning
 YAW_STEP = 0.12               # rad per step
 
 
@@ -68,12 +70,17 @@ class Oracle(object):
         self.yaw = None          # unwrapped gripper yaw, tracked
         self.integ = np.zeros(3)
         self.h_best, self.k_best = 1.0, 0
+        self.regrasps = 0
 
     def _track(self, obs):
         R = quat_mat(obs["ee_quat"])
         cur = math.atan2(R[1, 0], R[0, 0])
         if self.yaw is None:
-            self.yaw = cur
+            # unwrap so that the joint-7 model agrees with the actual joint-7 reading
+            ee = obs["ee_pos"]
+            q1 = azimuth(ee[0], ee[1])
+            self.yaw = min((cur + 2 * math.pi * k for k in (-2, -1, 0, 1, 2)),
+                           key=lambda y: abs(q7_of(y, q1) - float(obs["q"][6])))
         else:
             self.yaw += wrap(cur - wrap(self.yaw))
 
@@ -194,6 +201,11 @@ class Oracle(object):
             elif self.k > 200:
                 self.phase, self.k = "release", 0
             return a
+        if (self.phase == "turn" and self.regrasps < MAX_REGRASPS and abs(nerr) > math.radians(2.0)
+                and abs(float(obs["q"][6])) > Q7_REGRASP):
+            self._start_regrasp(obs, npos, Rn, nyaw)
+        if self.phase.startswith("rg_"):
+            return self._regrasp(obs, ee, npos, Rn, nyaw)
         if self.phase == "turn":
             # rotate the held nut about the peg axis by the stage's yaw change, pressing lightly down
             d = max(-0.06, min(0.06, nerr))
@@ -213,3 +225,84 @@ class Oracle(object):
                 self.phase, self.k = "retreat", 0
             return a
         return [0.0, 0.0, 0.01, 0.0, 0.0, 0.0, -1.0, 0]
+
+
+    # ------------------------------------------------------------------ regrasp on the shaft
+    def _start_regrasp(self, obs, npos, Rn, nyaw, flip=True):
+        """Let go (the nut stays on the pin) and take the handle again: from the other side when joint 7 is near
+        its limit (flip), else from the same side (releasing lets a jammed, tilted nut settle). Joint 7 is
+        predicted from its current reading: it changes by minus the change of gripper yaw."""
+        q7 = float(obs["q"][6])
+        if not flip:
+            self.rg_yaw = self.yaw
+        else:
+            best = None
+            for side in (math.pi / 2, -math.pi / 2):
+                for kk in (-1, 0, 1):
+                    y = wrap(nyaw + side) + 2 * math.pi * kk
+                    rest = [y + wrap(n - nyaw) for n in self.nyaw_seq[self.stage:]]
+                    worst = max([abs(q7 - (y - self.yaw))] + [abs(q7 - (r - self.yaw)) for r in rest])
+                    cost = worst + 0.2 * abs(y - self.yaw)
+                    if best is None or cost < best[0]:
+                        best = (cost, y)
+            self.rg_yaw = best[1]
+        self.rg_return = self.phase
+        self.regrasps += 1
+        self.phase, self.k = "rg_open", 0
+
+    def _regrasp(self, obs, ee, npos, Rn, nyaw):
+        h = npos + Rn @ np.array([HANDLE_OFF, 0.0, 0.0])
+        grasp = np.array([h[0], h[1], npos[2] + (GRASP_Z - TABLE_Z)])
+        if self.phase == "rg_open":
+            a = self._move(obs, ee, self.yaw, -1.0, gain=0.0)
+            if self.k > 6:
+                self.phase, self.k = "rg_up", 0
+            return a
+        if self.phase == "rg_up":
+            tgt = np.array([ee[0], ee[1], grasp[2] + 0.07])
+            a = self._move(obs, tgt, self.yaw, -1.0)
+            if ee[2] > tgt[2] - 0.005:
+                self.phase, self.k = "rg_turn", 0
+            return a
+        if self.phase == "rg_turn":
+            tgt = grasp + np.array([0.0, 0.0, 0.07])
+            a = self._move(obs, tgt, self.rg_yaw, -1.0)
+            if abs(self.yaw - self.rg_yaw) < 0.03 and np.linalg.norm(tgt - ee) < 0.004:
+                self.phase, self.k = "rg_down", 0
+            return a
+        if self.phase == "rg_down":
+            a = self._move(obs, grasp, self.rg_yaw, -1.0)
+            if np.linalg.norm(grasp - ee) < 0.003 or self.k > 40:
+                self.phase, self.k = "rg_close", 0
+            return a
+        # rg_close: grip, then re-plan the remaining gripper yaws from the new grasp
+        a = self._move(obs, grasp, self.rg_yaw, 1.0)
+        if self.k > 8:
+            self.yaw_seq = list(self.yaw_seq[:self.stage]) + [self.yaw + (n - nyaw) for n in self.nyaw_seq[self.stage:]]
+            self.phase, self.k = self.rg_return, 0
+            self.h_best, self.k_best = 1.0, 0
+        return a
+
+
+class KitOracle(object):
+    """Assembles the nuts of a kit one after the other with `Oracle`; `gt` is the kit ground truth
+    {"nuts": [{"nut_pos", "nut_quat", "groove", "target_peg", ...}], "pegs": [...]}."""
+
+    def __init__(self):
+        self.i = 0
+        self.sub = Oracle()
+        self.phase = "nut0"
+
+    def act(self, obs, gt):
+        nuts = gt["nuts"]
+        if self.i < len(nuts) and self.sub.phase == "retreat" and self.sub.k > 15:
+            self.i += 1
+            self.sub = Oracle()
+            self.phase = "nut%d" % self.i
+        if self.i >= len(nuts):
+            self.phase = "done"
+            return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0]
+        n = nuts[self.i]
+        one = {"nut_pos": n["nut_pos"], "nut_quat": n["nut_quat"], "groove": n["groove"],
+               "pegs": gt["pegs"], "target_peg": n["target_peg"]}
+        return self.sub.act(obs, one)

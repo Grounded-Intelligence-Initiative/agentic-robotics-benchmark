@@ -1,17 +1,18 @@
-"""Practice evaluation in YOUR DEV SIM on the practice nut (visible seeds; prints raw metrics only).
+"""Practice evaluation in YOUR DEV SIM (visible seeds; prints raw metrics only).
 
     /opt/venv/bin/python3 /home/user/practice_grader/grade.py [--episodes N] [--seed S ...]
-        [--nut /home/user/practice_nut.json] [--submission /home/user/submission]
+        [--kit /home/user/practice_kit.json | --sample K] [--submission /home/user/submission]
 
-Runs your controller (bash run.sh in --submission) against /home/user/keyed_env.py with the practice
-nut (or any nut spec file you pass with --nut, e.g. a replica you built); the target peg cycles
-through 1, 2, 3 bands. It speaks the same wire
+Runs your controller (bash run.sh in --submission) against /home/user/keyed_env.py on kits: the
+practice kit (or any kit file you pass with --kit), or with --sample K one new kit per episode drawn
+with keyed_env.sample_kit(numpy.random.default_rng(K + episode index)), exactly as the graded kits are
+drawn (from other seeds). It speaks the same wire
 as the hidden grader: READY within 120 s, each reply within 30 s, repeated step indices with
 perturbed observations (only the reply to the real observation is applied), an aborted episode
 scores 0, every episode runs a NEW controller process from a fresh copy of the submission (nothing
 carries over between episodes), replies longer than 64 KiB abort the episode, and the controller runs with only AF_UNIX sockets (the same seccomp filter as at grading
-time). It reports whether the run stayed inside the grading time budget (6000 s for 16 episodes).
-It never touches the hidden nuts, does not know the reference value and prints no score.
+time). It reports whether the run stayed inside the grading time budget (7800 s for 10 kits).
+It never touches the hidden kits, does not know the reference value and prints no score.
 """
 
 import argparse
@@ -37,7 +38,7 @@ READY_TIMEOUT = 120.0
 STEP_TIMEOUT = 30.0
 MAX_RESTARTS = 3
 MAX_LINE = 65536
-BUDGET_PER_EPISODE = 6000.0 / 16
+BUDGET_PER_EPISODE = 7800.0 / 10
 PROBE_RATE = 0.01
 
 _FILTER_SRC = r'''
@@ -175,30 +176,35 @@ def differ(a, b):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--submission", default="/home/user/submission")
-    ap.add_argument("--nut", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                                  "practice_nut.json"))
+    ap.add_argument("--kit", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                                  "practice_kit.json"))
+    ap.add_argument("--sample", type=int, default=None, help="draw a new kit per episode with sample_kit")
     ap.add_argument("--episodes", type=int, default=2)
     ap.add_argument("--seed", type=int, action="append", help="run these seeds instead of the practice list")
     a = ap.parse_args()
     if not os.path.isfile(os.path.join(a.submission, "run.sh")):
         print(json.dumps({"error": "no run.sh in {}".format(a.submission)}))
         return 2
-    spec = E.load_spec(a.nut)
+    fixed_kit = None if a.sample is not None else E.load_kit(a.kit)
     seeds = a.seed if a.seed else PRACTICE_SEEDS[:max(1, min(a.episodes, len(PRACTICE_SEEDS)))]
     rng = random.Random(2026)
     pairs = differed = 0
     results = []
     t0 = time.monotonic()
     for i, seed in enumerate(seeds):
-        env = E.NutEnv(spec, early_end=True)
-        bands = 1 + i % 3
+        if fixed_kit is None:
+            import numpy as np
+            kit = E.sample_kit(np.random.default_rng(a.sample + i), "S%d" % (a.sample + i))
+        else:
+            kit = fixed_kit
+        env = E.NutEnv(kit["nuts"], early_end=True)
         # like the grader: every episode runs a new controller process from a fresh copy of the submission
         tmp = tempfile.mkdtemp(prefix="practice-")
         work = os.path.join(tmp, "submission")
         shutil.copytree(a.submission, work, symlinks=True)
         wire = None
         try:
-            obs = env.reset(seed, bands)
+            obs = env.reset(seed, kit["order"])
             wire = Wire(work)
             wire.reset()
             for t in range(env.max_steps):
@@ -218,11 +224,11 @@ def main():
                 obs, done, info = env.step(act)
                 if done:
                     break
-            results.append({"seed": seed, "peg_bands": bands, "assembled": env.episode_score(),
-                            "progress": round(env.progress(), 4),
+            results.append({"seed": seed, "order": env.work_order(), "kit_complete": env.episode_score(),
+                            "nuts_assembled": env.nuts_assembled(), "progress": round(env.progress(), 4),
                             "steps": env.t, "sim_fault": env.fault})
         except (WireError, E.ActionError, ValueError, TypeError) as exc:
-            results.append({"seed": seed, "peg_bands": bands, "assembled": 0.0, "progress": 0.0,
+            results.append({"seed": seed, "kit_complete": 0.0, "nuts_assembled": 0, "progress": 0.0,
                             "aborted": str(exc)[:200]})
         finally:
             env.close()
@@ -230,16 +236,17 @@ def main():
                 wire.close()
             shutil.rmtree(tmp, ignore_errors=True)
     wall = time.monotonic() - t0
-    mean = sum(r["assembled"] for r in results) / len(results) if results else 0.0
+    mean = sum(r["kit_complete"] for r in results) / len(results) if results else 0.0
     print(json.dumps({
-        "metric": "assembly_success_rate (dev sim, {})".format(os.path.basename(a.nut)),
+        "metric": "kit_success_rate (dev sim, {})".format(
+            "sample_kit from seed {}".format(a.sample) if a.sample is not None else os.path.basename(a.kit)),
         "raw_value": round(mean, 5),
         "episodes": results,
         "repeated_t_pairs": pairs,
         "repeated_t_pairs_that_differed": differed,
         "wall_seconds": round(wall, 1),
         "within_grading_time_budget": wall <= BUDGET_PER_EPISODE * max(1, len(results)),
-        "note": "dev sim with the given nut; this is not your score",
+        "note": "dev sim; this is not your score",
     }, indent=1))
     return 0
 
