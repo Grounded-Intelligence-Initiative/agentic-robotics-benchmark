@@ -5,7 +5,8 @@ and the hidden set became candidates 1, 2 and 3 (anchor 0.9352). **Amendment 2 (
 postures and the robot state changed; the selection was repeated under the same rule (candidates 2, 3 and 4, anchor
 0.9552). **Amendment 3 (2026-11-09, at the end):** the reference's arm postures (round 4) and the agent cameras' look
 changed; the selection is repeated with one more rule: the kept scenes may not all share a layout fact a program could
-assume. The sections before each amendment record the earlier selections.
+assume. **Amendment 4 (2026-11-11):** the reference's postures (round 5) changed; the selection is repeated under
+amendment 3's rule. The sections before each amendment record the earlier selections.
 
 The grader runs the three scenes of `tests/hidden/seeds.json`, for agents and the oracle alike (verify.py
 `episode_seeds`; the oracle's privileged cells get the same layouts, not a nominal one). A scene is the cell's draw
@@ -480,3 +481,62 @@ amendment 1, measured in the old look; amendment 3 for the new look's effect on 
 look): `ok`, untouched reward 0.0, oracle reward 1.0. The oracle's three episodes repeat their selection runs to the
 last digit: cleaning_score 0.92130 (ratio 0.99999 to the anchor), mean simulated time 2799.39 s (the selection runs':
 2405.75, 2741.52 and 3250.89 s), no safety violation (peak robot contact 44 N), no broken dish; verify 4323 s.
+
+## Amendment 4 (2026-11-11): the reference's postures planned as a person's (round 5); the selection is repeated
+
+One change since amendment 3, before any run of this amendment:
+
+* **The reference's postures** (`reference.py`, `posture.md` round 5): every choice of the planner (grasp, carry
+  point and turn, stance, lean and stand height) is ranked by a human measure of the posture the executed path
+  resolves; items are carried at the waist and raised for the counter 1.2 m short of it; grasps are planned backwards
+  from the carry, the put and the sponge's work; the hand keeps its place in the room while the body bends; the
+  counter, the bins and the shelf are approached from a step back; the lids are opened standing; the broom is carried
+  for walks with its head 10 cm up. The cell, its controller and IK, the physics, the observations, the API and the
+  givens are unchanged: of the frozen files only `reference.py` differs from amendment 3's freeze.
+
+The frozen oracle of amendment 3 is therefore gone, and the selection is repeated, written here before any run:
+
+1. The oracle is frozen at `974b763` (sha256 below; `reference.py` is the one file that differs from `a7880f3`'s).
+2. The candidates are the 16 drawn on 2026-11-07 (`candidates.json`), in the same order; no new draw unless step 5
+   needs one.
+3. Each candidate runs once, exactly as before (`tools/launch_ref.sh`, `tools/run_ref.py`), in the task image built
+   from `environment/` at `296e8d1` (`environment/` is unchanged since), each pinned to 2 CPUs of its own; the
+   candidates are shared between two machines (apollo, 64 CPUs; apollo-pc-2, 48 CPUs), the same image on both.
+4. The pass criterion is unchanged (no safety violation, no damage, everything but the floor at full credit, at least
+   half of the crumbs binned).
+5. Amendment 3's rule is unchanged: the hidden set is the first three passing candidates, in drawn order, whose
+   layouts do not all share the recycling bin's slot nor the side of the table most of the floor's crumbs lie on (of
+   all sets of three passing candidates that satisfy this, the one whose drawn positions, sorted, come first
+   lexicographically). The facts per candidate are amendment 3's table (the layout draw has not changed). If no such
+   set exists among the 16, 16 more are drawn by `tools/draw_candidates.py` and the rule goes on in their order.
+6. Every candidate's result is recorded below (`selection_a4/seed_<seed>.json`), with the hollowing check and the
+   reference's wall clock per episode against the oracle's budget (`privileged_program_time_cap_s`, 10800 s per
+   episode; the verifier's 36000 s for the three). No camera frame of a hidden scene is rendered for the record. The
+   anchor is the mean of the kept selection runs; `ale validate`'s oracle pass on the final head is its full-verify
+   measurement.
+
+The frozen oracle (`974b763`):
+
+```
+f3a03a97db9fbe7697bf711c8c602492fe89d5142b0d1e57be6b9b2bda5752fd  tests/house_cell/cell.py
+d88e94a34316fa9d9590eedf4e40b7f35ed0b893a0672c08e890f7854f1f762c  tests/house_cell/cleaning.py
+5c9046ada48dc935538340de1eaceab078ae941de25a1bf6fd2b12aa3ffd0572  tests/house_cell/control.py
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  tests/house_cell/__init__.py
+93c439787b73108e64125326aa47a21fbc0cd3009e59a1b9a88a1f56e536f8d1  tests/house_cell/layout.py
+2814c5419023f70edc9e9507029be8583da7475138b9cc5da0fbd8af648ac272  tests/house_cell/objects.py
+5b9a26199f1e692bd6e0d4beb34699ac8fcf110920069dc5736fb01e33f94198  tests/house_cell/physics.py
+03880c6204b6bdd7e3412e93a7b9d85ab501dfe84e6c2b9efce2f3fb44ce0c49  tests/house_cell/props.py
+360b0be789a6cc8ca7d2220ffd68ffdf60f72226b51d6237ded03b1c48bfe87e  tests/house_cell/reference.py
+5b231503b38139893a887c541c0bd8fa0cf1f0ee8272f6f6c9e7d80ecdd1cf45  tests/house_cell/render.py
+223b284fd0ce69c6ed3f6b0d7f2348d67e0bcf150acdd70e567c8e6e0e7198e8  tests/house_cell/robot.py
+59015301eb370fdd8e965d65a26c4ae01af0b7b32b5b9821094399a43a1ff1ed  tests/house_cell/room.py
+8f3413807a8547ec05e56d65de6287457195cdf522b8b2c1c59e1538a3f46be8  tests/house_cell/scene.py
+fb9c83456a9275d0555da22f959c35ec44aa5c4909c72fc10e7de9cda5024cc4  tests/house_cell/scoring.py
+3a74be8b8c5a00b00367bb9d71f21e0c5eef0350c6a68e49cffce7f94ced1f36  tests/house_cell/server.py
+dbac8d1a656f5d93bc0354d8748091aab64b7167ed4d85d08b6f4968d5c1f729  tests/house_cell/walk_core.py
+4dcb59ed702796d95e442aafdaffdad191036f3008bc54e1cb783892be9b4fa7  tests/house_cell/look.json
+4f76a26e1fee4147327880b7a41d7e0e16855f7be57a8b8310a1353d80ebddc6  solution/solve.sh
+7e224c2848476398821fce93c03244c0b6e45274dc60a5e32742c574df789e9b  solution/reference/clean.py
+9a4c6c83b2d73f3b2fe5fffb1656ec250edbd11d3aefe5f25084699729208939  solution/reference/oracle_token
+e88f7bc29cc3bdf8cffd1ed17e854295e0b73f25164982b0a11682c0719d1038  tests/grader_config.json
+```
