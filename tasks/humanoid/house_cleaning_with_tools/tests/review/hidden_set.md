@@ -6,7 +6,8 @@ postures and the robot state changed; the selection was repeated under the same 
 0.9552). **Amendment 3 (2026-11-09, at the end):** the reference's arm postures (round 4) and the agent cameras' look
 changed; the selection is repeated with one more rule: the kept scenes may not all share a layout fact a program could
 assume. **Amendment 4 (2026-11-11):** the reference's postures (round 5) changed; the selection is repeated under
-amendment 3's rule. The sections before each amendment record the earlier selections.
+amendment 3's rule (its first run set aside for two planner mistakes, fixed; the repeated run keeps candidates 1, 2
+and 3 again, anchor 0.9306). The sections before each amendment record the earlier selections.
 
 The grader runs the three scenes of `tests/hidden/seeds.json`, for agents and the oracle alike (verify.py
 `episode_seeds`; the oracle's privileged cells get the same layouts, not a nominal one). A scene is the cell's draw
@@ -622,3 +623,50 @@ dbac8d1a656f5d93bc0354d8748091aab64b7167ed4d85d08b6f4968d5c1f729  tests/house_ce
 9a4c6c83b2d73f3b2fe5fffb1656ec250edbd11d3aefe5f25084699729208939  solution/reference/oracle_token
 e88f7bc29cc3bdf8cffd1ed17e854295e0b73f25164982b0a11682c0719d1038  tests/grader_config.json
 ```
+
+### Results (amendment 4; each candidate run once, 2026-11-11 15:26-16:20Z, the oracle at `4549238`, the image built from environment/ at `296e8d1`)
+
+| # | seed | stage score | crumbs binned | sim s | wall s | machine | result | why |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 6790790475345571576 | 0.9167 | 0.600 | 2551 | 2183 | apollo | pass (kept) |  |
+| 2 | 3125492756787262100 | 0.9537 | 0.733 | 2875 | 2746 | apollo | pass (kept) |  |
+| 3 | 7022738416721159354 | 0.9213 | 0.617 | 3095 | 2889 | apollo | pass (kept) |  |
+| 4 | 4089632381925228296 | 0.9120 | 0.583 | 3163 | 3223 | apollo | pass |  |
+| 5 | 6569624632418969883 | 0.9352 | 0.667 | 2842 | 2754 | apollo | pass |  |
+| 6 | 4920960843796068851 | 0.9213 | 0.617 | 3081 | 1336 | apollo-pc-2 | pass |  |
+| 7 | 7640796830471677594 | 0.9306 | 0.650 | 2981 | 1097 | apollo-pc-2 | pass |  |
+| 8 | 7981839151774950588 | 0.9074 | 0.567 | 3005 | 1328 | apollo-pc-2 | pass |  |
+| 9 | 4745791118675327858 | 0.9398 | 0.683 | 2854 | 1918 | apollo-pc-2 | pass |  |
+| 10 | 376632851020783183 | 0.9306 | 0.650 | 2910 | 1259 | apollo-pc-2 | pass |  |
+| 11 | 3945038779305284334 | 0.8031 | 0.667 | 2265 | 2091 | apollo-pc-2 | fail | damage: {'broken': ['plate_1'], 'on_floor': ['plate_1']}; short: dishes 0.25/1, grease 2.43/2.5 |
+| 12 | 4387728151438419368 | 0.9259 | 0.633 | 2780 | 1355 | apollo-pc-2 | pass |  |
+| 13 | 6432759289746745107 | 0.9722 | 0.800 | 3258 | 1733 | apollo-pc-2 | pass |  |
+| 14 | 18184323288814303 | 0.9630 | 0.767 | 2825 | 1384 | apollo-pc-2 | pass |  |
+| 15 | 6438526276579322594 | 0.9444 | 0.700 | 2771 | 1135 | apollo-pc-2 | pass |  |
+| 16 | 2636808825281067254 | 0.9352 | 0.667 | 2964 | 1205 | apollo-pc-2 | pass |  |
+
+15 of the 16 pass. The one failure is the reference's own: in 11 neither plate found a way onto the dish tray (the
+first met the counter's edge by 1.2 cm on its way in, the second and then a glass found no stance), each was let go
+at the counter, and the first fell to the floor and broke. In the first run the plates of 11 reached the tray; this
+time, after the step back with the raised plate, the robot carried it turned by 0.5 rad and walked to the counter
+another way. Nothing was changed for it: the selection stands as written. Of the four that failed the first run, 4,
+10 and 12 pass now, and in 11 no glass went off the table. Per-candidate records: `selection_a4/seed_<seed>.json`.
+
+**The hidden set** (`tests/hidden/seeds.json`, unchanged): candidates 1, 2 and 3, stage scores 0.9167, 0.9537 and
+0.9213 (mean 0.93056 = the anchor 0.9306). The first three passing candidates satisfy the rule as before: the
+recycling bin stands in the south slot in 1 and in the north slot in 2 and 3, and most of the floor's crumbs lie south
+of the table in 1 and 3 and north of it in 2. They are amendment 1's and amendment 3's hidden set, and the hollowing
+check is amendment 1's. In all three no safety violation, nothing broken or dropped; trash, dishes, books, grease and
+the finishing credit are full, the crumbs 60, 73 and 62 % binned; the peak robot contact is 72 N (in 3, a knee
+brushing the dustpan hanging by the bins; the limit is 150 N held for 0.2 s).
+
+**Wall clock.** The reference's episodes took 2183-3223 s of wall clock on apollo (candidates 1-5; 64 CPUs shared with
+other work) and 1097-2091 s on apollo-pc-2 (6-16); their program time, the wall clock less the cell's own time, is
+less. The oracle's budget is 10800 s of program time per episode (`privileged_program_time_cap_s`) and the
+verifier's 36000 s for the three. The longest pause between two log lines of a run was 120 s: the simulation
+advances throughout, and no planner search needed bounding.
+
+### The anchor (amendment 4)
+
+0.9306, the mean of the kept selection runs, with `full_at` 0.98 (unchanged). `ale validate`'s oracle pass on the
+final head is its full-verify measurement (below).

@@ -265,30 +265,39 @@ out.
   crumb off the table; round 4 took 9-23, the second pass 7-23 and left up to 3).
 * Setting a book into the waist-high shelf, the farther stances are ranked first (`shelf_put`, `put(offsets)`;
   standing close, the elbow was pulled far behind the back to slide the book in).
+* Stepping back with something in hand (`back_out`, `leave_low`; added after the first run of amendment 4's
+  selection, `hidden_set.md`): the planner checks a step back for the body only, and with the carry at the waist a
+  held item swept a glass off the dining table as the robot stepped back from it (development scenes 60 and 86; at
+  the coffee table in scene 87 the can and the wrist dragged the bottle along). Before such a step the hand is raised
+  until the item clears, by 3 cm, the tops of the loose objects within 0.2 m of its way back
+  (`lift_clear_of_neighbours`, sized by their collision boxes), and the item is carried again after the step (`walk`).
+* The last 0.8 m walked straight in with an item at the waist is also kept off the long tools, by the hips' half width,
+  all the way to the goal (checked against the room's fixtures only, a knee walked into the dustpan hanging by the
+  bins: a safety stop, and the can it carried fell; development scene 60).
 
 **Measured** (`tools/posture_run.py`'s finer measure, computed by the same code over recorded episodes, as the
 oracle's runs run the reference; development scenes 11-15, one privileged episode each, both arms every 0.2 s; time
 with either arm flagged; seconds summed over both arms per flag; round 4 as in the table above; all five scenes
-recorded with the final code):
+recorded with the final code, after the two fixes above):
 
 | scene | round 4: stage score | finer measure | swivel off | wrist bent | at a limit | elbow high | round 5: stage score | finer measure | swivel off | wrist bent | at a limit | elbow high |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 11 | 0.9120 | 66.4 % | 470 s | 1512 s | 65 s | 196 s | 0.9491 | 9.8 % | 132 s | 157 s | 27 s | 57 s |
-| 12 | 0.9306 | 63.4 % | 490 s | 1588 s | 92 s | 175 s | 0.9120 | 9.2 % | 130 s | 100 s | 23 s | 69 s |
-| 13 | 0.9028 | 64.7 % | 511 s | 1589 s | 79 s | 187 s | 0.8889 | 9.8 % | 162 s | 97 s | 26 s | 52 s |
-| 14 | 0.6900 | 68.3 % | 476 s | 1497 s | 68 s | 164 s | 0.9537 | 9.7 % | 119 s | 118 s | 33 s | 49 s |
-| 15 | 0.9213 | 64.7 % | 582 s | 1631 s | 81 s | 192 s | 0.9167 | 7.9 % | 137 s | 80 s | 16 s | 64 s |
+| 11 | 0.9120 | 66.4 % | 470 s | 1512 s | 65 s | 196 s | 0.9491 | 10.1 % | 135 s | 163 s | 28 s | 57 s |
+| 12 | 0.9306 | 63.4 % | 490 s | 1588 s | 92 s | 175 s | 0.9120 | 9.9 % | 147 s | 109 s | 30 s | 73 s |
+| 13 | 0.9028 | 64.7 % | 511 s | 1589 s | 79 s | 187 s | 0.9167 | 10.2 % | 160 s | 116 s | 28 s | 56 s |
+| 14 | 0.6900 | 68.3 % | 476 s | 1497 s | 68 s | 164 s | 0.9537 | 9.6 % | 110 s | 125 s | 32 s | 53 s |
+| 15 | 0.9213 | 64.7 % | 582 s | 1631 s | 81 s | 192 s | 0.9167 | 8.2 % | 152 s | 79 s | 22 s | 66 s |
 
-Over the five scenes the flagged share falls from 65.4 % to 9.3 % (9292 s to 1374 s), the wrist-bent seconds
-from 7817 s to 551 s and the elbow's swivel off its natural direction from 2529 s to 680 s. Every stage score is at or above round 4's except scene 12 0.9120 against 0.9306 (35 crumbs binned against 39; everything else at full credit), scene 13 0.8889 against 0.9028 (30 crumbs binned against 33; everything else at full credit), scene 15 0.9167 against 0.9213 (36 crumbs binned against 37; everything else at full credit): the crumbs the sweep bins vary by several between near-identical planners (the same group's one stroke took 30 of its 50 crumbs into the pan in one recording and 42 in another; those left beside the table's edges, where the pan cannot stand, stay); no safety violation, no dish broken or dropped. (Three recordings of nearly the same planner, the last three of this round, binned 34, 39, 44, 44
+Over the five scenes the flagged share falls from 65.4 % to 9.6 % (9292 s to 1431 s), the wrist-bent seconds
+from 7817 s to 592 s and the elbow's swivel off its natural direction from 2529 s to 704 s. Every stage score is at or above round 4's except scene 12 0.9120 against 0.9306 (35 crumbs binned against 39; everything else at full credit), scene 15 0.9167 against 0.9213 (36 crumbs binned against 37; everything else at full credit): the crumbs the sweep bins vary by several between near-identical planners (the same group's one stroke took 30 of its 50 crumbs into the pan in one recording and 42 in another; those left beside the table's edges, where the pan cannot stand, stay); no safety violation, no dish broken or dropped. (Three recordings of nearly the same planner, the last three of this round, binned 34, 39, 44, 44
 and 43 crumbs, 34, 35, 37, 44 and 43, and 43, 35, 30, 44 and 36 in scenes 11-15: a scene's count swings by up to 13
 between them, round 4's 35, 39, 33, 0 and 37 inside that spread; every other part of the credit is full in all
-of them but the first's scene 12, where the sponge fell at the sink, since fixed.) The episodes run 2823-3140 s (round 4 2556-3081 s): the counter is approached from a step back with the item raised there,
+of them but the first's scene 12, where the sponge fell at the sink, since fixed.) The episodes run 2825-3155 s (round 4 2556-3081 s): the counter is approached from a step back with the item raised there,
 the sink's work and the crumbs' strokes take more planned moves.
 
 **What remains** (the finer measure interval by interval, labelled by the innermost traced skill; per scene):
 
-Per scene: moves under 2 s 72.9 s, stepping back after a put 37.1 s, the soap pump 29.5 s, moves into the carry 26.8 s, the broom's strokes 22.4 s, the faucet lever 15.0 s, books onto the shelf 10.4 s, setting the dustpan down 7.7 s, takes 7.5 s, the free hand's retreat after a put 7.1 s, hanging a tool up 6.3 s, litter into a bin 6.1 s; the rest under 5 s each.
+Per scene: moves under 2 s 74.8 s, stepping back after a put 40.7 s, moves into the carry 30.8 s, the soap pump 29.6 s, the broom's strokes 24.2 s, the faucet lever 15.0 s, books onto the shelf 10.4 s, takes 8.5 s, the free hand's retreat after a put 8.5 s, setting the dustpan down 7.7 s, pushing the crumbs off the near edge 6.4 s, litter into a bin 5.5 s; the rest under 5 s each.
 
 * *The crumbs pushed off the near edge*: each stroke still ends with the sponge's middle 1 cm inside the edge (the
   crumbs ride 4-6 cm ahead of it); from the stances farther back this fell from about 65 s a scene to about 6 s.
