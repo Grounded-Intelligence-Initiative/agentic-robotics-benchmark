@@ -7,10 +7,9 @@
 > before every hand-off. Where it disagrees with the code or `git log`, the code wins: fix
 > this file.
 >
-> Last updated: 2026-11-03 (§8: the tasks move to the Harbor-based engine, `vendor/ale` @
-> `1cdbc02`). Before that: 2026-10-21 (§7: task assets: `task-assets.toml`; §9: PR #10
-> hardens the spacecraft task with hybrid wake cells, a telescoping port and an
-> encoder-polarity mux; fresh GPT-6.1 Sol no longer saturates it).
+> Last updated: 2026-11-09 (§11: `vendor/ale` @ `bfb7505`, a task names its GPU models).
+> Before that: 2026-11-07 (§10: the asset dataset is renamed `ale-robotics-assets`);
+> 2026-11-03 (§8: the tasks move to the Harbor-based engine, `vendor/ale` @ `1cdbc02`).
 
 ## 0. 2026-09-07 — created by the rebrand from "ALE Robotics"
 
@@ -393,6 +392,77 @@ re-vendored the fetcher (its docstring names the dataset). File lists, hashes an
 are unchanged, since a Hub rename keeps the repository's history. Every task with assets has a new
 content digest, so the registry is re-exported after the merge.
 
+## 11. 2026-11-09 — the engine pin lets a task name its GPU models
+
+`vendor/ale` moves from `1cdbc02` to upstream `main` `bfb7505` (engine version still 0.1.1,
+eleven merged pull requests). AgentsLastExam/ale#108 lets a task name the GPU models it accepts
+with Harbor's `gpu_types`, in `[environment]` and `[verifier.environment]`; without it every
+model is accepted. Every provider gives a sandbox only an accepted model, or refuses the task
+before it starts. `1cdbc02` refused the key as an unsupported Harbor field.
+
+- Each GPU task names the models it was tested on (2026-11-09), cheapest first, since Daytona
+  tries them in that order (RTX 4090 $0.57/h, RTX 5090 $0.74/h, H100 $2.27/h). The other
+  Daytona models were tested only where the cheap ones fell short, and the H100 on the team's
+  own machine; pull request #71 holds every run.
+  - `hand/hot3d_sharpa_retarget` names none: it validated on the RTX 4090, RTX 5090, RTX PRO
+    6000, H200 and H100.
+  - `driving/driving_safety_supervisor` and `uav/aerial_search_geolocation`:
+    `["RTX-4090", "H100"]`. Their agents' PyTorch (2.7.1, built for CUDA 12.6) has no kernels
+    for the RTX 5090. On the H100 the simulators render the same frames as on the RTX 4090,
+    1.4 (aerial) to 2-5 (driving) times slower on a loaded host.
+  - `swarm/hazard_bay_build`: `["RTX-4090", "RTX-5090"]`. On the H100 its render canary
+    matched the RTX 5090's, but the missions did not run on the loaded host; not listed until
+    they do.
+  - `arm/robotic_arm_environment_twin_from_real_photo`: `["RTX-4090", "RTX-5090"]`, in
+    `[environment]` only (its verifier has no GPU). OVRTX crashes the H100 at its first
+    render (`ERROR_DEVICE_LOST`).
+  - `arm/object_finding_and_organizing_on_messy_desk`: `["RTX-4090"]`. Isaac Sim 4.5 crashes
+    at start on the RTX 5090, and on the H100 its RGB cameras come out about 30 % darker than
+    on the RTX 4090 (depth identical).
+- Rendering needs the graphics half of the host's NVIDIA driver (Vulkan, EGL, OptiX), which
+  compute-only server installs leave out: on such a host every rendering task fails whatever
+  the model. The H100 results above were taken with the matching driver's graphics libraries
+  added to the test containers.
+- **Identity.** Every task's `spec_hash` changes, because the engine's task specification now
+  carries `gpu_types` (empty when a task names none); without that key every hash equals the
+  recorded one. The five tasks whose `task.toml` changed also get a new `content_digest`. The
+  registry identity cross-check fails for every known slug until `identity-history.json` is
+  re-exported after the merge.
+- Nothing else here changes: `ale lint`, `lint_domain.py`, `task_assets.py check`, the kit
+  selftest and `pytest` pass as they did on `1cdbc02`. The limits in
+  `docs/contributing-a-task.md` §7 and the verify-stage egress in `docs/security-model.md` §4
+  hold at `bfb7505`; §7's code references now point there. The docker provider now requests
+  every NVIDIA driver capability, graphics included (AgentsLastExam/ale#104). Verification
+  falls back to the framework's own Python when the image has no 3.12+
+  (AgentsLastExam/ale#100), which lacks the task's packages, so a grader that imports them
+  still needs the image's own.
+- The desktop's size became a run setting (AgentsLastExam/ale#107): the docker provider starts
+  every desktop at the run's `desktop_resolution` (default 1024x768), whatever the image's
+  `VNC_RESOLUTION` says, and a task cannot declare its own. The three CAD tasks
+  (`robotic_arm_cad_design_from_photos`, `uav_cad_design_from_photos`,
+  `bimanual_cad_design_from_photos`) were designed, validated and measured at 1440x900, and the
+  views their agents get are screenshots of the desktop: run them with
+  `--set desktop_resolution=1440x900` (their `task.toml` says so). Every other desktop task
+  uses the base's 1024x768, which the default keeps.
+- AgentsLastExam/ale#111 keeps Daytona sandbox names unique for long task names: before it,
+  concurrent episodes of one task on Daytona collided and could delete each other's sandboxes.
+- **RTX PRO 6000** (2026-11-10, the team's RTX PRO 6000 Blackwell Workstation Edition host, `bfb7505`;
+  each task copied with `gpu_types` narrowed to that model, as in #71):
+  - `hazard_bay_build`: `validate-0e73675f`, oracle 1.0. The render canary matched the RTX 5090's
+    (RGB std 74.0 vs 73.1, 8852 hot thermal pixels, depth 0.762, lidar 1.0), and both missions ran
+    with acceptance 0.956, as on the RTX 4090; verify 50 min. Now listed.
+  - `robotic_arm_environment_twin_from_real_photo`: the setup's OVRTX warm-up (471 s of its
+    1440 s) and two OVRTX renders of the oracle's twin from the agent's account (run `c5f4886c`,
+    reward 1.0; bit-identical, 7 s each at 1920x1080 and 64 spp). Now listed, in `[environment]`.
+  - `hot3d_sharpa_retarget` validates there too (`validate-24a8b005`, oracle 1.0, on a GPU shared
+    with other jobs); it names no models.
+  - Not listed: `driving_safety_supervisor` and `aerial_search_geolocation` (the agents' PyTorch
+    has no sm_120 kernels, as on the RTX 5090), and `object_finding_and_organizing_on_messy_desk`
+    (Isaac Sim 4.5 starts, but the RGB cameras come out about 30 % darker than on the RTX 4090, as
+    on the H100).
+- Next: run `hazard_bay_build`'s missions on an H100 on a quiet host, and add `H100` if they
+  pass.
+
 ## Open items
 
 - Website, display-only pull request: remove the backend (API, database service, sign-in,
@@ -544,8 +614,9 @@ commit 2278f3f until that run is scored; the changes below live in `setup/payloa
   the agent account cannot traverse; task images set `UV_PYTHON_INSTALL_DIR=/opt/uv-python`
   and keep the Dockerfile's agent-UID import self-check. The agent UID must traverse (not
   only read) everything the venv points at.
-- The engine stages `ale_verify` into `python3`, else `python3.12` (3.12+ required), and
-  names it in `ALE_VERIFY_PYTHON` (section 8).
+- The engine stages `ale_verify` into the image's `python3`, else `python3.12` (3.12+), else
+  its own Python, which lacks the task's packages, and names it in `ALE_VERIFY_PYTHON`
+  (sections 8 and 11).
 - `ale validate` does not keep a stage's stderr; it is in the episode's
   `trace.execution.jsonl`.
 - A null anchor is not an error: the engine fails the run with `oracle_not_full` and
