@@ -109,6 +109,12 @@ def tilted(forward_xy, down_deg):
     return f * math.cos(a) + np.array([0.0, 0.0, -math.sin(a)])
 
 
+def _rot2(v, a):
+    """A horizontal direction (x, y) turned by `a` about the vertical."""
+    c, s = math.cos(a), math.sin(a)
+    return np.array([c * v[0] - s * v[1], s * v[0] + c * v[1]])
+
+
 def geom_lowest(m, d, g):
     """The lowest point (z) of a primitive collider as it is now."""
     t = int(m.geom_type[g])
@@ -332,6 +338,7 @@ class NaturalIK:
         self.elbow = {s: mujoco.mj_name2id(m, B, f"{r.name}/{s}_elbow_link") for s in ("left", "right")}
         self.shoulder = {s: mujoco.mj_name2id(m, B, f"{r.name}/{s}_shoulder_pitch_link") for s in ("left", "right")}
         self.wrist = {s: mujoco.mj_name2id(m, B, f"{r.name}/{s}_wrist_pitch_link") for s in ("left", "right")}
+        self.wroll = {s: mujoco.mj_name2id(m, B, f"{r.name}/{s}_wrist_roll_link") for s in ("left", "right")}
         self.out = {"left": 1.0, "right": -1.0}
 
     def natural_elbow(self, side, Rt):
@@ -473,8 +480,65 @@ class NaturalIK:
             rows_.append(jr)
         return np.array(res), np.array(rows_).reshape(-1, 7), parts
 
+    # the human posture measure (round 5: posture_cost, by which every choice of the planner ranks): what a person's
+    # arm does not do, as squared hinges past a comfortable range, the quantities of the review's posture measure
+    # (tests/review/posture.md): (joint, half range, scale) of the wrist (sideways bend, flexion, the forearm's turn)
+    H_WRIST = ((5, 0.30, 0.22), (6, 0.45, 0.22), (4, 1.05, 0.25))
+    H_TWIST = (1.00, 0.25)              # rad: the shoulder's twist
+    H_ELBOW_DROP = 0.09                 # m: the elbow at least this far below the shoulder (torso frame)
+    H_SWIVEL = (30.0, 15.0)             # deg: the elbow off its natural direction about the shoulder-wrist line
+    H_LIMIT = 0.25                      # rad: every joint this far off its limits
+
+    def human(self, side, q):
+        """{term: cost} of arm joints q (self.dk's kinematics set; 0 for a posture a person takes without effort, about
+        1 at the edge of the comfortable range, 4 and more where the review's measure flags it)."""
+        r, dk = self.r, self.dk
+        q = np.asarray(q, float)
+        parts = {}
+        lo, hi = r.arm_lo[side], r.arm_hi[side]
+        marg = np.minimum(q - lo, hi - q)
+        parts["limit"] = float(np.sum((np.maximum(0.0, self.H_LIMIT - marg) / 0.10) ** 2))
+        parts["wrist"] = float(sum((max(0.0, abs(q[j]) - h) / s) ** 2 for j, h, s in self.H_WRIST))
+        parts["twist"] = (max(0.0, abs(q[2]) - self.H_TWIST[0]) / self.H_TWIST[1]) ** 2
+        Rt = dk.xmat[r.torso].reshape(3, 3)
+        S = Rt.T @ dk.xpos[self.shoulder[side]]
+        E = Rt.T @ dk.xpos[self.elbow[side]]
+        Wr = Rt.T @ dk.xpos[self.wroll[side]]
+        v = E - S
+        o = self.out[side]
+        parts["elbow_high"] = (max(0.0, v[2] + self.H_ELBOW_DROP) / 0.04) ** 2
+        parts["elbow_out"] = (max(0.0, o * v[1] - 0.13) / 0.05) ** 2
+        parts["elbow_back"] = (max(0.0, -v[0] - 0.06) / 0.05) ** 2
+        n = Wr - S
+        dn = float(np.linalg.norm(n))
+        sw = 0.0
+        if dn > 1e-6:
+            n = n / dn
+            e = v - (v @ n) * n
+            want = np.array([0.0, 0.3 * o, -1.0])
+            w = want - (want @ n) * n
+            if np.linalg.norm(w) < 0.2:
+                want = np.array([0.0, o, -0.3])
+                w = want - (want @ n) * n
+            a_, b_ = float(np.linalg.norm(v)), float(np.linalg.norm(Wr - E))
+            bend = 180.0 - math.degrees(math.acos(float(np.clip((a_ * a_ + b_ * b_ - dn * dn) / (2 * a_ * b_), -1, 1))))
+            if bend > 20.0 and np.linalg.norm(e) > 1e-6:
+                dev = math.degrees(math.acos(float(np.clip((e / np.linalg.norm(e)) @ (w / np.linalg.norm(w)), -1, 1))))
+                sw = (max(0.0, dev - self.H_SWIVEL[0]) / self.H_SWIVEL[1]) ** 2 * min(1.0, (bend - 20.0) / 15.0)
+        parts["swivel"] = sw
+        parts["hyperext"] = (max(0.0, q[3] - 1.50) / 0.08) ** 2
+        return parts
+
     def cost(self, qpos, side, q):
-        """The posture cost of arm joints q (the rest of the robot as in qpos)."""
+        """The posture cost of arm joints q (the rest of the robot as in qpos): the human measure (human)."""
+        dk = self.dk
+        dk.qpos[:] = qpos
+        dk.qpos[self.r.arm_q[side]] = q
+        mujoco.mj_kinematics(self.m, dk)
+        return sum(self.human(side, np.asarray(q, float)).values())
+
+    def cost_rank(self, qpos, side, q):
+        """The round-3 ranking measure (terms_rank) of arm joints q."""
         dk = self.dk
         dk.qpos[:] = qpos
         dk.qpos[self.r.arm_q[side]] = q
@@ -576,6 +640,7 @@ class Reference:
         self.yaw_captured = None
         self.dy_chosen = 0.0
         self.carry_lift = {}          # held item -> m its carry point is raised (go_put: lifted before leaning in)
+        self.dest_hint = None         # (x, y) of where the robot is going next (carry_pose: the carry height)
 
     def run(self):
         """The whole job (run_job)."""
@@ -584,6 +649,28 @@ class Reference:
     # ============================================================================================ primitives
     def step(self, n=1):
         return self.c.step(int(n))
+
+    HIGH_NEAR = 1.2       # (round 5) m: a dish or the sponge raised for the counter only this near its stance (0.7 m:
+    #                       a plate carried at the waist from the dining table's south side caught the chair's back as
+    #                       the robot turned for the counter and slipped from the hand)
+
+    def dest_counter(self):
+        """Is the robot on its way to the kitchen counter (dest_hint)?"""
+        if self.dest_hint is None:
+            return False
+        x, y = self.dest_hint[0], self.dest_hint[1]
+        return x < 1.25 and 1.0 < y < 3.6
+
+    def dest_high(self):
+        """On its way to the kitchen counter (dest_hint) and near it (round 5: HIGH_NEAR)? A held dish or the sponge is
+        then carried just clear of the counter (carry_pose), not at the waist. (Carried so all the way from the dining
+        table, a glass rode on a straight arm at shoulder height for 25-30 s a trip.)"""
+        if not self.dest_counter():
+            return False
+        if getattr(self, "_raised_goal", None) == (round(float(self.dest_hint[0]), 3), round(float(self.dest_hint[1]), 3)):
+            return True                  # (raised on the way there: walk)
+        b = self.base()
+        return math.hypot(b[0] - self.dest_hint[0], b[1] - self.dest_hint[1]) < self.HIGH_NEAR
 
     def out_of_time(self, margin=5.0):
         return self.c.done or self.c.sim_time > self.c.sim_cap - margin
@@ -599,20 +686,44 @@ class Reference:
     def pose(self, name):
         return self.c.pose(name)
 
-    def posture(self, h, pitch, timeout=4.0):
+    def _hold_cmd(self, cmd, held_tgt, h, pitch):
+        """(Reference.posture's hold) the arm joints that keep each held hand at its room pose with the body at
+        (h, pitch), added to the command."""
+        st = self.stance
+        b = self.base()
+        for sd, (ps, Rs) in held_tgt.items():
+            st.set_state((b[0], b[1], b[2]), h, pitch)
+            qc = np.asarray(self.c.ctrl.arm_cmd[sd], float)
+            q, ep, er = st.nik.solve(st.chk.qpos, sd, ps, _quat(Rs), qc, iters=15, null_total=0.04, natural=True)
+            if ep < 0.01 and er < 0.05:
+                cmd[f"{sd}_arm"] = {"q": [float(v) for v in q]}
+        return cmd
+
+    def posture(self, h, pitch, timeout=4.0, hold=()):
         """Stand height and waist pitch, waiting until the body is there (a waist still bending when the hand closes
-        on an object would press it into what it lies on)."""
+        on an object would press it into what it lies on). `hold` (round 5): the hands of these sides that hold
+        something keep their place in the room while the body bends or squats (as a person leans in over a counter
+        with a plate in hand; with its arm's joints fixed the item would swing down with the torso)."""
         r, ctrl = self.c.robot, self.c.ctrl
         # a smooth (cosine) ramp below the controller's rates (its own ramps start and stop at full speed, which
         # shakes a long tool in the hand)
         h0, p0 = float(ctrl.stand_cmd), float(ctrl.waist_cmd[2])
         dh, dp = float(h) - h0, float(pitch) - p0
         T = max(math.pi / 2 * abs(dh) / (0.9 * 0.15), math.pi / 2 * abs(dp) / (0.9 * 0.8))
+        held_tgt = {sd: self.site(sd) for sd in hold if self.held.get(sd)}
+        if held_tgt and T > 0.0:
+            # (the arm keeping the hand still moves its elbow and wrist faster than the waist bends: a slower bend,
+            # so the arm's joints stay well inside their speed limits and the held item does not lag down into what
+            # it is held over)
+            T = max(2.5 * T, 0.6)
         n = int(math.ceil(T / (2 * TICK)))
         pressing = 0
         for k in range(1, n + 1):
             u = 0.5 - 0.5 * math.cos(math.pi * k / n)
-            self.c.command({"stand_height": h0 + dh * u, "waist": [0.0, 0.0, p0 + dp * u]})
+            cmd = {"stand_height": h0 + dh * u, "waist": [0.0, 0.0, p0 + dp * u]}
+            if held_tgt:
+                self._hold_cmd(cmd, held_tgt, h0 + dh * u, p0 + dp * u)
+            self.c.command(cmd)
             self.step(2)
             pressing = pressing + 1 if (dh < -0.005 or dp > 0.01) and self.body_push() > 90.0 else 0
             if pressing >= 2:
@@ -623,7 +734,10 @@ class Reference:
                 self.c.command({"stand_height": h0 + dh * ub, "waist": [0.0, 0.0, p0 + dp * ub]})
                 self.step(15)
                 return False
-        self.c.command({"stand_height": float(h), "waist": [0.0, 0.0, float(pitch)]})
+        cmd = {"stand_height": float(h), "waist": [0.0, 0.0, float(pitch)]}
+        if held_tgt:
+            self._hold_cmd(cmd, held_tgt, float(h), float(pitch))
+        self.c.command(cmd)
         for _ in range(int(timeout / 0.05)):
             self.step(5)
             if self.c.done:
@@ -695,6 +809,11 @@ class Reference:
         """Walk to (x, y, yaw) round the furniture: arms in first (a held item in front of the chest, a free hand at
         home), turn towards each waypoint, go there, turn to the final yaw."""
         b = self.base()
+        self.dest_hint = (float(x), float(y))
+        if getattr(self, "_final_walk", False):
+            self._final_walk = False             # (the rest of the way after a raise for the counter: below)
+        elif not getattr(self, "_mid_walk", False):
+            self._raised_goal = None
         if math.hypot(x - b[0], y - b[1]) > 0.04 or abs(wrap(yaw - b[2])) > 0.05:
             self.stow()
             carrying = carrying or any(self.held.values())
@@ -727,9 +846,96 @@ class Reference:
             if pts is None:
                 self.log("[ref] walk: no path to (%.2f, %.2f); not moving" % pre)
                 return False
+        raise_ = [s_ for s_ in ("left", "right") if self.held[s_] and (self.held[s_] == "sponge" or (
+            self.held[s_] in O.LOOSE and O.CATEGORY[O.LOOSE[self.held[s_]][0]] == "dish"))]
+        goal_key = (round(float(x), 3), round(float(y), 3))
+        if pts and raise_ and not getattr(self, "_mid_walk", False) and self.dest_counter() and not self.dest_high() \
+                and getattr(self, "_raised_goal", None) != goal_key:
+            # (round 5) to the counter from afar with a dish or the sponge at the waist: walked so until HIGH_NEAR
+            # short of the goal (along the planned way), raised there for the counter, then the rest
+            legs = [np.array([b[0], b[1]], float)] + [np.asarray(q, float) for q in pts] + [np.asarray(pre, float)]
+            rest = 0.0
+            mid = None
+            for k in range(len(legs) - 1, 0, -1):
+                seg = legs[k] - legs[k - 1]
+                L_ = float(np.linalg.norm(seg))
+                if rest + L_ >= self.HIGH_NEAR - 0.1:
+                    u = (self.HIGH_NEAR - 0.1 - rest) / max(L_, 1e-9)
+                    mid = legs[k] - seg * u
+                    head = math.atan2(seg[1], seg[0])
+                    break
+                rest += L_
+            if mid is not None and float(np.linalg.norm(mid - legs[0])) > 0.3:
+                self._mid_walk = True
+                try:
+                    got = self.walk(float(mid[0]), float(mid[1]), head, carrying=True)
+                finally:
+                    self._mid_walk = False
+                self.dest_hint = (float(x), float(y))
+                if got is False:
+                    return False
+                self.log("[ref] walk: %s raised for the counter %.1f m short of it" % (
+                    ", ".join(self.held[s_] for s_ in raise_), self.HIGH_NEAR))
+                # (once per walk: where the rest of the way is longer than HIGH_NEAR as the crow flies, the raise
+                # here was planned again on every call, without end; dest_high holds for the rest of this walk)
+                self._raised_goal = goal_key
+                self._final_walk = True
+                return self.walk(x, y, yaw, carrying=carrying)
         if not self.held_path_clear(pts + [pre], (x, y), yaw):
             self.log("[ref] walk: a held tool would touch the room on the way to (%.2f, %.2f); not moving" % (x, y))
             return False
+        if pts and not self.held_path_clear(pts + [pre], (x, y), yaw, strict=True):
+            # (round 5) turning in place, a held long tool would pass within a few centimetres of the room (the plain
+            # check's tolerance; the dustpan hanging by the hip caught a dining-table leg as the robot turned beside
+            # it and slipped out of the hand): a step straight back first, if the turns are clear from there
+            b = self.base()
+            c0, s0 = math.cos(b[2]), math.sin(b[2])
+            for back in (0.15, 0.30):
+                bx, by = b[0] - back * c0, b[1] - back * s0
+                if self.planner.occ[self.planner.cell(bx, by)] or \
+                        not self.held_path_clear([], (bx, by), b[2], line=True):
+                    continue
+                p2 = planner.path((bx, by), pre, extra=self.loose_tools())
+                if p2 is None or not self.held_path_clear(p2 + [pre], (x, y), yaw, start=(bx, by, b[2]), strict=True):
+                    continue
+                self.log("[ref] walk: %.2f m straight back before turning with the held tool" % back)
+                self.goto(bx, by, b[2], tol=0.03, yaw_tol=0.05)
+                if self.pushed:
+                    return False
+                pts = p2
+                break
+        if pts and not self.held_path_clear(pts + [pre], (x, y), yaw, loose=True):
+            # (round 5) an item carried at the waist that would meet the room on the way, mostly near the goal, where
+            # the planner keeps only the body's own clearance (turning there towards the goal's heading, the item
+            # ahead swings into what stands by it: the tools hanging by the bins): the last 0.8 m walked straight in
+            # at the goal's heading, if that way is open
+            via = (x - 0.80 * c_, y - 0.80 * s_)
+            if planner._clear(via, pre, planner.hard):
+                p2 = planner.path((b[0], b[1]), via, extra=self.loose_tools())
+                if p2 is not None and self.held_path_clear(p2 + [via, pre], (x, y), yaw, loose=True):
+                    pts = p2 + [via]
+                    self.log("[ref] walk: the last 0.8 m to (%.2f, %.2f) straight in (the held item)" % (x, y))
+        for k_lift in range(3):
+            # (round 5) an item carried at the waist that would still meet the room on the way (a chair's back, what
+            # still stands on the table by the goal): carried 6 cm higher, then drawn in close
+            if self.held_path_clear(pts + [pre], (x, y), yaw, loose=True):
+                break
+            for s_ in ("left", "right"):
+                if self.held[s_] in O.LOOSE:
+                    if k_lift < 2:
+                        self.carry_lift[self.held[s_]] = self.carry_lift.get(self.held[s_], 0.0) + 0.06
+                        self.log("[ref] walk: %s would touch the room on the way to (%.2f, %.2f); carried higher" % (
+                            self.held[s_], x, y))
+                        self.carry_pose((s_,))
+                    else:
+                        self.carry_lift.pop(self.held[s_], None)
+                        self.log("[ref] walk: %s would touch the room on the way to (%.2f, %.2f); drawn in" % (
+                            self.held[s_], x, y))
+                        self.compact = True
+                        try:
+                            self.carry_pose((s_,))
+                        finally:
+                            self.compact = False
         replanned = False
         k = 0
         while k < len(pts):
@@ -774,12 +980,19 @@ class Reference:
             return math.hypot(b[0] - x, b[1] - y) < 0.10 and abs(wrap(b[2] - yaw)) < 0.15
         return True
 
-    def held_path_clear(self, pts, goal, yaw):
+    def held_path_clear(self, pts, goal, yaw, loose=False, start=None, strict=False, line=False):
         """The held long tools (broom, dustpan) clear of the room along a walk: each turn in place towards the next
         leg, along the legs, the last leg stepped in at the goal's heading; the arms as commanded. (The walk planner
         counts only the body's own clearance near the start and the goal: a dustpan hanging on the table's side of the
-        robot was caught on its edge and pulled out of the hand.)"""
-        tools = [s_ for s_ in ("left", "right") if self.held[s_] in ("broom", "dustpan") and s_ in self.grip_rel]
+        robot was caught on its edge and pulled out of the hand.) `loose` (round 5): the held loose items instead
+        (carried at the waist, an item may meet a chair's back or what stands on a table near the goal). `start`: from
+        there (x, y, yaw) rather than where the robot stands; `strict` (round 5): each turn in place also with the body
+        3 cm off in each direction and 0.08 rad either way (the hanging tool sways as the robot steps round); `line`:
+        the legs walked at the start's heading (a step straight back)."""
+        if loose:
+            tools = [s_ for s_ in ("left", "right") if self.held[s_] in O.LOOSE and s_ in self.grip_rel]
+        else:
+            tools = [s_ for s_ in ("left", "right") if self.held[s_] in ("broom", "dustpan") and s_ in self.grip_rel]
         if not tools:
             return True
         st = self.stance
@@ -793,7 +1006,17 @@ class Reference:
             for s_ in tools:
                 st.place_held(s_, self.held[s_], self.grip_rel[s_])
             return not [b_ for b_ in st.collisions(held=names) if b_[0] in mine]
-        b = self.base()
+
+        def turn_ok(x, y, th):
+            if not ok_at(x, y, th):
+                return False
+            if strict:
+                for dx, dy, dt in ((0.03, 0, 0), (-0.03, 0, 0), (0, 0.03, 0), (0, -0.03, 0), (0, 0, 0.08),
+                                   (0, 0, -0.08)):
+                    if not ok_at(x + dx, y + dy, th + dt):
+                        return False
+            return True
+        b = self.base() if start is None else start
         cur, th = np.array([float(b[0]), float(b[1])]), float(b[2])
         legs = [np.asarray(q, float) for q in pts] + [np.asarray(goal, float)]
         for k, q in enumerate(legs):
@@ -801,10 +1024,10 @@ class Reference:
             L = float(np.linalg.norm(seg))
             if L < 0.02:
                 continue
-            th_new = math.atan2(seg[1], seg[0]) if k < len(legs) - 1 else float(yaw)
+            th_new = th if line else math.atan2(seg[1], seg[0]) if k < len(legs) - 1 else float(yaw)
             dth = wrap(th_new - th)
             for f in np.linspace(0.0, 1.0, max(2, int(abs(dth) / 0.25) + 1)):
-                if not ok_at(cur[0], cur[1], th + dth * f):
+                if not turn_ok(cur[0], cur[1], th + dth * f):
                     return False
             th = th_new
             for f in np.linspace(0.0, 1.0, max(2, int(L / 0.06) + 1))[1:]:
@@ -877,6 +1100,52 @@ class Reference:
             self.planners[reach] = Planner(radius=reach)
         return self.planners[reach]
 
+    def clear_of_counter(self, reach, margin=0.05):
+        """(round 5) Facing the kitchen counter, straight back until the point `reach` ahead of the robot is `margin`
+        in front of the counter's top edge (an item lowered to the waist nearer would go in under the top's edge or
+        below the sink's front wall). At most 0.4 m."""
+        K = RM.KITCHEN
+        b = self.base()
+        c_, s_ = math.cos(b[2]), math.sin(b[2])
+        ax, ay = b[0] + reach * c_, b[1] + reach * s_
+        if c_ > -0.3 or not (K["y0"] - 0.1 < ay < K["y1"] + 0.1) or ax >= K["top_x1"] + margin:
+            return
+        d = min(0.4, (K["top_x1"] + margin - ax) / -c_)
+        self.log("[ref] %.2f m back from the counter before lowering to the waist" % d)
+        self.goto(b[0] - d * c_, b[1] - d * s_, b[2], tol=0.02, yaw_tol=0.05)
+
+    def draw_in(self, side, dists=(0.15, 0.12, 0.08, 0.05)):
+        """(round 5) The held item drawn straight back towards the body, level or 5 cm lower, the hand's rotation kept,
+        by a checked straight line (to no nearer than 0.18 m in front of the body's middle): the steps back from a
+        fixture then start from a bent arm, not one stretched out over the fixture; only if the arm then holds it more
+        naturally (drawn in low over a table, the hand's rotation kept folds the elbow to its limit). True if drawn
+        in."""
+        b = self.base()
+        p, R = self.site(side)
+        fwd = np.array([math.cos(b[2]), math.sin(b[2]), 0.0])
+        ahead = float((p - np.array([b[0], b[1], p[2]])) @ fwd)
+        h, pitch = float(self.c.ctrl.stand_cmd), float(self.c.ctrl.waist_cmd[2])
+        q_now = np.asarray(self.d.qpos[self.c.robot.arm_q[side]], float).copy()
+        self.stance.set_state((b[0], b[1], b[2]), h, pitch)
+        c_now = posture_cost(self, side, q_now)
+        for dd, dz in [(dd_, dz_) for dd_ in dists for dz_ in (0.0, -0.05)]:
+            if ahead - dd < 0.18:
+                continue
+            tgt = p - fwd * dd + np.array([0.0, 0.0, dz])
+            # (start=False: what the item touches now, the soap pump's head it pressed, does not block the line;
+            # (round 5) a little lower too: the arm folds down rather than up)
+            ok, worst, qs, why = self.stance.check((b[0], b[1], b[2]), h, pitch, side, [(tgt, R)],
+                                                   holding=self.held[side], grip_rel=self.grip_rel.get(side),
+                                                   fallback=False, start=False)
+            if ok:
+                q_end = np.asarray(list(rows(qs))[-1], float)
+                c_end = posture_cost(self, side, natural_resolve(self, side, tgt, R, q_end))
+                if c_end < c_now - 0.1:
+                    self.log("[ref] drawn in %.2f m before stepping back (posture %.2f -> %.2f)" % (dd, c_now, c_end))
+                    self.run_path(side, qs)
+                    return True
+        return False
+
     def back_out(self, carrying):
         """Close to a fixture (inside the planner's inflated obstacles), step straight back until clear (at most
         0.6 m), so that turning does not sweep the arms or what they hold into it."""
@@ -928,7 +1197,7 @@ class Reference:
         qs = []
         for p, R in poses:
             q, ep, er = self.stance.nik.solve(self.d.qpos, side, np.asarray(p, float), None if R is None else _quat(R),
-                                              q, iters=iters, null_total=0.05)
+                                              q, iters=iters, null_total=0.05, natural=True)
             worst = max(worst, ep)
             qs.append(q.copy())
         if qs:
@@ -1009,11 +1278,60 @@ class Reference:
                         break
                 continue
             else:
-                # clear of a counter (0.90-0.92 m) or the bookshelf (0.92 m) by the item's depth below the hand, at
-                # about elbow height (higher, an item held from above puts the elbow up level with the shoulder);
-                # leaning in over a counter, go_put lifts it higher first if it would sweep down into it
-                z = max(1.00, 0.95 + self.held_depth(s_) + 0.05) + self.carry_lift.get(self.held[s_], 0.0)
-                if self.canonical_carry(s_, z):
+                # (round 5) carried as a person carries it: in front of the waist with the forearm forward, at about
+                # elbow height (the G1's elbow hangs 0.89 m up), clear of the dining table by the item's depth below
+                # the hand; on the way to the kitchen counter (dest_hint) just clear of the counter instead (0.90 m),
+                # so it is not swept into it as the robot steps up; go_put lifts it higher first if it would still
+                # sweep down into what the robot leans over
+                depth = self.held_depth(s_)
+                lift = self.carry_lift.get(self.held[s_], 0.0)
+                # (on the way to the kitchen counter, dest_hint, a dish or the sponge just clear of the counter: it is
+                # put down there from a stance stepped into, go_put's low mode, held where it is while the robot
+                # bends; books go onto the shelf so too but from the waist: the shelf's top is out of their way)
+                high = self.dest_high() and self.held[s_] is not None and \
+                    (self.held[s_] == "sponge" or O.CATEGORY[O.LOOSE[self.held[s_]][0]] == "dish")
+                z_low = max(0.84, 0.79 + depth) + lift
+                # (3 cm clear of what stands on the counter: the trays' rims, 0.92 m, as the robot steps in)
+                z_high = max(0.96, 0.935 + depth) + lift
+                if self.planner.occ[self.planner.cell(b[0], b[1])]:
+                    # next to a fixture: the item first drawn in where the robot stands, just clear of the surface
+                    # (the arm out of its working pose before the steps back), then a step straight back clear of the
+                    # fixture (drawn in to the waist there it would sweep through what stands by it: the soap bottle
+                    # beside the sponge's tray, the dishes still on the table)
+                    # (round 5: just clear of the surface it stands by: by the dining table (0.75 m) the counter's
+                    # height put a glass on a straight arm at shoulder height)
+                    (dx_, dy_), (lx_, ly_) = RM.DINING["center"], RM.DINING["size"]
+                    by_table = abs(b[0] - dx_) < lx_ / 2 + 0.6 and abs(b[1] - dy_) < ly_ / 2 + 0.6
+                    z_fix = max(z_low, RM.DINING["top_z"] + depth + 0.05) if by_table else z_high
+                    if high or not self.canonical_carry(s_, z_fix, low=by_table):
+                        # (no carry pose there: the hand drawn straight back towards the body at its height first,
+                        # so the robot does not step back with its arm stretched out over the fixture: the soap
+                        # pump's head is at shoulder height)
+                        self.draw_in(s_)
+                    self.back_out(True)
+                    b = self.base()
+                if not high:
+                    # (round 5) clear of the kitchen counter first: stepped back from the sink after a rinse, the
+                    # sponge lowered to the waist 0.4 m ahead went in below the sink's front wall, caught on it as the
+                    # robot stepped back and fell
+                    self.clear_of_counter(0.45)
+                    b = self.base()
+                if self.canonical_carry(s_, z_high if high else z_low, low=not high):
+                    continue
+                if not high:
+                    # (still over the counter's or the table's edge at the waist's height: 0.2 m further back first,
+                    # where the floor is open)
+                    b = self.base()
+                    bx_, by_ = b[0] - 0.20 * math.cos(b[2]), b[1] - 0.20 * math.sin(b[2])
+                    if not self.planner.occ[self.planner.cell(bx_, by_)]:
+                        self.goto(bx_, by_, b[2], tol=0.03, yaw_tol=0.05)
+                        if self.canonical_carry(s_, z_low, low=True):
+                            continue
+                if not high and self.canonical_carry(s_, z_high, low=False):
+                    continue
+                # (as round 4 carried it: chest height)
+                z = max(1.00, 0.95 + depth + 0.05) + lift
+                if self.canonical_carry(s_, z, low=False, legacy=True):
                     continue
             if p[2] >= z - 0.01:
                 continue
@@ -1039,74 +1357,127 @@ class Reference:
                 else:
                     self.log("[ref] carry %s: no way up (%s)" % (self.held[s_], why))
 
-    def broom_upright(self, side):
-        """The held broom upright beside the hip for walking: its handle vertical, its head fore and aft about 20 cm
-        off the floor (a posture change at the next stance lowers it by up to 15 cm) (held tilted, its head would reach 0.7 m ahead of the robot). First up 12 cm, then there by a
-        checked path (a held tool passes through the robot's own legs: only the room counts). False if no way is
-        clear."""
+    def _tool_carry(self, side, tool, cands, z, dry=False):
+        """A held long tool to a carry pose beside the hip: of the candidates [(target point, hand rotation, extra
+        cost)], the one the arm holds most naturally (the human measure of the posture the executed path resolves),
+        first up (if low), then there by a checked path (a held tool passes through the robot's own legs: only the
+        room counts). (round 5: round 4 took the first of a few that the arm reached.) True if done or already so.
+        `dry` (round 5): the best candidate's arm joints only (None if none is reachable), unmoved."""
         b = self.base()
-        Rb = _Rz(b[2])
         h, pitch = self.c.ctrl.stand, float(self.c.ctrl.waist[2])
         p, R = self.site(side)
-        pg, Rg = self.grip_rel[side]
-        lat = 0.26 if side == "left" else -0.26
-        z = max(0.90, float(pg[2]) + 0.08 + 0.20)       # the grip's height above the bristles, plus 20 cm
-        tgt = np.array([b[0], b[1], 0.0]) + Rb @ np.array([0.20, lat, 0.0])
-        tgt[2] = z
-        Rup = None
-        for xs in (1.0, -1.0):
-            xb = Rb[:, 0] * xs
-            Rbr = np.stack([xb, np.cross(np.array([0.0, 0.0, 1.0]), xb), np.array([0.0, 0.0, 1.0])], axis=1)
-            Rh = Rbr @ Rg
-            if float(np.linalg.norm(tgt - p)) < 0.02 and float(np.linalg.norm(Rh - R)) < 0.05:
+        st, r = self.stance, self.c.robot
+        q0 = self.d.qpos[r.arm_q[side]].copy()
+        ranked = []
+        for tgt, Rh, extra in cands:
+            if not dry and float(np.linalg.norm(tgt - p)) < 0.02 and float(np.linalg.norm(Rh - R)) < 0.05:
                 return True
-            up = p + np.array([0.0, 0.0, 0.12 if p[2] < z - 0.06 else 0.0])
+            best = None
+            for sq in (q0, np.array(NATURAL_CARRY_Q[side], float), np.array(HOME_Q[side], float)):
+                st.set_state((b[0], b[1], b[2]), h, pitch)
+                q, ep, er = st.solve(side, tgt, Rh, sq, iters=100, quick=30)
+                if ep > 0.006 or er > 0.05:
+                    continue
+                q = natural_resolve(self, side, tgt, Rh, q)
+                c = posture_cost(self, side, q) + extra
+                if best is None or c < best[0]:
+                    best = (c, q)
+            if best is not None:
+                ranked.append((best[0], tgt, Rh, best[1]))
+        if dry:
+            return min(ranked, key=lambda t_: t_[0])[3] if ranked else None
+        ranked = [t_[:3] for t_ in ranked]
+        why = None
+        for c, tgt, Rh in sorted(ranked, key=lambda t_: t_[0])[:6]:
+            up = p + np.array([0.0, 0.0, max(0.0, min(0.12, z - 0.06 - p[2]))])
             poses = ([(up, R)] if up[2] > p[2] + 0.01 else []) + [(tgt, Rh)]
-            ok, worst, qs, why = self.stance.check((b[0], b[1], b[2]), h, pitch, side, poses, holding="broom",
-                                                   grip_rel=self.grip_rel.get(side))
+            ok, worst, qs, why = st.check((b[0], b[1], b[2]), h, pitch, side, poses, holding=tool,
+                                          grip_rel=self.grip_rel.get(side))
             if ok:
+                self.log("[ref] %s carry: posture %.2f" % (tool, c))
                 self.run_path(side, qs)
                 return True
-            Rup = why
-        self.log("[ref] broom upright: no way (%s)" % (Rup,))
+        self.log("[ref] %s carry: no way (%d candidates; %s)" % (tool, len(ranked), why))
         return False
 
-    def pan_compact(self, side):
-        """The held dustpan level beside the hip for walking, its pan behind the hand (the lip backwards; else
-        inwards, forwards, outwards: whichever the arm reaches), its floor about 15 cm off the floor (hanging out
-        sideways it would reach 0.8 m from the robot's middle; a held tool passes through the robot's own legs).
-        False if no way is clear."""
+    def broom_upright(self, side, dry=False):
+        """The held broom beside the hip for walking, its head about 20 cm off the floor (a posture change at the next
+        stance lowers it by up to 15 cm): upright (tilted forward its head would reach 0.7 m ahead of the robot) or
+        (round 5) tilted 30-40 deg with its head trailing behind and out beside the leg, the hand then at the waist;
+        turned about its handle so the arm holds it most naturally (round 5: the hand's approach forward, the wrist
+        straight; the head fore and aft preferred, across it reaches out farther). False if no way is clear."""
         b = self.base()
         Rb = _Rz(b[2])
-        h, pitch = self.c.ctrl.stand, float(self.c.ctrl.waist[2])
-        p, R = self.site(side)
+        pg, Rg = self.grip_rel[side]
+        sg = 1.0 if side == "left" else -1.0
+        z = max(0.90, float(pg[2]) + 0.08 + 0.20)       # the grip's height above the bristles, plus 20 cm
+        cands = []
+        for fwd, la in ((0.20, 0.26), (0.26, 0.22), (0.14, 0.28), (0.31, 0.21)):
+            tgt = np.array([b[0], b[1], 0.0]) + Rb @ np.array([fwd, sg * la, 0.0])
+            tgt[2] = z
+            for k in range(12):
+                psi = b[2] + k * math.pi / 6.0
+                xb = np.array([math.cos(psi), math.sin(psi), 0.0])
+                Rbr = np.stack([xb, np.cross(np.array([0.0, 0.0, 1.0]), xb), np.array([0.0, 0.0, 1.0])], axis=1)
+                # (the head across the body reaches out by up to its half length)
+                extra = 0.6 * abs(math.sin(k * math.pi / 6.0)) + 0.05 * abs(fwd - 0.24) / 0.06
+                cands.append((tgt, Rbr @ Rg, extra))
+                if getattr(self, "broom_stroke_start", False):
+                    continue
+                # (round 5) for a walk upright with its head lower, 10 or 14 cm off the floor, the hand at 0.96-1.0 m
+                # (stroke() raises it again before the robot lowers and leans for a stroke): held with its head 20 cm
+                # up the grip is at 1.06 m, about the G1's shoulder, and the elbow winged out to hold it there
+                for zdrop in (0.10, 0.06):
+                    tgt_l = tgt.copy()
+                    tgt_l[2] = max(0.80, z - zdrop)
+                    cands.append((tgt_l, Rbr @ Rg, extra + 0.1))
+                # (round 5) or tilted 30-40 deg, the head trailing behind and out beside the leg, the hand at the
+                # waist
+                for th in (0.52, 0.70):
+                    dh = Rb @ np.array([-1.0, 0.5 * sg, 0.0])
+                    dh /= np.linalg.norm(dh)
+                    u = np.array([0.0, 0.0, math.cos(th)]) - dh * math.sin(th)
+                    xt = xb - (xb @ u) * u
+                    if float(np.linalg.norm(xt)) < 1e-6:
+                        continue
+                    xt /= np.linalg.norm(xt)
+                    Rt_ = np.stack([xt, np.cross(u, xt), u], axis=1)
+                    tgt_t = tgt.copy()
+                    tgt_t[2] = 0.30 + float((Rt_ @ pg)[2])
+                    cands.append((tgt_t, Rt_ @ Rg, extra + 0.2))
+        return self._tool_carry(side, "broom", cands, z, dry=dry)
+
+    def pan_compact(self, side):
+        """The held dustpan level beside the hip for walking, its floor about 15 cm off the floor (hanging out sideways
+        it would reach 0.8 m from the robot's middle; a held tool passes through the robot's own legs), its lip
+        towards whichever direction the arm holds it most naturally (round 5; round 4: backwards, else inwards,
+        forwards, outwards, whichever the arm reached first; a pan lying across the body reaches out farther). False
+        if no way is clear."""
+        b = self.base()
+        Rb = _Rz(b[2])
         pg, Rg = self.grip_rel[side]
         sgn = 1.0 if side == "left" else -1.0
         z = max(0.85, float(pg[2]) + 0.15)
-        tgt = np.array([b[0], b[1], 0.0]) + Rb @ np.array([0.18, 0.24 * sgn, 0.0])
-        tgt[2] = z
-        why = None
-        for lip in (-Rb[:, 0], -Rb[:, 1] * sgn, Rb[:, 0], Rb[:, 1] * sgn):     # back, in, forward, out
-            Rh = pan_rot(lip[:2]) @ Rg
-            if float(np.linalg.norm(tgt - p)) < 0.02 and float(np.linalg.norm(Rh - R)) < 0.05:
-                return True
-            up = p + np.array([0.0, 0.0, max(0.0, min(0.10, z - p[2]))])
-            poses = ([(up, R)] if up[2] > p[2] + 0.01 else []) + [(tgt, Rh)]
-            ok, worst, qs, why = self.stance.check((b[0], b[1], b[2]), h, pitch, side, poses, holding="dustpan",
-                                                   grip_rel=self.grip_rel.get(side))
-            if ok:
-                self.run_path(side, qs)
-                return True
-        self.log("[ref] pan compact: no way (%s)" % (why,))
-        return False
+        cands = []
+        for fwd, la in ((0.18, 0.24), (0.24, 0.20), (0.12, 0.26), (0.30, 0.20), (0.34, 0.17)):
+            tgt = np.array([b[0], b[1], 0.0]) + Rb @ np.array([fwd, sgn * la, 0.0])
+            tgt[2] = z
+            for k in range(8):
+                ang = b[2] + math.pi + k * math.pi / 4.0           # the lip's direction: backwards first
+                lip = np.array([math.cos(ang), math.sin(ang)])
+                lat_out = abs(math.sin(k * math.pi / 4.0))
+                cands.append((tgt, pan_rot(lip) @ Rg, 0.4 * lat_out + 0.05 * abs(fwd - 0.24) / 0.06))
+        return self._tool_carry(side, "dustpan", cands, z)
 
-    def canonical_carry(self, side, z):
-        """The held item to a carry point (CARRY_POINTS: in front of the chest; litter for a bin also beside the hip),
-        level, in the most natural arm posture of a few (NaturalIK's posture cost: the elbow down beside the body, the
-        joints off their limits), by a checked joint-space move: whatever odd branch the grasp left the arm in, the
-        next put starts from the same kind of posture. An item symmetric about its vertical axis may also turn about
-        it (the hand then holds it at another angle) and litter is carried at any angle, so long as it stays clear of
-        the robot's body. False when none is clear."""
+    def canonical_carry(self, side, z, low=True, legacy=False, dry=False):
+        """The held item to a carry point, level, in the most natural arm posture (posture_cost, the human measure, of
+        the posture the executed path resolves: NaturalIK's natural resolution), by a checked joint-space move:
+        whatever odd branch the grasp left the arm in, the next put starts from the same kind of posture. The points
+        (round 5, carry_points): in front of the waist with the forearm forward at about the height z and a little
+        above it; litter for a bin also beside the hip with the arm hanging; `legacy`: round 4's points in front of
+        the chest (CARRY_POINTS). An item symmetric about its vertical axis may also turn about it (the hand then holds
+        it at another angle) and litter is carried at any angle, so long as it stays clear of the robot's body. False
+        when none is clear."""
         b = self.base()
         st = self.stance
         r = self.c.robot
@@ -1131,35 +1502,61 @@ class Reference:
         home = np.array(HOME_Q[side])
         sym = name in O.LOOSE and O.LOOSE[name][0] in SYMMETRIC
         yaws = (0.0,) if free_rot else (0.0, -0.5, 0.5, -1.0, 1.0, -1.6, 1.6) if sym else (0.0,)
-        seeds = [q0, home] + [np.array(v, float) for v in REACH_SEEDS[side][:3]]
+        seeds = [q0, np.array(NATURAL_CARRY_Q[side], float), home]
         sols = []
-        z_hip = max(0.72, 0.50 + self.held_depth(side)) + self.carry_lift.get(name, 0.0)
-        for fwd, la, zp in CARRY_POINTS:
-            if zp != 0.0 and not hip_carry(name):
+        z_hip = max(0.66, 0.50 + self.held_depth(side)) + self.carry_lift.get(name, 0.0)
+        pts = CARRY_POINTS if legacy else carry_points(low, compact=getattr(self, "compact", False))
+        for fwd, la, zp in pts:
+            if zp < 0.0 and not hip_carry(name):
                 continue
             t2 = np.array([b[0], b[1], 0.0]) + _Rz(b[2]) @ np.array([fwd, sgn * la, 0.0])
-            t2[2] = z if zp == 0.0 else z_hip
-            for dyaw in yaws:
-                Rt = None if free_rot else R if dyaw == 0.0 else _Rz(dyaw) @ R
+            t2[2] = (z + zp) if zp >= 0.0 else z_hip + (0.0 if zp == -1.0 else 0.06)
+            # (litter beside the hip or drawn in close may hang at any angle: a can is litter)
+            loose_rot = free_rot or ((zp < 0.0 or getattr(self, "compact", False)) and hip_carry(name))
+            for dyaw in ((0.0,) if loose_rot else yaws):
+                Rt = None if loose_rot else R if dyaw == 0.0 else _Rz(dyaw) @ R
                 for sq in seeds:
                     st.set_state((b[0], b[1], b[2]), h, pitch)
                     q, ep, er = st.solve(side, t2, Rt, sq, iters=120, quick=40)
                     if ep > 0.01 or (Rt is not None and er > 0.08):
                         continue
+                    q = natural_resolve(self, side, t2, Rt, q)
                     if any(float(np.max(np.abs(q - s_[1]))) < 0.05 for s_ in sols):
                         continue
                     if name and self.held_near_body(side, q, name):
                         continue
-                    sols.append((posture_cost(self, side, q) + 0.1 * abs(dyaw) + 0.05 * float(np.max(np.abs(q - q0))),
+                    # (a person carries an item close in, the elbow bent: the arm stretched out far in front costs)
+                    sols.append((posture_cost(self, side, q) + 0.1 * abs(dyaw) + 0.03 * float(np.max(np.abs(q - q0)))
+                                 + 0.05 * abs(fwd - 0.33) / 0.04 + 0.5 * (max(0.0, float(q[3]) - 0.55) / 0.25) ** 2,
                                  q, (fwd, la, zp, dyaw)))
-        for c1, q1, how in sorted(sols, key=lambda t: t[0])[:8]:
+        if dry:
+            # (round 5) the posture only, unmoved: what a put planned now for later, the item raised by then, starts
+            # from
+            return min(sols, key=lambda t: t[0])[1] if sols else None
+        for k_, (c1, q1, how) in enumerate(sorted(sols, key=lambda t: t[0])[:8]):
             st.set_state((b[0], b[1], b[2]), h, pitch)
             st.chk.qpos[r.arm_q[side]] = q0
-            path, why = st._joint_line(side, q0, q1, self.held[side], self.grip_rel.get(side), ())
+            path = None
+            if k_ < 4:
+                # (round 5) the hand's own straight line there (its waypoints solved, and executed, with the arm's
+                # natural resolution: a straight joint move from an odd posture swings the elbow through odd ones),
+                # else a joint move by a natural reach
+                pc_, Rc_ = st.site_pose(side, q1)
+                # (an item carried at any angle too to the planned posture's rotation: solved for the position
+                # alone, the line's waypoints kept the wrist as the take had left it, bent)
+                ok_, _, qs_, why_ = st.check((b[0], b[1], b[2]), h, pitch, side, [(pc_, Rc_)],
+                                             holding=name, grip_rel=self.grip_rel.get(side), seed=q0, fallback=False)
+                if ok_:
+                    path = list(rows(qs_))
+            if path is None:
+                st.set_state((b[0], b[1], b[2]), h, pitch)
+                st.chk.qpos[r.arm_q[side]] = q0
+                path, why = st._joint_line(side, q0, q1, self.held[side], self.grip_rel.get(side), ())
             if path is not None:
                 if float(np.max(np.abs(q1 - q0))) > 0.02:
                     self.log("[ref] carry %s: posture cost %.2f (point %.2f %.2f %s, turned %.1f)" % (
-                        name, c1, how[0], how[1], "hip" if how[2] else "chest", how[3]))
+                        name, c1, how[0], how[1], "hip" if how[2] < 0 else
+                        ("chest" if legacy else "front %.2f" % (z + how[2])), how[3]))
                 self.run_path(side, path)
                 return True
         self.log("[ref] carry %s: no natural carry (%d postures)" % (name, len(sols)))
@@ -1202,8 +1599,10 @@ class Reference:
         self.sync_held()
         held = [sd for sd in ("left", "right") if self.held[sd]]
         if held and (float(self.c.ctrl.waist_cmd[2]) > 0.05 or self.c.ctrl.stand_cmd < 0.75):
-            # upright first (the hand rises and draws back from what it worked over), so the raise below is in reach
-            self.posture(0.79, 0.0)
+            # upright first, so the raise below is in reach; (round 5) the hand holding an item keeps its place in the
+            # room meanwhile, as far as the arm reaches (with the arm's joints fixed the item rose with the torso to
+            # the face: the sponge taken from its tray leaning over the counter)
+            self.posture(0.79, 0.0, hold=tuple(sd for sd in held if self.held[sd] not in ("broom", "dustpan")))
         if held:
             self.carry_pose(tuple(held))
         for sd in ("left", "right"):
@@ -1213,7 +1612,7 @@ class Reference:
         self.posture(0.79, 0.0)
         self.wait_arms()
 
-    def retreat(self, side):
+    def retreat(self, side, up_to=None):
         """A free hand that is out in front (or low) drawn back by a planned Cartesian path, clear of what it worked
         on: straight up to 1.0 m (at least 4 cm), then in towards the chest; the joint move home starts from there."""
         b = self.base()
@@ -1226,13 +1625,40 @@ class Reference:
             return True            # (the arm hangs at home: nothing to draw back; lifting it would only swing it about)
         h = self.c.ctrl.stand
         pitch = float(self.c.ctrl.waist[2])
-        z = max(p[2] + 0.04, 1.0)
+        # (round 5: up to 1.0 m, but no higher than 8 cm below the shoulder: let go low with the knees bent, the
+        # dustpan's handle, the hand rose to the face)
+        bs = mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_BODY, f"{self.c.robot.name}/{side}_shoulder_pitch_link")
+        z = max(p[2] + 0.04, min(1.0 if up_to is None else up_to, float(self.d.xpos[bs][2]) - 0.08))
         up = np.array([p[0], p[1], z])
         lat = 0.22 if side == "left" else -0.22
         inn = np.array([b[0], b[1], 0.0]) + _Rz(b[2]) @ np.array([0.26, lat, 0.0])
         inn[2] = z
-        # the hand's rotation kept (a position-only solve may turn the wrist down into what is under it)
-        for poses in ([(up, R), (inn, R)], [(up, R)], [(p + np.array([0.0, 0.0, 0.03]), R)]):
+        # the hand's rotation kept on the way up (a position-only solve may turn the wrist down into what is under
+        # it); (round 5) drawn in towards the chest it turns to the arm's natural posture there (kept, the rotation of
+        # a drop into a bin or of a put far over the counter folded the elbow to its limit and raised it over the
+        # shoulder)
+        st = self.stance
+        q_in = None
+        for sq in (np.array(NATURAL_CARRY_Q[side], float), np.asarray(q, float)):
+            st.set_state((b[0], b[1], b[2]), h, pitch)
+            q1_, ep, er = st.solve(side, inn, None, sq, iters=80, quick=30)
+            if ep < 0.005:
+                q_in = natural_resolve(self, side, inn, None, q1_)
+                break
+        if q_in is not None:
+            # up by the planned line, then a checked joint move to the arm's natural posture there
+            ok, worst, qs, why = self.stance.check((b[0], b[1], b[2]), h, pitch, side, [(up, R)])
+            if ok:
+                q_up = np.asarray(list(rows(qs))[-1], float)
+                st.set_state((b[0], b[1], b[2]), h, pitch)
+                st.chk.qpos[self.c.robot.arm_q[side]] = q_up
+                path, why2 = st._joint_line(side, q_up, q_in, None, None, ())
+                if path is not None:
+                    self.run_path(side, qs, tol_end=0.03)
+                    self.run_path(side, path, tol_end=0.03, refine=False)
+                    return True
+        cands = [[(up, R), (inn, R)], [(up, R)], [(p + np.array([0.0, 0.0, 0.03]), R)]]
+        for poses in cands:
             ok, worst, qs, why = self.stance.check((b[0], b[1], b[2]), h, pitch, side, poses)
             if ok:
                 self.run_path(side, qs, tol_end=0.03)
@@ -1300,9 +1726,14 @@ class Reference:
             self.step(5)
         return False
 
-    def stance_free(self, base, h, pitch=0.0):
-        """The robot standing at `base` (arms as they are commanded) touches nothing of the room."""
+    def stance_free(self, base, h, pitch=0.0, with_held=True):
+        """The robot standing at `base` (arms as they are commanded) touches nothing of the room (`with_held`: nor does
+        what the hands hold, as they hold it now)."""
         st = self.stance
+        if not with_held:
+            # (the arms at home: the arm that carries the item moves it up before the robot steps in)
+            st.set_state(base, h, pitch, {sd: np.array(HOME_Q[sd], float) for sd in ("left", "right")})
+            return not st.collisions(held=None)
         st.set_state(base, h, pitch, {sd: self.c.ctrl.arm_cmd[sd] for sd in ("left", "right")})
         return not st.collisions(held=[n for n in self.held.values() if n])
 
@@ -1525,17 +1956,102 @@ class Reference:
         bx, h, pitch = (0.64, 0.62, 0.35) if open_ else (0.55, 0.79, 0.30)
         self.stand(0.79, wait=False)
         self.waist(0.0, wait=False)
-        if self.walk(bx, yc + lat * (-1.0), math.pi) is False:
-            self.log("[ref] lid %d: the walk there failed" % slot)
-            return False
-        self.posture(h, pitch)
         tab, _ = self.lid_tab(slot)
-        a = tilted((-1.0, 0.0), 15.0)
-        pin = np.cross(a, np.array([0.0, 1.0, 0.0]))
-        R, ep, er = self.best_frame(side, tab, a, [pin])
-        self.hand(side, False)
-        self.arms({side: (tab + np.array([0.07, 0.0, 0.03]), R)}, timeout=3.0, tol=0.01)
-        self.arms({side: (tab, R)}, timeout=2.5, tol=0.003)
+        # (round 5: standing and leaning in; the closed lid's tab is 0.61 m up at the bin's front, open it is 0.88 m up
+        # over the bin's back half)
+        bx_r5 = 0.60
+        th_goal = RM.LID_HOLD + math.radians(12) if open_ else RM.LID_HOLD - math.radians(22)
+        end = self.lid_tab(slot, th_goal)[0]
+        # (the tab in front of the hand's own shoulder: facing the wall, the robot's right is +y; round 4's nominal
+        # stance had the tab on the other side of the body, reached across it)
+        # (round 5) the tab taken from in front, the hand level or a little tilted, the pinch across the tab leaned
+        # 30 deg towards it (the forearm then turned less than palm up or down): the frame whose grasp and arc's end
+        # the arm reaches most naturally from the nominal stance, then the stance for it (ranked by the posture); by
+        # the other hand if it is free and this one finds none (the bin by the south wall: the right hand's stance
+        # would be against the wall)
+        st = self.stance
+        # (standing up, leaning a little: the tab and the arc's end both at about the forearm's height; squatting,
+        # the arc's end is above the shoulder)
+        hs = (0.79, 0.72)
+        ps = (0.30, 0.45, 0.52, 0.15)
+        chosen = None
+        why_l = None
+        n_frames = 0
+        other_ = "right" if side == "left" else "left"
+        for sd_ in [side] + ([other_] if not self.held[other_] else []):
+            base0 = (bx_r5, yc + (0.18 if sd_ == "left" else -0.18), math.pi)
+            if base0[1] < 0.35:
+                # (the bin by the south wall: standing there the free hand, which the stance model leaves out,
+                # met the wall at 245 N)
+                continue
+            frames = []
+            for tilt in (60.0, 45.0, 30.0, 15.0, 0.0):
+                a = tilted((-1.0, 0.0), tilt)
+                nrm = np.cross(a, np.array([0.0, 1.0, 0.0]))
+                nrm /= np.linalg.norm(nrm)
+                for lean in (30.0, -30.0, 0.0):
+                    pn = math.cos(math.radians(lean)) * nrm + math.sin(math.radians(lean)) * np.array([0.0, 1.0, 0.0])
+                    for sgn in (1.0, -1.0):
+                        Rh = hand_frame(a, sgn * pn)
+                        st.set_state(base0, 0.79, 0.45)
+                        best = None
+                        for sq in (np.array(NATURAL_CARRY_Q[sd_], float), np.array(HOME_Q[sd_], float),
+                                   np.array(REACH_SEEDS[sd_][2], float)):
+                            q, ep, er = st.solve(sd_, tab, Rh, sq, iters=100, quick=30)
+                            if ep > 0.004 or er > 0.04:
+                                continue
+                            q = natural_resolve(self, sd_, tab, Rh, q)
+                            q2, ep2, _ = st.nik.solve(st.chk.qpos, sd_, end, None, q, iters=80, natural=True)
+                            c = posture_cost(self, sd_, q) + (posture_cost(self, sd_, q2) if ep2 < 0.01 else 20.0)
+                            if best is None or c < best:
+                                best = c
+                        if best is not None:
+                            frames.append((best + 0.02 * tilt / 15.0, Rh, a))
+            frames.sort(key=lambda f_: f_[0])
+            n_frames += len(frames)
+            for c, Rh, a in frames[:4]:
+                pre = tab - a * 0.07 + np.array([0.0, 0.0, 0.03])
+                stance, qs = stance_search(self, sd_, [(pre, Rh), (tab, Rh)], base0, hs, ps, rank=4)
+                if stance is not None:
+                    chosen = (stance, Rh, a, pre)
+                    break
+                why_l = qs
+            if chosen is not None:
+                if sd_ != side:
+                    self.log("[ref] lid %d: by the %s hand" % (slot, sd_))
+                side = sd_
+                lat = 0.12 if side == "left" else -0.12
+                break
+        if chosen is None:
+            self.log("[ref] lid %d: no standing stance (%d frames; last: %s); round 4's squat" % (
+                slot, n_frames, why_l))
+            # (round 4: the nominal stance, the cell's IK)
+            if self.walk(bx, yc + lat * (-1.0), math.pi) is False:
+                self.log("[ref] lid %d: the walk there failed" % slot)
+                return False
+            self.posture(h, pitch)
+            a = tilted((-1.0, 0.0), 15.0)
+            pin = np.cross(a, np.array([0.0, 1.0, 0.0]))
+            R, ep, er = self.best_frame(side, tab, a, [pin])
+            self.hand(side, False)
+            self.arms({side: (tab + np.array([0.07, 0.0, 0.03]), R)}, timeout=3.0, tol=0.01)
+            self.arms({side: (tab, R)}, timeout=2.5, tol=0.003)
+        else:
+            (x, y, yaw, h, pitch), Rh, a, pre = chosen
+            if self.walk(x, y, yaw) is False:
+                self.log("[ref] lid %d: the walk there failed" % slot)
+                return False
+            self.posture(h, pitch)
+            b_ = self.base()
+            self.hand(side, False)
+            ok, worst, qs, why = st.check((b_[0], b_[1], b_[2]), h, pitch, side, [(pre, Rh), (tab, Rh)])
+            if ok:
+                self.run_path(side, qs)
+                self.settle(side)
+            else:
+                self.arms({side: (pre, Rh)}, timeout=3.0, tol=0.01)
+                self.arms({side: (tab, Rh)}, timeout=2.5, tol=0.003)
+            ep = float(np.linalg.norm(self.site(side)[0] - tab))
         got = self.hand(side, True)
         if got != f"bin{slot}_lid":
             self.log("[ref] lid %d: closed on %s (reach %.3f)" % (slot, got, ep))
@@ -1553,7 +2069,12 @@ class Reference:
         self.step(25)
         self.release(side, settle=70)
         p, R = self.site(side)
-        self.arms({side: (p + np.array([0.12, 0.0, 0.04]), R)}, timeout=2.0, tol=0.02)
+        # (round 5) the free arm down at once: off the tab by 4 cm, then by a joint move to its natural posture in front
+        # of the chest and home (drawn 12 cm back with the pinch's rotation kept and then up to 1.0 m, the open hand
+        # rose beside the head, palm out; left there, it stayed up until the next move)
+        self.retreat(side, up_to=float(p[2]) + 0.04)
+        self.home_safe(side)
+        self.step(60)
         th = self.c.mech.lid_angle(slot)
         ok = th > RM.LID_HOLD if open_ else th < 0.08
         if not ok:
@@ -1812,7 +2333,7 @@ class Stance:
             self._ignore = set()
 
     def _check(self, base, h, pitch, side, poses, holding=None, grip_rel=None, seed=None, iters=60, transit=True,
-               allow=(), fallback=True, start="held", back=0.0):
+               allow=(), fallback=True, start="held", back=0.0, hold=False):
         """(ok, worst position error, [arm joints], first failure). With `transit`, the path starts at the arm's
         present joints and reaches the first pose either through Cartesian waypoints every 3 cm / 0.1 rad or, when
         that line is blocked or leaves the arm's reach, by a checked joint-space move to the first pose solved from
@@ -1824,11 +2345,15 @@ class Stance:
             act = self.c.d.qpos[r.arm_q[side]]
             cmd = self.c.ctrl.arm_cmd[side]
             seed = act if float(np.max(np.abs(act - cmd))) > 0.05 else cmd
+            # (round 5: a put planned for an arm that will be in another posture by then, go_put's raise for the
+            # counter on the way)
+            if getattr(self, "seed_override", None) is not None and side == self.seed_override[0]:
+                seed = self.seed_override[1]
         q0 = np.array(seed, float)
         poses = list(poses)
         self.n_via = 0
         if back > 0 and transit and poses and start == "full":
-            return self._check_back(base, h, pitch, side, poses, holding, grip_rel, q0, iters, allow, back)
+            return self._check_back(base, h, pitch, side, poses, holding, grip_rel, q0, iters, allow, back, hold=hold)
         if transit and poses and start:
             # the start itself: the arms as they are, at this stance, standing up straight (the robot walks in so)
             # and in the posture (it then bends with them); start="held" (a re-plan where the robot already stands)
@@ -1841,9 +2366,26 @@ class Stance:
                 postures = ((base, h, pitch), (base, 0.79, 0.0)) + tuple(
                     (base, 0.79 + (h - 0.79) * u, pitch * u) for u in (0.2, 0.4, 0.6, 0.8)
                     if abs(h - 0.79) > 0.01 or abs(pitch) > 0.05)
+            hold_pose = None
+            if hold and start == "full" and holding is not None:
+                # (round 5) the hand keeps the place the carry gives it standing up straight while the robot bends
+                # (Reference.posture's hold): the arm solved for it at each step of the bend, upright first
+                self.set_state(base, 0.79, 0.0)
+                hold_pose = self.site_pose(side, q0)
+                postures = ((base, 0.79, 0.0),) + tuple(
+                    (base, 0.79 + (h - 0.79) * u, pitch * u) for u in (0.25, 0.5, 0.75)
+                    if abs(h - 0.79) > 0.01 or abs(pitch) > 0.05) + ((base, h, pitch),)
+            q_prev = q0
             for bse, hh, pp in postures:
                 self.set_state(bse, hh, pp)
-                self.chk.qpos[r.arm_q[side]] = q0
+                qa = q0
+                if hold_pose is not None:
+                    qa, ep_h, er_h = self.nik.solve(self.chk.qpos, side, hold_pose[0], _quat(hold_pose[1]), q_prev,
+                                                    iters=40, null_total=0.3, natural=True)
+                    if ep_h > 0.006 or er_h > 0.04:
+                        return False, 0.0, [], ("hold unreachable", round(ep_h, 4), round(er_h, 3))
+                    q_prev = qa
+                self.chk.qpos[r.arm_q[side]] = qa
                 self.chk.qpos[r.arm_q[other]] = self.c.d.qpos[r.arm_q[other]]
                 held = []
                 for sd in ("left", "right"):
@@ -1858,6 +2400,8 @@ class Stance:
                     bad = [b_ for b_ in bad if b_[0] == mine]
                 if bad:
                     return False, 0.0, [], ("start collides",) + tuple(bad[0])
+            if hold_pose is not None:
+                q0 = np.asarray(q_prev, float).copy()           # (the transit starts from the arm so, bent)
             self.set_state(base, h, pitch)
         # contacts the robot already makes where it stands (a leg by the dustpan it just set down) do not block the
         # arm's path: only new ones count
@@ -1909,9 +2453,10 @@ class Stance:
         why_line = why
         if not fallback:
             return False, worst, [], why_line
-        # (2) a checked joint-space move to the first pose, solved from natural reaching postures
+        # (2) a checked joint-space move to the first pose, solved from natural reaching postures (round 5: the
+        # natural carry's posture among them: the arm forward, the wrist straight)
         tried = []
-        for sq in [q0] + [np.array(v, float) for v in REACH_SEEDS[side]]:
+        for sq in [q0, np.array(NATURAL_CARRY_Q[side], float)] + [np.array(v, float) for v in REACH_SEEDS[side]]:
             self.set_state(base, h, pitch)
             self.chk.qpos[r.arm_q[side]] = q0
             q1, ep, er = self.solve(side, p1, R1, sq, iters=150, quick=40)
@@ -1932,7 +2477,7 @@ class Stance:
         return False, worst, [], why_line
 
 
-def _stance_check_back(self, base, h, pitch, side, poses, holding, grip_rel, q0, iters, allow, back):
+def _stance_check_back(self, base, h, pitch, side, poses, holding, grip_rel, q0, iters, allow, back, hold=False):
     """A stance reached bent (go_put's low mode): the robot walks in upright to `back` metres short of it, bends there
     (a held item, carried in front of the chest, would otherwise sweep down through what the robot reaches over, and
     it tilts with the torso), moves the hand to the first pose's place relative to the body (that pose shifted back by
@@ -1955,11 +2500,24 @@ def _stance_check_back(self, base, h, pitch, side, poses, holding, grip_rel, q0,
                 held.append(hn)
         return self.collisions(held=held or None)
 
-    # upright at the back-off point, then bending there
+    # upright at the back-off point, then bending there (round 5, `hold`: the hand keeping its place meanwhile, as
+    # Reference.posture holds it)
+    hold_pose = None
+    if hold and holding is not None:
+        self.set_state(bb, 0.79, 0.0)
+        hold_pose = self.site_pose(side, q0)
+    qh = np.asarray(q0, float).copy()
     for hh, pp in [(0.79, 0.0)] + [(0.79 + (h - 0.79) * u, pitch * u) for u in (0.2, 0.4, 0.6, 0.8, 1.0)]:
-        bad = held_bad(bb, hh, pp, q0)
+        if hold_pose is not None:
+            self.set_state(bb, hh, pp)
+            qh, ep_h, er_h = self.nik.solve(self.chk.qpos, side, hold_pose[0], _quat(hold_pose[1]), qh, iters=40,
+                                            null_total=0.3, natural=True)
+            if ep_h > 0.006 or er_h > 0.04:
+                return False, 0.0, [], ("hold unreachable", round(ep_h, 4), round(er_h, 3))
+        bad = held_bad(bb, hh, pp, qh)
         if bad:
             return False, 0.0, [], ("start collides",) + tuple(bad[0])
+    q0 = qh
     # bent there: the hand to the first pose's place relative to the body (a transit: it touches nothing)
     p1, R1 = poses[0]
     pre = (np.asarray(p1, float) - back * np.array([c_, s_, 0.0]), R1)
@@ -1988,11 +2546,27 @@ def _stance_check_back(self, base, h, pitch, side, poses, holding, grip_rel, q0,
 Stance._check_back = _stance_check_back
 
 
+def path_posture(ref, side, base, h, pitch, qs, poses):
+    """How unnatural the arm is along a planned path (the human measure of the posture the executed path resolves at
+    each pose: the worst plus a third of the mean), the robot at (base, h, pitch)."""
+    st = ref.stance
+    st.set_state(base, h, pitch)
+    cs = []
+    for entry, (p, R) in zip(qs[-len(poses):], poses):
+        q = natural_resolve(ref, side, p, R, last(entry), iters=40)
+        cs.append(posture_cost(ref, side, q))
+    if not cs:
+        return 0.0
+    return max(cs) + sum(cs) / (3.0 * len(cs))
+
+
 def stance_search(ref, side, poses, base0, heights, pitches, offsets=None, holding=None, yaw_offsets=(0.0,),
-                  allow=(), passes=(False, True), back=0.0):
+                  allow=(), passes=(False, True), back=0.0, rank=0, hold=False):
     """The first stance (x, y, yaw, h, pitch) near base0 from which every pose is reachable without collision, trying
     the offsets (forward, lateral metres in the base frame) in order: every stance with the straight approach line
-    first, then again with the joint-space approach as well. Returns (stance, joints) or (None, why)."""
+    first, then again with the joint-space approach as well. With `rank` (round 5), of the first `rank` such stances
+    of a pass the one whose path the arm takes most naturally (path_posture; the body chosen with the arm: where the
+    robot stands, how far it leans, how low it stands). Returns (stance, joints) or (None, why)."""
     st = ref.stance
     grip = ref.grip_rel.get(side) if holding else None
     x0, y0, yaw0 = base0
@@ -2009,18 +2583,37 @@ def stance_search(ref, side, poses, base0, heights, pitches, offsets=None, holdi
                 c, s = math.cos(yaw), math.sin(yaw)
                 for f, l in offsets:
                     base = (x0 + f * c - l * s, y0 + f * s + l * c, yaw)
-                    if ref.planner.occ[ref.planner.cell(base[0], base[1])] and not ref.stance_free(base, h):
+                    # (stepped into with the item raised first, `back`: the item as carried now does not count there)
+                    if ref.planner.occ[ref.planner.cell(base[0], base[1])] and \
+                            not ref.stance_free(base, h, with_held=back <= 0.0):
                         continue
                     stances.append((base, h, pitch))
     for fallback in passes:
+        found = []
         for base, h, pitch in stances:
             ok, worst, qs, why = st.check(base, h, pitch, side, poses, holding=holding, grip_rel=grip, allow=allow,
-                                          fallback=fallback, start="full", back=back)
+                                          fallback=fallback, start="full", back=back, hold=hold)
             n += 1
             if ok:
-                st.n_via_saved = st.n_via
-                ref.plan_stats.append((n, time.time() - t0, True))
-                return (base[0], base[1], base[2], h, pitch), qs
+                if rank <= 1:
+                    st.n_via_saved = st.n_via
+                    ref.plan_stats.append((n, time.time() - t0, True))
+                    return (base[0], base[1], base[2], h, pitch), qs
+                # (round 5: and the legs: a deep squat costs, so of stances the arm takes alike the robot stands
+                # taller; the human measure sees the arm only)
+                c = path_posture(ref, side, base, h, pitch, qs, poses) + 0.03 * len(found) + \
+                    1.0 * (max(0.0, 0.79 - h) / 0.1) ** 2
+                found.append((c, (base[0], base[1], base[2], h, pitch), qs, st.n_via))
+                if len(found) >= rank or c < 0.4:
+                    break                   # (a stance the arm takes without effort needs no rival)
+        if found:
+            c, stance, qs, nv = min(found, key=lambda f_: f_[0])
+            st.n_via_saved = nv
+            ref.last_rank_cost = c
+            ref.plan_stats.append((n, time.time() - t0, True))
+            ref.log("[ref]   stance ranked: %d feasible, posture %.2f (pitch %.2f h %.2f)" % (len(found), c, stance[4],
+                                                                                            stance[3]))
+            return stance, qs
     ref.plan_stats.append((n, time.time() - t0, False))
     return None, why
 
@@ -2034,7 +2627,7 @@ def _nominal(ref, surf, p, side, flip=False):
         C = RM.COFFEE
         cy, cl = C["center"][1], C["size"][1]
         y = float(np.clip(p[1] - lat, cy - cl / 2 + C["leg_inset"] + 0.21, cy + cl / 2 - C["leg_inset"] - 0.21))
-        return (C["center"][0] - C["size"][0] / 2 - 0.17, y, 0.0), (0.50, 0.55), (0.45, 0.52, 0.35), True
+        return (C["center"][0] - C["size"][0] / 2 - 0.17, y, 0.0), (0.62, 0.55, 0.50), (0.52, 0.45, 0.35), True
     if surf == "dining_top":
         D = RM.DINING
         (dx, dy), (lx, ly) = D["center"], D["size"]
@@ -2072,6 +2665,18 @@ def _grasp_frames(ref, name, side, base0):
     z = np.array([0.0, 0.0, 1.0])
     out = []
     if kind in ("can", "bottle", "glass"):
+        # (round 5) from the side with the hand nearly level, at about the middle of its height, the way a person takes
+        # a glass (the forearm forward, the wrist straight, the hand round it): from the robot's side and round the
+        # object; then round 4's steeper grasps near the top
+        hgt = {"can": 0.066, "bottle": 0.095, "glass": 0.062}[kind]
+        g = p + R[:, 2] * hgt
+        for tilt in (8.0, 20.0, 32.0):
+            for daz in (0.0, -0.4, 0.4, -0.8, 0.8):
+                d2 = _rot2(to, daz)
+                a = tilted(d2, tilt)
+                l2 = np.array([-d2[1], d2[0], 0.0])
+                for sgn in (1.0, -1.0):
+                    out.append((g, a, hand_frame(a, sgn * l2)))
         hgt = {"can": 0.075, "bottle": 0.10, "glass": 0.072}[kind]
         g = p + R[:, 2] * hgt
         for tilt in (62.0, 50.0, 40.0, 30.0):
@@ -2079,18 +2684,90 @@ def _grasp_frames(ref, name, side, base0):
             for sgn in (1.0, -1.0):
                 out.append((g, a, hand_frame(a, sgn * lat)))
     elif kind in ("napkin", "apple"):
+        # (round 5) a crumpled napkin or the core is taken any way round: the hand a little tilted from the robot's
+        # side and round it first (the wrist straight), then round 4's steeper grasps from above
+        for tilt in (28.0, 38.0):
+            for daz in (0.0, -0.45, 0.45):
+                d2 = _rot2(to, daz)
+                a = tilted(d2, tilt)
+                l2 = np.array([-d2[1], d2[0], 0.0])
+                for pin in (l2, -l2):
+                    out.append((p.copy(), a, hand_frame(a, pin)))
         for tilt in (55.0, 45.0, 65.0, 35.0):
             a = tilted(to, tilt)
             for pin in (lat, -lat):
                 out.append((p.copy(), a, hand_frame(a, pin)))
     elif kind == "plate":
+        # pinched at the rim (the pinch across the plate, within 35 deg of its axis), anywhere round the near half of
+        # the rim; (round 5) the pinch also leaned 20 deg to the side (the forearm then turned less) and the approach
+        # flatter, so the plate is carried level with the wrist straight
         rim = O.PLATE["r"] - 0.022
-        g = p - flat * rim + z * (O.PLATE["h"] / 2)
-        for tilt in (30.0, 25.0, 33.0):
-            a = tilted(to, tilt)
-            pin = z - (z @ a) * a
-            for sgn in (1.0, -1.0):
-                out.append((g, a, hand_frame(a, sgn * pin)))
+        for daz in (0.0, -0.35, 0.35):
+            d2 = _rot2(to, daz)
+            fl2 = np.array([d2[0], d2[1], 0.0])
+            g = p - fl2 * rim + z * (O.PLATE["h"] / 2)
+            # (and 38 deg: set down on the dish tray, a plate pinched with a flatter hand puts the wrist into the
+            # counter's top or the tray's rim, 2 cm below the plate's rim)
+            for tilt in (25.0, 18.0, 30.0, 38.0):
+                a = tilted(d2, tilt)
+                pin = z - (z @ a) * a
+                pin /= np.linalg.norm(pin)
+                side_v = np.cross(a, pin)
+                for lean in (0.0, 20.0, -20.0):
+                    if tilt > 26.0 and lean:
+                        continue
+                    pn = math.cos(math.radians(lean)) * pin + math.sin(math.radians(lean)) * side_v
+                    for sgn in (1.0, -1.0):
+                        out.append((g, a, hand_frame(a, sgn * pn)))
+    if kind == "sponge":
+        # (round 5) by the long edge facing the robot, pinched through its thickness (feature k = 2) with the hand
+        # nearly level and the pinch leaned 25-30 deg to the side (within the grip's 35 deg of the thin axis): the
+        # forearm then turned about 1 rad, not palm down, and wiping (the sponge's length across the stroke), rinsing
+        # and carrying it need no bent wrist
+        half = np.array(O.SPONGE["size"]) / 2
+        zt = R[:, 2]
+        edges = []
+        for ax in (0, 1):
+            for sgn in (-1.0, 1.0):
+                nrm = R[:, ax] * sgn
+                edges.append((float(nrm[:2] @ (-to)), ax, sgn))
+        edges.sort(reverse=True)
+        for _, ax, sgn in edges[:2]:
+            g = p + R[:, ax] * sgn * (half[ax] - 0.020)
+            inward = -R[:, ax] * sgn
+            inward = np.array([inward[0], inward[1]])
+            inward /= np.linalg.norm(inward)
+            for tilt in (12.0, 20.0):
+                a = tilted(inward, tilt)
+                pv = zt - (zt @ a) * a
+                pv /= np.linalg.norm(pv)
+                sv = np.cross(a, pv)
+                for lean in (28.0, -28.0, 22.0, -22.0):
+                    pn = math.cos(math.radians(lean)) * pv + math.sin(math.radians(lean)) * sv
+                    if abs(float(pn @ zt)) < 0.83:
+                        continue
+                    for s2 in (1.0, -1.0):
+                        out.append((g, a, hand_frame(a, s2 * pn)))
+    if kind == "sponge":
+        # (round 5) across its width with the hand nearly level behind one end of its length, the fingers along its
+        # sides (the pinch across its width, feature k = 1): wiping, rinsing and carrying it so need no bent wrist;
+        # from either end (the one nearer the robot first)
+        half = np.array(O.SPONGE["size"]) / 2
+        ends = sorted((1.0, -1.0), key=lambda sx: float(R[:2, 0] @ to) * sx, reverse=True)
+        for sx in ends:
+            ax = R[:, 0] * sx
+            ax2 = np.array([ax[0], ax[1]])
+            if np.linalg.norm(ax2) < 1e-6:
+                continue
+            ax2 /= np.linalg.norm(ax2)
+            g = p - ax * 0.012 + R[:, 2] * (half[2] - 0.006)
+            for tilt in (18.0, 28.0, 38.0):
+                a = tilted(ax2, tilt)
+                wy = R[:, 1]
+                pin = wy - (wy @ a) * a
+                pin /= np.linalg.norm(pin)
+                for s2 in (1.0, -1.0):
+                    out.append((g, a, hand_frame(a, s2 * pin)))
     if kind == "sponge":
         # from above, pinched across its width (the pad stays free underneath): approach straight down or tilted
         # towards the robot
@@ -2132,15 +2809,16 @@ def _grasp_frames(ref, name, side, base0):
 
 
 def carry_costs(ref, name, side, base0, frames):
-    """Per grasp frame, the arm posture it leaves for carrying (canonical_carry's points and turns from a robot
-    standing upright at base0, the item level as it then is; NaturalIK's posture cost, 50 when none is reachable):
-    a can taken from straight above is carried with the hand pointing down, best with the arm hanging beside the hip;
-    taken from the side, in front of the chest with the forearm level. Litter carried at any angle costs 0."""
+    """Per grasp frame, the arm posture it leaves for carrying (round 5: canonical_carry's points in front of the waist
+    and turns, from a robot standing upright at base0, the item level as it then is, at the height it will be carried
+    at: dishes, books and the sponge to the counter or the shelf just clear of the counter, litter at the waist or
+    beside the hip; the posture the executed path resolves, ranked by the human measure; 50 when none is reachable).
+    Litter carried at any angle costs 0."""
     kind = O.LOOSE[name][0]
     if kind in FREE_CARRY:
         return [0.0] * len(frames)
     st = ref.stance
-    _, Ro = ref.pose(name)
+    po, Ro = ref.pose(name)
     if name in O.BOOKS:
         yb = np.array([0.0, 0.0, 1.0 if Ro[2, 1] > 0 else -1.0])
         xb = Ro[:, 0] - (Ro[:, 0] @ yb) * yb
@@ -2148,30 +2826,84 @@ def carry_costs(ref, name, side, base0, frames):
         Rl = np.stack([xb, yb, np.cross(xb, yb)], axis=1)
     else:
         Rl = level(Ro)
+    # the object's lowest point now (it rests on its surface): a grasp's depth below the hand
+    m, d = ref.m, ref.d
+    bo = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, name)
+    lows = [geom_lowest(m, d, g_) for g_ in range(m.ngeom)
+            if m.geom_bodyid[g_] == bo and (m.geom_contype[g_] or m.geom_conaffinity[g_])]
+    z_low_obj = min(lows) if lows else float(po[2])
+    high = kind == "sponge" or O.CATEGORY[kind] == "dish"
     x, y, yaw = base0
     sgn = 1.0 if side == "left" else -1.0
-    pts = []
-    for fwd, la, z in CARRY_POINTS:
-        if z != 0.0 and not hip_carry(name):
-            continue
-        t = np.array([x, y, 0.0]) + _Rz(yaw) @ np.array([fwd, sgn * la, 0.0])
-        t[2] = 1.05 if z == 0.0 else 0.75
-        pts.append(t)
-    yaws = (0.0, -0.5, 0.5, -1.0, 1.0, -1.6, 1.6) if kind in SYMMETRIC else (0.0,)
-    seeds = [np.array(HOME_Q[side], float), np.array(REACH_SEEDS[side][0], float)]
+    yaws = (0.0, -0.6, 0.6, -1.3, 1.3) if kind in SYMMETRIC else (0.0,)
+    seeds = [np.array(NATURAL_CARRY_Q[side], float)]
     costs = []
     for g, a, Rh in frames:
+        depth = max(0.0, float(g[2]) - z_low_obj)
+        zc = max(0.96, 0.935 + depth) if high else max(0.84, 0.79 + depth)
+        pts = [(f, 0.15, zc + 0.015) for f in ((0.36, 0.42) if high else (0.32, 0.38))]
+        if hip_carry(name):
+            pts += [(0.12, 0.22, max(0.66, 0.50 + depth)), (0.20, 0.20, max(0.72, 0.56 + depth))]
         Rc = Rl @ (Ro.T @ Rh)
-        best = 50.0
-        for t in pts:
+        cands = []
+        for f, l, zz in pts:
+            t = np.array([x, y, 0.0]) + _Rz(yaw) @ np.array([f, sgn * l, 0.0])
+            t[2] = zz
             for dyaw in yaws:
+                Rt = _Rz(dyaw) @ Rc
                 for sq in seeds:
                     st.set_state((x, y, yaw), 0.79, 0.0)
-                    q, ep, er = st.solve(side, t, _Rz(dyaw) @ Rc, sq, iters=80, quick=30)
+                    q, ep, er = st.solve(side, t, Rt, sq, iters=80, quick=30)
                     if ep < 0.01 and er < 0.08:
-                        best = min(best, posture_cost(ref, side, q) + 0.1 * abs(dyaw))
+                        cands.append((posture_cost(ref, side, q) + 0.1 * abs(dyaw), t, Rt, q, dyaw))
+        best = 50.0
+        for c0, t, Rt, q, dyaw in sorted(cands, key=lambda c_: c_[0])[:3]:
+            st.set_state((x, y, yaw), 0.79, 0.0)
+            qn = natural_resolve(ref, side, t, Rt, q)
+            best = min(best, c0, posture_cost(ref, side, qn) + 0.1 * abs(dyaw))
+        if O.CATEGORY[kind] == "dish":
+            # (round 5) and the put it leaves at the dish tray (its nominal stance, a few leans and turns of the
+            # dish): a grip that cannot set the dish down there is no grip for it
+            best += 0.5 * tray_reach_cost(ref, name, side, Ro, Ro.T @ (np.asarray(g) - po), Ro.T @ Rh)
         costs.append(best)
     return costs
+
+
+def tray_reach_cost(ref, name, side, Ro, pg, Rg):
+    """The posture cost (posture_cost; 100 out of reach) of setting `name` held by the grip (pg, Rg) down on its dish
+    tray spot from the tray's nominal stance: the best of a few leans and turns of the item about the vertical."""
+    st = ref.stance
+    spot = tray_spot(ref, name)
+    tgt = spot + np.array([0.0, 0.0, 0.03])
+    lat = 0.12 if side == "left" else -0.12
+    base = (RM.KITCHEN["top_x1"] + 0.16, float(tgt[1]) + lat, math.pi)
+    Rl = level(Ro)
+    best = 100.0
+    support = ("dish_tray",) + tuple(f"{k}_col" for k in O.DISHES if k != name and O.LOOSE[k][0] == "plate")
+    arm_q = ref.c.robot.arm_q[side]
+    for dyaw in (0.0, 0.8, -0.8, 1.6, -1.6, math.pi):
+        Robj = _Rz(dyaw) @ Rl
+        ph, Rh_ = tgt + Robj @ pg, Robj @ Rg
+        for pitch in (0.15, 0.30, 0.45):
+            st.set_state(base, 0.79, pitch)
+            for sq in (np.array(NATURAL_CARRY_Q[side], float), np.array(REACH_SEEDS[side][2], float)):
+                q, ep, er = st.solve(side, ph, Rh_, sq, iters=80, quick=30)
+                if ep < 0.005 and er < 0.04:
+                    q = natural_resolve(ref, side, ph, Rh_, q)
+                    # (round 5) the arm and the dish clear of the counter and the tray's rim where it lets go (8 mm
+                    # over its spot: the wrist lowest there): a plate pinched with the hand nearly level put the wrist
+                    # into the counter's top, and the put then went in turned 1 rad with the arm stretched out
+                    ql, ep2, er2 = st.solve(side, spot + np.array([0.0, 0.0, 0.008]) + Robj @ pg, Rh_, q, iters=40)
+                    if ep2 > 0.005 or er2 > 0.04:
+                        continue
+                    st.chk.qpos[arm_q] = ql
+                    st.place_held(side, name, (pg, Rg))
+                    if st.collisions(held=[name], allow=support):
+                        continue
+                    best = min(best, posture_cost(ref, side, q))
+        if best < 0.5:
+            break
+    return best
 
 
 def carry_order(ref, name, side, base0, frames):
@@ -2192,70 +2924,157 @@ def posture_cost(ref, side, q):
 
 
 def sponge_work_costs(ref, side, frames):
-    """Per grasp frame of the sponge, the arm posture its grip leaves for the work that follows (posture_cost; 100 for
-    a pose out of reach): a wiping stroke's near and far ends on the dining table from its south side (as wipe_side
-    stands, the sponge level, the best of its turns about the vertical and two waist pitches) plus half the rinse
-    under the faucet (as rinse stands). A grasp is so chosen for the work as well as for the take."""
+    """Per grasp frame of the sponge, the arm posture its grip leaves for the work that follows (posture_cost, the
+    human measure, of the posture the executed path resolves; 100 for a pose out of reach): a wiping stroke's near
+    and far ends on the dining table from its south side (as wipe_side stands, the sponge level, the best of its turns
+    about the vertical and two waist pitches), the rinse under the faucet, the press on the soap pump and the carry to
+    the counter (round 5: each from a few stances, as the stance searches rank them; the rinse, the soap and the
+    carry weighted 0.6, 0.3 and 0.3). A grasp is so chosen for the work as well as for the take."""
     st = ref.stance
     p, Ro = ref.pose("sponge")
     D = RM.DINING
     (dx, dy), (lx, ly) = D["center"], D["size"]
     zc = D["top_z"] + O.SPONGE["size"][2] / 2 - 0.001
     lat = 0.12 if side == "left" else -0.12
+    sg = 1.0 if side == "left" else -1.0
     Rl = level(Ro)
     ox, oy, oz = RM.FAUCET["outlet"]
-    wipe_base = (dx + lat, dy - ly / 2 - 0.16, math.pi / 2)
+    kx = RM.KITCHEN["top_x1"]
+    wipe_bases = [(dx + lat, dy - ly / 2 - 0.16, math.pi / 2)]           # (as wipe_side stands)
     wipe_pts = (np.array([dx, dy - ly / 2 + 0.10, zc]), np.array([dx, dy + 0.01, zc]))
-    rinse_base = (RM.KITCHEN["top_x1"] + 0.17, oy + lat, math.pi)
-    rinse_pt = np.array([ox, oy, oz - 0.15])
-    yaws = (0.0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6, 2.4, -2.4, math.pi)
-    seeds = [np.array(HOME_Q[side], float), np.array(REACH_SEEDS[side][0], float), np.array(REACH_SEEDS[side][2], float)]
+    rinse_bases = [(kx + 0.17, oy + lat, math.pi)]
+    rinse_pt = np.array([ox, oy, oz - RINSE_DROP])
+    sx, sy = RM.SOAP["base"]
+    soap_bases = [(kx + 0.17 + db, sy + lat, math.pi) for db in (0.0, 0.04)]
+    soap_pt = np.array([sx, sy, RM.SOAP["neck_top"] + 0.010 + RM.SOAP["head_h"] + O.SPONGE["size"][2] / 2 + 0.03])
+    carry_base = (2.0, 2.0, 0.0)
+    carry_pts = [np.array([2.0 + f, 2.0 + sg * 0.15, z]) for f, z in ((0.36, 0.86), (0.40, 0.95))]
+    yaws = (0.0, 0.5, -0.5, 1.0, -1.0, 1.57, -1.57, math.pi)
+    seeds = [np.array(NATURAL_CARRY_Q[side], float), np.array(REACH_SEEDS[side][2], float)]
 
     def pose_cost(base, pitch, pobj, Robj, pg, Rg):
         st.set_state(base, 0.79, pitch)
         best = 100.0
         for sq in seeds:
-            q, ep, er = st.solve(side, pobj + Robj @ pg, Robj @ Rg, sq, iters=100, quick=30)
+            ph, Rh_ = pobj + Robj @ pg, Robj @ Rg
+            q, ep, er = st.solve(side, ph, Rh_, sq, iters=100, quick=30)
             if ep < 0.005 and er < 0.04:
-                best = min(best, posture_cost(ref, side, q))
+                best = min(best, posture_cost(ref, side, natural_resolve(ref, side, ph, Rh_, q)))
         return best
+
+    def best_of(bases, pitches, pts, pg, Rg):
+        c = 200.0
+        for dyaw in yaws:
+            Robj = _Rz(dyaw) @ Rl
+            for base in bases:
+                for pitch in pitches:
+                    c = min(c, max(pose_cost(base, pitch, pt, Robj, pg, Rg) for pt in pts))
+        return c
 
     out = []
     for g, a, Rh in frames:
         pg, Rg = Ro.T @ (np.asarray(g) - p), Ro.T @ Rh
-        wipe = 200.0
-        for dyaw in yaws:
-            Robj = _Rz(dyaw) @ Rl
-            for pitch in (0.45, 0.52):
-                c = max(pose_cost(wipe_base, pitch, pt, Robj, pg, Rg) for pt in wipe_pts)
-                wipe = min(wipe, c)
-        rinse = min(pose_cost(rinse_base, pitch, rinse_pt, _Rz(dyaw) @ Rl, pg, Rg) for dyaw in yaws
-                    for pitch in (0.30, 0.15))
-        out.append(wipe + 0.5 * rinse)
+        # (the wiping strokes' stances and leans as wipe_side plans them: a grip judged from another stance may not
+        # reach the strokes from the ones the wiping uses; the stain's middle and both its ends along the table: a
+        # grip that cannot reach every stroke cannot clean the table)
+        wipe = best_of(wipe_bases, (0.45, 0.52), wipe_pts, pg, Rg)
+        rinse = best_of(rinse_bases, (0.15, 0.30), (rinse_pt,), pg, Rg)
+        soap = best_of(soap_bases, (0.0, 0.15), (soap_pt,), pg, Rg)
+        carry = min(best_of([carry_base], (0.0,), (pt,), pg, Rg) for pt in carry_pts)
+        out.append(wipe + 0.5 * rinse + 0.2 * min(soap, 20.0) + 0.3 * min(carry, 20.0))
     return out
 
 
+def wipe_strokes_ok(ref, side, frame):
+    """Can the sponge, held by `frame`'s grip, follow the first round's wiping strokes as degrease and wipe_side will
+    plan them (the stain's ends and middle, from both long sides of the table, its near and far ends from the grease
+    cells), from wipe_side's stances and leans (the path's waypoints solved one from the next, as the stance checks
+    solve them; the best of a few turns of the sponge about the vertical)? The arm only, no collisions."""
+    st = ref.stance
+    g, a, Rh = frame
+    p, Ro = ref.pose("sponge")
+    pg, Rg = Ro.T @ (np.asarray(g) - p), Ro.T @ Rh
+    D = RM.DINING
+    (dx, dy), (lx, ly) = D["center"], D["size"]
+    top = D["top_z"]
+    hz = O.SPONGE["size"][2] / 2
+    lat = 0.12 if side == "left" else -0.12
+    zc = top + hz - 0.001
+    Rl = level(Ro)
+    cells = grease_cells(ref)
+    if not len(cells):
+        return True
+    for from_south in (True, False):
+        sel = cells[cells[:, 1] <= dy + 0.03] if from_south else cells[cells[:, 1] > dy - 0.03]
+        if not len(sel):
+            continue
+        x0, x1 = float(sel[:, 0].min()), float(sel[:, 0].max())
+        if from_south:
+            y_near, y_far = float(sel[:, 1].min()) - 0.03, min(dy + 0.01, float(sel[:, 1].max()) + 0.03)
+            yaw_r, y_base = math.pi / 2, dy - ly / 2 - 0.16
+        else:
+            y_near, y_far = float(sel[:, 1].max()) + 0.03, max(dy - 0.01, float(sel[:, 1].min()) - 0.03)
+            yaw_r, y_base = -math.pi / 2, dy + ly / 2 + 0.16
+        for x in sorted({x0, (x0 + x1) / 2, x1}):
+            path = [np.array([x, y_near, top + hz + 0.04]), np.array([x, y_near, zc + 0.003])]
+            n = max(2, int(abs(y_far - y_near) / 0.03))
+            path += [np.array([x, y_near + (y_far - y_near) * i / n, zc]) for i in range(1, n + 1)]
+            bx = float(np.clip(x + (lat if from_south else -lat), dx - lx / 2 + 0.02, dx + lx / 2 - 0.02))
+            ok_x = False
+            for dyaw in (0.0, 0.5, -0.5, 1.0, -1.0, math.pi):
+                Robj = _Rz(dyaw) @ Rl
+                hp = [(pt + Robj @ pg, Robj @ Rg) for pt in path]
+                for pitch in (0.45, 0.52, 0.35):
+                    for fwd, lt in ((0.0, 0.0), (0.03, 0.0), (0.05, 0.0), (-0.03, 0.0)):
+                        c_, s_ = math.cos(yaw_r), math.sin(yaw_r)
+                        base = (bx + fwd * c_ - lt * s_, y_base + fwd * s_ + lt * c_, yaw_r)
+                        st.set_state(base, 0.79, pitch)
+                        q, ep, er = st.solve(side, hp[0][0], hp[0][1], np.array(NATURAL_CARRY_Q[side], float),
+                                             iters=100, quick=30)
+                        if ep > 0.005 or er > 0.04:
+                            continue
+                        good = True
+                        for ph, Rh_ in hp[1:]:
+                            q, ep, er = st.solve(side, ph, Rh_, q, 60, null_total=st.PATH_NULL)
+                            if ep > 0.005 or er > 0.04:
+                                good = False
+                                break
+                        if good:
+                            ok_x = True
+                            break
+                    if ok_x:
+                        break
+                if ok_x:
+                    break
+            if not ok_x:
+                return False
+    return True
+
+
 def ranked_stances(ref, name, side, base0, frames, pitches=(0.30, 0.45, 0.20, 0.60), heights=(0.79, 0.70),
-                   work=None):
+                   work=None, yaws=(0.0,)):
     """(cost, stance (x, y, yaw, h, pitch), frame, arm joints) for taking `name` by the grasp frames from stances
     beside base0 (the robot up to 24 cm to either side, so the arm can reach straight or across the body), feasible
     ones only, the most natural arm posture (posture_cost, plus the frame's `work` cost if given) first."""
     st, r = ref.stance, ref.c.robot
-    yaw = base0[2]
-    c_, s_ = math.cos(yaw), math.sin(yaw)
     work = work or [0.0] * len(frames)
     out = []
-    for lat in (0.0, 0.08, -0.08, 0.16, -0.16, 0.24, -0.24):
+    for lat, dyaw in [(l_, y_) for y_ in yaws for l_ in (0.0, 0.08, -0.08, 0.16, -0.16)]:
+        yaw = base0[2] + dyaw
+        c_, s_ = math.cos(yaw), math.sin(yaw)
         for pitch in pitches:
             for h in heights:
                 base = (base0[0] - lat * s_, base0[1] + lat * c_, yaw)
                 st.set_state(base, h, pitch)
                 for kf, (g, a, Rh) in enumerate(frames):
                     best = None
-                    for sq in [np.array(ARM_HOME[side], float)] + [np.array(v, float) for v in REACH_SEEDS[side]]:
+                    for sq in [np.array(ARM_HOME[side], float), np.array(NATURAL_CARRY_Q[side], float),
+                               np.array(REACH_SEEDS[side][2], float)]:
                         q, ep, er = st.solve(side, g, Rh, sq, iters=120, quick=40, w_home=0.02)
                         if ep > 0.003 or er > 0.03:
                             continue
+                        # (the posture the executed path resolves there)
+                        q = natural_resolve(ref, side, g, Rh, q)
                         cost = posture_cost(ref, side, q)
                         if best is None or cost < best[0]:
                             best = (cost, q)
@@ -2264,23 +3083,55 @@ def ranked_stances(ref, name, side, base0, frames, pitches=(0.30, 0.45, 0.20, 0.
                     st.chk.qpos[r.arm_q[side]] = best[1]
                     if st.collisions():
                         continue
-                    out.append((best[0] + work[kf], (base[0], base[1], base[2], h, pitch), (g, a, Rh), best[1]))
+                    # (round 5: and the legs: the shallower squat of postures the arm takes alike)
+                    out.append((best[0] + work[kf] + 1.0 * (max(0.0, 0.79 - h) / 0.1) ** 2,
+                                (base[0], base[1], base[2], h, pitch), (g, a, Rh), best[1]))
     out.sort(key=lambda t: t[0])
     return out
 
 
-def _take_natural(ref, name, side, nom, lift, tries=6):
-    """take() from the stance where the arm reaches the grasp in the most natural posture (ranked_stances): the
-    stance search from each ranked stance in turn, the approach led by that posture (a joint-space move to it first,
-    so the arm keeps its branch; the path from the present arm configuration may otherwise end with the elbow over
-    the head). None when no ranked stance works (take() goes on as before)."""
+def _take_natural(ref, name, side, nom, lift, tries=6, top=6):
+    """take() from the stance where the arm reaches the grasp in the most natural posture (ranked_stances) for the
+    grasp that leaves the most natural carry (carry_costs; the sponge: the work that follows, sponge_work_costs),
+    the `top` grasps by that: the stance search from each ranked stance in turn, the approach led by that posture (a
+    joint-space move to it first, so the arm keeps its branch; the path from the present arm configuration may
+    otherwise end with the elbow over the head). None when no ranked stance works (take() goes on as before)."""
     base0, heights, pitches, low = nom
     frames = _grasp_frames(ref, name, side, base0)
     if name == "sponge" and ref.surface_of(ref.pose(name)[0]) == "counter":
         work = sponge_work_costs(ref, side, frames)
+        # (a grip that reached no stroke, degrease's regrasp: ruled out, and its turn by half a turn about the
+        # sponge's vertical, the same grip of the symmetric sponge)
+        bad = getattr(ref, "sponge_bad_grips", [])
+        if bad:
+            ps_, Rs_ = ref.pose(name)
+            Rpi = _Rz(math.pi)
+            for k, (g, a, Rh) in enumerate(frames):
+                pg_, Rg_ = Rs_.T @ (np.asarray(g, float) - ps_), Rs_.T @ Rh
+                for pgb, Rgb in bad:
+                    for P_, R_ in ((pgb, Rgb), (Rpi @ pgb, Rpi @ Rgb)):
+                        dR = R_ @ Rg_.T
+                        ang = math.acos(float(np.clip((np.trace(dR) - 1) / 2, -1.0, 1.0)))
+                        if float(np.linalg.norm(P_ - pg_)) < 0.03 and ang < 0.35:
+                            work[k] += 200.0
+        # (the best few grips' wiping strokes checked as wipe_side will plan them, waypoint by waypoint: a grip whose
+        # strokes the arm cannot follow cannot clean the table, however natural its postures at their ends)
+        order = sorted(range(len(frames)), key=lambda k: (round(work[k], 2), k))
+        n_ok = 0
+        for k in order:
+            if n_ok >= 3:
+                break
+            if wipe_strokes_ok(ref, side, frames[k]):
+                n_ok += 1
+            else:
+                work[k] += 100.0
     else:
         work = carry_costs(ref, name, side, base0, frames)
-    ranked = ranked_stances(ref, name, side, base0, frames, pitches=pitches, heights=heights, work=work)
+    keep = sorted(range(len(frames)), key=lambda k: (round(work[k], 2), k))[:top]
+    frames, work = [frames[k] for k in keep], [work[k] for k in keep]
+    # (the sponge lies along its tray, across the robot's reach: the robot may stand turned a little towards it)
+    yaws = (0.0, -0.35, 0.35) if name == "sponge" else (0.0,)
+    ranked = ranked_stances(ref, name, side, base0, frames, pitches=pitches, heights=heights, work=work, yaws=yaws)
     for cost, (x, y, yaw, h, pitch), (g, a, Rh), q_nat in ranked[:tries]:
         pre = g - a * 0.09 + np.array([0.0, 0.0, 0.03])
         fwd = np.array([math.cos(yaw), math.sin(yaw), 0.0])
@@ -2290,8 +3141,11 @@ def _take_natural(ref, name, side, nom, lift, tries=6):
         poses += [(up - fwd * 0.05 * k + np.array([0.0, 0.0, 0.02 * k]), Rh) for k in range(1, 3)]
         ref.stance.prefer_seeds = [q_nat]          # (also for _take_go's re-plan where the robot then stands)
         try:
-            stance, sol = stance_search(ref, side, poses, (x, y, yaw), (h,), (pitch,),
-                                        offsets=[(0.0, 0.0), (-0.03, 0.0), (0.03, 0.0)], passes=(True,))
+            offs = [(0.0, 0.0), (-0.03, 0.0), (0.03, 0.0)]
+            if low:
+                # (at a low table: squatting where it stands the robot's hips may meet the table top: a little back)
+                offs += [(-0.06, 0.0), (-0.09, 0.0), (-0.12, 0.0)]
+            stance, sol = stance_search(ref, side, poses, (x, y, yaw), (h,), (pitch,), offsets=offs, passes=(True,))
             if stance is not None:
                 ref.log("[ref] take %s: natural posture (cost %.3f), stance (%.2f, %.2f, %.2f) h %.2f pitch %.2f"
                         % (name, cost, stance[0], stance[1], stance[2], stance[3], stance[4]))
@@ -2299,7 +3153,8 @@ def _take_natural(ref, name, side, nom, lift, tries=6):
         finally:
             ref.stance.prefer_seeds = None
         ref.take_why = sol
-    ref.log("[ref] take %s: no natural posture (%d ranked stances)" % (name, len(ranked)))
+    ref.log("[ref] take %s: no natural posture (%d ranked stances; last: %s)" % (name, len(ranked),
+                                                                               getattr(ref, "take_why", None)))
     return None
 
 
@@ -2311,15 +3166,22 @@ def take(ref, name, side, lift=0.12):
     if nom is None:
         ref.log("[ref] take %s: it lies on the %s, out of reach" % (name, surf))
         return False
+    ref.dest_hint = (float(nom[0][0]), float(nom[0][1]))
     ref.stow()                                   # plan from the configuration the walk will leave the arm in
     if ref.held[side]:
         ref.log("[ref] take %s: the %s hand still holds %s" % (name, side, ref.held[side]))
         return False
     qs, why_last = None, None
-    if name == "sponge" and surf == "counter":
+    if name == "sponge" and surf == "counter" and not getattr(ref, "round4_sponge_grips", False):
         # the sponge from its tray: from the stance of the most natural arm posture for the grasp and for the work
         # that follows it (the wiping and the rinsing); the nominal stance in front of the tray leaves the arm
         # reaching over the head
+        got = _take_natural(ref, name, side, nom, lift, top=12)
+        if got is not None:
+            return got
+    elif O.LOOSE[name][0] != "book":
+        # (round 5) every other item likewise: the grasp that leaves the most natural carry, from the stance of the
+        # most natural reach for it
         got = _take_natural(ref, name, side, nom, lift)
         if got is not None:
             return got
@@ -2343,7 +3205,12 @@ def _take_plan(ref, name, side, base0, heights, pitches, lift):
     """(joints, hand poses, grasp point, stance) of the first grasp of `name` reachable from near base0, or None
     (the last failure in ref.take_why)."""
     qs, why_last = None, None
-    frames = carry_order(ref, name, side, base0, _grasp_frames(ref, name, side, base0))
+    frames = _grasp_frames(ref, name, side, base0)
+    if name == "sponge" and getattr(ref, "round4_sponge_grips", False):
+        # (round 4's families: by the edge facing the robot, tilted 25-33 deg, then from above, as round 4 took it)
+        frames = frames[-12:] + frames[-18:-12]
+    else:
+        frames = carry_order(ref, name, side, base0, frames)
     for passes in ((False,), (True,)):               # every grasp by the straight approach first
         for g, a, Rh in frames:
             pre = g - a * 0.09 + np.array([0.0, 0.0, 0.03])
@@ -2383,6 +3250,7 @@ def _take_go(ref, name, side, qs, poses_used, g, stance, low):
         if ref.walk(x, y, yaw) is False:
             ref.log("[ref] take %s: the walk there failed" % name)
             return False
+        ref.low_spot = None
         ref.posture(h, pitch)
     if not ref.arrived(x, y, yaw):
         ref.log("[ref] take %s: the stance was not reached" % name)
@@ -2407,7 +3275,10 @@ def _take_go(ref, name, side, qs, poses_used, g, stance, low):
         ref.leave_low()
         return False
     ref.run_path(side, qs[nv + 4:nv + 7], tol_via=0.012)      # off the surface: close to the vertical line
-    ref.run_path(side, qs[nv + 7:])
+    # (round 5) not then drawn back 10 cm towards the body with the hand's rotation kept (qs[nv + 7:], still planned:
+    # the stance search keeps room for it): drawn in so while the robot still bent over the table, the elbow folded to
+    # its limit and the shoulder swung back, and the arm stayed so while the robot stepped back and straightened up;
+    # the carry pose follows from the lift's posture
     ref.leave_low()
     return True
 
@@ -2419,6 +3290,34 @@ FREE_CARRY = ("napkin", "apple")      # carried at any angle (litter: the hand h
 # on its way to a bin (hip_carry) also beside the hip with the arm hanging, its height clear of a low table by the
 # item's depth (a can held from above dangles from the hand there; carried at the chest it puts the elbow up)
 CARRY_POINTS = ((0.30, 0.20, 0.0), (0.27, 0.14, 0.0), (0.33, 0.25, 0.0), (0.10, 0.24, -1.0), (0.16, 0.24, -1.0))
+# (round 5) the natural carry: the upper arm hanging a little forward, the elbow bent about a right angle, the forearm
+# and the hand forward and level, the wrist straight (the G1's elbow then hangs 0.89 m up and the grasp site is 0.35 m
+# in front of the shoulder): a seed of the carry solves
+NATURAL_CARRY_Q = {"right": [-0.10, -0.05, 0.0, 0.05, 0.0, 0.0, 0.0], "left": [-0.10, 0.05, 0.0, 0.05, 0.0, 0.0, 0.0]}
+
+
+def carry_points(low, compact=False):
+    """canonical_carry's points (forward, out to the hand's side, height above the carry height; a negative height:
+    beside the hip, at the hip height (-1) or 6 cm above it (-2)): in front of the waist, the forearm forward; `low`:
+    the carry height is the item's own (in the open), else the counter's (a little farther out, the forearm then
+    rising a little); `compact`: drawn in close to the body (a walk past a fixture)."""
+    if compact:
+        return tuple((f, l, dz) for dz in (0.0, 0.05) for f in (0.22, 0.26) for l in (0.14, 0.20))
+    if low:
+        pts = [(f, l, dz) for dz in (0.0, 0.05) for f in (0.30, 0.35, 0.40) for l in (0.12, 0.18)]
+    else:
+        pts = [(f, l, dz) for dz in (0.0, 0.03) for f in (0.32, 0.37, 0.42) for l in (0.12, 0.18)]
+    return tuple(pts) + ((0.10, 0.22, -1.0), (0.17, 0.22, -1.0), (0.22, 0.20, -2.0))
+
+
+def natural_resolve(ref, side, p, R, q, iters=60):
+    """The arm configuration the executed path resolves at the hand pose (p, R) (NaturalIK's natural redundancy
+    resolution from q, as Reference.refine_path solves it), or q if that does not converge: the posture a choice of
+    the planner is ranked by."""
+    st = ref.stance
+    q2, ep, er = st.nik.solve(st.chk.qpos, side, np.asarray(p, float), None if R is None else _quat(R), q,
+                              iters=iters, natural=True)
+    return q2 if ep < 0.003 and (R is None or er < 0.02) else np.asarray(q, float)
 
 
 def hip_carry(name):
@@ -2444,40 +3343,68 @@ def _turned(ref, name, R, dy, yaw_stance, absolute):
 
 
 def plan_put(ref, side, name, targets, base0, heights, pitches, yaw_offsets=(0.0,), allow=(), offsets=None,
-             absolute=False, back=0.0):
+             absolute=False, back=0.0, rank=4, hold=True):
     """(stance, joints, hand poses) for carrying the held object through `targets`; a symmetric object may arrive
     turned about its vertical axis (several turns are tried; with `absolute`, only small turns of the rotations as
     given)."""
+    hold = hold and name not in ("broom", "dustpan")   # (a long tool hangs from the hand: it moves with the body)
     if absolute:
         dyaws = (0.0, 0.3, -0.3, 0.6, -0.6)
     else:
         dyaws = (0.0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6, 2.4, -2.4, math.pi) if O.LOOSE[name][0] in SYMMETRIC else (0.0,)
     why = None
     for passes in ((False,), (True,)):               # every turn by the straight approach first
+        found = []
         for dy in dyaws:
             tg = [(p, _turned(ref, name, R, dy, base0[2], absolute)) for p, R in targets]
             poses = [ref.hand_for(side, p, R) for p, R in tg]
+            ref.last_rank_cost = 0.0
             stance, qs = stance_search(ref, side, poses, base0, heights, pitches, holding=name,
-                                       yaw_offsets=yaw_offsets, allow=allow, offsets=offsets, passes=passes, back=back)
+                                       yaw_offsets=yaw_offsets, allow=allow, offsets=offsets, passes=passes, back=back,
+                                       rank=rank, hold=hold)
             if stance is not None:
-                ref.dy_chosen = dy
-                return stance, qs, poses
-            why = qs
+                # (round 5) of the first few turns that work, the one the arm takes most naturally
+                found.append((ref.last_rank_cost + 0.05 * abs(dy), dy, stance, qs, poses, ref.stance.n_via_saved))
+                if rank <= 1 or len(found) >= 3 or found[-1][0] < 0.6:
+                    break
+            else:
+                why = qs
+        if found:
+            c, dy, stance, qs, poses, nv = min(found, key=lambda f_: f_[0])
+            ref.dy_chosen = dy
+            ref.stance.n_via_saved = nv
+            if rank > 1:
+                ref.log("[ref] plan %s: posture %.2f (turned %.1f, pitch %.2f h %.2f)" % (name, c, dy, stance[4],
+                                                                                        stance[3]))
+            return stance, qs, poses
     return None, why, None
 
 
 def go_put(ref, side, name, targets, base0, heights, pitches, what, yaw_offsets=(0.0,), absolute=False, low=False,
-           allow=(), back=0.15):
+           allow=(), back=0.15, offsets=None, rank=4):
     """Plan a stance for carrying the held object through `targets` (from the carrying configuration, taken first),
     walk there (`low`: take the posture `back` metres short of it, then step in), take the posture, then plan the
     arm's path again from the arm as it now is. Returns (joint path, hand poses) or None."""
     ref.yaw_captured = ref.base()[2]          # the targets' rotations were taken now (the caller's pose())
+    ref.dest_hint = (float(base0[0]), float(base0[1]))
     ref.stow()
     if ref.held[side] != name:
         ref.log("[ref] %s %s: not in the %s hand" % (what, name, side))
         return None
-    stance, qs, poses = plan_put(ref, side, name, targets, base0, heights, pitches, yaw_offsets, absolute=absolute,
-                                 allow=allow, back=back if low else 0.0)
+    q_plan = None
+    if low and ref.dest_counter() and not ref.dest_high() and (name == "sponge" or (
+            name in O.LOOSE and O.CATEGORY[O.LOOSE[name][0]] == "dish")):
+        # (round 5) carried at the waist from afar and raised for the counter only on the way (walk): the put
+        # planned from the raised posture
+        z_hi = max(0.96, 0.935 + ref.held_depth(side)) + ref.carry_lift.get(name, 0.0)
+        q_plan = ref.canonical_carry(side, z_hi, low=False, dry=True)
+    ref.stance.seed_override = (side, np.asarray(q_plan, float)) if q_plan is not None else None
+    try:
+        stance, qs, poses = plan_put(ref, side, name, targets, base0, heights, pitches, yaw_offsets,
+                                     absolute=absolute, allow=allow, back=back if low else 0.0, offsets=offsets,
+                                     rank=rank)
+    finally:
+        ref.stance.seed_override = None
     for dz in (0.08, 0.16):
         # carried in front of the chest, the item would sweep down into what the robot leans over (a plate's far
         # rim into the counter): lifted higher first, as a person lifts a plate over the counter
@@ -2487,7 +3414,7 @@ def go_put(ref, side, name, targets, base0, heights, pitches, what, yaw_offsets=
         ref.carry_lift[name] = dz
         ref.carry_pose((side,))
         stance, qs, poses = plan_put(ref, side, name, targets, base0, heights, pitches, yaw_offsets,
-                                     absolute=absolute, allow=allow, back=back if low else 0.0)
+                                     absolute=absolute, allow=allow, back=back if low else 0.0, offsets=offsets)
     if stance is None:
         ref.log("[ref] %s %s: no stance (%s)" % (what, name, qs))
         return None
@@ -2497,7 +3424,7 @@ def go_put(ref, side, name, targets, base0, heights, pitches, what, yaw_offsets=
         if ref.walk(x - back * c_, y - back * s_, yaw, carrying=True) is False:
             ref.log("[ref] %s %s: the walk there failed" % (what, name))
             return None
-        ref.posture(h, pitch)
+        ref.posture(h, pitch, hold=(side,) if name not in ("broom", "dustpan") else ())
         ref.low_spot = (x - back * c_, y - back * s_, yaw)
         # bent where it stands: the hand to the first target's place relative to the body, then step in so
         b = ref.base()
@@ -2518,7 +3445,8 @@ def go_put(ref, side, name, targets, base0, heights, pitches, what, yaw_offsets=
         if ref.walk(x, y, yaw, carrying=True) is False:
             ref.log("[ref] %s %s: the walk there failed" % (what, name))
             return None
-        ref.posture(h, pitch)
+        ref.low_spot = None
+        ref.posture(h, pitch, hold=(side,) if name not in ("broom", "dustpan") else ())
     b = ref.base()
     ref.sync_held()
     if ref.held[side] != name:
@@ -2555,12 +3483,12 @@ def go_put(ref, side, name, targets, base0, heights, pitches, what, yaw_offsets=
 
 
 def put(ref, side, name, targets, base0, heights, pitches, release_settle=40, what="put", yaw_offsets=(0.0,),
-        absolute=False, low=False, allow=(), back=0.15):
+        absolute=False, low=False, allow=(), back=0.15, rank=4, offsets=None):
     """Carry the object held in `side` through the object poses `targets` [(p, R)] from a planned stance, let go at
     the last one, back the hand off (`allow`: what it may touch, the surface it is set on). Returns True if the hand
     got there."""
     got = go_put(ref, side, name, targets, base0, heights, pitches, what, yaw_offsets, absolute=absolute, low=low,
-                 allow=allow, back=back)
+                 allow=allow, back=back, rank=rank, offsets=offsets)
     if got is None:
         return False
     qs, poses = got
@@ -2583,13 +3511,58 @@ def put(ref, side, name, targets, base0, heights, pitches, release_settle=40, wh
 
 
 def bin_put(ref, side, name, kind):
+    """Drop the held litter into its bin. (round 5) Litter may go in at any angle: of the item as carried and the item
+    tipped forward about the robot's side-to-side axis by 0.5 and 0.9 rad (the hand then reaches down into the
+    opening with the wrist straight, not level out over it), the one whose drop the arm reaches most naturally."""
     slot = ref.bin_slot(kind)
     yc = RM.BIN_SLOTS_Y[slot]
-    po, Ro = ref.pose(name)
     lat = 0.12 if side == "left" else -0.12
-    tgt = np.array([0.20, yc, RM.BIN["rim_z"] + 0.14])
-    return put(ref, side, name, [(tgt + np.array([0.0, 0.0, 0.06]), Ro), (tgt, Ro)], (0.64, yc + lat, math.pi),
-               (0.79, 0.72), (0.30, 0.45, 0.15), release_settle=50, what="bin")
+    # (let go 12 cm over the rim of the opening's near half, the robot stepping up close and bending down to it)
+    tgt = np.array([0.23, yc, RM.BIN["rim_z"] + 0.12])
+    base0 = (0.52, yc + lat, math.pi)
+    heights, pitches = (0.79, 0.72, 0.66), (0.30, 0.45, 0.15, 0.55)
+    ref.dest_hint = (float(base0[0]), float(base0[1]))
+    ref.stow()                                   # (carried first: the drop's rotations from the item as carried)
+    po, Ro = ref.pose(name)
+    best = None
+    if ref.held[side] == name and side in ref.grip_rel:
+        # the item as it will be relative to the robot facing the wall at the bin (it keeps its pose relative to the
+        # body), then tipped about the robot's side-to-side axis (y there); each tip judged by the drop's posture
+        # alone (its IK from a few stances near the nominal one, the item's turn free), the full plan made by put()
+        Ro_s = _Rz(wrap(base0[2] - ref.base()[2])) @ Ro
+        ax = np.array([0.0, 1.0, 0.0])
+        st = ref.stance
+        pg, Rg = ref.grip_rel[side]
+        for tip in (0.0, 0.5, 0.9):
+            Rt = _axis_angle(ax, -tip) @ Ro_s
+            c_tip = 100.0
+            for dyaw in (0.0, 0.6, -0.6, 1.2, -1.2, math.pi):
+                Rtt = _Rz(dyaw) @ Rt
+                ph, Rh_ = tgt + Rtt @ pg, Rtt @ Rg
+                for dx in (0.0, -0.05, 0.05):
+                    for h_, pitch in ((0.79, 0.30), (0.79, 0.45), (0.72, 0.45)):
+                        st.set_state((base0[0] + dx, base0[1], base0[2]), h_, pitch)
+                        for sq in (np.array(NATURAL_CARRY_Q[side], float), np.array(HOME_Q[side], float)):
+                            q, ep, er = st.solve(side, ph, Rh_, sq, iters=80, quick=30)
+                            if ep < 0.005 and er < 0.04:
+                                c_tip = min(c_tip, posture_cost(ref, side, natural_resolve(ref, side, ph, Rh_, q))
+                                            + 0.1 * abs(dyaw))
+                if c_tip < 0.3:
+                    break
+            c = c_tip + 0.3 * tip
+            if best is None or c < best[0]:
+                best = (c, [(tgt + np.array([0.0, 0.0, 0.06]), Rt), (tgt, Rt)], tip)
+            if best[0] < 0.6:
+                break
+    targets = best[1] if best is not None else [(tgt + np.array([0.0, 0.0, 0.06]), Ro), (tgt, Ro)]
+    if best is not None and best[2] > 0.0:
+        ref.log("[ref] bin %s: tipped %.1f rad (posture %.2f)" % (name, best[2], best[0]))
+    if best is not None and best[2] == 0.0:
+        targets = [(tgt + np.array([0.0, 0.0, 0.06]), Ro), (tgt, Ro)]
+    # (from 0.25 m short, bent there, the item brought over the opening there and stepped in: carried at the waist
+    # straight in, it met the open lid's front edge, which stands at the waist's height over the bin)
+    return put(ref, side, name, targets, base0, heights, pitches, release_settle=50, what="bin",
+               absolute=best is not None and best[2] > 0.0, low=True, back=0.25)
 
 
 def tray_spot(ref, name):
@@ -2637,6 +3610,9 @@ def tray_spots(ref, name):
 
 def tray_put(ref, side, name):
     po, Ro = ref.pose(name)
+    # (round 5) set down level: taken just after the take, while the robot still bends over the table, the dish is
+    # tilted with the torso (8 deg at a 0.15 rad lean), and the put planned with that tilt dipped the plate's rim
+    Ro = level(Ro)
     lat = 0.12 if side == "left" else -0.12
     support = ("dish_tray",) + tuple(f"{k}_col" for k in O.DISHES if k != name and O.LOOSE[k][0] == "plate")
     ok = False
@@ -2650,8 +3626,13 @@ def tray_put(ref, side, name):
             ref.stow()
         above = tgt + np.array([0.0, 0.0, 0.07])
         targets = [(above, Ro), (tgt + np.array([0.0, 0.0, 0.03]), Ro), (tgt + np.array([0.0, 0.0, 0.008]), Ro)]
+        # (round 5: carried at the waist, the dish is raised over the counter 0.25 m short of the stance, then the
+        # robot steps in: as a person lifts a plate over the counter's edge)
+        # (bent `back` short of the stance, held just clear of the counter where it is, then stepped in)
+        back = 0.30 if O.LOOSE[name][0] == "plate" else 0.25
         ok = put(ref, side, name, targets, (RM.KITCHEN["top_x1"] + 0.16, tgt[1] + lat, math.pi), (0.79,),
-                 (0.30, 0.15, 0.45, 0.52), release_settle=40, what="tray", allow=support)
+                 (0.15, 0.30, 0.0, 0.45), release_settle=40, what="tray", allow=support, low=True, back=back, rank=8,
+                 yaw_offsets=(0.0, 0.3, -0.3))
         if ok:
             break
     return ok
@@ -2694,7 +3675,12 @@ def shelf_put(ref, side, name):
     # robot bends 0.25 m short of it and steps in so, the book then in front of the opening)
     return put(ref, side, name, targets, (xc + lat, RM.SHELF["y0"] - 0.40, math.pi / 2), (0.79, 0.72),
                (0.30, 0.15, 0.45), release_settle=50, what="shelf",
-               allow=("shelf_board2",) + tuple(f"{k}_col" for k in O.BOOKS if k != name), low=True, back=0.25)
+               allow=("shelf_board2",) + tuple(f"{k}_col" for k in O.BOOKS if k != name), low=True, back=0.25,
+               rank=8, yaw_offsets=(0.0, 0.3, -0.3),
+               # (round 5: the farther stances first: standing close to the waist-high shelf the elbow was pulled far
+               # behind the back to set the book in)
+               offsets=[(-0.08, 0.0), (-0.12, 0.0), (-0.04, 0.0), (-0.08, 0.04), (-0.08, -0.04), (0.0, 0.0),
+                        (-0.16, 0.0), (0.04, 0.0)])
 
 
 def put_hold(ref, side, name, targets, base0, heights, pitches, what="hold"):
@@ -2708,45 +3694,25 @@ def put_hold(ref, side, name, targets, base0, heights, pitches, what="hold"):
 
 # ================================================================================================ wiping
 def sponge_path(ref, side, obj_poses, base0, heights=(0.79,), pitches=(0.30, 0.15, 0.45, 0.52),
-                yaw_offsets=(0.0, 0.3, -0.3), what="sponge", walk=True, allow=(), offsets=None, run_upto=None):
+                yaw_offsets=(0.0, 0.3, -0.3), what="sponge", walk=True, allow=(), offsets=None, run_upto=None,
+                low=False, back=0.25):
     """Move the held sponge through object poses (its rotation free about the vertical): a planned stance (walked
-    to), then the planned joint path. Returns the stance or None; with run_upto = k only the path up to pose k is run
-    and (stance, the remaining hand poses) is returned."""
-    ref.yaw_captured = ref.base()[2]
-    ref.stow()
-    if ref.held[side] != "sponge":
-        ref.log("[ref] %s: the sponge is not in the %s hand" % (what, side))
+    to; `low`, round 5: bent `back` metres short of it and the sponge brought to the first pose's place relative to the
+    body there, then stepped in, as go_put does: carried at the waist it would sweep through the counter), then the
+    planned joint path. Returns the stance or None; with run_upto = k only the path up to pose k is run and (stance,
+    the remaining hand poses) is returned."""
+    got = go_put(ref, side, "sponge", obj_poses, base0, heights, pitches, what, yaw_offsets, low=low, allow=allow,
+                 back=back, offsets=offsets)
+    if got is None:
         return None
-    stance, qs, poses = plan_put(ref, side, "sponge", obj_poses, base0, heights, pitches, yaw_offsets, allow=allow,
-                                 offsets=offsets)
-    if stance is None:
-        ref.log("[ref] %s: no stance (%s)" % (what, qs))
-        return None
-    x, y, yaw, h, pitch = stance
-    if walk and ref.walk(x, y, yaw, carrying=True) is False:
-        ref.log("[ref] %s: the walk there failed" % what)
-        return None
-    ref.posture(h, pitch)
-    b = ref.base()
-    ref.sync_held()
-    if ref.held[side] != "sponge":
-        ref.log("[ref] %s: the sponge was lost on the way" % what)
-        return None
-    dy0 = ref.dy_chosen
-    for dy in (dy0, dy0 + 0.3, dy0 - 0.3):
-        tg = [(p, _Rz(dy) @ free_yaw(ref, "sponge", R, b[2], ref.yaw_captured)) for p, R in obj_poses]
-        hp = [ref.hand_for(side, p, R) for p, R in tg]
-        ok, worst, qs2, why = ref.stance.check((b[0], b[1], b[2]), h, pitch, side, hp, holding="sponge",
-                                               grip_rel=ref.grip_rel.get(side), allow=allow)
-        if ok:
-            if run_upto is None:
-                ref.run_path(side, qs2)
-                return stance
-            nv = ref.stance.n_via
-            ref.run_path(side, qs2[:nv + run_upto + 1])
-            return stance, hp[run_upto + 1:]
-    ref.log("[ref] %s: no path from the stance (%s)" % (what, why))
-    return None
+    qs2, hp = got
+    stance = tuple(float(v) for v in ref.base()) + (float(ref.c.ctrl.stand_cmd), float(ref.c.ctrl.waist_cmd[2]))
+    if run_upto is None:
+        ref.run_path(side, qs2)
+        return stance
+    nv = ref.stance.n_via
+    ref.run_path(side, qs2[:nv + run_upto + 1])
+    return stance, hp[run_upto + 1:]
 
 
 def faucet_on(ref, on=True, side="left"):
@@ -2766,21 +3732,32 @@ def faucet_on(ref, on=True, side="left"):
     g = tip(th0)
     lat = 0.12 if side == "left" else -0.12
     base0 = (RM.KITCHEN["top_x1"] + 0.17, py + lat, math.pi)
+    ref.dest_hint = (float(base0[0]), float(base0[1]))
     ref.stow()
     best = None
-    for tilt in (55.0, 40.0, 70.0, 25.0):
+    found = []
+    # (round 5) the lever's end taken from in front along the lever, the hand nearly level and the pinch across it
+    # (the forearm forward, the wrist straight), the robot leaning in over the counter; then round 4's grasps from
+    # above; of the first few that work, the one the arm takes most naturally (the stance search ranks its stances)
+    for tilt in (0.0, 12.0, 55.0, 40.0, 70.0, 25.0):
+        if found and tilt in (55.0, 40.0, 70.0, 25.0):
+            break
         a = tilted((-1.0, 0.0), tilt)
         for pin in (np.array([0.0, 1.0, 0.0]), np.array([0.0, -1.0, 0.0])):
             Rh = hand_frame(a, pin)
             pre = g - a * 0.07 + np.array([0.0, 0.0, 0.03])
             arc = [(tip(th0 + (goal - th0) * k / 8.0), None) for k in range(1, 9)]
-            stance, qs = stance_search(ref, side, [(pre, Rh), (g, Rh)] + arc, base0, (0.79,), (0.30, 0.15, 0.45),
-                                       yaw_offsets=(0.0, 0.3, -0.3))
+            ref.last_rank_cost = 0.0
+            stance, qs = stance_search(ref, side, [(pre, Rh), (g, Rh)] + arc, base0, (0.79,),
+                                       (0.30, 0.45, 0.15), yaw_offsets=(0.0, 0.3, -0.3), rank=4)
             if stance is not None:
-                best = (stance, Rh, pre)
-                break
-        if best:
+                found.append((ref.last_rank_cost + 0.01 * tilt / 10.0, (stance, Rh, pre)))
+                if len(found) >= 3:
+                    break
+        if len(found) >= 3:
             break
+    if found:
+        best = min(found, key=lambda f_: f_[0])[1]
     if best is None:
         ref.log("[ref] faucet: no stance")
         return False
@@ -2815,6 +3792,12 @@ def faucet_on(ref, on=True, side="left"):
     return ok
 
 
+# (round 5) the sponge rinsed 7 cm under the spout's mouth (the cell rinses it anywhere in the stream between the basin's
+# bottom and the mouth): held just over the counter's height the arm reaches it with the forearm forward (15 cm under
+# the mouth, inside the basin, the hand reached down over the sink's front with the wrist bent)
+RINSE_DROP = 0.07
+
+
 def rinse(ref, side="right", seconds=2.6):
     """The sponge (in `side`) in the running water."""
     if not ref.c.mech.water_on():
@@ -2822,8 +3805,9 @@ def rinse(ref, side="right", seconds=2.6):
     ox, oy, oz = RM.FAUCET["outlet"]
     Ro = level(ref.pose("sponge")[1])
     lat = 0.12 if side == "left" else -0.12
-    path = [(np.array([ox + 0.05, oy, oz - 0.08]), Ro), (np.array([ox, oy, oz - 0.15]), Ro)]
-    st = sponge_path(ref, side, path, (RM.KITCHEN["top_x1"] + 0.17, oy + lat, math.pi), what="rinse")
+    path = [(np.array([ox + 0.06, oy, oz - RINSE_DROP + 0.02]), Ro), (np.array([ox, oy, oz - RINSE_DROP]), Ro)]
+    st = sponge_path(ref, side, path, (RM.KITCHEN["top_x1"] + 0.17, oy + lat, math.pi), what="rinse", low=True,
+                     pitches=(0.0, 0.15, 0.30, 0.45))
     if st is None:
         return False
     l0 = ref.c.process.sponge.load
@@ -2843,10 +3827,11 @@ def soap(ref, side="right"):
     Ro = level(ref.pose("sponge")[1])
     lat = 0.12 if side == "left" else -0.12
     c0 = np.array([sx, sy, head_top + hz])
-    path = [(c0 + np.array([0.0, 0.0, 0.06]), Ro), (c0 + np.array([0.0, 0.0, 0.004]), Ro)]
+    # (round 5: from 3.5 cm above the head, not 6: the pump stands about shoulder high for the G1)
+    path = [(c0 + np.array([0.0, 0.0, 0.035]), Ro), (c0 + np.array([0.0, 0.0, 0.004]), Ro)]
     doses0 = ref.c.process.sponge.doses             # (the approach itself may already press the head)
     st = sponge_path(ref, side, path, (RM.KITCHEN["top_x1"] + 0.17, sy + lat, math.pi), what="soap",
-                     allow=("soap_pump_col", "soap_bottle_col"))
+                     allow=("soap_pump_col", "soap_bottle_col"), low=True, pitches=(0.0, 0.15, 0.30))
     if st is None:
         return False
     p, R = ref.site(side)
@@ -2902,6 +3887,7 @@ def wipe_side(ref, side, xs, y_near, y_far, from_south, press=0.001, target_N=12
     hz = O.SPONGE["size"][2] / 2
     sgn = 1.0 if from_south else -1.0
     done = 0
+    failed_in_row = 0
     for k, x in enumerate(xs):
         ref.sync_held()
         if ref.held[side] != "sponge" and not take(ref, "sponge", side):
@@ -2924,6 +3910,9 @@ def wipe_side(ref, side, xs, y_near, y_far, from_south, press=0.001, target_N=12
                                                    float(ref.c.ctrl.waist_cmd[2]), side, hp, holding="sponge",
                                                    grip_rel=ref.grip_rel.get(side), allow=("dining_top",),
                                                    fallback=False)
+            if ok and path_posture(ref, side, (b[0], b[1], b[2]), float(ref.c.ctrl.stand_cmd),
+                                   float(ref.c.ctrl.waist_cmd[2]), qs2, hp) > 2.0:
+                ok = False              # (round 5: reached from here only with an unnatural arm: a stance of its own)
             if ok:
                 ref.run_path(side, qs2[:ref.stance.n_via + 2])
                 res = (None, hp[2:])
@@ -2934,7 +3923,16 @@ def wipe_side(ref, side, xs, y_near, y_far, from_south, press=0.001, target_N=12
                                        (0.03, -0.04)],
                               run_upto=1)
         if res is None:
+            # (round 5: none of those reaches the stroke: a step nearer the table)
+            res = sponge_path(ref, side, path, (bx, y_base, yaw_r), heights=(0.79,), pitches=(0.45, 0.52, 0.35),
+                              yaw_offsets=(0.0, 0.2, -0.2), what="wipe x %.2f (nearer)" % x, allow=("dining_top",),
+                              offsets=[(0.08, 0.0), (0.10, 0.0), (0.08, 0.04), (0.08, -0.04)], run_upto=1)
+        if res is None:
+            failed_in_row += 1
+            if failed_in_row >= 2 and done == 0:
+                return done, "unreachable"       # (round 5: no stroke of this side reached: not every x again)
             continue
+        failed_in_row = 0
         _, rest = res
         press_follow(ref, side, rest[:-1], target_N=target_N)
         ref.track(side, rest[-1:], ticks=8)
@@ -3022,14 +4020,20 @@ def wipe_crumbs_off(ref, side="right", target_N=4.0, passes=4):
                                                            float(ref.c.ctrl.waist_cmd[2]), side, hp, holding="sponge",
                                                            grip_rel=ref.grip_rel.get(side), allow=("dining_top",),
                                                            fallback=False)
+                    if ok and path_posture(ref, side, (b[0], b[1], b[2]), float(ref.c.ctrl.stand_cmd),
+                                           float(ref.c.ctrl.waist_cmd[2]), qs2, hp) > 2.0:
+                        ok = False      # (round 5: reached from here only with an unnatural arm: a stance of its own)
                     if ok:
                         ref.run_path(side, qs2[:ref.stance.n_via + 2])
                         res = (None, hp[2:])
                 if res is None:
+                    # (round 5: farther back first, the stance ranked by the path's posture: 16 cm from the edge
+                    # and leaning, the shoulder is over the edge, and the hand drawing the sponge to it pulled the
+                    # elbow far behind the back)
                     res = sponge_path(ref, side, path, (bx, y_base, yaw_r), heights=(0.79,), pitches=(0.45, 0.52, 0.35),
                                       yaw_offsets=(0.0, 0.2, -0.2), what="crumbs x %.2f" % x, allow=("dining_top",),
-                                      offsets=[(0.0, 0.0), (0.03, 0.0), (0.05, 0.0), (-0.03, 0.0), (0.03, 0.04),
-                                               (0.03, -0.04)],
+                                      offsets=[(-0.06, 0.0), (0.0, 0.0), (-0.10, 0.0), (0.03, 0.0), (0.05, 0.0),
+                                               (-0.03, 0.0), (0.03, 0.04), (0.03, -0.04)],
                                       run_upto=1)
                 if res is None:
                     continue
@@ -3037,6 +4041,12 @@ def wipe_crumbs_off(ref, side="right", target_N=4.0, passes=4):
                 _, rest = res
                 press_follow(ref, side, rest[:-1], target_N=target_N)
                 ref.track(side, rest[-1:], ticks=8)
+                # (round 5) then back out over the table and a little higher: at the edge the hand is in front of the
+                # hips at the table's height, the elbow folded and the wrist bent, and the robot straightened up for
+                # the next lane's stance with the arm held so
+                p_, R_ = ref.site(side)
+                sg = 1.0 if from_south else -1.0
+                ref.track(side, [(p_ + np.array([0.0, sg * 0.06 * k, 0.015 * k]), R_) for k in (1, 2)], ticks=8)
                 done += 1
         n1 = len(table_crumbs(ref)[0])
         ref.log("[ref] crumbs off the table, pass %d: %d -> %d left on it (t %.0f)" % (pas, n0, n1, ref.c.sim_time))
@@ -3050,9 +4060,12 @@ def wipe_crumbs_off(ref, side="right", target_N=4.0, passes=4):
 def degrease(ref, side="right", max_rounds=5):
     """Take the sponge, run the water, soap it, wipe the stain clean from both long sides of the table (rinsing and
     re-soaping as it loads up), rinse it, put it back in its tray, stop the water."""
-    if not take(ref, "sponge", side):
-        return False
+    # (round 5) the water on first, both hands free (as a person does at a sink; with the sponge in one hand the other
+    # reached the lever across the counter while the held sponge dipped towards it as the robot leant in)
     faucet_on(ref, True, side="left" if side == "right" else "right")
+    if not take(ref, "sponge", side):
+        faucet_on(ref, False, side="left" if side == "right" else "right")
+        return False
     soap(ref, side)
     D = RM.DINING
     (dx, dy), (lx, ly) = D["center"], D["size"]
@@ -3060,6 +4073,7 @@ def degrease(ref, side="right", max_rounds=5):
         cells = grease_cells(ref)
         if len(cells) == 0 or ref.c.process.grease.removed_fraction() > 0.985:
             break
+        strokes_round = 0
         for from_south in (True, False):
             sel = cells[cells[:, 1] <= dy + 0.03] if from_south else cells[cells[:, 1] > dy - 0.03]
             if len(sel) == 0:
@@ -3078,8 +4092,41 @@ def degrease(ref, side="right", max_rounds=5):
             ref.log("[ref] wipe round %d %s: %d of %d strokes, %s, removed %.3f, load %.1f, soap %.2f" % (
                 rnd, "south" if from_south else "north", done, len(xs), why,
                 ref.c.process.grease.removed_fraction(), ref.c.process.sponge.load, ref.c.process.sponge.soap))
+            strokes_round += done
             if why == "lost":
                 break
+        if strokes_round == 0:
+            n_rg = getattr(ref, "sponge_regrasps", 0)
+            if n_rg < 2 and rnd == n_rg:
+                # (round 5) the grip reaches no stroke from the table's sides: the sponge back into its tray and
+                # taken again, first by the next of round 5's grips (this one, and its turn by half a turn, ruled
+                # out), then by round 4's (by an edge or from above), which reach every stroke
+                ref.log("[ref] degrease: no stroke reached with this grip; the sponge taken again (%s)" % (
+                    "round 5's next grip" if n_rg == 0 else "round 4's grips"))
+                ref.sponge_regrasps = n_rg + 1
+                ref.sync_held()
+                if side in ref.grip_rel:
+                    ref.sponge_bad_grips = getattr(ref, "sponge_bad_grips", []) + [ref.grip_rel[side]]
+                T_ = RM.SPONGE_TRAY
+                tgt_ = np.array([T_["center"][0], T_["center"][1],
+                                 RM.KITCHEN["top_z"] + 0.002 + O.SPONGE["size"][2] / 2 + 0.004])
+                Ro_ = level(ref.pose("sponge")[1])
+                put(ref, side, "sponge", [(tgt_ + np.array([0.0, 0.0, 0.05]), Ro_), (tgt_, Ro_)],
+                    (RM.KITCHEN["top_x1"] + 0.17, T_["center"][1] + (0.12 if side == "left" else -0.12), math.pi),
+                    (0.79,), (0.30, 0.45, 0.15), what="sponge-home", yaw_offsets=(0.0, 0.3, -0.3),
+                    allow=("tray_bottom", "tray_rim_0", "tray_rim_1", "tray_rim_2", "tray_rim_3"), low=True,
+                    back=0.25)
+                ref.sync_held()
+                if ref.held[side] is None:
+                    ref.round4_sponge_grips = n_rg >= 1
+                    try:
+                        got = take(ref, "sponge", side)
+                    finally:
+                        ref.round4_sponge_grips = False
+                    if got:
+                        continue
+            ref.log("[ref] degrease: no stroke reached in round %d; stopping the wiping" % rnd)
+            break
         ref.sync_held()
         if ref.held[side] != "sponge":
             ref.log("[ref] degrease: the sponge is lost (t %.0f)" % ref.c.sim_time)
@@ -3099,7 +4146,7 @@ def degrease(ref, side="right", max_rounds=5):
     ok = put(ref, side, "sponge", [(tgt + np.array([0.0, 0.0, 0.05]), Ro), (tgt, Ro)],
              (RM.KITCHEN["top_x1"] + 0.17, ty + (0.12 if side == "left" else -0.12), math.pi), (0.79,),
              (0.30, 0.45, 0.15), what="sponge-home", yaw_offsets=(0.0, 0.3, -0.3),
-             allow=("tray_bottom", "tray_rim_0", "tray_rim_1", "tray_rim_2", "tray_rim_3"))
+             allow=("tray_bottom", "tray_rim_0", "tray_rim_1", "tray_rim_2", "tray_rim_3"), low=True, back=0.25)
     faucet_on(ref, False, side="left" if side == "right" else "right")
     return ok
 
@@ -3141,6 +4188,7 @@ def tool_take(ref, tool, side, grip_s, from_lip=False):
     ref.stow()
     best = None
     why = None
+    found = []
     for b0 in (base0 if isinstance(base0, list) else [base0]):
         for tilt in (0.0, 15.0, -10.0, 30.0):
             to = np.array([math.cos(b0[2]), math.sin(b0[2])])
@@ -3151,16 +4199,21 @@ def tool_take(ref, tool, side, grip_s, from_lip=False):
                 Rh = hand_frame(a, sgn * np.cross(u, a))
                 pre = g - a * 0.10
                 poses = [(pre, Rh), (g - a * 0.05, Rh), (g, Rh)]
+                ref.last_rank_cost = 0.0
                 stance, qs = stance_search(ref, side, poses, b0, (0.79, 0.70, 0.62, 0.55), (0.25, 0.10, 0.40, 0.52),
-                                           yaw_offsets=(0.0, 0.3, -0.3))
+                                           yaw_offsets=(0.0, 0.3, -0.3), rank=3)
                 if stance is not None:
-                    best = (stance, Rh, poses)
-                    break
-                why = qs
-            if best:
+                    # (round 5) the grip whose take the arm makes most naturally (both turns of the hand round the
+                    # handle: one of them leaves the arm turned out for the carry and the strokes), of the first few
+                    found.append((ref.last_rank_cost + 0.02 * abs(tilt) / 15.0, (stance, Rh, poses)))
+                else:
+                    why = qs
+            if len(found) >= 3:
                 break
-        if best:
+        if found:
             break
+    if found:
+        best = min(found, key=lambda f_: f_[0])[1]
     if best is None:
         ref.log("[ref] take %s: no stance (%s)" % (tool, why))
         return False
@@ -3286,21 +4339,34 @@ def stroke(ref, side, A, B, tilt=0.42):
     u /= L
     yaw = math.atan2(u[1], u[0])
     lat = 0.12 if side == "left" else -0.12
-    for flip in (False, True):
-        hov = broom_pose(A, u, tilt, flip, lift=0.05)
-        down = broom_pose(A, u, tilt, flip)
-        targets = [hov, down]
-        for ahead in (0.66, 0.58, 0.74):
-            # the hand (and the handle above the head) on the stroke's line: the base `lat` off it, to the other side
-            base0 = (A[0] - ahead * u[0] + lat * u[1], A[1] - ahead * u[1] - lat * u[0], yaw)
-            ref.yaw_captured = ref.base()[2]
-            stance, qs, poses = plan_put(ref, side, "broom", targets, base0, (0.79, 0.72), (0.15, 0.30, 0.0),
-                                         yaw_offsets=(0.0, 0.15, -0.15),
-                                         offsets=[(0.0, 0.0), (-0.04, 0.0), (0.04, 0.0), (0.0, 0.04), (0.0, -0.04)])
+    # (round 5) planned from the broom as it is raised at the stance before the stroke (below), not as carried for the
+    # walk (lower: bent at the stance so, its head would meet the floor)
+    ref.broom_stroke_start = True
+    try:
+        q_raised = ref.broom_upright(side, dry=True)
+    finally:
+        ref.broom_stroke_start = False
+    ref.stance.seed_override = (side, np.asarray(q_raised, float)) if q_raised is not None else None
+    try:
+        for flip in (False, True):
+            hov = broom_pose(A, u, tilt, flip, lift=0.05)
+            down = broom_pose(A, u, tilt, flip)
+            targets = [hov, down]
+            for ahead in (0.66, 0.58, 0.74):
+                # the hand (and the handle above the head) on the stroke's line: the base `lat` off it, to the other
+                # side
+                base0 = (A[0] - ahead * u[0] + lat * u[1], A[1] - ahead * u[1] - lat * u[0], yaw)
+                ref.yaw_captured = ref.base()[2]
+                stance, qs, poses = plan_put(ref, side, "broom", targets, base0, (0.79, 0.72), (0.15, 0.30, 0.0),
+                                             yaw_offsets=(0.0, 0.15, -0.15),
+                                             offsets=[(0.0, 0.0), (-0.04, 0.0), (0.04, 0.0), (0.0, 0.04),
+                                                      (0.0, -0.04)])
+                if stance is not None:
+                    break
             if stance is not None:
                 break
-        if stance is not None:
-            break
+    finally:
+        ref.stance.seed_override = None
     if stance is None:
         ref.log("[ref] stroke: no stance for (%.2f, %.2f) -> (%.2f, %.2f)" % (A[0], A[1], B[0], B[1]))
         return False
@@ -3308,6 +4374,14 @@ def stroke(ref, side, A, B, tilt=0.42):
     if ref.walk(x, y, yaw_s, carrying=True) is False:
         ref.log("[ref] stroke: the walk there failed")
         return False
+    # (round 5) carried for the walk with its head 10-14 cm up (broom_upright), the broom is raised back to 20 cm here
+    # before the robot lowers and leans for the stroke (the posture change lowers it by up to 15 cm), so the stroke
+    # starts as round 4's did
+    ref.broom_stroke_start = True
+    try:
+        ref.carry_pose((side,))
+    finally:
+        ref.broom_stroke_start = False
     ref.posture(h, pitch)
     b = ref.base()
     tg = [(p, _Rz(ref.dy_chosen) @ free_yaw(ref, "broom", R, b[2], ref.yaw_captured)) for p, R in targets]
@@ -3721,6 +4795,9 @@ def pan_regrasp_low(ref, side):
 
 
 PAN_GRIP_S = 0.58        # the dustpan held this far up its handle (from the handle feature's lower end) for the floor
+#                          (round 5: 4 cm higher, the set-down standing ranked 140 on the human measure, the hand then
+#                          so close in at the hip that the wrist bent to its limit, and the pan could not be set down
+#                          again after a take from behind: kept)
 PAN_LOW_S = 0.30         # ... and this low (the coffee-table regrasp; unused)
 PAN_DUMP_S = 0.40        # ... and this far, taken from the lip's side off the floor, to empty it into a bin and hang it
                          # up (the tipped pan puts the hand 1.1-1.2 m up; held at the high grip it would be 1.3 m)
@@ -3747,16 +4824,39 @@ def dump_pan(ref, side, tips=(0.80, 0.92, 1.02, 1.10)):
     Wb = np.array([0.0, O.DUSTPAN["depth"], O.DUSTPAN["wall_h"]])
     sgn = 1.0 if float((_axis_angle(lo, 0.5) @ Rp @ Wb)[2]) > float((Rp @ Wb)[2]) else -1.0
     ok = False
-    for dx, dz in ((0.05, 0.025), (0.07, 0.04), (0.04, 0.05)):
-        lip = np.array([B["x1"] - dx, yc, B["rim_z"] + dz])
-        targets = [(lip + np.array([0.12, 0.0, 0.0]), _axis_angle(lo, sgn * tips[0]) @ Rp)]
-        targets += [(lip, _axis_angle(lo, sgn * a) @ Rp) for a in tips]
-        # the robot facing the wall, the hand about 0.40 m ahead of it (the tipped pan puts the hand beyond the lip)
-        hp, _ = ref.hand_for(side, *targets[-1])
-        base0 = (float(hp[0]) + 0.40, float(hp[1]) + (0.15 if side == "left" else -0.15), math.pi)
-        ok = put_hold(ref, side, "dustpan", targets, base0, (0.79, 0.72, 0.65), (0.20, 0.35, 0.05, 0.45),
-                      what="dump")
-        if ok:
+    for attempt in range(2):
+        if attempt:
+            # (round 5) no way there from where the robot stands (beside the dining table the pan hanging by the hip
+            # may not turn there: the walk refuses to move): a step straight back, then the plans again
+            b = ref.base()
+            c0, s0 = math.cos(b[2]), math.sin(b[2])
+            stepped = False
+            for back in (0.30, 0.15):
+                bx, by = b[0] - back * c0, b[1] - back * s0
+                if not ref.planner.occ[ref.planner.cell(bx, by)] and \
+                        ref.held_path_clear([], (bx, by), b[2], line=True):
+                    ref.log("[ref] dump: %.2f m straight back first" % back)
+                    ref.goto(bx, by, b[2], tol=0.03, yaw_tol=0.05)
+                    stepped = not ref.pushed
+                    break
+            if not stepped:
+                break
+        for dx, dz in ((0.05, 0.025), (0.07, 0.04), (0.04, 0.05)):
+            ref.sync_held()
+            if ref.held[side] != "dustpan":
+                break                       # (lost on the way: nothing left to plan with)
+            lip = np.array([B["x1"] - dx, yc, B["rim_z"] + dz])
+            targets = [(lip + np.array([0.12, 0.0, 0.0]), _axis_angle(lo, sgn * tips[0]) @ Rp)]
+            targets += [(lip, _axis_angle(lo, sgn * a) @ Rp) for a in tips]
+            # the robot facing the wall, the hand about 0.40 m ahead of it (the tipped pan puts the hand beyond the
+            # lip)
+            hp, _ = ref.hand_for(side, *targets[-1])
+            base0 = (float(hp[0]) + 0.40, float(hp[1]) + (0.15 if side == "left" else -0.15), math.pi)
+            ok = put_hold(ref, side, "dustpan", targets, base0, (0.79, 0.72, 0.65), (0.20, 0.35, 0.05, 0.45),
+                          what="dump")
+            if ok:
+                break
+        if ok or ref.held[side] != "dustpan":
             break
     ref.step(80)
     n_bin = int((ref.c.process.crumbs.state == CL.BIN_GENERAL).sum())
@@ -3787,6 +4887,12 @@ def tool_home(ref, side, tool):
     ok = ok and ref.c.clips.engaged[tool]
     if not ok:
         ref.log("[ref] clip %s: not engaged" % tool)
+    # (round 5) then straight back from the wall, 0.25 m: turning where it stood, beside the tools hanging there, the
+    # robot pressed on them and the walk to the bins' lids gave up (the lids were left open)
+    b = ref.base()
+    bx, by = b[0] - 0.25 * math.cos(b[2]), b[1] - 0.25 * math.sin(b[2])
+    if not ref.planner.occ[ref.planner.cell(bx, by)] or by > b[1]:
+        ref.goto(bx, by, b[2], tol=0.03, yaw_tol=0.05)
     return ok
 
 
