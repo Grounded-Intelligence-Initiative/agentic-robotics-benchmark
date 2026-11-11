@@ -817,7 +817,8 @@ class Reference:
         if math.hypot(x - b[0], y - b[1]) > 0.04 or abs(wrap(yaw - b[2])) > 0.05:
             self.stow()
             carrying = carrying or any(self.held.values())
-            self.back_out(carrying)
+            if self.back_out(carrying):
+                self.stow()                  # (raised clear of what stood by it for the step back: carried again)
         b = self.base()
         planner = self.planner_for(carrying)
         # the last stretch: face the goal's heading 0.35 m before it, then step straight in (no turning beside a
@@ -910,7 +911,11 @@ class Reference:
             # ahead swings into what stands by it: the tools hanging by the bins): the last 0.8 m walked straight in
             # at the goal's heading, if that way is open
             via = (x - 0.80 * c_, y - 0.80 * s_)
-            if planner._clear(via, pre, planner.hard):
+            # (the straight way kept off the long tools as well, by the hips' half width, all the way in: checked
+            # against the room's fixtures only, a knee walked into the dustpan hanging by the bins)
+            r_ = min(planner.radius, HARD_R)
+            tools_ = planner._inflate(self.loose_tools(), r_) & ~planner._inflate([], r_)
+            if planner._clear(via, pre, planner.hard) and planner._clear(via, (x, y), tools_):
                 p2 = planner.path((b[0], b[1]), via, extra=self.loose_tools())
                 if p2 is not None and self.held_path_clear(p2 + [via, pre], (x, y), yaw, loose=True):
                     pts = p2 + [via]
@@ -1167,8 +1172,74 @@ class Reference:
                 best = (x, y)
                 if k >= 2:
                     break
+        lifted = False
         if best is not None:
+            for sd in ("left", "right"):
+                if self.held[sd]:
+                    lifted = self.lift_clear_of_neighbours(sd, float(math.hypot(best[0] - b[0], best[1] - b[1]))) \
+                        or lifted
             self.goto(best[0], best[1], b[2], tol=0.02)
+        return lifted
+
+    def _loose_extent(self, name):
+        """(xy radius about the body's origin, top's height) of a loose object as it lies now (its collision geoms'
+        boxes, geom_aabb, turned into the room)."""
+        m, d = self.m, self.d
+        bid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, name)
+        c = d.xpos[bid]
+        r, top = 0.0, float(c[2])
+        for g in range(m.ngeom):
+            if int(m.geom_bodyid[g]) != bid or not (m.geom_contype[g] or m.geom_conaffinity[g]):
+                continue
+            Rg = d.geom_xmat[g].reshape(3, 3)
+            ctr = d.geom_xpos[g] + Rg @ m.geom_aabb[g][:3]
+            ext = np.abs(Rg) @ m.geom_aabb[g][3:]
+            r = max(r, float(np.hypot(ctr[0] - c[0], ctr[1] - c[1]) + np.hypot(ext[0], ext[1])))
+            top = max(top, float(ctr[2] + ext[2]))
+        return r, top
+
+    def lift_clear_of_neighbours(self, side, back, half=0.20, clear=0.03):
+        """(round 5) Before a step straight back of `back` metres with this hand low over a surface: the hand (and what
+        it holds) raised clear of the loose objects standing where it will sweep (the planner's checks leave the hands
+        out, and a step back is no planned path: a plate drawn in just clear of the dining table knocked a glass
+        standing by its edge off it as the robot stepped back; a can lifted at the coffee table dragged the bottle
+        beside it off). The corridor: from 0.30 m ahead of the hand to `back` + 0.10 m behind it, `half` to either
+        side; the hand's lowest point taken 6 cm below its grasp site, or the held item's bottom. Logged when raised."""
+        if back < 0.01:
+            return False
+        b = self.base()
+        p, R = self.site(side)
+        fwd = np.array([math.cos(b[2]), math.sin(b[2]), 0.0])
+        lat = np.array([-fwd[1], fwd[0], 0.0])
+        held = self.held[side]
+        low = float(p[2]) - 0.06
+        if held:
+            low = min(low, float(p[2]) - self.held_depth(side))
+        need, who = 0.0, None
+        for n in O.LOOSE:
+            if n in self.held.values():
+                continue
+            q, _ = self.pose(n)
+            if q[2] < 0.3:
+                continue                      # (on the floor: not in the hand's way)
+            rel = np.asarray(q, float) - np.asarray(p, float)
+            along = -float(rel @ fwd)
+            r_, top_ = self._loose_extent(n)
+            if -0.30 <= along <= back + 0.10 and abs(float(rel @ lat)) <= half + r_ and top_ + clear - low > need:
+                need, who = top_ + clear - low, n
+        if need <= 0.005:
+            return False
+        h, pitch = float(self.c.ctrl.stand_cmd), float(self.c.ctrl.waist_cmd[2])
+        for f in (1.0, 0.7):
+            up = np.asarray(p, float) + np.array([0.0, 0.0, need * f])
+            ok, worst, qs, why = self.stance.check((b[0], b[1], b[2]), h, pitch, side, [(up, R)], holding=held,
+                                                   grip_rel=self.grip_rel.get(side) if held else None)
+            if ok:
+                self.log("[ref] %s hand %.2f m up clear of %s before stepping back" % (side, need * f, who))
+                self.run_path(side, qs)
+                return True
+        self.log("[ref] %s hand: no way up clear of %s before stepping back (%s)" % (side, who, why))
+        return False
 
     def arms(self, targets, timeout=6.0, tol=0.004, path="line", waist=None):
         """targets: {side: (pos, R)} in the room frame; waits until every grasp site is within tol (or timeout)."""
@@ -1926,6 +1997,10 @@ class Reference:
         """Step back from a low table before standing up (the reverse of approach's two stages)."""
         if getattr(self, "low_spot", None) is not None:
             x, y, yaw = self.low_spot
+            b = self.base()
+            for sd in ("left", "right"):
+                if self.held[sd]:
+                    self.lift_clear_of_neighbours(sd, float(math.hypot(x - b[0], y - b[1])))
             self.goto(x, y, yaw, tol=0.02)
             self.low_spot = None
 
