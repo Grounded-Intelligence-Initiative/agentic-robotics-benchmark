@@ -540,3 +540,85 @@ dbac8d1a656f5d93bc0354d8748091aab64b7167ed4d85d08b6f4968d5c1f729  tests/house_ce
 9a4c6c83b2d73f3b2fe5fffb1656ec250edbd11d3aefe5f25084699729208939  solution/reference/oracle_token
 e88f7bc29cc3bdf8cffd1ed17e854295e0b73f25164982b0a11682c0719d1038  tests/grader_config.json
 ```
+
+### The first run (amendment 4; 2026-11-11 13:34-14:42Z; set aside)
+
+Each candidate ran once as written above, the odd ones on apollo and the even ones on apollo-pc-2
+(`selection_a4_first/seed_<seed>.json`):
+
+| # | seed | stage score | crumbs binned | sim s | wall s | machine | result | why |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 6790790475345571576 | 0.9167 | 0.600 | 2545 | 2148 | apollo | pass |  |
+| 2 | 3125492756787262100 | 0.9537 | 0.733 | 2871 | 1236 | apollo-pc-2 | pass |  |
+| 3 | 7022738416721159354 | 0.9537 | 0.733 | 2958 | 2161 | apollo | pass |  |
+| 4 | 4089632381925228296 | 0.8370 | 0.583 | 3082 | 1290 | apollo-pc-2 | fail | damage: {'broken': ['glass_1'], 'on_floor': ['glass_1']}; short: dishes 0.75/1 |
+| 5 | 6569624632418969883 | 0.9352 | 0.667 | 2837 | 2559 | apollo | pass |  |
+| 6 | 4920960843796068851 | 0.9213 | 0.617 | 3077 | 1384 | apollo-pc-2 | pass |  |
+| 7 | 7640796830471677594 | 0.9306 | 0.650 | 2986 | 2486 | apollo | pass |  |
+| 8 | 7981839151774950588 | 0.9074 | 0.567 | 3006 | 1274 | apollo-pc-2 | pass |  |
+| 9 | 4745791118675327858 | 0.9398 | 0.683 | 2857 | 4057 | apollo | pass |  |
+| 10 | 376632851020783183 | 0.8417 | 0.600 | 2659 | 977 | apollo-pc-2 | fail | damage: {'broken': ['glass_1'], 'on_floor': ['glass_1']}; short: dishes 0.75/1 |
+| 11 | 3945038779305284334 | 0.8602 | 0.667 | 2318 | 1851 | apollo | fail | damage: {'broken': ['glass_2'], 'on_floor': ['glass_2']}; short: dishes 0.75/1 |
+| 12 | 4387728151438419368 | 0.7974 | 0.633 | 2942 | 1243 | apollo-pc-2 | fail | safety: {'t': 700.12, 'what': 'robot_contact:a/left_knee_link/dustpan', 'value': 197.34}, {'t': 702.54, 'what': 'robot_contact:a/left_knee_link/dustpan', 'value': 154.22}, {'t': 704.65, 'what': 'robot_contact:a/left_ankle_roll_link/dustpan', 'value': 342.11}; damage: {'broken': ['glass_2'], 'on_floor': ['can_red', 'glass_2']}; short: trash 1.71/2, dishes 0.75/1 |
+| 13 | 6432759289746745107 | 0.9722 | 0.800 | 3252 | 3636 | apollo | pass |  |
+| 14 | 18184323288814303 | 0.9630 | 0.767 | 2825 | 1335 | apollo-pc-2 | pass |  |
+| 15 | 6438526276579322594 | 0.9444 | 0.700 | 2764 | 2259 | apollo | pass |  |
+| 16 | 2636808825281067254 | 0.9352 | 0.667 | 2967 | 1161 | apollo-pc-2 | pass |  |
+
+12 of the 16 pass. The four failures are two mistakes of the reference's round-5 planner, not properties of the
+scenes:
+
+* **A glass knocked off the table** (4, 10, 11 and 12): stepping back from the dining table with an item in hand, the
+  item swept a glass off the table. The planner checks a step back (`back_out`, `leave_low`) for the robot's body
+  only, and round 5's carry holds the item lower and farther forward than round 4's did.
+* **A knee into the hanging dustpan** (12): the last 0.8 m to the recycling bin, walked straight in at the goal's
+  heading with the can at the waist (round 5's `walk`), was checked against the room's fixtures only; the left knee
+  and ankle met the dustpan hanging by the bins (197 N, then 342 N: safety stops), the walk stopped 0.27 m short and
+  the can, let go there, fell.
+
+The same mistakes happened in development scenes (the glass in 60 and 86, the coffee table's bottle dragged along by
+the can and the wrist in 87, the dustpan in 60); they were found and fixed there, and no candidate was run for it:
+
+* before a step back with something in a hand the hand is raised until the item clears, by 3 cm, the tops of the
+  loose objects within 0.2 m of its way back (`Reference.lift_clear_of_neighbours`, sized by the objects' collision
+  boxes), and the item is carried again after the step (`walk`);
+* the straight way in is also kept off the long tools, by the hips' half width, all the way to the goal.
+
+With both fixes (`4549238`) the development scenes 11-15 score 0.9491, 0.9120, 0.9167, 0.9537 and 0.9167 (scene 13
+was 0.8889 at `974b763`, the others are unchanged), scene 60 0.9120 (a safety stop before), 86 and 87 0.9259, with no
+safety violation and nothing broken or dropped; the finer posture measure over 11-15 is 9.6 % (9.3 % at `974b763`;
+`posture.md`).
+
+The first run is therefore set aside (under the rule it would have kept 1, 2 and 3, mean 0.94136), and the selection is
+repeated exactly as written above, steps 2-6 unchanged, with the oracle frozen again:
+
+1. The oracle is frozen at `4549238` (sha256 below; `reference.py` is again the one file that differs from `a7880f3`'s
+   freeze).
+2. Candidates 1-5 run on apollo (the machine `ale validate` runs on), 6-16 on apollo-pc-2; the records go to
+   `selection_a4/seed_<seed>.json`.
+
+The frozen oracle (`4549238`):
+
+```
+f3a03a97db9fbe7697bf711c8c602492fe89d5142b0d1e57be6b9b2bda5752fd  tests/house_cell/cell.py
+d88e94a34316fa9d9590eedf4e40b7f35ed0b893a0672c08e890f7854f1f762c  tests/house_cell/cleaning.py
+5c9046ada48dc935538340de1eaceab078ae941de25a1bf6fd2b12aa3ffd0572  tests/house_cell/control.py
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  tests/house_cell/__init__.py
+93c439787b73108e64125326aa47a21fbc0cd3009e59a1b9a88a1f56e536f8d1  tests/house_cell/layout.py
+2814c5419023f70edc9e9507029be8583da7475138b9cc5da0fbd8af648ac272  tests/house_cell/objects.py
+5b9a26199f1e692bd6e0d4beb34699ac8fcf110920069dc5736fb01e33f94198  tests/house_cell/physics.py
+03880c6204b6bdd7e3412e93a7b9d85ab501dfe84e6c2b9efce2f3fb44ce0c49  tests/house_cell/props.py
+b9a30b5b63ca43cbbd4dd8fa3ef4c3da261c120a6da3fa437d65fbb12b853b68  tests/house_cell/reference.py
+5b231503b38139893a887c541c0bd8fa0cf1f0ee8272f6f6c9e7d80ecdd1cf45  tests/house_cell/render.py
+223b284fd0ce69c6ed3f6b0d7f2348d67e0bcf150acdd70e567c8e6e0e7198e8  tests/house_cell/robot.py
+59015301eb370fdd8e965d65a26c4ae01af0b7b32b5b9821094399a43a1ff1ed  tests/house_cell/room.py
+8f3413807a8547ec05e56d65de6287457195cdf522b8b2c1c59e1538a3f46be8  tests/house_cell/scene.py
+fb9c83456a9275d0555da22f959c35ec44aa5c4909c72fc10e7de9cda5024cc4  tests/house_cell/scoring.py
+3a74be8b8c5a00b00367bb9d71f21e0c5eef0350c6a68e49cffce7f94ced1f36  tests/house_cell/server.py
+dbac8d1a656f5d93bc0354d8748091aab64b7167ed4d85d08b6f4968d5c1f729  tests/house_cell/walk_core.py
+4dcb59ed702796d95e442aafdaffdad191036f3008bc54e1cb783892be9b4fa7  tests/house_cell/look.json
+4f76a26e1fee4147327880b7a41d7e0e16855f7be57a8b8310a1353d80ebddc6  solution/solve.sh
+7e224c2848476398821fce93c03244c0b6e45274dc60a5e32742c574df789e9b  solution/reference/clean.py
+9a4c6c83b2d73f3b2fe5fffb1656ec250edbd11d3aefe5f25084699729208939  solution/reference/oracle_token
+e88f7bc29cc3bdf8cffd1ed17e854295e0b73f25164982b0a11682c0719d1038  tests/grader_config.json
+```
