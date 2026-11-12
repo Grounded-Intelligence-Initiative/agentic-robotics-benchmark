@@ -1,0 +1,127 @@
+{
+ "rule": "Pre-registered on 2026-11-12, before any candidate ran: this file's rule, candidates and frozen hashes were committed first. Candidates: a kit seed and a layout seed per candidate, drawn from os.urandom (63-bit), in the order listed; candidate i's kit is keyed_env.sample_kit(numpy.random.default_rng(kit_seed), id) and its layout and noise seed is layout_seed. The frozen reference solution (solution/ at frozen_commit; the sha256 of every file it and the grader run are under `frozen`) runs each candidate ONCE, in drawn order, through the grader itself (tests/review/regrade.sh: a fresh container of the task image with the verifier's resources and layout, the submission that solution/solve.sh writes, a one-episode plan). A candidate is kept when the reference completes its kit: kit_complete 1 (all three nuts assembled and still seated, none ruined), with no abort, no fault and no controller-budget cut. The hidden set (tests/ref/episodes.json) is the first 10 kept candidates in drawn order. Should fewer than 10 of the 16 be kept, 8 more candidates are drawn the same way, appended and run, and so on. Every drop is recorded with its reason; the hollowing check compares the kept kits' features (turn sizes and directions, dead ends, false entrances, mass, friction, reach, peg spacing) with all candidates'. The reference is deterministic on a candidate (it acts on the real observation's proprioception from _gt; layout and noise follow from the seeds), so the anchor's full verify of the set must repeat every kept run (kit_complete, nuts assembled, steps).",
+ "image": {
+  "id": "sha256:fafcb374fc1ed807ce982ed21efd16f2b0f4ce8ba9808e1c77e51de1bd7d7be4",
+  "note": "the task image built from environment/ (Dockerfile and requirements.txt unchanged by the maintainer fixes; their sha256 under frozen)"
+ },
+ "set_size": 10,
+ "candidates": [
+  {
+   "i": 0,
+   "id": "C00",
+   "kit_seed": 8048628628639373556,
+   "layout_seed": 5572516107603538229
+  },
+  {
+   "i": 1,
+   "id": "C01",
+   "kit_seed": 5684310791733847266,
+   "layout_seed": 5542780590868844172
+  },
+  {
+   "i": 2,
+   "id": "C02",
+   "kit_seed": 3313905202023320903,
+   "layout_seed": 7012133900300724445
+  },
+  {
+   "i": 3,
+   "id": "C03",
+   "kit_seed": 1487411164860768293,
+   "layout_seed": 3575190740268097701
+  },
+  {
+   "i": 4,
+   "id": "C04",
+   "kit_seed": 753905959030880718,
+   "layout_seed": 8134419340824514022
+  },
+  {
+   "i": 5,
+   "id": "C05",
+   "kit_seed": 9118074940110817589,
+   "layout_seed": 1016656742917323567
+  },
+  {
+   "i": 6,
+   "id": "C06",
+   "kit_seed": 7875675624729060504,
+   "layout_seed": 8156498286229882589
+  },
+  {
+   "i": 7,
+   "id": "C07",
+   "kit_seed": 7641557339198761048,
+   "layout_seed": 502032249287965310
+  },
+  {
+   "i": 8,
+   "id": "C08",
+   "kit_seed": 6579093413008417087,
+   "layout_seed": 2896381739548922562
+  },
+  {
+   "i": 9,
+   "id": "C09",
+   "kit_seed": 4720053112326796583,
+   "layout_seed": 6242263119774731436
+  },
+  {
+   "i": 10,
+   "id": "C10",
+   "kit_seed": 7703716494067380877,
+   "layout_seed": 1470819384068334762
+  },
+  {
+   "i": 11,
+   "id": "C11",
+   "kit_seed": 5650034626429553655,
+   "layout_seed": 6191187730312833092
+  },
+  {
+   "i": 12,
+   "id": "C12",
+   "kit_seed": 6787169044854545055,
+   "layout_seed": 5846068929046143828
+  },
+  {
+   "i": 13,
+   "id": "C13",
+   "kit_seed": 7714982911761501347,
+   "layout_seed": 1276939450150411286
+  },
+  {
+   "i": 14,
+   "id": "C14",
+   "kit_seed": 5436798191792808075,
+   "layout_seed": 2851568103719523740
+  },
+  {
+   "i": 15,
+   "id": "C15",
+   "kit_seed": 2018561000907245270,
+   "layout_seed": 2333144875270439849
+  }
+ ],
+ "frozen_commit": "7130e83",
+ "frozen": {
+  "solution/solve.sh": "3314b1a8f01970ba663e10a8162e5c73fb1fdf8095d1d27cfed2bffc66153db5",
+  "solution/solver/oracle_ctrl.py": "b5803abf3fdd54c3c413dea5117479bdc68d5f02ee8cf115678fbddbb361861e",
+  "solution/solver/oracle_main.py": "a8c574a80dbb4e7f7d8db8f5ffa806e20419985949870bf3a56e159d514b33b0",
+  "tests/keyed_env.py": "f65567a831b346f1ddb045bd12c4ba07394b46325bd8754b49f8a296e05d090f",
+  "tests/keyed_credit.py": "12b58008cb1bb19763068972b84f132a72c66fc7482a453aed7e371ff9bae23f",
+  "tests/verify.py": "d334571785bc0d210373eb67567f30b2558e14fee549dd863c9924a6a7dabe32",
+  "tests/grader_config.json": "317bed3c65fd9aa3477035b84e7ae41532595b104b2b9542c4089e83fd4b159e",
+  "tests/nonet_exec.py": "f959b15c69a01e60a79c6f3c2cf83e8b84e40e061dc038d78b1e1e30746c96fc",
+  "tests/test.sh": "da73eea923aef8fc51f2baee4409bc3b89d3f4416adf7d60d432a125d9ad5437",
+  "tests/oracle_token.sha256": "0ddff0649335e27124af8c298fa54afb13b91aa2154f9e7950a343186166bbaa",
+  "environment/Dockerfile": "4524747ce17e68db3b4f8be57608085138982bfcdc4b8ab73a7b520a3a8f10e2",
+  "environment/requirements.txt": "f8044709e08e9c3deb83d17f5e92c891916f210af48a4d8c4a03fd1d5e03c92d",
+  "tests/robotics_grader/__init__.py": "d75f3c6293445af3277b05fe00df38ef7378645651ff3cfbad7f8bcfe1f56604",
+  "tests/robotics_grader/scoring.py": "9353682eb3536df264b3cb5ec3bf2be24a410f88af5b20cf86cb31796930a83b",
+  "tests/robotics_grader/seeds.py": "b795f63404d14f0c90ca0098582e80afabd251396b1f4d6ababf4e7f6037b5e1",
+  "tests/robotics_grader/selftest.py": "7a4be7513643147c2f91f866a24b6a5253a3203180b4724ca54a188fd0c2027f",
+  "tests/robotics_grader/solver.py": "288a8c1f3a1dfd61d3b2c9240c40f095411c6129af867b00fc6a0d8a77ab2d84",
+  "tests/robotics_grader/stage.py": "a97eefbc9ee2f4c67b26eecdfc76d1ac84cf4615a2f8ab2fc63e75c581eb0c2f"
+ }
+}
