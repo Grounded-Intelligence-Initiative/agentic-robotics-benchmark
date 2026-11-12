@@ -65,10 +65,19 @@ them; the authoring spec says how.
 
 ## What the engine provides at verify time
 
-Verification is shared: once the agent is done, the engine uploads `tests/` into the same
-sandbox at `/opt/ale/tests` (root-only, like all of `/opt/ale`) and runs `bash test.sh`
-there as root, with that folder as cwd and the network open. Before the script starts, the
-engine
+Verification runs in a **separate** sandbox, the recommended default this template ships
+(`[verifier] environment_mode = "separate"`): once the agent is done, the engine releases
+the agent's sandbox, provisions a fresh verifier from the task image that the agent never
+touched, restores only the declared `artifacts` into it, uploads `tests/` to
+`/opt/ale/tests` (root-only, like all of `/opt/ale`) and runs `bash test.sh` there as root,
+with that folder as cwd and the network open. Shared verification (omit the key) instead
+runs `test.sh` in the agent's own sandbox, where a program the agent planted on root's PATH
+(the base image leaves `/usr/local/bin` agent-writable and ahead of `/usr/bin`) would run
+as root before the grader and bypass it; separate verification closes that, so prefer it for
+every task. Two consequences of the fresh sandbox: `environment/setup/setup.sh` does **not**
+run in the verifier, and nothing the agent left outside the declared `artifacts` is there —
+so anything verify reads must be staged by the task (in `tests/`, or a declared artifact),
+not assumed from setup. Before the script starts, the engine
 
 - stages its own `ale_verify` package into the first interpreter that is Python 3.12 or
   newer, `python3`, else `python3.12`, and names that interpreter in `ALE_VERIFY_PYTHON`.
@@ -111,7 +120,12 @@ instead, for a run outside the engine (a host-side dry run, the kit's selftest);
 `Solver` speaks one JSON object per line to the agent's `run.sh`, launched as `bash run.sh`
 with cwd `/home/user/submission` at the agent's UID. `READY` must arrive within
 `READY_TIMEOUT_FACTOR` (4) step deadlines of launch, 120 s with the template's
-`step_timeout_s: 30` (`tests/grader_config.json`), and every reply within one step deadline:
+`step_timeout_s: 30` (`tests/grader_config.json`), and every reply within one step deadline.
+That deadline is a **single per-request budget**, fixed the moment the request is written
+(and the `READY` wait likewise): blank lines, a partial line or a trickle of output are all
+charged against the same `step_timeout` and cannot extend it — and a flood of blank lines is
+capped — so a solver can never stall verification by dribbling output. Missing the deadline
+aborts the episode exactly as a slow reply does.
 
 ```
 {"type": "reset"}                        -> {"ok": true}
@@ -239,12 +253,20 @@ field.
    is one of the benchmark's platforms (`tasks/platforms.json`, listed in the manifest's
    comment) and names the `tasks/<platform>/` folder the task lands in. A new key needs a
    maintainer.
-2. Budgets and network. Size `[environment]` (`cpus`, `memory_mb`, and `gpus` when the
-   task needs them), `[agent].timeout_sec` (the agent's whole budget, training included)
-   and `[verifier].timeout_sec` (every scored episode plus probes). Keep
-   `network_mode = "no-network"` unless the task needs a host: `allowlist` names it in
-   `allowed_hosts`, and `public` needs `[metadata].network_justification`. Setup has no
-   field; the engine bounds it at 1800 s.
+2. Budgets and network. Size `[environment]` (`cpus`, `memory_mb`, and `gpus` when the task
+   needs them), `[agent].timeout_sec` (the agent's whole budget, training included) and
+   `[verifier].timeout_sec` (every scored episode plus probes). A GPU task names, in
+   `gpu_types` in `[environment]` and `[verifier.environment]`, the models it has been
+   tested on, cheapest first: Daytona tries them in that order, and a host without one of
+   them refuses the task before it starts. It leaves the key out only when every model
+   tested runs it. Test the H100 and Daytona's RTX 4090, RTX 5090, RTX PRO 6000 and H200 by
+   running what uses the GPU on each: the simulator's start, a frame compared with one from
+   a model already validated, and the agent's own GPU libraries. A model can lack a
+   library's kernels, render differently or run too slowly for the budgets, and rendering
+   also needs the graphics part of the host's NVIDIA driver, which compute-only installs
+   leave out. Keep `network_mode = "no-network"` unless the task needs a host: `allowlist`
+   names it in `allowed_hosts`, and `public` needs `[metadata].network_justification`. Setup
+   has no field; the engine bounds it at 1800 s.
 3. Image. Make `environment/Dockerfile` your environment: the simulator and every stable
    dependency, FROM the ALE base at an exact version; Python packages go in
    `environment/requirements.txt`. Keep the py3.12 `/opt/venv` with a world-traversable
