@@ -1,4 +1,8 @@
-"""Fetch licensed, pinned nominal robot assets; no scene instances or answers."""
+"""Install the pinned render assets (nominal robot meshes, CC0 textures and props) and bake the props for MuJoCo.
+
+The files come from the benchmark's Hugging Face dataset (fetched by fetch_assets.py into --source at the pin in
+assets.sha256); each is checked again against this manifest's sha256 before it is installed. No scene instances or
+answers are in them."""
 import argparse
 import hashlib
 import json
@@ -63,7 +67,7 @@ def bake_models(manifest, destination):
                                                    "parts": parts}, indent=2)+"\n")
 
 
-def fetch(manifest, destination):
+def fetch(manifest, destination, source=None):
     manifest = json.loads(Path(manifest).read_text())
     destination = Path(destination)
     for item in manifest["files"]:
@@ -73,9 +77,12 @@ def fetch(manifest, destination):
         target = destination/relative
         if target.exists() and hashlib.sha256(target.read_bytes()).hexdigest() == item["sha256"]:
             continue
-        url = item.get("url") or f'https://raw.githubusercontent.com/google-deepmind/mujoco_menagerie/{manifest["revision"]}/{relative.as_posix()}'
-        with urllib.request.urlopen(url, timeout=60) as response:
-            payload = response.read()
+        if source is not None:
+            payload = (Path(source)/relative).read_bytes()
+        else:
+            url = item.get("url") or f'https://raw.githubusercontent.com/google-deepmind/mujoco_menagerie/{manifest["revision"]}/{relative.as_posix()}'
+            with urllib.request.urlopen(url, timeout=60) as response:
+                payload = response.read()
         if hashlib.sha256(payload).hexdigest() != item["sha256"]:
             raise ValueError(f"asset checksum mismatch: {relative}")
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -88,5 +95,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest", type=Path)
     parser.add_argument("destination", type=Path)
+    parser.add_argument("--source", type=Path, help="install from this folder (the fetched dataset files), not the URLs")
     args = parser.parse_args()
-    fetch(args.manifest, args.destination)
+    fetch(args.manifest, args.destination, args.source)

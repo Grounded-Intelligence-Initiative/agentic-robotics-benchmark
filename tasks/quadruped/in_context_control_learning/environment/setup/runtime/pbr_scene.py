@@ -124,8 +124,9 @@ def upgrade(root, kind, assets, rng):
         # existing obstacle, so they cannot create invisible collision changes.
         prop(root, assets, "utility_box_01", "back_cabinet", (-3.25, 4.1, 0), (.85, .55, 1.65))
         prop(root, assets, "portable_generator", "back_generator", (2.9, 4.0, 0), (1.15, .68, .9), yaw=-18)
-        for x in (-3.6, 3.6):
-            add(world, f"floor_line{x}", (x, 0, .002), (.018, 3.7, .001), "safety_paint")
+        if kind != "icl":   # the delivery bay has a real fence instead of painted lines
+            for x in (-3.6, 3.6):
+                add(world, f"floor_line{x}", (x, 0, .002), (.018, 3.7, .001), "safety_paint")
     else:
         # A service bridge over an engineered channel, with approaches that meet
         # the bridge rather than decorative buildings at miniature scale.
@@ -152,7 +153,7 @@ def upgrade(root, kind, assets, rng):
     # topology. Their stepped bases and caps make them constructed partitions.
     if kind in ("icl", "cross"):
         for item in world.findall("geom"):
-            if item.get("name", "").startswith("wall") and "_post" not in item.get("name", ""):
+            if item.get("name", "").startswith(("wall", "fence")) and "_post" not in item.get("name", ""):
                 item.set("material", "navigation_panel")
                 item.set("rgba", ".42 .49 .58 1")
     if kind == "arm":

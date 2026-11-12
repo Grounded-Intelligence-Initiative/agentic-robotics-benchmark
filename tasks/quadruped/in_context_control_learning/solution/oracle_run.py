@@ -1,51 +1,19 @@
-"""Unprivileged scripted oracle. This proves feasibility, not model ICL performance."""
+"""The engine's oracle: the image-only scripted reference (policy.py), driving the robot service through its socket.
+
+It sees exactly what the agent sees (the image and the status of each reply) and is the task's feasibility proof; it
+is not an LLM result. The grader recognises the oracle by the engine's own trajectory (agent name "oracle") and skips
+the direct-control audit for it, since a script necessarily talks to the socket.
+"""
 import json
-import base64
-from pathlib import Path
-import shutil
-import sys
 
 from client import Client
 from policy import solve
 
 
-class RecordedClient(Client):
-    def __init__(self, out):
-        super().__init__()
-        self.out, self.events = out, []
-
-    def request(self, method, **params):
-        result = super().request(method, **params)
-        self.events.append({"method": method, "params": params,
-                            "observation": {k: v for k, v in result.items() if k != "images"}})
-        for i, image in enumerate(result["images"]):
-            (self.out/f"final-camera-{i}.png").write_bytes(base64.b64decode(image))
-            if len(self.events) == 1:
-                (self.out/f"initial-camera-{i}.png").write_bytes(base64.b64decode(image))
-        (self.out/"example_interaction.json").write_text(json.dumps(self.events, indent=2))
-        return result
-
-
 def main():
-    here = Path(__file__).resolve().parent
-    kind = json.loads((here/"kind.json").read_text())["kind"]
-    out = Path("/home/user/submission")
-    if kind in ("flight", "arm"):
-        for name in ("policy.py", "coordinates.py"):
-            shutil.copy2(here/name, out/name)
-        (out/"run.sh").write_text(
-            "#!/usr/bin/env bash\nset -euo pipefail\ncd \"$(dirname \"$0\")\"\n"
-            f"exec /opt/venv/bin/python3 -c 'from policy import controller_main; controller_main(\"{kind}\")'\n"
-        )
-        (out/"run.sh").chmod(0o755)
-        if kind == "arm":
-            shutil.copy2(here/"predict.py", out/"predict.py")
-    result = solve(RecordedClient(out), kind, artifacts=out)
-    (out/"reference_result.json").write_text(json.dumps({
-        "kind": kind, "done": result["done"],
-        "steps_remaining": result["steps_remaining"], "scripted_reference": True,
-    }, indent=2))
-    print(json.dumps({"kind": kind, "steps_remaining": result["steps_remaining"]}), flush=True)
+    obs = solve(Client())
+    print(json.dumps({k: obs[k] for k in ("delivered", "deliveries", "steps_remaining", "requests_remaining", "done")}),
+          flush=True)
 
 
 if __name__ == "__main__":

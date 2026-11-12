@@ -1,73 +1,90 @@
-# In-Context Control Learning
+# In-Context Control Learning: a delivery robot in a dark bay
 
-## Goal and rules
-You are a frozen model learning the effects of four unknown buttons by looking
-at the camera and acting within ONE conversation. Complete four navigation stages.
-Retain your observations and discoveries in context. The button mapping is fixed
-throughout the episode, but goals change after each successful stage.
+You teleoperate a quadruped delivery robot through six deliveries in a dark warehouse bay. Its remote has four
+unlabeled buttons. You find out what the buttons do, and where the walls are, from the camera images in this
+conversation, and you drive the robot yourself, one button press per tool call. Nothing about the buttons or the
+layout is given beyond what is written here; what you learn early in the episode keeps holding later in it.
 
-Use ONLY direct `robot_observe`, `robot_act`, and `robot_advance` tool calls.
-Do not write or run a controller, call a terminal, delegate to another agent, or
-train/change model parameters. No program submission is requested or evaluated.
-The verifier matches the engine's trusted tool-call trajectory against the
-protected environment ledger; self-reported compliance does not count. A run
-without an auditable trajectory is not a valid In-Context result.
+## The bay
 
-`robot_act` accepts `{"action":[button]}` where button is exactly 0, 1/3, 2/3, or 1
-(use 0.3333333333333333 and 0.6666666666666666). Discover their effects from images.
-The quadruped-shaped body has stabilization and planar motion provided. You are
-learning button semantics and navigation, not learning to stand or walk from scratch.
-Only a local neighborhood and the goal beacon are visible. Walls and the narrow
-and wide openings are randomized between episodes, but persist between stages.
-Context can therefore retain both button semantics and a map of previously seen areas.
+- Coordinates are metres in the bay's frame, origin at the centre, +x to the right of the image and +y up.
+- A fence encloses the bay; its inner faces are at x = ±3.55 m and y = ±3.55 m. The robot cannot leave the bay.
+- Two partition walls (0.24 m thick) run from the south fence to the north fence, parallel to the y axis: one at
+  some x between −1.5 and −0.9 m, the other at some x between 0.9 and 1.5 m. They split the bay into a west, a middle
+  and an east part. Each partition has two openings, a narrow one (0.6 to 0.75 m wide) and a wide one (1.0 to
+  1.25 m wide), at y between about −3.4 and 3.4 m. Where the partitions and openings are differs from episode to
+  episode; it does not change during the episode.
+- The bay's lights are off. A ceiling camera looks straight down at the whole bay, but in the dark it sees only what
+  the robot's own floodlight lights, the floor and walls within 1.4 m of the robot's centre, and the beacon of the
+  active delivery point, a blue lamp that is visible from anywhere. Everything else is black (pixel value 10).
 
-## Progress and evaluation
-After the blue goal is reached, call `robot_advance` for the next stage. This
-does not reset the shared 500-action (100 simulated second) budget. The environment
-returns to a new starting pose; previously learned button semantics still apply.
-The outcome is completion of all four stages. Stage completion, contacts and
-action counts are also recorded. A scripted oracle validates physics/interface
-feasibility ONLY; it is explicitly marked and is not evidence of LLM learning.
+## The camera image
 
-## Interface and permissions
+Every reply carries one 256 × 256 RGB image, an orthographic view straight down, 32 px per metre, centred on the
+bay. The centre of pixel (u, v) (column u, row v, counted from the top-left corner) is at
 
-The protected service supplies images; no state vector, world source, scene seed,
-map, or target answer is exposed. Use the `robot_observe`, `robot_act`,
-`robot_advance`, and `robot_report` tools as applicable. Observations contain
-base64 PNG `images`, a `frame_id`, `phase`, `done`, `completed_stages`,
-`steps_remaining`, and `damage_remaining`. The MCP tools also display the images.
-The red tracking marker is attached to your robot. Ground navigation goals and the arm tray are blue.
-The live environment uses CPU Filament PBR rendering, CC0 industrial scans, normal
-and roughness maps, and nominal robot meshes in a detailed workcell,
-not just reviewer-only decoration. Flight uses scaled Crazyflie geometry with the
-stated benchmark dynamics; ground robots use scaled Go1 meshes with stabilized planar
-control, not a learned walking policy. The arm is a three-axis industrial Cartesian
-suction gantry, not a serial Panda manipulator. Visual meshes use simplified collision
-proxies. These are simulated tasks, not hardware-validated digital twins.
+x = (u + 0.5)/32 − 4,  y = 4 − (v + 0.5)/32.
 
-Each valid action advances MuJoCo by 0.2 simulated seconds. This is not a
-wall-clock speed contest. `observe` does not advance physics. At most 2048 service
-requests are accepted. Reset is not available. Reconnecting, restarting your
-client, or changing a local file does not restore action or damage budgets.
-Only `advance` performs the specified one-way phase transitions. Public clients
-are available at `/home/user/robot/client.py`; the MCP endpoint itself is immutable.
-The environment is a root-owned process with a private authoritative ledger.
+The robot carries a red marker plate on its back. The active delivery point is a blue square pad 0.4 m across inside
+a blue beacon disc 0.5 m across. The fence and the partitions are blue-grey with metal posts. The camera is part of
+the bay, not a privileged measurement: no position, map or button meaning is given in any other form.
 
-`images[0]` is the top view and `images[1]` is the side view. The camera output
-is a calibrated 256-by-256 orthographic RGB view. Pixel center
-`(u,v)` maps to top-view coordinates `x=(u+0.5)/32-4`,
-`y=4-(v+0.5)/32` in metres. Side-view vertical coordinate is
-`z=6-(v+0.5)/32`. Cameras are part of the instrument specification, not privileged
-measurements. Colors are visual appearances, not object-state fields.
-There is no internet dependency and no GPU requirement.
-For tasks permitting code, run Python with `/opt/venv/bin/python3`, including in
-`run.sh`. The harness may remove `/opt/venv/bin` from `PATH`; bare `python3` may
-not have the required packages. In-Context Control Learning still forbids code execution.
+## The robot and its remote
 
-Do not attempt to read protected files, modify the service, forge a ledger, or
-recover a hidden seed. Agent-written reports of success have no grading authority.
-Inspection/search may submit evidence from the final permitted action frame.
-This does not advance time or reopen the exhausted movement budget.
+- The robot walks on a stabilized base. It never turns: it keeps the heading it was set down with, which you are not
+  told and which differs between episodes. Its footprint is a disc of radius 0.16 m. (The simulation is a planar
+  base with a quadruped's body and gait speeds; the legs are not simulated.)
+- `robot_act` with `{"action": [b]}` presses one button for 0.2 s of walking. b must be exactly 0,
+  0.3333333333333333, 0.6666666666666666 or 1. The four buttons are walk forward, walk back, step left and step right,
+  in the robot's own frame, in an order you are not told. Forward is the fastest gait; walking back and stepping
+  sideways are slower. One press moves the robot about 0.1 to 0.3 m; a press right after a different button still
+  carries a little of the previous motion.
+- The robot stops at walls and the fence and slides along them. Contacts do no damage and end nothing; they are
+  recorded but not scored.
+- The third delivery point is also a loading stop. When you advance from it, the robot is loaded and set back down
+  facing another way: its new heading differs from the old one by 60 to 180 degrees, either way, and every gait is
+  slower by the same factor (0.6 to 0.75 of the unloaded speed). From then on the buttons move it in new directions;
+  which button is which gait does not change, and neither does the layout. The rest you have to see for yourself.
 
-## Scene variation
-Button mapping, response gain, wall openings, starting poses and stage goals; lighting and background details. The mapping and map persist across all four stages.
+## The deliveries
+
+- Six delivery points, one active at a time. A point counts as reached when, after a press, the robot's centre is
+  within 0.3 m of the pad's centre. The reply then says `"goal_reached": true`; call `robot_advance` to light the next
+  point. The robot stays where it is, and nothing is restored.
+- Consecutive points lie in different parts of the bay, so every leg passes at least one partition; some legs cross
+  the whole bay. The partitions and openings you have seen stay where they were for the later legs.
+- When the sixth point is reached the episode ends (`"done": true`).
+
+## Tools and replies
+
+- `robot_observe`: the current image and status, without moving the robot.
+- `robot_act`: one button press, then the new image and status.
+- `robot_advance`: light the next delivery point (only after the active one is reached).
+
+Each reply is a JSON object, `frame_id`, `delivery` (the active point, 1 to 6), `deliveries` (6), `delivered` (the
+points reached so far), `goal_reached`, `steps_remaining` (presses left), `requests_remaining` and `done`, followed by
+the image. An invalid request returns an error and still counts as a request.
+
+## Limits
+
+Each of these ends the episode; there is no reset and nothing is restored:
+
+- 500 button presses;
+- 560 requests in all (observe, act and advance together);
+- 3 hours of wall-clock time for your whole session.
+
+## Rules
+
+- Drive the robot yourself with direct `robot_observe`, `robot_act` and `robot_advance` calls, and do the perception
+  and planning in your own reasoning from the images in this conversation. This task measures exactly that.
+- Do not run commands or code (no terminal, no scripts, no programs talking to the robot's socket), do not write or
+  edit files, and do not start other agents. Keeping a to-do list and reading files are allowed, though nothing on
+  disk helps: the robot service and its records are not readable.
+- The grader checks this from your session. If any request reached the robot service other than through your own
+  `robot_*` tool calls, or you called a tool that runs commands or code, writes or edits files, or starts another
+  agent, the run scores 0.
+
+## Scoring
+
+Your score is the fraction of the six delivery points you reached; a reached point counts even if the episode ends
+before you advance from it. Presses, requests and wall contacts are recorded but do not change the score.

@@ -271,7 +271,10 @@ def decorate(xml, kind, radius=.13, seed=0):
     else:
         for g in agent.findall("geom"):
             g.set("rgba", "0 0 0 0")
-        robot_meshes(root, agent, "ground" if kind in ("icl", "cross") else "drone", radius)
+        # The ground robot walks without turning: its meshes sit in the agent's fixed-heading child body.
+        chassis = agent.find("body[@name='chassis']")
+        robot_meshes(root, agent if chassis is None else chassis,
+                     "ground" if kind in ("icl", "cross") else "drone", radius)
     if kind in ("flight", "arm", "icl", "cross"):
         for j, x in enumerate((-4.3, 4.3)):
             geom(world, f"hall_wall{j}", pos=(x, 0, 1.6), size=(.12, 4.6, 1.6), rgba=(.48, .52, .55, 1))
@@ -298,7 +301,7 @@ def decorate(xml, kind, radius=.13, seed=0):
             geom(world, f"gate_foot{y}", pos=(gx, y, .04), size=(.22, .20, .04), rgba=(.12, .14, .16, 1))
     elif kind in ("icl", "cross"):
         for g in list(world.findall("geom")):
-            if not g.get("name", "").startswith("wall"):
+            if not g.get("name", "").startswith(("wall", "fence")):
                 continue
             g.set("rgba", ".42 .49 .58 1")
             x, y, z = map(float, g.get("pos").split())

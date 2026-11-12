@@ -1,4 +1,4 @@
-"""Public client. The socket accepts only documented world operations."""
+"""The robot service's socket client, used by the MCP bridge. The socket accepts only observe, act and advance."""
 import json
 import socket
 
@@ -11,7 +11,7 @@ class Client:
 
     def request(self, method, **params):
         with socket.socket(socket.AF_UNIX) as sock:
-            sock.settimeout(30)
+            sock.settimeout(60)
             sock.connect(self.path)
             sock.sendall((json.dumps({"method": method, "params": params})+"\n").encode())
             with sock.makefile("rb") as stream:
@@ -28,6 +28,3 @@ class Client:
 
     def advance(self):
         return self.request("advance")
-
-    def report(self, frame_id, point):
-        return self.request("report", frame_id=frame_id, point=point)
