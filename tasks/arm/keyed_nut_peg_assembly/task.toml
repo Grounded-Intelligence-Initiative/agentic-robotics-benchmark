@@ -16,7 +16,7 @@ timeout_sec = 28800
 network_mode = "no-network"
 
 [verifier]
-timeout_sec = 9000
+timeout_sec = 12600
 environment_mode = "separate"
 
 [verifier.environment]

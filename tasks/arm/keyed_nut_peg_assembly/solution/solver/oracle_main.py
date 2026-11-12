@@ -1,7 +1,9 @@
 """Reference solution's wire loop: answers the grading wire with `oracle_ctrl.Oracle`.
 
 It needs the ground truth that the grader attaches (`_gt`) only when the submission carries the
-reference solution's token; without it, it answers a no-op action. Repeated step indices are
+reference solution's token; without it, it answers a no-op action. It acts on the real observation's
+proprioception, which `_gt["proprio"]` carries, so a repeated step is answered identically whatever copy it
+comes with (the reference's run does not depend on the grader's probe draws). Repeated step indices are
 handled like helpers/wire_skeleton.py: every query of a step is answered from a copy of the
 controller state from before that step, and when the next step arrives the copy whose observation is
 closest to it is kept.
@@ -51,7 +53,7 @@ def main():
             else:
                 work = copy.deepcopy(snapshot)
             gt = obs.get("_gt")
-            action = work.act(obs, gt) if gt else list(NOOP)
+            action = work.act(dict(obs, **gt.get("proprio", {})), gt) if gt else list(NOOP)
             candidates.append((obs, work))
             print(json.dumps({"action": [float(a) for a in action]}), file=out, flush=True)
         elif kind == "close":

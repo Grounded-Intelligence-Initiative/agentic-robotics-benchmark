@@ -5,12 +5,21 @@ restores only the declared artifact /home/user/submission). Defensively it still
 process first (rev-leak R14, SPEC L3), then hands the
 restored submission (size-capped) to the agent account in place, at /home/user/submission, the folder the
 instruction names (ownership changes never follow a symlink). It owns its own copy of
-the robot environment (keyed_env.py, byte-identical to the agent's dev sim) and plays the fixed hidden
-episodes of tests/ref/episodes.json in order (each: a kit of three nuts and its work order, drawn with the
-public `sample_kit` from a secret seed, and the layout and noise seed), drives the agent's controller over the kit wire at the agent's
-UID, and scores every episode from its own simulator state (`NutEnv.episode_score`: 1 if the whole kit
-was assembled, every nut on its own peg, else 0). The metric is the fraction of complete kits; the
-fraction of nuts assembled and the staged `NutEnv.progress` are reported as diagnostics only.
+the robot environment (keyed_env.py, byte-identical to the agent's dev sim) and the credit rule
+(keyed_credit.py, grader-only), plays the fixed hidden episodes of tests/ref/episodes.json in order (each: a
+kit of three nuts and its work order, drawn with the public `sample_kit` from a seed, and the layout and
+noise seed; the set and its pre-registered selection: tests/hidden/selection.json), drives the agent's
+controller over the kit wire at the agent's UID, and scores every episode from its own simulator state
+(`GradedNutEnv.episode_score`: 1 if the whole kit was assembled, every nut on its own peg, else 0). The
+metric is the fraction of complete kits; the fraction of nuts assembled and the staged
+`GradedNutEnv.progress` are reported as diagnostics only.
+
+Time: every kit has a controller budget (grader_config.json controller_budget_s): the time the grader waits
+for the controller (launch to READY and the reset reply, then every reply) plus a fixed charge per image the
+controller asks for (image_charge_s, per camera). The simulator's own time is not charged, so the grading
+machine's speed does not change a score; a kit whose controller exhausts its budget stops at that step and is
+scored on the state it reached. A wall-clock cap on the whole run (wall_cap_s, below the stage timeout) is only
+a safety net: the episode under way when it is reached and the ones after it score 0.
 
 Reference-solution access: if the submission holds a file `oracle_token` whose SHA-256 equals
 tests/oracle_token.sha256, every observation also carries `_gt` (the ground-truth scene state). Only
@@ -27,8 +36,9 @@ Additions to the kit wire (the vendored kit stays byte-identical):
   * A start-up self-test proves the network block (`egress_guard`); if the filter cannot be
     installed, /proc/net is polled every step and any agent-UID internet socket zeroes the run.
   * Every agent-UID process is killed (bounded, fail-closed) before the solver starts and after it
-    closes.
-  * A wall-clock budget below the stage timeout: on overrun the remaining episodes count 0.
+    closes. One that outlives the bounded kill (the base image's supervisord respawns the account's
+    desktop as fast as it is killed) is stopped; only one still running once stopped fails the run.
+  * The per-kit controller budget and the wall-clock safety net above.
   * Every path agent behaviour can reach is charged as a score, never a crash.
 """
 
@@ -47,6 +57,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import hashlib  # noqa: E402
 
+import keyed_credit as KC  # noqa: E402
 import keyed_env as E  # noqa: E402
 from robotics_grader import (  # noqa: E402
     ProbeLock,
@@ -115,6 +126,56 @@ def kill_agent_processes(uid, rounds=20, pause=0.25):
                 pass
         time.sleep(pause)
     return not _agent_pids(uid)
+
+
+def _proc_state(pid):
+    """The /proc state letter of `pid` ("X" once it is gone)."""
+    try:
+        with open("/proc/{}/status".format(pid)) as f:
+            for line in f:
+                if line.startswith("State:"):
+                    return line.split()[1]
+    except (OSError, IndexError):
+        pass
+    return "X"
+
+
+def _still_running(uid, bound_s=3.0):
+    """SIGSTOP every live process of `uid` until a pass finds none still running (a respawn that appears meanwhile is
+    stopped by the next pass) or `bound_s` elapsed; returns the PIDs still running (empty: every one is stopped)."""
+    deadline = time.monotonic() + float(bound_s)
+    while True:
+        for pid in _agent_pids(uid):
+            try:
+                os.kill(pid, signal.SIGSTOP)
+            except OSError:
+                pass
+        time.sleep(0.05)
+        running = [pid for pid in _agent_pids(uid) if _proc_state(pid) not in ("T", "t", "X")]
+        if not running or time.monotonic() > deadline:
+            return running
+
+
+def stop_agent_processes(uid):
+    """kill_agent_processes, then: True when none is left or every one left is stopped. The base image's supervisord
+    respawns the agent account's desktop as fast as it is killed, so in the separate verifier a process that outlives
+    the bounded kill is the image's own; it is stopped (a stopped process does not exit, so it is not respawned) and
+    only one still running once stopped fails the run (cleanup_failed), as before."""
+    if kill_agent_processes(uid):
+        return True
+    running = _still_running(uid)
+    log("{} process(es) of the agent account outlived the kill, {} still running after the freeze".format(
+        len(_agent_pids(uid)), len(running)))
+    return not running
+
+
+def image_charge(action, charges):
+    """(charge in s, count) of the images an action asks for; (0, 0) for a malformed action (env.step rejects it)."""
+    try:
+        _mv, _g, render = E.parse_action(action)
+    except (E.ActionError, TypeError, ValueError, OverflowError):
+        return 0.0, 0
+    return sum(float(charges[c]) for c in render), len(render)
 
 
 class GuardedSolver(Solver):
@@ -289,7 +350,9 @@ def fresh_submission(pristine, workdir, uid, gid):
 
 def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt, pristine=None, gid=None,
                  baseline=None):
-    budget = float(config.get("grader_budget_s", 6000))
+    budget = float(config.get("controller_budget_s", 600))
+    charges = dict(config.get("image_charge_s", {"left": 0.45, "right": 0.45, "wrist": 0.25}))
+    wall_cap = float(config.get("wall_cap_s", 12000))
     lock = ProbeLock(rng, rate=config.get("probe_rate", 0.01),
                      pass_fraction=config.get("probe_pass_fraction", 0.1), tolerance=1e-4)
     scores, aborted, faults = [], 0, 0
@@ -298,7 +361,8 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
     progress = []
     nuts_done = []
     egress_hits = 0
-    budget_exhausted = False
+    wall_cap_hit = False
+    controller_s, budget_cut, images = [], 0, 0
     GuardedSolver.guard = egress_mode == "seccomp"
     GuardedSolver.nproc = int(config.get("solver_nproc_limit", 0))
     solver = None
@@ -310,42 +374,57 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
                 except Exception:  # noqa: BLE001 - closing a broken solver must not crash the grader
                     pass
             if pristine is not None:
-                kill_agent_processes(uid)
+                stop_agent_processes(uid)
                 scrub_agent_files(uid, os.path.dirname(workdir), baseline or set())
                 fresh_submission(pristine, workdir, uid, gid)
             solver = None
             nut = item["id"]
-            if time.monotonic() - t_start > budget:
-                budget_exhausted = True
+            if time.monotonic() - t_start > wall_cap:
+                wall_cap_hit = True
                 scores.append(0.0)
                 per_nut.setdefault(nut, []).append(0.0)
+                log("episode {} ({}): not run, the grading wall-clock cap ({:.0f} s) was reached".format(ep, nut, wall_cap))
                 continue
-            env = E.NutEnv(specs[nut]["nuts"], early_end=True)
+            env = KC.GradedNutEnv(specs[nut]["nuts"], early_end=True)
             score = 0.0
             prog = 0.0
             ndone = 0
             reason = "ok"
+            spent = 0.0              # this kit's controller time: start-up, replies, image charges
             try:
                 obs = env.reset(int(item["seed"]), specs[nut]["order"])
+                started = time.monotonic()
                 solver = GuardedSolver(step_timeout=config.get("step_timeout_s", 30), submission=workdir,
                                        max_restarts=0)
                 solver.reset()
+                spent += time.monotonic() - started
                 for t in range(env.max_steps):
-                    if time.monotonic() - t_start > budget:
-                        budget_exhausted = True
-                        raise SolverAborted("grader budget exhausted")
+                    if time.monotonic() - t_start > wall_cap:
+                        wall_cap_hit = True
+                        raise SolverAborted("grading wall-clock cap reached")
                     if egress_mode == "detect" and agent_inet_sockets(uid):
                         egress_hits += 1
                     wire = E.to_wire(obs)
                     if with_gt:
-                        wire["_gt"] = env.gt()
+                        wire["_gt"] = KC.ground_truth(env, wire)
+                    other = None
                     if lock.due():
                         other = E.to_wire(env.perturbed_observation(obs, rng))
                         if with_gt:
                             other["_gt"] = wire["_gt"]
+                    asked = time.monotonic()           # the controller's time starts once the request is ready
+                    if other is not None:
                         action = lock.probe(solver, t, wire, perturbed=other)
                     else:
                         action = solver.act(t, wire)
+                    spent += time.monotonic() - asked
+                    charge, n_img = image_charge(action, charges)
+                    spent += charge
+                    if spent > budget:
+                        budget_cut += 1
+                        reason = "controller budget ({:.0f} s) used up at t={}".format(budget, t)
+                        break
+                    images += n_img
                     obs, done, info = env.step(action)
                     if done:
                         break
@@ -370,8 +449,9 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
             per_nut.setdefault(nut, []).append(score)
             progress.append(prog)
             nuts_done.append(ndone)
-            log("episode {} ({}): kit_complete={:.0f} nuts_assembled={} progress={:.3f} steps={} {}".format(
-                ep, nut, score, ndone, prog, getattr(env, "t", 0), reason))
+            controller_s.append(spent)
+            log("episode {} ({}): kit_complete={:.0f} nuts_assembled={} progress={:.3f} steps={} controller_s={:.1f} {}".format(
+                ep, nut, score, ndone, prog, getattr(env, "t", 0), spent, reason))
     finally:
         try:
             if solver is not None:
@@ -379,7 +459,10 @@ def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, w
         except Exception:  # noqa: BLE001 - closing a broken solver must not crash the grader
             pass
     per_stage["nuts_assembled_fraction"] = [n / float(E.NUTS) for n in nuts_done]
-    return scores, aborted, faults, per_nut, per_stage, egress_hits, budget_exhausted, lock, progress
+    timing = {"controller_s_max": max(controller_s) if controller_s else 0.0,
+              "controller_s_mean": sum(controller_s) / len(controller_s) if controller_s else 0.0,
+              "controller_budget_cuts": float(budget_cut), "images_requested": float(images)}
+    return scores, aborted, faults, per_nut, per_stage, egress_hits, wall_cap_hit, lock, progress, timing
 
 
 def main():
@@ -392,7 +475,7 @@ def main():
     except KeyError:
         write_verdict(zero_verdict(reason="no agent account", anchored=anchor is not None))
         return
-    if not kill_agent_processes(uid):
+    if not stop_agent_processes(uid):
         write_verdict(zero_verdict(reason="agent processes could not be stopped (cleanup_failed)",
                                    anchored=anchor is not None))
         return
@@ -426,14 +509,14 @@ def main():
     egress_mode = "seccomp" if egress_self_test(uid, gid, int(config.get("solver_nproc_limit", 0))) else "detect"
     log("egress guard: " + egress_mode)
     try:
-        (scores, aborted, faults, per_nut, per_stage, egress_hits, budget_exhausted,
-         lock, progress) = run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt,
-                              pristine=pristine, gid=gid, baseline=baseline)
+        (scores, aborted, faults, per_nut, per_stage, egress_hits, wall_cap_hit,
+         lock, progress, timing) = run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt,
+                                                pristine=pristine, gid=gid, baseline=baseline)
     except (SolverMissing, SolverAborted) as exc:
-        kill_agent_processes(uid)
+        stop_agent_processes(uid)
         write_verdict(zero_verdict(reason=str(exc)[:200], anchored=anchor is not None))
         return
-    cleanup_ok = kill_agent_processes(uid)
+    cleanup_ok = stop_agent_processes(uid)
     measured = sum(scores) / len(scores) if scores else 0.0
     if egress_hits or not cleanup_ok or not math.isfinite(measured) or measured < 0:
         measured = 0.0
@@ -444,7 +527,12 @@ def main():
                  egress_guard_seccomp=1.0 if egress_mode == "seccomp" else 0.0,
                  egress_detected=float(egress_hits),
                  cleanup_failed=0.0 if cleanup_ok else 1.0,
-                 budget_exhausted=1.0 if budget_exhausted else 0.0,
+                 wall_cap_hit=1.0 if wall_cap_hit else 0.0,
+                 controller_s_max=round(timing["controller_s_max"], 3),
+                 controller_s_mean=round(timing["controller_s_mean"], 3),
+                 controller_budget_cuts=timing["controller_budget_cuts"],
+                 images_requested=timing["images_requested"],
+                 grading_wall_s=round(time.monotonic() - t_start, 1),
                  probe_lock_ok=1.0 if lock.ok else 0.0,
                  reference_token=1.0 if with_gt else 0.0,
                  mean_progress=sum(progress) / len(progress) if progress else 0.0)

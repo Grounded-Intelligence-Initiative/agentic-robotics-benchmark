@@ -3,13 +3,15 @@
 A Franka Panda arm stands at a table with three upright pegs and three nuts of different colours: a
 kit. The work order says which nut goes on which peg. Assemble the whole kit: pick up each nut by its
 handle, fit it onto its peg, work it down until it sits on the peg's base and let go. The difficulty
-is that each peg carries a pin and each nut has a hidden **groove** in the wall of its hole, a small
+is that each peg carries a pin and each nut has a **groove** in the wall of its hole, a small
 bayonet maze: a nut only comes down while the pin travels along the groove, which means lowering it,
 turning it about the shaft, lowering it again, turning it again. Grooves also have dead ends and
-false entrances. Every episode brings new nuts whose grooves you have never seen, and nothing about a
-nut, seen from outside, tells you where its groove runs: your controller has to find its way through
-each groove by feel, with the arm's force/torque sensor and the motion of the nut, within the
-episode. A kit counts only when all three nuts are assembled.
+false entrances. Every episode brings new nuts whose grooves you have never seen. The outside of a
+nut does not show its groove; the groove is in the wall of the hole, where you can see it only by
+looking into the hole at a steep angle or at the nut's bottom face. Your controller has to work out
+each groove within the episode, by looking into the hole, by feel with the arm's force/torque
+sensor and the motion of the nut, or both, and then turn the nut through it. A kit counts only when
+all three nuts are assembled.
 
 Deliver a controller that does the job from camera images, joint readings and the wrist
 force/torque sensor. You have **8 hours** of wall time for the whole job (exploring, building and
@@ -22,9 +24,9 @@ do not start many in parallel.
 
 | Path | What it is |
 |---|---|
-| `keyed_env.py` | The complete robot environment: table, Panda arm and gripper (robosuite 1.5.2 models), the operational-space controller, the pegs, the nut model, cameras, sensor noise and the credit rule. The grader runs this exact file. Read its docstrings: frames, units, geometry, the nut family and the samplers `sample_nut_spec` and `sample_kit`, action and observation formats, camera matrices. |
-| `practice_kit.json` | A practice kit (`keyed_env.load_kit`: three nut specs with their grooves and the work order; `env = NutEnv(kit["nuts"]); env.reset(seed, kit["order"])`). `keyed_env.sample_kit(numpy.random.default_rng(seed))` draws as many more as you like, exactly as the graded kits are drawn. `env.gt()` gives the dev sim's ground truth (nut poses, their grooves, the peg poses). |
-| `practice_grader/grade.py` | Runs your controller over the grading wire on the practice kit (or a kit file you pass with `--kit`, or new kits drawn with `sample_kit` with `--sample SEED`) and prints which kits were complete, how many nuts each got assembled and how far each got. |
+| `keyed_env.py` | The complete robot environment: table, Panda arm and gripper (robosuite 1.5.2 models), the operational-space controller, the pegs, the nut model, cameras, sensor noise and the two safety stops (a ruined nut, an unstable simulation). The grader runs this exact file; it judges the assembly with its own code, by the rule under "Deliverable and grading". Read its docstrings: frames, units, geometry, the nut family and the samplers `sample_nut_spec` and `sample_kit`, action and observation formats, camera matrices. |
+| `practice_kit.json` | A practice kit (`keyed_env.load_kit`: three nut specs with their grooves and the work order; `env = NutEnv(kit["nuts"]); env.reset(seed, kit["order"])`). `keyed_env.sample_kit(numpy.random.default_rng(seed))` draws as many more as you like, from the same family as the graded kits. It is not one of the graded kits. |
+| `practice_bench/run_bench.py` | A practice bench: runs your controller over the grading wire in your dev sim on the practice kit (or a kit file you pass with `--kit`, or new kits drawn with `sample_kit` with `--sample SEED`), the way the grader runs it, and reports how each episode ended (see "Checking your work"). It does not judge the assembly. |
 | `helpers/wire_skeleton.py` | Optional boilerplate for the grading wire (READY / reset / act / close, repeated step indices). |
 
 Python 3.12 is `/opt/venv/bin/python3` (NumPy, SciPy, OpenCV (headless), Pillow, MuJoCo 3.16.0 and
@@ -45,9 +47,12 @@ cameras offscreen on the CPU (`MUJOCO_GL=egl`, already set).
   the shaft, with a handle bar (16 mm wide, from 25 to 41 mm above the nut's bottom face) reaching
   98 mm from the hole axis. The ring is 24 sectors (15 degrees each, counted counter-clockwise from
   the handle) by 9 layers (5 mm each). The groove is cut into the inner part of the hole wall (out
-  to 19 mm from the axis); its top layer is always solid and its entrances (the real one and any
-  false ones) open only on the bottom face, which lies on the table: from above nothing shows.
-  Nothing forbids looking at the bottom face if you manage to. Every nut's groove belongs to the same family, documented exactly in
+  to 19 mm from the axis). Its top layer is always solid, so the top face and the outside of the
+  ring show nothing, and its entrances (the real one and any false ones) open only on the bottom
+  face, which lies on the table. The groove is plain geometry in the hole wall, though: looking down
+  into the hole at a steep angle, you see the far side of the wall below the top layer, where every
+  cut cell is a recess about 6 mm deep, and the bottom face shows the entrances if you get to see
+  it. Every nut's groove belongs to the same family, documented exactly in
   `keyed_env.py` (`sample_nut_spec`): an entrance riser at the bottom, a first turn of 2 to 4 sectors either way, a
   riser, a second turn of 2 to 4 sectors either way and a last riser, all 2 sectors wide; turn
   channels may continue 1 to 3 sectors the other way into a dead end; and there may be up to two
@@ -64,9 +69,10 @@ into a riser only while the riser is within about +-4 degrees of the pin. Restin
 - Every graded episode has its own kit, drawn with `sample_kit` from a seed you do not know: three
   nuts of three different colours (from `NUT_COLOURS`: blue, green, orange, pink, purple, red, teal,
   yellow), each with its own groove, mass (0.05 to 0.15 kg) and surface friction coefficient (0.6 to
-  1.0), and a random assignment of the nuts to the pegs. Everything else (robot, controller, action
-  and observation formats, cameras, sensor noise, physics settings, peg geometry, layout ranges) is
-  the same as in your dev sim.
+  1.0), and a random assignment of the nuts to the pegs. (The graded kits are draws that a reference
+  controller given the grooves completed with this robot.) Everything else (robot, controller,
+  action and observation formats, cameras, sensor noise, physics settings, peg geometry, layout
+  ranges, the safety stops) is the same as in your dev sim.
 - The **work order** is in every observation as `order`: a list of `{"colour": name, "peg_bands":
   1 | 2 | 3}`, one entry per nut, each peg used once. You may assemble the nuts in any sequence.
 
@@ -141,17 +147,31 @@ for 3 consecutive steps, while the nut is on its peg) ruins the nut and ends the
 is complete. Your result is the **fraction of the 10 kits completed**. (The grader also records how
 many nuts each kit got assembled and how far each nut got, for diagnosis only; they do not count.)
 An episode in which the controller crashes, answers late or malformed, or makes the simulation
-unstable (any arm joint faster than 8 rad/s or a nut faster than 5 m/s) scores 0. The whole grading
-run must finish within **7800 s** of wall time, simulation and rendering included: budget it at
-about 780 s per kit, that is about 0.3 s per step on average including your controller's own time.
-On the grader a simulation step takes about 0.04 s and each requested image about 0.2 s. The budget
-includes your controller's start-up in every episode. The episode under way when the budget runs
-out, and the episodes after it, score 0. Only the final controller is scored.
+unstable (any arm joint faster than 8 rad/s or a nut faster than 5 m/s) scores 0.
+
+**Time.** Every kit has a **controller budget of 600 s**: the time the grader waits for your
+controller (from its launch to `READY` and the `reset` reply, then every reply, each timed from when
+the request is sent) plus a fixed charge for every image you ask for: **0.45 s** for a `left` or
+`right` image and **0.25 s** for a `wrist` image (about what rendering one takes on the grading
+machine; the three images of an episode's first observation are free). The simulation's own time is
+not charged, so the grading machine's speed does not change your result. When a kit's budget runs
+out, its episode stops at that step and is judged as it stands (an incomplete kit scores 0). For
+scale: on the grading machine a simulation step without images takes about 0.03 s of the grader's
+time, and the reference controller uses less than 1 s of its budget per kit. As a safety net, the whole
+grading run stops after 12000 s of wall time (within these budgets a run takes at most about 2
+hours); the episode under way and the ones after it would then score 0. Only the final controller
+is scored.
 
 ## Checking your work
 
-`/opt/venv/bin/python3 /home/user/practice_grader/grade.py` runs your controller in your dev sim on
-visible practice seeds over the same wire: same request shape, same deadlines, a few repeated-`t`
-queries, a new controller process from a fresh copy of the submission for every episode, and the
-same network filter. It prints which kits it saw complete, how many nuts each got assembled, how far
-each got, and whether the run kept within the time budget.
+`/opt/venv/bin/python3 /home/user/practice_bench/run_bench.py` runs your controller in your dev sim
+on practice kits and visible layout seeds over the same wire: same request shape, same deadlines, a
+few repeated-`t` queries, a new controller process from a fresh copy of the submission for every
+episode, the same network filter and the same controller budget. Like a commissioning bench, it
+reports what the cell itself would tell you: for every episode the steps run and how it ended (all
+steps run, a safety stop with the nut it ruined or the instability, an abort of the wire with its
+reason, or the budget used up), your controller's budget use and image count. It does not judge the
+assembly: no completion verdict, no count of assembled nuts, no ground truth. Judge how a kit went
+from what your controller saw and recorded, or from the cameras' images of the final state
+(`--final-images DIR`). Because it does not judge completion, its episodes run all 2400 steps unless
+something ends them earlier.

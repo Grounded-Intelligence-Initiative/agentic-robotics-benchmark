@@ -1,9 +1,11 @@
-"""Bayonet nut kit: the task's robot environment (scene, robot, controller, sensors, credit).
+"""Bayonet nut kit: the task's robot environment (scene, robot, controller, sensors, safety stops).
 
 This file is byte-identical in your dev sim and in the grader. What differs between them is only the
 KIT that is loaded: three nut specs (see `NUT_SPEC_KEYS`) and the work order. Your dev sim ships one
 practice kit (`practice_kit.json`, `load_kit`), and `sample_kit` draws more; every graded episode loads
-its own kit, drawn with `sample_kit` from a seed you never see.
+its own kit, drawn with `sample_kit` from a seed you never see. This file has no ground-truth accessor
+and judges no assembly: the grader judges every nut by the rule the task instruction states, with its
+own code, on the state this simulation reaches.
 
 Frames and units
 ----------------
@@ -15,10 +17,7 @@ Main entry points
     kit = load_kit("practice_kit.json")     # or sample_kit(numpy.random.default_rng(seed))
     env = NutEnv(kit["nuts"])               # three nut specs
     obs = env.reset(seed, kit["order"])     # any int seed: layout + sensor noise; order[i] = bands of nut i's peg
-    obs, done, info = env.step(action)      # 10 Hz
-    env.episode_score()                     # 1.0 if the kit is complete, else 0.0 (see `episode_score`)
-    env.nuts_assembled(), env.progress()    # diagnostics (not scored)
-    env.gt()                                # ground truth (dev use only)
+    obs, done, info = env.step(action)      # 10 Hz; info = {"t", "fault", "ruined"} (see Safety stops)
 
 Action (a list of 8 numbers):
     [dx, dy, dz, drx, dry, drz, grip, cams]
@@ -28,7 +27,8 @@ Action (a list of 8 numbers):
               current gripper orientation; an operational-space controller tracks the target;
     grip:     -1 = fully open (80 mm) ... +1 = fully closed; linear in between;
     cams:     integer bit mask of the cameras whose RGB image the NEXT observation carries
-              (1 = left, 2 = right, 4 = wrist; 0 = none). Images cost wall time.
+              (1 = left, 2 = right, 4 = wrist; 0 = none). Images cost wall time (and, when graded,
+              controller budget: see the task instruction).
 
 Scene
 -----
@@ -43,9 +43,13 @@ The nut: a ring 45 mm tall (outer radius 28 mm, a 24-sided polygon) whose hole (
 nut's bottom face) reaching 98 mm from the hole axis along the nut's local +x axis. The ring is
 built from 24 sectors (15 degrees each; sector s spans [15 s, 15 (s + 1)] degrees counter-clockwise
 from the handle) x 9 layers (5 mm each, layer 0 at the bottom). In each cell the inner part of the
-wall (radius 12.7 to 19 mm) is either solid or cut away; the cut cells form a hidden GROOVE in the
-hole wall, through which the pin must travel for the nut to come down. The top layer is always
-solid, so the groove cannot be seen from above. The groove family (identical for every nut):
+wall (radius 12.7 to 19 mm) is either solid or cut away; the cut cells form a GROOVE in the hole
+wall, through which the pin must travel for the nut to come down. The top layer is always solid,
+so the outside of a nut does not show its groove, but the groove is real geometry and can be seen
+where the hole is open to view: looking down into the hole at a steep angle shows the far side of
+the hole wall below the top layer, where every cut cell is a recess about 6 mm deep (a step at its
+bottom edge), and the entrances are openings in the bottom face. The groove family (identical for
+every nut):
 
   * channels are 2 sectors (30 degrees) wide;
   * an ENTRANCE riser: layers 0-1 at sectors (e, e + 1);
@@ -70,6 +74,17 @@ peg; nut i goes on the peg with order[i] bands (`work_order` names the nuts by c
 Nut spec (a dict): {"id": str, "groove": {"entrance": 0..23, "turns": [k1, k2], "dead_ends":
 [n1, n2] (sectors, 0 = none), "false_entrances": [sectors]}, "mass": kg (0.05-0.15), "friction":
 sliding friction of the nut surfaces (0.6-1.0), "rgba": [r, g, b, 1]}.
+
+Safety stops (they end the episode, in your dev sim as in the grader)
+--------------------------------------------------------------------
+  * an unstable simulation: any arm joint faster than INSTAB_ROBOT_QVEL = 8 rad/s, a nut faster than
+    INSTAB_NUT_VEL = 5 m/s, or a non-finite state (`info["fault"]` names it);
+  * a ruined nut: while a nut is on its own peg (its hole axis within ENGAGE_XY = 5 mm of that peg's
+    shaft axis, below the shaft top), the centre of the pin lies inside a solid cell of the nut's
+    wall, more than FORCE_ANGLE_TOL = 5 degrees sideways or FORCE_Z_TOL = 1.5 mm up or down from
+    every cut cell, for FORCE_STEPS = 3 consecutive steps (`pin_in_wall`); the groove walls are solid,
+    so this only happens when the pin is forced through one. `info["ruined"]` lists the ruined nuts.
+With `early_end=False` (a development option) a ruined nut is recorded but the episode goes on.
 """
 
 import json
@@ -130,19 +145,12 @@ HANDLE_CLEAR = 0.07          # handle centre from any other nut centre
 NUT_YAW_CENTER = math.radians(135.0)   # nut yaw = azimuth of the nut from the robot base + this +- spread
 NUT_YAW_SPREAD = math.radians(60.0)
 
-# credit
-LIFT_HEIGHT = 0.03           # nut bottom above the table while held (stage 1)
-ENGAGE_XY = 0.005            # hole axis within this distance of the target shaft axis (stage 2)
-SEAT_TOL = 0.003             # nut bottom within this height of the collar top (stage 3)
-SEAT_TILT = math.radians(5.0)
-RELEASE_OPEN = 0.06          # finger opening (m) counted as released
-RELEASE_STEPS = 10
+# safety stops
+ENGAGE_XY = 0.005            # a nut is on its peg: hole axis within this distance of that peg's shaft axis
 GROOVE_TOP = 0.0395          # nut bottom above the collar when it rests on the pin (pin top)
 FORCE_ANGLE_TOL = 5.0        # deg: pin centre this far inside a solid wall cell (sideways) breaks the nut
 FORCE_Z_TOL = 0.0015         # m: ... or this far (up or down)
 FORCE_STEPS = 3              # consecutive control steps
-CREDIT_ON_PEG = 0.35
-CREDIT_DEPTH = 0.80
 
 GRIP_KP = 3000.0             # finger position gain (N/m); the finger force is capped at 20 N
 RGB_NOISE = 2.0              # 8-bit sigma
@@ -475,6 +483,7 @@ class NutEnv(object):
     """One kit: NUTS nuts on the table, each to be assembled on its own peg (the work order)."""
 
     def __init__(self, nut_specs, render=True, max_steps=MAX_STEPS, early_end=True):
+        """early_end: end the episode at the first ruined nut (a fault always ends it)."""
         if isinstance(nut_specs, dict):
             nut_specs = [nut_specs]
         self.specs = [check_nut_spec(sp) for sp in nut_specs]
@@ -507,8 +516,6 @@ class NutEnv(object):
         self.t = 0
         self.done = False
         self.fault = None
-        self.credit = [0.0] * self.n
-        self.release_count = [0] * self.n
         self.broken = [False] * self.n
         self.force_count = [0] * self.n
         self.render_next = CAMERA_NAMES
@@ -670,29 +677,13 @@ class NutEnv(object):
                     return False
         return True
 
-    def stage_now(self, i=0):
-        """Instantaneous stage of nut i: 0 none, 1 lifted while held, 2 on its target peg (then
-        self.depth_now is the fraction of the groove travelled), 3 seated on it."""
-        p, R = self.nut_state(i)
-        px, py, pyaw = self.peg_poses[self.target_peg[i]]
-        dxy = math.hypot(p[0] - px, p[1] - py)
-        tilt = math.acos(max(-1.0, min(1.0, R[2, 2])))
+    def on_peg(self, i=0):
+        """True while nut i is on its own peg: its hole axis within ENGAGE_XY of that peg's shaft axis, the nut
+        below the shaft top and above the table (the condition under which `pin_in_wall` can ruin it)."""
+        p, _R = self.nut_state(i)
+        px, py, _pyaw = self.peg_poses[self.target_peg[i]]
         top = TABLE_Z + COLLAR_H + PEG_H
-        self.depth_now = 0.0
-        if dxy <= ENGAGE_XY and p[2] < top - 0.005 and p[2] > TABLE_Z:
-            h = p[2] - (TABLE_Z + COLLAR_H)
-            self.depth_now = max(0.0, min(1.0, (GROOVE_TOP - h) / GROOVE_TOP))
-            if h <= SEAT_TOL and tilt <= SEAT_TILT:
-                return 3
-            return 2
-        held = len(self._finger_touch(i)[1]) >= 2
-        if held and p[2] - TABLE_Z >= LIFT_HEIGHT:
-            return 1
-        return 0
-
-    def assembled(self, i):
-        """Nut i was assembled (credit 1) and still sits on its target peg's collar, not ruined."""
-        return self.credit[i] >= 1.0 and not self.broken[i] and self.stage_now(i) == 3
+        return math.hypot(p[0] - px, p[1] - py) <= ENGAGE_XY and p[2] < top - 0.005 and p[2] > TABLE_Z
 
     def _post_step(self):
         d = self.data
@@ -704,60 +695,16 @@ class NutEnv(object):
         if self.fault is not None:
             self.done = True
             return
-        opening = float(d.qpos[self.gq[0]] - d.qpos[self.gq[1]])
         for i in range(self.n):
-            st = self.stage_now(i)
-            if st >= 2 and not self.broken[i]:
+            if not self.broken[i] and self.on_peg(i):
                 self.force_count[i] = self.force_count[i] + 1 if self.pin_in_wall(i) else 0
                 if self.force_count[i] >= FORCE_STEPS:
                     self.broken[i] = True
-            if self.broken[i]:
-                continue                  # ruined: its credit stays where it was
-            if st >= 1:
-                self.credit[i] = max(self.credit[i], 0.25)
-            if st >= 2:
-                self.credit[i] = max(self.credit[i], CREDIT_ON_PEG + (CREDIT_DEPTH - CREDIT_ON_PEG) * self.depth_now)
-            if st == 3 and opening >= RELEASE_OPEN and not self._finger_touch(i)[0]:
-                self.release_count[i] += 1
-            else:
-                self.release_count[i] = 0
-            if self.release_count[i] >= RELEASE_STEPS:
-                self.credit[i] = 1.0
-        complete = all(self.assembled(i) for i in range(self.n))
-        if (self.early_end and (complete or any(self.broken))) or self.t >= self.max_steps:
+        if (self.early_end and any(self.broken)) or self.t >= self.max_steps:
             self.done = True
 
-    def episode_score(self):
-        """Score of the episode: 1.0 if the kit is complete at the end: every nut assembled (seated on ITS target
-        peg's collar, within SEAT_TOL and tilt below 5 degrees, for RELEASE_STEPS consecutive steps with the fingers
-        open at least RELEASE_OPEN and not touching it) and still seated there, and no nut ruined; else 0.0 (also
-        after a fault)."""
-        if self.fault is not None:
-            return 0.0
-        return 1.0 if all(self.assembled(i) for i in range(self.n)) and not any(self.broken) else 0.0
-
-    def nuts_assembled(self):
-        """Diagnostic: number of nuts assembled and still seated on their target pegs."""
-        if self.fault is not None:
-            return 0
-        return sum(1 for i in range(self.n) if self.assembled(i))
-
-    def progress(self):
-        """Diagnostic only (not scored): the mean over the nuts of the best stage each reached (0 after a fault):
-        0.25 the nut was lifted LIFT_HEIGHT above the table while both fingers held it;
-        0.35 + 0.45 x d  the nut's hole was around ITS target peg's shaft (axis within ENGAGE_XY, nut below the
-             shaft top), d = how far its bottom has come down from resting on the pin (GROOVE_TOP above the collar,
-             d = 0) towards the collar (d = 1); the best d of the episode counts;
-        1.0  the nut sat on its target peg's collar (within SEAT_TOL, tilt below 5 degrees) for RELEASE_STEPS
-             consecutive steps with the fingers open at least RELEASE_OPEN and not touching it.
-        Forcing the pin through the groove wall (`pin_in_wall` for FORCE_STEPS consecutive steps while the nut
-        is on its target peg) ruins the nut: its progress stays at its value from before, and the kit fails."""
-        if self.fault is not None:
-            return 0.0
-        return float(sum(self.credit)) / self.n
-
     def info(self):
-        return {"t": self.t, "fault": self.fault}
+        return {"t": self.t, "fault": self.fault, "ruined": [i for i in range(self.n) if self.broken[i]]}
 
     # ------------------------------------------------------------------ sensing
     def _renderer(self, w, h):
@@ -844,19 +791,6 @@ class NutEnv(object):
         w[:3] += np.array([rng.uniform(-0.2, 0.2) for _ in range(3)])
         out["wrench"] = np.round(w, 4)
         return out
-
-    # ------------------------------------------------------------------ ground truth (dev only)
-    def gt(self):
-        nuts = []
-        for i in range(self.n):
-            p, R = self.nut_state(i)
-            nuts.append({"nut_pos": p.tolist(), "nut_quat": quat_from_mat(R).tolist(),
-                         "groove": self.specs[i]["groove"], "target_peg": self.target_peg[i],
-                         "colour": colour_name(self.specs[i]["rgba"]), "stage": int(self.stage_now(i)),
-                         "credit": float(self.credit[i]), "broken": bool(self.broken[i]),
-                         "assembled": bool(self.assembled(i))})
-        return {"nuts": nuts, "pegs": [[float(v) for v in pp] for pp in self.peg_poses], "t": int(self.t),
-                "fault": self.fault}
 
 
 NUT_COLOURS = {"blue": [0.16, 0.36, 0.78, 1], "green": [0.20, 0.62, 0.30, 1], "red": [0.78, 0.18, 0.16, 1],
