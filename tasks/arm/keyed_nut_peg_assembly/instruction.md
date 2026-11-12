@@ -45,8 +45,9 @@ cameras offscreen on the CPU (`MUJOCO_GL=egl`, already set).
   the shaft, with a handle bar (16 mm wide, from 25 to 41 mm above the nut's bottom face) reaching
   98 mm from the hole axis. The ring is 24 sectors (15 degrees each, counted counter-clockwise from
   the handle) by 9 layers (5 mm each). The groove is cut into the inner part of the hole wall (out
-  to 19 mm from the axis); its top layer is always solid and its entrance is on the bottom face, so
-  it cannot be seen. Every nut's groove belongs to the same family, documented exactly in
+  to 19 mm from the axis); its top layer is always solid and its entrances (the real one and any
+  false ones) open only on the bottom face, which lies on the table: from above nothing shows.
+  Nothing forbids looking at the bottom face if you manage to. Every nut's groove belongs to the same family, documented exactly in
   `keyed_env.py` (`sample_nut_spec`): an entrance riser at the bottom, a first turn of 2 to 4 sectors either way, a
   riser, a second turn of 2 to 4 sectors either way and a last riser, all 2 sectors wide; turn
   channels may continue 1 to 3 sectors the other way into a dead end; and there may be up to two
