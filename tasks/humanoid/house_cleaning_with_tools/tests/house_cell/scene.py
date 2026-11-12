@@ -524,8 +524,10 @@ def build(layout: dict, *, offscreen=(960, 720), decor: bool = True):
     add_kitchen(s, b)
     wb = s.worldbody
     meta = {"features": {}, "graspable": [], "bins": {}, "fixture_bodies": {}}
+    bin_recs = []
     for slot, kind in enumerate(layout["bins"]):
         rec = O.add_bin(b, wb, slot, RM.BIN_SLOTS_Y[slot], kind)
+        bin_recs.append(rec)
         meta["bins"][slot] = kind
         meta["features"][f"bin{slot}_lid"] = rec["features"]
         meta["graspable"].append(f"bin{slot}_lid")
@@ -593,6 +595,9 @@ def build(layout: dict, *, offscreen=(960, 720), decor: bool = True):
             s.add_equality(name=f"grip_{side}_{name}", name1=f"{ROBOT_NAME}/{side}_wrist_yaw_link", name2=name, **kw)
     for tool in RM.CLIPS:
         s.add_equality(name=f"clip_{tool}", name1="world", name2=tool, **weld)
+    # the bins' insides (drawn only), after every other body of the cell (objects.add_bin_inside)
+    for slot, rec in enumerate(bin_recs):
+        O.add_bin_inside(b, wb, slot, rec)
     if decor:
         add_decor(s)
     return s, meta

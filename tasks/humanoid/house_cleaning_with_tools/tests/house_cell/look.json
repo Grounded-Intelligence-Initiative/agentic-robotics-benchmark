@@ -198,6 +198,15 @@
   },
   "pendant_glow": {
    "emission": 0.03
+  },
+  "bin_blue_inner": {
+   "specular": 0.0
+  },
+  "bin_grey_inner": {
+   "specular": 0.0
+  },
+  "bin_inside": {
+   "specular": 0.0
   }
  },
  "gains": {
@@ -460,6 +469,21 @@
    0.6836,
    0.5138,
    0.5121
+  ],
+  "bin_blue_inner": [
+   0.1007,
+   0.3467,
+   0.3972
+  ],
+  "bin_grey_inner": [
+   0.4378,
+   0.411,
+   0.3863
+  ],
+  "bin_inside": [
+   0.1196,
+   0.1139,
+   0.2851
   ]
  }
 }

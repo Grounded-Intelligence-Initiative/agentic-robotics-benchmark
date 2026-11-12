@@ -486,6 +486,10 @@ _TEXTURES = {
     "offwhite": (plain, (128, 128, (0.90, 0.89, 0.86), 32, 0.03)),
     "bin_blue": (plain, (128, 128, (0.12, 0.33, 0.62), 33, 0.04)),
     "bin_grey": (plain, (128, 128, (0.30, 0.31, 0.32), 34, 0.04)),
+    # (the bins' insides: the same plastic as a texture of their own, so that the cameras' look darkens them alone;
+    # render.apply_look scales a textured material's texture data in place)
+    "bin_blue_inner": (plain, (128, 128, (0.12, 0.33, 0.62), 33, 0.04)),
+    "bin_grey_inner": (plain, (128, 128, (0.30, 0.31, 0.32), 34, 0.04)),
     "badge": (recycle_badge, (128, 128, (0.12, 0.33, 0.62), (0.92, 0.94, 0.95))),
     "seat_fabric": (fabric, (128, 128, (0.55, 0.50, 0.44), 35)),
     "hob": (hob, (256, 256, 36)),

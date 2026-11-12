@@ -356,6 +356,122 @@ def dustpan_handle_axis():
 # ================================================================================================ fixtures' moving parts
 
 
+def _open_shell(hx, hy, h, wt, rc, nc=6, c_in=0.002):
+    """A bin's body as drawn: the rounded box the bins were drawn as (P.rounded_box, radius rc, 4 subdivisions: its
+    walls, bottom and rounded edges kept vertex for vertex, so that a bin with its lid shut looks as before), without
+    its top face: from the rounded edge a rim of the wall's thickness, the inner wall down to the bottom collider's
+    top face, and the inside's floor. Centred like the box (x in [-hx, hx], y in [-hy, hy], z in [-h/2, h/2]). (The
+    closed box drew a bin as a solid block: an open lid showed a solid top and litter vanished into it, while the
+    colliders are open walls.) Returns (the outside: walls, bottom, rim; the inside: inner wall and floor), each
+    (V, F, N, UV)."""
+    V, F, N, UV = P.rounded_box([hx, hy, h / 2], rc, 4)
+    F = F[:-2 * 4 * 4]                                # (the top face: the last face rounded_box builds, 2 n^2 triangles)
+    used = np.unique(F)
+    remap = -np.ones(len(V), int)
+    remap[used] = np.arange(len(used))
+    V, N, UV, F = V[used], N[used], UV[used], remap[F].astype(np.int32)
+    # the open edge round the top: by position (each face of the box has its own vertices, for its uv), the edges of
+    # one triangle only, chained into a loop
+    from collections import Counter
+    key = lambda i: tuple(np.round(V[i], 7))
+    E_ = Counter()
+    for t in F:
+        for a, b in ((t[0], t[1]), (t[1], t[2]), (t[2], t[0])):
+            ka, kb = key(a), key(b)
+            E_[(min(ka, kb), max(ka, kb))] += 1
+    adj = {}
+    for (ka, kb), c in E_.items():
+        if c == 1:
+            adj.setdefault(ka, []).append(kb)
+            adj.setdefault(kb, []).append(ka)
+    cur = min(adj, key=lambda q: math.atan2(q[1], q[0]) % (2 * math.pi))
+    loop, prev = [cur], None
+    while True:
+        nx = [q for q in adj[cur] if q != prev]
+        if not nx or nx[0] == loop[0]:
+            break
+        prev, cur = cur, nx[0]
+        loop.append(cur)
+    O_ = np.array(loop, float)
+    # (counter-clockwise from above: the signed area of the loop)
+    if float(np.sum(O_[:, 0] * np.roll(O_[:, 1], -1) - np.roll(O_[:, 0], -1) * O_[:, 1])) < 0:
+        O_ = O_[::-1]
+
+    def ring(d, z):
+        ax, ay, r = hx - d, hy - d, max(rc - d, 0.002)
+        pts, nrm = [], []
+        for cx, cy, a0 in ((ax - r, ay - r, 0.0), (-(ax - r), ay - r, 90.0), (-(ax - r), -(ay - r), 180.0),
+                           (ax - r, -(ay - r), 270.0)):
+            for k in range(nc + 1):
+                a = math.radians(a0 + 90.0 * k / nc)
+                pts.append((cx + r * math.cos(a), cy + r * math.sin(a), z))
+                nrm.append((math.cos(a), math.sin(a)))
+        P_ = np.array(pts, float)
+        seg = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(P_[:, :2], axis=0), axis=1))]
+        return P_, np.array(nrm, float), seg
+    z1 = h / 2
+    zin = -h / 2 + 0.03 + wt                          # the inside's floor: the bottom collider's top face
+    Vs, Fs, Ns, UVs = [V], [F], [N], [UV]
+    base = len(V)
+    # the rim: the open edge zipped to the inner wall's top (by angle round the centre), facing up
+    I_, _, _ = ring(wt, z1 - c_in)
+    ang = lambda Q: np.arctan2(Q[:, 1], Q[:, 0]) % (2 * math.pi)
+    ao, ai = ang(O_), ang(I_)
+    so, si = int(np.argmin(ao)), int(np.argmin(ai))
+    O2, I2 = np.roll(O_, -so, axis=0), np.roll(I_, -si, axis=0)
+    ao, ai = ang(O2), ang(I2)
+    no, ni = len(O2), len(I2)
+    Vs.append(O2); Vs.append(I2)
+    Ns.append(np.tile([0.0, 0.0, 1.0], (no + ni, 1)))
+    UVs.append(np.stack([np.r_[O2[:, 0], I2[:, 0]] + hx, np.r_[O2[:, 1], I2[:, 1]] + hy], axis=1))
+    i, j, tri = 0, 0, []
+    while i < no or j < ni:
+        ao_n = ao[(i + 1) % no] + (2 * math.pi if i + 1 >= no else 0.0)
+        ai_n = ai[(j + 1) % ni] + (2 * math.pi if j + 1 >= ni else 0.0)
+        if j >= ni or (i < no and ao_n <= ai_n):
+            tri.append((base + i % no, base + (i + 1) % no, base + no + j % ni))
+            i += 1
+        else:
+            tri.append((base + i % no, base + no + (j + 1) % ni, base + no + j % ni))
+            j += 1
+    Fs.append(np.array(tri, np.int32))
+    base += no + ni
+    # the inner wall, facing in, and the inside's floor, facing up (drawn apart: their own material)
+    n_outer = sum(len(f_) for f_ in Fs)
+    A, nA, sA = ring(wt, z1 - c_in)
+    B, _, _ = ring(wt, zin)
+    M = len(A)
+    Vs.append(np.vstack([A, B]))
+    nn = np.concatenate([-nA, np.zeros((M, 1))], axis=1)
+    Ns.append(np.vstack([nn, nn]))
+    UVs.append(np.stack([np.r_[sA, sA], np.r_[A[:, 2], B[:, 2]] + h / 2], axis=1))
+    tri = []
+    for k in range(M):
+        a, b_, c, d = base + k, base + (k + 1) % M, base + M + (k + 1) % M, base + M + k
+        tri += [(a, b_, c), (a, c, d)]
+    Fs.append(np.array(tri, np.int32))
+    base += 2 * M
+    Vs.append(np.vstack([[0.0, 0.0, zin], B]))
+    Ns.append(np.tile([0.0, 0.0, 1.0], (M + 1, 1)))
+    UVs.append(np.stack([np.r_[0.0, B[:, 0]] + hx, np.r_[0.0, B[:, 1]] + hy], axis=1))
+    Fs.append(np.array([(base, base + 1 + k, base + 1 + (k + 1) % M) for k in range(M)], np.int32))
+    V2, N2, UV2 = np.concatenate(Vs), np.concatenate(Ns), np.concatenate(UVs)
+    F2 = np.concatenate(Fs).astype(np.int32)
+    # winding of the added parts: each triangle's normal along its vertices' normals (the box's faces are kept)
+    nb = len(F)
+    e = np.cross(V2[F2[:, 1]] - V2[F2[:, 0]], V2[F2[:, 2]] - V2[F2[:, 0]])
+    flip = (e * (N2[F2[:, 0]] + N2[F2[:, 1]] + N2[F2[:, 2]])).sum(1) < 0
+    flip[:nb] = False
+    F2[flip] = F2[flip][:, [0, 2, 1]]
+
+    def part(T):
+        used = np.unique(T)
+        rm = -np.ones(len(V2), int)
+        rm[used] = np.arange(len(used))
+        return V2[used], rm[T].astype(np.int32), N2[used], UV2[used]
+    return part(F2[:n_outer]), part(F2[n_outer:])
+
+
 def add_bin(b: Builder, wb, slot: int, y_c: float, kind: str):
     """One flip-lid bin (kind "recycling" = blue, "general" = grey) with its back to the west wall, centred at y_c.
     Returns {"body", "lid", "lid_joint", "features"}."""
@@ -374,7 +490,7 @@ def add_bin(b: Builder, wb, slot: int, y_c: float, kind: str):
     for wn, (half, pos) in walls.items():
         b.prim(body, f"bin{slot}_{wn}_col", G.mjGEOM_BOX, half, pos, contact=FIX_CONTACT,
                friction=(0.6, 0.005, 0.0001))
-    shell = P.rounded_box([hx, hy, rim / 2], 0.012, 4)
+    shell, inner = _open_shell(hx, hy, rim, wt, 0.012)
     b.visual(body, f"bin{slot}_shell", P.scale_uv(shell, 2.0, 2.0), mat, pos=(xc, 0, rim / 2))
     dark = b.material("bin_inside", (0.10, 0.10, 0.11, 1))
     b.prim(body, f"bin{slot}_inside", G.mjGEOM_BOX, [hx - wt, hy - wt, 0.002], (xc, 0, 0.035 + wt), visual=True,
@@ -403,7 +519,17 @@ def add_bin(b: Builder, wb, slot: int, y_c: float, kind: str):
     b.prim(lid, f"bin{slot}_tab", G.mjGEOM_CAPSULE, [B["tab_r"], B["tab_len"] / 2, 0], (tab_x, 0, lt / 2), q,
            visual=True, material=b.material("tab_dark", (0.12, 0.12, 0.13, 1)))
     feats = [("cyl", (tab_x, -B["tab_len"] / 2, lt / 2), (tab_x, B["tab_len"] / 2, lt / 2), B["tab_r"])]
-    return {"body": body, "lid": lid, "features": feats}
+    return {"body": body, "lid": lid, "features": feats, "inner": inner, "pos": (xc, y_c, rim / 2), "tex": tex}
+
+
+def add_bin_inside(b: Builder, wb, slot: int, rec: dict):
+    """A bin's inside as drawn (its inner wall and floor, `_open_shell`): a body of its own, added after every
+    other body of the cell, so that the geoms of the model before it keep their indices (a recorded episode's
+    drawn-state changes, by geom index, replay on it); its own material, so that the cameras' look can darken the
+    inside the way the path-traced look does."""
+    body = wb.add_body(name=f"bin{slot}_inside_drawn", pos=list(rec["pos"]))
+    mat = b.material(f"{rec['tex']}_inner", tex=f"{rec['tex']}_inner")
+    b.visual(body, f"bin{slot}_inner", P.scale_uv(rec["inner"], 2.0, 2.0), mat)
 
 
 def add_faucet(b: Builder, wb):

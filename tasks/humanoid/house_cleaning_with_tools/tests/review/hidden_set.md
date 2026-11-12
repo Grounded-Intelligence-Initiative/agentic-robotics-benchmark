@@ -1,13 +1,14 @@
 # The fixed hidden scene set (tests/hidden/seeds.json)
 
-**Amendment 1 (2026-11-08):** the cell and the reference changed, the selection was repeated under the same rule,
-and the hidden set became candidates 1, 2 and 3 (anchor 0.9352). **Amendment 2 (2026-11-09):** the reference's arm
+**Amendment 1 (2026-11-08):** the cell and the reference changed, the selection was repeated under the same rule, and
+the hidden set became candidates 1, 2 and 3 (anchor 0.9352). **Amendment 2 (2026-11-09):** the reference's arm
 postures and the robot state changed; the selection was repeated under the same rule (candidates 2, 3 and 4, anchor
 0.9552). **Amendment 3 (2026-11-09, at the end):** the reference's arm postures (round 4) and the agent cameras' look
 changed; the selection is repeated with one more rule: the kept scenes may not all share a layout fact a program could
 assume. **Amendment 4 (2026-11-11):** the reference's postures (round 5) changed; the selection is repeated under
 amendment 3's rule (its first run set aside for two planner mistakes, fixed; the repeated run keeps candidates 1, 2
-and 3 again, anchor 0.9306). The sections before each amendment record the earlier selections.
+and 3 again, anchor 0.9306); an addendum (2026-11-12) draws the bins open, the physics unchanged. The sections before
+each amendment record the earlier selections.
 
 The grader runs the three scenes of `tests/hidden/seeds.json`, for agents and the oracle alike (verify.py
 `episode_seeds`; the oracle's privileged cells get the same layouts, not a nominal one). A scene is the cell's draw
@@ -675,3 +676,38 @@ cleaning_score 0.93056 (ratio 0.99995 to the anchor), mean simulated time 2840.1
 2874.56 and 3095.24 s), no safety violation (peak robot contact 72 N), no broken dish. The reference's program time
 averaged 2486 s an episode (budget 10800 s); verify 9953 s (budget 36000 s), the three episodes one after another
 on a busy machine.
+
+## Amendment 4, addendum (2026-11-12): the bins drawn open
+
+The bins' drawn body was a closed rounded box (`house_cell/objects.py`, `add_bin`), while their colliders are open
+walls: with a lid open the agent cameras (and the review's video) showed a solid top where the bin is open, and litter
+vanished into it. Changed, before any further run:
+
+* `objects.py`: the same rounded box without its top face (its walls, bottom and rounded edges vertex for vertex), a
+  rim of the walls' 10 mm and the inner walls down to the bottom collider's top face (`_open_shell`); the inside drawn
+  by a body of its own added after every other body of the cell (`add_bin_inside`, `scene.py`), so that every
+  earlier geom keeps its index;
+* `props.py`: the inside's texture, the same plastic under a name of its own (`bin_blue_inner`, `bin_grey_inner`);
+* `look.json`: the inside's colour gains and no specular for the inner walls and the inside's floor (Filament draws
+  no ambient occlusion), fitted to OVRTX stills of the kitchen ceiling camera and the head camera at three states of
+  development scene 11 with the lids open (OVRTX over Filament, linear luminance: inner walls 1.013 blue, 1.003
+  grey; the bins' outsides 0.938 and 1.010, their lids 1.018 and 0.951 as before; the inside's floor below 0.001 in
+  both). Before the change the inside drew 3.7 times as bright as the path-traced look.
+
+Only drawn geometry, textures and the look changed (contype 0, mass 0, no joint): development scenes 11, 12 and 13
+run again with these files repeat their earlier episodes exactly (every recorded joint position of every snapshot
+equal, the same call trace, the same stage scores 0.9491, 0.9120 and 0.9167). The oracle frozen at
+`4549238` and this selection therefore stand; `ale validate` on the head (below) repeats the selection runs. The
+changed frozen files' sha256:
+
+```
+1472841a218e87e689ae388ebbcb19197ccbf8c4be785642af40ca52d06c86be  tests/house_cell/objects.py
+e259915790e7db2a79007f65cab10c1c5a294d2b26ed5ee457f923236ccf2c7d  tests/house_cell/props.py
+3451cf5efd9ac9c5c7ee71b8b09a5b4c27cd1db2529a25dbebf57aaa54447955  tests/house_cell/scene.py
+9ab531a5f05549eb2edcdeb96b1091ca245e16f121fa79aac18d1531fa3596a8  tests/house_cell/look.json
+```
+
+With the lids shut the survey photos are unchanged to within the sensor noise: re-rendered with the open bins they
+differ from the given ones in a thin band along the bins' top front edge (1540-2407 pixels of the kitchen ceiling
+camera's frame and the head camera's at the bins, by 1-3 grey levels in most, at most 26; the depth by 1 mm at no more
+than 4 pixels), against up to 113 pixels and 27 levels between two renders of the old art; they stay as given.
