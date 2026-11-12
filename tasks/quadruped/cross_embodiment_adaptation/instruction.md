@@ -25,8 +25,9 @@ graded on sites it has never seen.
 - Two to four crates (axis-aligned, 0.4-0.9 m on a side) stand at least 1.2 m from each other, from the hall's walls
   and from the partition. The nearest point of a crate is at least 0.85 m from the carrier's start and from the pad's
   centre, and at least 0.6 m from the scout's start.
-- The scout starts within 0.12 m of (-2.8, -1.8), the carrier within 0.12 m of (-2.8, +1.8), and the delivery pad (a
-  bright blue 0.4 m square) is centred within 0.15 m of (+2.6, -1.7). Lighting details differ between sites.
+- The scout starts at (-2.8, -1.8) and the carrier at (-2.8, +1.8), each coordinate within 0.12 m; the delivery pad
+  (a bright blue 0.4 m square) is centred at (+2.6, -1.7), each coordinate within 0.15 m. Lighting details differ
+  between sites.
 
 ## The robots
 

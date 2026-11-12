@@ -8,7 +8,9 @@
 # now meets the hall's walls (no way round its ends), the carrier can pass only the wide opening (narrow openings
 # 0.62-0.66 m, carrier 0.76-0.86 m), sees 0.5 m around itself, stops at its first contact and is 5-8x heavier than the
 # scout (a lagged response), so it needs the scouted map: on development seeds a perfectly controlled carrier with the
-# full map arrives 120/120, with the partition but no crates 25/120, blind 0/120 (tests/review/map_ablation.json).
+# full map arrives 200/200, with the partition but no crates 36/200, blind 0/200 (tests/review/map_ablation.json).
+# The image-only reference program (solution/reference, no token) arrives on 24/24 development sites
+# (tests/review/reference_dev.json); the privileged oracle on 8/8 hidden sites (tests/anchor.json).
 #
 # [agent] timeout_sec: 2 h to write, commission and leave the mission program. [verifier] timeout_sec: 8 missions,
 # each at most 1200 s of wall clock (program time <= 300 s plus the service's rendering, about 0.3-0.6 s a frame here

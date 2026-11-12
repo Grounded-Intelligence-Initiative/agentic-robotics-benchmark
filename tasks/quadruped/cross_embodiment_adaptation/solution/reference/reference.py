@@ -263,11 +263,19 @@ class Robot:
                 return True
             if stop is not None and stop():
                 return False
-            blocked = self.map.blocked(reach, unseen_free)
-            blocked[cell(*self.p)] = False
-            dist = bfs(blocked, disk_cells(target, radius))
-            plan = astar(self.model, blocked, dist, self.p, self.v,
-                         lambda q: (q[0]-target[0])**2+(q[1]-target[1])**2 < radius**2)
+            plan = None
+            # The scout may start a plan inside the margin it keeps (it can touch things): then it
+            # plans with its bare footprint and may leave the cell it stands in.
+            for margin_reach, escape in ((reach, 0.), (.16, .12)) if self.phase == 0 else ((reach, 0.),):
+                blocked = self.map.blocked(margin_reach, unseen_free)
+                blocked[cell(*self.p)] = False
+                if escape:
+                    blocked[disk_cells(self.p, escape)] = False
+                dist = bfs(blocked, disk_cells(target, radius))
+                plan = astar(self.model, blocked, dist, self.p, self.v,
+                             lambda q: (q[0]-target[0])**2+(q[1]-target[1])**2 < radius**2)
+                if plan:
+                    break
             if not plan:
                 return False
             for b in plan[:12]:
@@ -306,6 +314,13 @@ def unseen_on_route(map_, path, skip):
     is not yet seen, the one nearest that stretch; pixels in `skip` (given up on) are not asked for again."""
     k = int(np.ceil((CARRIER_REACH+.05)*PX))
     unseen = (map_.state == -1) & INSIDE & ~skip
+    # Around the carrier's start: its start jitter (0.12 m) and its probe presses need room on every side.
+    around = unseen & ((XX-CARRIER_START[0])**2+(YY-CARRIER_START[1])**2 < (CARRIER_REACH+.45)**2)
+    if around.any():
+        rows, cols = np.nonzero(around)
+        r, c = cell(*CARRIER_START)
+        j = int(np.argmin((rows-r)**2+(cols-c)**2))
+        return np.array([XS[cols[j]], YS[rows[j]]])
     for r, c in path:
         r0, c0 = max(0, r-k), max(0, c-k)
         window = unseen[r0:r+k+1, c0:c+k+1]
