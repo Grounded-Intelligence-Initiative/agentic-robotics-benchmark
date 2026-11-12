@@ -1,0 +1,200 @@
+{"seed": 3001, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 199, "simulated_seconds": 100.0}
+{"seed": 3002, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 155, "simulated_seconds": 100.0}
+{"seed": 3003, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 265, "simulated_seconds": 100.0}
+{"seed": 3004, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 347, "simulated_seconds": 100.0}
+{"seed": 3005, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 286, "simulated_seconds": 100.0}
+{"seed": 3006, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 106, "simulated_seconds": 100.0}
+{"seed": 3007, "mode": "random", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 84, "simulated_seconds": 100.0, "leg_1_actions": 318}
+{"seed": 3008, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 180, "simulated_seconds": 100.0}
+{"seed": 3009, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 85, "simulated_seconds": 100.0}
+{"seed": 3010, "mode": "random", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 249, "simulated_seconds": 100.0, "leg_1_actions": 52}
+{"seed": 3011, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 197, "simulated_seconds": 100.0}
+{"seed": 3012, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 302, "simulated_seconds": 100.0}
+{"seed": 3013, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 87, "simulated_seconds": 100.0}
+{"seed": 3014, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 93, "simulated_seconds": 100.0}
+{"seed": 3015, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 230, "simulated_seconds": 100.0}
+{"seed": 3016, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 129, "simulated_seconds": 100.0}
+{"seed": 3017, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 330, "simulated_seconds": 100.0}
+{"seed": 3018, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 179, "simulated_seconds": 100.0}
+{"seed": 3019, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 189, "simulated_seconds": 100.0}
+{"seed": 3020, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 210, "simulated_seconds": 100.0}
+{"seed": 3021, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 135, "simulated_seconds": 100.0}
+{"seed": 3022, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 307, "simulated_seconds": 100.0}
+{"seed": 3023, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 193, "simulated_seconds": 100.0}
+{"seed": 3024, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 167, "simulated_seconds": 100.0}
+{"seed": 3025, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 208, "simulated_seconds": 100.0}
+{"seed": 3026, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 126, "simulated_seconds": 100.0}
+{"seed": 3027, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 209, "simulated_seconds": 100.0}
+{"seed": 3028, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 96, "simulated_seconds": 100.0}
+{"seed": 3029, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 256, "simulated_seconds": 100.0}
+{"seed": 3030, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 79, "simulated_seconds": 100.0}
+{"seed": 3031, "mode": "random", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 325, "simulated_seconds": 100.0, "leg_1_actions": 319}
+{"seed": 3032, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 368, "simulated_seconds": 100.0}
+{"seed": 3033, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 215, "simulated_seconds": 100.0}
+{"seed": 3034, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 75, "simulated_seconds": 100.0}
+{"seed": 3035, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 57, "simulated_seconds": 100.0}
+{"seed": 3036, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 143, "simulated_seconds": 100.0}
+{"seed": 3037, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 216, "simulated_seconds": 100.0}
+{"seed": 3038, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 140, "simulated_seconds": 100.0}
+{"seed": 3039, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 254, "simulated_seconds": 100.0}
+{"seed": 3040, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 267, "simulated_seconds": 100.0}
+{"seed": 3041, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 50, "simulated_seconds": 100.0}
+{"seed": 3042, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 77, "simulated_seconds": 100.0}
+{"seed": 3043, "mode": "random", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 222, "simulated_seconds": 100.0, "leg_1_actions": 257}
+{"seed": 3044, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 181, "simulated_seconds": 100.0}
+{"seed": 3045, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 226, "simulated_seconds": 100.0}
+{"seed": 3046, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 212, "simulated_seconds": 100.0}
+{"seed": 3047, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 307, "simulated_seconds": 100.0}
+{"seed": 3048, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 207, "simulated_seconds": 100.0}
+{"seed": 3049, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 47, "simulated_seconds": 100.0}
+{"seed": 3050, "mode": "random", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 145, "simulated_seconds": 100.0, "leg_1_actions": 259}
+{"seed": 3051, "mode": "random", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 63, "simulated_seconds": 100.0, "leg_1_actions": 436}
+{"seed": 3052, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 110, "simulated_seconds": 100.0}
+{"seed": 3053, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 215, "simulated_seconds": 100.0}
+{"seed": 3054, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 284, "simulated_seconds": 100.0}
+{"seed": 3055, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 121, "simulated_seconds": 100.0}
+{"seed": 3056, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 320, "simulated_seconds": 100.0}
+{"seed": 3057, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 90, "simulated_seconds": 100.0}
+{"seed": 3058, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 471, "simulated_seconds": 100.0}
+{"seed": 3059, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 95, "simulated_seconds": 100.0}
+{"seed": 3060, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 100, "simulated_seconds": 100.0}
+{"seed": 3061, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 68, "simulated_seconds": 100.0}
+{"seed": 3062, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 137, "simulated_seconds": 100.0}
+{"seed": 3063, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 123, "simulated_seconds": 100.0}
+{"seed": 3064, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 312, "simulated_seconds": 100.0}
+{"seed": 3065, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 284, "simulated_seconds": 100.0}
+{"seed": 3066, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 100, "simulated_seconds": 100.0}
+{"seed": 3067, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 100, "simulated_seconds": 100.0}
+{"seed": 3068, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 132, "simulated_seconds": 100.0}
+{"seed": 3069, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 107, "simulated_seconds": 100.0}
+{"seed": 3070, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 156, "simulated_seconds": 100.0}
+{"seed": 3071, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 19, "simulated_seconds": 100.0}
+{"seed": 3072, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 278, "simulated_seconds": 100.0}
+{"seed": 3073, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 347, "simulated_seconds": 100.0}
+{"seed": 3074, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 95, "simulated_seconds": 100.0}
+{"seed": 3075, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 157, "simulated_seconds": 100.0}
+{"seed": 3076, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 39, "simulated_seconds": 100.0}
+{"seed": 3077, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 143, "simulated_seconds": 100.0}
+{"seed": 3078, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 151, "simulated_seconds": 100.0}
+{"seed": 3079, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 225, "simulated_seconds": 100.0}
+{"seed": 3080, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 370, "simulated_seconds": 100.0}
+{"seed": 3081, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 167, "simulated_seconds": 100.0}
+{"seed": 3082, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 263, "simulated_seconds": 100.0}
+{"seed": 3083, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 398, "simulated_seconds": 100.0}
+{"seed": 3084, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 129, "simulated_seconds": 100.0}
+{"seed": 3085, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 45, "simulated_seconds": 100.0}
+{"seed": 3086, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 106, "simulated_seconds": 100.0}
+{"seed": 3087, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 161, "simulated_seconds": 100.0}
+{"seed": 3088, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 222, "simulated_seconds": 100.0}
+{"seed": 3089, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 79, "simulated_seconds": 100.0}
+{"seed": 3090, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 205, "simulated_seconds": 100.0}
+{"seed": 3091, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 140, "simulated_seconds": 100.0}
+{"seed": 3092, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 67, "simulated_seconds": 100.0}
+{"seed": 3093, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 77, "simulated_seconds": 100.0}
+{"seed": 3094, "mode": "random", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 92, "simulated_seconds": 100.0, "leg_1_actions": 449}
+{"seed": 3095, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 254, "simulated_seconds": 100.0}
+{"seed": 3096, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 201, "simulated_seconds": 100.0}
+{"seed": 3097, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 81, "simulated_seconds": 100.0}
+{"seed": 3098, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 152, "simulated_seconds": 100.0}
+{"seed": 3099, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 190, "simulated_seconds": 100.0}
+{"seed": 3100, "mode": "random", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 162, "simulated_seconds": 100.0}
+{"seed": 3001, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 771, "simulated_seconds": 100.0, "leg_1_actions": 71, "leg_2_actions": 72}
+{"seed": 3002, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 1127, "simulated_seconds": 100.0}
+{"seed": 3003, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 468, "simulated_seconds": 100.0}
+{"seed": 3004, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 673, "simulated_seconds": 100.0}
+{"seed": 3005, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 379, "simulated_seconds": 100.0}
+{"seed": 3006, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 244, "simulated_seconds": 100.0}
+{"seed": 3007, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 368, "simulated_seconds": 100.0, "leg_1_actions": 234}
+{"seed": 3008, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 370, "simulated_seconds": 100.0, "leg_1_actions": 196, "leg_2_actions": 23}
+{"seed": 3009, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 450, "simulated_seconds": 100.0, "leg_1_actions": 215, "leg_2_actions": 20}
+{"seed": 3010, "mode": "greedy", "delivered": 4, "deliveries": 6, "delivered_fraction": 0.6666666666666666, "success": 0.0, "steps": 500, "collisions": 518, "simulated_seconds": 100.0, "leg_1_actions": 28, "leg_2_actions": 43, "leg_3_actions": 309, "leg_4_actions": 44}
+{"seed": 3011, "mode": "greedy", "delivered": 3, "deliveries": 6, "delivered_fraction": 0.5, "success": 0.0, "steps": 500, "collisions": 312, "simulated_seconds": 100.0, "leg_1_actions": 114, "leg_2_actions": 18, "leg_3_actions": 294}
+{"seed": 3012, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 299, "simulated_seconds": 100.0}
+{"seed": 3013, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 465, "simulated_seconds": 100.0}
+{"seed": 3014, "mode": "greedy", "delivered": 3, "deliveries": 6, "delivered_fraction": 0.5, "success": 0.0, "steps": 500, "collisions": 270, "simulated_seconds": 100.0, "leg_1_actions": 53, "leg_2_actions": 319, "leg_3_actions": 88}
+{"seed": 3015, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 635, "simulated_seconds": 100.0}
+{"seed": 3016, "mode": "greedy", "delivered": 3, "deliveries": 6, "delivered_fraction": 0.5, "success": 0.0, "steps": 500, "collisions": 403, "simulated_seconds": 100.0, "leg_1_actions": 140, "leg_2_actions": 11, "leg_3_actions": 105}
+{"seed": 3017, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 352, "simulated_seconds": 100.0, "leg_1_actions": 61, "leg_2_actions": 55}
+{"seed": 3018, "mode": "greedy", "delivered": 4, "deliveries": 6, "delivered_fraction": 0.6666666666666666, "success": 0.0, "steps": 500, "collisions": 143, "simulated_seconds": 100.0, "leg_1_actions": 41, "leg_2_actions": 119, "leg_3_actions": 87, "leg_4_actions": 47}
+{"seed": 3019, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 251, "simulated_seconds": 100.0, "leg_1_actions": 96}
+{"seed": 3020, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 332, "simulated_seconds": 100.0}
+{"seed": 3021, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 202, "simulated_seconds": 100.0, "leg_1_actions": 40}
+{"seed": 3022, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 595, "simulated_seconds": 100.0}
+{"seed": 3023, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 191, "simulated_seconds": 100.0}
+{"seed": 3024, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 365, "simulated_seconds": 100.0, "leg_1_actions": 20}
+{"seed": 3025, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 268, "simulated_seconds": 100.0}
+{"seed": 3026, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 278, "simulated_seconds": 100.0}
+{"seed": 3027, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 625, "simulated_seconds": 100.0, "leg_1_actions": 47}
+{"seed": 3028, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 183, "simulated_seconds": 100.0, "leg_1_actions": 72}
+{"seed": 3029, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 491, "simulated_seconds": 100.0}
+{"seed": 3030, "mode": "greedy", "delivered": 3, "deliveries": 6, "delivered_fraction": 0.5, "success": 0.0, "steps": 500, "collisions": 80, "simulated_seconds": 100.0, "leg_1_actions": 198, "leg_2_actions": 14, "leg_3_actions": 230}
+{"seed": 3031, "mode": "greedy", "delivered": 3, "deliveries": 6, "delivered_fraction": 0.5, "success": 0.0, "steps": 500, "collisions": 418, "simulated_seconds": 100.0, "leg_1_actions": 22, "leg_2_actions": 209, "leg_3_actions": 213}
+{"seed": 3032, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 590, "simulated_seconds": 100.0, "leg_1_actions": 99}
+{"seed": 3033, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 222, "simulated_seconds": 100.0}
+{"seed": 3034, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 232, "simulated_seconds": 100.0, "leg_1_actions": 65, "leg_2_actions": 24}
+{"seed": 3035, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 179, "simulated_seconds": 100.0}
+{"seed": 3036, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 234, "simulated_seconds": 100.0}
+{"seed": 3037, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 351, "simulated_seconds": 100.0}
+{"seed": 3038, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 628, "simulated_seconds": 100.0}
+{"seed": 3039, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 345, "simulated_seconds": 100.0, "leg_1_actions": 56}
+{"seed": 3040, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 619, "simulated_seconds": 100.0}
+{"seed": 3041, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 90, "simulated_seconds": 100.0, "leg_1_actions": 74, "leg_2_actions": 25}
+{"seed": 3042, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 116, "simulated_seconds": 100.0}
+{"seed": 3043, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 329, "simulated_seconds": 100.0, "leg_1_actions": 182, "leg_2_actions": 21}
+{"seed": 3044, "mode": "greedy", "delivered": 3, "deliveries": 6, "delivered_fraction": 0.5, "success": 0.0, "steps": 500, "collisions": 578, "simulated_seconds": 100.0, "leg_1_actions": 133, "leg_2_actions": 80, "leg_3_actions": 20}
+{"seed": 3045, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 403, "simulated_seconds": 100.0}
+{"seed": 3046, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 799, "simulated_seconds": 100.0}
+{"seed": 3047, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 511, "simulated_seconds": 100.0, "leg_1_actions": 144, "leg_2_actions": 105}
+{"seed": 3048, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 1258, "simulated_seconds": 100.0}
+{"seed": 3049, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 114, "simulated_seconds": 100.0}
+{"seed": 3050, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 451, "simulated_seconds": 100.0}
+{"seed": 3051, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 244, "simulated_seconds": 100.0}
+{"seed": 3052, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 291, "simulated_seconds": 100.0}
+{"seed": 3053, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 946, "simulated_seconds": 100.0, "leg_1_actions": 48}
+{"seed": 3054, "mode": "greedy", "delivered": 3, "deliveries": 6, "delivered_fraction": 0.5, "success": 0.0, "steps": 500, "collisions": 539, "simulated_seconds": 100.0, "leg_1_actions": 291, "leg_2_actions": 27, "leg_3_actions": 52}
+{"seed": 3055, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 262, "simulated_seconds": 100.0, "leg_1_actions": 23}
+{"seed": 3056, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 424, "simulated_seconds": 100.0, "leg_1_actions": 44}
+{"seed": 3057, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 228, "simulated_seconds": 100.0, "leg_1_actions": 55}
+{"seed": 3058, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 560, "simulated_seconds": 100.0, "leg_1_actions": 173, "leg_2_actions": 37}
+{"seed": 3059, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 191, "simulated_seconds": 100.0}
+{"seed": 3060, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 386, "simulated_seconds": 100.0, "leg_1_actions": 460}
+{"seed": 3061, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 142, "simulated_seconds": 100.0}
+{"seed": 3062, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 218, "simulated_seconds": 100.0}
+{"seed": 3063, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 234, "simulated_seconds": 100.0}
+{"seed": 3064, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 784, "simulated_seconds": 100.0}
+{"seed": 3065, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 968, "simulated_seconds": 100.0}
+{"seed": 3066, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 596, "simulated_seconds": 100.0}
+{"seed": 3067, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 195, "simulated_seconds": 100.0}
+{"seed": 3068, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 416, "simulated_seconds": 100.0}
+{"seed": 3069, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 155, "simulated_seconds": 100.0, "leg_1_actions": 35, "leg_2_actions": 27}
+{"seed": 3070, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 365, "simulated_seconds": 100.0}
+{"seed": 3071, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 173, "simulated_seconds": 100.0, "leg_1_actions": 204, "leg_2_actions": 264}
+{"seed": 3072, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 761, "simulated_seconds": 100.0}
+{"seed": 3073, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 770, "simulated_seconds": 100.0}
+{"seed": 3074, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 470, "simulated_seconds": 100.0}
+{"seed": 3075, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 254, "simulated_seconds": 100.0}
+{"seed": 3076, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 129, "simulated_seconds": 100.0, "leg_1_actions": 34, "leg_2_actions": 253}
+{"seed": 3077, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 217, "simulated_seconds": 100.0, "leg_1_actions": 122, "leg_2_actions": 45}
+{"seed": 3078, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 315, "simulated_seconds": 100.0}
+{"seed": 3079, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 758, "simulated_seconds": 100.0}
+{"seed": 3080, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 614, "simulated_seconds": 100.0}
+{"seed": 3081, "mode": "greedy", "delivered": 3, "deliveries": 6, "delivered_fraction": 0.5, "success": 0.0, "steps": 500, "collisions": 278, "simulated_seconds": 100.0, "leg_1_actions": 99, "leg_2_actions": 219, "leg_3_actions": 130}
+{"seed": 3082, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 1044, "simulated_seconds": 100.0}
+{"seed": 3083, "mode": "greedy", "delivered": 4, "deliveries": 6, "delivered_fraction": 0.6666666666666666, "success": 0.0, "steps": 500, "collisions": 963, "simulated_seconds": 100.0, "leg_1_actions": 66, "leg_2_actions": 58, "leg_3_actions": 130, "leg_4_actions": 156}
+{"seed": 3084, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 244, "simulated_seconds": 100.0, "leg_1_actions": 87, "leg_2_actions": 15}
+{"seed": 3085, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 172, "simulated_seconds": 100.0, "leg_1_actions": 55}
+{"seed": 3086, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 176, "simulated_seconds": 100.0}
+{"seed": 3087, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 356, "simulated_seconds": 100.0, "leg_1_actions": 481}
+{"seed": 3088, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 835, "simulated_seconds": 100.0}
+{"seed": 3089, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 195, "simulated_seconds": 100.0}
+{"seed": 3090, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 361, "simulated_seconds": 100.0, "leg_1_actions": 165, "leg_2_actions": 22}
+{"seed": 3091, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 360, "simulated_seconds": 100.0, "leg_1_actions": 58, "leg_2_actions": 286}
+{"seed": 3092, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 150, "simulated_seconds": 100.0, "leg_1_actions": 315}
+{"seed": 3093, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 342, "simulated_seconds": 100.0}
+{"seed": 3094, "mode": "greedy", "delivered": 1, "deliveries": 6, "delivered_fraction": 0.16666666666666666, "success": 0.0, "steps": 500, "collisions": 794, "simulated_seconds": 100.0, "leg_1_actions": 307}
+{"seed": 3095, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 1143, "simulated_seconds": 100.0, "leg_1_actions": 164, "leg_2_actions": 144}
+{"seed": 3096, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 623, "simulated_seconds": 100.0}
+{"seed": 3097, "mode": "greedy", "delivered": 2, "deliveries": 6, "delivered_fraction": 0.3333333333333333, "success": 0.0, "steps": 500, "collisions": 320, "simulated_seconds": 100.0, "leg_1_actions": 283, "leg_2_actions": 64}
+{"seed": 3098, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 606, "simulated_seconds": 100.0}
+{"seed": 3099, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 315, "simulated_seconds": 100.0}
+{"seed": 3100, "mode": "greedy", "delivered": 0, "deliveries": 6, "delivered_fraction": 0.0, "success": 0.0, "steps": 500, "collisions": 714, "simulated_seconds": 100.0}
