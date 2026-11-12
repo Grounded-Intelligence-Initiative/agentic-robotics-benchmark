@@ -1,0 +1,751 @@
+{
+ "rule": "Pre-registered on 2026-11-12, before any candidate ran: this file's rule, candidates and frozen hashes were committed first. Candidates: a kit seed and a layout seed per candidate, drawn from os.urandom (63-bit), in the order listed; candidate i's kit is keyed_env.sample_kit(numpy.random.default_rng(kit_seed), id) and its layout and noise seed is layout_seed. The frozen reference solution (solution/ at frozen_commit; the sha256 of every file it and the grader run are under `frozen`) runs each candidate ONCE, in drawn order, through the grader itself (tests/review/regrade.sh: a fresh container of the task image with the verifier's resources and layout, the submission that solution/solve.sh writes, a one-episode plan). A candidate is kept when the reference completes its kit: kit_complete 1 (all three nuts assembled and still seated, none ruined), with no abort, no fault and no controller-budget cut. The hidden set (tests/ref/episodes.json) is the first 10 kept candidates in drawn order. Should fewer than 10 of the 16 be kept, 8 more candidates are drawn the same way, appended and run, and so on. Every drop is recorded with its reason; the hollowing check compares the kept kits' features (turn sizes and directions, dead ends, false entrances, mass, friction, reach, peg spacing) with all candidates'. The reference is deterministic on a candidate (it acts on the real observation's proprioception from _gt; layout and noise follow from the seeds), so the anchor's full verify of the set must repeat every kept run (kit_complete, nuts assembled, steps).",
+ "image": {
+  "id": "sha256:fafcb374fc1ed807ce982ed21efd16f2b0f4ce8ba9808e1c77e51de1bd7d7be4",
+  "note": "the task image built from environment/ (Dockerfile and requirements.txt unchanged by the maintainer fixes; their sha256 under frozen)"
+ },
+ "set_size": 10,
+ "candidates": [
+  {
+   "i": 0,
+   "id": "C00",
+   "kit_seed": 8048628628639373556,
+   "layout_seed": 5572516107603538229
+  },
+  {
+   "i": 1,
+   "id": "C01",
+   "kit_seed": 5684310791733847266,
+   "layout_seed": 5542780590868844172
+  },
+  {
+   "i": 2,
+   "id": "C02",
+   "kit_seed": 3313905202023320903,
+   "layout_seed": 7012133900300724445
+  },
+  {
+   "i": 3,
+   "id": "C03",
+   "kit_seed": 1487411164860768293,
+   "layout_seed": 3575190740268097701
+  },
+  {
+   "i": 4,
+   "id": "C04",
+   "kit_seed": 753905959030880718,
+   "layout_seed": 8134419340824514022
+  },
+  {
+   "i": 5,
+   "id": "C05",
+   "kit_seed": 9118074940110817589,
+   "layout_seed": 1016656742917323567
+  },
+  {
+   "i": 6,
+   "id": "C06",
+   "kit_seed": 7875675624729060504,
+   "layout_seed": 8156498286229882589
+  },
+  {
+   "i": 7,
+   "id": "C07",
+   "kit_seed": 7641557339198761048,
+   "layout_seed": 502032249287965310
+  },
+  {
+   "i": 8,
+   "id": "C08",
+   "kit_seed": 6579093413008417087,
+   "layout_seed": 2896381739548922562
+  },
+  {
+   "i": 9,
+   "id": "C09",
+   "kit_seed": 4720053112326796583,
+   "layout_seed": 6242263119774731436
+  },
+  {
+   "i": 10,
+   "id": "C10",
+   "kit_seed": 7703716494067380877,
+   "layout_seed": 1470819384068334762
+  },
+  {
+   "i": 11,
+   "id": "C11",
+   "kit_seed": 5650034626429553655,
+   "layout_seed": 6191187730312833092
+  },
+  {
+   "i": 12,
+   "id": "C12",
+   "kit_seed": 6787169044854545055,
+   "layout_seed": 5846068929046143828
+  },
+  {
+   "i": 13,
+   "id": "C13",
+   "kit_seed": 7714982911761501347,
+   "layout_seed": 1276939450150411286
+  },
+  {
+   "i": 14,
+   "id": "C14",
+   "kit_seed": 5436798191792808075,
+   "layout_seed": 2851568103719523740
+  },
+  {
+   "i": 15,
+   "id": "C15",
+   "kit_seed": 2018561000907245270,
+   "layout_seed": 2333144875270439849
+  }
+ ],
+ "frozen_commit": "7130e83",
+ "frozen": {
+  "solution/solve.sh": "3314b1a8f01970ba663e10a8162e5c73fb1fdf8095d1d27cfed2bffc66153db5",
+  "solution/solver/oracle_ctrl.py": "b5803abf3fdd54c3c413dea5117479bdc68d5f02ee8cf115678fbddbb361861e",
+  "solution/solver/oracle_main.py": "a8c574a80dbb4e7f7d8db8f5ffa806e20419985949870bf3a56e159d514b33b0",
+  "tests/keyed_env.py": "f65567a831b346f1ddb045bd12c4ba07394b46325bd8754b49f8a296e05d090f",
+  "tests/keyed_credit.py": "12b58008cb1bb19763068972b84f132a72c66fc7482a453aed7e371ff9bae23f",
+  "tests/verify.py": "d334571785bc0d210373eb67567f30b2558e14fee549dd863c9924a6a7dabe32",
+  "tests/grader_config.json": "317bed3c65fd9aa3477035b84e7ae41532595b104b2b9542c4089e83fd4b159e",
+  "tests/nonet_exec.py": "f959b15c69a01e60a79c6f3c2cf83e8b84e40e061dc038d78b1e1e30746c96fc",
+  "tests/test.sh": "da73eea923aef8fc51f2baee4409bc3b89d3f4416adf7d60d432a125d9ad5437",
+  "tests/oracle_token.sha256": "0ddff0649335e27124af8c298fa54afb13b91aa2154f9e7950a343186166bbaa",
+  "environment/Dockerfile": "4524747ce17e68db3b4f8be57608085138982bfcdc4b8ab73a7b520a3a8f10e2",
+  "environment/requirements.txt": "f8044709e08e9c3deb83d17f5e92c891916f210af48a4d8c4a03fd1d5e03c92d",
+  "tests/robotics_grader/__init__.py": "d75f3c6293445af3277b05fe00df38ef7378645651ff3cfbad7f8bcfe1f56604",
+  "tests/robotics_grader/scoring.py": "9353682eb3536df264b3cb5ec3bf2be24a410f88af5b20cf86cb31796930a83b",
+  "tests/robotics_grader/seeds.py": "b795f63404d14f0c90ca0098582e80afabd251396b1f4d6ababf4e7f6037b5e1",
+  "tests/robotics_grader/selftest.py": "7a4be7513643147c2f91f866a24b6a5253a3203180b4724ca54a188fd0c2027f",
+  "tests/robotics_grader/solver.py": "288a8c1f3a1dfd61d3b2c9240c40f095411c6129af867b00fc6a0d8a77ab2d84",
+  "tests/robotics_grader/stage.py": "a97eefbc9ee2f4c67b26eecdfc76d1ac84cf4615a2f8ab2fc63e75c581eb0c2f"
+ },
+ "selection_run": {
+  "where": "apollo, the task image sha256:fafcb374..., one fresh container per candidate (tests/review/regrade.sh, 4 CPUs, 12 GB, no network), 6 at a time, 2026-11-12",
+  "tool_sha256": "cb9cd95c21ccdb3677e86b5bad18eddde066226d6f5be70e9506e144f0b68b34",
+  "regrade_sha256": "d83462b9ad88b91993deedbd2c5bb81478612ba094a85a3b4d19faaf808e909d",
+  "runs": [
+   {
+    "i": 0,
+    "id": "C00",
+    "features": {
+     "turn_sectors_mean": 3.0,
+     "turns_of_4": 3,
+     "nuts_turning_one_way_twice": 1,
+     "net_turn_sectors_max": 4,
+     "dead_end_sectors": 14,
+     "false_entrances": 3,
+     "mass_mean": 0.0854,
+     "friction_mean": 0.7681,
+     "max_reach_m": 0.7279,
+     "min_peg_gap_m": 0.2218
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 765,
+    "controller_s": 1.3,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 36,
+    "kept": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 1,
+    "id": "C01",
+    "features": {
+     "turn_sectors_mean": 3.167,
+     "turns_of_4": 2,
+     "nuts_turning_one_way_twice": 1,
+     "net_turn_sectors_max": 7,
+     "dead_end_sectors": 12,
+     "false_entrances": 4,
+     "mass_mean": 0.1026,
+     "friction_mean": 0.7117,
+     "max_reach_m": 0.6668,
+     "min_peg_gap_m": 0.1724
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 666,
+    "controller_s": 1.1,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 32,
+    "kept": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 2,
+    "id": "C02",
+    "features": {
+     "turn_sectors_mean": 3.5,
+     "turns_of_4": 4,
+     "nuts_turning_one_way_twice": 0,
+     "net_turn_sectors_max": 2,
+     "dead_end_sectors": 11,
+     "false_entrances": 5,
+     "mass_mean": 0.1018,
+     "friction_mean": 0.7308,
+     "max_reach_m": 0.6646,
+     "min_peg_gap_m": 0.1541
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 694,
+    "controller_s": 1.3,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 34,
+    "kept": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 3,
+    "id": "C03",
+    "features": {
+     "turn_sectors_mean": 3.333,
+     "turns_of_4": 3,
+     "nuts_turning_one_way_twice": 2,
+     "net_turn_sectors_max": 7,
+     "dead_end_sectors": 13,
+     "false_entrances": 1,
+     "mass_mean": 0.093,
+     "friction_mean": 0.7469,
+     "max_reach_m": 0.7085,
+     "min_peg_gap_m": 0.1381
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 692,
+    "controller_s": 1.1,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 32,
+    "kept": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 4,
+    "id": "C04",
+    "features": {
+     "turn_sectors_mean": 3.333,
+     "turns_of_4": 3,
+     "nuts_turning_one_way_twice": 1,
+     "net_turn_sectors_max": 6,
+     "dead_end_sectors": 8,
+     "false_entrances": 2,
+     "mass_mean": 0.1057,
+     "friction_mean": 0.7935,
+     "max_reach_m": 0.6719,
+     "min_peg_gap_m": 0.1937
+    },
+    "kit_complete": 0,
+    "nuts_assembled": 2,
+    "progress": 0.901,
+    "steps": 1023,
+    "controller_s": 1.6,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 49,
+    "kept": false,
+    "drop_reasons": [
+     "kit not complete (2 of 3 nuts assembled; the episode ended at step 1023: a nut was ruined)"
+    ]
+   },
+   {
+    "i": 5,
+    "id": "C05",
+    "features": {
+     "turn_sectors_mean": 2.667,
+     "turns_of_4": 1,
+     "nuts_turning_one_way_twice": 3,
+     "net_turn_sectors_max": 6,
+     "dead_end_sectors": 3,
+     "false_entrances": 0,
+     "mass_mean": 0.0888,
+     "friction_mean": 0.716,
+     "max_reach_m": 0.6564,
+     "min_peg_gap_m": 0.1449
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 628,
+    "controller_s": 1.1,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 32,
+    "kept": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 6,
+    "id": "C06",
+    "features": {
+     "turn_sectors_mean": 3.0,
+     "turns_of_4": 2,
+     "nuts_turning_one_way_twice": 2,
+     "net_turn_sectors_max": 8,
+     "dead_end_sectors": 8,
+     "false_entrances": 3,
+     "mass_mean": 0.1142,
+     "friction_mean": 0.8647,
+     "max_reach_m": 0.6954,
+     "min_peg_gap_m": 0.153
+    },
+    "kit_complete": 0,
+    "nuts_assembled": 2,
+    "progress": 0.901,
+    "steps": 2400,
+    "controller_s": 2.8,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 95,
+    "kept": false,
+    "drop_reasons": [
+     "kit not complete (2 of 3 nuts assembled; all 2400 steps run)"
+    ]
+   },
+   {
+    "i": 7,
+    "id": "C07",
+    "features": {
+     "turn_sectors_mean": 3.0,
+     "turns_of_4": 1,
+     "nuts_turning_one_way_twice": 2,
+     "net_turn_sectors_max": 7,
+     "dead_end_sectors": 8,
+     "false_entrances": 2,
+     "mass_mean": 0.0881,
+     "friction_mean": 0.7308,
+     "max_reach_m": 0.7112,
+     "min_peg_gap_m": 0.1536
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 656,
+    "controller_s": 1.1,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 34,
+    "kept": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 8,
+    "id": "C08",
+    "features": {
+     "turn_sectors_mean": 3.0,
+     "turns_of_4": 2,
+     "nuts_turning_one_way_twice": 2,
+     "net_turn_sectors_max": 8,
+     "dead_end_sectors": 10,
+     "false_entrances": 2,
+     "mass_mean": 0.1297,
+     "friction_mean": 0.7534,
+     "max_reach_m": 0.7325,
+     "min_peg_gap_m": 0.1319
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 845,
+    "controller_s": 1.0,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 37,
+    "kept": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 9,
+    "id": "C09",
+    "features": {
+     "turn_sectors_mean": 2.667,
+     "turns_of_4": 2,
+     "nuts_turning_one_way_twice": 2,
+     "net_turn_sectors_max": 8,
+     "dead_end_sectors": 15,
+     "false_entrances": 5,
+     "mass_mean": 0.1021,
+     "friction_mean": 0.8239,
+     "max_reach_m": 0.7058,
+     "min_peg_gap_m": 0.1306
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 723,
+    "controller_s": 1.3,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 33,
+    "kept": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 10,
+    "id": "C10",
+    "features": {
+     "turn_sectors_mean": 2.833,
+     "turns_of_4": 2,
+     "nuts_turning_one_way_twice": 1,
+     "net_turn_sectors_max": 4,
+     "dead_end_sectors": 7,
+     "false_entrances": 2,
+     "mass_mean": 0.1269,
+     "friction_mean": 0.9145,
+     "max_reach_m": 0.6216,
+     "min_peg_gap_m": 0.1404
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 686,
+    "controller_s": 1.1,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 34,
+    "kept": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 11,
+    "id": "C11",
+    "features": {
+     "turn_sectors_mean": 2.333,
+     "turns_of_4": 0,
+     "nuts_turning_one_way_twice": 1,
+     "net_turn_sectors_max": 5,
+     "dead_end_sectors": 7,
+     "false_entrances": 0,
+     "mass_mean": 0.0768,
+     "friction_mean": 0.8629,
+     "max_reach_m": 0.716,
+     "min_peg_gap_m": 0.1596
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 744,
+    "controller_s": 1.2,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 30,
+    "kept": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 12,
+    "id": "C12",
+    "features": {
+     "turn_sectors_mean": 2.833,
+     "turns_of_4": 2,
+     "nuts_turning_one_way_twice": 1,
+     "net_turn_sectors_max": 5,
+     "dead_end_sectors": 12,
+     "false_entrances": 1,
+     "mass_mean": 0.0751,
+     "friction_mean": 0.7815,
+     "max_reach_m": 0.7216,
+     "min_peg_gap_m": 0.1601
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 672,
+    "controller_s": 1.0,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 26,
+    "kept": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 13,
+    "id": "C13",
+    "features": {
+     "turn_sectors_mean": 3.0,
+     "turns_of_4": 2,
+     "nuts_turning_one_way_twice": 1,
+     "net_turn_sectors_max": 6,
+     "dead_end_sectors": 8,
+     "false_entrances": 1,
+     "mass_mean": 0.1281,
+     "friction_mean": 0.812,
+     "max_reach_m": 0.6426,
+     "min_peg_gap_m": 0.1866
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 699,
+    "controller_s": 1.0,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 27,
+    "kept": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 14,
+    "id": "C14",
+    "features": {
+     "turn_sectors_mean": 2.667,
+     "turns_of_4": 1,
+     "nuts_turning_one_way_twice": 0,
+     "net_turn_sectors_max": 1,
+     "dead_end_sectors": 2,
+     "false_entrances": 2,
+     "mass_mean": 0.0956,
+     "friction_mean": 0.7765,
+     "max_reach_m": 0.7251,
+     "min_peg_gap_m": 0.1418
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 836,
+    "controller_s": 1.2,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 33,
+    "kept": true,
+    "drop_reasons": []
+   },
+   {
+    "i": 15,
+    "id": "C15",
+    "features": {
+     "turn_sectors_mean": 3.167,
+     "turns_of_4": 2,
+     "nuts_turning_one_way_twice": 0,
+     "net_turn_sectors_max": 2,
+     "dead_end_sectors": 10,
+     "false_entrances": 1,
+     "mass_mean": 0.1096,
+     "friction_mean": 0.7617,
+     "max_reach_m": 0.6862,
+     "min_peg_gap_m": 0.1615
+    },
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "progress": 1.0,
+    "steps": 687,
+    "controller_s": 1.0,
+    "reason": "ok",
+    "reference_token": 1.0,
+    "aborted": 0.0,
+    "sim_faults": 0.0,
+    "budget_cuts": 0.0,
+    "wall_s": 25,
+    "kept": true,
+    "drop_reasons": []
+   }
+  ],
+  "summary": "14 of 16 candidates completed by the reference; the hidden set is C00, C01, C02, C03, C05, C07, C08, C09, C10, C11 (the first 10 completed in drawn order); dropped before the last of them: C04 (kit not complete (2 of 3 nuts assembled; the episode ended at step 1023: a nut was ruined)), C06 (kit not complete (2 of 3 nuts assembled; all 2400 steps run))",
+  "hollowing_check": {
+   "dead_end_sectors": {
+    "kept_mean": 10.0,
+    "all_mean": 9.25
+   },
+   "false_entrances": {
+    "kept_mean": 2.4,
+    "all_mean": 2.125
+   },
+   "friction_mean": {
+    "kept_mean": 0.7759,
+    "all_mean": 0.7843
+   },
+   "mass_mean": {
+    "kept_mean": 0.0995,
+    "all_mean": 0.1015
+   },
+   "max_reach_m": {
+    "kept_mean": 0.6911,
+    "all_mean": 0.6909
+   },
+   "min_peg_gap_m": {
+    "kept_mean": 0.1547,
+    "all_mean": 0.159
+   },
+   "net_turn_sectors_max": {
+    "kept_mean": 5.8,
+    "all_mean": 5.375
+   },
+   "nuts_turning_one_way_twice": {
+    "kept_mean": 1.5,
+    "all_mean": 1.25
+   },
+   "turn_sectors_mean": {
+    "kept_mean": 2.95,
+    "all_mean": 2.9688
+   },
+   "turns_of_4": {
+    "kept_mean": 2.0,
+    "all_mean": 2.0
+   }
+  }
+ },
+ "hidden_set": [
+  "C00",
+  "C01",
+  "C02",
+  "C03",
+  "C05",
+  "C07",
+  "C08",
+  "C09",
+  "C10",
+  "C11"
+ ],
+ "anchor_verify": {
+  "date": "2026-11-12",
+  "how": "tests/review/regrade.sh: one full verify of the reference's submission (solution/solve.sh) on the fixed set, a fresh container of the task image (the image above) with 4 CPUs, 12 GB and no network, in the separate verifier's layout",
+  "wall_s": 288,
+  "measured": 1.0,
+  "episodes": [
+   {
+    "episode": 0,
+    "id": "C00",
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "steps": 765,
+    "controller_s": 0.8
+   },
+   {
+    "episode": 1,
+    "id": "C01",
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "steps": 666,
+    "controller_s": 0.7
+   },
+   {
+    "episode": 2,
+    "id": "C02",
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "steps": 694,
+    "controller_s": 0.8
+   },
+   {
+    "episode": 3,
+    "id": "C03",
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "steps": 692,
+    "controller_s": 0.5
+   },
+   {
+    "episode": 4,
+    "id": "C05",
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "steps": 628,
+    "controller_s": 0.5
+   },
+   {
+    "episode": 5,
+    "id": "C07",
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "steps": 656,
+    "controller_s": 0.5
+   },
+   {
+    "episode": 6,
+    "id": "C08",
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "steps": 845,
+    "controller_s": 0.7
+   },
+   {
+    "episode": 7,
+    "id": "C09",
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "steps": 723,
+    "controller_s": 1.0
+   },
+   {
+    "episode": 8,
+    "id": "C10",
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "steps": 686,
+    "controller_s": 1.0
+   },
+   {
+    "episode": 9,
+    "id": "C11",
+    "kit_complete": 1,
+    "nuts_assembled": 3,
+    "steps": 744,
+    "controller_s": 0.9
+   }
+  ],
+  "every_episode_repeats_its_selection_run": true,
+  "probes": {
+   "total": 75.0,
+   "answers_that_differed": 0.0,
+   "note": "the reference acts on _gt's real proprioception, so it answers both copies of a repeated step alike; the probe record never gates"
+  }
+ }
+}
