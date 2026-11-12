@@ -59,3 +59,38 @@ The oracle and everything that decides an episode, by sha256:
 ## Result
 
 (Appended after the run, below this line.)
+
+Run 2026-11-12 on a 48-core x86-64 machine, 20 containers at a time, from commit `e2e584e` (this rule's commit; the
+frozen hashes above were checked before the run), image built from its `environment/`.
+
+- All 40 candidates were run once. Every one scored reward 1.0 with all six delivery points reached, and in every
+  one the grader's replay agreed with the service. Kept: candidates 0 to 23 in drawn order; candidates 24 to 39 were
+  run but are not needed (the rule keeps the first 24). Nothing was dropped.
+- On the kept set the oracle used 194 to 406 presses (median 300) of the 500, at most
+  412 of the 560 requests, 13 wall contacts in all, and 36 to 157 s of wall-clock time per episode.
+- Anchor: delivered fraction 1.0 on the kept set (24 of 24 at 6/6); `full_at` 0.98.
+
+Hollowing check (kept 24 against all 40 candidates; `steps` is the oracle's presses):
+
+```
+feature           kept mean   all mean  kept min  kept max
+heading_deg         167.266    176.757    29.130   356.706
+loaded_turn_deg       5.636      1.379  -154.985   161.628
+forward_speed         1.332      1.329     1.200     1.494
+backward_ratio        0.664      0.653     0.559     0.747
+left_speed            0.818      0.818     0.701     0.933
+right_speed           0.845      0.830     0.724     0.938
+load                  0.674      0.677     0.607     0.744
+wall_x0              -1.190     -1.173    -1.472    -0.981
+wall_x1               1.239      1.203     0.904     1.500
+narrow0               0.672      0.673     0.623     0.718
+wide0                 1.146      1.144     1.016     1.247
+narrow1               0.656      0.664     0.622     0.707
+wide1                 1.124      1.105     1.005     1.233
+long_legs             2.875      2.600     2.000     6.000
+straight_path_m      27.049     25.978    21.413    32.930
+steps               298.833    287.850   194.000   406.000
+```
+
+The kept scenes cover the drawn ranges; no feature is narrowed (all 40 passed, so the kept set is simply the first
+24 draws).

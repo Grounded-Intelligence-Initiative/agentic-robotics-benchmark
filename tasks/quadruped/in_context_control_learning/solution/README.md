@@ -1,70 +1,40 @@
-# In-Context Control Learning
+# In-Context Control Learning: the oracle
 
-**Draft task candidate.** A frozen model directly tries four unfamiliar buttons and navigates four consecutive goals in one conversation. No submitted controller replaces that interaction.
+A frozen model teleoperates a quadruped delivery robot through six deliveries in a dark bay, one button press per
+tool call. It has to learn from the camera images what the four unlabeled buttons do (body-frame forward, back, step
+left and step right, at an unknown heading, with unequal gait speeds, all changed by a loading stop after the third
+delivery), where the partitions and their openings are, and keep both in mind across the episode. No program may
+drive the robot or process the images; the grader checks that from the session.
 
-![Actual CPU simulator capture](preview.jpg)
+## The oracle
 
-The large image is a reviewer camera. The inset and [agent-view.png](agent-view.png)
-show the actual restricted observation. Both use the same PBR scene, not a marketing mockup.
+`solve.sh` runs `oracle_run.py`, the image-only scripted reference in `policy.py`. It gets what the agent gets (the
+image and the JSON status of each reply, the camera calibration from the instruction) and nothing else:
 
-## Visual refresh
+- it presses each button once to measure its displacement, and again after the loading stop;
+- it adds every lit wall pixel to a map, which persists across deliveries;
+- it plans with A* over its own measured button displacements, unknown floor counting as free, and re-plans after
+  every press; presses that hit nothing refine the displacement estimates;
+- it advances as soon as a delivery point is reached.
 
-MuJoCo 3.16 Filament runs on CPU Vulkan (lavapipe), with no GPU fallback.
-The scenes include CC0 industrial scans, correctly scaled surface UVs, normal/roughness
-maps, fixed-exposure lighting, and spatial supersampling. Temporal post-processing is
-disabled so an unchanged scene produces identical camera pixels. Tracking stickers
-remain visible; no semantic overlays or privileged state are added to observations.
+It is a feasibility proof, not an LLM result. The grader recognises it by the engine's trajectory (agent name
+`oracle`) and skips the direct-control audit for it, since a script necessarily talks to the robot socket.
 
-Original action semantics, calibrated cameras, collision proxies, scoring and budgets
-are retained. Detailed scenery has zero mass and contact response. This is a visual
-upgrade of a lightweight simulation, not a claim of hardware-accurate dynamics.
+## Measurements
 
-## Randomization
+| what | result |
+|---|---|
+| hidden set (24 scenes, `tests/review/hidden_set/`) | 24 of 24 at six of six delivery points, 194 to 406 presses (median 300) of 500, at most 412 of 560 requests |
+| 40 development seeds (3001-3040) | 40 of 40 at six of six |
+| random buttons (100 development seeds) | 0.012 of the points on average |
+| privileged greedy, no map memory (100 development seeds) | 0.148 |
 
-Button mapping, response gain, wall openings, starting poses and stage goals; lighting and background details. The mapping and map persist across all four stages.
+`tests/review/check_task.py` runs the task's self-checks inside the image; `tests/review/run_episode.sh` runs one
+episode the way the engine does; `tests/review/baselines.py` the two baselines.
 
-The private seed persists throughout an episode. Reconnecting does not resample the
-scene or restore budgets. Six-seed determinism/variation/phase checks passed.
+## What the simulation is
 
-## Validation
-
-- Image-only scripted reference: **3/3** private randomized validation scenes.
-- Development demonstration: seed 101, 161 actions, 0 contacts.
-- Real ALE gate: **untouched 0.0 / oracle 1.0**, after measuring the new anchor.
-- Anchor `success_rate`: 1.000000000, from 1 actual oracle runs.
-- CPU only; no Astra/frontier-model calls. Pinned engine `90a7c1cfa649c5dbf1078714773f99840e44cba3`.
-- Shared-service security probe: 14 permission/forgery checks, forged success scored zero.
-
-The numbers above are feasibility checks, not model difficulty measurements
-or a sealed benchmark test set.
-
-[Raw evidence](validation-evidence.json) · [Success example](success-example.json) ·
-[Interaction log](success-interaction.json)
-
-## Reproduce
-
-From `vendor/ale`:
-
-```bash
-uv run ale lint ../../tasks/quadruped/in_context_control_learning
-uv run ale validate ../../tasks/quadruped/in_context_control_learning
-```
-
-Inside the task image, `tests/review/check_randomization.py` checks six scenes and
-`tests/review/review_task.py --out /tmp/review --seeds 101 102 103` captures reviewer evidence.
-
-## Limits
-
-The Go1 visual model has stabilized planar motion, not learned legged locomotion. The scripted oracle is explicitly exempt from the direct-model constraint for feasibility validation. It does not establish an LLM in-context-learning effect; retained-context vs cleared-context model trials remain pending.
-
-Keep this PR in **Draft**. Independent review, task registration and frontier-model
-difficulty evaluation remain pending. Scanned props do not make a task difficult by
-themselves. Earlier failures and pilot images are retained in the author's local logs.
-
-## Assets
-
-Powered by Poly Haven: CC0 scanned utility cabinet, generator, concrete barrier and
-surface textures. Menagerie Crazyflie/Go1 visual meshes retain their original licenses.
-The lighting probe ships with the Apache-2.0 MuJoCo package. Pinned URLs, SHA256 hashes
-and notices are in `environment/visual_assets.json` and `environment/LICENSE.*`. No commercial
-warehouse pack, private laboratory scene or generated marketing image is included.
+A planar base under a velocity controller with a scaled Unitree Go1 body (MuJoCo Menagerie meshes) and stabilized
+gaits, not legged locomotion; walls and the fence are boxes. The images are rendered on the CPU with MuJoCo 3.16's
+Filament renderer (lavapipe), with Poly Haven CC0 textures and props; the render assets come from the benchmark's
+Hugging Face dataset, pinned in `environment/assets.sha256`.
