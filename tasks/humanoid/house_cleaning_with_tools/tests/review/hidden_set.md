@@ -711,3 +711,8 @@ With the lids shut the survey photos are unchanged to within the sensor noise: r
 differ from the given ones in a thin band along the bins' top front edge (1540-2407 pixels of the kitchen ceiling
 camera's frame and the head camera's at the bins, by 1-3 grey levels in most, at most 26; the depth by 1 mm at no more
 than 4 pixels), against up to 113 pixels and 27 levels between two renders of the old art; they stay as given.
+
+`ale validate` from a clean checkout of `28248d8` (validate-04d71f3c, 2026-11-12, apollo, engine bfb7505): `ok`,
+untouched reward 0.0, oracle reward 1.0, the oracle's three episodes the selection runs again to the last digit
+(cleaning_score 0.93056, ratio 0.99995 to the anchor; mean simulated time 2840.13 s; peak robot contact 72 N; no
+safety violation, no broken dish); verify 8673 s.
