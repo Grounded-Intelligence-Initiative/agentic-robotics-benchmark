@@ -1,0 +1,9 @@
+{
+  "metric": "mission_success_rate",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 0.98,
+  "source": "Measured, not a published figure: the privileged oracle (solution/oracle) on the 8 fixed hidden sites (tests/hidden/sites.json), one full verify by tests/grader.py in a fresh container laid out like the separate verifier, 2026-11-12: 8 of 8 missions. Every site's outcome and carrier press count equal its selection run (tests/hidden/selection.json), so full_at is 0.98 (the oracle is deterministic: exact state through its token, exact pulse dynamics).",
+  "measurements": [1.0],
+  "carrier_presses_per_site": [70, 57, 62, 65, 56, 63, 68, 62]
+}

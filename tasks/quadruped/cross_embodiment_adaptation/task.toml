@@ -1,0 +1,53 @@
+# cross_embodiment_adaptation (quadruped): scout an unmapped hall with a small robot, then deliver with a large, heavy
+# one through the one opening it fits, around crates it cannot see, on hidden sites, with a program the agent writes.
+#
+# Maintainers' round (2026-11-12, PR #37 review): the graded record moved from the agent sandbox's live service to a
+# separate verifier that runs the agent's mission program once on each of 8 fixed hidden sites (tests/hidden/,
+# selected by the pre-registered rule in tests/review/selection.md with the frozen privileged oracle); the agent's
+# sandbox keeps a commissioning service on random development sites (no truth, no score, no debrief). The partition
+# now meets the hall's walls (no way round its ends), the carrier can pass only the wide opening (narrow openings
+# 0.62-0.66 m, carrier 0.76-0.86 m), sees 0.5 m around itself, stops at its first contact and is 5-8x heavier than the
+# scout (a lagged response), so it needs the scouted map: on development seeds a perfectly controlled carrier with the
+# full map arrives 200/200, with the partition but no crates 36/200, blind 0/200 (tests/review/map_ablation.json).
+# The image-only reference program (solution/reference, no token) arrives on 24/24 development sites
+# (tests/review/reference_dev.json); the privileged oracle on 8/8 hidden sites (tests/anchor.json).
+#
+# [agent] timeout_sec: 2 h to write, commission and leave the mission program. [verifier] timeout_sec: 8 missions,
+# each at most 1200 s of wall clock (program time <= 300 s plus the service's rendering, about 0.3-0.6 s a frame here
+# for at most 640 requests) plus the service start and clean-up (about 20 s); a mission the service itself fails runs
+# once more. The oracle's eight missions take about 8-10 min here.
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/cross_embodiment_adaptation"
+
+[metadata]
+platform = "quadruped"
+
+[environment]
+cpus = 2
+memory_mb = 4096
+gpus = 0
+
+# The robot service's MCP bridge, which setup copies from environment/setup/payload/ into the root-owned
+# /opt/visual_robotics/client. Nothing in it depends on the working directory: Python resolves its one local import
+# (client.py) from the script's own folder, and the bridge uses only stdin, stdout and the service socket.
+[[environment.mcp_servers]]
+name = "robot"
+transport = "stdio"
+command = "/opt/venv/bin/python3"
+args = ["/opt/visual_robotics/client/mcp_stdio.py"]
+
+[agent]
+timeout_sec = 7200
+network_mode = "no-network"
+
+[verifier]
+timeout_sec = 12600
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 2
+memory_mb = 4096
+gpus = 0

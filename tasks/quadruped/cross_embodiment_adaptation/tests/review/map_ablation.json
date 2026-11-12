@@ -1,0 +1,4829 @@
+{
+ "seeds": "7000-7199",
+ "summary": {
+  "full": {
+   "missions": 200,
+   "arrived": 200.0,
+   "reasons": {
+    "arrived": 200
+   }
+  },
+  "wall_only": {
+   "missions": 200,
+   "arrived": 36.0,
+   "reasons": {
+    "arrived": 36,
+    "contact stop": 164
+   }
+  },
+  "blind": {
+   "missions": 200,
+   "arrived": 0.0,
+   "reasons": {
+    "contact stop": 200
+   }
+  }
+ },
+ "rows": [
+  {
+   "seed": 7000,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 73,
+   "crates": 2
+  },
+  {
+   "seed": 7000,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 73,
+   "crates": 2
+  },
+  {
+   "seed": 7000,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 31,
+   "crates": 2
+  },
+  {
+   "seed": 7001,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 70,
+   "crates": 2
+  },
+  {
+   "seed": 7001,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 2
+  },
+  {
+   "seed": 7001,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 15,
+   "crates": 2
+  },
+  {
+   "seed": 7002,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 67,
+   "crates": 3
+  },
+  {
+   "seed": 7002,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 44,
+   "crates": 3
+  },
+  {
+   "seed": 7002,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 3
+  },
+  {
+   "seed": 7003,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 79,
+   "crates": 3
+  },
+  {
+   "seed": 7003,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 56,
+   "crates": 3
+  },
+  {
+   "seed": 7003,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 12,
+   "crates": 3
+  },
+  {
+   "seed": 7004,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 56,
+   "crates": 3
+  },
+  {
+   "seed": 7004,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 56,
+   "crates": 3
+  },
+  {
+   "seed": 7004,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 15,
+   "crates": 3
+  },
+  {
+   "seed": 7005,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 72,
+   "crates": 2
+  },
+  {
+   "seed": 7005,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 45,
+   "crates": 2
+  },
+  {
+   "seed": 7005,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 17,
+   "crates": 2
+  },
+  {
+   "seed": 7006,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 63,
+   "crates": 4
+  },
+  {
+   "seed": 7006,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 4
+  },
+  {
+   "seed": 7006,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 4
+  },
+  {
+   "seed": 7007,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 63,
+   "crates": 3
+  },
+  {
+   "seed": 7007,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 5,
+   "crates": 3
+  },
+  {
+   "seed": 7007,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 5,
+   "crates": 3
+  },
+  {
+   "seed": 7008,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 60,
+   "crates": 3
+  },
+  {
+   "seed": 7008,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 36,
+   "crates": 3
+  },
+  {
+   "seed": 7008,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 16,
+   "crates": 3
+  },
+  {
+   "seed": 7009,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 3
+  },
+  {
+   "seed": 7009,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 3
+  },
+  {
+   "seed": 7009,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 40,
+   "crates": 3
+  },
+  {
+   "seed": 7010,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 61,
+   "crates": 3
+  },
+  {
+   "seed": 7010,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 6,
+   "crates": 3
+  },
+  {
+   "seed": 7010,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 40,
+   "crates": 3
+  },
+  {
+   "seed": 7011,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 66,
+   "crates": 3
+  },
+  {
+   "seed": 7011,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 47,
+   "crates": 3
+  },
+  {
+   "seed": 7011,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 18,
+   "crates": 3
+  },
+  {
+   "seed": 7012,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 73,
+   "crates": 2
+  },
+  {
+   "seed": 7012,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 73,
+   "crates": 2
+  },
+  {
+   "seed": 7012,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 28,
+   "crates": 2
+  },
+  {
+   "seed": 7013,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 3
+  },
+  {
+   "seed": 7013,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 37,
+   "crates": 3
+  },
+  {
+   "seed": 7013,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 19,
+   "crates": 3
+  },
+  {
+   "seed": 7014,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 2
+  },
+  {
+   "seed": 7014,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 2
+  },
+  {
+   "seed": 7014,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 24,
+   "crates": 2
+  },
+  {
+   "seed": 7015,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 58,
+   "crates": 2
+  },
+  {
+   "seed": 7015,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 2
+  },
+  {
+   "seed": 7015,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 24,
+   "crates": 2
+  },
+  {
+   "seed": 7016,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 67,
+   "crates": 3
+  },
+  {
+   "seed": 7016,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 47,
+   "crates": 3
+  },
+  {
+   "seed": 7016,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 47,
+   "crates": 3
+  },
+  {
+   "seed": 7017,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 74,
+   "crates": 2
+  },
+  {
+   "seed": 7017,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 20,
+   "crates": 2
+  },
+  {
+   "seed": 7017,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 23,
+   "crates": 2
+  },
+  {
+   "seed": 7018,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 2
+  },
+  {
+   "seed": 7018,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 2
+  },
+  {
+   "seed": 7018,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 2
+  },
+  {
+   "seed": 7019,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 3
+  },
+  {
+   "seed": 7019,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 38,
+   "crates": 3
+  },
+  {
+   "seed": 7019,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 17,
+   "crates": 3
+  },
+  {
+   "seed": 7020,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 3
+  },
+  {
+   "seed": 7020,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 40,
+   "crates": 3
+  },
+  {
+   "seed": 7020,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 16,
+   "crates": 3
+  },
+  {
+   "seed": 7021,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 64,
+   "crates": 3
+  },
+  {
+   "seed": 7021,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 13,
+   "crates": 3
+  },
+  {
+   "seed": 7021,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 13,
+   "crates": 3
+  },
+  {
+   "seed": 7022,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 74,
+   "crates": 3
+  },
+  {
+   "seed": 7022,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 74,
+   "crates": 3
+  },
+  {
+   "seed": 7022,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 15,
+   "crates": 3
+  },
+  {
+   "seed": 7023,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 4
+  },
+  {
+   "seed": 7023,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 4
+  },
+  {
+   "seed": 7023,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 4
+  },
+  {
+   "seed": 7024,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 67,
+   "crates": 4
+  },
+  {
+   "seed": 7024,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 37,
+   "crates": 4
+  },
+  {
+   "seed": 7024,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 12,
+   "crates": 4
+  },
+  {
+   "seed": 7025,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 3
+  },
+  {
+   "seed": 7025,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 25,
+   "crates": 3
+  },
+  {
+   "seed": 7025,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 3
+  },
+  {
+   "seed": 7026,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 66,
+   "crates": 2
+  },
+  {
+   "seed": 7026,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 51,
+   "crates": 2
+  },
+  {
+   "seed": 7026,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 29,
+   "crates": 2
+  },
+  {
+   "seed": 7027,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 61,
+   "crates": 3
+  },
+  {
+   "seed": 7027,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 13,
+   "crates": 3
+  },
+  {
+   "seed": 7027,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 13,
+   "crates": 3
+  },
+  {
+   "seed": 7028,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 76,
+   "crates": 2
+  },
+  {
+   "seed": 7028,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 53,
+   "crates": 2
+  },
+  {
+   "seed": 7028,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 2
+  },
+  {
+   "seed": 7029,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 4
+  },
+  {
+   "seed": 7029,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 4
+  },
+  {
+   "seed": 7029,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 6,
+   "crates": 4
+  },
+  {
+   "seed": 7030,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 2
+  },
+  {
+   "seed": 7030,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 2
+  },
+  {
+   "seed": 7030,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 19,
+   "crates": 2
+  },
+  {
+   "seed": 7031,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 66,
+   "crates": 3
+  },
+  {
+   "seed": 7031,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 3
+  },
+  {
+   "seed": 7031,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 3
+  },
+  {
+   "seed": 7032,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 62,
+   "crates": 2
+  },
+  {
+   "seed": 7032,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 62,
+   "crates": 2
+  },
+  {
+   "seed": 7032,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 33,
+   "crates": 2
+  },
+  {
+   "seed": 7033,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 66,
+   "crates": 3
+  },
+  {
+   "seed": 7033,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 49,
+   "crates": 3
+  },
+  {
+   "seed": 7033,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 19,
+   "crates": 3
+  },
+  {
+   "seed": 7034,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 2
+  },
+  {
+   "seed": 7034,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 2
+  },
+  {
+   "seed": 7034,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 18,
+   "crates": 2
+  },
+  {
+   "seed": 7035,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 58,
+   "crates": 3
+  },
+  {
+   "seed": 7035,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 3
+  },
+  {
+   "seed": 7035,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 3
+  },
+  {
+   "seed": 7036,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 79,
+   "crates": 3
+  },
+  {
+   "seed": 7036,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 3
+  },
+  {
+   "seed": 7036,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 6,
+   "crates": 3
+  },
+  {
+   "seed": 7037,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 3
+  },
+  {
+   "seed": 7037,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 3
+  },
+  {
+   "seed": 7037,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 6,
+   "crates": 3
+  },
+  {
+   "seed": 7038,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 57,
+   "crates": 3
+  },
+  {
+   "seed": 7038,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 32,
+   "crates": 3
+  },
+  {
+   "seed": 7038,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 19,
+   "crates": 3
+  },
+  {
+   "seed": 7039,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 2
+  },
+  {
+   "seed": 7039,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 20,
+   "crates": 2
+  },
+  {
+   "seed": 7039,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 34,
+   "crates": 2
+  },
+  {
+   "seed": 7040,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 61,
+   "crates": 2
+  },
+  {
+   "seed": 7040,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 61,
+   "crates": 2
+  },
+  {
+   "seed": 7040,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 25,
+   "crates": 2
+  },
+  {
+   "seed": 7041,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 64,
+   "crates": 3
+  },
+  {
+   "seed": 7041,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 64,
+   "crates": 3
+  },
+  {
+   "seed": 7041,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 33,
+   "crates": 3
+  },
+  {
+   "seed": 7042,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 80,
+   "crates": 2
+  },
+  {
+   "seed": 7042,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 2
+  },
+  {
+   "seed": 7042,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 30,
+   "crates": 2
+  },
+  {
+   "seed": 7043,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 70,
+   "crates": 4
+  },
+  {
+   "seed": 7043,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 4
+  },
+  {
+   "seed": 7043,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 24,
+   "crates": 4
+  },
+  {
+   "seed": 7044,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 62,
+   "crates": 4
+  },
+  {
+   "seed": 7044,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 10,
+   "crates": 4
+  },
+  {
+   "seed": 7044,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 23,
+   "crates": 4
+  },
+  {
+   "seed": 7045,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 75,
+   "crates": 3
+  },
+  {
+   "seed": 7045,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 3
+  },
+  {
+   "seed": 7045,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 3
+  },
+  {
+   "seed": 7046,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 66,
+   "crates": 2
+  },
+  {
+   "seed": 7046,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 13,
+   "crates": 2
+  },
+  {
+   "seed": 7046,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 15,
+   "crates": 2
+  },
+  {
+   "seed": 7047,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 77,
+   "crates": 3
+  },
+  {
+   "seed": 7047,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 13,
+   "crates": 3
+  },
+  {
+   "seed": 7047,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 19,
+   "crates": 3
+  },
+  {
+   "seed": 7048,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 76,
+   "crates": 2
+  },
+  {
+   "seed": 7048,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 76,
+   "crates": 2
+  },
+  {
+   "seed": 7048,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 2
+  },
+  {
+   "seed": 7049,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 4
+  },
+  {
+   "seed": 7049,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 4
+  },
+  {
+   "seed": 7049,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 18,
+   "crates": 4
+  },
+  {
+   "seed": 7050,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 63,
+   "crates": 2
+  },
+  {
+   "seed": 7050,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 63,
+   "crates": 2
+  },
+  {
+   "seed": 7050,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 26,
+   "crates": 2
+  },
+  {
+   "seed": 7051,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 75,
+   "crates": 3
+  },
+  {
+   "seed": 7051,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 44,
+   "crates": 3
+  },
+  {
+   "seed": 7051,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 18,
+   "crates": 3
+  },
+  {
+   "seed": 7052,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 71,
+   "crates": 3
+  },
+  {
+   "seed": 7052,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 60,
+   "crates": 3
+  },
+  {
+   "seed": 7052,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 3
+  },
+  {
+   "seed": 7053,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 57,
+   "crates": 3
+  },
+  {
+   "seed": 7053,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 3
+  },
+  {
+   "seed": 7053,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 3
+  },
+  {
+   "seed": 7054,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 3
+  },
+  {
+   "seed": 7054,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 41,
+   "crates": 3
+  },
+  {
+   "seed": 7054,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 13,
+   "crates": 3
+  },
+  {
+   "seed": 7055,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 79,
+   "crates": 2
+  },
+  {
+   "seed": 7055,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 2
+  },
+  {
+   "seed": 7055,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 2
+  },
+  {
+   "seed": 7056,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 57,
+   "crates": 2
+  },
+  {
+   "seed": 7056,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 44,
+   "crates": 2
+  },
+  {
+   "seed": 7056,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 23,
+   "crates": 2
+  },
+  {
+   "seed": 7057,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 85,
+   "crates": 3
+  },
+  {
+   "seed": 7057,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 78,
+   "crates": 3
+  },
+  {
+   "seed": 7057,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 17,
+   "crates": 3
+  },
+  {
+   "seed": 7058,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 55,
+   "crates": 4
+  },
+  {
+   "seed": 7058,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 35,
+   "crates": 4
+  },
+  {
+   "seed": 7058,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 15,
+   "crates": 4
+  },
+  {
+   "seed": 7059,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 66,
+   "crates": 3
+  },
+  {
+   "seed": 7059,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 45,
+   "crates": 3
+  },
+  {
+   "seed": 7059,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 24,
+   "crates": 3
+  },
+  {
+   "seed": 7060,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 70,
+   "crates": 2
+  },
+  {
+   "seed": 7060,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 40,
+   "crates": 2
+  },
+  {
+   "seed": 7060,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 2
+  },
+  {
+   "seed": 7061,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 2
+  },
+  {
+   "seed": 7061,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 2
+  },
+  {
+   "seed": 7061,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 36,
+   "crates": 2
+  },
+  {
+   "seed": 7062,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 60,
+   "crates": 3
+  },
+  {
+   "seed": 7062,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 60,
+   "crates": 3
+  },
+  {
+   "seed": 7062,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 3
+  },
+  {
+   "seed": 7063,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 2
+  },
+  {
+   "seed": 7063,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 13,
+   "crates": 2
+  },
+  {
+   "seed": 7063,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 13,
+   "crates": 2
+  },
+  {
+   "seed": 7064,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 56,
+   "crates": 4
+  },
+  {
+   "seed": 7064,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 56,
+   "crates": 4
+  },
+  {
+   "seed": 7064,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 25,
+   "crates": 4
+  },
+  {
+   "seed": 7065,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 57,
+   "crates": 4
+  },
+  {
+   "seed": 7065,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 39,
+   "crates": 4
+  },
+  {
+   "seed": 7065,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 4
+  },
+  {
+   "seed": 7066,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 2
+  },
+  {
+   "seed": 7066,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 2
+  },
+  {
+   "seed": 7066,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 2
+  },
+  {
+   "seed": 7067,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 2
+  },
+  {
+   "seed": 7067,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 43,
+   "crates": 2
+  },
+  {
+   "seed": 7067,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 18,
+   "crates": 2
+  },
+  {
+   "seed": 7068,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 4
+  },
+  {
+   "seed": 7068,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 4
+  },
+  {
+   "seed": 7068,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 4
+  },
+  {
+   "seed": 7069,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 62,
+   "crates": 3
+  },
+  {
+   "seed": 7069,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 42,
+   "crates": 3
+  },
+  {
+   "seed": 7069,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 17,
+   "crates": 3
+  },
+  {
+   "seed": 7070,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 62,
+   "crates": 2
+  },
+  {
+   "seed": 7070,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 43,
+   "crates": 2
+  },
+  {
+   "seed": 7070,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 29,
+   "crates": 2
+  },
+  {
+   "seed": 7071,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 83,
+   "crates": 2
+  },
+  {
+   "seed": 7071,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 83,
+   "crates": 2
+  },
+  {
+   "seed": 7071,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 34,
+   "crates": 2
+  },
+  {
+   "seed": 7072,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 70,
+   "crates": 4
+  },
+  {
+   "seed": 7072,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 6,
+   "crates": 4
+  },
+  {
+   "seed": 7072,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 4
+  },
+  {
+   "seed": 7073,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 74,
+   "crates": 2
+  },
+  {
+   "seed": 7073,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 74,
+   "crates": 2
+  },
+  {
+   "seed": 7073,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 28,
+   "crates": 2
+  },
+  {
+   "seed": 7074,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 3
+  },
+  {
+   "seed": 7074,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 47,
+   "crates": 3
+  },
+  {
+   "seed": 7074,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 20,
+   "crates": 3
+  },
+  {
+   "seed": 7075,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 79,
+   "crates": 4
+  },
+  {
+   "seed": 7075,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 59,
+   "crates": 4
+  },
+  {
+   "seed": 7075,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 4
+  },
+  {
+   "seed": 7076,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 73,
+   "crates": 2
+  },
+  {
+   "seed": 7076,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 51,
+   "crates": 2
+  },
+  {
+   "seed": 7076,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 28,
+   "crates": 2
+  },
+  {
+   "seed": 7077,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 66,
+   "crates": 2
+  },
+  {
+   "seed": 7077,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 2
+  },
+  {
+   "seed": 7077,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 19,
+   "crates": 2
+  },
+  {
+   "seed": 7078,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 57,
+   "crates": 4
+  },
+  {
+   "seed": 7078,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 46,
+   "crates": 4
+  },
+  {
+   "seed": 7078,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 4
+  },
+  {
+   "seed": 7079,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 3
+  },
+  {
+   "seed": 7079,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 3
+  },
+  {
+   "seed": 7079,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 16,
+   "crates": 3
+  },
+  {
+   "seed": 7080,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 74,
+   "crates": 3
+  },
+  {
+   "seed": 7080,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 3
+  },
+  {
+   "seed": 7080,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 3
+  },
+  {
+   "seed": 7081,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 3
+  },
+  {
+   "seed": 7081,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 43,
+   "crates": 3
+  },
+  {
+   "seed": 7081,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 27,
+   "crates": 3
+  },
+  {
+   "seed": 7082,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 72,
+   "crates": 2
+  },
+  {
+   "seed": 7082,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 41,
+   "crates": 2
+  },
+  {
+   "seed": 7082,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 24,
+   "crates": 2
+  },
+  {
+   "seed": 7083,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 4
+  },
+  {
+   "seed": 7083,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 39,
+   "crates": 4
+  },
+  {
+   "seed": 7083,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 4
+  },
+  {
+   "seed": 7084,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 67,
+   "crates": 4
+  },
+  {
+   "seed": 7084,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 10,
+   "crates": 4
+  },
+  {
+   "seed": 7084,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 4
+  },
+  {
+   "seed": 7085,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 3
+  },
+  {
+   "seed": 7085,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 12,
+   "crates": 3
+  },
+  {
+   "seed": 7085,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 26,
+   "crates": 3
+  },
+  {
+   "seed": 7086,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 3
+  },
+  {
+   "seed": 7086,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 42,
+   "crates": 3
+  },
+  {
+   "seed": 7086,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 3
+  },
+  {
+   "seed": 7087,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 63,
+   "crates": 3
+  },
+  {
+   "seed": 7087,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 34,
+   "crates": 3
+  },
+  {
+   "seed": 7087,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 34,
+   "crates": 3
+  },
+  {
+   "seed": 7088,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 67,
+   "crates": 3
+  },
+  {
+   "seed": 7088,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 3
+  },
+  {
+   "seed": 7088,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 3
+  },
+  {
+   "seed": 7089,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 2
+  },
+  {
+   "seed": 7089,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 17,
+   "crates": 2
+  },
+  {
+   "seed": 7089,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 17,
+   "crates": 2
+  },
+  {
+   "seed": 7090,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 62,
+   "crates": 2
+  },
+  {
+   "seed": 7090,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 2
+  },
+  {
+   "seed": 7090,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 26,
+   "crates": 2
+  },
+  {
+   "seed": 7091,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 64,
+   "crates": 3
+  },
+  {
+   "seed": 7091,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 39,
+   "crates": 3
+  },
+  {
+   "seed": 7091,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 3
+  },
+  {
+   "seed": 7092,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 63,
+   "crates": 2
+  },
+  {
+   "seed": 7092,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 2
+  },
+  {
+   "seed": 7092,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 2
+  },
+  {
+   "seed": 7093,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 66,
+   "crates": 4
+  },
+  {
+   "seed": 7093,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 4
+  },
+  {
+   "seed": 7093,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 4
+  },
+  {
+   "seed": 7094,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 2
+  },
+  {
+   "seed": 7094,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 2
+  },
+  {
+   "seed": 7094,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 19,
+   "crates": 2
+  },
+  {
+   "seed": 7095,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 71,
+   "crates": 3
+  },
+  {
+   "seed": 7095,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 18,
+   "crates": 3
+  },
+  {
+   "seed": 7095,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 3
+  },
+  {
+   "seed": 7096,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 62,
+   "crates": 3
+  },
+  {
+   "seed": 7096,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 3
+  },
+  {
+   "seed": 7096,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 3
+  },
+  {
+   "seed": 7097,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 60,
+   "crates": 3
+  },
+  {
+   "seed": 7097,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 43,
+   "crates": 3
+  },
+  {
+   "seed": 7097,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 3
+  },
+  {
+   "seed": 7098,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 58,
+   "crates": 3
+  },
+  {
+   "seed": 7098,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 3
+  },
+  {
+   "seed": 7098,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 3
+  },
+  {
+   "seed": 7099,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 61,
+   "crates": 4
+  },
+  {
+   "seed": 7099,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 4
+  },
+  {
+   "seed": 7099,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 12,
+   "crates": 4
+  },
+  {
+   "seed": 7100,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 56,
+   "crates": 2
+  },
+  {
+   "seed": 7100,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 56,
+   "crates": 2
+  },
+  {
+   "seed": 7100,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 37,
+   "crates": 2
+  },
+  {
+   "seed": 7101,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 2
+  },
+  {
+   "seed": 7101,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 2
+  },
+  {
+   "seed": 7101,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 36,
+   "crates": 2
+  },
+  {
+   "seed": 7102,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 79,
+   "crates": 4
+  },
+  {
+   "seed": 7102,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 19,
+   "crates": 4
+  },
+  {
+   "seed": 7102,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 26,
+   "crates": 4
+  },
+  {
+   "seed": 7103,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 61,
+   "crates": 2
+  },
+  {
+   "seed": 7103,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 20,
+   "crates": 2
+  },
+  {
+   "seed": 7103,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 32,
+   "crates": 2
+  },
+  {
+   "seed": 7104,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 85,
+   "crates": 2
+  },
+  {
+   "seed": 7104,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 53,
+   "crates": 2
+  },
+  {
+   "seed": 7104,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 2
+  },
+  {
+   "seed": 7105,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 67,
+   "crates": 2
+  },
+  {
+   "seed": 7105,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 47,
+   "crates": 2
+  },
+  {
+   "seed": 7105,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 33,
+   "crates": 2
+  },
+  {
+   "seed": 7106,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 3
+  },
+  {
+   "seed": 7106,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 18,
+   "crates": 3
+  },
+  {
+   "seed": 7106,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 18,
+   "crates": 3
+  },
+  {
+   "seed": 7107,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 75,
+   "crates": 4
+  },
+  {
+   "seed": 7107,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 23,
+   "crates": 4
+  },
+  {
+   "seed": 7107,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 4
+  },
+  {
+   "seed": 7108,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 55,
+   "crates": 4
+  },
+  {
+   "seed": 7108,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 4
+  },
+  {
+   "seed": 7108,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 4
+  },
+  {
+   "seed": 7109,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 2
+  },
+  {
+   "seed": 7109,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 2
+  },
+  {
+   "seed": 7109,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 30,
+   "crates": 2
+  },
+  {
+   "seed": 7110,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 64,
+   "crates": 2
+  },
+  {
+   "seed": 7110,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 64,
+   "crates": 2
+  },
+  {
+   "seed": 7110,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 30,
+   "crates": 2
+  },
+  {
+   "seed": 7111,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 64,
+   "crates": 2
+  },
+  {
+   "seed": 7111,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 40,
+   "crates": 2
+  },
+  {
+   "seed": 7111,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 33,
+   "crates": 2
+  },
+  {
+   "seed": 7112,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 3
+  },
+  {
+   "seed": 7112,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 44,
+   "crates": 3
+  },
+  {
+   "seed": 7112,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 17,
+   "crates": 3
+  },
+  {
+   "seed": 7113,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 61,
+   "crates": 4
+  },
+  {
+   "seed": 7113,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 18,
+   "crates": 4
+  },
+  {
+   "seed": 7113,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 5,
+   "crates": 4
+  },
+  {
+   "seed": 7114,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 67,
+   "crates": 3
+  },
+  {
+   "seed": 7114,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 12,
+   "crates": 3
+  },
+  {
+   "seed": 7114,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 28,
+   "crates": 3
+  },
+  {
+   "seed": 7115,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 2
+  },
+  {
+   "seed": 7115,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 2
+  },
+  {
+   "seed": 7115,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 2
+  },
+  {
+   "seed": 7116,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 3
+  },
+  {
+   "seed": 7116,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 3
+  },
+  {
+   "seed": 7116,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 3
+  },
+  {
+   "seed": 7117,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 62,
+   "crates": 4
+  },
+  {
+   "seed": 7117,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 6,
+   "crates": 4
+  },
+  {
+   "seed": 7117,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 15,
+   "crates": 4
+  },
+  {
+   "seed": 7118,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 76,
+   "crates": 4
+  },
+  {
+   "seed": 7118,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 4
+  },
+  {
+   "seed": 7118,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 15,
+   "crates": 4
+  },
+  {
+   "seed": 7119,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 2
+  },
+  {
+   "seed": 7119,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 25,
+   "crates": 2
+  },
+  {
+   "seed": 7119,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 27,
+   "crates": 2
+  },
+  {
+   "seed": 7120,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 83,
+   "crates": 4
+  },
+  {
+   "seed": 7120,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 4
+  },
+  {
+   "seed": 7120,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 23,
+   "crates": 4
+  },
+  {
+   "seed": 7121,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 2
+  },
+  {
+   "seed": 7121,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 68,
+   "crates": 2
+  },
+  {
+   "seed": 7121,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 29,
+   "crates": 2
+  },
+  {
+   "seed": 7122,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 62,
+   "crates": 2
+  },
+  {
+   "seed": 7122,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 42,
+   "crates": 2
+  },
+  {
+   "seed": 7122,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 2
+  },
+  {
+   "seed": 7123,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 2
+  },
+  {
+   "seed": 7123,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 2
+  },
+  {
+   "seed": 7123,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 2
+  },
+  {
+   "seed": 7124,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 57,
+   "crates": 2
+  },
+  {
+   "seed": 7124,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 10,
+   "crates": 2
+  },
+  {
+   "seed": 7124,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 2
+  },
+  {
+   "seed": 7125,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 75,
+   "crates": 4
+  },
+  {
+   "seed": 7125,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 57,
+   "crates": 4
+  },
+  {
+   "seed": 7125,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 12,
+   "crates": 4
+  },
+  {
+   "seed": 7126,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 56,
+   "crates": 4
+  },
+  {
+   "seed": 7126,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 45,
+   "crates": 4
+  },
+  {
+   "seed": 7126,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 27,
+   "crates": 4
+  },
+  {
+   "seed": 7127,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 2
+  },
+  {
+   "seed": 7127,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 2
+  },
+  {
+   "seed": 7127,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 20,
+   "crates": 2
+  },
+  {
+   "seed": 7128,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 3
+  },
+  {
+   "seed": 7128,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 3
+  },
+  {
+   "seed": 7128,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 3
+  },
+  {
+   "seed": 7129,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 58,
+   "crates": 3
+  },
+  {
+   "seed": 7129,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 3
+  },
+  {
+   "seed": 7129,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 5,
+   "crates": 3
+  },
+  {
+   "seed": 7130,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 61,
+   "crates": 2
+  },
+  {
+   "seed": 7130,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 48,
+   "crates": 2
+  },
+  {
+   "seed": 7130,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 2
+  },
+  {
+   "seed": 7131,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 4
+  },
+  {
+   "seed": 7131,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 45,
+   "crates": 4
+  },
+  {
+   "seed": 7131,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 4
+  },
+  {
+   "seed": 7132,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 55,
+   "crates": 2
+  },
+  {
+   "seed": 7132,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 16,
+   "crates": 2
+  },
+  {
+   "seed": 7132,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 2
+  },
+  {
+   "seed": 7133,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 60,
+   "crates": 3
+  },
+  {
+   "seed": 7133,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 15,
+   "crates": 3
+  },
+  {
+   "seed": 7133,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 15,
+   "crates": 3
+  },
+  {
+   "seed": 7134,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 61,
+   "crates": 3
+  },
+  {
+   "seed": 7134,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 61,
+   "crates": 3
+  },
+  {
+   "seed": 7134,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 17,
+   "crates": 3
+  },
+  {
+   "seed": 7135,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 79,
+   "crates": 3
+  },
+  {
+   "seed": 7135,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 57,
+   "crates": 3
+  },
+  {
+   "seed": 7135,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 13,
+   "crates": 3
+  },
+  {
+   "seed": 7136,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 4
+  },
+  {
+   "seed": 7136,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 25,
+   "crates": 4
+  },
+  {
+   "seed": 7136,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 25,
+   "crates": 4
+  },
+  {
+   "seed": 7137,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 60,
+   "crates": 4
+  },
+  {
+   "seed": 7137,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 4
+  },
+  {
+   "seed": 7137,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 12,
+   "crates": 4
+  },
+  {
+   "seed": 7138,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 63,
+   "crates": 3
+  },
+  {
+   "seed": 7138,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 3
+  },
+  {
+   "seed": 7138,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 3
+  },
+  {
+   "seed": 7139,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 62,
+   "crates": 3
+  },
+  {
+   "seed": 7139,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 55,
+   "crates": 3
+  },
+  {
+   "seed": 7139,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 17,
+   "crates": 3
+  },
+  {
+   "seed": 7140,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 63,
+   "crates": 2
+  },
+  {
+   "seed": 7140,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 63,
+   "crates": 2
+  },
+  {
+   "seed": 7140,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 29,
+   "crates": 2
+  },
+  {
+   "seed": 7141,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 73,
+   "crates": 2
+  },
+  {
+   "seed": 7141,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 20,
+   "crates": 2
+  },
+  {
+   "seed": 7141,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 26,
+   "crates": 2
+  },
+  {
+   "seed": 7142,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 55,
+   "crates": 3
+  },
+  {
+   "seed": 7142,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 3
+  },
+  {
+   "seed": 7142,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 3
+  },
+  {
+   "seed": 7143,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 86,
+   "crates": 3
+  },
+  {
+   "seed": 7143,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 15,
+   "crates": 3
+  },
+  {
+   "seed": 7143,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 15,
+   "crates": 3
+  },
+  {
+   "seed": 7144,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 3
+  },
+  {
+   "seed": 7144,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 18,
+   "crates": 3
+  },
+  {
+   "seed": 7144,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 26,
+   "crates": 3
+  },
+  {
+   "seed": 7145,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 56,
+   "crates": 3
+  },
+  {
+   "seed": 7145,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 3
+  },
+  {
+   "seed": 7145,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 3
+  },
+  {
+   "seed": 7146,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 85,
+   "crates": 3
+  },
+  {
+   "seed": 7146,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 6,
+   "crates": 3
+  },
+  {
+   "seed": 7146,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 34,
+   "crates": 3
+  },
+  {
+   "seed": 7147,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 67,
+   "crates": 3
+  },
+  {
+   "seed": 7147,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 3
+  },
+  {
+   "seed": 7147,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 25,
+   "crates": 3
+  },
+  {
+   "seed": 7148,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 75,
+   "crates": 3
+  },
+  {
+   "seed": 7148,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 20,
+   "crates": 3
+  },
+  {
+   "seed": 7148,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 3
+  },
+  {
+   "seed": 7149,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 70,
+   "crates": 2
+  },
+  {
+   "seed": 7149,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 70,
+   "crates": 2
+  },
+  {
+   "seed": 7149,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 2
+  },
+  {
+   "seed": 7150,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 3
+  },
+  {
+   "seed": 7150,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 3
+  },
+  {
+   "seed": 7150,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 3
+  },
+  {
+   "seed": 7151,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 60,
+   "crates": 2
+  },
+  {
+   "seed": 7151,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 49,
+   "crates": 2
+  },
+  {
+   "seed": 7151,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 24,
+   "crates": 2
+  },
+  {
+   "seed": 7152,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 77,
+   "crates": 3
+  },
+  {
+   "seed": 7152,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 77,
+   "crates": 3
+  },
+  {
+   "seed": 7152,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 29,
+   "crates": 3
+  },
+  {
+   "seed": 7153,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 57,
+   "crates": 2
+  },
+  {
+   "seed": 7153,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 33,
+   "crates": 2
+  },
+  {
+   "seed": 7153,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 18,
+   "crates": 2
+  },
+  {
+   "seed": 7154,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 3
+  },
+  {
+   "seed": 7154,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 38,
+   "crates": 3
+  },
+  {
+   "seed": 7154,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 28,
+   "crates": 3
+  },
+  {
+   "seed": 7155,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 70,
+   "crates": 3
+  },
+  {
+   "seed": 7155,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 3
+  },
+  {
+   "seed": 7155,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 25,
+   "crates": 3
+  },
+  {
+   "seed": 7156,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 57,
+   "crates": 3
+  },
+  {
+   "seed": 7156,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 10,
+   "crates": 3
+  },
+  {
+   "seed": 7156,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 3
+  },
+  {
+   "seed": 7157,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 70,
+   "crates": 3
+  },
+  {
+   "seed": 7157,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 54,
+   "crates": 3
+  },
+  {
+   "seed": 7157,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 16,
+   "crates": 3
+  },
+  {
+   "seed": 7158,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 72,
+   "crates": 3
+  },
+  {
+   "seed": 7158,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 39,
+   "crates": 3
+  },
+  {
+   "seed": 7158,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 23,
+   "crates": 3
+  },
+  {
+   "seed": 7159,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 61,
+   "crates": 2
+  },
+  {
+   "seed": 7159,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 43,
+   "crates": 2
+  },
+  {
+   "seed": 7159,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 21,
+   "crates": 2
+  },
+  {
+   "seed": 7160,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 2
+  },
+  {
+   "seed": 7160,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 2
+  },
+  {
+   "seed": 7160,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 19,
+   "crates": 2
+  },
+  {
+   "seed": 7161,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 63,
+   "crates": 2
+  },
+  {
+   "seed": 7161,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 14,
+   "crates": 2
+  },
+  {
+   "seed": 7161,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 12,
+   "crates": 2
+  },
+  {
+   "seed": 7162,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 73,
+   "crates": 3
+  },
+  {
+   "seed": 7162,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 52,
+   "crates": 3
+  },
+  {
+   "seed": 7162,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 24,
+   "crates": 3
+  },
+  {
+   "seed": 7163,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 64,
+   "crates": 3
+  },
+  {
+   "seed": 7163,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 10,
+   "crates": 3
+  },
+  {
+   "seed": 7163,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 26,
+   "crates": 3
+  },
+  {
+   "seed": 7164,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 63,
+   "crates": 2
+  },
+  {
+   "seed": 7164,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 43,
+   "crates": 2
+  },
+  {
+   "seed": 7164,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 43,
+   "crates": 2
+  },
+  {
+   "seed": 7165,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 67,
+   "crates": 3
+  },
+  {
+   "seed": 7165,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 3
+  },
+  {
+   "seed": 7165,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 3
+  },
+  {
+   "seed": 7166,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 56,
+   "crates": 4
+  },
+  {
+   "seed": 7166,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 43,
+   "crates": 4
+  },
+  {
+   "seed": 7166,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 26,
+   "crates": 4
+  },
+  {
+   "seed": 7167,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 62,
+   "crates": 3
+  },
+  {
+   "seed": 7167,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 10,
+   "crates": 3
+  },
+  {
+   "seed": 7167,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 16,
+   "crates": 3
+  },
+  {
+   "seed": 7168,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 58,
+   "crates": 4
+  },
+  {
+   "seed": 7168,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 35,
+   "crates": 4
+  },
+  {
+   "seed": 7168,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 4
+  },
+  {
+   "seed": 7169,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 64,
+   "crates": 4
+  },
+  {
+   "seed": 7169,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 4
+  },
+  {
+   "seed": 7169,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 4
+  },
+  {
+   "seed": 7170,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 86,
+   "crates": 4
+  },
+  {
+   "seed": 7170,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 4
+  },
+  {
+   "seed": 7170,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 4
+  },
+  {
+   "seed": 7171,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 2
+  },
+  {
+   "seed": 7171,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 69,
+   "crates": 2
+  },
+  {
+   "seed": 7171,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 36,
+   "crates": 2
+  },
+  {
+   "seed": 7172,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 84,
+   "crates": 2
+  },
+  {
+   "seed": 7172,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 2
+  },
+  {
+   "seed": 7172,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 2
+  },
+  {
+   "seed": 7173,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 2
+  },
+  {
+   "seed": 7173,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 48,
+   "crates": 2
+  },
+  {
+   "seed": 7173,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 27,
+   "crates": 2
+  },
+  {
+   "seed": 7174,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 76,
+   "crates": 2
+  },
+  {
+   "seed": 7174,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 2
+  },
+  {
+   "seed": 7174,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 23,
+   "crates": 2
+  },
+  {
+   "seed": 7175,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 2
+  },
+  {
+   "seed": 7175,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 16,
+   "crates": 2
+  },
+  {
+   "seed": 7175,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 16,
+   "crates": 2
+  },
+  {
+   "seed": 7176,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 57,
+   "crates": 3
+  },
+  {
+   "seed": 7176,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 9,
+   "crates": 3
+  },
+  {
+   "seed": 7176,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 23,
+   "crates": 3
+  },
+  {
+   "seed": 7177,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 70,
+   "crates": 3
+  },
+  {
+   "seed": 7177,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 23,
+   "crates": 3
+  },
+  {
+   "seed": 7177,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 20,
+   "crates": 3
+  },
+  {
+   "seed": 7178,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 64,
+   "crates": 4
+  },
+  {
+   "seed": 7178,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 31,
+   "crates": 4
+  },
+  {
+   "seed": 7178,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 37,
+   "crates": 4
+  },
+  {
+   "seed": 7179,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 56,
+   "crates": 4
+  },
+  {
+   "seed": 7179,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 45,
+   "crates": 4
+  },
+  {
+   "seed": 7179,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 37,
+   "crates": 4
+  },
+  {
+   "seed": 7180,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 63,
+   "crates": 4
+  },
+  {
+   "seed": 7180,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 4
+  },
+  {
+   "seed": 7180,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 4
+  },
+  {
+   "seed": 7181,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 63,
+   "crates": 3
+  },
+  {
+   "seed": 7181,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 3
+  },
+  {
+   "seed": 7181,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 3
+  },
+  {
+   "seed": 7182,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 74,
+   "crates": 4
+  },
+  {
+   "seed": 7182,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 5,
+   "crates": 4
+  },
+  {
+   "seed": 7182,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 4
+  },
+  {
+   "seed": 7183,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 58,
+   "crates": 2
+  },
+  {
+   "seed": 7183,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 35,
+   "crates": 2
+  },
+  {
+   "seed": 7183,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 23,
+   "crates": 2
+  },
+  {
+   "seed": 7184,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 77,
+   "crates": 3
+  },
+  {
+   "seed": 7184,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 12,
+   "crates": 3
+  },
+  {
+   "seed": 7184,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 10,
+   "crates": 3
+  },
+  {
+   "seed": 7185,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 3
+  },
+  {
+   "seed": 7185,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 65,
+   "crates": 3
+  },
+  {
+   "seed": 7185,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 26,
+   "crates": 3
+  },
+  {
+   "seed": 7186,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 57,
+   "crates": 3
+  },
+  {
+   "seed": 7186,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 15,
+   "crates": 3
+  },
+  {
+   "seed": 7186,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 6,
+   "crates": 3
+  },
+  {
+   "seed": 7187,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 2
+  },
+  {
+   "seed": 7187,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 34,
+   "crates": 2
+  },
+  {
+   "seed": 7187,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 15,
+   "crates": 2
+  },
+  {
+   "seed": 7188,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 56,
+   "crates": 4
+  },
+  {
+   "seed": 7188,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 6,
+   "crates": 4
+  },
+  {
+   "seed": 7188,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 6,
+   "crates": 4
+  },
+  {
+   "seed": 7189,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 59,
+   "crates": 4
+  },
+  {
+   "seed": 7189,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 4
+  },
+  {
+   "seed": 7189,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 7,
+   "crates": 4
+  },
+  {
+   "seed": 7190,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 62,
+   "crates": 4
+  },
+  {
+   "seed": 7190,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 13,
+   "crates": 4
+  },
+  {
+   "seed": 7190,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 13,
+   "crates": 4
+  },
+  {
+   "seed": 7191,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 76,
+   "crates": 2
+  },
+  {
+   "seed": 7191,
+   "map": "wall_only",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 76,
+   "crates": 2
+  },
+  {
+   "seed": 7191,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 20,
+   "crates": 2
+  },
+  {
+   "seed": 7192,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 73,
+   "crates": 3
+  },
+  {
+   "seed": 7192,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 40,
+   "crates": 3
+  },
+  {
+   "seed": 7192,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 24,
+   "crates": 3
+  },
+  {
+   "seed": 7193,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 70,
+   "crates": 4
+  },
+  {
+   "seed": 7193,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 4
+  },
+  {
+   "seed": 7193,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 27,
+   "crates": 4
+  },
+  {
+   "seed": 7194,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 73,
+   "crates": 4
+  },
+  {
+   "seed": 7194,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 53,
+   "crates": 4
+  },
+  {
+   "seed": 7194,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 12,
+   "crates": 4
+  },
+  {
+   "seed": 7195,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 62,
+   "crates": 2
+  },
+  {
+   "seed": 7195,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 43,
+   "crates": 2
+  },
+  {
+   "seed": 7195,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 16,
+   "crates": 2
+  },
+  {
+   "seed": 7196,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 80,
+   "crates": 3
+  },
+  {
+   "seed": 7196,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 8,
+   "crates": 3
+  },
+  {
+   "seed": 7196,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 22,
+   "crates": 3
+  },
+  {
+   "seed": 7197,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 60,
+   "crates": 3
+  },
+  {
+   "seed": 7197,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 12,
+   "crates": 3
+  },
+  {
+   "seed": 7197,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 18,
+   "crates": 3
+  },
+  {
+   "seed": 7198,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 56,
+   "crates": 2
+  },
+  {
+   "seed": 7198,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 2
+  },
+  {
+   "seed": 7198,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 11,
+   "crates": 2
+  },
+  {
+   "seed": 7199,
+   "map": "full",
+   "success": 1.0,
+   "reason": "arrived",
+   "carrier_actions": 61,
+   "crates": 2
+  },
+  {
+   "seed": 7199,
+   "map": "wall_only",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 25,
+   "crates": 2
+  },
+  {
+   "seed": 7199,
+   "map": "blind",
+   "success": 0.0,
+   "reason": "contact stop",
+   "carrier_actions": 25,
+   "crates": 2
+  }
+ ]
+}
