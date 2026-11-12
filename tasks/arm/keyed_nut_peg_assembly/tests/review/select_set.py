@@ -198,7 +198,13 @@ def kept(rec):
     if rec["reference_token"] != 1.0:
         why.append("the reference's token was not accepted")
     if rec["kit_complete"] != 1:
-        why.append("kit not complete (%d of 3 nuts assembled, %s)" % (rec["nuts_assembled"], rec["reason"]))
+        if rec["reason"] != "ok":
+            how = rec["reason"]
+        elif rec["steps"] < 2400:
+            how = "the episode ended at step %d: a nut was ruined" % rec["steps"]
+        else:
+            how = "all 2400 steps run"
+        why.append("kit not complete (%d of 3 nuts assembled; %s)" % (rec["nuts_assembled"], how))
     if rec["aborted"] or rec["sim_faults"] or rec["budget_cuts"]:
         why.append("abort, fault or budget cut")
     return not why, why

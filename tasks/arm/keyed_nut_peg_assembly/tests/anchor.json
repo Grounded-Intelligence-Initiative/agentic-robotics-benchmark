@@ -2,6 +2,6 @@
   "metric": "kit_success_rate",
   "direction": "higher",
   "value": 1.0,
-  "full_at": 1.0,
-  "source": "Privileged reference solution (solution/, token-gated ground truth) on the 10 fixed hidden kits of tests/ref/episodes.json: 10 of 10 kits complete (30 of 30 nuts assembled), measured 1.0, in ale validate on the pinned engine 1cdbc02 (GitHub Actions run 43099763666 in WaterHyacinthInNANHU/agentic-robotics-benchmark, 2026-11-11) and in the verify episode loop locally. Each episode's layout and sensor noise follow from its fixed seed and probes never change the applied action, so the oracle's result is deterministic: full_at 1.0."
+  "full_at": 0.98,
+  "source": "Privileged reference solution (solution/, token-gated ground truth) on the 10 fixed hidden kits of tests/ref/episodes.json, the pre-registered selection of tests/hidden/selection.json (the first 10 of 16 os.urandom candidates the frozen reference completed, in drawn order; 14 of 16 completed). One full verify of its submission in a fresh container of the task image in the separate verifier's layout (tests/review/regrade.sh, 2026-11-12, recorded under anchor_verify) completed 10 of 10 kits (30 of 30 nuts), every episode with the same steps as its selection run: measured 1.0. The reference is deterministic on the set (it acts on the real observation's proprioception from _gt; layout and noise follow from each episode's seed), so full_at 0.98."
 }
