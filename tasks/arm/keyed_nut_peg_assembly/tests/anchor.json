@@ -3,5 +3,5 @@
   "direction": "higher",
   "value": 1.0,
   "full_at": 1.0,
-  "source": "Privileged reference solution (solution/, token-gated ground truth) on the 10 fixed hidden kits of tests/ref/episodes.json: 10 of 10 kits complete (30 of 30 nuts assembled) in the verify episode loop locally; to be confirmed by ale validate on the pinned engine 1cdbc02. Each episode's layout and sensor noise follow from its fixed seed and probes never change the applied action, so the oracle's result is deterministic: full_at 1.0."
+  "source": "Privileged reference solution (solution/, token-gated ground truth) on the 10 fixed hidden kits of tests/ref/episodes.json: 10 of 10 kits complete (30 of 30 nuts assembled), measured 1.0, in ale validate on the pinned engine 1cdbc02 (GitHub Actions run 43099763666 in WaterHyacinthInNANHU/agentic-robotics-benchmark, 2026-11-11) and in the verify episode loop locally. Each episode's layout and sensor noise follow from its fixed seed and probes never change the applied action, so the oracle's result is deterministic: full_at 1.0."
 }
