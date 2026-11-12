@@ -125,6 +125,9 @@ fresh copy of the one you left, and launches `bash run.sh` again (it must print 
 Nothing your controller writes or learns during one graded episode is available in the next one:
 whatever it should know has to be in the submission you leave. So `run.sh` has to
 work when started again: no fixed ports, PID files or locks that an earlier run leaves behind.
+Processes your controller leaves behind are stopped; the whole run scores 0 only if one of them
+cannot be stopped, or if a process of your account is found holding an internet connection (only
+possible where the network filter could not be installed).
 
 `t` is the step index within the episode, starting at 0 after each `reset`. A step may be queried
 more than once with the same `t`; answer each request from the observation it carries. Repeated
