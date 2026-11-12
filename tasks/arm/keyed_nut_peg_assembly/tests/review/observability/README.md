@@ -20,9 +20,11 @@ images, `T_world_wrist` and the public camera matrices); the dev sim's state is 
 The hole fits the shaft with 1.7 mm of radial clearance, so these estimates are enough to grip a nut across its ring
 and put it on its peg. The groove itself is found by feel or by looking into the hole (instruction.md says both are
 possible): the nut's drops into a riser (15, 15 and 9.5 mm) show in the gripper's height, and a blocked turn in the
-gripper's yaw. A by-feel controller built on this perception during the review reached the pin with every nut it
-carried, told false entrances by their short travel and assembled single nuts on development kits, but did not complete
-a kit within the review's effort (the second turn's drop jams); it is not shipped.
+gripper's yaw. A by-feel controller built on this perception during the review (the ring gripped across its centre, the
+groove felt through the gripper's height and yaw) put 21 of the 22 nuts it picked up on 12 development kits onto their
+pins and into a riser, told false entrances by their short travel, and assembled one or two single nuts per run of 12
+kits, but completed no kit within the review's effort (its turns stall in the narrow mouth of the next riser); it is not
+shipped.
 
 Run (inside the task image; `tests/` mounted read-only):
 
