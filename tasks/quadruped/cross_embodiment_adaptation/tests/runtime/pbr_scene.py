@@ -152,7 +152,7 @@ def upgrade(root, kind, assets, rng):
     # topology. Their stepped bases and caps make them constructed partitions.
     if kind in ("icl", "cross"):
         for item in world.findall("geom"):
-            if item.get("name", "").startswith("wall") and "_post" not in item.get("name", ""):
+            if item.get("name", "").startswith(("wall", "boundary")) and "_post" not in item.get("name", ""):
                 item.set("material", "navigation_panel")
                 item.set("rgba", ".42 .49 .58 1")
     if kind == "arm":

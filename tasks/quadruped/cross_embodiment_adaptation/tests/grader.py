@@ -1,332 +1,400 @@
-"""Trusted scoring; all submission code and XML are executed at the agent UID."""
+"""Grader of cross_embodiment_adaptation: the agent's mission program on the hidden sites.
+
+Runs as root in a SEPARATE verifier sandbox: the engine restores only the declared artifact
+/home/user/submission there, and setup does not run. For every site of tests/hidden/sites.json
+(fixed, chosen by the pre-registered rule in tests/review/selection.md) the grader
+
+  * starts its own robot service (tests/runtime/service.py, graded mode: one mission, no
+    new_site, `truth` only for the token whose sha256 is tests/hidden/oracle_token.sha256),
+  * runs the program once (`bash run.sh` from a read-only copy of the submission, as the agent
+    account, a minimal environment, a fresh HOME, no network: tests/nonet.py),
+  * stops it when the mission has ended (10 s grace), when its program time (wall time minus
+    the time the service spends answering) passes the budget, or at the wall cap,
+  * kills every process of the agent account (bounded, then frozen: the #64 survivor pattern
+    of arm_hidden_mechanism_box) and reads the mission's outcome from the service's own ledger.
+
+The score is the fraction of hidden missions in which the carrier reached the delivery pad,
+relative to the anchor (tests/anchor.json). A mission the service itself failed (an internal
+error) is run once more from scratch; a second failure is a task error, never the agent's zero.
+"""
 import json
 import math
 import os
-from pathlib import Path
-import secrets
-import selectors
+import pwd
+import shutil
 import signal
+import stat
 import subprocess
+import sys
+import threading
 import time
+from pathlib import Path
 
-os.environ.setdefault("MUJOCO_GL", "osmesa")
-os.environ.setdefault("LIBGL_ALWAYS_SOFTWARE", "1")
-import numpy as np
-import mujoco
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
 
-from audit import audit_trajectory
-from submission_snapshot import snapshot_submission
-from robotics_grader import (
-    Solver, SolverAborted, SolverMissing, deprivileged, ratio_rewards,
-    read_anchor, require, stage_dir, write_verdict, zero_verdict, ProbeLock, seed_rng,
+from nonet import nonet_argv, selftest  # noqa: E402
+from robotics_grader import (  # noqa: E402
+    agent_user, ratio_rewards, read_anchor, require, stage_config, stage_dir, write_verdict, zero_verdict,
 )
-from world import LIMITS, World, png
+from robotics_grader.stage import secure_exec_path  # noqa: E402
 
-SUBMISSION = "/opt/visual_robotics/evaluation/submission"
-
-
-def reconstruction_probes(seed):
-    """New action sequences excite both robot motion and object transport."""
-    cases = []
-    rng = np.random.default_rng(seed ^ 0x51E5)
-    for _ in range(3):
-        world = World("arm", seed, render=False)
-        actions, positions = [], []
-        xy = world.block.copy()
-        destination = world.tray + rng.uniform(-.12, .12, 2)
-        lift = float(rng.uniform(.9, 1.25))
-        waypoints = [([*xy, .85], -1), ([*xy, .30], -1),
-                     ([*xy, .30], 1), ([*xy, lift], 1),
-                     ([*destination, lift], 1), ([*destination, .32], 1),
-                     ([*destination, .30], -1)]
-        for goal, grip in waypoints:
-            for step in range(25):
-                error = np.array(goal)-world.position()
-                action = np.r_[np.clip((np.array(goal)-world.command)/.14, -1, 1), grip].tolist()
-                world.act(action)
-                actions.append(action)
-                positions.append(np.r_[world.position(), world.data.body("object").xpos].tolist())
-                if np.linalg.norm(error) < .045 and step > 0:
-                    break
-                if world.done:
-                    break
-            if world.done:
-                break
-        pos = np.array(positions)
-        require(len(pos) > 10 and np.max(np.linalg.norm(pos[:, 3:]-pos[0, 3:], axis=1)) > .3,
-                "reconstruction probe failed to excite object dynamics")
-        cases.append((actions, pos))
-        world.close()
-    return cases
+RUNTIME = HERE/"runtime"
+PAYLOAD = HERE/"setup_payload"
+HIDDEN = HERE/"hidden"
+WORK = Path("/opt/arb-verify")              # root-only records of the graded missions
+RUN = Path("/opt/arb-run")                  # the program's read-only copy and its homes
+SOCKET = Path("/run/visual_robotics/world.sock")
+PUBLIC_CLIENT = Path("/opt/visual_robotics/client")
+PYTHON = "/opt/venv/bin/python3"
+RUNUSER = "/usr/sbin/runuser"
+ENV = "/usr/bin/env"
+MAX_SUBMISSION_BYTES = 64*1024*1024
+MAX_SUBMISSION_FILES = 2000
 
 
-def prediction_output(process, actions, timeout=20, byte_limit=2_000_000):
-    """Bound both input and output pipes, including children that never read stdin."""
-    payload = json.dumps({"actions": actions}).encode()
-    offset, size, chunks = 0, 0, []
-    deadline = time.monotonic()+timeout
-    os.set_blocking(process.stdin.fileno(), False)
-    os.set_blocking(process.stdout.fileno(), False)
-    with selectors.DefaultSelector() as selector:
-        selector.register(process.stdin, selectors.EVENT_WRITE, "stdin")
-        selector.register(process.stdout, selectors.EVENT_READ, "stdout")
-        eof = False
-        while not eof:
-            remaining = deadline-time.monotonic()
-            ready = selector.select(timeout=max(0., remaining)) if remaining > 0 else []
-            if not ready:
-                raise subprocess.TimeoutExpired("prediction", timeout)
-            for key, _ in ready:
-                if key.data == "stdin":
-                    try:
-                        offset += os.write(key.fd, payload[offset:offset+8192])
-                    except BrokenPipeError:
-                        offset = len(payload)
-                    if offset == len(payload):
-                        selector.unregister(process.stdin)
-                        process.stdin.close()
-                else:
-                    chunk = os.read(key.fd, 8192)
-                    if not chunk:
-                        eof = True
+def log(msg):
+    print("[grader] " + msg, file=sys.stderr, flush=True)
+
+
+# --- the agent account's processes (arm_hidden_mechanism_box tests/verify.py, #64) ------------- #
+def _agent_pids(uid):
+    pids = []
+    for name in os.listdir("/proc"):
+        if not name.isdigit():
+            continue
+        try:
+            with open("/proc/{}/status".format(name)) as f:
+                zombie = False
+                for line in f:
+                    if line.startswith("State:"):
+                        # a zombie runs no code; it only waits to be reaped
+                        zombie = line.split()[1].startswith(("Z", "X"))
+                    elif line.startswith("Uid:"):
+                        if int(line.split()[1]) == uid and not zombie:
+                            pids.append(int(name))
                         break
-                    size += len(chunk)
-                    if size > byte_limit:
-                        raise ValueError("prediction output exceeds limit")
-                    chunks.append(chunk)
-    process.wait(timeout=max(.01, deadline-time.monotonic()))
-    if process.returncode:
-        raise ValueError("prediction process failed")
-    return b"".join(chunks)
+        except (OSError, ValueError, IndexError):
+            continue
+    return pids
 
 
-def parse_prediction(payload, count):
-    try:
-        value = json.loads(payload)
-        rows = value["positions"]
-        if (not isinstance(rows, list) or len(rows) != count
-                or any(not isinstance(row, list) or len(row) != 6 for row in rows)
-                or any(isinstance(x, bool) or not isinstance(x, (int, float))
-                       or not math.isfinite(x) for row in rows for x in row)):
-            raise ValueError("expected finite numeric N-by-6 position predictions")
-        return np.asarray(rows, dtype=float).reshape(count, 6)
-    except (ValueError, KeyError, TypeError, OverflowError, RecursionError) as exc:
-        raise ValueError("invalid prediction output") from exc
-
-
-def run_prediction(actions, model_only=False):
-    entry = "/opt/visual_robotics/client/model_rollout.py" if model_only else "predict.py"
-    process = deprivileged(
-        ["/opt/venv/bin/python3", *(["-I"] if model_only else []), entry],
-        cwd=SUBMISSION,
-        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    try:
-        return parse_prediction(prediction_output(process, actions), len(actions))
-    finally:
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        process.wait()
-
-
-def validate_model():
-    code = (
-        "import runpy; "
-        "d=runpy.run_path('/opt/visual_robotics/client/model_rollout.py'); "
-        "d['load_model']('scene.xml')"
-    )
-    process = deprivileged(
-        ["/opt/venv/bin/python3", "-I", "-c", code], cwd=SUBMISSION,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
-    )
-    try:
-        return process.wait(timeout=15) == 0
-    finally:
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        process.wait()
-
-
-def counterfactual_observation(world, observation, rng):
-    """Render a displaced pose in separate data; never advance the actual episode."""
-    original = world.data
-    alternate = mujoco.MjData(world.model)
-    alternate.qpos[:] = original.qpos
-    alternate.qvel[:] = original.qvel
-    alternate.ctrl[:] = original.ctrl
-    alternate.eq_active[:] = original.eq_active
-    alternate.qpos[:2] += [rng.uniform(.5, .8)*rng.choice((-1, 1)) for _ in range(2)]
-    alternate.qpos[:2] = np.clip(alternate.qpos[:2], -3., 3.)
-    alternate.qpos[2] = np.clip(alternate.qpos[2]+rng.uniform(.3, .6), .4, 1.8)
-    tray_id, tray_position = None, None
-    if world.kind == "arm":
-        # Stay below the gantry's front rail and within its reachable workspace;
-        # an occluded/out-of-workspace counterfactual is not a valid sensitivity probe.
-        alternate.qpos[:2] = np.clip(alternate.qpos[:2], -2.4, 2.4)
-        alternate.qpos[2] = np.clip(alternate.qpos[2], .4, 1.35)
-        # A staged setpoint controller can legitimately hold its command while a
-        # servo settles. Change its visual task target as well as the arm pose.
-        alternate.qpos[3:5] += [rng.uniform(.35, .6)*rng.choice((-1, 1)) for _ in range(2)]
-        tray_id = world.model.geom("tray").id
-        tray_position = world.model.geom_pos[tray_id].copy()
-        world.model.geom_pos[tray_id, :2] += [rng.uniform(.35, .6)*rng.choice((-1, 1)) for _ in range(2)]
-    try:
-        mujoco.mj_forward(world.model, alternate)
-        world.data = alternate
-        return {**observation, "images": [png(im) for im in world.images()]}
-    finally:
-        world.data = original
-        if tray_id is not None:
-            world.model.geom_pos[tray_id] = tray_position
-
-
-def evaluate_controller(kind, seeds):
-    results = []
-    with Solver(step_timeout=10, max_restarts=3, submission=SUBMISSION) as solver:
-        for seed in seeds:
-            world = World(kind, seed)
-            lock = ProbeLock(seed_rng(), rate=.1, pass_fraction=.5)
+def kill_agent_processes(uid, rounds=20, pause=0.25):
+    """Kill every process of the agent account; True when none is left (bounded)."""
+    for _ in range(rounds):
+        pids = _agent_pids(uid)
+        if not pids:
+            return True
+        for pid in pids:
             try:
-                solver.reset()
-                obs = world.observe()
-                while not obs["done"]:
-                    if lock.due():
-                        alternative = counterfactual_observation(world, obs, lock.rng)
-                        action = lock.probe(solver, world.steps, obs, perturbed=alternative)
-                    else:
-                        action = solver.act(world.steps, obs)
-                    obs = world.act(action)
-                results.append({**world.metrics(), **lock.rewards(), "aborted": 0})
-            except (SolverAborted, ValueError, TypeError, OverflowError) as exc:
-                # An unusable controller loses this episode, not unrelated valid episodes.
-                results.append({**world.metrics(), **lock.rewards(), "success": 0., "aborted": 1})
-                print(f"[controller-episode-aborted] {exc}", flush=True)
-            finally:
-                world.close()
-    return results
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
+        time.sleep(pause)
+    return not _agent_pids(uid)
+
+
+def _proc_state(pid):
+    """The /proc state letter of `pid` ("X" once it is gone)."""
+    try:
+        with open("/proc/{}/status".format(pid)) as f:
+            for line in f:
+                if line.startswith("State:"):
+                    return line.split()[1]
+    except (OSError, IndexError):
+        pass
+    return "X"
+
+
+def _still_running(uid, bound_s=3.0):
+    """SIGSTOP every live process of `uid` until a pass finds none still running (a respawn that appears meanwhile is
+    stopped by the next pass) or `bound_s` elapsed; returns the PIDs still running (empty: every one is stopped)."""
+    deadline = time.monotonic() + float(bound_s)
+    while True:
+        for pid in _agent_pids(uid):
+            try:
+                os.kill(pid, signal.SIGSTOP)
+            except OSError:
+                pass
+        time.sleep(0.05)
+        running = [pid for pid in _agent_pids(uid) if _proc_state(pid) not in ("T", "t", "X")]
+        if not running or time.monotonic() > deadline:
+            return running
+
+
+def stop_agent_processes(uid):
+    """kill_agent_processes, then: True when none is left or every one left is stopped. The base image's supervisord
+    respawns the agent account's desktop as fast as it is killed, so in the separate verifier a process that outlives
+    the bounded kill is the image's own; it is stopped (a stopped process does not exit, so it is not respawned) and
+    only one still running once stopped fails the run (cleanup_failed)."""
+    if kill_agent_processes(uid):
+        return True
+    running = _still_running(uid)
+    log("{} process(es) of the agent account outlived the kill, {} still running after the freeze".format(
+        len(_agent_pids(uid)), len(running)))
+    return not running
+
+
+# --- the submission ---------------------------------------------------------------------------- #
+def copy_submission(source, target):
+    """Regular files and directories of `source` (no link is followed or copied) into a root-owned,
+    world-readable `target`. Returns None, or the reason the submission is unusable."""
+    source = Path(source)
+    if not source.is_dir() or source.is_symlink():
+        return "no submission folder"
+    if target.exists():
+        shutil.rmtree(target)
+    target.mkdir(parents=True)
+    total = files = 0
+    for dirpath, dirnames, filenames in os.walk(source, followlinks=False):
+        rel = Path(dirpath).relative_to(source)
+        dirnames[:] = [d for d in dirnames if d != "__pycache__" and not (Path(dirpath)/d).is_symlink()]
+        for d in dirnames:
+            (target/rel/d).mkdir()
+        for name in filenames:
+            path = Path(dirpath)/name
+            info = path.lstat()
+            if not stat.S_ISREG(info.st_mode):
+                continue
+            files += 1
+            total += info.st_size
+            if files > MAX_SUBMISSION_FILES or total > MAX_SUBMISSION_BYTES:
+                return "submission larger than {} files / {} MB".format(MAX_SUBMISSION_FILES,
+                                                                         MAX_SUBMISSION_BYTES >> 20)
+            shutil.copyfile(path, target/rel/name, follow_symlinks=False)
+            os.chmod(target/rel/name, 0o755 if info.st_mode & 0o111 else 0o644)
+    for dirpath, _, _ in os.walk(target):
+        os.chmod(dirpath, 0o755)
+    if not (target/"run.sh").is_file():
+        return "no run.sh in the submission"
+    return None
+
+
+def stage_public_client():
+    """The client the agent was given, at the path it had (setup does not run in this sandbox)."""
+    if PUBLIC_CLIENT.exists():
+        shutil.rmtree(PUBLIC_CLIENT)
+    shutil.copytree(PAYLOAD, PUBLIC_CLIENT)
+    for path in [PUBLIC_CLIENT, *PUBLIC_CLIENT.rglob("*")]:
+        os.chmod(path, 0o755 if path.is_dir() else 0o644)
+    os.chmod(PUBLIC_CLIENT.parent, 0o755)
+
+
+# --- one mission ------------------------------------------------------------------------------- #
+def _ledger(directory):
+    try:
+        return json.loads((directory/"state.json").read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def _stop(proc, grace=10.):
+    if proc.poll() is None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=grace)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+
+
+def _tail_reader(stream, keep, limit=16384):
+    """Keep the last `limit` bytes of the program's output, never more (it is never printed: a hidden site's
+    layout must not reach the published verify log)."""
+    def pump():
+        try:
+            while True:
+                chunk = stream.read(4096)
+                if not chunk:
+                    break
+                keep[0] = (keep[0]+chunk)[-limit:]
+        except (OSError, ValueError):
+            pass
+    thread = threading.Thread(target=pump, daemon=True)
+    thread.start()
+    return thread
+
+
+def program_argv(home):
+    env = ["PATH=/opt/venv/bin:/usr/bin:/bin", "HOME={}".format(home), "TMPDIR={}/tmp".format(home),
+           "LANG=C.UTF-8", "ROBOT_SOCKET={}".format(SOCKET), "MUJOCO_GL=osmesa", "LIBGL_ALWAYS_SOFTWARE=1",
+           "OMP_NUM_THREADS=1", "OPENBLAS_NUM_THREADS=1", "PYTHONNOUSERSITE=1"]
+    return [RUNUSER, "-u", agent_user(), "--", ENV, "-i"] + env + nonet_argv(["/bin/bash", "run.sh"], PYTHON)
+
+
+def run_mission(index, seed, uid, gid, config, token_sha256, attempt):
+    """One mission on one hidden site. Returns its record (with `infra` True when the service failed)."""
+    directory = WORK/"mission-{:02d}-{}".format(index, attempt)
+    if directory.exists():
+        shutil.rmtree(directory)
+    directory.mkdir(parents=True, mode=0o700)
+    (directory/"seed").write_text(str(seed))
+    os.chmod(directory/"seed", 0o600)
+    if SOCKET.exists() or SOCKET.is_symlink():
+        SOCKET.unlink()
+    SOCKET.parent.mkdir(parents=True, exist_ok=True)
+    os.chown(SOCKET.parent, 0, 0)
+    os.chmod(SOCKET.parent, 0o755)
+    service_log = open(directory/"service.log", "wb")
+    service = subprocess.Popen(
+        [PYTHON, "-E", "-s", "-B", str(RUNTIME/"service.py"), "--mode", "graded", "--directory", str(directory),
+         "--socket", str(SOCKET), "--seed-file", str(directory/"seed"), "--token-sha256", token_sha256],
+        cwd=str(RUNTIME), stdout=service_log, stderr=service_log, start_new_session=True,
+        env={"PATH": "/opt/venv/bin:/usr/bin:/bin", "HOME": "/root", "LANG": "C.UTF-8", "MUJOCO_GL": "osmesa",
+             "LIBGL_ALWAYS_SOFTWARE": "1", "LP_NUM_THREADS": "2", "OPENBLAS_NUM_THREADS": "1",
+             "OMP_NUM_THREADS": "1", "PYTHONNOUSERSITE": "1"})
+    record = {"site": index, "attempt": attempt, "infra": False}
+    try:
+        deadline = time.monotonic()+180
+        while not (directory/"ready").exists():
+            if service.poll() is not None or time.monotonic() > deadline:
+                record["infra"] = True
+                record["reason"] = "robot service did not start"
+                return record
+            time.sleep(.1)
+        home = RUN/"home-{:02d}-{}".format(index, attempt)
+        if home.exists():
+            shutil.rmtree(home)
+        (home/"tmp").mkdir(parents=True)
+        for path in (home, home/"tmp"):
+            os.chown(path, uid, gid)
+            os.chmod(path, 0o700)
+        budget = float(config.get("program_seconds", 300))
+        wall_cap = float(config.get("mission_wall_seconds", 1200))
+        grace = float(config.get("exit_grace_seconds", 10))
+        output = [b""]
+        started = time.monotonic()
+        program = subprocess.Popen(program_argv(home), cwd=str(RUN/"program"), stdin=subprocess.DEVNULL,
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True,
+                                   env={"PATH": "/usr/bin:/bin"})
+        reader = _tail_reader(program.stdout, output)
+        ended_at, reason, program_time = None, "program exited", 0.
+        while True:
+            time.sleep(.2)
+            now = time.monotonic()
+            state = _ledger(directory) or {}
+            busy = float(state.get("busy_seconds", 0.))
+            in_flight = state.get("request_started")
+            if in_flight:
+                busy += max(0., time.time()-float(in_flight))
+            program_time = max(0., now-started-busy)
+            if state.get("done") and ended_at is None:
+                ended_at = now
+            if program.poll() is not None:
+                reason = "program exited" if not state.get("done") else "mission ended"
+                break
+            if ended_at is not None and now-ended_at > grace:
+                reason = "mission ended (program stopped after the grace period)"
+                break
+            if program_time > budget:
+                reason = "program time budget spent"
+                break
+            if now-started > wall_cap:
+                reason = "mission wall cap reached"
+                break
+            if service.poll() is not None:
+                reason = "robot service exited"
+                record["infra"] = True
+                break
+        wall = time.monotonic()-started
+        record["cleanup_ok"] = stop_agent_processes(uid)
+        if program.poll() is None:
+            try:
+                os.killpg(program.pid, signal.SIGKILL)
+            except OSError:
+                pass
+            program.wait()
+        reader.join(5)
+        _stop(service)
+        state = _ledger(directory) or {}
+        if state.get("internal_errors"):
+            record["infra"] = True
+            reason = "robot service internal error"
+        metrics = state.get("metrics") or {}
+        record.update({"reason": reason, "program_seconds": round(program_time, 2), "wall_seconds": round(wall, 2),
+                       "requests": int(state.get("requests", 0)),
+                       "success": float(metrics.get("success", 0.)), "switched": float(metrics.get("switched", 0.)),
+                       "scout_actions": float(metrics.get("scout_actions", 0)),
+                       "carrier_actions": float(metrics.get("carrier_actions", 0)),
+                       "scout_contacts": float(metrics.get("scout_contacts", 0)),
+                       "contact_stop": float(metrics.get("contact_stop", 0.)),
+                       "final_goal_distance": float(metrics.get("final_goal_distance", -1.))})
+        (directory/"program_output.txt").write_bytes(output[0])
+        (directory/"record.json").write_text(json.dumps(record, indent=1))
+        return record
+    finally:
+        _stop(service)
+        service_log.close()
+        if SOCKET.exists():
+            SOCKET.unlink()
 
 
 def main():
-    root = Path(stage_dir())
-    private = Path("/var/lib/visual_robotics")
-    require((private/"state.json").is_file(), "missing protected environment ledger")
-    # Stop the live endpoint before running arbitrary deliverables, closing a side channel.
-    pid = int((private/"pid").read_text())
-    try:
-        os.kill(pid, 0)
-        require(Path(f"/proc/{pid}/stat").read_text().split()[2] != "Z",
-                "world service crashed; this is an environment failure, not an agent failure")
-        os.kill(pid, signal.SIGTERM)
-    except ProcessLookupError:
-        require(False, "world service exited unexpectedly")
-    state = json.loads((private/"state.json").read_text())
-    kind = json.loads((root/"grader_config.json").read_text())["kind"]
-    require(state["kind"] == kind, "wrong service episode")
+    started = time.monotonic()
+    config = stage_config()
     anchor, calibration = read_anchor()
-    metrics = state["metrics"]
-    # ALE captures verifier stdout as framework-owned evidence before destroying
-    # the sandbox. Do not put this journal on an agent-writable path.
-    print("[authoritative-journal] " + json.dumps({
-        "kind": kind, "requests": state["requests"], "events": state["events"],
-        "metrics": metrics, "replay_seed_post_run": state["seed"],
-    }, separators=(",", ":")), flush=True)
-    extra = {f"exploration_{k}": v for k, v in metrics.items()}
-    locks_ok = True
-    extra["trusted_requests"] = state["requests"]
-    if kind in ("flight", "arm"):
-        try:
-            snapshot = snapshot_submission("/home/user/submission", SUBMISSION)
-            print("[frozen-submission] " + json.dumps(snapshot), flush=True)
-        except (ValueError, OSError) as exc:
-            write_verdict(zero_verdict(f"invalid submission: {exc}", anchored=anchor is not None))
-            return
-        sub = Path(SUBMISSION)
-        needed = ["run.sh"] + (["scene.xml", "predict.py"] if kind == "arm" else [])
-        if not all((sub/name).is_file() for name in needed):
-            write_verdict(zero_verdict("missing deliverables", anchored=anchor is not None))
-            return
-        error, model_error, consistency, reconstruction = 0., 0., 0., 1.
-        if kind == "arm":
-            try:
-                if not validate_model():
-                    raise ValueError("scene is not a runnable robot-and-object model")
-                errors, model_errors, consistency_errors = [], [], []
-                for actions, expected in reconstruction_probes(state["seed"]):
-                    predicted = run_prediction(actions)
-                    from_model = run_prediction(actions, model_only=True)
-                    errors.append(np.mean((predicted-expected)**2))
-                    model_errors.append(np.mean((from_model-expected)**2))
-                    consistency_errors.append(np.mean((predicted-from_model)**2))
-                error = math.sqrt(float(np.mean(errors)))
-                model_error = math.sqrt(float(np.mean(model_errors)))
-                consistency = math.sqrt(float(np.mean(consistency_errors)))
-                reconstruction = float(np.exp(-max(error, model_error)/.15))
-            except (ValueError, KeyError, OSError, subprocess.TimeoutExpired):
-                write_verdict(zero_verdict("invalid reconstruction", anchored=anchor is not None))
-                return
-        # Seeds exist only in grader memory. The model never receives reset parameters.
-        seeds = ([state["seed"]] if kind == "arm" else []) + [
-            secrets.randbits(64) for _ in range(3 if kind == "arm" else 4)]
-        try:
-            results = evaluate_controller(kind, seeds)
-        except (SolverMissing, SolverAborted, ValueError, TypeError) as exc:
-            write_verdict(zero_verdict(f"controller protocol failure: {exc}", anchored=anchor is not None))
-            return
-        print("[evaluation-replay-seeds-post-run] " + json.dumps(seeds), flush=True)
-        success = float(np.mean([r["success"] for r in results]))
-        probes = sum(r["probes_total"] for r in results)
-        passed = sum(r["probes_passed"] for r in results)
-        locks_ok = probes == 0 or passed/probes >= .5
-        total_damage = metrics["damage_cost"] + sum(r["damage_cost"] for r in results)
-        measured = success * reconstruction * max(0., 1-total_damage/40)
-        extra.update({"success_rate": success, "prediction_rmse": error,
-                      "probes_total": probes, "probes_passed": passed,
-                      "match_lock_ok": float(locks_ok),
-                      "scene_rollout_rmse": model_error,
-                      "predictor_scene_disagreement": consistency,
-                      "reconstruction_quality": reconstruction,
-                      "cumulative_damage_cost": total_damage,
-                      "evaluation_episodes": len(results),
-                      "episodes_aborted": sum(r["aborted"] for r in results),
-                      "mean_collisions": np.mean([r["collisions"] for r in results]),
-                      "mean_actions": np.mean([r["steps"] for r in results])})
-    else:
-        if not state["events"]:
-            write_verdict(zero_verdict("no interaction", anchored=anchor is not None))
-            return
-        if kind == "icl":
-            path = os.environ.get("ALE_TRAJECTORY_PATH")
-            require(path is not None, "engine trajectory is required for direct-model evaluation")
-            trajectory = json.loads(Path(path).read_text())
-            # This identity comes from the engine-staged, root-only ATIF file.
-            # Never use a user-writable marker or the existence of ~/.ale-solution.
-            oracle = trajectory.get("agent", {}).get("name") == "oracle"
-            if not oracle:
-                require(trajectory.get("schema_version") == "ATIF-v1.8"
-                        and trajectory.get("agent", {}).get("model_name"),
-                        "unsupported/missing trusted model trace; do not count this as a model failure")
-            try:
-                audited = audit_trajectory(path, state["events"])
-            except (ValueError, KeyError, TypeError):
-                audited = False
-            extra.update({"scripted_oracle": float(oracle),
-                          "model_tool_audit_passed": float(audited)})
-            if not (oracle or audited):
-                write_verdict(zero_verdict("direct-tool audit failed",
-                                          anchored=anchor is not None, extra=extra))
-                return
-        measured = metrics["success"]
-        extra.update(metrics)
-        extra["simulation_seconds"] = metrics["steps"] * .2
-    write_verdict(ratio_rewards(
-        measured, anchor, metric_name=calibration["metric"], extra=extra, locks_ok=locks_ok,
-        full_at=calibration["full_at"],
-    ))
+    try:
+        account = pwd.getpwnam(agent_user())
+    except KeyError:
+        write_verdict(zero_verdict("no agent account", anchored=anchor is not None))
+        return
+    uid, gid = account.pw_uid, account.pw_gid
+    secure_exec_path()
+    if not stop_agent_processes(uid):
+        write_verdict(zero_verdict("agent processes could not be stopped (cleanup_failed)",
+                                   anchored=anchor is not None))
+        return
+    WORK.mkdir(parents=True, exist_ok=True)
+    os.chmod(WORK, 0o700)
+    RUN.mkdir(parents=True, exist_ok=True)
+    os.chmod(RUN, 0o755)
+    problem = copy_submission(os.path.join(os.path.expanduser("~"+agent_user()), "submission"), RUN/"program")
+    if problem:
+        write_verdict(zero_verdict(problem, anchored=anchor is not None))
+        return
+    sites = json.loads((HIDDEN/"sites.json").read_text())["seeds"]
+    token_sha256 = (HIDDEN/"oracle_token.sha256").read_text().split()[0]
+    require(len(token_sha256) == 64, "malformed oracle token hash")
+    stage = Path(stage_dir())
+    stage_mode = stat.S_IMODE(stage.stat().st_mode)
+    os.chmod(stage, 0o700)     # nothing of the tests stage is readable while agent code runs
+    try:
+        stage_public_client()
+        ok, detail = selftest(lambda argv: [RUNUSER, "-u", agent_user(), "--", ENV, "-i",
+                                            "PATH=/opt/venv/bin:/usr/bin:/bin"] + argv, PYTHON)
+        require(ok, detail)
+        records, cleanup_ok = [], True
+        for index, seed in enumerate(sites):
+            record = run_mission(index, int(seed), uid, gid, config, token_sha256, attempt=0)
+            if record["infra"]:
+                log("site {}: {}; running it once more".format(index, record.get("reason")))
+                record = run_mission(index, int(seed), uid, gid, config, token_sha256, attempt=1)
+                require(not record["infra"], "site {}: the robot service failed twice ({})".format(
+                    index, record.get("reason")))
+            cleanup_ok = cleanup_ok and record.get("cleanup_ok", True)
+            records.append(record)
+            log("site {}: success={:.0f} scout={:.0f} carrier={:.0f} contact_stop={:.0f} program={:.0f}s "
+                "wall={:.0f}s ({})".format(index, record["success"], record["scout_actions"],
+                                           record["carrier_actions"], record["contact_stop"],
+                                           record["program_seconds"], record["wall_seconds"], record["reason"]))
+    finally:
+        os.chmod(stage, stage_mode)
+    measured = sum(r["success"] for r in records)/len(records)
+    if not cleanup_ok:
+        log("a process of the agent account survived a mission: the run scores 0 (cleanup_failed)")
+        measured = 0.
+    extra = {"missions": len(records), "missions_succeeded": sum(r["success"] for r in records),
+             "missions_switched": sum(r["switched"] for r in records),
+             "missions_contact_stop": sum(r["contact_stop"] for r in records),
+             "mean_scout_actions": sum(r["scout_actions"] for r in records)/len(records),
+             "mean_carrier_actions": sum(r["carrier_actions"] for r in records)/len(records),
+             "mean_program_seconds": sum(r["program_seconds"] for r in records)/len(records),
+             "cleanup_failed": 0. if cleanup_ok else 1., "verify_seconds": time.monotonic()-started}
+    for r in records:
+        extra["site{}_success".format(r["site"])] = r["success"]
+    extra = {k: float(v) for k, v in extra.items() if math.isfinite(float(v))}
+    write_verdict(ratio_rewards(measured, anchor, metric_name=calibration["metric"], extra=extra,
+                                full_at=calibration["full_at"]))
 
 
 if __name__ == "__main__":

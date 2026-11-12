@@ -1,4 +1,5 @@
 {
-  "kind": "cross",
-  "authoring_version": 5
+  "program_seconds": 300,
+  "mission_wall_seconds": 1200,
+  "exit_grace_seconds": 10
 }

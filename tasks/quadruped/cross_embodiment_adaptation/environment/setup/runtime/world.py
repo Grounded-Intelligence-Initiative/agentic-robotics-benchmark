@@ -1,4 +1,11 @@
-"""Trusted MuJoCo worlds. This module must never be agent-readable in a task."""
+"""Trusted MuJoCo world of one cross-embodiment mission. Never agent-readable in a task.
+
+A mission: a small scout maps an enclosed hall it sees only near itself, then the operator
+switches to a large carrier (new button permutation and gain) that must reach the delivery
+pad. The carrier sees only its immediate surroundings and stops at its first contact, so it
+can arrive only along a route the scout has mapped: through the one opening of the partition
+wide enough for it, around the crates.
+"""
 import base64
 import io
 import math
@@ -11,23 +18,31 @@ import mujoco
 import numpy as np
 from PIL import Image
 
-from geometry import SIZE, arm_scene, box, header
+from geometry import SIZE, box, header
 from scene_assets import decorate, sync_visuals
 from pbr_renderer import Renderer
 
-KINDS = ("flight", "arm", "icl", "cross", "bridge", "rescue")
-LIMITS = {"flight": 220, "arm": 180, "icl": 500, "cross": 320,
-          "bridge": 160, "rescue": 160}
-
-
-def crossed_gate(previous, current, center=(0., 0.)):
-    """A directed crossing of the aperture, not merely a visit near its plane."""
-    gate_x, gate_y = center
-    if not previous[0] < gate_x <= current[0]:
-        return False
-    fraction = (gate_x-previous[0])/(current[0]-previous[0])
-    crossing = previous + fraction*(current-previous)
-    return bool(abs(crossing[1]-gate_y) < .6 and .6 < crossing[2] < 2.)
+KIND = "cross"
+FIELD = 3.8                      # inner faces of the hall's boundary walls: |x|, |y| = FIELD
+WALL_HALF = .12                  # half thickness of the partition
+LEG = .025                       # leg capsule radius, at the corners of the body box
+SCOUT_HALF = .13                 # scout body box half side (collision square 0.31 m with the legs)
+CARRIER_HALF = (.355, .405)      # carrier body box half side (collision square 0.76-0.86 m)
+SCOUT_MASS = 1.0                 # body box mass, kg (the four legs add 0.08)
+CARRIER_MASS = (5.0, 8.0)        # the carrier is heavy: its velocity responds with a 0.13-0.2 s lag
+WIDE = (1.20, 1.35)              # the wide opening (the carrier fits)
+NARROW = (.62, .66)              # the two narrow openings (only the scout fits)
+SCOUT_ACTIONS = 200              # phase 0 budget
+CARRIER_ACTIONS = 160            # phase 1 budget
+MIN_SCOUT_ACTIONS = 12           # actions before the switch is allowed
+VIEW = (1.4, .5)                 # view radius around the robot, per phase
+GOAL_VIEW = .25                  # the delivery pad's beacon is always visible
+GOAL_TOLERANCE = .3              # carrier centre within this of the pad centre
+SPEED = (1.2, 1.0)               # m/s per unit gain, per phase
+GAIN = ((.85, 1.15), (.7, .9))   # per-site response gain range, per phase
+DIRECTIONS = ((1, 0), (-1, 0), (0, 1), (0, -1))
+BUTTONS = (0., 1/3, 2/3, 1.)
+SUBSTEPS = 20                    # 20 x 10 ms = 0.2 s per action
 
 
 def png(image):
@@ -36,353 +51,309 @@ def png(image):
     return base64.b64encode(buffer.getvalue()).decode()
 
 
-class World:
-    def __init__(self, kind, seed, render=True):
-        if kind not in KINDS:
-            raise ValueError("unknown task")
-        self.kind, self.seed = kind, int(seed)
-        self.rng = np.random.default_rng(seed)
-        self.render_enabled = render
-        self.steps = self.collisions = self.damage = self.reports = 0
-        self.phase = 0
-        self.done = self.success = self.passed_gate = False
-        self.grasped = self.broken = False
-        self.stage_steps, self.stage_success = [], []
-        self.mapping = self.rng.permutation(4).tolist()
-        self.gain = float(self.rng.uniform(.85, 1.15))
-        self.goal = np.array([2.2, float(self.rng.uniform(-.4, .4)), 1.2])
-        self.start = np.array([-2.2, float(self.rng.uniform(-.3, .3)), .18])
-        self.block = np.array([self.rng.uniform(-1.4, -.7), self.rng.uniform(-.8, .8)])
-        self.tray = np.array([self.rng.uniform(.9, 1.5), self.rng.uniform(-.8, .8)])
-        self.obstacle = np.array([0., self.rng.uniform(-.4, .4)])
-        self.target = np.array([self.rng.uniform(-2.4, 2.4), self.rng.uniform(-1.5, 1.5)])
-        if kind == "bridge":
-            self.target[0] = self.rng.uniform(-1.9, 1.9)
-        if kind == "rescue":
-            while abs(self.target[0]) < .8 and abs(self.target[1] - .8) < .7:
-                self.target = np.array([self.rng.uniform(-2.4, 2.4), self.rng.uniform(-1.5, 1.5)])
-        self.last_frames = {}
-        self.frame_id = 0
-        self.completed = set()
-        variant_rng = np.random.default_rng(int(seed) ^ 0x513EA7)
-        self.gate = np.zeros(2)
-        self.hover_steps = 0
-        self.arm_gains = np.full(3, 120.)
-        self.walls = []
-        self.scene_seed = int(seed) ^ 0x72B49A
-        scene_rng = np.random.default_rng(self.scene_seed)
-        self.bridge_half_gap = float(scene_rng.uniform(.16, .25))
-        self.bridge_half_width = float(scene_rng.uniform(.58, .82))
-        self.bridge_y = float(scene_rng.uniform(-.38, .38))
-        self.buildings = [
-            (float(x+scene_rng.uniform(-.25, .25)), float(y+scene_rng.uniform(-.2, .2)),
-             float(scene_rng.uniform(.32, .52)), float(scene_rng.uniform(.32, .52)),
-             float(scene_rng.uniform(.75, 1.15)))
-            for x, y in ((-1, -2.3), (1, 2.3), (0, .8))
-        ]
-        self.target_yaw = float(scene_rng.uniform(-math.pi, math.pi))
-        self.nav_starts = [np.array([-2.8, y])+scene_rng.uniform(-.12, .12, 2)
-                           for y in (-1.8, 1.8, -1.8, 1.8)]
-        self.nav_goals = [np.array([2.6, y])+scene_rng.uniform(-.15, .15, 2)
-                          for y in (1.7, -1.7, 1.7, -1.7)]
-        self.large_radius = float(scene_rng.uniform(.26, .32))
-        if kind == "rescue":
-            # Keep the complete mannequin clear of opaque roofs; every sampled
-            # target must admit real image evidence, not a lucky guessed report.
-            for _ in range(1000):
-                if all(abs(self.target[0]-x) > sx+.95 or abs(self.target[1]-y) > sy+.95
-                       for x, y, sx, sy, _ in self.buildings):
+def _rect_gap(a, b):
+    """Edge-to-edge distance between axis-aligned rectangles (cx, cy, hx, hy); 0 when they touch."""
+    dx = max(0., abs(a[0]-b[0])-a[2]-b[2])
+    dy = max(0., abs(a[1]-b[1])-a[3]-b[3])
+    return math.hypot(dx, dy)
+
+
+def _point_gap(rect, p):
+    dx = max(0., abs(p[0]-rect[0])-rect[2])
+    dy = max(0., abs(p[1]-rect[1])-rect[3])
+    return math.hypot(dx, dy)
+
+
+def occupancy(rects, inflate, resolution=.04):
+    """Boolean grid (rows = y descending from +FIELD, cols = x ascending from -FIELD) of cells whose centre
+    lies within `inflate` of an obstacle rectangle or of the boundary; used for the feasibility check."""
+    n = int(round(2*FIELD/resolution))
+    centres = -FIELD+(np.arange(n)+.5)*resolution
+    xx, yy = np.meshgrid(centres, centres[::-1])
+    blocked = (np.abs(xx) > FIELD-inflate) | (np.abs(yy) > FIELD-inflate)
+    for cx, cy, hx, hy in rects:
+        dx = np.maximum(0., np.abs(xx-cx)-hx)
+        dy = np.maximum(0., np.abs(yy-cy)-hy)
+        blocked |= dx*dx+dy*dy < inflate*inflate
+    return blocked, resolution
+
+
+def _reachable(blocked, resolution, start, goal):
+    n = blocked.shape[0]
+
+    def cell(p):
+        return (int(np.clip((FIELD-p[1])/resolution, 0, n-1)), int(np.clip((p[0]+FIELD)/resolution, 0, n-1)))
+    s, g = cell(start), cell(goal)
+    if blocked[s] or blocked[g]:
+        return False
+    seen = np.zeros_like(blocked)
+    seen[s] = True
+    frontier = [s]
+    while frontier:
+        nxt = []
+        for r, c in frontier:
+            if (r, c) == g:
+                return True
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                rr, cc = r+dr, c+dc
+                if 0 <= rr < n and 0 <= cc < n and not blocked[rr, cc] and not seen[rr, cc]:
+                    seen[rr, cc] = True
+                    nxt.append((rr, cc))
+        frontier = nxt
+    return False
+
+
+class Site:
+    """The hall of one mission, drawn from its seed (deterministic)."""
+
+    def __init__(self, seed):
+        self.seed = int(seed)
+        rng = np.random.default_rng([self.seed % (2**64), 0xC805])
+        for _ in range(2000):
+            if self._draw(rng):
+                break
+        else:  # pragma: no cover - the draw succeeds within a few attempts
+            raise RuntimeError("no feasible site for this seed")
+        self.look_seed = int(rng.integers(0, 2**62))
+
+    def _draw(self, rng):
+        self.wall_x = float(rng.uniform(-.45, .45))
+        widths = [float(rng.uniform(*WIDE))] + [float(rng.uniform(*NARROW)) for _ in range(2)]
+        openings = []
+        for width in widths:
+            for _ in range(200):
+                centre = float(rng.uniform(-3.6+width/2, 3.6-width/2))
+                lo, hi = centre-width/2, centre+width/2
+                if all(lo >= b+.6 or hi <= a-.6 for a, b, _ in openings):
+                    openings.append((lo, hi, width))
                     break
-                self.target = scene_rng.uniform([-2.4, -1.5], [2.4, 1.5])
             else:
-                raise RuntimeError("could not sample a visible rescue target")
-        if kind == "flight":
-            self.gate = variant_rng.uniform([-.6, -.9], [.4, .9])
-            self.start[:2] = variant_rng.uniform([-2.9, -.9], [-2.2, .9])
-            self.goal[:2] = variant_rng.uniform([2., -1.], [2.7, 1.])
-            self.goal[2] = 1.3
-        elif kind == "arm":
-            # Visually identical initial scenes can have different actuator responses.
-            self.arm_gains = variant_rng.uniform(35., 230., 3)
-        elif kind in ("icl", "cross"):
-            wall_x = float(variant_rng.uniform(-.45, .45))
-            narrow = float(variant_rng.uniform(-.45, .45))
-            wide = float(variant_rng.choice([-1., 1.])*variant_rng.uniform(1.9, 2.25))
-            openings = sorted([(narrow-.3, narrow+.3), (wide-.65, wide+.65)])
-            cursor = -3.45
-            for lo, hi in openings + [(3.45, 3.45)]:
-                self.walls.append((wall_x, (cursor+lo)/2, .12, (lo-cursor)/2))
-                cursor = hi
+                return False
+        self.wide = openings[0][:2]
+        self.openings = sorted(openings)
+        self.scout_start = np.array([-2.8, -1.8])+rng.uniform(-.12, .12, 2)
+        self.carrier_start = np.array([-2.8, 1.8])+rng.uniform(-.12, .12, 2)
+        self.goal = np.array([2.6, -1.7])+rng.uniform(-.15, .15, 2)
+        self.carrier_half = float(rng.uniform(*CARRIER_HALF))
+        self.carrier_mass = float(rng.uniform(*CARRIER_MASS))
+        reach = self.carrier_half+LEG
+        partition = (self.wall_x, 0., WALL_HALF, FIELD)
+        crates = []
+        for _ in range(int(rng.integers(2, 5))):
+            for _ in range(300):
+                hx, hy = (float(v) for v in rng.uniform(.2, .45, 2))
+                cx = float(rng.uniform(-FIELD+1.2+hx, FIELD-1.2-hx))
+                cy = float(rng.uniform(-FIELD+1.2+hy, FIELD-1.2-hy))
+                rect = (cx, cy, hx, hy)
+                if (_rect_gap(rect, partition) >= 1.2 and all(_rect_gap(rect, c) >= 1.2 for c in crates)
+                        and _point_gap(rect, self.carrier_start) >= reach+.5
+                        and _point_gap(rect, self.goal) >= reach+.5
+                        and _point_gap(rect, self.scout_start) >= .6):
+                    crates.append(rect)
+                    break
+        if len(crates) < 2:
+            return False
+        self.crates = crates
+        self.partition = []
+        cursor = -FIELD-.12
+        for lo, hi, _ in self.openings + [(FIELD+.12, FIELD+.12, 0)]:
+            self.partition.append((self.wall_x, (cursor+lo)/2, WALL_HALF, (lo-cursor)/2))
+            cursor = hi
+        rects = self.partition+self.crates
+        blocked, res = occupancy(rects, reach+.08)
+        if not _reachable(blocked, res, self.carrier_start, self.goal):
+            return False
+        blocked, res = occupancy(rects, SCOUT_HALF+LEG+.03)
+        return _reachable(blocked, res, self.scout_start, self.goal)
+
+    def boundary(self):
+        t = .06
+        return [(0., FIELD+t, FIELD+2*t, t), (0., -FIELD-t, FIELD+2*t, t),
+                (FIELD+t, 0., t, FIELD+2*t), (-FIELD-t, 0., t, FIELD+2*t)]
+
+    def obstacles(self):
+        """Every collision rectangle (cx, cy, hx, hy): the partition's segments, the crates, the boundary."""
+        return list(self.partition)+list(self.crates)+self.boundary()
+
+
+class World:
+    def __init__(self, seed, render=True):
+        self.seed = int(seed)
+        self.site = Site(self.seed)
+        control = np.random.default_rng([self.seed % (2**64), 0xB077])
+        self.mappings = [control.permutation(4).tolist() for _ in range(2)]
+        self.gains = [float(control.uniform(*GAIN[k])) for k in range(2)]
+        self.render_enabled = render
+        self.phase = 0
+        self.steps = [0, 0]
+        self.done = self.success = self.contact_stop = False
+        self.switched = False
+        self.scout_contacts = 0
+        self.bumper = False
+        self.frame_id = 0
+        self.renderer = None
         self._build()
 
+    # --- model ------------------------------------------------------------- #
+    @property
+    def half(self):
+        return SCOUT_HALF if self.phase == 0 else self.site.carrier_half
+
     def _build(self):
-        if hasattr(self, "renderer") and self.renderer:
+        if self.renderer is not None:
             self.renderer.close()
-        self.radius = .13 if self.phase == 0 else self.large_radius
-        if self.kind == "arm":
-            xml = arm_scene(self.block, self.tray, self.obstacle, self.arm_gains)
-        else:
-            xml = header()
-            if self.kind == "flight":
-                gx, gy = self.gate
-                for name, pos, size in (
-                    ("gate_left", f"{gx} {gy-.8} 1.1", ".07 .08 1.1"),
-                    ("gate_right", f"{gx} {gy+.8} 1.1", ".07 .08 1.1"),
-                    ("gate_top", f"{gx} {gy} 2.2", ".07 .88 .07"),
-                ):
-                    xml += box(name, pos, size, "1 .7 .05 1")
-                xml += box("goal", f"{self.goal[0]} {self.goal[1]} .025",
-                           ".28 .28 .025", ".03 .12 1 1", False)
-                xml += """<body name="agent" pos="0 0 0"><freejoint/>
-                  <geom name="robot" type="box" size=".17 .14 .055" mass=".8"
-                        rgba="1 .02 .02 1"/>
-                  <geom type="capsule" fromto="-.23 -.23 0 .23 .23 0" size=".025"
-                        mass=".01" rgba=".5 .55 .6 1"/>
-                  <geom type="capsule" fromto="-.23 .23 0 .23 -.23 0" size=".025"
-                        mass=".01" rgba=".5 .55 .6 1"/></body>"""
-            else:
-                if self.kind in ("icl", "cross"):
-                    self.goal = np.r_[self.nav_goals[self.phase], .22]
-                    # Both embodiments see the same sampled map, not a memorized layout.
-                    for i, (cx, cy, sx, sy) in enumerate(self.walls):
-                        xml += box(f"wall{i}", f"{cx} {cy} .35", f"{sx} {sy} .35",
-                                   ".55 .6 .65 1")
-                    xml += box("goal", f"{self.goal[0]} {self.goal[1]} .02",
-                               ".2 .2 .02", ".03 .12 1 1", False)
-                elif self.kind == "bridge":
-                    self.target[1] = self.bridge_y
-                    # A missing deck segment, not a semantic target label.
-                    left = self.target[0] - self.bridge_half_gap
-                    right = self.target[0] + self.bridge_half_gap
-                    xml += box("deck_left", f"{(-3+left)/2} {self.bridge_y} .55",
-                               f"{(left+3)/2} {self.bridge_half_width} .06", ".65 .67 .7 1")
-                    xml += box("deck_right", f"{(right+3)/2} {self.bridge_y} .55",
-                               f"{(3-right)/2} {self.bridge_half_width} .06", ".65 .67 .7 1")
-                    xml += box("water", "0 0 .01", "3.3 1.4 .01", ".02 .25 .75 1", False)
-                    for bx in (-2.4, 2.4):
-                        xml += box(f"pier{bx}", f"{bx} {self.bridge_y} .25", ".16 .55 .25", ".5 .5 .5 1")
-                elif self.kind == "rescue":
-                    for i, (x, y, sx, sy, h) in enumerate(self.buildings):
-                        xml += box(f"building{i}", f"{x} {y} {h/2}", f"{sx} {sy} {h/2}",
-                                   ".5 .55 .6 1")
-                    tx, ty = self.target
-                    xml += f"""<body pos="{tx} {ty} .12" euler="0 0 {math.degrees(self.target_yaw)}">
-                      <geom name="victim" type="capsule" fromto="-.13 0 0 .13 0 0"
-                            size=".08" rgba="1 .45 0 1"/>
-                      <geom type="sphere" pos=".23 0 0" size=".08" rgba="1 .7 .4 1"/>
-                    </body>"""
-                z = 1.6 if self.kind in ("bridge", "rescue") else .23
-                rad = self.radius if self.kind == "cross" else .13
-                xml += f"""<body name="agent" pos="0 0 {z}">
-                  <joint name="x" type="slide" axis="1 0 0" damping="5"/>
-                  <joint name="y" type="slide" axis="0 1 0" damping="5"/>
-                  <geom name="robot" type="box" size="{rad} {rad} .06"
-                        mass="1" rgba="1 .02 .02 1"/>"""
-                if self.kind in ("icl", "cross"):
-                    for lx in (-rad, rad):
-                        for ly in (-rad, rad):
-                            xml += f'<geom type="capsule" fromto="{lx} {ly} 0 {lx} {ly} -.15" size=".025" mass=".02" rgba=".4 .45 .5 1"/>'
-                else:
-                    xml += '<geom type="capsule" fromto="-.25 -.25 0 .25 .25 0" size=".025" mass=".01" rgba=".6 .6 .6 1"/>'
-                xml += "</body>"
-            xml += "</worldbody></mujoco>"
-        xml = decorate(xml, self.kind, self.radius if self.kind == "cross" else .13,
-                       seed=self.scene_seed)
+            self.renderer = None
+        site, rad = self.site, self.half
+        mass = SCOUT_MASS if self.phase == 0 else site.carrier_mass
+        xml = header()
+        for i, (cx, cy, hx, hy) in enumerate(site.partition):
+            xml += box(f"wall{i}", f"{cx} {cy} .35", f"{hx} {hy} .35", ".55 .6 .65 1")
+        for i, (cx, cy, hx, hy) in enumerate(site.crates):
+            xml += box(f"crate{i}", f"{cx} {cy} .3", f"{hx} {hy} .3", ".5 .45 .35 1")
+        for i, (cx, cy, hx, hy) in enumerate(site.boundary()):
+            xml += box(f"boundary{i}", f"{cx} {cy} .35", f"{hx} {hy} .35", ".55 .6 .65 1")
+        gx, gy = site.goal
+        xml += box("goal", f"{gx} {gy} .02", ".2 .2 .02", ".03 .12 1 1", False)
+        xml += f"""<body name="agent" pos="0 0 .23">
+          <joint name="x" type="slide" axis="1 0 0" damping="5"/>
+          <joint name="y" type="slide" axis="0 1 0" damping="5"/>
+          <geom name="robot" type="box" size="{rad} {rad} .06" mass="{mass}" rgba="1 .02 .02 1"/>"""
+        for lx in (-rad, rad):
+            for ly in (-rad, rad):
+                xml += (f'<geom type="capsule" fromto="{lx} {ly} 0 {lx} {ly} -.15" size="{LEG}" '
+                        f'mass=".02" rgba=".4 .45 .5 1"/>')
+        xml += "</body></worldbody></mujoco>"
+        xml = decorate(xml, KIND, rad, seed=site.look_seed)
         self.model = mujoco.MjModel.from_xml_string(xml)
         self.data = mujoco.MjData(self.model)
         self.agent_id = self.model.body("agent").id
-        if self.kind == "flight":
-            self.data.qpos[:3] = self.start
-        elif self.kind == "arm":
-            self.data.qpos[:3] = [-1.9, -1.7, 1.0]
-            self.command = self.data.qpos[:3].copy()
-            self.data.ctrl[:] = self.command
-        else:
-            self.data.qpos[:2] = self.nav_starts[self.phase] if self.kind in ("icl", "cross") else [-2.8, -1.8]
+        self.data.qpos[:2] = site.scout_start if self.phase == 0 else site.carrier_start
         mujoco.mj_forward(self.model, self.data)
         self._contacts = set()
-        self.renderer = Renderer(self.model, SIZE, SIZE) if self.render_enabled else None
+        if self.render_enabled:
+            self.renderer = Renderer(self.model, SIZE, SIZE)
 
     def position(self):
-        return self.data.xpos[self.agent_id].copy()
+        # The slide joints are the base's x and y (qpos, not xpos: mj_step leaves xpos one substep behind).
+        return self.data.qpos[:2].copy()
 
-    def images(self):
+    def _touching(self):
+        """Geoms other than the floor in contact with the robot, at the current configuration."""
+        touching = set()
+        for contact in self.data.contact[:self.data.ncon]:
+            b1 = self.model.geom_bodyid[contact.geom1]
+            b2 = self.model.geom_bodyid[contact.geom2]
+            if (b1 == self.agent_id) != (b2 == self.agent_id):
+                other = contact.geom2 if b1 == self.agent_id else contact.geom1
+                if self.model.geom(other).name != "floor":
+                    touching.add(int(other))
+        return touching
+
+    def _contact(self, touching):
+        if touching:
+            self.bumper = True
+        if self.phase == 0:
+            self.scout_contacts += len(touching-self._contacts)
+            self._contacts = touching
+        elif touching:
+            # The carrier's safety stop: halted at its first contact, mission over.
+            self.data.qvel[:] = 0
+            self.contact_stop = True
+        return self.contact_stop
+
+    # --- observation ------------------------------------------------------- #
+    def image(self):
         sync_visuals(self.model, self.data)
-        images = []
-        for camera in ("top", "side"):
-            if camera == "side" and self.kind in ("icl", "cross", "bridge", "rescue"):
-                images.append(np.full((SIZE, SIZE, 3), 10, dtype=np.uint8))
-                continue
-            option = mujoco.MjvOption()
-            option.geomgroup[3] = 0
-            self.renderer.update_scene(self.data, camera=camera, scene_option=option)
-            im = self.renderer.render().copy()
-            if camera == "top" and self.kind in ("icl", "cross", "bridge", "rescue"):
-                xx = (np.arange(SIZE) + .5) / SIZE * 8 - 4
-                yy = 4 - (np.arange(SIZE) + .5) / SIZE * 8
-                visible = (xx[None, :] - self.position()[0])**2 + (yy[:, None] - self.position()[1])**2 < 1.4**2
-                # Navigation goal is a task-supplied visual beacon, not a map of obstacles.
-                if self.kind in ("icl", "cross"):
-                    visible |= ((xx[None, :] - self.goal[0])**2 +
-                                (yy[:, None] - self.goal[1])**2 < .25**2)
-                im[~visible] = 10
-            images.append(im)
-        return images
-
-    def observe(self):
-        self.frame_id += 1
-        imgs = self.images()
-        self.last_frames[self.frame_id] = {
-            "position": self.position().tolist(),
-            "target_visible": self._target_visible(),
-        }
-        return {"images": [png(im) for im in imgs], "frame_id": self.frame_id,
-                "steps_remaining": max(0, LIMITS[self.kind] - self.steps),
-                "damage_remaining": max(0., 40 - self.damage),
-                "phase": self.phase, "done": self.done,
-                "completed_stages": len(self.completed)}
-
-    def _target_visible(self):
-        if self.kind not in ("bridge", "rescue"):
-            return False
-        if np.linalg.norm(self.position()[:2] - self.target) >= 1.25:
-            return False
         option = mujoco.MjvOption()
         option.geomgroup[3] = 0
         self.renderer.update_scene(self.data, camera="top", scene_option=option)
-        self.renderer.enable_segmentation_rendering()
-        try:
-            segment = self.renderer.render().copy()
-        finally:
-            self.renderer.disable_segmentation_rendering()
-        x = int((self.target[0]+4)*32)
-        y = int((4-self.target[1])*32)
-        patch = segment[max(0, y-3):y+4, max(0, x-3):x+4, 0]
-        expected = self.model.geom("water" if self.kind == "bridge" else "victim").id
-        return bool((patch == expected).sum() >= 4)
+        im = self.renderer.render().copy()
+        xx = (np.arange(SIZE)+.5)/SIZE*8-4
+        yy = 4-(np.arange(SIZE)+.5)/SIZE*8
+        p, g = self.position(), self.site.goal
+        visible = (xx[None, :]-p[0])**2+(yy[:, None]-p[1])**2 < VIEW[self.phase]**2
+        visible |= (xx[None, :]-g[0])**2+(yy[:, None]-g[1])**2 < GOAL_VIEW**2
+        im[~visible] = 10
+        return im
 
+    def observe(self):
+        self.frame_id += 1
+        obs = {"frame_id": self.frame_id, "phase": self.phase, "done": self.done,
+               "steps_remaining": self.remaining(), "bumper": self.bumper,
+               "contact_stop": self.contact_stop}
+        if self.render_enabled:
+            obs["images"] = [png(self.image())]
+        return obs
+
+    def remaining(self):
+        return max(0, (SCOUT_ACTIONS, CARRIER_ACTIONS)[self.phase]-self.steps[self.phase])
+
+    # --- actions ----------------------------------------------------------- #
     def act(self, action):
-        if self.done or self.steps >= LIMITS[self.kind]:
-            raise ValueError("episode finished")
-        if not isinstance(action, list) or not all(isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) for x in action):
-            raise ValueError("finite numeric action list required")
-        n = 4 if self.kind in ("flight", "arm") else (1 if self.kind in ("icl", "cross") else 2)
-        if len(action) != n or any(abs(x) > 1 for x in action):
-            raise ValueError("wrong action shape or range")
-        if self.kind in ("icl", "cross") and action[0] not in (0., 1/3, 2/3, 1.):
-            raise ValueError("buttons must be 0, 1/3, 2/3, or 1")
-        self.steps += 1
-        previous_position = self.position()
-        if self.kind == "arm":
-            self.command = np.clip(self.command + np.array(action[:3]) * .14,
-                                   [-2.6, -2.6, .17], [2.6, 2.6, 1.5])
-            obj = self.data.body("object").xpos.copy()
-            if action[3] > .5 and not self.grasped and np.linalg.norm(self.position() - obj) < .24 and not self.broken:
-                self.model.eq_data[0, 3:6] = obj - self.position()
-                self.model.eq_data[0, 6:10] = [1, 0, 0, 0]
-                self.data.eq_active[0] = 1
-                self.grasped = True
-            elif action[3] < -.5:
-                self.data.eq_active[0] = 0
-                self.grasped = False
-        for _ in range(20):
+        if self.done:
+            raise ValueError("the mission has ended")
+        if not isinstance(action, list) or len(action) != 1 or isinstance(action[0], bool) \
+                or not isinstance(action[0], (int, float)) or not math.isfinite(action[0]):
+            raise ValueError("action must be a one-element list: [0], [1/3], [2/3] or [1]")
+        index = next((i for i, b in enumerate(BUTTONS) if abs(action[0]-b) < 1e-6), None)
+        if index is None:
+            raise ValueError("buttons are 0, 1/3, 2/3 and 1")
+        if self.remaining() == 0:
+            raise ValueError("the scout's action budget is spent; call advance()" if self.phase == 0
+                             else "the carrier's action budget is spent")
+        self.steps[self.phase] += 1
+        direction = np.array(DIRECTIONS[self.mappings[self.phase][index]], float)
+        velocity = direction*self.gains[self.phase]*SPEED[self.phase]
+        self.bumper = False
+        for _ in range(SUBSTEPS):
             self.data.xfrc_applied[:] = 0
-            if self.kind == "flight":
-                rot = self.data.xmat[self.agent_id].reshape(3, 3)
-                self.data.xfrc_applied[self.agent_id, :3] = rot[:, 2] * ((action[0] + 1) * 8.2)
-                desired = np.array([action[1] * .3, action[2] * .3, action[3] * .4])
-                roll = math.atan2(rot[2, 1], rot[2, 2])
-                pitch = math.asin(float(np.clip(-rot[2, 0], -1, 1)))
-                yaw = math.atan2(rot[1, 0], rot[0, 0])
-                self.data.xfrc_applied[self.agent_id, 3:] = .5 * (desired - [roll, pitch, yaw]) - .12 * self.data.qvel[3:6]
-            elif self.kind == "arm":
-                self.data.ctrl[:] = self.command
-                self.data.qfrc_applied[:3] = [0, 0, 5.01]
-            else:
-                if self.kind in ("icl", "cross"):
-                    index = int(round(action[0] * 3))
-                    direction = ((1, 0), (-1, 0), (0, 1), (0, -1))[self.mapping[index]]
-                    speed = 1.2 if self.kind == "icl" or self.phase == 0 else 1.0
-                    velocity = np.array(direction) * self.gain * speed
-                else:
-                    velocity = np.array(action) * 1.6
-                self.data.qfrc_applied[:2] = 35 * (velocity - self.data.qvel[:2])
-            mujoco.mj_step(self.model, self.data)
-            robot_contacts = set()
-            for contact_index, contact in enumerate(self.data.contact):
-                names = {self.model.geom(contact.geom1).name, self.model.geom(contact.geom2).name}
-                if self.kind == "arm" and "fragile" in names and not self.broken:
-                    force = np.zeros(6)
-                    mujoco.mj_contactForce(self.model, self.data, contact_index, force)
-                    if np.linalg.norm(force[:3]) > 50:
-                        self.broken = True
-                        self.damage += 20
-                elif self.kind != "arm" and "floor" not in names and (
-                        self.model.geom_bodyid[contact.geom1] == self.agent_id
-                        or self.model.geom_bodyid[contact.geom2] == self.agent_id):
-                    robot_contacts.add(tuple(sorted((int(contact.geom1), int(contact.geom2)))))
-            self.collisions += len(robot_contacts-self._contacts)
-            self._contacts = robot_contacts
-        p = self.position()
-        if self.kind == "flight":
-            self.passed_gate |= crossed_gate(previous_position, p, self.gate)
-            stable = (self.passed_gate and np.linalg.norm(p-self.goal) < .3
-                      and np.linalg.norm(self.data.qvel[:3]) < .35
-                      and np.linalg.norm(self.data.qvel[3:6]) < .5 and not self.collisions)
-            self.hover_steps = self.hover_steps + 1 if stable else 0
-            self.success = self.hover_steps >= 10
-        elif self.kind == "arm":
-            obj = self.data.body("object").xpos
-            self.success = bool(np.linalg.norm(obj[:2]-self.tray) < .20 and obj[2] < .19 and not self.grasped and not self.broken)
-        elif self.kind in ("icl", "cross"):
-            reached = np.linalg.norm(p[:2]-self.goal[:2]) < .3
-            if reached:
-                self.completed.add(self.phase)
-            self.success = bool(reached and (self.kind == "icl" and self.phase == 3 or self.kind == "cross" and self.phase == 1))
-        self.done = bool(self.success or self.steps >= LIMITS[self.kind] or self.damage > 40 or
-                         np.any(np.abs(p[:2]) > 3.8) or self.kind == "flight" and p[2] > 4)
-        return self.observe() if self.render_enabled else {}
-
-    def advance(self):
-        if self.kind not in ("icl", "cross") or self.done:
-            raise ValueError("no phase transition")
-        if self.kind == "icl" and (self.phase not in self.completed or self.phase >= 3):
-            raise ValueError("complete current goal before advancing")
-        if self.kind == "cross" and (self.phase != 0 or self.steps < 12):
-            raise ValueError("scout for at least 12 actions; only one body switch")
-        self.stage_steps.append(self.steps)
-        self.phase += 1
-        if self.kind == "cross":
-            self.mapping = self.rng.permutation(4).tolist()
-            self.gain = float(self.rng.uniform(.7, .9))
-        self._build()
-        return self.observe() if self.render_enabled else {}
-
-    def report(self, frame_id, point):
-        if (self.kind not in ("bridge", "rescue") or self.success or self.reports >= 3
-                or np.any(np.abs(self.position()[:2]) > 3.8)):
-            raise ValueError("report not permitted")
-        if not isinstance(frame_id, int) or isinstance(frame_id, bool):
-            raise ValueError("frame_id must be an integer")
-        if not isinstance(point, list) or len(point) != 2 or not all(isinstance(x, (int, float)) and math.isfinite(x) for x in point):
-            raise ValueError("report a finite 2D point")
-        self.reports += 1
-        frame = self.last_frames.get(frame_id)
-        self.success = bool(frame and frame["target_visible"] and np.linalg.norm(np.array(point)-self.target) < .3)
-        self.done = bool(self.success or self.reports >= 3 or self.steps >= LIMITS[self.kind])
+            self.data.qfrc_applied[:2] = 35*(velocity-self.data.qvel[:2])
+            mujoco.mj_step(self.model, self.data)       # contacts of the configuration it started from
+            if self._contact(self._touching()):
+                break
+        mujoco.mj_forward(self.model, self.data)        # and of the one it ended in
+        if not self.contact_stop:
+            self._contact(self._touching())
+        if self.phase == 1:
+            if not self.contact_stop and np.linalg.norm(self.position()-self.site.goal) < GOAL_TOLERANCE:
+                self.success = True
+            self.done = bool(self.success or self.contact_stop or self.remaining() == 0)
         return self.observe()
 
+    def advance(self):
+        if self.done or self.phase != 0:
+            raise ValueError("the body switch happens once, from the scout to the carrier")
+        if self.steps[0] < MIN_SCOUT_ACTIONS:
+            raise ValueError(f"scout for at least {MIN_SCOUT_ACTIONS} actions before the switch")
+        self.phase = 1
+        self.switched = True
+        self.bumper = False
+        self._build()
+        return self.observe()
+
+    # --- records ----------------------------------------------------------- #
     def metrics(self):
-        return {"success": float(self.success), "steps": self.steps,
-                "collisions": self.collisions, "damage_cost": self.damage,
-                "completed_stages": len(self.completed), "reports": self.reports,
-                "hover_seconds": self.hover_steps*.2 if self.kind == "flight" else 0.,
-                "scout_actions": self.stage_steps[0] if self.kind == "cross" and self.stage_steps else 0,
-                "post_switch_actions": self.steps-self.stage_steps[0]
-                    if self.kind == "cross" and self.stage_steps else 0,
-                **{f"stage_{i}_actions": end-start for i, (start, end) in enumerate(
-                    zip([0]+self.stage_steps, self.stage_steps+[self.steps]))}}
+        return {"success": float(self.success), "switched": float(self.switched),
+                "scout_actions": self.steps[0], "carrier_actions": self.steps[1],
+                "scout_contacts": self.scout_contacts, "contact_stop": float(self.contact_stop),
+                "final_goal_distance": float(np.linalg.norm(self.position()-self.site.goal))
+                if self.phase == 1 else -1.0}
+
+    def truth(self):
+        """The whole site and the robot's true state: answered only to the token-holding oracle."""
+        s = self.site
+        return {"phase": self.phase, "position": self.position().tolist(),
+                "velocity": self.data.qvel[:2].tolist(),
+                "buttons": [list(DIRECTIONS[m]) for m in self.mappings[self.phase]],
+                "gain": self.gains[self.phase], "speed": SPEED[self.phase], "half": self.half, "leg": LEG,
+                "mass": float(self.model.body_mass[self.agent_id]), "damping": float(self.model.dof_damping[0]),
+                "drive": 35., "timestep": float(self.model.opt.timestep), "substeps": SUBSTEPS,
+                "obstacles": [list(map(float, r)) for r in s.obstacles()],
+                "wide_opening": list(s.wide), "wall_x": s.wall_x,
+                "carrier_start": s.carrier_start.tolist(), "carrier_half": s.carrier_half,
+                "goal": s.goal.tolist(), "steps": list(self.steps)}
 
     def close(self):
-        if self.renderer:
+        if self.renderer is not None:
             self.renderer.close()
+            self.renderer = None

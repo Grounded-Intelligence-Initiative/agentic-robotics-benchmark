@@ -298,14 +298,29 @@ def decorate(xml, kind, radius=.13, seed=0):
             geom(world, f"gate_foot{y}", pos=(gx, y, .04), size=(.22, .20, .04), rgba=(.12, .14, .16, 1))
     elif kind in ("icl", "cross"):
         for g in list(world.findall("geom")):
-            if not g.get("name", "").startswith("wall"):
+            name = g.get("name", "")
+            if not name.startswith(("wall", "boundary")):
                 continue
             g.set("rgba", ".42 .49 .58 1")
             x, y, z = map(float, g.get("pos").split())
             sx, sy, sz = map(float, g.get("size").split())
-            geom(world, g.get("name")+"_cap", pos=(x, y, z+sz+.012), size=(sx+.015, sy, .012), rgba=(.42, .49, .58, 1))
-            for k, yy in enumerate(np.arange(y-sy+.12, y+sy, .5)):
-                geom(world, g.get("name")+f"_post{k}", pos=(x-.125, yy, .32), size=(.016, .025, .32), material="brushed")
+            geom(world, name+"_cap", pos=(x, y, z+sz+.012), size=(sx+.015, sy+.015, .012), rgba=(.42, .49, .58, 1))
+            if name.startswith("wall"):
+                for k, yy in enumerate(np.arange(y-sy+.12, y+sy, .5)):
+                    geom(world, name+f"_post{k}", pos=(x-.125, yy, .32), size=(.016, .025, .32), material="brushed")
+        for g in list(world.findall("geom")):
+            name = g.get("name", "")
+            if not name.startswith("crate"):
+                continue
+            # A strapped steel transport crate on its collision box (same footprint, no extra contact).
+            x, y, z = map(float, g.get("pos").split())
+            sx, sy, sz = map(float, g.get("size").split())
+            g.set("material", "rust_mat")
+            g.set("rgba", "1 1 1 1")
+            geom(world, name+"_lid", pos=(x, y, z+sz+.01), size=(sx-.03, sy-.03, .01), material="dark_metal")
+            for k, dx in enumerate((-.6, .6)):
+                geom(world, name+f"_strap{k}", pos=(x+dx*sx, y, z+sz+.022), size=(.025, sy+.004, .006),
+                     rgba=(.78, .62, .16, 1))
     elif kind == "bridge":
         water = world.find("geom[@name='water']")
         water.set("rgba", "1 1 1 1")

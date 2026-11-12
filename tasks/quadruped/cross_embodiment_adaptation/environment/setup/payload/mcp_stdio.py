@@ -1,35 +1,37 @@
-"""Minimal MCP stdio bridge; no shell, arbitrary paths, code execution, or reset."""
+"""Minimal MCP stdio bridge to the robot service; no shell, paths, code execution or reset of budgets."""
 import json
 import sys
+
 from client import Client
 
 TOOLS = [
-    {"name": "robot_observe", "description": "Observe two RGB cameras and remaining budgets.",
+    {"name": "robot_observe", "description": "Look through the robot's top-view camera; the robot does not move.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "robot_act", "description": "Apply one bounded action. It consumes simulation budget.",
+    {"name": "robot_act", "description": "Press one button: action [0], [1/3], [2/3] or [1]; 0.2 s of motion.",
      "inputSchema": {"type": "object", "properties": {"action": {"type": "array", "items": {"type": "number"}}},
                      "required": ["action"], "additionalProperties": False}},
-    {"name": "robot_advance", "description": "Advance to the next permitted task phase, without restoring budgets.",
+    {"name": "robot_advance", "description": "Switch once from the scout to the carrier (after 12 or more scout actions).",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "robot_report", "description": "Report a target using an observed frame ID and world XY.",
-     "inputSchema": {"type": "object", "properties": {"frame_id": {"type": "integer"},
-                     "point": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}},
-                     "required": ["frame_id", "point"], "additionalProperties": False}},
+    {"name": "robot_new_site", "description": "Commissioning: start a fresh mission on a new development site.",
+     "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
 ]
 
 
 def main():
     client = Client()
     for line in sys.stdin:
-        req = json.loads(line)
-        if "id" not in req:
+        try:
+            req = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(req, dict) or "id" not in req:
             continue
         try:
             method = req["method"]
             if method == "initialize":
                 result = {"protocolVersion": req.get("params", {}).get("protocolVersion", "2024-11-05"),
                           "capabilities": {"tools": {}},
-                          "serverInfo": {"name": "visual_robotics", "version": "1.0"}}
+                          "serverInfo": {"name": "cross_embodiment_robot", "version": "2.0"}}
             elif method == "tools/list":
                 result = {"tools": TOOLS}
             elif method == "tools/call":
@@ -45,7 +47,7 @@ def main():
             else:
                 raise ValueError("unsupported method")
             reply = {"jsonrpc": "2.0", "id": req["id"], "result": result}
-        except (ValueError, KeyError, OSError) as exc:
+        except (ValueError, KeyError, TypeError, OSError) as exc:
             reply = {"jsonrpc": "2.0", "id": req["id"], "error": {"code": -32602, "message": str(exc)}}
         print(json.dumps(reply), flush=True)
 

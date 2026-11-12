@@ -1,70 +1,46 @@
-# Cross-Embodiment Adaptation
+# Cross-Embodiment Adaptation: solution
 
-**Draft task candidate.** Explore a partially observed map with a small robot, switch to a larger robot with different button responses, then reach the navigation goal using the persistent map.
+![A development site (not a hidden one): the hall as reviewers see it, the privileged oracle's carrier route in orange,
+the scout's 1.4 m and the carrier's 0.5 m view circles; right: the scout's and the carrier's actual observations and
+the delivered carrier](preview.jpg)
 
-![Actual CPU simulator capture](preview.jpg)
+The large image is a reviewer view of development seed 1001 (no agent ever gets it). The agent's own observation is
+the masked top view on the right, as in [agent-view.png](agent-view.png): the scout sees 1.4 m around itself, the
+carrier 0.5 m, and the delivery pad's beacon is always visible.
 
-The large image is a reviewer camera. The inset and [agent-view.png](agent-view.png)
-show the actual restricted observation. Both use the same PBR scene, not a marketing mockup.
+## What is here
 
-## Visual refresh
-
-MuJoCo 3.16 Filament runs on CPU Vulkan (lavapipe), with no GPU fallback.
-The scenes include CC0 industrial scans, correctly scaled surface UVs, normal/roughness
-maps, fixed-exposure lighting, and spatial supersampling. Temporal post-processing is
-disabled so an unchanged scene produces identical camera pixels. Tracking stickers
-remain visible; no semantic overlays or privileged state are added to observations.
-
-Original action semantics, calibrated cameras, collision proxies, scoring and budgets
-are retained. Detailed scenery has zero mass and contact response. This is a visual
-upgrade of a lightweight simulation, not a claim of hardware-accurate dynamics.
-
-## Randomization
-
-Wall openings, starting poses, stage goals, target-body footprint, button mapping and response gain; lighting and background details. The map persists across the body switch; the target body's mapping and gain change only once.
-
-The private seed persists throughout an episode. Reconnecting does not resample the
-scene or restore budgets. Six-seed determinism/variation/phase checks passed.
+| path | what it is |
+|---|---|
+| `solve.sh` | the oracle episode: copies `oracle/` into `/home/user/submission/` |
+| `oracle/` | the privileged oracle mission program. It holds a token whose sha256 only `tests/hidden/oracle_token.sha256` knows, so the graded robot service answers its `truth` call (the site's obstacles and the robot's exact state and dynamics). It presses 12 scout buttons in place, switches, and drives the carrier along a route found by A* over whole button pulses in position-velocity space, each pulse predicted exactly and checked for clearance at its 10 ms substeps. It shows that every hidden mission can be completed; it is not an agent's solution. |
+| `reference/` | the image-only reference mission program (no token, no truth): it uses only what the instruction gives an agent. The scout identifies the buttons with four presses and explores until the carrier's planned route is seen end to end (plan the route with unseen cells assumed free, visit the first unseen stretch of its corridor, repeat); walls, crates and the pad are segmented by colour. After the switch, eight presses fit the carrier's lagged response (one pole and a steady speed), then A* over pulses on the scouted map, inflated by the worst-case 0.86 m footprint plus a margin. It is the evidence that the observations suffice (`tests/review/reference_dev.json`). |
 
 ## Validation
 
-- Image-only scripted reference: **3/3** private randomized validation scenes.
-- Development demonstration: seed 101, 147 actions, 0 contacts.
-- Real ALE gate: **untouched 0.0 / oracle 1.0**, after measuring the new anchor.
-- Anchor `success_rate`: 1.000000000, from 1 actual oracle runs.
-- CPU only; no Astra/frontier-model calls. Pinned engine `90a7c1cfa649c5dbf1078714773f99840e44cba3`.
-- Shared-service security probe: 14 permission/forgery checks, forged success scored zero.
-
-The numbers above are feasibility checks, not model difficulty measurements
-or a sealed benchmark test set.
-
-[Raw evidence](validation-evidence.json) · [Success example](success-example.json) ·
-[Interaction log](success-interaction.json)
+- The privileged oracle on the 8 hidden sites: see `tests/anchor.json` (the anchor) and `tests/review/selection.md`
+  (the pre-registered selection and its results).
+- The image-only reference on development seeds: `tests/review/reference_dev.json`.
+- How much of the map the carrier needs: `tests/review/map_ablation.json` (a perfectly controlled carrier with the
+  full map, with the partition but no crates, and with no map).
 
 ## Reproduce
 
-From `vendor/ale`:
+From the benchmark's pinned engine (`vendor/ale`):
 
 ```bash
 uv run ale lint ../../tasks/quadruped/cross_embodiment_adaptation
 uv run ale validate ../../tasks/quadruped/cross_embodiment_adaptation
 ```
 
-Inside the task image, `tests/review/check_randomization.py` checks six scenes and
-`tests/review/review_task.py --out /tmp/review --seeds 101 102 103` captures reviewer evidence.
-
 ## Limits
 
-Both bodies use scaled Go1 meshes and stabilized planar motion. Post-switch calibration consumes the same action budget: this is budgeted adaptation, not strict zero-shot. Whether prior exploration improves an actual model over no exploration is not yet measured.
-
-Keep this PR in **Draft**. Independent review, task registration and frontier-model
-difficulty evaluation remain pending. Scanned props do not make a task difficult by
-themselves. Earlier failures and pilot images are retained in the author's local logs.
+Both bodies use scaled Go1 meshes on simple collision boxes with supplied leg stabilization and planar base motion;
+the carrier's lag is a heavier body under the same velocity drive. This is a simulated task, not a hardware-validated
+digital twin.
 
 ## Assets
 
-Powered by Poly Haven: CC0 scanned utility cabinet, generator, concrete barrier and
-surface textures. Menagerie Crazyflie/Go1 visual meshes retain their original licenses.
-The lighting probe ships with the Apache-2.0 MuJoCo package. Pinned URLs, SHA256 hashes
-and notices are in `environment/visual_assets.json` and `environment/LICENSE.*`. No commercial
-warehouse pack, private laboratory scene or generated marketing image is included.
+Powered by Poly Haven: CC0 scanned utility cabinet, generator, concrete barrier and surface textures. Menagerie
+Crazyflie/Go1 visual meshes retain their original licenses. The lighting probe ships with the Apache-2.0 MuJoCo
+package. Pinned URLs, SHA256 hashes and notices are in `environment/visual_assets.json` and `environment/LICENSE.*`.
