@@ -104,6 +104,10 @@ the gripper grasps the kit. To deliver it, set it down on the floor next to the 
 | joint and belt encoders | | flipper angles, gauge, mast, head, arm joints, gripper opening, belt speeds |
 | radio | antenna on the mast | link up / down and its signal strength (dBm) |
 
+The colour cameras expose automatically for where they are: in a dark crawl space the image is brightened (the lamps'
+pool of light dominates it, and the street seen through an opening from inside comes out overexposed); outdoors they
+expose for daylight.
+
 Surfaces have the temperatures they would have on site: the shaded interior of the building at the day's air
 temperature (8 to 24 C, a little scatter between objects), sun-heated outdoor surfaces warmer (metal in the sun much
 warmer), the survivor's skin about 33-35 C and their clothes about 27-31 C. Appliances can still be warm.

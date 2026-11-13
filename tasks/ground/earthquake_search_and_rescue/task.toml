@@ -42,10 +42,12 @@ memory_mb = 16384
 
 # setup (no field: the engine bounds it at a fixed 1800 s): the givens in the agent home and the training ground.
 # [agent] timeout_sec: 4 h. [verifier] timeout_sec: the import check (at most 120 s), the desktop settle (at most 60 s),
-# then 4 hidden sites, each a site build (2-8 s) plus the program within its 1200 s program-time cap, which does not
-# count the cell's simulation (1800 s simulated at most, at 2-5x real time here: up to about 15 min of wall clock) and
-# sensor rendering (700 camera frames at 0.3-1 s, 1800 lidar sweeps at 0.2-0.3 s, 1800 thermal frames at 0.05 s on
-# OSMesa: up to about 25 min), plus the end and clean-up: at the bounds about 4000 s a site, 16000 s for the four,
+# then 4 hidden sites, each a site build with its look (the render and sensor twins, the sky: about 15 s on 8 CPUs;
+# the first colour frame's shaders and textures: about 15 s more) plus the program within its 1200 s program-time cap,
+# which does not count the cell's simulation (1800 s simulated at most, at 2-5x real time here: up to about 15 min of
+# wall clock) and sensor rendering (700 camera frames at 0.5-0.9 s: Filament colour on lavapipe, classic depth, the
+# encoding; 1800 lidar sweeps at about 0.2 s, 1800 thermal frames at 0.05 s: up to about 20 min, measured on 8 CPUs),
+# plus the end and clean-up: at the bounds about 4000 s a site, 16000 s for the four,
 # 20000 s with one site run twice after a cell failure; 6.5 h leaves margin. The oracle's sites run the reference
 # program inside one privileged call (about 3-6 min each here).
 [agent]

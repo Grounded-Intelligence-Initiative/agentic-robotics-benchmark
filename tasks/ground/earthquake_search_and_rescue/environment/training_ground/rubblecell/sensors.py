@@ -1,7 +1,11 @@
 """The crawler's sensors (cell internals): RGB-D cameras, the 16-channel lidar, the thermal camera, the odometry and
 the radio link, all computed from the simulation the way the real devices measure.
 
-Rendering: MuJoCo's classic renderer (OSMesa in the sandbox). One renderer per image size is kept for the episode.
+Rendering: the colour images come from look.py (MuJoCo's Filament renderer on the scene's render twin); depth, lidar,
+segmentation and thermal from MuJoCo's classic renderer (OSMesa in the sandbox) on the sensor twin (the physics geometry
+plus the drawn-only decor, whose ids follow the physics model's), both synced to the physics state before each frame.
+The physics model is never rendered. One classic renderer per image size is kept for the episode. With
+RUBBLECELL_LOOK=classic (development) the colour comes from the classic renderer too.
 * Cameras: colour + depth (z-depth, metres) with the device's noise, dropouts and range limits.
 * Lidar: a 16-channel spinning lidar on the mast top (elevations -15 .. +15 deg, 0.5 deg azimuth steps, 0.3-25 m),
   sampled from four depth renders (90 deg sectors) at the lidar's origin; points in the lidar frame (axes of the
@@ -36,10 +40,14 @@ SEG_W, SEG_H = 160, 120
 
 
 class Sensors(object):
-    def __init__(self, scene, rng, render=True):
+    def __init__(self, scene, rng, render=True, look=None):
         self.sc = scene
-        self.m = scene.model
-        self.d = scene.data
+        self.look = look
+        self.phys_d = scene.data
+        tw = look.twins if look is not None else None
+        # what the classic renderer draws: the sensor twin when there is one, else the physics model itself
+        self.m = tw.depth_model if tw is not None else scene.model
+        self.d = tw.depth_data if tw is not None else scene.data
         self.rng = rng
         self.render_ok = render
         self._r = {}
@@ -60,6 +68,10 @@ class Sensors(object):
             self.opt.geomgroup[g] = 0
 
     # ------------------------------------------------------------------ renderers
+    def _sync(self):
+        if self.look is not None:
+            self.look.twins.sync(self.phys_d)
+
     def _renderer(self, w, h):
         key = (w, h)
         if key not in self._r:
@@ -73,6 +85,9 @@ class Sensors(object):
             except Exception:  # noqa: BLE001
                 pass
         self._r = {}
+        if self.look is not None:
+            self.look.close()
+            self.look = None
 
     def _seg(self, cam_id, w, h):
         """(object id, object type) per pixel of an id-colour render; pixels whose colour is no geom's id (the edge
@@ -137,7 +152,11 @@ class Sensors(object):
         """(rgb uint8, depth float32 metres with NaN where invalid or None, intrinsics, T_chassis_cam 4x4)."""
         c = CAMERAS[name]
         cid = self.cam_ids[name]
-        rgb = self._render(cid, c["w"], c["h"], "rgb")
+        self._sync()
+        if self.look is not None:
+            rgb = self.look.rgb(self.phys_d, c["cam"], c["w"], c["h"])
+        else:
+            rgb = self._render(cid, c["w"], c["h"], "rgb")
         sig = 2.0
         rgb = np.clip(rgb.astype(np.float32) + self.rng.normal(0.0, sig, rgb.shape), 0, 255).astype(np.uint8)
         dep = None
@@ -161,7 +180,7 @@ class Sensors(object):
 
     def cam_extrinsics(self, cid):
         """4x4 pose of the camera's OPTICAL frame (x right, y down, z forward) in the chassis frame."""
-        d = self.d
+        d = self.phys_d
         ch = self.sc.info["chassis_body"]
         Rw_ch = d.xmat[ch].reshape(3, 3)
         pw_ch = d.xpos[ch]
@@ -186,6 +205,7 @@ class Sensors(object):
         fx = fy
         cx, cy = (w - 1) / 2.0, (h - 1) / 2.0
         pts = []
+        self._sync()
         for k, cid in enumerate(self.lidar_cams):
             z = self._render(cid, w, h, "depth").astype(np.float64)
             lo = math.radians(k * 90.0 - 45.0)
@@ -216,7 +236,7 @@ class Sensors(object):
 
     def lidar_pose(self):
         """4x4 pose of the lidar frame (chassis axes, origin at the optical centre) in the chassis frame."""
-        d = self.d
+        d = self.phys_d
         ch = self.sc.info["chassis_body"]
         cid = self.lidar_cams[0]
         Rw_ch = d.xmat[ch].reshape(3, 3)
@@ -225,12 +245,19 @@ class Sensors(object):
         return T
 
     # ------------------------------------------------------------------ thermal
-    def set_temperatures(self, temps, survivor_geoms):
-        self._temps = np.asarray(temps, np.float32)
+    def set_temperatures(self, temps, survivor_geoms, outdoor_c=None):
+        """Per-geom temperatures of the physics model; the sensor twin's drawn-only decor (ids past the physics
+        model's, all of it outdoors) at `outdoor_c`."""
+        temps = np.asarray(temps, np.float32)
+        if self.m.ngeom > len(temps):
+            pad = float(outdoor_c) if outdoor_c is not None else float(np.median(temps))
+            temps = np.concatenate([temps, np.full(self.m.ngeom - len(temps), pad, np.float32)])
+        self._temps = temps
         self._survivor_geoms = np.asarray(sorted(survivor_geoms), np.int32)
 
     def thermal(self):
         """(centi-kelvin uint16 H x W, survivor pixel count) of the thermal camera."""
+        self._sync()
         seg = self._render(self.thermal_cam, THERMAL["w"], THERMAL["h"], "seg")
         ids = seg[..., 0].astype(np.int64)
         typ = seg[..., 1].astype(np.int64)
@@ -252,6 +279,7 @@ class Sensors(object):
         """How many pixels of the survivor a low-resolution segmentation of camera `name` shows (the visibility record)."""
         if self._survivor_geoms is None:
             return 0
+        self._sync()
         seg = self._render(self.cam_ids[name], SEG_W, SEG_H, "seg")
         ids = seg[..., 0].astype(np.int64)
         typ = seg[..., 1].astype(np.int64)

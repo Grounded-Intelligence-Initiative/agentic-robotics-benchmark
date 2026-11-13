@@ -40,6 +40,7 @@ from . import grasp
 from .plan import draw_plan
 from .robot import CRAWLER, Crawler, arm_fk, arm_ik
 from .scene import build_scene
+from .look import SceneLook, look_mode
 from .sensors import CAMERAS, LIDAR, THERMAL, Odometry, Sensors
 
 __all__ = ["RubbleCellServer", "DEFAULT_CONFIG", "PUBLIC_METHODS"]
@@ -150,9 +151,16 @@ class RubbleCellServer(object):
         self.robot = Crawler(m, d)
         self.robot.set_initial()
         mujoco.mj_forward(m, d)
-        self.sensors = Sensors(self.sc, self.rng, render=self.render_enabled)
+        look = None
+        if self.render_enabled and look_mode() == "filament":
+            # the colour images' look (look.py): its own twins of the scene; the physics model is not touched
+            look = SceneLook(self.sc)
+            self.look_build_s = look.build_s
+        self.sensors = Sensors(self.sc, self.rng, render=self.render_enabled, look=look)
         self._index()
-        self.sensors.set_temperatures(self._temperatures(), self.survivor_geoms)
+        env = self.plan["env"]
+        self.sensors.set_temperatures(self._temperatures(), self.survivor_geoms,
+                                      outdoor_c=env["ambient_c"] + 7.0 * env["sun"])
         st = self.plan["start"]
         self.odom = Odometry(self.rng, (st["x"], st["y"]), st["yaw"])
         # settle 1 s (the robot set down on the street)

@@ -285,6 +285,13 @@
    "cell_version": "0.1.2",
    "change": "the welds that hold the props' slabs (and the kit's latch) act at the body's own centre (MuJoCo's default anchor near the world origin let a slab far from the origin sink out of sight, leaving its crate with no visible load)",
    "rerun": "all 16 candidates re-run with the frozen reference (the runs above): the end times shift slightly, every score is the same as before (completions k = 1, 7, 9, 10, 11, 12, 14, 15); hidden set unchanged"
+  },
+  {
+   "date": "2026-11-13",
+   "cell_version": "0.2.0",
+   "change": "the look: the cameras' colour images from MuJoCo's Filament renderer on a render twin of the scene (physically based materials, the sky, the city around the cordon), depth, lidar, thermal and the visibility record from the classic renderer on a sensor twin with the same drawn-only decor; the physics model and every random generator of the cell untouched (tests/README.md section 7)",
+   "evidence": "the compiled physics model's MJB bytes hash identically before any look code existed and after building and rendering the whole look (4 hidden sites, lanes, two training sites); the frozen reference program in the task image repeats the 0.1.2 selection runs sample for sample on the four hidden sites and the lanes (every state record identical, every score 1.0)",
+   "hidden_set": "unchanged (k = 1, 7, 9, 10): the physics, hence every candidate's run, is the same as 0.1.2's"
   }
  ]
 }

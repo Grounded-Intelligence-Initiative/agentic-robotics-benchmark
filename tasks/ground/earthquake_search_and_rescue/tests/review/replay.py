@@ -1,147 +1,182 @@
 """Render a mission video from a trajectory record of the rubble cell (out/traj_<tag>.npz under /opt/arb-verify of a
 kept verifier sandbox: time, qpos and eq_active samples at 4 Hz). Maintainers' review tool; nothing runs it.
 
-usage: python3 tests/review/replay.py TRAJ.npz OUT.mp4 [--kind hidden] [--fps 24] [--every 1] [--size 1280x720]
-       (needs mujoco, numpy, Pillow, ffmpeg and an OpenGL backend: MUJOCO_GL=egl on a GPU host, osmesa elsewhere)
+usage: python3 tests/review/replay.py TRAJ.npz OUT.mp4 [--title TEXT] [--size 1600x900] [--fps 24] [--every 1]
+                                       [--intro 6] [--crf 24]
+       (needs mujoco with its Filament module, numpy, Pillow, ffmpeg and a Vulkan driver: a GPU's, or Mesa's lavapipe
+       at a few seconds a frame; the look's texture sets are made on first use, see rubblecell/pbr.py)
 
-Layout: a chase camera over the robot (ceilings and dropped slabs drawn see-through), the robot's mast camera as an
-inset, a top-down cutaway map of the site with the path so far, a caption with the time. H.264 via ffmpeg (crf 30).
-Host-side tool (EGL).
+The grader saves each episode's state at 4 Hz (time, qpos, the welds' activity); this rebuilds the site from its seed,
+dresses it with the look's video quality (look.SceneLook: the render twin unbatched, so the storeys over the robot can
+be cut away) and films it with MuJoCo's Filament renderer: an establishing crane shot down the street, then a chase
+camera that follows the robot, the storeys above it cut away while it is inside, the robot's mast camera inset, the
+frame letterboxed with a vignette and a light film grain. One video frame per state sample: 4 Hz of simulated time at
+24 frames per second plays 6x faster than the mission.
 """
-
 import argparse
 import math
 import os
 import subprocess
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))     # tests/ (rubblecell)
+for k in ("DISPLAY", "WAYLAND_DISPLAY"):
+    os.environ.pop(k, None)
 
 import mujoco  # noqa: E402
 import numpy as np  # noqa: E402
 from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 
+from rubblecell.look import SceneLook  # noqa: E402
 from rubblecell.plan import draw_plan  # noqa: E402
-from rubblecell.robot import Crawler  # noqa: E402
 from rubblecell.scene import build_scene  # noqa: E402
 
-SEE_THROUGH = ("ceil", "upslab", "upwall", "upwin", "pancake", "voidslab", "hangpanel", "nbuilding", "nwin", "sign",
-               "fillslab", "backwall", "ceilfill")
+
+def font(size):
+    for p in ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/usr/share/fonts/dejavu/DejaVuSans.ttf"):
+        if os.path.isfile(p):
+            return ImageFont.truetype(p, size)
+    return ImageFont.load_default()
+
+
+def look_at(pos, target, roll_up=(0.0, 0.0, 1.0)):
+    pos, target = np.asarray(pos, float), np.asarray(target, float)
+    f = target - pos
+    f /= np.linalg.norm(f)
+    up = np.asarray(roll_up, float)
+    up = up - f * up.dot(f)
+    up /= np.linalg.norm(up)
+    return pos, f, up
+
+
+def smoothstep(t):
+    t = min(1.0, max(0.0, t))
+    return t * t * (3 - 2 * t)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("traj")
     ap.add_argument("out")
-    ap.add_argument("--kind", default=None)
+    ap.add_argument("--title", default="")
+    ap.add_argument("--size", default="1600x900")
     ap.add_argument("--fps", type=int, default=24)
     ap.add_argument("--every", type=int, default=1)
-    ap.add_argument("--size", default="1280x720")
-    ap.add_argument("--title", default="")
-    ap.add_argument("--crf", type=int, default=30)
+    ap.add_argument("--intro", type=float, default=6.0)
+    ap.add_argument("--crf", type=int, default=24)
+    ap.add_argument("--max-frames", type=int, default=0)
     a = ap.parse_args()
+    W, H = (int(x) for x in a.size.split("x"))
     z = np.load(a.traj, allow_pickle=True)
     traj = z["traj"]
-    seed = int(z["seed"])
-    kind = a.kind or str(z["kind"])
-    W, H = [int(v) for v in a.size.split("x")]
+    seed, kind = int(z["seed"]), str(z["kind"])
     plan = draw_plan(seed, kind)
     sc = build_scene(plan)
-    m, d = sc.model, sc.data
-    Crawler(m, d).set_initial()
+    m = sc.model
+    d = mujoco.MjData(m)
     nq, neq = m.nq, m.neq
+    t0 = time.time()
+    look = SceneLook(sc, quality="video")
+    print("[film] look built in %.1f s" % (time.time() - t0), flush=True)
+    tw = look.twins
+    tm, td = tw.rgb_model, tw.rgb_data
     S = sc.site
-    # see-through structure for the chase view
-    hide = np.array([i for i in range(m.ngeom) if m.geom(i).name.startswith(SEE_THROUGH)], int)
-    m.vis.map.znear = 0.02 / max(1.0, m.stat.extent)
-    m.vis.map.zfar = 150.0 / max(1.0, m.stat.extent)
-    r_main = mujoco.Renderer(m, H, W)
-    iw, ih = W // 3, (W // 3) * 3 // 4
-    r_cam = mujoco.Renderer(m, ih, iw)
-    mw = W // 4
-    mh = int(mw * (S.hy1 - 0.0 + 3.0 - (-6.0)) / (S.W + 6.0)) if False else int(mw * (S.D + 9.0) / (S.W + 4.0))
-    r_map = mujoco.Renderer(m, max(64, mh), max(64, mw))
-    chassis = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "chassis")
-    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", "%dx%d" % (W, H), "-r",
-           str(a.fps), "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", str(a.crf), "-pix_fmt", "yuv420p",
-           "-movflags", "+faststart", a.out]
-    ff = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
-        small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 15)
-    except OSError:
-        font = small = ImageFont.load_default()
-    path = []
-    cam_yaw = None
-    gid0 = m.geom_group.copy()
-    for k in range(0, len(traj), a.every):
+    ch = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "chassis")
+    # the static geoms the cut-away may hide: bottom height of each (the twin at rest)
+    mujoco.mj_kinematics(tm, td)
+    static = np.array([int(tm.body_rootid[tm.geom_bodyid[i]]) == 0 for i in range(tm.ngeom)])
+    bottom = np.empty(tm.ngeom)
+    inside_fp = np.zeros(tm.ngeom, bool)
+    for i in range(tm.ngeom):
+        R = td.geom_xmat[i].reshape(3, 3)
+        half = np.asarray(tm.geom_aabb[i][3:], float)
+        c = td.geom_xpos[i] + R @ np.asarray(tm.geom_aabb[i][:3], float)
+        bottom[i] = c[2] - float(np.abs(R[2]) @ half)
+        inside_fp[i] = (-0.4 < c[0] < S.W + 0.4) and (-0.4 < c[1] < S.D + 0.4)
+    st = plan["start"]
+    yaw0 = float(st["yaw"])
+    cam_pos = None
+    cam_tgt = None
+    frames = list(range(0, len(traj), a.every))
+    n_intro = int(a.intro * a.fps)
+    total = n_intro + len(frames)
+    if a.max_frames:
+        total = min(total, a.max_frames)
+    ff = subprocess.Popen(["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", "%dx%d" % (W, H),
+                           "-r", str(a.fps), "-i", "-", "-c:v", "libx264", "-preset", "slow", "-crf", str(a.crf),
+                           "-pix_fmt", "yuv420p", "-movflags", "+faststart", a.out], stdin=subprocess.PIPE)
+    bar = int((H - W / 2.2) / 2)
+    yy, xx = np.mgrid[0:H, 0:W]
+    vig = 1.0 - 0.32 * (((xx - W / 2) / (W / 2)) ** 2 + ((yy - H / 2) / (H / 2)) ** 2) ** 1.4
+    vig = np.clip(vig, 0.55, 1.0)[..., None].astype(np.float32)
+    grain_rng = np.random.default_rng(7)
+    f_title, f_cap = font(int(H * 0.032)), font(int(H * 0.022))
+    iw, ih = int(W * 0.26), int(W * 0.26 * 0.75)
+    tstart = time.time()
+    for n in range(total):
+        k = frames[0] if n < n_intro else frames[min(n - n_intro, len(frames) - 1)]
         row = traj[k]
-        t = float(row[0])
         d.qpos[:] = row[1:1 + nq]
         if neq:
-            d.eq_active[:] = (row[1 + nq:1 + nq + neq] > 0.5).astype(np.uint8)
-        mujoco.mj_forward(m, d)
-        p = d.xpos[chassis].copy()
-        R = d.xmat[chassis].reshape(3, 3)
-        yaw = math.atan2(R[1, 0], R[0, 0])
-        cam_yaw = yaw if cam_yaw is None else cam_yaw + 0.15 * ((yaw - cam_yaw + math.pi) % (2 * math.pi) - math.pi)
-        path.append(p[:2].copy())
-        # chase view: structure overhead hidden
-        m.geom_group[hide] = 5
-        c = mujoco.MjvCamera()
-        c.lookat[:] = p + np.array([0, 0, 0.2])
-        inside = p[1] > 0.3
-        c.distance = 3.2 if inside else 4.0
-        c.azimuth = math.degrees(cam_yaw) + (20.0 if inside else 0.0)
-        c.elevation = -38.0 if inside else -22.0
-        r_main.update_scene(d, c)
-        img = r_main.render()
-        # top-down map
-        cm = mujoco.MjvCamera()
-        cm.lookat[:] = [S.W / 2, (S.D - 6.0) / 2, 0]
-        cm.distance = max(S.W + 4, S.D + 9) * 1.15
-        cm.azimuth = 90
-        cm.elevation = -89.9
-        r_map.update_scene(d, cm)
-        mp = r_map.render()
-        m.geom_group[:] = gid0
-        # the robot's own view
-        r_cam.update_scene(d, camera="mast_rgbd")
-        ci = r_cam.render()
-        frame = Image.fromarray(img)
-        dr = ImageDraw.Draw(frame)
-        frame.paste(Image.fromarray(ci), (W - iw - 12, 12))
-        dr.rectangle([W - iw - 13, 11, W - 11, 12 + ih], outline=(255, 255, 255), width=2)
-        dr.text((W - iw - 4, 16), "robot mast camera", fill=(255, 255, 255), font=small)
-        # map with path
-        mi = Image.fromarray(mp)
-        md = ImageDraw.Draw(mi)
-        mw_, mh_ = mi.size
-
-        def to_px(xy):
-            # top-down camera: x right, y up; span estimated from the camera distance and fovy
-            span_y = 2 * cm.distance * math.tan(math.radians(m.vis.global_.fovy / 2))
-            span_x = span_y * mw_ / mh_
-            u = (xy[0] - cm.lookat[0]) / span_x * mw_ + mw_ / 2
-            v = -(xy[1] - cm.lookat[1]) / span_y * mh_ + mh_ / 2
-            return u, v
-        if len(path) > 1:
-            md.line([to_px(q) for q in path], fill=(255, 200, 0), width=2)
-        u, v = to_px(p)
-        md.ellipse([u - 4, v - 4, u + 4, v + 4], fill=(255, 60, 0))
-        frame.paste(mi, (12, H - mh_ - 12))
-        dr.rectangle([11, H - mh_ - 13, 12 + mw_, H - 11], outline=(255, 255, 255), width=2)
-        txt = "%s   t = %5.1f s" % (a.title, t)
-        dr.text((16, 12), txt, fill=(255, 255, 255), font=font, stroke_width=2, stroke_fill=(0, 0, 0))
-        ff.stdin.write(np.asarray(frame.convert("RGB")).tobytes())
+            d.eq_active[:] = row[1 + nq:1 + nq + neq] > 0.5
+        mujoco.mj_kinematics(m, d)
+        mujoco.mj_camlight(m, d)
+        tw.sync(d)
+        p = d.xpos[ch].copy()
+        R = d.xmat[ch].reshape(3, 3)
+        hd = R[:, 0].copy()
+        hd[2] = 0.0
+        hd /= max(1e-6, np.linalg.norm(hd))
+        side = np.array([-hd[1], hd[0], 0.0])
+        inside = (0.15 < p[0] < S.W - 0.15) and (0.15 < p[1] < S.D - 0.15)
+        # the camera: the crane down the street at first, then the chase
+        if inside:
+            want_pos = p - hd * 2.4 + side * 0.9 + np.array([0, 0, 3.6])
+            want_tgt = p + hd * 0.6 + np.array([0, 0, 0.15])
+        else:
+            want_pos = p - hd * 3.4 + side * 1.4 + np.array([0, 0, 1.9])
+            want_tgt = p + hd * 1.0 + np.array([0, 0, 0.35])
+        if n < n_intro:
+            u = smoothstep(n / max(1, n_intro - 1))
+            crane = np.array([p[0] - 9.0, -9.5, 9.0])
+            crane_t = np.array([p[0] + 2.0, 6.0, 4.0])
+            cam_pos = crane * (1 - u) + want_pos * u
+            cam_tgt = crane_t * (1 - u) + want_tgt * u
+        else:
+            al = 0.10
+            cam_pos = cam_pos * (1 - al) + want_pos * al
+            cam_tgt = cam_tgt * (1 - al) + want_tgt * al
+        # the cut-away: the storeys (and a dropped slab) over the robot while it is inside the building
+        if inside:
+            cut = static & inside_fp & (bottom > p[2] + 0.45)
+            td.geom_xmat[cut] = 0.0
+        pos, fwd, up = look_at(cam_pos, cam_tgt)
+        img = look.renderer.view(d, pos, fwd, up, 52.0, W, H, ssaa=1, gain=1.0 if not inside else 1.4)
+        inset = look.renderer.camera(d, "mast_rgbd", iw, ih)
+        frame = img.astype(np.float32) * vig
+        frame += grain_rng.normal(0.0, 2.2, frame.shape).astype(np.float32)
+        frame = np.clip(frame, 0, 255).astype(np.uint8)
+        frame[:bar] = 0
+        frame[H - bar:] = 0
+        im = Image.fromarray(frame)
+        x0, y0 = W - iw - int(W * 0.02), H - bar - ih - int(H * 0.03)
+        dr = ImageDraw.Draw(im)
+        dr.rectangle([x0 - 3, y0 - 3, x0 + iw + 2, y0 + ih + 2], outline=(235, 235, 235), width=2)
+        im.paste(Image.fromarray(inset), (x0, y0))
+        dr.text((x0 + 8, y0 + 6), "mast camera", fill=(240, 240, 240), font=f_cap)
+        if a.title:
+            dr.text((int(W * 0.03), bar + int(H * 0.025)), a.title, fill=(245, 245, 245), font=f_title)
+        dr.text((int(W * 0.03), H - bar + int(H * 0.012)), "t = %5.1f s  (x%d)" % (row[0], max(1, round(a.fps / 4 * a.every))),
+                fill=(210, 210, 210), font=f_cap)
+        ff.stdin.write(np.asarray(im).tobytes())
+        if n % 120 == 0:
+            el = time.time() - tstart
+            print("[film] frame %d/%d  %.2f s/frame" % (n, total, el / max(1, n)), flush=True)
     ff.stdin.close()
     ff.wait()
-    for r in (r_main, r_cam, r_map):
-        try:
-            r.close()
-        except Exception:  # noqa: BLE001
-            pass
-    print("wrote", a.out, os.path.getsize(a.out) // 1024, "KiB", len(traj) // a.every, "frames")
+    look.close()
+    print("[film] wrote %s %d frames, %.1f MB" % (a.out, total, os.path.getsize(a.out) / 1e6), flush=True)
 
 
 if __name__ == "__main__":
