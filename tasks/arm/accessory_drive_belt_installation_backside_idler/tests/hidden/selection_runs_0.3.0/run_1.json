@@ -1,0 +1,18 @@
+{
+ "i": 1,
+ "seed": 555945938315199980,
+ "started_utc": "2026-11-12T20:59:22+00:00",
+ "frozen_ok": true,
+ "where": "host",
+ "cell": "belt-station/0.3.0",
+ "python": "3.12.14",
+ "numpy": "2.5.3",
+ "mujoco": "3.16.0",
+ "tool_sha256": "ab5cafbfcbf5fbe0db1a433a98cf59ee175f51d986de74b2327f0d97ac3bfe24",
+ "start_contact_depth_mm": 0.0,
+ "idle_1s_max_move_mm": 0.566,
+ "belt_lowest_mm": 226.7,
+ "engine_id": "EN-99980",
+ "start_ok": true,
+ "wall_s": 1.5
+}

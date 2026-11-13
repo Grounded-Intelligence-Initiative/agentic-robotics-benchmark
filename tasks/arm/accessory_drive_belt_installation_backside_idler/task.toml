@@ -1,0 +1,71 @@
+# accessory_drive_belt_installation_backside_idler (Physical Execution, robotic arm, two arms).
+#
+# The belt station of a compact-engine dressing line: two torque-controlled Franka Pandas (MuJoCo, CPU) fit the new
+# poly-V accessory belt of one engine per episode on a five-pulley drive with a smooth backside idler on the top run and
+# the automatic tensioner on the slack side, the technician's way: the belt goes over the crank, the alternator and the
+# water pump with its top run under the idler (its back on the idler's face), one arm swings the tensioner open by its
+# service lever along its arc and holds it against its spring, the other puts the last span on, and the tensioner is
+# let back slowly onto the belt. After finish the grader runs the drive in (crank clockwise, 1.5 rev/s for 4 s against
+# the accessories' drag) and inspects it: every pulley wrapped on its right side with the belt in its groove zone or on
+# the smooth pulleys' faces (not on a shoulder or a flange), the idler wrapped on the belt's back (a hard gate: a belt
+# over the idler or in front of it can still put the pointer in the window), the run-in slip within 3 %, the tensioner
+# at rest inside its window marks. A snap-back of the tensioner, a
+# dropped belt or a protective stop (a link pressing anything, the other arm included, with more than 30 N for 30 ms)
+# scores the engine 0. The belt is a closed chain of rigid links; how it hangs, slides off a pulley top, rides a
+# shoulder or slips in a hand is contact dynamics. The engine's pose, the belt's stiffness, mass, length and friction,
+# the tensioner's spring and damper and the drag vary per engine within documented ranges. Nothing about the belt is
+# on the wire: the program has the robots' own sensors (joints, tool poses, grippers, wrist force/torque) and three
+# calibrated RGB-D cameras, and every outcome is silent. Score = the mean over the hidden engines of g x q (cell_manual).
+# The hidden set is fixed: engines pinned in tests/hidden/seeds.json, selected by the rule registered (with the sha256
+# of every frozen file) in tests/hidden/selection.json before the draw. Realism rule: no simulator of the station in the
+# agent's sandbox, no practice cell (the program meets each engine in its graded episode); the agent has the drive
+# drawing and data sheets, the cell's manuals with one full describe() answer, the robot's model and the client.
+# Family: the station (cell, controller, cameras, grip/safety/damage rules, wire, verify kit) is shared with
+# arm/accessory_drive_belt_installation (drive A); this task is its drive B: five members with two back wraps (the
+# smooth idler I on the top run, T on the slack side after a clockwise crank), mirrored arm roles, the last span on the
+# left run from WP to C, the lever opening clockwise up the left of WP. The idler adds mainly a silent misroute (the
+# belt over I, or in front of I, can leave the pointer in the window) that the hard I gate scores 0; the honest
+# program never needed a separate tuck under I. tests/NOTICE.md lists what is shared and what is new.
+# Value: belt routing on serpentine accessory drives is still manual on reman, MRO and low-volume engine lines; this is
+# the robot-programming side of automating it with two collaborative arms.
+# Declared simplifications: the belt is modelled flat (no rib/groove interlock) and does not twist; the grip on a belt
+# link or the service lever is a rule (documented verbatim); the tensioner's spring, the belt tension and the drag are
+# scaled to about one tenth of a production engine's; the belt's mass (0.22-0.26 kg/m) is about twice a real 6PK belt's
+# (0.06-0.12 kg/m) and was not tuned to it; everything but the pulleys (the hands' backs and open fingers, the arms, the
+# peg, the engine block) touches the belt without friction (documented in catalog.md and describe()["belt"]).
+
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/accessory_drive_belt_installation_backside_idler"
+
+[metadata]
+platform = "arm"
+tags = ["accessory-drive", "belt", "deformable", "bimanual", "tensioner", "backside-idler", "force-control", "panda", "mujoco",
+        "code-as-policy", "camera", "force-torque", "hidden-seed"]
+
+[environment]
+cpus = 4
+memory_mb = 12288
+
+# [agent] timeout_sec: 6 h. [verifier] timeout_sec, at the bounds: an episode may use 2400 s of program time + 1500 s
+# simulated + 600 frames. Measured in the task image (one CPU per episode): the cell's wall 0.72-0.85 s per simulated
+# second, 0.25-0.27 s per rendered frame, build + settle + run-in under 15 s, so an episode at every bound takes about
+# 2400 + 1275 + 160 + 15 = 3850 s; 4 episodes + one possible re-run + the import check and the desktop settle come to
+# about 19500 s; with ~30 % margin 25200 s. Each episode is also cut at a 4800 s wall (grader_config.json
+# episode_wall_cap_s, a safety net above the bounds, unreachable inside the documented budgets without heavy CPU
+# contention: the CPU cap cuts first), so 5 x 4800 s + start (about 24150 s, the pathological case) stays inside it with
+# about 4 % to spare. (The oracle's own episodes take 227-797 s in the task image.)
+[agent]
+timeout_sec = 21600
+network_mode = "no-network"
+
+[verifier]
+timeout_sec = 25200
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 4
+memory_mb = 12288
+gpus = 0
