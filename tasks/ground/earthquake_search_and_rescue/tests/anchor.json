@@ -1,0 +1,8 @@
+{
+ "direction": "higher",
+ "full_at": 0.95,
+ "metric": "rescue_score",
+ "note": "rescue_score is the mean over the hidden sites of the mission's score (rubblecell.server.score: located 0.45, kit 0.25, returned 0.30; a void scores the site 0), already on [0, 1]; ratio = score / value, reward = clamp(ratio / full_at, 0, 1).",
+ "source": "reference program (tests/reference: the site's plan and the true pose) on the fixed hidden set of cell version 0.1.2 (tests/hidden/seeds.json: 4 sites selected by the pre-registered rule of tests/hidden/selection.json, 8 of 16 candidates completed by the frozen reference): `ale validate` validate-eb7d31c2 (2026-11-13, engine bfb7505, separate verification, the task image, 8 CPUs) measured rescue_score 1.0 (every site located 1, kit 1, returned 1; no void, no lost robot; 518 s simulated and 144 s of wall clock per site on average), as did validate-a29242f2 on cell 0.1.1 and validate-c664aa8b on cell 0.1.0 (525 s simulated and 141 s of wall clock per site on average) and the selection runs; full_at 0.95 leaves room for a rounding difference on another CPU (the physics is deterministic on one machine).",
+ "value": 1.0
+}
