@@ -1,0 +1,9 @@
+{
+ "example/rescue.py": "2be705ccf9ed0028b7109005fafd083155ae904ed4063ea943cce750f09e4ac2",
+ "given/field_guide.md": "a9a8c98114c59f23e4ae19fdd2085b2602020f599010de80713e3372c20039dd",
+ "given/lib/rubblecell/__init__.py": "4f5507ad452f2ebd286798d1c2607a273eaf7198d82389446d19db507160629b",
+ "given/lib/rubblecell/client.py": "fb76cae32d7c7aeca8d7eb36374b2bacdf61c49f694d70b00b9e158584a652f9",
+ "given/robot_api.md": "b6407e8248229b87f85229477360a1123576171d5c4563f0d470215bdc3b5c77",
+ "given/robot_manual.md": "7eba8a041cbd77dc19524e92220e30079eb28584071e6e06007e963c80281e70",
+ "training/run_mission.py": "93e224f91f3a776cc2141e7364f025aee48764dff3b8fcb37fc9372716150293"
+}
