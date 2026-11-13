@@ -1,0 +1,8 @@
+{
+ "direction": "higher",
+ "metric": "belt_acceptance",
+ "value": 1.0,
+ "full_at": 0.83,
+ "note": "Set by the pre-registered rule tests/review/full_at_rule.md (sha256 157b66d2..., registered 2026-11-12 18:33Z): the evaluation of the honest program on the sealed fresh set (16 engines, tests/review/fresh_seeds.json) + the 4 hidden engines gave p = 19/20 on the development host and p = 18/20 = 0.90 in the task image (rule 6: the lower stands); full_at = floor_to_0.01(0.90 - 1/16) = 0.83. ratio = score / value, reward = clamp(ratio / full_at, 0, 1).",
+ "source": "the oracle (solution/honest/: the honest program, public API, the given documents and the given Panda model only; graded like any submission) on cell belt-station/0.3.0, one single-episode verify per engine in the task image (cold build belt-station:b1): belt_acceptance 1.0 on all 4 hidden engines (value 1.0), 14/16 fresh engines at 1.0 (tests/review/oracle_record.md)."
+}

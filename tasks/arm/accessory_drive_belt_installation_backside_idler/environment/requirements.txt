@@ -1,0 +1,7 @@
+# accessory_drive_belt_installation_backside_idler: the ONE list of Python dependencies of the task image (/opt/venv, Python 3.12).
+# Pinned to the versions the cell was developed and tested against: MuJoCo 3.16.0 (the furniture cell's pin) and the arm chain's numerics pins (the development venv has the same versions).
+mujoco==3.16.0
+numpy==2.5.3
+scipy==1.18.1
+pillow==12.3.0
+opencv-python-headless==5.0.0.93

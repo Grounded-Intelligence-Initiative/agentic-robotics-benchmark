@@ -1,0 +1,539 @@
+{
+ "cell_version": "belt-station/0.3.0",
+ "units": {
+  "length": "m",
+  "angle": "rad",
+  "quaternion": "wxyz",
+  "time": "s",
+  "force": "N",
+  "torque": "N m"
+ },
+ "frames": {
+  "world": "x forward (towards the engine), y left, z up; the base plate top is z = 0",
+  "engine": "E: origin on the crank axis in the plane of the accessory face; x to the right and z up as seen from the robots, y into the engine; depth d = -y in front of the face",
+  "engine_nominal_pose": {
+   "origin_world": [
+    0.55,
+    0.0,
+    0.3
+   ],
+   "x_E_world": [
+    0.0,
+    -1.0,
+    0.0
+   ],
+   "y_E_world": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "z_E_world": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "tolerance": "the engine stands on its pallet within +-4 mm, +-1 deg yaw and +-0.5 deg roll of nominal"
+  }
+ },
+ "robots": {
+  "model": "two franka_emika_panda with the Franka hand (MuJoCo Menagerie, Apache-2.0), torque-driven joints; links gravity-compensated",
+  "arms": {
+   "left": {
+    "base_pos": [
+     0.0,
+     0.35,
+     0.0
+    ],
+    "base_yaw_rad": 0.0,
+    "home_q": [
+     0.35,
+     -0.55,
+     0.0,
+     -2.35,
+     0.0,
+     1.85,
+     0.785
+    ],
+    "joints": [
+     "L/joint1",
+     "L/joint2",
+     "L/joint3",
+     "L/joint4",
+     "L/joint5",
+     "L/joint6",
+     "L/joint7"
+    ],
+    "joint_range": [
+     [
+      -2.8973,
+      2.8973
+     ],
+     [
+      -1.7628,
+      1.7628
+     ],
+     [
+      -2.8973,
+      2.8973
+     ],
+     [
+      -3.0718,
+      -0.0698
+     ],
+     [
+      -2.8973,
+      2.8973
+     ],
+     [
+      -0.0175,
+      3.7525
+     ],
+     [
+      -2.8973,
+      2.8973
+     ]
+    ],
+    "torque_limit_Nm": [
+     87.0,
+     87.0,
+     87.0,
+     87.0,
+     12.0,
+     12.0,
+     12.0
+    ]
+   },
+   "right": {
+    "base_pos": [
+     0.0,
+     -0.35,
+     0.0
+    ],
+    "base_yaw_rad": 0.0,
+    "home_q": [
+     -0.35,
+     -0.55,
+     0.0,
+     -2.35,
+     0.0,
+     1.85,
+     0.785
+    ],
+    "joints": [
+     "R/joint1",
+     "R/joint2",
+     "R/joint3",
+     "R/joint4",
+     "R/joint5",
+     "R/joint6",
+     "R/joint7"
+    ],
+    "joint_range": [
+     [
+      -2.8973,
+      2.8973
+     ],
+     [
+      -1.7628,
+      1.7628
+     ],
+     [
+      -2.8973,
+      2.8973
+     ],
+     [
+      -3.0718,
+      -0.0698
+     ],
+     [
+      -2.8973,
+      2.8973
+     ],
+     [
+      -0.0175,
+      3.7525
+     ],
+     [
+      -2.8973,
+      2.8973
+     ]
+    ],
+    "torque_limit_Nm": [
+     87.0,
+     87.0,
+     87.0,
+     87.0,
+     12.0,
+     12.0,
+     12.0
+    ]
+   }
+  },
+  "tcp": "between the finger pads, 0.1034 m from the hand frame along its +z (the approach axis); +y = the fingers' closing axis",
+  "gripper": {
+   "max_width_m": 0.08,
+   "rate_m_s": 0.05,
+   "max_force_N": 70.0
+  },
+  "hand_data_sheet": {
+   "mass_kg": 0.76,
+   "com_in_hand_frame_m": [
+    -0.0096,
+    0.0,
+    0.0311
+   ],
+   "note": "hand + two fingers; the flange F/T reads their weight (about 7.5 N) after a tare at another orientation: compensate it from this mass and centre of mass, or tare again after turning the hand",
+   "finger": {
+    "pad_end_beyond_tcp_m": 0.008,
+    "fingertip_beyond_tcp_m": 0.0089,
+    "pad_half_width_x_m": 0.0085,
+    "pad_z_range_in_hand_frame_m": [
+     0.0944,
+     0.1114
+    ],
+    "pad_face_to_finger_back_m": 0.0155,
+    "only_pads": "only the pads' faces are finger pads; every other surface of a finger counts as a link for the safety rule"
+   }
+  }
+ },
+ "control": {
+  "tick_s": 0.01,
+  "physics_step_s": 0.002,
+  "modes": [
+   "joint",
+   "cartesian"
+  ],
+  "stiffness_scale_range": [
+   0.2,
+   1.0
+  ],
+  "joint": "each joint follows a trapezoidal path to its target (<= 1.5 rad/s, <= 3 rad/s^2), tracked by a PD on the joint torques: tau = s kp (q_cmd - q) - kd dq, kp = (4500, 4500, 3500, 3500, 2000, 2000, 2000) N m/rad, kd = min(0.1 s kp, (88, 1183, 74, 293, 56, 61, 43)) N m s/rad",
+  "cartesian": "an impedance at the tcp: F = s 3000 N/m (x_ref - x) - critical damping, M = s 150 N m/rad orientation error - critical damping, mapped by J^T; a null-space term keeps the arm near the IK posture of the reference; x_ref moves towards the commanded pose at <= 0.5 m/s and <= 1.5 rad/s (a straight line); the reference starts from the actual tcp when the mode changes to cartesian",
+  "holds_loads": "links are gravity-compensated; held loads and contact forces are not",
+  "torque_limit_Nm": [
+   87.0,
+   87.0,
+   87.0,
+   87.0,
+   12.0,
+   12.0,
+   12.0
+  ]
+ },
+ "grip_rule": "A closing gripper (commanded width more than 2 mm below its current width, or 1 mm or less, while its fingers close towards it: until they reach the commanded width or stop on what they hold) holds what lies between its finger pads at the pose of closing: a belt link whose centre is within the pads (hand-frame |x| <= 8.5 mm (+3 mm), z 94.4-111.4 mm (+-3 mm), |y| within the opening) and whose thickness lies across the closing axis within 30 deg (the link is welded to the hand), or the round service lever whose axis passes between the pads within 30 deg of square to the closing axis (two point constraints on the lever's axis 5 mm either side of the pads' middle, so the lever may turn between the pads); the lever can be held by one hand at a time: a second hand closing on it while the other holds it holds nothing. Opening the fingers (commanded width above the current width by more than 2 mm) lets go. The hold slips (lets go) when the held thing pulls with more than 30 N, or when the moment about the grip on a held belt exceeds 1.0 N m about any axis (bending it flatwise or edgewise, or twisting it), for 50 ms. Open fingers and the backs of closed fingers otherwise touch the belt without friction, so a span can be pushed. The belt meets a finger pad on its flat face (the pads' small ridges do not touch the belt).",
+ "safety": "Any Panda link or hand surface pressing on anything (the engine, the drive and its lever, the belt, the peg, the base plate and the pallet, the other arm) with more than 30 N for 30 ms, and any part of one arm, its finger pads included, pressing on the other arm with more than 30 N for 30 ms, stops both arms: the episode ends (stopped) and the engine scores 0. The finger pads are excepted against everything except the other arm. The force is judged per pair of bodies (the largest contact force between them, not a sum).",
+ "damage": "The tensioner's damper is rated for 60 deg/s of arm speed: faster (a snap-back, a violent swing) damages it and the engine is rejected. A belt that touches the base plate (an element joint lower than 4 mm above it) is scrap. Damage is not reported during the episode; it is judged through the episode, the switch-off, the settle and the run-in.",
+ "ft_sensor": {
+  "frame": "the hand frame at the flange (each arm)",
+  "reports": "force (N) and torque (N m) the arm exerts on the hand and everything it holds (the hand's own weight included), mean over the 10 ms tick, minus the reading at the last tare()",
+  "noise": {
+   "force_N_rms": 0.3,
+   "torque_Nm_rms": 0.02
+  },
+  "bias": "an unknown constant offset per arm and episode (within +-1.0 N, +-0.05 N m), removed by tare()"
+ },
+ "cameras": {
+  "front": {
+   "width": 1280,
+   "height": 960,
+   "fx": 1029.3633218445882,
+   "fy": 1029.3633218445882,
+   "cx": 639.5,
+   "cy": 479.5,
+   "fovy_deg": 50.0,
+   "depth": "planar z along the optical axis",
+   "depth_unit_m": 0.001,
+   "depth_valid_m": [
+    0.3,
+    3.0
+   ],
+   "depth_noise_m": "0.0010 + 0.0025 z^2 (z in m)",
+   "convention": "OpenCV: x right, y down, z forward; pixel (u, v) = (column, row), row 0 at the top",
+   "mount": "fixed",
+   "T_world_cam": [
+    [
+     -2.220446049250313e-16,
+     -0.6150317986938773,
+     0.7885023060177911,
+     0.05
+    ],
+    [
+     -1.0000000000000002,
+     2.220446049250313e-16,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     -0.7885023060177911,
+     -0.6150317986938771,
+     0.8
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ]
+  },
+  "left_wrist": {
+   "width": 640,
+   "height": 480,
+   "fx": 432.97146126514167,
+   "fy": 432.97146126514167,
+   "cx": 319.5,
+   "cy": 239.5,
+   "fovy_deg": 58.0,
+   "depth": "planar z along the optical axis",
+   "depth_unit_m": 0.0001,
+   "depth_valid_m": [
+    0.07,
+    0.5
+   ],
+   "depth_noise_m": "0.0002 + 0.0015 z^2 (z in m)",
+   "convention": "OpenCV: x right, y down, z forward; pixel (u, v) = (column, row), row 0 at the top",
+   "mount": "L/hand",
+   "T_body_cam": [
+    [
+     0.0,
+     0.9645535241081342,
+     0.26388728489750835,
+     -0.058
+    ],
+    [
+     -1.0,
+     -1.1102230246251565e-16,
+     -2.7755575615628914e-17,
+     0.0
+    ],
+    [
+     2.7755575615628914e-17,
+     -0.26388728489750835,
+     0.9645535241081342,
+     0.041400000000000006
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "note": "T_world_cam = T_world_body(L/hand) @ T_body_cam; the body pose follows from the arm's joint angles"
+  },
+  "right_wrist": {
+   "width": 640,
+   "height": 480,
+   "fx": 432.97146126514167,
+   "fy": 432.97146126514167,
+   "cx": 319.5,
+   "cy": 239.5,
+   "fovy_deg": 58.0,
+   "depth": "planar z along the optical axis",
+   "depth_unit_m": 0.0001,
+   "depth_valid_m": [
+    0.07,
+    0.5
+   ],
+   "depth_noise_m": "0.0002 + 0.0015 z^2 (z in m)",
+   "convention": "OpenCV: x right, y down, z forward; pixel (u, v) = (column, row), row 0 at the top",
+   "mount": "R/hand",
+   "T_body_cam": [
+    [
+     0.0,
+     0.9645535241081342,
+     0.26388728489750835,
+     -0.058
+    ],
+    [
+     -1.0,
+     -1.1102230246251565e-16,
+     -2.7755575615628914e-17,
+     0.0
+    ],
+    [
+     2.7755575615628914e-17,
+     -0.26388728489750835,
+     0.9645535241081342,
+     0.041400000000000006
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "note": "T_world_cam = T_world_body(R/hand) @ T_body_cam; the body pose follows from the arm's joint angles"
+  }
+ },
+ "drive": {
+  "variant": "B",
+  "frame": "engine frame E (x, z in the face plane; depth d in front of the face)",
+  "pulleys": {
+   "C": {
+    "centre_xz": [
+     0.0,
+     0.0
+    ],
+    "groove_floor_radius": 0.07,
+    "kind": "crank"
+   },
+   "ALT": {
+    "centre_xz": [
+     0.165,
+     0.225
+    ],
+    "groove_floor_radius": 0.04,
+    "kind": "grooved"
+   },
+   "I": {
+    "centre_xz": [
+     0.035,
+     0.285
+    ],
+    "face_radius": 0.035,
+    "kind": "idler",
+    "face_d": [
+     0.015,
+     0.04
+    ],
+    "flanges_d": [
+     [
+      0.012,
+      0.015
+     ],
+     [
+      0.04,
+      0.043
+     ]
+    ],
+    "flange_height": 0.004,
+    "surface": "smooth, flanged (the belt's back runs on it)"
+   },
+   "WP": {
+    "centre_xz": [
+     -0.095,
+     0.245
+    ],
+    "groove_floor_radius": 0.05,
+    "kind": "grooved"
+   }
+  },
+  "route": "C, ALT, I, WP, T (counter-clockwise as drawn): ribs on C, ALT, WP; back on I and T",
+  "crank_rotation": "clockwise as drawn (the belt runs C, T, WP, I, ALT)",
+  "groove": {
+   "back_shoulder_d": [
+    0.01,
+    0.016
+   ],
+   "groove_zone_d": [
+    0.016,
+    0.038
+   ],
+   "front_shoulder_d": [
+    0.038,
+    0.041
+   ],
+   "front_chamfer": "45 deg, 2.5 mm, from the shoulder top down to the floor radius in front",
+   "shoulder_height_above_floor": 0.0025
+  },
+  "tensioner_pulley": {
+   "radius": 0.045,
+   "face_d": [
+    0.015,
+    0.04
+   ],
+   "flanges_d": [
+    [
+     0.012,
+     0.015
+    ],
+    [
+     0.04,
+     0.043
+    ]
+   ],
+   "flange_height": 0.004,
+   "surface": "smooth (the belt's back runs on it)"
+  },
+  "tensioner": {
+   "pivot_xz": [
+    -0.14,
+    0.16
+   ],
+   "arm_length": 0.07,
+   "angle": "theta = the pulley arm's direction from the pivot, counter-clockwise from E +x in the drawing; the tensioner opens clockwise (theta decreasing)",
+   "closed_stop_deg": -24.000000000000004,
+   "install_stop_deg": -114.00000000000001,
+   "install_stop_clearance": "at the install stop the pulley face stands 13.5 mm (its flanges 9.5 mm) clear of the straight belt line from WP to C",
+   "window_marks_deg": [
+    -47.0,
+    -28.0
+   ],
+   "pointer": "a white blade on the arm's boss pointing away from the pulley (theta + 180 deg), 30-46 mm from the pivot, 8.5 mm in front of the face; the window marks are white lines on the face at theta + 180 deg, 40-52 mm from the pivot",
+   "service_lever": {
+    "radius_from_pivot": 0.157,
+    "angle_from_pulley_arm_deg": 230.0,
+    "diameter": 0.016,
+    "d_range": [
+     0.004,
+     0.08900000000000001
+    ],
+    "note": "a round bar parallel to the pulley axes on a branch of the arm; it swings with the arm on a circle about the pivot"
+   }
+  },
+  "peg": {
+   "axis_xz": [
+    0.33,
+    0.38
+   ],
+   "radius": 0.012,
+   "d_range": [
+    0.0,
+    0.1
+   ]
+  }
+ },
+ "belt": {
+  "section": "poly-V, 20 mm wide x 4.5 mm thick (modelled flat, no rib/groove interlock, no twist)",
+  "nominal_length_m": 1.21,
+  "length_tolerance": "+-0.5 % of nominal",
+  "pitch_line": "10 mm rigid elements (links), each with flatwise and edgewise bending joints",
+  "edgewise_to_flatwise_stiffness": 8.0,
+  "mass_per_m_kg": [
+   0.216,
+   0.264
+  ],
+  "droop_class": "a 200 mm free end held level droops 32-71 mm",
+  "install_slack": "with the tensioner at its install stop the belt is longer than the four-pulley path (C, ALT, I, WP with the back on I; 1.1665 m at the joint line) by about 37-50 mm",
+  "print": "white part-number print every 50 mm on the back; the back is black",
+  "friction": "belt on the pulleys' grooves and faces: mu 0.6-0.9; on everything else: frictionless"
+ },
+ "tensioner": {
+  "spring": "torsion spring towards closing: torque = preload at the closed stop + rate x (theta - closed stop)",
+  "rate_Nm_per_rad": 0.83,
+  "preload_at_closed_stop_Nm": 1.84,
+  "spread": "rate and preload each +-15 % per engine",
+  "damper_Nm_s_per_rad": [
+   0.7,
+   1.3
+  ],
+  "pivot_friction_Nm": [
+   0.04,
+   0.12
+  ],
+  "rated_arm_speed_dps": 60.0
+ },
+ "acceptance": "After finish the robots are switched off and out of the drive; the drive settles for 1 s; a run-in motor turns the crank clockwise at 1.5 rev/s for 4 s against the accessories' drag. Then: every grooved pulley (C, ALT, WP) wrapped on its rib side with the belt in the groove zone on the groove floor (not on a shoulder or edge), the tensioner pulley and the idler I each wrapped on the belt's back with the belt on its face between the flanges, each accessory (ALT, WP) turned within 3 % of the crank's angle times its ratio (slip), the tensioner's pointer inside its window marks, all judged the moment the run-in motor stops. Score = g x q per engine: g = 1 if no damage, no protective stop, the pointer inside the window and the idler I passing, else 0; q = (C, ALT, WP, T passing + 1 if the slip is within spec) / 5.",
+ "budgets": {
+  "sim_time_cap_s": 1500.0,
+  "program_time_cap_s": 2400.0,
+  "program_time": "the episode's wall clock minus the cell's own time inside step (simulation) and get_camera (rendering)",
+  "silence_abort_s": 120.0,
+  "max_ticks_per_step": 1000,
+  "camera_frames": 600,
+  "tick_s": 0.01
+ }
+}
