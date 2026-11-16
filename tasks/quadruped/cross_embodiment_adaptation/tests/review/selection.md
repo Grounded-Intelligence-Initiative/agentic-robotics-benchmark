@@ -47,4 +47,44 @@ Frozen inputs (sha256), as committed with this rule:
 
 ## Result
 
-(Not run yet: this file is committed with the rule, the candidates and the frozen inputs first.)
+Run 2026-11-16 (`select_sites.py run`, task image, verifier layout, the frozen inputs above). Seventeen candidates were
+looked at in drawn order; the eight that ran all arrived, so the oracle dropped none. Cell A was full after orders
+0-3; the nine later candidates of cell A were recorded and not run; cell B filled at order 16. Kept
+(`tests/hidden/sites.json`): cell A orders 0, 1, 2, 3; cell B orders 4, 10, 11, 16.
+
+| order | cell | run | oracle | carrier presses | kept |
+|---|---|---|---|---|---|
+| 0 | A | yes | arrived | 67 | yes |
+| 1 | A | yes | arrived | 76 | yes |
+| 2 | A | yes | arrived | 90 | yes |
+| 3 | A | yes | arrived | 89 | yes |
+| 4 | B | yes | arrived | 110 | yes |
+| 5 | A | no (cell already full) | - | - | no |
+| 6 | A | no (cell already full) | - | - | no |
+| 7 | A | no (cell already full) | - | - | no |
+| 8 | A | no (cell already full) | - | - | no |
+| 9 | A | no (cell already full) | - | - | no |
+| 10 | B | yes | arrived | 103 | yes |
+| 11 | B | yes | arrived | 81 | yes |
+| 12 | A | no (cell already full) | - | - | no |
+| 13 | A | no (cell already full) | - | - | no |
+| 14 | A | no (cell already full) | - | - | no |
+| 15 | A | no (cell already full) | - | - | no |
+| 16 | B | yes | arrived | 101 | yes |
+
+Hollowing check (`hollowing.py`; mean [min, max]; `heading_apart` in degrees):
+
+| set | n | wall_x | wide_to_dock | wide_width | crates | carrier_side | carrier_mass | start_offset | heading_apart | floor_span | oracle carrier presses |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| kept (hidden) | 8 | -0.15 [-0.43, -0.02] | 1.95 [0.30, 3.81] | 1.58 [1.52, 1.63] | 2.75 [2.00, 3.00] | 0.81 [0.79, 0.83] | 6.50 [5.48, 8.00] | 0.63 [0.42, 0.78] | 100.56 [16.20, 171.00] | 0.60 [0.56, 0.64] | 89.6 [67, 110] |
+| all 24 candidates | 24 | -0.08 [-0.43, 0.36] | 1.51 [0.07, 4.27] | 1.57 [1.50, 1.64] | 2.71 [2.00, 4.00] | 0.81 [0.77, 0.86] | 6.45 [5.15, 8.00] | 0.61 [0.29, 0.78] | 95.49 [4.60, 176.20] | 0.60 [0.56, 0.64] | - |
+| development 7000-7199 | 200 | -0.04 [-0.45, 0.45] | 2.21 [0.01, 4.90] | 1.57 [1.50, 1.65] | 2.58 [2.00, 4.00] | 0.81 [0.76, 0.86] | 6.52 [5.09, 8.03] | 0.54 [0.07, 0.80] | 89.75 [1.60, 178.40] | 0.60 [0.56, 0.64] | 87.0 [51, 142] |
+
+Cells among the 24 candidates: A 17, B 7; among the development sample: A 102, B 98. The draw happened to hold many more
+A than B candidates (17 to 7; the development sample splits 102 to 98), so cell B took until order 16; nothing was
+re-drawn for that, as the rule says. By chance none of the kept sites has four crates and their partitions all lie on
+the dock's side of the hall's middle; the carrier's sizes span 0.79-0.83 m of the 0.76-0.86 m range.
+
+Anchor: the oracle's full verify on the kept sites in a fresh container (verifier layout): 8 of 8, every site's carrier
+press count equal to its selection run (67, 76, 90, 89, 110, 103, 81, 101), so `tests/anchor.json` is 1.0 with
+`full_at` 0.98.
