@@ -106,7 +106,7 @@ class AgentProcess(object):
                 continue
             try:
                 obj = json.loads(line)
-            except ValueError:
+            except (ValueError, RecursionError):    # RecursionError: nested deeper than the parser's limit
                 return "bad", line[:120]
             if not isinstance(obj, dict) or "method" not in obj:
                 return "bad", line[:120]
