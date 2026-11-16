@@ -75,7 +75,8 @@ radii at which it still reaches six of six on (nearly) every seed.
 ## The oracle (`solution/oracle_policy.py`)
 
 Privileged (ground truth through the oracle token); it takes no frame. On development seeds 3001-3100 it reaches
-six of six on all 100, with 173 to 337 presses (median 241) and no wall contact. On the hidden set: see
+six of six on all 100, with 173 to 337 presses (median 241) and no wall contact. On the 40 candidates of the
+hidden set it reached six of six on every one; the 24 kept scenes took it 159 to 313 presses (median 228), see
 `hidden_set/RULE.md`.
 
 ## Reproducing

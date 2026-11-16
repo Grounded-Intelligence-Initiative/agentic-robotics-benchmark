@@ -71,3 +71,41 @@ results on development seeds are in `../README.md`.
 ## Result
 
 (Appended after the run, below this line.)
+
+Run 2026-11-16 (07:16 UTC) on a 48-core x86-64 machine, 20 containers at a time, from commit `690f0e3` (this rule's
+commit, exported with `git archive`; the 26 frozen hashes above were checked on the exported tree before the run),
+with the task image built from its `environment/` (the Dockerfile and its inputs have not changed since the image of
+2026-11-12).
+
+- All 40 candidates were run once. Every one scored reward 1.0 with all six delivery points reached, the privileged
+  channel accepted, and the grader's replay agreeing with the service. Kept: candidates 0 to 23 in drawn order;
+  candidates 24 to 39 were run but are not needed (the rule keeps the first 24). Nothing was dropped.
+- On the kept set the oracle used 159 to 313 presses (median 228) of the 500, at most 319 of the 660 requests, no
+  camera frame and no wall contact, in 1.4 to 8.9 s of wall-clock time per episode.
+- Anchor: delivered fraction 1.0 on the kept set (24 of 24 at 6/6); `full_at` 0.98.
+
+Hollowing check (kept 24 against all 40 candidates; `steps` is the oracle's presses; speeds are the commanded ones,
+of which a press covers 0.175 s worth):
+
+```
+feature           kept mean   all mean  kept min  kept max
+heading_deg         192.829    171.005     2.794   332.461
+loaded_turn_deg      15.792      4.525  -169.814   176.840
+forward_speed         1.341      1.335     1.227     1.482
+backward_ratio        0.652      0.648     0.552     0.742
+left_rate_deg        93.898     92.604    70.057   120.831
+right_rate_deg      100.487     97.351    73.031   124.025
+load                  0.680      0.678     0.611     0.748
+wall_x0              -1.238     -1.224    -1.498    -0.916
+wall_x1               1.161      1.182     0.904     1.499
+narrow0               0.671      0.670     0.627     0.718
+wide0                 1.103      1.127     1.018     1.235
+narrow1               0.671      0.668     0.621     0.716
+wide1                 1.112      1.110     1.002     1.248
+long_legs             2.792      2.875     2.000     5.000
+straight_path_m      26.288     26.462    20.226    33.711
+steps               232.750    234.075   159.000   313.000
+```
+
+The kept scenes cover the drawn ranges; no feature is narrowed (all 40 passed, so the kept set is simply the first
+24 draws).
