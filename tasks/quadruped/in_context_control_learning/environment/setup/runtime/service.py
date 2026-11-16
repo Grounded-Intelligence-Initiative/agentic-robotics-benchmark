@@ -4,9 +4,14 @@ The ledger (state.json) records every request in order, with its parameters and 
 agent phase that the verifier reads: the task declares it as an artifact, the engine copies it out of the agent's
 sandbox when the agent stops and restores it, root-owned, in the fresh verifier sandbox, which replays its requests
 against the same scene to score the episode.
+
+The oracle's channel: a request {"method": "unlock", "params": {"token": <text>}} switches the world to privileged
+replies (ground truth). The service keeps no secret: it records the sha256 of the token it was sent, never the token,
+and the grader, which alone holds the expected hash (tests/oracle_token.sha256), zeroes any run that used the channel
+with another token. The MCP bridge does not expose it, so an agent that follows the rules cannot send it at all.
 """
 import argparse
-import base64
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -15,7 +20,7 @@ import socketserver
 from world import KIND, REQUEST_LIMIT, VERSION, World
 
 
-ALLOWED = {"observe": set(), "act": {"action"}, "advance": set()}
+ALLOWED = {"observe": set(), "act": {"action"}, "advance": set(), "unlock": {"token_sha256"}}
 
 
 def dispatch(world, method, params):
@@ -26,16 +31,24 @@ def dispatch(world, method, params):
     return getattr(world, method)(**params)
 
 
+def recorded(method, params):
+    """The parameters as the ledger keeps them: a token is replaced by its sha256."""
+    if method == "unlock" and isinstance(params, dict) and set(params) == {"token"} and isinstance(params["token"], str):
+        return {"token_sha256": hashlib.sha256(params["token"].encode()).hexdigest()}
+    if method == "unlock":
+        return {}        # refused by dispatch; nothing of a malformed unlock is kept
+    return params
+
+
 class Runtime:
-    def __init__(self, directory, seed, scene_index):
+    def __init__(self, directory, seed, scene_index, render=True):
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, mode=0o700, exist_ok=True)
         os.chmod(self.directory, 0o700)
         self.seed, self.scene_index = int(seed), int(scene_index)
-        self.world = World(self.seed)
+        self.world = World(self.seed, render=render)
         self.count = 0
         self.events = []
-        (self.directory/"frames").mkdir(exist_ok=True, mode=0o700)
         self.flush()
 
     def flush(self):
@@ -54,12 +67,12 @@ class Runtime:
         if not isinstance(req, dict) or set(req) != {"method", "params"}:
             self.flush()
             raise ValueError("invalid request envelope")
-        method, params = req["method"], req["params"]
+        method = req["method"]
+        params = recorded(method, req["params"])
         event = {"method": method, "params": params}
         self.events.append(event)
         try:
-            result = self.dispatch(method, params)
-            event["frame_id"] = result["frame_id"]
+            result = dispatch(self.world, method, params)
             event["steps"], event["delivered"] = self.world.steps, self.world.delivered
             result["requests_remaining"] = REQUEST_LIMIT-self.count
             return result
@@ -68,12 +81,6 @@ class Runtime:
             raise
         finally:
             self.flush()
-
-    def dispatch(self, method, params):
-        result = dispatch(self.world, method, params)
-        for i, encoded in enumerate(result.get("images", [])):
-            (self.directory/"frames"/f'{result["frame_id"]:04d}-{i}.png').write_bytes(base64.b64decode(encoded))
-        return result
 
 
 class Handler(socketserver.StreamRequestHandler):

@@ -1,12 +1,13 @@
 """Trusted MuJoCo world of the delivery bay. This module must never be agent-readable in a task.
 
 One episode is one scene, fixed by its seed: a fenced 7.1 m square bay with two partition walls (each with a narrow
-and a wide opening), a quadruped-shaped robot that walks without turning (a stabilized planar base), a four-button
-remote whose buttons are walk forward / walk back / step left / step right in the robot's own frame (the assignment,
-the robot's heading and its gait speeds are drawn per scene), and six delivery points visited in order. After the
-third delivery the robot is loaded and set back down facing another way: every gait is slower and every button
-moves it in a new direction. The same seed and the same requests give the same episode with or without rendering:
-the verifier replays the service's ledger with render=False.
+and a wide opening), a quadruped-shaped robot on a stabilized planar base with a turning gait, a four-button remote
+whose buttons are walk forward / walk back / turn left / turn right (the assignment and the step sizes are drawn per
+scene), and six delivery points visited in order. The robot reports its compass heading and the coordinates of the
+active delivery point; its only view of the bay is its own forward camera under its own floodlight. After the third
+delivery the robot is loaded and set back down facing another way, and every gait is slower. The same seed and the
+same requests give the same episode with or without rendering: the verifier replays the service's ledger with
+render=False.
 """
 import base64
 import io
@@ -25,22 +26,27 @@ from scene_assets import decorate
 from pbr_renderer import Renderer
 
 KIND = "icl"
-VERSION = 2
+VERSION = 3
 DELIVERIES = 6
 LOAD_AFTER = 3            # the load goes on when the agent advances from this delivery point
 ACTION_LIMIT = 500        # button presses per episode
-REQUEST_LIMIT = 560       # service requests per episode (observe, act and advance together)
+FRAME_LIMIT = 120         # camera frames per episode (robot_observe)
+REQUEST_LIMIT = 660       # service requests per episode: every press and frame, the advances, and room for errors
 PRESS_SECONDS = .2        # simulated time per press
 SUBSTEPS = 20             # MuJoCo steps of 0.01 s per press
 FENCE = 3.55              # inner face of the perimeter fence, |x| and |y| (m)
 ROBOT_RADIUS = .16        # collision footprint of the base (m)
 GOAL_TOLERANCE = .3       # the base's centre within this distance of a delivery point's centre (m)
-LIGHT_RADIUS = 1.4        # the robot's floodlight lights the floor this far around the robot's centre (m)
-BEACON_RADIUS = .25       # the active delivery point's beacon is visible from anywhere
+LIGHT_RADIUS = 1.0        # the floodlight lights what is within this distance of the robot's centre, along the floor
 WALL_HALF = .12           # half thickness of a partition wall (m)
+WALL_HEIGHT = .7          # walls and fence, without the 0.024 m cap
+CAMERA_HEIGHT = .25       # the camera's optical centre above the floor, on the robot's vertical axis (m)
+CAMERA_FOV = 90.          # degrees, horizontal and vertical (square image)
+DARK = 10                 # pixel value of everything the floodlight does not reach
+YAW_INERTIA = 100.        # the stabilized base holds its heading: wall contacts do not turn it (kg m^2)
+PAD_RGBA = ".04 .85 .18 1"   # the delivery pad: green, unlike the blue-grey panels and the concrete floor
 BUTTONS = (0., 1/3, 2/3, 1.)
-MOTIONS = ("forward", "backward", "left", "right")
-BODY_DIRECTION = {"forward": (1., 0.), "backward": (-1., 0.), "left": (0., 1.), "right": (0., -1.)}
+MOTIONS = ("forward", "backward", "left", "right")       # left and right are turns in place
 
 
 def png(image):
@@ -71,8 +77,11 @@ class Scene:
         self.seed = int(seed)
         self.heading = float(rng.uniform(0, 2*math.pi))
         forward = float(rng.uniform(1.2, 1.5))
+        # Commanded speeds: m/s for the two walking gaits, rad/s for the two turns. The base settles at 0.875 of a
+        # command, so one 0.2 s press is 0.21-0.26 m forward, 0.12-0.2 m back and 12-22 degrees of turn.
         self.speeds = {"forward": forward, "backward": forward*float(rng.uniform(.55, .75)),
-                       "left": float(rng.uniform(.7, .95)), "right": float(rng.uniform(.7, .95))}
+                       "left": math.radians(float(rng.uniform(70., 125.))),
+                       "right": math.radians(float(rng.uniform(70., 125.)))}
         self.mapping = [MOTIONS[i] for i in rng.permutation(4)]     # button index -> gait
         self.load = float(rng.uniform(.6, .75))
         turn = float(rng.uniform(math.radians(60), math.pi))*(1 if rng.uniform() < .5 else -1)
@@ -126,7 +135,8 @@ class Scene:
         return {"heading_deg": math.degrees(self.heading), "loaded_turn_deg": turn,
                 "forward_speed": self.speeds["forward"],
                 "backward_ratio": self.speeds["backward"]/self.speeds["forward"],
-                "left_speed": self.speeds["left"], "right_speed": self.speeds["right"], "load": self.load,
+                "left_rate_deg": math.degrees(self.speeds["left"]),
+                "right_rate_deg": math.degrees(self.speeds["right"]), "load": self.load,
                 "wall_x0": self.walls_x[0], "wall_x1": self.walls_x[1],
                 "narrow0": self.openings[0][0][1], "wide0": self.openings[0][1][1],
                 "narrow1": self.openings[1][0][1], "wide1": self.openings[1][1][1],
@@ -145,8 +155,9 @@ class World:
         self.delivered = 0               # delivery points reached so far
         self.loaded = False              # on from the advance after the LOAD_AFTER-th delivery
         self.done = False
-        self.frame_id = 0
+        self.frames = 0                  # camera frames taken
         self.reached_at_steps = []       # press count at which each delivery point was reached
+        self.privileged = False          # set by unlock(); the grader accepts it only with the oracle's token
         self._contacts = set()
         self._build()
 
@@ -155,68 +166,108 @@ class World:
         s = self.scene
         xml = header()
         for name, x, y, sx, sy in s.wall_boxes():
-            xml += box(name, f"{x} {y} .35", f"{sx} {sy} .35", ".55 .6 .65 1")
+            xml += box(name, f"{x} {y} {WALL_HEIGHT/2}", f"{sx} {sy} {WALL_HEIGHT/2}", ".55 .6 .65 1")
         gx, gy = s.goals[0]
-        xml += box("goal", f"{gx} {gy} .02", ".2 .2 .02", ".03 .12 1 1", False)
+        xml += box("goal", f"{gx} {gy} .02", ".2 .2 .02", PAD_RGBA, False)
+        # Slide joints first, then the yaw hinge: x and y stay the bay's axes whatever the heading.
         xml += f"""<body name="agent" pos="0 0 .23">
           <joint name="x" type="slide" axis="1 0 0" damping="5"/>
           <joint name="y" type="slide" axis="0 1 0" damping="5"/>
+          <joint name="yaw" type="hinge" axis="0 0 1" armature="{YAW_INERTIA}" damping="{5*YAW_INERTIA}"/>
           <geom name="robot" type="cylinder" size="{ROBOT_RADIUS} .06" mass="1" rgba="1 .02 .02 1"/>
-          <body name="chassis" euler="0 0 {math.degrees(s.heading)}"/>
+          <camera name="onboard" pos="0 0 {CAMERA_HEIGHT-.23}" xyaxes="0 -1 0 0 0 1" fovy="{CAMERA_FOV}"/>
         </body>"""
         xml += "</worldbody></mujoco>"
         xml = decorate(xml, KIND, .15, seed=s.seed ^ 0x72B49A)
+        # The onboard camera comes within 0.16 m of a wall: a near plane of 2 cm (the default would be 0.34 m).
+        xml = xml.replace("<visual>", '<visual><map znear="0.0006"/>', 1)
         self.model = mujoco.MjModel.from_xml_string(xml)
         self.data = mujoco.MjData(self.model)
         self.agent_id = self.model.body("agent").id
-        self.chassis_id = self.model.body("chassis").id
         self.goal_geom = self.model.geom("goal").id
+        self.camera_id = self.model.camera("onboard").id
+        # The robot's own body is behind the lens: its geoms go to group 1, which the onboard view does not draw.
+        for i in range(self.model.ngeom):
+            if self.model.geom_bodyid[i] == self.agent_id:
+                self.model.geom_group[i] = 1
         self.data.qpos[:2] = s.start
+        self.data.qpos[2] = s.heading
         mujoco.mj_forward(self.model, self.data)
         self.renderer = Renderer(self.model, SIZE, SIZE) if self.render_enabled else None
+        focal = (SIZE/2)/math.tan(math.radians(CAMERA_FOV)/2)
+        u, v = np.meshgrid(np.arange(SIZE)+.5, np.arange(SIZE)+.5)
+        rays = np.stack([(u-SIZE/2)/focal, -(v-SIZE/2)/focal, -np.ones_like(u)], axis=-1).reshape(-1, 3)
+        self._rays = rays/np.linalg.norm(rays, axis=1)[:, None]      # unit rays in the camera's own frame
 
     def position(self):
         return self.data.xpos[self.agent_id][:2].copy()
+
+    def yaw(self):
+        return float(self.data.qpos[2])
 
     def goal(self):
         return np.array(self.scene.goals[self.current])
 
     # --- observations ------------------------------------------------------------------------------------------
+    def lit(self):
+        """Which pixels of the onboard view the floodlight reaches."""
+        origin = self.data.cam_xpos[self.camera_id].copy()
+        rays = self._rays@self.data.cam_xmat[self.camera_id].reshape(3, 3).T
+        n = len(rays)
+        geomid, dist = np.full(n, -1, np.int32), np.zeros(n)
+        groups = np.array([1, 0, 1, 0, 0, 0], np.uint8)
+        mujoco.mj_multiRay(self.model, self.data, origin, rays.ravel(), groups, 1, self.agent_id, geomid, dist, None,
+                           n, 30.)
+        hit = origin[None, :2]+rays[:, :2]*dist[:, None]
+        p = self.position()
+        visible = (geomid >= 0) & (((hit-p)**2).sum(axis=1) < LIGHT_RADIUS**2)
+        return visible.reshape(SIZE, SIZE)
+
     def image(self):
         option = mujoco.MjvOption()
+        option.geomgroup[1] = 0
         option.geomgroup[3] = 0
-        self.renderer.update_scene(self.data, camera="top", scene_option=option)
+        self.renderer.update_scene(self.data, camera="onboard", scene_option=option)
         im = self.renderer.render().copy()
-        xx = (np.arange(SIZE)+.5)/SIZE*8-4
-        yy = 4-(np.arange(SIZE)+.5)/SIZE*8
-        p, g = self.position(), self.goal()
-        # The bay is dark: the ceiling camera sees what the robot's floodlight lights and the active beacon.
-        visible = (xx[None, :]-p[0])**2 + (yy[:, None]-p[1])**2 < LIGHT_RADIUS**2
-        visible |= (xx[None, :]-g[0])**2 + (yy[:, None]-g[1])**2 < BEACON_RADIUS**2
-        im[~visible] = 10
+        # The bay is dark: the camera sees what the robot's floodlight lights and nothing else.
+        im[~self.lit()] = DARK
         return im
 
     def status(self):
-        return {"frame_id": self.frame_id, "delivery": self.current+1, "deliveries": DELIVERIES,
+        gx, gy = self.goal()
+        return {"delivery": self.current+1, "deliveries": DELIVERIES,
                 "delivered": self.delivered, "goal_reached": self.delivered > self.current,
-                "steps_remaining": max(0, ACTION_LIMIT-self.steps), "done": self.done}
+                "goal": {"x": round(float(gx), 2), "y": round(float(gy), 2)},
+                "heading_deg": int(round(math.degrees(self.yaw()))) % 360,
+                "steps_remaining": max(0, ACTION_LIMIT-self.steps),
+                "frames_remaining": max(0, FRAME_LIMIT-self.frames), "done": self.done}
+
+    def reply(self):
+        result = self.status()
+        if self.privileged:
+            x, y = self.position()
+            result["truth"] = {"x": float(x), "y": float(y), "yaw": self.yaw()}
+        return result
 
     def observe(self):
-        self.frame_id += 1
-        result = self.status()
+        if self.frames >= FRAME_LIMIT:
+            raise ValueError("camera frame budget exhausted; the robot can still be driven")
+        self.frames += 1
+        result = self.reply()
+        sx, sy = self.scene.start
+        result["start"] = {"x": round(float(sx), 2), "y": round(float(sy), 2),
+                           "heading_deg": int(round(math.degrees(self.scene.heading))) % 360}
         if self.render_enabled:
             result["images"] = [png(self.image())]
         return result
 
     # --- actions -----------------------------------------------------------------------------------------------
-    def velocity_command(self, button):
+    def command(self, button):
+        """(forward speed m/s, yaw rate rad/s) that a button commands now."""
         s = self.scene
         motion = s.mapping[button]
         speed = s.speeds[motion]*(s.load if self.loaded else 1.)
-        bx, by = BODY_DIRECTION[motion]
-        heading = s.loaded_heading if self.loaded else s.heading
-        c, sn = math.cos(heading), math.sin(heading)
-        return np.array([c*bx-sn*by, sn*bx+c*by])*speed
+        return {"forward": (speed, 0.), "backward": (-speed, 0.), "left": (0., speed), "right": (0., -speed)}[motion]
 
     def act(self, action):
         if self.done or self.steps >= ACTION_LIMIT:
@@ -228,9 +279,12 @@ class World:
             raise ValueError("buttons must be 0, 1/3, 2/3, or 1")
         button = int(round(action[0]*3))
         self.steps += 1
-        command = self.velocity_command(button)
+        walk, turn = self.command(button)
         for _ in range(SUBSTEPS):
-            self.data.qfrc_applied[:2] = 35*(command-self.data.qvel[:2])
+            yaw = self.data.qpos[2]
+            target = np.array([math.cos(yaw)*walk, math.sin(yaw)*walk])
+            self.data.qfrc_applied[:2] = 35*(target-self.data.qvel[:2])
+            self.data.qfrc_applied[2] = 35*YAW_INERTIA*(turn-self.data.qvel[2])
             mujoco.mj_step(self.model, self.data)
             touching = set()
             for contact in self.data.contact[:self.data.ncon]:
@@ -244,7 +298,7 @@ class World:
             self.delivered += 1
             self.reached_at_steps.append(self.steps)
         self.done = bool(self.delivered == DELIVERIES or self.steps >= ACTION_LIMIT)
-        return self.observe()
+        return self.reply()
 
     def advance(self):
         if self.done:
@@ -255,19 +309,36 @@ class World:
         gx, gy = self.goal()
         self.model.geom_pos[self.goal_geom][:2] = [gx, gy]
         if self.current == LOAD_AFTER:
-            # Loaded at the third point and set back down facing another way (the body turns, the base does not).
+            # Loaded at the third point and set back down facing another way, standing still.
             self.loaded = True
-            half = self.scene.loaded_heading/2
-            self.model.body_quat[self.chassis_id] = [math.cos(half), 0, 0, math.sin(half)]
+            self.data.qpos[2] = self.scene.loaded_heading
             self.data.qvel[:] = 0
         mujoco.mj_forward(self.model, self.data)
-        return self.observe()
+        return self.reply()
+
+    def unlock(self, token_sha256):
+        """The oracle's channel: the scene's ground truth, and the true pose in every later reply.
+
+        The service hashes the token it is sent and records the hash; whether it is the oracle's token is decided by
+        the grader, which holds the expected hash (tests/oracle_token.sha256) and zeroes any other run that used
+        this channel."""
+        if not isinstance(token_sha256, str):
+            raise ValueError("token required")
+        self.privileged = True
+        s = self.scene
+        result = self.reply()
+        result["scene"] = {"walls": [[x, y, sx, sy] for _, x, y, sx, sy in s.wall_boxes()],
+                           "mapping": list(s.mapping), "speeds": dict(s.speeds), "load": s.load,
+                           "loaded_heading": s.loaded_heading, "goals": [[float(x), float(y)] for x, y in s.goals],
+                           "start": [float(s.start[0]), float(s.start[1]), s.heading]}
+        return result
 
     def metrics(self):
         legs = [b-a for a, b in zip([0]+self.reached_at_steps, self.reached_at_steps)]
         return {"delivered": self.delivered, "deliveries": DELIVERIES,
                 "delivered_fraction": self.delivered/DELIVERIES, "success": float(self.delivered == DELIVERIES),
-                "steps": self.steps, "collisions": self.collisions, "simulated_seconds": self.steps*PRESS_SECONDS,
+                "steps": self.steps, "frames": self.frames, "collisions": self.collisions,
+                "simulated_seconds": self.steps*PRESS_SECONDS,
                 **{f"leg_{i+1}_actions": n for i, n in enumerate(legs)}}
 
     def close(self):

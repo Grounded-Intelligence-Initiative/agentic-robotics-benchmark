@@ -77,8 +77,11 @@ def upgrade(root, kind, assets, rng):
         ("lamp", (.95, .91, .77, 1), .4, 0),
         ("tracking_red", (.48, .001, .003, 1), 1, 0),
     ):
+        # The partition and fence panels glow a little, so a panel the robot's floodlight reaches reads as lit
+        # from either side (the scene's one fixed environment light leaves half of the faces nearly black).
+        emission = {"lamp": "1.2", "navigation_panel": ".15"}.get(name, "0")
         ET.SubElement(asset, "material", name=name, rgba=numbers(color),
-                      roughness=str(rough), metallic=str(metal), emission="1.2" if name == "lamp" else "0")
+                      roughness=str(rough), metallic=str(metal), emission=emission)
     for item in world.iter("geom"):
         if item.get("name") in ("robot_marker", "cup"):
             item.set("material", "tracking_red")
@@ -123,7 +126,9 @@ def upgrade(root, kind, assets, rng):
         # Real scans stay outside the traversable square unless they replace an
         # existing obstacle, so they cannot create invisible collision changes.
         prop(root, assets, "utility_box_01", "back_cabinet", (-3.25, 4.1, 0), (.85, .55, 1.65))
-        prop(root, assets, "portable_generator", "back_generator", (2.9, 4.0, 0), (1.15, .68, .9), yaw=-18)
+        # (the generator stands clear of the delivery bay's north fence, whose outer face is at y = 3.67)
+        prop(root, assets, "portable_generator", "back_generator", (2.9, 4.0 if kind != "icl" else 4.25, 0),
+             (1.15, .68, .9), yaw=-18)
         if kind != "icl":   # the delivery bay has a real fence instead of painted lines
             for x in (-3.6, 3.6):
                 add(world, f"floor_line{x}", (x, 0, .002), (.018, 3.7, .001), "safety_paint")

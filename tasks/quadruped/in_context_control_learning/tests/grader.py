@@ -9,6 +9,10 @@ What the grader reads:
 It replays the ledger's requests against the scene the ledger names (a scene of the hidden set) and scores the
 replayed episode: reward = (deliveries reached / 6) / anchor / full_at, clamped to [0, 1]. A replay that disagrees with
 the service's own record is an environment failure (task error), never the agent's low score.
+
+The oracle's channel: the service answers an `unlock` request with ground truth and records the sha256 of the token
+it was sent. Only this folder holds the expected hash (oracle_token.sha256; the token itself is in solution/, which
+no agent sandbox ever contains). A ledger with an `unlock` whose hash is not that one scores 0.
 """
 import json
 import os
@@ -59,8 +63,18 @@ def main():
     if not events:
         write_verdict(zero_verdict("no interaction", anchored=anchor is not None, extra=extra))
         return
+    unlocks = [e for e in events if e.get("method") == "unlock"]
+    expected = (root/"oracle_token.sha256").read_text().split()[0]
+    privileged = bool(unlocks) and all((e.get("params") or {}).get("token_sha256") == expected and "error" not in e
+                                       for e in unlocks)
+    extra["privileged_requests"] = float(len(unlocks))
+    extra["privileged_mode"] = float(privileged)
+    if unlocks and not privileged:
+        write_verdict(zero_verdict("the robot service's ground-truth channel was used without the oracle's token",
+                                   anchored=anchor is not None, extra=extra))
+        return
     metrics = replay(state)
-    for key in ("delivered", "steps", "collisions"):
+    for key in ("delivered", "steps", "frames", "collisions"):
         require(metrics[key] == state["metrics"][key],
                 f"replayed {key} {metrics[key]} differs from the service's {state['metrics'][key]}; "
                 "an environment failure, not an agent result")

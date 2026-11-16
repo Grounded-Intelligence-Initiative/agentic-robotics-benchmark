@@ -25,10 +25,12 @@ transport = "stdio"
 command = "/opt/venv/bin/python3"
 args = ["/opt/visual_robotics/client/mcp_stdio.py"]
 
-# Three hours, stated in instruction.md. The session is at most 560 robot requests, one tool call each; Opus 5.5 high
-# takes about 5-15 s per call on our gateway, so the requests, not the clock, are what a careful run uses up.
+# Six hours, stated in instruction.md. The session is at most 660 robot requests (500 presses, 120 camera frames),
+# one tool call each. On the earlier ceiling-camera version Opus 5.5 high needed 8 s per model call and made five
+# presses per call; with a frame to read and a pose to keep, a careful run may spend a minute on a call and make
+# 300 calls. The presses and the frames, not the clock, are what a run is meant to use up.
 [agent]
-timeout_sec = 10800
+timeout_sec = 21600
 network_mode = "no-network"
 
 # Separate verification: tests/test.sh runs as root in a fresh verifier sandbox started from the task image, into which
