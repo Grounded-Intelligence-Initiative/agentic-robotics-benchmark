@@ -5,8 +5,11 @@ reach the same service at `/run/visual_robotics/world.sock` (`ROBOT_SOCKET` over
 Run code with `/opt/venv/bin/python3`; do not rely on the harness's PATH.
 
 `observe()`, `act(action)`, `advance()` and `new_site()` return an observation: one base64 PNG
-in `images`, `frame_id`, `phase`, `done`, `steps_remaining`, `requests_remaining`, `bumper`
-and `contact_stop`. `top_image(obs)` decodes the image; `pixel_to_world` / `world_to_pixel`
-convert between pixels and metres. There is no state, map, seed or file-reading call.
+in `images` (the current body's camera), `odometer` (the leg odometer's running total, metres,
+in the body's frame), `frame_id`, `phase`, `done`, `steps_remaining`, `requests_remaining`,
+`bumper` and `contact_stop`. `camera_image(obs)` decodes the image; `pixel_to_body` /
+`body_to_pixel` convert between pixels and floor points in the body's own frame. Nothing
+reports a position or a heading in the hall, and there is no state, map, seed or file-reading
+call.
 
 Your mission program goes in `/home/user/submission/run.sh` (the instruction says how it is run).

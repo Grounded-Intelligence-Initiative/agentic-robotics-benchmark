@@ -24,7 +24,7 @@ import traceback
 
 from world import World
 
-REQUESTS = 640                    # requests per mission (observe, act, advance, truth)
+REQUESTS = 1000                   # requests per mission (observe, act, advance, truth)
 MAX_EVENTS = 1200
 
 

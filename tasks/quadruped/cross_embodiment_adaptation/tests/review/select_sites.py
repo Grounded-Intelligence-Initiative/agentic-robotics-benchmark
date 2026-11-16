@@ -26,17 +26,22 @@ CANDIDATES = 24
 
 
 def cell_of(site):
-    """Cell A: the wide opening's centre at y >= 0 (above the hall's midline, the carrier's side); B: below."""
-    return "A" if (site.wide[0]+site.wide[1])/2 >= 0 else "B"
+    """Cell A: the middle of the wide opening lies within 2.25 m, along the partition, of the dock (the scout
+    comes on it early); B: farther (the scout has to survey the partition to find it)."""
+    return "A" if abs((site.wide[0]+site.wide[1])/2-site.dock[1]) < 2.25 else "B"
 
 
 def features(seed):
+    import math
     import world as W
     site = W.Site(seed)
+    turn = math.degrees((site.carrier_yaw-site.scout_yaw+math.pi) % (2*math.pi)-math.pi)
     return {"cell": cell_of(site), "wall_x": round(site.wall_x, 3),
-            "wide_centre_y": round((site.wide[0]+site.wide[1])/2, 3),
+            "wide_to_dock": round(abs((site.wide[0]+site.wide[1])/2-site.dock[1]), 3),
             "wide_width": round(site.wide[1]-site.wide[0], 3), "crates": len(site.crates),
-            "carrier_side": round(2*(site.carrier_half+W.LEG), 3), "carrier_mass": round(site.carrier_mass+.08, 2)}
+            "carrier_side": round(2*(site.carrier_half+W.LEG), 3), "carrier_mass": round(site.carrier_mass+.08, 2),
+            "start_offset": round(float(((site.carrier_start-site.dock)**2).sum()**.5), 3),
+            "heading_apart": round(abs(turn), 1), "floor_span": round(site.floor_camera["span"], 3)}
 
 
 def draw(args):
@@ -82,7 +87,7 @@ def run(args):
     sites = [s for c in ("A", "B") for s in kept[c]]
     Path(args.out).write_text(json.dumps({
         "rule": "tests/review/selection.md", "per_cell": PER_CELL,
-        "cells": {"A": "wide opening centre y >= 0", "B": "wide opening centre y < 0"},
+        "cells": {"A": "wide opening within 2.25 m of the dock along the partition", "B": "farther"},
         "candidates": rows, "kept": sites}, indent=1)+"\n")
     Path(args.sites).write_text(json.dumps({"seeds": sites}, indent=1)+"\n")
     shutil.rmtree(G.RUN/"program", ignore_errors=True)

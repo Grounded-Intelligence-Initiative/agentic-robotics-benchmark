@@ -1,28 +1,31 @@
 # Cross-Embodiment Adaptation: solution
 
-![A development site (not a hidden one): the hall as reviewers see it, the privileged oracle's carrier route in orange,
-the scout's 1.4 m and the carrier's 0.5 m view circles; right: the scout's and the carrier's actual observations and
-the delivered carrier](preview.jpg)
+![A development site (not a hidden one). Left: the hall as reviewers see it, with the scout's track in white, the
+carrier's in orange, the dock and the pad. Middle: the map the reference's scout made in its own frame (floor mosaic;
+green: floor seen in the trusted centre of a frame; red: feet of walls and footprints of crates) with the carrier's
+route. Right: what the two robots see: a frame of the scout's mast camera and one of the carrier's floor
+camera](preview.jpg)
 
-The large image is a reviewer view of development seed 1001 (no agent ever gets it). The agent's own observation is
-the masked top view on the right, as in [agent-view.png](agent-view.png): the scout sees 1.4 m around itself, the
-carrier 0.5 m, and the delivery pad's beacon is always visible.
+The pictures are of development seed 1001 (no agent ever gets the left one). The agent's own observations are on the
+right, as in [agent-view.png](agent-view.png): the scout's mast camera (a pinhole 2.0 m above the floor: walls and
+crates lean away from the centre and hide the floor behind them) and the carrier's floor camera (about 0.6 m of floor
+under its base, nothing else).
 
 ## What is here
 
 | path | what it is |
 |---|---|
 | `solve.sh` | the oracle episode: copies `oracle/` into `/home/user/submission/` |
-| `oracle/` | the privileged oracle mission program. It holds a token whose sha256 only `tests/hidden/oracle_token.sha256` knows, so the graded robot service answers its `truth` call (the site's obstacles and the robot's exact state and dynamics). It presses 12 scout buttons in place, switches, and drives the carrier along a route found by A* over whole button pulses in position-velocity space, each pulse predicted exactly and checked for clearance at its 10 ms substeps. It shows that every hidden mission can be completed; it is not an agent's solution. |
-| `reference/` | the image-only reference mission program (no token, no truth): it uses only what the instruction gives an agent. The scout identifies the buttons with four presses and explores until the carrier's planned route is seen end to end (plan the route with unseen cells assumed free, visit the first unseen stretch of its corridor, repeat); walls, crates and the pad are segmented by colour. After the switch, eight presses fit the carrier's lagged response (one pole and a steady speed), then A* over pulses on the scouted map, inflated by the worst-case 0.86 m footprint plus a margin. It is the evidence that the observations suffice (`tests/review/reference_dev.json`). |
+| `oracle/` | the privileged oracle mission program. It holds a token whose sha256 only `tests/hidden/oracle_token.sha256` knows, so the graded robot service answers its `truth` call (the site's obstacles and the robot's exact pose, velocity and dynamics). It presses 12 scout buttons in place, switches, and drives the carrier by model-predictive control on the true map: before every press it reads the true state and rolls every sequence of the next five presses through the exact model; the first press must stay clear even if it slips (a slip cannot be known in advance, not even by the oracle). It shows that every hidden mission can be completed; it is not an agent's solution. |
+| `reference/` | the reference mission program from the robots' own observations (no token, no truth): the evidence that they suffice (`tests/review/reference_dev.json`). `vision.py`: image geometry and registration. `perception.py`: what a frame of the mast camera says about the floor plane (floor seen, a wall's foot, a crate's footprint from its lid). `mapping.py`: the floor mosaic and the vote maps in the scout's frame; every frame is registered on the mosaic, so slips and turns are measured. `explore.py`: find the pad, then see every cell of a route the carrier can take. `floorloc.py`: the carrier finds its pose in the scout's map from its floor camera (every heading, five spans), then tracks it by visual odometry corrected on the mosaic. `driving.py`: fits the carrier's lagged response as it drives and steers by model-predictive control. `planning.py`: routes on the map. |
 
 ## Validation
 
 - The privileged oracle on the 8 hidden sites: see `tests/anchor.json` (the anchor) and `tests/review/selection.md`
   (the pre-registered selection and its results).
-- The image-only reference on development seeds: `tests/review/reference_dev.json`.
-- How much of the map the carrier needs: `tests/review/map_ablation.json` (a perfectly controlled carrier with the
-  full map, with the partition but no crates, and with no map).
+- The reference on development seeds, run by the task's grader: `tests/review/reference_dev.json`.
+- What the carrier needs to know: `tests/review/ablation.json` (a perfectly controlled carrier with the truth; without
+  the scout's map; with the map but without finding itself in it, in position, in heading, or while it drives).
 
 ## Reproduce
 
@@ -36,8 +39,10 @@ uv run ale validate ../../tasks/quadruped/cross_embodiment_adaptation
 ## Limits
 
 Both bodies use scaled Go1 meshes on simple collision boxes with supplied leg stabilization and planar base motion;
-the carrier's lag is a heavier body under the same velocity drive. This is a simulated task, not a hardware-validated
-digital twin.
+the carrier's lag is a heavier body under the same velocity drive; a slip is a press that delivers part of the
+commanded velocity and turns the body. The scout's camera is an ideal pinhole and the carrier's an ideal orthographic
+view with a simple sensor model (exposure, colour balance, vignetting, noise). This is a simulated task, not a
+hardware-validated digital twin.
 
 ## Assets
 
