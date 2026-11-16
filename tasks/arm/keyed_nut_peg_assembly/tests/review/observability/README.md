@@ -28,6 +28,20 @@ pins and into a riser, told false entrances by their short travel, and assembled
 kits, but completed no kit within the review's effort (its turns stall in the narrow mouth of the next riser); it is not
 shipped.
 
+## A controller on the observations alone, within the takt (2026-11-16)
+
+`observation_only_controller_dev_kits.json`: the submission of the first frontier measurement (Claude Opus 5.5,
+2026-11-12) acts on the observations alone: it reads the layout from the first images and finds each groove by touch,
+with no access to any state when it runs. It was made for the earlier version, whose episodes lasted 2400 steps, and
+completed 9 of that version's 10 graded kits in 1047 to 1834 steps. Run by the grader on the commissioning service's
+16 development kits under today's 1200-step takt (a one-episode plan per kit through `tests/review/regrade.sh`), it
+completes 3 of 16 kits (1090, 1152 and 1175 steps) and assembles 30 of 48 nuts; on the other 13 kits the takt runs out
+with one or two nuts assembled. The reference, which is given the grooves, needs 598 to 838 steps on the same kits.
+So the observations are enough to complete kits, also within the takt for a controller that was not written for it;
+what the takt asks for is a groove search about as direct as the reference's path.
+
+The perception check above was repeated on the amended image the same day: every kit's numbers are identical.
+
 Run (inside the task image; `tests/` mounted read-only):
 
     docker run --rm --network none -v <task>/tests:/stage:ro --entrypoint /opt/venv/bin/python3 <task image> \

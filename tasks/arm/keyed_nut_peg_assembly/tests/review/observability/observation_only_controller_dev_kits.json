@@ -1,0 +1,177 @@
+{
+ "what": "A controller that acts on the observations alone, run by the grader on the commissioning service's 16 development kits under the 1200-step takt (tests/review/regrade.sh, a one-episode plan per kit, a fresh container of the task image each, 6 at a time; 2026-11-16). The controller is the submission of the first frontier measurement (Claude Opus 5.5, 2026-11-12, made for the version with a 2400-step limit; its task log is in the benchmark's task-log dataset): it reads the layout from the first images and finds each groove by touch, and has no access to any state when it runs. It was not written for this takt. reference_steps: what the reference, which is given the grooves, needed on the same kit.",
+ "summary": {
+  "kits": 16,
+  "kits_complete": 3,
+  "nuts": 48,
+  "nuts_assembled": 30,
+  "steps_of_the_complete_kits": [
+   1090,
+   1152,
+   1175
+  ],
+  "on_the_2400_step_version": "9 of 10 graded kits, 29 of 30 nuts, 1047 to 1834 steps for a complete kit"
+ },
+ "kits": [
+  {
+   "kit": 1,
+   "name": "D02",
+   "kit_complete": 0,
+   "nuts_assembled": 1,
+   "steps": 1200,
+   "controller_s": 3.6,
+   "images_requested": 6,
+   "reference_steps": 612
+  },
+  {
+   "kit": 2,
+   "name": "D03",
+   "kit_complete": 0,
+   "nuts_assembled": 1,
+   "steps": 1200,
+   "controller_s": 3.3,
+   "images_requested": 6,
+   "reference_steps": 686
+  },
+  {
+   "kit": 3,
+   "name": "D04",
+   "kit_complete": 0,
+   "nuts_assembled": 2,
+   "steps": 1200,
+   "controller_s": 3.5,
+   "images_requested": 6,
+   "reference_steps": 639
+  },
+  {
+   "kit": 4,
+   "name": "D05",
+   "kit_complete": 0,
+   "nuts_assembled": 2,
+   "steps": 1200,
+   "controller_s": 3.5,
+   "images_requested": 6,
+   "reference_steps": 721
+  },
+  {
+   "kit": 5,
+   "name": "D06",
+   "kit_complete": 1,
+   "nuts_assembled": 3,
+   "steps": 1090,
+   "controller_s": 3.4,
+   "images_requested": 6,
+   "reference_steps": 670
+  },
+  {
+   "kit": 6,
+   "name": "D07",
+   "kit_complete": 1,
+   "nuts_assembled": 3,
+   "steps": 1152,
+   "controller_s": 3.4,
+   "images_requested": 6,
+   "reference_steps": 650
+  },
+  {
+   "kit": 7,
+   "name": "D08",
+   "kit_complete": 0,
+   "nuts_assembled": 2,
+   "steps": 1200,
+   "controller_s": 3.6,
+   "images_requested": 6,
+   "reference_steps": 676
+  },
+  {
+   "kit": 8,
+   "name": "D09",
+   "kit_complete": 0,
+   "nuts_assembled": 2,
+   "steps": 1200,
+   "controller_s": 3.4,
+   "images_requested": 6,
+   "reference_steps": 838
+  },
+  {
+   "kit": 9,
+   "name": "D10",
+   "kit_complete": 0,
+   "nuts_assembled": 1,
+   "steps": 1200,
+   "controller_s": 3.0,
+   "images_requested": 5,
+   "reference_steps": 769
+  },
+  {
+   "kit": 10,
+   "name": "D11",
+   "kit_complete": 0,
+   "nuts_assembled": 2,
+   "steps": 1200,
+   "controller_s": 3.4,
+   "images_requested": 6,
+   "reference_steps": 729
+  },
+  {
+   "kit": 11,
+   "name": "D12",
+   "kit_complete": 0,
+   "nuts_assembled": 2,
+   "steps": 1200,
+   "controller_s": 3.4,
+   "images_requested": 6,
+   "reference_steps": 773
+  },
+  {
+   "kit": 12,
+   "name": "D13",
+   "kit_complete": 0,
+   "nuts_assembled": 2,
+   "steps": 1200,
+   "controller_s": 3.4,
+   "images_requested": 6,
+   "reference_steps": 655
+  },
+  {
+   "kit": 13,
+   "name": "D14",
+   "kit_complete": 0,
+   "nuts_assembled": 2,
+   "steps": 1200,
+   "controller_s": 3.8,
+   "images_requested": 7,
+   "reference_steps": 608
+  },
+  {
+   "kit": 14,
+   "name": "D16",
+   "kit_complete": 1,
+   "nuts_assembled": 3,
+   "steps": 1175,
+   "controller_s": 3.2,
+   "images_requested": 6,
+   "reference_steps": 696
+  },
+  {
+   "kit": 15,
+   "name": "D17",
+   "kit_complete": 0,
+   "nuts_assembled": 1,
+   "steps": 1200,
+   "controller_s": 3.4,
+   "images_requested": 6,
+   "reference_steps": 693
+  },
+  {
+   "kit": 16,
+   "name": "D18",
+   "kit_complete": 0,
+   "nuts_assembled": 1,
+   "steps": 1200,
+   "controller_s": 3.3,
+   "images_requested": 6,
+   "reference_steps": 598
+  }
+ ]
+}

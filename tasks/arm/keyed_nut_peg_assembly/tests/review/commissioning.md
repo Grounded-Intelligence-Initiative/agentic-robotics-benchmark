@@ -66,7 +66,9 @@ Chosen like the graded set, from their own pre-registered candidates (kit seed 7
 "draws that the reference completed"; unfiltered development kits would be a slightly different population (about
 one draw in seven has a wrist-range case the reference does not handle), and with 32 episodes every development kit
 has to be worth its episode. No development seed is a candidate's and no development kit has a graded kit's
-grooves (the test above).
+grooves (the test above). The run (2026-11-16): the reference completed 22 of the 24 candidates in 598 to 846
+steps; D01 and D15 dropped (the takt ran out with two and one nuts assembled), so the kits are D02 to D14 and D16 to
+D18, which the agent addresses as kits 1 to 16.
 
 ## The window's size
 
@@ -87,3 +89,12 @@ printed at every step.
 on 12 maintainer kits (`sample_kit` 1000-1009, 1020, 1037) the reference repeats its earlier runs step for step
 where it completes (601 to 743 steps), and the kits it does not complete now end at 1200 steps instead of 2400. The
 controller budget (600 s of controller time per kit) and the image charges are unchanged.
+
+The hidden set under the takt: the rule ran again on the same 16 candidates (the selection record's amendment). The
+reference completed the same 14, each with the steps of its first run (628 to 845), so the set is the same ten kits,
+and its full verify measured 1.0 again.
+
+Is the takt within reach of a controller that has only the observations? The first measurement's submission, which
+was not written for it, completes 3 of the 16 development kits within 1200 steps and assembles 30 of 48 nuts
+(`observability/observation_only_controller_dev_kits.json`); it needed 1047 to 1834 steps for the nine graded kits it
+completed under the earlier limit. The takt is about one and a half times the reference's slowest kit.

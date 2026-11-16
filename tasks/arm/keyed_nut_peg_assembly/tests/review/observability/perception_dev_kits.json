@@ -1,6 +1,6 @@
 {
  "summary": {
-  "run": "2026-11-12, apollo, the task image (two containers of 15 kits, 1 CPU each)",
+  "run": "2026-11-12, apollo, the task image (two containers of 15 kits, 1 CPU each); repeated the same way on 2026-11-16 on the amended image (the 1200-step takt, the commissioning service): every kit's numbers identical",
   "kits": 30,
   "pegs": 90,
   "pegs_found": 90,

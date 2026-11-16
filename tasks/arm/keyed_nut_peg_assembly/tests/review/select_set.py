@@ -30,6 +30,9 @@ from their own pre-registered candidates (an amendment's "development_kits": kit
     # host (standard library): the rule over the runs, the hollowing check; --write records the set
     python3 -B tests/review/select_set.py make --pool hidden --work <work> [--write]
     # --pool dev --write records the development kits and writes them into the service's kits.json
+    # host: the reference's full verify of the set (regrade.sh on tests/ as it is), recorded as the anchor's source
+    bash tests/review/regrade.sh <image> <name> <reference submission> <out>
+    python3 -B tests/review/select_set.py anchor --out <out> --how "<where and how>"
 """
 
 import argparse
@@ -368,6 +371,56 @@ def cmd_make(a):
     print("wrote %s and %s" % (EPISODES, SELECTION))
 
 
+ANY_EPISODE_LINE = re.compile(r"\[grader\] episode (?P<ep>\d+) \((?P<id>[^)]+)\): kit_complete=(?P<kit>\d) "
+                              r"nuts_assembled=(?P<nuts>\d) progress=(?P<prog>[0-9.]+) steps=(?P<steps>\d+) "
+                              r"controller_s=(?P<cs>[0-9.]+) (?P<reason>.*)$")
+
+
+def cmd_anchor(a):
+    """Record the reference's full verify of the set (the out folder of one regrade.sh run on tests/ as it is):
+    it must repeat every kept selection run. The anchor (tests/anchor.json `value`) is its measured value."""
+    import datetime
+    sel = load_selection()
+    rec = latest(sel)
+    runs = {r["id"]: r for r in rec["selection_run"]["runs"]}
+    eps = []
+    with open(os.path.join(a.out, "verify.stderr")) as f:
+        for line in f:
+            m = ANY_EPISODE_LINE.search(line.strip())
+            if m:
+                eps.append({"episode": int(m.group("ep")), "id": m.group("id"), "kit_complete": int(m.group("kit")),
+                            "nuts_assembled": int(m.group("nuts")), "steps": int(m.group("steps")),
+                            "controller_s": float(m.group("cs"))})
+    with open(os.path.join(a.out, "verdict.json")) as f:
+        verdict = json.load(f)
+    with open(os.path.join(a.out, "regrade.log")) as f:
+        log = f.read()
+    wall = re.findall(r"wall_s=(\d+)", log)
+    image = re.findall(r"image=(\S+) \((sha256:[0-9a-f]+)\)", log)
+    assert [e["id"] for e in eps] == rec["hidden_set"], "the verify did not play the hidden set in order"
+    repeats = all((e["kit_complete"], e["nuts_assembled"], e["steps"]) ==
+                  (runs[e["id"]]["kit_complete"], runs[e["id"]]["nuts_assembled"], runs[e["id"]]["steps"]) for e in eps)
+    met = verdict["metrics"]
+    assert met["reference_token"] == 1.0 and not met["episodes_aborted"] and not met["sim_faults"]
+    rec["anchor_verify"] = {
+        "date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
+        "how": a.how,
+        "image": image[-1][1] if image else None,
+        "wall_s": int(wall[-1]) if wall else None,
+        "measured": met["kit_success_rate"],
+        "episodes": eps,
+        "every_episode_repeats_its_selection_run": repeats,
+        "probes": {"total": met["probes_total"], "answers_that_differed": met["probes_passed"],
+                   "note": "the reference acts on _gt's real proprioception, so it answers both copies of a repeated "
+                           "step alike; the probe record never gates"},
+    }
+    if a.pre_registered_commit:
+        rec["pre_registered_commit"] = a.pre_registered_commit
+    save_selection(sel)
+    print("anchor verify: measured %s, %d episodes, repeats its selection runs: %s" % (
+        met["kit_success_rate"], len(eps), repeats))
+
+
 def cmd_provisional(a):
     """Before the development candidates have run: the service's kits.json lists the first DEV_SIZE candidates
     (their kits as `prepare --pool dev` drew them), so that the image builds; `make --pool dev --write` replaces
@@ -418,9 +471,13 @@ def main():
     m.add_argument("--work", required=True)
     m.add_argument("--write", action="store_true")
     m.add_argument("--where", default="")
+    an = sub.add_parser("anchor")
+    an.add_argument("--out", required=True, help="the out folder of regrade.sh's full verify of the set")
+    an.add_argument("--how", required=True)
+    an.add_argument("--pre-registered-commit", default=None)
     a = ap.parse_args()
     {"draw": cmd_draw, "amend": cmd_amend, "prepare": cmd_prepare, "provisional": cmd_provisional, "run": cmd_run,
-     "make": cmd_make}[a.cmd](a)
+     "make": cmd_make, "anchor": cmd_anchor}[a.cmd](a)
 
 
 if __name__ == "__main__":
