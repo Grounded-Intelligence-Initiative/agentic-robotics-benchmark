@@ -1,0 +1,214 @@
+# Bayonet nut kit cell: data sheet
+
+What the engineer who commissions a controller on this cell is given: the kit's drawing data and tolerances, how a
+kit is laid out, the robot and its controller, the sensors and cameras, the safety stops, the takt, and the wire of
+the commissioning service. The numbers, the camera calibration and a few geometry helpers are also in
+`cell_data.py` (plain Python and NumPy). The cell itself (its simulator, its model files, its state) is not in your
+account: you meet it through the commissioning service (section 10) and when your controller is graded.
+
+## 1. Frames and units
+
+World frame: metres, radians, seconds. The table top is the plane z = 0.80 and spans x, y in [-0.40, 0.40]. The
+Panda base stands at (-0.56, 0, 0.80) facing +x. Quaternions are (w, x, y, z). Angles in a nut are counted
+counter-clockwise seen from above, from the handle (the nut's local +x axis).
+
+## 2. The pegs (drawing)
+
+| part | geometry |
+|---|---|
+| collar (base) | a 50 x 50 x 10 mm block on the table, dark grey |
+| shaft | a cylinder of radius 11 mm, 65 mm tall, on the collar, light grey; its top is 75 mm above the table |
+| pin | a block on the shaft surface on the peg's local +x side: radial extent 10.5 to 17.2 mm from the shaft axis, 3 mm wide (tangential), 4 mm tall, centred 37.5 mm above the collar top (its top face 39.5 mm above it) |
+| bands | 1, 2 or 3 near-black rings around the shaft, each 7 mm tall and 0.4 mm proud of the shaft; centres 10, 23 and 36 mm below the shaft top (a peg with one band has the top one, with two the top two) |
+
+The three pegs of a kit are identical except for their bands. A peg's yaw turns its pin with it.
+
+## 3. The nuts (drawing)
+
+- **Ring.** 45 mm tall, a 24-sided prism: 24 sectors of 15 degrees (sector s spans [15 s, 15 (s + 1)] degrees from
+  the handle) by 9 layers of 5 mm (layer 0 at the bottom). Outside flats 28 mm from the hole axis. The nut's origin
+  is the point of the hole axis on the bottom face.
+- **Hole.** Fits over the shaft: its flats are 12.8 mm from the axis (inscribed radius 12.7 mm; the shaft is
+  11 mm), so a nut on a shaft has about 1.7 mm of radial clearance.
+- **Wall cells.** In every (sector, layer) cell the wall is two blocks: an outer block from 19 to 28 mm (always
+  there) and an inner block from 12.8 to 19 mm, which is either solid or cut away. The cut cells form the
+  **groove**; its floor is at 19 mm from the axis, so a cut cell is a recess 6.2 mm deep. An inner block is 5.4 mm
+  wide (tangentially), wider than its sector is at the hole (3.4 mm), so the solid cells beside a channel overhang
+  it near the hole: a channel two sectors wide is nominally 30 degrees wide but opens only about 21 degrees at the
+  hole surface. With the pin's width, a nut resting on the pin drops into a riser only while the riser's centre
+  is within about +-4 degrees of the pin.
+- **Handle.** A bar along the nut's +x axis from 26 to 98 mm from the hole axis, 16 mm wide, from 25 to 41 mm above
+  the bottom face.
+- **Mass and surfaces.** Mass 0.05 to 0.15 kg, centre of mass 15 mm from the hole axis towards the handle and
+  18 mm above the bottom face. Sliding friction coefficient of the nut's surfaces 0.6 to 1.0. One colour per nut,
+  nominal RGB in `cell_data.NUT_COLOURS`: blue, green, orange, pink, purple, red, teal, yellow.
+- **Groove family** (identical rules for every nut; `cell_data.groove_cells` lists the cut cells of a groove):
+  - channels are 2 sectors (30 degrees) wide; a groove is given by its entrance sector e (0 to 23), two turns
+    k1 and k2, two dead-end lengths and its false entrances;
+  - the **entrance riser**: layers 0-1 at sectors (e, e + 1);
+  - the **first turn**: layers 1-2, running k1 sectors from sector e (k1 = 2, 3 or 4 sectors either way:
+    counter-clockwise for k1 > 0), then a **riser** in layers 2-4 at the new sector e + k1;
+  - the **second turn**: layers 4-5, k2 sectors from there (2, 3 or 4, either way), then the last riser in
+    layers 5-7;
+  - **dead ends**: each turn channel may continue 1, 2 or 3 sectors the other way from where it starts, and stop;
+  - **false entrances** (0, 1 or 2): risers in layers 0-2 at other sectors that lead nowhere; each is at least
+    2 sectors clear of every cut cell of the true path in layers 0-2 and of the other false entrance;
+  - layer 8 (the top one) is always solid, and the outer blocks are all there: the top face and the outside of the
+    ring show nothing. The groove is plain geometry, though: looking down into the hole at a steep angle you see
+    the far side of the hole wall below the top layer, where every cut cell is a recess; the entrances are openings
+    in the bottom face.
+- **How a nut comes down.** The pin enters the groove from below. With the nut resting on the pin, the nut's
+  bottom is 39.5 mm above the collar. It comes down to 24.5 mm once the pin is in the entrance riser (or a false
+  entrance), to 9.5 mm once it has passed the first turn and riser, and to the collar once it has passed the
+  second. Passing a turn means rotating the nut about the shaft while the pin is in the turn channel: the nut
+  turns by -15 degrees per sector the pin advances counter-clockwise in the nut's frame.
+- **How the family is drawn** (the graded nuts and the development nuts alike): the entrance uniformly over the 24
+  sectors; each turn 2, 3 or 4 sectors, either way, each with equal chance; each dead end 0, 1, 2 or 3 sectors
+  with equal chance; 0, 1 or 2 false entrances with equal chance, each placed uniformly among the sectors that
+  keep the clearance above (fewer if none is free); mass and friction uniformly in their ranges.
+
+## 4. A kit and how it is laid out
+
+A kit is three nuts of three different colours (chosen uniformly among the eight) and a **work order**: a random
+assignment of the nuts to the pegs with 1, 2 and 3 bands. Every observation carries it as `order`: a list of
+`{"colour": name, "peg_bands": 1 | 2 | 3}`, one entry per nut.
+
+Layout tolerances (every episode draws them anew, uniformly, and redraws until all hold):
+
+- peg centres: x in [-0.02, 0.15], y in [-0.21, 0.21], at least 0.13 m apart; peg yaws uniform over the full
+  circle; which peg carries how many bands is random;
+- nut centres (hole axes): x in [-0.24, -0.06], y in [-0.24, 0.24], at least 0.12 m apart and at least 0.13 m from
+  every peg centre; the nuts lie flat on the table, bottom face down;
+- nut yaw (the handle's direction) = the nut's azimuth seen from the robot base, atan2(y, x + 0.56), plus 135
+  degrees plus a uniform offset within +-60 degrees;
+- the handle's centre (63 mm from the hole axis) has |y| < 0.30 and x > -0.28, lies at least 0.09 m from every peg
+  centre, at least 0.07 m from the other nuts' centres and at least 0.05 m from the other handles' centres.
+
+## 5. The robot and its controller
+
+- **Arm and gripper.** A Franka Panda with its parallel-jaw gripper: the robosuite 1.5.2 models
+  `robots/panda/robot.xml` and `grippers/panda_gripper.xml` under
+  `/opt/venv/lib/python3.12/site-packages/robosuite/models/assets/` (kinematics, inertias, joint limits, torque
+  limits of 80 N m on joints 1-5 and 12 N m on joints 6-7, the collision shapes of hand and fingers). The base is at
+  (-0.56, 0, 0.80). An episode starts at rest at joints (0, -0.35, 0, -2.35, 0, 2.0, pi/4) with the fingers open,
+  the gripper pointing down. `ee_pos` / `ee_quat` are the pose of the gripper's `grip_site` (between the finger
+  pads).
+- **Action** (10 Hz): `[dx, dy, dz, drx, dry, drz, grip, cams]`.
+  - `dx, dy, dz`: a displacement of the gripper site in the world frame (m; the vector is clipped to a length of
+    0.02). The position target of the step is the site's **current** position plus this displacement, clamped to
+    the box x, y in [-0.45, 0.45], z in [0.802, 1.35]. Targets do not accumulate: every step starts again from
+    where the gripper is.
+  - `drx, dry, drz`: a world-frame rotation vector (rad; clipped to a length of 0.15) applied to the gripper's
+    current orientation; the result is the step's orientation target.
+  - `grip`: -1 = fingers fully open (80 mm) ... +1 = fully closed, linear in between. Each finger is
+    position-controlled to its half of the commanded opening with a stiffness of 3000 N/m, and its force is
+    capped at 20 N.
+  - `cams`: an integer bit mask of the cameras whose image the next observation carries (1 = left, 2 = right,
+    4 = wrist; 0 = none).
+- **Tracking.** The arm is torque-controlled at 500 Hz by an operational-space controller that holds the step's
+  target for 0.1 s: a task-space acceleration of 400 x (position error) - 40 x (velocity) and 200 x (orientation
+  error) - 28.3 x (angular velocity), i.e. critically damped with natural frequencies of 20 and 14.1 rad/s, turned
+  into joint torques through the arm's task-space inertia, with gravity and Coriolis compensation. In the null
+  space the arm is pulled towards the posture (0, -0.3, 0, -2.2, 0, 1.9, pi/4) (5 N m/rad, damping 6 N m s/rad);
+  every joint has an extra damping of 0.5 N m s/rad and is braked above 1.5 rad/s. Because the target is re-based
+  on the current pose at every step, a displacement command that is blocked keeps pressing with a force that
+  grows with the commanded displacement (the task-space inertia times 400 times the error); it is a compliant
+  position controller, not a force controller.
+
+## 6. Sensors
+
+- `q`, `dq`: the seven arm joints' positions and velocities (rounded to 1e-6).
+- `gripper`: the finger opening in m (0.08 fully open).
+- `wrench`: force (N) and torque (N m) at the wrist force/torque sensor, expressed in world axes. The sensor sits
+  at the gripper's mounting face (the `ft_frame` of the gripper model, 97 mm behind the grip site) and reads what
+  the arm applies to the gripper there: with nothing touched it reads the gripper's weight, about +5.1 N in z; a
+  contact that pushes the gripper up lowers z; pushing the gripper against something in +x raises x. Every sample
+  carries noise (sigma 0.3 N per force axis, 0.03 N m per torque axis) and a bias that is fixed within an episode
+  and drawn anew for each (within +-0.5 N per force axis, +-0.05 N m per torque axis).
+- `T_world_wrist`: the 4 x 4 pose of the wrist camera in the world, OpenCV convention.
+- There is no depth image and no object state of any kind.
+
+## 7. Cameras
+
+| camera | pose | field of view (vertical) | image |
+|---|---|---|---|
+| `left` | fixed at (-0.30, 0.55, 1.45), looking at (0.05, 0, 0.80), image up along world +z | 50 degrees | 320 x 240 |
+| `right` | fixed at (-0.30, -0.55, 1.45), looking at (0.05, 0, 0.80), image up along world +z | 50 degrees | 320 x 240 |
+| `wrist` | on the hand (the robot model's `eye_in_hand`), looking along the gripper's approach axis; its pose is `T_world_wrist` | 75 degrees | 256 x 192 |
+
+Pinhole cameras without distortion; the focal length in pixels is (H / 2) / tan(fovy / 2) for both axes and the
+principal point is at (W / 2, H / 2), so the centre of pixel (u, v) is at (u + 0.5, v + 0.5).
+`cell_data.fixed_camera_matrices(name)` returns (K, T_world_cam) of a fixed camera in the OpenCV convention (x
+right, y down, z forward), `cell_data.wrist_camera_intrinsics()` the wrist camera's K. Images are RGB, 8 bit, with
+pixel noise of sigma 2; on the wire each is `{"dtype": "uint8", "shape": [H, W, 3], "b64": <raw row-major bytes,
+base64>}` (`cell_data.decode_image`). An image is empty (shape `[0, 0, 3]`) unless the previous action asked for
+it; the first observation of an episode carries all three.
+
+## 8. Safety stops (they end an episode, on the commissioning service as when graded)
+
+- **A ruined nut.** While a nut is on its own peg (its hole axis within 5 mm of that peg's shaft axis, the nut
+  below the shaft top), the centre of the pin lies inside a solid cell of the nut's wall, more than 5 degrees
+  sideways or 1.5 mm up or down from every cut cell, for 3 consecutive steps. The groove walls are solid, so this
+  only happens when the pin is forced through one.
+- **An unstable simulation.** Any arm joint faster than 8 rad/s, a nut faster than 5 m/s, or a state that is not
+  finite.
+
+## 9. Takt and the episode
+
+One action every 0.1 s. An episode is one kit and lasts at most 1200 steps (120 s): the takt time, 40 s per nut.
+Observation format, the grading wire (READY / reset / act / close), the deadlines, the controller budget and the
+rule by which a nut counts as assembled are in the task instruction.
+
+## 10. The commissioning service
+
+The cell, on 16 development kits, for your commissioning window. It is the cell your controller is graded on (the
+same robot and controller, sensors, cameras, kit family, layout tolerances, safety stops, takt and budgets); the
+development kits are draws from the family of section 3 that the reference controller completed within the takt,
+like the graded kits, and none of them is a graded kit.
+
+- **The window.** 32 episodes in your session, at most 2 at a time. An episode counts from its `reset`. The count
+  is in `/run/keyedcell/commission_status.json` and does not grow: plan your episodes. (The size is that of a
+  real commissioning window: one working shift on the cell with a tray of 16 pre-series kits, at about a quarter
+  of an hour per trial: lay the kit out, run one takt, look at the result, clear the pegs, change the program.)
+- **A kit's episode.** `reset(kit)` lays development kit `kit` (1 to 16) out. Each kit has its own layout, and its
+  episode starts the same way every time you start it (the same layout, the same sensor bias and noise).
+- **What it answers.** What the cell gives a controller: the observation after every action, and how the episode
+  ended. It answers no object pose, no groove, no score, no completion verdict and no debrief: it does not judge
+  the assembly, so an episode does not end when the kit is complete (when graded, it does). How an episode went,
+  you judge from what your program saw and recorded and from the cameras.
+- **How an episode ends.** After 1200 steps ("all steps run"); on a safety stop (it names the ruined nut's colour
+  or the instability); when the episode's controller budget is used up (600 s: the service's wait for each of your
+  requests plus 0.45 s per left or right image and 0.25 s per wrist image asked for; the first observation's
+  images are free); after 120 s without a request; or when you close it.
+
+Wire: a unix stream socket, `/run/keyedcell/commission.sock`; one connection is one episode; one JSON object per
+line (`~/commission/client.py` speaks it).
+
+```
+{"id": 1, "method": "reset", "params": {"kit": 3}}
+        -> {"id": 1, "result": {"ok": true, "kit": 3, "episode": 5, "episodes_left": 27, "max_steps": 1200,
+                                "controller_budget_s": 600.0, "obs": {...}}}
+{"id": 2, "method": "step", "params": {"action": [8 numbers]}}
+        -> {"id": 2, "result": {"obs": {...}, "done": false}}
+        -> {"id": 2, "result": {"obs": {...}, "done": false, "probe_obs": {...}}}      (about 1 % of the steps)
+        -> {"id": 2, "result": {"obs": {...}, "done": true, "ended": "all steps run"}}
+{"id": 3, "method": "close", "params": {"images": true}}
+        -> {"id": 3, "result": {"ok": true, "ended": "...", "steps": 1200, "controller_s": 7.9,
+                                "controller_budget_s": 600.0, "images_requested": 12,
+                                "final_images": {"left": {...}, "right": {...}, "wrist": {...}}}}
+```
+
+- `obs` is the observation of the task instruction (`t`, `order`, `q`, `dq`, `ee_pos`, `ee_quat`, `gripper`,
+  `wrench`, `T_world_wrist`, `left`, `right`, `wrist`). It is `null` only on the reply that ends an episode on its
+  budget or on an unstable step.
+- `probe_obs` holds the readings (no images) of a slightly perturbed copy of `obs`, the copy the grader sends when
+  it asks a step twice; `~/commission/run_kit.py` uses it to query your controller the way the grader does.
+- `close` ends the episode; with `"images": true` its reply carries the three cameras' images of the final state
+  (free of charge). After an episode is over you have 60 s to close it.
+- A refusal is `{"id": n, "error": word, "detail": sentence}`: `bad_params` (the kit number), `busy` (two episodes
+  are open; no episode is used), `commissioning_window_used`, `no_episode` (a `step` before `reset`),
+  `one_episode_per_connection`, `bad_action` (not 8 finite numbers with an integer camera mask 0 to 7; the step is
+  not applied and the episode goes on), `episode_over`, `forbidden` (any other method), `cell_fault`, `bad_request`
+  (a line that is not one JSON request object of at most 64 KiB; the connection closes).
+- When a limit ends the episode while the service waits, it sends `{"id": null, "event": "episode_over",
+  "reason": ...}` and closes the connection.

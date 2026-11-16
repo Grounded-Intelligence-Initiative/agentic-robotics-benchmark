@@ -1,6 +1,7 @@
-"""The grader's credit rule for keyed_nut_peg_assembly (grader-only; the agent's dev sim has none of it).
+"""The grader's credit rule for keyed_nut_peg_assembly (grader-only; the commissioning service in the agent's
+sandbox has none of it).
 
-keyed_env.py (byte-identical in the agent's dev sim and here) is the robot environment: physics, robot,
+keyed_env.py (here, and as a byte copy in the commissioning service) is the robot cell: physics, robot,
 controller, sensors, cameras and the two safety stops (an unstable simulation; a ruined nut). It has no
 ground-truth accessor and judges no assembly. This module adds, for the grader only:
 

@@ -1,5 +1,5 @@
-"""Can a controller see what it needs? Camera-only perception (perceive.py) against the dev sim's state, on development
-kits only (a maintainer's evidence; the grader never runs it, and no graded kit is used).
+"""Can a controller see what it needs? Camera-only perception (perceive.py) against the simulator's state, on maintainer
+development kits only (a maintainer's evidence; the grader never runs it, and no graded kit is used).
 
 Per kit, from the episode's first observation (its three free images): the shaft tops in the wrist camera's view from
 the start pose (peg positions), the bands of every peg in the fixed cameras (which peg is which), each nut's rough

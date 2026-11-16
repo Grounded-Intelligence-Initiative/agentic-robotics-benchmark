@@ -1,6 +1,6 @@
 """Camera-only perception for keyed_nut_peg_assembly (a maintainer's evidence that the observations suffice; the
 grader never runs it). Everything here uses what a controller receives: the observation's RGB images, its
-T_world_wrist and the public camera matrices (keyed_env.py's CAMERAS, WRIST, fixed_camera_matrices); nothing else.
+T_world_wrist and the published camera matrices (the data sheet's CAMERAS, WRIST, fixed_camera_matrices); nothing else.
 
   * coarse_nut: each fixed camera's largest blob of the nut's colour (kit-aware hue segmentation that copes with the
     lights washing the colours out), its centroid back-projected onto the ring's mid-height plane;

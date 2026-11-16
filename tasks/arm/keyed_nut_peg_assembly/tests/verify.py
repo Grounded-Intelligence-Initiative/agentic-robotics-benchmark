@@ -5,7 +5,8 @@ restores only the declared artifact /home/user/submission). Defensively it still
 process first (rev-leak R14, SPEC L3), then hands the
 restored submission (size-capped) to the agent account in place, at /home/user/submission, the folder the
 instruction names (ownership changes never follow a symlink). It owns its own copy of
-the robot environment (keyed_env.py, byte-identical to the agent's dev sim) and the credit rule
+the robot cell (keyed_env.py; the agent never reads it: its sandbox has the cell's data sheet and a commissioning
+service that runs a byte copy of this file on development kits, under an account of its own) and the credit rule
 (keyed_credit.py, grader-only), plays the fixed hidden episodes of tests/ref/episodes.json in order (each: a
 kit of three nuts and its work order, drawn with the public `sample_kit` from a seed, and the layout and
 noise seed; the set and its pre-registered selection: tests/hidden/selection.json), drives the agent's
@@ -262,7 +263,7 @@ def agent_inet_sockets(uid):
 def stage_submission(uid, gid):
     """Make the restored submission the agent account's own folder, in place at ~user/submission: the
     folder the instruction names, where run.sh is started and where the controller may write, as it can in
-    the practice grader. Ownership changes never follow a symlink (lchown, a walk that does not
+    a commissioning run. Ownership changes never follow a symlink (lchown, a walk that does not
     follow links); size and file count are capped. Returns the path, or None if there is no usable
     submission."""
     src = os.path.join(os.path.expanduser("~" + agent_user()), "submission")

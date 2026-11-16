@@ -1,4 +1,4 @@
-"""The fixed hidden set's selection (a maintainer's tool; the grader never runs it).
+"""The fixed hidden set's selection, and the development kits' (a maintainer's tool; the grader never runs it).
 
 The rule was pre-registered in tests/hidden/selection.json ("rule", "candidates", "frozen") and committed before any
 candidate ran: the frozen reference solution (solution/) runs each candidate kit ONCE, in drawn order, through the
@@ -9,15 +9,27 @@ SET_SIZE kept candidates in drawn order. Should fewer be kept, more candidates a
 run. Every drop is recorded with its reason; the hollowing check compares the kept kits' features with all
 candidates'.
 
+When a file the reference or the grader runs changes, the rule runs again on the same candidates, as an AMENDMENT
+(selection.json "amendments": what changed, the new sha256 of the frozen files, committed before any run on them;
+then its selection_run, hidden_set and anchor_verify). The latest amendment's set is the hidden set.
+
+The commissioning service's development kits (environment/commission_service/kits.json) are chosen by the same rule
+from their own pre-registered candidates (an amendment's "development_kits": kit seed 7001 + i, layout seed
+11001 + i, in order): the first DEV_SIZE the reference completes. They are disjoint from the hidden candidates.
+
     # once, before anything runs (host, standard library): the candidates and the frozen files' sha256
     python3 -B tests/review/select_set.py draw --n 16 --frozen-commit <sha>
+    # an amendment, before anything runs on the changed files (host): its frozen sha256 and development candidates
+    python3 -B tests/review/select_set.py amend --what "<what changed>" --dev-n 24
     # inside the task image (it draws each kit with keyed_env.sample_kit): one tests/ copy per candidate
     docker run --rm --network none -v <task>/tests:/stage:ro -v <work>:/work --entrypoint /opt/venv/bin/python3 \\
-        <image> -I -B /stage/review/select_set.py prepare --out /work
+        <image> -I -B /stage/review/select_set.py prepare --pool hidden --out /work      (or --pool dev)
     # host: each candidate once through the grader (regrade.sh), --jobs at a time
-    python3 -B tests/review/select_set.py run --work <work> --image <image> --submission <reference submission> --jobs 6
+    python3 -B tests/review/select_set.py run --pool hidden --work <work> --image <image> \\
+        --submission <reference submission> --jobs 6
     # host (standard library): the rule over the runs, the hollowing check; --write records the set
-    python3 -B tests/review/select_set.py make --work <work> [--write]
+    python3 -B tests/review/select_set.py make --pool hidden --work <work> [--write]
+    # --pool dev --write records the development kits and writes them into the service's kits.json
 """
 
 import argparse
@@ -38,7 +50,11 @@ TESTS = os.path.dirname(HERE)
 TASK = os.path.dirname(TESTS)
 SELECTION = os.path.join(TESTS, "hidden", "selection.json")
 EPISODES = os.path.join(TESTS, "ref", "episodes.json")
+KITS = os.path.join(TASK, "environment", "commission_service", "kits.json")
 SET_SIZE = 10
+DEV_SIZE = 16                    # the commissioning service's development kits
+DEV_KIT_SEED0 = 7001             # development candidate i: kit seed 7001 + i, layout seed 11001 + i
+DEV_LAYOUT_SEED0 = 11001
 FROZEN = ("solution/solve.sh", "solution/solver/oracle_ctrl.py", "solution/solver/oracle_main.py",
           "tests/keyed_env.py", "tests/keyed_credit.py", "tests/verify.py", "tests/grader_config.json",
           "tests/nonet_exec.py", "tests/test.sh", "tests/oracle_token.sha256",
@@ -67,6 +83,34 @@ def load_selection():
         return json.load(f)
 
 
+def save_kits(kits):
+    """kits.json: the window's settings one per line, then one line per development kit."""
+    head = {k: v for k, v in kits.items() if k != "kits"}
+    text = json.dumps(head, indent=1)[:-2] + ',\n "kits": [\n' + ",\n".join(
+        "  " + json.dumps(k) for k in kits["kits"]) + "\n ]\n}\n"
+    assert json.loads(text) == kits
+    with open(KITS, "w") as f:
+        f.write(text)
+
+
+def max_steps():
+    """keyed_env.MAX_STEPS, read from the source (this tool's host commands import nothing of the task)."""
+    with open(os.path.join(TESTS, "keyed_env.py")) as f:
+        src = f.read()
+    return int(re.search(r"^NUTS = (\d+)", src, re.M).group(1)) * int(re.search(r"^CYCLE_STEPS = (\d+)", src, re.M).group(1))
+
+
+def latest(sel):
+    """The record the current set lives in: the latest amendment, or the selection itself."""
+    return sel["amendments"][-1] if sel.get("amendments") else sel
+
+
+def pool_candidates(sel, pool):
+    if pool == "dev":
+        return latest(sel)["development_kits"]["candidates"]
+    return sel["candidates"]
+
+
 def save_selection(sel):
     with open(SELECTION, "w") as f:
         json.dump(sel, f, indent=1)
@@ -89,6 +133,55 @@ def cmd_draw(a):
         sel["frozen"] = frozen_hashes()
     save_selection(sel)
     print("%d candidates in %s" % (len(cands), SELECTION))
+
+
+# ---------------------------------------------------------------------------------------------------------- amend
+def cmd_amend(a):
+    """Pre-register an amendment: what changed, the frozen files' new sha256, the development candidates."""
+    import datetime
+    sel = load_selection()
+    before = latest(sel)["frozen"]
+    now = frozen_hashes()
+    changed = sorted(k for k in set(before) | set(now) if before.get(k) != now.get(k))
+    dev = [{"i": i, "id": "D%02d" % (i + 1), "kit_seed": DEV_KIT_SEED0 + i, "layout_seed": DEV_LAYOUT_SEED0 + i}
+           for i in range(a.dev_n)]
+    hidden_seeds = {c["kit_seed"] for c in sel["candidates"]} | {c["layout_seed"] for c in sel["candidates"]}
+    assert not hidden_seeds & ({d["kit_seed"] for d in dev} | {d["layout_seed"] for d in dev})
+    if a.replace:
+        last = sel["amendments"][-1]
+        assert "selection_run" not in last and "selection_run" not in last["development_kits"], "it has runs"
+        sel["amendments"].pop()
+        before = latest(sel)["frozen"]
+        changed = sorted(k for k in set(before) | set(now) if before.get(k) != now.get(k))
+    sel.setdefault("amendments", []).append({
+        "amended_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "what": a.what,
+        "rule": ("Pre-registered before any candidate ran on the amended files: this amendment (what changed, the "
+                 "frozen files' sha256, the development candidates) was committed first. The selection's own rule runs "
+                 "again, unchanged, on the same %d candidates in the same order: the frozen reference runs each ONCE "
+                 "through the grader itself (tests/review/regrade.sh, a fresh container of the amended task image, a "
+                 "one-episode plan); a candidate is kept when the reference completes its kit (kit_complete 1, no "
+                 "abort, no fault, no controller-budget cut), now within the amended episode length; the hidden set "
+                 "is the first %d kept in drawn order; should fewer than %d be kept, 8 more candidates are drawn "
+                 "from os.urandom, appended and run. The anchor is the reference's full verify of that set, which "
+                 "must repeat every kept run (kit_complete, nuts assembled, steps)." % (
+                     len(sel["candidates"]), SET_SIZE, SET_SIZE)),
+        "frozen": now,
+        "changed": changed,
+        "development_kits": {
+            "rule": ("The commissioning service's development kits (environment/commission_service/kits.json) are "
+                     "chosen like the hidden set, from their own candidates: candidate i (id D01 ...) is "
+                     "keyed_env.sample_kit(numpy.random.default_rng(%d + i), id) with layout and noise seed %d + i, "
+                     "in order; the frozen reference runs each ONCE through the grader; the development kits are the "
+                     "first %d it completes, in order (should fewer be kept, the next seeds follow). No development "
+                     "seed is a hidden candidate's, and no development kit has a hidden candidate's grooves." % (
+                         DEV_KIT_SEED0, DEV_LAYOUT_SEED0, DEV_SIZE)),
+            "candidates": dev,
+        },
+    })
+    save_selection(sel)
+    print("amendment %d pre-registered: %d frozen files changed (%s), %d development candidates" % (
+        len(sel["amendments"]), len(changed), ", ".join(changed), len(dev)))
 
 
 # ---------------------------------------------------------------------------------------------------------- prepare
@@ -119,10 +212,11 @@ def cmd_prepare(a):
     sys.path.insert(0, TESTS)
     import keyed_env as E
     sel = load_selection()
-    idx = a.index if a.index else [c["i"] for c in sel["candidates"]]
+    cands = pool_candidates(sel, a.pool)
+    idx = a.index if a.index else [c["i"] for c in cands]
     os.makedirs(a.out, exist_ok=True)
     for i in idx:
-        c = sel["candidates"][i]
+        c = cands[i]
         kit = E.sample_kit(np.random.default_rng(int(c["kit_seed"])), c["id"])
         seed = int(c["layout_seed"]) & (2 ** 64 - 1)
         layout = E.sample_layout(np.random.default_rng([seed & 0xFFFFFFFF, seed >> 32, 7]), E.NUTS)
@@ -140,7 +234,7 @@ def cmd_prepare(a):
 # ---------------------------------------------------------------------------------------------------------- run
 def cmd_run(a):
     sel = load_selection()
-    idx = a.index if a.index else [c["i"] for c in sel["candidates"]]
+    idx = a.index if a.index else [c["i"] for c in pool_candidates(sel, a.pool)]
     regrade = os.path.join(HERE, "regrade.sh")
 
     def one(i):
@@ -200,10 +294,10 @@ def kept(rec):
     if rec["kit_complete"] != 1:
         if rec["reason"] != "ok":
             how = rec["reason"]
-        elif rec["steps"] < 2400:
+        elif rec["steps"] < max_steps():
             how = "the episode ended at step %d: a nut was ruined" % rec["steps"]
         else:
-            how = "all 2400 steps run"
+            how = "all %d steps run" % max_steps()
         why.append("kit not complete (%d of 3 nuts assembled; %s)" % (rec["nuts_assembled"], how))
     if rec["aborted"] or rec["sim_faults"] or rec["budget_cuts"]:
         why.append("abort, fault or budget cut")
@@ -212,9 +306,11 @@ def kept(rec):
 
 def cmd_make(a):
     sel = load_selection()
-    n = len(sel["candidates"])
+    cand_list = pool_candidates(sel, a.pool)
+    size = DEV_SIZE if a.pool == "dev" else SET_SIZE
+    n = len(cand_list)
     rows, cands, kept_ids = [], {}, []
-    for c in sel["candidates"]:
+    for c in cand_list:
         rec, cand = read_run(a.work, c["i"])
         assert cand["episode"]["id"] == c["id"] and cand["episode"]["seed"] == c["layout_seed"], c["id"]
         ok, why = kept(rec)
@@ -223,37 +319,72 @@ def cmd_make(a):
         cands[c["id"]] = cand
         if ok:
             kept_ids.append(c["id"])
-    hidden = kept_ids[:SET_SIZE]
-    if len(hidden) < SET_SIZE:
-        print("only %d kept: draw more candidates (draw --append) and run them" % len(hidden))
-    cut = max((r["i"] for r in rows if r["id"] in hidden), default=-1)
+    chosen = kept_ids[:size]
+    if len(chosen) < size:
+        print("only %d kept: more candidates are needed (hidden: draw --append; dev: the next seeds) and run" % len(chosen))
+    cut = max((r["i"] for r in rows if r["id"] in chosen), default=-1)
     dropped = ["%s (%s)" % (r["id"], "; ".join(r["drop_reasons"])) for r in rows if not r["kept"] and r["i"] < cut]
     keys = sorted(rows[0]["features"])
-    ks = [r for r in rows if r["id"] in hidden]
+    ks = [r for r in rows if r["id"] in chosen]
     hollow = {k: {"kept_mean": round(sum(r["features"][k] for r in ks) / max(1, len(ks)), 4),
                   "all_mean": round(sum(r["features"][k] for r in rows) / len(rows), 4)} for k in keys}
-    summary = ("%d of %d candidates completed by the reference; the hidden set is %s (the first %d completed in drawn "
+    what = "development kits are" if a.pool == "dev" else "hidden set is"
+    summary = ("%d of %d candidates completed by the reference; the %s %s (the first %d completed in drawn "
                "order); dropped before the last of them: %s" % (
-                   len(kept_ids), n, ", ".join(hidden), SET_SIZE, ", ".join(dropped) or "none"))
+                   len(kept_ids), n, what, ", ".join(chosen), size, ", ".join(dropped) or "none"))
     print(summary)
     for r in rows:
         print("  %s %s steps %s nuts %s %s" % (r["id"], "kept" if r["kept"] else "drop", r.get("steps"),
                                                 r.get("nuts_assembled"), "; ".join(r["drop_reasons"])))
     print("hollowing check:", json.dumps(hollow))
-    if a.write and len(hidden) == SET_SIZE:
-        sel["selection_run"] = {"where": a.where, "tool_sha256": sha256_file(os.path.abspath(__file__)),
-                                "regrade_sha256": sha256_file(os.path.join(HERE, "regrade.sh")),
-                                "runs": rows, "summary": summary, "hollowing_check": hollow}
-        sel["hidden_set"] = hidden
+    if not (a.write and len(chosen) == size):
+        return
+    run = {"where": a.where, "tool_sha256": sha256_file(os.path.abspath(__file__)),
+           "regrade_sha256": sha256_file(os.path.join(HERE, "regrade.sh")),
+           "runs": rows, "summary": summary, "hollowing_check": hollow}
+    rec = latest(sel)
+    if a.pool == "dev":
+        rec["development_kits"]["selection_run"] = run
+        rec["development_kits"]["kits"] = chosen
         save_selection(sel)
-        eps = [cands[h]["episode"] for h in hidden]
-        with open(EPISODES, "w") as f:
-            json.dump({"note": "fixed hidden grading episodes: a kit (three nuts and the work order) drawn with "
-                               "keyed_env.sample_kit from a seed, and the layout/noise seed; the first %d candidates "
-                               "of tests/hidden/selection.json the reference completed, in drawn order" % SET_SIZE,
-                       "episodes": eps}, f, indent=1)
-            f.write("\n")
-        print("wrote %s and %s" % (EPISODES, SELECTION))
+        with open(KITS) as f:
+            kits = json.load(f)
+        by_id = {c["id"]: c for c in cand_list}
+        kits["kits"] = [{"name": cid, "kit_seed": by_id[cid]["kit_seed"], "layout_seed": by_id[cid]["layout_seed"],
+                         "kit": cands[cid]["episode"]["kit"]} for cid in chosen]
+        save_kits(kits)
+        print("wrote %s and %s" % (KITS, SELECTION))
+        return
+    rec["selection_run"] = run
+    rec["hidden_set"] = chosen
+    save_selection(sel)
+    eps = [cands[h]["episode"] for h in chosen]
+    with open(EPISODES, "w") as f:
+        json.dump({"note": "fixed hidden grading episodes: a kit (three nuts and the work order) drawn with "
+                           "keyed_env.sample_kit from a seed, and the layout/noise seed; the first %d candidates "
+                           "of tests/hidden/selection.json the reference completed, in drawn order" % SET_SIZE,
+                   "episodes": eps}, f, indent=1)
+        f.write("\n")
+    print("wrote %s and %s" % (EPISODES, SELECTION))
+
+
+def cmd_provisional(a):
+    """Before the development candidates have run: the service's kits.json lists the first DEV_SIZE candidates
+    (their kits as `prepare --pool dev` drew them), so that the image builds; `make --pool dev --write` replaces
+    them with the first DEV_SIZE the reference completes."""
+    sel = load_selection()
+    cand_list = pool_candidates(sel, "dev")[:DEV_SIZE]
+    with open(KITS) as f:
+        kits = json.load(f)
+    out = []
+    for c in cand_list:
+        with open(os.path.join(a.work, "cand_%02d.json" % c["i"])) as f:
+            cand = json.load(f)
+        assert cand["episode"]["id"] == c["id"] and cand["episode"]["seed"] == c["layout_seed"], c["id"]
+        out.append({"name": c["id"], "kit_seed": c["kit_seed"], "layout_seed": c["layout_seed"], "kit": cand["episode"]["kit"]})
+    kits["kits"] = out
+    save_kits(kits)
+    print("wrote %s: the first %d development candidates (provisional)" % (KITS, len(out)))
 
 
 def main():
@@ -263,10 +394,18 @@ def main():
     d.add_argument("--n", type=int, default=16)
     d.add_argument("--frozen-commit", default=None)
     d.add_argument("--append", action="store_true")
+    am = sub.add_parser("amend")
+    am.add_argument("--what", required=True)
+    am.add_argument("--dev-n", type=int, default=24)
+    am.add_argument("--replace", action="store_true", help="replace the latest amendment (only before it has runs)")
     p = sub.add_parser("prepare")
+    p.add_argument("--pool", choices=("hidden", "dev"), default="hidden")
     p.add_argument("--out", required=True)
     p.add_argument("--index", type=int, nargs="*")
+    pv = sub.add_parser("provisional")
+    pv.add_argument("--work", required=True)
     r = sub.add_parser("run")
+    r.add_argument("--pool", choices=("hidden", "dev"), default="hidden")
     r.add_argument("--work", required=True)
     r.add_argument("--image", required=True)
     r.add_argument("--submission", required=True)
@@ -275,11 +414,13 @@ def main():
     r.add_argument("--index", type=int, nargs="*")
     r.add_argument("--force", action="store_true")
     m = sub.add_parser("make")
+    m.add_argument("--pool", choices=("hidden", "dev"), default="hidden")
     m.add_argument("--work", required=True)
     m.add_argument("--write", action="store_true")
     m.add_argument("--where", default="")
     a = ap.parse_args()
-    {"draw": cmd_draw, "prepare": cmd_prepare, "run": cmd_run, "make": cmd_make}[a.cmd](a)
+    {"draw": cmd_draw, "amend": cmd_amend, "prepare": cmd_prepare, "provisional": cmd_provisional, "run": cmd_run,
+     "make": cmd_make}[a.cmd](a)
 
 
 if __name__ == "__main__":

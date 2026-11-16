@@ -1,11 +1,15 @@
-"""Bayonet nut kit: the task's robot environment (scene, robot, controller, sensors, safety stops).
+"""Bayonet nut kit: the task's robot cell (scene, robot, controller, sensors, safety stops).
 
-This file is byte-identical in your dev sim and in the grader. What differs between them is only the
-KIT that is loaded: three nut specs (see `NUT_SPEC_KEYS`) and the work order. Your dev sim ships one
-practice kit (`practice_kit.json`, `load_kit`), and `sample_kit` draws more; every graded episode loads
-its own kit, drawn with `sample_kit` from a seed you never see. This file has no ground-truth accessor
-and judges no assembly: the grader judges every nut by the rule the task instruction states, with its
-own code, on the state this simulation reaches.
+Where this file runs: in the grader (tests/keyed_env.py) and, as a byte copy, in the commissioning service of
+the agent's sandbox (environment/commission_service/keyed_env.py, readable by the service's account only).
+The agent never reads it. What the agent has is the cell's data sheet (datasheet.md and cell_data.py in its
+home: the kit's drawing data and tolerances, the robot and its controller, the sensors, the cameras, the
+safety stops, the wire) and a window of commissioning episodes on the service's development kits. What
+differs between the two places is only the KIT that is loaded: three nut specs (see `NUT_SPEC_KEYS`) and the
+work order. Every graded episode loads its own kit, drawn with `sample_kit` from a seed; the service loads its
+development kits, none of them a graded kit or a candidate of the graded set's selection. This file has no
+ground-truth accessor and judges no assembly: the grader judges every nut by the rule the task instruction
+states, with its own code (keyed_credit.py), on the state this simulation reaches.
 
 Frames and units
 ----------------
@@ -14,7 +18,7 @@ stands at (-0.56, 0, 0.80) facing +x. Metres, radians, seconds. Quaternions are 
 
 Main entry points
 -----------------
-    kit = load_kit("practice_kit.json")     # or sample_kit(numpy.random.default_rng(seed))
+    kit = sample_kit(numpy.random.default_rng(seed))    # or load_kit(path)
     env = NutEnv(kit["nuts"])               # three nut specs
     obs = env.reset(seed, kit["order"])     # any int seed: layout + sensor noise; order[i] = bands of nut i's peg
     obs, done, info = env.step(action)      # 10 Hz; info = {"t", "fault", "ruined"} (see Safety stops)
@@ -75,8 +79,8 @@ Nut spec (a dict): {"id": str, "groove": {"entrance": 0..23, "turns": [k1, k2], 
 [n1, n2] (sectors, 0 = none), "false_entrances": [sectors]}, "mass": kg (0.05-0.15), "friction":
 sliding friction of the nut surfaces (0.6-1.0), "rgba": [r, g, b, 1]}.
 
-Safety stops (they end the episode, in your dev sim as in the grader)
---------------------------------------------------------------------
+Safety stops (they end the episode, in the commissioning service as in the grader)
+----------------------------------------------------------------------------------
   * an unstable simulation: any arm joint faster than INSTAB_ROBOT_QVEL = 8 rad/s, a nut faster than
     INSTAB_NUT_VEL = 5 m/s, or a non-finite state (`info["fault"]` names it);
   * a ruined nut: while a nut is on its own peg (its hole axis within ENGAGE_XY = 5 mm of that peg's
@@ -102,8 +106,8 @@ TIMESTEP = 0.002
 SUBSTEPS = 50                    # -> 10 Hz control
 CONTROL_DT = TIMESTEP * SUBSTEPS
 NUTS = 3                         # nuts in a kit (one per peg)
-CYCLE_STEPS = 800                # cycle time per nut: 80 s simulated
-MAX_STEPS = NUTS * CYCLE_STEPS   # control steps per episode (one kit, 240 s simulated)
+CYCLE_STEPS = 400                # takt time per nut: 40 s simulated
+MAX_STEPS = NUTS * CYCLE_STEPS   # control steps per episode (one kit, 120 s simulated)
 MAX_DPOS = 0.02
 MAX_DROT = 0.15
 TABLE_Z = 0.80

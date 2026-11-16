@@ -2,7 +2,9 @@
 
 The task's observations carry no object state. This folder shows, on development kits only, that the camera images are
 enough to find everything the job needs, with code that uses only what a controller receives (the observation's RGB
-images, `T_world_wrist` and the public camera matrices); the dev sim's state is read only to score the estimates.
+images, `T_world_wrist` and the published camera matrices of the data sheet); the simulator's state is read only to
+score the estimates. These kits (`sample_kit` seeds 1000-1029) are maintainer kits: neither graded kits, nor selection
+candidates, nor the commissioning service's development kits.
 
 - `perceive.py`: the perception (nut colours with a kit-aware hue segmentation that copes with the lights washing the
   colours out; peg shaft tops; peg bands; the ring centre by a circle fitted to its outer edge in a close-up).
