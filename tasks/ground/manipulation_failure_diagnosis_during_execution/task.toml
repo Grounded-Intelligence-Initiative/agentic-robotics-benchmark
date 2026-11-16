@@ -1,0 +1,34 @@
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+# An online failure monitor for a kitchen mobile manipulator: a CPU program that watches recorded runs played back chunk
+# by chunk (three camera views, gripper command, arm and base poses) and raises one timely, typed alarm per failed run, graded on fixed hidden
+# runs it never sees, with no model calls at grading.
+[task]
+name = "grounded-intelligence-initiative/manipulation_failure_diagnosis_during_execution"
+
+[metadata]
+platform = "ground"
+# The oracle submits the oracle token (solution/reference/oracle_token, sha256 in tests/): the grader then adds the key
+# to each chunk's request (the right reply for that chunk), and the oracle replays it. Its only job is to show the wire and the grader work.
+oracle_kind = "token-privileged"
+
+[environment]
+cpus = 4
+memory_mb = 16384
+
+[agent]
+timeout_sec = 28800
+network_mode = "no-network"
+
+# Verifier timeout = the grader budget (tests/grader_config.json: 2 x the hidden runs' playback time + 20 s per run +
+# 4 x 120 s READY/restarts + 600 s, rounded up to 100 s) + 1200 s for staging, the network self-test and image start.
+[verifier]
+timeout_sec = 8300
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 4
+memory_mb = 16384
+gpus = 0
+build_timeout_sec = 3600

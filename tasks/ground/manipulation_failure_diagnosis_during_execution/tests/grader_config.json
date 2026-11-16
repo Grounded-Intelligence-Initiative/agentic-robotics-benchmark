@@ -1,0 +1,7 @@
+{
+  "step_timeout_s": 30,
+  "max_restarts": 3,
+  "realtime_allowance_s": 20,
+  "scoring_cap": 1.5,
+  "grader_budget_s": 7100
+}
