@@ -7,9 +7,11 @@
 > before every hand-off. Where it disagrees with the code or `git log`, the code wins: fix
 > this file.
 >
-> Last updated: 2026-11-09 (§11: `vendor/ale` @ `bfb7505`, a task names its GPU models).
-> Before that: 2026-11-07 (§10: the asset dataset is renamed `ale-robotics-assets`);
-> 2026-11-03 (§8: the tasks move to the Harbor-based engine, `vendor/ale` @ `1cdbc02`).
+> Last updated: 2026-11-17 (§14: one stage per task card; `driving` and `ground` become one
+> platform, `ground` "Ground vehicle"). Before that: 2026-11-16 (§13: task cards in
+> `tasks/cards.toml`, the `ground` platform, the merge gate and the GPU-model check); 2026-11-14 (§12: the grasp task pins OpenBLAS
+> to its Haswell kernels); 2026-11-09 (§11: `vendor/ale` @ `bfb7505`, a task names its GPU
+> models); 2026-11-07 (§10: the asset dataset is renamed `ale-robotics-assets`).
 
 ## 0. 2026-09-07 — created by the rebrand from "ALE Robotics"
 
@@ -462,6 +464,157 @@ before it starts. `1cdbc02` refused the key as an unsupported Harbor field.
     on the H100).
 - Next: run `hazard_bay_build`'s missions on an H100 on a quiet host, and add `H100` if they
   pass.
+## 12. 2026-11-14 — the grasp task pins OpenBLAS; wrong matrix products on recent Intel CPUs
+
+A collaborator's `ale validate` of `tasks/arm/novel_object_6dof_grasp_detection` on an Intel
+Xeon Platinum 8490H ended `oracle_not_full`: reference mean AP 63.5 against the anchor run's
+72.339 (reward 0.88), the same in three runs, no environment error in the logs. The cause is
+wrong matrix products, not rounding. The fix is the pull request from branch
+`hardening/novel-object-6dof-grasp-detection-openblas-kernels` (its commit `da9fb88`).
+
+- **Cause.** `/opt/grasp` carries numpy 1.23.5 (graspnetAPI 1.2.11's evaluation needs
+  numpy < 1.24), whose wheel bundles OpenBLAS 0.3.20
+  (`numpy.libs/libopenblas64_p-r0-742d56dc.3.20.so`). OpenBLAS picks its kernels by CPU when it
+  loads. In 0.3.20 (`driver/others/dynamic.c`) Sapphire Rapids with AVX512_BF16 gets the
+  Cooperlake kernels, and so does, by the feature-based fallback, any CPU with AVX512_BF16 it
+  does not know. With those kernels DGEMM returns products with a relative error of about 1.5:
+  `np.matmul(T, X.T)` (T 4x4, X (N, 4)) is wrong from N = 193 up on one thread (tried up to
+  100000) and for N = 193 to 10000 with the default thread count; the contiguous layout only for
+  N >= 93750 on one thread; the stacked `(G,N,3) @ (G,3,3)` product was right at every size
+  tried. The Haswell, SkylakeX and Zen kernels of the same copy are correct to 4e-16. The
+  OpenBLAS 0.3.22 changelog lists a fix for the run-time selection of Cooperlake in
+  DYNAMIC_ARCH builds; the defect inside OpenBLAS was not confirmed by rebuilding it.
+- **Effect.** That product is graspnetAPI's `utils.eval_utils.transform_points`. On hidden frame
+  0160_0005, 93,558 of the 93,750 table points and most points of every object model with more
+  than 192 points were more than 1 mm off, up to 1.29 m. Under those kernels the grader scores
+  the same correct reference predictions 37.137 instead of 72.156 mean AP (28 frames, lower on
+  all 28); the reference, labelling against the corrupted scene, flags 42.0 % of its candidates
+  empty instead of 6.8 %; reference and grader together give 65.37 instead of 72.48 mean AP on
+  56 frames (-7.11, standard error 0.89), the collaborator's result in direction and size (the
+  448 frames were not run under those kernels). Replacing only `transform_points` by an einsum
+  version restored bit-identical reference output and per-frame AP (7 of 7 frames each). The
+  gradient-boosted scorer is not involved: its inputs and outputs are bit-identical under all
+  kernels.
+- **Four copies.** A `/opt/grasp` process maps four OpenBLAS copies, each choosing for itself:
+  numpy 0.3.20, scipy 0.3.18, opencv-python 0.3.3, cvxopt 0.3.23. Without a pin a Xeon 8490H
+  selects numpy Cooperlake, scipy Prescott, opencv Prescott, cvxopt Cooperlake (from the
+  sources); this host's AMD Zen 4 numpy Zen, scipy Zen, opencv Barcelona, cvxopt Cooperlake
+  (measured); the anchor machine's AMD Zen 5 Barcelona for numpy, scipy and opencv and
+  Cooperlake for cvxopt (from the sources). Only numpy's 0.3.20 on Cooperlake computed wrong
+  products; cvxopt's 0.3.23 on Cooperlake was correct.
+- **How it was measured.** Every run was on an AMD Ryzen Threadripper 7960X (Zen 4, AVX-512
+  with AVX512_BF16) in the task image's Python environment. `OPENBLAS_CORETYPE=Cooperlake` is a
+  name 0.3.20 does not know, so it falls back to its feature-based choice, Cooperlake: the
+  kernels a Xeon 8490H selects. Nothing was run on a real Xeon 8490H.
+- **The fix.** `OPENBLAS_CORETYPE=Haswell`, which all four copies honour: an image `ENV`; a
+  `.pth` in `/opt/grasp`'s site-packages that sets it when the variable is missing (an explicit
+  value wins; `python -S` skips it); `tests/verify.py`'s `NUMERICS_ENV`, in `CHILD_ENV` (every
+  solver process, reference and submissions alike) and in the scoring subprocess's
+  environment; the practice check. New `tests/numerics_check.py`, which `verify.py` runs in the
+  solver and in the scoring environment after the early zero for a missing `solver.py` and
+  before the hidden frames are fetched: on x86-64 every mapped OpenBLAS copy must report
+  Haswell, and BLAS-backed products must agree with einsum in the evaluation's layouts for 1 to
+  100000 points; otherwise the stage ends as a task error. `instruction.md` gains one
+  Environment bullet; `tests/anchor.json` changes in its `source` text only (`value`, `full_at`
+  and `baseline_mean_ap` unchanged); `tests/test_numerics_pin_novel_object_6dof_grasp_detection.py`
+  is a repository test (no Docker).
+- **Measured for the fix.** With `OPENBLAS_CORETYPE=Haswell` all four copies use their Haswell
+  kernels. The reference output is bit-identical under the Haswell, SkylakeX and Zen kernels and
+  the anchor machine's selection (28 of 28 frames). The starting detector gives
+  `baseline_mean_ap` 7.866108398398201 exactly on all 448 frames under Haswell; under the Zen 5
+  native selection (Barcelona) it gives 7.868463118375316 (4 frames differ), so with the pin
+  the constant is exact there too. The scoring of a given array did not depend on the OpenBLAS
+  thread count (1 versus default, 8-CPU container) or on the kernel family, Cooperlake
+  excepted. `numerics_check.py` passes under Haswell with 1 thread and with default threads,
+  fails under Cooperlake at every thread count and CPU limit tried, and fails on the kernel
+  family with the variable unset and the `.pth` absent; about 3.5 s per run. At `da9fb88`:
+  `pytest` 464 passed, 12 skipped; `ale lint`, `scripts/lint_domain.py` and
+  `scripts/task_assets.py check` (0 problems) ok; `tests/robotics_grader` byte-identical to
+  `shared/robotics_grader`. At the pinned engine (`bfb7505`, docker provider) the image `ENV`
+  reaches the setup, agent, oracle and verify commands (read in the engine source, tried with
+  its guestd).
+- **numpy's own SIMD paths are left alone.** numpy 1.23.5 computes float64 sin, cos, exp, log
+  and arccos on an AVX-512 path where the CPU has one. Switching those paths off changes the
+  reference's candidates in the last bit and its per-frame AP by -1.75 to +1.97 (7 frames,
+  +0.16 on the mean), the size of the cross-machine difference `anchor.json` already recorded
+  (16 frames, at most 2.0 per frame, -0.31 on the mean); the starting detector's AP and the
+  scoring of a given array (7 frames) did not change. So `NPY_DISABLE_CPU_FEATURES` is not set,
+  `full_at` 0.98 covers the difference and the anchor value stays. For anyone who does set it,
+  the names are numpy-version specific: 1.23.5 knows AVX512F, AVX512CD, AVX512_SKX, AVX512_CLX,
+  AVX512_CNL and AVX512_ICL and warns about names it does not know or that the CPU lacks;
+  numpy 2.x knows X86_V4, AVX512_ICL and AVX512_SPR.
+- **Scope and limits.** Scores of this task from machines with AVX512_BF16 Intel CPUs before
+  this change are not valid, agent runs included: the grader itself was wrong there. Runs on
+  the AMD hosts used so far are not affected. No other task is affected: every other task
+  image uses numpy >= 1.26 for its interpreter (requirements files and Dockerfiles on `main` at
+  `b7b55ac`). x86-64 CPUs without AVX2 and FMA can no longer run this task (the Haswell kernels
+  end the process; the verify stage then ends as a task error, and the image build's
+  self-check fails). An explicitly empty `OPENBLAS_CORETYPE` is kept by the defaults (the
+  `.pth`, the practice check), and OpenBLAS then chooses by CPU features again; the graded
+  processes are not affected, because `verify.py` sets the value itself.
+- **Validated.** `ale validate` of `da9fb88` on the Threadripper 7960X host (run
+  `validate-f444851d`, engine `bfb7505`, 2026-11-15 UTC): untouched 0.0, oracle 1.0. The
+  reference reads mean AP 72.33897 over the 448 hidden frames (ap_gain 64.47286, ratio
+  0.9999993 to the anchor's 64.4729), 448 of 448 frames valid, no timeout, slowest call 131.0 s
+  of its 300 s, prediction 3416 s, scoring 556 s: the anchor run of 2026-11-07, made on another
+  CPU, to its last recorded digit. The grader's log shows the numerics check passing in both
+  environments, all four OpenBLAS copies on Haswell, largest relative error 3.4e-16.
+  `identity-history.json` carries the task's new record, exported from the clean branch.
+- **Still to do.** The collaborator re-runs `ale validate` on the Xeon 8490H, the only
+  confirmation on real hardware.
+
+## 13. 2026-11-16 — task cards, the `ground` platform, the merge gate, the GPU-model check
+
+- **Task cards** (`tasks/cards.toml`, rules in `docs/task-cards.md`): each task on main has a
+  card with a readable `title`, a one-sentence `summary`, the `platforms` it involves (the
+  folder's first, then cross-references) and the `stages` it covers (several in workflow
+  order, or `end-to-end` alone). The file is outside every task folder, so cards change no
+  `spec_hash` or `content_digest`. The website reads the file. 26 cards, one per task on main.
+- **`scripts/task_cards.py`** (`check [--strict]`, `todo`, `context TASK`) and
+  `schemas/task-cards.schema.json`; `tests/test_task_cards.py`.
+- **The merge gate**: the maintainer who finishes a task's pull request adds its card (and a
+  GPU task's tested `gpu_types`) on the branch and labels it `ready-to-merge`. CI's card check
+  is strict on a labelled pull request and on `main`; until then a missing card is a warning,
+  so a contributor's checks stay green. The workflow re-runs on `labeled` / `unlabeled`.
+- **`scripts/gpu_types.py`** (`check`, `list`): every `gpu_types` name accepts a known GPU
+  model, asked of the pinned engine (`ale.run.gpu.accepts_model`), so CI runs it in the
+  engine-lint job; a GPU table without the key is a notice. `tests/test_gpu_types.py`.
+- **`ground`** ("Ground robot (UGV/AMR)") joins `tasks/platforms.json` after `driving`:
+  wheeled and tracked ground robots that are not car-like vehicles driving a road or a track.
+  No task folder moves; `hazard_bay_build` and `robotic_arm_environment_twin_from_real_photo`
+  name it as a cross-reference. The claim order (legged → `quadruped`/`humanoid`; driving
+  tasks → `driving`; other wheeled or tracked → `ground`) is in `CONTRIBUTING.md` step 3 and
+  `docs/task-cards.md`.
+- **Next**: with branch protection on `main` (required checks `engine-lint` and
+  `static-checks`), nothing merges around the gate; it is off today.
+
+## 14. 2026-11-17 — one stage per task; `driving` and `ground` become one platform
+
+Owner decisions of 2026-11-17; they supersede the stage rule and the `driving` / `ground` claim
+order of §13 (§5's platform list predates both).
+
+- **One stage per task.** A card's `stages` is a list of exactly one entry: the last stage of the
+  workflow that the task's score depends on. A job task that also has the agent rebuild a scene
+  or pick hardware on the way is filed by the job; `assembly` means building the robot's own
+  body, and assembling furniture or parts with a robot is `behavior`. `end-to-end` stays the
+  category of a task that runs the whole chain (no task uses it). `scripts/task_cards.py check`
+  fails any other `stages`, and the schema says the same (`minItems` = `maxItems` = 1).
+  `hazard_bay_build` (was hardware-design + environment + behavior) is `behavior`.
+- **Ground vehicle.** `driving` ("Autonomous driving") and `ground` ("Ground robot (UGV/AMR)")
+  are one platform, key `ground`, label "Ground vehicle", in `driving`'s place after `uav`: any
+  wheeled or tracked ground vehicle or robot (a car at any scale on a road or a track, AMR /
+  AGV / UGV, rovers, wheeled mobile manipulators). The key `driving` is gone:
+  `driving_safety_supervisor` moves to `tasks/ground/driving_safety_supervisor/` with
+  `[metadata].platform = "ground"`, and its card's platforms are `["ground"]`. The new
+  platform value and the new asset pin change the task's `spec_hash` and `content_digest`
+  (the slug is unchanged); `identity-history.json` keeps its old records and carries the new
+  one, exported from a clean work tree of the branch. An asset list's `# prefix:` must name the
+  task's folder (`scripts/task_assets.py check`), so the task's 19 files were copied server
+  side to `tasks/ground/driving_safety_supervisor/payload/` on the asset dataset (commit
+  `4c7c4d8b`, every sha256 unchanged) and the list is re-pinned there. The old folder stays on
+  the dataset until this merges; then it is deleted and the dataset card's rows are fixed.
+- `tasks/arm/object_finding_and_organizing_on_messy_desk/task.toml` still lists `driving` in a
+  comment; it is left as it is, since editing it would change that task's identity.
 
 ## Open items
 
@@ -623,6 +776,14 @@ commit 2278f3f until that run is scored; the changes below live in `setup/payloa
   `harness/ale_onboard.py` reads that as `needs_anchor` with the measured value.
 - A task that hands the agent a copy of its simulator must seed episodes with 64 bits and
   draw hidden values through a keyed hash; an LCG or a 31-bit seed gives the episode away.
+- A Python wheel can bundle its own OpenBLAS (numpy, scipy, opencv-python and cvxopt each do),
+  and each copy picks its kernels by CPU when it loads, so one process can run several copies
+  on different kernels, and an old copy can be wrong on a CPU newer than it: numpy 1.23.5's
+  OpenBLAS 0.3.20 computes wrong matrix products on Intel CPUs with AVX512_BF16 (section 12).
+  A task that has to carry such a wheel pins `OPENBLAS_CORETYPE` to a correct kernel family in
+  the image and in every process its grader starts, and lets the verify stage check the
+  products before it scores (`tasks/arm/novel_object_6dof_grasp_detection`: the Dockerfile,
+  `tests/verify.py`'s `NUMERICS_ENV`, `tests/numerics_check.py`).
 
 ### 2026-10-23 — provisional anchor
 - Oracle a5c3982 measured through the task's verify stage (task image, network off): episode 0 S = 0.641 (O 0.72, R 0.56); episodes 1–2 running. Anchor recorded as 0.641058, full_at 0.8 (template default), marked provisional.
