@@ -1,4 +1,4 @@
-"""PRIVILEGED v3 author reference, not an image-only solution.
+"""PRIVILEGED v4 author reference, not an image-only solution.
 
 Uses authorized truth, never a seed or prerecorded commands. Searches rounded
 oriented routes on the supplied geometry, checking the full payload sweep, then

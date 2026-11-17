@@ -1,4 +1,4 @@
-# Robot Service v3
+# Robot Service v4
 
 The MCP tools and client.py reach the same service at
 /run/visual_robotics/world.sock (ROBOT_SOCKET overrides it).

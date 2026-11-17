@@ -287,8 +287,8 @@ def run_mission(index, seed, uid, gid, config, token_sha256, attempt, *, oracle_
         for path in (home, home/"tmp"):
             os.chown(path, uid, gid)
             os.chmod(path, 0o700)
-        budget = float(config.get("program_seconds", 300))
-        wall_cap = float(config.get("mission_wall_seconds", 1200))
+        budget = float(config.get("program_seconds", 600))
+        wall_cap = float(config.get("mission_wall_seconds", 1800))
         grace = float(config.get("exit_grace_seconds", 10))
         output = [b""]
         started = time.monotonic()

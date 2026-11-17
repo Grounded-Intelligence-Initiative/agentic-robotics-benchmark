@@ -61,9 +61,10 @@ def main():
             (args.out/f'{seed}-{mode}.json').write_text(json.dumps(row, indent=2)+'\n')
             rows.append({k: v for k, v in row.items() if k != 'trace'})
             print(json.dumps(rows[-1]), flush=True)
-    sources = list((TASK/'tests/runtime').glob('*.py'))+[TASK/'solution/oracle/oracle.py']
+    sources = list((TASK/'tests/runtime').glob('*.py'))+[TASK/'solution/oracle/oracle.py',
+               TASK/'tests/hidden/sites.json', TASK/'tests/hidden/candidates.json', TASK/'tests/grader_config.json']
     hashes = {str(p.relative_to(TASK)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
-    summary = dict(version=3, kind='privileged native direct-World diagnostics, not official ALE verification',
+    summary = dict(version=4, kind='privileged native direct-World diagnostics, not official ALE verification',
                    source_sha256=hashes, mujoco_version=W.mujoco.__version__, rows=rows)
     (args.out/'summary.json').write_text(json.dumps(summary, indent=2)+'\n')
     return int(any(not r['success'] for r in rows if r['mode'] == 'full'))

@@ -73,6 +73,26 @@ class GeometryTests(unittest.TestCase):
         for source in (TASK/'environment/setup/runtime').glob('*.py'):
             self.assertEqual(source.read_bytes(), (TASK/'tests/runtime'/source.name).read_bytes(), source.name)
 
+    def test_maintainer_budgets_are_preserved(self):
+        import ast
+        import json
+        import tomllib
+        config = json.loads((TASK/'tests/grader_config.json').read_text())
+        self.assertEqual(config['program_seconds'], 600)
+        self.assertEqual(config['mission_wall_seconds'], 1800)
+        task = tomllib.loads((TASK/'task.toml').read_text())
+        self.assertEqual(task['agent']['timeout_sec'], 7200)
+        self.assertEqual(task['verifier']['timeout_sec'], 16200)
+        world = ast.parse((TASK/'tests/runtime/world.py').read_text())
+        budgets = next(n.value for n in world.body if isinstance(n, ast.Assign)
+                       and isinstance(n.targets[0], ast.Tuple)
+                       and n.targets[0].elts[0].id == 'SCOUT_ACTIONS')
+        self.assertEqual(ast.literal_eval(budgets)[:2], (500, 240))
+        service = ast.parse((TASK/'tests/runtime/service.py').read_text())
+        requests = next(n.value for n in service.body if isinstance(n, ast.Assign)
+                        and isinstance(n.targets[0], ast.Name) and n.targets[0].id == 'REQUESTS')
+        self.assertEqual(ast.literal_eval(requests), 1000)
+
 
 @unittest.skipUnless(importlib.util.find_spec('mujoco'), 'native checks require task image')
 class NativeTests(unittest.TestCase):
@@ -112,6 +132,7 @@ class NativeTests(unittest.TestCase):
 
     def test_public_observation_has_no_pose(self):
         w = self.carrier()
+        self.assertEqual(w.truth()['version'], 4)
         self.assertEqual(set(w.observe()), {'frame_id', 'phase', 'done', 'steps_remaining', 'bumper', 'contact_stop'})
         for name in ('ego_front', 'ego_rear'):
             self.assertEqual(w.model.cam_bodyid[w.model.camera(name).id], w.agent_id)

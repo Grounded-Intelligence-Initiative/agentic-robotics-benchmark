@@ -1,4 +1,4 @@
-"""Trusted v3 MuJoCo scout/carrier mission. Stabilized planar bases, not gait physics.
+"""Trusted v4 MuJoCo scout/carrier mission. Stabilized planar bases, not gait physics.
 
 Carrier x/y slides and yaw hinge are force driven by mj_step. Native contacts
 include the welded payload and every other descendant of the agent body.
@@ -23,7 +23,7 @@ from pbr_renderer import Renderer
 
 KIND = 'cross'
 LEG, SCOUT_HALF, SCOUT_MASS = .025, .13, 1.
-SCOUT_ACTIONS, CARRIER_ACTIONS, MIN_SCOUT_ACTIONS = 200, 260, 12
+SCOUT_ACTIONS, CARRIER_ACTIONS, MIN_SCOUT_ACTIONS = 500, 240, 12
 DIRECTIONS = ((1, 0), (-1, 0), (0, 1), (0, -1))
 BUTTONS = (0., 1/3, 2/3, 1.)
 CAMERAS = ('ego_front', 'ego_rear')
@@ -205,7 +205,7 @@ class World:
 
     def truth(self):
         s = self.site
-        t = dict(version=3, phase=self.phase, position=self.position().tolist(),
+        t = dict(version=4, phase=self.phase, position=self.position().tolist(),
                  velocity=self.data.qvel.tolist(), obstacles=[list(r) for r in s.obstacles()],
                  half=list(self.half), carrier_half=list(s.carrier_half),
                  carrier_start=list(s.carrier_start), carrier_yaw=s.carrier_yaw,

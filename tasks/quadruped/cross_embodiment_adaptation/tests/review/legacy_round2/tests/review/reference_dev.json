@@ -1,0 +1,266 @@
+{
+ "what": "solution/reference (the robots' own observations, no token) run by tests/grader.py (unchanged, separate-verifier layout, 2 CPUs and 4 GB per container) on development seeds, 2026-11-16",
+ "reference_sha256": "6e7af54308eee429418072825f9d06854f38fb358049b0d418fd51a9bbe4a9a3",
+ "reference_files": [
+  "client.py",
+  "driving.py",
+  "explore.py",
+  "floorloc.py",
+  "mapping.py",
+  "perception.py",
+  "planning.py",
+  "reference.py",
+  "run.sh",
+  "vision.py"
+ ],
+ "seeds": "5000-5023",
+ "arrived": 24,
+ "missions": 24,
+ "contact_stops": 0,
+ "mean_program_seconds": 39.2,
+ "max_program_seconds": 70,
+ "mean_scout_presses": 278.0,
+ "mean_carrier_presses": 91.3,
+ "rows": [
+  {
+   "seed": 5000,
+   "success": 1,
+   "scout_presses": 277,
+   "carrier_presses": 86,
+   "contact_stop": 0,
+   "program_seconds": 33,
+   "wall_seconds": 122,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5001,
+   "success": 1,
+   "scout_presses": 494,
+   "carrier_presses": 92,
+   "contact_stop": 0,
+   "program_seconds": 70,
+   "wall_seconds": 254,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5002,
+   "success": 1,
+   "scout_presses": 320,
+   "carrier_presses": 85,
+   "contact_stop": 0,
+   "program_seconds": 40,
+   "wall_seconds": 166,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5003,
+   "success": 1,
+   "scout_presses": 260,
+   "carrier_presses": 84,
+   "contact_stop": 0,
+   "program_seconds": 34,
+   "wall_seconds": 122,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5004,
+   "success": 1,
+   "scout_presses": 178,
+   "carrier_presses": 75,
+   "contact_stop": 0,
+   "program_seconds": 23,
+   "wall_seconds": 86,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5005,
+   "success": 1,
+   "scout_presses": 291,
+   "carrier_presses": 140,
+   "contact_stop": 0,
+   "program_seconds": 42,
+   "wall_seconds": 154,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5006,
+   "success": 1,
+   "scout_presses": 165,
+   "carrier_presses": 80,
+   "contact_stop": 0,
+   "program_seconds": 25,
+   "wall_seconds": 97,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5007,
+   "success": 1,
+   "scout_presses": 403,
+   "carrier_presses": 92,
+   "contact_stop": 0,
+   "program_seconds": 65,
+   "wall_seconds": 213,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5008,
+   "success": 1,
+   "scout_presses": 225,
+   "carrier_presses": 102,
+   "contact_stop": 0,
+   "program_seconds": 29,
+   "wall_seconds": 109,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5009,
+   "success": 1,
+   "scout_presses": 298,
+   "carrier_presses": 81,
+   "contact_stop": 0,
+   "program_seconds": 46,
+   "wall_seconds": 158,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5010,
+   "success": 1,
+   "scout_presses": 116,
+   "carrier_presses": 99,
+   "contact_stop": 0,
+   "program_seconds": 20,
+   "wall_seconds": 78,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5011,
+   "success": 1,
+   "scout_presses": 199,
+   "carrier_presses": 116,
+   "contact_stop": 0,
+   "program_seconds": 35,
+   "wall_seconds": 127,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5012,
+   "success": 1,
+   "scout_presses": 315,
+   "carrier_presses": 108,
+   "contact_stop": 0,
+   "program_seconds": 40,
+   "wall_seconds": 142,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5013,
+   "success": 1,
+   "scout_presses": 227,
+   "carrier_presses": 91,
+   "contact_stop": 0,
+   "program_seconds": 36,
+   "wall_seconds": 133,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5014,
+   "success": 1,
+   "scout_presses": 500,
+   "carrier_presses": 97,
+   "contact_stop": 0,
+   "program_seconds": 65,
+   "wall_seconds": 247,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5015,
+   "success": 1,
+   "scout_presses": 198,
+   "carrier_presses": 75,
+   "contact_stop": 0,
+   "program_seconds": 26,
+   "wall_seconds": 96,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5016,
+   "success": 1,
+   "scout_presses": 354,
+   "carrier_presses": 112,
+   "contact_stop": 0,
+   "program_seconds": 48,
+   "wall_seconds": 168,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5017,
+   "success": 1,
+   "scout_presses": 291,
+   "carrier_presses": 88,
+   "contact_stop": 0,
+   "program_seconds": 44,
+   "wall_seconds": 160,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5018,
+   "success": 1,
+   "scout_presses": 187,
+   "carrier_presses": 79,
+   "contact_stop": 0,
+   "program_seconds": 27,
+   "wall_seconds": 107,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5019,
+   "success": 1,
+   "scout_presses": 228,
+   "carrier_presses": 106,
+   "contact_stop": 0,
+   "program_seconds": 35,
+   "wall_seconds": 126,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5020,
+   "success": 1,
+   "scout_presses": 281,
+   "carrier_presses": 76,
+   "contact_stop": 0,
+   "program_seconds": 34,
+   "wall_seconds": 126,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5021,
+   "success": 1,
+   "scout_presses": 355,
+   "carrier_presses": 63,
+   "contact_stop": 0,
+   "program_seconds": 52,
+   "wall_seconds": 187,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5022,
+   "success": 1,
+   "scout_presses": 236,
+   "carrier_presses": 88,
+   "contact_stop": 0,
+   "program_seconds": 33,
+   "wall_seconds": 129,
+   "end": "mission ended"
+  },
+  {
+   "seed": 5023,
+   "success": 1,
+   "scout_presses": 275,
+   "carrier_presses": 76,
+   "contact_stop": 0,
+   "program_seconds": 38,
+   "wall_seconds": 135,
+   "end": "mission ended"
+  }
+ ]
+}

@@ -1,4 +1,4 @@
-"""V3 stabilized planar transport model; no leg or free-payload simulation.
+"""V4 stabilized planar transport model; no leg or free-payload simulation.
 
 Geometry is sampled without solver/model outcomes. The service aisle is a constructive
 feasibility witness, not a path given to an agent (or a requirement in the success test).
@@ -89,7 +89,7 @@ def docked(state, goal):
 
 
 class Site:
-    """Seed-frozen generative policy v3, with no rejection based on any rollout."""
+    """Seed-frozen generative policy v4, with no rejection based on any rollout."""
     def __init__(self, seed):
         self.seed = int(seed)
         rng = random.Random(self.seed ^ 0xC8050003)

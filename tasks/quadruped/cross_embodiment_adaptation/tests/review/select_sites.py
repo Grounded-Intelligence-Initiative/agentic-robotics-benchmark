@@ -38,7 +38,7 @@ def main():
                                attempt=0, oracle_authorized=True)
         rows.append({**result, 'seed': seed})
         print(json.dumps(rows[-1]), flush=True)
-        args.out.write_text(json.dumps(dict(version=3, fixed_seeds=seeds, rows=rows), indent=2)+'\n')
+        args.out.write_text(json.dumps(dict(version=4, fixed_seeds=seeds, rows=rows), indent=2)+'\n')
 
 
 if __name__ == '__main__':

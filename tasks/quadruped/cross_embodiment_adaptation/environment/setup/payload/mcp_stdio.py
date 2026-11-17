@@ -31,7 +31,7 @@ def main():
             if method == "initialize":
                 result = {"protocolVersion": req.get("params", {}).get("protocolVersion", "2024-11-05"),
                           "capabilities": {"tools": {}},
-                          "serverInfo": {"name": "cross_embodiment_robot", "version": "3.0"}}
+                          "serverInfo": {"name": "cross_embodiment_robot", "version": "4.0"}}
             elif method == "tools/list":
                 result = {"tools": TOOLS}
             elif method == "tools/call":

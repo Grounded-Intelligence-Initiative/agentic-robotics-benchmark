@@ -1,4 +1,4 @@
-# Cross-Embodiment Adaptation: scout, transfer, and dock
+# Cross-Embodiment Adaptation v4: scout, transfer, and dock
 
 Write an unattended mission program that scouts an unmapped hall with a small robot,
 then delivers a long rigid load with a heavier carrier. Both use real Go1 visual meshes
@@ -79,14 +79,14 @@ footprints and dynamics.
 
 ## Mission Rules
 
-- At most 200 scout actions. Call `advance()` once, after at least 12 scout actions.
+- At most 500 scout actions. Call `advance()` once, after at least 12 scout actions.
   It removes the scout and starts the carrier at the green parking mark.
-- At most 260 carrier actions. Success requires the carrier center within 0.12 m
+- At most 240 carrier actions. Success requires the carrier center within 0.12 m
   of the delivery-bay center, heading within 7 degrees of its yellow-front
   orientation, speed below 0.055 m/s and yaw rate below 0.07 rad/s, for three
   consecutive action endpoints. Stop and settle; merely crossing the pad fails.
 - Carrier contact or exhausting its actions ends the mission in failure.
-- At most 640 requests (observe, act, advance) per mission. Scout contacts, route
+- At most 1000 requests (observe, act, advance) per mission. Scout contacts, route
   length, time and action count do not contribute extra penalties.
 
 ## Deliverable and Execution
@@ -105,8 +105,8 @@ and 64 MB). The program runs as the unprivileged agent account, with a minimal
 environment, fresh writable HOME/TMPDIR, and no network (only Unix sockets).
 Use `/opt/venv/bin/python3`; numpy, scipy, Pillow, MuJoCo 3.16 and trimesh are
 installed. Write only under HOME/TMPDIR. There are 2 CPUs, 4 GB shared with the
-service, no GPU, 300 s of program time excluding service request processing, and
-1200 s total wall time per mission.
+service, no GPU, 600 s of program time excluding service request processing, and
+1800 s total wall time per mission.
 
 After a mission ends, the program has 10 s to exit. Limits kill its process tree;
 the mission counts as it stands, and the other missions still run. A surviving

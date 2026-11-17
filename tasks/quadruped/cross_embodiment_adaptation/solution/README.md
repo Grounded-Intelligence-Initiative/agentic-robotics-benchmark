@@ -1,4 +1,4 @@
-# Cross-Embodiment Adaptation v3
+# Cross-Embodiment Adaptation v4
 
 ## Current Reference
 
@@ -16,12 +16,14 @@ It does not use site seeds, stored trajectories, or modify the world. It exploit
 the published constructive aisle topology, so it is a feasibility reference,
 not a general-purpose motion planner or proof of frontier difficulty.
 
-Direct native, no-render diagnostics on koa04 completed all eight frozen seeds
-with 124-148 carrier actions. This is not yet an official separate-verifier
+Fresh native, no-render diagnostics on koa04 completed all eight latest hidden
+seeds retained from 9d8cc14, with 127-148 carrier actions. This is not an official separate-verifier
 anchor. The parent owns that run and final scoring/security evidence.
-See tests/review/v3_hidden_native.json and tests/review/README.md for provenance.
-Old v2 screenshots, image-only solver and measurements are explicitly archived
-under tests/review/legacy_v2; none is current evidence.
+See tests/review/v4_hidden_native.json and tests/review/README.md for provenance.
+The complete round-2 floor-localization source/reference/evidence is preserved
+byte-for-byte under tests/review/legacy_round2. The older v2 material remains
+under legacy_v2, and pre-integration candidate receipts under legacy_candidate_v3.
+None of these historical measurements is presented as v4 evidence.
 
 ## Mechanics and Observability
 
@@ -37,8 +39,11 @@ extent. The 2.24 x 1.10 m blue docking bay has a yellow front band. The larger
 painted bay keeps the alignment cue observable around the load. All these are
 physical scene appearances, not overlays or annotations.
 
-PR37's earlier reviewer completed v2 and a later localization-only prototype.
-Those results do not establish v3 difficulty. A new frontier evaluation and an
+V4 deliberately replaces round 2's floor-only carrier localization and odometer
+with native long-payload dynamics, swept-volume turns and oriented docking.
+It preserves the later maintainer's larger budgets, fixed suite and isolation.
+PR37's earlier reviewer completed v2 and the later floor-localization candidate.
+Those results do not establish v4 difficulty. A new frontier evaluation and an
 image-only feasibility demonstration are still needed. The camera change and
 new action schema alone must not be counted as genuine difficulty evidence.
 
@@ -47,10 +52,10 @@ new action schema alone must not be counted as genuine difficulty evidence.
 Inside the task image on remote CPU:
 
 ```bash
-/opt/venv/bin/python3 -B /task/tests/review/test_v3_mechanics.py
-/opt/venv/bin/python3 -B /task/tests/review/v3_rollout.py --seeds hidden --out /evidence/hidden
-/opt/venv/bin/python3 -B /task/tests/review/v3_rollout.py --seeds 1000-1019 --modes full,blind,scout_route,xy,circumscribed --out /evidence/ablations
-/opt/venv/bin/python3 -B /task/tests/review/v3_render.py --seed 1001 --out /evidence/render
+/opt/venv/bin/python3 -B /task/tests/review/test_v4_mechanics.py
+/opt/venv/bin/python3 -B /task/tests/review/v4_rollout.py --seeds hidden --out /evidence/hidden
+/opt/venv/bin/python3 -B /task/tests/review/v4_rollout.py --seeds 1000-1019 --modes full,blind,scout_route,xy,circumscribed --out /evidence/ablations
+/opt/venv/bin/python3 -B /task/tests/review/v4_render.py --seed 1001 --out /evidence/render
 ```
 
 The direct-World harness is a development test, not a substitute for ALE validate.

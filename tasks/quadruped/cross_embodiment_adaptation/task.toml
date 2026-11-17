@@ -1,11 +1,12 @@
-# PR37 v3: map with the scout, transfer to a long oriented carrier, settle into a dock.
+# PR37 v4: map with the scout, transfer to a long oriented carrier, settle into a dock.
 # Native MuJoCo force-driven stabilized planar bases; no articulated gait claim.
 # Body-mounted perspective cameras; no globally calibrated top view or pose fields.
-# Fixed eight seeds retained without outcome-based reselection. See tests/review/selection.md.
+# Latest round-2 head 9d8cc14 seeds/candidates retained without outcome-based reselection.
 # PRIVILEGED direct-World reference diagnostics: 8/8 hidden and 20/20 development.
 # These are not the separate-verifier anchor or frontier difficulty evidence.
-# Historical v2 measurements and image-only solver are under tests/review/legacy_v2/.
-# Maintainer session/resource/network/verifier settings below are unchanged.
+# Round-2 source/reference/evidence are byte-preserved under tests/review/legacy_round2/.
+# Pre-integration candidate receipts are historical under tests/review/legacy_candidate_v3/.
+# Session/resource/network/verifier settings below match maintainer head 9d8cc14.
 schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission"]
 
@@ -34,7 +35,7 @@ timeout_sec = 7200
 network_mode = "no-network"
 
 [verifier]
-timeout_sec = 12600
+timeout_sec = 16200
 environment_mode = "separate"
 
 [verifier.environment]

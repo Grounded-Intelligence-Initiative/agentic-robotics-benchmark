@@ -1,7 +1,7 @@
 {
-  "version": 3,
+  "version": 4,
   "rule": "tests/review/selection.md",
-  "policy": "All eight base-878913e seeds retained; no outcome-based selection or regeneration",
-  "historical_selection": "tests/review/legacy_v2/selection.json",
-  "current_measurements": "tests/review/v3_hidden_native.json"
+  "policy": "All eight seeds and candidate list retained byte-for-byte from maintainer round-2 head 9d8cc14; no outcome-based reselection",
+  "historical_selection": "tests/review/legacy_round2/tests/hidden/selection.json",
+  "current_measurements": "tests/review/v4_hidden_native.json"
 }
