@@ -34,15 +34,18 @@ floors, hole and friction, each peg's shaft and pin, the gripper pads' friction,
 friction, the force/torque sensor's zero and its drift, each camera's mounting and intrinsics and
 the lamps' brightness have their own actual values within the tolerances the data sheet states
 (`datasheet.md`, section 11). The actual values are never told. The published camera calibration is
-the drawing's, so a position taken from an image alone is off by millimetres (the hole has about
-1.8 mm of radial clearance on the shaft); a model you build from the data sheet is the drawing's
-cell; the commissioning service is where you meet real ones.
+the drawing's, so a position taken from an image alone is off by millimetres, and **the nut fits
+its shaft with a locating fit: 0.5 mm of radial clearance on the drawing (0.35 to 0.65 mm on real
+parts), square edges, no lead-in chamfer**. A nut cannot be put on a shaft from image positions; the
+shaft has to be found by touch (`datasheet.md`, section 12: the fit, the cell's compliance and what
+the wrist sensor reads when a nut meets a shaft). A model you build from the data sheet is the
+drawing's cell; the commissioning service is where you meet real ones.
 
 ## What is in your home directory
 
 | Path | What it is |
 |---|---|
-| `datasheet.md` | The cell's data sheet: frames and units, the pegs' and the nuts' drawing data (geometry, the groove family and how it is drawn, mass, friction, colours), how a kit is laid out, the robot and its controller (action format, tracking law, gripper), the sensors, the cameras with their published calibration, the safety stops, the takt, the commissioning service's wire, and the tolerances within which every real kit and the cell on the day differ from the drawing (section 11). |
+| `datasheet.md` | The cell's data sheet: frames and units, the pegs' and the nuts' drawing data (geometry, the groove family and how it is drawn, mass, friction, colours), how a kit is laid out, the robot and its controller (action format, tracking law, compliance, gripper), the sensors, the cameras with their published calibration, the safety stops, the takt, the commissioning service's wire, the tolerances within which every real kit and the cell on the day differ from the drawing (section 11), and the fit of a nut on a shaft with what the wrist sensor reads when they meet (section 12). |
 | `cell_data.py` | The data sheet's numbers, the tolerance table and a function that draws one set of real values within it, the camera matrices and a few geometry helpers (plain Python and NumPy; it contains no simulator). Copy it into your submission if your controller uses it. |
 | `commission/client.py` | The client of the commissioning service: start an episode on a development kit, send actions, get observations (`Episode`, `status`). |
 | `commission/run_kit.py` | Runs your controller over the grading wire in one commissioning episode, the way the grader runs it, and reports how the episode ended (see "Commissioning"). It does not judge the assembly. |
@@ -61,13 +64,13 @@ episodes run on the same four cores).
 - World frame: metres, radians; the table top is the plane z = 0.80, the Panda base stands at
   (-0.56, 0, 0.80) facing +x. Quaternions are (w, x, y, z).
 - **Pegs.** Three pegs stand on the table. Each has a 50 x 50 x 10 mm base collar and on it a round
-  shaft of radius 11 mm, 65 mm tall, with one **pin**: a small block on the shaft surface, 3 mm
+  shaft of radius 12.3 mm, 65 mm tall, with a square end and one **pin**: a small block on the shaft surface, 3 mm
   wide and 4 mm tall, reaching 17.2 mm from the shaft axis, centred 37.5 mm above the collar top.
   The pegs are identical except for 1, 2 or 3 dark bands near the top of the shaft. Each episode
   draws the peg positions (centres with x in [-0.02, 0.15], y in [-0.21, 0.21], at least 0.13 m
   apart) and their yaws (uniform over the full circle, which turns the pin with the peg) anew.
 - **Nuts.** Each nut is a ring 45 mm tall (outer radius 28 mm) whose hole (inscribed radius 12.8 mm) fits over
-  the shaft, with a handle bar (16 mm wide, from 25 to 41 mm above the nut's bottom face) reaching
+  the shaft with 0.5 mm of radial clearance, with a handle bar (16 mm wide, from 25 to 41 mm above the nut's bottom face) reaching
   98 mm from the hole axis. The ring is 24 sectors (15 degrees each, counted counter-clockwise from
   the handle) by 9 layers (5 mm each). The groove is cut into the inner part of the hole wall (out
   to 19 mm from the axis). Its top layer is always solid, so the top face and the outside of the
@@ -81,15 +84,17 @@ episodes run on the same four cores).
   channels may continue 1 to 3 sectors the other way into a dead end; and there may be up to two
   false entrances (risers as deep as the real one that lead nowhere). A channel is 30 degrees wide,
   but the solid cells beside it narrow the opening near the shaft: a nut resting on the pin drops
-  into a riser only while the riser is within about +-4 degrees of the pin (+-2.5 to +-5.5 on real
+  into a riser only while the riser is within about +-5 degrees of the pin (+-4.5 to +-7 on real
   nuts). Resting on the pin, the nut's bottom is 39.5 mm above the collar; it can come down to
   24.5 mm in an entrance riser, to 9.5 mm after the first turn and riser, and to the collar after the
   second (each within about half a millimetre on real parts). Each episode places the three
   nuts flat on the table with their centres at x in [-0.24, -0.06], y in [-0.24, 0.24], at least
   0.12 m apart, handles clear of the other nuts, each with its yaw (direction of the handle) equal to
   its azimuth seen from the robot base plus 135 degrees plus a uniform offset within +-60 degrees.
-- The fingers hold the handle by friction only, so a held nut slowly sags about the grip under its
-  own weight; the hand is wide enough to touch a neighbouring peg if it passes close to it.
+- The two fingers move together, symmetrically about the hand's axis, so a gripped part is centred
+  between them; across the closing direction and in rotation it is held by the pads' friction only,
+  so a held nut sags about the grip under its own weight. The hand is wide enough to touch a
+  neighbouring peg if it passes close to it.
 - Every graded episode has its own kit, drawn from the family (`datasheet.md`, sections 3 and 4)
   with a seed you do not know: three nuts of three different colours (blue, green, orange, pink,
   purple, red, teal or yellow), each with its own groove, mass (0.05 to 0.15 kg) and friction against

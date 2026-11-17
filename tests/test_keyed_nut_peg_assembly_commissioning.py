@@ -215,7 +215,7 @@ class AgentSide(unittest.TestCase):
             "groove_r": "| 19 mm | +-%g mm" % (tol["groove_r"] * 1000),
             "handle_deg": "+-%g degrees" % tol["handle_deg"],
             "colour": "+-%g |" % tol["colour"],
-            "shaft_r": "| 11 mm | +-%g mm" % (tol["shaft_r"] * 1000),
+            "shaft_r": "| 12.3 mm | +-%g mm" % (tol["shaft_r"] * 1000),
             "pin_r": "| 17.2 mm | +-%g mm" % (tol["pin_r"] * 1000),
             "pin_w": "| 3 mm / 4 mm | +-%g mm each" % (2 * tol["pin_w"] * 1000),
             "pin_hh": "| 3 mm / 4 mm | +-%g mm each" % (2 * tol["pin_hh"] * 1000),
@@ -239,6 +239,39 @@ class AgentSide(unittest.TestCase):
         flat = " ".join(INSTRUCTION.split())
         for words in ("section 11", "tolerances", "never told", "published camera calibration"):
             self.assertTrue(words in flat, "the instruction does not say %r" % words)
+
+    def test_the_fit_is_stated(self):
+        """The nut's fit on its shaft, the hand's coupled fingers and what follows from them are in the data sheet
+        (section 12) and the instruction, with the simulator's numbers."""
+        tree = ast.parse((TASK / "tests/keyed_env.py").read_text())
+        consts = {}
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                    and node.targets[0].id in ("TOL", "R_HOLE", "SHAFT_R"):
+                consts[node.targets[0].id] = eval(compile(ast.Expression(node.value), "fit", "eval"), {"__builtins__": {}})
+        clear = (consts["R_HOLE"] - consts["SHAFT_R"]) * 1000
+        spread = (consts["TOL"]["hole_r"] + consts["TOL"]["shaft_r"]) * 1000
+        fit = "%g mm of radial clearance on the drawing" % round(clear, 3)
+        real = "%g to %g mm on real parts" % (round(clear - spread, 3), round(clear + spread, 3))
+        self.assertEqual((fit, real), ("0.5 mm of radial clearance on the drawing", "0.35 to 0.65 mm on real parts"))
+        sheet = " ".join(DATASHEET.split())
+        self.assertIn("## 12. The fit", DATASHEET)
+        tail = " ".join(DATASHEET[DATASHEET.index("## 12. The fit"):].split())
+        for words in (fit, real, "no lead-in chamfer", "by touch", "What the wrist reads, the nut on the shaft end",
+                      "What the wrist reads, the hole over the shaft",
+                      "What the wrist reads, the nut's rim against the shaft's side"):
+            self.assertTrue(words in tail, "the data sheet's section 12 does not say %r" % words)
+        for words in ("a cylinder of radius %g mm" % (consts["SHAFT_R"] * 1000), "locating fit", "**Compliance.**",
+                      "The two fingers are one mechanism"):
+            self.assertTrue(words in sheet, "the data sheet does not say %r" % words)
+        flat = " ".join(INSTRUCTION.split())
+        for words in (fit, "(%s)" % real, "no lead-in chamfer", "found by touch", "section 12",
+                      "shaft of radius %g mm" % (consts["SHAFT_R"] * 1000), "The two fingers move together"):
+            self.assertTrue(words in flat, "the instruction does not say %r" % words)
+        cell = (TASK / "tests/keyed_env.py").read_text()
+        self.assertIn("mjEQ_JOINT", cell)
+        self.assertIn('eq.name1 = "r_g_finger_joint1"', cell)
+        self.assertIn('eq.name2 = "r_g_finger_joint2"', cell)
 
     def test_instruction_names_only_what_the_agent_has(self):
         for name in ("datasheet.md", "cell_data.py", "commission/client.py", "commission/run_kit.py",

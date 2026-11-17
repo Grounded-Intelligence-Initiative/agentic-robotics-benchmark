@@ -19,6 +19,7 @@ import numpy as np
 TABLE_Z = 0.80
 NUT_TOP_Z = TABLE_Z + 0.045
 SHAFT_TOP_Z = TABLE_Z + 0.010 + 0.065
+SHAFT_R = 0.0123                    # the data sheet's shaft radius
 NUT_RGB = {"blue": [0.16, 0.36, 0.78], "green": [0.20, 0.62, 0.30], "red": [0.78, 0.18, 0.16],
            "yellow": [0.86, 0.74, 0.16], "orange": [0.85, 0.45, 0.12], "purple": [0.55, 0.25, 0.70],
            "teal": [0.15, 0.65, 0.68], "pink": [0.80, 0.35, 0.55]}
@@ -237,7 +238,7 @@ def refine_peg_top(img, K, T, xy, search_px=16):
     if pc[2] <= 0.02:
         return None
     u0, v0 = (K @ pc)[:2] / pc[2] - 0.5
-    r = 0.011 * K[0, 0] / pc[2]                         # the shaft's radius in pixels
+    r = SHAFT_R * K[0, 0] / pc[2]                       # the shaft's radius in pixels
     n = int(math.ceil(1.8 * r)) + 1
     yy, xx = np.mgrid[-n:n + 1, -n:n + 1]
     rr = np.hypot(xx, yy)
@@ -303,7 +304,7 @@ def count_bands(img, K, T, peg_xy):
     shift = np.array([seen[0] - top[0], seen[1] - top[1]])          # the shaft as seen against the shaft as drawn
 
     def sample(z):
-        pts = [[peg_xy[0] + 0.0112 * d[0] + o * -d[1], peg_xy[1] + 0.0112 * d[1] + o * d[0], TABLE_Z + z]
+        pts = [[peg_xy[0] + (SHAFT_R + 0.0002) * d[0] + o * -d[1], peg_xy[1] + (SHAFT_R + 0.0002) * d[1] + o * d[0], TABLE_Z + z]
                for o in (-0.003, 0.0, 0.003)]
         uv = project(pts, K, T) + shift
         return float(np.median([_bilinear(gray, u, w) for (u, w) in uv]))

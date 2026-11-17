@@ -29,7 +29,10 @@ Action (a list of 8 numbers):
               to length MAX_DPOS = 0.02);
     drx..drz: a world-frame rotation vector (rad; clipped to length MAX_DROT = 0.15) applied to the
               current gripper orientation; an operational-space controller tracks the target;
-    grip:     -1 = fully open (80 mm) ... +1 = fully closed; linear in between;
+    grip:     -1 = fully open (80 mm) ... +1 = fully closed; linear in between. The two fingers are one
+              mechanism (as on the real hand): they move symmetrically about the hand's axis, each driven
+              with at most 20 N, so a part is centred between them when it is gripped and a held part
+              cannot push them aside together;
     cams:     integer bit mask of the cameras whose RGB image the NEXT observation carries
               (1 = left, 2 = right, 4 = wrist; 0 = none). Images cost wall time (and, when graded,
               controller budget: see the task instruction).
@@ -37,13 +40,14 @@ Action (a list of 8 numbers):
 Scene
 -----
 Three pegs stand on the table. Each peg: a 50 x 50 x 10 mm collar (base), on it a round shaft of
-radius 11 mm, 65 mm tall, carrying one pin: a small block on the shaft surface (3 mm wide, 4 mm
-tall, reaching 17.2 mm from the shaft axis) centred 37.5 mm above the collar top, on the peg's
-local +x side. The pegs look alike except for 1, 2 or 3 dark bands near the shaft top. Every
+radius 12.3 mm, 65 mm tall, with a square end (no lead-in chamfer), carrying one pin: a small block
+on the shaft surface (3 mm wide, 4 mm tall, reaching 17.2 mm from the shaft axis) centred 37.5 mm
+above the collar top, on the peg's local +x side. The pegs look alike except for 1, 2 or 3 dark bands near the shaft top. Every
 episode draws the peg positions and yaws anew.
 
 The nut: a ring 45 mm tall (outer radius 28 mm, a 24-sided polygon) whose hole (inscribed radius
-12.8 mm) fits over the shaft, with a handle bar (16 mm wide, 16 mm tall, from 25 to 41 mm above the
+12.8 mm, square edges) fits over the shaft with a locating fit (1 mm on the diameter: the fine series
+of clearance holes; 0.5 mm of radial clearance on the drawing), with a handle bar (16 mm wide, 16 mm tall, from 25 to 41 mm above the
 nut's bottom face) reaching 98 mm from the hole axis along the nut's local +x axis. The ring is
 built from 24 sectors (15 degrees each; sector s spans [15 s, 15 (s + 1)] degrees counter-clockwise
 from the handle) x 9 layers (5 mm each, layer 0 at the bottom). In each cell the inner part of the
@@ -100,7 +104,7 @@ joint's friction (JOINT_FRICTION, which the tracking law does not compensate), t
 camera's real mount and intrinsics (the published calibration and `T_world_wrist` stay the drawing's) and the
 lamps' brightness, each uniformly within its range in TOL. The observations never carry these values; the data
 sheet states the ranges. `NutEnv(..., tolerances=False)` builds the drawing's kit on an ideal cell (a
-maintainer's check: with it the simulation is the one before the tolerances were introduced).
+maintainer's check).
 """
 
 import bisect
@@ -132,14 +136,14 @@ WORKSPACE_HI = np.array([0.45, 0.45, TABLE_Z + 0.55])
 NSEC = 24             # angular sectors of the nut ring (15 degrees each)
 LAYER = 0.005         # layer height of the nut ring
 NLAYER = 9            # nut height 45 mm
-R_HOLE = 0.0128       # hole radius: the flats of the 24-sided hole from the axis (shaft 11 mm)
+R_HOLE = 0.0128       # hole radius: the flats of the 24-sided hole from the axis (shaft 12.3 mm)
 R_GROOVE = 0.019      # groove floor radius
 R_NUT = 0.028         # nut outer radius
 NUT_H = NLAYER * LAYER
 HANDLE_LEN = 0.070
 HANDLE_W = 0.008      # half width
 HANDLE_Z = (0.025, 0.041)
-SHAFT_R = 0.011
+SHAFT_R = 0.0123      # a locating fit in the 25.6 mm hole: 1 mm on the diameter (the fine series of clearance holes)
 PEG_H = 0.065
 COLLAR = 0.025        # collar half width
 COLLAR_H = 0.010
@@ -209,7 +213,8 @@ JOINT_FRICTION = ((0.54615, 0.87224, 0.64068, 1.2794, 0.83904, 0.30301, 0.56489)
                   (5.1181, 9.0657, 10.136, 5.5903, 8.3469, 17.133, 10.336),
                   (0.039533, 0.025882, -0.04607, 0.036194, 0.026226, -0.021047, 0.0035526))
 
-GRIP_KP = 3000.0             # finger position gain (N/m); the finger force is capped at 20 N
+GRIP_KP = 3000.0             # finger position gain (N/m); each finger's force is capped at 20 N
+FINGER_COUPLING = (0.005, 1.0)   # solref of the constraint that makes the two fingers one mechanism
 RGB_NOISE = 2.0              # 8-bit sigma
 WRENCH_NOISE = 0.3           # N (torque: 0.03 N m)
 WRENCH_BIAS = 0.5            # N per axis, fixed per episode (torque: 0.05 N m)
@@ -600,6 +605,15 @@ def build_model(specs, layout, unit=None):
         if act.name.startswith("r_g_gripper_finger_joint"):
             act.gainprm[0] = GRIP_KP
             act.biasprm[1] = -GRIP_KP
+    # the hand's two fingers are one mechanism (one drive, as on the real hand): they open and close symmetrically
+    # about the hand's axis, so a part is centred when gripped and a held part cannot push the fingers aside together
+    eq = root.add_equality()
+    eq.type = mujoco.mjtEq.mjEQ_JOINT
+    eq.name = "finger_coupling"
+    eq.name1 = "r_g_finger_joint1"
+    eq.name2 = "r_g_finger_joint2"
+    eq.data[:5] = [0.0, -1.0, 0.0, 0.0, 0.0]
+    eq.solref = list(FINGER_COUPLING)
     m = root.compile()
     m.cam_fovy[m.camera("r_eye_in_hand").id] = WRIST["fovy"]
     return m

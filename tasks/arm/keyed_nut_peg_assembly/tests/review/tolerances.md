@@ -1,4 +1,4 @@
-# The tolerances and where each number comes from (maintainer notes, 2026-11-17)
+# The tolerances, the fit, and where each number comes from (maintainer notes, 2026-11-17)
 
 Round 3 of the maintainer review. After round 2 the agent rebuilt the cell from its data sheet as a twin of its own
 and developed there with the twin's ground truth: the drawing was the cell. A real cell is not its drawing. From this
@@ -28,7 +28,7 @@ number, it is cited; where the number is an engineering estimate, the note says 
 
 | value | range | source |
 |---|---|---|
-| shaft radius | +-0.05 mm | ISO 2768-1 class f on the 22 mm diameter (+-0.1 mm); ground bar stock is tighter |
+| shaft radius | +-0.05 mm | ISO 2768-1 class f on the shaft's diameter (+-0.1 mm for 6 to 30 mm); ground bar stock is tighter |
 | pin reach from the shaft axis | +-0.2 mm | ISO 2768-1 class m, 6 to 30 mm |
 | pin width and height | +-0.1 mm each | ISO 2768-1 class m, 0.5 to 6 mm |
 | pin centre above the collar top | +-0.3 mm | ISO 2768-1 class m, over 30 up to 120 mm |
@@ -47,10 +47,53 @@ number, it is cited; where the number is an engineering estimate, the note says 
 | lamps: brightness | +-15 % | estimate: lamp ageing and daylight through a shift |
 
 What they add up to (also stated in the data sheet): a nut on the pin rests at 39.5 +- 0.35 mm, stalls at 24.5 and
-9.5 +- 0.55 mm; riser middles are 30, 45 or 60 +- 2 degrees apart; the drop window is about +-2.5 to +-5.5 degrees; the
-radial clearance 1.65 to 1.95 mm. With the published calibration alone a point on the table is typically 4 mm off in a
-fixed camera (p90 8 mm, at worst 16 mm) and 2 mm off in the wrist camera from 0.25 m (p90 3.5 mm, at worst 6 mm):
-more than the hole's clearance, so a nut cannot be put on a shaft from an image position alone.
+9.5 +- 0.55 mm; riser middles are 30, 45 or 60 +- 2 degrees apart; a nut left free on the pin drops into a riser
+within +-4.5 to +-7 degrees of the riser's real middle (measured, 18 nuts; +-4 to +-5.5 on the drawing's nut). With the
+published calibration alone a point on the table is typically 4 mm off in a fixed camera (p90 8 mm, at worst 16 mm) and
+2 mm off in the wrist camera from 0.25 m (p90 3.5 mm, at worst 6 mm).
+
+## The fit (amendment 3)
+
+Tolerances and a 100 s takt were not enough (below, and `commissioning.md`): the contribution's hole was 25.6 mm on a
+22 mm shaft, 1.8 mm of radial clearance, and that play absorbed every tolerance and most of the cameras' error. A
+keyed nut is a locating part. From amendment 3 on:
+
+| what | value | source |
+|---|---|---|
+| the fit | shaft 24.6 mm in the 25.6 mm hole: 1 mm on the diameter, 0.5 mm of radial clearance on the drawing, 0.35 to 0.65 mm with the tolerances of the hole (+-0.1 mm) and the shaft (+-0.05 mm) | ISO 273 (clearance holes for bolts and screws): the fine series is the shank + 1 mm in this size range (23 mm for 22, 25 mm for 24), the medium series + 2 mm, the coarse series + 4 mm. The contribution's pair was between medium and coarse. A locating fit by a limits-and-fits standard would be tighter still (ISO 286 H11/c11 on 22 mm: 0.11 to 0.37 mm on the diameter); the fine clearance series is what parts made to general tolerances can hold. |
+| lead-in | none: the shaft end and the hole's edges are square | the geometry as contributed (a cylinder and a prism); the data sheet says so |
+| the shaft, not the hole, was changed | | the nut and its groove are untouched: the inner wall blocks, the pin's reach and the window in which a nut drops into a riser depend on the hole's radius, not on the shaft's (measured: +-4 to +-5.5 degrees on the drawing's nut with either shaft) |
+| the hand's fingers | one mechanism: the two finger slides are coupled (an equality constraint, `keyed_env.FINGER_COUPLING`) | the real Franka hand has one drive for both fingers, which move symmetrically. The robosuite model drives each finger on its own, both capped at 20 N: a gripped part then has nothing holding it along the closing direction but the slides' damping, and a sideways force of 2 or 3 N walks nut and fingers through the hand (measured: 10 to 15 mm during a search on the shaft end). With 1.8 mm of clearance that did not show; with a locating fit it would make a search by touch impossible while the reference, which is given the nut's real pose, would not notice. |
+
+The data sheet's section 12 states the fit, why it has to be done by touch, what holds the nut, the cell's compliance
+(section 5: the tracking law's static stiffness, measured at seven places of the work area) and what the wrist reads
+when the nut is on the shaft end, when the hole comes over the shaft, when the nut's rim meets the shaft's side and
+when a tilted nut binds. Every number there is measured on this cell or follows from the drawing.
+
+Clearances tried (the 16 development kits of amendment 2, in-process runs with the grader's cell and credit rule,
+before amendment 3's candidates were drawn; fingers coupled):
+
+| radial clearance: drawing (real) | reference (given the real grooves and poses) | round-2 frontier submission, unchanged | the same with insertion by touch (below) |
+|---|---|---|---|
+| 1.8 mm (1.65 to 1.95), fingers not coupled: amendment 2 | 16 of 16 | 8 of 16 kits, 31 of 48 nuts (9 of 16 through the grader) | |
+| 1.0 mm (0.85 to 1.15) | 16 of 16 | 5 of 16, 24 of 48 | 8 of 16, 38 of 48 (an earlier version of the search) |
+| 0.75 mm (0.6 to 0.9) | 16 of 16 | 4 of 16, 17 of 48 | 6 of 16, 37 of 48 (an earlier version of the search) |
+| 0.5 mm (0.35 to 0.65): amendment 3 | 16 of 16 (624 to 803 steps) | 1 of 16, 8 of 48 | 6 of 16, 37 of 48; 48 of 48 insertions on the shaft |
+
+**Insertion by touch with the agent's observations alone.** A maintainer's controller (kept with the review's
+records, not shipped) changes the round-2 frontier submission's insertion only; its perception, grasp and groove
+search are as submitted. The first nut of a
+kit is brought beside its shaft and its rim is pushed against the shaft's side from two directions, which gives the
+shaft's axis in the hand's own terms; the difference to the cameras' plan is kept in the hand's frame and corrects
+the plans for the kit's other nuts; a nut that still comes to rest on the shaft end is slid along a small spiral
+under a light push until it dips over the shaft. It uses `ee_pos`, `ee_quat` and `wrench` and nothing else. See
+`observability/README.md` for its result through the grader on amendment 3's development kits.
+
+What did not work, for the record: reading the direction of the shaft from the wrist's torques while the nut is
+pressed on the shaft end. The contact sits somewhere on a thin crescent of the shaft end beside the hole, and with
+a nut that sags a few tenths of a degree in the grip it sits at one end of that crescent as often as in its
+middle: 13 presses at 11 to 15 N gave the direction within 45 degrees in 10 cases and off by 75 to 100 degrees
+in 3. The data sheet says so.
 
 ## What was not varied, and why
 
@@ -62,6 +105,9 @@ more than the hole's clearance, so a nut cannot be put on a shaft from an image 
   stays in proportion to the sliding friction.
 - No actuation or image latency, no joint encoder offsets: the first would change the cell's design, not a
   tolerance; the second is far below the cameras' errors (Franka gives a pose repeatability of +-0.1 mm).
+- The tolerance code was checked against the earlier simulation at 45e088b (`tolerances=False` repeated the round-2
+  runs to within one step). Since amendment 3 the drawing itself differs (the shaft, the coupled fingers), so that
+  switch now gives the new drawing's kit on an ideal cell.
 
 ## What it does to the reference and to a round-2 controller
 

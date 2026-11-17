@@ -35,14 +35,14 @@ WORKSPACE_HI = np.array([0.45, 0.45, TABLE_Z + 0.55])
 NSEC = 24             # angular sectors of the nut ring (15 degrees each)
 LAYER = 0.005         # layer height of the nut ring
 NLAYER = 9            # nut height 45 mm
-R_HOLE = 0.0128       # hole radius: the flats of the 24-sided hole from the axis (shaft 11 mm)
+R_HOLE = 0.0128       # hole radius: the flats of the 24-sided hole from the axis (shaft 12.3 mm)
 R_GROOVE = 0.019      # groove floor radius
 R_NUT = 0.028         # nut outer radius
 NUT_H = NLAYER * LAYER
 HANDLE_LEN = 0.070
 HANDLE_W = 0.008      # half width
 HANDLE_Z = (0.025, 0.041)
-SHAFT_R = 0.011
+SHAFT_R = 0.0123      # a locating fit in the 25.6 mm hole: 1 mm on the diameter (the fine series of clearance holes)
 PEG_H = 0.065
 COLLAR = 0.025        # collar half width
 COLLAR_H = 0.010
@@ -125,7 +125,7 @@ JOINT_FRICTION = ((0.54615, 0.87224, 0.64068, 1.2794, 0.83904, 0.30301, 0.56489)
                   (5.1181, 9.0657, 10.136, 5.5903, 8.3469, 17.133, 10.336),
                   (0.039533, 0.025882, -0.04607, 0.036194, 0.026226, -0.021047, 0.0035526))
 
-GRIP_KP = 3000.0             # finger position gain (N/m); the finger force is capped at 20 N
+GRIP_KP = 3000.0             # finger position gain (N/m); each finger's force is capped at 20 N
 RGB_NOISE = 2.0              # 8-bit sigma
 WRENCH_NOISE = 0.3           # N (torque: 0.03 N m)
 WRENCH_BIAS = 0.5            # N per axis, fixed per episode (torque: 0.05 N m)

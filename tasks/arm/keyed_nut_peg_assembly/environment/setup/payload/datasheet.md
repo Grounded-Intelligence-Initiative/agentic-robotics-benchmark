@@ -1,8 +1,8 @@
 # Bayonet nut kit cell: data sheet
 
 What the engineer who commissions a controller on this cell is given: the kit's drawing data and tolerances, how a
-kit is laid out, the robot and its controller, the sensors and cameras, the safety stops, the takt, and the wire of
-the commissioning service. The numbers, the camera calibration and a few geometry helpers are also in
+kit is laid out, the robot and its controller, the sensors and cameras, the safety stops, the takt, the wire of
+the commissioning service, and what the fit of a nut on a shaft asks of the cell (section 12). The numbers, the camera calibration and a few geometry helpers are also in
 `cell_data.py` (plain Python and NumPy). The cell itself (its simulator, its model files, its state) is not in your
 account: you meet it through the commissioning service (section 10) and when your controller is graded.
 
@@ -22,8 +22,8 @@ counter-clockwise seen from above, from the handle (the nut's local +x axis).
 | part | geometry |
 |---|---|
 | collar (base) | a 50 x 50 x 10 mm block on the table, dark grey |
-| shaft | a cylinder of radius 11 mm, 65 mm tall, on the collar, light grey; its top is 75 mm above the table |
-| pin | a block on the shaft surface on the peg's local +x side: radial extent 10.5 to 17.2 mm from the shaft axis, 3 mm wide (tangential), 4 mm tall, centred 37.5 mm above the collar top (its top face 39.5 mm above it) |
+| shaft | a cylinder of radius 12.3 mm, 65 mm tall, on the collar, light grey; its top is 75 mm above the table; its end is square (no lead-in chamfer) |
+| pin | a block on the shaft surface on the peg's local +x side: radial extent 11.8 to 17.2 mm from the shaft axis, 3 mm wide (tangential), 4 mm tall, centred 37.5 mm above the collar top (its top face 39.5 mm above it) |
 | bands | 1, 2 or 3 near-black rings around the shaft, each 7 mm tall and 0.4 mm proud of the shaft; centres 10, 23 and 36 mm below the shaft top (a peg with one band has the top one, with two the top two) |
 
 The three pegs of a kit are identical except for their bands. A peg's yaw turns its pin with it.
@@ -33,15 +33,17 @@ The three pegs of a kit are identical except for their bands. A peg's yaw turns 
 - **Ring.** 45 mm tall, a 24-sided prism: 24 sectors of 15 degrees (sector s spans [15 s, 15 (s + 1)] degrees from
   the handle) by 9 layers of 5 mm (layer 0 at the bottom). Outside flats 28 mm from the hole axis. The nut's origin
   is the point of the hole axis on the bottom face.
-- **Hole.** Fits over the shaft: a 24-sided hole whose flats are 12.8 mm from the axis (the shaft is 11 mm), so a
-  nut on a shaft has 1.8 mm of radial clearance.
+- **Hole.** A 24-sided hole whose flats are 12.8 mm from the axis, with square edges (no lead-in chamfer). It
+  fits over the 12.3 mm shaft with a **locating fit**: 1 mm on the diameter, the fine series of clearance holes
+  for this size, so a nut on a shaft has 0.5 mm of radial clearance on the drawing and 0.35 to 0.65 mm on real
+  parts (section 11). What that asks of the cell: section 12.
 - **Wall cells.** In every (sector, layer) cell the wall is two blocks: an outer block from 19 to 28 mm (always
   there) and an inner block from 12.8 to 19 mm, which is either solid or cut away. The cut cells form the
   **groove**; its floor is at 19 mm from the axis, so a cut cell is a recess 6.2 mm deep. An inner block is 5.4 mm
   wide (tangentially), wider than its sector is at the hole (3.4 mm), so the solid cells beside a channel overhang
   it near the hole: a channel two sectors wide is nominally 30 degrees wide but opens only about 21 degrees at the
-  hole surface. With the pin's width, a nut resting on the pin drops into a riser only while the riser's centre
-  is within about +-4 degrees of the pin.
+  hole surface. With the pin's width, a nut resting on the pin drops into a riser only while the riser's middle
+  is within about +-5 degrees of the pin (measured on nuts left free on the pin: +-4 to +-5.5 degrees).
 - **Handle.** A bar along the nut's +x axis from 26 to 98 mm from the hole axis, 16 mm wide, from 25 to 41 mm above
   the bottom face.
 - **Mass and surfaces.** Mass 0.05 to 0.15 kg, centre of mass 15 mm from the hole axis towards the handle and
@@ -109,7 +111,10 @@ Layout tolerances (every episode draws them anew, uniformly, and redraws until a
     current orientation; the result is the step's orientation target.
   - `grip`: -1 = fingers fully open (80 mm) ... +1 = fully closed, linear in between. Each finger is
     position-controlled to its half of the commanded opening with a stiffness of 3000 N/m, and its force is
-    capped at 20 N.
+    capped at 20 N. The two fingers are one mechanism, as on the real hand: they move symmetrically about the
+    hand's axis. A part is therefore centred between them when it is gripped (it is pushed there, or the hand
+    gives), and a held part cannot push the fingers aside together; across the closing direction and in rotation
+    it is held by the pads' friction alone.
   - `cams`: an integer bit mask of the cameras whose image the next observation carries (1 = left, 2 = right,
     4 = wrist; 0 = none).
 - **Tracking.** The arm is torque-controlled at 500 Hz by an operational-space controller that holds the step's
@@ -123,6 +128,13 @@ Layout tolerances (every episode draws them anew, uniformly, and redraws until a
   position controller, not a force controller. The law knows nothing of the joints' friction (section 11), so the
   real arm lags a little behind what this law alone would do: a displacement command of a few tenths of a
   millimetre may not move it at all.
+- **Compliance.** What a blocked displacement command presses with, at the grip site with the gripper pointing
+  down (the task-space inertia times 400, at the height where a nut meets a shaft): over the pegs' area 3.3 to
+  5.8 N per mm in x, about 2.5 N per mm in y and 2.9 to 3.6 N per mm in z; over the nuts' area about 3.3 N per mm
+  in x and y and about 6 N per mm in z. The directions are coupled through the arm's inertia: a push down also
+  pushes away from the robot base (+x) with 0.3 to 0.45 of the downward force, and sideways (y) with up to 0.15
+  of it at the sides of the area. In rotation the hand resists with 170 to 220 N m/rad about world x, 125 to
+  170 N m/rad about y and 40 N m/rad about the vertical axis.
 
 ## 6. Sensors
 
@@ -250,7 +262,7 @@ handle, the collar, the shaft's height and the bands are as drawn.
 | sliding friction against a peg | | 0.3 to 0.7 |
 | mass | | 0.05 to 0.15 kg |
 | **Every peg** | | |
-| shaft radius | 11 mm | +-0.05 mm |
+| shaft radius | 12.3 mm | +-0.05 mm |
 | pin: reach from the shaft axis | 17.2 mm | +-0.2 mm |
 | pin: width / height | 3 mm / 4 mm | +-0.1 mm each |
 | pin: centre above the collar top | 37.5 mm | +-0.3 mm |
@@ -271,9 +283,46 @@ handle, the collar, the shaft's height and the bands are as drawn.
   (`cell_data.JOINT_FRICTION`, `cell_data.joint_friction_torque`). It levels off at about half of phi1.
 - **What the tolerances add up to.** A nut resting on the pin has its bottom 39.5 +- 0.35 mm above the collar; it
   stalls at 24.5 +- 0.55 mm after the entrance riser and at 9.5 +- 0.55 mm after the first turn. The middles of two
-  risers are 30, 45 or 60 degrees apart, +-2 degrees. The window in which a nut on the pin drops into a riser is
-  between about +-2.5 and +-5.5 degrees wide. The radial clearance of a nut on a shaft is 1.65 to 1.95 mm.
+  risers are 30, 45 or 60 degrees apart, +-2 degrees. The window in which a nut left free on the pin drops into a
+  riser is between about +-4.5 and +-7 degrees about the riser's real middle. The radial clearance of a nut on a
+  shaft is 0.35 to 0.65 mm.
 - **What the cameras' tolerances add up to.** With the published calibration alone, a point on the table seen by a
   fixed camera is typically about 4 mm off (one time in ten more than 8 mm, at worst about 16 mm); a point seen by
   the wrist camera from 0.25 m is typically about 2 mm off (one time in ten more than 3.5 mm, at worst about 6 mm).
   A camera's error is the same through an episode, and the wrist camera's is fixed in the hand's frame.
+
+## 12. The fit: what putting a nut on a shaft asks of the cell
+
+- **The fit.** A 25.6 mm hole (across flats) on a 24.6 mm shaft: 1 mm on the diameter, the fine series of
+  clearance holes for this size; 0.5 mm of radial clearance on the drawing, 0.35 to 0.65 mm on real parts. The
+  shaft end and the hole's edges are square: there is no lead-in chamfer to guide the nut on. The hole is 45 mm
+  deep, so a nut tilted against the shaft by more than twice the clearance over that depth (about 0.9 to 1.6
+  degrees) binds on the shaft at two points instead of sliding down.
+- **Why it has to be done by touch.** A position taken from an image with the published calibration is off by
+  millimetres (section 11), several times the clearance, for the shaft and for the held nut alike. The nut's hole
+  cannot be put over a shaft from image positions alone; the shaft has to be found by touch, with the wrist
+  sensor and the hand's position. Both ways below work with this cell's sensors.
+- **What holds the nut.** Along the fingers' closing direction the nut is centred on the hand's axis (the fingers
+  are one mechanism, section 5). Across it and in rotation the pads' friction holds it (0.6 to 1.2, 20 N per
+  finger): a nut gripped by its ring sags in the grip by a few tenths of a degree (up to about 0.8 degrees
+  measured).
+- **What the wrist reads, the nut on the shaft end.** A nut lowered with its hole's axis more than the clearance
+  off the shaft's axis stops with its bottom face on the shaft end, 65 mm above the collar top. A displacement
+  command that presses it there reads as the downward push (about 3 N per mm of commanded displacement) together
+  with the sideways force the tracking law adds to it (section 5, Compliance), which the friction on the shaft
+  end holds (0.3 to 0.7; a larger share slides the nut over the end). The push's line of action lies on the part
+  of the shaft end beside the hole, 13 mm or more from the hole's axis, on the side where the shaft's axis is;
+  because two faces that do not meet flat touch at an edge, it can lie up to about a quarter turn to either side
+  of that direction. The wrist's torques (torque = lever x force about the sensor, which is 97 mm above the grip
+  site) therefore tell on which side of the hole the shaft is, not exactly where.
+- **What the wrist reads, the hole over the shaft.** Once the hole's axis is within the clearance of the shaft's
+  axis the nut goes down under the same push, until the pin stops it 39.5 mm above the collar (section 3). A nut
+  slid over the shaft end under a light push dips when it gets there.
+- **What the wrist reads, the nut's rim against the shaft's side.** The ring's outside (flats 28.0 mm from the
+  hole's axis, corners 28.2 mm) pushed sideways against the side of the shaft, below the shaft end, stops there:
+  the hand stops and the wrist reads the push as a sideways force (the stiffness of section 5). The hole's axis
+  is then 40.3 to 40.5 mm from the shaft's axis. The handle is higher than the shaft end while the nut's bottom is
+  less than 25 mm below it, so the rim can meet the shaft from any side.
+- **What the wrist reads, a nut that binds.** A nut tilted against the shaft by more than the fit allows stops
+  part of the way down under the same push that moved it before; the two contacts' couple reaches the wrist as a
+  torque about a horizontal axis.
