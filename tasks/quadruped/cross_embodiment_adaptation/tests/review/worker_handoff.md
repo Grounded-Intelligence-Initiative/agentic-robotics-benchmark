@@ -1,5 +1,10 @@
 # PR37 V4 Integration Handoff
 
+Parent follow-up: the actual pinned-engine validation and post-merge security
+fixture subsequently completed. See README.md, v4_ale_validation.json and
+v4_security_integration.json for the final evidence. The handoff below records
+the worker's earlier state; its parent-pending statements are historical.
+
 ## Frozen Source
 
 Local checkpoint: `07f3a3a`. Integrated maintainer round-2 head: `9d8cc14`.

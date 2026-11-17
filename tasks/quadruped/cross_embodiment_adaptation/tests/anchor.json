@@ -3,7 +3,7 @@
   "direction": "higher",
   "value": 1,
   "full_at": 0.98,
-  "source": "PR37 v4 preliminary native measurement after integrating maintainer head 9d8cc14, 2026-11-16: the PRIVILEGED author reference completed all eight latest hidden seeds, unchanged from 9d8cc14, on koa04 in ale-cross-maintainer-env:20261116 with 2 CPUs/4 GB/no network. Fresh per-site results and runtime/suite/config source hashes: tests/review/v4_hidden_native.json. This is direct-World no-render diagnostics, NOT official ALE separate-verifier evidence. Parent final validation remains pending; earlier round-2 and pre-integration candidate results are archived, not inherited.",
+  "source": "PR37 v4, integrated maintainer head 9d8cc14 without changing hidden seeds or budgets. Actual pinned ALE engine bfb7505 run validate-6a247128 on koa04, completed 2026-11-17 01:22 UTC: privileged oracle reward 1.0, untouched reward 0.0, 8/8 separate-verifier missions successful, zero contact stops, mean 136.875 carrier actions. Engine report, lifecycle phases, verdicts and matching active source hashes: tests/review/v4_ale_validation.json. Supporting native diagnostics: tests/review/v4_hidden_native.json. Earlier results are archived, not inherited. No frontier-model difficulty claim.",
   "measurements": [
     1
   ],
@@ -17,5 +17,5 @@
     141,
     136
   ],
-  "validation_status": "v4_native_latest_suite_passed_pending_separate_verifier"
+  "validation_status": "v4_actual_ale_separate_verifier_passed"
 }

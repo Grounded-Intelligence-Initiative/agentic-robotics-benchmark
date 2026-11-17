@@ -17,9 +17,12 @@ the published constructive aisle topology, so it is a feasibility reference,
 not a general-purpose motion planner or proof of frontier difficulty.
 
 Fresh native, no-render diagnostics on koa04 completed all eight latest hidden
-seeds retained from 9d8cc14, with 127-148 carrier actions. This is not an official separate-verifier
-anchor. The parent owns that run and final scoring/security evidence.
-See tests/review/v4_hidden_native.json and tests/review/README.md for provenance.
+seeds retained from 9d8cc14, with 127-148 carrier actions. The subsequent actual
+ALE validation (`validate-6a247128`, engine `bfb7505`) separately completed all
+eight verifier missions: oracle reward 1, untouched reward 0, no contact stops,
+mean 136.875 carrier actions. The active source hashes match this revision.
+See tests/review/v4_ale_validation.json, v4_hidden_native.json and README.md
+for provenance and the separate security-fixture results.
 The complete round-2 floor-localization source/reference/evidence is preserved
 byte-for-byte under tests/review/legacy_round2. The older v2 material remains
 under legacy_v2, and pre-integration candidate receipts under legacy_candidate_v3.

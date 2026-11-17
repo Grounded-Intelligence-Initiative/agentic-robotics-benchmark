@@ -2,6 +2,20 @@
 
 ## Evidence and Limits
 
+The actual pinned ALE engine (`bfb7505`) completed validation run
+`validate-6a247128`: untouched reward 0, privileged oracle reward 1, eight of
+eight separate-verifier missions successful with zero contact stops. All six
+lifecycle phases succeeded. `v4_ale_validation.json` contains the engine report,
+verdicts, configuration and 46 active-file hashes checked against this revision.
+The local collection wrapper was interrupted after the remote run; the completed
+engine records were retrieved from koa04 without rerunning or inferring an exit code.
+
+The post-integration real-grader security fixture denied copied-token truth
+requests and five protected paths on each of eight sites. This fixture uses a
+synthetic ordinary-agent ATIF, not a model or an ALE run; see
+`v4_security_integration.json`. An independent rendered/headless check also
+confirmed identical physics state and public status for matching action sequences.
+
 Current native remote diagnostics (MuJoCo 3.16, 2 CPUs, 4 GB, CPU only):
 full privileged reference 8/8 latest 9d8cc14 hidden seeds and 20/20 development
 seeds 1000-1019, freshly rerun with the exact 500/240/1000 maintainer budgets
@@ -31,8 +45,9 @@ fail during the initial heading maneuver, not exclusively inside the dogleg.
 
 The author reference is explicitly PRIVILEGED. The public v4 observation pipeline
 has not yet been solved by an image-only reference, and no Opus 5.5 v4 score is
-claimed. Parent owns the independent ALE oracle/nop validation, security checks,
-final anchor and frontier evaluation.
+claimed. Passing the privileged reference and isolation checks does not establish
+image-only solvability, a necessary benefit from scouting, or the requested
+frontier-model difficulty. Those measurements remain pending.
 
 ## Reproduce Remotely
 
