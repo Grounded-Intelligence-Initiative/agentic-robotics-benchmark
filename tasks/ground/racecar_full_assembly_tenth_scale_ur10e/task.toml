@@ -10,13 +10,14 @@
 # the grader's MuJoCo cell (tests/arm/assembly_car: the stand, the deck shelf, the parts tray and the loose units placed
 # and turned around a hidden bench plan, the four hubs at random angles; two uncalibrated RGB-D cameras, top and wrist,
 # rendered by MuJoCo's Filament on CPU Vulkan in the baked factory hall; noisy F/T, no unit poses, no fastening events).
-# Score = the episode mean of the fastened mates' weight / 11.5; a safety violation (a robot link other than the
-# gripper's pads pressing above 150 N, tests/grader_config.json safety.robot_force_N, or a unit pressed above 150 N
-# for 0.2 s) does not end the episode, but an episode with one keeps only 30 % of its score (tests/grader_config.json
-# scoring.safety_violation_factor). The oracle submits the privileged reference program with a 256-bit token on the
-# same 4 hidden episodes. Grader knobs live in tests/grader_config.json; the cell's hidden kit (tests/gt/: the units'
-# meshes and collision pieces) is not in the repository: the grader unpacks it at verify start from the benchmark's
-# asset dataset (pinned by sha256), or from the local development copy tests/assets/gt.tar.xz when that is present.
+# Score = contract_ok x the episode mean of the fastened mates' weight / 11.5; a safety violation (a robot link other
+# than the gripper's pads pressing above 150 N, tests/grader_config.json safety.robot_force_N, or a unit pressed above
+# 150 N for 0.2 s) does not end the episode, but an episode with one keeps only 30 % of its score
+# (tests/grader_config.json scoring.safety_violation_factor). The oracle submits the privileged reference program with a
+# 256-bit token on the same 4 hidden episodes. Grader knobs live in tests/grader_config.json; the cell's hidden kit
+# (tests/gt/: the units' meshes and collision pieces) is not in the repository: the grader unpacks it at verify start
+# from the benchmark's asset dataset (pinned by sha256), or from a maintainer's local copy tests/assets/gt.tar.xz when
+# that is present.
 
 schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission"]

@@ -3,7 +3,7 @@
 The grader reads the set straight from tests/hidden/episodes.json (format racecar-asm-set/1: four episodes, one per
 stratum of arm/assembly_car/layout.py, each a seed and a layout digest) and compares the digest at every reset; a
 malformed set, and a layout the cell builds differently, are task errors whose messages name no value of the set; every
-agent process starts through netguard; the hidden kit is pinned by sha256 and file count (the development copy
+agent process starts through netguard; the hidden kit is pinned by sha256 and file count (a maintainer's local copy
 tests/assets/gt.tar.xz, when present, has that sha256); the oracle token's sha256 is the one under tests/hidden/; once
 the set is frozen it holds four distinct seeds in [0, 2**63), one per stratum, the selection record keeps each of them,
 and nothing agent-visible (instruction.md, environment/) holds a value of the set or the token. The safety rule (v1.7,
@@ -15,8 +15,8 @@ the grader checks and records, the cell's watch takes through the server, the ce
 and every agent-visible text prints.
 
 Stdlib only: the grader's set functions are taken from tests/verify.py by name (it imports numpy and MuJoCo at module
-level, which the host venv does not have). Tests that need the frozen set skip until it exists (the hidden-set package
-writes tests/hidden/episodes.json and selection.json).
+level, which the host venv does not have). Tests that need the frozen set skip until it exists
+(tests/review/select_set.py writes tests/hidden/episodes.json and selection.json).
 """
 import ast
 import hashlib
@@ -401,11 +401,11 @@ class ContactLimit(unittest.TestCase):
 
 
 class FrozenSet(unittest.TestCase):
-    """the frozen set itself (skips until the hidden-set package has written tests/hidden/episodes.json)"""
+    """the frozen set itself (skips until tests/review/select_set.py has written tests/hidden/episodes.json)"""
 
     def setUp(self):
         if not SET_PATH.is_file():
-            self.skipTest("tests/hidden/episodes.json not written yet (the hidden-set package selects it)")
+            self.skipTest("tests/hidden/episodes.json not written yet (tests/review/select_set.py selects it)")
         self.set = json.loads(SET_PATH.read_text())
 
     def test_the_set_passes_the_graders_own_loader(self):

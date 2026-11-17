@@ -6,5 +6,5 @@ verdict.local.json
 gt/
 .gt.part/
 .gt.tar.xz
-# the local development copy of the hidden kit's tarball (assets/gt.tar.xz: an engine asset root, never in git)
+# a maintainer's local copy of the hidden kit's tarball (assets/gt.tar.xz: an engine asset root, never in git)
 /assets/

@@ -2,12 +2,11 @@
 
 The grader (`verify.py`, started by `test.sh`) runs as root in a separate verifier sandbox from the task image; the
 agent never sees this folder. This note says what the grader does, how the fixed hidden set was chosen and how its
-freeze works, what the zero-cost evidence of development shows and what is left for the owner. The full development
-record (the design of record `DESIGN.md` v1.8, the phase 2 plan, the final state report `PHASE2_REPORT.md`, one record
-per work package, the independent phase 2 review `reviews/PHASE2_REVIEW.md` with the disposition of its findings,
-the evidence files) is in the dev workspace under
-`docs/plan/driving/tasks/racecar_full_assembly_tenth_scale_ur10e-dev/`. No value of the hidden set (seeds, layout
-digests, the bench plan, the oracle token) appears outside `hidden/`.
+freeze works, what the zero-cost evidence of development shows and what is left for the owner. The maintainers' build
+tooling for this task (the generators of the givens and the drawings, the integration and quality-control harnesses,
+the probes and their evidence files) is not part of the repository: this note and `hidden/selection.json` carry what a
+maintainer needs, and "How to redo" lists the checks that run from the repository. No value of the hidden set (seeds,
+layout digests, the bench plan, the oracle token) appears outside `hidden/`.
 
 ## What is here
 
@@ -46,7 +45,7 @@ one number in `grader_config.json` (`scoring.safety_violation_factor`): `verify.
 cell's `describe()` prints it, and the instruction, the cell manual, the cell API and `cell_config.json` take their
 figure from it through their generator. With the factor set to 0 the grader reproduces the verdicts of v1.6 byte for
 byte (the reward envelope, every metric, the diagnostic; checked on the recorded verdicts of the reference program's
-validates and of the calibration episode, the dev workspace's `tools/rescore_records.py`). The metrics keep the
+validates and of the calibration episode). The metrics keep the
 ungated mean (`stage_score_mean_ungated`), the hard-rule counts (`hard_violation_rate`, `robot_contact_episodes`,
 `part_force_episodes`) and the largest sustained force; `out/episodes.json` records each episode's `episode_value`.
 
@@ -62,8 +61,7 @@ take their figure from it through their generator; the cell's own default (`arm/
 cell built without the grader's configuration) is the same number, and the server's default takes the cell's. The
 unit-pressed rule (150 N for 0.2 s), the factor, the gates and everything else are unchanged. With the limit set to
 30 N the cell and the grader give the verdicts of v1.7: on every recorded episode summary (the watch keeps each
-episode's largest robot-link force; the dev workspace's `tools/limit_records.py`: 33 records and the oracle of 14
-validates) and in one run of a violating QC case (M9 at 30 N, the same per-episode results as its v1.7 run). While a
+episode's largest robot-link force: 33 records and the oracle of 14 validates) and in one run of a violating QC case (M9 at 30 N, the same per-episode results as its v1.7 run). While a
 link's force on a body stays above the limit, the watch (`CarCell.watch_tick`) logs a `safety:` event for that link
 and body at most once every 0.5 s, each with the force of its own tick (its de-duplication looks only at the episode's
 last five violations); the event list is therefore not the largest force of the episode, which is in
@@ -105,13 +103,18 @@ and wall time, forces, illegal calls) goes to `metrics` only, all finite numbers
   the url, its hash, the note) and the files the agent reads (`instruction.md`, the setup payload, the asset list, the
   given parts, drawings, photo manual and render assets, `setup_payload/`, `given_hashes.json`). `select_set.py check`
   applies the table in force (a changed recorded entry is a note); `select_set.py record` enters recorded changes with
-  their date and reason (`recorded_changes`: the corrected cell manual, 2026-11-15T16:13:21Z; the phase 2 review's
+  their date and reason (`recorded_changes`: the corrected cell manual, 2026-11-15T16:13:21Z; an independent review's
   text fixes of the instruction, the packing list and `assembly_layout.png`, 2026-11-15T20:24:13Z; the order
   statement's half-sentence on the fixtures beside the car, 2026-11-15T22:26:03Z; the publication,
   2026-11-15T22:33:35Z: the asset list's revision and `hidden_gt.url` at the dataset commit, `hidden_gt.note`; the
   v1.7 texts of the safety rule, 2026-11-17T00:33Z; the v1.8 texts of the robot-contact limit, 2026-11-17T18:22:55Z;
   the move of the task's folder to `tasks/ground/`, 2026-11-17T22:19:43Z: the asset list's revision and prefix and
-  `hidden_gt.url` at the dataset commit of the copy).
+  `hidden_gt.url` at the dataset commit of the copy; the record's own text and the selection tool, 2026-11-17T23:18:19Z:
+  the 71 run paths of the record made relative to the folder the development runs were kept under (`path_rule`), its
+  citations of documents outside the repository reworded in place (the rule text as drawn in three places, the
+  expectation, the amendments' authorities, the reasons of recorded changes 1-6; each field with the sha256 of its old
+  and new value under `edited`), and `select_set.py` recording run paths relative to a run root (`--root`); no frozen
+  entry, no recorded entry and no value the selection or the check uses changed).
   No reselection and no redraw were made. Amendment A2 (written at 2026-11-17T00:32:59Z, after checking the A1 table
   on the tree just before the change) lets a dated decision of the owner that changes only how an episode's outcome is
   scored re-enter the frozen table instead of a redraw: the v1.7 safety rule changed `verify.py`,
@@ -143,30 +146,30 @@ the stick pack's prisms 0.23 mm beyond the sleeve along its sides and up to 2.5 
 faces that the stick pack meets within 1.8 mm of the drawn bay (its larger differences, up to 10.1 mm, face away from
 the pack). An earlier text called the shapes "the drawn shapes with material taken away and none added", true for the
 chassis only; it was corrected (the kit unchanged). Every number of the manual comes from a named source and has an
-independent reading in the dev workspace (`evidence/givens/manual_audit.json`: 499 numbers, 0 mismatches; the built
-pieces measured face by face in `evidence/kit/collision_sides.json`).
+independent reading (499 numbers, 0 mismatches; the built pieces measured face by face).
 
-## Integration gates (finalization, 2026-11-15; rerun after the phase 2 review's text fixes, for v1.7, 2026-11-16, and for v1.8, 2026-11-17)
+## Integration gates (finalization, 2026-11-15; rerun after the independent review's text fixes, for v1.7, 2026-11-16, for v1.8, 2026-11-17, and after recorded change 9, 2026-11-17)
 
-From the dev workspace's `tools/gate_all.sh all --runs 2` on the shared development clone, plus the checks below.
-The two `ale validate` runs of this tree, their comparison (rewards, every episode's grader line, the reference
+The repository's gates (`ale lint`, `scripts/lint_domain.py`, `scripts/task_assets.py check`, the task card check, the
+repository tests) and `ale validate` of this tree (at the finalization two runs, compared with each other; after every
+later change one more, compared with the previous tree's: rewards, every episode's grader line, the reference
 program's per-mate lines, every metric but wall-clock values and three counters of the verifier sandbox's own desktop
-session), the gate log and the full leak scan are filed in the dev workspace (`PHASE2_REPORT.md` section 2,
-`evidence/validate/`).
+session), plus the checks below; the rows marked (build tooling) ran with the maintainers' build tooling, the others
+run from the repository ("How to redo").
 
 | check | result |
 |---|---|
 | hidden set's frozen table (amendment A3 since v1.8; A2 since v1.7; A1 before) | unchanged; `episodes.json` is the selection's set |
 | `review/select_set.py selftest` | 10 / 10 (among them: the publication metadata and the documents may change, a grader value or a kit member may not, a table written by the rule as drawn is checked by that rule) |
-| givens rebuilt by their generator (`regen_givens.py check`) | 127 files and 3 evidence files, 0 differences; manual audit 499 numbers, all with an independent reading, 0 mismatches; generator selftest 32 / 32 |
-| texts' own checks (`docs_src/tools/docs_tools.py check`, 38 tests) | ok |
-| the five drawings rebuilt by their generator (`drawings/make_drawings.py --check`, 26 tests) | identical; audit: 87 printed dimensions, 0 failures (`assembly_layout.png` gained note 5, its values unchanged) |
-| leak list and hidden values over the agent-visible files of the task folder | 251 files, 0 unwaived hits (the waived ones: the word "anchor" in the reused, hash-pinned gripper model and hall bundle) |
+| givens rebuilt by their generator (build tooling) | 127 files and 3 evidence files, 0 differences; manual audit 499 numbers, all with an independent reading, 0 mismatches; generator selftest 32 / 32 |
+| the givens' text sources' own checks (build tooling, 38 tests) | ok |
+| the five drawings rebuilt by their generator (build tooling, 26 tests) | identical; audit: 87 printed dimensions, 0 failures (`assembly_layout.png` gained note 5, its values unchanged) |
+| leak list and hidden values over the agent-visible files of the task folder (build tooling) | 251 files, 0 unwaived hits (the waived ones: the word "anchor" in the reused, hash-pinned gripper model and hall bundle) |
 | `review/observability.md` against the hidden values | 0 hits |
 
-## Quality control (DESIGN section 8, the rows marked "full run", work package P2-17)
+## Quality control (the full-run cases; build tooling)
 
-Every case runs the grader's own `verify.main()` on the four hidden episodes; expectations are the design's formula
+Every case runs the grader's own `verify.main()` on the four hidden episodes; expectations are the score formula's
 values, written before each run and never edited after it. 30 rows and one diagnostic, 0 mismatches. For v1.7 the two
 rows that expected a zeroed episode (M9, M10) were re-derived by the new rule (their v1.6 expectation stays in their
 case file) and run again, with the new rule's own rows S1 and S4 and the degenerate row M1 = C4, on the development
@@ -202,8 +205,7 @@ M12 cross-check ran in the task image exactly as the verifier does (root, `nobod
 physics cases depends on the texts. The image cases depend on the givens (the grader checks `/opt/arb` against
 `given_hashes.json`): after every change of the givens (the corrected manual; the review's text fixes; the v1.7 texts
 of the safety rule; the v1.8 texts of the robot-contact limit) they run again in the task image that the validate of
-that tree built (the dev workspace's `evidence/validate/qc_image_final/`; for v1.7 `evidence/qc_v17/`, for v1.8
-`evidence/qc_v18/`, where C1-C3, C9a-f and M12 in the image read as before).
+that tree built (for v1.7 and for v1.8 too: C1-C3, C9a-f and M12 in the image read as before).
 
 ## Zero-cost difficulty evidence
 
@@ -239,7 +241,7 @@ that tree built (the dev workspace's `evidence/validate/qc_image_final/`; for v1
   again the probe's: a wheel the survey saw only in part (episode 2), and a wrist calibration that diverged after a
   board inside its bound was rejected and was accepted unchecked, after which a pick pressed the LiDAR into its nest
   above 150 N (episode 3). No document gap and no binding window in either round.
-- **Independent partial evidence for the step from the documents to a home** (the phase 2 review, 2026-11-15). A
+- **Independent partial evidence for the step from the documents to a home** (an independent review, 2026-11-15). A
   camera-only program written by the reviewer with the public API and the given files only (the LiDAR's home and
   its scored orientation from the drawings, the part files and the photographs; its own calibration, fixture and
   unit poses and moves; nothing of the kit, the reference program or the grader) built the LiDAR onto the deck on
@@ -253,7 +255,7 @@ that tree built (the dev workspace's `evidence/validate/qc_image_final/`; for v1
   part files and the manual, and moves planned on it.
 - **Prior for a frontier model** (score model with the measured lock curves): centre about 0.15 (0.13-0.18), range
   0.04-0.40; the width comes from attempt rates counted on other tasks, so it is an order of magnitude. Levers frozen
-  as they were; no configuration edit followed. The phase 2 review reads the centre as more likely high than low:
+  as they were; no configuration edit followed. The independent review reads the centre as more likely high than low:
   the probe behind the measured error levels had the kit's static data, and the steps no program has measured (above)
   are where an honest program loses most.
 
@@ -287,8 +289,8 @@ episode; the oracle's verify takes about 1 250 s. The camera-only probe used 26-
 - `environment/assets.sha256` pins `6cfa80d0…` and every file (the image build downloads and checks them with
   `fetch_assets.py`); `grader_config.json → hidden_gt.url` pins the kit at the same commit (`verify.py` downloads it at
   verify start and checks its sha256 and file count). Both downloads were run against the dataset after the upload
-  and again after the move, anonymously, as the image build and the grader do (`-dev/tools/publish_check.py live`):
-  195 / 195 files and 14 620 / 14 620.
+  and again after the move, anonymously, as the image build and the grader do: 195 / 195 files and 14 620 / 14 620
+  (`ale validate` repeats both: the image build fetches the givens, verify downloads the kit).
 - Filling in the commit changed publication metadata and a document only, recorded under amendment A1
   (`recorded_changes`, 2026-11-15T22:33:35Z); the move changed the same two entries (the asset list's `# revision:` and
   `# prefix:` lines, `hidden_gt.url`), recorded under amendment A3 (`recorded_changes`, 2026-11-17T22:19:43Z). The
@@ -298,8 +300,8 @@ episode; the oracle's verify takes about 1 250 s. The camera-only probe used 26-
 ## The calibration episode and open points (as of 2026-11-16)
 
 1. **The calibration episode** ran on 2026-11-15/16 with the owner's approval (one Claude Opus 5.5 episode, effort
-   high, 6 h): reward 0.104 (the dev workspace's `evidence/rounds/ROUND1.md`).
-2. **The order statement** (the phase 2 review, m1; settled by the lead designer's ruling of 2026-11-15): with the
+   high, 6 h): reward 0.104.
+2. **The order statement** (a finding of the independent review, settled by the lead designer on 2026-11-15): with the
    deck still on its shelf, the front-left wheel cannot be fitted with the reference program's grasps (every arm
    solution collides with the deck). The instruction and the cell manual say the order is the agent's within what
    the car physically allows and what the fixtures beside the car leave room for; they name no fixture and no unit
@@ -307,19 +309,25 @@ episode; the oracle's verify takes about 1 250 s. The camera-only probe used 26-
 
 ## How to redo
 
-From the dev workspace (`-dev/` = `docs/plan/driving/tasks/racecar_full_assembly_tenth_scale_ur10e-dev`):
+The maintainers' build tooling for this task (the generators, the integration and quality-control harnesses, the
+probes) is not part of the repository. From the repository root, with the engine set up as `CLAUDE.md` describes
+(`T` = `tasks/ground/racecar_full_assembly_tenth_scale_ur10e`):
 
 ```bash
--dev/tools/gate_all.sh all --runs 2      # preflight (the freeze check, vendor and asset checks, givens rebuilt byte for
-                                         # byte, the published pins), sync to the shared clone in the published form (the
-                                         # copy without its two asset roots: the image fetches the givens, verify downloads
-                                         # the kit), lint / domain lint / task assets / byte identity / pytest, ale validate
-                                         # twice + comparison, the kit's source, full leak scan, archive to -dev/evidence/validate/
--dev/tools/gate_all.sh compare <validate-A> <validate-B>
--dev/tools/publish_check.py live          # both download paths against the dataset, read-only
--dev/qc/run_qc.py image-case --case C3 --runs <dir> --image <task image>      # one QC case in the task image
-python3 -I -B review/select_set.py check --selection hidden/selection.json     # the freeze in force (amendment A3)
--dev/tools/rescore_records.py all          # the v1.7 scoring on recorded verdicts: factor 0 reproduces them byte for byte
--dev/tools/limit_records.py all            # the robot-contact limit on recorded episodes: at 30 N it reproduces them
-python3 -I -B review/select_set.py accept --selection <copy of hidden/selection.json> --episodes hidden/episodes.json --out <dir>
+# the freeze check reads the two engine asset roots, which no checkout has: fetch them at the pinned commit first
+python3 $T/environment/fetch_assets.py $T/environment/assets.sha256 $T/environment/assets/payload
+python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["hidden_gt"]["url"])' $T/tests/grader_config.json \
+    | xargs curl -fsSL --create-dirs -o $T/tests/assets/gt.tar.xz     # its sha256 must be grader_config.json hidden_gt.sha256
+python3 -I -B $T/tests/review/select_set.py check --selection $T/tests/hidden/selection.json   # the freeze in force (amendment A3)
+python3 -I -B $T/tests/review/select_set.py selftest                     # the selection tool's own tests (10)
+python3 -I -B $T/tests/review/select_set.py accept --selection <copy of hidden/selection.json> --image <task image> \
+    --episodes $T/tests/hidden/episodes.json --root <dir> --out <dir>/accept   # two verify runs of the set in the task image
+rm -rf $T/environment/assets $T/tests/assets                             # back to the published form
+(cd vendor/ale && VIRTUAL_ENV= uv run ale lint ../../$T)
+uv run python scripts/lint_domain.py $T
+python3 scripts/task_assets.py check                                     # the asset list against task-assets.toml
+uv run pytest -q tests/test_racecar_full_assembly_tenth_scale_ur10e_set.py tests/test_verify_survivor_racecar_full_assembly_tenth_scale_ur10e.py
+(cd vendor/ale && VIRTUAL_ENV= uv run ale validate ../../$T --runs-dir <runs dir>)
+    # untouched 0.0, oracle 1.0: the image build fetches the givens at the pinned commit, verify downloads the kit
+    # and checks its sha256 and file count, every reset checks the episode's layout digest
 ```

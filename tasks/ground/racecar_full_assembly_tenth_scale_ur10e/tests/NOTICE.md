@@ -2,7 +2,7 @@
 
 Vehicle geometry, textures and part data: the benchmark owner's own tenth-scale car model and the CAD resources it was built from; the owner confirmed they may be redistributed with this task.
 
-The cell's hidden kit (`tests/gt/`, unpacked at verify start from the asset dataset, or from the local development copy
+The cell's hidden kit (`tests/gt/`, unpacked at verify start from the asset dataset, or from a maintainer's local copy
 `tests/assets/gt.tar.xz`) holds the car's visual meshes (decimated from the model, two product-label textures replaced
 by unlabelled copies) and the simplified, subtract-only collision pieces made from the model's dimensions; the
 differences between collision and appearance are documented to the agent in the cell manual.

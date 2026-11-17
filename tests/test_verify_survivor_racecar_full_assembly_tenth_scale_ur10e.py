@@ -19,7 +19,8 @@ from pathlib import Path
 
 SLUG = "racecar_full_assembly_tenth_scale_ur10e"
 _HERE = Path(__file__).resolve()
-# in the benchmark repository: tests/<this file> beside tasks/ground/<slug>; in the development tree: <slug>-dev/repo_tests/
+# the task folder: tasks/ground/<slug> beside this file's tests/ folder in the benchmark repository, else <slug> two
+# folders up from this file
 _CANDIDATES = [_HERE.parents[1] / "tasks" / "ground" / SLUG, _HERE.parents[2] / SLUG]
 TASK = next((p for p in _CANDIDATES if (p / "tests" / "verify.py").is_file()), _CANDIDATES[0])
 VERIFY = TASK / "tests" / "verify.py"

@@ -3,7 +3,7 @@
  "task": "racecar_full_assembly_tenth_scale_ur10e",
  "drawn_utc": "2026-11-15T04:57:01Z",
  "rule": "tests/review/select_set.py (module docstring; copied into rule_text)",
- "rule_text": "The rule, fixed before any candidate ran (written 2026-11-14 into this docstring; `draw` copies it, with the constants\nbelow and the sha256 of every frozen file, into selection.json before the first candidate runs):\n\n1. Freeze. FROZEN below lists what decides an episode's layout and the reference program's run (verify.py, test.sh,\n   grader_config.json, netguard.py, episode_trace.py, the hidden bench plan, the oracle token's sha256, the hidden kit's\n   tarball tests/assets/gt.tar.xz, the solution's solve.sh / assemble.py / token) and FROZEN_TREES the code and models\n   underneath (tests/arm, tests/common, tests/render, tests/render_filament, tests/room, the given robot models).\n   `draw` records their sha256; every later command refuses to go on when one of them differs (the robot models are\n   compared through the folder a run is given). This workspace is not committed by the package that selects the set,\n   so the draw's UTC time and these hashes are the record of the freeze.\n2. Draw. 12 candidates c00..c11 from os.urandom: seed = int.from_bytes(8 bytes, \"little\") % 2**63, drawn again while\n   below 2**32 or equal to an earlier seed. Candidate i is in stratum STRATA[i % 4] (layout.STRATA: the stand's yaw sign\n   x the stick pack's lead end: yaw+lead0, yaw+lead180, yaw-lead0, yaw-lead180) and round i // 4, so every stratum has\n   three candidates in drawn order. selection.json is written before any candidate runs; `digests` then adds each\n   candidate's layout digest (layout.layout_digest(layout.episode_layout(seed, plan, kit, cfg = grader_config[\"layout\"],\n   stratum)): a pure function of the inputs, no physics) and its layout draws (for the hollowing check).\n3. Run. Every candidate runs ONCE in each of three environments, the privileged reference program exactly as the\n   oracle plays it (one frame of each camera, then `reference_assemble`, then `finish`):\n   - host: the development venv on the development machine, in-process: CarInfoServer(the kit unpacked from\n     tests/assets/gt.tar.xz, the given robot models, the hidden bench plan, grader_config.json with the MuJoCo agent\n     renderer, privileged) -> reset(seed, stratum) (its digest must be the recorded one) -> the episode trace of\n     verify.py attached -> handle(\"get_camera\" top), handle(\"get_camera\" wrist), handle(\"reference_assemble\"),\n     handle(\"finish\") -> finalize();\n   - pod: the same on the second machine (another CPU: the shared cloud machine), its own interpreter and libraries;\n   - image: the task image, through tests/test.sh -> verify.py with the solution/solve.sh submission (the oracle\n     token) and the local kit tarball, one verify run per round (its four candidates are the set of that run); and,\n     because verify keeps no frame, the top frame 0 of every candidate rendered once more in the same image by the\n     agent renderer of grader_config.json (Filament) to measure what the top camera sees (`view`).\n   All 12 candidates run in every environment, also those of a stratum whose earlier candidate passes (evidence for\n   the hollowing check). A run that ends without a complete result because of the infrastructure (the process was\n   killed, the machine or the container went away) is run again; a completed run is final.\n4. Keep. A candidate passes one environment's run when: the layout digest is the recorded one; the reference program\n   ran (no exception, its report reached finalize); all eight mates are LOCKED and the stage score is 1.0; its\n   unplanned contacts are 0; the episode is hard_ok (no robot link above 30 N, no sustained part force above 150 N)\n   and the largest sustained part force is below 150 N; at every capture of every mate the pose error is at most 50 %\n   of that mate's capture window (reference.capture_ratios: the largest of lateral / window, tilt / window (a seat's\n   total rotation) and, keyed, clock / window; the distance short of home is not an error: a unit is captured on its\n   way in); every loose unit is at least 30 % seen in the top camera's frame 0 (P2-08's rule: 4000 area-weighted\n   samples on the unit's visual meshes; a sample is seen when it projects into the frame and the frame's sensor\n   depth there is valid and within 15 mm of the sample's depth). A candidate passes when it passes in all three\n   environments. A stratum's first passing candidate in drawn order is its episode; the episodes go into\n   episodes.json in the order of STRATA.\n5. Fallback. If a stratum has no passing candidate, no set is written and grader_config.json is not changed: the\n   fallback of DESIGN section 7 (the oracle on the nominal layout, oracle_nominal_layout true, the agent still graded\n   on a fixed hidden set) is written up as a recommendation for the maintainers.\n6. Hollowing check (`report`). Flags: (a) more than 1/3 of the candidates dropped; (b) two or more drops share a cause\n   (the same clause on the same mate or unit); (c) capture margin: per mate class (battery, deck, compute, lidar,\n   wheel), the kept episodes' capture ratio (the largest of the three environments) against the dropped candidates':\n   flagged when, on a class that dropped no candidate through its capture clause, the kept mean is below the dropped\n   mean by more than 0.10 of the window (the dropped layouts were harder for the reference on mates that did not\n   reject them); on a class that did drop candidates through its capture clause the gap is by construction and is\n   reported, with each kept episode's place in the population of the earlier 100-seed campaign when one is given\n   (`--population`); (d) the layout draws of the kept, the dropped and all candidates are reported (stand / clamp /\n   shelf / tray offsets, the plays, the bench units' poses, the hubs' angles off the nearest hex orientation). A flag\n   is reported with the set; the remedy is the precedent's (fix the reference program, freeze again, draw a new\n   selection that supersedes this one), never knowingly keeping an easy subset.\n7. Determinism record: per candidate and environment the mates' states, capture ratios and capture times, sim time,\n   ticks, the largest forces, an outcome fingerprint (sha256 over finalize's physics fields without wall-clock\n   values) and the sha256 of the episode trace's qpos (float32 every 4 ticks, verify's own recorder); host and pod also\n   a sha256 of every control tick's qpos + qvel (float64). `determinism` writes the tables.",
+ "rule_text": "The rule, fixed before any candidate ran (written 2026-11-14 into this docstring; `draw` copies it, with the constants\nbelow and the sha256 of every frozen file, into selection.json before the first candidate runs):\n\n1. Freeze. FROZEN below lists what decides an episode's layout and the reference program's run (verify.py, test.sh,\n   grader_config.json, netguard.py, episode_trace.py, the hidden bench plan, the oracle token's sha256, the hidden kit's\n   tarball tests/assets/gt.tar.xz, the solution's solve.sh / assemble.py / token) and FROZEN_TREES the code and models\n   underneath (tests/arm, tests/common, tests/render, tests/render_filament, tests/room, the given robot models).\n   `draw` records their sha256; every later command refuses to go on when one of them differs (the robot models are\n   compared through the folder a run is given). The task's files were not committed when the set was selected,\n   so the draw's UTC time and these hashes are the record of the freeze.\n2. Draw. 12 candidates c00..c11 from os.urandom: seed = int.from_bytes(8 bytes, \"little\") % 2**63, drawn again while\n   below 2**32 or equal to an earlier seed. Candidate i is in stratum STRATA[i % 4] (layout.STRATA: the stand's yaw sign\n   x the stick pack's lead end: yaw+lead0, yaw+lead180, yaw-lead0, yaw-lead180) and round i // 4, so every stratum has\n   three candidates in drawn order. selection.json is written before any candidate runs; `digests` then adds each\n   candidate's layout digest (layout.layout_digest(layout.episode_layout(seed, plan, kit, cfg = grader_config[\"layout\"],\n   stratum)): a pure function of the inputs, no physics) and its layout draws (for the hollowing check).\n3. Run. Every candidate runs ONCE in each of three environments, the privileged reference program exactly as the\n   oracle plays it (one frame of each camera, then `reference_assemble`, then `finish`):\n   - host: the development venv on the development machine, in-process: CarInfoServer(the kit unpacked from\n     tests/assets/gt.tar.xz, the given robot models, the hidden bench plan, grader_config.json with the MuJoCo agent\n     renderer, privileged) -> reset(seed, stratum) (its digest must be the recorded one) -> the episode trace of\n     verify.py attached -> handle(\"get_camera\" top), handle(\"get_camera\" wrist), handle(\"reference_assemble\"),\n     handle(\"finish\") -> finalize();\n   - pod: the same on the second machine (another CPU: the shared cloud machine), its own interpreter and libraries;\n   - image: the task image, through tests/test.sh -> verify.py with the solution/solve.sh submission (the oracle\n     token) and the local kit tarball, one verify run per round (its four candidates are the set of that run); and,\n     because verify keeps no frame, the top frame 0 of every candidate rendered once more in the same image by the\n     agent renderer of grader_config.json (Filament) to measure what the top camera sees (`view`).\n   All 12 candidates run in every environment, also those of a stratum whose earlier candidate passes (evidence for\n   the hollowing check). A run that ends without a complete result because of the infrastructure (the process was\n   killed, the machine or the container went away) is run again; a completed run is final.\n4. Keep. A candidate passes one environment's run when: the layout digest is the recorded one; the reference program\n   ran (no exception, its report reached finalize); all eight mates are LOCKED and the stage score is 1.0; its\n   unplanned contacts are 0; the episode is hard_ok (no robot link above 30 N, no sustained part force above 150 N)\n   and the largest sustained part force is below 150 N; at every capture of every mate the pose error is at most 50 %\n   of that mate's capture window (reference.capture_ratios: the largest of lateral / window, tilt / window (a seat's\n   total rotation) and, keyed, clock / window; the distance short of home is not an error: a unit is captured on its\n   way in); every loose unit is at least 30 % seen in the top camera's frame 0 (4000 area-weighted\n   samples on the unit's visual meshes; a sample is seen when it projects into the frame and the frame's sensor\n   depth there is valid and within 15 mm of the sample's depth). A candidate passes when it passes in all three\n   environments. A stratum's first passing candidate in drawn order is its episode; the episodes go into\n   episodes.json in the order of STRATA.\n5. Fallback. If a stratum has no passing candidate, no set is written and grader_config.json is not changed: the\n   pre-written fallback (the oracle on the nominal layout, oracle_nominal_layout true, the agent still graded\n   on a fixed hidden set) is written up as a recommendation for the maintainers.\n6. Hollowing check (`report`). Flags: (a) more than 1/3 of the candidates dropped; (b) two or more drops share a cause\n   (the same clause on the same mate or unit); (c) capture margin: per mate class (battery, deck, compute, lidar,\n   wheel), the kept episodes' capture ratio (the largest of the three environments) against the dropped candidates':\n   flagged when, on a class that dropped no candidate through its capture clause, the kept mean is below the dropped\n   mean by more than 0.10 of the window (the dropped layouts were harder for the reference on mates that did not\n   reject them); on a class that did drop candidates through its capture clause the gap is by construction and is\n   reported, with each kept episode's place in the population of the earlier 100-seed campaign when one is given\n   (`--population`); (d) the layout draws of the kept, the dropped and all candidates are reported (stand / clamp /\n   shelf / tray offsets, the plays, the bench units' poses, the hubs' angles off the nearest hex orientation). A flag\n   is reported with the set; the remedy is the precedent's (fix the reference program, freeze again, draw a new\n   selection that supersedes this one), never knowingly keeping an easy subset.\n7. Determinism record: per candidate and environment the mates' states, capture ratios and capture times, sim time,\n   ticks, the largest forces, an outcome fingerprint (sha256 over finalize's physics fields without wall-clock\n   values) and the sha256 of the episode trace's qpos (float32 every 4 ticks, verify's own recorder); host and pod also\n   a sha256 of every control tick's qpos + qvel (float64). `determinism` writes the tables.",
  "constants": {
   "N_CANDIDATES": 12,
   "SEED_MOD": 9223372036854775808,
@@ -54,7 +54,7 @@
  "kit_sha256": "328939c34609e9f9b9108da78f3e37249c1d311de60f0361ca11f2f8c5fff4f4",
  "kit_files": 14620,
  "source": "os.urandom: 8 bytes little-endian per seed mod 2**63, drawn again below 2**32 or on a repeat; candidate i -> stratum STRATA[i % 4], round i // 4 (0 seeds redrawn)",
- "expectation": "A priori, from the earlier 100-seed campaign of the same reference program (P2-11, seeds 101-200, 25 per stratum, known hub clock: the final reference_shop.py is byte-identical in physics there): the battery's capture ratio exceeded 0.5 in 16 of 100 runs, all in the lead180 strata (yaw+lead180 10 / 25, yaw-lead180 6 / 25; lead0 at most 0.384); every other mate at most 0.049; 100 / 100 at 8 / 8 with 0 unplanned contacts and at most 13.2 N sustained. Expected: a lead0 stratum keeps its first candidate; a lead180 candidate drops with probability about 0.24-0.40 through the battery's capture clause; the chance that a lead180 stratum has no passing candidate of three is about 0.064 (yaw+lead180) and 0.014 (yaw-lead180), so about 0.08 that no set can be formed. Host and pod are different CPUs: the earlier campaign saw a one-tick drift from the third step on (P2-11 5.5), which can move a capture ratio near 0.5 between environments. Visibility in the top frame: P2-08 measured at least 40.8 % (the LiDAR) on 10 seeds.",
+ "expectation": "A priori, from the earlier 100-seed campaign of the same reference program (seeds 101-200, 25 per stratum, known hub clock: the final reference_shop.py is byte-identical in physics there): the battery's capture ratio exceeded 0.5 in 16 of 100 runs, all in the lead180 strata (yaw+lead180 10 / 25, yaw-lead180 6 / 25; lead0 at most 0.384); every other mate at most 0.049; 100 / 100 at 8 / 8 with 0 unplanned contacts and at most 13.2 N sustained. Expected: a lead0 stratum keeps its first candidate; a lead180 candidate drops with probability about 0.24-0.40 through the battery's capture clause; the chance that a lead180 stratum has no passing candidate of three is about 0.064 (yaw+lead180) and 0.014 (yaw-lead180), so about 0.08 that no set can be formed. Host and pod are different CPUs: the earlier campaign saw a one-tick drift from the third step on, which can move a capture ratio near 0.5 between environments. Visibility in the top frame: an earlier measurement found at least 40.8 % (the LiDAR) on 10 seeds.",
  "candidates": [
   {
    "id": "c00",
@@ -257,7 +257,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/pod/c00/result.json"
+     "source": "P2-13/pod/c00/result.json"
     },
     "image_view": {
      "layout_digest": "b7f080d4436bede856d645255d2efdccb9a9ba91b5ccad629039b49fa2400ac0",
@@ -293,7 +293,7 @@
       ],
       "renderer": "filament"
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/view/res/view/c00/result.json"
+     "source": "P2-13/image/view/res/view/c00/result.json"
     },
     "image": {
      "seed": 8407697636695390538,
@@ -412,7 +412,7 @@
       }
      },
      "env": "image",
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round0/image_run.json",
+     "source": "P2-13/image/round0/image_run.json",
      "round": 0,
      "env_info": {
       "cpu": "AMD Ryzen Threadripper 7960X 24-Cores",
@@ -424,7 +424,7 @@
      },
      "verdict_reward": 1.0,
      "exit_code": "0",
-     "trace_file": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round0/res/arb-verify/out/trace/agent_ep01/trace.npz"
+     "trace_file": "P2-13/image/round0/res/arb-verify/out/trace/agent_ep01/trace.npz"
     },
     "host": {
      "env": "host",
@@ -572,7 +572,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/host/c00/result.json"
+     "source": "P2-13/host/c00/result.json"
     }
    },
    "failed": {
@@ -785,7 +785,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/pod/c01/result.json"
+     "source": "P2-13/pod/c01/result.json"
     },
     "image_view": {
      "layout_digest": "03809d1a246cc264275225b1ce6138c240953306287c0ff2cff8736f18f5413e",
@@ -821,7 +821,7 @@
       ],
       "renderer": "filament"
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/view/res/view/c01/result.json"
+     "source": "P2-13/image/view/res/view/c01/result.json"
     },
     "image": {
      "seed": 8267712778943177144,
@@ -940,7 +940,7 @@
       }
      },
      "env": "image",
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round0/image_run.json",
+     "source": "P2-13/image/round0/image_run.json",
      "round": 0,
      "env_info": {
       "cpu": "AMD Ryzen Threadripper 7960X 24-Cores",
@@ -952,7 +952,7 @@
      },
      "verdict_reward": 1.0,
      "exit_code": "0",
-     "trace_file": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round0/res/arb-verify/out/trace/agent_ep02/trace.npz"
+     "trace_file": "P2-13/image/round0/res/arb-verify/out/trace/agent_ep02/trace.npz"
     },
     "host": {
      "env": "host",
@@ -1100,7 +1100,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/host/c01/result.json"
+     "source": "P2-13/host/c01/result.json"
     }
    },
    "failed": {
@@ -1313,7 +1313,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/pod/c02/result.json"
+     "source": "P2-13/pod/c02/result.json"
     },
     "image_view": {
      "layout_digest": "d89a2f0699b12c26e2438f328f43fd1bcb2eff547e0542797e488f313d0d1536",
@@ -1349,7 +1349,7 @@
       ],
       "renderer": "filament"
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/view/res/view/c02/result.json"
+     "source": "P2-13/image/view/res/view/c02/result.json"
     },
     "image": {
      "seed": 4645450495380593091,
@@ -1468,7 +1468,7 @@
       }
      },
      "env": "image",
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round0/image_run.json",
+     "source": "P2-13/image/round0/image_run.json",
      "round": 0,
      "env_info": {
       "cpu": "AMD Ryzen Threadripper 7960X 24-Cores",
@@ -1480,7 +1480,7 @@
      },
      "verdict_reward": 1.0,
      "exit_code": "0",
-     "trace_file": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round0/res/arb-verify/out/trace/agent_ep03/trace.npz"
+     "trace_file": "P2-13/image/round0/res/arb-verify/out/trace/agent_ep03/trace.npz"
     },
     "host": {
      "env": "host",
@@ -1628,7 +1628,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/host/c02/result.json"
+     "source": "P2-13/host/c02/result.json"
     }
    },
    "failed": {
@@ -1841,7 +1841,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/pod/c03/result.json"
+     "source": "P2-13/pod/c03/result.json"
     },
     "image_view": {
      "layout_digest": "391fff0ef5d22c8ecb00769df8a8f4a31080765e5fbd1bb2cd684cbef98daab6",
@@ -1877,7 +1877,7 @@
       ],
       "renderer": "filament"
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/view/res/view/c03/result.json"
+     "source": "P2-13/image/view/res/view/c03/result.json"
     },
     "image": {
      "seed": 1523527859930685746,
@@ -1996,7 +1996,7 @@
       }
      },
      "env": "image",
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round0/image_run.json",
+     "source": "P2-13/image/round0/image_run.json",
      "round": 0,
      "env_info": {
       "cpu": "AMD Ryzen Threadripper 7960X 24-Cores",
@@ -2008,7 +2008,7 @@
      },
      "verdict_reward": 1.0,
      "exit_code": "0",
-     "trace_file": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round0/res/arb-verify/out/trace/agent_ep04/trace.npz"
+     "trace_file": "P2-13/image/round0/res/arb-verify/out/trace/agent_ep04/trace.npz"
     },
     "host": {
      "env": "host",
@@ -2156,7 +2156,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/host/c03/result.json"
+     "source": "P2-13/host/c03/result.json"
     }
    },
    "failed": {
@@ -2369,7 +2369,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/pod/c04/result.json"
+     "source": "P2-13/pod/c04/result.json"
     },
     "image_view": {
      "layout_digest": "f4ef587ffccb74d3c5806d102961c6adda4a6b231ee0de63dbf90c207395a15b",
@@ -2405,7 +2405,7 @@
       ],
       "renderer": "filament"
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/view/res/view/c04/result.json"
+     "source": "P2-13/image/view/res/view/c04/result.json"
     },
     "image": {
      "seed": 3712218609825764209,
@@ -2524,7 +2524,7 @@
       }
      },
      "env": "image",
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round1/image_run.json",
+     "source": "P2-13/image/round1/image_run.json",
      "round": 1,
      "env_info": {
       "cpu": "AMD Ryzen Threadripper 7960X 24-Cores",
@@ -2536,7 +2536,7 @@
      },
      "verdict_reward": 1.0,
      "exit_code": "0",
-     "trace_file": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round1/res/arb-verify/out/trace/agent_ep01/trace.npz"
+     "trace_file": "P2-13/image/round1/res/arb-verify/out/trace/agent_ep01/trace.npz"
     },
     "host": {
      "env": "host",
@@ -2684,7 +2684,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/host/c04/result.json"
+     "source": "P2-13/host/c04/result.json"
     }
    },
    "failed": {
@@ -2897,7 +2897,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/pod/c05/result.json"
+     "source": "P2-13/pod/c05/result.json"
     },
     "image_view": {
      "layout_digest": "705b0e2ee27ae07622ab2f1e0a6636c6aa53c1b1df486783d2472f7e19a2dd9b",
@@ -2933,7 +2933,7 @@
       ],
       "renderer": "filament"
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/view/res/view/c05/result.json"
+     "source": "P2-13/image/view/res/view/c05/result.json"
     },
     "image": {
      "seed": 834537183990409517,
@@ -3052,7 +3052,7 @@
       }
      },
      "env": "image",
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round1/image_run.json",
+     "source": "P2-13/image/round1/image_run.json",
      "round": 1,
      "env_info": {
       "cpu": "AMD Ryzen Threadripper 7960X 24-Cores",
@@ -3064,7 +3064,7 @@
      },
      "verdict_reward": 1.0,
      "exit_code": "0",
-     "trace_file": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round1/res/arb-verify/out/trace/agent_ep02/trace.npz"
+     "trace_file": "P2-13/image/round1/res/arb-verify/out/trace/agent_ep02/trace.npz"
     },
     "host": {
      "env": "host",
@@ -3212,7 +3212,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/host/c05/result.json"
+     "source": "P2-13/host/c05/result.json"
     }
    },
    "failed": {
@@ -3425,7 +3425,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/pod/c06/result.json"
+     "source": "P2-13/pod/c06/result.json"
     },
     "image_view": {
      "layout_digest": "6e098ee61244884805dba89f5c2da9742e9ceda277aee22ac7d9e8dcfa3d260b",
@@ -3461,7 +3461,7 @@
       ],
       "renderer": "filament"
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/view/res/view/c06/result.json"
+     "source": "P2-13/image/view/res/view/c06/result.json"
     },
     "image": {
      "seed": 2044893951681907998,
@@ -3580,7 +3580,7 @@
       }
      },
      "env": "image",
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round1/image_run.json",
+     "source": "P2-13/image/round1/image_run.json",
      "round": 1,
      "env_info": {
       "cpu": "AMD Ryzen Threadripper 7960X 24-Cores",
@@ -3592,7 +3592,7 @@
      },
      "verdict_reward": 1.0,
      "exit_code": "0",
-     "trace_file": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round1/res/arb-verify/out/trace/agent_ep03/trace.npz"
+     "trace_file": "P2-13/image/round1/res/arb-verify/out/trace/agent_ep03/trace.npz"
     },
     "host": {
      "env": "host",
@@ -3740,7 +3740,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/host/c06/result.json"
+     "source": "P2-13/host/c06/result.json"
     }
    },
    "failed": {
@@ -3953,7 +3953,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/pod/c07/result.json"
+     "source": "P2-13/pod/c07/result.json"
     },
     "image_view": {
      "layout_digest": "66cc3b090723892b3b565f30f2f184a10bb61b6ad11052f833c85efe95d8691b",
@@ -3989,7 +3989,7 @@
       ],
       "renderer": "filament"
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/view/res/view/c07/result.json"
+     "source": "P2-13/image/view/res/view/c07/result.json"
     },
     "image": {
      "seed": 1343752601565488469,
@@ -4108,7 +4108,7 @@
       }
      },
      "env": "image",
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round1/image_run.json",
+     "source": "P2-13/image/round1/image_run.json",
      "round": 1,
      "env_info": {
       "cpu": "AMD Ryzen Threadripper 7960X 24-Cores",
@@ -4120,7 +4120,7 @@
      },
      "verdict_reward": 1.0,
      "exit_code": "0",
-     "trace_file": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round1/res/arb-verify/out/trace/agent_ep04/trace.npz"
+     "trace_file": "P2-13/image/round1/res/arb-verify/out/trace/agent_ep04/trace.npz"
     },
     "host": {
      "env": "host",
@@ -4268,7 +4268,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/host/c07/result.json"
+     "source": "P2-13/host/c07/result.json"
     }
    },
    "failed": {
@@ -4485,7 +4485,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/pod/c08/result.json"
+     "source": "P2-13/pod/c08/result.json"
     },
     "image_view": {
      "layout_digest": "9d6ac86bb379afd023c48a57715ce011da00d9a71abb2747d48cb8840230c8f4",
@@ -4521,7 +4521,7 @@
       ],
       "renderer": "filament"
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/view/res/view/c08/result.json"
+     "source": "P2-13/image/view/res/view/c08/result.json"
     },
     "image": {
      "seed": 6783671514733393943,
@@ -4640,7 +4640,7 @@
       }
      },
      "env": "image",
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round2/image_run.json",
+     "source": "P2-13/image/round2/image_run.json",
      "round": 2,
      "env_info": {
       "cpu": "AMD Ryzen Threadripper 7960X 24-Cores",
@@ -4652,7 +4652,7 @@
      },
      "verdict_reward": 1.0,
      "exit_code": "0",
-     "trace_file": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round2/res/arb-verify/out/trace/agent_ep01/trace.npz"
+     "trace_file": "P2-13/image/round2/res/arb-verify/out/trace/agent_ep01/trace.npz"
     },
     "host": {
      "env": "host",
@@ -4800,7 +4800,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/host/c08/result.json"
+     "source": "P2-13/host/c08/result.json"
     }
    },
    "failed": {
@@ -5013,7 +5013,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/pod/c09/result.json"
+     "source": "P2-13/pod/c09/result.json"
     },
     "image_view": {
      "layout_digest": "178a0f9b9e506867950aa6fcb8fee5f8b4469d2f06be5ae3991c20200482eb94",
@@ -5049,7 +5049,7 @@
       ],
       "renderer": "filament"
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/view/res/view/c09/result.json"
+     "source": "P2-13/image/view/res/view/c09/result.json"
     },
     "image": {
      "seed": 6696486585802289374,
@@ -5168,7 +5168,7 @@
       }
      },
      "env": "image",
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round2/image_run.json",
+     "source": "P2-13/image/round2/image_run.json",
      "round": 2,
      "env_info": {
       "cpu": "AMD Ryzen Threadripper 7960X 24-Cores",
@@ -5180,7 +5180,7 @@
      },
      "verdict_reward": 1.0,
      "exit_code": "0",
-     "trace_file": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round2/res/arb-verify/out/trace/agent_ep02/trace.npz"
+     "trace_file": "P2-13/image/round2/res/arb-verify/out/trace/agent_ep02/trace.npz"
     },
     "host": {
      "env": "host",
@@ -5328,7 +5328,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/host/c09/result.json"
+     "source": "P2-13/host/c09/result.json"
     }
    },
    "failed": {
@@ -5541,7 +5541,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/pod/c10/result.json"
+     "source": "P2-13/pod/c10/result.json"
     },
     "image_view": {
      "layout_digest": "64071b232c45e3c184fdf030414d11a4fb9ead1b20af4221a6fe89cde8a4bedc",
@@ -5577,7 +5577,7 @@
       ],
       "renderer": "filament"
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/view/res/view/c10/result.json"
+     "source": "P2-13/image/view/res/view/c10/result.json"
     },
     "image": {
      "seed": 4711228137088910212,
@@ -5696,7 +5696,7 @@
       }
      },
      "env": "image",
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round2/image_run.json",
+     "source": "P2-13/image/round2/image_run.json",
      "round": 2,
      "env_info": {
       "cpu": "AMD Ryzen Threadripper 7960X 24-Cores",
@@ -5708,7 +5708,7 @@
      },
      "verdict_reward": 1.0,
      "exit_code": "0",
-     "trace_file": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round2/res/arb-verify/out/trace/agent_ep03/trace.npz"
+     "trace_file": "P2-13/image/round2/res/arb-verify/out/trace/agent_ep03/trace.npz"
     },
     "host": {
      "env": "host",
@@ -5856,7 +5856,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/host/c10/result.json"
+     "source": "P2-13/host/c10/result.json"
     }
    },
    "failed": {
@@ -6069,7 +6069,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/pod/c11/result.json"
+     "source": "P2-13/pod/c11/result.json"
     },
     "image_view": {
      "layout_digest": "494d99e7a1fc665fde930bb4ef03dc93738e80149285604fe05054c9b6c51311",
@@ -6105,7 +6105,7 @@
       ],
       "renderer": "filament"
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/view/res/view/c11/result.json"
+     "source": "P2-13/image/view/res/view/c11/result.json"
     },
     "image": {
      "seed": 4255322647877075187,
@@ -6224,7 +6224,7 @@
       }
      },
      "env": "image",
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round2/image_run.json",
+     "source": "P2-13/image/round2/image_run.json",
      "round": 2,
      "env_info": {
       "cpu": "AMD Ryzen Threadripper 7960X 24-Cores",
@@ -6236,7 +6236,7 @@
      },
      "verdict_reward": 1.0,
      "exit_code": "0",
-     "trace_file": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round2/res/arb-verify/out/trace/agent_ep04/trace.npz"
+     "trace_file": "P2-13/image/round2/res/arb-verify/out/trace/agent_ep04/trace.npz"
     },
     "host": {
      "env": "host",
@@ -6384,7 +6384,7 @@
        "n": 1
       }
      },
-     "source": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/host/c11/result.json"
+     "source": "P2-13/host/c11/result.json"
     }
    },
    "failed": {
@@ -6401,20 +6401,20 @@
   {
    "env": "host",
    "kind": "candidates",
-   "dir": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/host",
+   "dir": "P2-13/host",
    "utc": "2026-11-15T06:05:45Z"
   },
   {
    "env": "pod",
    "kind": "candidates",
-   "dir": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/pod",
+   "dir": "P2-13/pod",
    "utc": "2026-11-15T06:05:45Z"
   },
   {
    "env": "image",
    "kind": "candidates",
    "round": 0,
-   "dir": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round0",
+   "dir": "P2-13/image/round0",
    "image": "racecar-asm-smoke:p2-01",
    "image_id": "sha256:b336d44e3e405e85a06aed15ae390c3d1b562753f8f1a1764fcde0bbb03be33b",
    "exit_code": "0",
@@ -6431,7 +6431,7 @@
    "env": "image",
    "kind": "candidates",
    "round": 1,
-   "dir": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round1",
+   "dir": "P2-13/image/round1",
    "image": "racecar-asm-smoke:p2-01",
    "image_id": "sha256:b336d44e3e405e85a06aed15ae390c3d1b562753f8f1a1764fcde0bbb03be33b",
    "exit_code": "0",
@@ -6448,7 +6448,7 @@
    "env": "image",
    "kind": "candidates",
    "round": 2,
-   "dir": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/round2",
+   "dir": "P2-13/image/round2",
    "image": "racecar-asm-smoke:p2-01",
    "image_id": "sha256:b336d44e3e405e85a06aed15ae390c3d1b562753f8f1a1764fcde0bbb03be33b",
    "exit_code": "0",
@@ -6464,7 +6464,7 @@
   {
    "env": "image",
    "kind": "view",
-   "dir": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/image/view",
+   "dir": "P2-13/image/view",
    "image": "racecar-asm-smoke:p2-01",
    "image_id": "sha256:b336d44e3e405e85a06aed15ae390c3d1b562753f8f1a1764fcde0bbb03be33b",
    "wall_s": 165.9,
@@ -6568,14 +6568,14 @@
   "passed": true,
   "image": "racecar-asm-smoke:p2-01",
   "image_id": "sha256:b336d44e3e405e85a06aed15ae390c3d1b562753f8f1a1764fcde0bbb03be33b",
-  "dir": "/data/xiatao/tmp/driving_roboracer_20261113/asm/P2-13/accept"
+  "dir": "P2-13/accept"
  },
  "amendments": [
   {
    "id": "A1",
    "date": "2026-11-15",
    "written_utc": "2026-11-15T14:50:36Z",
-   "authority": "the lead designer's ruling 4 of the task's finalization (2026-11-15): amend the frozen-table rule of the hidden set with a dated amendment in the selection record before any file changes; no reselection, no redraw",
+   "authority": "the lead designer's decision at the task's finalization (2026-11-15): amend the frozen-table rule of the hidden set with a dated amendment in the selection record before any file changes; no reselection, no redraw",
    "amends": "rule 1 (Freeze) of rule_text, as drawn at 2026-11-15T04:57:01Z",
    "rule": "Rule 1 as amended: the frozen table covers what determines an episode's outcome: the kit, the cell and layout code, the reference program, the server, verify and the grader's values. The publication metadata (the location and the hash of the hidden kit's archive) and the documents the agent reads are recorded by hash, but their change does not invalidate the set. In detail: (a) the hidden kit is frozen by its content, not by its archive's bytes: 'tests/assets/gt.tar.xz#members' = sha256 over the sorted lines '<member name> <sha256 of the member's bytes>' of the archive's file members; (b) tests/grader_config.json is frozen by its values: 'tests/grader_config.json#values' = sha256 of its canonical JSON (keys sorted, separators ',' and ':', ASCII) without hidden_gt.url, hidden_gt.sha256 and hidden_gt.note (the archive's location, its hash and the sentence that describes the location; verify never reads the note; hidden_gt.files, tries and backoff_s stay frozen); (c) every other file and tree of the draw's table stays frozen with its drawn sha256 (9 files, 6 trees); (d) recorded, never invalidating: the archive's sha256 and hidden_gt.url / sha256 / note (publication), and the files the agent reads or that are derived from them (instruction.md, environment/setup/payload/, environment/assets.sha256, environment/assets/payload/given/{parts, drawings, manual}/, environment/assets/payload/render/, tests/setup_payload/, tests/given_hashes.json); a later change of them is entered in recorded_changes with its date and reason. Files outside both tables stay outside the rule as before. The candidates, their runs, the set and tests/hidden/episodes.json stay as drawn.",
    "why": "the rule as drawn froze two files whose bytes carry more than an episode's outcome: grader_config.json also holds the hidden kit archive's download location (a placeholder revision until the owner approves the upload) and tests/assets/gt.tar.xz is frozen by its archive bytes; publishing the kit (filling in the revision, or re-packing the same members) would have invalidated a set whose episodes it cannot change. The documents the agent reads were in neither table; they are now recorded so that every text change stays traceable",
@@ -6639,18 +6639,18 @@
    "id": "A2",
    "date": "2026-11-16",
    "written_utc": "2026-11-17T00:32:59Z",
-   "authority": "the owner's decision of 2026-11-16, relayed by the task's lead (the main session): an assembly task should not read a flat zero for a program that assembles a good part of the car; an episode with a safety violation keeps 30 % of its stage score instead of 0 (task version v1.7, DESIGN section 19.0c); the hidden episodes, the kit, the cell physics, the windows, the documents' facts and the reference program unchanged; no reselection",
+   "authority": "the owner's decision of 2026-11-16, relayed by the task's lead: an assembly task should not read a flat zero for a program that assembles a good part of the car; an episode with a safety violation keeps 30 % of its stage score instead of 0 (task version v1.7); the hidden episodes, the kit, the cell physics, the windows, the documents' facts and the reference program unchanged; no reselection",
    "amends": "rule 1 (Freeze) of rule_text as amended by A1 (2026-11-15)",
    "rule": "Rule 1 as amended by A1 stays in force. In addition: a dated decision of the owner that changes only how an episode's outcome is scored (verify.py's score arithmetic and its words, grader_config.json's scoring values and the grader's notes, the agent-visible strings that state the rule) re-enters the frozen table under a new amendment instead of a redraw, when (a) every other entry of the table in force is unchanged; (b) inside the frozen trees only the strings and docstrings that state the rule change (here arm/assembly_car/server.py: the safety strings of describe()), no file of the cell's physics, layout, kit loading or reference program; (c) every episode's layout digest is still recomputed at every reset and equals episodes.json in the validates that follow; (d) the reference program's per-episode outcome on the four episodes is reproduced (validate comparison: the same grader lines and per-mate lines). The table in force is this amendment's from its writing. A change of anything else in the table still means a new draw (select_set.py draw --supersedes).",
    "why": "the files that carry the rule are frozen as wholes: verify.py by its bytes, grader_config.json by its values, tests/arm as a tree; the new rule changes bytes in all three though none of them enters an episode's physics or layout, so the set that the four episodes are, and every outcome the reference program reaches on them, stay valid. The factor is 0.3 (grader_config.json scoring.safety_violation_factor), one number from which verify.py and every agent-visible text take it",
    "checked_at_writing": {
     "before_change": {
-     "tool_check_json": "/data/xiatao/tmp/driving_roboracer_20261113/asm/V17/pre/freeze_status_pre.json",
+     "tool_check_json": "V17/pre/freeze_status_pre.json",
      "table": "amendment A1 (2026-11-15)",
      "frozen_ok": true,
      "episodes_is_the_set": true,
      "recorded_changed": [],
-     "snapshot": "/data/xiatao/tmp/driving_roboracer_20261113/asm/V17/pre/task_body_v16",
+     "snapshot": "V17/pre/task_body_v16",
      "snapshot_entries_as_A1": true
     },
     "after_change": {
@@ -6732,18 +6732,18 @@
    "id": "A3",
    "date": "2026-11-17",
    "written_utc": "2026-11-17T18:22:36Z",
-   "authority": "the owner's decision of 2026-11-17, relayed by the task's lead (the main session): the robot-contact limit of 30 N was inherited from the first assembly task without a derivation for this car; it becomes 150 N, the force at which an arm of this class stops itself by default, so that the rule means a contact at which the real robot would have stopped (task version v1.8, DESIGN section 19.0d); the unit-pressed rule, the factor 0.3, the gates, weights, aggregation, anchor, the hidden episodes, the kit, the cell physics and the reference program unchanged; no reselection",
+   "authority": "the owner's decision of 2026-11-17, relayed by the task's lead: the robot-contact limit of 30 N was inherited from the first assembly task without a derivation for this car; it becomes 150 N, the force at which an arm of this class stops itself by default, so that the rule means a contact at which the real robot would have stopped (task version v1.8); the unit-pressed rule, the factor 0.3, the gates, weights, aggregation, anchor, the hidden episodes, the kit, the cell physics and the reference program unchanged; no reselection",
    "amends": "rule 1 (Freeze) of rule_text as amended by A1 (2026-11-15) and A2 (2026-11-16)",
    "rule": "Rule 1 as amended by A1 and A2 stays in force. In addition: a dated decision of the owner that changes only the threshold of a safety rule of the cell's watch (here the robot-contact limit, grader_config.json safety.robot_force_N) re-enters the frozen table under a new amendment instead of a redraw, with the lines that carry the same number as the cell's and the server's defaults, the grader's reading and record of it (verify.py), and the strings, docstrings and comments that state it, when (a) every other entry of the table in force is unchanged; (b) inside the frozen trees no line outside a comment changes unless it carries the threshold, and no file of the cell's physics, layout, kit loading or reference program changes otherwise; (c) every episode's layout digest is still recomputed at every reset and equals episodes.json in the validates that follow; (d) the reference program's per-episode outcome on the four episodes is reproduced (validate comparison: the same grader lines and per-mate lines); (e) the selection's own criteria for the reference program hold under the new threshold. The table in force is this amendment's from its writing. A change of anything else in the table still means a new draw (select_set.py draw --supersedes).",
    "why": "the files that carry the limit are frozen as wholes: grader_config.json by its values, verify.py by its bytes, tests/arm as a tree; the new limit changes bytes in all three, yet a threshold of the watch enters no episode's physics or layout, only which contacts are recorded as violations. The selection's keep rule for the reference program (rule 4 as drawn: 8 / 8 in all three environments, no unplanned contact, the episode hard_ok with no robot link above 30 N and no sustained part force above 150 N, the largest sustained force below 150 N) used a robot-contact limit of 30 N, which is stricter than 150 N: every candidate that met it meets the new limit, every candidate keeps its outcome, and nothing is reselected; the reference program's robot links press on nothing in the recorded runs (0 N), so the set that the four episodes are, and every outcome the reference program reaches on them, stay valid under 150 N as under 30 N. The limit is one number (grader_config.json safety.robot_force_N), from which the cell's watch, describe(), cell_config.json and every agent-visible text take it; the cell's default (arm/assembly_car/cell.py) is the same number",
    "checked_at_writing": {
     "before_change": {
-     "tool_check_json": "/data/xiatao/tmp/driving_roboracer_20261113/asm/V18/pre/freeze_status_pre.json",
+     "tool_check_json": "V18/pre/freeze_status_pre.json",
      "table": "amendment A2 (2026-11-16)",
      "frozen_ok": true,
      "episodes_is_the_set": true,
      "recorded_changed": [],
-     "snapshot": "/data/xiatao/tmp/driving_roboracer_20261113/asm/V18/pre/task_body_v17",
+     "snapshot": "V18/pre/task_body_v17",
      "snapshot_entries_as_A2": true
     },
     "after_change": {
@@ -6836,7 +6836,7 @@
      "field": "why",
      "replaced": "The selection's criteria for the reference program (8 / 8 on every candidate in three environments, no unplanned contact, the largest sustained force below 150 N) do not use the robot-contact limit, and the reference program's robot links press on nothing in the recorded runs (0 N), so",
      "with": "The selection's keep rule for the reference program (rule 4 as drawn: 8 / 8 in all three environments, no unplanned contact, the episode hard_ok with no robot link above 30 N and no sustained part force above 150 N, the largest sustained force below 150 N) used a robot-contact limit of 30 N, which is stricter than 150 N: every candidate that met it meets the new limit, every candidate keeps its outcome, and nothing is reselected; the reference program's robot links press on nothing in the recorded runs (0 N), so",
-     "reason": "the independent check of v1.8 (finding m5): the keep rule as drawn (rule 4 of rule_text) requires hard_ok with no robot link above 30 N, so the sentence that the criteria do not use the limit was wrong; the conclusion (no reselection) holds because 30 N is stricter than 150 N",
+     "reason": "the independent check of v1.8: the keep rule as drawn (rule 4 of rule_text) requires hard_ok with no robot link above 30 N, so the sentence that the criteria do not use the limit was wrong; the conclusion (no reselection) holds because 30 N is stricter than 150 N",
      "checked": {
       "table_in_force_before": "amendment A3 (2026-11-17)",
       "frozen_ok_before": true,
@@ -6855,7 +6855,7 @@
  "recorded_changes": [
   {
    "utc": "2026-11-15T16:13:21Z",
-   "why": "finalization 2026-11-15, the lead designer's ruling 1: the cell manual's Collision model corrected to what the cell simulates (the built pieces' differences from the drawn units, measured: DEV/evidence/kit/collision_sides.json) and the late text items of P2-12 / P2-16 / P2-18, the givens regenerated by DEV/regen_givens.py (byte-reproducible); and ruling 4: this tool implements amendment A1. No file of the frozen table changed (checked before this entry)",
+   "why": "finalization 2026-11-15, by the lead designer's decision: the cell manual's Collision model corrected to what the cell simulates (the built pieces' differences from the drawn units, measured face by face) and the last text items of the development, the givens regenerated by their generator (byte-reproducible); and, by the decision behind amendment A1, this tool implements amendment A1. No file of the frozen table changed (checked before this entry)",
    "changed": {
     "documents/environment/setup/payload/": [
      "d1830c0b864d7cbc577584febbbd84b9d0a826f35874b8b92ec6df16e6f94c21",
@@ -6902,7 +6902,7 @@
   },
   {
    "utc": "2026-11-15T20:24:13Z",
-   "why": "phase 2 independent review (2026-11-15), its findings acted on (DEV/reviews/PHASE2_REVIEW.md, disposition section): m2 the instruction's Tools line names OpenCV 5.0 and its missing hand-eye functions and the importable mink, Pinocchio, CoACD, CadQuery; m3 the instruction says the code check is static; m4 assembly_layout.png gains note 5 (both outline datums lie to the car's left of datum C; DEV/drawings, dim_audit 87 values unchanged); m5 kit.json's mass text says the roller's mass_g and com_mm are its four hubs'. Texts only, regenerated by DEV/regen_givens.py (byte-reproducible). No file of the frozen table changed (checked before this entry)",
+   "why": "the independent review of the task (2026-11-15), its findings acted on: the instruction's Tools line names OpenCV 5.0 and its missing hand-eye functions and the importable mink, Pinocchio, CoACD, CadQuery; the instruction says the code check is static; assembly_layout.png gains note 5 (both outline datums lie to the car's left of datum C; the drawings' audit: 87 values unchanged); kit.json's mass text says the roller's mass_g and com_mm are its four hubs'. Texts only, regenerated by their generator (byte-reproducible). No file of the frozen table changed (checked before this entry)",
    "changed": {
     "documents/environment/assets.sha256": [
      "7c34d42cd01cdaf3160cff44e9fe7dfb8ee253bbe2607bcca41cf850295fdd83",
@@ -6955,7 +6955,7 @@
   },
   {
    "utc": "2026-11-15T20:31:05Z",
-   "why": "phase 2 review follow-up: the tool's default image is now the local tag racecar-asm-task:current (the runtime image the latest validate of this tree built, re-tagged after every validate; the older tag's image holds the superseded drawing). One constant changed; no file of the frozen table changed (checked before this entry)",
+   "why": "follow-up of the independent review: the tool's default image is now the local tag racecar-asm-task:current (the runtime image the latest validate of this tree built, re-tagged after every validate; the older tag's image holds the superseded drawing). One constant changed; no file of the frozen table changed (checked before this entry)",
    "changed": {},
    "recorded": {
     "publication": {
@@ -6989,7 +6989,7 @@
   },
   {
    "utc": "2026-11-15T22:26:03Z",
-   "why": "the lead designer's ruling on the phase 2 review's open minor item m1 (2026-11-15): the order statement of the instruction and of the cell manual gains the half-sentence that the order is the agent's choice within what the fixtures beside the car leave room for (no fixture and no unit named; DEV/docs_src/instruction.tmpl.md, cell_manual.tmpl.md). Texts only, regenerated by DEV/regen_givens.py (byte-reproducible; the asset payload and environment/assets.sha256 unchanged). Recorded by hash under amendment A1; no reselection. No file of the frozen table changed (checked before this entry)",
+   "why": "the lead designer's decision on an open minor finding of the independent review (2026-11-15): the order statement of the instruction and of the cell manual gains the half-sentence that the order is the agent's choice within what the fixtures beside the car leave room for (no fixture and no unit named; in the templates of the instruction and the cell manual). Texts only, regenerated by their generator (byte-reproducible; the asset payload and environment/assets.sha256 unchanged). Recorded by hash under amendment A1; no reselection. No file of the frozen table changed (checked before this entry)",
    "changed": {
     "documents/environment/setup/payload/": [
      "ad8886e16fc08cefe4e87b35cc85c25c59520fcafeade20dce2ded045290eb44",
@@ -7034,7 +7034,7 @@
   },
   {
    "utc": "2026-11-15T22:33:35Z",
-   "why": "publication (2026-11-15, with the owner's approval): environment/assets/payload/ (195 files) uploaded to the benchmark's asset dataset grounded-intelligence-initiative/ale-robotics-assets under tasks/driving/racecar_full_assembly_tenth_scale_ur10e/payload/ and tests/assets/gt.tar.xz (sha256 328939c3..., 14 620 file members, its members digest the frozen one) under .../verifier/gt.tar.xz, one dataset commit a6bfe73e80bc6ea336b91140f229ececc08fba6e (the dataset card's row in fd06624f7814c36c4b79688e63d693be83d5cde5); the bytes downloaded at that commit equal the staged ones. Filled in: the revision of environment/assets.sha256 (DEV/regen_givens.py with ARB_ASSET_REVISION, then kept) and grader_config.json hidden_gt.url at the same commit, hidden_gt.note rewritten without the placeholder sentence. Publication metadata and a document, recorded by hash under amendment A1; hidden_gt.sha256, files, tries and backoff_s unchanged; no reselection. No file of the frozen table changed (checked before this entry)",
+   "why": "publication (2026-11-15, with the owner's approval): environment/assets/payload/ (195 files) uploaded to the benchmark's asset dataset grounded-intelligence-initiative/ale-robotics-assets under tasks/driving/racecar_full_assembly_tenth_scale_ur10e/payload/ and tests/assets/gt.tar.xz (sha256 328939c3..., 14 620 file members, its members digest the frozen one) under .../verifier/gt.tar.xz, one dataset commit a6bfe73e80bc6ea336b91140f229ececc08fba6e (the dataset card's row in fd06624f7814c36c4b79688e63d693be83d5cde5); the bytes downloaded at that commit equal the staged ones. Filled in: the revision of environment/assets.sha256 (by the givens generator with the dataset commit, then kept) and grader_config.json hidden_gt.url at the same commit, hidden_gt.note rewritten without the placeholder sentence. Publication metadata and a document, recorded by hash under amendment A1; hidden_gt.sha256, files, tries and backoff_s unchanged; no reselection. No file of the frozen table changed (checked before this entry)",
    "changed": {
     "publication/tests/grader_config.json#hidden_gt.note": [
      "4c3c2c4d2e187f0bf251b321a065fcdbe0baacd16b06e21b20d29fa9a0ddcd5b",
@@ -7075,7 +7075,7 @@
   },
   {
    "utc": "2026-11-17T00:33:14Z",
-   "why": "task version v1.7 (2026-11-16, the owner's decision on the per-episode safety rule, amendment A2 written at 2026-11-17T00:32:59Z): an episode with a safety violation keeps 30 % of its stage score (grader_config.json scoring.safety_violation_factor 0.3); the agent's texts generated from DEV/docs_src (regen_givens.py build): instruction.md (the grading paragraph and the assembly_score sentence), the cell manual's Safety section, the cell API's step events, cell_config.json (scoring.safety_violation_factor and two public notes), their copies in tests/setup_payload/ and tests/given_hashes.json; no fact of the documents changed, no asset of the dataset changed (environment/assets.sha256 and the given parts, drawings, manual and render assets byte-identical)",
+   "why": "task version v1.7 (2026-11-16, the owner's decision on the per-episode safety rule, amendment A2 written at 2026-11-17T00:32:59Z): an episode with a safety violation keeps 30 % of its stage score (grader_config.json scoring.safety_violation_factor 0.3); the agent's texts rebuilt by their generator from their templates: instruction.md (the grading paragraph and the assembly_score sentence), the cell manual's Safety section, the cell API's step events, cell_config.json (scoring.safety_violation_factor and two public notes), their copies in tests/setup_payload/ and tests/given_hashes.json; no fact of the documents changed, no asset of the dataset changed (environment/assets.sha256 and the given parts, drawings, manual and render assets byte-identical)",
    "changed": {
     "documents/environment/setup/payload/": [
      "84b2ce987f737463796fbe3bc4c6a615def52b7382898e2e8766643b16a5b47d",
@@ -7199,6 +7199,120 @@
     "tests/review/select_set.py": "6b6848f08145e40b4f47e4c045e0d3bc5e13594bdd6805728ebdf5bc72a651da"
    },
    "frozen_checked": "amendment A3 (2026-11-17): unchanged"
+  },
+  {
+   "utc": "2026-11-17T23:18:19Z",
+   "why": "text of this record and of the selection tool (2026-11-17), by the benchmark's rule for its public text: no machine path, no account or machine name, and no citation of a document that is not in the repository. (1) Paths: the 71 paths of runs that this record holds (the candidates' run sources, 48, and image traces, 12; the list of ingested runs, 6; the acceptance folder, 1; the checks at writing of amendments A2 and A3, 4) lose their absolute prefix up to and including the folder the task's development runs were kept under; the rest of each path is unchanged (path_rule). Amendments A2 and A3 quoted two such paths each as a fact of their day; they follow the same rule. (2) Citations reworded in place, each sentence standing on its own and saying what it said: rule_text as drawn in three places (the last sentence of rule 1, the visibility clause of rule 4, the fallback of rule 5; every clause, number and constant unchanged), the expectation in three, the authorities of A1, A2 and A3, the dated correction of A3's rationale, and the reasons of recorded changes 1 to 6 (edited: each field with the sha256 of its old and its new value). (3) The selection tool records run paths relative to a run root from now on (ingest and accept take --root, determinism reads them back under it), and its docstring loses the same three citations: its sha256 changes (tools_changed); its selftest passes 10 / 10. No value that the selection or the check uses changed: the seeds, the candidates' runs and outcomes, the layout digests, the set and episodes.json, the acceptance, the hollowing check, and the frozen and recorded tables of the draw and of every amendment are as they were (compared leaf by leaf before this entry was written); no file of the frozen table and no recorded entry changed. The frozen table (amendment A3) holds, episodes.json is the selection's set, and the four set episodes' layout digests recomputed from their seeds equal episodes.json and the candidates' records, before and after this record. No amendment, no reselection, no redraw.",
+   "changed": {},
+   "recorded": {
+    "publication": {
+     "tests/assets/gt.tar.xz": "328939c34609e9f9b9108da78f3e37249c1d311de60f0361ca11f2f8c5fff4f4",
+     "tests/grader_config.json#hidden_gt.url": "ac82897db6166c0a1c549102942cd38ec2cdef31976ff505c872471fe766a734",
+     "tests/grader_config.json#hidden_gt.sha256": "7826a7d574e3595e764899fd24e63e67e256e0adc4bf71ce5801173853d2cd64",
+     "tests/grader_config.json#hidden_gt.note": "c7af77de6e4efde92e9326e3133c3c7e6379a0b6b3271599335d20d8809790eb"
+    },
+    "documents": {
+     "instruction.md": "085258f7c39009762aa404edc9677a3b2cce4364356911bce7ba0fe17805467d",
+     "environment/assets.sha256": "65c6828e6a47314f472add17f0aef1f4ad5323e562a67934e711815b1d622cea",
+     "tests/given_hashes.json": "22ec573b4aa4a399b3d4e757682694d034fa826af67a33a181be2416306c8503",
+     "environment/setup/payload/": "7ea8f96a252913736807186b18698d4bd8c0300c98285d524096bb2de913c131",
+     "environment/assets/payload/given/parts/": "cf7474fad80c23f25539d3a1f78b26e915466a88588ba8ef8263c4ad6dbff8e5",
+     "environment/assets/payload/given/drawings/": "dfece19a682cef21b9613a86c6cde01031573fe117cc4e13a087278a787d193c",
+     "environment/assets/payload/given/manual/": "963d5f2b2af8e26d01d9c1840adfaba50003b26cf83b90ac9212d659a113003e",
+     "environment/assets/payload/render/": "d25e9c225c66d9244a8b7a98bbb5056216e32bf16898b9f110fc8a9a3d6972ff",
+     "tests/setup_payload/": "7ea8f96a252913736807186b18698d4bd8c0300c98285d524096bb2de913c131"
+    }
+   },
+   "tools": {
+    "tests/review/select_set.py": "e40c86e557cf76556ca8641ebb817d00b42e7e35d07a66e4e25ff49654f2cea7"
+   },
+   "frozen_checked": "amendment A3 (2026-11-17): unchanged",
+   "tools_changed": {
+    "tests/review/select_set.py": [
+     "6b6848f08145e40b4f47e4c045e0d3bc5e13594bdd6805728ebdf5bc72a651da",
+     "e40c86e557cf76556ca8641ebb817d00b42e7e35d07a66e4e25ff49654f2cea7"
+    ]
+   },
+   "path_rule": "every path of a run in this record (the candidates' run sources and image traces, the list of ingested runs, the acceptance folder, the checks at writing of amendments A2 and A3) is relative to the folder the task's development runs were kept under: the absolute prefix up to and including that folder is dropped, the rest of each path is as it was; since this change the selection tool writes run paths that way itself (`ingest` and `accept` take --root, `determinism` reads them back under --root)",
+   "edited": {
+    "paths": {
+     "n": 71,
+     "by_field": {
+      "candidates/*/runs/pod/source": 12,
+      "candidates/*/runs/image_view/source": 12,
+      "candidates/*/runs/image/source": 12,
+      "candidates/*/runs/image/trace_file": 12,
+      "candidates/*/runs/host/source": 12,
+      "runs/*/dir": 6,
+      "acceptance/dir": 1,
+      "amendments/*/checked_at_writing/before_change/tool_check_json": 2,
+      "amendments/*/checked_at_writing/before_change/snapshot": 2
+     }
+    },
+    "reworded": [
+     {
+      "field": "rule_text",
+      "was_sha256": "b035f47bef5ad7c6aacf2816eaeaff2c8cdc999e0c0d185b31e258eb19b534e7",
+      "now_sha256": "d05b66f5d132f016fbf9c82fc5378c08d1363b18ae8c7c396945e3b322ab2098"
+     },
+     {
+      "field": "expectation",
+      "was_sha256": "3d8b9d869f22d1afd84348c26d4efe4ec5d23b0ac4a8f79fb624c4f8828d63a8",
+      "now_sha256": "e67cc8aace38cc2466a993c48bc11a390586014c1cfa8fb2b7113a4a3b133365"
+     },
+     {
+      "field": "amendments/0/authority",
+      "was_sha256": "bd17aca5b0f1aaa011afa219520c061cf3c912a0cccc741e11fbd760a6c4fef9",
+      "now_sha256": "8ce8950a49210fb9bd665d5e31d1a643e563b778a91bde399666e1dff81c865f"
+     },
+     {
+      "field": "amendments/1/authority",
+      "was_sha256": "135402f0454237df637fd1ebdc5c63083d5aae1cf6caf87e637dec20ad4f53da",
+      "now_sha256": "fadb5eeae7c2efc7dc5604475c868312822404ab65afa92b4f3a21f535672d5d"
+     },
+     {
+      "field": "amendments/2/authority",
+      "was_sha256": "ab06bc181d031eda45459be4853932e61832ccfeb495b1cd76365f7c165c2b41",
+      "now_sha256": "644cdeb9d6484f85e355cd62a9b79c6471e78066d6f9c6bdd1ae1fa202981925"
+     },
+     {
+      "field": "amendments/2/corrections/0/reason",
+      "was_sha256": "def12e70b7f1e9edb40166d33a651f3e6a37d3d19b2ba693a546c3486203090f",
+      "now_sha256": "7dfcf1dab333b349a5e947961dd8a659acce2f1df5bbf6d4d0ad626c723ef7bf"
+     },
+     {
+      "field": "recorded_changes/0/why",
+      "was_sha256": "eeff1f6a722786aed1e85bcf439d812e672f431e04c4146a2a0a3136415fa49d",
+      "now_sha256": "3c556713c31460db5b82e65385499ca0350815d9f0915d0e1852b53a81568167"
+     },
+     {
+      "field": "recorded_changes/1/why",
+      "was_sha256": "04da3a5ba7a65352cf2e7cfc6d736838d5d490468427b6f1719a6182acf0616a",
+      "now_sha256": "9d29e253952e4c4dd0bdee670d3bb28aa6347989c115b72645c00e7694904e5e"
+     },
+     {
+      "field": "recorded_changes/2/why",
+      "was_sha256": "320a0037eb97d3eb8b4adee0251ebb769f8d76d139cec23edea3e05c908dbdef",
+      "now_sha256": "8ec11ce021724c2b0a33226d6450cb19e918de41b9754d1ae2d3db608c93d1ff"
+     },
+     {
+      "field": "recorded_changes/3/why",
+      "was_sha256": "d3c2f8eb8a1e33ece7699869b972253f5aa60bd780abec2920d084913fb3047f",
+      "now_sha256": "f9350f359b01f08f036f47e113f22fea1fd231293f47b6b469f2b467fc32f311"
+     },
+     {
+      "field": "recorded_changes/4/why",
+      "was_sha256": "b3ebde4b2e511f6a2932c1ddb2bc8cd0f263a4bb514ec8120b34965f7e21d9fc",
+      "now_sha256": "3509567500675c2a895a9f60fa3d82c6b608d769a311ec01da1fe689c1dbd817"
+     },
+     {
+      "field": "recorded_changes/5/why",
+      "was_sha256": "12e469f170ac1c6c85d4d66d6b8a747026ba6c72fd21e6558c3e6439badd28da",
+      "now_sha256": "04b8a161d54182690c2f56ea9a7cea2899881356ea8b6ab688c80c6e4ad39130"
+     }
+    ],
+    "unchanged": "every other value of this record (structure, seeds, digests, runs, outcomes, the frozen and recorded tables of the draw and of every amendment, the set, the acceptance and the hollowing check): compared leaf by leaf before the entry was written"
+   }
   }
  ]
 }

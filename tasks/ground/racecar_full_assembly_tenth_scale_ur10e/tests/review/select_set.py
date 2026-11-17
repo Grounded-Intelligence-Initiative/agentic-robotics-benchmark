@@ -24,8 +24,8 @@ below and the sha256 of every frozen file, into selection.json before the first 
    drawings, photo manual and render assets, tests/setup_payload and tests/given_hashes.json) are recorded by hash, but
    their change does not invalidate the set: the check names a changed one as a note, and `record` enters the new
    hashes in the selection's recorded_changes with the date and the reason. Files outside both tables are outside the
-   rule. This workspace is not committed by the package that selects the set, so the draw's UTC time and these hashes
-   are the record of the freeze.
+   rule. The task's files were not committed when the set was selected, so the draw's UTC time and these hashes are the
+   record of the freeze.
 2. Draw. 12 candidates c00..c11 from os.urandom: seed = int.from_bytes(8 bytes, "little") % 2**63, drawn again while
    below 2**32 or equal to an earlier seed. Candidate i is in stratum STRATA[i % 4] (layout.STRATA: the stand's yaw sign
    x the stick pack's lead end: yaw+lead0, yaw+lead180, yaw-lead0, yaw-lead180) and round i // 4, so every stratum has
@@ -53,13 +53,13 @@ below and the sha256 of every frozen file, into selection.json before the first 
    and the largest sustained part force is below 150 N; at every capture of every mate the pose error is at most 50 %
    of that mate's capture window (reference.capture_ratios: the largest of lateral / window, tilt / window (a seat's
    total rotation) and, keyed, clock / window; the distance short of home is not an error: a unit is captured on its
-   way in); every loose unit is at least 30 % seen in the top camera's frame 0 (P2-08's rule: 4000 area-weighted
+   way in); every loose unit is at least 30 % seen in the top camera's frame 0 (4000 area-weighted
    samples on the unit's visual meshes; a sample is seen when it projects into the frame and the frame's sensor
    depth there is valid and within 15 mm of the sample's depth). A candidate passes when it passes in all three
    environments. A stratum's first passing candidate in drawn order is its episode; the episodes go into
    episodes.json in the order of STRATA.
 5. Fallback. If a stratum has no passing candidate, no set is written and grader_config.json is not changed: the
-   fallback of DESIGN section 7 (the oracle on the nominal layout, oracle_nominal_layout true, the agent still graded
+   pre-written fallback (the oracle on the nominal layout, oracle_nominal_layout true, the agent still graded
    on a fixed hidden set) is written up as a recommendation for the maintainers.
 6. Hollowing check (`report`). Flags: (a) more than 1/3 of the candidates dropped; (b) two or more drops share a cause
    (the same clause on the same mate or unit); (c) capture margin: per mate class (battery, deck, compute, lidar,
@@ -87,15 +87,17 @@ score 1.0 in both with the same per-episode scores.
     python3 -I -B select_set.py run         --selection SEL.json --env host|pod --out DIR [-P 6] [--robot DIR] [--kit DIR]
     python3 -I -B select_set.py image       --selection SEL.json --round R --out DIR [--image TAG]     (docker, on the host)
     python3 -I -B select_set.py image-view  --selection SEL.json --out DIR [--image TAG]                (docker, on the host)
-    python3 -I -B select_set.py ingest      --selection SEL.json --env host|pod|image --runs DIR [--runs DIR ...]
+    python3 -I -B select_set.py ingest      --selection SEL.json --env host|pod|image --root ROOT --runs DIR [--runs DIR ...]
     python3 -I -B select_set.py make        --selection SEL.json --out EPISODES.json
-    python3 -I -B select_set.py report      --selection SEL.json [--population P2-11_summary.json] [--json OUT]
-    python3 -I -B select_set.py accept      --selection SEL.json --episodes EPISODES.json --out DIR [--image TAG] [--repeat 2]
-    python3 -I -B select_set.py determinism --selection SEL.json --out determinism.md [--acceptance DIR]
+    python3 -I -B select_set.py report      --selection SEL.json [--population SUMMARY.json] [--json OUT]
+    python3 -I -B select_set.py accept      --selection SEL.json --episodes EPISODES.json --root ROOT --out DIR [--image TAG] [--repeat 2]
+    python3 -I -B select_set.py determinism --selection SEL.json --out determinism.md [--root ROOT] [--acceptance DIR]
     python3 -I -B select_set.py selftest    [--physics --kit DIR --robot DIR]
 
 `episode` (one candidate in-process) and `view` (the top frame only) are what `run` starts per candidate. Paths are
-found from this file, so the tool runs from any copy of the task (the pod's, the image's stage).
+found from this file, so the tool runs from any copy of the task (the pod's, the image's stage). The paths of runs that
+`ingest` and `accept` write into the selection are relative to ROOT, the folder the selection's runs are kept under
+(a path outside it is refused); `determinism` reads the run files back under --root.
 """
 
 import argparse
@@ -229,6 +231,20 @@ def _json_default(o):
 def roundtrip(x):
     """x as JSON gives it back (numpy scalars to Python, tuples to lists, floats exact)"""
     return json.loads(json.dumps(x, default=_json_default))
+
+
+def run_path(p, root):
+    """p relative to the run root (the folder the selection's runs are kept under), '/'-separated; a path outside
+    the root is refused, so the selection records no machine's absolute path"""
+    ap, rr = os.path.abspath(p), os.path.abspath(root)
+    if os.path.commonpath([ap, rr]) != rr:
+        raise SystemExit("%s is not under the run root %s (--root)" % (p, root))
+    return os.path.relpath(ap, rr).replace(os.sep, "/")
+
+
+def from_root(p, root):
+    """a recorded run path read back: relative paths under root (default: the working folder), absolute ones as they are"""
+    return p if not p or os.path.isabs(p) else os.path.join(root or os.getcwd(), p)
 
 
 def strip_wall(x):
@@ -658,7 +674,7 @@ def mesh_world(m, d, g):
 
 
 def unit_visual_geoms(srv, unit):
-    """the visual mesh geoms (type mesh, group 2, no contacts) of every body of a unit (P2-08 coverage_check's choice)"""
+    """the visual mesh geoms (type mesh, group 2, no contacts) of every body of a unit (the geoms the camera sees)"""
     m = srv.model
     bodies = set(b for b, u in srv.cell.unit_of_body.items() if u == unit)
     return [g for g in range(m.ngeom) if int(m.geom_bodyid[g]) in bodies and int(m.geom_type[g]) == 7 and int(m.geom_group[g]) == 2
@@ -905,7 +921,7 @@ def cmd_run(a):
 
 # ================================================================================================ the task image
 def setup_payload_standin(dst):
-    """a stand-in of tests/setup_payload/ while the task has none (the givens package writes the real one): given/lib =
+    """a stand-in of tests/setup_payload/ while the task has none (the givens generator writes the real one): given/lib =
     byte copies of the client library's vendored modules (the earlier task's layout), given/cell/README.md"""
     lib = os.path.join(dst, "given", "lib")
     arm = os.path.join(lib, "arm")
@@ -1263,7 +1279,7 @@ def cmd_ingest(a):
                     continue
                 if rec.get("robot_tree") != sel["frozen_trees"].get(ROBOT_TREE):
                     raise SystemExit("%s: the robot models of the %s run differ from the frozen ones" % (cid, a.env))
-                c.setdefault("runs", {})[a.env] = dict(compact_run(rec, a.env), source=p)
+                c.setdefault("runs", {})[a.env] = dict(compact_run(rec, a.env), source=run_path(p, a.root))
                 n += 1
         elif a.env == "image":
             ir = os.path.join(runs, "image_run.json")
@@ -1274,13 +1290,13 @@ def cmd_ingest(a):
                     cid = [k for k, c in by_id.items() if c["seed"] == e.get("seed")][0]
                     if e.get("missing"):
                         continue
-                    r = dict(compact_run(e, "image"), env="image", source=ir, round=got["round"], env_info=got.get("env_info"),
+                    r = dict(compact_run(e, "image"), env="image", source=run_path(ir, a.root), round=got["round"], env_info=got.get("env_info"),
                              verdict_reward=got["verdict_reward"], exit_code=got["exit_code"])
                     if e.get("trace_file"):
-                        r["trace_file"] = e["trace_file"]
+                        r["trace_file"] = run_path(e["trace_file"], a.root)
                     by_id[cid].setdefault("runs", {})["image"] = r
                     n += 1
-                _log_run(sel, {"env": "image", "kind": "candidates", "round": got["round"], "dir": runs, "image": got["image"],
+                _log_run(sel, {"env": "image", "kind": "candidates", "round": got["round"], "dir": run_path(runs, a.root), "image": got["image"],
                                "image_id": got["image_id"], "exit_code": got["exit_code"], "reward": got["verdict_reward"],
                                "wall_s": got["docker"]["wall_s"], "utc": got["utc"], "task_errors": got["task_errors"],
                                "stage_notes": got.get("stage_notes")})
@@ -1294,14 +1310,14 @@ def cmd_ingest(a):
                             c.setdefault("runs", {})["image_view"] = dict({k: rec.get(k) for k in ("layout_digest", "digest_ok", "error", "env_info",
                                                                                                     "renderer", "wall_s", "robot_tree")},
                                                                           view=compact_run(rec, "image")["view"])
-                            c["runs"]["image_view"]["source"] = p
+                            c["runs"]["image_view"]["source"] = run_path(p, a.root)
                             if rec.get("robot_tree") != sel["frozen_trees"].get(ROBOT_TREE):
                                 c["runs"]["image_view"]["robot_tree_differs"] = True
                             n += 1
-                _log_run(sel, {"env": "image", "kind": "view", "dir": runs, "image": got["image"], "image_id": got["image_id"],
+                _log_run(sel, {"env": "image", "kind": "view", "dir": run_path(runs, a.root), "image": got["image"], "image_id": got["image_id"],
                                "wall_s": got["docker"]["wall_s"], "utc": got["utc"], "n": got["n"]})
         if a.env in ("host", "pod"):
-            _log_run(sel, {"env": a.env, "kind": "candidates", "dir": runs, "utc": utc_now()})
+            _log_run(sel, {"env": a.env, "kind": "candidates", "dir": run_path(runs, a.root), "utc": utc_now()})
     for c in sel["candidates"]:
         decided, passed, failed = judge(c)
         c["failed"] = {e: [t for _k, t in v] for e, v in failed.items()}
@@ -1351,10 +1367,10 @@ def cmd_make(a):
         c["selection"] = "kept" if c in kept.values() else ("dropped" if c in dropped else "passed, not needed")
     if open_:
         sel["set"] = {"made_utc": utc_now(), "written": False, "strata_without_a_pass": open_,
-                      "fallback": "DESIGN section 7: oracle on the nominal layout (oracle_nominal_layout true), the agent still on a fixed set; "
+                      "fallback": "the pre-written fallback: oracle on the nominal layout (oracle_nominal_layout true), the agent still on a fixed set; "
                                   "grader_config.json is not changed by this tool (a recommendation for the maintainers)"}
         save(a.selection, sel)
-        print("NO SET: strata without a passing candidate: %s (fallback of DESIGN 7 recommended; nothing written to %s)" % (open_, a.out))
+        print("NO SET: strata without a passing candidate: %s (the pre-written fallback recommended; nothing written to %s)" % (open_, a.out))
         return 2
     doc = set_of([kept[st] for st in STRATA])
     with open(a.out, "w") as f:
@@ -1390,7 +1406,7 @@ def _mean(xs):
 
 
 def population(path):
-    """{stratum: {slot: [capture ratio]}} of an earlier campaign summary (P2-11's summary_acceptance.json)"""
+    """{stratum: {slot: [capture ratio]}} of an earlier campaign summary (its summary_acceptance.json)"""
     if not path:
         return None
     d = load(path)
@@ -1537,7 +1553,7 @@ def cmd_accept(a):
     summary = {"format": "racecar-asm-set-acceptance/1", "episodes_sha256": sha256_file(a.episodes), "repeat": a.repeat, "parallel": bool(a.parallel),
                "rewards": [r["verdict_reward"] for r in runs], "per_episode": per, "same_per_episode_scores": same_scores,
                "same_fingerprints": same_fp, "same_traces": same_trace, "passed": ok,
-               "runs": [{"dir": rows[i][0], "exit_code": r["exit_code"], "reward": r["verdict_reward"], "metrics": r["metrics"],
+               "runs": [{"dir": run_path(rows[i][0], a.root), "exit_code": r["exit_code"], "reward": r["verdict_reward"], "metrics": r["metrics"],
                          "task_errors": r["task_errors"], "wall_s": r["docker"]["wall_s"], "env_info": r.get("env_info"),
                          "episodes": [{k: e.get(k) for k in ("seed", "stratum", "digest_ok", "stage_score", "n_locked", "hard_ok", "unplanned_contacts",
                                                              "max_sustained_N", "sim_time_s", "ticks", "fingerprint", "trace", "episode_wall_s",
@@ -1546,7 +1562,7 @@ def cmd_accept(a):
     save(os.path.join(out, "acceptance.json"), summary)
     sel["acceptance"] = {k: summary[k] for k in ("utc", "rewards", "per_episode", "same_per_episode_scores", "same_fingerprints", "same_traces",
                                                  "passed", "image", "image_id")}
-    sel["acceptance"]["dir"] = out
+    sel["acceptance"]["dir"] = run_path(out, a.root)
     save(a.selection, sel)
     print("acceptance: rewards %s; per-episode %s; same scores %s, same fingerprints %s, same traces %s -> %s" % (
         summary["rewards"], per, same_scores, same_fp, same_trace, "PASSED" if ok else "FAILED"))
@@ -1652,12 +1668,12 @@ def cmd_determinism(a):
         for k, v in (("host_image_fp", hi_fp), ("host_image_trace", hi_tr), ("host_pod_fp", hp_fp), ("host_pod_trace", hp_tr)):
             stats[k] += int(v)
         cmpr = None
-        fa = os.path.join(os.path.dirname(R["host"].get("source", "")), "trace.npz")
+        fa = os.path.join(os.path.dirname(from_root(R["host"].get("source", ""), a.root)), "trace.npz")
         if not hp_tr:
-            fb = _remap(os.path.join(os.path.dirname(R["pod"].get("source", "")), "trace.npz"), a.remap)
+            fb = _remap(os.path.join(os.path.dirname(from_root(R["pod"].get("source", ""), a.root)), "trace.npz"), a.remap)
             cmpr = _trace_compare(fa, fb)
         if not hi_tr:
-            ci = _trace_compare(fa, R["image"].get("trace_file"))
+            ci = _trace_compare(fa, from_root(R["image"].get("trace_file"), a.root))
             if ci is not None:
                 notes_hi.append("%s host / image first trace difference: frame %s, t %s s, max |dq| %.3g" % (
                     c["id"], ci["first_diff_frame"], _f2(ci["first_diff_t_s"]), ci["max_abs_dq"]))
@@ -2040,7 +2056,7 @@ def _verify_fns(names):
 
 
 def _t_physics(a):
-    """a non-candidate episode (seed 1009, yaw+lead0, P2-09's scratch seed) twice with the sim cap at 25 s: the whole path
+    """a non-candidate episode (seed 1009, yaw+lead0, a development seed outside the selection) twice with the sim cap at 25 s: the whole path
     of rule 3 (reset, digest, trace, top / wrist frames, visibility, reference_assemble stopped by the cap, finish,
     finalize) and two identical results on one machine"""
     from arm.assembly_car import layout as LY
@@ -2134,6 +2150,7 @@ def main():
     p = sp.add_parser("ingest")
     p.add_argument("--selection", required=True)
     p.add_argument("--env", required=True, choices=ENVS)
+    p.add_argument("--root", required=True, help="the folder the runs are kept under; recorded paths are relative to it")
     p.add_argument("--runs", required=True, action="append")
     p.set_defaults(fn=cmd_ingest)
     p = sp.add_parser("make")
@@ -2148,6 +2165,7 @@ def main():
     p = sp.add_parser("accept")
     p.add_argument("--selection", required=True)
     p.add_argument("--episodes", required=True)
+    p.add_argument("--root", required=True, help="the folder --out is under; recorded paths are relative to it")
     p.add_argument("--out", required=True)
     p.add_argument("--image", default=IMAGE_DEFAULT)
     p.add_argument("--repeat", type=int, default=2)
@@ -2157,6 +2175,7 @@ def main():
     p.add_argument("--selection", required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--remap", action="append", help="SRC=DST: where the pod's trace files are on this machine")
+    p.add_argument("--root", help="the folder the recorded run paths are relative to (default: the working folder)")
     p.set_defaults(fn=cmd_determinism)
     p = sp.add_parser("selftest")
     p.add_argument("--physics", action="store_true")

@@ -1,8 +1,8 @@
 # Observability of the hidden episodes: the I3 camera probe (summary)
 
 Two rounds of the same camera-only program on the four hidden episodes, each episode once per round. Round 1
-(work package P2-18) missed the design gate (mean >= 0.6 and every class fastened at least once) by 0.002; both
-of its losses were defects of its overhead-camera stage. Round 2 (finalization, the lead designer's ruling 2)
+missed the design gate (mean >= 0.6 and every class fastened at least once) by 0.002; both of its losses were
+defects of its overhead-camera stage. Round 2 (written at the task's finalization, by the lead designer's decision)
 repairs exactly those two defects and changes nothing else: (a) a fixture board whose residual in the overhead
 camera's joint fit stands out of the other boards', or whose fixture lands outside the placement bounds the cell
 documents, is rejected (a board not seen alike); its fixture is then kept out of every planned move over those
@@ -20,7 +20,7 @@ inverse kinematics, planner) driven by the probe's estimates. The probe assumes 
 static data from the drawings and the part files; it does not measure that derivation. So the gate's "public
 information only" half is shown for the perception, not for the step from the documents to the homes, the grasps
 and a collision model. Round 1 was developed on hidden episodes 0 and 1, so its two 1.000 there are not blind
-either. Independent partial evidence for that step (the phase 2 review: a program with the public API and the
+either. Independent partial evidence for that step (an independent review's program with the public API and the
 given files only, on the LiDAR's sub-assembly route) is in `tests/README.md`.
 
 | | round 1 | round 2 |
