@@ -2322,6 +2322,286 @@
     }
    },
    "pre_registered_commit": "5c6dbff"
+  },
+  {
+   "amended_utc": "2026-11-17T01:32:20Z",
+   "what": "Round 3 of the maintainer review (2026-11-17). (1) Tolerances: every episode is a real kit on the cell as it is that day. keyed_env.sample_unit draws, from the episode's layout and noise seed, each nut's own sector and layer boundaries, hole and groove radii, handle direction and colour shade, each peg's own shaft and pin, the finger pads' friction, each arm joint's friction (the Panda's identified curve, which the tracking law does not compensate), the wrench zero's drift, each camera's real mount and intrinsics (the published calibration and T_world_wrist stay the drawing's) and the lamps' brightness, each uniformly within its range (keyed_env.TOL; sources in tests/review/tolerances.md; every range is stated in the data sheet). A nut's friction against a peg is now the nut's own (0.3 to 0.7; the pegs' coefficient is 0.1). The credit rule's ground truth (keyed_credit.ground_truth) carries the real groove (actual), which the reference uses. (2) Takt: keyed_env.MAX_STEPS 1200 -> 1000 (100 s for a kit). The amendment changes what a kit is, so the hidden set is selected from fresh candidates and the development kits from fresh development candidates.",
+   "rule": "Pre-registered before any candidate ran on the amended files: this amendment (what changed, the frozen files' sha256, the candidates, the development candidates) was committed first. The selection's own rule runs again, unchanged, on 16 fresh candidates of this amendment (kit and layout seeds from os.urandom, 63-bit, in the order listed under its `candidates`; the amendment changes what a kit is, so the earlier candidates' runs say nothing about the new kits): the frozen reference runs each ONCE through the grader itself (tests/review/regrade.sh, a fresh container of the amended task image, a one-episode plan); a candidate is kept when the reference completes its kit (kit_complete 1, no abort, no fault, no controller-budget cut), now within the amended episode length; the hidden set is the first 10 kept in drawn order; should fewer than 10 be kept, 8 more candidates are drawn from os.urandom, appended and run. The anchor is the reference's full verify of that set, which must repeat every kept run (kit_complete, nuts assembled, steps).",
+   "frozen": {
+    "solution/solve.sh": "3314b1a8f01970ba663e10a8162e5c73fb1fdf8095d1d27cfed2bffc66153db5",
+    "solution/solver/oracle_ctrl.py": "f7e75e7f60b895a3057b34c43606cc2a76e446dfcecf499ed96af988a7c77428",
+    "solution/solver/oracle_main.py": "a8c574a80dbb4e7f7d8db8f5ffa806e20419985949870bf3a56e159d514b33b0",
+    "tests/keyed_env.py": "8742c6a462d01b94bd25a3fe19152d44e16fc8595cc78a7e78dbe48586376e26",
+    "tests/keyed_credit.py": "2ab4fc524109ccc8296da4c8d27ec573be8b976806c30ab32ea9342dd1d4d638",
+    "tests/verify.py": "d09bf972e5f7e2fec6ce75b2a8495e78fdbddf30865d4de0516e3fdf2bfd31fa",
+    "tests/grader_config.json": "317bed3c65fd9aa3477035b84e7ae41532595b104b2b9542c4089e83fd4b159e",
+    "tests/nonet_exec.py": "f959b15c69a01e60a79c6f3c2cf83e8b84e40e061dc038d78b1e1e30746c96fc",
+    "tests/test.sh": "da73eea923aef8fc51f2baee4409bc3b89d3f4416adf7d60d432a125d9ad5437",
+    "tests/oracle_token.sha256": "0ddff0649335e27124af8c298fa54afb13b91aa2154f9e7950a343186166bbaa",
+    "environment/Dockerfile": "fb9614f16df32b82a2c1fdea7e15ad7c140d9fff8081266b1330c2eab63e0fdc",
+    "environment/requirements.txt": "f8044709e08e9c3deb83d17f5e92c891916f210af48a4d8c4a03fd1d5e03c92d",
+    "tests/robotics_grader/__init__.py": "d75f3c6293445af3277b05fe00df38ef7378645651ff3cfbad7f8bcfe1f56604",
+    "tests/robotics_grader/scoring.py": "9353682eb3536df264b3cb5ec3bf2be24a410f88af5b20cf86cb31796930a83b",
+    "tests/robotics_grader/seeds.py": "b795f63404d14f0c90ca0098582e80afabd251396b1f4d6ababf4e7f6037b5e1",
+    "tests/robotics_grader/selftest.py": "7a4be7513643147c2f91f866a24b6a5253a3203180b4724ca54a188fd0c2027f",
+    "tests/robotics_grader/solver.py": "288a8c1f3a1dfd61d3b2c9240c40f095411c6129af867b00fc6a0d8a77ab2d84",
+    "tests/robotics_grader/stage.py": "a97eefbc9ee2f4c67b26eecdfc76d1ac84cf4615a2f8ab2fc63e75c581eb0c2f"
+   },
+   "changed": [
+    "environment/Dockerfile",
+    "solution/solver/oracle_ctrl.py",
+    "tests/keyed_credit.py",
+    "tests/keyed_env.py"
+   ],
+   "development_kits": {
+    "rule": "The commissioning service's development kits (environment/commission_service/kits.json) are chosen like the hidden set, from their own candidates: candidate i (id T01 ...) is keyed_env.sample_kit(numpy.random.default_rng(8001 + i), id) with layout and noise seed 12001 + i, in order; the frozen reference runs each ONCE through the grader; the development kits are the first 16 it completes, in order (should fewer be kept, the next seeds follow). No development seed is a hidden candidate's, and no development kit has a hidden candidate's grooves.",
+    "seed0": 8001,
+    "layout_seed0": 12001,
+    "candidates": [
+     {
+      "i": 0,
+      "id": "T01",
+      "kit_seed": 8001,
+      "layout_seed": 12001
+     },
+     {
+      "i": 1,
+      "id": "T02",
+      "kit_seed": 8002,
+      "layout_seed": 12002
+     },
+     {
+      "i": 2,
+      "id": "T03",
+      "kit_seed": 8003,
+      "layout_seed": 12003
+     },
+     {
+      "i": 3,
+      "id": "T04",
+      "kit_seed": 8004,
+      "layout_seed": 12004
+     },
+     {
+      "i": 4,
+      "id": "T05",
+      "kit_seed": 8005,
+      "layout_seed": 12005
+     },
+     {
+      "i": 5,
+      "id": "T06",
+      "kit_seed": 8006,
+      "layout_seed": 12006
+     },
+     {
+      "i": 6,
+      "id": "T07",
+      "kit_seed": 8007,
+      "layout_seed": 12007
+     },
+     {
+      "i": 7,
+      "id": "T08",
+      "kit_seed": 8008,
+      "layout_seed": 12008
+     },
+     {
+      "i": 8,
+      "id": "T09",
+      "kit_seed": 8009,
+      "layout_seed": 12009
+     },
+     {
+      "i": 9,
+      "id": "T10",
+      "kit_seed": 8010,
+      "layout_seed": 12010
+     },
+     {
+      "i": 10,
+      "id": "T11",
+      "kit_seed": 8011,
+      "layout_seed": 12011
+     },
+     {
+      "i": 11,
+      "id": "T12",
+      "kit_seed": 8012,
+      "layout_seed": 12012
+     },
+     {
+      "i": 12,
+      "id": "T13",
+      "kit_seed": 8013,
+      "layout_seed": 12013
+     },
+     {
+      "i": 13,
+      "id": "T14",
+      "kit_seed": 8014,
+      "layout_seed": 12014
+     },
+     {
+      "i": 14,
+      "id": "T15",
+      "kit_seed": 8015,
+      "layout_seed": 12015
+     },
+     {
+      "i": 15,
+      "id": "T16",
+      "kit_seed": 8016,
+      "layout_seed": 12016
+     },
+     {
+      "i": 16,
+      "id": "T17",
+      "kit_seed": 8017,
+      "layout_seed": 12017
+     },
+     {
+      "i": 17,
+      "id": "T18",
+      "kit_seed": 8018,
+      "layout_seed": 12018
+     },
+     {
+      "i": 18,
+      "id": "T19",
+      "kit_seed": 8019,
+      "layout_seed": 12019
+     },
+     {
+      "i": 19,
+      "id": "T20",
+      "kit_seed": 8020,
+      "layout_seed": 12020
+     },
+     {
+      "i": 20,
+      "id": "T21",
+      "kit_seed": 8021,
+      "layout_seed": 12021
+     },
+     {
+      "i": 21,
+      "id": "T22",
+      "kit_seed": 8022,
+      "layout_seed": 12022
+     },
+     {
+      "i": 22,
+      "id": "T23",
+      "kit_seed": 8023,
+      "layout_seed": 12023
+     },
+     {
+      "i": 23,
+      "id": "T24",
+      "kit_seed": 8024,
+      "layout_seed": 12024
+     }
+    ]
+   },
+   "candidates": [
+    {
+     "i": 0,
+     "id": "E00",
+     "kit_seed": 1247762840126546890,
+     "layout_seed": 3219438523941064329
+    },
+    {
+     "i": 1,
+     "id": "E01",
+     "kit_seed": 4358236914087452911,
+     "layout_seed": 2866283348347636665
+    },
+    {
+     "i": 2,
+     "id": "E02",
+     "kit_seed": 7655813185659519165,
+     "layout_seed": 6941781397463167143
+    },
+    {
+     "i": 3,
+     "id": "E03",
+     "kit_seed": 8210539798122169537,
+     "layout_seed": 4700734441944012085
+    },
+    {
+     "i": 4,
+     "id": "E04",
+     "kit_seed": 3174703229521882157,
+     "layout_seed": 5343535173329151679
+    },
+    {
+     "i": 5,
+     "id": "E05",
+     "kit_seed": 2717694172906669301,
+     "layout_seed": 525849931691919963
+    },
+    {
+     "i": 6,
+     "id": "E06",
+     "kit_seed": 5841630432769299603,
+     "layout_seed": 7952947529699536201
+    },
+    {
+     "i": 7,
+     "id": "E07",
+     "kit_seed": 7541921671215539279,
+     "layout_seed": 5439332906115523434
+    },
+    {
+     "i": 8,
+     "id": "E08",
+     "kit_seed": 2379379562727474441,
+     "layout_seed": 6391430966845859915
+    },
+    {
+     "i": 9,
+     "id": "E09",
+     "kit_seed": 1928723514366685571,
+     "layout_seed": 5462413270538998948
+    },
+    {
+     "i": 10,
+     "id": "E10",
+     "kit_seed": 5050914240542310276,
+     "layout_seed": 6295526548403959845
+    },
+    {
+     "i": 11,
+     "id": "E11",
+     "kit_seed": 4721241267376032244,
+     "layout_seed": 678781474233984154
+    },
+    {
+     "i": 12,
+     "id": "E12",
+     "kit_seed": 3369134459750825292,
+     "layout_seed": 3254554702177718932
+    },
+    {
+     "i": 13,
+     "id": "E13",
+     "kit_seed": 3322478948799168439,
+     "layout_seed": 3004567081918741149
+    },
+    {
+     "i": 14,
+     "id": "E14",
+     "kit_seed": 4502885845909268490,
+     "layout_seed": 5798651712866855335
+    },
+    {
+     "i": 15,
+     "id": "E15",
+     "kit_seed": 3713518382296295865,
+     "layout_seed": 5540807344163245037
+    }
+   ]
   }
  ]
 }

@@ -9,18 +9,20 @@ SET_SIZE kept candidates in drawn order. Should fewer be kept, more candidates a
 run. Every drop is recorded with its reason; the hollowing check compares the kept kits' features with all
 candidates'.
 
-When a file the reference or the grader runs changes, the rule runs again on the same candidates, as an AMENDMENT
-(selection.json "amendments": what changed, the new sha256 of the frozen files, committed before any run on them;
-then its selection_run, hidden_set and anchor_verify). The latest amendment's set is the hidden set.
+When a file the reference or the grader runs changes, the rule runs again as an AMENDMENT (selection.json
+"amendments": what changed, the new sha256 of the frozen files, committed before any run on them; then its
+selection_run, hidden_set and anchor_verify): on the same candidates when the kits themselves are unchanged, on
+fresh os.urandom candidates of its own (`amend --fresh N`) when the change alters what a kit is. The latest
+amendment's set is the hidden set.
 
 The commissioning service's development kits (environment/commission_service/kits.json) are chosen by the same rule
-from their own pre-registered candidates (an amendment's "development_kits": kit seed 7001 + i, layout seed
-11001 + i, in order): the first DEV_SIZE the reference completes. They are disjoint from the hidden candidates.
+from their own pre-registered candidates (an amendment's "development_kits": kit seed seed0 + i, layout seed
+layout_seed0 + i, in order): the first DEV_SIZE the reference completes. They are disjoint from the hidden candidates.
 
     # once, before anything runs (host, standard library): the candidates and the frozen files' sha256
     python3 -B tests/review/select_set.py draw --n 16 --frozen-commit <sha>
     # an amendment, before anything runs on the changed files (host): its frozen sha256 and development candidates
-    python3 -B tests/review/select_set.py amend --what "<what changed>" --dev-n 24
+    python3 -B tests/review/select_set.py amend --what "<what changed>" --dev-n 24 [--fresh 16 --dev-seed0 8001]
     # inside the task image (it draws each kit with keyed_env.sample_kit): one tests/ copy per candidate
     docker run --rm --network none -v <task>/tests:/stage:ro -v <work>:/work --entrypoint /opt/venv/bin/python3 \\
         <image> -I -B /stage/review/select_set.py prepare --pool hidden --out /work      (or --pool dev)
@@ -56,8 +58,8 @@ EPISODES = os.path.join(TESTS, "ref", "episodes.json")
 KITS = os.path.join(TASK, "environment", "commission_service", "kits.json")
 SET_SIZE = 10
 DEV_SIZE = 16                    # the commissioning service's development kits
-DEV_KIT_SEED0 = 7001             # development candidate i: kit seed 7001 + i, layout seed 11001 + i
-DEV_LAYOUT_SEED0 = 11001
+DEV_KIT_SEED0 = 7001             # development candidate i of the first amendment: kit seed 7001 + i,
+DEV_LAYOUT_SEED0 = 11001         # layout seed 11001 + i (a later amendment names its own: --dev-seed0)
 FROZEN = ("solution/solve.sh", "solution/solver/oracle_ctrl.py", "solution/solver/oracle_main.py",
           "tests/keyed_env.py", "tests/keyed_credit.py", "tests/verify.py", "tests/grader_config.json",
           "tests/nonet_exec.py", "tests/test.sh", "tests/oracle_token.sha256",
@@ -100,7 +102,7 @@ def max_steps():
     """keyed_env.MAX_STEPS, read from the source (this tool's host commands import nothing of the task)."""
     with open(os.path.join(TESTS, "keyed_env.py")) as f:
         src = f.read()
-    return int(re.search(r"^NUTS = (\d+)", src, re.M).group(1)) * int(re.search(r"^CYCLE_STEPS = (\d+)", src, re.M).group(1))
+    return int(re.search(r"^MAX_STEPS = (\d+)", src, re.M).group(1))
 
 
 def latest(sel):
@@ -109,9 +111,11 @@ def latest(sel):
 
 
 def pool_candidates(sel, pool):
+    """The candidates in force: the development kits' of the latest amendment; for the hidden set the latest
+    amendment's own fresh ones if it drew any, else the selection's."""
     if pool == "dev":
         return latest(sel)["development_kits"]["candidates"]
-    return sel["candidates"]
+    return latest(sel).get("candidates") or sel["candidates"]
 
 
 def save_selection(sel):
@@ -125,12 +129,18 @@ def cmd_draw(a):
     sel = load_selection() if os.path.exists(SELECTION) else {}
     if sel.get("candidates") and not a.append:
         sys.exit("candidates already drawn; use --append to add a batch under the rule")
-    cands = list(sel.get("candidates", []))
+    own = bool(sel.get("amendments")) and "candidates" in sel["amendments"][-1]   # the latest amendment's own
+    cands = list(sel["amendments"][-1]["candidates"] if own else sel.get("candidates", []))
+    prefix = cands[0]["id"][0] if cands else "C"
     for _ in range(a.n):
         kit_seed = int.from_bytes(os.urandom(8), "little") >> 1          # 63-bit
         layout_seed = int.from_bytes(os.urandom(8), "little") >> 1
-        cands.append({"i": len(cands), "id": "C%02d" % len(cands), "kit_seed": kit_seed, "layout_seed": layout_seed})
-    sel["candidates"] = cands
+        cands.append({"i": len(cands), "id": "%s%02d" % (prefix, len(cands)), "kit_seed": kit_seed,
+                      "layout_seed": layout_seed})
+    if own:
+        sel["amendments"][-1]["candidates"] = cands
+    else:
+        sel["candidates"] = cands
     if not a.append:
         sel["frozen_commit"] = a.frozen_commit
         sel["frozen"] = frozen_hashes()
@@ -146,9 +156,18 @@ def cmd_amend(a):
     before = latest(sel)["frozen"]
     now = frozen_hashes()
     changed = sorted(k for k in set(before) | set(now) if before.get(k) != now.get(k))
-    dev = [{"i": i, "id": "D%02d" % (i + 1), "kit_seed": DEV_KIT_SEED0 + i, "layout_seed": DEV_LAYOUT_SEED0 + i}
+    seed0 = a.dev_seed0
+    layout0 = seed0 + (DEV_LAYOUT_SEED0 - DEV_KIT_SEED0)
+    dev = [{"i": i, "id": "%s%02d" % (a.dev_prefix, i + 1), "kit_seed": seed0 + i, "layout_seed": layout0 + i}
            for i in range(a.dev_n)]
-    hidden_seeds = {c["kit_seed"] for c in sel["candidates"]} | {c["layout_seed"] for c in sel["candidates"]}
+    fresh = []
+    for i in range(a.fresh):                                  # this amendment's own hidden candidates
+        fresh.append({"i": i, "id": "%s%02d" % (a.fresh_prefix, i),
+                      "kit_seed": int.from_bytes(os.urandom(8), "little") >> 1,
+                      "layout_seed": int.from_bytes(os.urandom(8), "little") >> 1})
+    every = list(sel["candidates"]) + [c for am in sel.get("amendments", []) for c in am.get("candidates", [])] + fresh
+    hidden_seeds = {c["kit_seed"] for c in every} | {c["layout_seed"] for c in every}
+    assert len(hidden_seeds) == 2 * len(every), "a seed was drawn twice"
     assert not hidden_seeds & ({d["kit_seed"] for d in dev} | {d["layout_seed"] for d in dev})
     if a.replace:
         last = sel["amendments"][-1]
@@ -160,36 +179,43 @@ def cmd_amend(a):
         "amended_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "what": a.what,
         "rule": ("Pre-registered before any candidate ran on the amended files: this amendment (what changed, the "
-                 "frozen files' sha256, the development candidates) was committed first. The selection's own rule runs "
-                 "again, unchanged, on the same %d candidates in the same order: the frozen reference runs each ONCE "
+                 "frozen files' sha256, the candidates, the development candidates) was committed first. The "
+                 "selection's own rule runs again, unchanged, on %s: the frozen reference runs each ONCE "
                  "through the grader itself (tests/review/regrade.sh, a fresh container of the amended task image, a "
                  "one-episode plan); a candidate is kept when the reference completes its kit (kit_complete 1, no "
                  "abort, no fault, no controller-budget cut), now within the amended episode length; the hidden set "
                  "is the first %d kept in drawn order; should fewer than %d be kept, 8 more candidates are drawn "
                  "from os.urandom, appended and run. The anchor is the reference's full verify of that set, which "
                  "must repeat every kept run (kit_complete, nuts assembled, steps)." % (
-                     len(sel["candidates"]), SET_SIZE, SET_SIZE)),
+                     ("%d fresh candidates of this amendment (kit and layout seeds from os.urandom, 63-bit, in the "
+                      "order listed under its `candidates`; the amendment changes what a kit is, so the earlier "
+                      "candidates' runs say nothing about the new kits)" % len(fresh)) if fresh else
+                     "the same %d candidates in the same order" % len(sel["candidates"]), SET_SIZE, SET_SIZE)),
         "frozen": now,
         "changed": changed,
         "development_kits": {
             "rule": ("The commissioning service's development kits (environment/commission_service/kits.json) are "
-                     "chosen like the hidden set, from their own candidates: candidate i (id D01 ...) is "
+                     "chosen like the hidden set, from their own candidates: candidate i (id %s01 ...) is "
                      "keyed_env.sample_kit(numpy.random.default_rng(%d + i), id) with layout and noise seed %d + i, "
                      "in order; the frozen reference runs each ONCE through the grader; the development kits are the "
                      "first %d it completes, in order (should fewer be kept, the next seeds follow). No development "
                      "seed is a hidden candidate's, and no development kit has a hidden candidate's grooves." % (
-                         DEV_KIT_SEED0, DEV_LAYOUT_SEED0, DEV_SIZE)),
+                         a.dev_prefix, seed0, layout0, DEV_SIZE)),
+            "seed0": seed0, "layout_seed0": layout0,
             "candidates": dev,
         },
     })
+    if fresh:
+        sel["amendments"][-1]["candidates"] = fresh
     save_selection(sel)
-    print("amendment %d pre-registered: %d frozen files changed (%s), %d development candidates" % (
-        len(sel["amendments"]), len(changed), ", ".join(changed), len(dev)))
+    print("amendment %d pre-registered: %d frozen files changed (%s), %d fresh candidates, %d development candidates" % (
+        len(sel["amendments"]), len(changed), ", ".join(changed), len(fresh), len(dev)))
 
 
 # ---------------------------------------------------------------------------------------------------------- prepare
-def kit_features(kit, layout):
-    """The hollowing check's features of one candidate: per kit, from its three nuts and its layout."""
+def kit_features(kit, layout, unit=None):
+    """The hollowing check's features of one candidate: per kit, from its three nuts, its layout and (with
+    tolerances) the actual values its episode draws."""
     import math
     nuts = kit["nuts"]
     turns = [abs(int(k)) for sp in nuts for k in sp["groove"]["turns"]]
@@ -198,7 +224,15 @@ def kit_features(kit, layout):
     base = (-0.56, 0.0)
     reach = max(math.hypot(x - base[0], y - base[1]) for (x, y, _yaw) in layout["pegs"] + layout["nuts"])
     gaps = [math.hypot(p[0] - q[0], p[1] - q[1]) for i, p in enumerate(layout["pegs"]) for q in layout["pegs"][i + 1:]]
-    return {"turn_sectors_mean": round(sum(turns) / len(turns), 3),
+    real = {}
+    if unit:
+        walls = [abs(float(w)) for n in unit["nuts"] for w in n["wall"]]
+        cams = [abs(float(v)) for c in unit["cameras"].values() for v in c["pos"]]
+        real = {"pad_friction": round(float(unit["pad_friction"]), 4),
+                "joint_friction_scale_mean": round(sum(unit["joint_friction"]) / 7.0, 4),
+                "wall_offset_abs_mean_deg": round(sum(walls) / len(walls), 4),
+                "camera_offset_abs_mean_mm": round(1000.0 * sum(cams) / len(cams), 4)}
+    return dict(real, **{"turn_sectors_mean": round(sum(turns) / len(turns), 3),
             "turns_of_4": sum(1 for t in turns if t == 4),
             "nuts_turning_one_way_twice": same,
             "net_turn_sectors_max": max(net),
@@ -207,7 +241,7 @@ def kit_features(kit, layout):
             "mass_mean": round(sum(float(sp["mass"]) for sp in nuts) / len(nuts), 4),
             "friction_mean": round(sum(float(sp["friction"]) for sp in nuts) / len(nuts), 4),
             "max_reach_m": round(reach, 4),
-            "min_peg_gap_m": round(min(gaps), 4)}
+            "min_peg_gap_m": round(min(gaps), 4)})
 
 
 def cmd_prepare(a):
@@ -223,6 +257,7 @@ def cmd_prepare(a):
         kit = E.sample_kit(np.random.default_rng(int(c["kit_seed"])), c["id"])
         seed = int(c["layout_seed"]) & (2 ** 64 - 1)
         layout = E.sample_layout(np.random.default_rng([seed & 0xFFFFFFFF, seed >> 32, 7]), E.NUTS)
+        unit = E.sample_unit(np.random.default_rng([seed & 0xFFFFFFFF, seed >> 32, 13]), E.NUTS)
         dst = os.path.join(a.out, "tests_%02d" % i)
         shutil.rmtree(dst, ignore_errors=True)
         shutil.copytree(TESTS, dst, ignore=shutil.ignore_patterns("__pycache__", "hidden", "review"))
@@ -230,7 +265,7 @@ def cmd_prepare(a):
         with open(os.path.join(dst, "ref", "episodes.json"), "w") as f:
             json.dump({"note": "selection candidate %s (one-episode plan)" % c["id"], "episodes": [ep]}, f, indent=1)
         with open(os.path.join(a.out, "cand_%02d.json" % i), "w") as f:
-            json.dump({"i": i, "episode": ep, "features": kit_features(kit, layout)}, f, indent=1)
+            json.dump({"i": i, "episode": ep, "features": kit_features(kit, layout, unit)}, f, indent=1)
         print("prepared candidate %d (%s)" % (i, c["id"]), flush=True)
 
 
@@ -450,6 +485,10 @@ def main():
     am = sub.add_parser("amend")
     am.add_argument("--what", required=True)
     am.add_argument("--dev-n", type=int, default=24)
+    am.add_argument("--dev-seed0", type=int, default=DEV_KIT_SEED0, help="kit seed of development candidate 0")
+    am.add_argument("--dev-prefix", default="D")
+    am.add_argument("--fresh", type=int, default=0, help="draw this many fresh hidden candidates for the amendment")
+    am.add_argument("--fresh-prefix", default="E")
     am.add_argument("--replace", action="store_true", help="replace the latest amendment (only before it has runs)")
     p = sub.add_parser("prepare")
     p.add_argument("--pool", choices=("hidden", "dev"), default="hidden")

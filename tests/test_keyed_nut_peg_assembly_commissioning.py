@@ -1,11 +1,13 @@
-"""keyed_nut_peg_assembly: the commissioning service, the data sheet and the takt.
+"""keyed_nut_peg_assembly: the commissioning service, the data sheet, the tolerances and the takt.
 
 The agent's sandbox holds no simulator it can read. It holds the cell's data sheet (environment/setup/payload/:
 datasheet.md, cell_data.py, the commissioning client and runner, the wire helper) and a commissioning service
 (environment/commission_service/) that runs the grader's own simulator (a byte copy of tests/keyed_env.py) on
 development kits, for a fixed number of episodes, under an account of its own. The service must run the graded
 episode's limits, on kits that are neither graded kits nor candidates of the graded set's selection, and never answer
-ground truth, a score or a completion verdict. The data sheet's numbers are the simulator's. The takt is 40 s per nut.
+ground truth, a score or a completion verdict. The data sheet's numbers are the simulator's, and so are the
+tolerances within which every real kit and the cell on the day differ from the drawing: each range the simulator
+draws from is stated in the data sheet. The takt is 100 s per kit.
 
 Standard library only (the host-side suite has no numpy or mujoco): the task's Python files are read as text or syntax
 trees, never imported.
@@ -29,16 +31,18 @@ INSTRUCTION = (TASK / "instruction.md").read_text()
 DATASHEET = (PAYLOAD / "datasheet.md").read_text()
 
 #: The constants the data sheet's module shares with the simulator: the same name, the same expression.
-SHARED = ("NUTS", "CYCLE_STEPS", "MAX_STEPS", "MAX_DPOS", "MAX_DROT", "TABLE_Z", "TABLE_HALF", "ROBOT_BASE",
+SHARED = ("NUTS", "MAX_STEPS", "MAX_DPOS", "MAX_DROT", "TABLE_Z", "TABLE_HALF", "ROBOT_BASE",
           "WORKSPACE_LO", "WORKSPACE_HI", "NSEC", "LAYER", "NLAYER", "R_HOLE", "R_GROOVE", "R_NUT", "NUT_H",
           "HANDLE_LEN", "HANDLE_W", "HANDLE_Z", "SHAFT_R", "PEG_H", "COLLAR", "COLLAR_H", "PIN_Z", "PIN_R", "PIN_W",
           "PIN_HH", "TURN_LAYERS", "RISERS", "PEG_REGION", "PEG_MIN_SPACING", "NUT_REGION", "NUT_PEG_MIN_DIST",
           "NUT_MIN_SPACING", "HANDLE_CLEAR", "NUT_YAW_CENTER", "NUT_YAW_SPREAD", "ENGAGE_XY", "GROOVE_TOP",
           "FORCE_ANGLE_TOL", "FORCE_Z_TOL", "FORCE_STEPS", "GRIP_KP", "RGB_NOISE", "WRENCH_NOISE", "WRENCH_BIAS",
           "INSTAB_ROBOT_QVEL", "INSTAB_NUT_VEL", "HOME_Q", "NULLSPACE_Q", "CAMERAS", "WRIST", "CAMERA_NAMES",
-          "OBS_KEYS", "NUT_COLOURS")
+          "OBS_KEYS", "NUT_COLOURS", "TOL", "NUT_FRICTION", "NUT_MASS", "PAD_FRICTION_MODEL", "PAD_TORSION_MODEL",
+          "PEG_FRICTION", "JOINT_FRICTION")
 #: The helpers it shares with the simulator: the same name, the same body.
-SHARED_FUNCTIONS = ("look_at", "camera_intrinsics", "fixed_camera_matrices", "wrap_angle", "groove_cells")
+SHARED_FUNCTIONS = ("look_at", "camera_intrinsics", "fixed_camera_matrices", "wrap_angle", "groove_cells",
+                    "wall_boundaries", "level_boundaries", "sample_unit")
 
 
 def assignments(path):
@@ -88,8 +92,9 @@ class CommissioningService(unittest.TestCase):
     def test_development_kits_are_the_pre_registered_ones(self):
         dev = LATEST["development_kits"]
         cands = {c["id"]: c for c in dev["candidates"]}
+        seed0, layout0 = dev.get("seed0", 7001), dev.get("layout_seed0", 11001)
         for c in dev["candidates"]:
-            self.assertEqual((c["kit_seed"], c["layout_seed"]), (7001 + c["i"], 11001 + c["i"]))
+            self.assertEqual((c["kit_seed"], c["layout_seed"]), (seed0 + c["i"], layout0 + c["i"]))
         names = [k["name"] for k in KITS["kits"]]
         for k in KITS["kits"]:
             self.assertEqual((k["kit_seed"], k["layout_seed"]), (cands[k["name"]]["kit_seed"], cands[k["name"]]["layout_seed"]))
@@ -102,7 +107,7 @@ class CommissioningService(unittest.TestCase):
             for r in runs:
                 if r["kept"]:
                     self.assertEqual((r["kit_complete"], r["nuts_assembled"], r["drop_reasons"]), (1, 3, []))
-                    self.assertLess(r["steps"], 1200)
+                    self.assertLess(r["steps"], 1000)
         else:                                        # pre-registered, not run yet: the first 16 candidates
             self.assertEqual(names, [c["id"] for c in dev["candidates"]][:16])
 
@@ -112,12 +117,11 @@ class CommissioningService(unittest.TestCase):
         self.assertEqual(KITS["image_charge_s"], GRADER["image_charge_s"])
         self.assertEqual(KITS["probe_rate"], GRADER["probe_rate"])
         self.assertGreaterEqual(KITS["silence_s"], GRADER["step_timeout_s"])
-        for text in (INSTRUCTION, DATASHEET):
+        for name, text in (("instruction.md", INSTRUCTION), ("datasheet.md", DATASHEET)):
             flat = " ".join(text.split())
-            self.assertIn("32 episodes", flat)
-            self.assertIn("16 development kits", flat)
-            self.assertIn("at most 2 at a time", flat)
-            self.assertIn("%d s without a request" % KITS["silence_s"], flat)
+            for words in ("32 episodes", "16 development kits", "at most 2 at a time",
+                          "%d s without a request" % KITS["silence_s"]):
+                self.assertTrue(words in flat, "%s does not say %r" % (name, words))
         runner = (PAYLOAD / "commission/run_kit.py").read_text()
         self.assertIn("CONTROLLER_BUDGET = %.1f" % GRADER["controller_budget_s"], runner)
         charges = GRADER["image_charge_s"]
@@ -134,7 +138,8 @@ class CommissioningService(unittest.TestCase):
         for forbidden in ("nut_state", "pin_in_wall", "on_peg", "peg_poses", "layout", "specs", "cells", "broken",
                           "force_count", "target_peg", "data", "model", "wrench_bias", "credit", "release_count",
                           "episode_score", "nuts_assembled", "progress", "assembled", "stage_now", "ground_truth",
-                          "depth_now", "_finger_touch"):
+                          "depth_now", "_finger_touch", "unit", "wall_rel", "levels", "pin_mid", "pin_height",
+                          "joint_friction", "wrench_drift"):
             self.assertNotIn(forbidden, used, "the commissioning service reads %s" % forbidden)
         for word in ("keyed_credit", "GradedNutEnv", "kit_complete", "_gt"):
             self.assertNotIn(word, src)
@@ -187,14 +192,53 @@ class AgentSide(unittest.TestCase):
     def test_takt(self):
         cell = (TASK / "tests/keyed_env.py").read_text()
         self.assertIn("\nNUTS = 3 ", cell)
-        self.assertIn("\nCYCLE_STEPS = 400 ", cell)
-        self.assertIn("\nMAX_STEPS = NUTS * CYCLE_STEPS ", cell)
-        for text in (INSTRUCTION, DATASHEET):
+        self.assertIn("\nMAX_STEPS = 1000 ", cell)
+        for name, text in (("instruction.md", INSTRUCTION), ("datasheet.md", DATASHEET)):
             flat = " ".join(text.split())
-            self.assertIn("1200 steps", flat)
-            self.assertIn("40 s per nut", flat)
-            self.assertNotIn("2400", flat)
-        self.assertIn("ends at 1200 steps", " ".join(INSTRUCTION.split()))
+            self.assertTrue("1000 steps" in flat and "100 s" in flat, "%s does not state the takt" % name)
+            self.assertFalse(re.search(r"\b(2400|1200)\b", flat), "%s still names an earlier takt" % name)
+        self.assertTrue("ends at 1000 steps" in " ".join(INSTRUCTION.split()), "the instruction's ending rule")
+
+    def test_every_tolerance_is_stated(self):
+        tree = ast.parse((TASK / "tests/keyed_env.py").read_text())
+        consts = {}
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                    and node.targets[0].id in ("TOL", "NUT_FRICTION", "NUT_MASS"):
+                consts[node.targets[0].id] = eval(compile(ast.Expression(node.value), "tol", "eval"), {"__builtins__": {}})
+        tol = consts["TOL"]
+        sheet = " ".join(DATASHEET[DATASHEET.index("## 11. Tolerances"):].split())
+        stated = {
+            "wall_deg": "+-%g degree" % tol["wall_deg"],
+            "level": "+-%g mm" % (tol["level"] * 1000),
+            "hole_r": "| 12.8 mm | +-%g mm" % (tol["hole_r"] * 1000),
+            "groove_r": "| 19 mm | +-%g mm" % (tol["groove_r"] * 1000),
+            "handle_deg": "+-%g degrees" % tol["handle_deg"],
+            "colour": "+-%g |" % tol["colour"],
+            "shaft_r": "| 11 mm | +-%g mm" % (tol["shaft_r"] * 1000),
+            "pin_r": "| 17.2 mm | +-%g mm" % (tol["pin_r"] * 1000),
+            "pin_w": "| 3 mm / 4 mm | +-%g mm each" % (2 * tol["pin_w"] * 1000),
+            "pin_hh": "| 3 mm / 4 mm | +-%g mm each" % (2 * tol["pin_hh"] * 1000),
+            "pin_z": "| 37.5 mm | +-%g mm" % (tol["pin_z"] * 1000),
+            "pad_friction": "%g to %g (the pads' torsional friction in proportion)" % tol["pad_friction"],
+            "joint_friction": "x %g to %g" % tol["joint_friction"],
+            "wrench_drift": "+-%g N and +-%g N m per minute" % (tol["wrench_drift"][0] * 60, tol["wrench_drift"][1] * 60),
+            "cam_fixed_pos": "| section 7 | +-%g mm / +-%g degrees" % (tol["cam_fixed_pos"] * 1000, tol["cam_fixed_rot_deg"]),
+            "cam_fixed_rot_deg": "| section 7 | +-%g mm / +-%g degrees" % (tol["cam_fixed_pos"] * 1000, tol["cam_fixed_rot_deg"]),
+            "cam_wrist_pos": "mount | +-%g mm / +-%g degrees" % (tol["cam_wrist_pos"] * 1000, tol["cam_wrist_rot_deg"]),
+            "cam_wrist_rot_deg": "mount | +-%g mm / +-%g degrees" % (tol["cam_wrist_pos"] * 1000, tol["cam_wrist_rot_deg"]),
+            "cam_focal": "+-%g %% / +-%g pixel" % (tol["cam_focal"] * 100, tol["cam_principal_px"]),
+            "cam_principal_px": "+-%g %% / +-%g pixel" % (tol["cam_focal"] * 100, tol["cam_principal_px"]),
+            "light": "+-%g %%" % (tol["light"] * 100),
+        }
+        self.assertEqual(sorted(stated), sorted(tol), "a tolerance the data sheet's check does not know")
+        for key, text in stated.items():
+            self.assertTrue(text in sheet, "the data sheet does not state the tolerance %s as %r" % (key, text))
+        self.assertTrue("%g to %g |" % consts["NUT_FRICTION"] in sheet, "the nuts' friction range")
+        self.assertTrue("%g to %g kg" % consts["NUT_MASS"] in sheet, "the nuts' mass range")
+        flat = " ".join(INSTRUCTION.split())
+        for words in ("section 11", "tolerances", "never told", "published camera calibration"):
+            self.assertTrue(words in flat, "the instruction does not say %r" % words)
 
     def test_instruction_names_only_what_the_agent_has(self):
         for name in ("datasheet.md", "cell_data.py", "commission/client.py", "commission/run_kit.py",

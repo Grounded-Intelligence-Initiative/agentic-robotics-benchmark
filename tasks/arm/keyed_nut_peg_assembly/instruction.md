@@ -15,7 +15,7 @@ all three nuts are assembled.
 
 You are the engineer who commissions the cell for this kit family. Deliver a controller that does
 the job from camera images, joint readings and the wrist force/torque sensor, within the cell's
-**takt time: 40 s per nut, 120 s (1200 control steps) for a kit**. You have **8 hours** of wall time
+**takt time: 100 s (1000 control steps) for a kit**. You have **8 hours** of wall time
 for the whole job (studying the data sheet, commissioning on the cell, building and testing the
 controller). Have your controller in `/home/user/submission/` well before the time is up. Your
 sandbox has 4 CPU cores and 12 GB of memory (processes that exceed it are killed), no GPU and no
@@ -28,12 +28,22 @@ through a service that answers what the cell gives a controller and nothing else
 "Commissioning"). The cell's simulator, its model files and its state are not readable from your
 account, and there is no rehearsal of the graded kits.
 
+**The data sheet is a drawing, and no real kit or cell is exactly its drawing.** Every episode,
+graded or commissioning, is a real kit on the cell as it is that day: each nut's groove walls,
+floors, hole and friction, each peg's shaft and pin, the gripper pads' friction, the arm joints'
+friction, the force/torque sensor's zero and its drift, each camera's mounting and intrinsics and
+the lamps' brightness have their own actual values within the tolerances the data sheet states
+(`datasheet.md`, section 11). The actual values are never told. The published camera calibration is
+the drawing's, so a position taken from an image alone is off by millimetres (the hole has about
+1.8 mm of radial clearance on the shaft); a model you build from the data sheet is the drawing's
+cell; the commissioning service is where you meet real ones.
+
 ## What is in your home directory
 
 | Path | What it is |
 |---|---|
-| `datasheet.md` | The cell's data sheet: frames and units, the pegs' and the nuts' drawing data (geometry, the groove family and how it is drawn, mass, friction, colours), how a kit is laid out and its tolerances, the robot and its controller (action format, tracking law, gripper), the sensors, the cameras with their calibration, the safety stops, the takt, and the commissioning service's wire. |
-| `cell_data.py` | The data sheet's numbers, the camera matrices and a few geometry helpers (plain Python and NumPy; it contains no simulator). Copy it into your submission if your controller uses it. |
+| `datasheet.md` | The cell's data sheet: frames and units, the pegs' and the nuts' drawing data (geometry, the groove family and how it is drawn, mass, friction, colours), how a kit is laid out, the robot and its controller (action format, tracking law, gripper), the sensors, the cameras with their published calibration, the safety stops, the takt, the commissioning service's wire, and the tolerances within which every real kit and the cell on the day differ from the drawing (section 11). |
+| `cell_data.py` | The data sheet's numbers, the tolerance table and a function that draws one set of real values within it, the camera matrices and a few geometry helpers (plain Python and NumPy; it contains no simulator). Copy it into your submission if your controller uses it. |
 | `commission/client.py` | The client of the commissioning service: start an episode on a development kit, send actions, get observations (`Episode`, `status`). |
 | `commission/run_kit.py` | Runs your controller over the grading wire in one commissioning episode, the way the grader runs it, and reports how the episode ended (see "Commissioning"). It does not judge the assembly. |
 | `helpers/wire_skeleton.py` | Optional boilerplate for the grading wire (READY / reset / act / close, repeated step indices). |
@@ -56,7 +66,7 @@ episodes run on the same four cores).
   The pegs are identical except for 1, 2 or 3 dark bands near the top of the shaft. Each episode
   draws the peg positions (centres with x in [-0.02, 0.15], y in [-0.21, 0.21], at least 0.13 m
   apart) and their yaws (uniform over the full circle, which turns the pin with the peg) anew.
-- **Nuts.** Each nut is a ring 45 mm tall (outer radius 28 mm) whose hole (inscribed radius 12.7 mm) fits over
+- **Nuts.** Each nut is a ring 45 mm tall (outer radius 28 mm) whose hole (inscribed radius 12.8 mm) fits over
   the shaft, with a handle bar (16 mm wide, from 25 to 41 mm above the nut's bottom face) reaching
   98 mm from the hole axis. The ring is 24 sectors (15 degrees each, counted counter-clockwise from
   the handle) by 9 layers (5 mm each). The groove is cut into the inner part of the hole wall (out
@@ -66,14 +76,15 @@ episodes run on the same four cores).
   into the hole at a steep angle, you see the far side of the wall below the top layer, where every
   cut cell is a recess about 6 mm deep, and the bottom face shows the entrances if you get to see
   it. Every nut's groove belongs to the same family, documented exactly in
-  `datasheet.md` (section 3): an entrance riser at the bottom, a first turn of 2 to 4 sectors either way, a
+  `datasheet.md` (section 3; a real nut has it within the tolerances of section 11): an entrance riser at the bottom, a first turn of 2 to 4 sectors either way, a
   riser, a second turn of 2 to 4 sectors either way and a last riser, all 2 sectors wide; turn
   channels may continue 1 to 3 sectors the other way into a dead end; and there may be up to two
   false entrances (risers as deep as the real one that lead nowhere). A channel is 30 degrees wide,
   but the solid cells beside it narrow the opening near the shaft: a nut resting on the pin drops
-  into a riser only while the riser is within about +-4 degrees of the pin. Resting on the pin, the
-  nut's bottom is 39.5 mm above the collar; it can come down to 24.5 mm in an entrance riser, to 9.5 mm
-  after the first turn and riser, and to the collar after the second. Each episode places the three
+  into a riser only while the riser is within about +-4 degrees of the pin (+-2.5 to +-5.5 on real
+  nuts). Resting on the pin, the nut's bottom is 39.5 mm above the collar; it can come down to
+  24.5 mm in an entrance riser, to 9.5 mm after the first turn and riser, and to the collar after the
+  second (each within about half a millimetre on real parts). Each episode places the three
   nuts flat on the table with their centres at x in [-0.24, -0.06], y in [-0.24, 0.24], at least
   0.12 m apart, handles clear of the other nuts, each with its yaw (direction of the handle) equal to
   its azimuth seen from the robot base plus 135 degrees plus a uniform offset within +-60 degrees.
@@ -81,12 +92,13 @@ episodes run on the same four cores).
   own weight; the hand is wide enough to touch a neighbouring peg if it passes close to it.
 - Every graded episode has its own kit, drawn from the family (`datasheet.md`, sections 3 and 4)
   with a seed you do not know: three nuts of three different colours (blue, green, orange, pink,
-  purple, red, teal or yellow), each with its own groove, mass (0.05 to 0.15 kg) and surface friction
-  coefficient (0.6 to 1.0), and a random assignment of the nuts to the pegs. (The graded kits are
-  draws that a reference controller given the grooves completed with this robot within the takt; it
-  needs 630 to 850 steps for a kit.) Everything else (robot, controller, action and observation
-  formats, cameras, sensor noise, physics, peg geometry, layout tolerances, the safety stops, the
-  takt) is the same as on the commissioning service's cell.
+  purple, red, teal or yellow), each with its own groove, mass (0.05 to 0.15 kg) and friction against
+  a peg (0.3 to 0.7), and a random assignment of the nuts to the pegs; and its own actual values
+  within the tolerances, for the kit and for the cell. (The graded kits are draws that a reference
+  controller given the real grooves completed with this robot within the takt; it needs
+  about 580 to 830 steps for a kit.) Everything else (robot, controller, action and observation formats,
+  cameras, sensor noise, physics, layout rules, tolerances, the safety stops, the takt) is the same
+  as on the commissioning service's cell.
 - The **work order** is in every observation as `order`: a list of `{"colour": name, "peg_bands":
   1 | 2 | 3}`, one entry per nut, each peg used once. You may assemble the nuts in any sequence.
 
@@ -94,21 +106,22 @@ episodes run on the same four cores).
 
 Observation (a JSON object): `t` (step index), `order`, `q`, `dq` (7 arm joints), `ee_pos` (gripper site, world frame, m), `ee_quat`
 (w, x, y, z), `gripper` (finger opening, m), `wrench` (force N and torque N m at the wrist sensor,
-world frame, with noise and a fixed per-episode bias), `T_world_wrist` (4 x 4 pose of the wrist
+world frame, with noise, a per-episode zero offset and a slow drift of that zero), `T_world_wrist` (4 x 4 pose of the wrist
 camera, OpenCV convention), and the RGB images `left`, `right` (fixed cameras, 320 x 240) and
 `wrist` (256 x 192), each `{"dtype": "uint8", "shape": [H, W, 3], "b64": <raw row-major bytes,
 base64>}`. An image is empty (shape `[0, 0, 3]`) unless the previous action asked for it; the
-first observation of an episode carries all three. Camera intrinsics and the fixed cameras' poses:
-`datasheet.md` (section 7) and `cell_data.py` (`fixed_camera_matrices`, `WRIST`); the principal point
-is at (W/2, H/2), so the centre of pixel (u, v) is at (u + 0.5, v + 0.5). There is no depth image and
-no object state of any kind.
+first observation of an episode carries all three. The published camera intrinsics and fixed-camera
+poses: `datasheet.md` (section 7) and `cell_data.py` (`fixed_camera_matrices`, `WRIST`); the
+principal point is drawn at (W/2, H/2), so the centre of pixel (u, v) is at (u + 0.5, v + 0.5). The
+real cameras are within their tolerances of that, and `T_world_wrist` is the hand's pose with the
+drawn mount. There is no depth image and no object state of any kind.
 
 Action: a list of 8 numbers `[dx, dy, dz, drx, dry, drz, grip, cams]` at 10 Hz: a gripper-site
 displacement (world frame, clipped to 0.02 m), a world-frame rotation vector (clipped to 0.15
 rad), the gripper command (-1 open ... +1 closed; the finger force is capped at 20 N) and a camera
 bit mask for the next observation (1 = left, 2 = right, 4 = wrist). How the arm tracks an action:
-`datasheet.md` (section 5). An episode lasts at most **1200 steps** (120 s simulated): the takt time
-for a kit, 40 s per nut.
+`datasheet.md` (section 5). An episode lasts at most **1000 steps** (100 s simulated): the takt time
+for a kit.
 
 ## Deliverable and grading
 
@@ -160,10 +173,10 @@ nut counts as **assembled** when it sits on **its** peg's collar (its bottom wit
 top, tilt below 5 degrees) for 10 consecutive steps with the fingers open at least 60 mm and not
 touching it, and it still sits there at the end of the episode. A nut on the wrong peg, left partway
 down its groove or still held is not assembled. The groove walls are solid: forcing a pin through
-them (its centre more than 5 degrees sideways or 1.5 mm up or down inside a solid part of the wall,
-for 3 consecutive steps, while the nut is on its peg) ruins the nut and ends the episode. A kit is
-**complete** when all three nuts are assembled; the episode ends at 1200 steps (the takt) or as soon
-as the kit is complete: a kit that is not complete when the takt runs out scores 0. Your result is
+them (its centre more than 5 degrees sideways or 1.5 mm up or down inside a solid part of the real
+nut's wall, for 3 consecutive steps, while the nut is on its peg) ruins the nut and ends the episode.
+A kit is **complete** when all three nuts are assembled; the episode ends at 1000 steps (the takt) or
+as soon as the kit is complete: a kit that is not complete when the takt runs out scores 0. Your result is
 the **fraction of the 10 kits completed**. (The grader also records how many nuts each kit got
 assembled and how far each nut got, for diagnosis only; they do not count.) An episode in which the
 controller crashes, answers late or malformed, or makes the simulation unstable (any arm joint
@@ -190,15 +203,16 @@ commissioning service in your sandbox runs the cell on 16 development kits (`dat
 10).
 
 * **What it is.** The cell of the graded episodes (the same robot and controller, sensors, cameras,
-  kit family, layout tolerances, safety stops, takt and controller budget) behind a socket:
+  kit family, layout rules, tolerances, safety stops, takt and controller budget) behind a socket:
   `reset(kit)` lays development kit 1 to 16 out and answers the first observation, `step(action)`
   applies an action and answers the next one, `close()` ends the episode. The development kits are
   draws from the kit family that the reference controller completed within the takt, like the
-  graded kits; each has its own layout, and a kit's episode starts the same way every time.
+  graded kits. Each is a real kit: it has its own layout, its own actual values within the
+  tolerances and its own state of the cell, and its episode starts the same way every time.
 * **What it is not.** A simulator you can read or query, a rehearsal of the graded kits or a grader:
   no development kit is a graded kit, and the service answers no ground truth (no nut or peg pose,
   no groove), no score, no completion verdict and no debrief. It reports only how an episode ended:
-  all 1200 steps run, a safety stop (with the colour of the ruined nut, or the instability), the
+  all 1000 steps run, a safety stop (with the colour of the ruined nut, or the instability), the
   controller budget used up, 120 s without a request, or your `close`. Because it does not judge
   completion, an episode does not end when the kit is complete. How an episode went, you judge from
   what your program saw and recorded and from the cameras (`close(images=True)` returns the three

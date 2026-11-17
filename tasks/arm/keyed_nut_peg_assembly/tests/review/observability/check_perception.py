@@ -41,20 +41,29 @@ def rotvec(Rerr):
     return v * th / (2 * math.sin(th)) if th < math.pi - 1e-6 else v
 
 
-def close_up(env, obs, xy, cam_off, cam_dz, steps=45):
-    """Move the wrist camera to 0.24 m above `xy` with plain actions, then return the wrist image and its pose."""
-    for k in range(steps):
+def close_up(env, obs, xy, cam_off, cam_dz, steps=45, turn=0.0):
+    """Move the wrist camera to 0.24 m above `xy` with plain actions (turning the hand by `turn` rad about the
+    vertical on the way), then return the wrist image and its pose."""
+    R = E.mat_from_quat(obs["ee_quat"])
+    left = float(turn)                       # the turn still to make
+    for k in range(steps + int(abs(turn) / 0.12)):
         R = E.mat_from_quat(obs["ee_quat"])
         ee = np.asarray(obs["ee_pos"], float)
         off = R[:2, :2] @ cam_off
         tgt = np.array([xy[0] - off[0], xy[1] - off[1], E.TABLE_Z + 0.24 - cam_dz])
         yaw = math.atan2(R[1, 0], R[0, 0])
+        step = max(-0.12, min(0.12, left))
         dp = tgt - ee
         n = np.linalg.norm(dp)
         dp = dp * (0.02 / n) if n > 0.02 else dp
-        arrived = n < 0.004 and k > 2
-        a = list(dp) + list(rotvec(down_rot(yaw) @ R.T)) + [-1.0, 4 if arrived else 0]
+        arrived = n < 0.004 and k > 2 and abs(left) < 1e-9
+        a = list(dp) + list(rotvec(down_rot(yaw + step) @ R.T)) + [-1.0, 4 if arrived else 0]
+        yaw_before = yaw
         obs, _done, _info = env.step(a)
+        R2 = E.mat_from_quat(obs["ee_quat"])
+        left -= E.wrap_angle(math.atan2(R2[1, 0], R2[0, 0]) - yaw_before)     # what the hand really turned
+        if abs(left) < 0.01:
+            left = 0.0
         if arrived:
             break
     if obs["wrist"].shape[0] == 0:
@@ -75,18 +84,50 @@ def run_kit(k):
     cam_dz = Tw[2, 3] - ee0[2]
     out = {"kit": k, "layout_seed": k + 4000, "pegs": [], "nuts": []}
     pegs = P.find_pegs(obs["wrist"], Kw, Tw, exclude_rows_from=140)
+    first = dict(obs)                        # the episode's first observation (its three free images)
+    e_hand = None                            # the wrist camera's apparent offset in the hand frame, once measured
     for j, (px, py, _yaw) in enumerate(env.peg_poses):
         d = [math.hypot(p[0] - px, p[1] - py) for p in pegs]
         est = pegs[int(np.argmin(d))] if d else None
         res = []
         for cam in ("left", "right"):
             Kc, Tc = P.fixed_camera(cam)
-            res.append(P.count_bands(obs[cam], Kc, Tc, est if est is not None else (px, py)))
+            res.append(P.count_bands(first[cam], Kc, Tc, est if est is not None else (px, py)))
         good = [r for r in res if r[0] is not None]
         bands = max(good, key=lambda r: r[1])[0] if good else None
-        out["pegs"].append({"bands": j + 1, "found": est is not None, "err_mm": round(1000 * min(d), 2) if d else None,
-                            "bands_seen": bands, "bands_left": res[0][0], "bands_right": res[1][0]})
-    imgs = {"left": obs["left"], "right": obs["right"]}
+        rec = {"bands": j + 1, "found": est is not None, "err_mm": round(1000 * min(d), 2) if d else None,
+               "bands_seen": bands, "bands_left": res[0][0], "bands_right": res[1][0],
+               "closeup_err_mm": None, "two_view_err_mm": None, "two_view_steps": None, "corrected_err_mm": None}
+        if est is not None:
+            # two wrist close-ups of the shaft top, the hand turned half a turn between them: the camera's mounting
+            # and principal-point errors move the two estimates in opposite directions, so their mean is free of them
+            t0 = int(obs["t"])
+            obs, img, Tc = close_up(env, obs, est, cam_off, cam_dz)
+            a = P.refine_peg_top(img, Kw, Tc, est)
+            Ra = E.mat_from_quat(obs["ee_quat"])
+            yaw_a = math.atan2(Ra[1, 0], Ra[0, 0])
+            if a is not None and e_hand is not None:
+                # one close-up, corrected by the offset measured once on an earlier peg of this episode
+                ca, sa = math.cos(yaw_a), math.sin(yaw_a)
+                fixed = np.asarray(a) - np.array([ca * e_hand[0] - sa * e_hand[1], sa * e_hand[0] + ca * e_hand[1]])
+                rec["corrected_err_mm"] = round(1000 * math.hypot(fixed[0] - px, fixed[1] - py), 2)
+            half = math.pi if float(obs["q"][6]) > 0 else -math.pi      # away from joint 7's nearer limit
+            t1 = int(obs["t"])
+            obs, img, Tc = close_up(env, obs, a if a is not None else est, cam_off, cam_dz, turn=half)
+            b = P.refine_peg_top(img, Kw, Tc, a if a is not None else est)
+            if a is not None:
+                rec["closeup_err_mm"] = round(1000 * math.hypot(a[0] - px, a[1] - py), 2)
+            if a is not None and b is not None:
+                mid = (np.asarray(a) + np.asarray(b)) / 2.0
+                rec["two_view_err_mm"] = round(1000 * math.hypot(mid[0] - px, mid[1] - py), 2)
+                rec["two_view_steps"] = int(obs["t"]) - t1
+                if e_hand is None:
+                    off = np.asarray(a) - mid                # view A's apparent offset, turned into the hand frame
+                    ca, sa = math.cos(-yaw_a), math.sin(-yaw_a)
+                    e_hand = np.array([ca * off[0] - sa * off[1], sa * off[0] + ca * off[1]])
+            del t0
+        out["pegs"].append(rec)
+    imgs = {"left": first["left"], "right": first["right"]}
     coarse = {c: P.coarse_nut(imgs, c, cols) for c in cols}
     for i, col in enumerate(cols):
         p, R = env.nut_state(i)
@@ -118,8 +159,15 @@ def main():
     ye = [abs(n["yaw_err_deg"]) for n in nuts if ok(n["yaw_err_deg"])]
     ce = [n["coarse_err_mm"] for n in nuts if ok(n["coarse_err_mm"])]
     pct = lambda v: [round(float(x), 2) for x in np.percentile(v, [50, 90, 100])] if v else None  # noqa: E731
+    cu = [p["closeup_err_mm"] for p in pegs if ok(p["closeup_err_mm"])]
+    tv = [p["two_view_err_mm"] for p in pegs if ok(p["two_view_err_mm"])]
+    ts = [p["two_view_steps"] for p in pegs if ok(p["two_view_steps"])]
+    co = [p["corrected_err_mm"] for p in pegs if ok(p["corrected_err_mm"])]
     summary = {"kits": len(kits),
                "pegs": len(pegs), "pegs_found": sum(1 for p in pegs if p["found"]), "peg_err_mm_p50_p90_max": pct(pe),
+               "peg_closeup_err_mm_p50_p90_max": pct(cu), "peg_two_view_n": len(tv),
+               "peg_two_view_err_mm_p50_p90_max": pct(tv), "peg_two_view_steps_p50_max": [float(np.median(ts)), float(max(ts))] if ts else None,
+               "peg_corrected_n": len(co), "peg_corrected_err_mm_p50_p90_max": pct(co),
                "bands_right": sum(1 for p in pegs if p["bands_seen"] == p["bands"]),
                "bands_wrong": sum(1 for p in pegs if p["bands_seen"] not in (None, p["bands"])),
                "bands_undecided": sum(1 for p in pegs if p["bands_seen"] is None),

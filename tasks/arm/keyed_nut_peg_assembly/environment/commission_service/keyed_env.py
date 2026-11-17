@@ -43,11 +43,11 @@ local +x side. The pegs look alike except for 1, 2 or 3 dark bands near the shaf
 episode draws the peg positions and yaws anew.
 
 The nut: a ring 45 mm tall (outer radius 28 mm, a 24-sided polygon) whose hole (inscribed radius
-12.7 mm) fits over the shaft, with a handle bar (16 mm wide, 16 mm tall, from 25 to 41 mm above the
+12.8 mm) fits over the shaft, with a handle bar (16 mm wide, 16 mm tall, from 25 to 41 mm above the
 nut's bottom face) reaching 98 mm from the hole axis along the nut's local +x axis. The ring is
 built from 24 sectors (15 degrees each; sector s spans [15 s, 15 (s + 1)] degrees counter-clockwise
 from the handle) x 9 layers (5 mm each, layer 0 at the bottom). In each cell the inner part of the
-wall (radius 12.7 to 19 mm) is either solid or cut away; the cut cells form a GROOVE in the hole
+wall (radius 12.8 to 19 mm) is either solid or cut away; the cut cells form a GROOVE in the hole
 wall, through which the pin must travel for the nut to come down. The top layer is always solid,
 so the outside of a nut does not show its groove, but the groove is real geometry and can be seen
 where the hole is open to view: looking down into the hole at a steep angle shows the far side of
@@ -88,9 +88,22 @@ Safety stops (they end the episode, in the commissioning service as in the grade
     wall, more than FORCE_ANGLE_TOL = 5 degrees sideways or FORCE_Z_TOL = 1.5 mm up or down from
     every cut cell, for FORCE_STEPS = 3 consecutive steps (`pin_in_wall`); the groove walls are solid,
     so this only happens when the pin is forced through one. `info["ruined"]` lists the ruined nuts.
+    It is judged on the real nut and the real pin (below).
 With `early_end=False` (a development option) a ruined nut is recorded but the episode goes on.
+
+Tolerances: the real kit and the cell on the day
+------------------------------------------------
+Everything above is the DRAWING. Every episode (`reset`) is a real kit on the cell as it is that day:
+`sample_unit` draws, from the episode's seed, each nut's own sector and layer boundaries, hole and groove
+radii, handle direction and colour shade, each peg's own shaft and pin, the finger pads' friction, each arm
+joint's friction (JOINT_FRICTION, which the tracking law does not compensate), the wrench zero's drift, each
+camera's real mount and intrinsics (the published calibration and `T_world_wrist` stay the drawing's) and the
+lamps' brightness, each uniformly within its range in TOL. The observations never carry these values; the data
+sheet states the ranges. `NutEnv(..., tolerances=False)` builds the drawing's kit on an ideal cell (a
+maintainer's check: with it the simulation is the one before the tolerances were introduced).
 """
 
+import bisect
 import json
 import math
 import os
@@ -106,8 +119,7 @@ TIMESTEP = 0.002
 SUBSTEPS = 50                    # -> 10 Hz control
 CONTROL_DT = TIMESTEP * SUBSTEPS
 NUTS = 3                         # nuts in a kit (one per peg)
-CYCLE_STEPS = 400                # takt time per nut: 40 s simulated
-MAX_STEPS = NUTS * CYCLE_STEPS   # control steps per episode (one kit, 120 s simulated)
+MAX_STEPS = 1000                 # control steps per episode: the takt time for a kit, 100 s simulated
 MAX_DPOS = 0.02
 MAX_DROT = 0.15
 TABLE_Z = 0.80
@@ -120,7 +132,7 @@ WORKSPACE_HI = np.array([0.45, 0.45, TABLE_Z + 0.55])
 NSEC = 24             # angular sectors of the nut ring (15 degrees each)
 LAYER = 0.005         # layer height of the nut ring
 NLAYER = 9            # nut height 45 mm
-R_HOLE = 0.0128       # hole radius (inscribed 12.7 mm on the 24-gon; shaft 11 mm)
+R_HOLE = 0.0128       # hole radius: the flats of the 24-sided hole from the axis (shaft 11 mm)
 R_GROOVE = 0.019      # groove floor radius
 R_NUT = 0.028         # nut outer radius
 NUT_H = NLAYER * LAYER
@@ -155,6 +167,47 @@ GROOVE_TOP = 0.0395          # nut bottom above the collar when it rests on the 
 FORCE_ANGLE_TOL = 5.0        # deg: pin centre this far inside a solid wall cell (sideways) breaks the nut
 FORCE_Z_TOL = 0.0015         # m: ... or this far (up or down)
 FORCE_STEPS = 3              # consecutive control steps
+
+# Tolerances: what a real kit and the cell on the day differ in from the drawing. Every value is drawn uniformly
+# within its range, independently, per nut, per peg and per episode (`sample_unit`); where each number comes from:
+# tests/review/tolerances.md. A range (lo, hi) is absolute; a single number t means nominal - t .. nominal + t.
+TOL = {
+    # every nut
+    "wall_deg": 1.0,            # each of the 24 sector boundaries of the hole wall (the channel walls)
+    "level": 0.0002,            # each of the 8 layer boundaries inside the wall (the channel floors and ceilings)
+    "hole_r": 0.0001,           # hole flats from the axis
+    "groove_r": 0.0002,         # groove floor radius
+    "handle_deg": 0.5,          # the handle's direction against the wall's sector grid
+    "colour": 0.04,             # each RGB component of the nut's colour
+    # every peg
+    "shaft_r": 0.00005,
+    "pin_r": 0.0002,            # pin tip radius
+    "pin_w": 0.00005,           # pin half width
+    "pin_hh": 0.00005,          # pin half height
+    "pin_z": 0.0003,            # pin centre above the collar top
+    # the cell on the day (every episode)
+    "pad_friction": (0.6, 1.2),             # sliding friction of the finger pads on a nut (the robot model says 2)
+    "joint_friction": (0.6, 1.4),           # scale of each arm joint's friction curve (JOINT_FRICTION)
+    "wrench_drift": (0.3 / 60.0, 0.012 / 60.0),   # zero drift of the wrench: N per s, N m per s, per axis
+    "cam_fixed_pos": 0.002,     # fixed cameras: position, per axis
+    "cam_fixed_rot_deg": 0.2,   # fixed cameras: orientation, about each axis
+    "cam_wrist_pos": 0.0015,    # wrist camera on the hand: position, per axis
+    "cam_wrist_rot_deg": 0.3,   # wrist camera on the hand: orientation, about each axis
+    "cam_focal": 0.005,         # focal length, relative, every camera
+    "cam_principal_px": 1.0,    # principal point, pixels per axis, every camera
+    "light": 0.15,              # brightness of the lamps, relative
+}
+NUT_FRICTION = (0.3, 0.7)    # sliding friction between a nut and a peg (the nut spec's `friction`)
+NUT_MASS = (0.05, 0.15)      # kg
+PAD_FRICTION_MODEL = 2.0     # the robot model's pad friction, which TOL["pad_friction"] replaces
+PAD_TORSION_MODEL = 0.05     # ... and its torsional friction (m), scaled with the pad friction
+PEG_FRICTION = 0.1           # the pegs' own coefficient: below every nut's, so that a nut-peg pair has the nut's
+# The arm joints' friction torque (N m) at joint speed w (rad/s): phi1 / (1 + exp(-phi2 (w + phi3))) -
+# phi1 / (1 + exp(-phi2 phi3)), the curve identified on the Franka Emika Panda (Gaz et al., IEEE RA-L 2019,
+# supplementary Table I). The cell's tracking law does not compensate it.
+JOINT_FRICTION = ((0.54615, 0.87224, 0.64068, 1.2794, 0.83904, 0.30301, 0.56489),
+                  (5.1181, 9.0657, 10.136, 5.5903, 8.3469, 17.133, 10.336),
+                  (0.039533, 0.025882, -0.04607, 0.036194, 0.026226, -0.021047, 0.0035526))
 
 GRIP_KP = 3000.0             # finger position gain (N/m); the finger force is capped at 20 N
 RGB_NOISE = 2.0              # 8-bit sigma
@@ -343,47 +396,148 @@ def _box(x0, x1, y0, y1, z0, z1, attrs):
         (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, (x1 - x0) / 2, (y1 - y0) / 2, (z1 - z0) / 2, attrs)
 
 
-def nut_body_xml(spec):
+def wall_boundaries(u=None):
+    """Angles (degrees, counter-clockwise from the sector grid's zero) of the NSEC sector boundaries of a nut's hole
+    wall: nominally 15 s; a real nut's are each off by its `wall` tolerance. Sector s lies between boundary s and
+    boundary s + 1 (boundary NSEC is boundary 0 plus 360)."""
+    d = 360.0 / NSEC
+    off = u["wall"] if u else [0.0] * NSEC
+    return [d * k + float(off[k]) for k in range(NSEC)]
+
+
+def level_boundaries(u=None):
+    """Heights (m above the nut's bottom face) of the NLAYER + 1 layer boundaries of a nut's hole wall: nominally
+    LAYER * l; a real nut's NLAYER - 1 inner ones are each off by its `level` tolerance."""
+    off = u["level"] if u else [0.0] * (NLAYER - 1)
+    return [0.0] + [LAYER * (k + 1) + float(off[k]) for k in range(NLAYER - 1)] + [NUT_H]
+
+
+def nut_body_xml(spec, u=None):
     """The nut as an MJCF body (origin: hole axis on the bottom face; handle along local +x). The ring is
     NSEC x NLAYER cells, each an inner block (R_HOLE..R_GROOVE) and an outer block (R_GROOVE..R_NUT);
-    groove cells have no inner block."""
+    groove cells have no inner block. `u` (a nut of `sample_unit`) makes it a real nut: the inner blocks stand on
+    the nut's own sector and layer boundaries, the hole and the groove floor have their own radii, the handle its
+    own direction, the colour its own shade. Without `u` it is the drawing's nut."""
     cells = groove_cells(spec["groove"])
-    rgba = " ".join("{:.3f}".format(float(c)) for c in spec["rgba"])
+    rgb = [float(c) for c in spec["rgba"][:3]]
+    if u:
+        rgb = [min(1.0, max(0.0, c + float(dc))) for c, dc in zip(rgb, u["rgb"])]
+    rgba = " ".join("{:.3f}".format(c) for c in rgb + [1.0])
     attrs = 'rgba="{}" condim="4" solref="0.002 1" friction="{:.4f} 0.01 0.0001"'.format(rgba, float(spec["friction"]))
     da = 2 * math.pi / NSEC
+    r_hole = R_HOLE + (float(u["hole_r"]) if u else 0.0)
+    r_groove = R_GROOVE + (float(u["groove_r"]) if u else 0.0)
+    wb = wall_boundaries(u)
+    wb.append(wb[0] + 360.0)
+    zb = level_boundaries(u)
+    box = '<geom type="box" pos="{:.6f} {:.6f} {:.6f}" quat="{:.6f} 0 0 {:.6f}" size="{:.6f} {:.6f} {:.6f}" {}/>'
     g = []
     for sec in range(NSEC):
-        a = (sec + 0.5) * da
-        c, sn = math.cos(a), math.sin(a)
-        quat = "{:.6f} 0 0 {:.6f}".format(math.cos(a / 2), math.sin(a / 2))
+        a = (sec + 0.5) * da                                   # the outer block stands on the drawing's sector
+        ai = math.radians((wb[sec] + wb[sec + 1]) / 2.0) if u else a   # the inner block on the nut's own
+        wi = math.radians(wb[sec + 1] - wb[sec]) if u else da
         for lay in range(NLAYER):
-            z = (lay + 0.5) * LAYER
-            for (r0, r1, inner) in ((R_HOLE, R_GROOVE, True), (R_GROOVE, R_NUT, False)):
+            for (r0, r1, inner) in ((r_hole, r_groove, True), (r_groove, R_NUT, False)):
                 if inner and (sec, lay) in cells:
                     continue
                 rc = (r0 + r1) / 2
-                ht = r1 * math.tan(da / 2) + 0.0002
-                g.append('<geom type="box" pos="{:.6f} {:.6f} {:.6f}" quat="{}" size="{:.6f} {:.6f} {:.6f}" {}/>'.format(
-                    rc * c, rc * sn, z, quat, (r1 - r0) / 2, ht, LAYER / 2, attrs))
-    g.append(_box(R_NUT - 0.002, R_NUT + HANDLE_LEN, -HANDLE_W, HANDLE_W, HANDLE_Z[0], HANDLE_Z[1], attrs))
+                if inner:
+                    ang, ht = ai, r1 * math.tan(wi / 2) + 0.0002
+                    z0, z1 = (zb[lay], zb[lay + 1]) if u else (lay * LAYER, (lay + 1) * LAYER)
+                else:
+                    ang, ht = a, r1 * math.tan(da / 2) + 0.0002
+                    z0, z1 = lay * LAYER, (lay + 1) * LAYER
+                g.append(box.format(rc * math.cos(ang), rc * math.sin(ang), (z0 + z1) / 2, math.cos(ang / 2),
+                                    math.sin(ang / 2), (r1 - r0) / 2, ht, (z1 - z0) / 2, attrs))
+    hd = math.radians(float(u["handle"])) if u else 0.0       # the handle's direction against the sector grid
+    hx = (R_NUT - 0.002 + R_NUT + HANDLE_LEN) / 2
+    g.append(box.format(hx * math.cos(hd), hx * math.sin(hd), (HANDLE_Z[0] + HANDLE_Z[1]) / 2, math.cos(hd / 2),
+                        math.sin(hd / 2), (HANDLE_LEN + 0.002) / 2, HANDLE_W, (HANDLE_Z[1] - HANDLE_Z[0]) / 2, attrs))
     m = float(spec["mass"])
     return ('<body name="nut"><freejoint name="nut_free"/>'
             '<inertial pos="0.015 0 0.018" mass="{m:.5f}" diaginertia="{a:.3e} {b:.3e} {c:.3e}"/>{g}</body>').format(
         m=m, a=m * 6.0e-4, b=m * 9.0e-4, c=m * 1.1e-3, g="".join(g))
 
 
-def peg_body_xml(i, bands):
-    shaft = 'rgba="0.62 0.64 0.67 1"'
-    g = _box(-COLLAR, COLLAR, -COLLAR, COLLAR, 0, COLLAR_H, 'rgba="0.30 0.31 0.34 1"')
-    g += '<geom type="cylinder" pos="0 0 {:.4f}" size="{:.4f} {:.4f}" {}/>'.format(
-        COLLAR_H + PEG_H / 2, SHAFT_R, PEG_H / 2, shaft)
-    g += _box(SHAFT_R - 0.0005, PIN_R, -PIN_W, PIN_W, COLLAR_H + PIN_Z - PIN_HH, COLLAR_H + PIN_Z + PIN_HH, shaft)
+def peg_body_xml(i, bands, u=None):
+    """Peg i (i + 1 bands). `u` (a peg of `sample_unit`) makes it a real peg: its own shaft radius and pin, and the
+    pegs' own friction coefficient (below every nut's, so that a nut on a peg slides with the nut's coefficient)."""
+    shaft_r = SHAFT_R + (float(u["shaft_r"]) if u else 0.0)
+    pin_r = PIN_R + (float(u["pin_r"]) if u else 0.0)
+    pin_w = PIN_W + (float(u["pin_w"]) if u else 0.0)
+    pin_hh = PIN_HH + (float(u["pin_hh"]) if u else 0.0)
+    pin_z = PIN_Z + (float(u["pin_z"]) if u else 0.0)
+    fr = ' friction="{:.3f} 0.005 0.0001"'.format(PEG_FRICTION) if u else ""
+    shaft = 'rgba="0.62 0.64 0.67 1"' + fr
+    g = _box(-COLLAR, COLLAR, -COLLAR, COLLAR, 0, COLLAR_H, 'rgba="0.30 0.31 0.34 1"' + fr)
+    g += '<geom type="cylinder" pos="0 0 {:.4f}" size="{:.5f} {:.4f}" {}/>'.format(
+        COLLAR_H + PEG_H / 2, shaft_r, PEG_H / 2, shaft)
+    g += _box(shaft_r - 0.0005, pin_r, -pin_w, pin_w, COLLAR_H + pin_z - pin_hh, COLLAR_H + pin_z + pin_hh, shaft)
     top = COLLAR_H + PEG_H
     for k in range(bands):
         z = top - 0.010 - 0.013 * k
-        g += ('<geom type="cylinder" pos="0 0 {:.4f}" size="{:.4f} 0.0035" rgba="0.07 0.07 0.09 1" contype="0" '
-              'conaffinity="0" group="1" mass="0"/>').format(z, SHAFT_R + 0.0004)
+        g += ('<geom type="cylinder" pos="0 0 {:.4f}" size="{:.5f} 0.0035" rgba="0.07 0.07 0.09 1" contype="0" '
+              'conaffinity="0" group="1" mass="0"/>').format(z, shaft_r + 0.0004)
     return '<body name="peg{}">{}</body>'.format(i, g)
+
+
+def sample_unit(rng, nuts=NUTS):
+    """The actual values of one episode's kit and cell within the tolerances TOL: per nut, per peg (peg i has i + 1
+    bands) and for the cell on the day. Every value is uniform within its range and independent of the others.
+    Angles in `wall`, `handle` are degrees; camera `rot` is a rotation vector in radians. JSON-ready."""
+    def sym(t, n=None):
+        v = rng.uniform(-t, t, n)
+        return float(v) if n is None else [float(x) for x in v]
+
+    unit = {"nuts": [], "pegs": [], "cameras": {}}
+    for _ in range(nuts):
+        unit["nuts"].append({"wall": sym(TOL["wall_deg"], NSEC), "level": sym(TOL["level"], NLAYER - 1),
+                             "hole_r": sym(TOL["hole_r"]), "groove_r": sym(TOL["groove_r"]),
+                             "handle": sym(TOL["handle_deg"]), "rgb": sym(TOL["colour"], 3)})
+    for _ in range(3):
+        unit["pegs"].append({"shaft_r": sym(TOL["shaft_r"]), "pin_r": sym(TOL["pin_r"]), "pin_w": sym(TOL["pin_w"]),
+                             "pin_hh": sym(TOL["pin_hh"]), "pin_z": sym(TOL["pin_z"])})
+    unit["pad_friction"] = float(rng.uniform(*TOL["pad_friction"]))
+    unit["joint_friction"] = [float(x) for x in rng.uniform(TOL["joint_friction"][0], TOL["joint_friction"][1], 7)]
+    unit["wrench_drift"] = sym(TOL["wrench_drift"][0], 3) + sym(TOL["wrench_drift"][1], 3)
+    for name in CAMERA_NAMES:
+        fixed = name in CAMERAS
+        unit["cameras"][name] = {
+            "pos": sym(TOL["cam_fixed_pos"] if fixed else TOL["cam_wrist_pos"], 3),
+            "rot": sym(math.radians(TOL["cam_fixed_rot_deg"] if fixed else TOL["cam_wrist_rot_deg"]), 3),
+            "focal": sym(TOL["cam_focal"]), "principal": sym(TOL["cam_principal_px"], 2)}
+    unit["light"] = sym(TOL["light"])
+    return unit
+
+
+def apply_cell_state(m, unit):
+    """Put the cell's state of the day (`sample_unit`) into a compiled model: the pads' friction, the cameras' real
+    poses and intrinsics (the published calibration stays the drawing's), the lamps' brightness."""
+    scale = float(unit["pad_friction"]) / PAD_FRICTION_MODEL
+    for name in ("r_g_finger1_pad_collision", "r_g_finger2_pad_collision"):
+        gid = m.geom(name).id
+        m.geom_friction[gid, 0] = PAD_FRICTION_MODEL * scale
+        m.geom_friction[gid, 1] = PAD_TORSION_MODEL * scale
+    pix = 1e-5                                               # an arbitrary pixel size (m) for MuJoCo's intrinsics
+    for name in CAMERA_NAMES:
+        err = unit["cameras"][name]
+        if name in CAMERAS:
+            cid, (_p, _t, fovy, w, h) = m.camera(name).id, CAMERAS[name]
+        else:
+            cid, fovy, w, h = m.camera("r_eye_in_hand").id, WRIST["fovy"], WRIST["width"], WRIST["height"]
+        m.cam_pos[cid] = m.cam_pos[cid] + np.asarray(err["pos"], float)       # in the parent's frame
+        R = axis_angle_mat(err["rot"]) @ mat_from_quat(m.cam_quat[cid])
+        m.cam_quat[cid] = quat_from_mat(R)
+        f = (h / 2.0) / math.tan(math.radians(fovy) / 2.0) * (1.0 + float(err["focal"]))
+        m.cam_resolution[cid] = [w, h]
+        m.cam_sensorsize[cid] = [w * pix, h * pix]
+        # MuJoCo's principal offset is opposite to the image's: the real principal point is at
+        # (w / 2 + principal[0], h / 2 + principal[1]) in pixels (u right, v down)
+        m.cam_intrinsic[cid] = [f * pix, f * pix, -float(err["principal"][0]) * pix, -float(err["principal"][1]) * pix]
+    k = 1.0 + float(unit["light"])
+    m.light_diffuse[:] = m.light_diffuse * k
+    m.vis.headlight.diffuse[:] = m.vis.headlight.diffuse * k
+    m.vis.headlight.ambient[:] = m.vis.headlight.ambient * k
 
 
 SCENE_XML = """<mujoco model="keyed_nut">
@@ -411,8 +565,10 @@ SCENE_XML = """<mujoco model="keyed_nut">
 </mujoco>"""
 
 
-def build_model(specs, layout):
-    """Compile table + Panda + 3 pegs + the nuts for a layout {pegs: [(x, y, yaw)]*3, nuts: [(x, y, yaw)]}."""
+def build_model(specs, layout, unit=None):
+    """Compile table + Panda + 3 pegs + the nuts for a layout {pegs: [(x, y, yaw)]*3, nuts: [(x, y, yaw)]}.
+    `unit` (`sample_unit`) gives every nut and peg its real dimensions; without it they are the drawing's. The
+    cell's state of the day is applied afterwards (`apply_cell_state`)."""
     root = mujoco.MjSpec.from_string(SCENE_XML.format(dt=TIMESTEP, tz2=TABLE_Z / 2, th=TABLE_HALF, rx=ROBOT_BASE[0]))
     wb = root.worldbody
     for name, (pos, tgt, fovy, _w, _h) in CAMERAS.items():
@@ -432,8 +588,9 @@ def build_model(specs, layout):
     objs = mujoco.MjSpec.from_string(
         '<mujoco><compiler angle="radian" autolimits="true"/>'
         '<worldbody>{}{}</worldbody></mujoco>'.format(
-            "".join(peg_body_xml(i, i + 1) for i in range(3)),
-            "".join(nut_body_xml(sp).replace('<body name="nut">', '<body name="nut%d">' % i, 1)
+            "".join(peg_body_xml(i, i + 1, unit["pegs"][i] if unit else None) for i in range(3)),
+            "".join(nut_body_xml(sp, unit["nuts"][i] if unit else None)
+                    .replace('<body name="nut">', '<body name="nut%d">' % i, 1)
                     .replace('name="nut_free"', 'name="nut%d_free"' % i, 1) for i, sp in enumerate(specs))))
     for i, (x, y, yaw) in enumerate(layout["pegs"]):
         wb.add_frame(pos=[x, y, TABLE_Z], quat=list(yaw_quat(yaw))).attach_body(objs.body("peg%d" % i), "o_", "")
@@ -486,13 +643,16 @@ def sample_layout(rng, nuts=NUTS):
 class NutEnv(object):
     """One kit: NUTS nuts on the table, each to be assembled on its own peg (the work order)."""
 
-    def __init__(self, nut_specs, render=True, max_steps=MAX_STEPS, early_end=True):
-        """early_end: end the episode at the first ruined nut (a fault always ends it)."""
+    def __init__(self, nut_specs, render=True, max_steps=MAX_STEPS, early_end=True, tolerances=True):
+        """early_end: end the episode at the first ruined nut (a fault always ends it). tolerances: every episode
+        is a real kit on the cell of the day (`sample_unit`, drawn from the episode's seed); False builds the
+        drawing's kit on an ideal cell (a maintainer's check; neither the grader nor the service uses it)."""
         if isinstance(nut_specs, dict):
             nut_specs = [nut_specs]
         self.specs = [check_nut_spec(sp) for sp in nut_specs]
         self.n = len(self.specs)
         self.early_end = early_end
+        self.tolerances = bool(tolerances)
         self.render_enabled = render
         self.max_steps = int(max_steps)
         self.model = None
@@ -509,14 +669,19 @@ class NutEnv(object):
         place = np.random.default_rng([self.seed & 0xFFFFFFFF, self.seed >> 32, 7])
         self.rng = np.random.default_rng([self.seed & 0xFFFFFFFF, self.seed >> 32, 11])
         self.layout = sample_layout(place, self.n)
+        self.unit = (sample_unit(np.random.default_rng([self.seed & 0xFFFFFFFF, self.seed >> 32, 13]), self.n)
+                     if self.tolerances else None)
         self.close()
-        self.model = build_model(self.specs, self.layout)
+        self.model = build_model(self.specs, self.layout, self.unit)
         self.data = mujoco.MjData(self.model)
         self.fk = mujoco.MjData(self.model)
         self._index()
+        if self.unit is not None:
+            apply_cell_state(self.model, self.unit)
         self._init_state()
         self.wrench_bias = np.concatenate([self.rng.uniform(-WRENCH_BIAS, WRENCH_BIAS, 3),
                                            self.rng.uniform(-0.1 * WRENCH_BIAS, 0.1 * WRENCH_BIAS, 3)])
+        self.wrench_drift = np.asarray(self.unit["wrench_drift"], float) if self.unit is not None else np.zeros(6)
         self.t = 0
         self.done = False
         self.fault = None
@@ -537,6 +702,11 @@ class NutEnv(object):
         self.ft_torque = m.sensor("r_g_torque_ee").adr[0]
         self.ft_site = m.site("r_g_ft_frame").id
         self.wrist_cam = m.camera("r_eye_in_hand").id
+        # the published wrist-camera pose is the drawing's mount on the hand (taken before `apply_cell_state` moves
+        # the real camera within its mounting tolerance)
+        self.wrist_body = int(m.cam_bodyid[self.wrist_cam])
+        self.wrist_pos0 = m.cam_pos[self.wrist_cam].copy()
+        self.wrist_mat0 = mat_from_quat(m.cam_quat[self.wrist_cam]) @ np.diag([1.0, -1.0, -1.0])
         self.nut_body, self.nut_qadr, self.nut_dadr, self.nut_geoms = [], [], [], []
         for i in range(self.n):
             b = m.body("o_nut%d" % i).id
@@ -554,6 +724,22 @@ class NutEnv(object):
         self.target_peg = [b - 1 for b in self.order]           # peg body i carries i + 1 bands
         self.peg_poses = [tuple(p) for p in self.layout["pegs"]]
         self.cells = [groove_cells(sp["groove"]) for sp in self.specs]
+        u = self.unit
+        # every nut's own wall grid (sector boundaries relative to boundary 0, layer boundaries) and groove floor
+        self.wall0 = [wall_boundaries(u["nuts"][i] if u else None)[0] for i in range(self.n)]
+        self.wall_rel = [[b - self.wall0[i] for b in wall_boundaries(u["nuts"][i] if u else None)] for i in range(self.n)]
+        self.levels = [level_boundaries(u["nuts"][i] if u else None) for i in range(self.n)]
+        self.groove_r = [R_GROOVE + (float(u["nuts"][i]["groove_r"]) if u else 0.0) for i in range(self.n)]
+        # every peg's own pin: radius of its middle from the shaft axis, height of its centre above the table
+        self.pin_mid = [((SHAFT_R + (float(u["pegs"][k]["shaft_r"]) if u else 0.0))
+                         + (PIN_R + (float(u["pegs"][k]["pin_r"]) if u else 0.0))) / 2 for k in range(3)]
+        self.pin_height = [TABLE_Z + COLLAR_H + PIN_Z + (float(u["pegs"][k]["pin_z"]) if u else 0.0) for k in range(3)]
+        if u is not None:
+            f = np.array(JOINT_FRICTION, float)
+            phi1 = f[0] * np.asarray(u["joint_friction"], float)
+            self.joint_friction = (phi1, f[1], f[2], phi1 / (1.0 + np.exp(-f[1] * f[2])))
+        else:
+            self.joint_friction = None
         self._jp, self._jr = np.zeros((3, m.nv)), np.zeros((3, m.nv))
         self._M = np.zeros((m.nv, m.nv))
 
@@ -630,9 +816,12 @@ class NutEnv(object):
     def _physics_step(self):
         m, d = self.model, self.data
         gw = [self.grip_target, -self.grip_target]
+        jf = self.joint_friction
         for _ in range(SUBSTEPS):
             d.ctrl[self.act] = self._osc_torque()
             d.ctrl[self.gact] = gw
+            if jf is not None:            # the joints' friction (JOINT_FRICTION), which the tracking law does not know
+                d.qfrc_applied[self.jv] = jf[3] - jf[0] / (1.0 + np.exp(-jf[1] * (d.qvel[self.jv] + jf[2])))
             mujoco.mj_step(m, d)
         if not np.all(np.isfinite(d.qpos)) or not np.all(np.isfinite(d.qvel)):
             self.fault = "non-finite state"
@@ -664,19 +853,19 @@ class NutEnv(object):
         """True if the centre of nut i's target peg's pin lies inside a solid cell of the nut's wall, more than
         FORCE_ANGLE_TOL sideways or FORCE_Z_TOL up/down from every groove cell of the same layer/sector."""
         p, R = self.nut_state(i)
-        px, py, pyaw = self.peg_poses[self.target_peg[i]]
-        rc = (SHAFT_R + PIN_R) / 2
-        pin = np.array([px + rc * math.cos(pyaw), py + rc * math.sin(pyaw), TABLE_Z + COLLAR_H + PIN_Z])
+        k = self.target_peg[i]
+        px, py, pyaw = self.peg_poses[k]
+        rc = self.pin_mid[k]
+        pin = np.array([px + rc * math.cos(pyaw), py + rc * math.sin(pyaw), self.pin_height[k]])
         q = R.T @ (pin - p)
         z = float(q[2])
-        if not 0.0 < z < NUT_H or math.hypot(q[0], q[1]) > R_GROOVE:
+        if not 0.0 < z < NUT_H or math.hypot(q[0], q[1]) > self.groove_r[i]:
             return False
-        ang = math.degrees(math.atan2(q[1], q[0])) % 360.0
-        da = 360.0 / NSEC
+        ang = math.degrees(math.atan2(q[1], q[0]))
         for dz in (0.0, FORCE_Z_TOL, -FORCE_Z_TOL):
-            lay = int(math.floor((z + dz) / LAYER))
+            lay = bisect.bisect_right(self.levels[i], z + dz) - 1          # the nut's own layers
             for dang in (0.0, FORCE_ANGLE_TOL, -FORCE_ANGLE_TOL):
-                sec = int(math.floor(((ang + dang) % 360.0) / da))
+                sec = bisect.bisect_right(self.wall_rel[i], (ang + dang - self.wall0[i]) % 360.0) - 1   # ... and sectors
                 if (sec, lay) in self.cells[i] or lay < 0:
                     return False
         return True
@@ -739,14 +928,18 @@ class NutEnv(object):
         noise = self.rng.normal(0.0, RGB_NOISE, rgb.shape)
         return np.clip(rgb.astype(np.float32) + noise, 0, 255).astype(np.uint8)
 
-    def wrist_camera_matrices(self):
-        """(K, T_world_cam) of the wrist camera now, OpenCV convention."""
-        d = self.data
-        R = d.cam_xmat[self.wrist_cam].reshape(3, 3) @ np.diag([1.0, -1.0, -1.0])
+    def _wrist_pose(self, d):
+        """T_world_cam of the wrist camera as published: the drawing's mount on the hand, OpenCV convention."""
+        Rb = d.xmat[self.wrist_body].reshape(3, 3)
         T = np.eye(4)
-        T[:3, :3] = R
-        T[:3, 3] = d.cam_xpos[self.wrist_cam]
-        return camera_intrinsics(WRIST["fovy"], WRIST["width"], WRIST["height"]), T
+        T[:3, :3] = Rb @ self.wrist_mat0
+        T[:3, 3] = d.xpos[self.wrist_body] + Rb @ self.wrist_pos0
+        return T
+
+    def wrist_camera_matrices(self):
+        """(K, T_world_cam) of the wrist camera now as published (the drawing's intrinsics and mount), OpenCV
+        convention. The real camera sits within its tolerances of that."""
+        return camera_intrinsics(WRIST["fovy"], WRIST["width"], WRIST["height"]), self._wrist_pose(self.data)
 
     def work_order(self):
         """[{"colour": name, "peg_bands": b}] per nut (nut i first)."""
@@ -756,8 +949,9 @@ class NutEnv(object):
         d = self.data
         R = d.site_xmat[self.site].reshape(3, 3)
         Rft = d.site_xmat[self.ft_site].reshape(3, 3)
-        f = Rft @ d.sensordata[self.ft_force:self.ft_force + 3] + self.wrench_bias[:3] + self.rng.normal(0, WRENCH_NOISE, 3)
-        tq = (Rft @ d.sensordata[self.ft_torque:self.ft_torque + 3] + self.wrench_bias[3:]
+        zero = self.wrench_bias + self.wrench_drift * (self.t * CONTROL_DT)      # the sensor's zero now
+        f = Rft @ d.sensordata[self.ft_force:self.ft_force + 3] + zero[:3] + self.rng.normal(0, WRENCH_NOISE, 3)
+        tq = (Rft @ d.sensordata[self.ft_torque:self.ft_torque + 3] + zero[3:]
               + self.rng.normal(0, WRENCH_NOISE * 0.1, 3))
         obs = {"t": int(self.t),
                "order": self.work_order(),
@@ -781,16 +975,11 @@ class NutEnv(object):
         f.qpos[:] = self.data.qpos
         f.qpos[self.jq] = q
         mujoco.mj_kinematics(self.model, f)
-        mujoco.mj_camlight(self.model, f)
         out = dict(obs)
         out["q"] = np.round(q, 6)
         out["ee_pos"] = np.round(f.site_xpos[self.site], 6)
         out["ee_quat"] = np.round(quat_from_mat(f.site_xmat[self.site].reshape(3, 3)), 6)
-        R = f.cam_xmat[self.wrist_cam].reshape(3, 3) @ np.diag([1.0, -1.0, -1.0])
-        T = np.eye(4)
-        T[:3, :3] = R
-        T[:3, 3] = f.cam_xpos[self.wrist_cam]
-        out["T_world_wrist"] = np.round(T, 6)
+        out["T_world_wrist"] = np.round(self._wrist_pose(f), 6)
         w = np.asarray(obs["wrench"], float).copy()
         w[:3] += np.array([rng.uniform(-0.2, 0.2) for _ in range(3)])
         out["wrench"] = np.round(w, 4)
@@ -811,7 +1000,8 @@ def sample_nut_spec(rng, nut_id="N", colour=None):
     """A random nut from the task's nut family (the hidden graded nuts are drawn with this exact function):
     entrance uniform over the 24 sectors; each turn 2, 3 or 4 sectors, either way; each turn channel continues
     into a dead end of 0-3 sectors the other way; 0, 1 or 2 false entrances at sectors at least 2 sectors clear
-    of every cell of the true path and of each other; mass uniform 0.05-0.15 kg; friction uniform 0.6-1.0;
+    of every cell of the true path and of each other; mass uniform over NUT_MASS; friction (the sliding
+    friction between this nut and a peg) uniform over NUT_FRICTION;
     colour from NUT_COLOURS (uniform, unless `colour` names one). `rng` is a numpy Generator."""
     g = {"entrance": int(rng.integers(NSEC)),
          "turns": [int(rng.choice([2, 3, 4])) * int(rng.choice([-1, 1])) for _ in range(2)],
@@ -827,8 +1017,8 @@ def sample_nut_spec(rng, nut_id="N", colour=None):
         f = int(rng.choice(free))
         g["false_entrances"].append(f)
         busy.update({f % NSEC, (f + 1) % NSEC})
-    return check_nut_spec({"id": nut_id, "groove": g, "mass": round(float(rng.uniform(0.05, 0.15)), 4),
-                           "friction": round(float(rng.uniform(0.6, 1.0)), 4),
+    return check_nut_spec({"id": nut_id, "groove": g, "mass": round(float(rng.uniform(*NUT_MASS)), 4),
+                           "friction": round(float(rng.uniform(*NUT_FRICTION)), 4),
                            "rgba": list(NUT_COLOURS[colour] if colour else
                                         NUT_COLOURS[sorted(NUT_COLOURS)[int(rng.integers(len(NUT_COLOURS)))]])})
 

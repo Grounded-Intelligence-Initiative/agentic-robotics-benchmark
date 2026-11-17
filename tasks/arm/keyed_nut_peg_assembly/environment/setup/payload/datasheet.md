@@ -6,6 +6,11 @@ the commissioning service. The numbers, the camera calibration and a few geometr
 `cell_data.py` (plain Python and NumPy). The cell itself (its simulator, its model files, its state) is not in your
 account: you meet it through the commissioning service (section 10) and when your controller is graded.
 
+**Sections 2 to 7 give the drawing: nominal values. No real nut, peg or cell has exactly these.** Every episode,
+graded or commissioning, is a real kit on the cell as it is that day, each within the tolerances of section 11, and
+none of its actual values is told to your controller. A model built from this sheet is the drawing's cell; the
+commissioning service is where you meet real ones.
+
 ## 1. Frames and units
 
 World frame: metres, radians, seconds. The table top is the plane z = 0.80 and spans x, y in [-0.40, 0.40]. The
@@ -28,8 +33,8 @@ The three pegs of a kit are identical except for their bands. A peg's yaw turns 
 - **Ring.** 45 mm tall, a 24-sided prism: 24 sectors of 15 degrees (sector s spans [15 s, 15 (s + 1)] degrees from
   the handle) by 9 layers of 5 mm (layer 0 at the bottom). Outside flats 28 mm from the hole axis. The nut's origin
   is the point of the hole axis on the bottom face.
-- **Hole.** Fits over the shaft: its flats are 12.8 mm from the axis (inscribed radius 12.7 mm; the shaft is
-  11 mm), so a nut on a shaft has about 1.7 mm of radial clearance.
+- **Hole.** Fits over the shaft: a 24-sided hole whose flats are 12.8 mm from the axis (the shaft is 11 mm), so a
+  nut on a shaft has 1.8 mm of radial clearance.
 - **Wall cells.** In every (sector, layer) cell the wall is two blocks: an outer block from 19 to 28 mm (always
   there) and an inner block from 12.8 to 19 mm, which is either solid or cut away. The cut cells form the
   **groove**; its floor is at 19 mm from the axis, so a cut cell is a recess 6.2 mm deep. An inner block is 5.4 mm
@@ -40,8 +45,9 @@ The three pegs of a kit are identical except for their bands. A peg's yaw turns 
 - **Handle.** A bar along the nut's +x axis from 26 to 98 mm from the hole axis, 16 mm wide, from 25 to 41 mm above
   the bottom face.
 - **Mass and surfaces.** Mass 0.05 to 0.15 kg, centre of mass 15 mm from the hole axis towards the handle and
-  18 mm above the bottom face. Sliding friction coefficient of the nut's surfaces 0.6 to 1.0. One colour per nut,
-  nominal RGB in `cell_data.NUT_COLOURS`: blue, green, orange, pink, purple, red, teal, yellow.
+  18 mm above the bottom face. Sliding friction between a nut and a peg (shaft, pin, collar) 0.3 to 0.7, its own
+  value for every nut. One colour per nut, nominal RGB in `cell_data.NUT_COLOURS`: blue, green, orange, pink, purple,
+  red, teal, yellow.
 - **Groove family** (identical rules for every nut; `cell_data.groove_cells` lists the cut cells of a groove):
   - channels are 2 sectors (30 degrees) wide; a groove is given by its entrance sector e (0 to 23), two turns
     k1 and k2, two dead-end lengths and its false entrances;
@@ -65,7 +71,8 @@ The three pegs of a kit are identical except for their bands. A peg's yaw turns 
 - **How the family is drawn** (the graded nuts and the development nuts alike): the entrance uniformly over the 24
   sectors; each turn 2, 3 or 4 sectors, either way, each with equal chance; each dead end 0, 1, 2 or 3 sectors
   with equal chance; 0, 1 or 2 false entrances with equal chance, each placed uniformly among the sectors that
-  keep the clearance above (fewer if none is free); mass and friction uniformly in their ranges.
+  keep the clearance above (fewer if none is free); mass and friction uniformly in their ranges. The real nut then
+  has this groove within the tolerances of section 11.
 
 ## 4. A kit and how it is laid out
 
@@ -113,7 +120,9 @@ Layout tolerances (every episode draws them anew, uniformly, and redraws until a
   every joint has an extra damping of 0.5 N m s/rad and is braked above 1.5 rad/s. Because the target is re-based
   on the current pose at every step, a displacement command that is blocked keeps pressing with a force that
   grows with the commanded displacement (the task-space inertia times 400 times the error); it is a compliant
-  position controller, not a force controller.
+  position controller, not a force controller. The law knows nothing of the joints' friction (section 11), so the
+  real arm lags a little behind what this law alone would do: a displacement command of a few tenths of a
+  millimetre may not move it at all.
 
 ## 6. Sensors
 
@@ -123,8 +132,9 @@ Layout tolerances (every episode draws them anew, uniformly, and redraws until a
   at the gripper's mounting face (the `ft_frame` of the gripper model, 97 mm behind the grip site) and reads what
   the arm applies to the gripper there: with nothing touched it reads the gripper's weight, about +5.1 N in z; a
   contact that pushes the gripper up lowers z; pushing the gripper against something in +x raises x. Every sample
-  carries noise (sigma 0.3 N per force axis, 0.03 N m per torque axis) and a bias that is fixed within an episode
-  and drawn anew for each (within +-0.5 N per force axis, +-0.05 N m per torque axis).
+  carries noise (sigma 0.3 N per force axis, 0.03 N m per torque axis) and the sensor's zero error: an offset that
+  is drawn anew for each episode (within +-0.5 N per force axis, +-0.05 N m per torque axis) plus a steady drift
+  during the episode (section 11).
 - `T_world_wrist`: the 4 x 4 pose of the wrist camera in the world, OpenCV convention.
 - There is no depth image and no object state of any kind.
 
@@ -135,6 +145,10 @@ Layout tolerances (every episode draws them anew, uniformly, and redraws until a
 | `left` | fixed at (-0.30, 0.55, 1.45), looking at (0.05, 0, 0.80), image up along world +z | 50 degrees | 320 x 240 |
 | `right` | fixed at (-0.30, -0.55, 1.45), looking at (0.05, 0, 0.80), image up along world +z | 50 degrees | 320 x 240 |
 | `wrist` | on the hand (the robot model's `eye_in_hand`), looking along the gripper's approach axis; its pose is `T_world_wrist` | 75 degrees | 256 x 192 |
+
+This table and the functions below are the cell's **published calibration**: the cameras as drawn. The real
+cameras sit within the tolerances of section 11 of it (mounting position and orientation, focal length, principal
+point), and `T_world_wrist` is the hand's pose with the drawn mount, not the real camera's pose.
 
 Pinhole cameras without distortion; the focal length in pixels is (H / 2) / tan(fovy / 2) for both axes and the
 principal point is at (W / 2, H / 2), so the centre of pixel (u, v) is at (u + 0.5, v + 0.5).
@@ -149,34 +163,38 @@ it; the first observation of an episode carries all three.
 - **A ruined nut.** While a nut is on its own peg (its hole axis within 5 mm of that peg's shaft axis, the nut
   below the shaft top), the centre of the pin lies inside a solid cell of the nut's wall, more than 5 degrees
   sideways or 1.5 mm up or down from every cut cell, for 3 consecutive steps. The groove walls are solid, so this
-  only happens when the pin is forced through one.
+  only happens when the pin is forced through one. It is judged on the real nut and the real pin (their own
+  walls, floors and heights within the tolerances), not on the drawing.
 - **An unstable simulation.** Any arm joint faster than 8 rad/s, a nut faster than 5 m/s, or a state that is not
   finite.
 
 ## 9. Takt and the episode
 
-One action every 0.1 s. An episode is one kit and lasts at most 1200 steps (120 s): the takt time, 40 s per nut.
+One action every 0.1 s. An episode is one kit and lasts at most 1000 steps: the takt time, 100 s per kit.
 Observation format, the grading wire (READY / reset / act / close), the deadlines, the controller budget and the
 rule by which a nut counts as assembled are in the task instruction.
 
 ## 10. The commissioning service
 
 The cell, on 16 development kits, for your commissioning window. It is the cell your controller is graded on (the
-same robot and controller, sensors, cameras, kit family, layout tolerances, safety stops, takt and budgets); the
-development kits are draws from the family of section 3 that the reference controller completed within the takt,
-like the graded kits, and none of them is a graded kit.
+same robot and controller, sensors, cameras, kit family, layout tolerances, safety stops, takt and budgets, and the
+same tolerances: every development kit is a real kit, with its own actual values and its own state of the cell);
+the development kits are draws from the family of section 3 that the reference controller completed within the
+takt, like the graded kits, and none of them is a graded kit.
 
 - **The window.** 32 episodes in your session, at most 2 at a time. An episode counts from its `reset`. The count
   is in `/run/keyedcell/commission_status.json` and does not grow: plan your episodes. (The size is that of a
   real commissioning window: one working shift on the cell with a tray of 16 pre-series kits, at about a quarter
   of an hour per trial: lay the kit out, run one takt, look at the result, clear the pegs, change the program.)
-- **A kit's episode.** `reset(kit)` lays development kit `kit` (1 to 16) out. Each kit has its own layout, and its
-  episode starts the same way every time you start it (the same layout, the same sensor bias and noise).
+- **A kit's episode.** `reset(kit)` lays development kit `kit` (1 to 16) out. Each kit has its own layout, its
+  own actual values within the tolerances and its own state of the cell, and its episode starts the same way
+  every time you start it (the same layout, parts, cameras, friction, sensor zero and noise). The graded kits
+  have other values within the same tolerances.
 - **What it answers.** What the cell gives a controller: the observation after every action, and how the episode
   ended. It answers no object pose, no groove, no score, no completion verdict and no debrief: it does not judge
   the assembly, so an episode does not end when the kit is complete (when graded, it does). How an episode went,
   you judge from what your program saw and recorded and from the cameras.
-- **How an episode ends.** After 1200 steps ("all steps run"); on a safety stop (it names the ruined nut's colour
+- **How an episode ends.** After 1000 steps ("all steps run"); on a safety stop (it names the ruined nut's colour
   or the instability); when the episode's controller budget is used up (600 s: the service's wait for each of your
   requests plus 0.45 s per left or right image and 0.25 s per wrist image asked for; the first observation's
   images are free); after 120 s without a request; or when you close it.
@@ -186,14 +204,14 @@ line (`~/commission/client.py` speaks it).
 
 ```
 {"id": 1, "method": "reset", "params": {"kit": 3}}
-        -> {"id": 1, "result": {"ok": true, "kit": 3, "episode": 5, "episodes_left": 27, "max_steps": 1200,
+        -> {"id": 1, "result": {"ok": true, "kit": 3, "episode": 5, "episodes_left": 27, "max_steps": 1000,
                                 "controller_budget_s": 600.0, "obs": {...}}}
 {"id": 2, "method": "step", "params": {"action": [8 numbers]}}
         -> {"id": 2, "result": {"obs": {...}, "done": false}}
         -> {"id": 2, "result": {"obs": {...}, "done": false, "probe_obs": {...}}}      (about 1 % of the steps)
         -> {"id": 2, "result": {"obs": {...}, "done": true, "ended": "all steps run"}}
 {"id": 3, "method": "close", "params": {"images": true}}
-        -> {"id": 3, "result": {"ok": true, "ended": "...", "steps": 1200, "controller_s": 7.9,
+        -> {"id": 3, "result": {"ok": true, "ended": "...", "steps": 1000, "controller_s": 7.9,
                                 "controller_budget_s": 600.0, "images_requested": 12,
                                 "final_images": {"left": {...}, "right": {...}, "wrist": {...}}}}
 ```
@@ -212,3 +230,50 @@ line (`~/commission/client.py` speaks it).
   (a line that is not one JSON request object of at most 64 KiB; the connection closes).
 - When a limit ends the episode while the service waits, it sends `{"id": null, "event": "episode_over",
   "reason": ...}` and closes the connection.
+
+## 11. Tolerances: the real kit and the cell on the day
+
+Every value below is drawn anew for every episode's kit and cell, uniformly within its range and independently of
+the others (`cell_data.TOL`; `cell_data.sample_unit` draws one set). Nothing else differs from the drawing: the
+layout rules of section 4, the family rules of section 3, the controller's law and limits, the nut's outside and
+handle, the collar, the shaft's height and the bands are as drawn.
+
+| what | drawing | a real one |
+|---|---|---|
+| **Every nut** | | |
+| each of the 24 sector boundaries of the hole wall (where a channel ends there: its wall) | 15 degrees x s from the handle | +-1 degree |
+| each of the 8 layer boundaries inside the wall (the channels' floors and ceilings) | 5 mm x l above the bottom face | +-0.2 mm |
+| hole flats from the axis | 12.8 mm | +-0.1 mm |
+| groove floor from the axis | 19 mm | +-0.2 mm |
+| the handle's direction against the wall's sector grid | 0 | +-0.5 degrees |
+| colour, each RGB component | `cell_data.NUT_COLOURS` | +-0.04 |
+| sliding friction against a peg | | 0.3 to 0.7 |
+| mass | | 0.05 to 0.15 kg |
+| **Every peg** | | |
+| shaft radius | 11 mm | +-0.05 mm |
+| pin: reach from the shaft axis | 17.2 mm | +-0.2 mm |
+| pin: width / height | 3 mm / 4 mm | +-0.1 mm each |
+| pin: centre above the collar top | 37.5 mm | +-0.3 mm |
+| **The cell on the day** | | |
+| finger pads: sliding friction against a nut | 2 in the robot model | 0.6 to 1.2 (the pads' torsional friction in proportion) |
+| each arm joint: friction torque | the curve below | x 0.6 to 1.4, its own factor for every joint |
+| wrench zero: offset per axis | 0 | +-0.5 N, +-0.05 N m |
+| wrench zero: drift per axis, steady through the episode | 0 | up to +-0.3 N and +-0.012 N m per minute |
+| fixed cameras: position per axis / orientation about each axis | section 7 | +-2 mm / +-0.2 degrees |
+| wrist camera on the hand: position per axis / orientation about each axis | the robot model's mount | +-1.5 mm / +-0.3 degrees |
+| every camera: focal length / principal point per axis | section 7 | +-0.5 % / +-1 pixel |
+| lamps: brightness | | +-15 % |
+
+- **Joint friction.** The friction torque at arm joint j turning at w rad/s opposes the motion and is
+  phi1 / (1 + exp(-phi2 (w + phi3))) - phi1 / (1 + exp(-phi2 phi3)), with phi1 = (0.546, 0.872, 0.641, 1.279,
+  0.839, 0.303, 0.565) N m, phi2 = (5.12, 9.07, 10.14, 5.59, 8.35, 17.13, 10.34) s/rad and phi3 = (0.0395, 0.0259,
+  -0.0461, 0.0362, 0.0262, -0.0210, 0.0036) rad/s for joints 1 to 7: the curve identified on this robot type
+  (`cell_data.JOINT_FRICTION`, `cell_data.joint_friction_torque`). It levels off at about half of phi1.
+- **What the tolerances add up to.** A nut resting on the pin has its bottom 39.5 +- 0.35 mm above the collar; it
+  stalls at 24.5 +- 0.55 mm after the entrance riser and at 9.5 +- 0.55 mm after the first turn. The middles of two
+  risers are 30, 45 or 60 degrees apart, +-2 degrees. The window in which a nut on the pin drops into a riser is
+  between about +-2.5 and +-5.5 degrees wide. The radial clearance of a nut on a shaft is 1.65 to 1.95 mm.
+- **What the cameras' tolerances add up to.** With the published calibration alone, a point on the table seen by a
+  fixed camera is typically about 4 mm off (one time in ten more than 8 mm, at worst about 16 mm); a point seen by
+  the wrist camera from 0.25 m is typically about 2 mm off (one time in ten more than 3.5 mm, at worst about 6 mm).
+  A camera's error is the same through an episode, and the wrist camera's is fixed in the hand's frame.

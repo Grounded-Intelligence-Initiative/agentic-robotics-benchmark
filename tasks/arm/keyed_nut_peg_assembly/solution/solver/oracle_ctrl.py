@@ -97,14 +97,22 @@ class Oracle(object):
             dr = rotvec(down_rot(wrap(self.yaw + step)) @ R.T)
         return list(dp) + list(dr) + [grip, 0]
 
-    def _plan(self, npos, nyaw, peg, groove):
+    def _plan(self, npos, nyaw, peg, groove, actual=None):
         """Nut yaws: entering (pin centred in the entrance channel), after turn 1, after turn 2; then pick the
-        grasp side and unwrapping that keep joint 7 inside its limits over the whole sequence."""
+        grasp side and unwrapping that keep joint 7 inside its limits over the whole sequence. `actual` (the nut as
+        it really is: its risers' middles, the heights it stalls at, its handle's direction) replaces the drawing's
+        values where the grader gives it."""
         px, py, pyaw = peg
         e = int(groove["entrance"])
         k1, k2 = [int(k) for k in groove["turns"]]
-        psi0 = pyaw - (e + 1) * SECTOR                  # pin (peg +x) at the channel centre, nut frame angle 15(e+1)
-        nyaws = [psi0, psi0 - k1 * SECTOR, psi0 - (k1 + k2) * SECTOR]
+        risers = [(e + 1) * SECTOR, (e + 1 + k1) * SECTOR, (e + 1 + k1 + k2) * SECTOR]   # nut-frame angles
+        self.stalls, self.pin_top, self.handle_dir = STALLS, GROOVE_TOP, 0.0
+        if actual:
+            risers = [float(a) for a in actual["risers"]]
+            self.stalls = tuple(float(v) for v in actual["stalls"])
+            self.pin_top = float(actual["pin_top"])
+            self.handle_dir = float(actual["handle"])
+        nyaws = [pyaw - a for a in risers]              # pin (peg +x) in the middle of each riser
         q1g = azimuth(npos[0], npos[1])
         q1p = azimuth(px, py)
         best = None
@@ -134,8 +142,8 @@ class Oracle(object):
         px, py = peg[0], peg[1]
         self.k += 1
         if self.phase == "plan":
-            self._plan(npos, nyaw, peg, gt["groove"])
-            h = npos + Rn @ np.array([HANDLE_OFF, 0.0, 0.0])
+            self._plan(npos, nyaw, peg, gt["groove"], gt.get("actual"))
+            h = npos + Rn @ self._handle_point()
             self.handle = np.array([h[0], h[1], GRASP_Z])
             self.phase, self.k = "above", 0
         if self.phase == "above":
@@ -176,8 +184,8 @@ class Oracle(object):
                 self.phase, self.k = "descend", 0
             return a
         if self.phase == "descend":
-            stop = STALLS[self.stage]
-            if h > GROOVE_TOP + 0.002:
+            stop = self.stalls[self.stage]
+            if h > self.pin_top + 0.002:
                 # still above the pin: centre the hole on the shaft
                 self.integ = np.clip(self.integ + 0.3 * exy, -0.02, 0.02)
                 tgt = np.array([px, py, COLLAR_TOP + stop - 0.004]) + hold_off + self.integ
@@ -250,8 +258,12 @@ class Oracle(object):
         self.regrasps += 1
         self.phase, self.k = "rg_open", 0
 
+    def _handle_point(self):
+        """The grasp point on the handle, in the nut frame."""
+        return np.array([HANDLE_OFF * math.cos(self.handle_dir), HANDLE_OFF * math.sin(self.handle_dir), 0.0])
+
     def _regrasp(self, obs, ee, npos, Rn, nyaw):
-        h = npos + Rn @ np.array([HANDLE_OFF, 0.0, 0.0])
+        h = npos + Rn @ self._handle_point()
         grasp = np.array([h[0], h[1], npos[2] + (GRASP_Z - TABLE_Z)])
         if self.phase == "rg_open":
             a = self._move(obs, ee, self.yaw, -1.0, gain=0.0)
@@ -304,5 +316,5 @@ class KitOracle(object):
             return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0]
         n = nuts[self.i]
         one = {"nut_pos": n["nut_pos"], "nut_quat": n["nut_quat"], "groove": n["groove"],
-               "pegs": gt["pegs"], "target_peg": n["target_peg"]}
+               "actual": n.get("actual"), "pegs": gt["pegs"], "target_peg": n["target_peg"]}
         return self.sub.act(obs, one)

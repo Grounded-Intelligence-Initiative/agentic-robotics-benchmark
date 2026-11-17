@@ -109,14 +109,41 @@ class GradedNutEnv(E.NutEnv):
         return float(sum(self.credit)) / self.n
 
 
+def actual_groove(env, i):
+    """What the reference may know of nut i as it really is, on its own peg (the drawing's values when the episode
+    has no tolerances): `risers`, the nut-frame angles (rad, unwrapped along the groove) of the middles of its
+    entrance riser and of the risers after the first and the second turn; `stalls`, the heights (m above the collar)
+    at which its bottom comes to rest after each of them; `pin_top`, the height (m above the collar) at which it
+    rests on the pin; `handle`, the handle's real direction (rad) against the nut frame's +x."""
+    u = env.unit
+    g = env.specs[i]["groove"]
+    wb = E.wall_boundaries(u["nuts"][i] if u else None)
+    zb = E.level_boundaries(u["nuts"][i] if u else None)
+
+    def middle(sec):                 # the channel of sectors (sec, sec + 1) lies between boundaries sec and sec + 2
+        lo = wb[sec % E.NSEC] + 360.0 * (sec // E.NSEC)
+        hi = wb[(sec + 2) % E.NSEC] + 360.0 * ((sec + 2) // E.NSEC)
+        return math.radians((lo + hi) / 2.0)
+
+    e, k1, k2 = int(g["entrance"]), int(g["turns"][0]), int(g["turns"][1])
+    peg = u["pegs"][env.target_peg[i]] if u else None
+    pin_top = E.PIN_Z + E.PIN_HH + ((float(peg["pin_z"]) + float(peg["pin_hh"])) if peg else 0.0)
+    ceilings = [zb[E.TURN_LAYERS[0][1] + 1], zb[E.TURN_LAYERS[1][1] + 1], zb[E.RISERS[2][1] + 1]]
+    return {"risers": [middle(e), middle(e + k1), middle(e + k1 + k2)],
+            "stalls": [max(0.0, pin_top - c) for c in ceilings], "pin_top": pin_top,
+            "handle": math.radians(float(u["nuts"][i]["handle"])) if u else 0.0}
+
+
 def ground_truth(env, wire_obs):
-    """The reference solution's `_gt`: nut poses, grooves, target pegs, peg poses, and `proprio`, the real
-    observation's q / ee_pos / ee_quat (the reference acts on these, never on a perturbed copy)."""
+    """The reference solution's `_gt`: nut poses, grooves (the drawing's and, under `actual`, the nut as it really
+    is), target pegs, peg poses, and `proprio`, the real observation's q / ee_pos / ee_quat (the reference acts on
+    these, never on a perturbed copy)."""
     nuts = []
     for i in range(env.n):
         p, R = env.nut_state(i)
         nuts.append({"nut_pos": p.tolist(), "nut_quat": E.quat_from_mat(R).tolist(),
-                     "groove": env.specs[i]["groove"], "target_peg": env.target_peg[i],
+                     "groove": env.specs[i]["groove"], "actual": actual_groove(env, i),
+                     "target_peg": env.target_peg[i],
                      "colour": E.colour_name(env.specs[i]["rgba"]), "stage": int(env.stage_now(i)),
                      "credit": float(env.credit[i]), "broken": bool(env.broken[i]),
                      "assembled": bool(env.assembled(i))})

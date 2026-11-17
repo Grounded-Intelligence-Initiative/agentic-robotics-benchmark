@@ -198,11 +198,15 @@ def find_nuts(img, K, T, colours, min_px=40, kit_colours=None, refine=False):
 
 
 def find_pegs(img, K, T, exclude_rows_from=None):
-    """Shaft tops: bright, unsaturated pixels, back-projected onto the shaft-top plane and grouped (3 pegs)."""
+    """Shaft tops: bright, unsaturated pixels, back-projected onto the shaft-top plane and grouped (3 pegs). The
+    brightness threshold follows the image's brightest unsaturated pixels (the lamps' brightness varies)."""
     h, s, v = hsv_image(img)
-    mask = (s < 0.10) & (v > 0.80)
+    grey = s < 0.10
     if exclude_rows_from is not None:
-        mask[exclude_rows_from:, :] = False
+        grey[exclude_rows_from:, :] = False
+    if not grey.any():
+        return []
+    mask = grey & (v > 0.80 * float(np.percentile(v[grey], 99.8)))
     vs, us = np.nonzero(mask)
     if len(us) == 0:
         return []
@@ -223,6 +227,42 @@ def find_pegs(img, K, T, exclude_rows_from=None):
     return [g["c"] for g in groups[:3]]
 
 
+def refine_peg_top(img, K, T, xy, search_px=16):
+    """A shaft top in a close-up from above, by its shape instead of its brightness (the arm's shadow may lie
+    across it): the centre of the disc of the shaft's radius that stands out most against the ring around it, in
+    log intensity, within `search_px` pixels of where `xy` projects. Returns the world (x, y) on the shaft-top
+    plane, or None."""
+    import cv2
+    pc = T[:3, :3].T @ (np.array([xy[0], xy[1], SHAFT_TOP_Z]) - T[:3, 3])
+    if pc[2] <= 0.02:
+        return None
+    u0, v0 = (K @ pc)[:2] / pc[2] - 0.5
+    r = 0.011 * K[0, 0] / pc[2]                         # the shaft's radius in pixels
+    n = int(math.ceil(1.8 * r)) + 1
+    yy, xx = np.mgrid[-n:n + 1, -n:n + 1]
+    rr = np.hypot(xx, yy)
+    disc = (rr <= 0.85 * r).astype(np.float32)
+    ring = ((rr >= 1.15 * r) & (rr <= 1.7 * r)).astype(np.float32)
+    logi = np.log(img.astype(np.float32).mean(axis=2) + 8.0)
+    score = cv2.filter2D(logi, -1, disc / disc.sum(), borderType=cv2.BORDER_REFLECT) \
+        - cv2.filter2D(logi, -1, ring / ring.sum(), borderType=cv2.BORDER_REFLECT)
+    H, W = score.shape
+    ui, vi = int(round(u0)), int(round(v0))
+    a0, a1, b0, b1 = max(0, vi - search_px), min(H, vi + search_px + 1), max(0, ui - search_px), min(W, ui + search_px + 1)
+    if a1 - a0 < 3 or b1 - b0 < 3:
+        return None
+    win = score[a0:a1, b0:b1]
+    j, i = np.unravel_index(int(np.argmax(win)), win.shape)
+    vj, ui2 = a0 + j, b0 + i
+    c0, c1, d0, d1 = max(0, vj - 2), min(H, vj + 3), max(0, ui2 - 2), min(W, ui2 + 3)
+    w = score[c0:c1, d0:d1] - score[c0:c1, d0:d1].min()
+    if w.sum() <= 0:
+        return None
+    gy, gx = np.mgrid[c0:c1, d0:d1]
+    us, vs = float((w * gx).sum() / w.sum()), float((w * gy).sum() / w.sum())
+    return backproject(np.array([us]), np.array([vs]), K, T, SHAFT_TOP_Z)[0][:2]
+
+
 def _bilinear(gray, u, v):
     H, W = gray.shape
     if not (0 <= u < W - 1 and 0 <= v < H - 1):
@@ -239,17 +279,34 @@ GAP_Z = (0.0585, 0.0455, 0.0325)
 
 def count_bands(img, K, T, peg_xy):
     """Bands on the shaft side facing the camera: the intensity at each band's height against the gaps between them.
-    Returns (bands, contrast) or (None, 0) when the shaft is not seen clearly."""
+    The published calibration is only the drawing's and the peg's position an estimate, so the shaft is anchored in
+    the image itself: the bright shaft top nearest to where `peg_xy` projects is found, and the bands and gaps are
+    sampled at their drawn offsets below it. Returns (bands, contrast) or (None, 0) when the shaft is not seen
+    clearly."""
+    import cv2
     cam = T[:3, 3]
+    gray = img.astype(np.float32).mean(axis=2)
     d = np.array([cam[0] - peg_xy[0], cam[1] - peg_xy[1]])
     d = d / np.linalg.norm(d)
-    gray = img.astype(np.float32).mean(axis=2)
+    top = project([[peg_xy[0], peg_xy[1], SHAFT_TOP_Z]], K, T)[0]
+    h, s, v = hsv_image(img)
+    grey = s < 0.10
+    if not grey.any():
+        return None, 0.0
+    mask = (grey & (v > 0.86 * float(np.percentile(v[grey], 99.8)))).astype(np.uint8)
+    n_lab, _lab, stats, cent = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    blobs = [cent[k] for k in range(1, n_lab) if 3 <= stats[k, cv2.CC_STAT_AREA] <= 60
+             and math.hypot(cent[k][0] - top[0], cent[k][1] - top[1]) < 10.0]
+    if not blobs:
+        return None, 0.0
+    seen = min(blobs, key=lambda c: math.hypot(c[0] - top[0], c[1] - top[1]))
+    shift = np.array([seen[0] - top[0], seen[1] - top[1]])          # the shaft as seen against the shaft as drawn
 
     def sample(z):
         pts = [[peg_xy[0] + 0.0112 * d[0] + o * -d[1], peg_xy[1] + 0.0112 * d[1] + o * d[0], TABLE_Z + z]
                for o in (-0.003, 0.0, 0.003)]
-        uv = project(pts, K, T)
-        return float(np.median([_bilinear(gray, u, v) for (u, v) in uv]))
+        uv = project(pts, K, T) + shift
+        return float(np.median([_bilinear(gray, u, w) for (u, w) in uv]))
 
     band = [sample(z) for z in BAND_Z]
     gap = [sample(z) for z in GAP_Z]

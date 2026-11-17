@@ -60,7 +60,7 @@ RUN find /opt/keyedcell-commission -name '__pycache__' -type d -prune -exec rm -
 RUN runuser -u keyedcell -- env -i HOME=/opt/keyedcell-commission/state TMPDIR=/opt/keyedcell-commission/state \
         PATH=/opt/venv/bin:/usr/bin:/bin LANG=C.UTF-8 MUJOCO_GL=egl PYOPENGL_PLATFORM=egl OMP_NUM_THREADS=1 \
         LP_NUM_THREADS=2 MESA_SHADER_CACHE_DISABLE=true PYTHONNOUSERSITE=1 \
-        /opt/venv/bin/python3 -B -s -c "import json, sys; sys.path.insert(0, '/opt/keyedcell-commission'); import commissiond, keyed_env as E; k = commissiond.KITS['kits'][0]; env = E.NutEnv(k['kit']['nuts']); obs = env.reset(int(k['layout_seed']), k['kit']['order']); assert obs['wrist'].shape == (192, 256, 3) and obs['left'].mean() > 10; assert env.max_steps == 1200; env.close(); print('[image] commissioning service: the cell loads and renders for its account,', len(commissiond.KITS['kits']), 'development kits')" \
+        /opt/venv/bin/python3 -B -s -c "import json, sys; sys.path.insert(0, '/opt/keyedcell-commission'); import commissiond, keyed_env as E; k = commissiond.KITS['kits'][0]; env = E.NutEnv(k['kit']['nuts']); obs = env.reset(int(k['layout_seed']), k['kit']['order']); assert obs['wrist'].shape == (192, 256, 3) and obs['left'].mean() > 10; assert env.max_steps == 1000 and env.unit is not None; env.close(); print('[image] commissioning service: the cell loads and renders for its account,', len(commissiond.KITS['kits']), 'development kits')" \
     && rm -rf /opt/keyedcell-commission/state && mkdir -p /opt/keyedcell-commission/state \
     && chown keyedcell:keyedcell /opt/keyedcell-commission/state && chmod 700 /opt/keyedcell-commission/state \
     && ! runuser -u user -- ls /opt/keyedcell-commission > /dev/null 2>&1 \

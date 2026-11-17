@@ -28,6 +28,8 @@ LATEST = SELECTION["amendments"][-1] if SELECTION.get("amendments") else SELECTI
 #: An amendment is committed before its runs (pre-registration); until they are recorded, the set's checks wait.
 PENDING = "selection_run" not in LATEST or "anchor_verify" not in LATEST
 WAIT = "the latest amendment is pre-registered and has not run yet"
+#: The candidates in force: the latest amendment's own fresh ones if it drew any, else the selection's.
+CANDIDATES = LATEST.get("candidates") or SELECTION["candidates"]
 
 
 def sha256(path):
@@ -36,17 +38,22 @@ def sha256(path):
 
 class HiddenSet(unittest.TestCase):
     def test_candidates_are_unique_63_bit_seeds(self):
-        cands = SELECTION["candidates"]
-        self.assertGreaterEqual(len(cands), 16)
-        self.assertEqual([c["i"] for c in cands], list(range(len(cands))))
-        seeds = [c["kit_seed"] for c in cands] + [c["layout_seed"] for c in cands]
+        pools = [SELECTION["candidates"]] + [a["candidates"] for a in SELECTION.get("amendments", []) if "candidates" in a]
+        seeds = []
+        for cands in pools:
+            self.assertGreaterEqual(len(cands), 16)
+            self.assertEqual([c["i"] for c in cands], list(range(len(cands))))
+            self.assertEqual(len({c["id"] for c in cands}), len(cands))
+            seeds += [c["kit_seed"] for c in cands] + [c["layout_seed"] for c in cands]
         self.assertEqual(len(set(seeds)), len(seeds))
         self.assertTrue(all(0 < s < 2 ** 63 for s in seeds))
+        ids = [c["id"] for cands in pools for c in cands]
+        self.assertEqual(len(set(ids)), len(ids), "two candidate pools share an id")
 
     @unittest.skipIf(PENDING, WAIT)
     def test_set_is_the_first_ten_kept_in_drawn_order(self):
         runs = LATEST["selection_run"]["runs"]
-        self.assertEqual([r["id"] for r in runs], [c["id"] for c in SELECTION["candidates"]])
+        self.assertEqual([r["id"] for r in runs], [c["id"] for c in CANDIDATES])
         kept = [r["id"] for r in runs if r["kept"]]
         self.assertEqual(LATEST["hidden_set"], kept[:SELECTION["set_size"]])
         self.assertEqual(len(LATEST["hidden_set"]), 10)
@@ -59,7 +66,7 @@ class HiddenSet(unittest.TestCase):
 
     @unittest.skipIf(PENDING, WAIT)
     def test_episodes_are_the_selected_candidates(self):
-        cands = {c["id"]: c for c in SELECTION["candidates"]}
+        cands = {c["id"]: c for c in CANDIDATES}
         self.assertEqual([e["id"] for e in EPISODES], LATEST["hidden_set"])
         for e in EPISODES:
             self.assertEqual(e["seed"], cands[e["id"]]["layout_seed"])
@@ -96,7 +103,7 @@ class HiddenSet(unittest.TestCase):
     @unittest.skipIf(PENDING, WAIT)
     def test_reference_keeps_the_takt(self):
         steps = [r["steps"] for r in LATEST["selection_run"]["runs"] if r["kept"]]
-        self.assertTrue(all(0 < n < 1200 for n in steps), steps)
+        self.assertTrue(all(0 < n < 1000 for n in steps), steps)
 
 
 class Grader(unittest.TestCase):
