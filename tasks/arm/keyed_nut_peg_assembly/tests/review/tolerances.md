@@ -92,7 +92,8 @@ before amendment 3's candidates were drawn; fingers coupled, except where noted)
 
 On amendment 3's own development kits, through the grader, with the insertion as it ended up and the controller's
 peg template set to the data sheet's shaft: the unchanged submission 3 of 16 kits (15 of 48 nuts), the one with
-insertion by touch 9 of 16 (40 of 48), the reference 22 of the 24 candidates.
+insertion by touch 9 of 16 (40 of 48), the reference 22 of the 24 candidates. What amendment 4's 850 steps do to
+both, and to the third measurement's submission: `commissioning.md`, "Amendment 4".
 
 **Insertion by touch with the agent's observations alone.** A maintainer's controller (kept with the review's
 records, not shipped) changes the round-2 frontier submission's insertion only; its perception, grasp and groove

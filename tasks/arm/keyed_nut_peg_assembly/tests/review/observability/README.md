@@ -1,4 +1,4 @@
-# Observability: what a controller can see and feel (maintainer evidence, 2026-11-12; round 3 on 2026-11-17)
+# Observability: what a controller can see and feel (maintainer evidence, 2026-11-12; rounds 3 and 4 on 2026-11-17)
 
 The task's observations carry no object state. This folder shows, on development kits only, that they are enough
 for the job: the camera images to find everything, and the hand's position with the wrist sensor to put a nut on its
@@ -10,7 +10,8 @@ state is read only to score the estimates.
 
 `perceive.py` (the perception), `check_perception.py` (per kit: the first observation's free images, then wrist
 close-ups over each peg and each nut's rough position, with plain actions as a controller would move; every estimate
-against the simulator), `perception_dev_kits.json` (30 kits, 90 pegs, 90 nuts, on amendment 3's cell). These kits
+against the simulator), `perception_dev_kits.json` (30 kits, 90 pegs, 90 nuts, on amendment 4's image; every kit's
+numbers are those of amendment 3's run: the takt does not touch the cameras). These kits
 (`sample_kit` seeds 1000-1029, layout seeds + 4000) are maintainer kits: neither graded kits, nor selection
 candidates, nor the commissioning service's development kits.
 
@@ -33,12 +34,31 @@ Before the tolerances (the drawing's cell, 2026-11-12 and 2026-11-16) the same c
 So the cameras find every part and tell the pegs apart, to a few millimetres. The fit has 0.35 to 0.65 mm of radial
 clearance: no image position, however the views are combined, puts a hole over a shaft. That takes touch.
 
-## Touch: a controller on the observations alone completes kits (2026-11-17, amendment 3)
+## Touch: controllers on the observations alone (2026-11-17)
 
-`observation_only_controller_dev_kits.json`. The controller is a maintainer's and is not shipped (it is kept with
-the review's records). It is the second frontier measurement's submission (Claude Opus 5.5, 2026-11-16), which
-reads the layout from the first images and wrist close-ups, grips a nut across its ring and finds the groove by
-touch, with its insertion replaced:
+Two controllers that act on the observations alone (no access to any state when they run), each run by the grader
+on the commissioning service's 16 development kits (a one-episode plan per kit through `tests/review/regrade.sh`).
+
+**Under amendment 4 (850 steps).**
+
+- `earlier_submission_dev_kits.json`: the third frontier measurement's submission, unchanged (Claude Opus 5.5,
+  2026-11-17, made under amendment 3's 1000 steps). It reads the layout from the images, finds each shaft by touch
+  and each groove by touch. **9 of 16 kits complete** (679 to 836 steps), 39 of 48 nuts. It was commissioned on
+  these very kits, so that is an in-sample figure; on kits it never met it completes 1 of 6 kept development
+  candidates outside the service and 12 of 32 maintainer kits (of the 26 the reference completes there), and 4 of
+  the 10 graded kits by the steps of its own graded run. The reference needs 637 to 798 steps on the 16 kits.
+- `observation_only_controller_dev_kits.json`: the maintainer's controller described below. **1 of 16 kits**
+  (831 steps), 31 of 48 nuts; 2 of 32 maintainer kits. It was written for 1000 steps and is too slow for 850.
+
+So within 85 s the observations still suffice: a controller that has only them completes kits end to end. What
+that controller carries is an insertion by touch that round 3's data sheet described; round 4 took the description
+out of the data sheet (`../tolerances.md`, "The fit"), and the task now asks the agent to find a way to put a nut
+on its shaft, with the fit, the cell's compliance and the wrist's readings stated.
+
+**Under amendment 3 (1000 steps): the maintainer's controller.** It is the second frontier measurement's submission
+(Claude Opus 5.5, 2026-11-16), which reads the layout from the first images and wrist close-ups, grips a nut across
+its ring and finds the groove by touch, with its insertion replaced; it is not shipped (it is kept with the
+review's records):
 
 1. **The first nut of a kit: two touches.** The held nut is brought beside its shaft (the cameras' plan is good to
    a few millimetres, which is enough for that), lowered until its lower rim is below the shaft end, and pushed
@@ -54,15 +74,11 @@ touch, with its insertion replaced:
    friction on the shaft end holds the hand back), until the nut dips; it then gives way sideways to what the
    shaft pushes and goes down.
 
-Run by the grader on the commissioning service's 16 development kits of amendment 3 (a one-episode plan per kit
-through `tests/review/regrade.sh`): **9 of 16 kits complete** (841 to 959 steps), 40 of 48 nuts assembled. In an
-in-process run on the same kits it put 48 of 48 nuts on their shafts; from above the shaft to the pin took 50 steps
-at the median (two touches 73 to 94; a corrected plan 23 to 51). The reference, which is given the real grooves and
-poses, needs 637 to 798 steps on these kits. The seven kits it does not complete end at the takt with one or two
-nuts assembled: what is left to do better is time, in the insertion and in the groove search.
-
-`earlier_submission_dev_kits.json`: the same submission unchanged, which puts nuts on shafts from image positions
-with a search of up to 3 mm in twelve places: 3 of 16 kits, 15 of 48 nuts.
+With 1000 steps it completed 9 of the 16 development kits (841 to 959 steps), 40 of 48 nuts, and in an in-process
+run put 48 of 48 nuts on their shafts; from above the shaft to the pin took 50 steps at the median (two touches 73
+to 94; a corrected plan 23 to 51). The second measurement's submission, unchanged, which puts nuts on shafts from
+image positions with a search of up to 3 mm in twelve places, completed 3 of 16 (15 of 48 nuts) under the same
+rules. (These notes are for maintainers: `tests/` is never shown to an agent.)
 
 What did not work is in `../tolerances.md` (reading the shaft's direction from the wrist's torques on the shaft end).
 

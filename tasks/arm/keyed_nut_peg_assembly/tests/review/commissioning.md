@@ -1,4 +1,4 @@
-# The commissioning service and the takt (maintainer notes, 2026-11-16; round 3 on 2026-11-17)
+# The commissioning service and the takt (maintainer notes, 2026-11-16; rounds 3 and 4 on 2026-11-17)
 
 Why the task changed, what the agent has now, and how the window was sized. The agent-facing contract is
 `instruction.md` and `environment/setup/payload/datasheet.md`; this page is for maintainers and validators.
@@ -41,6 +41,28 @@ Round 3 (2026-11-17), approved by the benchmark's owner:
    (`tolerances.md`, "The fit"). The reference, which is given the real grooves and poses, needs 644 to 802 steps
    on the graded kits.
 
+The third frontier measurement (the same agent, 2026-11-17, on that version) scored 0.61: 6 of 10 kits, 25 of 30
+nuts, the complete kits in 730 to 892 steps. Two things kept it there. The data sheet's new section 12 did not
+only state the fit and the wrist's readings: it described the nut's rim pushed against the shaft's side with the
+distance between the two axes at that contact, and said that both ways of finding the shaft work. The agent
+wrote exactly that insertion in half an hour (two touches, a circle intersection; by its own count 46 of 50
+insertions on the real cell went on at the first place, at about 52 steps a nut). And its groove search by touch
+is about as fast as the reference's known path. This time it developed mostly on the real cell (29 whole runs
+over all 16 development kits) and stopped after 3.9 of its 8 hours, when the window was used up.
+
+Round 4 (2026-11-17), approved by the benchmark's owner:
+
+6. **The data sheet states readings, not a method.** The rim paragraph, the slide over the shaft end, "has to be
+   found by touch" and "both ways work" are gone from section 12; so is the advice on how to spend the
+   commissioning window. What stays is what a drawing and a cell's data sheet state: the fit and its series, the
+   tolerances, no lead-in, the compliance, and what the wrist reads on the shaft end, over the shaft and when a nut
+   binds. `tests/test_keyed_nut_peg_assembly_commissioning.py` keeps the removed wording out of the payload.
+7. **A takt of 85 s for a kit**, 850 steps. The reference needs at most 802 steps on a graded kit and 798 on a
+   development kit, so the kits stay the same (amendment 4, below).
+8. **Sources as read.** Every source named for a tolerance was checked against a text that could be read; the
+   camera calibration, the friction spread and two smaller items had been attributed to papers that were not read
+   and are engineering estimates now (`tolerances.md`). No value changed.
+
 ## What the agent has
 
 | what | where | note |
@@ -62,7 +84,7 @@ and thread settings. The image's working directory is `/`, so that the engine's 
 from the agent's home (engine issue AgentsLastExam/ale#142).
 
 - One connection is one episode: `reset(kit)`, `step(action)`, `close()`. It answers the observation of the public
-  wire and how the episode ended: all 1000 steps run, a safety stop (the ruined nut's colour, or the instability),
+  wire and how the episode ended: all 850 steps run, a safety stop (the ruined nut's colour, or the instability),
   the controller budget used up, 120 s of silence, or the client's close. `close(images=true)` adds the three
   cameras' images of the final state. About 1 % of the step replies carry the perturbed copy the grader uses for its
   repeated-step queries, so that `run_kit.py` can drive a controller the way the grader does.
@@ -79,31 +101,33 @@ from the agent's home (engine issue AgentsLastExam/ale#142).
   silence and the budget end an episode with the documented words (tried with 6 s and 12 s). A step without images takes about 0.02 s there, with all three images 0.4 s; a whole
   whole episode through `run_kit.py` about half a minute. Repeated on the round-3 image (2026-11-17): the closed
   folder and process, the wire, two episodes at a time, the count, a cell fault; a whole episode ends with "all
-  steps run" at step 1000.
+  steps run" at step 1000 (850 since round 4).
 
 ## The development kits
 
-Chosen like the graded set, from their own pre-registered candidates (in force: amendment 3's, kit seed 9001 + i,
-layout and noise seed 13001 + i; amendment 2 used 8001 + i and 12001 + i, round 2 7001 + i and 11001 + i): the
-first 16 that the frozen reference completes within the takt, each run once through the grader (`select_set.py --pool dev`; the record is the selection
+Chosen like the graded set, from their own pre-registered candidates (in force: kit seed 9001 + i, layout and noise
+seed 13001 + i, drawn for amendment 3 and run again under amendment 4's takt; amendment 2 used 8001 + i and
+12001 + i, round 2 7001 + i and 11001 + i): the first 16 that the frozen reference completes within the takt, each run once through the grader (`select_set.py --pool dev`; the record is the selection
 record's latest amendment, `development_kits`). The graded kits are
 "draws that the reference completed"; unfiltered development kits would be a slightly different population (about
 one draw in seven has a wrist-range case the reference does not handle), and with 32 episodes every development kit
 has to be worth its episode. No development seed is a candidate's and no development kit has a graded kit's
 grooves (the test above). The run under amendment 3 (2026-11-17): the reference completed 22 of the 24 candidates in
 637 to 798 steps; U11 and U15 dropped (the takt ran out with none and two nuts assembled), so the kits are U01 to
-U10, U12 to U14 and U16 to U18, which the agent addresses as kits 1 to 16. (Amendment 2's run, the same day: 23 of
+U10, U12 to U14 and U16 to U18, which the agent addresses as kits 1 to 16. Under amendment 4's 850 steps the run
+repeated itself: the same 22, each with the same steps, the same 16 kits. (Amendment 2's run, the same day: 23 of
 24 in 636 to 804 steps. Round 2's run, 2026-11-16: 22 of 24 in 598 to 846 steps.)
 
 ## The window's size
 
 32 episodes, 2 at a time, on 16 kits. The model is a real commissioning window: a plant gives the engineer who
 brings a new kit family onto a cell one working shift and a tray of pre-series kits. A trial takes about a quarter
-of an hour: a technician lays the kit out, the cell runs at most one takt (100 s), the engineer looks at the
+of an hour: a technician lays the kit out, the cell runs at most one takt (85 s), the engineer looks at the
 result and the logs, the technician takes the nuts off the pegs, the engineer changes the program. That is 32
 trials in 8 hours, two per kit on average: a few for teach-in and measurements (grasp, carry, how a nut on the pin
 feels, what a riser and a blocked turn read), the rest for whole runs. Simulated time is not the limit (32 episodes
-are 53 minutes of cell time and about a quarter of an hour of computing); the count is, as on a real cell.
+are 45 minutes of cell time and about a quarter of an hour of computing); the count is, as on a real cell. In the
+third measurement the count was what ended the agent's work.
 
 For comparison: the readable simulator of the first measurement served about 300 kit runs with the true state
 printed at every step.
@@ -111,7 +135,8 @@ printed at every step.
 ## The takt
 
 Round 2: `keyed_env.CYCLE_STEPS` 800 -> 400, an episode of at most 1200 steps. Round 3: `keyed_env.MAX_STEPS = 1000`,
-100 s for a kit. The controller budget (600 s of controller time per kit) and the image charges are unchanged.
+100 s for a kit. Round 4: `keyed_env.MAX_STEPS = 850`, 85 s for a kit. The controller budget (600 s of controller
+time per kit) and the image charges are unchanged.
 
 The tolerances change what a kit is (the reference is given the real groove through its token:
 `keyed_credit.ground_truth`, `actual`), so amendment 2 of the selection record drew 16 fresh hidden candidates and 24
@@ -160,3 +185,31 @@ development candidates and was committed before any of them ran (32d05cc).
 - Hard enough to measure: the second measurement's submission, unchanged, completes **3 of the 16** (15 of 48
   nuts): it cannot find the shaft from image positions.
 
+## Amendment 4: an 85 s takt, and a data sheet without the method
+
+The takt changes nothing of a kit or of the physics, and the reference's runs are deterministic, so amendment 4 ran
+the rule again on the same candidates; it was committed before any of them ran on the amended files (09c09d6).
+
+- Development candidates: the reference completed the same 22 of 24, each with the steps of its amendment-3 run
+  (637 to 798); the kits are the same 16.
+- Hidden candidates: the same 12 of 16, each with the same steps (600 to 802); F06, F08, F09 and F15 ran out of
+  the takt as before. The set is the same ten kits, and its full verify measured 1.0 with every episode repeating
+  its selection run (644 to 802 steps).
+- On 32 maintainer kits the reference completes 26 within 850 steps (582 to 793); it completed 27 within 1000.
+
+What the takt does to controllers that have only the observations, each run by the grader (2026-11-17):
+
+| controller | the service's 16 development kits | kept development candidates outside the service (U19 to U24) | 32 maintainer kits (the reference completes 26) |
+|---|---|---|---|
+| the third measurement's submission, unchanged | 9 of 16 (39 of 48 nuts), 679 to 836 steps | 1 of 6 (12 of 18 nuts) | 12 of 32 (75 of 96 nuts), all 12 among the reference's 26 |
+| the maintainer's controller with the round-3 insertion by touch | 1 of 16 (31 of 48 nuts) | | 2 of 32 (55 of 96 nuts) |
+
+- The third measurement's submission was commissioned on the service's 16 kits (29 whole runs), so its 9 of 16 is
+  an in-sample figure. On kits it never met it completes 13 of 38, and 4 of the 10 graded kits by the steps of its
+  own graded run (730, 752, 808, 841 within 850; 887 and 892 not). It carries the insertion that round 3's data
+  sheet described; what removing that description does can only be measured by a new run.
+- So the observations suffice within 85 s: a controller that sees and feels only what the agent gets completes
+  kits end to end. The maintainer's controller no longer does: its insertion costs about 50 steps a nut at the
+  median, like the measurement's own (about 52 by its count), and the rest of it is slower than the measurement's;
+  the takt does not leave that.
+- The camera-only check repeats on amendment 4's image with every kit's numbers identical.

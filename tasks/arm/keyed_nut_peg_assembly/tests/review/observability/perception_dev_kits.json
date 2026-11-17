@@ -1,6 +1,6 @@
 {
  "summary": {
-  "run": "2026-11-17, apollo, the task image of amendment 3 (three containers of 10 kits, 1 CPU each): real kits on the cell of the day, the estimates made with the published calibration",
+  "run": "2026-11-17, apollo, the task image of amendment 4 (three containers of 10 kits, 1 CPU each): real kits on the cell of the day, the estimates made with the published calibration; every kit's numbers are those of amendment 3's run the same day (the takt does not touch the cameras)",
   "kits": 30,
   "pegs": 90,
   "pegs_found": 90,
