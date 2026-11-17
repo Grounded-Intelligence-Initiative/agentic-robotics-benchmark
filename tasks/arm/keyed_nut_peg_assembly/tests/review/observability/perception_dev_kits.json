@@ -1,24 +1,24 @@
 {
  "summary": {
-  "run": "2026-11-17, apollo, the task image of amendment 2 (three containers of 10 kits, 1 CPU each): real kits on the cell of the day, the estimates made with the published calibration",
+  "run": "2026-11-17, apollo, the task image of amendment 3 (three containers of 10 kits, 1 CPU each): real kits on the cell of the day, the estimates made with the published calibration",
   "kits": 30,
   "pegs": 90,
   "pegs_found": 90,
   "peg_err_mm_p50_p90_max": [
-   3.57,
-   5.82,
-   14.01
+   3.43,
+   5.92,
+   12.63
   ],
   "peg_closeup_err_mm_p50_p90_max": [
-   1.58,
-   3.23,
-   4.98
+   1.63,
+   3.45,
+   4.91
   ],
   "peg_two_view_n": 90,
   "peg_two_view_err_mm_p50_p90_max": [
-   0.76,
-   1.51,
-   2.2
+   1.05,
+   1.5,
+   1.83
   ],
   "peg_two_view_steps_p50_max": [
    60,
@@ -26,9 +26,9 @@
   ],
   "peg_corrected_n": 60,
   "peg_corrected_err_mm_p50_p90_max": [
-   1.42,
-   2.42,
-   3.06
+   1.6,
+   2.18,
+   3.12
   ],
   "bands_right": 90,
   "bands_wrong": 0,
@@ -41,17 +41,17 @@
    27.72
   ],
   "closeup_err_mm_p50_p90_max": [
-   1.78,
-   3.37,
-   67.44
+   1.77,
+   3.35,
+   81.52
   ],
   "handle_yaw_err_deg_p50_p90_max": [
    0.28,
-   0.74,
-   179.79
+   0.69,
+   178.96
   ],
   "closeup_over_3mm": 17,
-  "handle_flipped": 3
+  "handle_flipped": 2
  },
  "kits": [
   {
@@ -61,46 +61,46 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 2.37,
+     "err_mm": 2.39,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.17,
-     "two_view_err_mm": 0.89,
+     "closeup_err_mm": 0.79,
+     "two_view_err_mm": 1.29,
      "two_view_steps": 59,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 0.97,
+     "err_mm": 1.19,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 1.71,
-     "two_view_err_mm": 0.1,
+     "closeup_err_mm": 1.63,
+     "two_view_err_mm": 0.98,
      "two_view_steps": 59,
-     "corrected_err_mm": 1.07
+     "corrected_err_mm": 0.78
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 2.13,
+     "err_mm": 2.2,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 0.51,
-     "two_view_err_mm": 0.9,
+     "closeup_err_mm": 0.96,
+     "two_view_err_mm": 0.48,
      "two_view_steps": 59,
-     "corrected_err_mm": 1.42
+     "corrected_err_mm": 1.83
     }
    ],
    "nuts": [
     {
      "colour": "green",
      "coarse_err_mm": 13.66,
-     "err_mm": 0.65,
-     "yaw_err_deg": -0.59
+     "err_mm": 0.64,
+     "yaw_err_deg": -0.58
     },
     {
      "colour": "teal",
@@ -123,58 +123,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 3.27,
+     "err_mm": 3.47,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 0.37,
-     "two_view_err_mm": 0.59,
+     "closeup_err_mm": 1.59,
+     "two_view_err_mm": 0.27,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 2.54,
+     "err_mm": 2.84,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 2.18,
-     "two_view_err_mm": 0.9,
+     "closeup_err_mm": 1.82,
+     "two_view_err_mm": 1.05,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.56
+     "corrected_err_mm": 0.73
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 3.08,
+     "err_mm": 2.51,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 0.36,
-     "two_view_err_mm": 0.22,
+     "closeup_err_mm": 1.51,
+     "two_view_err_mm": 0.84,
      "two_view_steps": 61,
-     "corrected_err_mm": 0.98
+     "corrected_err_mm": 1.6
     }
    ],
    "nuts": [
     {
      "colour": "teal",
      "coarse_err_mm": 18.91,
-     "err_mm": 1.58,
-     "yaw_err_deg": 0.18
+     "err_mm": 1.57,
+     "yaw_err_deg": 0.24
     },
     {
      "colour": "purple",
      "coarse_err_mm": 12.22,
-     "err_mm": 1.3,
-     "yaw_err_deg": -0.07
+     "err_mm": 1.36,
+     "yaw_err_deg": -0.14
     },
     {
      "colour": "red",
      "coarse_err_mm": 11.55,
-     "err_mm": 1.27,
-     "yaw_err_deg": -0.33
+     "err_mm": 1.24,
+     "yaw_err_deg": -0.24
     }
    ]
   },
@@ -185,38 +185,38 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 2.8,
+     "err_mm": 2.86,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 0.71,
-     "two_view_err_mm": 1.22,
+     "closeup_err_mm": 0.87,
+     "two_view_err_mm": 1.31,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 4.31,
+     "err_mm": 3.41,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 2.81,
-     "two_view_err_mm": 0.46,
+     "closeup_err_mm": 0.89,
+     "two_view_err_mm": 0.82,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.38
+     "corrected_err_mm": 0.57
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 3.01,
+     "err_mm": 2.94,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 0.56,
-     "two_view_err_mm": 1.09,
+     "closeup_err_mm": 1.6,
+     "two_view_err_mm": 1.32,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.05
+     "corrected_err_mm": 1.62
     }
    ],
    "nuts": [
@@ -230,7 +230,7 @@
      "colour": "teal",
      "coarse_err_mm": 18.35,
      "err_mm": 1.75,
-     "yaw_err_deg": -0.12
+     "yaw_err_deg": -0.11
     },
     {
      "colour": "orange",
@@ -247,58 +247,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 6.66,
+     "err_mm": 6.38,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 0.93,
-     "two_view_err_mm": 0.26,
+     "closeup_err_mm": 3.24,
+     "two_view_err_mm": 1.3,
      "two_view_steps": 60,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 5.22,
+     "err_mm": 6.12,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 1.36,
-     "two_view_err_mm": 1.24,
+     "closeup_err_mm": 0.56,
+     "two_view_err_mm": 1.39,
      "two_view_steps": 60,
-     "corrected_err_mm": 1.04
+     "corrected_err_mm": 1.66
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 6.27,
+     "err_mm": 5.98,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 0.53,
-     "two_view_err_mm": 0.51,
+     "closeup_err_mm": 0.27,
+     "two_view_err_mm": 1.13,
      "two_view_steps": 60,
-     "corrected_err_mm": 1.31
+     "corrected_err_mm": 1.97
     }
    ],
    "nuts": [
     {
      "colour": "teal",
      "coarse_err_mm": 14.06,
-     "err_mm": 2.74,
-     "yaw_err_deg": 0.11
+     "err_mm": 2.75,
+     "yaw_err_deg": 0.1
     },
     {
      "colour": "purple",
      "coarse_err_mm": 22.26,
-     "err_mm": 2.44,
-     "yaw_err_deg": 0.03
+     "err_mm": 2.46,
+     "yaw_err_deg": -0.02
     },
     {
      "colour": "green",
      "coarse_err_mm": 18.71,
      "err_mm": 2.45,
-     "yaw_err_deg": -0.47
+     "yaw_err_deg": -0.45
     }
    ]
   },
@@ -309,58 +309,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 1.71,
+     "err_mm": 1.9,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.74,
-     "two_view_err_mm": 1.45,
+     "closeup_err_mm": 1.55,
+     "two_view_err_mm": 1.34,
      "two_view_steps": 59,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 1.68,
+     "err_mm": 1.46,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 2.38,
-     "two_view_err_mm": 0.96,
+     "closeup_err_mm": 2.78,
+     "two_view_err_mm": 1.34,
      "two_view_steps": 58,
-     "corrected_err_mm": 3.06
+     "corrected_err_mm": 2.12
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 0.83,
+     "err_mm": 1.75,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 1.13,
-     "two_view_err_mm": 1.33,
+     "closeup_err_mm": 0.81,
+     "two_view_err_mm": 0.92,
      "two_view_steps": 59,
-     "corrected_err_mm": 1.08
+     "corrected_err_mm": 1.2
     }
    ],
    "nuts": [
     {
      "colour": "blue",
      "coarse_err_mm": 23.53,
-     "err_mm": 1.12,
-     "yaw_err_deg": -0.18
+     "err_mm": 1.11,
+     "yaw_err_deg": -0.23
     },
     {
      "colour": "yellow",
      "coarse_err_mm": 24.36,
      "err_mm": 1.1,
-     "yaw_err_deg": 0.22
+     "yaw_err_deg": 0.21
     },
     {
      "colour": "purple",
      "coarse_err_mm": 21.18,
      "err_mm": 1.34,
-     "yaw_err_deg": -0.11
+     "yaw_err_deg": -0.1
     }
    ]
   },
@@ -371,52 +371,52 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 5.23,
+     "err_mm": 4.47,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 0.39,
-     "two_view_err_mm": 1.04,
+     "closeup_err_mm": 1.26,
+     "two_view_err_mm": 1.39,
      "two_view_steps": 59,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 4.44,
+     "err_mm": 4.02,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 3.11,
-     "two_view_err_mm": 0.87,
+     "closeup_err_mm": 2.94,
+     "two_view_err_mm": 1.08,
      "two_view_steps": 58,
-     "corrected_err_mm": 2.42
+     "corrected_err_mm": 1.99
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 5.48,
+     "err_mm": 5.19,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 1.98,
-     "two_view_err_mm": 1.19,
+     "closeup_err_mm": 2.93,
+     "two_view_err_mm": 1.23,
      "two_view_steps": 59,
-     "corrected_err_mm": 1.0
+     "corrected_err_mm": 1.96
     }
    ],
    "nuts": [
     {
      "colour": "orange",
      "coarse_err_mm": 21.25,
-     "err_mm": 2.21,
+     "err_mm": 2.2,
      "yaw_err_deg": 0.37
     },
     {
      "colour": "blue",
      "coarse_err_mm": 22.93,
      "err_mm": 2.18,
-     "yaw_err_deg": -0.0
+     "yaw_err_deg": 0.02
     },
     {
      "colour": "yellow",
@@ -433,38 +433,38 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 3.3,
+     "err_mm": 3.82,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.3,
-     "two_view_err_mm": 0.4,
+     "closeup_err_mm": 3.33,
+     "two_view_err_mm": 1.13,
      "two_view_steps": 59,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 3.8,
+     "err_mm": 4.06,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 3.23,
-     "two_view_err_mm": 0.96,
+     "closeup_err_mm": 3.29,
+     "two_view_err_mm": 1.53,
      "two_view_steps": 59,
-     "corrected_err_mm": 2.0
+     "corrected_err_mm": 1.71
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 14.01,
+     "err_mm": 12.63,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 2.12,
-     "two_view_err_mm": 2.2,
+     "closeup_err_mm": 1.09,
+     "two_view_err_mm": 1.81,
      "two_view_steps": 59,
-     "corrected_err_mm": 1.94
+     "corrected_err_mm": 2.18
     }
    ],
    "nuts": [
@@ -477,14 +477,14 @@
     {
      "colour": "green",
      "coarse_err_mm": 21.94,
-     "err_mm": 1.8,
-     "yaw_err_deg": -0.22
+     "err_mm": 1.77,
+     "yaw_err_deg": -0.28
     },
     {
      "colour": "orange",
      "coarse_err_mm": 23.87,
      "err_mm": 2.0,
-     "yaw_err_deg": 0.02
+     "yaw_err_deg": 0.0
     }
    ]
   },
@@ -495,38 +495,38 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 3.02,
+     "err_mm": 3.43,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.33,
-     "two_view_err_mm": 1.07,
+     "closeup_err_mm": 1.48,
+     "two_view_err_mm": 1.37,
      "two_view_steps": 62,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 2.06,
+     "err_mm": 1.89,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 2.23,
-     "two_view_err_mm": 0.67,
+     "closeup_err_mm": 1.58,
+     "two_view_err_mm": 0.28,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.21
+     "corrected_err_mm": 1.31
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 2.94,
+     "err_mm": 3.31,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 1.82,
-     "two_view_err_mm": 1.51,
+     "closeup_err_mm": 1.45,
+     "two_view_err_mm": 1.5,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.34
+     "corrected_err_mm": 1.43
     }
    ],
    "nuts": [
@@ -557,38 +557,38 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 1.78,
+     "err_mm": 1.74,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.95,
-     "two_view_err_mm": 0.55,
+     "closeup_err_mm": 1.98,
+     "two_view_err_mm": 1.37,
      "two_view_steps": 60,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 1.18,
+     "err_mm": 1.45,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 1.16,
-     "two_view_err_mm": 0.2,
+     "closeup_err_mm": 1.18,
+     "two_view_err_mm": 1.26,
      "two_view_steps": 60,
-     "corrected_err_mm": 0.9
+     "corrected_err_mm": 0.97
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 3.07,
+     "err_mm": 2.04,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 1.3,
-     "two_view_err_mm": 0.23,
+     "closeup_err_mm": 1.43,
+     "two_view_err_mm": 0.36,
      "two_view_steps": 60,
-     "corrected_err_mm": 0.7
+     "corrected_err_mm": 0.58
     }
    ],
    "nuts": [
@@ -602,7 +602,7 @@
      "colour": "green",
      "coarse_err_mm": 22.48,
      "err_mm": 0.83,
-     "yaw_err_deg": 0.28
+     "yaw_err_deg": 0.29
     },
     {
      "colour": "pink",
@@ -619,46 +619,46 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 2.43,
+     "err_mm": 2.15,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 0.66,
-     "two_view_err_mm": 1.86,
+     "closeup_err_mm": 0.98,
+     "two_view_err_mm": 1.44,
      "two_view_steps": 59,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 2.94,
+     "err_mm": 2.54,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 2.03,
-     "two_view_err_mm": 0.33,
+     "closeup_err_mm": 2.18,
+     "two_view_err_mm": 0.47,
      "two_view_steps": 58,
-     "corrected_err_mm": 0.42
+     "corrected_err_mm": 0.31
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 2.3,
+     "err_mm": 1.73,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 1.58,
-     "two_view_err_mm": 0.26,
+     "closeup_err_mm": 2.49,
+     "two_view_err_mm": 0.98,
      "two_view_steps": 58,
-     "corrected_err_mm": 1.65
+     "corrected_err_mm": 1.82
     }
    ],
    "nuts": [
     {
      "colour": "blue",
      "coarse_err_mm": 18.08,
-     "err_mm": 1.2,
-     "yaw_err_deg": 0.19
+     "err_mm": 1.22,
+     "yaw_err_deg": 0.21
     },
     {
      "colour": "yellow",
@@ -670,7 +670,7 @@
      "colour": "purple",
      "coarse_err_mm": 15.55,
      "err_mm": 1.16,
-     "yaw_err_deg": -0.35
+     "yaw_err_deg": -0.34
     }
    ]
   },
@@ -681,38 +681,38 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 5.21,
+     "err_mm": 5.53,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 2.02,
-     "two_view_err_mm": 1.8,
+     "closeup_err_mm": 2.26,
+     "two_view_err_mm": 1.83,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 6.67,
+     "err_mm": 6.01,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 4.3,
-     "two_view_err_mm": 0.43,
+     "closeup_err_mm": 4.62,
+     "two_view_err_mm": 0.41,
      "two_view_steps": 60,
-     "corrected_err_mm": 0.95
+     "corrected_err_mm": 1.11
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 6.88,
+     "err_mm": 5.99,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 2.51,
-     "two_view_err_mm": 0.68,
+     "closeup_err_mm": 2.31,
+     "two_view_err_mm": 0.77,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.09
+     "corrected_err_mm": 1.51
     }
    ],
    "nuts": [
@@ -720,19 +720,19 @@
      "colour": "red",
      "coarse_err_mm": 18.3,
      "err_mm": 3.21,
-     "yaw_err_deg": 0.21
+     "yaw_err_deg": 0.2
     },
     {
      "colour": "purple",
      "coarse_err_mm": 19.29,
      "err_mm": 3.35,
-     "yaw_err_deg": 0.52
+     "yaw_err_deg": 0.55
     },
     {
      "colour": "blue",
      "coarse_err_mm": 23.69,
      "err_mm": 3.37,
-     "yaw_err_deg": 0.43
+     "yaw_err_deg": 0.45
     }
    ]
   },
@@ -743,58 +743,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 2.4,
+     "err_mm": 2.47,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.48,
-     "two_view_err_mm": 0.35,
-     "two_view_steps": 60,
+     "closeup_err_mm": 1.09,
+     "two_view_err_mm": 0.96,
+     "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 2.4,
+     "err_mm": 2.95,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 4.08,
-     "two_view_err_mm": 0.66,
+     "closeup_err_mm": 3.55,
+     "two_view_err_mm": 0.75,
      "two_view_steps": 60,
-     "corrected_err_mm": 2.65
+     "corrected_err_mm": 2.54
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 2.92,
+     "err_mm": 3.03,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 1.85,
-     "two_view_err_mm": 0.19,
+     "closeup_err_mm": 2.61,
+     "two_view_err_mm": 1.04,
      "two_view_steps": 61,
-     "corrected_err_mm": 0.03
+     "corrected_err_mm": 1.55
     }
    ],
    "nuts": [
     {
      "colour": "blue",
      "coarse_err_mm": 20.09,
-     "err_mm": 1.66,
-     "yaw_err_deg": 0.39
+     "err_mm": 1.62,
+     "yaw_err_deg": 0.33
     },
     {
      "colour": "green",
      "coarse_err_mm": 19.98,
-     "err_mm": 1.52,
-     "yaw_err_deg": -0.36
+     "err_mm": 1.46,
+     "yaw_err_deg": -0.45
     },
     {
      "colour": "teal",
      "coarse_err_mm": 15.11,
-     "err_mm": 1.73,
-     "yaw_err_deg": -0.11
+     "err_mm": 1.78,
+     "yaw_err_deg": -0.18
     }
    ]
   },
@@ -805,58 +805,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 4.46,
+     "err_mm": 4.93,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.61,
-     "two_view_err_mm": 1.2,
+     "closeup_err_mm": 1.85,
+     "two_view_err_mm": 0.49,
      "two_view_steps": 59,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 4.03,
+     "err_mm": 4.42,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 4.98,
-     "two_view_err_mm": 0.94,
+     "closeup_err_mm": 4.64,
+     "two_view_err_mm": 1.26,
      "two_view_steps": 59,
-     "corrected_err_mm": 3.0
+     "corrected_err_mm": 3.12
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 5.07,
+     "err_mm": 5.31,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 3.32,
-     "two_view_err_mm": 0.74,
+     "closeup_err_mm": 3.62,
+     "two_view_err_mm": 0.41,
      "two_view_steps": 59,
-     "corrected_err_mm": 1.67
+     "corrected_err_mm": 1.56
     }
    ],
    "nuts": [
     {
      "colour": "orange",
      "coarse_err_mm": 19.96,
-     "err_mm": 2.79,
-     "yaw_err_deg": -0.07
+     "err_mm": 2.88,
+     "yaw_err_deg": -0.02
     },
     {
      "colour": "purple",
      "coarse_err_mm": 19.55,
-     "err_mm": 2.77,
-     "yaw_err_deg": -0.48
+     "err_mm": 2.78,
+     "yaw_err_deg": -0.47
     },
     {
      "colour": "green",
      "coarse_err_mm": 10.15,
      "err_mm": 2.98,
-     "yaw_err_deg": -0.08
+     "yaw_err_deg": -0.09
     }
    ]
   },
@@ -867,58 +867,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 5.41,
+     "err_mm": 5.75,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.35,
-     "two_view_err_mm": 1.77,
+     "closeup_err_mm": 1.95,
+     "two_view_err_mm": 1.28,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 6.24,
+     "err_mm": 5.66,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 4.01,
-     "two_view_err_mm": 1.03,
+     "closeup_err_mm": 4.31,
+     "two_view_err_mm": 0.54,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.12
+     "corrected_err_mm": 1.75
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 4.93,
+     "err_mm": 5.04,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 2.41,
-     "two_view_err_mm": 1.84,
+     "closeup_err_mm": 2.96,
+     "two_view_err_mm": 1.64,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.54
+     "corrected_err_mm": 1.23
     }
    ],
    "nuts": [
     {
      "colour": "pink",
      "coarse_err_mm": 19.72,
-     "err_mm": 2.78,
-     "yaw_err_deg": -0.09
+     "err_mm": 2.79,
+     "yaw_err_deg": -0.12
     },
     {
      "colour": "red",
      "coarse_err_mm": 20.9,
-     "err_mm": 2.79,
-     "yaw_err_deg": 0.65
+     "err_mm": 2.77,
+     "yaw_err_deg": 0.58
     },
     {
      "colour": "blue",
      "coarse_err_mm": 19.8,
-     "err_mm": 2.81,
-     "yaw_err_deg": -0.17
+     "err_mm": 2.8,
+     "yaw_err_deg": -0.18
     }
    ]
   },
@@ -929,52 +929,52 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 1.86,
+     "err_mm": 1.58,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.21,
-     "two_view_err_mm": 1.23,
+     "closeup_err_mm": 1.43,
+     "two_view_err_mm": 1.42,
      "two_view_steps": 60,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 1.48,
+     "err_mm": 1.98,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 2.57,
-     "two_view_err_mm": 1.06,
+     "closeup_err_mm": 2.46,
+     "two_view_err_mm": 1.51,
      "two_view_steps": 60,
-     "corrected_err_mm": 2.46
+     "corrected_err_mm": 2.31
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 2.47,
+     "err_mm": 2.14,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 0.89,
-     "two_view_err_mm": 1.65,
+     "closeup_err_mm": 0.25,
+     "two_view_err_mm": 1.26,
      "two_view_steps": 60,
-     "corrected_err_mm": 1.6
+     "corrected_err_mm": 1.28
     }
    ],
    "nuts": [
     {
      "colour": "pink",
      "coarse_err_mm": 18.02,
-     "err_mm": 0.92,
-     "yaw_err_deg": 0.37
+     "err_mm": 0.88,
+     "yaw_err_deg": 0.39
     },
     {
      "colour": "yellow",
      "coarse_err_mm": 18.72,
      "err_mm": 0.78,
-     "yaw_err_deg": 0.5
+     "yaw_err_deg": 0.52
     },
     {
      "colour": "teal",
@@ -991,58 +991,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 2.17,
+     "err_mm": 3.12,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.4,
-     "two_view_err_mm": 0.49,
+     "closeup_err_mm": 1.46,
+     "two_view_err_mm": 1.0,
      "two_view_steps": 60,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 2.68,
+     "err_mm": 1.7,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 1.68,
-     "two_view_err_mm": 0.48,
+     "closeup_err_mm": 1.54,
+     "two_view_err_mm": 0.32,
      "two_view_steps": 59,
-     "corrected_err_mm": 2.83
+     "corrected_err_mm": 1.14
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 2.47,
+     "err_mm": 2.4,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 0.78,
-     "two_view_err_mm": 0.57,
+     "closeup_err_mm": 1.31,
+     "two_view_err_mm": 1.6,
      "two_view_steps": 60,
-     "corrected_err_mm": 0.8
+     "corrected_err_mm": 0.67
     }
    ],
    "nuts": [
     {
      "colour": "yellow",
      "coarse_err_mm": 14.69,
-     "err_mm": 67.44,
-     "yaw_err_deg": 179.79
+     "err_mm": 81.52,
+     "yaw_err_deg": 0.39
     },
     {
      "colour": "pink",
      "coarse_err_mm": 21.6,
-     "err_mm": 7.85,
-     "yaw_err_deg": -77.75
+     "err_mm": 6.71,
+     "yaw_err_deg": -73.53
     },
     {
      "colour": "orange",
      "coarse_err_mm": 15.77,
-     "err_mm": 0.58,
-     "yaw_err_deg": -0.47
+     "err_mm": 0.59,
+     "yaw_err_deg": -0.44
     }
    ]
   },
@@ -1053,58 +1053,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 4.61,
+     "err_mm": 4.35,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 2.2,
-     "two_view_err_mm": 1.36,
+     "closeup_err_mm": 3.51,
+     "two_view_err_mm": 1.11,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 5.3,
+     "err_mm": 5.75,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 4.35,
-     "two_view_err_mm": 0.16,
+     "closeup_err_mm": 4.91,
+     "two_view_err_mm": 0.58,
      "two_view_steps": 61,
-     "corrected_err_mm": 2.29
+     "corrected_err_mm": 1.97
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 4.54,
+     "err_mm": 4.87,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 2.29,
-     "two_view_err_mm": 1.57,
+     "closeup_err_mm": 3.12,
+     "two_view_err_mm": 1.5,
      "two_view_steps": 61,
-     "corrected_err_mm": 0.34
+     "corrected_err_mm": 1.69
     }
    ],
    "nuts": [
     {
      "colour": "yellow",
      "coarse_err_mm": 17.87,
-     "err_mm": 3.38,
-     "yaw_err_deg": -0.04
+     "err_mm": 3.41,
+     "yaw_err_deg": -0.06
     },
     {
      "colour": "pink",
      "coarse_err_mm": 19.93,
-     "err_mm": 3.37,
-     "yaw_err_deg": -0.32
+     "err_mm": 3.31,
+     "yaw_err_deg": -0.31
     },
     {
      "colour": "green",
      "coarse_err_mm": 19.56,
-     "err_mm": 3.21,
-     "yaw_err_deg": 0.22
+     "err_mm": 3.23,
+     "yaw_err_deg": 0.24
     }
    ]
   },
@@ -1115,38 +1115,38 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 4.47,
+     "err_mm": 5.29,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 2.48,
-     "two_view_err_mm": 0.23,
+     "closeup_err_mm": 2.88,
+     "two_view_err_mm": 0.22,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 5.08,
+     "err_mm": 4.9,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 4.23,
-     "two_view_err_mm": 0.72,
+     "closeup_err_mm": 3.45,
+     "two_view_err_mm": 0.9,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.96
+     "corrected_err_mm": 1.04
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 5.43,
+     "err_mm": 4.61,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 1.91,
-     "two_view_err_mm": 0.64,
+     "closeup_err_mm": 1.53,
+     "two_view_err_mm": 1.0,
      "two_view_steps": 61,
-     "corrected_err_mm": 0.73
+     "corrected_err_mm": 2.34
     }
    ],
    "nuts": [
@@ -1154,19 +1154,19 @@
      "colour": "red",
      "coarse_err_mm": 19.52,
      "err_mm": 2.5,
-     "yaw_err_deg": -0.5
+     "yaw_err_deg": -0.51
     },
     {
      "colour": "teal",
      "coarse_err_mm": 16.24,
      "err_mm": 2.57,
-     "yaw_err_deg": 0.02
+     "yaw_err_deg": 0.01
     },
     {
      "colour": "pink",
      "coarse_err_mm": 12.37,
-     "err_mm": 4.11,
-     "yaw_err_deg": 4.92
+     "err_mm": 4.09,
+     "yaw_err_deg": 4.84
     }
    ]
   },
@@ -1177,38 +1177,38 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 1.51,
+     "err_mm": 0.81,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 0.51,
-     "two_view_err_mm": 0.74,
+     "closeup_err_mm": 0.52,
+     "two_view_err_mm": 0.31,
      "two_view_steps": 60,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 0.9,
+     "err_mm": 0.87,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 1.49,
-     "two_view_err_mm": 0.24,
+     "closeup_err_mm": 1.48,
+     "two_view_err_mm": 0.15,
      "two_view_steps": 60,
-     "corrected_err_mm": 2.09
+     "corrected_err_mm": 1.6
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 0.45,
+     "err_mm": 0.55,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 1.58,
-     "two_view_err_mm": 1.6,
+     "closeup_err_mm": 1.44,
+     "two_view_err_mm": 1.16,
      "two_view_steps": 60,
-     "corrected_err_mm": 2.18
+     "corrected_err_mm": 1.83
     }
    ],
    "nuts": [
@@ -1216,19 +1216,19 @@
      "colour": "red",
      "coarse_err_mm": 16.37,
      "err_mm": 0.36,
-     "yaw_err_deg": -0.35
+     "yaw_err_deg": -0.38
     },
     {
      "colour": "green",
      "coarse_err_mm": 16.7,
-     "err_mm": 0.18,
-     "yaw_err_deg": 0.64
+     "err_mm": 0.19,
+     "yaw_err_deg": 0.69
     },
     {
      "colour": "purple",
      "coarse_err_mm": 17.4,
-     "err_mm": 0.21,
-     "yaw_err_deg": 0.47
+     "err_mm": 0.2,
+     "yaw_err_deg": 0.54
     }
    ]
   },
@@ -1239,58 +1239,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 3.91,
+     "err_mm": 4.83,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.96,
-     "two_view_err_mm": 0.29,
+     "closeup_err_mm": 2.68,
+     "two_view_err_mm": 0.7,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 4.34,
+     "err_mm": 4.49,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 2.99,
-     "two_view_err_mm": 0.76,
+     "closeup_err_mm": 2.75,
+     "two_view_err_mm": 0.31,
      "two_view_steps": 60,
-     "corrected_err_mm": 1.83
+     "corrected_err_mm": 1.68
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 4.37,
+     "err_mm": 4.97,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 0.47,
-     "two_view_err_mm": 0.87,
+     "closeup_err_mm": 0.89,
+     "two_view_err_mm": 0.82,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.73
+     "corrected_err_mm": 1.78
     }
    ],
    "nuts": [
     {
      "colour": "blue",
      "coarse_err_mm": 23.15,
-     "err_mm": 2.1,
-     "yaw_err_deg": 0.27
+     "err_mm": 2.14,
+     "yaw_err_deg": 0.26
     },
     {
      "colour": "orange",
      "coarse_err_mm": 23.46,
      "err_mm": 2.34,
-     "yaw_err_deg": -0.13
+     "yaw_err_deg": -0.14
     },
     {
      "colour": "green",
      "coarse_err_mm": 20.73,
-     "err_mm": 2.22,
-     "yaw_err_deg": 0.01
+     "err_mm": 2.23,
+     "yaw_err_deg": -0.0
     }
    ]
   },
@@ -1301,46 +1301,46 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 4.7,
+     "err_mm": 4.95,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.05,
-     "two_view_err_mm": 1.36,
+     "closeup_err_mm": 2.17,
+     "two_view_err_mm": 1.15,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 7.51,
+     "err_mm": 6.62,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 0.39,
-     "two_view_err_mm": 0.37,
+     "closeup_err_mm": 1.62,
+     "two_view_err_mm": 0.43,
      "two_view_steps": 60,
-     "corrected_err_mm": 2.07
+     "corrected_err_mm": 1.57
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 3.91,
+     "err_mm": 3.76,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 1.93,
-     "two_view_err_mm": 0.86,
+     "closeup_err_mm": 1.96,
+     "two_view_err_mm": 0.84,
      "two_view_steps": 60,
-     "corrected_err_mm": 0.79
+     "corrected_err_mm": 1.43
     }
    ],
    "nuts": [
     {
      "colour": "purple",
      "coarse_err_mm": 15.73,
-     "err_mm": 2.11,
-     "yaw_err_deg": -0.42
+     "err_mm": 2.09,
+     "yaw_err_deg": -0.46
     },
     {
      "colour": "teal",
@@ -1352,7 +1352,7 @@
      "colour": "red",
      "coarse_err_mm": 12.78,
      "err_mm": 1.99,
-     "yaw_err_deg": -0.58
+     "yaw_err_deg": -0.57
     }
    ]
   },
@@ -1363,58 +1363,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 1.89,
+     "err_mm": 1.77,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.8,
-     "two_view_err_mm": 0.58,
+     "closeup_err_mm": 1.31,
+     "two_view_err_mm": 0.65,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 0.81,
+     "err_mm": 0.22,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 2.13,
-     "two_view_err_mm": 0.66,
+     "closeup_err_mm": 1.26,
+     "two_view_err_mm": 1.17,
      "two_view_steps": 60,
-     "corrected_err_mm": 0.57
+     "corrected_err_mm": 0.24
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 0.7,
+     "err_mm": 0.35,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 1.24,
-     "two_view_err_mm": 0.91,
+     "closeup_err_mm": 0.87,
+     "two_view_err_mm": 1.08,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.94
+     "corrected_err_mm": 1.9
     }
    ],
    "nuts": [
     {
      "colour": "pink",
      "coarse_err_mm": 14.56,
-     "err_mm": 1.45,
-     "yaw_err_deg": 0.01
+     "err_mm": 1.25,
+     "yaw_err_deg": 0.28
     },
     {
      "colour": "orange",
      "coarse_err_mm": 15.43,
-     "err_mm": 1.31,
-     "yaw_err_deg": -0.6
+     "err_mm": 1.28,
+     "yaw_err_deg": -0.56
     },
     {
      "colour": "green",
      "coarse_err_mm": 15.29,
-     "err_mm": 1.44,
-     "yaw_err_deg": -0.16
+     "err_mm": 1.41,
+     "yaw_err_deg": -0.15
     }
    ]
   },
@@ -1425,58 +1425,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 3.97,
+     "err_mm": 4.24,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.57,
-     "two_view_err_mm": 0.51,
+     "closeup_err_mm": 2.9,
+     "two_view_err_mm": 1.49,
      "two_view_steps": 60,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 10.73,
+     "err_mm": 9.94,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 2.29,
-     "two_view_err_mm": 1.03,
+     "closeup_err_mm": 2.58,
+     "two_view_err_mm": 0.68,
      "two_view_steps": 59,
-     "corrected_err_mm": 0.42
+     "corrected_err_mm": 0.78
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 4.06,
+     "err_mm": 3.67,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 0.43,
-     "two_view_err_mm": 1.34,
+     "closeup_err_mm": 1.35,
+     "two_view_err_mm": 0.47,
      "two_view_steps": 60,
-     "corrected_err_mm": 1.94
+     "corrected_err_mm": 1.63
     }
    ],
    "nuts": [
     {
      "colour": "red",
      "coarse_err_mm": 16.67,
-     "err_mm": 1.61,
+     "err_mm": 1.63,
      "yaw_err_deg": -0.57
     },
     {
      "colour": "blue",
      "coarse_err_mm": 18.68,
-     "err_mm": 1.78,
-     "yaw_err_deg": -0.74
+     "err_mm": 1.75,
+     "yaw_err_deg": -0.69
     },
     {
      "colour": "orange",
      "coarse_err_mm": 22.08,
-     "err_mm": 1.37,
-     "yaw_err_deg": 0.25
+     "err_mm": 1.33,
+     "yaw_err_deg": 0.27
     }
    ]
   },
@@ -1487,12 +1487,12 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 3.45,
+     "err_mm": 2.97,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.15,
-     "two_view_err_mm": 0.68,
+     "closeup_err_mm": 0.51,
+     "two_view_err_mm": 0.83,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
@@ -1503,30 +1503,30 @@
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 2.98,
-     "two_view_err_mm": 0.9,
+     "closeup_err_mm": 2.85,
+     "two_view_err_mm": 1.43,
      "two_view_steps": 60,
-     "corrected_err_mm": 2.81
+     "corrected_err_mm": 1.94
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 2.46,
+     "err_mm": 2.42,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 0.77,
-     "two_view_err_mm": 0.56,
+     "closeup_err_mm": 0.85,
+     "two_view_err_mm": 1.07,
      "two_view_steps": 61,
-     "corrected_err_mm": 0.74
+     "corrected_err_mm": 0.75
     }
    ],
    "nuts": [
     {
      "colour": "green",
      "coarse_err_mm": 16.69,
-     "err_mm": 1.58,
-     "yaw_err_deg": 0.02
+     "err_mm": 1.61,
+     "yaw_err_deg": -0.0
     },
     {
      "colour": "orange",
@@ -1538,7 +1538,7 @@
      "colour": "red",
      "coarse_err_mm": 16.08,
      "err_mm": 1.49,
-     "yaw_err_deg": -0.33
+     "yaw_err_deg": -0.32
     }
    ]
   },
@@ -1549,38 +1549,38 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 4.51,
+     "err_mm": 3.3,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.21,
-     "two_view_err_mm": 0.51,
+     "closeup_err_mm": 1.41,
+     "two_view_err_mm": 0.74,
      "two_view_steps": 60,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 5.91,
+     "err_mm": 6.08,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 1.69,
-     "two_view_err_mm": 0.08,
+     "closeup_err_mm": 2.06,
+     "two_view_err_mm": 0.94,
      "two_view_steps": 59,
-     "corrected_err_mm": 2.4
+     "corrected_err_mm": 2.81
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 3.57,
+     "err_mm": 2.79,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 1.02,
-     "two_view_err_mm": 0.47,
+     "closeup_err_mm": 0.5,
+     "two_view_err_mm": 1.28,
      "two_view_steps": 60,
-     "corrected_err_mm": 1.03
+     "corrected_err_mm": 1.14
     }
    ],
    "nuts": [
@@ -1588,19 +1588,19 @@
      "colour": "orange",
      "coarse_err_mm": 15.02,
      "err_mm": 1.12,
-     "yaw_err_deg": -0.72
+     "yaw_err_deg": -0.67
     },
     {
      "colour": "yellow",
      "coarse_err_mm": 2.48,
      "err_mm": 66.47,
-     "yaw_err_deg": 178.99
+     "yaw_err_deg": 178.96
     },
     {
      "colour": "pink",
      "coarse_err_mm": 16.25,
-     "err_mm": 12.21,
-     "yaw_err_deg": -65.34
+     "err_mm": 12.22,
+     "yaw_err_deg": -65.19
     }
    ]
   },
@@ -1611,38 +1611,38 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 1.44,
+     "err_mm": 1.81,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.69,
-     "two_view_err_mm": 1.27,
+     "closeup_err_mm": 1.65,
+     "two_view_err_mm": 1.66,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 1.06,
+     "err_mm": 1.02,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 2.3,
-     "two_view_err_mm": 0.62,
+     "closeup_err_mm": 2.36,
+     "two_view_err_mm": 1.4,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.83
+     "corrected_err_mm": 1.82
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 0.84,
+     "err_mm": 0.48,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 0.5,
-     "two_view_err_mm": 1.71,
+     "closeup_err_mm": 0.34,
+     "two_view_err_mm": 1.62,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.29
+     "corrected_err_mm": 0.95
     }
    ],
    "nuts": [
@@ -1661,8 +1661,8 @@
     {
      "colour": "red",
      "coarse_err_mm": 21.08,
-     "err_mm": 0.81,
-     "yaw_err_deg": -0.5
+     "err_mm": 0.82,
+     "yaw_err_deg": -0.51
     }
    ]
   },
@@ -1673,58 +1673,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 5.82,
+     "err_mm": 5.92,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 1.55,
-     "two_view_err_mm": 1.23,
+     "closeup_err_mm": 1.97,
+     "two_view_err_mm": 1.37,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 5.3,
+     "err_mm": 5.47,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 4.03,
-     "two_view_err_mm": 0.24,
+     "closeup_err_mm": 4.61,
+     "two_view_err_mm": 0.08,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.46
+     "corrected_err_mm": 1.92
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 4.51,
+     "err_mm": 4.72,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 1.92,
-     "two_view_err_mm": 0.19,
+     "closeup_err_mm": 2.41,
+     "two_view_err_mm": 1.29,
      "two_view_steps": 61,
-     "corrected_err_mm": 0.75
+     "corrected_err_mm": 1.74
     }
    ],
    "nuts": [
     {
      "colour": "pink",
      "coarse_err_mm": 19.33,
-     "err_mm": 3.24,
-     "yaw_err_deg": -0.06
+     "err_mm": 3.17,
+     "yaw_err_deg": -0.07
     },
     {
      "colour": "purple",
      "coarse_err_mm": 17.73,
-     "err_mm": 3.07,
-     "yaw_err_deg": -85.56
+     "err_mm": 3.05,
+     "yaw_err_deg": -84.82
     },
     {
      "colour": "green",
      "coarse_err_mm": 17.12,
-     "err_mm": 3.33,
-     "yaw_err_deg": -0.61
+     "err_mm": 3.32,
+     "yaw_err_deg": -0.6
     }
    ]
   },
@@ -1735,58 +1735,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 3.61,
+     "err_mm": 3.46,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 2.06,
-     "two_view_err_mm": 1.23,
+     "closeup_err_mm": 2.1,
+     "two_view_err_mm": 1.27,
      "two_view_steps": 60,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 3.96,
+     "err_mm": 3.68,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 1.51,
-     "two_view_err_mm": 0.88,
+     "closeup_err_mm": 1.67,
+     "two_view_err_mm": 0.07,
      "two_view_steps": 59,
-     "corrected_err_mm": 2.3
+     "corrected_err_mm": 2.41
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 1.92,
+     "err_mm": 2.29,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 0.96,
-     "two_view_err_mm": 0.74,
+     "closeup_err_mm": 0.82,
+     "two_view_err_mm": 1.36,
      "two_view_steps": 60,
-     "corrected_err_mm": 1.03
+     "corrected_err_mm": 1.47
     }
    ],
    "nuts": [
     {
      "colour": "yellow",
      "coarse_err_mm": 14.83,
-     "err_mm": 0.84,
-     "yaw_err_deg": -0.23
+     "err_mm": 0.86,
+     "yaw_err_deg": -0.25
     },
     {
      "colour": "pink",
      "coarse_err_mm": 27.72,
-     "err_mm": 3.34,
-     "yaw_err_deg": 90.97
+     "err_mm": 3.31,
+     "yaw_err_deg": 90.84
     },
     {
      "colour": "blue",
      "coarse_err_mm": 12.31,
      "err_mm": 0.95,
-     "yaw_err_deg": -0.16
+     "yaw_err_deg": -0.15
     }
    ]
   },
@@ -1797,52 +1797,52 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 3.55,
+     "err_mm": 3.84,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 0.88,
-     "two_view_err_mm": 1.51,
+     "closeup_err_mm": 2.13,
+     "two_view_err_mm": 1.03,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 3.85,
+     "err_mm": 3.62,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 3.63,
-     "two_view_err_mm": 0.27,
+     "closeup_err_mm": 3.89,
+     "two_view_err_mm": 0.35,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.53
+     "corrected_err_mm": 1.07
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 3.72,
+     "err_mm": 3.65,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 1.01,
-     "two_view_err_mm": 0.15,
+     "closeup_err_mm": 2.55,
+     "two_view_err_mm": 1.05,
      "two_view_steps": 62,
-     "corrected_err_mm": 1.16
+     "corrected_err_mm": 1.37
     }
    ],
    "nuts": [
     {
      "colour": "pink",
      "coarse_err_mm": 16.83,
-     "err_mm": 2.02,
-     "yaw_err_deg": -0.58
+     "err_mm": 2.04,
+     "yaw_err_deg": -0.59
     },
     {
      "colour": "yellow",
      "coarse_err_mm": 10.74,
-     "err_mm": 1.8,
-     "yaw_err_deg": -0.24
+     "err_mm": 1.79,
+     "yaw_err_deg": -0.22
     },
     {
      "colour": "red",
@@ -1859,58 +1859,58 @@
     {
      "bands": 1,
      "found": true,
-     "err_mm": 4.41,
+     "err_mm": 4.1,
      "bands_seen": 1,
      "bands_left": 1,
      "bands_right": 1,
-     "closeup_err_mm": 0.75,
-     "two_view_err_mm": 0.94,
+     "closeup_err_mm": 1.2,
+     "two_view_err_mm": 0.91,
      "two_view_steps": 61,
      "corrected_err_mm": null
     },
     {
      "bands": 2,
      "found": true,
-     "err_mm": 4.59,
+     "err_mm": 4.76,
      "bands_seen": 2,
      "bands_left": 2,
      "bands_right": 2,
-     "closeup_err_mm": 1.34,
-     "two_view_err_mm": 1.35,
+     "closeup_err_mm": 1.18,
+     "two_view_err_mm": 1.11,
      "two_view_steps": 60,
-     "corrected_err_mm": 1.75
+     "corrected_err_mm": 1.81
     },
     {
      "bands": 3,
      "found": true,
-     "err_mm": 3.93,
+     "err_mm": 3.26,
      "bands_seen": 3,
      "bands_left": 3,
      "bands_right": 3,
-     "closeup_err_mm": 0.71,
-     "two_view_err_mm": 1.13,
+     "closeup_err_mm": 1.11,
+     "two_view_err_mm": 0.23,
      "two_view_steps": 61,
-     "corrected_err_mm": 1.28
+     "corrected_err_mm": 1.36
     }
    ],
    "nuts": [
     {
      "colour": "pink",
      "coarse_err_mm": 17.03,
-     "err_mm": 1.74,
-     "yaw_err_deg": 0.2
+     "err_mm": 1.69,
+     "yaw_err_deg": 0.19
     },
     {
      "colour": "red",
      "coarse_err_mm": 17.39,
-     "err_mm": 1.84,
-     "yaw_err_deg": 0.16
+     "err_mm": 1.85,
+     "yaw_err_deg": 0.12
     },
     {
      "colour": "blue",
      "coarse_err_mm": 18.92,
-     "err_mm": 1.88,
-     "yaw_err_deg": -0.44
+     "err_mm": 1.87,
+     "yaw_err_deg": -0.41
     }
    ]
   }

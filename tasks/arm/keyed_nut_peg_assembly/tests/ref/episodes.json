@@ -2,576 +2,27 @@
  "note": "fixed hidden grading episodes: a kit (three nuts and the work order) drawn with keyed_env.sample_kit from a seed, and the layout/noise seed; the first 10 candidates of tests/hidden/selection.json the reference completed, in drawn order",
  "episodes": [
   {
-   "id": "E00",
+   "id": "F00",
    "kit": {
     "nuts": [
      {
-      "id": "E00-0",
+      "id": "F00-0",
       "groove": {
-       "entrance": 23,
-       "turns": [
-        -2,
-        2
-       ],
-       "dead_ends": [
-        1,
-        2
-       ],
-       "false_entrances": []
-      },
-      "mass": 0.1207,
-      "friction": 0.5159,
-      "rgba": [
-       0.2,
-       0.62,
-       0.3,
-       1
-      ]
-     },
-     {
-      "id": "E00-1",
-      "groove": {
-       "entrance": 22,
-       "turns": [
-        3,
-        2
-       ],
-       "dead_ends": [
-        2,
-        2
-       ],
-       "false_entrances": [
-        11,
-        4
-       ]
-      },
-      "mass": 0.0585,
-      "friction": 0.3699,
-      "rgba": [
-       0.16,
-       0.36,
-       0.78,
-       1
-      ]
-     },
-     {
-      "id": "E00-2",
-      "groove": {
-       "entrance": 14,
-       "turns": [
-        -3,
-        -3
-       ],
-       "dead_ends": [
-        0,
-        2
-       ],
-       "false_entrances": [
-        20
-       ]
-      },
-      "mass": 0.0636,
-      "friction": 0.5301,
-      "rgba": [
-       0.55,
-       0.25,
-       0.7,
-       1
-      ]
-     }
-    ],
-    "order": [
-     1,
-     2,
-     3
-    ]
-   },
-   "seed": 3219438523941064329
-  },
-  {
-   "id": "E01",
-   "kit": {
-    "nuts": [
-     {
-      "id": "E01-0",
-      "groove": {
-       "entrance": 19,
-       "turns": [
-        2,
-        3
-       ],
-       "dead_ends": [
-        1,
-        3
-       ],
-       "false_entrances": [
-        5
-       ]
-      },
-      "mass": 0.0575,
-      "friction": 0.4796,
-      "rgba": [
-       0.86,
-       0.74,
-       0.16,
-       1
-      ]
-     },
-     {
-      "id": "E01-1",
-      "groove": {
-       "entrance": 2,
-       "turns": [
-        3,
-        -2
-       ],
-       "dead_ends": [
-        2,
-        1
-       ],
-       "false_entrances": []
-      },
-      "mass": 0.0915,
-      "friction": 0.3578,
-      "rgba": [
-       0.78,
-       0.18,
-       0.16,
-       1
-      ]
-     },
-     {
-      "id": "E01-2",
-      "groove": {
-       "entrance": 12,
-       "turns": [
-        4,
-        2
-       ],
-       "dead_ends": [
-        3,
-        0
-       ],
-       "false_entrances": []
-      },
-      "mass": 0.0935,
-      "friction": 0.3754,
-      "rgba": [
-       0.8,
-       0.35,
-       0.55,
-       1
-      ]
-     }
-    ],
-    "order": [
-     3,
-     1,
-     2
-    ]
-   },
-   "seed": 2866283348347636665
-  },
-  {
-   "id": "E02",
-   "kit": {
-    "nuts": [
-     {
-      "id": "E02-0",
-      "groove": {
-       "entrance": 3,
-       "turns": [
-        -2,
-        4
-       ],
-       "dead_ends": [
-        3,
-        1
-       ],
-       "false_entrances": [
-        17,
-        21
-       ]
-      },
-      "mass": 0.1034,
-      "friction": 0.3771,
-      "rgba": [
-       0.85,
-       0.45,
-       0.12,
-       1
-      ]
-     },
-     {
-      "id": "E02-1",
-      "groove": {
-       "entrance": 12,
-       "turns": [
-        4,
-        -2
-       ],
-       "dead_ends": [
-        2,
-        0
-       ],
-       "false_entrances": []
-      },
-      "mass": 0.0974,
-      "friction": 0.5526,
-      "rgba": [
-       0.55,
-       0.25,
-       0.7,
-       1
-      ]
-     },
-     {
-      "id": "E02-2",
-      "groove": {
-       "entrance": 17,
-       "turns": [
-        2,
-        -2
-       ],
-       "dead_ends": [
-        1,
-        1
-       ],
-       "false_entrances": [
-        1
-       ]
-      },
-      "mass": 0.1401,
-      "friction": 0.3867,
-      "rgba": [
-       0.2,
-       0.62,
-       0.3,
-       1
-      ]
-     }
-    ],
-    "order": [
-     1,
-     3,
-     2
-    ]
-   },
-   "seed": 6941781397463167143
-  },
-  {
-   "id": "E03",
-   "kit": {
-    "nuts": [
-     {
-      "id": "E03-0",
-      "groove": {
-       "entrance": 20,
-       "turns": [
-        -2,
-        -3
-       ],
-       "dead_ends": [
-        3,
-        0
-       ],
-       "false_entrances": [
-        9
-       ]
-      },
-      "mass": 0.1464,
-      "friction": 0.4489,
-      "rgba": [
-       0.8,
-       0.35,
-       0.55,
-       1
-      ]
-     },
-     {
-      "id": "E03-1",
-      "groove": {
-       "entrance": 2,
-       "turns": [
-        3,
-        -2
-       ],
-       "dead_ends": [
-        2,
-        0
-       ],
-       "false_entrances": [
-        12
-       ]
-      },
-      "mass": 0.0811,
-      "friction": 0.3134,
-      "rgba": [
-       0.2,
-       0.62,
-       0.3,
-       1
-      ]
-     },
-     {
-      "id": "E03-2",
-      "groove": {
-       "entrance": 21,
-       "turns": [
-        3,
-        -4
-       ],
-       "dead_ends": [
-        3,
-        0
-       ],
-       "false_entrances": [
-        9
-       ]
-      },
-      "mass": 0.1255,
-      "friction": 0.3699,
-      "rgba": [
-       0.15,
-       0.65,
-       0.68,
-       1
-      ]
-     }
-    ],
-    "order": [
-     1,
-     3,
-     2
-    ]
-   },
-   "seed": 4700734441944012085
-  },
-  {
-   "id": "E04",
-   "kit": {
-    "nuts": [
-     {
-      "id": "E04-0",
-      "groove": {
-       "entrance": 8,
-       "turns": [
-        -2,
-        4
-       ],
-       "dead_ends": [
-        1,
-        0
-       ],
-       "false_entrances": [
-        1
-       ]
-      },
-      "mass": 0.0717,
-      "friction": 0.6302,
-      "rgba": [
-       0.85,
-       0.45,
-       0.12,
-       1
-      ]
-     },
-     {
-      "id": "E04-1",
-      "groove": {
-       "entrance": 1,
-       "turns": [
-        4,
-        -2
-       ],
-       "dead_ends": [
-        2,
-        0
-       ],
-       "false_entrances": []
-      },
-      "mass": 0.0879,
-      "friction": 0.6219,
-      "rgba": [
-       0.15,
-       0.65,
-       0.68,
-       1
-      ]
-     },
-     {
-      "id": "E04-2",
-      "groove": {
-       "entrance": 12,
+       "entrance": 15,
        "turns": [
         -4,
-        -2
-       ],
-       "dead_ends": [
-        3,
-        2
-       ],
-       "false_entrances": [
-        4,
-        0
-       ]
-      },
-      "mass": 0.0757,
-      "friction": 0.6026,
-      "rgba": [
-       0.16,
-       0.36,
-       0.78,
-       1
-      ]
-     }
-    ],
-    "order": [
-     1,
-     2,
-     3
-    ]
-   },
-   "seed": 5343535173329151679
-  },
-  {
-   "id": "E05",
-   "kit": {
-    "nuts": [
-     {
-      "id": "E05-0",
-      "groove": {
-       "entrance": 0,
-       "turns": [
-        3,
-        4
-       ],
-       "dead_ends": [
-        2,
-        1
-       ],
-       "false_entrances": [
-        17,
-        8
-       ]
-      },
-      "mass": 0.111,
-      "friction": 0.4778,
-      "rgba": [
-       0.15,
-       0.65,
-       0.68,
-       1
-      ]
-     },
-     {
-      "id": "E05-1",
-      "groove": {
-       "entrance": 10,
-       "turns": [
-        -2,
-        2
-       ],
-       "dead_ends": [
-        2,
-        3
-       ],
-       "false_entrances": [
-        17
-       ]
-      },
-      "mass": 0.0962,
-      "friction": 0.4082,
-      "rgba": [
-       0.86,
-       0.74,
-       0.16,
-       1
-      ]
-     },
-     {
-      "id": "E05-2",
-      "groove": {
-       "entrance": 9,
-       "turns": [
-        -3,
-        2
-       ],
-       "dead_ends": [
-        1,
-        1
-       ],
-       "false_entrances": [
-        22,
-        2
-       ]
-      },
-      "mass": 0.1206,
-      "friction": 0.3407,
-      "rgba": [
-       0.85,
-       0.45,
-       0.12,
-       1
-      ]
-     }
-    ],
-    "order": [
-     1,
-     3,
-     2
-    ]
-   },
-   "seed": 525849931691919963
-  },
-  {
-   "id": "E06",
-   "kit": {
-    "nuts": [
-     {
-      "id": "E06-0",
-      "groove": {
-       "entrance": 14,
-       "turns": [
-        -2,
-        2
-       ],
-       "dead_ends": [
-        2,
-        0
-       ],
-       "false_entrances": [
-        4,
-        19
-       ]
-      },
-      "mass": 0.0843,
-      "friction": 0.3843,
-      "rgba": [
-       0.85,
-       0.45,
-       0.12,
-       1
-      ]
-     },
-     {
-      "id": "E06-1",
-      "groove": {
-       "entrance": 5,
-       "turns": [
-        4,
         3
        ],
        "dead_ends": [
-        0,
-        1
+        3,
+        3
        ],
        "false_entrances": [
         23
        ]
       },
-      "mass": 0.0983,
-      "friction": 0.6274,
+      "mass": 0.0585,
+      "friction": 0.3245,
       "rgba": [
        0.86,
        0.74,
@@ -580,27 +31,51 @@
       ]
      },
      {
-      "id": "E06-2",
+      "id": "F00-1",
       "groove": {
-       "entrance": 7,
+       "entrance": 6,
        "turns": [
-        3,
-        -4
+        4,
+        3
        ],
        "dead_ends": [
-        2,
-        1
+        1,
+        0
        ],
-       "false_entrances": [
-        2
-       ]
+       "false_entrances": []
       },
-      "mass": 0.0707,
-      "friction": 0.583,
+      "mass": 0.1205,
+      "friction": 0.6736,
       "rgba": [
        0.55,
        0.25,
        0.7,
+       1
+      ]
+     },
+     {
+      "id": "F00-2",
+      "groove": {
+       "entrance": 5,
+       "turns": [
+        -4,
+        4
+       ],
+       "dead_ends": [
+        1,
+        0
+       ],
+       "false_entrances": [
+        16,
+        11
+       ]
+      },
+      "mass": 0.0794,
+      "friction": 0.3814,
+      "rgba": [
+       0.2,
+       0.62,
+       0.3,
        1
       ]
      }
@@ -611,56 +86,54 @@
      3
     ]
    },
-   "seed": 7952947529699536201
+   "seed": 3238402391959660536
   },
   {
-   "id": "E07",
+   "id": "F01",
    "kit": {
     "nuts": [
      {
-      "id": "E07-0",
+      "id": "F01-0",
       "groove": {
-       "entrance": 5,
+       "entrance": 23,
        "turns": [
-        -4,
-        2
+        -2,
+        -3
        ],
        "dead_ends": [
         1,
-        0
+        3
        ],
        "false_entrances": [
-        21
+        15,
+        18
        ]
       },
-      "mass": 0.0681,
-      "friction": 0.4153,
+      "mass": 0.12,
+      "friction": 0.6001,
       "rgba": [
-       0.78,
-       0.18,
-       0.16,
+       0.15,
+       0.65,
+       0.68,
        1
       ]
      },
      {
-      "id": "E07-1",
+      "id": "F01-1",
       "groove": {
-       "entrance": 5,
+       "entrance": 14,
        "turns": [
-        3,
-        -4
-       ],
-       "dead_ends": [
-        3,
+        -3,
         2
        ],
-       "false_entrances": [
-        22,
-        14
-       ]
+       "dead_ends": [
+        1,
+        1
+       ],
+       "false_entrances": []
       },
-      "mass": 0.1298,
-      "friction": 0.4265,
+      "mass": 0.086,
+      "friction": 0.5414,
       "rgba": [
        0.8,
        0.35,
@@ -669,201 +142,21 @@
       ]
      },
      {
-      "id": "E07-2",
+      "id": "F01-2",
       "groove": {
-       "entrance": 21,
+       "entrance": 10,
        "turns": [
-        -2,
-        4
-       ],
-       "dead_ends": [
         3,
-        3
-       ],
-       "false_entrances": [
-        11,
-        8
-       ]
-      },
-      "mass": 0.1353,
-      "friction": 0.4899,
-      "rgba": [
-       0.86,
-       0.74,
-       0.16,
-       1
-      ]
-     }
-    ],
-    "order": [
-     2,
-     1,
-     3
-    ]
-   },
-   "seed": 5439332906115523434
-  },
-  {
-   "id": "E08",
-   "kit": {
-    "nuts": [
-     {
-      "id": "E08-0",
-      "groove": {
-       "entrance": 14,
-       "turns": [
-        -4,
-        3
+        2
        ],
        "dead_ends": [
-        0,
+        1,
         0
        ],
        "false_entrances": []
       },
-      "mass": 0.0932,
-      "friction": 0.6656,
-      "rgba": [
-       0.15,
-       0.65,
-       0.68,
-       1
-      ]
-     },
-     {
-      "id": "E08-1",
-      "groove": {
-       "entrance": 20,
-       "turns": [
-        -4,
-        2
-       ],
-       "dead_ends": [
-        3,
-        2
-       ],
-       "false_entrances": [
-        2
-       ]
-      },
-      "mass": 0.0626,
-      "friction": 0.4656,
-      "rgba": [
-       0.16,
-       0.36,
-       0.78,
-       1
-      ]
-     },
-     {
-      "id": "E08-2",
-      "groove": {
-       "entrance": 11,
-       "turns": [
-        -4,
-        -3
-       ],
-       "dead_ends": [
-        3,
-        1
-       ],
-       "false_entrances": [
-        21,
-        18
-       ]
-      },
-      "mass": 0.0776,
-      "friction": 0.4915,
-      "rgba": [
-       0.78,
-       0.18,
-       0.16,
-       1
-      ]
-     }
-    ],
-    "order": [
-     2,
-     3,
-     1
-    ]
-   },
-   "seed": 6391430966845859915
-  },
-  {
-   "id": "E09",
-   "kit": {
-    "nuts": [
-     {
-      "id": "E09-0",
-      "groove": {
-       "entrance": 19,
-       "turns": [
-        4,
-        2
-       ],
-       "dead_ends": [
-        0,
-        0
-       ],
-       "false_entrances": [
-        16,
-        8
-       ]
-      },
-      "mass": 0.0526,
-      "friction": 0.4055,
-      "rgba": [
-       0.15,
-       0.65,
-       0.68,
-       1
-      ]
-     },
-     {
-      "id": "E09-1",
-      "groove": {
-       "entrance": 23,
-       "turns": [
-        -2,
-        2
-       ],
-       "dead_ends": [
-        2,
-        1
-       ],
-       "false_entrances": [
-        5
-       ]
-      },
-      "mass": 0.0674,
-      "friction": 0.6346,
-      "rgba": [
-       0.55,
-       0.25,
-       0.7,
-       1
-      ]
-     },
-     {
-      "id": "E09-2",
-      "groove": {
-       "entrance": 0,
-       "turns": [
-        3,
-        4
-       ],
-       "dead_ends": [
-        1,
-        1
-       ],
-       "false_entrances": [
-        12,
-        17
-       ]
-      },
-      "mass": 0.0723,
-      "friction": 0.4047,
+      "mass": 0.1297,
+      "friction": 0.6357,
       "rgba": [
        0.85,
        0.45,
@@ -874,11 +167,698 @@
     ],
     "order": [
      3,
+     1,
+     2
+    ]
+   },
+   "seed": 1826805858222881035
+  },
+  {
+   "id": "F02",
+   "kit": {
+    "nuts": [
+     {
+      "id": "F02-0",
+      "groove": {
+       "entrance": 9,
+       "turns": [
+        -3,
+        -4
+       ],
+       "dead_ends": [
+        0,
+        3
+       ],
+       "false_entrances": [
+        19
+       ]
+      },
+      "mass": 0.1401,
+      "friction": 0.5455,
+      "rgba": [
+       0.15,
+       0.65,
+       0.68,
+       1
+      ]
+     },
+     {
+      "id": "F02-1",
+      "groove": {
+       "entrance": 11,
+       "turns": [
+        -4,
+        4
+       ],
+       "dead_ends": [
+        1,
+        2
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.1175,
+      "friction": 0.4446,
+      "rgba": [
+       0.78,
+       0.18,
+       0.16,
+       1
+      ]
+     },
+     {
+      "id": "F02-2",
+      "groove": {
+       "entrance": 19,
+       "turns": [
+        3,
+        -3
+       ],
+       "dead_ends": [
+        0,
+        0
+       ],
+       "false_entrances": [
+        13
+       ]
+      },
+      "mass": 0.1301,
+      "friction": 0.3537,
+      "rgba": [
+       0.85,
+       0.45,
+       0.12,
+       1
+      ]
+     }
+    ],
+    "order": [
+     3,
+     1,
+     2
+    ]
+   },
+   "seed": 4064927441112888754
+  },
+  {
+   "id": "F03",
+   "kit": {
+    "nuts": [
+     {
+      "id": "F03-0",
+      "groove": {
+       "entrance": 23,
+       "turns": [
+        3,
+        2
+       ],
+       "dead_ends": [
+        0,
+        0
+       ],
+       "false_entrances": [
+        7
+       ]
+      },
+      "mass": 0.051,
+      "friction": 0.4161,
+      "rgba": [
+       0.85,
+       0.45,
+       0.12,
+       1
+      ]
+     },
+     {
+      "id": "F03-1",
+      "groove": {
+       "entrance": 7,
+       "turns": [
+        -4,
+        4
+       ],
+       "dead_ends": [
+        1,
+        3
+       ],
+       "false_entrances": [
+        23,
+        15
+       ]
+      },
+      "mass": 0.0627,
+      "friction": 0.6556,
+      "rgba": [
+       0.86,
+       0.74,
+       0.16,
+       1
+      ]
+     },
+     {
+      "id": "F03-2",
+      "groove": {
+       "entrance": 9,
+       "turns": [
+        2,
+        2
+       ],
+       "dead_ends": [
+        3,
+        0
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.0975,
+      "friction": 0.683,
+      "rgba": [
+       0.16,
+       0.36,
+       0.78,
+       1
+      ]
+     }
+    ],
+    "order": [
+     3,
      2,
      1
     ]
    },
-   "seed": 5462413270538998948
+   "seed": 132730254096095285
+  },
+  {
+   "id": "F04",
+   "kit": {
+    "nuts": [
+     {
+      "id": "F04-0",
+      "groove": {
+       "entrance": 22,
+       "turns": [
+        -3,
+        3
+       ],
+       "dead_ends": [
+        0,
+        0
+       ],
+       "false_entrances": [
+        8
+       ]
+      },
+      "mass": 0.1335,
+      "friction": 0.5147,
+      "rgba": [
+       0.78,
+       0.18,
+       0.16,
+       1
+      ]
+     },
+     {
+      "id": "F04-1",
+      "groove": {
+       "entrance": 18,
+       "turns": [
+        3,
+        3
+       ],
+       "dead_ends": [
+        3,
+        2
+       ],
+       "false_entrances": [
+        6
+       ]
+      },
+      "mass": 0.0838,
+      "friction": 0.3171,
+      "rgba": [
+       0.55,
+       0.25,
+       0.7,
+       1
+      ]
+     },
+     {
+      "id": "F04-2",
+      "groove": {
+       "entrance": 2,
+       "turns": [
+        -2,
+        2
+       ],
+       "dead_ends": [
+        2,
+        2
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.054,
+      "friction": 0.5683,
+      "rgba": [
+       0.16,
+       0.36,
+       0.78,
+       1
+      ]
+     }
+    ],
+    "order": [
+     1,
+     3,
+     2
+    ]
+   },
+   "seed": 8742862483774447116
+  },
+  {
+   "id": "F05",
+   "kit": {
+    "nuts": [
+     {
+      "id": "F05-0",
+      "groove": {
+       "entrance": 9,
+       "turns": [
+        2,
+        -3
+       ],
+       "dead_ends": [
+        3,
+        3
+       ],
+       "false_entrances": [
+        3
+       ]
+      },
+      "mass": 0.1015,
+      "friction": 0.5476,
+      "rgba": [
+       0.86,
+       0.74,
+       0.16,
+       1
+      ]
+     },
+     {
+      "id": "F05-1",
+      "groove": {
+       "entrance": 2,
+       "turns": [
+        -2,
+        -4
+       ],
+       "dead_ends": [
+        0,
+        1
+       ],
+       "false_entrances": [
+        13,
+        21
+       ]
+      },
+      "mass": 0.0666,
+      "friction": 0.5647,
+      "rgba": [
+       0.2,
+       0.62,
+       0.3,
+       1
+      ]
+     },
+     {
+      "id": "F05-2",
+      "groove": {
+       "entrance": 12,
+       "turns": [
+        3,
+        3
+       ],
+       "dead_ends": [
+        0,
+        0
+       ],
+       "false_entrances": [
+        5,
+        18
+       ]
+      },
+      "mass": 0.0637,
+      "friction": 0.4709,
+      "rgba": [
+       0.16,
+       0.36,
+       0.78,
+       1
+      ]
+     }
+    ],
+    "order": [
+     1,
+     2,
+     3
+    ]
+   },
+   "seed": 2105443224998447192
+  },
+  {
+   "id": "F07",
+   "kit": {
+    "nuts": [
+     {
+      "id": "F07-0",
+      "groove": {
+       "entrance": 16,
+       "turns": [
+        -2,
+        3
+       ],
+       "dead_ends": [
+        2,
+        1
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.1402,
+      "friction": 0.3669,
+      "rgba": [
+       0.85,
+       0.45,
+       0.12,
+       1
+      ]
+     },
+     {
+      "id": "F07-1",
+      "groove": {
+       "entrance": 10,
+       "turns": [
+        -4,
+        4
+       ],
+       "dead_ends": [
+        0,
+        3
+       ],
+       "false_entrances": [
+        0
+       ]
+      },
+      "mass": 0.1467,
+      "friction": 0.4774,
+      "rgba": [
+       0.55,
+       0.25,
+       0.7,
+       1
+      ]
+     },
+     {
+      "id": "F07-2",
+      "groove": {
+       "entrance": 11,
+       "turns": [
+        -2,
+        -4
+       ],
+       "dead_ends": [
+        3,
+        3
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.139,
+      "friction": 0.4393,
+      "rgba": [
+       0.2,
+       0.62,
+       0.3,
+       1
+      ]
+     }
+    ],
+    "order": [
+     2,
+     1,
+     3
+    ]
+   },
+   "seed": 8584011580865653580
+  },
+  {
+   "id": "F10",
+   "kit": {
+    "nuts": [
+     {
+      "id": "F10-0",
+      "groove": {
+       "entrance": 15,
+       "turns": [
+        -4,
+        4
+       ],
+       "dead_ends": [
+        2,
+        2
+       ],
+       "false_entrances": [
+        5,
+        8
+       ]
+      },
+      "mass": 0.1359,
+      "friction": 0.4204,
+      "rgba": [
+       0.78,
+       0.18,
+       0.16,
+       1
+      ]
+     },
+     {
+      "id": "F10-1",
+      "groove": {
+       "entrance": 17,
+       "turns": [
+        -2,
+        2
+       ],
+       "dead_ends": [
+        3,
+        3
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.0512,
+      "friction": 0.6369,
+      "rgba": [
+       0.15,
+       0.65,
+       0.68,
+       1
+      ]
+     },
+     {
+      "id": "F10-2",
+      "groove": {
+       "entrance": 12,
+       "turns": [
+        -4,
+        2
+       ],
+       "dead_ends": [
+        0,
+        0
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.0634,
+      "friction": 0.3033,
+      "rgba": [
+       0.16,
+       0.36,
+       0.78,
+       1
+      ]
+     }
+    ],
+    "order": [
+     1,
+     3,
+     2
+    ]
+   },
+   "seed": 1072692704032203477
+  },
+  {
+   "id": "F11",
+   "kit": {
+    "nuts": [
+     {
+      "id": "F11-0",
+      "groove": {
+       "entrance": 7,
+       "turns": [
+        4,
+        -3
+       ],
+       "dead_ends": [
+        3,
+        3
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.0931,
+      "friction": 0.617,
+      "rgba": [
+       0.85,
+       0.45,
+       0.12,
+       1
+      ]
+     },
+     {
+      "id": "F11-1",
+      "groove": {
+       "entrance": 12,
+       "turns": [
+        -3,
+        -4
+       ],
+       "dead_ends": [
+        1,
+        1
+       ],
+       "false_entrances": [
+        1,
+        17
+       ]
+      },
+      "mass": 0.1245,
+      "friction": 0.4689,
+      "rgba": [
+       0.15,
+       0.65,
+       0.68,
+       1
+      ]
+     },
+     {
+      "id": "F11-2",
+      "groove": {
+       "entrance": 16,
+       "turns": [
+        -2,
+        2
+       ],
+       "dead_ends": [
+        3,
+        0
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.1261,
+      "friction": 0.3905,
+      "rgba": [
+       0.78,
+       0.18,
+       0.16,
+       1
+      ]
+     }
+    ],
+    "order": [
+     2,
+     3,
+     1
+    ]
+   },
+   "seed": 4031707727947916294
+  },
+  {
+   "id": "F12",
+   "kit": {
+    "nuts": [
+     {
+      "id": "F12-0",
+      "groove": {
+       "entrance": 16,
+       "turns": [
+        -2,
+        4
+       ],
+       "dead_ends": [
+        2,
+        1
+       ],
+       "false_entrances": [
+        5
+       ]
+      },
+      "mass": 0.1436,
+      "friction": 0.5059,
+      "rgba": [
+       0.85,
+       0.45,
+       0.12,
+       1
+      ]
+     },
+     {
+      "id": "F12-1",
+      "groove": {
+       "entrance": 14,
+       "turns": [
+        -3,
+        4
+       ],
+       "dead_ends": [
+        0,
+        3
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.1364,
+      "friction": 0.6715,
+      "rgba": [
+       0.55,
+       0.25,
+       0.7,
+       1
+      ]
+     },
+     {
+      "id": "F12-2",
+      "groove": {
+       "entrance": 15,
+       "turns": [
+        2,
+        3
+       ],
+       "dead_ends": [
+        1,
+        2
+       ],
+       "false_entrances": []
+      },
+      "mass": 0.1163,
+      "friction": 0.4874,
+      "rgba": [
+       0.15,
+       0.65,
+       0.68,
+       1
+      ]
+     }
+    ],
+    "order": [
+     2,
+     1,
+     3
+    ]
+   },
+   "seed": 6825141320732188031
   }
  ]
 }

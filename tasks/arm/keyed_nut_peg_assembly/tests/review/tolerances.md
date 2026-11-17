@@ -71,14 +71,18 @@ when the nut is on the shaft end, when the hole comes over the shaft, when the n
 when a tilted nut binds. Every number there is measured on this cell or follows from the drawing.
 
 Clearances tried (the 16 development kits of amendment 2, in-process runs with the grader's cell and credit rule,
-before amendment 3's candidates were drawn; fingers coupled):
+before amendment 3's candidates were drawn; fingers coupled, except where noted):
 
 | radial clearance: drawing (real) | reference (given the real grooves and poses) | round-2 frontier submission, unchanged | the same with insertion by touch (below) |
 |---|---|---|---|
 | 1.8 mm (1.65 to 1.95), fingers not coupled: amendment 2 | 16 of 16 | 8 of 16 kits, 31 of 48 nuts (9 of 16 through the grader) | |
 | 1.0 mm (0.85 to 1.15) | 16 of 16 | 5 of 16, 24 of 48 | 8 of 16, 38 of 48 (an earlier version of the search) |
 | 0.75 mm (0.6 to 0.9) | 16 of 16 | 4 of 16, 17 of 48 | 6 of 16, 37 of 48 (an earlier version of the search) |
-| 0.5 mm (0.35 to 0.65): amendment 3 | 16 of 16 (624 to 803 steps) | 1 of 16, 8 of 48 | 6 of 16, 37 of 48; 48 of 48 insertions on the shaft |
+| 0.5 mm (0.35 to 0.65): amendment 3 | 16 of 16 (624 to 803 steps) | 1 of 16, 8 of 48 (fingers not coupled) | 6 of 16, 37 of 48; 48 of 48 insertions on the shaft |
+
+On amendment 3's own development kits, through the grader, with the insertion as it ended up and the controller's
+peg template set to the data sheet's shaft: the unchanged submission 3 of 16 kits (15 of 48 nuts), the one with
+insertion by touch 9 of 16 (40 of 48), the reference 22 of the 24 candidates.
 
 **Insertion by touch with the agent's observations alone.** A maintainer's controller (kept with the review's
 records, not shipped) changes the round-2 frontier submission's insertion only; its perception, grasp and groove
@@ -86,8 +90,8 @@ search are as submitted. The first nut of a
 kit is brought beside its shaft and its rim is pushed against the shaft's side from two directions, which gives the
 shaft's axis in the hand's own terms; the difference to the cameras' plan is kept in the hand's frame and corrects
 the plans for the kit's other nuts; a nut that still comes to rest on the shaft end is slid along a small spiral
-under a light push until it dips over the shaft. It uses `ee_pos`, `ee_quat` and `wrench` and nothing else. See
-`observability/README.md` for its result through the grader on amendment 3's development kits.
+under a light push until it dips over the shaft. The insertion uses `ee_pos`, `ee_quat` and `wrench` and nothing
+else. See `observability/README.md` for its result through the grader on amendment 3's development kits.
 
 What did not work, for the record: reading the direction of the shaft from the wrist's torques while the nut is
 pressed on the shaft end. The contact sits somewhere on a thin crescent of the shaft end beside the hole, and with

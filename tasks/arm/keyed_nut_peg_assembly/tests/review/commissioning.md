@@ -33,7 +33,12 @@ Round 3 (2026-11-17), approved by the benchmark's owner:
    cameras' mounts and intrinsics, the lamps (`tolerances.md`: every range and where it comes from). A simulation
    built from the data sheet can only draw from the ranges; the commissioning window is where the agent meets
    real ones.
-4. **A takt of 100 s for a kit**, 1000 steps. The reference, which is given the real grooves, needs 605 to 812 steps
+4. **A takt of 100 s for a kit**, 1000 steps.
+5. **A locating fit** of the nut on its shaft (0.5 mm of radial clearance on the drawing in place of 1.8 mm; square
+   edges, no lead-in chamfer) and the hand's two fingers as one mechanism, after changes 3 and 4 alone proved not
+   hard enough (below). A nut can no longer be put on a shaft from image positions: the shaft has to be found by
+   touch. The data sheet states the fit, the cell's compliance and what the wrist reads when a nut meets a shaft
+   (`tolerances.md`, "The fit"). The reference, which is given the real grooves and poses, needs 644 to 802 steps
    on the graded kits.
 
 ## What the agent has
@@ -78,16 +83,17 @@ from the agent's home (engine issue AgentsLastExam/ale#142).
 
 ## The development kits
 
-Chosen like the graded set, from their own pre-registered candidates (in force: amendment 2's, kit seed 8001 + i,
-layout and noise seed 12001 + i; round 2 used 7001 + i and 11001 + i): the first 16 that the frozen reference
-completes within the takt, each run once through the grader (`select_set.py --pool dev`; the record is the selection
+Chosen like the graded set, from their own pre-registered candidates (in force: amendment 3's, kit seed 9001 + i,
+layout and noise seed 13001 + i; amendment 2 used 8001 + i and 12001 + i, round 2 7001 + i and 11001 + i): the
+first 16 that the frozen reference completes within the takt, each run once through the grader (`select_set.py --pool dev`; the record is the selection
 record's latest amendment, `development_kits`). The graded kits are
 "draws that the reference completed"; unfiltered development kits would be a slightly different population (about
 one draw in seven has a wrist-range case the reference does not handle), and with 32 episodes every development kit
 has to be worth its episode. No development seed is a candidate's and no development kit has a graded kit's
-grooves (the test above). The run under amendment 2 (2026-11-17): the reference completed 23 of the 24 candidates in
-636 to 804 steps; T06 dropped (a nut ruined at step 831 with two assembled), so the kits are T01 to T05 and T07 to
-T17, which the agent addresses as kits 1 to 16. (Round 2's run, 2026-11-16: 22 of 24 in 598 to 846 steps.)
+grooves (the test above). The run under amendment 3 (2026-11-17): the reference completed 22 of the 24 candidates in
+637 to 798 steps; U11 and U15 dropped (the takt ran out with none and two nuts assembled), so the kits are U01 to
+U10, U12 to U14 and U16 to U18, which the agent addresses as kits 1 to 16. (Amendment 2's run, the same day: 23 of
+24 in 636 to 804 steps. Round 2's run, 2026-11-16: 22 of 24 in 598 to 846 steps.)
 
 ## The window's size
 
@@ -118,14 +124,14 @@ kits only (`sample_kit` 1000 on, layout seed + 4000; neither candidates nor deve
 - With the tolerances, the reference completes 28 of 32 kits in 576 to 821 steps, as many as without them.
 
 The hidden set under amendment 2: the reference completed 14 of the 16 fresh candidates (605 to 812 steps; E12 and
-E14 dropped, a nut ruined each); the set is the first ten, E00 to E09, and its full verify measured 1.0 with every
-episode repeating its selection run.
+E14 dropped, a nut ruined each); the set was the first ten, E00 to E09, and its full verify measured 1.0 with every
+episode repeating its selection run. Amendment 3 replaced it (below).
 
-## Is this version within reach, and is it hard enough?
+## Amendment 2: within reach, and not hard enough
 
 A controller that has only the observations: the second measurement's submission, which was written for the
-drawing's cell and a 1200-step takt, run by the grader on the 16 development kits of amendment 2
-(`observability/observation_only_controller_dev_kits.json`): **9 of 16 kits** (32 of 48 nuts), in 664 to 992 steps.
+drawing's cell and a 1200-step takt, run by the grader on the 16 development kits of amendment 2 (the per-kit
+record is in this folder's history, commit 6347893): **9 of 16 kits** (32 of 48 nuts), in 664 to 992 steps.
 So the version is within reach, and it is not hard enough:
 
 - Its groove search by touch is about as fast as the reference's known path (about 210 steps a nut when no false
@@ -137,4 +143,20 @@ So the version is within reach, and it is not hard enough:
 - A shorter takt would not change the picture: of the same runs, 6 of 16 kits end within 900 steps and 4 of 16
   within 800 (9 and 7 of 16 with the cameras' error switched off).
 
-A stronger raise is needed than tolerances and this takt: the fit (the next amendment).
+## Amendment 3: the fit
+
+The contribution's 1.8 mm of radial clearance absorbed every tolerance and most of the cameras' error, so the fit
+became a locating fit and the hand's fingers one mechanism (`tolerances.md`, "The fit": sources, the clearances
+tried, why the fingers). It changes what a kit is, so amendment 3 drew 16 fresh hidden candidates and 24 fresh
+development candidates and was committed before any of them ran (32d05cc).
+
+- On maintainer kits before that: the reference completes 27 of 32 (582 to 973 steps; 28 of 32 with the earlier
+  fit), with no fault and no ruined nut. It needed no change: it steers the real nut onto the real shaft.
+- Development kits: above. Hidden set: the reference completed 12 of the 16 fresh candidates (600 to 802 steps;
+  F06, F08, F09 and F15 dropped, the takt ran out with one or two nuts assembled); the set is the first ten, F00 to
+  F05, F07, F10, F11 and F12, and its full verify measured 1.0 with every episode repeating its selection run.
+- Within reach: a maintainer's controller on the observations alone, with insertion by touch, completes **9 of the
+  16 development kits** through the grader and puts 48 of 48 nuts on their shafts (`observability/README.md`).
+- Hard enough to measure: the second measurement's submission, unchanged, completes **3 of the 16** (15 of 48
+  nuts): it cannot find the shaft from image positions.
+

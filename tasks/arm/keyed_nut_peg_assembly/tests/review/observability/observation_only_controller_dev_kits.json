@@ -1,183 +1,183 @@
 {
- "what": "A controller that acts on the observations alone, run by the grader on the commissioning service's 16 development kits under the rules of amendment 2 (a real kit on the cell of the day within the data sheet's tolerances, a 1000-step takt; tests/review/regrade.sh, a one-episode plan per kit, a fresh container of the task image each, 6 at a time; 2026-11-17). The controller is the submission of the second frontier measurement (Claude Opus 5.5, 2026-11-16, made for the version without tolerances and with a 1200-step takt, on which it completed 7 of 10 graded kits; its task log is in the benchmark's task-log dataset): it reads the layout from the first images and wrist close-ups and finds each groove by touch, and has no access to any state when it runs. It was not written for these rules. reference_steps: what the reference, which is given the real grooves, needed on the same kit.",
+ "what": "A controller that acts on the observations alone, run by the grader on the commissioning service's 16 development kits under amendment 3's rules (a real kit on the cell of the day, a locating fit of 0.35 to 0.65 mm of radial clearance, a 1000-step takt; tests/review/regrade.sh, a one-episode plan per kit, a fresh container of the task image each, 6 at a time; 2026-11-17). The controller is a maintainer's: the second frontier measurement's submission (Claude Opus 5.5, 2026-11-16: it reads the layout from the first images and wrist close-ups and finds each groove by touch) with its insertion replaced by one that finds the shaft by touch (the first nut's rim is pushed against the shaft's side from two directions; the difference to the cameras' plan corrects the kit's other plans in the hand's frame; a nut that comes to rest on the shaft end is slid along a small spiral under a light push until it dips over the shaft) and its peg template set to the data sheet's shaft. It reads ee_pos, ee_quat, wrench and the images, and has no access to any state when it runs. It is kept with the review's records and not shipped. reference_steps: what the reference, which is given the real grooves and poses, needed on the same kit.",
  "summary": {
   "kits": 16,
   "kits_complete": 9,
   "nuts": 48,
-  "nuts_assembled": 32,
+  "nuts_assembled": 40,
   "steps_of_the_complete_kits": [
-   664,
-   727,
-   782,
-   789,
-   821,
-   830,
-   920,
-   976,
-   992
+   841,
+   873,
+   903,
+   907,
+   910,
+   913,
+   923,
+   938,
+   959
   ],
-  "on_the_version_it_was_made_for": "7 of 10 graded kits, 26 of 30 nuts (1200-step takt, no tolerances)"
+  "insertions_in_process_run": "48 of 48 nuts put on their shafts by touch; steps from above the shaft to the pin: median 50, 90th percentile 94 (first nut of a kit, two touches: 73 to 94; later nuts, corrected plan and small spiral: 23 to 51 in 27 cases, 122 to 144 with two touches after it in 5)"
  },
  "kits": [
   {
    "kit": 1,
-   "name": "T01",
-   "kit_complete": 1,
-   "nuts_assembled": 3,
-   "steps": 821,
-   "controller_s": 11.0,
-   "images_requested": 6,
-   "reference_steps": 690
-  },
-  {
-   "kit": 2,
-   "name": "T02",
-   "kit_complete": 0,
-   "nuts_assembled": 1,
-   "steps": 1000,
-   "controller_s": 10.0,
-   "images_requested": 4,
-   "reference_steps": 680
-  },
-  {
-   "kit": 3,
-   "name": "T03",
-   "kit_complete": 0,
-   "nuts_assembled": 0,
-   "steps": 1000,
-   "controller_s": 10.0,
-   "images_requested": 4,
-   "reference_steps": 804
-  },
-  {
-   "kit": 4,
-   "name": "T04",
-   "kit_complete": 1,
-   "nuts_assembled": 3,
-   "steps": 992,
-   "controller_s": 10.8,
-   "images_requested": 6,
-   "reference_steps": 688
-  },
-  {
-   "kit": 5,
-   "name": "T05",
-   "kit_complete": 1,
-   "nuts_assembled": 3,
-   "steps": 976,
-   "controller_s": 11.2,
-   "images_requested": 6,
-   "reference_steps": 641
-  },
-  {
-   "kit": 6,
-   "name": "T07",
-   "kit_complete": 0,
-   "nuts_assembled": 0,
-   "steps": 1000,
-   "controller_s": 10.0,
-   "images_requested": 4,
-   "reference_steps": 674
-  },
-  {
-   "kit": 7,
-   "name": "T08",
-   "kit_complete": 0,
-   "nuts_assembled": 0,
-   "steps": 1000,
-   "controller_s": 8.8,
-   "images_requested": 4,
-   "reference_steps": 775
-  },
-  {
-   "kit": 8,
-   "name": "T09",
-   "kit_complete": 0,
-   "nuts_assembled": 1,
-   "steps": 1000,
-   "controller_s": 8.8,
-   "images_requested": 4,
-   "reference_steps": 720
-  },
-  {
-   "kit": 9,
-   "name": "T10",
-   "kit_complete": 0,
-   "nuts_assembled": 1,
-   "steps": 1000,
-   "controller_s": 8.6,
-   "images_requested": 4,
-   "reference_steps": 670
-  },
-  {
-   "kit": 10,
-   "name": "T11",
-   "kit_complete": 1,
-   "nuts_assembled": 3,
-   "steps": 920,
-   "controller_s": 9.6,
-   "images_requested": 6,
-   "reference_steps": 677
-  },
-  {
-   "kit": 11,
-   "name": "T12",
-   "kit_complete": 1,
-   "nuts_assembled": 3,
-   "steps": 727,
-   "controller_s": 9.2,
-   "images_requested": 6,
-   "reference_steps": 730
-  },
-  {
-   "kit": 12,
-   "name": "T13",
+   "name": "U01",
    "kit_complete": 0,
    "nuts_assembled": 2,
    "steps": 1000,
-   "controller_s": 9.7,
-   "images_requested": 6,
-   "reference_steps": 663
-  },
-  {
-   "kit": 13,
-   "name": "T14",
-   "kit_complete": 1,
-   "nuts_assembled": 3,
-   "steps": 830,
    "controller_s": 9.3,
    "images_requested": 6,
-   "reference_steps": 736
+   "reference_steps": 743
   },
   {
-   "kit": 14,
-   "name": "T15",
+   "kit": 2,
+   "name": "U02",
    "kit_complete": 1,
    "nuts_assembled": 3,
-   "steps": 664,
-   "controller_s": 9.1,
+   "steps": 910,
+   "controller_s": 9.3,
    "images_requested": 6,
-   "reference_steps": 636
+   "reference_steps": 676
   },
   {
-   "kit": 15,
-   "name": "T16",
+   "kit": 3,
+   "name": "U03",
    "kit_complete": 1,
    "nuts_assembled": 3,
-   "steps": 782,
-   "controller_s": 9.0,
+   "steps": 907,
+   "controller_s": 9.2,
+   "images_requested": 6,
+   "reference_steps": 686
+  },
+  {
+   "kit": 4,
+   "name": "U04",
+   "kit_complete": 0,
+   "nuts_assembled": 1,
+   "steps": 1000,
+   "controller_s": 9.2,
+   "images_requested": 6,
+   "reference_steps": 674
+  },
+  {
+   "kit": 5,
+   "name": "U05",
+   "kit_complete": 0,
+   "nuts_assembled": 2,
+   "steps": 1000,
+   "controller_s": 9.5,
+   "images_requested": 6,
+   "reference_steps": 637
+  },
+  {
+   "kit": 6,
+   "name": "U06",
+   "kit_complete": 0,
+   "nuts_assembled": 2,
+   "steps": 1000,
+   "controller_s": 9.5,
+   "images_requested": 6,
+   "reference_steps": 774
+  },
+  {
+   "kit": 7,
+   "name": "U07",
+   "kit_complete": 0,
+   "nuts_assembled": 2,
+   "steps": 1000,
+   "controller_s": 9.4,
    "images_requested": 6,
    "reference_steps": 707
   },
   {
-   "kit": 16,
-   "name": "T17",
+   "kit": 8,
+   "name": "U08",
    "kit_complete": 1,
    "nuts_assembled": 3,
-   "steps": 789,
+   "steps": 959,
    "controller_s": 9.4,
    "images_requested": 6,
-   "reference_steps": 750
+   "reference_steps": 755
+  },
+  {
+   "kit": 9,
+   "name": "U09",
+   "kit_complete": 0,
+   "nuts_assembled": 2,
+   "steps": 1000,
+   "controller_s": 9.4,
+   "images_requested": 6,
+   "reference_steps": 680
+  },
+  {
+   "kit": 10,
+   "name": "U10",
+   "kit_complete": 1,
+   "nuts_assembled": 3,
+   "steps": 923,
+   "controller_s": 9.2,
+   "images_requested": 6,
+   "reference_steps": 727
+  },
+  {
+   "kit": 11,
+   "name": "U12",
+   "kit_complete": 1,
+   "nuts_assembled": 3,
+   "steps": 841,
+   "controller_s": 9.4,
+   "images_requested": 6,
+   "reference_steps": 692
+  },
+  {
+   "kit": 12,
+   "name": "U13",
+   "kit_complete": 1,
+   "nuts_assembled": 3,
+   "steps": 938,
+   "controller_s": 9.2,
+   "images_requested": 6,
+   "reference_steps": 753
+  },
+  {
+   "kit": 13,
+   "name": "U14",
+   "kit_complete": 1,
+   "nuts_assembled": 3,
+   "steps": 873,
+   "controller_s": 9.0,
+   "images_requested": 6,
+   "reference_steps": 798
+  },
+  {
+   "kit": 14,
+   "name": "U16",
+   "kit_complete": 1,
+   "nuts_assembled": 3,
+   "steps": 903,
+   "controller_s": 9.2,
+   "images_requested": 6,
+   "reference_steps": 714
+  },
+  {
+   "kit": 15,
+   "name": "U17",
+   "kit_complete": 1,
+   "nuts_assembled": 3,
+   "steps": 913,
+   "controller_s": 9.0,
+   "images_requested": 6,
+   "reference_steps": 667
+  },
+  {
+   "kit": 16,
+   "name": "U18",
+   "kit_complete": 0,
+   "nuts_assembled": 2,
+   "steps": 1000,
+   "controller_s": 9.2,
+   "images_requested": 6,
+   "reference_steps": 663
   }
  ]
 }

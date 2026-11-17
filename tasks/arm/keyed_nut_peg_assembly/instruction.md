@@ -100,8 +100,8 @@ episodes run on the same four cores).
   purple, red, teal or yellow), each with its own groove, mass (0.05 to 0.15 kg) and friction against
   a peg (0.3 to 0.7), and a random assignment of the nuts to the pegs; and its own actual values
   within the tolerances, for the kit and for the cell. (The graded kits are draws that a reference
-  controller given the real grooves completed with this robot within the takt; it needs
-  about 600 to 810 steps for a kit.) Everything else (robot, controller, action and observation formats,
+  controller given the real grooves and poses completed with this robot within the takt; it needs
+  about 640 to 800 steps for a kit.) Everything else (robot, controller, action and observation formats,
   cameras, sensor noise, physics, layout rules, tolerances, the safety stops, the takt) is the same
   as on the commissioning service's cell.
 - The **work order** is in every observation as `order`: a list of `{"colour": name, "peg_bands":
