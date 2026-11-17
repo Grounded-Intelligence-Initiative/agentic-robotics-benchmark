@@ -5,7 +5,9 @@ imports): deadlines, READY, the controller time cap, the action check, the 64 Ki
 discarding lines written without a request, restarts after an aborted episode (at most 3), the image cap, the success
 rule and the step budget. Like the grader it pauses the controller (SIGSTOP) whenever no request is outstanding; here
 that pauses run.sh's process group (the grader pauses every process of your account and also caps their number).
-The kitchens and states are practice ones (RoboCasa pretrain split). It prints no score.
+The kitchens and states are practice ones (RoboCasa pretrain split). It prints the raw outcome only: per state whether
+it was recovered, per job the recovered fraction and their mean over the jobs on these practice states. It never prints
+the grader's ratio or reward.
 
   /opt/venv/bin/python3 practice_grader/grade.py [--submission ~/submission] [--states p00,p03] [--max-steps N]
 """

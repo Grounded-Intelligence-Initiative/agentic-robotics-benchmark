@@ -3,58 +3,6 @@
  "step_budget": 1500,
  "states": [
   {
-   "id": "h00",
-   "task": "CoffeeSetupMug",
-   "seed": 1114191951,
-   "split": "target",
-   "prefix": "h00_prefix.npz",
-   "qpos": "h00_state.npz",
-   "card": "h00_card.json",
-   "roles": {
-    "coffee_machine_left_group": "target",
-    "counter_1_left_group": "support"
-   }
-  },
-  {
-   "id": "h01",
-   "task": "CoffeeSetupMug",
-   "seed": 240257729,
-   "split": "target",
-   "prefix": "h01_prefix.npz",
-   "qpos": "h01_state.npz",
-   "card": "h01_card.json",
-   "roles": {
-    "coffee_machine_left_group": "target",
-    "counter_1_left_group": "support"
-   }
-  },
-  {
-   "id": "h02",
-   "task": "CoffeeSetupMug",
-   "seed": 1894050179,
-   "split": "target",
-   "prefix": "h02_prefix.npz",
-   "qpos": "h02_state.npz",
-   "card": "h02_card.json",
-   "roles": {
-    "coffee_machine_main_group": "target",
-    "counter_main_main_group": "support"
-   }
-  },
-  {
-   "id": "h03",
-   "task": "CoffeeSetupMug",
-   "seed": 1957084735,
-   "split": "target",
-   "prefix": "h03_prefix.npz",
-   "qpos": "h03_state.npz",
-   "card": "h03_card.json",
-   "roles": {
-    "coffee_machine_main_group": "target",
-    "counter_1_main_group": "support"
-   }
-  },
-  {
    "id": "h04",
    "task": "CoffeeSetupMug",
    "seed": 211968027,
@@ -154,19 +102,6 @@
    "roles": {
     "coffee_machine_main_group": "target",
     "counter_main_main_group": "support"
-   }
-  },
-  {
-   "id": "h12",
-   "task": "CoffeeSetupMug",
-   "seed": 1777466003,
-   "split": "target",
-   "prefix": "h12_prefix.npz",
-   "qpos": "h12_state.npz",
-   "card": "h12_card.json",
-   "roles": {
-    "coffee_machine_left_group": "target",
-    "counter_1_left_group": "support"
    }
   },
   {

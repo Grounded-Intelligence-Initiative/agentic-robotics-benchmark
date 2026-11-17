@@ -9,6 +9,15 @@ recovered when the job's own success check holds for 10 consecutive control step
 Metric: job_balanced_recovered_fraction = the mean over jobs of each job's recovered fraction (wire_rules.job_balanced).
 
 Isolation while grading (all stated in the instruction):
+- The controller is the only thing that runs as the agent's account. The verifier image (tests/Dockerfile) starts no
+  desktop session: the base image's supervisord would run one as that account and restart it when the controller
+  kills it, and the new session would run the account's autostart entries and start script outside the launcher's
+  filter and outside the pauses below (both routes were measured on the first form of this task). At its start the
+  grader reclaims root's PATH directories (the kit's secure_exec_path), kills what runs as the account and requires
+  that nothing of the account appears by itself for QUIET_S; a sandbox that fails this is a task error. At every
+  pause it checks that every process of the account carries the launcher's no_new_privs mark, which the launcher sets
+  before it drops to the account and which no descendant can clear: a process without it was not started through
+  the launcher. That ends the episode, and that state and every later one score 0.
 - The controller's processes run only while a request is outstanding: every process of the agent's account is stopped
   (SIGSTOP) from the moment a reply has been read (or READY seen) until the next request is written, so kitchen
   builds, simulation and rendering never share the CPUs with it and it cannot compute ahead of a request.
@@ -51,6 +60,7 @@ from robotics_grader import (  # noqa: E402
     Solver, SolverAborted, SolverMissing, agent_user, fail, ratio_rewards, read_anchor, stage_config, write_verdict,
     zero_verdict,
 )
+from robotics_grader.stage import secure_exec_path  # noqa: E402
 
 STAGE = os.path.dirname(os.path.abspath(__file__))
 NONET = os.path.join(STAGE, "nonet_exec.py")
@@ -65,6 +75,8 @@ TOKEN_FILE = ".oracle_token"
 TOKEN_MAX_BYTES = 4096
 SIM_PYTHON = "/opt/venv/bin/python3"
 PREFIX_TOL = 1e-9                            # max |qpos - recorded| after the prefix replay (every run so far: 0.0)
+QUIET_S = 5.0                                # nothing of the agent's account may appear by itself for this long at the
+#                                              start (longer than supervisord's longest pause before it retries a start)
 METRIC = "job_balanced_recovered_fraction"
 
 
@@ -108,6 +120,46 @@ def kill_agent_processes(uid, rounds=20, pause=0.25):
                     pass
         time.sleep(pause)
     return not _agent_pids(uid)
+
+
+def _describe(pid):
+    try:
+        with open("/proc/{}/cmdline".format(pid), "rb") as f:
+            return "{} {}".format(pid, f.read(120).replace(b"\0", b" ").decode("utf-8", "replace").strip())
+    except OSError:
+        return "{} (gone)".format(pid)
+
+
+def require_empty_account(uid, quiet_s=QUIET_S):
+    """The grading sandbox must run nothing as the agent's account by itself (tests/Dockerfile starts no desktop
+    session). Called right after the verify-start kill, before the controller exists: a process of the account that
+    is there, or appears within `quiet_s`, was started by the image, and a session that an image restarts runs outside
+    the controller's launcher. That sandbox is not the one this grader is written for: a task error."""
+    deadline = time.monotonic() + quiet_s
+    while True:
+        pids = _agent_pids(uid)
+        if pids:
+            fail("the grading sandbox starts processes as the agent's account by itself ({}); its image must run no "
+                 "session as that account: the grading sandbox is not isolated".format("; ".join(map(_describe, pids[:5]))))
+        if time.monotonic() >= deadline:
+            return
+        time.sleep(0.1)
+
+
+def outside_launcher(pid):
+    """True if `pid` is a live process without the no_new_privs mark. nonet_exec.py sets the mark before it drops to
+    the agent's account, every descendant inherits it and none can clear it, so a process of the account without it
+    was not started through the launcher (and so runs without its filter). A zombie runs nothing and does not count;
+    a kernel that does not report the mark gives no finding."""
+    try:
+        with open("/proc/{}/status".format(pid)) as f:
+            status = f.read()
+    except OSError:
+        return False
+    fields = dict(line.split(":", 1) for line in status.splitlines() if ":" in line)
+    if fields.get("State", "").strip()[:1] in ("Z", "X"):
+        return False
+    return fields.get("NoNewPrivs", "").strip() == "0"
 
 
 def agent_bytes(uid, roots=("/tmp", "/var/tmp", "/dev/shm", "/home")):
@@ -206,6 +258,7 @@ class GuardedSolver(Solver):
         self.uid = uid
         self.last_reply_s = 0.0
         self._stopped = []
+        self.outside = []                    # processes of the account found running outside the launcher
         super().__init__(**kw)
 
     # -- pausing the agent's account
@@ -222,6 +275,13 @@ class GuardedSolver(Solver):
                     pass
                 stopped.add(pid)
         self._stopped = sorted(stopped)
+        for pid in self._stopped:
+            if outside_launcher(pid):
+                self.outside.append(_describe(pid))
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except OSError:
+                    pass
         return len(stopped)
 
     def thaw(self):
@@ -233,12 +293,17 @@ class GuardedSolver(Solver):
         self._stopped = []
 
     def _pause_or_abort(self):
-        if self.freeze() > W.MAX_PROCESSES:
+        count = self.freeze()
+        if self.outside:
+            self._broken = True
+            raise SolverAborted("a process of the controller's account runs outside the grader's launcher")
+        if count > W.MAX_PROCESSES:
             self._broken = True
             raise SolverAborted("more than {} processes in the controller's account".format(W.MAX_PROCESSES))
 
     # -- process
     def _spawn(self):
+        secure_exec_path()   # as the kit's own launcher does: nothing agent-writable is left on root's PATH
         uid, gid = _agent_ids()
         cmd = [sys.executable, "-I", NONET, "--uid", str(uid), "--gid", str(gid), "--cwd", self.submission,
                "--rlimit-fsize", str(FSIZE_LIMIT), "--", "bash", self.entry]
@@ -504,6 +569,7 @@ def run_state(spec, state, solver, cfg, privileged, stats):
 
 
 def main():
+    secure_exec_path()       # before anything else: no directory on root's PATH is left to the agent's account
     config = stage_config()
     anchor, meta = read_anchor()
     hidden = load_hidden()
@@ -513,6 +579,7 @@ def main():
         write_verdict(zero_verdict(reason="no agent account", anchored=anchor is not None))
         return
     kill_agent_processes(uid)
+    require_empty_account(uid)
     try:
         workdir = stage_submission(uid, gid)
     except OSError as exc:
@@ -533,7 +600,7 @@ def main():
     os.makedirs(logdir, exist_ok=True)
     config["_logdir"] = logdir
     states = hidden["states"]
-    results, stats, aborted, tampered = [], {}, 0, None
+    results, stats, aborted, tampered, escaped = [], {}, 0, None, None
     try:
         solver = GuardedSolver(uid, step_timeout=W.STEP_TIMEOUT_S, submission=workdir, max_restarts=W.MAX_RESTARTS)
     except SolverMissing as exc:
@@ -552,6 +619,14 @@ def main():
             if tampered is not None:
                 results.append((state["task"], False))
                 log("state {} ({}): recovered=False assets changed".format(state["id"], state["task"]))
+                continue
+            if escaped is None and solver.outside:
+                escaped = state["id"]
+                log("processes of the agent's account ran outside the launcher ({}): state {} and every later one "
+                    "score 0".format("; ".join(solver.outside[:5]), state["id"]))
+            if escaped is not None:
+                results.append((state["task"], False))
+                log("state {} ({}): recovered=False a process ran outside the launcher".format(state["id"], state["task"]))
                 continue
             try:
                 recovered, reason = run_state(hidden, state, solver, config, privileged, stats)
@@ -579,6 +654,7 @@ def main():
     measured, per_job = W.job_balanced(results)
     extra = {"states": float(len(results)), "states_recovered": float(sum(ok for _, ok in results)),
              "episodes_aborted": float(aborted), "assets_tampered": 1.0 if tampered else 0.0,
+             "processes_outside_launcher": float(len(solver.outside)),
              "oracle_token_matched": 1.0 if privileged else 0.0, "oracle_token_mismatch": 1.0 if mismatch else 0.0,
              "prefix_max_err": float(stats.get("prefix_max_err", 0.0)),
              "controller_seconds": float(stats.get("controller_s", 0.0))}

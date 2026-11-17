@@ -11,7 +11,10 @@ old name, but every task now names the new one.
 
 Only agent-visible material goes there: the dataset is public and its files end up in the image the agent runs in.
 The grader's ground truth and the oracle's reference artifact stay in the task's `tests/` and `solution/` in git
-(they reach the sandbox only when their stage runs; see [`security-model.md`](security-model.md)).
+(they reach the sandbox only when their stage runs; see [`security-model.md`](security-model.md)). One exception, by
+the benchmark owner's decision of 2026-11-17: `arm/longtail_manipulation_recovery` keeps the RoboCasa assets of its
+graded kitchens under its `payload/` prefix (`verifier_assets.tar.gz`), fetched by its separate verifier image only.
+They are public RoboCasa files that hold no state or answer of the task (the task's `tests/NOTICE.md`).
 
 ## 1. The pieces
 

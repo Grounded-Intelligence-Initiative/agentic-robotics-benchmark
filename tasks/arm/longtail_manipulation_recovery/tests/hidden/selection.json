@@ -1,6 +1,6 @@
 {
 "format": "longtail_manipulation_recovery selection facts 2",
-"rule": "Apply the pre-registered selection rule to every recorded candidate and write the facts.\n\nRule (frozen 2026-11-09 in rec/fresh_collect.py PHYS + tools/run_selection.py, applied here unchanged):\n  C1 fresh XR-1 rollout on split=target, failed at the task horizon;\n  C2 physical change (plan.json 'phys'): object xy displacement >= 0.05 m or tilt >= 30 deg, and object z >= 0.35 m at T;\n  C3 a recorded rescue from that state held the task's success for the last 10 of 15 hold steps (native). A rescue\n     attempt is XR-1 run again from the restored state with a new noise seed, optionally after a short scripted\n     prefix: V0/X(k%3=1) none; V1 / X(k%3=2) \"retract\": 12 steps gripper open, then up to 60 steps moving the hand\n     0.12 m up and 0.15 m toward the base; V2 / X(k%3=0) \"home\": retract, then up to 200 steps servoing the hand to the\n     rollout's step-0 pose. V0-V2 are tried in order at recording (stop at the first good one); X10, X11, ... are the\n     extra attempts of the extra-rescue jobs (3 per failure, stop at the first good one, as far as their wall cap reached);\n  C4 container (task wrapper): restore bit-exact to the recorded qpos, not successful at restore,\n     the open-loop replay of the rescue recovers (10 consecutive success steps within 1500) in 3 of 3 runs;\n  C5 no-op, blind (release, lift-retract, return to the start hand pose) and blind retry at the failure hand pose\n     each do not recover within 1500 steps.\n  C6 (added 2026-11-11 after review, before any frontier result, for oracle reproducibility across hosts): the replay\n     also recovers in both runs with 1e-9 Gaussian noise added to every qpos entry at restore (seeds 1 and 2).\n  A2 a job enters the hidden set only with at least 3 states kept by C1-C6 (added 2026-11-11).",
+"rule": "Apply the pre-registered selection rule to every recorded candidate and write the facts.\n\nRule (frozen 2026-11-09 in rec/fresh_collect.py PHYS + tools/run_selection.py, applied here unchanged):\n  C1 fresh XR-1 rollout on split=target, failed at the task horizon;\n  C2 physical change (plan.json 'phys'): object xy displacement >= 0.05 m or tilt >= 30 deg, and object z >= 0.35 m at T;\n  C3 a recorded rescue from that state held the task's success for the last 10 of 15 hold steps (native). A rescue\n     attempt is XR-1 run again from the restored state with a new noise seed, optionally after a short scripted\n     prefix: V0/X(k%3=1) none; V1 / X(k%3=2) \"retract\": 12 steps gripper open, then up to 60 steps moving the hand\n     0.12 m up and 0.15 m toward the base; V2 / X(k%3=0) \"home\": retract, then up to 200 steps servoing the hand to the\n     rollout's step-0 pose. V0-V2 are tried in order at recording (stop at the first good one); X10, X11, ... are the\n     extra attempts of the extra-rescue jobs (3 per failure, stop at the first good one, as far as their wall cap reached);\n  C4 container (task wrapper): restore bit-exact to the recorded qpos, not successful at restore,\n     the open-loop replay of the rescue recovers (10 consecutive success steps within 1500) in 3 of 3 runs;\n  C5 no-op, blind (release, lift-retract, return to the start hand pose) and blind retry at the failure hand pose\n     each do not recover within 1500 steps.\n  C6 (added 2026-11-11 after review, before any frontier result, for oracle reproducibility across hosts): the replay\n     also recovers in both runs with 1e-9 Gaussian noise added to every qpos entry at restore (seeds 1 and 2).\n  A2 a job enters the hidden set only with at least 3 states kept by C1-C6 (added 2026-11-11).\n  A4 (added 2026-11-17 by the maintainers' review, the benchmark owner's decision): CoffeeSetupMug counts as done\n     only when RoboCasa's check_obj_upright (15 degrees) also holds for the mug; C3, C4 and C6 are re-applied under\n     that check to the kept CoffeeSetupMug states with their rescues as recorded.",
 "split": "target",
 "runs": [
 "pilot1",
@@ -17,9 +17,10 @@
 "drop_C4": "C4: replay not reproducible",
 "drop_C5": "C5: a blind baseline recovers it",
 "drop_C6": "C6: replay fails under 1e-9 restore noise",
-"keep": "in the hidden set"
+"keep": "in the hidden set",
+"drop_A4": "A4: the recorded rescue does not finish the job under the amended check (it leaves the mug tipped under the dispenser)"
 },
-"note": "Every rollout of the listed runs is here. Plans (seeds from os.urandom) were written before each run. C4-C6 ran in the task container with the task wrapper. C6 was added on 2026-11-11 after review, before any frontier result, for oracle reproducibility across hosts; it removed 5 states of the first freeze. Rescue attempts: name, scripted prefix, success, held for the last 10 hold steps.",
+"note": "Every rollout of the listed runs is here. Plans (seeds from os.urandom) were written before each run. C4-C6 ran in the task container with the task wrapper. C6 was added on 2026-11-11 after review, before any frontier result, for oracle reproducibility across hosts; it removed 5 states of the first freeze. Rescue attempts: name, scripted prefix, success, held for the last 10 hold steps. A4 (2026-11-17): the CoffeeSetupMug check also requires the mug upright; the 5 kept states whose recorded rescue leaves the mug tipped were removed, 27 states remain.",
 "amendments": [
 {
 "id": "A1",
@@ -47,28 +48,27 @@
 "why": "the first set was 15 of 20 CoffeeSetupMug",
 "before": "any agent result on the job-balanced score",
 "recheck": "bal1 candidates went through the same C1-C6 and A2"
+},
+{
+"id": "A4",
+"date": "2026-11-17",
+"clause": "the success check of CoffeeSetupMug; C3, C4 and C6 re-applied under it",
+"change": "CoffeeSetupMug counts as done only when RoboCasa's check_obj_upright (default threshold, 15 degrees) also holds for the mug, together with RoboCasa's own check, for the 10 consecutive steps (kitchen_sim.Kitchen.success). C3 (a recorded rescue finishes the job), C4 (its replay recovers in 3 of 3 runs) and C6 (and in both runs with 1e-9 restore noise) were re-applied under the amended check to the 11 kept CoffeeSetupMug states, with the rescues as recorded: nothing was re-recorded and no state was added",
+"why": "maintainers' review of the pull request, the benchmark owner's decision: a mug lying or leaning under the dispenser is not a finished coffee setup. RoboCasa's own check asks only for the mug's position, and in the author's two frontier episodes on the 32-state set 2 of the 5 recovered mug states passed with a tipped mug",
+"before": "decided after the author's two frontier episodes on the 32-state set (they are what showed the loose check passing tipped mugs) and before any frontier episode on the amended set. The amendment tightens one check and removes states; it cannot make a state easier",
+"recheck": "each kept CoffeeSetupMug state's recorded rescue was replayed in the verifier image with the grader's restore and simulator wrapper (prefix error 0.0 in every run). In 5 states (h00, h01, h02, h03, h12) the rescue ends with the mug tipped (29 to 83 degrees from upright) and the mug is never upright under the dispenser within the 1500 steps: verdict drop_A4. In 6 states (h04, h05, h06, h11, h13, h14) the amended check holds at the same step as the unamended one in 3 of 3 exact replays, and in 2 of 2 replays with 1e-9 Gaussian noise on every qpos entry of the restored state (numpy default_rng seeds 1 and 2; h11 one step later): kept. C5 holds a fortiori, since the amended check implies the unamended one. CoffeeSetupMug keeps 6 states (A2 asks for 3). The per-state numbers are in each candidate's 'a4'. The one CoffeeSetupMug candidate that C5 had removed stays removed: its recordings are not part of the task, so it was not re-examined",
+"set": "before: 32 states (11 CoffeeSetupMug, 11 PickPlaceDrawerToCounter, 10 PickPlaceCounterToStove); after: 27 (6, 11, 10)",
+"files": "removed: the prefix, state and card files of h00, h01, h02, h03, h12 and their rescues in solution/rescues/; changed: states.json, the success_rule text of the cards of h04, h05, h06, h11, h13, h14 (frozen_files_sha256 has the new hashes) and of the practice mug cards"
 }
 ],
 "frozen_files_sha256": {
-"h00_card.json": "d1c9b905e13957ca0cbcf816063ce7f2d7826453ee9e8a7cd6b0b4e05fdfba49",
-"h00_prefix.npz": "26a8f5bdadc676d8c1dc8f59f9b5fe0eefc282aca4f175a0ae869eb6efee341a",
-"h00_state.npz": "77ed25a363b63c8df5fe0ac740b03a648455eff75b04b96e77e7c6984e5ba74f",
-"h01_card.json": "5626f4626474039957dd205931519c32bbee9c05e60c0d45e07f68d267cb6844",
-"h01_prefix.npz": "79d7361d8629c53880f455a4bfbef0fa07ea2e3a734269c48379e098b9e93182",
-"h01_state.npz": "2b3e32cff2b4f67a7d859bbdea76165bb4a044109efff0032be339152668cc89",
-"h02_card.json": "b39bf3288ec54c4ee4dadff69ae4dd46a4788973cba12d62e72a4c4d52658546",
-"h02_prefix.npz": "2ad111ed1a96cb37d8c89d81391e2649967532e19b2f37c93c17465d057653aa",
-"h02_state.npz": "692e5e226fd69c6a6d473e759c29c769eff349b451f8860c11b99692739804c6",
-"h03_card.json": "5626f4626474039957dd205931519c32bbee9c05e60c0d45e07f68d267cb6844",
-"h03_prefix.npz": "0bc6091b792e8845edb58b3d47950e4bb72e6cc28726117237638f1ab7ff8767",
-"h03_state.npz": "d2ad4404856e61cd577383eb7303a28a64930d0a42eade8947bf2c5eee3c9bc2",
-"h04_card.json": "d1c9b905e13957ca0cbcf816063ce7f2d7826453ee9e8a7cd6b0b4e05fdfba49",
+"h04_card.json": "7ac670b9a8bcf8d26eae788dbf39b98668716e68a49be1f69e36689a902c8c52",
 "h04_prefix.npz": "eaddef3a285885a383acea2c5f283697a3d1f20441994d4f283d9ea3d4f315cf",
 "h04_state.npz": "aa64a861eaf8961c343f62d6a7732511eec4430ef063b030a3ac01bfc55cfafc",
-"h05_card.json": "7d25e9a97ef36dfd8893d8c8749078b01d146e1c59c6e8d966261911f5bce9d9",
+"h05_card.json": "779e5ea184f5cde6285912332a041591bf385fd529557d69a56b67c7931b3b90",
 "h05_prefix.npz": "930da14f41d63b8d44fdcfe10e21307fa4b96fda72e804590884a91035e6c259",
 "h05_state.npz": "0301bb4ca2f14197a1ea234cb9d4d13a75682537bbe780dbf1fbac2df56c82e8",
-"h06_card.json": "d1c9b905e13957ca0cbcf816063ce7f2d7826453ee9e8a7cd6b0b4e05fdfba49",
+"h06_card.json": "7ac670b9a8bcf8d26eae788dbf39b98668716e68a49be1f69e36689a902c8c52",
 "h06_prefix.npz": "5bf314b0a07a148d8d7ba63dcab543ab5bc91ed529612dffe2f4485bf1aea1ba",
 "h06_state.npz": "5863c88c5f734d607c2675508c813ebd8eaedf8551be1b2134d0a928266912ff",
 "h07_card.json": "6a54754ee97a9703b5aebc2ab2b9e3285543e7ab57bdd2b1499f5e8791f298f8",
@@ -83,16 +83,13 @@
 "h10_card.json": "b28d9a070bf3c94f5553037fc355516785ba4cb88478b106bfea210036b2f971",
 "h10_prefix.npz": "d4d78d9900a3af5683430f1c1f79c7aaac7db46777824c548cc2748d333eb9bb",
 "h10_state.npz": "bc202872fce5ce2bb6d3aa0c46a1f212d36ccd37b2226a6099a7e54bc4d6fd4a",
-"h11_card.json": "2d27f9bce36ee0d82fd3c6fc106883ea64cf573eec51e98ee8a9b1f621594868",
+"h11_card.json": "a987624636cb2bfd6528ddacd719bea419d1295f789b164749e54e5b4544f5da",
 "h11_prefix.npz": "b1def5fdfd028814fcba41f98423b0cd8a0056ba01d065b7b09272c697acd91d",
 "h11_state.npz": "339b6e9e5c339e7c176e4283187b07de28d7771a2b1e8887861d03a5c944bfa6",
-"h12_card.json": "7d25e9a97ef36dfd8893d8c8749078b01d146e1c59c6e8d966261911f5bce9d9",
-"h12_prefix.npz": "fe46c76c316de590ba73eb237e16159be7daf4b233053c62aace5185a6a59f22",
-"h12_state.npz": "d82fa3115524eacc944fb310c61141a38b986e4a4d91fd4d6b5d7b93c21db533",
-"h13_card.json": "5626f4626474039957dd205931519c32bbee9c05e60c0d45e07f68d267cb6844",
+"h13_card.json": "ea0870b850423b61dbac792f8f8eb28cd381869f45927db65df940d59f36e134",
 "h13_prefix.npz": "af5209b9b6778a7841fb00e3da6be0820acf9474ce74df8ad3035221630374b6",
 "h13_state.npz": "582f249974228b5f28e0a97acf264e02a052ef235140f90e2c3768154e7d1cc6",
-"h14_card.json": "2d27f9bce36ee0d82fd3c6fc106883ea64cf573eec51e98ee8a9b1f621594868",
+"h14_card.json": "a987624636cb2bfd6528ddacd719bea419d1295f789b164749e54e5b4544f5da",
 "h14_prefix.npz": "b90cd4896b8955b7812e82abe817a611f2b41950bb400bfd4fe891fda99ba94c",
 "h14_state.npz": "cfa3bb4e1baec4dc6e490c3a35ee5c9b78aeb84c7078ab0e1b44d58f7541efd1",
 "h15_card.json": "6f3a576608b1a32aa67ddc1802f8abde533fe16fd13c90df7c3adc24fe273264",
@@ -146,11 +143,7 @@
 "h31_card.json": "6dbb7651ccad1ab2a0819aed7f7de9656700123ee5dee73a5134fe4816d27dbf",
 "h31_prefix.npz": "ad9e1665aeb6cd214bf17d9f09945e55bdff794f43f611c420598e024ea47e1b",
 "h31_state.npz": "ab805f2fd994b29f79833f197f498f9c10e111a728d5d9a31a57e2dc4b21611f",
-"states.json": "b5254c8a73baf30bb541c04900453df198951d25392a1222f40bc55fb85644f9",
-"solution/rescues/h00.npz": "9550f206736d9011393c03c1a4c87179403ddc851afec9d96f01968a5d4fbc2c",
-"solution/rescues/h01.npz": "9019ad53b0df29ae64affb869a9bb5139abaae0ee7b7856a7242e3ecc55154ad",
-"solution/rescues/h02.npz": "bb6f330f35c50b8a2c6623312cb00bc0bfa11a091948176931a86a8d5ce75e58",
-"solution/rescues/h03.npz": "3a6e9d5afa5ed2c1022950a90ccba91bd176de4cb4b50fce8090a94c5045ca40",
+"states.json": "3744935cd48acc7a4837a13f1d30381b63f4014a826cd25719299086e8229414",
 "solution/rescues/h04.npz": "76a3e8ad094a4d4d29d3e02d880a7e646705f117e1b355953303cf146f8f117d",
 "solution/rescues/h05.npz": "7b182c9ffaf075e69e151f7873e59a123510a5914b2acb231031300a17b91ccf",
 "solution/rescues/h06.npz": "9aec7a41e21d1fa18456db9cca938e845dc2d94e567a11ed9e9d2beb6bb9aa48",
@@ -159,7 +152,6 @@
 "solution/rescues/h09.npz": "040c8cfc40e141b969a5ccddb9493bc89c43fb4e5391b13326633026fe2afeed",
 "solution/rescues/h10.npz": "bd41abfc7d6fc7e91f98b65f39902462655d76a2784d19bdb33f13d98cbb4603",
 "solution/rescues/h11.npz": "168abe7dab723af4dcb8e0aaf2ab7abd768cbebbd02bc837b6ec046251e83a6c",
-"solution/rescues/h12.npz": "0549240be0daa71d783d03cf36740442796ab2cd4c2ab1183386026c1bdf05f8",
 "solution/rescues/h13.npz": "1f58d574e3e2dd458d848218ba4bcc8a8e26878a16ad57d3d394bc8dcb060824",
 "solution/rescues/h14.npz": "27633278aa4c8fc23338458c46e7ad3627fd9504a9c1386d0c547a1db299e1a2",
 "solution/rescues/h15.npz": "fc3db7190ef48b9cf01108c08921e5fee53662210c8c514b04706dfa30eedb38",
@@ -190,7 +182,8 @@
 "c5_fail": 1,
 "c6_fail": 4,
 "incomplete": 0,
-"kept": 11
+"kept": 6,
+"a4_dropped": 5
 },
 "PickPlaceCounterToCabinet": {
 "rollouts": 130,
@@ -294,7 +287,7 @@ false
 "task": "CoffeeSetupMug",
 "seed": 1114191951,
 "run": "pilot1",
-"verdict": "keep",
+"verdict": "drop_A4",
 "rollout_success": false,
 "phys": {
 "xy_disp_m": 0.0236,
@@ -334,7 +327,20 @@ true
 true,
 true
 ],
-"hidden_id": "h00"
+"a4": {
+"rescue_ends_upright": false,
+"recovered_unamended_at_step": 176,
+"roll_pitch_deg_then": [
+-28.2,
+-7.3
+],
+"roll_pitch_deg_at_step_1500": [
+-25.1,
+-8.7
+],
+"steps_upright_and_placed_of_1500": 0
+},
+"hidden_id_before_a4": "h00"
 },
 {
 "task": "CoffeeSetupMug",
@@ -436,7 +442,7 @@ false
 "task": "CoffeeSetupMug",
 "seed": 240257729,
 "run": "pilot1",
-"verdict": "keep",
+"verdict": "drop_A4",
 "rollout_success": false,
 "phys": {
 "xy_disp_m": 0.1335,
@@ -482,7 +488,20 @@ true
 true,
 true
 ],
-"hidden_id": "h01"
+"a4": {
+"rescue_ends_upright": false,
+"recovered_unamended_at_step": 741,
+"roll_pitch_deg_then": [
+67.6,
+56.5
+],
+"roll_pitch_deg_at_step_1500": [
+67.6,
+56.5
+],
+"steps_upright_and_placed_of_1500": 0
+},
+"hidden_id_before_a4": "h01"
 },
 {
 "task": "CoffeeSetupMug",
@@ -2000,7 +2019,7 @@ false
 "task": "CoffeeSetupMug",
 "seed": 1894050179,
 "run": "main1",
-"verdict": "keep",
+"verdict": "drop_A4",
 "rollout_success": false,
 "phys": {
 "xy_disp_m": 0.0603,
@@ -2058,7 +2077,20 @@ true
 true,
 true
 ],
-"hidden_id": "h02"
+"a4": {
+"rescue_ends_upright": false,
+"recovered_unamended_at_step": 250,
+"roll_pitch_deg_then": [
+-76.7,
+55.5
+],
+"roll_pitch_deg_at_step_1500": [
+-76.7,
+55.5
+],
+"steps_upright_and_placed_of_1500": 0
+},
+"hidden_id_before_a4": "h02"
 },
 {
 "task": "CoffeeSetupMug",
@@ -2132,7 +2164,7 @@ false
 "task": "CoffeeSetupMug",
 "seed": 1957084735,
 "run": "main1",
-"verdict": "keep",
+"verdict": "drop_A4",
 "rollout_success": false,
 "phys": {
 "xy_disp_m": 0.0577,
@@ -2208,7 +2240,20 @@ true
 true,
 true
 ],
-"hidden_id": "h03"
+"a4": {
+"rescue_ends_upright": false,
+"recovered_unamended_at_step": 665,
+"roll_pitch_deg_then": [
+67.6,
+56.5
+],
+"roll_pitch_deg_at_step_1500": [
+67.6,
+56.5
+],
+"steps_upright_and_placed_of_1500": 0
+},
+"hidden_id_before_a4": "h03"
 },
 {
 "task": "CoffeeSetupMug",
@@ -2334,7 +2379,32 @@ true
 true,
 true
 ],
-"hidden_id": "h04"
+"hidden_id": "h04",
+"a4": {
+"rescue_ends_upright": true,
+"recovered_amended": [
+true,
+true,
+true
+],
+"recovered_amended_at_step": [
+822,
+822,
+822
+],
+"roll_pitch_deg_then": [
+-0.0,
+-0.1
+],
+"perturb_recovered_amended": [
+true,
+true
+],
+"perturb_recovered_amended_at_step": [
+822,
+822
+]
+}
 },
 {
 "task": "CoffeeSetupMug",
@@ -2796,7 +2866,32 @@ true
 true,
 true
 ],
-"hidden_id": "h05"
+"hidden_id": "h05",
+"a4": {
+"rescue_ends_upright": true,
+"recovered_amended": [
+true,
+true,
+true
+],
+"recovered_amended_at_step": [
+1167,
+1167,
+1167
+],
+"roll_pitch_deg_then": [
+0.1,
+-0.0
+],
+"perturb_recovered_amended": [
+true,
+true
+],
+"perturb_recovered_amended_at_step": [
+1167,
+1167
+]
+}
 },
 {
 "task": "CoffeeSetupMug",
@@ -2852,7 +2947,32 @@ true
 true,
 true
 ],
-"hidden_id": "h06"
+"hidden_id": "h06",
+"a4": {
+"rescue_ends_upright": true,
+"recovered_amended": [
+true,
+true,
+true
+],
+"recovered_amended_at_step": [
+371,
+371,
+371
+],
+"roll_pitch_deg_then": [
+5.5,
+-4.5
+],
+"perturb_recovered_amended": [
+true,
+true
+],
+"perturb_recovered_amended_at_step": [
+371,
+371
+]
+}
 },
 {
 "task": "CoffeeSetupMug",
@@ -4669,7 +4789,32 @@ true
 true,
 true
 ],
-"hidden_id": "h11"
+"hidden_id": "h11",
+"a4": {
+"rescue_ends_upright": true,
+"recovered_amended": [
+true,
+true,
+true
+],
+"recovered_amended_at_step": [
+508,
+508,
+508
+],
+"roll_pitch_deg_then": [
+0.0,
+0.0
+],
+"perturb_recovered_amended": [
+true,
+true
+],
+"perturb_recovered_amended_at_step": [
+509,
+509
+]
+}
 },
 {
 "task": "CoffeeSetupMug",
@@ -4905,7 +5050,7 @@ false
 "task": "CoffeeSetupMug",
 "seed": 1777466003,
 "run": "main3",
-"verdict": "keep",
+"verdict": "drop_A4",
 "rollout_success": false,
 "phys": {
 "xy_disp_m": 0.0416,
@@ -4945,7 +5090,20 @@ true
 true,
 true
 ],
-"hidden_id": "h12"
+"a4": {
+"rescue_ends_upright": false,
+"recovered_unamended_at_step": 594,
+"roll_pitch_deg_then": [
+-80.4,
+41.9
+],
+"roll_pitch_deg_at_step_1500": [
+-80.4,
+42.3
+],
+"steps_upright_and_placed_of_1500": 0
+},
+"hidden_id_before_a4": "h12"
 },
 {
 "task": "CoffeeSetupMug",
@@ -5083,7 +5241,32 @@ true
 true,
 true
 ],
-"hidden_id": "h13"
+"hidden_id": "h13",
+"a4": {
+"rescue_ends_upright": true,
+"recovered_amended": [
+true,
+true,
+true
+],
+"recovered_amended_at_step": [
+689,
+689,
+689
+],
+"roll_pitch_deg_then": [
+-0.0,
+-0.0
+],
+"perturb_recovered_amended": [
+true,
+true
+],
+"perturb_recovered_amended_at_step": [
+689,
+689
+]
+}
 },
 {
 "task": "CoffeeSetupMug",
@@ -5852,7 +6035,32 @@ true
 true,
 true
 ],
-"hidden_id": "h14"
+"hidden_id": "h14",
+"a4": {
+"rescue_ends_upright": true,
+"recovered_amended": [
+true,
+true,
+true
+],
+"recovered_amended_at_step": [
+165,
+165,
+165
+],
+"roll_pitch_deg_then": [
+-0.1,
+-0.1
+],
+"perturb_recovered_amended": [
+true,
+true
+],
+"perturb_recovered_amended_at_step": [
+165,
+165
+]
+}
 },
 {
 "task": "CoffeeSetupMug",

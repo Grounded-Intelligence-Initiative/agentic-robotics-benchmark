@@ -27,6 +27,9 @@ os.environ.setdefault("NPY_DISABLE_CPU_FEATURES", "AVX512F AVX512CD AVX512_KNL A
 import numpy as np  # noqa: E402
 
 CAMERA_KEYS = ("robot0_agentview_left", "robot0_agentview_right", "robot0_eye_in_hand")
+# Jobs whose object must also stand upright to count: RoboCasa's own check_obj_upright (default threshold, 15 degrees)
+# on top of the job's success check. A tipped mug under a dispenser is not a finished coffee setup.
+UPRIGHT_JOBS = ("CoffeeSetupMug",)
 CAM_BITS = {"robot0_agentview_left": 1, "robot0_agentview_right": 2, "robot0_eye_in_hand": 4}
 DEPTH_BIT = 8
 IMG_SIZE = 256
@@ -207,7 +210,14 @@ class Kitchen:
         return [*values["gripper0_right_force_ee"], *values["gripper0_right_torque_ee"]]
 
     def success(self):
-        return bool(self.raw._check_success())
+        """The job's own RoboCasa success check; for the jobs in UPRIGHT_JOBS the object must also be upright
+        (robocasa.utils.object_utils.check_obj_upright: the x and y Euler angles of its body below 15 degrees)."""
+        if not self.raw._check_success():
+            return False
+        if self.task in UPRIGHT_JOBS:
+            from robocasa.utils import object_utils
+            return bool(object_utils.check_obj_upright(self.raw, "obj"))
+        return True
 
     def physical_digest(self):
         import hashlib

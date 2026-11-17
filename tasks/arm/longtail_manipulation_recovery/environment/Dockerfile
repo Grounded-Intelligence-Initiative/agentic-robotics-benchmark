@@ -31,10 +31,16 @@ ENV MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa MPLBACKEND=Agg OMP_NUM_THREADS=1 O
     OPENBLAS_CORETYPE=Haswell NUMBA_CPU_NAME=haswell NUMBA_CPU_FEATURES=+avx2,+fma,+sse4.2 LP_NUM_THREADS=4 PYTHONHASHSEED=0 \
     NPY_DISABLE_CPU_FEATURES="AVX512F AVX512CD AVX512_KNL AVX512_KNM AVX512_SKX AVX512_CLX AVX512_CNL AVX512_ICL AVX512_SPR AVX512FP16"
 
-# ---- task assets: fetched at the dataset commit pinned in assets.sha256, checked file by file (docs/task-assets.md):
-# the fixtures, textures and object models of the practice kitchens only.
-COPY fetch_assets.py assets.sha256 /opt/task-assets/
+# ---- task assets: fetched at the dataset commit pinned in assets.sha256 (docs/task-assets.md): the fixtures, textures
+# and object models of the practice kitchens only. The 1,971 files travel as one archive, pinned by its sha256 (one
+# request per file would run into the Hub's rate limit); after unpacking, every file is checked against the per-file
+# list robocasa_assets.files.sha256, and a file the list does not name fails the build.
+COPY fetch_assets.py assets.sha256 robocasa_assets.files.sha256 /opt/task-assets/
 RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload \
+    && tar -xzf /opt/task-assets/payload/robocasa_assets.tar.gz -C /opt/task-assets/payload --no-same-owner \
+    && rm /opt/task-assets/payload/robocasa_assets.tar.gz \
+    && (cd /opt/task-assets/payload && sha256sum -c --quiet /opt/task-assets/robocasa_assets.files.sha256 \
+        && [ "$(find robocasa_assets -type f | wc -l)" = "$(wc -l < /opt/task-assets/robocasa_assets.files.sha256)" ]) \
     && cp -r /opt/task-assets/payload/robocasa_assets/. /opt/sim/robocasa/robocasa/models/assets/ \
     && rm -rf /opt/task-assets/payload/robocasa_assets
 

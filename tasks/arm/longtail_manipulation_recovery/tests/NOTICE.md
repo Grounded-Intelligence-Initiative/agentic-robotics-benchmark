@@ -27,5 +27,18 @@ author's machine. XR-1 itself is not part of this task, is in neither image, and
 rescue action sequences.
 
 Where the large files live: `grounded-intelligence-initiative/ale-robotics-assets`, under
-`tasks/arm/longtail_manipulation_recovery/payload/` (`robocasa_assets/` for the agent image, `verifier_assets/` for the verifier
-image), pinned by `environment/assets.sha256` and `tests/assets.sha256` (docs/task-assets.md).
+`tasks/arm/longtail_manipulation_recovery/payload/`, as two archives: `robocasa_assets.tar.gz` (1,971 files, the practice
+kitchens, fetched by the agent's image) and `verifier_assets.tar.gz` (2,309 files, the graded kitchens, fetched by the
+verifier image only). Each archive is pinned by dataset commit and sha256 in `environment/assets.sha256` and
+`tests/assets.sha256` (docs/task-assets.md); after unpacking, the image builds check every file against the per-file
+lists `environment/robocasa_assets.files.sha256` and `tests/verifier_assets.files.sha256`, which are the lists this
+task was first submitted with (one request per file would run into the Hub's rate limit, hence the archives).
+
+**The held-out set on the public dataset is an exception.** The dataset holds agent-visible files; a task's hidden
+material stays in git or is fetched at verify from its `verifier/` folder. `verifier_assets.tar.gz` is neither: it is
+the part of RoboCasa's public asset set that the graded kitchens load (the held-out layouts and styles and 82 object
+instances that the agent's image does not have), placed under `payload/` so that the verifier image can fetch it at
+build time through `tests/assets.sha256`. The benchmark owner allowed this on 2026-11-17: the files are public
+already, they hold no state, pose or answer of this task, and the agent works without network, so it cannot fetch
+them. Which layouts, styles and instances the graded kitchens use can be read off that archive's file list, as it can
+be read off `tests/` in this public repository.
