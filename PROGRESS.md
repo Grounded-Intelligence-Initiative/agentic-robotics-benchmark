@@ -7,9 +7,11 @@
 > before every hand-off. Where it disagrees with the code or `git log`, the code wins: fix
 > this file.
 >
-> Last updated: 2026-11-14 (§12: the grasp task pins OpenBLAS to its Haswell kernels).
-> Before that: 2026-11-09 (§11: `vendor/ale` @ `bfb7505`, a task names its GPU models);
-> 2026-11-07 (§10: the asset dataset is renamed `ale-robotics-assets`).
+> Last updated: 2026-11-17 (§14: one stage per task card; `driving` and `ground` become one
+> platform, `ground` "Ground vehicle"). Before that: 2026-11-16 (§13: task cards in
+> `tasks/cards.toml`, the `ground` platform, the merge gate and the GPU-model check); 2026-11-14 (§12: the grasp task pins OpenBLAS
+> to its Haswell kernels); 2026-11-09 (§11: `vendor/ale` @ `bfb7505`, a task names its GPU
+> models); 2026-11-07 (§10: the asset dataset is renamed `ale-robotics-assets`).
 
 ## 0. 2026-09-07 — created by the rebrand from "ALE Robotics"
 
@@ -462,7 +464,6 @@ before it starts. `1cdbc02` refused the key as an unsupported Harbor field.
     on the H100).
 - Next: run `hazard_bay_build`'s missions on an H100 on a quiet host, and add `H100` if they
   pass.
-
 ## 12. 2026-11-14 — the grasp task pins OpenBLAS; wrong matrix products on recent Intel CPUs
 
 A collaborator's `ale validate` of `tasks/arm/novel_object_6dof_grasp_detection` on an Intel
@@ -561,6 +562,59 @@ wrong matrix products, not rounding. The fix is the pull request from branch
   `identity-history.json` carries the task's new record, exported from the clean branch.
 - **Still to do.** The collaborator re-runs `ale validate` on the Xeon 8490H, the only
   confirmation on real hardware.
+
+## 13. 2026-11-16 — task cards, the `ground` platform, the merge gate, the GPU-model check
+
+- **Task cards** (`tasks/cards.toml`, rules in `docs/task-cards.md`): each task on main has a
+  card with a readable `title`, a one-sentence `summary`, the `platforms` it involves (the
+  folder's first, then cross-references) and the `stages` it covers (several in workflow
+  order, or `end-to-end` alone). The file is outside every task folder, so cards change no
+  `spec_hash` or `content_digest`. The website reads the file. 26 cards, one per task on main.
+- **`scripts/task_cards.py`** (`check [--strict]`, `todo`, `context TASK`) and
+  `schemas/task-cards.schema.json`; `tests/test_task_cards.py`.
+- **The merge gate**: the maintainer who finishes a task's pull request adds its card (and a
+  GPU task's tested `gpu_types`) on the branch and labels it `ready-to-merge`. CI's card check
+  is strict on a labelled pull request and on `main`; until then a missing card is a warning,
+  so a contributor's checks stay green. The workflow re-runs on `labeled` / `unlabeled`.
+- **`scripts/gpu_types.py`** (`check`, `list`): every `gpu_types` name accepts a known GPU
+  model, asked of the pinned engine (`ale.run.gpu.accepts_model`), so CI runs it in the
+  engine-lint job; a GPU table without the key is a notice. `tests/test_gpu_types.py`.
+- **`ground`** ("Ground robot (UGV/AMR)") joins `tasks/platforms.json` after `driving`:
+  wheeled and tracked ground robots that are not car-like vehicles driving a road or a track.
+  No task folder moves; `hazard_bay_build` and `robotic_arm_environment_twin_from_real_photo`
+  name it as a cross-reference. The claim order (legged → `quadruped`/`humanoid`; driving
+  tasks → `driving`; other wheeled or tracked → `ground`) is in `CONTRIBUTING.md` step 3 and
+  `docs/task-cards.md`.
+- **Next**: with branch protection on `main` (required checks `engine-lint` and
+  `static-checks`), nothing merges around the gate; it is off today.
+
+## 14. 2026-11-17 — one stage per task; `driving` and `ground` become one platform
+
+Owner decisions of 2026-11-17; they supersede the stage rule and the `driving` / `ground` claim
+order of §13 (§5's platform list predates both).
+
+- **One stage per task.** A card's `stages` is a list of exactly one entry: the last stage of the
+  workflow that the task's score depends on. A job task that also has the agent rebuild a scene
+  or pick hardware on the way is filed by the job; `assembly` means building the robot's own
+  body, and assembling furniture or parts with a robot is `behavior`. `end-to-end` stays the
+  category of a task that runs the whole chain (no task uses it). `scripts/task_cards.py check`
+  fails any other `stages`, and the schema says the same (`minItems` = `maxItems` = 1).
+  `hazard_bay_build` (was hardware-design + environment + behavior) is `behavior`.
+- **Ground vehicle.** `driving` ("Autonomous driving") and `ground` ("Ground robot (UGV/AMR)")
+  are one platform, key `ground`, label "Ground vehicle", in `driving`'s place after `uav`: any
+  wheeled or tracked ground vehicle or robot (a car at any scale on a road or a track, AMR /
+  AGV / UGV, rovers, wheeled mobile manipulators). The key `driving` is gone:
+  `driving_safety_supervisor` moves to `tasks/ground/driving_safety_supervisor/` with
+  `[metadata].platform = "ground"`, and its card's platforms are `["ground"]`. The new
+  platform value and the new asset pin change the task's `spec_hash` and `content_digest`
+  (the slug is unchanged); `identity-history.json` keeps its old records and carries the new
+  one, exported from a clean work tree of the branch. An asset list's `# prefix:` must name the
+  task's folder (`scripts/task_assets.py check`), so the task's 19 files were copied server
+  side to `tasks/ground/driving_safety_supervisor/payload/` on the asset dataset (commit
+  `4c7c4d8b`, every sha256 unchanged) and the list is re-pinned there. The old folder stays on
+  the dataset until this merges; then it is deleted and the dataset card's rows are fixed.
+- `tasks/arm/object_finding_and_organizing_on_messy_desk/task.toml` still lists `driving` in a
+  comment; it is left as it is, since editing it would change that task's identity.
 
 ## Open items
 
