@@ -5,7 +5,7 @@ Runs as root in a SEPARATE verifier sandbox: the engine restores only the declar
 (fixed, chosen by the pre-registered rule in tests/review/selection.md) the grader
 
   * starts its own robot service (tests/runtime/service.py, graded mode: one mission, no
-    new_site, `truth` only for the token whose sha256 is tests/hidden/oracle_token.sha256),
+    new_site, `truth` only for an engine-authorized oracle holding the expected token),
   * runs the program once (`bash run.sh` from a read-only copy of the submission, as the agent
     account, a minimal environment, a fresh HOME, no network: tests/nonet.py),
   * stops it when the mission has ended (10 s grace), when its program time (wall time minus
@@ -222,8 +222,33 @@ def program_argv(home):
     return [RUNUSER, "-u", agent_user(), "--", ENV, "-i"] + env + nonet_argv(["/bin/bash", "run.sh"], PYTHON)
 
 
-def run_mission(index, seed, uid, gid, config, token_sha256, attempt):
-    """One mission on one hidden site. Returns its record (with `infra` True when the service failed)."""
+def oracle_authorized_from_trajectory():
+    """Only the engine's ATIF identity authorizes truth, never anything in the submission.
+
+    ALE_TRAJECTORY_PATH is supplied by the engine to the separate verifier, not forwarded
+    from the participant program. Missing or malformed evidence grants no capability.
+    """
+    path = os.environ.get("ALE_TRAJECTORY_PATH")
+    if not path:
+        return False
+    try:
+        trajectory = json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return False
+    if not isinstance(trajectory, dict):
+        return False
+    schema = trajectory.get("schema_version")
+    agent = trajectory.get("agent")
+    return (isinstance(schema, str) and schema.startswith("ATIF-")
+            and isinstance(agent, dict) and agent.get("name") == "oracle")
+
+
+def run_mission(index, seed, uid, gid, config, token_sha256, attempt, *, oracle_authorized=False):
+    """One mission; truth is disabled unless trusted author code explicitly authorizes it.
+
+    Review scripts running the privileged oracle must pass oracle_authorized=True. The
+    ordinary default ignores even a valid historical token hash. `infra` marks service failure.
+    """
     directory = WORK/"mission-{:02d}-{}".format(index, attempt)
     if directory.exists():
         shutil.rmtree(directory)
@@ -236,9 +261,12 @@ def run_mission(index, seed, uid, gid, config, token_sha256, attempt):
     os.chown(SOCKET.parent, 0, 0)
     os.chmod(SOCKET.parent, 0o755)
     service_log = open(directory/"service.log", "wb")
+    service_argv = [PYTHON, "-E", "-s", "-B", str(RUNTIME/"service.py"), "--mode", "graded",
+                    "--directory", str(directory), "--socket", str(SOCKET), "--seed-file", str(directory/"seed")]
+    if oracle_authorized is True:
+        service_argv += ["--token-sha256", token_sha256]
     service = subprocess.Popen(
-        [PYTHON, "-E", "-s", "-B", str(RUNTIME/"service.py"), "--mode", "graded", "--directory", str(directory),
-         "--socket", str(SOCKET), "--seed-file", str(directory/"seed"), "--token-sha256", token_sha256],
+        service_argv,
         cwd=str(RUNTIME), stdout=service_log, stderr=service_log, start_new_session=True,
         env={"PATH": "/opt/venv/bin:/usr/bin:/bin", "HOME": "/root", "LANG": "C.UTF-8", "MUJOCO_GL": "osmesa",
              "LIBGL_ALWAYS_SOFTWARE": "1", "LP_NUM_THREADS": "2", "OPENBLAS_NUM_THREADS": "1",
@@ -353,8 +381,11 @@ def main():
         write_verdict(zero_verdict(problem, anchored=anchor is not None))
         return
     sites = json.loads((HIDDEN/"sites.json").read_text())["seeds"]
-    token_sha256 = (HIDDEN/"oracle_token.sha256").read_text().split()[0]
-    require(len(token_sha256) == 64, "malformed oracle token hash")
+    oracle_authorized = oracle_authorized_from_trajectory()
+    token_sha256 = None
+    if oracle_authorized:
+        token_sha256 = (HIDDEN/"oracle_token.sha256").read_text().split()[0]
+        require(len(token_sha256) == 64, "malformed oracle token hash")
     stage = Path(stage_dir())
     stage_mode = stat.S_IMODE(stage.stat().st_mode)
     os.chmod(stage, 0o700)     # nothing of the tests stage is readable while agent code runs
@@ -365,10 +396,12 @@ def main():
         require(ok, detail)
         records, cleanup_ok = [], True
         for index, seed in enumerate(sites):
-            record = run_mission(index, int(seed), uid, gid, config, token_sha256, attempt=0)
+            record = run_mission(index, int(seed), uid, gid, config, token_sha256, attempt=0,
+                                 oracle_authorized=oracle_authorized)
             if record["infra"]:
                 log("site {}: {}; running it once more".format(index, record.get("reason")))
-                record = run_mission(index, int(seed), uid, gid, config, token_sha256, attempt=1)
+                record = run_mission(index, int(seed), uid, gid, config, token_sha256, attempt=1,
+                                     oracle_authorized=oracle_authorized)
                 require(not record["infra"], "site {}: the robot service failed twice ({})".format(
                     index, record.get("reason")))
             cleanup_ok = cleanup_ok and record.get("cleanup_ok", True)
@@ -389,7 +422,8 @@ def main():
              "mean_scout_actions": sum(r["scout_actions"] for r in records)/len(records),
              "mean_carrier_actions": sum(r["carrier_actions"] for r in records)/len(records),
              "mean_program_seconds": sum(r["program_seconds"] for r in records)/len(records),
-             "cleanup_failed": 0. if cleanup_ok else 1., "verify_seconds": time.monotonic()-started}
+             "cleanup_failed": 0. if cleanup_ok else 1., "verify_seconds": time.monotonic()-started,
+             "scripted_oracle": float(oracle_authorized)}
     for r in records:
         extra["site{}_success".format(r["site"])] = r["success"]
     extra = {k: float(v) for k, v in extra.items() if math.isfinite(float(v))}

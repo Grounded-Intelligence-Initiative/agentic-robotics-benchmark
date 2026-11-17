@@ -91,7 +91,7 @@ class Runtime:
                 raise ValueError(f"this mission's {REQUESTS} requests are spent; it has ended")
             event = {"m": method}
             if method == "act" and isinstance(params.get("action"), list):
-                event["a"] = params["action"][:1]
+                event["a"] = params["action"][:2]
             if len(self.events) < MAX_EVENTS:
                 self.events.append(event)
             try:

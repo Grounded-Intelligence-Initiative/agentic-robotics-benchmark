@@ -1,159 +1,196 @@
-"""Privileged oracle mission program (maintainers' reference, not an agent's solution).
+"""PRIVILEGED v3 author reference, not an image-only solution.
 
-It holds the token whose sha256 only the grader knows, so the graded robot service answers its
-`truth` call: the whole site and the robot's exact state and dynamics. It proves every hidden
-mission can be done: 12 scout actions in place, the switch, then the carrier along a route found
-by A* over whole button pulses in position-velocity space (the heavy carrier coasts), each
-pulse's 0.2 s predicted exactly and checked for clearance at its 10 ms substeps. It re-plans
-whenever the carrier is not where the plan said it would be.
+Uses authorized truth, never a seed or prerecorded commands. Searches rounded
+oriented routes on the supplied geometry, checking the full payload sweep, then
+tracks with low-speed feedback and brakes into the oriented dock. The family has
+a constructive service aisle; this planner exploits that published topology.
+It proves feasibility, not difficulty or image-based observability by itself.
 """
+import math
 import heapq
 import os
 import sys
-from collections import deque
 
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from client import Client  # noqa: E402
+from client import Client
 
-TOKEN = open(os.path.join(HERE, "token.txt")).read().strip()
-FIELD = 3.8
-RES = .02
-MARGIN = .04
-ARRIVE = .24
-MAX_EXPANSIONS = 250000
+TOKEN = open(os.path.join(HERE, 'token.txt')).read().strip()
+
+
+def wrap(a):
+    return (a+math.pi) % (2*math.pi)-math.pi
 
 
 def truth(robot):
-    return robot.request("truth", token=TOKEN)
+    return robot.request('truth', token=TOKEN)
 
 
-class Pulse:
-    """One 0.2 s button pulse under MuJoCo's Euler step (joint damping implicit, the drive explicit):
-    v' = a v + b vt per substep, so every substep's offset is C[k] v0 + D[k] vt."""
-
-    def __init__(self, t):
-        h, m, d, k = t["timestep"], t["mass"], t["damping"], t["drive"]
-        a = (1-h*k/m)/(1+h*d/m)
-        b = (h*k/m)/(1+h*d/m)
-        self.a, self.b = a, b
-        self.C, self.D = [], []
-        cv, dv, cp, dp = 1., 0., 0., 0.
-        for _ in range(int(t["substeps"])):
-            cv, dv = a*cv, a*dv+b
-            cp, dp = cp+h*cv, dp+h*dv
-            self.C.append(cp)
-            self.D.append(dp)
-        self.cv, self.dv = cv, dv
-
-    def run(self, v, vt):
-        """Substep offsets (list of (dx, dy)) and the final velocity."""
-        offsets = [(c*v[0]+e*vt[0], c*v[1]+e*vt[1]) for c, e in zip(self.C, self.D)]
-        return offsets, (self.cv*v[0]+self.dv*vt[0], self.cv*v[1]+self.dv*vt[1])
+def free(path, half, obstacles, margin=.065):
+    """Vectorized four-axis OBB/AABB SAT over the full swept centreline."""
+    path = np.asarray(path)
+    c, s = np.cos(path[:, 2]), np.sin(path[:, 2])
+    a, b = np.asarray(half)+margin
+    for cx, cy, hx, hy in obstacles:
+        dx, dy = cx-path[:, 0], cy-path[:, 1]
+        collision = ((np.abs(dx) <= hx+a*np.abs(c)+b*np.abs(s)) &
+                     (np.abs(dy) <= hy+a*np.abs(s)+b*np.abs(c)) &
+                     (np.abs(dx*c+dy*s) <= a+hx*np.abs(c)+hy*np.abs(s)) &
+                     (np.abs(-dx*s+dy*c) <= b+hx*np.abs(s)+hy*np.abs(c)))
+        if collision.any():
+            return False
+    return True
 
 
-class Planner:
-    def __init__(self, t):
-        n = self.n = int(round(2*FIELD/RES))
-        centres = -FIELD+(np.arange(n)+.5)*RES
-        xx, yy = np.meshgrid(centres, centres[::-1])
-        reach = t["half"]+t["leg"]+MARGIN
-        blocked = (np.abs(xx) > FIELD-reach) | (np.abs(yy) > FIELD-reach)
-        for cx, cy, hx, hy in t["obstacles"]:
-            blocked |= (np.abs(xx-cx) < hx+reach) & (np.abs(yy-cy) < hy+reach)
-        self.blocked = blocked
-        self.goal = np.array(t["goal"])
-        near = (xx-self.goal[0])**2+(yy-self.goal[1])**2 < ARRIVE**2
-        dist = np.full((n, n), np.inf)
-        queue = deque()
-        for r, c in zip(*np.nonzero(near & ~blocked)):
-            dist[r, c] = 0
-            queue.append((r, c))
-        while queue:
-            r, c = queue.popleft()
-            d = dist[r, c]+1
-            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                rr, cc = r+dr, c+dc
-                if 0 <= rr < n and 0 <= cc < n and not blocked[rr, cc] and d < dist[rr, cc]:
-                    dist[rr, cc] = d
-                    queue.append((rr, cc))
-        self.dist = dist
-        self.pulse = Pulse(t)
-        self.targets = [(d[0]*t["gain"]*t["speed"], d[1]*t["gain"]*t["speed"]) for d in t["buttons"]]
-        # The fastest a pulse can move the carrier: steady velocity held for the whole 0.2 s.
-        self.step = self.pulse.b/(1-self.pulse.a)*t["gain"]*t["speed"]*t["timestep"]*t["substeps"]
-
-    def cell(self, x, y):
-        return (min(self.n-1, max(0, int((FIELD-y)/RES))), min(self.n-1, max(0, int((x+FIELD)/RES))))
-
-    def free(self, x, y, offsets):
-        blocked = self.blocked
-        for dx, dy in offsets[1::2]:
-            if blocked[self.cell(x+dx, y+dy)]:
-                return False
-        return True
-
-    def plan(self, p, v):
-        """Shortest button sequence from the true state (p, v) to the pad, or None."""
-        gx, gy = self.goal
-        frontier = [(0., 0, 0, (float(p[0]), float(p[1])), (float(v[0]), float(v[1])), None)]
-        seen = {}
-        expansions = pushed = 0
-        while frontier and expansions < MAX_EXPANSIONS:
-            _, g, _, q, w, chain = heapq.heappop(frontier)
-            if (q[0]-gx)**2+(q[1]-gy)**2 < ARRIVE**2:
-                buttons = []
-                while chain is not None:
-                    chain, button = chain
-                    buttons.append(button)
-                return buttons[::-1]
-            key = (round(q[0]/.01), round(q[1]/.01), round(w[0]/.05), round(w[1]/.05))
-            if seen.get(key, 1e9) <= g:
-                continue
-            seen[key] = g
-            expansions += 1
-            for b, vt in enumerate(self.targets):
-                offsets, nw = self.pulse.run(w, vt)
-                if not self.free(q[0], q[1], offsets):
-                    continue
-                nq = (q[0]+offsets[-1][0], q[1]+offsets[-1][1])
-                h = self.dist[self.cell(*nq)]
-                if not np.isfinite(h):
-                    continue
-                pushed += 1
-                heapq.heappush(frontier, (g+1+h*RES/self.step, g+1, pushed, nq, nw, (chain, b)))
+def rounded_route(start, goal, heading, level, radius):
+    n = np.array([math.cos(heading), math.sin(heading)])
+    e = np.array([n[1], -n[0]])
+    if np.dot(np.array(goal[:2])-start[:2], e) < 0:
+        e = -e
+    sx, sy = np.dot(start[:2], e), np.dot(start[:2], n)
+    gx, gy = np.dot(goal[:2], e), np.dot(goal[:2], n)
+    if gx-sx < 2*radius or level-radius < max(sy, gy):
         return None
+    points = []
+    def add(x, y, dx, dy):
+        p, direction = x*e+y*n, dx*e+dy*n
+        points.append((p[0], p[1], math.atan2(direction[1], direction[0])))
+    def line(a, b, direction):
+        count = max(1, math.ceil(math.dist(a, b)/.025))
+        for k in range(count):
+            p = np.array(a)+(np.array(b)-a)*k/count
+            add(*p, *direction)
+    line((sx, sy), (sx, level-radius), (0, 1))
+    for a in np.linspace(math.pi, math.pi/2, 65):
+        add(sx+radius+radius*math.cos(a), level-radius+radius*math.sin(a), math.sin(a), -math.cos(a))
+    line((sx+radius, level), (gx-radius, level), (1, 0))
+    for a in np.linspace(math.pi/2, 0, 65):
+        add(gx-radius+radius*math.cos(a), level-radius+radius*math.sin(a), math.sin(a), -math.cos(a))
+    line((gx, level-radius), (gx, gy), (0, -1))
+    add(gx, gy, 0, -1)
+    return np.array(points)
+
+
+def plan(t, mode='full'):
+    if mode in ('scout_route', 'xy'):
+        return xy_route(t, .155 if mode == 'scout_route' else min(t['half']))
+    start, goal = (*t['position'], t['state'][2]), (*t['goal'], t['goal_yaw'])
+    obstacles = t['obstacles'] if mode != 'blind' else t['obstacles'][-4:]
+    half = t['half'] if mode != 'small_body' else [.155, .155]
+    if mode == 'circumscribed':
+        half = [math.hypot(*t['half'])]*2
+    n = np.array([math.cos(start[2]), math.sin(start[2])])
+    bottom = max(np.dot(start[:2], n), np.dot(goal[:2], n))
+    for level in np.arange(bottom+.9, 3.25, .035):
+        for radius in (.85, .95, 1.05):
+            path = rounded_route(start, goal, start[2], level, radius)
+            if path is not None and free(path, half, obstacles):
+                return path
+    raise RuntimeError('no swept-volume route in the service-aisle family')
+
+
+def xy_route(t, radius):
+    """Anti-shortcut baseline: shortest inflated XY path, with no heading state."""
+    res, count = .05, 152
+    centers = -3.8+(np.arange(count)+.5)*res
+    xx, yy = np.meshgrid(centers, centers)
+    blocked = np.zeros((count, count), dtype=bool)
+    for x, y, a, b in t['obstacles']:
+        blocked |= (np.abs(xx-x) <= a+radius+.025) & (np.abs(yy-y) <= b+radius+.025)
+    def cell(p):
+        return (int((p[1]+3.8)/res), int((p[0]+3.8)/res))
+    start, goal = cell(t['position']), cell(t['goal'])
+    queue, costs, parents = [(0., start)], {start: 0.}, {}
+    while queue:
+        _, p = heapq.heappop(queue)
+        if p == goal:
+            route = [p]
+            while p != start:
+                p = parents[p]
+                route.append(p)
+            points = np.array([(centers[c], centers[r]) for r, c in route[::-1]])
+            points[0], points[-1] = t['position'], t['goal']
+            yaw = np.arctan2(np.diff(points[:, 1]), np.diff(points[:, 0]))
+            return np.column_stack((points, np.r_[yaw, t['goal_yaw']]))
+        for dr, dc in ((0, 1), (1, 0), (0, -1), (-1, 0)):
+            q = (p[0]+dr, p[1]+dc)
+            if not (0 <= q[0] < count and 0 <= q[1] < count) or blocked[q]:
+                continue
+            cost = costs[p]+1
+            if cost < costs.get(q, float('inf')):
+                costs[q], parents[q] = cost, p
+                h = abs(q[0]-goal[0])+abs(q[1]-goal[1])
+                heapq.heappush(queue, (cost+h, q))
+    raise RuntimeError('no XY route')
+
+
+class Controller:
+    def __init__(self, t, mode='full'):
+        self.path = plan(t, mode)
+        self.progress = 0
+        self.params = t['dynamics']
+
+    def command(self, t):
+        state = t['state']
+        p = np.asarray(state[:2])
+        yaw = state[2]
+        # Monotone nearest progress prevents a turn from jumping to another leg.
+        end = min(len(self.path), self.progress+90)
+        near = self.progress+int(np.argmin(np.linalg.norm(self.path[self.progress:end, :2]-p, axis=1)))
+        self.progress = near
+        aim = near
+        while aim < len(self.path)-1 and np.linalg.norm(self.path[aim, :2]-p) < .38:
+            aim += 1
+        target = self.path[aim, :2].copy()
+        distance = np.linalg.norm(p-t['goal'])
+        if aim == len(self.path)-1:
+            # Extend the docking axis for heading convergence, but stop at the pad.
+            target += .35*np.array([math.cos(t['goal_yaw']), math.sin(t['goal_yaw'])])
+        delta = target-p
+        side = -math.sin(yaw)*delta[0]+math.cos(yaw)*delta[1]
+        curvature = 2*side/max(float(delta@delta), .04)
+        steering = math.atan(self.params['wheelbase']*curvature)/self.params['steer_max']
+        speed = .43
+        if near > len(self.path)-65:
+            axis = np.array([math.cos(t['goal_yaw']), math.sin(t['goal_yaw'])])
+            along = float((np.array(t['goal'])-p)@axis)
+            speed = max(-.12, min(speed, .85*along))
+            if distance < .065 and abs(wrap(yaw-t['goal_yaw'])) < .09:
+                speed, steering = 0., 0.
+        return (speed/self.params['speed'], max(-1., min(1., steering)))
+
+
+def channels(t, command):
+    action = [0., 0.]
+    for i in range(2):
+        action[t['axes'][i]] = float(command[i]*t['signs'][i])
+    return action
+
+
+def run(robot, get_truth=None, mode='full', trace=None):
+    get_truth = get_truth or (lambda: truth(robot))
+    obs, t = robot.observe(), get_truth()
+    plus = next(b for b, d in enumerate(t['buttons']) if d == [1, 0])
+    minus = next(b for b, d in enumerate(t['buttons']) if d == [-1, 0])
+    for k in range(12):
+        obs = robot.act([(plus if k % 2 == 0 else minus)/3])
+    obs, t = robot.advance(), get_truth()
+    controller = Controller(t, mode)
+    while not obs['done']:
+        action = channels(t, controller.command(t))
+        obs = robot.act(action)
+        t = get_truth()
+        if trace is not None:
+            trace.append(dict(action=action, state=t['state']))
+    return obs
 
 
 def main():
-    robot = Client()
-    obs = robot.observe()
-    t = truth(robot)
-    # Scout: the 12 actions the switch requires, back and forth along x in free space.
-    plus = next(b for b, d in enumerate(t["buttons"]) if d == [1, 0])
-    minus = next(b for b, d in enumerate(t["buttons"]) if d == [-1, 0])
-    for k in range(12):
-        obs = robot.act([(plus if k % 2 == 0 else minus)/3])
-    obs = robot.advance()
-    t = truth(robot)
-    planner = Planner(t)
-    while not obs["done"]:
-        p, v = t["position"], t["velocity"]
-        buttons = planner.plan(p, v)
-        if not buttons:
-            return 1
-        for button in buttons:
-            offsets, _ = planner.pulse.run(v, planner.targets[button])
-            expected = (p[0]+offsets[-1][0], p[1]+offsets[-1][1])
-            obs = robot.act([button/3])
-            t = truth(robot)
-            p, v = t["position"], t["velocity"]
-            if obs["done"] or (p[0]-expected[0])**2+(p[1]-expected[1])**2 > .005**2:
-                break
+    run(Client())
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     sys.exit(main())

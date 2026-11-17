@@ -5,9 +5,9 @@ import sys
 from client import Client
 
 TOOLS = [
-    {"name": "robot_observe", "description": "Look through the robot's top-view camera; the robot does not move.",
+    {"name": "robot_observe", "description": "Body-relative front/rear perspective cameras; no motion or absolute pose.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "robot_act", "description": "Press one button: action [0], [1/3], [2/3] or [1]; 0.2 s of motion.",
+    {"name": "robot_act", "description": "0.2 s: scout [0], [1/3], [2/3], [1]; carrier [channel0,channel1] in [-1,1].",
      "inputSchema": {"type": "object", "properties": {"action": {"type": "array", "items": {"type": "number"}}},
                      "required": ["action"], "additionalProperties": False}},
     {"name": "robot_advance", "description": "Switch once from the scout to the carrier (after 12 or more scout actions).",
@@ -31,7 +31,7 @@ def main():
             if method == "initialize":
                 result = {"protocolVersion": req.get("params", {}).get("protocolVersion", "2024-11-05"),
                           "capabilities": {"tools": {}},
-                          "serverInfo": {"name": "cross_embodiment_robot", "version": "2.0"}}
+                          "serverInfo": {"name": "cross_embodiment_robot", "version": "3.0"}}
             elif method == "tools/list":
                 result = {"tools": TOOLS}
             elif method == "tools/call":

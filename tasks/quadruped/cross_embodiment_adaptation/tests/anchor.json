@@ -1,9 +1,21 @@
 {
   "metric": "mission_success_rate",
   "direction": "higher",
-  "value": 1.0,
+  "value": 1,
   "full_at": 0.98,
-  "source": "Measured, not a published figure: the privileged oracle (solution/oracle) on the 8 fixed hidden sites (tests/hidden/sites.json), one full verify by tests/grader.py in a fresh container laid out like the separate verifier, 2026-11-12: 8 of 8 missions. Every site's outcome and carrier press count equal its selection run (tests/hidden/selection.json), so full_at is 0.98 (the oracle is deterministic: exact state through its token, exact pulse dynamics).",
-  "measurements": [1.0],
-  "carrier_presses_per_site": [70, 57, 62, 65, 56, 63, 68, 62]
+  "source": "PR37 v3 preliminary measurement, 2026-11-16: PRIVILEGED author reference (solution/oracle) completed the unchanged eight seeds with native MuJoCo in direct-World no-render diagnostics on koa04, task image ale-cross-maintainer-env:20261116, 2 CPUs/4 GB/no network. Evidence: tests/review/v3_hidden_native.json. This is NOT an official ALE separate-verifier measurement; parent validation is pending. No v2 reference result is asserted for v3. Score normalization remains unchanged.",
+  "measurements": [
+    1
+  ],
+  "carrier_presses_per_site": [
+    136,
+    144,
+    133,
+    144,
+    148,
+    147,
+    135,
+    124
+  ],
+  "validation_status": "native_diagnostics_only_pending_separate_verifier"
 }

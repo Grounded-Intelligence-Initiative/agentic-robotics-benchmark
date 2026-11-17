@@ -1,21 +1,11 @@
-# cross_embodiment_adaptation (quadruped): scout an unmapped hall with a small robot, then deliver with a large, heavy
-# one through the one opening it fits, around crates it cannot see, on hidden sites, with a program the agent writes.
-#
-# Maintainers' round (2026-11-12, PR #37 review): the graded record moved from the agent sandbox's live service to a
-# separate verifier that runs the agent's mission program once on each of 8 fixed hidden sites (tests/hidden/,
-# selected by the pre-registered rule in tests/review/selection.md with the frozen privileged oracle); the agent's
-# sandbox keeps a commissioning service on random development sites (no truth, no score, no debrief). The partition
-# now meets the hall's walls (no way round its ends), the carrier can pass only the wide opening (narrow openings
-# 0.62-0.66 m, carrier 0.76-0.86 m), sees 0.5 m around itself, stops at its first contact and is 5-8x heavier than the
-# scout (a lagged response), so it needs the scouted map: on development seeds a perfectly controlled carrier with the
-# full map arrives 200/200, with the partition but no crates 36/200, blind 0/200 (tests/review/map_ablation.json).
-# The image-only reference program (solution/reference, no token) arrives on 24/24 development sites
-# (tests/review/reference_dev.json); the privileged oracle on 8/8 hidden sites (tests/anchor.json).
-#
-# [agent] timeout_sec: 2 h to write, commission and leave the mission program. [verifier] timeout_sec: 8 missions,
-# each at most 1200 s of wall clock (program time <= 300 s plus the service's rendering, about 0.3-0.6 s a frame here
-# for at most 640 requests) plus the service start and clean-up (about 20 s); a mission the service itself fails runs
-# once more. The oracle's eight missions take about 8-10 min here.
+# PR37 v3: map with the scout, transfer to a long oriented carrier, settle into a dock.
+# Native MuJoCo force-driven stabilized planar bases; no articulated gait claim.
+# Body-mounted perspective cameras; no globally calibrated top view or pose fields.
+# Fixed eight seeds retained without outcome-based reselection. See tests/review/selection.md.
+# PRIVILEGED direct-World reference diagnostics: 8/8 hidden and 20/20 development.
+# These are not the separate-verifier anchor or frontier difficulty evidence.
+# Historical v2 measurements and image-only solver are under tests/review/legacy_v2/.
+# Maintainer session/resource/network/verifier settings below are unchanged.
 schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission"]
 

@@ -1,12 +1,13 @@
 """Public client of the robot service. The socket accepts only the documented calls.
 
-    from client import Client, top_image, pixel_to_world, world_to_pixel
+    from client import Client, camera_image
     robot = Client()                 # ROBOT_SOCKET, default /run/visual_robotics/world.sock
     obs = robot.observe()            # does not move the robot
     obs = robot.act([1/3])           # one button press (0, 1/3, 2/3 or 1): 0.2 s of motion
     obs = robot.advance()            # the one switch from the scout to the carrier
     obs = robot.new_site()           # commissioning only: a fresh development site
-    image = top_image(obs)           # 256 x 256 x 3 uint8 (needs numpy and Pillow)
+    image = camera_image(obs, 0)     # front; index 1 is rear, both body-relative perspective
+    obs = robot.act([0., 0.])        # carrier only: brake; signed channels otherwise
 """
 import base64
 import io
@@ -46,18 +47,13 @@ class Client:
         return self.request("new_site")
 
 
-def top_image(obs):
-    """The observation's top view as a (256, 256, 3) uint8 array."""
+def camera_image(obs, index=0):
+    """Body-relative front/rear perspective image as a (256, 256, 3) array."""
     import numpy as np
     from PIL import Image
-    return np.asarray(Image.open(io.BytesIO(base64.b64decode(obs["images"][0]))).convert("RGB"))
+    return np.asarray(Image.open(io.BytesIO(base64.b64decode(obs["images"][index]))).convert("RGB"))
 
 
-def pixel_to_world(u, v):
-    """Pixel centre (column u, row v) of the top view to hall coordinates (x, y) in metres."""
-    return (u+.5)/32-4, 4-(v+.5)/32
-
-
-def world_to_pixel(x, y):
-    """Hall coordinates in metres to fractional pixel coordinates (u, v) of the top view."""
-    return (x+4)*32-.5, (4-y)*32-.5
+def top_image(obs):
+    """Legacy decoding alias only: this is NOT a calibrated world top view."""
+    return camera_image(obs, 0)

@@ -272,6 +272,24 @@ def decorate(xml, kind, radius=.13, seed=0):
         for g in agent.findall("geom"):
             g.set("rgba", "0 0 0 0")
         robot_meshes(root, agent, "ground" if kind in ("icl", "cross") else "drone", radius)
+        payload = agent.find("body[@name='payload']")
+        if payload is not None:
+            load = payload.find("geom[@name='load']")
+            a, b, _ = map(float, load.get("size").split())
+            load.set("rgba", "0 0 0 0")
+            # The visible rack has exactly the collision envelope in plan view.
+            # Elevating the display leaves the genuine Go1 meshes visible below it.
+            for side in (-1, 1):
+                geom(payload, f"payload_rail_{side}", pos=(0, side*(b-.025), .10),
+                     size=(a, .025, .035), rgba=(.72, .68, .30, 1))
+                geom(payload, f"payload_end_{side}", pos=(side*(a-.035), 0, .10),
+                     size=(.035, b, .035), rgba=(.72, .68, .30, 1))
+            geom(payload, "payload_mount", pos=(0, 0, .10), size=(.07, b, .025), rgba=(.72, .68, .30, 1))
+            geom(payload, "payload_nose", pos=(a-.10, 0, .14), size=(.08, b*.8, .008), rgba=(.05, .85, .85, 1))
+            geom(payload, "payload_tail", pos=(-a+.10, 0, .14), size=(.08, b*.8, .008), rgba=(.9, .9, .9, 1))
+            marker = agent.find("geom[@name='robot_marker']")
+            marker.set("pos", "0 0 .29")
+            marker.set("size", ".12 .06 .006")
     if kind in ("flight", "arm", "icl", "cross"):
         for j, x in enumerate((-4.3, 4.3)):
             geom(world, f"hall_wall{j}", pos=(x, 0, 1.6), size=(.12, 4.6, 1.6), rgba=(.48, .52, .55, 1))

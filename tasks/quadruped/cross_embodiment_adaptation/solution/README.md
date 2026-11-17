@@ -1,46 +1,63 @@
-# Cross-Embodiment Adaptation: solution
+# Cross-Embodiment Adaptation v3
 
-![A development site (not a hidden one): the hall as reviewers see it, the privileged oracle's carrier route in orange,
-the scout's 1.4 m and the carrier's 0.5 m view circles; right: the scout's and the carrier's actual observations and
-the delivered carrier](preview.jpg)
+## Current Reference
 
-The large image is a reviewer view of development seed 1001 (no agent ever gets it). The agent's own observation is
-the masked top view on the right, as in [agent-view.png](agent-view.png): the scout sees 1.4 m around itself, the
-carrier 0.5 m, and the delivery pad's beacon is always visible.
+`oracle/` is the **PRIVILEGED author reference**, not an image-only solution.
+`solve.sh` installs its mission program; the existing oracle/run.sh entrypoint
+is unchanged. The separate verifier must authorize the official oracle episode
+as well as validating its secret token. Ordinary submissions must not gain
+truth by copying the public author code/token.
 
-## What is here
+The reference receives exact geometry, pose, dynamics and channel assignment.
+It searches rounded service-aisle routes in position/heading, checking the
+swept elongated footprint at 2.5 cm spacing, then executes low-speed feedback
+through the same force-driven MuJoCo interface and brakes into the oriented dock.
+It does not use site seeds, stored trajectories, or modify the world. It exploits
+the published constructive aisle topology, so it is a feasibility reference,
+not a general-purpose motion planner or proof of frontier difficulty.
 
-| path | what it is |
-|---|---|
-| `solve.sh` | the oracle episode: copies `oracle/` into `/home/user/submission/` |
-| `oracle/` | the privileged oracle mission program. It holds a token whose sha256 only `tests/hidden/oracle_token.sha256` knows, so the graded robot service answers its `truth` call (the site's obstacles and the robot's exact state and dynamics). It presses 12 scout buttons in place, switches, and drives the carrier along a route found by A* over whole button pulses in position-velocity space, each pulse predicted exactly and checked for clearance at its 10 ms substeps. It shows that every hidden mission can be completed; it is not an agent's solution. |
-| `reference/` | the image-only reference mission program (no token, no truth): it uses only what the instruction gives an agent. The scout identifies the buttons with four presses and explores until the carrier's planned route is seen end to end (plan the route with unseen cells assumed free, visit the first unseen stretch of its corridor, repeat); walls, crates and the pad are segmented by colour. After the switch, eight presses fit the carrier's lagged response (one pole and a steady speed), then A* over pulses on the scouted map, inflated by the worst-case 0.86 m footprint plus a margin. It is the evidence that the observations suffice (`tests/review/reference_dev.json`). |
+Direct native, no-render diagnostics on koa04 completed all eight frozen seeds
+with 124-148 carrier actions. This is not yet an official separate-verifier
+anchor. The parent owns that run and final scoring/security evidence.
+See tests/review/v3_hidden_native.json and tests/review/README.md for provenance.
+Old v2 screenshots, image-only solver and measurements are explicitly archived
+under tests/review/legacy_v2; none is current evidence.
 
-## Validation
+## Mechanics and Observability
 
-- The privileged oracle on the 8 hidden sites: see `tests/anchor.json` (the anchor) and `tests/review/selection.md`
-  (the pre-registered selection and its results).
-- The image-only reference on development seeds: `tests/review/reference_dev.json`.
-- How much of the map the carrier needs: `tests/review/map_ablation.json` (a perfectly controlled carrier with the
-  full map, with the partition but no crates, and with no map).
+MuJoCo integrates x/y slide and yaw hinge dynamics with native contacts,
+including the welded child payload. Traction-bounded forces, lateral stabilization,
+steering lag and yaw inertia are explicit abstractions. Real Go1 meshes remain
+visible inside an open rack whose outline matches a conservative filled collision
+rectangle. There is no foot locomotion, payload articulation or hardware validation.
 
-## Reproduce
+Public observations are two low, body-mounted perspective cameras, no absolute
+pose or visibility disk. The cyan/white rack ends indicate body orientation and
+extent. The 2.24 x 1.10 m blue docking bay has a yellow front band. The larger
+painted bay keeps the alignment cue observable around the load. All these are
+physical scene appearances, not overlays or annotations.
 
-From the benchmark's pinned engine (`vendor/ale`):
+PR37's earlier reviewer completed v2 and a later localization-only prototype.
+Those results do not establish v3 difficulty. A new frontier evaluation and an
+image-only feasibility demonstration are still needed. The camera change and
+new action schema alone must not be counted as genuine difficulty evidence.
+
+## Reproduction
+
+Inside the task image on remote CPU:
 
 ```bash
-uv run ale lint ../../tasks/quadruped/cross_embodiment_adaptation
-uv run ale validate ../../tasks/quadruped/cross_embodiment_adaptation
+/opt/venv/bin/python3 -B /task/tests/review/test_v3_mechanics.py
+/opt/venv/bin/python3 -B /task/tests/review/v3_rollout.py --seeds hidden --out /evidence/hidden
+/opt/venv/bin/python3 -B /task/tests/review/v3_rollout.py --seeds 1000-1019 --modes full,blind,scout_route,xy,circumscribed --out /evidence/ablations
+/opt/venv/bin/python3 -B /task/tests/review/v3_render.py --seed 1001 --out /evidence/render
 ```
 
-## Limits
-
-Both bodies use scaled Go1 meshes on simple collision boxes with supplied leg stabilization and planar base motion;
-the carrier's lag is a heavier body under the same velocity drive. This is a simulated task, not a hardware-validated
-digital twin.
+The direct-World harness is a development test, not a substitute for ALE validate.
+From the pinned engine, run the unchanged lint/validate mission-program workflow.
 
 ## Assets
 
-Powered by Poly Haven: CC0 scanned utility cabinet, generator, concrete barrier and surface textures. Menagerie
-Crazyflie/Go1 visual meshes retain their original licenses. The lighting probe ships with the Apache-2.0 MuJoCo
-package. Pinned URLs, SHA256 hashes and notices are in `environment/visual_assets.json` and `environment/LICENSE.*`.
+Poly Haven CC0 workcell assets and textures; licensed Menagerie Go1 meshes;
+MuJoCo's Apache-2.0 lighting probe. Pinned URLs, hashes and notices remain in
+environment/visual_assets.json and environment/LICENSE.*.
