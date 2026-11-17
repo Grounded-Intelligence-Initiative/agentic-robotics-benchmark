@@ -25,7 +25,7 @@ artifacts = ["/home/user/submission"]
 name = "grounded-intelligence-initiative/racecar_full_assembly_tenth_scale_ur10e"
 
 [metadata]
-platform = "driving"
+platform = "ground"
 mode = "atomic"
 stage = "assembly"
 stage_key = "assembly"

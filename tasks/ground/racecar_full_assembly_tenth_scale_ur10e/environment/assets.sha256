@@ -1,7 +1,7 @@
 # endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/ale-robotics-assets
-# revision: a6bfe73e80bc6ea336b91140f229ececc08fba6e
-# prefix: tasks/driving/racecar_full_assembly_tenth_scale_ur10e/payload
+# revision: 6cfa80d098df6a6def71f8304edbcd4245fa829f
+# prefix: tasks/ground/racecar_full_assembly_tenth_scale_ur10e/payload
 5ef2dc552be141c5301921f11f522b9d2c27a42c373b51d545a154f2d4b4cbfb  given/drawings/assembly_layout.png
 d30d44e8d8d6259f9a2155ab0cd75f8602473c488b90196fcda8e4172c406c5d  given/drawings/battery_bay.png
 cf8b307e3c148bee3d3e135a6bff71415249d6ff3d6eedec85fa997c098d410a  given/drawings/hub_and_wheel.png

@@ -30,7 +30,7 @@ from pathlib import Path
 
 SLUG = "racecar_full_assembly_tenth_scale_ur10e"
 _HERE = Path(__file__).resolve()
-_CANDIDATES = [_HERE.parents[1] / "tasks" / "driving" / SLUG, _HERE.parents[2] / SLUG]
+_CANDIDATES = [_HERE.parents[1] / "tasks" / "ground" / SLUG, _HERE.parents[2] / SLUG]
 TASK = next((p for p in _CANDIDATES if (p / "tests" / "verify.py").is_file()), _CANDIDATES[0])
 TESTS = TASK / "tests"
 VERIFY = TESTS / "verify.py"
@@ -210,12 +210,13 @@ class ConfigAndToken(unittest.TestCase):
         self.assertRegex(hg["sha256"], r"\A[0-9a-f]{64}\Z")
         self.assertIsInstance(hg["files"], int)
         self.assertGreater(hg["files"], 0)
-        self.assertTrue(hg["url"].endswith("/tasks/driving/%s/verifier/gt.tar.xz" % SLUG), hg["url"])
+        self.assertTrue(hg["url"].endswith("/tasks/ground/%s/verifier/gt.tar.xz" % SLUG), hg["url"])
         self.assertEqual(CONFIG["scope"]["premounted"], [])
         self.assertIs(CONFIG["scoring"]["count_subassembly"], True)
 
     def test_the_givens_and_the_kit_are_pinned_at_one_published_dataset_commit(self):
-        # published 2026-11-15: the asset list and hidden_gt.url name the same 40-hex commit of the asset dataset,
+        # published 2026-11-15, the folder moved to tasks/ground/ on 2026-11-17: the asset list and hidden_gt.url name
+        # the same 40-hex commit of the asset dataset,
         # never the placeholder of forty zeros, and the kit sits in the task's own verifier/ folder next to payload/
         head = {}
         for ln in (TASK / "environment" / "assets.sha256").read_text(encoding="utf-8").splitlines():
@@ -225,8 +226,8 @@ class ConfigAndToken(unittest.TestCase):
         rev = head.get("revision", "")
         self.assertRegex(rev, r"\A[0-9a-f]{40}\Z")
         self.assertNotEqual(rev, "0" * 40, "the asset list holds the placeholder revision")
-        self.assertEqual(head.get("prefix"), "tasks/driving/%s/payload" % SLUG)
-        want = "%s/datasets/%s/resolve/%s/tasks/driving/%s/verifier/gt.tar.xz" % (
+        self.assertEqual(head.get("prefix"), "tasks/ground/%s/payload" % SLUG)
+        want = "%s/datasets/%s/resolve/%s/tasks/ground/%s/verifier/gt.tar.xz" % (
             head.get("endpoint", "https://huggingface.co").rstrip("/"), head.get("repo"), rev, SLUG)
         self.assertEqual(CONFIG["hidden_gt"]["url"], want)
         self.assertNotIn("placeholder", CONFIG["hidden_gt"].get("note", ""))

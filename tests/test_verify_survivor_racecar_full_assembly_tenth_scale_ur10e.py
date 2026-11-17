@@ -19,8 +19,8 @@ from pathlib import Path
 
 SLUG = "racecar_full_assembly_tenth_scale_ur10e"
 _HERE = Path(__file__).resolve()
-# in the benchmark repository: tests/<this file> beside tasks/driving/<slug>; in the development tree: <slug>-dev/repo_tests/
-_CANDIDATES = [_HERE.parents[1] / "tasks" / "driving" / SLUG, _HERE.parents[2] / SLUG]
+# in the benchmark repository: tests/<this file> beside tasks/ground/<slug>; in the development tree: <slug>-dev/repo_tests/
+_CANDIDATES = [_HERE.parents[1] / "tasks" / "ground" / SLUG, _HERE.parents[2] / SLUG]
 TASK = next((p for p in _CANDIDATES if (p / "tests" / "verify.py").is_file()), _CANDIDATES[0])
 VERIFY = TASK / "tests" / "verify.py"
 FAMILY = "contract"   # "contract": the survivor reason zeroes contract_ok; "void": a survivor raises a task error

@@ -24,7 +24,7 @@
   "note": "the cell's hidden kit (gt/: kit.json + meshes/), never in the repository and never in an image: verify.py fetch_hidden_gt downloads this tarball of the benchmark's asset dataset at verify start (the URL is pinned at the dataset commit that environment/assets.sha256 pins too), checks its sha256 and its file count and unpacks it into the root-only stage folder; a maintainer's local copy (ARB_HIDDEN_GT_TARBALL, or tests/assets/gt.tar.xz, an engine asset root that no checkout has) is used instead when present, under the same checks",
   "sha256": "328939c34609e9f9b9108da78f3e37249c1d311de60f0361ca11f2f8c5fff4f4",
   "tries": 4,
-  "url": "https://huggingface.co/datasets/grounded-intelligence-initiative/ale-robotics-assets/resolve/a6bfe73e80bc6ea336b91140f229ececc08fba6e/tasks/driving/racecar_full_assembly_tenth_scale_ur10e/verifier/gt.tar.xz"
+  "url": "https://huggingface.co/datasets/grounded-intelligence-initiative/ale-robotics-assets/resolve/6cfa80d098df6a6def71f8304edbcd4245fa829f/tasks/ground/racecar_full_assembly_tenth_scale_ur10e/verifier/gt.tar.xz"
  },
  "info_layout": {
   "camera_draw": {

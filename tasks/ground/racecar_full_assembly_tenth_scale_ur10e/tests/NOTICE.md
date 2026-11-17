@@ -29,7 +29,7 @@ the benchmark's model sources; this file carries the attribution.
 
 The task's car is the benchmark maintainer's own Blender model of a tenth-scale autonomous race car of the F1TENTH /
 RoboRacer kind (final scene `car model_6.blend`; its part-level scene `car model_2.blend`, from which every part is
-taken), the same model as that of the driving CAD-stage task `racecar_cad_design_from_requirements`. The model is used
+taken), the same model as that of the race car's CAD-stage task `racecar_cad_design_from_requirements`. The model is used
 as it is: no vertex of it is changed. What this task derives from it (the six part files, the photographs of the picture
 manual, the outlines of the drawings, the hidden kit's visual meshes and the collision pieces made from the model's
 dimensions) is computed from the model by rule.
@@ -53,8 +53,8 @@ spacer pins are modelled primitives.
 
 The large givens (the units' part files, the drawings, the picture manual, the arm and gripper models and the cameras'
 scenery) are served by the benchmark's asset dataset `grounded-intelligence-initiative/ale-robotics-assets` under
-`tasks/driving/racecar_full_assembly_tenth_scale_ur10e/payload/`, at the commit pinned in `environment/assets.sha256`;
-the hidden kit `gt.tar.xz` is `tasks/driving/racecar_full_assembly_tenth_scale_ur10e/verifier/gt.tar.xz` there, at the
+`tasks/ground/racecar_full_assembly_tenth_scale_ur10e/payload/`, at the commit pinned in `environment/assets.sha256`;
+the hidden kit `gt.tar.xz` is `tasks/ground/racecar_full_assembly_tenth_scale_ur10e/verifier/gt.tar.xz` there, at the
 commit pinned in `grader_config.json` (`hidden_gt.url`). The photographs are renders of the model above, the part files
 and the kit's meshes are decimated from it, and what derives from the makers' CAD files in the table above keeps their
 makers' terms. The arm and gripper models keep their BSD licences (their LICENSE files next to them); the cameras'

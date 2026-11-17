@@ -24,7 +24,7 @@ digests, the bench plan, the oracle token) appears outside `hidden/`.
 | `review/observability.md` | the camera-only probe's summary, both rounds side by side (statistics only) |
 | `setup_payload/` | byte copy of `environment/setup/payload/` (the small givens: `kit.json`, the cell documents, the client library) |
 | `given_hashes.json` | sha256 of every file the grader's `/opt/arb` must hold |
-| `hidden_gt.url` of `grader_config.json` | where the hidden kit is: `verifier/gt.tar.xz` of the benchmark's asset dataset at commit `a6bfe73e80bc6ea336b91140f229ececc08fba6e` (the commit `environment/assets.sha256` pins for the givens); `verify.py` downloads it at verify start and checks the pinned sha256 and file count; it is never in the repository or an image. A maintainer's local copy (`ARB_HIDDEN_GT_TARBALL`, or `assets/gt.tar.xz` here, an engine asset root that no checkout has) is used instead under the same checks |
+| `hidden_gt.url` of `grader_config.json` | where the hidden kit is: `verifier/gt.tar.xz` of the task's folder on the benchmark's asset dataset at commit `6cfa80d098df6a6def71f8304edbcd4245fa829f` (the commit `environment/assets.sha256` pins for the givens); `verify.py` downloads it at verify start and checks the pinned sha256 and file count; it is never in the repository or an image. A maintainer's local copy (`ARB_HIDDEN_GT_TARBALL`, or `assets/gt.tar.xz` here, an engine asset root that no checkout has) is used instead under the same checks |
 
 ## The score
 
@@ -109,7 +109,9 @@ and wall time, forces, illegal calls) goes to `metrics` only, all finite numbers
   text fixes of the instruction, the packing list and `assembly_layout.png`, 2026-11-15T20:24:13Z; the order
   statement's half-sentence on the fixtures beside the car, 2026-11-15T22:26:03Z; the publication,
   2026-11-15T22:33:35Z: the asset list's revision and `hidden_gt.url` at the dataset commit, `hidden_gt.note`; the
-  v1.7 texts of the safety rule, 2026-11-17T00:33Z; the v1.8 texts of the robot-contact limit, 2026-11-17T18:22:55Z).
+  v1.7 texts of the safety rule, 2026-11-17T00:33Z; the v1.8 texts of the robot-contact limit, 2026-11-17T18:22:55Z;
+  the move of the task's folder to `tasks/ground/`, 2026-11-17T22:19:43Z: the asset list's revision and prefix and
+  `hidden_gt.url` at the dataset commit of the copy).
   No reselection and no redraw were made. Amendment A2 (written at 2026-11-17T00:32:59Z, after checking the A1 table
   on the tree just before the change) lets a dated decision of the owner that changes only how an episode's outcome is
   scored re-enter the frozen table instead of a redraw: the v1.7 safety rule changed `verify.py`,
@@ -266,24 +268,32 @@ and finalizing grow, so the margin of about 1 800 s holds for them. The referenc
 episode; the oracle's verify takes about 1 250 s. The camera-only probe used 26-55 frames, 188-426 s of sim and
 486-1119 s of wall per episode over both rounds.
 
-## Where the files are (published 2026-11-15)
+## Where the files are (published 2026-11-15; folder moved to `tasks/ground/` 2026-11-17)
 
 - The task's large givens (`environment/assets/payload/`: 195 files, 102 319 431 bytes: the six part files, five
   drawings, the picture manual, the arm and gripper models, the cameras' scenery) are on the benchmark's asset dataset
-  `grounded-intelligence-initiative/ale-robotics-assets` under `tasks/driving/racecar_full_assembly_tenth_scale_ur10e/payload/`,
+  `grounded-intelligence-initiative/ale-robotics-assets` under `tasks/ground/racecar_full_assembly_tenth_scale_ur10e/payload/`,
   and the hidden kit (`gt.tar.xz`, 36 816 332 bytes, sha256 `328939c3…`, 14 620 files) under
-  `…/verifier/gt.tar.xz`, both in one dataset commit, `a6bfe73e80bc6ea336b91140f229ececc08fba6e` (with the owner's
-  approval; the dataset card's row followed in `fd06624f7814c36c4b79688e63d693be83d5cde5`). The bytes downloaded at
-  that commit equal the uploaded ones. 169 of the 195 payload files (`given/robot/`, `render/`) are byte copies of
-  `quadruped_full_assembly_12dof_ur10e`'s, uploaded again under this task's prefix, because each task's asset list
+  `…/verifier/gt.tar.xz`. They were uploaded on 2026-11-15 in one dataset commit,
+  `a6bfe73e80bc6ea336b91140f229ececc08fba6e`, under the task's folder of that day, `tasks/driving/…` (with the owner's
+  approval; the dataset card's row followed in `fd06624f7814c36c4b79688e63d693be83d5cde5`); the bytes downloaded at
+  that commit equal the uploaded ones. When the benchmark merged its platforms `driving` and `ground` into `ground`
+  (2026-11-17), all 196 files were copied unchanged, server side and in one commit,
+  `6cfa80d098df6a6def71f8304edbcd4245fa829f`, to the task's new folder: every file has the size, git blob id and
+  sha256 of its source, and the folder downloaded at that commit equals the uploaded bytes (the card's row in
+  `ce8a3d2dd5b49cfe66c4b2ba17b660765a9a5899`). 169 of the 195 payload files (`given/robot/`, `render/`) are byte copies
+  of `quadruped_full_assembly_12dof_ur10e`'s, uploaded again under this task's prefix, because each task's asset list
   names one prefix.
-- `environment/assets.sha256` pins that commit and every file (the image build downloads and checks them with
+- `environment/assets.sha256` pins `6cfa80d0…` and every file (the image build downloads and checks them with
   `fetch_assets.py`); `grader_config.json → hidden_gt.url` pins the kit at the same commit (`verify.py` downloads it at
-  verify start and checks its sha256 and file count). Both downloads were run against the dataset after the upload,
-  anonymously, as the image build and the grader do (`-dev/tools/publish_check.py live`): 195 / 195 files and
-  14 620 / 14 620.
+  verify start and checks its sha256 and file count). Both downloads were run against the dataset after the upload
+  and again after the move, anonymously, as the image build and the grader do (`-dev/tools/publish_check.py live`):
+  195 / 195 files and 14 620 / 14 620.
 - Filling in the commit changed publication metadata and a document only, recorded under amendment A1
-  (`recorded_changes`, 2026-11-15T22:33:35Z); the frozen table is unchanged.
+  (`recorded_changes`, 2026-11-15T22:33:35Z); the move changed the same two entries (the asset list's `# revision:` and
+  `# prefix:` lines, `hidden_gt.url`), recorded under amendment A3 (`recorded_changes`, 2026-11-17T22:19:43Z). The
+  frozen table is unchanged, and the four set episodes' layout digests, recomputed from their seeds, equal
+  `hidden/episodes.json`.
 
 ## The calibration episode and open points (as of 2026-11-16)
 
