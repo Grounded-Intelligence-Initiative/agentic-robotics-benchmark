@@ -63,9 +63,9 @@ more than the hole's clearance, so a nut cannot be put on a shaft from an image 
 - No actuation or image latency, no joint encoder offsets: the first would change the cell's design, not a
   tolerance; the second is far below the cameras' errors (Franka gives a pose repeatability of +-0.1 mm).
 
-## What it does to the reference and to a round-2 controller (maintainer kits, not candidates)
+## What it does to the reference and to a round-2 controller
 
-Measured on maintainer kits (`sample_kit` seeds 1000 on, layout seed + 4000), before any candidate ran:
+Before any candidate ran, on maintainer kits (`sample_kit` seeds 1000 on, layout seed + 4000):
 
 - The reference (given the real grooves through the token): 28 of 32 kits complete in 576 to 821 steps, as many as
   without tolerances (the four it fails are wrist-range cases and one ruined nut, as before). With the tolerances
@@ -74,3 +74,6 @@ Measured on maintainer kits (`sample_kit` seeds 1000 on, layout seed + 4000), be
   6 of 16 with them. One group at a time switched off: perfect cameras 10 of 16, no joint friction 8 of 16, the
   model's pad friction 5 of 16. The cameras' calibration error is what it does not cope with: it puts nuts on shaft
   tops several millimetres off and its search (up to 3 mm) does not find the shaft.
+
+After the selection of amendment 2, on the commissioning service's 16 development kits: the same submission
+completes 9 of 16 through the grader (12 of 16 with the cameras' error switched off). See `commissioning.md`.

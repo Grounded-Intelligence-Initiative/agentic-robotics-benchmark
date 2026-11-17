@@ -1,4 +1,4 @@
-# The commissioning service and the takt (maintainer notes, 2026-11-16)
+# The commissioning service and the takt (maintainer notes, 2026-11-16; round 3 on 2026-11-17)
 
 Why the task changed, what the agent has now, and how the window was sized. The agent-facing contract is
 `instruction.md` and `environment/setup/payload/datasheet.md`; this page is for maintainers and validators.
@@ -13,19 +13,34 @@ the sandbox, so the agent's own harness read its internal state (`env.data`, `nu
 ran about 300 traced kit runs on about 95 kits. Removing the ground-truth accessor did not keep the answer from it.
 Its kits took 1047 to 1834 steps of the 2400 allowed.
 
-Two changes, both approved by the benchmark's owner:
+Round 2 (2026-11-16), two changes, both approved by the benchmark's owner:
 
 1. **A commissioning service in place of the readable simulator.** A commissioning engineer has the cell's data
    sheet and a window on the cell, not the cell's source code and not a debugger on the parts' true state.
-2. **A takt near the reference's.** 40 s per nut, 1200 steps per kit. The reference, which is given the grooves,
-   needs 628 to 845 steps on the graded kits; a production cell's takt is set by what the job needs, not by twice
-   what the slowest attempt took.
+2. **A takt near the reference's.** Then 40 s per nut, 1200 steps per kit. A production cell's takt is set by what
+   the job needs, not by twice what the slowest attempt took.
+
+The second frontier measurement (the same agent, 2026-11-16, on that version) scored 0.71: 7 of 10 kits. Hiding the
+simulator was not enough: within minutes the agent rebuilt the cell from the data sheet as a simulation of its own,
+developed its controller there with that simulation's ground truth, and used the 32 commissioning episodes to
+confirm it. The data sheet was the cell: every kit was exactly its drawing.
+
+Round 3 (2026-11-17), approved by the benchmark's owner:
+
+3. **A real kit on the cell of the day.** No real kit or cell is exactly its drawing. Every episode, graded or
+   commissioning, draws its own actual values within tolerances that the data sheet states: the nuts' grooves, holes
+   and friction, the pegs' shafts and pins, the pads' and the arm joints' friction, the wrench zero's drift, the
+   cameras' mounts and intrinsics, the lamps (`tolerances.md`: every range and where it comes from). A simulation
+   built from the data sheet can only draw from the ranges; the commissioning window is where the agent meets
+   real ones.
+4. **A takt of 100 s for a kit**, 1000 steps. The reference, which is given the real grooves, needs 605 to 812 steps
+   on the graded kits.
 
 ## What the agent has
 
 | what | where | note |
 |---|---|---|
-| the cell's data sheet | `~/datasheet.md`, `~/cell_data.py` | the kit's drawing data and tolerances, how the family and the layout are drawn, the robot and its controller (action format, tracking law and gains, gripper), sensors, camera calibration, safety stops, takt, the service's wire; `cell_data.py` holds the same numbers and geometry helpers and no simulator (`tests/test_keyed_nut_peg_assembly_commissioning.py` compares them with the simulator's, and checks that the payload holds no simulator code) |
+| the cell's data sheet | `~/datasheet.md`, `~/cell_data.py` | the kit's drawing data and tolerances, how the family and the layout are drawn, the tolerances (section 11), the robot and its controller (action format, tracking law and gains, gripper), sensors, camera calibration, safety stops, takt, the service's wire; `cell_data.py` holds the same numbers and geometry helpers and no simulator (`tests/test_keyed_nut_peg_assembly_commissioning.py` compares them with the simulator's, and checks that the payload holds no simulator code) |
 | the robot's model | the robosuite 1.5.2 Panda and gripper files in the image's Python environment | public; MuJoCo is installed, so the agent can build a twin of its own from the data sheet |
 | a commissioning window | the service on `/run/keyedcell/commission.sock`, `~/commission/client.py`, `~/commission/run_kit.py` | 32 episodes on 16 development kits |
 
@@ -42,7 +57,7 @@ and thread settings. The image's working directory is `/`, so that the engine's 
 from the agent's home (engine issue AgentsLastExam/ale#142).
 
 - One connection is one episode: `reset(kit)`, `step(action)`, `close()`. It answers the observation of the public
-  wire and how the episode ended: all 1200 steps run, a safety stop (the ruined nut's colour, or the instability),
+  wire and how the episode ended: all 1000 steps run, a safety stop (the ruined nut's colour, or the instability),
   the controller budget used up, 120 s of silence, or the client's close. `close(images=true)` adds the three
   cameras' images of the final state. About 1 % of the step replies carry the perturbed copy the grader uses for its
   repeated-step queries, so that `run_kit.py` can drive a controller the way the grader does.
@@ -50,51 +65,76 @@ from the agent's home (engine issue AgentsLastExam/ale#142).
   the image, and an episode never ends because a kit is complete.
 - The window is counted under a lock in the service's own folder and survives a restart of the service; an episode
   that could not be started (a fault of the cell) is not counted. A kit's episode is the same every time (its own
-  layout and noise seed), so two versions of a controller can be compared on it.
+  layout, its own actual values within the tolerances and its own noise, all from its seed), so two versions of a
+  controller can be compared on it. The service never tells a kit's actual values.
 - Checked in a container of the image, as the agent account (2026-11-16): the folder can be neither listed nor read;
   `/proc/<pid>/{environ,mem,maps,cwd,exe,fd}` of the service are refused; the service cannot be signalled; methods
   other than the three answer `forbidden`; a third open episode answers `busy` and uses no episode; a `reset`
   beyond the window answers `commissioning_window_used` (tried with a window of 4); the count survives a restart;
   silence and the budget end an episode with the documented words (tried with 6 s and 12 s). A step without images takes about 0.02 s there, with all three images 0.4 s; a whole
-  1200-step episode through `run_kit.py` about 30 s.
+  whole episode through `run_kit.py` about half a minute. Repeated on the round-3 image (2026-11-17): the closed
+  folder and process, the wire, two episodes at a time, the count, a cell fault; a whole episode ends with "all
+  steps run" at step 1000.
 
 ## The development kits
 
-Chosen like the graded set, from their own pre-registered candidates (kit seed 7001 + i, layout and noise seed
-11001 + i): the first 16 that the frozen reference completes within the takt, each run once through the grader
-(`select_set.py --pool dev`; the record is the selection record's amendment, `development_kits`). The graded kits are
+Chosen like the graded set, from their own pre-registered candidates (in force: amendment 2's, kit seed 8001 + i,
+layout and noise seed 12001 + i; round 2 used 7001 + i and 11001 + i): the first 16 that the frozen reference
+completes within the takt, each run once through the grader (`select_set.py --pool dev`; the record is the selection
+record's latest amendment, `development_kits`). The graded kits are
 "draws that the reference completed"; unfiltered development kits would be a slightly different population (about
 one draw in seven has a wrist-range case the reference does not handle), and with 32 episodes every development kit
 has to be worth its episode. No development seed is a candidate's and no development kit has a graded kit's
-grooves (the test above). The run (2026-11-16): the reference completed 22 of the 24 candidates in 598 to 846
-steps; D01 and D15 dropped (the takt ran out with two and one nuts assembled), so the kits are D02 to D14 and D16 to
-D18, which the agent addresses as kits 1 to 16.
+grooves (the test above). The run under amendment 2 (2026-11-17): the reference completed 23 of the 24 candidates in
+636 to 804 steps; T06 dropped (a nut ruined at step 831 with two assembled), so the kits are T01 to T05 and T07 to
+T17, which the agent addresses as kits 1 to 16. (Round 2's run, 2026-11-16: 22 of 24 in 598 to 846 steps.)
 
 ## The window's size
 
 32 episodes, 2 at a time, on 16 kits. The model is a real commissioning window: a plant gives the engineer who
 brings a new kit family onto a cell one working shift and a tray of pre-series kits. A trial takes about a quarter
-of an hour: a technician lays the kit out, the cell runs at most one takt (2 minutes), the engineer looks at the
+of an hour: a technician lays the kit out, the cell runs at most one takt (100 s), the engineer looks at the
 result and the logs, the technician takes the nuts off the pegs, the engineer changes the program. That is 32
 trials in 8 hours, two per kit on average: a few for teach-in and measurements (grasp, carry, how a nut on the pin
 feels, what a riser and a blocked turn read), the rest for whole runs. Simulated time is not the limit (32 episodes
-are 64 minutes of cell time and about 20 minutes of computing); the count is, as on a real cell.
+are 53 minutes of cell time and about a quarter of an hour of computing); the count is, as on a real cell.
 
 For comparison: the readable simulator of the first measurement served about 300 kit runs with the true state
 printed at every step.
 
 ## The takt
 
-`keyed_env.CYCLE_STEPS` 800 -> 400, so an episode is at most 1200 steps (120 s). The physics is otherwise untouched:
-on 12 maintainer kits (`sample_kit` 1000-1009, 1020, 1037) the reference repeats its earlier runs step for step
-where it completes (601 to 743 steps), and the kits it does not complete now end at 1200 steps instead of 2400. The
-controller budget (600 s of controller time per kit) and the image charges are unchanged.
+Round 2: `keyed_env.CYCLE_STEPS` 800 -> 400, an episode of at most 1200 steps. Round 3: `keyed_env.MAX_STEPS = 1000`,
+100 s for a kit. The controller budget (600 s of controller time per kit) and the image charges are unchanged.
 
-The hidden set under the takt: the rule ran again on the same 16 candidates (the selection record's amendment). The
-reference completed the same 14, each with the steps of its first run (628 to 845), so the set is the same ten kits,
-and its full verify measured 1.0 again.
+The tolerances change what a kit is (the reference is given the real groove through its token:
+`keyed_credit.ground_truth`, `actual`), so amendment 2 of the selection record drew 16 fresh hidden candidates and 24
+fresh development candidates and was committed before any of them ran (45e088b). Checks before that, on maintainer
+kits only (`sample_kit` 1000 on, layout seed + 4000; neither candidates nor development kits):
 
-Is the takt within reach of a controller that has only the observations? The first measurement's submission, which
-was not written for it, completes 3 of the 16 development kits within 1200 steps and assembles 30 of 48 nuts
-(`observability/observation_only_controller_dev_kits.json`); it needed 1047 to 1834 steps for the nine graded kits it
-completed under the earlier limit. The takt is about one and a half times the reference's slowest kit.
+- With the tolerances switched off (`NutEnv(tolerances=False)`) and the earlier kits (1000-1009, 1020, 1037) the
+  reference repeats its round-2 runs to within one step (601 to 743 steps): the tolerance code leaves the drawing's
+  cell as it was.
+- With the tolerances, the reference completes 28 of 32 kits in 576 to 821 steps, as many as without them.
+
+The hidden set under amendment 2: the reference completed 14 of the 16 fresh candidates (605 to 812 steps; E12 and
+E14 dropped, a nut ruined each); the set is the first ten, E00 to E09, and its full verify measured 1.0 with every
+episode repeating its selection run.
+
+## Is this version within reach, and is it hard enough?
+
+A controller that has only the observations: the second measurement's submission, which was written for the
+drawing's cell and a 1200-step takt, run by the grader on the 16 development kits of amendment 2
+(`observability/observation_only_controller_dev_kits.json`): **9 of 16 kits** (32 of 48 nuts), in 664 to 992 steps.
+So the version is within reach, and it is not hard enough:
+
+- Its groove search by touch is about as fast as the reference's known path (about 210 steps a nut when no false
+  entrance is met), so the takt leaves it room for three or four exploration errors per kit. No tolerance slows a
+  search by touch.
+- Its failures are insertions that miss the shaft: the cameras' calibration error is larger than its search. With
+  the cameras' error switched off it completes 12 of the 16 kits; with the other groups switched off one at a time
+  (maintainer kits) nothing changes much. A controller written for these rules will widen its search.
+- A shorter takt would not change the picture: of the same runs, 6 of 16 kits end within 900 steps and 4 of 16
+  within 800 (9 and 7 of 16 with the cameras' error switched off).
+
+A stronger raise is needed than tolerances and this takt: the fit (the next amendment).
