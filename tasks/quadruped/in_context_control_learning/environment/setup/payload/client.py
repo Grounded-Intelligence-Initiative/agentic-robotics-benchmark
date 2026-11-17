@@ -23,8 +23,8 @@ class Client:
     def observe(self):
         return self.request("observe")
 
-    def act(self, action):
-        return self.request("act", action=action)
+    def act(self, action, frames=30):
+        return self.request("act", action=action, frames=frames)
 
     def advance(self):
         return self.request("advance")

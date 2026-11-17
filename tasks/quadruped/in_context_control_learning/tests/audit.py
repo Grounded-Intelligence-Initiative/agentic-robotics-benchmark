@@ -4,7 +4,7 @@ The rule the instruction states: every request the robot service received must h
 own robot_* tool calls, and the agent must not call a tool that runs commands or code, writes or edits files, or
 starts another agent. Tools that only keep a to-do list or read files are allowed, as are tool calls the harness
 rejected before they reached the service (they appear in the trajectory but not in the ledger), so the ledger has to
-be an ordered subsequence of the agent's robot_* calls, not equal to them.
+be an ordered subsequence of the agent's robot_* calls, not equal to them. Unknown tools fail closed.
 """
 import json
 import re
@@ -12,8 +12,12 @@ import re
 ROBOT = {"robot_observe": "observe", "robot_act": "act", "robot_advance": "advance"}
 # Note-keeping and read-only tools of the harnesses we run: none of them can reach the robot service or run code.
 HARMLESS = {"TodoWrite", "TodoRead", "TaskCreate", "TaskUpdate", "TaskList", "TaskGet", "TaskOutput", "TaskStop",
-            "Read", "Glob", "Grep", "LS", "ToolSearch", "ScheduleWakeup", "EnterPlanMode", "ExitPlanMode",
-            "AskUserQuestion", "ListMcpResourcesTool", "ReadMcpResourceTool", "update_plan", "view_image"}
+            "Read", "Glob", "Grep", "LS", "ToolSearch", "EnterPlanMode", "ExitPlanMode",
+            "AskUserQuestion", "ListMcpResourcesTool", "ReadMcpResourceTool"}
+# Codex preserves the functions namespace in ATIF; only these exact built-ins are exempt.
+CODEX_HARMLESS = {"update_plan", "view_image", "request_user_input", "tool_search_tool",
+                  "list_mcp_resources", "list_mcp_resource_templates", "read_mcp_resource"}
+HARMLESS |= CODEX_HARMLESS | {"functions." + name for name in CODEX_HARMLESS}
 FORBIDDEN = {"Bash", "BashOutput", "KillShell", "KillBash", "Write", "Edit", "MultiEdit", "NotebookEdit", "Agent",
              "Task", "Skill", "SlashCommand", "WebFetch", "WebSearch"}
 # Other harnesses' names for the same capabilities (shell, code, file writing, sub-agents, web, desktop control).
@@ -60,7 +64,7 @@ def audit_trajectory(payload, events):
     """(passed, reason, stats) for an ATIF trajectory dict and the ledger's event list."""
     stats = {"robot_calls": 0, "harmless_calls": 0, "unclassified_calls": 0, "forbidden_calls": 0,
              "ledger_events": len(events), "ledger_events_matched": 0}
-    calls, forbidden = [], []
+    calls, forbidden, unclassified = [], [], []
     for step in payload.get("steps", []):
         if step.get("source") != "agent":
             continue
@@ -71,9 +75,14 @@ def audit_trajectory(payload, events):
                 calls.append((ROBOT[name], _arguments(call)))
             elif kind == "forbidden":
                 forbidden.append(name)
+            elif kind == "unclassified":
+                unclassified.append(name or "<unnamed>")
     if forbidden:
         return False, "the agent called tools that run code, write files or start agents: " + \
             ", ".join(sorted(set(forbidden))), stats
+    if unclassified:
+        return False, "the agent called tools not approved for direct control: " + \
+            ", ".join(sorted(set(unclassified))), stats
     i = 0
     for n, event in enumerate(events):
         while i < len(calls) and not (calls[i][0] == event.get("method") and _same(calls[i][1], event.get("params"))):

@@ -23,24 +23,44 @@ LEDGER = Path("/var/lib/visual_robotics/state.json")
 
 
 def replay(state):
-    """Re-run the ledger's requests on the same scene, without rendering; the episode's metrics."""
+    """Replay requests, checking supplied event fingerprints and the final state_fingerprint.
+
+    The world returns a non-null JSON-native fingerprint of all deterministic state; the
+    service stores it under the same ledger key. Version 3+ requires a final fingerprint;
+    older worlds also require one if either side opts in.
+    """
     world = World(state["seed"], render=False)
-    for n, event in enumerate(state["events"]):
-        try:
-            dispatch(world, event.get("method"), event.get("params"))
-            error = None
-        except (ValueError, TypeError, KeyError, OverflowError) as exc:
-            error = str(exc)
-        require((error is None) == ("error" not in event),
-                f"replay diverged from the service at request {n+1}: {error!r} vs {event.get('error')!r}; "
-                "an environment failure, not an agent result")
-        if error is None:
-            require((event.get("steps"), event.get("delivered")) == (world.steps, world.delivered),
-                    f"replay diverged from the service at request {n+1} (presses, deliveries); "
+    try:
+        fingerprint = getattr(world, "state_fingerprint", None)
+        for n, event in enumerate(state["events"]):
+            try:
+                dispatch(world, event.get("method"), event.get("params"))
+                error = None
+            except (ValueError, TypeError, KeyError, OverflowError) as exc:
+                error = str(exc)
+            require((error is None) == ("error" not in event),
+                    f"replay diverged from the service at request {n+1}: {error!r} vs {event.get('error')!r}; "
                     "an environment failure, not an agent result")
-    metrics = world.metrics()
-    world.close()
-    return metrics
+            if error is None:
+                require((event.get("steps"), event.get("delivered")) == (world.steps, world.delivered),
+                        f"replay diverged from the service at request {n+1} (presses, deliveries); "
+                        "an environment failure, not an agent result")
+            if "state_fingerprint" in event:
+                require(callable(fingerprint) and event["state_fingerprint"] is not None
+                        and fingerprint() == event["state_fingerprint"],
+                        f"replay diverged from the service at request {n+1} (state fingerprint); "
+                        "an environment failure, not an agent result")
+        if VERSION >= 3 or fingerprint is not None or "state_fingerprint" in state:
+            require(callable(fingerprint), "the ledger requires a state fingerprint but the replay world does not; "
+                    "an environment failure, not an agent result")
+            require(state.get("state_fingerprint") is not None,
+                    "the service's final state fingerprint is missing; an environment failure, not an agent result")
+            require(fingerprint() == state["state_fingerprint"],
+                    "replayed final state fingerprint differs from the service's; "
+                    "an environment failure, not an agent result")
+        return world.metrics()
+    finally:
+        world.close()
 
 
 def main():

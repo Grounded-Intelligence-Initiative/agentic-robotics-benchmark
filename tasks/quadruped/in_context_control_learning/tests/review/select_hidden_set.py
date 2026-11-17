@@ -88,4 +88,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit("Archived v2 selector: v3 must retain all 24 fixed seeds. Run privileged_reference.py --all-hidden.")

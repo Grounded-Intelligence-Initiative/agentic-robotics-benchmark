@@ -2,8 +2,8 @@
   "metric": "delivered_fraction",
   "direction": "higher",
   "value": 1.0,
-  "full_at": 0.98,
-  "source": "Measured: the image-only scripted oracle (solution/policy.py) reached all six delivery points on every scene of the hidden set (24 of 24, delivered_fraction 1.0 each), run once per scene through the robot service and the grader's ledger replay by the pre-registered selection (tests/review/hidden_set/RULE.md, selection.jsonl). Every kept episode scored exactly what its selection run scored, so full_at is 0.98.",
+  "full_at": 1.0,
+  "source": "V3 measured PRIVILEGED offline feasibility reference (solution/privileged.py), NOT image-only or frontier evidence: all 24 previously frozen hidden seeds, in registered order without reselection, completed 6/6 with exact ledger replay and state fingerprints on koa04 CPU in the pinned task environment. See tests/review/v3/summary.json and receipt.json for every result and source digest. Mean delivered_fraction is 1.0; full_at 1.0 preserves exact partial-delivery fraction. The old v2 image-only measurements are historical and are not used for this anchor. This cohort is not an ALE validate or participant difficulty run.",
   "measurements": [
     1.0,
     1.0,
@@ -30,5 +30,5 @@
     1.0,
     1.0
   ],
-  "evidence": "tests/review/hidden_set/selection.jsonl"
+  "evidence": "tests/review/v3/summary.json"
 }

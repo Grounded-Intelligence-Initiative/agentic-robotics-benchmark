@@ -271,7 +271,7 @@ def decorate(xml, kind, radius=.13, seed=0):
     else:
         for g in agent.findall("geom"):
             g.set("rgba", "0 0 0 0")
-        # The ground robot walks without turning: its meshes sit in the agent's fixed-heading child body.
+        # Visual Go1 meshes follow the planar base; no articulated gait is claimed.
         chassis = agent.find("body[@name='chassis']")
         robot_meshes(root, agent if chassis is None else chassis,
                      "ground" if kind in ("icl", "cross") else "drone", radius)

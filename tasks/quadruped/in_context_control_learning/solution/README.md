@@ -1,40 +1,47 @@
-# In-Context Control Learning: the oracle
+# PRIVILEGED v3 Feasibility Reference
 
-A frozen model teleoperates a quadruped delivery robot through six deliveries in a dark bay, one button press per
-tool call. It has to learn from the camera images what the four unlabeled buttons do (body-frame forward, back, step
-left and step right, at an unknown heading, with unequal gait speeds, all changed by a loading stop after the third
-delivery), where the partitions and their openings are, and keep both in mind across the episode. No program may
-drive the robot or process the images; the grader checks that from the session.
+`solve.sh` runs `oracle_run.py`. This is deliberately privileged author code,
+not an image-only policy and not evidence of model difficulty. It reads hidden
+scene metadata and exact dynamic state from an oracle-only mirror. The user
+expressly authorized this distinction for the v3 feasibility proof.
 
-## The oracle
+The pinned ALE engine uploads `solution/` only when the selected harness is
+`oracle` (`episode_protocol.py`, `_run_agent`/`_upload_oracle`). None of this
+directory is copied by participant setup or the Dockerfile. No privileged
+operation was added to the public socket/MCP protocol. The service accepts only
+observe, act (with optional frames), and advance. The engine-recorded oracle
+trajectory is the existing separate-verifier audit exemption, not an agent
+environment variable or a task-provided identity claim.
 
-`solve.sh` runs `oracle_run.py`, the image-only scripted reference in `policy.py`. It gets what the agent gets (the
-image and the JSON status of each reply, the camera calibration from the instruction) and nothing else:
+An exact SHA-256 of the first ordinary RGB observation selects a hidden seed from
+`initial_fingerprints.json`. Source hashes must also match. Unknown images fail
+closed; there is no nearest-image guess. The bundled `private/` modules mirror
+the live dynamics, and `privileged.py` plans through the wide openings, predicts
+actuator lag and coasting on separate MuJoCo data, and stops at each pose. All real
+actions go through the same budgeted socket operations as the task; no pose,
+velocity, filter, budget or completion state is changed by the controller.
 
-- it presses each button once to measure its displacement, and again after the loading stop;
-- it adds every lit wall pixel to a map, which persists across deliveries;
-- it plans with A* over its own measured button displacements, unknown floor counting as free, and re-plans after
-  every press; presses that hit nothing refine the displacement estimates;
-- it advances as soon as a delivery point is reached.
+## Evidence and Reproduction
 
-It is a feasibility proof, not an LLM result. The grader recognises it by the engine's trajectory (agent name
-`oracle`) and skips the direct-control audit for it, since a script necessarily talks to the robot socket.
+Run `tests/review/privileged_reference.py --all-hidden --output <new-directory>`
+in the task image on remote CPU. It runs all 24 fixed seeds in registered order
+and writes every ledger, metric, failure, replay result and source digest. This
+is offline feasibility; `tests/review/run_episode.sh` additionally exercises the
+actual root-owned service, unprivileged oracle process and separate replay.
 
-## Measurements
+`tests/review/build_oracle_fingerprints.py --output <new-directory>` renders all
+24 initial frames without success filtering. Its JSON belongs only in this
+oracle directory, never in participant payload. Runtime/private/test copy parity
+must hold after every dynamics or renderer change.
 
-| what | result |
-|---|---|
-| hidden set (24 scenes, `tests/review/hidden_set/`) | 24 of 24 at six of six delivery points, 194 to 406 presses (median 300) of 500, at most 412 of 560 requests |
-| 40 development seeds (3001-3040) | 40 of 40 at six of six |
-| random buttons (100 development seeds) | 0.012 of the points on average |
-| privileged greedy, no map memory (100 development seeds) | 0.148 |
+## Historical v2 Policy
 
-`tests/review/check_task.py` runs the task's self-checks inside the image; `tests/review/run_episode.sh` runs one
-episode the way the engine does; `tests/review/baselines.py` the two baselines.
+`policy.py` and `coordinates.py` are retained as historical v2 image-only code.
+They require the removed calibrated ceiling view and fixed-heading translation
+model; they are obsolete for v3 and are not invoked by `solve.sh`. The v2 24/24,
+development and baseline measurements in `tests/review/hidden_set/selection.jsonl`
+and `baselines.jsonl` do not measure v3. Do not cite them as v3 feasibility or
+difficulty evidence. The hidden seed files are frozen and must not be reselected.
 
-## What the simulation is
-
-A planar base under a velocity controller with a scaled Unitree Go1 body (MuJoCo Menagerie meshes) and stabilized
-gaits, not legged locomotion; walls and the fence are boxes. The images are rendered on the CPU with MuJoCo 3.16's
-Filament renderer (lavapipe), with Poly Haven CC0 textures and props; the render assets come from the benchmark's
-Hugging Face dataset, pinned in `environment/assets.sha256`.
+The Go1 meshes and pinned visual assets are preserved. Dynamics are a force-driven
+planar base with yaw, inertia and slip, not articulated locomotion or actual gait.

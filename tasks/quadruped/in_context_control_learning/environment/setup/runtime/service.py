@@ -16,12 +16,13 @@ from world import KIND, REQUEST_LIMIT, VERSION, World
 
 
 ALLOWED = {"observe": set(), "act": {"action"}, "advance": set()}
+OPTIONAL = {"observe": set(), "act": {"frames"}, "advance": set()}
 
 
 def dispatch(world, method, params):
     """One request against the world; the verifier's replay calls the same function."""
     if (not isinstance(method, str) or method not in ALLOWED or not isinstance(params, dict)
-            or set(params) != ALLOWED[method]):
+            or not ALLOWED[method] <= set(params) <= ALLOWED[method] | OPTIONAL[method]):
         raise ValueError("operation/arguments not allowed; reset is never available")
     return getattr(world, method)(**params)
 
@@ -40,7 +41,8 @@ class Runtime:
 
     def flush(self):
         state = {"kind": KIND, "version": VERSION, "seed": self.seed, "scene_index": self.scene_index,
-                 "requests": self.count, "events": self.events, "metrics": self.world.metrics()}
+                 "requests": self.count, "events": self.events, "metrics": self.world.metrics(),
+                 "state_fingerprint": self.world.state_fingerprint()}
         temp = self.directory/"state.tmp"
         temp.write_text(json.dumps(state))
         os.chmod(temp, 0o600)
@@ -67,6 +69,7 @@ class Runtime:
             event["error"] = str(exc)
             raise
         finally:
+            event["state_fingerprint"] = self.world.state_fingerprint()
             self.flush()
 
     def dispatch(self, method, params):

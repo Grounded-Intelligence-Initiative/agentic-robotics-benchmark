@@ -5,15 +5,18 @@ from client import Client
 
 TOOLS = [
     {"name": "robot_observe",
-     "description": "Look through the ceiling camera without moving the robot: one 256x256 top-view image and the "
+     "description": "Look through the onboard perspective camera without advancing time: one 384x384 image and the "
                     "delivery status. Does not use a button press.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
     {"name": "robot_act",
-     "description": "Press one remote button for one 0.2 s step of walking, then return the new camera image and "
-                    "status. action is a list holding one value: 0, 0.3333333333333333, 0.6666666666666666 or 1.",
+     "description": "Hold a button for frames physics ticks (1-120, default 30; each tick is 0.01 s), then return "
+                    "the onboard image and status. action contains one of 0, 0.3333333333333333, "
+                    "0.6666666666666666 or 1. The unknown, episode-fixed assignment is forward, "
+                    "turn left, turn right and brake. Motion has lag and momentum.",
      "inputSchema": {"type": "object",
                      "properties": {"action": {"type": "array", "items": {"type": "number"},
-                                               "minItems": 1, "maxItems": 1}},
+                                               "minItems": 1, "maxItems": 1},
+                                    "frames": {"type": "integer", "minimum": 1, "maximum": 120, "default": 30}},
                      "required": ["action"], "additionalProperties": False}},
     {"name": "robot_advance",
      "description": "After the active delivery point is reached (goal_reached true), light the next one. "
@@ -33,7 +36,7 @@ def main():
             if method == "initialize":
                 result = {"protocolVersion": req.get("params", {}).get("protocolVersion", "2024-11-05"),
                           "capabilities": {"tools": {}},
-                          "serverInfo": {"name": "delivery_robot", "version": "2.0"}}
+                          "serverInfo": {"name": "delivery_robot", "version": "3.0"}}
             elif method == "tools/list":
                 result = {"tools": TOOLS}
             elif method == "tools/call":

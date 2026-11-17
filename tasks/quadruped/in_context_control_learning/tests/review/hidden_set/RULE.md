@@ -1,5 +1,11 @@
 # The hidden scene set: pre-registered selection
 
+V3 status: the 24 selected seeds remain frozen in their original order. Everything
+below describes the historical v2 selection and its measurements, not evidence
+for v3 dynamics or the current privileged reference. Do not re-run selection or
+drop seeds based on v3 performance. Current feasibility evidence is recorded
+separately under `tests/review/v3/`.
+
 Written and committed, with `candidates.json`, before any candidate was run (2026-11-12).
 
 ## What is frozen

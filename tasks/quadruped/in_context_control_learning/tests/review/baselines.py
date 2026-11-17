@@ -1,4 +1,4 @@
-"""Luck floor and a privileged baseline on development seeds (not the hidden set), without rendering.
+"""HISTORICAL V2 ONLY: luck floor and privileged baseline on development seeds.
 
     /opt/venv/bin/python3 tests/review/baselines.py <random|greedy> <out.jsonl> <seed> [<seed> ...]
 
@@ -66,4 +66,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit("Archived v2 baseline and measurements, not valid v3 evidence.")
