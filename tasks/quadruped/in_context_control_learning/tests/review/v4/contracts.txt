@@ -1,0 +1,49 @@
+test_advance_does_not_teleport_or_reset_and_load_changes_inertia (__main__.DynamicsTests.test_advance_does_not_teleport_or_reset_and_load_changes_inertia) ... ok
+test_body_frame_nonholonomic_motion (__main__.DynamicsTests.test_body_frame_nonholonomic_motion) ... ok
+test_docking_schmitt_gate (__main__.DynamicsTests.test_docking_schmitt_gate) ... ok
+test_fingerprint_covers_hidden_memory (__main__.DynamicsTests.test_fingerprint_covers_hidden_memory) ... ok
+test_fixed_mapping_and_copy_parity (__main__.DynamicsTests.test_fixed_mapping_and_copy_parity) ... ok
+test_force_integration_and_history (__main__.DynamicsTests.test_force_integration_and_history) ... ok
+test_invalid_requests_do_not_mutate_physics (__main__.DynamicsTests.test_invalid_requests_do_not_mutate_physics) ... ok
+test_load_is_not_a_constant_displacement_scale (__main__.DynamicsTests.test_load_is_not_a_constant_displacement_scale) ... ok
+test_onboard_only_and_no_truth_response (__main__.DynamicsTests.test_onboard_only_and_no_truth_response) ... ok
+test_partitioned_presses_same_dynamics (__main__.DynamicsTests.test_partitioned_presses_same_dynamics) ... ok
+test_precision_pose_speed_and_continuous_dwell (__main__.DynamicsTests.test_precision_pose_speed_and_continuous_dwell) ... ok
+test_separate_camera_budget_and_status_only_actions (__main__.DynamicsTests.test_separate_camera_budget_and_status_only_actions) ... ok
+test_terrain_hysteresis_and_different_traction (__main__.DynamicsTests.test_terrain_hysteresis_and_different_traction) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 12.557s
+
+OK
+test_engine_mcp_metadata_and_string_arguments (__main__.AuditTests.test_engine_mcp_metadata_and_string_arguments) ... ok
+test_ledger_is_an_ordered_subsequence (__main__.AuditTests.test_ledger_is_an_ordered_subsequence) ... ok
+test_legitimate_read_only_and_discovery_tools (__main__.AuditTests.test_legitimate_read_only_and_discovery_tools) ... ok
+test_other_mcp_servers_cannot_borrow_safe_names (__main__.AuditTests.test_other_mcp_servers_cannot_borrow_safe_names) ... ok
+test_unknown_and_executable_tools_fail_closed (__main__.AuditTests.test_unknown_and_executable_tools_fail_closed) ... ok
+test_actuator_drift_fails_even_when_all_counters_match (__main__.ReplayTests.test_actuator_drift_fails_even_when_all_counters_match) ... ok
+test_early_drift_fails_even_when_final_state_would_match (__main__.ReplayTests.test_early_drift_fails_even_when_final_state_would_match) ... ok
+test_error_event_fingerprint_is_checked (__main__.ReplayTests.test_error_event_fingerprint_is_checked) ... ok
+test_existing_counter_check_still_fails_as_task_error (__main__.ReplayTests.test_existing_counter_check_still_fails_as_task_error) ... ok
+test_ledger_fingerprint_requires_world_support (__main__.ReplayTests.test_ledger_fingerprint_requires_world_support) ... ok
+test_legacy_world_without_fingerprints (__main__.ReplayTests.test_legacy_world_without_fingerprints) ... ok
+test_matching_event_fingerprints_including_error (__main__.ReplayTests.test_matching_event_fingerprints_including_error) ... ok
+test_matching_fingerprint_with_observation_and_error (__main__.ReplayTests.test_matching_fingerprint_with_observation_and_error) ... ok
+test_missing_fingerprint_is_not_silently_accepted (__main__.ReplayTests.test_missing_fingerprint_is_not_silently_accepted) ... ok
+test_new_version_cannot_opt_out_of_fingerprints (__main__.ReplayTests.test_new_version_cannot_opt_out_of_fingerprints) ... ok
+test_null_event_fingerprint_fails (__main__.ReplayTests.test_null_event_fingerprint_fails) ... ok
+test_null_fingerprint_is_not_silently_accepted (__main__.ReplayTests.test_null_fingerprint_is_not_silently_accepted) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.003s
+
+OK
+test_failed_first_seed_does_not_abort_fixed_cohort (__main__.ReferenceTests.test_failed_first_seed_does_not_abort_fixed_cohort) ... ok
+test_keyboard_interrupt_is_not_swallowed (__main__.ReferenceTests.test_keyboard_interrupt_is_not_swallowed) ... ok
+test_replay_system_exit_is_persisted_as_failure (__main__.ReferenceTests.test_replay_system_exit_is_persisted_as_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.087s
+
+OK
+all v4 checks passed

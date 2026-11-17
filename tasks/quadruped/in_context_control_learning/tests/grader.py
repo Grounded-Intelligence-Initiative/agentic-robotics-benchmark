@@ -9,6 +9,9 @@ What the grader reads:
 It replays the ledger's requests against the scene the ledger names (a scene of the hidden set) and scores the
 replayed episode: reward = (deliveries reached / 6) / anchor / full_at, clamped to [0, 1]. A replay that disagrees with
 the service's own record is an environment failure (task error), never the agent's low score.
+
+The author oracle reconstructs a private mirror from solution-only metadata. The
+service has no privileged operation, token or ground-truth response.
 """
 import json
 import os
@@ -80,7 +83,7 @@ def main():
         write_verdict(zero_verdict("no interaction", anchored=anchor is not None, extra=extra))
         return
     metrics = replay(state)
-    for key in ("delivered", "steps", "collisions"):
+    for key in ("delivered", "steps", "frames", "collisions"):
         require(metrics[key] == state["metrics"][key],
                 f"replayed {key} {metrics[key]} differs from the service's {state['metrics'][key]}; "
                 "an environment failure, not an agent result")

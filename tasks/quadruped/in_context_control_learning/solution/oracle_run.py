@@ -1,4 +1,4 @@
-"""PRIVILEGED v3 engine oracle. NOT an image-only participant solution.
+"""PRIVILEGED v4 engine oracle. NOT an image-only participant solution.
 
 ALE stages solution/ only for its oracle harness. An exact initial-frame key
 selects author-only seed metadata, then a private world mirrors ordinary socket
@@ -43,7 +43,7 @@ def main():
         session.events.append({"method": "observe", "params": {}, "frame_id": world.frame_id,
                                "steps": 0, "delivered": 0, "state_fingerprint": world.state_fingerprint()})
         Controller(world, session.call).solve()
-        print(json.dumps({"reference": "PRIVILEGED v3; not image-only", **world.metrics(),
+        print(json.dumps({"reference": "PRIVILEGED v4; not image-only", **world.metrics(),
                           "requests": len(session.events)}), flush=True)
     finally:
         world.close()

@@ -47,7 +47,7 @@ class FakeController:
 
 
 world = types.ModuleType("world")
-world.KIND, world.VERSION, world.World = "icl", 3, FakeWorld
+world.KIND, world.VERSION, world.World = "icl", 4, FakeWorld
 privileged = types.ModuleType("privileged")
 privileged.Controller, privileged.Session = FakeController, FakeSession
 grader = types.ModuleType("grader")

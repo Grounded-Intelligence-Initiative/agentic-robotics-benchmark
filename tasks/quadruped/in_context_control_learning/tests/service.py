@@ -28,12 +28,12 @@ def dispatch(world, method, params):
 
 
 class Runtime:
-    def __init__(self, directory, seed, scene_index):
+    def __init__(self, directory, seed, scene_index, render=True):
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, mode=0o700, exist_ok=True)
         os.chmod(self.directory, 0o700)
         self.seed, self.scene_index = int(seed), int(scene_index)
-        self.world = World(self.seed)
+        self.world = World(self.seed, render=render)
         self.count = 0
         self.events = []
         (self.directory/"frames").mkdir(exist_ok=True, mode=0o700)

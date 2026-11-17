@@ -1,4 +1,4 @@
-"""Trusted v3 delivery bay: onboard vision and force-driven planar pose docking.
+"""Trusted v4 delivery bay: onboard vision and force-driven planar pose docking.
 
 The Go1 meshes are visual only, NOT a gait simulation. Three MuJoCo coordinates
 (x, y, yaw), bounded body-frame forces, actuator lag and surface-dependent lateral
@@ -26,11 +26,12 @@ from scene_assets import decorate
 from pbr_renderer import Renderer
 
 KIND = "icl"
-VERSION = 3
+VERSION = 4
 DELIVERIES = 6
 LOAD_AFTER = 3            # the load goes on when the agent advances from this delivery point
 ACTION_LIMIT = 500        # button presses per episode
-REQUEST_LIMIT = 560       # service requests per episode (observe, act and advance together)
+FRAME_LIMIT = 120         # separately requested camera observations
+REQUEST_LIMIT = 660       # service requests per episode (observe, act and advance together)
 DT = .01
 DEFAULT_FRAMES = 30
 MAX_FRAMES = 120
@@ -96,7 +97,7 @@ class Scene:
         self.speeds = {"forward": forward, "backward": forward*float(rng.uniform(.55, .75)),
                        "left": float(rng.uniform(.7, .95)), "right": float(rng.uniform(.7, .95))}
         # The permutation is unknown but fixed for the entire episode, including
-        # loading. Retain v2's random draws to preserve its registered geometry.
+        # loading. Retain the registered random draw order for layout generation.
         self.mapping = [MOTIONS[i] for i in rng.permutation(4)]
         self.load = float(rng.uniform(.6, .75))
         turn = float(rng.uniform(math.radians(60), math.pi))*(1 if rng.uniform() < .5 else -1)
@@ -227,6 +228,12 @@ class World:
         xml += "</worldbody></mujoco>"
         xml = decorate(xml, KIND, .15, seed=s.seed ^ 0x72B49A)
         root = ET.fromstring(xml)
+        # Preserve round2's near-plane fix: MuJoCo scales znear by model extent.
+        visual = root.find("visual")
+        mapping = visual.find("map")
+        if mapping is None:
+            mapping = ET.SubElement(visual, "map")
+        mapping.set("znear", "0.0006")
         # There is no global camera, even in the compiled model.
         for camera in list(root.find("worldbody").findall("camera")):
             root.find("worldbody").remove(camera)
@@ -254,8 +261,8 @@ class World:
         """Private replay attestation, never an observation or service operation.
 
         Include MuJoCo's complete integration state (including warm starts),
-        model mutations and every history-dependent task variable. Frame IDs are
-        request bookkeeping, deliberately excluded: observation freezes physics.
+        model mutations, camera consumption and every history-dependent task
+        variable. Observation changes its counter, but never advances physics.
         """
         spec = mujoco.mjtState.mjSTATE_INTEGRATION
         state = np.empty(mujoco.mj_stateSize(self.model, spec))
@@ -265,7 +272,8 @@ class World:
                    "body_pos": self.model.body_pos.tolist(), "body_quat": self.model.body_quat.tolist(),
                    "response": vars(self.response), "loaded": self.loaded, "current": self.current,
                    "delivered": self.delivered, "dock_armed": self.dock_armed, "dock_frames": self.dock_frames,
-                   "steps": self.steps, "physics_frames": self.physics_frames, "done": self.done,
+                   "steps": self.steps, "frames": self.frame_id,
+                   "physics_frames": self.physics_frames, "done": self.done,
                    "contacts": sorted(self._contacts), "collisions": self.collisions,
                    "reached_at_steps": self.reached_at_steps}
         return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":"),
@@ -282,9 +290,12 @@ class World:
         return {"frame_id": self.frame_id, "delivery": self.current+1, "deliveries": DELIVERIES,
                 "delivered": self.delivered, "goal_reached": self.delivered > self.current,
                 "loaded": self.loaded,
-                "steps_remaining": max(0, ACTION_LIMIT-self.steps), "done": self.done}
+                "steps_remaining": max(0, ACTION_LIMIT-self.steps),
+                "frames_remaining": max(0, FRAME_LIMIT-self.frame_id), "done": self.done}
 
     def observe(self):
+        if self.frame_id >= FRAME_LIMIT:
+            raise ValueError("camera frame budget exhausted")
         self.frame_id += 1
         result = self.status()
         if self.render_enabled:
@@ -357,7 +368,7 @@ class World:
             self.update_docking()
         mujoco.mj_forward(self.model, self.data)
         self.done = bool(self.delivered == DELIVERIES or self.steps >= ACTION_LIMIT)
-        return self.observe()
+        return self.status()
 
     def advance(self):
         if self.done:
@@ -380,13 +391,14 @@ class World:
             mujoco.mj_setConst(self.model, self.data)
             self.data.qpos[:], self.data.qvel[:], self.data.time = qpos, qvel, time
         mujoco.mj_forward(self.model, self.data)
-        return self.observe()
+        return self.status()
 
     def metrics(self):
         legs = [b-a for a, b in zip([0]+self.reached_at_steps, self.reached_at_steps)]
         return {"delivered": self.delivered, "deliveries": DELIVERIES,
                 "delivered_fraction": self.delivered/DELIVERIES, "success": float(self.delivered == DELIVERIES),
-                "steps": self.steps, "collisions": self.collisions, "simulated_seconds": self.physics_frames*DT,
+                "steps": self.steps, "frames": self.frame_id, "collisions": self.collisions,
+                "simulated_seconds": self.physics_frames*DT,
                 **{f"leg_{i+1}_actions": n for i, n in enumerate(legs)}}
 
     def close(self):

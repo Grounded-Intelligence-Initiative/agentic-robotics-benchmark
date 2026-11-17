@@ -1,9 +1,9 @@
-# PRIVILEGED v3 Feasibility Reference
+# PRIVILEGED v4 Feasibility Reference
 
 `solve.sh` runs `oracle_run.py`. This is deliberately privileged author code,
 not an image-only policy and not evidence of model difficulty. It reads hidden
 scene metadata and exact dynamic state from an oracle-only mirror. The user
-expressly authorized this distinction for the v3 feasibility proof.
+expressly authorized this distinction for the v4 feasibility proof.
 
 The pinned ALE engine uploads `solution/` only when the selected harness is
 `oracle` (`episode_protocol.py`, `_run_agent`/`_upload_oracle`). None of this
@@ -34,14 +34,20 @@ actual root-owned service, unprivileged oracle process and separate replay.
 oracle directory, never in participant payload. Runtime/private/test copy parity
 must hold after every dynamics or renderer change.
 
-## Historical v2 Policy
+## Historical References
 
-`policy.py` and `coordinates.py` are retained as historical v2 image-only code.
-They require the removed calibrated ceiling view and fixed-heading translation
-model; they are obsolete for v3 and are not invoked by `solve.sh`. The v2 24/24,
-development and baseline measurements in `tests/review/hidden_set/selection.jsonl`
-and `baselines.jsonl` do not measure v3. Do not cite them as v3 feasibility or
-difficulty evidence. The hidden seed files are frozen and must not be reselected.
+The round2 image-only reference, privileged token reference, selection, baseline
+and margin evidence are archived byte-for-byte under
+`tests/review/legacy/round2-8b7195d/`. They are NOT current entrypoints or v4
+evidence. Round2's image policy relies on removed compass/coordinate outputs;
+its token-based truth service is deliberately absent from v4. The earlier ceiling
+policy remains in git history. No current image-only success claim is made.
+
+The round2 hidden 24 seeds, all 40 candidates and their order are preserved
+exactly, with no selection based on v4 results. The v3 checkpoint evidence uses
+the previous seed set and cannot establish v4 feasibility. The oracle consumes
+one of the 120 separately budgeted camera observations; its subsequent act and
+advance replies contain status only. All ordinary requests count toward 660.
 
 The Go1 meshes and pinned visual assets are preserved. Dynamics are a force-driven
 planar base with yaw, inertia and slip, not articulated locomotion or actual gait.

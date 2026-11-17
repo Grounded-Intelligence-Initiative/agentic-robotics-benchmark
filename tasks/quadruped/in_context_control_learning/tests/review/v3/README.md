@@ -119,3 +119,8 @@ or score-below-0.5 claim is made. The exact image-key manifest was verified on
 the pinned renderer/image on koa04; a different software rendering stack must
 regenerate all keys (unknown images fail closed). There is no working v3
 image-only scripted solver, and no claim of articulated gait or hardware fidelity.
+# Historical Checkpoint Only
+
+This directory records the pre-round2-integration v3 checkpoint on the former
+hidden set. It is not v4 evidence. Current seeds come unchanged from `8b7195d`;
+current feasibility receipts belong in `../v4/`.

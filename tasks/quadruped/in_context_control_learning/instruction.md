@@ -7,7 +7,7 @@ realistic Go1 visual meshes, NOT simulated articulated walking gait.
 
 ## Observation and Bay
 
-Each reply includes one 384 x 384 RGB perspective image from a camera rigidly
+Each `robot_observe` reply includes one 384 x 384 RGB perspective image from a camera rigidly
 mounted on the robot, 0.88 m above the floor and 0.12 m behind its centre. It looks
 forward and 35 degrees down with a 100-degree vertical field of view. The view
 turns and translates with the body. There is no overhead view, global pixel-to-map
@@ -96,15 +96,18 @@ dock ends the episode. Earlier successful docks retain their partial credit.
 
 ## Tools and Limits
 
-- `robot_observe`: image and status without advancing physics.
-- `robot_act`: one button held for the specified frames, then image and status.
-- `robot_advance`: activate the next dock, only after reaching the current one.
+- `robot_observe`: image and status without advancing physics; costs one camera frame.
+- `robot_act`: one button held for the specified physics ticks, then status only (no image).
+- `robot_advance`: activate the next dock after reaching the current one; status only.
 
 Public status contains `frame_id`, `delivery`, `deliveries`, `delivered`,
-`goal_reached`, `loaded`, `steps_remaining`, `requests_remaining` and `done`.
-There is no reset. Limits remain 500 button presses, 560 total service requests
-(including invalid requests), and 3 hours of wall-clock time. Longer presses do
-not cost extra presses, but give less frequent feedback.
+`goal_reached`, `loaded`, `steps_remaining`, `frames_remaining`, `requests_remaining`
+and `done`. `frame_id` counts camera observations, not physics ticks.
+There is no reset. Limits are 500 button presses, 120 camera observations,
+660 total service requests (including invalid requests), and 6 hours of wall-clock
+time. The `frames` argument of `robot_act` counts physics ticks, not camera images;
+longer presses do not cost extra presses or camera frames. After camera exhaustion,
+actions and advances remain available within their other budgets.
 
 ## Direct-Control Rules and Scoring
 

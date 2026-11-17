@@ -13,6 +13,7 @@ import mujoco
 import numpy as np
 from service import dispatch
 from world import (ANGLE_RELEASE, ANGLE_TOLERANCE, DOCK_FRAMES, GOAL_RELEASE, GOAL_TOLERANCE,
+                   ACTION_LIMIT, FRAME_LIMIT, REQUEST_LIMIT, VERSION,
                    LOAD_AFTER, STOP_SPEED, STOP_YAW, Scene, World)
 
 
@@ -52,6 +53,7 @@ class DynamicsTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 dispatch(self.w, "act", params)
         for method, params in (("truth", {}), ("reset", {}), ("observe", {"camera": "top"}),
+                               ("unlock", {"token": "anything"}), ("unlock", {"token_sha256": "anything"}),
                                ("act", {"action": [0], "seed": 1})):
             with self.assertRaises(ValueError):
                 dispatch(self.w, method, params)
@@ -63,12 +65,43 @@ class DynamicsTests(unittest.TestCase):
         self.assertEqual(int(self.w.model.cam_bodyid[0]), self.w.agent_id)
         self.assertEqual(self.w.model.cam_projection[0], mujoco.mjtProjection.mjPROJ_PERSPECTIVE)
         self.assertEqual(float(self.w.model.cam_fovy[0]), 100.)
-        keys = {"frame_id", "delivery", "deliveries", "delivered", "goal_reached", "loaded", "steps_remaining", "done"}
+        self.assertAlmostEqual(float(self.w.model.vis.map.znear), .0006, places=8)
+        keys = {"frame_id", "delivery", "deliveries", "delivered", "goal_reached", "loaded",
+                "steps_remaining", "frames_remaining", "done"}
         self.assertEqual(set(self.w.observe()), keys)
+        spec = mujoco.mjtState.mjSTATE_INTEGRATION
+        state = np.empty(mujoco.mj_stateSize(self.w.model, spec))
+        mujoco.mj_getState(self.w.model, self.w.data, state, spec)
+        response = replace(self.w.response)
+        docking = (self.w.dock_armed, self.w.dock_frames)
         before = self.w.state_fingerprint()
         for _ in range(10):
             self.w.observe()
-        self.assertEqual(before, self.w.state_fingerprint())
+        after = np.empty_like(state)
+        mujoco.mj_getState(self.w.model, self.w.data, after, spec)
+        np.testing.assert_array_equal(state, after)
+        self.assertEqual(response, self.w.response)
+        self.assertEqual(docking, (self.w.dock_armed, self.w.dock_frames))
+        self.assertNotEqual(before, self.w.state_fingerprint(), "camera accounting must be attested")
+
+    def test_separate_camera_budget_and_status_only_actions(self):
+        self.assertEqual((VERSION, ACTION_LIMIT, FRAME_LIMIT, REQUEST_LIMIT), (4, 500, 120, 660))
+        # A sentinel renderer makes an accidental automatic image fail even headlessly.
+        self.w.render_enabled = True
+        self.w.image = lambda: self.fail("act/advance must not render")
+        self.assertNotIn("images", self.act("brake", 1))
+        self.w.delivered = 1
+        self.assertNotIn("images", self.w.advance())
+        self.assertEqual(self.w.frame_id, 0)
+        self.w.render_enabled = False
+        for n in range(FRAME_LIMIT):
+            self.assertEqual(self.w.observe()["frames_remaining"], FRAME_LIMIT-n-1)
+        fingerprint = self.w.state_fingerprint()
+        with self.assertRaisesRegex(ValueError, "camera frame budget exhausted"):
+            self.w.observe()
+        self.assertEqual(self.w.state_fingerprint(), fingerprint)
+        self.assertEqual(self.act("brake", 1)["frames_remaining"], 0)
+        self.assertEqual(self.w.metrics()["frames"], FRAME_LIMIT)
 
     def test_force_integration_and_history(self):
         self.pose()
@@ -181,7 +214,8 @@ class DynamicsTests(unittest.TestCase):
     def test_fingerprint_covers_hidden_memory(self):
         for obj, field, value in ((self.w, "dock_armed", True), (self.w, "dock_frames", 1),
                                   (self.w.response, "drive", .1), (self.w.response, "turn", .1),
-                                  (self.w.response, "terrain", 1), (self.w, "loaded", True)):
+                                  (self.w.response, "terrain", 1), (self.w, "loaded", True),
+                                  (self.w, "frame_id", 1)):
             old = getattr(obj, field)
             before = self.w.state_fingerprint()
             setattr(obj, field, value)

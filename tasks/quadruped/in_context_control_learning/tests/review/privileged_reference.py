@@ -1,4 +1,4 @@
-"""AUTHOR-ONLY v3 feasibility runs, on the remote CPU pool, never a participant tool.
+"""AUTHOR-ONLY v4 feasibility runs, on the remote CPU pool, never a participant tool.
 
 --all-hidden uses every frozen seed in its registered order, without selection.
 Every run writes its ledger, metrics, replay result and source digest, including
@@ -44,7 +44,7 @@ def run(seed, index, output, render=False):
         # Grader require() raises SystemExit for replay divergence. Record that
         # failed seed and continue the fixed cohort; do not swallow interrupts.
         error = (error or "")+f" replay: {type(exc).__name__}: {exc}"
-    row = {"label": "PRIVILEGED v3 feasibility, not image-only or frontier evidence", "seed": seed,
+    row = {"label": "PRIVILEGED v4 feasibility, not image-only or frontier evidence", "seed": seed,
            "scene_index": index, **ledger["metrics"], "requests": len(session.events),
            "replay_ok": replay_ok, "error": error, "wall_seconds": time.monotonic()-start}
     (output/f"{seed}.result.json").write_text(json.dumps(row, indent=2)+"\n")
