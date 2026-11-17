@@ -373,7 +373,7 @@ the wheel held by the arm and pushed along the hub's axle at 10 mm/s:
 ## Safety
 
 * **Violations.** Two things are safety violations: a robot link other than the gripper's four pad boxes pressing with
-  more than 30 N on the chassis, a fixture, the bench or a unit (the normal forces of that link on that body
+  more than 150 N on the chassis, a fixture, the bench or a unit (the normal forces of that link on that body
   summed); a unit pressed on the environment or on another unit with more than 150 N for 0.2 s (the normal forces
   summed per unit and body it presses on; the gripper's pads holding a unit do not count). The deck standoffs and the
   chassis brace are parts of the rigid chassis: a finger link, as opposed to a pad, that presses on them falls under

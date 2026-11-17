@@ -25,11 +25,12 @@ This grader:
      no training calls, size cap), the network audit (static: no networking import, no computed import, no started
      program; runtime: no outbound network activity while the program runs), the module imports under the run regime,
      >= 1 step call, no late write, no surviving process; per episode the safety rule (`safety_factor`, DESIGN v1.7:
-     an episode with a safety violation, i.e. hard_ok false: a robot link other than the gripper's four pad boxes > 30 N
-     on one body, or a unit pressed on the environment or another unit above 150 N for 0.2 s, keeps
-     grader_config.json scoring.safety_violation_factor of its stage score, one factor per episode however many
-     violations; the episode goes on; 0 = the rule of v1.0-v1.6, the episode zeroed); a unit off the bench or faster
-     than 3 m/s is only scrapped (it and what it carries count nothing);
+     an episode with a safety violation, i.e. hard_ok false: a robot link other than the gripper's four pad boxes
+     above the robot-contact limit grader_config.json safety.robot_force_N on one body (`contact_limit`; 150 N since
+     v1.8, 30 N in v1.0-v1.7; the cell's watch reads the same number), or a unit pressed on the environment or another
+     unit above 150 N for 0.2 s, keeps grader_config.json scoring.safety_violation_factor of its stage score, one
+     factor per episode however many violations; the episode goes on; 0 = the rule of v1.0-v1.6, the episode zeroed);
+     a unit off the bench or faster than 3 m/s is only scrapped (it and what it carries count nothing);
   4. the oracle token: submission/.oracle_token whose sha256 equals hidden/oracle_token.sha256 switches the cells to the
      privileged mode (the call `reference_assemble`; stat privileged_mode); a wrong token is ignored (stat
      oracle_token_mismatch); the privileged mode plays the same four hidden episodes (oracle_nominal_layout false);
@@ -632,6 +633,17 @@ def safety_factor(cfg):
     return float(v)
 
 
+def contact_limit(cfg):
+    """grader_config.json safety.robot_force_N: the robot-contact limit, N (a robot link other than the gripper's four pad
+    boxes pressing on one body harder than this is a safety violation; the cell's watch takes it from the same key,
+    CarInfoServer.cell_config). A finite number > 0, else a task error; 150 since v1.8 (the owner's decision of
+    2026-11-17), 30 in v1.0-v1.7."""
+    v = (cfg.get("safety") or {}).get("robot_force_N")
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(float(v)) or not float(v) > 0.0:
+        fail("grader_config.json safety.robot_force_N must be a finite number > 0")
+    return float(v)
+
+
 def episode_values(agent, factor):
     """the scored value of each episode summary: its stage score, times `factor` when the episode broke a hard rule
     (hard_ok false; one factor however many violations)"""
@@ -737,6 +749,8 @@ def _main_locked(cfg, rewards, metrics, guard_dir):
     metrics["hidden_set_episodes"] = float(len(episodes))
     factor = safety_factor(cfg)
     metrics["safety_violation_factor"] = factor
+    limit = contact_limit(cfg)
+    metrics["robot_contact_limit_N"] = limit
     gt_files, gt_s, gt_source = fetch_hidden_gt(cfg)
     metrics["hidden_gt_files"] = float(gt_files)
     metrics["hidden_gt_fetch_s"] = float(gt_s)
@@ -787,8 +801,8 @@ def _main_locked(cfg, rewards, metrics, guard_dir):
         for ck, cv in (s_a.get("net_delta") or {}).items():
             metrics["net_" + ck] = metrics.get("net_" + ck, 0.0) + float(max(0, cv))
     vals = episode_values(agent, factor)
-    log("[grader] safety rule: factor %s (an episode with a safety violation keeps that share of its stage score); "
-        "scored per episode %s" % ("%.10g" % factor, ["%.4f" % v for v in vals]))
+    log("[grader] safety rule: robot-contact limit %s N, factor %s (an episode with a safety violation keeps that share of "
+        "its stage score); scored per episode %s" % ("%.10g" % limit, "%.10g" % factor, ["%.4f" % v for v in vals]))
     for s_a, v in zip(agent, vals):
         s_a["episode_value"] = v                     # the record (out/episodes.json): the episode's scored value
     steps_gate = 1.0 if step_calls > 0 else 0.0

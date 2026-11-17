@@ -124,8 +124,9 @@ DEFAULT_CAR_CONFIG = {
     "max_ticks_per_step": 500,
     "camera_budget_frames": 450,
     "settle_s": 1.0,
-    # the cell's watch (cell.py "watch"): the two hard rules and the scrap rule
-    "safety": {"robot_force_N": 30.0, "part_speed_m_s": 3.0},
+    # the cell's watch (cell.py "watch"): the two hard rules and the scrap rule; the robot-contact limit is the cell's own
+    # default (grader_config.json safety.robot_force_N is the same number)
+    "safety": {"robot_force_N": CELL_CONFIG["watch"]["robot_force_N"], "part_speed_m_s": 3.0},
     "damage": {"part_force_N": 150.0, "ticks": 20},
     "scrap": {"below_bench_m": 0.05},
     "photo": json.loads(json.dumps(DEFAULT_INFO_CONFIG["photo"])),

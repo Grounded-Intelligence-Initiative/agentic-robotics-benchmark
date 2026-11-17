@@ -75,7 +75,7 @@ written after your session ended. The code check is static: it parses your `.py`
 a method of the same name, such as MuJoCo's `spec.compile()`, is fine.
 
 Per episode, two things are safety violations: a robot link other than the gripper's four pad boxes pressing with more
-than 30 N on the chassis, a fixture, the bench or a unit; and a unit pressed on the environment or on another unit
+than 150 N on the chassis, a fixture, the bench or a unit; and a unit pressed on the environment or on another unit
 with more than 150 N for 0.2 s. A safety violation does not end the episode, but an episode with one keeps only
 30 % of its score. One violation or several: the episode keeps the same 30 %. A dropped unit is not a safety
 violation: a loose unit whose centre of mass moves faster than 3 m/s, or that falls off the bench, is scrapped. It

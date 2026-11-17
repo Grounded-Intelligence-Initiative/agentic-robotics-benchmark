@@ -95,7 +95,7 @@
  "safety": {
   "note": "robot_force_N: a robot link other than the gripper's pads pressing harder than this is a safety violation (see scoring.safety_violation_factor); part_speed_m_s: a loose unit faster than this, or off the bench, is scrapped (it no longer counts; the episode goes on)",
   "part_speed_m_s": 3.0,
-  "robot_force_N": 30.0
+  "robot_force_N": 150.0
  },
  "scope": {
   "note": "premounted: places the cell fastens itself before the episode starts; none in this version",

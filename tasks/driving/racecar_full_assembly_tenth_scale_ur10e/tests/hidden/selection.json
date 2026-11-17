@@ -6727,6 +6727,129 @@
     "tests/review/select_set.py": "6b6848f08145e40b4f47e4c045e0d3bc5e13594bdd6805728ebdf5bc72a651da"
    },
    "reselection": "none: no redraw, no new candidate, the kept episodes and episodes.json unchanged"
+  },
+  {
+   "id": "A3",
+   "date": "2026-11-17",
+   "written_utc": "2026-11-17T18:22:36Z",
+   "authority": "the owner's decision of 2026-11-17, relayed by the task's lead (the main session): the robot-contact limit of 30 N was inherited from the first assembly task without a derivation for this car; it becomes 150 N, the force at which an arm of this class stops itself by default, so that the rule means a contact at which the real robot would have stopped (task version v1.8, DESIGN section 19.0d); the unit-pressed rule, the factor 0.3, the gates, weights, aggregation, anchor, the hidden episodes, the kit, the cell physics and the reference program unchanged; no reselection",
+   "amends": "rule 1 (Freeze) of rule_text as amended by A1 (2026-11-15) and A2 (2026-11-16)",
+   "rule": "Rule 1 as amended by A1 and A2 stays in force. In addition: a dated decision of the owner that changes only the threshold of a safety rule of the cell's watch (here the robot-contact limit, grader_config.json safety.robot_force_N) re-enters the frozen table under a new amendment instead of a redraw, with the lines that carry the same number as the cell's and the server's defaults, the grader's reading and record of it (verify.py), and the strings, docstrings and comments that state it, when (a) every other entry of the table in force is unchanged; (b) inside the frozen trees no line outside a comment changes unless it carries the threshold, and no file of the cell's physics, layout, kit loading or reference program changes otherwise; (c) every episode's layout digest is still recomputed at every reset and equals episodes.json in the validates that follow; (d) the reference program's per-episode outcome on the four episodes is reproduced (validate comparison: the same grader lines and per-mate lines); (e) the selection's own criteria for the reference program hold under the new threshold. The table in force is this amendment's from its writing. A change of anything else in the table still means a new draw (select_set.py draw --supersedes).",
+   "why": "the files that carry the limit are frozen as wholes: grader_config.json by its values, verify.py by its bytes, tests/arm as a tree; the new limit changes bytes in all three, yet a threshold of the watch enters no episode's physics or layout, only which contacts are recorded as violations. The selection's keep rule for the reference program (rule 4 as drawn: 8 / 8 in all three environments, no unplanned contact, the episode hard_ok with no robot link above 30 N and no sustained part force above 150 N, the largest sustained force below 150 N) used a robot-contact limit of 30 N, which is stricter than 150 N: every candidate that met it meets the new limit, every candidate keeps its outcome, and nothing is reselected; the reference program's robot links press on nothing in the recorded runs (0 N), so the set that the four episodes are, and every outcome the reference program reaches on them, stay valid under 150 N as under 30 N. The limit is one number (grader_config.json safety.robot_force_N), from which the cell's watch, describe(), cell_config.json and every agent-visible text take it; the cell's default (arm/assembly_car/cell.py) is the same number",
+   "checked_at_writing": {
+    "before_change": {
+     "tool_check_json": "/data/xiatao/tmp/driving_roboracer_20261113/asm/V18/pre/freeze_status_pre.json",
+     "table": "amendment A2 (2026-11-16)",
+     "frozen_ok": true,
+     "episodes_is_the_set": true,
+     "recorded_changed": [],
+     "snapshot": "/data/xiatao/tmp/driving_roboracer_20261113/asm/V18/pre/task_body_v17",
+     "snapshot_entries_as_A2": true
+    },
+    "after_change": {
+     "files_unchanged": 9,
+     "trees_unchanged": 5,
+     "changed": {
+      "tests/grader_config.json#values": [
+       "babe05cd691e8d9f467c5d49be5d9374d833f482827519be8db042f4100b4ea1",
+       "103fd837d0ffe22b2e2232d41d810b1708fce98231c72476cd0a7c6d41f19670"
+      ],
+      "tests/verify.py": [
+       "af0e162d8f920a44098b7021c252ab2768544b9e566ee37b75492d3204e026a1",
+       "0a316cb903c2ff01188568388f02030cfe82328f112f0c5d800c39d74378170d"
+      ]
+     },
+     "changed_trees": {
+      "tests/arm": [
+       "18a3e39928b59d64199926f60eb4971ae395dab2bd30c61a09e56e9ce988bfb9",
+       "48970f81acee564097eaa4b26404decba646c6d77f71cb8be0b8d16a9f182b94"
+      ]
+     },
+     "tests_arm_files_changed": [
+      "assembly_car/cell.py",
+      "assembly_car/server.py"
+     ],
+     "tests_arm_lines_other_than_the_limit_and_comments": 0,
+     "grader_config_keys_changed": [
+      "safety.note",
+      "safety.robot_force_N"
+     ],
+     "robot_force_N": [
+      30.0,
+      150.0
+     ],
+     "kit_members_as_A2": true
+    },
+    "episodes_sha256_is_the_set": true,
+    "selection_json_sha256_before": "266ab748fd59b5c2014f9b7c38b9519ba9300126f005c83ac9e175b267253b7e"
+   },
+   "frozen": {
+    "tests/verify.py": "0a316cb903c2ff01188568388f02030cfe82328f112f0c5d800c39d74378170d",
+    "tests/test.sh": "a3ae37dc3edaebb7da88837f221c31ac9878f7a7523ec395d7c074781aec851e",
+    "tests/netguard.py": "80747b83b161c1495a4d0ccfae439188e3c42c94c0e41bc518f2d530170a64d7",
+    "tests/episode_trace.py": "e55c7b8004c9d7819fb3f8e9daf1204338a689e027503943d00055d9a2554632",
+    "tests/hidden/bench_plan.json": "c9cbb3416fee393341baa33ecdf65b5ac53fc9f1b23cb55fd6cb973e989563d1",
+    "tests/hidden/oracle_token.sha256": "c815e5d3326fa8b94f4f004247d919d490ac7abdd0ad9ab830d5822597d76d74",
+    "solution/solve.sh": "c7a4ab9ce55396ecd0180fb72d027a2500a17a4005f7fd12cdceb09005a46681",
+    "solution/reference/assemble.py": "84c9cda5733fdc6100afe18c6ec334d1c0569461206fc7c929cbb6d21f8d2cf2",
+    "solution/reference/oracle_token": "c7c89fd14f9af6e7aa65136e212391e93c4eb3785bc99f390b303094f549dcdf",
+    "tests/grader_config.json#values": "103fd837d0ffe22b2e2232d41d810b1708fce98231c72476cd0a7c6d41f19670",
+    "tests/assets/gt.tar.xz#members": "bbc2b4b934b229e219bd83c5c696e16698fe576f22cc63f9df875d938437bbf4"
+   },
+   "frozen_counts": {
+    "tests/assets/gt.tar.xz#members": 14620
+   },
+   "frozen_trees": {
+    "tests/arm": "48970f81acee564097eaa4b26404decba646c6d77f71cb8be0b8d16a9f182b94",
+    "tests/common": "c72b609d5891112e376876f1881a64e8323bb680a8c492ce145663537b94b8ed",
+    "tests/render": "08473c0de3ee3a06a8788493c3b9eff78c25e4151a635cc20f77208031bc7161",
+    "tests/render_filament": "09c41d7777d46d87e462291f48186c6cde3eef26976242c128ec41c95c66a5da",
+    "tests/room": "026fbf2d79c4b5865684642e5da1ccbd3b7af962e59bb6e68f8ee5bb2b53605f",
+    "environment/assets/payload/given/robot": "7229d7c5317852782159032ffd373a7b266749bc106c35ae0cc6c0697f55fde4"
+   },
+   "recorded": {
+    "publication": {
+     "tests/assets/gt.tar.xz": "328939c34609e9f9b9108da78f3e37249c1d311de60f0361ca11f2f8c5fff4f4",
+     "tests/grader_config.json#hidden_gt.url": "e3f2aabd1f46240118f8564537e5e830bbc4bff9229b74550d88a0c3d2af0385",
+     "tests/grader_config.json#hidden_gt.sha256": "7826a7d574e3595e764899fd24e63e67e256e0adc4bf71ce5801173853d2cd64",
+     "tests/grader_config.json#hidden_gt.note": "c7af77de6e4efde92e9326e3133c3c7e6379a0b6b3271599335d20d8809790eb"
+    },
+    "documents": {
+     "instruction.md": "085258f7c39009762aa404edc9677a3b2cce4364356911bce7ba0fe17805467d",
+     "environment/assets.sha256": "5732815792d60faf14335988184a331efddf29292a0c34a42eda59af1463aa81",
+     "tests/given_hashes.json": "22ec573b4aa4a399b3d4e757682694d034fa826af67a33a181be2416306c8503",
+     "environment/setup/payload/": "7ea8f96a252913736807186b18698d4bd8c0300c98285d524096bb2de913c131",
+     "environment/assets/payload/given/parts/": "cf7474fad80c23f25539d3a1f78b26e915466a88588ba8ef8263c4ad6dbff8e5",
+     "environment/assets/payload/given/drawings/": "dfece19a682cef21b9613a86c6cde01031573fe117cc4e13a087278a787d193c",
+     "environment/assets/payload/given/manual/": "963d5f2b2af8e26d01d9c1840adfaba50003b26cf83b90ac9212d659a113003e",
+     "environment/assets/payload/render/": "d25e9c225c66d9244a8b7a98bbb5056216e32bf16898b9f110fc8a9a3d6972ff",
+     "tests/setup_payload/": "7ea8f96a252913736807186b18698d4bd8c0300c98285d524096bb2de913c131"
+    }
+   },
+   "tool_at_writing": {
+    "tests/review/select_set.py": "6b6848f08145e40b4f47e4c045e0d3bc5e13594bdd6805728ebdf5bc72a651da"
+   },
+   "reselection": "none: no redraw, no new candidate, the kept episodes and episodes.json unchanged",
+   "corrections": [
+    {
+     "utc": "2026-11-17T21:21:16Z",
+     "field": "why",
+     "replaced": "The selection's criteria for the reference program (8 / 8 on every candidate in three environments, no unplanned contact, the largest sustained force below 150 N) do not use the robot-contact limit, and the reference program's robot links press on nothing in the recorded runs (0 N), so",
+     "with": "The selection's keep rule for the reference program (rule 4 as drawn: 8 / 8 in all three environments, no unplanned contact, the episode hard_ok with no robot link above 30 N and no sustained part force above 150 N, the largest sustained force below 150 N) used a robot-contact limit of 30 N, which is stricter than 150 N: every candidate that met it meets the new limit, every candidate keeps its outcome, and nothing is reselected; the reference program's robot links press on nothing in the recorded runs (0 N), so",
+     "reason": "the independent check of v1.8 (finding m5): the keep rule as drawn (rule 4 of rule_text) requires hard_ok with no robot link above 30 N, so the sentence that the criteria do not use the limit was wrong; the conclusion (no reselection) holds because 30 N is stricter than 150 N",
+     "checked": {
+      "table_in_force_before": "amendment A3 (2026-11-17)",
+      "frozen_ok_before": true,
+      "episodes_is_the_set_before": true,
+      "keep_clause_in_rule_text": "the episode is hard_ok (no robot link above 30 N, no sustained part force above 150 N)",
+      "candidate_runs": 36,
+      "candidate_runs_hard_ok_at_or_below_30_N": 36,
+      "largest_robot_link_force_N": 0.0,
+      "selection_json_sha256_before": "dbdbf5b55a6e08a88d2715d59f7c9f5bb1f09e70e4109c7b8321bafe3c7ac325"
+     },
+     "unchanged": "A3's written_utc, rule, frozen tables, recorded table and checks at writing; no reselection, no redraw"
+    }
+   ]
   }
  ],
  "recorded_changes": [
@@ -6994,6 +7117,51 @@
     "tests/review/select_set.py": "6b6848f08145e40b4f47e4c045e0d3bc5e13594bdd6805728ebdf5bc72a651da"
    },
    "frozen_checked": "amendment A2 (2026-11-16): unchanged"
+  },
+  {
+   "utc": "2026-11-17T18:22:55Z",
+   "why": "task version v1.8, the owner's decision of 2026-11-17: the robot-contact limit becomes 150 N (was 30 N, inherited from the first assembly task); the instruction, the cell manual and cell_config.json print the new figure, rebuilt by their generator from grader_config.json safety.robot_force_N (the frozen entries re-entered under amendment A3); no reselection",
+   "changed": {
+    "documents/environment/setup/payload/": [
+     "0afec855edea981fa6d0ffb4c763c26656d81fc35f09d3489e16164ee846502a",
+     "7ea8f96a252913736807186b18698d4bd8c0300c98285d524096bb2de913c131"
+    ],
+    "documents/instruction.md": [
+     "fcf25633704e252590e471aa2852a16eeec61793b85540d5dad6dac9efb691d6",
+     "085258f7c39009762aa404edc9677a3b2cce4364356911bce7ba0fe17805467d"
+    ],
+    "documents/tests/given_hashes.json": [
+     "01311343644d2bae7cc849d194bc272b43ce0ca0a4e2ee63c37c9c45e74913d0",
+     "22ec573b4aa4a399b3d4e757682694d034fa826af67a33a181be2416306c8503"
+    ],
+    "documents/tests/setup_payload/": [
+     "0afec855edea981fa6d0ffb4c763c26656d81fc35f09d3489e16164ee846502a",
+     "7ea8f96a252913736807186b18698d4bd8c0300c98285d524096bb2de913c131"
+    ]
+   },
+   "recorded": {
+    "publication": {
+     "tests/assets/gt.tar.xz": "328939c34609e9f9b9108da78f3e37249c1d311de60f0361ca11f2f8c5fff4f4",
+     "tests/grader_config.json#hidden_gt.url": "e3f2aabd1f46240118f8564537e5e830bbc4bff9229b74550d88a0c3d2af0385",
+     "tests/grader_config.json#hidden_gt.sha256": "7826a7d574e3595e764899fd24e63e67e256e0adc4bf71ce5801173853d2cd64",
+     "tests/grader_config.json#hidden_gt.note": "c7af77de6e4efde92e9326e3133c3c7e6379a0b6b3271599335d20d8809790eb"
+    },
+    "documents": {
+     "instruction.md": "085258f7c39009762aa404edc9677a3b2cce4364356911bce7ba0fe17805467d",
+     "environment/assets.sha256": "5732815792d60faf14335988184a331efddf29292a0c34a42eda59af1463aa81",
+     "tests/given_hashes.json": "22ec573b4aa4a399b3d4e757682694d034fa826af67a33a181be2416306c8503",
+     "environment/setup/payload/": "7ea8f96a252913736807186b18698d4bd8c0300c98285d524096bb2de913c131",
+     "environment/assets/payload/given/parts/": "cf7474fad80c23f25539d3a1f78b26e915466a88588ba8ef8263c4ad6dbff8e5",
+     "environment/assets/payload/given/drawings/": "dfece19a682cef21b9613a86c6cde01031573fe117cc4e13a087278a787d193c",
+     "environment/assets/payload/given/manual/": "963d5f2b2af8e26d01d9c1840adfaba50003b26cf83b90ac9212d659a113003e",
+     "environment/assets/payload/render/": "d25e9c225c66d9244a8b7a98bbb5056216e32bf16898b9f110fc8a9a3d6972ff",
+     "tests/setup_payload/": "7ea8f96a252913736807186b18698d4bd8c0300c98285d524096bb2de913c131"
+    }
+   },
+   "tools": {
+    "tests/review/select_set.py": "6b6848f08145e40b4f47e4c045e0d3bc5e13594bdd6805728ebdf5bc72a651da"
+   },
+   "frozen_checked": "amendment A3 (2026-11-17): unchanged"
   }
  ]
 }

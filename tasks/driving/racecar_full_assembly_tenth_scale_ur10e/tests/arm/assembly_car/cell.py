@@ -65,7 +65,9 @@ CELL_CONFIG = {
     "weld_solref": [0.002, 1.0], "weld_solimp": [0.99, 0.999, 0.001, 0.5, 2.0],
     # the coupling's constructor arguments (its defaults are the frozen values; the stop's clearance 0.1 mm)
     "coupling": {"stop_clear_m": 1e-4},
-    "watch": {"enabled": True, "robot_force_N": 30.0, "part_force_N": 150.0, "part_force_ticks": 20,
+    # robot_force_N: the robot-contact limit (the grader passes grader_config.json safety.robot_force_N, the same number;
+    # this default serves a cell built without the grader's configuration)
+    "watch": {"enabled": True, "robot_force_N": 150.0, "part_force_N": 150.0, "part_force_ticks": 20,
               "scrap_speed_m_s": 3.0, "scrap_below_bench_m": 0.05, "scrap": True},
     # the kit's collision geoms in group 3 (hidden); True: group 1 with colours (a kit without visual meshes)
     "show_collision": False,
@@ -517,7 +519,7 @@ class CarCell(object):
                 gp, go = (g1, g2) if c1 == 3 else (g2, g1)
                 key = (self.gunit[gp], m.body(int(m.geom_bodyid[go])).name)
                 part_sum[key] = part_sum.get(key, 0.0) + fn
-        # the 30 N rule: the normal forces of a robot link (not a pad) on one body, summed over their contacts
+        # the robot-contact rule (watch.robot_force_N): the normal forces of a robot link (not a pad) on one body, summed over their contacts
         for (lb, ob), fn in rob_sum.items():
             what = "%s:%s" % (m.body(lb).name, m.body(ob).name)
             if fn > self.max_robot_force:

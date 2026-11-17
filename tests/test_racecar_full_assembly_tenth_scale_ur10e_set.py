@@ -9,7 +9,10 @@ the set is frozen it holds four distinct seeds in [0, 2**63), one per stratum, t
 and nothing agent-visible (instruction.md, environment/) holds a value of the set or the token. The safety rule (v1.7,
 the owner's decision of 2026-11-16): an episode with a safety violation keeps grader_config.json
 scoring.safety_violation_factor of its stage score (one factor per episode), factor 0 is the earlier rule, and every
-agent-visible text that states the rule prints that factor and none says the episode is zeroed.
+agent-visible text that states the rule prints that factor and none says the episode is zeroed. The robot-contact limit
+(v1.8, the owner's decision of 2026-11-17): one number, grader_config.json safety.robot_force_N = 150 (was 30), which
+the grader checks and records, the cell's watch takes through the server, the cell's and the server's defaults repeat,
+and every agent-visible text prints.
 
 Stdlib only: the grader's set functions are taken from tests/verify.py by name (it imports numpy and MuJoCo at module
 level, which the host venv does not have). Tests that need the frozen set skip until it exists (the hidden-set package
@@ -324,6 +327,76 @@ class SafetyRule(unittest.TestCase):
                 self.assertNotIn(old, text, name)
         public = json.loads((given / "cell_config.json").read_text())
         self.assertEqual(public["scoring"]["safety_violation_factor"], self.factor)
+
+
+def _dict_entry(tree, var, key):
+    """the AST node of `var = {..., key: <node>, ...}` at module level"""
+    for n in tree.body:
+        if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == var for t in n.targets) and isinstance(n.value, ast.Dict):
+            for k, v in zip(n.value.keys, n.value.values):
+                if isinstance(k, ast.Constant) and k.value == key:
+                    return v
+    raise AssertionError("%s has no %r" % (var, key))
+
+
+class ContactLimit(unittest.TestCase):
+    """v1.8: the robot-contact limit is one number of the grader configuration, 150 N"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.g = _grader(["contact_limit"], consts=())
+        cls.limit = CONFIG["safety"]["robot_force_N"]
+        cls.fns = {n.name: n for n in ast.parse(VERIFY.read_text()).body if isinstance(n, ast.FunctionDef)}
+        cls.car = TESTS / "arm" / "assembly_car"
+
+    def test_the_limit_is_one_number_of_the_grader_configuration(self):
+        self.assertEqual(self.limit, 150.0)
+        self.assertEqual(self.g["contact_limit"](CONFIG), 150.0)
+        self.assertEqual(CONFIG["damage"]["part_force_N"], 150.0)        # the unit-pressed rule, unchanged
+        self.assertEqual(CONFIG["damage"]["ticks"], 20)
+
+    def test_a_bad_limit_is_a_task_error(self):
+        for bad in (None, 0, 0.0, -30.0, float("nan"), float("inf"), True, "150"):
+            cfg = {"safety": {}} if bad is None else {"safety": {"robot_force_N": bad}}
+            with self.assertRaises(TaskError, msg=repr(bad)):
+                self.g["contact_limit"](cfg)
+        for good in (30, 30.0, 150.0):
+            self.assertEqual(self.g["contact_limit"]({"safety": {"robot_force_N": good}}), float(good))
+
+    def test_the_grader_reads_and_records_it(self):
+        src = ast.unparse(self.fns["_main_locked"])
+        self.assertIn("limit = contact_limit(cfg)", src)
+        self.assertIn("metrics['robot_contact_limit_N'] = limit", src)
+        self.assertLess(src.index("contact_limit(cfg)"), src.index("contract_check("))
+
+    def test_the_cell_takes_it_from_the_configuration(self):
+        server = ast.parse((self.car / "server.py").read_text())
+        cls = [n for n in server.body if isinstance(n, ast.ClassDef) and n.name == "CarInfoServer"][0]
+        cc = ast.unparse([n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "cell_config"][0])
+        self.assertIn("'robot_force_N': float(c['safety']['robot_force_N'])", cc)
+        self.assertIn("float(W['robot_force_N'])", ast.unparse(ast.parse((self.car / "cell.py").read_text())))
+        desc = ast.unparse([n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "describe"][0])
+        self.assertIn("'robot_force_N': float(self.cfg['safety']['robot_force_N'])", desc)
+
+    def test_the_defaults_are_the_same_number(self):
+        watch = _dict_entry(ast.parse((self.car / "cell.py").read_text()), "CELL_CONFIG", "watch")
+        self.assertEqual(ast.literal_eval(watch)["robot_force_N"], self.limit)
+        safety = _dict_entry(ast.parse((self.car / "server.py").read_text()), "DEFAULT_CAR_CONFIG", "safety")
+        expr = {ast.literal_eval(k): ast.unparse(v) for k, v in zip(safety.keys, safety.values)}
+        self.assertEqual(expr["robot_force_N"], "CELL_CONFIG['watch']['robot_force_N']")
+
+    def test_the_agent_visible_texts_print_it(self):
+        given = TASK / "environment" / "setup" / "payload" / "given" / "cell"
+        flat = {name: " ".join(p.read_text().split()) for name, p in (("instruction.md", TASK / "instruction.md"),
+                                                                       ("cell_manual.md", given / "cell_manual.md"))}
+        rule = "a robot link other than the gripper's four pad boxes pressing with more than %.0f N on the chassis" % self.limit
+        for name, text in flat.items():
+            self.assertIn(rule, text, name)
+            self.assertNotIn("more than 30 N", text, name)
+        public = json.loads((given / "cell_config.json").read_text())
+        self.assertEqual(public["safety"]["robot_force_N"], self.limit)
+        copy = json.loads((TESTS / "setup_payload" / "given" / "cell" / "cell_config.json").read_text())
+        self.assertEqual(copy["safety"]["robot_force_N"], self.limit)
 
 
 class FrozenSet(unittest.TestCase):
