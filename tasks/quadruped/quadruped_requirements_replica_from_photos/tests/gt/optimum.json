@@ -6,7 +6,7 @@
    {
     "count": 4,
     "joint_type": "hip_roll",
-    "part_id": "WD-R52-48",
+    "part_id": "WD-R52-42",
     "role": "actuator"
    },
    {
@@ -37,35 +37,35 @@
     "role": "hub"
    }
   ],
-  "total_cost_usd": 1367.0
+  "total_cost_usd": 1343.0
  },
- "cost": 1367.0,
+ "cost": 1343.0,
  "family": "6S",
  "format": "quad-optimum/1",
  "items_util": {
-  "battery": 0.9451872665640733,
-  "budget": 0.8453927025355596,
-  "drivers": 0.8730147259634428,
-  "fl_hip_pitch": 0.9336961551219963,
-  "fl_hip_roll": 0.927231552854414,
-  "fl_knee": 0.9281537349194928,
-  "fr_hip_pitch": 0.9332038446875726,
-  "fr_hip_roll": 0.8938901370553816,
-  "fr_knee": 0.9257117007251673,
+  "battery": 0.9492995061881544,
+  "budget": 0.8451856513530522,
+  "drivers": 0.8580215256636585,
+  "fl_hip_pitch": 0.9357753913579131,
+  "fl_hip_roll": 0.927267471359955,
+  "fl_knee": 0.9159906706620372,
+  "fr_hip_pitch": 0.9556126521468379,
+  "fr_hip_roll": 0.8783944582731149,
+  "fr_knee": 0.9302103835283974,
   "hub": 1.0,
-  "rl_hip_pitch": 0.9353747183743256,
-  "rl_hip_roll": 0.8740323610952438,
-  "rl_knee": 0.4431324551068803,
-  "rr_hip_pitch": 0.9578489037863704,
-  "rr_hip_roll": 0.9514474051376176,
-  "rr_knee": 0.4477570328231661
+  "rl_hip_pitch": 0.9024003993381885,
+  "rl_hip_roll": 0.8483204648553162,
+  "rl_knee": 0.4675271429635857,
+  "rr_hip_pitch": 0.9325702998579469,
+  "rr_hip_roll": 0.9620564748000745,
+  "rr_knee": 0.4815863811632191
  },
- "knife_edge_min": 0.00021903058097172412,
+ "knife_edge_min": 0.00021116965072698335,
  "n_kept": {
   "hip_pitch": 4,
-  "hip_roll": 11,
+  "hip_roll": 12,
   "knee": 4
  },
- "n_leaves": 172,
+ "n_leaves": 193,
  "node_cap": 20000
 }

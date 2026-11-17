@@ -3,7 +3,7 @@
  "items": [
   {
    "band": "brief",
-   "bound": 2.202,
+   "bound": 1.657,
    "comparator": "<=",
    "id": "REQ-PAYLOAD-MAX",
    "quantity": "payload_mass_max",
@@ -15,7 +15,7 @@
   },
   {
    "band": "brief",
-   "bound": 1.66,
+   "bound": 1.34,
    "comparator": ">=",
    "id": "REQ-PAYLOAD-MIN",
    "quantity": "payload_mass_min",
@@ -37,7 +37,7 @@
   },
   {
    "band": "brief",
-   "bound": 0.283,
+   "bound": 0.262,
    "comparator": "==",
    "id": "REQ-STANCE-H",
    "quantity": "stance_height",
@@ -48,7 +48,7 @@
   },
   {
    "band": "brief",
-   "bound": 0.146,
+   "bound": 0.147,
    "comparator": "==",
    "id": "REQ-CROUCH-H",
    "quantity": "crouch_height",
@@ -70,7 +70,7 @@
   },
   {
    "band": "brief",
-   "bound": 0.122,
+   "bound": 0.138,
    "comparator": "==",
    "id": "REQ-STEP",
    "quantity": "step_length",
@@ -81,7 +81,7 @@
   },
   {
    "band": "brief",
-   "bound": 0.065,
+   "bound": 0.067,
    "comparator": "==",
    "id": "REQ-LIFT",
    "quantity": "swing_height",
@@ -92,7 +92,7 @@
   },
   {
    "band": "brief",
-   "bound": 0.88,
+   "bound": 0.95,
    "comparator": "<=",
    "id": "REQ-SHIFT-T",
    "quantity": "shift_time",
@@ -103,7 +103,7 @@
   },
   {
    "band": "brief",
-   "bound": 0.5,
+   "bound": 0.54,
    "comparator": "<=",
    "id": "REQ-SWING-T",
    "quantity": "swing_time",
@@ -114,7 +114,7 @@
   },
   {
    "band": "brief",
-   "bound": 0.68,
+   "bound": 0.65,
    "comparator": "==",
    "id": "REQ-SWAY",
    "quantity": "sway_fraction",
@@ -125,7 +125,7 @@
   },
   {
    "band": "brief",
-   "bound": 2940.0,
+   "bound": 3060.0,
    "comparator": ">=",
    "id": "REQ-MISSION",
    "quantity": "mission_time",
@@ -242,7 +242,7 @@
   },
   {
    "band": "brief",
-   "bound": 1617.0,
+   "bound": 1589.0,
    "comparator": "<=",
    "id": "REQ-COST",
    "quantity": "total_cost",
@@ -275,7 +275,7 @@
   },
   {
    "band": "photo",
-   "bound": 0.207,
+   "bound": 0.217,
    "comparator": "==",
    "id": "REQ-POD-L",
    "quantity": "payload_box_length",
@@ -289,7 +289,7 @@
   },
   {
    "band": "photo",
-   "bound": 0.128,
+   "bound": 0.132,
    "comparator": "==",
    "id": "REQ-POD-W",
    "quantity": "payload_box_width",
@@ -303,7 +303,7 @@
   },
   {
    "band": "photo",
-   "bound": 0.113,
+   "bound": 0.121,
    "comparator": "==",
    "id": "REQ-POD-H",
    "quantity": "payload_box_height",

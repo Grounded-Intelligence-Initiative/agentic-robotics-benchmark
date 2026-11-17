@@ -83,30 +83,33 @@
  "housing_classes": {
   "R38": {
    "bolt": "M3",
-   "bolt_circle_m": 0.044,
-   "bolts": 3,
+   "bolt_circle_m": 0.025,
+   "bolts": 4,
    "can_diameter_m": 0.038,
-   "can_length_m": 0.058,
-   "flange_diameter_m": 0.05,
-   "flange_thickness_m": 0.003
+   "can_length_m": 0.016,
+   "lip_diameter_m": 0.026,
+   "mount_diameter_m": 0.03,
+   "shaft_diameter_m": 0.004
   },
   "R52": {
    "bolt": "M3",
-   "bolt_circle_m": 0.06,
+   "bolt_circle_m": 0.025,
    "bolts": 4,
    "can_diameter_m": 0.052,
-   "can_length_m": 0.046,
-   "flange_diameter_m": 0.066,
-   "flange_thickness_m": 0.003
+   "can_length_m": 0.02,
+   "lip_diameter_m": 0.026,
+   "mount_diameter_m": 0.03,
+   "shaft_diameter_m": 0.004
   },
   "R62": {
-   "bolt": "M4",
-   "bolt_circle_m": 0.07,
+   "bolt": "M3",
+   "bolt_circle_m": 0.025,
    "bolts": 4,
    "can_diameter_m": 0.062,
-   "can_length_m": 0.042,
-   "flange_diameter_m": 0.076,
-   "flange_thickness_m": 0.003
+   "can_length_m": 0.024,
+   "lip_diameter_m": 0.026,
+   "mount_diameter_m": 0.03,
+   "shaft_diameter_m": 0.004
   }
  },
  "hubs": [

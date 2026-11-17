@@ -1,21 +1,22 @@
 # Build log of the reference unit (colleague's notes)
 
-[BL-01] Printing. All printed parts are SLS nylon (PA12) from one supplier batch, 1.2 mm walls with internal ribs; the
-limiters are PETG.
+[BL-01] Printing. All printed parts are SLS nylon (PA12) from one supplier batch, black except for the upper legs,
+which are white; the limiters are PETG.
 
-[BL-02] Weight. The 44 printed parts (the two trunk shells, the nose box and its lid, the deck, the belly-bay lid, the
-eight shoulder and thigh shells, the four shanks, the two spacer rings and the limiters) weighed 1.281 kg together
-before assembly (kitchen scale, +-2 g, three batches); the hip_pitch rings are part of the shoulder shells. I did not
-weigh them one by one.
+[BL-02] Weight. The 95 printed parts (the eleven trunk frame parts, the eight hip_roll shells, the six trunk plates
+and covers, the two nose-box parts (the box and its lid), the mount plate, the belly-bay cradle, the eight hip_roll
+shell clips, the eight shoulder shells, the eight hip adapter and pivot-arm parts, the eight thigh shells, the two
+spacer rings, the four shanks and the limiters) weighed 1.732 kg together before assembly (kitchen scale, +-2 g, three
+batches); the hip_pitch rings are part of the shoulder shells. I did not weigh them one by one.
 
 [BL-03] Electrical. 0.4 V between the pack terminals and the front-right knee's connector during the stand-up; assume
 the same at every module. The tray (hub, six drivers, IMU) draws 0.6 A at the pack voltage with the modules idle.
 
-[BL-04] Bought parts, weight. The camera module stays on the replicas: 126 g. The electronics tray as wired (hub, six
-drivers, IMU, harness) weighed 0.378 kg; the replicas' new hub and drivers go into the same tray: count it at this
-mass. The four foot caps: 59 g. The unit as photographed weighed 4.470 kg on the parcel scale (+-5 g), with its
-as-found pack (an AC-6S-40) and its twelve as-found modules (2.016 kg together, from the build invoice); the rest is
-the pivot bearings and fasteners at the joints.
+[BL-04] Bought parts, weight. The camera module stays on the replicas: 101 g. The electronics tray as wired (hub, six
+drivers, IMU, harness) weighed 0.394 kg; the replicas' new hub and drivers go into the same tray: count it at this
+mass. The four rubber foot tyres: 55 g. The unit as photographed weighed 4.887 kg on the parcel scale (+-5 g), with
+its as-found pack (an AC-6S-40) and its twelve as-found modules (2.016 kg together, from the build invoice); the rest
+is the pivot bearings and fasteners at the joints.
 
 [BL-05] Cameras. Photos from my phone: the main camera and the 2x camera; photos/photos.json gives the focal-length
 class of every photo (`wide`: the main camera, `normal`: the 2x camera). PH-01..PH-12 are from four tripod stations,
@@ -27,10 +28,10 @@ for every photo; everything else is hand-held.
 
 [BL-06] Stops and housings. PH-13..PH-24: each joint of the front-left and of the rear-left leg driven slowly into its
 printed limiter, lower and upper, the other joints wherever they were; the limiters are the same printed parts on
-every leg. PH-25..PH-27: the module housings (PH-25 hip_roll through the belly vents, PH-26 hip_pitch through the
-shoulder shell's vent, PH-27 knee through the thigh shell's vent). Module fit as I assembled it: the hip_roll and knee
-modules' cans sit directly in their housings' bores; the hip_pitch modules sit on rings printed in one piece with the
-shoulder shells, which fill the bore around their cans.
+every leg. PH-25..PH-27: the module housings (PH-25 hip_roll through the trunk's open frame, PH-26 hip_pitch through
+the gap between the shoulder shell and the trunk, PH-27 knee through the thigh shell's opening). Module fit as I
+assembled it: the hip_roll and knee modules' cans sit directly in their housings' collars; the hip_pitch modules sit
+in reducer rings printed in one piece with the shoulder shells, which fill the collar around their cans.
 
 [BL-07] Known sizes. I laid a 300 mm steel rule next to the unit for PH-02 and PH-31 only, an ID-1 card (85.60 x 53.98
 mm) for PH-28 only, and stood a beverage can (66 mm diameter, 122 mm tall) on the bench for PH-04 and PH-34 only; the
@@ -44,10 +45,11 @@ vendors' (outline drawings on the datasheet pages).
 inspected here.
 
 [BL-10] Repair. 2026-09-01: the nose box cracked when the unit slid off its stand; I reprinted it and its lid in PETG
-from another spool (4 perimeters, 40 % gyroid infill): they are the darker, glossier parts in the photos. They weighed
-1.38 x the original nose box and lid on the lab scale. BL-02 is the weight of the original parts.
+from another spool (4 perimeters, 40 % gyroid infill): they are the lighter grey, glossier parts in the photos, with
+visible layer lines. They weighed 1.40 x the original nose box and lid on the lab scale. BL-02 is the weight of the
+original parts.
 
-[BL-11] Shank. The CAD drawing (rev A, 2025-12-02) dimensions the shank at 168.1 mm from the knee axis to the foot-cap
+[BL-11] Shank. The CAD drawing (rev A, 2025-12-02) dimensions the shank at 180.9 mm from the knee axis to the foot
 centre. On 2026-03-19 I fitted the longer rev B shanks (for the customer's grating steps); the drawing was never
 updated. The unit in the photos has the rev B shanks, and BL-02 is with them.
 

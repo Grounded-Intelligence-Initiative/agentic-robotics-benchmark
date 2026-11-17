@@ -5,14 +5,14 @@ requirements:
 - id: REQ-PAYLOAD-MAX
   quantity: payload_mass_max
   comparator: <=
-  bound: 2.202
+  bound: 1.657
   unit: kg
   source_id: PH-35
   source_clause: PH-35
 - id: REQ-PAYLOAD-MIN
   quantity: payload_mass_min
   comparator: '>='
-  bound: 1.66
+  bound: 1.34
   unit: kg
   source_id: B-04
   source_clause: B-04
@@ -26,14 +26,14 @@ requirements:
 - id: REQ-STANCE-H
   quantity: stance_height
   comparator: ==
-  bound: 0.283
+  bound: 0.262
   unit: m
   source_id: B-05
   source_clause: B-05
 - id: REQ-CROUCH-H
   quantity: crouch_height
   comparator: ==
-  bound: 0.146
+  bound: 0.147
   unit: m
   source_id: B-06
   source_clause: B-06
@@ -47,42 +47,42 @@ requirements:
 - id: REQ-STEP
   quantity: step_length
   comparator: ==
-  bound: 0.122
+  bound: 0.138
   unit: m
   source_id: B-07
   source_clause: B-07
 - id: REQ-LIFT
   quantity: swing_height
   comparator: ==
-  bound: 0.065
+  bound: 0.067
   unit: m
   source_id: B-07
   source_clause: B-07
 - id: REQ-SHIFT-T
   quantity: shift_time
   comparator: <=
-  bound: 0.88
+  bound: 0.95
   unit: s
   source_id: B-07
   source_clause: B-07
 - id: REQ-SWING-T
   quantity: swing_time
   comparator: <=
-  bound: 0.5
+  bound: 0.54
   unit: s
   source_id: B-07
   source_clause: B-07
 - id: REQ-SWAY
   quantity: sway_fraction
   comparator: ==
-  bound: 0.68
+  bound: 0.65
   unit: fraction
   source_id: B-07
   source_clause: B-07
 - id: REQ-MISSION
   quantity: mission_time
   comparator: '>='
-  bound: 2940.0
+  bound: 3060.0
   unit: s
   source_id: B-09
   source_clause: B-09
@@ -152,7 +152,7 @@ requirements:
 - id: REQ-COST
   quantity: total_cost
   comparator: <=
-  bound: 1617.0
+  bound: 1589.0
   unit: USD
   source_id: B-12
   source_clause: B-12
@@ -173,28 +173,28 @@ requirements:
 - id: REQ-POD-L
   quantity: payload_box_length
   comparator: ==
-  bound: 0.207
+  bound: 0.217
   unit: m
   source_id: PH-34
   source_clause: PH-34
 - id: REQ-POD-W
   quantity: payload_box_width
   comparator: ==
-  bound: 0.128
+  bound: 0.132
   unit: m
   source_id: PH-34
   source_clause: PH-34
 - id: REQ-POD-H
   quantity: payload_box_height
   comparator: ==
-  bound: 0.113
+  bound: 0.121
   unit: m
   source_id: PH-34
   source_clause: PH-34
 - id: REQ-D01
   quantity: proof_peak_torque:hip_roll
   comparator: ==
-  bound: 3.778117517533231
+  bound: 3.55246975801635
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -202,7 +202,7 @@ requirements:
 - id: REQ-D02
   quantity: proof_peak_torque:hip_pitch
   comparator: ==
-  bound: 2.3800339245164084
+  bound: 2.46471873146166
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -210,7 +210,7 @@ requirements:
 - id: REQ-D03
   quantity: proof_peak_torque:knee
   comparator: ==
-  bound: 6.311769613548559
+  bound: 6.590343692385524
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -218,7 +218,7 @@ requirements:
 - id: REQ-D04
   quantity: duty_rms_torque:hip_roll
   comparator: ==
-  bound: 1.8237834125763723
+  bound: 1.777986836141467
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -226,7 +226,7 @@ requirements:
 - id: REQ-D05
   quantity: duty_rms_torque:hip_pitch
   comparator: ==
-  bound: 1.2757133472102116
+  bound: 1.2982156646671417
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -234,7 +234,7 @@ requirements:
 - id: REQ-D06
   quantity: duty_rms_torque:knee
   comparator: ==
-  bound: 3.3235778883278977
+  bound: 3.4746954732203683
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -242,7 +242,7 @@ requirements:
 - id: REQ-D07
   quantity: standup_peak_torque:knee
   comparator: ==
-  bound: 4.382504375086942
+  bound: 4.269189404532984
   unit: N.m
   source_id: derived
   source_clause: B-16
@@ -250,7 +250,7 @@ requirements:
 - id: REQ-D08
   quantity: joint_peak_speed:hip_pitch
   comparator: ==
-  bound: 2.57378912702266
+  bound: 3.098660782418981
   unit: rad/s
   source_id: derived
   source_clause: B-16
@@ -258,7 +258,7 @@ requirements:
 - id: REQ-D09
   quantity: joint_peak_speed:knee
   comparator: ==
-  bound: 3.3306135224177242
+  bound: 3.1774246142402656
   unit: rad/s
   source_id: derived
   source_clause: B-16
@@ -266,7 +266,7 @@ requirements:
 - id: REQ-D10
   quantity: supply_peak_current
   comparator: ==
-  bound: 7.8305423012262
+  bound: 7.817373714339266
   unit: A
   source_id: derived
   source_clause: B-16
@@ -274,7 +274,7 @@ requirements:
 - id: REQ-D11
   quantity: mission_charge
   comparator: ==
-  bound: 4.092643875573031
+  bound: 4.052573503332218
   unit: Ah
   source_id: derived
   source_clause: B-16
@@ -282,7 +282,7 @@ requirements:
 - id: REQ-D12
   quantity: drive_peak_current:knee
   comparator: ==
-  bound: 10.880594081526084
+  bound: 10.860130405293392
   unit: A
   source_id: derived
   source_clause: B-16
@@ -290,7 +290,7 @@ requirements:
 - id: REQ-D13
   quantity: drive_rms_current:knee
   comparator: ==
-  bound: 6.111103081744099
+  bound: 6.00615067964561
   unit: A
   source_id: derived
   source_clause: B-16
@@ -298,7 +298,7 @@ requirements:
 - id: REQ-D14
   quantity: robot_mass
   comparator: ==
-  bound: 5.178537960408046
+  bound: 5.547429639352778
   unit: kg
   source_id: derived
   source_clause: B-16
@@ -306,7 +306,7 @@ requirements:
 - id: REQ-D15
   quantity: loaded_com_x
   comparator: ==
-  bound: 0.0650966837012668
+  bound: 0.07295658983279034
   unit: m
   source_id: derived
   source_clause: B-16
@@ -314,7 +314,7 @@ requirements:
 - id: REQ-D16
   quantity: peak_normal_force
   comparator: ==
-  bound: 39.773986504671505
+  bound: 39.01111249620717
   unit: N
   source_id: derived
   source_clause: B-16

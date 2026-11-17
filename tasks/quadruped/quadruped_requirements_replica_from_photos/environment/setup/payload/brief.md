@@ -19,28 +19,28 @@ mAh, %, ...). An item's unit must convert to the SI unit of its quantity.
 
 [B-04] Payload. The replicas carry a payload of at least the bottom and at most the top of the payload band. The top
 of the payload band is the mass of the customer's sensor pod on the kitchen scale in PH-35 (read the display); the
-bottom of the band is 1.66 kg. The pod (with its own base plate, as weighed) mounts on the deck's mount plate (its
+bottom of the band is 1.34 kg. The pod (with its own base plate, as weighed) mounts on the deck's mount plate (its
 four inserts, PH-31), long side along the trunk, centred on the plate. Its centre of mass is where the customer marked
 it: the two marks on its long sides. The replicas carry the pod as it is. Its box (PH-34..PH-36) is the pod as it
 stands on its base plate, the plate included: the length of its long side, its width, and its height from the bottom
 face of the plate to the top of the box.
 
-[B-05] Stance. The trunk is level; the plane of the four hip_roll axes is 0.283 m above the ground; every foot point
+[B-05] Stance. The trunk is level; the plane of the four hip_roll axes is 0.262 m above the ground; every foot point
 lies directly under its hip_pitch axis, with its hip_roll joint at 0; the knees are in the configuration of
 PH-01..PH-12.
 
-[B-06] Stand-up. From the crouch, with the hip_roll-axis plane 0.146 m above the ground and the feet in their stance
+[B-06] Stand-up. From the crouch, with the hip_roll-axis plane 0.147 m above the ground and the feet in their stance
 positions, to the stance of B-05 within 1.0 s (quintic profile, B-14 c).
 
-[B-07] Inspection crawl. The stop-and-go crawl of B-14 d with a step length of 0.122 m, a swing height of 0.065 m, a
-weight shift of 0.88 s and a swing of 0.50 s per step (neither may take longer) and a sway fraction of 0.68;
+[B-07] Inspection crawl. The stop-and-go crawl of B-14 d with a step length of 0.138 m, a swing height of 0.067 m, a
+weight shift of 0.95 s and a swing of 0.54 s per step (neither may take longer) and a sway fraction of 0.65;
 continuous duty: the cycle repeats without rest.
 
 [B-08] Proof. The four swing-apex poses of the crawl, each held static on three feet with a proof load of at least
 1.25 x the top of the payload band on the pod mount (B-14 e).
 
 [B-09] Battery and mission. One Ardent Cells pack of the 6S or 8S family per unit, carried in the reference unit's
-pack bay (Appendix D); its outline must fit that bay. Mission: at least 49 min on one charge; at most 80 % of the
+pack bay (Appendix D); its outline must fit that bay. Mission: at least 51 min on one charge; at most 80 % of the
 delivered capacity usable; 3.5 V per cell at the end of the mission.
 
 [B-10] Actuators. From the vendor pages DS-* only. One module SKU per joint type on all four legs: the legs are
@@ -52,7 +52,7 @@ characteristic.
 [B-11] Power. One pack, one driver type (count = 12 / channels per board) and one hub per unit; the harness drop of
 BL-03 at every module; the tray current of BL-03; no current limiting during the duty.
 
-[B-12] Cost. At most 1617 USD per unit for the modules, the pack, the drivers and the hub at the 10-99 pcs list price
+[B-12] Cost. At most 1589 USD per unit for the modules, the pack, the drivers and the hub at the 10-99 pcs list price
 (price_list.md).
 
 [B-13] Engineering change. Any BOM line changed after the pilot acceptance costs 60 USD per unit (rework and
@@ -182,7 +182,7 @@ units):
   - The origin lies on the plane of the four hip_roll axes (all parallel to x), midway between the left and right
     hip_roll axes and midway between the front and rear hip_pitch axes, with the hip_roll joints at 0.
   - Legs `fl, fr, rl, rr`.
-- **Foot point.** The centre of the foot cap's sphere: the contact rule's force point.
+- **Foot point.** The centre of the round foot, on its axis at mid-width: the contact rule's force point.
 
 | quantity | definition |
 |---|---|
@@ -194,7 +194,7 @@ units):
 | spacer legs | the set of legs that carry spacer rings (may be empty) |
 | `thigh_length` | distance between the parallel hip_pitch and knee axes |
 | `shank_length` | distance from the knee axis to the foot point |
-| `foot_radius` | radius of the foot cap's sphere |
+| `foot_radius` | outer radius of the foot's rubber tyre |
 | pack bay | the bay of the trunk that carries the reference unit's pack (nose box or belly bay); B-14 a puts the replica's pack CoM at its centre |
 | mount plate centre | the centre of the deck's four mount inserts |
 | hip_roll angle | rotation about the leg's hip_roll axis; 0 when the leg plane is vertical; + = abduction (the foot moves away from the trunk's midplane) |

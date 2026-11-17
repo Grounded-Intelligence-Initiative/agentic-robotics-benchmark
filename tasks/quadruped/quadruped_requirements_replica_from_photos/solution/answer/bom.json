@@ -5,7 +5,7 @@
   {
    "count": 4,
    "joint_type": "hip_roll",
-   "part_id": "WD-R52-48",
+   "part_id": "WD-R52-42",
    "role": "actuator"
   },
   {
@@ -36,5 +36,5 @@
    "role": "hub"
   }
  ],
- "total_cost_usd": 1367.0
+ "total_cost_usd": 1343.0
 }
