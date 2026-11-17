@@ -14,6 +14,7 @@ PRIVILEGED feasibility evidence, not image-only or frontier-model performance.
 | Contract tests | 13 dynamics/API + 17 security + 3 author-runner regressions passed |
 | Native rendering during replay | 8 nonblank 384x384 views; every event and final fingerprint exact |
 | Manifest | 24 unique initial images; exact registered order; all six runtime hashes match all three copies |
+| Actual pinned ALE validate | untouched reward 0; privileged oracle reward 1; both completed all lifecycle phases |
 
 `summary.json` contains every cohort result. `receipt.json` binds the world,
 service, grader, hidden seeds, controller and P2-fixed cohort helper. `contracts.txt`
@@ -34,12 +35,16 @@ rendering, `LP_NUM_THREADS=2` and `OPENBLAS_NUM_THREADS=1`. See `../README.md` f
 Container names: `icl-worker-v4-hidden24`, `icl-worker-v4-fingerprints`,
 `icl-worker-v4-live-first`, `icl-worker-v4-views`, `icl-worker-v4-contracts-final`.
 All completed with exit status 0. The first-seed pilot uses a synthetic oracle
-trajectory and is not actual ALE validation. Parent owns the independent actual
-ALE v4 run, security review and global report; its older candidate run must not
-be represented as v4 evidence. No model call was launched here.
+trajectory and is not actual ALE validation. The separate, real engine run
+`validate-065d48b8` completed on 2026-11-17 UTC. See `ale_validation.json` for its
+47 active source/data hashes, engine identity, phase results and actual verdicts.
+Its evidence remains at `koa04:/home/wang100/projects/ale-validator-hardening-20261116/parent/icl-ale-validate-v4/`.
+The older candidate's validation is not used as v4 evidence. No fresh v4
+frontier-model result is available. The Opus difficulty target and image-only
+feasibility remain open.
 
 The P2 fix was also tested on the old candidate's full 24-seed cohort before this
 merge; those receipts live under `../v3/exitfix/`, clearly separated from v4.
 Production runtime/solution/grader hashes stayed frozen during current evidence
-generation and the parent's ALE snapshot. Only anchor provenance/measurements
+generation and the independent ALE snapshot. Only anchor provenance/measurements
 were finalized afterwards; value=1.0 and full_at=1.0 never changed.

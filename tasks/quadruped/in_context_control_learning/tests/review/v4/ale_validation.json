@@ -1,0 +1,255 @@
+{
+  "label": "Actual pinned ALE validate: privileged oracle and untouched control; not a model evaluation",
+  "passed": true,
+  "host": "koa04",
+  "engine_commit": "bfb75050aca2c54b45c5ab23bae6028a834a468a",
+  "remote_evidence": "/home/wang100/projects/ale-validator-hardening-20261116/parent/icl-ale-validate-v4",
+  "command": [
+    "env",
+    "CUDA_VISIBLE_DEVICES=",
+    "LP_NUM_THREADS=2",
+    "OPENBLAS_NUM_THREADS=1",
+    "OMP_NUM_THREADS=1",
+    "/home/wang100/projects/ale-validator-hardening-20261116/engine/.venv/bin/ale",
+    "validate",
+    "/home/wang100/projects/ale-validator-hardening-20261116/parent/icl-ale-validate-v4/task",
+    "--runs-dir",
+    "/home/wang100/projects/ale-validator-hardening-20261116/parent/icl-ale-validate-v4/runs"
+  ],
+  "source_sha256": {
+    "environment/Dockerfile": "42c1ebc57330d9710a5d0f17e973cd20d9fc6629a0e59b402d8dd0467aafe980",
+    "environment/LICENSE.assets": "45164fb946bd04159759ae33ae611d8c694afe0846e837beba6b10d65e455ef7",
+    "environment/LICENSE.go1": "2b794acf1e250f5545ae5a47d81e5685ea5488ce077d1087ed8be5f81e9ba5c0",
+    "environment/assets.sha256": "04896329a57cd21cb96f04e65cba7483df0ae32364f5ad26c2e0d313bd4c7941",
+    "environment/fetch_assets.py": "8d16511241caa6aa0a0eb7dce60c0d6efffa4efdbfc222ddfa53722a569d4689",
+    "environment/fetch_visual_assets.py": "3d988a90a4cbc8959938a5053de57c176fcc8e6c4ef51a1da1a43f4639727041",
+    "environment/requirements.txt": "c0f139f069942f0036d73ee0165acf9c59883314616a602e2ff945557b7a0852",
+    "environment/setup/payload/client.py": "d0742235a3703d2037677647e414b322f66dc70b172dbeb713400f528f1b0aac",
+    "environment/setup/payload/mcp_stdio.py": "e894ed936cf6b407ec9a1877f6630dd5f6b11daf53fdd72e40b4bdeada760d01",
+    "environment/setup/runtime/geometry.py": "cf4db0fac7a4131c9fe29872f4ab243cb67d00393109cd10935d18b2be3e17c4",
+    "environment/setup/runtime/pbr_renderer.py": "9d73722325be6264b3b4a9aa80627b4a3a43049d8a7546569ffbed9e04c43eae",
+    "environment/setup/runtime/pbr_scene.py": "4e4aee9b33f20436c451b0b4af5ae18a277448c0d7ba17477db3e9dcbbdaedc7",
+    "environment/setup/runtime/scene_assets.py": "fa88c5f590f0930d89e28778f05588aa2e9eb531f11dd5dff10e261a3057c3ea",
+    "environment/setup/runtime/service.py": "1d3881e70d7cca1a7c517535a79247cce40c0b0f33e29567c5f8506f56df928b",
+    "environment/setup/runtime/world.py": "e0c8a2fec8e42eb8ac8747373ff1e59d02a54b5ae1621a887454f9254c898164",
+    "environment/setup/scenes.json": "e42f4ba3a8167e21525db326c94ed82cc9395e44e2ac570ef01d44ab2176e0dd",
+    "environment/setup/setup.sh": "20f4ab4de3c08b4d3989ffc632e23c3145f4323357b3bc176535f0b343a2f428",
+    "environment/setup/setup_runtime.py": "8a2eca7fa10336343c110ed6436eedfeaa0e9c3a74639998c740da002dfa95ec",
+    "environment/visual_assets.json": "b1821b53c8fb7d611bca38855950b5b47458fff8d83c196074c70c47e015bfbe",
+    "solution/client.py": "d0742235a3703d2037677647e414b322f66dc70b172dbeb713400f528f1b0aac",
+    "solution/initial_fingerprints.json": "d2ebcf6d98bcad548378bec6777d2205ff911b9aa41bc6490e92db58a4f520d5",
+    "solution/oracle_run.py": "fc9f0f59bb75f7c2bd19f98df2fe89554d5c288d69fdedbbab445ece1c0157a2",
+    "solution/private/geometry.py": "cf4db0fac7a4131c9fe29872f4ab243cb67d00393109cd10935d18b2be3e17c4",
+    "solution/private/pbr_renderer.py": "9d73722325be6264b3b4a9aa80627b4a3a43049d8a7546569ffbed9e04c43eae",
+    "solution/private/pbr_scene.py": "4e4aee9b33f20436c451b0b4af5ae18a277448c0d7ba17477db3e9dcbbdaedc7",
+    "solution/private/scene_assets.py": "fa88c5f590f0930d89e28778f05588aa2e9eb531f11dd5dff10e261a3057c3ea",
+    "solution/private/service.py": "1d3881e70d7cca1a7c517535a79247cce40c0b0f33e29567c5f8506f56df928b",
+    "solution/private/world.py": "e0c8a2fec8e42eb8ac8747373ff1e59d02a54b5ae1621a887454f9254c898164",
+    "solution/privileged.py": "4322a90323de07241c0dad353ee6b6e16666fd93dd7e6042a60df7beb96886c8",
+    "solution/solve.sh": "a8ba427a1d7d9308735d1a7985742ada112586a46b7f732894473d99b591ab3f",
+    "tests/audit.py": "b03a97b82c083c818ab2d92adf2327b8e5ca8721cf2d6016e586d5f7597c4393",
+    "tests/geometry.py": "cf4db0fac7a4131c9fe29872f4ab243cb67d00393109cd10935d18b2be3e17c4",
+    "tests/grader.py": "62d958a60555d9a43b1b1bf56c1d7c3bff5f843826c97841c282b93172934d90",
+    "tests/grader_config.json": "739616860838a49bd86ff593b3d61b58a2bdb87faa3dd20655386a5f479ff1e0",
+    "tests/hidden_scenes.json": "e42f4ba3a8167e21525db326c94ed82cc9395e44e2ac570ef01d44ab2176e0dd",
+    "tests/pbr_renderer.py": "9d73722325be6264b3b4a9aa80627b4a3a43049d8a7546569ffbed9e04c43eae",
+    "tests/pbr_scene.py": "4e4aee9b33f20436c451b0b4af5ae18a277448c0d7ba17477db3e9dcbbdaedc7",
+    "tests/robotics_grader/__init__.py": "d75f3c6293445af3277b05fe00df38ef7378645651ff3cfbad7f8bcfe1f56604",
+    "tests/robotics_grader/scoring.py": "9353682eb3536df264b3cb5ec3bf2be24a410f88af5b20cf86cb31796930a83b",
+    "tests/robotics_grader/seeds.py": "b795f63404d14f0c90ca0098582e80afabd251396b1f4d6ababf4e7f6037b5e1",
+    "tests/robotics_grader/selftest.py": "7a4be7513643147c2f91f866a24b6a5253a3203180b4724ca54a188fd0c2027f",
+    "tests/robotics_grader/solver.py": "288a8c1f3a1dfd61d3b2c9240c40f095411c6129af867b00fc6a0d8a77ab2d84",
+    "tests/robotics_grader/stage.py": "a97eefbc9ee2f4c67b26eecdfc76d1ac84cf4615a2f8ab2fc63e75c581eb0c2f",
+    "tests/scene_assets.py": "fa88c5f590f0930d89e28778f05588aa2e9eb531f11dd5dff10e261a3057c3ea",
+    "tests/service.py": "1d3881e70d7cca1a7c517535a79247cce40c0b0f33e29567c5f8506f56df928b",
+    "tests/test.sh": "0336d5357eea449f4cafb135c14011ee05e2eff4a9c0e3f48f925384450ccdce",
+    "tests/world.py": "e0c8a2fec8e42eb8ac8747373ff1e59d02a54b5ae1621a887454f9254c898164"
+  },
+  "active_code_matches_current": true,
+  "task_configuration": {
+    "schema_version": "1.4+ale.1",
+    "artifacts": [
+      "/home/user/submission",
+      "/var/lib/visual_robotics/state.json"
+    ],
+    "task": {
+      "name": "grounded-intelligence-initiative/in_context_control_learning"
+    },
+    "metadata": {
+      "platform": "quadruped"
+    },
+    "environment": {
+      "cpus": 2,
+      "memory_mb": 4096,
+      "gpus": 0,
+      "mcp_servers": [
+        {
+          "name": "robot",
+          "transport": "stdio",
+          "command": "/opt/venv/bin/python3",
+          "args": [
+            "/opt/visual_robotics/client/mcp_stdio.py"
+          ]
+        }
+      ]
+    },
+    "agent": {
+      "timeout_sec": 21600,
+      "network_mode": "no-network"
+    },
+    "verifier": {
+      "timeout_sec": 900,
+      "environment_mode": "separate",
+      "environment": {
+        "cpus": 2,
+        "memory_mb": 4096,
+        "gpus": 0
+      }
+    }
+  },
+  "score_normalization": {
+    "metric": "delivered_fraction",
+    "direction": "higher",
+    "value": 1,
+    "full_at": 1
+  },
+  "episodes": [
+    {
+      "kind": "oracle",
+      "episode_id": "grounded-intelligence-initiative.in_context_control_learning-oracle-e3c67de5",
+      "status": "completed",
+      "finished_at": "2026-11-17T01:12:30.162112Z",
+      "rewards": {
+        "reward": 1
+      },
+      "verification": {
+        "reward": 1,
+        "metrics": {
+          "ratio": 1,
+          "anchor_recorded": 1,
+          "delivered_fraction": 1,
+          "scene_index": 0,
+          "requests": 220,
+          "ledger_events": 220,
+          "delivered": 6,
+          "deliveries": 6,
+          "success": 1,
+          "steps": 214,
+          "frames": 1,
+          "collisions": 0,
+          "simulated_seconds": 221.9,
+          "leg_1_actions": 35,
+          "leg_2_actions": 40,
+          "leg_3_actions": 25,
+          "leg_4_actions": 28,
+          "leg_5_actions": 42,
+          "leg_6_actions": 44,
+          "scripted_oracle": 1,
+          "reward_exact": 1
+        }
+      },
+      "phases": [
+        {
+          "duration_ms": 5365,
+          "finished_at": "2026-11-17T01:11:38.708708Z",
+          "outcome": "succeeded",
+          "phase": "provision",
+          "started_at": "2026-11-17T01:11:33.343198Z"
+        },
+        {
+          "duration_ms": 6270,
+          "finished_at": "2026-11-17T01:11:45.364029Z",
+          "outcome": "succeeded",
+          "phase": "setup",
+          "started_at": "2026-11-17T01:11:39.093252Z"
+        },
+        {
+          "duration_ms": 26853,
+          "finished_at": "2026-11-17T01:12:13.133766Z",
+          "outcome": "succeeded",
+          "phase": "agent",
+          "started_at": "2026-11-17T01:11:46.280656Z"
+        },
+        {
+          "duration_ms": 16633,
+          "finished_at": "2026-11-17T01:12:29.927069Z",
+          "outcome": "succeeded",
+          "phase": "verify",
+          "started_at": "2026-11-17T01:12:13.293997Z"
+        },
+        {
+          "duration_ms": 57,
+          "finished_at": "2026-11-17T01:12:30.045592Z",
+          "outcome": "succeeded",
+          "phase": "teardown",
+          "started_at": "2026-11-17T01:12:29.987644Z"
+        },
+        {
+          "duration_ms": 82,
+          "finished_at": "2026-11-17T01:12:30.162112Z",
+          "outcome": "succeeded",
+          "phase": "finalize",
+          "started_at": "2026-11-17T01:12:30.079116Z"
+        }
+      ]
+    },
+    {
+      "kind": "untouched",
+      "episode_id": "grounded-intelligence-initiative.in_context_control_learning-untouched-9a5e88d6",
+      "status": "completed",
+      "finished_at": "2026-11-17T01:11:33.091265Z",
+      "rewards": {
+        "reward": 0
+      },
+      "verification": {
+        "reward": 0,
+        "metrics": {
+          "ratio": 0,
+          "anchor_recorded": 1,
+          "scene_index": 15,
+          "requests": 0,
+          "ledger_events": 0,
+          "reward_exact": 0
+        },
+        "diagnostic": "scoring 0: no interaction"
+      },
+      "phases": [
+        {
+          "duration_ms": 8039,
+          "finished_at": "2026-11-17T01:11:13.707668Z",
+          "outcome": "succeeded",
+          "phase": "provision",
+          "started_at": "2026-11-17T01:11:05.668483Z"
+        },
+        {
+          "duration_ms": 5464,
+          "finished_at": "2026-11-17T01:11:19.280799Z",
+          "outcome": "succeeded",
+          "phase": "setup",
+          "started_at": "2026-11-17T01:11:13.816342Z"
+        },
+        {
+          "duration_ms": 13294,
+          "finished_at": "2026-11-17T01:11:32.702782Z",
+          "outcome": "succeeded",
+          "phase": "verify",
+          "started_at": "2026-11-17T01:11:19.408441Z"
+        },
+        {
+          "duration_ms": 141,
+          "finished_at": "2026-11-17T01:11:32.939167Z",
+          "outcome": "succeeded",
+          "phase": "teardown",
+          "started_at": "2026-11-17T01:11:32.797906Z"
+        },
+        {
+          "duration_ms": 99,
+          "finished_at": "2026-11-17T01:11:33.091265Z",
+          "outcome": "succeeded",
+          "phase": "finalize",
+          "started_at": "2026-11-17T01:11:32.991611Z"
+        }
+      ]
+    }
+  ]
+}

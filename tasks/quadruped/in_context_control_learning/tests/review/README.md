@@ -35,9 +35,15 @@ continuation after grader `SystemExit`. Its current native CPU run passed
 
 The author feasibility cohort takes approximately six minutes on two CPU cores.
 Initial-image generation takes about one minute; the live first-seed oracle
-pilot is separate. These are not actual ALE validation or frontier-model results.
-The parent owns official ALE validation, independent security review and the
-global evaluation report. No v4 image-only or model difficulty claim is made.
+pilot is separate. These are not frontier-model results.
+
+An independent, actual pinned-engine `ale validate` also passed on v4:
+untouched reward 0, privileged oracle reward 1. All 47 active source/data files,
+parsed task settings and score normalization match the validated snapshot.
+`v4/ale_validation.json` records the engine commit, source hashes, full lifecycle
+outcomes, verdicts and reproduction command. Native rendered/headless replay
+also matched exactly. No v4 image-only feasibility or model difficulty claim is
+made; a fresh Opus 5.5 run is still required before judging the difficulty target.
 
 ## Remote Commands
 
