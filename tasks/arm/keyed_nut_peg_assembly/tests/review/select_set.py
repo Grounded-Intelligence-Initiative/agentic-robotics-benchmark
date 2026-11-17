@@ -11,9 +11,9 @@ candidates'.
 
 When a file the reference or the grader runs changes, the rule runs again as an AMENDMENT (selection.json
 "amendments": what changed, the new sha256 of the frozen files, committed before any run on them; then its
-selection_run, hidden_set and anchor_verify): on the same candidates when the kits themselves are unchanged, on
-fresh os.urandom candidates of its own (`amend --fresh N`) when the change alters what a kit is. The latest
-amendment's set is the hidden set.
+selection_run, hidden_set and anchor_verify): on the same candidates when the kits themselves are unchanged (the
+candidates in force: those of the latest amendment that drew its own), on fresh os.urandom candidates of its own
+(`amend --fresh N`) when the change alters what a kit is. The latest amendment's set is the hidden set.
 
 The commissioning service's development kits (environment/commission_service/kits.json) are chosen by the same rule
 from their own pre-registered candidates (an amendment's "development_kits": kit seed seed0 + i, layout seed
@@ -110,12 +110,21 @@ def latest(sel):
     return sel["amendments"][-1] if sel.get("amendments") else sel
 
 
+def hidden_candidates(sel):
+    """The hidden candidates in force: those of the latest amendment that drew fresh ones of its own (an amendment
+    that leaves the kits as they are runs on the candidates in force before it), else the selection's."""
+    for am in reversed(sel.get("amendments", [])):
+        if am.get("candidates"):
+            return am["candidates"]
+    return sel["candidates"]
+
+
 def pool_candidates(sel, pool):
-    """The candidates in force: the development kits' of the latest amendment; for the hidden set the latest
-    amendment's own fresh ones if it drew any, else the selection's."""
+    """The candidates in force: the development kits' of the latest amendment; for the hidden set see
+    `hidden_candidates`."""
     if pool == "dev":
         return latest(sel)["development_kits"]["candidates"]
-    return latest(sel).get("candidates") or sel["candidates"]
+    return hidden_candidates(sel)
 
 
 def save_selection(sel):
@@ -190,7 +199,8 @@ def cmd_amend(a):
                      ("%d fresh candidates of this amendment (kit and layout seeds from os.urandom, 63-bit, in the "
                       "order listed under its `candidates`; the amendment changes what a kit is, so the earlier "
                       "candidates' runs say nothing about the new kits)" % len(fresh)) if fresh else
-                     "the same %d candidates in the same order" % len(sel["candidates"]), SET_SIZE, SET_SIZE)),
+                     "the same %d candidates in the same order (those in force before this amendment: the kits "
+                     "themselves are unchanged)" % len(hidden_candidates(sel)), SET_SIZE, SET_SIZE)),
         "frozen": now,
         "changed": changed,
         "development_kits": {

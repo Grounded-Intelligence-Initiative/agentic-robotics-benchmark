@@ -16,6 +16,7 @@ trees, never imported.
 import ast
 import hashlib
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -28,8 +29,12 @@ LATEST = SELECTION["amendments"][-1] if SELECTION.get("amendments") else SELECTI
 #: An amendment is committed before its runs (pre-registration); until they are recorded, the set's checks wait.
 PENDING = "selection_run" not in LATEST or "anchor_verify" not in LATEST
 WAIT = "the latest amendment is pre-registered and has not run yet"
-#: The candidates in force: the latest amendment's own fresh ones if it drew any, else the selection's.
-CANDIDATES = LATEST.get("candidates") or SELECTION["candidates"]
+#: The candidates in force: those of the latest amendment that drew fresh ones of its own (an amendment that leaves
+#: the kits as they are runs on the candidates in force before it), else the selection's.
+CANDIDATES = next((a["candidates"] for a in reversed(SELECTION.get("amendments", [])) if a.get("candidates")),
+                  SELECTION["candidates"])
+#: The takt in force (keyed_env.MAX_STEPS), read from the simulator's source.
+TAKT = int(re.search(r"^MAX_STEPS = (\d+)", (TASK / "tests/keyed_env.py").read_text(), re.M).group(1))
 
 
 def sha256(path):
@@ -103,7 +108,8 @@ class HiddenSet(unittest.TestCase):
     @unittest.skipIf(PENDING, WAIT)
     def test_reference_keeps_the_takt(self):
         steps = [r["steps"] for r in LATEST["selection_run"]["runs"] if r["kept"]]
-        self.assertTrue(all(0 < n < 1000 for n in steps), steps)
+        self.assertEqual(TAKT, 850)
+        self.assertTrue(all(0 < n < TAKT for n in steps), steps)
 
 
 class Grader(unittest.TestCase):

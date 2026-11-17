@@ -20,7 +20,7 @@ import numpy as np
 # ----------------------------------------------------------------------------------------------
 CONTROL_DT = 0.1                 # one action every 0.1 s (10 Hz); the arm's torque loop runs at 500 Hz
 NUTS = 3                         # nuts in a kit (one per peg)
-MAX_STEPS = 1000                 # control steps per episode: the takt time for a kit, 100 s simulated
+MAX_STEPS = 850                  # control steps per episode: the takt time for a kit, 85 s simulated
 MAX_DPOS = 0.02
 MAX_DROT = 0.15
 TABLE_Z = 0.80

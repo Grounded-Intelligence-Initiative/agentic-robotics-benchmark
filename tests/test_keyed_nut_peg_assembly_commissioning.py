@@ -7,7 +7,8 @@ development kits, for a fixed number of episodes, under an account of its own. T
 episode's limits, on kits that are neither graded kits nor candidates of the graded set's selection, and never answer
 ground truth, a score or a completion verdict. The data sheet's numbers are the simulator's, and so are the
 tolerances within which every real kit and the cell on the day differ from the drawing: each range the simulator
-draws from is stated in the data sheet. The takt is 100 s per kit.
+draws from is stated in the data sheet. The takt is 85 s per kit. The data sheet states the fit and what the wrist
+reads in each contact, not how to put a nut on a shaft.
 
 Standard library only (the host-side suite has no numpy or mujoco): the task's Python files are read as text or syntax
 trees, never imported.
@@ -107,7 +108,7 @@ class CommissioningService(unittest.TestCase):
             for r in runs:
                 if r["kept"]:
                     self.assertEqual((r["kit_complete"], r["nuts_assembled"], r["drop_reasons"]), (1, 3, []))
-                    self.assertLess(r["steps"], 1000)
+                    self.assertLess(r["steps"], 850)
         else:                                        # pre-registered, not run yet: the first 16 candidates
             self.assertEqual(names, [c["id"] for c in dev["candidates"]][:16])
 
@@ -192,12 +193,13 @@ class AgentSide(unittest.TestCase):
     def test_takt(self):
         cell = (TASK / "tests/keyed_env.py").read_text()
         self.assertIn("\nNUTS = 3 ", cell)
-        self.assertIn("\nMAX_STEPS = 1000 ", cell)
+        self.assertIn("\nMAX_STEPS = 850 ", cell)
         for name, text in (("instruction.md", INSTRUCTION), ("datasheet.md", DATASHEET)):
             flat = " ".join(text.split())
-            self.assertTrue("1000 steps" in flat and "100 s" in flat, "%s does not state the takt" % name)
-            self.assertFalse(re.search(r"\b(2400|1200)\b", flat), "%s still names an earlier takt" % name)
-        self.assertTrue("ends at 1000 steps" in " ".join(INSTRUCTION.split()), "the instruction's ending rule")
+            self.assertTrue("850 steps" in flat and "85 s" in flat, "%s does not state the takt" % name)
+            self.assertFalse(re.search(r"\b(2400|1200|1000)\b|\b100 s\b", flat), "%s still names an earlier takt" % name)
+        self.assertTrue("ends at 850 steps" in " ".join(INSTRUCTION.split()), "the instruction's ending rule")
+        self.assertIn("(85 s)", KITS["window"])
 
     def test_every_tolerance_is_stated(self):
         tree = ast.parse((TASK / "tests/keyed_env.py").read_text())
@@ -257,21 +259,37 @@ class AgentSide(unittest.TestCase):
         sheet = " ".join(DATASHEET.split())
         self.assertIn("## 12. The fit", DATASHEET)
         tail = " ".join(DATASHEET[DATASHEET.index("## 12. The fit"):].split())
-        for words in (fit, real, "no lead-in chamfer", "by touch", "What the wrist reads, the nut on the shaft end",
-                      "What the wrist reads, the hole over the shaft",
-                      "What the wrist reads, the nut's rim against the shaft's side"):
+        for words in (fit, real, "no lead-in chamfer", "cannot be put over a shaft from image positions alone",
+                      "What the wrist reads, the nut on the shaft end",
+                      "What the wrist reads, the hole over the shaft", "What the wrist reads, a nut that binds"):
             self.assertTrue(words in tail, "the data sheet's section 12 does not say %r" % words)
         for words in ("a cylinder of radius %g mm" % (consts["SHAFT_R"] * 1000), "locating fit", "**Compliance.**",
                       "The two fingers are one mechanism"):
             self.assertTrue(words in sheet, "the data sheet does not say %r" % words)
         flat = " ".join(INSTRUCTION.split())
-        for words in (fit, "(%s)" % real, "no lead-in chamfer", "found by touch", "section 12",
+        for words in (fit, "(%s)" % real, "no lead-in chamfer", "from image positions alone", "section 12",
                       "shaft of radius %g mm" % (consts["SHAFT_R"] * 1000), "The two fingers move together"):
             self.assertTrue(words in flat, "the instruction does not say %r" % words)
         cell = (TASK / "tests/keyed_env.py").read_text()
         self.assertIn("mjEQ_JOINT", cell)
         self.assertIn('eq.name1 = "r_g_finger_joint1"', cell)
         self.assertIn('eq.name2 = "r_g_finger_joint2"', cell)
+
+    def test_payload_states_readings_not_a_method(self):
+        """What the agent is given says what the parts are and what the sensors read; it does not say how to put a
+        nut on its shaft (the round-3 data sheet did: the rim against the shaft's side with its distance, a slide
+        over the shaft end, "both ways work") or how to spend the commissioning window."""
+        texts = {"instruction.md": INSTRUCTION}
+        for p in sorted(PAYLOAD.rglob("*")):
+            if p.is_file() and "__pycache__" not in p.parts:
+                texts[p.relative_to(PAYLOAD).as_posix()] = p.read_text()
+        for name, text in texts.items():
+            flat = " ".join(text.split())
+            for words in ("rim", "40.3", "40.4", "40.5", "Both ways", "both ways", "found by touch", "by touch",
+                          "slid over", "spiral", "two directions", "teach-in and single measurements first",
+                          "plan your episodes"):
+                self.assertFalse(re.search(r"(?<![A-Za-z])%s(?![A-Za-z])" % re.escape(words), flat),
+                                 "%s says %r" % (name, words))
 
     def test_instruction_names_only_what_the_agent_has(self):
         for name in ("datasheet.md", "cell_data.py", "commission/client.py", "commission/run_kit.py",

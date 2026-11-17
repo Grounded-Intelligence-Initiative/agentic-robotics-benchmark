@@ -182,7 +182,7 @@ it; the first observation of an episode carries all three.
 
 ## 9. Takt and the episode
 
-One action every 0.1 s. An episode is one kit and lasts at most 1000 steps: the takt time, 100 s per kit.
+One action every 0.1 s. An episode is one kit and lasts at most 850 steps: the takt time, 85 s per kit.
 Observation format, the grading wire (READY / reset / act / close), the deadlines, the controller budget and the
 rule by which a nut counts as assembled are in the task instruction.
 
@@ -195,7 +195,7 @@ the development kits are draws from the family of section 3 that the reference c
 takt, like the graded kits, and none of them is a graded kit.
 
 - **The window.** 32 episodes in your session, at most 2 at a time. An episode counts from its `reset`. The count
-  is in `/run/keyedcell/commission_status.json` and does not grow: plan your episodes. (The size is that of a
+  is in `/run/keyedcell/commission_status.json` and does not grow. (The size is that of a
   real commissioning window: one working shift on the cell with a tray of 16 pre-series kits, at about a quarter
   of an hour per trial: lay the kit out, run one takt, look at the result, clear the pegs, change the program.)
 - **A kit's episode.** `reset(kit)` lays development kit `kit` (1 to 16) out. Each kit has its own layout, its
@@ -206,7 +206,7 @@ takt, like the graded kits, and none of them is a graded kit.
   ended. It answers no object pose, no groove, no score, no completion verdict and no debrief: it does not judge
   the assembly, so an episode does not end when the kit is complete (when graded, it does). How an episode went,
   you judge from what your program saw and recorded and from the cameras.
-- **How an episode ends.** After 1000 steps ("all steps run"); on a safety stop (it names the ruined nut's colour
+- **How an episode ends.** After 850 steps ("all steps run"); on a safety stop (it names the ruined nut's colour
   or the instability); when the episode's controller budget is used up (600 s: the service's wait for each of your
   requests plus 0.45 s per left or right image and 0.25 s per wrist image asked for; the first observation's
   images are free); after 120 s without a request; or when you close it.
@@ -216,14 +216,14 @@ line (`~/commission/client.py` speaks it).
 
 ```
 {"id": 1, "method": "reset", "params": {"kit": 3}}
-        -> {"id": 1, "result": {"ok": true, "kit": 3, "episode": 5, "episodes_left": 27, "max_steps": 1000,
+        -> {"id": 1, "result": {"ok": true, "kit": 3, "episode": 5, "episodes_left": 27, "max_steps": 850,
                                 "controller_budget_s": 600.0, "obs": {...}}}
 {"id": 2, "method": "step", "params": {"action": [8 numbers]}}
         -> {"id": 2, "result": {"obs": {...}, "done": false}}
         -> {"id": 2, "result": {"obs": {...}, "done": false, "probe_obs": {...}}}      (about 1 % of the steps)
         -> {"id": 2, "result": {"obs": {...}, "done": true, "ended": "all steps run"}}
 {"id": 3, "method": "close", "params": {"images": true}}
-        -> {"id": 3, "result": {"ok": true, "ended": "...", "steps": 1000, "controller_s": 7.9,
+        -> {"id": 3, "result": {"ok": true, "ended": "...", "steps": 850, "controller_s": 7.9,
                                 "controller_budget_s": 600.0, "images_requested": 12,
                                 "final_images": {"left": {...}, "right": {...}, "wrist": {...}}}}
 ```
@@ -298,10 +298,9 @@ handle, the collar, the shaft's height and the bands are as drawn.
   shaft end and the hole's edges are square: there is no lead-in chamfer to guide the nut on. The hole is 45 mm
   deep, so a nut tilted against the shaft by more than twice the clearance over that depth (about 0.9 to 1.6
   degrees) binds on the shaft at two points instead of sliding down.
-- **Why it has to be done by touch.** A position taken from an image with the published calibration is off by
-  millimetres (section 11), several times the clearance, for the shaft and for the held nut alike. The nut's hole
-  cannot be put over a shaft from image positions alone; the shaft has to be found by touch, with the wrist
-  sensor and the hand's position. Both ways below work with this cell's sensors.
+- **The fit and the cameras.** A position taken from an image with the published calibration is off by
+  millimetres (section 11), several times the clearance, for the shaft and for the held nut alike: the nut's hole
+  cannot be put over a shaft from image positions alone.
 - **What holds the nut.** Along the fingers' closing direction the nut is centred on the hand's axis (the fingers
   are one mechanism, section 5). Across it and in rotation the pads' friction holds it (0.6 to 1.2, 20 N per
   finger): a nut gripped by its ring sags in the grip by a few tenths of a degree (up to about 0.8 degrees
@@ -313,16 +312,10 @@ handle, the collar, the shaft's height and the bands are as drawn.
   end holds (0.3 to 0.7; a larger share slides the nut over the end). The push's line of action lies on the part
   of the shaft end beside the hole, 13 mm or more from the hole's axis, on the side where the shaft's axis is;
   because two faces that do not meet flat touch at an edge, it can lie up to about a quarter turn to either side
-  of that direction. The wrist's torques (torque = lever x force about the sensor, which is 97 mm above the grip
-  site) therefore tell on which side of the hole the shaft is, not exactly where.
+  of that direction. The wrist reads the push and its moment about the sensor (torque = lever x force), which is
+  97 mm above the grip site.
 - **What the wrist reads, the hole over the shaft.** Once the hole's axis is within the clearance of the shaft's
-  axis the nut goes down under the same push, until the pin stops it 39.5 mm above the collar (section 3). A nut
-  slid over the shaft end under a light push dips when it gets there.
-- **What the wrist reads, the nut's rim against the shaft's side.** The ring's outside (flats 28.0 mm from the
-  hole's axis, corners 28.2 mm) pushed sideways against the side of the shaft, below the shaft end, stops there:
-  the hand stops and the wrist reads the push as a sideways force (the stiffness of section 5). The hole's axis
-  is then 40.3 to 40.5 mm from the shaft's axis. The handle is higher than the shaft end while the nut's bottom is
-  less than 25 mm below it, so the rim can meet the shaft from any side.
+  axis the nut goes down under the same push, until the pin stops it 39.5 mm above the collar (section 3).
 - **What the wrist reads, a nut that binds.** A nut tilted against the shaft by more than the fit allows stops
   part of the way down under the same push that moved it before; the two contacts' couple reaches the wrist as a
   torque about a horizontal axis.

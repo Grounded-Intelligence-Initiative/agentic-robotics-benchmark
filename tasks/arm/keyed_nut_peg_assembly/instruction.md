@@ -15,7 +15,7 @@ all three nuts are assembled.
 
 You are the engineer who commissions the cell for this kit family. Deliver a controller that does
 the job from camera images, joint readings and the wrist force/torque sensor, within the cell's
-**takt time: 100 s (1000 control steps) for a kit**. You have **8 hours** of wall time
+**takt time: 85 s (850 control steps) for a kit**. You have **8 hours** of wall time
 for the whole job (studying the data sheet, commissioning on the cell, building and testing the
 controller). Have your controller in `/home/user/submission/` well before the time is up. Your
 sandbox has 4 CPU cores and 12 GB of memory (processes that exceed it are killed), no GPU and no
@@ -36,10 +36,10 @@ the lamps' brightness have their own actual values within the tolerances the dat
 (`datasheet.md`, section 11). The actual values are never told. The published camera calibration is
 the drawing's, so a position taken from an image alone is off by millimetres, and **the nut fits
 its shaft with a locating fit: 0.5 mm of radial clearance on the drawing (0.35 to 0.65 mm on real
-parts), square edges, no lead-in chamfer**. A nut cannot be put on a shaft from image positions; the
-shaft has to be found by touch (`datasheet.md`, section 12: the fit, the cell's compliance and what
-the wrist sensor reads when a nut meets a shaft). A model you build from the data sheet is the
-drawing's cell; the commissioning service is where you meet real ones.
+parts), square edges, no lead-in chamfer**. A nut cannot be put on a shaft from image positions
+alone (`datasheet.md`, section 12: the fit, the cell's compliance and what the wrist sensor reads
+when a nut meets a shaft). A model you build from the data sheet is the drawing's cell; the
+commissioning service is where you meet real ones.
 
 ## What is in your home directory
 
@@ -125,7 +125,7 @@ Action: a list of 8 numbers `[dx, dy, dz, drx, dry, drz, grip, cams]` at 10 Hz: 
 displacement (world frame, clipped to 0.02 m), a world-frame rotation vector (clipped to 0.15
 rad), the gripper command (-1 open ... +1 closed; the finger force is capped at 20 N) and a camera
 bit mask for the next observation (1 = left, 2 = right, 4 = wrist). How the arm tracks an action:
-`datasheet.md` (section 5). An episode lasts at most **1000 steps** (100 s simulated): the takt time
+`datasheet.md` (section 5). An episode lasts at most **850 steps** (85 s simulated): the takt time
 for a kit.
 
 ## Deliverable and grading
@@ -180,7 +180,7 @@ touching it, and it still sits there at the end of the episode. A nut on the wro
 down its groove or still held is not assembled. The groove walls are solid: forcing a pin through
 them (its centre more than 5 degrees sideways or 1.5 mm up or down inside a solid part of the real
 nut's wall, for 3 consecutive steps, while the nut is on its peg) ruins the nut and ends the episode.
-A kit is **complete** when all three nuts are assembled; the episode ends at 1000 steps (the takt) or
+A kit is **complete** when all three nuts are assembled; the episode ends at 850 steps (the takt) or
 as soon as the kit is complete: a kit that is not complete when the takt runs out scores 0. Your result is
 the **fraction of the 10 kits completed**. (The grader also records how many nuts each kit got
 assembled and how far each nut got, for diagnosis only; they do not count.) An episode in which the
@@ -217,7 +217,7 @@ commissioning service in your sandbox runs the cell on 16 development kits (`dat
 * **What it is not.** A simulator you can read or query, a rehearsal of the graded kits or a grader:
   no development kit is a graded kit, and the service answers no ground truth (no nut or peg pose,
   no groove), no score, no completion verdict and no debrief. It reports only how an episode ended:
-  all 1000 steps run, a safety stop (with the colour of the ruined nut, or the instability), the
+  all 850 steps run, a safety stop (with the colour of the ruined nut, or the instability), the
   controller budget used up, 120 s without a request, or your `close`. Because it does not judge
   completion, an episode does not end when the kit is complete. How an episode went, you judge from
   what your program saw and recorded and from the cameras (`close(images=True)` returns the three
@@ -225,9 +225,8 @@ commissioning service in your sandbox runs the cell on 16 development kits (`dat
 * **Its window.** **32 episodes** in your session, at most 2 at a time; an episode counts from its
   `reset`, whatever its length. That is the size of a real commissioning window: one working shift
   on the cell with a tray of 16 pre-series kits, at about a quarter of an hour per trial. The count
-  is in `/run/keyedcell/commission_status.json` and does not grow, so plan your episodes: teach-in
-  and single measurements first (a script of your own on `commission/client.py`), then whole runs
-  of your controller.
+  is in `/run/keyedcell/commission_status.json` and does not grow. `commission/client.py` drives an
+  episode from a script of your own; `commission/run_kit.py` runs your controller in one (below).
 * **Whole runs.** `/opt/venv/bin/python3 /home/user/commission/run_kit.py --kit K` runs your
   controller in one episode the way the grader runs it: the same request shape, the same deadlines,
   a few repeated-`t` queries, a new controller process from a fresh copy of the submission, the same
