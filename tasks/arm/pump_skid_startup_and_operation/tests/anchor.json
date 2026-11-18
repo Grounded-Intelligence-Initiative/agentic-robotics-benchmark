@@ -3,6 +3,6 @@
  "full_at": 1.0,
  "metric": "dual_mode_score",
  "note": "dual mode (experiment): dual_mode_score = (offline_reward + online_reward) / 2, the mean of the task's two items, each already normalised by its own anchor, cap and full_at: the program item by anchor_offline.json (main's anchor: operation_score over the 8 hidden episodes) and the graded-episode item by anchor_online.json (operation_score of the one live graded episode). So the reference reaches 1.0 on both, and the combined anchor is 1.0 by construction; reward = clamp(dual_mode_score / 1.0, 0, 1).",
- "source": "by construction from the two component anchors, each the reference program's own measured value (never a published figure): anchor_offline.json is main's (the oracle's two full verifies of 2026-11-10, 0.97646), anchor_online.json the oracle's measured score on the graded episode ep08 (validate-86bd2023, 0.9999999999998129); to be confirmed by this dual mode's validate, whose oracle must reach both.",
+ "source": "by construction from the two component anchors, each the reference program's own measured value (never a published figure): anchor_offline.json is main's (0.9765) and anchor_online.json the oracle's measured score on the graded episode ep08 (1.0); confirmed by this dual mode's validate, validate-a2030ac8 (engine bfb7505, commit c9b50ef0): the oracle's program item measured operation_score 0.9764560763887231 on the 8 hidden episodes (offline_reward 1.0) and its graded episode 0.9999999999998129 (online_reward 1.0), so dual_mode_score 1.0; untouched 0.0.",
  "value": 1.0
 }
