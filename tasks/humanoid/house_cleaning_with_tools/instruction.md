@@ -63,7 +63,9 @@ A later script connects again with `connect_graded()` and goes on from there; `c
 
 * **Start once.** `start()` starts the graded episode. It is charged the moment it is accepted, before anything is
   simulated, and is never refunded: a second `start()` answers `already_started`. Before the start the cell's calls
-  answer `not_started`; `status()` answers at any time.
+  answer `not_started`; `status()` answers at any time. No practice facility exists, before or during the graded
+  episode (no practice cell, no lab trials, no checker); what you build yourself (a test rig, a stand-in cell, your
+  scripts) stays yours throughout.
 * **The episode persists.** It lives in the service, not in your connection: a closed connection, or a script that
   ends or crashes, leaves it where it is. Nothing moves between requests: the robot holds its last targets and the
   simulation advances only inside `step`, so your thinking costs no simulated time. One client at a time: a second
@@ -143,6 +145,7 @@ your work: the run is then an infrastructure failure.
   lost and, after at most a few retries, ends the session (the graded episode then ends as it stands). Write large
   files in several parts and keep every single response well below that limit.
 - Session time: this session is stopped after 7 hours of wall-clock time from its start (the 4-hour start window and
-  the 3-hour graded window). A session stopped by that limit is not graded at all, so a late finish scores nothing.
-  Note the start time with `date` when you begin, and end the session yourself (stop working and say that you are
-  done) once the graded episode is over, and at least 15 minutes before the limit.
+  the 3-hour graded window). If the session ends while the graded episode is still running, stopped by that limit or
+  ended by you, the episode is scored as it stood after your last request. Note the start time with `date` when you
+  begin; when you are done with the graded episode, finish it (`finish()`) and end the session yourself (stop working
+  and say that you are done).
