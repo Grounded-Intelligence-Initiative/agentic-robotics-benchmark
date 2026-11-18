@@ -412,3 +412,39 @@ the graded episode starts (it then closes, O13 below); the offline grader is `ve
   episode, or that an episode is run again after a cell failure (those budgets are a commissioned program's), and they
   name `practice_closed`. The instruction's session note says what O6 says: a session that stops while the graded
   episode runs leaves it scored as it stood after the last request.
+
+## 8. The dual mode (experiment, 2026-11-18; never merged into main)
+
+On the branch `exp/dual-mode-scoring` the task has two items, one session and one verify; the reward is their mean
+(each normalised by its own anchor, cap and `full_at`).
+
+* **The program item** is main's offline grading, unchanged: `offline_verify.py` is main's `verify.py` with two hooks
+  that only `verify.py` sets (`ARB_OFFLINE_ANCHOR` = `anchor_offline.json`, main's anchor; `ARB_OFFLINE_VERDICT` = the
+  root-only file its verdict goes to, instead of the engine's result). `test.sh` is main's again; `[verifier]` is
+  main's (21600 s, 8 CPUs, 16 GB). It grades the program frozen at the graded start, or the session-end submission if
+  the graded episode never started.
+* **The online item** is section 7's graded episode (`anchor_online.json`, the online variant's anchor), scored from
+  the record as there.
+* **The freeze.** At the graded start, before anything is charged, the worker asks the root supervisor (one byte on a
+  pipe; the supervisor takes no other input and never reads the episode) to copy `/home/user/submission` into the
+  root-only `/var/lib/arb-online/submission_snapshot/` (`graded_service.snapshot_submission`: every path opened
+  relative to its parent's descriptor with `O_NOFOLLOW`, so no link is followed; links, sockets, fifos and devices
+  skipped and counted; main's 60 MB cap, plus at most 10,000 entries and 32 levels so the copy ends in bounded time and
+  the record directory stays within the engine's artifact limits; over a cap: `too_large`, no copy). A copy that fails
+  refuses the start, nothing charged; then the practice flag (O13), then the charge. The record gains
+  `snapshot_status`, `snapshot_files`, `snapshot_bytes`, `snapshot_sha256` (the sorted list of path, size and content
+  sha256) and `snapshot_skipped`. Measured in a container: 3 ms for a 1 MB submission; three symbolic links (to
+  `/etc/passwd`, to the root-only episode file, to `/opt`) and a fifo skipped; a submission folder replaced by a link
+  froze as an empty folder; 61 MB froze as `too_large`; the agent account could read neither the snapshot nor the
+  record; a program rewritten after the start did not reach the program item (8 of 8 episodes ran the frozen one).
+* **`verify.py`, in order:** stop the agent account's processes (`cellkit.lockdown`, as main); read and check the record;
+  if the episode started (the record or `state.json`), check the snapshot against its digest and replace the restored
+  `/home/user/submission` with a root-owned copy of it (main's late-write gate skips root-owned entries, as it does
+  every restored entry); a `too_large`, missing or altered snapshot scores the program item 0 without a run; run main's
+  grading as a process of its own; score the record; write one verdict, `ratio_rewards(mean, anchor.json = 1.0, cap
+  1.0, metric dual_mode_score, full_at 1.0)`, with both items' metrics (prefixes `offline_` and `online_`).
+* **The oracle** (`solution/solve.sh`): main's steps first (the reference program and its token into the submission),
+  then the graded episode with the token (section 7), so the snapshot holds the reference program.
+* **The givens** say both: the program run (main's text: the grader, the import check, the budgets, the rerun) for the
+  program item, and that the graded episode has none of it; commissioning shifts run under the hidden episodes'
+  budgets and close at the graded start (`practice_closed`).

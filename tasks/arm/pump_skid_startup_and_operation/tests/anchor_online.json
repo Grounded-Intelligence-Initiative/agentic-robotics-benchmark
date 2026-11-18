@@ -1,0 +1,8 @@
+{
+ "direction": "higher",
+ "full_at": 0.98,
+ "metric": "operation_score",
+ "note": "the dual mode's graded-episode item (the online variant's anchor, unchanged): online variant (experimental): operation_score is the shift's score of the ONE graded episode the agent plays itself (skidcell.episode: start-up 0.20, operation in band 0.25, the window's events 0.25, shutdown 0.15, the log sheet 0.15; a void scores it 0), already on [0, 1], read from the graded episode's record (/var/lib/arb-online/record.json); ratio = score / value, reward = clamp(ratio / full_at, 0, 1).",
+ "source": "reference program (tests/reference, run inside the cell by the privileged reference_run: privileged eyes for the robot's motions only, decisions on what an operator can see), played by the oracle (solution/solve.sh) on the online variant's graded episode ep08 through the agent-side client: ale validate validate-86bd2023 (engine bfb7505, commit d3f7473b, the task image of main) measured operation_score 0.9999999999998129 (every part full: start-up 0.20, operation 0.25, the events 0.25 with supply_loss, filter_slug, demand_step and dosing_airlock all credited, shutdown 0.15, log 0.15; no void, no protective stop), the same to the last digit as the oracle's run in a container of the task image the same day and as the hidden set's selection run for this site (1.0); value = that, rounded to four decimals as the offline anchor was (never a published figure). full_at 0.98 as on main (the episode reproduces exactly). Offline anchor on main: 0.9765, the mean of the eight hidden episodes.",
+ "value": 1.0
+}
