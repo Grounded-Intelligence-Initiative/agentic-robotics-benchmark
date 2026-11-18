@@ -72,6 +72,10 @@ packer.solve(cell)` on a connected `cell`). The rules:
 
 * **One start.** `start()` succeeds once per session. It is charged before anything is simulated and never given
   back, and nothing restarts or resets the graded episode (`reset` and `truth` answer `forbidden` there).
+* **Practice during the graded episode.** Practice that runs hidden code or hidden episodes ends when the graded
+  episode starts; this cell has none. `LocalCell` and `~/practice/grade.py` run the code you were given, in your own
+  processes, on seeds you choose: they are your own tools and stay available throughout, as a program could carry
+  them.
 * **Two windows.** The graded episode must be started within 4 hours of the start of your session (`status()` gives
   `prep_left_s`); after that `start()` is refused and the task scores 0. Once started, it runs for at most 3 hours of
   wall-clock time (`graded_left_s`).

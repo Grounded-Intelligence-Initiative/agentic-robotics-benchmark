@@ -377,6 +377,11 @@ contract; what they became here:
   `/opt/arb-online/private`, the copy of `online/reference/` (byte copies of `reference/`) that only `arbonline` can
   read), then the unchanged `reference/packer.py` (describe, two frames, `reference_run`) and `finish`. The anchor's
   value is the oracle's measured `episode_score` in a validate of this variant (`anchor.json` `online`).
+* **Practice when the graded episode starts (O13, added 2026-11-18).** Every practice service that runs hidden code
+  or hidden instances must close at the start. This task has none: its practice facilities, `LocalCell` and
+  `practice/grade.py`, run the given cell code in the agent's own processes on seeds the agent chooses (the rule's
+  "local cell whose code it was given", which stays available), and the graded service offers no practice. Nothing is
+  closed; the instruction says so beside the one-shot rule.
 * **The agent's side (O11, O12)**: `instruction.md` replaces the deliverable and the grading sections with the graded
   episode; `client.py` gains `connect_graded` / `GradedCell`, `cell_api.md` the section "The graded episode",
   `cell_manual.md` one sentence on the budgets (the three copies and `given_hashes.json` follow). The practice
