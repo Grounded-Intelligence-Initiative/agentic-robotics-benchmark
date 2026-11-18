@@ -390,6 +390,12 @@
     "spec_hash": "sha256:5cb77cb4f3b29c214b2cfcdb7f1fa96d95bc993ae485bc7083251c003b22281b"
   },
   {
+    "content_digest": "sha256:7a6291a954e3323b60fa0850ab35589767489ab96b594ff71e05496eb8fa56b3",
+    "since": "2026-11-18T02:07:59Z",
+    "slug": "quadruped_requirements_replica_from_photos",
+    "spec_hash": "sha256:e40405b916f3585c82c7bb98eeb97af2427772707be57a9007ec0cc9eb40f078"
+  },
+  {
     "content_digest": "sha256:94e424c327992c1c2ffafec559c80d549bbd91b1589e610b3d0824a2e12c05ae",
     "since": "2026-11-18T01:01:43Z",
     "slug": "racecar_full_assembly_tenth_scale_ur10e",
