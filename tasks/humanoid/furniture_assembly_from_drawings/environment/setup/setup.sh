@@ -5,7 +5,9 @@
 #   2. the practice lab: lab/ (the lab server and its own copy of the furniture cell) installed at /opt/arb-lab, owned
 #      by the lab account `arbcell` with mode 0700 (the agent can read neither the cell's code nor the lab's state),
 #      and the lab server started as that account. It serves practice episodes of the cell, never privileged, on the
-#      Unix socket /run/furniture-cell/practice.sock; setup waits (at most 60 s) until the socket is up;
+#      Unix socket /run/furniture-cell/practice.sock, until the graded episode starts (practice then ends: the graded
+#      episode's service creates /var/lib/arb-online/practice_closed, the lab's --closed-flag); setup waits (at most
+#      60 s) until the socket is up;
 #   3. the graded episode's service (the online variant): online/graded_server.py, started as root from this
 #      root-only folder. Its worker imports the offline grader's own cell code (online/furniture_cell), reads the
 #      hidden graded episode (online/graded_episode.json) and the oracle token's digest as root, drops to `arbcell`
@@ -25,6 +27,7 @@ LAB_USER=arbcell
 SOCK_DIR=/run/furniture-cell
 SOCK="$SOCK_DIR/practice.sock"
 PY=/opt/venv/bin/python3
+RECORD_DIR=/var/lib/arb-online                       # the graded episode's record directory (section 3)
 
 # ---- 1. the agent's givens --------------------------------------------------------------------------------------------
 # cp -r, NOT -a: with -a the `payload/.` form also copies the payload directory's own root ownership onto the agent
@@ -75,6 +78,7 @@ setsid nohup runuser -u "$LAB_USER" -- env -i \
     ARB_G1_DIR="$G1_DIR" OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 LP_NUM_THREADS=4 \
     "$PY" -s -B "$LAB_DIR/lab_server.py" --socket "$SOCK" --config "$LAB_DIR/lab_config.json" \
         --state "$LAB_DIR/state" --log "$LAB_DIR/lab_server.log" --allow-user "$AGENT_USER" \
+        --closed-flag "$RECORD_DIR/practice_closed" \
     >>"$LAB_DIR/lab.log" 2>&1 </dev/null &
 LAB_PID=$!
 cd - >/dev/null
@@ -95,7 +99,6 @@ fi
 # config), stdio closed by the daemon itself; the command returns once the service serves (its worker has built the
 # graded episode's cell) or failed. The service's own logs (service.log, supervisor.log) sit next to the record.
 GRADED_SOCK_DIR=/run/furniture-graded
-RECORD_DIR=/var/lib/arb-online
 for f in online/graded_server.py online/graded_config.json online/graded_episode.json online/oracle_token.sha256 \
          online/furniture_cell/server.py online/furniture_cell/reference.py; do
   [ -f "$f" ] || { echo "[setup] online/ is incomplete: $f is missing" >&2; exit 1; }

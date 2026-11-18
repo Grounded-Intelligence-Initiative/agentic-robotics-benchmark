@@ -42,6 +42,9 @@ A program written as `solve(cell)` (as in the practice example of `cell_api.md`)
 * **One start.** `start()` starts the graded episode. It works once per session and is never undone or refunded; a
   second `start()` answers `already_started`. Before the start, every call except `status()` and `start()` answers
   `not_started`.
+* **Practice ends with the start.** All practice comes before the graded episode: the moment `start()` succeeds, the
+  practice cell ends any open practice episode and refuses new ones for the rest of the session (its calls then answer
+  `practice_closed`). Your own code and tools, and anything you built from the givens, stay available.
 * **Persistent, one connection at a time.** The episode lives in the service, not in your connection: closing the
   connection (`close()`, or the end or crash of your script) leaves it exactly where it is, and the next
   `connect_graded()` resumes it, so you can drive it from many short scripts. While one connection is open, another

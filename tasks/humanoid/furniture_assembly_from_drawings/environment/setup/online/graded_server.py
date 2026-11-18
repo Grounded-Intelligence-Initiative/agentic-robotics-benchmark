@@ -25,6 +25,10 @@ The episode:
     is persisted (fsync) before anything is simulated and never refunded;
   * it lives in the worker, not in a connection: a disconnect leaves it where it is and a new connection resumes it;
     one client at a time (another connection gets "busy");
+  * practice ends when it starts: before the start is persisted, the worker creates the flag file the practice lab
+    watches (`practice_closed_flag`, in the record directory, which the agent can neither read nor write); the lab
+    then ends an open practice episode and refuses new ones for the rest of the session ("practice_closed"), as
+    offline all practice happens before grading. A worker that restarts after the start makes sure the flag exists;
   * it ends at its own end (the cell's simulated-time cap, or an internal error of the cell inside step / command),
     at the agent's `finish`, `graded_s` after its start (the service ends it itself), or with the session (the record
     then holds the episode as it stood after the agent's last request). A worker that dies or restarts ends it with
@@ -85,6 +89,7 @@ DEFAULTS = {
     "agent_user": "user",                    # the evaluated account: may connect; the service never runs as it
     "socket": "/run/furniture-graded/graded.sock",
     "record_dir": "/var/lib/arb-online",
+    "practice_closed_flag": "/var/lib/arb-online/practice_closed",   # the practice lab's --closed-flag
     "prep_s": 14400.0,
     "graded_s": 10800.0,
     "cell": None,                            # the cell's configuration: the offline grading run's budgets
@@ -314,9 +319,11 @@ def load_config(path):
         v = cfg[key]
         if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0:
             raise ValueError("%s must be a positive number" % key)
-    for key in ("socket", "record_dir"):
+    for key in ("socket", "record_dir", "practice_closed_flag"):
         if not os.path.isabs(cfg[key]):
             raise ValueError("%s must be an absolute path" % key)
+    if os.path.dirname(cfg["practice_closed_flag"]) != os.path.abspath(cfg["record_dir"]):
+        raise ValueError("the practice-closed flag must live in the record directory (the agent cannot touch it)")
     if os.path.dirname(cfg["socket"]) in ("/", "/tmp", "/var/tmp", "/dev/shm", "/run"):
         raise ValueError("the socket must live in its own root-owned directory")
     if os.path.dirname(os.path.abspath(cfg["record_dir"])) in ("/", "/tmp", "/var/tmp", "/dev/shm"):
@@ -475,10 +482,22 @@ class Worker(object):
         return float(self.state["started_at_unix"]) + self.graded_s - (now or time.time())
 
     # -- start-up
+    def close_practice(self, now=None):
+        """Create the flag that ends practice (O13: once the graded episode has started, the practice lab ends an open
+        practice episode and refuses new ones). Idempotent; fsync before it returns."""
+        flag = self.cfg["practice_closed_flag"]
+        if os.path.lexists(flag):
+            return
+        write_json_atomic(flag, {"closed_at_unix": round(now or time.time(), 3),
+                                 "why": "the graded episode started: practice is over for this session"})
+        self.log.write(kind="practice_closed")
+
     def prepare(self):
         """After the privilege drop: resume the persisted state. Returns a line for the log."""
         self.save_state(worker_starts=int(self.state.get("worker_starts", 0)) + 1)
         self.last_record = self._read_last_record()       # what status() reports once the episode is over
+        if self.started:
+            self.close_practice()                         # (a worker that died between the flag and the start)
         if self.started and not self.ended:
             # the worker died or restarted with the episode running: it ends with its last record (no resume)
             self.save_state(ended=True, end_reason="worker_restart", ended_at_unix=time.time())
@@ -671,7 +690,13 @@ class Worker(object):
             privileged = bool(self.token_digest) and got == self.token_digest
             mismatch = not privileged
         now = time.time()
-        # the start is charged and persisted before anything is simulated, and never refunded
+        # practice ends first (a started episode always has practice closed), then the start is charged and persisted
+        # before anything is simulated, and never refunded
+        try:
+            self.close_practice(now)
+        except OSError as exc:
+            self.log.write(kind="practice_close_failed", err="%s: %s" % (type(exc).__name__, exc))
+            return {"error": "internal_error"}
         self.save_state(started=True, started_at_unix=now, privileged=privileged, oracle_token_mismatch=mismatch)
         self.srv.privileged = privileged                  # the privileged calls; the layout stays the graded one
         self.srv.wall_start = now

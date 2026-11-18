@@ -44,7 +44,8 @@ nothing. Any other method answers `{"error": "forbidden"}`, does nothing and is 
 * Practice: `furniture_client.client.connect_practice()` connects to the practice cell, a separate service
   (`/run/furniture-cell/practice.sock`) that runs one fresh practice episode per connection with exactly the graded
   rules and budgets (episodes drawn like the graded ones, never the same), at most 60 practice episodes in your session
-  (`cell._call("status")` tells how many are used). Example:
+  (`cell._call("status")` tells how many are used). Practice ends for good when the graded episode starts: an open
+  practice episode then ends, and the practice cell answers `practice_closed` for the rest of the session. Example:
 
 ```python
 import sys; sys.path.insert(0, "/home/user/given/lib")
