@@ -103,10 +103,15 @@ class RecordTests(_Case):
 
     def test_foreign_or_malformed_records_are_refused(self):
         for rec in (record(episode="ep02"), record(seed_sha256="0" * 64), record(task="other"),
-                    record(format="arb-online-record/0"), record(started=False), record(episode_score=float("nan")),
-                    record(episode_score=-0.1), record(episode_score=True), record(episode_score="0.9")):
+                    record(format="arb-online-record/0"), record(started=False)):
             self.write_record(rec)
             self.assertIsNone(self.verify.load_record(ONLINE)[0], rec)
+        for rec in (record(episode_score=float("nan")), record(episode_score=-0.1), record(episode_score=True),
+                    record(episode_score="0.9")):       # the record stands (it froze the program); no online score
+            self.write_record(rec)
+            got, _ = self.verify.load_record(ONLINE)
+            self.assertIsNone(self.verify.online_score(got)[0], rec)
+            self.assertEqual(self.verify.online_item(got, None)[0], 0.0)
         for raw in (b"{not json", b"[1, 2]", b" " * (1 << 20) + b"{}"):
             (self.records / "record.json").write_bytes(raw)
             self.assertIsNone(self.verify.load_record(ONLINE)[0])
@@ -182,6 +187,30 @@ class FreezeTests(_Case):
         rec, _ = self.verify.load_record(ONLINE)
         with self.assertRaises(SystemExit):
             self.verify.program_graded(rec)
+
+    def test_a_window_closed_without_a_start_grades_the_copy_frozen_then(self):
+        sub = self.home / "submission"
+        self.program(sub, "def solve(cell):\n    print('PROGRAM-A')\n")
+        res = self.freeze(sub)
+        (sub / "packer.py").write_text("def solve(cell):\n    print('PROGRAM-B')\n")   # changed after the window closed
+        self.write_record(record(started=False, ended=False, end_reason=None, prep_window_closed=True, episode_score=0.0,
+                                 snapshot_files=res["files"], snapshot_bytes=res["bytes"], snapshot_sha256=res["sha256"]))
+        rec, why = self.verify.load_record(ONLINE)
+        self.assertIsNone(why)
+        label, _ = self.verify.program_graded(rec)
+        self.assertEqual(label, "frozen_at_window_close")
+        self.assertIn("PROGRAM-A", (sub / "packer.py").read_text())
+        reward, stats, text = self.verify.online_item(rec, why)
+        self.assertEqual((reward, stats["online_started"]), (0.0, 0.0))
+        self.assertIn("never started", text)
+
+    def test_a_record_that_froze_nothing_usable_is_a_task_error(self):
+        self.write_record(record(started=False, prep_window_closed=True, snapshot_status="error"))
+        rec, _ = self.verify.load_record(ONLINE)
+        with self.assertRaises(SystemExit):
+            self.verify.program_graded(rec)
+        self.write_record(record(started=False))                 # neither a start nor a closed window
+        self.assertIsNone(self.verify.load_record(ONLINE)[0])
 
     def test_too_large_grades_nothing_and_never_started_grades_the_session_end(self):
         sub = self.home / "submission"
