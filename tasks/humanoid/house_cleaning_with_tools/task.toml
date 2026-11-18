@@ -23,10 +23,12 @@
 # DUAL MODE (experimental, 2026-11-18; never merged into main): one session, one verify, two scoring items, reward =
 # their mean, each normalised by its own anchor (tests/anchor_offline.json = main's, tests/anchor_online.json; the
 # combined dual_mode_score in tests/anchor.json is 1.0 by construction).
-# * The offline item is main's grading above, unchanged, of the program FROZEN AT THE GRADED START: at the start, before
-#   it is charged, the graded episode's service has its root supervisor copy /home/user/submission into
-#   /var/lib/arb-online/submission_snapshot (regular files and directories, no link followed, main's 60 MB cap); if the
-#   episode is never started, the submission at the session's end is graded, as on main.
+# * The offline item is main's grading above, unchanged, of the program FROZEN at the earlier of the graded start and the
+#   start window's close (prep_s after the service's start): then (before a start is charged) the graded episode's
+#   service has its root supervisor copy /home/user/submission into /var/lib/arb-online/submission_snapshot (regular
+#   files and directories, no link followed, main's 60 MB cap), so the program keeps main's preparation time; the
+#   submission at the session's end is graded only when the session ends before the window closes, without a start, or
+#   there is no usable record.
 # * The online item is the graded episode the agent plays itself during its session, through the graded episode's cell
 #   service (environment/setup/online/service.py, started by environment/setup/setup.sh; the cell a byte copy of
 #   tests/house_cell, served as the dedicated `arbcell` account over a unix socket; the client ~/given/lib/house_client's

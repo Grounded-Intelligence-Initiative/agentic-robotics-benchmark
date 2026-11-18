@@ -7,8 +7,10 @@ account). The service writes the episode's record to /var/lib/arb-online/record.
 start is charged, its root supervisor copies /home/user/submission into /var/lib/arb-online/submission_snapshot (the
 freeze). The engine collects /var/lib/arb-online as root after the agent phase and restores it here root-owned (a
 declared artifact, task.toml). verify.py uses this module:
-  * load_record(): the record's checks (a regular file of at most 1 MB, valid JSON, format, task, episode and seed
-    digest equal to tests/online.json, started, episode_score finite and >= 0);
+  * read_record(): the record's checks (a regular file of at most 1 MB, valid JSON, format, task, episode and seed
+    digest equal to tests/online.json), for a started episode or a start window that closed without a start (the
+    record then says prep_window_closed: the program was frozen at that moment);
+  * load_record(): read_record() plus started and episode_score finite and >= 0 (the online item);
   * snapshot_digest(): the digest the service recorded for the frozen program (snapshot_sha256), recomputed;
   * online_verdict(): the online item, robotics_grader.ratio_rewards of the episode's score against
     tests/anchor_online.json (a missing, invalid or never-started record: robotics_grader.zero_verdict).
@@ -21,7 +23,6 @@ import os
 import stat as statmod
 
 RECORD = os.environ.get("ARB_ONLINE_RECORD", "/var/lib/arb-online/record.json")
-STATE = os.path.join(os.path.dirname(RECORD), "state.json")
 SNAPSHOT_DIR = os.path.join(os.path.dirname(RECORD), "submission_snapshot")
 RECORD_FORMAT = "arb-online-record/1"
 MAX_RECORD_BYTES = 1 << 20
@@ -37,26 +38,9 @@ def _number(v):
     return v if math.isfinite(v) else None
 
 
-def record_exists():
-    return os.path.lexists(RECORD)
-
-
-def state_started():
-    """True when the service's own state file says the graded episode was started (its charge is written before the
-    first record): evidence of a start when the record itself is missing or unusable."""
-    try:
-        st = os.lstat(STATE)
-        if not statmod.S_ISREG(st.st_mode) or st.st_size > 65536:
-            return False
-        with open(STATE, "rb") as fh:
-            state = json.loads(fh.read(65537).decode("utf-8"))
-        return isinstance(state, dict) and state.get("started") is True
-    except (OSError, ValueError, UnicodeDecodeError):
-        return False
-
-
-def load_record(online):
-    """(record, None) for a record of the graded episode that was started, else (None, why the online item scores 0)."""
+def read_record(online):
+    """(record, None) for a usable record of the graded episode (started, or its start window closed without a start),
+    else (None, why it is unusable or missing)."""
     try:
         st = os.lstat(RECORD)
     except FileNotFoundError:
@@ -78,7 +62,17 @@ def load_record(online):
                       ("seed_sha256", online.get("seed_sha256"))):
         if rec.get(key) != want:
             return None, "the record's %s is %r, not the graded episode's %r" % (key, rec.get(key), want)
+    return rec, None
+
+
+def load_record(online):
+    """(record, None) for a record of the graded episode that was started, else (None, why the online item scores 0)."""
+    rec, why = read_record(online)
+    if rec is None:
+        return None, why
     if rec.get("started") is not True:
+        if rec.get("prep_window_closed") is True:
+            return None, "the graded episode was never started (its start window closed first)"
         return None, "the graded episode was never started"
     score = _number(rec.get("episode_score"))
     if score is None or score < 0.0:

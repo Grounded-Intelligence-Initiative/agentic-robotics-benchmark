@@ -4,17 +4,19 @@ camera-only), DUAL MODE (experimental; never merged into main): runs as ROOT in 
 Dual mode: one session, one verify, two scoring items, reward = their mean.
   * The offline item is main's grading, unchanged (everything below this paragraph, from main's tests/verify.py): the
     agent's program /home/user/submission/clean.py run on the 3 scenes of the fixed hidden set, main's gates, budgets
-    and score, against main's anchor (tests/anchor_offline.json). The program graded is the one FROZEN AT THE GRADED
-    START: when the episode started, the graded episode's cell service had its root supervisor copy the submission
-    into /var/lib/arb-online/submission_snapshot before the start was charged; if the episode never started, the
-    submission at the session's end (the one the engine restored here, as on main).
+    and score, against main's anchor (tests/anchor_offline.json). The program graded is the one FROZEN at the earlier of
+    the graded start and the start window's close (prep_s after the service's start): the graded episode's cell
+    service had its root supervisor copy the submission into /var/lib/arb-online/submission_snapshot then (before a
+    start is charged); the submission at the session's end (the one the engine restored here, as on main) only when
+    the session ended before the window closed without a start, or there is no usable record.
   * The online item is the graded episode the agent played itself through that service: the record
     /var/lib/arb-online/record.json, checked and scored as the online variant does (tests/online_record.py, against
     tests/anchor_online.json).
   * main() here, in this order: the lockdown below (_early_lockdown, at import: the agent account's processes stopped
     as on main); the record read and checked; the frozen program put in place of the restored submission
-    (_frozen_program; an episode that started without a whole frozen program scores 0 on the offline item); main's
-    offline grading (_main_locked); the online item; reward = (offline reward + online reward) / 2, each the unrounded
+    (_frozen_program: frozen at the earlier of the graded start and the start window's close; over the size cap the
+    offline item scores 0; without a freeze, i.e. the session ended first or there is no usable record, the
+    session-end submission); main's offline grading (_main_locked); the online item; reward = (offline reward + online reward) / 2, each the unrounded
     reward against its own anchor, cap and full_at, written once through robotics_grader.ratio_rewards against
     tests/anchor.json (dual_mode_score, 1.0 by construction), both items in the metrics (offline_*, online_*).
 
@@ -597,32 +599,38 @@ def _replace_submission(src):
 
 
 def _frozen_program(rec, why):
-    """Step 3 of the dual mode (the freeze): which program the offline item grades. Returns (mode, info):
-      "session_end": the graded episode never started (no record, no start in the service's state file): the submission
-          the engine restored, the session's end, graded as on main;
-      "snapshot": the episode started and its program was frozen whole before the start was charged: the frozen copy
-          (its file count and digest checked against the record; a mismatch is a task error) replaces the restored
-          submission;
-      "zero": the episode started but its program was not frozen (over the offline submission's size cap) or cannot be
-          identified (the record of a started episode is unusable): the offline item scores 0."""
-    if rec is None:
-        if online_record.record_exists() or online_record.state_started():
-            return "zero", {"status": "unknown", "reason": "the graded episode was started but its record is unusable "
-                                                           "(%s): the program frozen at its start cannot be identified" % why}
-        return "session_end", {"status": "not_started", "reason": "the graded episode was never started: the program in "
-                                                                  "the submission folder at the session's end is graded"}
+    """Step 3 of the dual mode (the freeze): which program the offline item grades. The service froze the program at the
+    earlier of the graded start and the start window's close (prep_s after its start); `rec` is its record in either
+    case (read_record). Returns (mode, info):
+      "snapshot": the record says the program was frozen (started, or prep_window_closed) and the copy is whole: the
+          frozen copy (its file count and digest checked against the record; a mismatch is a task error) replaces the
+          restored submission;
+      "zero": the program was frozen but over the offline submission's size cap (nothing was copied): the offline item
+          scores 0;
+      "session_end": the session ended before the start window closed, without a start, or there is no usable record:
+          the submission the engine restored, the session's end, graded as on main."""
+    frozen = rec is not None and (rec.get("started") is True or rec.get("prep_window_closed") is True)
+    if not frozen:
+        why_end = ("no usable record of the graded episode (%s)" % why) if rec is None else \
+            "the session ended before the start window closed, without a start"
+        return "session_end", {"status": "not_frozen", "reason": why_end + ": the program in the submission folder at "
+                                                                         "the session's end is graded"}
+    at = rec.get("snapshot_at") or ("graded_start" if rec.get("started") is True else "prep_window")
     status = rec.get("snapshot_status")
+    if status == "too_large":
+        return "zero", {"status": "too_large", "at": at, "reason": "the program in /home/user/submission was over the "
+                                                                   "submission's size cap when it froze (at %s): "
+                                                                   "nothing of it is graded" % at}
     if status != "ok":
-        return "zero", {"status": str(status), "reason": "the program in /home/user/submission was not frozen at the graded "
-                                                         "start (%s): nothing of it is graded" % status}
+        fail("the record says the program was frozen (at %s) but holds no usable copy (snapshot_status %r)" % (at, status))
     files, size, digest = online_record.snapshot_digest()
     if digest != rec.get("snapshot_sha256") or files != rec.get("snapshot_files"):
         fail("the frozen program (%d files, sha256 %s) does not match its record (%r files, sha256 %r)" % (
             files, digest, rec.get("snapshot_files"), rec.get("snapshot_sha256")))
     if os.getuid() == 0:
         _replace_submission(online_record.SNAPSHOT_DIR)
-    return "snapshot", {"status": "ok", "files": files, "bytes": size, "sha256": digest,
-                        "reason": "the program frozen at the graded start (%d files, %d bytes) is graded" % (files, size)}
+    return "snapshot", {"status": "ok", "at": at, "files": files, "bytes": size, "sha256": digest,
+                        "reason": "the program frozen at %s (%d files, %d bytes) is graded" % (at, files, size)}
 
 
 def _write_dual(mode, frozen, rec, on):
@@ -642,6 +650,8 @@ def _write_dual(mode, frozen, rec, on):
              "snapshot_files": float(frozen.get("files", 0) or 0), "snapshot_bytes": float(frozen.get("bytes", 0) or 0),
              "offline_graded_frozen_program": 1.0 if mode == "snapshot" else 0.0,
              "offline_graded_session_end": 1.0 if mode == "session_end" else 0.0,
+             "snapshot_at_graded_start": 1.0 if frozen.get("at") == "graded_start" else 0.0,
+             "snapshot_at_prep_window": 1.0 if frozen.get("at") == "prep_window" else 0.0,
              "online_started": 0.0 if rec is None else 1.0}
     for r in online_record.END_REASONS:
         extra["online_end_reason." + r] = 1.0 if (rec is not None and rec.get("ended") and rec.get("end_reason") == r) else 0.0
@@ -705,8 +715,10 @@ def main():
         metrics[k] = float(EARLY.get(k, -1.0 if k == "stage_lock_latency_ms" else 0.0))
     try:
         try:
-            rec, why = online_record.load_record(load_json(ONLINE))      # 2. the graded episode's record (O9)
-            mode, frozen = _frozen_program(rec, why)                     # 3. the program the offline item grades
+            online = load_json(ONLINE)
+            rec_any, why_any = online_record.read_record(online)         # 2. the graded episode's record
+            rec, why = online_record.load_record(online)                 # ... of a started episode (O9)
+            mode, frozen = _frozen_program(rec_any, why_any)             # 3. the program the offline item grades
             log("[grader] dual mode: %s" % frozen["reason"])
             if mode == "zero":
                 _offline_zero(frozen["reason"], metrics)

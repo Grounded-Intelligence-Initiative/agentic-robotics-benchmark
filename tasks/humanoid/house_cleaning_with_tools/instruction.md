@@ -54,7 +54,8 @@ minimal environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `MUJOCO_GL`, `PYTHONPATH`
 (or `bash run.sh`). Resolve given files through `os.environ.get("ARB_GIVEN_DIR", os.path.expanduser("~/given"))`, write
 only under the run's HOME / TMPDIR. A program that crashes ends that episode with what it achieved; the other episodes
 still run. The program is graded after your session, in a fresh sandbox that holds nothing else of yours (no other
-file, no process you started), and **the program graded is the one frozen when you start the graded episode** (below).
+file, no process you started), and **the program graded is the one frozen when you start the graded episode, or when
+the start window closes if you have not started by then** (below).
 
 ## The graded episode
 
@@ -87,15 +88,18 @@ A later script connects again with `connect_graded()` and goes on from there; `c
   answer `not_started`; `status()` answers at any time. No practice facility exists, before or during the graded
   episode (no practice cell, no lab trials, no checker); what you build yourself (a test rig, a stand-in cell, your
   scripts) stays yours throughout.
-* **The freeze.** The moment `start()` is accepted, before the episode is charged, the service copies your submission
-  folder: that copy is the program graded on the 3 hidden episodes. What you change in `/home/user/submission/` after
-  the start never reaches the program's grading, so nothing you see in the graded episode can go into the program. The
+* **The freeze.** Your program freezes at the earlier of two moments: when `start()` is accepted (before the episode is
+  charged), or when the start window closes (below) if you have not started by then. At that moment the service copies
+  your submission folder: that copy is the program graded on the 3 hidden episodes, and nothing you change in
+  `/home/user/submission/` afterwards is graded, so nothing you see in the graded episode can go into the program. The
   copy takes regular files and folders only (symbolic links, special files, `__pycache__`, folders more than 32 levels
   deep and names that are not plain UTF-8 text without line breaks are left out), and only within the program's size
   limit (60 MB, and at most 20,000 entries): over it nothing is copied and the program scores 0. If the copy fails, the
   start is refused and nothing is charged. `start()` and `status()` report what was frozen
-  (`program_frozen`: its status, files and bytes). If you never start the graded episode, the program graded is the
-  one in the submission folder when your session ends.
+  (`program_frozen`: its status, files and bytes). If the start window closes without a start, the graded episode can
+  no longer be started (it scores 0) and the program frozen then is graded. Only if your session ends before the
+  start window closes, without a start, is the program graded the one in the submission folder when the session
+  ends.
 * **The episode persists.** It lives in the service, not in your connection: a closed connection, or a script that
   ends or crashes, leaves it where it is. Nothing moves between requests: the robot holds its last targets and the
   simulation advances only inside `step`, so your thinking costs no simulated time. One client at a time: a second
@@ -103,10 +107,10 @@ A later script connects again with `connect_graded()` and goes on from there; `c
   episode stays; the proxy connects again by itself on its next call).
 * **Two windows, in wall-clock time.** The start window: `start()` is accepted within 4 hours of the service's start
   (it starts during the sandbox's setup, a little before your session; `status()["start_window_left_s"]` gives the
-  time left); those 4 hours are for your program and for your preparation of the graded episode alike. A later start
-  is refused, and the graded episode then scores 0. The graded window: the episode ends 3 hours after its start
-  (`status()["graded_window_left_s"]`) whatever its state; your thinking time counts against it, simulated time does
-  not.
+  time left); those 4 hours are for your program and for your preparation of the graded episode alike, and your
+  program freezes when they end at the latest. A later start is refused, and the graded episode then scores 0. The
+  graded window: the episode ends 3 hours after its start (`status()["graded_window_left_s"]`) whatever its state;
+  your thinking time counts against it, simulated time does not.
 * **How it ends.** At `finish()`; when it reaches 4800 s of simulated time (`step` then reports `done` and the event
   `episode_over`); when the graded window closes; or when your session ends. In every case the apartment is scored as
   it stands after your last request: nothing is simulated afterwards. After the end the cell's calls answer
@@ -144,15 +148,15 @@ episode** you drove. Each item is its `cleaning_score` (below) scaled against wh
 achieves on the same scenes.
 
 The program (3 hidden episodes: three fixed hidden scenes, the graded episode's among them; the freeze keeps what you
-see in the graded episode out of the program). Gates (multiply the program's score): `contract_ok` = `clean.py` is a regular file that parses and
-defines `solve`, imports under the run regime above (within 120 s and 120 CPU seconds), makes at least one `step` call
-over the episodes, holds no remote network socket while it runs, your own `.py` files import no networking module
-(`socket`, `ssl`, `urllib`, `http`, `requests`, `asyncio`, `ctypes`, `subprocess`, ...), load no module under a
-computed name, execute no computed code (`exec` / `eval` / `compile` of a non-literal) and start no other program, the
-submission folder holds no model weight file (a name ending in `.pt`, `.pth`, `.onnx`, `.safetensors`, `.ckpt`, `.h5`
-or `.pb`) and is at most 60 MB, and no process of the program outlives its episode. Per episode `safety`
-(cell_manual.md section 9): a violation zeroes that episode. The program's `cleaning_score` is the mean over the 3
-episodes.
+see in the graded episode out of the program). Gates (multiply the program's score): `contract_ok` = `clean.py` is a
+regular file that parses and defines `solve`, imports under the run regime above (within 120 s and 120 CPU seconds),
+makes at least one `step` call over the episodes, holds no remote network socket while it runs, your own `.py` files
+import no networking module (`socket`, `ssl`, `urllib`, `http`, `requests`, `asyncio`, `ctypes`, `subprocess`, ...),
+load no module under a computed name, execute no computed code (`exec` / `eval` / `compile` of a non-literal) and start
+no other program, the submission folder holds no model weight file (a name ending in `.pt`, `.pth`, `.onnx`,
+`.safetensors`, `.ckpt`, `.h5` or `.pb`) and is at most 60 MB, and no process of the program outlives its episode. Per
+episode `safety` (cell_manual.md section 9): a violation zeroes that episode. The program's `cleaning_score` is the
+mean over the 3 episodes.
 
 The graded episode: its `cleaning_score`, read from the apartment's state when the episode ends; a safety violation
 (cell_manual.md section 9) at any time in the episode makes it 0. No program gate applies to it.
@@ -189,9 +193,9 @@ as your work: the run is then an infrastructure failure.
 - Environment facts (harness limits): a single tool call whose input runs above roughly 25-30k tokens is dropped by the
   harness (it is never executed and no error comes back), and a response that reaches the 64k output-token limit is
   lost and, after at most a few retries, ends the session (the graded episode then ends as it stands; the program
-  graded is the frozen one, or the one in `/home/user/submission/` at that moment if you had not started the graded
-  episode). Write large files in several parts, keep every single response well below that limit, write a first
-  complete submission early and refine it before you start the graded episode.
+  graded is the frozen one, or, if nothing was frozen yet, the one in `/home/user/submission/` at that moment). Write
+  large files in several parts, keep every single response well below that limit, write a first complete submission
+  early and refine it before you start the graded episode.
 - Session time: this session is stopped after 7 hours of wall-clock time from its start (the 4-hour start window and
   the 3-hour graded window). If the session ends while the graded episode is still running, stopped by that limit or
   ended by you, the episode is scored as it stood after your last request. Note the start time with `date` when you

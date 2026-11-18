@@ -29,13 +29,17 @@ daemon (setsid, stdio on /dev/null) that lives into the agent phase. The layout 
 The graded episode:
   * `start` charges it once per session: the charge is persisted (state.json, fsync) before anything is simulated and is
     never refunded. A start is accepted only within prep_s of the service's start.
-  * The freeze (dual mode): before a start is charged, the worker asks the supervisor, over the socketpair it holds
-    since its fork, to copy /home/user/submission into submission_snapshot in the record directory (root-owned 0700 /
+  * The freeze (dual mode): the program freezes at the earlier of the graded start and the start window's close
+    (prep_s after the service's start). Before a start is charged, or when the window closes without a start, the
+    worker asks the supervisor, over the socketpair it holds since its fork, to copy /home/user/submission into
+    submission_snapshot in the record directory (root-owned 0700 /
     0600; regular files and directories only, no symbolic link followed, special files and __pycache__ skipped; within
     the offline submission's size cap, cell_config's route_gate, else nothing is copied: too_large). The supervisor
     answers only this one request, with fixed paths, and only while the state file says the episode has not started;
-    a copy that fails refuses the start and charges nothing. The record carries snapshot_status, snapshot_files,
-    snapshot_bytes and snapshot_sha256; the verifier grades that copy as the offline item (tests/verify.py).
+    a copy that fails refuses the start and charges nothing. The record carries snapshot_status, snapshot_at
+    (graded_start | prep_window), snapshot_files, snapshot_bytes and snapshot_sha256; a window that closes without a
+    start writes a record of its own (started false, prep_window_closed true) and no start is accepted afterwards.
+    The verifier grades that copy as the offline item (tests/verify.py).
   * The episode lives in the worker, not in a connection: a disconnect leaves it where it is and a new connection
     resumes it. One client at a time (a second connection is told `busy`). A connection idle for idle_timeout_s is
     closed; the episode stays.
@@ -439,7 +443,7 @@ class Service:
         self.conn_seq = 0
         self.started = bool(state.get("started"))
         self.t_start = state.get("start_wall")
-        self.ended = bool(state.get("ended")) or (self.started and server is None) or server is None
+        self.ended = bool(state.get("ended")) or (self.started and server is None)
         self.end_reason = state.get("end_reason")
         self.t_end = state.get("end_wall")
         self.requests = 0
@@ -467,6 +471,44 @@ class Service:
             return res if isinstance(res, dict) else {"status": "error", "detail": "bad reply"}
         except (OSError, ValueError) as exc:
             return {"status": "error", "detail": "the supervisor did not answer (%s)" % type(exc).__name__}
+
+    def _close_prep(self):
+        """(under self.lock) The start window closed without a start (dual mode): the program freezes now, as it would
+        have at a start, so the program item keeps main's preparation time; the graded episode can no longer start.
+        The record says so (started false, prep_window_closed true, the snapshot's fields)."""
+        if self.started or self.state.get("prep_closed"):
+            return
+        snap = self.freeze()
+        if snap.get("status") not in ("ok", "too_large"):
+            self.log.write(kind="freeze_failed", at="prep_window", detail=str(snap.get("detail"))[:200])
+        snap = {k: snap.get(k) for k in ("status", "files", "bytes", "sha256", "skipped")}
+        snap["at"] = "prep_window"
+        self.state.update(prep_closed=True, prep_closed_wall=time.time(), snapshot=snap)
+        try:
+            self.save_state()
+        except OSError:
+            self.log.write(kind="state_write_failed")
+        rec = {"format": RECORD_FORMAT, "task": self.cfg["task"], "episode": self.meta.get("episode"),
+               "seed_sha256": self.meta.get("seed_sha256"), "started": False, "ended": False, "end_reason": None,
+               "prep_window_closed": True, "prep_window_closed_at": _iso(self.state.get("prep_closed_wall")),
+               "requests": 0, "steps": 0, "sim_time_s": 0.0, "wall_s_since_start": 0.0, "episode_score": 0.0,
+               "metrics": {}, "privileged": False, "started_at": None, "ended_at": None,
+               "windows": {"prep_s": self.prep_s, "graded_s": self.graded_s,
+                           "service_start": _iso(self.state.get("service_start"))},
+               "score_error": None, "render_errors": 0, "service": SERVICE, "service_version": SERVICE_VERSION,
+               "snapshot_status": snap.get("status"), "snapshot_at": "prep_window",
+               "snapshot_files": int(snap.get("files") or 0), "snapshot_bytes": int(snap.get("bytes") or 0),
+               "snapshot_sha256": snap.get("sha256"), "snapshot_skipped": int(snap.get("skipped") or 0)}
+        try:
+            atomic_write_json(self.record_path, finite(rec))
+        except Exception:  # noqa: BLE001
+            self.log.write(kind="record_write_failed", tb=traceback.format_exc(limit=8))
+        self.log.write(kind="prep_window_closed", snapshot_status=snap.get("status"), files=snap.get("files"))
+        if self.server is not None:
+            try:
+                self.server.close()           # the cameras' render contexts: the episode can no longer run
+            except Exception:  # noqa: BLE001
+                pass
 
     def _frozen_public(self):
         snap = self.state.get("snapshot") or {}
@@ -536,9 +578,10 @@ class Service:
             "service": SERVICE, "service_version": SERVICE_VERSION,
         }
         snap = self.state.get("snapshot") or {}        # the program frozen at the start (dual mode)
-        rec.update({"snapshot_status": snap.get("status"), "snapshot_files": int(snap.get("files") or 0),
-                    "snapshot_bytes": int(snap.get("bytes") or 0), "snapshot_sha256": snap.get("sha256"),
-                    "snapshot_skipped": int(snap.get("skipped") or 0)})
+        rec.update({"snapshot_status": snap.get("status"), "snapshot_at": snap.get("at"),
+                    "snapshot_files": int(snap.get("files") or 0), "snapshot_bytes": int(snap.get("bytes") or 0),
+                    "snapshot_sha256": snap.get("sha256"), "snapshot_skipped": int(snap.get("skipped") or 0),
+                    "prep_window_closed": False})
         return finite(rec)
 
     def _write_record(self):
@@ -583,8 +626,9 @@ class Service:
                 self.save_state()
             except OSError:
                 self.log.write(kind="state_write_failed")
-        self.ended = True
-        self.end_reason = self.state.get("end_reason") or "worker_restart"
+        if self.state.get("started") or self.state.get("end_reason") == "state_unreadable":
+            self.ended = True
+            self.end_reason = self.state.get("end_reason") or "worker_restart"
         self.last_record = rec
         self.log.write(kind="restarted", started=bool(self.state.get("started")), end_reason=self.end_reason)
 
@@ -639,7 +683,7 @@ class Service:
             "start_window_s": self.prep_s, "graded_window_s": self.graded_s,
             "start_window_left_s": None if (self.started or self.ended) else round(max(0.0, t0 + self.prep_s - now), 1),
             "graded_window_left_s": round(max(0.0, float(self.t_start) + self.graded_s - now), 1) if running else None,
-            "program_frozen": self._frozen_public() if self.started else None,
+            "program_frozen": self._frozen_public() if self.state.get("snapshot") else None,
         }
 
     def _start(self, rid, params):
@@ -647,8 +691,10 @@ class Service:
             if self.started:
                 return self._err(rid, "already_started", "the graded episode was started at %s; it starts once per "
                                                          "session" % _iso(self.t_start))
-            if self.server is None or self.ended:
-                return self._err(rid, "start_window_closed", "the graded episode can no longer be started")
+            if self.server is None or self.ended or self.state.get("prep_closed"):
+                return self._err(rid, "start_window_closed", "the graded episode can no longer be started (the "
+                                                             "program was frozen when the start window closed)"
+                                 if self.state.get("prep_closed") else "the graded episode can no longer be started")
             if not isinstance(params, dict):
                 return self._err(rid, "bad_params", "start takes no parameters")
             privileged = False
@@ -674,6 +720,7 @@ class Service:
                 return self._err(rid, "internal_error", "the program in /home/user/submission could not be frozen; "
                                                         "nothing was started")
             snap = {k: snap.get(k) for k in ("status", "files", "bytes", "sha256", "skipped")}
+            snap["at"] = "graded_start"
             # the charge: persisted before anything is simulated, never refunded
             self.state.update(started=True, start_wall=now, privileged=privileged, snapshot=snap)
             try:
@@ -748,6 +795,12 @@ class Service:
         while True:
             time.sleep(0.25)
             try:
+                if (self.server is not None and not self.started and not self.state.get("prep_closed")
+                        and time.time() - float(self.state.get("service_start") or 0.0) >= self.prep_s):
+                    with self.lock:
+                        if not self.started:
+                            self._close_prep()          # the program freezes at the start window's close
+                    continue
                 if self.server is None or not self.started or self.ended:
                     continue
                 if time.time() - float(self.t_start) >= self.graded_s:
@@ -885,8 +938,9 @@ def run_worker(cfg, listener, ready_fd, lab, freeze_chan=None):
         except (OSError, ValueError):
             state = None                       # fail closed: no start
             log.write(kind="state_unreadable")
-        if state is None or state.get("started"):
-            # a restart after the start (or an unreadable state): nothing hidden is read, nothing is resumed
+        if state is None or state.get("started") or state.get("prep_closed"):
+            # a restart after the start or the start window's close (or an unreadable state): nothing hidden is read,
+            # nothing is resumed
             svc = Service(cfg, log, reqlog, state or {"service_start": 0.0, "started": False, "ended": True,
                                                       "end_reason": "state_unreadable"}, state_path, record_path)
             drop_privileges(lab)
@@ -1073,8 +1127,8 @@ def snapshot_submission(cfg):
 
 def serve_freeze(chan, cfg, sup_log):
     """(the supervisor's thread) The worker's one request on its channel: `freeze` -> the snapshot's result, one JSON
-    line. Refused once the state file says the graded episode started (the program is frozen once, before the
-    charge); anything else is answered `error`."""
+    line. The program is frozen once: refused once the state file says the graded episode started or the program was
+    frozen (at the start, or when the start window closed); anything else is answered `error`."""
     buf = b""
     while True:
         try:
@@ -1092,11 +1146,11 @@ def serve_freeze(chan, cfg, sup_log):
             if line.strip() == b"freeze":
                 try:
                     state = read_json(os.path.join(cfg["state_dir"], "state.json"), 1 << 16)
-                    started = bool(state.get("started"))
+                    done = bool(state.get("started")) or bool(state.get("snapshot"))
                 except (OSError, ValueError):
-                    started = True                      # fail closed
-                if started:
-                    res["detail"] = "the graded episode already started"
+                    done = True                         # fail closed
+                if done:
+                    res["detail"] = "the program is frozen already"
                 else:
                     res = snapshot_submission(cfg)
             sup_log.write(kind="freeze", **{k: v for k, v in res.items() if k != "sha256"})

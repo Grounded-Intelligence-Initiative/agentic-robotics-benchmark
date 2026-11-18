@@ -9,10 +9,11 @@
 #     (online/episode.json) as root, builds the episode's house cell (online/house_cell, a byte copy of the verifier's
 #     tests/house_cell), drops to the dedicated `arbcell` account and serves /run/arb-online/cell.sock; the episode's
 #     record goes to /var/lib/arb-online (the lab account's, 0700: the agent can neither read nor write it; a declared
-#     artifact, scored by tests/verify.py in the separate verifier). Dual mode: at the graded start, before it is
-#     charged, the service's root supervisor freezes the agent's program (/home/user/submission ->
-#     /var/lib/arb-online/submission_snapshot), the copy the verifier grades as the offline item. Fixed argv, a clean
-#     environment, no hidden value outside this folder. The command returns once the service serves (or fails setup).
+#     artifact, scored by tests/verify.py in the separate verifier). Dual mode: at the earlier of the graded start
+#     (before it is charged) and the start window's close, the service's root supervisor freezes the agent's program
+#     (/home/user/submission -> /var/lib/arb-online/submission_snapshot), the copy the verifier grades as the offline
+#     item. Fixed argv, a clean environment, no hidden value outside this folder. The command returns once the service
+#     serves (or fails setup).
 # There is no practice cell: the service serves the one graded episode and nothing else.
 set -euo pipefail
 umask 022
