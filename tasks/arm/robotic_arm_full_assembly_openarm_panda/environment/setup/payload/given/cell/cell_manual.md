@@ -71,7 +71,11 @@ the pixels); its noise is about 0.5 mm + 4 mm per m^2 x z^2 for the top camera a
 for the wrist cameras, plus unit-specific systematic errors of up to about a millimetre that do not average away. The
 hall's brightness varies by up to about 20 % between runs, and each camera unit has its own slight colour response
 (gain and tint within a few per cent), constant during a run; the image noise is new in every frame. The images come
-from a physically based renderer of the hall (soft shadows, reflections on metal and plastic).
+from MuJoCo's Filament renderer (physically based: soft shadows, reflections on metal and plastic) in the hall, whose
+light is baked into its textures (`~/render`). The given render layer (`~/given/lib/render`, with
+`arm.assembly_openarm.agent_render`) renders the same way: the same renderer, hall and look for your own scenes, depth
+from MuJoCo on the same geometry (`cell_api.md`, "Rendering your own frames"); MuJoCo's classic renderer stays
+available.
 
 ## Fastening, joints, collisions
 
