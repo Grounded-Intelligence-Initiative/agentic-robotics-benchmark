@@ -1,6 +1,6 @@
 # endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/ale-robotics-assets
-# revision: 0000000000000000000000000000000000000000
+# revision: ce1641adaf531089abd8b1fa0be82f56f6b732b6
 # prefix: tasks/soft/tensegrity_cad_design_from_photos/payload
 3cc178e3d64c2531eaa73238cab26c08c5e63d83d53ea1f3c653fb9ac7097d53  photos/photo_001.jpg
 99b4078bffc956b92347a4b4fb0bdf27bda8f5a598df81e8ed09fee4db486616  photos/photo_002.jpg
