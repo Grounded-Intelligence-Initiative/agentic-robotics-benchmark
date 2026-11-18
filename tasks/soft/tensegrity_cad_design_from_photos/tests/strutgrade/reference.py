@@ -109,7 +109,8 @@ class Reference(object):
     types     purchased type -> {"name", "pn", "mass_g", "symmetry", "axis_local", "cons" [constituents], "anchor",
               "V", "centroid", "spec"}; constituent = {"id", "type", "k", "V", "com", "I" (default integration),
               "V_pin" (eps 1e-7), "verts", "size", "geo", "cls"}
-    classes   congruence classes of all constituents (UAV v2): {"id", "rep", "members" [(constituent, M)], "types"}
+    classes   congruence classes of all constituents (as in the UAV CAD task): {"id", "rep", "members"
+              [(constituent, M)], "types"}
     placements purchased reference instance id -> {"id", "type", "W" (local -> strut)}
     """
 

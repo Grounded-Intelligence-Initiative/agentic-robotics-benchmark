@@ -82,7 +82,7 @@ def repaired(ctx, geo):
 
 def min_distance(group_a, group_b, disk, reach):
     """Smallest surface distance between two groups of Placed (query points within `reach` of the other's box only;
-    UAV v2's min_distance)."""
+    the UAV CAD task's min_distance)."""
     best = np.inf
     for a in group_a:
         for b in group_b:

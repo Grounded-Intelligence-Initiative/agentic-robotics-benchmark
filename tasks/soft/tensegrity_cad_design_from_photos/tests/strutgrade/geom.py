@@ -417,7 +417,7 @@ def weld(V, F, tol):
 
 def fill_holes(V, F, max_loop):
     """Close boundary loops of at most max_loop edges of a *tessellation of a submitted B-rep* with triangle fans (the
-    OCC mesher leaves seam gaps on some imported B-reps; UAV v2). Never used on a reference mesh."""
+    OCC mesher leaves seam gaps on some imported B-reps; as in the UAV CAD task). Never used on a reference mesh."""
     import trimesh
     mesh = trimesh.Trimesh(V, F, process=False)
     edges = mesh.edges_sorted
@@ -731,7 +731,7 @@ def iou(geo_a, T_a, geo_b, T_b):
 # ============================================================================ distances
 def surface_distances(query, samples, normals, tree, disk_mm):
     """Distance of each query point to a surface given by dense samples with normals: the distance to the tangent disk
-    (radius disk_mm) of the nearest sample (the bimanual task's cad_tree.checks, UAV v2)."""
+    (radius disk_mm) of the nearest sample (the bimanual task's cad_tree.checks, as in the UAV CAD task)."""
     if tree is None or len(query) == 0:
         return np.full(max(1, len(query)), np.inf)
     d, idx = tree.query(query)
@@ -841,7 +841,7 @@ def icp(src, dst, dst_n, tree, T0, iters, trim, bound_mm=30.0, step_rad=0.15, to
 def _axial_rotations(src_v, cs, Is, dst_v, cd, Id, rh_tol):
     """Rotations for a source whose inertia has two equal moments (a body of revolution or of 3+-fold symmetry): the
     distinct principal axis onto the destination's (both senses), then the turn about it that takes the source's most
-    distinctive off-axis vertex onto each destination vertex of the same radius and height (UAV v2)."""
+    distinctive off-axis vertex onto each destination vertex of the same radius and height (as in the UAV CAD task)."""
     ws, Es = eigen(Is)
     wd, Ed = eigen(Id)
     out = []
@@ -930,7 +930,7 @@ def register_exact(src, dst, tol, all_solutions=False):
 def register_samples(src_geo, dst_geo, cfg, src=None, dst=None, n_keep=6):
     """Rigid registration of two tessellated solids (T src->dst, trimmed RMS): coarse ICP on a subsample from the 24
     principal-axis starts (exact inertia when both are given, else of the sample clouds), the best n_keep refined on
-    the query samples (UAV v2 register_samples, used for purchased solids that are not an unchanged import)."""
+    the query samples (register_samples of the UAV CAD task, for purchased solids that are not an unchanged import)."""
     R = cfg["recognition"]
     q = src_geo.query()[0]
     D, N, tree = dst_geo.dense()

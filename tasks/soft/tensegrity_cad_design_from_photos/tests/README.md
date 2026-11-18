@@ -299,15 +299,17 @@ code, the configuration and the reference tables (and three key names of records
 `seen.json` `plane_reading`, one in `purchased.json`'s instances) lost references to development records; every code
 file has the same syntax tree without its docstrings, every value the grader reads is unchanged, the reference samples
 are the same point sets, and the oracle, the empty submission and the measured episode's document grade bit for bit as
-before. Any change to one of them is a new version of the task and has to be accepted again (oracle 1.0, nothing
-submitted 0, the QC of section 9); scores of episodes recorded before stay as they are; a re-grade under another
-configuration is marked as such and is not a reading. `README.md` and `NOTICE.md` are not part of the freeze.
+before. Later that day nine more docstrings were reworded in the same way (the same syntax trees, the same grades);
+the code list hash below includes them, and no other identity moved. Any change to one of them is a new version of the
+task and has to be accepted again (oracle 1.0, nothing submitted 0, the QC of section 9); scores of episodes recorded
+before stay as they are; a re-grade under another configuration is marked as such and is not a reading. `README.md`
+and `NOTICE.md` are not part of the freeze.
 
 | What | Identity |
 |---|---|
 | `grader_config.json` | sha256 `531746a4c7c61ade4ee3c579a63ec950876ef7a871a95450c66a2021f7164a4e` |
 | `reference/reference.json` (pins the 29 reference files) | sha256 `dd9d02e41e2c9a1aa3e7a295b2306afac9f266d10d88916573c9d45aa9d250d8` |
-| the 21 code files (`fcstd_extract.py`, `grade.py`, `lockdown_runtime.py`, `strutgrade/*.py`, `test.sh`, `verify.py`) | list hash `f22bc27788309434f997abed6f59518f8e6a5a26f4e0cb0d78164d6be635d6be` |
+| the 21 code files (`fcstd_extract.py`, `grade.py`, `lockdown_runtime.py`, `strutgrade/*.py`, `test.sh`, `verify.py`) | list hash `bbd11a3711f171dd5baac9cbbe1b1eb77b566f3bd3627ce2a3d57e8bb51d21c6` |
 | the 287 photographs of the payload | list hash `2077cdc55000a83c318bca1f36c24e562ccd17bad2ec5d6d0dbb4b64965b430d` |
 | `instruction.md` as generated from this configuration | sha256 `4b443e63a8eddd39c52f8fe0e5dd461aad2e3c0c2be2d3f1922e5152ce1bce8a` |
 

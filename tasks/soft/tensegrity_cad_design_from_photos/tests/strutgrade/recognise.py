@@ -1,6 +1,6 @@
-"""Recognition of purchased parts by their full shape, in the submission's own frame (the code of UAV
-v2's recognise / form_instances unchanged, with this task's type table: GEARMOTOR (Pololu 5192) and ROD (McMaster-Carr
-8974K19); the five boards join when they are in the payload).
+"""Recognition of purchased parts by their full shape, in the submission's own frame (the code of the UAV CAD
+task's recognise / form_instances unchanged, with this task's type table: GEARMOTOR (Pololu 5192) and ROD
+(McMaster-Carr 8974K19); the five boards join when they are in the payload).
 
 Every untagged solid (not demoted by a local rule) is compared with every constituent class of the purchased types
 (the grader's copies, read from the pinned vendor STEPs): volume within recognition.volume_rel (1 %), then a rigid

@@ -6,7 +6,7 @@ with a time limit); it imports FreeCAD's own modules and the standard library on
 
     freecadcmd -c "import sys; sys.argv = ['fcstd_extract.py', FCSTD, OUT_DIR]; exec(open(PATH).read())"
 
-Base: the UAV v2 extractor (uav_cad_design_from_photos/tests/fcstd_extract.py), with the root-object reading of
+Base: the extractor of uav_cad_design_from_photos (tests/fcstd_extract.py), with the root-object reading of
 link sources from an earlier extractor of this task and the joint fields of the arm task's extractor (FreeCAD 1.1.4's
 Revolute: EnableAngleMin / Max, AngleMin / Max; the global joint frames through UtilsAssembly.getJcsGlobalPlc, the
 same reading as the arm task, checked on 1.1.4).
@@ -222,8 +222,7 @@ def extract(fcstd, out_dir):
 def root_components(doc):
     """(prefix, object) of the shape-bearing objects at the top of a document without an Assembly: its visible root
     objects, then the visible shape-bearing objects referenced only by App::Link objects (the source of a link that
-    reuses it sits in no container and is not a root object only because of those links), once each (the retired
-    soft 02 extractor)."""
+    reuses it sits in no container and is not a root object only because of those links), once each."""
     out = []
     for o in doc.RootObjects:
         if skipped(o) or not bool(getattr(o, "Visibility", True)):
