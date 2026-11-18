@@ -390,6 +390,12 @@
     "spec_hash": "sha256:5cb77cb4f3b29c214b2cfcdb7f1fa96d95bc993ae485bc7083251c003b22281b"
   },
   {
+    "content_digest": "sha256:94e424c327992c1c2ffafec559c80d549bbd91b1589e610b3d0824a2e12c05ae",
+    "since": "2026-11-18T01:01:43Z",
+    "slug": "racecar_full_assembly_tenth_scale_ur10e",
+    "spec_hash": "sha256:4b24178a05c0cd9a72680b2f79c8d8b8f42a5765108b16d368453a7a9a1ca1fc"
+  },
+  {
     "content_digest": "sha256:f456d8f118ef8558e2c21140559089440cbb6fc4f4b615e3b8e80106bc445680",
     "since": "2026-11-10T12:37:39Z",
     "slug": "robocasa_object_dynamics_from_video",
@@ -640,6 +646,12 @@
     "since": "2026-11-17T21:03:50Z",
     "slug": "rov_requirements_engineering_from_tender",
     "spec_hash": "sha256:2ad8fdbec0941d6d375498a3e29d2ea37503a4058d70f908b166579c8bb3f477"
+  },
+  {
+    "content_digest": "sha256:7a532fc49250e2572ef9dcefe547bb3629f1d4b356243ab65e4245278b1fb2d5",
+    "since": "2026-11-18T01:08:13Z",
+    "slug": "rov_subsea_manifold_leak_isolation",
+    "spec_hash": "sha256:6004fd8830f33fcc8acc35253cf9d02354d00688b61375c1c139e69c05cfcd52"
   },
   {
     "content_digest": "sha256:6dac2e03c2f9d4b855c53f3ee56177b80b47db73846aa60eb119caa8820c2b3f",
