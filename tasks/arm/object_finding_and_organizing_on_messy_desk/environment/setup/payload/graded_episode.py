@@ -9,7 +9,8 @@ Pillow and SciPy).
     from graded_episode import GradedEpisode
     ep = GradedEpisode()                 # connects; raises GradedEpisodeError("busy") if another client is
     print(ep.status())                   # {"started": false, "ended": false, "steps": 0, "horizon": 20000, ...}
-    obs = ep.start()                     # ONCE per session, charged at once: the observation at t = 0
+    obs = ep.start()                     # ONCE per session, charged at once: the observation at t = 0;
+                                         # it also freezes /home/user/submission for the program's grading
     obs = ep.step([0, 0, -0.02, 0, 0, 0, 0, 0])   # one control step -> the next observation (ep.done at the end)
     obs = ep.observe()                   # the latest observation again; nothing is simulated
     ep.finish()                          # ends the episode now (it is then scored as it stands)
@@ -48,6 +49,7 @@ class GradedEpisode(object):
         self.path, self.timeout = path, float(timeout)
         self.done = False
         self.t = None
+        self.program_snapshot = None
         self._sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self._sock.settimeout(self.timeout)
         self._sock.connect(path)
@@ -80,13 +82,18 @@ class GradedEpisode(object):
         """Start the graded episode and return its first observation (t = 0). Once per session: the start is
         charged before anything is simulated and never refunded. It launches the episode's simulator, which
         takes from seconds to a few minutes; if the simulator cannot start, nothing is charged
-        (GradedEpisodeError "simulator_unavailable"). If this call is cut off, the start still completes in
-        the service: check status() and continue with observe(). `token` is for the task's maintainers;
-        leave it out."""
+        (GradedEpisodeError "simulator_unavailable"). Just before the charge it freezes /home/user/submission:
+        that copy is the program graded on the hidden episodes; `program_snapshot` then holds its status
+        ("ok", or "too_large": nothing kept), files, bytes and skipped entries (links, other accounts' files).
+        If the copy fails, nothing is charged (GradedEpisodeError "snapshot_failed"). If this call is cut
+        off, the start still completes in the service: check status() and continue with observe(). `token`
+        is for the task's maintainers; leave it out."""
         msg = {"op": "start"}
         if token is not None:
             msg["token"] = str(token)
-        return self._call(msg, timeout=timeout)["obs"]
+        reply = self._call(msg, timeout=timeout)
+        self.program_snapshot = reply.get("program_snapshot")
+        return reply["obs"]
 
     def step(self, action):
         """Apply one action ([dx, dy, dz, droll, dpitch, dyaw, grip, mark], plus an optional ninth number: the
@@ -125,7 +132,8 @@ def _main(argv):
             print(json.dumps(ep.status()))
         elif cmd == "start":
             obs = ep.start()
-            print(json.dumps({"t": obs.get("t"), "request": obs.get("request"), "ee_pose": obs.get("ee_pose")}))
+            print(json.dumps({"t": obs.get("t"), "request": obs.get("request"), "ee_pose": obs.get("ee_pose"),
+                              "program_snapshot": ep.program_snapshot}))
         elif cmd == "finish":
             if "--yes" not in argv:
                 print("finish ends the graded episode for good; run it again with --yes", file=sys.stderr)

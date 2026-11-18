@@ -88,7 +88,8 @@ def main():
             log("start attempt %d: %s; retrying in 60 s" % (attempt, exc))
             ep.close()
             time.sleep(60.0)
-    log("episode started after %.0f s" % (time.monotonic() - t0))
+    log("episode started after %.0f s; the submission frozen for the program's grading: %s" % (
+        time.monotonic() - t0, json.dumps(ep.program_snapshot)))
     steps, last_report = 0, time.monotonic()
     while not ep.done:
         action = ctl.act(obs["t"], obs)

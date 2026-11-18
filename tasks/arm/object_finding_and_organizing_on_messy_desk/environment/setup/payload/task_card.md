@@ -93,9 +93,11 @@ exactly one instance present, or one with none (an absent request).
   cameras at 1920 x 1080 (same poses and focal length, horizontal field of view unchanged, the
   vertical one cropped to 16:9; focal 1466 px, principal point (960, 540); `info` -> `hires` lists
   the matrices). The hi-res frames are rendered every step anyway and only encoded and sent when
-  asked for, so the plain 10 Hz step is unaffected; a hi-res camera frame asked for costs
-  wall-clock time only: the simulator's PNG encoding (about 0.1 s per camera) and receiving and
-  decoding it (about 3 MB per camera).
+  asked for, so the plain 10 Hz step is unaffected; every hi-res camera frame asked for is
+  charged 0.1 s against the controller's time budget (the simulator's PNG encoding, at a fixed
+  price; the budget is in the instruction), and receiving and decoding it (about 3 MB per
+  camera) is the controller's own time on top. The graded episode you play yourself has no time
+  budget: there a hi-res frame costs wall-clock time only.
 
 ## Control
 - 10 Hz control, 60 Hz physics (6 substeps per action).

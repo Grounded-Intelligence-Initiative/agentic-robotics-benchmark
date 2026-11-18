@@ -31,5 +31,13 @@
   "OMNI_KIT_ACCEPT_EULA": "YES",
   "MPLBACKEND": "Agg"
  },
- "require_seccomp": true
+ "require_seccomp": true,
+ "submission": "/home/user/submission",
+ "snapshot_dir": "/var/lib/arb-online/submission_snapshot",
+ "snapshot_caps": {
+  "max_entries": 99000,
+  "max_depth": 64,
+  "max_bytes": 17179869184
+ },
+ "snapshot_timeout_s": 900
 }
