@@ -9,8 +9,10 @@ Two scoring items, one reward, their mean:
   to main's tests/verify.py (the run.sh controller on the hidden episodes of episodes.json, each in an Isaac Sim
   process of its own, the controller budget, the probe lock, S = O * R); offline_item() below is main's main()
   with the verdict returned instead of written and main's anchor read from anchor_offline.json. The program it
-  grades is the one frozen at the graded start (the record's snapshot, checked against the record's digest), or,
-  when the episode was never started, the submission folder as the session left it, as on main.
+  grades is the one the service froze at the earlier of the graded start and the close of the preparation window
+  (the record's snapshot, checked against the record's digest); only when there is no usable record of a freeze
+  (the session ended before the window closed, or the record did not arrive) the submission folder as the session
+  left it, as on main.
 - the online item: the graded episode's record, scored as in the online variant (anchor_online.json).
 
 reward = (offline reward + online reward) / 2, each item's exact kit reward with its own anchor, cap and full_at;
@@ -56,8 +58,7 @@ METRIC_KEYS = ("organization", "request_progress", "request_rate", "score_unscal
                "absent_wrong", "claims_wrong", "first_holds", "objects_lost", "arrivals", "containers_cleared",
                "disturbances", "org_num", "org_den", "episode_cut", "hires_frames", "bad_actions",
                "privileged_mode", "oracle_token_mismatch")
-PROGRAMS = ("session_end", "snapshot", "snapshot_too_large", "snapshot_mismatch", "record_invalid",
-            "record_dir_missing")
+PROGRAMS = ("session_end", "snapshot_start", "snapshot_prep_window", "snapshot_too_large")
 
 
 # ----------------------------------------------------------------------------------------------------------
@@ -104,12 +105,20 @@ def load_record(path, max_bytes):
     return rec, None
 
 
-def check_record(rec, online):
-    """None when the record belongs to this task's graded episode and was started, else why not."""
+def identity_problem(rec, online):
+    """None when the record belongs to this task's graded episode, else why not."""
     for key, want in (("format", FORMAT), ("task", online["task"]), ("episode", online["episode"]),
                       ("seed_sha256", online["seed_sha256"])):
         if rec.get(key) != want:
             return "the record's {} is {!r}, not {!r}".format(key, rec.get(key), want)
+    return None
+
+
+def check_record(rec, online):
+    """None when the record belongs to this task's graded episode and was started, else why not (O9)."""
+    why = identity_problem(rec, online)
+    if why is not None:
+        return why
     if rec.get("started") is not True:
         return "the record says the graded episode was never started"
     score = rec.get("episode_score")
@@ -174,6 +183,36 @@ def snapshot_digest(root):
             rel = os.path.relpath(path, root).replace(os.sep, "/")
             lines.append("%s\0%d\0%s\n" % (rel, st.st_size, h.hexdigest()))
     return hashlib.sha256("".join(sorted(lines)).encode("utf-8", "surrogateescape")).hexdigest()
+
+
+def choose_program(rec, online, submission):
+    """-> (program, note): the program the offline item grades. `rec` is the record when one arrived and belongs
+    to this task's graded episode (a usable record), else None.
+
+    The service froze the program at the graded start (started) or at the close of the preparation window
+    (prep_window_closed): its snapshot replaces the restored session-end folder, provided its digest matches the
+    record's (a mismatch, or a freeze on record without a usable snapshot, is a task error); "too_large" grades no
+    program. With no usable record of a freeze, the submission folder as the session left it is graded."""
+    frozen = rec is not None and (rec.get("started") is True or rec.get("prep_window_closed") is True)
+    if not frozen:
+        return "session_end", ("no record of a freeze ({}): the submission as the session left it".format(
+            "no usable record" if rec is None else "neither started nor closed"))
+    status, at = rec.get("snapshot_status"), rec.get("snapshot_at") or ("start" if rec.get("started") else
+                                                                        "prep_window")
+    if status == "too_large":
+        return "snapshot_too_large", "the submission frozen at the {} was too large ({}): no program is graded".format(
+            "graded start" if at == "start" else "close of the preparation window", rec.get("snapshot_note"))
+    if status != "ok":
+        fail("the record holds a freeze of the program without a usable snapshot (snapshot_status {!r})".format(status))
+    digest = snapshot_digest(online["snapshot"])
+    if digest is None or digest != rec.get("snapshot_sha256"):
+        fail("the frozen program in {} does not match the record's digest ({} files, sha256 {}...)".format(
+            online["snapshot"], rec.get("snapshot_files"), str(rec.get("snapshot_sha256"))[:12]))
+    install_snapshot(online["snapshot"], submission)
+    program = "snapshot_start" if at == "start" else "snapshot_prep_window"
+    return program, "the submission frozen at the {} ({} files, {} bytes)".format(
+        "graded start" if at == "start" else "close of the preparation window", rec.get("snapshot_files"),
+        rec.get("snapshot_bytes"))
 
 
 def install_snapshot(src, dst):
@@ -242,36 +281,26 @@ def main():
     online = load_online()
     # 1. Agent processes: none run here (a fresh verifier sandbox, separate verification); main's grading
     #    reclaims root's PATH before any agent code runs (the kit's deprivileged runner), as on main.
-    # 2. The online record (O9).
+    # 2. The online record (O9). Usable: it arrived (the record directory's service.log, written at setup, tells
+    #    the directory did) and belongs to this task's graded episode.
     record_dir = os.path.dirname(online["record"])
     record_dir_here = os.path.isdir(record_dir) and os.path.lexists(os.path.join(record_dir, "service.log"))
-    record_present = record_dir_here and os.path.lexists(online["record"])
-    rec, why = (load_record(online["record"], int(online["max_record_bytes"])) if record_present
-                else (None, "no record of the graded episode: it was never started"))
+    rec, why = (load_record(online["record"], int(online["max_record_bytes"])) if record_dir_here
+                else (None, "the graded episode's record directory did not reach the verifier"))
+    if rec is not None:
+        problem = identity_problem(rec, online)
+        if problem is not None:
+            rec, why = None, problem
     if rec is not None:
         why = check_record(rec, online)
     started = rec is not None and why is None
-    # 3. The program: frozen at the start, or the session-end folder when the episode never started.
+    # 3. The program: frozen at the earlier of the graded start and the close of the preparation window, or the
+    #    session-end folder when no usable record holds a freeze.
     submission = os.path.join(agent_home(), "submission")
-    snapshot = online["snapshot"]
-    if not record_dir_here:
-        program, note = "record_dir_missing", "the graded episode's record directory did not reach the verifier"
-    elif not record_present:
-        program, note = "session_end", "the episode was never started: the submission as the session left it"
-    elif not started:
-        program, note = "record_invalid", "the record is invalid ({}): no program is graded".format(why)
-    elif rec.get("snapshot_status") == "too_large":
-        program, note = "snapshot_too_large", "the submission frozen at the start was too large ({})".format(
-            rec.get("snapshot_note"))
-    elif rec.get("snapshot_status") == "ok" and snapshot_digest(snapshot) == rec.get("snapshot_sha256"):
-        install_snapshot(snapshot, submission)
-        program, note = "snapshot", "the submission frozen at the start ({} files, {} bytes)".format(
-            rec.get("snapshot_files"), rec.get("snapshot_bytes"))
-    else:
-        program, note = "snapshot_mismatch", "the frozen submission does not match the record's digest"
+    program, note = choose_program(rec, online, submission)
     print("[grader] program graded: {}".format(note), file=sys.stderr, flush=True)
     # 4. The offline item: main's grading.
-    if program in ("session_end", "snapshot"):
+    if program in ("session_end", "snapshot_start", "snapshot_prep_window"):
         offline = offline_item(submission)
     else:
         offline = zero_verdict(reason=note, anchored=True)

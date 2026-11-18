@@ -72,11 +72,13 @@ class GradedEpisode(object):
 
     def status(self):
         """started, ended, steps (the episode's step index t), horizon, sim_time_s, prep_left_s (time left to
-        start the episode), graded_left_s (time left in the graded window once started)."""
+        start the episode), graded_left_s (time left in the graded window once started), program_frozen (your
+        submission folder has been frozen for the program's grading: at the start, or when the start window
+        closed with no start)."""
         r = self._call({"op": "status"})
         self.done = bool(r["ended"])
         return {k: r[k] for k in ("started", "ended", "steps", "horizon", "sim_time_s", "prep_left_s",
-                                  "graded_left_s")}
+                                  "graded_left_s", "program_frozen")}
 
     def start(self, token=None, timeout=4800.0):
         """Start the graded episode and return its first observation (t = 0). Once per session: the start is

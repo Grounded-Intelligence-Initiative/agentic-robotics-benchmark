@@ -73,17 +73,19 @@ measured its own way and taken relative to a hidden reference value of its own:
 2. **The graded episode.** You play one hidden episode yourself, live, during your session (see
    **The graded episode**); this item is its `S`.
 
-**The freeze.** The program graded is the one in `/home/user/submission` at the moment you start
-the graded episode: the start copies the folder, and nothing you change in it afterwards counts.
-If you never start the graded episode, the program graded is the folder as your session leaves
-it. So put your program in place first, then start the episode.
+**The freeze.** The program graded is the one in `/home/user/submission` at the earlier of two
+moments: when you start the graded episode, or when the first hour of your session (the window for
+starting it, see **Time**) ends. The folder is copied then, and nothing you change in it afterwards
+counts. Only if your session itself ends before that hour is over is the folder graded as the
+session leaves it. So put your program in place first, then start the episode.
 
 **Time.** Your session has a hard limit of **5 hours** of wall-clock time from the moment it starts
 (run `date` now and keep track). The first **1 hour** is for your program and your preparation:
-you must start the graded episode within it (a later start is refused, and the graded episode
-then scores 0). The episode then has at most **4 hours**. When it is over, end your session
-yourself. A session stopped at its limit is still scored: the graded episode as it stood after
-your last step, and the program as the freeze left it.
+you must start the graded episode within it. When that hour ends with no start, your program is
+frozen then, a later start is refused, and the graded episode scores 0. A started episode has at
+most **4 hours**. When it is over, end your session yourself. A session stopped at its limit is
+still scored: the graded episode as it stood after your last step, and the program as the freeze
+left it.
 
 ## The program (the first item)
 
@@ -140,7 +142,7 @@ import sys; sys.path.insert(0, "/home/user")
 from graded_episode import GradedEpisode
 ep = GradedEpisode()                 # connect (one client at a time)
 ep.status()                          # {"started", "ended", "steps", "horizon", "sim_time_s",
-                                     #  "prep_left_s", "graded_left_s"}
+                                     #  "prep_left_s", "graded_left_s", "program_frozen"}
 obs = ep.start()                     # ONCE per session: freezes your program, then the
                                      # observation at t = 0
 while not ep.done:
@@ -177,7 +179,9 @@ From a shell, `/opt/venv/bin/python3 /home/user/graded_episode.py status` prints
   is about an hour of simulation: drive it from a program, not by hand, and run long stretches in
   the background with a log.
 - **Its window.** It must be started within the first hour of your session (`prep_left_s`; see
-  **How you are scored**), and then has at most **4 hours** of wall-clock time (`graded_left_s`).
+  **How you are scored**); when that hour ends with no start, your program is frozen then and the
+  episode can no longer be started. A started episode has at most **4 hours** of wall-clock time
+  (`graded_left_s`).
 - **How it ends.** The episode ends at step `20000`, when you call `finish()`, when its 4 hours run
   out, or when your session ends, whichever comes first. Nothing is simulated after it ends. An
   episode that ends before step `20000` is scored on the state it reached, scaled by the fraction of

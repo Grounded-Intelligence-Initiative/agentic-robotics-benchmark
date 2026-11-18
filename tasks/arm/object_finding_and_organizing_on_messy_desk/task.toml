@@ -46,8 +46,8 @@ gpu_types = ["RTX-4090"]
 # episode service, which warms its simulator's shader cache before it serves: 270-360 s measured cold)
 # has no field: the engine bounds it at a fixed 1800 s.
 # [agent] timeout_sec (dual mode) = prep_s + graded_s = 3600 + 14400. prep_s is the task's agent budget on
-# main (1 h), for the program and the preparation: the graded episode must be started within it, and its start
-# freezes the program. graded_s is 4 h instead of the default 3 h because the simulation itself needs about an
+# main (1 h), for the program and the preparation: the graded episode must be started within it, and the
+# program freezes at the earlier of the start and the close of that window. graded_s is 4 h instead of the default 3 h because the simulation itself needs about an
 # hour of wall time: 20000 steps at 0.15-0.25 s a step measured on an RTX 4090 host; the privileged
 # reference's own online episode took 3468 s (ale validate run validate-abe7f0f5) in a sandbox where nothing
 # else ran, and an agent's desk lab and perception share the same GPU and 8 CPUs. The service enforces both

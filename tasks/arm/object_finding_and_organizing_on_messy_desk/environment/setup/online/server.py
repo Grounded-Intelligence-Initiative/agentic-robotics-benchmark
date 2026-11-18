@@ -49,6 +49,13 @@ The record: /var/lib/arb-online/record.json (lab account, 0600, in a 0700 direct
 under the root-owned /var/lib), rewritten atomically (temp file, fsync, rename) at the start, at the end,
 and at most `record_interval_s` after any change in between; requests.jsonl beside it (append-only, no
 images, capped). The separate verifier reads the record; nothing the agent writes reaches it.
+
+The freeze (dual mode): the program the offline item grades is frozen at the earlier of the graded start and
+the close of the preparation window (`prep_s` after the service starts serving). Either way the worker asks the
+root supervisor, over the socketpair made at its fork, to copy the agent's submission folder into the record
+directory (snapshot_submission below); at the start a failed copy refuses the start and charges nothing. A
+window that closes with no start leaves a record of the freeze only (started false, prep_window_closed true,
+snapshot_at "prep_window"); the graded episode is then never played.
 """
 
 import argparse
@@ -93,7 +100,7 @@ ERRORS = {
     "busy": "another client is connected; one client at a time",
     "not_started": "the graded episode has not been started",
     "already_started": "the graded episode was already started (one start per session)",
-    "start_window_closed": "the window for starting the graded episode has closed",
+    "start_window_closed": "the window for starting the graded episode has closed (your program was frozen then)",
     "episode_over": "the graded episode has ended",
     "graded_window_closed": "the graded window has closed; the episode has ended",
     "bad_action": "action must be 8 finite numbers, plus an optional ninth (the hi-res camera bitmask)",
@@ -585,7 +592,7 @@ class Episode:
         now = time.monotonic() if now is None else now
         if self.phase == "idle":
             return float(self.cfg["graded_s"])
-        if self.phase == "ended":
+        if self.phase in ("ended", "closed"):
             return 0.0
         return max(0.0, float(self.cfg["graded_s"]) - (now - self.started_mono))
 
@@ -608,6 +615,10 @@ class Episode:
             return
         self.persisted = rec
         self.steps = int(rec.get("steps") or 0)
+        if rec.get("started") is False and rec.get("prep_window_closed") is True:
+            self.phase = "closed"                       # the window closed with no start: the program is frozen
+            self.snapshot = {"status": rec.get("snapshot_status"), "at": rec.get("snapshot_at")}
+            return
         if not rec.get("ended"):
             rec["ended"], rec["end_reason"], rec["ended_utc"] = True, "worker_restart", _utc()
             rec["written_utc"] = _utc()
@@ -643,6 +654,7 @@ class Episode:
                 "snapshot_status": snap.get("status"), "snapshot_files": snap.get("files"),
                 "snapshot_bytes": snap.get("bytes"), "snapshot_sha256": snap.get("sha256"),
                 "snapshot_skipped": snap.get("skipped"), "snapshot_note": snap.get("note"),
+                "snapshot_at": snap.get("at"), "prep_window_closed": False,
                 "started": True, "ended": self.phase == "ended", "end_reason": self.end_reason,
                 "requests": self.requests, "steps": self.steps, "horizon": self.horizon,
                 "sim_time_s": round(self.steps / float(CONTROL_HZ), 1),
@@ -654,7 +666,7 @@ class Episode:
         """Snapshot under the episode lock, write outside it (one writer at a time)."""
         with self.write_lock:
             with self.lock:
-                if self.phase == "idle":
+                if self.phase in ("idle", "closed"):
                     return
                 data = json.dumps(self.record(), sort_keys=True, allow_nan=False).encode()
                 self.dirty = False
@@ -681,6 +693,8 @@ class Episode:
             with self.lock:
                 if self.phase == "running" and self.graded_left() <= 0.0:
                     self._end("graded_window")
+                elif self.phase == "idle" and self.prep_left() <= 0.0:
+                    self.close_prep()
 
     def log_request(self, op, ok, error=None, action=None, wall=None):
         if self.req_log is None:
@@ -845,17 +859,53 @@ class Episode:
             return None
         return None
 
+    def close_prep(self):
+        """The preparation window closed with no start (called with the lock held): the program freezes now, so it
+        keeps main's preparation time, and the graded episode is never played. The record says so (started false,
+        prep_window_closed true, the snapshot's fields with snapshot_at "prep_window")."""
+        if self.phase != "idle":
+            return
+        snap = None
+        for attempt in range(3):
+            snap = self.request_snapshot()
+            if snap and snap.get("status") in ("ok", "too_large"):
+                break
+            time.sleep(5.0)
+        if not snap or snap.get("status") not in ("ok", "too_large"):
+            snap = {"status": "error", "note": (snap or {}).get("note") or "the snapshot could not be taken"}
+        snap["at"] = "prep_window"
+        self.snapshot = snap
+        self.phase = "closed"
+        rec = {"format": RECORD_FORMAT, "task": TASK, "episode": self.episode_id, "seed_sha256": self.seed_sha256,
+               "snapshot_status": snap.get("status"), "snapshot_files": snap.get("files"),
+               "snapshot_bytes": snap.get("bytes"), "snapshot_sha256": snap.get("sha256"),
+               "snapshot_skipped": snap.get("skipped"), "snapshot_note": snap.get("note"), "snapshot_at": "prep_window",
+               "prep_window_closed": True, "started": False, "ended": False, "end_reason": None,
+               "requests": self.requests, "steps": 0, "horizon": self.horizon, "sim_time_s": 0.0,
+               "wall_s_since_start": 0.0, "episode_score": 0.0, "metrics": {}, "service_version": SERVICE_VERSION,
+               "started_utc": None, "ended_utc": None, "frozen_utc": _utc(), "written_utc": _utc()}
+        try:
+            _write_atomic(self.record_path, json.dumps(rec, sort_keys=True, allow_nan=False).encode())
+        except (OSError, ValueError) as exc:
+            self.log.write(kind="record_write_failed_at_prep_close", err=str(exc))
+        self.log.write(kind="prep_window_closed",
+                       snapshot={k: snap.get(k) for k in ("status", "files", "bytes", "dirs", "skipped", "copy_s")})
+
     # -- ops (called with the lock held)
     def op_status(self, req):
         now = time.monotonic()
-        return {"started": self.phase != "idle", "ended": self.phase == "ended", "steps": self.steps,
+        return {"started": self.phase in ("running", "ended"), "ended": self.phase == "ended", "steps": self.steps,
                 "horizon": self.horizon, "sim_time_s": round(self.steps / float(CONTROL_HZ), 1),
-                "prep_left_s": round(self.prep_left(now), 1), "graded_left_s": round(self.graded_left(now), 1)}
+                "prep_left_s": round(self.prep_left(now), 1), "graded_left_s": round(self.graded_left(now), 1),
+                "program_frozen": self.snapshot is not None}
 
     def op_start(self, req):
+        if self.phase == "closed":
+            raise ReplyError("start_window_closed")
         if self.phase != "idle":
             raise ReplyError("already_started")
         if self.prep_left() <= 0.0:
+            self.close_prep()
             raise ReplyError("start_window_closed")
         privileged, mismatch = token_ok(req.get("token"), self.token_digest)
         t0 = time.monotonic()
@@ -875,6 +925,7 @@ class Episode:
             sim, self.sim = self.sim, None
             self.close_sim(sim)
             raise ReplyError("snapshot_failed")
+        snap["at"] = "start"
         self.snapshot = snap
         # charged and persisted before anything is simulated; never refunded
         self.phase = "running"
@@ -916,6 +967,8 @@ class Episode:
         return {"obs": obs, "t": obs.get("t", 0), "done": False, "program_snapshot": frozen}
 
     def _running(self):
+        if self.phase == "closed":
+            raise ReplyError("start_window_closed")
         if self.phase == "idle":
             raise ReplyError("not_started")
         if self.phase == "ended":
@@ -951,6 +1004,8 @@ class Episode:
         return {"obs": obs, "t": obs.get("t", self.steps), "done": self.phase == "ended"}
 
     def op_observe(self, req):
+        if self.phase == "closed":
+            raise ReplyError("start_window_closed")
         if self.phase == "idle":
             raise ReplyError("not_started")
         if self.last_obs is None:
@@ -958,6 +1013,8 @@ class Episode:
         return {"obs": self.last_obs, "t": self.last_obs.get("t", self.steps), "done": self.phase == "ended"}
 
     def op_finish(self, req):
+        if self.phase == "closed":
+            raise ReplyError("start_window_closed")
         if self.phase == "idle":
             raise ReplyError("not_started")
         if self.phase == "running":
