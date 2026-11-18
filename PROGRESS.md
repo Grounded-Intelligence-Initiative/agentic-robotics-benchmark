@@ -12,6 +12,15 @@
 > `tasks/cards.toml`, the `ground` platform, the merge gate and the GPU-model check); 2026-11-14 (§12: the grasp task pins OpenBLAS
 > to its Haswell kernels); 2026-11-09 (§11: `vendor/ale` @ `bfb7505`, a task names its GPU
 > models); 2026-11-07 (§10: the asset dataset is renamed `ale-robotics-assets`).
+>
+> **This branch, `exp/online-graded-episode` (2026-11-17), is an experiment and is never merged
+> into main.** It gives seven quasi-static behavior tasks an online variant: the agent plays one
+> hidden graded episode itself, during its session, through a service it can neither read nor
+> write, and the separate verifier scores the record that service leaves in `/var/lib/arb-online`
+> (a declared artifact). The tasks: `arm_hidden_mechanism_box`, `kitchen_appliance_tending`,
+> `shoe_lacing_and_boxing`, `object_finding_and_organizing_on_messy_desk`,
+> `furniture_assembly_from_drawings`, `house_cleaning_with_tools`,
+> `pump_skid_startup_and_operation`. The rules and the per-task status are in the pull request.
 
 ## 0. 2026-09-07 — created by the rebrand from "ALE Robotics"
 

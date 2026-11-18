@@ -1,0 +1,7 @@
+{
+ "note": "The graded episode the record must name (verify.py checks format, task, episode and seed_sha256 against the record; the seed itself lives only in environment/setup/online/graded_episode.json, root-only while the agent works). seed_sha256 = sha256 of the seed's decimal text.",
+ "format": "arb-online-record/1",
+ "task": "furniture_assembly_from_drawings",
+ "episode": "graded-01",
+ "seed_sha256": "4ac42ce1fe746837574fa7dfc7819ccb226e7a598d151f3e2f5ad5a88d5559f1"
+}

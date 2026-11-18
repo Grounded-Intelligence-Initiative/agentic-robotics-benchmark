@@ -1,0 +1,42 @@
+{
+ "note": "The graded episode service (graded_server.py). cell: the furniture cell's configuration, the offline grading run's budgets (as the practice lab's lab_config.json): simulated-time cap, camera frames, ticks per step call, settle time before t = 0; program_time_cap_s and silence_s only appear in describe(): the graded episode has no program-time cap and no silence rule (the simulation advances only inside the agent's own requests). prep_s = the task's agent budget on main (the start must come within it of the service's first start); graded_s = the graded window from the start, the contract's default of 3 h (the cell's own work for a whole episode at its bounds, 1500 s simulated and 900 frames, is about 25 min here; the reference assembler's episode takes about 5 min). request_cap_s bounds one request (a hang ends the worker and with it the episode); privileged_request_cap_s the oracle's one reference_assemble request. practice_closed_flag: created at the start, before the start is persisted; the practice lab (lab_server.py --closed-flag) then ends an open practice episode and refuses new ones (practice ends when the graded episode starts).",
+ "task": "furniture_assembly_from_drawings",
+ "episode_file": "graded_episode.json",
+ "oracle_token_digest_file": "oracle_token.sha256",
+ "user": "arbcell",
+ "agent_user": "user",
+ "socket": "/run/furniture-graded/graded.sock",
+ "record_dir": "/var/lib/arb-online",
+ "practice_closed_flag": "/var/lib/arb-online/practice_closed",
+ "prep_s": 14400.0,
+ "graded_s": 10800.0,
+ "cell": {
+  "sim_cap_s": 1500.0,
+  "camera_budget_frames": 900,
+  "max_ticks_per_step": 500,
+  "settle_s": 0.5,
+  "program_time_cap_s": 3000.0,
+  "silence_s": 120.0
+ },
+ "request_cap_s": 300.0,
+ "privileged_request_cap_s": 7200.0,
+ "reply_timeout_s": 120.0,
+ "record_min_interval_s": 1.0,
+ "max_line_bytes": 1048576,
+ "requests_log_max_bytes": 33554432,
+ "service_log_max_bytes": 8388608,
+ "max_restarts": 5,
+ "start_timeout_s": 300.0,
+ "require_seccomp": true,
+ "env": {
+  "MUJOCO_GL": "osmesa",
+  "PYOPENGL_PLATFORM": "osmesa",
+  "ARB_G1_DIR": "/opt/arb-assets/unitree_g1",
+  "ARB_ROOM_DECOR_DIR": "/opt/arb-assets/room_decor",
+  "OMP_NUM_THREADS": "1",
+  "OPENBLAS_NUM_THREADS": "1",
+  "MKL_NUM_THREADS": "1",
+  "LP_NUM_THREADS": "4",
+  "MESA_SHADER_CACHE_DISABLE": "true"
+ }
+}

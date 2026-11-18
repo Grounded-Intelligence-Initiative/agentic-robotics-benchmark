@@ -1,5 +1,5 @@
 {
- "given/cell/cell_api.md": "30f3563d84039aa2d6ebc944c196c073f854ff45a199a91eb81edacd3d85072a",
+ "given/cell/cell_api.md": "8179422e41ac7a440e449c3754d9e8ba3d06b78e0eb2a0aabcca254a4652d4fd",
  "given/cell/cell_manual.md": "af03e8508052d0bdcfe70841e8c0004f24481c1adc2070c3926d09deda38ea4b",
  "given/drawings/sheet_00_cover.png": "785a199f91a20e961b59e049edf821fc1722444854b85b0f5fd378b45c5b5f49",
  "given/drawings/sheet_01_parts.png": "772b6757c4d4bfc38dc071c4bc09ba69aa01a1e1776009e5da0e42b24b5026b5",
@@ -11,8 +11,8 @@
  "given/drawings/sheet_07_step4.png": "dd17f890778ab42ce15dcac0338c7f8154d5423448e51a58c7f3a693ee7e0287",
  "given/drawings/sheet_08_step5.png": "6740edac8d3c17ee31e6e8457227e9881c0470e7ca061121794406cf2da8f5b0",
  "given/drawings/sheet_09_floor_plan.png": "9b8fe03b8e050d78140e9962aff1d926f0d0a318350dcfa2b74aef13c866d500",
- "given/lib/furniture_client/__init__.py": "23de86209d75023ad573d2e23aa81e417c7e607fb3118b068411f9f2fae3349b",
- "given/lib/furniture_client/client.py": "178940f95927b8fa67901e74a97a597ea3f4c613fed4ee900c9e3bda759d7ac1",
+ "given/lib/furniture_client/__init__.py": "e326bea5dfba0feed99655fd3f165c3ecfea9d4040185f3b1f71c24d09e72630",
+ "given/lib/furniture_client/client.py": "89d7a73d68deffde33b85a85a85d715f450c8654304950f4e6ce62cb3c68e912",
  "given/robot/unitree_g1/CHANGELOG.md": "241370c50dde400cc6a5f7835825eb16b9457d2d069c1546164eb0e2ccdadcf9",
  "given/robot/unitree_g1/LICENSE": "98335465f43a20b5850e4651db6e74c4aa1e9fc8e8813d38f345178045c0da50",
  "given/robot/unitree_g1/README.md": "e0ca5e85f68ff9554631c3ea6ac624b469d6018a37e273daa1234e43e3ad4395",

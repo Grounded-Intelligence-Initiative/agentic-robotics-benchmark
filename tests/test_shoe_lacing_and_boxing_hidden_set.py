@@ -15,6 +15,14 @@ The anchor is the lowest work_score of the recorded full verifies of the privile
 full_at under which those verifies still read reward 1.0. Nothing the agent sees names the token, the set or its selection; the cell library's own mentions of its
 privileged calls (the PR author's public cell code, byte-identical to the grader's) are pinned as they are.
 
+ONLINE VARIANT (experimental branch, 2026-11-17): the agent plays one graded episode of this set itself, through the
+graded service (environment/setup/online/), and tests/verify.py scores the service's record. The graded episode is a
+member of the set (environment/setup/online/episode.json, root-only while the agent works; tests/online.json holds its
+id and seed digest); the service runs byte copies of the grader's configuration, of the givens' pins, of the token's
+digest and of the reference; of the frozen files only those the variant had to change differ (ONLINE_CHANGED: the
+verifier, its entry, the oracle's entry, the image's service account, the agent's client and its pin); the anchor is
+the reference's measured score on the graded episode (anchor.json `online`), the offline anchor kept beside it.
+
 Standard library only (the host-side suite has no numpy): verify.py is read as a syntax tree, not imported.
 """
 
@@ -57,6 +65,14 @@ RENDER_ONLY = ("tests/shoecell/cameras.py", "tests/shoecell/physics.py", "tests/
                "tests/given_hashes.json", "environment/Dockerfile")
 # ... or the grader's verify-start lockdown alone (kind "lockdown": tests/verify.py, nothing an episode runs or scores)
 AMENDABLE = {"renderer": RENDER_ONLY, "lockdown": ("tests/verify.py",)}
+# the frozen files the online variant changes (the physics, the scoring, the reference and the configuration stay as
+# frozen): the verifier and its entry (the record instead of the episodes), the oracle's entry (the graded episode
+# through the agent's client), the image (the service account), the agent's client (connect_graded) and its pin
+ONLINE_CHANGED = ("environment/Dockerfile", "solution/solve.sh", "tests/given_hashes.json", "tests/shoecell/client.py",
+                  "tests/test.sh", "tests/verify.py")
+ONLINE = json.loads((TASK / "tests/online.json").read_text())
+ONLINE_DIR = TASK / "environment/setup/online"
+GRADED = json.loads((ONLINE_DIR / "episode.json").read_text())
 
 
 def current_frozen():
@@ -76,7 +92,13 @@ def task_files():
 
 
 def agent_visible():
-    return [TASK / "instruction.md"] + sorted(p for p in (TASK / "environment").rglob("*") if p.is_file())
+    """What reaches the agent: the instruction, the image's build context (environment/ less setup/) and the payload
+    staged into its home. The rest of environment/setup/ (setup.sh, the graded service and its hidden inputs) is
+    root-only at /opt/ale/setup while the agent works."""
+    setup = TASK / "environment/setup"
+    payload = setup / "payload"
+    return [TASK / "instruction.md"] + sorted(p for p in (TASK / "environment").rglob("*") if p.is_file()
+                                               and (setup not in p.parents or payload in p.parents))
 
 
 class TokenTests(unittest.TestCase):
@@ -87,9 +109,11 @@ class TokenTests(unittest.TestCase):
         self.assertEqual(hashlib.sha256(token).hexdigest(), digest)
 
     def test_the_digest_lives_only_under_tests_hidden(self):
+        """... and in the graded service's byte copy (root-only at /opt/ale/setup while the agent works)."""
         digest = (HIDDEN / "oracle_token.sha256").read_text().split()[0]
         holders = [p.relative_to(TASK).as_posix() for p in task_files() if digest in p.read_text(errors="replace")]
-        self.assertEqual(holders, ["tests/hidden/oracle_token.sha256"])
+        self.assertEqual(holders, ["environment/setup/online/oracle_token.sha256", "tests/hidden/oracle_token.sha256"])
+        self.assertEqual(sha256(ONLINE_DIR / "oracle_token.sha256"), sha256(HIDDEN / "oracle_token.sha256"))
 
     def test_the_token_lives_only_in_the_solution(self):
         token = (TASK / "solution/reference/oracle_token").read_text().strip()
@@ -105,8 +129,8 @@ class HiddenSetTests(unittest.TestCase):
         pinned = seeds_mod.load_pinned(str(HIDDEN / "seeds.json"))
         seeds = pinned["seeds"]
         self.assertEqual(len(seeds), CONFIG["episodes"])
-        self.assertEqual(CONFIG["episodes"], 6)  # instruction.md: "6 episodes"
-        self.assertIn("(6 episodes)", (TASK / "instruction.md").read_text())
+        self.assertEqual(CONFIG["episodes"], 6)
+        self.assertIn("ONE graded episode", (TASK / "instruction.md").read_text())   # the online variant
         self.assertEqual(len(set(seeds)), len(seeds))
         self.assertTrue(all(isinstance(s, int) and 2 ** 32 <= s < 2 ** 63 for s in seeds))
         self.assertEqual(set(SEEDS) - {"seeds", "source"}, set())
@@ -176,15 +200,36 @@ class HiddenSetTests(unittest.TestCase):
             for rel, digest in b["tool_sha256"].items():
                 self.assertEqual(sha256(TASK / rel), digest, "{} changed since batch {} was drawn".format(rel, b["batch"]))
 
+    def test_the_graded_episode_is_a_member_of_the_set(self):
+        """The online variant's graded episode: one seed of the set, under the id the offline verifier ran it as (ep01 ..
+        ep06), its digest in tests/online.json; the service and the verifier agree on the record's identity."""
+        seed = GRADED["seed"]
+        self.assertIn(seed, SEEDS["seeds"])
+        self.assertEqual(GRADED["episode"], "ep%02d" % (SEEDS["seeds"].index(seed) + 1))
+        self.assertEqual(ONLINE["episode"], GRADED["episode"])
+        self.assertEqual(ONLINE["seed_sha256"], hashlib.sha256(str(seed).encode("ascii")).hexdigest())
+        self.assertEqual(ONLINE["task"], TASK.name)
+        server = (ONLINE_DIR / "server.py").read_text()
+        self.assertIn('RECORD_FORMAT = "%s"' % ONLINE["format"], server)
+        self.assertIn('hashlib.sha256(str(seed).encode("ascii")).hexdigest()', server)
+        cfg = json.loads((ONLINE_DIR / "online.json").read_text())
+        self.assertEqual(cfg["task"], TASK.name)
+        self.assertEqual(ONLINE["record"], cfg["record_dir"] + "/record.json")
+        self.assertEqual(ONLINE["windows"], {"prep_s": cfg["prep_s"], "graded_s": cfg["graded_s"]})
+        manifest = (TASK / "task.toml").read_text()
+        self.assertIn("timeout_sec = %d" % (cfg["prep_s"] + cfg["graded_s"]), manifest)
+        self.assertIn('"%s"' % cfg["record_dir"], manifest.split("artifacts = ")[1].splitlines()[0])
+
+    def test_the_service_runs_the_grader_s_configuration_givens_and_reference(self):
+        self.assertEqual(sha256(ONLINE_DIR / "grader_config.json"), sha256(TASK / "tests/grader_config.json"))
+        self.assertEqual(sha256(ONLINE_DIR / "given_hashes.json"), sha256(TASK / "tests/given_hashes.json"))
+        names = sorted(p.name for p in (TASK / "tests/reference").glob("*.py"))
+        self.assertEqual(sorted(p.name for p in (ONLINE_DIR / "reference").glob("*.py")), names)
+        for n in names:
+            self.assertEqual(sha256(ONLINE_DIR / "reference" / n), sha256(TASK / "tests/reference" / n), n)
+
     def test_the_pinned_list_is_run_as_it_stands(self):
-        """verify.py reads the list itself (hidden_set); a pinned stream's derive() would hash it into other seeds."""
-        tree = ast.parse((TASK / "tests/verify.py").read_text())
-        funcs = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
-        calls = {n.func.id for n in ast.walk(funcs["_main_locked"]) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
-        self.assertIn("hidden_set", calls)
-        attrs = {n.func.attr for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
-        self.assertNotIn("derive", attrs)
-        self.assertIn('"seeds.json"', ast.get_source_segment((TASK / "tests/verify.py").read_text(), funcs["hidden_set"]))
+        """A pinned stream's derive() would hash the list into other seeds (the offline verifier read the list itself)."""
         path = str(HIDDEN / "seeds.json")
         self.assertEqual(seeds_mod.seed_rng(pinned=path).seeds(6, bits=63), SEEDS["seeds"])
         self.assertNotEqual(seeds_mod.seed_rng(pinned=path).derive("episodes").seeds(6, bits=63), SEEDS["seeds"])
@@ -196,11 +241,16 @@ class HiddenSetTests(unittest.TestCase):
 
 class FrozenTests(unittest.TestCase):
     def test_the_files_the_set_was_selected_with_are_unchanged(self):
-        """... or as the last amendment recorded them (test_every_amendment_...)."""
+        """... or as the last amendment recorded them (test_every_amendment_...), except the files the online variant
+        changes (ONLINE_CHANGED), which all differ."""
         frozen = current_frozen()
         for rel, digest in sorted(frozen.items()):
+            if rel in ONLINE_CHANGED:
+                self.assertNotEqual(sha256(TASK / rel), digest, rel)
+                continue
             self.assertEqual(sha256(TASK / rel), digest, "{} changed since the selection (or its last amendment): the "
                              "set and the anchor were measured with the frozen file".format(rel))
+        self.assertTrue(set(ONLINE_CHANGED) <= set(frozen))
         self.assertEqual(sorted(frozen), select_set.frozen_paths(str(TASK)))
 
     def test_every_amendment_changed_only_what_its_kind_allows_and_the_reference_repeated_every_run(self):
@@ -277,10 +327,24 @@ class CellTests(unittest.TestCase):
 
 
 class AnchorTests(unittest.TestCase):
+    def test_the_anchor_is_the_reference_s_measured_score_on_the_graded_episode(self):
+        """The online variant's anchor: the oracle's episode_score in a validate of the variant, on the graded episode;
+        the reference repeats the offline verifies' run of that episode (simulated time and ticks)."""
+        online = ANCHOR["online"]
+        self.assertEqual(ANCHOR["value"], online["episode_score"])
+        self.assertEqual(online["episode"], ONLINE["episode"])
+        self.assertRegex(online["run"], r"^validate-[0-9a-f]{8}$")
+        self.assertEqual(online["end_reason"], "finish")
+        for v in ANCHOR["verifies"]:
+            e = v["episodes"][SEEDS["seeds"].index(GRADED["seed"])]
+            self.assertEqual((e["sim_time_s"], e["ticks"], e["work_score"]),
+                             (online["sim_time_s"], online["ticks"], online["episode_score"]))
+
     def test_the_anchor_is_the_lowest_recorded_verify_of_the_set(self):
+        """The offline anchor, kept as `offline`."""
         verifies = ANCHOR["verifies"]
         self.assertGreaterEqual(len(verifies), 1)
-        self.assertEqual(ANCHOR["value"], min(v["work_score"] for v in verifies))
+        self.assertEqual(ANCHOR["offline"]["value"], min(v["work_score"] for v in verifies))
         for v in verifies:
             self.assertEqual([e["seed"] for e in v["episodes"]], SEEDS["seeds"])
             mean = sum(e["work_score"] for e in v["episodes"]) / len(v["episodes"])
@@ -300,8 +364,10 @@ class AnchorTests(unittest.TestCase):
         else:
             self.assertLess(ANCHOR["full_at"], 0.98)
         for v in ANCHOR["verifies"]:  # the oracle's own verifies read reward 1.0 (half-up, two decimals)
-            reward = min(1.0, max(0.0, v["work_score"] / ANCHOR["value"] / ANCHOR["full_at"]))
+            reward = min(1.0, max(0.0, v["work_score"] / ANCHOR["offline"]["value"] / ANCHOR["full_at"]))
             self.assertGreaterEqual(reward, 0.995)
+        reward = min(1.0, max(0.0, ANCHOR["online"]["episode_score"] / ANCHOR["value"] / ANCHOR["full_at"]))
+        self.assertGreaterEqual(reward, 0.995)  # ... and so does the oracle's graded episode
 
 
 class AgentVisibleTests(unittest.TestCase):
@@ -326,6 +392,18 @@ class AgentVisibleTests(unittest.TestCase):
             for needle in needles:
                 self.assertNotIn(needle, text, "{} names {}".format(p.relative_to(TASK), needle[:24]))
         self.assertNotIn("fresh seeds", (TASK / "instruction.md").read_text())
+
+    def test_setup_stages_only_the_payload_into_the_agent_home(self):
+        """The graded service's folder (the seed, the token's digest, the reference) is never copied where the agent
+        can read it: setup.sh copies payload/ into the agent home and online/reference/ into the service account's
+        private folder only."""
+        lines = [ln for ln in (TASK / "environment/setup/setup.sh").read_text().splitlines()
+                 if not ln.lstrip().startswith("#") and re.search(r"(?<![-\w])online/", ln)]
+        self.assertTrue(lines)
+        for ln in lines:
+            self.assertNotIn("HOME_DIR", ln, ln)
+            self.assertTrue(ln.startswith("install -o root -g \"$SERVICE_USER\" -m 0640 online/reference/")
+                            or "online/server.py" in ln, ln)
 
     def test_the_cell_library_s_mentions_of_its_privileged_calls_are_the_pinned_ones(self):
         found = {}

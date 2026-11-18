@@ -110,6 +110,10 @@ RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
 # before the agent's session (and restarts it should it ever exit); the agent reaches it through a unix socket and gets
 # the cell's public calls and reset(site): no ground truth, no score.
 RUN useradd --system --no-create-home --home-dir /opt/skidcell-commission --shell /usr/sbin/nologin skidcell
+# The online variant (experiment): the graded episode's service (environment/setup/online/graded_service.py) serves the
+# agent's one graded episode as its own account, never root, never the agent, and not `skidcell`, whose service answers
+# the agent's commissioning shifts.
+RUN useradd --system --user-group --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin skidgrade
 COPY commission_service /opt/skidcell-commission
 RUN find /opt/skidcell-commission -name '__pycache__' -type d -prune -exec rm -rf {} + \
     && rm -rf /opt/skidcell-commission/state /opt/skidcell-commission/given \

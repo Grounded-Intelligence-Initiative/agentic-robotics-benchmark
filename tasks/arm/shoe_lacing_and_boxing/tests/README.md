@@ -5,6 +5,10 @@ its wire in `cell_api.md`. This page records the design decisions, what the grad
 known to be rough in version 0.2 (2026-10-30, Yuanfang Peng; reference lacing and the lace physics reworked 2026-11-05;
 the lid tray's delivery spot 2026-11-07).
 
+**This copy is the ONLINE VARIANT (experimental branch, 2026-11-17; section 6).** The agent plays one graded episode
+itself through a service and the verifier scores the service's record; sections 1-5 describe the offline task, whose
+cell, configuration, reference and hidden set the variant reuses unchanged.
+
 ## 1. The job and why it is worth measuring
 
 Lacing is the last manual operation of a sneaker line (Adidas's Speedfactory left it to people; Pou Chen and Solomon
@@ -323,3 +327,63 @@ anchor is the oracle's full or near-full score with `full_at` near 1. Here:
   (`box_skills._shift_lid_away`) stays for a lid a wall fold meets, and its `LID_TRAY_IN` comment still describes the
   old delivery.
 * Three-row batches need a longer lace (section 2).
+
+## 6. The online variant (experimental, 2026-11-17)
+
+The owner's experiment on seven quasi-static behavior tasks: instead of leaving a program that a verifier runs on the
+hidden episodes, the agent plays ONE hidden episode itself during its session. Rules O1-O12 of the experiment's
+contract; what they became here:
+
+* **The graded episode (O1).** Drawn once from the offline hidden set (`hidden/seeds.json`, six seeds run as
+  ep01-ep06) with OS entropy on 2026-11-18T04:36:44Z: `python3 -c 'import secrets; print(secrets.randbelow(6))'`
+  printed 0, so the graded episode is ep01, seed 2122884573269676624 (the offline anchor's verifies ran it in
+  463.68 s simulated, 46368 ticks, work_score 1.0). The seed lives in `environment/setup/online/episode.json`
+  (root-only at `/opt/ale/setup` while the agent works); `online.json` holds the id and the sha256 of the seed's
+  decimal digits, which the verifier checks against the record. Every model meets this episode.
+* **The service (O3-O8)**, `environment/setup/online/server.py`, started by `environment/setup/setup.sh`: the alelab
+  daemon pattern of `arm_hidden_mechanism_box` (a root supervisor that never reads the episode, binds
+  `/run/arb-online/cell.sock` and restarts the worker at most 5 times; a worker that reads the episode, the reference
+  token's digest, the grader's cell configuration (`online/grader_config.json`, a byte copy of `grader_config.json`)
+  and the givens' pins (`online/given_hashes.json`, a byte copy of `given_hashes.json`) as root, checks its own
+  root-owned copy of the givens (`/opt/arb-online`, built by setup.sh from the payload and the image's Panda) file by
+  file, drops to the account `arbonline` (created in the Dockerfile) irreversibly, not dumpable, under the AF_UNIX-only
+  seccomp filter, then builds the cell, `ShoeCellServer(given, config, mode="hidden")` + `reset(seed)` exactly as
+  `run_episode` of the offline verifier did). Requests are the cell's own JSON-lines wire (`shoecell.client`:
+  `connect_graded()` returns a `GradedCell`, the same proxy, plus `status`, `start`, `close`) and go to the cell's own
+  dispatch (`ShoeCellServer.handle`). One client at a time (`busy`), the episode persists across connections, one start
+  per session (persisted with fsync in `/var/lib/arb-online/state.json` before anything is simulated), the start window
+  `prep_s` = 14400 s (the offline agent budget) from the service's first start, the graded window `graded_s` = 10800 s
+  (the default; the oracle's episode takes 10-20 min), `[agent] timeout_sec` = 25200. What does not carry over from the
+  offline wire (O2): the program-time cap, the silence limit, the CPU backstop, the program-contract gates (route gate,
+  network audit, run account); what does: everything the cell enforces (sim cap, step cap, frame budget, safety, the
+  work score) and the after-done limits of the wire (50 steps / 200 requests after the cell's own end).
+* **The end (O6).** The offline grader ends an episode whose program stops with `server._end(reason)` and scores it
+  with `finalize()`, simulating nothing more; the service does the same at `finish`, at the graded window's end
+  (`end_reason graded_window`) and at the cell's own end (`done`). A worker that dies ends the episode with its last
+  record (`worker_restart`). If the session ends first, the last record applies.
+* **The record (O7)**, `/var/lib/arb-online/record.json` (the directory `arbonline`'s, 0700, created by setup.sh,
+  declared in `task.toml` `artifacts`): rewritten atomically at the start, after a changing request once 2 s have passed
+  since the last write or the connection has been quiet for 0.5 s or has closed, and at the end; `episode_score` is
+  `work.summary(violations)["work_score"]`, the same function `finalize()` calls, computed as if the episode ended
+  then (the scene's scoring queries only read the state: the physics is not perturbed). `requests.jsonl` logs every
+  request (the token redacted) up to 32 MB.
+* **The verifier (O9)**, `verify.py`: reads the record, checks it against `online.json`, scores `episode_score` with
+  `ratio_rewards` against `anchor.json` (unchanged metric, direction and full_at); no record, a malformed one or one
+  that never started scores 0. It runs no program; the offline machinery (`shoecell/`, `cellkit/`, `setup_payload/`,
+  `reference/`, `hidden/`, `review/`) stays in this folder unused, as the record of the offline task.
+* **The oracle (O10)**: `solution/solve.sh` runs `solution/graded.py` as the agent account: `connect_graded()`, `start`
+  with the 256-bit token (the service compares its sha256 with `online/oracle_token.sha256`, a byte copy of
+  `hidden/oracle_token.sha256`, and on a match sets the cell's `privileged` and `reference_dir` =
+  `/opt/arb-online/private`, the copy of `online/reference/` (byte copies of `reference/`) that only `arbonline` can
+  read), then the unchanged `reference/packer.py` (describe, two frames, `reference_run`) and `finish`. The anchor's
+  value is the oracle's measured `episode_score` in a validate of this variant (`anchor.json` `online`).
+* **Practice when the graded episode starts (O13, added 2026-11-18).** Every practice service that runs hidden code
+  or hidden instances must close at the start. This task has none: its practice facilities, `LocalCell` and
+  `practice/grade.py`, run the given cell code in the agent's own processes on seeds the agent chooses (the rule's
+  "local cell whose code it was given", which stays available), and the graded service offers no practice. Nothing is
+  closed; the instruction says so beside the one-shot rule.
+* **The agent's side (O11, O12)**: `instruction.md` replaces the deliverable and the grading sections with the graded
+  episode; `client.py` gains `connect_graded` / `GradedCell`, `cell_api.md` the section "The graded episode",
+  `cell_manual.md` one sentence on the budgets (the three copies and `given_hashes.json` follow). The practice
+  facilities (`LocalCell`, `practice/grade.py`, the example) are unchanged.
+

@@ -3,12 +3,13 @@
 The two robots are the MuJoCo Menagerie `unitree_g1` model (`g1_with_hands.xml`; BSD-3-Clause, its LICENSE ships inside
 the folder), fetched by `environment/Dockerfile` at commit f3b6013629c7b94f8ee93fd977b161fa8350f9bc and pinned file by
 file in `environment/g1_assets.sha256`. The cell replaces the model's floating base and actuators (base joints, servos,
-gravity compensation) and uses the primitive colliders of Menagerie's `g1_mjlab.xml`; `tests/furniture_cell/robot.py`
-builds it with MjSpec at cell start. The agent gets the unmodified folder in `~/given/robot/unitree_g1/`.
+gravity compensation) and uses the primitive colliders of Menagerie's `g1_mjlab.xml`;
+`environment/setup/online/furniture_cell/robot.py` (the online variant keeps the grader's cell there) builds it with
+MjSpec at cell start. The agent gets the unmodified folder in `~/given/robot/unitree_g1/`.
 
-The B930 bookcase, its drawing set (`tests/furniture_cell/drawings.py`, rendered with matplotlib), the room and its
-fixed furniture as the physics knows them (the base cabinet, the couch, the plant and the rug, built from primitive
-shapes), the panel cart and the kitting table are original to this task. No third-party furniture model, drawing or
+The B930 bookcase, its drawing set (`environment/setup/online/furniture_cell/drawings.py`, rendered with matplotlib),
+the room and its fixed furniture as the physics knows them (the base cabinet, the couch, the plant and the rug, built
+from primitive shapes), the panel cart and the kitting table are original to this task. No third-party furniture model, drawing or
 dataset is part of the physics or the drawings.
 
 What the cameras see of the room, its decor (the oak floor, the plaster walls and ceiling, the skirting, the window's

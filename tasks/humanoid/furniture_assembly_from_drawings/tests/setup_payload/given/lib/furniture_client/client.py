@@ -16,12 +16,15 @@ Every method is one JSON-lines request ({"id": n, "method": ..., "params": {...}
 ({"id": n, "result": ...} or {"id": n, "error": code, "detail": text}). A reply carrying an error raises CellError
 (its `code` is e.g. "bad_params", "forbidden", "camera_budget"; a "forbidden" call is counted against the program).
 
-Two transports, one protocol:
-  * connect_stdio(): the graded run. The launcher (`main`) starts the program with the cell on its own stdin / stdout;
-    it moves this process's stdout (Python's and the C-level file descriptor 1) to stderr first, so prints never
-    corrupt the wire.
+Transports, one protocol:
+  * connect_graded(path): the graded episode's cell over a Unix stream socket ($ARB_GRADED_SOCKET, default
+    /run/furniture-graded/graded.sock): a GradedCell, the same proxy plus status() and start(). The episode lives in
+    the service: closing the connection leaves it where it is, the next connect_graded() resumes it, finish() ends it.
   * connect_practice(path): the practice lab's cell over a Unix stream socket ($ARB_PRACTICE_SOCKET, default
     /run/furniture-cell/practice.sock), for developing the program against the same physics.
+  * connect_stdio(): a cell on the program's own stdin / stdout, as the launcher (`main`) starts a program; it moves
+    this process's stdout (Python's and the C-level file descriptor 1) to stderr first, so prints never corrupt the
+    wire.
 
 numpy-typed arguments are accepted (sent as plain numbers / lists).
 """
@@ -33,14 +36,15 @@ import os
 import sys
 import traceback
 
-__all__ = ["Cell", "CellError", "decode_frame", "connect_stdio", "connect_practice", "given_dir", "main", "BOOTSTRAP",
-           "PUBLIC_CAMERAS", "PRACTICE_SOCKET"]
+__all__ = ["Cell", "CellError", "GradedCell", "decode_frame", "connect_stdio", "connect_practice", "connect_graded",
+           "given_dir", "main", "BOOTSTRAP", "PUBLIC_CAMERAS", "PRACTICE_SOCKET", "GRADED_SOCKET"]
 
 # the launcher the graded run starts: `python -B -E -s -c BOOTSTRAP <library dir> assemble`
 BOOTSTRAP = ("import sys; sys.path.insert(0, sys.argv[1]); from furniture_client.client import main; "
              "sys.exit(main(sys.argv[2:]))")
 PUBLIC_CAMERAS = ("ceiling_west", "ceiling_east", "a/head", "b/head")
 PRACTICE_SOCKET = "/run/furniture-cell/practice.sock"
+GRADED_SOCKET = "/run/furniture-graded/graded.sock"
 
 
 class CellError(RuntimeError):
@@ -209,6 +213,76 @@ def connect_practice(path=None, timeout=None):
         s.close()
 
     return Cell(send, recv, close=close)
+
+
+class GradedCell(Cell):
+    """The graded episode's cell (connect_graded()): the same proxy and calls as the practice cell, plus status() and
+    start(). The episode lives in the graded episode's service, not in this connection: close() (or the end of this
+    process) leaves it exactly where it is and the next connect_graded() resumes it; finish() ends it for good."""
+
+    def status(self):
+        """Where the graded episode stands, at any time: started, ended, end (why it ended), steps, sim_time,
+        sim_time_max, camera_frames_used, camera_frames_max, prep_window_left_s, graded_window_left_s (seconds; None
+        where a window does not apply)."""
+        return self._call("status")
+
+    def start(self):
+        """Start the graded episode: once per session, never undone (a second start answers "already_started"; after
+        the preparation window, "prep_window_closed"). Returns status()."""
+        return self._call("start")
+
+
+def connect_graded(path=None, timeout=None):
+    """The graded episode's cell over its Unix stream socket: `path` (default $ARB_GRADED_SOCKET or
+    /run/furniture-graded/graded.sock). Connecting starts nothing (see GradedCell.start). `timeout` (s, optional) bounds
+    every socket operation. One connection at a time: while another one is open this raises CellError("busy"). Returns
+    a GradedCell; close() it when this script is done with it."""
+    import socket
+    if path is None:
+        path = os.environ.get("ARB_GRADED_SOCKET", GRADED_SOCKET)
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        if timeout is not None:
+            s.settimeout(float(timeout))
+        s.connect(path)
+    except OSError as e:
+        s.close()
+        raise CellError("unreachable", "cannot reach the graded episode's service at %s: %s" % (path, e))
+    rf = s.makefile("r", encoding="utf-8", newline="\n")
+    wf = s.makefile("w", encoding="utf-8", newline="\n")
+
+    def send(text):
+        wf.write(text)
+        wf.flush()
+
+    def recv():
+        return rf.readline()
+
+    def close():
+        for f in (wf, rf):
+            try:
+                f.close()
+            except Exception:  # noqa: BLE001
+                pass
+        s.close()
+
+    # the service answers a connection it refuses (busy, forbidden) with one error line: a status request first
+    try:
+        send(json.dumps({"id": 0, "method": "status", "params": {}}) + "\n")
+        line = recv()
+    except OSError as e:
+        close()
+        raise CellError("closed", "the connection to the graded episode's service broke (%s)" % e.__class__.__name__)
+    try:
+        reply = json.loads(line) if line else None
+    except ValueError:
+        reply = None
+    if not isinstance(reply, dict) or "error" in reply or reply.get("id") != 0:
+        close()
+        if isinstance(reply, dict) and "error" in reply:
+            raise CellError(reply["error"], reply.get("detail"))
+        raise CellError("closed" if not line else "bad_reply", "the graded episode's service did not answer")
+    return GradedCell(send, recv, close=close)
 
 
 def main(argv=None):

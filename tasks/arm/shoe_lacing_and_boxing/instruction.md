@@ -36,25 +36,63 @@ box size, published in `describe()["objects"]`. Per pair the colours vary, the s
 tray either way round with a random turn (a shoe may lie on its side) and the blank lands either way round. The lace
 is tacked at row 1 (stitched to the insole between the two row-1 rings), so each tail keeps its length.
 
-## What you produce (in `/home/user/submission/`)
+## What is graded: one graded episode, played by you during this session
 
-`packer.py` exposing `solve(cell) -> None` (plus any helper modules, optional `run.sh`). The grader runs it once per
-hidden episode (6 episodes) in its own physics cell. It talks to the cell through `cell` (API in
-`~/given/cell/cell_api.md`): the arms' own state (joints, tool poses, gripper width and grasp signal, the clamp and
-the hook clip's sensors) and the five RGB-D cameras; no object poses. Per episode: 900 s of simulated time; 1200 s of
-program time, which is the episode's wall clock minus the time the cell spends simulating (inside `step`) and rendering
-(inside `get_camera`), so it measures your program's own computation and its other requests; at most 120 s from a reply
-to your next request; 450 camera frames in total.
+Nothing in `/home/user/submission/` is graded. Your score is the outcome of ONE graded episode that you play yourself,
+during this session, through the cell's graded service: one work order (one pair) on a hidden seed (not one you can
+choose or read; the cell builds its scene like every episode's), run by the cell's own code under the same rules as
+every episode: 900 s of simulated time, at most 500 ticks per `step`, 450 camera frames, the safety rules and the work
+score below. Simulated time advances only inside your own requests (`step`; a frame renders the state as it is): the
+time you spend thinking, perceiving and writing code between two requests costs no simulated time, and the graded
+episode has no program-time or silence limit (the program-time and silence budgets that `describe()["budgets"]`
+lists apply to programs run on the practice wire, not here).
 
-How the program is run: a fresh process under a dedicated unprivileged account that is not yours, from a per-run
-directory with a read-only copy of your submission folder (regular files only), an empty writable HOME / TMPDIR, a
-minimal environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `MUJOCO_GL`, `PYTHONPATH` = the given library `~/given/lib`,
-`ARB_GIVEN_DIR` = a read-only copy of `~/given`) and the launcher `python3 -B -E -s -c <bootstrap> <lib> packer` (or
-`bash run.sh`). Resolve given files through `os.environ.get("ARB_GIVEN_DIR", os.path.expanduser("~/given"))`, write only
-under the run's HOME / TMPDIR. A program that crashes ends that episode with what it achieved; the other episodes still
-run. Your submission must be final when your session ends: the submission folder is then copied out of your sandbox
-and graded in a fresh sandbox that holds nothing else of yours (no other file, no process you started), and a
-surviving process of the run account voids the contract gate.
+Connect from any process of yours with `shoecell.client.connect_graded()`. It returns the same `cell` proxy a
+`solve(cell)` receives (API in `~/given/cell/cell_api.md`, section "The graded episode"), plus `status()`, `start()`
+and `close()`:
+
+```python
+import sys
+sys.path.insert(0, "/home/user/given/lib")
+from shoecell.client import connect_graded, decode_frame
+
+with connect_graded() as cell:              # one client at a time: a second one gets CellError("busy: ...")
+    print(cell.status())                    # started / ended, steps, sim_time, prep_left_s, graded_left_s
+    cell.start()                            # ONCE per session: starts the graded episode
+    info = cell.describe()
+    rgb, depth = decode_frame(cell.get_camera("overhead"))
+    cell.set_control("left", "cartesian", 0.6)
+    cell.command("left", tcp_pos=[0.15, 0.0, 0.30], tcp_quat=[0.0, 1.0, 0.0, 0.0])
+    print(cell.step(100))
+# leaving the block closes the connection; the episode stays where it is, and the next connect_graded() resumes it
+```
+
+You can drive it from many short scripts, step by step, or run a program of yours on it (`import packer;
+packer.solve(cell)` on a connected `cell`). The rules:
+
+* **One start.** `start()` succeeds once per session. It is charged before anything is simulated and never given
+  back, and nothing restarts or resets the graded episode (`reset` and `truth` answer `forbidden` there).
+* **Practice during the graded episode.** Practice that runs hidden code or hidden episodes ends when the graded
+  episode starts; this cell has none. `LocalCell` and `~/practice/grade.py` run the code you were given, in your own
+  processes, on seeds you choose: they are your own tools and stay available throughout, as a program could carry
+  them.
+* **Two windows.** The graded episode must be started within 4 hours of the start of your session (`status()` gives
+  `prep_left_s`); after that `start()` is refused and the task scores 0. Once started, it runs for at most 3 hours of
+  wall-clock time (`graded_left_s`).
+* **One client; the episode persists.** One connection at a time. The episode lives in the service, not in your
+  connection: a script that ends, crashes or disconnects leaves it exactly where it was (the last commands stay
+  commanded, and nothing moves until the next `step`). A connection that sends no request for 15 minutes is closed;
+  the episode stays.
+* **How it ends.** At its own end (900 s simulated, or a physics fault), when you call `cell.finish()`, when its
+  3 hours run out, or when your session ends. `finish()` ends it for good: a `solve(cell)` that calls `cell.finish()`
+  at its end (the example does) ends the graded episode too. After the end only `status()` answers (after its own end
+  you may still read its state and frames, as a program may).
+* **How it is scored.** When it ends, it is scored as it stands at that moment, on the cell's own physical state, by
+  the rules below, exactly as the grader scores an episode whose program stops there; nothing is simulated afterwards
+  (a box still on its way to the outfeed line is not shipped). If your session ends before the graded episode has
+  ended, it is scored as it stood after your last request.
+* **What you learn.** What a program learns from the cell (its replies, frames and events) plus `status()`; never
+  the score or the episode's seed. Nothing else you do or leave is graded.
 
 ## What you are given
 
@@ -63,28 +101,17 @@ surviving process of the run account voids the contract gate.
 | `~/given/cell/cell_manual.md` | the integrator's cell description: bench, the two robots' base poses and tools, the cameras with their exact calibration, the zones (infeed tray, blank spot, cradle, outfeed line) with their nominal positions and the per-episode jitter, what a shoe, a lace, a box blank and a lid are (geometry, eyelet layout, colours), the attach rules of the gripper and the hook, the cradle clamp, the carton's snap-locks, the lid rule, safety rules, budgets |
 | `~/given/cell/cell_api.md` | the cell's programming manual (the wire API) |
 | `~/given/cell/cell_config.json` | the cell's configuration as far as it is public |
-| `~/given/lib/shoecell/` | the cell's library: `client` (the proxy, `decode_frame`), `local` (`LocalCell`: the same cell in your own process on a seed of your choice, with `truth()` for development), `practice` (the wire), and the cell's own code (`physics`, `control`, `cameras`, `episode`, `server`): the grader runs this exact code on hidden seeds |
+| `~/given/lib/shoecell/` | the cell's library: `client` (the proxy, `decode_frame`, `connect_graded`: the graded episode), `local` (`LocalCell`: the same cell in your own process on a seed of your choice, with `truth()` for development), `practice` (the wire), and the cell's own code (`physics`, `control`, `cameras`, `episode`, `server`): the graded service runs this exact code on the graded episode |
 | `~/given/panda/` | the robots' MuJoCo model (Apache-2.0) |
 | `~/practice/grade.py` | runs your program over the real wire against the practice cell on a visible seed and prints the raw work score with the per-pair milestones |
-| `~/example/packer.py` | a complete, policy-free program (reads frames, moves both arms, finishes; scores 0): the starting point |
+| `~/example/packer.py` | a complete, policy-free program (reads frames, moves both arms, finishes; earns nothing): a starting point for a `solve(cell)` |
 
 Tools: Python 3.12 (`/opt/venv/bin/python3`; call it by that path, the bare `python3` on your shell's `PATH` may be
 another interpreter) with numpy, scipy, OpenCV (`cv2`, headless), Pillow, MuJoCo 3.14. No network in your session.
 
-## How you are graded (verify runs 6 hidden episodes)
+## How the graded episode is scored
 
-Gates (multiply the score): `contract_ok` = `packer.py` is a regular file that parses and defines `solve`, passes the
-route gate (no weight files, no training calls, submission <= 60 MB), imports under the run regime above, makes at
-least one `step` call over the episodes, causes no network activity during any episode, and your own `.py` files
-import no networking module (`socket`, `ssl`, `urllib`, `http`, `requests`, `asyncio`, `ctypes`, `subprocess`, ...),
-load no module under a computed name, execute no computed code (`exec` / `eval` / `compile` of a non-literal) and start
-no other program (`os.system`, `os.exec*`, `os.spawn*`, ...). `safety`: a Panda link other than the gripper's finger pads or the hook pressing more than 30 N on
-the bench, the cradle or an object, or any contact between the two arms above 30 N, for 30 ms (three control ticks) in a
-row, or an object faster than 3 m/s, is a violation that voids the credit of the pair being worked on when it happens (even if that pair is later shipped). A
-physics fault (the simulation diverging under a violent action) ends the episode with the credit of the pairs shipped
-before it.
-
-`work_score` = the mean over the episodes of the accepted work of the episode's pair, which can earn
+`work_score` = the accepted work of the graded episode's pair, which can earn
 1.0 = lacing of shoe A (0.30) + lacing of shoe B (0.30) + box erected (0.12) + pair packed (0.13) + lid closed (0.10)
 + box shipped (0.05), judged on the cell's own physical state when the box is shipped or when the episode ends, and
 0 for a pair during which a safety violation occurred. The work order is a laced pair in a shipped box: "packed",
@@ -96,9 +123,14 @@ than 50 % slack between consecutive rows, plus 3 cm for the dip under the flap a
 0 if an aglet is left inside the shoe (passed in and never brought back out). "Packed" needs both shoes inside the
 erected box, sole down (within 15 degrees), heel-to-toe (headings within 30 degrees of opposite), not resting on a
 wall. "Closed" needs the lid on the box as above with both shoes inside, sole down, not resting on a wall (heel-to-toe
-is the packing's alone). "Shipped" needs such a closed box with its floor centre across the outfeed line. The reward you are judged on is `work_score` relative to a hidden
-reference value. Stats (not scored): per-milestone means, frames used per camera, sim / wall / program time, illegal calls,
-safety events.
+is the packing's alone). "Shipped" needs such a closed box with its floor centre across the outfeed line. The reward
+you are judged on is the graded episode's `work_score` relative to a hidden reference value.
+
+`safety`: a Panda link other than the gripper's finger pads or the hook pressing more than 30 N on the bench, the
+cradle or an object, or any contact between the two arms above 30 N, for 30 ms (three control ticks) in a row, or an
+object faster than 3 m/s, is a violation that voids the credit of the pair being worked on when it happens (even if
+that pair is later shipped). A physics fault (the simulation diverging under a violent action) ends the episode with
+the credit of the pairs shipped before it.
 
 ## Rules of the cell (details in `cell_manual.md` / `cell_api.md`)
 
@@ -118,18 +150,18 @@ safety events.
 
 `LocalCell(seed=...)` and `~/practice/grade.py` give you the same cell on seeds of your choice, with `truth()` (every
 pose, the eyelets, the lace passes, the carton state, the milestones) for development only: the graded cell never
-answers it. The hidden episodes use other seeds; the cell builds their scenes with the same code.
+answers it. The graded episode uses another seed; the cell builds its scene with the same code.
 
 ## Notes
 
 - Photos and camera frames are meant to be processed programmatically; view only the images you need.
-- Do not modify the given files in your home directory; the grader reads its own copies.
+- Do not modify the given files in your home directory; the graded service runs its own copies.
 - Environment facts (harness limits): a single tool call whose input runs above roughly 25-30k tokens is dropped by the
   harness (it is never executed and no error comes back), and a response that reaches the 64k output-token limit is lost
-  and, after at most a few retries, ends the session with whatever is in `/home/user/submission/` at that moment. Write
-  large files in several parts (one function group per write), keep every single response well below that limit, write
-  a first complete submission early and refine it.
-- Session time: this session is stopped after 4 hours of wall-clock time from its start. A session stopped by that limit
-  is not graded at all, so a late finish scores nothing. Note the start time with `date` when you begin, keep a complete
-  submission in place from early on, and end the session yourself (stop working and say that you are done) at least
-  15 minutes before the limit.
+  and, after at most a few retries, ends the session (the graded episode is then scored as it stood). Write large files
+  in several parts (one function group per write) and keep every single response well below that limit.
+- Session time: this session is stopped after 7 hours of wall-clock time from its start; a graded episode started
+  within its 4 hours has its 3-hour window close before that. If the session ends before the graded episode has ended
+  (stopped at that limit, or ended any other way), the graded episode is scored as it stood after your last request,
+  as above. Note the start time with `date` when you begin; when you are done, call `cell.finish()` and end the session
+  yourself (stop working and say that you are done).
