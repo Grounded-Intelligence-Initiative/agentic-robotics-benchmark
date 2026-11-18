@@ -2,14 +2,15 @@
 
 You are the robot integrator of a home-cleaning service. A customer had a dinner for two in their studio apartment
 and has booked a clean-up; one Unitree G1 humanoid (29 DoF, Dex3-1 hands) is on site, just inside the door. Your job:
-write the program that makes the robot work through the customer's cleaning list below, using only what the robot can
-sense: its head camera, three ceiling cameras of the apartment, its motors' state (joint angles, velocities and torque
-estimates), its localisation and its hands' tactile load. The apartment's fixed furniture is surveyed exactly
-(`~/given/cell/cell_manual.md`); nothing else is given: where the litter, the dishes and the books lie, where and how
-big the grease spill is, where the crumbs are, which of the two bins is the recycling one, whether a lid is open or the
-water runs, how much soap or grease the sponge holds — all of that has to be seen in the camera images (and
-remembered). Every episode is a different mess, and
-there is no practice cell: the program goes to the customer's site as it is, the way a cleaning service's robot does.
+make the robot work through the customer's cleaning list below in one graded episode that you drive yourself, during
+this session, through the cell's service, using only what the robot can sense: its head camera, three ceiling cameras
+of the apartment, its motors' state (joint angles, velocities and torque estimates), its localisation and its hands'
+tactile load. The apartment's fixed furniture is surveyed exactly (`~/given/cell/cell_manual.md`); nothing else is
+given: where the litter, the dishes and the books lie, where and how big the grease spill is, where the crumbs are,
+which of the two bins is the recycling one, whether a lid is open or the water runs, how much soap or grease the sponge
+holds — all of that has to be seen in the camera images (and remembered). The graded episode is a mess you have not
+seen, and there is no practice cell: the graded episode is the only time anything runs the cell, and it can be started
+once.
 
 ## The cleaning list
 
@@ -35,24 +36,57 @@ The cell manual gives the apartment's survey, the robot, its controllers and the
 the lids, the faucet, the pump and the clips, how the cleaning works (wiping, rinsing, soaping, sweeping, the dustpan)
 the way the products' and the tools' data sheets describe it, what breaks, safety and the budgets.
 
-## What you produce (in `/home/user/submission/`)
+## The graded episode
 
-`clean.py` exposing `solve(cell) -> None` (plus any helper modules, optional `run.sh`). The grader runs it once per
-hidden episode (**3 episodes**) in its own physics cell; the program talks to the cell through `cell` (API in
-`~/given/cell/cell_api.md`). Per episode: 4800 s of simulated time; 3600 s of program time, which is the episode's wall
-clock minus the time the cell spends simulating (inside `step`) and rendering (inside `get_camera`), so it measures your
-program's own computation and its other requests; at most 120 s from a reply to your next request; 1500 camera frames
-in total; at most 14,400 s of CPU time for the program's process (all threads; SIGXCPU ends it beyond that), whose
-numerical libraries run with `OMP_NUM_THREADS` / `OPENBLAS_NUM_THREADS` / `MKL_NUM_THREADS` = 2.
+One episode of the cell: a fixed hidden scene drawn by the rules of cell_manual.md section 2 (the same scene for every
+run of this task; the survey photos show two other scenes drawn by the same rules), with the cell's own rules: 4800 s
+of simulated time, 1500 camera frames, at most 500 ticks per `step` call, the grip rule, the cleaning processes and the
+safety watch (cell_manual.md section 9). It runs in this sandbox, in a cell service that runs as an account that is
+not yours, behind a unix socket; you drive it with the cell's client (`~/given/lib/house_client/`), from as many short
+scripts as you like:
 
-How the program is run: a fresh process under a dedicated unprivileged account that is not yours, from a per-run
-directory with a read-only copy of your submission folder (regular files only), an empty writable HOME / TMPDIR, a
-minimal environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `MUJOCO_GL`, `PYTHONPATH` = a copy of `~/given/lib`,
-`ARB_GIVEN_DIR` = a read-only copy of `~/given`) and the launcher `python3 -B -E -s -c <bootstrap> <lib> clean`
-(or `bash run.sh`). Resolve given files through `os.environ.get("ARB_GIVEN_DIR", os.path.expanduser("~/given"))`, write
-only under the run's HOME / TMPDIR. A program that crashes ends that episode with what it achieved; the other episodes
-still run. Your submission must be final when your session ends: the submission folder is then copied out of your
-sandbox and graded in a fresh sandbox that holds nothing else of yours (no other file, no process you started).
+```python
+import sys
+sys.path.insert(0, "/home/user/given/lib")
+from house_client import connect_graded, decode_frame
+
+cell = connect_graded()          # the graded episode's cell: the calls of cell_api.md, plus start / status / close
+print(cell.status())             # started, ended, steps, sim_time, camera_frames, the time left in each window
+cell.start()                     # ONCE per session: starts the graded episode
+rgb, depth = decode_frame(cell.get_camera("ceiling_dining"))
+cell.command(base_goal=[2.85, 1.75, 1.57])
+r = cell.step(200)               # 2 s of simulated time; r["sim_time"], r["done"], r["events"]
+cell.close()                     # disconnects: the episode stays exactly where it is
+```
+
+A later script connects again with `connect_graded()` and goes on from there; `cell.finish()` ends the episode.
+
+* **Start once.** `start()` starts the graded episode. It is charged the moment it is accepted, before anything is
+  simulated, and is never refunded: a second `start()` answers `already_started`. Before the start the cell's calls
+  answer `not_started`; `status()` answers at any time.
+* **The episode persists.** It lives in the service, not in your connection: a closed connection, or a script that
+  ends or crashes, leaves it where it is. Nothing moves between requests: the robot holds its last targets and the
+  simulation advances only inside `step`, so your thinking costs no simulated time. One client at a time: a second
+  connection gets `CellError` `busy`. A connection that sends nothing for 15 minutes is closed by the service (the
+  episode stays; the proxy connects again by itself on its next call).
+* **Two windows, in wall-clock time.** The start window: `start()` is accepted within 4 hours of the service's start
+  (it starts during the sandbox's setup, a little before your session; `status()["start_window_left_s"]` gives the
+  time left); a later start is refused and the task then scores 0. The graded window: the episode ends 3 hours after
+  its start (`status()["graded_window_left_s"]`) whatever its state; your thinking time counts against it, simulated
+  time does not.
+* **How it ends.** At `finish()`; when it reaches 4800 s of simulated time (`step` then reports `done` and the event
+  `episode_over`); when the graded window closes; or when your session ends. In every case the apartment is scored as
+  it stands after your last request: nothing is simulated afterwards. After the end the cell's calls answer
+  `episode_over` (`finish()` answers `{"ok": true}`).
+* **What you learn.** What the robot's program would learn in the episode: the replies of cell_api.md (camera frames,
+  the robot's own state, `step` events: only `safety:<what>` and `episode_over`), and `status()`. Never the score.
+* **What does not apply.** cell_manual.md section 10 and `describe()`'s `budgets` also give a program-time budget
+  (3600 s), a 120 s silence limit and a CPU-time budget: they bound a program that a grader runs by itself, and the
+  graded episode has none of them (its two windows replace them); the 4800 s of simulated time, the 1500 frames and
+  the 500 ticks per `step` do apply. cell_manual.md section 11 lists what you prepare with; what it calls deploying the
+  program is, here, the graded episode you drive.
+* **Nothing else is graded.** Your files, the submission folder `/home/user/submission/` and anything else you leave
+  in the sandbox are not read: only the graded episode, as it ended.
 
 ## What you are given
 
@@ -63,28 +97,20 @@ sandbox and graded in a fresh sandbox that holds nothing else of yours (no other
 | `~/given/cell/describe.json` | exactly what the cell's `describe()` returns (robot, joints, limits, cameras with their exact poses, the room, budgets, safety) |
 | `~/given/cell/survey/` | survey photos: camera frames of two scenes of the apartment drawn by the same rules as the graded ones (not among them), as the cameras deliver them (cell_manual.md section 11) |
 | `~/given/robot/unitree_g1/` | the robot's MuJoCo model (Menagerie, BSD-3-Clause); the cell's modifications are in the manual |
-| `~/given/lib/house_client/` | the cell's client (`Cell`, `decode_frame`, `load_frame` for the survey photos, the launcher) |
+| `~/given/lib/house_client/` | the cell's client (`connect_graded` for the graded episode, `Cell`, `decode_frame`, `load_frame` for the survey photos, the launcher) |
 
-**No practice cell.** Nothing in your session runs the cell: no practice episodes, no answer key, no checker. You
-prepare the program from the manual, the survey, the photos and the robot's model (you may build any test rig of
-your own); it then runs on the graded episodes as it is.
+**No practice cell.** Nothing in your session runs the cell but the graded episode: no practice episodes, no answer
+key, no checker. You prepare from the manual, the survey, the photos and the robot's model (you may build any test rig
+of your own: `Cell(send, recv)` takes any pair of line functions, so a stand-in cell of yours can drive your code),
+then you play the graded episode, once.
 
 Tools: Python 3.12 at **`/opt/venv/bin/python3`** (use this path; the plain `python3` on your PATH may lack the
 packages) with numpy, scipy, OpenCV (`cv2`, headless), Pillow, matplotlib and MuJoCo 3.16. No network in your session.
 
-## How you are graded (3 hidden episodes)
+## How the graded episode is scored
 
-Gates (multiply the score): `contract_ok` = `clean.py` is a regular file that parses and defines `solve`, imports under
-the run regime above (within 120 s and 120 CPU seconds), makes at least one `step` call over the episodes, holds no
-remote network socket while it runs, your own `.py` files import no networking module (`socket`, `ssl`, `urllib`,
-`http`, `requests`, `asyncio`, `ctypes`, `subprocess`, ...), load no module under a computed name, execute no computed
-code (`exec` / `eval` / `compile` of a non-literal) and start no other program, the submission folder holds no model
-weight file (a name ending in `.pt`, `.pth`, `.onnx`, `.safetensors`, `.ckpt`, `.h5` or `.pb`) and is at most 60 MB,
-and no process of the program outlives its episode. Per episode `safety` (cell_manual.md section 9): a violation zeroes
-that episode.
-
-`cleaning_score` = the mean over the 3 episodes (three fixed hidden scenes) of the checklist's credit less the damage
-charges, / 10, read from the apartment's state when the episode ends:
+`cleaning_score` = the checklist's credit less the damage charges, / 10, read from the apartment's state when the
+graded episode ends; a safety violation (cell_manual.md section 9) at any time in the episode makes it 0:
 * trash, 2.0: each of the seven pieces 2/7 when it lies inside the right bin (below its rim);
 * dishes, 1.0: each plate and glass 0.25 when it stands on the dish tray (or on a dish on it), unbroken;
 * books, 1.0: each book 0.5 when it rests in the target compartment (its middle inside it, on the shelf or on the
@@ -101,23 +127,22 @@ charges, / 10, read from the apartment's state when the episode ends:
   things (a piece of trash, a plate, a glass, a book, the sponge) left on the floor at the end (outside the bins); an
   episode's credit after the charges is at least 0.
 
-The cell never tells your program what it has achieved; it reads the apartment's state when the episode ends. A
+The service never tells you what the episode has achieved; it reads the apartment's state when the episode ends. A
 failure on the grading side (the cell, the renderer: a camera request answered `camera_unavailable`) is not scored as
 your work: the run is then an infrastructure failure.
 
 ## Notes
 
-- Images (camera frames) are meant to be processed by your program; look at the ones you need.
+- Images (camera frames) are meant to be processed by your scripts; look at the ones you need.
 - The survey of the fixed furniture, the camera calibrations, the robot's kinematics and joint angles are exact; the
   localisation, the joint velocities and the joint torque estimates are slightly noisy; everything about the mess must
-  be measured in each episode.
-- Do not modify the given files in your home directory; the grader reads its own copies.
+  be measured in the episode.
+- Do not modify the given files in your home directory.
 - Environment facts (harness limits): a single tool call whose input runs above roughly 25-30k tokens is dropped by the
   harness (it is never executed and no error comes back), and a response that reaches the 64k output-token limit is
-  lost and, after at most a few retries, ends the session with whatever is in `/home/user/submission/` at that moment.
-  Write large files in several parts, keep every single response well below that limit, write a first complete
-  submission early and refine it.
-- Session time: this session is stopped after 4 hours of wall-clock time from its start. A session stopped by that limit
-  is not graded at all, so a late finish scores nothing. Note the start time with `date` when you begin, keep a complete
-  submission in place from early on, and end the session yourself (stop working and say that you are done) at least
-  15 minutes before the limit.
+  lost and, after at most a few retries, ends the session (the graded episode then ends as it stands). Write large
+  files in several parts and keep every single response well below that limit.
+- Session time: this session is stopped after 7 hours of wall-clock time from its start (the 4-hour start window and
+  the 3-hour graded window). A session stopped by that limit is not graded at all, so a late finish scores nothing.
+  Note the start time with `date` when you begin, and end the session yourself (stop working and say that you are
+  done) once the graded episode is over, and at least 15 minutes before the limit.

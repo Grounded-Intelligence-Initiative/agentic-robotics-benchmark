@@ -1,8 +1,9 @@
-"""Program-side proxy of the house cell, and the launcher that runs a submission against it.
+"""Program-side proxy of the house cell: the graded episode's connection, and the launcher that runs a program on a cell
+connected to its stdin / stdout.
 
     from house_client import decode_frame
 
-    def solve(cell):                                    # in /home/user/submission/clean.py
+    def solve(cell):                                    # a program driving the cell, e.g. solve(connect_graded())
         info = cell.describe()                          # robot, joints, control limits, grip, cameras, room, budgets
         f = cell.get_camera("ceiling_dining")           # one RGB-D frame (counts against the frame budget)
         rgb, depth_m = decode_frame(f)                  # uint8 H x W x 3, float32 H x W metres (NaN = no reading)
@@ -16,10 +17,24 @@ Every method is one JSON-lines request ({"id": n, "method": ..., "params": {...}
 ({"id": n, "result": ...} or {"id": n, "error": code, "detail": text}). A reply carrying an error raises CellError
 (its `code` is e.g. "bad_params", "forbidden", "camera_budget"; a "forbidden" call is counted against the program).
 
-The transport: connect_stdio(), the graded run. The launcher (`main`) starts the program with the cell on its own
-stdin / stdout; it moves this process's stdout (Python's and the C-level file descriptor 1) to stderr first, so prints
-never corrupt the wire. There is no practice cell: Cell(send, recv) takes any pair of line functions (a stand-in of
-your own for testing), and load_frame() reads the survey photos (~/given/cell/survey/) as get_camera replies.
+The graded episode of this session: connect_graded() connects to the cell service that holds it (a unix socket,
+GRADED_SOCKET) and returns a GradedCell, the same proxy with start(), status() and close() besides. One client at a
+time; the episode lives in the service, so close() (or the end of your script) leaves it where it is, and a later
+connect_graded() resumes it:
+
+    from house_client import connect_graded
+    cell = connect_graded()
+    cell.status()                                       # started / ended, steps, sim_time, time left in each window
+    cell.start()                                        # once per session: starts THE graded episode
+    ...                                                 # describe(), get_state(), command(), step(), get_camera()
+    cell.finish()                                       # ends the graded episode: scored as it stands
+    cell.close()                                        # disconnects (the episode stays where it is)
+
+The transport of a program run by a launcher: connect_stdio(). The launcher (`main`) starts the program with the cell
+on its own stdin / stdout; it moves this process's stdout (Python's and the C-level file descriptor 1) to stderr first,
+so prints never corrupt the wire. There is no practice cell: Cell(send, recv) takes any pair of line functions (a
+stand-in of your own for testing), and load_frame() reads the survey photos (~/given/cell/survey/) as get_camera
+replies.
 
 numpy-typed arguments are accepted (sent as plain numbers / lists).
 """
@@ -31,13 +46,15 @@ import os
 import sys
 import traceback
 
-__all__ = ["Cell", "CellError", "decode_frame", "load_frame", "connect_stdio", "given_dir", "main", "BOOTSTRAP",
-           "PUBLIC_CAMERAS"]
+__all__ = ["Cell", "CellError", "GradedCell", "connect_graded", "decode_frame", "load_frame", "connect_stdio", "given_dir",
+           "main", "BOOTSTRAP", "PUBLIC_CAMERAS", "GRADED_SOCKET"]
 
 # the launcher the graded run starts: `python -B -E -s -c BOOTSTRAP <library dir> clean`
 BOOTSTRAP = ("import sys; sys.path.insert(0, sys.argv[1]); from house_client.client import main; "
              "sys.exit(main(sys.argv[2:]))")
 PUBLIC_CAMERAS = ("ceiling_kitchen", "ceiling_dining", "ceiling_living", "head")
+# the graded episode's cell service (its directory and the socket belong to the service; you can connect, nothing more)
+GRADED_SOCKET = "/run/arb-online/cell.sock"
 
 
 class CellError(RuntimeError):
@@ -127,6 +144,100 @@ class Cell(object):
                 self._close()
             finally:
                 self._close = None
+
+
+class GradedCell(Cell):
+    """This session's graded episode, through its cell service (connect_graded()). The calls of Cell (describe,
+    get_state, command, step, get_camera, finish) go to the graded episode's cell; besides them:
+
+      start()   starts the graded episode: once per session, never undone (later calls answer `already_started`);
+      status()  {started, ended, end_reason, steps, sim_time, camera_frames, start_window_left_s,
+                 graded_window_left_s, ...}: never the episode's score;
+      close()   disconnects; the episode stays where it is (connect_graded() again to go on).
+
+    Before start() the cell's calls answer `not_started`, after the episode's end `episode_over` (finish() then just
+    answers {"ok": true}). One client at a time: a second connection gets CellError `busy`. A connection that sends
+    nothing for 15 minutes is closed by the service; the next call on this proxy then connects again by itself."""
+
+    def __init__(self, path=GRADED_SOCKET):
+        self._path = str(path)
+        self._sock = None
+        self._rfile = None
+        self.service = None
+        Cell.__init__(self, self._send_line, self._recv_line, self._disconnect)
+        self._connect()
+
+    def _connect(self):
+        import socket
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            s.connect(self._path)
+        except OSError as e:
+            s.close()
+            raise CellError("unavailable", "cannot connect to the graded episode's cell service at %s (%s)" % (
+                self._path, e.__class__.__name__))
+        self._sock = s
+        self._rfile = s.makefile("r", encoding="utf-8", newline="\n")
+        line = self._rfile.readline()
+        try:
+            hello = json.loads(line) if line else None
+        except ValueError:
+            hello = None
+        if not isinstance(hello, dict) or "error" in hello or "service" not in hello:
+            self._disconnect()
+            if isinstance(hello, dict) and "error" in hello:
+                raise CellError(hello["error"], hello.get("detail"))
+            raise CellError("bad_reply", "the service did not greet")
+        self.service = hello["service"]
+
+    def _send_line(self, text):
+        data = text.encode("utf-8")
+        if self._sock is None:
+            self._connect()
+        try:
+            self._sock.sendall(data)
+        except (BrokenPipeError, ConnectionResetError):
+            # the service had closed this connection (idle): the request never reached it; connect again and send it
+            self._disconnect()
+            self._connect()
+            self._sock.sendall(data)
+
+    def _recv_line(self):
+        return self._rfile.readline() if self._rfile is not None else ""
+
+    def _disconnect(self):
+        for f in (self._rfile, self._sock):
+            if f is not None:
+                try:
+                    f.close()
+                except OSError:
+                    pass
+        self._rfile = self._sock = None
+
+    def start(self):
+        """Start the graded episode (once per session; the start is charged before anything is simulated)."""
+        return self._call("start")
+
+    def status(self):
+        """started / ended (and why), steps, sim_time, camera_frames, the time left in each window (seconds)."""
+        return self._call("status")
+
+    def close(self):
+        """Disconnect; the graded episode stays where it is."""
+        self._disconnect()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+        return False
+
+
+def connect_graded(path=GRADED_SOCKET):
+    """The graded episode's cell (a GradedCell), connected to its service. Raises CellError `busy` while another client
+    is connected, `unavailable` when the service cannot be reached."""
+    return GradedCell(path)
 
 
 def decode_frame(reply):
