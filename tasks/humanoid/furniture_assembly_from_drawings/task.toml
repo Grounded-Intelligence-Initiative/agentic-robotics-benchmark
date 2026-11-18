@@ -1,5 +1,5 @@
-# furniture_assembly_from_drawings (Physical Execution, humanoid; built 2026-10-30 by Yuanfang Peng), ONLINE VARIANT
-# (experiment branch, 2026-11-17: never merged into main).
+# furniture_assembly_from_drawings (Physical Execution, humanoid; built 2026-10-30 by Yuanfang Peng), DUAL MODE
+# (experiment branch, 2026-11-18: never merged into main).
 #
 # A furniture-assembly service on site: two Unitree G1 humanoids (29 DoF, Dex3-1 hands) must build the B930 flat-pack
 # bookcase (two side panels, top, bottom, fixed shelf and a hardboard back, joined by dowels) exactly as its drawings
@@ -7,19 +7,26 @@
 # orientations every episode; the manufacturer's drawing set (parts list, part drawings, wordless assembly steps, floor
 # plan) is the only description of the furniture, and two-person steps need both robots. The sensing is camera-only
 # (two ceiling RGB-D cameras and a head RGB-D camera per robot, noisy localisation, joint encoders and tactile load; no
-# part poses, no part identities, no joint states on the wire). Online variant: the agent plays ONE hidden graded
-# episode itself during its session (drawn once from the offline grader's 63-bit episode seeds; the same for every
-# model) through the graded episode's service (environment/setup/online/graded_server.py: the offline grader's own
-# cell under the offline per-episode rules, run as the lab account, reachable on a Unix socket only), which writes the
-# episode's record to /var/lib/arb-online, a directory the agent can neither read nor write. The separate verifier
-# scores that record: assembly_score = the bookcase's credited weight / 9 when the episode ends (the six dowel joints,
-# the back panel, the placement), 0 after a safety violation. A practice lab serves practice episodes of the same cell
-# (never privileged, budget-limited) on another Unix socket. The oracle plays the graded episode with the privileged
-# reference assembler (its start carries the oracle token).
+# part poses, no part identities, no joint states on the wire). Two scoring items of one task, one session, one
+# verify; reward = their mean:
+#   * the program (main's item, unchanged): the agent delivers assemble.py (solve(cell)), run as an unprivileged account
+#     on 3 hidden-seed episodes of the grader's MuJoCo cell over a JSON-lines RPC in the separate verifier; score = the
+#     mean of the bookcase's credited weight / 9 times the gates. The program graded is the submission frozen when the
+#     graded episode starts (the graded episode's root supervisor copies it into /var/lib/arb-online, which the agent
+#     can neither read nor write), or when the preparation window closes if the episode is never started;
+#   * the graded episode (the online item): the agent plays ONE hidden episode itself during its session (drawn once
+#     from the offline grader's 63-bit episode seeds; the same for every model) through the graded episode's service
+#     (environment/setup/online/graded_server.py: the offline grader's own cell, byte-identical in tests/furniture_cell
+#     and environment/setup/online/furniture_cell, under the offline per-episode rules, run as the lab account on a Unix
+#     socket); score = the bookcase's credited weight / 9 when the episode ends.
+# A practice lab serves practice episodes of the same cell (never privileged, budget-limited) until the graded episode
+# starts. The oracle leaves main's privileged reference program (with its token), then plays the graded episode with
+# the privileged reference assembler.
 
 schema_version = "1.4+ale.1"
-# The graded episode's record directory (written by the graded episode's service as the lab account; restored
-# root-owned in the separate verifier, which scores it), and the agent's submission folder (collected, not read).
+# The agent's program (graded as frozen at the graded start; the separate verifier gets the restored folder, used
+# when the episode was never started and the window never closed) and the graded episode's record directory (its
+# record and the frozen program; written by the graded episode's service, restored root-owned in the verifier).
 artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
@@ -39,23 +46,30 @@ memory_mb = 16384
 # setup (no field: the engine bounds it at a fixed 1800 s): the agent's givens, the practice lab (its server builds one
 # cell as a self-test before it listens) and the graded episode's service (its worker builds the graded episode's cell
 # before it serves); seconds. [agent] timeout_sec = prep_s + graded_s (environment/setup/online/graded_config.json):
-# the graded episode must be started within prep_s = 4 h (the agent budget on main, practice included) of the
-# service's start, and then runs for at most graded_s = 3 h of wall clock (the contract's default: the cell's own work
-# for a whole episode at its bounds, 1500 s simulated and 900 frames, is about 25 min here; the oracle's episode takes
-# about 5 min). [verifier] timeout_sec: verify.py only reads the record.
+# prep_s = 4 h, main's agent budget, for the program and the preparation of the graded episode (which must start
+# within it of the service's start), then graded_s = 3 h of wall clock for the graded episode.
 [agent]
 timeout_sec = 25200
 network_mode = "no-network"
 
+# [verifier] timeout_sec and resources are main's: the program is graded as on main (the import check, then 3 hidden
+# episodes, each a cell build plus the program within its 3000 s program-time cap, which does not count the cell's
+# simulation, 1500 s simulated at most, and rendering, 900 frames at most; at the bounds an episode takes about 4300 s
+# of wall clock here and up to about 5800 s on a machine that renders at 2.3 s per frame, hence 6 h for the three);
+# reading the graded episode's record takes seconds. The oracle's episodes run the reference assembler inside one
+# privileged call (about 5 min each).
+#
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
-# touched, with only the declared artifacts in it (restored root-owned): the graded episode's record directory, which
-# verify.py reads, and the submission, which nothing reads. environment/setup/setup.sh does not run there and no
-# program runs: two CPUs and 4 GB are plenty.
+# touched, with only the declared artifacts in it (restored root-owned): the submission and the graded episode's record
+# directory (the record and the frozen program). environment/setup/setup.sh does not run there (no ~/given, no practice
+# lab, no graded episode service): tests/test.sh builds the grader's root-owned copy of the givens (/opt/arb) itself,
+# from tests/setup_payload/ and the image's robot model. The agent's program runs during verify, so the verifier gets
+# the agent's resources (CPU rendering: no GPU).
 [verifier]
-timeout_sec = 600
+timeout_sec = 21600
 environment_mode = "separate"
 
 [verifier.environment]
-cpus = 2
-memory_mb = 4096
+cpus = 8
+memory_mb = 16384
 gpus = 0

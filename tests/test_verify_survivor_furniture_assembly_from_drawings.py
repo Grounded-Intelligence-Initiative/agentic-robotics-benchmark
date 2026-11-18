@@ -17,6 +17,9 @@ import unittest
 from pathlib import Path
 
 VERIFY = Path(__file__).resolve().parents[1] / "tasks/humanoid/furniture_assembly_from_drawings/tests/verify.py"
+# dual mode: verify.py stops the agent account first (step 1), then runs main's grader, tests/offline_verify.py (main's
+# verify.py with two hooks), whose own verify-start lockdown runs again on the program it grades
+OFFLINE_VERIFY = VERIFY.with_name("offline_verify.py")
 FAMILY = "contract"   # "contract": the survivor reason zeroes contract_ok; "void": a survivor raises a task error
 
 
@@ -56,14 +59,16 @@ class _Survivor:
         self.proc.wait()
 
 
-def _functions(names):
-    tree = ast.parse(VERIFY.read_text())
+def _functions(names, path=VERIFY):
+    tree = ast.parse(path.read_text())
     body = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in names]
-    assert {n.name for n in body} == set(names), "verify.py lacks %s" % (set(names) - {n.name for n in body})
-    return compile(ast.Module(body=body, type_ignores=[]), str(VERIFY), "exec")
+    assert {n.name for n in body} == set(names), "%s lacks %s" % (path.name, set(names) - {n.name for n in body})
+    return compile(ast.Module(body=body, type_ignores=[]), str(path), "exec")
 
 
 class SurvivorAtVerifyStart(unittest.TestCase):
+    VERIFY = VERIFY
+
     def setUp(self):
         self.survivor = _Survivor()
         self.addCleanup(self.survivor.close)
@@ -106,7 +111,7 @@ class SurvivorAtVerifyStart(unittest.TestCase):
               "SUBMISSION": str(self.tmp / "home" / "submission"), "LATE_GATE_MAX_GAP_S": 600.0, "WATCH_ROOTS": [],
               "RUNS_ROOT": str(self.tmp / "runs"), "SNAPSHOT": str(self.tmp / "snap"), "SNAP_ROOT": str(self.tmp),
               "QUARANTINE": str(self.tmp / "q")}
-        exec(_functions(["_proc_state", "_still_running", "_early_lockdown"]), ns)
+        exec(_functions(["_proc_state", "_still_running", "_early_lockdown"], self.VERIFY), ns)
         fn = ns["_early_lockdown"]
         out = fn(Freezer()) if fn.__code__.co_argcount else fn()
         return out, logs
@@ -137,11 +142,18 @@ class SurvivorAtVerifyStart(unittest.TestCase):
         """main() voids the run on agent_processes_running, never on the kill's raw survivor count."""
         if FAMILY != "void":
             self.skipTest("contract family: the reason list is the gate")
-        main = next(n for n in ast.parse(VERIFY.read_text()).body if isinstance(n, ast.FunctionDef) and n.name == "main")
+        main = next(n for n in ast.parse(self.VERIFY.read_text()).body
+                    if isinstance(n, ast.FunctionDef) and n.name == "main")
         tests = [ast.unparse(n.test) for n in ast.walk(main)
                  if isinstance(n, ast.If) and any(isinstance(b, ast.Raise) for b in n.body)]
         self.assertFalse([t for t in tests if "agent_processes_left" in t], tests)
         self.assertTrue([t for t in tests if "agent_processes_running" in t], tests)
+
+
+@unittest.skipUnless(OFFLINE_VERIFY.is_file(), "no tests/offline_verify.py (not the dual mode)")
+class SurvivorAtVerifyStartMainGrader(SurvivorAtVerifyStart):
+    """The same checks on main's own verify-start lockdown, which the dual mode's verify.py runs with main's grading."""
+    VERIFY = OFFLINE_VERIFY
 
 
 if __name__ == "__main__":

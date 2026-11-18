@@ -1,5 +1,5 @@
 {
- "note": "The graded episode service (graded_server.py). cell: the furniture cell's configuration, the offline grading run's budgets (as the practice lab's lab_config.json): simulated-time cap, camera frames, ticks per step call, settle time before t = 0; program_time_cap_s and silence_s only appear in describe(): the graded episode has no program-time cap and no silence rule (the simulation advances only inside the agent's own requests). prep_s = the task's agent budget on main (the start must come within it of the service's first start); graded_s = the graded window from the start, the contract's default of 3 h (the cell's own work for a whole episode at its bounds, 1500 s simulated and 900 frames, is about 25 min here; the reference assembler's episode takes about 5 min). request_cap_s bounds one request (a hang ends the worker and with it the episode); privileged_request_cap_s the oracle's one reference_assemble request. practice_closed_flag: created at the start, before the start is persisted; the practice lab (lab_server.py --closed-flag) then ends an open practice episode and refuses new ones (practice ends when the graded episode starts).",
+ "note": "The graded episode service (graded_server.py). cell: the furniture cell's configuration, the offline grading run's budgets (as the practice lab's lab_config.json): simulated-time cap, camera frames, ticks per step call, settle time before t = 0; program_time_cap_s and silence_s only appear in describe(): the graded episode has no program-time cap and no silence rule (the simulation advances only inside the agent's own requests). prep_s = the task's agent budget on main (the start must come within it of the service's first start); graded_s = the graded window from the start, the contract's default of 3 h (the cell's own work for a whole episode at its bounds, 1500 s simulated and 900 frames, is about 25 min here; the reference assembler's episode takes about 5 min). request_cap_s bounds one request (a hang ends the worker and with it the episode); privileged_request_cap_s the oracle's one reference_assemble request. practice_closed_flag: created at the start, before the start is persisted; the practice lab (lab_server.py --closed-flag) then ends an open practice episode and refuses new ones (practice ends when the graded episode starts). Dual mode: at the start (before it is charged), or when the preparation window closes without a start, the root supervisor copies submission_dir into snapshot_dir (no symlink followed; main's 60 MB submission cap, the engine's entry and depth limits: over them the status is too_large and nothing is copied); the offline grader grades that snapshot.",
  "task": "furniture_assembly_from_drawings",
  "episode_file": "graded_episode.json",
  "oracle_token_digest_file": "oracle_token.sha256",
@@ -8,6 +8,12 @@
  "socket": "/run/furniture-graded/graded.sock",
  "record_dir": "/var/lib/arb-online",
  "practice_closed_flag": "/var/lib/arb-online/practice_closed",
+ "submission_dir": "/home/user/submission",
+ "snapshot_dir": "/var/lib/arb-online/submission_snapshot",
+ "snapshot_max_bytes": 62914560,
+ "snapshot_max_entries": 100000,
+ "snapshot_max_depth": 64,
+ "snapshot_timeout_s": 600.0,
  "prep_s": 14400.0,
  "graded_s": 10800.0,
  "cell": {

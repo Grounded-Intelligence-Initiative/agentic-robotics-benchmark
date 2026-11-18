@@ -1,8 +1,8 @@
 {
- "metric": "assembly_score",
+ "metric": "dual_mode_score",
  "direction": "higher",
  "value": 1.0,
  "full_at": 1.0,
- "source": "measured 2026-11-18 by ale validate (run validate-436dadd0, engine bfb7505, the online variant at 2489b76c): the oracle (the privileged reference assembler driving the graded episode graded-01 through the agent-side client) scored episode_score 1.0 (credit 9/9, no safety violation, 802.4 s simulated); the same reference scored 1.0 on that episode in a local run of the cell",
- "note": "assembly_score is already on [0, 1]; online variant: the score of the one graded episode"
+ "source": "1.0 by construction (the mean of the program item, main's assembly_score against main's anchor in anchor_offline.json, and the live item, the graded episode's assembly_score against the online anchor in anchor_online.json, each normalised by its own measured anchor), confirmed 2026-11-18 by ale validate validate-6fad4eb7 (engine bfb7505, the dual mode at cca4462f): the oracle scored dual_mode_score 1.0 (offline_reward 1.0: main's privileged reference program frozen at the graded start, 3 episodes; online_reward 1.0: the privileged reference assembler on graded-01)",
+ "note": "dual mode: reward = (offline_reward + online_reward) / 2; the components' anchors are anchor_offline.json (main's anchor.json, byte-identical) and anchor_online.json (the online variant's)"
 }
