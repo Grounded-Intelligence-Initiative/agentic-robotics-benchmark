@@ -11,25 +11,30 @@ cell renders its camera frames with; what the cell draws per run (the hall's bri
 
 `cam` is a render.spec.CameraSpec (pixels fx fy cx cy, world_T_cam in OpenCV axes: x right, y down, z forward; lens
 distortion only through the photo pipeline). One session per scene and one open session per process (close it before
-opening the next): it is compiled once (about 10-30 s on the CPU, the display transform's lookup table included);
-every frame copies the state by joint name, updates the Filament scene and renders RGB as an exact off-axis pinhole
-(the MuJoCo backend's frustum), then the filmic display transform (render.filament.agx's regrade) through an 8-bit
-lookup table. The render model is your MjSpec (bodies and joint names as in your physics) without the MuJoCo-only
-scenery (geoms named `floor`, `backdrop_*`, `bench_leg_*`, `bench_rail_*`, `bench_shelf`, and every geom in a group
-above 2), plus the robot table's steel frame under the 2.0 x 1.4 m top, the arm's control box with its teach pendant
-and the hazard tape on the floor around the cell, the factory room bundle (`render.room.add_room`: Cycles-baked
-lightmaps on the hall, its lamps lighting the live objects, the room's HDR image light) and the look
-(`agent_look.json` and `make_look`: the hall's calibrated light units, exposure and filmic display transform; PBR
-terms per material class: the arm, the fixtures (`mat_stand`, `mat_shelf`, `mat_tray`), the boards, the props; the
-scanned oak maps on the bench top geom `table_top` of material `mat_bench`). Materials named `mat_vis_<key>` take
-metallic / roughness from a material table `kit["materials"][<key>]` (the roughness clamped to the look's
-"kit_materials" range): by default the given kit.json's table (`given_kit()`: the car model's materials by key, with
-the terms the cell's cameras render them with), else the `kit` dict you pass (`kit={}`: none); a material without an
-entry gets the look's default terms. Your scene's own lights are replaced by the hall's. Depth comes from the MuJoCo
-backend on the same geometry (room meshes without textures): metric and registered with the RGB. Lens distortion,
+opening the next): it is compiled once (on 8 CPUs for a twin of the whole cell about 4-11 s, the display transform's
+8-bit lookup table, about 2 s, included) and holds about 4 GB more while open; until you give it a state it shows your
+twin's own pose (qpos0). Every frame copies the state by joint name, updates the Filament scene and renders RGB as an
+exact off-axis pinhole (the MuJoCo backend's frustum), then the filmic display transform (render.filament.agx's regrade)
+through that table: the first frame after Filament's context is made takes about 7-10 s, later ones about 0.7 s (1280 x
+960) and 0.4 s (640 x 480) with depth. Closing the last open session (or view) of the process releases Filament's
+context and its memory, so the next one's first frame takes that long again. The render model is your MjSpec (bodies and
+joint names as in your physics) without the MuJoCo-only scenery (geoms named `floor`, `backdrop_*`, `bench_leg_*`,
+`bench_rail_*`, `bench_shelf`, and every geom in a group above 2), plus the robot table's steel frame under the 2.0 x
+1.4 m top, the arm's control box with its teach pendant and the hazard tape on the floor around the cell, the factory
+room bundle (`render.room.add_room`: Cycles-baked lightmaps on the hall, its lamps lighting the live objects, the room's
+HDR image light) and the look (`agent_look.json` and `make_look`: the hall's calibrated light units, exposure and filmic
+display transform; PBR terms per material class: the arm, the fixtures (`mat_stand`, `mat_shelf`, `mat_tray`), the
+boards, the props; the scanned oak maps on the bench top geom `table_top` of material `mat_bench`). Materials named
+`mat_vis_<key>` take metallic / roughness from a material table `kit["materials"][<key>]` (the roughness clamped to the
+look's "kit_materials" range): by default the given kit.json's table (`given_kit()`: the car model's materials by key,
+with the terms the cell's cameras render them with), else the `kit` dict you pass (`kit={}`: none); a material without
+an entry gets the look's default terms. kit.json's part_materials (the material key of every triangle of the part
+files), its rgba and the printed faces' textured meshes let a twin built from the part files carry these materials
+(cell_api.md, "Rendering your own frames"). Your scene's own lights are replaced by the hall's. Depth comes from the
+MuJoCo backend on the same geometry (room meshes without textures): metric and registered with the RGB. Lens distortion,
 noise, blur, vignetting, colour jitter and the depth-sensor model are render/postprocess.py (PhotoSpec), the same code
-as the MuJoCo path. `exposure_factor` scales the exposure (the cell's hall is up to about +-20 % brighter or darker
-from run to run).
+as the MuJoCo path. `exposure_factor` scales the exposure (the cell's hall is up to about +-20 % brighter or darker from
+run to run).
 
 Assets: the scenery folder (`_render_dir()`: $ARB_AGENT_RENDER_DIR, else `render` next to $ARB_GIVEN_DIR, else
 ~/render) holds `room/` (an arb-room/1 bundle: room.json, meshes, baked textures, ibl/ibl.ktx) and `oak/` (the bench
@@ -46,7 +51,7 @@ import numpy as np
 
 from render.backends.base import BackendCapabilities, RawView, RenderSession, raw_outputs
 from render.backends.mujoco_backend import MujocoBackend
-from render.filament.view import _OPEN, check_one_session    # the process's open Filament sessions (closed at exit)
+from render.filament.view import _OPEN, _release_context, check_one_session   # the process's Filament sessions
 
 __all__ = ["open_session", "available", "FilamentAgentBackend", "make_look", "look_config", "kit_material_rules", "given_kit",
            "DEFAULT_BENCH"]
@@ -343,6 +348,7 @@ class FilamentAgentSession(RenderSession):
         self.t_open_s = time.perf_counter() - t0
         self._digest = None
         _OPEN.add(self)
+        self.sync_from(self.depth.model, self.depth.data)   # the twin's own pose until a state is given
 
     def set_state(self, state=None, qpos=None, joints=None):
         self.depth.set_state(state, qpos, joints)
@@ -411,7 +417,8 @@ class FilamentAgentSession(RenderSession):
         return {"session": True, "renderer": "filament", "t_open_s": round(self.t_open_s, 2), "room": self.room_record.get("room")}
 
     def close(self):
-        """Free the Filament objects in dependency order (the context outlives every session: _shutdown)."""
+        """Free the Filament objects in dependency order, then (no other session open) Filament's context itself
+        (render.filament.view._release_context); the context outlives every scene object (and at exit: _shutdown)."""
         if self.scn is None:
             return
         _OPEN.discard(self)
@@ -428,6 +435,9 @@ class FilamentAgentSession(RenderSession):
         self.objs = None
         gc.collect()
         self.depth.close()
+        _SPECS.clear()
+        self.ctx = None
+        _release_context()
 
 
 class FilamentAgentBackend(MujocoBackend):

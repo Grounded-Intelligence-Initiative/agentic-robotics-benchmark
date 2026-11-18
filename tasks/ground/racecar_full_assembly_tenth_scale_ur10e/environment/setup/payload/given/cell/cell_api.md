@@ -65,10 +65,10 @@ noise, blur, vignetting, colour response and the depth-sensor model are the rend
   lights. The look's material classes are named in `agent_render.make_look` (the arm's, the fixtures' `mat_stand`,
   `mat_shelf`, `mat_tray`, the boards', the props'); materials named `mat_vis_<key>` take metallic and roughness from
   a material table `kit["materials"][<key>]`: by default the one in `~/given/kit.json` (`agent_render.given_kit()`:
-  the car model's materials by key, with the terms the cell's cameras render them with; the part files carry no
-  materials), else the `kit` you pass (`kit={}`: none); a material without an entry gets the look's default terms.
-  `exposure_factor` stands for the hall's brightness (the cell's own varies by up to about 20 % between runs). The
-  session follows the render layer's interface: `sync_from(model, data)` copies your physics state by joint name,
+  the car model's materials by key, with the terms the cell's cameras render them with), else the `kit` you pass
+  (`kit={}`: none); a material without an entry gets the look's default terms. `exposure_factor` stands for the hall's
+  brightness (the cell's own varies by up to about 20 % between runs). The session follows the render layer's
+  interface: `sync_from(model, data)` copies your physics state by joint name,
   `render_raw_views([cam], ("rgb", "depth"))` gives the pinhole images,
   `render([cam], photo=..., seed=k, outputs=("rgb", "sensor_depth"))` runs the photo pipeline.
 * `render.filament.view.open_view(spec_or_mjcf_path, room=..., look=..., surface=..., bench_xy=...)`: any scene of
@@ -85,6 +85,19 @@ noise, blur, vignetting, colour response and the depth-sensor model are the rend
   `[geom glob, material glob, {"roughness", "metallic"}]` rules, the first match wins) or None. `view.session` is a
   render-layer session for the photo pipeline.
 
+A twin of the car from the part files: the part files carry no materials; `~/given/kit.json` says which material each
+of their triangles has and what each material looks like (appearance only). `part_materials` lists for each part file
+its runs `[first triangle, number of triangles, material key]` in the file's triangle order, together covering the
+file; `materials[<key>]` holds the material's `rgba` (its base colour) next to its `metallic` and `roughness`, and a
+key with a `texture` (the printed boards of the deck) also names a `texture_mesh`, an OBJ file in
+`~/given/appearance/` with the same triangles as that key's run, with texture coordinates, in the part file's frame
+and millimetres. Split each part mesh into its runs (the runs of one key may share one mesh), give each a material
+named `mat_vis_<key>` with that `rgba` (for a textured key take its `texture_mesh` instead of the run, and its image
+as the material's colour map: a two-dimensional texture in sRGB, the RGB role), scale the meshes from millimetres to
+metres, set their inertia to `shell` (the surfaces are open; make the geoms massless, without contacts, in group two)
+and pose each part file on its body (`roller.stl` is in the car's own frame, its wheel hubs at the drawn angle).
+`agent_render.open_session` then renders the car as the cell's cameras do.
+
 An example, with `~/given/lib` on `sys.path`, `spec` your `MjSpec` of the cell, `model` / `data` your physics and
 `cam` a `CameraSpec` (`CameraSpec.look_at(name, eye=..., target=..., width=..., height=..., hfov_deg=...)`):
 `from arm.assembly_car import agent_render`; `session = agent_render.open_session(spec)`;
@@ -96,10 +109,18 @@ An example, with `~/given/lib` on `sys.path`, `spec` your `MjSpec` of the cell, 
 `rgb_w = view.render({"my_hinge": angle}, "my_camera", width, height)` (a joint and a camera of `part_spec`);
 `view.close()`.
 
-What it costs here: opening a session of a full twin of the cell, with its first frame, takes about as long as an
-episode's first frame in the cell (about 14-15 s); then a frame takes about as long as one of the cell's
-(0.4-1.2 s, a 640 x 480 frame at the low end, a 1280 x 960 frame through the photo pipeline at the high
-end). One Filament session per process at a time: close it before opening the next (a second one is refused). Your
+What it costs here (eight CPUs, a twin of the whole cell): `open_session` takes about 4-11 s, the display
+transform's lookup table (about 2 s) included, and the open session holds about 4 GB on top of your twin. Its
+first frame takes about 7-10 s: that is the first frame after Filament's context is made, which the first session
+or view of a process pays, and again the next one after the last was closed; the first frame of another image size
+takes about 0.8 s more. Then a 1280 x 960 frame takes about 0.7 s with depth (1.3 s through the photo
+pipeline) and a 640 x 480 frame about 0.4 s (0.5 s); `open_view` takes about 4 s on the same scene and
+renders as fast. Until you give a state (`sync_from`, `set_state`, or `state` in `view.render`), a session or view
+shows your twin's own pose (its initial joint positions: the bodies where your spec puts them). One Filament session
+per process at a time: close it before opening the next (a second one is refused). Closing the last one also releases
+Filament's context and its memory once nothing refers to the closed session (about 0.7 GB stays with the process, up
+to about 1.7 GB after several opens), so the next session's or view's first frame takes that long again. Your
 program may use the layer during an episode too (it finds the hall next to `$ARB_GIVEN_DIR`); it then has two render
-threads, so its frames take longer, and the time counts against the episode's wall clock. MuJoCo's classic renderer
-stays available: the render layer's MuJoCo backend (`render.backends.get_backend("mujoco")`) and `mujoco.Renderer`.
+threads (about 1.1 s / 2.1 s and 0.5 s / 0.7 s per frame, its first frame about 10 s), and the time counts
+against the episode's wall clock. MuJoCo's classic renderer stays available: the render layer's MuJoCo backend
+(`render.backends.get_backend("mujoco")`) and `mujoco.Renderer`.
