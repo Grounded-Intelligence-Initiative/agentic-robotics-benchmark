@@ -1,11 +1,11 @@
 # Cell API (`cell`), version furniture-cell/1.0
 
-Your program drives the cell through `cell`, a proxy (`furniture_client.client.Cell`, in
-`~/given/lib/furniture_client/`) that `connect_practice()` (a practice episode) and `connect_graded()` (the graded
-episode) return; writing the program as `solve(cell) -> None` lets the same code drive both. Every method is one
-JSON-lines request `{"id": n, "method": ..., "params": {...}}` answered by `{"id": n, "result": {...}}` or
-`{"id": n, "error": "..."}` (the proxy raises `CellError` on an error). Nothing moves between requests: only `step`
-advances time.
+Your program `/home/user/submission/assemble.py` exposes `solve(cell) -> None`. `cell` is a proxy
+(`furniture_client.client.Cell`, in `~/given/lib/furniture_client/`), the same whether the grader's launcher,
+`connect_practice()` (a practice episode) or `connect_graded()` (the graded episode) connected it, so the same code
+drives all three: every method is one JSON-lines request `{"id": n, "method": ..., "params": {...}}` answered by
+`{"id": n, "result": {...}}` or `{"id": n, "error": "..."}` (the proxy raises `CellError` on an error). Nothing moves
+between requests: only `step` advances time.
 
 | call | returns | notes |
 |---|---|---|
@@ -36,11 +36,16 @@ nothing. Any other method answers `{"error": "forbidden"}`, does nothing and is 
 
 ## Running a program
 
+* The program's hidden episodes: the grader launches your program itself (see the instruction), from the copy of the
+  submission folder frozen when the graded episode starts: the client's `main()` imports `assemble` from the current
+  directory and calls `solve(cell)` on a cell connected to the program's stdin / stdout, then calls `finish()`.
+  `print()` goes to stderr.
 * The graded episode: you drive it yourself through `furniture_client.client.connect_graded()`, a separate service
   (`/run/furniture-graded/graded.sock`) that holds the one graded episode of your session. It answers `status()` at
-  any time, `start()` once, and the calls above once the episode is started. The episode lives in the service:
-  closing the connection leaves it where it is, the next `connect_graded()` resumes it, and `finish()` ends it for
-  good. The instruction gives the rules (the windows, how the episode ends).
+  any time, `start()` once (it freezes the program first), and the calls above once the episode is started. The
+  episode lives in the service: closing the connection leaves it where it is, the next `connect_graded()` resumes it,
+  and `finish()` ends it for good. The program's budgets of program time and silence do not apply to it. The
+  instruction gives the rules (the windows, how the episode ends).
 * Practice: `furniture_client.client.connect_practice()` connects to the practice cell, a separate service
   (`/run/furniture-cell/practice.sock`) that runs one fresh practice episode per connection with exactly the graded
   rules and budgets (episodes drawn like the graded ones, never the same), at most 60 practice episodes in your session

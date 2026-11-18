@@ -13,8 +13,10 @@
 #      hidden graded episode (online/graded_episode.json) and the oracle token's digest as root, drops to `arbcell`
 #      irreversibly, builds the graded episode's cell and serves it on /run/furniture-graded/graded.sock (a root-owned
 #      directory). The episode's record goes to /var/lib/arb-online (the lab account's, mode 0700, in the root-owned
-#      /var/lib: the agent can neither read nor write it), which task.toml declares as an artifact: the separate
-#      verifier scores the record and nothing else.
+#      /var/lib: the agent can neither read nor write it), which task.toml declares as an artifact. Dual mode: when
+#      the graded episode starts (before the start is charged), or when its preparation window closes without a
+#      start, the service's root supervisor freezes the agent's program: a copy of ~/submission in
+#      /var/lib/arb-online/submission_snapshot, which the separate verifier grades as main grades a submission.
 # Nothing else set up here reaches the grader: verification is separate (task.toml). tests/setup_payload/ stays a byte
 # copy of payload/ here (change both together, then tests/given_hashes.json).
 # Dynamic-only: packages and the robot model live in environment/Dockerfile.
