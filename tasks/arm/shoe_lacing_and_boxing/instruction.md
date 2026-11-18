@@ -160,7 +160,8 @@ answers it. The graded episode uses another seed; the cell builds its scene with
   harness (it is never executed and no error comes back), and a response that reaches the 64k output-token limit is lost
   and, after at most a few retries, ends the session (the graded episode is then scored as it stood). Write large files
   in several parts (one function group per write) and keep every single response well below that limit.
-- Session time: this session is stopped after 7 hours of wall-clock time from its start. A session stopped by that limit
-  is not graded at all, so a late finish scores nothing. Note the start time with `date` when you begin, start the
-  graded episode early enough to finish it (an episode started late cannot use its whole 3 hours), and end the session
-  yourself (stop working and say that you are done) at least 15 minutes before the limit.
+- Session time: this session is stopped after 7 hours of wall-clock time from its start; a graded episode started
+  within its 4 hours has its 3-hour window close before that. If the session ends before the graded episode has ended
+  (stopped at that limit, or ended any other way), the graded episode is scored as it stood after your last request,
+  as above. Note the start time with `date` when you begin; when you are done, call `cell.finish()` and end the session
+  yourself (stop working and say that you are done).
