@@ -3,6 +3,6 @@
  "direction": "higher",
  "value": 1.0,
  "full_at": 1.0,
- "source": "measured 2026-10-30 by ale validate (run validate-fb553984, the final version): the oracle (privileged reference assembler, nominal layout) scored assembly_score 1.0 in each of the 3 episodes (credit 9/9, no safety violation); the same reference scored 1.0 on 16 of 16 random layouts outside the gate",
- "note": "assembly_score is already on [0, 1]"
+ "source": "measured 2026-11-18 by ale validate (run validate-436dadd0, engine bfb7505, the online variant at 2489b76c): the oracle (the privileged reference assembler driving the graded episode graded-01 through the agent-side client) scored episode_score 1.0 (credit 9/9, no safety violation, 802.4 s simulated); the same reference scored 1.0 on that episode in a local run of the cell",
+ "note": "assembly_score is already on [0, 1]; online variant: the score of the one graded episode"
 }
