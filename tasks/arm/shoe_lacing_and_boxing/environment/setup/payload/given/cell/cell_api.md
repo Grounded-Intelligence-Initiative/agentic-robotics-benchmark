@@ -1,14 +1,19 @@
 # Finishing cell API (`cell`), version shoe-lacing-and-boxing-cell/0.1.0
 
-You talk to the cell through `cell`, a proxy (`shoecell.client.Cell`) with the calls below, in three places:
-`LocalCell(seed=...)` (`shoecell.local`: a practice cell in your own process, plus `truth()`); the practice wire
-(`~/practice/grade.py` runs a program, a `packer.py` exposing `solve(cell) -> None`, in its own process the way a
-grader runs one: `python3 -B -E -s -c <bootstrap> <lib> packer` from the program's folder, the bootstrap putting
-`<lib>` on `sys.path` and calling `shoecell.client.main`, which imports `packer` from the current directory, or
-`bash run.sh` when the program ships one; every method is then one JSON-lines request on the process's original
-stdout, answered on stdin by the practice cell's physics server, and `print()` goes to stderr); and the graded episode
-(`shoecell.client.connect_graded()`, section "The graded episode" below). A reply carrying `error` raises
-`shoecell.client.CellError`.
+Your program `/home/user/submission/packer.py` exposes `solve(cell) -> None`. The grader runs it once per hidden
+episode in a fresh process under a dedicated unprivileged account, from a per-run directory holding a root-owned
+READ-ONLY copy of your submission folder (regular files only: symbolic links and `__pycache__` are not copied), with an
+empty writable `$HOME` / `$TMPDIR`, a minimal environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `MUJOCO_GL=osmesa`,
+`PYTHONPATH` = a read-only copy of `~/given/lib`, `ARB_GIVEN_DIR` = a read-only copy of `~/given`, BLAS threads 2) and
+the launcher `python3 -B -E -s -c <bootstrap> <lib> packer` (the bootstrap puts `<lib>` on `sys.path` and calls
+`shoecell.client.main`, which imports `packer` from the current directory), or `bash run.sh` when you ship one.
+`cell` is a proxy (`shoecell.client.Cell`): every method is one JSON-lines request on the process's original stdout,
+answered on stdin by the grader's physics server; `print()` goes to stderr. A reply carrying `error` raises
+`shoecell.client.CellError`. The same proxy serves your development and the graded episode:
+`LocalCell(seed=...)` (`shoecell.local`: a practice cell in your own process, plus `truth()`), `~/practice/grade.py`
+(runs your program over the real wire against the practice cell, as the grader runs it) and
+`shoecell.client.connect_graded()` (the graded episode, section "The graded episode" below; the program graded is
+your submission folder as it was when the graded episode started).
 
 Units on the API: metres, radians, seconds, quaternions `wxyz`; the cell frame = the bench-top centre, z up, x along
 the bench, y across it, the arms behind the +y edge (see `cell_manual.md`). `arm` is `"left"` (the gripper arm) or
@@ -35,12 +40,14 @@ grader's reference controller) are not available to your program.
 ## Budgets and aborts
 
 Everywhere, per episode: 900 s of simulated time, at most 500 ticks per `step`, 450 camera frames (the cell's own
-limits). On the practice wire a program also has 1200 s of program time per episode (the episode's wall clock minus
-the cell's own time inside `step`, simulating, and inside `get_camera`, rendering); 120 s from a reply to the next
-request (silence) aborts the episode; a CPU-time backstop of 4 x the program-time cap applies per process; a program
-that breaks the wire (crash, malformed line, exit, or not reading a reply within the silence limit) ends its episode
-with what it achieved so far. Once the episode is over (sim cap, physics fault) the program may still read its state
-and `finish`; after 50 more `step` calls, 200 more requests or 60 s the episode closes.
+limits). A program (on the grader's hidden episodes and on the practice wire) also has 1200 s of program time per
+episode (the episode's wall clock minus the cell's own time inside `step`, simulating, and inside `get_camera`,
+rendering); 120 s from a reply to the next request (silence) aborts the episode; a CPU-time backstop of 4 x the
+program-time cap applies per process; every process of the run's account is killed when the episode ends; a program
+that breaks the wire (crash, malformed line, exit, or not reading a reply within the silence limit) ends ITS episode
+with what it achieved so far and the other episodes still run. Once the episode is over (sim cap, physics fault) the
+program may still read its state and `finish`; after 50 more `step` calls, 200 more requests or 60 s the episode
+closes.
 
 ## The graded episode (`connect_graded`)
 

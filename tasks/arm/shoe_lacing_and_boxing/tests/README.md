@@ -5,9 +5,8 @@ its wire in `cell_api.md`. This page records the design decisions, what the grad
 known to be rough in version 0.2 (2026-10-30, Yuanfang Peng; reference lacing and the lace physics reworked 2026-11-05;
 the lid tray's delivery spot 2026-11-07).
 
-**This copy is the ONLINE VARIANT (experimental branch, 2026-11-17; section 6).** The agent plays one graded episode
-itself through a service and the verifier scores the service's record; sections 1-5 describe the offline task, whose
-cell, configuration, reference and hidden set the variant reuses unchanged.
+**This copy is the DUAL MODE (experimental branch, 2026-11-18; section 7)**: main's program item (sections 1-5,
+unchanged) and the online graded episode (section 6) in one session and one verify, the reward the mean of the two.
 
 ## 1. The job and why it is worth measuring
 
@@ -386,4 +385,41 @@ contract; what they became here:
   episode; `client.py` gains `connect_graded` / `GradedCell`, `cell_api.md` the section "The graded episode",
   `cell_manual.md` one sentence on the budgets (the three copies and `given_hashes.json` follow). The practice
   facilities (`LocalCell`, `practice/grade.py`, the example) are unchanged.
+
+## 7. The dual mode (experimental, 2026-11-18)
+
+The owner's decision: offline and online are two scoring items of one task, scored as their mean, in one session and
+one verify, with the program frozen at the start (rules DM1-DM8 of the experiment). What they became here:
+
+* **One verify** (`verify.py`, DM5): (1) the agent account's processes stopped as main's verifier starts
+  (`cellkit.lockdown.stop_and_kill_uid`, the account freezer); (2) the record read and checked (O9); (3) the program
+  graded: the copy frozen at the start when the episode started (checked file by file against the record's
+  `snapshot_sha256`), an empty folder when the frozen copy was over the cap (`too_large`), the restored submission when
+  the episode was never started; (4) main's grading, unchanged: `offline_verify.py` is main's `tests/verify.py` byte
+  for byte and runs as its own program in `/opt/arb-offline/tests`, a root-only copy of this folder laid out as main's
+  (`offline_verify.py` as `verify.py`, `anchor_offline.json` as `anchor.json`), so its lockdown, gates, network audit,
+  hidden set, budgets, oracle token and reference value apply as they are, and its envelope (`verdict.local.json`)
+  gives `offline_reward`; (5) the record's `episode_score` against `anchor_online.json` gives `online_reward`; (6)
+  `reward = (offline_reward + online_reward) / 2`, written once through `ratio_rewards` against `anchor.json`
+  (`dual_mode_score`, value 1.0, cap 1.0, full_at 1.0). A task error of main's grading is the verify's task error.
+* **The anchors** (DM2): `anchor_offline.json` is main's `anchor.json` byte for byte, `anchor_online.json` the online
+  variant's `anchor.json` byte for byte; `anchor.json` is the combined metric's, 1.0 by construction (the oracle reaches
+  both items' reference values) and confirmed by the validate's oracle.
+* **The freeze** (DM3): before the start is charged, the worker sends one byte on a pipe to the root supervisor, which
+  copies `/home/user/submission` into `/var/lib/arb-online/submission_snapshot` (root-owned 0700 / 0600: neither the
+  agent nor the service account can read it) with main's snapshot rules (`cellkit.lockdown.snapshot_dir`: regular
+  files and folders only; links, special files and `__pycache__` dropped), opening every entry relative to an open
+  folder with `O_NOFOLLOW` (no link is followed at any level), within main's 60 MB route-gate cap (over it:
+  `too_large`, no copy, the program item scores 0) and below the engine's artifact bounds (50000 entries, depth 32;
+  names of printable ASCII). A failed copy refuses the start and charges nothing (`snapshot_failed`). The record and
+  `state.json` carry `snapshot_status`, `snapshot_files`, `snapshot_bytes`, `snapshot_sha256` (the sha256 of the sorted
+  "path NUL size NUL sha256" lines) and `snapshot_skipped`; the agent learns its frozen program's files and bytes
+  (`status()["program_frozen"]`). The supervisor never reads the graded episode; the worker never regains root.
+* **Time** (DM4): `prep_s` 14400 s (main's agent budget) for the program and the preparation, then `graded_s`
+  10800 s; `[agent] timeout_sec` 25200; `[verifier]` main's (32400 s, 8 CPUs, 16 GB).
+* **The oracle** (DM7): `solution/solve.sh` puts the reference program and its token into the submission folder (main's
+  `solve.sh`), then plays the graded episode with it (`graded.py`), so the frozen copy holds the reference program.
+* **The instruction**: the two items and their mean, the freeze, main's program section (its contract, with the freeze
+  in place of "final when your session ends"), the graded episode's section, the scoring of both items, the windows;
+  no "not graded" sentence. The physics-fault rule stays as it is (owner, 2026-11-18).
 
