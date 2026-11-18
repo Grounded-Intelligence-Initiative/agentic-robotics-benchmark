@@ -1,8 +1,8 @@
 {
  "metric": "assembly_score",
  "direction": "higher",
- "value": null,
+ "value": 1.0,
  "full_at": 1.0,
- "source": "to be measured by ale validate on the online variant: the oracle's episode_score on the graded episode (the privileged reference assembler through the agent-side client; a local run on 2026-11-18 scored 1.0, credit 9/9, no safety violation, 802.4 s simulated)",
+ "source": "measured 2026-11-18 by ale validate (run validate-436dadd0, engine bfb7505, the online variant at 2489b76c): the oracle (the privileged reference assembler driving the graded episode graded-01 through the agent-side client) scored episode_score 1.0 (credit 9/9, no safety violation, 802.4 s simulated); the same reference scored 1.0 on that episode in a local run of the cell",
  "note": "assembly_score is already on [0, 1]; online variant: the score of the one graded episode"
 }

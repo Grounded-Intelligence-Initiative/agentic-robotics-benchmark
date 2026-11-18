@@ -57,8 +57,8 @@ A program written as `solve(cell)` (as in the practice example of `cell_api.md`)
   hours of wall-clock time (`graded_window_left_s`); then the service ends it itself.
 * **How it ends.** The episode ends at the first of: your `finish()`; the end of its simulated time, 1500 s (the `step`
   reply that reaches it carries `done: true` and the event `episode_over`); the end of the graded window; an internal
-  error of the cell inside `step` or `command`; a failure of the service; the end of your session. From then on every
-  call except `status()` answers `episode_over`, and `status()` says how it ended. Ending simulates nothing: the
+  error of the cell inside `step` or `command`; a failure of the service; the end of your session. From then on the
+  cell's calls answer `episode_over`, and `status()` says how it ended. Ending simulates nothing: the
   furniture is judged as it stands at that moment. If your session ends first, it is judged as it stood after your
   last request; if the service fails, as the service last recorded it (it records the episode after your requests,
   at most about a second apart).
