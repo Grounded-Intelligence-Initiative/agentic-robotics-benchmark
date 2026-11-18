@@ -261,5 +261,60 @@ class FreezeTests(unittest.TestCase):
         self.assertEqual(dual.snapshot_digest(self.cfg["snapshot_dir"]), rep["sha256"])
 
 
+class ProgramChoiceTests(unittest.TestCase):
+    """verify.choose_program: the snapshot whenever a usable record says the program was frozen (at the graded start,
+    or at the close of the preparation window), nothing for a too-large freeze, a task error for a freeze without a
+    matching snapshot, and the session-end folder only with no usable record of a freeze."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        root = Path(self.tmp.name)
+        src, self.snapshot, self.submission = root / "agent", root / "snapshot", root / "submission"
+        src.mkdir()
+        (src / "run.sh").write_text("frozen")
+        self.submission.mkdir()
+        (self.submission / "run.sh").write_text("session end")
+        rep = server.snapshot_submission({"submission": str(src), "snapshot_dir": str(self.snapshot),
+                                          "snapshot_caps": {"max_entries": 100, "max_depth": 64, "max_bytes": 1 << 20}},
+                                         os.getuid())
+        self.digest = rep["sha256"]
+        self.online = {"snapshot": str(self.snapshot)}
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def choose(self, rec):
+        return dual.choose_program(rec, self.online, str(self.submission))[0]
+
+    def graded(self):
+        return (self.submission / "run.sh").read_text()
+
+    def test_no_usable_record_grades_the_session_end_folder(self):
+        self.assertEqual(self.choose(None), "session_end")
+        self.assertEqual(self.graded(), "session end")
+
+    def test_a_freeze_at_the_start(self):
+        rec = {"started": True, "snapshot_status": "ok", "snapshot_sha256": self.digest, "snapshot_at": "start"}
+        self.assertEqual(self.choose(rec), "snapshot_start")
+        self.assertEqual(self.graded(), "frozen")
+
+    def test_a_freeze_when_the_window_closed_with_no_start(self):
+        rec = {"started": False, "prep_window_closed": True, "snapshot_status": "ok", "snapshot_sha256": self.digest,
+               "snapshot_at": "prep_window"}
+        self.assertEqual(self.choose(rec), "snapshot_prep_window")
+        self.assertEqual(self.graded(), "frozen")
+
+    def test_a_too_large_freeze_grades_no_program(self):
+        rec = {"started": True, "snapshot_status": "too_large", "snapshot_at": "start"}
+        self.assertEqual(self.choose(rec), "snapshot_too_large")
+        self.assertEqual(self.graded(), "session end")
+
+    def test_a_freeze_without_a_matching_snapshot_is_a_task_error(self):
+        for rec in ({"started": True, "snapshot_status": "ok", "snapshot_sha256": "0" * 64},
+                    {"started": False, "prep_window_closed": True, "snapshot_status": "error"}):
+            with self.assertRaises(SystemExit):
+                self.choose(rec)
+
+
 if __name__ == "__main__":
     unittest.main()
