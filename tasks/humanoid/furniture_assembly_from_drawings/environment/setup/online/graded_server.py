@@ -31,7 +31,7 @@ The episode:
     watches (`practice_closed_flag`, in the record directory, which the agent can neither read nor write); the lab
     then ends an open practice episode and refuses new ones for the rest of the session ("practice_closed"), as
     offline all practice happens before grading. A worker that restarts after the start makes sure the flag exists;
-  * the program freezes when it starts (dual mode): before anything else of the start, the worker asks the root
+  * the program freezes when the episode starts (dual mode): before anything else of the start, the worker asks the root
     supervisor, over a pipe, to copy the agent's submission folder into the record directory (`snapshot_dir`,
     root-owned: the agent can read neither it nor the record). The copy follows no symlink (each directory and file
     is opened relative to its parent's descriptor with O_NOFOLLOW; symlinks, non-regular files and files that are not
@@ -39,7 +39,8 @@ The episode:
     or over `snapshot_max_entries` / `snapshot_max_depth`: status "too_large" and no copy, the program item then
     scores 0) and lands atomically (a temporary folder, then a rename). A copy that fails refuses the start, which
     then charges nothing. The offline grader grades the snapshot. If the preparation window closes without a start,
-    the program freezes then (the program item keeps main's preparation time); the graded episode is then never
+    the program freezes then (the program item keeps main's preparation time; a copy that still fails after
+    `snapshot_attempts` tries is recorded as failed and the program item scores 0); the graded episode is then never
     played;
   * it ends at its own end (the cell's simulated-time cap, or an internal error of the cell inside step / command),
     at the agent's `finish`, `graded_s` after its start (the service ends it itself), or with the session (the record
@@ -109,6 +110,8 @@ DEFAULTS = {
     "snapshot_max_entries": 100000,          # the engine's own artifact traversal limit
     "snapshot_max_depth": 64,                # the engine's own artifact depth limit
     "snapshot_timeout_s": 600.0,
+    "snapshot_attempts": 3,                  # at the window's close: tries before the failure is recorded
+    "snapshot_retry_delay_s": 5.0,
     "prep_s": 14400.0,
     "graded_s": 10800.0,
     "cell": None,                            # the cell's configuration: the offline grading run's budgets
@@ -334,7 +337,7 @@ def load_config(path):
     if not isinstance(cfg["cell"], dict) or set(cfg["cell"]) != set(CELL_KEYS):
         raise ValueError("the config's 'cell' must hold exactly %s" % (CELL_KEYS,))
     for key in ("prep_s", "graded_s", "request_cap_s", "privileged_request_cap_s", "reply_timeout_s",
-                "record_min_interval_s", "start_timeout_s", "snapshot_timeout_s"):
+                "record_min_interval_s", "start_timeout_s", "snapshot_timeout_s", "snapshot_retry_delay_s"):
         v = cfg[key]
         if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0:
             raise ValueError("%s must be a positive number" % key)
@@ -343,7 +346,7 @@ def load_config(path):
             raise ValueError("%s must be an absolute path" % key)
     if os.path.dirname(cfg["snapshot_dir"].rstrip("/")) != os.path.abspath(cfg["record_dir"]):
         raise ValueError("the submission snapshot must live in the record directory (the agent cannot reach it)")
-    for key in ("snapshot_max_bytes", "snapshot_max_entries", "snapshot_max_depth"):
+    for key in ("snapshot_max_bytes", "snapshot_max_entries", "snapshot_max_depth", "snapshot_attempts"):
         v = cfg[key]
         if isinstance(v, bool) or not isinstance(v, int) or v <= 0:
             raise ValueError("%s must be a positive integer" % key)
@@ -702,12 +705,17 @@ class Worker(object):
             out = None
         return out if isinstance(out, dict) else {"status": "failed", "error": "bad reply"}
 
-    def take_snapshot(self, why):
-        snap = self.request_snapshot(why)
-        out = {k: snap.get(k) for k in ("status", "files", "dirs", "bytes", "sha256", "skipped", "reason", "wall_s",
-                                        "error")}
-        out["at"] = why
-        self.log.write(kind="snapshot", **{k: v for k, v in out.items() if k != "sha256"})
+    def take_snapshot(self, why, attempts=1):
+        """The freeze, through the supervisor; up to `attempts` tries while a copy fails (the last reply counts)."""
+        for attempt in range(1, int(attempts) + 1):
+            snap = self.request_snapshot(why)
+            out = {k: snap.get(k) for k in ("status", "files", "dirs", "bytes", "sha256", "skipped", "reason",
+                                            "wall_s", "error")}
+            out["at"], out["attempts"] = why, attempt
+            self.log.write(kind="snapshot", **{k: v for k, v in out.items() if k != "sha256"})
+            if out["status"] in ("ok", "too_large") or attempt >= int(attempts):
+                return out
+            time.sleep(float(self.cfg["snapshot_retry_delay_s"]))
         return out
 
     def close_practice(self, now=None):
@@ -775,6 +783,7 @@ class Worker(object):
         }
         snap = st.get("snapshot") or {}
         rec.update({"snapshot_status": snap.get("status"), "snapshot_at": snap.get("at"),
+                    "snapshot_attempts": int(snap.get("attempts") or 0),
                     "snapshot_files": int(snap.get("files") or 0), "snapshot_bytes": int(snap.get("bytes") or 0),
                     "snapshot_sha256": snap.get("sha256"), "snapshot_skipped": snap.get("skipped") or {},
                     "snapshot_reason": snap.get("reason")})
@@ -860,8 +869,11 @@ class Worker(object):
         """The preparation window closed without a start: the episode never runs (the record says so)."""
         if self.started or self.state.get("prep_closed"):
             return
-        # the program freezes now (dual mode): it keeps main's preparation time whether or not the episode is played
-        self.save_state(prep_closed=True, snapshot=self.take_snapshot("prep_window"))
+        # the program freezes now (dual mode): it keeps main's preparation time whether or not the episode is played.
+        # A copy that still fails after the retries is recorded as failed, and the program item then scores 0: the
+        # session-end submission must never stand in for it (that would give the program prep_s + graded_s)
+        self.save_state(prep_closed=True,
+                        snapshot=self.take_snapshot("prep_window", attempts=self.cfg["snapshot_attempts"]))
         if self.srv is not None:
             try:
                 self.srv.close()
