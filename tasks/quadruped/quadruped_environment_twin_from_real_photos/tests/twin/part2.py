@@ -9,7 +9,7 @@ Stages (each under Guard: an alarm at runtime.stage_caps_s[stage] or the time le
   criteria.order (one stage each, named C1 .. C7).
 A timeout, a MemoryError or an exception in a stage scores that stage's criteria 0 with a diagnostic (gate, g0_settle
 and align: G0 = 0; core: every criterion; q: C2 and every q-weighted term through q = 0; a criterion: itself), except
-in the stages of runtime.timeout_is_task_error (the walks, C6, designer decision DP10): no outcome may come from the
+in the stages of runtime.timeout_is_task_error (the walks, C6): no outcome may come from the
 wall clock there, so a timeout is a task error (the episode is void), as is a walk run that exceeds its wall guard or
 a walk budget that runs out (walks.WalkTimeError). TruthError and twin_gate.TaskError propagate: they are task errors.
 A criterion that is not available (no module or no truth file) is "not implemented"; with criteria.require_all it is a
@@ -104,7 +104,7 @@ def _align_stage(tw, truth, cfg):
 
 class WalkTaskError(RuntimeError):
     """A walk stage ran out of wall time (a stage alarm, a run past its wall guard, the walk budget): the verifier was
-    too slow, the episode is void (designer decision DP10). A task error, never a score."""
+    too slow, the episode is void. A task error, never a score."""
 
 
 def _task_error_stages(cfg):
@@ -303,7 +303,7 @@ def twin_score(res, cfg, g1=1.0):
 def selftest(truth, cfg, deadline=None, caps=None):
     """The true twin through grade_twin (the same code as every submission) and the reproduction checks. Raises
     TruthError on any failure. No stage alarms; `deadline` (wall clock) and the stage caps reach the criteria as
-    ctx.deadline, so the walk pool plans its budget (and a walk budget that runs out is a task error, DP10)."""
+    ctx.deadline, so the walk pool plans its budget (and a walk budget that runs out is a task error)."""
     t0 = time.time()
     keep = {}
     caps = dict(caps if caps is not None else (cfg.get("runtime") or {}).get("stage_caps_s", {}))

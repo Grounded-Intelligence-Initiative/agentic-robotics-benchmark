@@ -1,4 +1,4 @@
-"""C4 static physics (spec 5.7), and the physics of the graded twin that C5 reuses.
+"""C4 static physics, and the physics of the graded twin that C5 reuses.
 
     phys = physics(ctx)            # the standard settle of the graded twin (cached as ctx.cache("settle"))
     r = score(ctx)                 # {"value", "detail"}: C4 = mean over zones of
@@ -7,7 +7,7 @@
 The settle. twin_sim's standard simulation on the gate's physics model (excluded units deleted), the gates held at
 their photographed position, the agent units paired with HELD true units held kinematic like their true pair: first
 the quasi-static relaxation (twin_sim settle.relax_s), then the dynamic settle (settle.seconds); every displacement is
-measured against the SUBMITTED pose, so what the relaxation moves counts as drift (designer decision DP1).
+measured against the SUBMITTED pose, so what the relaxation moves counts as drift.
 
 static_share (per zone). Over the true units of the zone that count (not 'ignore'), rest (not held) and stayed
 static in every physics variant of the truth (support_truth.json static_units): sum of q_i x [the paired agent unit
@@ -34,7 +34,7 @@ F1 = 2 x sum of the weights / (n_required + n_twin_edges); a zone with neither i
 - The zone of an edge is the zone of its supported unit (a true unit's zone, an unpaired agent unit's allocated zone).
 
 C4_zone = w_static x static_share + w_support x support_F1 over the terms the zone has (renormalised); C4 = the mean
-over the zones that have one. The truth's builder (grader_dev/truth_tools/build_support_truth.py) maps the true
+over the zones that have one. The truth's builder maps the true
 twin's variants with the same functions (edges_from_pairs, EnvParts), so the true twin reproduces its own truth.
 """
 import math
@@ -253,8 +253,8 @@ def _physics(ctx):
     for j in range(m.njnt):
         if m.jnt_type[j] == mujoco.mjtJoint.mjJNT_FREE and m.body_parentid[m.jnt_bodyid[j]] == 0:
             free_units.add(mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_BODY, int(m.jnt_bodyid[j])))
-    # agent units paired with a held true unit are held, the pairs with 'ignore' entries included [decision E1:
-    # the truth builders hold every held unit, ignore entries too (the real site's foam roll u052, whose support is
+    # agent units paired with a held true unit are held, the pairs with 'ignore' entries included [the truth
+    # builders hold every held unit, ignore entries too (the real site's foam roll u052, whose support is
     # hidden); left free, it falls in the true twin's own settle and the self-test fails]
     pairs = sorted(set(a2t.items()) | set(removed.items()))
     hold = {a: "world" for a, t in pairs if t in held_true and a in free_units}
@@ -417,7 +417,7 @@ def score(ctx):
 
 
 def selftest(ctx, result):
-    """On the true twin: the relaxation leaves every resting unit ('ignore' entries included, DP1) within
+    """On the true twin: the relaxation leaves every resting unit ('ignore' entries included) within
     C4.selftest.relax_mm, and the settle every counted one within settle_mm / settle_deg (ignore entries:
     ignore_settle_mm); every unit of static_units is static; the mapped
     edges are exactly the required ones (and the nominal ambiguous ones are the ones ignored); every environment pair
@@ -434,7 +434,7 @@ def selftest(ctx, result):
         r = st["items"].get(u.id)
         if r is None or r["held"]:
             continue
-        # DP1: the relaxation must leave every unit of the true twin, 'ignore' entries included, within relax_mm
+        # the relaxation must leave every unit of the true twin, 'ignore' entries included, within relax_mm
         worst["relax_mm"] = max(worst["relax_mm"], float(r["relax_drift_mm"]))
         if u.ignore:
             worst["ignore_mm"] = max(worst["ignore_mm"], float(r["max_drift_mm"]))

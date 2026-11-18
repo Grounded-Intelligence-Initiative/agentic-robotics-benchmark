@@ -12,7 +12,7 @@
    "rest": "static",
    "ignore": false,
    "lift_probe": false,
-   "notes": "VW LT 35 chassis cab with a refrigerated box body; see notes/gt/A2_units_west.md (u001)."
+   "notes": "VW LT 35 chassis cab with a refrigerated box body."
   },
   {
    "id": "u002",
@@ -301,7 +301,7 @@
    "rest": "held",
    "ignore": false,
    "lift_probe": false,
-   "notes": "leaning board (held: it cannot rest without the rack frame it leans on). ignore only because its footprint centroid (y 6.05) lies 3 - 9 cm north of the region edge y = 6.0 (REQUESTS.md): if the region is moved to include it, set ignore false. Label \"board\" is a proposal (not in the provisional vocabulary)."
+   "notes": "leaning board (held: it cannot rest without the rack frame it leans on). ignore only because its footprint centroid (y 6.05) lies 3 - 9 cm north of the region edge y = 6.0."
   },
   {
    "id": "u050",

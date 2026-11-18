@@ -1,4 +1,4 @@
-"""C2 pose and shape (spec 5.5): per matched pair q = b_pose x b_shape x b_vert; C2_zone = sum q / max(N_true,
+"""C2 pose and shape: per matched pair q = b_pose x b_shape x b_vert; C2_zone = sum q / max(N_true,
 n_submitted); C2 = the mean over the zones that have a true or a submitted unit.
 
     q, detail = pair_q(ctx)        # run by the core before any criterion (C4 and C5 weight by q)
@@ -8,28 +8,28 @@ b_pose = band_down(e_pose, C2.pose_band_m). A restricted registration of the tru
   onto the agent unit's surface (site frame, at s*): a yaw psi about the vertical through the centre c of the true
   footprint box (the minimum-area rectangle of the true samples' xy) plus a 3-D translation t, point-to-plane on the
   agent samples' normals with nearest neighbours taken in [position, normal_weight_m x normal] space (orientation-
-  aware: measured on the fixture, plain nearest neighbours recovered only 0.8 of 2 deg of a trailer's yaw), trimmed
+  aware: measured on a test site, plain nearest neighbours recovered only 0.8 of 2 deg of a trailer's yaw), trimmed
   (registration.trim), damped (max_step_deg / max_step_m per iteration, max_total_deg / max_total_m in all), from yaw
   0 and, for c2 / c4 units, also from the symmetric yaws; the start with the smallest trimmed mean 6-D distance wins
   (ties: the first). `free` units fit the translation only.
   G(x) = Rz(psi) (x - c) + c + t; e_pose = min over the symmetry group S of max over the four corners k of the true
   footprint box of |G(S(corner_k)) - corner_k| in xy (S = rotations about c by 180 deg for c2, 90 deg for c4; none:
   the identity only); free: |t_xy|. A corner further than C2.pose_corner_clip_m from c is taken on its ray from c at
-  that distance (designer decision DP21.2: a 1.3 deg turn of a 6.7 m truck moves its far corners 8 cm, but the robot
+  that distance (a 1.3 deg turn of a 6.7 m truck moves its far corners 8 cm, but the robot
   meets the unit where it passes it; the clip charges the yaw of every unit like that of a unit 2 x clip across).
-b_shape = band_up(F_reg, C2.shape_band) (designer decision DP2, C2.shape_on "F_registered"): F_reg is the surface
+b_shape = band_up(F_reg, C2.shape_band) (C2.shape_on "F_registered"): F_reg is the surface
   F-score at matching.tau_m (3 cm) after applying the registration of b_pose to the true samples, so it measures the
-  shape alone (measured on the fixture before DP2: the matching's F at 3 cm took a pallet box's q to 0 at a 6 cm shift
+  shape alone (measured on a test site: the matching's F at 3 cm took a pallet box's q to 0 at a 6 cm shift
   while b_pose was 0.82). shape_on "F" (calibration only) uses the matching's F instead, which is taken at
-  matching.tau_match_m (0.10 m) since DP2.
+  matching.tau_match_m (0.10 m).
 b_vert = band_down(e_vert, C2.vert_band_m): support.SupportField.vertical_gap in the agent's own twin, times s* (a
   shape whose top is more than C2.vert.support_above_m above the unit's lowest point is no support), then along the
-  support chain (designer decision DP13): a unit's b_vert is at most the chained b_vert of what it rests on (its
+  support chain: a unit's b_vert is at most the chained b_vert of what it rests on (its
   supporters: support.CHAIN_TOL_M), and the chain must end in the environment or a gate, so a unit on a floating
   unit floats too (support.chain_b_vert; the supporters may be units that are not paired, which get their own
   vertical gap). detail: b_vert (chained), b_vert_own, support.supporters.
 detail also carries F_registered when C2.report_registered_shape is set; C1 counts a pair as a true positive only
-when its shape measure reaches C2.shape_band[0] (DP14, score_c1.shape_measure).
+when its shape measure reaches C2.shape_band[0] (score_c1.shape_measure).
 """
 import math
 
@@ -120,8 +120,8 @@ def register(Pt, Nt, Pa, Na, tree, c, sym, rc):
 
 def e_pose(psi, t, box, sym, clip=None):
     """The largest horizontal displacement of the true footprint box's four corners under the registration (psi about
-    the box centre, then t), minimised over the symmetry group; `clip` (C2.pose_corner_clip_m, designer decision
-    DP21.2): a corner further than clip from the box's centre is taken on the same ray at the clip distance, so the yaw
+    the box centre, then t), minimised over the symmetry group; `clip` (C2.pose_corner_clip_m):
+    a corner further than clip from the box's centre is taken on the same ray at the clip distance, so the yaw
     of a long unit is charged like that of a unit 2 x clip across. free: |t_xy| (no corner, no clip)."""
     if sym == "free":
         return float(np.linalg.norm(t[:2]))
@@ -164,7 +164,7 @@ def _vert_own(vg, s_star, sec):
 
 
 def chained_vert(ctx, gaps, sf):
-    """Designer decision DP13: b_vert along the support chain. gaps {agent body: vertical_gap result} of the paired
+    """b_vert along the support chain. gaps {agent body: vertical_gap result} of the paired
     units; the supporters they name (and theirs, recursively) get their own vertical gap too. Returns {body: (own
     b_vert, chained b_vert)} for every body visited."""
     from .support import chain_b_vert, is_chain_end

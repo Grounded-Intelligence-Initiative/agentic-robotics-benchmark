@@ -553,7 +553,7 @@ def main():
         strict = [c for c in (cfg.get("runtime") or {}).get("timeout_is_task_error", []) if c in keys]
         unfinished = [c for c in strict if c not in sub_crit]
         if how != "finished" and unfinished and g0 == 1.0:
-            # designer decision DP10: no outcome may come from the wall clock in these stages (the walks)
+            # no outcome may come from the wall clock in these stages (the walks)
             fail("the worker was %s before %s finished: the verifier ran out of time, the episode is void" % (
                 how, ", ".join(unfinished)))
         for c in keys:

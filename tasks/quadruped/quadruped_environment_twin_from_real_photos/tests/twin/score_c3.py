@@ -1,4 +1,4 @@
-"""C3: the site's geometry in the robot's terms (spec 5.6; INTERFACES.md section "C-slice").
+"""C3: the site's geometry in the robot's terms.
 
     C3 = C1 x (w_slice slice + w_depth depth + w_up up x min(1, depth / up_depth_full)) / (w_slice + w_depth + w_up)
 
@@ -21,7 +21,7 @@ depth. Every c3 sample ray (true camera, true pixel), mapped into the agent's fr
   true surface point; a sample scores band_down(|distance|, band_m) (1 at 2 cm, 0 at 6 cm), no hit 0. depth = the
   mean over the environment classes present of the class's mean.
 up. band_down(up_tilt, up_band_deg) (1 at 0.5 deg, 0 at 3 deg), counted in proportion min(1, depth / up_depth_full)
-  (designer decision DP5: no credit for a level frame without structure).
+  (no credit for a level frame without structure).
 """
 import json
 import math

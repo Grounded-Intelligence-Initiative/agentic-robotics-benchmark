@@ -10,7 +10,7 @@ computed the way the submission's is.
 Rules of the contract implemented here and in the public twin_gate:
 - a collision geom is any geom with (contype, conaffinity) != (0, 0); everything else is visual and ignored;
 - a unit the gate excludes (failed plausibility), or that G0's settle check excludes (it still breaks the speed bound
-  after the relaxation, designer decision DP1), scores 0 in every criterion and is deleted from the model before any
+  after the relaxation), scores 0 in every criterion and is deleted from the model before any
   physics (twin_gate.physics_model); it still counts in the inventory denominators;
 - the environment is every collision geom of a body welded to the world outside the units and the gates.
 
@@ -130,7 +130,7 @@ class Twin:
         return [u["body"] for u in self.units if u["status"] != "ok"]
 
     def exclude(self, bodies, reasons=None):
-        """Exclude units after the gate (G0's settle check, DP1): their status becomes 'excluded' in the twin and in
+        """Exclude units after the gate (G0's settle check): their status becomes 'excluded' in the twin and in
         the gate report (so physics_model, the walks and every criterion leave them out); they still count as
         submitted units."""
         reasons = reasons or {}
@@ -183,7 +183,7 @@ def load_twin(folder, vocabulary=None, rules=None):
 
 
 def g0_settle(twin, rules=None):
-    """G0's settle check (twin_gate.settle_check, designer decision DP1) on the twin's physics model, the gates held:
+    """G0's settle check (twin_gate.settle_check) on the twin's physics model, the gates held:
     {'ran', 'fail', 'reasons', 'excluded', energy and speed maxima, ...}. The units it excludes are excluded in the
     twin from here on (Twin.exclude). Not run (and not a failure here) when the gate already failed."""
     if not twin.ok:

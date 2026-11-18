@@ -1391,7 +1391,7 @@
    ]
   }
  ],
- "source": "the stored pycolmap reconstruction of the 44 photos (default options, 2000 px, principal point fixed at the centre), undistorted model + OpenMVS dense cloud; S by a point-to-plane similarity ICP of the dense cloud onto the laser scan (build_sfm_selftest_real.py)",
+ "source": "the stored pycolmap reconstruction of the 44 photos (default options, 2000 px, principal point fixed at the centre), undistorted model + OpenMVS dense cloud; S by a point-to-plane similarity ICP of the dense cloud onto the laser scan",
  "structure_fit": {
   "dense_points_used": 289433,
   "scan_voxels": 5577841,

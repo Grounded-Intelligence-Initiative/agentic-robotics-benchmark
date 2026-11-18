@@ -1,4 +1,4 @@
-"""The criterion registry and the context object handed to every criterion (grader_dev/INTERFACES.md section 4).
+"""The criterion registry and the context object handed to every criterion.
 
     entries = criteria(cfg)                  # [Entry] in criteria.order
     ok, why = available(entry, truth)        # the module exists (importlib.util.find_spec) and its truth files exist

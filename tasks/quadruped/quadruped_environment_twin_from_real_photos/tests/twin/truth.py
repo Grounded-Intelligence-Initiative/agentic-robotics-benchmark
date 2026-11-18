@@ -1,4 +1,4 @@
-"""The hidden truth (tests/gt/, grader_dev/INTERFACES.md section 2), loaded and checked once per verify.
+"""The hidden truth (tests/gt/), loaded and checked once per verify.
 
     truth = Truth(gt, cfg, vocabulary)      # gt: {key: path} (grader_config.json "gt", resolved); raises TruthError
     truth.twin, truth.cameras, truth.region, truth.units, truth.unit, truth.surfaces, truth.c3
@@ -7,7 +7,7 @@
 
 The true twin goes through the same public gate as a submission and must pass it with no exclusion and labels from
 the vocabulary. Every file is checked against it when it is loaded (ids, counts, shapes; the true units' surface samples are
-recomputed from the true twin and checked against items_surface.npz's digest, designer decision DP6); the deeper
+recomputed from the true twin and checked against items_surface.npz's digest); the deeper
 reproduction checks (cameras, c3 rays, zones) are part of the self-test (part2.selftest).
 """
 import json
@@ -136,7 +136,7 @@ class Truth:
             for lab in u.labels():
                 if lab not in self.vocabulary:
                     raise TruthError("unit %s: label %r is not in the vocabulary" % (u.id, lab))
-        # surfaces: recomputed from the true twin and checked against the stored digest (DP6)
+        # surfaces: recomputed from the true twin and checked against the stored digest
         self.surfaces = match.TrueSurfaces(_read_npz(self.paths["items_surface"]), self.units, cfg, tw)
         # c3 samples
         self.c3 = _read_npz(self.paths["c3_samples"])

@@ -1,8 +1,8 @@
-"""C1 inventory (spec 5.4): C1_zone = 2 TP_label / (N_true + n_submitted); C1 = the mean over the zones that have
+"""C1 inventory: C1_zone = 2 TP_label / (N_true + n_submitted); C1 = the mean over the zones that have
 a true or a submitted unit.
 
 TP_label counts the matched pairs (F >= matching.f_min) whose submitted label is the true label or one of its
-accepted alternatives (and is in the vocabulary) AND whose shape is recognisable (designer decision DP14): the shape
+accepted alternatives (and is in the vocabulary) AND whose shape is recognisable: the shape
 measure of C2's b_shape (F_registered, the F-score at matching.tau_m after the registration of b_pose, when
 C2.shape_on is "F_registered"; the matching's F otherwise) reaches C2.shape_band[0]. Matching itself stays tolerant
 (F at tau_match_m), so a rough box standing in for a unit is matched (it takes the true unit out of the unmatched
@@ -15,7 +15,7 @@ from .zones import mean_over_zones
 
 
 def shape_measure(ctx, true_id, pair):
-    """The F that C2's b_shape uses for this pair (DP14), or None when the q stage gave none."""
+    """The F that C2's b_shape uses for this pair, or None when the q stage gave none."""
     sec = ctx.cfg["C2"]
     if sec.get("shape_on", "F_registered") != "F_registered":
         return float(pair["F"])

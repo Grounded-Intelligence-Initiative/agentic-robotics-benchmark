@@ -1,6 +1,6 @@
-"""Matching submitted units to true units on the surface F-score (spec 5.4, designer decision DP2).
+"""Matching submitted units to true units on the surface F-score.
 
-    ts = TrueSurfaces(npz, truth_units, cfg, twin)    # the true samples (recomputed from the true twin, DP6) + KD-trees
+    ts = TrueSurfaces(npz, truth_units, cfg, twin)    # the true samples (recomputed from the true twin) + KD-trees
     m = pair_measure(ts, k, solid, tree, cfg)         # {"F", "precision", "recall", "n_prec", "n_rec"} at tau_match_m
     M = match_units(truth, solids, cfg)               # Matching
 
@@ -17,13 +17,13 @@ perfect copy has every distance far below tau.
 Candidates: pairs whose bounding boxes overlap after a margin of pair_bbox_margin_m + tau; every other pair has F 0.
 Matching: Hungarian (scipy linear_sum_assignment) maximising F over the entries with F >= f_min (the others set to 0
 first, so a sub-threshold overlap never displaces a valid pair); labels play no part. Two passes over the same F table
-(designer decision DP21.1, the counted units first): pass 1 over the COUNTED true units and every agent unit, pass 2
+(the counted units first): pass 1 over the COUNTED true units and every agent unit, pass 2
 over the 'ignore' entries and the agent units that pass 1 left unpaired, so an 'ignore' entry (clutter lying on a
 counted unit) cannot take the agent's model of that unit away from it. A submitted unit matched to an 'ignore' entry
-is removed from all counts (spec 5.4: neither credit nor charge). Where no agent unit has a pair (F >= f_min) with both
+is removed from all counts (neither credit nor charge). Where no agent unit has a pair (F >= f_min) with both
 a counted unit and an 'ignore' entry, the table splits into the two passes and the result is the single assignment's.
 
-The true samples (designer decision DP6): items_surface.npz stores no sample, only per unit the sample count, the
+The true samples: items_surface.npz stores no sample, only per unit the sample count, the
 "determined" flags as packed bits and a sha256 of the sample coordinates rounded to 1e-6 m (plus per-unit moments);
 TrueSurfaces recomputes the samples from the true twin with surfaces.sample_union (exactly what the oracle's solid
 gives) and checks them against the stored digest: a mismatch is a TruthError (task error).
@@ -39,7 +39,7 @@ MOMENT_TOL_M = 1e-6
 
 
 def sample_digest(P):
-    """sha256 (hex) of sample coordinates rounded to DIGEST_ROUND_M (DP6)."""
+    """sha256 (hex) of sample coordinates rounded to DIGEST_ROUND_M."""
     import hashlib
     Q = np.round(np.asarray(P, float) / DIGEST_ROUND_M).astype(np.int64)
     return hashlib.sha256(np.ascontiguousarray(Q).tobytes()).hexdigest()
@@ -67,7 +67,7 @@ def true_unit_samples(twin, unit_id, cfg):
 
 
 class TrueSurfaces:
-    """The true units' surface samples (recomputed from the true twin, DP6) with their stored "determined" flags."""
+    """The true units' surface samples (recomputed from the true twin) with their stored "determined" flags."""
 
     def __init__(self, npz, units, cfg, twin):
         for k in ("format", "ids", "counts", "determined_bits", "digest", "moments", "spacing_m"):
@@ -167,7 +167,7 @@ class Matching:
 
 
 def assign_counted_first(W, ignore, f_min):
-    """The pairs (true index, agent index), sorted, of the DP21.1 matching on the F table W (true x agent): a Hungarian
+    """The pairs (true index, agent index), sorted, of the counted-first matching on the F table W (true x agent): a Hungarian
     assignment maximising F over the entries with F >= f_min, first over the counted true rows (ignore[i] false) and
     every column, then over the 'ignore' rows and the columns the first pass left unpaired."""
     from scipy.optimize import linear_sum_assignment
@@ -191,7 +191,7 @@ def assign_counted_first(W, ignore, f_min):
 
 
 def match_units(truth, solids, cfg):
-    """solids: {agent body: surfaces.Solid} (site frame). Returns a Matching (counted units first: DP21.1)."""
+    """solids: {agent body: surfaces.Solid} (site frame). Returns a Matching (counted units first)."""
     from scipy.spatial import cKDTree
     mc = cfg["matching"]
     ts = truth.surfaces

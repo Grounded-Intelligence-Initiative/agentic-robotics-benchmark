@@ -1,4 +1,4 @@
-"""The scored region and its zones (spec 5.3).
+"""The scored region and its zones.
 
     region = Region(region_json)            # .inside(xy), .zone_of(xy), .zone_ids, .height_cap
     Z = allocate(truth, twin, solids, matching, simmap, cfg)        # Zones
@@ -8,7 +8,7 @@ A true unit's zone is its items_truth.json "zone" (the self-test checks that its
 zone). A submitted unit takes its pair's zone; an unpaired one (the gate's excluded units included: they still count
 as submitted) the zone holding its footprint centroid after the alignment map; outside the region it is ignored
 (not counted). A unit matched to an 'ignore' truth entry is removed from every count. A point in the region but in no
-zone polygon gets the zone whose polygon is nearest (C0 decision; the truth's zones are meant to cover the region).
+zone polygon gets the zone whose polygon is nearest (the truth's zones are meant to cover the region).
 """
 import numpy as np
 

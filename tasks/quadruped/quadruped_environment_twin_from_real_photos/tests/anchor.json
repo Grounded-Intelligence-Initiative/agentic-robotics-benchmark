@@ -3,6 +3,6 @@
  "full_at": 1.0,
  "metric": "twin_score",
  "note": "twin_score is the gated weighted mean of the seven criteria, already on [0, 1]; ratio = score / 1.0, reward = ratio",
- "source": "the oracle's own measured twin_score (static deterministic grader: the oracle submission, the true twin, scores exactly 1.0 on every run; three dev runs on the fixture gave byte-identical verdicts); validation runs to be listed in the task's evidence",
+ "source": "the oracle's own measured twin_score (static deterministic grader: the oracle submission, the true twin, scores exactly 1.0 on every run, with byte-identical verdicts)",
  "value": 1.0
 }

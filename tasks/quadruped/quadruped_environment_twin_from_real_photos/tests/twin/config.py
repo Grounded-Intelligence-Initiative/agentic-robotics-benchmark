@@ -7,7 +7,7 @@
 
 A band key holds a two-element list in the order the function takes it: [full, zero] for band_down (an error band,
 e.g. C2 pose_band_m [0.03, 0.10]) and [zero, full] for band_up (a value band, e.g. C2 shape_band [0.5, 0.9]).
-check() also validates the keys of scoring v1.2 (designer decisions DP21, DP22): C2.pose_corner_clip_m a positive
+check() also validates the keys of scoring v1.2: C2.pose_corner_clip_m a positive
 number, C6.unit_routes_need "paired" or "none", and C6.truth.max_progress_spread (the truth's keep rule for blocked
 routes) not above C6.progress_band[0] (a kept route's own spread must keep full credit, or the oracle could lose it).
 """
@@ -33,7 +33,7 @@ REQUIRED = {
                 "worker_address_space_mb", "stage_caps_s"),
 }
 CRITERION_KEYS = ("name", "module", "weight", "truth", "gate")
-# C6's condition on unit-decided routes (DP22): "paired" = every deciding unit paired with a unit that walks; "none"
+# C6's condition on unit-decided routes: "paired" = every deciding unit paired with a unit that walks; "none"
 UNIT_ROUTES_NEED = ("paired", "none")
 
 

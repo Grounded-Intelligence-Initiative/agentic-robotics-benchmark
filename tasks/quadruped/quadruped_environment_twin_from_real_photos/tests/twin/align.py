@@ -1,4 +1,4 @@
-"""The alignment of a twin's free frame onto the site frame (spec 5.2).
+"""The alignment of a twin's free frame onto the site frame.
 
     al = align_twin(twin, truth, cfg, scene)   # Alignment: .map (final SimMap agent -> site), .map2, .map1, .s,
                                                # .up_tilt_deg, .refined, .inliers, .info, .fail (None or the reason)
@@ -411,7 +411,7 @@ def map_error(m_est, m_ref, centre, radii=(0.0, 5.0, 10.0, 15.0), z=0.0, n_beari
 
 
 def selftest_sfm(truth, cfg):
-    """Spec 5.2 step 6: the true twin re-expressed in a stored real SfM frame (its static scene seen through
+    """Self-test of the alignment: the true twin re-expressed in a stored real SfM frame (its static scene seen through
     S_site_from_sfm) is aligned with that reconstruction's cameras; the recovered map must equal S_site_from_sfm
     within selftest_sfm.max_disp_m at selftest_sfm.radius_m from the camera path and selftest_sfm.max_rot_deg.
     Returns the measured numbers; raises truth.TruthError on a failure."""

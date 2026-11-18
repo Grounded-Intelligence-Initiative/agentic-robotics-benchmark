@@ -1,4 +1,4 @@
-"""C5 interaction (spec 5.8): w_lift x lift + w_gate x gate (ungated; the orchestrator multiplies by C1).
+"""C5 interaction: w_lift x lift + w_gate x gate (ungated; the orchestrator multiplies by C1).
 
 Lift (over the whole site). The lift probes of the truth (probe_truth.json "lift"): each probed true unit's paired
 agent unit is lifted by C5.lift_m (in the twin's own units: lift_m / s*) with twin_sim's standard drive, from the
@@ -23,9 +23,9 @@ truth's variants), agent units the zones do not count (outside the region), and 
 Gate. Per true gate (probe_truth.json "gates", site frame), the agent gate whose leaf centre (the centre of its
 collision geometry at qpos0, twin_gate.gate_travel, mapped by the alignment) lies within C5.gate_match_m; one to one,
 nearest first. A matched gate scores band(angle between the slide axes as lines, axis_band_deg) x travel_rule; the
-travel rule (twin_sim.gate_rule) is checked in the TRUE opening direction (designer decision DP7): the true axis
+travel rule (twin_sim.gate_rule) is checked in the TRUE opening direction: the true axis
 times its opening sign, mapped into the twin, gives the sign of the agent's slide axis that opens. Its closing
-condition (DP17) allows C5.max_closing_m of travel beyond the surveyed position against that direction, plus the true
+condition allows C5.max_closing_m of travel beyond the surveyed position against that direction, plus the true
 gate's own travel that way (0 for a gate surveyed shut), so a range symmetric about the surveyed position fails.
 gate = sum of the scores / max(number of true gates, number of submitted gates that are matched or whose mapped leaf
 centre lies in the region).
@@ -107,7 +107,7 @@ class ProbeTruth:
             if not (lo - 1e-9 <= q0 <= hi + 1e-9):
                 raise TruthError("probe_truth.json: gate %s is surveyed outside its own travel" % rec["id"])
             # how far the true gate itself can travel beyond its surveyed position against its opening direction
-            # (site metres: the truth is the site frame); the closing condition of the travel rule adds it (DP17)
+            # (site metres: the truth is the site frame); the closing condition of the travel rule adds it
             rec["closing_m"] = max(0.0, (q0 - lo) if rec["opening_sign"] > 0 else (hi - q0))
             self.gates.append(rec)
         tgates = sorted(g["body"] for g in truth.twin.gates)

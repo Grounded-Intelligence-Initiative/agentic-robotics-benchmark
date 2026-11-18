@@ -1,4 +1,4 @@
-"""What a unit rests on, in the twin's own frame and units (C2's b_vert; spec 5.5).
+"""What a unit rests on, in the twin's own frame and units (C2's b_vert).
 
     sf = SupportField(twin)                  # every collision shape of the twin at qpos0, by owner
     r = sf.vertical_gap("pallet_box_1", cfg) # {"e_vert": m (agent units), "min_gap": signed, "supporter", ...}
@@ -16,13 +16,13 @@ that have a support; e_vert = |min_gap| (a resting unit touches: 0). A unit with
 over the void or is sunk deeper than support_above_m: e_vert = inf. All of it in the twin's own frame (its z is its
 up); the caller multiplies by s*, and support_above_m is divided by s* to keep it in site metres.
 
-Supporters (designer decision DP13, the support chain of b_vert): the owners ("env", "gate:<body>" or a unit's body)
+Supporters (the support chain of b_vert): the owners ("env", "gate:<body>" or a unit's body)
 of the columns whose gap lies within CHAIN_TOL_M (site metres, / s* in the twin's frame) of the unit's min_gap, i.e.
 what the unit rests on at its lowest contact (a unit standing both on the floor and on a neighbour at the same level
 has both). chain_b_vert() turns the per-unit band values into the chained ones: a unit's b_vert is at most the best
 chained b_vert of its supporters, the environment and the gates (bodies hanging from the static world) end a chain
 with 1, and a chain that never reaches them (a stack on a unit that floats, a loop of units resting on each other)
-gives 0 [decision E1: the least fixed point of b(u) = min(own(u), max over supporters s of b(s)), i.e. the widest
+gives 0 [the least fixed point of b(u) = min(own(u), max over supporters s of b(s)), i.e. the widest
 path to the environment].
 """
 import math
@@ -31,16 +31,16 @@ import numpy as np
 
 from . import load
 
-CHAIN_TOL_M = 0.005          # site metres: columns this close to the lowest contact name the unit's supporters (DP13)
+CHAIN_TOL_M = 0.005          # site metres: columns this close to the lowest contact name the unit's supporters
 
 
 def is_chain_end(owner):
-    """The environment and the gates end a support chain (DP13)."""
+    """The environment and the gates end a support chain."""
     return owner == "env" or str(owner).startswith("gate:")
 
 
 def chain_b_vert(own, supporters):
-    """DP13: own {body: b_vert of the unit by itself}, supporters {body: [owner, ...]} -> {body: chained b_vert}.
+    """own {body: b_vert of the unit by itself}, supporters {body: [owner, ...]} -> {body: chained b_vert}.
     b(u) = min(own(u), max over the supporters s of b(s)), b(env) = b(gate) = 1, a supporter that is no listed unit
     (or that has no value) counts 0; computed as the least fixed point from b = 0 (a monotone iteration over the
     sorted bodies, at most len(own) + 1 sweeps), so a loop of units that never reaches the environment stays 0."""

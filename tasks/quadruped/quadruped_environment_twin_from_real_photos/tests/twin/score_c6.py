@@ -1,21 +1,20 @@
-"""C6 walk predictivity (spec 5.9; INTERFACES.md section C6).
+"""C6 walk predictivity.
 
 The probe robot walks every kept route of gt/routes.json in the graded twin (units held where submitted, gates
 fixed, standard contacts: walks.prepare) under the K agent-side variants of the config; each run is scored against
 the STORED true outcome:
     truth reached:      1 if the run reaches (progress >= reach_progress), else 0
     truth not reached:  0 if the run reaches, else band(|progress - progress_true|, C6.progress_band)
-                        ([0.05, 0.20] since designer decision DP21.5)
-A route's raw score is the mean over its variants. Designer decisions DP21.4 and DP22 (C6.unit_routes_need
-"paired"): a route whose deciding units (routes.json feature.units) are named scores its raw score only when every one
+A route's raw score is the mean over its variants. With C6.unit_routes_need
+"paired", a route whose deciding units (routes.json feature.units) are named scores its raw score only when every one
 of them is PAIRED in the matching (ctx.matching.t2a) with an agent unit that takes part in the walks (status ok: an
 excluded unit is deleted from the walk model), else 0: a route outcome is a statement about a thing, and a twin
 without that thing has said nothing about it. How well the unit is modelled is C1's and C2's question (no true
-positive is asked for: DP22 amends DP21.4), whether the robot's run ends as on the site is this criterion's. Routes
+positive is asked for), whether the robot's run ends as on the site is this criterion's. Routes
 with no deciding unit (the building, the gates, open floor) are scored as they are; "none" scores every route raw. A
 deciding unit that is not a counted true unit is a TruthError when the routes are loaded. BA = 0.5 (mean over the
 "open" routes + mean over the "blocked" routes); the ungated value is max(0, 2 BA - 1) (the orchestrator multiplies it
-by C1, D8).
+by C1).
 
 Self-test (the true twin graded with ctx.selftest): every kept route is walked ONCE at the nominal start; the run must
 reproduce the stored outcome and progress (sec.selftest_progress_tol), and the route condition must hold on every
@@ -23,7 +22,7 @@ route (every deciding unit paired with the true twin's own unit); any mismatch i
 environment: another MuJoCo or numpy build, a changed instrument, a stale truth), never a silent change of the route
 set.
 
-No outcome comes from the wall clock (designer decision DP10): a run that passes its wall guard, or a walk budget that
+No outcome comes from the wall clock: a run that passes its wall guard, or a walk budget that
 runs out, raises walks.WalkTimeError, which the orchestrator turns into a task error (the episode is void), in the
 self-test and for a submission alike.
 """
@@ -76,7 +75,7 @@ def load_routes(ctx):
         groups[r["group"]] += 1
         units = deciding_units(r)
         if units:
-            # DP21.4 / DP22: the deciding units must be counted true units (only those have counted pairs)
+            # the deciding units must be counted true units (only those have counted pairs)
             bad = [u for u in units if u not in ctx.truth.unit or ctx.truth.unit[u].ignore]
             if bad:
                 raise TruthError("routes.json: route %s names deciding units that are not counted true units: %s" % (
@@ -111,7 +110,7 @@ def _gate_value(ctx):
 
 def deciding_units(route):
     """The route's deciding units (routes.json feature.units: true unit ids), [] when the building, a gate or open
-    floor decides it (designer decisions DP21.4, DP22)."""
+    floor decides it."""
     units = (route.get("feature") or {}).get("units") or []
     if not isinstance(units, list) or not all(isinstance(u, str) for u in units):
         raise TruthError("routes.json: route %s: feature.units must be a list of unit ids" % route.get("id"))
@@ -120,7 +119,7 @@ def deciding_units(route):
 
 def units_paired(ctx):
     """{true unit id: agent body} of the counted pairs of the matching whose agent unit takes part in the walks (status
-    ok; walks.prepare deletes the excluded units) (DP22). A true unit without such a pair is missing from the twin."""
+    ok; walks.prepare deletes the excluded units). A true unit without such a pair is missing from the twin."""
     M = getattr(ctx, "matching", None)
     if M is None:
         return {}
@@ -139,7 +138,7 @@ def score(ctx):
                 "diagnostic": "walks skipped: C1 = 0 makes C6 0"}
     variants = walks.make_variants(sec)
     if ctx.selftest:
-        variants = variants[:1]                  # the true twin: once, at the nominal start (spec 5.9)
+        variants = variants[:1]                  # the true twin: once, at the nominal start
     mapped, res, stats = walk_twin(ctx, routes, variants, ctx.deadline)
     need = sec["unit_routes_need"]
     paired = units_paired(ctx) if need == "paired" else {}
@@ -171,8 +170,8 @@ def score(ctx):
                           "start": m["start"], "score_raw": raw, "deciding_units": units, "units_paired": units_pair,
                           "condition": held, "score": s, "runs": runs})
     if ctx.selftest and unheld:
-        raise TruthError("the true twin does not have every deciding unit of these routes paired with its own unit "
-                         "(DP22): %s" % ", ".join(unheld[:6]))
+        raise TruthError("the true twin does not have every deciding unit of these routes paired with its own unit"
+                         ": %s" % ", ".join(unheld[:6]))
     mean = {g: (sum(v) / len(v) if v else float("nan")) for g, v in groups.items()}
     if not all(math.isfinite(x) for x in mean.values()):
         raise TruthError("C6: a route group is empty")
@@ -216,7 +215,7 @@ def selftest(ctx, result):
         raise TruthError("the true twin does not reproduce its stored walks: " + "; ".join(bad[:6]))
     unheld = [p["id"] for p in rows if p.get("condition") is False]
     if unheld:
-        raise TruthError("the true twin does not have every deciding unit of these routes paired with its own unit "
-                         "(DP22): %s" % ", ".join(unheld[:6]))
+        raise TruthError("the true twin does not have every deciding unit of these routes paired with its own unit"
+                         ": %s" % ", ".join(unheld[:6]))
     return {"routes": len(rows), "nominal_reproduced": len(rows),
             "unit_routes_condition_held": sum(1 for p in rows if p.get("deciding_units") and p.get("condition"))}
