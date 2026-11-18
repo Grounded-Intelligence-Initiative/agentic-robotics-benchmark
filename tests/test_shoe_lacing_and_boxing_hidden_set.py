@@ -15,13 +15,14 @@ The anchor is the lowest work_score of the recorded full verifies of the privile
 full_at under which those verifies still read reward 1.0. Nothing the agent sees names the token, the set or its selection; the cell library's own mentions of its
 privileged calls (the PR author's public cell code, byte-identical to the grader's) are pinned as they are.
 
-ONLINE VARIANT (experimental branch, 2026-11-17): the agent plays one graded episode of this set itself, through the
-graded service (environment/setup/online/), and tests/verify.py scores the service's record. The graded episode is a
-member of the set (environment/setup/online/episode.json, root-only while the agent works; tests/online.json holds its
-id and seed digest); the service runs byte copies of the grader's configuration, of the givens' pins, of the token's
-digest and of the reference; of the frozen files only those the variant had to change differ (ONLINE_CHANGED: the
-verifier, its entry, the oracle's entry, the image's service account, the agent's client and its pin); the anchor is
-the reference's measured score on the graded episode (anchor.json `online`), the offline anchor kept beside it.
+DUAL MODE (experimental branch, 2026-11-18): main's program item and the online graded episode in one session and one
+verify. Main's tests/verify.py lives on byte for byte as tests/offline_verify.py (the dual verify.py runs it for the
+program item), main's anchor.json as anchor_offline.json, the online variant's as anchor_online.json; anchor.json is the
+combined metric's (dual_mode_score, 1.0). The graded episode is a member of the set (environment/setup/online/
+episode.json, root-only while the agent works; tests/online.json holds its id and seed digest); the service runs byte
+copies of the grader's configuration, of the givens' pins, of the token's digest and of the reference; of the frozen
+files only those the dual mode had to change differ (DUAL_CHANGED: the verifier's entry, the oracle's entry, the
+image's service account, the agent's client and its pin).
 
 Standard library only (the host-side suite has no numpy): verify.py is read as a syntax tree, not imported.
 """
@@ -56,7 +57,9 @@ seeds_mod = _module("shoe_lacing_cellkit_seeds", TASK / "tests/cellkit/seeds.py"
 select_set = _module("shoe_lacing_select_set", TASK / "tests/review/select_set.py")
 SELECTION = json.loads((HIDDEN / "selection.json").read_text())
 SEEDS = json.loads((HIDDEN / "seeds.json").read_text())
-ANCHOR = json.loads((TASK / "tests/anchor.json").read_text())
+ANCHOR = json.loads((TASK / "tests/anchor_online.json").read_text())        # the online variant's (the graded episode)
+OFFLINE_ANCHOR = json.loads((TASK / "tests/anchor_offline.json").read_text())   # main's (the program item)
+DUAL_ANCHOR = json.loads((TASK / "tests/anchor.json").read_text())              # the combined metric's
 CONFIG = json.loads((TASK / "tests/grader_config.json").read_text())
 AMENDMENTS = SELECTION.get("amendments", [])
 # what an amendment may change: the cameras' renderer (the colour from a render twin, the depth from a depth twin; the
@@ -69,7 +72,7 @@ AMENDABLE = {"renderer": RENDER_ONLY, "lockdown": ("tests/verify.py",)}
 # frozen): the verifier and its entry (the record instead of the episodes), the oracle's entry (the graded episode
 # through the agent's client), the image (the service account), the agent's client (connect_graded) and its pin
 ONLINE_CHANGED = ("environment/Dockerfile", "solution/solve.sh", "tests/given_hashes.json", "tests/shoecell/client.py",
-                  "tests/test.sh", "tests/verify.py")
+                  "tests/verify.py")     # the dual mode: tests/test.sh is main's again, main's verify.py offline_verify.py
 ONLINE = json.loads((TASK / "tests/online.json").read_text())
 ONLINE_DIR = TASK / "environment/setup/online"
 GRADED = json.loads((ONLINE_DIR / "episode.json").read_text())
@@ -130,7 +133,8 @@ class HiddenSetTests(unittest.TestCase):
         seeds = pinned["seeds"]
         self.assertEqual(len(seeds), CONFIG["episodes"])
         self.assertEqual(CONFIG["episodes"], 6)
-        self.assertIn("ONE graded episode", (TASK / "instruction.md").read_text())   # the online variant
+        self.assertIn("(6 episodes)", (TASK / "instruction.md").read_text())        # the program item
+        self.assertIn("ONE graded episode", (TASK / "instruction.md").read_text())   # the graded-episode item
         self.assertEqual(len(set(seeds)), len(seeds))
         self.assertTrue(all(isinstance(s, int) and 2 ** 32 <= s < 2 ** 63 for s in seeds))
         self.assertEqual(set(SEEDS) - {"seeds", "source"}, set())
@@ -229,7 +233,16 @@ class HiddenSetTests(unittest.TestCase):
             self.assertEqual(sha256(ONLINE_DIR / "reference" / n), sha256(TASK / "tests/reference" / n), n)
 
     def test_the_pinned_list_is_run_as_it_stands(self):
-        """A pinned stream's derive() would hash the list into other seeds (the offline verifier read the list itself)."""
+        """main's verify.py (offline_verify.py here) reads the list itself (hidden_set); a pinned stream's derive() would
+        hash it into other seeds."""
+        source = (TASK / "tests/offline_verify.py").read_text()
+        tree = ast.parse(source)
+        funcs = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
+        calls = {n.func.id for n in ast.walk(funcs["_main_locked"]) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+        self.assertIn("hidden_set", calls)
+        attrs = {n.func.attr for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
+        self.assertNotIn("derive", attrs)
+        self.assertIn('"seeds.json"', ast.get_source_segment(source, funcs["hidden_set"]))
         path = str(HIDDEN / "seeds.json")
         self.assertEqual(seeds_mod.seed_rng(pinned=path).seeds(6, bits=63), SEEDS["seeds"])
         self.assertNotEqual(seeds_mod.seed_rng(pinned=path).derive("episodes").seeds(6, bits=63), SEEDS["seeds"])
@@ -252,6 +265,9 @@ class FrozenTests(unittest.TestCase):
                              "set and the anchor were measured with the frozen file".format(rel))
         self.assertTrue(set(ONLINE_CHANGED) <= set(frozen))
         self.assertEqual(sorted(frozen), select_set.frozen_paths(str(TASK)))
+        # the dual mode runs main's verifier unchanged for the program item, from main's test.sh
+        self.assertEqual(sha256(TASK / "tests/offline_verify.py"), frozen["tests/verify.py"])
+        self.assertEqual(sha256(TASK / "tests/test.sh"), frozen["tests/test.sh"])
 
     def test_every_amendment_changed_only_what_its_kind_allows_and_the_reference_repeated_every_run(self):
         prev = SELECTION["frozen"]
@@ -339,6 +355,20 @@ class AnchorTests(unittest.TestCase):
             e = v["episodes"][SEEDS["seeds"].index(GRADED["seed"])]
             self.assertEqual((e["sim_time_s"], e["ticks"], e["work_score"]),
                              (online["sim_time_s"], online["ticks"], online["episode_score"]))
+
+    def test_the_dual_anchor_is_the_combined_metric_s(self):
+        self.assertEqual((DUAL_ANCHOR["metric"], DUAL_ANCHOR["direction"]), ("dual_mode_score", "higher"))
+        self.assertEqual((DUAL_ANCHOR["value"], DUAL_ANCHOR["full_at"]), (1.0, 1.0))
+        self.assertEqual((OFFLINE_ANCHOR["metric"], ANCHOR["metric"]), ("work_score", "work_score"))
+        self.assertEqual(OFFLINE_ANCHOR["value"], ANCHOR["offline"]["value"])   # main's, also kept in the online one
+        self.assertEqual(OFFLINE_ANCHOR["verifies"], ANCHOR["verifies"])
+
+    def test_the_offline_anchor_is_main_s(self):
+        """anchor_offline.json is main's anchor.json: the lowest recorded verify of the set."""
+        verifies = OFFLINE_ANCHOR["verifies"]
+        self.assertGreaterEqual(len(verifies), 1)
+        self.assertEqual(OFFLINE_ANCHOR["value"], min(v["work_score"] for v in verifies))
+        self.assertEqual(OFFLINE_ANCHOR["full_at"], 0.98)
 
     def test_the_anchor_is_the_lowest_recorded_verify_of_the_set(self):
         """The offline anchor, kept as `offline`."""
