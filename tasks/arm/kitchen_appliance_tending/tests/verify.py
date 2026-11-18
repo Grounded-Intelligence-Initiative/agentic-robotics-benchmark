@@ -1,35 +1,34 @@
-"""Grader for kitchen_appliance_tending, online graded episode (experimental variant).
+"""Grader for kitchen_appliance_tending, dual mode (experimental): one verify for the two scoring items.
 
-Runs as root in a SEPARATE verifier sandbox and runs no program. During the agent phase the agent played the task's
-one graded episode itself, through the lab service (environment/setup/lab/alelab/server.py, serving as the account
-`alelab`): one entry of the offline grader's fixed hidden set (tests/hidden/episodes.json), chosen at the start from a
-random order of all 18 (environment/setup/online/order.json, the seeds root-only; tests/online.json holds the same
-order as index, unit, episode id and seed digest): the first entry whose unit is not the unit of a lab trial charged
-before the start, so the graded unit is one the agent never practised on. It is simulated exactly as the offline
-grader simulates an episode of that set
-(appliance_plugin.py: Episode(ApplianceEnv(spec, None, render=True), seed); the score is the episode's mean request
-credit (episode.py), 0 after an unstable simulation; an episode ended before its last request closed, by a finish,
-its window or the end of the session, is scored as if it ended at that moment: the open request closes then and a
-request not yet opened earns 0). The lab wrote the episode's record to /var/lib/arb-online/record.json, a
-directory of the lab account that the agent can neither read nor write; the engine collected that directory as a
-declared artifact after the agent phase and restored it here, root-owned. Nothing else of the agent's is read: the
-submission folder is not.
+Runs as root in a SEPARATE verifier sandbox. The agent had one session for two items, scored together:
+  * the program (the offline item, main's task): the controller it left in /home/user/submission/, graded by main's
+    own grader, unchanged (tests/offline_verify.py, byte-identical to main's tests/verify.py: the fixed hidden set of
+    18 episodes, the kit's wire with the probe lock, the seccomp launcher, the budgets, the oracle token's truth for
+    the reference);
+  * the graded episode (the online item): one episode of that hidden set it played itself through the lab
+    (environment/setup/lab/alelab/server.py, the account `alelab`), the first entry of a random order whose unit no
+    lab trial used (tests/online.json holds the order), whose record the lab wrote to /var/lib/arb-online/record.json.
+The program is frozen at the graded start: the lab's root supervisor copied the submission folder into
+/var/lib/arb-online/submission_snapshot/ before the start was charged (the record holds its status, counts and digest);
+the engine collected that directory and the submission as declared artifacts after the agent phase and restored them
+here, root-owned.
 
-This grader reclaims root's PATH directories first (robotics_grader.stage.secure_exec_path), stops every agent-UID
-process (in the separate verifier only the base image's desktop runs as that account: a process that outlives the
-bounded kill is stopped, and only one still running once stopped fails the run, cleanup_failed), reads the record
-(a regular file of at most 1 MB, never through a link), checks it against tests/online.json (format, task, episode
-id, the seed's sha256), that the episode was started, that its episode is the one the order gives for the record's
-trial units (order_index, episode and seed digest recomputed from tests/online.json) and that its score is a finite
-number >= 0, stops the agent account's processes again, and scores the episode's score against the anchor with the
-kit. A missing, invalid or never-started record, or one whose episode the order does not give, scores 0. The rest of tests/ (the environment, the episode logic, the hidden set, the renderer)
-is the offline grader's and is not used here.
+In this order: reclaim root's PATH directories (robotics_grader.stage.secure_exec_path) and stop every agent-UID
+process (as main's grader does); read the record; if the episode started, the program graded is the snapshot (its
+digest checked against the record; a snapshot that is not "ok" or does not match scores the program 0), else the
+restored session-end submission (as on main); run main's grader on it, its verdict captured instead of written (its
+anchor: tests/anchor_offline.json, main's anchor.json); score the record as the online variant does, the choice of
+the episode recomputed from the order and the record's trial units (tests/anchor_online.json; 0 without a record or
+a start); stop the agent account's processes again; reward = the mean of the two items' rewards, written once through
+the kit against tests/anchor.json (dual_mode_score, 1.0 when both items reach their anchors).
 """
 
+import hashlib
 import json
 import math
 import os
 import pwd
+import shutil
 import signal
 import stat
 import sys
@@ -50,9 +49,10 @@ from robotics_grader.stage import secure_exec_path  # noqa: E402
 STAGE = os.path.dirname(os.path.abspath(__file__))
 ONLINE = os.path.join(STAGE, "online.json")
 RECORD = "/var/lib/arb-online/record.json"
+SNAPSHOT = "/var/lib/arb-online/submission_snapshot"
 RECORD_FORMAT = "arb-online-record/1"
 MAX_RECORD_BYTES = 1 << 20
-METRIC = "mean_request_credit"
+METRIC = "mean_request_credit"  # both items' metric (main's, and the graded episode's on the same scale)
 END_REASONS = ("done", "finish", "graded_window", "worker_restart")
 
 
@@ -147,8 +147,8 @@ def _no_constants(name):
     raise ValueError("non-finite constant")
 
 
-def read_record(path, online):
-    """(record, None) for a valid record of this task's graded episode that was started, else (None, reason)."""
+def load_record(path):
+    """The record as a JSON object (a regular file of at most 1 MB, never through a link), or (None, reason)."""
     try:
         st = os.lstat(path)
     except OSError:
@@ -175,26 +175,32 @@ def read_record(path, online):
         return None, "the graded-episode record is not valid JSON"
     if not isinstance(rec, dict):
         return None, "the graded-episode record is not a JSON object"
+    return rec, None
+
+
+def check_record(rec, online):
+    """None for a record of this task's graded episode that was started with a finite score >= 0 and whose episode is
+    the one the order gives for its trial units, else the reason."""
     if rec.get("format") != RECORD_FORMAT:
-        return None, "the graded-episode record has another format"
+        return "the graded-episode record has another format"
     if rec.get("task") != online["task"]:
-        return None, "the graded-episode record's task differs from tests/online.json"
+        return "the graded-episode record's task differs from tests/online.json"
     if rec.get("started") is not True:
-        return None, "the graded episode was never started"
+        return "the graded episode was never started"
     units = rec.get("trial_units")
     if not isinstance(units, list) or not all(isinstance(u, str) for u in units):
-        return None, "the graded-episode record has no valid trial_units"
+        return "the graded-episode record has no valid trial_units"
     pos, want = expected_choice(online, units)
     if want is None:
-        return None, "no entry of the order is left for the record's trial units"
+        return "no entry of the order is left for the record's trial units"
     got = rec.get("order_index")
     if isinstance(got, bool) or got != pos or rec.get("episode") != want["episode"] \
             or rec.get("seed_sha256") != want["seed_sha256"]:
-        return None, "the record's graded episode is not the one the order gives for its trial units"
+        return "the record's graded episode is not the one the order gives for its trial units"
     score = rec.get("episode_score")
     if isinstance(score, bool) or not isinstance(score, (int, float)) or not math.isfinite(score) or score < 0:
-        return None, "the graded-episode record has no finite episode_score >= 0"
-    return rec, None
+        return "the graded-episode record has no finite episode_score >= 0"
+    return None
 
 
 def expected_choice(online, trial_units):
@@ -231,6 +237,93 @@ def record_metrics(rec):
     return out
 
 
+def snapshot_digest(root):
+    """(files, bytes, sha256) of a snapshot tree, computed as the lab computes it: sha256 over the lines
+    "<path>\\0<size>\\0<sha256 of content>\\n" of its regular files in sorted path order (no link is followed)."""
+    listing = []
+    for dp, dns, fns in os.walk(root, followlinks=False):
+        for fn in fns:
+            fp = os.path.join(dp, fn)
+            st = os.lstat(fp)
+            if not stat.S_ISREG(st.st_mode):
+                continue
+            h, size = hashlib.sha256(), 0
+            with open(fp, "rb") as fh:
+                for block in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(block)
+                    size += len(block)
+            listing.append((os.path.relpath(fp, root), size, h.hexdigest()))
+    digest = hashlib.sha256()
+    for rel, size, content_sha in sorted(listing):
+        digest.update(("%s\0%d\0%s\n" % (rel, size, content_sha)).encode("utf-8", "surrogateescape"))
+    return len(listing), sum(x[1] for x in listing), digest.hexdigest()
+
+
+def check_snapshot(rec, root=SNAPSHOT):
+    """None when the record says the program was frozen ("ok") and the restored snapshot matches its counts and
+    digest, else the reason (the program item then scores 0)."""
+    status = rec.get("snapshot_status")
+    if status != "ok":
+        return "the program was not frozen at the graded start (snapshot {})".format(status)
+    if not os.path.isdir(root) or os.path.islink(root):
+        return "the frozen program is missing from the artifacts"
+    files, size, digest = snapshot_digest(root)
+    if (files, size, digest) != (rec.get("snapshot_files"), rec.get("snapshot_bytes"), rec.get("snapshot_sha256")):
+        return "the frozen program does not match the record's digest"
+    return None
+
+
+def install_snapshot(root, dest):
+    """Replace the restored submission folder `dest` with the frozen program (as root): `dest` is removed without
+    following links, then the snapshot's directories and regular files are copied with their modes. Main's grader
+    then hands the folder to the agent account, as it does with a restored submission."""
+    if os.path.islink(dest) or (os.path.lexists(dest) and not os.path.isdir(dest)):
+        os.unlink(dest)
+    elif os.path.isdir(dest):
+        shutil.rmtree(dest)
+    os.mkdir(dest, 0o700)
+    for dp, dns, fns in os.walk(root, followlinks=False):
+        rel = os.path.relpath(dp, root)
+        target = dest if rel == "." else os.path.join(dest, rel)
+        for dn in dns:
+            if not os.path.islink(os.path.join(dp, dn)):
+                os.mkdir(os.path.join(target, dn), 0o700)
+        for fn in fns:
+            sp, tp = os.path.join(dp, fn), os.path.join(target, fn)
+            st = os.lstat(sp)
+            if stat.S_ISREG(st.st_mode):
+                shutil.copyfile(sp, tp, follow_symlinks=False)
+                os.chmod(tp, stat.S_IMODE(st.st_mode))
+
+
+def run_offline():
+    """Main's grader (tests/offline_verify.py, unchanged) on /home/user/submission: its verdict and diagnostic,
+    captured instead of written; it reads main's anchor (tests/anchor_offline.json)."""
+    import offline_verify as OV
+    captured = []
+
+    def capture(verdict, path=None, diagnostic=None):
+        captured.append((verdict, diagnostic))
+
+    OV.write_verdict = capture
+    OV.read_anchor = lambda name="anchor.json": read_anchor("anchor_offline.json")
+    OV.main()
+    if not captured:
+        raise RuntimeError("main's grader wrote no verdict")
+    verdict, diagnostic = captured[-1]
+    return verdict, diagnostic if diagnostic is not None else verdict.get("diagnostic")
+
+
+def online_component(rec, reason, config):
+    """The graded episode's item: its record scored against the online anchor, or 0 with the reason."""
+    anchor, meta = read_anchor("anchor_online.json")
+    if reason is not None:
+        return zero_verdict(reason=reason, anchored=anchor is not None)
+    return ratio_rewards(float(rec["episode_score"]), anchor, cap=config.get("scoring_cap", 1.5),
+                         higher_is_better=True, metric_name=METRIC, locks_ok=True, extra=record_metrics(rec),
+                         full_at=meta.get("full_at", 1.0))
+
+
 def main():
     secured = {"root_path_dirs_secured": float(len(secure_exec_path()))}   # before anything else runs
     config = stage_config()
@@ -246,23 +339,53 @@ def main():
         write_verdict(zero_verdict(reason="agent processes could not be stopped (cleanup_failed)",
                                    anchored=anchor is not None, extra=secured))
         return
-    rec, reason = read_record(RECORD, online)
+    rec, load_reason = load_record(RECORD)
+    started = rec is not None and rec.get("started") is True
+    online_reason = load_reason if rec is None else check_record(rec, online)
+    # the program graded: frozen at the start, or the session-end submission when the episode never started
+    program = "session_end"
+    offline_reason = None
+    if started:
+        offline_reason = check_snapshot(rec)
+        if offline_reason is None:
+            install_snapshot(SNAPSHOT, os.path.join(os.path.expanduser("~" + agent_user()), "submission"))
+            program = "snapshot"
+    if offline_reason is None:
+        off, off_diag = run_offline()
+    else:
+        log("program item: " + offline_reason)
+        off, off_diag = zero_verdict(reason=offline_reason, anchored=True), None
+        program = "none"
+    on = online_component(rec, online_reason, config)
     cleanup_ok = stop_agent_processes(uid)
-    if rec is None:
-        write_verdict(zero_verdict(reason=reason, anchored=anchor is not None, extra=secured))
-        return
-    measured = float(rec["episode_score"])
+    off_r, on_r = float(off["rewards"]["reward"]), float(on["rewards"]["reward"])
+    combined = (off_r + on_r) / 2.0
     if not cleanup_ok:
-        measured = 0.0
-    extra = dict(record_metrics(rec), cleanup_failed=0.0 if cleanup_ok else 1.0, **secured)
-    verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5), higher_is_better=True,
-                            metric_name=METRIC, locks_ok=True, extra=extra, full_at=meta.get("full_at", 1.0))
-    diagnostic = "graded episode {}: end_reason={} steps={} sim_time_s={} requests={} episode_score={:.4f}".format(
-        rec["episode"], rec.get("end_reason"), rec.get("steps"), rec.get("sim_time_s"), rec.get("requests"),
-        measured)
+        combined = 0.0
+    extra = {"offline_reward": off_r, "online_reward": on_r, "cleanup_failed": 0.0 if cleanup_ok else 1.0,
+             "program_snapshot": 1.0 if program == "snapshot" else 0.0,
+             "program_session_end": 1.0 if program == "session_end" else 0.0,
+             "episode_started": 1.0 if started else 0.0, **secured}
+    for status in ("ok", "too_large", "missing"):
+        extra["snapshot_" + status] = 1.0 if (rec or {}).get("snapshot_status") == status else 0.0
+    for key in ("snapshot_files", "snapshot_bytes"):
+        if _number((rec or {}).get(key)):
+            extra[key] = float(rec[key])
+    for reason in END_REASONS:
+        extra["online_end_" + reason] = 1.0 if (rec or {}).get("end_reason") == reason else 0.0
+    for key, v in sorted((off.get("metrics") or {}).items()):
+        extra["offline_" + key] = v
+    for key, v in sorted((on.get("metrics") or {}).items()):
+        extra["online_" + key] = v
+    verdict = ratio_rewards(combined, anchor, cap=1.0, higher_is_better=True, metric_name="dual_mode_score",
+                            locks_ok=True, extra=extra, full_at=meta.get("full_at", 1.0))
+    diagnostic = ("dual mode: program {} ({}; reward {:.4f}), graded episode {} (reward {:.4f}; {}), mean {:.4f}; "
+                  "program item: {}; graded episode item: {}").format(
+        program, (rec or {}).get("snapshot_status"), off_r, (rec or {}).get("episode"), on_r,
+        (rec or {}).get("end_reason"), combined, off_diag or off.get("diagnostic") or "graded",
+        on.get("diagnostic") or "scored")
     write_verdict(verdict, diagnostic=diagnostic)
-    log("{} anchor={} ratio={:.3f} reward={:.3f}".format(diagnostic, anchor, verdict["metrics"]["ratio"],
-                                                         verdict["rewards"]["reward"]))
+    log("{} anchor={} reward={:.3f}".format(diagnostic, anchor, verdict["rewards"]["reward"]))
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 {
- "metric": "mean_request_credit",
+ "metric": "dual_mode_score",
  "direction": "higher",
  "value": 1.0,
- "full_at": 0.98,
- "source": "Kept at 1.0 for the order rule (2026-11-18): the graded episode is the first entry of a random order of the fixed hidden set's 18 entries (tests/online.json) whose unit no lab trial used; the oracle uses no trial, so it plays the first entry (hidden-set entry 5, unit u3). The fixed hidden set holds only entries on which the privileged reference scored 1.0 (tests/hidden/episode_selection.json), and main's anchor is 1.0 over 90 episodes. Under the first conversion's single drawn episode (entry 3, unit u0) the oracle measured 1.0 in validate-9d0a3c5d, validate-658a230c and validate-82c35cd9 (engine bfb7505, Docker, 2026-11-18); the order rule is confirmed by one ale validate of its commit.",
- "note": "Online graded episode (experimental variant): one episode, so the anchor is the oracle's own score on the episode it plays. full_at 0.98 as on main."
+ "full_at": 1.0,
+ "source": "1.0 by construction (dual mode, 2026-11-18): the mean of the program item's reward (main's grader, tests/offline_verify.py, against main's anchor in tests/anchor_offline.json) and the graded episode's reward (against the online variant's anchor in tests/anchor_online.json), each item normalised by its own measured anchor and full_at. Confirmed by the oracle of ale validate validate-ff2a8c53 (engine bfb7505, Docker, commit b4e8d110): program item 1.0 (the snapshot taken at the graded start, 18 of 18 hidden episodes graded), graded episode 1.0 (order position 0, unit u3), dual_mode_score 1.0; untouched 0.0.",
+ "note": "Dual mode (experimental): one session, one verify; the program is frozen at the graded start. Component anchors: tests/anchor_offline.json (main's anchor.json, byte-identical) and tests/anchor_online.json (the online variant's)."
 }

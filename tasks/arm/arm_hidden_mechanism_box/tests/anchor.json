@@ -1,9 +1,8 @@
 {
- "metric": "mean_opening_progress",
+ "metric": "dual_mode_score",
  "direction": "higher",
  "value": 1.0,
  "full_at": 1.0,
- "source": "The privileged oracle's measured episode_score on the graded episode (tests/online.json: box i1, one fixed seed) from a real run: ale validate validate-1e666aca (engine bfb7505, Docker, 2026-11-18) of commit a8d1a650 with a null anchor, oracle episode arm_hidden_mechanism_box-oracle-ca1287e5: mean_opening_progress 1.0 (all five stages of i1 done, the episode ended at its own end after 1455 steps); untouched 0.0 (never started).",
- "reference_commit": "a8d1a650",
- "note": "Online graded episode (experimental variant): one episode, so the anchor is the oracle's own score on that episode (an in-container dry run before the validate measured the same, 1.0 after 1455 steps). full_at 1.0 as on main."
+ "source": "1.0 by construction (dual mode, 2026-11-18): the mean of the program item's reward (main's grader, tests/offline_verify.py, against main's anchor in tests/anchor_offline.json) and the graded episode's reward (against the online variant's anchor in tests/anchor_online.json), each item normalised by its own measured anchor. Confirmed by the oracle of ale validate validate-419c3e9f (engine bfb7505, Docker, commit e0cce70c): program item 1.0 (the snapshot taken at the graded start, 8 of 8 hidden episodes at 1.0), graded episode 1.0, dual_mode_score 1.0; untouched 0.0.",
+ "note": "Dual mode (experimental): one session, one verify; the program is frozen at the graded start. Component anchors: tests/anchor_offline.json (main's anchor.json, byte-identical) and tests/anchor_online.json (the online variant's)."
 }

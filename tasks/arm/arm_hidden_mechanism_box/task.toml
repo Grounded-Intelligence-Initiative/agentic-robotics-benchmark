@@ -1,5 +1,7 @@
-# Online graded episode (experimental variant): the agent plays one hidden graded episode itself, through the lab
-# service, and the separate verifier scores the record the lab leaves in /var/lib/arb-online (a declared artifact).
+# Dual mode (experimental variant): one session, one verify, two scoring items. The program the agent leaves in
+# /home/user/submission (main's task, graded by main's grader on the hidden boxes), frozen at the graded start, and
+# one hidden graded episode the agent plays itself through the lab; the reward is the mean of the two. The verifier
+# reads the snapshot and the lab's record from /var/lib/arb-online (a declared artifact).
 
 schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission", "/var/lib/arb-online"]
@@ -14,15 +16,15 @@ platform = "arm"
 cpus = 4
 memory_mb = 12288
 
-# prep_s 28800 (the 8 h budget on main: the graded episode must start within it) + graded_s 10800 (the episode's
-# own window after its start).
+# prep_s 28800 (main's 8 h budget, shared by the program and the preparation; the graded episode must start within
+# it) + graded_s 10800 (the episode's own window after its start).
 [agent]
 timeout_sec = 39600
 network_mode = "no-network"
 
-# The grader only reads the record.
+# Main's: the verifier runs main's grading of the program again, then reads the record.
 [verifier]
-timeout_sec = 600
+timeout_sec = 7200
 environment_mode = "separate"
 
 [verifier.environment]

@@ -20,6 +20,9 @@
   "record_dir": "/var/lib/arb-online",
   "prep_s": 7200,
   "graded_s": 10800,
-  "oracle_token_sha256": "a0308fcc1ceaed2f66c8a5bd30f0005d64c4a028e4c697bb2e32a45798293c3d"
+  "oracle_token_sha256": "a0308fcc1ceaed2f66c8a5bd30f0005d64c4a028e4c697bb2e32a45798293c3d",
+  "snapshot_source": "/home/user/submission",
+  "snapshot_max_files": 5000,
+  "snapshot_max_bytes": 209715200
  }
 }
