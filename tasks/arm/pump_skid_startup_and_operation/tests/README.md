@@ -350,3 +350,50 @@ protective stop), `full_at` 0.98.
   sites 2001-2008 the r1 program (written with v0.3's practice service) scored 0.681 on the v0.6 rules (0.571 on
   v0.5.3) when given v0.5's wrist-load format; with the new format it cannot turn a valve (it reads the two old
   scalars) and scores 0; the latest no-practice program scores 0 on both, now without voids.
+
+## 7. The online variant (experiment, 2026-11-17; never merged into main)
+
+On the experiment branch `exp/online-graded-episode` the agent no longer leaves a program for this grader: it plays
+ONE graded episode itself, during its session, and `verify.py` scores the record of that episode. Everything above
+(the cell, the hidden set, the reference program, the commissioning service, the givens) is unchanged; the offline
+grader is `verify.py` on main.
+
+* **The episode.** Episode ep08 of the hidden set (`hidden/seeds.json`, the grader's order), drawn once on
+  2026-11-18 with `secrets.randbelow(8)` (OS entropy); the same episode serves every model. The seed and the oracle
+  token's digest live root-only in `environment/setup/online/episode.json`; `online.json` holds the episode id and the
+  seed's sha256 (of its decimal string) for the record's cross-check.
+* **The service** (`environment/setup/online/graded_service.py`, started by `setup.sh` as root before the session;
+  the alelab daemon pattern of arm_hidden_mechanism_box): a root supervisor (AF_UNIX-only seccomp, trimmed
+  capabilities; it never reads the episode) binds `/run/skidcell-graded/graded.sock` in its own root-owned directory and
+  forks the worker, which reads the episode, imports and checks the grader's cell (the image's byte copy of
+  `tests/skidcell/`, copied root-only by `setup.sh` and pinned by `online/service.json`'s digests) and the reference
+  program (`online/reference/`, a byte copy of `reference/`, likewise pinned), builds the episode's cell as `verify.py`
+  builds one (mode hidden, the grader's cell configuration, the numerics pins of `test.sh`), and drops to its own
+  account `skidgrade` (created by `setup.sh`: the image stays unchanged; not `skidcell`, whose unhardened service
+  answers the agent's commissioning shifts). It serves one client at a time; the episode lives in the worker, so a
+  disconnect leaves it where it is.
+* **The rules.** One start per session, persisted before anything is simulated, within `prep_s` = 14400 s (main's agent
+  budget) of the service's start; the episode ends at the cell's own end (the sim cap, a physics fault, an internal
+  error), at the agent's `finish`, `graded_s` = 10800 s after its start, or with the session (then the last record
+  stands); a worker restart ends it with its last record. It ends as `verify.py` ends an episode whose program stops
+  (`_end`, then the score as it stands; nothing simulated after). What does not carry over: the program's time, CPU and
+  silence budgets, the allowance after the end, the import check and the contract gates, and the rerun of an episode
+  in which the cell failed (a one-shot episode cannot be run again; such an episode is scored as it stands, and the
+  record's metrics show the failure). `[agent] timeout_sec` = prep_s + graded_s = 25200.
+* **The record.** `/var/lib/arb-online` (owner `skidgrade`, 0700; declared in `task.toml` `artifacts`):
+  `record.json` (`arb-online-record/1`: the episode, `seed_sha256`, started / ended / end_reason, requests, steps,
+  sim_time_s, wall_s_since_start, `episode_score` = `Monitor.summary(...)["score"]` as if the episode ended at that
+  moment, the per-episode metrics under the offline grader's names, a bounded detail of the parts and events), written
+  atomically at the start, at most once a second while requests change the episode and within a second of the last one,
+  and at the end; `requests.jsonl` (method, arguments, sim time; capped at 32 MB); `state.json`; the service's logs.
+* **The verifier** (`verify.py`, `test.sh`): reads the record (a regular file of at most 1 MB, strict JSON), checks
+  `format` / `task` / `episode` / `seed_sha256` against `online.json`, `started` and a finite `episode_score` >= 0,
+  and scores it with `ratio_rewards` against `anchor.json` (metric, direction and `full_at` unchanged); a missing or
+  invalid record scores 0 with the reason.
+* **The oracle** (`solution/solve.sh` -> `solution/reference/play_graded.py`): as the agent account, it connects with
+  `connect_graded()`, starts the episode with the oracle token (the service then gives the cell the privileged calls,
+  as the offline grader does for the token), runs the reference submission (`operate.py`: describe, two frames,
+  `reference_run`) and finishes. Measured in a container of the task image on 2026-11-18: 0.99999999999981 for ep08
+  (the hidden set's selection run: 1.0), 100 s of wall clock.
+* **The client** (`given/lib/skidcell/client.py`, with its copies `skidcell/client.py` and `setup_payload/...`, and
+  `given_hashes.json`): `connect_graded()`, `Cell.start()`, `Cell.status()`; nothing else in the givens changed.

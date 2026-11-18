@@ -1,5 +1,6 @@
-"""Agent-side proxy of the pump skid cell + the program launcher + the commissioning connection (the one module of the
-cell the agent gets; the cell itself runs in the grader and in the commissioning service, out of the agent's sight).
+"""Agent-side proxy of the pump skid cell + the program launcher + the commissioning and graded-episode connections (the
+one module of the cell the agent gets; the cell itself runs in the grader, in the commissioning service and in the
+graded episode's service, out of the agent's sight).
 
     def solve(cell):                                   # in /home/user/submission/operate.py
         info = cell.describe()
@@ -22,6 +23,17 @@ Commissioning (development only): `connect_commissioning(site)` opens a shift on
 which starts the shift. One connection is one shift, under the graded episode's budgets; the commissioning window has
 a fixed number of shifts (`cell_manual.md` section 8). `~/commission/run_shift.py` runs a whole program in a shift the
 way the grader runs it.
+
+The graded episode: `connect_graded()` connects to the graded episode's service (a hidden site of the series): the
+same cell and calls, plus `start()` (once per session: it starts the shift) and `status()`. The episode lives in the
+service, not in the connection: closing the connection (or the script ending) leaves it where it is, and the next
+`connect_graded()` resumes it; one connection at a time (a second one raises `CellError("busy")`). `finish()` ends it.
+
+    cell = connect_graded()                            # resumes the episode if it has started
+    cell.status()                                      # started, ended, steps, sim_time_s, frames, windows' time left
+    cell.start()                                       # ONCE per session; charged at once, never refunded
+    ...                                                # describe / get_state / command / step / get_camera / ...
+    cell.close()                                       # the episode stays where it is
 """
 
 import base64
@@ -32,13 +44,14 @@ import sys
 import traceback
 
 __all__ = ["Cell", "CellError", "decode_frame", "connect_stdio", "connect_commissioning", "main", "BOOTSTRAP", "launcher_argv",
-           "COMMISSION_SOCKET", "COMMISSION_STATUS"]
+           "COMMISSION_SOCKET", "COMMISSION_STATUS", "connect_graded", "GRADED_SOCKET"]
 
 BOOTSTRAP = ("import sys; sys.path.insert(0, sys.argv[1]); from skidcell.client import main; "
              "sys.exit(main(sys.argv[2:]))")
 PYTHON_FLAGS = ["-B", "-E", "-s"]
 COMMISSION_SOCKET = "/run/skidcell/commission.sock"
 COMMISSION_STATUS = "/run/skidcell/commission_status.json"
+GRADED_SOCKET = "/run/skidcell-graded/graded.sock"
 
 
 class CellError(RuntimeError):
@@ -126,6 +139,18 @@ class Cell(object):
         as the previous shift left it, at sim_time 0. Once per connection; it uses one shift of the window."""
         return self._call("reset", site=int(site))
 
+    # ---- the graded episode's service only (the other cells answer {"error": "forbidden"})
+    def start(self, token=None):
+        """Start the graded episode: the skid as the previous shift left it, at sim_time 0. Once per session and only
+        within its start window; the start is charged at once and never refunded."""
+        params = {} if token is None else {"token": str(token)}
+        return self._call("start", **params)
+
+    def status(self):
+        """The graded episode's state: started, ended, end, steps, sim_time_s, camera_frames_used,
+        camera_frames_left, prep_window_left_s, graded_window_left_s (nothing else: no score)."""
+        return self._call("status")
+
     def close(self):
         closer = getattr(self, "_close", None)
         if closer is not None:
@@ -200,6 +225,60 @@ def connect_commissioning(site=None, path=None):
     cell._close = close
     if site is not None:
         cell.reset(site)
+    return cell
+
+
+def connect_graded(start=False, path=None):
+    """A connection to the graded episode's service (a Cell: the cell's calls, plus `start()` and `status()`). The
+    episode lives in the service: closing this connection leaves it where it is, and the next connect_graded() resumes
+    it. One connection at a time: while another holds the episode this raises CellError("busy"). `start=True` also
+    starts the episode (once per session)."""
+    import socket
+    path = path or GRADED_SOCKET
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        sock.connect(path)
+    except OSError as e:
+        sock.close()
+        raise CellError("the graded episode's service is not reachable at %s (%s)" % (path, e))
+    rf = sock.makefile("r", encoding="utf-8", newline="\n")
+    wf = sock.makefile("w", encoding="utf-8", newline="\n")
+
+    def send(text):
+        try:
+            wf.write(text)
+            wf.flush()
+        except OSError as e:
+            raise CellError("the graded episode's service closed the connection (%s)" % e)
+
+    def recv():
+        try:
+            return rf.readline()
+        except OSError:
+            return ""
+
+    def close():
+        for f in (wf, rf):
+            try:
+                f.close()
+            except OSError:
+                pass
+        sock.close()
+
+    cell = Cell(send, recv)
+    cell._close = close
+    try:                                       # the first reply: the episode is ours, or another connection holds it
+        cell._id += 1
+        send(json.dumps({"id": cell._id, "method": "status", "params": {}}) + "\n")
+        line = recv()
+        reply = json.loads(line) if line else {}
+        if "error" in reply or reply.get("id") != cell._id or "result" not in reply:
+            raise CellError(str(reply.get("error") or "the graded episode's service closed the connection"))
+    except (CellError, ValueError) as e:
+        close()
+        raise CellError(str(e))
+    if start:
+        cell.start()
     return cell
 
 

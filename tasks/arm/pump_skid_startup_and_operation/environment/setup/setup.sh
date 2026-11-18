@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Setup: trusted root, cwd = this staged folder, before the agent phase. Stages the givens (the cell documents, the
 # client library, the instrument catalog, the commissioning launcher and the example program) into the agent home, owned
-# by the agent, and starts the commissioning service (below). The grader
+# by the agent, and starts the graded episode's service and the commissioning service (below). The grader
 # never reads these copies: verification is separate (task.toml), and tests/test.sh builds the grader's own ROOT-OWNED read-only
 # copy of the same givens in the fresh verifier sandbox, from tests/setup_payload/ (a byte copy of payload/ here: change
 # both together, then tests/given_hashes.json) and the image's robot model (/opt/task-assets/panda).
@@ -20,6 +20,28 @@ for entry in payload/* payload/.[!.]*; do
 done
 mkdir -p "$HOME_DIR/submission" && chown "$AGENT_USER:$AGENT_USER" "$HOME_DIR/submission"
 echo "[setup] givens staged in $HOME_DIR (owner $AGENT_USER)" >&2
+
+# The online variant: the graded episode's service (online/graded_service.py), ONE episode of the grader's hidden set
+# (online/episode.json) that the agent plays itself through skidcell.client.connect_graded(). It runs the grader's own
+# cell: the image's byte copy of tests/skidcell/ (/opt/skidcell-commission/skidcell/), copied here, root-only, before
+# any other account runs (the worker checks it against online/service.json's digests and imports it as root). Started
+# as root, it reads the episode, then serves as its own account `skidgrade` (created here: a system account without a
+# home or a login shell, not the commissioning service's `skidcell`, which serves the agent's commissioning shifts)
+# through /run/skidcell-graded/graded.sock and writes the episode's record to /var/lib/arb-online (owner skidgrade,
+# 0700), which task.toml declares an artifact and tests/verify.py scores. The command returns once the service serves.
+GRADED="$PWD/online"
+id -u skidgrade > /dev/null 2>&1 || useradd --system --user-group --no-create-home --home-dir /nonexistent \
+    --shell /usr/sbin/nologin skidgrade
+rm -rf "$GRADED/skidcell"
+install -d -o root -g root -m 700 "$GRADED/skidcell"
+cp /opt/skidcell-commission/skidcell/*.py "$GRADED/skidcell/"
+chown -R root:root "$GRADED"
+chmod -R go-rwx "$GRADED"
+env -i PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 HOME=/nonexistent \
+    /opt/venv/bin/python3 -I -B "$GRADED/graded_service.py" --config "$GRADED/service.json" < /dev/null > /dev/null 2>&1 \
+  || { echo "[setup] the graded episode's service did not come up (/var/lib/arb-online/service.log)" >&2; exit 1; }
+[ -S /run/skidcell-graded/graded.sock ] || { echo "[setup] the graded episode's service has no socket" >&2; exit 1; }
+echo "[setup] graded episode's service listening on /run/skidcell-graded/graded.sock" >&2
 
 # The commissioning service (v0.6), the series' cell on its development sites (sister sites, never a graded one): the
 # image installs it under /opt/skidcell-commission for the account `skidcell` only (the agent account can neither read
