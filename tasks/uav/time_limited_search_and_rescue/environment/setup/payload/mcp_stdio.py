@@ -4,17 +4,12 @@ import sys
 from client import Client
 
 TOOLS = [
-    {"name": "robot_observe", "description": "Observe two RGB cameras and remaining budgets.",
+    {"name": "robot_observe", "description": "Observe onboard downward and forward RGB cameras.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "robot_act", "description": "Apply one bounded action. It consumes simulation budget.",
-     "inputSchema": {"type": "object", "properties": {"action": {"type": "array", "items": {"type": "number"}}},
+    {"name": "robot_act", "description": "Move the stabilized UAV in X/Y/Z and command its gripper for 0.2 seconds.",
+     "inputSchema": {"type": "object", "properties": {"action": {"type": "array", "minItems": 4, "maxItems": 4,
+                                                                  "items": {"type": "number", "minimum": -1, "maximum": 1}}},
                      "required": ["action"], "additionalProperties": False}},
-    {"name": "robot_advance", "description": "Advance to the next permitted task phase, without restoring budgets.",
-     "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "robot_report", "description": "Report a target using an observed frame ID and world XY.",
-     "inputSchema": {"type": "object", "properties": {"frame_id": {"type": "integer"},
-                     "point": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}},
-                     "required": ["frame_id", "point"], "additionalProperties": False}},
 ]
 
 

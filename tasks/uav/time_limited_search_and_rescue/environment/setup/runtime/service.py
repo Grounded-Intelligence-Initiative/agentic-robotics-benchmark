@@ -7,7 +7,7 @@ from pathlib import Path
 import secrets
 import socketserver
 
-from world import World
+from rescue import World
 
 
 class Runtime:
@@ -24,7 +24,7 @@ class Runtime:
 
     def flush(self):
         state = {"seed": self.seed, "kind": self.world.kind, "events": self.events,
-                 "metrics": self.world.metrics(), "phase": self.world.phase,
+                 "metrics": self.world.metrics(),
                  "requests": self.count}
         temp = self.directory/"state.tmp"
         temp.write_text(json.dumps(state))
@@ -52,8 +52,7 @@ class Runtime:
             self.flush()
 
     def dispatch(self, method, params):
-        allowed = {"observe": set(), "act": {"action"}, "advance": set(),
-                   "report": {"frame_id", "point"}}
+        allowed = {"observe": set(), "act": {"action"}}
         if not isinstance(method, str) or method not in allowed or not isinstance(params, dict) or set(params) != allowed[method]:
             raise ValueError("operation/arguments not allowed; reset is never available")
         result = getattr(self.world, method)(**params)

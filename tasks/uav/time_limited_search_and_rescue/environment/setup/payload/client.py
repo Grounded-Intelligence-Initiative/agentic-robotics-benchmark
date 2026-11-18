@@ -25,9 +25,3 @@ class Client:
 
     def act(self, action):
         return self.request("act", action=action)
-
-    def advance(self):
-        return self.request("advance")
-
-    def report(self, frame_id, point):
-        return self.request("report", frame_id=frame_id, point=point)
