@@ -13954,6 +13954,7 @@
      "NPY_DISABLE_CPU_FEATURES": "X86_V4 AVX512_ICL AVX512_SPR",
      "OMP_NUM_THREADS": "1",
      "OPENBLAS_CORETYPE": "Haswell",
+     "OPENBLAS_L2_SIZE": "256",
      "OPENBLAS_NUM_THREADS": "1",
      "P19_WHATIF_SEABED_HALF": null,
      "PYOPENGL_PLATFORM": "osmesa",
@@ -13980,6 +13981,7 @@
      "NPY_DISABLE_CPU_FEATURES": "X86_V4 AVX512_ICL AVX512_SPR",
      "OMP_NUM_THREADS": "1",
      "OPENBLAS_CORETYPE": "Haswell",
+     "OPENBLAS_L2_SIZE": "256",
      "OPENBLAS_NUM_THREADS": "1",
      "P19_WHATIF_SEABED_HALF": null,
      "PYOPENGL_PLATFORM": "osmesa",
@@ -16772,6 +16774,21 @@
    "F": 4
   }
  },
+ "record_amendments": [
+  {
+   "id": "04",
+   "kind": "environment_record",
+   "name": "blas_pin_environment_record",
+   "previous_selection": {
+    "kept_at": "superseded/amendment04_previous/selection.json",
+    "sha256": "4c8793c7759fbf1d59c08921adebf99cc0c109efca9eaa8e56aa48917c8e477c"
+   },
+   "record": "hidden/amendments/04_blas_pin_environment_record.json",
+   "sha256": "16434cc00131a21db66a967deedf1b71b968cb99fadcb44466ec241650591306",
+   "what": "The run-environment records of the freeze (freeze.platform: the maintainer machine and the machine of stages G, O, R, B and the set checks) gain OPENBLAS_L2_SIZE=256, the variable that amendment 04 of the task adds next to OPENBLAS_CORETYPE=Haswell in tests/test.sh and in the practice service's launcher (environment/setup/setup.sh), so that the record names the environment in which the selection's numbers are reproduced from now on.",
+   "written_utc": "2026-11-18T21:44:37Z"
+  }
+ ],
  "rule": {
   "commit": "e7239137b6ba7c3575c908a40064ae2834a6c9f5",
   "commit_time": "2026-11-16T01:42:48-05:00",
