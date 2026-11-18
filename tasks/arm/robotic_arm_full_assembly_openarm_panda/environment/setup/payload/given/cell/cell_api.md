@@ -98,11 +98,19 @@ rgb_w = view.render({"my_joint": 0.5}, "my_camera", 640, 480)
 view.close()
 ```
 
-What it costs here (8 CPUs): opening a session of a full twin of the cell takes about 15-30 s (the display transform's
-lookup table included), its first frame about 3-12 s more, about as long as the cell's own; then a 1280 x 960 frame
-about 0.6-0.9 s with depth (about 1.2-1.5 s through the photo pipeline) and a 640 x 480 frame about 0.3-0.5 s
-(0.45-0.65 s). One Filament session per process at a time: close it before opening the next (a second one is refused).
-Your program may use the layer during an episode too (it finds the hall next to `$ARB_GIVEN_DIR`); it then has 2
-render threads (about 1.0-1.2 s / 1.7-1.8 s and 0.45-0.55 s / 0.6-0.65 s per frame), and the time counts against the
+What it costs here (8 CPUs, a twin of the whole cell): `open_session` takes about 12-30 s (up to about 45 s on a busy
+machine), the display transform's lookup table (about 2 s) included, and the open session holds about 5.5-6.5 GB. Its
+first frame takes about 7-11 s (up to about 17 s on a busy machine): that is the first frame after Filament's context is
+made, which the first session or view of a process pays, and again the next one after the last was closed; the first
+frame of another image size takes about 1-1.5 s more (the photo pipeline renders a slightly larger image per camera; its
+first `top` picture took about 4-19 s here). Then a 1280 x 960 frame takes about 0.45-0.65 s with depth (about 1.1-1.5 s
+through the photo pipeline, 2.5-4 s on a busy machine) and a 640 x 480 frame about 0.25-0.35 s (0.35-0.55 s);
+`open_view` takes about 5-40 s on the same scene and renders as fast. Until you give a state (`sync_from`, `set_state`,
+or `state` in `view.render`), a session or view shows your twin's own pose (`qpos0`: the bodies where your spec puts
+them). One Filament session per process at a time: close it before opening the next (a second one is refused). Closing
+the last one also releases Filament's context and its memory once nothing refers to the closed session (about 0.5-1.6 GB
+stays with the process), so the next session's or view's first frame takes the 7-11 s again. Your program may use the
+layer during an episode too (it finds the hall next to `$ARB_GIVEN_DIR`); it then has 2 render threads (about 0.8-1.05 s
+/ 1.3-3.7 s and 0.35-0.5 s / 0.45-0.65 s per frame, its first frame about 7-11 s), and the time counts against the
 episode's wall clock. MuJoCo's classic renderer stays available: the render layer's MuJoCo backend
 (`render.backends.get_backend("mujoco")`) and `mujoco.Renderer`.

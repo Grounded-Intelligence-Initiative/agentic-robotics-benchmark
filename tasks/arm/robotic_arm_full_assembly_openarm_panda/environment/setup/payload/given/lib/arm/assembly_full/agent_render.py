@@ -4,9 +4,11 @@ module holds the shared parts: the session class (`FilamentAgentSession`), the r
 transform's lookup table, the steel workbench frame and the scenery folder's lookup.
 
 MuJoCo's Filament renderer (physically based, Vulkan; on the CPU through Mesa's lavapipe) in the baked factory hall.
-Every frame copies the state by joint name, updates the Filament scene and renders RGB as an exact off-axis pinhole
-(the MuJoCo backend's frustum), then the AgX display transform through an 8-bit lookup table; depth comes from the
-MuJoCo backend on the same geometry (room meshes without textures). One open session per process.
+Every frame copies the state by joint name, updates the Filament scene and renders RGB as an exact off-axis pinhole (the
+MuJoCo backend's frustum), then the AgX display transform through an 8-bit lookup table; depth comes from the MuJoCo
+backend on the same geometry (room meshes without textures). One open session per process; until it is given a state a
+session shows the twin's own pose (qpos0), and closing the last open session (or view) of the process releases
+Filament's context and its memory.
 
 Assets: the scenery folder (`_render_dir()`: $ARB_AGENT_RENDER_DIR, else `render` next to $ARB_GIVEN_DIR, else
 ~/render) holds `room/` (an arb-room/1 bundle: room.json, meshes, baked textures, ibl/ibl.ktx) and `oak/` (the bench
@@ -23,7 +25,7 @@ import numpy as np
 
 from render.backends.base import BackendCapabilities, RawView, RenderSession, raw_outputs
 from render.backends.mujoco_backend import MujocoBackend
-from render.filament.view import _OPEN, check_one_session    # the process's open Filament sessions (closed at exit)
+from render.filament.view import _OPEN, _release_context, check_one_session   # the process's Filament sessions
 
 __all__ = ["open_session", "available", "make_look", "FilamentAgentBackend"]
 
@@ -223,6 +225,7 @@ class FilamentAgentSession(RenderSession):
         self.t_open_s = time.perf_counter() - t0
         self._digest = None
         _OPEN.add(self)
+        self.sync_from(self.depth.model, self.depth.data)   # the twin's own pose until a state is given
 
     def set_state(self, state=None, qpos=None, joints=None):
         self.depth.set_state(state, qpos, joints)
@@ -291,7 +294,8 @@ class FilamentAgentSession(RenderSession):
         return {"session": True, "renderer": "filament", "t_open_s": round(self.t_open_s, 2), "room": self.room_record.get("room")}
 
     def close(self):
-        """Free the Filament objects in dependency order (the context outlives every session: _shutdown)."""
+        """Free the Filament objects in dependency order, then (no other session open) Filament's context itself
+        (render.filament.view._release_context); the context outlives every scene object (and at exit: _shutdown)."""
         if self.scn is None:
             return
         _OPEN.discard(self)
@@ -308,6 +312,9 @@ class FilamentAgentSession(RenderSession):
         self.objs = None
         gc.collect()
         self.depth.close()
+        _SPECS.clear()
+        self.ctx = None
+        _release_context()
 
 
 class FilamentAgentBackend(MujocoBackend):

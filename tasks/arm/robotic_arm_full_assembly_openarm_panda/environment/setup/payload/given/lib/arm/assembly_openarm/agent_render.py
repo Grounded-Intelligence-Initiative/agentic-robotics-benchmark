@@ -12,17 +12,23 @@ bench); what the cell draws per run (the hall's brightness) is an argument here.
 
 `cam` is a render.spec.CameraSpec (pixels fx fy cx cy, world_T_cam in OpenCV axes: x right, y down, z forward; lens
 distortion only through the photo pipeline). One session per scene and one open session per process (close it before
-opening the next). The render model is your MjSpec (bodies and joint names as in your physics) without the MuJoCo-only
-scenery (geoms named `floor`, `backdrop_*`, `bench_leg_*`, `bench_apron_*`, `bench_shelf`, and every geom in a group
-above 2), plus the steel workbench frame under the 1.6 x 1.4 m bench top, the factory room bundle (Cycles-baked
-lightmaps on the hall, its lamps lighting the live objects, its HDR image light) and the look (`agent_look.json` +
-the material classes below; the scanned oak maps on the bench top geom `table_top` of material `mat_bench`). The datum
-boards (a checkerboard on the bench, one on the gallows' foot plate, a plate on each Panda's hand: physical facts the
-cell manual documents) are part of your twin: `render.scale_refs.checkerboard` + `add_to_spec` draw them, their
-materials named `<board>__*` (`bench_board`, `fixture_board`, `hand_plate_left`, `hand_plate_right`). Your scene's own
-lights are replaced by the hall's. RGB from Filament as an exact pinhole, depth from the MuJoCo backend on the same
-geometry; lens distortion, noise, blur, vignetting, colour jitter and the depth-sensor model in render/postprocess.py.
-`exposure_factor` scales the exposure (the cell's hall is up to about +-20 % brighter or darker from run to run).
+opening the next): it is compiled once (about 12-30 s on 8 CPUs for a twin of the whole cell, up to about 45 s on a busy
+machine, the AgX display transform's 8-bit lookup table, about 2 s, included) and holds about 5.5-6.5 GB while open;
+until you give it a state it shows your twin's own pose (qpos0). The first frame after Filament's context is made takes
+about 7-11 s, later ones about 0.45-0.65 s (1280 x 960) and 0.25-0.35 s (640 x 480) with depth (longer on a busy
+machine). Closing the last open session (or view) of the process releases Filament's context and its memory, so the next
+one's first frame takes that long again. The render model is your MjSpec (bodies and joint names as in your physics)
+without the MuJoCo-only scenery (geoms named `floor`, `backdrop_*`, `bench_leg_*`, `bench_apron_*`, `bench_shelf`, and
+every geom in a group above 2), plus the steel workbench frame under the 1.6 x 1.4 m bench top, the factory room bundle
+(Cycles-baked lightmaps on the hall, its lamps lighting the live objects, its HDR image light) and the look
+(`agent_look.json` + the material classes below; the scanned oak maps on the bench top geom `table_top` of material
+`mat_bench`). The datum boards (a checkerboard on the bench, one on the gallows' foot plate, a plate on each Panda's
+hand: physical facts the cell manual documents) are part of your twin: `render.scale_refs.checkerboard` + `add_to_spec`
+draw them, their materials named `<board>__*` (`bench_board`, `fixture_board`, `hand_plate_left`, `hand_plate_right`).
+Your scene's own lights are replaced by the hall's. RGB from Filament as an exact pinhole, depth from the MuJoCo backend
+on the same geometry; lens distortion, noise, blur, vignetting, colour jitter and the depth-sensor model in
+render/postprocess.py. `exposure_factor` scales the exposure (the cell's hall is up to about +-20 % brighter or darker
+from run to run).
 """
 import json
 import math
@@ -150,6 +156,14 @@ class PairSession(FA.FilamentAgentSession):
             return rgb.copy()
         idx = (rgb[..., 0].astype(np.int32) << 16) | (rgb[..., 1].astype(np.int32) << 8) | rgb[..., 2]
         return self.lut[idx]
+
+    def close(self):
+        """The full-arm session's close (Filament's context goes with the process's last open session or view), then
+        the pair's registered depth twin."""
+        was_open = self.scn is not None
+        FA.FilamentAgentSession.close(self)
+        if was_open:
+            _SPECS.clear()
 
 
 def open_session(spec, exposure_factor=1.0, render_dir=None, content_files=(), lod="full"):
