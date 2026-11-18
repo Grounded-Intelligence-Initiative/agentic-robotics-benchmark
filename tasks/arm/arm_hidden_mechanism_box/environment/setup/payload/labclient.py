@@ -19,7 +19,9 @@ The graded episode (one per session; see the task's instructions):
         lab.graded_finish()                # ends it now
     The graded episode lives in the lab, not in your connection: closing the connection (or this
     client) leaves it where it is, and a later connection resumes it. One connection holds it at a
-    time; another one gets the error `graded_busy` until the first one closes.
+    time; another one gets the error `graded_busy` until the first one closes. Starting it ends lab
+    practice: every open trial ends then, and reset (and execute) answer `practice_closed` for the
+    rest of the session (hello and budget still answer).
 
 Command line:
     python3 labclient.py hello | budget

@@ -105,7 +105,7 @@ otherwise the boxes behave deterministically. Lab episodes never end early, and 
 reports scores, stages or part positions: only observations. A step takes about 0.01 s plus about
 0.07 s per image; one with all three images returns about 0.8 MB. When the budget is used up,
 `reset` answers `budget_exhausted`. The lab boxes are exactly the boxes you are scored on. The lab
-also serves the graded episode (below); lab trials stay available for the whole session.
+also serves the graded episode (below); its trials end when the graded episode starts.
 
 ## Stages and credit
 
@@ -137,7 +137,10 @@ The calls (`labclient.py`; the requests are JSON lines on the lab socket, `{"op"
 
 - `obs = lab.graded_start()`: starts the graded episode and returns its first observation (all three images). It
   can be started **once per session**: the start is recorded before anything is simulated and is never given back,
-  whatever happens afterwards (a crash of your script, a lost connection).
+  whatever happens afterwards (a crash of your script, a lost connection). **Starting it ends lab practice**: every
+  open lab trial ends at that moment, and `reset` is refused (`practice_closed`) for the rest of the session, as no
+  practice happens during a graded run (`hello` and `budget` still answer). Your own tools stay available: the dev
+  sim `box_env.py`, the practice box, the practice grader and anything you wrote.
 - `obs, done = lab.graded_step(action)`: one control step (0.1 s simulated) with an action in the format above;
   `obs` is the next observation and `done` is true once the episode has ended. A malformed action is refused
   (`bad_action`) and simulates nothing.
