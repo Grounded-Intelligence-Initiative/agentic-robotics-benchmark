@@ -378,6 +378,12 @@
     "spec_hash": "sha256:aa97c970e3cbbe9c6f8c3c1d25d7881f1fa315cc126669b894a5d6d0d5b009d1"
   },
   {
+    "content_digest": "sha256:dd3c32644f869826914372663adc796a187c8422337dc2ade0b78a5c1b0f5967",
+    "since": "2026-11-18T19:42:44Z",
+    "slug": "quadruped_environment_twin_from_real_photos",
+    "spec_hash": "sha256:383367afeeb29cf92ef74414cf1d140e01ae25f4de5520eefff508fbfa185515"
+  },
+  {
     "content_digest": "sha256:5a1448b649b00eb5ab761888745f50d451806b0e3a935d1a9d82b987791ff332",
     "since": "2026-11-18T06:36:31Z",
     "slug": "quadruped_full_assembly_12dof_ur10e",
@@ -406,6 +412,12 @@
     "since": "2026-11-18T19:33:30Z",
     "slug": "quadruped_hazardous_plant_inspection",
     "spec_hash": "sha256:eb4760a3a5232e9d56a45752e4472d0cab5887213597c7d333359a4b53814df2"
+  },
+  {
+    "content_digest": "sha256:dc18ee960769c267358e4636dc22f19e06eb4a64fb8d17e06f216c25dcf6da17",
+    "since": "2026-11-18T20:17:22Z",
+    "slug": "racecar_full_assembly_tenth_scale_ur10e",
+    "spec_hash": "sha256:241b9f8f8c1a1c3f270838176f26134be01799a1453ee09113f25249270b5747"
   },
   {
     "content_digest": "sha256:94e424c327992c1c2ffafec559c80d549bbd91b1589e610b3d0824a2e12c05ae",
@@ -520,6 +532,12 @@
     "since": "2026-11-09T08:27:34Z",
     "slug": "robotic_arm_environment_twin_from_real_photo",
     "spec_hash": "sha256:2cdb12dced10ea1abc0cb022ef25a8ee6284edad3a3090b54a383461c29ef9af"
+  },
+  {
+    "content_digest": "sha256:ace2d6b475a3db4a3884ba740bb53cf8710d8ec765a1b0acc7d7a290c6ea5376",
+    "since": "2026-11-18T19:54:06Z",
+    "slug": "robotic_arm_full_assembly_openarm_panda",
+    "spec_hash": "sha256:7aa524faa440cb734da4a906bbd5703543b3d397d386d72cf165e0e22db58762"
   },
   {
     "content_digest": "sha256:c0a39344dee76a4ca084fe6dcdefc2ae36ce27cda9c601aa36454fd0b90ffd4f",
