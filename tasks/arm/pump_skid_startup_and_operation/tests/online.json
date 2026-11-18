@@ -1,0 +1,15 @@
+{
+ "note": "the online variant's graded episode, for the verifier's cross-check of the record (tests/verify.py). The graded episode is one episode of the offline grader's fixed hidden set (hidden/seeds.json: eight sites, ep01..ep08 in the grader's order), drawn once with OS entropy; the episode and its seed live root-only in environment/setup/online/episode.json, where the graded episode's service reads them. seed_sha256 = sha256 of the seed's decimal string.",
+ "format": "arb-online-record/1",
+ "task": "pump_skid_startup_and_operation",
+ "episode": "ep08",
+ "seed_sha256": "c8d660a7f41a9dab233949e4c56064ad14465678a2e496a8594428a0d5f7a3de",
+ "draw": {
+  "when_utc": "2026-11-18T04:35:03Z",
+  "from": "hidden/seeds.json['seeds'] (sha256 e05f8a872156414f2feee87b8a4f9d434e971d0c46c56f25657403a8bd7a333b), the offline grader's 8 hidden episodes in order",
+  "how": "python3: secrets.randbelow(8) (OS entropy), once; index 7 -> ep08"
+ },
+ "record": "/var/lib/arb-online/record.json",
+ "prep_s": 14400,
+ "graded_s": 10800
+}
