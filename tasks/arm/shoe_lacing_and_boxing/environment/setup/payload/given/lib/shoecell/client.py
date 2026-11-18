@@ -14,6 +14,16 @@
 Every method is one JSON-lines request on this process's original stdout, answered on stdin by the grader's
 physics server. The launcher rebinds `sys.stdout` to stderr first, so ordinary prints never corrupt the wire.
 A reply carrying "error" raises CellError (a `forbidden` error is counted by the grader as an illegal call).
+
+The graded episode is the same cell behind the graded service's unix socket: `connect_graded()` returns the same
+proxy (a `GradedCell`), from any process of yours, plus `status()`, `start()` and `close()`:
+
+    from shoecell.client import connect_graded
+    with connect_graded() as cell:                     # one client at a time: CellError("busy: ...") otherwise
+        print(cell.status())                           # started, ended, steps, sim time, time left in each window
+        cell.start()                                   # once per session: starts the graded episode
+        cell.step(20)                                  # ... the calls above; cell.finish() ends the graded episode
+    # leaving the block closes the connection; the episode stays where it is and the next connection resumes it
 """
 
 import base64
@@ -23,7 +33,10 @@ import os
 import sys
 import traceback
 
-__all__ = ["Cell", "CellError", "decode_frame", "connect_stdio", "main", "BOOTSTRAP", "launcher_argv"]
+__all__ = ["Cell", "CellError", "GradedCell", "GRADED_SOCKET", "decode_frame", "connect_stdio", "connect_graded", "main",
+           "BOOTSTRAP", "launcher_argv"]
+
+GRADED_SOCKET = "/run/arb-online/cell.sock"
 
 BOOTSTRAP = ("import sys; sys.path.insert(0, sys.argv[1]); from shoecell.client import main; "
              "sys.exit(main(sys.argv[2:]))")
@@ -137,6 +150,101 @@ def connect_stdio():
         return inp.readline()
 
     return Cell(send, recv)
+
+
+class GradedCell(Cell):
+    """The graded episode's cell (`connect_graded`): the proxy's calls over the graded service's unix socket, plus
+    `status()`, `start()` and `close()`. A reply carrying "error" raises CellError("<code>: <what it means>")."""
+
+    def __init__(self, sock):
+        self._sock = sock
+        self._buf = b""
+        self.greeting = None
+        Cell.__init__(self, self._sock_send, self._sock_recv)
+
+    def _sock_send(self, text):
+        self._sock.sendall(text.encode("utf-8"))
+
+    def _sock_recv(self):
+        while b"\n" not in self._buf:
+            chunk = self._sock.recv(1 << 20)
+            if not chunk:
+                return ""
+            self._buf += chunk
+        line, self._buf = self._buf.split(b"\n", 1)
+        return line.decode("utf-8")
+
+    def _call(self, method, **params):
+        if self._sock is None:
+            raise CellError("the graded connection is closed")
+        self._id += 1
+        try:
+            self._send(json.dumps({"id": self._id, "method": method, "params": params}) + "\n")
+            line = self._recv()
+        except OSError as e:
+            self.close()
+            raise CellError("the graded connection failed: %s" % e)
+        if not line:
+            self.close()
+            raise CellError("the graded cell closed the connection")
+        reply = json.loads(line)
+        if "error" in reply:
+            raise CellError(str(reply["error"]) + (": " + str(reply["detail"]) if reply.get("detail") else ""))
+        if reply.get("id") != self._id:
+            raise CellError("reply id mismatch")
+        return reply.get("result")
+
+    def status(self):
+        """`started`, `ended`, `end_reason`, `steps`, `sim_time`, `camera_frames_used`, `prep_left_s` (time left to
+        start the graded episode), `graded_left_s` (time left in its window once started), `can_start`."""
+        return self._call("status")
+
+    def start(self):
+        """Starts the graded episode: once per session, charged before anything is simulated, never given back."""
+        return self._call("start")
+
+    def close(self):
+        """Closes the connection; the graded episode stays where it is."""
+        if self._sock is not None:
+            try:
+                self._sock.close()
+            except OSError:
+                pass
+            self._sock = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+        return False
+
+
+def connect_graded(path=None, timeout=None):
+    """Connect to the graded episode's cell (the graded service, `GRADED_SOCKET`; one client at a time). `timeout`:
+    seconds per request (None: as long as the request takes; a long step takes seconds). Raises CellError when the
+    service cannot be reached or another client is connected (`busy`)."""
+    import socket
+    path = path or os.environ.get("ARB_GRADED_SOCKET") or GRADED_SOCKET
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        sock.settimeout(30.0)
+        sock.connect(path)
+        cell = GradedCell(sock)
+        hello = cell._recv()
+    except OSError as e:
+        sock.close()
+        raise CellError("the graded cell cannot be reached at %s: %s" % (path, e))
+    if not hello:
+        sock.close()
+        raise CellError("the graded cell closed the connection")
+    greeting = json.loads(hello)
+    if "error" in greeting:
+        sock.close()
+        raise CellError(str(greeting["error"]) + (": " + str(greeting["detail"]) if greeting.get("detail") else ""))
+    sock.settimeout(timeout)
+    cell.greeting = greeting
+    return cell
 
 
 def launcher_argv(python, lib_dir, program_dir, module="packer"):
