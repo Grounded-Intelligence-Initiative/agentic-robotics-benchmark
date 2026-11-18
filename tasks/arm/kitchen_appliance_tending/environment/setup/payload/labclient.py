@@ -12,7 +12,7 @@ Python 3 standard library only; numpy is used only if you pass numpy arrays or a
         out = lab.execute("inst_a", plan)  # costs ONE trial; runs an open-loop plan
 
 The graded episode (one per session; see the task's instructions):
-        obs = lab.graded_start()           # once: starts it (never refunded) -> its first observation
+        obs = lab.graded_start()           # once: freezes the submission folder, starts it -> first obs
         obs, done = lab.graded_step(a)     # one simulated step of the graded episode
         obs, done = lab.graded_observe()   # the latest observation again (nothing is simulated)
         print(lab.graded_status())         # started / ended, steps, simulated time, time left
@@ -149,7 +149,9 @@ class LabClient:
 
     # -- the graded episode
     def graded_start(self):
-        """Start the graded episode (once per session, never refunded); returns its first observation."""
+        """Start the graded episode (once per session, never refunded); returns its first observation. It first
+        freezes /home/user/submission (the program graded is the one there now); if that copy fails the episode
+        does not start and nothing is charged (`snapshot_failed`)."""
         return self.request({"op": "graded_start"})["obs"]
 
     def graded_step(self, action):

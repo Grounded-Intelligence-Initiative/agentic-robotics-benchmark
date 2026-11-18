@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# Privileged reference solution: a scripted controller that knows the hidden units (solution/oracle/units.json and
-# their models) and is told their placement and control states by the oracle token's truth. It builds its own copy of
-# the scene each episode (reference.Shadow) and runs one scripted primitive per request.
-# Online graded episode: the controller plays the session's graded episode itself, through the agent-side client
-# (labclient.py in the agent home), driven by solution/graded_run.py: graded_start with the oracle token (the lab then
-# adds `truth` to every graded observation, as the offline grader does for a tokened submission), one graded_step per
-# controller reply until the episode ends (its third request closed), then graded_finish if it is still running.
+# Privileged reference solution, dual mode: a scripted controller that knows the hidden units (solution/oracle/units.json
+# and their models) and is told their placement and control states by the oracle token's truth. It builds its own copy
+# of the scene each episode (reference.Shadow) and runs one scripted primitive per request.
+# 1. The program item, as main's solve.sh: the controller and .oracle_token go into the submission folder (main's grader
+#    gives a tokened submission the truth in every observation).
+# 2. The graded episode: the same controller plays it through the agent-side client (labclient.py in the agent home),
+#    driven by solution/graded_run.py: graded_start with the oracle token (which freezes the submission folder just
+#    filled; the lab then adds `truth` to every graded observation), one graded_step per controller reply until the
+#    episode ends (its third request closed), then graded_finish if it is still running. The order matters: the program
+#    frozen at the start must be the reference program.
 # Runs as the agent account with the agent's timeouts and network policy; spends no lab trials.
 set -euo pipefail
 HOME_DIR="${ALE_HOME:-/home/user}"
