@@ -64,13 +64,19 @@ noise, blur, vignetting, colour response and the depth-sensor model are the rend
   control box with its pendant, the floor tape and the hall are added, and the hall's lamps replace your scene's
   lights. The look's material classes are named in `agent_render.make_look` (the arm's, the fixtures' `mat_stand`,
   `mat_shelf`, `mat_tray`, the boards', the props'); materials named `mat_vis_<key>` take metallic and roughness from
-  `kit["materials"][<key>]` when you pass such a table, else the look's default terms. `exposure_factor` stands for
-  the hall's brightness (the cell's own varies by up to about 20 % between runs). The session follows the render
-  layer's interface: `sync_from(model, data)` copies your physics state by joint name,
+  a material table `kit["materials"][<key>]`: by default the one in `~/given/kit.json` (`agent_render.given_kit()`:
+  the car model's materials by key, with the terms the cell's cameras render them with; the part files carry no
+  materials), else the `kit` you pass (`kit={}`: none); a material without an entry gets the look's default terms.
+  `exposure_factor` stands for the hall's brightness (the cell's own varies by up to about 20 % between runs). The
+  session follows the render layer's interface: `sync_from(model, data)` copies your physics state by joint name,
   `render_raw_views([cam], ("rgb", "depth"))` gives the pinhole images,
   `render([cam], photo=..., seed=k, outputs=("rgb", "sensor_depth"))` runs the photo pipeline.
 * `render.filament.view.open_view(spec_or_mjcf_path, room=..., look=..., surface=..., bench_xy=...)`: any scene of
-  yours. `view.render(state, camera, width=None, height=None, depth=False)` returns an RGB uint8 array (H x W, three
+  yours, rendered exactly as given: none of the cell's props are added (no robot table frame, control box or floor
+  tape), your scene's own floor and walls stay unless `drop_prefixes` names them, and only geoms in a group above two
+  are left out; with `room`, the hall is added and its lamps replace your scene's lights (unless `keep_lights`). A
+  twin of this cell goes through `agent_render.open_session` instead.
+  `view.render(state, camera, width=None, height=None, depth=False)` returns an RGB uint8 array (H x W, three
   channels; with `depth=True` also depth float32 H x W); `state` is an `MjData` (joints copied by name), a
   `(model, data)` pair, a dict `{joint name: value}` or None; `camera` is a camera name of the model (with `width`,
   `height`), a `CameraSpec` or a dict `{"width", "height", "fx", "fy", "cx", "cy", "world_T_cam"}` (`"K"` may stand
@@ -83,10 +89,12 @@ An example, with `~/given/lib` on `sys.path`, `spec` your `MjSpec` of the cell, 
 `cam` a `CameraSpec` (`CameraSpec.look_at(name, eye=..., target=..., width=..., height=..., hfov_deg=...)`):
 `from arm.assembly_car import agent_render`; `session = agent_render.open_session(spec)`;
 `session.sync_from(model, data)`; `raw = session.render_raw_views([cam], ("rgb", "depth"))[0]` (`raw.rgb`,
-`raw.depth`); `session.close()`; then `from render.filament.view import open_view`;
-`view = open_view(spec, room=os.path.expanduser("~/render/room"), surface=os.path.expanduser("~/render/oak"), look=agent_render.make_look(), bench_xy=agent_render.DEFAULT_BENCH["centre_xy"])`;
-`rgb, depth = view.render(data, cam, depth=True)`;
-`rgb_w = view.render({"ur/shoulder_pan_joint": pan}, "ur/wrist", width, height)`; `view.close()`.
+`raw.depth`); `session.close()`; then, for a scene of yours that is not the cell twin (`part_spec`, its `part_data`),
+`from render.filament.view import open_view`;
+`view = open_view(part_spec, room=os.path.expanduser("~/render/room"), surface=os.path.expanduser("~/render/oak"), look=agent_render.make_look(), bench_xy=agent_render.DEFAULT_BENCH["centre_xy"])`;
+`rgb, depth = view.render(part_data, cam, depth=True)`;
+`rgb_w = view.render({"my_hinge": angle}, "my_camera", width, height)` (a joint and a camera of `part_spec`);
+`view.close()`.
 
 What it costs here: opening a session of a full twin of the cell, with its first frame, takes about as long as an
 episode's first frame in the cell (about 14-15 s); then a frame takes about as long as one of the cell's

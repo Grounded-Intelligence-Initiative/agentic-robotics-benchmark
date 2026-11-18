@@ -22,12 +22,14 @@ lightmaps on the hall, its lamps lighting the live objects, the room's HDR image
 (`agent_look.json` and `make_look`: the hall's calibrated light units, exposure and filmic display transform; PBR
 terms per material class: the arm, the fixtures (`mat_stand`, `mat_shelf`, `mat_tray`), the boards, the props; the
 scanned oak maps on the bench top geom `table_top` of material `mat_bench`). Materials named `mat_vis_<key>` take
-metallic / roughness from `kit["materials"][<key>]` when you pass a `kit` dict with such a table (the roughness
-clamped to the look's "kit_materials" range); without one they get the look's default terms. Your scene's own lights
-are replaced by the hall's. Depth comes from the MuJoCo backend on the same geometry (room meshes without textures):
-metric and registered with the RGB. Lens distortion, noise, blur, vignetting, colour jitter and the depth-sensor model
-are render/postprocess.py (PhotoSpec), the same code as the MuJoCo path. `exposure_factor` scales the exposure (the
-cell's hall is up to about +-20 % brighter or darker from run to run).
+metallic / roughness from a material table `kit["materials"][<key>]` (the roughness clamped to the look's
+"kit_materials" range): by default the given kit.json's table (`given_kit()`: the car model's materials by key, with
+the terms the cell's cameras render them with), else the `kit` dict you pass (`kit={}`: none); a material without an
+entry gets the look's default terms. Your scene's own lights are replaced by the hall's. Depth comes from the MuJoCo
+backend on the same geometry (room meshes without textures): metric and registered with the RGB. Lens distortion,
+noise, blur, vignetting, colour jitter and the depth-sensor model are render/postprocess.py (PhotoSpec), the same code
+as the MuJoCo path. `exposure_factor` scales the exposure (the cell's hall is up to about +-20 % brighter or darker
+from run to run).
 
 Assets: the scenery folder (`_render_dir()`: $ARB_AGENT_RENDER_DIR, else `render` next to $ARB_GIVEN_DIR, else
 ~/render) holds `room/` (an arb-room/1 bundle: room.json, meshes, baked textures, ibl/ibl.ktx) and `oak/` (the bench
@@ -46,7 +48,8 @@ from render.backends.base import BackendCapabilities, RawView, RenderSession, ra
 from render.backends.mujoco_backend import MujocoBackend
 from render.filament.view import _OPEN, check_one_session    # the process's open Filament sessions (closed at exit)
 
-__all__ = ["open_session", "available", "FilamentAgentBackend", "make_look", "look_config", "kit_material_rules", "DEFAULT_BENCH"]
+__all__ = ["open_session", "available", "FilamentAgentBackend", "make_look", "look_config", "kit_material_rules", "given_kit",
+           "DEFAULT_BENCH"]
 
 LOOK_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent_look.json")
 # the car materials' rule when agent_look.json has no "kit_materials" block
@@ -123,7 +126,25 @@ def kit_material_rules(kit, rule=None):
     return out
 
 
+def given_kit():
+    """The given kit.json (its "materials" table: the metallic / roughness of the car model's materials by key, the
+    terms the cell's cameras render them with): $ARB_GIVEN_DIR/kit.json (where the cell runs your program), else the
+    kit.json of the given folder this library is in, else ~/given/kit.json; None when there is none."""
+    paths = [os.path.join(os.environ["ARB_GIVEN_DIR"], "kit.json")] if os.environ.get("ARB_GIVEN_DIR") else []
+    paths += [os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "kit.json"),
+              os.path.expanduser("~/given/kit.json")]
+    for p in paths:
+        if os.path.isfile(p):
+            with open(p, encoding="utf-8") as f:
+                return json.load(f)
+    return None
+
+
 def make_look(exposure_factor=1.0, kit=None, render_dir=None):
+    """The cell's look: agent_look.json and the material classes below. `kit` is the material table of the car's
+    materials `mat_vis_<key>`: None = the given kit.json's (given_kit()), a dict with "materials", or {} for none."""
+    if kit is None:
+        kit = given_kit()
     from render.filament.backend import Look
     cfg, kit_rule = look_config()
     look = Look(name="factory-agent-car", version="1")
@@ -439,7 +460,9 @@ def open_session(spec, exposure_factor=1.0, kit=None, bench=None, render_dir=Non
     Filament in the factory hall, depth from MuJoCo on the same geometry.
 
     exposure_factor  the hall's brightness (1.0 = nominal; the cell's own varies by up to about +-20 % between runs)
-    kit              None, or a dict with "materials": {key: {"metallic", "roughness"}} for your materials `mat_vis_<key>`
+    kit              the material table for your materials `mat_vis_<key>`: None (default) = the given kit.json's
+                     ("materials": {key: {"metallic", "roughness"}}, the terms the cell's cameras use), a dict of
+                     yours with "materials", or {} for none (the look's default terms)
     bench            the robot table {"size_xy", "centre_xy", "thickness", "floor_z"} (default DEFAULT_BENCH, the cell's)
     render_dir       the scenery folder with room/ and oak/ (default: _render_dir())
     content_files    files or folders whose bytes enter the frames' provenance digest (e.g. your meshes)

@@ -3,6 +3,7 @@
  "car": "the tenth-scale autonomous race car: a tenth-scale, four-wheel-drive touring-class car with an autonomy deck",
  "frames": "every file of parts/ is in millimetres. A loose unit's file shows the unit in the attitude its `delivered` text names, which is the attitude in which it is presented in the cell: its lowest point on z = 0, its footprint's smallest enclosing rectangle centred on the origin with its long side along x (the wheel: its axis on the z axis). roller.stl is in the car's own frame: origin on the ground plane under the middle of the rear axle, x forward, y to the left, z up, the wheel hubs at the angle of the drawn model. com_mm = the centre of mass in the file's frame; size_mm = the file's bounding box",
  "geometry": "the files show the car as it is drawn (its visible surface, simplified in triangle count only). The cell's collision shapes differ from them: cell/cell_manual.md, Collision model",
+ "appearance": "materials = the surface terms of the car model's materials by material key (metallic and roughness), the terms the cell's cameras render the car with; nothing else about them. The part files carry no materials. The cell cameras' render session in the given library (arm.assembly_car.agent_render) applies this table to materials named mat_vis_<key>",
  "mass": "mass_g = the mass the cell simulates for the unit, rounded to 1 g. The roller's mass_g and com_mm are those of its four wheel hubs, the only parts of it that move: the rest of the rolling chassis is clamped rigidly on the work stand and its mass plays no role in the cell",
  "identical_units": "units with the same id are interchangeable: any wheel fits any hub",
  "not_in_the_kit": "the wheel nuts and the battery hold-down bar with its two pins are fitted at another station; the photographs of the finished car show them",
@@ -172,5 +173,239 @@
    181.2,
    142.7
   ]
+ },
+ "materials": {
+  "m00": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m01": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m02": {
+   "metallic": 0.8601,
+   "roughness": 0.6606
+  },
+  "m03": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m04": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m05": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m06": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m07": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m08": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m09": {
+   "metallic": 0.0,
+   "roughness": 0.2212
+  },
+  "m10": {
+   "metallic": 0.1865,
+   "roughness": 0.7642
+  },
+  "m11": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m12": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m13": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m14": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m15": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m16": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m17": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m18": {
+   "metallic": 0.0984,
+   "roughness": 0.2409
+  },
+  "m19": {
+   "metallic": 0.0,
+   "roughness": 0.2
+  },
+  "m20": {
+   "metallic": 0.2073,
+   "roughness": 0.7306
+  },
+  "m21": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m22": {
+   "metallic": 0.0,
+   "roughness": 0.5
+  },
+  "m23": {
+   "metallic": 0.3316,
+   "roughness": 0.2782
+  },
+  "m24": {
+   "metallic": 0.0,
+   "roughness": 0.5
+  },
+  "m25": {
+   "metallic": 0.0,
+   "roughness": 0.6347
+  },
+  "m26": {
+   "metallic": 0.5078,
+   "roughness": 0.6305
+  },
+  "m27": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m28": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m29": {
+   "metallic": 0.0,
+   "roughness": 0.3196
+  },
+  "m30": {
+   "metallic": 0.0,
+   "roughness": 0.159
+  },
+  "m31": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m32": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m33": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m34": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m35": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m36": {
+   "metallic": 0.0,
+   "roughness": 1.0
+  },
+  "m37": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m38": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m39": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m40": {
+   "metallic": 0.0,
+   "roughness": 0.672
+  },
+  "m41": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m42": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m43": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m44": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m45": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m46": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m47": {
+   "metallic": 0.0,
+   "roughness": 0.8222
+  },
+  "m48": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m49": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m50": {
+   "metallic": 0.0,
+   "roughness": 0.7487
+  },
+  "m51": {
+   "metallic": 0.0,
+   "roughness": 0.1227
+  },
+  "m52": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m53": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m54": {
+   "metallic": 0.0,
+   "roughness": 0.4336
+  },
+  "m55": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  },
+  "m56": {
+   "metallic": 0.0,
+   "roughness": 0.4181
+  },
+  "m57": {
+   "metallic": 0.0,
+   "roughness": 0.5528
+  }
  }
 }
