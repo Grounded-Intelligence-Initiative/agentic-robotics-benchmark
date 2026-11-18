@@ -44,7 +44,7 @@ if expected and Path("/evidence").is_dir():
     private = Path("/var/lib/visual_robotics")
     ledger = json.loads((private/"state.json").read_text())
     grasp = next(e["frame_id"] for e in ledger["events"]
-                 if e["method"] == "act" and e["params"]["action"][3] == 1.)
+                 if e["method"] == "act" and e["params"]["action"][4] == 1.)
     for label, step in (("pre-grasp", grasp-1), ("loaded-flight", grasp+5)):
         for camera in range(2):
             shutil.copy2(private/"frames"/f"{step:04d}-{camera}.png",

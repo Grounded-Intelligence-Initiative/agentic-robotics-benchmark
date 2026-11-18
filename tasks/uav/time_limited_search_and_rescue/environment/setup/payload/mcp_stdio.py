@@ -6,8 +6,8 @@ from client import Client
 TOOLS = [
     {"name": "robot_observe", "description": "Observe onboard downward and forward RGB cameras.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "robot_act", "description": "Move the stabilized UAV in X/Y/Z and command its gripper for 0.2 seconds.",
-     "inputSchema": {"type": "object", "properties": {"action": {"type": "array", "minItems": 4, "maxItems": 4,
+    {"name": "robot_act", "description": "Move the stabilized UAV by [right,forward,up,yaw_left,grip] for 0.2 seconds.",
+     "inputSchema": {"type": "object", "properties": {"action": {"type": "array", "minItems": 5, "maxItems": 5,
                                                                   "items": {"type": "number", "minimum": -1, "maximum": 1}}},
                      "required": ["action"], "additionalProperties": False}},
 ]

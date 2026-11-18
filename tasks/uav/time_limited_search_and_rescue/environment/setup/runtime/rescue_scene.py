@@ -1,24 +1,24 @@
-"""Procedural training wing, occupancy model, and its physical scale plan."""
+"""Procedural local-view training wing and its rendered collision geometry."""
 from collections import deque
 from dataclasses import dataclass
+from io import BytesIO
 import xml.etree.ElementTree as ET
 
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 from pbr_scene import prop
 from scene_assets import asset_root, geom, materials, robot_meshes
 
 SIDE = 5
 PITCH = 1.72
-MODULE = .29
-PLAN = (-PITCH, 0.)
-DOWN_OFFSET = .20
-START = (0., 0., 1.24)
-BOUNDS = ((-4.15, 4.15), (-.72, 7.61), (.39, 1.65))
+START = (0., 0., 1.30, 0.)
+BOUNDS = ((-4.15, 4.15), (-.72, 7.61), (.39, 2.09))
 SLOT_SILL, SLOT_LINTEL = .43, .89
 RAISED_SILL = .73
-WALL_TOP = 2.05
-HOME = (2, 0)
+DECK, LANDING, WALL_TOP = .60, .99, 2.42
+DECK_Y = 2.5*PITCH
+APRON = .63
 DARK = (.075, .112, .126, 1)
 WALL = (.65, .70, .70, 1)
 WHITE = (.94, .95, .91, 1)
@@ -26,6 +26,8 @@ AMBER = (.95, .67, .08, 1)
 TEAL = (.022, .74, .39, 1)
 BLUE = (.05, .32, .84, 1)
 ORANGE = (1., .26, .018, 1)
+PURPLE = (.72, .19, .86, 1)
+RED = (.90, .045, .045, 1)
 
 
 def edge(a, b):
@@ -34,6 +36,10 @@ def edge(a, b):
 
 def xy(cell, pitch=PITCH):
     return np.array([(cell[0]-2)*pitch, cell[1]*pitch])
+
+
+def floor_z(cell):
+    return DECK if cell[1] >= 3 else 0.
 
 
 def interior_edges():
@@ -65,6 +71,7 @@ class Layout:
     outlet: int
     rooms: tuple
     pod: tuple
+    safety: tuple
     tone: float
 
 
@@ -100,10 +107,20 @@ def layout_for(seed):
     raised.update(e for e in halls if (inlet, 1) in e)
     from_inlet = distances((inlet, 1), halls)
     from_outlet = distances((outlet, 1), halls)
-    deep = sorted((p for p in from_inlet if p[1] >= 2 and p[0] != outlet),
+    deep = sorted((p for p in from_inlet if p[1] >= 3 and p[0] != outlet),
                   key=lambda p: min(from_inlet[p], from_outlet[p]), reverse=True)[:8]
     rooms = tuple(deep[i] for i in rng.choice(len(deep), size=3, replace=False))
     target = rooms[int(rng.integers(3))]
+    # On a cycle, never the sole connection. Prefer a shutter that changes
+    # the shortest loaded route, rather than closing an irrelevant dead end.
+    choices = []
+    for e in halls:
+        if any(p[0] == outlet for p in e):
+            continue
+        after = distances((outlet, 1), [other for other in halls if other != e])
+        if len(after) == len(from_outlet):
+            choices.append((after[target]-from_outlet[target], int(e[0][1] >= 3), e))
+    safety = max(choices)[2]
     dx, dy = rng.uniform(-.28, .28, 2)
     yaw = float(rng.uniform(-.50, .50))
     tone = float(rng.uniform(.92, 1.05))
@@ -118,7 +135,8 @@ def layout_for(seed):
         dx, yaw = -dx, -yaw
     px, py = xy(mirror(target)) + (dx, dy)
     return Layout(transformed(halls), transformed(raised), mirror((inlet, 1))[0],
-                  mirror((outlet, 1))[0], tuple(map(mirror, rooms)), (px, py, yaw), tone)
+                  mirror((outlet, 1))[0], tuple(map(mirror, rooms)), (px, py, yaw),
+                  edge(*map(mirror, safety)), tone)
 
 
 def build(layout):
@@ -139,7 +157,8 @@ def build(layout):
             <joint name="x" type="slide" axis="1 0 0" damping="9"/>
             <joint name="y" type="slide" axis="0 1 0" damping="9"/>
             <joint name="z" type="slide" axis="0 0 1" damping="9"/>
-            <camera name="down" pos="0 .20 -.145" fovy="94"/>
+            <joint name="yaw" type="hinge" axis="0 0 1" damping=".65"/>
+            <camera name="down" pos="0 .46 -.145" fovy="94"/>
             <camera name="forward" pos="0 .17 .045" xyaxes="1 0 0 0 .12 .99277" fovy="94"/>
           </body>
           <body name="pod" pos="0 2 .074">
@@ -154,9 +173,11 @@ def build(layout):
           <position name="mx" joint="x" kp="190" kv="16"/>
           <position name="my" joint="y" kp="190" kv="16"/>
           <position name="mz" joint="z" kp="190" kv="16"/>
+          <position name="heading" joint="yaw" kp="25" kv="1.1"/>
         </actuator>
     </mujoco>""")
-    materials(root)
+    asset = materials(root)
+    decals = {}
     w = root.find("worldbody")
     w.find("geom[@name='floor']").set("material", "floor_mat")
     uav = w.find("body[@name='uav']")
@@ -177,7 +198,28 @@ def build(layout):
         geom(w, f"pad_side{side}", pos=(side*.39, 0, .010), size=(.030, .42, .002), rgba=WHITE)
     geom(w, "pad_cross", pos=(0, 0, .010), size=(.39, .030, .002), rgba=WHITE)
 
-    obstacles = []
+    deck_center = (0., (DECK_Y+4.5*PITCH)/2, DECK/2)
+    deck_half = (2.5*PITCH, PITCH, DECK/2)
+    geom(w, "mezzanine", pos=deck_center, size=deck_half, material="floor_mat",
+         rgba=(.72, .83, .86, 1), contype="1", conaffinity="1")
+    obstacles = [("deck", deck_center, deck_half)]
+    shutters = {}
+
+    def sign(text, x, y, z, width=.34):
+        key = text.lower().replace(" ", "_")
+        filename = key+".png"
+        if filename not in decals:
+            im = Image.new("RGB", (256, 64), (27, 42, 48))
+            ImageDraw.Draw(im).text((128, 31), text, anchor="mm", fill=(241, 246, 240),
+                                    font=ImageFont.load_default(size=35))
+            out = BytesIO()
+            im.save(out, format="PNG")
+            decals[filename] = out.getvalue()
+            ET.SubElement(asset, "texture", name=key, type="2d", file=filename)
+            ET.SubElement(asset, "material", name=key, texture=key, texrepeat="1 1")
+        geom(w, f"sign{len(w)}", "plane", (x, y, z+.012), (width, .085, .002), material=key)
+
+    sign("STAGING", 0., -.64, 0.)
 
     def wall(center, half, kind, color=WALL):
         obstacles.append((kind, center, half))
@@ -188,6 +230,8 @@ def build(layout):
         normal = 0 if a[0] != b[0] else 1
         tangent = 1-normal
         gate_half = .51 if route == "inspection" else .56
+        vertical = floor_z(a) != floor_z(b) and min(a[1], b[1]) == 2
+        safety = edge(a, b) == layout.safety
 
         def section(mid, span, lo, hi, kind, color):
             pos, half = [*center, (lo+hi)/2], [.075, .075, (hi-lo)/2]
@@ -198,23 +242,52 @@ def build(layout):
         if route is None:
             section(0., PITCH/2+.026, 0., WALL_TOP, "wall", WALL)
             return
+        color = PURPLE if route == "inspection" else BLUE if route == "cargo" else AMBER if vertical else WHITE
+        for i, (here, there) in enumerate(((a, b), (b, a))):
+            pos = xy(here)+(xy(there)-xy(here))*APRON/PITCH
+            size = [.068, .068, .004]
+            size[tangent] = .153
+            name = f"apron{len(w)}"
+            geom(w, name, pos=(*pos, floor_z(here)+.007), size=size, rgba=color)
+            if safety:
+                shutters.setdefault("warning", []).append(name)
         for side in (-1, 1):
             section(side*(PITCH/2+gate_half)/2, (PITCH/2-gate_half)/2+.014,
                     0., WALL_TOP, "wall", WALL)
         if route == "inspection":
             section(0., gate_half, 0., SLOT_SILL, "inspection", AMBER)
             section(0., gate_half, SLOT_LINTEL, WALL_TOP, "inspection", AMBER)
-        elif route == "raised":
-            section(0., gate_half, 0., RAISED_SILL, "raised", (.57, .47, .18, 1))
+            sign("INSPECTION", *xy((a[0], 0)), 0.)
+        elif vertical:
+            section(0., gate_half, 0., LANDING, "landing", AMBER)
+            section(0., gate_half, 2.28, WALL_TOP, "landing", AMBER)
+        elif route == "raised" and not safety:
+            floor = floor_z(a)
+            section(0., gate_half, floor, floor+RAISED_SILL, "raised", (.57, .47, .18, 1))
         elif route == "cargo":
             x, y = center
             body = ET.SubElement(w, "body", name="cargo_shutter", mocap="true", pos=f"{x} {y} 1.025")
             geom(body, "cargo_leaf", size=(gate_half, .075, 1.025), rgba=BLUE)
+            shutters["cargo"] = len(obstacles)
+            obstacles.append(("cargo", (x, y, 1.025), (gate_half, .085, 1.025)))
+            sign("CARGO", *xy((a[0], 0)), 0.)
             for z in np.linspace(-.90, .90, 9):
                 geom(body, f"shutter_rib{z:.3f}", pos=(0, 0, z), size=(gate_half, .084, .018), rgba=DARK)
             for side in (-1, 1):
                 geom(w, f"cargo_jamb{side}", pos=(x+side*.572, y, 1.025),
                      size=(.030, .10, 1.025), rgba=BLUE)
+        if safety:
+            x, y = center
+            half = [.085, .085, 1.21]
+            half[tangent] = gate_half
+            body = ET.SubElement(w, "body", name="safety_shutter", mocap="true", pos=f"{x} {y} 3.8")
+            geom(body, "safety_leaf", size=half, rgba=RED)
+            for i, z in enumerate(np.linspace(-1., 1., 7)):
+                rib = half.copy()
+                rib[normal], rib[2] = .092, .021
+                geom(body, f"safety_rib{i}", pos=(0, 0, z), size=rib, rgba=DARK)
+            shutters["safety"] = len(obstacles)
+            obstacles.append(("safety", (x, y, 3.8), half))
 
     for y in range(SIDE):
         boundary((-1, y), (0, y))
@@ -231,46 +304,15 @@ def build(layout):
     # Bay paint runs around (not through) the central pickup area.
     for i, room in enumerate(layout.rooms):
         x, y = xy(room)
+        sign("RESCUE BAY", x, y-.43, floor_z(room))
         for side in (-1, 1):
-            geom(w, f"bay{i}_rail{side}", pos=(x+side*.53, y, .005),
+            geom(w, f"bay{i}_rail{side}", pos=(x+side*.47, y, floor_z(room)+.005),
                  size=(.023, .57, .004), rgba=TEAL)
+    for y in (1, 2, 3, 4):
+        label = "CARGO RUN" if y != 3 else "MEZZANINE"
+        sign(label, *xy((layout.outlet, y)), floor_z((layout.outlet, y)))
     for side in (-1, 1):
         x = side*4.48
         prop(root, asset_root(), "utility_box_01", f"cabinet{side}", (x, 0, 0), (.52, .61, .87))
 
-    # This scale model is world geometry visible to both onboard cameras.
-    # Wall segments and door gaps are generated from the same layout as the wing.
-    geom(w, "plan_plinth", pos=(*PLAN, .016), size=(.81, .81, .016), rgba=WHITE)
-    geom(w, "plan_surface", pos=(*PLAN, .034), size=(.767, .767, .004), rgba=DARK)
-
-    def plan_xy(cell):
-        return np.asarray(PLAN)+xy(cell, MODULE)-(0, 2*MODULE)
-
-    def ink(name, pos, size, color, z=.046):
-        return geom(w, "plan_"+name, pos=(*pos, z), size=(*size, .005), rgba=color)
-
-    for i, pos in enumerate(layout.rooms):
-        ink(f"room{i}", plan_xy(pos), (.063, .063), TEAL)
-    ink("home", plan_xy(HOME), (.062, .062), BLUE)
-    for a, b in (list(interior_edges()) + [((x, 0), (x, 1)) for x in range(SIDE)]):
-        normal = 0 if a[0] != b[0] else 1
-        tangent = 1-normal
-        p = (plan_xy(a)+plan_xy(b))/2
-        name = f"{a[0]}_{a[1]}_{b[0]}_{b[1]}"
-        is_entry = a[1] == 0 and a[0] == layout.inlet
-        is_exit = a[1] == 0 and a[0] == layout.outlet
-        if is_entry or is_exit or (a, b) in layout.halls:
-            for side in (-1, 1):
-                mid, sz = p.copy(), [.010, .010]
-                mid[tangent] += side*.11
-                sz[tangent] = .037
-                ink(f"jamb{name}_{side}", mid, sz, WHITE)
-            if is_entry or is_exit or (a, b) in layout.raised:
-                sz = [.015, .015]
-                sz[tangent] = .068
-                ink(name, p, sz, BLUE if is_exit else AMBER)
-        else:
-            sz = [.010, .010]
-            sz[tangent] = .152
-            ink(name, p, sz, WHITE)
-    return ET.tostring(root, encoding="unicode"), obstacles
+    return ET.tostring(root, encoding="unicode"), decals, obstacles, shutters

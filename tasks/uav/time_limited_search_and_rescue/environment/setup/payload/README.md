@@ -2,7 +2,7 @@
 
 Use the declared MCP tools for direct image interaction.
 Import `Client` from `client.py` and call `observe()` or
-`act([dx, dy, dz, grip])`. See the task instructions for the camera and control
+`act([right, forward, up, yaw_left, grip])`. See the instructions for camera and control
 calibration.
 Run code with `/opt/venv/bin/python3`; do not rely on the harness's PATH.
 The endpoint is `/run/visual_robotics/world.sock`.
