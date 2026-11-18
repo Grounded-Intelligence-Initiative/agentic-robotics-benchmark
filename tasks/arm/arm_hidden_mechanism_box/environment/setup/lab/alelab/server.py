@@ -45,16 +45,18 @@ the agent plays itself through these ops; the lab writes its outcome to a record
   * Practice ends when it starts: the start ends every open lab trial, and reset / execute are refused
     (`practice_closed`) for the rest of the session, a restarted worker included (hello and budget still
     answer). Trial ops and the start are serialized by one lock, so no trial advances after the start.
-  * The program freezes at the start (dual mode, when `snapshot_source` is set): before the start is
-    charged the worker asks the root supervisor, over a socketpair made before the fork, to copy the
-    agent's submission into `record_dir`/submission_snapshot (root-owned; the record directory is the lab
-    account's 0700). The supervisor never reads hidden data; it walks the submission by file descriptor
-    with O_NOFOLLOW (no link is followed, whatever the agent swaps in meanwhile), copies only regular files
-    and directories the agent owns, and applies the program's caps (files, bytes): over a cap it copies
-    nothing (`too_large`), with no submission folder `missing`. A failed copy refuses the start and charges
-    nothing (`snapshot_failed`). The record gains snapshot_status, snapshot_files, snapshot_bytes,
-    snapshot_skipped and snapshot_sha256 (sha256 of the lines "<path>\\0<size>\\0<sha256 of content>\\n" of
-    the copied files in sorted path order).
+  * The program freezes at the earlier of the start and the close of the start window (dual mode, when
+    `snapshot_source` is set): before the start is charged, or once `prep_s` have passed without a start
+    (the worker's timer; a failed copy there is retried for about a minute, then recorded as failed), the
+    worker asks the root supervisor, over a socketpair made before the fork, to copy the agent's submission
+    into `record_dir`/submission_snapshot (root-owned; the record directory is the lab account's 0700). The
+    supervisor never reads hidden data; it walks the submission by file descriptor with O_NOFOLLOW (no link
+    is followed, whatever the agent swaps in meanwhile), copies only regular files and directories the agent
+    owns, and applies the program's caps (files, bytes): over a cap it copies nothing (`too_large`), with no
+    submission folder `missing`. A failed copy refuses the start and charges nothing (`snapshot_failed`).
+    The record gains snapshot_trigger (start | prep_window), snapshot_utc, snapshot_status, snapshot_files,
+    snapshot_bytes, snapshot_skipped and snapshot_sha256 (sha256 of the lines
+    "<path>\\0<size>\\0<sha256 of content>\\n" of the copied files in sorted path order).
   * The episode lives in the worker, not in a connection: a disconnect leaves it where it is and any
     later connection resumes it; one connection holds it at a time (another one gets `busy`) until that
     connection closes. Every graded op but graded_status claims it.
@@ -1062,6 +1064,8 @@ class Graded:
         self.dirty = False
         self.snap_sock = None  # the socketpair end to the root supervisor (dual mode: the freeze)
         self.snap_seq = 0
+        self.snap_attempts = 0  # failed freezes at the close of the start window (retried, then recorded)
+        self.snap_retry_at = 0.0
 
     def _request_snapshot(self):
         """Ask the root supervisor to freeze the agent's submission; its reply, or {"status": "failed"}."""
@@ -1115,6 +1119,31 @@ class Graded:
         end = st["ended_mono"] if st["ended"] and st["ended_mono"] is not None else time.monotonic()
         return max(0.0, end - float(st["started_mono"]))
 
+    def _prep_over(self):
+        """The start window has closed (an unreadable state never reports so: nothing is frozen on it)."""
+        st = self.state.data
+        return (not self.state.broken and st["service_start_mono"] is not None
+                and self._since_service() > float(self.cfg["prep_s"]))
+
+    def _freeze_at_window_close(self):
+        """The start window closed without a start: freeze the program now, as a start would have. Under self.lock.
+        A failed copy is retried every 5 s up to 12 times, then recorded as failed (the program item then scores 0)."""
+        snapshot = self._request_snapshot()
+        if snapshot["status"] == "failed":
+            self.snap_attempts += 1
+            if self.snap_attempts < 12:
+                self.snap_retry_at = time.monotonic() + 5.0
+                return
+        st = self.state.data
+        st["snapshot"] = dict(snapshot, trigger="prep_window", utc=time.time())
+        try:
+            self.state.save()
+        except OSError as exc:
+            self.log.write(kind="graded_state_persist_failed", err=str(exc))
+        self.log.write(kind="snapshot_at_window_close", status=snapshot["status"], attempts=self.snap_attempts + 1)
+        self._req("snapshot", trigger="prep_window", status=snapshot["status"])
+        self._write()
+
     def _window_over(self):
         s = self._since_start()
         return s is not None and s > float(self.cfg["graded_s"])
@@ -1143,6 +1172,8 @@ class Graded:
             "metrics": dict(self.result["metrics"]),
             "detail": self.result.get("detail"),
             "privileged": bool(st["privileged"]),
+            "snapshot_trigger": (st["snapshot"] or {}).get("trigger"),
+            "snapshot_utc": _iso((st["snapshot"] or {}).get("utc")),
             "snapshot_status": (st["snapshot"] or {}).get("status"),
             "snapshot_files": (st["snapshot"] or {}).get("files"),
             "snapshot_bytes": (st["snapshot"] or {}).get("bytes"),
@@ -1326,6 +1357,7 @@ class Graded:
                 if snapshot["status"] == "failed":
                     self._req("start_refused", error="snapshot_failed")
                     raise ReplyError("snapshot_failed")
+                snapshot = dict(snapshot, trigger="start", utc=time.time())
             # the charge: persisted before anything is simulated, never refunded
             st.update(started=True, started_wall=time.time(), started_mono=time.monotonic(), privileged=privileged,
                       snapshot=snapshot)
@@ -1407,15 +1439,22 @@ class Graded:
             return {"status": self.status(cid)}
 
     def timer(self):
-        """Ends the episode when its window closes, even without requests; flushes a lagging record."""
+        """Ends the episode when its window closes, even without requests; freezes the program when the start window
+        closes without a start; flushes a lagging record."""
         while True:
             time.sleep(1.0)
             with self.lock:
-                st = self.state.data
-                if st["started"] and not st["ended"] and self._window_over():
-                    self._finalize("graded_window")
-                elif self.dirty and not st["ended"]:
-                    self._write(force=False)
+                try:
+                    st = self.state.data
+                    if st["started"] and not st["ended"] and self._window_over():
+                        self._finalize("graded_window")
+                    elif (not st["started"] and st["snapshot"] is None and self.cfg["snapshot_source"]
+                          and time.monotonic() >= self.snap_retry_at and self._prep_over()):
+                        self._freeze_at_window_close()
+                    elif self.dirty and not st["ended"]:
+                        self._write(force=False)
+                except Exception:  # noqa: BLE001 - the timer keeps running
+                    self.log.write(kind="graded_timer_error", tb=traceback.format_exc(limit=20))
 
 
 # ----------------------------------------------------------------------------------------------

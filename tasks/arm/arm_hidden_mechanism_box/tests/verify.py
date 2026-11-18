@@ -7,14 +7,17 @@ Runs as root in a SEPARATE verifier sandbox. The agent had one session for two i
   * the graded episode (the online item): one hidden episode it played itself through the lab
     (environment/setup/lab/alelab/server.py, the account `alelab`), whose record the lab wrote to
     /var/lib/arb-online/record.json.
-The program is frozen at the graded start: the lab's root supervisor copied the submission folder into
-/var/lib/arb-online/submission_snapshot/ before the start was charged (the record holds its status, counts and digest);
+The program is frozen at the earlier of the graded start and the close of the start window: the lab's root supervisor
+copied the submission folder into /var/lib/arb-online/submission_snapshot/ before the start was charged, or when the
+start window closed without a start (the record holds the trigger, the status, the counts and the digest);
 the engine collected that directory and the submission as declared artifacts after the agent phase and restored them
 here, root-owned.
 
-In this order: stop every agent-UID process (as main's grader does); read the record; if the episode started, the
-program graded is the snapshot (its digest checked against the record; a snapshot that is not "ok" or does not match
-scores the program 0), else the restored session-end submission (as on main); run main's grader on it, its verdict
+In this order: stop every agent-UID process (as main's grader does); read the record; if it records a freeze (at
+the start or at the close of the start window), the program graded is the snapshot (its digest checked against the
+record; a snapshot that is not "ok" or does not match scores the program 0), else (the session ended before the
+window closed, or there is no usable record) the restored session-end submission, as on main; run main's grader on
+it, its verdict
 captured instead of written (its anchor: tests/anchor_offline.json, main's anchor.json); score the record as the
 online variant does (tests/anchor_online.json; 0 without a record or a start); stop the agent account's processes
 again; reward = the mean of the two items' rewards, written once through the kit against tests/anchor.json
@@ -316,10 +319,14 @@ def main():
     rec, load_reason = load_record(RECORD)
     started = rec is not None and rec.get("started") is True
     online_reason = load_reason if rec is None else check_record(rec, online)
-    # the program graded: frozen at the start, or the session-end submission when the episode never started
+    # the program graded: the one frozen at the earlier of the start and the close of the start window; the
+    # session-end submission only when the session ended before that (a usable record with no freeze) or when there
+    # is no usable record
+    usable = rec is not None and rec.get("format") == RECORD_FORMAT and rec.get("task") == online["task"]
+    frozen = usable and (started or rec.get("snapshot_status") is not None)
     program = "session_end"
     offline_reason = None
-    if started:
+    if frozen:
         offline_reason = check_snapshot(rec)
         if offline_reason is None:
             install_snapshot(SNAPSHOT, os.path.join(os.path.expanduser("~" + agent_user()), "submission"))
@@ -339,6 +346,9 @@ def main():
     extra = {"offline_reward": off_r, "online_reward": on_r, "cleanup_failed": 0.0 if cleanup_ok else 1.0,
              "program_snapshot": 1.0 if program == "snapshot" else 0.0,
              "program_session_end": 1.0 if program == "session_end" else 0.0,
+             "snapshot_at_start": 1.0 if (rec or {}).get("snapshot_trigger") == "start" else 0.0,
+             "snapshot_at_window_close": 1.0 if (rec or {}).get("snapshot_trigger") == "prep_window"
+             else 0.0,
              "episode_started": 1.0 if started else 0.0}
     for status in ("ok", "too_large", "missing"):
         extra["snapshot_" + status] = 1.0 if (rec or {}).get("snapshot_status") == status else 0.0
@@ -353,9 +363,10 @@ def main():
         extra["online_" + key] = v
     verdict = ratio_rewards(combined, anchor, cap=1.0, higher_is_better=True, metric_name="dual_mode_score",
                             locks_ok=True, extra=extra, full_at=meta.get("full_at", 1.0))
-    diagnostic = ("dual mode: program {} ({}; reward {:.4f}), graded episode {} (reward {:.4f}; {}), mean {:.4f}; "
-                  "program item: {}; graded episode item: {}").format(
-        program, (rec or {}).get("snapshot_status"), off_r, (rec or {}).get("episode"), on_r,
+    diagnostic = ("dual mode: program {} ({} at {}; reward {:.4f}), graded episode {} (reward {:.4f}; {}), "
+                  "mean {:.4f}; program item: {}; graded episode item: {}").format(
+        program, (rec or {}).get("snapshot_status"), (rec or {}).get("snapshot_trigger"), off_r,
+        (rec or {}).get("episode"), on_r,
         (rec or {}).get("end_reason"), combined, off_diag or off.get("diagnostic") or "graded",
         on.get("diagnostic") or "scored")
     write_verdict(verdict, diagnostic=diagnostic)
