@@ -1,30 +1,31 @@
-"""Author-only checks; the RGB reference sees the same envelope as the agent."""
+"""Author controls for local visual odometry, separate from participant runs."""
 import argparse
 import base64
 import json
-import math
 from pathlib import Path
 import sys
 
-import mujoco
+import numpy as np
 
 TASK = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(TASK/"environment/setup/runtime"), str(TASK/"solution")]
-from oracle_run import DIRECTIONS, TRAVEL, Pilot, add, run
+from oracle_run import run
 from rescue import LIMIT, World
-from rescue_scene import distances, edge, floor_z, layout_for, xy
+from rescue_scene import layout_for
 
 
 class Record:
-    """No simulator fields are supplied to the reference through this adapter."""
+    """The controller receives only the public envelope; truth is logged here."""
     def __init__(self, world, capture=False):
         self.world = world
-        self.actions, self.frames = [], {}
+        self.actions, self.frames, self.poses = [], {}, {}
         self.capture = capture
 
     def save(self, obs):
+        step = obs["frame_id"]
+        self.poses[step] = self.world.position.copy()
         if self.capture:
-            self.frames[obs["frame_id"]] = obs["images"]
+            self.frames[step] = obs["images"]
         return obs
 
     def observe(self):
@@ -38,147 +39,158 @@ class Record:
         path.write_bytes(base64.b64decode(self.frames[step][camera]))
 
 
-def probe(seed):
-    """Author-only pose fixture for semantic paint visibility; not a rollout."""
-    w = World("rescue", seed)
-    try:
-        mismatches = []
-        variants = [(x, y) for x in range(5) for y in range(5)]
-        for x, y in variants:
-            for heading in (0., math.pi/2, -math.pi/2, math.pi):
-                z = floor_z((x, y))
-                w.data.qpos[:4] = (*xy((x, y)), TRAVEL+z, heading)
-                mujoco.mj_forward(w.model, w.data)
-                w._observation = None
-                p = Pilot(w)
-                p.command[:] = w.data.qpos[:4]
-                actual = p.scan()[1]
-                for d in DIRECTIONS:
-                    neighbor = add((x, y), d)
-                    expects = None
-                    if edge((x, y), neighbor) in w.layout.halls:
-                        expects = "landing" if floor_z(neighbor) != z else "open"
-                    if x == neighbor[0] and {y, neighbor[1]} == {0, 1}:
-                        expects = "inspection" if x == w.layout.inlet else "cargo" if x == w.layout.outlet else None
-                    if (expects is not None and actual[d] != expects
-                            or expects is None and actual[d] in ("landing", "inspection", "cargo", "open")):
-                        mismatches.append(((x, y), heading, d, expects, actual[d]))
-        assert not mismatches, mismatches
-        print(json.dumps({"mode": "local-probe", "poses": 100, "seed": seed}), flush=True)
-    finally:
-        w.close()
+def outcome(world, seed, mode, **extra):
+    result = {"seed": seed, "site": seed >> 1, "sign": world.bias_sign, "mode": mode,
+              "failure": world.failure, **world.metrics(), **extra}
+    print(json.dumps(result), flush=True)
+    return result
 
 
-def case(seed, mode, output=None):
-    w = World("rescue", seed)
+def episode(seed, mode, output=None):
+    world = World("rescue", seed)
     try:
-        r = Record(w, capture=bool(output))
+        record = Record(world, bool(output))
+        pilot, error = None, None
+        feedback = mode if mode in ("odometry", "prelift") else "rgb"
         try:
-            p = run(r, retrace=mode == "retrace", locate_only=mode == "locate")
+            pilot = run(record, retrace=mode == "retrace", feedback=feedback)
         except RuntimeError as exc:
+            error = str(exc)
             tb = exc.__traceback__
             while tb and tb.tb_frame.f_code is not run.__code__:
                 tb = tb.tb_next
             if tb:
-                print(json.dumps(tb.tb_frame.f_locals["p"].trace[-30:]), flush=True)
-            print(json.dumps(w.metrics()), flush=True)
-            raise
-        meta = next((x for x in p.trace if x["event"] == "topology_summary"), {})
-        looks = [x for x in p.trace if x["event"] == "shutter_probe" and x["confirmed"]]
-        m = {"seed": seed, "mode": mode, "failure": w.failure, **w.metrics(),
-             "loop_edges": len(meta.get("loop_edges", [])),
-             "closed_edge_replans": len(meta.get("invalidated_edges", [])),
-             "shutter_probes": len(looks),
-             "parallax_probes": sum(x["event"] == "parallax_probe" for x in p.trace)}
-        print(json.dumps(m), flush=True)
+                pilot = tb.tb_frame.f_locals["p"]
+        fixes = [e for e in pilot.trace if e["event"] == "station_fix"] if pilot else []
+        true_errors = []
+        loaded_before = []
+        for e in fixes:
+            col, row = e["cell"]
+            actual = record.poses[e["frame"]][:2]
+            center = world.layout.xy((col+2, row))
+            true_errors.append(float(np.linalg.norm(actual-center)))
+            if e["loaded"]:
+                old = record.poses[e["before_frame"]][:2]
+                loaded_before.append(float(np.linalg.norm(old-center)))
+        stopped_error = None
+        if mode == "prelift" and pilot and pilot.path:
+            col, row = pilot.path[-1]
+            stopped_error = float(np.linalg.norm(world.position[:2]-world.layout.xy((col+2, row))))
+        result = outcome(world, seed, mode, policy_error=error, fixes=len(fixes),
+                         loaded_fixes=sum(e["loaded"] for e in fixes),
+                         max_true_loaded_arrival_error_m=round(max(loaded_before, default=0.), 4),
+                         max_true_fix_error_m=round(max(true_errors, default=0.), 4),
+                         distance_from_last_requested_cell_m=stopped_error,
+                         max_estimated_offset_m=round(max((e["before_m"] for e in fixes), default=0.), 4))
         if mode == "rgb":
-            assert m["success"] == 1 and m["rescue_progress"] == 1., m
-            assert m["mezzanine_z"] > 1.70 and m["loaded_descent_z"] > 1.7
-            assert m["loaded_cargo_cells"] >= 3 and m["yaw_travel_deg"] > 180
-            assert m["closed_edge_replans"] <= 1 and m["shutter_probes"] <= 1
-            assert m["steps"] < LIMIT
-        elif mode == "retrace":
-            assert m["lifted"] and m["inspection_abort"] and m["pod_impact"] and not m["uav_impact"], m
-        else:
-            assert m["located"] and not m["grasped"] and not m["delivered"], m
+            assert not error and result["success"] and result["rescue_progress"] == 1., result
+            assert result["cargo_return"] and result["loaded_descent_z"] > 1.7
+            assert result["loaded_fixes"] >= 4 and result["max_true_fix_error_m"] < .09
+            assert result["steps"] < LIMIT
+        if mode == "odometry":
+            assert not fixes
+        if mode == "prelift":
+            assert not result["loaded_fixes"] and result["lifted"], result
+        if mode == "retrace":
+            assert not error and result["lifted"] and result["inspection_abort"] and result["pod_impact"], result
         if output:
             output.mkdir(parents=True, exist_ok=True)
-            (output/f"navigation-{mode}-{seed}.json").write_text(json.dumps(p.trace, indent=2))
+            if pilot:
+                (output/f"navigation-{mode}-{seed}.json").write_text(json.dumps(pilot.trace, indent=2))
             if mode == "rgb":
-                r.export(m["steps"], output/f"delivery-{seed}.png", 0)
-                landing = next(x for x in p.trace if x["event"] == "landing_probe" and x["floor"] == 0.)
-                r.export(landing["frame"], output/f"landing-local-{seed}.png", 0)
-                r.export(landing["frame"], output/f"landing-front-{seed}.png", 1)
-                bay = next(x for x in reversed(p.trace)
-                           if x["event"] == "local_rgb" and not x["loaded"])
-                r.export(bay["frame"], output/f"bay-{seed}.png", 0)
-            if looks:
-                r.export(looks[0]["frame"], output/f"shutter-{mode}-{seed}.png", 1)
-        return r.actions, m
+                (output/f"author-actions-{seed}.json").write_text(json.dumps(record.actions))
+                largest = max((e for e in fixes if e["loaded"]), key=lambda e: e["before_m"])
+                step = largest["frame"]
+                record.export(largest["before_frame"], output/f"arrival-{seed}.png", 0)
+                record.export(step, output/f"recentered-{seed}.png", 0)
+                record.export(0, output/f"launch-{seed}.png", 0)
+                landing = next(e for e in pilot.trace if e["event"] == "landing_probe")
+                record.export(landing["frame"], output/f"landing-{seed}.png", 1)
+        return record.actions, result
     finally:
-        w.close()
+        world.close()
 
 
-def replay(seed, actions, matched_inlet=False):
-    w = World("rescue", seed, render=False)
+def replay(seed, actions, jitter, same_sign=False):
+    world = World("rescue", seed, render=False)
+    rng = np.random.default_rng(742)
     try:
-        for a in actions:
-            if w.act(a)["done"]:
+        for action in actions:
+            tracked = action.copy()
+            if jitter and any(abs(v) > .03 for v in tracked[:2]):
+                tracked[:2] = np.clip(np.asarray(tracked[:2])+rng.normal(0., .025, 2), -1., 1.).tolist()
+            if world.act(tracked)["done"]:
                 break
-        print(json.dumps({"seed": seed, "mode": "fixed-replay", "failure": w.failure,
-                          "matched_inlet": matched_inlet,
-                          **w.metrics()}), flush=True)
-        assert not w.metrics()["success"] and w.metrics()["uav_impact"]
-        if matched_inlet:
-            assert w.metrics()["entered_wing"], w.metrics()
+        return outcome(world, seed, "tape-jitter" if jitter else "tape", same_sign=same_sign)
     finally:
-        w.close()
+        world.close()
 
 
 def structural():
     for i in range(128):
-        a, b = (layout_for(2*i+j) for j in (0, 1))
-        assert a.halls != layout_for(2*i+2).halls and a.outlet == 4-b.outlet
-        assert all(r[1] >= 3 for r in a.rooms)
-        assert frozenset(edge(*((4-x, y) for x, y in e)) for e in a.halls) == b.halls
-        assert len(distances((a.outlet, 1), a.halls-{a.safety})) == 20
+        direct, mirror = layout_for(2*i), layout_for(2*i+1)
+        assert direct.outlet == 4-mirror.outlet
+        np.testing.assert_allclose(direct.columns, -np.asarray(mirror.columns)[::-1])
+        assert direct.rows == mirror.rows
+        assert 1.58-1e-8 <= min(np.diff(direct.rows)) <= max(np.diff(direct.rows)) <= 1.90+1e-8
+    worlds = [World("rescue", s, render=False) for s in (0, 1)]
+    try:
+        a, b = worlds
+        assert a.layout == b.layout and a.bias_sign == -b.bias_sign
+        for world in worlds:
+            for _ in range(2):
+                world.act([0., .45, 0., 0., 0.])
+            for _ in range(6):
+                world.act([0.]*5)
+        assert (a.position[0]-a.layout.launch[0])*(b.position[0]-b.layout.launch[0]) < 0
+        for world in worlds:
+            rest = world.position.copy()
+            for _ in range(8):
+                world.act([0.]*5)
+            assert np.linalg.norm(world.position-rest) < .005
+        print(json.dumps({"mode": "hold", "stationary_after_settle": True,
+                          "matched_signs": True}), flush=True)
+    finally:
+        for world in worlds:
+            world.close()
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--rgb-seeds", nargs="+", type=int, default=[0, 1, 6, 19])
-    parser.add_argument("--retrace-seeds", nargs="*", type=int, default=[0, 1])
+    parser.add_argument("--sites", type=int, nargs="+", default=[0, 19])
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--probe", type=int)
+    parser.add_argument("--positives-only", action="store_true")
     args = parser.parse_args()
     structural()
-    if args.probe is not None:
-        probe(args.probe)
-        return
-    baseline = None
-    positive = []
-    for seed in args.rgb_seeds:
-        actions, m = case(seed, "rgb", args.output)
-        if baseline is None:
-            baseline = actions
-        positive.append(m)
-    assert sum(m["loop_edges"] for m in positive) > 0
-    assert sum(m["closed_edge_replans"] for m in positive) > 0
-    first_seed = args.rgb_seeds[0]
-    mirror = first_seed ^ 1
-    same_inlet = next(s for s in range(32) if s not in (first_seed, mirror)
-                      and layout_for(s).inlet == layout_for(first_seed).inlet)
-    replay(mirror, baseline)
-    replay(same_inlet, baseline, matched_inlet=True)
-    for seed in args.retrace_seeds:
-        case(seed, "retrace", args.output)
-    w = World("rescue", 0, render=False)
+    outcomes = []
+    for site in args.sites:
+        seed = 2*site
+        direct = episode(seed, "rgb", args.output)
+        opposite = episode(seed+1, "rgb", args.output)
+        tape = direct[0]
+        if args.positives_only:
+            continue
+        matched = []
+        for s, positive in ((seed, direct), (seed+1, opposite)):
+            for mode in ("odometry", "prelift"):
+                actions, result = episode(s, mode, args.output)
+                if mode == "prelift":
+                    until = result["steps_to_lift"]
+                    assert until == positive[1]["steps_to_lift"] and until > 0
+                    assert actions[:until] == positive[0][:until], "matched pickup diverged"
+                matched.append(result)
+        outcomes.extend(matched)
+        replay(seed, tape, jitter=True, same_sign=True)
+        replay(seed+1, tape, jitter=False)
+        replay(seed+1, tape, jitter=True)
+    if not args.positives_only:
+        assert any(m["mode"] == "prelift" and not m["success"] for m in outcomes), outcomes
+        episode(2*args.sites[0], "retrace", args.output)
+    world = World("rescue", 0, render=False)
     try:
-        w.observe()
-        assert w.metrics()["rescue_progress"] == 0
-        print(json.dumps({"mode": "untouched", **w.metrics()}), flush=True)
+        assert world.metrics()["rescue_progress"] == 0.
     finally:
-        w.close()
+        world.close()
 
 
 if __name__ == "__main__":

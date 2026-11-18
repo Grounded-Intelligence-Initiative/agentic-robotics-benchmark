@@ -11,9 +11,9 @@ import mujoco
 import numpy as np
 from PIL import Image
 
-from rescue_scene import BOUNDS, DECK, DECK_Y, PITCH, RED, START, build, layout_for, xy
+from rescue_scene import DECK, RED, START_Z, build, layout_for
 
-LIMIT = 780
+LIMIT = 1000
 DT = .2
 INCREMENTS = np.array([.32, .32, .19])
 SCORE = {"entered_wing": .12, "mezzanine": .08, "located": .10, "grasped": .12,
@@ -35,27 +35,29 @@ def basis(yaw):
     return np.array([[c, -s], [s, c]])
 
 
-def floor_at(y):
-    return DECK if y >= DECK_Y else 0.
-
-
 class World:
     kind = "rescue"
 
     def __init__(self, kind, seed, render=True):
         if kind != self.kind:
             raise ValueError("unknown task")
-        self.layout = layout_for(seed)
+        # Adjacent seeds share the site, gains and launch position but reverse
+        # the cross-axis tracking residual. It never affects a hold command.
+        self.layout = layout_for(seed >> 1)
+        self.bias_sign = 1 if seed & 1 else -1
+        self.trim_offset = np.zeros(2)
+        self.loaded_trim_m = 0.
+        self.bounds = np.asarray(self.layout.bounds).T
         xml, decals, obstacles, shutters = build(self.layout)
         self.model = mujoco.MjModel.from_xml_string(xml, assets=decals)
         self.shutters = shutters
         self.model.light_diffuse[:] *= self.layout.tone
         self.data = mujoco.MjData(self.model)
-        self.command = np.array(START)
+        self.command = np.array([*self.layout.launch, START_Z, 0.])
         self.data.qpos[:4] = self.command
         self.data.ctrl[:] = self.command
         x, y, yaw = self.layout.pod
-        self.data.qpos[4:] = (x, y, floor_at(y)+.073, math.cos(yaw/2), 0., 0., math.sin(yaw/2))
+        self.data.qpos[4:] = (x, y, self.floor_at(y)+.073, math.cos(yaw/2), 0., 0., math.sin(yaw/2))
         mujoco.mj_forward(self.model, self.data)
         self.renderer = mujoco.Renderer(self.model, 256, 256) if render else None
         self.kinds, centers, half = zip(*obstacles)
@@ -63,7 +65,9 @@ class World:
         self.solid_lo, self.solid_hi = centers-half, centers+half
         self.pod_rotation = np.empty(9)
         self.rel_quat = np.empty(4)
-        self.room_centers = np.asarray([xy(room) for room in self.layout.rooms])
+        self.room_centers = np.asarray([self.layout.xy(room) for room in self.layout.rooms])
+        self.columns = np.asarray(self.layout.columns)
+        self.rows = np.asarray(self.layout.rows)
         self.steps = self.release_dwell = self.close_attempts = 0
         self.steps_to_lift = self.steps_to_cargo = 0
         self.done = self.shutter_open = False
@@ -85,6 +89,9 @@ class World:
     @property
     def payload(self):
         return self.data.qpos[4:7]
+
+    def floor_at(self, y):
+        return DECK if y >= self.layout.deck_y else 0.
 
     def close(self):
         if self.renderer is not None:
@@ -132,7 +139,7 @@ class World:
         elif signal < -.5 and self.held:
             self.data.eq_active[0] = False
             self.release_dwell = 0
-            if self.payload[2]-floor_at(self.payload[1]) > .195 or speed > .34 or turn_speed > .34:
+            if self.payload[2]-self.floor_at(self.payload[1]) > .195 or speed > .34 or turn_speed > .34:
                 self.abort("unsafe_release")
 
     def intersect(self, lo, hi, pod=False):
@@ -161,15 +168,16 @@ class World:
     def physical_progress(self, previous_y):
         x, y, z = self.position
         px, py, pz = self.payload
-        if not self.held and "entered_wing" not in self.progress and previous_y < PITCH/2 <= y:
+        if (not self.held and "entered_wing" not in self.progress
+                and previous_y < self.layout.inlet_y <= y):
             self.progress.add("entered_wing")
             self.entry_z = z
-        if previous_y < DECK_Y <= y and not self.mezzanine_z:
+        if previous_y < self.layout.deck_y <= y and not self.mezzanine_z:
             self.progress.add("mezzanine")
             self.mezzanine_z = z
-        if self.held and previous_y > DECK_Y >= y and not self.loaded_descent_z:
+        if self.held and previous_y > self.layout.deck_y >= y and not self.loaded_descent_z:
             self.loaded_descent_z = z
-        if self.held and pz-floor_at(py) >= .54:
+        if self.held and pz-self.floor_at(py) >= .54:
             self.progress.add("lifted")
             if not self.shutter_open:
                 # The training wing's mechanical lift interlock retracts the cargo leaf.
@@ -184,11 +192,12 @@ class World:
                     self.solid_hi[idx, 2] += movement
                 for name in self.shutters["warning"]:
                     self.model.geom(name).rgba[:] = RED
-        if self.held and previous_y > PITCH/2 >= y and "cargo_return" not in self.progress:
+        if self.held and previous_y > self.layout.inlet_y >= y and "cargo_return" not in self.progress:
             self.progress.add("cargo_return")
             self.steps_to_cargo = self.steps
             self.exit_z = z
-        if (not self.held and "lifted" in self.progress and math.hypot(px, py) <= .28
+        if (not self.held and "lifted" in self.progress
+                and math.hypot(px-self.layout.pad[0], py-self.layout.pad[1]) <= .28
                 and pz <= .095 and np.linalg.norm(self.data.qvel[4:10]) <= .16):
             self.release_dwell += 1
             if self.release_dwell >= 50:
@@ -199,12 +208,12 @@ class World:
 
     def observation_progress(self):
         x, y, z = self.position
-        if y > PITCH/2:
-            cx, cy = int(round(x/PITCH))+2, int(round(y/PITCH))
+        if y > self.layout.inlet_y:
+            cx, cy = int(np.argmin(abs(self.columns-x))), int(np.argmin(abs(self.rows-y)))
             self.cells_seen.add((cx, cy))
             if self.held and cx == self.layout.outlet:
                 self.loaded_cargo_cells.add(cy)
-        if z-floor_at(y) >= .85:
+        if z-self.floor_at(y) >= .85:
             near = np.flatnonzero(np.max(np.abs(self.room_centers-[x, y]), axis=1) < .47)
             self.rooms_seen.update(map(int, near))
             # Center-room view, a conservative visual-discovery checkpoint.
@@ -221,8 +230,18 @@ class World:
         self._observation = None
         self.grip(action[4])
         delta = INCREMENTS*action[:3]
-        delta[:2] = basis(self.command[3]) @ delta[:2]
-        self.command[:3] = np.clip(self.command[:3]+delta, *np.array(BOUNDS).T)
+        # The inner servo is stable; only translation increments are mis-tracked.
+        # At zero input, both the gain term and cross-coupling vanish.
+        estimated = delta[:2].copy()
+        delta[:2] *= self.layout.gains
+        side = self.bias_sign*(.125 if self.held else .032)*estimated[1]
+        delta[0] += side
+        if self.held:
+            self.loaded_trim_m += abs(side)
+        rotation = basis(self.command[3])
+        self.trim_offset += rotation @ (delta[:2]-estimated)
+        delta[:2] = rotation @ delta[:2]
+        self.command[:3] = np.clip(self.command[:3]+delta, *self.bounds)
         self.command[3] += math.radians(30)*action[3]
         self.data.ctrl[:] = self.command
         previous_heading = self.data.qpos[3]
@@ -259,5 +278,7 @@ class World:
             "mezzanine_z": round(self.mezzanine_z, 4),
             "loaded_descent_z": round(self.loaded_descent_z, 4),
             "yaw_travel_deg": round(math.degrees(self.turn_angle), 1),
+            "loaded_trim_m": round(self.loaded_trim_m, 3),
+            "command_tracking_offset_m": round(float(np.linalg.norm(self.trim_offset)), 3),
             "close_attempts": self.close_attempts,
         }

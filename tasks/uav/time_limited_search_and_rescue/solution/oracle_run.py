@@ -9,6 +9,7 @@ import sys
 
 import numpy as np
 from PIL import Image
+from scipy import ndimage
 
 sys.path.insert(0, "/opt/visual_robotics/client")
 PITCH, APRON, DECK = 1.72, .63, .60
@@ -18,6 +19,7 @@ TRAVEL, SLOT = 1.30, .71
 TURN = math.pi/6
 FOCAL = 128/math.tan(math.radians(47))
 DIRECTIONS = ((0, 1), (1, 0), (-1, 0), (0, -1))
+MARKS = np.array([(x, y) for x in (-.29, .29) for y in (-.29, .29)])
 
 
 def basis(a):
@@ -58,13 +60,55 @@ def find_pod(rgb, command, floor):
     return command[:2]+basis(command[3]) @ local
 
 
+def station_offset(rgb):
+    """Find a repeated local 58 cm square in the calibrated cruise view."""
+    r, g, b = rgb.transpose(2, 0, 1)
+    labels, count = ndimage.label((r > 185) & (g < 70) & (b > 92) & (r > b+28))
+    if not count:
+        return None
+    sizes = np.bincount(labels.ravel())
+    ids = [i for i in range(1, count+1) if 16 <= sizes[i] <= 150]
+    if len(ids) < 2:
+        return None
+    scale = (TRAVEL-.145-.016)/FOCAL
+    uv = np.asarray(ndimage.center_of_mass(np.ones_like(labels), labels, ids))[:, ::-1]
+    spots = (uv-127.5)*[scale, -scale]+[0., DOWN_OFFSET]
+    hypotheses = (spots[:, None, :]-MARKS[None, :, :]).reshape(-1, 2)
+    fits = []
+    for center in hypotheses:
+        if np.max(np.abs(center)) > .43:
+            continue
+        error = np.linalg.norm(spots[:, None, :]-center-MARKS[None, :, :], axis=2)
+        neighbors = error.argmin(axis=0)
+        matched = error[neighbors, np.arange(len(MARKS))] < .058
+        if sum(matched) >= 2:
+            fit = np.mean(spots[neighbors[matched]]-MARKS[matched], axis=0)
+            fits.append((-sum(matched), np.linalg.norm(fit), fit))
+    return min(fits, key=lambda f: f[:2])[2] if fits else None
+
+
+def pad_offset(rgb):
+    r, g, b = rgb.transpose(2, 0, 1)
+    labels, count = ndimage.label((b > 145) & (b > r+65) & (b > g+45))
+    if not count:
+        return None
+    largest = 1+np.argmax(np.bincount(labels.ravel())[1:])
+    rows, cols = np.where(labels == largest)
+    if rows.size < 2200:
+        return None
+    scale = (TRAVEL-.145-.008)/FOCAL
+    u, v = (cols.min()+cols.max())/2, (rows.min()+rows.max())/2
+    return (np.array([u, v])-127.5)*[scale, -scale]+[0., DOWN_OFFSET]
+
+
 class Pilot:
-    def __init__(self, client):
+    def __init__(self, client, feedback="rgb"):
         self.client = client
         self.command = np.array([0., 0., TRAVEL, 0.])
         self.obs = client.observe()
         self.trace = []
         self.path = []
+        self.feedback, self.loaded = feedback, False
 
     def act(self, action):
         if not self.obs["done"]:
@@ -97,6 +141,41 @@ class Pilot:
     def cell(self, cell, z, settle=0):
         x, y = PITCH*np.asarray(cell)
         self.go(x, y, z, settle)
+
+    def register(self, cell):
+        if self.feedback == "odometry" or (self.feedback == "prelift" and self.loaded):
+            return
+        if self.obs["done"]:
+            return
+        initial = None
+        before_frame = None
+        turned = False
+        for _ in range(6):
+            offset = station_offset(decode(self.obs))
+            if offset is None:
+                if turned:
+                    break
+                # Change the optical viewpoint around the suspended sled;
+                # a hold stabilizes on the same patch without adding drift.
+                self.face(*(-basis(self.command[3])[:, 0]))
+                self.grip()
+                turned = True
+                continue
+            error = float(np.linalg.norm(offset))
+            if initial is None:
+                initial = error
+                before_frame = self.obs["frame_id"]
+            if error <= .036:
+                self.command[:2] = PITCH*np.asarray(cell)
+                self.trace.append({"event": "station_fix", "cell": cell, "loaded": self.loaded,
+                                   "before_m": round(initial, 4), "after_m": round(error, 4),
+                                   "before_frame": before_frame,
+                                   "frame": self.obs["frame_id"]})
+                return
+            self.act([*np.clip(.94*offset/PACE[:2], -1., 1.).tolist(), 0., 0., 0.])
+            self.grip()
+        if not self.obs["done"]:
+            raise RuntimeError(f"cannot establish a local station fix at {cell}")
 
     def scan(self):
         rgb = decode(self.obs)
@@ -239,24 +318,32 @@ class Discovery:
             p.cell(here, TRAVEL+DECK)
             p.cell(there, TRAVEL+DECK)
         p.cell(there, TRAVEL+self.floors[there], settle=1)
+        p.register(there)
         self.previous, self.current = here, there
         p.path.append(there)
 
 
-def run(client, retrace=False, locate_only=False):
-    p = Pilot(client)
+def run(client, retrace=False, locate_only=False, feedback="rgb"):
+    p = Pilot(client, feedback)
     inlet = None
-    for col in (0, 1, 2, -1, -2):
+    tried = set()
+    for col in (0, 1, 2, 1, 0, -1, -2):
         p.cell((col, 0), TRAVEL, settle=1)
+        p.register((col, 0))
+        if col in tried:
+            continue
+        tried.add(col)
         _, view = p.scan()
         if view[(0, 1)] == "inspection":
             inlet = (col, 1)
             break
     if inlet is None:
         raise RuntimeError("no visible inspection slot")
+    p.face(0, 1)
     p.cell((inlet[0], 0), SLOT, settle=1)
     p.cell(inlet, SLOT)
     p.cell(inlet, TRAVEL, settle=1)
+    p.register(inlet)
     nav = Discovery(p, inlet)
     p.path.append(inlet)
     target = None
@@ -272,9 +359,12 @@ def run(client, retrace=False, locate_only=False):
     px, py = map(float, target)
     p.go(px, py, .43+DECK, settle=3)
     p.grip(1.)
+    p.loaded = True
     p.go(px, py, TRAVEL+DECK)
     p.cell(nav.current, TRAVEL+DECK, settle=1)
+    p.register(nav.current)
     p.trace.append({"event": "pickup_attempt", "cell": nav.current, "frame": p.obs["frame_id"]})
+    staging = None
     while not p.obs["done"]:
         _, view = nav.scan(True)
         if retrace and nav.current == inlet:
@@ -285,12 +375,25 @@ def run(client, retrace=False, locate_only=False):
         if not retrace and "cargo" in view.values():
             d = next(d for d, k in view.items() if k == "cargo")
             p.face(*d)
-            p.cell(add(nav.current, d), TRAVEL)
+            staging = add(nav.current, d)
+            p.cell(staging, TRAVEL, settle=1)
+            p.register(staging)
             break
         nav.move(nav.route(goal=inlet if retrace else nav.cargo))
-    p.cell((0, 0), TRAVEL)
+    if staging is not None:
+        col = staging[0]
+        while col and not p.obs["done"]:
+            col -= int(math.copysign(1, col))
+            p.cell((col, 0), TRAVEL, settle=1)
+            p.register((col, 0))
     p.face(0, 1)
-    p.cell((0, 0), .43, settle=3)
+    p.grip()
+    if not p.obs["done"]:
+        offset = pad_offset(decode(p.obs))
+        if offset is None:
+            raise RuntimeError("blue delivery pad not in the down view")
+        tx, ty = p.command[:2]+basis(p.command[3]) @ offset
+        p.go(tx, ty, .43, settle=3)
     p.grip(-1.)
     for _ in range(3):
         p.grip()

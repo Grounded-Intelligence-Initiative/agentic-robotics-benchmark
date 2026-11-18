@@ -11,14 +11,12 @@ from pbr_scene import prop
 from scene_assets import asset_root, geom, materials, robot_meshes
 
 SIDE = 5
-PITCH = 1.72
-START = (0., 0., 1.30, 0.)
-BOUNDS = ((-4.15, 4.15), (-.72, 7.61), (.39, 2.09))
+START_Z = 1.30
 SLOT_SILL, SLOT_LINTEL = .43, .89
 RAISED_SILL = .73
 DECK, LANDING, WALL_TOP = .60, .99, 2.42
-DECK_Y = 2.5*PITCH
 APRON = .63
+MARK_HALF = .29
 DARK = (.075, .112, .126, 1)
 WALL = (.65, .70, .70, 1)
 WHITE = (.94, .95, .91, 1)
@@ -28,14 +26,24 @@ BLUE = (.05, .32, .84, 1)
 ORANGE = (1., .26, .018, 1)
 PURPLE = (.72, .19, .86, 1)
 RED = (.90, .045, .045, 1)
+TAPE = (.97, .015, .49, 1)
 
 
 def edge(a, b):
     return tuple(sorted((a, b)))
 
 
-def xy(cell, pitch=PITCH):
-    return np.array([(cell[0]-2)*pitch, cell[1]*pitch])
+def axis_at(axis, i):
+    if i < 0:
+        return 2*axis[0]-axis[1]
+    if i >= len(axis):
+        return 2*axis[-1]-axis[-2]
+    return axis[i]
+
+
+def boundaries(axis, i):
+    center = axis[i]
+    return (axis_at(axis, i-1)+center)/2, (axis_at(axis, i+1)+center)/2
 
 
 def floor_z(cell):
@@ -73,6 +81,28 @@ class Layout:
     pod: tuple
     safety: tuple
     tone: float
+    columns: tuple
+    rows: tuple
+    launch: tuple
+    gains: tuple
+    pad: tuple
+
+    def xy(self, cell):
+        return np.array([axis_at(self.columns, cell[0]), axis_at(self.rows, cell[1])])
+
+    @property
+    def deck_y(self):
+        return (self.rows[2]+self.rows[3])/2
+
+    @property
+    def inlet_y(self):
+        return (self.rows[0]+self.rows[1])/2
+
+    @property
+    def bounds(self):
+        return ((boundaries(self.columns, 0)[0]+.05, boundaries(self.columns, SIDE-1)[1]-.05),
+                (boundaries(self.rows, 0)[0]+.05, boundaries(self.rows, SIDE-1)[1]-.05),
+                (.39, 2.09))
 
 
 def layout_for(seed):
@@ -124,6 +154,12 @@ def layout_for(seed):
     dx, dy = rng.uniform(-.28, .28, 2)
     yaw = float(rng.uniform(-.50, .50))
     tone = float(rng.uniform(.92, 1.05))
+    columns = np.r_[0., np.cumsum(rng.uniform(1.58, 1.90, SIDE-1))]
+    columns -= columns[2]
+    rows = np.r_[0., np.cumsum(rng.uniform(1.58, 1.90, SIDE-1))]
+    start_x, start_y = rng.uniform(-.13, .13, 2)
+    gains = tuple(rng.uniform(.96, 1.045, 2))
+    pad_x, pad_y = rng.uniform(-.16, .16, 2)
 
     def mirror(p):
         return (SIDE-1-p[0], p[1]) if seed & 1 else p
@@ -133,13 +169,19 @@ def layout_for(seed):
 
     if seed & 1:
         dx, yaw = -dx, -yaw
-    px, py = xy(mirror(target)) + (dx, dy)
+        start_x = -start_x
+        pad_x = -pad_x
+        columns = -columns[::-1]
+    bx, by = mirror(target)
+    px, py = columns[bx]+dx, rows[by]+dy
     return Layout(transformed(halls), transformed(raised), mirror((inlet, 1))[0],
                   mirror((outlet, 1))[0], tuple(map(mirror, rooms)), (px, py, yaw),
-                  edge(*map(mirror, safety)), tone)
+                  edge(*map(mirror, safety)), tone, tuple(columns), tuple(rows),
+                  (start_x, start_y), gains, (pad_x, pad_y))
 
 
 def build(layout):
+    xy = layout.xy
     root = ET.fromstring("""
     <mujoco model="indoor rescue training wing">
         <compiler angle="degree" autolimits="true"/>
@@ -193,13 +235,16 @@ def build(layout):
         geom(pod, f"leg{side}", pos=(side*.044, -.123, .11), size=(.032, .083, .027), rgba=AMBER)
         geom(pod, f"arm{side}", pos=(side*.096, .030, .105), size=(.025, .071, .023), rgba=AMBER)
     geom(pod, "bar", pos=(0, 0, .136), size=(.142, .025, .015), rgba=WHITE)
-    geom(w, "pad", pos=(0, 0, .004), size=(.56, .53, .004), rgba=BLUE)
+    px, py = layout.pad
+    geom(w, "pad", pos=(px, py, .004), size=(.56, .53, .004), rgba=BLUE)
     for side in (-1, 1):
-        geom(w, f"pad_side{side}", pos=(side*.39, 0, .010), size=(.030, .42, .002), rgba=WHITE)
-    geom(w, "pad_cross", pos=(0, 0, .010), size=(.39, .030, .002), rgba=WHITE)
+        geom(w, f"pad_side{side}", pos=(px+side*.39, py, .010), size=(.030, .42, .002), rgba=WHITE)
+    geom(w, "pad_cross", pos=(px, py, .010), size=(.39, .030, .002), rgba=WHITE)
 
-    deck_center = (0., (DECK_Y+4.5*PITCH)/2, DECK/2)
-    deck_half = (2.5*PITCH, PITCH, DECK/2)
+    xmin, xmax = boundaries(layout.columns, 0)[0], boundaries(layout.columns, SIDE-1)[1]
+    ymax = boundaries(layout.rows, SIDE-1)[1]
+    deck_center = ((xmin+xmax)/2, (layout.deck_y+ymax)/2, DECK/2)
+    deck_half = ((xmax-xmin)/2, (ymax-layout.deck_y)/2, DECK/2)
     geom(w, "mezzanine", pos=deck_center, size=deck_half, material="floor_mat",
          rgba=(.72, .83, .86, 1), contype="1", conaffinity="1")
     obstacles = [("deck", deck_center, deck_half)]
@@ -229,7 +274,10 @@ def build(layout):
         center = (xy(a)+xy(b))/2
         normal = 0 if a[0] != b[0] else 1
         tangent = 1-normal
-        gate_half = .51 if route == "inspection" else .56
+        gate_half = .51 if route == "inspection" else .59
+        axis = layout.rows if tangent == 1 else layout.columns
+        lo, hi = boundaries(axis, a[tangent])
+        lo, hi = lo-center[tangent], hi-center[tangent]
         vertical = floor_z(a) != floor_z(b) and min(a[1], b[1]) == 2
         safety = edge(a, b) == layout.safety
 
@@ -240,20 +288,19 @@ def build(layout):
             wall(pos, half, kind, color)
 
         if route is None:
-            section(0., PITCH/2+.026, 0., WALL_TOP, "wall", WALL)
+            section((lo+hi)/2, (hi-lo)/2+.026, 0., WALL_TOP, "wall", WALL)
             return
         color = PURPLE if route == "inspection" else BLUE if route == "cargo" else AMBER if vertical else WHITE
         for i, (here, there) in enumerate(((a, b), (b, a))):
-            pos = xy(here)+(xy(there)-xy(here))*APRON/PITCH
+            pos = xy(here)+(xy(there)-xy(here))*APRON/np.linalg.norm(xy(there)-xy(here))
             size = [.068, .068, .004]
             size[tangent] = .153
             name = f"apron{len(w)}"
             geom(w, name, pos=(*pos, floor_z(here)+.007), size=size, rgba=color)
             if safety:
                 shutters.setdefault("warning", []).append(name)
-        for side in (-1, 1):
-            section(side*(PITCH/2+gate_half)/2, (PITCH/2-gate_half)/2+.014,
-                    0., WALL_TOP, "wall", WALL)
+        for start, end in ((lo, -gate_half), (gate_half, hi)):
+            section((start+end)/2, (end-start)/2+.014, 0., WALL_TOP, "wall", WALL)
         if route == "inspection":
             section(0., gate_half, 0., SLOT_SILL, "inspection", AMBER)
             section(0., gate_half, SLOT_LINTEL, WALL_TOP, "inspection", AMBER)
@@ -274,7 +321,7 @@ def build(layout):
             for z in np.linspace(-.90, .90, 9):
                 geom(body, f"shutter_rib{z:.3f}", pos=(0, 0, z), size=(gate_half, .084, .018), rgba=DARK)
             for side in (-1, 1):
-                geom(w, f"cargo_jamb{side}", pos=(x+side*.572, y, 1.025),
+                geom(w, f"cargo_jamb{side}", pos=(x+side*(gate_half+.012), y, 1.025),
                      size=(.030, .10, 1.025), rgba=BLUE)
         if safety:
             x, y = center
@@ -301,6 +348,16 @@ def build(layout):
         route = "raised" if (a, b) in layout.raised else "open" if (a, b) in layout.halls else None
         boundary(a, b, route)
 
+    # Identical local maintenance stations: known scale/orientation, no IDs
+    # and no information about the route or rescue object.
+    for col in range(SIDE):
+        for row in range(SIDE):
+            x, y = xy((col, row))
+            for i, dx in enumerate((-MARK_HALF, MARK_HALF)):
+                for j, dy in enumerate((-MARK_HALF, MARK_HALF)):
+                    geom(w, f"tape{col}_{row}_{i}_{j}", "cylinder",
+                         (x+dx, y+dy, floor_z((col, row))+.012), (.054, .004), TAPE)
+
     # Bay paint runs around (not through) the central pickup area.
     for i, room in enumerate(layout.rooms):
         x, y = xy(room)
@@ -311,8 +368,7 @@ def build(layout):
     for y in (1, 2, 3, 4):
         label = "CARGO RUN" if y != 3 else "MEZZANINE"
         sign(label, *xy((layout.outlet, y)), floor_z((layout.outlet, y)))
-    for side in (-1, 1):
-        x = side*4.48
+    for side, x in enumerate((xmin-.52, xmax+.52)):
         prop(root, asset_root(), "utility_box_01", f"cabinet{side}", (x, 0, 0), (.52, .61, .87))
 
     return ET.tostring(root, encoding="unicode"), decals, obstacles, shutters

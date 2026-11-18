@@ -1,4 +1,4 @@
-# UAV Search and Rescue: Mezzanine Wing
+# UAV Search and Rescue: Visual Odometry
 
 Recover an orange **RESCUE MANNEQUIN** and sled from an indoor training
 wing and deliver it to the blue staging pad. This is a simulated
@@ -6,6 +6,12 @@ civilian exercise. The doors, turns, and rescue bay vary. There is no
 floor plan: explore with the UAV's two local RGB cameras and keep track
 of the passages and landmarks you actually see.
 
+- Recenter visually at the four pink maintenance dots before crossing
+  a doorway. The dots form the same **0.58 m square** at each station.
+  Its center is a safe observation pose, not a waypoint you must visit.
+  The dots have no room IDs. The takeoff hover can start slightly
+  off-center, and the actual blue delivery pad is offset from the
+  staging square. Use the pad itself for final alignment.
 - Find the **INSPECTION** slot off the staging strip. Align on the
   violet floor apron, settle at about **0.71 m** altitude, and fly
   through empty. Once clear, climb before leaving that pocket.
@@ -33,13 +39,16 @@ of the passages and landmarks you actually see.
 ## Controls
 
 `robot_act({"action":[right, forward, up, yaw_left, grip]})` takes five
-numbers in `[-1,1]`. It increments the stabilized setpoint by up to
+numbers in `[-1,1]`. The nominal increments of the stabilized setpoint are up to
 **0.32 m** on each horizontal axis, **0.19 m** vertically, and **30°**
 in yaw per action. Positive yaw turns left; a zero holds that axis.
 Horizontal increments are relative to the **heading setpoint at the
-start of the action**. Body and camera motion have a short lag. Hold
-still for two or three actions before precise alignment, grasp or
-release. The UAV starts at 1.30 m with its heading facing the wing.
+start of the action**. Horizontal travel can differ by a few percent
+from the nominal distance, and forward motion can couple sideways by
+about 0.13 m per metre when loaded (less when empty). Do not assume
+command totals are pose. Zero horizontal commands settle to a
+stationary hover: stop, correct using a fresh image, and look again.
+The UAV starts at 1.30 m with its heading facing the wing.
 Altitude setpoints are limited to 0.39–2.09 m above launch.
 
 `grip=+1` attempts a close, `-1` releases, and `0` leaves it alone.
@@ -47,7 +56,7 @@ It applies before movement. A close needs the grapple bar within about
 13 cm of horizontal alignment and low translational and turn speed.
 High or fast release, or striking a wall, sill, or shutter with the
 airframe **or load**, ends the sortie. Each action advances 0.2 simulated
-seconds; the allowance is **780 actions** (156 simulated seconds).
+seconds; the allowance is **1,000 actions** (200 simulated seconds).
 There is no reset. Observations do not advance time, but the live service
 accepts at most 2,048 calls in total, including actions and observations.
 
@@ -60,10 +69,11 @@ right and forward. The down camera is 0.46 m forward and 0.145 m below
 the UAV center, with a 94° perspective field of view. On a horizontal
 surface `d` metres below that camera, a metre projects to
 `(128 / tan(47°)) / d` pixels. The point under the gripper is centered
-horizontally and 0.46 m down-image of the camera's ground center. The
-floor modules are about 1.72 m across; apron paint is roughly 0.63 m
-from a room center. These are measurement scales, not a map. Use the
-forward view to inspect height, clearance and obstructions.
+horizontally and 0.46 m down-image of the camera's ground center.
+Neighboring stations are 1.58–1.90 m apart; the spacing is not uniform.
+Apron paint is about 0.63 m from its station center. If the sled masks
+a dot, turn while hovering or use another visible side of the square.
+Use the forward view to inspect height, clearance and obstructions.
 
 Only the images, `frame_id`, `done`, and `steps_remaining` are exposed.
 There is no pose, depth, object list, map, or hidden identifier. Use the
