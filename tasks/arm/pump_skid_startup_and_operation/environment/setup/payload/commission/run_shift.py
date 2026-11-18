@@ -8,11 +8,12 @@ series (the commissioning service's sister sites, never a graded site), the way 
 The program runs as you, from a fresh copy of its folder (regular files only), with the grader's environment (an empty
 HOME and TMPDIR, PYTHONPATH = the given client library, ARB_GIVEN_DIR = ~/given, MUJOCO_GL=osmesa, BLAS threads 2),
 the grader's launcher and its CPU cap (4 x the program-time budget); its stdin / stdout carry the wire to the
-commissioning service, its stderr comes out here. The service applies a program's budgets itself (1800 s simulated,
-600 frames, 1200 s of program time, 180 s of silence) and ends the shift when one runs out. `reset` is this script's
-(the program's own `reset` calls answer `forbidden`, as in the grader). Each run uses one shift of the commissioning
-window (`cell_manual.md` section 8; the shifts left: /run/skidcell/commission_status.json); none starts once the
-graded episode has started (`practice_closed`).
+commissioning service, its stderr comes out here. The service applies the hidden episodes' budgets itself (1800 s
+simulated, 600 frames, 1200 s of program time, 180 s of silence) and ends the shift when one runs out. `reset` is
+this script's (the program's own `reset` calls answer `forbidden`, as in the grader). Each run uses one shift of the
+commissioning window (`cell_manual.md` section 8; the shifts left: /run/skidcell/commission_status.json); none starts
+once the graded episode has started (`practice_closed`). Keep this script out of your submission folder: it starts a
+process, which the grader's audit refuses in your program's files.
 
 What it prints is what the program and the robot cell saw: how the shift ended, the simulated time, the frames, the
 grips, slips and protective stops reported to the program. There is no score and no debrief: judge the shift by what

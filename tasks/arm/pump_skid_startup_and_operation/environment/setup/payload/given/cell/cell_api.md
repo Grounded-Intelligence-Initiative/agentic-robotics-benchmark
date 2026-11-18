@@ -1,19 +1,25 @@
 # Skid cell API (`cell`), version pump-skid-cell/0.6.0
 
-Your program (for instance `/home/user/submission/operate.py` exposing `solve(cell) -> None`) talks to a cell through
-`cell`. Two services run the cell: the graded episode's service, the one shift that is scored, which you drive
-yourself from scripts of your own through `skidcell.client.connect_graded()` (no program is run for you there, and it
-has no program-time, CPU or silence budget and no import check: the instruction gives its rules), and the
-commissioning service on the series' development sites (below). `~/commission/run_shift.py` runs a program in a
-commissioning shift the way a grader runs one: in a fresh process, from a per-run directory holding a copy of your
-submission folder (regular files only: symbolic links and `__pycache__` are not copied), with an empty writable
-`$HOME` / `$TMPDIR`, a minimal environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `MUJOCO_GL=osmesa`, `PYTHONPATH` =
-`~/given/lib`, `ARB_GIVEN_DIR` = `~/given`, BLAS threads 2) and the launcher `python3 -B -E -s -c <bootstrap> <lib>
-operate` (the bootstrap puts `<lib>` on `sys.path` and calls `skidcell.client.main`, which imports `operate` from the
-current directory), or `bash run.sh` when you ship one; its CPU time is capped at 4x its program time.
-`cell` is a proxy (`skidcell.client.Cell`): every method is one JSON-lines request, on the process's original stdout
-and answered on its stdin in a program that `run_shift.py` runs (`print()` then goes to stderr), on a Unix socket
-through `connect_graded()` and `connect_commissioning()`. A reply carrying `error` raises
+Your program `/home/user/submission/operate.py` exposes `solve(cell) -> None`. The grader runs it once per hidden
+episode in a fresh process under a dedicated unprivileged account, from a per-run directory holding a root-owned
+READ-ONLY copy of your submission folder (regular files only: symbolic links and `__pycache__` are not copied), with an
+empty writable `$HOME` / `$TMPDIR`, a minimal environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `MUJOCO_GL=osmesa`,
+`PYTHONPATH` = a read-only copy of `~/given/lib`, `ARB_GIVEN_DIR` = a read-only copy of `~/given`, BLAS threads 2) and
+the launcher `python3 -B -E -s -c <bootstrap> <lib> operate` (the bootstrap puts `<lib>` on `sys.path` and calls
+`skidcell.client.main`, which imports `operate` from the current directory), or `bash run.sh` when you ship one.
+Every process of the program runs with no network: a seccomp filter refuses every socket but a Unix-domain one
+(`socket()` of an inet family fails with `PermissionError`); the cell's wire is a pipe pair and needs none. Before the
+first episode the grader imports `operate` once under the same regime to check that it defines `solve`: that import must
+finish within 120 s of wall clock and 120 CPU seconds (all threads together: a library that runs many threads spends
+CPU seconds faster than wall seconds); a failed or slower import scores every episode 0, so keep heavy precomputation
+out of module level (inside `solve` it counts against the episode's program time). Each episode's CPU time is capped at
+4x its program time. The program the grader runs is the copy of your submission folder frozen when you start the
+graded episode (or the folder at your session's end if you never start it). The graded episode itself, the task's
+second item, is no program run: you drive it yourself from scripts of your own through `skidcell.client.connect_graded()`
+(the instruction gives its rules), and neither this paragraph nor the program's budgets below apply to it.
+`cell` is a proxy (`skidcell.client.Cell`): every method is one JSON-lines request on the process's original stdout,
+answered on stdin by the grader's cell; `print()` goes to stderr. Through `connect_graded()` and
+`connect_commissioning()` the requests go over a Unix socket instead. A reply carrying `error` raises
 `skidcell.client.CellError`.
 
 Units: metres, radians, seconds, quaternions `wxyz`; the world frame is the skid's frame (`cell_manual.md` section 1).
@@ -37,16 +43,18 @@ one document on the wire is the site's equipment list (`describe()["site"]`).
 
 Errors: a malformed request answers `bad_params: ...`; a call outside the list answers `forbidden` (counted as an
 illegal call); `episode_over` after the episode ended (`step` still answers, nothing moves). An internal error of the
-cell while it answers a call that changes the cell ends the episode. A frame the cell could not render answers
-`camera_unavailable` and is not charged to the frame budget: ask again. The graded episode is never run again: an
-episode the cell ended (an internal error, a physics fault) is scored as it stands.
+cell while it answers a call that changes the cell ends the episode. When the cell failed in an episode (an internal
+error, a physics fault, a frame it could not render: `camera_unavailable`, which is not charged to the frame budget),
+the grader runs that episode once more from scratch, with a fresh cell and a fresh process of your program, and the
+second run counts. The graded episode is never run again: one the cell ended (an internal error, a physics fault) is
+scored as it stands, and a frame it could not render may be asked again.
 
-Budgets per episode: 1800 s of simulated time and 600 camera frames. A program that `run_shift.py` runs in a
-commissioning shift also has 1200 s of **program time** (the wall clock minus the cell's own time inside `step` and
-`get_camera`), 4x that in CPU seconds, and 180 s of silence (no request) ends its shift; after the shift is over it may
-still read state and must finish. The graded episode has none of these three (`describe()["budgets"]` lists them as a
-program run has them): its clock advances only inside `step`, the time between your requests costs it nothing, and
-once it is over its service answers `status()` and `finish()` only.
+Budgets per episode (`describe()["budgets"]`): 1800 s of simulated time; 1200 s of **program time** (the wall clock
+minus the cell's own time inside `step` and `get_camera`), 4x that in CPU seconds; 600 camera frames; 180 s of
+silence (no request) ends the episode. After the episode is over the program may still read state and must finish.
+The graded episode has the 1800 s of simulated time and the 600 frames, and none of the others: its clock advances only
+inside `step`, the time between your requests costs it nothing, and once it is over its service answers `status()`
+and `finish()` only.
 
 No call returns ground truth.
 

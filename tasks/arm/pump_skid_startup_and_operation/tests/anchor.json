@@ -1,8 +1,8 @@
 {
  "direction": "higher",
- "full_at": 0.98,
- "metric": "operation_score",
- "note": "online variant (experimental): operation_score is the shift's score of the ONE graded episode the agent plays itself (skidcell.episode: start-up 0.20, operation in band 0.25, the window's events 0.25, shutdown 0.15, the log sheet 0.15; a void scores it 0), already on [0, 1], read from the graded episode's record (/var/lib/arb-online/record.json); ratio = score / value, reward = clamp(ratio / full_at, 0, 1).",
- "source": "reference program (tests/reference, run inside the cell by the privileged reference_run: privileged eyes for the robot's motions only, decisions on what an operator can see), played by the oracle (solution/solve.sh) on the online variant's graded episode ep08 through the agent-side client: ale validate validate-86bd2023 (engine bfb7505, commit d3f7473b, the task image of main) measured operation_score 0.9999999999998129 (every part full: start-up 0.20, operation 0.25, the events 0.25 with supply_loss, filter_slug, demand_step and dosing_airlock all credited, shutdown 0.15, log 0.15; no void, no protective stop), the same to the last digit as the oracle's run in a container of the task image the same day and as the hidden set's selection run for this site (1.0); value = that, rounded to four decimals as the offline anchor was (never a published figure). full_at 0.98 as on main (the episode reproduces exactly). Offline anchor on main: 0.9765, the mean of the eight hidden episodes.",
+ "full_at": 1.0,
+ "metric": "dual_mode_score",
+ "note": "dual mode (experiment): dual_mode_score = (offline_reward + online_reward) / 2, the mean of the task's two items, each already normalised by its own anchor, cap and full_at: the program item by anchor_offline.json (main's anchor: operation_score over the 8 hidden episodes) and the graded-episode item by anchor_online.json (operation_score of the one live graded episode). So the reference reaches 1.0 on both, and the combined anchor is 1.0 by construction; reward = clamp(dual_mode_score / 1.0, 0, 1).",
+ "source": "by construction from the two component anchors, each the reference program's own measured value (never a published figure): anchor_offline.json is main's (the oracle's two full verifies of 2026-11-10, 0.97646), anchor_online.json the oracle's measured score on the graded episode ep08 (validate-86bd2023, 0.9999999999998129); to be confirmed by this dual mode's validate, whose oracle must reach both.",
  "value": 1.0
 }

@@ -1,5 +1,5 @@
 {
- "note": "the graded episode's service (graded_service.py): public constants only; the hidden episode is episode.json, which only the worker reads. cell_config is the cell part of tests/grader_config.json (the grader's own cell configuration); cell_sha256 pins online/skidcell/, which setup.sh copies from the image's /opt/skidcell-commission/skidcell/ (the byte copy of tests/skidcell/ less its client), and reference_sha256 pins online/reference/, the byte copy of tests/reference/ (the privileged reference program that the oracle's token unlocks); env is the grader's numerics and rendering environment (the image's thread pins and tests/test.sh's OpenBLAS and numpy pins). prep_s is the agent's budget on main ([agent] timeout_sec 14400): the episode must be started within it; graded_s is the window from the start to the episode's latest end. practice_flag (O13): the graded episode's start writes it, and the commissioning service ends its shifts and refuses new ones once it exists.",
+ "note": "the graded episode's service (graded_service.py): public constants only; the hidden episode is episode.json, which only the worker reads. cell_config is the cell part of tests/grader_config.json (the grader's own cell configuration); cell_sha256 pins online/skidcell/, which setup.sh copies from the image's /opt/skidcell-commission/skidcell/ (the byte copy of tests/skidcell/ less its client), and reference_sha256 pins online/reference/, the byte copy of tests/reference/ (the privileged reference program that the oracle's token unlocks); env is the grader's numerics and rendering environment (the image's thread pins and tests/test.sh's OpenBLAS and numpy pins). prep_s is the agent's budget on main ([agent] timeout_sec 14400): the episode must be started within it; graded_s is the window from the start to the episode's latest end. practice_flag (O13): the graded episode's start writes it, and the commissioning service ends its shifts and refuses new ones once it exists. The dual mode's freeze (DM3): at the graded start the root supervisor copies submission_dir into record_dir/snapshot_name (no link followed; snapshot_max_bytes = tests/grader_config.json's max_submission_mb of 60 MB, main's cap; entries and depth bounded so the copy finishes and stays within the engine's artifact limits).",
  "task": "pump_skid_startup_and_operation",
  "user": "skidgrade",
  "agent_user": "user",
@@ -60,5 +60,11 @@
  "requests_log_cap_bytes": 33554432,
  "record_max_bytes": 1000000,
  "reply_timeout_s": 120,
- "practice_flag": "/run/skidcell-graded/flags/started"
+ "practice_flag": "/run/skidcell-graded/flags/started",
+ "submission_dir": "/home/user/submission",
+ "snapshot_name": "submission_snapshot",
+ "snapshot_max_bytes": 62914560,
+ "snapshot_max_entries": 10000,
+ "snapshot_max_depth": 32,
+ "snapshot_timeout_s": 120
 }
