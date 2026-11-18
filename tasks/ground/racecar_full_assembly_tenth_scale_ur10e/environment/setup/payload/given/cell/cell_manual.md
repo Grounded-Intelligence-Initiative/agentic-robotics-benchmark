@@ -121,9 +121,10 @@ varies with the range (up to 1 mm for the top camera, 0.2 mm for the wrist camer
 about 0.4 mm and 0.1 mm rms. The wrist camera's lens sits about 0.13 m from the pinch point: closer than its
 0.1 m minimum range it gives no depth. The hall's brightness varies by up to about 20 % between runs, and each
 camera unit has its own slight colour response (gain and tint within a few per cent), constant during a run; the image
-noise is new in every frame. The images come from a physically based renderer of the hall (soft shadows, reflections
-on metal and plastic); the given render layer (`~/given/lib/render`) draws scenes with MuJoCo's classic renderer
-instead (same geometry and camera model, plainer shading, no hall).
+noise is new in every frame. The images come from MuJoCo's Filament renderer (physically based: soft shadows,
+reflections on metal and plastic) in the hall, whose light is baked into its textures (`~/render`). The given render
+layer (`~/given/lib/render`) renders the same way: the same renderer, hall and look for your own scenes, depth from
+MuJoCo on the same geometry (`cell_api.md`, "Rendering your own frames"); MuJoCo's classic renderer stays available.
 
 ## The gripper on a thin plate
 

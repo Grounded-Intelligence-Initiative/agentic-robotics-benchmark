@@ -7878,6 +7878,51 @@
     ],
     "unchanged": "every other value of this record (structure, seeds, digests, runs, outcomes, the frozen and recorded tables of the draw and of every amendment, the set, the acceptance and the hollowing check): compared leaf by leaf before the entry was written"
    }
+  },
+  {
+   "utc": "2026-11-18T03:03:11Z",
+   "why": "agent-view port (2026-11-18), by the owner's decision of 2026-11-17 that every image the agent makes through the given library renders like the cell's cameras: the given library gains the cell cameras' Filament layer (render/filament/: byte copies of tests/render_filament/ plus view.py, a scene-independent API; render/room.py: a byte copy of tests/room/; arm/assembly_car/agent_render.py: the cell's tests/arm/assembly_car/agent_render.py with the server's inputs as arguments, and its agent_look.json, a byte copy; the quadruped task's library brings arm/assembly_quad/agent_render.py and its look the same way), and arm/assembly_info/cell_render.open_session renders with Filament by default (MuJoCo's classic renderer on request); the instruction, the cell manual and the cell API say so (templates, numbers from their placeholders). The givens rebuilt by their generator (regen_givens.py build with the quadruped task's ported library as the precedent; check 151 owned files and 3 evidence files, 0 differences); environment/assets.sha256 and the asset payload unchanged. No grader file, value, hidden set or scoring changed; no file of the frozen table changed (checked before this entry)",
+   "changed": {
+    "documents/environment/setup/payload/": [
+     "7ea8f96a252913736807186b18698d4bd8c0300c98285d524096bb2de913c131",
+     "3f5e1cfe5765f3c99dd07a26dbcd037c866a8a232ab3484f61b23a6f83f9f9ef"
+    ],
+    "documents/instruction.md": [
+     "085258f7c39009762aa404edc9677a3b2cce4364356911bce7ba0fe17805467d",
+     "7a70df2fcdec28a63d1be482e83ae8fcf588836e7f791bfae5f1502ac9c1841c"
+    ],
+    "documents/tests/given_hashes.json": [
+     "22ec573b4aa4a399b3d4e757682694d034fa826af67a33a181be2416306c8503",
+     "c92233fa6241a66cbfd4d4def41279211cf195dd9b9b0fdbae5704ecd371aa76"
+    ],
+    "documents/tests/setup_payload/": [
+     "7ea8f96a252913736807186b18698d4bd8c0300c98285d524096bb2de913c131",
+     "3f5e1cfe5765f3c99dd07a26dbcd037c866a8a232ab3484f61b23a6f83f9f9ef"
+    ]
+   },
+   "recorded": {
+    "publication": {
+     "tests/assets/gt.tar.xz": "328939c34609e9f9b9108da78f3e37249c1d311de60f0361ca11f2f8c5fff4f4",
+     "tests/grader_config.json#hidden_gt.url": "ac82897db6166c0a1c549102942cd38ec2cdef31976ff505c872471fe766a734",
+     "tests/grader_config.json#hidden_gt.sha256": "7826a7d574e3595e764899fd24e63e67e256e0adc4bf71ce5801173853d2cd64",
+     "tests/grader_config.json#hidden_gt.note": "c7af77de6e4efde92e9326e3133c3c7e6379a0b6b3271599335d20d8809790eb"
+    },
+    "documents": {
+     "instruction.md": "7a70df2fcdec28a63d1be482e83ae8fcf588836e7f791bfae5f1502ac9c1841c",
+     "environment/assets.sha256": "65c6828e6a47314f472add17f0aef1f4ad5323e562a67934e711815b1d622cea",
+     "tests/given_hashes.json": "c92233fa6241a66cbfd4d4def41279211cf195dd9b9b0fdbae5704ecd371aa76",
+     "environment/setup/payload/": "3f5e1cfe5765f3c99dd07a26dbcd037c866a8a232ab3484f61b23a6f83f9f9ef",
+     "environment/assets/payload/given/parts/": "cf7474fad80c23f25539d3a1f78b26e915466a88588ba8ef8263c4ad6dbff8e5",
+     "environment/assets/payload/given/drawings/": "dfece19a682cef21b9613a86c6cde01031573fe117cc4e13a087278a787d193c",
+     "environment/assets/payload/given/manual/": "963d5f2b2af8e26d01d9c1840adfaba50003b26cf83b90ac9212d659a113003e",
+     "environment/assets/payload/render/": "d25e9c225c66d9244a8b7a98bbb5056216e32bf16898b9f110fc8a9a3d6972ff",
+     "tests/setup_payload/": "3f5e1cfe5765f3c99dd07a26dbcd037c866a8a232ab3484f61b23a6f83f9f9ef"
+    }
+   },
+   "tools": {
+    "tests/review/select_set.py": "e40c86e557cf76556ca8641ebb817d00b42e7e35d07a66e4e25ff49654f2cea7"
+   },
+   "frozen_checked": "amendment A4 (2026-11-17): unchanged"
   }
  ]
 }
