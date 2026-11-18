@@ -91,6 +91,10 @@ From a shell, `/opt/venv/bin/python3 /home/user/graded_episode.py status` prints
   simulated and never refunded. It launches the episode's own simulator, which takes from seconds
   to a few minutes; if that simulator cannot start, nothing is charged and you can try again. It
   needs about 6 GB of GPU memory, as the desk lab does: if your lab holds the GPU, close it first.
+- **Practice ends when the graded episode starts.** Any practice facility that runs hidden code or
+  hidden instances closes for good at the start. This task has none: the desk lab is your own tool
+  (its code is in your home and it runs under your account, as a program of yours could carry
+  it), so it stays available while the graded episode runs, GPU memory permitting.
 - **The world waits for you.** It advances only inside `step()`: one call is one control step
   (0.1 s of simulated time). Between your calls nothing moves and no deadline runs, so thinking
   costs no simulated time; deadlines are in steps (`deadline_t`). The episode does not stand still

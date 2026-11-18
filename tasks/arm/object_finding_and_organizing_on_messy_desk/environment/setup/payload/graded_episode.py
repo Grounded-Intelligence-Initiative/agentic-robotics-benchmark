@@ -41,7 +41,8 @@ class GradedEpisodeError(Exception):
 
 
 class GradedEpisode(object):
-    """One connection to the graded episode service. `timeout` bounds every call except start()."""
+    """One connection to the graded episode service. `timeout` bounds every call except start(). `done` is
+    true once a reply has said the episode is over (a step, observe(), status() or finish())."""
 
     def __init__(self, path=SOCKET, timeout=300.0):
         self.path, self.timeout = path, float(timeout)
@@ -71,6 +72,7 @@ class GradedEpisode(object):
         """started, ended, steps (the episode's step index t), horizon, sim_time_s, prep_left_s (time left to
         start the episode), graded_left_s (time left in the graded window once started)."""
         r = self._call({"op": "status"})
+        self.done = bool(r["ended"])
         return {k: r[k] for k in ("started", "ended", "steps", "horizon", "sim_time_s", "prep_left_s",
                                   "graded_left_s")}
 

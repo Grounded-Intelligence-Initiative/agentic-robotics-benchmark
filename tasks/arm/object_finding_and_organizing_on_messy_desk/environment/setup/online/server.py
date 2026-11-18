@@ -843,13 +843,14 @@ class Episode:
         try:
             obs, state = self.sim.reset(self.seed, self.horizon)
             self.containers = _containers(self.sim.info()) if privileged else None
-        except SimError as exc:
-            self.log.write(kind="simulator_failed", op="reset", err=str(exc)[:300], sim_log_tail=self.sim_log_tail())
+            self.scorer = EpisodeScorer(self.horizon)
+            if privileged:
+                obs["privileged"] = privileged_block(state, self.containers, obs)
+        except Exception as exc:  # noqa: BLE001 - the simulator died or answered out of shape: the episode ends here
+            self.log.write(kind="simulator_failed", op="reset", err="%s: %s" % (type(exc).__name__, str(exc)[:300]),
+                           sim_log_tail=self.sim_log_tail())
             self._end("worker_restart")
             raise ReplyError("simulator_failed")
-        self.scorer = EpisodeScorer(self.horizon)
-        if privileged:
-            obs["privileged"] = privileged_block(state, self.containers, obs)
         self.last_obs = obs
         self.dirty = True
         self.log_request("start", True, wall=time.monotonic() - self.started_mono)
@@ -873,12 +874,12 @@ class Episode:
             raise
         try:
             obs, state = self.sim.step(action)
-        except SimError as exc:
-            self.log.write(kind="simulator_failed", op="step", t=self.steps, err=str(exc)[:300],
-                           sim_log_tail=self.sim_log_tail())
+            self.scorer.add_step(state)
+        except Exception as exc:  # noqa: BLE001 - the simulator died or answered out of shape: the episode ends here
+            self.log.write(kind="simulator_failed", op="step", t=self.steps,
+                           err="%s: %s" % (type(exc).__name__, str(exc)[:300]), sim_log_tail=self.sim_log_tail())
             self._end("worker_restart")
             raise ReplyError("simulator_failed")
-        self.scorer.add_step(state)
         self.steps += 1
         self.hires += hires_frames(action)
         if self.privileged:

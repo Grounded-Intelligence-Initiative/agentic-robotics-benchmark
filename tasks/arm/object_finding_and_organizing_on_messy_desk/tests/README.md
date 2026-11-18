@@ -48,6 +48,11 @@ the record of that episode; no program of the agent runs after the session.
 - **The reference**: `solution/solve.sh` runs `solution/privileged/oracle.py` unchanged through
   `solution/drive_oracle.py`, which starts the episode through the agent's own client with the
   reference token; the service then adds the same `privileged` block the offline grader adds.
+- **Practice (rule O13, practice ends when the graded episode starts)** closes nothing here: the task's
+  one practice facility, the desk lab, is the agent's own tool (code staged into its home, run under its
+  account, no episode and no hidden instance in it; a program could carry it, as the offline controller
+  could), so it stays available during the graded episode. The instruction says so beside the one-shot
+  rule.
 - **GPU**: the agent's desk lab and the episode's simulator are two Isaac processes on one GPU, about
   6 GB of VRAM each (5.9-6.3 GB measured per process).
 
