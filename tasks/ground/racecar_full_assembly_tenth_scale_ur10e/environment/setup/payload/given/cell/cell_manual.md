@@ -124,7 +124,10 @@ camera unit has its own slight colour response (gain and tint within a few per c
 noise is new in every frame. The images come from MuJoCo's Filament renderer (physically based: soft shadows,
 reflections on metal and plastic) in the hall, whose light is baked into its textures (`~/render`). The given render
 layer (`~/given/lib/render`) renders the same way: the same renderer, hall and look for your own scenes, depth from
-MuJoCo on the same geometry (`cell_api.md`, "Rendering your own frames"); MuJoCo's classic renderer stays available.
+MuJoCo on the same geometry (`cell_api.md`, "Rendering your own frames"); it is the way to see what these cameras
+would see. MuJoCo's own renderer (`mujoco.Renderer`, or the render layer's `"mujoco"` backend) stays available but
+draws a different picture (no hall, MuJoCo's own lights, flat colours, no reflections), so image processing tuned on
+its frames may behave differently on the cameras' frames.
 
 ## The gripper on a thin plate
 
