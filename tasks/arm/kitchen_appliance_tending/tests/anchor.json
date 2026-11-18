@@ -1,8 +1,8 @@
 {
  "metric": "mean_request_credit",
  "direction": "higher",
- "value": null,
+ "value": 1.0,
  "full_at": 0.98,
- "source": "Pending: the privileged oracle's measured episode_score on the graded episode (tests/online.json), from a real ale validate run of this variant.",
- "note": "Online graded episode (experimental variant): one episode, so the anchor is the oracle's own score on that episode. full_at 0.98 as on main."
+ "source": "The privileged oracle's measured episode_score on the graded episode (tests/online.json: unit u0, entry 3 of the fixed hidden set) from a real run: ale validate validate-9d0a3c5d (engine bfb7505, Docker, 2026-11-18) of commit fd85ebd0 with a null anchor, oracle episode kitchen_appliance_tending-oracle-197fc5ea: mean_request_credit 1.0 (the episode ended at its own end after 1061 steps, its three requests completed); untouched 0.0 (never started).",
+ "note": "Online graded episode (experimental variant): one episode, so the anchor is the oracle's own score on that episode (an in-container dry run before the validate measured the same, 1.0 after 1061 steps, all three requests completed). full_at 0.98 as on main."
 }
