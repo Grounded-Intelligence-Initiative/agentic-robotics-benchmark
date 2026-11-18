@@ -3,6 +3,17 @@
  "full_at": 1.0,
  "metric": "dual_mode_score",
  "note": "DUAL MODE: dual_mode_score = (offline_reward + online_reward) / 2, each item already normalised by its own measured reference value: the program item is main's reward (work_score over the 6 hidden episodes against anchor_offline.json, main's anchor.json byte for byte: value 1.0, full_at 0.98), the graded-episode item the online variant's (episode ep01's work_score against anchor_online.json: value 1.0, full_at 0.98). Both items lie in [0, 1], so the combined value is related to 1.0 with cap 1.0 and full_at 1.0: reward = dual_mode_score.",
- "source": "By construction: the privileged reference reaches both items' reference values (main's verifies of the hidden set and the online validates of ep01, recorded in anchor_offline.json and anchor_online.json), so its dual_mode_score is 1.0; confirmed by the oracle of this build's validate.",
+ "source": "By construction: the privileged reference reaches both items' reference values (main's verifies of the hidden set and the online validates of ep01, recorded in anchor_offline.json and anchor_online.json), so its dual_mode_score is 1.0. Confirmed by validate-b84353ad (engine bfb7505, a clean checkout of d82bd6ca): untouched reward 0.0 (no program, no record); oracle reward 1.0 (reward_exact 1.0): the program item 1.0 (main's grading of the copy frozen at the start, 2 files: work_score 1.0 over the 6 hidden episodes, contract_ok 1.0, privileged 1.0) and the graded-episode item 1.0 (ep01: work_score 1.0, 463.68 s simulated, 46368 ticks, ended by finish).",
+ "validate": {
+  "commit": "d82bd6ca",
+  "offline_reward": 1.0,
+  "offline_work_score": 1.0,
+  "online_reward": 1.0,
+  "online_work_score": 1.0,
+  "oracle_reward": 1.0,
+  "oracle_reward_exact": 1.0,
+  "run": "validate-b84353ad",
+  "untouched_reward": 0.0
+ },
  "value": 1.0
 }
