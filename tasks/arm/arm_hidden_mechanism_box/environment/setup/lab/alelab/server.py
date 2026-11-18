@@ -42,6 +42,9 @@ the agent plays itself through these ops; the lab writes its outcome to a record
   {"op": "graded_finish"}                       -> ends it now
   * One shot: the start is persisted (fsync) before anything is simulated and never refunded; it is
     refused once `prep_s` have passed since the lab's start.
+  * Practice ends when it starts: the start ends every open lab trial, and reset / execute are refused
+    (`practice_closed`) for the rest of the session, a restarted worker included (hello and budget still
+    answer). Trial ops and the start are serialized by one lock, so no trial advances after the start.
   * The episode lives in the worker, not in a connection: a disconnect leaves it where it is and any
     later connection resumes it; one connection holds it at a time (another one gets `busy`) until that
     connection closes. Every graded op but graded_status claims it.
@@ -149,6 +152,7 @@ ERRORS = {
     "already_started": "the graded episode was started already; it starts once per session (resume it with graded_observe)",
     "graded_over": "the graded episode has ended",
     "window_closed": "the graded episode can no longer be started: its start window has closed",
+    "practice_closed": "lab practice has ended: the graded episode has started, so no trial runs for the rest of the session",
 }
 GRADED_DEFAULTS = {
     "episode": None,  # root-only episode file (relative to the config file): {"episode", "instance", "seed"}
@@ -1253,6 +1257,7 @@ class Graded:
                 self.log.write(kind="graded_state_persist_failed", err=str(exc))
                 raise ReplyError("internal")
             self.log.write(kind="graded_start", conn=cid, privileged=privileged)
+            self.worker.close_practice()  # O13: every open lab trial ends; no trial starts from now on
             self._req("start", privileged=privileged)
             self._write()
             try:
@@ -1373,6 +1378,12 @@ class Worker:
         self.graded = graded
         if graded is not None:
             self.supported.extend(GRADED_OPS)
+        # Practice (lab trials) ends once the graded episode has started, for the rest of the session: read back from
+        # the persisted graded state (fail closed when it is unreadable). Trial ops and close_practice run under
+        # practice_lock; open_trials maps a connection id to its state while it holds a trial.
+        self.practice_lock = threading.Lock()
+        self.open_trials = {}
+        self.practice_is_closed = graded is not None and bool(graded.state.broken or graded.state.data["started"])
 
     # -- plugin calls under one lock, watched for wall-clock overruns
     def call(self, fn, *args):
@@ -1491,15 +1502,8 @@ class Worker:
         except (OSError, socket.timeout):
             pass
         finally:
-            trial = state.get("trial")
-            if trial is not None:
-                self.trials_log.write(
-                    kind="trial_end",
-                    conn=cid,
-                    instance=trial.instance,
-                    steps=trial.steps,
-                    reason="disconnect",
-                )
+            with self.practice_lock:
+                self._end_trial(state, cid, "disconnect")
             if self.graded is not None:
                 self.graded.release(cid)  # the graded episode stays where it is
             try:
@@ -1612,19 +1616,12 @@ class Worker:
         return self.graded.op_finish(req, cid)
 
     def op_close(self, req, state, cid):
-        trial = state.get("trial")
-        if trial is not None:
-            self.trials_log.write(
-                kind="trial_end",
-                conn=cid,
-                instance=trial.instance,
-                steps=trial.steps,
-                reason="close",
-            )
-            state["trial"] = None
+        with self.practice_lock:
+            self._end_trial(state, cid, "close")
         return {}
 
     def _end_trial(self, state, cid, reason):
+        """Under practice_lock."""
         trial = state.get("trial")
         if trial is not None:
             self.trials_log.write(
@@ -1635,6 +1632,30 @@ class Worker:
                 reason=reason,
             )
         state["trial"] = None
+        self.open_trials.pop(cid, None)
+
+    def close_practice(self):
+        """The graded episode has started (O13): every open lab trial ends now, and reset / execute are refused
+        (practice_closed) for the rest of the session. Called by Graded.op_start once the start is persisted; waits for
+        a trial op in flight, so no trial advances after the start."""
+        with self.practice_lock:
+            if self.practice_is_closed:
+                return
+            self.practice_is_closed = True
+            ended = 0
+            for cid, st in sorted(self.open_trials.items()):
+                ended += 1 if st.get("trial") is not None else 0
+                self._end_trial(st, cid, "practice_closed")
+            self.open_trials.clear()
+            self.trials_log.write(kind="practice_closed", trials_ended=ended)
+
+    def _practice_open(self, state, cid, op):
+        """Under practice_lock: refuse a trial op once practice has ended, ending the connection's trial if it has
+        one (nothing is charged)."""
+        if self.practice_is_closed:
+            self._end_trial(state, cid, "practice_closed")
+            self.trials_log.write(kind="refused", conn=cid, op=op, reason="practice_closed")
+            raise ReplyError("practice_closed")
 
     def _charge(self, cid, op, inst):
         remaining = self.budget.charge()
@@ -1653,6 +1674,24 @@ class Worker:
         return remaining
 
     def op_reset(self, req, state, cid):
+        with self.practice_lock:
+            self._practice_open(state, cid, "reset")
+            out = self._op_reset(req, state, cid)
+            if state.get("trial") is not None:
+                self.open_trials[cid] = state
+            return out
+
+    def op_step(self, req, state, cid):
+        with self.practice_lock:
+            self._practice_open(state, cid, "step")
+            return self._op_step(req, state, cid)
+
+    def op_execute(self, req, state, cid):
+        with self.practice_lock:
+            self._practice_open(state, cid, "execute")
+            return self._op_execute(req, state, cid)
+
+    def _op_reset(self, req, state, cid):
         inst = self._instance(req)
         self._end_trial(state, cid, "replaced")
         remaining = self._charge(cid, "reset", inst)
@@ -1671,7 +1710,7 @@ class Worker:
         state["trial"] = Trial(episode, inst)
         return {"instance": inst, "obs": payload, "remaining": remaining}
 
-    def op_step(self, req, state, cid):
+    def _op_step(self, req, state, cid):
         trial = state.get("trial")
         if trial is None:
             raise ReplyError("no_trial")
@@ -1700,7 +1739,7 @@ class Worker:
             self._end_trial(state, cid, "done")
         return {"obs": payload, "done": done, "step": trial.steps}
 
-    def op_execute(self, req, state, cid):
+    def _op_execute(self, req, state, cid):
         inst = self._instance(req)
         plan = self._plugin_validate("validate_plan", req["plan"], "bad_plan")
         remaining = self._charge(cid, "execute", inst)

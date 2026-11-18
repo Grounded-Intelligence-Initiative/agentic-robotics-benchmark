@@ -140,8 +140,8 @@ it cannot answer within 120 s restarts its worker (a trial already charged is no
 placement, initial state, request queue, lighting and sensor noise. A reset takes about 1 s and a step with all three
 images about 0.2 s (much less without images). The lab never reports scores, credit or the unit's state: only
 observations; but a request that closes before its deadline was completed. The lab units are exactly the units you
-are scored on. With 1 trial you can visit one of the nine units. The lab also serves the graded episode (below); the
-lab trial stays available for the whole session.
+are scored on. With 1 trial you can visit one of the nine units. The lab also serves the graded episode (below); its
+trial ends when the graded episode starts.
 
 ## The graded episode (the only thing scored)
 
@@ -156,7 +156,10 @@ The calls (`labclient.py`; the requests are JSON lines on the lab socket, `{"op"
 
 - `obs = lab.graded_start()`: starts the graded episode and returns its first observation (all three images). It
   can be started **once per session**: the start is recorded before anything is simulated and is never given back,
-  whatever happens afterwards (a crash of your script, a lost connection).
+  whatever happens afterwards (a crash of your script, a lost connection). **Starting it ends lab practice**: an
+  open lab trial ends at that moment, and `reset` is refused (`practice_closed`) for the rest of the session, as no
+  practice happens during a graded run (`hello` and `budget` still answer). Your own tools stay available: the dev
+  sim (`appliance_env.py`, `episode.py`, the practice units), the practice grader and anything you wrote.
 - `obs, done = lab.graded_step(action)`: one control step (0.1 s simulated) with an action in the format above;
   `obs` is the next observation and `done` is true once the episode has ended. A malformed action is refused
   (`bad_action`) and simulates nothing.
