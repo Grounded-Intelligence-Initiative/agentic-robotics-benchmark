@@ -10,7 +10,10 @@ survivor; and checks that tests/verify.py voids the run on the running count onl
 Also: grade.py's child process runs on OpenBLAS's Haswell kernels on every CPU (OPENBLAS_CORETYPE in its
 environment, whatever the verify stage's own environment says). Under the AVX-512 kernel (SkylakeX) the reference's
 own part P51 does not tessellate to a closed manifold, the reference cannot load and every verify ends as a task
-error. Runs the grader's own `grade_child`, taken from tests/lockdown_runtime.py by name, with subprocess.run stubbed.
+error. Beside it the child gets OPENBLAS_L2_SIZE=256: on some AMD CPUs (L2 of 1024 KB per core) the OpenBLAS that
+numpy bundles otherwise enlarges its matrix-product blocks, for the forced kernel too, beyond what the Haswell kernel's
+fixed stack buffer holds (a product with a long inner dimension crashes or comes out wrong). Runs the grader's own
+`grade_child`, taken from tests/lockdown_runtime.py by name, with subprocess.run stubbed.
 """
 import ast
 import json
@@ -134,7 +137,8 @@ class SurvivorAtVerifyStart(unittest.TestCase):
 
 
 class GradeChildKernels(unittest.TestCase):
-    """The environment grade_child hands grade.py: OpenBLAS pinned to its Haswell kernels, one thread each."""
+    """The environment grade_child hands grade.py: OpenBLAS pinned to its Haswell kernels with the L2 size beside
+    the kernel, one thread each."""
 
     def setUp(self):
         self.tmp = Path(self.enterContext(tempfile.TemporaryDirectory()))
@@ -163,19 +167,26 @@ class GradeChildKernels(unittest.TestCase):
         return res, calls
 
     def test_the_child_runs_on_the_haswell_kernels(self):
-        for given in (None, "SkylakeX", ""):  # unset, the AVX-512 kernel, an empty value: the child gets Haswell
-            with self.subTest(parent=given):
-                res, calls = self._grade_child({"OPENBLAS_CORETYPE": given, "STAGE_ONLY": "kept"})
-                self.assertEqual(res, {"ok": True})
-                self.assertEqual(len(calls), 1)
-                argv, kwargs = calls[0]
-                self.assertEqual(argv[2], str(self.tmp / "stage" / "grade.py"))
-                env = kwargs["env"]
-                self.assertEqual(env["OPENBLAS_CORETYPE"], "Haswell")
-                self.assertEqual(env["STAGE_ONLY"], "kept")  # the rest of the stage's environment is kept
-                self.assertEqual({k: env[k] for k in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")},
-                                 {"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1"})
-                self.assertEqual(env["ARB_GRADER_CPUS"], "8")
+        # the verify stage's own values: unset, the AVX-512 kernel / the L2 size that lets the blocks grow, an empty
+        # value; whatever they are, the child gets Haswell and 256
+        for core in (None, "SkylakeX", ""):
+            for l2 in (None, "1024", ""):
+                with self.subTest(parent_core=core, parent_l2=l2):
+                    self._check_child_env(core, l2)
+
+    def _check_child_env(self, core, l2):
+        res, calls = self._grade_child({"OPENBLAS_CORETYPE": core, "OPENBLAS_L2_SIZE": l2, "STAGE_ONLY": "kept"})
+        self.assertEqual(res, {"ok": True})
+        self.assertEqual(len(calls), 1)
+        argv, kwargs = calls[0]
+        self.assertEqual(argv[2], str(self.tmp / "stage" / "grade.py"))
+        env = kwargs["env"]
+        self.assertEqual({k: env.get(k) for k in ("OPENBLAS_CORETYPE", "OPENBLAS_L2_SIZE")},
+                         {"OPENBLAS_CORETYPE": "Haswell", "OPENBLAS_L2_SIZE": "256"})
+        self.assertEqual(env["STAGE_ONLY"], "kept")  # the rest of the stage's environment is kept
+        self.assertEqual({k: env[k] for k in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")},
+                         {"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1"})
+        self.assertEqual(env["ARB_GRADER_CPUS"], "8")
 
     def test_the_grade_goes_through_grade_child(self):
         """grade.py is started in one place, grade_child, and verify.py's main() calls it once."""
