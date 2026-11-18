@@ -1,0 +1,226 @@
+{
+ "H01": {
+  "size": [
+   0.598,
+   0.297,
+   0.199
+  ],
+  "mass": 9.5,
+  "com": [
+   0,
+   0
+  ],
+  "stack_limit": 10,
+  "fragile": true,
+  "tone": 3,
+  "brand": "BRISA"
+ },
+ "H02": {
+  "size": [
+   0.596,
+   0.298,
+   0.2
+  ],
+  "mass": 4.0,
+  "com": [
+   0,
+   0
+  ],
+  "stack_limit": 10,
+  "fragile": false,
+  "tone": 2,
+  "brand": "FJELL"
+ },
+ "H03": {
+  "size": [
+   0.298,
+   0.197,
+   0.16
+  ],
+  "mass": 1.5,
+  "com": [
+   0,
+   0
+  ],
+  "stack_limit": 10,
+  "fragile": true,
+  "tone": 3,
+  "brand": "LUMEN"
+ },
+ "H04": {
+  "size": [
+   0.397,
+   0.396,
+   0.32
+  ],
+  "mass": 13.0,
+  "com": [
+   0.003,
+   -0.03
+  ],
+  "stack_limit": 5,
+  "fragile": true,
+  "tone": 1,
+  "brand": "ORMEN"
+ },
+ "H05": {
+  "size": [
+   0.398,
+   0.297,
+   0.319
+  ],
+  "mass": 5.5,
+  "com": [
+   0,
+   0
+  ],
+  "stack_limit": 40,
+  "fragile": false,
+  "tone": 0,
+  "brand": "QUILL"
+ },
+ "H06": {
+  "size": [
+   0.598,
+   0.198,
+   0.2
+  ],
+  "mass": 3.5,
+  "com": [
+   0,
+   0
+  ],
+  "stack_limit": 10,
+  "fragile": false,
+  "tone": 1,
+  "brand": "TALLIS"
+ },
+ "H07": {
+  "size": [
+   0.597,
+   0.398,
+   0.199
+  ],
+  "mass": 11.0,
+  "com": [
+   0,
+   0
+  ],
+  "stack_limit": 40,
+  "fragile": false,
+  "tone": 2,
+  "brand": "VARDE"
+ },
+ "H08": {
+  "size": [
+   0.397,
+   0.296,
+   0.32
+  ],
+  "mass": 5.0,
+  "com": [
+   0,
+   0
+  ],
+  "stack_limit": null,
+  "fragile": false,
+  "tone": 1,
+  "brand": "BRISA"
+ },
+ "H09": {
+  "size": [
+   0.396,
+   0.197,
+   0.199
+  ],
+  "mass": 1.5,
+  "com": [
+   0,
+   0
+  ],
+  "stack_limit": 20,
+  "fragile": false,
+  "tone": 2,
+  "brand": "FJELL"
+ },
+ "H10": {
+  "size": [
+   0.297,
+   0.197,
+   0.159
+  ],
+  "mass": 1.5,
+  "com": [
+   0,
+   0
+  ],
+  "stack_limit": 20,
+  "fragile": false,
+  "tone": 1,
+  "brand": "LUMEN"
+ },
+ "H11": {
+  "size": [
+   0.597,
+   0.196,
+   0.24
+  ],
+  "mass": 5.5,
+  "com": [
+   0,
+   0
+  ],
+  "stack_limit": 5,
+  "fragile": true,
+  "tone": 0,
+  "brand": "ORMEN"
+ },
+ "H12": {
+  "size": [
+   0.396,
+   0.396,
+   0.239
+  ],
+  "mass": 9.5,
+  "com": [
+   0,
+   0
+  ],
+  "stack_limit": 40,
+  "fragile": false,
+  "tone": 3,
+  "brand": "QUILL"
+ },
+ "H13": {
+  "size": [
+   0.597,
+   0.398,
+   0.2
+  ],
+  "mass": 13.5,
+  "com": [
+   0,
+   0
+  ],
+  "stack_limit": 20,
+  "fragile": false,
+  "tone": 3,
+  "brand": "TALLIS"
+ },
+ "H14": {
+  "size": [
+   0.396,
+   0.197,
+   0.2
+  ],
+  "mass": 3.0,
+  "com": [
+   0,
+   0
+  ],
+  "stack_limit": 40,
+  "fragile": false,
+  "tone": 2,
+  "brand": "VARDE"
+ }
+}

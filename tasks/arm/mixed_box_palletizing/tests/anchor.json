@@ -1,0 +1,9 @@
+{
+  "metric": "complete_order_fraction",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 0.85,
+  "source": "measured: the privileged reference (solution/controller/controller.py with the grader's truth) under `ale validate` on this task, runs validate-c5c8ab99 and validate-38710c7c, 2026-11-17, engine vendor/ale bfb7505: complete_order_fraction 1.0 in both (all eight hidden orders shipped complete, shipped volume fraction 1.0, oracle_token 1). An in-process run on a different CPU architecture gave the same result.",
+  "reference_commit": "the commit that adds this task",
+  "note": "The metric is the fraction of the eight hidden orders that ship complete (every carton of the order ships; 0 to 1, higher is better). The reference is privileged: the grader gives it the truth (joint zero offsets, pallet pose, the state of every arrived carton) when its submission carries the token whose hash is tests/hidden/oracle_token.sha256, so the value is what perfect calibration and perception achieve with an online planner. The hidden orders were drawn at random from the hidden catalogue and kept when the reference shipped them complete in physics (61 of 65 candidates did); the eight with the largest volume are the set. Seeds are fixed and the reference closes its loop on the truth, so its value does not move from run to run. full_at 0.85 leaves room for one order of eight lost to a different floating-point path on another machine."
+}

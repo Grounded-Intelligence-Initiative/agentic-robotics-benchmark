@@ -1,0 +1,52 @@
+# mixed_box_palletizing: a 4-axis palletizing arm with a vacuum gripper builds a mixed pallet from modular cartons
+# that arrive one at a time, in an order nobody announces. The agent delivers a controller that sees each carton
+# only through RGB-D cameras (pose, size, printed handling marks: stacking limit by mass, do not stack, fragile),
+# feels its mass and centre of gravity through the wrist force/torque sensor, and decides where it goes: on the
+# pallet, or on a small buffer table for later. Physical execution, long horizon: an order is 16 to 20 cartons and
+# 5,000 to 6,000 control steps.
+#
+# Two things make it hard. The cartons tile the pallet, so an order fits only with a few millimetres between
+# neighbours (the reference leaves 4 mm; with 8 mm no order fits). And the cell is never its drawing: in every
+# order the joint zeros (up to 0.5 degrees, about 20 mm at the pad), the camera mounts (30 mm, 1.5 degrees) and
+# the pallet's pose (25 mm, 2 degrees) differ, and nothing reports them. A controller has to calibrate itself
+# from survey marks and what it sees and feels, to about a millimetre.
+#
+# The agent gets no simulator: the cell's drawing (task_card.md), reference images of the marks, the drawn
+# kinematics, and a lab, the practice cell behind a socket, for three practice orders in total, which answers
+# with observations only. Graded (tests/verify.py, separate verifier sandbox): the controller is driven over a
+# stdio wire through eight hidden orders of hidden cartons; after each order the pallet goes through a tilt test.
+# The metric is the fraction of the orders that ship complete (every carton ships, undamaged, inside the real
+# pallet's edges); reward = clamp(metric / anchor / full_at, 0, 1) (tests/anchor.json). The reference is
+# privileged: a token in its submission makes the grader add the truth (calibration, carton states) to its
+# observations; it plans online like any controller.
+
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/mixed_box_palletizing"
+
+[metadata]
+platform = "arm"
+
+[environment]
+cpus = 4
+memory_mb = 8192
+
+# setup: stage the task card, the mark images and the lab client, and start the lab service (seconds).
+# agent: 3 h for the whole job, the two lab orders included (a lab order driven by the reference controller takes
+# a few minutes of wall time).
+[agent]
+timeout_sec = 10800
+network_mode = "no-network"
+
+# verify: eight orders over the wire. The reference controller's whole grading run takes a few minutes; the grader
+# stops scoring after run_budget_s = 5400 s (tests/grader_config.json), which the timeout leaves room for.
+[verifier]
+timeout_sec = 7200
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 4
+memory_mb = 8192
+gpus = 0
