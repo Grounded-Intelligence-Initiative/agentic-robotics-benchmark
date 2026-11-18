@@ -88,10 +88,10 @@ RETREAT_M = 0.06
 LOCK_HOLD_TICKS = 500           # at most this long holding a captured unit until the cell locks it
 LOCK_WAIT_TICKS = 300           # ... and after letting go
 CONTACT_N = 0.5                 # the monitor's threshold
-BATTERY_RELEASE_M = 0.024       # the pack's underside above its seat at the release (DESIGN 2.2, G5)
+BATTERY_RELEASE_M = 0.024       # the pack's underside above its seat at the release (the fingers reach no lower past the brace)
 BATTERY_LOWER_SPEED_M_S = 0.030
 BATTERY_HOLD_TICKS = 30
-BATTERY_FINGER_CLEAR_M = 0.001  # the fingers off the brace at the release (G5's static line: 1.0 mm)
+BATTERY_FINGER_CLEAR_M = 0.001  # the fingers off the brace at the release (the battery grasp's static clearance line: 1.0 mm)
 PART_FORCE_TICKS = 20
 
 # the four top-down units' procedures (per unit type of the kit)
@@ -142,7 +142,7 @@ def make_planner(cell, seed=0):
 
 def unit_grasps(kit):
     """{unit: [(G (m), width (m), desc, entry)]}: the reference grasps of the four top-down units (`car_grasps.
-    reference_grasps`: the package's added ones, then the frozen primaries; the unit of each slot from the kit; the
+    reference_grasps`: the added ones (`ADDED`), then the frozen primaries; the unit of each slot from the kit; the
     grasps are in the unit's frame, layout-independent)"""
     out = {}
     for s in kit["slots"]:

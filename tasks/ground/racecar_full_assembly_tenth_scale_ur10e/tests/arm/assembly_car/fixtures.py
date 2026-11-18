@@ -11,7 +11,7 @@ vertical and a shift on the bench (`layout.py` draws it per episode).
   flat underside is clamped (its top = the tub's underside, the wheel axles AXLE_HEIGHT_MM above the bench), and a
   tab of the base plate reaching forward beyond the car's nose with the stand board on it (in front of the nose so
   that the overhead camera sees it). The stand stays inside |y| <= 64 mm above the base plate: nothing of it is in
-  the lower finger's path beside a wheel (WP-04 stand_choice.md section 5).
+  the lower finger's path beside a wheel.
 * **deck shelf** ("shelf"; frame: origin under the deck frame's origin as the deck lies on the shelf, x = the deck's
   forward axis): a foot plate, a pedestal, two rails under the deck plate's underside (the right long edge overhangs
   the nearer rail by ~47 mm: the gripper's linkage hangs there), a back fence along the left long edge and two end
@@ -49,7 +49,7 @@ __all__ = ["BENCH_BOARD", "TOOL_PLATE", "AXLE_HEIGHT_MM", "REF_POINT_CAR_MM", "T
 # the tub's flat underside (z of the car frame; = the cradle plate's top)
 REF_POINT_CAR_MM = (128.922, 0.0, 32.901)
 TUB_BOTTOM_Z_CAR_MM = 14.690
-AXLE_HEIGHT_MM = 200.0            # the reference point above the bench (WP-04 stand_choice.md: H = 0.20 m)
+AXLE_HEIGHT_MM = 200.0            # the reference point above the bench (the stand's height H = 0.20 m)
 
 
 def T_stand_car():

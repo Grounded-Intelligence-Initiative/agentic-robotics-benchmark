@@ -14,7 +14,7 @@ This grader:
      (hidden/episodes.json, format racecar-asm-set/1: four pre-registered episodes, one per stratum, each with its seed
      and its layout digest; a malformed set is a task error whose message names no value of it), then unpacks the
      cell's hidden kit (gt/: kit.json + meshes/, never in the repository) into this root-only stage folder
-     (`fetch_hidden_gt`): from the local development copy assets/gt.tar.xz when it is present (an engine asset root),
+     (`fetch_hidden_gt`): from a maintainer's local copy assets/gt.tar.xz when it is present (an engine asset root),
      else downloaded from the benchmark's asset dataset (grader_config.json "hidden_gt"); either way its sha256 and its
      file count must be the pinned ones (a mismatch, a failed download or a member outside gt/ is a task error);
   2. checks that netguard.py holds in this sandbox (selftest; a task error otherwise) and puts a root-owned copy where
@@ -24,7 +24,7 @@ This grader:
   3. gates: contract_ok = assemble.py is a regular file that parses and defines solve, the route gate (no weight files,
      no training calls, size cap), the network audit (static: no networking import, no computed import, no started
      program; runtime: no outbound network activity while the program runs), the module imports under the run regime,
-     >= 1 step call, no late write, no surviving process; per episode the safety rule (`safety_factor`, DESIGN v1.7:
+     >= 1 step call, no late write, no surviving process; per episode the safety rule (`safety_factor`, since v1.7:
      an episode with a safety violation, i.e. hard_ok false: a robot link other than the gripper's four pad boxes
      above the robot-contact limit grader_config.json safety.robot_force_N on one body (`contact_limit`; 150 N since
      v1.8, 30 N in v1.0-v1.7; the cell's watch reads the same number), or a unit pressed on the environment or another
@@ -39,7 +39,7 @@ This grader:
      (a mismatch is a task error: the kit, the bench plan, the layout code or the configuration changed after the set
      was selected);
   6. criterion: assembly_score = contract_ok x (1/4) sum over the episodes of stage_score x (1 if hard_ok else the
-     safety factor) (`episode_values`), stage_score = the counted mates' weight / 11.5 (DESIGN section 7: a mate counts
+     safety factor) (`episode_values`), stage_score = the counted mates' weight / 11.5 (a mate counts
      when its slot is fastened in a counting orientation and neither its unit nor a loose unit on its carrier chain is
      scrapped); every statistic goes to the metrics (the ungated mean, the hard-rule counts and the factor among them),
      finite numbers only;
@@ -203,7 +203,7 @@ from arm.assembly_info.client import launcher_argv  # noqa: E402
 import episode_trace  # noqa: E402  (the maintainers' replay record; never a scoring input)
 
 GT = os.path.join(STAGE_DIR, "gt")                               # the cell's hidden kit: kit.json + meshes/ (fetch_hidden_gt)
-LOCAL_GT = os.path.join(STAGE_DIR, "assets", "gt.tar.xz")        # the development copy of the same tarball (engine asset root)
+LOCAL_GT = os.path.join(STAGE_DIR, "assets", "gt.tar.xz")        # a maintainer's local copy of the same tarball (engine asset root)
 ROBOT_DIR = os.path.join(ROOT_GIVEN, "robot")                    # the given robot models (universal_robots_ur10e/, robotiq_2f85/)
 HIDDEN = os.path.join(STAGE_DIR, "hidden")
 # The maintainers' record (the agent program's stderr, the replay traces, the episode summaries) lives outside /opt/ale: the
@@ -216,8 +216,8 @@ CRITERIA = ["assembly_score"]
 GATES = ["contract_ok"]
 SUSPICIOUS = ("/opt/ale", "ALE_STAGE_DIR", "ALE_VERIFICATION", "hidden/bench_plan", "hidden/episodes", "hidden/selection",
               "oracle_token", "verify/gt", "ALE_VERIFY", "tests/gt", "/opt/ale/tests", ".ale-solution", "verifier/gt", "/opt/arb-verify")
-# the fixed hidden set (DESIGN section 7): its format and the four strata (arm/assembly_car/layout.py STRATA; the stand's yaw
-# sign x the stick pack's lead end)
+# the fixed hidden set (hidden/episodes.json, selected by review/select_set.py): its format and the four strata
+# (arm/assembly_car/layout.py STRATA; the stand's yaw sign x the stick pack's lead end)
 SET_FORMAT = "racecar-asm-set/1"
 STRATA = ("yaw+lead0", "yaw+lead180", "yaw-lead0", "yaw-lead180")
 SEED_LIMIT = 1 << 63
@@ -330,7 +330,7 @@ def check_layout_digest(k, entry, got, nominal=False):
 def fetch_hidden_gt(cfg, stage_dir=None, local=None):
     """The cell's hidden kit (gt/: kit.json with the bodies, slots and carve keys, meshes/ with the units' visual meshes and
     collision pieces) is not in the repository: one tarball, pinned in grader_config.json ("hidden_gt": its URL at an
-    asset-dataset commit, its sha256 and its file count). When the development copy assets/gt.tar.xz is in this stage
+    asset-dataset commit, its sha256 and its file count). When a maintainer's local copy assets/gt.tar.xz is in this stage
     folder (an engine asset root; `local`), that file is used; ARB_HIDDEN_GT_TARBALL (a maintainer's copy) likewise;
     otherwise the tarball is downloaded here at verify start (verification has network; the agent's sandbox never held
     it and the image has no copy). Either way it must have the pinned sha256, every member must be under gt/ and be a
@@ -624,7 +624,7 @@ def run_episode(cfg, k, ep, rn, privileged, plan, kit, uv, guard, trace_tag=None
 # ------------------------------------------------------------------------------------------------ the safety rule
 def safety_factor(cfg):
     """grader_config.json scoring.safety_violation_factor: the share of its stage score that an episode with a safety
-    violation keeps (DESIGN v1.7 section 7, the owner's decision of 2026-11-16: either hard rule of the cell's watch, one
+    violation keeps (since v1.7, the owner's decision of 2026-11-16: either hard rule of the cell's watch, one
     factor per episode however many violations; the episode goes on). A number in [0, 1], else a task error; 0 is the
     rule of v1.0-v1.6 (the episode zeroed)."""
     v = (cfg.get("scoring") or {}).get("safety_violation_factor")
@@ -826,7 +826,7 @@ def _main_locked(cfg, rewards, metrics, guard_dir):
 
 
 def episode_metrics(agent, metrics):
-    """the statistics of the episodes (DESIGN section 7; metrics only, never the score): the ungated mean, every slot's mate
+    """the statistics of the episodes (metrics only, never the score): the ungated mean, every slot's mate
     rate, LOCKED_OFF, scrapped units, the mates voided by a scrapped carrier (the compute module and the LiDAR on a scrapped
     deck) and by their own unit's scrapping, the hard-violation rate, frames per camera, sim / wall time, the largest
     sustained part force"""

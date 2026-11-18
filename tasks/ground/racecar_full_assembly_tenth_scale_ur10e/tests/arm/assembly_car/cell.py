@@ -4,7 +4,7 @@ with a 2F-85, `arm.assembly_quad.ur_robot`; optional for the floating check), th
 (`coupling.py`) and the cell's watch (scrapping and the safety rules).
 
 `CarCell(kit_dir, layout, config=None, log=print, robot_hook=None, spec_hook=None, settle_s=1.0, robot_init=None)`
-compiles from any kit directory in the hidden kit's format (DEV/kit/KIT_FORMAT.md, `racecar-asm-kit/1`: kit.json and
+compiles from any kit directory in the hidden kit's format (`racecar-asm-kit/1`, its fields in `check_kit`: kit.json and
 its meshes, geoms in body frames) and an episode layout (`layout.episode_layout`):
   * the bench, the floor and the fixtures (`fixtures.py`: stand, shelf, tray as static box bodies at the layout's
     places; the datum boards are the render twin's, `fixtures.boards()`);
@@ -88,7 +88,7 @@ def load_kit(kit_dir):
 
 
 def check_kit(kit):
-    """the fields the cell reads (KIT_FORMAT.md), or ValueError"""
+    """the fields the cell reads (kit format racecar-asm-kit/1), or ValueError"""
     if kit.get("kit_version") != KIT_VERSION:
         raise ValueError("kit: kit_version %r, this cell reads %s" % (kit.get("kit_version"), KIT_VERSION))
     B = kit["bodies"]

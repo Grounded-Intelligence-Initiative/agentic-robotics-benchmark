@@ -8,7 +8,7 @@ plan in, a layout out; a pure function of its inputs (`layout_digest` fingerprin
    "fixtures": {"stand" | "shelf" | "tray": {xy, yaw_deg}}, "plays": {DCK | CMP | LDR: {dx_mm, dy_mm, dyaw_deg}},
    "parts": {unit: (pos, quat wxyz)}, "hub_deg": {hub body: deg}, "lead_end_deg", "jitter": {...}}
 
-The draws (DESIGN.md v1.2 section 4; amplitudes in DEFAULT_LAYOUT, the grader config's "layout" block):
+The draws (amplitudes in DEFAULT_LAYOUT, the grader config's "layout" block):
 * the stand at its nominal place (the car's reference point at nominal_xy, the car facing the arm: yaw 180 deg)
   moved by +-jitter_m in x and in y and turned by a magnitude in (0, jitter_yaw_deg] whose sign is the stratum's;
   the chassis on the stand off its drawn place by the clamping repeatability (+-clamp_repeat_m, +-clamp_repeat_deg);
@@ -27,15 +27,15 @@ The draws (DESIGN.md v1.2 section 4; amplitudes in DEFAULT_LAYOUT, the grader co
   amplitudes halve every `layouts` failed layouts, the plan itself last (the precedent's rule);
 * each hub's start angle uniform in [hub_start_deg[0], hub_start_deg[1]) from its angle in the model.
 
-Strata (the fixed hidden set, DESIGN section 7): the stand's yaw sign x the stick pack's lead end: "yaw+lead0",
+Strata (the fixed hidden set, tests/hidden/episodes.json): the stand's yaw sign x the stick pack's lead end: "yaw+lead0",
 "yaw+lead180", "yaw-lead0", "yaw-lead180". stratum=None draws both from the seed.
 
 nominal=True (the privileged oracle's fallback): the plan itself, every fixture at its nominal place, no clamping
 offset, the units at the middle of their plays, the hubs at the plan's "oracle" angles (or 0); the stratum's lead end
 still applies.
 
-`check_layout(lay, kit, uv, cfg)` -> (ok, problems, measures): the validity rules re-checked on a drawn layout (the dev
-check over many seeds, DEV/tools/layout_validity.py).
+`check_layout(lay, kit, uv, cfg)` -> (ok, problems, measures): the validity rules re-checked on a drawn layout (also run
+over many seeds as a check of the draws).
 """
 import copy
 import hashlib
@@ -159,7 +159,7 @@ def _stl_vertices(path):
 
 
 def geom_points(g, kit_dir, n_circle=64):
-    """the points of one kit collision geom (KIT_FORMAT section 5) in its body's frame (m): a box's 8 corners, a
+    """the points of one kit collision geom (an entry of a kit body's "collision" list) in its body's frame (m): a box's 8 corners, a
     cylinder's two rims (n_circle points each, circumscribed), a mesh's STL vertices"""
     t = g["type"]
     if t == "box":
@@ -597,7 +597,7 @@ def layout_digest_of(seed, plan, kit, uv=None, cfg=None, stratum=None, nominal=F
     return layout_digest(episode_layout(seed, plan, kit, uv=uv, cfg=cfg, stratum=stratum, nominal=nominal))
 
 
-# ------------------------------------------------------------------ the dev check
+# ------------------------------------------------------------------ the layout check
 def check_layout(lay, kit, uv=None, cfg=None):
     """(ok, problems, measures) of a drawn layout: every bench unit on the bench, in the ring, clear of the arm's base,
     >= fixture_gap_m from every fixture, >= gap_m from every other bench unit, out of the lanes; the fixtures on the

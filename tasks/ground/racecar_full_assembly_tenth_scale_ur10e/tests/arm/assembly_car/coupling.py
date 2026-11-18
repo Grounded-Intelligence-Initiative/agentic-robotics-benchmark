@@ -17,7 +17,7 @@ rest and lock. Changed for this cell:
     weight) and the sub-assembly rule (`count_subassembly`, default on: a mate on a loose carrier counts wherever the
     carrier is; off = it counts only once its carrier chain is fastened to the base).
 
-Slot kinds (frames 4 x 4 in metres, z along the insertion, see the dev record's frames.md):
+Slot kinds (frames 4 x 4 in metres, z along the insertion):
   keyed  the part's frame (`frame_in_part`) against the carrier's (`frame_in_carrier`): the axes within the tilt, the
          axis lines within the lateral window, the part's frame home along the axis, the turn about the axis within
          the clock window of a key orientation (k x pitch_deg). `any_key` slots (the wheels on the hubs' hexes: 60 deg)
@@ -375,7 +375,7 @@ class CouplingStateMachine(object):
                 # a seat's pull starts once the part has settled on its carrier, from a pose not past home along the
                 # insertion: a weld engaged on a battery still falling onto its bay (0.3-0.4 m/s, 600-800 deg/s at the
                 # capture tick) and the landing's contacts ask nearly hard, conflicting accelerations of the same body
-                # (6.5-9.6 kN for one tick in the prototype, 17-32 N without the capture; DESIGN 3, WP-06 P5, P2-02)
+                # (6.5-9.6 kN for one tick in the prototype cell, 17-32 N without the capture)
                 vc, vp = self._vel(x["bc"]), self._vel(c["bp"])
                 if (float(np.linalg.norm(vp[3:] - vc[3:])) > self.seat_settle_v or
                         float(np.linalg.norm(vp[:3] - vc[:3])) > self.seat_settle_w):
@@ -406,8 +406,8 @@ class CouplingStateMachine(object):
         # the weld point at the slot's frame on the part (the key's root, the seat), not at the part's body origin: a soft
         # weld then pulls the feature home about the feature. MuJoCo at run time: body2's point = data[0:3] (body2
         # frame), body1's point = data[3:6] as given (body1 frame), so data[3:6] is that point's home in the carrier's
-        # frame (the quadruped's check: zero residual at the target, none from a turn about it; this cell's dev test
-        # pulls a wheel and a battery home through it)
+        # frame (the quadruped's check: zero residual at the target, none from a turn about it; in this cell a wheel
+        # and a battery were pulled home through it as well)
         a2 = c["Fp"][:3, 3]
         self.m.eq_data[e, 0:3] = a2
         self.m.eq_data[e, 3:6] = rel[:3, 3] + rel[:3, :3] @ a2

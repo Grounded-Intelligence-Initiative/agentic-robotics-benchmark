@@ -4,7 +4,7 @@
   "wrist"
  ],
  "agent_renderer": "filament",
- "budgets_note": "sim_cap_s / wall_cap_s / camera_budget_frames = DEV/evidence/view/budgets.json 'recommended' (P2-08, measured in the task image: tick up to 23.1 ms, top frame 1.17 s, first frame +15.2 s, cell build 4.3 s): 4 x (build + wall cap) + the kit's download stays inside the verifier's 14400 s with 10 % to spare; DESIGN 4's starting values (900 s / 2400 s) did not fit. privileged_wall_cap_s = wall_cap_s (the reference program, 250-400 s sim)",
+ "budgets_note": "sim_cap_s / wall_cap_s / camera_budget_frames = the budgets recommended by a measurement in the task image (tick up to 23.1 ms, top frame 1.17 s, first frame +15.2 s, cell build 4.3 s): 4 x (build + wall cap) + the kit's download stays inside the verifier's 14400 s (task.toml [verifier] timeout_sec) with 10 % to spare; the starting values (900 s / 2400 s) did not fit. privileged_wall_cap_s = wall_cap_s (the reference program, 250-400 s sim)",
  "camera_budget_frames": 450,
  "cpu_cap_factor": 4.0,
  "damage": {
@@ -136,7 +136,7 @@
    60.0
   ],
   "lanes": null,
-  "note": "the episode's physical draws (arm/assembly_car/layout.py, DESIGN 4): the stand within jitter_m of its nominal place, turned by a magnitude in (0, jitter_yaw_deg] with the stratum's sign, the chassis on it within the clamping repeatability; the shelf and the tray within their jitter, the deck and the tray's two units inside their plays; the wheels and the stick pack moved / turned around the hidden bench plan (xy_m, yaw_deg; gap_m apart, fixture_gap_m from the fixtures, out of the wheel lanes, the centre in the reach ring), the stick pack turned by the stratum's lead end; the hubs uniform in hub_start_deg. reach_m / lanes null = bench_plan.RING_M / LANES. Any change changes every layout digest: the fixed hidden set must be selected again",
+  "note": "the episode's physical draws (arm/assembly_car/layout.py): the stand within jitter_m of its nominal place, turned by a magnitude in (0, jitter_yaw_deg] with the stratum's sign, the chassis on it within the clamping repeatability; the shelf and the tray within their jitter, the deck and the tray's two units inside their plays; the wheels and the stick pack moved / turned around the hidden bench plan (xy_m, yaw_deg; gap_m apart, fixture_gap_m from the fixtures, out of the wheel lanes, the centre in the reach ring), the stick pack turned by the stratum's lead end; the hubs uniform in hub_start_deg. reach_m / lanes null = bench_plan.RING_M / LANES. Any change changes every layout digest: the fixed hidden set must be selected again",
   "reach_m": null,
   "settle_lift_m": 0.0003,
   "shelf": {
@@ -204,17 +204,17 @@
  },
  "runner_account": "nobody",
  "safety": {
-  "note": "robot_force_N: the robot-contact limit: a robot link other than the 2F-85's four pad boxes pressing on one body harder than this (normal forces summed over that pair's contacts) is a safety violation (the episode goes on and keeps scoring.safety_violation_factor of its stage score); 150 N since v1.8 (the owner's decision of 2026-11-17, DESIGN v1.8 section 19.0d: the force at which an arm of this class stops itself by default), 30 N in v1.0-v1.7 (inherited from the first assembly task, not derived for this car); the cell's watch, describe(), cell_config.json and the agent's documents take it from here; part_speed_m_s: a loose unit whose centre of mass is faster than this is scrapped (it and what is fastened on it count nothing; the episode goes on)",
+  "note": "robot_force_N: the robot-contact limit: a robot link other than the 2F-85's four pad boxes pressing on one body harder than this (normal forces summed over that pair's contacts) is a safety violation (the episode goes on and keeps scoring.safety_violation_factor of its stage score); 150 N since v1.8 (the owner's decision of 2026-11-17, amendment A3 in tests/hidden/selection.json: the force at which an arm of this class stops itself by default), 30 N in v1.0-v1.7 (inherited from the first assembly task, not derived for this car); the cell's watch, describe(), cell_config.json and the agent's documents take it from here; part_speed_m_s: a loose unit whose centre of mass is faster than this is scrapped (it and what is fastened on it count nothing; the episode goes on)",
   "part_speed_m_s": 3.0,
   "robot_force_N": 150.0
  },
  "scope": {
-  "note": "slots the cell fastens before the episode (a gate's fallback; they leave the scored weight): none in this version (DESIGN 3, scope frozen)",
+  "note": "slots the cell fastens before the episode (a gate's fallback; they leave the scored weight): none in this version (the scope is frozen: the robot fits all eight loose units)",
   "premounted": []
  },
  "scoring": {
   "count_subassembly": true,
-  "note": "lever L11: true = a compute module or a LiDAR fastened on the deck assembly counts wherever the deck assembly is, unless the deck assembly is scrapped; false = only mates whose carrier chain is fastened to the chassis. safety_violation_factor: the share of its stage score that an episode with a safety violation keeps (either hard rule: safety.robot_force_N, or damage.part_force_N for damage.ticks), one factor per episode however many violations, the episode going on (the owner's decision of 2026-11-16, DESIGN v1.7 section 7; 0 = the rule of v1.0-v1.6, the episode zeroed); verify.py scores with it and the agent's documents print it",
+  "note": "count_subassembly: true = a compute module or a LiDAR fastened on the deck assembly counts wherever the deck assembly is, unless the deck assembly is scrapped; false = only mates whose carrier chain is fastened to the chassis. safety_violation_factor: the share of its stage score that an episode with a safety violation keeps (either hard rule: safety.robot_force_N, or damage.part_force_N for damage.ticks), one factor per episode however many violations, the episode going on (the owner's decision of 2026-11-16, amendment A2 in tests/hidden/selection.json; 0 = the rule of v1.0-v1.6, the episode zeroed); verify.py scores with it and the agent's documents print it",
   "safety_violation_factor": 0.3
  },
  "scrap": {

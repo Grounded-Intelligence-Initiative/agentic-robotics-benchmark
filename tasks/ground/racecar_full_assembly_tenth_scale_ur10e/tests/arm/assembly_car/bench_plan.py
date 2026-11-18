@@ -11,7 +11,7 @@ The spots (cell frame, m) and why:
   lead end towards the car's rear: at the nominal placement the cell's +x); the episode turns it by the stratum's lead
   end (0 / 180 deg).
 Every spot keeps, under the worst +-30 mm / +-30 deg draw, its footprint centre inside the reach ring RING_M (the
-WP-04 pick map: 8 hand yaws feasible on 855 / 844 of 951 cells, none failing inside 1.30 m for a wheel), 60 mm from
+arm's pick map: 8 hand yaws feasible on 855 / 844 of 951 cells, none failing inside 1.30 m for a wheel), 60 mm from
 every other unit, the fixtures and the bench board, and out of the wheel lanes LANES (beside the car at the nominal
 placement, where nothing taller than LANES["height_m"] may stand; the loose units are kept out of them altogether).
 

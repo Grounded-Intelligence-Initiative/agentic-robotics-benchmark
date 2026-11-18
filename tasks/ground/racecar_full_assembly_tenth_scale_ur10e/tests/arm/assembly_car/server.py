@@ -52,7 +52,7 @@ from .cell import CELL_CONFIG, CarCell, check_kit, load_kit
 CELL_VERSION = "racecar-assembly-cell/1.0.0"
 PUBLIC_METHODS = ("describe", "get_state", "set_control", "command", "step", "get_camera", "finish")
 PRIVILEGED_METHODS = ("get_state_privileged", "describe_privileged", "reference_assemble")
-# what this cell is built for (_check_kit): DESIGN v1.2 section 3
+# what this cell is built for (_check_kit): 8 slots of total weight 11.5, 8 loose units, 6 keyed slots, 4 hubs
 EXPECTED_KIT = {"slots": 8, "weight": 11.5, "loose": 8, "keyed": 6, "rotors": 4}
 # the given kit.json's unit ids per kit unit type
 GIVEN_UNIT_IDS = {"WHL": "wheel", "BAT": "battery_pack", "DCK": "deck_assembly", "CMP": "compute_module", "LDR": "lidar"}
@@ -66,7 +66,7 @@ PLACE_WORDS = {
 }
 CORNER_WORDS = {"FL": "front left", "FR": "front right", "RL": "rear left", "RR": "rear right"}
 
-# ------------------------------------------------------------------ the agent-visible strings (docs_src/cell_public_texts.json)
+# ------------------------------------------------------------------ the agent-visible strings (describe() shows them)
 TASK_TEXT = ("build the car on its work stand as the picture manual shows: the stick pack into the battery bay, the deck assembly "
              "onto the four deck standoffs, the compute module and the LiDAR onto the deck plate, and a wheel onto every hub")
 ITEMS_TEXT = (
@@ -136,7 +136,7 @@ DEFAULT_CAR_CONFIG = {
     "agent_renderer": "filament",
     "robot": {"model": "ur10e", "pos": [0.0, 0.0, 0.0], "yaw_deg": 0.0},
     "layout": json.loads(json.dumps(LY.DEFAULT_LAYOUT)),
-    # the gates' fallback (slots the cell fastens before the episode; they leave the scored weight) and lever L11
+    # the gates' fallback (slots the cell fastens before the episode; they leave the scored weight) and the sub-assembly rule (count_subassembly)
     "scope": {"premounted": []},
     "scoring": {"count_subassembly": True},
     "oracle_nominal_layout": False,

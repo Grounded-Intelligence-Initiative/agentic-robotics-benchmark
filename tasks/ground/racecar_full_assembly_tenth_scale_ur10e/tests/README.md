@@ -18,7 +18,7 @@ layout digests, the bench plan, the oracle token) appears outside `hidden/`.
 | `anchor.json` | metric `assembly_score`, value 1.0, `full_at` 1.0 (the oracle's own score by construction) |
 | `arm/assembly_car/` | this task's cell: `coupling.py` (per-slot capture, pull home, lock, scrap, carrier voiding, the wheel stops), `cell.py`, `layout.py`, `bench_plan.py`, `fixtures.py`, `server.py` (public RPC, the token-only `reference_assemble`), `reference.py` + `reference_shop.py` + `car_grasps.py` (the privileged reference program), `render_twin.py`, `agent_render.py`, `agent_look.json` |
 | `arm/{assembly_cell, assembly_info, assembly_six, assembly_quad}/`, `robotics_grader/`, `common/`, `render/`, `render_filament/`, `room/`, `episode_trace.py`, `netguard.py` | vendored byte for byte from the benchmark's published assembly cells and kit (`netguard.py`: seccomp, no IP sockets for the agent's program) |
-| `hidden/` | `episodes.json` (the four graded episodes), `selection.json` (every candidate, run and decision of the selection, the dated amendments A1, A2 and A3 of its freeze rule and the recorded changes), `bench_plan.json`, `oracle_token.sha256` |
+| `hidden/` | `episodes.json` (the four graded episodes), `selection.json` (every candidate, run and decision of the selection, the dated amendments A1 to A4 of its freeze rule and the recorded changes), `bench_plan.json`, `oracle_token.sha256` |
 | `review/select_set.py` | the pre-registered selection of the hidden set and its freeze check (a maintainer's tool; the grader never runs it) |
 | `review/observability.md` | the camera-only probe's summary, both rounds side by side (statistics only) |
 | `setup_payload/` | byte copy of `environment/setup/payload/` (the small givens: `kit.json`, the cell documents, the client library) |
@@ -89,7 +89,7 @@ and wall time, forces, illegal calls) goes to `metrics` only, all finite numbers
   12 / 12 candidates. Another CPU: not bit-identical (the first difference 9-16 s into an episode), outcomes identical
   for 11 / 12. Acceptance verifies of the set in the image: 1.0 / 1.0, the same fingerprints and traces. The layout
   digest of every episode is recomputed at every reset and compared with `episodes.json`; a mismatch is a task error.
-- **What invalidates the set: the frozen table as amended (A1, 2026-11-15; A2, 2026-11-16; A3, 2026-11-17).** The rule
+- **What invalidates the set: the frozen table as amended (A1, 2026-11-15; A2, 2026-11-16; A3, 2026-11-17; A4, 2026-11-17).** The rule
   as drawn froze two files whose bytes carry more than an episode's outcome (`grader_config.json` also holds the
   hidden kit's download location, then still to be filled in at publication; the kit was frozen by its archive's
   bytes). Amendment A1, written into `selection.json` (`amendments`) at 2026-11-15T14:50:36Z, before any file changed
@@ -128,7 +128,21 @@ and wall time, forces, illegal calls) goes to `metrics` only, all finite numbers
   threshold enters no physics or layout, the selection's keep rule required no robot link above 30 N, which is
   stricter than 150 N, so every selected episode still qualifies and nothing is reselected, and the reference
   program's robot links press on nothing in any recorded run (A3's rationale says so since its dated correction of
-  2026-11-17T21:21:16Z, in `corrections`). Any other change of a frozen entry still means `select_set.py draw
+  2026-11-17T21:21:16Z, in `corrections`). Amendment A4 (the lead designer's decision of 2026-11-17, written at
+  2026-11-18T00:23:26Z by the run that made the change, after checking the A3 table on the unchanged tree) lets the
+  comments, docstrings and note strings of `verify.py`, `grader_config.json` and the files of `arm/assembly_car/` that
+  cited documents or files outside the repository be reworded without a redraw, under conditions checked on a copy of
+  the task before the change was accepted: (a) every changed Python file has the same abstract syntax tree once the
+  docstrings of its module, classes and functions are removed (the docstrings that changed are listed in the
+  amendment); (b) `grader_config.json` is equal once every key named `note` or ending in `_note` is deleted, and only
+  such notes changed (five; `hidden_gt.note` is not among them); (c) the hidden set is unchanged: the four layout
+  digests recomputed from their seeds equal `episodes.json`, which has the set's sha256, and the kit has its pinned
+  sha256 and its 14 620 members; (d) the validate of the tree that carries A4 reproduces the per-episode grader lines
+  and the reference program's per-mate lines of the validate before it. One string of code changed with them, the
+  provenance label `FROZEN_SOURCE["file"]` of `arm/assembly_car/car_grasps.py`, which no code reads (its uses are
+  listed in the amendment); the grasp labels by which the reference program tells its grasp tiers apart are unchanged.
+  A4 re-anchors the table on the new bytes of those three entries (12 files); every other entry is as A3 recorded it,
+  and nothing the agent sees changed. Any other change of a frozen entry still means `select_set.py draw
   --supersedes`, then the full QC cases, the camera probe and the noise ladder again. Filling in the real revision of
   `hidden_gt.url` at publication did not.
 
@@ -148,7 +162,7 @@ the pack). An earlier text called the shapes "the drawn shapes with material tak
 chassis only; it was corrected (the kit unchanged). Every number of the manual comes from a named source and has an
 independent reading (499 numbers, 0 mismatches; the built pieces measured face by face).
 
-## Integration gates (finalization, 2026-11-15; rerun after the independent review's text fixes, for v1.7, 2026-11-16, for v1.8, 2026-11-17, and after recorded change 9, 2026-11-17)
+## Integration gates (finalization, 2026-11-15; rerun after the independent review's text fixes, for v1.7, 2026-11-16, for v1.8, 2026-11-17, after recorded change 9, 2026-11-17, and after amendment A4, 2026-11-18)
 
 The repository's gates (`ale lint`, `scripts/lint_domain.py`, `scripts/task_assets.py check`, the task card check, the
 repository tests) and `ale validate` of this tree (at the finalization two runs, compared with each other; after every
@@ -159,7 +173,7 @@ run from the repository ("How to redo").
 
 | check | result |
 |---|---|
-| hidden set's frozen table (amendment A3 since v1.8; A2 since v1.7; A1 before) | unchanged; `episodes.json` is the selection's set |
+| hidden set's frozen table (amendment A4 since 2026-11-18; A3 since v1.8; A2 since v1.7; A1 before) | unchanged; `episodes.json` is the selection's set |
 | `review/select_set.py selftest` | 10 / 10 (among them: the publication metadata and the documents may change, a grader value or a kit member may not, a table written by the rule as drawn is checked by that rule) |
 | givens rebuilt by their generator (build tooling) | 127 files and 3 evidence files, 0 differences; manual audit 499 numbers, all with an independent reading, 0 mismatches; generator selftest 32 / 32 |
 | the givens' text sources' own checks (build tooling, 38 tests) | ok |
@@ -318,7 +332,7 @@ probes) is not part of the repository. From the repository root, with the engine
 python3 $T/environment/fetch_assets.py $T/environment/assets.sha256 $T/environment/assets/payload
 python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["hidden_gt"]["url"])' $T/tests/grader_config.json \
     | xargs curl -fsSL --create-dirs -o $T/tests/assets/gt.tar.xz     # its sha256 must be grader_config.json hidden_gt.sha256
-python3 -I -B $T/tests/review/select_set.py check --selection $T/tests/hidden/selection.json   # the freeze in force (amendment A3)
+python3 -I -B $T/tests/review/select_set.py check --selection $T/tests/hidden/selection.json   # the freeze in force (amendment A4)
 python3 -I -B $T/tests/review/select_set.py selftest                     # the selection tool's own tests (10)
 python3 -I -B $T/tests/review/select_set.py accept --selection <copy of hidden/selection.json> --image <task image> \
     --episodes $T/tests/hidden/episodes.json --root <dir> --out <dir>/accept   # two verify runs of the set in the task image

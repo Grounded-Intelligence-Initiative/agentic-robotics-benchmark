@@ -15,12 +15,12 @@ Host. Everything here reads an episode host with the attributes of the cell serv
 `cell` (a CarCell built with the arm), `model` / `data` (= cell.m / cell.d), `episode` (the information tier's draws,
 `assembly_info.layout_info.draw_episode(seed, cfg["info_layout"], strict=False)`: cameras, lights, the tool plate's
 mount jitter), `cfg` (with "photo", the sensor models of `assembly_info.cell_info.DEFAULT_INFO_CONFIG`), `kit_dir`
-and `ep_seed`. `ViewHost` is a minimal such host (the dev tools' and the tests' episode: layout, cell, draws, the
+and `ep_seed`. `ViewHost` is a minimal such host (an episode for tools and tests: layout, cell, draws, the
 renderer choice); `camera_spec(host, name)`, `photo_spec(host, name)` and `render_frame(host, name, ...)` are the
 camera pipeline of the server's `get_camera` (the earlier cell's `QuadInfoServer.camera_spec` / `photo_spec`).
 
 `INFO_LAYOUT` holds the agent cameras' nominal mounts, their per-episode spreads and the bench lights: the earlier
-assembly cell's grader configuration (same bench, arm, gripper and hall; DESIGN section 4). It is hidden (tests/ only);
+assembly cell's grader configuration (same bench, arm, gripper and hall). It is hidden (tests/ only);
 the grader configuration's "info_layout" block takes these values.
 """
 
@@ -161,7 +161,7 @@ def attach_kit_textures(spec, kit):
 def visual_spec_hook(spec):
     """CarCell spec_hook for kits with visual meshes: the model's art meshes are open surfaces, MuJoCo cannot take a
     volume inertia of them ("mesh volume is too small"); they are massless (mass 0 geoms), so the shell rule only lets
-    the cell compile (record P2-05, open item for the cell)"""
+    the cell compile (an open item for the cell)"""
     import mujoco
     n = 0
     for mesh in spec.meshes:
@@ -328,7 +328,7 @@ def _deep_update(a, b):
 
 
 class ViewHost(object):
-    """A minimal episode host for the agent view (the dev tools and tests; the cell server provides the same attributes):
+    """A minimal episode host for the agent view (for tools and tests; the cell server provides the same attributes):
     the episode layout (`layout.episode_layout(seed, plan, kit, stratum=...)`), the cell with the arm (`CarCell`, the
     kit's visual meshes compiled with `visual_spec_hook`), the information tier's draws (cameras, lights, the tool
     plate's jitter) and one render session of `cfg["agent_renderer"]` ("filament": agent_render.py; "mujoco": this

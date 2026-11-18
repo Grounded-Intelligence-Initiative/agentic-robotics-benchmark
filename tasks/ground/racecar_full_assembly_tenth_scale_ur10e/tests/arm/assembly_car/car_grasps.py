@@ -4,8 +4,8 @@ A grasp is the tcp pose G in the unit's body frame (the kit's body frames; tcp a
 with the right pad on +y, x = y x z) and the opening the pads stop at. The precedent's generator
 (`assembly_quad/grasps.py`) puts the tcp inside the part's bounding box and needs a ray hit in the tcp's layer: it finds
 no fingertip pinch of a thin band (the compute module's 34.56 mm heat-sink faces, the deck plate's 5.19 mm edge), and
-its 6 mm minimum opening excludes the deck. This module has the families of the dev study instead (the dev record
-WP-04: `study/car_grasps.py`, moved here unchanged in their parameters, mm):
+its 6 mm minimum opening excludes the deck. This module has the families of the grasp study for this car instead
+(moved here unchanged in their parameters, mm):
 
 * `wheel_grasps`    top-down across the tyre diameter, the tool axis on the wheel axis (the hub axis frame: origin
                     the wheel centre, z the axle outwards, x the car's up projected on the wheel plane); parameters:
@@ -21,16 +21,16 @@ WP-04: `study/car_grasps.py`, moved here unchanged in their parameters, mm):
                     the fingertips below the unit's top, a station across the pads; the tip centred on the box of the
                     unit's surface above the tips.
 
-`FROZEN` is the grasp table frozen on the real kit by the kit recheck (dev record P2-06, `FROZEN_SOURCE`): per slot
+`FROZEN` is the grasp table frozen on the real kit by the kit recheck (`FROZEN_SOURCE`: its schema and sha256): per slot
 the kit study's row, its role ("primary": dynamically validated on the kit and the same parameters valid on the true
 solids; "alternate": static only; "kit only": valid on the collision proxy only, never used by the reference
 program), the family parameters, the opening on the kit's pieces and G (mm, as frozen: 5 decimals; `as_m`
 re-orthonormalises the rotation). `frozen_grasps(slot)` gives the primary ones in metres, best first. `ADDED` holds the
-grasps the reference program's own package added in front of a slot's frozen ones, each with its reason (the stick
+grasps added for the reference program in front of a slot's frozen ones, each with its reason (the stick
 pack: the frozen primary cannot reach its 24 mm release on the kit); `reference_grasps(slot)` = ADDED + the frozen
 primaries, the reference program's candidates.
 
-`analyse` is the dev study's pad-closing analysis: the two pads (22 x 37.5 mm faces, from the 2F-85's opening table,
+`analyse` is the grasp study's pad-closing analysis: the two pads (22 x 37.5 mm faces, from the 2F-85's opening table,
 parallel to the approach) close along the closing axis on a unit's surface samples (`unit_surface`: the kit's
 collision geoms of the unit sampled on their faces, union only), each stopping at the extreme sample inside its
 footprint, iterated on the opening; it reports the opening, both contact patches, their overlap seen along the closing
@@ -108,7 +108,7 @@ def as_m(G_mm):
     return G
 
 
-# ------------------------------------------------------------------ families (the dev study's, mm)
+# ------------------------------------------------------------------ families (the grasp study's, mm)
 def tool_frame(a, c):
     """rotation with z = approach a, y = closing axis c (right pad on +y), x = y x z"""
     a = np.asarray(a, float) / np.linalg.norm(a)
@@ -241,7 +241,7 @@ def _entry(row, role, params, width_mm, G_mm, **extra):
     return e
 
 
-FROZEN_SOURCE = {"file": "DEV/evidence/recheck/grasps_frozen.json", "schema": 'racecar-grasps-frozen/1', "sha256": '7b458a2641bf3eb411f89675db9074f32659576eccd5c1f95245040bd7b7de66'}
+FROZEN_SOURCE = {"file": "the grasp table frozen by the kit recheck of 2026-11-14 (its rows: FROZEN)", "schema": 'racecar-grasps-frozen/1', "sha256": '7b458a2641bf3eb411f89675db9074f32659576eccd5c1f95245040bd7b7de66'}
 FROZEN = {
     'whl_FL': [
         _entry(68, 'primary', {'phi_deg': 255.0, 'tip_depth_mm': 6.0}, 65.19,
@@ -403,14 +403,15 @@ FROZEN = {
 }
 
 
-# Grasps this package (dev record P2-10) adds before the frozen ones, with the reason. The frozen battery primary (row
+# Grasps added for the reference program before the frozen ones, with the reason. The frozen battery primary (row
 # 178, station -15) cannot release at 24 mm on the kit: its inboard pad comes within 1 mm of the chassis's speed
 # controller pieces (component "esc", car x 108.8-118.6, y -5.6..-3.1, z 56-60) at 28 mm and enters them from 27 mm down
 # (1.5 mm at 24 mm), the hand's links within 3 mm until 32 mm (the planner's per-body margins fixed, reference.make_planner); the
 # kit recheck's 20 drops with it were in fact let go at 26.4-29.2 mm, the pad on those pieces. Rows 358 / 356 (station
-# +30, the same tilt, tip and pads; the kit and WP-04 studies' row ids) are clean down to 24 mm on the kit (fingers
-# >= 1 mm, links >= 3 mm, the release opening and the retreat), and on the true solids WP-04 held them to 24 mm with the
-# release and the retreat checked (fingers 1.01 / 1.81 / 2.42 mm). Their drops on the kit: DEV/evidence/reference/g5_row358/.
+# +30, the same tilt, tip and pads; the kit study's and the grasp study's row ids) are clean down to 24 mm on the kit (fingers
+# >= 1 mm, links >= 3 mm, the release opening and the retreat), and on the true solids the grasp study held them to 24 mm with the
+# release and the retreat checked (fingers 1.01 / 1.81 / 2.42 mm). Row 358 dropped on the kit with the kit recheck's battery-drop
+# trial unchanged: 19 / 20 LOCKED.
 ADDED = {
     "battery": [
         _entry(358, 'primary (P2-10)', {'station_x_mm': 30.0, 'beta_deg': 10.0, 'tip_below_contact_mm': 2.0, 'right_pad': 'outboard (-y)'}, 46.48,
@@ -428,10 +429,10 @@ ADDED = {
 # negative way (-0.7..-4.9 deg) and the car drawn towards the arm (stand x <= 0.611 m) or turned, the frozen yaw -10 deg
 # pinches put the wrist into the car's nose at the pick and only the two frozen yaw 0 deg ones are left (4 of 38
 # reference layouts, 3-7 left in 6 more); these are the other ten yaw 0 deg pinches of the kit study (stations car x
-# 120-142.5, 6-9 mm in, the right pad below), re-run through P2-06's G3 script unchanged (DEV/evidence/reference/deck_g3/:
-# 20 s carry at 0.25 m/s, planner seeds 0 / 1 / 2): sag <= 0.901 deg and LOCKED in all 30 runs; on the true solids
-# WP-04 walked them home with nothing within 6 mm (release and retreat not checked there, as for the frozen 118 / 136).
-# Ordered by the worst sag of the three runs; see the dev record P2-10.
+# 120-142.5, 6-9 mm in, the right pad below), re-run unchanged through the kit recheck's deck-pinch trial (a 20 s
+# carry at 0.25 m/s, planner seeds 0 / 1 / 2): sag <= 0.901 deg and LOCKED in all 30 runs; on the true solids
+# the grasp study walked them home with nothing within 6 mm (release and retreat not checked there, as for the frozen 118 / 136).
+# Ordered by the worst sag of the three runs.
 FALLBACK = {
     "deck": [
         _entry(137, 'fallback (P2-10)', {'station_x_car_mm': 127.5, 'tip_depth_mm': 9.0, 'yaw_deg': 0.0, 'right_pad': 'bottom'}, 5.19,
@@ -478,7 +479,7 @@ def fallback_grasps(slot):
 
 
 def reference_grasps(slot):
-    """[(G (m), width (m), desc, entry)]: the reference program's candidates of a slot, best first: this package's
+    """[(G (m), width (m), desc, entry)]: the reference program's candidates of a slot, best first: the
     added grasps (`ADDED`), then the frozen primaries (`frozen_grasps`)"""
     out = []
     for e in ADDED.get(slot, []):
@@ -722,7 +723,7 @@ def analyse(data, G, width_guess_mm, iters=4, faces=pad_faces_tcp):
 
 
 FAMILY_DEFAULTS = {
-    # the dev study's dense grids (study/cellplan.slot_grasps) and the families' width guesses
+    # the grasp study's dense grids and the families' width guesses
     "BAT": {"kw": {"stations": np.arange(-55.0, 55.1, 5.0), "betas": (-10.0, -5.0, 0.0, 5.0, 10.0), "tips": (2.0, 4.0)}, "wg": 46.4},
     "DCK": {"kw": {"stations_car": np.arange(75.0, 150.1, 7.5), "depths": (6.0, 7.5, 9.0), "yaws": (-10.0, 0.0, 10.0)}, "wg": 5.19},
     "CMP": {"kw": {"thetas": range(0, 180, 15), "tip_depths": (3.0, 4.5, 6.0), "offsets": (-8.0, 0.0, 8.0), "width_guess": 34.6},

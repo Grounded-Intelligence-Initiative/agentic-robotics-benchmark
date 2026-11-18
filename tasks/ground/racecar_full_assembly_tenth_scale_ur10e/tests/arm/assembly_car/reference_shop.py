@@ -44,7 +44,7 @@ The episode (`shop_steps(kit, order)`, `program(cell, order)`):
         FR, RR, RL, FL (the designed wheel of each corner: WHL2, WHL4, WHL3, WHL1)
   B1    the wheels first: FR, RR, RL, then the stick pack and the deck, then the FL wheel, then the compute module and
         the LiDAR. The FL hub cannot be reached while the deck assembly is on its shelf (every IK branch of the
-        hand's pre-insertion, and still 20 mm out, puts wrist 2 12.8-16.8 mm into the deck; dev record P2-11), so
+        hand's pre-insertion, and still 20 mm out, puts wrist 2 12.8-16.8 mm into the deck), so
         its wheel follows the deck
   B2    the shop order with the LiDAR before the compute module
   B3    the shop order with the wheels swapped: WHL4 on FL, WHL3 on FR, WHL2 on RL, WHL1 on RR (no wheel on the hub
@@ -79,12 +79,12 @@ CORNERS = ("FL", "FR", "RL", "RR")
 WHEEL_SPEC = {"slot": None, "kind": "wheel", "pre_grasp_m": REF.PREGRASP_M, "open_extra_m": REF.OPEN_EXTRA_M,
               "lift_m": REF.LIFT_M, "from_above": True, "carry_v": REF.CARRY_SPEED_M_S, "release_extra_m": REF.RELEASE_EXTRA_M}
 WHEEL_STALL_M = 0.0015          # the wheel this far behind the command along the axis ...
-WHEEL_STALL_TICKS = 10          # ... for this many ticks: stalled (G1's rule)
-STOP_BAND_M = (0.0018, 0.0033)  # a stall this far short of home rests on the stop (G1: 2.31-2.46 mm at 0-20 N)
-SEARCH_PUSH_N = 4.0             # the search's push on the stop (<= 5 N; G1: 3-5 N caught, hub creep <= 1.3 deg)
+WHEEL_STALL_TICKS = 10          # ... for this many ticks: stalled (the wheel-entry trials' rule)
+STOP_BAND_M = (0.0018, 0.0033)  # a stall this far short of home rests on the stop (the wheel-entry trials: 2.31-2.46 mm at 0-20 N)
+SEARCH_PUSH_N = 4.0             # the search's push on the stop (<= 5 N; the wheel-entry trials: 3-5 N caught, hub creep <= 1.3 deg)
 STOP_DETECT_N = 6.0             # a wheel in the stop band pushing the hub harder than this rests on its stop (the push is
                                 # read at once: waiting for the lag rule let the arm press the stop with ~20 N first)
-SEARCH_GAIN = 0.4e-3            # m per N s of the integral law on the tool's target (G1's rate)
+SEARCH_GAIN = 0.4e-3            # m per N s of the integral law on the tool's target (the wheel-entry trials' rate)
 SEARCH_TURN_DEG_S = 10.0
 SEARCH_SWEEP_DEG = 35.0
 SEARCH_OVERSHOOT_DEG = 2.0

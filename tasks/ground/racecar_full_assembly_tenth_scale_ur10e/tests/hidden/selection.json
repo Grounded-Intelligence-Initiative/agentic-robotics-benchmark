@@ -6850,6 +6850,571 @@
      "unchanged": "A3's written_utc, rule, frozen tables, recorded table and checks at writing; no reselection, no redraw"
     }
    ]
+  },
+  {
+   "id": "A4",
+   "date": "2026-11-17",
+   "written_utc": "2026-11-18T00:23:26Z",
+   "authority": "the lead designer's decision of 2026-11-17 (the same authority as amendment A1), on the owner's rule that text in the public repository does not cite the maintainers' documents or files outside it: the comments, docstrings and note strings of three frozen entries (tests/verify.py, the notes of tests/grader_config.json, tests/arm/assembly_car/) that still did are reworded so that each statement stands on its own; nothing the grader, the cell, the layout or the reference program executes or reads changes; no reselection",
+   "amends": "rule 1 (Freeze) of rule_text as amended by A1 (2026-11-15), A2 (2026-11-16) and A3 (2026-11-17)",
+   "rule": "Rule 1 as amended by A1, A2 and A3 stays in force. In addition: in tests/verify.py, tests/grader_config.json and the files of tests/arm/assembly_car/ only, a change of comments, docstrings and note strings whose only purpose is to remove or reword references to documents and files outside the repository re-enters the frozen table under a new amendment instead of a redraw, when (a) every changed Python file has the same abstract syntax tree once the docstring of its module and of every class and function is removed (ast.dump compared before and after), and the docstrings that changed are listed; (b) tests/grader_config.json is equal before and after once every key named \"note\" or ending in \"_note\" is deleted (deep comparison), and only such note strings changed; (c) the hidden set itself is unchanged: the four episodes' layout digests, recomputed from their seeds, equal episodes.json and the candidates' records, episodes.json has the set's sha256, the kit archive has the pinned sha256 and the members of the table in force; (d) one ale validate of the tree that carries the amendment reproduces the validate before the change: the same per-episode grader lines of the oracle and the untouched sandbox and the same per-mate lines of the reference program (wall times aside). With them one string value of code may change: FROZEN_SOURCE[\"file\"] of tests/arm/assembly_car/car_grasps.py, a provenance label that no code compares, hashes or opens, when its every use is listed and the module's abstract syntax tree, docstrings removed, is identical apart from that one value. The table in force is this amendment's from its writing. A change of anything else in the table still means a new draw (select_set.py draw --supersedes).",
+   "why": "the owner's rule for the public repository: its text does not cite the maintainers' documents or files outside it. After recorded change 9 the comments, docstrings and note strings of three entries of the frozen table still did (the design document's sections, levers and gate ids, file names of the development tree, work-package ids and development records used as references, the development copy of the kit): tests/verify.py (frozen by its bytes), tests/grader_config.json (frozen by its values, which hold its notes) and tests/arm (frozen as a tree; the lines are in ten files of arm/assembly_car/). These entries are frozen as wholes, so their bytes change only under an amendment. The changed bytes are comments, docstrings and note strings, which no code executes, compares or hashes, and one provenance label, FROZEN_SOURCE[\"file\"] of arm/assembly_car/car_grasps.py, which no code reads; the grader, the cell, the layout code and the reference program run the same syntax trees and read the same values, so the set that the four episodes are, and every outcome the reference program reaches on them, stay valid. The grasp labels that carry a work-package id stay as they are: the reference program tells its grasp tiers apart by them.",
+   "changes": {
+    "files": {
+     "tests/arm/assembly_car/bench_plan.py": {
+      "sha256": [
+       "4f983682e8d3141f35ef59cf759c08d86ecf15cd0650a5b3b9f748a67a3fa497",
+       "a1fab406c6d9f09a29e33e24e763a873fecc5392d42f3749c6756710f1e822b5"
+      ],
+      "lines_removed_added": [
+       1,
+       1
+      ],
+      "docstrings_changed": [
+       {
+        "name": "<module>",
+        "old_sha256": "eaed6f98db630a09bc341899129795a26f0f2b4bbdfb6178822ad6b5416683ee",
+        "new_sha256": "69168b1c20401541fd63172b51ea1ce72c668505388002adf838fd94128aaae4"
+       }
+      ],
+      "ast_without_docstrings_sha256": [
+       "e95788ad0f00ad0b360dfe4f999c5e5747d9b6bd2891f82eabb21d11fa1b1e36",
+       "e95788ad0f00ad0b360dfe4f999c5e5747d9b6bd2891f82eabb21d11fa1b1e36"
+      ]
+     },
+     "tests/arm/assembly_car/car_grasps.py": {
+      "sha256": [
+       "42463f55f265c498f1056c64cb59d6c5f552ceaad224f03b120107503d543251",
+       "e240b2a1560ed51744d260b9d74dbcd3a1b5592ac7ea063dfbd7330783ef196e"
+      ],
+      "lines_removed_added": [
+       17,
+       18
+      ],
+      "docstrings_changed": [
+       {
+        "name": "<module>",
+        "old_sha256": "f516394110288284ee488031cfc95a0274ee743901a508a817ae4d524b939c1e",
+        "new_sha256": "fe8c91099daecf11680fa6353f99e1356a43e59ee8f4c5e33dc3ef6fa826762f"
+       },
+       {
+        "name": "reference_grasps",
+        "old_sha256": "29107e5c06559e001706679a504b3193d6c0527daafc977930d5969bc4ae7627",
+        "new_sha256": "57e72cd4c28b4a33bbb65460070fffb18e04d820d1b9cc477594810e72b96f17"
+       }
+      ],
+      "ast_without_docstrings_sha256": [
+       "f372587ab620116df3ab5779ee4550b99e112709c8624b9b97c2b2ca26f1bad3",
+       "7a57aa4e6e80c41503368c8173c2c095c106a0d30ce18f317a44f445de1debd8"
+      ]
+     },
+     "tests/arm/assembly_car/cell.py": {
+      "sha256": [
+       "378abee31627827b4151908ac5f2d2cd9fec55030db5fb6f6013ba3f567a5eff",
+       "76b75cdb36f39dfd2c78484fa5ff3fcc483f3411251e72ddf76df613ead5ebc8"
+      ],
+      "lines_removed_added": [
+       2,
+       2
+      ],
+      "docstrings_changed": [
+       {
+        "name": "<module>",
+        "old_sha256": "6f475672ee8a69a9af12f913719b9dbe7858c9618e0d8f8c6cbe409748312939",
+        "new_sha256": "a977299e568dc05184b62f5054d1f3c2ef9b02afe8d3096d8ccc159a4aea1ed5"
+       },
+       {
+        "name": "check_kit",
+        "old_sha256": "85c18176026539892423a3542372ba50c8a6ccc18082b21c8ea96c714c83df7c",
+        "new_sha256": "ba022d35a04ba11d97b5ebdce6210d16deecaeaf640349f4f948c6cad044a5c4"
+       }
+      ],
+      "ast_without_docstrings_sha256": [
+       "d8442718ad190d71f97b16f99ece7f72644cff1cc622cbdaac02da800dac3a76",
+       "d8442718ad190d71f97b16f99ece7f72644cff1cc622cbdaac02da800dac3a76"
+      ]
+     },
+     "tests/arm/assembly_car/coupling.py": {
+      "sha256": [
+       "96b5a87620c8aaf6bcd8ca306cb168178837d20881e459b65518e7f375ec13b0",
+       "40a8fc69a408464d898be038dc12671f1f63aeb9d5d0c91be17e5e451453bcdf"
+      ],
+      "lines_removed_added": [
+       4,
+       4
+      ],
+      "docstrings_changed": [
+       {
+        "name": "<module>",
+        "old_sha256": "bf49d25872e16b0006246b0b5adb79501b6d91bf5c538df97698f3a045bc64f4",
+        "new_sha256": "347d10b2c907cdfea84901b1ee9c3a7dab867ca484ff68d2d21bc66fb0f1db31"
+       }
+      ],
+      "ast_without_docstrings_sha256": [
+       "37aeb6f2f40221867ecd3960b0ec0f8500f6748e299ebd60ca171abae50a3d60",
+       "37aeb6f2f40221867ecd3960b0ec0f8500f6748e299ebd60ca171abae50a3d60"
+      ]
+     },
+     "tests/arm/assembly_car/fixtures.py": {
+      "sha256": [
+       "01a1ed1b180c662f54d2e9cd13e1b6ebb326a6295f7f5d5fc5ef1521c19a6e07",
+       "90b1a08ae7b3607c0d0d976481a96c9740c6191f2c985b9793b6bf53c101518c"
+      ],
+      "lines_removed_added": [
+       2,
+       2
+      ],
+      "docstrings_changed": [
+       {
+        "name": "<module>",
+        "old_sha256": "d5515dd8c4d5c70da498829a644e5d82c3a978cccfe89357117ad12328ff8ca7",
+        "new_sha256": "a203d18377095305e4cb742e15bf09a5671c5e4b092c5db89d3b884bcb2e25c8"
+       }
+      ],
+      "ast_without_docstrings_sha256": [
+       "53a932922f4c37053172dbbe243faacfbb3f03fc18200a35c83ca794ac2881b8",
+       "53a932922f4c37053172dbbe243faacfbb3f03fc18200a35c83ca794ac2881b8"
+      ]
+     },
+     "tests/arm/assembly_car/layout.py": {
+      "sha256": [
+       "e96f3f2725ca1427dcd68d585fa1b3362f5f417be546090ed6ec9702d3ab9960",
+       "6b688cbd7cbb257a38509b429db36366743ea1531a4e3b44bf4e334ccefb278b"
+      ],
+      "lines_removed_added": [
+       6,
+       6
+      ],
+      "docstrings_changed": [
+       {
+        "name": "<module>",
+        "old_sha256": "6e5a86991fc454556c49b59572c32f39f7f1f40903fa45c078edfa24a132217c",
+        "new_sha256": "c365661659778a45796d2028251ab896f8480ec3b61b820a414ce1dfcc3cdc38"
+       },
+       {
+        "name": "geom_points",
+        "old_sha256": "d13735f7c0941c52918e3f351768952e9033d3fd539c95e3f0b3610db5c154cd",
+        "new_sha256": "8da3007ba20da85f1abb836fe5cfc9bc781335d2c8293b2089de7824b29d8f93"
+       }
+      ],
+      "ast_without_docstrings_sha256": [
+       "4fe920fceb035bf4ba2956ac41f22a84a045067c5c89377f26cca00739ffcaf6",
+       "4fe920fceb035bf4ba2956ac41f22a84a045067c5c89377f26cca00739ffcaf6"
+      ]
+     },
+     "tests/arm/assembly_car/reference.py": {
+      "sha256": [
+       "d17e6c2396434f3571dc0e44349a841309b5df06207ab8d6b916a1e4c43c9f30",
+       "356fc0de5ec8fe48355dd7e0e18315843716f189531b2809ceff0ee13135298d"
+      ],
+      "lines_removed_added": [
+       3,
+       3
+      ],
+      "docstrings_changed": [
+       {
+        "name": "unit_grasps",
+        "old_sha256": "013165c2082b5795d0dd9bb6924b1322834a757875e5174102ee46058178cc9d",
+        "new_sha256": "f9cad46e29bf05aed88f5ed8234377ca50aea63d8fc65d44b3203ba7549bf5b3"
+       }
+      ],
+      "ast_without_docstrings_sha256": [
+       "4e1d02bf77b5af4a6cbeb4def0ed55685fbb832061c9af7dab3b6b147cea3435",
+       "4e1d02bf77b5af4a6cbeb4def0ed55685fbb832061c9af7dab3b6b147cea3435"
+      ]
+     },
+     "tests/arm/assembly_car/reference_shop.py": {
+      "sha256": [
+       "6910d8b4738a8f81b0266a9c3e8f317883c1855ff0fcf09ee1f59bf5e4b33ea7",
+       "4ea48c99b4bcbc7c0e53541e8c2a3aa28a873450d2e054901667bbdb13a16292"
+      ],
+      "lines_removed_added": [
+       5,
+       5
+      ],
+      "docstrings_changed": [
+       {
+        "name": "<module>",
+        "old_sha256": "0421a0cdde4fb0dd1d505ff82d061c0b1597deb45e7b51ed2683d995c15e375b",
+        "new_sha256": "90b5a61bc1c552f157c79c45da90b86e1f49285679941a18091db18ccdf7afa7"
+       }
+      ],
+      "ast_without_docstrings_sha256": [
+       "bd4fc2b7a70a99c9a961789adf2eb8d10c66c45cb08e87ebb48424a7b320b184",
+       "bd4fc2b7a70a99c9a961789adf2eb8d10c66c45cb08e87ebb48424a7b320b184"
+      ]
+     },
+     "tests/arm/assembly_car/render_twin.py": {
+      "sha256": [
+       "3c07bca14ba977cfa73a13914f7e1656cf1458a7d15cf1baf0dc5d73d40c17ff",
+       "42e47156f673d46e47b6b9b63582b4a9b2e92bbaa935deb55b8566fab4fe8830"
+      ],
+      "lines_removed_added": [
+       4,
+       4
+      ],
+      "docstrings_changed": [
+       {
+        "name": "<module>",
+        "old_sha256": "f61d5b2044f7ada15641aa8db7bbca5a638c0d8547102771b9f4119d89dd7476",
+        "new_sha256": "e6b9e4ca3025b2b3c9207c0dfcb6c8d0ee48a0ca08153f47e129f314e7c05c70"
+       },
+       {
+        "name": "ViewHost",
+        "old_sha256": "8568fc4f15ac854c4ca2dbd1c5c570014ef38a47a3e0f6ea8eb0d51112f497ee",
+        "new_sha256": "9db525bfc6b466722b5152bda056231e510cfd5d7487e82c21af5ef1e3de8fc4"
+       },
+       {
+        "name": "visual_spec_hook",
+        "old_sha256": "ce61534426dcc287528d11df2932d955d1eb78a1613fdfc390d06b76668cc157",
+        "new_sha256": "af1eb307059f9de33ca7e1e8e41ee3c049769eb03edc1b9c601284a3ff034810"
+       }
+      ],
+      "ast_without_docstrings_sha256": [
+       "1fa789c55714d6aeff80cbbaee65725b15a68d18114122fca3723c222b475655",
+       "1fa789c55714d6aeff80cbbaee65725b15a68d18114122fca3723c222b475655"
+      ]
+     },
+     "tests/arm/assembly_car/server.py": {
+      "sha256": [
+       "34a4f639655efa19f4d00227fd1007bf7490a7f1a0a55521e22541cc715fcd4e",
+       "f1bf58bb5bd8663db42545e5f7600a85859149bdb5c3ed88308efc99f1ed13a5"
+      ],
+      "lines_removed_added": [
+       3,
+       3
+      ],
+      "docstrings_changed": [],
+      "ast_without_docstrings_sha256": [
+       "469c56d5c739578a9d0e7b81714dcdbeb394e95d9fa85def690410ab2926272b",
+       "469c56d5c739578a9d0e7b81714dcdbeb394e95d9fa85def690410ab2926272b"
+      ]
+     },
+     "tests/grader_config.json": {
+      "sha256": [
+       "a023f68a747c65766382ed88b244e3489ed6922e531efe189a80c22c0b2367ff",
+       "37f289e11009b98cbb2e27492e8d1b3f123ce5655979c5c695c9b6de9175175a"
+      ],
+      "lines_removed_added": [
+       5,
+       5
+      ],
+      "notes_changed": [
+       "budgets_note",
+       "layout.note",
+       "safety.note",
+       "scope.note",
+       "scoring.note"
+      ]
+     },
+     "tests/verify.py": {
+      "sha256": [
+       "0a316cb903c2ff01188568388f02030cfe82328f112f0c5d800c39d74378170d",
+       "9c2263fc8c0d3659cd60b5df393a6bcfeb22daae5d41d4e131fe526c4912a559"
+      ],
+      "lines_removed_added": [
+       9,
+       9
+      ],
+      "docstrings_changed": [
+       {
+        "name": "<module>",
+        "old_sha256": "72f086e526c566eea4ee17ed448e22cce8f5f3d5d114cfa7fd4137c676ba82bc",
+        "new_sha256": "6661133a0e1bded5f373a8c4b849ea4ab7a474011608cf623a1168f4ea7dc8ef"
+       },
+       {
+        "name": "episode_metrics",
+        "old_sha256": "af974fa81a1a2c8ba3ed6700ae91b87d68075d6ac9cdb17e8edbf8b0f1b59845",
+        "new_sha256": "a6586a251eb4f5bdc7bd60cc7884de46b4d479a1413a29d51052f85d2c4e8422"
+       },
+       {
+        "name": "fetch_hidden_gt",
+        "old_sha256": "47d5c6464939ff8ef42388ee794a83b522675cb9a4578067b7155455cc454f8f",
+        "new_sha256": "08f05469814b3bf5aae78d9974ca4caaa4bdc30377464f284d5fc0f095c1b837"
+       },
+       {
+        "name": "safety_factor",
+        "old_sha256": "d7a048a03bd178d47e2e2b0b6ad606934a19cf2333c4abb1742ba5c9a8122131",
+        "new_sha256": "9db1929c4eb8b974ac0ac8a3b2ae3ab101e09f8fb31fb86826729271d841b241"
+       }
+      ],
+      "ast_without_docstrings_sha256": [
+       "36e659cea593a2ee0e47d01cd803fc46ec71b68ca0a085c02bca6c0cd0a7c6ce",
+       "36e659cea593a2ee0e47d01cd803fc46ec71b68ca0a085c02bca6c0cd0a7c6ce"
+      ]
+     }
+    },
+    "frozen_source_file": {
+     "file": "tests/arm/assembly_car/car_grasps.py",
+     "constant": "FROZEN_SOURCE['file']",
+     "old_sha256": "ec173995705e6a531de89bdceb993ea170b98eebde23077642001e52e0bef38c",
+     "new": "the grasp table frozen by the kit recheck of 2026-11-14 (its rows: FROZEN)",
+     "uses": [
+      {
+       "where": "tests/arm/assembly_car/car_grasps.py",
+       "line": 244,
+       "kind": "definition"
+      },
+      {
+       "where": "tests/arm/assembly_car/car_grasps.py",
+       "line": 48,
+       "kind": "string in __all__"
+      },
+      {
+       "where": "tests/arm/assembly_car/car_grasps.py",
+       "line": 24,
+       "kind": "text (docstring or comment)"
+      },
+      {
+       "where": "the maintainers' build tooling (not in the repository)",
+       "line": null,
+       "kind": "read (attribute) of member 'sha256'"
+      }
+     ],
+     "read_by_no_code": true,
+     "ast_identical_apart_from_this_value": true,
+     "the_one_differing_constant": true
+    },
+    "not_changed": "the grasp labels 'primary (P2-10)' / 'fallback (P2-10)', the desc suffixes of car_grasps.py and reference.py's endswith('(P2-10 fallback)') (code: the reference program tells its tiers apart by them); tests/test.sh and the vendored files (outside this amendment's files)"
+   },
+   "checked_at_writing": {
+    "before_change": {
+     "table": "amendment A3 (2026-11-17)",
+     "files": 11,
+     "trees": 6,
+     "frozen_ok": true,
+     "frozen_changed": [],
+     "episodes_is_the_set": true,
+     "amendments": [
+      "A1",
+      "A2",
+      "A3"
+     ],
+     "recorded_changed": [],
+     "recorded_changes_entered": 9,
+     "snapshot": {
+      "described_as": "the task folder copied just before the change, without its two asset roots",
+      "frozen_files_compared": 10,
+      "frozen_trees_compared": 5,
+      "entries_as_the_task": true,
+      "selection_json_as_the_task": true
+     }
+    },
+    "a_python_files": {
+     "tests/arm/assembly_car/bench_plan.py": {
+      "ast_identical": true,
+      "ok": true
+     },
+     "tests/arm/assembly_car/car_grasps.py": {
+      "constants_differing_with_docstrings_removed": 1,
+      "ast_identical_but_frozen_source_file": true,
+      "the_one_differing_constant_is_frozen_source_file": true,
+      "ok": true
+     },
+     "tests/arm/assembly_car/cell.py": {
+      "ast_identical": true,
+      "ok": true
+     },
+     "tests/arm/assembly_car/coupling.py": {
+      "ast_identical": true,
+      "ok": true
+     },
+     "tests/arm/assembly_car/fixtures.py": {
+      "ast_identical": true,
+      "ok": true
+     },
+     "tests/arm/assembly_car/layout.py": {
+      "ast_identical": true,
+      "ok": true
+     },
+     "tests/arm/assembly_car/reference.py": {
+      "ast_identical": true,
+      "ok": true
+     },
+     "tests/arm/assembly_car/reference_shop.py": {
+      "ast_identical": true,
+      "ok": true
+     },
+     "tests/arm/assembly_car/render_twin.py": {
+      "ast_identical": true,
+      "ok": true
+     },
+     "tests/arm/assembly_car/server.py": {
+      "ast_identical": true,
+      "ok": true
+     },
+     "tests/verify.py": {
+      "ast_identical": true,
+      "ok": true
+     }
+    },
+    "b_grader_config": {
+     "ok": true,
+     "equal_without_notes": true,
+     "only_note_strings_changed": true,
+     "hidden_gt_note_unchanged": true,
+     "canonical_json_before_and_after": true
+    },
+    "c_hidden_set": {
+     "candidate_table_check": {
+      "table": "amendment A3 (2026-11-17)",
+      "frozen_changed": [
+       "tests/arm/",
+       "tests/grader_config.json#values",
+       "tests/verify.py"
+      ],
+      "episodes_is_the_set": true,
+      "recorded_changed": []
+     },
+     "tests_arm_files_changed": [
+      "assembly_car/bench_plan.py",
+      "assembly_car/car_grasps.py",
+      "assembly_car/cell.py",
+      "assembly_car/coupling.py",
+      "assembly_car/fixtures.py",
+      "assembly_car/layout.py",
+      "assembly_car/reference.py",
+      "assembly_car/reference_shop.py",
+      "assembly_car/render_twin.py",
+      "assembly_car/server.py"
+     ],
+     "files_changed": [
+      "tests/arm/assembly_car/bench_plan.py",
+      "tests/arm/assembly_car/car_grasps.py",
+      "tests/arm/assembly_car/cell.py",
+      "tests/arm/assembly_car/coupling.py",
+      "tests/arm/assembly_car/fixtures.py",
+      "tests/arm/assembly_car/layout.py",
+      "tests/arm/assembly_car/reference.py",
+      "tests/arm/assembly_car/reference_shop.py",
+      "tests/arm/assembly_car/render_twin.py",
+      "tests/arm/assembly_car/server.py",
+      "tests/grader_config.json",
+      "tests/verify.py"
+     ],
+     "agent_visible_files_changed": [],
+     "layout_digests": {
+      "recomputed_from_seeds_with": "the candidate's own arm/assembly_car/layout.py and the kit",
+      "equal_episodes_json_and_records": true,
+      "episodes": [
+       {
+        "episode": 1,
+        "stratum": "yaw+lead0",
+        "in_set": "b7f080d4436b...",
+        "recomputed": "b7f080d4436b...",
+        "candidate_recorded": "b7f080d4436b...",
+        "module": "tests/arm/assembly_car/layout.py"
+       },
+       {
+        "episode": 2,
+        "stratum": "yaw+lead180",
+        "in_set": "03809d1a246c...",
+        "recomputed": "03809d1a246c...",
+        "candidate_recorded": "03809d1a246c...",
+        "module": "tests/arm/assembly_car/layout.py"
+       },
+       {
+        "episode": 3,
+        "stratum": "yaw-lead0",
+        "in_set": "d89a2f0699b1...",
+        "recomputed": "d89a2f0699b1...",
+        "candidate_recorded": "d89a2f0699b1...",
+        "module": "tests/arm/assembly_car/layout.py"
+       },
+       {
+        "episode": 4,
+        "stratum": "yaw-lead180",
+        "in_set": "391fff0ef5d2...",
+        "recomputed": "391fff0ef5d2...",
+        "candidate_recorded": "391fff0ef5d2...",
+        "module": "tests/arm/assembly_car/layout.py"
+       }
+      ]
+     },
+     "episodes_json_sha256_is_the_set": true,
+     "kit": {
+      "archive_sha256_is_grader_config_hidden_gt_sha256": true,
+      "members_as_the_table_in_force": true,
+      "member_count": 14620,
+      "member_count_as_the_table_in_force": true
+     },
+     "other_entries_unchanged": {
+      "files": 9,
+      "trees": 5
+     }
+    },
+    "d_validate": "checked after the writing: one ale validate of the tree that carries this amendment, compared with the validate before the change (the same per-episode grader lines and per-mate lines)",
+    "after_change": {
+     "files_unchanged": 9,
+     "trees_unchanged": 5,
+     "changed": {
+      "tests/grader_config.json#values": [
+       "103fd837d0ffe22b2e2232d41d810b1708fce98231c72476cd0a7c6d41f19670",
+       "34552e7facc8d4d27550209a4e50193970673a782c96f2631ece745bd71bf615"
+      ],
+      "tests/verify.py": [
+       "0a316cb903c2ff01188568388f02030cfe82328f112f0c5d800c39d74378170d",
+       "9c2263fc8c0d3659cd60b5df393a6bcfeb22daae5d41d4e131fe526c4912a559"
+      ]
+     },
+     "changed_trees": {
+      "tests/arm": [
+       "48970f81acee564097eaa4b26404decba646c6d77f71cb8be0b8d16a9f182b94",
+       "045964d78ec01d700502aec6c1fe4e0e050a07464222a1c67a06c25ff23cdc4b"
+      ]
+     },
+     "as_the_candidate": true,
+     "kit_members_as_A3": true
+    },
+    "selection_json_sha256_before": "6642a46a17077b59feed6cc0ba4e00a973790281bb10f424847bd5cd70359f49"
+   },
+   "frozen": {
+    "tests/verify.py": "9c2263fc8c0d3659cd60b5df393a6bcfeb22daae5d41d4e131fe526c4912a559",
+    "tests/test.sh": "a3ae37dc3edaebb7da88837f221c31ac9878f7a7523ec395d7c074781aec851e",
+    "tests/netguard.py": "80747b83b161c1495a4d0ccfae439188e3c42c94c0e41bc518f2d530170a64d7",
+    "tests/episode_trace.py": "e55c7b8004c9d7819fb3f8e9daf1204338a689e027503943d00055d9a2554632",
+    "tests/hidden/bench_plan.json": "c9cbb3416fee393341baa33ecdf65b5ac53fc9f1b23cb55fd6cb973e989563d1",
+    "tests/hidden/oracle_token.sha256": "c815e5d3326fa8b94f4f004247d919d490ac7abdd0ad9ab830d5822597d76d74",
+    "solution/solve.sh": "c7a4ab9ce55396ecd0180fb72d027a2500a17a4005f7fd12cdceb09005a46681",
+    "solution/reference/assemble.py": "84c9cda5733fdc6100afe18c6ec334d1c0569461206fc7c929cbb6d21f8d2cf2",
+    "solution/reference/oracle_token": "c7c89fd14f9af6e7aa65136e212391e93c4eb3785bc99f390b303094f549dcdf",
+    "tests/grader_config.json#values": "34552e7facc8d4d27550209a4e50193970673a782c96f2631ece745bd71bf615",
+    "tests/assets/gt.tar.xz#members": "bbc2b4b934b229e219bd83c5c696e16698fe576f22cc63f9df875d938437bbf4"
+   },
+   "frozen_counts": {
+    "tests/assets/gt.tar.xz#members": 14620
+   },
+   "frozen_trees": {
+    "tests/arm": "045964d78ec01d700502aec6c1fe4e0e050a07464222a1c67a06c25ff23cdc4b",
+    "tests/common": "c72b609d5891112e376876f1881a64e8323bb680a8c492ce145663537b94b8ed",
+    "tests/render": "08473c0de3ee3a06a8788493c3b9eff78c25e4151a635cc20f77208031bc7161",
+    "tests/render_filament": "09c41d7777d46d87e462291f48186c6cde3eef26976242c128ec41c95c66a5da",
+    "tests/room": "026fbf2d79c4b5865684642e5da1ccbd3b7af962e59bb6e68f8ee5bb2b53605f",
+    "environment/assets/payload/given/robot": "7229d7c5317852782159032ffd373a7b266749bc106c35ae0cc6c0697f55fde4"
+   },
+   "recorded": {
+    "publication": {
+     "tests/assets/gt.tar.xz": "328939c34609e9f9b9108da78f3e37249c1d311de60f0361ca11f2f8c5fff4f4",
+     "tests/grader_config.json#hidden_gt.url": "ac82897db6166c0a1c549102942cd38ec2cdef31976ff505c872471fe766a734",
+     "tests/grader_config.json#hidden_gt.sha256": "7826a7d574e3595e764899fd24e63e67e256e0adc4bf71ce5801173853d2cd64",
+     "tests/grader_config.json#hidden_gt.note": "c7af77de6e4efde92e9326e3133c3c7e6379a0b6b3271599335d20d8809790eb"
+    },
+    "documents": {
+     "instruction.md": "085258f7c39009762aa404edc9677a3b2cce4364356911bce7ba0fe17805467d",
+     "environment/assets.sha256": "65c6828e6a47314f472add17f0aef1f4ad5323e562a67934e711815b1d622cea",
+     "tests/given_hashes.json": "22ec573b4aa4a399b3d4e757682694d034fa826af67a33a181be2416306c8503",
+     "environment/setup/payload/": "7ea8f96a252913736807186b18698d4bd8c0300c98285d524096bb2de913c131",
+     "environment/assets/payload/given/parts/": "cf7474fad80c23f25539d3a1f78b26e915466a88588ba8ef8263c4ad6dbff8e5",
+     "environment/assets/payload/given/drawings/": "dfece19a682cef21b9613a86c6cde01031573fe117cc4e13a087278a787d193c",
+     "environment/assets/payload/given/manual/": "963d5f2b2af8e26d01d9c1840adfaba50003b26cf83b90ac9212d659a113003e",
+     "environment/assets/payload/render/": "d25e9c225c66d9244a8b7a98bbb5056216e32bf16898b9f110fc8a9a3d6972ff",
+     "tests/setup_payload/": "7ea8f96a252913736807186b18698d4bd8c0300c98285d524096bb2de913c131"
+    }
+   },
+   "tool_at_writing": {
+    "tests/review/select_set.py": "e40c86e557cf76556ca8641ebb817d00b42e7e35d07a66e4e25ff49654f2cea7"
+   },
+   "reselection": "none: no redraw, no new candidate, the kept episodes and episodes.json unchanged"
   }
  ],
  "recorded_changes": [
