@@ -52,8 +52,8 @@ or leaning under a dispenser is not a finished coffee setup (`gripper site` is t
 - **PickPlaceCounterToStove** (10 of the 27 states): the object touches the pan, its origin is within 0.07 m horizontally of the pan's origin, and the gripper site is more than 0.25 m from the object's origin.
 
 Note what the checks do not ask for, so you neither rely on it nor over-deliver: the mug may face any way round (its
-handle may point anywhere; only its tilt counts); for the drawer job, contact with any counter geometry counts (its top
-or its sides); for the stove job, the pan is not required to stay on the stove.
+handle may point anywhere; only its tilt counts); for the drawer job, contact with any geometry of any counter counts (its
+top, its sides or its base panels); for the stove job, the pan is not required to stay on the stove.
 
 ## Wire protocol
 
@@ -99,7 +99,7 @@ rendered per episode (each camera counts one); beyond that, images come back emp
 - `camera_pose_world`: for `robot0_agentview_left`, `robot0_agentview_right`, `robot0_eye_in_hand`, the 4 x 4 world pose of the camera in the OpenCV convention (x right, y down, z forward).
 - `images`: per requested camera `{"rgb": {...}, "depth_mm": {...}}`, each `{"dtype", "shape", "b64"}` with raw row-major bytes (`uint8` H x W x 3, row 0 at the top, 256 x 256; `uint16` millimetres along the optical axis, clipped to 65000; a pixel that sees no surface reads 65000, since the far
 plane lies beyond 65 m).
-- `card` (only at `t = 0`): `task_family`; `instruction` (the sentence the robot was given); `success_rule` (the exact check for this job, as above); `object` and, where the job has a movable receptacle, `receptacle`, each `{"name", "image_png_b64" (a 128 x 128 rendered catalogue picture of that object on grey), "size_m" (bounding box, m)}`; `camera_intrinsics` (3 x 3 pixel matrix per camera, fixed); `kitchen_map` (list of `{"type", "center", "size_xyz", "yaw_rad"}` per fixture in world coordinates, with `"role": "target"` on the fixture the job names, where there is one, and `"support"` on the counter it starts from: outlines only, no handles, knobs or object poses); `step_budget`.
+- `card` (only at `t = 0`): `task_family`; `instruction` (the sentence the robot was given); `success_rule` (the exact check for this job, as above); `object` and, where the job has a movable receptacle, `receptacle`, each `{"name", "image_png_b64" (a 128 x 128 rendered catalogue picture of that object on grey), "size_m" (bounding box, m)}`; `camera_intrinsics` (3 x 3 pixel matrix per camera, fixed); `kitchen_map` (list of `{"type", "center", "box_center", "size_xyz", "yaw_rad"}` per fixture in world coordinates: `center` is the fixture body's origin (RoboCasa's `pos`), which need not be the middle of its box; `box_center` is the centre of its bounding box; `size_xyz` is the box's full extent along the fixture's own x, y and z (width, depth, height; not half sizes); `yaw_rad` turns the fixture's x and y about the world z axis. `"role": "target"` marks the fixture the job names, where there is one, and `"support"` the counter it starts from: outlines only, no handles, knobs or object poses); `step_budget`.
 
 There is no object pose, no fixture joint state, no success flag and no seed on the wire. Calibration and the map are
 exact. Use `practice_states` and `kitchen_sim.py` to develop perception; the practice kitchens use different layouts,
@@ -114,12 +114,15 @@ states. There is no partial credit within an episode.
 
 Limits, all enforced by the grader:
 
-- Controller time is capped at **400 s per episode**: for each `act` request, the time from the grader having written
-  the request to your reply line arriving, summed over the episode. Simulation, rendering and writing the observation
-  do not count, and your processes cannot run outside that time (see below). An episode that exceeds the cap ends and
-  scores 0.
+- Controller time is capped at **400 s per episode**: for each `act` request, the time from the grader starting to
+  write the request to your reply line arriving, summed over the episode. Reading the request is your time: an
+  observation with images is larger than the pipe's buffer, so the grader writes it as you read it, and the request's
+  10 s deadline covers the write as well (a request you have not read by then ends the episode like a late reply).
+  Simulation and rendering do not count, and your processes cannot run outside that time (see below). An episode that
+  exceeds the cap ends and scores 0. The cap was sized on the author's machine (Intel Core i9-14900KF, the sandbox's 4
+  CPUs); on a slower host the same controller needs more of it.
 - A reply later than 10 s, a malformed action (not 12 or 13 numbers, not finite, or a camera mask outside 0-15), a reply
-  line longer than 64 KiB, more than 1000 blank lines before the reply to one request, a crash or a closed stdout ends that episode, which scores 0; the next episode restarts `run.sh` (at most 3 restarts in the run; after that the
+  line longer than 64 KiB (65,536 bytes of UTF-8, the newline not counted), more than 1000 blank lines before the reply to one request, a crash or a closed stdout ends that episode, which scores 0; the next episode restarts `run.sh` (at most 3 restarts in the run; after that the
   remaining episodes score 0).
 - The submission folder may hold at most 200 MiB and 5000 files; a larger one scores 0. A missing or unstartable
   `run.sh` (no `READY` within 40 s among its first 200 lines of output) scores 0.
@@ -142,8 +145,11 @@ readable, so your controller cannot build kitchens there. The sandbox has the sa
 the grader's simulator (about 6 GB). The grading sandbox runs no desktop session and nothing else as your user: the
 only processes of your account there are the ones `run.sh` starts. Every one of them is paused (SIGSTOP)
 from the moment your reply is read
-until the next request is written, which includes kitchen builds, simulation and rendering; background threads and
-processes therefore only run while a request is outstanding, and that time is charged to you.
+until the grader starts writing the next request, which includes kitchen builds, simulation and rendering; background
+threads and processes therefore only run while a request is outstanding, and that time is charged to you. A pause
+holds only once every process of your account shows as stopped; one that has not stopped within 5 s ends the episode.
+The practice grader starts `run.sh` with the same three variables and the same deadlines (it pauses only `run.sh`'s
+process group, where the grader pauses every process of your account).
 
 The whole grading run has an outer limit of 8 hours (28,800 s), which these caps keep out of reach: on the author's
 machine a controller that requested every camera with depth at every step took about 156 s per state for simulation,

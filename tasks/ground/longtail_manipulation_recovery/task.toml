@@ -9,7 +9,7 @@ artifacts = ["/home/user/submission"]
 name = "grounded-intelligence-initiative/longtail_manipulation_recovery"
 
 [metadata]
-platform = "arm"
+platform = "ground"
 # The oracle submits the oracle token (solution/oracle_token; its sha256 is tests/oracle_token.sha256): the grader then
 # tells it which hidden state each episode is, and it replays that state's recorded rescue actions.
 oracle_kind = "token-privileged"

@@ -19,9 +19,13 @@ Isolation while grading (all stated in the instruction):
   before it drops to the account and which no descendant can clear: a process without it was not started through
   the launcher. That ends the episode, and that state and every later one score 0.
 - The controller's processes run only while a request is outstanding: every process of the agent's account is stopped
-  (SIGSTOP) from the moment a reply has been read (or READY seen) until the next request is written, so kitchen
-  builds, simulation and rendering never share the CPUs with it and it cannot compute ahead of a request.
-- Controller time is the time from a request being fully written to its reply, summed per episode and capped.
+  (SIGSTOP) from the moment a reply has been read (or READY seen) until the grader starts writing the next request,
+  so kitchen builds, simulation and rendering never share the CPUs with it and it cannot compute ahead of a request.
+  A pause holds only once /proc shows every process of the account stopped; one that does not stop within
+  FREEZE_TIMEOUT_S ends the episode.
+- A request's deadline and its controller time start before the grader writes it: the write itself (an observation
+  with images is larger than the pipe's buffer) is bounded by the same deadline, so a controller that reads slowly is
+  charged for it and one that stops reading misses the deadline. Controller time is summed per episode and capped.
 - At most MAX_QUEUED_LINES reply lines are buffered (the controller's writes block beyond that); lines that arrive
   without a request outstanding are discarded; a line longer than MAX_LINE ends the episode.
 - More than MAX_PROCESSES processes of the agent's account at a pause ends the episode.
@@ -44,6 +48,7 @@ import os
 import pwd
 import queue
 import re
+import select
 import shutil
 import signal
 import struct
@@ -77,6 +82,8 @@ SIM_PYTHON = "/opt/venv/bin/python3"
 PREFIX_TOL = 1e-9                            # max |qpos - recorded| after the prefix replay (every run so far: 0.0)
 QUIET_S = 5.0                                # nothing of the agent's account may appear by itself for this long at the
 #                                              start (longer than supervisord's longest pause before it retries a start)
+FREEZE_TIMEOUT_S = 5.0                       # every process of the account must show as stopped within this
+STOPPED_STATES = ("T", "t", "Z", "X", None)  # stopped, traced-stopped, zombie, dead, gone
 METRIC = "job_balanced_recovered_fraction"
 
 
@@ -105,6 +112,17 @@ def _agent_pids(uid):
         except OSError:
             continue
     return pids
+
+
+def _proc_state(pid):
+    """The one-letter state of `pid` from /proc/<pid>/stat (the field after the command name), None if it is gone."""
+    try:
+        with open("/proc/{}/stat".format(pid), "rb") as f:
+            stat = f.read()
+    except OSError:
+        return None
+    rest = stat[stat.rfind(b")") + 1:].split()
+    return rest[0].decode("ascii", "replace") if rest else None
 
 
 def kill_agent_processes(uid, rounds=20, pause=0.25):
@@ -259,21 +277,36 @@ class GuardedSolver(Solver):
         self.last_reply_s = 0.0
         self._stopped = []
         self.outside = []                    # processes of the account found running outside the launcher
+        self.unstoppable = []                # processes of the account that did not stop at the last pause
         super().__init__(**kw)
 
     # -- pausing the agent's account
     def freeze(self):
-        stopped = set()
-        for _ in range(50):
-            new = [p for p in _agent_pids(self.uid) if p not in stopped]
-            if not new:
-                break
-            for pid in new:
+        """SIGSTOP every process of the account and confirm it: a process counts as paused only once /proc shows it
+        stopped (T, t) or gone (Z, X). A scan that finds one still running signals it again and scans anew, so a fork
+        chain is caught process by process; the pause holds when two consecutive scans find the same processes, all
+        stopped (a stopped process cannot start another). Not reached within FREEZE_TIMEOUT_S: self.unstoppable."""
+        stopped, previous = set(), None
+        deadline = time.monotonic() + FREEZE_TIMEOUT_S
+        self.unstoppable = []
+        while True:
+            pids = _agent_pids(self.uid)
+            running = [p for p in pids if _proc_state(p) not in STOPPED_STATES]
+            for pid in running:
                 try:
                     os.kill(pid, signal.SIGSTOP)
                 except OSError:
                     pass
-                stopped.add(pid)
+            stopped.update(pids)
+            current = frozenset(pids)
+            if not running and current == previous:
+                break
+            previous = None if running else current
+            if time.monotonic() > deadline:
+                self.unstoppable = [_describe(p) for p in running[:5]]
+                break
+            if running:
+                time.sleep(0.001)
         self._stopped = sorted(stopped)
         for pid in self._stopped:
             if outside_launcher(pid):
@@ -294,6 +327,10 @@ class GuardedSolver(Solver):
 
     def _pause_or_abort(self):
         count = self.freeze()
+        if self.unstoppable:
+            self._broken = True
+            raise SolverAborted("processes of the controller's account did not stop within {:g}s ({})".format(
+                FREEZE_TIMEOUT_S, "; ".join(self.unstoppable)))
         if self.outside:
             self._broken = True
             raise SolverAborted("a process of the controller's account runs outside the grader's launcher")
@@ -364,19 +401,44 @@ class GuardedSolver(Solver):
             time.sleep(0.005)
         raise SolverAborted("solver keeps writing without a request")
 
+    def _write_within(self, data, deadline):
+        """Write one request against the reply's own deadline. A request with images is larger than the pipe's buffer,
+        so a blocking write would wait for the controller to read it, with the controller running and not charged,
+        and forever for a controller that stops reading. The pipe is written non-blocking, a chunk at a time as it
+        drains, and a request still not read at the deadline ends the episode like a late reply (the restart that
+        follows kills the controller; the partial request dies with its pipe)."""
+        try:
+            fd = self.proc.stdin.fileno()
+        except (OSError, ValueError):
+            raise SolverAborted("solver stdin closed")
+        view = memoryview(data.encode("utf-8"))
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+        try:
+            while view:
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    raise SolverAborted("solver did not read the request within its {:g}s deadline".format(
+                        self.step_timeout))
+                if not select.select([], [fd], [], left)[1]:
+                    continue
+                try:
+                    view = view[os.write(fd, view):]
+                except BlockingIOError:
+                    continue
+                except OSError:
+                    raise SolverAborted("solver stdin closed")
+        finally:
+            fcntl.fcntl(fd, fcntl.F_SETFL, flags)
+
     def _exchange(self, message):
         self._discard_stale()
         data = json.dumps(message) + "\n"
+        t0 = time.monotonic()            # the clock and the deadline start before the write, not after it
+        deadline = t0 + self.step_timeout
         self.thaw()
         try:
-            self.proc.stdin.write(data)
-            self.proc.stdin.flush()
-        except (IOError, OSError, ValueError):
-            self._pause_or_abort()
-            raise SolverAborted("solver stdin closed")
-        t0 = time.monotonic()
-        try:
-            deadline = t0 + self.step_timeout
+            self._write_within(data, deadline)
             for _ in range(1000):
                 line = self._readline(deadline, self.step_timeout).strip()
                 if not line:
@@ -528,6 +590,13 @@ def load_hidden():
 
 
 # ---------------------------------------------------------------- one state
+def note(state, recovered, reason):
+    """One state's outcome, logged and returned for the verdict's diagnostic."""
+    line = "state {} ({}): recovered={} {}".format(state["id"], state["task"], recovered, reason)
+    log(line)
+    return line
+
+
 def run_state(spec, state, solver, cfg, privileged, stats):
     """Returns (recovered, reason). SolverAborted ends this state only; simulator failures are task errors."""
     budget = int(spec["step_budget"])
@@ -601,6 +670,7 @@ def main():
     config["_logdir"] = logdir
     states = hidden["states"]
     results, stats, aborted, tampered, escaped = [], {}, 0, None, None
+    outcomes = []                            # one line per state, kept in the verdict's diagnostic
     try:
         solver = GuardedSolver(uid, step_timeout=W.STEP_TIMEOUT_S, submission=workdir, max_restarts=W.MAX_RESTARTS)
     except SolverMissing as exc:
@@ -618,7 +688,7 @@ def main():
                     state["id"]))
             if tampered is not None:
                 results.append((state["task"], False))
-                log("state {} ({}): recovered=False assets changed".format(state["id"], state["task"]))
+                outcomes.append(note(state, False, "assets changed"))
                 continue
             if escaped is None and solver.outside:
                 escaped = state["id"]
@@ -626,7 +696,7 @@ def main():
                     "score 0".format("; ".join(solver.outside[:5]), state["id"]))
             if escaped is not None:
                 results.append((state["task"], False))
-                log("state {} ({}): recovered=False a process ran outside the launcher".format(state["id"], state["task"]))
+                outcomes.append(note(state, False, "a process ran outside the launcher"))
                 continue
             try:
                 recovered, reason = run_state(hidden, state, solver, config, privileged, stats)
@@ -644,7 +714,7 @@ def main():
                 else:
                     fail(str(exc))
             results.append((state["task"], bool(recovered)))
-            log("state {} ({}): recovered={} {}".format(state["id"], state["task"], recovered, reason))
+            outcomes.append(note(state, bool(recovered), reason))
     finally:
         try:
             solver.close()
@@ -662,9 +732,10 @@ def main():
         extra["recovered_fraction_" + job] = float(frac)
     verdict = ratio_rewards(measured, anchor, cap=float(config.get("scoring_cap", 1.5)), higher_is_better=True,
                             metric_name=METRIC, extra=extra, full_at=float(meta.get("full_at", 1.0)))
-    write_verdict(verdict)
-    log("measured={:.4f} anchor={} reward={:.3f} aborted={} privileged={} tampered={}".format(
-        measured, anchor, verdict["rewards"]["reward"], aborted, privileged, tampered))
+    summary = "measured={:.4f} anchor={} reward={:.3f} aborted={} privileged={} tampered={}".format(
+        measured, anchor, verdict["rewards"]["reward"], aborted, privileged, tampered)
+    write_verdict(verdict, diagnostic="\n".join(outcomes + [summary]))
+    log(summary)
 
 
 if __name__ == "__main__":

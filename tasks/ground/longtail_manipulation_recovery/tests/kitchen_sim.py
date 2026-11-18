@@ -270,8 +270,11 @@ def wire_observation(kitchen, t, cam_mask):
 
 
 def kitchen_map(raw, roles=None):
-    """Coarse fixture map in the world frame: type, centre, half sizes and yaw of each fixture's bounding box. No parts
-    (handles, knobs, buttons, racks), no object positions, no model names. `roles` marks the fixture a job names."""
+    """Coarse fixture map in the world frame, one row per fixture: type; `center`, the fixture body's origin (RoboCasa's
+    `pos`); `box_center`, the centre of its bounding box (the origin plus RoboCasa's `origin_offset` turned by the
+    yaw; equal to `center` for a fixture without one); `size_xyz`, the box's full extents along the fixture's own x, y
+    and z (RoboCasa's `size`: width, depth, height); `yaw_rad`. No parts (handles, knobs, buttons, racks), no object
+    positions, no model names. `roles` marks the fixture a job names."""
     out = []
     names = roles or {}
     for fx_name, fx in sorted(raw.fixtures.items()):
@@ -279,9 +282,13 @@ def kitchen_map(raw, roles=None):
             pos = [float(x) for x in np.asarray(fx.pos)]
             size = [float(x) for x in np.asarray(fx.size)]
             yaw = float(getattr(fx, "rot", 0.0))
+            off = np.asarray(getattr(fx, "origin_offset", (0.0, 0.0, 0.0)), dtype=float).reshape(3)
         except Exception:
             continue
-        row = {"type": type(fx).__name__, "center": pos, "size_xyz": size, "yaw_rad": yaw}
+        c, s_ = math.cos(yaw), math.sin(yaw)
+        box = [pos[0] + c * off[0] - s_ * off[1], pos[1] + s_ * off[0] + c * off[1], pos[2] + off[2]]
+        row = {"type": type(fx).__name__, "center": pos, "box_center": [float(x) for x in box], "size_xyz": size,
+               "yaw_rad": yaw}
         if fx_name in names:
             row["role"] = names[fx_name]
         out.append(row)

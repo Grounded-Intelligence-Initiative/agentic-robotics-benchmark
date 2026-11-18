@@ -5,6 +5,8 @@ imports): deadlines, READY, the controller time cap, the action check, the 64 Ki
 discarding lines written without a request, restarts after an aborted episode (at most 3), the image cap, the success
 rule and the step budget. Like the grader it pauses the controller (SIGSTOP) whenever no request is outstanding; here
 that pauses run.sh's process group (the grader pauses every process of your account and also caps their number).
+It starts run.sh with the grader's environment: PATH, HOME and LANG only, nothing inherited from your shell. Each
+request's 10 s deadline and its controller time start before the request is written, as in grading.
 The kitchens and states are practice ones (RoboCasa pretrain split). It prints the raw outcome only: per state whether
 it was recovered, per job the recovered fraction and their mean over the jobs on these practice states. It never prints
 the grader's ratio or reward.
@@ -16,6 +18,7 @@ import fcntl
 import json
 import os
 import queue
+import select
 import signal
 import struct
 import subprocess
@@ -25,6 +28,8 @@ import threading
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# The controller's whole environment, as the grader's launcher gives it (nothing else is inherited from your shell).
+CONTROLLER_ENV = {"PATH": "/opt/venv/bin:/usr/local/bin:/usr/bin:/bin", "HOME": "/home/user", "LANG": "C.UTF-8"}
 HOME = os.path.dirname(HERE)
 STATES = os.path.join(HOME, "practice_states")
 sys.path.insert(0, HOME)
@@ -48,7 +53,8 @@ class Controller:
 
     def _start(self):
         self.proc = subprocess.Popen(["bash", "run.sh"], cwd=self.folder, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                     stderr=None, universal_newlines=True, bufsize=1, start_new_session=True)
+                                     stderr=None, universal_newlines=True, bufsize=1, start_new_session=True,
+                                     env=dict(CONTROLLER_ENV))
         self.lines = queue.Queue(maxsize=W.MAX_QUEUED_LINES)
         threading.Thread(target=self._pump, args=(self.proc, self.lines), daemon=True).start()
         deadline = time.monotonic() + W.READY_TIMEOUT_S
@@ -127,18 +133,40 @@ class Controller:
             self.broken = True
             raise
 
+    def _write_within(self, data, deadline):
+        """Write the request against the reply's deadline, as the grader does: non-blocking, a chunk at a time as the
+        pipe drains; a request not read by the deadline ends the episode like a late reply."""
+        try:
+            fd = self.proc.stdin.fileno()
+        except (OSError, ValueError):
+            raise Aborted("controller stdin closed")
+        view = memoryview(data.encode("utf-8"))
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+        try:
+            while view:
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    raise Aborted("deadline missed (the request was not read in time)")
+                if not select.select([], [fd], [], left)[1]:
+                    continue
+                try:
+                    view = view[os.write(fd, view):]
+                except BlockingIOError:
+                    continue
+                except OSError:
+                    raise Aborted("controller stdin closed")
+        finally:
+            fcntl.fcntl(fd, fcntl.F_SETFL, flags)
+
     def _exchange(self, msg):
         self._discard_stale()
         data = json.dumps(msg) + "\n"
+        t0 = time.monotonic()            # the clock and the deadline start before the write, as in grading
+        deadline = t0 + W.STEP_TIMEOUT_S
         self._signal(signal.SIGCONT)
         try:
-            self.proc.stdin.write(data)
-            self.proc.stdin.flush()
-        except (OSError, ValueError):
-            raise Aborted("controller stdin closed")
-        t0 = time.monotonic()
-        try:
-            deadline = t0 + W.STEP_TIMEOUT_S
+            self._write_within(data, deadline)
             for _ in range(1000):
                 line = self._get(deadline).strip()
                 if not line:

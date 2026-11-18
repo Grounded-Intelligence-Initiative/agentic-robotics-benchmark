@@ -27,7 +27,8 @@ author's machine. XR-1 itself is not part of this task, is in neither image, and
 rescue action sequences.
 
 Where the large files live: `grounded-intelligence-initiative/ale-robotics-assets`, under
-`tasks/arm/longtail_manipulation_recovery/payload/`, as two archives: `robocasa_assets.tar.gz` (1,971 files, the practice
+`tasks/ground/longtail_manipulation_recovery/payload/` (the same two files were first uploaded under the task's earlier
+folder, `tasks/arm/longtail_manipulation_recovery/payload/`), as two archives: `robocasa_assets.tar.gz` (1,971 files, the practice
 kitchens, fetched by the agent's image) and `verifier_assets.tar.gz` (2,309 files, the graded kitchens, fetched by the
 verifier image only). Each archive is pinned by dataset commit and sha256 in `environment/assets.sha256` and
 `tests/assets.sha256` (docs/task-assets.md); after unpacking, the image builds check every file against the per-file

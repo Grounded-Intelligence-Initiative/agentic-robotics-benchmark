@@ -7,9 +7,10 @@ import math
 
 STEP_TIMEOUT_S = 10.0          # per request (reset or act)
 READY_TIMEOUT_S = 40.0         # READY after each (re)start
-CONTROLLER_CAP_S = 400.0       # per episode, summed over act replies, from the request being written to the reply
+CONTROLLER_CAP_S = 400.0       # per episode, summed over act replies, from the start of the request's write to the reply
+#                                (sized on the authoring host, Intel Core i9-14900KF, with the sandbox's 4 CPUs)
 MAX_RESTARTS = 3
-MAX_LINE = 65536               # characters per reply line, newline excluded
+MAX_LINE = 65536               # bytes (UTF-8) per reply line, newline excluded
 MAX_QUEUED_LINES = 64          # lines buffered from the controller; beyond that its writes block
 MAX_PROCESSES = 512            # processes of the controller's account at any pause
 MAX_FRAMES = 3000              # rendered camera images per episode
@@ -49,7 +50,9 @@ def check_action(action):
 
 
 def line_too_long(line):
-    return len(line.rstrip("\n")) > MAX_LINE
+    """A reply line over MAX_LINE bytes once encoded as UTF-8 (the readers take at most MAX_LINE + 2 characters at a
+    time, so a longer line arrives cut, and the cut part is already over the limit)."""
+    return len(line.rstrip("\n").encode("utf-8")) > MAX_LINE
 
 
 def job_balanced(results):
