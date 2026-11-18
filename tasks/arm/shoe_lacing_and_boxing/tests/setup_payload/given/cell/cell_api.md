@@ -13,7 +13,8 @@ answered on stdin by the grader's physics server; `print()` goes to stderr. A re
 `LocalCell(seed=...)` (`shoecell.local`: a practice cell in your own process, plus `truth()`), `~/practice/grade.py`
 (runs your program over the real wire against the practice cell, as the grader runs it) and
 `shoecell.client.connect_graded()` (the graded episode, section "The graded episode" below; the program graded is
-your submission folder as it was when the graded episode started).
+your submission folder as it was when the graded episode started, or when its start window closed if it was never
+started).
 
 Units on the API: metres, radians, seconds, quaternions `wxyz`; the cell frame = the bench-top centre, z up, x along
 the bench, y across it, the arms behind the +y edge (see `cell_manual.md`). `arm` is `"left"` (the gripper arm) or
@@ -58,7 +59,7 @@ takes), plus:
 
 | call | returns | notes |
 |---|---|---|
-| `status()` | `started`, `ended`, `end_reason` (`done` = the episode's own end, `finish`, `graded_window` or `worker_restart`; null while it runs), `steps` (your `step` calls), `sim_time`, `camera_frames_used`, `prep_window_s`, `graded_window_s`, `prep_left_s` (time left to start the graded episode), `graded_left_s` (time left in its window once started), `can_start` | answers always, before, during and after the episode; never the score |
+| `status()` | `started`, `ended`, `end_reason` (`done` = the episode's own end, `finish`, `graded_window` or `worker_restart`; null while it runs), `steps` (your `step` calls), `sim_time`, `camera_frames_used`, `prep_window_s`, `graded_window_s`, `prep_left_s` (time left to start the graded episode), `graded_left_s` (time left in its window once started), `can_start`, `prep_window_closed`, `program_frozen` (your frozen program's `status`, `files`, `bytes`, once frozen) | answers always, before, during and after the episode; never the score |
 | `start()` | `ok`, `started`, `graded_window_s` | starts the graded episode: once per session, charged before anything is simulated, never given back; refused a second time (`already_started`) and after the start window (`prep_window_closed`) |
 | `close()` | | closes the connection (so does leaving a `with connect_graded() as cell:` block); the episode stays where it is |
 

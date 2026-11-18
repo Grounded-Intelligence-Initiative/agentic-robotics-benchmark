@@ -18,10 +18,12 @@ Order:
   1. every process of the agent account stopped as main's verifier starts (cellkit.lockdown.stop_and_kill_uid, then the
      account freezer), stdlib only;
   2. the record read and checked (format, task, episode and seed digest as online.json, started, a finite score);
-  3. the program graded: if the graded episode started, the copy frozen at the start replaces the restored
-     /home/user/submission (status ok: checked file by file against the record's snapshot_sha256; too_large: an empty
-     folder, so the program item scores 0, as main's 60 MB route gate would); if it never started (no usable record),
-     the restored submission stays: the folder as the session left it, as on main;
+  3. the program graded: the service froze the submission folder at the earlier of the graded start and the close of
+     the start window (prep_s after the service's start). If the record says it did, the frozen copy replaces the
+     restored /home/user/submission (status ok: checked file by file against the record's snapshot_sha256; too_large:
+     an empty folder, so the program item scores 0, as main's 60 MB route gate would; anything else: a task error); if
+     there is no usable record (the session ended before the window closed, without a start), the restored
+     submission stays: the folder as the session left it, as on main;
   4. main's grading of that submission (the offline item); a task error there is the verify's task error;
   5. the online item; 6. the mean, one verdict.
 """
@@ -106,7 +108,8 @@ def stop_agent():
 # ------------------------------------------------------------------------------------------------ 2. the record
 
 def load_record(online):
-    """(record, None) when the record is the graded episode's and usable, else (None, why)."""
+    """(record, None) when the record is the graded episode's (format, task, episode and seed digest), else (None, why).
+    A record of a start window that closed without a start is usable (it carries the program's freeze)."""
     try:
         st = os.lstat(RECORD)
     except FileNotFoundError:
@@ -129,12 +132,19 @@ def load_record(online):
     for key in ("format", "task", "episode", "seed_sha256"):
         if rec.get(key) != online[key]:
             return None, "the record's %s is %r, not %r" % (key, rec.get(key), online[key])
+    if rec.get("started") is not True and rec.get("prep_window_closed") is not True:
+        return None, "the record holds neither a start nor the close of the start window"
+    return rec, None
+
+
+def online_score(rec):
+    """(episode_score, None) of a started graded episode with a usable score, else (None, why)."""
     if rec.get("started") is not True:
-        return None, "the record says the graded episode never started"
+        return None, "the graded episode was never started (its start window closed)"
     score = _number(rec.get("episode_score"))
     if score is None or score < 0.0:
         return None, "the record's episode_score is not a finite number >= 0"
-    return rec, None
+    return score, None
 
 
 def record_stats(rec):
@@ -200,14 +210,14 @@ def _replace_submission(src):
 
 
 def program_graded(rec):
-    """Which submission the program item grades (step 3); returns (label, stats). A started episode always had its
-    folder frozen (the service refuses a start whose copy failed): a frozen copy that is missing or differs from the
-    record's digest is a task error."""
+    """Which submission the program item grades (step 3); returns (label, stats). A record means the program was frozen
+    (at the start, which the service refuses when the copy fails, or when the start window closed): a freeze that is
+    not ok or too_large, or a frozen copy that is missing or differs from the record's digest, is a task error."""
     if rec is None:
         return "session_end", {"program_session_end": 1.0}
     status = rec.get("snapshot_status")
     if status not in SNAPSHOT_STATUSES:
-        fail("the record of a started episode has no freeze status (%r)" % (status,))
+        fail("the record holds no usable freeze of the program (snapshot_status %r: %s)" % (status, rec.get("snapshot_why")))
     if status == "too_large":
         _replace_submission(None)
         return "too_large", {"program_too_large": 1.0}
@@ -219,7 +229,8 @@ def program_graded(rec):
              "%r bytes, %s)" % (files, nbytes, digest[:16], rec.get("snapshot_files"), rec.get("snapshot_bytes"),
                                 str(rec.get("snapshot_sha256"))[:16]))
     _replace_submission(FROZEN)
-    return "frozen_at_start", {"program_frozen_at_start": 1.0, "program_files": float(files), "program_bytes": float(nbytes)}
+    label = "frozen_at_start" if rec.get("started") is True else "frozen_at_window_close"
+    return label, {"program_" + label: 1.0, "program_files": float(files), "program_bytes": float(nbytes)}
 
 
 # ------------------------------------------------------------------------------------------------ 4. main's grading
@@ -266,11 +277,14 @@ def offline_item():
 # ------------------------------------------------------------------------------------------------ 5.-6. the score
 
 def online_item(rec, why):
-    """(online_reward, its stats, text): the record's episode_score against anchor_online.json (0 without a record)."""
+    """(online_reward, its stats, text): the record's episode_score against anchor_online.json (0 without a started
+    episode)."""
     anchor, meta = read_anchor("anchor_online.json")
     if rec is None:
         return 0.0, {"online_record_present": 0.0 if why and why.startswith("no record") else 1.0}, "online: " + why
-    score = float(rec["episode_score"])
+    score, why_not = online_score(rec)
+    if score is None:
+        return 0.0, {"online_record_present": 1.0, "online_started": 0.0}, "online: " + why_not
     v = ratio_rewards(score, anchor, higher_is_better=meta.get("direction", "higher") == "higher",
                       metric_name=meta.get("metric", "work_score"), locks_ok=True, full_at=meta.get("full_at", 1.0))
     m = rec.get("metrics") if isinstance(rec.get("metrics"), dict) else {}
@@ -313,9 +327,10 @@ def main():
             log("[grader] online: " + why)
         label, program_stats = program_graded(rec)              # 3
         log("[grader] the program item grades the submission %s" % {
-            "session_end": "as the session left it (the graded episode was never started)",
-            "too_large": "frozen at the start: over the 60 MB cap, so none (the program item scores 0)",
-            "frozen_at_start": "frozen when the graded episode started"}[label])
+            "session_end": "as the session left it (no freeze on record: the session ended before the start window closed)",
+            "too_large": "as frozen: over the 60 MB cap, so none (the program item scores 0)",
+            "frozen_at_start": "frozen when the graded episode started",
+            "frozen_at_window_close": "frozen when the start window closed (the graded episode was never started)"}[label])
         if FREEZER[0] is not None:
             FREEZER[0].stop()                                   # main's grader runs its own lockdown and freezer now
         offline_reward, offline_metrics = offline_item()        # 4

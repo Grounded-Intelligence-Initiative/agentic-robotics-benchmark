@@ -393,9 +393,9 @@ one verify, with the program frozen at the start (rules DM1-DM8 of the experimen
 
 * **One verify** (`verify.py`, DM5): (1) the agent account's processes stopped as main's verifier starts
   (`cellkit.lockdown.stop_and_kill_uid`, the account freezer); (2) the record read and checked (O9); (3) the program
-  graded: the copy frozen at the start when the episode started (checked file by file against the record's
-  `snapshot_sha256`), an empty folder when the frozen copy was over the cap (`too_large`), the restored submission when
-  the episode was never started; (4) main's grading, unchanged: `offline_verify.py` is main's `tests/verify.py` byte
+  graded: the frozen copy when the record says the program was frozen (at the start or at the window's close;
+  checked file by file against the record's `snapshot_sha256`), an empty folder when it was over the cap
+  (`too_large`), the restored submission without a usable record; (4) main's grading, unchanged: `offline_verify.py` is main's `tests/verify.py` byte
   for byte and runs as its own program in `/opt/arb-offline/tests`, a root-only copy of this folder laid out as main's
   (`offline_verify.py` as `verify.py`, `anchor_offline.json` as `anchor.json`), so its lockdown, gates, network audit,
   hidden set, budgets, oracle token and reference value apply as they are, and its envelope (`verdict.local.json`)
@@ -405,13 +405,19 @@ one verify, with the program frozen at the start (rules DM1-DM8 of the experimen
 * **The anchors** (DM2): `anchor_offline.json` is main's `anchor.json` byte for byte, `anchor_online.json` the online
   variant's `anchor.json` byte for byte; `anchor.json` is the combined metric's, 1.0 by construction (the oracle reaches
   both items' reference values) and confirmed by the validate's oracle.
-* **The freeze** (DM3): before the start is charged, the worker sends one byte on a pipe to the root supervisor, which
-  copies `/home/user/submission` into `/var/lib/arb-online/submission_snapshot` (root-owned 0700 / 0600: neither the
+* **The freeze** (DM3, as corrected on 2026-11-18): the program freezes at the earlier of the graded start and the
+  close of the start window (`prep_s` after the service's start), so the program item keeps main's preparation time
+  whether or not the agent plays the graded episode. Before the start is charged, or the moment the window closes
+  without a start, the worker sends one byte on a pipe to the root supervisor, which copies `/home/user/submission`
+  into `/var/lib/arb-online/submission_snapshot` (root-owned 0700 / 0600: neither the
   agent nor the service account can read it) with main's snapshot rules (`cellkit.lockdown.snapshot_dir`: regular
   files and folders only; links, special files and `__pycache__` dropped), opening every entry relative to an open
   folder with `O_NOFOLLOW` (no link is followed at any level), within main's 60 MB route-gate cap (over it:
   `too_large`, no copy, the program item scores 0) and below the engine's artifact bounds (50000 entries, depth 32;
-  names of printable ASCII). A failed copy refuses the start and charges nothing (`snapshot_failed`). The record and
+  names of printable ASCII). A failed copy refuses the start and charges nothing (`snapshot_failed`); at the window's
+  close it is tried three times, then recorded as `error`, which the verifier treats as a task error. A window that
+  closes without a start leaves a record saying so (`started` false, `prep_window_closed` true, the snapshot fields);
+  the restored submission is graded only without a usable record (the session ended before the window closed). The record and
   `state.json` carry `snapshot_status`, `snapshot_files`, `snapshot_bytes`, `snapshot_sha256` (the sha256 of the sorted
   "path NUL size NUL sha256" lines) and `snapshot_skipped`; the agent learns its frozen program's files and bytes
   (`status()["program_frozen"]`). The supervisor never reads the graded episode; the worker never regains root.

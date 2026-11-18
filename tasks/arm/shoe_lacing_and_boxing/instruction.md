@@ -46,13 +46,16 @@ Your reward is the mean of two items, each from 0 to 1:
 
 Each item is its work score related to a hidden reference value for that item ("How the two items are scored").
 
-**The program is frozen when the graded episode starts.** The moment `start()` succeeds, the cell's graded service
-copies your submission folder, and that copy is the program the grader runs: nothing you change in the folder
-afterwards is graded. Put your final program in place before you start the graded episode. If you never start it,
-the folder as it is when your session ends is graded, and the graded episode scores 0.
+**The program is frozen at the graded start, or when the start window closes.** The moment `start()` succeeds, or,
+if you never start the graded episode, the moment its start window closes (4 hours into the session), the cell's graded
+service copies your submission folder, and that copy is the program the grader runs: nothing you change in the folder
+afterwards is graded. Put your final program in place before you start the graded episode. Only if your session ends
+before the start window closes, without a start, is the folder graded as your session leaves it (and the graded
+episode scores 0).
 
 **Time.** The first 4 hours of the session are for the program and your preparation; the graded episode must be
-started within them (which freezes the program). Once started, the graded episode has 3 hours of wall-clock time.
+started within them, and the program is frozen when you start it or when they end. Once started, the graded episode
+has 3 hours of wall-clock time.
 
 ## The program (in `/home/user/submission/`)
 
@@ -70,11 +73,11 @@ minimal environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `MUJOCO_GL`, `PYTHONPATH`
 `ARB_GIVEN_DIR` = a read-only copy of `~/given`) and the launcher `python3 -B -E -s -c <bootstrap> <lib> packer` (or
 `bash run.sh`). Resolve given files through `os.environ.get("ARB_GIVEN_DIR", os.path.expanduser("~/given"))`, write only
 under the run's HOME / TMPDIR. A program that crashes ends that episode with what it achieved; the other episodes still
-run. The program graded is the copy frozen when the graded episode started (regular files and folders only: symbolic
-links, special files and `__pycache__` are left out; at most 60 MB in all, else the program item scores 0), or the
-folder as your session leaves it if you never start the graded episode. It is graded in a fresh sandbox that holds
-nothing else of yours (no other file, no process you started), and a surviving process of the run account voids the
-contract gate.
+run. The program graded is the copy frozen when the graded episode started or, if it was never started, when its
+start window closed (regular files and folders only: symbolic links, special files and `__pycache__` are left out; at
+most 60 MB in all, else the program item scores 0); only if your session ends before that window closes, without a
+start, is the folder graded as your session leaves it. It is graded in a fresh sandbox that holds nothing else of
+yours (no other file, no process you started), and a surviving process of the run account voids the contract gate.
 
 ## The graded episode, played by you during this session
 
@@ -119,8 +122,9 @@ packer.solve(cell)` on a connected `cell`). The rules:
   processes, on seeds you choose: they are your own tools and stay available throughout, as a program could carry
   them.
 * **Two windows.** The graded episode must be started within 4 hours of the start of your session (`status()` gives
-  `prep_left_s`); after that `start()` is refused and the graded episode scores 0 (the program is then graded as your
-  session leaves it). Once started, it runs for at most 3 hours of wall-clock time (`graded_left_s`).
+  `prep_left_s`); when that window closes without a start, your program is frozen at that moment, `start()` is
+  refused from then on and the graded episode scores 0. Once started, it runs for at most 3 hours of wall-clock time
+  (`graded_left_s`).
 * **One client; the episode persists.** One connection at a time. The episode lives in the service, not in your
   connection: a script that ends, crashes or disconnects leaves it exactly where it was (the last commands stay
   commanded, and nothing moves until the next `step`). A connection that sends no request for 15 minutes is closed;
@@ -160,18 +164,18 @@ cell's own physical state. **The program item** = its gates x the mean work scor
 to a hidden reference value. **The graded-episode item** = the graded episode's work score, relative to a hidden
 reference value. Your reward = the mean of the two items.
 
-Gates of the program item (multiply its score): `contract_ok` = `packer.py` is a regular file that parses and
-defines `solve`, passes the route gate (no weight files, no training calls, submission <= 60 MB), imports under the run
-regime above, makes at least one `step` call over the episodes, causes no network activity during any episode, and your own `.py` files
-import no networking module (`socket`, `ssl`, `urllib`, `http`, `requests`, `asyncio`, `ctypes`, `subprocess`, ...),
-load no module under a computed name, execute no computed code (`exec` / `eval` / `compile` of a non-literal) and start
-no other program (`os.system`, `os.exec*`, `os.spawn*`, ...).
+Gates of the program item (multiply its score): `contract_ok` = `packer.py` is a regular file that parses and defines
+`solve`, passes the route gate (no weight files, no training calls, submission <= 60 MB), imports under the run regime
+above, makes at least one `step` call over the episodes, causes no network activity during any episode, and your own
+`.py` files import no networking module (`socket`, `ssl`, `urllib`, `http`, `requests`, `asyncio`, `ctypes`,
+`subprocess`, ...), load no module under a computed name, execute no computed code (`exec` / `eval` / `compile` of a
+non-literal) and start no other program (`os.system`, `os.exec*`, `os.spawn*`, ...).
 
-`safety` (every episode): a Panda link other than the gripper's finger pads or the hook pressing more than 30 N on
-the bench, the cradle or an object, or any contact between the two arms above 30 N, for 30 ms (three control ticks) in a
-row, or an object faster than 3 m/s, is a violation that voids the credit of the pair being worked on when it happens (even if that pair is later shipped). A
-physics fault (the simulation diverging under a violent action) ends the episode with the credit of the pairs shipped
-before it.
+`safety` (every episode): a Panda link other than the gripper's finger pads or the hook pressing more than 30 N on the
+bench, the cradle or an object, or any contact between the two arms above 30 N, for 30 ms (three control ticks) in a
+row, or an object faster than 3 m/s, is a violation that voids the credit of the pair being worked on when it happens
+(even if that pair is later shipped). A physics fault (the simulation diverging under a violent action) ends the
+episode with the credit of the pairs shipped before it.
 
 The work score of an episode (`work_score`) = the accepted work of its pair, which can earn
 1.0 = lacing of shoe A (0.30) + lacing of shoe B (0.30) + box erected (0.12) + pair packed (0.13) + lid closed (0.10)
@@ -216,12 +220,13 @@ answers it. The hidden episodes and the graded episode use other seeds; the cell
 - Do not modify the given files in your home directory; the grader and the graded service run their own copies.
 - Environment facts (harness limits): a single tool call whose input runs above roughly 25-30k tokens is dropped by the
   harness (it is never executed and no error comes back), and a response that reaches the 64k output-token limit is lost
-  and, after at most a few retries, ends the session (the program is then graded as frozen at the start, or as the
-  folder stands at that moment if you had not started the graded episode, and the graded episode as it stood). Write
+  and, after at most a few retries, ends the session (the program is then graded as frozen, or, if it was not frozen
+  yet, as the folder stands at that moment; the graded episode as it stood). Write
   large files in several parts (one function group per write), keep every single response well below that limit, and
   write a first complete program early and refine it before you start the graded episode.
 - Session time: this session is stopped after 7 hours of wall-clock time from its start; a graded episode started
   within its 4 hours has its 3-hour window close before that. If the session ends before the graded episode has ended
   (stopped at that limit, or ended any other way), the graded episode is scored as it stood after your last request,
-  as above, and the program as frozen at the start. Note the start time with `date` when you begin; when you are done,
+  as above, and the program as frozen (at the start, or when the start window closed). Note the start time with `date`
+  when you begin; when you are done,
   call `cell.finish()` and end the session yourself (stop working and say that you are done).

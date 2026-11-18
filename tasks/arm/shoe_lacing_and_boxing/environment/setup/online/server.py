@@ -51,12 +51,15 @@ The graded episode
   * The agent learns what a program learns (the cell's replies) plus `status`: started / ended, steps, simulated
     time, time left in each window. Never the score, the record, the episode id or the seed.
 
-The freeze (the dual mode). The offline item grades the program in /home/user/submission as it was when the graded
-episode started. Before the start is charged, the worker asks the supervisor (one byte on a pipe; no path, no
-argument), which copies the folder into record_dir/submission_snapshot (root-owned 0700 / 0600: neither the agent nor
+The freeze (the dual mode). The offline item grades the program in /home/user/submission as it was at the earlier of
+the graded start and the close of the start window (`prep_s` after the service's first start): before the start is
+charged, or the moment the window closes without a start, the worker asks the supervisor (one byte on a pipe; no path,
+no argument), which copies the folder into record_dir/submission_snapshot (root-owned 0700 / 0600: neither the agent nor
 the service account can read it) with the grader's own snapshot rules (regular files and folders only; links, special
 files and __pycache__ dropped; no link followed at any level) and the grader's submission cap (60 MB; over it: status
-too_large, no copy, the offline item scores 0). A failed copy refuses the start and charges nothing. The record carries
+too_large, no copy, the offline item scores 0). A failed copy refuses the start and charges nothing; at the window's
+close it is tried three times, then recorded as `error`. When the window closes without a start the record says so
+(started false, prep_window_closed true, the snapshot fields). The record carries
 snapshot_status, snapshot_files, snapshot_bytes and snapshot_sha256 (the digest of the sorted (path, size, sha256)
 list), which tests/verify.py checks against the copy before it grades it.
 
@@ -109,7 +112,8 @@ ERRORS = {
             "connection, then connect again",
     "not_started": "the graded episode has not been started: call start() first (once per session)",
     "already_started": "the graded episode was started already (one start per session)",
-    "prep_window_closed": "the window for starting the graded episode has closed; it can no longer be started",
+    "prep_window_closed": "the window for starting the graded episode has closed; it can no longer be started (your "
+                          "program was frozen when it closed)",
     "episode_over": "the graded episode has ended; only status answers",
     "service_broken": "the graded service cannot persist its state; the graded episode cannot be started",
     "snapshot_failed": "your submission folder could not be frozen, so the graded episode was not started and nothing "
@@ -735,6 +739,7 @@ class GradedService(object):
         self.started_mono = state.get("started_mono")
         self.graded_deadline = None if self.started_mono is None else float(self.started_mono) + float(cfg["graded_s"])
         self.ended, self.end_reason = bool(state.get("ended")), state.get("end_reason")
+        self.prep_closed = bool(state.get("prep_closed"))   # the start window closed without a start (program frozen)
         self.ended_mono, self.ended_utc = None, None
         self.broken = False
         self.dirty = False
@@ -773,6 +778,43 @@ class GradedService(object):
         now = time.monotonic() if now is None else now
         if self.started and not self.ended and self.server is not None and now >= self.graded_deadline:
             self.end("graded_window")
+        if not self.started and not self.prep_closed and now > self.prep_deadline:
+            self.close_prep()
+
+    def close_prep(self):
+        """The start window closed without a start (the dual mode): the program freezes now, as it would have at a start,
+        so the program item keeps main's preparation time; the graded episode can no longer be started. A copy that keeps
+        failing is recorded as `error` (tests/verify.py then stops with a task error: the program cannot be graded)."""
+        snap = {"status": "error", "why": "not attempted"}
+        for attempt in range(3):
+            snap = self._request_snapshot()
+            if snap.get("status") in ("ok", "too_large"):
+                break
+            self.log.write(kind="snapshot_failed", at="prep_window", attempt=attempt + 1, why=snap.get("why"))
+            time.sleep(5.0)
+        snap = {k: snap.get(k) for k in ("status", "files", "bytes", "sha256", "skipped", "why")}
+        snap["utc"] = now_utc()
+        snap["at"] = "prep_window"
+        st = dict(self.state, prep_closed=True, prep_closed_utc=now_utc(), snapshot=snap)
+        try:
+            atomic_write_json(state_path(self.cfg), st)
+        except OSError as exc:
+            self.log.write(kind="state_persist_failed", err=str(exc))
+        self.state = st
+        self.prep_closed = True
+        self.server = None                      # the cell is no longer needed
+        rec = {"format": RECORD_FORMAT, "task": self.cfg["task"], "episode": self.episode_id,
+               "seed_sha256": self.seed_sha256, "service_version": SERVICE_VERSION, "cell_version": self.cell_version,
+               "started": False, "ended": False, "end_reason": None, "prep_window_closed": True,
+               "prep_closed_utc": st["prep_closed_utc"], "requests": 0, "steps": 0, "sim_time_s": 0.0,
+               "wall_s_since_start": 0.0, "episode_score": 0.0, "metrics": {}, "written_utc": now_utc(), "seq": 1}
+        rec.update(self._snapshot_fields())
+        try:
+            atomic_write_json(self.record_path, rec)
+            self.last_record = rec
+        except OSError as exc:
+            self.log.write(kind="record_write_failed", err=str(exc))
+        self.log.write(kind="prep_window_closed", snapshot=snap)
 
     # ---- requests
     def handle_line(self, line):
@@ -815,11 +857,12 @@ class GradedService(object):
                 "prep_left_s": None if self.started else max(0.0, self.prep_deadline - now),
                 "graded_left_s": None if not self.started else (0.0 if self.ended else max(0.0, self.graded_deadline - now)),
                 "can_start": (not self.started) and now <= self.prep_deadline and not self.broken and self.server is not None,
-                "program_frozen": self._frozen()}
+                "prep_window_closed": self.prep_closed, "program_frozen": self._frozen()}
 
     def _frozen(self):
-        """What the agent learns of the freeze: its own program's copy (status, files, bytes), after the start."""
-        snap = self.state.get("snapshot") if self.started else None
+        """What the agent learns of the freeze: its own program's copy (status, files, bytes), once frozen (at the start
+        or when the start window closed)."""
+        snap = self.state.get("snapshot") if (self.started or self.prep_closed) else None
         return None if not isinstance(snap, dict) else {k: snap.get(k) for k in ("status", "files", "bytes")}
 
     def _request_snapshot(self):
@@ -850,11 +893,11 @@ class GradedService(object):
     def op_start(self, params):
         if self.started:
             raise ReplyError("already_started")
+        now = time.monotonic()
+        if self.prep_closed or now > self.prep_deadline:
+            raise ReplyError("prep_window_closed")
         if self.broken or self.server is None:
             raise ReplyError("service_broken")
-        now = time.monotonic()
-        if now > self.prep_deadline:
-            raise ReplyError("prep_window_closed")
         if not isinstance(params, dict) or not set(params) <= {"token"}:
             raise ReplyError("bad_request", "start() takes no parameters")
         token = params.get("token")
@@ -871,6 +914,7 @@ class GradedService(object):
             raise ReplyError("snapshot_failed")
         snap = {k: snap.get(k) for k in ("status", "files", "bytes", "sha256", "skipped", "why")}
         snap["utc"] = now_utc()
+        snap["at"] = "start"
         now = time.monotonic()
         if now > self.prep_deadline:
             raise ReplyError("prep_window_closed")
@@ -898,7 +942,7 @@ class GradedService(object):
 
     def op_cell(self, method, params):
         if not self.started:
-            raise ReplyError("not_started")
+            raise ReplyError("prep_window_closed" if self.prep_closed else "not_started")
         if self.ended:
             # after the cell's own end (sim cap, physics fault) the program may still read its state and finish, within
             # the grader's after-done limits; after a finish, the graded window or a restart nothing more answers
@@ -1059,7 +1103,8 @@ class GradedService(object):
         snap = self.state.get("snapshot") if isinstance(self.state.get("snapshot"), dict) else {}
         return {"snapshot_status": snap.get("status"), "snapshot_files": snap.get("files"),
                 "snapshot_bytes": snap.get("bytes"), "snapshot_sha256": snap.get("sha256"),
-                "snapshot_skipped": snap.get("skipped"), "snapshot_utc": snap.get("utc")}
+                "snapshot_skipped": snap.get("skipped"), "snapshot_utc": snap.get("utc"),
+                "snapshot_at": snap.get("at"), "snapshot_why": snap.get("why")}
 
     # ---- the serving loop (one client at a time)
     def serve(self, listener):
@@ -1210,8 +1255,8 @@ def run_worker(cfg, listener, ready_fd, lab, snapshot_fds=None):
         svc = GradedService(cfg, log, state, episode_id, seed_sha256, token_digest, snapshot_fds)
         if svc.started:
             svc.close_after_restart()
-        else:
-            svc.build(seed, cell_cfg)
+        elif not svc.prep_closed:
+            svc.build(seed, cell_cfg)           # (a closed start window needs no cell: status only)
         del seed
         log.write(kind="worker_ready", uid=os.getuid(), gid=os.getgid(), seccomp_inet_blocked=sec_ok,
                   started=svc.started, ended=svc.ended, prep_left_s=round(svc.prep_deadline - time.monotonic(), 1))
