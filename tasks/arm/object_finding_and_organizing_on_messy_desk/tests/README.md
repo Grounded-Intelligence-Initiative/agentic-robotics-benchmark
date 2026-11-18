@@ -34,7 +34,8 @@ the record of that episode; no program of the agent runs after the session.
 - **Windows**: the start must come within `prep_s` = 3600 s of the service's start (the end of its
   warm-up, i.e. the start of the agent phase); the episode then has `graded_s` = 14400 s. 4 h rather
   than the default 3 h because the simulation itself takes about an hour (0.15-0.25 s a step measured on
-  an RTX 4090 host). `[agent] timeout_sec` = 18000.
+  an RTX 4090 host; the privileged reference's own episode took 3468 s in validate-abe7f0f5, with nothing
+  else running in its sandbox). `[agent] timeout_sec` = 18000.
 - **The end**: at step 20000 (`done`), at the agent's finish, at the end of the graded window, or when
   the worker or its simulator dies (`worker_restart`). Ended early, the episode is scored as this
   folder's grader on main scores an episode it cuts (a controller out of budget): the state reached,

@@ -47,9 +47,10 @@ gpu_types = ["RTX-4090"]
 # [agent] timeout_sec (online variant) = prep_s + graded_s = 3600 + 14400. prep_s is the task's agent
 # budget on main (1 h): the graded episode must be started within it. graded_s is 4 h instead of the
 # default 3 h because the simulation itself needs about an hour of wall time: 20000 steps at 0.15-0.25 s a
-# step measured on an RTX 4090 host (the privileged reference's online episode: see tests/anchor.json),
-# against the offline episode's own allowance of simulation plus a 3000 s controller budget. The service
-# enforces both windows (environment/setup/online/online.json).
+# step measured on an RTX 4090 host; the privileged reference's own online episode took 3468 s
+# (ale validate run validate-abe7f0f5) in a sandbox where nothing else ran, and an agent's desk lab and
+# perception share the same GPU and 8 CPUs. Offline the program had 3000 s of its own time on top of the
+# simulation. The service enforces both windows (environment/setup/online/online.json).
 [agent]
 timeout_sec = 18000
 network_mode = "no-network"
