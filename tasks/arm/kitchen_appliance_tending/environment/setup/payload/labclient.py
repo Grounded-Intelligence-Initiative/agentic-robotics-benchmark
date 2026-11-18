@@ -151,7 +151,8 @@ class LabClient:
     def graded_start(self):
         """Start the graded episode (once per session, never refunded); returns its first observation. It first
         freezes /home/user/submission (the program graded is the one there now); if that copy fails the episode
-        does not start and nothing is charged (`snapshot_failed`)."""
+        does not start and nothing is charged (`snapshot_failed`). Without a start, the lab freezes the folder
+        when the start window closes."""
         return self.request({"op": "graded_start"})["obs"]
 
     def graded_step(self, action):

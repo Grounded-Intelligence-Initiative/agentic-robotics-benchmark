@@ -16,8 +16,9 @@ You are scored on **two items, equally weighted**:
    (the same episode for every model), that you play yourself, through the lab, step by step, with whatever programs
    you write (The graded episode).
 
-The program graded is the one in `/home/user/submission/` at the moment you start the graded episode: the lab freezes
-that folder then, and nothing you change in it afterwards counts. You have **8 hours** to prepare, shared by the
+The program graded is the one in `/home/user/submission/` at the moment you start the graded episode, or when its
+start window closes (8 hours after the lab's start) if you have not started it by then: the lab freezes that folder
+at that moment, and nothing you change in it afterwards counts. You have **8 hours** to prepare, shared by the
 program and your preparation for the graded episode (exploring, lab trials, building and testing the controller and
 your tools); start the graded episode within them, with your controller in place. From its start you have up to
 **3 hours** to play it.
@@ -159,12 +160,14 @@ way when it runs out, and the episodes after it, score 0. Your controller is one
 again only after a crash), so it may carry what it learned about a box in one episode into later
 episodes on the same box: online adaptation during execution is allowed and intended. Trial usage is not scored.
 
-**The freeze.** The controller graded is the one in `/home/user/submission/` at the moment of `graded_start`: the lab
-copies the folder then (regular files and folders only; links are not copied), before the graded episode is charged,
-and the grader runs that copy. Nothing you change in the folder after the start counts, so the program cannot use
-what you see in the graded episode. If the folder holds more than 5000 files or 200 MiB at that moment, nothing is
-copied and the program scores 0. If you never start the graded episode, the controller graded is the one in the folder
-at the end of your session.
+**The freeze.** The controller graded is the one in `/home/user/submission/` at the earlier of two moments: when you
+call `graded_start` (before the graded episode is charged), or when the graded episode's start window closes (8 hours
+after the lab's start) if you have not started it by then. The lab copies the folder at that moment (regular files
+and folders only; links are not copied), and the grader runs that copy. Nothing you change in the folder afterwards
+counts, so the program can use neither what you see in the graded episode nor the time after the window. If the
+folder holds more than 5000 files or 200 MiB at that moment, nothing is copied and the program scores 0. Only if
+your session ends before the start window closes, without a start, is the controller graded the one in the folder at
+the end of your session.
 
 ## The graded episode (scoring item 2)
 
@@ -226,7 +229,7 @@ ends there and is scored as it stood.
 
 **Two windows.** The graded episode must be started within 8 hours of the lab's start (a few seconds before your
 session starts); a later `graded_start` is refused (`window_closed`), and then the graded episode scores 0 (the
-program is still graded: the one in the folder at the end of your session). Once started, the episode ends:
+program is still graded: the one in the folder when the window closed). Once started, the episode ends:
 
 - at its own end: all of the box's stages done, 2500 steps, or an unstable simulation (which scores 0);
 - when you call `graded_finish`;
