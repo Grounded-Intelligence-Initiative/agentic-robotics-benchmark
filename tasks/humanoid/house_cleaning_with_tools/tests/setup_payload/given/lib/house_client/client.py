@@ -1,9 +1,9 @@
-"""Program-side proxy of the house cell: the graded episode's connection, and the launcher that runs a program on a cell
-connected to its stdin / stdout.
+"""Program-side proxy of the house cell, the launcher that runs a submission against it, and the connection of the graded
+episode you drive yourself.
 
     from house_client import decode_frame
 
-    def solve(cell):                                    # a program driving the cell, e.g. solve(connect_graded())
+    def solve(cell):                                    # in /home/user/submission/clean.py
         info = cell.describe()                          # robot, joints, control limits, grip, cameras, room, budgets
         f = cell.get_camera("ceiling_dining")           # one RGB-D frame (counts against the frame budget)
         rgb, depth_m = decode_frame(f)                  # uint8 H x W x 3, float32 H x W metres (NaN = no reading)
@@ -17,22 +17,23 @@ Every method is one JSON-lines request ({"id": n, "method": ..., "params": {...}
 ({"id": n, "result": ...} or {"id": n, "error": code, "detail": text}). A reply carrying an error raises CellError
 (its `code` is e.g. "bad_params", "forbidden", "camera_budget"; a "forbidden" call is counted against the program).
 
-The graded episode of this session: connect_graded() connects to the cell service that holds it (a unix socket,
-GRADED_SOCKET) and returns a GradedCell, the same proxy with start(), status() and close() besides. One client at a
-time; the episode lives in the service, so close() (or the end of your script) leaves it where it is, and a later
-connect_graded() resumes it:
+The graded episode you drive yourself in this session: connect_graded() connects to the cell service that holds it (a
+unix socket, GRADED_SOCKET) and returns a GradedCell, the same proxy with start(), status() and close() besides; a
+program's solve(cell) runs on it as solve(connect_graded()). One client at a time; the episode lives in the service, so
+close() (or the end of your script) leaves it where it is, and a later connect_graded() resumes it:
 
     from house_client import connect_graded
     cell = connect_graded()
     cell.status()                                       # started / ended, steps, sim_time, time left in each window
-    cell.start()                                        # once per session: starts THE graded episode
+    cell.start()                                        # once per session: starts THE graded episode (and freezes
+                                                        # the program in /home/user/submission)
     ...                                                 # describe(), get_state(), command(), step(), get_camera()
     cell.finish()                                       # ends the graded episode: scored as it stands
     cell.close()                                        # disconnects (the episode stays where it is)
 
-The transport of a program run by a launcher: connect_stdio(). The launcher (`main`) starts the program with the cell
-on its own stdin / stdout; it moves this process's stdout (Python's and the C-level file descriptor 1) to stderr first,
-so prints never corrupt the wire. There is no practice cell: Cell(send, recv) takes any pair of line functions (a
+The transport of your program's graded run: connect_stdio(). The launcher (`main`) starts the program with the cell on
+its own stdin / stdout; it moves this process's stdout (Python's and the C-level file descriptor 1) to stderr first, so
+prints never corrupt the wire. There is no practice cell: Cell(send, recv) takes any pair of line functions (a
 stand-in of your own for testing), and load_frame() reads the survey photos (~/given/cell/survey/) as get_camera
 replies.
 
@@ -215,7 +216,8 @@ class GradedCell(Cell):
         self._rfile = self._sock = None
 
     def start(self):
-        """Start the graded episode (once per session; the start is charged before anything is simulated)."""
+        """Start the graded episode (once per session; before the start is charged the program in /home/user/submission
+        is frozen: that copy is the program graded, see the instruction)."""
         return self._call("start")
 
     def status(self):

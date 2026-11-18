@@ -1,7 +1,8 @@
 """Oracle driver of house_cleaning_with_tools's online graded episode (solution/solve.sh runs it as the agent account):
 connects to the graded episode's cell service with the agent-side client, starts the graded episode with the oracle
 token (the privileged mode: reference_clean and truth), runs the task's privileged oracle program (clean.py's solve:
-one frame of each public camera, then the reference cleaner inside one call) and finishes the episode.
+one frame of each public camera, then the reference cleaner inside one call) and finishes the episode. In the dual
+mode solution/solve.sh has put main's reference program into the submission first, so the freeze at the start holds it.
 
 Usage: online_oracle.py <the given client library dir> <the oracle token file>"""
 import os
