@@ -14,5 +14,12 @@
   "LIBERO_ASSETS": "/opt/libero-assets",
   "LP_NUM_THREADS": "2",
   "MESA_SHADER_CACHE_DISABLE": "true"
+ },
+ "graded": {
+  "episode": "../online/episode.json",
+  "task": "arm_hidden_mechanism_box",
+  "record_dir": "/var/lib/arb-online",
+  "prep_s": 28800,
+  "graded_s": 10800
  }
 }
