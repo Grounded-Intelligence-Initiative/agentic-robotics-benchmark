@@ -12,16 +12,20 @@ verifier sandbox (task.toml). One task, two items, one verdict:
                       once through ratio_rewards against anchor.json (dual_mode_score, 1.0 by construction).
 
 The freeze: the program graded is the copy of /home/user/submission that the graded episode's root supervisor made at
-the graded start (/var/lib/arb-online/submission_snapshot/, out of the agent's reach), checked against the record's
-snapshot_sha256; if the episode never started, the restored session-end submission, as on main. In this order:
+the earlier of the graded start and the close of the start window (prep_s with no start)
+(/var/lib/arb-online/submission_snapshot/, out of the agent's reach), checked against the record's snapshot_sha256.
+The restored session-end submission is graded, as on main, only when nothing was frozen (the session ended before the
+window closed) or when there is no usable record of a freeze (neither record.json nor the service's state.json).
+In this order:
   1. stop the agent account's processes (cellkit.lockdown, as main's grader does; main's grader does it once more, and
      freezes them until its verdict, when it starts);
   2. read and check the record (as the online variant's grader: a regular file of at most 1 MB, strict JSON, format,
      task, episode and seed digest equal to online.json, started true, a finite episode_score >= 0);
-  3. when the episode started (the record, or the service's state.json, says so): the snapshot must be status ok and
-     match its digest, and it then replaces the restored /home/user/submission (root-owned, as every restored entry
-     is, so main's late-write gate passes it); a snapshot that is too_large, missing or altered scores the program item
-     0 without a run. When it never started, the restored submission stays;
+  3. when the program was frozen (the record, or failing it the service's state.json, says so: at the graded start or
+     at the window's close): the snapshot must be status ok and match its digest, and it then replaces the restored
+     /home/user/submission (root-owned, as every restored entry is, so main's late-write gate passes it); a snapshot
+     that is too_large, missing or altered scores the program item 0 without a run. When nothing was frozen, the
+     restored submission stays;
   4. main's offline grading on /home/user/submission, as a process of its own (its verdict goes to a root-only file; a
      task error there is a task error here);
   5. the online item from the record (0 without a valid, started record);
@@ -179,34 +183,36 @@ def record_state(rec, why, online):
 
 
 def freeze_decision(rec, rstate, state):
-    """(started, snapshot fields, None) or (started, fields, why the program item scores 0 without a run). The episode
-    started when its record or the service's state.json says so; a record that is not this task's graded episode's
-    leaves the freeze unknown, and the program item then scores 0 (it never comes from the agent: neither file is
-    writable from the agent's account)."""
-    if rstate == "invalid":
-        return True, {}, "the graded-episode record is invalid, so the freeze cannot be checked"
-    started = rstate == "started" or bool(isinstance(state, dict) and state.get("started"))
-    if not started:
-        return False, {}, None
-    if rstate == "started":
+    """(frozen_by, snapshot fields, None) or (frozen_by, fields, why the program item scores 0 without a run); frozen_by
+    is graded_start, prep_window_closed or None (nothing frozen: the session-end submission is graded). The freeze
+    comes from a usable record (this task's graded episode: started, or not started with freeze prep_window_closed),
+    else from the service's state.json; with neither, nothing counts as frozen. Neither file is writable from the
+    agent's account."""
+    frozen_by, fields = None, {}
+    if rstate == "started" or (rstate == "not_started" and rec.get("freeze") == "prep_window_closed"):
+        frozen_by = "graded_start" if rstate == "started" else "prep_window_closed"
         fields = {k: rec.get(k) for k in ("snapshot_status", "snapshot_files", "snapshot_bytes", "snapshot_sha256")}
-    else:
-        sn = (state or {}).get("snapshot") or {}
+    elif isinstance(state, dict) and (state.get("started") or state.get("frozen") == "prep_window_closed"):
+        frozen_by = "graded_start" if state.get("started") else "prep_window_closed"
+        sn = state.get("snapshot") or {}
         fields = {"snapshot_status": sn.get("status"), "snapshot_files": sn.get("files"), "snapshot_bytes": sn.get("bytes"),
                   "snapshot_sha256": sn.get("sha256")}
+    if frozen_by is None:
+        return None, {}, None
     status = fields.get("snapshot_status")
+    when = "the graded episode started" if frozen_by == "graded_start" else "the start window closed"
     if status == "too_large":
-        return True, fields, ("the submission folder was larger than the program's cap (60 MB, or too many files or folders) "
-                              "when the graded episode started: nothing was frozen, the program item scores 0")
+        return frozen_by, fields, ("the submission folder was larger than the program's cap (60 MB, or too many files or "
+                                 "folders) when %s: nothing was frozen, the program item scores 0" % when)
     if status != "ok":
-        return True, fields, "the submission folder was not frozen at the graded start (status %r)" % (status,)
+        return frozen_by, fields, "the submission folder was not frozen when %s (status %r)" % (when, status)
     if os.path.islink(SNAPSHOT) or not os.path.isdir(SNAPSHOT):
-        return True, fields, "the frozen copy of the submission folder is missing"
+        return frozen_by, fields, "the frozen copy of the submission folder is missing"
     entries, nfiles, nbytes, problems = snapshot_listing(SNAPSHOT)
     if problems or snapshot_digest(entries) != fields.get("snapshot_sha256") or nfiles != fields.get("snapshot_files") \
             or nbytes != fields.get("snapshot_bytes"):
-        return True, fields, "the frozen copy of the submission folder does not match its record"
-    return True, fields, None
+        return frozen_by, fields, "the frozen copy of the submission folder does not match its record"
+    return frozen_by, fields, None
 
 
 # ---------------------------------------------------------------------------------------------- 4. the program item
@@ -270,22 +276,26 @@ def main():
     rec_ok = rec is not None and rec_why is None
     rstate = record_state(rec, why, online)
     state, _ = read_json_file(os.path.join(ONLINE_DIR, "state.json"))
-    started, snap, freeze_why = freeze_decision(rec, rstate, state)              # 3
+    frozen_by, snap, freeze_why = freeze_decision(rec, rstate, state)            # 3
     extra = {"agent_processes_killed_dual": float(killed), "online_record_valid": 1.0 if rec_ok else 0.0,
-             "online_started": 1.0 if started else 0.0}
+             "online_started": 1.0 if rec_ok else 0.0,
+             "frozen_at_graded_start": 1.0 if frozen_by == "graded_start" else 0.0,
+             "frozen_at_window_close": 1.0 if frozen_by == "prep_window_closed" else 0.0}
     for k, v in snap.items():
         if k != "snapshot_status" and _number(v) is not None:
             extra[k] = _number(v)
     extra["snapshot_ok"] = 1.0 if snap.get("snapshot_status") == "ok" else 0.0
     extra["snapshot_too_large"] = 1.0 if snap.get("snapshot_status") == "too_large" else 0.0
-    if started and freeze_why is None:
+    frozen_at = {"graded_start": "the graded start", "prep_window_closed": "the close of the start window"}.get(frozen_by)
+    if frozen_by and freeze_why is None:
         place_snapshot(SNAPSHOT, SUBMISSION)
-        log("[grader] the program item grades the copy frozen at the graded start (%s files, %s bytes)" % (
-            snap.get("snapshot_files"), snap.get("snapshot_bytes")))
-    elif not started:
-        log("[grader] the graded episode never started: the program item grades the session-end submission")
+        log("[grader] the program item grades the copy frozen at %s (%s files, %s bytes)" % (
+            frozen_at, snap.get("snapshot_files"), snap.get("snapshot_bytes")))
+    elif not frozen_by:
+        log("[grader] nothing was frozen (no usable record of a freeze): the program item grades the session-end "
+            "submission")
 
-    if started and freeze_why is not None:                                       # 4
+    if frozen_by and freeze_why is not None:                                     # 4
         log("[grader] program item 0: " + freeze_why)
         off_reward, off_score, off_text, off_metrics = 0.0, 0.0, "program item 0: " + freeze_why, {}
         extra["offline_ran"] = 0.0
@@ -334,7 +344,7 @@ def main():
                             full_at=meta.get("full_at", 1.0))
     text = ("dual mode: reward = mean(program item %.4f, graded episode item %.4f) = %.4f. The program (%s): %s The graded "
             "episode: %s." % (off_reward, on_reward, combined,
-                              "frozen at the graded start" if started else "the session-end submission", off_text, on_text))
+                              "frozen at %s" % frozen_at if frozen_by else "the session-end submission", off_text, on_text))
     log("[grader] " + text)
     write_verdict(verdict, diagnostic=text)
 

@@ -14,7 +14,8 @@ finish within 120 s of wall clock and 120 CPU seconds (all threads together: a l
 CPU seconds faster than wall seconds); a failed or slower import scores every episode 0, so keep heavy precomputation
 out of module level (inside `solve` it counts against the episode's program time). Each episode's CPU time is capped at
 4x its program time. The program the grader runs is the copy of your submission folder frozen when you start the
-graded episode (or the folder at your session's end if you never start it). The graded episode itself, the task's
+graded episode, or when the start window closes with no start (the folder at your session's end only if the session
+ends before either). The graded episode itself, the task's
 second item, is no program run: you drive it yourself from scripts of your own through `skidcell.client.connect_graded()`
 (the instruction gives its rules), and neither this paragraph nor the program's budgets below apply to it.
 `cell` is a proxy (`skidcell.client.Cell`): every method is one JSON-lines request on the process's original stdout,
