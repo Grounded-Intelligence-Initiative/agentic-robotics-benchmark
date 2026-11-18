@@ -41,6 +41,10 @@ achieved so far and the other episodes still run.
 
 ## Rendering your own frames
 
+MuJoCo's own renderer (`mujoco.Renderer`, or the render layer's `"mujoco"` backend) draws a different picture than the
+cell's cameras (no hall, MuJoCo's own lights, flat colours, no reflections), so image processing tuned on its frames
+may behave differently on the cell's frames; the given render layer is the way to see what the cell's cameras would see.
+
 The given render layer renders like the cell's cameras: MuJoCo's Filament renderer (physically based; on the CPU through
 Vulkan, Mesa's lavapipe; MuJoCo 3.17's Filament module) in the factory hall of `~/render` (its baked lightmaps, its
 lamps, its HDR image light, the scanned oak bench top), with the cell's look (`arm/assembly_openarm/agent_look.json`
@@ -65,18 +69,20 @@ distortion, noise, blur, vignetting, colour response and the depth-sensor model 
   own varies by up to about 20 % between runs). The session follows the render layer's interface:
   `sync_from(model, data)` copies your physics state by joint name, `render_raw_views([cam], ("rgb", "depth"))` gives
   the pinhole images, `render([cam], photo=..., seed=k, outputs=("rgb", "sensor_depth"))` runs the photo pipeline.
-* `render.filament.view.open_view(spec_or_mjcf_path, room=..., look=..., surface=..., bench_xy=(0.0, 0.0))`: any scene
-  of yours, rendered exactly as you give it. The hall, its lamps and its image light are added (the lamps replace your
-  scene's lights unless `keep_lights=True`); nothing of the cell is (no bench frame, no props), and your own geoms stay,
-  floor and walls included, unless `drop_prefixes` names them (only geoms in groups above `max_group`, 2, are left
-  out). A twin of the cell goes through `agent_render.open_session` instead. `view.render(state, camera, width=None,
-  height=None, depth=False)` returns RGB uint8 H x W x 3 (with `depth=True` also depth float32 H x W); `state` is an
-  `MjData` (joints copied by name), a `(model, data)` pair, a dict `{joint name: value}` or None; `camera` is a camera
-  name of the model (with `width`, `height`), a `CameraSpec` or a dict `{"width", "height", "fx", "fy", "cx", "cy",
-  "world_T_cam"}` (`"K"` may stand for the four intrinsics). `look` is the cell's look (`agent_render.make_look()`), a
-  look file of your own (JSON: the fields of `render.filament.backend.Look`; `"materials"` a list of `[geom glob,
-  material glob, {"roughness", "metallic"}]` rules, the first match wins) or None; `surface` a folder of scanned maps
-  (`~/render/oak`) for the look's bench top geom. `view.session` is a render-layer session for the photo pipeline.
+* `render.filament.view.open_view(spec_or_mjcf_path, room=..., look=..., surface=..., bench_xy=(0.0, 0.0),
+  exposure_factor=1.0)`: any scene of yours, rendered exactly as you give it. The hall, its lamps and its image light
+  are added (the lamps replace your scene's lights unless `keep_lights=True`); nothing of the cell is (no bench frame,
+  no props), and your own geoms stay, floor and walls included, unless `drop_prefixes` names them (only geoms in groups
+  above `max_group`, 2, are left out). A twin of the cell goes through `agent_render.open_session` instead.
+  `view.render(state, camera, width=None, height=None, depth=False)` returns RGB uint8 H x W x 3 (with `depth=True` also
+  depth float32 H x W); `state` is an `MjData` (joints copied by name), a `(model, data)` pair, a dict `{joint name:
+  value}` or None; `camera` is a camera name of the model (with `width`, `height`), a `CameraSpec` or a dict `{"width",
+  "height", "fx", "fy", "cx", "cy", "world_T_cam"}` (`"K"` (a 3 x 3 matrix) may stand for the four intrinsics). `look`
+  is the cell's look (`agent_render.make_look()`), a look file of your own (JSON: the fields of
+  `render.filament.backend.Look`; `"materials"` a list of `[geom glob, material glob, {"roughness", "metallic"}]` rules,
+  the first match wins) or None; `surface` a folder of scanned maps (`~/render/oak`) for the look's bench top geom. For
+  the hall's brightness pass `exposure_factor=...` to `open_view` and leave `make_look()` at its default (a view would
+  render `make_look(f)` with a wrong display gain). `view.session` is a render-layer session for the photo pipeline.
 
 ```python
 import os, sys
@@ -108,7 +114,7 @@ through the photo pipeline, 2.5-4 s on a busy machine) and a 640 x 480 frame abo
 `open_view` takes about 5-40 s on the same scene and renders as fast. Until you give a state (`sync_from`, `set_state`,
 or `state` in `view.render`), a session or view shows your twin's own pose (`qpos0`: the bodies where your spec puts
 them). One Filament session per process at a time: close it before opening the next (a second one is refused). Closing
-the last one also releases Filament's context and its memory once nothing refers to the closed session (about 0.5-1.6 GB
+the last one also releases Filament's context and its memory once nothing refers to the closed session (about 0.5-1.7 GB
 stays with the process), so the next session's or view's first frame takes the 7-11 s again. Your program may use the
 layer during an episode too (it finds the hall next to `$ARB_GIVEN_DIR`); it then has 2 render threads (about 0.8-1.05 s
 / 1.3-3.7 s and 0.35-0.5 s / 0.45-0.65 s per frame, its first frame about 7-11 s), and the time counts against the
