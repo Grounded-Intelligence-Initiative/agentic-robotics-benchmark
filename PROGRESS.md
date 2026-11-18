@@ -616,7 +616,7 @@ order of §13 (§5's platform list predates both).
 - `tasks/arm/object_finding_and_organizing_on_messy_desk/task.toml` still lists `driving` in a
   comment; it is left as it is, since editing it would change that task's identity.
 
-## 14. 2026-11-17 — the kit clears the agent's account before it starts agent code
+## 15. 2026-11-17 — the kit clears the agent's account before it starts agent code
 
 - **The finding** (review of the contributed `longtail_manipulation_recovery`, pull request
   #80). A controller that the grader starts under a no-network seccomp filter got code run
