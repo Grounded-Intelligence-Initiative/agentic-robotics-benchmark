@@ -406,5 +406,9 @@ the graded episode starts (it then closes, O13 below); the offline grader is `ve
   `reference_run`) and finishes. Measured by `ale validate` (validate-86bd2023) and in a container of the task image
   on 2026-11-18, the same to the last digit: 0.9999999999998129 for ep08 (the hidden set's selection run: 1.0), about
   100 s of wall clock; `anchor.json` holds it rounded to 1.0.
-* **The client** (`given/lib/skidcell/client.py`, with its copies `skidcell/client.py` and `setup_payload/...`, and
-  `given_hashes.json`): `connect_graded()`, `Cell.start()`, `Cell.status()`; nothing else in the givens changed.
+* **The givens** (with their copies under `setup_payload/`, `skidcell/client.py` and `given_hashes.json`): the client
+  adds `connect_graded()`, `Cell.start()`, `Cell.status()`; `cell_api.md`, `cell_manual.md` (sections 6 and 8) and
+  `run_shift.py`'s docstring no longer say that a program-time, silence or import time-out ends or zeroes the graded
+  episode, or that an episode is run again after a cell failure (those budgets are a commissioned program's), and they
+  name `practice_closed`. The instruction's session note says what O6 says: a session that stops while the graded
+  episode runs leaves it scored as it stood after the last request.

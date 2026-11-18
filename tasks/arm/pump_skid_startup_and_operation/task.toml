@@ -38,8 +38,8 @@
 # the service's start, the agent budget on main) and the episode ends at its own end, at the agent's finish, graded_s =
 # 10800 s after its start, or with the session. The service writes the episode's record to /var/lib/arb-online, declared
 # below; tests/verify.py scores that record and runs no program. Practice ends when the graded episode starts: the
-# commissioning service ends its open shifts and refuses new ones from then on (O13). The givens are unchanged (the client
-# library adds connect_graded / start / status).
+# commissioning service ends its open shifts and refuses new ones from then on (O13). The givens describe the graded
+# episode, not a graded program run (the client library adds connect_graded / start / status).
 
 schema_version = "1.4+ale.1"
 # Where the agent leaves its work (not graded in the online variant) and the graded episode's record (the service's

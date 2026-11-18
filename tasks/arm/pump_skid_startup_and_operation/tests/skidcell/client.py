@@ -20,7 +20,7 @@ A reply carrying "error" raises CellError (a `forbidden` error is counted by the
 
 Commissioning (development only): `connect_commissioning(site)` opens a shift on one of the series' development sites
 (the sister sites the commissioning service runs; never a graded site): the same cell and calls, plus `reset(site)`,
-which starts the shift. One connection is one shift, under the graded episode's budgets; the commissioning window has
+which starts the shift. One connection is one shift, under a program's budgets; the commissioning window has
 a fixed number of shifts (`cell_manual.md` section 8). `~/commission/run_shift.py` runs a whole program in a shift the
 way the grader runs it.
 
