@@ -2,8 +2,11 @@
 
 Runs as root in a SEPARATE verifier sandbox and runs no program. During the agent phase the agent played the task's
 one graded episode itself, through the lab service (environment/setup/lab/alelab/server.py, serving as the account
-`alelab`): one entry of the offline grader's fixed hidden set (tests/hidden/episodes.json), the unit and seed of
-environment/setup/online/episode.json, simulated exactly as the offline grader simulates an episode of that set
+`alelab`): one entry of the offline grader's fixed hidden set (tests/hidden/episodes.json), chosen at the start from a
+random order of all 18 (environment/setup/online/order.json, the seeds root-only; tests/online.json holds the same
+order as index, unit, episode id and seed digest): the first entry whose unit is not the unit of a lab trial charged
+before the start, so the graded unit is one the agent never practised on. It is simulated exactly as the offline
+grader simulates an episode of that set
 (appliance_plugin.py: Episode(ApplianceEnv(spec, None, render=True), seed); the score is the episode's mean request
 credit (episode.py), 0 after an unstable simulation; an episode ended before its last request closed, by a finish,
 its window or the end of the session, is scored as if it ended at that moment: the open request closes then and a
@@ -16,9 +19,10 @@ This grader reclaims root's PATH directories first (robotics_grader.stage.secure
 process (in the separate verifier only the base image's desktop runs as that account: a process that outlives the
 bounded kill is stopped, and only one still running once stopped fails the run, cleanup_failed), reads the record
 (a regular file of at most 1 MB, never through a link), checks it against tests/online.json (format, task, episode
-id, the seed's sha256), that the episode was started and that its score is a finite number >= 0, stops the agent
-account's processes again, and scores the episode's score against the anchor with the kit. A missing, invalid or
-never-started record scores 0. The rest of tests/ (the environment, the episode logic, the hidden set, the renderer)
+id, the seed's sha256), that the episode was started, that its episode is the one the order gives for the record's
+trial units (order_index, episode and seed digest recomputed from tests/online.json) and that its score is a finite
+number >= 0, stops the agent account's processes again, and scores the episode's score against the anchor with the
+kit. A missing, invalid or never-started record, or one whose episode the order does not give, scores 0. The rest of tests/ (the environment, the episode logic, the hidden set, the renderer)
 is the offline grader's and is not used here.
 """
 
@@ -173,15 +177,33 @@ def read_record(path, online):
         return None, "the graded-episode record is not a JSON object"
     if rec.get("format") != RECORD_FORMAT:
         return None, "the graded-episode record has another format"
-    for key in ("task", "episode", "seed_sha256"):
-        if rec.get(key) != online[key]:
-            return None, "the graded-episode record's {} differs from tests/online.json".format(key)
+    if rec.get("task") != online["task"]:
+        return None, "the graded-episode record's task differs from tests/online.json"
     if rec.get("started") is not True:
         return None, "the graded episode was never started"
+    units = rec.get("trial_units")
+    if not isinstance(units, list) or not all(isinstance(u, str) for u in units):
+        return None, "the graded-episode record has no valid trial_units"
+    pos, want = expected_choice(online, units)
+    if want is None:
+        return None, "no entry of the order is left for the record's trial units"
+    got = rec.get("order_index")
+    if isinstance(got, bool) or got != pos or rec.get("episode") != want["episode"] \
+            or rec.get("seed_sha256") != want["seed_sha256"]:
+        return None, "the record's graded episode is not the one the order gives for its trial units"
     score = rec.get("episode_score")
     if isinstance(score, bool) or not isinstance(score, (int, float)) or not math.isfinite(score) or score < 0:
         return None, "the graded-episode record has no finite episode_score >= 0"
     return rec, None
+
+
+def expected_choice(online, trial_units):
+    """(position, entry) of the first entry of tests/online.json's order whose unit is not one of `trial_units`, or
+    (None, None) when none is left."""
+    for pos, entry in enumerate(online["order"]):
+        if entry["unit"] not in trial_units:
+            return pos, entry
+    return None, None
 
 
 def _number(v):
@@ -191,13 +213,16 @@ def _number(v):
 def record_metrics(rec):
     """The record's counters, how the episode ended and the per-episode sub-metrics, as finite numbers."""
     out = {}
-    for key in ("steps", "steps_rejected", "sim_time_s", "requests", "wall_s_since_start", "started_after_s"):
+    for key in ("steps", "steps_rejected", "sim_time_s", "requests", "wall_s_since_start", "started_after_s",
+                "order_index"):
         if _number(rec.get(key)):
             out[key] = float(rec[key])
     out["episode_ended"] = 1.0 if rec.get("ended") is True else 0.0
     for reason in END_REASONS:
         out["end_" + reason] = 1.0 if rec.get("end_reason") == reason else 0.0
     out["privileged"] = 1.0 if rec.get("privileged") is True else 0.0
+    units = rec.get("trial_units")
+    out["trial_units_count"] = float(len(units)) if isinstance(units, list) else 0.0
     metrics = rec.get("metrics")
     if isinstance(metrics, dict):
         for key, v in sorted(metrics.items()):

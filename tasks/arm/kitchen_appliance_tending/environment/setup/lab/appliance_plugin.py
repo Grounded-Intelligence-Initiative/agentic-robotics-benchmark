@@ -14,11 +14,12 @@ is proven before the lab serves; a renderer that cannot start fails the lab's st
 reset or a step (appliance_env.RenderError), is the lab's own error: the server answers `internal` and logs the
 traceback lab-side; it is never reported as anything the agent's action caused.
 
-The graded episode (graded_reset; the episode file environment/setup/online/episode.json names the unit and its
-seed, one entry of the fixed hidden set) runs exactly as the offline grader runs an episode of that set, and is
-scored as it scores one (the mean request credit, 0 after an unstable simulation). With the oracle token
-(lab.json "graded" oracle_token_sha256) every graded observation also carries the unit's truth, as the offline
-grader gives a tokened submission; a renderer failure in the graded episode restarts the worker, which ends it.
+The graded episode (graded_reset; the lab chooses it at the start from the random order of the fixed hidden set in
+environment/setup/online/order.json: the first entry on a unit no lab trial used) runs exactly as the offline grader
+runs an episode of that set, and is scored as it scores one (the mean request credit, 0 after an unstable
+simulation). With the oracle token (lab.json "graded" oracle_token_sha256) every graded observation also carries the
+unit's truth, as the offline grader gives a tokened submission; a renderer failure in the graded episode restarts
+the worker, which ends it.
 """
 
 import os
