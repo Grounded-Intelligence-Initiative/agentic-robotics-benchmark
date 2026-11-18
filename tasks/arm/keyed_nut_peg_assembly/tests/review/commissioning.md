@@ -77,8 +77,9 @@ completion verdict or a debrief.
 
 ## The service
 
-`environment/commission_service/`: `commissiond.py`, `keyed_env.py` (a byte copy of `tests/keyed_env.py`) and
-`kits.json` (the development kits and the window). The image installs it under `/opt/keyedcell-commission` for the
+`environment/commission_service/`: `commissiond.py`, `keyed_env.py` (a byte copy of `tests/keyed_env.py`), since
+amendment 5 the cameras' renderer `keyed_render.py` with `keyed_look.json` (byte copies of the grader's too:
+`rendering.md`) and `kits.json` (the development kits and the window). The image installs it under `/opt/keyedcell-commission` for the
 account `keyedcell`, mode 700; `environment/setup/setup.sh` starts it under a restart loop with the image's rendering
 and thread settings. The image's working directory is `/`, so that the engine's root helpers never import a module
 from the agent's home (engine issue AgentsLastExam/ale#142).
@@ -136,7 +137,8 @@ printed at every step.
 
 Round 2: `keyed_env.CYCLE_STEPS` 800 -> 400, an episode of at most 1200 steps. Round 3: `keyed_env.MAX_STEPS = 1000`,
 100 s for a kit. Round 4: `keyed_env.MAX_STEPS = 850`, 85 s for a kit. The controller budget (600 s of controller
-time per kit) and the image charges are unchanged.
+time per kit) and the image charges are unchanged. (Amendment 5, the cameras' renderer, moved the wrist image's charge
+from 0.25 s to 0.35 s: `rendering.md`.)
 
 The tolerances change what a kit is (the reference is given the real groove through its token:
 `keyed_credit.ground_truth`, `actual`), so amendment 2 of the selection record drew 16 fresh hidden candidates and 24

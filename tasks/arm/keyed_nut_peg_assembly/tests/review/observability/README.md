@@ -1,4 +1,4 @@
-# Observability: what a controller can see and feel (maintainer evidence, 2026-11-12; rounds 3 and 4 on 2026-11-17)
+# Observability: what a controller can see and feel (maintainer evidence, 2026-11-12; rounds 3 and 4 on 2026-11-17; the cameras' renderer on 2026-11-18)
 
 The task's observations carry no object state. This folder shows, on development kits only, that they are enough
 for the job: the camera images to find everything, and the hand's position with the wrist sensor to put a nut on its
@@ -10,8 +10,8 @@ state is read only to score the estimates.
 
 `perceive.py` (the perception), `check_perception.py` (per kit: the first observation's free images, then wrist
 close-ups over each peg and each nut's rough position, with plain actions as a controller would move; every estimate
-against the simulator), `perception_dev_kits.json` (30 kits, 90 pegs, 90 nuts, on amendment 4's image; every kit's
-numbers are those of amendment 3's run: the takt does not touch the cameras). These kits
+against the simulator), `perception_dev_kits.json` (30 kits, 90 pegs, 90 nuts, on amendment 5's image: the cameras
+drawn by `keyed_render.py`, see `../rendering.md`). These kits
 (`sample_kit` seeds 1000-1029, layout seeds + 4000) are maintainer kits: neither graded kits, nor selection
 candidates, nor the commissioning service's development kits.
 
@@ -20,15 +20,21 @@ calibration (data sheet, section 11), so an image position is off by millimetres
 
 | what | from | result (30 kits) |
 |---|---|---|
-| peg positions | the wrist camera's view from the start pose | 90 of 90 found; error 3.4 mm median, 5.9 mm p90, 12.6 mm max |
+| peg positions | the wrist camera's view from the start pose | 90 of 90 found; error 4.6 mm median, 9.5 mm p90, 13.3 mm max |
 | which peg is which (1, 2, 3 bands) | the fixed left and right cameras | 90 of 90 right |
-| a peg's shaft top | one wrist close-up from above | 1.6 mm median, 3.5 mm p90, 4.9 mm max |
-| the same | two close-ups, the hand turned half a turn between them (about 60 steps) | 1.1 mm median, 1.5 mm p90, 1.8 mm max: the wrist camera's error is fixed in the hand's frame, so most of it cancels |
-| the same | one close-up, corrected by the offset measured on the kit's first peg | 1.6 mm median, 2.2 mm p90, 3.1 mm max |
-| rough nut positions | the fixed cameras | 90 of 90 found; 18 mm median (the blob's centre lies towards the handle), 28 mm max |
-| ring centre and handle direction | one wrist close-up over the rough position | centre 1.8 mm median, 3.4 mm p90 (17 of 90 over 3 mm, two of them with the handle read the wrong way round, which a second look would catch); handle 0.3 degrees median |
+| a peg's shaft top | one wrist close-up from above | 1.7 mm median, 3.0 mm p90, 4.9 mm max |
+| the same | two close-ups, the hand turned half a turn between them (about 60 steps) | 0.7 mm median, 1.2 mm p90, 1.6 mm max: the wrist camera's error is fixed in the hand's frame, so most of it cancels |
+| the same | one close-up, corrected by the offset measured on the kit's first peg | 1.0 mm median, 1.8 mm p90, 2.5 mm max |
+| rough nut positions | the fixed cameras | 90 of 90 found; 17 mm median (the blob's centre lies towards the handle), 24 mm max |
+| ring centre and handle direction | one wrist close-up over the rough position | centre 1.8 mm median, 3.2 mm p90 (11 of 90 over 3 mm; the worst, 12 mm, a yellow nut whose handle was also read 9 degrees off); handle 0.3 degrees median (one orange nut 30 degrees off), none read the wrong way round |
 
-Before the tolerances (the drawing's cell, 2026-11-12 and 2026-11-16) the same code gave: peg positions 0.5 mm median
+With MuJoCo's own renderer (amendments 3 and 4, 2026-11-17) the same kits gave: peg positions 3.4 mm median, 90 of 90
+band counts, shaft tops 1.6 mm (one close-up) and 1.1 mm (two), ring centres 1.8 mm median with 17 of 90 over 3 mm and
+two handles read the wrong way round. The perception code is not the same: the new images needed their own rules
+(the hues the cameras see under the warm light instead of the nominal ones, the oak bench top and its shaded
+patches, a band count from the intensity profile down the shaft instead of from single samples).
+
+Before the tolerances (the drawing's cell, 2026-11-12 and 2026-11-16) the old code gave: peg positions 0.5 mm median
 (1.3 mm max), ring centres 0.15 mm median. The cameras' calibration error is the difference.
 
 So the cameras find every part and tell the pegs apart, to a few millimetres. The fit has 0.35 to 0.65 mm of radial
