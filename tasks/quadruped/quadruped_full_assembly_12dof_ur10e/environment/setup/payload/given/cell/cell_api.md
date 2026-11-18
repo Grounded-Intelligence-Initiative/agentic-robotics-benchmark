@@ -64,13 +64,16 @@ ways in (put `~/given/lib` on `sys.path`):
   `render_raw_views([cam], ("rgb", "depth"))` gives the pinhole images, `render([cam], photo=..., seed=k,
   outputs=("rgb", "sensor_depth"))` runs the photo pipeline.
 * `render.filament.view.open_view(spec_or_mjcf_path, room=..., look=..., surface=..., bench_xy=(0.45, 0.0))`: any scene
-  of yours. `view.render(state, camera, width=None, height=None, depth=False)` returns RGB uint8 H x W x 3 (with
-  `depth=True` also depth float32 H x W); `state` is an `MjData` (joints copied by name), a `(model, data)` pair, a dict
-  `{joint name: value}` or None; `camera` is a camera name of the model (with `width`, `height`), a `CameraSpec` or a
-  dict `{"width", "height", "fx", "fy", "cx", "cy", "world_T_cam"}` (`"K"` may stand for the four intrinsics). `look`
-  is the cell's look (`agent_render.make_look()`), a look file of your own (JSON: the fields of
-  `render.filament.backend.Look`; `"materials"` a list of `[geom glob, material glob, {"roughness", "metallic"}]`
-  rules, the first match wins) or None. `view.session` is a render-layer session for the photo pipeline.
+  of yours, rendered exactly as given: none of the cell's props are added (no robot table frame, control box or floor
+  tape), your scene's own floor and walls stay unless `drop_prefixes` names them, and only geoms in a group above 2 are
+  left out; with `room`, the hall is added and its lamps replace your scene's lights (unless `keep_lights`). A twin of
+  this cell goes through `agent_render.open_session` instead. `view.render(state, camera, width=None, height=None,
+  depth=False)` returns RGB uint8 H x W x 3 (with `depth=True` also depth float32 H x W); `state` is an `MjData` (joints
+  copied by name), a `(model, data)` pair, a dict `{joint name: value}` or None; `camera` is a camera name of the model
+  (with `width`, `height`), a `CameraSpec` or a dict `{"width", "height", "fx", "fy", "cx", "cy", "world_T_cam"}` (`"K"`
+  may stand for the four intrinsics). `look` is the cell's look (`agent_render.make_look()`), a look file of your own
+  (JSON: the fields of `render.filament.backend.Look`; `"materials"` a list of `[geom glob, material glob, {"roughness",
+  "metallic"}]` rules, the first match wins) or None. `view.session` is a render-layer session for the photo pipeline.
 
 ```python
 import os, sys
@@ -85,10 +88,10 @@ session.sync_from(model, data)                       # model, data: your physics
 raw = session.render_raw_views([cam], ("rgb", "depth"))[0]    # raw.rgb, raw.depth
 session.close()                                      # one session per process at a time
 
-view = open_view(spec, room=os.path.expanduser("~/render/room"), surface=os.path.expanduser("~/render/oak"),
-                 look=agent_render.make_look(), bench_xy=(0.45, 0.0))
-rgb, depth = view.render(data, cam, depth=True)
-rgb_w = view.render({"ur/shoulder_pan_joint": 0.5}, "ur/wrist", 640, 480)
+view = open_view(part_spec, room=os.path.expanduser("~/render/room"), surface=os.path.expanduser("~/render/oak"),
+                 look=agent_render.make_look(), bench_xy=(0.45, 0.0))   # part_spec: a scene of yours, not the cell twin
+rgb, depth = view.render(part_data, cam, depth=True)                     # part_data: its MjData
+rgb_w = view.render({"my_hinge": 0.5}, "my_camera", 640, 480)            # a joint and a camera of part_spec
 view.close()
 ```
 
