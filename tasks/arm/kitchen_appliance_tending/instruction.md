@@ -6,7 +6,7 @@ to preheat, set or turn off the oven. The appliances are models you have not see
 cameras and feel them through the arm.
 
 You are scored on **one graded episode** that you play yourself, through the lab, while your session runs: one
-episode on one of the scored units, drawn once before your session (the same episode for every model). You carry
+episode of the hidden set, on a scored unit your lab trial did not use (see The graded episode). You carry
 out its requests from camera images, joint readings and the wrist force/torque sensor, step by step, with whatever
 programs you write. You have **2 hours** to prepare (exploring, the lab trial, building and testing your tools) and
 must start the graded episode within them; from its start you have up to **3 hours** to play it (see The graded
@@ -140,17 +140,20 @@ it cannot answer within 120 s restarts its worker (a trial already charged is no
 placement, initial state, request queue, lighting and sensor noise. A reset takes about 1 s and a step with all three
 images about 0.2 s (much less without images). The lab never reports scores, credit or the unit's state: only
 observations; but a request that closes before its deadline was completed. The lab units are exactly the units you
-are scored on. With 1 trial you can visit one of the nine units. The lab also serves the graded episode (below); its
-trial ends when the graded episode starts.
+are scored on. With 1 trial you can visit one of the nine units; the graded episode is on another one. The lab also
+serves the graded episode (below); its trial ends when the graded episode starts.
 
 ## The graded episode (the only thing scored)
 
 The graded episode is one episode of the fixed hidden set the scored units are graded on (18 episodes, 2 per unit,
 each a unit with a fixed seed: its placement, initial state, request queue, lighting, camera offsets and sensor
-noise), drawn once at random before your session. Every model plays this same episode. Its first observation names
-the unit (`unit`). It is an episode like a lab trial on that unit (the same unit, robot, controller, action and
-observation formats, cameras, sensor noise, physics, requests, deadlines and credit rule), except that it is that
-fixed episode, and it is not your lab trial.
+noise). Before your session these 18 episodes were put in one random order, the same for every model. At
+`graded_start` the lab takes the first episode in that order whose unit is not the unit of your lab trial (if you
+have used it), so the graded episode is never on the unit you practised on, and models whose trial covered the same
+unit play the same episode. You learn which unit it is only at the start: its first observation names the unit
+(`unit`). It is an episode like a lab trial on that unit (the same unit, robot, controller, action and observation
+formats, cameras, sensor noise, physics, requests, deadlines and credit rule), except that it is that fixed episode,
+and it is not your lab trial.
 
 The calls (`labclient.py`; the requests are JSON lines on the lab socket, `{"op": "graded_start"}` and so on):
 

@@ -45,6 +45,11 @@ the agent plays itself through these ops; the lab writes its outcome to a record
   * Practice ends when it starts: the start ends every open lab trial, and reset / execute are refused
     (`practice_closed`) for the rest of the session, a restarted worker included (hello and budget still
     answer). Trial ops and the start are serialized by one lock, so no trial advances after the start.
+  * An order instead of one episode: the episode file may hold {"order": [{"episode", "instance", "seed",
+    "index"}, ...]}; graded_start then takes the first entry whose instance is not the instance of any lab
+    trial charged before the start (the budget file keeps the instance of every charge), so the graded
+    instance is one the agent never practised on. The choice (its position) and those trial instances are
+    persisted with the start and written into the record (order_index, trial_units).
   * The episode lives in the worker, not in a connection: a disconnect leaves it where it is and any
     later connection resumes it; one connection holds it at a time (another one gets `busy`) until that
     connection closes. Every graded op but graded_status claims it.
@@ -584,15 +589,20 @@ class Budget:
             self.used = int(data["used"])
             if self.total < 0 or self.used < 0:
                 raise ValueError("negative")
+            charged = data.get("charged", [])
+            if not isinstance(charged, list) or not all(isinstance(x, str) for x in charged):
+                raise ValueError("charged")
+            self.charged = list(charged)  # the instance of every charge, in order
         except Exception as exc:  # fail closed: never reset to full
             self.total, self.used, self.broken = 0, 0, True
+            self.charged = []
             log.write(kind="budget_state_unreadable", err=type(exc).__name__)
 
     @staticmethod
     def initialize(path, total, uid, gid):
         if os.path.lexists(path):
             return False
-        Budget._write(path, {"total": total, "used": 0, "version": 1})
+        Budget._write(path, {"total": total, "used": 0, "charged": [], "version": 1})
         os.chown(path, uid, gid)
         return True
 
@@ -616,15 +626,25 @@ class Budget:
         with self.lock:
             return 0 if self.broken else max(0, self.total - self.used)
 
-    def charge(self):
-        """Returns the remaining count after charging one trial, or None when exhausted."""
+    def charged_instances(self):
+        """The sorted distinct instances of the trials charged so far, or None when they are not known (an
+        unreadable or unpersisted budget state, or counts that disagree)."""
+        with self.lock:
+            if self.broken or len(self.charged) != self.used:
+                return None
+            return sorted(set(self.charged))
+
+    def charge(self, instance=None):
+        """Returns the remaining count after charging one trial (on `instance`), or None when exhausted."""
         with self.lock:
             if self.broken or self.used >= self.total:
                 return None
             self.used += 1
+            self.charged.append(instance if isinstance(instance, str) else "")
             try:
                 self._write(
-                    self.path, {"total": self.total, "used": self.used, "version": 1}
+                    self.path,
+                    {"total": self.total, "used": self.used, "charged": self.charged, "version": 1},
                 )
             except OSError as exc:
                 self.broken = (
@@ -891,12 +911,28 @@ def _atomic_write(path, data, tmp_name=None):
 
 
 def load_graded_episode(path, ids):
-    """The graded episode from its root-only file: {"episode": id, "instance": one of `ids`, "seed": 0 <= int <
-    2**64} (other keys, such as how it was drawn, are ignored; a "seed_sha256" must match). Read as root."""
+    """The graded episode(s) from the root-only file, read as root: one episode {"episode": id, "instance": one of
+    `ids`, "seed": 0 <= int < 2**64}, or an order {"order": [such entries, each with an optional "index", its
+    position in the task's hidden set]} (other keys, such as how they were drawn, are ignored; a "seed_sha256" must
+    match its seed). Returns {"single": bool, "order": [{"episode", "instance", "seed", "seed_sha256", "index"}]}."""
     with open(path, "rb") as fh:
         data = json.loads(fh.read(1 << 16))
     if not isinstance(data, dict):
         raise ValueError("graded episode file must hold an object")
+    if "order" not in data:
+        return {"single": True, "order": [_graded_entry(data, ids)]}
+    raw = data["order"]
+    if not isinstance(raw, list) or not 0 < len(raw) <= 1000:
+        raise ValueError("graded order must be a non-empty list")
+    order = [_graded_entry(e, ids) for e in raw]
+    if len({e["episode"] for e in order}) != len(order) or len({e["seed"] for e in order}) != len(order):
+        raise ValueError("graded order repeats an episode id or a seed")
+    return {"single": False, "order": order}
+
+
+def _graded_entry(data, ids):
+    if not isinstance(data, dict):
+        raise ValueError("graded episode entry must be an object")
     eid, inst, seed = data.get("episode"), data.get("instance"), data.get("seed")
     if not isinstance(eid, str) or not EPISODE_ID_RE.match(eid):
         raise ValueError("graded episode id")
@@ -907,7 +943,10 @@ def load_graded_episode(path, ids):
     digest = hashlib.sha256(str(seed).encode()).hexdigest()
     if data.get("seed_sha256") not in (None, digest):
         raise ValueError("graded episode seed_sha256 does not match its seed")
-    return {"episode": eid, "instance": inst, "seed": seed, "seed_sha256": digest}
+    index = data.get("index")
+    if index is not None and (isinstance(index, bool) or not isinstance(index, int) or index < 0):
+        raise ValueError("graded episode index must be a non-negative integer")
+    return {"episode": eid, "instance": inst, "seed": seed, "seed_sha256": digest, "index": index}
 
 
 class GradedState:
@@ -917,7 +956,7 @@ class GradedState:
     (fail closed)."""
 
     FIELDS = ("service_start_wall", "service_start_mono", "started", "started_wall", "started_mono",
-              "privileged", "ended", "end_reason", "ended_wall", "ended_mono")
+              "privileged", "ended", "end_reason", "ended_wall", "ended_mono", "choice", "trial_units")
 
     def __init__(self, path, log):
         self.path, self.log = path, log
@@ -1022,8 +1061,9 @@ class Graded:
     """The session's one graded episode (module docstring). Lives in the worker; every graded op runs under
     `self.lock`, and plugin calls under it go through the worker's plugin lock (lock order: graded, plugin)."""
 
-    def __init__(self, gcfg, spec, state, record, log, control_dt):
-        self.cfg, self.spec, self.state, self.record, self.log = gcfg, spec, state, record, log
+    def __init__(self, gcfg, plan, state, record, log, control_dt):
+        self.cfg, self.plan, self.state, self.record, self.log = gcfg, plan, state, record, log
+        self.spec = self._chosen()  # the graded episode: the only one, or (an order) the one chosen at the start
         self.control_dt = float(control_dt)
         self.worker = None
         self.lock = threading.Lock()
@@ -1036,6 +1076,15 @@ class Graded:
         self.result = {"score": 0.0, "metrics": {}, "detail": None}
         self.last_write = 0.0
         self.dirty = False
+
+    def _chosen(self):
+        if self.plan["single"]:
+            return self.plan["order"][0]
+        st = self.state.data
+        c = st.get("choice")
+        if st["started"] and isinstance(c, int) and not isinstance(c, bool) and 0 <= c < len(self.plan["order"]):
+            return self.plan["order"][c]
+        return None
 
     # -- clocks
     def _since_service(self):
@@ -1062,8 +1111,10 @@ class Graded:
         return {
             "format": "arb-online-record/1",
             "task": self.cfg["task"],
-            "episode": self.spec["episode"],
-            "seed_sha256": self.spec["seed_sha256"],
+            "episode": None if self.spec is None else self.spec["episode"],
+            "seed_sha256": None if self.spec is None else self.spec["seed_sha256"],
+            "order_index": st["choice"],
+            "trial_units": st["trial_units"],
             "started": bool(st["started"]),
             "ended": bool(st["ended"]),
             "end_reason": st["end_reason"],
@@ -1112,7 +1163,8 @@ class Graded:
         self.worker = worker
         st = self.state.data
         rec = self.record.load()
-        if rec is not None and rec.get("episode") == self.spec["episode"] and rec.get("started") is True:
+        if rec is not None and self.spec is not None and rec.get("episode") == self.spec["episode"] \
+                and rec.get("started") is True:
             for key in ("requests", "steps", "steps_rejected"):
                 v = rec.get(key)
                 if isinstance(v, int) and not isinstance(v, bool) and v >= 0:
@@ -1248,16 +1300,34 @@ class Graded:
                 if not hmac.compare_digest(hashlib.sha256(tok.strip().encode()).hexdigest(), want):
                     raise ReplyError("bad_request")
                 privileged = True
-            # the charge: persisted before anything is simulated, never refunded
-            st.update(started=True, started_wall=time.time(), started_mono=time.monotonic(), privileged=privileged)
-            try:
-                self.state.save()
-            except OSError as exc:
-                st.update(started=False, started_wall=None, started_mono=None, privileged=False)
-                self.log.write(kind="graded_state_persist_failed", err=str(exc))
-                raise ReplyError("internal")
-            self.log.write(kind="graded_start", conn=cid, privileged=privileged)
-            self.worker.close_practice()  # O13: every open lab trial ends; no trial starts from now on
+            w = self.worker
+            with w.practice_lock:
+                # The trials charged so far are read while no trial op can run, and practice closes in the same step
+                # (O13), so no trial is charged or advances between the choice and the start.
+                units = w.budget.charged_instances()
+                if units is None:
+                    self.log.write(kind="graded_trial_units_unknown")
+                    raise ReplyError("internal")
+                if self.plan["single"]:
+                    choice = 0
+                else:  # the first entry of the order on an instance no lab trial used
+                    choice = next((k for k, e in enumerate(self.plan["order"]) if e["instance"] not in units), None)
+                    if choice is None:
+                        self.log.write(kind="graded_no_entry_left", trial_units=units)
+                        raise ReplyError("internal")
+                # the charge: persisted before anything is simulated, never refunded
+                st.update(started=True, started_wall=time.time(), started_mono=time.monotonic(),
+                          privileged=privileged, choice=choice, trial_units=units)
+                try:
+                    self.state.save()
+                except OSError as exc:
+                    st.update(started=False, started_wall=None, started_mono=None, privileged=False, choice=None,
+                              trial_units=None)
+                    self.log.write(kind="graded_state_persist_failed", err=str(exc))
+                    raise ReplyError("internal")
+                self.spec = self.plan["order"][choice]
+                w.close_practice_locked()  # O13: every open lab trial ends; no trial starts from now on
+            self.log.write(kind="graded_start", conn=cid, privileged=privileged, choice=choice, trial_units=units)
             self._req("start", privileged=privileged)
             self._write()
             try:
@@ -1634,20 +1704,19 @@ class Worker:
         state["trial"] = None
         self.open_trials.pop(cid, None)
 
-    def close_practice(self):
-        """The graded episode has started (O13): every open lab trial ends now, and reset / execute are refused
-        (practice_closed) for the rest of the session. Called by Graded.op_start once the start is persisted; waits for
-        a trial op in flight, so no trial advances after the start."""
-        with self.practice_lock:
-            if self.practice_is_closed:
-                return
-            self.practice_is_closed = True
-            ended = 0
-            for cid, st in sorted(self.open_trials.items()):
-                ended += 1 if st.get("trial") is not None else 0
-                self._end_trial(st, cid, "practice_closed")
-            self.open_trials.clear()
-            self.trials_log.write(kind="practice_closed", trials_ended=ended)
+    def close_practice_locked(self):
+        """Under practice_lock: the graded episode has started (O13): every open lab trial ends now, and reset /
+        execute are refused (practice_closed) for the rest of the session. Called by Graded.op_start once the start
+        is persisted; holding practice_lock means no trial op is in flight, so no trial advances after the start."""
+        if self.practice_is_closed:
+            return
+        self.practice_is_closed = True
+        ended = 0
+        for cid, st in sorted(self.open_trials.items()):
+            ended += 1 if st.get("trial") is not None else 0
+            self._end_trial(st, cid, "practice_closed")
+        self.open_trials.clear()
+        self.trials_log.write(kind="practice_closed", trials_ended=ended)
 
     def _practice_open(self, state, cid, op):
         """Under practice_lock: refuse a trial op once practice has ended, ending the connection's trial if it has
@@ -1658,7 +1727,7 @@ class Worker:
             raise ReplyError("practice_closed")
 
     def _charge(self, cid, op, inst):
-        remaining = self.budget.charge()
+        remaining = self.budget.charge(inst)
         if remaining is None:
             self.trials_log.write(
                 kind="refused",
@@ -1833,11 +1902,11 @@ def run_worker(cfg, listener, ready_fd, lab):
             raise RuntimeError(
                 "validate_* decisions differ between instances/states (rev-leak F1)"
             )
-        graded_spec = None
+        graded_plan = None
         if cfg["graded"] is not None:
             if not callable(getattr(plugin, "graded_reset", None)):
                 raise TypeError("the config has a graded episode but the plugin has no graded_reset")
-            graded_spec = load_graded_episode(cfg["graded"]["episode"], ids)  # as root, before the drop
+            graded_plan = load_graded_episode(cfg["graded"]["episode"], ids)  # as root, before the drop
             control_dt = float((plugin.info() or {}).get("control_dt", 0.0)) if callable(
                 getattr(plugin, "info", None)) else 0.0
         # -- privilege drop (irreversible)
@@ -1870,10 +1939,10 @@ def run_worker(cfg, listener, ready_fd, lab):
             )
         budget = Budget(os.path.join(state_dir, "budget.json"), log)
         graded = None
-        if graded_spec is not None:
+        if graded_plan is not None:
             graded = Graded(
                 cfg["graded"],
-                graded_spec,
+                graded_plan,
                 GradedState(os.path.join(state_dir, "graded.json"), log),
                 RecordDir(cfg["graded"]["record_dir"], cfg["graded"]["requests_log_cap"], log),
                 log,

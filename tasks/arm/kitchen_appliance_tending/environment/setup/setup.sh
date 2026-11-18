@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Setup — runs as trusted root, cwd = this staged folder (/opt/ale/setup, root-only), before the agent
 # phase. (1) Stage the agent-visible payload into the agent home. (2) Start the lab service that holds
-# the hidden units and the graded episode: it reads ref/units.json, ref/units/ and online/episode.json as root,
+# the hidden units and the graded episode: it reads ref/units.json, ref/units/ and online/order.json as root,
 # drops to the dedicated `alelab` account and serves /run/ale-lab/lab.sock (fixed argv, clean environment, no
 # hidden value outside this folder).
 set -euo pipefail
@@ -29,7 +29,7 @@ mkdir -p "$HOME_DIR/submission" && chown "$AGENT_USER:$AGENT_USER" "$HOME_DIR/su
 umask 077
 # The graded episode's record directory (online variant): the lab account's own (0700) in root's /var/lib, so the
 # agent can neither read nor write it; the engine collects it as a declared artifact after the agent phase. The lab
-# checks it again and writes the record there (lab/lab.json "graded"; the episode is online/episode.json).
+# checks it again and writes the record there (lab/lab.json "graded"; the episodes are online/order.json).
 install -d -o alelab -g alelab -m 0700 /var/lib/arb-online
 # Returns once the lab serves (the daemon is detached, stdio on /dev/null) or fails setup.
 env -i PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 HOME=/nonexistent \

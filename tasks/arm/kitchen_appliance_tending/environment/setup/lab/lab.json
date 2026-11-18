@@ -15,7 +15,7 @@
   "MESA_SHADER_CACHE_DISABLE": "true"
  },
  "graded": {
-  "episode": "../online/episode.json",
+  "episode": "../online/order.json",
   "task": "kitchen_appliance_tending",
   "record_dir": "/var/lib/arb-online",
   "prep_s": 7200,

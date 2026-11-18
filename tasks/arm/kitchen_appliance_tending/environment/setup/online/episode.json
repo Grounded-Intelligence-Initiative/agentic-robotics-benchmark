@@ -1,9 +1,0 @@
-{
- "format": "arb-online-episode/1",
- "task": "kitchen_appliance_tending",
- "episode": "u0@696a6e0d545a",
- "instance": "u0",
- "seed": 2433537977515057068,
- "seed_sha256": "696a6e0d545a3416caab886de0ebf7ccf9ee46bfd019b9b74105c031af5073ee",
- "source": "Drawn 2026-11-18T04:37:10+00:00 with OS entropy (Python secrets.randbelow(18)) from the offline grader's fixed hidden set (tests/hidden/episodes.json, 'kitchen_appliance_tending fixed set 1', 18 episodes, 2 per unit, in file order): entry 3, unit u0 with its seed. seed_sha256 = sha256 of the seed's decimal digits."
-}
