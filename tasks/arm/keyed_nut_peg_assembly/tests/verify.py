@@ -352,7 +352,7 @@ def fresh_submission(pristine, workdir, uid, gid):
 def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt, pristine=None, gid=None,
                  baseline=None):
     budget = float(config.get("controller_budget_s", 600))
-    charges = dict(config.get("image_charge_s", {"left": 0.45, "right": 0.45, "wrist": 0.25}))
+    charges = dict(config.get("image_charge_s", {"left": 0.45, "right": 0.45, "wrist": 0.35}))
     wall_cap = float(config.get("wall_cap_s", 12000))
     lock = ProbeLock(rng, rate=config.get("probe_rate", 0.01),
                      pass_fraction=config.get("probe_pass_fraction", 0.1), tolerance=1e-4)

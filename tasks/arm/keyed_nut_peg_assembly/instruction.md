@@ -116,7 +116,8 @@ camera, OpenCV convention), and the RGB images `left`, `right` (fixed cameras, 3
 `wrist` (256 x 192), each `{"dtype": "uint8", "shape": [H, W, 3], "b64": <raw row-major bytes,
 base64>}`. An image is empty (shape `[0, 0, 3]`) unless the previous action asked for it; the
 first observation of an episode carries all three. The published camera intrinsics and fixed-camera
-poses: `datasheet.md` (section 7) and `cell_data.py` (`fixed_camera_matrices`, `WRIST`); the
+poses: `datasheet.md` (section 7, which also says what the images show: the cell in its laboratory
+under a warm light) and `cell_data.py` (`fixed_camera_matrices`, `WRIST`); the
 principal point is drawn at (W/2, H/2), so the centre of pixel (u, v) is at (u + 0.5, v + 0.5). The
 real cameras are within their tolerances of that, and `T_world_wrist` is the hand's pose with the
 drawn mount. There is no depth image and no object state of any kind.
@@ -190,7 +191,7 @@ faster than 8 rad/s or a nut faster than 5 m/s) scores 0.
 **Time.** Every kit has a **controller budget of 600 s**: the time the grader waits for your
 controller (from its launch to `READY` and the `reset` reply, then every reply, each timed from when
 the request is sent) plus a fixed charge for every image you ask for: **0.45 s** for a `left` or
-`right` image and **0.25 s** for a `wrist` image (about what rendering one takes on the grading
+`right` image and **0.35 s** for a `wrist` image (about what rendering one takes on the grading
 machine; the three images of an episode's first observation are free). The simulation's own time is
 not charged, so the grading machine's speed does not change your result. When a kit's budget runs
 out, its episode stops at that step and is judged as it stands (an incomplete kit scores 0). For

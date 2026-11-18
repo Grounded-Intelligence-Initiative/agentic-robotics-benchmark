@@ -67,10 +67,13 @@ def functions(path):
 
 class CommissioningService(unittest.TestCase):
     def test_runs_the_graders_cell(self):
-        self.assertEqual((SERVICE / "keyed_env.py").read_bytes(), (TASK / "tests/keyed_env.py").read_bytes(),
-                         "commission_service/keyed_env.py differs from tests/keyed_env.py")
+        # the cell, its cameras' renderer and the look's numbers: byte copies of the grader's, so that the service
+        # and the grader draw the same image of the same state
+        for name in ("keyed_env.py", "keyed_render.py", "keyed_look.json"):
+            self.assertEqual((SERVICE / name).read_bytes(), (TASK / "tests" / name).read_bytes(),
+                             "commission_service/%s differs from tests/%s" % (name, name))
         self.assertEqual(sorted(p.name for p in SERVICE.iterdir() if p.name != "__pycache__"),
-                         ["commissiond.py", "keyed_env.py", "kits.json"])
+                         ["commissiond.py", "keyed_env.py", "keyed_look.json", "keyed_render.py", "kits.json"])
 
     def test_development_kits_are_not_graded_kits(self):
         kits = KITS["kits"]
@@ -298,6 +301,52 @@ class AgentSide(unittest.TestCase):
             self.assertTrue((PAYLOAD / name).is_file(), name)
         for gone in ("keyed_env.py", "practice_kit", "practice_bench", "dev sim", "sample_kit"):
             self.assertNotIn(gone, INSTRUCTION)
+
+
+class Cameras(unittest.TestCase):
+    """The cameras' renderer (tests/keyed_render.py with tests/keyed_look.json) and its render bundle."""
+
+    RENDER = (TASK / "tests/keyed_render.py").read_text()
+    LOOK = json.loads((TASK / "tests/keyed_look.json").read_text())
+    ASSETS = (TASK / "environment/assets.sha256").read_text()
+    DOCKERFILE = (TASK / "environment/Dockerfile").read_text()
+
+    def test_bundle_is_pinned_and_complete(self):
+        self.assertRegex(self.ASSETS, r"(?m)^# revision: [0-9a-f]{40}$")
+        self.assertIn("# prefix: tasks/arm/keyed_nut_peg_assembly/payload\n", self.ASSETS)
+        listed = set(re.findall(r"(?m)^[0-9a-f]{64}  (\S+)$", self.ASSETS))
+        names = ast.literal_eval(re.search(r"(?m)^BUNDLE_FILES = (\(.*\))$", self.RENDER).group(1))
+        self.assertEqual(listed, {"render/" + n for n in names})
+        self.assertEqual(self.LOOK["ibl"]["file"], "ibl.ktx")
+        self.assertIn('os.environ.get("KEYED_RENDER_DIR", "/opt/task-assets/payload/render")', self.RENDER)
+        self.assertIn("ENV KEYED_RENDER_DIR=/opt/task-assets/payload/render", self.DOCKERFILE)
+
+    def test_bundle_is_the_cells_not_the_agents(self):
+        # fetched into a root-owned folder that the agent account cannot read; nothing stages it into the home
+        self.assertIn("chown -R root:keyedcell /opt/task-assets && chmod -R u=rwX,g=rX,o= /opt/task-assets",
+                      self.DOCKERFILE)
+        self.assertIn("! runuser -u user -- ls /opt/task-assets", self.DOCKERFILE)
+        self.assertNotIn("task-assets", (TASK / "environment/setup/setup.sh").read_text())
+
+    def test_the_lamps_tolerance_reaches_every_light(self):
+        env = (TASK / "tests/keyed_env.py").read_text()
+        self.assertIn('self.lamp_gain = 1.0 + float(self.unit["light"])', env)
+        self.assertIn('self.gain = float(getattr(env, "lamp_gain", 1.0)) * float(look["exposure_scale"])', self.RENDER)
+        self.assertIn('self.ibl_intensity = float(look["ibl"]["intensity"]) * self.gain', self.RENDER)
+        self.assertIn('intensity=float(l["candela"]) * self.gain', self.RENDER)
+        self.assertGreater(len(self.LOOK["lamps"]), 0)
+        self.assertTrue(all(l.get("shadow") for l in self.LOOK["lamps"]))
+
+    def test_images_keep_their_sizes_and_noise(self):
+        env = (TASK / "tests/keyed_env.py").read_text()
+        self.assertIn("noise = self.rng.normal(0.0, RGB_NOISE, rgb.shape)", env)
+        self.assertGreaterEqual(int(self.LOOK["render"]["supersample"]), 1)
+        self.assertIn("W, H = ep.size[cam]", self.RENDER)                 # the model's own camera resolutions
+        self.assertIn("mujoco.mjv_updateCamera(m, d, cam, scn)", self.RENDER)   # the model's own cameras of the day
+
+    def test_data_sheet_says_what_the_images_show(self):
+        self.assertIn("**What the images show.**", DATASHEET)
+        self.assertIn("what the images show", INSTRUCTION)
 
 
 if __name__ == "__main__":

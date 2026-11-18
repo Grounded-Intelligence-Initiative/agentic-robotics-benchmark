@@ -63,7 +63,9 @@ DEV_LAYOUT_SEED0 = 11001         # layout seed 11001 + i (a later amendment name
 FROZEN = ("solution/solve.sh", "solution/solver/oracle_ctrl.py", "solution/solver/oracle_main.py",
           "tests/keyed_env.py", "tests/keyed_credit.py", "tests/verify.py", "tests/grader_config.json",
           "tests/nonet_exec.py", "tests/test.sh", "tests/oracle_token.sha256",
-          "environment/Dockerfile", "environment/requirements.txt")
+          "tests/keyed_render.py", "tests/keyed_look.json",        # the cameras' renderer and its look
+          "environment/Dockerfile", "environment/requirements.txt",
+          "environment/assets.sha256")                             # the render bundle's pinned files
 EPISODE_LINE = re.compile(r"\[grader\] episode 0 \((?P<id>[^)]+)\): kit_complete=(?P<kit>\d) nuts_assembled=(?P<nuts>\d) "
                           r"progress=(?P<prog>[0-9.]+) steps=(?P<steps>\d+) controller_s=(?P<cs>[0-9.]+) (?P<reason>.*)$")
 

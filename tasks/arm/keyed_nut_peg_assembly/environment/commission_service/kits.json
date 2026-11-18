@@ -9,7 +9,7 @@
  "image_charge_s": {
   "left": 0.45,
   "right": 0.45,
-  "wrist": 0.25
+  "wrist": 0.35
  },
  "probe_rate": 0.01,
  "kits": [

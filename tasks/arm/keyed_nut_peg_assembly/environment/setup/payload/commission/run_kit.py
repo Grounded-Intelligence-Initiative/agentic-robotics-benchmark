@@ -7,7 +7,7 @@ It starts your controller (bash run.sh in a fresh copy of --submission) and driv
 the commissioning service's cell in the place of the grader's: READY within 120 s, each reply within 30 s, repeated
 step indices with perturbed observations (only the reply to the real observation is applied), replies longer than
 64 KiB abort the episode, only AF_UNIX sockets (the same seccomp filter as at grading time), and the per-kit
-controller budget (600 s: start-up and reply time plus 0.45 s per left or right image and 0.25 s per wrist image
+controller budget (600 s: start-up and reply time plus 0.45 s per left or right image and 0.35 s per wrist image
 asked for). The episode is one of your commissioning window's (data sheet, section 10): it counts from the moment
 the controller is ready and the kit is laid out.
 
@@ -41,7 +41,7 @@ READY_TIMEOUT = 120.0
 STEP_TIMEOUT = 30.0
 MAX_LINE = 65536
 CONTROLLER_BUDGET = 600.0                                   # s per kit, as when graded
-IMAGE_CHARGE = {"left": 0.45, "right": 0.45, "wrist": 0.25}  # s per image asked for, as when graded
+IMAGE_CHARGE = {"left": 0.45, "right": 0.45, "wrist": 0.35}  # s per image asked for, as when graded
 CAMERA_NAMES = ("left", "right", "wrist")
 
 _FILTER_SRC = r'''

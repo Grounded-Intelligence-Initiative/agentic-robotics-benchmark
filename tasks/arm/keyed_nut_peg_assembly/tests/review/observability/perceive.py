@@ -2,8 +2,8 @@
 grader never runs it). Everything here uses what a controller receives: the observation's RGB images, its
 T_world_wrist and the published camera matrices (the data sheet's CAMERAS, WRIST, fixed_camera_matrices); nothing else.
 
-  * coarse_nut: each fixed camera's largest blob of the nut's colour (kit-aware hue segmentation that copes with the
-    lights washing the colours out), its centroid back-projected onto the ring's mid-height plane;
+  * coarse_nut: each fixed camera's largest blob of the nut's colour (kit-aware hue segmentation on the hues the
+    cameras see under the cell's warm lamps), its centroid back-projected onto the ring's mid-height plane;
   * find_nuts (refine=True): a close-up from the wrist camera right above the nut: the blob's principal axis, the handle
     end told by its narrow spread, then a circle fitted to the ring's outer edge away from the handle (radius 28 mm);
   * find_pegs: the shaft tops (bright, unsaturated discs) in the wrist camera's view from the start pose, back-projected
@@ -79,35 +79,50 @@ def project(points, K, T):
     return uv.T - 0.5
 
 
-# hues of the nuts' top faces where the lights wash them out (a channel at 255): orange and yellow turn yellower, pink
-# bluer; the others keep their hue
-HUE_WASHED = dict(NUT_HUE, orange=50.0, yellow=60.0, pink=305.0)
+# The nuts' hues as the cameras see them: the cell's lamps and the room are warm, which moves every hue towards the
+# light's (green and purple by about 20 degrees, red by 10). Medians over maintainer kits that are not among the
+# checked ones (seeds 880000 ...); a controller would measure them on the commissioning service's development kits.
+SEEN_HUE = {"blue": 224.0, "green": 116.0, "red": 11.0, "yellow": 49.0, "orange": 31.0, "purple": 300.0,
+            "teal": 177.0, "pink": 342.0}
+# The bench top is light oak (hue about 33 degrees, saturation 0.2 to 0.45) and the floor beside it a darker,
+# redder wood; where the hand shades the bench from both lamps the oak is lit by the room alone and turns a
+# saturated orange-brown (hue about 25 degrees, saturation 0.55 to 0.8, value below 0.8). The warm colours are told
+# from the lit oak by their saturation and from the shaded oak by their brightness.
+SAT_MIN = {"orange": 0.50, "yellow": 0.42, "red": 0.45}
+TABLE_HALF = 0.40
 
 
 def colour_mask(img, colour, kit_colours=None, hue_tol=30.0):
-    """Pixels of `colour`: nearer in hue to it than to the kit's other colours (washed-out pixels compared with the
-    washed hues), saturated enough, and not the table's wood (hue 18-46 deg at saturation 0.28-0.58)."""
+    """Pixels of `colour`: nearer in hue to it than to the kit's other colours, saturated enough, and not the bench
+    top's oak (hue 18-44 deg: below saturation 0.50 in the light, below value 0.82 in the hand's shade)."""
     h, s, v = hsv_image(img)
     cols = list(kit_colours) if kit_colours else [colour]
     if colour not in cols:
         cols.append(colour)
-    washed = v > 0.93
 
     def dist(c):
-        ref = np.where(washed, HUE_WASHED[c], NUT_HUE[c])
-        return np.abs(((h - ref) + 180.0) % 360.0 - 180.0)
+        return np.abs(((h - SEEN_HUE[c]) + 180.0) % 360.0 - 180.0)
 
     d = dist(colour)
     nearest = np.ones_like(d, dtype=bool)
     for c in cols:
         if c != colour:
             nearest &= d <= dist(c)
-    wood = (h > 18.0) & (h < 46.0) & (s > 0.28) & (s < 0.58) & ~washed
-    if colour in ("orange", "yellow"):
-        sat_min = np.where(washed, 0.25, 0.60)
-    else:
-        sat_min = np.where(washed, 0.10, 0.10)
-    return nearest & (d < hue_tol) & (s > sat_min) & (v > 0.15) & ~wood
+    wood = (h > 18.0) & (h < 44.0) & ((s < 0.50) | (v < 0.82))
+    return nearest & (d < hue_tol) & (s > SAT_MIN.get(colour, 0.24)) & (v > 0.30) & ~wood
+
+
+def on_table(mask, K, T, z_plane, margin=0.01):
+    """`mask` without the pixels whose ray meets the plane z = z_plane outside the bench top (the floor beside the
+    bench is a red-brown wood)."""
+    vs, us = np.nonzero(mask)
+    if len(us) == 0:
+        return mask
+    pts = backproject(us.astype(float), vs.astype(float), K, T, z_plane)
+    out = (np.abs(pts[:, 0]) > TABLE_HALF - margin) | (np.abs(pts[:, 1]) > TABLE_HALF - margin)
+    mask = mask.copy()
+    mask[vs[out], us[out]] = False
+    return mask
 
 
 def nut_from_points(pts):
@@ -185,7 +200,7 @@ def ring_circle(blob, K, T, centre, handle_yaw):
 def find_nuts(img, K, T, colours, min_px=40, kit_colours=None, refine=False):
     out = {}
     for col in colours:
-        blob = largest_blob(colour_mask(img, col, kit_colours))
+        blob = largest_blob(on_table(colour_mask(img, col, kit_colours), K, T, NUT_TOP_Z))
         if blob is None or blob.sum() < min_px:
             out[col] = None
             continue
@@ -274,16 +289,16 @@ def _bilinear(gray, u, v):
                  + (1 - a) * b * gray[v0 + 1, u0] + a * b * gray[v0 + 1, u0 + 1])
 
 
-BAND_Z = (0.065, 0.052, 0.039)          # band centres above the table (top - 10 mm - 13 mm k)
-GAP_Z = (0.0585, 0.0455, 0.0325)
+BAND_DARKNESS = 6.3                     # what one band takes out of the profile down the shaft (mm of full darkness)
 
 
-def count_bands(img, K, T, peg_xy):
-    """Bands on the shaft side facing the camera: the intensity at each band's height against the gaps between them.
-    The published calibration is only the drawing's and the peg's position an estimate, so the shaft is anchored in
-    the image itself: the bright shaft top nearest to where `peg_xy` projects is found, and the bands and gaps are
-    sampled at their drawn offsets below it. Returns (bands, contrast) or (None, 0) when the shaft is not seen
-    clearly."""
+def count_bands(img, K, T, peg_xy, detail=None):
+    """Bands on the shaft side facing the camera, from the intensity down that side, millimetre by millimetre (a
+    band is a good pixel tall in the fixed cameras): the count is the number of dark stretches, 13 mm apart, and
+    must agree with the darkness the bands take out of the profile in all. The published calibration is only the
+    drawing's and the peg's position an estimate, so the shaft is anchored in the image itself: the bright shaft
+    top nearest to where `peg_xy` projects is found and the profile is taken at its drawn offsets below it. Returns
+    (bands, contrast) or (None, contrast) when the shaft is not seen clearly."""
     import cv2
     cam = T[:3, 3]
     gray = img.astype(np.float32).mean(axis=2)
@@ -291,10 +306,18 @@ def count_bands(img, K, T, peg_xy):
     d = d / np.linalg.norm(d)
     top = project([[peg_xy[0], peg_xy[1], SHAFT_TOP_Z]], K, T)[0]
     h, s, v = hsv_image(img)
-    grey = s < 0.10
+    # judged within a window around where the top projects: elsewhere in the image the robot's white covers are
+    # brighter than a shaft top in the arm's shade
+    H, W = gray.shape
+    u0, v0, r = int(round(top[0])), int(round(top[1])), 14
+    a0, a1, b0, b1 = max(0, v0 - r), min(H, v0 + r + 1), max(0, u0 - r), min(W, u0 + r + 1)
+    if a1 - a0 < 5 or b1 - b0 < 5:
+        return None, 0.0
+    grey = np.zeros(s.shape, dtype=bool)
+    grey[a0:a1, b0:b1] = s[a0:a1, b0:b1] < 0.12
     if not grey.any():
         return None, 0.0
-    mask = (grey & (v > 0.86 * float(np.percentile(v[grey], 99.8)))).astype(np.uint8)
+    mask = (grey & (v > 0.88 * float(np.percentile(v[grey], 98.0)))).astype(np.uint8)
     n_lab, _lab, stats, cent = cv2.connectedComponentsWithStats(mask, connectivity=8)
     blobs = [cent[k] for k in range(1, n_lab) if 3 <= stats[k, cv2.CC_STAT_AREA] <= 60
              and math.hypot(cent[k][0] - top[0], cent[k][1] - top[1]) < 10.0]
@@ -309,16 +332,31 @@ def count_bands(img, K, T, peg_xy):
         uv = project(pts, K, T) + shift
         return float(np.median([_bilinear(gray, u, w) for (u, w) in uv]))
 
-    band = [sample(z) for z in BAND_Z]
-    gap = [sample(z) for z in GAP_Z]
-    if any(np.isnan(band + gap)):
+    zs = np.arange(0.074, 0.0245, -0.001)          # every millimetre down the shaft, from under its top edge
+    prof = np.array([sample(z) for z in zs])
+    if np.isnan(prof).any():
         return None, 0.0
-    ref = float(np.median(gap))
-    dark = [b < 0.55 * ref for b in band]
-    contrast = ref - min(band)
-    # bands are filled from the top: 1 = (65), 2 = (65, 52), 3 = all three
-    n = sum(dark)
-    if n == 0 or dark != [True] * n + [False] * (3 - n):
+    bright = float(np.percentile(prof, 80.0))       # the clear shaft
+    rel = prof / max(bright, 1.0)
+    darkness = float(np.clip(1.0 - rel, 0.0, 1.0).sum())            # mm of fully dark shaft: about 6.3 per band
+    runs, start = [], None                          # stretches darker than 0.6 of the clear shaft
+    for i, low in enumerate(list(rel < 0.60) + [False]):
+        if low and start is None:
+            start = i
+        elif not low and start is not None:
+            if i - start >= 2 and float(rel[start:i].min()) < 0.50:
+                runs.append((start, i))
+            start = None
+    n = len(runs)
+    contrast = bright - float(prof.min())
+    if detail is not None:
+        detail.update(darkness=darkness, runs=runs, bright=bright,
+                      text="D %.1f runs %d bright %.0f | %s" % (darkness, n, bright, "".join(
+                          "#" if r < 0.4 else ("+" if r < 0.6 else ("-" if r < 0.8 else ".")) for r in rel)))
+    if n < 1 or n > 3 or abs(darkness / BAND_DARKNESS - n) > 0.75:
+        return None, contrast
+    mids = [(a + b) / 2.0 for a, b in runs]
+    if any(abs((mids[i + 1] - mids[i]) - 13.0) > 4.0 for i in range(n - 1)):      # the bands are 13 mm apart
         return None, contrast
     return n, contrast
 

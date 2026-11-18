@@ -18,10 +18,24 @@ RUN python3 -m venv /opt/venv \
     && rm -f /tmp/requirements.txt \
     && chmod -R a+rX /opt/venv
 
-# Software rendering for MuJoCo's OpenGL renderer (Mesa llvmpipe through EGL, CPU only).
+# Software rendering for MuJoCo's own OpenGL renderer (Mesa llvmpipe through EGL, CPU only). The cell's cameras no
+# longer use it (see the next step); it stays for depth and segmentation checks of the review tools.
 RUN apt-get update && apt-get install -y --no-install-recommends libegl1 libgl1 libgles2 libegl-mesa0 libgl1-mesa-dri \
     && rm -rf /var/lib/apt/lists/*
 ENV MUJOCO_GL=egl PYOPENGL_PLATFORM=egl MPLBACKEND=Agg OMP_NUM_THREADS=1 LP_NUM_THREADS=2
+
+# The cameras' renderer (keyed_render.py beside keyed_env.py): MuJoCo's Filament module (in the mujoco wheel) on
+# Vulkan; Mesa's lavapipe is the CPU Vulkan driver (the task has no GPU).
+RUN apt-get update && apt-get install -y --no-install-recommends mesa-vulkan-drivers libvulkan1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---- task assets: fetched at the dataset commit pinned in assets.sha256, checked file by file (docs/task-assets.md):
+# render/ (the cameras' render bundle: room.npz, room.json, ibl.ktx; keyed_render.py reads it in place). It is part
+# of the cell's simulator, not of the agent's files: nothing copies it into the agent's home, and further down it is
+# made readable by root (the grader) and by the commissioning service's account only.
+COPY fetch_assets.py assets.sha256 /opt/task-assets/
+RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload
+ENV KEYED_RENDER_DIR=/opt/task-assets/payload/render
 
 # The declared artifact path exists even when nobody works.
 RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
@@ -54,13 +68,18 @@ RUN find /opt/keyedcell-commission -name '__pycache__' -type d -prune -exec rm -
     && chown -R keyedcell:keyedcell /opt/keyedcell-commission \
     && chmod -R u+rwX,go-rwx /opt/keyedcell-commission
 
+# The render bundle: root and the commissioning service's account read it, the agent account does not.
+RUN chown -R root:keyedcell /opt/task-assets && chmod -R u=rwX,g=rX,o= /opt/task-assets \
+    && ! runuser -u user -- ls /opt/task-assets > /dev/null 2>&1
+
 # The commissioning service works for its own account (the cell loads, lays a development kit out and
-# renders its cameras offscreen), and the agent account can neither list nor read it. One import line
+# draws its three cameras through keyed_render.py: this proves the image's Vulkan driver for that account),
+# and the agent account can neither list nor read it. One import line
 # per -c: a continuation line starting with `from` reads as a Dockerfile FROM to the final-stage lint.
 RUN runuser -u keyedcell -- env -i HOME=/opt/keyedcell-commission/state TMPDIR=/opt/keyedcell-commission/state \
         PATH=/opt/venv/bin:/usr/bin:/bin LANG=C.UTF-8 MUJOCO_GL=egl PYOPENGL_PLATFORM=egl OMP_NUM_THREADS=1 \
         LP_NUM_THREADS=2 MESA_SHADER_CACHE_DISABLE=true PYTHONNOUSERSITE=1 \
-        /opt/venv/bin/python3 -B -s -c "import json, sys; sys.path.insert(0, '/opt/keyedcell-commission'); import commissiond, keyed_env as E; k = commissiond.KITS['kits'][0]; env = E.NutEnv(k['kit']['nuts']); obs = env.reset(int(k['layout_seed']), k['kit']['order']); assert obs['wrist'].shape == (192, 256, 3) and obs['left'].mean() > 10; assert env.max_steps == 850 and env.unit is not None; env.close(); print('[image] commissioning service: the cell loads and renders for its account,', len(commissiond.KITS['kits']), 'development kits')" \
+        /opt/venv/bin/python3 -B -s -c "import json, sys; sys.path.insert(0, '/opt/keyedcell-commission'); import commissiond, keyed_env as E; k = commissiond.KITS['kits'][0]; env = E.NutEnv(k['kit']['nuts']); obs = env.reset(int(k['layout_seed']), k['kit']['order']); assert obs['wrist'].shape == (192, 256, 3) and obs['left'].shape == (240, 320, 3) and min(obs[c].mean() for c in E.CAMERA_NAMES) > 20 and min(obs[c].std() for c in E.CAMERA_NAMES) > 10; assert env.max_steps == 850 and env.unit is not None; env.close(); print('[image] commissioning service: the cell loads and renders for its account,', len(commissiond.KITS['kits']), 'development kits')" \
     && rm -rf /opt/keyedcell-commission/state && mkdir -p /opt/keyedcell-commission/state \
     && chown keyedcell:keyedcell /opt/keyedcell-commission/state && chmod 700 /opt/keyedcell-commission/state \
     && ! runuser -u user -- ls /opt/keyedcell-commission > /dev/null 2>&1 \
@@ -68,6 +87,12 @@ RUN runuser -u keyedcell -- env -i HOME=/opt/keyedcell-commission/state TMPDIR=/
     && ! runuser -u user -- cat /opt/keyedcell-commission/kits.json > /dev/null 2>&1 \
     && test -z "$(find /opt/keyedcell-commission ! -user keyedcell -print -quit)" \
     && test -z "$(find /opt/keyedcell-commission -perm /077 -print -quit)"
+
+# The same cameras work for root, the grader's account (the grader's copy of the cell arrives with tests/ at verify;
+# the service's byte copy stands in for it here), and a second drawing of the same state is the same bytes.
+RUN env HOME=/tmp MESA_SHADER_CACHE_DISABLE=true /opt/venv/bin/python3 -B -s -c "import json, sys; sys.path.insert(0, '/opt/keyedcell-commission'); import keyed_env as E; k = json.load(open('/opt/keyedcell-commission/kits.json'))['kits'][0]; env = E.NutEnv(k['kit']['nuts'], render=False); env.reset(int(k['layout_seed']), k['kit']['order']); v = E._KR.open_view(env); a = [v.render(c) for c in E.CAMERA_NAMES]; b = [v.render(c) for c in E.CAMERA_NAMES]; assert all((x == y).all() for x, y in zip(a, b)) and min(x.std() for x in a) > 10; env.close(); print('[image] the cameras render for root; a state drawn twice is the same bytes')" \
+    && find /opt/keyedcell-commission -name '__pycache__' -type d -prune -exec rm -rf {} + \
+    && test -z "$(find /opt/keyedcell-commission ! -user keyedcell -print -quit)"
 
 # The engine's root helpers (the guest service that copies the declared artifact out of this sandbox when
 # the agent stops) run in the image's working directory, and `python3 -c` puts that directory first on

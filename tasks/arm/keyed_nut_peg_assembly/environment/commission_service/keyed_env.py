@@ -105,6 +105,15 @@ camera's real mount and intrinsics (the published calibration and `T_world_wrist
 lamps' brightness, each uniformly within its range in TOL. The observations never carry these values; the data
 sheet states the ranges. `NutEnv(..., tolerances=False)` builds the drawing's kit on an ideal cell (a
 maintainer's check).
+
+The cameras' images
+-------------------
+`NutEnv.render` draws through keyed_render.py (beside this file): MuJoCo 3.16's Filament renderer on the CPU. It
+draws this model's robot (its visual meshes), pegs and nuts in the simulator's state through this model's cameras
+(their real mounts and intrinsics of the day), in the laboratory the cell stands in (a render bundle of meshes,
+textures and an image light, read from KEYED_RENDER_DIR; nothing of it is simulated), under the gantry's lamps at
+the brightness of the day (`lamp_gain`). The scenery of SCENE_XML (floor, wall, table block, pedestal block, lights)
+is the simulation's and is not drawn. The sensor noise is added here, from the episode's generator.
 """
 
 import bisect
@@ -115,6 +124,16 @@ import os
 import numpy as np
 
 import mujoco
+
+try:                                # the cameras' renderer; an environment built with render=False never needs it
+    import keyed_render as _KR
+    RenderError = _KR.RenderError
+    _KR_ERROR = None
+except ImportError as _exc:
+    _KR, _KR_ERROR = None, "keyed_render.py cannot be imported beside keyed_env.py: {}".format(_exc)
+
+    class RenderError(RuntimeError):
+        """The cameras' renderer failed: an error of the environment, not of a controller."""
 
 # ----------------------------------------------------------------------------------------------
 # Public constants
@@ -233,10 +252,6 @@ CAMERA_NAMES = ("left", "right", "wrist")
 NUT_SPEC_KEYS = ("id", "groove", "mass", "friction", "rgba")
 OBS_KEYS = ("t", "order", "q", "dq", "ee_pos", "ee_quat", "gripper", "wrench", "T_world_wrist",
             "left", "right", "wrist")
-
-
-_SCENE_OPT = mujoco.MjvOption()
-_SCENE_OPT.sitegroup[:] = 0          # sites are frames, not objects: never drawn
 
 
 class EnvError(Exception):
@@ -517,7 +532,8 @@ def sample_unit(rng, nuts=NUTS):
 
 def apply_cell_state(m, unit):
     """Put the cell's state of the day (`sample_unit`) into a compiled model: the pads' friction, the cameras' real
-    poses and intrinsics (the published calibration stays the drawing's), the lamps' brightness."""
+    poses and intrinsics (the published calibration stays the drawing's). The lamps' brightness is not in the model:
+    NutEnv.lamp_gain carries it to the cameras' renderer, which multiplies its lamps and its image light by it."""
     scale = float(unit["pad_friction"]) / PAD_FRICTION_MODEL
     for name in ("r_g_finger1_pad_collision", "r_g_finger2_pad_collision"):
         gid = m.geom(name).id
@@ -539,10 +555,6 @@ def apply_cell_state(m, unit):
         # MuJoCo's principal offset is opposite to the image's: the real principal point is at
         # (w / 2 + principal[0], h / 2 + principal[1]) in pixels (u right, v down)
         m.cam_intrinsic[cid] = [f * pix, f * pix, -float(err["principal"][0]) * pix, -float(err["principal"][1]) * pix]
-    k = 1.0 + float(unit["light"])
-    m.light_diffuse[:] = m.light_diffuse * k
-    m.vis.headlight.diffuse[:] = m.vis.headlight.diffuse * k
-    m.vis.headlight.ambient[:] = m.vis.headlight.ambient * k
 
 
 SCENE_XML = """<mujoco model="keyed_nut">
@@ -614,6 +626,11 @@ def build_model(specs, layout, unit=None):
     eq.name2 = "r_g_finger_joint2"
     eq.data[:5] = [0.0, -1.0, 0.0, 0.0, 0.0]
     eq.solref = list(FINGER_COUPLING)
+    # materials for the cameras' renderer only (keyed_render.py gives each nut, each kind of peg part and the
+    # gripper's parts one; the nuts and the pegs keep their geoms' own colours); no geom of this model uses them
+    for name in ["look_nut%d" % i for i in range(len(specs))] + ["look_collar", "look_shaft", "look_pin", "look_band",
+                                                                 "look_hand", "look_finger", "look_pad"]:
+        root.add_material(name=name)
     m = root.compile()
     m.cam_fovy[m.camera("r_eye_in_hand").id] = WRIST["fovy"]
     return m
@@ -670,7 +687,8 @@ class NutEnv(object):
         self.render_enabled = render
         self.max_steps = int(max_steps)
         self.model = None
-        self._renderers = {}
+        self._view = None
+        self.lamp_gain = 1.0
 
     # ------------------------------------------------------------------ episode
     def reset(self, seed, order):
@@ -692,6 +710,7 @@ class NutEnv(object):
         self._index()
         if self.unit is not None:
             apply_cell_state(self.model, self.unit)
+        self.lamp_gain = 1.0 + float(self.unit["light"]) if self.unit is not None else 1.0   # the lamps' brightness
         self._init_state()
         self.wrench_bias = np.concatenate([self.rng.uniform(-WRENCH_BIAS, WRENCH_BIAS, 3),
                                            self.rng.uniform(-0.1 * WRENCH_BIAS, 0.1 * WRENCH_BIAS, 3)])
@@ -914,31 +933,23 @@ class NutEnv(object):
         return {"t": self.t, "fault": self.fault, "ruined": [i for i in range(self.n) if self.broken[i]]}
 
     # ------------------------------------------------------------------ sensing
-    def _renderer(self, w, h):
-        r = self._renderers.get((w, h))
-        if r is None:
-            r = mujoco.Renderer(self.model, h, w)
-            self._renderers[(w, h)] = r
-        return r
-
     def close(self):
         """Free the episode's renderer resources."""
-        for r in self._renderers.values():
+        if self._view is not None:
             try:
-                r.close()
+                self._view.close()
             except Exception:  # noqa: BLE001 - a renderer that failed to free must not stop the caller
                 pass
-        self._renderers = {}
+        self._view = None
 
     def render(self, cam):
-        if cam == "wrist":
-            w, h, camid = WRIST["width"], WRIST["height"], self.wrist_cam
-        else:
-            _p, _t, _f, w, h = CAMERAS[cam]
-            camid = self.model.camera(cam).id
-        r = self._renderer(w, h)
-        r.update_scene(self.data, camera=camid, scene_option=_SCENE_OPT)
-        rgb = r.render()
+        """`cam`'s 8-bit RGB image now (keyed_render.py: the episode's drawn model is built at the first image),
+        with the sensor noise. Raises RenderError."""
+        if self._view is None:
+            if _KR is None:
+                raise RenderError(_KR_ERROR)
+            self._view = _KR.open_view(self)
+        rgb = self._view.render(cam)
         noise = self.rng.normal(0.0, RGB_NOISE, rgb.shape)
         return np.clip(rgb.astype(np.float32) + noise, 0, 255).astype(np.uint8)
 

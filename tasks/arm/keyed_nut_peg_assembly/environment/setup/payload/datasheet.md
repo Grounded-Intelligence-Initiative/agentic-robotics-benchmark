@@ -170,6 +170,16 @@ pixel noise of sigma 2; on the wire each is `{"dtype": "uint8", "shape": [H, W, 
 base64>}` (`cell_data.decode_image`). An image is empty (shape `[0, 0, 3]`) unless the previous action asked for
 it; the first observation of an episode carries all three.
 
+**What the images show.** The cell in its laboratory: the robot in its covers, the bench top of light oak (the
+table), the pegs (dark grey collars, near-white shafts, black bands), the nuts, and around the bench the room (a
+wooden floor, shelving, other benches, the camera gantry with its lamp over the robot's side of the bench). The
+light is the gantry's lamp, a bar, and the room's warm daylight, so a colour in an image is not its nominal RGB:
+hues lie up to about 20 degrees from the nominal ones (towards the warm light) and lit faces are lighter; the eight
+colours stay apart from each other. The arm and the hand shade the bench under the lamp (where the lamp is cut off
+altogether the oak is lit by the room alone and looks orange-brown). The wrist camera does not see the hand it is
+mounted in, only the fingers. The lamps' brightness of the day (section 11) scales the light of the whole image; the
+cameras' exposure does not change.
+
 ## 8. Safety stops (they end an episode, on the commissioning service as when graded)
 
 - **A ruined nut.** While a nut is on its own peg (its hole axis within 5 mm of that peg's shaft axis, the nut
@@ -208,7 +218,7 @@ takt, like the graded kits, and none of them is a graded kit.
   you judge from what your program saw and recorded and from the cameras.
 - **How an episode ends.** After 850 steps ("all steps run"); on a safety stop (it names the ruined nut's colour
   or the instability); when the episode's controller budget is used up (600 s: the service's wait for each of your
-  requests plus 0.45 s per left or right image and 0.25 s per wrist image asked for; the first observation's
+  requests plus 0.45 s per left or right image and 0.35 s per wrist image asked for; the first observation's
   images are free); after 120 s without a request; or when you close it.
 
 Wire: a unix stream socket, `/run/keyedcell/commission.sock`; one connection is one episode; one JSON object per
