@@ -11,20 +11,25 @@ renders its camera frames with; what the cell draws per run (the hall's brightne
 
 `cam` is a render.spec.CameraSpec (pixels fx fy cx cy, world_T_cam in OpenCV axes: x right, y down, z forward; lens
 distortion only through the photo pipeline). One session per scene and one open session per process (close it before
-opening the next): it is compiled once (seconds on the CPU, the display transform's lookup table about 10 s more once
-per process); every frame copies the state by joint name, updates the Filament scene and renders RGB as an exact
-off-axis pinhole (the MuJoCo backend's frustum), then the AgX display transform through an 8-bit lookup table. The
-render model is your MjSpec (bodies and joint names as in your physics) without the MuJoCo-only scenery (geoms named
-`floor`, `backdrop_*`, `bench_leg_*`, `bench_apron_*`, `bench_shelf`, and every geom in a group above 2), plus the
-steel workbench frame under the 1.6 x 1.0 m bench top (legs, rails, lower shelf, apron), the factory room bundle
-(`render.room.add_room`: Cycles-baked lightmaps on the hall, its lamps lighting the live objects, the room's HDR image
-light) and the look (`agent_look.json` and `make_look`: PBR terms per material class, the scanned oak maps on the bench
-top geom `table_top` of material `mat_table`, light units, AgX). Your scene's own lights are replaced by the hall's.
-Depth comes from the MuJoCo backend on the same geometry (room meshes without textures): metric and registered with
-the RGB. Lens distortion, noise, blur, vignetting, colour jitter and the depth-sensor model are render/postprocess.py
-(PhotoSpec), the same code as the MuJoCo path. `exposure_factor` scales the exposure (the cell's hall is up to about
-+-20 % brighter or darker from run to run). A twin built on the given cell code goes through this session in
-`arm.assembly_info.cell_render.open_session(server)` (its `render_spec(server)`, at the run's drawn brightness).
+opening the next): it is compiled once (about 4-7 s on 8 CPUs for a twin of the whole cell, up to about 25 s on a busy
+machine, the AgX display transform's 8-bit lookup table, about 2 s, included) and holds about 4-5 GB while open; until
+you give it a state it shows your twin's own pose (qpos0). Every frame copies the state by joint name, updates the
+Filament scene and renders RGB as an exact off-axis pinhole (the MuJoCo backend's frustum), then the display transform
+through that table: the first frame after Filament's context is made takes about 7-10 s, later ones about 0.45-0.75 s
+(1280 x 960) and 0.3-0.45 s (640 x 480) with depth (up to about twice as long on a busy machine). Closing the last open
+session (or view) of the process releases Filament's context and its memory, so the next one's first frame takes that
+long again. The render model is your MjSpec (bodies and joint names as in your physics) without the MuJoCo-only scenery
+(geoms named `floor`, `backdrop_*`, `bench_leg_*`, `bench_apron_*`, `bench_shelf`, and every geom in a group above 2),
+plus the steel workbench frame under the 1.6 x 1.0 m bench top (legs, rails, lower shelf, apron), the factory room
+bundle (`render.room.add_room`: Cycles-baked lightmaps on the hall, its lamps lighting the live objects, the room's HDR
+image light) and the look (`agent_look.json` and `make_look`: PBR terms per material class, the scanned oak maps on the
+bench top geom `table_top` of material `mat_table`, light units, AgX). Your scene's own lights are replaced by the
+hall's. Depth comes from the MuJoCo backend on the same geometry (room meshes without textures): metric and registered
+with the RGB. Lens distortion, noise, blur, vignetting, colour jitter and the depth-sensor model are
+render/postprocess.py (PhotoSpec), the same code as the MuJoCo path. `exposure_factor` scales the exposure (the cell's
+hall is up to about +-20 % brighter or darker from run to run). A twin built on the given cell code goes through this
+session in `arm.assembly_info.cell_render.open_session(server)` (its `render_spec(server)`, at the run's drawn
+brightness).
 
 Assets: the scenery folder (`_render_dir()`: $ARB_AGENT_RENDER_DIR, else `render` next to $ARB_GIVEN_DIR, else
 ~/render) holds `room/` (an arb-room/1 bundle: room.json, meshes, baked textures, ibl/ibl.ktx) and `oak/` (the bench
@@ -41,7 +46,7 @@ import numpy as np
 
 from render.backends.base import BackendCapabilities, RawView, RenderSession, raw_outputs
 from render.backends.mujoco_backend import MujocoBackend
-from render.filament.view import _OPEN, check_one_session    # the process's open Filament sessions (closed at exit)
+from render.filament.view import _OPEN, _release_context, check_one_session   # the process's Filament sessions
 
 __all__ = ["open_session", "available", "make_look", "FilamentAgentBackend"]
 
@@ -241,6 +246,7 @@ class FilamentAgentSession(RenderSession):
         self.t_open_s = time.perf_counter() - t0
         self._digest = None
         _OPEN.add(self)
+        self.sync_from(self.depth.model, self.depth.data)   # the twin's own pose until a state is given
 
     def set_state(self, state=None, qpos=None, joints=None):
         self.depth.set_state(state, qpos, joints)
@@ -309,7 +315,8 @@ class FilamentAgentSession(RenderSession):
         return {"session": True, "renderer": "filament", "t_open_s": round(self.t_open_s, 2), "room": self.room_record.get("room")}
 
     def close(self):
-        """Free the Filament objects in dependency order (the context outlives every session: _shutdown)."""
+        """Free the Filament objects in dependency order, then (no other session open) Filament's context itself
+        (render.filament.view._release_context); the context outlives every scene object (and at exit: _shutdown)."""
         if self.scn is None:
             return
         _OPEN.discard(self)
@@ -326,6 +333,9 @@ class FilamentAgentSession(RenderSession):
         self.objs = None
         gc.collect()
         self.depth.close()
+        _SPECS.clear()
+        self.ctx = None
+        _release_context()
 
 
 class FilamentAgentBackend(MujocoBackend):
