@@ -677,7 +677,7 @@
   }
  ],
  "sha256": {
-  "ledger.json": "b449a3d4c5a01c4df91f0611b4fd6814c68517598a0ee775098a062441ca2d34",
+  "ledger.json": "55ad0b2e7b5bdd4e91ee38a8bff7a2aeca12cf4ef18b4259b50fab0ce2301d56",
   "neutral_lists.json": "682bb7bfb446aca082b48c83910ca2d370c0357adad5b8a68c41f2df3b60634e",
   "price_table.json": "edfc721637c3a213d04d212eb15b9c74b06ef6b0db477fb8678eb78ed481ac09"
  },

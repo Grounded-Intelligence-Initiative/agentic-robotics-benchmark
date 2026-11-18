@@ -5190,7 +5190,7 @@
      "says": "ROB-14451 at 12.15"
     }
    ],
-   "ruling": "the bill of materials row; both part numbers accepted (plan fallback)",
+   "ruling": "the bill of materials row; both part numbers accepted",
    "route": {
     "givens": [
      "firmware",

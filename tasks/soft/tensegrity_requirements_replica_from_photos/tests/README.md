@@ -140,10 +140,10 @@ C3 8, C4 35).
 
 | file | sha256 | what it is |
 |---|---|---|
-| `tests/gt/ledger.json` | `b449a3d4c5a01c4df91f0611b4fd6814c68517598a0ee775098a062441ca2d34` | the truth ledger: 118 rows (graded C1T 21, C1D 11, C1N 2, C2 8, C3 8, C4 36; 7 neutral BOM rows; 25 W0 rows), each with its value, real sources (file, sha256, how read), contradictions and ruling, route in the givens, tier |
+| `tests/gt/ledger.json` | `55ad0b2e7b5bdd4e91ee38a8bff7a2aeca12cf4ef18b4259b50fab0ce2301d56` | the truth ledger: 118 rows (graded C1T 21, C1D 11, C1N 2, C2 8, C3 8, C4 36; 7 neutral BOM rows; 25 W0 rows), each with its value, real sources (file, sha256, how read), contradictions and ruling, route in the givens, tier |
 | `tests/gt/price_table.json` | `edfc721637c3a213d04d212eb15b9c74b06ef6b0db477fb8678eb78ed481ac09` | the designers' purchase table: per row the pack size, unit price, quantity-discount tiers, quantity per strut and the priced-scope flag; the totals for 1 / 2 / 4 / 8 / 10 robots |
 | `tests/gt/neutral_lists.json` | `682bb7bfb446aca082b48c83910ca2d370c0357adad5b8a68c41f2df3b60634e` | the BOM neutral list (7 rows), the out-of-scope categories, the W0 list (25 quantities with their truths) and the vocabulary names that no given material fixes |
-| `tests/gt/freeze.json` | `2877ec6feafeb88c064aa6428e37b90662742f346b9da1fea8245f02ce1e0fc7` | the freeze (v1.1): the graded list (83 rows), the three ungraded rows and why, the measured bands (zero point 4 a), tiers, route classes and the route audit with its one-step route floor, the matching attributes and tolerances, extra accepted part numbers and accepted series, the sha256 pins of the three files above, the hashes of v1.0 |
+| `tests/gt/freeze.json` | `a4287637b22cbe33b39634941dd1ddb94aa9cda6c2c1623517850bebff69b22c` | the freeze (v1.1): the graded list (83 rows), the three ungraded rows and why, the measured bands (zero point 4 a), tiers, route classes and the route audit with its one-step route floor, the matching attributes and tolerances, extra accepted part numbers and accepted series, the sha256 pins of the three files above, the hashes of v1.0 |
 | `tests/grader_config.json` | `62dcf6bb2afbebd3cd8d2ee074d0e926668d464ad1009fcabcad46cd01040a9b` | every knob (v1.1): weights, limits, C1 groups and blocks, tier weights, band rules, the C4 category / attribute maps, normalisation, neutral rules, the kit rule's zero point, the reported F-beta, the C5 band |
 | `tests/anchor.json` | `e1c99f7ef34b134b48e84336ad7ce3e71ca38f4e47cf24af3069f387e5826b2b` | the reward anchor: value = full_at = 1.0 (the privileged reference's own score) |
 | `tests/given_hashes.json` | `b20b2a94cce5855203dc86696475b56db4210e6e0ce051bcbb769caf2694cbc5` | the maintainers' pin of the givens (26 payload files and 320 photos, with sizes); not read at verify time |
@@ -168,7 +168,7 @@ C3 8, C4 35).
 | `tests/reqgrade/schemas/quantities.json` | `03097ff4ed9a4cc66d5043b84bf5fdbe80bf95e15c465850c6e6878b13a931fd` | byte copy of the public vocabulary (66 names) |
 | `tests/reqgrade/schemas/units.json` | `5871cd5d111dba376f4990fcc6afade571dd3738a70f0d8dd64b9fa3cdf833b1` | byte copy of the public unit table |
 | `tests/reqgrade/schemas/contract/ledger_map.json` | `554f24ba9aef5d90b8827c4d232fa1706b240472098019e425dd8da0e23283f4` | HIDDEN contract table: ledger keys and categories -> the public names; the two ruled-out rows |
-| `tests/reqgrade/schemas/contract/quantity_classes.json` | `d03a205b8bea6eb50ec39a8d93a751667e38a13c0247ded849cb57567e72cc66` | HIDDEN contract table: which vocabulary names are graded (8), W0 (27) or fixed by no given material (31); tolerance classes |
+| `tests/reqgrade/schemas/contract/quantity_classes.json` | `bc66df81f62ac312894db6d707905ef09ef78f4b8a278e741eacea1ef227586b` | HIDDEN contract table: which vocabulary names are graded (8), W0 (27) or fixed by no given material (31); tolerance classes |
 | `tests/robotics_grader/__init__.py` | `d75f3c6293445af3277b05fe00df38ef7378645651ff3cfbad7f8bcfe1f56604` | the benchmark's shared verify kit (byte-identical to `shared/robotics_grader/`) |
 | `tests/robotics_grader/scoring.py` | `9353682eb3536df264b3cb5ec3bf2be24a410f88af5b20cf86cb31796930a83b` | kit |
 | `tests/robotics_grader/seeds.py` | `b795f63404d14f0c90ca0098582e80afabd251396b1f4d6ababf4e7f6037b5e1` | kit |
@@ -183,7 +183,9 @@ C3 8, C4 35).
 ### 4.1 Which of the designers' files each truth file is read from
 
 The upstream locations, commits and licences of these files are in `NOTICE.md`. None of them is in this repository
-or in the image. sha256 in full, as recorded in each ledger row's `sources`.
+or in the image. sha256 in full, as recorded in each ledger row's `sources`; those cited for the CAD sibling task's
+`tests/reference/families.json` and `features.json` are the hashes of the two files when the ledger was built (later
+text-only amendments of those files changed their hashes, not a value).
 
 | key in the ledger | the designers' (or vendor's) file | sha256 | what is read from it |
 |---|---|---|---|

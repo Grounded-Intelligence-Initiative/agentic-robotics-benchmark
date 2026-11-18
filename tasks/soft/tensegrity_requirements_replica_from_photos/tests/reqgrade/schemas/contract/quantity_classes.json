@@ -632,7 +632,7 @@
       "unit": "m"
     }
   },
-  "schema": "tensegrity_requirements_replica_from_photos/contract/quantity_classes v1 (HIDDEN; never copied into the payload, the image or hf_tree/agent)",
+  "schema": "tensegrity_requirements_replica_from_photos/contract/quantity_classes v1 (HIDDEN; never copied into the payload, the image or the asset dataset)",
   "tolerance_classes": {
     "encoder_counts": {
       "applies_to": "a derived number of encoder counts",
