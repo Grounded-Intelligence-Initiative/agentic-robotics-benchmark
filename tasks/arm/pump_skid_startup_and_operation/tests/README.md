@@ -393,7 +393,8 @@ grader is `verify.py` on main.
 * **The oracle** (`solution/solve.sh` -> `solution/reference/play_graded.py`): as the agent account, it connects with
   `connect_graded()`, starts the episode with the oracle token (the service then gives the cell the privileged calls,
   as the offline grader does for the token), runs the reference submission (`operate.py`: describe, two frames,
-  `reference_run`) and finishes. Measured in a container of the task image on 2026-11-18: 0.99999999999981 for ep08
-  (the hidden set's selection run: 1.0), 100 s of wall clock.
+  `reference_run`) and finishes. Measured by `ale validate` (validate-86bd2023) and in a container of the task image
+  on 2026-11-18, the same to the last digit: 0.9999999999998129 for ep08 (the hidden set's selection run: 1.0), about
+  100 s of wall clock; `anchor.json` holds it rounded to 1.0.
 * **The client** (`given/lib/skidcell/client.py`, with its copies `skidcell/client.py` and `setup_payload/...`, and
   `given_hashes.json`): `connect_graded()`, `Cell.start()`, `Cell.status()`; nothing else in the givens changed.

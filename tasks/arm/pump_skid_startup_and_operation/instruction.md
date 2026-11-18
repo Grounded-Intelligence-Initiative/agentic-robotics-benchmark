@@ -74,8 +74,8 @@ there is no stdio wire here). Mind `finish()`: it ends the graded episode at onc
   next `connect_graded()` resumes it. One connection at a time: `connect_graded()` raises `CellError("busy")` while
   another connection holds the episode (end that script first). Before `start()` every cell call answers
   `not_started`; `reset` and any call outside `cell_api.md` answer `forbidden` and count as illegal calls, as in the
-  cell. Should the service's own process fail, the episode ends where it stood after your last request; it is not
-  resumed.
+  cell. The service records the episode as it stands after your requests (at least once a second while you work);
+  should its own process fail, the episode ends as last recorded and is not resumed.
 * **Two windows.** Start the graded episode within 4 hours of the service's start (the service starts with your
   sandbox, a few minutes before your session begins; `status()["prep_window_left_s"]` counts down); after that,
   `start()` answers `prep_window_closed` and the task scores 0. Once started, the episode lasts at most 3 hours of
