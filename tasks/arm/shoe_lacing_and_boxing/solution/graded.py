@@ -1,4 +1,5 @@
-"""The oracle's driver of the graded episode (run by solve.sh as the agent account): connects to the graded service
+"""The oracle's driver of the graded episode (run by solve.sh as the agent account, after solve.sh has put the
+reference program into the submission folder, which the service freezes at the start): connects to the graded service
 with the agent's own client (shoecell.client.connect_graded), starts the graded episode with the 256-bit reference
 token (the service compares its sha256 with its root-only digest and, on a match, gives this episode's cell the
 privileged calls), runs the existing privileged reference program (reference/packer.py: describe, two camera frames,
@@ -24,7 +25,7 @@ def main():
     t0 = time.time()
     with connect_graded() as cell:
         print("[oracle] before: %s" % json.dumps(cell.status()), file=sys.stderr, flush=True)
-        cell._call("start", token=token)
+        print("[oracle] start: %s" % json.dumps(cell._call("start", token=token)), file=sys.stderr, flush=True)
         packer.solve(cell)
         cell.finish()
         print("[oracle] after %.0f s: %s" % (time.time() - t0, json.dumps(cell.status())), file=sys.stderr, flush=True)

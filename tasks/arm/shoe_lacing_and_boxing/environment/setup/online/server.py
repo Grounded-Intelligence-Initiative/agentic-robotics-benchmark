@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""arb-online: the graded service of shoe_lacing_and_boxing (the online variant; experimental).
+"""arb-online: the graded service of shoe_lacing_and_boxing (the dual mode; experimental).
 
 The agent plays ONE hidden episode itself, during its session, through this service: the offline verifier's own
 cell (shoecell.server.ShoeCellServer, mode "hidden", with the grader's configuration) on the graded episode's seed.
@@ -16,7 +16,8 @@ detached daemon (setsid, stdio on /dev/null) and survives into the agent phase.
 
 Process layout (the alelab daemon pattern of arm_hidden_mechanism_box)
   supervisor (root, comm "arbonline-sup"): binds the unix socket, initialises the service state, forks and restarts
-      the worker (bounded). It never reads the graded episode and never accepts a connection.
+      the worker (bounded) and, on the worker's request over a pipe pair, freezes the agent's submission folder at the
+      start (below). It never reads the graded episode and never accepts a connection.
   worker (comm "arbonline-wrk"): forked as root, reads the graded episode (episode.json: id and seed) and the digest
       of the maintainers' reference token, checks the service's root-owned copy of the givens against their pinned
       sha256 (given_hashes.json), then drops to the dedicated service account irreversibly (setgroups([]), setgid,
@@ -50,6 +51,18 @@ The graded episode
   * The agent learns what a program learns (the cell's replies) plus `status`: started / ended, steps, simulated
     time, time left in each window. Never the score, the record, the episode id or the seed.
 
+The freeze (the dual mode). The offline item grades the program in /home/user/submission as it was at the earlier of
+the graded start and the close of the start window (`prep_s` after the service's first start): before the start is
+charged, or the moment the window closes without a start, the worker asks the supervisor (one byte on a pipe; no path,
+no argument), which copies the folder into record_dir/submission_snapshot (root-owned 0700 / 0600: neither the agent nor
+the service account can read it) with the grader's own snapshot rules (regular files and folders only; links, special
+files and __pycache__ dropped; no link followed at any level) and the grader's submission cap (60 MB; over it: status
+too_large, no copy, the offline item scores 0). A failed copy refuses the start and charges nothing; at the window's
+close it is tried three times, then recorded as `error`. When the window closes without a start the record says so
+(started false, prep_window_closed true, the snapshot fields). The record carries
+snapshot_status, snapshot_files, snapshot_bytes and snapshot_sha256 (the digest of the sorted (path, size, sha256)
+list), which tests/verify.py checks against the copy before it grades it.
+
 Record: record_dir/record.json, rewritten atomically (temp file, fsync, rename, fsync of the directory) when a
 request changed the episode and `record_every_s` has passed since the last write or the connection went quiet for
 `idle_flush_s`, and always when the episode starts and ends. `episode_score` is the cell's work score of the episode
@@ -72,6 +85,7 @@ import pwd
 import re
 import resource
 import select
+import shutil
 import signal
 import socket
 import stat
@@ -80,7 +94,7 @@ import sys
 import time
 import traceback
 
-SERVICE_VERSION = "shoe-lacing-and-boxing-online/1"
+SERVICE_VERSION = "shoe-lacing-and-boxing-dual/1"
 RECORD_FORMAT = "arb-online-record/1"
 PROTOCOL = 1
 END_REASONS = ("done", "finish", "graded_window", "worker_restart")
@@ -98,9 +112,12 @@ ERRORS = {
             "connection, then connect again",
     "not_started": "the graded episode has not been started: call start() first (once per session)",
     "already_started": "the graded episode was started already (one start per session)",
-    "prep_window_closed": "the window for starting the graded episode has closed; it can no longer be started",
+    "prep_window_closed": "the window for starting the graded episode has closed; it can no longer be started (your "
+                          "program was frozen when it closed)",
     "episode_over": "the graded episode has ended; only status answers",
     "service_broken": "the graded service cannot persist its state; the graded episode cannot be started",
+    "snapshot_failed": "your submission folder could not be frozen, so the graded episode was not started and nothing "
+                       "was charged; start() again",
     "internal": "internal error of the graded service",
 }
 
@@ -130,6 +147,11 @@ DEFAULTS = {
     "max_restarts": 5,
     "start_timeout_s": 900.0,
     "require_seccomp": True,
+    "submission_dir": "/home/user/submission",   # the agent's program, frozen at the start (the dual mode)
+    "snapshot_max_bytes": 60 << 20,  # the grader's submission cap (grader_config.json route_gate.max_submission_mb)
+    "snapshot_max_entries": 50000,   # files and folders: below the engine's artifact bound (100000 entries)
+    "snapshot_max_depth": 32,        # folder depth: below the engine's artifact bound (64)
+    "snapshot_timeout_s": 300.0,
     "env": {},                       # PUBLIC settings of the cell's process (renderer, BLAS threads); never hidden values
 }
 ID_RE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
@@ -537,6 +559,156 @@ def check_givens(root, hashes):
     return problems
 
 
+# ----------------------------------------------------------------------------------------------------------------
+# the freeze (the dual mode): the agent's program is copied when the graded episode starts
+
+SNAPSHOT_DIR = "submission_snapshot"            # in record_dir: root-owned 0700, files 0600
+SNAPSHOT_NAME_RE = re.compile(r"^[\x21-\x7e][\x20-\x7e]{0,254}$")   # printable ASCII names (the artifact copy keeps them)
+
+
+class _TooLarge(Exception):
+    pass
+
+
+def snapshot_digest(entries):
+    """sha256 of the sorted list of (relative path, size, sha256 of the content) of the snapshot's files: the record's
+    `snapshot_sha256`, which tests/verify.py recomputes from the copy it receives."""
+    h = hashlib.sha256()
+    for rel, size, digest in sorted(entries):
+        h.update(("%s\0%d\0%s\n" % (rel, size, digest)).encode("utf-8"))
+    return h.hexdigest()
+
+
+def _clear_path(path):
+    """Remove whatever is at `path`, never following a link (shutil.rmtree works through folder descriptors)."""
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return
+    if stat.S_ISDIR(st.st_mode):
+        shutil.rmtree(path)
+    else:
+        os.unlink(path)
+
+
+def _open_dir(name, dir_fd=None):
+    return os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=dir_fd)
+
+
+def _snapshot_file(name, sfd, dfd, budget):
+    """Copy one regular file (by name inside the open folders); (bytes, sha256), None when it is no longer a regular
+    file; raises _TooLarge past `budget` bytes."""
+    fs = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC, dir_fd=sfd)
+    try:
+        if not stat.S_ISREG(os.fstat(fs).st_mode):
+            return None
+        fo = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=dfd)
+        try:
+            h, n = hashlib.sha256(), 0
+            while True:
+                chunk = os.read(fs, 1 << 20)
+                if not chunk:
+                    break
+                n += len(chunk)
+                if n > budget:
+                    raise _TooLarge()
+                h.update(chunk)
+                view = memoryview(chunk)
+                while view:
+                    view = view[os.write(fo, view):]
+        finally:
+            os.close(fo)
+    finally:
+        os.close(fs)
+    return n, h.hexdigest()
+
+
+def _snapshot_walk(sfd, dfd, rel, depth, st, caps):
+    for name in sorted(os.listdir(sfd)):
+        st["entries"] += 1
+        if st["entries"] > caps["entries"]:
+            raise _TooLarge("more than %d files and folders" % caps["entries"])
+        try:
+            info = os.stat(name, dir_fd=sfd, follow_symlinks=False)
+        except FileNotFoundError:
+            continue
+        if not SNAPSHOT_NAME_RE.match(name):
+            st["skipped"] += 1
+            continue
+        if stat.S_ISDIR(info.st_mode):
+            if name == "__pycache__":
+                st["skipped"] += 1
+                continue
+            if depth + 1 > caps["depth"]:
+                raise _TooLarge("folders nested deeper than %d" % caps["depth"])
+            csfd = _open_dir(name, sfd)
+            try:
+                os.mkdir(name, 0o700, dir_fd=dfd)
+                cdfd = _open_dir(name, dfd)
+                try:
+                    _snapshot_walk(csfd, cdfd, rel + name + "/", depth + 1, st, caps)
+                finally:
+                    os.close(cdfd)
+            finally:
+                os.close(csfd)
+        elif stat.S_ISREG(info.st_mode):
+            try:
+                got = _snapshot_file(name, sfd, dfd, caps["bytes"] - st["bytes"])
+            except _TooLarge:
+                raise _TooLarge("more than %d bytes" % caps["bytes"])
+            if got is None:
+                st["skipped"] += 1
+                continue
+            st["bytes"] += got[0]
+            st["files"].append((rel + name, got[0], got[1]))
+        else:
+            st["skipped"] += 1               # a symbolic link, a pipe, a socket or a device
+
+
+def snapshot_submission(src, dst, max_bytes, max_entries, max_depth):
+    """The freeze (root side: the supervisor, which never reads the graded episode). Copies the agent's submission
+    folder `src` into a fresh root-only folder `dst` (0700 / 0600) the way the grader's own snapshot does
+    (cellkit.lockdown.snapshot_dir: regular files and folders only; symbolic links, special files and __pycache__
+    dropped), never following a link at any level (every open is relative to an open folder, O_NOFOLLOW), within the
+    grader's submission cap (`max_bytes`) and the entry and depth bounds of the engine's artifact copy. Returns
+    {status: ok | too_large | error, files, bytes, sha256, skipped, why}; too_large and error leave no copy; a missing
+    `src` is an empty program (ok, no files)."""
+    res = {"status": "error", "files": 0, "bytes": 0, "sha256": None, "skipped": 0, "why": None}
+    st = {"entries": 0, "bytes": 0, "skipped": 0, "files": []}
+    caps = {"bytes": int(max_bytes), "entries": int(max_entries), "depth": int(max_depth)}
+    try:
+        _clear_path(dst)
+        os.mkdir(dst, 0o700)
+        dfd = _open_dir(dst)
+        try:
+            info = os.fstat(dfd)
+            if info.st_uid != os.geteuid():
+                raise RuntimeError("the snapshot folder is not the service's")
+            try:
+                sfd = _open_dir(src)
+            except FileNotFoundError:
+                sfd = None
+            if sfd is not None:
+                try:
+                    _snapshot_walk(sfd, dfd, "", 0, st, caps)
+                finally:
+                    os.close(sfd)
+        finally:
+            os.close(dfd)
+        res.update(status="ok", files=len(st["files"]), bytes=st["bytes"], sha256=snapshot_digest(st["files"]),
+                   skipped=st["skipped"])
+    except _TooLarge as exc:
+        res.update(status="too_large", why=str(exc), files=len(st["files"]), bytes=st["bytes"], skipped=st["skipped"])
+    except Exception as exc:  # noqa: BLE001 - reported to the worker, which refuses the start
+        res.update(status="error", why="%s: %s" % (type(exc).__name__, str(exc)[:300]))
+    if res["status"] != "ok":
+        try:
+            _clear_path(dst)
+        except OSError:
+            pass
+    return res
+
+
 def _json_default(obj):
     """json.dumps fallback of the grader's wire: numpy values as plain values, sets sorted, anything else as str."""
     if hasattr(obj, "tolist"):
@@ -553,8 +725,9 @@ class GradedService(object):
     """The graded episode in the worker (the service account): the cell, the two windows, the requests, the record.
     Single-threaded: the cell is only touched from the serving loop."""
 
-    def __init__(self, cfg, log, state, episode_id, seed_sha256, token_digest):
+    def __init__(self, cfg, log, state, episode_id, seed_sha256, token_digest, snapshot_fds=None):
         self.cfg, self.log, self.state = cfg, log, state
+        self.snapshot_fds = snapshot_fds        # (request fd, reply fd): the supervisor's freeze of the submission
         self.episode_id, self.seed_sha256, self.token_digest = episode_id, seed_sha256, token_digest
         self.server = None
         self.cell_version = None
@@ -566,6 +739,7 @@ class GradedService(object):
         self.started_mono = state.get("started_mono")
         self.graded_deadline = None if self.started_mono is None else float(self.started_mono) + float(cfg["graded_s"])
         self.ended, self.end_reason = bool(state.get("ended")), state.get("end_reason")
+        self.prep_closed = bool(state.get("prep_closed"))   # the start window closed without a start (program frozen)
         self.ended_mono, self.ended_utc = None, None
         self.broken = False
         self.dirty = False
@@ -604,6 +778,43 @@ class GradedService(object):
         now = time.monotonic() if now is None else now
         if self.started and not self.ended and self.server is not None and now >= self.graded_deadline:
             self.end("graded_window")
+        if not self.started and not self.prep_closed and now > self.prep_deadline:
+            self.close_prep()
+
+    def close_prep(self):
+        """The start window closed without a start (the dual mode): the program freezes now, as it would have at a start,
+        so the program item keeps main's preparation time; the graded episode can no longer be started. A copy that keeps
+        failing is recorded as `error` (tests/verify.py then stops with a task error: the program cannot be graded)."""
+        snap = {"status": "error", "why": "not attempted"}
+        for attempt in range(3):
+            snap = self._request_snapshot()
+            if snap.get("status") in ("ok", "too_large"):
+                break
+            self.log.write(kind="snapshot_failed", at="prep_window", attempt=attempt + 1, why=snap.get("why"))
+            time.sleep(5.0)
+        snap = {k: snap.get(k) for k in ("status", "files", "bytes", "sha256", "skipped", "why")}
+        snap["utc"] = now_utc()
+        snap["at"] = "prep_window"
+        st = dict(self.state, prep_closed=True, prep_closed_utc=now_utc(), snapshot=snap)
+        try:
+            atomic_write_json(state_path(self.cfg), st)
+        except OSError as exc:
+            self.log.write(kind="state_persist_failed", err=str(exc))
+        self.state = st
+        self.prep_closed = True
+        self.server = None                      # the cell is no longer needed
+        rec = {"format": RECORD_FORMAT, "task": self.cfg["task"], "episode": self.episode_id,
+               "seed_sha256": self.seed_sha256, "service_version": SERVICE_VERSION, "cell_version": self.cell_version,
+               "started": False, "ended": False, "end_reason": None, "prep_window_closed": True,
+               "prep_closed_utc": st["prep_closed_utc"], "requests": 0, "steps": 0, "sim_time_s": 0.0,
+               "wall_s_since_start": 0.0, "episode_score": 0.0, "metrics": {}, "written_utc": now_utc(), "seq": 1}
+        rec.update(self._snapshot_fields())
+        try:
+            atomic_write_json(self.record_path, rec)
+            self.last_record = rec
+        except OSError as exc:
+            self.log.write(kind="record_write_failed", err=str(exc))
+        self.log.write(kind="prep_window_closed", snapshot=snap)
 
     # ---- requests
     def handle_line(self, line):
@@ -645,16 +856,48 @@ class GradedService(object):
                 "prep_window_s": float(self.cfg["prep_s"]), "graded_window_s": float(self.cfg["graded_s"]),
                 "prep_left_s": None if self.started else max(0.0, self.prep_deadline - now),
                 "graded_left_s": None if not self.started else (0.0 if self.ended else max(0.0, self.graded_deadline - now)),
-                "can_start": (not self.started) and now <= self.prep_deadline and not self.broken and self.server is not None}
+                "can_start": (not self.started) and now <= self.prep_deadline and not self.broken and self.server is not None,
+                "prep_window_closed": self.prep_closed, "program_frozen": self._frozen()}
+
+    def _frozen(self):
+        """What the agent learns of the freeze: its own program's copy (status, files, bytes), once frozen (at the start
+        or when the start window closed)."""
+        snap = self.state.get("snapshot") if (self.started or self.prep_closed) else None
+        return None if not isinstance(snap, dict) else {k: snap.get(k) for k in ("status", "files", "bytes")}
+
+    def _request_snapshot(self):
+        """Ask the root supervisor to freeze the submission folder (snapshot_submission); its reply, or an error."""
+        if not self.snapshot_fds:
+            return {"status": "error", "why": "no freeze channel"}
+        qw, ar = self.snapshot_fds
+        try:
+            while select.select([ar], [], [], 0)[0]:          # a reply that came after an earlier timeout
+                if not os.read(ar, 4096):
+                    return {"status": "error", "why": "the freeze channel is closed"}
+            os.write(qw, b"S")
+            buf, deadline = b"", time.monotonic() + float(self.cfg["snapshot_timeout_s"])
+            while b"\n" not in buf:
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    return {"status": "error", "why": "the freeze timed out"}
+                if select.select([ar], [], [], left)[0]:
+                    chunk = os.read(ar, 4096)
+                    if not chunk:
+                        return {"status": "error", "why": "the freeze channel is closed"}
+                    buf += chunk
+            res = json.loads(buf.split(b"\n", 1)[0])
+        except (OSError, ValueError) as exc:
+            return {"status": "error", "why": "%s: %s" % (type(exc).__name__, exc)}
+        return res if isinstance(res, dict) else {"status": "error", "why": "a malformed reply"}
 
     def op_start(self, params):
         if self.started:
             raise ReplyError("already_started")
+        now = time.monotonic()
+        if self.prep_closed or now > self.prep_deadline:
+            raise ReplyError("prep_window_closed")
         if self.broken or self.server is None:
             raise ReplyError("service_broken")
-        now = time.monotonic()
-        if now > self.prep_deadline:
-            raise ReplyError("prep_window_closed")
         if not isinstance(params, dict) or not set(params) <= {"token"}:
             raise ReplyError("bad_request", "start() takes no parameters")
         token = params.get("token")
@@ -663,8 +906,20 @@ class GradedService(object):
             privileged = isinstance(token, str) and self.token_digest is not None and hmac.compare_digest(
                 hashlib.sha256(token.strip().encode("utf-8")).hexdigest(), self.token_digest)
             mismatch = not privileged
+        # the freeze (the dual mode): the root supervisor copies the submission folder before anything is charged; the
+        # copy is the program the offline item grades. A failed copy refuses the start and charges nothing.
+        snap = self._request_snapshot()
+        if snap.get("status") not in ("ok", "too_large"):
+            self.log.write(kind="snapshot_failed", why=snap.get("why"))
+            raise ReplyError("snapshot_failed")
+        snap = {k: snap.get(k) for k in ("status", "files", "bytes", "sha256", "skipped", "why")}
+        snap["utc"] = now_utc()
+        snap["at"] = "start"
+        now = time.monotonic()
+        if now > self.prep_deadline:
+            raise ReplyError("prep_window_closed")
         # the charge: persisted before anything is simulated, never refunded
-        st = dict(self.state, started=True, started_utc=now_utc(), started_mono=now, privileged=privileged)
+        st = dict(self.state, started=True, started_utc=now_utc(), started_mono=now, privileged=privileged, snapshot=snap)
         try:
             atomic_write_json(state_path(self.cfg), st)
         except OSError as exc:
@@ -680,13 +935,14 @@ class GradedService(object):
             self.server.reference_dir = self.cfg["private_dir"]
         self.server.wall_start = time.time()
         self.log.write(kind="episode_started", privileged=privileged, token_mismatch=mismatch,
-                       prep_used_s=round(now - self.service_mono, 1))
+                       prep_used_s=round(now - self.service_mono, 1), snapshot=snap)
         self.write_record()
-        return {"ok": True, "started": True, "graded_window_s": float(self.cfg["graded_s"])}
+        return {"ok": True, "started": True, "graded_window_s": float(self.cfg["graded_s"]),
+                "program_frozen": self._frozen()}
 
     def op_cell(self, method, params):
         if not self.started:
-            raise ReplyError("not_started")
+            raise ReplyError("prep_window_closed" if self.prep_closed else "not_started")
         if self.ended:
             # after the cell's own end (sim cap, physics fault) the program may still read its state and finish, within
             # the grader's after-done limits; after a finish, the graded window or a restart nothing more answers
@@ -754,6 +1010,7 @@ class GradedService(object):
                    "end_reason": None, "started_utc": self.state.get("started_utc"), "requests": 0, "steps": 0,
                    "sim_time_s": 0.0, "wall_s_since_start": 0.0, "episode_score": 0.0, "metrics": {},
                    "note": "no record had been written when the worker restarted"}
+            rec.update(self._snapshot_fields())
         if not rec.get("ended"):
             rec.update(ended=True, end_reason=self.state.get("end_reason") if self.state.get("ended") else "worker_restart",
                        ended_utc=now_utc(), written_utc=now_utc(), seq=int(rec.get("seq") or 0) + 1)
@@ -834,12 +1091,20 @@ class GradedService(object):
             "started_utc": self.state.get("started_utc"), "ended_utc": self.ended_utc if self.ended else None,
             "requests": int(self.requests), "steps": int(s["step_calls"]), "sim_time_s": float(s["sim_time_s"]),
             "wall_s_since_start": float(wall), "episode_score": float(s["work_score"]), "metrics": metrics,
+            **self._snapshot_fields(),
             "cell": {"done_reason": done, "violations": [v.get("what") for v in s["violations"]][:20],
                      "calls": s.get("calls") or {},
                      "pair": None if pair is None else {k: pair.get(k) for k in ("credit", "milestones", "safety_void",
                                                                                  "shipped", "shipped_at", "detail")}},
             "written_utc": now_utc(), "seq": self.record_seq,
         }
+
+    def _snapshot_fields(self):
+        snap = self.state.get("snapshot") if isinstance(self.state.get("snapshot"), dict) else {}
+        return {"snapshot_status": snap.get("status"), "snapshot_files": snap.get("files"),
+                "snapshot_bytes": snap.get("bytes"), "snapshot_sha256": snap.get("sha256"),
+                "snapshot_skipped": snap.get("skipped"), "snapshot_utc": snap.get("utc"),
+                "snapshot_at": snap.get("at"), "snapshot_why": snap.get("why")}
 
     # ---- the serving loop (one client at a time)
     def serve(self, listener):
@@ -953,9 +1218,10 @@ class GradedService(object):
 # ----------------------------------------------------------------------------------------------------------------
 # worker: the graded episode's process
 
-def run_worker(cfg, listener, ready_fd, lab):
+def run_worker(cfg, listener, ready_fd, lab, snapshot_fds=None):
     """Forked from the supervisor as root: read the graded episode and the pinned inputs, drop privileges, build the
-    cell, serve."""
+    cell, serve. `snapshot_fds` (request, reply): the pipe pair to the supervisor, which freezes the submission folder
+    at the start (the worker never regains root for it)."""
     _set_comm("arbonline-wrk")
     os.umask(0o077)
     log = Log(os.path.join(cfg["record_dir"], "service.log"), cfg["service_log_max_bytes"])
@@ -986,11 +1252,11 @@ def run_worker(cfg, listener, ready_fd, lab):
         sec_ok = seccomp_selftest()
         if cfg["require_seccomp"] and not sec_ok:
             raise RuntimeError("seccomp self-test failed: an AF_INET socket could be created")
-        svc = GradedService(cfg, log, state, episode_id, seed_sha256, token_digest)
+        svc = GradedService(cfg, log, state, episode_id, seed_sha256, token_digest, snapshot_fds)
         if svc.started:
             svc.close_after_restart()
-        else:
-            svc.build(seed, cell_cfg)
+        elif not svc.prep_closed:
+            svc.build(seed, cell_cfg)           # (a closed start window needs no cell: status only)
         del seed
         log.write(kind="worker_ready", uid=os.getuid(), gid=os.getgid(), seccomp_inet_blocked=sec_ok,
                   started=svc.started, ended=svc.ended, prep_left_s=round(svc.prep_deadline - time.monotonic(), 1))
@@ -1017,6 +1283,43 @@ def _close_fds(keep):
                 os.close(fd)
             except OSError:
                 pass
+
+
+def supervise_worker(pid, qr, aw, cfg, sup_log):
+    """Wait for the worker to exit, meanwhile answering its freeze requests (one byte "S" -> one JSON line): the copy
+    of the agent's submission folder at the start (snapshot_submission), done here because it needs root and the
+    supervisor never reads the graded episode. Returns the worker's exit status."""
+    open_q = True
+    while True:
+        try:
+            ready = select.select([qr] if open_q else [], [], [], 0.5)[0]
+        except InterruptedError:
+            ready = []
+        if ready:
+            try:
+                req = os.read(qr, 1)
+            except OSError:
+                req = b""
+            if not req:
+                open_q = False
+            elif req == b"S":
+                t0 = time.monotonic()
+                res = snapshot_submission(cfg["submission_dir"], os.path.join(cfg["record_dir"], SNAPSHOT_DIR),
+                                          cfg["snapshot_max_bytes"], cfg["snapshot_max_entries"], cfg["snapshot_max_depth"])
+                sup_log.write(kind="snapshot", wall_s=round(time.monotonic() - t0, 3),
+                              **{k: res.get(k) for k in ("status", "files", "bytes", "skipped", "why")})
+                try:
+                    os.write(aw, (json.dumps(res) + "\n").encode("utf-8"))
+                except OSError:
+                    pass
+        try:
+            done, code = os.waitpid(pid, os.WNOHANG)
+        except ChildProcessError:
+            return -1
+        except InterruptedError:
+            continue
+        if done:
+            return code
 
 
 def run_supervisor(cfg, lab, notify_fd):
@@ -1070,9 +1373,13 @@ def run_supervisor(cfg, lab, notify_fd):
     restarts, first = 0, True
     while not stopping["flag"]:
         r, w = os.pipe()
+        qr, qw = os.pipe()               # the worker's freeze requests
+        ar, aw = os.pipe()               # the supervisor's replies
         pid = os.fork()
         if pid == 0:
             os.close(r)
+            os.close(qr)
+            os.close(aw)
             try:
                 sup_log.fh.close()
             except OSError:
@@ -1084,9 +1391,11 @@ def run_supervisor(cfg, lab, notify_fd):
                     pass
             signal.signal(signal.SIGTERM, signal.SIG_DFL)
             signal.signal(signal.SIGINT, signal.SIG_DFL)
-            run_worker(cfg, listener, w, lab)
+            run_worker(cfg, listener, w, lab, (qw, ar))
             os._exit(1)
         os.close(w)
+        os.close(qw)
+        os.close(ar)
         stopping["child"] = pid
         status = b""
         try:
@@ -1103,15 +1412,9 @@ def run_supervisor(cfg, lab, notify_fd):
                 except OSError:
                     pass
                 notify_fd = None
-        while True:
-            try:
-                _, code = os.waitpid(pid, 0)
-                break
-            except ChildProcessError:
-                code = -1
-                break
-            except InterruptedError:
-                continue
+        code = supervise_worker(pid, qr, aw, cfg, sup_log)
+        os.close(qr)
+        os.close(aw)
         stopping["child"] = None
         sup_log.write(kind="worker_exit", pid=pid, status=code, ready=status == b"R")
         if stopping["flag"]:

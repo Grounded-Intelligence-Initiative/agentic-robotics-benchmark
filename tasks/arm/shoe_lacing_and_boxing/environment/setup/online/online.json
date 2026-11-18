@@ -6,6 +6,7 @@
  "record_dir": "/var/lib/arb-online",
  "given_dir": "/opt/arb-online/given",
  "private_dir": "/opt/arb-online/private",
+ "submission_dir": "/home/user/submission",
  "episode": "episode.json",
  "cell_config": "grader_config.json",
  "given_hashes": "given_hashes.json",
@@ -24,6 +25,10 @@
  "max_restarts": 5,
  "start_timeout_s": 900.0,
  "require_seccomp": true,
+ "snapshot_max_bytes": 62914560,
+ "snapshot_max_entries": 50000,
+ "snapshot_max_depth": 32,
+ "snapshot_timeout_s": 300.0,
  "env": {
   "MUJOCO_GL": "osmesa",
   "PYOPENGL_PLATFORM": "osmesa",
