@@ -1,65 +1,92 @@
-# Rescue Author Notes
+# Training Wing Author Notes
 
-This PR39 upgrade replaces target reporting with a complete physical sortie.
-The licensed Crazyflie shell and Poly Haven cabinets, paving and wall textures
-are rendered in MuJoCo on CPU. The fixed-heading UAV uses three servo-driven
-MuJoCo slides; the pod is a free body attached only by a proximity- and
-speed-gated weld. These are simulation abstractions, not a flight controller
-or a hardware rescue procedure.
+This is a new version after `5b4fe09`, not a revision to that candidate's
+trial results. It replaces both forecast boards with a procedural indoor
+wing and a physical scale model of its topology. There are 20 room cells,
+22 connecting doorways (a spanning tree and three extra connections),
+and three marked candidate bays. The viewed rooms, rather than the
+floor plan, reveal the actual sled. Mirrored seed siblings reflect the
+doors, bays, inlet and exit; other bases resample connectivity and the pod.
+The cargo corridor occupies an outer column and has a single connection
+to the search rooms, at row three or four. This forces several loaded
+hallway segments that an outbound bay route never needs.
+The downward camera is a local perspective camera, so tall opaque
+walls can occlude adjacent rooms rather than giving a floating map view.
 
-The private seed selects one of four lateral lanes and independently one of
-two vertically and laterally separated bulkhead windows. In each block of
-four seeds, toggling bit 0 swaps the lane, toggling bit 1 swaps the height,
-and everything else remains fixed (including pod and lighting). Wrong
-openings terminate at the physics substep, with no retries. Both onboard
-views are identical across each matched pair at its corresponding junction
-at the same pose. The upper window requires more altitude than the first
-barrier permits, and neither the sides nor roof provides a bypass.
+## Physics and scoring
 
-The root-owned ledger scores .05 per board, .10 per outbound crossing,
-.10 for seeing the pod, .20 for lifting it, .15 per loaded return crossing,
-and .10 for settled delivery. It records actual center altitude at each
-crossing. Unsafe aborts cap the score at .65; agent artifacts confer no credit.
+The Crazyflie mesh rides on three MuJoCo slides; the pod is a MuJoCo free
+body and can be attached only by a proximity- and speed-gated weld.
+The verifier checks separate swept bounding volumes for the airframe
+and the real posed sled against the same obstacle boxes that are rendered.
+These are conservative simulation envelopes, not validated hardware
+flight, contact compliance, or payload aerodynamics.
 
-## Run the Oracle
+The inspection slot is 0.46 m high. The airframe/gripper envelope
+fits, but the suspended sled and airframe together do not: the airframe
+can fit at 0.71 m while the sled strikes the sill. The cargo shutter is
+physically closed until the first lift moves the sled center to 0.54 m,
+then retracts. The first interior pocket has raised sills on all inward
+paths, requiring a climb after insertion. The walls reach above the
+altitude envelope. Neither inspection-slot retracing nor early entry
+through the cargo route is viable.
 
-Using the pinned ALE engine (no model):
+Full reward comes from physical lift and settled release on the pad.
+No map, route, progress-point, or time-efficiency threshold gates a valid
+delivery. Partial progress measures plan vicinity .05, wing entry .12,
+up to three viewed bays .02 each, target vicinity .10, grasp .12,
+lift .15, and loaded egress .20. Bay/target vicinity is a conservative
+camera-placement proxy, not semantic proof of what the agent recognized.
+The private ledger also records ingress and loaded exit heights, room
+and cell coverage, action counts, per-stage timing, and impact component.
+There is no credit from submitted files, and no scoring of path optimality.
+
+## Reproduce
+
+From the pinned engine, with `TASK` set to the task directory:
 
 ```bash
 ale lint "$TASK"
-ale validate "$TASK" --runs-dir /tmp/ale-rescue-validate
-ale run "$TASK" --agent oracle --runs-dir /tmp/ale-rescue-oracle
+ale validate "$TASK" --runs-dir /tmp/ale-rescue-wing-validate
+ale run "$TASK" --agent oracle --runs-dir /tmp/ale-rescue-wing-oracle
 ```
 
-Here `TASK` is the full path to this task directory. ALE stages
-`solution/solve.sh` in the oracle episode only. It drives the same public
-client as the agent and infers both the heat cue and the sled from RGB.
-The privileged author pilot is separate and is never staged for interaction.
+The ALE oracle reads only the public camera stream. From the first plan
+view it reconstructs a graph, then it searches candidate rooms in
+shortest-path order, visually aligns over the sled, and takes the cargo
+route back. Its `reference-route.json` records visited center waypoints
+as zero-based `[column,row]` from left and front; row zero is the staging
+strip. It never imports the simulator or reads a seed.
 
-## Reproduce Author Checks
+In the author example (seed 0), the RGB pilot entered at `[3,1]`,
+searched the three marked bays, and lifted in `[1,4]`. The loaded
+approach reached the service connection at `[3,4] -> [4,4]` and took
+`[4,3] -> [4,2] -> [4,1] -> [4,0]` out, finishing in 229 actions.
+The 1,024-layout route audit found at most 29 interior edge traversals
+for the tested search order across all candidate bay positions. At six
+actions per edge plus a conservative 81 for flight outside the graph,
+pickup and release, that gives 255 against the 300-action limit.
 
-With the built environment image, run this in the task directory:
+Author checks use environment image `IMAGE` and an optional writable
+mount at `/frames` for the plan, inspection view, delivery, and route:
 
 ```bash
-docker run --rm --network none --cpus 2 --memory 3g \
-  -e PYTHONDONTWRITEBYTECODE=1 -v "$PWD:/root/source:ro" \
+docker run --rm --cpus 2 --memory 3g --network none \
+  -e PYTHONDONTWRITEBYTECODE=1 -v "$PWD:/task:ro" \
   --entrypoint /opt/venv/bin/python3 "$IMAGE" \
-  /root/source/tests/review/check_rescue.py --rgb
+  /task/tests/review/check_rescue.py --rgb-seeds 0 1 6 7 12 19
 
 for mode in untouched oracle; do
-  docker run --rm --network none --cpus 2 --memory 3g --user 0:0 \
+  docker run --rm --cpus 2 --memory 3g --network none --user 0:0 \
     -v "$PWD:/root/source:ro" --entrypoint /bin/bash "$IMAGE" \
     /root/source/tests/review/staged_smoke.sh "$mode"
 done
 ```
 
-The first check exercises twelve seeds covering all joint lane/height
-variants. At both junctions it compares actual RGB bytes and drives the
-same route in the corresponding matched pair to confirm different outcomes.
-Controls include privileged, untouched, locate-only, cue-blind lane and
-altitude pilots with perfect pod coordinates, fixed-altitude flights, and
-attempts to fly over or around the bulkhead. Pass `--output /frames` with
-a writable mount to save the forecast and both onboard junction images.
-The staged smoke uses fresh containers with the root service, agent UID,
-actual Unix socket and protected verdict; it is not the ALE framework
-gate. No live model call is needed for either.
+When RGB seeds are requested, the audit appends its longest selected-bay
+case. The deterministic author checks cover geometry, route length, positive
+and unsurveyed deliveries, locate-only, matched pickup/retrace, fixed
+layout replay, bypass and level-flight attempts, and RGB plan decoding.
+Staged smoke checks the real Unix socket, agent UID and protected verdict,
+not the ALE framework gate. These are author feasibility controls, not
+participant-model results or a sealed benchmark sample.

@@ -3,7 +3,7 @@
   "direction": "higher",
   "value": 1.0,
   "full_at": 1.0,
-  "source": "Measured with the author ground-truth pilot on koa04, seeds 0 to 11 spanning all eight lane/height combinations; every sortie delivered the pod and measured 1.0 rescue_progress.",
+  "source": "Measured with the author ground-truth pilot on koa04, procedural wing seeds 0 to 11; every sortie delivered the pod and measured 1.0 rescue_progress.",
   "measurements": [
     1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0
   ]

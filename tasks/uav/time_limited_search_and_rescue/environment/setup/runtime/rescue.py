@@ -1,4 +1,4 @@
-"""Protected MuJoCo dynamics and milestone ledger for the fictional rescue exercise."""
+"""Protected MuJoCo flight, swept clearance checks, and live rescue ledger."""
 import base64
 import io
 import math
@@ -11,33 +11,17 @@ import mujoco
 import numpy as np
 from PIL import Image
 
-from rescue_scene import (BOARD, BOUNDS, COOL, CRATES, DOWN_OFFSET, GATE_CEILING,
-                          GATE_HALF_WIDTH, GATE_Y, HEIGHT_BOARD, HEIGHT_GATE_Y,
-                          HEIGHT_GATE_ZONE, HEIGHT_HALF_WIDTH, LANES, PAD,
-                          PASSAGES, template)
+from rescue_scene import BOUNDS, PITCH, PLAN, START, build, layout_for, xy
 
-LIMIT = 184
+LIMIT = 300
 DT = .2
 INCREMENTS = np.array([.32, .32, .19])
-START = np.array([*PAD, 1.12])
-SCORE = {"survey_lane": 5, "survey_height": 5, "lane_out": 10, "height_out": 10,
-         "located": 10, "lifted": 20, "height_back": 15, "lane_back": 15, "delivered": 10}
-CROSSINGS = ("lane_out", "height_out", "height_back", "lane_back")
-
-
-def scenario(seed):
-    """Each block of four levels independently swaps lane and altitude forecasts."""
-    rng = np.random.default_rng(seed >> 2)
-    lane = int(rng.permutation(len(LANES))[seed & 1])
-    height = int(rng.integers(len(PASSAGES))) ^ ((seed >> 1) & 1)
-    x = rng.choice((-2.55, 0., 2.55)) + rng.uniform(-.33, .33)
-    # Keep the middle aisle clear of the two cabinets at ground level.
-    if abs(x) < 1.0:
-        x *= .42
-    y = rng.choice((4.64, 7.05)) + rng.uniform(-.25, .25)
-    yaw = rng.uniform(-.6, .6)
-    tone = rng.uniform(.88, 1.08)
-    return lane, height, (x, y, yaw), tone
+SCORE = {"surveyed": .05, "entered_wing": .12, "located": .10, "grasped": .12,
+         "lifted": .15, "cargo_return": .20}
+FAILURES = ("wall", "raised", "inspection", "cargo", "unsafe_release")
+ROTOR_LOW = np.array([.21, .21, .235])
+ROTOR_HIGH = np.array([.21, .21, .130])
+POD_HALF = np.array([.155, .26, .112])
 
 
 def png(rgb):
@@ -52,22 +36,32 @@ class World:
     def __init__(self, kind, seed, render=True):
         if kind != self.kind:
             raise ValueError("unknown task")
-        self.safe_lane, self.safe_height, (x, y, yaw), tone = scenario(seed)
-        self.model = mujoco.MjModel.from_xml_string(template())
-        self.model.geom(f"forecast_tile{self.safe_lane}").rgba[:] = COOL
-        self.model.geom(f"height_tile{self.safe_height}").rgba[:] = COOL
-        self.model.light_diffuse[:] *= tone
+        self.layout = layout_for(seed)
+        xml, obstacles = build(self.layout)
+        self.model = mujoco.MjModel.from_xml_string(xml)
+        self.model.light_diffuse[:] *= self.layout.tone
         self.data = mujoco.MjData(self.model)
-        self.data.qpos[:3] = self.command = START.copy()
+        self.command = np.array(START)
+        self.data.qpos[:3] = self.command
         self.data.ctrl[:] = self.command
+        x, y, yaw = self.layout.pod
         self.data.qpos[3:] = (x, y, .073, math.cos(yaw/2), 0., 0., math.sin(yaw/2))
         mujoco.mj_forward(self.model, self.data)
         self.renderer = mujoco.Renderer(self.model, 256, 256) if render else None
+        cx = xy((self.layout.outlet, 0))[0]
+        obstacles.append(("cargo", (cx, PITCH/2, 1.025), (.56, .085, 1.025)))
+        self.kinds, centers, half = zip(*obstacles)
+        centers, half = np.asarray(centers), np.asarray(half)
+        self.solid_lo, self.solid_hi = centers-half, centers+half
+        self.pod_rotation = np.empty(9)
+        self.room_centers = np.asarray([xy(room) for room in self.layout.rooms])
         self.steps = self.release_dwell = self.close_attempts = 0
-        self.done = False
-        self.failure = None
-        self.progress = set()
-        self.crossing_altitudes = {}
+        self.steps_to_lift = self.steps_to_cargo = 0
+        self.done = self.shutter_open = False
+        self.failure = self.impact_body = None
+        self.progress, self.rooms_seen, self.cells_seen = set(), set(), set()
+        self.loaded_cargo_cells = set()
+        self.entry_z = self.exit_z = 0.
         self._observation = None
 
     @property
@@ -83,17 +77,17 @@ class World:
         return self.data.qpos[3:6]
 
     def close(self):
-        if self.renderer:
+        if self.renderer is not None:
             self.renderer.close()
 
     def images(self):
         if self.renderer is None:
             return []
-        frames = []
+        result = []
         for camera in ("down", "forward"):
             self.renderer.update_scene(self.data, camera=camera)
-            frames.append(self.renderer.render().copy())
-        return frames
+            result.append(self.renderer.render().copy())
+        return result
 
     def observe(self):
         if self._observation is None:
@@ -103,21 +97,21 @@ class World:
             }
         return self._observation
 
-    def abort(self, reason):
-        self.failure = reason
+    def abort(self, reason, body=None):
+        self.failure, self.impact_body = reason, body
         self.done = True
 
     def grip(self, signal):
-        delta = self.payload - self.position
+        delta = self.payload-self.position
         speed = np.linalg.norm(self.data.qvel[:3])
         if signal > .5 and not self.held:
             self.close_attempts += 1
-            if ("located" in self.progress and np.linalg.norm(delta[:2]) <= .135
-                    and abs(delta[2]+.306) <= .060 and speed <= .30):
-                # Capture the current rest transform so the pod is not teleported.
+            if np.linalg.norm(delta[:2]) <= .135 and abs(delta[2]+.306) <= .060 and speed <= .30:
+                # Capture the actual pose, not a teleport or a success-report command.
                 self.model.eq_data[0, 3:6] = delta
                 self.model.eq_data[0, 6:10] = self.data.qpos[6:10]
                 self.data.eq_active[0] = True
+                self.progress.add("grasped")
                 self.release_dwell = 0
         elif signal < -.5 and self.held:
             self.data.eq_active[0] = False
@@ -125,64 +119,72 @@ class World:
             if self.payload[2] > .195 or speed > .34:
                 self.abort("unsafe_release")
 
-    def check_safety(self):
-        x, y, z = self.position
-        if abs(y) <= GATE_Y:
-            nearest = int(np.argmin(np.abs(np.asarray(LANES)-x)))
-            if abs(x-LANES[nearest]) > GATE_HALF_WIDTH or z > GATE_CEILING:
-                self.abort("baffle")
-            elif nearest != self.safe_lane:
-                self.abort("heat")
-        if abs(y-HEIGHT_GATE_Y) <= HEIGHT_GATE_ZONE:
-            opening = next((i for i, (cx, _, _, lo, hi) in enumerate(PASSAGES)
-                            if abs(x-cx) <= HEIGHT_HALF_WIDTH and lo <= z <= hi), None)
-            if opening is None:
-                self.abort("bulkhead")
-            elif opening != self.safe_height:
-                self.abort("height_heat")
-        for cx, cy, sx, sy, height in CRATES:
-            if (abs(x-cx) < sx+.14 and abs(y-cy) < sy+.14
-                    and z < height+(.43 if self.held else .24)):
-                self.abort("cabinet")
+    def intersect(self, lo, hi):
+        hits = np.flatnonzero(np.all((lo < self.solid_hi) & (hi > self.solid_lo), axis=1))
+        return self.kinds[hits[0]] if hits.size else None
 
-    def record_crossings(self, previous_y):
-        _, y, z = self.position
-        for prefix, plane in (("lane", 0.), ("height", HEIGHT_GATE_Y)):
-            if previous_y < plane <= y:
-                self.crossing_altitudes.setdefault(f"{prefix}_out", float(z))
-            elif previous_y > plane >= y and self.held and "lifted" in self.progress:
-                self.crossing_altitudes.setdefault(f"{prefix}_back", float(z))
+    def check_clearance(self, prev_drone, prev_pod):
+        pos = self.position
+        hit = self.intersect(np.minimum(pos, prev_drone)-ROTOR_LOW,
+                             np.maximum(pos, prev_drone)+ROTOR_HIGH)
+        if hit is not None:
+            self.abort(hit, "uav")
+        if self.done or "grasped" not in self.progress:
+            return
+        # Orient the sled's bounding box with its MuJoCo quaternion; check its
+        # swept volume separately from the UAV so a clean airframe can still strike.
+        mujoco.mju_quat2Mat(self.pod_rotation, self.data.qpos[6:10])
+        rotation = self.pod_rotation.reshape(3, 3)
+        shift = rotation[:, 2]*.04
+        half = np.abs(rotation) @ POD_HALF
+        hit = self.intersect(np.minimum(self.payload, prev_pod)+shift-half,
+                             np.maximum(self.payload, prev_pod)+shift+half)
+        if hit is not None:
+            self.abort(hit, "pod")
 
-    def update_progress(self):
+    def physical_progress(self, previous_y):
         x, y, z = self.position
         px, py, pz = self.payload
-        for name, (cx, cy) in (("survey_lane", BOARD), ("survey_height", HEIGHT_BOARD)):
-            if z >= .72 and abs(x-cx) <= .68 and abs(y-cy) <= .68:
-                self.progress.add(name)
-        if "survey_lane" in self.progress and .81 < y < HEIGHT_GATE_Y-HEIGHT_GATE_ZONE:
-            self.progress.add("lane_out")
-        if {"lane_out", "survey_height"} <= self.progress and y > HEIGHT_GATE_Y+.80:
-            self.progress.add("height_out")
-        if ("height_out" in self.progress and z >= .57 and abs(px-x) < 1.45
-                and abs(py-y-DOWN_OFFSET) < 1.45):
-            self.progress.add("located")
-        if self.held and pz >= .62:
+        if not self.held and "entered_wing" not in self.progress and previous_y < PITCH/2 <= y:
+            self.progress.add("entered_wing")
+            self.entry_z = z
+        if self.held and pz >= .54:
             self.progress.add("lifted")
-        if (self.held and "lifted" in self.progress and .81 < y < HEIGHT_GATE_Y-.81
-                and py < HEIGHT_GATE_Y-.63 and "height_back" in self.crossing_altitudes):
-            self.progress.add("height_back")
-        if (self.held and "height_back" in self.progress and y < -.82 and py < -.62
-                and "lane_back" in self.crossing_altitudes):
-            self.progress.add("lane_back")
-        if (not self.held and "lane_back" in self.progress
-                and np.linalg.norm(self.payload[:2]-PAD) <= .28 and pz <= .095
-                and np.linalg.norm(self.data.qvel[3:9]) <= .16):
+            if not self.shutter_open:
+                # The training wing's mechanical lift interlock retracts the cargo leaf.
+                self.shutter_open = True
+                self.steps_to_lift = self.steps
+                self.data.mocap_pos[0, 2] = 3.30
+                self.solid_lo[-1, 2] = 2.275
+                self.solid_hi[-1, 2] = 4.325
+        if self.held and previous_y > PITCH/2 >= y and "cargo_return" not in self.progress:
+            self.progress.add("cargo_return")
+            self.steps_to_cargo = self.steps
+            self.exit_z = z
+        if (not self.held and "lifted" in self.progress and math.hypot(px, py) <= .28
+                and pz <= .095 and np.linalg.norm(self.data.qvel[3:9]) <= .16):
             self.release_dwell += 1
             if self.release_dwell >= 50:
                 self.progress.add("delivered")
                 self.done = True
         else:
             self.release_dwell = 0
+
+    def observation_progress(self):
+        x, y, z = self.position
+        if abs(x-PLAN[0]) < .36 and abs(y-PLAN[1]) < .32 and z >= 1.05:
+            self.progress.add("surveyed")
+        if y > PITCH/2:
+            cx, cy = int(round(x/PITCH))+2, int(round(y/PITCH))
+            self.cells_seen.add((cx, cy))
+            if self.held and cx == self.layout.outlet:
+                self.loaded_cargo_cells.add(cy)
+        if z >= .85:
+            near = np.flatnonzero(np.max(np.abs(self.room_centers-[x, y]), axis=1) < .47)
+            self.rooms_seen.update(map(int, near))
+            # Center-room view, a conservative visual-discovery checkpoint.
+            if np.max(np.abs(self.payload[:2]-[x, y])) < .62:
+                self.progress.add("located")
 
     def act(self, action):
         if (not isinstance(action, list) or len(action) != 4
@@ -198,26 +200,31 @@ class World:
         for _ in range(round(DT/self.model.opt.timestep)):
             if self.done:
                 break
-            previous_y = float(self.position[1])
+            prev_drone, prev_pod = self.position.copy(), self.payload.copy()
             mujoco.mj_step(self.model, self.data)
-            self.check_safety()
+            self.check_clearance(prev_drone, prev_pod)
             if not self.done:
-                self.record_crossings(previous_y)
-                self.update_progress()
+                self.physical_progress(prev_drone[1])
+        if not self.done:
+            self.observation_progress()
         if self.steps >= LIMIT:
             self.done = True
         return self.observe()
 
     def metrics(self):
-        points = sum(SCORE[name] for name in self.progress)
+        delivered = "delivered" in self.progress
+        partial = sum(SCORE.get(k, 0.) for k in self.progress)+.02*len(self.rooms_seen)
         return {
-            "rescue_progress": min(points, 65 if self.failure else 100)/100,
-            "success": int("delivered" in self.progress and self.failure is None),
+            "rescue_progress": 1. if delivered else round(partial, 2),
+            "success": int(delivered), "delivered": int(delivered),
             **{name: int(name in self.progress) for name in SCORE},
+            **{f"{kind}_abort": int(self.failure == kind) for kind in FAILURES},
+            "pod_impact": int(self.impact_body == "pod"),
+            "uav_impact": int(self.impact_body == "uav"),
+            "rooms_seen": len(self.rooms_seen), "wing_cells_visited": len(self.cells_seen),
+            "loaded_cargo_cells": len(self.loaded_cargo_cells),
             "steps": self.steps, "simulation_seconds": round(self.data.time, 3),
-            "hazard_abort": int(self.failure in ("heat", "baffle", "cabinet", "bulkhead", "height_heat")),
-            "unsafe_release": int(self.failure == "unsafe_release"),
-            "close_attempts": self.close_attempts, "safe_lane": self.safe_lane+1,
-            "safe_height": self.safe_height+1,
-            **{f"{k}_z": round(self.crossing_altitudes.get(k, 0.), 4) for k in CROSSINGS},
+            "steps_to_lift": self.steps_to_lift, "steps_to_cargo": self.steps_to_cargo,
+            "entry_z": round(self.entry_z, 4), "exit_z": round(self.exit_z, 4),
+            "close_attempts": self.close_attempts,
         }

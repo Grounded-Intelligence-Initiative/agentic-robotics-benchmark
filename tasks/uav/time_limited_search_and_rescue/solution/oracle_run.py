@@ -1,7 +1,10 @@
-"""ALE reference: uses only public camera frames and the published controls."""
+"""Read the in-world floor plan and find the sled through the public RGB client."""
 import base64
+from collections import deque
+from dataclasses import dataclass
 import io
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -10,24 +13,94 @@ from PIL import Image
 
 sys.path.insert(0, "/opt/visual_robotics/client")
 
-LANES = (-2.7, -.9, .9, 2.7)
-PASSAGES = ((.92, .75), (-.92, 2.20))
+PITCH, MODULE = 1.72, .29
 PACE = np.array([.32, .32, .19])
-CAMERA_SCALE = 3.5/256
-PAD_Y = -5.25
-TRAVEL = 1.16
+START = (0., 0., 1.24)
+PLAN = (-PITCH, 0.)
+FOCAL = 128/math.tan(math.radians(47))
+TRAVEL = 1.34
+SLOT = .71
 
 
-def down(observation):
-    return np.asarray(Image.open(io.BytesIO(base64.b64decode(observation["images"][0]))),
-                      dtype=np.int16)
+def decode(observation):
+    pixels = base64.b64decode(observation["images"][0])
+    return np.asarray(Image.open(io.BytesIO(pixels)), dtype=np.int16)
+
+
+def xy(cell, pitch=PITCH):
+    return np.array([(cell[0]-2)*pitch, cell[1]*pitch])
+
+
+@dataclass(frozen=True)
+class Plan:
+    halls: tuple
+    inlet: int
+    outlet: int
+    rooms: tuple
+
+
+def read_plan(observation):
+    rgb = decode(observation)
+    scale = FOCAL/(START[2]-.145-.051)
+
+    def color(local):
+        u, v = np.rint(np.array([127.5, 127.5])+(local-[0., .20])*[scale, -scale]).astype(int)
+        return np.median(rgb[v-1:v+2, u-1:u+2], axis=(0, 1))
+
+    def ink(cell):
+        return xy(cell, MODULE)-[0., 2*MODULE]
+
+    halls, rooms = [], []
+    for y in range(1, 5):
+        for x in range(5):
+            a = (x, y)
+            r, g, b = color(ink(a))
+            if g > 110 and g > r+55:
+                rooms.append(a)
+            for dx, dy in ((1, 0), (0, 1)):
+                b_cell = (x+dx, y+dy)
+                if max(b_cell) >= 5:
+                    continue
+                r, g, b = color((ink(a)+ink(b_cell))/2)
+                if min(r, g, b) < 145:  # dark floor or amber raised sill, not white wall
+                    halls.append(tuple(sorted((a, b_cell))))
+    inlet, outlet = None, None
+    for x in range(5):
+        r, g, b = color((ink((x, 0))+ink((x, 1)))/2)
+        if b > r+65 and b > 120:
+            outlet = x
+        elif g > b+55 and r > 130:
+            inlet = x
+    if inlet is None or outlet is None or len(rooms) != 3:
+        raise RuntimeError(f"unreadable plan: inlet {inlet}, outlet {outlet}, bays {rooms}")
+    return Plan(tuple(halls), inlet, outlet, tuple(rooms))
+
+
+def path(start, goal, halls):
+    reached = {start: None}
+    visit = deque([start])
+    while visit:
+        a = visit.popleft()
+        if a == goal:
+            route = []
+            while a is not None:
+                route.append(a)
+                a = reached[a]
+            return list(reversed(route))
+        for u, v in halls:
+            b = v if u == a else u if v == a else None
+            if b is not None and b not in reached:
+                reached[b] = a
+                visit.append(b)
+    raise RuntimeError(f"no hallway connection from {start} to {goal}")
 
 
 class Pilot:
     def __init__(self, client):
         self.client = client
-        self.command = np.array([0., PAD_Y, 1.12])
+        self.command = np.array(START)
         self.obs = client.observe()
+        self.flown = {"search": [], "egress": []}
 
     def act(self, action):
         if not self.obs["done"]:
@@ -39,109 +112,93 @@ class Pilot:
         while not self.obs["done"] and np.max(np.abs(target-self.command)) > 1e-7:
             self.act([*np.clip((target-self.command)/PACE, -1., 1.).tolist(), 0.])
         for _ in range(settle):
-            self.act([0., 0., 0., 0.])
+            self.grip(0.)
+
+    def cell(self, cell, z=TRAVEL, settle=0):
+        self.go(*xy(cell), z, settle)
 
     def grip(self, signal):
         self.act([0., 0., 0., signal])
 
-    def scan(self, x, y):
-        target = np.array([x, y, TRAVEL])
-        while not self.obs["done"]:
-            if find_pod(self.obs, self.command) is not None:
-                self.go(*self.command, settle=2)
-                pod = find_pod(self.obs, self.command)
-                if pod is not None:
-                    return pod
-            error = target-self.command
-            if np.max(np.abs(error)) <= 1e-7:
-                self.go(*target, settle=2)
-                return find_pod(self.obs, self.command)
-            self.act([*np.clip(error/PACE, -1., 1.).tolist(), 0.])
-        return None
-
-
-def forecast(observation, height=False):
-    rgb = down(observation)
-    # Read the board directly under the UAV; the other board can be at an edge.
-    rgb = rgb[113:173]
-    r, g, b = rgb.transpose(2, 0, 1)
-    rows, columns = np.where((g > 105) & (g > r+65) & (b > r+28))
-    if rows.size < 120:
-        raise RuntimeError("green forecast tile not in view")
-    x = (columns.mean()+.5-128)*CAMERA_SCALE
-    tiles = [-.30, .30] if height else [-.72, -.24, .24, .72]
-    return int(np.argmin(np.abs(x-np.array(tiles))))
+    def follow(self, route, stage):
+        for cell in route:
+            if self.obs["done"]:
+                break
+            self.cell(cell)
+            self.flown[stage].append(cell)
 
 
 def find_pod(observation, command):
-    rgb = down(observation)
-    r, g, b = rgb.transpose(2, 0, 1)
-    # Orange shell, not the yellow mannequin or the red/yellow corridor.
-    rows, columns = np.where((r > 150) & (g > 60) & (g < .65*r)
-                             & (b < 48) & (r > 1.7*g))
-    if rows.size < 260:
+    r, g, b = decode(observation).transpose(2, 0, 1)
+    rows, cols = np.where((r > 150) & (g > 48) & (r > 1.7*g) & (b < 55))
+    if rows.size < 230 or np.ptp(cols) > 68 or np.ptp(rows) > 80:
         return None
-    if (rows.min() < 4 or columns.min() < 4 or rows.max() >= 252 or columns.max() >= 252
-            or np.ptp(rows) > 60 or np.ptp(columns) > 50):
-        return None
-    u, v = (columns.min()+columns.max())/2, (rows.min()+rows.max())/2
-    return command[:2]+[(u+.5-128)*CAMERA_SCALE, (128-v-.5)*CAMERA_SCALE+.20]
+    u, v = (cols.min()+cols.max())/2, (rows.min()+rows.max())/2
+    scale = (command[2]-.145-.177)/FOCAL
+    return command[:2]+[(u-127.5)*scale, .20-(v-127.5)*scale]
 
 
-def run(client, lane=None, height=None, target=None, locate_only=False):
-    p = Pilot(client)
-    p.go(0., -3.28, settle=2)
-    if lane is None:
-        lane = forecast(p.obs)
-    p.go(1., -2.12, settle=2)
-    if height is None:
-        height = forecast(p.obs, height=True)
-    x = LANES[lane]
-    hx, hz = PASSAGES[height]
-    p.go(x, -1.12)
-    p.go(x, 1.12)
-    p.go(hx, 1.47, hz, settle=1)
-    p.go(hx, 3.78, hz)
-    p.go(hx, 3.78)
-    if p.obs["done"]:
-        return p.obs
+def run(client, plan=None, target=None, retrace=False, locate_only=False, visit_plan=True):
+    pilot = Pilot(client)
+    if visit_plan or plan is None:
+        pilot.go(*PLAN, START[2], settle=3)
+    if plan is None:
+        plan = read_plan(pilot.obs)
+    inlet = (plan.inlet, 1)
+    pilot.cell((plan.inlet, 0), SLOT, settle=1)
+    pilot.cell(inlet, SLOT)
+    pilot.cell(inlet)
+    if pilot.obs["done"]:
+        return pilot
+    current = inlet
+    if target is not None:
+        goal = (int(round(target[0]/PITCH))+2, int(round(target[1]/PITCH)))
+        pilot.follow(path(current, goal, plan.halls), "search")
+        current = goal
+    else:
+        goals = set(plan.rooms)
+        while goals and not pilot.obs["done"]:
+            route = min((path(current, goal, plan.halls) for goal in sorted(goals)),
+                        key=len)
+            pilot.follow(route, "search")
+            current = route[-1]
+            goals.remove(current)
+            pilot.cell(current, settle=2)
+            if not pilot.obs["done"]:
+                target = find_pod(pilot.obs, pilot.command)
+                if target is not None:
+                    break
+    if pilot.obs["done"] or locate_only:
+        return pilot
     if target is None:
-        # Read along the pass, settle before using a detection for precise alignment.
-        side = -1 if hx < 0 else 1
-        p.go(side*1.72, 4.68)
-        for sx, sy in ((-side*1.72, 4.68), (-side*1.72, 6.73), (side*1.72, 6.73)):
-            target = p.scan(sx, sy)
-            if target is not None or p.obs["done"]:
-                break
-        if target is None and not p.obs["done"]:
-            raise RuntimeError("no fully visible rescue sled")
-    if p.obs["done"]:
-        return p.obs
+        raise RuntimeError("no rescue sled in the marked rooms")
     px, py = map(float, target)
-    p.go(px, py, settle=1)
-    if locate_only:
-        return p.obs
-    p.go(px, py, .43, settle=2)
-    p.grip(1.)
-    p.go(px, py)
-    p.go(hx, 3.78)
-    p.go(hx, 3.78, hz, settle=1)
-    p.go(hx, 1.47, hz)
-    p.go(x, 1.1)
-    p.go(x, -1.1)
-    p.go(0., PAD_Y)
-    p.go(0., PAD_Y, .43, settle=2)
-    p.grip(-1.)
+    pilot.go(px, py, .43, settle=3)
+    pilot.grip(1.)
+    pilot.go(px, py)
+    pilot.cell(current)
+    if retrace:
+        pilot.follow(reversed(pilot.flown["search"]), "egress")
+        pilot.cell(inlet, SLOT, settle=2)
+        pilot.cell((plan.inlet, 0), SLOT)
+        return pilot
+    outlet = (plan.outlet, 1)
+    pilot.follow(path(current, outlet, plan.halls), "egress")
+    pilot.cell((plan.outlet, 0))
+    pilot.cell((2, 0))
+    pilot.cell((2, 0), .43, settle=3)
+    pilot.grip(-1.)
     for _ in range(3):
-        p.grip(0.)
-    return p.obs
+        pilot.grip(0.)
+    return pilot
 
 
 if __name__ == "__main__":
     from client import Client
 
-    result = run(Client())
+    pilot = run(Client())
     out = Path("/home/user/submission")
-    for i, png in enumerate(result["images"]):
-        (out/f"final-camera-{i}.png").write_bytes(base64.b64decode(png))
-    print(json.dumps({k: v for k, v in result.items() if k != "images"}), flush=True)
+    for i, frame in enumerate(pilot.obs["images"]):
+        (out/f"final-camera-{i}.png").write_bytes(base64.b64decode(frame))
+    (out/"reference-route.json").write_text(json.dumps(pilot.flown, indent=2))
+    print(json.dumps({k: v for k, v in pilot.obs.items() if k != "images"}), flush=True)

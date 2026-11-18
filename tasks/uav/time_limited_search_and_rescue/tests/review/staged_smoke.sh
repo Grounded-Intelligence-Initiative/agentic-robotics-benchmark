@@ -19,7 +19,7 @@ if [[ "$mode" == oracle ]]; then
     chown -R user:user /home/user/.ale-solution
     runuser -u user -- bash /home/user/.ale-solution/solve.sh
     if [[ -d /evidence ]]; then
-        cp /home/user/submission/final-camera-*.png /evidence/
+        cp /home/user/submission/final-camera-*.png /home/user/submission/reference-route.json /evidence/
     fi
 fi
 

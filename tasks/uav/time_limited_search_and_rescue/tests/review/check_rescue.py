@@ -1,4 +1,4 @@
-"""Author-only geometry, oracle, and controls. Never staged into an agent run."""
+"""Author checks for the procedural wing; run separately from the live ALE agent."""
 import argparse
 import json
 from pathlib import Path
@@ -9,204 +9,179 @@ from PIL import Image
 
 TASK = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(TASK/"environment/setup/runtime"), str(TASK/"solution")]
-from oracle_run import Pilot, forecast, run
-from rescue import LIMIT, World
-from rescue_scene import GATE_CEILING, HEIGHT_GATE_Y, LANES, PASSAGES
+from oracle_run import PLAN, START, Pilot, Plan, path, read_plan, run
+from rescue import LIMIT, ROTOR_HIGH, ROTOR_LOW, World
+from rescue_scene import PITCH, SLOT_LINTEL, SLOT_SILL, layout_for
 
 
-def check(seed, mode):
+def plan_for(layout):
+    return Plan(tuple(sorted(layout.halls)), layout.inlet, layout.outlet, layout.rooms)
+
+
+def logged(world, mode, seed, **extra):
+    answer = {"mode": mode, "seed": seed, "inlet": world.layout.inlet,
+              "outlet": world.layout.outlet, "failure": world.failure, **world.metrics(), **extra}
+    print(json.dumps(answer), flush=True)
+    return answer
+
+
+def layouts_checks():
+    for seed in range(64):
+        a, b = layout_for(2*seed), layout_for(2*seed+1)
+        assert a.outlet != b.outlet and a.inlet == 4-b.inlet
+        reflected = {tuple(sorted((4-x, y) for x, y in edge)) for edge in a.halls}
+        assert reflected == b.halls
+        assert len(a.halls) == 22 and len(set(a.rooms)) == 3
+        assert a.outlet != a.inlet and a.halls != layout_for(2*seed+2).halls
+        connection, = [e for e in a.halls if sum(x == a.outlet for x, _ in e) == 1]
+        assert connection[0][1] == connection[1][1] >= 3
+        for r in a.rooms:
+            assert r[0] != a.outlet
+            assert path((a.inlet, 1), r, a.halls)
+            assert path(r, (a.outlet, 1), a.halls)
+    assert SLOT_LINTEL-SLOT_SILL > ROTOR_LOW[2]+ROTOR_HIGH[2]
+    # Sled lower surface sits >.37 m under the UAV at the closest reachable grasp.
+    assert SLOT_LINTEL-SLOT_SILL < .37+ROTOR_HIGH[2]
+
+
+def route_budget_check():
+    longest = (0, 0)
+    longest_live = (0, 0)
+    for seed in range(1024):
+        layout = layout_for(seed)
+        x, y, _ = layout.pod
+        bay = (int(round(x/PITCH))+2, int(round(y/PITCH)))
+        current, left, outbound = (layout.inlet, 1), set(layout.rooms), 0
+        while left:
+            route = min((path(current, goal, layout.halls) for goal in sorted(left)), key=len)
+            outbound += len(route)-1
+            current = route[-1]
+            left.remove(current)
+            egress = len(path(current, (layout.outlet, 1), layout.halls))-1
+            longest = max(longest, (outbound+egress, seed))
+            if current == bay:
+                longest_live = max(longest_live, (outbound+egress, seed))
+    # Each edge is six actions. 81 more upper-bound the plan, portal
+    # approaches, up/down transitions, room pauses, grip and set-down.
+    predicted = 6*longest[0]+81
+    print(json.dumps({"mode": "route-budget", "layouts": 1024, "max_edges": longest[0],
+                      "seed": longest[1], "planned_action_upper_bound": predicted,
+                      "longest_actual_bay": longest_live,
+                      "limit": LIMIT}), flush=True)
+    assert LIMIT >= predicted+24
+    return longest_live[1]
+
+
+def check(seed, mode, output=None):
     world = World("rescue", seed, render=mode == "rgb")
     try:
         if mode == "untouched":
             world.observe()
-        elif mode == "blind":
-            # Give the controls perfect pod truth and the other correct route.
-            run(world, lane=0, height=world.safe_height, target=world.payload[:2].copy())
-        elif mode == "blind-height":
-            run(world, lane=world.safe_lane, height=0, target=world.payload[:2].copy())
-        elif mode == "rgb":
-            run(world)
         else:
-            run(world, lane=world.safe_lane, height=world.safe_height, target=world.payload[:2].copy(),
-                locate_only=mode == "locate-only")
-        metrics = world.metrics()
-        print(json.dumps({"seed": seed, "mode": mode, "failure": world.failure, **metrics}),
-              flush=True)
-        if mode in ("privileged", "rgb"):
-            assert metrics["rescue_progress"] == 1 and metrics["success"] == 1, metrics
-            assert metrics["steps"] < LIMIT
-            assert not world.held and np.linalg.norm(world.payload[:2]-[0., -5.25]) <= .28
-            _, _, _, lo, hi = PASSAGES[world.safe_height]
-            assert lo <= metrics["height_out_z"] <= hi
-            assert lo <= metrics["height_back_z"] <= hi
-            assert abs(metrics["height_out_z"]-metrics["lane_out_z"]) > .3
-            assert abs(metrics["height_back_z"]-metrics["lane_back_z"]) > .3
-        elif mode == "untouched":
-            assert metrics["rescue_progress"] == 0 and metrics["steps"] == 0
-        elif mode == "locate-only":
-            assert metrics["rescue_progress"] == .40 and not metrics["lifted"]
-        elif mode == "blind" and world.safe_lane != 0:
-            assert world.failure == "heat" and metrics["rescue_progress"] == .10
-            assert not world.held and world.act([0., 1., 0., 1.])["done"]
-            assert world.metrics() == metrics
-        elif mode == "blind-height":
-            if world.safe_height == 0:
-                assert metrics["success"] == 1
+            plan = plan_for(world.layout)
+            if mode == "rgb":
+                pilot = run(world)
+            elif mode == "fixed":
+                # Replay layout zero's geometry/route, even though this is another wing.
+                first = layout_for(0)
+                pilot = run(world, plan_for(first), target=np.asarray(first.pod[:2]))
             else:
-                assert world.failure == "height_heat" and metrics["rescue_progress"] == .20
-                assert world.act([0., 0., 1., 0.])["done"] and world.metrics() == metrics
-        return metrics
+                pilot = run(world, plan, target=world.payload[:2].copy(),
+                            retrace=mode == "retrace", locate_only=mode == "locate-only",
+                            visit_plan=mode != "unsurveyed")
+            if output and mode == "rgb":
+                output.mkdir(parents=True, exist_ok=True)
+                (output/f"route-{seed}.json").write_text(json.dumps(pilot.flown, indent=2))
+                for i, frame in enumerate(world.images()):
+                    Image.fromarray(frame).save(output/f"delivery-{seed}-{i}.png")
+        m = logged(world, mode, seed)
+        if mode in ("privileged", "rgb", "unsurveyed"):
+            assert m["success"] == 1 and m["rescue_progress"] == 1., m
+            assert m["cargo_return"] and m["exit_z"] > m["entry_z"]+.50
+            assert m["loaded_cargo_cells"] >= 3
+            assert m["steps"] < LIMIT
+            assert not world.held and np.linalg.norm(world.payload[:2]) <= .28
+            if mode == "unsurveyed":
+                assert not m["surveyed"], m
+        elif mode == "untouched":
+            assert m["rescue_progress"] == 0. and not m["steps"]
+        elif mode == "locate-only":
+            assert m["entered_wing"] and m["located"] and not m["grasped"] and not m["delivered"]
+        elif mode == "retrace":
+            assert m["lifted"] and not m["success"] and not m["cargo_return"]
+            assert world.failure == "inspection" and world.impact_body == "pod", m
+        return m
     finally:
         world.close()
 
 
-def check_pair(seed, axis, output):
-    assert seed % 4 == 0
-    sibling = seed+(1 if axis == "lane" else 2)
-    worlds = [World("rescue", s) for s in (seed, sibling)]
-    try:
-        a, b = worlds
-        np.testing.assert_array_equal(a.data.qpos, b.data.qpos)
-        assert (a.safe_lane != b.safe_lane) == (axis == "lane")
-        assert (a.safe_height != b.safe_height) == (axis == "height")
-        pilots = [Pilot(w) for w in worlds]
-        for p, w in zip(pilots, worlds):
-            p.go(0., -3.28, settle=2)
-            assert forecast(p.obs) == w.safe_lane
-            if axis == "height":
-                p.go(1., -2.12, settle=2)
-                assert forecast(p.obs, height=True) == w.safe_height
-        board = [w.images()[0] for w in worlds]
-        assert not np.array_equal(*board)
-        # Compare both actual onboard views from exactly the same later pose.
-        for p in pilots:
-            if axis == "height":
-                x = LANES[a.safe_lane]
-                p.go(x, -1.12)
-                p.go(x, 1.12)
-                p.go(0., .94, settle=2)
-            else:
-                p.go(0., -1.12, settle=2)
-        junction = [w.images() for w in worlds]
-        for left, right in zip(*junction):
-            np.testing.assert_array_equal(left, right)
-        if output:
-            output.mkdir(parents=True, exist_ok=True)
-            for i, image in enumerate(board):
-                Image.fromarray(image).save(output/f"{axis}-forecast-{i}.png")
-            for i, image in enumerate(junction[0]):
-                Image.fromarray(image).save(output/f"{axis}-junction-{i}.png")
-        for p in pilots:
-            if axis == "height":
-                x, _, _, lo, hi = PASSAGES[a.safe_height]
-                z = (lo+hi)/2
-                p.go(x, 1.47, z, settle=1)
-                p.go(x, 3.78, z)
-            else:
-                x = LANES[a.safe_lane]
-                p.go(x, -1.12)
-                p.go(x, 1.12)
-        failure = "heat" if axis == "lane" else "height_heat"
-        assert a.metrics()[f"{axis}_out"] == 1 and b.failure == failure
-        print(json.dumps({"pair": [seed, sibling], "axis": axis, "junction_images_identical": True,
-                          "same_action_different_heat_outcome": True}), flush=True)
-    finally:
-        for w in reversed(worlds):
-            w.close()
-
-
-def check_safety():
-    for case in ("overflight", "height-overflight", "height-skirt", "premature-grip", "high-drop"):
+def check_controls():
+    for mode in ("closed-cargo", "over-slot", "level-through-sill"):
         world = World("rescue", 0, render=False)
         try:
-            p = Pilot(world)
-            if case == "premature-grip":
-                p.grip(1.)
-                assert not world.held and world.metrics()["rescue_progress"] == 0.
-                continue
-            x = LANES[world.safe_lane]
-            p.go(0., -3.28)
-            p.go(1., -2.12)
-            p.go(x, -1.12, z=1.75 if case == "overflight" else 1.16)
-            if case == "overflight":
-                p.go(x, 1.12, z=1.75)
-                assert world.failure == "baffle" and not world.metrics()["lane_out"]
-                continue
-            p.go(x, 1.12)
-            hx, _, _, lo, hi = PASSAGES[world.safe_height]
-            hz = (lo+hi)/2
-            if case in ("height-overflight", "height-skirt"):
-                bypass_x = 3.39 if case == "height-skirt" else hx
-                bypass_z = 2.55 if case == "height-overflight" else hz
-                p.go(bypass_x, 1.47, bypass_z)
-                p.go(bypass_x, 3.78, bypass_z)
-                assert world.failure == "bulkhead" and not world.metrics()["height_out"]
-                continue
-            p.go(hx, 1.47, hz)
-            p.go(hx, 3.78, hz)
-            px, py = world.payload[:2].copy()
-            p.go(px, py)
-            p.go(px, py, .43, settle=2)
-            p.grip(1.)
-            p.go(px, py, settle=2)
-            assert world.held and world.metrics()["lifted"]
-            p.grip(-1.)
-            assert world.failure == "unsafe_release" and not world.metrics()["delivered"]
+            pilot = Pilot(world)
+            col = world.layout.outlet if mode == "closed-cargo" else world.layout.inlet
+            if mode == "level-through-sill":
+                pilot.cell((col, 0), .71, settle=2)
+                inlet = (col, 1)
+                pilot.cell(inlet, .71)
+                onward = next(b if a == inlet else a for a, b in sorted(world.layout.raised)
+                              if inlet in (a, b))
+                pilot.cell(onward, .71)
+                reason = "raised"
+            else:
+                pilot.cell((col, 0))
+                pilot.cell((col, 1))
+                reason = "cargo" if mode == "closed-cargo" else "inspection"
+            assert world.failure == reason and world.impact_body == "uav"
+            logged(world, mode, 0)
         finally:
             world.close()
-    print(json.dumps({"guard_checks": ["overflight", "height-overflight", "height-skirt",
-                                      "premature-grip", "high-drop"]}), flush=True)
 
 
-def check_fixed_altitude(seed, z):
-    w = World("rescue", seed, render=False)
+def check_plan(seed, output):
+    w = World("rescue", seed)
     try:
         p = Pilot(w)
-        p.go(0., -3.28, z)
-        p.go(1., -2.12, z)
-        x = LANES[w.safe_lane]
-        hx = PASSAGES[w.safe_height][0]
-        p.go(x, -1.12, z)
-        p.go(x, 1.12, z)
-        p.go(hx, 1.47, z)
-        p.go(hx, 3.78, z)
-        reached = w.position[1] > HEIGHT_GATE_Y
-        assert reached == (z == .75 and w.safe_height == 0), w.metrics()
-        print(json.dumps({"mode": "fixed-altitude", "seed": seed, "setpoint_z": z,
-                          "passed_height_gate": bool(reached), "failure": w.failure,
-                          **w.metrics()}), flush=True)
+        p.go(*PLAN, START[2], settle=3)
+        plan = read_plan(p.obs)
+        assert set(plan.halls) == w.layout.halls
+        assert (plan.inlet, plan.outlet) == (w.layout.inlet, w.layout.outlet)
+        assert set(plan.rooms) == set(w.layout.rooms)
+        if output:
+            output.mkdir(parents=True, exist_ok=True)
+            Image.fromarray(w.images()[0]).save(output/f"plan-{seed}.png")
+            p.cell((plan.inlet, 0), .71, settle=2)
+            Image.fromarray(w.images()[1]).save(output/f"inspection-{seed}.png")
+        print(json.dumps({"mode": "plan-rgb", "seed": seed, "edges": len(plan.halls),
+                          "matches_physical_layout": True}), flush=True)
     finally:
         w.close()
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--rgb", action="store_true")
-    parser.add_argument("--output", type=Path)
-    parser.add_argument("--rgb-seeds", type=int, nargs="+", default=list(range(12)))
-    args = parser.parse_args()
-    assert PASSAGES[0][4] < PASSAGES[1][3] and GATE_CEILING < PASSAGES[1][3]
-    seeds = range(12)
-    joints = set()
-    for seed in seeds:
-        result = check(seed, "privileged")
-        joints.add((result["safe_lane"], result["safe_height"]))
-        check(seed, "locate-only")
-        check(seed, "untouched")
-    assert joints == {(lane, height) for lane in range(1, 5) for height in (1, 2)}
-    blind = [check(seed, "blind") for seed in seeds]
-    assert 0 < sum(m["success"] for m in blind) < len(blind)/2
-    blind_height = [check(seed, "blind-height") for seed in seeds]
-    assert sum(m["success"] for m in blind_height) == len(blind_height)//2
-    for seed in (0, 2):
-        for z in (.75, 1.16, 2.2):
-            check_fixed_altitude(seed, z)
-    check_safety()
-    if args.rgb:
-        check_pair(0, "lane", args.output)
-        check_pair(0, "height", args.output)
-        for seed in args.rgb_seeds:
-            check(seed, "rgb")
+    p = argparse.ArgumentParser()
+    p.add_argument("--rgb-seeds", nargs="+", type=int, default=[])
+    p.add_argument("--output", type=Path)
+    p.add_argument("--privileged-count", type=int, default=12)
+    args = p.parse_args()
+    layouts_checks()
+    long_seed = route_budget_check()
+    for seed in range(args.privileged_count):
+        check(seed, "privileged")
+    for seed in range(4):
+        for mode in ("untouched", "locate-only", "retrace"):
+            check(seed, mode)
+    fixed = [check(i, "fixed") for i in range(6)]
+    assert fixed[0]["success"] and sum(m["success"] for m in fixed) <= 2
+    assert sum(m["uav_impact"] for m in fixed) >= 3
+    unsurveyed = next(seed for seed in range(16)
+                     if layout_for(seed).outlet == 4 and layout_for(seed).inlet >= 2)
+    check(unsurveyed, "unsurveyed")
+    check_controls()
+    for seed in dict.fromkeys([*args.rgb_seeds, long_seed] if args.rgb_seeds else []):
+        check_plan(seed, args.output)
+        check(seed, "rgb", args.output)
 
 
 if __name__ == "__main__":

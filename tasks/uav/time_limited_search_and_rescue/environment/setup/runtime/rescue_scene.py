@@ -1,64 +1,150 @@
-"""3D industrial rescue yard. Only the forecast paint varies with the route."""
-from functools import lru_cache
+"""Procedural training wing, occupancy model, and its physical scale plan."""
+from collections import deque
+from dataclasses import dataclass
 import xml.etree.ElementTree as ET
 
+import numpy as np
+
 from pbr_scene import prop
-from scene_assets import asset_root, geom, materials, robot_meshes, vec
+from scene_assets import asset_root, geom, materials, robot_meshes
 
-LANES = (-2.7, -.9, .9, 2.7)
-PAD = (0., -5.25)
-BOARD = (0., -3.28)
-HEIGHT_BOARD = (1., -2.12)
-BOUNDS = ((-3.39, 3.39), (-5.70, 8.10), (.39, 2.55))
-DOWN_WIDTH = 3.5
+SIDE = 5
+PITCH = 1.72
+MODULE = .29
+PLAN = (-PITCH, 0.)
 DOWN_OFFSET = .20
-GATE_Y = .53
-GATE_HALF_WIDTH = .44
-GATE_CEILING = 1.43
-HEIGHT_GATE_Y = 2.72
-HEIGHT_GATE_ZONE = .61
-HEIGHT_HALF_WIDTH = .49
-# Indexed by forecast dot count minus one: (x, visible opening bottom/top,
-# safe UAV center range including clearance for the loaded pod).
-PASSAGES = ((.92, .03, 1.12, .57, .92), (-.92, 1.52, 2.62, 1.98, 2.42))
-CRATES = [(-.75, 5.13, .37, .46, .60), (.75, 6.06, .37, .46, .68)]
-
-DARK = (.085, .106, .118, 1)
-STEEL = (.33, .38, .41, 1)
-WHITE = (.91, .92, .87, 1)
-HOT = (.83, .075, .025, 1)
-AMBER = (.96, .70, .08, 1)
-COOL = (.018, .92, .55, 1)
-BLUE = (.06, .30, .78, 1)
-ORANGE = (1., .29, .016, 1)
+START = (0., 0., 1.24)
+BOUNDS = ((-4.15, 4.15), (-.72, 7.61), (.39, 1.65))
+SLOT_SILL, SLOT_LINTEL = .43, .89
+RAISED_SILL = .73
+WALL_TOP = 2.05
+HOME = (2, 0)
+DARK = (.075, .112, .126, 1)
+WALL = (.65, .70, .70, 1)
+WHITE = (.94, .95, .91, 1)
+AMBER = (.95, .67, .08, 1)
+TEAL = (.022, .74, .39, 1)
+BLUE = (.05, .32, .84, 1)
+ORANGE = (1., .26, .018, 1)
 
 
-@lru_cache(maxsize=1)
-def template():
+def edge(a, b):
+    return tuple(sorted((a, b)))
+
+
+def xy(cell, pitch=PITCH):
+    return np.array([(cell[0]-2)*pitch, cell[1]*pitch])
+
+
+def interior_edges():
+    for y in range(1, SIDE):
+        for x in range(SIDE):
+            for dx, dy in ((1, 0), (0, 1)):
+                if x+dx < SIDE and y+dy < SIDE:
+                    yield edge((x, y), (x+dx, y+dy))
+
+
+def distances(start, edges):
+    dist = {start: 0}
+    visit = deque([start])
+    while visit:
+        a = visit.popleft()
+        for u, v in edges:
+            b = v if u == a else u if v == a else None
+            if b is not None and b not in dist:
+                dist[b] = dist[a]+1
+                visit.append(b)
+    return dist
+
+
+@dataclass(frozen=True)
+class Layout:
+    halls: frozenset
+    raised: frozenset
+    inlet: int
+    outlet: int
+    rooms: tuple
+    pod: tuple
+    tone: float
+
+
+def layout_for(seed):
+    rng = np.random.default_rng(seed >> 1)
+    inlet, outlet = int(rng.integers(1, 4)), int(rng.choice((0, 4)))
+    service_row = int(rng.integers(3, SIDE))
+    all_edges = [e for e in interior_edges() if all(p[0] != outlet for p in e)]
+    groups = {p: p for e in all_edges for p in e}
+
+    def find(p):
+        while p != groups[p]:
+            p = groups[p]
+        return p
+
+    halls, loops = [], []
+    for i in rng.permutation(len(all_edges)):
+        u, v = e = all_edges[i]
+        a, b = find(u), find(v)
+        if a != b:
+            groups[a] = b
+            halls.append(e)
+        else:
+            loops.append(e)
+    # The cargo column is a dedicated egress spine, linked to the rooms only
+    # near the far end. It cannot shorten any outbound search path.
+    halls += loops[:3]
+    halls += [edge((outlet, y), (outlet, y+1)) for y in range(1, SIDE-1)]
+    halls.append(edge((outlet, service_row), (1 if outlet == 0 else SIDE-2, service_row)))
+    raised = {halls[i] for i in rng.choice(len(halls), size=3, replace=False)}
+    # The inspection pocket is below the hall sills: level flight from the
+    # insertion slot into the rest of the wing is physically blocked.
+    raised.update(e for e in halls if (inlet, 1) in e)
+    from_inlet = distances((inlet, 1), halls)
+    from_outlet = distances((outlet, 1), halls)
+    deep = sorted((p for p in from_inlet if p[1] >= 2 and p[0] != outlet),
+                  key=lambda p: min(from_inlet[p], from_outlet[p]), reverse=True)[:8]
+    rooms = tuple(deep[i] for i in rng.choice(len(deep), size=3, replace=False))
+    target = rooms[int(rng.integers(3))]
+    dx, dy = rng.uniform(-.28, .28, 2)
+    yaw = float(rng.uniform(-.50, .50))
+    tone = float(rng.uniform(.92, 1.05))
+
+    def mirror(p):
+        return (SIDE-1-p[0], p[1]) if seed & 1 else p
+
+    def transformed(edges):
+        return frozenset(edge(mirror(u), mirror(v)) for u, v in edges)
+
+    if seed & 1:
+        dx, yaw = -dx, -yaw
+    px, py = xy(mirror(target)) + (dx, dy)
+    return Layout(transformed(halls), transformed(raised), mirror((inlet, 1))[0],
+                  mirror((outlet, 1))[0], tuple(map(mirror, rooms)), (px, py, yaw), tone)
+
+
+def build(layout):
     root = ET.fromstring("""
-    <mujoco model="civilian rescue yard">
+    <mujoco model="indoor rescue training wing">
         <compiler angle="degree" autolimits="true"/>
         <option timestep=".005" integrator="implicitfast"/>
         <visual>
           <global offwidth="256" offheight="256"/>
-          <headlight ambient=".53 .53 .53" diffuse=".25 .25 .25" specular="0 0 0"/>
+          <headlight ambient=".54 .54 .54" diffuse=".26 .26 .26" specular="0 0 0"/>
           <map znear=".001" zfar="6"/>
         </visual>
         <worldbody>
-          <light directional="true" pos="-3 -4 7" dir=".3 .48 -1"
-                 diffuse=".64 .63 .60" castshadow="false"/>
-          <geom name="floor" type="plane" size="5 7 1" friction=".9 .02 .005"/>
+          <light directional="true" dir=".3 .42 -1" diffuse=".62 .60 .58" castshadow="false"/>
+          <geom name="floor" type="plane" size="6 10 1" friction=".9 .02 .005"/>
           <body name="uav" gravcomp="1">
             <inertial pos="0 0 0" mass=".8" diaginertia=".012 .012 .015"/>
             <joint name="x" type="slide" axis="1 0 0" damping="9"/>
             <joint name="y" type="slide" axis="0 1 0" damping="9"/>
             <joint name="z" type="slide" axis="0 0 1" damping="9"/>
-            <camera name="down" pos="0 .20 -.145" projection="orthographic" fovy="3.5"/>
-            <camera name="forward" pos="0 .17 .045" xyaxes="1 0 0 0 .05 .99875" fovy="106"/>
+            <camera name="down" pos="0 .20 -.145" fovy="94"/>
+            <camera name="forward" pos="0 .17 .045" xyaxes="1 0 0 0 .12 .99277" fovy="94"/>
           </body>
           <body name="pod" pos="0 2 .074">
             <freejoint name="pod_free"/>
-            <geom name="sled_collision" type="box" size=".145 .255 .072" mass=".15"
+            <geom name="sled_collision" type="box" size=".145 .245 .072" mass=".15"
                   rgba=".105 .115 .12 1" friction=".95 .04 .01"/>
           </body>
         </worldbody>
@@ -75,114 +161,116 @@ def template():
     w.find("geom[@name='floor']").set("material", "floor_mat")
     uav = w.find("body[@name='uav']")
     robot_meshes(root, uav, "drone")
-    geom(uav, "gripper_stem", "cylinder", (0, 0, -.115), (.031, .075), DARK)
+    geom(uav, "gripper", "cylinder", (0, 0, -.133), (.035, .098), DARK)
     for side in (-1, 1):
-        geom(uav, f"gripper_jaw{side}", pos=(side*.053, 0, -.207),
-             size=(.025, .050, .025), rgba=STEEL)
-
-    body = w.find("body[@name='pod']")
-    geom(body, "pod_shell", pos=(0, 0, .056), size=(.155, .26, .050), rgba=ORANGE)
-    geom(body, "mannequin_torso", "ellipsoid", (0, .027, .105), (.086, .109, .038), AMBER)
-    geom(body, "mannequin_head", "sphere", (0, .155, .107), (.057,), AMBER)
+        geom(uav, f"jaw{side}", pos=(side*.053, 0, -.207), size=(.025, .050, .025), rgba=WALL)
+    pod = w.find("body[@name='pod']")
+    geom(pod, "shell", pos=(0, 0, .053), size=(.155, .26, .051), rgba=ORANGE)
+    geom(pod, "torso", "ellipsoid", (0, .027, .105), (.086, .109, .038), AMBER)
+    geom(pod, "head", "sphere", (0, .155, .107), (.057,), AMBER)
     for side in (-1, 1):
-        geom(body, f"mannequin_leg{side}", "capsule",
-             size=(.031,), fromto=vec((side*.041, -.045, .11, side*.054, -.204, .106)),
-             rgba=AMBER)
-        geom(body, f"mannequin_arm{side}", "capsule",
-             size=(.023,), fromto=vec((side*.064, .074, .105, side*.112, -.042, .10)),
-             rgba=AMBER)
-    geom(body, "grapple_crossbar", pos=(0, 0, .136), size=(.142, .025, .015), rgba=WHITE)
-
+        geom(pod, f"leg{side}", pos=(side*.044, -.123, .11), size=(.032, .083, .027), rgba=AMBER)
+        geom(pod, f"arm{side}", pos=(side*.096, .030, .105), size=(.025, .071, .023), rgba=AMBER)
+    geom(pod, "bar", pos=(0, 0, .136), size=(.142, .025, .015), rgba=WHITE)
+    geom(w, "pad", pos=(0, 0, .004), size=(.56, .53, .004), rgba=BLUE)
     for side in (-1, 1):
-        geom(w, f"boundary{side}", pos=(side*3.88, 1.23, 1.34),
-             size=(.13, 7.30, 1.34), material="brick_mat")
-        geom(w, f"boundary_cap{side}", pos=(side*3.88, 1.23, 2.68),
-             size=(.16, 7.3, .04), rgba=STEEL)
-        for y in (-4.8, -2.4, 0, 2.4, 4.8, 7.2):
-            geom(w, f"pier{side}_{y}", pos=(side*3.90, y, 1.02),
-                 size=(.19, .13, 1.02), rgba=STEEL)
-    geom(w, "south_wall", pos=(0, -6.07, .58), size=(3.92, .12, .58), material="brick_mat")
-    geom(w, "rear_wall", pos=(0, 8.53, 1.46), size=(3.92, .12, 1.46), material="brick_mat")
-    for i in range(6):
-        geom(w, f"rear_cladding{i}", pos=(i*1.3-3.25, 8.40, 1.99),
-             size=(.43, .025, .43), rgba=(.22, .35, .41, 1))
-    # Licensed, locally staged Poly Haven scans form the two service cabinets.
-    for i, (x, y, sx, sy, h) in enumerate(CRATES):
-        prop(root, asset_root(), "utility_box_01", f"service_cabinet{i}", (x, y, 0),
-             (2*sx, 2*sy, h))
+        geom(w, f"pad_side{side}", pos=(side*.39, 0, .010), size=(.030, .42, .002), rgba=WHITE)
+    geom(w, "pad_cross", pos=(0, 0, .010), size=(.39, .030, .002), rgba=WHITE)
 
-    geom(w, "evac_pad", pos=(*PAD, .004), size=(.57, .54, .004), rgba=BLUE)
-    for x in (-.41, .41):
-        geom(w, f"pad_upright{x}", pos=(x, PAD[1], .010), size=(.028, .44, .001), rgba=WHITE)
-    geom(w, "pad_crosspiece", pos=(*PAD, .010), size=(.41, .028, .001), rgba=WHITE)
-    geom(w, "forecast_base", pos=(*BOARD, .047), size=(1.02, .31, .047), rgba=DARK)
-    for i, x in enumerate((-0.72, -.24, .24, .72)):
-        geom(w, f"forecast_tile{i}", pos=(x, BOARD[1], .106), size=(.202, .23, .011), rgba=AMBER)
-        for j in range(i+1):
-            geom(w, f"forecast_dot{i}_{j}", "cylinder",
-                 (x+(j-i/2)*.088, BOARD[1], .120), (.026, .004), DARK)
-    geom(w, "height_forecast_base", pos=(*HEIGHT_BOARD, .047), size=(.63, .32, .047), rgba=BLUE)
-    for i, dx in enumerate((-.30, .30)):
-        x, y = HEIGHT_BOARD
-        geom(w, f"height_tile{i}", pos=(x+dx, y, .106), size=(.23, .24, .011), rgba=AMBER)
-        for j in range(i+1):
-            geom(w, f"height_dot{i}_{j}", "cylinder", (x+dx+(j-i/2)*.15, y, .120),
-                 (.041, .004), DARK)
+    obstacles = []
 
-    # Red/yellow baffles are always hot. All four openings have the same local
-    # geometry and markings; none of these geoms encode the episodic forecast.
-    for i, x in enumerate((-3.6, -1.8, 0., 1.8, 3.6)):
-        geom(w, f"baffle{i}", pos=(x, 0, .81), size=(.26, .37, .81), rgba=HOT)
-        for j in range(5):
-            geom(w, f"baffle_band{i}_{j}", pos=(x, 0, .16+j*.30),
-                 size=(.265, .375, .055), rgba=AMBER)
-    geom(w, "lintel", pos=(0, 0, 1.72), size=(3.85, .29, .13), rgba=DARK)
-    for i, x in enumerate(LANES):
+    def wall(center, half, kind, color=WALL):
+        obstacles.append((kind, center, half))
+        geom(w, f"solid{len(obstacles)}", pos=center, size=half, rgba=color)
+
+    def boundary(a, b, route=None):
+        center = (xy(a)+xy(b))/2
+        normal = 0 if a[0] != b[0] else 1
+        tangent = 1-normal
+        gate_half = .51 if route == "inspection" else .56
+
+        def section(mid, span, lo, hi, kind, color):
+            pos, half = [*center, (lo+hi)/2], [.075, .075, (hi-lo)/2]
+            pos[tangent] += mid
+            half[tangent] = span
+            wall(pos, half, kind, color)
+
+        if route is None:
+            section(0., PITCH/2+.026, 0., WALL_TOP, "wall", WALL)
+            return
         for side in (-1, 1):
-            geom(w, f"lane_plate{i}_{side}", pos=(x, side*.70, .005),
-                 size=(.43, .13, .004), rgba=DARK)
-            for j in range(i+1):
-                geom(w, f"lane_dot{i}_{side}_{j}", "cylinder",
-                     (x+(j-i/2)*.142, side*.70, .013), (.044, .005), WHITE)
-        for offset in (-.62, .62):
-            geom(w, f"hot_edge{i}_{offset}", pos=(x+offset, 0, .008),
-                 size=(.018, .54, .008), rgba=HOT)
+            section(side*(PITCH/2+gate_half)/2, (PITCH/2-gate_half)/2+.014,
+                    0., WALL_TOP, "wall", WALL)
+        if route == "inspection":
+            section(0., gate_half, 0., SLOT_SILL, "inspection", AMBER)
+            section(0., gate_half, SLOT_LINTEL, WALL_TOP, "inspection", AMBER)
+        elif route == "raised":
+            section(0., gate_half, 0., RAISED_SILL, "raised", (.57, .47, .18, 1))
+        elif route == "cargo":
+            x, y = center
+            body = ET.SubElement(w, "body", name="cargo_shutter", mocap="true", pos=f"{x} {y} 1.025")
+            geom(body, "cargo_leaf", size=(gate_half, .075, 1.025), rgba=BLUE)
+            for z in np.linspace(-.90, .90, 9):
+                geom(body, f"shutter_rib{z:.3f}", pos=(0, 0, z), size=(gate_half, .084, .018), rgba=DARK)
+            for side in (-1, 1):
+                geom(w, f"cargo_jamb{side}", pos=(x+side*.572, y, 1.025),
+                     size=(.030, .10, 1.025), rgba=BLUE)
 
-    # The transverse bulkhead is solid from wall to wall, with two genuinely
-    # empty windows in different rows/columns. No sign at this bulkhead varies.
-    def bulkhead(name, lo_x, hi_x, lo_z, hi_z, rgba=STEEL):
-        geom(w, name, pos=((lo_x+hi_x)/2, HEIGHT_GATE_Y, (lo_z+hi_z)/2),
-             size=((hi_x-lo_x)/2, .30, (hi_z-lo_z)/2), rgba=rgba)
+    for y in range(SIDE):
+        boundary((-1, y), (0, y))
+        boundary((SIDE-1, y), (SIDE, y))
+    for x in range(SIDE):
+        boundary((x, -1), (x, 0))
+        boundary((x, SIDE-1), (x, SIDE))
+        route = "inspection" if x == layout.inlet else "cargo" if x == layout.outlet else None
+        boundary((x, 0), (x, 1), route)
+    for a, b in interior_edges():
+        route = "raised" if (a, b) in layout.raised else "open" if (a, b) in layout.halls else None
+        boundary(a, b, route)
 
-    bulkhead("height_sill", -3.90, 3.90, 0., .03)
-    bulkhead("height_middle", -3.90, 3.90, 1.12, 1.52, DARK)
-    bulkhead("height_roof", -3.90, 3.90, 2.62, 2.93, DARK)
-    for i, (x, bottom, top, _, _) in enumerate(PASSAGES):
-        bulkhead(f"bulkhead{i}_left", -3.90, x-.75, bottom, top)
-        bulkhead(f"bulkhead{i}_right", x+.75, 3.90, bottom, top)
+    # Bay paint runs around (not through) the central pickup area.
+    for i, room in enumerate(layout.rooms):
+        x, y = xy(room)
         for side in (-1, 1):
-            y = HEIGHT_GATE_Y+side*.308
-            for dx in (-.78, .78):
-                geom(w, f"window{i}_jamb{side}_{dx}", pos=(x+dx, y, (bottom+top)/2),
-                     size=(.045, .015, (top-bottom)/2), rgba=AMBER)
-            z = 1.32 if i == 0 else 2.77
-            for j in range(i+1):
-                geom(w, f"window{i}_dot{side}_{j}", "sphere",
-                     (x+(j-i/2)*.22, y+side*.016, z), (.077,), WHITE)
-            y = HEIGHT_GATE_Y+side*1.07
-            geom(w, f"window{i}_lead{side}", pos=(x, y, .005),
-                 size=(.35, .13, .004), rgba=DARK)
-            for j in range(i+1):
-                geom(w, f"window{i}_lead_dot{side}_{j}", "cylinder",
-                     (x+(j-i/2)*.16, y, .012), (.048, .004), WHITE)
-    for i, x in enumerate((-3.46, -2.78, -2.10, 2.10, 2.78, 3.46)):
-        for side in (-1, 1):
-            geom(w, f"bulkhead_warning{i}_{side}", pos=(x, HEIGHT_GATE_Y+side*.308, 1.32),
-                 size=(.24, .016, .055), rgba=HOT, euler="0 30 0")
-    # Center a landmark between the gates, and delineate the far search yard.
-    geom(w, "staging_line", pos=(0, 1.14, .004), size=(1.45, .035, .003), rgba=WHITE)
-    for y in (3.77, 5.69, 7.59):
-        for x in (-2.4, 0., 2.4):
-            geom(w, f"search_grid{x}_{y}", pos=(x, y, .002),
-                 size=(.65, .016, .002), rgba=(.48, .51, .49, 1))
-    return ET.tostring(root, encoding="unicode")
+            geom(w, f"bay{i}_rail{side}", pos=(x+side*.53, y, .005),
+                 size=(.023, .57, .004), rgba=TEAL)
+    for side in (-1, 1):
+        x = side*4.48
+        prop(root, asset_root(), "utility_box_01", f"cabinet{side}", (x, 0, 0), (.52, .61, .87))
+
+    # This scale model is world geometry visible to both onboard cameras.
+    # Wall segments and door gaps are generated from the same layout as the wing.
+    geom(w, "plan_plinth", pos=(*PLAN, .016), size=(.81, .81, .016), rgba=WHITE)
+    geom(w, "plan_surface", pos=(*PLAN, .034), size=(.767, .767, .004), rgba=DARK)
+
+    def plan_xy(cell):
+        return np.asarray(PLAN)+xy(cell, MODULE)-(0, 2*MODULE)
+
+    def ink(name, pos, size, color, z=.046):
+        return geom(w, "plan_"+name, pos=(*pos, z), size=(*size, .005), rgba=color)
+
+    for i, pos in enumerate(layout.rooms):
+        ink(f"room{i}", plan_xy(pos), (.063, .063), TEAL)
+    ink("home", plan_xy(HOME), (.062, .062), BLUE)
+    for a, b in (list(interior_edges()) + [((x, 0), (x, 1)) for x in range(SIDE)]):
+        normal = 0 if a[0] != b[0] else 1
+        tangent = 1-normal
+        p = (plan_xy(a)+plan_xy(b))/2
+        name = f"{a[0]}_{a[1]}_{b[0]}_{b[1]}"
+        is_entry = a[1] == 0 and a[0] == layout.inlet
+        is_exit = a[1] == 0 and a[0] == layout.outlet
+        if is_entry or is_exit or (a, b) in layout.halls:
+            for side in (-1, 1):
+                mid, sz = p.copy(), [.010, .010]
+                mid[tangent] += side*.11
+                sz[tangent] = .037
+                ink(f"jamb{name}_{side}", mid, sz, WHITE)
+            if is_entry or is_exit or (a, b) in layout.raised:
+                sz = [.015, .015]
+                sz[tangent] = .068
+                ink(name, p, sz, BLUE if is_exit else AMBER)
+        else:
+            sz = [.010, .010]
+            sz[tangent] = .152
+            ink(name, p, sz, WHITE)
+    return ET.tostring(root, encoding="unicode"), obstacles
