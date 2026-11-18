@@ -1,5 +1,8 @@
+# Online graded episode (experimental variant): the agent plays one hidden graded episode itself, through the lab
+# service, and the separate verifier scores the record the lab leaves in /var/lib/arb-online (a declared artifact).
+
 schema_version = "1.4+ale.1"
-artifacts = ["/home/user/submission"]
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/arm_hidden_mechanism_box"
@@ -11,12 +14,15 @@ platform = "arm"
 cpus = 4
 memory_mb = 12288
 
+# prep_s 28800 (the 8 h budget on main: the graded episode must start within it) + graded_s 10800 (the episode's
+# own window after its start).
 [agent]
-timeout_sec = 28800
+timeout_sec = 39600
 network_mode = "no-network"
 
+# The grader only reads the record.
 [verifier]
-timeout_sec = 7200
+timeout_sec = 600
 environment_mode = "separate"
 
 [verifier.environment]

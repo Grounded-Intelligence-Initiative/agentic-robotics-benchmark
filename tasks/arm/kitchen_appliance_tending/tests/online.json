@@ -1,0 +1,8 @@
+{
+ "format": "arb-online/1",
+ "task": "kitchen_appliance_tending",
+ "episode": "u0@696a6e0d545a",
+ "seed_sha256": "696a6e0d545a3416caab886de0ebf7ccf9ee46bfd019b9b74105c031af5073ee",
+ "record": "/var/lib/arb-online/record.json",
+ "note": "The graded episode of the online variant: its id and the sha256 of its seed's decimal digits (entry 3 of tests/hidden/episodes.json). The episode and the seed live root-only in environment/setup/online/episode.json; the lab copies the id and the digest into every record, and tests/verify.py scores a record only when both match."
+}

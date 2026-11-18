@@ -5,35 +5,38 @@ wall oven. Someone asks it, one request at a time, to turn a burner on or off, t
 to preheat, set or turn off the oven. The appliances are models you have not seen; you see them only through
 cameras and feel them through the arm.
 
-Deliver a controller that carries out these requests from camera images, joint readings and the wrist
-force/torque sensor. You have **2 hours** of wall time for the whole job (exploring, the lab trial, building and
-testing the controller); have your controller in `/home/user/submission/` well before the time is up. A session
-still running at the limit is cut off.
+You are scored on **one graded episode** that you play yourself, through the lab, while your session runs: one
+episode on one of the scored units, drawn once before your session (the same episode for every model). You carry
+out its requests from camera images, joint readings and the wrist force/torque sensor, step by step, with whatever
+programs you write. You have **2 hours** to prepare (exploring, the lab trial, building and testing your tools) and
+must start the graded episode within them; from its start you have up to **3 hours** to play it (see The graded
+episode). A session still running at its limit is cut off.
 
 ## What is in your home directory
 
 | Path | What it is |
 |---|---|
-| `appliance_env.py` | The complete robot environment: the cell, the Panda arm and gripper (robosuite models), the operational-space controller, cameras, sensor noise. The lab and the grader run this exact file; only the unit differs. Read its docstrings. |
-| `kitchen_render.py`, `kitchen_scene.py`, `kitchen_fx.py`, `kitchen_look.json` | The cameras' renderer, the kitchen around the cell and the burners' flames: `appliance_env.py` draws every image with them, and the lab and the grader run these exact files. They read the kitchen's room bundle in `/opt/task-assets/payload/render` (read-only). |
-| `episode.py` | The exact episode logic the lab and the grader run: initial states, requests, deadlines and the credit rule. |
+| `appliance_env.py` | The complete robot environment: the cell, the Panda arm and gripper (robosuite models), the operational-space controller, cameras, sensor noise. The lab runs this exact file, for its trial and for the graded episode; only the unit differs. Read its docstrings. |
+| `kitchen_render.py`, `kitchen_scene.py`, `kitchen_fx.py`, `kitchen_look.json` | The cameras' renderer, the kitchen around the cell and the burners' flames: `appliance_env.py` draws every image with them, and the lab runs these exact files. They read the kitchen's room bundle in `/opt/task-assets/payload/render` (read-only). |
+| `episode.py` | The exact episode logic the lab runs (its trial and the graded episode): initial states, requests, deadlines and the credit rule. |
 | `task_card.md` | Frames, mounts, the units, the cameras, the sensors and the numbers. |
 | `units.json`, `units/` | Three practice units (p0 cooktop, p1 microwave, p2 oven) with their models and mechanisms (`quirks`); `env.unit_state()` and `env.truth()` give their ground truth in your dev sim. They are examples of the kinds, not the scored units. |
-| `practice_grader/grade.py` | Runs your controller over the grading wire against the practice units on visible seeds and prints the raw metric, each request's outcome and whether the repeated-step check would pass. |
+| `practice_grader/grade.py` | Runs a controller over the controller wire against the practice units on visible seeds and prints the raw metric, each request's outcome and whether the repeated-step check would pass. It applies the rules of a controller run (deadlines, repeated step indices, restarts, a time budget); none of them apply to the graded episode. |
 | `labclient.py` | Client for the lab (library and command line). |
 | `helpers/lab_bridge.py` | Optional boilerplate: runs your controller (`run.sh`) for one lab trial and logs every observation and action. |
-| `helpers/wire_skeleton.py` | Optional boilerplate for the grading wire (READY / reset / act / close, repeated step indices; one controller object for the whole run, with a reset hook per episode). |
+| `helpers/wire_skeleton.py` | Optional boilerplate for the controller wire (READY / reset / act / close, repeated step indices; one controller object for the whole run, with a reset hook per episode). |
+| `helpers/graded_bridge.py` | Optional boilerplate: runs such a controller (`run.sh`) in the graded episode, or continues the episode with it, and logs every observation and action. |
 | `NOTICE.md` | Where the appliance models come from (CC-BY-4.0). |
 
 Run Python as `/opt/venv/bin/python3` (Python 3.12 with NumPy, SciPy, OpenCV, Pillow, MuJoCo 3.16). The cameras are
 drawn by MuJoCo's Filament renderer (physically based) on the CPU (Mesa's lavapipe Vulkan driver; there is no GPU),
-the same way in your dev sim, in the lab and in the grader. The cell stands in a furnished kitchen that is drawn
+the same way in your dev sim and in the lab. The cell stands in a furnished kitchen that is drawn
 only: the cabinets, walls, shelf and furniture in the images have no collision geometry, and the robot can touch
 exactly what the simulation holds (the unit, the box it stands on, the wall behind it and the floor). The first
 image of a process takes about 5-7 s (the renderer starts and compiles its shaders; a later episode's first images
 take well under a second), and each process that renders needs about 1 GB of memory. `mujoco.Renderer` (through
-OSMesa) still works for anything else you want to draw. The sandbox has 4 CPUs and 12 GB of memory, while grading
-too (the image sets `OMP_NUM_THREADS=1`, so `nproc` prints 1).
+OSMesa) still works for anything else you want to draw. The sandbox has 4 CPUs and 12 GB of memory (the image sets
+`OMP_NUM_THREADS=1`, so `nproc` prints 1).
 
 ## The scored units
 
@@ -102,7 +105,8 @@ For each request, decided when it closes:
   setting (only on or off), the oven's timer knob. They are compared during those 20 steps only: a control disturbed
   on the way (the wrong burner turned on, one knocked off) must be back in its state before the 20 steps count.
 
-The episode score is the mean over its three requests; your result is the mean over the graded episodes.
+The episode score is the mean over its three requests; your result is the graded episode's score (The graded
+episode).
 
 ## Observation and action
 
@@ -125,53 +129,91 @@ an integer from 0 to 7 (anything else is a malformed action).
 
 `labclient.py` talks to a service on `/run/ale-lab/lab.sock` (JSON lines; `python3 labclient.py --help`). This lab
 serves `hello`, `budget`, `reset`, `step` and `close` (the client's `execute`, an open-loop plan, is not served here:
-the lab answers `unsupported`). A **trial** is one episode on one unit: `reset` with the unit id starts it (and
-charges 1 trial; you have **1 trial in total**, for one of the nine units, never refunded), then `step` with an
-action returns the next observation (steps are free) until the episode ends. A trial ends when its episode ends (when
-its third request closes, or when the simulation becomes unstable), when you send another `reset` or close the
-connection, after 3600 s of wall time or after 900 s without a request; a step cap of 4800 requests applies. A
-`reset` on a connection that has a trial ends that trial; once your trial is charged, every further `reset` is
-refused (`budget_exhausted`). The lab serves at most two connections
-at a time, and a call it cannot answer within 120 s restarts its worker (a trial already charged is not refunded).
-Each trial draws a fresh placement, initial state, request queue, lighting and sensor noise. A reset takes about 1 s
-and a step with all three images about 0.2 s (much less without images). The lab never reports scores, credit or the
-unit's state: only observations; but a request that closes before its deadline was completed. The lab units are
-exactly the units you are scored on. With 1 trial you can visit one of the nine units: the other eight your
-controller meets for the first time in the graded episodes. The lab is gone when grading starts.
+the lab answers `unsupported`), and the graded episode's calls (below). A **trial** is one episode on one unit:
+`reset` with the unit id starts it (and charges 1 trial; you have **1 trial in total**, for one of the nine units,
+never refunded), then `step` with an action returns the next observation (steps are free) until the episode ends. A
+trial ends when its episode ends (when its third request closes, or when the simulation becomes unstable), when you
+send another `reset` or close the connection, after 3600 s of wall time or after 900 s without a request; a step cap
+of 4800 requests applies. A `reset` on a connection that has a trial ends that trial; once your trial is charged,
+every further `reset` is refused (`budget_exhausted`). The lab serves at most two connections at a time, and a call
+it cannot answer within 120 s restarts its worker (a trial already charged is not refunded). Each trial draws a fresh
+placement, initial state, request queue, lighting and sensor noise. A reset takes about 1 s and a step with all three
+images about 0.2 s (much less without images). The lab never reports scores, credit or the unit's state: only
+observations; but a request that closes before its deadline was completed. The lab units are exactly the units you
+are scored on. With 1 trial you can visit one of the nine units. The lab also serves the graded episode (below); the
+lab trial stays available for the whole session.
 
-## Deliverable and grading
+## The graded episode (the only thing scored)
 
-Leave a controller in `/home/user/submission/` with an executable `run.sh` (started as `bash run.sh` with that
-folder as working directory, as your user, with no network: only AF_UNIX sockets work). Everything it needs must
-be inside that folder (at most 5000 files and 200 MiB; a larger folder scores 0), and the controller may write
-there; nothing else of your home is available when it is graded. Protocol (one JSON object per line on
-stdin/stdout; stdout carries only protocol messages, use stderr for logs): print `READY` within 120 s of its start
-(a controller that does not, at its first start, scores 0 for the whole run); then answer `{"type": "reset"}` with
-`{"ok": true}`, `{"type": "act", "t": T, "obs": {...}}` with `{"action": [8 numbers]}` within 30 s, and
-`{"type": "close"}` with `{"ok": true}` before exiting. At about 1 % of the steps the grader asks the same `t`
-twice, once with the real observation and once with a slightly perturbed copy, in a hidden order, and applies only
-the reply to the real one. The copy differs in `q` (each joint by up to 0.001 rad) and in what follows from it
-(`ee_pos`, `ee_quat`, `T_world_wrist`, recomputed), and in the wrench's force (up to 0.2 N per axis); `dq`,
-`gripper`, the images and everything else are the same. A pair in which both replies command no motion (the first
-six numbers all zero, within 1e-9) is not counted either way; if fewer than 10 % of the other pairs get two replies
-that differ (by more than 1e-4 in some number), the whole run scores 0: a controller that ignores its input, or
-answers a repeated `t` from a cache, fails.
+The graded episode is one episode of the fixed hidden set the scored units are graded on (18 episodes, 2 per unit,
+each a unit with a fixed seed: its placement, initial state, request queue, lighting, camera offsets and sensor
+noise), drawn once at random before your session. Every model plays this same episode. Its first observation names
+the unit (`unit`). It is an episode like a lab trial on that unit (the same unit, robot, controller, action and
+observation formats, cameras, sensor noise, physics, requests, deadlines and credit rule), except that it is that
+fixed episode, and it is not your lab trial.
 
-The grader runs 18 episodes: 2 on each unit, a fixed hidden set (each episode's seed is the same for every
-submission, so are its placement, initial state, lighting and camera offsets), in a hidden order (the observation
-names the unit). The lab, in contrast, draws a fresh episode at every trial. An episode in which the controller
-crashes, answers late or malformed, or makes the simulation unstable (an arm joint faster than 8 rad/s, a burner knob
-or a door faster than 30 rad/s, or a MuJoCo warning of a bad state) scores 0. After a crash, a late answer or a reply
-that breaks the protocol, the controller is started again before the next episode, at most 3 times: the episode that
-would need a fourth restart and every later one score 0. The whole grading run must finish within 6000 s; the
-episode under way when it runs out, and the episodes after it, score 0. The 6000 s cover the simulator and the
-rendering as well as your controller: measured over the grading wire with the task's Python on 4 CPUs (medians of
-two runs), a step costs the grader about 4-6 ms without an image, and an image asked for adds about 30-35 ms (wrist)
-or 15-20 ms (a fixed camera), up to several times that on a busy machine; a step with all three images costs about
-0.08-0.1 s. A run in which every request runs to its deadline has between 54,000 and 63,000 steps: all three images
-at every step of such a run cost the grader about 4,100 to 6,100 s, which leaves little of the 6000 s for your
-controller (nothing on a busy machine), while one fixed image at every step costs about 1,000 to 1,500 s. Before
-the first episode the grader draws one test image of each camera, which takes a few seconds of the 6000 s. Your
-controller is one process for the whole grading run (it is started again only after a crash, a late answer or a reply
-that breaks the protocol, at most 3 times), so it may carry what it learned about a unit in one episode into later
-episodes on the same unit. Only the final controller is scored; trial usage is not.
+The calls (`labclient.py`; the requests are JSON lines on the lab socket, `{"op": "graded_start"}` and so on):
+
+- `obs = lab.graded_start()`: starts the graded episode and returns its first observation (all three images). It
+  can be started **once per session**: the start is recorded before anything is simulated and is never given back,
+  whatever happens afterwards (a crash of your script, a lost connection).
+- `obs, done = lab.graded_step(action)`: one control step (0.1 s simulated) with an action in the format above;
+  `obs` is the next observation and `done` is true once the episode has ended. A malformed action is refused
+  (`bad_action`) and simulates nothing.
+- `obs, done = lab.graded_observe()`: the latest observation again, as the last step returned it (images
+  included); nothing is simulated. Use it to continue from a new script.
+- `lab.graded_status()`: `started`, `ended`, `end_reason`, `steps`, `sim_time_s`, `prep_left_s` (seconds left to
+  start it), `graded_left_s` (seconds left in it) and `holder` (`"you"`, `"other"` or none: the connection that
+  holds it).
+- `lab.graded_finish()`: ends the graded episode now.
+
+From the shell: `python3 labclient.py graded_status`, `graded_finish`, `graded_start --out first.json` (prints the
+reply with each image's data replaced by its shape and saves it whole), `graded_observe --out now.json`.
+`helpers/graded_bridge.py` runs a wire controller (`run.sh`) in the graded episode, as `helpers/lab_bridge.py`
+does for a trial (`--resume` continues the episode where it stands; `--steps N` stops after N steps; `--finish`
+ends the episode if the run stops before its end). A short example:
+
+```python
+import sys; sys.path.insert(0, "/home/user")
+from labclient import LabClient
+
+with LabClient() as lab:
+    obs = lab.graded_start()                                  # once per session
+    print(obs["unit"], obs["request_text"], obs["request_deadline_t"])
+    for _ in range(20):
+        obs, done = lab.graded_step([0, 0, -0.01, 0, 0, 0, -1, 0])
+
+# later, from another script: continue where the episode stands
+with LabClient() as lab:
+    obs, done = lab.graded_observe()
+    obs, done = lab.graded_step([0, 0, 0, 0, 0, 0, -1, 7])     # all three images in the next observation
+    print(lab.graded_status())
+    lab.graded_finish()                                       # when you are done
+```
+
+The episode lives in the lab, not in your connection or program: closing a connection or ending a script leaves it
+where it is, and any later connection continues it. Simulated time advances only with your steps, never while you
+think: a request's deadline (`request_deadline_t`) is a step index. One connection holds the episode at a time:
+while one holds it, graded calls from another one are answered `graded_busy` (`graded_status` still answers) until
+the first one closes. The lab serves at most two connections at a time and closes a connection that sent nothing
+for 900 s. If the lab itself fails during the episode, the episode ends there and is scored as it stood.
+
+**Two windows.** The graded episode must be started within 2 hours of the lab's start (a few seconds before your
+session starts); a later `graded_start` is refused (`window_closed`), and then the task scores 0. Once started, the
+episode ends:
+
+- at its own end: when its third request closes, or when the simulation becomes unstable (which scores 0);
+- when you call `graded_finish`;
+- 3 hours after its start (the lab ends it then, with or without a request);
+- when your session ends (at the latest 5 hours after it started).
+
+After its end the lab refuses further graded steps (`graded_over`).
+
+**Score.** Your result is the graded episode's score, the mean credit of its three requests (Credit), at the moment
+it ends. Nothing is simulated after the end: if the episode ends before its third request closes, the request open
+at that moment closes then (reached if its requested state has held for the last 3 steps; completed only if it
+already was) and a request not yet opened earns 0. If your session ends while the episode is running, it is scored
+as it stood after your last step. The lab never reports the score, the credit or the unit's state, only
+observations (a request that closes before its deadline was completed). Nothing else is scored: not the submission
+folder, not your lab trial, not any controller you build. `task_card.md` and the practice grader describe a run of
+a controller over the wire on the whole hidden set; here only the graded episode counts.
