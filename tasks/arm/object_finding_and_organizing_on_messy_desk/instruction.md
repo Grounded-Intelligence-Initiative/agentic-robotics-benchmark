@@ -42,7 +42,7 @@ An episode runs a fixed `20000` control steps at 10 Hz. During it:
    description of one specific object (for example `the mustard bottle`). Most
    requested objects are somewhere on the desk or in a container; some are not present at all.
    You close a request yourself with a *mark* in your action: **done: delivered** or **done:
-   no such object**. The grader checks the physical truth at that moment: a delivered mark
+   no such object**. The episode checks the physical truth at that moment: a delivered mark
    is right only if the requested object rests in the red container; a no-such-object mark is
    right only if no such object was on the desk or in a container when the request opened
    (while it is open the world neither brings one nor takes it away). A right mark closes the
@@ -58,51 +58,64 @@ An episode runs a fixed `20000` control steps at 10 Hz. During it:
    rest beside the robot's base (closer than 0.26 m, where no camera sees it and no hand reaches)
    is set back down on a free desk spot by the world a couple of seconds later, like a nudge.
 
-Every event is drawn from a hidden per-episode seed. Nothing in your sandbox plays an episode:
-the desk lab (see **Your sandbox**) is this desk without one, so your controller meets these
-dynamics, and is scored, for the first time in the graded episodes.
+Every event is drawn from a hidden per-episode seed. Nothing in your sandbox plays an episode
+except the graded episode itself: the desk lab (see **Your sandbox**) is this desk without one, so
+you meet these dynamics for the first time in the graded episode, which is also the only time they
+are scored.
 
-## What you must deliver
+## The graded episode
 
-Your session has a hard limit of **1 hour** of wall-clock time from the moment it starts (run
-`date` now and keep track). A session that is still running at the limit is cut off and **not
-graded at all**, so keep a working controller in place as you go and end the session yourself,
-with at least 10 minutes to spare. Whatever is in `/home/user/submission` when you end it is
-what the grader runs.
-
-Leave a controller at `/home/user/submission/run.sh`. The grader launches it as
-`bash run.sh` with the working directory `/home/user/submission`, as your own user account,
-with **no network access**, and talks to it over stdin/stdout, one JSON object per line.
-Grading runs in a fresh copy of this machine into which only `/home/user/submission` is
-carried over: the rest of your home (the desk lab, `lab_client.py`, the task card, anything you
-saved elsewhere) is not there, so everything the controller imports or reads
-must be inside that folder.
-Call interpreters by absolute path in `run.sh`: `/opt/venv/bin/python3` is Python 3.12 with
-NumPy, Pillow and SciPy (the bare `python3` on your shell's `PATH` may be a different one), and
-the simulator runs under `/opt/isaac/bin/python3`.
+You are scored on one episode, the **graded episode**, which you play yourself during this
+session. It was drawn the way the hidden episodes are, from the same hidden set, and it runs under
+exactly the rules of this page: the same desk, simulator, sensors, seed-driven world, `20000`-step
+horizon, request deadlines and score. It runs in a service of its own on this machine, under
+another account: you cannot read it, change it or see its score, and you drive it through
+`/home/user/graded_episode.py` (Python 3, standard library only):
 
 ```
-READY                                                     <- your first stdout line, within 120 s
-{"type": "reset"}                        -> {"ok": true}
-{"type": "act", "t": 0, "obs": {...}}    -> {"action": [dx, dy, dz, droll, dpitch, dyaw, grip, mark]}   (an optional ninth number asks for hi-res frames, see Action)
-{"type": "close"}                        -> {"ok": true}, then exit
+import sys; sys.path.insert(0, "/home/user")
+from graded_episode import GradedEpisode
+ep = GradedEpisode()                 # connect (one client at a time)
+ep.status()                          # {"started", "ended", "steps", "horizon", "sim_time_s",
+                                     #  "prep_left_s", "graded_left_s"}
+obs = ep.start()                     # ONCE per session: the observation at t = 0
+while not ep.done:
+    obs = ep.step(policy(obs))       # one control step: an action in, the next observation out
+ep.finish()                          # optional: end the episode now
 ```
 
-- `t` is the step index inside the episode, owned by the grader and restarting at 0 after
-  every `reset`. **A step may be queried more than once with the same `t`**; repeated queries
-  do not advance the episode. Count steps by `t`, not by requests, and answer every request
-  from the observation it carries: a repeated query can carry slightly different
-  proprioception, and the grader uses such pairs to check that your actions depend on what you
-  observe. A controller whose actions do not (a replay, a constant stream) scores 0.
-- Every reply is due within 30 s. A missed deadline, a crash, non-JSON output or a reply
-  without `action` aborts the episode; the next `reset` restarts `run.sh` (at most 3 restarts
-  per run), so your controller must survive being started again.
-- An aborted episode scores 0; it is never dropped.
-- Your controller has a **time budget of 3000 s per episode**: the time the grader spends
-  waiting for your replies, summed over the episode, plus 0.1 s for every hi-res camera frame
-  you ask for (see Action). The simulator's own time is not counted, so a slow machine does not
-  cost you anything. An episode whose controller uses up its budget is cut at that step and
-  scored on the state it reached, scaled by the fraction of the horizon that ran (see Scoring).
+From a shell, `/opt/venv/bin/python3 /home/user/graded_episode.py status` prints the status
+(`start` and `finish --yes` also exist).
+
+- **One shot.** `start()` succeeds once per session. The start is charged before anything is
+  simulated and never refunded. It launches the episode's own simulator, which takes from seconds
+  to a few minutes; if that simulator cannot start, nothing is charged and you can try again. It
+  needs about 6 GB of GPU memory, as the desk lab does: if your lab holds the GPU, close it first.
+- **The world waits for you.** It advances only inside `step()`: one call is one control step
+  (0.1 s of simulated time). Between your calls nothing moves and no deadline runs, so thinking
+  costs no simulated time; deadlines are in steps (`deadline_t`). The episode does not stand still
+  while you step, though: arrivals, requests and disturbances come as described above.
+- **Persistent.** The episode lives in the service, not in your connection or your script. Close
+  the connection, let a script crash, or move to the next script: a new `GradedEpisode()` continues
+  where the episode stands, and `observe()` returns the observation your next step acts on (nothing
+  is simulated). One client at a time: while one is connected, a second gets `busy`, so let your
+  program log its own progress and close its connection (or exit) before you connect another.
+- **Steps.** `step(action)` takes the eight numbers of **Action** (plus the optional ninth); a
+  malformed action is refused and nothing is simulated. Each observation is exactly the one
+  described in **Observation**. A step takes about 0.15-0.25 s of wall-clock time, so a full episode
+  is about an hour of simulation: drive it from a program, not by hand, and run long stretches in
+  the background with a log.
+- **Two windows.** You must start the graded episode within **1 hour** of the start of your
+  session (`prep_left_s`); a later start is refused, and the task then scores 0. Once started, the
+  episode has at most **4 hours** of wall-clock time (`graded_left_s`). Your session's hard limit is
+  **5 hours**. Run `date` now and keep track.
+- **How it ends.** The episode ends at step `20000`, when you call `finish()`, when its 4 hours run
+  out, or when your session ends, whichever comes first. Nothing is simulated after it ends. An
+  episode that ends before step `20000` is scored on the state it reached, scaled by the fraction of
+  the horizon that ran (see **Scoring**), so an early end costs in proportion; if your session ends
+  while the episode runs, it is scored as it stood after your last step.
+- **Nothing else is graded.** `/home/user/submission` is not read and no program of yours runs
+  after the session: the graded episode's record, kept by the service, is the whole result.
 
 ## Observation
 
@@ -135,11 +148,10 @@ command in `[0, 1]` (0 = open, 1 = closed), and a `mark` for the open request: `
 such object** (you claim it is not on the desk). The optional ninth number is a **hi-res request**:
 a bitmask of cameras (1 = agentview, 2 = left_view, 4 = eye_in_hand, 8 = oblique; 15 = all four)
 whose 1920 x 1080 RGB and depth frames come back in that step's observation as `rgb_hires` /
-`depth_hires`. The 320 x 320 frames always arrive at 10 Hz; every hi-res camera frame you ask for
-is charged 0.1 s against your controller's time budget (the simulator's PNG encoding, at a fixed
-price), and receiving and decoding it (about 3 MB per camera) is your controller's own time on top,
-so you choose, step by step, between picture quality and time. Nothing else about the step
-changes. A mark is ignored while no request is open, and a request accepts one mark only; the
+`depth_hires`. The 320 x 320 frames always arrive at 10 Hz; a hi-res frame costs wall-clock time
+inside the graded window (the simulator's PNG encoding, about 0.1 s per camera, and receiving and
+decoding it, about 3 MB per camera), so you choose, step by step, between picture quality and time.
+Nothing else about the step changes. A mark is ignored while no request is open, and a request accepts one mark only; the
 request, and the desk with it, are judged at the step of the mark. The environment turns the delta
 into joint targets through inverse kinematics, interpolated over the step (a 5 cm step completes
 about 96% within it); a delta with no solution is refused and the arm simply stays put for that
@@ -148,8 +160,8 @@ rather than jumped to.
 
 ## Scoring
 
-The grader owns the simulator and tracks the physical state at every step; nothing your
-controller prints is a scoring input. Its detectors: finger **contact** with an object (physics
+The graded episode's service owns the simulator and tracks the physical state at every step;
+nothing you print or write is a scoring input. Its detectors: finger **contact** with an object (physics
 contact report), **held** (a real grasp: both fingers touch the object and it has been lifted,
 its centre at least 3 cm above where it last rested; a finger brushing or pushing an object does
 not hold it), **in container** (the object's centre inside a container's interior, in that
@@ -212,15 +224,17 @@ order at the mark, so an object dug out of its container and not put back, or an
 loose, counts against you then. The two terms multiply: a tidy desk earns nothing while no
 request has earned a point (an episode whose request points add up to 0 or less scores 0,
 however well sorted the desk), and request points earn only as much as the desk is in order.
-An untouched scene scores exactly 0. An episode the grader cuts short because your controller
-used up its time budget is scored on the state it reached, scaled by the fraction of the
-horizon that ran; an aborted episode (protocol error, step deadline, malformed action) scores 0.
+An untouched scene scores exactly 0. An episode that ends before its last step (your `finish()`,
+the end of its 4-hour window, the end of your session) is scored on the state it reached, scaled by
+the fraction of the horizon that ran: `S · steps / 20000`.
 
-The task's reported metric is `mean_episode_score`, the mean of `S` over the hidden seeds. The
-reward you are judged on is that mean relative to a hidden reference value.
+The task's reported metric is `mean_episode_score`, here the `S` of the graded episode (the mean
+over that one episode). The reward you are judged on is that value relative to a hidden reference
+value.
 
 ## Your sandbox
 
+- `/home/user/graded_episode.py` — the graded episode's client (see **The graded episode**);
 - `/home/user/messy_desk_lab.py` — the desk lab: this desk in Isaac Sim, with the same robot,
   containers, objects, cameras, physics and action rule as the graded episodes, but without the
   episode. Nothing arrives, no request opens, nothing is misplaced, nudged or emptied, and nothing
@@ -230,13 +244,15 @@ reward you are judged on is that mean relative to a hidden reference value.
   observation your controller will get plus the arm's own `ik_ok` status. The commands are in
   the task card; `/home/user/lab_client.py` starts the lab and wraps them. It is where you try
   your perception and your grasps; the episode itself, its requests and its scoring are the ones
-  described above, and the only run of your controller through them is the graded one;
-- `/home/user/example_controller/` — a complete, policy-free controller (`run.sh` + one Python
-  file: READY, the reply loop, camera decoding, where the action goes). Copy it to
-  `/home/user/submission/` and replace the policy; as shipped it holds still and scores 0;
+  described above, and the only run through them is the graded one;
+- `/home/user/example_controller/` — a policy-free controller skeleton (`run.sh` + one Python
+  file): camera decoding and where the action goes. It speaks a stdin/stdout wire of its own
+  (READY, reset, act, close) that the graded episode does not use; take what helps and drive the
+  graded episode with `graded_episode.py`;
 - `/home/user/task_card.md` — camera calibration, desk and container geometry, the hand, the
   class catalogue, the desk lab's commands.
 
 The lab runs headless on the GPU in this sandbox. Its first launch in a fresh sandbox compiles
 the renderer's shaders and takes about ten minutes; later launches take seconds. Start it early
-and keep it alive.
+and keep it alive while you practise. The graded episode's simulator runs on the same GPU (about
+6 GB each), and its shaders were compiled before your session started.
