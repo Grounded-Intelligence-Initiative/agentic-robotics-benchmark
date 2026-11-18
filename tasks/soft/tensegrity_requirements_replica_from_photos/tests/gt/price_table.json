@@ -4,7 +4,7 @@
   "key": "bom_xlsx",
   "file": "the project's website (NOTICE.md row 8): BOM.xlsx",
   "sha256": "3dea5cc931d8758edf7f7f91b350ff498b703577aa277af90cf918284448c613",
-  "how": "openpyxl: Components (pack, unit price, per-strut quantity, J tier formulas), Discounts (tier prices); formulas evaluated by readers/bom.py"
+  "how": "openpyxl: Components (pack, unit price, per-strut quantity, J tier formulas), Discounts (tier prices); formulas evaluated by the maintainers' workbook reader"
  },
  "cost_function": "total = qty_per_strut x 24 + qty_per_robot_extra x 8 (8 robots); packs = ceil(total / pack); price = the tier the total reaches (strict \"<\" bounds as in the workbook); cost = packs x price",
  "robots": 8,

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Oracle (privileged reference): the three deliverables transcribed from the hidden truth ledger (tests/gt/ledger.json)
-# by the dev-side builder qc/build_oracle.py; nothing is solved here. `ale validate` runs this in place of the agent,
+# by the maintainers' build; nothing is solved here. `ale validate` runs this in place of the agent,
 # as the same unprivileged account; the grader scores it exactly 1.0 on every criterion (tests/anchor.json).
 set -euo pipefail
 HOME_DIR="${ALE_HOME:-/home/user}"

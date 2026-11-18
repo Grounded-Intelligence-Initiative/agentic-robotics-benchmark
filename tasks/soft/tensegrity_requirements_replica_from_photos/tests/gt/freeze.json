@@ -677,9 +677,9 @@
   }
  ],
  "sha256": {
-  "ledger.json": "63d70980d7946566aa743a82f42a0c984ffe7539e2474b9c382a71f0a7168e94",
+  "ledger.json": "b449a3d4c5a01c4df91f0611b4fd6814c68517598a0ee775098a062441ca2d34",
   "neutral_lists.json": "682bb7bfb446aca082b48c83910ca2d370c0357adad5b8a68c41f2df3b60634e",
-  "price_table.json": "96eb059854465d236e9708b3b08a73d48bf352356ec693fd42253a9259cd90f4"
+  "price_table.json": "edfc721637c3a213d04d212eb15b9c74b06ef6b0db477fb8678eb78ed481ac09"
  },
  "v1_0": {
   "by": "the maintainers' freeze step",

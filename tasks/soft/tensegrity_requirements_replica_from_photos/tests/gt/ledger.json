@@ -165,7 +165,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -304,7 +304,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -443,7 +443,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -582,7 +582,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -721,7 +721,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -860,7 +860,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -1002,7 +1002,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -1144,7 +1144,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -1286,7 +1286,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -1428,7 +1428,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -1570,7 +1570,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -1712,7 +1712,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -1854,7 +1854,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -1996,7 +1996,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -2138,7 +2138,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -2247,7 +2247,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -2357,7 +2357,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -2467,7 +2467,7 @@
    },
    "cross_checks": [
     {
-     "what": "trace self-check on the neutral export (ledger/trace_check.py)",
+     "what": "trace self-check on the neutral export (the maintainers' trace check)",
      "result": "51 / 51 items equal"
     },
     {
@@ -2755,79 +2755,79 @@
      "key": null,
      "file": "the designers' whole-strut mesh: the list of its edge-connected pieces (maintainers' split)",
      "sha256": "78abb197334b21708a9c6425a8551679b81828147fe8e6abeb544908af156572",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/families.json",
      "sha256": "a91fcf8015ea495df6cd465dd3f9b50aaa55b85b68840ebcb9dcbab62add9b92",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/features.json",
      "sha256": "ed2ee25104dfa3a3b063ce53b54b3ebf758bba330d3b23f3bf68161c1b03abaa",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-CO.ply",
      "sha256": "84c49339b739378b65df09fea1210a455f7a7cb5f7b89cdd365469959798d8b5",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EA.ply",
      "sha256": "86141554087331400d6db16ff67d4fabe488842e1e498f13324ae6cd8a607cf0",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EB.ply",
      "sha256": "d2f42be190b98721c39f5c3c41f31d885f7501331f3cf5cf3094ec650ae1f40d",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EC.ply",
      "sha256": "23e27e8a640f530abd928e93832eddf9b8c9f0bf48d9f4da4a7669763d4be099",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MA.ply",
      "sha256": "a61ff89372e543807dd6a1e1ed6a5e1e95c33ec4cb462c389018848dab470abc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MB.ply",
      "sha256": "0ec26b554e83d3ed6359fef178308e2587430d80e63230d341340220972aec41",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-PB.ply",
      "sha256": "6b0cec7d82f98aa36e82de49efc2105e8a99b110bf9e63448e8ae48df62efbdc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-WI.ply",
      "sha256": "8b3449d597088c8f69e8450f503703903485270b63cf56995339ec0399ef4543",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c022.ply (maintainers' split)",
      "sha256": "f4c3d4ad1288e2ffa4115b0429d87fef4c42cf14e105d36af97789f95dbef049",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c097.ply (maintainers' split)",
      "sha256": "617c09a378c865c8532fe30d0579292b9d898d0ce76fd9651dd7dce44ace482c",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     }
    ],
    "contradictions": [
@@ -2885,79 +2885,79 @@
      "key": null,
      "file": "the designers' whole-strut mesh: the list of its edge-connected pieces (maintainers' split)",
      "sha256": "78abb197334b21708a9c6425a8551679b81828147fe8e6abeb544908af156572",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/families.json",
      "sha256": "a91fcf8015ea495df6cd465dd3f9b50aaa55b85b68840ebcb9dcbab62add9b92",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/features.json",
      "sha256": "ed2ee25104dfa3a3b063ce53b54b3ebf758bba330d3b23f3bf68161c1b03abaa",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-CO.ply",
      "sha256": "84c49339b739378b65df09fea1210a455f7a7cb5f7b89cdd365469959798d8b5",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EA.ply",
      "sha256": "86141554087331400d6db16ff67d4fabe488842e1e498f13324ae6cd8a607cf0",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EB.ply",
      "sha256": "d2f42be190b98721c39f5c3c41f31d885f7501331f3cf5cf3094ec650ae1f40d",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EC.ply",
      "sha256": "23e27e8a640f530abd928e93832eddf9b8c9f0bf48d9f4da4a7669763d4be099",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MA.ply",
      "sha256": "a61ff89372e543807dd6a1e1ed6a5e1e95c33ec4cb462c389018848dab470abc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MB.ply",
      "sha256": "0ec26b554e83d3ed6359fef178308e2587430d80e63230d341340220972aec41",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-PB.ply",
      "sha256": "6b0cec7d82f98aa36e82de49efc2105e8a99b110bf9e63448e8ae48df62efbdc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-WI.ply",
      "sha256": "8b3449d597088c8f69e8450f503703903485270b63cf56995339ec0399ef4543",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c022.ply (maintainers' split)",
      "sha256": "f4c3d4ad1288e2ffa4115b0429d87fef4c42cf14e105d36af97789f95dbef049",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c097.ply (maintainers' split)",
      "sha256": "617c09a378c865c8532fe30d0579292b9d898d0ce76fd9651dd7dce44ace482c",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     }
    ],
    "contradictions": [],
@@ -3010,79 +3010,79 @@
      "key": null,
      "file": "the designers' whole-strut mesh: the list of its edge-connected pieces (maintainers' split)",
      "sha256": "78abb197334b21708a9c6425a8551679b81828147fe8e6abeb544908af156572",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/families.json",
      "sha256": "a91fcf8015ea495df6cd465dd3f9b50aaa55b85b68840ebcb9dcbab62add9b92",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/features.json",
      "sha256": "ed2ee25104dfa3a3b063ce53b54b3ebf758bba330d3b23f3bf68161c1b03abaa",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-CO.ply",
      "sha256": "84c49339b739378b65df09fea1210a455f7a7cb5f7b89cdd365469959798d8b5",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EA.ply",
      "sha256": "86141554087331400d6db16ff67d4fabe488842e1e498f13324ae6cd8a607cf0",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EB.ply",
      "sha256": "d2f42be190b98721c39f5c3c41f31d885f7501331f3cf5cf3094ec650ae1f40d",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EC.ply",
      "sha256": "23e27e8a640f530abd928e93832eddf9b8c9f0bf48d9f4da4a7669763d4be099",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MA.ply",
      "sha256": "a61ff89372e543807dd6a1e1ed6a5e1e95c33ec4cb462c389018848dab470abc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MB.ply",
      "sha256": "0ec26b554e83d3ed6359fef178308e2587430d80e63230d341340220972aec41",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-PB.ply",
      "sha256": "6b0cec7d82f98aa36e82de49efc2105e8a99b110bf9e63448e8ae48df62efbdc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-WI.ply",
      "sha256": "8b3449d597088c8f69e8450f503703903485270b63cf56995339ec0399ef4543",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c022.ply (maintainers' split)",
      "sha256": "f4c3d4ad1288e2ffa4115b0429d87fef4c42cf14e105d36af97789f95dbef049",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c097.ply (maintainers' split)",
      "sha256": "617c09a378c865c8532fe30d0579292b9d898d0ce76fd9651dd7dce44ace482c",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     }
    ],
    "contradictions": [],
@@ -3139,79 +3139,79 @@
      "key": null,
      "file": "the designers' whole-strut mesh: the list of its edge-connected pieces (maintainers' split)",
      "sha256": "78abb197334b21708a9c6425a8551679b81828147fe8e6abeb544908af156572",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/families.json",
      "sha256": "a91fcf8015ea495df6cd465dd3f9b50aaa55b85b68840ebcb9dcbab62add9b92",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/features.json",
      "sha256": "ed2ee25104dfa3a3b063ce53b54b3ebf758bba330d3b23f3bf68161c1b03abaa",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-CO.ply",
      "sha256": "84c49339b739378b65df09fea1210a455f7a7cb5f7b89cdd365469959798d8b5",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EA.ply",
      "sha256": "86141554087331400d6db16ff67d4fabe488842e1e498f13324ae6cd8a607cf0",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EB.ply",
      "sha256": "d2f42be190b98721c39f5c3c41f31d885f7501331f3cf5cf3094ec650ae1f40d",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EC.ply",
      "sha256": "23e27e8a640f530abd928e93832eddf9b8c9f0bf48d9f4da4a7669763d4be099",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MA.ply",
      "sha256": "a61ff89372e543807dd6a1e1ed6a5e1e95c33ec4cb462c389018848dab470abc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MB.ply",
      "sha256": "0ec26b554e83d3ed6359fef178308e2587430d80e63230d341340220972aec41",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-PB.ply",
      "sha256": "6b0cec7d82f98aa36e82de49efc2105e8a99b110bf9e63448e8ae48df62efbdc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-WI.ply",
      "sha256": "8b3449d597088c8f69e8450f503703903485270b63cf56995339ec0399ef4543",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c022.ply (maintainers' split)",
      "sha256": "f4c3d4ad1288e2ffa4115b0429d87fef4c42cf14e105d36af97789f95dbef049",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c097.ply (maintainers' split)",
      "sha256": "617c09a378c865c8532fe30d0579292b9d898d0ce76fd9651dd7dce44ace482c",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     }
    ],
    "contradictions": [],
@@ -3274,79 +3274,79 @@
      "key": null,
      "file": "the designers' whole-strut mesh: the list of its edge-connected pieces (maintainers' split)",
      "sha256": "78abb197334b21708a9c6425a8551679b81828147fe8e6abeb544908af156572",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/families.json",
      "sha256": "a91fcf8015ea495df6cd465dd3f9b50aaa55b85b68840ebcb9dcbab62add9b92",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/features.json",
      "sha256": "ed2ee25104dfa3a3b063ce53b54b3ebf758bba330d3b23f3bf68161c1b03abaa",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-CO.ply",
      "sha256": "84c49339b739378b65df09fea1210a455f7a7cb5f7b89cdd365469959798d8b5",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EA.ply",
      "sha256": "86141554087331400d6db16ff67d4fabe488842e1e498f13324ae6cd8a607cf0",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EB.ply",
      "sha256": "d2f42be190b98721c39f5c3c41f31d885f7501331f3cf5cf3094ec650ae1f40d",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EC.ply",
      "sha256": "23e27e8a640f530abd928e93832eddf9b8c9f0bf48d9f4da4a7669763d4be099",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MA.ply",
      "sha256": "a61ff89372e543807dd6a1e1ed6a5e1e95c33ec4cb462c389018848dab470abc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MB.ply",
      "sha256": "0ec26b554e83d3ed6359fef178308e2587430d80e63230d341340220972aec41",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-PB.ply",
      "sha256": "6b0cec7d82f98aa36e82de49efc2105e8a99b110bf9e63448e8ae48df62efbdc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-WI.ply",
      "sha256": "8b3449d597088c8f69e8450f503703903485270b63cf56995339ec0399ef4543",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c022.ply (maintainers' split)",
      "sha256": "f4c3d4ad1288e2ffa4115b0429d87fef4c42cf14e105d36af97789f95dbef049",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c097.ply (maintainers' split)",
      "sha256": "617c09a378c865c8532fe30d0579292b9d898d0ce76fd9651dd7dce44ace482c",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     }
    ],
    "contradictions": [],
@@ -3403,79 +3403,79 @@
      "key": null,
      "file": "the designers' whole-strut mesh: the list of its edge-connected pieces (maintainers' split)",
      "sha256": "78abb197334b21708a9c6425a8551679b81828147fe8e6abeb544908af156572",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/families.json",
      "sha256": "a91fcf8015ea495df6cd465dd3f9b50aaa55b85b68840ebcb9dcbab62add9b92",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/features.json",
      "sha256": "ed2ee25104dfa3a3b063ce53b54b3ebf758bba330d3b23f3bf68161c1b03abaa",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-CO.ply",
      "sha256": "84c49339b739378b65df09fea1210a455f7a7cb5f7b89cdd365469959798d8b5",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EA.ply",
      "sha256": "86141554087331400d6db16ff67d4fabe488842e1e498f13324ae6cd8a607cf0",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EB.ply",
      "sha256": "d2f42be190b98721c39f5c3c41f31d885f7501331f3cf5cf3094ec650ae1f40d",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EC.ply",
      "sha256": "23e27e8a640f530abd928e93832eddf9b8c9f0bf48d9f4da4a7669763d4be099",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MA.ply",
      "sha256": "a61ff89372e543807dd6a1e1ed6a5e1e95c33ec4cb462c389018848dab470abc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MB.ply",
      "sha256": "0ec26b554e83d3ed6359fef178308e2587430d80e63230d341340220972aec41",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-PB.ply",
      "sha256": "6b0cec7d82f98aa36e82de49efc2105e8a99b110bf9e63448e8ae48df62efbdc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-WI.ply",
      "sha256": "8b3449d597088c8f69e8450f503703903485270b63cf56995339ec0399ef4543",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c022.ply (maintainers' split)",
      "sha256": "f4c3d4ad1288e2ffa4115b0429d87fef4c42cf14e105d36af97789f95dbef049",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c097.ply (maintainers' split)",
      "sha256": "617c09a378c865c8532fe30d0579292b9d898d0ce76fd9651dd7dce44ace482c",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     }
    ],
    "contradictions": [
@@ -3537,79 +3537,79 @@
      "key": null,
      "file": "the designers' whole-strut mesh: the list of its edge-connected pieces (maintainers' split)",
      "sha256": "78abb197334b21708a9c6425a8551679b81828147fe8e6abeb544908af156572",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/families.json",
      "sha256": "a91fcf8015ea495df6cd465dd3f9b50aaa55b85b68840ebcb9dcbab62add9b92",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/features.json",
      "sha256": "ed2ee25104dfa3a3b063ce53b54b3ebf758bba330d3b23f3bf68161c1b03abaa",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-CO.ply",
      "sha256": "84c49339b739378b65df09fea1210a455f7a7cb5f7b89cdd365469959798d8b5",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EA.ply",
      "sha256": "86141554087331400d6db16ff67d4fabe488842e1e498f13324ae6cd8a607cf0",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EB.ply",
      "sha256": "d2f42be190b98721c39f5c3c41f31d885f7501331f3cf5cf3094ec650ae1f40d",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EC.ply",
      "sha256": "23e27e8a640f530abd928e93832eddf9b8c9f0bf48d9f4da4a7669763d4be099",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MA.ply",
      "sha256": "a61ff89372e543807dd6a1e1ed6a5e1e95c33ec4cb462c389018848dab470abc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MB.ply",
      "sha256": "0ec26b554e83d3ed6359fef178308e2587430d80e63230d341340220972aec41",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-PB.ply",
      "sha256": "6b0cec7d82f98aa36e82de49efc2105e8a99b110bf9e63448e8ae48df62efbdc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-WI.ply",
      "sha256": "8b3449d597088c8f69e8450f503703903485270b63cf56995339ec0399ef4543",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c022.ply (maintainers' split)",
      "sha256": "f4c3d4ad1288e2ffa4115b0429d87fef4c42cf14e105d36af97789f95dbef049",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c097.ply (maintainers' split)",
      "sha256": "617c09a378c865c8532fe30d0579292b9d898d0ce76fd9651dd7dce44ace482c",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     }
    ],
    "contradictions": [],
@@ -3663,79 +3663,79 @@
      "key": null,
      "file": "the designers' whole-strut mesh: the list of its edge-connected pieces (maintainers' split)",
      "sha256": "78abb197334b21708a9c6425a8551679b81828147fe8e6abeb544908af156572",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/families.json",
      "sha256": "a91fcf8015ea495df6cd465dd3f9b50aaa55b85b68840ebcb9dcbab62add9b92",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/features.json",
      "sha256": "ed2ee25104dfa3a3b063ce53b54b3ebf758bba330d3b23f3bf68161c1b03abaa",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-CO.ply",
      "sha256": "84c49339b739378b65df09fea1210a455f7a7cb5f7b89cdd365469959798d8b5",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EA.ply",
      "sha256": "86141554087331400d6db16ff67d4fabe488842e1e498f13324ae6cd8a607cf0",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EB.ply",
      "sha256": "d2f42be190b98721c39f5c3c41f31d885f7501331f3cf5cf3094ec650ae1f40d",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EC.ply",
      "sha256": "23e27e8a640f530abd928e93832eddf9b8c9f0bf48d9f4da4a7669763d4be099",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MA.ply",
      "sha256": "a61ff89372e543807dd6a1e1ed6a5e1e95c33ec4cb462c389018848dab470abc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MB.ply",
      "sha256": "0ec26b554e83d3ed6359fef178308e2587430d80e63230d341340220972aec41",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-PB.ply",
      "sha256": "6b0cec7d82f98aa36e82de49efc2105e8a99b110bf9e63448e8ae48df62efbdc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-WI.ply",
      "sha256": "8b3449d597088c8f69e8450f503703903485270b63cf56995339ec0399ef4543",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c022.ply (maintainers' split)",
      "sha256": "f4c3d4ad1288e2ffa4115b0429d87fef4c42cf14e105d36af97789f95dbef049",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c097.ply (maintainers' split)",
      "sha256": "617c09a378c865c8532fe30d0579292b9d898d0ce76fd9651dd7dce44ace482c",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     }
    ],
    "contradictions": [
@@ -3794,79 +3794,79 @@
      "key": null,
      "file": "the designers' whole-strut mesh: the list of its edge-connected pieces (maintainers' split)",
      "sha256": "78abb197334b21708a9c6425a8551679b81828147fe8e6abeb544908af156572",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/families.json",
      "sha256": "a91fcf8015ea495df6cd465dd3f9b50aaa55b85b68840ebcb9dcbab62add9b92",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/features.json",
      "sha256": "ed2ee25104dfa3a3b063ce53b54b3ebf758bba330d3b23f3bf68161c1b03abaa",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-CO.ply",
      "sha256": "84c49339b739378b65df09fea1210a455f7a7cb5f7b89cdd365469959798d8b5",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EA.ply",
      "sha256": "86141554087331400d6db16ff67d4fabe488842e1e498f13324ae6cd8a607cf0",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EB.ply",
      "sha256": "d2f42be190b98721c39f5c3c41f31d885f7501331f3cf5cf3094ec650ae1f40d",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EC.ply",
      "sha256": "23e27e8a640f530abd928e93832eddf9b8c9f0bf48d9f4da4a7669763d4be099",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MA.ply",
      "sha256": "a61ff89372e543807dd6a1e1ed6a5e1e95c33ec4cb462c389018848dab470abc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MB.ply",
      "sha256": "0ec26b554e83d3ed6359fef178308e2587430d80e63230d341340220972aec41",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-PB.ply",
      "sha256": "6b0cec7d82f98aa36e82de49efc2105e8a99b110bf9e63448e8ae48df62efbdc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-WI.ply",
      "sha256": "8b3449d597088c8f69e8450f503703903485270b63cf56995339ec0399ef4543",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c022.ply (maintainers' split)",
      "sha256": "f4c3d4ad1288e2ffa4115b0429d87fef4c42cf14e105d36af97789f95dbef049",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c097.ply (maintainers' split)",
      "sha256": "617c09a378c865c8532fe30d0579292b9d898d0ce76fd9651dd7dce44ace482c",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     }
    ],
    "contradictions": [],
@@ -3921,79 +3921,79 @@
      "key": null,
      "file": "the designers' whole-strut mesh: the list of its edge-connected pieces (maintainers' split)",
      "sha256": "78abb197334b21708a9c6425a8551679b81828147fe8e6abeb544908af156572",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/families.json",
      "sha256": "a91fcf8015ea495df6cd465dd3f9b50aaa55b85b68840ebcb9dcbab62add9b92",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/features.json",
      "sha256": "ed2ee25104dfa3a3b063ce53b54b3ebf758bba330d3b23f3bf68161c1b03abaa",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-CO.ply",
      "sha256": "84c49339b739378b65df09fea1210a455f7a7cb5f7b89cdd365469959798d8b5",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EA.ply",
      "sha256": "86141554087331400d6db16ff67d4fabe488842e1e498f13324ae6cd8a607cf0",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EB.ply",
      "sha256": "d2f42be190b98721c39f5c3c41f31d885f7501331f3cf5cf3094ec650ae1f40d",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EC.ply",
      "sha256": "23e27e8a640f530abd928e93832eddf9b8c9f0bf48d9f4da4a7669763d4be099",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MA.ply",
      "sha256": "a61ff89372e543807dd6a1e1ed6a5e1e95c33ec4cb462c389018848dab470abc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MB.ply",
      "sha256": "0ec26b554e83d3ed6359fef178308e2587430d80e63230d341340220972aec41",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-PB.ply",
      "sha256": "6b0cec7d82f98aa36e82de49efc2105e8a99b110bf9e63448e8ae48df62efbdc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-WI.ply",
      "sha256": "8b3449d597088c8f69e8450f503703903485270b63cf56995339ec0399ef4543",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c022.ply (maintainers' split)",
      "sha256": "f4c3d4ad1288e2ffa4115b0429d87fef4c42cf14e105d36af97789f95dbef049",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c097.ply (maintainers' split)",
      "sha256": "617c09a378c865c8532fe30d0579292b9d898d0ce76fd9651dd7dce44ace482c",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     }
    ],
    "contradictions": [],
@@ -4061,79 +4061,79 @@
      "key": null,
      "file": "the designers' whole-strut mesh: the list of its edge-connected pieces (maintainers' split)",
      "sha256": "78abb197334b21708a9c6425a8551679b81828147fe8e6abeb544908af156572",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/families.json",
      "sha256": "a91fcf8015ea495df6cd465dd3f9b50aaa55b85b68840ebcb9dcbab62add9b92",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/features.json",
      "sha256": "ed2ee25104dfa3a3b063ce53b54b3ebf758bba330d3b23f3bf68161c1b03abaa",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-CO.ply",
      "sha256": "84c49339b739378b65df09fea1210a455f7a7cb5f7b89cdd365469959798d8b5",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EA.ply",
      "sha256": "86141554087331400d6db16ff67d4fabe488842e1e498f13324ae6cd8a607cf0",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EB.ply",
      "sha256": "d2f42be190b98721c39f5c3c41f31d885f7501331f3cf5cf3094ec650ae1f40d",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EC.ply",
      "sha256": "23e27e8a640f530abd928e93832eddf9b8c9f0bf48d9f4da4a7669763d4be099",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MA.ply",
      "sha256": "a61ff89372e543807dd6a1e1ed6a5e1e95c33ec4cb462c389018848dab470abc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MB.ply",
      "sha256": "0ec26b554e83d3ed6359fef178308e2587430d80e63230d341340220972aec41",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-PB.ply",
      "sha256": "6b0cec7d82f98aa36e82de49efc2105e8a99b110bf9e63448e8ae48df62efbdc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-WI.ply",
      "sha256": "8b3449d597088c8f69e8450f503703903485270b63cf56995339ec0399ef4543",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c022.ply (maintainers' split)",
      "sha256": "f4c3d4ad1288e2ffa4115b0429d87fef4c42cf14e105d36af97789f95dbef049",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c097.ply (maintainers' split)",
      "sha256": "617c09a378c865c8532fe30d0579292b9d898d0ce76fd9651dd7dce44ace482c",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     }
    ],
    "contradictions": [],
@@ -4183,79 +4183,79 @@
      "key": null,
      "file": "the designers' whole-strut mesh: the list of its edge-connected pieces (maintainers' split)",
      "sha256": "78abb197334b21708a9c6425a8551679b81828147fe8e6abeb544908af156572",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/families.json",
      "sha256": "a91fcf8015ea495df6cd465dd3f9b50aaa55b85b68840ebcb9dcbab62add9b92",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/features.json",
      "sha256": "ed2ee25104dfa3a3b063ce53b54b3ebf758bba330d3b23f3bf68161c1b03abaa",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-CO.ply",
      "sha256": "84c49339b739378b65df09fea1210a455f7a7cb5f7b89cdd365469959798d8b5",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EA.ply",
      "sha256": "86141554087331400d6db16ff67d4fabe488842e1e498f13324ae6cd8a607cf0",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EB.ply",
      "sha256": "d2f42be190b98721c39f5c3c41f31d885f7501331f3cf5cf3094ec650ae1f40d",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EC.ply",
      "sha256": "23e27e8a640f530abd928e93832eddf9b8c9f0bf48d9f4da4a7669763d4be099",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MA.ply",
      "sha256": "a61ff89372e543807dd6a1e1ed6a5e1e95c33ec4cb462c389018848dab470abc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MB.ply",
      "sha256": "0ec26b554e83d3ed6359fef178308e2587430d80e63230d341340220972aec41",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-PB.ply",
      "sha256": "6b0cec7d82f98aa36e82de49efc2105e8a99b110bf9e63448e8ae48df62efbdc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-WI.ply",
      "sha256": "8b3449d597088c8f69e8450f503703903485270b63cf56995339ec0399ef4543",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c022.ply (maintainers' split)",
      "sha256": "f4c3d4ad1288e2ffa4115b0429d87fef4c42cf14e105d36af97789f95dbef049",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c097.ply (maintainers' split)",
      "sha256": "617c09a378c865c8532fe30d0579292b9d898d0ce76fd9651dd7dce44ace482c",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     }
    ],
    "contradictions": [],
@@ -4296,79 +4296,79 @@
      "key": null,
      "file": "the designers' whole-strut mesh: the list of its edge-connected pieces (maintainers' split)",
      "sha256": "78abb197334b21708a9c6425a8551679b81828147fe8e6abeb544908af156572",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/families.json",
      "sha256": "a91fcf8015ea495df6cd465dd3f9b50aaa55b85b68840ebcb9dcbab62add9b92",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/features.json",
      "sha256": "ed2ee25104dfa3a3b063ce53b54b3ebf758bba330d3b23f3bf68161c1b03abaa",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-CO.ply",
      "sha256": "84c49339b739378b65df09fea1210a455f7a7cb5f7b89cdd365469959798d8b5",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EA.ply",
      "sha256": "86141554087331400d6db16ff67d4fabe488842e1e498f13324ae6cd8a607cf0",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EB.ply",
      "sha256": "d2f42be190b98721c39f5c3c41f31d885f7501331f3cf5cf3094ec650ae1f40d",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-EC.ply",
      "sha256": "23e27e8a640f530abd928e93832eddf9b8c9f0bf48d9f4da4a7669763d4be099",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MA.ply",
      "sha256": "a61ff89372e543807dd6a1e1ed6a5e1e95c33ec4cb462c389018848dab470abc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-MB.ply",
      "sha256": "0ec26b554e83d3ed6359fef178308e2587430d80e63230d341340220972aec41",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-PB.ply",
      "sha256": "6b0cec7d82f98aa36e82de49efc2105e8a99b110bf9e63448e8ae48df62efbdc",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the CAD sibling task tensegrity_cad_design_from_photos: tests/reference/parts/F-WI.ply",
      "sha256": "8b3449d597088c8f69e8450f503703903485270b63cf56995339ec0399ef4543",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c022.ply (maintainers' split)",
      "sha256": "f4c3d4ad1288e2ffa4115b0429d87fef4c42cf14e105d36af97789f95dbef049",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     },
     {
      "key": null,
      "file": "the designers' whole-strut mesh: piece c097.ply (maintainers' split)",
      "sha256": "617c09a378c865c8532fe30d0579292b9d898d0ce76fd9651dd7dce44ace482c",
-     "how": "measured (readers/mesh.py, trimesh process=False)"
+     "how": "measured (the maintainers' mesh reader, trimesh process=False)"
     }
    ],
    "contradictions": [

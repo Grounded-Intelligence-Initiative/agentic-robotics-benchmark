@@ -140,10 +140,10 @@ C3 8, C4 35).
 
 | file | sha256 | what it is |
 |---|---|---|
-| `tests/gt/ledger.json` | `63d70980d7946566aa743a82f42a0c984ffe7539e2474b9c382a71f0a7168e94` | the truth ledger: 118 rows (graded C1T 21, C1D 11, C1N 2, C2 8, C3 8, C4 36; 7 neutral BOM rows; 25 W0 rows), each with its value, real sources (file, sha256, how read), contradictions and ruling, route in the givens, tier |
-| `tests/gt/price_table.json` | `96eb059854465d236e9708b3b08a73d48bf352356ec693fd42253a9259cd90f4` | the designers' purchase table: per row the pack size, unit price, quantity-discount tiers, quantity per strut and the priced-scope flag; the totals for 1 / 2 / 4 / 8 / 10 robots |
+| `tests/gt/ledger.json` | `b449a3d4c5a01c4df91f0611b4fd6814c68517598a0ee775098a062441ca2d34` | the truth ledger: 118 rows (graded C1T 21, C1D 11, C1N 2, C2 8, C3 8, C4 36; 7 neutral BOM rows; 25 W0 rows), each with its value, real sources (file, sha256, how read), contradictions and ruling, route in the givens, tier |
+| `tests/gt/price_table.json` | `edfc721637c3a213d04d212eb15b9c74b06ef6b0db477fb8678eb78ed481ac09` | the designers' purchase table: per row the pack size, unit price, quantity-discount tiers, quantity per strut and the priced-scope flag; the totals for 1 / 2 / 4 / 8 / 10 robots |
 | `tests/gt/neutral_lists.json` | `682bb7bfb446aca082b48c83910ca2d370c0357adad5b8a68c41f2df3b60634e` | the BOM neutral list (7 rows), the out-of-scope categories, the W0 list (25 quantities with their truths) and the vocabulary names that no given material fixes |
-| `tests/gt/freeze.json` | `0adab5da8307e677be51e91c3ff0d325ee2b157da658165897c8a06d9458674b` | the freeze (v1.1): the graded list (83 rows), the three ungraded rows and why, the measured bands (zero point 4 a), tiers, route classes and the route audit with its one-step route floor, the matching attributes and tolerances, extra accepted part numbers and accepted series, the sha256 pins of the three files above, the hashes of v1.0 |
+| `tests/gt/freeze.json` | `2877ec6feafeb88c064aa6428e37b90662742f346b9da1fea8245f02ce1e0fc7` | the freeze (v1.1): the graded list (83 rows), the three ungraded rows and why, the measured bands (zero point 4 a), tiers, route classes and the route audit with its one-step route floor, the matching attributes and tolerances, extra accepted part numbers and accepted series, the sha256 pins of the three files above, the hashes of v1.0 |
 | `tests/grader_config.json` | `62dcf6bb2afbebd3cd8d2ee074d0e926668d464ad1009fcabcad46cd01040a9b` | every knob (v1.1): weights, limits, C1 groups and blocks, tier weights, band rules, the C4 category / attribute maps, normalisation, neutral rules, the kit rule's zero point, the reported F-beta, the C5 band |
 | `tests/anchor.json` | `e1c99f7ef34b134b48e84336ad7ce3e71ca38f4e47cf24af3069f387e5826b2b` | the reward anchor: value = full_at = 1.0 (the privileged reference's own score) |
 | `tests/given_hashes.json` | `b20b2a94cce5855203dc86696475b56db4210e6e0ce051bcbb769caf2694cbc5` | the maintainers' pin of the givens (26 payload files and 320 photos, with sizes); not read at verify time |
@@ -175,7 +175,7 @@ C3 8, C4 35).
 | `tests/robotics_grader/selftest.py` | `7a4be7513643147c2f91f866a24b6a5253a3203180b4724ca54a188fd0c2027f` | kit |
 | `tests/robotics_grader/solver.py` | `288a8c1f3a1dfd61d3b2c9240c40f095411c6129af867b00fc6a0d8a77ab2d84` | kit |
 | `tests/robotics_grader/stage.py` | `a97eefbc9ee2f4c67b26eecdfc76d1ac84cf4615a2f8ab2fc63e75c581eb0c2f` | kit |
-| `solution/solve.sh` | `5576fa23f8e50b24c0daf90bbab1c7ade3e5940831d4b3d9be6d5178eace8c10` | the privileged reference's script: copies `answer/` into the submission folder |
+| `solution/solve.sh` | `eb99373f072aa6a57ca73213cc7090888a7cd5fa6171e0af1d1e945e2fcdc9c5` | the privileged reference's script: copies `answer/` into the submission folder |
 | `solution/answer/requirements.yaml` | `0828915153f920b1add3c0ed1e1951efa2246c40fbb9ceeb7cc5a420daaa7802` | reference: 8 requirement items and 8 derived quantities, transcribed from the ledger |
 | `solution/answer/bom.json` | `4d1534f286668d2b7fa962e7b6a6512a161e247c58d74b18c3d79da19f3e9330` | reference: 35 lines for 8 robots (the graded rows), transcribed from the ledger |
 | `solution/answer/cable_net.json` | `d218ae819b51759a94689f367937b87d7a0f749733b943258568dc522c2808e9` | reference: 3 controllers, 6 cables, 9 sensors, 3 spare inputs, 10 dimensions, 1 count |
@@ -323,7 +323,7 @@ files, photos and vendor families that carry its evidence, and the twelve facts 
   * the four BOM hedges below the reference, with C4 not above the matching single wrong answer and a break-even
     confidence p* = (hedge - counterpart) / (reference - counterpart) of at most 0.5; the five other hedges no
     better than their counterpart by more than 0.01 (the largest is the count hedge of C2, +0.0033);
-  * two full passes give byte-identical `results.json` (its sha256 is in `reading.json` beside it); the 263
+  * two full passes give byte-identical results (the maintainers keep their sha256); the 263
     submissions of the v1.0 case set score the same with and without the fold; on the host the grader is not root, so
     the lockdown is skipped.
   The maintainers' unit tests of the grading modules pass on v1.1 (216 and 123 tests).
@@ -334,7 +334,7 @@ files, photos and vendor families that carry its evidence, and the twelve facts 
   exists only as root and scores 0. 30 adversarial submissions (sparse files, lone
   surrogates, alias and merge-key bombs, alias cycles, long integers, long lists, deep nesting, FIFOs, links, late
   writes) all ended as a recorded 0 within 0.5 s and 100 MB. Verify took 0.15-0.64 s; the container peaked at 526 MB
-  with the image's desktop session. The v1.1 run of this step uses the cases of `make_cases.py` as they are.
+  with the image's desktop session. The v1.1 run of this step uses the maintainers' case generator as it is.
 * **Determinism across CPUs** (measured on v1.0 and not repeated on v1.1, whose changes to the grader are integer
   counts and one division): the same image on a second CPU generation gave the same rewards, diagnostics and scoring
   metrics on 5 cases. A verdict file written as root is never byte-identical between two runs: it records `t_ref` (a
