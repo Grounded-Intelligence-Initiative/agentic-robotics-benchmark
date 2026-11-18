@@ -103,10 +103,8 @@ there is no stdio wire here). Mind `finish()`: it ends the graded episode at onc
   `operation_score` relative to a hidden reference value. Nothing else is graded: `/home/user/submission/` is not
   read, and the service tells you nothing about the score; judge the shift by what you see.
 
-The givens also describe a program run by a grader: `cell_api.md`'s first paragraph and its budgets (a program process
-on a pipe, its import check, 1200 s of program time and 4x that in CPU seconds, 180 s of silence, an episode run once
-more after a cell failure) and `~/commission/run_shift.py`. Those hold for the commissioning shifts; the graded episode
-is the one described here.
+`~/commission/run_shift.py` runs a program in a commissioning shift the way a grader runs one, with a program's budgets
+(`cell_api.md`: 1200 s of program time, 4x that in CPU seconds, 180 s of silence); the graded episode has none of them.
 
 ## What you are given
 
@@ -159,10 +157,10 @@ your sandbox runs the series' cell on 9 development sites (`cell_manual.md` sect
   program saw and recorded. The simulator's code is not readable from your account.
 * **Its budget.** 12 commissioning shifts in your session, at most 2 at a time, and none once the graded episode has
   started (its start ends commissioning for the session); each under a program's budgets (1800 s of simulated time,
-  1200 s of program time, 600 frames, 180 s of silence; `cell_manual.md` calls them the graded episode's). Plan them:
-  teach-in and single steps first (`skidcell.client.connect_commissioning(site)` in a script of your own), then whole
-  runs of your program (`/opt/venv/bin/python3 ~/commission/run_shift.py --site N`). The count:
-  `/run/skidcell/commission_status.json` (`practice_closed` once the graded episode has started).
+  1200 s of program time, 600 frames, 180 s of silence). Plan them: teach-in and single steps first
+  (`skidcell.client.connect_commissioning(site)` in a script of your own), then whole runs of your program
+  (`/opt/venv/bin/python3 ~/commission/run_shift.py --site N`). The count: `/run/skidcell/commission_status.json`
+  (`practice_closed` once the graded episode has started).
 
 The robot's own model (`~/given/panda/`, MuJoCo) is yours to simulate the arm with.
 
@@ -176,6 +174,7 @@ The robot's own model (`~/given/panda/`, MuJoCo) is yours to simulate the arm wi
   request). Write large files in several parts (one function group per write), keep every single response well below
   that limit, and keep your programs and notes in files.
 - Session time: this session is stopped after 7 hours of wall-clock time from its start (the 4-hour start window, then
-  the graded episode's 3 hours). A session stopped by that limit is not graded at all, so a late finish scores nothing.
-  Note the start time with `date` when you begin, start the graded episode in time, and end the session yourself (stop
-  working and say that you are done) once the graded episode has ended, at least 15 minutes before the limit.
+  the graded episode's 3 hours). Should it stop while the graded episode runs, the episode is scored as it stood after
+  your last request, with nothing simulated afterwards. Note the start time with `date` when you begin and start the
+  graded episode in time; when its shift is done (after the shutdown), call `finish()`, then end the session yourself
+  (stop working and say that you are done).

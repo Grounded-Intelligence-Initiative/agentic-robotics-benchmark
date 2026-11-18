@@ -133,7 +133,8 @@ skid. Depth reads the same surfaces as the colour image, the room included.
 ## 6. Time and budgets
 
 The cell's clock advances only inside `step` (10 ms per tick); the process (flows, levels, alarms, the window's events)
-advances with it. Your program's own computing time is not simulated time but is capped per episode (`cell_api.md`).
+advances with it. Your program's own computing time is not simulated time: a program run in a commissioning shift has
+a cap on it (`cell_api.md`), the graded episode has none.
 The schedule: the window opens at 600 s, the shift ends at 1500 s, the episode ends at 1800 s.
 
 ## 7. The client library
@@ -155,7 +156,8 @@ the equipment manual (between them they show every build option of the manual, e
 situation of the SOP), none of them a graded site.
 
 * **What it is.** The cell of the graded episodes (the robot with its controller, the grip rule, the wrist load, the
-  safety watch and its protective stops, the cameras' frames, the process with its faults, the budgets) on the wire
+  safety watch and its protective stops, the cameras' frames, the process with its faults, the simulated time and the
+  frame budget) on the wire
   of `cell_api.md`, plus `reset(site)`, which starts a shift on development site `site` (1-9) from the state its
   previous shift left. A site's shift is the same each time you start it.
 * **What it is not.** A simulator you can read or query: it answers no ground truth (no device pose, no valve
@@ -163,9 +165,11 @@ situation of the SOP), none of them a graded site.
   logged and saved. The graded sites are other sites of the series, with their own numbering, builds, leftovers,
   faults and timings.
 * **The window.** 12 commissioning shifts in your session (a shift counts from its `reset`), at most 2 at a time.
-  Each runs under the graded episode's budgets (1800 s of simulated time, 1200 s of program time, 600 camera frames,
-  180 s of silence) and the service ends it when one runs out (`{"event": "shift_over", "reason": ...}`, then the
-  connection closes). The count: `/run/skidcell/commission_status.json`. It does not grow: plan your shifts.
+  Each runs under a program's budgets (1800 s of simulated time, 1200 s of program time, 600 camera frames, 180 s of
+  silence) and the service ends it when one runs out (`{"event": "shift_over", "reason": ...}`, then the connection
+  closes). None runs once the graded episode has started: its start ends any open shift (reason `practice_closed`)
+  and refuses every later one (`practice_closed`). The count: `/run/skidcell/commission_status.json`. It does not
+  grow: plan your shifts.
 * **How.** `skidcell.client.connect_commissioning(site)` returns a `Cell` whose shift has begun (one connection, one
   shift): a script that jogs the robot to a device, grabs frames and records what it sees is a commissioning
   engineer's teach-in. `/opt/venv/bin/python3 ~/commission/run_shift.py --site N` runs your whole program in a shift,
