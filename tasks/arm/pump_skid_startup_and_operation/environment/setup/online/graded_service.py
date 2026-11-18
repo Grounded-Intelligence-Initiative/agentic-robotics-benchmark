@@ -36,6 +36,11 @@ Rules:
     worker never builds a cell for it.
   * The agent learns the cell's replies and `status` (started / ended, steps, simulated time, frames, the windows'
     time left): never the score, the record, the episode's id or its seed.
+  * Practice ends when the graded episode starts (O13): before the start is persisted, the worker writes the flag
+    `practice_flag` (/run/skidcell-graded/flags/started: world-readable, in a directory only this service's account
+    can write, inside the root-owned socket directory), and the commissioning service ends its open shifts and refuses
+    new ones from then on (environment/commission_service/commissiond.py). A start whose flag cannot be written is
+    refused (nothing charged); a restarted worker writes the flag again if the episode had started.
 
 Process layout (the alelab daemon pattern of arm_hidden_mechanism_box):
   supervisor (root, comm skidgrade-sup): PR_SET_NO_NEW_PRIVS and a seccomp filter under which only AF_UNIX sockets can
@@ -83,7 +88,7 @@ SERVICE_VERSION = "pump-skid-graded/1"
 RECORD_FORMAT = "arb-online-record/1"
 MAX_LINE = 4 * 1024 * 1024                 # one request line, as the offline wire caps it
 REQUIRED = ("task", "user", "agent_user", "socket", "record_dir", "prep_s", "graded_s", "episode_file", "cell_dir",
-            "cell_sha256", "reference_dir", "reference_sha256", "given_dir", "cell_config", "env")
+            "cell_sha256", "reference_dir", "reference_sha256", "given_dir", "cell_config", "env", "practice_flag")
 DEFAULTS = {"max_restarts": 3, "start_timeout_s": 180.0, "record_interval_s": 1.0, "requests_log_cap_bytes": 32 << 20,
             "record_max_bytes": 1000000, "reply_timeout_s": 120.0, "max_log_bytes": 16 << 20, "note": ""}
 ERRORS = {
@@ -348,9 +353,11 @@ def load_config(path):
     base = os.path.dirname(path)
     for key in ("episode_file", "cell_dir", "reference_dir"):
         cfg[key] = os.path.normpath(os.path.join(base, cfg[key]))
-    for key in ("socket", "record_dir", "given_dir"):
+    for key in ("socket", "record_dir", "given_dir", "practice_flag"):
         if not os.path.isabs(cfg[key]):
             raise ValueError("%s must be an absolute path" % key)
+    if os.path.dirname(os.path.dirname(cfg["practice_flag"])) != os.path.dirname(cfg["socket"]):
+        raise ValueError("the practice flag's directory must sit in the socket's root-owned directory")
     if os.path.dirname(cfg["socket"]) in ("/", "/tmp", "/var/tmp", "/dev/shm", "/run"):
         raise ValueError("the socket must live in its own root-owned directory")
     if os.path.dirname(cfg["record_dir"].rstrip("/")) in ("/", "/tmp", "/var/tmp", "/dev/shm"):
@@ -500,6 +507,10 @@ class GradedEpisode(object):
             self.state.update({"ended": True, "end_reason": "worker_restart", "ended_wall": now})
             self.log.write(kind="episode_end", reason="worker_restart", note="the worker restarted: the last record stands")
         if self.started:
+            try:
+                self.close_practice()                 # a worker that died before writing it: practice stays closed
+            except OSError:
+                self.log.write(kind="practice_flag_failed", tb=traceback.format_exc(limit=4))
             rec = self.store.read_json("record.json") or {}
             self.last = {k: rec.get(k) for k in ("steps", "sim_time_s", "requests")}
             self.last["frames"] = (rec.get("metrics") or {}).get("camera_frames_mean")
@@ -510,6 +521,24 @@ class GradedEpisode(object):
             self.req_log = fd
         except OSError as e:
             self.log.write(kind="requests_log_unavailable", err=str(e))
+
+    def close_practice(self):
+        """O13: the flag that ends practice (the commissioning service stats it). Written once, atomically; raises
+        OSError when it cannot be written."""
+        path = self.cfg["practice_flag"]
+        if os.path.lexists(path):
+            return
+        data = json.dumps({"graded_episode_started": True,
+                           "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}).encode() + b"\n"
+        tmp = path + ".tmp"
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+        try:
+            os.fchmod(fd, 0o644)
+            os.write(fd, data)
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        os.replace(tmp, path)
 
     def _minimal_record(self, now):
         start = float(self.state.get("start_wall") or now)
@@ -653,6 +682,12 @@ class GradedEpisode(object):
             got = hashlib.sha256(str(token).strip().encode("utf-8")).hexdigest()
             privileged = got == self.ep["oracle_token_sha256"]
             self.token_mismatch = not privileged
+        # O13: practice ends when the graded episode starts; no start without the flag that ends it
+        try:
+            self.close_practice()
+        except OSError:
+            self.log.write(kind="practice_flag_failed", tb=traceback.format_exc(limit=4))
+            return {"error": "internal", "detail": ERRORS["internal"]}
         # the charge: persisted before anything is simulated, never refunded
         self.state.update({"started": True, "start_wall": now, "privileged": privileged})
         try:
@@ -987,6 +1022,8 @@ def _init_state(cfg, acct):
     store = Store(cfg["record_dir"])
     if os.path.lexists(store.path("state.json")):
         return
+    if os.path.lexists(cfg["practice_flag"]):
+        os.unlink(cfg["practice_flag"])              # a fresh service: nothing has started, practice is open
     store.write_json("state.json", {"version": 1, "service_started": time.time(), "started": False, "ended": False,
                                     "start_wall": None, "end_reason": None, "worker_starts": 0,
                                     "prep_s": cfg["prep_s"], "graded_s": cfg["graded_s"]})
@@ -1004,6 +1041,8 @@ def start(config_path):
         sockdir = os.path.dirname(cfg["socket"])
         os.makedirs(os.path.dirname(sockdir), exist_ok=True)
         _secure_dir(sockdir, 0o755, 0, 0)
+        # O13: the practice flag's directory, writable by the service's account only, readable by everyone
+        _secure_dir(os.path.dirname(cfg["practice_flag"]), 0o755, acct.pw_uid, acct.pw_gid)
         parent = os.path.dirname(cfg["record_dir"].rstrip("/"))
         os.makedirs(parent, exist_ok=True)
         pst = os.lstat(parent)

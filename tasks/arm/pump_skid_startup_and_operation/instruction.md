@@ -76,6 +76,11 @@ there is no stdio wire here). Mind `finish()`: it ends the graded episode at onc
   `not_started`; `reset` and any call outside `cell_api.md` answer `forbidden` and count as illegal calls, as in the
   cell. The service records the episode as it stands after your requests (at least once a second while you work);
   should its own process fail, the episode ends as last recorded and is not resumed.
+* **Practice ends when the graded episode starts.** The moment `start()` is accepted, the commissioning service ends
+  any open shift (it sends the event `shift_over` with the reason `practice_closed` and closes the connection; the
+  client raises `CellError`) and refuses new shifts for the rest of the session (`CellError("practice_closed")`): a
+  program at its site has no sister site to practise on in the middle of its shift, so commission first. What is yours
+  stays available: the robot's model, your own simulations, and anything you wrote or recorded.
 * **Two windows.** Start the graded episode within 4 hours of the service's start (the service starts with your
   sandbox, a few minutes before your session begins; `status()["prep_window_left_s"]` counts down); after that,
   `start()` answers `prep_window_closed` and the task scores 0. Once started, the episode lasts at most 3 hours of
@@ -152,12 +157,12 @@ your sandbox runs the series' cell on 9 development sites (`cell_manual.md` sect
   site has its own numbering, builds, leftovers, faults and timings), and the service answers no ground truth (no
   device pose, valve position or process value), no score and no debrief. How a shift went, you judge from what your
   program saw and recorded. The simulator's code is not readable from your account.
-* **Its budget.** 12 commissioning shifts in your session, at most 2 at a time, each under a program's budgets (1800 s
-  of simulated time, 1200 s of program time, 600 frames, 180 s of silence; `cell_manual.md` calls them the graded
-  episode's). The commissioning shifts and the graded episode do not count against each other. Plan them: teach-in and
-  single steps first (`skidcell.client.connect_commissioning(site)` in a script of your own), then whole runs of your
-  program (`/opt/venv/bin/python3 ~/commission/run_shift.py --site N`). The count:
-  `/run/skidcell/commission_status.json`.
+* **Its budget.** 12 commissioning shifts in your session, at most 2 at a time, and none once the graded episode has
+  started (its start ends commissioning for the session); each under a program's budgets (1800 s of simulated time,
+  1200 s of program time, 600 frames, 180 s of silence; `cell_manual.md` calls them the graded episode's). Plan them:
+  teach-in and single steps first (`skidcell.client.connect_commissioning(site)` in a script of your own), then whole
+  runs of your program (`/opt/venv/bin/python3 ~/commission/run_shift.py --site N`). The count:
+  `/run/skidcell/commission_status.json` (`practice_closed` once the graded episode has started).
 
 The robot's own model (`~/given/panda/`, MuJoCo) is yours to simulate the arm with.
 

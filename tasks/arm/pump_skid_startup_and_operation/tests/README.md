@@ -355,8 +355,8 @@ protective stop), `full_at` 0.98.
 
 On the experiment branch `exp/online-graded-episode` the agent no longer leaves a program for this grader: it plays
 ONE graded episode itself, during its session, and `verify.py` scores the record of that episode. Everything above
-(the cell, the hidden set, the reference program, the commissioning service, the givens) is unchanged; the offline
-grader is `verify.py` on main.
+(the cell, the hidden set, the reference program, the givens) is unchanged, and so is the commissioning service until
+the graded episode starts (it then closes, O13 below); the offline grader is `verify.py` on main.
 
 * **The episode.** Episode ep08 of the hidden set (`hidden/seeds.json`, the grader's order), drawn once on
   2026-11-18 with `secrets.randbelow(8)` (OS entropy); the same episode serves every model. The seed and the oracle
@@ -369,7 +369,7 @@ grader is `verify.py` on main.
   `tests/skidcell/`, copied root-only by `setup.sh` and pinned by `online/service.json`'s digests) and the reference
   program (`online/reference/`, a byte copy of `reference/`, likewise pinned), builds the episode's cell as `verify.py`
   builds one (mode hidden, the grader's cell configuration, the numerics pins of `test.sh`), and drops to its own
-  account `skidgrade` (created by `setup.sh`: the image stays unchanged; not `skidcell`, whose unhardened service
+  account `skidgrade` (created in the image, `environment/Dockerfile`; not `skidcell`, whose unhardened service
   answers the agent's commissioning shifts). It serves one client at a time; the episode lives in the worker, so a
   disconnect leaves it where it is.
 * **The rules.** One start per session, persisted before anything is simulated, within `prep_s` = 14400 s (main's agent
@@ -380,6 +380,16 @@ grader is `verify.py` on main.
   silence budgets, the allowance after the end, the import check and the contract gates, and the rerun of an episode
   in which the cell failed (a one-shot episode cannot be run again; such an episode is scored as it stands, and the
   record's metrics show the failure). `[agent] timeout_sec` = prep_s + graded_s = 25200.
+* **Practice ends when the graded episode starts (O13, 2026-11-18).** Offline, a program never practises in the middle
+  of its graded shift; online, the agent could pause the graded site and try a recovery on a commissioning shift. So
+  the graded start first writes `/run/skidcell-graded/flags/started` (world-readable, in a directory owned by
+  `skidgrade` inside the root-owned socket directory: the agent can neither forge nor remove it; a start whose flag
+  cannot be written is refused, nothing charged), then persists the start. `commissiond.py` stats the flag at every
+  request and at least once a second while an open shift waits: an open shift ends (the event `shift_over`, reason
+  `practice_closed`, then the connection closes; the ledger records the reason), and every later connection's first
+  request is answered `{"error": "practice_closed"}`; `commission_status.json` gains `practice_closed`. A flag that
+  cannot be checked counts as set (practice fails closed); `setup.sh` checks that the commissioning account sees the
+  flag's directory and that the flag is not set. This is the image's only change besides the account `skidgrade`.
 * **The record.** `/var/lib/arb-online` (owner `skidgrade`, 0700; declared in `task.toml` `artifacts`):
   `record.json` (`arb-online-record/1`: the episode, `seed_sha256`, started / ended / end_reason, requests, steps,
   sim_time_s, wall_s_since_start, `episode_score` = `Monitor.summary(...)["score"]` as if the episode ended at that

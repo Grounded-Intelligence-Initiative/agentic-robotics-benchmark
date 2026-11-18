@@ -1,5 +1,5 @@
 {
- "note": "the graded episode's service (graded_service.py): public constants only; the hidden episode is episode.json, which only the worker reads. cell_config is the cell part of tests/grader_config.json (the grader's own cell configuration); cell_sha256 pins online/skidcell/, which setup.sh copies from the image's /opt/skidcell-commission/skidcell/ (the byte copy of tests/skidcell/ less its client), and reference_sha256 pins online/reference/, the byte copy of tests/reference/ (the privileged reference program that the oracle's token unlocks); env is the grader's numerics and rendering environment (the image's thread pins and tests/test.sh's OpenBLAS and numpy pins). prep_s is the agent's budget on main ([agent] timeout_sec 14400): the episode must be started within it; graded_s is the window from the start to the episode's latest end.",
+ "note": "the graded episode's service (graded_service.py): public constants only; the hidden episode is episode.json, which only the worker reads. cell_config is the cell part of tests/grader_config.json (the grader's own cell configuration); cell_sha256 pins online/skidcell/, which setup.sh copies from the image's /opt/skidcell-commission/skidcell/ (the byte copy of tests/skidcell/ less its client), and reference_sha256 pins online/reference/, the byte copy of tests/reference/ (the privileged reference program that the oracle's token unlocks); env is the grader's numerics and rendering environment (the image's thread pins and tests/test.sh's OpenBLAS and numpy pins). prep_s is the agent's budget on main ([agent] timeout_sec 14400): the episode must be started within it; graded_s is the window from the start to the episode's latest end. practice_flag (O13): the graded episode's start writes it, and the commissioning service ends its shifts and refuses new ones once it exists.",
  "task": "pump_skid_startup_and_operation",
  "user": "skidgrade",
  "agent_user": "user",
@@ -59,5 +59,6 @@
  "record_interval_s": 1.0,
  "requests_log_cap_bytes": 33554432,
  "record_max_bytes": 1000000,
- "reply_timeout_s": 120
+ "reply_timeout_s": 120,
+ "practice_flag": "/run/skidcell-graded/flags/started"
 }
