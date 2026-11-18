@@ -112,12 +112,14 @@ From a shell, `/opt/venv/bin/python3 /home/user/graded_episode.py status` prints
 - **Two windows.** You must start the graded episode within **1 hour** of the start of your
   session (`prep_left_s`); a later start is refused, and the task then scores 0. Once started, the
   episode has at most **4 hours** of wall-clock time (`graded_left_s`). Your session's hard limit is
-  **5 hours**. Run `date` now and keep track.
+  **5 hours**: run `date` now and keep track. A session stopped at that limit is still scored, on
+  the graded episode as it stood after your last step.
 - **How it ends.** The episode ends at step `20000`, when you call `finish()`, when its 4 hours run
   out, or when your session ends, whichever comes first. Nothing is simulated after it ends. An
   episode that ends before step `20000` is scored on the state it reached, scaled by the fraction of
   the horizon that ran (see **Scoring**), so an early end costs in proportion; if your session ends
-  while the episode runs, it is scored as it stood after your last step.
+  while the episode runs, it is scored as it stood after your last step. Once the episode is over,
+  end your session yourself: nothing else remains to be done or delivered.
 - **Nothing else is graded.** `/home/user/submission` is not read and no program of yours runs
   after the session: the graded episode's record, kept by the service, is the whole result.
 
