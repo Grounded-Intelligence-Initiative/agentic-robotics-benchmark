@@ -2,17 +2,14 @@
 
 Two modes behind the same Unix socket and the same calls:
 
-* ``commissioning`` (the agent's sandbox): development sites drawn at random, ``new_site``
-  starts a fresh one. It answers what the robot sees and nothing more: no site truth, no score.
-* ``graded`` (the verifier): one mission on one hidden site; ``new_site`` is refused and
-  ``truth`` answers only a caller holding the token whose sha256 the grader passed in.
+* ``commissioning`` (the agent's sandbox): scout-only, with fresh sites on request.
+* ``graded`` (the verifier): one irreversible switch, no reset and no truth endpoint.
 
 The ledger (``state.json`` in the 0700 directory) is rewritten atomically after every request;
 it carries the mission's metrics and the seconds the service spent answering requests, which
 the grader subtracts from wall time to measure the program's own time.
 """
 import argparse
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -22,19 +19,17 @@ import sys
 import time
 import traceback
 
-from world import World
+from mission import World
 
-REQUESTS = 1000                   # requests per mission (observe, act, advance, truth)
-MAX_EVENTS = 1200
+REQUESTS = 3000
 
 
 class Runtime:
-    def __init__(self, directory, mode, seed=None, token_sha256=None):
+    def __init__(self, directory, mode, seed=None):
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, mode=0o700, exist_ok=True)
         os.chmod(self.directory, 0o700)
         self.mode = mode
-        self.token_sha256 = token_sha256
         self.busy = 0.
         self.sites = 0
         self.world = None
@@ -50,7 +45,6 @@ class Runtime:
         self.world = World(self.seed)
         self.requests = 0
         self.exhausted = False
-        self.events = []
         self.sites += 1
         self.flush()
 
@@ -60,8 +54,7 @@ class Runtime:
                  "done": bool(self.world and (self.world.done or self.exhausted)),
                  "phase": self.world.phase if self.world else 0,
                  "metrics": self.world.metrics() if self.world else {},
-                 "internal_errors": self.internal_errors, "request_started": self.request_started,
-                 "events": self.events}
+                 "internal_errors": self.internal_errors, "request_started": self.request_started}
         temp = self.directory/"state.tmp"
         temp.write_text(json.dumps(state))
         temp.replace(self.directory/"state.json")
@@ -89,16 +82,7 @@ class Runtime:
             if self.requests > REQUESTS:
                 self.exhausted = True
                 raise ValueError(f"this mission's {REQUESTS} requests are spent; it has ended")
-            event = {"m": method}
-            if method == "act" and isinstance(params.get("action"), list):
-                event["a"] = params["action"][:2]
-            if len(self.events) < MAX_EVENTS:
-                self.events.append(event)
-            try:
-                return self._answer(self.dispatch(method, params))
-            except (ValueError, TypeError, KeyError, OverflowError) as exc:
-                event["error"] = str(exc)[:120]
-                raise
+            return self._answer(self.dispatch(method, params))
         except (ValueError, TypeError, KeyError, OverflowError):
             raise
         except Exception:
@@ -117,18 +101,14 @@ class Runtime:
         return observation
 
     def dispatch(self, method, params):
-        allowed = {"observe": set(), "act": {"action"}, "advance": set()}
+        allowed = {"observe": set(), "act": {"action"}}
         if self.mode == "graded":
-            allowed["truth"] = {"token"}
+            allowed["advance"] = set()
+        elif method == "advance":
+            raise ValueError("commissioning is scout-only; Go1 first deploys in the verifier")
         if method not in allowed or set(params) != allowed[method]:
             raise ValueError("calls are observe(), act(action), advance()"
                              + (", new_site()" if self.mode == "commissioning" else ""))
-        if method == "truth":
-            token = params["token"]
-            if (not isinstance(token, str) or not self.token_sha256
-                    or hashlib.sha256(token.encode()).hexdigest() != self.token_sha256):
-                raise ValueError("forbidden")
-            return self.world.truth()
         return getattr(self.world, method)(**params)
 
 
@@ -156,14 +136,13 @@ def main():
     parser.add_argument("--directory", default="/var/lib/visual_robotics")
     parser.add_argument("--socket", default="/run/visual_robotics/world.sock")
     parser.add_argument("--seed-file", help="graded: a root-only file holding the site's seed")
-    parser.add_argument("--token-sha256", help="graded: sha256 of the oracle's token")
     args = parser.parse_args()
     seed = None
     if args.mode == "graded":
         if not args.seed_file:
             parser.error("--seed-file is required in graded mode")
         seed = int(Path(args.seed_file).read_text().strip())
-    runtime = Runtime(args.directory, args.mode, seed, args.token_sha256)
+    runtime = Runtime(args.directory, args.mode, seed)
     path = Path(args.socket)
     path.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
     if path.exists():

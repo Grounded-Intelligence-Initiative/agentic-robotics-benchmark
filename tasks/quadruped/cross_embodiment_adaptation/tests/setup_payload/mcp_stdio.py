@@ -5,14 +5,13 @@ import sys
 from client import Client
 
 TOOLS = [
-    {"name": "robot_observe", "description": "Body-relative front/rear perspective cameras; no motion or absolute pose.",
+    {"name": "robot_observe", "description": "Current UAV down-camera and local tracking; no motion.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "robot_act", "description": "0.2 s: scout [0], [1/3], [2/3], [1]; carrier [channel0,channel1] in [-1,1].",
-     "inputSchema": {"type": "object", "properties": {"action": {"type": "array", "items": {"type": "number"}}},
+    {"name": "robot_act", "description": "Translate the UAV by [dx, dy] metres (norm <= 0.60).",
+     "inputSchema": {"type": "object", "properties": {"action": {"type": "array", "items": {"type": "number"},
+                                                               "minItems": 2, "maxItems": 2}},
                      "required": ["action"], "additionalProperties": False}},
-    {"name": "robot_advance", "description": "Switch once from the scout to the carrier (after 12 or more scout actions).",
-     "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "robot_new_site", "description": "Commissioning: start a fresh mission on a new development site.",
+    {"name": "robot_new_site", "description": "Commission another scout-only site; no access to the Go1.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
 ]
 
@@ -31,7 +30,7 @@ def main():
             if method == "initialize":
                 result = {"protocolVersion": req.get("params", {}).get("protocolVersion", "2024-11-05"),
                           "capabilities": {"tools": {}},
-                          "serverInfo": {"name": "cross_embodiment_robot", "version": "4.0"}}
+                          "serverInfo": {"name": "cross_embodiment_robot", "version": "5.0"}}
             elif method == "tools/list":
                 result = {"tools": TOOLS}
             elif method == "tools/call":

@@ -14,4 +14,4 @@ RUN mkdir -p /home/user/submission && chown user:user /home/user/submission
 RUN runuser -u user -- python3 -c "import mujoco; m=mujoco.MjModel.from_xml_string('<mujoco/>'); r=mujoco.Renderer(m,64,64); r.close()"
 COPY visual_assets.json fetch_visual_assets.py /tmp/visual_assets/
 RUN /opt/venv/bin/python3 /tmp/visual_assets/fetch_visual_assets.py /tmp/visual_assets/visual_assets.json /opt/visual_robotics/assets \
-    && chmod -R a+rX /opt/visual_robotics/assets
+    && chmod 0700 /opt/visual_robotics/assets /tmp/visual_assets

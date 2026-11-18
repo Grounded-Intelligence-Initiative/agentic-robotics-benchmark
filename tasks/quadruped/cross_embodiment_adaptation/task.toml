@@ -1,13 +1,6 @@
-# PR37 v4: map with the scout, transfer to a long oriented carrier, settle into a dock.
-# Native MuJoCo force-driven stabilized planar bases; no articulated gait claim.
-# Body-mounted perspective cameras; no globally calibrated top view or pose fields.
-# Latest round-2 head 9d8cc14 seeds/candidates retained without outcome-based reselection.
-# PRIVILEGED direct-World reference diagnostics: 8/8 hidden and 20/20 development.
-# Actual ALE validate-6a247128: untouched 0, oracle 1, 8/8 separate-verifier missions.
-# Neither result establishes frontier difficulty; fresh Opus measurement is pending.
-# Round-2 source/reference/evidence are byte-preserved under tests/review/legacy_round2/.
-# Pre-integration candidate receipts are historical under tests/review/legacy_candidate_v3/.
-# Session/resource/network/verifier settings below match maintainer head 9d8cc14.
+# PR37 v5: UAV camera survey, map transfer, native joint-level Go1 control.
+# Scout-only commissioning; first target deployment is in the separate verifier.
+# The official eight site seeds are unchanged.
 schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission"]
 

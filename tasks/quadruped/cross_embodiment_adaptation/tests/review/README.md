@@ -1,72 +1,66 @@
-# V4 Reviewer Material
+# V5 author evidence
 
-## Evidence and Limits
+On all eight unchanged official seeds, the scene had one of two physical
+aisles open (three south, five north). Each comparison keeps the site, native
+Go1 and joint controller fixed. The camera arm surveyed RGB and inferred both
+the aisle and the dock. Cue-blind arms ran the exact same survey movements,
+discarded all its images, and used a fixed aisle and the same nominal dock.
+The privileged arm used the true open aisle, dock center and pose, but sent
+the identical twelve-angle commands through `World.act`.
 
-The actual pinned ALE engine (`bfb7505`) completed validation run
-`validate-6a247128`: untouched reward 0, privileged oracle reward 1, eight of
-eight separate-verifier missions successful with zero contact stops. All six
-lifecycle phases succeeded. `v4_ale_validation.json` contains the engine report,
-verdicts, configuration and 46 active-file hashes checked against this revision.
-The local collection wrapper was interrupted after the remote run; the completed
-engine records were retrieved from koa04 without rerunning or inferring an exit code.
+| Arm | Switched | Entered aisle | First aisle correct | Crossed island | Safe docks |
+|---|---:|---:|---:|---:|---:|
+| Privileged feasibility | 8/8 | 8/8 | 8/8 | 8/8 | 8/8 |
+| Scout RGB + public target feedback | 8/8 | 8/8 | 8/8 | 8/8 | 8/8 |
+| Cue-blind, always south | 8/8 | 8/8 | 3/8 | 3/8 | 1/8 |
+| Cue-blind, always north | 8/8 | 8/8 | 5/8 | 5/8 | 5/8 |
 
-The post-integration real-grader security fixture denied copied-token truth
-requests and five protected paths on each of eight sites. This fixture uses a
-synthetic ordinary-agent ATIF, not a model or an ALE run; see
-`v4_security_integration.json`. An independent rendered/headless check also
-confirmed identical physics state and public status for matching action sequences.
+All eight wrong-aisle runs walked 2.74 to 3.11 m before physical contact stopped
+them; all eight correctly chosen blind arms crossed, so the route effect does
+not depend on the less precise blind dock estimate (two missed docks).
+The RGB arm traveled 5.41 to 5.84 m, using 811 to 881 target actions; all four feet
+were seen lifting and contacting the ground on every mission. No arm fell.
+See [raw outcomes](v5-evidence/results.jsonl), sampled target paths for sites
+0 and 1, and [a real UAV launch frame](v5-evidence/site0-launch.png) and
+[end-of-survey frame](v5-evidence/site0-survey-end.png). These are author-only,
+including the privileged and scripted controllers.
 
-Current native remote diagnostics (MuJoCo 3.16, 2 CPUs, 4 GB, CPU only):
-full privileged reference 8/8 latest 9d8cc14 hidden seeds and 20/20 development
-seeds 1000-1019, freshly rerun with the exact 500/240/1000 maintainer budgets
-after integration (not relabeled old receipts).
-Blind, scout-route replay, XY-width planning and conservative circumscribed
-inflation each completed 0/20 development missions. The first three contact
-obstacles; the circumscribed approximation rejects the service opening.
-These deliberately limited baselines do not establish frontier-model difficulty
-or prove that every possible XY planner fails. In particular XY/scout replay may
-fail during the initial heading maneuver, not exclusively inside the dogleg.
+The verifier reports `missions_corridor_entered`, `missions_first_aisle_correct`,
+`missions_fell_before_aisle`, total falls, partition crossings and forward
+progress, plus per-site equivalents. First aisle is latched at the first
+physical crossing of x = 1.10 m. Interpret route accuracy as correct / entered;
+an unentered aisle is not a wrong choice. Only safe docks affect reward.
 
-- v4_hidden_native.json and v4_development_native.json: per-mission results.
-- test_v4_mechanics.py: orientation-dependent fit, endpoint-versus-sweep collision,
-  dogleg width versus turn orientation, native child-payload contact, inertia,
-  traction, heading/rest docking, public observation schema and runtime parity.
-- v4_rollout.py: trusted direct-World reference and matched controller baselines.
-- v4_render.py: actual front/rear onboard frames, both phases.
-- select_sites.py: author-only fixed-suite verifier runner. Never reselects seeds.
-- selection.md: unchanged seeds and outcome-independent v4 geometry policy.
-- legacy_v2/: quarantined old measurements, selection features and XY solver.
-- legacy_round2/: 53 byte-preserved files from 9d8cc14, including its full
-  reference, ablation, measurements, private source and original selection.
-- legacy_candidate_v3/: pre-integration receipts for the superseded seed suite.
-- test_service_logging.py: both carrier channels in the persisted service ledger.
-- check_security.py / check_security_integration.py: critic-owned authorization
-  checks and a disposable real-grader fixture; not frontier-model evaluations.
+## Reproduction
 
-The author reference is explicitly PRIVILEGED. The public v4 observation pipeline
-has not yet been solved by an image-only reference, and no Opus 5.5 v4 score is
-claimed. Passing the privileged reference and isolation checks does not establish
-image-only solvability, a necessary benefit from scouting, or the requested
-frontier-model difficulty. Those measurements remain pending.
-
-## Reproduce Remotely
-
-Mount only this task at /task:ro and a fresh writable output directory at /evidence.
-The following require the task image and its assets; run substantial rollouts on
-the provisioned remote CPU, not ubt2025:
+Run the following in the task's pinned image on the provisioned CPU host,
+with the task mounted read-only and a fresh writable evidence directory:
 
 ```bash
-/opt/venv/bin/python3 -B /task/tests/review/test_v4_mechanics.py
-/opt/venv/bin/python3 -B /task/tests/review/v4_rollout.py --seeds hidden --out /evidence/hidden
-/opt/venv/bin/python3 -B /task/tests/review/v4_rollout.py --seeds 1000-1019 --modes full,blind,scout_route,xy,circumscribed --out /evidence/development
-/opt/venv/bin/python3 -B /task/tests/review/v4_render.py --seed 1001 --out /evidence/render
+/opt/venv/bin/python3 -B tests/review/test_v5_contract.py
+/opt/venv/bin/python3 -B tests/review/v5_controls.py /out/fresh
+bash tests/review/test_v5_isolation.sh  # root, disposable task container
 ```
 
-Provenance: koa04:/home/wang100/projects/ale-validator-hardening-20261116/cross-v4,
-image ale-cross-maintainer-env:20261116, outputs under
-evidence/cross-worker-v4-20261116/hidden-240/ and development-240/.
-See worker_handoff.md for frozen hashes and exact Docker commands.
-These no-render diagnostics use the real native
-physics but bypass the service/security/runner. They are not official ALE results.
-Author run_mission calls must explicitly pass oracle_authorized=True; ordinary
-submissions may not gain truth just by copying the token.
+Author runs: `koa04:/home/wang100/projects/ale-hardening-20261118-checks/cross/final/evidence`,
+cached `ale-cross-maintainer-env:20261116` (419e6251d06b, MuJoCo 3.16.0),
+Docker runc, no network or GPU devices, 2 CPU cap, 4 GiB. The isolation
+smoke applied v5's asset directory modes to that existing image, then tested
+the actual setup and service as root with requests/file checks as the
+participant UID. It was not a full pinned ALE validation; that and blind Sol
+are owner-run. Previous planar-task receipts are historical; see
+[v4 notes](v4_README.md).
+
+## Scope
+
+This is transfer of route evidence across sensor and control embodiments in
+simulation. The UAV is a fixed-altitude kinematic camera platform, the Go1
+uses native free-base rigid-body dynamics and position servos on a flat floor,
+and local tracking/inertial sensing are idealized. This is not a hardware
+digital twin or proof of a general Go1 gait on unknown terrain. Zero-shot
+means a frozen submission, no participant target commissioning and no
+retries. The installed target asset and runtime are root-only; the open-source
+nominal model and analytical knowledge are not intrinsically secret. An audit
+of the participant trajectory is still needed for the no-offline-rollout and
+no-pretrained-gait rules. Author feasibility runs are not zero-shot model
+evidence.

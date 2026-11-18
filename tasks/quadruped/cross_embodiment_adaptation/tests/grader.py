@@ -4,8 +4,7 @@ Runs as root in a SEPARATE verifier sandbox: the engine restores only the declar
 /home/user/submission there, and setup does not run. For every site of tests/hidden/sites.json
 (fixed, chosen by the pre-registered rule in tests/review/selection.md) the grader
 
-  * starts its own robot service (tests/runtime/service.py, graded mode: one mission, no
-    new_site, `truth` only for an engine-authorized oracle holding the expected token),
+  * starts its own robot service (graded mode: one mission, no reset or truth endpoint),
   * runs the program once (`bash run.sh` from a read-only copy of the submission, as the agent
     account, a minimal environment, a fresh HOME, no network: tests/nonet.py),
   * stops it when the mission has ended (10 s grace), when its program time (wall time minus
@@ -13,9 +12,8 @@ Runs as root in a SEPARATE verifier sandbox: the engine restores only the declar
   * kills every process of the agent account (bounded, then frozen: the #64 survivor pattern
     of arm_hidden_mechanism_box) and reads the mission's outcome from the service's own ledger.
 
-The score is the fraction of hidden missions in which the carrier reached the delivery pad,
-relative to the anchor (tests/anchor.json). A mission the service itself failed (an internal
-error) is run once more from scratch; a second failure is a task error, never the agent's zero.
+The score is the fraction of hidden missions in which the Go1 safely docked, relative to
+the anchor. A service failure voids the run without redeploying the target.
 """
 import json
 import math
@@ -222,34 +220,9 @@ def program_argv(home):
     return [RUNUSER, "-u", agent_user(), "--", ENV, "-i"] + env + nonet_argv(["/bin/bash", "run.sh"], PYTHON)
 
 
-def oracle_authorized_from_trajectory():
-    """Only the engine's ATIF identity authorizes truth, never anything in the submission.
-
-    ALE_TRAJECTORY_PATH is supplied by the engine to the separate verifier, not forwarded
-    from the participant program. Missing or malformed evidence grants no capability.
-    """
-    path = os.environ.get("ALE_TRAJECTORY_PATH")
-    if not path:
-        return False
-    try:
-        trajectory = json.loads(Path(path).read_text())
-    except (OSError, ValueError):
-        return False
-    if not isinstance(trajectory, dict):
-        return False
-    schema = trajectory.get("schema_version")
-    agent = trajectory.get("agent")
-    return (isinstance(schema, str) and schema.startswith("ATIF-")
-            and isinstance(agent, dict) and agent.get("name") == "oracle")
-
-
-def run_mission(index, seed, uid, gid, config, token_sha256, attempt, *, oracle_authorized=False):
-    """One mission; truth is disabled unless trusted author code explicitly authorizes it.
-
-    Review scripts running the privileged oracle must pass oracle_authorized=True. The
-    ordinary default ignores even a valid historical token hash. `infra` marks service failure.
-    """
-    directory = WORK/"mission-{:02d}-{}".format(index, attempt)
+def run_mission(index, seed, uid, gid, config):
+    """Run the frozen program once; infra records an error, not a retry."""
+    directory = WORK/"mission-{:02d}-0".format(index)
     if directory.exists():
         shutil.rmtree(directory)
     directory.mkdir(parents=True, mode=0o700)
@@ -263,15 +236,13 @@ def run_mission(index, seed, uid, gid, config, token_sha256, attempt, *, oracle_
     service_log = open(directory/"service.log", "wb")
     service_argv = [PYTHON, "-E", "-s", "-B", str(RUNTIME/"service.py"), "--mode", "graded",
                     "--directory", str(directory), "--socket", str(SOCKET), "--seed-file", str(directory/"seed")]
-    if oracle_authorized is True:
-        service_argv += ["--token-sha256", token_sha256]
     service = subprocess.Popen(
         service_argv,
         cwd=str(RUNTIME), stdout=service_log, stderr=service_log, start_new_session=True,
         env={"PATH": "/opt/venv/bin:/usr/bin:/bin", "HOME": "/root", "LANG": "C.UTF-8", "MUJOCO_GL": "osmesa",
              "LIBGL_ALWAYS_SOFTWARE": "1", "LP_NUM_THREADS": "2", "OPENBLAS_NUM_THREADS": "1",
              "OMP_NUM_THREADS": "1", "PYTHONNOUSERSITE": "1"})
-    record = {"site": index, "attempt": attempt, "infra": False}
+    record = {"site": index, "infra": False}
     try:
         deadline = time.monotonic()+180
         while not (directory/"ready").exists():
@@ -280,7 +251,7 @@ def run_mission(index, seed, uid, gid, config, token_sha256, attempt, *, oracle_
                 record["reason"] = "robot service did not start"
                 return record
             time.sleep(.1)
-        home = RUN/"home-{:02d}-{}".format(index, attempt)
+        home = RUN/"home-{:02d}-0".format(index)
         if home.exists():
             shutil.rmtree(home)
         (home/"tmp").mkdir(parents=True)
@@ -343,10 +314,15 @@ def run_mission(index, seed, uid, gid, config, token_sha256, attempt, *, oracle_
                        "requests": int(state.get("requests", 0)),
                        "success": float(metrics.get("success", 0.)), "switched": float(metrics.get("switched", 0.)),
                        "scout_actions": float(metrics.get("scout_actions", 0)),
-                       "carrier_actions": float(metrics.get("carrier_actions", 0)),
-                       "scout_contacts": float(metrics.get("scout_contacts", 0)),
-                       "contact_stop": float(metrics.get("contact_stop", 0.)),
-                       "final_goal_distance": float(metrics.get("final_goal_distance", -1.))})
+                       "target_actions": float(metrics.get("target_actions", 0)),
+                       "contact_stop": float(metrics.get("target_contact", 0)),
+                       "target_fell": float(metrics.get("target_fell", 0)),
+                       "corridor_entered": float(metrics.get("corridor_entered", 0)),
+                       "first_aisle_correct": float(metrics.get("first_aisle_correct", 0)),
+                       "fell_before_aisle": float(metrics.get("fell_before_aisle", 0)),
+                       "partition_crossed": float(metrics.get("partition_crossed", 0)),
+                       "max_forward_m": float(metrics.get("max_forward_m", 0)),
+                       "travel_m": float(metrics.get("travel_m", 0))})
         (directory/"program_output.txt").write_bytes(output[0])
         (directory/"record.json").write_text(json.dumps(record, indent=1))
         return record
@@ -381,11 +357,6 @@ def main():
         write_verdict(zero_verdict(problem, anchored=anchor is not None))
         return
     sites = json.loads((HIDDEN/"sites.json").read_text())["seeds"]
-    oracle_authorized = oracle_authorized_from_trajectory()
-    token_sha256 = None
-    if oracle_authorized:
-        token_sha256 = (HIDDEN/"oracle_token.sha256").read_text().split()[0]
-        require(len(token_sha256) == 64, "malformed oracle token hash")
     stage = Path(stage_dir())
     stage_mode = stat.S_IMODE(stage.stat().st_mode)
     os.chmod(stage, 0o700)     # nothing of the tests stage is readable while agent code runs
@@ -396,19 +367,14 @@ def main():
         require(ok, detail)
         records, cleanup_ok = [], True
         for index, seed in enumerate(sites):
-            record = run_mission(index, int(seed), uid, gid, config, token_sha256, attempt=0,
-                                 oracle_authorized=oracle_authorized)
-            if record["infra"]:
-                log("site {}: {}; running it once more".format(index, record.get("reason")))
-                record = run_mission(index, int(seed), uid, gid, config, token_sha256, attempt=1,
-                                     oracle_authorized=oracle_authorized)
-                require(not record["infra"], "site {}: the robot service failed twice ({})".format(
-                    index, record.get("reason")))
+            record = run_mission(index, int(seed), uid, gid, config)
+            require(not record["infra"], "site {}: service failure, no redeployment ({})".format(
+                index, record.get("reason")))
             cleanup_ok = cleanup_ok and record.get("cleanup_ok", True)
             records.append(record)
-            log("site {}: success={:.0f} scout={:.0f} carrier={:.0f} contact_stop={:.0f} program={:.0f}s "
+            log("site {}: success={:.0f} scout={:.0f} target={:.0f} contact_stop={:.0f} program={:.0f}s "
                 "wall={:.0f}s ({})".format(index, record["success"], record["scout_actions"],
-                                           record["carrier_actions"], record["contact_stop"],
+                                           record["target_actions"], record["contact_stop"],
                                            record["program_seconds"], record["wall_seconds"], record["reason"]))
     finally:
         os.chmod(stage, stage_mode)
@@ -420,12 +386,21 @@ def main():
              "missions_switched": sum(r["switched"] for r in records),
              "missions_contact_stop": sum(r["contact_stop"] for r in records),
              "mean_scout_actions": sum(r["scout_actions"] for r in records)/len(records),
-             "mean_carrier_actions": sum(r["carrier_actions"] for r in records)/len(records),
+             "mean_target_actions": sum(r["target_actions"] for r in records)/len(records),
+             "missions_corridor_entered": sum(r["corridor_entered"] for r in records),
+             "missions_first_aisle_correct": sum(r["first_aisle_correct"] for r in records),
+             "missions_fell_before_aisle": sum(r["fell_before_aisle"] for r in records),
+             "missions_partition_crossed": sum(r["partition_crossed"] for r in records),
+             "missions_fell": sum(r["target_fell"] for r in records),
+             "mean_max_forward_m": sum(r["max_forward_m"] for r in records)/len(records),
+             "mean_travel_m": sum(r["travel_m"] for r in records)/len(records),
              "mean_program_seconds": sum(r["program_seconds"] for r in records)/len(records),
-             "cleanup_failed": 0. if cleanup_ok else 1., "verify_seconds": time.monotonic()-started,
-             "scripted_oracle": float(oracle_authorized)}
+             "cleanup_failed": 0. if cleanup_ok else 1., "verify_seconds": time.monotonic()-started}
     for r in records:
-        extra["site{}_success".format(r["site"])] = r["success"]
+        prefix = "site{}_".format(r["site"])
+        for key in ("success", "switched", "corridor_entered", "first_aisle_correct",
+                    "fell_before_aisle", "target_fell", "partition_crossed", "max_forward_m"):
+            extra[prefix+key] = r[key]
     extra = {k: float(v) for k, v in extra.items() if math.isfinite(float(v))}
     write_verdict(ratio_rewards(measured, anchor, metric_name=calibration["metric"], extra=extra,
                                 full_at=calibration["full_at"]))

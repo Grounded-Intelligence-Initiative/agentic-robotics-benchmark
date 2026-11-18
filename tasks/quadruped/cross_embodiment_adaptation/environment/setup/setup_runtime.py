@@ -8,6 +8,7 @@ import time
 
 def main():
     stage = Path(__file__).resolve().parent
+    stage.chmod(0o700)
     private = Path("/var/lib/visual_robotics")
     if private.exists():
         raise RuntimeError("refusing to reset an existing episode")

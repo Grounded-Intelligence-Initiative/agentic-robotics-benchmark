@@ -2,20 +2,6 @@
   "metric": "mission_success_rate",
   "direction": "higher",
   "value": 1,
-  "full_at": 0.98,
-  "source": "PR37 v4, integrated maintainer head 9d8cc14 without changing hidden seeds or budgets. Actual pinned ALE engine bfb7505 run validate-6a247128 on koa04, completed 2026-11-17 01:22 UTC: privileged oracle reward 1.0, untouched reward 0.0, 8/8 separate-verifier missions successful, zero contact stops, mean 136.875 carrier actions. Engine report, lifecycle phases, verdicts and matching active source hashes: tests/review/v4_ale_validation.json. Supporting native diagnostics: tests/review/v4_hidden_native.json. Earlier results are archived, not inherited. No frontier-model difficulty claim.",
-  "measurements": [
-    1
-  ],
-  "carrier_presses_per_site": [
-    127,
-    130,
-    148,
-    146,
-    129,
-    138,
-    141,
-    136
-  ],
-  "validation_status": "v4_actual_ale_separate_verifier_passed"
+  "full_at": 1,
+  "source": "PR37 v5 public-camera author policy safely docked on all eight unchanged official seeds; measured hardware-model and ALE provenance in tests/review/README.md."
 }

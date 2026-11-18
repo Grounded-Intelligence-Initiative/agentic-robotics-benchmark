@@ -3,11 +3,11 @@
     from client import Client, camera_image
     robot = Client()                 # ROBOT_SOCKET, default /run/visual_robotics/world.sock
     obs = robot.observe()            # does not move the robot
-    obs = robot.act([1/3])           # one button press (0, 1/3, 2/3 or 1): 0.2 s of motion
-    obs = robot.advance()            # the one switch from the scout to the carrier
-    obs = robot.new_site()           # commissioning only: a fresh development site
-    image = camera_image(obs, 0)     # front; index 1 is rear, both body-relative perspective
-    obs = robot.act([0., 0.])        # carrier only: brake; signed channels otherwise
+    obs = robot.act([.5, 0.])        # UAV translation in metres; returns down-camera frame
+    image = camera_image(obs)
+    obs = robot.new_site()           # commissioning only: another scout-only site
+    obs = robot.advance()            # grading only, one switch to the Go1 after >=4 scout moves
+    obs = robot.act({"target_rad": [0., .9, -1.8]*4, "ticks": 12})  # Go1 pose
 """
 import base64
 import io
@@ -47,13 +47,8 @@ class Client:
         return self.request("new_site")
 
 
-def camera_image(obs, index=0):
-    """Body-relative front/rear perspective image as a (256, 256, 3) array."""
+def camera_image(obs):
+    """UAV nadir perspective RGB as a (256, 256, 3) array."""
     import numpy as np
     from PIL import Image
-    return np.asarray(Image.open(io.BytesIO(base64.b64decode(obs["images"][index]))).convert("RGB"))
-
-
-def top_image(obs):
-    """Legacy decoding alias only: this is NOT a calibrated world top view."""
-    return camera_image(obs, 0)
+    return np.asarray(Image.open(io.BytesIO(base64.b64decode(obs["images"][0]))).convert("RGB"))
