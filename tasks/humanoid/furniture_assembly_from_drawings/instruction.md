@@ -23,8 +23,8 @@ Your score is the mean of the two: (the program's score + the graded episode's s
 **The program is frozen when you start the graded episode.** At the moment `start()` succeeds, the contents of
 `/home/user/submission/` are copied, and that copy is the program the grader runs; nothing you change in the folder
 afterwards counts. If you never start the graded episode, the program is frozen when the preparation window closes
-(4 hours after its service started, which is just before your session began), or at the end of your session if that
-comes first. So finish the program before you start the graded episode.
+(4 hours after its service started, which is just before your session began; if that copy fails, the program scores
+0), or at the end of your session if that comes first. So finish the program before you start the graded episode.
 
 ## The program (in `/home/user/submission/`)
 

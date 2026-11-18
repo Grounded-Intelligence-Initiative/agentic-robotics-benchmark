@@ -1,14 +1,16 @@
-"""Grader of furniture_assembly_from_drawings, dual mode: two scoring items of one task, one session, one verify. Runs
-as ROOT in the verify stage (separate verification: a fresh verifier sandbox holding only the declared artifacts, restored
-root-owned: the submission and the graded episode's record directory).
+"""Grader of furniture_assembly_from_drawings, dual mode: two scoring items of one task, one session, one verify.
+Runs as ROOT in the verify stage (separate verification: a fresh verifier sandbox holding only the declared artifacts,
+restored root-owned: the submission and the graded episode's record directory).
 
   * The program item (offline): main's grader, unchanged. tests/offline_verify.py is main's tests/verify.py with two
     hooks (the verdict is handed back instead of written; main(finish=False) leaves the stage modes and the freezer to
     this file); it runs the agent's assemble.py solve(cell) on 3 hidden episodes with fresh seeds, as on main, with
     main's gates, budgets, lockdown and record. The program it grades is the one frozen when the graded episode
     started (/var/lib/arb-online/submission_snapshot: the graded episode's root supervisor copied the submission folder
-    there before the start was charged), or when the preparation window closed if the episode was never started; with
-    no record of a freeze, the submission as the session left it (as on main).
+    there before the start was charged), or when the preparation window closed if the episode was never started (a
+    freeze at the window's close that failed, after the service's retries, scores the program item 0); the
+    submission as the session left it (as on main) only when the session ended before the window closed or there is
+    no usable record.
   * The live item (online): the record of the ONE graded episode the agent played itself during its session, scored as
     the online variant scores it (the cell's stage score of the graded episode when it ended, 0 after a safety
     violation; 0 when the episode never started).
@@ -21,8 +23,9 @@ Order:
      stdlib only, before anything else is imported);
   2. read and check the record (tests/online.json: format, task, episode, seed digest);
   3. pick the program: the snapshot when the record says the program was frozen (its digest checked against the
-     record: a mismatch is a task error), none when the frozen submission was over main's size cap (the program item
-     then scores 0), else the restored submission;
+     record: a mismatch is a task error); none when the frozen submission was over main's size cap or the freeze at
+     the window's close failed (the program item then scores 0); the restored submission only when the session ended
+     before the window closed or the record is unusable;
   4. main's offline grading of that program (main's own lockdown runs on it: kill, freezer, stage lock, late-write gate,
      its root-owned snapshot, then the gates and the 3 episodes): the offline component;
   5. the live component from the record;
@@ -227,10 +230,13 @@ def snapshot_digest(root):
 
 def choose_program(rec, snapshot_root):
     """(program folder or None, facts): None means the program item scores 0 (the frozen submission was over main's
-    cap). The snapshot is used when the record says the program was frozen, at the start or at the close of the
-    preparation window; otherwise the submission as the session left it."""
+    cap, or the freeze at the window's close failed). The snapshot is used when the record says the program was
+    frozen, at the start or at the close of the preparation window; the submission as the session left it only when
+    the session ended before the window closed (nothing frozen, nothing to freeze yet) or there is no usable record.
+    A failed freeze never falls back to the session-end submission: that would give the program prep_s + graded_s."""
     restored = os.path.join(HOME, "submission")
-    facts = {"program_snapshot": 0.0, "program_session_end": 0.0, "program_too_large": 0.0}
+    facts = {"program_snapshot": 0.0, "program_session_end": 0.0, "program_too_large": 0.0,
+             "program_freeze_failed": 0.0}
     status = rec.get("snapshot_status") if rec is not None else None
     frozen = rec is not None and (rec.get("started") is True or rec.get("prep_window_closed") is True)
     if rec is not None and rec.get("started") is True and status not in ("ok", "too_large"):
@@ -248,6 +254,11 @@ def choose_program(rec, snapshot_root):
         facts["program_too_large"] = 1.0
         log("[grader] the program frozen at %s was over main's submission cap (%s): the program item scores 0" % (
             rec.get("snapshot_at"), rec.get("snapshot_reason")))
+        return None, facts
+    if frozen:                                    # the window closed and its freeze failed (or never ran)
+        facts["program_freeze_failed"] = 1.0
+        log("[grader] the freeze when the preparation window closed failed (snapshot_status %r after %s attempt(s)): "
+            "the program item scores 0" % (status, rec.get("snapshot_attempts")))
         return None, facts
     facts["program_session_end"] = 1.0
     log("[grader] no freeze of the program on record (%s): the submission as the session left it" % (
@@ -400,6 +411,7 @@ def _main_dual():
                 (rec or {}).get("snapshot_at") == "start" else
                 "the program frozen when the preparation window closed" if program_facts["program_snapshot"] else
                 "the frozen submission was over main's size cap, not graded" if program_facts["program_too_large"]
+                else "the freeze at the window's close failed, not graded" if program_facts["program_freeze_failed"]
                 else "the submission as the session left it",
                 ("assembly_score %.4f on the graded episode %s, ended %s" % (
                     on_raw, rec.get("episode"),
