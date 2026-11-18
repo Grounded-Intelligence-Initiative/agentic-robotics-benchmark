@@ -1,0 +1,6 @@
+{
+ "episode": "hidden-1",
+ "seed": 14926794028863747417,
+ "seed_sha256": "bb244c6be2d7d21ca6ab7d84efd40165b80d32db641a769c9205440adaa2e910",
+ "source": "Drawn 2026-11-18T04:41:49Z with secrets.randbelow(3) (OS entropy) over the seeds of tests/episodes.json, the offline verifier's fixed hidden set, in its order: index 1. Root-only while the agent works (/opt/ale/setup); the service reads it as root before it drops privileges."
+}
