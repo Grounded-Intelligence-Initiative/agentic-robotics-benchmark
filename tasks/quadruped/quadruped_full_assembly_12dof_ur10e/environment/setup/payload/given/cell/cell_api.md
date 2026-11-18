@@ -44,6 +44,10 @@ still run.
 
 ## Rendering your own frames
 
+MuJoCo's own renderer (`mujoco.Renderer`, or the render layer's `"mujoco"` backend) draws a different picture than the
+cell's cameras (no hall, MuJoCo's own lights, flat colours, no reflections), so image processing tuned on its frames
+may behave differently on the cell's frames; the given render layer is the way to see what the cell's cameras would see.
+
 The given render layer renders like the cell's cameras: MuJoCo's Filament renderer (physically based; on the CPU through
 Vulkan, Mesa's lavapipe) in the factory hall of `~/render` (its baked lightmaps, its lamps, its HDR image light, the
 scanned oak bench top), with the cell's look (`arm/assembly_quad/agent_look.json` and `agent_render.make_look()`: light
@@ -63,17 +67,20 @@ ways in (put `~/given/lib` on `sys.path`):
   render layer's interface: `sync_from(model, data)` copies your physics state by joint name,
   `render_raw_views([cam], ("rgb", "depth"))` gives the pinhole images, `render([cam], photo=..., seed=k,
   outputs=("rgb", "sensor_depth"))` runs the photo pipeline.
-* `render.filament.view.open_view(spec_or_mjcf_path, room=..., look=..., surface=..., bench_xy=(0.45, 0.0))`: any scene
-  of yours, rendered exactly as given: none of the cell's props are added (no robot table frame, control box or floor
-  tape), your scene's own floor and walls stay unless `drop_prefixes` names them, and only geoms in a group above 2 are
-  left out; with `room`, the hall is added and its lamps replace your scene's lights (unless `keep_lights`). A twin of
-  this cell goes through `agent_render.open_session` instead. `view.render(state, camera, width=None, height=None,
-  depth=False)` returns RGB uint8 H x W x 3 (with `depth=True` also depth float32 H x W); `state` is an `MjData` (joints
-  copied by name), a `(model, data)` pair, a dict `{joint name: value}` or None; `camera` is a camera name of the model
-  (with `width`, `height`), a `CameraSpec` or a dict `{"width", "height", "fx", "fy", "cx", "cy", "world_T_cam"}` (`"K"`
-  may stand for the four intrinsics). `look` is the cell's look (`agent_render.make_look()`), a look file of your own
-  (JSON: the fields of `render.filament.backend.Look`; `"materials"` a list of `[geom glob, material glob, {"roughness",
-  "metallic"}]` rules, the first match wins) or None. `view.session` is a render-layer session for the photo pipeline.
+* `render.filament.view.open_view(spec_or_mjcf_path, room=..., look=..., surface=..., bench_xy=(0.45, 0.0),
+  exposure_factor=1.0)`: any scene of yours, rendered exactly as given: none of the cell's props are added (no robot
+  table frame, control box or floor tape), your scene's own floor and walls stay unless `drop_prefixes` names them, and
+  only geoms in a group above 2 are left out; with `room`, the hall is added and its lamps replace your scene's lights
+  (unless `keep_lights`). A twin of this cell goes through `agent_render.open_session` instead. `view.render(state,
+  camera, width=None, height=None, depth=False)` returns RGB uint8 H x W x 3 (with `depth=True` also depth float32
+  H x W); `state` is an `MjData` (joints copied by name), a `(model, data)` pair, a dict `{joint name: value}` or None;
+  `camera` is a camera name of the model (with `width`, `height`), a `CameraSpec` or a dict `{"width", "height", "fx",
+  "fy", "cx", "cy", "world_T_cam"}` (`"K"` (a 3 x 3 matrix) may stand for the four intrinsics). `look` is the cell's
+  look (`agent_render.make_look()`), a look file of your own (JSON: the fields of `render.filament.backend.Look`;
+  `"materials"` a list of `[geom glob, material glob, {"roughness", "metallic"}]` rules, the first match wins) or None.
+  For the hall's brightness pass `exposure_factor=...` to `open_view` and leave `make_look()` at its default (a view
+  would render `make_look(f)` with a wrong display gain). `view.session` is a render-layer session for the photo
+  pipeline.
 
 ```python
 import os, sys
