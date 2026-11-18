@@ -40,7 +40,10 @@ Rules:
     agent's submission folder into the root-only record/submission_snapshot/ (regular files and folders only, never
     following a link; main's 60 MB cap and bounds on entries and depth: over any of them the start goes on with
     snapshot_status too_large and no copy). A copy that fails refuses the start; nothing is charged. tests/verify.py
-    grades that copy as the program (main's offline grading) and the record as the graded episode.
+    grades that copy as the program (main's offline grading) and the record as the graded episode. The program freezes
+    at the earlier of the graded start and the close of the start window: when `prep_s` runs out with no start, the
+    worker's own timer has the supervisor make the same copy at that moment and writes a record that says so
+    (started false, freeze prep_window_closed), so later edits are not graded either.
   * Practice ends when the graded episode starts (O13): before the start is persisted, the worker writes the flag
     `practice_flag` (/run/skidcell-graded/flags/started: world-readable, in a directory only this service's account
     can write, inside the root-owned socket directory), and the commissioning service ends its open shifts and refuses
@@ -756,8 +759,30 @@ class GradedEpisode(object):
 
     def snapshot_fields(self):
         sn = self.state.get("snapshot") or {}
-        return {"snapshot_status": sn.get("status"), "snapshot_files": sn.get("files"), "snapshot_bytes": sn.get("bytes"),
-                "snapshot_sha256": sn.get("sha256"), "snapshot_skipped": sn.get("skipped")}
+        return {"freeze": self.state.get("frozen"), "snapshot_status": sn.get("status"), "snapshot_files": sn.get("files"),
+                "snapshot_bytes": sn.get("bytes"), "snapshot_sha256": sn.get("sha256"), "snapshot_skipped": sn.get("skipped")}
+
+    def freeze_at_window_close(self, now):
+        """The start window closed with no start: the program freezes now, as it would have at a start (the same copy by
+        the root supervisor), and a record says so. Retried at the next tick when the copy did not answer."""
+        snap = self.request_snapshot()
+        if not isinstance(snap, dict) or snap.get("status") not in ("ok", "too_large"):
+            self.log.write(kind="window_close_freeze_failed", result=snap)
+            self.freeze_retry_at = time.time() + 30.0
+            return
+        self.state.update({"frozen": "prep_window_closed", "frozen_wall": now,
+                           "snapshot": {k: snap.get(k) for k in ("status", "reason", "files", "bytes", "sha256", "skipped")}})
+        try:
+            self.store.write_json("state.json", self.state)
+            rec = {"format": RECORD_FORMAT, "task": self.cfg["task"], "episode": self.ep["episode"],
+                   "seed_sha256": self.ep["seed_sha256"], "started": False, "ended": False, "end_reason": None,
+                   "requests": 0, "steps": 0, "sim_time_s": 0.0, "wall_s_since_start": None, "episode_score": 0.0,
+                   "metrics": {}, "service_version": SERVICE_VERSION,
+                   "written_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)), **self.snapshot_fields()}
+            self.store.write_json("record.json", rec)
+        except OSError:
+            self.log.write(kind="window_close_record_failed", tb=traceback.format_exc(limit=4))
+        self.log.write(kind="frozen_at_window_close", **{k: snap.get(k) for k in ("status", "files", "bytes", "skipped")})
 
     def _minimal_record(self, now):
         start = float(self.state.get("start_wall") or now)
@@ -868,6 +893,9 @@ class GradedEpisode(object):
     def windows(self, now):
         if self.started and not self.ended and now >= self.graded_deadline():
             self.end("graded_window", now)
+        if not self.started and not self.state.get("frozen") and not self.state.get("state_lost") and \
+                now >= self.prep_deadline() and now >= getattr(self, "freeze_retry_at", 0.0):
+            self.freeze_at_window_close(now)
 
     # -- requests
     def status(self, now):
@@ -886,7 +914,8 @@ class GradedEpisode(object):
             graded_left = 0.0 if self.ended else max(0.0, self.graded_deadline() - now)
         return {"started": self.started, "ended": self.ended, "end": self.end_reason, "steps": steps,
                 "sim_time_s": sim, "camera_frames_used": frames, "camera_frames_left": max(0, budget - frames),
-                "prep_window_left_s": round(prep_left, 1), "graded_window_left_s": round(graded_left, 1)}
+                "prep_window_left_s": round(prep_left, 1), "graded_window_left_s": round(graded_left, 1),
+                "program_frozen": bool(self.state.get("frozen"))}
 
     def start(self, params, now):
         if not isinstance(params, dict):
@@ -915,12 +944,14 @@ class GradedEpisode(object):
             self.log.write(kind="practice_flag_failed", tb=traceback.format_exc(limit=4))
             return {"error": "internal", "detail": ERRORS["internal"]}
         # the charge: persisted before anything is simulated, never refunded
-        self.state.update({"started": True, "start_wall": now, "privileged": privileged,
+        self.state.update({"started": True, "start_wall": now, "privileged": privileged, "frozen": "graded_start",
+                           "frozen_wall": now,
                            "snapshot": {k: snap.get(k) for k in ("status", "reason", "files", "bytes", "sha256", "skipped")}})
         try:
             self.store.write_json("state.json", self.state)
         except OSError:
-            self.state.update({"started": False, "start_wall": None, "privileged": False, "snapshot": None})
+            self.state.update({"started": False, "start_wall": None, "privileged": False, "snapshot": None,
+                               "frozen": None, "frozen_wall": None})
             self.log.write(kind="start_not_persisted", tb=traceback.format_exc(limit=4))
             return {"error": "internal", "detail": ERRORS["internal"]}
         self.cell.privileged = privileged
@@ -1054,6 +1085,8 @@ class GradedEpisode(object):
             wait = 60.0
             if self.started and not self.ended:
                 wait = min(wait, self.graded_deadline() - now)
+            if not self.started and not self.state.get("frozen"):
+                wait = min(wait, max(self.prep_deadline(), getattr(self, "freeze_retry_at", 0.0)) - now)
             if self.dirty:
                 wait = min(wait, self.last_write + float(self.cfg["record_interval_s"]) - now)
             socks = [self.listener] + ([self.client.sock] if self.client is not None else [])

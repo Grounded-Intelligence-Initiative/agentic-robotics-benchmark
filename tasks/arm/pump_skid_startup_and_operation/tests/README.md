@@ -431,7 +431,11 @@ On the branch `exp/dual-mode-scoring` the task has two items, one session and on
   relative to its parent's descriptor with `O_NOFOLLOW`, so no link is followed; links, sockets, fifos and devices
   skipped and counted; main's 60 MB cap, plus at most 10,000 entries and 32 levels so the copy ends in bounded time and
   the record directory stays within the engine's artifact limits; over a cap: `too_large`, no copy). A copy that fails
-  refuses the start, nothing charged; then the practice flag (O13), then the charge. The record gains
+  refuses the start, nothing charged; then the practice flag (O13), then the charge. The program freezes at the
+  earlier of the graded start and the close of the start window (the coordinator's correction of 2026-11-18): when
+  `prep_s` runs out with no start, the worker's timer has the supervisor make the same copy then and writes a record
+  with `started` false and `freeze` `prep_window_closed`, which `verify.py` grades; the session-end submission is graded
+  only when nothing was frozen (the session ended first) or no usable record of a freeze exists. The record gains
   `snapshot_status`, `snapshot_files`, `snapshot_bytes`, `snapshot_sha256` (the sorted list of path, size and content
   sha256) and `snapshot_skipped`. Measured in a container: 3 ms for a 1 MB submission; three symbolic links (to
   `/etc/passwd`, to the root-only episode file, to `/opt`) and a fifo skipped; a submission folder replaced by a link

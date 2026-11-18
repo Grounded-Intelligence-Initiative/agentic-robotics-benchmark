@@ -44,19 +44,20 @@ The score is the mean of two items, each relative to its own hidden reference va
 2. **The graded episode**: one shift on a hidden site of the series that you run yourself, live, during this session,
    scored by the same procedure (its section below).
 
-**The freeze.** The program graded is the one in the submission folder at the moment you start the graded episode. At
-that moment, before the shift begins, the graded episode's service copies the folder out of your reach (regular files
-and folders only, symbolic links skipped; above 60 MB, or 10,000 files and folders, nothing is copied and the program
-scores 0), and nothing you change in the folder afterwards reaches the program's grading: finish the program before
-you start the shift. If you
-never start the graded episode, the folder as it is when your session ends is graded, and the graded episode scores 0.
+**The freeze.** The program graded is the one in the submission folder at the earlier of two moments: when you start
+the graded episode, or when the 4-hour window below closes without a start. At that moment (before the shift begins,
+if you start it) the graded episode's service copies the folder out of your reach (regular files and folders only,
+symbolic links skipped; above 60 MB, or 10,000 files and folders, nothing is copied and the program scores 0), and
+nothing you change in the folder afterwards reaches the program's grading: finish the program before you start the
+shift. The folder as it is when your session ends is graded only if the session ends before either moment. Without a
+start the graded episode scores 0.
 
 **Practice** (commissioning, below) closes when the graded episode starts.
 
 **The windows.** You have 4 hours from the service's start (it starts with your sandbox, a few minutes before your
 session begins) to write the program and to prepare, commissioning included; start the graded episode within them
-(later, `start()` answers `prep_window_closed`). The graded episode then has at most 3 hours. The session lasts 7 hours
-in all.
+(later, `start()` answers `prep_window_closed`, and the program freezes as it is when they close). The graded episode
+then has at most 3 hours. The session lasts 7 hours in all.
 
 ## What you produce (in `/home/user/submission/`)
 
@@ -80,10 +81,10 @@ defines `solve`: the import must finish within 120 s of wall clock and 120 CPU s
 episode scores 0; do heavy precomputation inside `solve`, not at module level. Resolve given files through `os.environ.get("ARB_GIVEN_DIR", os.path.expanduser("~/given"))`, write only
 under the run's HOME / TMPDIR. A program that crashes ends that episode with what it achieved; the other episodes still
 run. An episode in which the cell itself failed (an internal error, a physics fault, a frame it could not render) is run
-once more from scratch, and the second run counts. Your program must be final when you start the graded episode (the
-freeze, above): the frozen copy (or, if you never start the graded episode, the folder at your session's end) is graded
-after your session in a fresh sandbox that holds nothing else of yours (no other file, no process you started), and a
-surviving process of the run account voids the contract gate.
+once more from scratch, and the second run counts. Your program must be final when you start the graded episode, and
+at the latest when the 4-hour window closes (the freeze, above): the frozen copy (or, if your session ends before
+either, the folder at its end) is graded after your session in a fresh sandbox that holds nothing else of yours (no
+other file, no process you started), and a surviving process of the run account voids the contract gate.
 
 ## What you are given
 
@@ -172,7 +173,8 @@ there is no stdio wire here). Mind `finish()`: it ends the graded episode at onc
   stays available: the robot's model, your own simulations, and anything you wrote or recorded.
 * **Two windows.** Start the graded episode within 4 hours of the service's start (the service starts with your
   sandbox, a few minutes before your session begins; `status()["prep_window_left_s"]` counts down); after that,
-  `start()` answers `prep_window_closed` and this item scores 0. Once started, the episode lasts at most 3 hours of
+  `start()` answers `prep_window_closed`, this item scores 0 and your program is frozen as it is then
+  (`status()["program_frozen"]`). Once started, the episode lasts at most 3 hours of
   wall clock (`graded_window_left_s`).
 * **How it ends.** At its own end (1800 s of simulated time, or when the cell ends it: a physics fault or an internal
   error of the cell; the graded episode is never run again), at your `finish()`, when its 3 hours run out, or when your
@@ -241,13 +243,13 @@ The robot's own model (`~/given/panda/`, MuJoCo) is yours to simulate the arm wi
 - Do not modify the given files in your home directory; the grader reads its own copies.
 - Environment facts (harness limits): a single tool call whose input runs above roughly 25-30k tokens is dropped by the
   harness (it is never executed and no error comes back), and a response that reaches the 64k output-token limit is lost
-  and, after at most a few retries, ends the session (the program graded is then the copy frozen at the graded
-  episode's start or, if it never started, whatever is in `/home/user/submission/` at that moment; the graded episode
-  counts as it stood after your last request). Write large files in several parts (one function group per write), keep
+  and, after at most a few retries, ends the session (the program graded is then the copy frozen at the graded start
+  or at the close of the 4-hour window or, before either, whatever is in `/home/user/submission/` at that moment; the
+  graded episode counts as it stood after your last request). Write large files in several parts (one function group per write), keep
   every single response well below that limit, write a first complete submission early and refine it.
 - Session time: this session is stopped after 7 hours of wall-clock time from its start (the 4-hour window for the
   program and your preparation, then the graded episode's 3 hours). Should it stop while the graded episode runs, the
-  episode is scored as it stood after your last request, with nothing simulated afterwards; should it stop before you
-  start the graded episode, the submission folder is graded as it is then. Note the start time with `date` when you
+  episode is scored as it stood after your last request, with nothing simulated afterwards; your program is graded
+  as frozen at the graded start, or at the close of the 4-hour window when you did not start. Note the start time with `date` when you
   begin, keep a complete program in the folder from early on, start the graded episode in time, and when its shift is
   done (after the shutdown) call `finish()`, then end the session yourself (stop working and say that you are done).
