@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Privileged reference solution (SPEC 14.1 / 17): a scripted controller that knows every hidden box's mechanism
-# (solution/ref/boxes.json, protected reference data: part types, positions, directions and the unlock order). At
-# the episode start it estimates the box placement from the two fixed cameras (top-face segmentation + fit of the
-# known outline), then drives the stages in order with scripted primitives.
-# Online graded episode: the controller plays the session's graded episode itself, through the agent-side client
-# (helpers/graded_bridge.py and labclient.py in the agent home): graded_start, one graded_step per controller reply
-# until the episode ends (all of the box's stages done, or 2500 steps), then graded_finish if it is still running.
+# Privileged reference solution (SPEC 14.1 / 17), dual mode: a scripted controller that knows every hidden box's
+# mechanism (solution/ref/boxes.json, protected reference data: part types, positions, directions and the unlock
+# order). At each episode start it estimates the box placement from the two fixed cameras (top-face segmentation + fit
+# of the known outline), then drives the stages in order with scripted primitives.
+# 1. The program item, as main's solve.sh: the controller goes into the submission folder (run.sh and its files).
+# 2. The graded episode: the same controller plays it through the agent-side client (helpers/graded_bridge.py and
+#    labclient.py in the agent home): graded_start (which freezes the submission folder just filled), one graded_step
+#    per controller reply until the episode ends (all of the box's stages done, or 2500 steps), then graded_finish if
+#    it is still running. The order matters: the program frozen at the start must be the reference program.
 # Runs as the agent account with the agent's timeouts and network policy; spends no lab trials.
 set -euo pipefail
 HOME_DIR="${ALE_HOME:-/home/user}"
