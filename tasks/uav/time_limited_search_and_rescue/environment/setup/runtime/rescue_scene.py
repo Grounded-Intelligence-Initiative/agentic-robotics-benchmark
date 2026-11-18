@@ -1,4 +1,4 @@
-"""3D industrial rescue yard. The forecast board is the only route-dependent mesh."""
+"""3D industrial rescue yard. Only the forecast paint varies with the route."""
 from functools import lru_cache
 import xml.etree.ElementTree as ET
 
@@ -8,13 +8,20 @@ from scene_assets import asset_root, geom, materials, robot_meshes, vec
 LANES = (-2.7, -.9, .9, 2.7)
 PAD = (0., -5.25)
 BOARD = (0., -3.28)
-BOUNDS = ((-3.39, 3.39), (-5.70, 5.50), (.39, 1.88))
+HEIGHT_BOARD = (1., -2.12)
+BOUNDS = ((-3.39, 3.39), (-5.70, 8.10), (.39, 2.55))
 DOWN_WIDTH = 3.5
 DOWN_OFFSET = .20
 GATE_Y = .53
 GATE_HALF_WIDTH = .44
 GATE_CEILING = 1.43
-CRATES = [(-.75, 2.62, .37, .46, .60), (.75, 3.46, .37, .46, .68)]
+HEIGHT_GATE_Y = 2.72
+HEIGHT_GATE_ZONE = .61
+HEIGHT_HALF_WIDTH = .49
+# Indexed by forecast dot count minus one: (x, visible opening bottom/top,
+# safe UAV center range including clearance for the loaded pod).
+PASSAGES = ((.92, .03, 1.12, .57, .92), (-.92, 1.52, 2.62, 1.98, 2.42))
+CRATES = [(-.75, 5.13, .37, .46, .60), (.75, 6.06, .37, .46, .68)]
 
 DARK = (.085, .106, .118, 1)
 STEEL = (.33, .38, .41, 1)
@@ -47,7 +54,7 @@ def template():
             <joint name="y" type="slide" axis="0 1 0" damping="9"/>
             <joint name="z" type="slide" axis="0 0 1" damping="9"/>
             <camera name="down" pos="0 .20 -.145" projection="orthographic" fovy="3.5"/>
-            <camera name="forward" pos="0 .17 .045" xyaxes="1 0 0 0 .47 .8827" fovy="72"/>
+            <camera name="forward" pos="0 .17 .045" xyaxes="1 0 0 0 .05 .99875" fovy="106"/>
           </body>
           <body name="pod" pos="0 2 .074">
             <freejoint name="pod_free"/>
@@ -87,15 +94,18 @@ def template():
     geom(body, "grapple_crossbar", pos=(0, 0, .136), size=(.142, .025, .015), rgba=WHITE)
 
     for side in (-1, 1):
-        geom(w, f"boundary{side}", pos=(side*3.88, -.03, .76),
-             size=(.13, 5.99, .76), material="brick_mat")
-        geom(w, f"boundary_cap{side}", pos=(side*3.88, -.03, 1.54),
-             size=(.16, 6.0, .04), rgba=STEEL)
-        for y in (-4.8, -2.4, 0, 2.4, 4.8):
+        geom(w, f"boundary{side}", pos=(side*3.88, 1.23, 1.34),
+             size=(.13, 7.30, 1.34), material="brick_mat")
+        geom(w, f"boundary_cap{side}", pos=(side*3.88, 1.23, 2.68),
+             size=(.16, 7.3, .04), rgba=STEEL)
+        for y in (-4.8, -2.4, 0, 2.4, 4.8, 7.2):
             geom(w, f"pier{side}_{y}", pos=(side*3.90, y, 1.02),
                  size=(.19, .13, 1.02), rgba=STEEL)
-    for y in (-6.07, 5.84):
-        geom(w, f"endwall{y}", pos=(0, y, .58), size=(3.92, .12, .58), material="brick_mat")
+    geom(w, "south_wall", pos=(0, -6.07, .58), size=(3.92, .12, .58), material="brick_mat")
+    geom(w, "rear_wall", pos=(0, 8.53, 1.46), size=(3.92, .12, 1.46), material="brick_mat")
+    for i in range(6):
+        geom(w, f"rear_cladding{i}", pos=(i*1.3-3.25, 8.40, 1.99),
+             size=(.43, .025, .43), rgba=(.22, .35, .41, 1))
     # Licensed, locally staged Poly Haven scans form the two service cabinets.
     for i, (x, y, sx, sy, h) in enumerate(CRATES):
         prop(root, asset_root(), "utility_box_01", f"service_cabinet{i}", (x, y, 0),
@@ -111,6 +121,13 @@ def template():
         for j in range(i+1):
             geom(w, f"forecast_dot{i}_{j}", "cylinder",
                  (x+(j-i/2)*.088, BOARD[1], .120), (.026, .004), DARK)
+    geom(w, "height_forecast_base", pos=(*HEIGHT_BOARD, .047), size=(.63, .32, .047), rgba=BLUE)
+    for i, dx in enumerate((-.30, .30)):
+        x, y = HEIGHT_BOARD
+        geom(w, f"height_tile{i}", pos=(x+dx, y, .106), size=(.23, .24, .011), rgba=AMBER)
+        for j in range(i+1):
+            geom(w, f"height_dot{i}_{j}", "cylinder", (x+dx+(j-i/2)*.15, y, .120),
+                 (.041, .004), DARK)
 
     # Red/yellow baffles are always hot. All four openings have the same local
     # geometry and markings; none of these geoms encode the episodic forecast.
@@ -130,7 +147,41 @@ def template():
         for offset in (-.62, .62):
             geom(w, f"hot_edge{i}_{offset}", pos=(x+offset, 0, .008),
                  size=(.018, .54, .008), rgba=HOT)
-    for y in (1.31, 3.18, 4.99):
+
+    # The transverse bulkhead is solid from wall to wall, with two genuinely
+    # empty windows in different rows/columns. No sign at this bulkhead varies.
+    def bulkhead(name, lo_x, hi_x, lo_z, hi_z, rgba=STEEL):
+        geom(w, name, pos=((lo_x+hi_x)/2, HEIGHT_GATE_Y, (lo_z+hi_z)/2),
+             size=((hi_x-lo_x)/2, .30, (hi_z-lo_z)/2), rgba=rgba)
+
+    bulkhead("height_sill", -3.90, 3.90, 0., .03)
+    bulkhead("height_middle", -3.90, 3.90, 1.12, 1.52, DARK)
+    bulkhead("height_roof", -3.90, 3.90, 2.62, 2.93, DARK)
+    for i, (x, bottom, top, _, _) in enumerate(PASSAGES):
+        bulkhead(f"bulkhead{i}_left", -3.90, x-.75, bottom, top)
+        bulkhead(f"bulkhead{i}_right", x+.75, 3.90, bottom, top)
+        for side in (-1, 1):
+            y = HEIGHT_GATE_Y+side*.308
+            for dx in (-.78, .78):
+                geom(w, f"window{i}_jamb{side}_{dx}", pos=(x+dx, y, (bottom+top)/2),
+                     size=(.045, .015, (top-bottom)/2), rgba=AMBER)
+            z = 1.32 if i == 0 else 2.77
+            for j in range(i+1):
+                geom(w, f"window{i}_dot{side}_{j}", "sphere",
+                     (x+(j-i/2)*.22, y+side*.016, z), (.077,), WHITE)
+            y = HEIGHT_GATE_Y+side*1.07
+            geom(w, f"window{i}_lead{side}", pos=(x, y, .005),
+                 size=(.35, .13, .004), rgba=DARK)
+            for j in range(i+1):
+                geom(w, f"window{i}_lead_dot{side}_{j}", "cylinder",
+                     (x+(j-i/2)*.16, y, .012), (.048, .004), WHITE)
+    for i, x in enumerate((-3.46, -2.78, -2.10, 2.10, 2.78, 3.46)):
+        for side in (-1, 1):
+            geom(w, f"bulkhead_warning{i}_{side}", pos=(x, HEIGHT_GATE_Y+side*.308, 1.32),
+                 size=(.24, .016, .055), rgba=HOT, euler="0 30 0")
+    # Center a landmark between the gates, and delineate the far search yard.
+    geom(w, "staging_line", pos=(0, 1.14, .004), size=(1.45, .035, .003), rgba=WHITE)
+    for y in (3.77, 5.69, 7.59):
         for x in (-2.4, 0., 2.4):
             geom(w, f"search_grid{x}_{y}", pos=(x, y, .002),
                  size=(.65, .016, .002), rgba=(.48, .51, .49, 1))

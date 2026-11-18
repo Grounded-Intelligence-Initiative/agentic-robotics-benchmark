@@ -12,28 +12,32 @@ import numpy as np
 from PIL import Image
 
 from rescue_scene import (BOARD, BOUNDS, COOL, CRATES, DOWN_OFFSET, GATE_CEILING,
-                          GATE_HALF_WIDTH, GATE_Y, LANES, PAD, template)
+                          GATE_HALF_WIDTH, GATE_Y, HEIGHT_BOARD, HEIGHT_GATE_Y,
+                          HEIGHT_GATE_ZONE, HEIGHT_HALF_WIDTH, LANES, PAD,
+                          PASSAGES, template)
 
-LIMIT = 132
+LIMIT = 184
 DT = .2
 INCREMENTS = np.array([.32, .32, .19])
 START = np.array([*PAD, 1.12])
-SCORE = {"survey": 10, "entered_b": 15, "located": 15,
-         "lifted": 25, "carried_to_a": 20, "delivered": 15}
+SCORE = {"survey_lane": 5, "survey_height": 5, "lane_out": 10, "height_out": 10,
+         "located": 10, "lifted": 20, "height_back": 15, "lane_back": 15, "delivered": 10}
+CROSSINGS = ("lane_out", "height_out", "height_back", "lane_back")
 
 
 def scenario(seed):
-    """Seed neighbors share everything except the forecast and hot opening."""
-    rng = np.random.default_rng(seed >> 1)
+    """Each block of four levels independently swaps lane and altitude forecasts."""
+    rng = np.random.default_rng(seed >> 2)
     lane = int(rng.permutation(len(LANES))[seed & 1])
+    height = int(rng.integers(len(PASSAGES))) ^ ((seed >> 1) & 1)
     x = rng.choice((-2.55, 0., 2.55)) + rng.uniform(-.33, .33)
     # Keep the middle aisle clear of the two cabinets at ground level.
     if abs(x) < 1.0:
         x *= .42
-    y = rng.choice((2.04, 4.45)) + rng.uniform(-.25, .25)
+    y = rng.choice((4.64, 7.05)) + rng.uniform(-.25, .25)
     yaw = rng.uniform(-.6, .6)
     tone = rng.uniform(.88, 1.08)
-    return lane, (x, y, yaw), tone
+    return lane, height, (x, y, yaw), tone
 
 
 def png(rgb):
@@ -48,9 +52,10 @@ class World:
     def __init__(self, kind, seed, render=True):
         if kind != self.kind:
             raise ValueError("unknown task")
-        self.safe_lane, (x, y, yaw), tone = scenario(seed)
+        self.safe_lane, self.safe_height, (x, y, yaw), tone = scenario(seed)
         self.model = mujoco.MjModel.from_xml_string(template())
         self.model.geom(f"forecast_tile{self.safe_lane}").rgba[:] = COOL
+        self.model.geom(f"height_tile{self.safe_height}").rgba[:] = COOL
         self.model.light_diffuse[:] *= tone
         self.data = mujoco.MjData(self.model)
         self.data.qpos[:3] = self.command = START.copy()
@@ -62,6 +67,7 @@ class World:
         self.done = False
         self.failure = None
         self.progress = set()
+        self.crossing_altitudes = {}
         self._observation = None
 
     @property
@@ -127,26 +133,48 @@ class World:
                 self.abort("baffle")
             elif nearest != self.safe_lane:
                 self.abort("heat")
+        if abs(y-HEIGHT_GATE_Y) <= HEIGHT_GATE_ZONE:
+            opening = next((i for i, (cx, _, _, lo, hi) in enumerate(PASSAGES)
+                            if abs(x-cx) <= HEIGHT_HALF_WIDTH and lo <= z <= hi), None)
+            if opening is None:
+                self.abort("bulkhead")
+            elif opening != self.safe_height:
+                self.abort("height_heat")
         for cx, cy, sx, sy, height in CRATES:
             if (abs(x-cx) < sx+.14 and abs(y-cy) < sy+.14
                     and z < height+(.43 if self.held else .24)):
                 self.abort("cabinet")
 
+    def record_crossings(self, previous_y):
+        _, y, z = self.position
+        for prefix, plane in (("lane", 0.), ("height", HEIGHT_GATE_Y)):
+            if previous_y < plane <= y:
+                self.crossing_altitudes.setdefault(f"{prefix}_out", float(z))
+            elif previous_y > plane >= y and self.held and "lifted" in self.progress:
+                self.crossing_altitudes.setdefault(f"{prefix}_back", float(z))
+
     def update_progress(self):
         x, y, z = self.position
         px, py, pz = self.payload
-        if z >= .72 and abs(x-BOARD[0]) <= .68 and abs(y-BOARD[1]) <= .68:
-            self.progress.add("survey")
-        if "survey" in self.progress and y > .81:
-            self.progress.add("entered_b")
-        if ("entered_b" in self.progress and z >= .57 and abs(px-x) < 1.45
+        for name, (cx, cy) in (("survey_lane", BOARD), ("survey_height", HEIGHT_BOARD)):
+            if z >= .72 and abs(x-cx) <= .68 and abs(y-cy) <= .68:
+                self.progress.add(name)
+        if "survey_lane" in self.progress and .81 < y < HEIGHT_GATE_Y-HEIGHT_GATE_ZONE:
+            self.progress.add("lane_out")
+        if {"lane_out", "survey_height"} <= self.progress and y > HEIGHT_GATE_Y+.80:
+            self.progress.add("height_out")
+        if ("height_out" in self.progress and z >= .57 and abs(px-x) < 1.45
                 and abs(py-y-DOWN_OFFSET) < 1.45):
             self.progress.add("located")
         if self.held and pz >= .62:
             self.progress.add("lifted")
-        if self.held and "lifted" in self.progress and y < -.82 and py < -.62:
-            self.progress.add("carried_to_a")
-        if (not self.held and "carried_to_a" in self.progress
+        if (self.held and "lifted" in self.progress and .81 < y < HEIGHT_GATE_Y-.81
+                and py < HEIGHT_GATE_Y-.63 and "height_back" in self.crossing_altitudes):
+            self.progress.add("height_back")
+        if (self.held and "height_back" in self.progress and y < -.82 and py < -.62
+                and "lane_back" in self.crossing_altitudes):
+            self.progress.add("lane_back")
+        if (not self.held and "lane_back" in self.progress
                 and np.linalg.norm(self.payload[:2]-PAD) <= .28 and pz <= .095
                 and np.linalg.norm(self.data.qvel[3:9]) <= .16):
             self.release_dwell += 1
@@ -170,9 +198,11 @@ class World:
         for _ in range(round(DT/self.model.opt.timestep)):
             if self.done:
                 break
+            previous_y = float(self.position[1])
             mujoco.mj_step(self.model, self.data)
             self.check_safety()
             if not self.done:
+                self.record_crossings(previous_y)
                 self.update_progress()
         if self.steps >= LIMIT:
             self.done = True
@@ -185,7 +215,9 @@ class World:
             "success": int("delivered" in self.progress and self.failure is None),
             **{name: int(name in self.progress) for name in SCORE},
             "steps": self.steps, "simulation_seconds": round(self.data.time, 3),
-            "hazard_abort": int(self.failure in ("heat", "baffle", "cabinet")),
+            "hazard_abort": int(self.failure in ("heat", "baffle", "cabinet", "bulkhead", "height_heat")),
             "unsafe_release": int(self.failure == "unsafe_release"),
             "close_attempts": self.close_attempts, "safe_lane": self.safe_lane+1,
+            "safe_height": self.safe_height+1,
+            **{f"{k}_z": round(self.crossing_altitudes.get(k, 0.), 4) for k in CROSSINGS},
         }

@@ -7,18 +7,19 @@ MuJoCo slides; the pod is a free body attached only by a proximity- and
 speed-gated weld. These are simulation abstractions, not a flight controller
 or a hardware rescue procedure.
 
-The private seed selects one of four cool openings, a pod location and yaw,
-and a lighting variant. Seed neighbors `2k` and `2k+1` share pod, lighting,
-initial pose, and geometry; they differ only in the earlier forecast tile
-and which opening aborts the sortie. The first heat violation terminates
-at the physics substep, with no retries. At the junction, both onboard
-views are identical across a matched pair at the same pose. The split is
-across separate episodes; no reset or seed control exists in the public API.
+The private seed selects one of four lateral lanes and independently one of
+two vertically and laterally separated bulkhead windows. In each block of
+four seeds, toggling bit 0 swaps the lane, toggling bit 1 swaps the height,
+and everything else remains fixed (including pod and lighting). Wrong
+openings terminate at the physics substep, with no retries. Both onboard
+views are identical across each matched pair at its corresponding junction
+at the same pose. The upper window requires more altitude than the first
+barrier permits, and neither the sides nor roof provides a bypass.
 
-The root-owned ledger scores survey .10, safe entry into B .15, visibility
-of the pod from the down camera .15, lift .25, loaded return into A .20,
-and a settled delivery .15. Unsafe aborts cap the score at .65. The verifier
-reads only this protected ledger; the agent's artifact files confer no credit.
+The root-owned ledger scores .05 per board, .10 per outbound crossing,
+.10 for seeing the pod, .20 for lifting it, .15 per loaded return crossing,
+and .10 for settled delivery. It records actual center altitude at each
+crossing. Unsafe aborts cap the score at .65; agent artifacts confer no credit.
 
 ## Run the Oracle
 
@@ -52,11 +53,13 @@ for mode in untouched oracle; do
 done
 ```
 
-The first check exercises twelve fixed seeds in six matched layouts.
-It compares actual RGB bytes at the decision point and then drives the same
-route in the pair to confirm different outcomes. It also runs a privileged
-pilot, an untouched world, locate-only, a fixed-lane pilot given the pod's
-exact coordinates, and negative cases for overflight, premature grip, and
-high release. The staged smoke uses fresh containers with the root service,
-agent UID, actual Unix socket and protected verdict; it is not the ALE
-framework gate. No live model call is needed for either.
+The first check exercises twelve seeds covering all joint lane/height
+variants. At both junctions it compares actual RGB bytes and drives the
+same route in the corresponding matched pair to confirm different outcomes.
+Controls include privileged, untouched, locate-only, cue-blind lane and
+altitude pilots with perfect pod coordinates, fixed-altitude flights, and
+attempts to fly over or around the bulkhead. Pass `--output /frames` with
+a writable mount to save the forecast and both onboard junction images.
+The staged smoke uses fresh containers with the root service, agent UID,
+actual Unix socket and protected verdict; it is not the ALE framework
+gate. No live model call is needed for either.

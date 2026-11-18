@@ -26,7 +26,7 @@ def main():
     measured = metrics["rescue_progress"]
     # Framework-owned verifier output, unavailable to the live agent.
     print("[authoritative-journal] " + json.dumps(state, separators=(",", ":")), flush=True)
-    extra = {k: v for k, v in metrics.items() if k not in ("safe_lane", "rescue_progress")}
+    extra = {k: v for k, v in metrics.items() if k not in ("safe_lane", "safe_height", "rescue_progress")}
     extra["trusted_requests"] = state["requests"]
     write_verdict(ratio_rewards(measured, anchor, metric_name=calibration["metric"], extra=extra,
                                 full_at=calibration["full_at"]))

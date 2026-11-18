@@ -11,6 +11,7 @@ from PIL import Image
 sys.path.insert(0, "/opt/visual_robotics/client")
 
 LANES = (-2.7, -.9, .9, 2.7)
+PASSAGES = ((.92, .75), (-.92, 2.20))
 PACE = np.array([.32, .32, .19])
 CAMERA_SCALE = 3.5/256
 PAD_Y = -5.25
@@ -59,14 +60,17 @@ class Pilot:
         return None
 
 
-def forecast(observation):
+def forecast(observation, height=False):
     rgb = down(observation)
+    # Read the board directly under the UAV; the other board can be at an edge.
+    rgb = rgb[113:173]
     r, g, b = rgb.transpose(2, 0, 1)
     rows, columns = np.where((g > 105) & (g > r+65) & (b > r+28))
     if rows.size < 120:
         raise RuntimeError("green forecast tile not in view")
     x = (columns.mean()+.5-128)*CAMERA_SCALE
-    return int(np.argmin(np.abs(x-np.array([-.72, -.24, .24, .72]))))
+    tiles = [-.30, .30] if height else [-.72, -.24, .24, .72]
+    return int(np.argmin(np.abs(x-np.array(tiles))))
 
 
 def find_pod(observation, command):
@@ -84,21 +88,28 @@ def find_pod(observation, command):
     return command[:2]+[(u+.5-128)*CAMERA_SCALE, (128-v-.5)*CAMERA_SCALE+.20]
 
 
-def run(client, lane=None, target=None, locate_only=False):
+def run(client, lane=None, height=None, target=None, locate_only=False):
     p = Pilot(client)
     p.go(0., -3.28, settle=2)
     if lane is None:
         lane = forecast(p.obs)
+    p.go(1., -2.12, settle=2)
+    if height is None:
+        height = forecast(p.obs, height=True)
     x = LANES[lane]
+    hx, hz = PASSAGES[height]
     p.go(x, -1.12)
     p.go(x, 1.12)
+    p.go(hx, 1.47, hz, settle=1)
+    p.go(hx, 3.78, hz)
+    p.go(hx, 3.78)
     if p.obs["done"]:
         return p.obs
     if target is None:
         # Read along the pass, settle before using a detection for precise alignment.
-        side = -1 if x < 0 else 1
-        p.go(side*1.72, 2.08)
-        for sx, sy in ((-side*1.72, 2.08), (-side*1.72, 4.13), (side*1.72, 4.13)):
+        side = -1 if hx < 0 else 1
+        p.go(side*1.72, 4.68)
+        for sx, sy in ((-side*1.72, 4.68), (-side*1.72, 6.73), (side*1.72, 6.73)):
             target = p.scan(sx, sy)
             if target is not None or p.obs["done"]:
                 break
@@ -113,6 +124,9 @@ def run(client, lane=None, target=None, locate_only=False):
     p.go(px, py, .43, settle=2)
     p.grip(1.)
     p.go(px, py)
+    p.go(hx, 3.78)
+    p.go(hx, 3.78, hz, settle=1)
+    p.go(hx, 1.47, hz)
     p.go(x, 1.1)
     p.go(x, -1.1)
     p.go(0., PAD_Y)
