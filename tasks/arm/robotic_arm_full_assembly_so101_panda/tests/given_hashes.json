@@ -1,7 +1,7 @@
 {
- "given/cell/cell_api.md": "98a59a5c946d967000b6d95bd2b8a9e9f638be45959f1cdf8bdbfc722a2381a2",
+ "given/cell/cell_api.md": "6938dff75ab3986dfbf306a05f043dce147b84be7205f46611b68e3825aa1b27",
  "given/cell/cell_config.json": "2c2099709967b3ab9926a28f4a6d1de95f9d5eaf43e7d5f7f79a757ea3bc6865",
- "given/cell/cell_manual.md": "cffb3246bc6430f224b54a8ad6c7fb800c761e39f4eea3732434b930cd9f3f82",
+ "given/cell/cell_manual.md": "0b20a75686f841682bc5ed5c786998bbe6848d3223377400b2e6b4418d13bb8a",
  "given/kit.json": "fa26fc59cd84494dae61d7ed3f3818a70e220af04c05122b0faf9d1b5626072b",
  "given/lib/arm/__init__.py": "cb632305a0aa560d4066b3c054b2d92979abc3e8eb05558ccdf56cc439215133",
  "given/lib/arm/assembly_cell/__init__.py": "18955338ef7ddacbc889fefa55766cdd2f593ae7480bc722641a127d839abac1",
