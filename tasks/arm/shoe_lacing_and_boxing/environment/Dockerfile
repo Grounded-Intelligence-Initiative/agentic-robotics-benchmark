@@ -118,3 +118,8 @@ RUN export HOME=/root \
     && runuser -u user -- python3 -c "import mujoco, numpy, scipy, PIL, cv2; m = mujoco.MjModel.from_xml_path('/opt/task-assets/panda/panda_nohand.xml'); print('[shoe-cell] agent-UID import OK, panda_nohand nbody', m.nbody)" \
     && env -u DISPLAY python3 -c "import mujoco._render_filament as F, mujoco.experimental.studio.window; c = F.Context(F.ContextConfig(graphics_api=F.GraphicsApi.GRAPHICS_API_VULKAN)); print('[shoe-cell] Filament on Vulkan (lavapipe) OK')" \
     && test -z "$(find /home/user -user root -print -quit)"
+
+# The graded service's dedicated account (environment/setup/setup.sh starts the service as root; it reads the graded
+# episode, then serves it as this account, never as root or as the agent). Last, so the layers above stay as built.
+RUN useradd --system --user-group --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin arbonline \
+    && test -z "$(find /home/user -user root -print -quit)"

@@ -1,0 +1,15 @@
+{
+ "format": "arb-online-record/1",
+ "task": "shoe_lacing_and_boxing",
+ "episode": "ep01",
+ "seed_sha256": "350402b30e5a1330c7c3d23c4694208f83446b868ba8e736764ef9396cae0e77",
+ "seed_digest": "sha256 of the seed's decimal digits (ASCII), as the service computes it from environment/setup/online/episode.json",
+ "record": "/var/lib/arb-online/record.json",
+ "windows": {"prep_s": 14400.0, "graded_s": 10800.0},
+ "draw": {
+  "drawn_utc": "2026-11-18T04:36:44Z",
+  "from": "tests/hidden/seeds.json (sha256 2739737ad20dcb770bc6e474d4bd66747ff49b76d613e5c61ff7b50c256432ec): the offline verifier's fixed hidden set of 6 seeds, run in their order as ep01..ep06",
+  "how": "python3 -c 'import secrets; print(secrets.randbelow(6))' printed 0: the first seed, the offline verifier's ep01",
+  "note": "the same graded episode serves every model; the seed lives only in environment/setup/online/episode.json (root-only at /opt/ale/setup while the agent works) and in tests/hidden/seeds.json"
+ }
+}
