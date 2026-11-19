@@ -11,10 +11,13 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent/"runtime"))
+sys.path[:0] = [str(HERE.parent/"setup_payload"), str(HERE.parents[1]/"solution/oracle")]
 
 from articulated import CAMERA_Z, FOV, LAUNCH_BIT, MAX_LOOKS, MAX_SCOUT, WALL_Z, Go1, fixtures_and_launch, layout
 from mission import World
+from mobility import CLEARANCE, COVER_OFFSET, DECK_Z, DUCT_DEPTH, GUIDE_RISE, TERRAIN_BIT, fittings
 from service import Runtime
+from survey import scan
 
 
 HOLD = {"target_rad": [0., .9, -1.8]*4, "ticks": 40}
@@ -65,6 +68,8 @@ class Contract(unittest.TestCase):
                     request(runtime, "act", action=[0., 0.])
                 with self.assertRaises(ValueError):
                     request(runtime, "act", action=[0., 0.])
+                with self.assertRaises(ValueError):
+                    request(runtime, "advance", flat_control=True)
                 initial = request(runtime, "advance")
                 self.assertEqual(set(initial), {"phase", "done", "odom_xy_m", "odom_yaw_rad",
                                                "gravity_body_unit", "gyro_body_rad_s", "joint_rad",
@@ -76,6 +81,13 @@ class Contract(unittest.TestCase):
                 self.assertEqual((dog.model.nq, dog.model.nv, dog.model.nu), (19, 18, 12))
                 self.assertEqual((dog.model.neq, dog.model.nmocap, dog.model.ntendon), (0, 0, 0))
                 self.assertEqual(dog.model.opt.timestep, .002)
+                self.assertAlmostEqual(dog.model.body("inspection_saddle").mass[0], .70, places=5)
+                head, crown = dog.model.geom("scanner_head"), dog.model.geom("crown_guard")
+                to_fit_duct = CLEARANCE-crown.pos[2]-crown.size[2]
+                to_clear_guide = GUIDE_RISE-head.pos[2]+head.size[2]
+                self.assertGreater(to_clear_guide-to_fit_duct, .015)
+                self.assertGreater(2*head.size[1], .15)
+                self.assertTrue(set(dog.support_ids).isdisjoint(dog.wall_ids))
                 q0 = dog.data.qpos.copy()
                 self.assertEqual(initial["odom_xy_m"], [0., 0.])
                 self.assertEqual(initial["odom_yaw_rad"], 0.)
@@ -124,12 +136,18 @@ class Contract(unittest.TestCase):
                 dog.contact_wall = "rack3_1"
                 self.assertEqual(world.metrics()["contact_first"], 0)
                 self.assertEqual(world.metrics()["contact_second"], 1)
+                # The ledger scores the dynamics' terminal dock, not diagnostic waypoints.
+                dog.outcome = "docked"
+                dog.fitting_cleared.clear()
+                self.assertEqual(world.metrics()["duct_cleared"], 0)
+                self.assertEqual(world.metrics()["success"], 1)
             finally:
                 runtime.world.close()
 
     def test_fixed_suite_has_all_route_pairs_and_metric_gaps(self):
         cases = Counter()
         joint_cases = Counter()
+        order_cases = Counter()
         seeds = json.loads((HERE.parent/"hidden/sites.json").read_text())["seeds"]
         launch_sight = (CAMERA_Z-WALL_Z)*np.tan(np.deg2rad(FOV/2))
         for seed in seeds:
@@ -137,6 +155,13 @@ class Contract(unittest.TestCase):
             cases[tuple(rack.wide[0] > 0 for rack in racks[::2])] += 1
             posts, launch = fixtures_and_launch(seed, walls)
             joint_cases[tuple(r.wide[0] > 0 for r in racks[::2])+(launch[1] > 0,)] += 1
+            furniture = fittings(seed, racks)
+            order_cases[tuple(r.wide[0] > 0 for r in racks[::2])+(furniture[0].kind,)] += 1
+            _, same, same_goal, same_walls = layout(seed ^ TERRAIN_BIT)
+            self.assertEqual((racks, walls), (same, same_walls))
+            np.testing.assert_array_equal(goal, same_goal)
+            self.assertEqual((posts, launch), fixtures_and_launch(seed ^ TERRAIN_BIT, same_walls))
+            self.assertNotEqual(furniture[0].kind, fittings(seed ^ TERRAIN_BIT, same)[0].kind)
             _, paired, paired_goal, paired_walls = layout(seed ^ LAUNCH_BIT)
             self.assertEqual((racks, walls), (paired, paired_walls))
             np.testing.assert_array_equal(goal, paired_goal)
@@ -159,6 +184,23 @@ class Contract(unittest.TestCase):
                 self.assertEqual([(a[1], b[0]) for a, b in zip(slabs, slabs[1:])], sorted(expected))
         self.assertEqual(sorted(cases.values()), [2]*4)
         self.assertEqual(sorted(joint_cases.values()), [1]*8)
+        self.assertEqual(sorted(order_cases.values()), [1]*8)
+
+    def test_surface_height_from_public_image_parallax(self):
+        for seed in (1701, 1701 ^ TERRAIN_BIT):
+            world = World(seed)
+            try:
+                seen = scan(world).terrain()
+                self.assertEqual(len(seen), 2)
+                for fit, physical in zip(seen, world.fittings):
+                    top = DECK_Z+GUIDE_RISE if physical.kind == "deck" else CLEARANCE+DUCT_DEPTH
+                    x = physical.x + (COVER_OFFSET if physical.kind == "deck" else 0)
+                    self.assertAlmostEqual(fit["top_m"], top+.0014, delta=.016)
+                    self.assertAlmostEqual(fit["xy"][0], x, delta=.02)
+                    self.assertGreaterEqual(fit["views"], 2)
+                self.assertIsNone(world.go1)
+            finally:
+                world.close()
 
     def test_counterfactuals_separate_camera_evidence(self):
         # Change only the last passage, then only launch. No ground action in any case.

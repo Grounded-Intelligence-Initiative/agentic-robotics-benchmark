@@ -1,4 +1,4 @@
-# PR37 v7: register UAV and ground RGB, then transfer the route to local Go1 odometry.
+# PR37 v8: register the UAV survey and transfer clearance to a loaded native Go1.
 # Scout-only commissioning; first target deployment is in the separate verifier.
 # The official eight site seeds are unchanged.
 schema_version = "1.4+ale.1"

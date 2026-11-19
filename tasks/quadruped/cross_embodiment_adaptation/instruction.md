@@ -1,13 +1,13 @@
-# Cross-Embodiment Adaptation: register an aerial survey to a first Go1 deployment
+# Cross-Embodiment Adaptation: survey the loading line for a loaded Go1
 
 Write an unattended program that surveys an unknown floor plan from a UAV, then
 walks a Unitree Go1 to the blue dock on its first deployment. The program must
 transfer route information from its own scouting history. There is no target
-map, dock sensor, walking primitive, balance controller, or prelearned gait.
+map, dock sensor, height command, walking primitive, balance controller, or prelearned gait.
 
 ## Mission
 
-The flat warehouse workcell is about 8 m by 4 m. The target starts somewhere
+The warehouse workcell is about 8 m by 4 m. The target starts somewhere
 in the western staging bay. A blue dock with a yellow east edge is near the east
 end. Three transverse rack lines separate four staging bays. The first and
 last rack lines each have a near-center shortcut and a side passage. Both
@@ -19,6 +19,22 @@ center. Leave room to align before entering a passage and to clear the rack
 before changing direction. Passage positions, widths and dock center vary.
 The first frame does not show the openings. The orange caps mark actual
 collision footprints; they do not encode passability.
+
+One wide opening contains a suspended loading duct; the other contains a
+raised loading deck. Their order varies. The duct is 0.44 m long along X,
+its underside is 0.426 m above the floor and its sheet assembly is 0.068 m
+thick. The walkable loading cradle has a 0.62 m level deck 0.065 m above the floor
+and a 0.33 m sloping apron at each end, with a 0.012 m toe. Both fixtures
+span their passage. The cradle has two longitudinal wheel tracks, each
+0.150 m wide, centered 0.125 m to either side of the passage center.
+Between and outside the tracks, raised guides climb another 0.082 m above
+the deck. Their crests lie in the eastern half of the deck. The center
+guide and the duct both carry the same 0.160 x 0.078 m teal service cover
+1.4 mm proud of the top (on the cradle, 0.155 m east of deck center).
+They are not color-coded:
+the structures have different profiles, and separated UAV views of a fixed
+cover give metric height by parallax. The quoted underside clearance is a
+construction dimension; a nadir image does not see through a roof.
 
 Only the UAV uses the survey frame: origin at the UAV's first camera center
 projected onto the floor, +X east and +Y north. The Go1 is absent during
@@ -38,7 +54,7 @@ Their arrangement varies; individual caps carry no identifiers.
   There is no full-site image, semantic mask, or depth output.
 - `act([dx,dy])` moves the idealized survey UAV at fixed altitude. The
   displacement norm cannot exceed 0.60 m; the allowed tracking rectangle is
-  `[-0.45,6.80] x [-1.55,1.55]`. Movement clips at its edge. The action
+  `[-0.75,6.80] x [-1.55,1.55]`. Movement clips at its edge. The action
   returns a new camera observation. There are 80 moves, counted by
   `scout_actions_remaining`.
 - In grading, call `advance()` once after at least four scout actions. It
@@ -69,6 +85,14 @@ servo stiffness varies by up to 10%. The trunk has six free degrees of
 freedom. There are no hidden force, yaw, touchdown, or foot-placement
 commands. The exact simulator model and runtime are service-only.
 
+This Go1 carries a rigid 0.70 kg inspection saddle. In trunk coordinates
+its upper guard occupies X [-0.157, 0.047], Y [-0.085, 0.085], and reaches
+Z +0.199 m. The forward scanner head occupies X [0.225, 0.393],
+Y [-0.088, 0.088], Z [-0.163, -0.123] m. A pedestal and shank connect
+them to the trunk. Keep the guard below overhead fittings and the
+instrument off supporting surfaces; account for trunk pitch and the
+scanner overhang before the front feet reach a rising apron.
+
 Target `observe()`, `advance()` and target `act()` supply `odom_xy_m` and
 `odom_yaw_rad`: ideal planar displacement (mm rounding) and CCW yaw
 change (radians, wrapped to [-pi,pi]) relative to the **settled launch
@@ -77,6 +101,7 @@ fixed for the mission: initial forward is +x, initial left is +y. The other
 readings are `gravity_body_unit`, `gyro_body_rad_s`, `joint_rad`,
 `joint_rad_s`, `foot_contact` in leg order and `ticks_remaining`. There
 is no range, absolute heading, absolute position, or depth output.
+`foot_contact` includes contact with the floor, ramp, deck or guide.
 
 During a live deployment, `look(detent)` returns one actual local RGB PNG in
 `images`, plus `requests_remaining`, with **no physics step**. It does not
@@ -97,10 +122,12 @@ include `phase` (0/1), `done`, and `requests_remaining`. Budgets remain
 Dock centered within 0.17 m and headed within 16 degrees of survey +X. Remain upright
 (trunk above 0.16 m and body-up dot world-up greater than 0.80), below
 0.09 m/s linear and 0.35 rad/s angular speed, for 0.45 s continuously
-in simulation. Any barrier or bollard contact, persistent fall (0.20 s failing the
-upright test), or budget exhaustion ends the attempt. Scoring is safe docks
-out of eight sites. Passage choices, crossings, dock approach and stop
-causes are diagnostics, not score.
+in simulation. Barrier, bollard or overhead duct contact ends the attempt.
+Feet and legs may contact the floor, aprons, deck and guides normally; contact
+between the protected inspection saddle and these surfaces ends the attempt.
+A persistent fall (0.20 s failing the upright test) or exhausting the budget
+also ends it. Only a safe dock scores. No gait, maneuver, route, or waypoint
+is prescribed by the verifier.
 
 ## Submission and zero-shot rules
 

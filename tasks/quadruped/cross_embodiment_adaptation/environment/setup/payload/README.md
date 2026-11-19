@@ -1,4 +1,4 @@
-# Robot Service v7
+# Robot Service v8
 
 The public client and MCP tools reach the service on
 `/run/visual_robotics/world.sock` (`ROBOT_SOCKET` overrides it).

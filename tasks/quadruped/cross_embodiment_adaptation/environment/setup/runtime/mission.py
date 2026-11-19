@@ -4,13 +4,15 @@ import math
 import numpy as np
 
 from articulated import Go1, MAX_SCOUT, Survey, fixtures_and_launch, layout
+from mobility import fittings
 
 
 class World:
-    def __init__(self, seed):
+    def __init__(self, seed, *, flat_control=False):
         self.rng, self.racks, self.goal, self.walls = layout(seed)
         self.posts, self.launch = fixtures_and_launch(seed, self.walls)
-        self.survey = Survey(self.walls, self.goal, self.posts)
+        self.fittings = [] if flat_control else fittings(seed, self.racks)
+        self.survey = Survey(self.walls, self.goal, self.posts, self.fittings)
         self.go1 = None
         self.phase = self.scout_actions = 0
 
@@ -44,7 +46,7 @@ class World:
         if self.phase or self.scout_actions < 4:
             raise ValueError("switch exactly once, after at least four scout moves")
         self.survey.close()
-        self.go1 = Go1(self.rng, self.walls, self.goal, self.racks, self.posts, self.launch)
+        self.go1 = Go1(self.rng, self.walls, self.goal, self.racks, self.posts, self.launch, self.fittings)
         self.phase = 1
         return self.observe()
 
@@ -72,6 +74,16 @@ class World:
             "target_budget_stop": int(dog is not None and dog.outcome == "budget"),
             "target_outcome": dog.outcome if dog else "not_deployed",
             "contact_wall": wall,
+            "contact_part": dog.contact_part if dog else None,
+            "duct_entered": int(bool(dog and "duct" in dog.fitting_entered)),
+            "duct_cleared": int(bool(dog and "duct" in dog.fitting_cleared)),
+            "deck_entered": int(bool(dog and "deck" in dog.fitting_entered)),
+            "deck_cleared": int(bool(dog and "deck" in dog.fitting_cleared)),
+            "deck_support_feet": len(dog.deck_feet) if dog else 0,
+            "min_duct_gap_m": dog.min_duct_gap if dog else None,
+            "contact_duct": int(bool(wall and wall.startswith("duct_"))),
+            "contact_deck": int(bool(wall and wall.startswith("deck_"))),
+            "contact_load_floor": int(wall == "floor"),
             "contact_first": int(bool(wall and wall.startswith("rack1_"))),
             "contact_middle": int(bool(wall and wall.startswith("rack2_"))),
             "contact_second": int(bool(wall and wall.startswith("rack3_"))),

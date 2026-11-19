@@ -1,111 +1,130 @@
-# V7 author controls: two camera frames, one deployment
+# V8 author controls: the inspection load has to fit
 
-V6 gave the target its UAV-frame position and compass heading. V7 gives it
-only launch-frame planar odometry, gravity, gyro, joint/foot sensing, and
-on-demand RGB from a trunk-mounted inspection camera. There is no launch
-mark. Five identical safety caps are visible above and from the mast; their
-metric arrangement varies independently of launch and route. A frozen
-program must connect the target to the surveyed route. [Suite design](selection.md)
-describes the eight balanced cases and two additional counterfactuals.
+Two switchback rack openings contain a suspended duct and a loading cradle
+in variable order. The Go1 carries a fixed, mass-bearing inspection saddle:
+a protective crown above the trunk and a scanner projecting ahead and below
+it. These are collision geoms on a rigid 0.70 kg child body, not a virtual
+height threshold. The native free joint and twelve position servos remain.
 
-## Measurement
+For a level body on the floor, the duct leaves at most **0.227 m** of trunk
+height (0.426 minus 0.199). For the same level orientation with feet in
+the cradle tracks, passing the guide crest requires **more than 0.245 m**
+above the tread (0.082 plus 0.163). The 0.176 m scanner is wider than a
+0.150 m wheel track. This is a geometric explanation for the reference
+route, not a pose constraint. Foot, leg, ramp, tread and guide support are
+legal. A body can tilt or choose another foothold; only unsafe physical
+contact, falling or the existing budgets can prevent a dock.
 
-The reference projects the green spherical silhouettes from actual nadir
-images using the calibrated cap height. In eight body-relative ground
-views, silhouette tangent angles and the known radius give approximate
-range and bearing; gravity levels the camera rays. The estimator compares
-unlabeled point pairs, assigns compatible caps, and refines the planar
-rigid transform with greater weight on bearing than range. It receives
-neither a seed nor a catalog of possible poses. A single estimated transform
-maps subsequent odometry to the original route; no second localization,
-target practice, or gait change. Only after the policy returns does the
-author harness compare its estimate to private settled-pose truth.
+The UAV sees two covers with the same dimensions and finish. The reference
+tracks complete cover outlines over separated RGB exposures, fitting
+`point_xy = camera_xy + depth * image_ray_xy`. The elevated cover is on the
+duct roof, the lower one on the deck's center guide. The roof thickness,
+riser dimensions and load envelope are disclosed construction dimensions.
+The mast cannot look through the duct and the controller gets no terrain
+label, contact cause, height telemetry, map pose or seed. After registering
+the ground mast images, it uses only launch-frame odometry and native joint
+commands. The first deployment is irreversible.
 
-| Cases / arm | First wide choice | First fully crossed | Middle crossed | Last fully crossed | Safe dock |
-|---|---:|---:|---:|---:|---:|
-| 8 main, registered | 8 | 8 | 8 | 8 | 8 |
-| 8 main, identity transform | 4 | 1 | 0 | 0 | 0 |
-| 2 mirrored, registered | 2 | 2 | 2 | 2 | 2 |
-| 2 mirrored, identity transform | 2 | 0 | 0 | 0 | 0 |
+## Matched experiments
 
-Both arms saw identical RGB maps and exposures and used identical route
-plans, odometry, joint controller, action limits and scoring. The identity
-arm treats local coordinates as chart coordinates. Every failure was actual
-MuJoCo contact, not a localization threshold, fall or timeout.
+All arms use the same survey, registered transform, route, initial turn,
+stride, swing, joint IK and dock controller. Only the leg-extension setpoint
+changes: adaptive uses 0.205 m near the measured duct and 0.265 m elsewhere;
+fixed arms never switch their selected setpoint. The controller ramps from
+the native home pose at startup. The 0.217 m fixed arm was chosen because
+it actually solved *both* isolated fixtures of the rejected plain-deck
+prototype. Neither the intermediate control nor the prototype is a scored
+task variant.
 
-A stronger no-registration control reuses the *measured* transform from a
-successful original deployment on sites 0 and 3. With this frozen calibration
-it docked on both original starts. On their otherwise identical reflected
-starts the same calibrations were wrong by 1.38 m / 119.43 degrees and
-1.13 m / 91.82 degrees respectively; both runs hit the first rack. This
-author-only test favors the ablation by giving it a valid calibration for
-the exact scene, but no observation-dependent update on the current launch.
+The flat intervention removes only the two fittings. It retains the
+inspection load, independently translated/rotated starts, rack/slit
+geometry, gains, registration and contact rules. Sites 0 and 2 also run with
+the fittings interchanged and the outer survey rows reversed and shifted from
+1.50 to 1.42 m off center. [Selection](selection.md) gives the fixed suite.
 
-| Site | Registered translation error (mm) | Yaw error (deg) | Registered outcome | Identity contact |
-|---|---:|---:|---|---|
-| 0 | 3.46 | 0.043 | Dock | West wall |
-| 1 | 3.54 | 0.023 | Dock | First rack |
-| 2 | 5.48 | 0.083 | Dock | First rack |
-| 3 | 4.69 | 0.063 | Dock | West wall |
-| 4 | 7.20 | 0.127 | Dock | West wall |
-| 5 | 6.22 | 0.016 | Dock | West wall |
-| 6 | 3.22 | 0.039 | Dock | First rack (after initial crossing) |
-| 7 | 10.44 | 0.069 | Dock | First rack |
-| 0 mirrored | 4.40 | 0.046 | Dock | First rack |
-| 3 mirrored | 6.49 | 0.115 | Dock | First rack |
+| Final layout / arm | Safe docks | Observed effect |
+|---|---:|---|
+| Main / adaptive | 8/8 | Both fittings cleared, four distinct feet on each treaded deck |
+| Main / ordinary | 0/8 | Crown struck duct on all eight |
+| Main / crouch | 0/8 | Scanner struck entry apron on five, center guide on three |
+| Main / fixed 0.217 m | 0/8 | Scanner struck center guide on all eight |
+| Flat / ordinary | 8/8 | Same load and contact rules |
+| Flat / crouch | 8/8 | Same load and contact rules |
+| Order + flight perturbation / adaptive | 2/2 | Both fittings cleared; four feet supported on deck |
+| Order + flight perturbation / ordinary, crouch | 0/2 each | Two duct strikes and two apron strikes, respectively |
 
-All ten registered deployments matched five caps before the first joint
-command. Cross-ray RMS was 0.25-2.92 mm. Each took 49 scout moves and 8
-of 16 mast exposures. Docking used 15,702-19,381 of 36,000 ticks and
-1,351-1,658 of 4,000 requests; final dock errors were 0.079-0.094 m
-(limit 0.17 m). No tuning or retries of a failed registered site.
+| Site | Adaptive ticks | Crown gap in central duct (mm) | Final dock error (mm) | Fixed crouch struck |
+|---|---:|---:|---:|---|
+| 0 | 23,560 | 18.1 | 85 | Center guide |
+| 1 | 22,360 | 16.8 | 80 | West apron |
+| 2 | 21,437 | 15.9 | 91 | West apron |
+| 3 | 23,282 | 16.9 | 93 | West apron |
+| 4 | 24,243 | 18.8 | 92 | West apron |
+| 5 | 23,445 | 14.7 | 88 | Center guide |
+| 6 | 21,713 | 16.5 | 94 | West apron |
+| 7 | 22,659 | 16.2 | 83 | Center guide |
 
-## Identifiability
+On the eight main sites the maximum absolute cover-height error was 2.45 mm;
+worst launch registration error was 9.51 mm and 0.090 degrees. All four
+arms at each site produced identical RGB passage maps, measured fitting
+coordinates and applied launch transforms. No final trial fell or exhausted
+its physics budget. Each main reference used 53 scout moves, eight mast
+exposures and at most 2,066 of 4,000 requests and 24,243 of 36,000 ticks.
 
-The mast is aimed at the elevated fixtures, not at the floor. With a level
-trunk its lowest center-column ray is one degree above horizontal. All
-azimuths can be inspected without disturbing the launch pose. A rendered
-counterfactual test changes only the last route bit: the aerial images
-change, but all eight parked mast PNGs and the initial proprioceptive
-observation are identical. Reflecting only the launch reverses which image
-stream changes. All eight main sites also produced identical initial public
-non-image observations on their original and reflected starts.
+## Development and limits
 
-This is an idealized indoor registration task. Caps share known size and
-height; cameras and drift-free local odometry are calibrated; no RGB noise
-or lighting distribution shift is claimed. The ground views are available
-during motion too. The controls test the shared-frame shortcut, not an
-impossibility theorem for every alternative visual navigation strategy. No
-pose estimate or threshold is submitted to the verifier for credit.
+The first, steep apron stranded the ordinary gait. A gentler plain deck
+separated the two extreme gaits but admitted a single intermediate gait, so
+that design was rejected. The final raised guides and two wheel tracks add a
+real underbody clearance conflict. In the straight-lane probe the ordinary
+gait clears the deck with all four feet supporting on it and hits the duct;
+crouch does the opposite. Five fixed heights from 0.211 to 0.235 m were
+probed on both final fittings; none cleared both. The formerly successful
+0.217 m compromise struck the center guide with the scanner.
+
+Early whole-site runs also exposed launch-turn and rack-turn contacts that
+were not the intended effect. The final west staging bay has turning room;
+all arms settle, align, then change aisles in measured open bays. The flat
+controls check the resulting controller rather than charging those earlier
+failures to terrain adaptation.
+
+This is a known nominal inspection configuration in calibrated simulation,
+not hardware validation or generalization across arbitrary new morphologies.
+Mounts and fittings are rigid; the dock floor is level; odometry is ideal.
+The geometric bounds apply to a level body on the tracks, not every possible
+pitch, jump, gait or use of the raised surfaces. A safe alternative succeeds
+without reporting any maneuver to the verifier.
 
 ## Reproduction
 
-Use the task's pinned packages and assets with OSMesa software rendering.
-From the task root, with a fresh writable output directory for each command:
+On a CPU with the pinned task dependencies, visual assets and OSMesa software
+rendering, run from the task root. Use fresh output directories:
 
 ```bash
-python -B tests/review/test_v7_contract.py
-python -B tests/review/v7_controls.py pilot --pilot
-python -B tests/review/v7_controls.py final
-python -B tests/review/v7_controls.py replay --replay-from final/results.jsonl --sites 0 3 --mirrors 0 3
+python -B tests/review/test_v8_contract.py
+python -B tests/review/v8_fixture_probe.py --compromise
+python -B tests/review/v8_controls.py final --arms adaptive ordinary crouch intermediate
+python -B tests/review/v8_controls.py flat-final --flat --arms ordinary crouch
+python -B tests/review/v8_controls.py swapped --swap --alternate-survey --sites 0 2 --arms adaptive ordinary crouch
+python -B tests/review/check_v8_controls.py .
 ```
 
-Author work: `koa04:/home/wang100/projects/cross-registration-author-20261119`.
-`final/results.jsonl` holds 20 per-site/arm rows (SHA-256
-`ec65d8a40274d43dc93d8632e77081ea4b54be3950d5c2f2d22a39b9588565ff`).
-The same directory contains each service ledger and representative native
-UAV and mast PNGs. `pilot-final/` is the stationary development check on
-the final optics. `replay/results.jsonl` holds the four frozen-calibration
-controls (SHA-256 `6443a69f2844b80b43a9003df4b9d472d6a8be274b5a14a4ff6dad1e1401f59a`).
-Earlier horizontal-camera data are not candidate results.
-These are CPU-only author socket controls on MuJoCo 3.16.0, not formal ALE
-validation or blinded model evidence.
+Final evidence is on `koa04:/home/wang100/projects/cross-mobility-author-20261119`
+(MuJoCo 3.16.0, CPU-only OSMesa, public Unix socket). Each case retains
+its service ledger; selected sites include actual UAV and mast PNGs.
+These are author controls, not formal ALE validation or participant results.
 
-## Verifier delta
+| Receipt | SHA-256 |
+|---|---|
+| `final/results.jsonl` (32) | `1ec7a0fba0a30ba956f90c2794d7fef0e57566a3606c1e8944eff073f68aea83` |
+| `flat-final/results.jsonl` (16) | `c3c9293910b36316a9db25bffe5b46ebea452fd7d7118fe934611047a4177fe4` |
+| `swapped/results.jsonl` (6) | `a0228e0045e17fcc528064bba5dcdb471d142905be5d00c0ef5df8a14f010393` |
+| `cradle-compromise.jsonl` (10 straight probes) | `371efd4569f4366b77866027e98272e47af7ecead55957e796c565044461e3ff` |
 
-The service changes the target observation frame and meters 16 optional
-ground exposures. Existing passage, docking, budgets, time limits, contact
-termination and scoring rules remain. The verifier adds per-site/mean
-`ground_looks` and a separate `contact_bollard` cause; it does not publish
-the launch transform. Grading is still safe docks divided by eight,
-anchored at 1.0. Commissioning cannot deploy or use the ground camera.
+The verifier still scores safe docks out of eight, anchor 1.0. It now
+records duct/deck entries and downstream clearances, the number of distinct
+feet supported by the level tread, minimum vertical crown-to-soffit gap in
+the central part of the duct, fixture/floor contact causes and the colliding
+robot part in the private record. None awards or deducts a maneuver point.
+There are no new participant calls and no change to the wall, action, camera
+or request budgets. Flat/swap runs are author counterfactuals, not retries.

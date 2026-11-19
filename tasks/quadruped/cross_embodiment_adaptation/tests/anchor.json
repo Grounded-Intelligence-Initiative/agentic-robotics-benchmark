@@ -3,5 +3,5 @@
   "direction": "higher",
   "value": 1,
   "full_at": 1,
-  "source": "PR37 v7 CPU author controls: registered public RGB/local odometry policy docked at all eight fixed sites; see tests/review/README.md. Formal ALE validation pending."
+  "source": "PR37 v8 CPU author controls: registered public RGB and posture adaptation docked the loaded Go1 on all eight fixed sites; see tests/review/README.md. Formal ALE validation pending."
 }

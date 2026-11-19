@@ -55,7 +55,8 @@ STAGE_COUNTS = (
     "partition_crossed", "middle_crossed", "second_aisle_entered", "second_aisle_correct",
     "second_shortcut_selected", "second_partition_crossed", "dock_zone_entered",
     "contact_first", "contact_middle", "contact_second", "contact_boundary", "contact_bollard",
-    "target_budget_stop",
+    "duct_entered", "duct_cleared", "deck_entered", "deck_cleared", "contact_duct", "contact_deck",
+    "contact_load_floor", "target_budget_stop",
 )
 VERIFIER_STOPS = {
     "program_exit_before_done": "program exited",
@@ -328,6 +329,7 @@ def run_mission(index, seed, uid, gid, config):
                        "success": float(metrics.get("success", 0.)), "switched": float(metrics.get("switched", 0.)),
                        "scout_actions": float(metrics.get("scout_actions", 0)),
                        "ground_looks": int(metrics.get("ground_looks", 0)),
+                       "deck_support_feet": int(metrics.get("deck_support_feet", 0)),
                        "target_actions": float(metrics.get("target_actions", 0)),
                        "target_ticks": int(metrics.get("target_ticks", 0)),
                        "final_goal_distance": float(metrics.get("final_goal_distance", -1)),
@@ -337,7 +339,8 @@ def run_mission(index, seed, uid, gid, config):
                        "max_forward_m": float(metrics.get("max_forward_m", 0)),
                        "travel_m": float(metrics.get("travel_m", 0)),
                        **{key: metrics.get(key) for key in (
-                           "target_outcome", "contact_wall", "passage_choices", "passage_lateral_margin_m")},
+                           "target_outcome", "contact_wall", "contact_part", "min_duct_gap_m", "passage_choices",
+                           "passage_lateral_margin_m")},
                        **{key: int(metrics.get(key, 0)) for key in STAGE_COUNTS},
                        **{key: int(reason == value) for key, value in VERIFIER_STOPS.items()}})
         (directory/"program_output.txt").write_bytes(output[0])
@@ -416,8 +419,10 @@ def main():
     for r in records:
         prefix = "site{}_".format(r["site"])
         for key in ("success", "switched", "contact_stop", "target_fell", "max_forward_m", "target_ticks",
-                    "final_goal_distance", "ground_looks", *counts):
+                    "final_goal_distance", "ground_looks", "deck_support_feet", *counts):
             extra[prefix+key] = r[key]
+        if r["min_duct_gap_m"] is not None:
+            extra[prefix+"min_duct_gap_m"] = r["min_duct_gap_m"]
     extra = {k: float(v) for k, v in extra.items() if math.isfinite(float(v))}
     write_verdict(ratio_rewards(measured, anchor, metric_name=calibration["metric"], extra=extra,
                                 full_at=calibration["full_at"]))

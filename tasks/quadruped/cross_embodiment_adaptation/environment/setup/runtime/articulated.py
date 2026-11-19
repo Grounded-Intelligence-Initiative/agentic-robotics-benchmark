@@ -10,6 +10,7 @@ import numpy as np
 from PIL import Image
 
 from scene_assets import asset_root, geom, materials, robot_meshes, vec
+from mobility import BEVEL, CLEARANCE, DUCT, PROTECTED, SUPPORT, TERRAIN_BIT, add_fittings, add_load
 
 
 LEGS = ("FR", "FL", "RR", "RL")
@@ -39,16 +40,16 @@ class Rack:
 
 
 def layout(seed):
-    rng = np.random.default_rng(seed & ~(LAUNCH_BIT | ROUTE_BITS))
+    rng = np.random.default_rng(seed & ~(LAUNCH_BIT | ROUTE_BITS | TERRAIN_BIT))
     # Independent uniform seed bits; the fixed evaluation seeds cover each pair twice.
     sides = tuple(1 if (seed >> bit) & 1 else -1 for bit in (14, 15))
     bound = float(rng.uniform(1.86, 1.98))
     goal = np.array([rng.uniform(6.25, 6.43), rng.uniform(-.20, .20)])
     walls = {
-        "back": (-.84, -.70, -bound-.14, bound+.14),
+        "back": (-1.14, -1.00, -bound-.14, bound+.14),
         "front": (7.06, 7.20, -bound-.14, bound+.14),
-        "south": (-.70, 7.06, -bound-.14, -bound),
-        "north": (-.70, 7.06, bound, bound+.14),
+        "south": (-1.00, 7.06, -bound-.14, -bound),
+        "north": (-1.00, 7.06, bound, bound+.14),
     }
     racks = []
     for i, nominal in enumerate((1.39, 3.13, 4.87)):
@@ -74,7 +75,7 @@ def layout(seed):
 
 def fixtures_and_launch(seed, walls):
     # Independent streams: reflecting the launch changes neither rack, fixtures nor servo gains.
-    site = seed & ~(LAUNCH_BIT | ROUTE_BITS)
+    site = seed & ~(LAUNCH_BIT | ROUTE_BITS | TERRAIN_BIT)
     fixtures = np.random.default_rng([site, 3701])
     start = np.random.default_rng([site, 3702])
     hand = 1 if seed & LAUNCH_BIT else -1
@@ -94,7 +95,7 @@ def rotation2(yaw):
     return np.array([[c, -s], [s, c]])
 
 
-def scene(root, walls, goal, posts):
+def scene(root, walls, goal, posts, fittings):
     world = root.find("worldbody")
     materials(root)
     ET.SubElement(world, "geom", name="floor", type="plane", size="6 5 .1",
@@ -111,6 +112,7 @@ def scene(root, walls, goal, posts):
     geom(world, "dock", pos=(*goal, .002), size=(.29, .28, .002), rgba=(.035, .28, .89, 1))
     geom(world, "dock_nose", pos=(goal[0]+.261, goal[1], .005), size=(.026, .26, .001),
          rgba=(.88, .81, .09, 1))
+    add_fittings(root, world, fittings)
     for i, (x, y) in enumerate(posts):
         geom(world, f"bollard{i}_stem", "cylinder", (x, y, POST_Z/2), (.06, POST_Z/2),
              rgba=(.46, .47, .45, 1), contype=1, conaffinity=1)
@@ -126,9 +128,9 @@ def image64(rgb):
 
 
 class Survey:
-    def __init__(self, walls, goal, posts):
+    def __init__(self, walls, goal, posts, fittings):
         root = ET.fromstring('<mujoco><asset/><worldbody/></mujoco>')
-        world = scene(root, walls, goal, posts)
+        world = scene(root, walls, goal, posts, fittings)
         uav = ET.SubElement(world, "body", name="uav", mocap="true",
                             pos=vec((0, 0, CAMERA_Z+.12)))
         robot_meshes(root, uav, "drone")
@@ -141,7 +143,7 @@ class Survey:
         self.xy = np.zeros(2)
 
     def move(self, delta):
-        self.xy = np.clip(self.xy+delta, [-.45, -1.55], [6.80, 1.55])
+        self.xy = np.clip(self.xy+delta, [-.75, -1.55], [6.80, 1.55])
         self.cached = None
 
     def observe(self):
@@ -161,12 +163,13 @@ class Survey:
 
 
 class Go1:
-    def __init__(self, rng, walls, goal, racks, posts, launch):
+    def __init__(self, rng, walls, goal, racks, posts, launch, fittings):
         spec = asset_root()/"unitree_go1/go1.xml"
         root = ET.parse(spec).getroot()
         root.find("compiler").set("meshdir", str(spec.parent/"assets"))
-        scene(root, walls, goal, posts)
+        scene(root, walls, goal, posts, fittings)
         trunk = root.find(".//body[@name='trunk']")
+        add_load(trunk)
         for i in range(8):
             angle = i*math.pi/4
             # The mast looks up at fixtures. Roll/pitch follow the real trunk.
@@ -184,7 +187,20 @@ class Go1:
         self.trunk = model.body("trunk").id
         self.floor = model.geom("floor").id
         obstacles = [*walls, *(f"bollard{i}_{part}" for i in range(len(posts)) for part in ("cap", "stem"))]
+        if any(f.kind == "duct" for f in fittings):
+            obstacles.extend(DUCT)
         self.wall_ids = {model.geom(name).id: name for name in obstacles}
+        self.support_ids = {self.floor: "floor"}
+        if any(f.kind == "deck" for f in fittings):
+            self.support_ids.update({model.geom(name).id: name for name in SUPPORT})
+        self.protected = {model.geom(name).id: name for name in PROTECTED}
+        self.guard_id = model.geom("crown_guard").id
+        self.fittings = fittings
+        self.fitting_entered = set()
+        self.fitting_cleared = set()
+        self.deck_feet = set()
+        self.min_duct_gap = None
+        self.contact_part = None
         self.feet = [model.geom(leg).id for leg in LEGS]
         self.foot_modes = [set() for _ in LEGS]
         self.data = mujoco.MjData(model)
@@ -228,8 +244,34 @@ class Go1:
         return math.atan2(self.rotation[1, 0], self.rotation[0, 0])
 
     def ground_contacts(self):
-        floor = self.floor
-        return {int(b if a == floor else a) for a, b in self.data.contact.geom if a == floor or b == floor}
+        supported = set()
+        for a, b in self.data.contact.geom:
+            if b in self.support_ids or b in self.wall_ids:
+                a, b = b, a
+            if a in self.support_ids:
+                supported.add(int(b))
+                if self.support_ids[a] == "deck_table" and b in self.feet:
+                    self.deck_feet.add(int(b))
+                if b in self.protected:
+                    self.contact_wall, self.contact_part = self.support_ids[a], self.protected[b]
+            elif a in self.wall_ids:
+                self.contact_wall = self.wall_ids[a]
+                self.contact_part = self.model.geom(b).name or self.model.body(self.model.geom_bodyid[b]).name
+        return supported
+
+    def record_fittings(self):
+        x, y = self.xy
+        for f in self.fittings:
+            half = f.length/2 + (BEVEL if f.kind == "deck" else 0.)
+            if abs(x-f.x) < half and f.lo < y < f.hi:
+                self.fitting_entered.add(f.kind)
+                if f.kind == "duct" and abs(x-f.x) < f.length/2-.07:
+                    it = self.guard_id
+                    z = self.data.geom_xpos[it, 2]+abs(self.data.geom_xmat[it, 6:]) @ self.model.geom_size[it]
+                    gap = float(CLEARANCE-z)
+                    self.min_duct_gap = gap if self.min_duct_gap is None else min(gap, self.min_duct_gap)
+            if f.kind in self.fitting_entered and x > f.x+half+.30:
+                self.fitting_cleared.add(f.kind)
 
     def observe(self):
         relative = self.heading-self.origin_yaw
@@ -297,6 +339,7 @@ class Go1:
             self.travel += float(np.linalg.norm(self.xy-last))
             self.max_x = max(self.max_x, float(self.xy[0]))
             self.record_passages()
+            self.record_fittings()
             self.contacts = self.ground_contacts()
             for modes, foot in zip(self.foot_modes, self.feet):
                 modes.add(foot in self.contacts)
@@ -308,8 +351,6 @@ class Go1:
             self.dwell = self.dwell+1 if upright and quiet and parked else 0
             self.tipped = 0 if upright else self.tipped+1
             dt = self.model.opt.timestep
-            self.contact_wall = next((self.wall_ids[g] for pair in self.data.contact.geom
-                                      for g in pair if g in self.wall_ids), None)
             if self.contact_wall:
                 self.outcome = "contact"
             elif self.tipped*dt >= .20:

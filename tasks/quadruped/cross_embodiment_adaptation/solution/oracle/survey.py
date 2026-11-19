@@ -3,6 +3,7 @@ import itertools
 import math
 
 import numpy as np
+from scipy import ndimage
 
 from client import camera_image
 from registration import clusters, map_caps
@@ -26,6 +27,7 @@ class SurveyMap:
         self.occupied = self.visible.copy()
         self.dock = self.visible.copy()
         self.cap_samples = []
+        self.cover_tracks = []
 
     def add(self, obs):
         rgb = np.asarray(camera_image(obs))
@@ -33,6 +35,7 @@ class SurveyMap:
         focal = h / (2 * math.tan(math.radians(78)/2))
         x, y = obs["tracking_xy_m"]
         self.cap_samples.extend(map_caps(rgb, np.array([x, y])))
+        self.add_covers(rgb, np.array([x, y]), focal)
 
         def sample(height):
             scale = focal/(1.65-height)
@@ -51,6 +54,45 @@ class SurveyMap:
 
     def landmarks(self):
         return clusters(self.cap_samples, .13)
+
+    def add_covers(self, rgb, camera, focal):
+        r, g, b = rgb.astype(float).transpose(2, 0, 1)
+        mask = (g > 85) & (b > 85) & (g > 1.6*r) & (b > 1.6*r) & (g > .78*b) & (g < 1.22*b)
+        labels, _ = ndimage.label(mask)
+        h, w = mask.shape
+        for v, u in ndimage.find_objects(labels):
+            if min(v.start, h-v.stop, u.start, w-u.stop) < 2:
+                continue
+            if not 1.70 < (u.stop-u.start)/(v.stop-v.start) < 2.40 or u.stop-u.start < 12:
+                continue
+            if mask[v, u].mean() < .95:
+                continue
+            ray = np.array([u.start+u.stop-w, h-v.start-v.stop])/(2*focal)
+            coarse = camera+1.35*ray
+            for track in self.cover_tracks:
+                if np.linalg.norm(coarse-track[0][0]) < .55:
+                    break
+            else:
+                track = []
+                self.cover_tracks.append(track)
+            track.append((coarse, camera, ray))
+
+    def terrain(self):
+        fits = []
+        for track in self.cover_tracks:
+            if len(track) < 2:
+                raise ValueError("insufficient parallax on a loading fixture")
+            _, cameras, rays = np.asarray(track).transpose(1, 0, 2)
+            dc, dr = cameras-cameras.mean(axis=0), rays-rays.mean(axis=0)
+            if np.linalg.norm(dr) < .19:
+                raise ValueError("need separated views of fixture")
+            # Fixed point = camera_xy + (camera_z - surface_z) * image ray.
+            depth = -(dc*dr).sum()/(dr*dr).sum()
+            hits = cameras+depth*rays
+            xy = hits.mean(axis=0)
+            fits.append({"xy": xy.tolist(), "top_m": float(1.65-depth), "views": len(track),
+                         "rms_m": float(np.sqrt(np.mean(np.sum((hits-xy)**2, axis=1))))})
+        return sorted(fits, key=lambda fit: fit["xy"][0])
 
     def passages(self):
         dock_x, dock_y = np.where(self.dock)
@@ -75,11 +117,20 @@ class SurveyMap:
 
     def route(self, point_rack=None):
         racks, goal = self.passages()
+        deck_x = [item["xy"][0] for item in self.terrain() if item["top_m"] < .30]
         candidates = []
+        is_deck = [any(near-.12 < x < far+.12 for x in deck_x) for near, far, _ in racks]
+        bays = []
+        for i, ((_, far, _), (near, _, _)) in enumerate(itertools.pairwise(racks)):
+            # Translate sideways where the entire body, including trailing calves, fits.
+            fraction = .55 if is_deck[i] else .45 if is_deck[i+1] else .50
+            bays.append(far+fraction*(near-far))
         for i, (near, far, gaps) in enumerate(racks):
             minimum = 0. if i == point_rack else GO1_CLEARANCE
+            left = bays[i-1] if i else near-(.82 if is_deck[i] else APPROACH)
+            right = bays[i] if i < len(bays) else far+(.82 if is_deck[i] else APPROACH)
             candidates.append([
-                ((near-APPROACH, (a+b)/2), (far+APPROACH, (a+b)/2))
+                ((left, (a+b)/2), (right, (a+b)/2))
                 for a, b in gaps if b-a >= minimum
             ])
         if not all(candidates):
@@ -93,12 +144,12 @@ class SurveyMap:
         return min(paths, key=length)
 
 
-def scan(robot):
+def scan(robot, rows=(0., 1.50, -1.50)):
     surveyed = SurveyMap()
     obs = robot.observe()
     surveyed.add(obs)
-    for row, y in enumerate((0., 1.50, -1.50)):
-        xs = np.linspace(-.40, 6.62, 14)
+    for row, y in enumerate(rows):
+        xs = np.linspace(-.68, 6.64, 15)
         for x in xs if row % 2 == 0 else xs[::-1]:
             target = np.array([x, y])
             delta = target-obs["tracking_xy_m"]
