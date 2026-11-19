@@ -2,6 +2,8 @@
 
 Recover the rescue mannequin on its rigid medical litter. Deliver it intact to the **receiving station accepting this incident**. A dispatch arrow points toward that station. At receiving, a lowered shutter bears a large cross; an open doorway exposes a horizontal deck. The incident remains fixed during your sortie. You may inspect either approach, change your mind, or use any safe route.
 
+Entry safety briefing: center on the violet apron, settle at approximately 0.71 m, cross the inspection slot facing into it, and climb only after the aircraft has cleared the frame.
+
 **Aircraft and cameras.** `robot_act({"action":[right,forward,up,yaw_left,grip]})` accepts five numbers in [-1,1]. Each action advances 0.2 s. Maximum nominal setpoint increments are 0.32 m on each horizontal axis, 0.19 m vertically and 30 degrees in yaw. Horizontal axes use the heading at the **start** of the action; zero holds. Translation gains vary a few percent, and loaded forward travel can drift sideways by about 0.13 m per metre. Launch is at 1.30 m facing the wing; altitude limits are 0.39-4.69 m above launch.
 
 `robot_observe()` and each action return two 256-by-256 RGB views, `frame_id`, `done` and `steps_remaining`; no pose, map or depth. Both cameras rotate with the aircraft and have 94-degree vertical field of view (focal length 119.4 pixels). Camera 0 looks down from 0.46 m forward and 0.145 m below center; right/up in the image are body right/forward. Camera 1 looks forward, pitched 6.9 degrees down, from 0.17 m forward and 0.045 m above center. An attached board can obscure the down view.
