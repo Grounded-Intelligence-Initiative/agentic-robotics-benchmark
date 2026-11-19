@@ -257,6 +257,21 @@ anchor is the oracle's full or near-full score with `full_at` near 1. Here:
   5302 s). Without the pins (run `wirefix-shoe-verify-1`) every episode scored its selection run's score (work_score
   1) on another trajectory, and on two seeds (one episode each through `verify.run_episode`) the old and the new
   `tests/` gave the same trajectory to the bit. The anchor keeps all five verifies; value and full_at are unchanged.
+* The second lockdown amendment (2026-11-19, the fourth in `amendments`, kind `lockdown`): `tests/verify.py`'s
+  verify-start lockdown alone. A race between the image's desktop and the first episode's network audit failed
+  `ale validate` of the oracle: without this change 5 of 6 runs failed (all 4 on the remote validate host, 1 of 2
+  locally), with 2 or 6 TCP active opens counted and every episode at 1.0 before the gate. The verify-start kill stops
+  the agent account's desktop, and supervisord starts it once more after its 1 s backoff, about 1 s after the kill. In
+  the few milliseconds before the freezer stops them, the respawned X clients (`xdpyinfo -display :1` from the image's
+  `start-gnome.sh`, `dbus-launch --autolaunch` from pulseaudio) find no X server listening on :1, and libxcb falls
+  back to TCP on localhost:6001, which refuses: 2 active opens per attempt. All 6 counted opens of an instrumented
+  remote run came at about 1.1 s, inside episode 1; one instrumented local run passed because its first episode began
+  after the burst. The grader now waits, after the lockdown, until the account has had no new and no running process
+  for 5 s (at most 30 s), freezes it every 50 ms meanwhile, and logs the wait. No episode runs or scores differently,
+  and the image is unchanged (the repository test allows only `tests/verify.py` for this kind). The check is the wire
+  amendment's, with its pinned numerics: the reference's full verify on the same image (run `netgate-shoe-verify-1`)
+  repeated every kept selection run, the same score, simulated time, ticks and per-pair detail in all six (each 1.00;
+  verify wall 4467 s). The anchor keeps all six verifies; value and full_at are unchanged.
 * What the agent sees: `instruction.md` says the hidden episodes use other seeds and that the cell builds their scenes
   with the same code (it said "fresh seeds of the same distribution" before; a selected set is neither). Nothing
   agent-visible names the set, its selection or the token (the repository test); the cell library's own mentions of

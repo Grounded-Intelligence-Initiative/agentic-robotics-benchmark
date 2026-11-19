@@ -251,8 +251,9 @@ class FrozenTests(unittest.TestCase):
             self.assertEqual(hashlib.sha256(text.encode()).hexdigest(), before["tests/given_hashes.json"],
                              "given_hashes.json before the wire amendment differs in more than its given_pins")
             checked += 1
-        wire = [am for am in AMENDMENTS if am.get("kind") == "wire"]
-        if wire and wire[-1] is AMENDMENTS[-1]:
+        # the last amendment that changed given_hashes.json is the one checked, whatever came after it
+        touched = [am for am in AMENDMENTS if "tests/given_hashes.json" in am["changed"]]
+        if touched and touched[-1].get("kind") == "wire":
             self.assertGreaterEqual(checked, 1)
 
     def test_every_reference_and_cell_file_is_frozen(self):
