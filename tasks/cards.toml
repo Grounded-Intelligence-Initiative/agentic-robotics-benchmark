@@ -38,7 +38,7 @@ stages = ["behavior"]
 [longtail_manipulation_recovery]
 title = "Rescue failed kitchen jobs with a mobile Panda"
 summary = "Write the fallback controller of a mobile Panda: from the exact states where a learned policy failed its kitchen jobs, finish them from the robot's cameras, joint readings and wrist force."
-platforms = ["ground", "arm"]
+platforms = ["arm"]
 stages = ["behavior"]
 
 [novel_object_6dof_grasp_detection]
