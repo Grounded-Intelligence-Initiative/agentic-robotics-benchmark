@@ -15,15 +15,30 @@ def topology(l):
     start = (l.inlet,1,0)
     d = distances(start,l.halls)
     ground = {e for e in l.halls if e[0][2]==e[1][2]==0}
-    assert len(d)==30 and (*l.target[:2],0) not in distances(start,ground)
+    assert len(d)==30 and len(distances(start,ground))==15 and l.target[2]==1
     assert {k for x,y,k in l.rooms}=={0,1}
     assert all((x,y,1-k) in l.rooms for x,y,k in l.rooms)
     vertical = {e for e in l.halls if e[0][2]!=e[1][2]}
     assert {a[:2] for a,b in vertical}==set(l.wells) and len(vertical)==2
-    # At least two downstairs doors, one full well transit and three
-    # upstairs doors. A transit also flies into and back out of its alcove.
-    assert d[l.target]>=6 and l.target[:2] not in l.wells
+    # Either well alone supplies a complete path, including a freight-only
+    # round trip. No sampled site requires using the small service opening.
+    for link in vertical:
+        paths = distances(start,l.halls-{link})
+        assert l.target in paths and (l.outlet,1,0) in paths
+    assert l.target[:2] not in l.wells
     return d[l.target]
+
+
+def via_each(l):
+    result = {}
+    for i,k in enumerate(("service","freight")):
+        other = l.wells[1-i]
+        halls = l.halls-{edge((*other,0),(*other,1))}
+        foot = distances((l.inlet,1,0),halls)
+        carry = distances(l.target,halls)
+        result[k] = dict(inlet_to_upper=foot[(*l.wells[i],1)],inlet_to_sled=foot[l.target],
+                         sled_to_cargo=carry[(l.outlet,1,0)])
+    return result
 
 
 def check(seed,out,paired=None):
@@ -35,21 +50,22 @@ def check(seed,out,paired=None):
         assert all(np.isfinite(float(v)) for v in w.metrics().values())
         shortest = topology(l)
         sign = 1 if l.outlet==4 else -1
-        row = next(y for y in (1,2) if edge((2,y,1),(2+sign,y,1)) in l.halls)
+        row = 3
         x,y = l.xy((2,row))
         def ray(start,direction):
             gid = np.array([-1],dtype=np.int32)
             dist = mujoco.mj_ray(w.model,w.data,np.array(start,dtype=float),
                                  np.array(direction,dtype=float),None,1,-1,gid)
             return float(dist),w.model.geom(int(gid[0])).name if gid[0]>=0 else None
-        below = ray((x,y,1.30),(0,0,1))
-        above = ray((x,y,DECK+1.30),(0,0,-1))
+        # Off the central HOIST WELL floor sign, before the threshold apron.
+        below = ray((x,y+.20,1.30),(0,0,1))
+        above = ray((x,y+.20,DECK+1.30),(0,0,-1))
         blocked = ray((x,y,1.30),(sign,0,0))
         passage = ray((x,y,DECK+1.30),(sign,0,0))
         assert below[1].startswith("slab") and above[1].startswith("slab")
         assert abs(below[0]-(DECK-SLAB-1.30))<.001 and abs(above[0]-1.30)<.001
         assert blocked[0]<1.5 and passage[0]>2.4,(blocked,passage)
-        col,_ = l.wells[0]
+        col,_ = l.wells[1]
         wx,wy = l.xy((col,4))
         through = ray((wx,wy,1.30),(0,0,1))
         assert through[1].startswith("roof") and through[0]>3.5
@@ -96,7 +112,8 @@ def check(seed,out,paired=None):
             if w.act([0.,0.,1.,0.,0.])["done"]:
                 break
         assert w.failure=="slab" and w.impact_body=="uav"
-        return dict(seed=str(seed),shortest=shortest,bridge=(2,row),lower_blocked=blocked,
+        return dict(seed=str(seed),shortest=shortest,via_each=via_each(l),wells=l.wells,
+                    loading=l.loading,target=l.target,bridge=(2,row),lower_blocked=blocked,
                     upper_open=passage,ceiling_above=below,floor_below=above,open_well=through,
                     centered_board_gap_m=centered,offset_12cm_gap_m=drifted,
                     real_ceiling_contact=(w.failure,w.impact_geom,w.impact_obstacle),

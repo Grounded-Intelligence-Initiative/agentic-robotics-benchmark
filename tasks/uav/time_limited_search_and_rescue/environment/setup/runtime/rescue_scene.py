@@ -15,6 +15,8 @@ SIDE = 5
 START_Z = 1.30
 SLOT_SILL, SLOT_LINTEL = .43, .89
 DECK, SLAB, WELL_HALF, WALL_TOP = 2.60, .22, 1.17, 2.60
+SERVICE_HALF = .54
+IRON = (.61, .26, .125, 1)
 DARK = (.075, .112, .126, 1)
 WALL = (.65, .70, .70, 1)
 WHITE = (.94, .95, .91, 1)
@@ -96,6 +98,9 @@ class Layout:
     def xy(self, cell):
         return np.array([axis_at(self.columns, cell[0]), axis_at(self.rows, cell[1])])
 
+    def well_half(self, col):
+        return SERVICE_HALF if col == self.wells[0][0] else WELL_HALF
+
     @property
     def inlet_y(self):
         return (self.rows[0]+self.rows[1])/2
@@ -123,16 +128,14 @@ class Layout:
 def layout_for(seed):
     rng = np.random.default_rng(seed >> 1)
     inlet, outlet = int(rng.choice((1, 2))), 4
-    wells = ((int(rng.choice((0, 1))), 3), (int(rng.choice((3, 4))), 3))
+    wells = ((inlet, 3), (int(rng.choice((3, 4))), 3))
     cross_row = int(rng.choice((1, 2)))
     halls = set()
     for level in (0, 1):
         for region in (range(3), range(3, 5)):
             cells = {(x,y) for x in region for y in range(1,4)}
             opts = [e for e in interior_edges() if set(e) <= cells]
-            # The intake well is reached from the south below. Its upper
-            # vestibule may also have a side door. Nothing crosses the
-            # downstairs partition, including the space above the shutters.
+            # The service well has an approach from the south.
             if region.start == 0 and (level == 0 or rng.integers(2)):
                 opts = [e for e in opts if wells[0] not in e or e[0][0] == e[1][0]]
             groups = {v: {v} for v in cells}
@@ -149,11 +152,18 @@ def layout_for(seed):
             for a,b in extras[:1]:
                 halls.add(edge((*a,level), (*b,level)))
     halls.add(edge((2,cross_row,1), (3,cross_row,1)))
+    # Both hoists serve the connected warehouse on either storey. The short
+    # inspection approach and the upper transfer gallery are ordinary doors.
+    halls.add(edge((2,1,0), (3,1,0)))
+    for row in (1,2):
+        halls.add(edge((inlet,row,0), (inlet,row+1,0)))
+    for x in range(min(v[0] for v in wells), max(v[0] for v in wells)):
+        halls.add(edge((x,3,1), (x+1,3,1)))
     for x,y in wells:
         halls.add(edge((x,y,0), (x,y,1)))
     bays = ((3,1),(4,2)) if rng.integers(2) else ((3,2),(4,1))
     rooms = tuple((*v,k) for k in (0,1) for v in bays)
-    target = rooms[int(rng.integers(len(rooms)))]
+    target = (*bays[int(rng.integers(len(bays)))],1)
     dx, dy = rng.uniform(-.16, .16, 2)
     yaw = float(rng.uniform(-.50, .50))
     tone = float(rng.uniform(.92, 1.05))
@@ -277,6 +287,19 @@ def build(layout):
         slab(last, wx-WELL_HALF, wy-WELL_HALF, wy+WELL_HALF, DECK, "slab")
         last = wx+WELL_HALF
     slab(last, xmax, wy-WELL_HALF, wy+WELL_HALF, DECK, "slab")
+    # Cast-iron deck frames: their inner faces ARE the four boundaries of
+    # the opening. The service reducer fills the space back to the slab.
+    for col,_ in layout.wells:
+        wx, inner, outer = layout.columns[col], layout.well_half(col), WELL_HALF+.08
+        for axis in (0,1):
+            for sign in (-1,1):
+                pos = [wx,wy,DECK-SLAB/2+.01]
+                pos[axis] += sign*(outer+inner)/2
+                size = [inner,outer,SLAB/2+.01]
+                size[axis] = (outer-inner)/2
+                name = f"aperture_{col}_{axis}_{sign}"
+                geom(w,name,pos=pos,size=size,rgba=IRON,contype="1",conaffinity="1")
+                obstacles.append(("slab",name))
     (left,right),(bottom,_),_ = layout.bounds
     slab(left-.35,right+.35,bottom-.35,layout.inlet_y,DECK,"roof")
     slab(xmin-.15,xmax+.15,layout.inlet_y-.075,ymax+.075,2*DECK,"roof")

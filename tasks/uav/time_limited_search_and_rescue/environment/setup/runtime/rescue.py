@@ -111,7 +111,8 @@ class World:
         x,y,z = xyz
         if z < DECK or y < self.layout.inlet_y:
             return 0.
-        if abs(y-self.layout.rows[4]) < WELL_HALF and min(abs(x-u) for u in self.well_x) < WELL_HALF:
+        if any(max(abs(x-wx),abs(y-self.layout.rows[4])) < self.layout.well_half(col)
+               for wx,(col,_) in zip(self.well_x,self.layout.wells)):
             return 0.
         return DECK
 
@@ -226,9 +227,11 @@ class World:
             if (name in ("uav","pod") and (name == "uav" or self.held)
                     and abs(self.position[1]-self.layout.rows[4]) < WELL_HALF
                     and lo[:,2].min() <= DECK and hi[:,2].max() >= DECK-SLAB):
-                wx = min(self.well_x, key=lambda u: abs(self.position[0]-u))
+                idx = int(np.argmin(np.abs(self.position[0]-np.asarray(self.well_x))))
+                wx = self.well_x[idx]
                 origin = [wx,self.layout.rows[4]]
-                gap = WELL_HALF-max(np.abs(lo[:,:2]-origin).max(), np.abs(hi[:,:2]-origin).max())
+                gap = self.layout.well_half(self.layout.wells[idx][0])-max(
+                    np.abs(lo[:,:2]-origin).max(), np.abs(hi[:,:2]-origin).max())
                 self.well_gaps[name] = min(self.well_gaps.get(name, gap), float(gap))
             # Measure geometric margin near the two passages as an author diagnostic.
             reach = (.55*self.throats if name == "pod" else np.zeros(len(self.solids)))+.0001

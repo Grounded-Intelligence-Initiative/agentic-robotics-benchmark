@@ -7,7 +7,7 @@ from unittest.mock import patch
 import numpy as np
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/"solution"))
-from oracle_run import DIRECTIONS, FOCAL, RoomMemory, explore, guide_offset, reverse
+from oracle_run import DIRECTIONS, FOCAL, RoomMemory, aperture_width, explore, guide_offset, reverse
 
 
 class Routes(unittest.TestCase):
@@ -69,6 +69,27 @@ class Routes(unittest.TestCase):
         self.assertEqual([x[1] for x in m.onward(a,d)],[b,c,d])
         self.assertEqual(m.onward(d,d),[])
         self.assertEqual(m.onward(a,(0,1,0)),[])  # approach the observed, untried door here
+
+    def test_reduced_bore_filters_known_edges_and_fresh_frontiers(self):
+        m = RoomMemory()
+        a,b,c,d = (0,3,1),(0,3,0),(1,3,1),(1,3,0)
+        for x,y,h in ((a,b,(0,1)),(a,c,(1,0)),(c,d,(0,1)),(d,b,(-1,0))):
+            m.remember(x,y,0,1,h)
+        allowed = lambda at,s: not s[2] or at[0]!=0
+        self.assertEqual([x[1] for x in m.onward(a,b)],[b])
+        self.assertEqual([x[1] for x in m.onward(a,b,allowed)],[c,d,b])
+        del m.ports(a)[(0,0,-1)]
+        m.observed[a] = ((0,0,-1),)
+        m.observed[c] = ((1,0,0),)
+        self.assertEqual([x[1] for x in m.onward(a,(0,2,0),allowed)],[c])
+
+    def test_inner_edges_not_frame_color_label(self):
+        for span in (82,174):
+            img = np.zeros((256,256,3),dtype=int)
+            img[90:195,32:128-span//2] = img[90:195,128+span//2:224] = (182,87,46)
+            self.assertAlmostEqual(aperture_width(img,1.75),span*(1.75-.145-.02)/FOCAL)
+        with self.assertRaises(RuntimeError):
+            aperture_width(np.zeros_like(img),1.75)
 
 
 if __name__=="__main__":

@@ -240,6 +240,7 @@ class Pilot:
         self.path = []
         self.feedback, self.loaded = feedback, False
         self.keyframes = {}
+        self.apertures = {}
 
     def act(self, action):
         if not self.obs["done"]:
@@ -412,7 +413,37 @@ def guide_offset(image):
     return np.array([(left+right-255)*.70/span, .17+FOCAL*1.40/(.99277*span)-1.222])
 
 
-def cross_well(p, at, there, d):
+def aperture_width(rgb, height):
+    """Distance between the two inner edges of the same cast-iron deck frame."""
+    r,g,b = rgb.transpose(2,0,1)
+    # Use the illuminated horizontal face, not its darker vertical reveal
+    # (projecting that lower edge at deck height underestimates the bore).
+    iron = (r>g*1.45) & (g>b*1.22) & (g>58) & (r>150)
+    spans = []
+    for row in iron[107:189:2]:
+        xs, = np.where(row)
+        runs = [v for v in np.split(xs,np.flatnonzero(np.diff(xs)>1)+1) if len(v)>=3]
+        left = [v for v in runs if 12<v[0]<65 and v[-1]<117]
+        right = [v for v in runs if 190<v[-1]<244 and v[0]>139]
+        if left and right:
+            spans.append(right[-1][0]-left[0][-1]-1)
+    if len(spans)<6:
+        raise RuntimeError("cannot resolve the two inner edges of the hoist frame")
+    return float(np.median(spans)*(height-.145-.02)/FOCAL)
+
+
+def inspect_frame(p, at):
+    height = 1.75
+    xy = p.command[:2].copy()
+    p.go(*xy,DECK+height,settle=2)
+    width = aperture_width(decode(p.obs),height)
+    p.apertures[at[:2]] = width
+    p.trace.append(dict(event="aperture_measurement",cell=at,loaded=p.loaded,
+                        frame=p.obs["frame_id"],width_m=width))
+    p.go(*xy,DECK+TRAVEL,settle=1)
+
+
+def approach_well(p, at, d):
     h = TRAVEL+at[2]*DECK
     xy = PITCH*(np.asarray(at[:2])+d)
     (p.align_load if p.loaded else p.face)(*d)
@@ -433,15 +464,33 @@ def cross_well(p, at, there, d):
     else:
         raise RuntimeError("hoist guides did not converge")
     p.command[:2] = xy
+    return offset
+
+
+def leave_well(p, at, d):
+    (p.align_load if p.loaded else p.face)(*(-np.asarray(d)))
+    p.go(*(PITCH*np.asarray(at[:2])),TRAVEL+at[2]*DECK,settle=2)
+    p.register(at)
+
+
+def cross_well(p, at, there, d):
+    offset = approach_well(p,at,d)
+    if p.obs["done"]:
+        return
+    xy = p.command[:2].copy()
+    if at[2] and at[:2] not in p.apertures:
+        inspect_frame(p,at)
     before = p.obs["frame_id"]
     p.go(*xy,DECK-.11,settle=1)
     middle = p.obs["frame_id"]
     p.go(*xy,TRAVEL+there[2]*DECK,settle=2)
+    if p.obs["done"]:
+        return
+    if there[2] and there[:2] not in p.apertures:
+        inspect_frame(p,there)
     p.trace.append(dict(event="well_flight",cell=at,to=there,loaded=p.loaded,
                         before=before,middle=middle,frame=p.obs["frame_id"],guide_error_m=offset.tolist()))
-    (p.align_load if p.loaded else p.face)(*(-np.asarray(d)))
-    p.go(*(PITCH*np.asarray(there[:2])),TRAVEL+there[2]*DECK,settle=2)
-    p.register(there)
+    leave_well(p,there,d)
 
 
 def fly(p, a, b, d):
@@ -479,7 +528,7 @@ class RoomMemory:
         self.headings[self.key(a),delta] = heading
         self.headings[self.key(b),back] = heading if delta[2] else tuple(-v for v in heading)
 
-    def onward(self, start, goal):
+    def onward(self, start, goal, allowed=lambda at,d: True):
         """A proven route to cargo, else to the best observed untried doorway."""
         queue,seen = deque([(start,[])]), {self.key(start)}
         choices = []
@@ -489,20 +538,20 @@ class RoomMemory:
                 return path
             used = self.ports(at)
             for step in self.observed.get(self.key(at),()):
-                if step not in used:
+                if step not in used and allowed(at,step):
                     dest = tuple(a+b for a,b in zip(at,step))
                     distance = abs(dest[0]-goal[0])+abs(dest[1]-goal[1])+2*abs(dest[2]-goal[2])
                     choices.append((distance,len(path),path))
             for step in used:
                 b = tuple(x+y for x,y in zip(at,step))
-                if self.key(b) in seen or b[2] not in (0,1):
+                if self.key(b) in seen or b[2] not in (0,1) or not allowed(at,step):
                     continue
                 seen.add(self.key(b))
                 queue.append((b,path+[(at,b,self.headings[self.key(at),step])]))
         return min(choices,key=lambda c:c[:2])[2] if choices else None
 
 
-def explore(p, start, planar, cargo=None, memory=None):
+def explore(p, start, planar, cargo=None, memory=None, allowed=lambda at,d: True):
     at, trail = start, []
     memory = RoomMemory(planar) if memory is None else memory
     while not p.obs["done"]:
@@ -526,16 +575,22 @@ def explore(p, start, planar, cargo=None, memory=None):
                 ports[(*d,0)] = d
             elif kind == "landing":  # visible hoist threshold into a physical well
                 ports[(0,0,1-2*at[2])] = d
+                if p.loaded and at[2] and at[:2] not in p.apertures:
+                    approach_well(p,at,d)
+                    if p.obs["done"]:
+                        return at,trail,None
+                    inspect_frame(p,at)
+                    leave_well(p,at,d)
         used = memory.ports(at)
         memory.observed[memory.key(at)] = tuple(ports)
         frame = p.obs["frame_id"]
         p.trace.append(dict(event="room_scan",cell=at,loaded=p.loaded,frame=frame,
                             open=[list(port) for port in ports],
                             skipped=[(port,used[port]) for port in ports if port in used]))
-        fresh = [port for port in ports if port not in used]
+        fresh = [port for port in ports if port not in used and allowed(at,port)]
         if cargo is not None:
             goal = (cargo,1,0)  # the inside of the cargo shutter observed from staging
-            route = memory.onward(at,goal)
+            route = memory.onward(at,goal,allowed)
             if route:
                 p.trace.append(dict(event="known_egress",cell=at,to=route[-1][1],
                                     edges=len(route),frame=frame))
@@ -548,7 +603,7 @@ def explore(p, start, planar, cargo=None, memory=None):
         if fresh:
             def priority(port):
                 if cargo is None:
-                    return (-abs(port[2]),-port[1])
+                    return (-port[2],-port[1])
                 b = tuple(x+y for x,y in zip(at,port))
                 return (abs(b[0]-cargo)+abs(b[1]-1)+2*b[2],-abs(port[2]))
             step = min(fresh,key=priority)
@@ -569,7 +624,35 @@ def explore(p, start, planar, cargo=None, memory=None):
     return at,trail,None
 
 
-def run(client, *, planar=False, fixed_tool=None, hold_heading=False, feedback="rgb"):
+def loaded_return(p, bay, trail, surveyed, cargo, replay, hold_heading=False):
+    # Prefer our actual empty approach back to the lower warehouse. The
+    # ablation keeps the XYZ trail and all vision/servos, but reuses empty fit.
+    def allowed(at,port):
+        return (not port[2] or replay or
+                p.apertures.get(at[:2],math.inf)*math.sqrt(2) >= 1.80)
+
+    at = bay
+    for link in map(reverse,reversed(trail)):
+        a,b,d = link
+        if not a[2]:
+            break
+        if b[2] != a[2]:
+            accept = allowed(a,(0,0,-1))
+            p.trace.append(dict(event="return_route",cell=a,frame=p.obs["frame_id"],
+                                width_m=p.apertures[a[:2]],reuse=accept))
+            if not accept:
+                break
+        fly(p,*link)
+        if p.obs["done"]:
+            return p
+        at = b
+    at,_,d = explore(p,at,surveyed.planar,cargo,memory=surveyed,allowed=allowed)
+    if d is None:
+        return p
+    return unload(p,at,d,hold_heading)
+
+
+def run(client, *, planar=False, fixed_tool=None, hold_heading=False, feedback="rgb", replay=False):
     p = Pilot(client,feedback)
     def staging_to(start,end):
         for col in range(start,end,1 if start<end else -1):
@@ -630,9 +713,10 @@ def run(client, *, planar=False, fixed_tool=None, hold_heading=False, feedback="
     p.trace.append(dict(event="pickup_attempt",cell=bay,frame=p.obs["frame_id"]))
     if find_pod(decode(p.obs),p.command,floor) is not None:
         return p
-    at,_,d = explore(p,bay,planar,cargo,memory=surveyed)
-    if d is None:
-        return p
+    return loaded_return(p,bay,trail,surveyed,cargo,replay,hold_heading)
+
+
+def unload(p,at,d,hold_heading):
     p.align_load(*d)
     staging = (at[0]+d[0],at[1]+d[1])
     p.cell(staging,TRAVEL,settle=1)

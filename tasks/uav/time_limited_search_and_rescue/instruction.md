@@ -1,7 +1,7 @@
-# UAV Search and Rescue: Two-Storey Training Ward
+# UAV Search and Rescue: Warehouse Litter Return
 
 Recover the **RESCUE MANNEQUIN** on its full-length medical litter from
-an indoor training wing and set it down on the blue center of the
+an upper-storey training bay and set it down on the blue center of the
 receiving mat beyond the loading pocket. This is a simulated
 civilian exercise. The doors, turns, and rescue bay vary. There is no
 floor plan: explore with the UAV's two local RGB cameras and keep track
@@ -16,19 +16,25 @@ of the passages and landmarks you actually see.
 - Find the **INSPECTION** slot off the staging strip. Align on the
   violet floor apron, settle at about **0.71 m** altitude, and fly
   through empty. Once clear, climb before leaving that pocket.
-- Search both storeys. A room may be directly above another room with
-  different doors; a visit to one does not inspect the other. The
-  downstairs wards are separated by a solid partition. The connecting
-  passage is upstairs. White wear plates extend through ordinary doorways,
+- Explore the connected warehouse on both storeys. The casualty is upstairs;
+  inspection, the depot and receiving are downstairs. Rooms directly above
+  each other need not have the same doors. White wear plates extend through ordinary doorways,
   which have about 1.48 m of clear width.
 - Amber thresholds lead into **HOIST WELL** alcoves. Enter horizontally,
   then climb or descend **inside** the square aperture. The ceiling is
   solid elsewhere. Storey spacing is **2.60 m**, slab thickness **0.22 m**,
-  and the well opening is **2.34 by 2.34 m**. A useful cruise is **1.30 m
+  with a continuous iron frame around each opening. The **service hatch is
+  1.08 m square**; the **freight liftwell is 2.34 m square**. The service hatch
+  admits the UAV with either rescue head, but even its diagonal is shorter
+  than the litter. From above, look down at the frame's inner edges; the metal
+  is solid, not part of the opening. Both wells connect real landings at
+  different places. You may use the freight well on both trips.
+  A useful cruise is **1.30 m
   above the local floor**. Two continuous ochre steel guides on the back
   wall stand **1.40 m** apart; their midpoint and apparent span help center
   the aircraft about **1.2 m** in front of them. The guides can be seen
-  at both heights. Looking down inside a well shows the floor far below,
+  at both heights. Their spacing is the same at both wells; it does not
+  indicate the opening width. Looking through the opening shows the floor far below,
   not a floor at the upper landing. Leave horizontally once clear of the slab.
 - Search the marked **RESCUE BAY** rooms for the orange pickup panel on
   the green litter board. Its lifting
@@ -69,7 +75,9 @@ axis need not point along the UAV nose. Yaw turns the entire load.
 You can translate sideways or backwards without changing that yaw.
 Carrying the board across the UAV rather than under its camera boom
 gives a clearer down view. The board can obscure the floor; changing
-the viewing angle exposes different patches and wall junctions.
+the UAV's yaw alone will not move an attached board out of the camera's
+view. Inspect the frame before pickup, or use an approach and attachment
+that leave a clear view. The forward camera remains available.
 
 Across staging from the cargo exit, **LITTER TRANSFER** leads to a finite
 turning pocket. Beyond it, a perpendicular throat leads to **RECEIVING**.
