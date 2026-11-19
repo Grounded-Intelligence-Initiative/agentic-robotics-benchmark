@@ -21,7 +21,8 @@ SCORE = {"entered_wing": .12, "mezzanine": .08, "located": .10, "grasped": .12,
 FAILURES = ("wall", "raised", "inspection", "cargo", "deck", "landing", "safety", "unsafe_release")
 ROTOR_LOW = np.array([.21, .21, .235])
 ROTOR_HIGH = np.array([.21, .21, .130])
-POD_HALF = np.array([.155, .26, .112])
+POD_HALF = np.array([.155, .26, .166])
+TOOL_LOW = np.array([.21, .21, .27])
 
 
 def png(rgb):
@@ -57,7 +58,7 @@ class World:
         self.data.qpos[:4] = self.command
         self.data.ctrl[:] = self.command
         x, y, yaw = self.layout.pod
-        self.data.qpos[4:] = (x, y, self.floor_at(y)+.073, math.cos(yaw/2), 0., 0., math.sin(yaw/2))
+        self.data.qpos[4:11] = (x, y, self.floor_at(y)+.073, math.cos(yaw/2), 0., 0., math.sin(yaw/2))
         mujoco.mj_forward(self.model, self.data)
         self.renderer = mujoco.Renderer(self.model, 256, 256) if render else None
         self.kinds, centers, half = zip(*obstacles)
@@ -69,6 +70,9 @@ class World:
         self.columns = np.asarray(self.layout.columns)
         self.rows = np.asarray(self.layout.rows)
         self.steps = self.release_dwell = self.close_attempts = 0
+        self.tool_changes = self.steps_to_tool = self.fit_misses = 0
+        self.mounts = [self.model.equality(f"collet{i}_mount").id for i in range(2)]
+        self.docks = [self.model.equality(f"collet{i}_dock").id for i in range(2)]
         self.steps_to_lift = self.steps_to_cargo = 0
         self.done = self.shutter_open = False
         self.failure = self.impact_body = None
@@ -89,6 +93,10 @@ class World:
     @property
     def payload(self):
         return self.data.qpos[4:7]
+
+    @property
+    def tool(self):
+        return next((i for i, mount in enumerate(self.mounts) if self.data.eq_active[mount]), None)
 
     def floor_at(self, y):
         return DECK if y >= self.layout.deck_y else 0.
@@ -118,22 +126,56 @@ class World:
         self.failure, self.impact_body = reason, body
         self.done = True
 
+    def weld(self, eq, position, orientation):
+        # Capture the actual pose in the UAV frame.
+        yaw = self.data.qpos[3]
+        delta = position-self.position
+        delta[:2] = basis(yaw).T @ delta[:2]
+        self.model.eq_data[eq, 3:6] = delta
+        inverse = np.array([math.cos(yaw/2), 0., 0., -math.sin(yaw/2)])
+        mujoco.mju_mulQuat(self.rel_quat, inverse, orientation)
+        self.model.eq_data[eq, 6:10] = self.rel_quat
+        self.data.eq_active[eq] = True
+
+    def dock_tool(self, signal, tool):
+        for slot in range(2):
+            delta = np.asarray(self.layout.dock(slot))-self.position
+            if np.linalg.norm(delta[:2]) > .085 or abs(delta[2]+.206) > .035:
+                continue
+            mount, dock = self.mounts[slot], self.docks[slot]
+            if signal > .5 and tool is None:
+                body = self.data.body(f"collet{slot}")
+                self.data.eq_active[dock] = False
+                self.weld(mount, body.xpos, body.xquat)
+                self.steps_to_tool = self.steps_to_tool or self.steps
+                self.tool_changes += 1
+            elif signal < -.5 and tool == slot:
+                self.data.eq_active[mount] = False
+                self.data.eq_active[dock] = True
+            return
+
+    def fits(self, tool):
+        if tool is None:
+            return False
+        # The flange has to enter the recessed seat but not pass its retaining lip.
+        # Read the two inner radii from the same jaw geometry shown in RGB.
+        seat, lip = (self.model.geom(f"collet{tool}_{layer}4") for layer in ("seat", "lip"))
+        throat, recess = (abs(g.pos[1])-g.size[0] for g in (lip, seat))
+        return throat < self.model.geom("flange").size[0] < recess
+
     def grip(self, signal):
         delta = self.payload-self.position
         speed = np.linalg.norm(self.data.qvel[:3])
         turn_speed = abs(self.data.qvel[3])
+        tool = self.tool
         if signal > .5 and not self.held:
             self.close_attempts += 1
             if (np.linalg.norm(delta[:2]) <= .135 and abs(delta[2]+.306) <= .060
                     and speed <= .30 and turn_speed < .3):
-                # Capture the actual pose, not a teleport or a success-report command.
-                yaw = self.data.qpos[3]
-                delta[:2] = basis(yaw).T @ delta[:2]
-                self.model.eq_data[0, 3:6] = delta
-                inverse = np.array([math.cos(yaw/2), 0., 0., -math.sin(yaw/2)])
-                mujoco.mju_mulQuat(self.rel_quat, inverse, self.data.qpos[7:11])
-                self.model.eq_data[0, 6:10] = self.rel_quat
-                self.data.eq_active[0] = True
+                if not self.fits(tool):
+                    self.fit_misses += 1
+                    return
+                self.weld(0, self.payload, self.data.qpos[7:11])
                 self.progress.add("grasped")
                 self.release_dwell = 0
         elif signal < -.5 and self.held:
@@ -141,6 +183,8 @@ class World:
             self.release_dwell = 0
             if self.payload[2]-self.floor_at(self.payload[1]) > .195 or speed > .34 or turn_speed > .34:
                 self.abort("unsafe_release")
+        if not self.held and abs(signal) > .5 and speed <= .30 and turn_speed < .3:
+            self.dock_tool(signal, tool)
 
     def intersect(self, lo, hi, pod=False):
         hits = np.flatnonzero(np.all((lo < self.solid_hi) & (hi > self.solid_lo), axis=1))
@@ -148,7 +192,8 @@ class World:
 
     def check_clearance(self, prev_drone, prev_pod):
         pos = self.position
-        hit = self.intersect(np.minimum(pos, prev_drone)-ROTOR_LOW,
+        low = TOOL_LOW if self.tool is not None else ROTOR_LOW
+        hit = self.intersect(np.minimum(pos, prev_drone)-low,
                              np.maximum(pos, prev_drone)+ROTOR_HIGH)
         if hit is not None:
             self.abort(hit, "uav")
@@ -158,7 +203,7 @@ class World:
         # swept volume separately from the UAV so a clean airframe can still strike.
         mujoco.mju_quat2Mat(self.pod_rotation, self.data.qpos[7:11])
         rotation = self.pod_rotation.reshape(3, 3)
-        shift = rotation[:, 2]*.04
+        shift = rotation[:, 2]*.094
         half = np.abs(rotation) @ POD_HALF
         hit = self.intersect(np.minimum(self.payload, prev_pod)+shift-half,
                              np.maximum(self.payload, prev_pod)+shift+half, pod=True)
@@ -281,4 +326,6 @@ class World:
             "loaded_trim_m": round(self.loaded_trim_m, 3),
             "command_tracking_offset_m": round(float(np.linalg.norm(self.trim_offset)), 3),
             "close_attempts": self.close_attempts,
+            "tool_changes": self.tool_changes, "steps_to_tool": self.steps_to_tool,
+            "fit_misses": self.fit_misses,
         }

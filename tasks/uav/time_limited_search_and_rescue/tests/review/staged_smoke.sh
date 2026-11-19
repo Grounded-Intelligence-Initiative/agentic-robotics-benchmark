@@ -43,8 +43,9 @@ print(json.dumps({"staged_mode": sys.argv[1], **verdict}))
 if expected and Path("/evidence").is_dir():
     private = Path("/var/lib/visual_robotics")
     ledger = json.loads((private/"state.json").read_text())
-    grasp = next(e["frame_id"] for e in ledger["events"]
-                 if e["method"] == "act" and e["params"]["action"][4] == 1.)
+    grasp = max(e["frame_id"] for e in ledger["events"]
+                if e["method"] == "act" and e["params"]["action"][4] == 1.
+                and e["frame_id"] <= ledger["metrics"]["steps_to_lift"])
     for label, step in (("pre-grasp", grasp-1), ("loaded-flight", grasp+5)):
         for camera in range(2):
             shutil.copy2(private/"frames"/f"{step:04d}-{camera}.png",

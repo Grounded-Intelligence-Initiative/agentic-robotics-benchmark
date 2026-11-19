@@ -60,6 +60,63 @@ def find_pod(rgb, command, floor):
     return command[:2]+basis(command[3]) @ local
 
 
+def steel(rgb):
+    r, g, b = rgb.transpose(2, 0, 1)
+    return (r < 115) & (g > 145) & (b > 165) & (g > r+65)
+
+
+def survey(p, target, cell):
+    # Pick the side with room to offset from the sled. At cruise height the
+    # common cover hides the flange; see under it in the forward camera.
+    relative = target-PITCH*np.asarray(cell)
+    side = -1 if relative[1] > 0. else 1
+    offset = np.array([0., side*.55])
+    diagonal = abs(relative[1]) < .09
+    if diagonal:
+        # Keep both horizontal components clear of the nearest walls.
+        offset = np.where(relative > 0., -1., 1.)*(.55/math.sqrt(2))
+    p.face(*(-offset))
+    p.go(*(target+offset), .43+DECK, settle=3)
+    rows, cols = np.where(steel(decode(p.obs, 1)[130:244, 75:181]))
+    if rows.size < 40:
+        raise RuntimeError("no flange visible under the fitting cover")
+    width = int(np.ptp(cols)+1)
+    wide = width >= 37
+    p.trace.append({"event": "flange_survey", "cell": cell, "width_px": width,
+                    "profile": "wide" if wide else "narrow", "frame": p.obs["frame_id"]})
+    p.go(*p.command[:2], TRAVEL+DECK)
+    if diagonal:
+        p.face(0, -side)
+    p.cell(cell, TRAVEL+DECK, settle=1)
+    p.register(cell)
+    return wide
+
+
+def equip(p, wide):
+    p.face(0, 1)
+    p.grip()
+    mask = steel(decode(p.obs))
+    tools = []
+    scale = (TRAVEL-.145-.237)/FOCAL
+    for left, right in ((60, 127), (128, 196)):
+        rows, cols = np.where(mask[145:206, left:right])
+        if rows.size < 50:
+            raise RuntimeError("depot collet not visible")
+        u = left+(cols.min()+cols.max())/2
+        v = 145+(rows.min()+rows.max())/2
+        tools.append((int(np.ptp(cols)), (u-127.5)*scale, DOWN_OFFSET-(v-127.5)*scale))
+    width, dx, dy = sorted(tools)[int(wide)]
+    p.trace.append({"event": "depot_choice", "profile": "wide" if wide else "narrow",
+                    "slot": int(dx > 0), "width_px": width, "frame": p.obs["frame_id"]})
+    center = p.command[:2].copy()
+    p.go(*(center+[dx, dy]), .43, settle=3)
+    p.grip(1.)
+    p.go(*(center+[dx, dy]), TRAVEL)
+    p.trace.append({"event": "depot_departure", "frame": p.obs["frame_id"]})
+    p.cell((2, 0), TRAVEL, settle=1)
+    p.register((2, 0))
+
+
 def station_offset(rgb):
     """Find a repeated local 58 cm square in the calibrated cruise view."""
     r, g, b = rgb.transpose(2, 0, 1)
@@ -323,8 +380,22 @@ class Discovery:
         p.path.append(there)
 
 
-def run(client, retrace=False, locate_only=False, feedback="rgb"):
+def run(client, retrace=False, locate_only=False, feedback="rgb", fixed_tool=None):
     p = Pilot(client, feedback)
+
+    def enter(inlet):
+        p.face(0, 1)
+        p.cell((inlet[0], 0), SLOT, settle=1)
+        p.cell(inlet, SLOT)
+        p.cell(inlet, TRAVEL, settle=1)
+        p.register(inlet)
+
+    def staging_to(start, end):
+        for col in range(start, end, 1 if start < end else -1):
+            cell = (col+(1 if start < end else -1), 0)
+            p.cell(cell, TRAVEL, settle=1)
+            p.register(cell)
+
     inlet = None
     tried = set()
     for col in (0, 1, 2, 1, 0, -1, -2):
@@ -339,11 +410,7 @@ def run(client, retrace=False, locate_only=False, feedback="rgb"):
             break
     if inlet is None:
         raise RuntimeError("no visible inspection slot")
-    p.face(0, 1)
-    p.cell((inlet[0], 0), SLOT, settle=1)
-    p.cell(inlet, SLOT)
-    p.cell(inlet, TRAVEL, settle=1)
-    p.register(inlet)
+    enter(inlet)
     nav = Discovery(p, inlet)
     p.path.append(inlet)
     target = None
@@ -356,6 +423,26 @@ def run(client, retrace=False, locate_only=False, feedback="rgb"):
         nav.move(nav.route())
     if p.obs["done"] or locate_only:
         return p
+    bay = nav.current
+    p.trace.append({"event": "sled_found", "cell": bay, "frame": p.obs["frame_id"]})
+    wide = survey(p, target, bay) if fixed_tool is None else fixed_tool == "wide"
+    while nav.current != inlet and not p.obs["done"]:
+        nav.move(nav.route(inlet))
+    p.face(0, -1)
+    p.cell(inlet, SLOT, settle=1)
+    p.cell((inlet[0], 0), SLOT)
+    p.cell((inlet[0], 0), TRAVEL, settle=1)
+    p.register((inlet[0], 0))
+    staging_to(inlet[0], 2)
+    equip(p, wide)
+    staging_to(2, inlet[0])
+    enter(inlet)
+    while nav.current != bay and not p.obs["done"]:
+        nav.move(nav.route(bay))
+    target = find_pod(decode(p.obs), p.command, DECK)
+    if target is None:
+        raise RuntimeError("sled not visible on return to remembered bay")
+    p.trace.append({"event": "sled_reacquired", "cell": bay, "frame": p.obs["frame_id"]})
     px, py = map(float, target)
     p.go(px, py, .43+DECK, settle=3)
     p.grip(1.)
@@ -364,6 +451,10 @@ def run(client, retrace=False, locate_only=False, feedback="rgb"):
     p.cell(nav.current, TRAVEL+DECK, settle=1)
     p.register(nav.current)
     p.trace.append({"event": "pickup_attempt", "cell": nav.current, "frame": p.obs["frame_id"]})
+    if find_pod(decode(p.obs), p.command, DECK) is not None:
+        # On a miss the orange sled is still next to the original station.
+        p.trace.append({"event": "sled_still_on_floor", "frame": p.obs["frame_id"]})
+        return p
     staging = None
     while not p.obs["done"]:
         _, view = nav.scan(True)

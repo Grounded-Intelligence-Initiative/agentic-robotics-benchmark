@@ -27,6 +27,11 @@ ORANGE = (1., .26, .018, 1)
 PURPLE = (.72, .19, .86, 1)
 RED = (.90, .045, .045, 1)
 TAPE = (.97, .015, .49, 1)
+STEEL = (.06, .79, .91, 1)
+FLANGE_RADII = (.041, .093)
+# Inner throat and outer seat of the closed collet, in metres.
+COLLETS = ((.027, .054), (.074, .106))
+DOCK_Z = .224
 
 
 def edge(a, b):
@@ -86,6 +91,8 @@ class Layout:
     launch: tuple
     gains: tuple
     pad: tuple
+    flange: float
+    depot: tuple
 
     def xy(self, cell):
         return np.array([axis_at(self.columns, cell[0]), axis_at(self.rows, cell[1])])
@@ -97,6 +104,9 @@ class Layout:
     @property
     def inlet_y(self):
         return (self.rows[0]+self.rows[1])/2
+
+    def dock(self, slot):
+        return (self.columns[-1]+.32*(2*slot-1), .08, DOCK_Z)
 
     @property
     def bounds(self):
@@ -160,6 +170,8 @@ def layout_for(seed):
     start_x, start_y = rng.uniform(-.13, .13, 2)
     gains = tuple(rng.uniform(.96, 1.045, 2))
     pad_x, pad_y = rng.uniform(-.16, .16, 2)
+    flange = FLANGE_RADII[int(rng.integers(2))]
+    depot = tuple(COLLETS[i] for i in rng.permutation(2))
 
     def mirror(p):
         return (SIDE-1-p[0], p[1]) if seed & 1 else p
@@ -177,7 +189,7 @@ def layout_for(seed):
     return Layout(transformed(halls), transformed(raised), mirror((inlet, 1))[0],
                   mirror((outlet, 1))[0], tuple(map(mirror, rooms)), (px, py, yaw),
                   edge(*map(mirror, safety)), tone, tuple(columns), tuple(rows),
-                  (start_x, start_y), gains, (pad_x, pad_y))
+                  (start_x, start_y), gains, (pad_x, pad_y), flange, depot)
 
 
 def build(layout):
@@ -234,7 +246,10 @@ def build(layout):
     for side in (-1, 1):
         geom(pod, f"leg{side}", pos=(side*.044, -.123, .11), size=(.032, .083, .027), rgba=AMBER)
         geom(pod, f"arm{side}", pos=(side*.096, .030, .105), size=(.025, .071, .023), rgba=AMBER)
-    geom(pod, "bar", pos=(0, 0, .136), size=(.142, .025, .015), rgba=WHITE)
+    geom(pod, "flange", "cylinder", (0, 0, .164), (layout.flange, .023), STEEL)
+    geom(pod, "stem", "cylinder", (0, 0, .211), (.020, .025), DARK)
+    # Same top cover on both fittings; read the load-bearing flange from the side.
+    geom(pod, "fitting_cover", "cylinder", (0, 0, .247), (.132, .012), DARK)
     px, py = layout.pad
     geom(w, "pad", pos=(px, py, .004), size=(.56, .53, .004), rgba=BLUE)
     for side in (-1, 1):
@@ -265,6 +280,32 @@ def build(layout):
         geom(w, f"sign{len(w)}", "plane", (x, y, z+.012), (width, .085, .002), material=key)
 
     sign("STAGING", 0., -.64, 0.)
+    sign("TOOL DEPOT", layout.columns[-1], -.47, 0.)
+    for slot, (throat, seat) in enumerate(layout.depot):
+        name = f"collet{slot}"
+        x, y, z = layout.dock(slot)
+        stand = ET.SubElement(w, "body", name=name+"_stand", pos=f"{x} {y} {z}")
+        geom(stand, name+"_post", "cylinder", (0, 0, .089-z), (.035, .089), DARK)
+        head = ET.SubElement(w, "body", name=name, pos=f"{x} {y} {z}")
+        ET.SubElement(head, "freejoint", name=name+"_free")
+        ET.SubElement(head, "inertial", pos="0 0 0", mass=".035",
+                      diaginertia=".00015 .00015 .00015")
+        # Two semicircular jaws, with a retaining lip beneath the recessed seat.
+        for layer, radius, height in (("seat", seat, 0.), ("lip", throat, -.027)):
+            outer = seat+.027
+            mid = (radius+outer)/2
+            for i in range(16):
+                if i in (0, 8):
+                    continue
+                a = i*np.pi/8
+                geom(head, f"{name}_{layer}{i}", pos=(mid*np.cos(a), mid*np.sin(a), height),
+                     size=((outer-radius)/2, radius*np.tan(np.pi/16), .013), rgba=STEEL,
+                     euler=f"0 0 {np.degrees(a)}")
+        eq = root.find("equality")
+        ET.SubElement(eq, "weld", name=name+"_dock", body1=name+"_stand", body2=name,
+                      relpose="0 0 0 1 0 0 0", solref=".008 1")
+        ET.SubElement(eq, "weld", name=name+"_mount", body1="uav", body2=name,
+                      active="false", solref=".008 1")
 
     def wall(center, half, kind, color=WALL):
         obstacles.append((kind, center, half))

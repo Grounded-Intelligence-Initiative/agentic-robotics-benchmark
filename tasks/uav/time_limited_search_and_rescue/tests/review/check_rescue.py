@@ -1,4 +1,4 @@
-"""Author controls for local visual odometry, separate from participant runs."""
+"""Author controls for local visual odometry and interchangeable rescue fittings."""
 import argparse
 import base64
 import json
@@ -11,7 +11,7 @@ TASK = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(TASK/"environment/setup/runtime"), str(TASK/"solution")]
 from oracle_run import run
 from rescue import LIMIT, World
-from rescue_scene import layout_for
+from rescue_scene import FLANGE_RADII, layout_for
 
 
 class Record:
@@ -53,7 +53,8 @@ def episode(seed, mode, output=None):
         pilot, error = None, None
         feedback = mode if mode in ("odometry", "prelift") else "rgb"
         try:
-            pilot = run(record, retrace=mode == "retrace", feedback=feedback)
+            pilot = run(record, retrace=mode == "retrace", feedback=feedback,
+                        fixed_tool="narrow" if mode == "fixed-narrow" else None)
         except RuntimeError as exc:
             error = str(exc)
             tb = exc.__traceback__
@@ -62,6 +63,10 @@ def episode(seed, mode, output=None):
             if tb:
                 pilot = tb.tb_frame.f_locals["p"]
         fixes = [e for e in pilot.trace if e["event"] == "station_fix"] if pilot else []
+        stages = {e["event"]: e for e in pilot.trace if e["event"] in (
+            "sled_found", "flange_survey", "depot_choice", "depot_departure",
+            "sled_reacquired", "pickup_attempt", "sled_still_on_floor")} if pilot else {}
+        wide = world.layout.flange == FLANGE_RADII[1]
         true_errors = []
         loaded_before = []
         for e in fixes:
@@ -77,6 +82,9 @@ def episode(seed, mode, output=None):
             col, row = pilot.path[-1]
             stopped_error = float(np.linalg.norm(world.position[:2]-world.layout.xy((col+2, row))))
         result = outcome(world, seed, mode, policy_error=error, fixes=len(fixes),
+                         flange="wide" if wide else "narrow", stages=stages,
+                         tool_profile=None if world.tool is None else
+                         ("wide" if world.layout.depot[world.tool][0] > FLANGE_RADII[0] else "narrow"),
                          loaded_fixes=sum(e["loaded"] for e in fixes),
                          max_true_loaded_arrival_error_m=round(max(loaded_before, default=0.), 4),
                          max_true_fix_error_m=round(max(true_errors, default=0.), 4),
@@ -87,6 +95,16 @@ def episode(seed, mode, output=None):
             assert result["cargo_return"] and result["loaded_descent_z"] > 1.7
             assert result["loaded_fixes"] >= 4 and result["max_true_fix_error_m"] < .09
             assert result["steps"] < LIMIT
+            assert result["tool_profile"] == stages["flange_survey"]["profile"] == result["flange"]
+            assert stages["sled_found"]["frame"] < stages["flange_survey"]["frame"] < result["steps_to_tool"]
+            assert result["steps_to_tool"] < stages["sled_reacquired"]["frame"] < result["steps_to_lift"]
+            assert not result["fit_misses"]
+        if mode == "fixed-narrow":
+            assert not error and not result["failure"], result
+            assert result["tool_profile"] == "narrow" and "flange_survey" not in stages, result
+            assert stages["sled_found"]["cell"] == stages["sled_reacquired"]["cell"], result
+            assert bool(result["success"]) != wide and bool(result["fit_misses"]) == wide, result
+            assert bool(result["lifted"]) != wide, result
         if mode == "odometry":
             assert not fixes
         if mode == "prelift":
@@ -97,6 +115,9 @@ def episode(seed, mode, output=None):
             output.mkdir(parents=True, exist_ok=True)
             if pilot:
                 (output/f"navigation-{mode}-{seed}.json").write_text(json.dumps(pilot.trace, indent=2))
+            for event, camera in (("sled_found", 0), ("flange_survey", 1), ("depot_choice", 0)):
+                if event in stages and mode == "rgb":
+                    record.export(stages[event]["frame"], output/f"{event}-{seed}.png", camera)
             if mode == "rgb":
                 (output/f"author-actions-{seed}.json").write_text(json.dumps(record.actions))
                 largest = max((e for e in fixes if e["loaded"]), key=lambda e: e["before_m"])
@@ -160,8 +181,22 @@ def main():
     parser.add_argument("--sites", type=int, nargs="+", default=[0, 19])
     parser.add_argument("--output", type=Path)
     parser.add_argument("--positives-only", action="store_true")
+    parser.add_argument("--fixture-seeds", type=int, nargs="+")
     args = parser.parse_args()
     structural()
+    if args.fixture_seeds:
+        results = []
+        for seed in args.fixture_seeds:
+            actions, positive = episode(seed, "rgb", args.output)
+            results.append(positive)
+            if not args.positives_only:
+                control_actions, control = episode(seed, "fixed-narrow", args.output)
+                assert control["stages"]["sled_found"] == positive["stages"]["sled_found"]
+                found = positive["stages"]["sled_found"]["frame"]
+                assert actions[:found] == control_actions[:found], "matched search diverged"
+        if len(results) > 1:
+            assert {result["flange"] for result in results} == {"narrow", "wide"}
+        return
     outcomes = []
     for site in args.sites:
         seed = 2*site

@@ -1,4 +1,4 @@
-# UAV Search and Rescue: Visual Odometry
+# UAV Search and Rescue: Interchangeable Rescue Heads
 
 Recover an orange **RESCUE MANNEQUIN** and sled from an indoor training
 wing and deliver it to the blue staging pad. This is a simulated
@@ -23,11 +23,29 @@ of the passages and landmarks you actually see.
   climb to **1.90 m above launch** before entering, hold until fully
   clear on the other side, then adjust to the local floor. The walls
   are higher than the flight envelope.
-- Search the marked **RESCUE BAY** rooms for the orange sled and its
-  white grapple bar. Align in the down camera before descending. Settle
-  about **0.43 m above the local floor**, close the gripper, then lift.
-  If unsure of the grasp, look back at the pickup spot from a clear
-  nearby hover: an ungrasped sled stays on the floor.
+- Search the marked **RESCUE BAY** rooms for the orange sled. Its lifting
+  fitting is a cyan circular flange under a dark cover. The cover looks
+  the same on both sled types. Offset to the side with clear space, face
+  the sled and lower the UAV to see under the cover with the forward
+  camera. From roughly half a metre to the side at a 0.43 m hover, the
+  narrow flange is about 8 cm across and the wide one about 19 cm.
+  Remember the profile and the route back to the sled.
+- Return empty through **INSPECTION** to the **TOOL DEPOT** at the
+  right-hand end of staging (as seen from launch facing the wing).
+  The rack holds two cyan collet heads. Choose by geometry: the small
+  head has a smaller opening and fits the narrow flange; the large
+  head fits the wide flange. Rack positions can vary. Center directly
+  over the chosen head, settle at **0.43 m above staging** and close
+  to mount it. The head lifts with the aircraft and its stand is left
+  empty. One head can be carried at a time; to swap, return it to its
+  own stand at the same hover height and release before taking the other.
+- Fly back through **INSPECTION** with the head and find the sled again.
+  Use the down camera to center over the fitting, settle at **0.43 m
+  above the local floor**, then close and lift. The jaws close from
+  the sides, under the cover. A mismatched head will not latch: the
+  wide flange cannot enter the small seat, and the narrow flange slips
+  past the large head's retaining lip. Check that the sled lifted before
+  committing to egress. A miss leaves the sled on the floor.
 - Lifting the load opens the blue **CARGO** shutter and closes an
   interior safety shutter. A closed safety shutter has a red apron
   and a visible red panel. Recheck doors on the return and route around
@@ -52,8 +70,11 @@ The UAV starts at 1.30 m with its heading facing the wing.
 Altitude setpoints are limited to 0.39–2.09 m above launch.
 
 `grip=+1` attempts a close, `-1` releases, and `0` leaves it alone.
-It applies before movement. A close needs the grapple bar within about
-13 cm of horizontal alignment and low translational and turn speed.
+It applies before movement. Steady the UAV before mounting, latching
+or releasing. Hover directly over the rack head to mount it (the rack
+guide has about 8 cm of horizontal capture range). At the sled, the
+self-centering jaws accept about 13 cm of horizontal misalignment.
+Releasing the sled leaves the head attached to the UAV.
 High or fast release, or striking a wall, sill, or shutter with the
 airframe **or load**, ends the sortie. Each action advances 0.2 simulated
 seconds; the allowance is **1,000 actions** (200 simulated seconds).
