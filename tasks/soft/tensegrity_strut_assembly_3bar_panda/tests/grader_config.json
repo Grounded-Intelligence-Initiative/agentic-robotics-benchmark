@@ -48,7 +48,7 @@
   "files": 43,
   "note": "the cell's kit (gt/: kit.json, mating_graph.json, meshes/visual/, meshes/collision/), not in the repository and never in the image: verify.py fetch_hidden_gt downloads this tarball of the benchmark's asset dataset at verify start, checks its sha256 and file count and unpacks it into the root-only stage folder; until it is uploaded the url is a placeholder and tests/test.sh points ARB_HIDDEN_GT_TARBALL at the local copy tests/assets/gt.tar.xz (the maintainers' build tool rebuilds it byte for byte)",
   "sha256": "63c5b207b3e992e00126aa39c791791c934b875a4bafcc2a0639641bfb390169",
-  "url": "https://huggingface.co/datasets/grounded-intelligence-initiative/ale-robotics-assets/resolve/PLACEHOLDER-not-uploaded/tasks/soft/tensegrity_strut_assembly_3bar_panda/verifier/gt.tar.xz"
+  "url": "https://huggingface.co/datasets/grounded-intelligence-initiative/ale-robotics-assets/resolve/38a722fff3b2042d9587f0848ab2fc8c723fe13c/tasks/soft/tensegrity_strut_assembly_3bar_panda/verifier/gt.tar.xz"
  },
  "info_layout": {
   "camera_draw": {

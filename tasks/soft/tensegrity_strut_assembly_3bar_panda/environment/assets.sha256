@@ -1,6 +1,6 @@
 # endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/ale-robotics-assets
-# revision: 0000000000000000000000000000000000000000
+# revision: 38a722fff3b2042d9587f0848ab2fc8c723fe13c
 # prefix: tasks/soft/tensegrity_strut_assembly_3bar_panda/payload
 c885dc0cdd05fa45c01f6c6236f6c92570b3907ccbc2a2911dabec7fadf8811c  given/manual/photo_01.jpg
 406909b2d0df9a90e676e8682caff0513b29929081553543f4885b9be53b3077  given/manual/photo_02.jpg
