@@ -19,7 +19,7 @@ def check(seed):
         margins = {}
         for name, center, axis, baseline in (
             ("throat_entry", (cx+offset, cy+POCKET_HALF_DEPTH), 1, cx),
-            ("throat_exit", (cx+side*2.10, cy+stagger), 0, cy),
+            ("throat_exit", (cx+side*2.10, cy+side*stagger), 0, cy),
         ):
             blocks = w.solids[np.array(w.kinds) == name]
             def distance(degrees, lateral):

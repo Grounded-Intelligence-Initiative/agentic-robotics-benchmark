@@ -43,7 +43,7 @@ def impact_audit(w):
     mujoco.mju_mulQuat(alternate.qpos[7:11], yaw, w.data.qpos[7:11])
     mujoco.mj_forward(w.model, alternate)
     return {"board_at_impact_m": gap(w.data, [w.board]), "yaw_correction_deg": math.degrees(turn),
-            "impact_lane_error_m": w.payload[1]-w.layout.pocket[1]-w.layout.loading[2],
+            "impact_lane_error_m": w.payload[1]-w.layout.pocket[1]-w.layout.loading[1]*w.layout.loading[2],
             "aircraft_and_tool_at_impact_m": gap(w.data, [*w.parts["uav"], *w.parts[f"collet{w.tool}"]]),
             "same_xyz_aligned_board_m": gap(alternate, [w.board])}
 

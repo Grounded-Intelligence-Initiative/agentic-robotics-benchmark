@@ -114,8 +114,10 @@ class Layout:
 
     @property
     def receiving_pad(self):
-        offset, side, stagger = self.loading
-        return self.pocket + [side*3.80+self.pad[0], stagger+self.pad[1]]
+        return self.pad_at(self.loading[1])
+
+    def pad_at(self, side):
+        return self.pocket + [side*3.80+self.pad[0], side*self.loading[2]+self.pad[1]]
 
     @property
     def bounds(self):
@@ -126,7 +128,9 @@ class Layout:
 
 
 def layout_for(seed):
-    rng = np.random.default_rng(seed >> 1)
+    # Site, mirror and incident are independent. Flipping the incident bit
+    # changes the dispatch sign, shutters and receiving decks, not the search.
+    rng = np.random.default_rng(seed >> 2)
     inlet, outlet = int(rng.choice((1, 2))), 4
     wells = ((inlet, 3), (int(rng.choice((3, 4))), 3))
     cross_row = int(rng.choice((1, 2)))
@@ -176,7 +180,7 @@ def layout_for(seed):
     flange = FLANGE_RADII[int(rng.integers(2))]
     depot = tuple(COLLETS[i] for i in rng.permutation(2))
     yaw += int(rng.integers(2))*np.pi/2
-    loading = (rng.choice((-1, 1))*rng.uniform(.56, .66), int(rng.choice((-1, 1))),
+    loading = (rng.choice((-1, 1))*rng.uniform(.56, .66), 1 if seed & 2 else -1,
                rng.choice((-1, 1))*rng.uniform(.55, .70))
 
     def mirror(p):
@@ -260,13 +264,6 @@ def build(layout):
     # Same top cover on both fittings; read the load-bearing flange from the side.
     geom(pod, "fitting_cover", "cylinder", (0, 0, .247), (.132, .012), DARK)
     geom(pod, "centering_button", "cylinder", (0, 0, .261), (.080, .003), (.04, .90, .06, 1))
-    px, py = layout.receiving_pad
-    geom(w, "receiving_mat", pos=(px, py, .001), size=(1.25, .74, .001), rgba=TEAL)
-    geom(w, "pad", pos=(px, py, .004), size=(.56, .53, .004), rgba=BLUE)
-    for side in (-1, 1):
-        geom(w, f"pad_side{side}", pos=(px+side*.39, py, .010), size=(.030, .42, .002), rgba=WHITE)
-    geom(w, "pad_cross", pos=(px, py, .010), size=(.39, .030, .002), rgba=WHITE)
-
     xmin, xmax = boundaries(layout.columns, 0)[0], boundaries(layout.columns, SIDE-1)[1]
     ymax = boundaries(layout.rows, SIDE-1)[1]
     obstacles = []
@@ -305,7 +302,7 @@ def build(layout):
     slab(xmin-.15,xmax+.15,layout.inlet_y-.075,ymax+.075,2*DECK,"roof")
     shutters = {}
 
-    def sign(text, x, y, z, width=.34):
+    def sign(text, x, y, z, width=.34, vertical=False):
         key = text.lower().replace(" ", "_")
         filename = key+".png"
         if filename not in decals:
@@ -317,9 +314,22 @@ def build(layout):
             decals[filename] = out.getvalue()
             ET.SubElement(asset, "texture", name=key, type="2d", file=filename)
             ET.SubElement(asset, "material", name=key, texture=key, texrepeat="1 1")
-        geom(w, f"sign{len(w)}", "plane", (x, y, z+.012), (width, .085, .002), material=key)
+        geom(w, f"sign{len(w)}", "plane", (x, y, z if vertical else z+.012),
+             (width, .069 if vertical else .085, .002), material=key,
+             **({"xyaxes":"1 0 0 0 0 1"} if vertical else {}))
 
     sign("STAGING", 0., -.64, 0.)
+    # Wall-mounted wayfinding display. The arrow points in physical space;
+    # it is not a room identifier or color code.
+    direction = layout.loading[1]
+    sy = layout.inlet_y-.102
+    geom(w,"dispatch_housing",pos=(0,sy,1.75),size=(.57,.022,.26),rgba=DARK)
+    obstacles.append(("wall","dispatch_housing"))
+    sign("RECEIVING",0,sy-.026,1.90,.29,vertical=True)
+    geom(w,"dispatch_shaft",pos=(0,sy-.026,1.69),size=(.365,.003,.026),rgba=WHITE)
+    for v in (-1,1):
+        geom(w,f"dispatch_vane{v}",pos=(direction*.283,sy-.027,1.69+v*.078),
+             size=(.125,.003,.025),euler=f"0 {direction*v*43} 0",rgba=WHITE)
     sign("TOOL DEPOT", layout.columns[-1], -.47, 0.)
     for slot, (throat, seat) in enumerate(layout.depot):
         name = f"collet{slot}"
@@ -441,7 +451,6 @@ def build(layout):
     cx, cy = layout.pocket
     entry, side, stagger = layout.loading
     north, south = cy+POCKET_HALF_DEPTH, cy-POCKET_HALF_DEPTH
-    far, back, exit_x = cx+side*5.45, cx-side*2.10, cx+side*2.10
 
     def panel(axis, fixed, a, b, kind="loading_wall", depth=.075):
         mid, span = (a+b)/2, abs(b-a)/2
@@ -459,19 +468,45 @@ def build(layout):
             if axis == 1:
                 p.reverse()
                 h.reverse()
-            geom(w, f"{name}_line{j}", pos=(*p, .010), size=(*h, .006), rgba=LIME)
+            geom(w, f"{name}_{inward}_line{j}", pos=(*p, .010), size=(*h, .006), rgba=LIME)
 
     throat(1, north, cx+entry, cx-2.10, cx+2.10, -1, "throat_entry")
     for x in boundaries(layout.columns, layout.outlet):
         panel(0, x, north, north+.90)
-    throat(0, exit_x, cy+stagger, south, north, side, "throat_exit")
-    panel(0, back, south, north)
-    panel(0, far, south, north)
-    panel(1, south, back, far)
-    panel(1, north, exit_x, far)
+    panel(1, south, cx-5.45, cx+5.45)
+    for dx in (-1,1):
+        exit_x,far,lane = cx+dx*2.10,cx+dx*5.45,cy+dx*stagger
+        throat(0,exit_x,lane,south,north,dx,"throat_exit")
+        panel(0,far,south,north)
+        panel(1,north,exit_x,far)
+        # Roller case and, where deployed, the floor-to-headrail shutter.
+        wall((exit_x,lane,WALL_TOP-.11),(.115,.60,.11),"loading_wall",DARK)
+        px,py = layout.pad_at(dx)
+        if dx!=side:
+            name = f"receiving_shutter_{dx}"
+            geom(w,name,pos=(exit_x,lane,WALL_TOP/2),size=(.09,.56,WALL_TOP/2),
+                 rgba=(.56,.11,.09,1),contype="1",conaffinity="1")
+            obstacles.append(("loading_wall",name))
+            for v in (-1,1):
+                geom(w,f"closing_cross{dx}_{v}",pos=(exit_x-dx*.092,lane,1.32),
+                     size=(.002,.61,.046),euler=f"{v*45} 0 0",rgba=WHITE)
+            for i,z in enumerate((.28,.56,.82,1.84,2.12)):
+                geom(w,f"slat{dx}_{i}",pos=(exit_x-dx*.091,lane,z),size=(.001,.55,.012),rgba=DARK)
+        # A stowed station has no horizontal receiving surface. Both real
+        # mats exist and use the same collision and rest test.
+        upright = dx!=side
+        deck = ET.SubElement(w,"body",name=f"deck{dx}",
+                             pos=f"{far-dx*.18 if upright else px} {py} {1.28 if upright else .006}",
+                             euler=f"0 {-dx*90 if upright else 0} 0")
+        geom(deck,f"receiving_mat{dx}",size=(1.25,.74,.006),rgba=TEAL,
+             contype="1",conaffinity="1",friction=".95 .04 .01")
+        geom(deck,f"pad{dx}",pos=(0,0,.008),size=(.56,.53,.002),rgba=BLUE)
+        for v in (-1,1):
+            geom(deck,f"pad_side{dx}_{v}",pos=(v*.39,0,.013),size=(.030,.42,.002),rgba=WHITE)
+        geom(deck,f"pad_cross{dx}",pos=(0,0,.013),size=(.39,.030,.002),rgba=WHITE)
+        sign("RECEIVING",px,py-.61,0.)
     sign("LITTER TRANSFER", cx, north+.56, 0., .49)
     sign("TURNING POCKET", cx, cy-.49, 0., .48)
-    sign("RECEIVING", px, py-.61, 0.)
     # Bay paint runs around (not through) the central pickup area.
     for i, room in enumerate(layout.rooms):
         x, y = xy(room)

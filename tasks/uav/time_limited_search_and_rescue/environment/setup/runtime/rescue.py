@@ -65,7 +65,7 @@ class World:
         self.parts = {name: np.flatnonzero(self.model.geom_bodyid == self.model.body(name).id)
                       for name in ("uav", "pod", "collet0", "collet1")}
         self.board = self.model.geom("litter_board").id
-        self.mat = self.model.geom("receiving_mat").id
+        self.mats = [self.model.geom(f"receiving_mat{s}").id for s in (-1,1)]
         self.entry_clear = self.exit_clear = 0
         self.throat_margin = {}
         self.impact_geom = self.impact_obstacle = None
@@ -206,10 +206,22 @@ class World:
         half = self.model.geom_size[self.solids]  # all structural boxes are axis-aligned
         self.solid_lo, self.solid_hi = centers-half, centers+half
 
-    def mat_margin(self):
+    def mat_margin(self, mat=None):
+        if mat is None:
+            mat = min(self.mats,key=lambda g:np.linalg.norm(self.payload-self.data.geom_xpos[g]))
         ext = abs(self.data.geom_xmat[self.board].reshape(3, 3)) @ self.model.geom_size[self.board]
-        delta = abs(self.data.geom_xpos[self.board]-self.data.geom_xpos[self.mat])
-        return float(min((self.model.geom_size[self.mat]-delta-ext)[:2]))
+        support = abs(self.data.geom_xmat[mat].reshape(3,3)) @ self.model.geom_size[mat]
+        delta = abs(self.data.geom_xpos[self.board]-self.data.geom_xpos[mat])
+        return float(min((support-delta-ext)[:2]))
+
+    def supported_on_mat(self):
+        for c in self.data.contact:
+            a,b = c.geom
+            mat = b if a==self.board else a if b==self.board else -1
+            if (mat in self.mats and c.dist<=0. and self.mat_margin(mat)>=0. and
+                    np.linalg.norm(self.payload[:2]-self.data.geom_xpos[mat,:2])<=.28):
+                return True
+        return False
 
     def check_clearance(self):
         # Broad-phase AABBs only select pairs. Only contact between the actual
@@ -286,15 +298,13 @@ class World:
             self.exit_z = z
         if self.held and "cargo_return" in self.progress and py < 0.:
             cx, cy = self.layout.pocket
-            side = self.layout.loading[1]
             ext = abs(self.data.geom_xmat[self.board].reshape(3, 3)) @ self.model.geom_size[self.board]
             if not self.entry_clear and py+ext[1] < cy+POCKET_HALF_DEPTH-.28:
                 self.entry_clear = self.steps
-            if not self.exit_clear and side*(px-cx)-ext[0] > 2.10+.28 and py < cy+POCKET_HALF_DEPTH:
+            if not self.exit_clear and abs(px-cx)-ext[0] > 2.10+.28 and py < cy+POCKET_HALF_DEPTH:
                 self.exit_clear = self.steps
         if (not self.held and "lifted" in self.progress
-                and np.linalg.norm(self.payload[:2]-self.layout.receiving_pad) <= .28
-                and pz <= .095 and np.linalg.norm(self.data.qvel[4:10]) <= .16 and self.mat_margin() >= 0.):
+                and pz <= .095 and np.linalg.norm(self.data.qvel[4:10]) <= .16 and self.supported_on_mat()):
             self.release_dwell += 1
             if self.release_dwell >= 50:
                 self.progress.add("delivered")

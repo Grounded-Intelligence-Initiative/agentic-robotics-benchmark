@@ -96,20 +96,26 @@ def survey(p, target, cell):
     return wide
 
 
-def equip(p, wide):
-    p.face(0, 1)
-    p.grip()
-    mask = steel(decode(p.obs))
+def rack_heads(rgb):
+    mask = steel(rgb)
     tools = []
     scale = (TRAVEL-.145-.237)/FOCAL
     for left, right in ((60, 127), (128, 196)):
         rows, cols = np.where(mask[145:206, left:right])
         if rows.size < 50:
-            raise RuntimeError("depot collet not visible")
+            return []
         u = left+(cols.min()+cols.max())/2
         v = 145+(rows.min()+rows.max())/2
         tools.append((int(np.ptp(cols)), (u-127.5)*scale, DOWN_OFFSET-(v-127.5)*scale))
-    width, dx, dy = sorted(tools)[int(wide)]
+    return sorted(tools)
+
+
+def equip(p, wide, depot):
+    p.look(0,1)
+    tools = rack_heads(decode(p.obs))
+    if not tools:
+        raise RuntimeError("depot collets not visible")
+    width, dx, dy = tools[int(wide)]
     p.trace.append({"event": "depot_choice", "profile": "wide" if wide else "narrow",
                     "slot": int(dx > 0), "width_px": width, "frame": p.obs["frame_id"]})
     center = p.command[:2].copy()
@@ -117,8 +123,8 @@ def equip(p, wide):
     p.grip(1.)
     p.go(*(center+[dx, dy]), TRAVEL)
     p.trace.append({"event": "depot_departure", "frame": p.obs["frame_id"]})
-    p.cell((2, 0), TRAVEL, settle=1)
-    p.register((2, 0))
+    p.cell((depot, 0), TRAVEL, settle=1)
+    p.register((depot, 0))
 
 
 def floor_points(p, mask, height):
@@ -150,7 +156,7 @@ def sight_litter(p, target, floor):
     return (a+b)/2
 
 
-def read_throat(p, axis):
+def read_throat(p, axis, toward=None):
     # The two lime toe strips lie along the inner jamb faces. Fit their spacing
     # and use the approach ends (1.24 m before the throat center plane).
     r, g, b = decode(p.obs).transpose(2, 0, 1)
@@ -169,9 +175,74 @@ def read_throat(p, axis):
                 continue
             coord = np.r_[a[:, axis], b[:, axis]]
             side = 1 if np.mean(coord) > p.command[axis] else -1
+            if toward is not None and side!=toward:
+                continue
             plane = side*(np.min(side*coord)+1.24)
             return float((v+w)/2), float(plane), side
     return None
+
+
+def white_shapes(rgb):
+    neutral = (rgb.min(axis=2)>175) & (np.ptp(rgb,axis=2)<46)
+    labels,_ = ndimage.label(neutral)
+    for i,sl in enumerate(ndimage.find_objects(labels),1):
+        if sl is None:
+            continue
+        h,w = [v.stop-v.start for v in sl]
+        if w>=20 and h>=12 and w<190 and h<190:
+            yield labels[sl]==i,h,w
+
+
+def dispatch_arrow(rgb):
+    # A horizontal shaft with taller vanes toward its tip. No text or hue.
+    for shape,h,w in white_shapes(rgb):
+        if not 1.8<w/h<4.8 or w<38:
+            continue
+        ys,xs = np.where(shape)
+        wings = xs[abs(ys-(h-1)/2)>.27*h]
+        if len(wings)>.11*len(xs) and len(wings) and abs(wings.mean()/w-.5)>.17:
+            # The unadorned end of the shaft must be a thin central stroke.
+            d = 1 if wings.mean()>w/2 else -1
+            tail = ys[xs<w*.25] if d==1 else ys[xs>w*.75]
+            if len(tail) and np.ptp(tail)<.35*h:
+                return d
+    return None
+
+
+def station_view(rgb):
+    for shape,h,w in white_shapes(rgb):
+        if not .70<w/h<1.45 or min(w,h)<30:
+            continue
+        y,x = np.where(shape)
+        u,v = x/(w-1),y/(h-1)
+        if (np.mean(np.minimum(abs(u-v),abs(1-u-v))<.13)>.85 and
+                all(np.mean((u<.27 if a==0 else u>.73) & (v<.27 if b==0 else v>.73))>.035
+                    for a,b in ((0,0),(1,0),(0,1),(1,1)))):
+            return "closed"
+    # Positive evidence through the opening: blue target on the deployed
+    # green deck. A missing cross by itself is not a clear passage.
+    r,g,b = rgb[126:232,48:208].transpose(2,0,1)
+    if ((b>130)&(b>r+65)&(b>g+40)).sum()>45 and ((g>105)&(g>r+55)&(g>b+15)).sum()>40:
+        return "open"
+    return "uncertain"
+
+
+def choose_station(p,pivot,h):
+    first = p.fixed_side or p.receiving_hint or 1
+    for dx in (first,-first):
+        p.look(dx,0)
+        gate = read_throat(p,0,toward=dx)
+        if gate is None:
+            continue
+        lane,plane,side = gate
+        p.traverse(pivot[0],lane,h,h)
+        p.look(dx,0)
+        state = station_view(decode(p.obs,1))
+        p.trace.append(dict(event="station_inspection",side=dx,state=state,frame=p.obs["frame_id"]))
+        if state=="open" or p.fixed_side==dx:
+            return gate
+        p.traverse(*pivot,h,h)
+    raise RuntimeError("no visibly open receiving deck from the turning pocket")
 
 
 def transfer(p, hold_heading=False):
@@ -195,17 +266,7 @@ def transfer(p, hold_heading=False):
         p.go(lane, p.command[1], h, settle=1)
     p.traverse(lane, pivot[1], h, h)
     p.traverse(*pivot, h, h)
-    exit_gate = None
-    for dx in (1, -1):
-        p.face(dx, 0)
-        p.grip()
-        gate = read_throat(p, 0)
-        if gate is not None and gate[2] == dx:
-            exit_gate = gate
-            break
-    if exit_gate is None:
-        raise RuntimeError("two receiving jambs not visible from pocket")
-    lane, plane, side = exit_gate
+    lane, plane, side = choose_station(p,pivot,h)
     p.trace.append({"event": "exit_jambs", "offset_m": lane-pivot[1], "side": side,
                     "frame": p.obs["frame_id"]})
     if hold_heading:
@@ -241,6 +302,7 @@ class Pilot:
         self.feedback, self.loaded = feedback, False
         self.keyframes = {}
         self.apertures = {}
+        self.receiving_hint,self.fixed_side = None,None
 
     def act(self, action):
         if not self.obs["done"]:
@@ -667,19 +729,25 @@ def run(client, *, planar=False, fixed_tool=None, hold_heading=False, feedback="
         p.cell(b,TRAVEL,settle=1)
         p.register(b)
 
-    inlet = cargo = None
+    # The aircraft starts facing the wing. This is an optional useful hint;
+    # the actual doorway/deck is inspected again at a safe standoff.
+    p.receiving_hint = dispatch_arrow(decode(p.obs,1))
+    p.trace.append(dict(event="dispatch_view",side=p.receiving_hint,frame=p.obs["frame_id"]))
+    inlet = cargo = depot = None
     for col in (0,1,2,1,0,-1,-2):
         p.cell((col,0),TRAVEL,settle=1)
         p.register((col,0))
-        _, view = p.scan()
+        rgb, view = p.scan()
+        if rack_heads(rgb):
+            depot = col
         if view[(0,1)] == "inspection":
             inlet = (col,1,0)
         if view[(0,1)] == "cargo":
             cargo = col
-        if inlet is not None and cargo is not None:
+        if inlet is not None and cargo is not None and depot is not None:
             break
-    if inlet is None or cargo is None:
-        raise RuntimeError("inspection or cargo threshold not found from staging")
+    if inlet is None or cargo is None or depot is None:
+        raise RuntimeError("staging hardware not found")
     base = (inlet[0],0)
     staging_to(col,inlet[0])
     slot(base,inlet)
@@ -692,9 +760,9 @@ def run(client, *, planar=False, fixed_tool=None, hold_heading=False, feedback="
     for link in reversed(trail):
         fly(p,*reverse(link))
     slot(inlet,base)
-    staging_to(inlet[0],2)
-    equip(p,wide)
-    staging_to(2,inlet[0])
+    staging_to(inlet[0],depot)
+    equip(p,wide,depot)
+    staging_to(depot,inlet[0])
     slot(base,inlet)
     for link in trail:
         fly(p,*link)

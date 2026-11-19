@@ -1,145 +1,19 @@
-# UAV Search and Rescue: Warehouse Litter Return
+# Civilian Rescue: Warehouse Handoff
 
-Recover the **RESCUE MANNEQUIN** on its full-length medical litter from
-an upper-storey training bay and set it down on the blue center of the
-receiving mat beyond the loading pocket. This is a simulated
-civilian exercise. The doors, turns, and rescue bay vary. There is no
-floor plan: explore with the UAV's two local RGB cameras and keep track
-of the passages and landmarks you actually see.
+Recover the rescue mannequin on its rigid medical litter. Deliver it intact to the **receiving station accepting this incident**. A dispatch arrow points toward that station. At receiving, a lowered shutter bears a large cross; an open doorway exposes a horizontal deck. The incident remains fixed during your sortie. You may inspect either approach, change your mind, or use any safe route.
 
-- Fly by the architecture. Stone grain and grout seams are fixed to the
-  floor, and timber skirting follows real walls to the jambs. Keep some
-  floor in successive down views to measure motion. On a return trip,
-  compare what you see with an earlier view of the same doorway or floor
-  patch. There are no position markers or room IDs. Takeoff can be
-  slightly off-center. Use the actual receiving mat for final alignment.
-- Find the **INSPECTION** slot off the staging strip. Align on the
-  violet floor apron, settle at about **0.71 m** altitude, and fly
-  through empty. Once clear, climb before leaving that pocket.
-- Explore the connected warehouse on both storeys. The casualty is upstairs;
-  inspection, the depot and receiving are downstairs. Rooms directly above
-  each other need not have the same doors. White wear plates extend through ordinary doorways,
-  which have about 1.48 m of clear width.
-- Amber thresholds lead into **HOIST WELL** alcoves. Enter horizontally,
-  then climb or descend **inside** the square aperture. The ceiling is
-  solid elsewhere. Storey spacing is **2.60 m**, slab thickness **0.22 m**,
-  with a continuous iron frame around each opening. The **service hatch is
-  1.08 m square**; the **freight liftwell is 2.34 m square**. The service hatch
-  admits the UAV with either rescue head, but even its diagonal is shorter
-  than the litter. From above, look down at the frame's inner edges; the metal
-  is solid, not part of the opening. Both wells connect real landings at
-  different places. You may use the freight well on both trips.
-  A useful cruise is **1.30 m
-  above the local floor**. Two continuous ochre steel guides on the back
-  wall stand **1.40 m** apart; their midpoint and apparent span help center
-  the aircraft about **1.2 m** in front of them. The guides can be seen
-  at both heights. Their spacing is the same at both wells; it does not
-  indicate the opening width. Looking through the opening shows the floor far below,
-  not a floor at the upper landing. Leave horizontally once clear of the slab.
-- Search the marked **RESCUE BAY** rooms for the orange pickup panel on
-  the green litter board. Its lifting
-  fitting is a cyan circular flange under a dark cover. The cover looks
-  the same on both fitting types; the green centering button on top is
-  common to both. Offset to the side with clear space, face
-  the sled and lower the UAV to see under the cover with the forward
-  camera. From roughly half a metre to the side at a 0.43 m hover, the
-  narrow flange is about 8 cm across and the wide one about 19 cm.
-  Remember the profile and the route back to the sled.
-- Return empty through **INSPECTION** to the **TOOL DEPOT** at the
-  right-hand end of staging (as seen from launch facing the wing).
-  The rack holds two cyan collet heads. Choose by geometry: the small
-  head has a smaller opening and fits the narrow flange; the large
-  head fits the wide flange. Rack positions can vary. Center directly
-  over the chosen head, settle at **0.43 m above staging** and close
-  to mount it. The head lifts with the aircraft and its stand is left
-  empty. One head can be carried at a time; to swap, return it to its
-  own stand at the same hover height and release before taking the other.
-- Fly back through **INSPECTION** with the head and find the sled again.
-  Use the down camera to center over the fitting, settle at **0.43 m
-  above the local floor**, then close and lift. The jaws close from
-  the sides, under the cover. A mismatched head will not latch: the
-  wide flange cannot enter the small seat, and the narrow flange slips
-  past the large head's retaining lip. Check that the sled lifted before
-  committing to egress. A miss leaves the sled on the floor.
-- Lifting the load opens the blue **CARGO** shutter from the treatment
-  ward to staging downstairs. The litter cannot fit through the
-  inspection slot. If carrying the litter through a hoist well, center
-  both ends inside the opening before changing height.
+**Aircraft and cameras.** `robot_act({"action":[right,forward,up,yaw_left,grip]})` accepts five numbers in [-1,1]. Each action advances 0.2 s. Maximum nominal setpoint increments are 0.32 m on each horizontal axis, 0.19 m vertically and 30 degrees in yaw. Horizontal axes use the heading at the **start** of the action; zero holds. Translation gains vary a few percent, and loaded forward travel can drift sideways by about 0.13 m per metre. Launch is at 1.30 m facing the wing; altitude limits are 0.39-4.69 m above launch.
 
-## Loaded Transport
+`robot_observe()` and each action return two 256-by-256 RGB views, `frame_id`, `done` and `steps_remaining`; no pose, map or depth. Both cameras rotate with the aircraft and have 94-degree vertical field of view (focal length 119.4 pixels). Camera 0 looks down from 0.46 m forward and 0.145 m below center; right/up in the image are body right/forward. Camera 1 looks forward, pitched 6.9 degrees down, from 0.17 m forward and 0.045 m above center. An attached board can obscure the down view.
 
-The rigid board is **1.80 m long and 0.44 m wide**. The violet end grips
-are 1.62 m apart. Center the down camera over the board to see both.
-The clamp holds the relative pose at the instant of pickup: the long
-axis need not point along the UAV nose. Yaw turns the entire load.
-You can translate sideways or backwards without changing that yaw.
-Carrying the board across the UAV rather than under its camera boom
-gives a clearer down view. The board can obscure the floor; changing
-the UAV's yaw alone will not move an attached board out of the camera's
-view. Inspect the frame before pickup, or use an approach and attachment
-that leave a clear view. The forward camera remains available.
+**Equipment card**
 
-Across staging from the cargo exit, **LITTER TRANSFER** leads to a finite
-turning pocket. Beyond it, a perpendicular throat leads to **RECEIVING**.
-The two openings are offset; inspect the jambs to see which way and how far.
-Each clear gap is 1.10 m wide and 0.56 m deep. Lime stripes follow the inner
-jamb faces and extend 1.24 m onto the approach. Use their midpoint for the
-load centerline. Turn and translate where both ends have room; clearing
-the aircraft does not mean the trailing end is through. The pocket
-is 4.20 m across by 4.60 m deep.
-There is no prescribed heading or checkpoint maneuver. The walls, jambs
-and litter occupy the volumes you see. Bring the fitting over the blue
-center of the 2.50 by 1.48 m green receiving mat, settle at about 0.43 m,
-open the gripper and let the load come to rest with the entire board over the mat.
+| Equipment | Physical contract |
+|---|---|
+| Litter and heads | Board: 1.80 by 0.44 m; violet end grips 1.62 m apart. The cyan flange under the common dark cover is 8.2 or 18.6 cm across. Small and large split collets fit the corresponding flange. The clamp preserves the actual pickup yaw. |
+| Gripper | Above +0.5 closes, below -0.5 releases, otherwise holds; grip acts before movement. Mount or return a head on its own stand at 0.430 +/- 0.035 m, within 0.085 m horizontally. Latch within 0.135 m of the fitting, aircraft center 0.306 +/- 0.060 m above board center (about 0.40 m above the floor). Steady to at most 0.30 m/s and below 0.30 rad/s. A mismatch does not attach. |
+| Wing | Room pitches 2.60-2.80 m; storeys 2.60 m apart, slab 0.22 m thick. Amber hoist thresholds lead to square bores of 1.08 or 2.34 m; back-wall guides are 1.40 m apart. Ordinary white doorways clear 1.48 m. The violet inspection slot is 1.02 m wide with sill/lintel at 0.43/0.89 m. The blue cargo shutter retracts on a held lift of 0.54 m above the local floor. |
+| Transfer | The turning pocket is 4.20 by 4.60 m. Jambs give 1.10 m width over 0.56 m depth; lime toe strips extend 1.24 m toward their approach. The aircraft, head and entire load must clear structural surfaces. Contact ends the sortie. |
+| Handoff | The green deck is 2.50 by 1.48 m. Release with board center no higher than 0.195 m above the floor, speed and yaw rate no greater than 0.34 m/s and 0.34 rad/s. For full credit the released board must physically rest entirely on the deck, center within 0.28 m of the blue target center and at most 0.095 m high, for 0.25 s. The settling limit is 0.16 for the norm of its linear and angular velocities (m/s, rad/s). |
 
-## Controls
-
-`robot_act({"action":[right, forward, up, yaw_left, grip]})` takes five
-numbers in `[-1,1]`. The nominal increments of the stabilized setpoint are up to
-**0.32 m** on each horizontal axis, **0.19 m** vertically, and **30°**
-in yaw per action. Positive yaw turns left; a zero holds that axis.
-Horizontal increments are relative to the **heading setpoint at the
-start of the action**. Horizontal travel can differ by a few percent
-from the nominal distance, and forward motion can couple sideways by
-about 0.13 m per metre when loaded (less when empty). Do not assume
-command totals are pose. Zero horizontal commands settle to a
-stationary hover: stop, correct using a fresh image, and look again.
-The UAV starts at 1.30 m with its heading facing the wing.
-Altitude setpoints are limited to 0.39–4.69 m above launch.
-
-`grip=+1` attempts a close, `-1` releases, and `0` leaves it alone.
-It applies before movement. Steady the UAV before mounting, latching
-or releasing. Hover directly over the rack head to mount it (the rack
-guide has about 8 cm of horizontal capture range). At the sled, the
-self-centering jaws accept about 13 cm of horizontal misalignment.
-Releasing the sled leaves the head attached to the UAV.
-High or fast release, or striking a wall, slab, ceiling or shutter with the
-airframe **or load**, ends the sortie. Each action advances 0.2 simulated
-seconds; the allowance is **4,400 actions** (880 simulated seconds).
-There is no reset. Observations do not advance time, but the live service
-accepts at most 9,000 calls in total, including actions and observations.
-
-## Cameras
-
-`robot_observe()` and each action return two 256 × 256 RGB images:
-`images[0]` looks straight down; `images[1]` looks forward and slightly
-down by about 7°. Both rotate with the UAV. In the down view, right and up are body
-right and forward. The down camera is 0.46 m forward and 0.145 m below
-the UAV center, with a 94° perspective field of view. On a horizontal
-surface `d` metres below that camera, a metre projects to
-`(128 / tan(47°)) / d` pixels. The point under the gripper is centered
-horizontally and 0.46 m down-image of the camera's ground center.
-Neighboring wing rooms are 2.60–2.80 m apart; the spacing is not uniform.
-The partitions are about 15 cm thick, with skirting less than 1 cm proud of the wall.
-Doorway wear plates extend from the openings onto the approach. Distance
-to a wall can be measured where its skirting meets the floor. At a constant
-height and heading, floor features move opposite the camera's translation;
-do not mistake the attached load or the floor seen through a well for a local floor patch. Use the
-forward view to inspect height, clearance and obstructions.
-
-Only the images, `frame_id`, `done`, and `steps_remaining` are exposed.
-There is no pose, depth, object list, map, or hidden identifier. Use the
-tools or the public client at `/home/user/robot/client.py` with
-`/opt/venv/bin/python3`. Scoring uses the protected live interaction.
-Full credit is an intact, settled delivery after a physical lift; no
-particular room, route, or map format is required.
+Budget: **4,400 actions, 9,000 total calls, 30 minutes**, no reset. Observing does not advance simulation time. The public client is `/home/user/robot/client.py` with `/opt/venv/bin/python3`. Partial rescue progress is recorded; full credit is the physical handoff, not a particular sequence of visits.
