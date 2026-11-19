@@ -118,7 +118,13 @@ instead, for a run outside the engine (a host-side dry run, the kit's selftest);
 ## The closed_loop wire
 
 `Solver` speaks one JSON object per line to the agent's `run.sh`, launched as `bash run.sh`
-with cwd `/home/user/submission` at the agent's UID. `READY` must arrive within
+with cwd `/home/user/submission` at the agent's UID. Before the first launch the kit clears
+the agent's account (`clear_agent_account`): the sandbox's desktop session, which runs as
+that account under a supervisor that restarts it, is taken down for good, so that nothing
+of the account runs but what the grader starts (`docs/security-model.md`). A grader does not
+draw on the sandbox's desktop while agent code runs; one that starts agent code with a
+launcher of its own, without `Solver` or `deprivileged`, calls `clear_agent_account()`
+first. `READY` must arrive within
 `READY_TIMEOUT_FACTOR` (4) step deadlines of launch, 120 s with the template's
 `step_timeout_s: 30` (`tests/grader_config.json`), and every reply within one step deadline.
 That deadline is a **single per-request budget**, fixed the moment the request is written
@@ -264,7 +270,8 @@ field.
    a model already validated, and the agent's own GPU libraries. A model can lack a
    library's kernels, render differently or run too slowly for the budgets, and rendering
    also needs the graphics part of the host's NVIDIA driver, which compute-only installs
-   leave out. Keep `network_mode = "no-network"` unless the task needs a host: `allowlist`
+   leave out. CI checks that each name accepts a real model (`scripts/gpu_types.py check`;
+   `list` prints every GPU task's models). Keep `network_mode = "no-network"` unless the task needs a host: `allowlist`
    names it in `allowed_hosts`, and `public` needs `[metadata].network_justification`. Setup
    has no field; the engine bounds it at 1800 s.
 3. Image. Make `environment/Dockerfile` your environment: the simulator and every stable
