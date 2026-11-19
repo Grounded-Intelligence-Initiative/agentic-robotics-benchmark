@@ -11,10 +11,10 @@ sources and licences are in `NOTICE.md`; the rules as the agent reads them are i
 
 1. `test.sh` (root, in the verifier sandbox) closes the stage folder to every other account before any interpreter
    starts, then runs `verify.py` under the image's Python (`ALE_VERIFY_PYTHON`, else `python3`).
-2. `verify.py`, step 0 (`lockdown_runtime.py`, the UAV CAD task's file byte for byte): stop and freeze every process of
-   the agent account (the image's own desktop runs as that account), lock the stage, snapshot the submission into a
-   root-only folder and gate late writes. A submission root that is a symbolic link or lies outside the agent home is
-   not read.
+2. `verify.py`, step 0 (`lockdown_runtime.py`, the UAV CAD task's file as it was before that task's #119: only
+   `grade_child` differs, and this grader does not call it): stop and freeze every process of the agent account (the
+   image's own desktop runs as that account), lock the stage, snapshot the submission into a root-only folder and gate
+   late writes. A submission root that is a symbolic link or lies outside the agent home is not read.
 3. The document (the snapshot's `unit.FCStd`, else the only other `*.FCStd`, with a note) is checked as a zip archive
    (central directory, every member's CRC; a cut-off or damaged file scores 0), then read by headless FreeCAD as
    `nobody` with `fcstd_extract.py` (the UAV reader byte for byte; 600 s; at most 4000 shape leaves) into one BREP per
@@ -46,7 +46,7 @@ floor rising linearly from 0 at `surface` 0.15 to 1 at 0.55.
 | file or folder | what it is |
 |---|---|
 | `test.sh`, `verify.py` | the verify stage (above) |
-| `lockdown_runtime.py`, `arm/` | the lockdown, byte copies from the UAV CAD task (`arm/`: the stdlib stage helpers it imports) |
+| `lockdown_runtime.py`, `arm/` | the lockdown: `arm/` (the stdlib stage helpers it imports) are byte copies from the UAV CAD task; `lockdown_runtime.py` is that task's file as of before its #119 (`grade_child` differs and is not called here) |
 | `fcstd_extract.py` | the document reader, the UAV CAD task's file byte for byte |
 | `grade.py`, `cadgrade/` | the grade child: `reference.py` (the standard and the graded samples), `submission.py` (members, tags, solids, meshing), `align.py` (whole-unit alignment), `geom.py` (distances), `score.py` (surface, joint axes, structure), `run.py` (the rules), `util.py` |
 | `grader_config.json` | every number of the grader (groups below) |
