@@ -46,6 +46,20 @@ def outcome(world, seed, mode, **extra):
     return result
 
 
+def check_known_returns(trace):
+    stop = next(i for i, e in enumerate(trace) if e["event"] == "sled_found")
+    search = [tuple(e["cell"]) for e in trace[:stop] if e["event"] == "local_rgb"]
+    crossed = {frozenset(pair) for pair in zip(search, search[1:])}
+    returns = [(i, e) for i, e in enumerate(trace) if e["event"] == "known_return"]
+    assert [tuple(e["goal"]) for _, e in returns] == [search[0], search[-1]]
+    for i, e in returns:
+        stations = [tuple(e["cell"]), *map(tuple, e["path"])]
+        assert stations[-1] == tuple(e["goal"])
+        assert all(frozenset(pair) in crossed for pair in zip(stations, stations[1:]))
+        fixes = [tuple(f["cell"]) for f in trace[i+1:] if f["event"] == "station_fix"]
+        assert fixes[:len(stations)-1] == stations[1:]
+
+
 def episode(seed, mode, output=None):
     world = World("rescue", seed)
     try:
@@ -90,6 +104,13 @@ def episode(seed, mode, output=None):
                          max_true_fix_error_m=round(max(true_errors, default=0.), 4),
                          distance_from_last_requested_cell_m=stopped_error,
                          max_estimated_offset_m=round(max((e["before_m"] for e in fixes), default=0.), 4))
+        if output:
+            output.mkdir(parents=True, exist_ok=True)
+            if pilot:
+                (output/f"navigation-{mode}-{seed}.json").write_text(json.dumps(pilot.trace, indent=2))
+            if error or (mode == "rgb" and not result["success"]):
+                for camera in (0, 1):
+                    record.export(world.steps, output/f"stop-{mode}-{seed}-{camera}.png", camera)
         if mode == "rgb":
             assert not error and result["success"] and result["rescue_progress"] == 1., result
             assert result["cargo_return"] and result["loaded_descent_z"] > 1.7
@@ -105,6 +126,8 @@ def episode(seed, mode, output=None):
             assert stages["sled_found"]["cell"] == stages["sled_reacquired"]["cell"], result
             assert bool(result["success"]) != wide and bool(result["fit_misses"]) == wide, result
             assert bool(result["lifted"]) != wide, result
+        if mode in ("rgb", "fixed-narrow"):
+            check_known_returns(pilot.trace)
         if mode == "odometry":
             assert not fixes
         if mode == "prelift":
@@ -112,9 +135,6 @@ def episode(seed, mode, output=None):
         if mode == "retrace":
             assert not error and result["lifted"] and result["inspection_abort"] and result["pod_impact"], result
         if output:
-            output.mkdir(parents=True, exist_ok=True)
-            if pilot:
-                (output/f"navigation-{mode}-{seed}.json").write_text(json.dumps(pilot.trace, indent=2))
             for event, camera in (("sled_found", 0), ("flange_survey", 1), ("depot_choice", 0)):
                 if event in stages and mode == "rgb":
                     record.export(stages[event]["frame"], output/f"{event}-{seed}.png", camera)
@@ -182,6 +202,8 @@ def main():
     parser.add_argument("--output", type=Path)
     parser.add_argument("--positives-only", action="store_true")
     parser.add_argument("--fixture-seeds", type=int, nargs="+")
+    parser.add_argument("--require-mixed", action="store_true",
+                        help="assert the selected fixture seeds cover both flange profiles")
     args = parser.parse_args()
     structural()
     if args.fixture_seeds:
@@ -194,7 +216,7 @@ def main():
                 assert control["stages"]["sled_found"] == positive["stages"]["sled_found"]
                 found = positive["stages"]["sled_found"]["frame"]
                 assert actions[:found] == control_actions[:found], "matched search diverged"
-        if len(results) > 1:
+        if args.require_mixed:
             assert {result["flange"] for result in results} == {"narrow", "wide"}
         return
     outcomes = []

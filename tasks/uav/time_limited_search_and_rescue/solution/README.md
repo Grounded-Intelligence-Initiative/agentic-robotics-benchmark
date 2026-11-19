@@ -32,7 +32,7 @@ referee records the survey, acquisition, revisit, close, lift, cargo
 crossing and settled delivery separately. The older visual feedback
 and loaded retrace controls are still available without `--fixture-seeds`.
 
-The CPU author matrix on koa04 produced the following action frames.
+The original CPU author matrix on koa04 at `404fe53` produced these action frames.
 The two fixed-head misses had no impacts or aborts; each reached the
 original bay and attempted a close with the narrow head mounted.
 
@@ -43,16 +43,51 @@ original bay and attempted a close with the narrow head mounted.
 | 40 | Narrow | 57 | 65 | 153 | 218 | 230 | 375 | 414 | Settled at 398 |
 | 77 | Narrow | 67 | 80 | 186 | 273 | 285 | 593 | 632 | Settled at 616 |
 
+## Route Regression
+
+An unseen official oracle case on that revision stopped at action 120,
+before reaching the depot. A station's aft apron could be hidden by the
+sled, leaving a missing reverse edge. With its requested goal unreachable,
+the old planner chose an unscanned frontier instead; on arrival its
+zero-length path caused an index error. The untouched control scored zero.
+
+The revised reference records both directions of each completed crossing
+after arrival. Both depot legs follow a shortest path made of those
+crossings, with the existing floor transitions and RGB register at every
+station. A zero-length path means stay; no path is distinct from arrival.
+During egress a confirmed shutter removes both directions. The pilot can
+then take a visible detour or resume frontier exploration. None of these
+route choices is a scoring condition.
+
+On the recorded failure seed, the revised RGB reference surveyed at action
+103, mounted the narrow head at 205, reacquired the sled at 286, lifted at
+298, crossed the cargo exit at 549 and settled the delivery at 588. Each
+depot leg used three previously flown crossings; the opposite tracking
+direction delivered at 594. The referee checks the return paths against
+the actual search trace and the sequence of station fixes, independently
+of the planner's own graph.
+
+The expanded CPU author check delivered 17/17: the four earlier cases,
+the failed site in both tracking directions, three fresh sites in both
+directions, four further unfiltered draws, and a long-route site selected
+from a fixed 64-site draw before flight. The long route took 856 actions;
+the overall range was 414-917, so the 1,000-action allowance was retained.
+This is sampled headroom, not a bound over all layouts. The matched
+fixed-narrow control delivered on all three narrow cases and missed the
+latch on all six wide cases, without impacts. All 52 depot legs across
+the 26 RGB and fixed-head traces passed the crossing and recenter audit.
+
 With `TASK` set to the task directory, use the pinned engine and a
 cached rescue environment image `IMAGE` containing the visual assets:
 
 ```bash
 ale lint "$TASK"
 python3 scripts/lint_domain.py "$TASK"
+python3 "$TASK/tests/review/test_routes.py" -v
 docker run --rm --network none --cpus 1 --memory 3g \
   -e LP_NUM_THREADS=1 -e PYTHONDONTWRITEBYTECODE=1 \
   -v "$TASK:/task:ro" --entrypoint /opt/venv/bin/python3 "$IMAGE" \
-  /task/tests/review/check_rescue.py --fixture-seeds 0 3 40 77
+  /task/tests/review/check_rescue.py --fixture-seeds 0 3 40 77 --require-mixed
 ```
 
 Mount a writable directory and pass `--output` to retain local camera

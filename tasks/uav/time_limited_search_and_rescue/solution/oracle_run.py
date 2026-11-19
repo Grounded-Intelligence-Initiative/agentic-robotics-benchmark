@@ -254,6 +254,7 @@ class Discovery:
         self.pilot, self.current = pilot, inlet
         self.floors = {inlet: 0.}
         self.adjacency = {}
+        self.crossed = set()
         self.seen = set()
         self.closures, self.invalidated = set(), set()
         self.confirmed_shutters = set()
@@ -266,23 +267,29 @@ class Discovery:
         rgb, view = p.scan()
         doors = self.adjacency.setdefault(at, {})
         expected = self.signatures.get(at)
-        if loaded:
-            # A suspended load can occlude the aft apron. Resolve contradictions
-            # with a second camera heading before overwriting the remembered map.
-            known = expected if expected is not None else (
-                (delta(at, self.previous),) if self.previous is not None else ())
+        if not loaded:
+            # Before lift the shutters do not move. An occluded incoming apron
+            # cannot undo the crossing we just made. Keep the survey camera pose.
+            for there, kind in doors.items():
+                d = delta(at, there)
+                if view[d] == "wall" and frozenset((at, there)) in self.crossed:
+                    view[d] = kind
+        else:
+            # After lift a known passage can really be closed. Face it to check.
+            known = set(expected or ())
+            known.update(d for d in DIRECTIONS if frozenset((at, add(at, d))) in self.crossed)
             for d in DIRECTIONS:
                 kind = view[d]
-                if kind != "closed" and not (d in known and kind == "wall"):
-                    continue
                 there = add(at, d)
                 edge = tuple(sorted((at, there)))
                 if edge in self.confirmed_shutters:
                     view[d] = "closed"
                     continue
+                if kind != "closed" and not (d in known and kind == "wall"):
+                    continue
                 p.face(*d)
                 p.grip()
-                _, second = p.scan()
+                rgb, second = p.scan()
                 view[d] = second[d]
                 if "closed" in (kind, second[d]):
                     front = decode(p.obs, camera=1)[68:188, 66:190]
@@ -314,6 +321,7 @@ class Discovery:
                 if there in doors or at in self.adjacency.get(there, {}):
                     doors.pop(there, None)
                     self.adjacency.get(there, {}).pop(at, None)
+                    self.crossed.discard(frozenset((at, there)))
                     self.invalidated.add(edge)
                 continue
             if kind not in ("open", "landing"):
@@ -330,41 +338,60 @@ class Discovery:
                         "view": list(view.values()), "frame": p.obs["frame_id"], "loaded": loaded})
         return rgb, view
 
-    def route(self, goal=None):
-        parent = {self.current: None}
-        visit = deque([self.current])
+    def route(self, goal=None, *, observed_detour=False):
+        """Path excluding the current cell; [] means arrived, None means unreachable.
+
+        An explicit destination uses actual crossings, unless egress requests
+        an observed detour. Exploration stops at an unscanned station.
+        """
+        visited = {self.current}
+        visit = deque([(self.current, [])])
         frontiers = []
         while visit:
-            at = visit.popleft()
-            if goal is not None and at == goal:
-                frontiers = [at]
-                break
-            if at not in self.seen:
-                frontiers.append(at)
+            at, path = visit.popleft()
+            if at == goal:
+                return path
+            if goal is None and at not in self.seen:
+                if not path:
+                    return []
+                frontiers.append(path)
                 continue
             for there in self.adjacency.get(at, {}):
-                if there not in parent:
-                    parent[there] = at
-                    visit.append(there)
+                if there in visited:
+                    continue
+                if goal is not None and not observed_detour and frozenset((at, there)) not in self.crossed:
+                    continue
+                visited.add(there)
+                visit.append((there, path+[there]))
         if not frontiers:
-            raise RuntimeError(f"no accessible frontier at {self.current} after visiting {len(self.seen)} cells")
-
-        def unwind(end):
-            route = []
-            while end != self.current:
-                route.append(end)
-                end = parent[end]
-            return list(reversed(route))
+            return None
 
         # Prefer nearby frontiers. On ties look into the mezzanine on search,
         # and walk the upper deck before exploring the lower floor on egress.
-        def preference(at):
-            heading = delta(self.current, unwind(at)[0])
+        def preference(path):
+            heading = delta(self.current, path[0])
             a = math.atan2(-heading[0], heading[1])
-            return len(unwind(at)), -self.floors[at], abs(math.remainder(a-self.pilot.command[3], 2*math.pi))
+            return len(path), -self.floors[path[-1]], abs(math.remainder(a-self.pilot.command[3], 2*math.pi))
 
-        end = frontiers[0] if goal in frontiers else min(frontiers, key=preference)
-        return unwind(end)[0]
+        return min(frontiers, key=preference)
+
+    def return_to(self, goal):
+        path = self.route(goal)
+        if path is None:
+            raise RuntimeError(f"no crossed route from {self.current} to {goal}")
+        self.pilot.trace.append({"event": "known_return", "cell": self.current, "goal": goal,
+                                 "path": path, "frame": self.pilot.obs["frame_id"]})
+        for there in path:
+            if self.pilot.obs["done"]:
+                break
+            self.move(there)
+
+    def explore(self):
+        path = self.route()
+        if path is None:
+            raise RuntimeError(f"no accessible frontier at {self.current} after visiting {len(self.seen)} cells")
+        if path:
+            self.move(path[0])
 
     def move(self, there):
         p, here = self.pilot, self.current
@@ -376,6 +403,10 @@ class Discovery:
             p.cell(there, TRAVEL+DECK)
         p.cell(there, TRAVEL+self.floors[there], settle=1)
         p.register(there)
+        if p.obs["done"]:
+            return
+        self.crossed.add(frozenset((here, there)))
+        self.adjacency.setdefault(there, {})[here] = self.adjacency[here][there]
         self.previous, self.current = here, there
         p.path.append(there)
 
@@ -420,14 +451,13 @@ def run(client, retrace=False, locate_only=False, feedback="rgb", fixed_tool=Non
         if (target is not None and nav.floors[nav.current] == DECK
                 and np.max(np.abs(target-p.command[:2])) < .45):
             break
-        nav.move(nav.route())
+        nav.explore()
     if p.obs["done"] or locate_only:
         return p
     bay = nav.current
     p.trace.append({"event": "sled_found", "cell": bay, "frame": p.obs["frame_id"]})
     wide = survey(p, target, bay) if fixed_tool is None else fixed_tool == "wide"
-    while nav.current != inlet and not p.obs["done"]:
-        nav.move(nav.route(inlet))
+    nav.return_to(inlet)
     p.face(0, -1)
     p.cell(inlet, SLOT, settle=1)
     p.cell((inlet[0], 0), SLOT)
@@ -437,8 +467,7 @@ def run(client, retrace=False, locate_only=False, feedback="rgb", fixed_tool=Non
     equip(p, wide)
     staging_to(2, inlet[0])
     enter(inlet)
-    while nav.current != bay and not p.obs["done"]:
-        nav.move(nav.route(bay))
+    nav.return_to(bay)
     target = find_pod(decode(p.obs), p.command, DECK)
     if target is None:
         raise RuntimeError("sled not visible on return to remembered bay")
@@ -470,7 +499,17 @@ def run(client, retrace=False, locate_only=False, feedback="rgb", fixed_tool=Non
             p.cell(staging, TRAVEL, settle=1)
             p.register(staging)
             break
-        nav.move(nav.route(goal=inlet if retrace else nav.cargo))
+        goal = inlet if retrace else nav.cargo
+        path = nav.route(goal) if goal is not None else None
+        if goal is not None and path is None:
+            path = nav.route(goal, observed_detour=True)
+        if path is None:
+            # A safety shutter may have cut the known path to the exit.
+            nav.explore()
+        elif path:
+            nav.move(path[0])
+        else:
+            raise RuntimeError(f"no exit apron visible at remembered destination {goal}")
     if staging is not None:
         col = staging[0]
         while col and not p.obs["done"]:
