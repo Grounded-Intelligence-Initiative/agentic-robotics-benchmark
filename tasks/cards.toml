@@ -6,7 +6,7 @@
 #
 #   title      a readable name, sentence case, at most 48 characters, no closing period
 #   summary    one sentence, at most 200 characters
-#   platforms  the platforms the task involves (keys of tasks/platforms.json); the first is its folder's
+#   platforms  exactly one platform, the folder's (a key of tasks/platforms.json; a list of one)
 #   stages     exactly one stage: the last stage of the workflow its score depends on (a list of one)
 #
 # scripts/task_cards.py checks every card (CI); docs/task-cards.md has the rules.
@@ -29,9 +29,21 @@ summary = "Specify seven upgraded replicas of a two-arm robot that has left the 
 platforms = ["arm"]
 stages = ["requirements"]
 
+[keyed_nut_peg_assembly]
+title = "Assemble bayonet nut kits with a Panda"
+summary = "A Franka Panda must fit three bayonet nuts onto their pegs within the cell's takt time, working out each nut's hidden groove from camera images and a wrist force sensor on kits it has never seen."
+platforms = ["arm"]
+stages = ["behavior"]
+
 [kitchen_appliance_tending]
 title = "Tend unfamiliar kitchen appliances with a Panda"
 summary = "A fixed Franka Panda must switch and set cooktop burners, ovens and microwaves it has never seen, from camera images and its wrist force sensor, after a single lab trial on one of them."
+platforms = ["arm"]
+stages = ["behavior"]
+
+[longtail_manipulation_recovery]
+title = "Rescue failed kitchen jobs with a mobile Panda"
+summary = "Write the fallback controller of a mobile Panda: from the exact states where a learned policy failed its kitchen jobs, finish them from the robot's cameras, joint readings and wrist force."
 platforms = ["arm"]
 stages = ["behavior"]
 
@@ -68,7 +80,7 @@ stages = ["hardware-design"]
 [robotic_arm_environment_twin_from_real_photo]
 title = "Build a sim twin of a table from one photo"
 summary = "Build a MuJoCo digital twin of a client's console table, its drawer and toy groceries from one photograph, for a mobile manipulator to rehearse in."
-platforms = ["arm", "ground"]
+platforms = ["arm"]
 stages = ["environment"]
 
 [robotic_arm_full_assembly_openarm_panda]
@@ -113,11 +125,23 @@ summary = "Watch an automated car's camera and planner, let the planner drive wh
 platforms = ["ground"]
 stages = ["behavior"]
 
+[racecar_cad_design_from_photos]
+title = "Model a tenth-scale race car in CAD"
+summary = "Rebuild the lost CAD of a tenth-scale autonomous race car's 23 made parts in FreeCAD from photos of its staged teardown, and assemble them with its given parts."
+platforms = ["ground"]
+stages = ["hardware-design"]
+
 [racecar_full_assembly_tenth_scale_ur10e]
 title = "Assemble a tenth-scale race car with a 6-DoF arm"
 summary = "Program a 6-DoF arm to build a tenth-scale autonomous race car from its rolling chassis and eight loose units, guided by its picture manual and the cell's cameras."
-platforms = ["ground", "arm"]
+platforms = ["ground"]
 stages = ["assembly"]
+
+[racecar_requirements_replica_from_photos]
+title = "Specify upgraded replicas of a tenth-scale car"
+summary = "Specify six upgraded replicas of a tenth-scale autonomous race car that is out on long-term loan, from its archived photos and build log, down to a bill of materials."
+platforms = ["ground"]
+stages = ["requirements"]
 
 [racecar_time_trial_on_unseen_track]
 title = "Time-trial a tenth-scale car on unseen tracks"
@@ -155,16 +179,40 @@ summary = "Rebuild the lost CAD of a student-modified 12-joint quadruped in Free
 platforms = ["quadruped"]
 stages = ["hardware-design"]
 
+[quadruped_environment_twin_from_real_photos]
+title = "Build a sim twin of a delivery bay from photos"
+summary = "Build a MuJoCo digital twin of a building's goods delivery bay, its loose units and cage gates from 44 photos, for a small four-legged robot to rehearse its night rounds in."
+platforms = ["quadruped"]
+stages = ["environment"]
+
 [quadruped_full_assembly_12dof_ur10e]
 title = "Assemble a quadruped with a 6-DoF arm"
 summary = "Program a 6-DoF arm to build a twelve-actuator quadruped from its loose units, guided by its picture manual and the cell's cameras."
-platforms = ["quadruped", "arm"]
+platforms = ["quadruped"]
 stages = ["assembly"]
+
+[quadruped_hazardous_plant_inspection]
+title = "Inspect a legacy nuclear plant with a quadruped"
+summary = "Program a small quadruped to inspect a legacy nuclear plant building from an outdated drawing: read its tagged instruments, measure a dose rate, find an unlisted source and return to the pad."
+platforms = ["quadruped"]
+stages = ["behavior"]
 
 [quadruped_requirements_replica_from_photos]
 title = "Specify upgraded replicas of a quadruped"
 summary = "Specify eight upgraded replicas of an inspection quadruped that has left the lab, from its photos and build records, down to its actuators, drivers and battery."
 platforms = ["quadruped"]
+stages = ["requirements"]
+
+[tensegrity_cad_design_from_photos]
+title = "Model a tensegrity robot's strut in CAD"
+summary = "Rebuild the lost CAD of one strut of a small three-strut tensegrity rolling robot in FreeCAD from photos of its teardown and the documents of its purchased parts."
+platforms = ["soft"]
+stages = ["hardware-design"]
+
+[tensegrity_requirements_replica_from_photos]
+title = "Specify replicas of a tensegrity robot"
+summary = "Specify eight replicas of a three-strut, cable-driven tensegrity robot that was taken apart, from its teardown photos, firmware and board data, down to its cable net and a bill of materials."
+platforms = ["soft"]
 stages = ["requirements"]
 
 [fault_adaptive_spacecraft_docking]
@@ -176,7 +224,7 @@ stages = ["control"]
 [hazard_bay_build]
 title = "Rebuild a hazard bay, design and run its fleet"
 summary = "Rebuild a plant's hazard bay in Isaac Sim from photos, design a fleet of flying and ground robots from a catalog, and program it through the job."
-platforms = ["swarm", "uav", "ground", "arm"]
+platforms = ["swarm"]
 stages = ["behavior"]
 
 [aerial_search_geolocation]
@@ -188,7 +236,7 @@ stages = ["behavior"]
 [uav_assembly_agipix_xarm7]
 title = "Assemble a quadrotor with an xArm 7"
 summary = "Program an xArm 7 to build an AGiPix-derived quadrotor from its loose components onto the clamped lower chassis, guided by the picture manual and the cell's cameras."
-platforms = ["uav", "arm"]
+platforms = ["uav"]
 stages = ["assembly"]
 
 [uav_cad_design_from_photos]
@@ -212,7 +260,7 @@ stages = ["control"]
 [rov_final_assembly_and_trim_single_arm]
 title = "Assemble and trim an ROV with a 6-DoF arm"
 summary = "Program a 6-DoF arm to ballast an inspection ROV for the water on its work order, weighing it on load cells, and to fit its enclosure, vertical thrusters and guards by camera."
-platforms = ["underwater", "arm"]
+platforms = ["underwater"]
 stages = ["assembly"]
 
 [rov_requirements_engineering_from_tender]
