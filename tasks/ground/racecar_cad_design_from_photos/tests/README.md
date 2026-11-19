@@ -43,14 +43,16 @@ exception outside a grading item, a child that crashes or times out) fails the r
 
 ## The instruction and the numbers
 
-The criteria table of `instruction.md` (section "How it is graded") prints values of `grader_config.json`, and so do
-the paragraphs around it (the whole-document zeros, the shape floor) and the grading-weight column of the component
-table (`installation.type_weights`). The photo table is generated from the captions of the photo set and the component
-table from the car's bill of materials. When one of these values, a caption or a given component changes,
-`instruction.md` must be changed to match. No test in this repository compares the two; to check by hand, find the
-weights, bands, shares and tolerances of the criteria table, the solid and time limits of the whole-document zeros, the
-two ends of the shape floor and the grading weights under their keys in `grader_config.json`, where bands are written
-as in the table above, shares as fractions and time limits in seconds.
+The criteria table of `instruction.md` (section "How it is graded") prints values of `grader_config.json`, and so do the
+paragraphs around it (the recognition of the given solids, the whole-document zeros, the shape floor) and the
+grading-weight column of the component table (`installation.type_weights`). The photo table holds the captions of the
+photo set and the component table lists the given components. When one of these values, a caption or a given component
+changes, `instruction.md` must be changed to match. No test in this repository compares the two; to check by hand, find
+the weights, bands, shares and tolerances of the criteria table, the two recognition tolerances
+(`recognition.volume_rel`, `recognition.attach_mm`), the solid and time limits of the whole-document zeros, the two ends
+of the shape floor and the grading weights under their keys in `grader_config.json`, where bands are written as in the
+table above, shares as fractions and time limits in seconds. One share is not in the config: the equal split of the
+connection term of Installation between the made parts and the given pieces is fixed in `grade.py`.
 
 Statistics worth reading in a result (`metrics`): `shape_floor` and `raw_features`, `raw_installation`, `raw_mass`,
 `raw_fit` (the four criteria before the floor); `alignment_mode` (1 = the tub registered exactly on its vertex set),

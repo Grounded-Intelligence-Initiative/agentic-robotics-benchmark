@@ -27,9 +27,10 @@ Two treatments are applied to derived copies; the owner's model files themselves
   maker's name raised on the underside of one connector. Raised letters are cut flush with the face they stand on,
   engraved ones are filled flush with it; the removed or filled volume is the lettering alone, and the rest of each
   solid keeps its geometry. No given file carries a name, and none of this lettering can be read in any photograph.
-  Marks that name no maker or product stay as modelled: mould, cavity, revision, material and date marks,
-  certification, recycling and origin marks, the numbers on the tyres, tooth counts, single key letters and labels
-  such as ON / OFF. The mould numbers and date marks on the floor of the tub are flattened in the rendered mesh only.
+  Marks that name no maker or product stay as modelled: mould, cavity, revision, material and date marks, moulded part
+  numbers, certification, recycling and origin marks, polarity, arrow and pin marks, the numbers on the tyres, tooth
+  counts, single key letters and labels such as ON / OFF. The mould numbers and date marks on the floor of the tub are
+  flattened in the rendered mesh only.
 - The made plate and the printed part exist in the model as meshes whose hole walls are polygons. Each such wall is
   put back to the conic section it approximates (an ellipse or a circle fitted to the polygon, at most 0.02 mm from
   the mesh on the plate and 0.06 mm on the printed part), so that the grader's hole detector reads the holes. Nothing
