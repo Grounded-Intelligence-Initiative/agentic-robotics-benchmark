@@ -10,7 +10,6 @@ the grading wire carries, plus `result`: -1 while the order runs and, in the rep
 that ends it, the order's shipped volume fraction after the tilt test.
 """
 
-import math
 import secrets
 
 import pallet_cell as pc
@@ -38,17 +37,8 @@ MESSAGES = {
 
 
 def parse_action(action):
-    if not isinstance(action, (list, tuple)) or len(action) != 7:
-        raise ValueError
-    values = []
-    for v in action:
-        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
-            raise ValueError
-        values.append(float(v))
-    cams = int(round(values[5]))
-    if cams < 0 or cams > 7 or abs(values[5] - cams) > 1e-6:
-        raise ValueError
-    return values
+    """pallet_cell.parse_action: the one rule for the cell, the lab and the grader."""
+    return pc.parse_action(action)
 
 
 class _Episode(object):

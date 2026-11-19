@@ -2,11 +2,11 @@
 # that arrive one at a time, in an order nobody announces. The agent delivers a controller that sees each carton
 # only through RGB-D cameras (pose, size, printed handling marks: stacking limit by mass, do not stack, fragile),
 # feels its mass and centre of gravity through the wrist force/torque sensor, and decides where it goes: on the
-# pallet, or on a small buffer table for later. Physical execution, long horizon: an order is 16 to 20 cartons and
-# 5,000 to 6,000 control steps.
+# pallet, or on a small buffer table for later. Physical execution, long horizon: an order is 16 to 20 cartons; the
+# reference takes 5,000 to 6,000 control steps for one (the allowance is 6,800 to 8,400).
 #
 # Two things make it hard. The cartons tile the pallet, so an order fits only with a few millimetres between
-# neighbours (the reference leaves 4 mm; with 8 mm no order fits). And the cell is never its drawing: in every
+# neighbours (the reference keeps inside the pallet's edges and leaves 4 mm; its planner finds no room with 8 mm). And the cell is never its drawing: in every
 # order the joint zeros (up to 0.5 degrees, about 20 mm at the pad), the camera mounts (30 mm, 1.5 degrees) and
 # the pallet's pose (25 mm, 2 degrees) differ, and nothing reports them. A controller has to calibrate itself
 # from survey marks and what it sees and feels, to about a millimetre.
@@ -34,16 +34,19 @@ cpus = 4
 memory_mb = 8192
 
 # setup: stage the task card, the mark images and the lab client, and start the lab service (seconds).
-# agent: 3 h for the whole job, the two lab orders included (a lab order driven by the reference controller takes
-# a few minutes of wall time).
+# agent: 3 h for the whole job, the three lab trials included (a lab order driven by the reference controller
+# takes a few minutes of wall time).
 [agent]
 timeout_sec = 10800
 network_mode = "no-network"
 
-# verify: eight orders over the wire. The reference controller's whole grading run takes a few minutes; the grader
-# stops scoring after run_budget_s = 5400 s (tests/grader_config.json), which the timeout leaves room for.
+# verify: eight orders over the wire. The reference controller's whole grading run takes a few minutes. Each order
+# has a budget of controller time (controller_budget_s = 675 s: the grader's waits for the controller plus a fixed
+# charge per image asked for; tests/grader_config.json); the simulator's own time is not charged. wall_cap_s =
+# 13200 s is the grader's safety net on a slow machine, hard_deadline_s = 13800 s its last resort (it writes the
+# verdict from the orders finished so far), and the timeout leaves room above both.
 [verifier]
-timeout_sec = 7200
+timeout_sec = 14400
 environment_mode = "separate"
 
 [verifier.environment]

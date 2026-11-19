@@ -31,7 +31,12 @@ on `PATH`). The sandbox has 4 CPUs and 8 GB of memory, while grading too.
 ## The job
 
 An order is a sequence of cartons. A carton appears in the pick station at the end of the conveyor, skewed and a
-little off centre; the next one arrives 2 s after the station is clear. For each carton the controller decides
+little off centre; the next one arrives once the station has been clear for 2 s. The station is clear when no
+carton lies in it or within 0.15 m of its ends (a carton left on the conveyor just behind it, or on the floor
+just in front of it, blocks the infeed for good) and the carton on the gripper, if there is one, is out of the
+next one's way: its underside
+at least 0.36 m above the conveyor, or its centre at least 0.36 m beyond the station's edge (the station is the
+0.90 m x 0.80 m at the end of the conveyor, `task_card.md`). For each carton the controller decides
 where it goes: onto the pallet, or onto the buffer table to be placed later (the table is just a surface; what
 stands on it at the end of the order does not ship). The order ends when the controller says so (`done`) or when
 the step allowance runs out (400 control steps per carton of the order plus 400; the observation counts them down).
@@ -43,12 +48,12 @@ Everything the controller knows about a carton it has to sense:
 - **handling marks**, printed on the carton's top face, anywhere on it beside the sealing tape and turned by any
   multiple of 90 degrees: a stacking limit by mass (`5`, `10`, `20` or `40` kg), "do not stack" and "fragile".
   A carton carries at most one stacking mark; one without a stacking mark carries 80 kg. Print differs from
-  carton to carton as it does between suppliers and print runs: the marks' size (38 to 85 mm on a side), the ink
+  carton to carton as it does between suppliers and print runs: the marks' size (46 to 85 mm on a side), the ink
   (black to dark grey, brown or blue), how strongly it took, and worn patches. Shipping labels and brand text are
   printed too and mean nothing;
 - **mass** from the wrist force/torque sensor, once the carton hangs on the gripper;
-- **centre of gravity**: up to 0.12 m off the centre of the top face, and nothing printed says where. The torque
-  a hanging carton puts on the wrist does.
+- **centre of gravity**: it may lie off the centre of the top face (the kinds of carton were drawn with offsets
+  of up to 0.12 m), and nothing printed says where. The torque a hanging carton puts on the wrist does.
 
 Nothing in the observation names the carton, its mass, its marks or where anything stands.
 
@@ -61,8 +66,9 @@ graded, and nothing in the observation says by how much:
   0.3 at the shoulder, 0.3 at the elbow, 1.0 at the tool yaw. `q` and `tcp` are the readings, and the arm's own
   controller works in the readings too: your velocity command moves a target in the frame of the readings. So
   `tcp` is not where the pad is: at full reach 0.5 degrees is about 20 mm.
-- **Camera mounts.** Each camera hangs up to 30 mm (per axis) from its drawn position and points up to 1.5
-  degrees off its drawn direction. The intrinsics are exact.
+- **Camera mounts.** Each camera hangs up to 30 mm (per axis) from its drawn position. From where it hangs it
+  is aimed at the point the drawing has it look at, and misses that aim by up to 1.5 degrees (per axis); against
+  its drawn direction that is up to about 2.4 degrees (per axis). The intrinsics are exact.
 - **The pallet.** Its centre is up to 25 mm (per axis) from the drawn place and it is turned by up to 2 degrees.
   The shipping limits are the real pallet's edges.
 
@@ -71,14 +77,19 @@ conveyor, the table and the floor around the pallet, and a mark on top of the to
 
 ## What ships
 
-At the end of an order the gripper lets go, the cell settles for 2 s, and the pallet goes through a tilt test:
-gravity is tilted by 10 degrees toward +x, -x, +y and -y in turn (1 s up, 2 s held, 1 s down each). A carton
-**ships** when, after the test, all of these hold:
+At the end of an order the gripper lets go and the arm is out of the cell: from then on it touches nothing, so
+it cannot steady the stack, and whatever leans on it falls. The cell settles for 2 s, and the pallet goes through
+a tilt test: gravity is tilted by 10 degrees toward +x, -x, +y and -y in turn (1 s up, 2 s held, 1 s down each),
+followed by another 2 s of settling. A carton **ships** when all of these hold:
 
-- it stands upright (its top face up, level within 3 degrees) on the pallet's stack: no part of it more than
-  5 mm beyond the real pallet's edge, none below the deck, none higher than 1.00 m above the deck;
-- during the tilt test its centre moved at most 30 mm and it turned at most 5 degrees;
-- it was never **damaged**, at any time from its arrival to the end of the test:
+- after the test it stands upright (its top face up, level within 3 degrees) on the pallet's stack: no part of it more than
+  5 mm beyond the real pallet's edge, none more than 5 mm below the deck's surface, none more than 1.005 m
+  above it (the height limit of 1.00 m with the same 5 mm of tolerance);
+- at no time during the test (from the end of the first settling to the end of the last, sampled every 20 ms)
+  was its centre more than 30 mm from where it stood before the test, or the carton turned by more than 5 degrees
+  against how it stood then: a carton that rocks further and settles back does not ship;
+- it was never **damaged**, at any time from 0.3 s after its arrival (it is set down on the conveyor) to the
+  end of the test:
   - *shock*: the change of its velocity over any 20 ms window, divided by 20 ms, never exceeded 60 m/s^2
     (20 m/s^2 for a carton marked fragile). A free drop of about 70 mm (8 mm for fragile) onto something rigid
     reaches the limit;
@@ -91,8 +102,8 @@ ship (left on the floor, on the buffer table or on the conveyor, damaged, or mov
 shipment and counts as nothing. Your result is the fraction of the graded orders that ship complete. Every
 graded order, and every lab order, can be shipped complete: the reference controller has done it, deciding about
 each carton when it arrives as yours must. The reference is told what yours has to measure (the joint zeros, the
-pallet's real pose, and each arrived carton's true pose, size, mass, centre of gravity and limits), and your
-result is measured against it.
+cameras' real mounts, the pallet's real pose, and each arrived carton's true pose, size, mass, centre of gravity
+and limits), and your result is measured against it.
 
 The vacuum seal has limits of its own (`task_card.md`): it holds only so much pull and so much moment, less when
 the pad covers the carton's top only partly. A heavy carton held far from its centre of gravity hangs on most of
@@ -138,6 +149,8 @@ order to order. Depth is noisy (about 1.5 mm per metre of distance) and about 0.
 
 Action: a list of 7 numbers `[vx, vy, vz, wyaw, vacuum, cams, done]`:
 
+The seven are JSON numbers: a boolean or a string in their place is a malformed action.
+
 - `vx, vy, vz`: velocity of `tcp`, the pad-face centre as the readings have it (m/s, each clipped to 1.2); `wyaw`: tool yaw rate
   (rad/s, clipped to 2.5). Inside the step the commanded velocity ramps linearly from your previous command to this
   one, so the commanded acceleration is the change of your command divided by 0.1 s; the joints servo to the moving
@@ -150,12 +163,19 @@ Action: a list of 7 numbers `[vx, vy, vz, wyaw, vacuum, cams, done]`:
 
 `labclient.py` talks to a service on `/run/ale-lab/lab.sock` (JSON lines). The lab is the cell, with twelve
 practice kinds of carton and three practice orders, `p0`, `p1` and `p2` (16, 18 and 18 cartons). It serves `hello`,
-`budget`, `reset`, `step` and `close`. A **trial** is one order: `reset` with the order's id starts it and charges
-one trial; you have **3 trials in total**, never refunded. `step` with an action returns the next observation
-(steps are free) until the order ends: when you send `done`, or when its step allowance runs out. Every trial
-draws fresh printing, arrival poses, lighting, sensor noise, joint zeros, camera mounts and pallet pose. A trial also ends when you send another `reset` or
-close the connection, after 3600 s of wall time or after 900 s without a request. The lab serves at most two
-connections at a time.
+`budget`, `reset`, `step` and `close`, and nothing else. A **trial** is one order: `reset` with the order's id
+starts it and charges one trial; you have **3 trials in total**, never refunded. `step` with an action returns the
+next observation (steps are free) until the order ends: when you send `done`, or when its step allowance runs out.
+Every trial draws fresh printing, arrival poses, lighting, sensor noise, joint zeros, camera mounts and pallet
+pose.
+
+**A trial lives only as long as the connection that started it.** It ends, for good and without a result, when
+that connection closes: when the program holding it exits or crashes, when `labclient.py` is run from the command
+line (every call is a connection of its own, so `python3 labclient.py reset p0` spends a trial and ends it at
+once), or when you send another `reset`. It also ends after 3600 s of wall time or after 900 s without a
+request. A trial cannot be resumed or continued from another connection. So drive a whole order from one
+process that keeps its connection open, and test that process's own error handling before it spends a trial. The
+lab serves at most two connections at a time.
 
 The lab's observation is the observation of the grading wire, with one more key, `result`: -1 while the order
 runs and, in the reply to the step that ends it, the fraction of the order's carton volume that shipped after the
@@ -171,18 +191,29 @@ Different: the cartons (a hidden catalogue of 14 kinds, none of them a practice 
 
 All cartons, practice and hidden, are modular: made to tile a 1200 mm x 800 mm pallet. Their nominal footprints
 are 600 x 400, 600 x 300, 600 x 200, 400 x 400, 400 x 300, 400 x 200 and 300 x 200 mm; a real carton is 2 to 4 mm
-under nominal in length and in width (the same for all cartons of a kind). Heights are 0.16 to 0.32 m, masses 1.5
-to 25 kg, the centre of gravity up to 0.12 m off the centre of the top face. An order's cartons add up to between
-0.48 and 0.63 m^3 (the stack may be 1.00 m high, so up to two thirds of what the pallet can hold).
+under nominal in length and in width (the same for all cartons of a kind). Nominal heights are 0.16, 0.20, 0.24
+and 0.32 m; a real carton is up to 1 mm lower. The kinds
+were drawn from masses of 1.5 to 25 kg, centres of gravity up to 0.12 m off the centre of the top face, and the
+marks above; a catalogue of 12 or 14 kinds does not span all of that. The practice cartons weigh 2 to 14.5 kg and
+one kind of them has its centre of gravity off centre (by 54 mm); the hidden catalogue is a different draw, and
+any of the marks, an off-centre load or a heavier carton may or may not occur in it. An order's cartons add up
+to between 0.48 and 0.63 m^3 (the stack may be 1.00 m high, so up to two thirds of what the pallet can hold).
 
 The practice orders and the hidden orders were chosen the same way: drawn at random, and kept when the reference
-controller shipped them complete. It leaves 4 mm between neighbouring cartons. A planner that leaves 8 mm finds
-room for every carton in none of them: three cartons of 397 mm are 1191 mm, and the pallet is 1200 mm.
+controller shipped them complete. It keeps every carton inside the pallet's edges and leaves 4 mm between
+neighbours. Its planner, told to leave 8 mm instead, finds room for every carton in none of them: three cartons
+of 397 mm with two gaps of 8 mm are 1207 mm on a pallet of 1200 mm. The 5 mm that a carton may reach beyond an
+edge is all the room there is on top of that.
 
 ## Deliverable and grading
 
 Leave a controller in `/home/user/submission/` with a `run.sh` (started as `bash run.sh` with that folder as
-working directory, as your user, with no network). Everything it needs must be inside that folder: nothing else
+working directory, as your user, with no network, and with only `PATH`, `HOME` and `LANG` in its environment).
+No network means: it must not create an internet socket of any kind, the loopback included; between your own
+processes use pipes or UNIX sockets. Depending on the grading machine the attempt fails (also on the loopback),
+or the grader watches for such sockets and one that is not bound to the loopback scores the whole run 0.
+The folder may hold at most 5,000 files and 200 MB; a larger one is not graded and scores 0, so do not leave lab
+recordings in it. Everything the controller needs must be inside that folder: nothing else
 of your home is there when it is graded (copy `arm_kinematics.py` and `marks/` in if you use them); the image's
 Python and its packages are. Protocol, one JSON object per line on stdin/stdout (stdout carries only protocol messages; use
 stderr for logs): print `READY` within 120 s of the start; then answer `{"type": "reset"}` with `{"ok": true}`,
@@ -198,12 +229,30 @@ all zero) is not counted; if fewer than 10 % of the other pairs get two replies 
 one of the first four numbers), the whole run scores 0: a controller whose motion commands ignore the joint
 readings, or that answers a repeated `t` from a cache, fails.
 
-The grader runs the eight orders in a hidden sequence, each with a fixed seed (the same for every submission). An
+The grader runs the eight orders in a fixed sequence, each with a fixed seed (the same for every submission). An
 order in which the controller crashes, answers late or sends a malformed action, or in which the simulation
-becomes unstable, scores 0. After a crash, a late answer or a broken protocol the controller is started again
-before the next order, at most 3 times; the order that would need a fourth start and every later one score 0. A
-controller that does not print `READY` at its first start scores 0 for the whole run. The whole grading run must
-finish within 5400 s of wall time, simulator, rendering and your controller together; the order under way when it
-runs out and the orders after it score 0. For scale: on the task's 4 CPUs the cell needs roughly 5 ms per control
-step without images, and one camera's colour and depth images add roughly 0.1 s; a full run of the eight orders is
-about 40,000 to 60,000 control steps.
+becomes unstable, scores 0. The 30 s for an answer run from the moment the grader starts to send the request: an
+observation with images is several megabytes, and a controller that does not read it in time is late (it is
+then killed). After a crash, a late answer or a broken protocol the controller is started again before the next
+order, and so is one found dead when an order begins: at most 3 restarts in a run; the order that would need a
+fourth restart and every later one score 0. A controller that does not print `READY` at its first start scores 0
+for the whole run.
+
+**Controller time.** Every order has a budget of 675 s of controller time. Charged are:
+
+- the time the grader waits for your controller: from the moment a request is ready to be sent until its reply
+  has arrived, for `reset`, for every `act` (both requests of a repeated `t`), in the first order also the start
+  up to `READY`, and any restart of the controller (charged to the order that follows it);
+- a fixed 0.1 s for every camera image your actions ask for (`cams` = 7 costs 0.3 s). The three images of an
+  order's first observation are free.
+
+The simulator's and the renderer's own time are not charged: how fast the grading machine simulates and draws
+does not change your result. When an order's budget is used up the order ends at that step (the action that
+used it up is not carried out) and is judged as it stands. For scale: an order's step allowance is 6,800 to 8,400
+steps and its budget pays for 6,750 images, so nearly one image per step of the whole allowance, less whatever
+time your own answers take. The budget counts waiting, not computing: your code may go on working between
+requests on the task's 4 CPUs, which it shares with the simulator, and whatever slows the simulator down slows
+only the run. Outside the budgets there is only a safety net: a grading run that is still going after 13,200 s
+of wall time stops, and the order under way and those after it score 0. That is far more than the simulator and
+the renderer need: on the machine this task was validated on they took about 5 ms per control step and 0.02 to
+0.03 s per camera image.

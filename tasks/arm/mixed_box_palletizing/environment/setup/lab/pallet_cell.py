@@ -92,6 +92,8 @@ PALLET_HALF = np.array([0.60, 0.40])
 DECK_Z = 0.144                      # pallet deck surface
 STACK_HEIGHT_MAX = 1.00             # m above the deck
 INFEED_DELAY = 2.0                  # s the station must be clear before the next carton arrives
+STATION_CLEAR_Z = 0.36              # m: a held carton's underside this high above the conveyor clears the station
+STATION_CLEAR_XY = 0.36             # m: or its centre this far beyond the station's edge (x or y)
 
 # Handling rules.
 SHOCK_WINDOW = 0.020            # s
@@ -106,6 +108,7 @@ LOAD_PERIOD = 5                 # physics steps between load evaluations
 SETTLE_TIME = 2.0               # s before and after the tilt
 TILT_ANGLE = math.radians(10.0)
 TILT_RAMP, TILT_HOLD = 1.0, 2.0  # s
+TILT_SAMPLE = 10                # physics steps between two samples of the cartons' poses in the test
 OVERHANG_TOL = 0.005            # m a carton may reach beyond the pallet's edge
 LEVEL_TOL = math.radians(3.0)   # a shipped carton's top face is level within this
 MOVE_TOL = 0.030                # m a carton's centre may move during the tilt test
@@ -150,6 +153,27 @@ DRAW_PPM = 1000.0               # px per metre while drawing a face, before it i
 TAPE_W = 0.048                  # m
 STACK_LIMITS = (0, 5, 10, 20, 40)   # kg, the stacking marks that exist (0 = do not stack)
 TONES = ((196, 158, 112), (181, 140, 96), (205, 172, 130), (170, 134, 98))
+
+
+# --------------------------------------------------------------------------------------------
+# The action
+# --------------------------------------------------------------------------------------------
+
+def parse_action(action):
+    """The action as a list of 7 floats, or ValueError. The one rule for the cell, the lab and the
+    grader: a list (or tuple) of exactly 7 finite numbers (int or float, never a bool or a
+    string), the sixth an integer from 0 to 7."""
+    if not isinstance(action, (list, tuple)) or len(action) != 7:
+        raise ValueError("an action is a list of 7 numbers")
+    values = []
+    for v in action:
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
+            raise ValueError("an action is 7 finite numbers")
+        values.append(float(v))
+    cams = int(round(values[5]))
+    if cams < 0 or cams > 7 or abs(values[5] - cams) > 1e-6:
+        raise ValueError("cams is an integer from 0 to 7")
+    return values
 
 
 # --------------------------------------------------------------------------------------------
@@ -702,6 +726,7 @@ class PalletCell(object):
         self.arm_vadr = np.array([m.jnt_dofadr[ident(mujoco.mjtObj.mjOBJ_JOINT, j)] for j in ("j1", "j2", "j3", "j4")])
         self.jw_qadr = m.jnt_qposadr[ident(mujoco.mjtObj.mjOBJ_JOINT, "jw")]
         self.jc_qadr = m.jnt_qposadr[ident(mujoco.mjtObj.mjOBJ_JOINT, "jc")]
+        self.arm_geom = np.nonzero(m.geom_contype == 2)[0]      # the arm's colliding geoms (class "arm")
         self.half = np.array([[float(v) / 2 for v in self.catalog[s]["size"]] for s in order])
         self.mass = np.array([float(self.catalog[s]["mass"]) for s in order])
         self.volume = np.prod(2 * self.half, axis=1)
@@ -817,9 +842,13 @@ class PalletCell(object):
                     p[2] < BELT_Z + 0.55 and i != self.held:
                 return True
         if self.held >= 0:
+            # The held carton blocks the station until the next carton has room to arrive below
+            # or beside it: its underside STATION_CLEAR_Z above the conveyor (the tallest carton
+            # and a margin), or its centre STATION_CLEAR_XY beyond the station's edge.
             p = self.data.xpos[self.box_body[self.held]]
-            if abs(p[0] - STATION[0]) < STATION_HALF[0] and abs(p[1] - STATION[1]) < STATION_HALF[1] and \
-                    p[2] - self.half[self.held].max() < BELT_Z + 0.02:
+            if abs(p[0] - STATION[0]) < STATION_HALF[0] + STATION_CLEAR_XY and \
+                    abs(p[1] - STATION[1]) < STATION_HALF[1] + STATION_CLEAR_XY and \
+                    p[2] - self.half[self.held][2] < BELT_Z + STATION_CLEAR_Z:
                 return True
         return False
 
@@ -1010,15 +1039,11 @@ class PalletCell(object):
         """Advance one control step (CONTROL_DT). Returns the next observation."""
         if self.done:
             raise RuntimeError("the episode is over: call reset()")
-        a = [float(x) for x in action]
-        if len(a) != 7 or not all(math.isfinite(x) for x in a):
-            raise ValueError("an action is 7 finite numbers")
+        a = parse_action(action)
         vel = np.array([max(-V_MAX, min(V_MAX, a[0])), max(-V_MAX, min(V_MAX, a[1])),
                         max(-V_MAX, min(V_MAX, a[2])), max(-W_MAX, min(W_MAX, a[3]))])
         vacuum = a[4] >= 0.5
         cams = int(round(a[5]))
-        if cams < 0 or cams > 7 or abs(a[5] - cams) > 1e-6:
-            raise ValueError("cams is an integer from 0 to 7")
         if not vacuum:
             self._release()
             self.seal_lost = False
@@ -1139,14 +1164,20 @@ class PalletCell(object):
         return None
 
     def finish(self):
-        """End the order: release the gripper, let the cell settle, run the tilt test and decide
-        which cartons ship. Returns {"shipped_volume_fraction", "cartons": [...]}.
+        """End the order: release the gripper, take the arm out of the cell, let the cell settle,
+        run the tilt test and decide which cartons ship. Returns {"shipped_volume_fraction",
+        "cartons": [...]}.
+
+        From here on the arm touches nothing (its geoms stop colliding): it cannot hold a carton
+        in place through the test, and whatever leaned on it falls.
 
         The tilt test tilts gravity by TILT_ANGLE toward +x, -x, +y and -y in turn (ramp up over
         TILT_RAMP, hold TILT_HOLD, ramp down), which is what a pallet tilted that way feels. A
         carton ships when, after the test, it stands on the pallet's stack inside the limits
-        (_on_pallet), it has not moved more than MOVE_TOL or turned more than TURN_TOL during
-        the test, and it was never damaged (shock or load, the test included)."""
+        (_on_pallet), it was at no time during the test (from the end of the first settling to
+        the end of the last, sampled every TILT_SAMPLE physics steps) more than MOVE_TOL from
+        where it stood before the test or turned by more than TURN_TOL against how it stood,
+        and it was never damaged (shock or load, the test included)."""
         if self.finished:
             raise RuntimeError("finish() was already called")
         self.finished = True
@@ -1154,21 +1185,35 @@ class PalletCell(object):
         m, d = self.model, self.data
         self._release()
         self.vacuum = False
+        m.geom_contype[self.arm_geom] = 0
         if self.unstable:
             return self._result(["the simulation became unstable"] * self.n)
         self._physics(int(SETTLE_TIME / TIMESTEP))
         before = [self.box_pose(i) for i in range(self.n)]
+        moved = np.zeros(self.n)        # the largest excursion of each carton during the test
+        turned = np.zeros(self.n)
+
+        def sample():
+            for i in range(self.n):
+                pos, R = self.box_pose(i)
+                moved[i] = max(moved[i], float(np.linalg.norm(pos - before[i][0])))
+                cosine = (np.trace(before[i][1].T @ R) - 1.0) / 2.0
+                turned[i] = max(turned[i], math.acos(max(-1.0, min(1.0, float(cosine)))))
+
+        chunk = TILT_SAMPLE
         for direction in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             for duration, a0, a1 in ((TILT_RAMP, 0.0, 1.0), (TILT_HOLD, 1.0, 1.0), (TILT_RAMP, 1.0, 0.0)):
                 steps = int(duration / TIMESTEP)
-                chunk = 10
                 for s in range(0, steps, chunk):
                     angle = TILT_ANGLE * (a0 + (a1 - a0) * (s + chunk) / steps)
                     m.opt.gravity[:] = [G * math.sin(angle) * direction[0], G * math.sin(angle) * direction[1],
                                         -G * math.cos(angle)]
                     self._physics(chunk)
+                    sample()
         m.opt.gravity[:] = [0.0, 0.0, -G]
-        self._physics(int(SETTLE_TIME / TIMESTEP))
+        for s in range(0, int(SETTLE_TIME / TIMESTEP), chunk):
+            self._physics(chunk)
+            sample()
         reasons = []
         for i in range(self.n):
             reason = None
@@ -1177,13 +1222,10 @@ class PalletCell(object):
             if reason is None:
                 reason = self._on_pallet(i)
             if reason is None:
-                pos, R = self.box_pose(i)
-                if np.linalg.norm(pos - before[i][0]) > MOVE_TOL:
+                if moved[i] > MOVE_TOL:
                     reason = "moved in the tilt test"
-                else:
-                    turn = math.acos(max(-1.0, min(1.0, (np.trace(before[i][1].T @ R) - 1.0) / 2.0)))
-                    if turn > TURN_TOL:
-                        reason = "turned in the tilt test"
+                elif turned[i] > TURN_TOL:
+                    reason = "turned in the tilt test"
             if reason is None and self.damage[i] is not None:
                 reason = "damaged ({} at {} s)".format(*self.damage[i])
             reasons.append(reason)

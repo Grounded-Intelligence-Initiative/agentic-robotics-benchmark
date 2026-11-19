@@ -7,19 +7,19 @@ Python 3 standard library only; numpy is used only if you pass numpy arrays or a
     with LabClient() as lab:
         print(lab.hello())                 # ops, instance ids, public info, limits
         print(lab.budget())                # trials remaining (free)
-        obs = lab.reset("inst_a")          # costs ONE trial; starts a closed-loop trial
-        obs, done = lab.step([0.1])        # free inside the trial (step and time caps apply)
-        out = lab.execute("inst_a", plan)  # costs ONE trial; runs an open-loop plan
+        obs = lab.reset("p0")              # costs ONE trial; starts the order
+        obs, done = lab.step(action)       # free inside the trial (step and time caps apply)
 
 Command line:
     python3 labclient.py hello | budget
-    python3 labclient.py reset <instance>
-    python3 labclient.py execute <instance> <plan.json | ->
+    python3 labclient.py reset <instance>     (spends a trial and ends it: see below)
     python3 labclient.py raw '<one JSON request>'
 
 Trials are counted by the lab, not by this client: reconnecting, restarting your program or a
 failed step never gives a trial back. Each connection holds at most one trial; a new reset on
-the same connection ends the previous trial.
+the same connection ends the previous trial. A trial ends for good when its connection closes:
+every command-line call above is one connection, so `reset` from the command line spends a trial
+that nothing can continue. Drive an order from one process that keeps its LabClient open.
 """
 
 import base64
@@ -127,11 +127,6 @@ class LabClient:
         r = self.request({"op": "step", "action": action})
         return r["obs"], r["done"]
 
-    def execute(self, instance, plan):
-        return self.request({"op": "execute", "instance": instance, "plan": plan})[
-            "outcome"
-        ]
-
     def close(self):
         """End the current trial (if any) and the connection."""
         self.__exit__(None, None, None)
@@ -142,6 +137,9 @@ def main(argv):
         print(__doc__)
         return 2
     cmd, args = argv[0], argv[1:]
+    if (cmd, len(args)) not in (("hello", 0), ("budget", 0), ("reset", 1), ("raw", 1)):
+        print(__doc__)                     # --help and anything unknown: no connection is opened
+        return 2
     with LabClient() as lab:
         try:
             if cmd == "hello":
@@ -150,11 +148,6 @@ def main(argv):
                 out = {"remaining": lab.budget()}
             elif cmd == "reset" and len(args) == 1:
                 out = lab.request({"op": "reset", "instance": args[0]})
-            elif cmd == "execute" and len(args) == 2:
-                text = sys.stdin.read() if args[1] == "-" else open(args[1]).read()
-                out = lab.request(
-                    {"op": "execute", "instance": args[0], "plan": json.loads(text)}
-                )
             elif cmd == "raw" and len(args) == 1:
                 out = lab.request(json.loads(args[0]))
             else:

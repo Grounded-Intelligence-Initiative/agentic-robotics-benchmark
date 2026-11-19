@@ -9,7 +9,7 @@ This card is the cell as drawn. What the built cell differs in, and by how much 
 
 | Thing | Where |
 |---|---|
-| Pick station | end of the infeed conveyor, centred at (1.45, 0), conveyor surface at z = 0.60. The conveyor runs along world x and is 0.8 m wide. A carton arrives within 40 mm of the centre, its long side along the conveyor or across it, skewed by up to 20 degrees |
+| Pick station | end of the infeed conveyor, centred at (1.45, 0), 0.90 m along x and 0.80 m along y, conveyor surface at z = 0.60. The conveyor runs along world x and is 0.8 m wide, between two guide rails 60 mm high (30 mm wide, their inner faces at y = +-0.40) and with an end stop of the same height across it at x = 0.97 to 1.00: the arm and a low-carried carton can hit them. A carton arrives with its centre within 40 mm of the station's centre in x and in y (so up to 57 mm away), its long side along the conveyor or across it, skewed by up to 20 degrees |
 | Pallet *(drawn)* | centred at (0, 1.50): 1.2 m along world x, 0.8 m along world y, deck at z = 0.144. The stack may reach 1.00 m above the deck. The real pallet stands up to 25 mm (per axis) off and up to 2 degrees turned; its size and deck height are exact |
 | Buffer table | centred at (-1.45, 0): 1.1 m along x, 1.4 m along y, surface at z = 0.60 |
 
@@ -63,13 +63,22 @@ Drawn mounts (OpenCV convention: the optical axis is the camera's z, image x to 
 | `buffer` | (-1.45, 0, 3.00) | straight down | world -y | world -x | 945.00 | (319.5, 239.5) |
 
 The intrinsics are exact (square pixels, no distortion). The mounts are not: in every order each camera hangs up
-to 30 mm (per axis) from its drawn position and points up to 1.5 degrees off. The arm is in the picture when it
-is in the way.
+to 30 mm (per axis) from its drawn position. From there it is aimed at the point it looks at in the drawing (the
+point straight below its drawn position, on the surface it watches: the conveyor, the pallet's deck, the table)
+and misses that aim by up to 1.5 degrees (per axis). Against "straight down" that adds up to about 2.4 degrees
+(per axis) for `infeed`, 2.2 for `buffer` and 2.0 for `pallet`.
+
+The cameras have a minimum range: nothing nearer to a camera than about 1.3 to 1.45 m along its optical axis
+appears in its colour or depth image (one distance for the three cameras within an order, another in the next).
+So `infeed` shows nothing higher than 1.1 to 1.3 m above the floor (cartons on the conveyor, not the arm above
+them), `buffer` nothing higher than 1.5 to 1.7 m, `pallet` nothing higher than 2.5 to 2.7 m (the tool's mark
+reaches 2.71 m at the top of the arm's range). Below that the arm is in the picture when it is in the way.
 
 ## Survey marks
 
-Twelve marks are painted where the drawing says, exactly: a white disc of 25 mm radius with a black centre dot of
-8 mm radius, flat on its surface.
+Twelve marks sit where the drawing says, exactly: a white disc of 25 mm radius, 1.6 mm thick, with a black
+centre dot of 8 mm radius on it (the dot's top is 2.8 mm above the surface). The table gives the centres on the
+surface.
 
 | Camera that sees them | Surface | Mark centres (x, y, z) |
 |---|---|---|
@@ -77,16 +86,17 @@ Twelve marks are painted where the drawing says, exactly: a white disc of 25 mm 
 | `pallet` | floor | (-0.75, 0.97, 0), (0.75, 0.97, 0), (-0.75, 2.03, 0), (0.75, 2.03, 0) |
 | `buffer` | table | (-1.93, -0.63, 0.60), (-1.93, 0.63, 0.60), (-0.97, -0.63, 0.60), (-0.97, 0.63, 0.60) |
 
-A carton in the pick station or on the table may cover a mark. On top of the tool, on the tool axis, 0.06 m above
-the wrist pivot's height (0.61 m above the pad's face with the cup extended), is a magenta disc of 40 mm radius; a
-yellow dot of 15 mm radius sits on it 0.07 m from the axis along the tool's x axis.
+A carton in the pick station or on the table may cover a mark, and where a camera hangs at the far end of its tolerance the rim of one of its marks can lie a few pixels outside the image (the centre dot stays in view). On top of the tool, centred on the tool axis, is a
+magenta disc of 40 mm radius and 4 mm thickness; its top face is 0.062 m above the wrist pivot's height (0.612 m
+above the pad's face with the cup extended). Beside it, centred 0.07 m from the axis along the tool's x axis, is a
+yellow disc of 15 mm radius whose top face is 2 mm higher (0.064 m above the pivot's height).
 
 ## Cartons and marks
 
 A carton's frame sits at its centre: x along its length, y along its width, z up. Its centre of gravity is offset
 in x and y only (the load inside sits off centre). The top face carries a strip of sealing tape, 48 mm wide,
 along the middle of its length, and the marks in the two bands beside the tape. `marks/` shows the six marks; on
-a carton they are printed 38 to 85 mm on a side, in any of the four turns, in inks from black to dark grey, brown
+a carton they are printed 46 to 85 mm on a side, in any of the four turns, in inks from black to dark grey, brown
 or blue, sometimes faint or worn in patches.
 
 ## Numbers of the rules
@@ -95,7 +105,9 @@ or blue, sometimes faint or worn in patches.
 |---|---|
 | Shock limit | 60 m/s^2 over a 20 ms window; 20 m/s^2 for fragile |
 | Stacking load | printed kg; 0.5 kg for "do not stack"; 80 kg without a mark; 0.5 s low-pass |
-| Tilt test | 10 degrees toward +x, -x, +y, -y; 1 s up, 2 s held, 1 s down; 2 s of settling before and after |
-| Shipped | upright within 3 degrees; at most 5 mm beyond the real pallet's edge; top at most 1.00 m above the deck; moved at most 30 mm and turned at most 5 degrees in the test; never damaged |
+| Tilt test | the gripper lets go and the arm no longer touches anything; 2 s of settling; gravity tilted by 10 degrees toward +x, -x, +y, -y (1 s up, 2 s held, 1 s down each); 2 s of settling |
+| Shipped | after the test: upright within 3 degrees; at most 5 mm beyond the real pallet's edge; nothing more than 5 mm below the deck's surface; top at most 1.005 m above the deck (1.00 m plus 5 mm of tolerance). At every moment of the test, from the end of the first settling to the end of the last (sampled every 20 ms): its centre at most 30 mm from where it stood before the test, and turned at most 5 degrees against how it stood. Never damaged |
 | Friction | carton on carton and on the deck 0.5; on the conveyor 0.5; pad on carton 0.9 |
 | Step allowance | 400 control steps per carton of the order, plus 400 |
+| Sensor noise | wrench: 0.4 N per force axis and 0.04 N m per torque axis (standard deviation, every reading); depth: about 1.5 mm per metre of distance, 0.5 % of pixels read 0; `q`, `dq`: none |
+| Next carton | arrives when the station has been clear for 2 s (the first one 1 s after the order starts). Clear means: no carton that is not on the gripper has its centre within 0.60 m of the station's centre in x (the station and 0.15 m beyond each end), within 0.40 m in y and lower than z = 1.15; and a carton on the gripper has its underside at least 0.36 m above the conveyor or its centre at least 0.36 m beyond the station's edge in x or in y |
