@@ -653,7 +653,8 @@ order of §13 (§5's platform list predates both).
   `deprivileged`: `arm_hidden_mechanism_box`, `kitchen_appliance_tending`,
   `novel_object_6dof_grasp_detection`, `object_finding_and_organizing_on_messy_desk`,
   `driving_safety_supervisor`, `fault_adaptive_spacecraft_docking`, `hazard_bay_build`,
-  `aerial_search_geolocation`, `visual_low_level_flight_control`, and the template. Their
+  `aerial_search_geolocation`, `visual_low_level_flight_control`, `keyed_nut_peg_assembly`
+  (merged while this was open), and the template. Their
   verifier sandbox loses its desktop session (and root's system D-Bus) when the solver first
   starts. None draws on the sandbox's display by its code (the renderers drop `DISPLAY`, the
   Unreal simulators render offscreen, as their own accounts).
@@ -669,9 +670,15 @@ order of §13 (§5's platform list predates both).
   (`validate-e4ec5969`: 131 of 131 metrics equal to the record). In each oracle episode the
   only kind of line that the verifier's log has and the recorded run does not is the kit's
   `agent account ... cleared` (2.0 to 6.5 s); the two Unreal simulators, which are up before
-  the solver starts, ran on under it. `novel_object_6dof_grasp_detection` is the one not
-  re-validated yet: its validate needs a machine with its sandbox's 64 GB free, and the
-  first run was stopped by hand, before any score, when ours ran short of memory.
+  the solver starts, ran on under it. `keyed_nut_peg_assembly` too (`validate-e6a2ee01`: the
+  ten kits complete with the steps of its record); its selection record freezes the kit's
+  files, so the kit update is amendment 6 of `tests/hidden/selection.json`, pre-registered
+  and run by the task's own rule: every candidate repeats its earlier run, the hidden set and
+  the development kits are unchanged. There the clearing (3.7 s) falls inside the first
+  kit's solver start and is charged to that kit's controller time (600 s budget).
+  `novel_object_6dof_grasp_detection` is to be validated after the merge, when a machine has
+  the memory for it: its reference holds 52 to 54 GB for most of an hour, and two runs were
+  stopped before any score when the machines ran short.
 - **Not covered**: graders that start agent code with their own launcher and never through
   the kit's two calls (the assembly cells, the cell kits, the twin and description tasks). By
   their code they run it as `nobody` from a read-only copy while a thread keeps the agent's
