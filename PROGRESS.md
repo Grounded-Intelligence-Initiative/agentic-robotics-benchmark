@@ -656,13 +656,34 @@ order of §13 (§5's platform list predates both).
   `aerial_search_geolocation`, `visual_low_level_flight_control`, and the template. Their
   verifier sandbox loses its desktop session (and root's system D-Bus) when the solver first
   starts. None draws on the sandbox's display by its code (the renderers drop `DISPLAY`, the
-  Unreal simulators render offscreen, as their own accounts), but **none was re-validated
-  with this kit**: run `ale validate` on them before the merge, the two Unreal tasks first.
+  Unreal simulators render offscreen, as their own accounts).
+- **Re-validated with this kit** (2026-11-18 and 19, `ale validate` on engine `bfb7505`, the
+  branch at `f708f443`; later heads differ only outside the kit and these task folders):
+  untouched 0.0 and the oracle at its recorded score in `arm_hidden_mechanism_box`
+  (`validate-021564f8`), `kitchen_appliance_tending` (`validate-a34a9d1b`),
+  `fault_adaptive_spacecraft_docking` (`validate-6eb7d128`),
+  `visual_low_level_flight_control` (`validate-c36ffcc0`: 7 of 8 fresh scenes, inside the
+  spread its anchor records), `driving_safety_supervisor` (`validate-cdc35a8a`),
+  `aerial_search_geolocation` (`validate-b5cf1b37`),
+  `object_finding_and_organizing_on_messy_desk` (`validate-75ff606d`) and `hazard_bay_build`
+  (`validate-e4ec5969`: 131 of 131 metrics equal to the record). In each oracle episode the
+  only kind of line that the verifier's log has and the recorded run does not is the kit's
+  `agent account ... cleared` (2.0 to 6.5 s); the two Unreal simulators, which are up before
+  the solver starts, ran on under it. `novel_object_6dof_grasp_detection` is the one not
+  re-validated yet: its validate needs a machine with its sandbox's 64 GB free, and the
+  first run was stopped by hand, before any score, when ours ran short of memory.
 - **Not covered**: graders that start agent code with their own launcher and never through
   the kit's two calls (the assembly cells, the cell kits, the twin and description tasks). By
   their code they run it as `nobody` from a read-only copy while a thread keeps the agent's
   account stopped; `nobody` can neither write the account's files nor signal its processes,
-  so the two routes should not be open to them (read, not probed). A call to
+  so the two routes are not open to them. Probed on 2026-11-18 with the launchers of an
+  assembly cell (`robotic_arm_full_assembly_so101_panda`) and a cell kit
+  (`pump_skid_startup_and_operation`), each in its own image with the session running: 48
+  writes on the files the session starts from and 18 on autostart and profile files refused,
+  every signal refused, nothing run even after root restarted the session, while the same
+  program run as the agent's account got both routes. The stopped session matters as much
+  as the other account: a running session's X display takes any local account
+  (`docs/security-model.md`). A call to
   `clear_agent_account()` at their start would remove the session for good; that is a change
   of each task. And the network: root in the sandbox cannot make a network namespace
   (`unshare(CLONE_NEWNET)`: EPERM, no `CAP_SYS_ADMIN`), so a solver's network is still the

@@ -124,9 +124,15 @@ result can be matched to the exact committed tree it ran against.
   `deprivileged` log that and go on, so a grader whose rules lean on the confinement calls
   `clear_agent_account()` itself and fails the run when the report is not `cleared`. A grader
   that starts agent code with a launcher of its own and never through `Solver` or
-  `deprivileged` has to call it too. Programs that are not the agent's account but take its
-  requests stay reachable where the image runs them (in the base image, root's system D-Bus
-  goes down with the session; the engine's guest service is not reachable from the account).
+  `deprivileged` has to call it too, or to run that code as another account while it keeps
+  the agent's account stopped for the whole stage, as the assembly cells and the cell kits
+  do (probed with their own launchers on 2026-11-18: `nobody` could neither write a file the
+  session starts from nor signal it, and the stopped session's display never answered). The
+  other account alone is not enough: while the session runs, its X display takes any local
+  account, synthetic input included (the base image starts `Xvnc -SecurityTypes None`).
+  Programs that are not the agent's account but take its requests stay reachable where the
+  image runs them (in the base image, root's system D-Bus goes down with the session; the
+  engine's guest service is not reachable from the account).
 - **The probe lock is not a proof of honesty.** It catches a policy that ignores its input;
   a solver that notices a repeated `t` can vary its answer on purpose. Isolation, not the
   lock, keeps a score honest.
