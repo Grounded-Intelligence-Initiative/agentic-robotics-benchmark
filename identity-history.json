@@ -408,6 +408,12 @@
     "spec_hash": "sha256:5cb77cb4f3b29c214b2cfcdb7f1fa96d95bc993ae485bc7083251c003b22281b"
   },
   {
+    "content_digest": "sha256:1c2e277bd8be7affd15f5818446398aab94a28ac289e4466a2f303c1574bf683",
+    "since": "2026-11-19T00:05:55Z",
+    "slug": "quadruped_hazardous_plant_inspection",
+    "spec_hash": "sha256:eb4760a3a5232e9d56a45752e4472d0cab5887213597c7d333359a4b53814df2"
+  },
+  {
     "content_digest": "sha256:32b1518df7c1d82f9f56379f1db716364737d4ec1c7680850c1bd3dbc4b5ac44",
     "since": "2026-11-18T19:33:30Z",
     "slug": "quadruped_hazardous_plant_inspection",
@@ -700,6 +706,12 @@
     "since": "2026-11-16T05:02:14Z",
     "slug": "robotic_arm_robot_description_from_photos",
     "spec_hash": "sha256:f182662473459046382635e319a3ffcac3319036f3f8cc6ef1a81baff86764aa"
+  },
+  {
+    "content_digest": "sha256:cfef5099ff5869c66523afaa389ee20bf3553c295c98575daf3922017f73c87e",
+    "since": "2026-11-19T01:37:11Z",
+    "slug": "rov_final_assembly_and_trim_single_arm",
+    "spec_hash": "sha256:2fd37a6b25f07e34bb190b334dd0e2eac2eb8dadcee130a0697ff1dd3d26fef4"
   },
   {
     "content_digest": "sha256:663c6c4fad236bd7bf54e0190a43c2b2aa3654eb0e5552d8256648ffe6fdbed8",
