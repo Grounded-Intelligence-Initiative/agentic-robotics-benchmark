@@ -217,8 +217,11 @@ the given module files (about 3.4 million triangles) and the Panda: `open_sessio
 6 GB; the first picture takes about 11 s, then a `top` picture (1280 x 960) with depth about 1.8 s and a `wrist`
 picture (640 x 480) with depth about 1.3 s (medians); `open_view` of the same twin in the laboratory about 3-4 s for a
 `top` picture (all six lamps cast shadows there). Closing a session or a view releases the renderer (Filament's
-context) and most of its memory once nothing refers to the closed one (about 0.7 GB stays with the program after the
-first one, about 2 GB after seven in a row), so the next session's or view's first picture takes about 11 s again.
+context) and most of its memory once nothing refers to the closed one (about 1.2 GB stays with the program after the
+first one, about 3 GB after seven in a row), so the next session's or view's first picture takes about 11 s again.
+In a graded episode your program shares the verifier's memory (24 GB) with the cell's own camera session, which opens
+at your first `get_camera` call: measured in this cell, a program holding a twin session took about 8 GB and the cell's
+own session about 6-8 GB (the cell's process reached about 10 GB by the third episode).
 A program that needs pictures at several moments keeps one session or view open for all of them. Two pictures of one
 state, camera and seed made in two processes are not always equal byte for byte either: a small share of their pixels
 (measured: at most 0.2 % of the values) can differ by a few grey levels, mostly 1 or 2; the same holds for two frames

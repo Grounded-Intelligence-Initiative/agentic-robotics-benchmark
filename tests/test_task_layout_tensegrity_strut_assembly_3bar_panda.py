@@ -72,7 +72,7 @@ class TaskLayout(unittest.TestCase):
         self.assertEqual((cfg["agent"]["timeout_sec"], cfg["agent"]["network_mode"]), (21600, "no-network"))
         self.assertEqual((cfg["verifier"]["environment_mode"], cfg["verifier"]["timeout_sec"]), ("separate", 14400))
         ve = cfg["verifier"]["environment"]
-        self.assertEqual((ve["cpus"], ve["memory_mb"], ve["gpus"]), (8, 16384, 0))
+        self.assertEqual((ve["cpus"], ve["memory_mb"], ve["gpus"]), (8, 24576, 0))
 
     def test_no_bytecode_in_the_task(self):
         found = [str(p.relative_to(TASK)) for p in TASK.rglob("*") if p.name == "__pycache__" or p.suffix == ".pyc"]

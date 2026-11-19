@@ -1,5 +1,5 @@
 {
- "given/cell/cell_api.md": "ff8780d4f267b9010b6ae974be7f2ba64465c87d9ac5cbc678301c9d04ce55b0",
+ "given/cell/cell_api.md": "8dfc40fcd0bc47cf6063779d1ddcce7f217357cbaed10bfeb1766576a2100f6c",
  "given/cell/cell_config.json": "d5c45b77c4e6b3d3c30f7de5b92748b9d2345ac527b7c967f67c51010aad06d8",
  "given/cell/cell_manual.md": "90ee3e336049831b582fb68e8397e8effc555703d00d4fad7ea1e7180331d433",
  "given/cell/describe_example.json": "1aa06efc92c8d5ee593ea17dd4a96994cc999f6546d0e2453ac1bf5a75668c59",
@@ -7,7 +7,7 @@
  "given/lib/arm/__init__.py": "cb632305a0aa560d4066b3c054b2d92979abc3e8eb05558ccdf56cc439215133",
  "given/lib/arm/assembly_cell/__init__.py": "18955338ef7ddacbc889fefa55766cdd2f593ae7480bc722641a127d839abac1",
  "given/lib/arm/assembly_cell/cell_builder.py": "2152ff74d702322a200256c6342f7a75a40cbc0c3dc4d568bbf2503c020deceb",
- "given/lib/arm/assembly_cell/client.py": "2b53bdce627f7589fd513b3dba81d295f782c3db31ecd39cd2052f7329e0c39d",
+ "given/lib/arm/assembly_cell/client.py": "8d732e92dab13b8206c3e2ee844a74d3ae84d7779030f51ee21a09dc50db1271",
  "given/lib/arm/assembly_cell/controller.py": "79f59df7f3dc61ec5e4b8794cf9c38fac42386be3eb89171386476dfee43ad90",
  "given/lib/arm/assembly_cell/functional.py": "03402ffe4dc487dd4231d0ca0f6c8f0eee40eb2fe71a043e72d3358d0d4d668e",
  "given/lib/arm/assembly_cell/layout.py": "a5e1e473b94b20fa4e56014f4c7aeca53782c4c457667d59c440e5aba9ed62d9",
