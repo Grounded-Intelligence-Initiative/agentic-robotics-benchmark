@@ -173,7 +173,7 @@ def structural():
         assert direct.outlet == 4-mirror.outlet
         np.testing.assert_allclose(direct.columns, -np.asarray(mirror.columns)[::-1])
         assert direct.rows == mirror.rows
-        assert 1.58-1e-8 <= min(np.diff(direct.rows)) <= max(np.diff(direct.rows)) <= 1.90+1e-8
+        assert 2.60-1e-8 <= min(np.diff(direct.rows)) <= max(np.diff(direct.rows)) <= 2.80+1e-8
     worlds = [World("rescue", s, render=False) for s in (0, 1)]
     try:
         a, b = worlds

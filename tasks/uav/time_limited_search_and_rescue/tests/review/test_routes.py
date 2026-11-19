@@ -3,6 +3,8 @@ import sys
 import unittest
 from pathlib import Path
 
+import numpy as np
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]/"solution"))
 from oracle_run import DECK, DIRECTIONS, TRAVEL, Discovery
 
@@ -15,10 +17,13 @@ class Hover:
         self.doors = {}
 
     def scan(self):
-        return None, {d: self.doors.get(d, "wall") for d in DIRECTIONS}
+        return np.zeros((256, 256, 3), dtype=np.int16), {d: self.doors.get(d, "wall") for d in DIRECTIONS}
 
     def face(self, *heading):
         self.calls.append(("face", heading))
+
+    def grip(self):
+        pass
 
     def cell(self, cell, height, settle=0):
         self.calls.append(("cell", cell, height))

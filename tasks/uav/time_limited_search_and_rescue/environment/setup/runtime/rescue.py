@@ -1,4 +1,4 @@
-"""Protected MuJoCo flight, swept clearance checks, and live rescue ledger."""
+"""Protected MuJoCo flight, structural contact checks, and live rescue ledger."""
 import base64
 import io
 import math
@@ -11,18 +11,15 @@ import mujoco
 import numpy as np
 from PIL import Image
 
-from rescue_scene import DECK, RED, START_Z, build, layout_for
+from rescue_scene import DECK, POCKET_HALF_DEPTH, RED, START_Z, build, layout_for
 
-LIMIT = 1000
+LIMIT = 1600
 DT = .2
 INCREMENTS = np.array([.32, .32, .19])
 SCORE = {"entered_wing": .12, "mezzanine": .08, "located": .10, "grasped": .12,
          "lifted": .15, "cargo_return": .20}
-FAILURES = ("wall", "raised", "inspection", "cargo", "deck", "landing", "safety", "unsafe_release")
-ROTOR_LOW = np.array([.21, .21, .235])
-ROTOR_HIGH = np.array([.21, .21, .130])
-POD_HALF = np.array([.155, .26, .166])
-TOOL_LOW = np.array([.21, .21, .27])
+FAILURES = ("wall", "raised", "inspection", "cargo", "deck", "landing", "safety",
+            "throat_entry", "throat_exit", "loading_wall", "unsafe_release")
 
 
 def png(rgb):
@@ -61,10 +58,17 @@ class World:
         self.data.qpos[4:11] = (x, y, self.floor_at(y)+.073, math.cos(yaw/2), 0., 0., math.sin(yaw/2))
         mujoco.mj_forward(self.model, self.data)
         self.renderer = mujoco.Renderer(self.model, 256, 256) if render else None
-        self.kinds, centers, half = zip(*obstacles)
-        centers, half = np.asarray(centers), np.asarray(half)
-        self.solid_lo, self.solid_hi = centers-half, centers+half
-        self.pod_rotation = np.empty(9)
+        self.kinds, names = zip(*obstacles)
+        self.solids = np.array([self.model.geom(name).id for name in names])
+        self.throats = np.array([k.startswith("throat_") for k in self.kinds])
+        self.refresh_solids()
+        self.parts = {name: np.flatnonzero(self.model.geom_bodyid == self.model.body(name).id)
+                      for name in ("uav", "pod", "collet0", "collet1")}
+        self.board = self.model.geom("litter_board").id
+        self.mat = self.model.geom("receiving_mat").id
+        self.entry_clear = self.exit_clear = 0
+        self.throat_margin = {}
+        self.impact_geom = self.impact_obstacle = None
         self.rel_quat = np.empty(4)
         self.room_centers = np.asarray([self.layout.xy(room) for room in self.layout.rooms])
         self.columns = np.asarray(self.layout.columns)
@@ -186,29 +190,48 @@ class World:
         if not self.held and abs(signal) > .5 and speed <= .30 and turn_speed < .3:
             self.dock_tool(signal, tool)
 
-    def intersect(self, lo, hi, pod=False):
-        hits = np.flatnonzero(np.all((lo < self.solid_hi) & (hi > self.solid_lo), axis=1))
-        return next((self.kinds[i] for i in hits if not (pod and self.kinds[i] == "deck")), None)
+    def refresh_solids(self):
+        centers = self.data.geom_xpos[self.solids]
+        half = self.model.geom_size[self.solids]  # all structural boxes are axis-aligned
+        self.solid_lo, self.solid_hi = centers-half, centers+half
 
-    def check_clearance(self, prev_drone, prev_pod):
-        pos = self.position
-        low = TOOL_LOW if self.tool is not None else ROTOR_LOW
-        hit = self.intersect(np.minimum(pos, prev_drone)-low,
-                             np.maximum(pos, prev_drone)+ROTOR_HIGH)
-        if hit is not None:
-            self.abort(hit, "uav")
-        if self.done or "grasped" not in self.progress:
-            return
-        # Orient the sled's bounding box with its MuJoCo quaternion; check its
-        # swept volume separately from the UAV so a clean airframe can still strike.
-        mujoco.mju_quat2Mat(self.pod_rotation, self.data.qpos[7:11])
-        rotation = self.pod_rotation.reshape(3, 3)
-        shift = rotation[:, 2]*.094
-        half = np.abs(rotation) @ POD_HALF
-        hit = self.intersect(np.minimum(self.payload, prev_pod)+shift-half,
-                             np.maximum(self.payload, prev_pod)+shift+half, pod=True)
-        if hit is not None:
-            self.abort(hit, "pod")
+    def mat_margin(self):
+        ext = abs(self.data.geom_xmat[self.board].reshape(3, 3)) @ self.model.geom_size[self.board]
+        delta = abs(self.data.geom_xpos[self.board]-self.data.geom_xpos[self.mat])
+        return float(min((self.model.geom_size[self.mat]-delta-ext)[:2]))
+
+    def check_clearance(self):
+        # Broad-phase AABBs only select pairs. Only contact between the actual
+        # rendered MuJoCo geoms can abort, sampled at each 5 ms physics step.
+        mujoco.mj_kinematics(self.model, self.data)
+        for name in ("uav", "collet"+str(self.tool), "pod"):
+            if name not in self.parts or (name == "pod" and "grasped" not in self.progress):
+                continue
+            ids = self.parts[name]
+            rot = self.data.geom_xmat[ids].reshape(-1, 3, 3)
+            aabb = self.model.geom_aabb[ids]
+            centers = self.data.geom_xpos[ids]+(rot @ aabb[:, :3, None])[:, :, 0]
+            half = (np.abs(rot) @ aabb[:, 3:, None])[:, :, 0]
+            lo, hi = centers-half, centers+half
+            # Measure geometric margin near the two passages as an author diagnostic.
+            reach = (.55*self.throats if name == "pod" else np.zeros(len(self.solids)))+.0001
+            near = np.flatnonzero(np.all((lo.min(axis=0) <= self.solid_hi+reach[:, None]) &
+                                        (hi.max(axis=0) >= self.solid_lo-reach[:, None]), axis=1))
+            for i in near:
+                kind = self.kinds[i]
+                if name == "pod" and kind == "deck":  # normal floor support
+                    continue
+                candidates = ids[np.all((lo <= self.solid_hi[i]+reach[i]) &
+                                        (hi >= self.solid_lo[i]-reach[i]), axis=1)]
+                for g in candidates:
+                    dist = mujoco.mj_geomDistance(self.model, self.data, g, self.solids[i], reach[i], None)
+                    if name == "pod" and self.throats[i] and dist < reach[i]:
+                        self.throat_margin[kind] = min(self.throat_margin.get(kind, dist), dist)
+                    if dist <= 0.:
+                        self.impact_geom = self.model.geom(g).name
+                        self.impact_obstacle = self.model.geom(self.solids[i]).name
+                        self.abort(kind, "pod" if name == "pod" else "uav")
+                        return
 
     def physical_progress(self, previous_y):
         x, y, z = self.position
@@ -230,20 +253,26 @@ class World:
                 self.steps_to_lift = self.steps
                 for name, height in (("cargo", 3.8), ("safety", 1.21)):
                     mid = self.model.body(name+"_shutter").mocapid[0]
-                    idx = self.shutters[name]
-                    movement = height-self.data.mocap_pos[mid, 2]
                     self.data.mocap_pos[mid, 2] = height
-                    self.solid_lo[idx, 2] += movement
-                    self.solid_hi[idx, 2] += movement
+                mujoco.mj_kinematics(self.model, self.data)
+                self.refresh_solids()
                 for name in self.shutters["warning"]:
                     self.model.geom(name).rgba[:] = RED
         if self.held and previous_y > self.layout.inlet_y >= y and "cargo_return" not in self.progress:
             self.progress.add("cargo_return")
             self.steps_to_cargo = self.steps
             self.exit_z = z
+        if self.held and "cargo_return" in self.progress and py < 0.:
+            cx, cy = self.layout.pocket
+            side = self.layout.loading[1]
+            ext = abs(self.data.geom_xmat[self.board].reshape(3, 3)) @ self.model.geom_size[self.board]
+            if not self.entry_clear and py+ext[1] < cy+POCKET_HALF_DEPTH-.28:
+                self.entry_clear = self.steps
+            if not self.exit_clear and side*(px-cx)-ext[0] > 2.10+.28 and py < cy+POCKET_HALF_DEPTH:
+                self.exit_clear = self.steps
         if (not self.held and "lifted" in self.progress
-                and math.hypot(px-self.layout.pad[0], py-self.layout.pad[1]) <= .28
-                and pz <= .095 and np.linalg.norm(self.data.qvel[4:10]) <= .16):
+                and np.linalg.norm(self.payload[:2]-self.layout.receiving_pad) <= .28
+                and pz <= .095 and np.linalg.norm(self.data.qvel[4:10]) <= .16 and self.mat_margin() >= 0.):
             self.release_dwell += 1
             if self.release_dwell >= 50:
                 self.progress.add("delivered")
@@ -293,11 +322,11 @@ class World:
         for _ in range(round(DT/self.model.opt.timestep)):
             if self.done:
                 break
-            prev_drone, prev_pod = self.position.copy(), self.payload.copy()
+            previous_y = self.position[1]
             mujoco.mj_step(self.model, self.data)
-            self.check_clearance(prev_drone, prev_pod)
+            self.check_clearance()
             if not self.done:
-                self.physical_progress(prev_drone[1])
+                self.physical_progress(previous_y)
         if not self.done:
             self.observation_progress()
         self.turn_angle += abs(self.data.qpos[3]-previous_heading)
@@ -328,4 +357,8 @@ class World:
             "close_attempts": self.close_attempts,
             "tool_changes": self.tool_changes, "steps_to_tool": self.steps_to_tool,
             "fit_misses": self.fit_misses,
+            "entry_clear": self.entry_clear, "exit_clear": self.exit_clear,
+            "entry_margin_m": round(self.throat_margin.get("throat_entry", -1.), 4),
+            "exit_margin_m": round(self.throat_margin.get("throat_exit", -1.), 4),
+            "settled_mat_margin_m": round(self.mat_margin(), 4) if delivered else -1.,
         }

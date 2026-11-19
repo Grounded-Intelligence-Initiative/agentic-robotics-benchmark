@@ -1,7 +1,8 @@
-# UAV Search and Rescue: Interchangeable Rescue Heads
+# UAV Search and Rescue: Medical Litter Transfer
 
-Recover an orange **RESCUE MANNEQUIN** and sled from an indoor training
-wing and deliver it to the blue staging pad. This is a simulated
+Recover the **RESCUE MANNEQUIN** on its full-length medical litter from
+an indoor training wing and set it down on the blue center of the
+receiving mat beyond the loading pocket. This is a simulated
 civilian exercise. The doors, turns, and rescue bay vary. There is no
 floor plan: explore with the UAV's two local RGB cameras and keep track
 of the passages and landmarks you actually see.
@@ -10,8 +11,7 @@ of the passages and landmarks you actually see.
   a doorway. The dots form the same **0.58 m square** at each station.
   Its center is a safe observation pose, not a waypoint you must visit.
   The dots have no room IDs. The takeoff hover can start slightly
-  off-center, and the actual blue delivery pad is offset from the
-  staging square. Use the pad itself for final alignment.
+  off-center. Use the actual mat for final alignment.
 - Find the **INSPECTION** slot off the staging strip. Align on the
   violet floor apron, settle at about **0.71 m** altitude, and fly
   through empty. Once clear, climb before leaving that pocket.
@@ -23,9 +23,11 @@ of the passages and landmarks you actually see.
   climb to **1.90 m above launch** before entering, hold until fully
   clear on the other side, then adjust to the local floor. The walls
   are higher than the flight envelope.
-- Search the marked **RESCUE BAY** rooms for the orange sled. Its lifting
+- Search the marked **RESCUE BAY** rooms for the orange pickup panel on
+  the green litter board. Its lifting
   fitting is a cyan circular flange under a dark cover. The cover looks
-  the same on both sled types. Offset to the side with clear space, face
+  the same on both fitting types; the green centering button on top is
+  common to both. Offset to the side with clear space, face
   the sled and lower the UAV to see under the cover with the forward
   camera. From roughly half a metre to the side at a 0.43 m hover, the
   narrow flange is about 8 cm across and the wide one about 19 cm.
@@ -50,9 +52,32 @@ of the passages and landmarks you actually see.
   interior safety shutter. A closed safety shutter has a red apron
   and a visible red panel. Recheck doors on the return and route around
   the obstruction. The cargo run connects to the search rooms at the
-  far end and leads back down to staging. The sled cannot fit back
-  through the inspection slot. Descend over the pad, settle at about
-  0.43 m, open the gripper, and let the sled come to rest.
+  far end and leads back down to staging. The litter cannot fit back
+  through the inspection slot.
+
+## Loaded Transport
+
+The rigid board is **1.80 m long and 0.44 m wide**. The violet end grips
+are 1.62 m apart. Center the down camera over the board to see both.
+The clamp holds the relative pose at the instant of pickup: the long
+axis need not point along the UAV nose. Yaw turns the entire load.
+You can translate sideways or backwards without changing that yaw.
+Carrying the board across the UAV rather than under its camera boom
+gives a clearer down view. The board can cover floor markings both
+before and after pickup; change the viewing angle if a mark disappears.
+
+Across staging from the cargo exit, **LITTER TRANSFER** leads to a finite
+turning pocket. Beyond it, a perpendicular throat leads to **RECEIVING**.
+The two openings are offset; inspect the jambs to see which way and how far.
+Each clear gap is 1.10 m wide and 0.56 m deep. Lime stripes follow the inner
+jamb faces and extend 1.24 m onto the approach. Use their midpoint for the
+load centerline. Turn and translate where both ends have room; clearing
+the aircraft does not mean the trailing end is through. The pocket has a
+maintenance square at its center and is 4.20 m across by 4.60 m deep.
+There is no prescribed heading or checkpoint maneuver. The walls, jambs
+and litter occupy the volumes you see. Bring the fitting over the blue
+center of the 2.50 by 1.48 m green receiving mat, settle at about 0.43 m,
+open the gripper and let the load come to rest with the entire board over the mat.
 
 ## Controls
 
@@ -77,9 +102,9 @@ self-centering jaws accept about 13 cm of horizontal misalignment.
 Releasing the sled leaves the head attached to the UAV.
 High or fast release, or striking a wall, sill, or shutter with the
 airframe **or load**, ends the sortie. Each action advances 0.2 simulated
-seconds; the allowance is **1,000 actions** (200 simulated seconds).
+seconds; the allowance is **1,600 actions** (320 simulated seconds).
 There is no reset. Observations do not advance time, but the live service
-accepts at most 2,048 calls in total, including actions and observations.
+accepts at most 3,300 calls in total, including actions and observations.
 
 ## Cameras
 
@@ -91,7 +116,7 @@ the UAV center, with a 94° perspective field of view. On a horizontal
 surface `d` metres below that camera, a metre projects to
 `(128 / tan(47°)) / d` pixels. The point under the gripper is centered
 horizontally and 0.46 m down-image of the camera's ground center.
-Neighboring stations are 1.58–1.90 m apart; the spacing is not uniform.
+Neighboring wing stations are 2.60–2.80 m apart; the spacing is not uniform.
 Apron paint is about 0.63 m from its station center. If the sled masks
 a dot, turn while hovering or use another visible side of the square.
 Use the forward view to inspect height, clearance and obstructions.

@@ -12,7 +12,7 @@ from PIL import Image
 from scipy import ndimage
 
 sys.path.insert(0, "/opt/visual_robotics/client")
-PITCH, APRON, DECK = 1.72, .63, .60
+PITCH, APRON, DECK = 2.70, .63, .60
 DOWN_OFFSET = .46
 PACE = np.array([.32, .32, .19])
 TRAVEL, SLOT = 1.30, .71
@@ -51,13 +51,16 @@ def apron_color(rgb, local):
 
 def find_pod(rgb, command, floor):
     r, g, b = rgb.transpose(2, 0, 1)
-    rows, cols = np.where((r > 160) & (g > 48) & (r > 1.7*g) & (b < 55))
-    if rows.size < 250 or np.ptp(cols) > 77 or np.ptp(rows) > 84:
-        return None
-    u, v = (cols.min()+cols.max())/2, (rows.min()+rows.max())/2
-    scale = (command[2]-.145-floor-.177)/FOCAL
-    local = np.array([(u-127.5)*scale, DOWN_OFFSET-(v-127.5)*scale])
-    return command[:2]+basis(command[3]) @ local
+    labels, _ = ndimage.label((g > 155) & (r < 90) & (b < 75))
+    for i, count in enumerate(np.bincount(labels.ravel())):
+        if not i or not 110 < count < 950:
+            continue
+        rows, cols = np.where(labels == i)
+        if not (12 < np.ptp(cols) < 32 and 12 < np.ptp(rows) < 32):
+            continue
+        scale = (command[2]-.145-floor-.337)/FOCAL
+        local = [(cols.mean()-127.5)*scale, DOWN_OFFSET-(rows.mean()-127.5)*scale]
+        return command[:2]+basis(command[3]) @ local
 
 
 def steel(rgb):
@@ -115,6 +118,104 @@ def equip(p, wide):
     p.trace.append({"event": "depot_departure", "frame": p.obs["frame_id"]})
     p.cell((2, 0), TRAVEL, settle=1)
     p.register((2, 0))
+
+
+def floor_points(p, mask, height):
+    rows, cols = np.where(mask)
+    scale = (p.command[2]-.145-height)/FOCAL
+    local = np.column_stack(((cols-127.5)*scale, DOWN_OFFSET-(rows-127.5)*scale))
+    return p.command[:2]+local @ basis(p.command[3]).T
+
+
+def sight_litter(p, target):
+    # Center the camera, not the UAV, over the board to see both end grips.
+    p.face(0, 1)
+    p.go(target[0], target[1]-DOWN_OFFSET, TRAVEL+DECK, settle=2)
+    r, g, b = decode(p.obs).transpose(2, 0, 1)
+    labels, n = ndimage.label((b > 150) & (b > r+55) & (b > g+80) & (r > g+18))
+    marks = [floor_points(p, labels == i, DECK+.157).mean(axis=0)
+             for i, size in enumerate(np.bincount(labels.ravel())) if i and size >= 35]
+    pairs = [(a, b) for i, a in enumerate(marks) for b in marks[i+1:]
+             if 1.48 < np.linalg.norm(a-b) < 1.76]
+    if len(pairs) != 1:
+        raise RuntimeError("cannot see both litter end grips")
+    a, b = pairs[0]
+    axis = math.atan2(a[0]-b[0], b[1]-a[1])
+    heading = round((axis+math.pi/2)/(math.pi/2))*math.pi/2
+    p.trace.append({"event": "litter_axis", "span_m": float(np.linalg.norm(a-b)),
+                    "axis_deg": math.degrees(axis), "frame": p.obs["frame_id"]})
+    p.face(-math.sin(heading), math.cos(heading))
+    p.litter_relative = math.remainder(axis-p.command[3], math.pi)
+    return (a+b)/2
+
+
+def read_throat(p, axis):
+    # The two lime toe strips lie along the inner jamb faces. Fit their spacing
+    # and use the approach ends (1.24 m before the throat center plane).
+    r, g, b = decode(p.obs).transpose(2, 0, 1)
+    labels, n = ndimage.label((g > 155) & (g > r+20) & (r > 90) & (b < 95))
+    strips = []
+    for i, count in enumerate(np.bincount(labels.ravel())):
+        if not i or count < 20:
+            continue
+        pts = floor_points(p, labels == i, .016)
+        if np.ptp(pts[:, axis]) > .23 and np.ptp(pts[:, 1-axis]) < .12:
+            strips.append(pts)
+    for i, a in enumerate(strips):
+        for b in strips[i+1:]:
+            v, w = np.median(a[:, 1-axis]), np.median(b[:, 1-axis])
+            if not .94 < abs(v-w) < 1.17:
+                continue
+            coord = np.r_[a[:, axis], b[:, axis]]
+            side = 1 if np.mean(coord) > p.command[axis] else -1
+            plane = side*(np.min(side*coord)+1.24)
+            return float((v+w)/2), float(plane), side
+    return None
+
+
+def transfer(p, hold_heading=False):
+    h = 1.65
+    sx, sy = p.command[:2].copy()
+    p.go(sx, sy, h)
+    p.face(0, -1)
+    p.grip()
+    entry = read_throat(p, 1)
+    if entry is None or entry[2] != -1:
+        raise RuntimeError("two loading entrance jambs not visible")
+    lane, plane, _ = entry
+    pivot = np.array([sx, plane-2.30])
+    p.trace.append({"event": "entry_jambs", "offset_m": lane-sx, "frame": p.obs["frame_id"]})
+    p.align_load(0, -1)
+    p.go(lane, sy, h, settle=1)
+    p.go(lane, plane+1.30, h, settle=1)
+    near = read_throat(p, 1)
+    if near is not None:
+        lane = near[0]
+        p.go(lane, p.command[1], h, settle=1)
+    p.go(lane, pivot[1], h, settle=1)
+    p.go(*pivot, TRAVEL, settle=2)
+    p.register(None, center=pivot)
+    p.go(*pivot, h)
+    exit_gate = None
+    for dx in (1, -1):
+        p.face(dx, 0)
+        p.grip()
+        gate = read_throat(p, 0)
+        if gate is not None and gate[2] == dx:
+            exit_gate = gate
+            break
+    if exit_gate is None:
+        raise RuntimeError("two receiving jambs not visible from pocket")
+    lane, plane, side = exit_gate
+    p.trace.append({"event": "exit_jambs", "offset_m": lane-pivot[1], "side": side,
+                    "frame": p.obs["frame_id"]})
+    if hold_heading:
+        p.align_load(0, -1)
+    else:
+        p.align_load(side, 0)
+    p.go(pivot[0], lane, h, settle=1)
+    p.go(plane+side*1.70, lane, h, settle=1)
+    p.go(*p.command[:2], TRAVEL, settle=2)
 
 
 def station_offset(rgb):
@@ -186,12 +287,21 @@ class Pilot:
             self.act([0., 0., 0., move, 0.])
             error -= move*TURN
 
+    def align_load(self, dx, dy):
+        desired = math.atan2(-dx, dy)
+        heading = self.command[3]+math.remainder(desired-self.command[3]-self.litter_relative, math.pi)
+        self.face(-math.sin(heading), math.cos(heading))
+        self.grip()
+
     def go(self, x, y, z, settle=0):
         target = np.array([x, y, z])
         while not self.obs["done"] and np.max(np.abs(target-self.command[:3])) > 1e-7:
             error = target-self.command[:3]
             error[:2] = basis(self.command[3]).T @ error[:2]
-            self.act([*np.clip(error/PACE, -1., 1.).tolist(), 0., 0.])
+            move = error/PACE
+            # Preserve a straight world-space segment at arbitrary payload yaw.
+            move[:2] /= max(1., np.max(np.abs(move[:2])))
+            self.act([*np.clip(move, -1., 1.).tolist(), 0., 0.])
         for _ in range(settle):
             self.grip()
 
@@ -199,11 +309,15 @@ class Pilot:
         x, y = PITCH*np.asarray(cell)
         self.go(x, y, z, settle)
 
-    def register(self, cell):
+    def register(self, cell, center=None):
         if self.feedback == "odometry" or (self.feedback == "prelift" and self.loaded):
             return
         if self.obs["done"]:
             return
+        cardinal = round(self.command[3]/(math.pi/2))*math.pi/2
+        if abs(cardinal-self.command[3]) > 1e-6:
+            self.face(-math.sin(cardinal), math.cos(cardinal))
+            self.grip()
         initial = None
         before_frame = None
         turned = False
@@ -223,8 +337,9 @@ class Pilot:
                 initial = error
                 before_frame = self.obs["frame_id"]
             if error <= .036:
-                self.command[:2] = PITCH*np.asarray(cell)
-                self.trace.append({"event": "station_fix", "cell": cell, "loaded": self.loaded,
+                self.command[:2] = PITCH*np.asarray(cell) if center is None else center
+                self.trace.append({"event": "station_fix" if center is None else "pocket_fix",
+                                   "cell": cell, "loaded": self.loaded,
                                    "before_m": round(initial, 4), "after_m": round(error, 4),
                                    "before_frame": before_frame,
                                    "frame": self.obs["frame_id"]})
@@ -267,6 +382,14 @@ class Discovery:
         rgb, view = p.scan()
         doors = self.adjacency.setdefault(at, {})
         expected = self.signatures.get(at)
+        target = find_pod(rgb, p.command, self.floors[at]) if not loaded and self.floors[at] == DECK else None
+        if target is not None and np.max(np.abs(target-p.command[:2])) < .45:
+            # The board itself covers apron paint. Use the already flown route;
+            # survey this station's doors once the litter is off the floor.
+            self.seen.add(at)
+            p.trace.append({"event": "local_rgb", "cell": at, "floor": DECK, "loaded": False,
+                            "view": "litter over aprons", "frame": p.obs["frame_id"]})
+            return rgb, view
         if not loaded:
             # Before lift the shutters do not move. An occluded incoming apron
             # cannot undo the crossing we just made. Keep the survey camera pose.
@@ -285,7 +408,8 @@ class Discovery:
                 if edge in self.confirmed_shutters:
                     view[d] = "closed"
                     continue
-                if kind != "closed" and not (d in known and kind == "wall"):
+                if (kind != "closed" and not (kind == "wall" and (expected is None or d in known))
+                        and not (expected is not None and d not in expected and kind != "wall")):
                     continue
                 p.face(*d)
                 p.grip()
@@ -308,7 +432,7 @@ class Discovery:
                                     "result": second[d], "frame": p.obs["frame_id"]})
         signature = tuple(d for d, kind in view.items() if kind != "wall")
         if at in self.signatures:
-            if signature != self.signatures[at]:
+            if signature != self.signatures[at] and not (loaded and set(expected) <= set(signature)):
                 raise RuntimeError(f"doorway landmarks disagree at revisited cell {at}: {view}")
             p.trace.append({"event": "revisit_confirmed", "cell": at, "frame": p.obs["frame_id"]})
         self.signatures[at] = signature
@@ -395,7 +519,10 @@ class Discovery:
 
     def move(self, there):
         p, here = self.pilot, self.current
-        p.face(*delta(here, there))
+        if getattr(p, "loaded", False):
+            p.align_load(*delta(here, there))
+        else:
+            p.face(*delta(here, there))
         if self.floors[here] != self.floors[there]:
             p.trace.append({"event": "landing_probe", "cell": here, "floor": self.floors[here],
                             "frame": p.obs["frame_id"]})
@@ -411,7 +538,7 @@ class Discovery:
         p.path.append(there)
 
 
-def run(client, retrace=False, locate_only=False, feedback="rgb", fixed_tool=None):
+def run(client, retrace=False, locate_only=False, feedback="rgb", fixed_tool=None, hold_heading=False):
     p = Pilot(client, feedback)
 
     def enter(inlet):
@@ -472,7 +599,7 @@ def run(client, retrace=False, locate_only=False, feedback="rgb", fixed_tool=Non
     if target is None:
         raise RuntimeError("sled not visible on return to remembered bay")
     p.trace.append({"event": "sled_reacquired", "cell": bay, "frame": p.obs["frame_id"]})
-    px, py = map(float, target)
+    px, py = sight_litter(p, target)
     p.go(px, py, .43+DECK, settle=3)
     p.grip(1.)
     p.loaded = True
@@ -494,7 +621,7 @@ def run(client, retrace=False, locate_only=False, feedback="rgb", fixed_tool=Non
             return p
         if not retrace and "cargo" in view.values():
             d = next(d for d, k in view.items() if k == "cargo")
-            p.face(*d)
+            p.align_load(*d)
             staging = add(nav.current, d)
             p.cell(staging, TRAVEL, settle=1)
             p.register(staging)
@@ -510,12 +637,8 @@ def run(client, retrace=False, locate_only=False, feedback="rgb", fixed_tool=Non
             nav.move(path[0])
         else:
             raise RuntimeError(f"no exit apron visible at remembered destination {goal}")
-    if staging is not None:
-        col = staging[0]
-        while col and not p.obs["done"]:
-            col -= int(math.copysign(1, col))
-            p.cell((col, 0), TRAVEL, settle=1)
-            p.register((col, 0))
+    if staging is not None and not p.obs["done"]:
+        transfer(p, hold_heading)
     p.face(0, 1)
     p.grip()
     if not p.obs["done"]:

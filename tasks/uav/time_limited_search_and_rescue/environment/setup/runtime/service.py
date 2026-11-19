@@ -32,7 +32,7 @@ class Runtime:
 
     def call(self, req):
         self.count += 1
-        if self.count > 2048:
+        if self.count > 3300:
             self.flush()
             raise ValueError("request budget exhausted")
         if not isinstance(req, dict) or set(req) != {"method", "params"}:

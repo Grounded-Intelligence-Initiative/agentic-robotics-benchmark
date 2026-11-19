@@ -32,6 +32,11 @@ FLANGE_RADII = (.041, .093)
 # Inner throat and outer seat of the closed collet, in metres.
 COLLETS = ((.027, .054), (.074, .106))
 DOCK_Z = .224
+LITTER = (.22, .90, .072)
+LIME = (.48, .98, .035, 1)
+GRIP_TAPE = (.37, .08, .98, 1)
+THROAT = .55
+POCKET_HALF_DEPTH = 2.30
 
 
 def edge(a, b):
@@ -93,6 +98,7 @@ class Layout:
     pad: tuple
     flange: float
     depot: tuple
+    loading: tuple
 
     def xy(self, cell):
         return np.array([axis_at(self.columns, cell[0]), axis_at(self.rows, cell[1])])
@@ -109,9 +115,19 @@ class Layout:
         return (self.columns[-1]+.32*(2*slot-1), .08, DOCK_Z)
 
     @property
+    def pocket(self):
+        return np.array([self.columns[self.outlet], boundaries(self.rows, 0)[0]-.90-POCKET_HALF_DEPTH])
+
+    @property
+    def receiving_pad(self):
+        offset, side, stagger = self.loading
+        return self.pocket + [side*3.80+self.pad[0], stagger+self.pad[1]]
+
+    @property
     def bounds(self):
-        return ((boundaries(self.columns, 0)[0]+.05, boundaries(self.columns, SIDE-1)[1]-.05),
-                (boundaries(self.rows, 0)[0]+.05, boundaries(self.rows, SIDE-1)[1]-.05),
+        return ((min(boundaries(self.columns, 0)[0], self.pocket[0]-5.5),
+                 max(boundaries(self.columns, SIDE-1)[1], self.pocket[0]+5.5)),
+                (self.pocket[1]-POCKET_HALF_DEPTH-.15, boundaries(self.rows, SIDE-1)[1]-.05),
                 (.39, 2.09))
 
 
@@ -161,17 +177,20 @@ def layout_for(seed):
         if len(after) == len(from_outlet):
             choices.append((after[target]-from_outlet[target], int(e[0][1] >= 3), e))
     safety = max(choices)[2]
-    dx, dy = rng.uniform(-.28, .28, 2)
+    dx, dy = rng.uniform(-.16, .16, 2)
     yaw = float(rng.uniform(-.50, .50))
     tone = float(rng.uniform(.92, 1.05))
-    columns = np.r_[0., np.cumsum(rng.uniform(1.58, 1.90, SIDE-1))]
+    columns = np.r_[0., np.cumsum(rng.uniform(2.60, 2.80, SIDE-1))]
     columns -= columns[2]
-    rows = np.r_[0., np.cumsum(rng.uniform(1.58, 1.90, SIDE-1))]
+    rows = np.r_[0., np.cumsum(rng.uniform(2.60, 2.80, SIDE-1))]
     start_x, start_y = rng.uniform(-.13, .13, 2)
     gains = tuple(rng.uniform(.96, 1.045, 2))
     pad_x, pad_y = rng.uniform(-.16, .16, 2)
     flange = FLANGE_RADII[int(rng.integers(2))]
     depot = tuple(COLLETS[i] for i in rng.permutation(2))
+    yaw += int(rng.integers(2))*np.pi/2
+    loading = (rng.choice((-1, 1))*rng.uniform(.56, .66), int(rng.choice((-1, 1))),
+               rng.choice((-1, 1))*rng.uniform(.55, .70))
 
     def mirror(p):
         return (SIDE-1-p[0], p[1]) if seed & 1 else p
@@ -189,7 +208,7 @@ def layout_for(seed):
     return Layout(transformed(halls), transformed(raised), mirror((inlet, 1))[0],
                   mirror((outlet, 1))[0], tuple(map(mirror, rooms)), (px, py, yaw),
                   edge(*map(mirror, safety)), tone, tuple(columns), tuple(rows),
-                  (start_x, start_y), gains, (pad_x, pad_y), flange, depot)
+                  (start_x, start_y), gains, (pad_x, pad_y), flange, depot, loading)
 
 
 def build(layout):
@@ -205,7 +224,7 @@ def build(layout):
         </visual>
         <worldbody>
           <light directional="true" dir=".3 .42 -1" diffuse=".62 .60 .58" castshadow="false"/>
-          <geom name="floor" type="plane" size="6 10 1" friction=".9 .02 .005"/>
+          <geom name="floor" type="plane" size="16 16 1" friction=".9 .02 .005"/>
           <body name="uav" gravcomp="1">
             <inertial pos="0 0 0" mass=".8" diaginertia=".012 .012 .015"/>
             <joint name="x" type="slide" axis="1 0 0" damping="9"/>
@@ -217,8 +236,8 @@ def build(layout):
           </body>
           <body name="pod" pos="0 2 .074">
             <freejoint name="pod_free"/>
-            <geom name="sled_collision" type="box" size=".145 .245 .072" mass=".15"
-                  rgba=".105 .115 .12 1" friction=".95 .04 .01"/>
+            <geom name="litter_board" type="box" size=".22 .9 .072" mass=".20"
+                  rgba=".12 .33 .31 1" friction=".95 .04 .01"/>
           </body>
         </worldbody>
         <equality><weld name="clamp" body1="uav" body2="pod" active="false"
@@ -240,17 +259,26 @@ def build(layout):
     for side in (-1, 1):
         geom(uav, f"jaw{side}", pos=(side*.053, 0, -.207), size=(.025, .050, .025), rgba=WALL)
     pod = w.find("body[@name='pod']")
-    geom(pod, "shell", pos=(0, 0, .053), size=(.155, .26, .051), rgba=ORANGE)
-    geom(pod, "torso", "ellipsoid", (0, .027, .105), (.086, .109, .038), AMBER)
-    geom(pod, "head", "sphere", (0, .155, .107), (.057,), AMBER)
+    pod.find("geom").set("size", " ".join(map(str, LITTER)))
+    for end in (-1, 1):
+        geom(pod, f"end_grip{end}", pos=(0, end*.81, .078),
+             size=(.155, .035, .006), rgba=GRIP_TAPE)
     for side in (-1, 1):
-        geom(pod, f"leg{side}", pos=(side*.044, -.123, .11), size=(.032, .083, .027), rgba=AMBER)
-        geom(pod, f"arm{side}", pos=(side*.096, .030, .105), size=(.025, .071, .023), rgba=AMBER)
+        geom(pod, f"frame_rail{side}", pos=(side*.199, 0, .079),
+             size=(.020, .89, .009), rgba=WHITE)
+    geom(pod, "shell", pos=(0, 0, .053), size=(.155, .26, .051), rgba=ORANGE)
+    geom(pod, "torso", "ellipsoid", (0, .24, .113), (.13, .24, .055), AMBER)
+    geom(pod, "head", "ellipsoid", (0, .57, .12), (.092, .108, .075), AMBER)
+    for side in (-1, 1):
+        geom(pod, f"leg{side}", pos=(side*.064, -.38, .094), size=(.044, .30, .030), rgba=AMBER)
+        geom(pod, f"arm{side}", pos=(side*.15, .17, .10), size=(.026, .19, .024), rgba=AMBER)
     geom(pod, "flange", "cylinder", (0, 0, .164), (layout.flange, .023), STEEL)
     geom(pod, "stem", "cylinder", (0, 0, .211), (.020, .025), DARK)
     # Same top cover on both fittings; read the load-bearing flange from the side.
     geom(pod, "fitting_cover", "cylinder", (0, 0, .247), (.132, .012), DARK)
-    px, py = layout.pad
+    geom(pod, "centering_button", "cylinder", (0, 0, .261), (.080, .003), (.04, .90, .06, 1))
+    px, py = layout.receiving_pad
+    geom(w, "receiving_mat", pos=(px, py, .001), size=(1.25, .74, .001), rgba=TEAL)
     geom(w, "pad", pos=(px, py, .004), size=(.56, .53, .004), rgba=BLUE)
     for side in (-1, 1):
         geom(w, f"pad_side{side}", pos=(px+side*.39, py, .010), size=(.030, .42, .002), rgba=WHITE)
@@ -262,7 +290,7 @@ def build(layout):
     deck_half = ((xmax-xmin)/2, (ymax-layout.deck_y)/2, DECK/2)
     geom(w, "mezzanine", pos=deck_center, size=deck_half, material="floor_mat",
          rgba=(.72, .83, .86, 1), contype="1", conaffinity="1")
-    obstacles = [("deck", deck_center, deck_half)]
+    obstacles = [("deck", "mezzanine")]
     shutters = {}
 
     def sign(text, x, y, z, width=.34):
@@ -308,14 +336,15 @@ def build(layout):
                       active="false", solref=".008 1")
 
     def wall(center, half, kind, color=WALL):
-        obstacles.append((kind, center, half))
-        geom(w, f"solid{len(obstacles)}", pos=center, size=half, rgba=color)
+        name = f"solid{len(obstacles)}"
+        obstacles.append((kind, name))
+        geom(w, name, pos=center, size=half, rgba=color)
 
     def boundary(a, b, route=None):
         center = (xy(a)+xy(b))/2
         normal = 0 if a[0] != b[0] else 1
         tangent = 1-normal
-        gate_half = .51 if route == "inspection" else .59
+        gate_half = .51 if route == "inspection" else .74
         axis = layout.rows if tangent == 1 else layout.columns
         lo, hi = boundaries(axis, a[tangent])
         lo, hi = lo-center[tangent], hi-center[tangent]
@@ -356,14 +385,15 @@ def build(layout):
             x, y = center
             body = ET.SubElement(w, "body", name="cargo_shutter", mocap="true", pos=f"{x} {y} 1.025")
             geom(body, "cargo_leaf", size=(gate_half, .075, 1.025), rgba=BLUE)
-            shutters["cargo"] = len(obstacles)
-            obstacles.append(("cargo", (x, y, 1.025), (gate_half, .085, 1.025)))
+            obstacles.append(("cargo", "cargo_leaf"))
             sign("CARGO", *xy((a[0], 0)), 0.)
             for z in np.linspace(-.90, .90, 9):
                 geom(body, f"shutter_rib{z:.3f}", pos=(0, 0, z), size=(gate_half, .084, .018), rgba=DARK)
+                obstacles.append(("cargo", f"shutter_rib{z:.3f}"))
             for side in (-1, 1):
                 geom(w, f"cargo_jamb{side}", pos=(x+side*(gate_half+.012), y, 1.025),
                      size=(.030, .10, 1.025), rgba=BLUE)
+                obstacles.append(("cargo", f"cargo_jamb{side}"))
         if safety:
             x, y = center
             half = [.085, .085, 1.21]
@@ -374,20 +404,60 @@ def build(layout):
                 rib = half.copy()
                 rib[normal], rib[2] = .092, .021
                 geom(body, f"safety_rib{i}", pos=(0, 0, z), size=rib, rgba=DARK)
-            shutters["safety"] = len(obstacles)
-            obstacles.append(("safety", (x, y, 3.8), half))
+                obstacles.append(("safety", f"safety_rib{i}"))
+            obstacles.append(("safety", "safety_leaf"))
 
     for y in range(SIDE):
         boundary((-1, y), (0, y))
         boundary((SIDE-1, y), (SIDE, y))
     for x in range(SIDE):
-        boundary((x, -1), (x, 0))
+        if x != layout.outlet:
+            boundary((x, -1), (x, 0))
         boundary((x, SIDE-1), (x, SIDE))
         route = "inspection" if x == layout.inlet else "cargo" if x == layout.outlet else None
         boundary((x, 0), (x, 1), route)
     for a, b in interior_edges():
         route = "raised" if (a, b) in layout.raised else "open" if (a, b) in layout.halls else None
         boundary(a, b, route)
+
+    # The only entrance to receiving is through two full-height loading throats.
+    cx, cy = layout.pocket
+    entry, side, stagger = layout.loading
+    north, south = cy+POCKET_HALF_DEPTH, cy-POCKET_HALF_DEPTH
+    far, back, exit_x = cx+side*5.45, cx-side*2.10, cx+side*2.10
+
+    def panel(axis, fixed, a, b, kind="loading_wall", depth=.075):
+        mid, span = (a+b)/2, abs(b-a)/2
+        pos, size = ([fixed, mid], [depth, span]) if axis == 0 else ([mid, fixed], [span, depth])
+        wall((*pos, WALL_TOP/2), (*size, WALL_TOP/2), kind,
+             (.32, .57, .59, 1) if kind.startswith("throat") else WALL)
+
+    def throat(axis, fixed, center, lo, hi, inward, name):
+        panel(axis, fixed, lo, center-THROAT, name, .28)
+        panel(axis, fixed, center+THROAT, hi, name, .28)
+        # Reflective toe lines run along the clear inner faces onto the approach.
+        for j in (-1, 1):
+            p = [fixed-inward*.40, center+j*(THROAT-.025)]
+            h = [.84, .025]
+            if axis == 1:
+                p.reverse()
+                h.reverse()
+            geom(w, f"{name}_line{j}", pos=(*p, .010), size=(*h, .006), rgba=LIME)
+
+    throat(1, north, cx+entry, cx-2.10, cx+2.10, -1, "throat_entry")
+    for x in boundaries(layout.columns, layout.outlet):
+        panel(0, x, north, north+.90)
+    throat(0, exit_x, cy+stagger, south, north, side, "throat_exit")
+    panel(0, back, south, north)
+    panel(0, far, south, north)
+    panel(1, south, back, far)
+    panel(1, north, exit_x, far)
+    sign("LITTER TRANSFER", cx, north+.56, 0., .49)
+    sign("TURNING POCKET", cx, cy-.49, 0., .48)
+    sign("RECEIVING", px, py-.61, 0.)
+    for dx in (-MARK_HALF, MARK_HALF):
+        for dy in (-MARK_HALF, MARK_HALF):
+            geom(w, f"pocket_dot{dx}_{dy}", "cylinder", (cx+dx, cy+dy, .016), (.054, .004), TAPE)
 
     # Identical local maintenance stations: known scale/orientation, no IDs
     # and no information about the route or rescue object.
