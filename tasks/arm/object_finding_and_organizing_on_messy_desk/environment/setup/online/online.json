@@ -1,0 +1,43 @@
+{
+ "user": "arbonline",
+ "agent_user": "user",
+ "socket": "/run/arb-online/online.sock",
+ "record_dir": "/var/lib/arb-online",
+ "state_dir": "/var/lib/arb-online-sim",
+ "episode": "episode.json",
+ "token_digest": "oracle_token.sha256",
+ "simulator": "env.py",
+ "isaac_python": "/opt/isaac/bin/python3",
+ "prep_s": 3600,
+ "graded_s": 14400,
+ "horizon": 20000,
+ "sim_ready_timeout_s": 1500,
+ "sim_start_attempts": 3,
+ "sim_step_timeout_s": 120,
+ "warmup": {
+  "seed": 0,
+  "steps": 3,
+  "timeout_s": 1380
+ },
+ "start_timeout_s": 1560,
+ "idle_timeout_s": 900,
+ "max_line_bytes": 65536,
+ "max_restarts": 5,
+ "record_interval_s": 1.0,
+ "requests_log_cap_bytes": 33554432,
+ "log_cap_bytes": 2097152,
+ "env": {
+  "ACCEPT_EULA": "Y",
+  "OMNI_KIT_ACCEPT_EULA": "YES",
+  "MPLBACKEND": "Agg"
+ },
+ "require_seccomp": true,
+ "submission": "/home/user/submission",
+ "snapshot_dir": "/var/lib/arb-online/submission_snapshot",
+ "snapshot_caps": {
+  "max_entries": 99000,
+  "max_depth": 64,
+  "max_bytes": 17179869184
+ },
+ "snapshot_timeout_s": 900
+}

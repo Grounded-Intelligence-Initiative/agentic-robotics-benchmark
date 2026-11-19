@@ -59,9 +59,14 @@ ENV OMNI_KIT_ACCEPT_EULA=YES
 # The declared artifact path must exist even when nobody works.
 RUN mkdir -p /home/user/submission && chown -R user:user /home/user
 
+# The graded episode service's dedicated account (online variant): the service never runs as root or as
+# the agent while it holds the hidden episode, and its simulator runs as this account too.
+RUN useradd --system --user-group --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin arbonline
+
 ENV MPLBACKEND=Agg
 
-# Fail the build early: the verify interpreter is 3.12, and the AGENT account can import
-# the simulator from the second venv.
+# Fail the build early: the verify interpreter is 3.12, and the AGENT account and the graded episode
+# service's account can import the simulator from the second venv.
 RUN python3 -c "import sys; assert sys.version_info >= (3, 12), sys.version; import numpy, PIL; print('[image] python3', sys.version.split()[0])" \
-    && runuser -u user -- /opt/isaac/bin/python3 -c "import isaacsim, numpy, PIL; print('[image] agent-UID isaac import OK')"
+    && runuser -u user -- /opt/isaac/bin/python3 -c "import isaacsim, numpy, PIL; print('[image] agent-UID isaac import OK')" \
+    && runuser -u arbonline -- /opt/isaac/bin/python3 -c "import isaacsim, numpy, PIL; print('[image] service-UID isaac import OK')"

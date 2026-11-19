@@ -29,10 +29,21 @@
 # program on sister sites of the series (v0.6: a commissioning service in its sandbox runs the cell on 9 development
 # sites, never a graded one, 12 shifts, the graded episode's budgets, no truth, no score, no debrief); the simulator's
 # code and every ground truth stay out of its reach.
+#
+# DUAL MODE (experiment, branch exp/dual-mode-scoring; never merged into main): one session, one verify, two items, the
+# reward their mean. The program item is main's, unchanged: operate.py's solve(cell) on the 8 hidden sites with main's
+# budgets and its rerun of an episode in which the cell failed (tests/offline_verify.py), on the program frozen when
+# the agent starts the graded episode (the graded episode's root supervisor copies /home/user/submission into the
+# root-only /var/lib/arb-online/submission_snapshot/ before the start is charged), or on the session-end submission if
+# it never starts it. The online item is the graded episode of the online variant: ep08 of the hidden set, played live
+# through the graded episode's service (environment/setup/online/); commissioning closes when it starts (O13).
+# tests/verify.py grades both (main's grading, then the record) and writes one reward.
 
 schema_version = "1.4+ale.1"
-# Where the agent leaves its work (operate.py and its helper modules).
-artifacts = ["/home/user/submission"]
+# Where the agent leaves its program (the program item grades it as frozen at the graded start, or as it is at the
+# session's end if the graded episode never starts) and the graded episode's record with the frozen program (the
+# service's directory, which the agent can neither read nor write).
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/pump_skid_startup_and_operation"
@@ -42,29 +53,32 @@ name = "grounded-intelligence-initiative/pump_skid_startup_and_operation"
 # (operation_score, higher) lives in tests/anchor.json.
 platform = "arm"
 tags = ["process-plant", "valves", "gauges", "sop", "field-operator", "fault-diagnosis", "tag-plates", "panda", "rail", "mujoco", "code-as-policy", "camera-only",
-        "rgbd", "hidden-seed", "oracle-token"]
+        "rgbd", "hidden-seed", "oracle-token", "online-graded-episode"]
 
 [environment]
 cpus = 8
 memory_mb = 16384
 
-# setup (no field: the engine bounds it at a fixed 1800 s): the givens in the agent home (the grader's root-owned copy
-# is built by tests/test.sh in the verifier sandbox). [agent] timeout_sec: 4 h. [verifier] timeout_sec: the import
-# check (at most 120 s), the desktop settle (at most 60 s), then 8 hidden episodes, each a cell build (under a second)
-# plus the program within its 1200 s program-time cap, which does not count the cell's simulation (1800 s simulated at
-# most, about 1.5-2 min of wall clock here) and rendering (600 frames at most, 0.4-1.1 s each: Filament colour on lavapipe plus classic depth, measured on 8 CPUs; an episode's first frame about 3 s), plus up to about 80 s of
-# end and clean-up: at the bounds about 2000 s an episode, 16000 s for the eight, 18000 s with one episode run twice
-# after a cell failure; 6 h leaves 3600 s of margin. The oracle's episodes run the reference program inside one
-# privileged call (about 1.5-3 min each here).
+# setup (no field: the engine bounds it at a fixed 1800 s): the givens in the agent home, the graded episode's service
+# (its cell is built in a few seconds) and the commissioning service. [agent] timeout_sec = prep_s + graded_s: main's 4 h
+# for the program and the agent's preparation (the window in which the graded episode must be started, counted from the
+# service's start, a little before the session's) plus the 3 h graded window that follows the start (the default; the
+# episode's own simulation and rendering need about 15 min of it at most). [verifier] timeout_sec: main's, since main's
+# offline grading runs again: the import check (at most 120 s), the desktop settle (at most 60 s), then 8 hidden
+# episodes, each a cell build (under a second) plus the program within its 1200 s program-time cap, which does not count
+# the cell's simulation (1800 s simulated at most, about 1.5-2 min of wall clock) and rendering (600 frames at most,
+# 0.4-1.1 s each), plus up to about 80 s of end and clean-up: at the bounds about 2000 s an episode, 16000 s for the
+# eight, 18000 s with one episode run twice after a cell failure; 6 h leaves 3600 s of margin; the record takes seconds.
+# The oracle's episodes run the reference program inside one privileged call (about 1.5-3 min each).
 [agent]
-timeout_sec = 14400
+timeout_sec = 25200
 network_mode = "no-network"
 
 [verifier]
 timeout_sec = 21600
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
-# touched, with only the declared artifact (the submission) restored into it, so nothing else the agent left (a file,
-# a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there: tests/test.sh
+# touched, with only the declared artifacts (the submission and the graded episode's record directory) restored into
+# it, so nothing else the agent left (a file, a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there: tests/test.sh
 # builds the grader's root-owned copy of the givens itself. The agent's program runs during verify, so the verifier
 # gets the agent's resources (CPU rendering: no GPU).
 environment_mode = "separate"

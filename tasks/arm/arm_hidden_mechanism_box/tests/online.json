@@ -1,0 +1,8 @@
+{
+ "format": "arb-online/1",
+ "task": "arm_hidden_mechanism_box",
+ "episode": "i1@d5f4f392d5ad",
+ "seed_sha256": "d5f4f392d5ad49117d6b50c634121b9f32d859c7c73123c3ed9580a8288ef324",
+ "record": "/var/lib/arb-online/record.json",
+ "note": "The graded episode of the online variant: its id and the sha256 of its seed's decimal digits. The episode and the seed live root-only in environment/setup/online/episode.json; the lab copies the id and the digest into every record, and tests/verify.py scores a record only when both match."
+}

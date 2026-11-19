@@ -1,0 +1,134 @@
+{
+ "format": "arb-online-episode-order/1",
+ "task": "kitchen_appliance_tending",
+ "rule": "At graded_start the lab takes the first entry of `order` whose unit (`instance`) is not the unit of a lab trial charged before the start, so the graded episode is never on a unit the agent practised on.",
+ "source": "Drawn 2026-11-18T18:35:29+00:00 with OS entropy (secrets.SystemRandom().shuffle over the indices 0-17): a random order of all 18 entries of the offline grader's fixed hidden set (tests/hidden/episodes.json, 'kitchen_appliance_tending fixed set 1'); `index` is an entry's position in that file, seed_sha256 the sha256 of its seed's decimal digits. Replaces the single drawn episode (entry 3, unit u0) of the first conversion.",
+ "order": [
+  {
+   "index": 5,
+   "episode": "u3@9734426efbc9",
+   "instance": "u3",
+   "seed": 15605881240720506975,
+   "seed_sha256": "9734426efbc9f430f1408f29a7b4e07b6620588683b43d8d1247913e3412985c"
+  },
+  {
+   "index": 9,
+   "episode": "u5@9acdd5969fc4",
+   "instance": "u5",
+   "seed": 14023197352194698727,
+   "seed_sha256": "9acdd5969fc4ba7cc2443a3abe5a5527dd1f928dac324069e1d42a3df823d007"
+  },
+  {
+   "index": 8,
+   "episode": "u2@d9ce8e7ad67f",
+   "instance": "u2",
+   "seed": 16177700516589911371,
+   "seed_sha256": "d9ce8e7ad67ff3613550ba345ed7942f48a358fdca319a3d2c535e3dadd09c6e"
+  },
+  {
+   "index": 2,
+   "episode": "u8@e9baeeab2939",
+   "instance": "u8",
+   "seed": 20503753265692410,
+   "seed_sha256": "e9baeeab2939a7d762df08cf3d41101b995ee4420cc02b9d7a912c6097b7fd3f"
+  },
+  {
+   "index": 7,
+   "episode": "u8@eaad5546c0ca",
+   "instance": "u8",
+   "seed": 11375561797344878862,
+   "seed_sha256": "eaad5546c0cab935e1ee9f6f4599aa9fdb7f009c65effd96375bb02a4bc54623"
+  },
+  {
+   "index": 11,
+   "episode": "u6@d4c9687d9bd6",
+   "instance": "u6",
+   "seed": 5474728899677097721,
+   "seed_sha256": "d4c9687d9bd6ff2ad34e6f2b39181f3194c77e6189a7291c7dd0114b9f024fde"
+  },
+  {
+   "index": 15,
+   "episode": "u6@c6e9de5b40b7",
+   "instance": "u6",
+   "seed": 15125693244157032466,
+   "seed_sha256": "c6e9de5b40b7c27fd2e96e85161316a38da5b3750c18d3c2493782ff8a1137c3"
+  },
+  {
+   "index": 6,
+   "episode": "u5@68ff4e026243",
+   "instance": "u5",
+   "seed": 11289930795897151125,
+   "seed_sha256": "68ff4e026243863e4c1879905c2e7bd9484613aa79a0417aadab4f20cd73d904"
+  },
+  {
+   "index": 10,
+   "episode": "u1@339c3d9e5525",
+   "instance": "u1",
+   "seed": 603871317898819319,
+   "seed_sha256": "339c3d9e55256c284f81d68be179602cd7f17ef80665907da3bc18b759264487"
+  },
+  {
+   "index": 14,
+   "episode": "u4@dcee70291bd6",
+   "instance": "u4",
+   "seed": 5918157982911667440,
+   "seed_sha256": "dcee70291bd6a10e94f72a4614e80b38a15fa69bab6b42df8fa37d9b9a7e7088"
+  },
+  {
+   "index": 4,
+   "episode": "u2@d0fcaf1e0c50",
+   "instance": "u2",
+   "seed": 16259500198639530817,
+   "seed_sha256": "d0fcaf1e0c50cd3de5dc0aca0fda1b329ebe8aa43fa6fae86f52d10042dbc9b6"
+  },
+  {
+   "index": 0,
+   "episode": "u7@de731111eaa6",
+   "instance": "u7",
+   "seed": 12218416849694862617,
+   "seed_sha256": "de731111eaa60a2558e53b81b29d3bf8ad79471fdb85b5a7b798a7653dc7117b"
+  },
+  {
+   "index": 3,
+   "episode": "u0@696a6e0d545a",
+   "instance": "u0",
+   "seed": 2433537977515057068,
+   "seed_sha256": "696a6e0d545a3416caab886de0ebf7ccf9ee46bfd019b9b74105c031af5073ee"
+  },
+  {
+   "index": 13,
+   "episode": "u1@570229ebf32c",
+   "instance": "u1",
+   "seed": 12221698076534752065,
+   "seed_sha256": "570229ebf32c203c9c5289b276cdbe5e328361ed09959e9a845fd12d6790e50a"
+  },
+  {
+   "index": 16,
+   "episode": "u7@285c75244d04",
+   "instance": "u7",
+   "seed": 1726653658657273486,
+   "seed_sha256": "285c75244d040665abcf022f509ad3386c8bc416c10ad6c4026fbc65445c60ba"
+  },
+  {
+   "index": 17,
+   "episode": "u4@911231c95b05",
+   "instance": "u4",
+   "seed": 15548475382162886622,
+   "seed_sha256": "911231c95b0569151a03ccc0f8632777efe9263109b6a851f653c77dcf207d79"
+  },
+  {
+   "index": 1,
+   "episode": "u0@2544cc15a324",
+   "instance": "u0",
+   "seed": 3659038031876901525,
+   "seed_sha256": "2544cc15a3246cf429c01d384d05b674e7f7c97df1d610404e085ed19423ae0f"
+  },
+  {
+   "index": 12,
+   "episode": "u3@0928b8b0a235",
+   "instance": "u3",
+   "seed": 12124688175895452785,
+   "seed_sha256": "0928b8b0a2351a284c8e6945ee69f2d77c762bab60ad7da1bc288affb0b85b27"
+  }
+ ]
+}

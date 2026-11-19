@@ -23,6 +23,14 @@ the process or the score.
 
 Wire: JSON lines {"id": n, "method": ..., "params": {...}} -> {"id": n, "result": ...} or {"id": n, "error": ...,
 "detail": ...}, the graded cell's wire (skidcell.client.connect_commissioning speaks it).
+
+Practice ends when the graded episode starts (the online variant's rule O13): offline, a program never practises in
+the middle of its graded shift. The graded episode's service (environment/setup/online/graded_service.py) writes the
+flag GRADED_FLAG the moment the agent starts the graded episode (before anything of it is simulated), in a directory
+only that service's account can write. From then on this service ends every open shift (the event shift_over with the
+reason practice_closed, then the connection closes; an open shift looks at the flag at every request and at least once
+a second while it waits) and answers every new connection's first request {"error": "practice_closed"} for the rest of
+the session; commission_status.json says practice_closed. A flag that cannot be checked counts as set.
 """
 
 import fcntl
@@ -46,6 +54,25 @@ AFTER_DONE_MAX_STEPS = 50
 AFTER_DONE_MAX_REQUESTS = 200
 AFTER_DONE_MAX_S = 60.0
 MAX_LINE = 4 * 1024 * 1024
+GRADED_FLAG = os.environ.get("SKIDCELL_GRADED_FLAG", "/run/skidcell-graded/flags/started")
+FLAG_POLL_S = 1.0
+PRACTICE_CLOSED = ("the graded episode has started: commissioning has ended for this session (practice ends when the "
+                   "graded episode starts)")
+
+
+class PracticeClosed(Exception):
+    """The graded episode started while a shift waited for its next request."""
+
+
+def practice_closed():
+    """True once the graded episode has started (GRADED_FLAG exists); a flag that cannot be checked counts as set."""
+    try:
+        os.stat(GRADED_FLAG)
+        return True
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
 
 
 def log(msg):
@@ -83,7 +110,7 @@ class Ledger(object):
         d = d or self._read()
         n = int(SITES["shifts"])
         return {"commissioning_shifts": n, "shifts_used": int(d["shifts_used"]), "shifts_left": max(0, n - int(d["shifts_used"])),
-                "sites": len(SITES["seeds"]), "open_at_a_time": int(SITES["open"])}
+                "sites": len(SITES["seeds"]), "open_at_a_time": int(SITES["open"]), "practice_closed": practice_closed()}
 
     def publish(self):
         with open(self.lock, "a") as lk:
@@ -121,15 +148,23 @@ class Conn(object):
         self.sock = sock
         self.buf = b""
 
-    def read(self, timeout):
-        """The next request object; None on EOF; raises socket.timeout on silence, ValueError on a malformed line."""
+    def read(self, timeout, closed=None):
+        """The next request object; None on EOF; raises socket.timeout on silence, ValueError on a malformed line, and
+        PracticeClosed once `closed()` is true (asked at least once a second while it waits)."""
         deadline = time.time() + timeout
         while b"\n" not in self.buf:
             left = deadline - time.time()
             if left <= 0:
                 raise socket.timeout()
-            self.sock.settimeout(left)
-            chunk = self.sock.recv(1 << 20)
+            if closed is not None and closed():
+                raise PracticeClosed()
+            self.sock.settimeout(min(left, FLAG_POLL_S) if closed is not None else left)
+            try:
+                chunk = self.sock.recv(1 << 20)
+            except socket.timeout:
+                if closed is None:
+                    raise
+                continue
             if not chunk:
                 return None
             self.buf += chunk
@@ -180,7 +215,10 @@ def serve(sock, ledger):
             else:
                 wait = silence
             try:
-                req = conn.read(wait)
+                req = conn.read(wait, closed=practice_closed if server is not None else None)
+            except PracticeClosed:
+                reason = "practice_closed"          # the graded episode started: this shift ends here (O13)
+                break
             except socket.timeout:
                 reason = "silence" if server is None or (time.time() - t0) - float(server.work_wall) < cap else "program_time_cap"
                 break
@@ -192,6 +230,11 @@ def serve(sock, ledger):
                 break
             rid, method, params = req.get("id"), str(req.get("method")), req.get("params")
             params = params if isinstance(params, dict) else {}
+            if practice_closed():                   # O13: no request of a shift is served once the graded episode started
+                if server is None:
+                    conn.send({"id": rid, "error": "practice_closed", "detail": PRACTICE_CLOSED}, timeout=5.0)
+                reason = "practice_closed"
+                break
             if method == "reset":
                 if server is not None:
                     res = {"error": "one_shift_per_connection", "detail": "this connection's shift has begun: open a new one"}
@@ -239,7 +282,8 @@ def serve(sock, ledger):
     except (OSError, socket.timeout) as e:
         reason = reason or "connection (%s)" % type(e).__name__
     finally:
-        if reason in ("program_time_cap", "silence") or (server is not None and server.done and reason not in ("finish", "eof")):
+        if reason in ("program_time_cap", "silence") or (reason == "practice_closed" and server is not None) or \
+                (server is not None and server.done and reason not in ("finish", "eof")):
             try:                                # a budget ended the shift: say so before the connection closes
                 conn.send({"id": None, "event": "shift_over", "reason": reason}, timeout=5.0)
             except (OSError, socket.timeout):
@@ -257,6 +301,16 @@ def serve(sock, ledger):
             pass
 
 
+def _reap(pids):
+    for pid in list(pids):
+        try:
+            done, _st = os.waitpid(pid, os.WNOHANG)
+        except ChildProcessError:
+            done = pid
+        if done:
+            pids.discard(pid)
+
+
 def main():
     ledger = Ledger()
     try:
@@ -267,12 +321,23 @@ def main():
     srv.bind(SOCKET)
     os.chmod(SOCKET, 0o666)
     srv.listen(16)
+    srv.settimeout(FLAG_POLL_S)
     ledger.publish()
     log("listening on %s: %d sites, %d shifts, %d at a time" % (SOCKET, len(SITES["seeds"]), SITES["shifts"], SITES["open"]))
     children = set()
     busy = set()
+    closed_published = False
     while True:
-        conn, _ = srv.accept()
+        try:
+            conn, _ = srv.accept()
+        except socket.timeout:
+            _reap(children)
+            _reap(busy)
+            if not closed_published and practice_closed():
+                closed_published = True             # O13: the status file says so once the graded episode started
+                ledger.publish()
+                log("practice closed: the graded episode has started")
+            continue
         for pid in list(children):
             try:
                 done, _st = os.waitpid(pid, os.WNOHANG)
@@ -287,6 +352,23 @@ def main():
                 done = pid
             if done:
                 busy.discard(pid)
+        if practice_closed():
+            # O13: every new connection's first request is answered practice_closed (by a child, so that the service
+            # never waits on a client), and the connection is closed
+            pid = os.fork()
+            if pid == 0:
+                srv.close()
+                try:
+                    c = Conn(conn)
+                    req = c.read(10.0)
+                    c.send({"id": (req or {}).get("id"), "error": "practice_closed", "detail": PRACTICE_CLOSED}, timeout=5.0)
+                except Exception:  # noqa: BLE001
+                    pass
+                finally:
+                    os._exit(0)
+            busy.add(pid)
+            conn.close()
+            continue
         if len(children) >= int(SITES["open"]):
             # as many shifts open as the service takes: the connection's first request is answered `busy` (by a child,
             # so that the service never waits on a client), and the connection is closed; no shift is used

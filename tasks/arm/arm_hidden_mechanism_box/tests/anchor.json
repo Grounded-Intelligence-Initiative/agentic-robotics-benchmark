@@ -1,9 +1,8 @@
 {
-  "metric": "mean_opening_progress",
-  "direction": "higher",
-  "value": 1.0,
-  "full_at": 1.0,
-  "source": "Mean of 24 fresh privileged-oracle runs (8 hidden-box episodes each) through the real engine on the alebench podman dev runner, runs R/tM/runs/r6-oracle-1 and r6-oracle-2 (engine 90a7c1c, task digest excluding anchor sha256:71ca4b4a853c62dc), 2026-10-23; re-measured by a maintainer after the 2026-10-28 credit-rule fix in 3 ale validate runs on Docker 29.7 with the official base image (engine 90a7c1c)",
-  "reference_commit": "local-uncommitted (alebench fork, task digest sha256:71ca4b4a853c62dc)",
-  "note": "All 24 author runs measured 1.0 (192 of 192 episodes fully opened; sd 0); the 3 maintainer validate runs on the fixed rule measured 1.0 as well (24 of 24 episodes). In-process batch with image-based pose on the r6 boxes: 120 of 120 episodes fully opened (R/tM/fix_r1/r6/gt). full_at 1.0 (maintainer, 2026-10-28): the measured worst oracle ratio, per docs/architecture.md section 5 (the author had pre-registered 0.85)."
+ "metric": "dual_mode_score",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 1.0,
+ "source": "1.0 by construction (dual mode, 2026-11-18): the mean of the program item's reward (main's grader, tests/offline_verify.py, against main's anchor in tests/anchor_offline.json) and the graded episode's reward (against the online variant's anchor in tests/anchor_online.json), each item normalised by its own measured anchor. Confirmed by the oracle of ale validate validate-419c3e9f (engine bfb7505, Docker, commit e0cce70c) and, with the freeze at the earlier of the start and the start window's close, validate-9a4d734a (commit b4f6a9c3): program item 1.0 (the snapshot taken at the graded start, 8 of 8 hidden episodes at 1.0), graded episode 1.0, dual_mode_score 1.0; untouched 0.0.",
+ "note": "Dual mode (experimental): one session, one verify; the program is frozen at the graded start. Component anchors: tests/anchor_offline.json (main's anchor.json, byte-identical) and tests/anchor_online.json (the online variant's)."
 }

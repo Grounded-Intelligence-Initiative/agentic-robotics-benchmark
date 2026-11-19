@@ -9,7 +9,12 @@ the launcher `python3 -B -E -s -c <bootstrap> <lib> packer` (the bootstrap puts 
 `shoecell.client.main`, which imports `packer` from the current directory), or `bash run.sh` when you ship one.
 `cell` is a proxy (`shoecell.client.Cell`): every method is one JSON-lines request on the process's original stdout,
 answered on stdin by the grader's physics server; `print()` goes to stderr. A reply carrying `error` raises
-`shoecell.client.CellError`.
+`shoecell.client.CellError`. The same proxy serves your development and the graded episode:
+`LocalCell(seed=...)` (`shoecell.local`: a practice cell in your own process, plus `truth()`), `~/practice/grade.py`
+(runs your program over the real wire against the practice cell, as the grader runs it) and
+`shoecell.client.connect_graded()` (the graded episode, section "The graded episode" below; the program graded is
+your submission folder as it was when the graded episode started, or when its start window closed if it was never
+started).
 
 Units on the API: metres, radians, seconds, quaternions `wxyz`; the cell frame = the bench-top centre, z up, x along
 the bench, y across it, the arms behind the +y edge (see `cell_manual.md`). `arm` is `"left"` (the gripper arm) or
@@ -35,10 +40,37 @@ grader's reference controller) are not available to your program.
 
 ## Budgets and aborts
 
-900 s of simulated time and 1200 s of program time per episode (the episode's wall clock minus the cell's own time
-inside `step`, simulating, and inside `get_camera`, rendering); 120 s from a reply to the next request (silence) aborts
-the episode; a CPU-time backstop of 4 x the program-time cap applies per process; every process of the run's account
-is killed when the episode ends; a program that breaks the wire (crash, malformed line, exit, or not reading a reply
-within the silence limit) ends ITS episode with what it achieved so far and the other episodes still run. Once the
-episode is over (sim cap, physics fault) the program may still read its state and `finish`; after 50 more `step`
-calls, 200 more requests or 60 s the episode closes.
+Everywhere, per episode: 900 s of simulated time, at most 500 ticks per `step`, 450 camera frames (the cell's own
+limits). A program (on the grader's hidden episodes and on the practice wire) also has 1200 s of program time per
+episode (the episode's wall clock minus the cell's own time inside `step`, simulating, and inside `get_camera`,
+rendering); 120 s from a reply to the next request (silence) aborts the episode; a CPU-time backstop of 4 x the
+program-time cap applies per process; every process of the run's account is killed when the episode ends; a program
+that breaks the wire (crash, malformed line, exit, or not reading a reply within the silence limit) ends ITS episode
+with what it achieved so far and the other episodes still run. Once the episode is over (sim cap, physics fault) the
+program may still read its state and `finish`; after 50 more `step` calls, 200 more requests or 60 s the episode
+closes.
+
+## The graded episode (`connect_graded`)
+
+`shoecell.client.connect_graded(path=None, timeout=None)` connects to the graded service (unix socket
+`/run/arb-online/cell.sock`) and returns a `shoecell.client.GradedCell`: the proxy above, from any process of yours
+(every call of the table, the same replies and errors; `timeout`: seconds per request, None = as long as the request
+takes), plus:
+
+| call | returns | notes |
+|---|---|---|
+| `status()` | `started`, `ended`, `end_reason` (`done` = the episode's own end, `finish`, `graded_window` or `worker_restart`; null while it runs), `steps` (your `step` calls), `sim_time`, `camera_frames_used`, `prep_window_s`, `graded_window_s`, `prep_left_s` (time left to start the graded episode), `graded_left_s` (time left in its window once started), `can_start`, `prep_window_closed`, `program_frozen` (your frozen program's `status`, `files`, `bytes`, once frozen) | answers always, before, during and after the episode; never the score |
+| `start()` | `ok`, `started`, `graded_window_s` | starts the graded episode: once per session, charged before anything is simulated, never given back; refused a second time (`already_started`) and after the start window (`prep_window_closed`) |
+| `close()` | | closes the connection (so does leaving a `with connect_graded() as cell:` block); the episode stays where it is |
+
+Before `start()` every call of the table answers `not_started`. One client at a time: while another connection is
+open, `connect_graded()` raises `CellError("busy: ...")`; a connection that sends no request for 15 minutes is closed
+by the service. The episode lives in the service: a later connection resumes it as it was (the last commands stay
+commanded; nothing moves between `step` calls). It ends at its own end (sim cap, physics fault), at `finish()`, when
+its window (`graded_window_s` from the start) runs out, or when the service's worker restarts (it is then not
+resumed); after that every call but `status()` answers `episode_over` (after the episode's own end the cell still
+answers reads, and up to 50 more `step` calls / 200 requests, as on the wire). An ended episode is scored as it
+stands, on the cell's own state, as an episode whose program stopped at that moment; nothing is simulated afterwards.
+There is no program-time, silence or CPU limit on the graded episode: a request takes the wall clock its simulation
+and rendering take, and the time between your requests costs no simulated time. Its errors carry a short
+explanation: `CellError("<code>: <what it means>")`.

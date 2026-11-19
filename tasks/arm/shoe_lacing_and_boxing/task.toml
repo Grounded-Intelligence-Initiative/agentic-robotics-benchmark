@@ -1,18 +1,26 @@
-# shoe_lacing_and_boxing (Physical Execution, robotic arm; built 2026-10-30 by Yuanfang Peng).
+# shoe_lacing_and_boxing (Physical Execution, robotic arm; built 2026-10-30 by Yuanfang Peng), DUAL MODE (experimental,
+# 2026-11-18: main's program item and the online graded episode in one task, scored as their mean).
 #
 # A two-arm MuJoCo finishing cell at the end of a sneaker line: for each episode's pair, the cell must seat each shoe in the
 # lacing cradle, lace it criss-cross through its eyelet rows with the lacing hook and the gripper, erect the flat
-# shoe-box blank, pack the laced pair, set the lid tray on it and push the box to the outfeed. The agent delivers
-# packer.py (solve(cell): a camera-only program; three fixed RGB-D cameras and a wrist camera per arm; no object
-# poses, no eyelet positions, no lace or box state on the wire), run as an unprivileged account on hidden-seed episodes
-# of the grader's own cell. Score = the mean over the episodes of the accepted work over the work order (per pair: the
-# lacing of each shoe, the box erected, and packed / closed / shipped credited in proportion to the pair's laced shoes),
-# an episode with a safety violation scoring 0. The oracle submits the privileged reference program with a 256-bit
-# token. Grader knobs live in tests/grader_config.json.
+# shoe-box blank, pack the laced pair, set the lid tray on it and push the box to the outfeed. The cell is camera-only:
+# three fixed RGB-D cameras and a wrist camera per arm; no object poses, no eyelet positions, no lace or box state on the
+# wire. Two scoring items in one session and one verify:
+#  * the program item, as on main: packer.py (solve(cell)) run as an unprivileged account on the 6 hidden episodes of
+#    the grader's own cell (tests/offline_verify.py, main's verifier byte for byte); the program graded is the
+#    submission folder as the graded service froze it when the graded episode started (as the session left it if the
+#    episode was never started);
+#  * the graded-episode item: ONE hidden episode the agent plays itself through the graded service that
+#    environment/setup/setup.sh starts (environment/setup/online/server.py, the account `arbonline`, a unix socket; the
+#    agent's client is shoecell.client.connect_graded), scored from the service's record in /var/lib/arb-online.
+# reward = (program item + graded-episode item) / 2, each normalised by its own reference value (tests/verify.py). The
+# oracle leaves the privileged reference program in the submission folder, then plays the graded episode with it.
+# Grader knobs live in tests/grader_config.json (the service runs a byte copy of it).
 
 schema_version = "1.4+ale.1"
-# Where the agent leaves its work (packer.py and its helper modules).
-artifacts = ["/home/user/submission"]
+# The agent's program (the program item grades it when the graded episode was never started) and the graded service's
+# record directory (the graded episode's record and the program frozen at its start).
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/shoe_lacing_and_boxing"
@@ -22,32 +30,33 @@ name = "grounded-intelligence-initiative/shoe_lacing_and_boxing"
 # (work_score, higher) lives in tests/anchor.json.
 platform = "arm"
 tags = ["lacing", "packaging", "shoe", "deformable-linear-object", "panda", "multi-robot", "bimanual", "mujoco",
-        "code-as-policy", "camera-only", "rgbd", "hidden-seed", "oracle-token"]
+        "code-as-policy", "camera-only", "rgbd", "hidden-seed", "oracle-token", "online-graded-episode", "dual-mode"]
 
 [environment]
 cpus = 8
 memory_mb = 16384
 
-# setup (no field: the engine bounds it at a fixed 1800 s): the givens in the agent home (the grader's root-owned copy
-# is built by tests/test.sh in the verifier sandbox). [agent] timeout_sec: 4 h. [verifier] timeout_sec: the import check, then 6 hidden episodes of one pair each (six, not four:
-# the reference's own episode-to-episode spread, see tests/README.md section 4), each a cell build plus the program
-# within its 1200 s program-time cap, which does not count the cell's simulation (900 s simulated at most) and
-# rendering (450 frames at most); at the bounds an episode takes about 3000 s of wall clock here (up to 1500 s
-# simulating at 0.6x real time, up to 250 s rendering: Filament on lavapipe, 0.4-0.6 s a frame on 8 CPUs, plus ~10 s
-# building the render twins) and about 4900 s on a machine twice as slow, hence 9 h for the six. The oracle's episodes run the reference controller inside one privileged call: its verify of the fixed hidden
-# set (tests/hidden/seeds.json) took 4009 s here (610-760 s per episode, in a container with 8 CPUs; tests/README.md
-# section 4). The verifier sandbox's start and tests/test.sh's copy of the givens count against it too.
+# setup (no field: the engine bounds it at a fixed 1800 s): the givens in the agent home, the graded service's copy of
+# them and the service itself (about 10 s: it builds the graded episode's cell before it answers). The session,
+# [agent] timeout_sec, = prep_s + graded_s of environment/setup/online/online.json: 14400 s (4 h, main's agent budget)
+# for the program and the preparation, within which the graded episode must be started (the program is frozen then),
+# and 10800 s (3 h) for the graded episode.
 [agent]
-timeout_sec = 14400
+timeout_sec = 25200
 network_mode = "no-network"
 
 [verifier]
+# main's: the program item runs main's grading (the import check, then 6 hidden episodes of one pair each, each a cell
+# build plus the program within its 1200 s program-time cap, which does not count the cell's simulation (900 s simulated
+# at most) and rendering (450 frames at most); at the bounds an episode takes about 3000 s of wall clock here and about
+# 4900 s on a machine twice as slow, hence 9 h for the six; the oracle's verify of the hidden set took 4009-6669 s;
+# tests/README.md section 4); reading the graded episode's record adds seconds.
 timeout_sec = 32400
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
-# touched, with only the declared artifact (the submission) restored into it, so nothing else the agent left (a file,
-# a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there: tests/test.sh
-# builds the grader's root-owned copy of the givens itself. The agent's program runs during verify, so the verifier
-# gets the agent's resources (CPU rendering: no GPU).
+# touched, with only the declared artifacts (the submission folder and the graded service's record directory) restored
+# into it, so nothing else the agent left (a file, a process, a program planted on root's PATH) reaches it.
+# environment/setup/setup.sh does not run there: tests/test.sh builds the grader's root-owned copy of the givens itself.
+# The agent's program runs during verify, so the verifier gets the agent's resources (CPU rendering: no GPU).
 environment_mode = "separate"
 
 [verifier.environment]

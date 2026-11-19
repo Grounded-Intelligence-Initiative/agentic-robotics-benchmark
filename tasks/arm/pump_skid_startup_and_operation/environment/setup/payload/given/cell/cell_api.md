@@ -13,9 +13,14 @@ first episode the grader imports `operate` once under the same regime to check t
 finish within 120 s of wall clock and 120 CPU seconds (all threads together: a library that runs many threads spends
 CPU seconds faster than wall seconds); a failed or slower import scores every episode 0, so keep heavy precomputation
 out of module level (inside `solve` it counts against the episode's program time). Each episode's CPU time is capped at
-4x its program time.
+4x its program time. The program the grader runs is the copy of your submission folder frozen when you start the
+graded episode, or when the start window closes with no start (the folder at your session's end only if the session
+ends before either). The graded episode itself, the task's
+second item, is no program run: you drive it yourself from scripts of your own through `skidcell.client.connect_graded()`
+(the instruction gives its rules), and neither this paragraph nor the program's budgets below apply to it.
 `cell` is a proxy (`skidcell.client.Cell`): every method is one JSON-lines request on the process's original stdout,
-answered on stdin by the grader's cell; `print()` goes to stderr. A reply carrying `error` raises
+answered on stdin by the grader's cell; `print()` goes to stderr. Through `connect_graded()` and
+`connect_commissioning()` the requests go over a Unix socket instead. A reply carrying `error` raises
 `skidcell.client.CellError`.
 
 Units: metres, radians, seconds, quaternions `wxyz`; the world frame is the skid's frame (`cell_manual.md` section 1).
@@ -42,11 +47,15 @@ illegal call); `episode_over` after the episode ended (`step` still answers, not
 cell while it answers a call that changes the cell ends the episode. When the cell failed in an episode (an internal
 error, a physics fault, a frame it could not render: `camera_unavailable`, which is not charged to the frame budget),
 the grader runs that episode once more from scratch, with a fresh cell and a fresh process of your program, and the
-second run counts.
+second run counts. The graded episode is never run again: one the cell ended (an internal error, a physics fault) is
+scored as it stands, and a frame it could not render may be asked again.
 
 Budgets per episode (`describe()["budgets"]`): 1800 s of simulated time; 1200 s of **program time** (the wall clock
 minus the cell's own time inside `step` and `get_camera`), 4x that in CPU seconds; 600 camera frames; 180 s of
 silence (no request) ends the episode. After the episode is over the program may still read state and must finish.
+The graded episode has the 1800 s of simulated time and the 600 frames, and none of the others: its clock advances only
+inside `step`, the time between your requests costs it nothing, and once it is over its service answers `status()`
+and `finish()` only.
 
 No call returns ground truth.
 
@@ -55,7 +64,9 @@ the series' development sites, plus `reset(site)`, the first call of a connectio
 shift on development site `site` (1-9) and answers `ok`, `site`, `site_name`, `shift` (its number in the window) and
 `shifts_left`. `skidcell.client.connect_commissioning(site)` opens a connection and calls it. Errors: `bad_params` (no
 such site), `no_shift` (a call before `reset`), `one_shift_per_connection`, `commissioning_window_used` (every shift of
-the window is used), `busy` (as many shifts open as the service takes at a time). When a budget ends the shift the
+the window is used), `busy` (as many shifts open as the service takes at a time), `practice_closed` (the graded
+episode has started: commissioning has ended for the session, and an open shift ends with the event below, reason
+`practice_closed`). When a budget ends the shift the
 service sends `{"id": null, "event": "shift_over", "reason": ...}` and closes the connection (the client raises
 `CellError`). The commissioning window's count: `/run/skidcell/commission_status.json`. Nothing else differs from the
 graded cell: no truth, no score, no debrief.

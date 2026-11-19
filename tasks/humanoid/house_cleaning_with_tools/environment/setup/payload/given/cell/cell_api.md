@@ -1,7 +1,8 @@
 # Cell API (`cell`), version house-cell/1.0
 
 Your program `/home/user/submission/clean.py` exposes `solve(cell) -> None`. `cell` is a proxy
-(`house_client.client.Cell`, in `~/given/lib/house_client/`): every method is one JSON-lines request
+(`house_client.client.Cell`, in `~/given/lib/house_client/`; the graded episode you drive yourself is a `GradedCell`,
+from `house_client.connect_graded()`): every method is one JSON-lines request
 `{"id": n, "method": ..., "params": {...}}` answered by `{"id": n, "result": {...}}` or `{"id": n, "error": "..."}`
 (the proxy raises `CellError` on an error). Nothing moves between requests: only `step` advances time.
 
@@ -35,10 +36,18 @@ Malformed parameters (a wrong type or shape, an unknown key, a number that is no
 
 ## Running a program
 
-* Graded episodes: the grader launches your program itself (see the instruction): the client's `main()` imports `clean`
-  from the current directory and calls `solve(cell)` on a cell connected to the program's stdin / stdout, then calls
-  `finish()`. `print()` goes to stderr.
-* There is no practice cell: nothing in your session runs the cell. `describe.json` (this folder) is the reply of
-  `describe()`; the survey photos (`survey/`, cell_manual.md section 11) are camera frames as `get_camera` returns
-  them (`house_client.client.load_frame(path)` rebuilds the reply, `decode_frame` reads it). `Cell(send, recv)`
-  accepts any pair of line functions, so a stand-in cell of your own can drive your program for testing.
+* Your program's graded episodes: the grader launches your program itself (see the instruction): the client's `main()`
+  imports `clean` from the current directory and calls `solve(cell)` on a cell connected to the program's stdin /
+  stdout, then calls `finish()`. `print()` goes to stderr.
+* The graded episode you drive yourself (see the instruction): `house_client.connect_graded()` connects to its cell
+  service and returns a `GradedCell`: the calls above, plus `start()` (once per session; it freezes your program, see
+  the instruction), `status()` (started / ended, steps, simulated time, camera frames, the time left in each window)
+  and `close()` (disconnects; the episode stays where it is). Before `start()` the calls above answer
+  `{"error": "not_started"}`, after the episode's end `{"error": "episode_over"}` (`finish()` then answers
+  `{"ok": true}`); a second client at the same time gets `busy`. A program written as `solve(cell)` runs on it as
+  `solve(connect_graded())`.
+* There is no practice cell: nothing in your session runs the cell but the graded episode you drive. `describe.json` (this
+  folder) is the reply of `describe()`; the survey photos (`survey/`, cell_manual.md section 11) are camera frames as
+  `get_camera` returns them (`house_client.client.load_frame(path)` rebuilds the reply, `decode_frame` reads it).
+  `Cell(send, recv)` accepts any pair of line functions, so a stand-in cell of your own can drive your program for
+  testing.

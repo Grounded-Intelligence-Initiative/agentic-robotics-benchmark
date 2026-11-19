@@ -1,0 +1,9 @@
+{
+ "task": "house_cleaning_with_tools",
+ "episode": "hidden-1",
+ "seed_sha256": "689c4898cc0d52c414e63d0e58bed9789acb7368bbd95b4f49ef7037ff6df67e",
+ "record": "/var/lib/arb-online/record.json",
+ "format": "arb-online-record/1",
+ "draw": "2026-11-18T04:37:47Z, with OS entropy: python3 -c 'import secrets; print(secrets.randbelow(3))' -> 0, i.e. the first of the three scenes of the offline verifier's fixed hidden set (tests/hidden/seeds.json; its selection rule and record: tests/review/hidden_set.md). The episode id is hidden-<1-based index>; seed_sha256 is the sha256 of the seed's decimal ASCII form. The seed itself lives root-only in environment/setup/online/episode.json (the service's worker reads it as root before it drops privileges).",
+ "note": "the graded episode of the online variant, the same for every model: verify.py checks the record's task, episode and seed_sha256 against this file"
+}

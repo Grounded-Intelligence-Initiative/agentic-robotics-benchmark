@@ -58,25 +58,47 @@ An episode runs a fixed `20000` control steps at 10 Hz. During it:
    rest beside the robot's base (closer than 0.26 m, where no camera sees it and no hand reaches)
    is set back down on a free desk spot by the world a couple of seconds later, like a nudge.
 
-Every event is drawn from a hidden per-episode seed. Nothing in your sandbox plays an episode:
-the desk lab (see **Your sandbox**) is this desk without one, so your controller meets these
-dynamics, and is scored, for the first time in the graded episodes.
+Every event is drawn from a hidden per-episode seed. Nothing in your sandbox plays an episode
+except the graded episode itself: the desk lab (see **Your sandbox**) is this desk without one. You
+meet these dynamics for the first time in the graded episode, and your program, frozen at that
+episode's start, meets them in its own run after your session.
 
-## What you must deliver
+## How you are scored: two items
 
-Your session has a hard limit of **1 hour** of wall-clock time from the moment it starts (run
-`date` now and keep track). A session that is still running at the limit is cut off and **not
-graded at all**, so keep a working controller in place as you go and end the session yourself,
-with at least 10 minutes to spare. Whatever is in `/home/user/submission` when you end it is
-what the grader runs.
+Your score is the mean of two items. Each is the same episode score `S` (see **Scoring**),
+measured its own way and taken relative to a hidden reference value of its own:
+
+1. **The program.** A controller you leave in `/home/user/submission` (see **The program**) is
+   run after your session on the hidden episodes; this item is its mean `S` over them.
+2. **The graded episode.** You play one hidden episode yourself, live, during your session (see
+   **The graded episode**); this item is its `S`.
+
+**The freeze.** The program graded is the one in `/home/user/submission` at the earlier of two
+moments: when you start the graded episode, or when the first hour of your session (the window for
+starting it, see **Time**) ends. The folder is copied then, and nothing you change in it afterwards
+counts. Only if your session itself ends before that hour is over is the folder graded as the
+session leaves it. So put your program in place first, then start the episode.
+
+**Time.** Your session has a hard limit of **5 hours** of wall-clock time from the moment it starts
+(run `date` now and keep track). The first **1 hour** is for your program and your preparation:
+you must start the graded episode within it. When that hour ends with no start, your program is
+frozen then, a later start is refused, and the graded episode scores 0. A started episode has at
+most **4 hours**. When it is over, end your session yourself. A session stopped at its limit is
+still scored: the graded episode as it stood after your last step, and the program as the freeze
+left it.
+
+## The program (the first item)
 
 Leave a controller at `/home/user/submission/run.sh`. The grader launches it as
 `bash run.sh` with the working directory `/home/user/submission`, as your own user account,
 with **no network access**, and talks to it over stdin/stdout, one JSON object per line.
-Grading runs in a fresh copy of this machine into which only `/home/user/submission` is
-carried over: the rest of your home (the desk lab, `lab_client.py`, the task card, anything you
-saved elsewhere) is not there, so everything the controller imports or reads
-must be inside that folder.
+Grading runs in a fresh copy of this machine into which only your submission folder, as the
+freeze left it, is carried over: the rest of your home (the desk lab, `lab_client.py`, the task
+card, anything you saved elsewhere) is not there, so everything the controller imports or reads
+must be inside that folder. The freeze copies regular files and folders that are yours, with
+their permission bits; it skips links (it never follows one) and anything another account owns. A
+folder of more than 99,000 entries, 64 levels deep or 16 GiB is not copied, and the program
+item then scores 0.
 Call interpreters by absolute path in `run.sh`: `/opt/venv/bin/python3` is Python 3.12 with
 NumPy, Pillow and SciPy (the bare `python3` on your shell's `PATH` may be a different one), and
 the simulator runs under `/opt/isaac/bin/python3`.
@@ -103,6 +125,71 @@ READY                                                     <- your first stdout l
   you ask for (see Action). The simulator's own time is not counted, so a slow machine does not
   cost you anything. An episode whose controller uses up its budget is cut at that step and
   scored on the state it reached, scaled by the fraction of the horizon that ran (see Scoring).
+
+## The graded episode (the second item)
+
+The second item is one episode, the **graded episode**, which you play yourself during your
+session. It was drawn the way the hidden episodes are, from the same hidden set, and it runs under
+the same episode rules as your program's run: the same desk, simulator, sensors, seed-driven world,
+`20000`-step horizon, request deadlines and score. What it does not have are the program's
+run-time rules: no reply deadline, no controller time budget (so no hi-res charge), no repeated
+queries of a step (you ask for each step yourself) and no restarts. It runs in a service of its
+own on this machine, under another account: you cannot read it, change it or see its score, and
+you drive it through `/home/user/graded_episode.py` (Python 3, standard library only):
+
+```
+import sys; sys.path.insert(0, "/home/user")
+from graded_episode import GradedEpisode
+ep = GradedEpisode()                 # connect (one client at a time)
+ep.status()                          # {"started", "ended", "steps", "horizon", "sim_time_s",
+                                     #  "prep_left_s", "graded_left_s", "program_frozen"}
+obs = ep.start()                     # ONCE per session: freezes your program, then the
+                                     # observation at t = 0
+while not ep.done:
+    obs = ep.step(policy(obs))       # one control step: an action in, the next observation out
+ep.finish()                          # optional: end the episode now
+```
+
+From a shell, `/opt/venv/bin/python3 /home/user/graded_episode.py status` prints the status
+(`start` and `finish --yes` also exist).
+
+- **One shot.** `start()` succeeds once per session. It launches the episode's own simulator,
+  which takes from seconds to a few minutes; if that simulator cannot start, nothing is charged and
+  you can try again. It needs about 6 GB of GPU memory, as the desk lab does: if your lab holds the
+  GPU, close it first. Then, just before the start is charged, it freezes your program (see **How
+  you are scored**; `ep.program_snapshot` then reports the copy: `status` "ok" or "too_large", the
+  files, bytes and entries skipped); if the freeze fails, nothing is charged and you can try again.
+  The start is charged before anything is simulated and never refunded.
+- **Practice ends when the graded episode starts.** Any practice facility that runs hidden code or
+  hidden instances closes for good at the start. This task has none: the desk lab is your own tool
+  (its code is in your home and it runs under your account, as a program of yours could carry
+  it), so it stays available while the graded episode runs, GPU memory permitting.
+- **The world waits for you.** It advances only inside `step()`: one call is one control step
+  (0.1 s of simulated time). Between your calls nothing moves and no deadline runs, so thinking
+  costs no simulated time; deadlines are in steps (`deadline_t`). The episode does not stand still
+  while you step, though: arrivals, requests and disturbances come as described above.
+- **Persistent.** The episode lives in the service, not in your connection or your script. Close
+  the connection, let a script crash, or move to the next script: a new `GradedEpisode()` continues
+  where the episode stands, and `observe()` returns the observation your next step acts on (nothing
+  is simulated). One client at a time: while one is connected, a second gets `busy`, so let your
+  program log its own progress and close its connection (or exit) before you connect another.
+- **Steps.** `step(action)` takes the eight numbers of **Action** (plus the optional ninth); a
+  malformed action is refused and nothing is simulated. Each observation is exactly the one
+  described in **Observation**. A step takes about 0.15-0.25 s of wall-clock time, so a full episode
+  is about an hour of simulation: drive it from a program, not by hand, and run long stretches in
+  the background with a log.
+- **Its window.** It must be started within the first hour of your session (`prep_left_s`; see
+  **How you are scored**); when that hour ends with no start, your program is frozen then and the
+  episode can no longer be started. A started episode has at most **4 hours** of wall-clock time
+  (`graded_left_s`).
+- **How it ends.** The episode ends at step `20000`, when you call `finish()`, when its 4 hours run
+  out, or when your session ends, whichever comes first. Nothing is simulated after it ends. An
+  episode that ends before step `20000` is scored on the state it reached, scaled by the fraction of
+  the horizon that ran (see **Scoring**), so an early end costs in proportion; if your session ends
+  while the episode runs, it is scored as it stood after your last step. Once the episode is over,
+  end your session yourself: your program was frozen at the start, so nothing else remains.
+- **Its result.** The graded episode's record, kept by the service, is this item's whole result;
+  nothing you print or write enters it.
 
 ## Observation
 
@@ -138,8 +225,9 @@ whose 1920 x 1080 RGB and depth frames come back in that step's observation as `
 `depth_hires`. The 320 x 320 frames always arrive at 10 Hz; every hi-res camera frame you ask for
 is charged 0.1 s against your controller's time budget (the simulator's PNG encoding, at a fixed
 price), and receiving and decoding it (about 3 MB per camera) is your controller's own time on top,
-so you choose, step by step, between picture quality and time. Nothing else about the step
-changes. A mark is ignored while no request is open, and a request accepts one mark only; the
+so you choose, step by step, between picture quality and time. In the graded episode the same
+frames cost wall-clock time only (inside its window): it has no time budget. Nothing else about the
+step changes. A mark is ignored while no request is open, and a request accepts one mark only; the
 request, and the desk with it, are judged at the step of the mark. The environment turns the delta
 into joint targets through inverse kinematics, interpolated over the step (a 5 cm step completes
 about 96% within it); a delta with no solution is refused and the arm simply stays put for that
@@ -148,8 +236,9 @@ rather than jumped to.
 
 ## Scoring
 
-The grader owns the simulator and tracks the physical state at every step; nothing your
-controller prints is a scoring input. Its detectors: finger **contact** with an object (physics
+In both items the simulator belongs to the grading side (the grader in the program's run, the
+graded episode's service live), which tracks the physical state at every step; nothing you or your
+controller print or write is a scoring input. Its detectors: finger **contact** with an object (physics
 contact report), **held** (a real grasp: both fingers touch the object and it has been lifted,
 its centre at least 3 cm above where it last rested; a finger brushing or pushing an object does
 not hold it), **in container** (the object's centre inside a container's interior, in that
@@ -212,15 +301,21 @@ order at the mark, so an object dug out of its container and not put back, or an
 loose, counts against you then. The two terms multiply: a tidy desk earns nothing while no
 request has earned a point (an episode whose request points add up to 0 or less scores 0,
 however well sorted the desk), and request points earn only as much as the desk is in order.
-An untouched scene scores exactly 0. An episode the grader cuts short because your controller
-used up its time budget is scored on the state it reached, scaled by the fraction of the
-horizon that ran; an aborted episode (protocol error, step deadline, malformed action) scores 0.
+An untouched scene scores exactly 0. In the program's run, an episode the grader cuts short
+because your controller used up its time budget is scored on the state it reached, scaled by the
+fraction of the horizon that ran; an aborted episode (protocol error, step deadline, malformed
+action) scores 0. The graded episode, ended before its last step (your `finish()`, the end of its
+4-hour window, the end of your session), is scored the same way: on the state it reached, scaled by
+the fraction of the horizon that ran, `S · steps / 20000`; a malformed action there is refused and
+nothing is simulated.
 
-The task's reported metric is `mean_episode_score`, the mean of `S` over the hidden seeds. The
-reward you are judged on is that mean relative to a hidden reference value.
+The program item is the mean of `S` over the hidden episodes; the graded-episode item is that
+episode's `S`. Each is taken relative to a hidden reference value of its own, and the reward you
+are judged on is the mean of the two (the task reports it as `dual_mode_score`).
 
 ## Your sandbox
 
+- `/home/user/graded_episode.py` — the graded episode's client (see **The graded episode**);
 - `/home/user/messy_desk_lab.py` — the desk lab: this desk in Isaac Sim, with the same robot,
   containers, objects, cameras, physics and action rule as the graded episodes, but without the
   episode. Nothing arrives, no request opens, nothing is misplaced, nudged or emptied, and nothing
@@ -230,7 +325,8 @@ reward you are judged on is that mean relative to a hidden reference value.
   observation your controller will get plus the arm's own `ik_ok` status. The commands are in
   the task card; `/home/user/lab_client.py` starts the lab and wraps them. It is where you try
   your perception and your grasps; the episode itself, its requests and its scoring are the ones
-  described above, and the only run of your controller through them is the graded one;
+  described above, and the only runs through them are the graded ones: your program's run on the
+  hidden episodes and the graded episode;
 - `/home/user/example_controller/` — a complete, policy-free controller (`run.sh` + one Python
   file: READY, the reply loop, camera decoding, where the action goes). Copy it to
   `/home/user/submission/` and replace the policy; as shipped it holds still and scores 0;
@@ -239,4 +335,5 @@ reward you are judged on is that mean relative to a hidden reference value.
 
 The lab runs headless on the GPU in this sandbox. Its first launch in a fresh sandbox compiles
 the renderer's shaders and takes about ten minutes; later launches take seconds. Start it early
-and keep it alive.
+and keep it alive while you practise. The graded episode's simulator runs on the same GPU (about
+6 GB each), and its shaders were compiled before your session started.

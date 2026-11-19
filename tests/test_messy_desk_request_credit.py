@@ -195,15 +195,18 @@ class DeskLabTests(unittest.TestCase):
                              "re-run tests/review/make_lab.py after changing tests/env.py")
 
     def test_nothing_agent_visible_plays_or_scores_an_episode(self):
+        """Online variant: the payload adds graded_episode.py, a client of the graded episode service that holds
+        none of the episode's logic; the episode itself runs only in the service (environment/setup/online/)."""
         payload = TASK / "environment/setup/payload"
         names = sorted(p.relative_to(payload).as_posix() for p in payload.rglob("*") if p.is_file())
-        self.assertEqual(names, ["example_controller/controller.py", "example_controller/run.sh", "lab_client.py",
-                                 "messy_desk_lab.py", "task_card.md"])
-        lab = (payload / "messy_desk_lab.py").read_text()
-        for needle in ("_world_events", "_open_request", "force_request", "EpisodeScorer", "messy_desk_score",
-                       "REQUEST_ABSENT_P", "ARRIVAL_MEAN_STEPS", "DISTURB_MEAN_STEPS", "CONTAINER_CAP", "baseline",
-                       "def privileged", "def _value", "def gains"):
-            self.assertNotIn(needle, lab)
+        self.assertEqual(names, ["example_controller/controller.py", "example_controller/run.sh", "graded_episode.py",
+                                 "lab_client.py", "messy_desk_lab.py", "task_card.md"])
+        for name in ("messy_desk_lab.py", "graded_episode.py"):
+            text = (payload / name).read_text()
+            for needle in ("_world_events", "_open_request", "force_request", "EpisodeScorer", "messy_desk_score",
+                           "REQUEST_ABSENT_P", "ARRIVAL_MEAN_STEPS", "DISTURB_MEAN_STEPS", "CONTAINER_CAP", "baseline",
+                           "def privileged", "def _value", "def gains"):
+                self.assertNotIn(needle, text, "{} holds {}".format(name, needle))
 
 
 class SensorTests(unittest.TestCase):

@@ -1,0 +1,5 @@
+{
+ "episode": "ep01",
+ "seed": 2122884573269676624,
+ "source": "the graded episode of the online variant: the first seed of the offline verifier's fixed hidden set (the hidden episode it runs as ep01), drawn by index from the six with OS entropy on 2026-11-18 (secrets.randbelow(6) = 0)"
+}

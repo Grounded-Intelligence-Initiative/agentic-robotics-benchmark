@@ -3,8 +3,11 @@
 
 schema_version = "1.4+ale.1"
 
-# Where the agent leaves its work.
-artifacts = ["/home/user/submission"]
+# Where the agent leaves its work (the program, graded offline), and the graded episode's record (the online
+# item): the service writes /var/lib/arb-online as its own account (0700), with the snapshot of the submission it
+# froze at the graded start; the engine collects both as root after the agent phase and restores them, root-owned,
+# in the separate verifier.
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 # The task's stable identity, "<org>/<slug>". The org is grounded-intelligence-initiative,
 # the GitHub and Hugging Face organization that owns the benchmark, for every task here.
@@ -39,14 +42,22 @@ memory_mb = 32768
 gpus = 1
 gpu_types = ["RTX-4090"]
 
-# Setup (environment/setup/setup.sh: staging the agent-visible material) has no field: the
-# engine bounds it at a fixed 1800 s. [agent] timeout_sec: the agent's whole budget, including
-# training.
+# Setup (environment/setup/setup.sh: staging the agent-visible material, then starting the graded
+# episode service, which warms its simulator's shader cache before it serves: 270-360 s measured cold)
+# has no field: the engine bounds it at a fixed 1800 s.
+# [agent] timeout_sec (dual mode) = prep_s + graded_s = 3600 + 14400. prep_s is the task's agent budget on
+# main (1 h), for the program and the preparation: the graded episode must be started within it, and the
+# program freezes at the earlier of the start and the close of that window. graded_s is 4 h instead of the default 3 h because the simulation itself needs about an
+# hour of wall time: 20000 steps at 0.15-0.25 s a step measured on an RTX 4090 host; the privileged
+# reference's own online episode took 3468 s (ale validate run validate-abe7f0f5) in a sandbox where nothing
+# else ran, and an agent's desk lab and perception share the same GPU and 8 CPUs. The service enforces both
+# windows (environment/setup/online/online.json).
 [agent]
-timeout_sec = 3600
+timeout_sec = 18000
 network_mode = "no-network"
 
-# [verifier] timeout_sec: the scoring run — closed_loop needs room for every episode plus probes.
+# [verifier] timeout_sec (dual mode: main's, since main's grading of the program runs again; reading the record
+# takes seconds): the scoring run — closed_loop needs room for every episode plus probes.
 # Here: the 3 hidden episodes (tests/episodes.json), each in a simulator of its own: 20000 steps of
 # simulator time (0.13-0.16 s a step measured on an RTX 4090 host, under 4000 s an episode on a
 # slower one) plus the episode's controller budget (controller_budget_s in
@@ -70,10 +81,10 @@ network_mode = "no-network"
 [verifier]
 timeout_sec = 36000
 # Separate verification (2026-11-04): a fresh verifier sandbox from the same image, which the agent never touched;
-# only the declared artifact (/home/user/submission) is restored into it. In a shared sandbox, programs the agent
-# leaves earlier on root's PATH (the base image's /usr/local/bin is the agent's) would run as root at verify. The
-# grader needs nothing else from the agent's sandbox: tests/ brings env.py, sim_client.py and the scorer, the image
-# brings Isaac Sim and the stock assets, and setup.sh only stages the agent's material (the desk lab).
+# only the declared artifacts are restored into it. In a shared sandbox, programs the agent leaves earlier on root's
+# PATH (the base image's /usr/local/bin is the agent's) would run as root at verify. The grader needs nothing else
+# from the agent's sandbox: tests/ brings env.py, sim_client.py and the scorer, the image brings Isaac Sim and the
+# stock assets, the record directory brings the graded episode's record and the frozen program.
 environment_mode = "separate"
 
 # The verifier runs the simulator on the GPU, as the agent's sandbox does: the same resources.
