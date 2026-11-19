@@ -9601,6 +9601,193 @@
     }
    },
    "pre_registered_commit": "93ce903"
+  },
+  {
+   "amended_utc": "2026-11-19T06:35:47Z",
+   "what": "The shared verify-stage kit (2026-11-19). tests/robotics_grader/ is replaced by the benchmark's current copy of shared/robotics_grader/: a new file account.py with clear_agent_account(), which Solver.__init__ and deprivileged call before agent code starts. Once per verifier sandbox it switches every supervisord program off in supervisord's configuration, has supervisord reload, and kills the processes of the agent's account that the grader did not start until none comes back (2 to 6.5 s), so that the solver is the only code running as the agent's account while it is graded. Nothing of the cell, the kits, the credit rule, the plan, this grader's own module or the reference changes; the grader's own kill and freeze of the account stay. The clearing runs inside the first kit's solver start, so the first kit's controller time includes it. One `ale validate` of the task with the new kit had been started four minutes before this record was written, before the task's amendment rule was noticed; the rule and the candidates are those in force before it and were not chosen in view of it.",
+   "rule": "Pre-registered before any candidate ran on the amended files: this amendment (what changed, the frozen files' sha256, the candidates, the development candidates) was committed first. The selection's own rule runs again, unchanged, on the same 16 candidates in the same order (those in force before this amendment: the kits themselves are unchanged): the frozen reference runs each ONCE through the grader itself (tests/review/regrade.sh, a fresh container of the amended task image, a one-episode plan); a candidate is kept when the reference completes its kit (kit_complete 1, no abort, no fault, no controller-budget cut), now within the amended episode length; the hidden set is the first 10 kept in drawn order; should fewer than 10 be kept, 8 more candidates are drawn from os.urandom, appended and run. The anchor is the reference's full verify of that set, which must repeat every kept run (kit_complete, nuts assembled, steps).",
+   "frozen": {
+    "solution/solve.sh": "3314b1a8f01970ba663e10a8162e5c73fb1fdf8095d1d27cfed2bffc66153db5",
+    "solution/solver/oracle_ctrl.py": "f7e75e7f60b895a3057b34c43606cc2a76e446dfcecf499ed96af988a7c77428",
+    "solution/solver/oracle_main.py": "a8c574a80dbb4e7f7d8db8f5ffa806e20419985949870bf3a56e159d514b33b0",
+    "tests/keyed_env.py": "0440b881ba380fb149b4041fb1ad06c7cb4ed36bf35348ef0e4b8fd4f196d185",
+    "tests/keyed_credit.py": "2ab4fc524109ccc8296da4c8d27ec573be8b976806c30ab32ea9342dd1d4d638",
+    "tests/verify.py": "6a8f7688e0def1f89ae77c19636f9220dabfadcfc2be2643851704faa180e91c",
+    "tests/grader_config.json": "93be308d9cf781cc2fc1f59ba4a1315883181d2c8207ef4572486ed477417bb9",
+    "tests/nonet_exec.py": "f959b15c69a01e60a79c6f3c2cf83e8b84e40e061dc038d78b1e1e30746c96fc",
+    "tests/test.sh": "da73eea923aef8fc51f2baee4409bc3b89d3f4416adf7d60d432a125d9ad5437",
+    "tests/oracle_token.sha256": "0ddff0649335e27124af8c298fa54afb13b91aa2154f9e7950a343186166bbaa",
+    "tests/keyed_render.py": "2646685c0d7470b03871b0339de07a47d9a046ddde9f4bf733d17af76cf34bbd",
+    "tests/keyed_look.json": "73c42d55dbc33d602d1b408a470358320f896e75191ac952de3d18cb4f49ef45",
+    "environment/Dockerfile": "d0a6dd3122e05b01466c812a6430a7cbc2b001adbc38fa250c15a1694418b141",
+    "environment/requirements.txt": "f8044709e08e9c3deb83d17f5e92c891916f210af48a4d8c4a03fd1d5e03c92d",
+    "environment/assets.sha256": "5ceb1437cdaa46cfc2a6f1ffb40b2349f1f3efba175135dae4843aa27b87cb8b",
+    "tests/robotics_grader/__init__.py": "d8f32e4bc489448708584a174d6fddef8c1d7969d254ff145b621f22b947af3d",
+    "tests/robotics_grader/account.py": "7951366893446c36a01e2dfc4549eaf3c6eb59dbb3e4c4f6c9cf93ff386f4d8c",
+    "tests/robotics_grader/scoring.py": "9353682eb3536df264b3cb5ec3bf2be24a410f88af5b20cf86cb31796930a83b",
+    "tests/robotics_grader/seeds.py": "b795f63404d14f0c90ca0098582e80afabd251396b1f4d6ababf4e7f6037b5e1",
+    "tests/robotics_grader/selftest.py": "56a363808a5c16a2e484d3a40bc7b16a1ef5761a8c3495db9e69c41a97b740b3",
+    "tests/robotics_grader/solver.py": "308e8014d3273163d0c8d86ad853384918324a425181f06bc283c1b61e9549f7",
+    "tests/robotics_grader/stage.py": "977429b9cd490c3cab06628a1a093dce3bb8080c102f60bc7e47a4e84012057d"
+   },
+   "changed": [
+    "tests/robotics_grader/__init__.py",
+    "tests/robotics_grader/account.py",
+    "tests/robotics_grader/selftest.py",
+    "tests/robotics_grader/solver.py",
+    "tests/robotics_grader/stage.py"
+   ],
+   "development_kits": {
+    "rule": "The commissioning service's development kits (environment/commission_service/kits.json) are chosen like the hidden set, from their own candidates: candidate i (id U01 ...) is keyed_env.sample_kit(numpy.random.default_rng(9001 + i), id) with layout and noise seed 13001 + i, in order; the frozen reference runs each ONCE through the grader; the development kits are the first 16 it completes, in order (should fewer be kept, the next seeds follow). No development seed is a hidden candidate's, and no development kit has a hidden candidate's grooves.",
+    "seed0": 9001,
+    "layout_seed0": 13001,
+    "candidates": [
+     {
+      "i": 0,
+      "id": "U01",
+      "kit_seed": 9001,
+      "layout_seed": 13001
+     },
+     {
+      "i": 1,
+      "id": "U02",
+      "kit_seed": 9002,
+      "layout_seed": 13002
+     },
+     {
+      "i": 2,
+      "id": "U03",
+      "kit_seed": 9003,
+      "layout_seed": 13003
+     },
+     {
+      "i": 3,
+      "id": "U04",
+      "kit_seed": 9004,
+      "layout_seed": 13004
+     },
+     {
+      "i": 4,
+      "id": "U05",
+      "kit_seed": 9005,
+      "layout_seed": 13005
+     },
+     {
+      "i": 5,
+      "id": "U06",
+      "kit_seed": 9006,
+      "layout_seed": 13006
+     },
+     {
+      "i": 6,
+      "id": "U07",
+      "kit_seed": 9007,
+      "layout_seed": 13007
+     },
+     {
+      "i": 7,
+      "id": "U08",
+      "kit_seed": 9008,
+      "layout_seed": 13008
+     },
+     {
+      "i": 8,
+      "id": "U09",
+      "kit_seed": 9009,
+      "layout_seed": 13009
+     },
+     {
+      "i": 9,
+      "id": "U10",
+      "kit_seed": 9010,
+      "layout_seed": 13010
+     },
+     {
+      "i": 10,
+      "id": "U11",
+      "kit_seed": 9011,
+      "layout_seed": 13011
+     },
+     {
+      "i": 11,
+      "id": "U12",
+      "kit_seed": 9012,
+      "layout_seed": 13012
+     },
+     {
+      "i": 12,
+      "id": "U13",
+      "kit_seed": 9013,
+      "layout_seed": 13013
+     },
+     {
+      "i": 13,
+      "id": "U14",
+      "kit_seed": 9014,
+      "layout_seed": 13014
+     },
+     {
+      "i": 14,
+      "id": "U15",
+      "kit_seed": 9015,
+      "layout_seed": 13015
+     },
+     {
+      "i": 15,
+      "id": "U16",
+      "kit_seed": 9016,
+      "layout_seed": 13016
+     },
+     {
+      "i": 16,
+      "id": "U17",
+      "kit_seed": 9017,
+      "layout_seed": 13017
+     },
+     {
+      "i": 17,
+      "id": "U18",
+      "kit_seed": 9018,
+      "layout_seed": 13018
+     },
+     {
+      "i": 18,
+      "id": "U19",
+      "kit_seed": 9019,
+      "layout_seed": 13019
+     },
+     {
+      "i": 19,
+      "id": "U20",
+      "kit_seed": 9020,
+      "layout_seed": 13020
+     },
+     {
+      "i": 20,
+      "id": "U21",
+      "kit_seed": 9021,
+      "layout_seed": 13021
+     },
+     {
+      "i": 21,
+      "id": "U22",
+      "kit_seed": 9022,
+      "layout_seed": 13022
+     },
+     {
+      "i": 22,
+      "id": "U23",
+      "kit_seed": 9023,
+      "layout_seed": 13023
+     },
+     {
+      "i": 23,
+      "id": "U24",
+      "kit_seed": 9024,
+      "layout_seed": 13024
+     }
+    ]
+   }
   }
  ]
 }
