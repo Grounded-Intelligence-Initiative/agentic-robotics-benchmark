@@ -16,7 +16,7 @@ import sys
 import tempfile
 import time
 
-from . import scoring, seeds, solver as solver_mod, stage
+from . import account, scoring, seeds, solver as solver_mod, stage
 
 FAILURES = []
 
@@ -349,11 +349,13 @@ def test_probe_lock():
 # solver wire (real subprocesses; UID drop excluded — see the module docstring)
 # --------------------------------------------------------------------------- #
 class _LocalSolver(solver_mod.Solver):
-    """Same wire, spawned in-process instead of through `runuser`."""
+    """Same wire, spawned in-process instead of through `runuser`. The agent's account is left
+    as it is (`clear_account=False`): a self-test clears nothing, wherever it runs."""
 
-    def __init__(self, script, step_timeout=5.0):
+    def __init__(self, script, step_timeout=5.0, clear_account=False):
         super(_LocalSolver, self).__init__(
-            step_timeout, submission=os.path.dirname(script), entry=os.path.basename(script)
+            step_timeout, submission=os.path.dirname(script), entry=os.path.basename(script),
+            clear_account=clear_account,
         )
 
     def _spawn(self):
@@ -519,6 +521,44 @@ for line in sys.stdin:
     time.sleep(30)
 '''
 
+# Prints READY, resets, then answers each act with an endless trickle of blank lines —
+# one every (step_timeout / 4), never a real reply. The single per-request deadline must
+# abort within one step_timeout; a per-line deadline would let it run forever.
+_BLANK_TRICKLE_SOLVER = '''\
+import json, sys, time
+print("READY", flush=True)
+for line in sys.stdin:
+    req = json.loads(line.strip() or "{}")
+    if req.get("type") == "reset":
+        print(json.dumps({"ok": True}), flush=True); continue
+    while True:
+        print("", flush=True)
+        time.sleep(%(gap)s)
+'''
+
+# Never prints READY: trickles blank banner lines forever. The single handshake deadline
+# (step_timeout * READY_TIMEOUT_FACTOR) must abort it, not reset per line.
+_BLANK_BANNER_SOLVER = '''\
+import sys, time
+while True:
+    print("", flush=True)
+    time.sleep(%(gap)s)
+'''
+
+# Floods blank lines with no delay on the first act: faster than any deadline, so only the
+# blank-line cap stops it. Answers reset normally first.
+_BLANK_FLOOD_SOLVER = '''\
+import json, sys
+print("READY", flush=True)
+for line in sys.stdin:
+    req = json.loads(line.strip() or "{}")
+    if req.get("type") == "reset":
+        print(json.dumps({"ok": True}), flush=True); continue
+    while True:
+        sys.stdout.write("\\n")
+        sys.stdout.flush()
+'''
+
 
 def _replies_after_reset(solver, steps):
     """`reset()` then one `act` per step; a raised abort is a failed check, not a traceback."""
@@ -590,6 +630,47 @@ def test_solver_wire():
                 check("a stalled step aborts on its deadline", False, "no exception")
             except solver_mod.SolverAborted:
                 check("a stalled step aborts on its deadline", True)
+
+    # A blank-line trickle must abort within ONE step deadline, not run forever: the
+    # per-request deadline is fixed when the request is written, so a line every
+    # step_timeout/4 cannot keep resetting it.
+    with tempfile.TemporaryDirectory() as tmp:
+        blanks = _BLANK_TRICKLE_SOLVER % {"gap": 0.05}
+        with _LocalSolver(_write(tmp, blanks, "trickle.py"), step_timeout=0.4) as solver:
+            solver.reset()
+            began = time.time()
+            try:
+                solver.act(0, [0.0])
+                check("a blank-line trickle aborts on the request deadline", False, "no exception")
+            except solver_mod.SolverAborted:
+                elapsed = time.time() - began
+                check("a blank-line trickle aborts on the request deadline",
+                      elapsed < 2.0, "took %.2fs (should be ~0.4s)" % elapsed)
+
+    # The same trickle before READY must abort on the handshake deadline
+    # (step_timeout * READY_TIMEOUT_FACTOR), not per line.
+    with tempfile.TemporaryDirectory() as tmp:
+        banner = _BLANK_BANNER_SOLVER % {"gap": 0.05}
+        began = time.time()
+        try:
+            _LocalSolver(_write(tmp, banner, "banner.py"), step_timeout=0.3)
+            check("a blank trickle before READY aborts on the handshake deadline",
+                  False, "no exception")
+        except solver_mod.SolverAborted:
+            elapsed = time.time() - began
+            check("a blank trickle before READY aborts on the handshake deadline",
+                  elapsed < 4.0, "took %.2fs (should be ~1.2s)" % elapsed)
+
+    # A blank-line flood faster than any deadline is stopped by the blank-line cap.
+    with tempfile.TemporaryDirectory() as tmp:
+        with _LocalSolver(_write(tmp, _BLANK_FLOOD_SOLVER, "flood.py"), step_timeout=5.0) as solver:
+            solver.reset()
+            try:
+                solver.act(0, [0.0])
+                check("a blank-line flood aborts on the blank-line cap", False, "no exception")
+            except solver_mod.SolverAborted as exc:
+                check("a blank-line flood aborts on the blank-line cap",
+                      "blank lines" in str(exc), str(exc))
 
     with tempfile.TemporaryDirectory() as tmp:
         with _LocalSolver(_write(tmp, _LATE_ONCE_SOLVER), step_timeout=0.5) as solver:
@@ -777,6 +858,174 @@ def test_stage_identity():
     check("the default home is /home/user", stage.agent_user() == "user")
 
 
+class _NoProc(object):
+    """Stand-in so a patched Popen can return without starting anything."""
+
+
+def test_exec_hardening():
+    print("[exec hardening]")
+    # The fixed PATH the kit resolves its root helpers against must not contain any
+    # directory an unprivileged account can write (the base image's /usr/local/bin).
+    fixed = stage._SYSTEM_PATH.split(":")
+    check("the fixed root PATH excludes /usr/local/bin", "/usr/local/bin" not in fixed)
+    check("the fixed root PATH excludes /usr/local/sbin", "/usr/local/sbin" not in fixed)
+
+    # runuser — the one program the kit runs as root — resolves to an absolute path.
+    resolved = stage._resolve_root_tool("runuser")
+    check("runuser resolves to an absolute path", os.path.isabs(resolved) or resolved == "runuser")
+    if resolved != "runuser":
+        check("runuser resolves under the fixed root PATH",
+              any(resolved == os.path.join(d, "runuser") for d in fixed), resolved)
+
+    # deprivileged must exec runuser by that absolute path, never the bare name, so a
+    # planted /usr/local/bin/runuser cannot win. Capture the argv without launching.
+    captured = {}
+    saved = stage.subprocess.Popen
+
+    def fake_popen(argv, **kwargs):
+        captured["argv"] = list(argv)
+        captured["has_env"] = "env" in kwargs
+        return _NoProc()
+
+    stage.subprocess.Popen = fake_popen
+    try:
+        # clear_account=False: this is a self-test, wherever it runs; the account stays as it is.
+        stage.deprivileged(["bash", "run.sh"], clear_account=False)
+    finally:
+        stage.subprocess.Popen = saved
+    argv = captured.get("argv", [])
+    check("deprivileged execs runuser by absolute path, not the bare name",
+          bool(argv) and (os.path.isabs(argv[0]) or argv[0] == "runuser")
+          and os.path.basename(argv[0]) == "runuser", str(argv[:1]))
+    check("deprivileged runs the caller's argv under runuser",
+          argv[-2:] == ["bash", "run.sh"], str(argv))
+    check("deprivileged leaves the child environment to the agent's own PATH",
+          not captured.get("has_env"))
+
+    # The PATH-dir decision: only root ownership with no group/other write is safe.
+    Info = _stat_namedtuple()
+    check("a root-owned 0755 dir is secure",
+          not stage._insecure_dir(Info(0, 0, 0o040755)))
+    check("an agent-owned dir is insecure",
+          stage._insecure_dir(Info(1000, 1000, 0o040755)))
+    check("a root dir with a non-root group is insecure",
+          stage._insecure_dir(Info(0, 1000, 0o040750)))
+    check("a group-writable root dir is insecure",
+          stage._insecure_dir(Info(0, 0, 0o040775)))
+    check("a world-writable root dir is insecure",
+          stage._insecure_dir(Info(0, 0, 0o040757)))
+
+    # The lock itself: idempotent, and safe when a directory is absent or already safe.
+    with tempfile.TemporaryDirectory() as tmp:
+        absent = os.path.join(tmp, "missing")
+        safe = os.path.join(tmp, "safe")
+        os.mkdir(safe)
+        first = stage.secure_exec_path([absent, safe])
+        second = stage.secure_exec_path([absent, safe])
+        check("the PATH lock never raises on an absent or existing dir", True)
+        check("the PATH lock skips an absent directory", absent not in first)
+        check("the PATH lock is idempotent", first == second)
+        is_root = hasattr(os, "geteuid") and os.geteuid() == 0
+        if is_root:
+            # As root it must actually reclaim an agent-writable dir and then leave it.
+            victim = os.path.join(tmp, "victim")
+            os.mkdir(victim)
+            os.chown(victim, 1000, 1000)
+            reclaimed = stage.secure_exec_path([victim])
+            info = os.stat(victim)
+            check("as root the lock reclaims an agent-owned PATH dir",
+                  victim in reclaimed and info.st_uid == 0 and info.st_gid == 0
+                  and stage.stat.S_IMODE(info.st_mode) == 0o755)
+            check("as root the lock is idempotent on an already-safe dir",
+                  stage.secure_exec_path([victim]) == [])
+        else:
+            # Off root the lock cannot (and need not) chown, so it is a clean no-op: a kit
+            # that is not root cannot be hijacked through root's PATH.
+            check("off root the PATH lock is a clean no-op", first == [])
+
+
+def _stat_namedtuple():
+    import collections
+    return collections.namedtuple("_Info", "st_uid st_gid st_mode")
+
+
+def test_account_clearing():
+    print("[account clearing]")
+    # The rewrite of a supervisord configuration file: every program off, the rest untouched.
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "30-gnome.conf")
+        original = ("[program:gnome]\n"
+                    "command=/usr/local/bin/start-gnome.sh ; the session\n"
+                    "autostart=true\n"
+                    "autorestart=true\n"
+                    "user=user\n"
+                    'environment=HOME="/home/user",DISPLAY=":1"\n'
+                    "\n"
+                    "[group:desk]\n"
+                    "programs=gnome\n")
+        with open(path, "w") as handle:
+            handle.write(original)
+        check("a program supervisord would start is found", account.enabled_programs(path) == ["program:gnome"])
+        check("the rewrite names the section it switched off", account.disable_programs(path) == ["program:gnome"])
+        parser = account._read_config(path)
+        check("the program neither starts nor restarts afterwards",
+              parser.get("program:gnome", "autostart") == "false"
+              and parser.get("program:gnome", "autorestart") == "false")
+        check("its command and environment are untouched",
+              parser.get("program:gnome", "command") == "/usr/local/bin/start-gnome.sh"
+              and parser.get("program:gnome", "environment") == 'HOME="/home/user",DISPLAY=":1"'
+              and parser.get("group:desk", "programs") == "gnome")
+        with open(path) as handle:
+            rewritten = handle.read()
+        check("a second rewrite changes nothing", account.disable_programs(path) == [] and
+              open(path).read() == rewritten)
+        check("no draft file is left behind", os.listdir(tmp) == ["30-gnome.conf"])
+
+    # Only what the caller did not start counts as the account's processes.
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    try:
+        others = account.account_processes(os.getuid())
+        check("the caller and what it started are not the account's strays",
+              os.getpid() not in others and child.pid not in others)
+    finally:
+        child.kill()
+        child.wait()
+
+    # It acts only as root inside the engine's verify stage; a self-test must never clear anything.
+    saved = os.environ.pop("ALE_VERIFY_PYTHON", None)
+    ran = []
+    real = account._clear
+    account._clear = lambda *args, **kwargs: ran.append(1) or real(*args, **kwargs)
+    try:
+        report = account.clear_agent_account()
+    finally:
+        account._clear = real
+        if saved is not None:
+            os.environ["ALE_VERIFY_PYTHON"] = saved
+    check("outside the verify stage the clearing is skipped", bool(report["skipped"]) and not ran
+          and report["cleared"] is False, str(report))
+
+    # Solver clears before its first start (so a subclass with its own launcher gets it), once.
+    calls = []
+    saved_clear = solver_mod.clear_agent_account
+    solver_mod.clear_agent_account = lambda: calls.append("clear")
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            script = _write(tmp, "import sys\nprint('READY', flush=True)\n"
+                                 "for line in sys.stdin:\n    print('{\"ok\": true}', flush=True)\n")
+            solver = _LocalSolver(script, clear_account=True)
+            solver._broken = True
+            solver.reset()
+            solver.close()
+            quiet = _LocalSolver(script)
+            quiet.close()
+    finally:
+        solver_mod.clear_agent_account = saved_clear
+    check("Solver clears the account once, before its first start, not on a restart",
+          calls == ["clear"] and solver.restarts == 1, str(calls))
+    check("Solver(clear_account=False) leaves the account alone", quiet.clear_account is False)
+
+
 def main():
     print("robotics_grader selftest (python {}.{})".format(*sys.version_info[:2]))
     test_seeds()
@@ -786,6 +1035,8 @@ def main():
     test_solver_wire()
     test_probe_wire()
     test_stage_identity()
+    test_exec_hardening()
+    test_account_clearing()
     print()
     if FAILURES:
         print("FAILED: {}".format(", ".join(FAILURES)))

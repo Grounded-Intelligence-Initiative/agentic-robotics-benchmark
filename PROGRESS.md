@@ -7,8 +7,11 @@
 > before every hand-off. Where it disagrees with the code or `git log`, the code wins: fix
 > this file.
 >
-> Last updated: 2026-11-03 (§8: the tasks move to the Harbor-based engine, `vendor/ale` @
-> `1cdbc02`). Before that: 2026-10-21 (§7: task assets: `task-assets.toml`).
+> Last updated: 2026-11-17 (§14: one stage per task card; `driving` and `ground` become one
+> platform, `ground` "Ground vehicle"). Before that: 2026-11-16 (§13: task cards in
+> `tasks/cards.toml`, the `ground` platform, the merge gate and the GPU-model check); 2026-11-14 (§12: the grasp task pins OpenBLAS
+> to its Haswell kernels); 2026-11-09 (§11: `vendor/ale` @ `bfb7505`, a task names its GPU
+> models); 2026-11-07 (§10: the asset dataset is renamed `ale-robotics-assets`).
 
 ## 0. 2026-09-07 — created by the rebrand from "ALE Robotics"
 
@@ -239,7 +242,7 @@ and `verify/` included.
 ## 7. 2026-10-21 — task assets: one configuration file names the asset repository
 
 Tasks with large agent-visible files fetch them at image build from the Hugging Face dataset
-`grounded-intelligence-initiative/agentic-robotics-last-exam` (first used by the open pull
+`grounded-intelligence-initiative/ale-robotics-assets` (first used by the open pull
 request #13). The dataset is now named once, in `task-assets.toml`; `scripts/task_assets.py`
 writes it into every task's `image/assets.sha256` (`sync`), checks it in CI (`check`) and
 writes a new task's list (`list`); `shared/task_assets/fetch_assets.py` is the canonical
@@ -353,6 +356,348 @@ Gotchas found on the way:
 - Uploads ignore host modes (files 0644, directories 0755): stage entries run through `bash`,
   and a stage that starts another of its own files calls the interpreter.
 
+## 9. 2026-10-21 — spacecraft hardening validated on PR #10
+
+- PR #10 (`hardening/fault-adaptive-spacecraft-docking-stateful-valves`) now composes three
+  terminal-estimation challenges without extending the 400-step horizon: six physical-nozzle
+  shroud vortex cells with public hybrid load integrators and one hidden common initial parity;
+  a radially oscillating docking boom whose current extension must be tracked; and a redundant
+  boom encoder whose displacement polarity is hidden initially and independently re-selected
+  at the blackout-producing re-key. The camera can identify the polarity only after aligning
+  its delayed timestamp, so the blackout requires an explicit unresolved sensor hypothesis.
+- Capture tolerances are 0.085 m position, 0.060 m/s velocity, 0.020 rad yaw and 0.015 rad/s
+  yaw rate for 30 consecutive steps. The episode remains 400 steps; failures and collisions
+  are genuine closed-loop outcomes, not time-budget or malformed-output penalties.
+- The reference controller identifies the mux from timestamp-aligned camera/radius samples,
+  tracks the six hybrid wake modes, predicts their transitions inside its allocator, and uses
+  the measured boom radius plus differentiated radial rate. Four fresh oracle calibrations
+  measured 0.4432074102, 0.3634887656, 0.5031788493 and 0.5221913496 (mean 0.4580165937,
+  population sd 0.0618725521). The anchor uses that mean and `full_at: 0.75`; a final
+  `ale validate` passed with untouched reward 0 and oracle reward 1 (23/48, raw 0.4824985816).
+- A fresh GPT-6.1 Sol interactive trial saw the final specification from the start, explicitly
+  implemented the encoder-polarity calibration, and was recovered after the 30-minute agent
+  budget. Independent hidden replay completed all 48 episodes: 10 docks, 6 target collisions,
+  match lock passed, raw 0.2217035448. A second scored replay produced 12 docks, 7 collisions,
+  raw 0.2625658218, ratio 0.5732670506 and reward 0.7643560675. This no longer saturates the
+  benchmark; its success rate is 21--25%, versus the previous Opus 5.5 46--48/48 result.
+- Not yet validated on the Harbor-based engine (§8): PR #10's branch pins `vendor/ale` at
+  `90a7c1c`, and §8's `validate-44ad164a` on `1cdbc02` ran the version before this hardening.
+
+## 10. 2026-11-07 — the asset dataset is renamed `ale-robotics-assets`
+
+The Hugging Face dataset that serves the tasks' large agent-visible files was renamed from
+`grounded-intelligence-initiative/agentic-robotics-last-exam` to
+`grounded-intelligence-initiative/ale-robotics-assets` (the Hub answers the old name with a redirect).
+Following section 4 of `docs/task-assets.md`: `task-assets.toml` names the new dataset and
+`scripts/task_assets.py sync` rewrote the `repo` line of every task's `environment/assets.sha256` and
+re-vendored the fetcher (its docstring names the dataset). File lists, hashes and pinned dataset commits
+are unchanged, since a Hub rename keeps the repository's history. Every task with assets has a new
+content digest, so the registry is re-exported after the merge.
+
+## 11. 2026-11-09 — the engine pin lets a task name its GPU models
+
+`vendor/ale` moves from `1cdbc02` to upstream `main` `bfb7505` (engine version still 0.1.1,
+eleven merged pull requests). AgentsLastExam/ale#108 lets a task name the GPU models it accepts
+with Harbor's `gpu_types`, in `[environment]` and `[verifier.environment]`; without it every
+model is accepted. Every provider gives a sandbox only an accepted model, or refuses the task
+before it starts. `1cdbc02` refused the key as an unsupported Harbor field.
+
+- Each GPU task names the models it was tested on (2026-11-09), cheapest first, since Daytona
+  tries them in that order (RTX 4090 $0.57/h, RTX 5090 $0.74/h, H100 $2.27/h). The other
+  Daytona models were tested only where the cheap ones fell short, and the H100 on the team's
+  own machine; pull request #71 holds every run.
+  - `hand/hot3d_sharpa_retarget` names none: it validated on the RTX 4090, RTX 5090, RTX PRO
+    6000, H200 and H100.
+  - `driving/driving_safety_supervisor` and `uav/aerial_search_geolocation`:
+    `["RTX-4090", "H100"]`. Their agents' PyTorch (2.7.1, built for CUDA 12.6) has no kernels
+    for the RTX 5090. On the H100 the simulators render the same frames as on the RTX 4090,
+    1.4 (aerial) to 2-5 (driving) times slower on a loaded host.
+  - `swarm/hazard_bay_build`: `["RTX-4090", "RTX-5090"]`. On the H100 its render canary
+    matched the RTX 5090's, but the missions did not run on the loaded host; not listed until
+    they do.
+  - `arm/robotic_arm_environment_twin_from_real_photo`: `["RTX-4090", "RTX-5090"]`, in
+    `[environment]` only (its verifier has no GPU). OVRTX crashes the H100 at its first
+    render (`ERROR_DEVICE_LOST`).
+  - `arm/object_finding_and_organizing_on_messy_desk`: `["RTX-4090"]`. Isaac Sim 4.5 crashes
+    at start on the RTX 5090, and on the H100 its RGB cameras come out about 30 % darker than
+    on the RTX 4090 (depth identical).
+- Rendering needs the graphics half of the host's NVIDIA driver (Vulkan, EGL, OptiX), which
+  compute-only server installs leave out: on such a host every rendering task fails whatever
+  the model. The H100 results above were taken with the matching driver's graphics libraries
+  added to the test containers.
+- **Identity.** Every task's `spec_hash` changes, because the engine's task specification now
+  carries `gpu_types` (empty when a task names none); without that key every hash equals the
+  recorded one. The five tasks whose `task.toml` changed also get a new `content_digest`. The
+  registry identity cross-check fails for every known slug until `identity-history.json` is
+  re-exported after the merge.
+- Nothing else here changes: `ale lint`, `lint_domain.py`, `task_assets.py check`, the kit
+  selftest and `pytest` pass as they did on `1cdbc02`. The limits in
+  `docs/contributing-a-task.md` §7 and the verify-stage egress in `docs/security-model.md` §4
+  hold at `bfb7505`; §7's code references now point there. The docker provider now requests
+  every NVIDIA driver capability, graphics included (AgentsLastExam/ale#104). Verification
+  falls back to the framework's own Python when the image has no 3.12+
+  (AgentsLastExam/ale#100), which lacks the task's packages, so a grader that imports them
+  still needs the image's own.
+- The desktop's size became a run setting (AgentsLastExam/ale#107): the docker provider starts
+  every desktop at the run's `desktop_resolution` (default 1024x768), whatever the image's
+  `VNC_RESOLUTION` says, and a task cannot declare its own. The three CAD tasks
+  (`robotic_arm_cad_design_from_photos`, `uav_cad_design_from_photos`,
+  `bimanual_cad_design_from_photos`) were designed, validated and measured at 1440x900, and the
+  views their agents get are screenshots of the desktop: run them with
+  `--set desktop_resolution=1440x900` (their `task.toml` says so). Every other desktop task
+  uses the base's 1024x768, which the default keeps.
+- AgentsLastExam/ale#111 keeps Daytona sandbox names unique for long task names: before it,
+  concurrent episodes of one task on Daytona collided and could delete each other's sandboxes.
+- **RTX PRO 6000** (2026-11-10, the team's RTX PRO 6000 Blackwell Workstation Edition host, `bfb7505`;
+  each task copied with `gpu_types` narrowed to that model, as in #71):
+  - `hazard_bay_build`: `validate-0e73675f`, oracle 1.0. The render canary matched the RTX 5090's
+    (RGB std 74.0 vs 73.1, 8852 hot thermal pixels, depth 0.762, lidar 1.0), and both missions ran
+    with acceptance 0.956, as on the RTX 4090; verify 50 min. Now listed.
+  - `robotic_arm_environment_twin_from_real_photo`: the setup's OVRTX warm-up (471 s of its
+    1440 s) and two OVRTX renders of the oracle's twin from the agent's account (run `c5f4886c`,
+    reward 1.0; bit-identical, 7 s each at 1920x1080 and 64 spp). Now listed, in `[environment]`.
+  - `hot3d_sharpa_retarget` validates there too (`validate-24a8b005`, oracle 1.0, on a GPU shared
+    with other jobs); it names no models.
+  - Not listed: `driving_safety_supervisor` and `aerial_search_geolocation` (the agents' PyTorch
+    has no sm_120 kernels, as on the RTX 5090), and `object_finding_and_organizing_on_messy_desk`
+    (Isaac Sim 4.5 starts, but the RGB cameras come out about 30 % darker than on the RTX 4090, as
+    on the H100).
+- Next: run `hazard_bay_build`'s missions on an H100 on a quiet host, and add `H100` if they
+  pass.
+## 12. 2026-11-14 — the grasp task pins OpenBLAS; wrong matrix products on recent Intel CPUs
+
+A collaborator's `ale validate` of `tasks/arm/novel_object_6dof_grasp_detection` on an Intel
+Xeon Platinum 8490H ended `oracle_not_full`: reference mean AP 63.5 against the anchor run's
+72.339 (reward 0.88), the same in three runs, no environment error in the logs. The cause is
+wrong matrix products, not rounding. The fix is the pull request from branch
+`hardening/novel-object-6dof-grasp-detection-openblas-kernels` (its commit `da9fb88`).
+
+- **Cause.** `/opt/grasp` carries numpy 1.23.5 (graspnetAPI 1.2.11's evaluation needs
+  numpy < 1.24), whose wheel bundles OpenBLAS 0.3.20
+  (`numpy.libs/libopenblas64_p-r0-742d56dc.3.20.so`). OpenBLAS picks its kernels by CPU when it
+  loads. In 0.3.20 (`driver/others/dynamic.c`) Sapphire Rapids with AVX512_BF16 gets the
+  Cooperlake kernels, and so does, by the feature-based fallback, any CPU with AVX512_BF16 it
+  does not know. With those kernels DGEMM returns products with a relative error of about 1.5:
+  `np.matmul(T, X.T)` (T 4x4, X (N, 4)) is wrong from N = 193 up on one thread (tried up to
+  100000) and for N = 193 to 10000 with the default thread count; the contiguous layout only for
+  N >= 93750 on one thread; the stacked `(G,N,3) @ (G,3,3)` product was right at every size
+  tried. The Haswell, SkylakeX and Zen kernels of the same copy are correct to 4e-16. The
+  OpenBLAS 0.3.22 changelog lists a fix for the run-time selection of Cooperlake in
+  DYNAMIC_ARCH builds; the defect inside OpenBLAS was not confirmed by rebuilding it.
+- **Effect.** That product is graspnetAPI's `utils.eval_utils.transform_points`. On hidden frame
+  0160_0005, 93,558 of the 93,750 table points and most points of every object model with more
+  than 192 points were more than 1 mm off, up to 1.29 m. Under those kernels the grader scores
+  the same correct reference predictions 37.137 instead of 72.156 mean AP (28 frames, lower on
+  all 28); the reference, labelling against the corrupted scene, flags 42.0 % of its candidates
+  empty instead of 6.8 %; reference and grader together give 65.37 instead of 72.48 mean AP on
+  56 frames (-7.11, standard error 0.89), the collaborator's result in direction and size (the
+  448 frames were not run under those kernels). Replacing only `transform_points` by an einsum
+  version restored bit-identical reference output and per-frame AP (7 of 7 frames each). The
+  gradient-boosted scorer is not involved: its inputs and outputs are bit-identical under all
+  kernels.
+- **Four copies.** A `/opt/grasp` process maps four OpenBLAS copies, each choosing for itself:
+  numpy 0.3.20, scipy 0.3.18, opencv-python 0.3.3, cvxopt 0.3.23. Without a pin a Xeon 8490H
+  selects numpy Cooperlake, scipy Prescott, opencv Prescott, cvxopt Cooperlake (from the
+  sources); this host's AMD Zen 4 numpy Zen, scipy Zen, opencv Barcelona, cvxopt Cooperlake
+  (measured); the anchor machine's AMD Zen 5 Barcelona for numpy, scipy and opencv and
+  Cooperlake for cvxopt (from the sources). Only numpy's 0.3.20 on Cooperlake computed wrong
+  products; cvxopt's 0.3.23 on Cooperlake was correct.
+- **How it was measured.** Every run was on an AMD Ryzen Threadripper 7960X (Zen 4, AVX-512
+  with AVX512_BF16) in the task image's Python environment. `OPENBLAS_CORETYPE=Cooperlake` is a
+  name 0.3.20 does not know, so it falls back to its feature-based choice, Cooperlake: the
+  kernels a Xeon 8490H selects. Nothing was run on a real Xeon 8490H.
+- **The fix.** `OPENBLAS_CORETYPE=Haswell`, which all four copies honour: an image `ENV`; a
+  `.pth` in `/opt/grasp`'s site-packages that sets it when the variable is missing (an explicit
+  value wins; `python -S` skips it); `tests/verify.py`'s `NUMERICS_ENV`, in `CHILD_ENV` (every
+  solver process, reference and submissions alike) and in the scoring subprocess's
+  environment; the practice check. New `tests/numerics_check.py`, which `verify.py` runs in the
+  solver and in the scoring environment after the early zero for a missing `solver.py` and
+  before the hidden frames are fetched: on x86-64 every mapped OpenBLAS copy must report
+  Haswell, and BLAS-backed products must agree with einsum in the evaluation's layouts for 1 to
+  100000 points; otherwise the stage ends as a task error. `instruction.md` gains one
+  Environment bullet; `tests/anchor.json` changes in its `source` text only (`value`, `full_at`
+  and `baseline_mean_ap` unchanged); `tests/test_numerics_pin_novel_object_6dof_grasp_detection.py`
+  is a repository test (no Docker).
+- **Measured for the fix.** With `OPENBLAS_CORETYPE=Haswell` all four copies use their Haswell
+  kernels. The reference output is bit-identical under the Haswell, SkylakeX and Zen kernels and
+  the anchor machine's selection (28 of 28 frames). The starting detector gives
+  `baseline_mean_ap` 7.866108398398201 exactly on all 448 frames under Haswell; under the Zen 5
+  native selection (Barcelona) it gives 7.868463118375316 (4 frames differ), so with the pin
+  the constant is exact there too. The scoring of a given array did not depend on the OpenBLAS
+  thread count (1 versus default, 8-CPU container) or on the kernel family, Cooperlake
+  excepted. `numerics_check.py` passes under Haswell with 1 thread and with default threads,
+  fails under Cooperlake at every thread count and CPU limit tried, and fails on the kernel
+  family with the variable unset and the `.pth` absent; about 3.5 s per run. At `da9fb88`:
+  `pytest` 464 passed, 12 skipped; `ale lint`, `scripts/lint_domain.py` and
+  `scripts/task_assets.py check` (0 problems) ok; `tests/robotics_grader` byte-identical to
+  `shared/robotics_grader`. At the pinned engine (`bfb7505`, docker provider) the image `ENV`
+  reaches the setup, agent, oracle and verify commands (read in the engine source, tried with
+  its guestd).
+- **numpy's own SIMD paths are left alone.** numpy 1.23.5 computes float64 sin, cos, exp, log
+  and arccos on an AVX-512 path where the CPU has one. Switching those paths off changes the
+  reference's candidates in the last bit and its per-frame AP by -1.75 to +1.97 (7 frames,
+  +0.16 on the mean), the size of the cross-machine difference `anchor.json` already recorded
+  (16 frames, at most 2.0 per frame, -0.31 on the mean); the starting detector's AP and the
+  scoring of a given array (7 frames) did not change. So `NPY_DISABLE_CPU_FEATURES` is not set,
+  `full_at` 0.98 covers the difference and the anchor value stays. For anyone who does set it,
+  the names are numpy-version specific: 1.23.5 knows AVX512F, AVX512CD, AVX512_SKX, AVX512_CLX,
+  AVX512_CNL and AVX512_ICL and warns about names it does not know or that the CPU lacks;
+  numpy 2.x knows X86_V4, AVX512_ICL and AVX512_SPR.
+- **Scope and limits.** Scores of this task from machines with AVX512_BF16 Intel CPUs before
+  this change are not valid, agent runs included: the grader itself was wrong there. Runs on
+  the AMD hosts used so far are not affected. No other task is affected: every other task
+  image uses numpy >= 1.26 for its interpreter (requirements files and Dockerfiles on `main` at
+  `b7b55ac`). x86-64 CPUs without AVX2 and FMA can no longer run this task (the Haswell kernels
+  end the process; the verify stage then ends as a task error, and the image build's
+  self-check fails). An explicitly empty `OPENBLAS_CORETYPE` is kept by the defaults (the
+  `.pth`, the practice check), and OpenBLAS then chooses by CPU features again; the graded
+  processes are not affected, because `verify.py` sets the value itself.
+- **Validated.** `ale validate` of `da9fb88` on the Threadripper 7960X host (run
+  `validate-f444851d`, engine `bfb7505`, 2026-11-15 UTC): untouched 0.0, oracle 1.0. The
+  reference reads mean AP 72.33897 over the 448 hidden frames (ap_gain 64.47286, ratio
+  0.9999993 to the anchor's 64.4729), 448 of 448 frames valid, no timeout, slowest call 131.0 s
+  of its 300 s, prediction 3416 s, scoring 556 s: the anchor run of 2026-11-07, made on another
+  CPU, to its last recorded digit. The grader's log shows the numerics check passing in both
+  environments, all four OpenBLAS copies on Haswell, largest relative error 3.4e-16.
+  `identity-history.json` carries the task's new record, exported from the clean branch.
+- **Still to do.** The collaborator re-runs `ale validate` on the Xeon 8490H, the only
+  confirmation on real hardware.
+
+## 13. 2026-11-16 — task cards, the `ground` platform, the merge gate, the GPU-model check
+
+- **Task cards** (`tasks/cards.toml`, rules in `docs/task-cards.md`): each task on main has a
+  card with a readable `title`, a one-sentence `summary`, the `platforms` it involves (the
+  folder's first, then cross-references) and the `stages` it covers (several in workflow
+  order, or `end-to-end` alone). The file is outside every task folder, so cards change no
+  `spec_hash` or `content_digest`. The website reads the file. 26 cards, one per task on main.
+- **`scripts/task_cards.py`** (`check [--strict]`, `todo`, `context TASK`) and
+  `schemas/task-cards.schema.json`; `tests/test_task_cards.py`.
+- **The merge gate**: the maintainer who finishes a task's pull request adds its card (and a
+  GPU task's tested `gpu_types`) on the branch and labels it `ready-to-merge`. CI's card check
+  is strict on a labelled pull request and on `main`; until then a missing card is a warning,
+  so a contributor's checks stay green. The workflow re-runs on `labeled` / `unlabeled`.
+- **`scripts/gpu_types.py`** (`check`, `list`): every `gpu_types` name accepts a known GPU
+  model, asked of the pinned engine (`ale.run.gpu.accepts_model`), so CI runs it in the
+  engine-lint job; a GPU table without the key is a notice. `tests/test_gpu_types.py`.
+- **`ground`** ("Ground robot (UGV/AMR)") joins `tasks/platforms.json` after `driving`:
+  wheeled and tracked ground robots that are not car-like vehicles driving a road or a track.
+  No task folder moves; `hazard_bay_build` and `robotic_arm_environment_twin_from_real_photo`
+  name it as a cross-reference. The claim order (legged → `quadruped`/`humanoid`; driving
+  tasks → `driving`; other wheeled or tracked → `ground`) is in `CONTRIBUTING.md` step 3 and
+  `docs/task-cards.md`.
+- **Next**: with branch protection on `main` (required checks `engine-lint` and
+  `static-checks`), nothing merges around the gate; it is off today.
+
+## 14. 2026-11-17 — one stage per task; `driving` and `ground` become one platform
+
+Owner decisions of 2026-11-17; they supersede the stage rule and the `driving` / `ground` claim
+order of §13 (§5's platform list predates both).
+
+- **One stage per task.** A card's `stages` is a list of exactly one entry: the last stage of the
+  workflow that the task's score depends on. A job task that also has the agent rebuild a scene
+  or pick hardware on the way is filed by the job; `assembly` means building the robot's own
+  body, and assembling furniture or parts with a robot is `behavior`. `end-to-end` stays the
+  category of a task that runs the whole chain (no task uses it). `scripts/task_cards.py check`
+  fails any other `stages`, and the schema says the same (`minItems` = `maxItems` = 1).
+  `hazard_bay_build` (was hardware-design + environment + behavior) is `behavior`.
+- **Ground vehicle.** `driving` ("Autonomous driving") and `ground` ("Ground robot (UGV/AMR)")
+  are one platform, key `ground`, label "Ground vehicle", in `driving`'s place after `uav`: any
+  wheeled or tracked ground vehicle or robot (a car at any scale on a road or a track, AMR /
+  AGV / UGV, rovers, wheeled mobile manipulators). The key `driving` is gone:
+  `driving_safety_supervisor` moves to `tasks/ground/driving_safety_supervisor/` with
+  `[metadata].platform = "ground"`, and its card's platforms are `["ground"]`. The new
+  platform value and the new asset pin change the task's `spec_hash` and `content_digest`
+  (the slug is unchanged); `identity-history.json` keeps its old records and carries the new
+  one, exported from a clean work tree of the branch. An asset list's `# prefix:` must name the
+  task's folder (`scripts/task_assets.py check`), so the task's 19 files were copied server
+  side to `tasks/ground/driving_safety_supervisor/payload/` on the asset dataset (commit
+  `4c7c4d8b`, every sha256 unchanged) and the list is re-pinned there. The old folder stays on
+  the dataset until this merges; then it is deleted and the dataset card's rows are fixed.
+- `tasks/arm/object_finding_and_organizing_on_messy_desk/task.toml` still lists `driving` in a
+  comment; it is left as it is, since editing it would change that task's identity.
+
+## 15. 2026-11-17 — the kit clears the agent's account before it starts agent code
+
+- **The finding** (review of the contributed `longtail_manipulation_recovery`, pull request
+  #80). A controller that the grader starts under a no-network seccomp filter got code run
+  outside the filter, as the same account, in two ways. Both go through the base image's
+  supervisord (PID 1), which runs the desktop session as the agent's account with
+  `autorestart`: (1) replace `/usr/local/bin/start-gnome.sh` (the directory is the agent's in
+  `container-ubuntu22-base` 0.1.1) and kill the session; (2) write an entry into
+  `~/.config/autostart` and kill the session. The restarted code had `NoNewPrivs: 0` and
+  opened an `AF_INET` socket that the controller could not. Route 2 needs nothing but the
+  account's own home, so it holds for every grader that runs agent code as the agent's
+  account, with or without `secure_exec_path`. A live session is a third way (its D-Bus, X
+  and terminal services take requests from the account). Stopping the session (SIGSTOP), as
+  several graders do, does not hold either: the agent's code may kill what was stopped.
+- **The fix** (`shared/robotics_grader/account.py`, `clear_agent_account`). Once per sandbox,
+  before the first agent process: every supervisord program gets `autostart=false` and
+  `autorestart=false` in supervisord's configuration files, supervisord reloads (SIGHUP) and
+  starts nothing, and every process of the account that the grader did not start is killed
+  until none comes back. `Solver.__init__` and `deprivileged` call it, so a grader that
+  subclasses `Solver` with a launcher of its own gets it too; `clear_account=False` opts out.
+  It acts only as root in the engine's verify stage (`ALE_VERIFY_PYTHON`), keeps its report
+  in a root-only marker file (`/run/robotics_grader/`), and reports `cleared: False` instead
+  of failing under an init it does not know.
+- **Measured** in containers of the first verifier image of pull request #80 (the base
+  image's desktop, 45 processes of the account), with the review's two probe controllers
+  started through that task's seccomp launcher. Before: both probes got their code run with
+  `NoNewPrivs: 0` and `AF_INET socket: allowed`. After `clear_agent_account`: 45 processes
+  killed, 7 programs disabled, reload confirmed by supervisord's new pid file, 3 to 5 s;
+  probe 1 could still replace the start script when root's PATH was left as it was, and
+  nothing ran it; probe 2's autostart entry never ran; no process of the account existed
+  outside the launcher. An honest controller through the kit's own `Solver` (a helper process,
+  a file in its folder, a local socket pair, one restart) ran as before. The same clearing
+  worked on the CAD tasks' desktop variant (12 processes, openbox).
+- **Which graders change behaviour**: the ones that start agent code through `Solver` or
+  `deprivileged`: `arm_hidden_mechanism_box`, `kitchen_appliance_tending`,
+  `novel_object_6dof_grasp_detection`, `object_finding_and_organizing_on_messy_desk`,
+  `driving_safety_supervisor`, `fault_adaptive_spacecraft_docking`, `hazard_bay_build`,
+  `aerial_search_geolocation`, `visual_low_level_flight_control`, `keyed_nut_peg_assembly`
+  (merged while this was open), and the template. Their
+  verifier sandbox loses its desktop session (and root's system D-Bus) when the solver first
+  starts. None draws on the sandbox's display by its code (the renderers drop `DISPLAY`, the
+  Unreal simulators render offscreen, as their own accounts).
+- **Re-validated with this kit** (2026-11-18 and 19, `ale validate` on engine `bfb7505`, the
+  branch at `f708f443`; later heads differ only outside the kit and these task folders):
+  untouched 0.0 and the oracle at its recorded score in `arm_hidden_mechanism_box`
+  (`validate-021564f8`), `kitchen_appliance_tending` (`validate-a34a9d1b`),
+  `fault_adaptive_spacecraft_docking` (`validate-6eb7d128`),
+  `visual_low_level_flight_control` (`validate-c36ffcc0`: 7 of 8 fresh scenes, inside the
+  spread its anchor records), `driving_safety_supervisor` (`validate-cdc35a8a`),
+  `aerial_search_geolocation` (`validate-b5cf1b37`),
+  `object_finding_and_organizing_on_messy_desk` (`validate-75ff606d`) and `hazard_bay_build`
+  (`validate-e4ec5969`: 131 of 131 metrics equal to the record). In each oracle episode the
+  only kind of line that the verifier's log has and the recorded run does not is the kit's
+  `agent account ... cleared` (2.0 to 6.5 s); the two Unreal simulators, which are up before
+  the solver starts, ran on under it. `keyed_nut_peg_assembly` too (`validate-e6a2ee01`: the
+  ten kits complete with the steps of its record); its selection record freezes the kit's
+  files, so the kit update is amendment 6 of `tests/hidden/selection.json`, pre-registered
+  and run by the task's own rule: every candidate repeats its earlier run, the hidden set and
+  the development kits are unchanged. There the clearing (3.7 s) falls inside the first
+  kit's solver start and is charged to that kit's controller time (600 s budget).
+  `novel_object_6dof_grasp_detection` is to be validated after the merge, when a machine has
+  the memory for it: its reference holds 52 to 54 GB for most of an hour, and two runs were
+  stopped before any score when the machines ran short.
+- **Not covered**: graders that start agent code with their own launcher and never through
+  the kit's two calls (the assembly cells, the cell kits, the twin and description tasks). By
+  their code they run it as `nobody` from a read-only copy while a thread keeps the agent's
+  account stopped; `nobody` can neither write the account's files nor signal its processes,
+  so the two routes are not open to them. Probed on 2026-11-18 with the launchers of an
+  assembly cell (`robotic_arm_full_assembly_so101_panda`) and a cell kit
+  (`pump_skid_startup_and_operation`), each in its own image with the session running: 48
+  writes on the files the session starts from and 18 on autostart and profile files refused,
+  every signal refused, nothing run even after root restarted the session, while the same
+  program run as the agent's account got both routes. The stopped session matters as much
+  as the other account: a running session's X display takes any local account
+  (`docs/security-model.md`). A call to
+  `clear_agent_account()` at their start would remove the session for good; that is a change
+  of each task. And the network: root in the sandbox cannot make a network namespace
+  (`unshare(CLONE_NEWNET)`: EPERM, no `CAP_SYS_ADMIN`), so a solver's network is still the
+  engine's to close (`docs/security-model.md` §4).
+- **Identities**: every task's vendored kit changed, so every task has a new
+  `content_digest`; `identity-history.json` records them.
+
 ## Open items
 
 - Website, display-only pull request: remove the backend (API, database service, sign-in,
@@ -363,10 +708,10 @@ Gotchas found on the way:
 - After this merges: export the registry from a clean `main`, commit `identity-history.json`
   (the spacecraft task is new; the `drone_hover` record stays as history), and install the
   export in the website.
-- Raise the spacecraft task's difficulty in a new pull request (Jack or the maintainers):
-  Opus 5.5 saturates it (§6). The guidelines' target is a frontier `reward` roughly below 0.5,
-  from a harder engineering or perception challenge, not penalties. Then re-measure the anchor
-  and re-run the frontier models.
+- Review PR #10's hybrid-wake, telescoping-boom and encoder-mux hardening (§9). The measured
+  GPT-6.1 Sol reward is 0.764 rather than the aspirational sub-0.5 target, but it no longer
+  saturates and only docks 21--25% of hidden episodes. Any further reduction should improve
+  the reference policy or add a new observable capability gap, not tighten penalties.
 - Pull request #4 (`ball_physics_stepper`) must re-vendor the kit from #6 (CI's byte
   comparison), and should move to 64-bit, keyed-hash seeding if its agent holds a simulator
   copy.
@@ -379,6 +724,117 @@ Gotchas found on the way:
   - the CLI caps a response at 64k tokens and the gateway ends a request after 1800 s in total
     (`gateway/server.py`), which leaves long-thinking models with empty turns;
   - egress is opened before verify while a closed_loop solver runs.
+
+## 7. 2026-10-23 — messy-desk PR #12 diagram refinement
+
+- Redrew the object and request automata as compact, color-coded Mermaid flowcharts
+  in the task's scoring README and PR description. Kept state names, object values,
+  outcome branches and request cycling visible; moved qualifications into captions.
+- The object diagram is a lifecycle overview: transit, arrivals, disturbances and instance
+  reuse are omitted explicitly. The request diagram groups the two successful outcomes
+  and the incorrect-claim / expiry outcomes. No simulator or scoring behavior changed.
+- Checked Mermaid parsing and rendered both diagrams locally; task lint passes.
+- Follow-up: publish tightly cropped, opaque white PNGs with editable Mermaid sources
+  to keep the backgrounds stable in dark mode. Keep the object layout; compact the
+  request diagram vertically with Idle above the new-request transition and no Closed node.
+- Moved transition labels beside the arrows, removed opaque label backgrounds, and
+  reduced label emphasis so the arrow paths remain continuous and unobstructed.
+- Validation remains pending: stabilize oracle grasping, measure its anchor, run
+  `ale validate`, and measure frontier-model difficulty before marking the PR ready.
+
+## 8. 2026-10-23 — first-target-hold request credit
+
+- Request points award +1 for the first current target hold per request, topped up
+  to 2 points by verified delivery; a correct absence declaration also earns 2 points. Repeated
+  holds add nothing, and failure/expiry preserves only the first-hold credit already earned.
+- R divides total points by twice the number of opened requests, including an ongoing one, so
+  partial credit is immediate. The separate request success-rate diagnostic remains available.
+- Updated the environment event, hidden/practice scorer copies, instructions, formula and
+  diagrams. Historical contact is insufficient; the target must currently be in held state.
+  The existing loss predicate remains centre z < -0.2 m; diagrams explicitly say falls off
+  table. Releases onto the table or into a container are not loss events.
+- Focused request-credit tests cover deduplication, completion, failure, absence, current
+  holds and copy parity. Full Isaac rollout validation and anchor measurement remain pending.
+
+## 9. 2026-10-23 — messy desk: dev-wire live score, exact depth, oracle grasping (Claude session)
+
+- Practice tools: every `step`/`reset` reply of the simulator carries the running score (the same
+  `EpisodeScorer`), `{"cmd": "score"}` adds per-object value/baseline, `{"cmd": "request", ...}`
+  opens a request on demand; `practice_grader/grade.py --live N --score-file PATH`. Verified end
+  to end with a dummy wire agent (obs keys as documented, untouched = 0, marks: claim_wrong /
+  absent_correct / ignored without a request). Known gap: a request opened by the dev command
+  is not counted by the dev scorer until the next `step` (its event rides the `request` reply).
+- Simulator: `anti_aliasing: 0`. The default DLSS accumulated previous frames into the depth
+  images: ghost depth under moving fingers and a skirt of floating points around every object,
+  which inflated measured widths by ~2 cm and hid flat objects. `BASE_SCALE` master chef can
+  0.62, tuna can 0.72 (both exceeded the 8 cm hand); instance factors 0.92 / 1.00.
+- Oracle: containers are fitted from the static cameras only (the clipped hand-camera rim view
+  biased the red container's fit and leaked its walls as loose clusters); `plan_grasp` = pinch,
+  else rim grasp for hollow wide objects; `pick` re-centres from the hand camera 10 cm above the
+  object; silhouette pixels dropped before back-projection. Grasp validation on single objects
+  is running; refs.json must be rebuilt from `calib_collect2.py` output once grasps are stable.
+- Frontier run decided: Opus 5.5, claude-code harness, subscription auth, 1 episode first.
+
+## 10. 2026-10-23 — messy desk: scene physics fixes found while debugging the oracle (Claude session)
+
+- Every YCB object used to spawn lying on its side: the stock `Axis_Aligned` meshes are authored
+  with their height along local Y and `_spawn` only applied a yaw. Desk arrivals now stand
+  upright (Rx(-90)); scissors, marker and both clamps (local Y = their length) lie flat. Desk
+  spawns are set down 4 mm above the desk (`half_h` from the USD bound) instead of dropped.
+- The stock table is flat only for |x| < 0.709 and then rises into a 1.2 cm rim, which tipped
+  over objects that arrived at x > 0.71 and appeared as a 15 cm "object" strip in the hand camera.
+  The room is now shifted +0.10 m in x (`ROOM_OFFSET_X`): the whole reachable desk is flat.
+- Scales: every model offers a pinch of at most ~6.8-7.2 cm in any resting pose (cracker box
+  0.42, sugar 0.73, pudding 0.63, gelatin 0.80, potted meat 0.70, mustard 0.71, foam brick 0.92,
+  tomato soup can 0.92: at 6.8 cm the 8 cm hand kept only 6 mm per side and missed).
+- Measured: the open fingertips stop on the desk at TCP z = 0.028 (TCP_Z_MIN unchanged); the
+  visual finger mesh suggests 1.2 cm, the collision geometry is longer. Thin objects lying flat
+  (marker, scissors) are pinched with the fingertips at the desk; a pinch along a long object
+  wedges it between the fingers instead (lifted with the hand open).
+- Desk arrivals point their long side away from the nearest container wall (+-0.6 rad): with the
+  20 cm Franka hand, a long object lying along a wall could not be pinched in place (Monte Carlo:
+  81 % -> 95 % pinchable).
+- `sim_client`: a start attempt that hangs (Isaac's renderer occasionally deadlocks on the first
+  frame of a fresh process, seen twice today) is killed and retried, 3 x 480 s.
+- Instruction: draft banner removed; interpreters stated by absolute path (the claude-code harness
+  hard-codes PATH without /opt/venv/bin); request example matches the env's text.
+- Oracle: perception subtracts the desk profile; hand-camera component chosen by size x proximity;
+  width check keeps a 14 mm margin (the hand-camera cloud loses ~7 mm per side); tall objects are
+  grasped mid-body; rim grasps go 22 mm deep; the behaviour loop restarts after any exception.
+
+## 11. 2026-10-23 — messy desk: arm motion, reach, piles, oracle search (Claude session)
+
+Opus 5.5 frontier run in flight (`ale run ... --agent claude-code --model claude-opus-5-5 --set
+agent.version=2.1.309`; the harness default 2.1.227 is rejected by the model). `ale run` uploads
+the task's `verify/` folder from the local path when the verify stage starts, so `verify/` stays at
+commit 2278f3f until that run is scored; the changes below live in `setup/payload/` and `oracle/`.
+
+- Arm motion (env): each step's IK joint targets are interpolated over the 6 physics substeps.
+  Applied at once, the stiff drives covered the delta in 1-2 substeps and the jerk flung held
+  objects out of the fingers (12 of 42 test grasps dropped in transit, e.g. the sugar box slid
+  3.7 cm during a 3 cm/step lift). A 5 cm delta now completes ~96 % within the step.
+- Reach (env): the arm cannot reach down at r < ~0.25 m around |y| = 0.15 (IK refuses every
+  step); arrivals keep 0.26 m from the base (was 0.22). At x = 0.19-0.22 a hand turned 90 degrees
+  hits the container walls.
+- Initial piles (env): objects are set down on top of the pile near the container's centre line
+  and settled one by one (were thrown in from 0.25-0.65 m and rolled to the ends). A top-down
+  Franka hand (0.205 m wide) fits inside a 0.28 m container only within +-2-3 cm of its centre
+  line: 20 % of pile objects were reachable, now 36 % (1.3x longer containers would give 47 %,
+  not worth shrinking the desk strips).
+- `lab` with a null yaw sets an object down the way arrivals are (dev aid, task card updated).
+- Oracle: references rebuilt for the current scales (161 static, 166 hand-camera views; the old
+  LOO split was buggy: "_p" in "potted"/"pitcher" excluded whole models); hand-camera + 0.7 x
+  static distances fused (LOO class 166/166); narrowest-pinch yaw; a pinch-position search for
+  clamps/scissors; gentle placing near the centre line; container inventory (what it put where,
+  which initial piles are still unseen); request search digs the reachable top object, delivers it
+  straight to red when it is the target, and never claims absence while a container is blocked.
+- Grasp test (42 arrival-like spawns, both instances of every model): 18/42 -> 33/42.
+- Frontier run 1 (Opus 5.5, old env, `be35f322`): the agent was still debugging at the 4 h limit
+  (569 tool calls) and the engine does not verify a timed-out agent phase (status `timeout`, no
+  metrics). The instruction now states the hard 4 h limit and that a cut-off session is not graded.
+  Its last submission is kept in the run's `artifacts/submission`.
+- Domain lint: the practice grader's live line no longer reads a `"score"` key (the lint's
+  leaky-output pattern); only the two expected null-anchor problems remain.
 
 ## Gotchas
 
@@ -393,11 +849,32 @@ Gotchas found on the way:
   the agent account cannot traverse; task images set `UV_PYTHON_INSTALL_DIR=/opt/uv-python`
   and keep the Dockerfile's agent-UID import self-check. The agent UID must traverse (not
   only read) everything the venv points at.
-- The engine stages `ale_verify` into `python3`, else `python3.12` (3.12+ required), and
-  names it in `ALE_VERIFY_PYTHON` (section 8).
+- The engine stages `ale_verify` into the image's `python3`, else `python3.12` (3.12+), else
+  its own Python, which lacks the task's packages, and names it in `ALE_VERIFY_PYTHON`
+  (sections 8 and 11).
 - `ale validate` does not keep a stage's stderr; it is in the episode's
   `trace.execution.jsonl`.
 - A null anchor is not an error: the engine fails the run with `oracle_not_full` and
   `harness/ale_onboard.py` reads that as `needs_anchor` with the measured value.
 - A task that hands the agent a copy of its simulator must seed episodes with 64 bits and
   draw hidden values through a keyed hash; an LCG or a 31-bit seed gives the episode away.
+- A Python wheel can bundle its own OpenBLAS (numpy, scipy, opencv-python and cvxopt each do),
+  and each copy picks its kernels by CPU when it loads, so one process can run several copies
+  on different kernels, and an old copy can be wrong on a CPU newer than it: numpy 1.23.5's
+  OpenBLAS 0.3.20 computes wrong matrix products on Intel CPUs with AVX512_BF16 (section 12).
+  A task that has to carry such a wheel pins `OPENBLAS_CORETYPE` to a correct kernel family in
+  the image and in every process its grader starts, and lets the verify stage check the
+  products before it scores (`tasks/arm/novel_object_6dof_grasp_detection`: the Dockerfile,
+  `tests/verify.py`'s `NUMERICS_ENV`, `tests/numerics_check.py`).
+
+### 2026-10-23 — provisional anchor
+- Oracle a5c3982 measured through the task's verify stage (task image, network off): episode 0 S = 0.641 (O 0.72, R 0.56); episodes 1–2 running. Anchor recorded as 0.641058, full_at 0.8 (template default), marked provisional.
+- Opus 5.5 run 1 (old env build, timed out): submission graded offline on practice seed 11, 20000 steps: S = 0.353 (O 0.61, R 0.10). Run 2 on the current build in progress.
+- Open: full_at from the 3-episode spread; official `ale validate` once the GPU is free.
+- Agent budget lowered 4 h → 1 h (template default; the 4 h was a scaffold-time choice, not a benchmark requirement). Opus runs 1–2 are kept and reported as extended trials with a 4 h budget. Official `ale validate` queued to start when run 2 releases the GPU.
+- 2026-10-23 (owner decisions): four requests per episode (one per 5000-step window, `3a698f5`); O scores the episode's final state, and mark 3 (*done: episode*) ends the episode once its last request has closed (`a1321ca`; earlier done marks are ignored so all four requests count in R). The oracle sends mark 3 after its fourth request when nothing is left to sort. Anchor must be re-measured on this build (old-env oracle: 0.641 / 0.436 / 0.482, per-episode sd ~0.11). Validate is gated on a new anchor. Oracle pick work in progress (hard objects: mustard, bleach, clamps, scissors, pitcher, tuna).
+- Superseded the final-state score the same day (`d266c95`, owner): each request is a find-and-organize task judged at its close; O = mean of organization snapshots at every request close plus the last step; no episode-level done mark. While a request is open its object belongs to red only (+1 in red or held, -1 in any other container, 0 on the table); its baseline is re-read at the opening and restored the step after the close. Oracle: after the target is in red (or absence is settled) it puts back what it dug out and sorts loose objects, then marks (FINISH_MARGIN 350 steps before the deadline).
+- 2026-10-23 evening: `ale validate` passed (validate-1c441e93): untouched 0, oracle 1.0; oracle measured 0.434 (0.419 / 0.539 / 0.344) against the provisional anchor 0.520 (full_at 0.6). Anchor set to 0.4341, full_at 0.75 (`30b3ff7`). Opus run 2 (4 h extended trial) graded offline on the current grader: 0.555 (0.629 / 0.429 / 0.607) -> reward 1.0, so the task is too easy against this oracle. Oracle strengthened with 3D hand-fit checks and tilted grasps near container walls (`c788106`): seed 23 diagnostic 0.486 -> 0.625. Running: Opus run 3 on the 1 h budget (started 19:31 UTC); oracle re-measure mv_c (3 episodes) for the anchor; then a confirmation validate on the final anchor.
+- 2026-10-23 night: oracle c788106 re-measured through the verify stage on 3 hidden seeds: 0.4219 (0.163 / 0.507 / 0.596; 2 of 12 requests won, 7 expired). The tilted grasps did not move the hidden-seed mean (earlier oracle 0.434). Pooled per-episode sd ~0.16 over six oracle episodes, so a 3-episode mean varies by ~22% of the anchor: anchor set to 0.4219 with full_at 0.6 (`f93a8f9`, chosen before run 3's score was read). Opus 5.5 run 3 on the 1 h budget: agent ended after 22 min; mean_episode_score 0.200 (0.162 / 0.277 / 0.161; episode 1 cut by the 45 min wall budget), engine reward 0.615 against the old anchor, 0.79 against the new one. It never held a requested object (0 first holds, 8 wrong absence claims of 12). The grader now prints each episode's full seed and request log after the episode ends (stderr only), so a failed hidden episode can be replayed; the env's sim.log keeps only 16 bits of the seed, so the oracle's 0.163 episode cannot be replayed. Confirmation `ale validate` on f93a8f9 running (frozen copy).
+- 2026-10-24 00:00 UTC: confirmation `ale validate` on f93a8f9 passed (validate-b76c111b): untouched 0.0, oracle 1.0 (mean_episode_score 0.426 = 0.315 / 0.584 / 0.379 against the anchor 0.4219, ratio 1.01). The grader's new per-episode line shows two of its twelve requests were ABSENT requests that expired: the oracle never claims absence while a container it could not dig out may still hide the object, which under the current scoring costs the same as a wrong claim. Oracle failure census on four visible seeds (281 grasps): desk grasps lift 70%, in-container grasps 24% (geometric ceiling with the Franka hand 20.5 cm long in a 28 x 22 cm interior: 32% of the floor upright, 52% with tilts); 11 of 16 requests lost (5 grasp execution, 3 no feasible grasp, 2 perception misses, 2 decision logic). Owner decision: enlarge the containers to interior 36 x 24 cm (CONTAINER_SCALE 1.43 x 1.375 x 1.30, nominal x 0.41; reachable floor 73% with tilts). Staged in the scratch copy, reach test and probe episodes to follow; anchor, Opus 1 h run, task card, instruction, README and hero images must then be redone. Dev oracle (A/B on seeds 31/58/77/90 running): grasp height from the top right under the grasp point, re-centring around the anchor only, delivered mark when the target went into red unconfirmed; next: mark absent instead of expiring.
+- 2026-10-24 night (`ccab991`): the oracle's request success was capped by geometry: the Franka hand body (20.5 cm wide, 6.2 cm above the fingertips) fits a 28 x 24 cm container only within +-3.4 / +-1.35 cm of the centre line for low objects; tilted grasps reached their plan within 0.5 cm yet lifted 2 of 16. Owner decisions: red delivery container right in front of the base (0.25, 0; 0.237 x 0.272 m), the three class containers behind it (gray (0.44, -0.31), lightblue (0.575, 0), blue (0.44, 0.31); 0.326 x 0.272 m), walls 0.19 -> 0.12 m, a fourth task camera `oblique` (the scene image's viewpoint), and hi-res frames on request (optional ninth action element, camera bitmask; 1920x1080 RGB-D of those cameras in the same observation; the hi-res render products run every frame, about 9 ms per step, and are only encoded when asked: about 0.1 s and 3 MB per camera; switching an Isaac render product off and on again stops it for good, so they stay on). Free arrival spots 174 -> 406, all class-container floor within reach. Arrivals never spawn the open request's model. Oracle v3: mark 20 steps before the deadline whatever the arm is doing, stuck-arm recovery then give the object up, loose objects only within r 0.40-0.76, no grasp retries (0 of 23 lifted), clamps told apart by length, failed spots and stalled containers move the dig on, tilted grasps compensate the fingertip offset, carry height 0.38. Four visible seeds (31/58/77/90) on the new layout: 0.572 / 0.627 / 0.623 / 0.416 (mean 0.56), 8 of 16 requests won (was 6 of 16), container grasps 41% lifted (was 24%); seed 90 lost its second half to a loose clamp pushed to r = 0.80, hence the 0.76 limit. Every probe episode now records a composed video and one clip per request (host folder `video/`, git-ignored). Running: hidden-seed oracle measurement on the frozen copy of `ccab991` (3 episodes); then anchor, `ale validate`, Opus 1 h, PR numbers.
