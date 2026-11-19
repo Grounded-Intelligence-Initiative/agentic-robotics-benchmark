@@ -5,6 +5,44 @@ the geometry in `environment/setup/payload/task_card.md`. The code is `env.py` (
 its state machine) and `messy_desk_score.py` (the score), both in this folder; the agent has
 neither (see "The desk lab instead of the practice simulator" below).
 
+## Dual mode (experimental branch `exp/dual-mode-scoring`, 2026-11-18)
+
+One task, one session, one verify, two scoring items; the reward is their mean (rules DM1-DM8 on top of the online
+rules below).
+
+- **The offline item is main's grading, unchanged.** `offline_verify.py` is byte-identical to main's `verify.py`
+  (sha256 eb08b182...; the repository test pins it), with main's `grader_config.json`, `episodes.json`, budgets,
+  probe lock and `anchor_offline.json` (byte-identical to main's `anchor.json`, 0.908). `verify.py`'s
+  `offline_item()` is main's `main()` returning the verdict instead of writing it.
+- **The freeze** (corrected 2026-11-18: at the earlier of the graded start and the close of the preparation window,
+  so the program keeps main's preparation time whether or not the episode is played). At the graded start, just
+  before the start is charged, or when the preparation window (`prep_s` after the service starts serving) closes with
+  no start, the service's root supervisor copies `/home/user/submission` into
+  `/var/lib/arb-online/submission_snapshot/` (inside the record directory, so the agent can neither read nor write
+  it; root-owned, permission bits kept) on the worker's request over a socketpair made at the worker's fork; the
+  supervisor still never reads hidden data and never accepts a connection. A window that closes with no start leaves
+  a record of the freeze only (`started` false, `prep_window_closed` true, `snapshot_at` "prep_window"); later starts
+  are refused (`start_window_closed`). Every entry is
+  opened relative to its parent with `O_NOFOLLOW` on both sides: links are skipped, never followed, and so is
+  anything not a regular file or directory or not owned by the agent account. Limits: 99,000 entries (the engine's
+  own artifact walk stops at 100,000, and the record directory needs room beside the copy), 64 levels (the engine's
+  depth limit) and 16 GiB; over a limit the record says `snapshot_status` "too_large", nothing is kept and the
+  offline item scores 0. A failed copy refuses the start and charges nothing. The record gains `snapshot_status`,
+  `snapshot_files`, `snapshot_bytes`, `snapshot_sha256` (the sha256 of the sorted lines "path NUL size NUL
+  content-sha256"), `snapshot_skipped`, `snapshot_note` and `snapshot_at` ("start" or "prep_window").
+- **`verify.py`**: the record (O9); then the program: the snapshot whenever a usable record says the program was
+  frozen (`started`, or `prep_window_closed`), provided its digest matches the record's (it replaces the restored
+  session-end folder; a mismatch, or a freeze on record without a usable snapshot, is a task error); no program
+  (offline 0) for a too-large snapshot; the session-end folder only with no usable record of a freeze (the session
+  ended before the window closed, the record directory did not arrive - `service.log`, written at setup, tells - or
+  the record is not this episode's); then main's grading of that program; then the record's online item (`anchor_online.json`, 0.897458); then
+  `ratio_rewards((offline + online) / 2, anchor.json = 1.0, cap 1.0, full_at 1.0)`, with both items' rewards, raw
+  metrics and sub-metrics in the verdict's metrics (`offline_*`, `online_*`, `program_*`).
+- **Time**: `prep_s` 3600 (main's agent budget, for the program and the preparation), `graded_s` 14400, session
+  18000 s; `[verifier]` is main's again (36000 s, the GPU).
+- **The reference** (`solution/solve.sh`): main's installation of the privileged controller into the submission
+  first, then the online variant's drive of the graded episode, so the snapshot holds the reference program.
+
 ## Online variant (experimental branch `exp/online-graded-episode`, 2026-11-17)
 
 On this branch the agent plays ONE hidden episode itself, during its session, and the verifier scores
