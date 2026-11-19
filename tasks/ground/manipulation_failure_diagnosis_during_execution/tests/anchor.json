@@ -1,0 +1,9 @@
+{
+  "metric": "online_diagnosis_score",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 1.0,
+  "source": "measured: the token-privileged oracle's online_diagnosis_score in ale validate validate-0e28f683 (engine bfb7505, 2026-11-16, separate verification): 1.0 on the 88 hidden runs (P 1.0 over 48 failed runs, F 0.0 over 40 successful runs)",
+  "reference_commit": "the task content validated in validate-0e28f683 (spec_hash sha256:ae057c9e7ac761eda3418af6d6a127cd2c03fdf6ff6bfa67582c17941cb6967b); only this file changed since",
+  "note": "The oracle replays the answer key through the wire on the fixed hidden set (an alarm on the chunk that contains the onset, none on successful runs). The set is fixed and the replay is deterministic, so the oracle's score does not vary between runs and full_at is 1.0."
+}

@@ -1,0 +1,11 @@
+# The Python the agent's program runs on (3.12, /opt/venv), here and in the verifier image (tests/requirements.txt is
+# this file). CPU-only: nothing in this task uses a GPU.
+--extra-index-url https://download.pytorch.org/whl/cpu
+numpy==2.2.6
+scipy==1.15.3
+opencv-python-headless==4.12.0.88
+scikit-learn==1.7.2
+torch==2.7.1+cpu
+torchvision==0.22.1+cpu
+transformers==4.57.1
+pillow==11.3.0
