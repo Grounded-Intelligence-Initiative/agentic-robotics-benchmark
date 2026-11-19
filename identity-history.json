@@ -438,6 +438,12 @@
     "spec_hash": "sha256:eb4760a3a5232e9d56a45752e4472d0cab5887213597c7d333359a4b53814df2"
   },
   {
+    "content_digest": "sha256:0fd6276e286764b44847567d421fe57ca318fb135d0b5349360838d743d3161a",
+    "since": "2026-11-19T03:00:01Z",
+    "slug": "quadruped_requirements_replica_from_photos",
+    "spec_hash": "sha256:e40405b916f3585c82c7bb98eeb97af2427772707be57a9007ec0cc9eb40f078"
+  },
+  {
     "content_digest": "sha256:7a6291a954e3323b60fa0850ab35589767489ab96b594ff71e05496eb8fa56b3",
     "since": "2026-11-18T02:07:59Z",
     "slug": "quadruped_requirements_replica_from_photos",
