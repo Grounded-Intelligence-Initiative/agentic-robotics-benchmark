@@ -119,10 +119,12 @@ through the photo pipeline, 2.5-4 s on a busy machine) and a 640 x 480 frame abo
 or `state` in `view.render`), a session or view shows your twin's own pose (`qpos0`: the bodies where your spec puts
 them). One Filament session per process at a time: close it before opening the next (a second one is refused). Closing
 the last one also releases Filament's context and its memory once nothing refers to the closed session (about 0.5-1.7 GB
-stays with the process; each open/close cycle keeps about 0.5 GB more; keep one session open for the whole program), so
-the next session's or view's first frame takes the 7-11 s again. Your program may use the layer during an episode too
+stays with the process; each open/close cycle keeps about 0.2-0.7 GB more; keep one session open for the whole program),
+so the next session's or view's first frame takes the 7-11 s again. Your program may use the layer during an episode too
 (the session finds the hall next to `$ARB_GIVEN_DIR`; `~` is an empty folder there, so give `open_view` the folders next
 to `$ARB_GIVEN_DIR`, as the example does); it then has 2 render threads (about 0.8-1.05 s / 1.3-3.7 s and 0.35-0.5 s /
-0.45-0.65 s per frame, its first frame about 7-11 s), and the time counts against the episode's wall clock. MuJoCo's
-classic renderer stays available: the render layer's MuJoCo backend (`render.backends.get_backend("mujoco")`) and
-`mujoco.Renderer`.
+0.45-0.65 s per frame, its first frame about 7-11 s), and the time counts against the episode's wall clock. In the
+graded run your program shares the verifier's memory (24 GB) with the cell's own camera session, which opens at your
+first `get_camera` call: measured in this cell, a program holding a twin session took about 6 GB and the cell's own
+session about 4-6 GB (the cell's process reached about 13 GB by the third episode). MuJoCo's classic renderer stays
+available: the render layer's MuJoCo backend (`render.backends.get_backend("mujoco")`) and `mujoco.Renderer`.

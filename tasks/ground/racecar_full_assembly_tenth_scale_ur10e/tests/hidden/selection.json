@@ -8590,6 +8590,47 @@
     "tests/review/select_set.py": "e40c86e557cf76556ca8641ebb817d00b42e7e35d07a66e4e25ff49654f2cea7"
    },
    "frozen_checked": "amendment A6 (2026-11-19): unchanged"
+  },
+  {
+   "utc": "2026-11-19T05:12:34Z",
+   "why": "the graded-run memory note of 2026-11-19: cell_api.md says that each open/close cycle of the given render layer keeps about 0.2-0.7 GB more (the range the four 03 assembly cells share) and that in the graded run the program shares the verifier's memory (24 GB) with the cell's own camera session, with the sizes measured in this cell's graded run; the givens rebuilt by their generator (setup payload, tests/setup_payload, given_hashes.json). No grader file, grader value, hidden set, scoring or kit changed, and task.toml is unchanged (the verifier already had 24 GB); the frozen table is A6's and holds (checked before this entry)",
+   "changed": {
+    "documents/environment/setup/payload/": [
+     "da472f94b7883bb235800bd7556888333b6f5b1df7e809ca65854fdb6b1b4d55",
+     "8c1e82bfb52308627aa5577fccb6a8b2c2090fe8b86baa066fa69a5e514c6a38"
+    ],
+    "documents/tests/given_hashes.json": [
+     "3dd2a4fbbcc99b571e616fe8c6e526d0af0e1eabf9fdc8fc8432841820e6d781",
+     "9947c55dc7edca24c70747b18f82b95fb9d100730c442c8668e69a7c59c51f75"
+    ],
+    "documents/tests/setup_payload/": [
+     "da472f94b7883bb235800bd7556888333b6f5b1df7e809ca65854fdb6b1b4d55",
+     "8c1e82bfb52308627aa5577fccb6a8b2c2090fe8b86baa066fa69a5e514c6a38"
+    ]
+   },
+   "recorded": {
+    "publication": {
+     "tests/assets/gt.tar.xz": "39eb8e353ff6edfacd483ffbfba9ab53ae84925d59b55a7fb429a6f806a40916",
+     "tests/grader_config.json#hidden_gt.url": "2c142041962812202bfeae4e0af1f4ff8cdffc556999339a710a41bbf779ce5b",
+     "tests/grader_config.json#hidden_gt.sha256": "46d87d0d67ab4978091ce941f5c09e93fc64cd9cca5de396d573f321332fedbf",
+     "tests/grader_config.json#hidden_gt.note": "c7af77de6e4efde92e9326e3133c3c7e6379a0b6b3271599335d20d8809790eb"
+    },
+    "documents": {
+     "instruction.md": "8c05d99a87354883b2f0e8ae3b83403361bd18b8b868e8d2140d740c50ea9159",
+     "environment/assets.sha256": "2e774c1e82baa6b2bb3d42ff8128699e4a0eb59a4715200a4b67f40d46edd57f",
+     "tests/given_hashes.json": "9947c55dc7edca24c70747b18f82b95fb9d100730c442c8668e69a7c59c51f75",
+     "environment/setup/payload/": "8c1e82bfb52308627aa5577fccb6a8b2c2090fe8b86baa066fa69a5e514c6a38",
+     "environment/assets/payload/given/parts/": "80fd6f776b5d4038ac7db321b625abdeabaa99eb04c679a9faebf56878621d57",
+     "environment/assets/payload/given/drawings/": "dfece19a682cef21b9613a86c6cde01031573fe117cc4e13a087278a787d193c",
+     "environment/assets/payload/given/manual/": "963d5f2b2af8e26d01d9c1840adfaba50003b26cf83b90ac9212d659a113003e",
+     "environment/assets/payload/render/": "d25e9c225c66d9244a8b7a98bbb5056216e32bf16898b9f110fc8a9a3d6972ff",
+     "tests/setup_payload/": "8c1e82bfb52308627aa5577fccb6a8b2c2090fe8b86baa066fa69a5e514c6a38"
+    }
+   },
+   "tools": {
+    "tests/review/select_set.py": "e40c86e557cf76556ca8641ebb817d00b42e7e35d07a66e4e25ff49654f2cea7"
+   },
+   "frozen_checked": "amendment A6 (2026-11-19): unchanged"
   }
  ]
 }

@@ -130,10 +130,12 @@ renders as fast. Until you give a state (`sync_from`, `set_state`, or `state` in
 shows your twin's own pose (its initial joint positions: the bodies where your spec puts them). One Filament session
 per process at a time: close it before opening the next (a second one is refused). Closing the last one also releases
 Filament's context and its memory once nothing refers to the closed session (about 0.7 GB stays with the process;
-each open/close cycle keeps about 0.4 GB more; keep one session open for the whole program), so the next session's
-or view's first frame takes that long again. Your program may use the layer during an episode too (the session finds
-the hall next to `$ARB_GIVEN_DIR`; `~` is an empty folder there, so give `open_view` the folders next to
+each open/close cycle keeps about 0.2-0.7 GB more; keep one session open for the whole program), so the next
+session's or view's first frame takes that long again. Your program may use the layer during an episode too (the
+session finds the hall next to `$ARB_GIVEN_DIR`; `~` is an empty folder there, so give `open_view` the folders next to
 `$ARB_GIVEN_DIR`, as the example does); it then has two render threads (about 1.1 s / 2.1 s and 0.5 s / 0.7 s
-per frame, its first frame about 10 s), and the time counts against the episode's wall clock. MuJoCo's classic
-renderer stays available: the render layer's MuJoCo backend (`render.backends.get_backend("mujoco")`) and
-`mujoco.Renderer`.
+per frame, its first frame about 10 s), and the time counts against the episode's wall clock. In the graded run your
+program shares the verifier's memory (24 GB) with the cell's own camera session, which opens at your first
+`get_camera` call: measured in this cell, a program holding a twin session took about 4 GB and the cell's own
+session about 2-4 GB (the cell's process reached about 12 GB by the fourth episode). MuJoCo's classic renderer
+stays available: the render layer's MuJoCo backend (`render.backends.get_backend("mujoco")`) and `mujoco.Renderer`.
