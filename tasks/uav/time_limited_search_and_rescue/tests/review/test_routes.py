@@ -1,128 +1,75 @@
-"""Small camera-map fixtures; no MuJoCo, case seeds or world coordinates."""
+"""Small deterministic fixtures for storey memory, backtracking and optical guides."""
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]/"solution"))
-from oracle_run import DECK, DIRECTIONS, TRAVEL, Discovery
-
-
-class Hover:
-    def __init__(self):
-        self.command = [0., 0., TRAVEL, 0.]
-        self.obs = {"frame_id": 0, "done": False}
-        self.trace, self.path, self.calls = [], [], []
-        self.doors = {}
-
-    def scan(self):
-        return np.zeros((256, 256, 3), dtype=np.int16), {d: self.doors.get(d, "wall") for d in DIRECTIONS}
-
-    def face(self, *heading):
-        self.calls.append(("face", heading))
-
-    def grip(self):
-        pass
-
-    def cell(self, cell, height, settle=0, track=True):
-        self.calls.append(("cell", cell, height))
-
-    def register(self, cell):
-        self.calls.append(("fix", cell))
+sys.path.insert(0,str(Path(__file__).resolve().parents[2]/"solution"))
+from oracle_run import DIRECTIONS, FOCAL, RoomMemory, explore, guide_offset, reverse
 
 
 class Routes(unittest.TestCase):
-    inlet, landing, bay, spur = (0, 1), (0, 2), (0, 3), (1, 3)
+    def test_reverse_flies_into_same_well(self):
+        a,b,d = (0,1,0),(0,1,1),(0,1)
+        self.assertEqual(reverse((a,b,d)),(b,a,d))
+        c = (1,1,0)
+        self.assertEqual(reverse((a,c,(1,0))),(c,a,(-1,0)))
 
-    def setUp(self):
-        self.p = Hover()
-        self.nav = Discovery(self.p, self.inlet)
+    def test_ports_are_taken_on_real_crossings(self):
+        for flat in (False,True):
+            mem = RoomMemory(flat)
+            mem.remember((0,1,0),(0,2,0),10,18)
+            self.assertEqual(mem.ports((0,2,0))[(0,-1,0)],18)
+            self.assertEqual((0,-1,0) in mem.ports((0,2,1)),flat)
+            self.assertNotIn((0,0,1),mem.ports((0,2,0)))
 
-    def fly_out(self):
-        nav = self.nav
-        nav.floors.update({self.landing: 0., self.bay: DECK, self.spur: DECK})
-        nav.adjacency = {self.inlet: {self.landing: "open"},
-                         self.landing: {self.bay: "landing"}, self.bay: {self.spur: "open"}}
-        nav.seen.update((self.inlet, self.landing, self.bay))
-        nav.move(self.landing)
-        nav.move(self.bay)
-        self.p.calls.clear()
+    def test_both_enter_upper_landing_only_xyz_checks_other_room(self):
+        a,b,c,d = (0,0,0),(0,1,0),(0,1,1),(0,0,1)
+        doors = {a:{(0,1):"open"}, b:{(0,-1):"open",(0,1):"landing"},
+                 c:{(0,-1):"open",(0,1):"landing"},d:{(0,1):"open"}}
+        class Pilot:
+            def scan(self):
+                return self.at,{v:doors[self.at].get(v,"wall") for v in DIRECTIONS}
+            def look(self,*_):
+                return None
+        for flat in (False,True):
+            p = Pilot()
+            p.loaded,p.trace,p.at,p.obs = False,[],a,dict(done=False,frame_id=0)
+            p.command = np.zeros(4)
+            crossed = []
+            def fly(_,origin,target,heading):
+                self.assertEqual(origin,p.at)
+                self.assertIn(target,(a,b,c,d))
+                p.at = target
+                p.obs["frame_id"] += 1
+                crossed.append(target)
+            with patch("oracle_run.fly",fly), patch("oracle_run.apron_color",return_value="wall"), \
+                    patch("oracle_run.find_pod",side_effect=lambda cell,*_: np.zeros(2) if cell==d else None):
+                _,_,target = explore(p,a,flat)
+            self.assertIn(c,crossed)
+            self.assertEqual(target is None,flat)
+            self.assertEqual(crossed, [b,c,b,a] if flat else [b,c,d])
 
-    def test_at_goal_and_at_own_frontier(self):
-        nav = self.nav
-        self.assertEqual(nav.route(self.inlet), [])
-        nav.return_to(self.inlet)
-        self.assertEqual(nav.route(), [])
-        nav.explore()
-        self.assertFalse(self.p.calls)
-        self.p.doors[(0, 1)] = "open"
-        nav.scan(False)
-        self.assertEqual(nav.route(), [self.landing])
-        self.assertIsNone(nav.route(self.landing))  # visible, never crossed
+    def test_guide_span_measures_lateral_and_range(self):
+        img = np.zeros((256,256,3),dtype=int)
+        self.assertIsNone(guide_offset(img))
+        for u in (48,194):
+            img[:,u-4:u+5] = (218,165,37)
+        np.testing.assert_allclose(guide_offset(img),
+                                   [(48+194-255)*.70/146,.17+FOCAL*1.40/(.99277*146)-1.222])
 
-    def test_known_return_not_nearer_frontier(self):
-        self.fly_out()
-        nav = self.nav
-        self.assertEqual(nav.route(), [self.spur])
-        self.assertEqual(nav.route(self.inlet), [self.landing, self.inlet])
-        nav.return_to(self.inlet)
-        self.assertEqual([c[1] for c in self.p.calls if c[0] == "fix"], [self.landing, self.inlet])
-        self.assertIn(("cell", self.landing, TRAVEL+DECK), self.p.calls)
-        self.assertIn(("cell", self.landing, TRAVEL), self.p.calls)
-        nav.return_to(self.bay)
-        self.assertEqual(nav.current, self.bay)
-        self.assertNotIn(self.spur, self.p.path)
-
-    def test_unreachable_goal_does_not_launch_exploration(self):
-        self.fly_out()
-        self.assertIsNone(self.nav.route(self.spur))
-        with self.assertRaisesRegex(RuntimeError, "no crossed route"):
-            self.nav.return_to(self.spur)
-        self.assertFalse(self.p.calls)
-
-    def test_unscanned_arrival_and_occluded_back_apron(self):
-        self.fly_out()
-        nav = self.nav
-        nav.seen.remove(self.bay)
-        self.assertEqual(nav.route(), [])
-        self.assertEqual(nav.route(self.inlet), [self.landing, self.inlet])
-        _, view = nav.scan(False)  # blank view with the sled over the incoming apron
-        self.assertEqual(view[(0, -1)], "landing")
-        self.assertFalse(self.p.calls)
-
-    def test_confirmed_shutter_breaks_both_return_directions(self):
-        self.fly_out()
-        nav = self.nav
-        nav.confirmed_shutters.add(tuple(sorted((self.bay, self.landing))))
-        self.p.doors = {(0, -1): "closed", (1, 0): "open"}
-        nav.scan(True)
-        self.assertIsNone(nav.route(self.inlet))
-        self.assertEqual(nav.route(), [self.spur])
-        self.assertNotIn(self.landing, nav.adjacency[self.bay])
-        self.assertNotIn(self.bay, nav.adjacency[self.landing])
-        # A parallel observed corridor is viable for egress, not a proven return.
-        bypass = (1, 2)
-        nav.adjacency[self.spur] = {bypass: "landing"}
-        nav.adjacency[bypass] = {self.landing: "open"}
-        nav.floors[bypass] = 0.
-        nav.seen.update((self.spur, bypass))
-        self.assertIsNone(nav.route(self.inlet))
-        self.assertEqual(nav.route(self.inlet, observed_detour=True),
-                         [self.spur, bypass, self.landing, self.inlet])
-        self.p.doors[(0, -1)] = "open"
-        nav.scan(True)
-        self.assertNotIn(self.landing, nav.adjacency[self.bay])
-
-    def test_terminal_move_is_not_a_crossing(self):
-        nav = self.nav
-        self.p.doors[(0, 1)] = "open"
-        nav.scan(False)
-        self.p.register = lambda cell: self.p.obs.update(done=True)
-        nav.move(self.landing)
-        self.assertEqual(nav.current, self.inlet)
-        self.assertFalse(nav.crossed)
+    def test_loaded_route_prefers_known_crossings(self):
+        m = RoomMemory()
+        a,b,c,d = (0,2,1),(1,2,1),(1,2,0),(1,1,0)
+        for i,(u,v,h) in enumerate(((a,b,(1,0)),(b,c,(0,1)),(c,d,(0,-1)))):
+            m.remember(u,v,i,i+1,h)
+        m.observed[a] = ((0,-1,0),)
+        self.assertEqual([x[1] for x in m.onward(a,d)],[b,c,d])
+        self.assertEqual(m.onward(d,d),[])
+        self.assertEqual(m.onward(a,(0,1,0)),[])  # approach the observed, untried door here
 
 
-if __name__ == "__main__":
+if __name__=="__main__":
     unittest.main()

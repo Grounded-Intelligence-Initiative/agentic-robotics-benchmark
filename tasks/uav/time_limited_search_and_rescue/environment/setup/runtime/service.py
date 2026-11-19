@@ -24,7 +24,7 @@ class Runtime:
 
     def flush(self):
         state = {"seed": self.seed, "kind": self.world.kind, "events": self.events,
-                 "metrics": self.world.metrics(),
+                 "metrics": self.world.metrics(), "diagnostics": self.world.diagnostics(),
                  "requests": self.count}
         temp = self.directory/"state.tmp"
         temp.write_text(json.dumps(state))
@@ -32,7 +32,7 @@ class Runtime:
 
     def call(self, req):
         self.count += 1
-        if self.count > 5000:
+        if self.count > 9000:
             self.flush()
             raise ValueError("request budget exhausted")
         if not isinstance(req, dict) or set(req) != {"method", "params"}:

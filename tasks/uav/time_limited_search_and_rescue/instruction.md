@@ -1,4 +1,4 @@
-# UAV Search and Rescue: Medical Litter Transfer
+# UAV Search and Rescue: Two-Storey Training Ward
 
 Recover the **RESCUE MANNEQUIN** on its full-length medical litter from
 an indoor training wing and set it down on the blue center of the
@@ -16,14 +16,20 @@ of the passages and landmarks you actually see.
 - Find the **INSPECTION** slot off the staging strip. Align on the
   violet floor apron, settle at about **0.71 m** altitude, and fly
   through empty. Once clear, climb before leaving that pocket.
-- Reserve time to search the mezzanine. Look into unfamiliar openings
-  before committing. White aprons are ordinary doorways; amber aprons
-  mark a change of floor with a raised sill. The lower floor is the
-  launch datum; the mezzanine floor is **0.60 m higher**. A useful cruise
-  altitude is **1.30 m above the local floor**. For an amber connection,
-  climb to **1.90 m above launch** before entering, hold until fully
-  clear on the other side, then adjust to the local floor. The walls
-  are higher than the flight envelope.
+- Search both storeys. A room may be directly above another room with
+  different doors; a visit to one does not inspect the other. The
+  downstairs wards are separated by a solid partition. The connecting
+  passage is upstairs. White wear plates extend through ordinary doorways,
+  which have about 1.48 m of clear width.
+- Amber thresholds lead into **HOIST WELL** alcoves. Enter horizontally,
+  then climb or descend **inside** the square aperture. The ceiling is
+  solid elsewhere. Storey spacing is **2.60 m**, slab thickness **0.22 m**,
+  and the well opening is **2.34 by 2.34 m**. A useful cruise is **1.30 m
+  above the local floor**. Two continuous ochre steel guides on the back
+  wall stand **1.40 m** apart; their midpoint and apparent span help center
+  the aircraft about **1.2 m** in front of them. The guides can be seen
+  at both heights. Looking down inside a well shows the floor far below,
+  not a floor at the upper landing. Leave horizontally once clear of the slab.
 - Search the marked **RESCUE BAY** rooms for the orange pickup panel on
   the green litter board. Its lifting
   fitting is a cyan circular flange under a dark cover. The cover looks
@@ -49,12 +55,10 @@ of the passages and landmarks you actually see.
   wide flange cannot enter the small seat, and the narrow flange slips
   past the large head's retaining lip. Check that the sled lifted before
   committing to egress. A miss leaves the sled on the floor.
-- Lifting the load opens the blue **CARGO** shutter and closes an
-  interior safety shutter. A closed safety shutter has a red apron
-  and a visible red panel. Recheck doors on the return and route around
-  the obstruction. The cargo run connects to the search rooms at the
-  far end and leads back down to staging. The litter cannot fit back
-  through the inspection slot.
+- Lifting the load opens the blue **CARGO** shutter from the treatment
+  ward to staging downstairs. The litter cannot fit through the
+  inspection slot. If carrying the litter through a hoist well, center
+  both ends inside the opening before changing height.
 
 ## Loaded Transport
 
@@ -93,7 +97,7 @@ about 0.13 m per metre when loaded (less when empty). Do not assume
 command totals are pose. Zero horizontal commands settle to a
 stationary hover: stop, correct using a fresh image, and look again.
 The UAV starts at 1.30 m with its heading facing the wing.
-Altitude setpoints are limited to 0.39–2.09 m above launch.
+Altitude setpoints are limited to 0.39–4.69 m above launch.
 
 `grip=+1` attempts a close, `-1` releases, and `0` leaves it alone.
 It applies before movement. Steady the UAV before mounting, latching
@@ -101,11 +105,11 @@ or releasing. Hover directly over the rack head to mount it (the rack
 guide has about 8 cm of horizontal capture range). At the sled, the
 self-centering jaws accept about 13 cm of horizontal misalignment.
 Releasing the sled leaves the head attached to the UAV.
-High or fast release, or striking a wall, sill, or shutter with the
+High or fast release, or striking a wall, slab, ceiling or shutter with the
 airframe **or load**, ends the sortie. Each action advances 0.2 simulated
-seconds; the allowance is **2,400 actions** (480 simulated seconds).
+seconds; the allowance is **4,400 actions** (880 simulated seconds).
 There is no reset. Observations do not advance time, but the live service
-accepts at most 5,000 calls in total, including actions and observations.
+accepts at most 9,000 calls in total, including actions and observations.
 
 ## Cameras
 
@@ -122,7 +126,7 @@ The partitions are about 15 cm thick, with skirting less than 1 cm proud of the 
 Doorway wear plates extend from the openings onto the approach. Distance
 to a wall can be measured where its skirting meets the floor. At a constant
 height and heading, floor features move opposite the camera's translation;
-do not mistake the attached load or a raised sill for the floor. Use the
+do not mistake the attached load or the floor seen through a well for a local floor patch. Use the
 forward view to inspect height, clearance and obstructions.
 
 Only the images, `frame_id`, `done`, and `steps_remaining` are exposed.

@@ -35,7 +35,7 @@ def flight(seed, mode, folder, full):
             errors.append(float(np.linalg.norm(nominal-e["correction_m"]-truth)))
             priors.append(float(np.linalg.norm(nominal-truth)))
         for e in fixes:
-            x, y = e["cell"]
+            x, y = e["cell"][:2]
             offset = (rec.poses[e["frame"]][:2]-w.layout.xy((x+2,y))).tolist()
             e["referee_center_error_xy_m"] = offset
             offsets.append(float(np.linalg.norm(offset)))

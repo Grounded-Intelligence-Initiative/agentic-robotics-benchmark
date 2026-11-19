@@ -14,8 +14,7 @@ from scene_assets import asset_root, geom, materials, robot_meshes
 SIDE = 5
 START_Z = 1.30
 SLOT_SILL, SLOT_LINTEL = .43, .89
-RAISED_SILL = .73
-DECK, LANDING, WALL_TOP = .60, .99, 2.42
+DECK, SLAB, WELL_HALF, WALL_TOP = 2.60, .22, 1.17, 2.60
 DARK = (.075, .112, .126, 1)
 WALL = (.65, .70, .70, 1)
 WHITE = (.94, .95, .91, 1)
@@ -54,10 +53,6 @@ def boundaries(axis, i):
     return (axis_at(axis, i-1)+center)/2, (axis_at(axis, i+1)+center)/2
 
 
-def floor_z(cell):
-    return DECK if cell[1] >= 3 else 0.
-
-
 def interior_edges():
     for y in range(1, SIDE):
         for x in range(SIDE):
@@ -82,12 +77,12 @@ def distances(start, edges):
 @dataclass(frozen=True)
 class Layout:
     halls: frozenset
-    raised: frozenset
+    wells: tuple
     inlet: int
     outlet: int
     rooms: tuple
     pod: tuple
-    safety: tuple
+    target: tuple
     tone: float
     columns: tuple
     rows: tuple
@@ -100,10 +95,6 @@ class Layout:
 
     def xy(self, cell):
         return np.array([axis_at(self.columns, cell[0]), axis_at(self.rows, cell[1])])
-
-    @property
-    def deck_y(self):
-        return (self.rows[2]+self.rows[3])/2
 
     @property
     def inlet_y(self):
@@ -126,55 +117,43 @@ class Layout:
         return ((min(boundaries(self.columns, 0)[0], self.pocket[0]-5.5),
                  max(boundaries(self.columns, SIDE-1)[1], self.pocket[0]+5.5)),
                 (self.pocket[1]-POCKET_HALF_DEPTH-.15, boundaries(self.rows, SIDE-1)[1]-.05),
-                (.39, 2.09))
+                (.39, DECK+2.09))
 
 
 def layout_for(seed):
     rng = np.random.default_rng(seed >> 1)
-    inlet, outlet = int(rng.integers(1, 4)), int(rng.choice((0, 4)))
-    service_row = int(rng.integers(3, SIDE))
-    all_edges = [e for e in interior_edges() if all(p[0] != outlet for p in e)]
-    groups = {p: p for e in all_edges for p in e}
-
-    def find(p):
-        while p != groups[p]:
-            p = groups[p]
-        return p
-
-    halls, loops = [], []
-    for i in rng.permutation(len(all_edges)):
-        u, v = e = all_edges[i]
-        a, b = find(u), find(v)
-        if a != b:
-            groups[a] = b
-            halls.append(e)
-        else:
-            loops.append(e)
-    # The cargo column is a dedicated egress spine, linked to the rooms only
-    # near the far end. It cannot shorten any outbound search path.
-    halls += loops[:3]
-    halls += [edge((outlet, y), (outlet, y+1)) for y in range(1, SIDE-1)]
-    halls.append(edge((outlet, service_row), (1 if outlet == 0 else SIDE-2, service_row)))
-    raised = {halls[i] for i in rng.choice(len(halls), size=3, replace=False)}
-    # The inspection pocket is below the hall sills: level flight from the
-    # insertion slot into the rest of the wing is physically blocked.
-    raised.update(e for e in halls if (inlet, 1) in e)
-    from_inlet = distances((inlet, 1), halls)
-    from_outlet = distances((outlet, 1), halls)
-    deep = sorted((p for p in from_inlet if p[1] >= 3 and p[0] != outlet),
-                  key=lambda p: min(from_inlet[p], from_outlet[p]), reverse=True)[:8]
-    rooms = tuple(deep[i] for i in rng.choice(len(deep), size=3, replace=False))
-    target = rooms[int(rng.integers(3))]
-    # On a cycle, never the sole connection. Prefer a shutter that changes
-    # the shortest loaded route, rather than closing an irrelevant dead end.
-    choices = []
-    for e in halls:
-        if any(p[0] == outlet for p in e):
-            continue
-        after = distances((outlet, 1), [other for other in halls if other != e])
-        if len(after) == len(from_outlet):
-            choices.append((after[target]-from_outlet[target], int(e[0][1] >= 3), e))
-    safety = max(choices)[2]
+    inlet, outlet = int(rng.choice((1, 2))), 4
+    wells = ((int(rng.choice((0, 1))), 3), (int(rng.choice((3, 4))), 3))
+    cross_row = int(rng.choice((1, 2)))
+    halls = set()
+    for level in (0, 1):
+        for region in (range(3), range(3, 5)):
+            cells = {(x,y) for x in region for y in range(1,4)}
+            opts = [e for e in interior_edges() if set(e) <= cells]
+            # The intake well is reached from the south below. Its upper
+            # vestibule may also have a side door. Nothing crosses the
+            # downstairs partition, including the space above the shutters.
+            if region.start == 0 and (level == 0 or rng.integers(2)):
+                opts = [e for e in opts if wells[0] not in e or e[0][0] == e[1][0]]
+            groups = {v: {v} for v in cells}
+            extras = []
+            for i in rng.permutation(len(opts)):
+                a, b = opts[i]
+                if b in groups[a]:
+                    extras.append((a,b))
+                    continue
+                joined = groups[a] | groups[b]
+                for node in joined:
+                    groups[node] = joined
+                halls.add(edge((*a,level), (*b,level)))
+            for a,b in extras[:1]:
+                halls.add(edge((*a,level), (*b,level)))
+    halls.add(edge((2,cross_row,1), (3,cross_row,1)))
+    for x,y in wells:
+        halls.add(edge((x,y,0), (x,y,1)))
+    bays = ((3,1),(4,2)) if rng.integers(2) else ((3,2),(4,1))
+    rooms = tuple((*v,k) for k in (0,1) for v in bays)
+    target = rooms[int(rng.integers(len(rooms)))]
     dx, dy = rng.uniform(-.16, .16, 2)
     yaw = float(rng.uniform(-.50, .50))
     tone = float(rng.uniform(.92, 1.05))
@@ -191,22 +170,17 @@ def layout_for(seed):
                rng.choice((-1, 1))*rng.uniform(.55, .70))
 
     def mirror(p):
-        return (SIDE-1-p[0], p[1]) if seed & 1 else p
-
-    def transformed(edges):
-        return frozenset(edge(mirror(u), mirror(v)) for u, v in edges)
+        return (SIDE-1-p[0], *p[1:]) if seed & 1 else p
 
     if seed & 1:
-        dx, yaw = -dx, -yaw
-        start_x = -start_x
-        pad_x = -pad_x
+        dx, yaw, start_x, pad_x = -dx, -yaw, -start_x, -pad_x
         columns = -columns[::-1]
-    bx, by = mirror(target)
-    px, py = columns[bx]+dx, rows[by]+dy
-    return Layout(transformed(halls), transformed(raised), mirror((inlet, 1))[0],
-                  mirror((outlet, 1))[0], tuple(map(mirror, rooms)), (px, py, yaw),
-                  edge(*map(mirror, safety)), tone, tuple(columns), tuple(rows),
-                  (start_x, start_y), gains, (pad_x, pad_y), flange, depot, loading)
+    target = mirror(target)
+    px, py = columns[target[0]]+dx, rows[target[1]]+dy
+    return Layout(frozenset(edge(mirror(a), mirror(b)) for a,b in halls),
+                  tuple(map(mirror,wells)), mirror((inlet,1))[0], mirror((outlet,1))[0],
+                  tuple(map(mirror, rooms)), (px,py,yaw), target, tone, tuple(columns), tuple(rows),
+                  (start_x,start_y), gains, (pad_x,pad_y), flange, depot, loading)
 
 
 def build(layout):
@@ -285,11 +259,27 @@ def build(layout):
 
     xmin, xmax = boundaries(layout.columns, 0)[0], boundaries(layout.columns, SIDE-1)[1]
     ymax = boundaries(layout.rows, SIDE-1)[1]
-    deck_center = ((xmin+xmax)/2, (layout.deck_y+ymax)/2, DECK/2)
-    deck_half = ((xmax-xmin)/2, (ymax-layout.deck_y)/2, DECK/2)
-    geom(w, "mezzanine", pos=deck_center, size=deck_half, material="terrazzo",
-         rgba=(1, 1, 1, 1), contype="1", conaffinity="1")
-    obstacles = [("deck", "mezzanine")]
+    obstacles = []
+    def slab(x0, x1, y0, y1, top, kind):
+        name = f"{kind}{len(obstacles)}"
+        geom(w, name, pos=((x0+x1)/2,(y0+y1)/2,top-SLAB/2),
+             size=((x1-x0)/2,(y1-y0)/2,SLAB/2), material="terrazzo",
+             rgba=(1,1,1,1), contype="1", conaffinity="1")
+        obstacles.append((kind,name))
+
+    # An uninterrupted structural slab above both wards. Only the two
+    # enclosed rear wells are cut out; the staging/loading rooms are roofed.
+    wy = layout.rows[4]
+    slab(xmin, xmax, layout.inlet_y, wy-WELL_HALF, DECK, "slab")
+    slab(xmin, xmax, wy+WELL_HALF, ymax, DECK, "slab")
+    last = xmin
+    for wx in sorted(layout.columns[x] for x,_ in layout.wells):
+        slab(last, wx-WELL_HALF, wy-WELL_HALF, wy+WELL_HALF, DECK, "slab")
+        last = wx+WELL_HALF
+    slab(last, xmax, wy-WELL_HALF, wy+WELL_HALF, DECK, "slab")
+    (left,right),(bottom,_),_ = layout.bounds
+    slab(left-.35,right+.35,bottom-.35,layout.inlet_y,DECK,"roof")
+    slab(xmin-.15,xmax+.15,layout.inlet_y-.075,ymax+.075,2*DECK,"roof")
     shutters = {}
 
     def sign(text, x, y, z, width=.34):
@@ -339,7 +329,8 @@ def build(layout):
         obstacles.append((kind, name))
         geom(w, name, pos=center, size=half, rgba=color)
 
-    def boundary(a, b, route=None):
+    def boundary(a, b, route=None, level=0):
+        base_z = level*DECK
         center = (xy(a)+xy(b))/2
         normal = 0 if a[0] != b[0] else 1
         tangent = 1-normal
@@ -347,11 +338,10 @@ def build(layout):
         axis = layout.rows if tangent == 1 else layout.columns
         lo, hi = boundaries(axis, a[tangent])
         lo, hi = lo-center[tangent], hi-center[tangent]
-        vertical = floor_z(a) != floor_z(b) and min(a[1], b[1]) == 2
-        safety = edge(a, b) == layout.safety
+        well = route == "well"
 
         def section(mid, span, lo, hi, kind, color):
-            pos, half = [*center, (lo+hi)/2], [.075, .075, (hi-lo)/2]
+            pos, half = [*center, base_z+(lo+hi)/2], [.075, .075, (hi-lo)/2]
             pos[tangent] += mid
             half[tangent] = span
             wall(pos, half, kind, color)
@@ -360,7 +350,7 @@ def build(layout):
                 for side, room in ((-1, a), (1, b)):
                     base = pos.copy()
                     base[normal] += side*(half[normal]+.003)
-                    base[2] = floor_z(room)+.064
+                    base[2] = base_z+.064
                     trim = half.copy()
                     trim[normal], trim[2] = .003, .064
                     wall(base, trim, kind, (.39, .26, .17, 1))
@@ -368,30 +358,27 @@ def build(layout):
         if route is None:
             section((lo+hi)/2, (hi-lo)/2+.026, 0., WALL_TOP, "wall", WALL)
             return
-        color = PURPLE if route == "inspection" else BLUE if route == "cargo" else AMBER if vertical else WHITE
+        color = PURPLE if route == "inspection" else BLUE if route == "cargo" else AMBER if well else WHITE
         for i, (here, there) in enumerate(((a, b), (b, a))):
             # A wear plate extends from the physical opening onto its approach.
-            run = .84 if vertical else .79
+            if well and here[1] == 4 and level:
+                continue  # the upper well has air, not a floating wear plate
+            run = .84 if well else .79
             pos = center+(xy(here)-center)*(.075+run/2)/np.linalg.norm(xy(here)-center)
             size = [run/2, run/2, .004]
             size[tangent] = gate_half-.07
             name = f"apron{len(w)}"
-            geom(w, name, pos=(*pos, floor_z(here)+.007), size=size, rgba=color)
-            if safety:
-                shutters.setdefault("warning", []).append(name)
+            geom(w, name, pos=(*pos, base_z+.007), size=size, rgba=color)
         for start, end in ((lo, -gate_half), (gate_half, hi)):
             section((start+end)/2, (end-start)/2+.014, 0., WALL_TOP, "wall", WALL)
         if route == "inspection":
             section(0., gate_half, 0., SLOT_SILL, "inspection", AMBER)
             section(0., gate_half, SLOT_LINTEL, WALL_TOP, "inspection", AMBER)
             sign("INSPECTION", *xy((a[0], 0)), 0.)
-        elif vertical:
-            section(0., gate_half, 0., LANDING, "landing", AMBER)
-            section(0., gate_half, 2.28, WALL_TOP, "landing", AMBER)
-        elif route == "raised" and not safety:
-            floor = floor_z(a)
-            section(0., gate_half, floor, floor+RAISED_SILL, "raised", (.57, .47, .18, 1))
+        elif well:
+            sign("HOIST WELL", *xy(a), base_z, .38)
         elif route == "cargo":
+            section(0., gate_half, 2.00, WALL_TOP, "cargo", BLUE)
             x, y = center
             body = ET.SubElement(w, "body", name="cargo_shutter", mocap="true", pos=f"{x} {y} 1.025")
             geom(body, "cargo_leaf", size=(gate_half, .075, 1.025), rgba=BLUE)
@@ -404,31 +391,28 @@ def build(layout):
                 geom(w, f"cargo_jamb{side}", pos=(x+side*(gate_half+.012), y, 1.025),
                      size=(.030, .10, 1.025), rgba=BLUE)
                 obstacles.append(("cargo", f"cargo_jamb{side}"))
-        if safety:
-            x, y = center
-            half = [.085, .085, 1.21]
-            half[tangent] = gate_half
-            body = ET.SubElement(w, "body", name="safety_shutter", mocap="true", pos=f"{x} {y} 3.8")
-            geom(body, "safety_leaf", size=half, rgba=RED)
-            for i, z in enumerate(np.linspace(-1., 1., 7)):
-                rib = half.copy()
-                rib[normal], rib[2] = .092, .021
-                geom(body, f"safety_rib{i}", pos=(0, 0, z), size=rib, rgba=DARK)
-                obstacles.append(("safety", f"safety_rib{i}"))
-            obstacles.append(("safety", "safety_leaf"))
-
-    for y in range(SIDE):
-        boundary((-1, y), (0, y))
-        boundary((SIDE-1, y), (SIDE, y))
-    for x in range(SIDE):
-        if x != layout.outlet:
-            boundary((x, -1), (x, 0))
-        boundary((x, SIDE-1), (x, SIDE))
-        route = "inspection" if x == layout.inlet else "cargo" if x == layout.outlet else None
-        boundary((x, 0), (x, 1), route)
-    for a, b in interior_edges():
-        route = "raised" if (a, b) in layout.raised else "open" if (a, b) in layout.halls else None
-        boundary(a, b, route)
+    for level in (0,1):
+        for y in range(0 if not level else 1, SIDE):
+            boundary((-1,y),(0,y),level=level)
+            boundary((SIDE-1,y),(SIDE,y),level=level)
+        for x in range(SIDE):
+            if not level and x != layout.outlet:
+                boundary((x,-1),(x,0))
+            boundary((x,SIDE-1),(x,SIDE),level=level)
+            route = None if level else ("inspection" if x == layout.inlet else
+                                        "cargo" if x == layout.outlet else None)
+            boundary((x,0),(x,1),route,level)
+        for a,b in interior_edges():
+            route = "open" if edge((*a,level),(*b,level)) in layout.halls else None
+            if a in layout.wells and b == (a[0],4):
+                route = "well"
+            boundary(a,b,route,level)
+    # Full-height hoist guide channels on the back wall, visible from
+    # below as well as above. The rim is the exposed edge of the slab.
+    for i,(col,_) in enumerate(layout.wells):
+        for side in (-1,1):
+            wall((layout.columns[col]+side*.70, ymax-.103, DECK),
+                 (.046,.025,DECK), "wall", AMBER)
 
     # The only entrance to receiving is through two full-height loading throats.
     cx, cy = layout.pocket
@@ -468,13 +452,11 @@ def build(layout):
     # Bay paint runs around (not through) the central pickup area.
     for i, room in enumerate(layout.rooms):
         x, y = xy(room)
-        sign("RESCUE BAY", x, y-.43, floor_z(room))
+        z = room[2]*DECK
+        sign("RESCUE BAY", x, y-.43, z)
         for side in (-1, 1):
-            geom(w, f"bay{i}_rail{side}", pos=(x+side*.47, y, floor_z(room)+.005),
+            geom(w, f"bay{i}_rail{side}", pos=(x+side*.47, y, z+.005),
                  size=(.023, .57, .004), rgba=TEAL)
-    for y in (1, 2, 3, 4):
-        label = "CARGO RUN" if y != 3 else "MEZZANINE"
-        sign(label, *xy((layout.outlet, y)), floor_z((layout.outlet, y)))
     for side, x in enumerate((xmin-.52, xmax+.52)):
         prop(root, asset_root(), "utility_box_01", f"cabinet{side}", (x, 0, 0), (.52, .61, .87))
 

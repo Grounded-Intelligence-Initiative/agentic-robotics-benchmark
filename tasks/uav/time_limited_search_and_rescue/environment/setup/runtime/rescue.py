@@ -11,14 +11,14 @@ import mujoco
 import numpy as np
 from PIL import Image
 
-from rescue_scene import DECK, POCKET_HALF_DEPTH, RED, START_Z, build, layout_for
+from rescue_scene import DECK, SLAB, WELL_HALF, POCKET_HALF_DEPTH, START_Z, build, layout_for
 
-LIMIT = 2400
+LIMIT = 4400
 DT = .2
 INCREMENTS = np.array([.32, .32, .19])
 SCORE = {"entered_wing": .12, "mezzanine": .08, "located": .10, "grasped": .12,
          "lifted": .15, "cargo_return": .20}
-FAILURES = ("wall", "raised", "inspection", "cargo", "deck", "landing", "safety",
+FAILURES = ("wall", "inspection", "cargo", "slab", "roof",
             "throat_entry", "throat_exit", "loading_wall", "unsafe_release")
 
 
@@ -55,7 +55,7 @@ class World:
         self.data.qpos[:4] = self.command
         self.data.ctrl[:] = self.command
         x, y, yaw = self.layout.pod
-        self.data.qpos[4:11] = (x, y, self.floor_at(y)+.073, math.cos(yaw/2), 0., 0., math.sin(yaw/2))
+        self.data.qpos[4:11] = (x, y, self.layout.target[2]*DECK+.073, math.cos(yaw/2), 0., 0., math.sin(yaw/2))
         mujoco.mj_forward(self.model, self.data)
         self.renderer = mujoco.Renderer(self.model, 256, 256) if render else None
         self.kinds, names = zip(*obstacles)
@@ -84,6 +84,11 @@ class World:
         self.loaded_cargo_cells = set()
         self.entry_z = self.exit_z = 0.
         self.mezzanine_z = self.loaded_descent_z = self.turn_angle = 0.
+        self.well_events, self.well_gaps = [], {}
+        self.first_sight_frame = 0
+        self.search_m = 0.
+        self.storey_rooms = set()
+        self.well_x = tuple(self.layout.columns[c] for c,_ in self.layout.wells)
         self._observation = None
 
     @property
@@ -102,8 +107,13 @@ class World:
     def tool(self):
         return next((i for i, mount in enumerate(self.mounts) if self.data.eq_active[mount]), None)
 
-    def floor_at(self, y):
-        return DECK if y >= self.layout.deck_y else 0.
+    def floor_at(self, xyz):
+        x,y,z = xyz
+        if z < DECK or y < self.layout.inlet_y:
+            return 0.
+        if abs(y-self.layout.rows[4]) < WELL_HALF and min(abs(x-u) for u in self.well_x) < WELL_HALF:
+            return 0.
+        return DECK
 
     def close(self):
         if self.renderer is not None:
@@ -185,7 +195,7 @@ class World:
         elif signal < -.5 and self.held:
             self.data.eq_active[0] = False
             self.release_dwell = 0
-            if self.payload[2]-self.floor_at(self.payload[1]) > .195 or speed > .34 or turn_speed > .34:
+            if self.payload[2]-self.floor_at(self.payload) > .195 or speed > .34 or turn_speed > .34:
                 self.abort("unsafe_release")
         if not self.held and abs(signal) > .5 and speed <= .30 and turn_speed < .3:
             self.dock_tool(signal, tool)
@@ -213,13 +223,21 @@ class World:
             centers = self.data.geom_xpos[ids]+(rot @ aabb[:, :3, None])[:, :, 0]
             half = (np.abs(rot) @ aabb[:, 3:, None])[:, :, 0]
             lo, hi = centers-half, centers+half
+            if (name in ("uav","pod") and (name == "uav" or self.held)
+                    and abs(self.position[1]-self.layout.rows[4]) < WELL_HALF
+                    and lo[:,2].min() <= DECK and hi[:,2].max() >= DECK-SLAB):
+                wx = min(self.well_x, key=lambda u: abs(self.position[0]-u))
+                origin = [wx,self.layout.rows[4]]
+                gap = WELL_HALF-max(np.abs(lo[:,:2]-origin).max(), np.abs(hi[:,:2]-origin).max())
+                self.well_gaps[name] = min(self.well_gaps.get(name, gap), float(gap))
             # Measure geometric margin near the two passages as an author diagnostic.
             reach = (.55*self.throats if name == "pod" else np.zeros(len(self.solids)))+.0001
             near = np.flatnonzero(np.all((lo.min(axis=0) <= self.solid_hi+reach[:, None]) &
                                         (hi.max(axis=0) >= self.solid_lo-reach[:, None]), axis=1))
             for i in near:
                 kind = self.kinds[i]
-                if name == "pod" and kind == "deck":  # normal floor support
+                if (name == "pod" and kind == "slab" and self.payload[2] > DECK
+                        and (not self.held or "lifted" not in self.progress)):  # upper floor support only
                     continue
                 candidates = ids[np.all((lo <= self.solid_hi[i]+reach[i]) &
                                         (hi >= self.solid_lo[i]-reach[i]), axis=1)]
@@ -233,31 +251,32 @@ class World:
                         self.abort(kind, "pod" if name == "pod" else "uav")
                         return
 
-    def physical_progress(self, previous_y):
+    def physical_progress(self, previous_y, previous_z):
         x, y, z = self.position
         px, py, pz = self.payload
         if (not self.held and "entered_wing" not in self.progress
                 and previous_y < self.layout.inlet_y <= y):
             self.progress.add("entered_wing")
             self.entry_z = z
-        if previous_y < self.layout.deck_y <= y and not self.mezzanine_z:
+        if y > self.layout.inlet_y and previous_z < DECK <= z:
+            self.well_events.append((self.steps, "up", bool(self.held), round(x,3), round(y,3)))
+        if y > self.layout.inlet_y and previous_z >= DECK > z:
+            self.well_events.append((self.steps, "down", bool(self.held), round(x,3), round(y,3)))
+        if y > self.layout.inlet_y and z >= DECK+.70 and not self.mezzanine_z:
             self.progress.add("mezzanine")
             self.mezzanine_z = z
-        if self.held and previous_y > self.layout.deck_y >= y and not self.loaded_descent_z:
+        if self.held and previous_z >= DECK > z and not self.loaded_descent_z:
             self.loaded_descent_z = z
-        if self.held and pz-self.floor_at(py) >= .54:
+        if self.held and pz-self.floor_at(self.payload) >= .54:
             self.progress.add("lifted")
             if not self.shutter_open:
                 # The training wing's mechanical lift interlock retracts the cargo leaf.
                 self.shutter_open = True
                 self.steps_to_lift = self.steps
-                for name, height in (("cargo", 3.8), ("safety", 1.21)):
-                    mid = self.model.body(name+"_shutter").mocapid[0]
-                    self.data.mocap_pos[mid, 2] = height
+                mid = self.model.body("cargo_shutter").mocapid[0]
+                self.data.mocap_pos[mid,2] = 3.8
                 mujoco.mj_kinematics(self.model, self.data)
                 self.refresh_solids()
-                for name in self.shutters["warning"]:
-                    self.model.geom(name).rgba[:] = RED
         if self.held and previous_y > self.layout.inlet_y >= y and "cargo_return" not in self.progress:
             self.progress.add("cargo_return")
             self.steps_to_cargo = self.steps
@@ -284,15 +303,21 @@ class World:
         x, y, z = self.position
         if y > self.layout.inlet_y:
             cx, cy = int(np.argmin(abs(self.columns-x))), int(np.argmin(abs(self.rows-y)))
-            self.cells_seen.add((cx, cy))
+            self.cells_seen.add((cx, cy, int(z>=DECK)))
             if self.held and cx == self.layout.outlet:
                 self.loaded_cargo_cells.add(cy)
-        if z-self.floor_at(y) >= .85:
+        level = int(z>=DECK)
+        if z-level*DECK >= .85:
             near = np.flatnonzero(np.max(np.abs(self.room_centers-[x, y]), axis=1) < .47)
-            self.rooms_seen.update(map(int, near))
-            # Center-room view, a conservative visual-discovery checkpoint.
-            if np.max(np.abs(self.payload[:2]-[x, y])) < .62:
+            for i in near:
+                room = self.layout.rooms[i]
+                if room[2] == level:
+                    self.rooms_seen.add(int(i))
+                    self.storey_rooms.add(room)
+            if (not self.held and level == self.layout.target[2]
+                    and np.max(np.abs(self.payload[:2]-[x, y])) < .62):
                 self.progress.add("located")
+                self.first_sight_frame = self.first_sight_frame or self.steps
 
     def act(self, action):
         if (not isinstance(action, list) or len(action) != 5
@@ -319,14 +344,17 @@ class World:
         self.command[3] += math.radians(30)*action[3]
         self.data.ctrl[:] = self.command
         previous_heading = self.data.qpos[3]
+        before = self.position.copy()
         for _ in range(round(DT/self.model.opt.timestep)):
             if self.done:
                 break
-            previous_y = self.position[1]
+            previous_y, previous_z = self.position[1:]
             mujoco.mj_step(self.model, self.data)
             self.check_clearance()
             if not self.done:
-                self.physical_progress(previous_y)
+                self.physical_progress(previous_y, previous_z)
+        if not self.first_sight_frame:
+            self.search_m += float(np.linalg.norm(self.position-before))
         if not self.done:
             self.observation_progress()
         self.turn_angle += abs(self.data.qpos[3]-previous_heading)
@@ -334,9 +362,13 @@ class World:
             self.done = True
         return self.observe()
 
+    def diagnostics(self):
+        return {"candidate_visits": sorted(self.storey_rooms), "well_crossings": self.well_events,
+                "shaft_envelope_gap_m": self.well_gaps}
+
     def metrics(self):
         delivered = "delivered" in self.progress
-        partial = sum(SCORE.get(k, 0.) for k in self.progress)+.02*len(self.rooms_seen)
+        partial = sum(SCORE.get(k, 0.) for k in self.progress)+.06*len(self.rooms_seen)/len(self.layout.rooms)
         return {
             "rescue_progress": 1. if delivered else round(partial, 2),
             "success": int(delivered), "delivered": int(delivered),
@@ -345,6 +377,12 @@ class World:
             "pod_impact": int(self.impact_body == "pod"),
             "uav_impact": int(self.impact_body == "uav"),
             "rooms_seen": len(self.rooms_seen), "wing_cells_visited": len(self.cells_seen),
+            "overlap_xy": len(self.cells_seen)-len({(x,y) for x,y,_ in self.cells_seen}),
+            "upper_entries": sum(e[1]=="up" for e in self.well_events),
+            "lower_returns": sum(e[1]=="down" for e in self.well_events),
+            "loaded_shaft_crossings": sum(e[2] for e in self.well_events),
+            "first_sight_frame": self.first_sight_frame,
+            "initial_search_m": round(self.search_m,3),
             "loaded_cargo_cells": len(self.loaded_cargo_cells),
             "steps": self.steps, "simulation_seconds": round(self.data.time, 3),
             "steps_to_lift": self.steps_to_lift, "steps_to_cargo": self.steps_to_cargo,

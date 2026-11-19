@@ -1,78 +1,93 @@
-# Natural Navigation: Author Notes
+# Stacked Training Ward: Author Notes
 
-This fork starts at `456df220ed39b6db8b6f2ef222d648ea22719e7d`. The flange,
-detachable collets, load-preserving weld, cargo shutter, 1.80 m rigid litter,
-two perpendicular offset loading throats and whole-board receiving condition
-are unchanged. Skirting is registered as solid geometry, like the walls it
-covers. No fiducial, localization event or estimator threshold is graded.
+Parent: `6787b2c0e274724f9250b806b642288991f6cd15`. The former
+y-divided mezzanine and internal safety shutter are replaced, not extended.
+The natural RGB navigation, side fitting survey, geometry-matched tool depot,
+physical lift, cargo shutter, oriented 1.80 m litter transfer and whole-board
+settled delivery remain.
 
-## What changed
+## Construction
 
-There are no position squares in staging, the entire wing or the turning
-pocket. Quarry slabs and mezzanine terrazzo are laid as continuous finishes;
-the seams do not restart in each room. Slabs use different cuts of the same
-licensed concrete material. The finish recipes are shared across cases, not
-encoded from a site or room identifier. Skirting follows the actual walls
-and terminates at openings. Wear plates extend from the physical thresholds;
-their role is to distinguish ordinary doors, landings and shutters.
+Each storey has fifteen rooms on the same five-by-three footprint. A
+floor-to-ceiling partition divides the lower ward. Each side has an enclosed
+hoist alcove off its rear landing. Only the upper ward connects the two sides,
+at a variable crossing away from the wells. Each component is built connected,
+with extra doors for alternatives. The target is chosen from two treatment
+bay coordinates, each with a distinct room on **both** storeys. All are on
+the remote side. Even a downstairs target requires an ascent, an upper
+crossing and a descent before the fitting can be surveyed. The cargo leaf
+and its fixed header seal the otherwise shorter approach until lift.
 
-## What the reference observes
+The upper floor is 2.60 m above launch. The same opaque 0.22 m slab boxes
+support the free board, occlude RGB and participate in 5 ms contact checks.
+The two 2.34 m square apertures are actual cutouts. Staging and loading have
+a low roof, the ward has an upper roof, and the well surrounds are solid.
+Normal top support at pickup or rest is not a slab strike. The long board
+must fit inside a hole for the whole crossing; there is no required storey
+sequence in the delivery grade.
 
-`solution/architecture.py` uses no site assets or simulator imports. At a
-level, steady heading it matches normalized brightness patches in overlapping
-down views, searches around the command prediction, and estimates translation
-from patches agreeing on a displacement. Blank or inconsistent patches cast
-no vote. The floor-plane camera calibration gives displacement in metres.
-The pilot applies the accumulated correction after a level segment. If some
-parts of the floor are occluded, it uses the command prior for those pairs;
-it does not pretend to observe height-changing segments this way.
+## Reference and ablation
 
-On first visits it uses the visible wall-floor junction and, where visible,
-both sides of a doorway. On revisits it matches the current view against a
-camera view it saved in its own topological map, falling back to the walls
-when appearance does not agree. This is local registration with a small
-command prior, not global recognition from an arbitrary starting position.
-Equipment, extraction and loading use the parent task's RGB detectors. The
-additional viewing maneuvers have 2,400 actions and 5,000 total calls; the
-solver still has 30 minutes.
+The pilot discovers the two staging doors from RGB. It registers successive
+floor patches, looks at doorway wear plates, and can re-observe local wall
+geometry or a stored camera view. An amber threshold leads physically into
+a well. The pilot centers on the pair of visible back-wall guide channels,
+flies the storey interval vertically, then exits horizontally into the
+other landing. It tracks the level from its own flights, not from the server.
+Its room search remembers each doorway actually crossed and a reversible
+trail. That trail takes it to the depot and back to the surveyed bay.
+Loaded egress reuses doors actually crossed on search: take a known route
+to the observed cargo door, or approach a previously observed untried door.
 
-## Independent checks
+The XY control uses the same pilot and safe breadcrumb trail. The single
+ablation is the address of the high-level crossed-door memory in
+`RoomMemory.key`: XY instead of XYZ. It still views the current room for
+the litter on every arrival, reads the real doors, flies vertical actions in
+both directions and uses identical geometric flight, tools and landing
+control. If a downstairs door has already been crossed, the control can
+mistake its upstairs counterpart for an exhausted branch. Exact action
+prefixes and evidence of real same-XY, opposite-storey skipped doors are
+checked outside the policy. This is an ablation of search memory, not of
+altitude control or local visual registration.
 
-`tests/review/check_natural.py SEED OUTPUT --paired` flies the RGB policy and
-a fresh matched world. The latter continues to look, survey, choose, grasp,
-scan doors, measure the load axis and read the loading jambs; only visual
-localization corrections after pickup are withheld. The referee checks the
-identical action prefix through lift. It records independent physical poses
-for displacement-error diagnostics, real RGB pairs, camera revisit views,
-stages, raw action tapes and contact outcomes. None go into the pilot.
-Default author mode renders consumed camera pairs at their original physics
-timestep; `--full` renders both cameras on every action, as the service does.
-With `--odometry`, the same pilot withholds both kinds of localization
-corrections from takeoff. Missing matches do not terminate any of the modes.
+## Reproduction
 
-`test_architecture.py` covers translation under illumination change and
-camera-fixed occlusion, rejection of a blank view, and depth and jamb offset
-at an interrupted wall. `test_routes.py` covers the inherited navigation
-graph. Native ALE controls and blind runs are separate from these checks.
+`tests/review/check_stack.py SEED OUTPUT --paired` records both outcomes,
+raw action tapes, RGB images, stages and memory-alias evidence. Default
+author runs render needed camera pairs at their original action timestep;
+`--full` renders both cameras on every action. `check_stack_geometry.py`
+also checks generator connectivity, casts rays from matched physical
+poses, measures board clearance at different yaw angles and lateral
+offsets, and flies into a closed ceiling. Its staged camera pairs are
+explicitly separate from live search imagery. Scalar grader metrics and
+private structured diagnostics are separate; the public observation
+contains only RGB, frame number, remaining actions and done.
 
-## Author results
+The solver wall remains 30 minutes, with 4,400 actions and 9,000 total
+service calls for the physical vertical flights and return journeys.
 
-Eight sites were selected before rollout: the first new draw in each trim
-sign / flange / loading-exit-side combination. The two development sites
-were separate. No held-out site was replaced. All eight RGB flights
-surveyed, chose the fitting without a miss, revisited, lifted, crossed
-both loading throats and settled the whole board. They used 857-1,670
-actions. Across 300 level segments the mean displacement error against
-independent physics truth was 1.34 cm using the visual estimate (including
-its command fallbacks), versus 8.70 cm using the nominal command. The
-pilot registered 1,379 of 1,434 moving image pairs and matched 210
-previously observed room views.
+## Measured controls
 
-Withholding corrections from takeoff delivered 0/8: two physical wall
-impacts, five searches with no reachable frontier in the pilot's map, and
-one inconsistent doorway revisit. Withholding only after pickup delivered
-4/8; the other four stopped on inconsistent revisits, not impacts. All
-eight post-pickup controls matched the respective RGB actions through lift.
-Thus the result is about reliable navigation over the whole sortie. It
-does not establish that every leg needs visual correction, that direct
-wall-based alternatives are impossible, or that a blind model will fail.
+The first frozen search found and lifted the litter on all eight original
+sites, but twice exhausted a 3,600-action allowance after discarding its
+survey map for egress. Those are failed controls, not discarded seeds.
+After the known-route repair, the RGB reference delivered on the original
+8/8 and another 8/8 independently precommitted sites. Each panel includes
+all target-storey / flange / trim combinations and both mirrored layouts.
+The frozen reference used 1,998-3,296 actions. Actual launch-to-first-target
+approach distance varied from 61 to 148 m. The recorded loaded envelope
+stayed at least 0.195 m inside the rim across 14 loaded shaft transits.
+
+The matched XY pilot delivered 0/8 on each panel. All 16 actually ascended,
+descended and exhausted their projected search without finding the sled;
+none crashed or stopped on a missing storey label. The independent referee
+recorded 51 observations of a physically open doorway being skipped using a
+crossing remembered at the same XY on the other storey.
+
+The stacked geometry checks cover 512 procedural layouts (shortest inlet
+to target: 6-18 abstract edges; a well edge requires three flight legs).
+The 25-yaw sweep of the actual board left at least 0.243 m in a centered
+well, or 0.123 m with simultaneous 0.12 m X and Y offsets. These are
+measurements, not success thresholds. The memory control tests this
+pilot's choice of a search branch, not the impossibility of solving the
+ward with a different representation.
