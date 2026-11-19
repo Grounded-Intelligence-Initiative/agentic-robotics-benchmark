@@ -3,5 +3,5 @@
   "direction": "higher",
   "value": 1,
   "full_at": 1,
-  "source": "PR37 v5 public-camera author policy safely docked on all eight unchanged official seeds; measured hardware-model and ALE provenance in tests/review/README.md."
+  "source": "PR37 v6 CPU author controls: public RGB and native Go1 policy safely docked on all eight fixed seeds; see tests/review/README.md. Formal ALE validation pending."
 }

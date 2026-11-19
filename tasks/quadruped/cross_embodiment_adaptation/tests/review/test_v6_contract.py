@@ -1,7 +1,10 @@
 """Author regressions, run inside the task Docker image."""
+from collections import Counter
+import json
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 import unittest
 
 import numpy as np
@@ -9,7 +12,7 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent/"runtime"))
 
-from articulated import MAX_SCOUT, layout
+from articulated import CAMERA_Z, FOV, MAX_SCOUT, WALL_Z, Go1, layout
 from service import Runtime
 
 
@@ -89,21 +92,57 @@ class Contract(unittest.TestCase):
                 self.assertEqual(world.metrics()["first_aisle_correct"], 0)
                 dog.outcome = "fell"
                 self.assertEqual(world.metrics()["fell_before_aisle"], 1)
-                dog.corridor = -world.side
+                dog.choices[:] = ["shortcut", "wide", "wide"]
                 self.assertEqual(world.metrics()["corridor_entered"], 1)
                 self.assertEqual(world.metrics()["first_aisle_correct"], 0)
                 self.assertEqual(world.metrics()["fell_before_aisle"], 0)
-                dog.corridor = world.side
+                self.assertEqual(world.metrics()["second_aisle_correct"], 1)
+                dog.choices[:] = ["wide", "wide", "shortcut"]
                 self.assertEqual(world.metrics()["first_aisle_correct"], 1)
+                self.assertEqual(world.metrics()["second_shortcut_selected"], 1)
+                dog.contact_wall = "rack3_1"
+                self.assertEqual(world.metrics()["contact_first"], 0)
+                self.assertEqual(world.metrics()["contact_second"], 1)
             finally:
                 runtime.world.close()
 
-    def test_alternative_routes_not_visible_at_launch(self):
-        for seed in range(32):
-            _, open_side, _, walls = layout(seed)
-            x0, _, y0, y1 = walls["gate"]
-            self.assertGreater(x0, 1.75)
-            self.assertTrue(y1 < 0 if open_side == 1 else y0 > 0)
+    def test_fixed_suite_has_all_route_pairs_and_metric_gaps(self):
+        cases = Counter()
+        seeds = json.loads((HERE.parent/"hidden/sites.json").read_text())["seeds"]
+        launch_sight = (CAMERA_Z-WALL_Z)*np.tan(np.deg2rad(FOV/2))
+        for seed in seeds:
+            _, racks, goal, walls = layout(seed)
+            cases[tuple(rack.wide[0] > 0 for rack in racks[::2])] += 1
+            self.assertGreater(racks[0].near, launch_sight)
+            self.assertGreater(goal[0], racks[2].far)
+            for i, rack in enumerate(racks):
+                self.assertGreaterEqual(rack.wide[1]-rack.wide[0], .94-1e-9)
+                expected = [rack.wide]
+                if i != 1:
+                    self.assertLess(rack.shortcut[1]-rack.shortcut[0], .254)
+                    expected.append(rack.shortcut)
+                else:
+                    self.assertIsNone(rack.shortcut)
+                slabs = sorted((y0, y1) for n, (_, _, y0, y1) in walls.items()
+                               if n.startswith(f"rack{i+1}_"))
+                self.assertEqual([(a[1], b[0]) for a, b in zip(slabs, slabs[1:])], sorted(expected))
+        self.assertEqual(sorted(cases.values()), [2]*4)
+
+    def test_choices_latch_separately_from_full_crossings(self):
+        _, racks, _, _ = layout(173)
+        dog = SimpleNamespace(racks=racks, choices=[None]*3, crossed=[False]*3, lateral_margin=[None]*3)
+        for i, rack in enumerate(racks):
+            y = sum(rack.wide)/2
+            dog.xy = (rack.near-.40, y)
+            Go1.record_passages(dog)
+            self.assertIsNone(dog.choices[i])
+            dog.xy = (rack.near-.30, y)
+            Go1.record_passages(dog)
+            self.assertEqual(dog.choices[i], "wide")
+            self.assertFalse(dog.crossed[i])
+            dog.xy = (rack.far+.35, y)
+            Go1.record_passages(dog)
+            self.assertTrue(dog.crossed[i])
 
 
 if __name__ == "__main__":

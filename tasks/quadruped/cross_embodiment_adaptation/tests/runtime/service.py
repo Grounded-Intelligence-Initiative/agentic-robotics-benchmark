@@ -21,7 +21,7 @@ import traceback
 
 from mission import World
 
-REQUESTS = 3000
+REQUESTS = 4000
 
 
 class Runtime:
@@ -50,6 +50,7 @@ class Runtime:
 
     def flush(self):
         state = {"mode": self.mode, "sites": self.sites, "requests": self.requests,
+                 "requests_exhausted": self.exhausted,
                  "busy_seconds": round(self.busy, 4),
                  "done": bool(self.world and (self.world.done or self.exhausted)),
                  "phase": self.world.phase if self.world else 0,
@@ -86,8 +87,7 @@ class Runtime:
         except (ValueError, TypeError, KeyError, OverflowError):
             raise
         except Exception:
-            # The service's own failure (a render, the simulator), never the caller's: recorded so the
-            # grader runs the mission again instead of charging it to the program.
+            # A service failure voids verification rather than triggering a second deployment.
             self.internal_errors += 1
             print(traceback.format_exc(), file=sys.stderr, flush=True)
             raise RuntimeError("internal service error")

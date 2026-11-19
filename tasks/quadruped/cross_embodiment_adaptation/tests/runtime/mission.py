@@ -8,7 +8,7 @@ from articulated import Go1, MAX_SCOUT, Survey, layout
 
 class World:
     def __init__(self, seed):
-        self.rng, self.side, self.goal, self.walls = layout(seed)
+        self.rng, self.racks, self.goal, self.walls = layout(seed)
         self.survey = Survey(self.walls, self.goal)
         self.go1 = None
         self.phase = self.scout_actions = 0
@@ -43,14 +43,15 @@ class World:
         if self.phase or self.scout_actions < 4:
             raise ValueError("switch exactly once, after at least four scout moves")
         self.survey.close()
-        self.go1 = Go1(self.rng, self.walls, self.goal)
+        self.go1 = Go1(self.rng, self.walls, self.goal, self.racks)
         self.phase = 1
         return self.observe()
 
     def metrics(self):
         dog = self.go1
-        entered = bool(dog and dog.corridor)
+        first, _, second = dog.choices if dog else (None, None, None)
         fell = dog is not None and dog.outcome == "fell"
+        wall = dog.contact_wall if dog else None
         return {
             "success": int(dog is not None and dog.outcome == "docked"),
             "switched": self.phase,
@@ -59,10 +60,26 @@ class World:
             "target_ticks": dog.ticks if dog else 0,
             "target_contact": int(dog is not None and dog.outcome == "contact"),
             "target_fell": int(fell),
-            "corridor_entered": int(entered),
-            "first_aisle_correct": int(entered and dog.corridor == self.side),
-            "fell_before_aisle": int(fell and not entered),
-            "partition_crossed": int(dog is not None and dog.max_x > self.walls["island"][1]+.10),
+            "target_budget_stop": int(dog is not None and dog.outcome == "budget"),
+            "target_outcome": dog.outcome if dog else "not_deployed",
+            "contact_wall": wall,
+            "contact_first": int(bool(wall and wall.startswith("rack1_"))),
+            "contact_middle": int(bool(wall and wall.startswith("rack2_"))),
+            "contact_second": int(bool(wall and wall.startswith("rack3_"))),
+            "contact_boundary": int(bool(wall and not wall.startswith("rack"))),
+            "corridor_entered": int(first is not None),
+            "first_aisle_correct": int(first == "wide"),
+            "first_shortcut_selected": int(first == "shortcut"),
+            "fell_before_aisle": int(fell and first is None),
+            "partition_crossed": int(bool(dog and dog.crossed[0])),
+            "middle_crossed": int(bool(dog and dog.crossed[1])),
+            "second_aisle_entered": int(second is not None),
+            "second_aisle_correct": int(second == "wide"),
+            "second_shortcut_selected": int(second == "shortcut"),
+            "second_partition_crossed": int(bool(dog and dog.crossed[2])),
+            "dock_zone_entered": int(bool(dog and dog.dock_zone_entered)),
+            "passage_choices": dog.choices if dog else [None]*3,
+            "passage_lateral_margin_m": dog.lateral_margin if dog else [None]*3,
             "max_forward_m": dog.max_x if dog else 0.,
             "travel_m": dog.travel if dog else 0.,
             "final_goal_distance": dog.dock_error if dog else -1.,

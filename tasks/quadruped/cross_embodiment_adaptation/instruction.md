@@ -7,13 +7,18 @@ map, dock sensor, walking primitive, balance controller, or prelearned gait.
 
 ## Mission
 
-The flat indoor workcell is about 4.5 m by 3.5 m. The green launch mark is
-near the west end, the blue dock with a yellow east edge is near the east end,
-and a long central island separates two physically distinct aisles. An orange
-barrier closes one aisle. Which aisle is dead-ended, the wall dimensions, the
-barrier position and the dock center vary. Survey the actual site; the first
-frame cannot see the closure or the dock. Painted barrier tops mark their
-physical footprints.
+The flat warehouse workcell is about 8 m by 4 m. The green launch mark is
+near the west end and the blue dock with a yellow east edge is near the east
+end. Three transverse rack lines separate four staging bays. The first and
+last rack lines each have a near-center shortcut and a side passage. Both
+are real openings, but a clear centerline does not mean the Go1's trunk,
+hips and stepping feet will fit. Determine which openings are usable by
+measuring the scene at each rack; the side passage can be north or south
+independently at the two racks. The middle rack forces a return toward the
+center. Leave room to align before entering a passage and to clear the rack
+before changing direction. Passage positions, widths and dock center vary.
+The first frame does not show the openings. The orange caps mark actual
+collision footprints; they do not encode passability.
 
 The common tracking frame is measured in metres: +X east, +Y north, origin
 at the center of the Go1 launch mark. The Go1 starts near that origin facing
@@ -28,8 +33,8 @@ at the center of the Go1 launch mark. The Go1 starts near that origin facing
   There is no full-site image, semantic mask, or depth output.
 - `act([dx,dy])` moves the idealized survey UAV at fixed altitude. The
   displacement norm cannot exceed 0.60 m; the allowed tracking rectangle is
-  `[-0.35,3.60] x [-1.40,1.40]`. Movement clips at its edge. The action
-  returns a new camera observation. There are 64 moves, counted by
+  `[-0.45,6.80] x [-1.55,1.55]`. Movement clips at its edge. The action
+  returns a new camera observation. There are 80 moves, counted by
   `scout_actions_remaining`.
 - In grading, call `advance()` once after at least four scout actions. It
   permanently retires the UAV, instantiates the Go1 and returns its first
@@ -51,7 +56,8 @@ calf (about +Y) order. In the trunk frame +X is forward, +Y left and +Z up.
 | Calf | [-2.818, -0.888] |
 
 The hip pivots sit at x = +/-0.1881 m (front/rear) and y = +/-0.04675 m
-(left/right). The thigh axis is a further 0.08 m outward. Thigh and shank
+(left/right). The thigh axis is a further 0.08 m outward, so opposite
+thigh axes are about 0.254 m apart even at zero hip abduction. Thigh and shank
 are each 0.213 m along local -Z at zero angle. Nominal home targets are
 `[0, 0.9, -1.8]` per leg. The Go1 starts at its settled home stance, and
 servo stiffness varies by up to 10%. The trunk has six free degrees of
@@ -64,14 +70,15 @@ to mm), `heading_rad` relative to +X (CCW), `gravity_body_unit`,
 order and `ticks_remaining`. These are idealized tracking, IMU, encoder and
 foot-contact readings. There is no phase-1 camera or obstacle range. Both
 phases include `phase` (0/1), `done`, and `requests_remaining`. Budgets
-are 28,000 physics ticks and 3,000 requests total per site.
+are 36,000 physics ticks and 4,000 requests total per site.
 
 Dock centered within 0.17 m and headed within 16 degrees of +X. Remain upright
 (trunk above 0.16 m and body-up dot world-up greater than 0.80), below
 0.09 m/s linear and 0.35 rad/s angular speed, for 0.45 s continuously
 in simulation. Any barrier contact, persistent fall (0.20 s failing the
 upright test), or budget exhaustion ends the attempt. Scoring is safe docks
-out of eight sites; switch and physical travel are diagnostics, not score.
+out of eight sites. Passage choices, crossings, dock approach and stop
+causes are diagnostics, not score.
 
 ## Submission and zero-shot rules
 

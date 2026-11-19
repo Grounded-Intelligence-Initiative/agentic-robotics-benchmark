@@ -15,7 +15,7 @@ class Walk:
     def action(self, xy, yaw, ticks):
         delta = self.waypoints[self.index]-xy
         final = self.index == len(self.waypoints)-1
-        if not final and np.linalg.norm(delta) <= .16:
+        if not final and np.linalg.norm(delta) <= .10:
             self.index += 1
             delta = self.waypoints[self.index]-xy
             final = self.index == len(self.waypoints)-1

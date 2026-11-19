@@ -2,18 +2,22 @@
 import numpy as np
 
 from client import Client
-from survey import scan, waypoints
+from survey import scan
 from walk import Walk
+
+
+def deploy(robot, path):
+    obs = robot.advance()
+    walk = Walk(path)
+    while not obs["done"]:
+        obs = robot.act(walk.action(np.asarray(obs["tracking_xy_m"]), obs["heading_rad"],
+                                   obs["ticks_remaining"]))
+    return obs
 
 
 def main():
     robot = Client()
-    side, goal = scan(robot).route()
-    obs = robot.advance()
-    walk = Walk(waypoints(side, goal))
-    while not obs["done"]:
-        obs = robot.act(walk.action(np.asarray(obs["tracking_xy_m"]), obs["heading_rad"],
-                                   obs["ticks_remaining"]))
+    deploy(robot, scan(robot).route())
 
 
 if __name__ == "__main__":

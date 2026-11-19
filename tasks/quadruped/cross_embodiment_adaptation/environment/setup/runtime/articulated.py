@@ -3,6 +3,7 @@ import base64
 import io
 import math
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 
 import mujoco
 import numpy as np
@@ -14,28 +15,57 @@ from scene_assets import asset_root, geom, materials, robot_meshes, vec
 LEGS = ("FR", "FL", "RR", "RL")
 JOINTS = tuple(f"{leg}_{part}" for leg in LEGS for part in ("hip", "thigh", "calf"))
 WALL_Z, CAMERA_Z, FOV, PIXELS = .32, 1.65, 78, 256
-MAX_SCOUT, MAX_TICKS, MAX_HOLD = 64, 28000, 40
+MAX_SCOUT, MAX_TICKS, MAX_HOLD = 80, 36000, 40
 DOCK_RADIUS = .17
+
+
+@dataclass(frozen=True)
+class Rack:
+    near: float
+    far: float
+    wide: tuple
+    shortcut: tuple | None = None
+
+    def choice(self, y):
+        if self.wide[0] <= y <= self.wide[1]:
+            return "wide"
+        if self.shortcut and self.shortcut[0] <= y <= self.shortcut[1]:
+            return "shortcut"
+        return "outside"
 
 
 def layout(seed):
     rng = np.random.default_rng(seed)
-    side = int(rng.choice((-1, 1)))  # open side; the other is closed by a real gate
-    half = float(rng.uniform(.40, .52))
-    end = float(rng.uniform(2.38, 2.60))
-    gate = float(rng.uniform(1.85, 2.22))
-    bound = float(rng.uniform(1.60, 1.73))
-    goal = np.array([rng.uniform(3.08, 3.25), rng.uniform(-.20, .20)])
+    # Independent uniform seed bits; the fixed evaluation seeds cover each pair twice.
+    sides = tuple(1 if (seed >> bit) & 1 else -1 for bit in (14, 15))
+    bound = float(rng.uniform(1.86, 1.98))
+    goal = np.array([rng.uniform(6.25, 6.43), rng.uniform(-.20, .20)])
     walls = {
-        "island": (.66, end, -half, half),
-        "gate": (gate-.075, gate+.075, -bound, -half) if side == 1
-                else (gate-.075, gate+.075, half, bound),
-        "back": (-.69, -.55, -bound-.14, bound+.14),
-        "front": (3.84, 3.98, -bound-.14, bound+.14),
-        "south": (-.55, 3.84, -bound-.14, -bound),
-        "north": (-.55, 3.84, bound, bound+.14),
+        "back": (-.84, -.70, -bound-.14, bound+.14),
+        "front": (7.06, 7.20, -bound-.14, bound+.14),
+        "south": (-.70, 7.06, -bound-.14, -bound),
+        "north": (-.70, 7.06, bound, bound+.14),
     }
-    return rng, side, goal, walls
+    racks = []
+    for i, nominal in enumerate((1.39, 3.13, 4.87)):
+        x = nominal + float(rng.uniform(-.09, .09))
+        depth = float(rng.uniform(.23, .32))
+        center = (float(rng.uniform(-.12, .12)) if i == 1 else
+                  float(sides[i//2]*rng.uniform(1.00, 1.14)))
+        half = float(rng.uniform(.47, .55))
+        wide = (center-half, center+half)
+        shortcut = None
+        if i != 1:
+            center = float(rng.uniform(-.15, .15))
+            half = float(rng.uniform(.080, .108))
+            shortcut = (center-half, center+half)
+        rack = Rack(x-depth/2, x+depth/2, wide, shortcut)
+        gaps = sorted((wide, shortcut)) if shortcut else [wide]
+        edges = [-bound, *(edge for gap in gaps for edge in gap), bound]
+        for j, (lo, hi) in enumerate(zip(edges[::2], edges[1::2])):
+            walls[f"rack{i+1}_{j}"] = (rack.near, rack.far, lo, hi)
+        racks.append(rack)
+    return rng, racks, goal, walls
 
 
 def scene(root, walls, goal):
@@ -81,7 +111,7 @@ class Survey:
         self.xy = np.zeros(2)
 
     def move(self, delta):
-        self.xy = np.clip(self.xy+delta, [-.35, -1.40], [3.60, 1.40])
+        self.xy = np.clip(self.xy+delta, [-.45, -1.55], [6.80, 1.55])
         self.cached = None
 
     def observe(self):
@@ -101,7 +131,7 @@ class Survey:
 
 
 class Go1:
-    def __init__(self, rng, walls, goal):
+    def __init__(self, rng, walls, goal, racks):
         spec = asset_root()/"unitree_go1/go1.xml"
         root = ET.parse(spec).getroot()
         root.find("compiler").set("meshdir", str(spec.parent/"assets"))
@@ -115,7 +145,7 @@ class Go1:
         model.actuator_biasprm[:, 1] *= gain
         self.trunk = model.body("trunk").id
         self.floor = model.geom("floor").id
-        self.wall_ids = {model.geom(name).id for name in walls}
+        self.wall_ids = {model.geom(name).id: name for name in walls}
         self.feet = [model.geom(leg).id for leg in LEGS]
         self.foot_modes = [set() for _ in LEGS]
         self.data = mujoco.MjData(model)
@@ -131,8 +161,13 @@ class Go1:
         self.outcome = "running"
         self.max_x = 0.
         self.travel = 0.
-        self.corridor = 0
+        self.racks = racks
+        self.choices = [None]*len(racks)
+        self.crossed = [False]*len(racks)
+        self.lateral_margin = [None]*len(racks)
+        self.contact_wall = None
         self.dock_error = float(np.linalg.norm(self.xy-goal))
+        self.dock_zone_entered = False
         self.contacts = self.ground_contacts()
 
     @property
@@ -163,6 +198,20 @@ class Go1:
             "ticks_remaining": MAX_TICKS-self.ticks,
         }
 
+    def record_passages(self):
+        x, y = self.xy
+        for i, rack in enumerate(self.racks):
+            if self.choices[i] is None and x >= rack.near-.34:
+                self.choices[i] = rack.choice(y)
+            if rack.near-.32 <= x <= rack.far+.32:
+                # Lateral trunk-center slack, not a claim about the leg envelope.
+                lo, hi = rack.wide if self.choices[i] != "shortcut" else rack.shortcut
+                margin = float(min(y-lo, hi-y))
+                old = self.lateral_margin[i]
+                self.lateral_margin[i] = margin if old is None else min(margin, old)
+            if x >= rack.far+.34:
+                self.crossed[i] = True
+
     def act(self, action):
         if not isinstance(action, dict) or set(action) != {"target_rad", "ticks"}:
             raise ValueError("expected target_rad (12 angles) and ticks")
@@ -184,19 +233,21 @@ class Go1:
             self.ticks += 1
             self.travel += float(np.linalg.norm(self.xy-last))
             self.max_x = max(self.max_x, float(self.xy[0]))
-            if not self.corridor and self.xy[0] >= 1.1:
-                self.corridor = 1 if self.xy[1] > 0 else -1
+            self.record_passages()
             self.contacts = self.ground_contacts()
             for modes, foot in zip(self.foot_modes, self.feet):
                 modes.add(foot in self.contacts)
             upright = self.rotation[2, 2] > .80 and self.data.xpos[self.trunk, 2] > .16
             quiet = np.linalg.norm(self.data.qvel[:3]) < .09 and np.linalg.norm(self.data.qvel[3:6]) < .35
             self.dock_error = float(np.linalg.norm(self.xy-self.goal))
+            self.dock_zone_entered |= self.dock_error <= DOCK_RADIUS
             parked = self.dock_error <= DOCK_RADIUS and abs(self.heading) <= math.radians(16)
             self.dwell = self.dwell+1 if upright and quiet and parked else 0
             self.tipped = 0 if upright else self.tipped+1
             dt = self.model.opt.timestep
-            if any(int(a) in self.wall_ids or int(b) in self.wall_ids for a, b in self.data.contact.geom):
+            self.contact_wall = next((self.wall_ids[g] for pair in self.data.contact.geom
+                                      for g in pair if g in self.wall_ids), None)
+            if self.contact_wall:
                 self.outcome = "contact"
             elif self.tipped*dt >= .20:
                 self.outcome = "fell"

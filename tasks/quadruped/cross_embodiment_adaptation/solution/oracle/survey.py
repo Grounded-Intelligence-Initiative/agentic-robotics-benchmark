@@ -1,4 +1,5 @@
-"""Author demonstration: choose a route using only UAV RGB and local tracking."""
+"""Metric floor plan from the public nadir RGB and tracking, without site inputs."""
+import itertools
 import math
 
 import numpy as np
@@ -6,67 +7,98 @@ import numpy as np
 from client import camera_image
 
 
-HALL_SWEEP = [(x, y) for j, x in enumerate((0., 1.05, 2.10, 3.18))
-              for y in ((-.90, 0., .90) if j % 2 == 0 else (.90, 0., -.90))]
-RES = .025
+STEP = .02
+X = np.arange(.40, 6.81, STEP)
+Y = np.arange(-1.74, 1.75, STEP)
+GO1_CLEARANCE = .56  # conservative working width, including tracking/gait allowance
+APPROACH = .53
 
 
-def waypoints(side, goal):
-    # Clear the island with the whole stance before starting the final lateral leg.
-    return [(0., side*1.06), (max(3.29, goal[0]+.07), side*1.06), tuple(goal)]
+def runs(mask):
+    transitions = np.diff(np.r_[False, mask, False].astype(np.int8))
+    return zip(np.flatnonzero(transitions == 1), np.flatnonzero(transitions == -1))
 
 
 class SurveyMap:
     def __init__(self):
-        self.wall = set()
-        self.covered = set()
-        self.blue = set()
+        self.visible = np.zeros((len(X), len(Y)), dtype=bool)
+        self.occupied = self.visible.copy()
+        self.dock = self.visible.copy()
 
-    @staticmethod
-    def project(mask, centre, height):
-        r, c = np.nonzero(mask)
-        pixel_m = 2*height*math.tan(math.radians(39))/256
-        pr = np.stack([c+.5-128, 128-r-.5], axis=1)*pixel_m+centre
-        return set(map(tuple, np.rint(pr/RES).astype(int)))
+    def add(self, obs):
+        rgb = np.asarray(camera_image(obs))
+        h, w = rgb.shape[:2]
+        focal = h / (2 * math.tan(math.radians(78)/2))
+        x, y = obs["tracking_xy_m"]
 
-    def add(self, observation):
-        centre = observation["tracking_xy_m"]
-        r, g, b = camera_image(observation).astype(np.int16).transpose(2, 0, 1)
-        orange = (r > g+30) & (g > b+10) & (r > b+65)
-        blue = (b > r+58) & (b > g+28)
-        self.wall.update(self.project(orange, centre, 1.65-.32))
-        self.blue.update(self.project(blue, centre, 1.65))
-        self.covered.update(self.project(np.ones_like(orange), centre, 1.65-.32))
+        def sample(height):
+            scale = focal/(1.65-height)
+            u = np.rint((X-x)*scale+(w-1)/2).astype(int)
+            v = np.rint((y-Y)*scale+(h-1)/2).astype(int)
+            valid = ((u[:, None] >= 2) & (u[:, None] < w-2)
+                     & (v >= 2) & (v < h-2))
+            r, g, b = rgb[v.clip(0, h-1), u[:, None].clip(0, w-1)].astype(int).transpose(2, 0, 1)
+            return valid, r, g, b
 
-    def route(self):
-        if not self.blue:
-            raise ValueError("no dock visible in the survey")
-        blue = np.asarray(sorted(self.blue))*RES
-        goal = .5*(blue.min(axis=0)+blue.max(axis=0))+[.026, 0.]
-        # Require a surveyed and unobstructed tube down one of the two aisles.
-        feasible = []
-        for side in (-1, 1):
-            tube = {(i, j) for i in range(round(.62/RES), round(2.74/RES))
-                    for j in range(round((side*1.06-.27)/RES), round((side*1.06+.27)/RES)+1)}
-            if tube <= self.covered and not (tube & self.wall):
-                feasible.append(side)
-        if len(feasible) != 1:
-            raise ValueError(f"survey did not discriminate a corridor: {feasible}")
-        return feasible[0], goal
+        valid, r, g, b = sample(.32)
+        self.visible |= valid
+        self.occupied |= valid & (r > 135) & (r > 1.8*g) & (g > 1.35*b)
+        valid, r, g, b = sample(0)
+        self.dock |= valid & (b > 135) & (b > 1.8*g) & (g > 1.8*r)
+
+    def passages(self):
+        dock_x, dock_y = np.where(self.dock)
+        if not len(dock_x):
+            raise ValueError("dock not observed")
+        goal = np.array([X[dock_x].mean(), Y[dock_y].mean()])
+        interior = X < goal[0]-.60
+        if not self.visible[interior].all():
+            raise ValueError("rack footprint incompletely surveyed")
+        bands = self.occupied.mean(axis=1) > .35
+        racks = []
+        for lo, hi in runs(bands & interior):
+            if (hi-lo)*STEP < .10:
+                continue
+            blocked = self.occupied[lo+2:hi-2].mean(axis=0) > .50
+            gaps = [(float(Y[a]-STEP/2), float(Y[b-1]+STEP/2))
+                    for a, b in runs(~blocked) if a and b < len(Y)]
+            racks.append((float(X[lo]-STEP/2), float(X[hi-1]+STEP/2), gaps))
+        if not racks or any(not rack[2] for rack in racks):
+            raise ValueError("no complete series of passages in the RGB map")
+        return racks, goal
+
+    def route(self, point_rack=None):
+        racks, goal = self.passages()
+        candidates = []
+        for i, (near, far, gaps) in enumerate(racks):
+            minimum = 0. if i == point_rack else GO1_CLEARANCE
+            candidates.append([
+                ((near-APPROACH, (a+b)/2), (far+APPROACH, (a+b)/2))
+                for a, b in gaps if b-a >= minimum
+            ])
+        if not all(candidates):
+            raise ValueError("no route with the needed ground clearance")
+
+        def length(path):
+            return sum(math.dist(a, b) for a, b in itertools.pairwise([(0., 0.), *path]))
+
+        paths = ([p for passage in combo for p in passage]+[goal.tolist()]
+                 for combo in itertools.product(*candidates))
+        return min(paths, key=length)
 
 
-def scan(robot, keep=True):
-    mapping = SurveyMap() if keep else None
+def scan(robot):
+    surveyed = SurveyMap()
     obs = robot.observe()
-    if mapping is not None:
-        mapping.add(obs)
-    for point in HALL_SWEEP:
-        while True:
-            delta = np.asarray(point)-obs["tracking_xy_m"]
-            distance = np.linalg.norm(delta)
-            if distance < .008:
-                break
-            obs = robot.act((delta*min(1., .57/distance)).tolist())
-            if mapping is not None:
-                mapping.add(obs)
-    return mapping
+    surveyed.add(obs)
+    for row, y in enumerate((0., 1.10, -1.10)):
+        xs = np.linspace(0., 6.60, 13)
+        for x in xs if row % 2 == 0 else xs[::-1]:
+            target = np.array([x, y])
+            delta = target-obs["tracking_xy_m"]
+            while np.linalg.norm(delta) > 1e-6:
+                delta *= min(1., .55/np.linalg.norm(delta))
+                obs = robot.act(delta.tolist())
+                surveyed.add(obs)
+                delta = target-obs["tracking_xy_m"]
+    return surveyed

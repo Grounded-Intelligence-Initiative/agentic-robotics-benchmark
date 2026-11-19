@@ -1,66 +1,68 @@
-# V5 author evidence
+# V6 author evidence
 
-On all eight unchanged official seeds, the scene had one of two physical
-aisles open (three south, five north). Each comparison keeps the site, native
-Go1 and joint controller fixed. The camera arm surveyed RGB and inferred both
-the aisle and the dock. Cue-blind arms ran the exact same survey movements,
-discarded all its images, and used a fixed aisle and the same nominal dock.
-The privileged arm used the true open aisle, dock center and pose, but sent
-the identical twelve-angle commands through `World.act`.
+V6 adds two independent aperture decisions and a mandatory center-return
+partition. The robot cannot replace a clearance check with an open/closed
+test or use one side decision for the whole route. The same orange caps show
+the actual collision footprints of all racks. UAV images sampled from both
+center and side positions show the near-center slot and the ends of the
+offset opening at the calibrated rack-top plane. No color means "passable."
+See [fixed suite](selection.md) for the four route combinations.
 
-| Arm | Switched | Entered aisle | First aisle correct | Crossed island | Safe docks |
-|---|---:|---:|---:|---:|---:|
-| Privileged feasibility | 8/8 | 8/8 | 8/8 | 8/8 | 8/8 |
-| Scout RGB + public target feedback | 8/8 | 8/8 | 8/8 | 8/8 | 8/8 |
-| Cue-blind, always south | 8/8 | 8/8 | 3/8 | 3/8 | 1/8 |
-| Cue-blind, always north | 8/8 | 8/8 | 5/8 | 5/8 | 5/8 |
+The three arms use identical public RGB, target observations, route length
+objective, and twelve-joint controller. Each point-robot intervention
+removes only the minimum-width check at its named rack.
 
-All eight wrong-aisle runs walked 2.74 to 3.11 m before physical contact stopped
-them; all eight correctly chosen blind arms crossed, so the route effect does
-not depend on the less precise blind dock estimate (two missed docks).
-The RGB arm traveled 5.41 to 5.84 m, using 811 to 881 target actions; all four feet
-were seen lifting and contacting the ground on every mission. No arm fell.
-See [raw outcomes](v5-evidence/results.jsonl), sampled target paths for sites
-0 and 1, and [a real UAV launch frame](v5-evidence/site0-launch.png) and
-[end-of-survey frame](v5-evidence/site0-survey-end.png). These are author-only,
-including the privileged and scripted controllers.
+| Arm | First wide choice and crossing | Middle crossed | Second wide choice and crossing | Safe docks | Cause on failures |
+|---|---:|---:|---:|---:|---|
+| RGB + Go1 width | 8/8 | 8/8 | 8/8 | 8/8 | None |
+| Point robot at first rack | 0/8 | 0/8 | 0/8 | 0/8 | First shortcut contact, 8/8 |
+| Point robot at second rack | 8/8 | 8/8 | 0/8 | 0/8 | Second shortcut contact, 8/8 |
 
-The verifier reports `missions_corridor_entered`, `missions_first_aisle_correct`,
-`missions_fell_before_aisle`, total falls, partition crossings and forward
-progress, plus per-site equivalents. First aisle is latched at the first
-physical crossing of x = 1.10 m. Interpret route accuracy as correct / entered;
-an unentered aisle is not a wrong choice. Only safe docks affect reward.
+All 24 runs used 42 survey moves; none fell or exhausted a budget. Safe
+missions used 17,022-18,174 of 36,000 physics ticks, 1,447-1,542 of
+4,000 requests, and 5.37-6.63 s wall time on koa04. Minimum recorded
+lateral trunk-center slack at a rack was 0.441 m (not swept-volume
+clearance). Final dock center errors were 0.087-0.094 m against a
+0.17 m requirement. Both ablations saw the same projected site maps.
 
 ## Reproduction
 
-Run the following in the task's pinned image on the provisioned CPU host,
-with the task mounted read-only and a fresh writable evidence directory:
+Use the pinned task dependencies and pinned visual assets, with OSMesa
+software rendering. For example, in the task image:
 
 ```bash
-/opt/venv/bin/python3 -B tests/review/test_v5_contract.py
-/opt/venv/bin/python3 -B tests/review/v5_controls.py /out/fresh
-bash tests/review/test_v5_isolation.sh  # root, disposable task container
+/opt/venv/bin/python3 -B tests/review/test_v6_contract.py
+/opt/venv/bin/python3 -B tests/review/v6_controls.py /out/fresh
+# Optional root-only isolation test in a disposable task container:
+bash tests/review/test_v5_isolation.sh
 ```
 
-Author runs: `koa04:/home/wang100/projects/ale-hardening-20261118-checks/cross/final/evidence`,
-cached `ale-cross-maintainer-env:20261116` (419e6251d06b, MuJoCo 3.16.0),
-Docker runc, no network or GPU devices, 2 CPU cap, 4 GiB. The isolation
-smoke applied v5's asset directory modes to that existing image, then tested
-the actual setup and service as root with requests/file checks as the
-participant UID. It was not a full pinned ALE validation; that and blind Sol
-are owner-run. Previous planar-task receipts are historical; see
-[v4 notes](v4_README.md).
+The CPU-only author run used MuJoCo 3.16.0 and CPython 3.11 on
+`koa04:/home/wang100/projects/cross-affordance-author-20261119`.
+`controls/results.jsonl` has 24 per-site/arm rows (SHA-256
+`8ee33350dde916dd7cddb1e1d3352e7e422611e67071d19ed3fb67360cdab126`);
+`controls/` also holds each service ledger and live RGB samples from sites
+0 and 1. Every arm drove the graded service over its Unix socket. This was
+an author control, not a blinded run or formal ALE validation.
 
-## Scope
+## Verifier
 
-This is transfer of route evidence across sensor and control embodiments in
-simulation. The UAV is a fixed-altitude kinematic camera platform, the Go1
-uses native free-base rigid-body dynamics and position servos on a flat floor,
-and local tracking/inertial sensing are idealized. This is not a hardware
-digital twin or proof of a general Go1 gait on unknown terrain. Zero-shot
-means a frozen submission, no participant target commissioning and no
-retries. The installed target asset and runtime are root-only; the open-source
-nominal model and analytical knowledge are not intrinsically secret. An audit
-of the participant trajectory is still needed for the no-offline-rollout and
-no-pretrained-gait rules. Author feasibility runs are not zero-shot model
-evidence.
+Scoring is unchanged: fraction of eight safe docks, anchor 1.0. No changes
+to site seeds, wall/program budgets, submission staging, process isolation,
+or the switch/deployment rules. Scout actions increase from 64 to 80,
+target ticks from 28,000 to 36,000, and requests from 3,000 to 4,000.
+
+The verifier retains the first-choice and first-crossing diagnostics.
+Choices latch at the first approach plane (0.34 m before the rack face);
+crossings latch 0.34 m past the rear face. It adds shortcut choices,
+middle and final crossings, second-choice accuracy, dock-zone entry,
+contact location, target-budget and request exhaustion, and program
+exit/time caps as aggregate and per-site counters. First/second decision
+accuracy is correct divided by entered, not divided by all starts.
+Per-site telemetry includes target ticks and final dock distance. Private
+`record.json` also retains raw passage choices, lateral margin, contact
+wall, and target outcome.
+
+The UAV and tracking are idealized; the target is a simulated, unstabilized
+native Go1 with no participant target practice. This is evidence for
+geometry-to-route transfer, not general hardware locomotion.

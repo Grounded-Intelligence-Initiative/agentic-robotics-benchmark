@@ -50,6 +50,19 @@ ENV = "/usr/bin/env"
 MAX_SUBMISSION_BYTES = 64*1024*1024
 MAX_SUBMISSION_FILES = 2000
 
+STAGE_COUNTS = (
+    "corridor_entered", "first_aisle_correct", "first_shortcut_selected", "fell_before_aisle",
+    "partition_crossed", "middle_crossed", "second_aisle_entered", "second_aisle_correct",
+    "second_shortcut_selected", "second_partition_crossed", "dock_zone_entered",
+    "contact_first", "contact_middle", "contact_second", "contact_boundary",
+    "target_budget_stop",
+)
+VERIFIER_STOPS = {
+    "program_exit_before_done": "program exited",
+    "program_timeout": "program time budget spent",
+    "mission_wall_timeout": "mission wall cap reached",
+}
+
 
 def log(msg):
     print("[grader] " + msg, file=sys.stderr, flush=True)
@@ -315,14 +328,17 @@ def run_mission(index, seed, uid, gid, config):
                        "success": float(metrics.get("success", 0.)), "switched": float(metrics.get("switched", 0.)),
                        "scout_actions": float(metrics.get("scout_actions", 0)),
                        "target_actions": float(metrics.get("target_actions", 0)),
+                       "target_ticks": int(metrics.get("target_ticks", 0)),
+                       "final_goal_distance": float(metrics.get("final_goal_distance", -1)),
                        "contact_stop": float(metrics.get("target_contact", 0)),
                        "target_fell": float(metrics.get("target_fell", 0)),
-                       "corridor_entered": float(metrics.get("corridor_entered", 0)),
-                       "first_aisle_correct": float(metrics.get("first_aisle_correct", 0)),
-                       "fell_before_aisle": float(metrics.get("fell_before_aisle", 0)),
-                       "partition_crossed": float(metrics.get("partition_crossed", 0)),
+                       "requests_exhausted": int(state.get("requests_exhausted", False)),
                        "max_forward_m": float(metrics.get("max_forward_m", 0)),
-                       "travel_m": float(metrics.get("travel_m", 0))})
+                       "travel_m": float(metrics.get("travel_m", 0)),
+                       **{key: metrics.get(key) for key in (
+                           "target_outcome", "contact_wall", "passage_choices", "passage_lateral_margin_m")},
+                       **{key: int(metrics.get(key, 0)) for key in STAGE_COUNTS},
+                       **{key: int(reason == value) for key, value in VERIFIER_STOPS.items()}})
         (directory/"program_output.txt").write_bytes(output[0])
         (directory/"record.json").write_text(json.dumps(record, indent=1))
         return record
@@ -372,10 +388,11 @@ def main():
                 index, record.get("reason")))
             cleanup_ok = cleanup_ok and record.get("cleanup_ok", True)
             records.append(record)
-            log("site {}: success={:.0f} scout={:.0f} target={:.0f} contact_stop={:.0f} program={:.0f}s "
-                "wall={:.0f}s ({})".format(index, record["success"], record["scout_actions"],
-                                           record["target_actions"], record["contact_stop"],
-                                           record["program_seconds"], record["wall_seconds"], record["reason"]))
+            log("site {}: success={:.0f} first={} second={} dock_zone={} scout={:.0f} target={:.0f} "
+                "program={:.0f}s wall={:.0f}s ({}; {})".format(
+                    index, record["success"], record["first_aisle_correct"], record["second_aisle_correct"],
+                    record["dock_zone_entered"], record["scout_actions"], record["target_actions"],
+                    record["program_seconds"], record["wall_seconds"], record["target_outcome"], record["reason"]))
     finally:
         os.chmod(stage, stage_mode)
     measured = sum(r["success"] for r in records)/len(records)
@@ -387,19 +404,17 @@ def main():
              "missions_contact_stop": sum(r["contact_stop"] for r in records),
              "mean_scout_actions": sum(r["scout_actions"] for r in records)/len(records),
              "mean_target_actions": sum(r["target_actions"] for r in records)/len(records),
-             "missions_corridor_entered": sum(r["corridor_entered"] for r in records),
-             "missions_first_aisle_correct": sum(r["first_aisle_correct"] for r in records),
-             "missions_fell_before_aisle": sum(r["fell_before_aisle"] for r in records),
-             "missions_partition_crossed": sum(r["partition_crossed"] for r in records),
              "missions_fell": sum(r["target_fell"] for r in records),
              "mean_max_forward_m": sum(r["max_forward_m"] for r in records)/len(records),
              "mean_travel_m": sum(r["travel_m"] for r in records)/len(records),
              "mean_program_seconds": sum(r["program_seconds"] for r in records)/len(records),
              "cleanup_failed": 0. if cleanup_ok else 1., "verify_seconds": time.monotonic()-started}
+    counts = (*STAGE_COUNTS, "requests_exhausted", *VERIFIER_STOPS)
+    extra.update({"missions_"+key: sum(r[key] for r in records) for key in counts})
     for r in records:
         prefix = "site{}_".format(r["site"])
-        for key in ("success", "switched", "corridor_entered", "first_aisle_correct",
-                    "fell_before_aisle", "target_fell", "partition_crossed", "max_forward_m"):
+        for key in ("success", "switched", "contact_stop", "target_fell", "max_forward_m", "target_ticks",
+                    "final_goal_distance", *counts):
             extra[prefix+key] = r[key]
     extra = {k: float(v) for k, v in extra.items() if math.isfinite(float(v))}
     write_verdict(ratio_rewards(measured, anchor, metric_name=calibration["metric"], extra=extra,
