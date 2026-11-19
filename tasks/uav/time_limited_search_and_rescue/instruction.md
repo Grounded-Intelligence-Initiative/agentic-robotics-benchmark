@@ -7,11 +7,12 @@ civilian exercise. The doors, turns, and rescue bay vary. There is no
 floor plan: explore with the UAV's two local RGB cameras and keep track
 of the passages and landmarks you actually see.
 
-- Recenter visually at the four pink maintenance dots before crossing
-  a doorway. The dots form the same **0.58 m square** at each station.
-  Its center is a safe observation pose, not a waypoint you must visit.
-  The dots have no room IDs. The takeoff hover can start slightly
-  off-center. Use the actual mat for final alignment.
+- Fly by the architecture. Stone grain and grout seams are fixed to the
+  floor, and timber skirting follows real walls to the jambs. Keep some
+  floor in successive down views to measure motion. On a return trip,
+  compare what you see with an earlier view of the same doorway or floor
+  patch. There are no position markers or room IDs. Takeoff can be
+  slightly off-center. Use the actual receiving mat for final alignment.
 - Find the **INSPECTION** slot off the staging strip. Align on the
   violet floor apron, settle at about **0.71 m** altitude, and fly
   through empty. Once clear, climb before leaving that pocket.
@@ -63,8 +64,8 @@ The clamp holds the relative pose at the instant of pickup: the long
 axis need not point along the UAV nose. Yaw turns the entire load.
 You can translate sideways or backwards without changing that yaw.
 Carrying the board across the UAV rather than under its camera boom
-gives a clearer down view. The board can cover floor markings both
-before and after pickup; change the viewing angle if a mark disappears.
+gives a clearer down view. The board can obscure the floor; changing
+the viewing angle exposes different patches and wall junctions.
 
 Across staging from the cargo exit, **LITTER TRANSFER** leads to a finite
 turning pocket. Beyond it, a perpendicular throat leads to **RECEIVING**.
@@ -72,8 +73,8 @@ The two openings are offset; inspect the jambs to see which way and how far.
 Each clear gap is 1.10 m wide and 0.56 m deep. Lime stripes follow the inner
 jamb faces and extend 1.24 m onto the approach. Use their midpoint for the
 load centerline. Turn and translate where both ends have room; clearing
-the aircraft does not mean the trailing end is through. The pocket has a
-maintenance square at its center and is 4.20 m across by 4.60 m deep.
+the aircraft does not mean the trailing end is through. The pocket
+is 4.20 m across by 4.60 m deep.
 There is no prescribed heading or checkpoint maneuver. The walls, jambs
 and litter occupy the volumes you see. Bring the fitting over the blue
 center of the 2.50 by 1.48 m green receiving mat, settle at about 0.43 m,
@@ -102,9 +103,9 @@ self-centering jaws accept about 13 cm of horizontal misalignment.
 Releasing the sled leaves the head attached to the UAV.
 High or fast release, or striking a wall, sill, or shutter with the
 airframe **or load**, ends the sortie. Each action advances 0.2 simulated
-seconds; the allowance is **1,600 actions** (320 simulated seconds).
+seconds; the allowance is **2,400 actions** (480 simulated seconds).
 There is no reset. Observations do not advance time, but the live service
-accepts at most 3,300 calls in total, including actions and observations.
+accepts at most 5,000 calls in total, including actions and observations.
 
 ## Cameras
 
@@ -116,10 +117,13 @@ the UAV center, with a 94° perspective field of view. On a horizontal
 surface `d` metres below that camera, a metre projects to
 `(128 / tan(47°)) / d` pixels. The point under the gripper is centered
 horizontally and 0.46 m down-image of the camera's ground center.
-Neighboring wing stations are 2.60–2.80 m apart; the spacing is not uniform.
-Apron paint is about 0.63 m from its station center. If the sled masks
-a dot, turn while hovering or use another visible side of the square.
-Use the forward view to inspect height, clearance and obstructions.
+Neighboring wing rooms are 2.60–2.80 m apart; the spacing is not uniform.
+The partitions are about 15 cm thick, with skirting less than 1 cm proud of the wall.
+Doorway wear plates extend from the openings onto the approach. Distance
+to a wall can be measured where its skirting meets the floor. At a constant
+height and heading, floor features move opposite the camera's translation;
+do not mistake the attached load or a raised sill for the floor. Use the
+forward view to inspect height, clearance and obstructions.
 
 Only the images, `frame_id`, `done`, and `steps_remaining` are exposed.
 There is no pose, depth, object list, map, or hidden identifier. Use the

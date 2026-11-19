@@ -76,7 +76,7 @@ def episode(seed, mode, output=None):
                 tb = tb.tb_next
             if tb:
                 pilot = tb.tb_frame.f_locals["p"]
-        fixes = [e for e in pilot.trace if e["event"] == "station_fix"] if pilot else []
+        fixes = [e for e in pilot.trace if e["event"] == "station_fix" and e["applied"]] if pilot else []
         stages = {e["event"]: e for e in pilot.trace if e["event"] in (
             "sled_found", "flange_survey", "depot_choice", "depot_departure",
             "sled_reacquired", "pickup_attempt", "sled_still_on_floor")} if pilot else {}
@@ -114,7 +114,8 @@ def episode(seed, mode, output=None):
         if mode == "rgb":
             assert not error and result["success"] and result["rescue_progress"] == 1., result
             assert result["cargo_return"] and result["loaded_descent_z"] > 1.7
-            assert result["loaded_fixes"] >= 4 and result["max_true_fix_error_m"] < .09
+            assert result["loaded_fixes"] >= 4
+            assert any(e["method"] == "patch_revisit" for e in fixes)
             assert result["steps"] < LIMIT
             assert result["tool_profile"] == stages["flange_survey"]["profile"] == result["flange"]
             assert stages["sled_found"]["frame"] < stages["flange_survey"]["frame"] < result["steps_to_tool"]

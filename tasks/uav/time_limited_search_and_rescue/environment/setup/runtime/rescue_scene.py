@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from pbr_scene import prop
+from floor_finish import install
 from scene_assets import asset_root, geom, materials, robot_meshes
 
 SIDE = 5
@@ -15,8 +16,6 @@ START_Z = 1.30
 SLOT_SILL, SLOT_LINTEL = .43, .89
 RAISED_SILL = .73
 DECK, LANDING, WALL_TOP = .60, .99, 2.42
-APRON = .63
-MARK_HALF = .29
 DARK = (.075, .112, .126, 1)
 WALL = (.65, .70, .70, 1)
 WHITE = (.94, .95, .91, 1)
@@ -26,7 +25,6 @@ BLUE = (.05, .32, .84, 1)
 ORANGE = (1., .26, .018, 1)
 PURPLE = (.72, .19, .86, 1)
 RED = (.90, .045, .045, 1)
-TAPE = (.97, .015, .49, 1)
 STEEL = (.06, .79, .91, 1)
 FLANGE_RADII = (.041, .093)
 # Inner throat and outer seat of the closed collet, in metres.
@@ -251,8 +249,9 @@ def build(layout):
     </mujoco>""")
     asset = materials(root)
     decals = {}
+    install(asset, decals)
     w = root.find("worldbody")
-    w.find("geom[@name='floor']").set("material", "floor_mat")
+    w.find("geom[@name='floor']").set("material", "quarry")
     uav = w.find("body[@name='uav']")
     robot_meshes(root, uav, "drone")
     geom(uav, "gripper", "cylinder", (0, 0, -.133), (.035, .098), DARK)
@@ -288,8 +287,8 @@ def build(layout):
     ymax = boundaries(layout.rows, SIDE-1)[1]
     deck_center = ((xmin+xmax)/2, (layout.deck_y+ymax)/2, DECK/2)
     deck_half = ((xmax-xmin)/2, (ymax-layout.deck_y)/2, DECK/2)
-    geom(w, "mezzanine", pos=deck_center, size=deck_half, material="floor_mat",
-         rgba=(.72, .83, .86, 1), contype="1", conaffinity="1")
+    geom(w, "mezzanine", pos=deck_center, size=deck_half, material="terrazzo",
+         rgba=(1, 1, 1, 1), contype="1", conaffinity="1")
     obstacles = [("deck", "mezzanine")]
     shutters = {}
 
@@ -356,15 +355,26 @@ def build(layout):
             pos[tangent] += mid
             half[tangent] = span
             wall(pos, half, kind, color)
+            if kind == "wall":
+                # Continuous timber skirting ends with the actual wall at a jamb.
+                for side, room in ((-1, a), (1, b)):
+                    base = pos.copy()
+                    base[normal] += side*(half[normal]+.003)
+                    base[2] = floor_z(room)+.064
+                    trim = half.copy()
+                    trim[normal], trim[2] = .003, .064
+                    wall(base, trim, kind, (.39, .26, .17, 1))
 
         if route is None:
             section((lo+hi)/2, (hi-lo)/2+.026, 0., WALL_TOP, "wall", WALL)
             return
         color = PURPLE if route == "inspection" else BLUE if route == "cargo" else AMBER if vertical else WHITE
         for i, (here, there) in enumerate(((a, b), (b, a))):
-            pos = xy(here)+(xy(there)-xy(here))*APRON/np.linalg.norm(xy(there)-xy(here))
-            size = [.068, .068, .004]
-            size[tangent] = .153
+            # A wear plate extends from the physical opening onto its approach.
+            run = .84 if vertical else .79
+            pos = center+(xy(here)-center)*(.075+run/2)/np.linalg.norm(xy(here)-center)
+            size = [run/2, run/2, .004]
+            size[tangent] = gate_half-.07
             name = f"apron{len(w)}"
             geom(w, name, pos=(*pos, floor_z(here)+.007), size=size, rgba=color)
             if safety:
@@ -455,20 +465,6 @@ def build(layout):
     sign("LITTER TRANSFER", cx, north+.56, 0., .49)
     sign("TURNING POCKET", cx, cy-.49, 0., .48)
     sign("RECEIVING", px, py-.61, 0.)
-    for dx in (-MARK_HALF, MARK_HALF):
-        for dy in (-MARK_HALF, MARK_HALF):
-            geom(w, f"pocket_dot{dx}_{dy}", "cylinder", (cx+dx, cy+dy, .016), (.054, .004), TAPE)
-
-    # Identical local maintenance stations: known scale/orientation, no IDs
-    # and no information about the route or rescue object.
-    for col in range(SIDE):
-        for row in range(SIDE):
-            x, y = xy((col, row))
-            for i, dx in enumerate((-MARK_HALF, MARK_HALF)):
-                for j, dy in enumerate((-MARK_HALF, MARK_HALF)):
-                    geom(w, f"tape{col}_{row}_{i}_{j}", "cylinder",
-                         (x+dx, y+dy, floor_z((col, row))+.012), (.054, .004), TAPE)
-
     # Bay paint runs around (not through) the central pickup area.
     for i, room in enumerate(layout.rooms):
         x, y = xy(room)

@@ -25,7 +25,7 @@ class Hover:
     def grip(self):
         pass
 
-    def cell(self, cell, height, settle=0):
+    def cell(self, cell, height, settle=0, track=True):
         self.calls.append(("cell", cell, height))
 
     def register(self, cell):

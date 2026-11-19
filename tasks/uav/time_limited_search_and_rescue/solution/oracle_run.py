@@ -10,16 +10,16 @@ import sys
 import numpy as np
 from PIL import Image
 from scipy import ndimage
+from architecture import patches, translation, wall_face
 
 sys.path.insert(0, "/opt/visual_robotics/client")
-PITCH, APRON, DECK = 2.70, .63, .60
+PITCH, APRON, DECK = 2.70, .67, .60
 DOWN_OFFSET = .46
 PACE = np.array([.32, .32, .19])
 TRAVEL, SLOT = 1.30, .71
 TURN = math.pi/6
 FOCAL = 128/math.tan(math.radians(47))
 DIRECTIONS = ((0, 1), (1, 0), (-1, 0), (0, -1))
-MARKS = np.array([(x, y) for x in (-.29, .29) for y in (-.29, .29)])
 
 
 def basis(a):
@@ -186,16 +186,14 @@ def transfer(p, hold_heading=False):
     pivot = np.array([sx, plane-2.30])
     p.trace.append({"event": "entry_jambs", "offset_m": lane-sx, "frame": p.obs["frame_id"]})
     p.align_load(0, -1)
-    p.go(lane, sy, h, settle=1)
-    p.go(lane, plane+1.30, h, settle=1)
+    p.traverse(lane, sy, h, h)
+    p.traverse(lane, plane+1.30, h, h)
     near = read_throat(p, 1)
     if near is not None:
         lane = near[0]
         p.go(lane, p.command[1], h, settle=1)
-    p.go(lane, pivot[1], h, settle=1)
-    p.go(*pivot, TRAVEL, settle=2)
-    p.register(None, center=pivot)
-    p.go(*pivot, h)
+    p.traverse(lane, pivot[1], h, h)
+    p.traverse(*pivot, h, h)
     exit_gate = None
     for dx in (1, -1):
         p.face(dx, 0)
@@ -213,36 +211,9 @@ def transfer(p, hold_heading=False):
         p.align_load(0, -1)
     else:
         p.align_load(side, 0)
-    p.go(pivot[0], lane, h, settle=1)
-    p.go(plane+side*1.70, lane, h, settle=1)
+    p.traverse(pivot[0], lane, h, h)
+    p.traverse(plane+side*1.70, lane, h, h)
     p.go(*p.command[:2], TRAVEL, settle=2)
-
-
-def station_offset(rgb):
-    """Find a repeated local 58 cm square in the calibrated cruise view."""
-    r, g, b = rgb.transpose(2, 0, 1)
-    labels, count = ndimage.label((r > 185) & (g < 70) & (b > 92) & (r > b+28))
-    if not count:
-        return None
-    sizes = np.bincount(labels.ravel())
-    ids = [i for i in range(1, count+1) if 16 <= sizes[i] <= 150]
-    if len(ids) < 2:
-        return None
-    scale = (TRAVEL-.145-.016)/FOCAL
-    uv = np.asarray(ndimage.center_of_mass(np.ones_like(labels), labels, ids))[:, ::-1]
-    spots = (uv-127.5)*[scale, -scale]+[0., DOWN_OFFSET]
-    hypotheses = (spots[:, None, :]-MARKS[None, :, :]).reshape(-1, 2)
-    fits = []
-    for center in hypotheses:
-        if np.max(np.abs(center)) > .43:
-            continue
-        error = np.linalg.norm(spots[:, None, :]-center-MARKS[None, :, :], axis=2)
-        neighbors = error.argmin(axis=0)
-        matched = error[neighbors, np.arange(len(MARKS))] < .058
-        if sum(matched) >= 2:
-            fit = np.mean(spots[neighbors[matched]]-MARKS[matched], axis=0)
-            fits.append((-sum(matched), np.linalg.norm(fit), fit))
-    return min(fits, key=lambda f: f[:2])[2] if fits else None
 
 
 def pad_offset(rgb):
@@ -267,6 +238,7 @@ class Pilot:
         self.trace = []
         self.path = []
         self.feedback, self.loaded = feedback, False
+        self.keyframes = {}
 
     def act(self, action):
         if not self.obs["done"]:
@@ -305,49 +277,116 @@ class Pilot:
         for _ in range(settle):
             self.grip()
 
-    def cell(self, cell, z, settle=0):
-        x, y = PITCH*np.asarray(cell)
-        self.go(x, y, z, settle)
+    def look(self, dx, dy):
+        self.face(dx, dy)
+        self.grip()
+        return decode(self.obs)
 
-    def register(self, cell, center=None):
-        if self.feedback == "odometry" or (self.feedback == "prelift" and self.loaded):
+    @property
+    def localize(self):
+        return self.feedback != "odometry" and not (self.feedback == "prelift" and self.loaded)
+
+    def traverse(self, x, y, z, height):
+        start = self.command[:2].copy()
+        target = np.array([x, y])
+        distance = np.linalg.norm(target-start)
+        if self.obs["done"] or distance < .12:
+            self.go(x, y, z, settle=1)
             return
+        self.grip()
+        ax = basis(self.command[3])
+        first = self.obs["frame_id"]
+        scale = (height-.145)/FOCAL
+        old = patches(decode(self.obs))
+        total = np.zeros(2)
+        matches = []
+        example, last = None, first
+        pieces = max(1, math.ceil(np.max(np.abs(ax.T @ (target-start)))/.55))
+        previous = start
+        for dest in np.linspace(start, target, pieces+1)[1:]:
+            self.go(*dest, z)
+            if self.obs["done"]:
+                return
+            step = ax.T @ (dest-previous)
+            new = patches(decode(self.obs))
+            prior = step*[-1, 1]/scale
+            match = translation(old, new, prior, 18)
+            if match is not None:
+                shift, count = match
+                total += ax @ (shift*[-scale, scale])
+                matches.append(count)
+                if example is None or count > example["inliers"]:
+                    example = dict(before=last, after=self.obs["frame_id"], inliers=count,
+                                   prior_px=prior.tolist(), shift_px=shift.tolist())
+            else:
+                total += dest-previous
+            old, previous, last = new, dest, self.obs["frame_id"]
+        self.grip()
+        match = translation(old, patches(decode(self.obs)), [0, 0], 15)
+        if match is not None:
+            total += ax @ (match[0]*[-scale, scale])
+        error = target-start-total
+        self.trace.append({"event": "floor_track", "frame": self.obs["frame_id"], "loaded": self.loaded,
+                           "start_frame": first, "target_delta": (target-start).tolist(),
+                           "example": example,
+                           "pieces": pieces, "registered": len(matches), "inliers": sum(matches),
+                           "correction_m": error.tolist(), "applied": self.localize})
+        if self.localize and np.linalg.norm(error) > .014 and matches:
+            self.go(*(target+np.clip(error, -.48, .48)), z, settle=1)
+        self.command[:2] = target
+
+    def cell(self, cell, z, settle=0, track=True):
+        x, y = PITCH*np.asarray(cell)
+        if (track and abs(self.command[2]-z) < .001 and z >= TRAVEL
+                and np.linalg.norm(self.command[:2]-[x, y]) > 1.65):
+            self.traverse(x, y, z, TRAVEL)
+        else:
+            self.go(x, y, z, settle)
+
+    def register(self, cell):
         if self.obs["done"]:
             return
-        cardinal = round(self.command[3]/(math.pi/2))*math.pi/2
-        if abs(cardinal-self.command[3]) > 1e-6:
-            self.face(-math.sin(cardinal), math.cos(cardinal))
-            self.grip()
-        initial = None
-        before_frame = None
-        turned = False
-        for _ in range(6):
-            offset = station_offset(decode(self.obs))
-            if offset is None:
-                if turned:
-                    break
-                # Change the optical viewpoint around the suspended sled;
-                # a hold stabilizes on the same patch without adding drift.
-                self.face(*(-basis(self.command[3])[:, 0]))
-                self.grip()
-                turned = True
-                continue
-            error = float(np.linalg.norm(offset))
-            if initial is None:
-                initial = error
-                before_frame = self.obs["frame_id"]
-            if error <= .036:
-                self.command[:2] = PITCH*np.asarray(cell) if center is None else center
-                self.trace.append({"event": "station_fix" if center is None else "pocket_fix",
-                                   "cell": cell, "loaded": self.loaded,
-                                   "before_m": round(initial, 4), "after_m": round(error, 4),
-                                   "before_frame": before_frame,
-                                   "frame": self.obs["frame_id"]})
-                return
-            self.act([*np.clip(.94*offset/PACE[:2], -1., 1.).tolist(), 0., 0., 0.])
-            self.grip()
-        if not self.obs["done"]:
-            raise RuntimeError(f"cannot establish a local station fix at {cell}")
+        north = self.look(0, 1)
+        before = self.obs["frame_id"]
+        current = patches(north)
+        closure = (translation(self.keyframes[cell][1], current, [0, 0], 42)
+                   if cell in self.keyframes else None)
+        correction = np.zeros(2)
+        faces = []
+        if closure is not None:
+            correction = closure[0]*[1., -1.]*(TRAVEL-.145)/FOCAL
+        else:
+            def face_distance(image, axis, sign):
+                depth, jamb = wall_face(image)
+                if depth is not None:
+                    correction[axis] = sign*(depth-(PITCH/2-.081))
+                    faces.append(axis)
+                return jamb
+
+            jamb = face_distance(north, 1, 1)
+            if 1 not in faces and cell[1] > 0:
+                face_distance(self.look(0, -1), 1, -1)
+            if jamb is not None:
+                correction[0] = jamb
+            elif cell[1] > 0 or abs(cell[0]) == 2:
+                sign = -1 if cell[1] == 0 and cell[0] == -2 else 1
+                face_distance(self.look(sign, 0), 0, sign)
+                if 0 not in faces and cell[1] > 0:
+                    face_distance(self.look(-sign, 0), 0, -sign)
+        self.face(0, 1)
+        self.grip()
+        anchor = PITCH*np.asarray(cell)
+        if self.localize and np.max(np.abs(correction)) > .012:
+            self.go(*(self.command[:2]+np.clip(correction, -.45, .45)), self.command[2], settle=1)
+        self.command[:2] = anchor
+        if cell not in self.keyframes:
+            self.keyframes[cell] = (self.obs["frame_id"], patches(decode(self.obs)))
+        self.trace.append({"event": "station_fix", "cell": cell, "loaded": self.loaded,
+                           "method": "patch_revisit" if closure is not None else "wall_geometry",
+                           "reference_frame": self.keyframes[cell][0],
+                           "matches": closure[1] if closure is not None else 0, "faces": faces,
+                           "before_m": round(float(np.linalg.norm(correction)), 4),
+                           "applied": self.localize, "before_frame": before, "frame": self.obs["frame_id"]})
 
     def scan(self):
         rgb = decode(self.obs)
@@ -527,7 +566,7 @@ class Discovery:
             p.trace.append({"event": "landing_probe", "cell": here, "floor": self.floors[here],
                             "frame": p.obs["frame_id"]})
             p.cell(here, TRAVEL+DECK)
-            p.cell(there, TRAVEL+DECK)
+            p.cell(there, TRAVEL+DECK, track=False)
         p.cell(there, TRAVEL+self.floors[there], settle=1)
         p.register(there)
         if p.obs["done"]:

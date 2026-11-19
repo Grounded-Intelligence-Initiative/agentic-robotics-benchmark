@@ -13,7 +13,7 @@ from PIL import Image
 
 from rescue_scene import DECK, POCKET_HALF_DEPTH, RED, START_Z, build, layout_for
 
-LIMIT = 1600
+LIMIT = 2400
 DT = .2
 INCREMENTS = np.array([.32, .32, .19])
 SCORE = {"entered_wing": .12, "mezzanine": .08, "located": .10, "grasped": .12,
