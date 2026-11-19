@@ -41,6 +41,12 @@ summary = "A fixed Franka Panda must switch and set cooktop burners, ovens and m
 platforms = ["arm"]
 stages = ["behavior"]
 
+[longtail_manipulation_recovery]
+title = "Rescue failed kitchen jobs with a mobile Panda"
+summary = "Write the fallback controller of a mobile Panda: from the exact states where a learned policy failed its kitchen jobs, finish them from the robot's cameras, joint readings and wrist force."
+platforms = ["arm"]
+stages = ["behavior"]
+
 [novel_object_6dof_grasp_detection]
 title = "Detect grasps on objects never seen before"
 summary = "Improve a 6-DoF parallel-jaw grasp detector that works from one RGB-D frame of a cluttered table, scored on objects it has never seen."
@@ -118,6 +124,12 @@ title = "Supervise a self-driving car for safety"
 summary = "Watch an automated car's camera and planner, let the planner drive while it is safe and take over when it is not, on hidden CARLA routes."
 platforms = ["ground"]
 stages = ["behavior"]
+
+[racecar_cad_design_from_photos]
+title = "Model a tenth-scale race car in CAD"
+summary = "Rebuild the lost CAD of a tenth-scale autonomous race car's 23 made parts in FreeCAD from photos of its staged teardown, and assemble them with its given parts."
+platforms = ["ground"]
+stages = ["hardware-design"]
 
 [racecar_full_assembly_tenth_scale_ur10e]
 title = "Assemble a tenth-scale race car with a 6-DoF arm"
