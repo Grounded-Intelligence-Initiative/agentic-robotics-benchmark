@@ -56,9 +56,13 @@ holds for the closing message. Reply lines are capped at 64 KiB. A controller fo
 start of an order is started again before it, like one that broke the protocol.
 
 An exception inside an order that is not the controller's protocol failing (the simulator, memory,
-threads) costs that order and is counted in `grader_errors`; the run goes on. What a submission
-can still do is deny itself a verdict (fill the disk the result is written to): no path gives it
-a score it did not earn.
+threads) costs that order and is counted in `grader_errors`; the run goes on. If the verdict cannot
+be written (a controller that filled the disk), the submission's files and the account's files in
+the temporary folders are removed and it is written again. No path gives a submission a score it
+did not earn.
+
+The controller runs at a lower priority than the grader (nice 10) and with the image's own
+environment for rendering and BLAS (IMAGE_ENV) besides PATH, HOME and LANG.
 
 Determinism: the orders run in the file's sequence with their fixed seeds, and the match lock
 draws from one stream per order (probe_stream: the kit's seed_rng keyed by a BLAKE2b hash of a
@@ -80,6 +84,7 @@ import math
 import os
 import pwd
 import select
+import shutil
 import signal
 import stat
 import subprocess
@@ -114,6 +119,12 @@ MAX_SUBMISSION_FILES = 5000
 MAX_LINE = 65536            # a reply is one short JSON object
 PROBE_TAG = b"mixed_box_palletizing verify probe schedule 1"    # probe_stream's domain tag
 SOLVER_ENV = ("PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin", "HOME=/home/user", "LANG=C.UTF-8")
+# What the image sets for the agent while it works (environment/Dockerfile), so that a controller
+# that renders with MuJoCo or uses BLAS behaves when graded as it did in the sandbox.
+IMAGE_ENV = ("MUJOCO_GL=egl", "PYOPENGL_PLATFORM=egl", "MPLBACKEND=Agg", "OMP_NUM_THREADS=1", "LP_NUM_THREADS=2")
+# The controller runs below the grader's priority: what it computes between requests cannot starve
+# the simulator, and it costs the controller nothing while the grader waits for it.
+SOLVER_COMMAND = ("/usr/bin/env",) + IMAGE_ENV + ("/usr/bin/nice", "-n", "10", "bash")
 
 
 def log(message):
@@ -189,6 +200,36 @@ def stage_submission(uid, gid):
     os.lchown(path, uid, gid)
     os.chmod(path, 0o700)
     return path
+
+
+def free_agent_files(uid, workdir):
+    """Remove what the controller may have filled the disk with: the submission folder's contents
+    and everything the agent account owns in the shared temporary folders. Called only after the
+    orders are over, when the verdict could not be written. Nothing here follows a link."""
+    doomed = []
+    try:
+        doomed += [os.path.join(workdir, name) for name in os.listdir(workdir)]
+    except OSError:
+        pass
+    for folder in ("/tmp", "/var/tmp", "/dev/shm"):
+        try:
+            for name in os.listdir(folder):
+                path = os.path.join(folder, name)
+                try:
+                    if os.lstat(path).st_uid == uid:
+                        doomed.append(path)
+                except OSError:
+                    pass
+        except OSError:
+            pass
+    for path in doomed:
+        try:
+            if os.path.isdir(path) and not os.path.islink(path):
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                os.unlink(path)
+        except OSError:
+            pass
 
 
 def oracle_token_ok(workdir):
@@ -333,10 +374,10 @@ class GuardedSolver(Solver):
     def _spawn(self):
         if self.guard:
             command = [sys.executable, "-I", NONET, "--uid", str(self.uid), "--gid", str(self.gid),
-                       "--cwd", self.submission, "--", "bash", self.entry]
+                       "--cwd", self.submission, "--"] + list(SOLVER_COMMAND) + [self.entry]
         else:
-            command = ["/usr/sbin/runuser", "-u", agent_user(), "--", "/usr/bin/env", "-i"] + list(SOLVER_ENV) + [
-                "bash", self.entry]
+            command = ["/usr/sbin/runuser", "-u", agent_user(), "--", "/usr/bin/env", "-i"] + list(SOLVER_ENV) + list(
+                SOLVER_COMMAND) + [self.entry]
         try:
             proc = subprocess.Popen(command, cwd=self.submission, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                     stderr=subprocess.DEVNULL, universal_newlines=True, bufsize=1,
@@ -499,6 +540,7 @@ class Run(object):
         self.wall_cap_hit = False
         self.controller_s = []
         self.watch = None               # the EgressWatch, when the socket filter is not available
+        self.free_space = None          # called once if the verdict cannot be written (a full disk)
         self.cleanup_ok = True
         self._written = False
         self._guard = threading.Lock()
@@ -561,8 +603,15 @@ class Run(object):
                 measured, len(scores), ", ".join("{} {:.0f}".format(n, scores[n]) for n in names),
                 "ok" if self.lock.ok else "FAILED", self.lock.passed, self.lock.total, flags,
                 "\n".join(self.notes.get(n, "{}: not finished".format(n)) for n in names))
-            write_verdict(verdict, diagnostic=text)
-            self._written = True            # only once it is on disk: a failed write leaves the other writer its turn
+            try:
+                write_verdict(verdict, diagnostic=text)
+            except (Exception, SystemExit) as exc:  # noqa: BLE001 - e.g. the controller filled the disk
+                log("the verdict could not be written ({}): freeing the submission's files and writing again".format(
+                    type(exc).__name__))
+                if self.free_space is not None:
+                    self.free_space()
+                write_verdict(verdict, diagnostic=text)
+            self._written = True            # only once it is on disk
             log("measured={:.4f} anchor={} reward={:.3f} lock={} aborted={} guard={} wall={:.0f}s".format(
                 measured, self.anchor, verdict["rewards"]["reward"], self.lock.ok, self.aborted,
                 "seccomp" if GuardedSolver.guard else "watch", time.monotonic() - self.t_start))
@@ -585,17 +634,23 @@ class HardDeadline(threading.Thread):
             if left <= 0:
                 break
             time.sleep(min(left, 5.0))
-        log("hard deadline ({:.0f} s) reached: writing the verdict".format(self.after))
+        wrote = False
         try:
-            if self.state.write(cut_off=True):
-                if os.geteuid() == 0:
-                    kill_agent_processes(self.uid, rounds=8, pause=0.05)
-                sys.stderr.flush()
-                os._exit(0)
+            log("hard deadline ({:.0f} s) reached: writing the verdict".format(self.after))
+            wrote = self.state.write(cut_off=True)
+            if not wrote:
+                return                      # main has written it and is on its way out
+            if os.geteuid() == 0:
+                kill_agent_processes(self.uid, rounds=8, pause=0.05)
         except BaseException as exc:  # noqa: BLE001 - nothing may keep the process alive here
-            log("the hard deadline could not write the verdict: {}".format(type(exc).__name__))
-            sys.stderr.flush()
-            os._exit(1)
+            try:
+                log("the hard deadline could not write the verdict: {}".format(type(exc).__name__))
+            except BaseException:  # noqa: BLE001
+                pass
+        finally:
+            if wrote:
+                os._exit(0)
+        os._exit(1)
 
 
 def run(state, config, workdir, episodes, catalog):
@@ -711,9 +766,12 @@ def main():
     except KeyError:
         write_verdict(zero_verdict(reason="no agent account", anchored=anchored, extra=secured))
         return
+    home = os.path.expanduser("~" + agent_user())
+    present = not os.path.islink(os.path.join(home, "submission")) and not os.path.islink(
+        os.path.join(home, "submission", "run.sh")) and os.path.isfile(os.path.join(home, "submission", "run.sh"))
     if root and os.environ.get("ALE_VERIFY_PYTHON"):
         clear_agent_account()
-        if not kill_agent_processes(uid):
+        if not kill_agent_processes(uid) and present:      # with nothing to grade, the zero below needs no clean account
             fail("processes of the agent account could not be stopped before grading")
     try:
         workdir = stage_submission(uid, gid) if root else os.path.join(
@@ -724,7 +782,7 @@ def main():
     if workdir is None or os.path.islink(os.path.join(workdir, "run.sh")) or not os.path.isfile(
             os.path.join(workdir, "run.sh")):
         write_verdict(zero_verdict(
-            reason="no usable submission (no run.sh in /home/user/submission, or more than {} files or {} MB)".format(
+            reason="no usable submission (no run.sh in /home/user/submission, or more than {} files or {} MiB)".format(
                 MAX_SUBMISSION_FILES, MAX_SUBMISSION_BYTES // (1024 * 1024)), anchored=anchored, extra=secured))
         return
     truth = oracle_token_ok(workdir)        # decided here, before any code of the submission runs
@@ -738,6 +796,8 @@ def main():
         episodes = json.load(handle)
     lock = ProbeLock(None, rate=config.get("probe_rate", 0.01), pass_fraction=config.get("probe_pass_fraction", 0.1))
     state = Run([episode["name"] for episode in episodes], lock, anchor, meta, config, truth, secured, t_start)
+    if root:
+        state.free_space = lambda: free_agent_files(uid, workdir)
     watch = None
     if root and not GuardedSolver.guard:
         watch = state.watch = EgressWatch(uid)      # in the state before the deadline thread can write
@@ -759,8 +819,14 @@ def main():
         with state._guard:
             if state._written:
                 return
+            verdict = zero_verdict(reason=first_start_failed, anchored=anchored, extra=secured)
+            try:
+                write_verdict(verdict)
+            except (Exception, SystemExit):  # noqa: BLE001 - a full disk: free the submission's files, write again
+                if state.free_space is not None:
+                    state.free_space()
+                write_verdict(verdict)
             state._written = True
-        write_verdict(zero_verdict(reason=first_start_failed, anchored=anchored, extra=secured))
         return
     state.write()
 

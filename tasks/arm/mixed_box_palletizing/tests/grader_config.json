@@ -6,6 +6,6 @@
   "image_charge_s": 0.1,
   "wall_cap_s": 13200,
   "hard_deadline_s": 13800,
-  "require_seccomp": false,
+  "require_seccomp": true,
   "scoring_cap": 1.5
 }

@@ -208,15 +208,18 @@ edge is all the room there is on top of that.
 ## Deliverable and grading
 
 Leave a controller in `/home/user/submission/` with a `run.sh` (started as `bash run.sh` with that folder as
-working directory, as your user, with no network, and with only `PATH`, `HOME` and `LANG` in its environment).
-No network means: it must not create an internet socket of any kind, the loopback included; between your own
-processes use pipes or UNIX sockets. Depending on the grading machine the attempt fails (also on the loopback),
-or the grader watches for such sockets and one that is not bound to the loopback scores the whole run 0.
-The folder may hold at most 5,000 files and 200 MB; a larger one is not graded and scores 0, so do not leave lab
-recordings in it. Everything the controller needs must be inside that folder: nothing else
+working directory, as your user, with no network, at a lower priority than the simulator (`nice` 10), and with a
+fixed environment: `PATH`, `HOME`, `LANG` and, as in this sandbox, `MUJOCO_GL=egl`, `PYOPENGL_PLATFORM=egl`,
+`MPLBACKEND=Agg`, `OMP_NUM_THREADS=1` and `LP_NUM_THREADS=2`; nothing else you export here is there).
+No network means: the controller can create UNIX sockets and pipes and nothing else. Every other kind of socket
+fails with "operation not permitted": internet sockets, the loopback included, and also netlink, so calls that
+list network interfaces fail too. (A grading machine that cannot enforce this does not grade, or it watches
+for such sockets and one that is not bound to the loopback scores the whole run 0.)
+The folder may hold at most 5,000 files (links count) and 200 MiB; a larger one is not graded and scores 0, so do
+not leave lab recordings in it, and do not let the controller fill the disk with logs. Everything the controller needs must be inside that folder: nothing else
 of your home is there when it is graded (copy `arm_kinematics.py` and `marks/` in if you use them); the image's
-Python and its packages are. Protocol, one JSON object per line on stdin/stdout (stdout carries only protocol messages; use
-stderr for logs): print `READY` within 120 s of the start; then answer `{"type": "reset"}` with `{"ok": true}`,
+Python and its packages are. Protocol, one JSON object per line on stdin/stdout (stdout carries only protocol messages,
+flushed after each one; stderr is discarded): print `READY` within 120 s of the start; then answer `{"type": "reset"}` with `{"ok": true}`,
 `{"type": "act", "t": T, "obs": {...}}` with `{"action": [7 numbers]}` within 30 s, and `{"type": "close"}` with
 `{"ok": true}` before exiting. `reset` starts a new order.
 
@@ -234,7 +237,8 @@ order in which the controller crashes, answers late or sends a malformed action,
 becomes unstable, scores 0. The 30 s for an answer run from the moment the grader starts to send the request: an
 observation with images is several megabytes, and a controller that does not read it in time is late (it is
 then killed). After a crash, a late answer or a broken protocol the controller is started again before the next
-order, and so is one found dead when an order begins: at most 3 restarts in a run; the order that would need a
+order, and so is one found dead when an order begins (a malformed action costs the order but the controller keeps
+running): at most 3 restarts in a run; the order that would need a
 fourth restart and every later one score 0. A controller that does not print `READY` at its first start scores 0
 for the whole run.
 
