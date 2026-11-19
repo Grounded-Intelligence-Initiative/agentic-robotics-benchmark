@@ -376,6 +376,11 @@ def _corridors(S):
     target bay to the survivor's approach point."""
     plan = S.plan
     for o in plan["openings"]:
+        if o.get("challenge") == "prop":
+            # nothing else stands under the propped slab or against its crate: the slab bears on the crate alone
+            n, t = _passage_dir(o)
+            p = np.array([o["x"], o["y"]])
+            S.keep(p - t * (o["width"] / 2), p + t * (o["width"] / 2), 0.45)
         if o.get("challenge") in ("blocked", "prop"):
             continue
         n, t = _passage_dir(o)
@@ -797,11 +802,13 @@ def _challenge(S, o):
                   "slab", yaw=0.0, pitch=float(rng.uniform(-0.15, 0.15)), name="blockslab")
             S.mound(p[0], p[1], 1.2, 1.2, float(rng.uniform(0.7, 1.1)))
         elif kind == "prop":
-            # a broken slab section propped up in the opening: its high end rests on a wooden crate standing in the
-            # middle of the opening, its low end on the floor at one jamb. The crate is the load path: moving it
-            # brings the slab down (a secondary collapse). Too little room either side of the crate to pass.
+            # a broken slab section lies across the opening: one end on a wooden crate standing in the middle of the
+            # opening, the other on a brick heap at one jamb. Both are free bodies in the physics: the slab's weight
+            # really bears on the crate (about half of it; the heap carries the rest), so a touch does not shift the
+            # crate, and a crate pushed or pulled out lets the slab come down (a secondary collapse). Too little room
+            # either side of the crate, and too little height under the slab, to pass.
             crate_h, cx, cy = 0.42, 0.22, 0.17
-            # the crate stands on level floor
+            # the crate and the heap stand on level floor
             m_ = (S.GX - p[0]) ** 2 + (S.GY - p[1]) ** 2 < 0.9 ** 2
             S.H[m_] = 0.0
             S.bodies.append({"name": "prop_%d" % len(S.bodies), "kind": "prop", "pos": [p[0], p[1], crate_h / 2 + 0.002],
@@ -810,21 +817,21 @@ def _challenge(S, o):
                              "graspable": True, "on_route": False})
             prop = S.bodies[-1]["name"]
             side = -1.0 if rng.random() < 0.5 else 1.0
-            low = p + t * side * (w / 2 - 0.05)            # low end on the floor at the jamb
-            run_ = w / 2 - 0.05
-            rise = crate_h + 0.003
-            ang = math.atan2(rise, run_)
-            Ls = math.hypot(run_, rise) + 0.25
-            slab_t = 0.09
-            mid = low - t * side * (math.cos(ang) * Ls / 2)
-            zc = math.sin(ang) * Ls / 2 + slab_t / math.cos(ang) + 0.012     # 12 mm clear of the crate and the floor
-            # orientation: the slab's long axis along t, tilted up toward the crate
+            pile_half = 0.10
+            x_pile = w / 2 - pile_half                      # the heap's centre, along t from the opening's centre
+            q = p + t * side * x_pile
+            S.box((q[0], q[1], crate_h / 2), (pile_half if o["axis"] == "y" else 0.34, pile_half if o["axis"] == "x" else 0.34,
+                                              crate_h / 2), "brick", name="proppile")
+            slab_t = 0.09                                   # half the slab's thickness
+            x0, x1 = -0.20, x_pile + pile_half - 0.02       # the slab's span along t (side-normalised)
+            Ls = x1 - x0
+            mid = p + t * side * ((x0 + x1) / 2.0)
+            zc = crate_h + 0.002 + slab_t + 0.003           # set down 3 mm above its two supports
             base_yaw = 0.0 if o["axis"] == "y" else math.pi / 2
-            tilt = ang if side > 0 else -ang
             S.bodies.append({"name": "propslab_%d" % len(S.bodies), "kind": "propslab", "pos": [mid[0], mid[1], zc],
-                             "quat": _q_euler(base_yaw, tilt, 0.0), "mass": 180.0,
+                             "quat": _q_euler(base_yaw, 0.0, 0.0), "mass": 180.0,
                              "geoms": [{"type": "box", "size": [Ls / 2, 0.32, slab_t], "mat": "slab"}],
-                             "graspable": False, "held_by": prop, "on_route": False, "robot_only": True})
+                             "graspable": False, "held_by": prop, "on_route": False})
             o["geom"]["prop"] = prop
     # the wall's thickness at the opening, for the route
     o["thickness"] = th
