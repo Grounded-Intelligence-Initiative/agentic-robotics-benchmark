@@ -21,10 +21,15 @@ What the task derives from the model:
 
 Two treatments are applied to derived copies; the owner's model files themselves are never modified:
 
-- Lettering is removed from two given solids (a raised maker's name on one, an engraved type designation on the
-  other), so that no agent-visible file carries a name. The removed volume is the lettering alone. A third place,
-  mould numbers and date marks without any name, stays as modelled in its solid and is flattened in the rendered
-  mesh only.
+- Lettering is removed from five given solids: in the rolling base assembly, a maker's name raised on the battery's
+  hold-down bar, a type designation engraved into the speed controller's case and two maker names raised on the
+  servo saver; in the compute module, a maker's logo and wordmark engraved into the top plate of its fan sink and a
+  maker's name raised on the underside of one connector. Raised letters are cut flush with the face they stand on,
+  engraved ones are filled flush with it; the removed or filled volume is the lettering alone, and the rest of each
+  solid keeps its geometry. No given file carries a name, and none of this lettering can be read in any photograph.
+  Marks that name no maker or product stay as modelled: mould, cavity, revision, material and date marks,
+  certification, recycling and origin marks, the numbers on the tyres, tooth counts, single key letters and labels
+  such as ON / OFF. The mould numbers and date marks on the floor of the tub are flattened in the rendered mesh only.
 - The made plate and the printed part exist in the model as meshes whose hole walls are polygons. Each such wall is
   put back to the conic section it approximates (an ellipse or a circle fitted to the polygon, at most 0.02 mm from
   the mesh on the plate and 0.06 mm on the printed part), so that the grader's hole detector reads the holes. Nothing
@@ -57,9 +62,8 @@ in the STEP headers, in the photographs or on the given solids.
 
 The photographs are rendered with Blender Cycles on a bench in the lab room of the project's licensed art assets (the
 room bundle `room_lab_v4r3`), as in the sibling CAD-from-photos tasks. The world light is the HDRI `schadowplatz_4k`
-and the bench top carries the scanned material `oak_veneer_01`; both are public CC0 material by the project's records
-and were already used by the sibling tasks, and the owner decided to keep them. None of these assets is shipped with the task: only the rendered
-photographs are.
+and the bench top carries the scanned material `oak_veneer_01`; both are public CC0 material and are also used by the
+sibling tasks. None of these assets is shipped with the task: only the rendered photographs are.
 
 ## Where the files are
 

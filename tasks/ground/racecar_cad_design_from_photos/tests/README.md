@@ -43,11 +43,14 @@ exception outside a grading item, a child that crashes or times out) fails the r
 
 ## The instruction and the numbers
 
-The section "How it is graded" of `instruction.md` prints numbers of `grader_config.json`, and its tables are generated
-(the photo table from the photo set's captions, the component table from the bill of materials and the config). The
-instruction is built by the task's development tooling, never edited by hand: when a number of `grader_config.json`, a
-caption or a given component changes, rebuild it, and check it with the builder's `--check`, which compares every
-number of the criteria table with the config again.
+The criteria table of `instruction.md` (section "How it is graded") prints values of `grader_config.json`, and so do
+the paragraphs around it (the whole-document zeros, the shape floor) and the grading-weight column of the component
+table (`installation.type_weights`). The photo table is generated from the captions of the photo set and the component
+table from the car's bill of materials. When one of these values, a caption or a given component changes,
+`instruction.md` must be changed to match. No test in this repository compares the two; to check by hand, find the
+weights, bands, shares and tolerances of the criteria table, the solid and time limits of the whole-document zeros, the
+two ends of the shape floor and the grading weights under their keys in `grader_config.json`, where bands are written
+as in the table above, shares as fractions and time limits in seconds.
 
 Statistics worth reading in a result (`metrics`): `shape_floor` and `raw_features`, `raw_installation`, `raw_mass`,
 `raw_fit` (the four criteria before the floor); `alignment_mode` (1 = the tub registered exactly on its vertex set),
