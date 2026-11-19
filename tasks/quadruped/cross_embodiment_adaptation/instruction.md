@@ -1,4 +1,4 @@
-# Cross-Embodiment Adaptation: aerial survey to first Go1 deployment
+# Cross-Embodiment Adaptation: register an aerial survey to a first Go1 deployment
 
 Write an unattended program that surveys an unknown floor plan from a UAV, then
 walks a Unitree Go1 to the blue dock on its first deployment. The program must
@@ -7,8 +7,8 @@ map, dock sensor, walking primitive, balance controller, or prelearned gait.
 
 ## Mission
 
-The flat warehouse workcell is about 8 m by 4 m. The green launch mark is
-near the west end and the blue dock with a yellow east edge is near the east
+The flat warehouse workcell is about 8 m by 4 m. The target starts somewhere
+in the western staging bay. A blue dock with a yellow east edge is near the east
 end. Three transverse rack lines separate four staging bays. The first and
 last rack lines each have a near-center shortcut and a side passage. Both
 are real openings, but a clear centerline does not mean the Go1's trunk,
@@ -20,9 +20,14 @@ before changing direction. Passage positions, widths and dock center vary.
 The first frame does not show the openings. The orange caps mark actual
 collision footprints; they do not encode passability.
 
-The common tracking frame is measured in metres: +X east, +Y north, origin
-at the center of the Go1 launch mark. The Go1 starts near that origin facing
-+X. Tracking measures only the current vehicle, not the hall or destination.
+Only the UAV uses the survey frame: origin at the UAV's first camera center
+projected onto the floor, +X east and +Y north. The Go1 is absent during
+the survey. It deploys with independently chosen launch translation and yaw;
+there is no common tracker, compass, launch mark, or target pose on the map.
+To transfer a route, use the same fixed objects as seen from above and from
+the Go1. Around the staging bay are steel bollards with identical green
+spherical safety caps, radius 0.105 m, centers 0.72 m above the floor.
+Their arrangement varies; individual caps carry no identifiers.
 
 ## Phase 0: UAV
 
@@ -64,18 +69,35 @@ servo stiffness varies by up to 10%. The trunk has six free degrees of
 freedom. There are no hidden force, yaw, touchdown, or foot-placement
 commands. The exact simulator model and runtime are service-only.
 
-Observations include `tracking_xy_m` (idealized local tag tracking, rounded
-to mm), `heading_rad` relative to +X (CCW), `gravity_body_unit`,
-`gyro_body_rad_s`, `joint_rad`, `joint_rad_s`, `foot_contact` in leg
-order and `ticks_remaining`. These are idealized tracking, IMU, encoder and
-foot-contact readings. There is no phase-1 camera or obstacle range. Both
-phases include `phase` (0/1), `done`, and `requests_remaining`. Budgets
-are 36,000 physics ticks and 4,000 requests total per site.
+Target `observe()`, `advance()` and target `act()` supply `odom_xy_m` and
+`odom_yaw_rad`: ideal planar displacement (mm rounding) and CCW yaw
+change (radians, wrapped to [-pi,pi]) relative to the **settled launch
+trunk frame**, not to the survey. Both start at zero. The odometry axes are
+fixed for the mission: initial forward is +x, initial left is +y. The other
+readings are `gravity_body_unit`, `gyro_body_rad_s`, `joint_rad`,
+`joint_rad_s`, `foot_contact` in leg order and `ticks_remaining`. There
+is no range, absolute heading, absolute position, or depth output.
 
-Dock centered within 0.17 m and headed within 16 degrees of +X. Remain upright
+During a live deployment, `look(detent)` returns one actual local RGB PNG in
+`images`, plus `requests_remaining`, with **no physics step**. It does not
+turn the Go1. An ideal pan mount shares one optical center 0.20 m above the
+trunk origin along trunk +Z. Integer detents 0..7 pan counterclockwise by
+`detent * 45` degrees from trunk +X toward trunk +Y. At each detent the
+camera points **36 degrees up** from the trunk's horizontal plane toward
+the elevated fixtures; it tilts with the trunk. Image right is clockwise
+from the pan direction, image up is toward higher elevation. The square
+256 x 256 undistorted pinhole has a 70-degree vertical field of view, principal
+point (127.5,127.5) in zero-based pixel-center coordinates, and square pixels.
+You can scan all azimuths at rest before issuing any joint command. Each
+site allows 16 exposures at any time while the mission is live. Regular
+target observations are image-free. Normal observations in both phases
+include `phase` (0/1), `done`, and `requests_remaining`. Budgets remain
+36,000 physics ticks and 4,000 requests total per site.
+
+Dock centered within 0.17 m and headed within 16 degrees of survey +X. Remain upright
 (trunk above 0.16 m and body-up dot world-up greater than 0.80), below
 0.09 m/s linear and 0.35 rad/s angular speed, for 0.45 s continuously
-in simulation. Any barrier contact, persistent fall (0.20 s failing the
+in simulation. Any barrier or bollard contact, persistent fall (0.20 s failing the
 upright test), or budget exhaustion ends the attempt. Scoring is safe docks
 out of eight sites. Passage choices, crossings, dock approach and stop
 causes are diagnostics, not score.
@@ -96,7 +118,7 @@ causes are diagnostics, not score.
   During grading use the Unix socket in `$ROBOT_SOCKET` (default
   `/run/visual_robotics/world.sock`) through the client at
   `/opt/visual_robotics/client/client.py`. Its `camera_image(obs)` decodes
-  the UAV RGB. Use `/opt/venv/bin/python3`.
+  either camera's RGB. Use `/opt/venv/bin/python3`.
 - The development session is two hours. The verifier has 2 CPUs, 4 GB,
   no GPU, a 600 s program budget (excludes service time), a 1,800 s
   mission wall limit, and a 10 s grace period after termination.

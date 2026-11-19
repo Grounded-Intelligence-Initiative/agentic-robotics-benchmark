@@ -43,12 +43,16 @@ class Client:
     def advance(self):
         return self.request("advance")
 
+    def look(self, detent):
+        """One ground RGB exposure; pan CCW in 45-degree detents relative to the trunk."""
+        return self.request("look", detent=detent)
+
     def new_site(self):
         return self.request("new_site")
 
 
 def camera_image(obs):
-    """UAV nadir perspective RGB as a (256, 256, 3) array."""
+    """Decode one public UAV or ground RGB exposure as a (256, 256, 3) array."""
     import numpy as np
     from PIL import Image
     return np.asarray(Image.open(io.BytesIO(base64.b64decode(obs["images"][0]))).convert("RGB"))

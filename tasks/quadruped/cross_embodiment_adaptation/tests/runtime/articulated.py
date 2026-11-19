@@ -17,6 +17,10 @@ JOINTS = tuple(f"{leg}_{part}" for leg in LEGS for part in ("hip", "thigh", "cal
 WALL_Z, CAMERA_Z, FOV, PIXELS = .32, 1.65, 78, 256
 MAX_SCOUT, MAX_TICKS, MAX_HOLD = 80, 36000, 40
 DOCK_RADIUS = .17
+POST_Z, POST_R = .72, .105
+MAST_Z, MAST_FOV, MAST_PITCH, MAX_LOOKS = .20, 70, math.radians(36), 16
+LAUNCH_BIT = 1 << 33
+ROUTE_BITS = 3 << 14
 
 
 @dataclass(frozen=True)
@@ -35,7 +39,7 @@ class Rack:
 
 
 def layout(seed):
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng(seed & ~(LAUNCH_BIT | ROUTE_BITS))
     # Independent uniform seed bits; the fixed evaluation seeds cover each pair twice.
     sides = tuple(1 if (seed >> bit) & 1 else -1 for bit in (14, 15))
     bound = float(rng.uniform(1.86, 1.98))
@@ -68,7 +72,29 @@ def layout(seed):
     return rng, racks, goal, walls
 
 
-def scene(root, walls, goal):
+def fixtures_and_launch(seed, walls):
+    # Independent streams: reflecting the launch changes neither rack, fixtures nor servo gains.
+    site = seed & ~(LAUNCH_BIT | ROUTE_BITS)
+    fixtures = np.random.default_rng([site, 3701])
+    start = np.random.default_rng([site, 3702])
+    hand = 1 if seed & LAUNCH_BIT else -1
+    bank = fixtures.choice((-1, 1))
+    rail = sum(walls["north"][2:])/2
+    back = sum(walls["back"][:2])/2
+    posts = [(back, bank*fixtures.uniform(-1.40, -.93)), (back, bank*fixtures.uniform(.22, .74)),
+             (fixtures.uniform(-.08, .33), bank*rail), (fixtures.uniform(1.45, 1.95), bank*rail),
+             (fixtures.uniform(.50, 1.00), -bank*rail)]
+    launch = [start.uniform(-.06, .10)+hand*.12, hand*start.uniform(.54, .85),
+              -hand*math.radians(start.uniform(42., 70.))]
+    return posts, launch
+
+
+def rotation2(yaw):
+    c, s = math.cos(yaw), math.sin(yaw)
+    return np.array([[c, -s], [s, c]])
+
+
+def scene(root, walls, goal, posts):
     world = root.find("worldbody")
     materials(root)
     ET.SubElement(world, "geom", name="floor", type="plane", size="6 5 .1",
@@ -85,7 +111,11 @@ def scene(root, walls, goal):
     geom(world, "dock", pos=(*goal, .002), size=(.29, .28, .002), rgba=(.035, .28, .89, 1))
     geom(world, "dock_nose", pos=(goal[0]+.261, goal[1], .005), size=(.026, .26, .001),
          rgba=(.88, .81, .09, 1))
-    geom(world, "launch", pos=(0, 0, .002), size=(.25, .20, .002), rgba=(.07, .65, .18, 1))
+    for i, (x, y) in enumerate(posts):
+        geom(world, f"bollard{i}_stem", "cylinder", (x, y, POST_Z/2), (.06, POST_Z/2),
+             rgba=(.46, .47, .45, 1), contype=1, conaffinity=1)
+        geom(world, f"bollard{i}_cap", "sphere", (x, y, POST_Z), (POST_R,),
+             rgba=(.19, .84, .065, 1), contype=1, conaffinity=1)
     return world
 
 
@@ -96,9 +126,9 @@ def image64(rgb):
 
 
 class Survey:
-    def __init__(self, walls, goal):
+    def __init__(self, walls, goal, posts):
         root = ET.fromstring('<mujoco><asset/><worldbody/></mujoco>')
-        world = scene(root, walls, goal)
+        world = scene(root, walls, goal, posts)
         uav = ET.SubElement(world, "body", name="uav", mocap="true",
                             pos=vec((0, 0, CAMERA_Z+.12)))
         robot_meshes(root, uav, "drone")
@@ -131,11 +161,19 @@ class Survey:
 
 
 class Go1:
-    def __init__(self, rng, walls, goal, racks):
+    def __init__(self, rng, walls, goal, racks, posts, launch):
         spec = asset_root()/"unitree_go1/go1.xml"
         root = ET.parse(spec).getroot()
         root.find("compiler").set("meshdir", str(spec.parent/"assets"))
-        scene(root, walls, goal)
+        scene(root, walls, goal, posts)
+        trunk = root.find(".//body[@name='trunk']")
+        for i in range(8):
+            angle = i*math.pi/4
+            # The mast looks up at fixtures. Roll/pitch follow the real trunk.
+            image_up = (-math.sin(MAST_PITCH)*math.cos(angle), -math.sin(MAST_PITCH)*math.sin(angle),
+                        math.cos(MAST_PITCH))
+            ET.SubElement(trunk, "camera", name=f"mast{i}", pos=vec((0, 0, MAST_Z)),
+                          xyaxes=vec((math.sin(angle), -math.cos(angle), 0, *image_up)), fovy=str(MAST_FOV))
         model = self.model = mujoco.MjModel.from_xml_string(ET.tostring(root, encoding="unicode"))
         if (tuple(model.actuator(i).name for i in range(model.nu)) != JOINTS
                 or model.nq != 19 or model.nv != 18 or model.neq or model.nmocap):
@@ -145,21 +183,28 @@ class Go1:
         model.actuator_biasprm[:, 1] *= gain
         self.trunk = model.body("trunk").id
         self.floor = model.geom("floor").id
-        self.wall_ids = {model.geom(name).id: name for name in walls}
+        obstacles = [*walls, *(f"bollard{i}_{part}" for i in range(len(posts)) for part in ("cap", "stem"))]
+        self.wall_ids = {model.geom(name).id: name for name in obstacles}
         self.feet = [model.geom(leg).id for leg in LEGS]
         self.foot_modes = [set() for _ in LEGS]
         self.data = mujoco.MjData(model)
         mujoco.mj_resetDataKeyframe(model, self.data, model.key("home").id)
-        yaw = float(rng.uniform(-.026, .026))
+        self.data.qpos[:2] = launch[:2]
+        yaw = launch[2]
         self.data.qpos[3:7] = [math.cos(yaw/2), 0., 0., math.sin(yaw/2)]
         mujoco.mj_forward(model, self.data)
         mujoco.mj_step(model, self.data, nstep=200)  # settle the native home pose, before mission time
         mujoco.mj_kinematics(model, self.data)
+        self.origin = self.xy.copy()
+        self.origin_yaw = self.heading
+        self.world_to_odom = rotation2(-self.origin_yaw)
+        self.renderer = None
+        self.looks = 0
         self.goal = goal
         self.ticks = self.dwell = self.tipped = 0
         self.actions = 0
         self.outcome = "running"
-        self.max_x = 0.
+        self.max_x = float(self.xy[0])
         self.travel = 0.
         self.racks = racks
         self.choices = [None]*len(racks)
@@ -187,9 +232,10 @@ class Go1:
         return {int(b if a == floor else a) for a, b in self.data.contact.geom if a == floor or b == floor}
 
     def observe(self):
+        relative = self.heading-self.origin_yaw
         return {
-            "tracking_xy_m": self.xy.round(3).tolist(),
-            "heading_rad": round(self.heading, 4),
+            "odom_xy_m": (self.world_to_odom @ (self.xy-self.origin)).round(3).tolist(),
+            "odom_yaw_rad": round(math.atan2(math.sin(relative), math.cos(relative)), 4),
             "gravity_body_unit": (-self.rotation[2]).round(5).tolist(),
             "gyro_body_rad_s": self.data.qvel[3:6].round(4).tolist(),
             "joint_rad": self.data.qpos[7:].round(4).tolist(),
@@ -197,6 +243,23 @@ class Go1:
             "foot_contact": [foot in self.contacts for foot in self.feet],
             "ticks_remaining": MAX_TICKS-self.ticks,
         }
+
+    def look(self, detent):
+        if type(detent) is not int or not 0 <= detent < 8:
+            raise ValueError("camera detent must be an integer from 0 to 7")
+        if self.looks >= MAX_LOOKS:
+            raise ValueError("ground camera exposure budget spent")
+        if self.renderer is None:
+            self.renderer = mujoco.Renderer(self.model, PIXELS, PIXELS)
+        mujoco.mj_camlight(self.model, self.data)
+        self.renderer.update_scene(self.data, camera=f"mast{detent}")
+        self.looks += 1
+        return {"images": [image64(self.renderer.render())]}
+
+    def close(self):
+        if self.renderer is not None:
+            self.renderer.close()
+            self.renderer = None
 
     def record_passages(self):
         x, y = self.xy

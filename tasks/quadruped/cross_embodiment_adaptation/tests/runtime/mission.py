@@ -3,13 +3,14 @@ import math
 
 import numpy as np
 
-from articulated import Go1, MAX_SCOUT, Survey, layout
+from articulated import Go1, MAX_SCOUT, Survey, fixtures_and_launch, layout
 
 
 class World:
     def __init__(self, seed):
         self.rng, self.racks, self.goal, self.walls = layout(seed)
-        self.survey = Survey(self.walls, self.goal)
+        self.posts, self.launch = fixtures_and_launch(seed, self.walls)
+        self.survey = Survey(self.walls, self.goal, self.posts)
         self.go1 = None
         self.phase = self.scout_actions = 0
 
@@ -43,9 +44,14 @@ class World:
         if self.phase or self.scout_actions < 4:
             raise ValueError("switch exactly once, after at least four scout moves")
         self.survey.close()
-        self.go1 = Go1(self.rng, self.walls, self.goal, self.racks)
+        self.go1 = Go1(self.rng, self.walls, self.goal, self.racks, self.posts, self.launch)
         self.phase = 1
         return self.observe()
+
+    def look(self, detent):
+        if not self.phase or self.done:
+            raise ValueError("ground camera requires a live target deployment")
+        return self.go1.look(detent)
 
     def metrics(self):
         dog = self.go1
@@ -58,6 +64,9 @@ class World:
             "scout_actions": self.scout_actions,
             "target_actions": dog.actions if dog else 0,
             "target_ticks": dog.ticks if dog else 0,
+            "ground_looks": dog.looks if dog else 0,
+            # Private ledger only; never an observation or a verifier reward field.
+            "launch_pose_world": [*dog.origin.tolist(), dog.origin_yaw] if dog else None,
             "target_contact": int(dog is not None and dog.outcome == "contact"),
             "target_fell": int(fell),
             "target_budget_stop": int(dog is not None and dog.outcome == "budget"),
@@ -66,7 +75,8 @@ class World:
             "contact_first": int(bool(wall and wall.startswith("rack1_"))),
             "contact_middle": int(bool(wall and wall.startswith("rack2_"))),
             "contact_second": int(bool(wall and wall.startswith("rack3_"))),
-            "contact_boundary": int(bool(wall and not wall.startswith("rack"))),
+            "contact_boundary": int(wall in ("back", "front", "north", "south")),
+            "contact_bollard": int(bool(wall and wall.startswith("bollard"))),
             "corridor_entered": int(first is not None),
             "first_aisle_correct": int(first == "wide"),
             "first_shortcut_selected": int(first == "shortcut"),
@@ -87,3 +97,5 @@ class World:
 
     def close(self):
         self.survey.close()
+        if self.go1:
+            self.go1.close()

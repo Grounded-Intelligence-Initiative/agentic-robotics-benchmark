@@ -5,6 +5,7 @@ import math
 import numpy as np
 
 from client import camera_image
+from registration import clusters, map_caps
 
 
 STEP = .02
@@ -24,12 +25,14 @@ class SurveyMap:
         self.visible = np.zeros((len(X), len(Y)), dtype=bool)
         self.occupied = self.visible.copy()
         self.dock = self.visible.copy()
+        self.cap_samples = []
 
     def add(self, obs):
         rgb = np.asarray(camera_image(obs))
         h, w = rgb.shape[:2]
         focal = h / (2 * math.tan(math.radians(78)/2))
         x, y = obs["tracking_xy_m"]
+        self.cap_samples.extend(map_caps(rgb, np.array([x, y])))
 
         def sample(height):
             scale = focal/(1.65-height)
@@ -45,6 +48,9 @@ class SurveyMap:
         self.occupied |= valid & (r > 135) & (r > 1.8*g) & (g > 1.35*b)
         valid, r, g, b = sample(0)
         self.dock |= valid & (b > 135) & (b > 1.8*g) & (g > 1.8*r)
+
+    def landmarks(self):
+        return clusters(self.cap_samples, .13)
 
     def passages(self):
         dock_x, dock_y = np.where(self.dock)
@@ -91,8 +97,8 @@ def scan(robot):
     surveyed = SurveyMap()
     obs = robot.observe()
     surveyed.add(obs)
-    for row, y in enumerate((0., 1.10, -1.10)):
-        xs = np.linspace(0., 6.60, 13)
+    for row, y in enumerate((0., 1.50, -1.50)):
+        xs = np.linspace(-.40, 6.62, 14)
         for x in xs if row % 2 == 0 else xs[::-1]:
             target = np.array([x, y])
             delta = target-obs["tracking_xy_m"]

@@ -3,5 +3,5 @@
   "direction": "higher",
   "value": 1,
   "full_at": 1,
-  "source": "PR37 v6 CPU author controls: public RGB and native Go1 policy safely docked on all eight fixed seeds; see tests/review/README.md. Formal ALE validation pending."
+  "source": "PR37 v7 CPU author controls: registered public RGB/local odometry policy docked at all eight fixed sites; see tests/review/README.md. Formal ALE validation pending."
 }

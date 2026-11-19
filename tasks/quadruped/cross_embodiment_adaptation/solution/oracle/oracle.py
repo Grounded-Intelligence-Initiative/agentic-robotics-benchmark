@@ -1,23 +1,30 @@
-"""ALE author solution: no privileged service calls or hidden inputs."""
-import numpy as np
+"""ALE author solution: align the two sensor frames before walking."""
+import math
 
 from client import Client
+from registration import mast_scan, register, rot
 from survey import scan
 from walk import Walk
 
 
-def deploy(robot, path):
+def deploy(robot, survey, align=register):
+    path = survey.route()
+    chart = survey.landmarks()
     obs = robot.advance()
+    local, offset = mast_scan(robot, obs)
+    pose, diagnostics = align(local, chart, offset)
+    R = rot(pose[2])
     walk = Walk(path)
     while not obs["done"]:
-        obs = robot.act(walk.action(np.asarray(obs["tracking_xy_m"]), obs["heading_rad"],
-                                   obs["ticks_remaining"]))
-    return obs
+        xy = pose[:2]+R @ obs["odom_xy_m"]
+        yaw = pose[2]+obs["odom_yaw_rad"]
+        obs = robot.act(walk.action(xy, math.atan2(math.sin(yaw), math.cos(yaw)), obs["ticks_remaining"]))
+    return {"applied_pose": pose.tolist(), **diagnostics}
 
 
 def main():
     robot = Client()
-    deploy(robot, scan(robot).route())
+    deploy(robot, scan(robot))
 
 
 if __name__ == "__main__":

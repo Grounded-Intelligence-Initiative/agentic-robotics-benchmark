@@ -104,10 +104,11 @@ class Runtime:
         allowed = {"observe": set(), "act": {"action"}}
         if self.mode == "graded":
             allowed["advance"] = set()
+            allowed["look"] = {"detent"}
         elif method == "advance":
             raise ValueError("commissioning is scout-only; Go1 first deploys in the verifier")
         if method not in allowed or set(params) != allowed[method]:
-            raise ValueError("calls are observe(), act(action), advance()"
+            raise ValueError("calls are observe(), act(action), advance(), look(detent)"
                              + (", new_site()" if self.mode == "commissioning" else ""))
         return getattr(self.world, method)(**params)
 

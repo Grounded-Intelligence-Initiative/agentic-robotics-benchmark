@@ -1,4 +1,4 @@
-# PR37 v6: UAV metric clearance survey, switchback route, native joint-level Go1.
+# PR37 v7: register UAV and ground RGB, then transfer the route to local Go1 odometry.
 # Scout-only commissioning; first target deployment is in the separate verifier.
 # The official eight site seeds are unchanged.
 schema_version = "1.4+ale.1"

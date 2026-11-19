@@ -54,7 +54,7 @@ STAGE_COUNTS = (
     "corridor_entered", "first_aisle_correct", "first_shortcut_selected", "fell_before_aisle",
     "partition_crossed", "middle_crossed", "second_aisle_entered", "second_aisle_correct",
     "second_shortcut_selected", "second_partition_crossed", "dock_zone_entered",
-    "contact_first", "contact_middle", "contact_second", "contact_boundary",
+    "contact_first", "contact_middle", "contact_second", "contact_boundary", "contact_bollard",
     "target_budget_stop",
 )
 VERIFIER_STOPS = {
@@ -327,6 +327,7 @@ def run_mission(index, seed, uid, gid, config):
                        "requests": int(state.get("requests", 0)),
                        "success": float(metrics.get("success", 0.)), "switched": float(metrics.get("switched", 0.)),
                        "scout_actions": float(metrics.get("scout_actions", 0)),
+                       "ground_looks": int(metrics.get("ground_looks", 0)),
                        "target_actions": float(metrics.get("target_actions", 0)),
                        "target_ticks": int(metrics.get("target_ticks", 0)),
                        "final_goal_distance": float(metrics.get("final_goal_distance", -1)),
@@ -403,6 +404,7 @@ def main():
              "missions_switched": sum(r["switched"] for r in records),
              "missions_contact_stop": sum(r["contact_stop"] for r in records),
              "mean_scout_actions": sum(r["scout_actions"] for r in records)/len(records),
+             "mean_ground_looks": sum(r["ground_looks"] for r in records)/len(records),
              "mean_target_actions": sum(r["target_actions"] for r in records)/len(records),
              "missions_fell": sum(r["target_fell"] for r in records),
              "mean_max_forward_m": sum(r["max_forward_m"] for r in records)/len(records),
@@ -414,7 +416,7 @@ def main():
     for r in records:
         prefix = "site{}_".format(r["site"])
         for key in ("success", "switched", "contact_stop", "target_fell", "max_forward_m", "target_ticks",
-                    "final_goal_distance", *counts):
+                    "final_goal_distance", "ground_looks", *counts):
             extra[prefix+key] = r[key]
     extra = {k: float(v) for k, v in extra.items() if math.isfinite(float(v))}
     write_verdict(ratio_rewards(measured, anchor, metric_name=calibration["metric"], extra=extra,
