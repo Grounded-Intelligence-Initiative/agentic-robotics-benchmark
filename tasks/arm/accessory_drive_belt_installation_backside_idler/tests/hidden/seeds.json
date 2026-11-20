@@ -1,0 +1,10 @@
+{
+ "seeds": [
+  232734869101919960,
+  555945938315199980,
+  6787042526176404840,
+  1673819561893042314
+ ],
+ "rule": "candidates in draw order; keep a candidate whose start state is sound (no contact deeper than 0.5 mm when the episode starts, the belt on its peg, no belt link moving more than 5 mm over 1 s idle with the arms at home); the first 4 kept are the hidden set; nothing is skipped or re-drawn for any other reason (not for the belt's or the tensioner's physics, not for any program's result)",
+ "selection": "tests/hidden/selection.json"
+}
