@@ -122,9 +122,11 @@ physics model is never rendered and never touched, and no random generator of th
 * **Load-bearing props are loaded.** A prop was a 4 kg crate with nothing on it (the 180 kg slab hung from a weld and
   touched only the robot): 40 N moved it 5 cm and voided the site. Now the slab section is a free body that lies on
   the crate and on a brick heap at the jamb; the crate carries 750-850 N of it and needs about 1000 N at its base to
-  slide 5 cm; with the crate out, the slab comes down. A touch no longer moves it; the robot can still push it out
-  (it pushes with more than its own weight: 5 cm after 15 s of pushing at 0.3 m/s, at once when rammed at 0.45 m/s
-  or more). The rule counts the crate and its slab as one group. Furniture keeps clear of a prop (a keep-out).
+  slide 5 cm; with the crate out, the slab comes down. A touch or a bump no longer moves it 5 cm (training site B:
+  1 cm or less after 6 to 12 s of contact at 0.1 to 0.6 m/s commanded); the robot can still push it out, because its
+  tracks push with 550 N to more than 2 kN and the solver's friction creeps under a held load: 5 cm after 39 to 58 s
+  of pushing at any commanded speed from 0.05 to 0.6 m/s. The rule counts the crate and its slab as one group.
+  Furniture keeps clear of a prop (a keep-out).
 * **The survivor: a protective stop instead of a void.** 60 N for 30 ms used to zero the site, with no signal the
   program could react to; the frozen reference tripped it on a candidate and on a training site. Now it is the robot's
   protective stop (section 3).

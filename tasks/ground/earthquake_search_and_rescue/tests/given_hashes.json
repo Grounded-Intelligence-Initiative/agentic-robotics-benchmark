@@ -4,7 +4,7 @@
  "given/lib/rubblecell/__init__.py": "4f5507ad452f2ebd286798d1c2607a273eaf7198d82389446d19db507160629b",
  "given/lib/rubblecell/client.py": "28872591cfdb81f9a986a37c05583700d438133edc9374522ff229960d81441c",
  "given/robot_api.md": "1760837aa5feb7ff4f8f1bf7378b4b2b6c13347b11b8b3dbf50fe898ba874a5d",
- "given/robot_manual.md": "160c179eb0ed84499dc53aba946bfc48c54fd51e8c10c7aa3c8f4a67a9399b6d",
+ "given/robot_manual.md": "70ae35b57b3c430d1f457286337ed35a98aa216a3ff2b025f231191318530b7f",
  "session_time.sh": "a94c28bdcd50cb6abf208134e3aa4192cddba96176ebd2a0922550c0ba971ecc",
  "training/run_mission.py": "ccefd50ac8db4448c767f51cb3c367fceb4aed9162f9b3dc946af95c8c020a0a",
  "training/submission_checks.py": "9eff24d7ecf68625b0cd288398e98643205b9a3947964fbebed4915be1ecf297"

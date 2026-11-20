@@ -130,7 +130,8 @@ what reached it.
   enough to clear the person.
 * **Load-bearing debris.** Never move debris that something rests on: a slab, a beam, a stack above it. Such a prop
   really carries its load (a slab section of 180 kg bears on a crate with most of a kilonewton), so brushing against
-  it does not shift it, and the robot can still shift it: it pushes with more than its own weight. Once the robot,
+  it or bumping into it does not shift it far. The robot can still shift it: its tracks push with more than its own
+  weight, and a prop that is pushed on gives way slowly, a few centimetres within a minute. Once the robot,
   what it holds or debris it pushes has touched the prop or the slab on it, moving either by more than 5 cm brings
   the structure down (a secondary collapse, `collapse` in `step`'s events): the team aborts the mission and it
   scores 0. Before you take hold of anything or push through anything, check what bears on it.

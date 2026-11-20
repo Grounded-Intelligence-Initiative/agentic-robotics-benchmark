@@ -84,8 +84,8 @@ Three things end a mission early:
 - **Secondary collapse: the mission scores 0.** Load-bearing debris is debris that a slab or beam rests on. Once the
   robot, what it holds or debris it pushes has touched such a prop or the slab on it, moving either of them by more
   than 5 cm brings the structure down and the team aborts the mission (`collapse`). The load is real: the slab's
-  weight bears on the prop, so brushing against it does not shift it; pushing into it, ramming it or pulling it out
-  does.
+  weight bears on the prop, so brushing against it or bumping into it does not shift it that far; keeping on
+  pushing into it does (it gives way slowly, within a minute of pushing), and so does pulling it out.
 - **Robot lost.** A robot that overturns (tilted more than 70° for 2 s) or drops into an opening in the floor is
   lost: the mission ends there and keeps only what the team had already received.
 
