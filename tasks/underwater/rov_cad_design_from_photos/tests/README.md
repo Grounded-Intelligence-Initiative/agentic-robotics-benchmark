@@ -285,12 +285,28 @@ thruster beside it overlapped in the reference, and a 2 mm error of one thruster
   heads under the plate in photo_089, the side views), within the 4 mm the pose itself is known to (`NOTICE.md`, section
   4). The four ballast weights are turned by 1.014 degrees about their screw (the reference vehicle's pose): 1.0 mm
   between the two ends of a 57.89 mm block, about 3 px, and nothing in the photographs suggests it; placed square, the
-  four lose orientation credit, 0.0004 of the total. The two round foam blocks P28 and P29 stand at an inferred pose (5
-  mm), touch nothing in the reference (`supports` is empty) and, installed, show one face of P29 in one photograph
-  (photo_089); placing them by symmetry is estimated to cost 0.003 to 0.008 of the total. The four corner foam blocks
-  P09 to P12 are hidden under the corner fairings when installed (seen through the vent slots only); their place follows
-  from the fairing's inside and the centre plates. The gripper's extension through its clamp and its roll are a chosen
-  state (2 mm) that only the photographs give.
+  four keep their orientation credit: with the centroids brought together, a block turned by one degree still lies on
+  the reference block within the surface tolerance of the orientation measure (90th percentile 0.30 mm against 0.33 mm),
+  which reads as no orientation error (see "Measurement resolution"). The two round foam blocks P28 and P29 stand at an
+  inferred pose (5 mm), touch nothing in the reference (`supports` is empty) and, installed, show one face of P29 in one
+  photograph (photo_089); placing them by symmetry is estimated to cost 0.003 to 0.008 of the total. The four corner
+  foam blocks P09 to P12 are hidden under the corner fairings when installed (seen through the vent slots only); their
+  place follows from the fairing's inside and the centre plates. The gripper's extension through its clamp and its roll
+  are a chosen state (2 mm) that only the photographs give.
+- **Measurement resolution.** Two measures are coarser than the bands the instruction states, both in the submission's
+  favour. Orientation: a module that already lies on the reference module within the surface tolerance, once its
+  centroid is brought onto the reference one, reads an orientation error of zero (`Grading._orientation_error`; the
+  tolerance is the module's own sampling residual plus the larger of 0.1 mm and 0.002 of its size); for the smallest
+  modules this covers a turn of about one degree (the ballast weights: about 1.1 degrees), beyond the 0.5 degree
+  full-credit end. Contact: the distance between a module and what it rests on is measured on the 0.2 mm tessellation
+  (`mesh.deflection_mm`), so a gap of a few tenths of a millimetre can read as contact (measured: an exact gap of 0.25
+  mm read as contact, where the band gives full credit to 0.1 mm), and the same tessellation can report a few cubic
+  millimetres of penetration where the exact solids do not meet, far below the penetration band's full-credit end. In
+  the frontier episode the two together were worth about 0.0001 of the total.
+- **An orientation error of 180 degrees is a marker**, not a measured angle: the registration that measures a module's
+  orientation did not land on the reference surface (an error beyond its basin), which reads as no orientation credit.
+  In every case seen the true angle was beyond the band's zero end (45, 84 and 90 degrees in the frontier episode); a
+  pose between 0.5 and 12 degrees whose registration failed would lose more than the written band gives.
 - **The vehicle can be recognised.** Its outline and the combination of its modules in the photographs (an open
   frame of black plate, blue fairings, eight thrusters, a 4-inch enclosure with a dome and a 3-inch one) tell a
   reader who knows this class of vehicle which one it is; the registered markings of third-party components inside
