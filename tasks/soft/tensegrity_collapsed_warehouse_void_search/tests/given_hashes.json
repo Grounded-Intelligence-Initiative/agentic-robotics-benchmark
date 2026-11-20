@@ -1,0 +1,13 @@
+{
+ "example/operate.py": "bc376d042d183e6f0424070b4fef296291a7e0a3e6035d306c668f2a0bc539a9",
+ "given/calibration_site/calibration_site.md": "d1ff237dff8e2452226a1c0a30cc1ed0314bfd5afb43911d476692c9d83be2a4",
+ "given/calibration_site/site_plan.json": "3900d6db564bd8baf1e7d27ec3a74c63e345c2db9df3ff18073327e95c7cbb82",
+ "given/calibration_site/site_plan.png": "8ccea95eb7c72d2c71cedaf544d3c0051e635b8db03e6b49c74b78f2a547b701",
+ "given/camera_datasheet.md": "2dde7d480432a6a042aa13886976cf0e625b3a35d2c35340cdfea02e8c72ba67",
+ "given/lib/voidcell/__init__.py": "e48d04b5a6bd4b1b907a3af95bf1e2e9a7989e7d71fe0cace37b8ecc38bf8f0d",
+ "given/lib/voidcell/client.py": "a903e92d8b4026912d330fbd642718dc90ca9629ee4822c6e4fc2e349fea2646",
+ "given/robot_handbook.md": "a5d65ebe91d6420b188f074a6f7ff358535f45aa48ded7c3aa6f74345fd33e36",
+ "given/site_briefing.md": "e719d0700d4da5925cd2f3fb9029061127637534fa21562db871dc32a25c6140",
+ "given/station_api.md": "4bbb1161661e8a4a80e6297b5e8f1df3f271a1a818a913843a00d2cb66d4d930",
+ "training/run_mission.py": "a681cf0dc6feeed15349e046aabfa18354fb0c14defaceef0731ec212e9ea512"
+}

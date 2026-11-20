@@ -1,0 +1,56 @@
+{
+ "metric": "void_search_score",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 0.95,
+ "source": "the privileged reference's own measured value, not a published figure: the mean void_search_score of two full runs of tests/verify.py with the oracle submission (solution/solve.sh: operate.py and the oracle token; the cell's privileged reference_run, tests/reference/reference.py) on the 10 frozen hidden sites (tests/hidden/seeds.json sha256 c56c028b1e521bb3ec20faf2c07dbb2d04267e8cfc4ccae66540cf668d8b57f6, tests/hidden/limits.json sha256 3ac14df3395e86a309d55e6cb667e6e841a140434275eeecc9d8f98dfc0fb040: time limit 1800 s), runs oracleA (stage anchor null: the bootstrap path) and oracleB (stage anchor 1.0) of the freeze, on the development host, two at once, 2026-11-19 12:24 to 2026-11-19 13:21 UTC (not root: no lockdown, no account switch; the givens copy built as tests/test.sh builds it; tests/test.sh's numerics); void_search_score 1.000 and 1.000, every site 1.0 in both; every final state equal bit for bit between the two runs and to the admission run of the selection (tests/hidden/seeds.json reference_final_state_sha256)",
+ "measured": {
+  "how": "the oracle (solution/solve.sh: operate.py + the real token, privileged reference_run) through the real tests/verify.py on the 10 frozen hidden sites (tests/hidden/seeds.json), twice; value = the mean of the two runs",
+  "runs": {
+   "oracleA": {
+    "void_search_score": 1.0,
+    "episode_scores": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "stage_anchor_value": null,
+    "reward": 0.0,
+    "started_utc": "2026-11-19T12:24:05Z",
+    "ended_utc": "2026-11-19T13:20:19Z",
+    "verify_wall_s": 3374.6
+   },
+   "oracleB": {
+    "void_search_score": 1.0,
+    "episode_scores": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "stage_anchor_value": 1.0,
+    "reward": 1.0,
+    "started_utc": "2026-11-19T12:24:25Z",
+    "ended_utc": "2026-11-19T13:21:03Z",
+    "verify_wall_s": 3398.3
+   }
+  },
+  "seeds_json_sha256": "c56c028b1e521bb3ec20faf2c07dbb2d04267e8cfc4ccae66540cf668d8b57f6",
+  "limits_json_sha256": "3ac14df3395e86a309d55e6cb667e6e841a140434275eeecc9d8f98dfc0fb040",
+  "measured_at_utc": "2026-11-19T13:21:03Z"
+ },
+ "note": "reward = clamp(mean / value / full_at, 0, 1) (robotics_grader.ratio_rewards); value = the privileged reference's measured mean on the hidden set over the freeze's two runs. tests/hidden/seeds.json was revised after these runs (2026-11-19) in its n_rubble field only: the number of rubble blocks of each site (1 or 2), where the freeze had written 6, the number of keys of the site's rubble record; verify.py does not read the field, so the runs and their final states stand, and the sha256 quoted above is the revised file's"
+}
