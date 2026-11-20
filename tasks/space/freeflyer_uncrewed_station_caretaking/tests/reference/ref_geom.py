@@ -3,19 +3,18 @@ capture hint, the deposit plans of a held item on a suction face.
 
 * ``pregrasp_candidates``: the bar ``dist`` in front of the palm (world.pregrasp.distance_m sampled), both cage rolls
   (palm +z = +- bar axis): the construction of ``spacekit.primitives.GraspFeature._target`` as the site generator's
-  reach check uses it (tests/review/sitegen/gen/pregrasp.py sha256
-  00c1604b87f4c3a3e91d9bae7e7390d6f61008766dd8f818a12d9da1adc15801 ``robot_pose_for_bar``), ordered so that the aft
+  reach check uses it (tests/review/sitegen/gen/pregrasp.py,
+  ``robot_pose_for_bar``), ordered so that the aft
   depth camera sees the bar from 0.45-0.60 m first (reference.hint_range_m).
 * ``hint``: a world bar (centre, axis) and a world palm direction expressed in the body frame of a pose.
-* ``plan_pouch``: the pouch-pad bench study's plan (source
-  sha256 837221d055b401e8b2ec74cd220a8a601c6a7739d276985c21c39d70d8a5c337 ``plan_deposit``): the pouch's pose in the
+* ``plan_pouch``: the pouch's pose in the
   palm frame (privilege 4) -> the palm pose that puts the POUCH CENTRE on the pad centre (deposit rule 1),
   its long side (the handle bar) along the pad's b, its back face ``standoff`` off the face plane, palm +z toward the
-  pad plate's side; changed: the palm is squared to the pad, not turned by the pouch's in-hand attitude (align).
-* ``plan_sheet``: the soft sheet on the holding screen: the palm square to the screen (the holding-screen study's deposit axes) with
+  pad plate's side; the palm is squared to the pad, not turned by the pouch's in-hand attitude (align).
+* ``plan_sheet``: the soft sheet on the holding screen: the palm square to the screen with
   the bar kept in its in-plane direction (the smallest turn; with the inlet and the screen on parallel rack faces a
-  turn about the bar only: the holding-screen study's hand-over pose, measurement 4), the sheet's flat-layout centre on the screen
-  centre (deposit rule 1; the holding-screen study's P_HAND_OFF 0.12 m is this offset for a loop on an end strip), the held strip's back
+  turn about the bar only), the sheet's flat-layout centre on the screen
+  centre (deposit rule 1; for a loop on an end strip this is an offset of 0.12 m), the held strip's back
   ``standoff`` off the face plane; ``z_choice`` turns the bar to the screen's +-b / +-a axes instead (the fallback
   when no plate is seen).  The items turn freely about the grasped bar in the cage, so the plans
   square the palm, not the item, and the item's attitude is checked at the press (``item_normal_dev_deg``).
@@ -29,7 +28,7 @@ import numpy as np
 from spacekit.primitives import pose_for_palm
 from spacekit.rotations import mat_to_quat
 
-BAR_IN_PALM_X = -0.090       # bar centre in the palm frame after the close (89-91 mm; the firmware bench)
+BAR_IN_PALM_X = -0.090       # bar centre in the palm frame after the close (89-91 mm measured)
 
 
 def unit(v):
@@ -102,8 +101,8 @@ def inhand_angle(held: dict, R_item_palm) -> float:
 def plan_pouch(geom: dict, face, held: dict, plate_side: str = "+b", standoff: float = -0.008, align: str = "clamped",
                clamp_deg: float = 35.0, turn_deg: float | None = None) -> dict:
     """The pouch-pad plan (module doc).  held: Truth.held_pose (bodies [(p, R)] in the palm frame, half sizes).
-    align 'clamped' (default): the bench study's plan -- the palm turned about the bar by the pouch's in-hand turn so that
-    the pouch faces the pad (the cage carries it: the bench 30 / 30, the first runs here 6 / 6 when not refused) -- with the
+    align 'clamped' (default): the palm turned about the bar by the pouch's in-hand turn so that
+    the pouch faces the pad (the cage carries it: 30 / 30 on a test bench, 6 / 6 in the cell when not refused) -- with the
     turn clamped to clamp_deg (a pouch turned edge-on would swing the robot's body toward the face: the zone check
     refused those inserts), the centre placed where the pouch sits once the pad squares the rest of the turn;
     'palm': the palm square to the pad, no turn; 'item': the site parts' plan unclamped."""
@@ -209,9 +208,9 @@ def plan_sheet(geom: dict, face, held: dict, R_palm_world, standoff: float = -0.
                turn_deg: float = 0.0) -> dict:
     """The holding-screen plan (module doc).  held: Truth.held_pose; R_palm_world: the palm attitude now (the body
     estimate's attitude times the palm's constant rotation), only used to pick the smallest rotation.  The palm square
-    to the screen (palm x = the face normal; the holding-screen study's deposit axes), palm +z = the bar: z_choice None keeps the bar's
+    to the screen (palm x = the face normal), palm +z = the bar: z_choice None keeps the bar's
     in-plane direction (the smallest turn: a turn about the bar only when the inlet and the screen are on parallel
-    faces, the holding-screen study's hand-over pose) or '+b' / '-b' / '+a' / '-a'.  The sheet's flat-layout centre (the middle strip, from
+    faces) or '+b' / '-b' / '+a' / '-a'.  The sheet's flat-layout centre (the middle strip, from
     the held strip and the chain direction where they sit in the hand now) on the screen centre; the held strip's
     back ``standoff`` off the face plane."""
     n, fa, fb = _plane_axes(face)
@@ -262,7 +261,7 @@ def _axis_angle(axis, ang: float) -> np.ndarray:
 
 def plan_aligned(geom: dict, face, held: dict, kind: str, base: dict, standoff: float, max_deg: float) -> dict:
     """The deposit plan with the palm turned so that the held item's sealing face lies in the face plane (the
-    closed-loop alignment of the reference's fix round): ``base`` is the squared plan (plan_sheet / plan_pouch); the smallest rotation Q
+    closed-loop alignment): ``base`` is the squared plan (plan_sheet / plan_pouch); the smallest rotation Q
     about the item that takes the item's face normal (its pose in the hand now, P4) onto the face normal (either face
     seals), clamped to max_deg, turns the palm: R_palm = Q R_base; the item's centre (a sheet's flat-layout centre from
     its held strip, a pouch's centre) at its pose in the hand now goes on the face centre, its back ``standoff`` off

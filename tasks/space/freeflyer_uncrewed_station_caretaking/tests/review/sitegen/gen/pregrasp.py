@@ -9,14 +9,10 @@ module axis at the bar's axial position) with the arm deployed: the segment of `
 (``firmware.zonecheck.ZoneRules`` on the station's as-surveyed zones -- the same map and rule as the firmware's
 fly_to).  The records (``pregrasp_records``) list every accepted pose.
 
-Promoted from:
-  * the sketch's pre-capture probe (source sha256
-    2c0310df63e4cfb8773885482008b39da6f57a5da6921833fa97386b1e83c192): per bar, stand-offs x palm-z senses through
-    the firmware's arm map (the probe used a point check; here the whole segment, as the firmware bench does);
-  * robot_pose_for_bar of the firmware bench (source
-    sha256 6390dac0d03c9a89935e33a49e4c1f2c5e553321a47ba7592d28ca658c89031b), the construction of
-    ``spacekit.primitives.GraspFeature._target``; the palm transform and its plane offset are read once from a task
-    firmware layer (they are constants of the reference build).
+Per bar, every stand-off and palm-z sense is checked through the firmware's arm map (the whole segment, not a
+point); ``robot_pose_for_bar`` is the construction of ``spacekit.primitives.GraspFeature._target``; the palm
+transform and its plane offset are read once from a task firmware layer (they are constants of the reference
+build).
 """
 from __future__ import annotations
 

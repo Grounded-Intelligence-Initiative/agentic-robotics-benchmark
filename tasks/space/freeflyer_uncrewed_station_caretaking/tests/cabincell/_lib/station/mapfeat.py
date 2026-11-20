@@ -1,9 +1,7 @@
-"""Mapped feature points of the station (the as-surveyed map the localiser matches against; the station description 'Lighting and
-localisation': rack-face 0.25 m grid + handrails / luminaires / vents / hatch doors / return inlets / dock).
+"""Mapped feature points of the station (the as-surveyed map the localiser matches against:
+rack-face 0.25 m grid + handrails / luminaires / vents / hatch doors / return inlets / dock).
 
-Promoted from the localisation study's ``feature_points`` (source
-sha256 d81cf00bb739a1945b824d579d601d48bb6093f335ebd28f4eb84957817ab4b7), unchanged
-rule, on the neutral catalogue.  The stowage units are not mapped features (they can be moved; their fiducial plates
+``feature_points`` computes them on the neutral catalogue.  The stowage units are not mapped features (they can be moved; their fiducial plates
 are the robot's relative references).  ``data/station/map_features.json`` holds the points of both scenes; the
 firmware package reads it (lighting factors are its business).
 """

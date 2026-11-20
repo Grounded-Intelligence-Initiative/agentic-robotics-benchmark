@@ -34,10 +34,9 @@ settle after it is not charged) and the rest of the reservation goes back; a run
 failure, its process killed, a debrief that could not be made, a restart of the service) keeps the whole reservation
 charged.  The run count is never given back.  The status is in STATUS (world-readable).
 
-Promoted from the quadruped task's practice ground (the plant inspection task of this benchmark,
-its practiced.py "version 2", source sha256
-c7c0bf3da70308f689b605b5b68dace83580307dc686bbd7f577cd0eb61f47c4): the forked run per connection, the busy reply,
-the ledger under flock, the snapshots and the fallback last line of a dead run.  Changed: cards drawn per run instead
+Adapted from the practice ground of the quadruped plant inspection task of this benchmark (its practiced.py): the
+forked run per connection, the busy reply,
+the ledger under flock, the snapshots and the fallback last line of a dead run.  Here: cards drawn per run instead
 of stored sites, the simulated-minute allowance with reservation and charge, the observation sheet of categories
 (no per-item truth), the station record, the cell of this task.
 """

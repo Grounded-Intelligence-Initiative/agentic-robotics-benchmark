@@ -1,5 +1,5 @@
-"""Suction of a return inlet on loose items that cover part of it: the lumped duct-and-fan network of the
-cabin-mechanics spike, ported (numpy only, no scipy).
+"""Suction of a return inlet on loose items that cover part of it: a lumped duct-and-fan network
+(numpy only, no scipy).
 
 Network (one cabin fan, N return inlets in parallel -> common duct -> fan):
     fan:    dp_fan(Q, w) = curve(Q / (s w)) * (s w)^2       published cabin-fan curve, affinity scaled; w = speed
@@ -13,12 +13,12 @@ The inlet pressure difference P_c (cabin minus duct) is common to all open inlet
 carries P_c over its sealed area (behind it the medium / duct passes no flow, so there is no drop across it).
 Sealing decays with the item's gap g to the face: s(g) = 1 / (1 + (g / g0)^2).
 
-Inlet builds (``INLET_BUILDS``): the spike's four (bare grille, grille + 20-mesh screen, + coarse prefilter mat,
-filter element as the inlet face) plus two intermediate mats used in its removal sweep.  The spike stated its
-filter resistance per (m^3/s) at its 0.737 x 0.102 m filter face; here it is converted once to r_face [Pa s/m]
-(physical, transfers to other face areas) so the spike's numbers are reproduced exactly at its geometry.
+Inlet builds (``INLET_BUILDS``): four (bare grille, grille + 20-mesh screen, + coarse prefilter mat, filter element
+as the inlet face) plus two intermediate mats.  The filter resistance is given per (m^3/s) at a 0.737 x 0.102 m
+filter face and converted once to r_face [Pa s/m] (physical, transfers to other face areas), so the values hold
+exactly at that geometry.
 
-Fan spin-down / spin-up: first order, tau_fan (spike: 3 s, an estimate).
+Fan spin-down / spin-up: first order, tau_fan (3 s, an estimate).
 
 Items: ``SuctionFaces`` samples the two large faces (local z = +-half_z) of each item body in cells with
 sub-points; the suction of a cell acts at the cell centre, so lifting an edge loses that edge's suction (the
@@ -42,21 +42,21 @@ __all__ = [
 INCH = 0.0254
 CFM = 4.71947e-4             # m^3/s per ft^3/min
 INH2O = 249.089              # Pa per inch of water
-AIR_DENSITY = 1.2            # kg/m^3 (the spike used the propulsion model's 1.2)
+AIR_DENSITY = 1.2            # kg/m^3 (the propulsion model's 1.2)
 
-# Station filter element face 29 x 4 in, rated 70 cfm (the spike's reference inlet)  [R spike: filter test-protocol report]
+# Station filter element face 29 x 4 in, rated 70 cfm (the reference inlet)  [R filter test-protocol report]
 FILTER_FACE_REF = (29 * INCH, 4 * INCH)
 FILTER_FACE_REF_AREA = FILTER_FACE_REF[0] * FILTER_FACE_REF[1]
 FILTER_RATED_FLOW = 70 * CFM
 
 # Quiet cabin-ventilation fan, 12 000 rpm: free 220.4 cfm @ 0.52 inH2O, design 150.6 cfm @ 3.48 inH2O, peak
-# 4.0 inH2O @ 120.7 cfm [R spike: quiet cabin-fan measurement report]; the points below 120 cfm (stall region) are estimates [G].
+# 4.0 inH2O @ 120.7 cfm [R quiet cabin-fan measurement report]; the points below 120 cfm (stall region) are estimates [G].
 FAN_CURVE_Q = np.array([0.0, 60.0, 100.0, 120.7, 150.6, 190.0, 220.4]) * CFM
 FAN_CURVE_DP = np.array([3.0, 3.4, 3.85, 4.0, 3.48, 1.9, 0.52]) * INH2O
 FAN_DESIGN_POINT = (150.6 * CFM, 3.48 * INH2O)
 
-# K_face [-] on the face velocity; r_face [Pa per m/s of face velocity].  Spike values: r_filter 200 / 500 / 1200 /
-# 5300 Pa per (m^3/s) at the reference face -> r_face = r_filter * A_ref.  All [G] in the spike (order of magnitude of
+# K_face [-] on the face velocity; r_face [Pa per m/s of face velocity].  Values: r_filter 200 / 500 / 1200 /
+# 5300 Pa per (m^3/s) at the reference face -> r_face = r_filter * A_ref.  All [G] (order of magnitude of
 # a perforated grille, a 20-mesh screen, a coarse prefilter mat, a filter-faced inlet).
 _A = FILTER_FACE_REF_AREA
 INLET_BUILDS = {
@@ -186,7 +186,7 @@ class FanNetwork:
 
     builds: one build name for all inlets or a dict inlet name -> build name (or a dict of K_face / r_face).
     Q_design: unblocked design flow (default: sum of the inlets' flow0).  fan_scale: 'published' (the curve at its
-    test speed, as the spike) or 'design_point' (size-scaled so the curve's design point delivers Q_design: keeps a
+    test speed) or 'design_point' (size-scaled so the curve's design point delivers Q_design: keeps a
     small module fan out of the stall region) or a float.  tau_fan: first-order spin time constant [s].
     State: ``omega`` (speed fraction), ``omega_cmd``, ``Pc`` (inlet pressure difference [Pa]), ``Q`` (total flow),
     ``blocked`` {inlet: sealed area}.  ``solve()`` is skipped when nothing changed (key = speed and blockages)."""

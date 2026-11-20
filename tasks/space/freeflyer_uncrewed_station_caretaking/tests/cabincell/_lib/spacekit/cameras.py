@@ -32,9 +32,9 @@ CAMERA_ROLES = {"forward_wide": ("cam_fwd_wide", False), "aft_wide": ("cam_aft_w
 IMAGE_SIZE = {"forward_wide": (1280, 960), "aft_wide": (1280, 960), "forward_imaging": (1366, 1024),
               "forward_depth": (224, 171), "aft_depth": (224, 171)}
 
-# v0.4: the robot's two lamps (positions / axes in the robot body frame: the reference build's lamp windows, as the localisation study
-# used them) and the spot-light recipe for the classic renderer.  216 lm in a 45 deg beam = 452 cd [R dev.lamp,
-# derived by the telemetry study]; the classic renderer has no photometric units, so diffuse / attenuation are a calibration [G]:
+# v0.4: the robot's two lamps (positions / axes in the robot body frame: the reference build's lamp windows) and the
+# spot-light recipe for the classic renderer.  216 lm in a 45 deg beam = 452 cd [R dev.lamp]; the classic renderer
+# has no photometric units, so diffuse / attenuation are a calibration [G]:
 # inverse-square fall-off, equal to a typical cabin light's contribution (0.5) at about 1.4 m on axis.
 LAMPS = dict(front=dict(pos=(0.1345, 0.0, 0.0369), dir=(1.0, 0.0, 0.0)),
              aft=dict(pos=(-0.1345, -0.054, 0.0303), dir=(-1.0, 0.0, 0.0)))

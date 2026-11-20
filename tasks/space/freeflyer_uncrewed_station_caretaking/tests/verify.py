@@ -57,9 +57,7 @@ Records: out/episodes.json (every site's summary), out/<tag>.record.json (the ce
 and logs/<tag>.log (the program's stderr) under the root-only /opt/arb-verify (outside /opt/ale, which the engine
 clears before it keeps a sandbox); host-side runs as another account keep them under $ARB_RECORD_ROOT or the stage.
 
-Promoted from the quadruped task's tests/verify.py (the plant inspection task of this benchmark,
-version 2 with amendment 1, source sha256 0bb4d4b2613e35310da08964e6b32367f4a60fb64f65a60f403ef3b8cb013cb6):
-the early lockdown, the root payload check, the route gate, the parser and network audits, the import check, the token,
+Adapted from the tests/verify.py of the quadruped plant inspection task of this benchmark: the early lockdown, the root payload check, the route gate, the parser and network audits, the import check, the token,
 the desktop settle, the runner, the per-run wire and clean-up, the gates and the verdict writer are that file's.
 Changed for this task: the program is caretake.py on cabinkit; every run setting is read by key from
 the runtime site_spec (never written here) except the route gate's lists, which are the sibling's grader_config
@@ -206,8 +204,8 @@ FORBIDDEN_EXTENSIONS = (".pt", ".pth", ".onnx", ".safetensors", ".ckpt", ".h5", 
 FORBIDDEN_CALLS = ("torch.optim", ".backward(", "jax.grad")
 CPU_CAP_FACTOR = 4.0          # the program's CPU seconds per site = this x cell.budget.program_compute_s (sibling's value)
 SOCKET_SAMPLE_S = 0.5
-# the kernel's first choice when the sandbox's memory runs out is the program, never the grader (sibling amendment 1,
-# review); util-linux's choom is in the image; a host without it runs the program without the prefix (stat)
+# the kernel's first choice when the sandbox's memory runs out is the program, never the grader (as in the sibling
+# task); util-linux's choom is in the image; a host without it runs the program without the prefix (stat)
 OOM_FIRST = ["choom", "-n", "1000", "--"] if shutil.which("choom") else []
 PARSE_ERRORS = (SyntaxError, RecursionError, MemoryError, ValueError)
 SUSPICIOUS = ("/opt/ale", "ALE_STAGE_DIR", "ALE_VERIFICATION", "hidden/selection", "hidden/sites", "oracle_token",
@@ -618,7 +616,7 @@ def _parse_error(e):
 
 def unparsable_files(src):
     """[(relpath, error text)] of the submission's .py files the parser cannot read at all (RecursionError, MemoryError,
-    ValueError; the sibling's amendment 1): the walk and decoding are the network audit's, so that no file
+    ValueError; as in the sibling task): the walk and decoding are the network audit's, so that no file
     the audit reads reaches it unparsed. A SyntaxError is left to the audit's own rule (no program can import it)."""
     out = []
     for dp, dns, fns in os.walk(src):

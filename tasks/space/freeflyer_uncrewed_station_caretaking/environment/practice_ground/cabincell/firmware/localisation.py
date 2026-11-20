@@ -1,14 +1,12 @@
 """Localisation pieces of the task firmware: the lighting's effect on the map localisation, the fiducial plates'
 visibility (occlusion) gate, and the rail-relative mode of capture.
 
-* ``CabinRichness`` -- promoted from the localisation study (source
-  sha256 d81cf00bb739a1945b824d579d601d48bb6093f335ebd28f4eb84957817ab4b7,
-  ``CabinRichness``): the richness handed to ``spacekit.sensors.Localizer`` = weighted count of mapped feature points
+* ``CabinRichness`` -- the richness handed to ``spacekit.sensors.Localizer`` = weighted count of mapped feature points
   (the station's ``map_features.json``) in the forward camera's 120 deg / 0.3-6 m cone, facing the camera, not
   occluded (by the scene, or by the robot as the frames show it: ``RobotOccluder``), weight = min(1, lighting factor
   of the point's module (firmware.lighting.feature_factor: general / night / failed circuit) + the robot's lamps);
-  evaluated at the sparse-map rate (spec loc.rates) with a hold in between.  Unchanged rule; the moved-cargo zones of
-  the study are gone, the lamp positions come from spec dev.lamp.positions.
+  evaluated at the sparse-map rate (spec loc.rates) with a hold in between; the lamp positions come from spec
+  dev.lamp.positions.
 * ``RobotOccluder`` -- the robot's own occluder in every camera-visibility test of the firmware (since 1.1.0): the
   maker's public mesh as the agent's frames render it, in the pose of the robot's bodies, with the frames' near clip.
   The objects are the renderer's (``cabincell.sensors_render``: the asset ``robot_author`` through its loader, added by
@@ -20,9 +18,7 @@ visibility (occlusion) gate, and the rail-relative mode of capture.
   occlude.  So at arm tilt 0 nothing of the robot is in any camera's view, with the arm tilted the maker's arm and
   fingers are, where the frames show them.  The reconstruction's display meshes (group 1 of the physics model) and the
   robot's collision proxies are transparent to every camera-visibility test.
-* ``RayTester``, ``fiducial_check`` -- promoted from the holding-screen study (source sha256
-  0002545509f1343ad98b93e6753cd5eb8ed9d8bb5bd35a108fa782dd85c1f44a; the method is the stowage study's, the stowage study
-  sha256 16611b557e0fa0374ba43030e608f6d72d6f4bf3ea40a1f8cfa52a0f7d898bf2): a marker point of a plate is seen by the
+* ``RayTester``, ``fiducial_check`` -- a marker point of a plate is seen by the
   aft wide camera when it is inside the 40 deg cone, the range and the incidence limit (``dock.fiducial_visible``),
   inside the delivered pinhole frame, and its ray is blocked neither by the robot as the frames show it
   (``RobotOccluder``) nor by the scene (walls, handrails, parts and items -- the held item included).  At least
@@ -32,11 +28,11 @@ visibility (occlusion) gate, and the rail-relative mode of capture.
 * ``GatedFiducialLocalizer`` -- the simulation package's ``dock.DockRelativeLocalizer`` (consistent error model)
   whose fixes are gated by ``fiducial_check`` at the fiducial rate (spec loc.rates fiducial_Hz, held in between): a
   tick on which the plate is not visible gives no fiducial fix (the localiser's own no-view branch: inertial hold, then
-  the map).  the holding-screen study's ``SwitchLocalizer`` did the same with a gate flag; here the gate is computed inside the localiser.
-* ``RailLocalizer`` -- promoted from the capture study: the top of the stack;
-  after a capture lock the estimate is bar-relative.  Changed: the rail-relative estimate keeps the absolute error the
-  estimate had at the lock (frozen) plus a slow inertial drift; the capture study reported the true pose (relative errors cancel in the
-  approach either way, but the absolute pose is then exact, which is not what a bar-relative fix gives).
+  the map); the gate is computed inside the localiser.
+* ``RailLocalizer`` -- the top of the stack; after a capture lock the estimate is bar-relative: the rail-relative
+  estimate keeps the absolute error the estimate had at the lock (frozen) plus a slow inertial drift (relative errors
+  cancel in the approach either way; the true pose would make the absolute pose exact, which is not what a
+  bar-relative fix gives).
 numpy + mujoco + spacekit only.
 """
 from __future__ import annotations
@@ -51,7 +47,7 @@ from spacekit.rotations import quat_conj, quat_from_rotvec, quat_mul, quat_to_ma
 from spacekit.sensors import true_state
 
 CAMERA = dict(axis_body=(1.0, 0.0, 0.0), offset_body=(0.20, 0.0, 0.0), fov_deg=120.0, range_m=(0.3, 6.0), n_good=40,
-              min_cos_incidence=0.15, occlusion_tol_m=0.10)                                   # the localisation study [G]
+              min_cos_incidence=0.15, occlusion_tol_m=0.10)                                   # [G]
 LAMP_MODEL = dict(flux_lm=216.0, beam_full_deg=45.0, taper_to_deg=30.0, general_lux=150.0)   # dev.lamp; lux [G]
 LAMP_NAMES = {"forward": "front", "aft": "aft"}                                             # API name -> spec key
 AWC = "cam_aft_wide"

@@ -16,8 +16,8 @@ charge left. The grader runs the program on six hidden sites (`hidden/selection.
 |---|---|
 | `test.sh` | closes the stage and its parent before Python starts; builds the root-owned givens at `/opt/arb` from `setup_payload/` and the image's task-asset pictures (`/opt/task-assets/payload`); OSMesa, 8 rasteriser threads, one BLAS / OpenMP thread and the CPU pins of the runtime key `cell.recipe.env`; names the asset root (`CABINCELL_ASSET_ROOT`, default `/opt/task-assets`); `exec python3 -s verify.py` |
 | `verify.py` | the grader's driver (below) |
-| `grader_config.json` | every threshold and weight of the grader (exported from the task's master value table; never read by the cell's run settings or the rehearsal facility) |
-| `anchor.json` | metric `caretaking_score` (higher), `value` = the reference's score on the hidden set (1.0 by the selection rule), `full_at` 0.95 |
+| `grader_config.json` | every threshold and weight of the grader (generated, never edited by hand; never read by the cell's run settings or the rehearsal facility) |
+| `anchor.json` | metric `caretaking_score` (higher), `value` = the reference's score on the hidden set (1.0 by the selection rule of `review/select_set.py`), `full_at` 0.95 |
 | `cabincell/` | the cell: `server.py` (CabinCellServer, the wire side of the robot's API), `api.py`, the task firmware (`firmware/`), the station services (`station_service.py`, `telemetry_synth.py`), the site builder (`site/`), the frame renderer (`sensors_render.py`: a render-only twin that shows the maker's robot meshes), the grade (`grade.py`, `predicates.py`), the vendored simulation library (`_lib/spacekit`, `_lib/station`) and the runtime copy of the task's numbers (`data/site_spec.json` with its sha256 file); `data/<component>/ASSETS.json` pin the three model archives |
 | `reference/` | the privileged reference program (`reference.py`, driven by the privileged call `reference_run`) and its modules |
 | `hidden/` | `selection.json` (the fixed hidden set in episode order: package, sha256, the reference's energy on the site; the frozen file list, the per-cell decisions and the recorded amendments), `candidates.json` (all 36 candidates and their verdicts), `sites/*.site.tar.xz` (the six stored site packages), `oracle_token.sha256` |
@@ -74,6 +74,5 @@ image on the measuring host (the comment of `task.toml` gives the numbers).
 
 ## Maintenance
 
-Every file here has one owner among the maintainers' tools (recorded in their publish manifest): an assembly step
-makes the asset list, the mirror and `given_hashes.json`, a folder check checks the folder, and an integration check
-repeats the integration's checks.
+Every file here is written by one of the maintainers' tools: an assembly step makes the asset list, the mirror and
+`given_hashes.json`, and a folder check checks the folder.

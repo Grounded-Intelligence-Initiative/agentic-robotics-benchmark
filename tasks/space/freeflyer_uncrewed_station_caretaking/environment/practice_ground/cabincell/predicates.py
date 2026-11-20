@@ -1,4 +1,4 @@
-"""predicates.py -- what counts, by geometry (07 freeflyer_uncrewed_station_caretaking; the geometric
+"""predicates.py -- what counts, by geometry (freeflyer_uncrewed_station_caretaking; the geometric
 predicates of the scoring rules).
 
 Two layers, one definition each:
@@ -20,16 +20,11 @@ Two layers, one definition each:
 
 Thresholds are never literals here: callers pass the tests/grader_config.json values (``measure_params``).
 
-Promoted from the earlier prototypes (source sha256 at promotion):
-  the sketch grader   06d7d3488b649ba855ef714391a30d3669717477d0bc1f353dbb1e14ba01848d
-                         (_clear_windows -> longest_run, fan_stop_seconds -> fan_stop_intervals, evidence_ok)
-  the sketch cell    (Recorder.sample: loss of control at the record rate; bar_in_cage: 5 points along the bar)
-  the holding-screen study  0002545509f1343ad98b93e6753cd5eb8ed9d8bb5bd35a108fa782dd85c1f44a
-                         (strip_metrics: covered area = back face within the gap band and inside the opening;
-                          caged / in_gripper: the cage box)
-Changes against the prototypes: projected raster area instead of 4 x 8 sub-points per strip (exact to the raster
-cell), the first layer only, a symmetric gap band (distance <= max gap on either side of the face plane),
-the cage's plane condition |z - z_plane|, conservative readers for non-finite values.
+Measures: the longest clear run (longest_run), the fan-stop intervals, the evidence check (evidence_ok), loss of
+control at the record rate, the bar in the cage (5 points along the bar), the covered area (strip_metrics: the back
+face within the gap band and inside the opening, as the projected raster area, exact to the raster cell, of the
+first layer only; the gap band is symmetric: distance <= max gap on either side of the face plane), caged /
+in_gripper (the cage box with the plane condition |z - z_plane|), conservative readers for non-finite values.
 """
 from __future__ import annotations
 
@@ -141,7 +136,7 @@ def covered_fraction(face, boxes, band, opening_area_m2: float, cell: float = 0.
 
 
 def bar_points(centre, axis, length: float, n: int = 5) -> list:
-    """n points along a grasp bar (centre, unit axis, length) from -length / 2 to +length / 2 (the sketch cell's bar test)."""
+    """n points along a grasp bar (centre, unit axis, length) from -length / 2 to +length / 2."""
     c = [float(v) for v in centre]
     a = [float(v) for v in axis]
     na = math.sqrt(sum(v * v for v in a)) or 1.0

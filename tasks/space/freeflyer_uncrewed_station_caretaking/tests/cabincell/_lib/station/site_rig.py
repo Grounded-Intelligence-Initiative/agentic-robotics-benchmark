@@ -4,12 +4,9 @@ inlets and on the stowage units' faces (one SuctionFaces, the cabin air units' a
 the cabin air plus the units' own air, rotating-station loads, network updates at 100 Hz, suction and item aero at
 50 Hz zero-order hold or suction every physics step.
 
-Vendored from the station library's v0.2 ``scene_adapters/site_rig.py`` (sha256
-3d8c25b97c69bda594f9ed2a734073fb5038ed193b783303cb4c7daf67a2068d) and promoted from the holding-screen study's ``wire``
-(robot-free branch; sha256 805c67f6d42797856587efa184104367ff8b8b69348a388a9a0bb3fd2d116f28).  v0.3: spacekit 0.4.0's
-``StationVentilation(inlets=..., return_cfm={module: cfm}, imv_cfm={link: cfm})`` and ``StationModel(inhibited=...)``
-replace the v0.2 work-arounds; the stowage units' networks join the same SuctionFaces (occlusion on);
-no pockets (no shelters).  The components (``station_components``) are what the cell wires around the robot.
+Station library v0.3: spacekit 0.4.0's ``StationVentilation(inlets=..., return_cfm={module: cfm},
+imv_cfm={link: cfm})`` and ``StationModel(inhibited=...)`` carry the ventilation and the inhibition; the stowage
+units' networks join the same SuctionFaces (occlusion on).  The components (``station_components``) are what the cell wires around the robot.
 """
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
-"""The runtime copy of the task's site_spec (``tests/cabincell/data/site_spec.json``, exported from the
-master value table; no grader thresholds, no QC values) with its sha256 self-check.
+"""The runtime copy of the task's site_spec (``tests/cabincell/data/site_spec.json``, generated, never
+edited by hand; no grader thresholds, no QC values) with its sha256 self-check.
 
     from cabincell.site import spec
     v = spec.values()                       # {key: value}

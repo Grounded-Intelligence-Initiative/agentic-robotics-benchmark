@@ -15,7 +15,8 @@
 # held to the end + V 0.08 ventilation restored + K 0.18 sheet fixed on a holding screen + L 0.18 pouches on pads +
 # E 0.08 economy), R = 1.0, else 0.85 after hard collisions or keep-out time; no negative marks. caretaking_score =
 # the contract gate x the mean over six hidden sites, stored as site packages in tests/hidden/sites/ and chosen by
-# the pre-registered rule of tests/hidden/selection.json among sites the privileged reference completes twice. The
+# the pre-registered rule (tests/review/select_set.py; tests/hidden/selection.json pins its sha256) among sites the
+# privileged reference completes twice. The
 # oracle submits a two-line program with a 256-bit token: the reference program inside the cell gets the true world,
 # every move goes through the public calls.
 # Realism rule: the agent gets what the operator of the station's robot would have: the robot's manual and API, the
@@ -51,7 +52,7 @@ memory_mb = 16384
 # the worst values measured in containers of the task image (station look v05, the task assets from the build context's
 # local_assets; runs on 2026-11-17, 2026-11-18 and 2026-11-19; a value measured later only ever raises the limit) on
 # the measuring host (AMD Threadripper 7960X, 48 threads), each container with the verifier's 8 CPUs and 16 GB and no
-# network (the integration's bench records): per site the cell's build (30 s), 2400 simulated s at 1.077 wall s per
+# network: per site the cell's build (30 s), 2400 simulated s at 1.077 wall s per
 # simulated s (the oracle's slowest site in the verify of 2026-11-19, while other work held the host's load at about
 # 115-186; the same day the privileged reference's two runs gave 0.918-1.022 and the empty program's two 2400 s runs
 # 0.800-0.811, an idle AMD EPYC 7713 cloud machine's 2400 s null run of the cell 0.943; the look leaves the cell's cost per

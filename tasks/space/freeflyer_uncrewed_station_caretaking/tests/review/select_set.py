@@ -1,5 +1,5 @@
 """select_set.py -- the pre-registered selection of the fixed hidden set of freeflyer_uncrewed_station_caretaking
-(the selection rules and the owner's rule that every candidate runs once).
+(the selection rules and the rule that every candidate runs once).
 Maintainers' tool on the hidden side: never part of the grade, never named to the agent.
 
 The rule (``RULE``; the rule file is ``rule`` 's output and must equal it, ``check-rule``):
@@ -27,7 +27,7 @@ The rule (``RULE``; the rule file is ``rule`` 's output and must equal it, ``che
                observability step is computed again for all 36 candidates under the same rules, and ``reevaluate``
                applies the same order to the stored physics and robustness verdicts and the fresh observability
                verdicts; a cell whose new first candidate lacks a robustness run is held until that run is made (once)
-Every candidate is generated once and run once per run kind (owner 2026-11-06); robustness runs are made for every
+Every candidate is generated once and run once per run kind; robustness runs are made for every
 candidate that passes physics (those that also pass observability first), so the contingency needs no new run in
 the common case.  Runs made for candidates after a cell's site change nothing (the order decides).
 
@@ -92,13 +92,13 @@ SKIP_SUFFIX = (".pyc", ".pyo")
 RULE = dict(
     schema=SCHEMA_RULE, rule_version="1.0.0", task="freeflyer_uncrewed_station_caretaking",
     basis=["the task's site, observability and hidden-set rules",
-           "the maintainers' decisions on the reference, the candidates and the look", "owner 2026-11-06: every candidate runs once"],
+           "the maintainers' decisions on the reference, the candidates and the look", "every candidate runs once"],
     candidates=dict(label_key=LABEL_KEY, kind=KIND, cells="gen.cells.CELL_ORDER (L2xS, L2xP, H2xS, H2xP, L1xS, L1xP)",
                     per_cell_key="layout.candidates_per_cell", per_cell=6, extra_candidates=0,
                     seed_rule="layout.seed_rule: candidate (cell, k) = the first passing attempt j of sha256('<label>/<cell>/<k>/<j>')",
-                    max_attempts=MAX_ATTEMPTS, generator="tests/review/sitegen/gen pipeline.run_attempt with the contract's "
-                    "site.schema.json; every stage A-H (draw, screen, fixture, settle, telemetry, check_site, dry run, pack)"),
-    physics=dict(generation="a passing attempt with j < max_attempts (the generation conditions of 2.2 and check_site)",
+                    max_attempts=MAX_ATTEMPTS, generator="tests/review/sitegen/gen pipeline.run_attempt; "
+                    "every stage A-H (draw, screen, fixture, settle, telemetry, check_site, dry run, pack)"),
+    physics=dict(generation="a passing attempt with j < max_attempts (the generation conditions and check_site)",
                  dry_runs="the passing attempt's 600 s settle and 2400 s robot-free dry run (sheet cover change < 1 %, "
                           "displacement <= 3 mm; pouch <= 1 mm) passed",
                  reference_asis="one run of tests/reference (CabinCellServer(privileged=True).reference_run(), direct mode, "
@@ -135,7 +135,7 @@ RULE = dict(
               "same (candidate, kind) is an error",
     hollowing=dict(features=["hold_N", "chain_fold_deg", "offset_long_m", "offset_short_m", "cover_m2"],
                    compare="the six against all generated candidates, by tier; the dropped candidates' placements",
-                   blind_mc="the removal re-test's blind-sweep Monte Carlo (capture gate 4 cm / 8 deg, "
+                   blind_mc="a blind-sweep Monte Carlo of the removal (capture gate 4 cm / 8 deg, "
                             "budget 20) on the selected placements; reported to the maintainers above 0.20 (a report, not a gate)"),
     outputs=dict(hidden="tests/hidden/selection.json (set: tag, package, sha256, seed null, ref_energy_wh = the as-is "
                         "run's energy), tests/hidden/candidates.json, tests/hidden/sites/<site_id>.site.tar.xz",
@@ -438,7 +438,7 @@ def features_of(summary: dict) -> dict:
 
 # ============================================================================================== reference runs
 def stable_digest(rec: dict) -> str:
-    """sha256 of the record without what depends on the wall clock or the machine (the first reference program's and the trial runs' definition)."""
+    """sha256 of the record without what depends on the wall clock or the machine."""
     r = json.loads(json.dumps(rec))
     r.pop("metrics", None)
     r.get("budgets_used", {}).pop("program_compute_s", None)
@@ -731,8 +731,7 @@ def first_times(per: dict) -> dict:
 
 
 def attribute_check(per: dict, the_set: list) -> dict:
-    """The set's secondary attributes, read from each package's site.json, against layout.cell.* and layout.counts
-    (the cell table)."""
+    """The set's secondary attributes, read from each package's site.json, against layout.cell.* and layout.counts."""
     from cabincell import server as SV
     from cabincell.site import spec as SPEC
     v = SPEC.values()

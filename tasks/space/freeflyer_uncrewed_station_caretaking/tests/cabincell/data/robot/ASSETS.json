@@ -1,5 +1,5 @@
 {
- "about": "Robot model of task 07's cell: the frozen reference build's mjcf/freeflyer_v1.xml (collision meshes + light visual set) and mjcf/scene_dock_v1.xml (the dock; its collision meshes and its two target meshes: attach it with visual=False). Unpack the archive into an asset root; assetroot.py finds and verifies it.",
+ "about": "Robot model of the cell: the frozen reference build's mjcf/freeflyer_v1.xml (collision meshes + light visual set) and mjcf/scene_dock_v1.xml (the dock; its collision meshes and its two target meshes: attach it with visual=False). Unpack the archive into an asset root; assetroot.py finds and verifies it.",
  "archive": {
   "bytes": 683692,
   "deterministic": "sorted members, mtime 2026-11-15T00:00:00Z, uid/gid 0, modes 644/755, xz preset 9",

@@ -1,13 +1,10 @@
 """Siting of a stowage unit on a rack face: the dense ray check, the corridor and inlet-distance rules, and the air
 pre-screen in front of the holding screen.
 
-Promoted from the holding-screen study's ``unit_site_check`` (sha256 805c67f6d42797856587efa184104367ff8b8b69348a388a9a0bb3fd2d116f28)
-and the independent check's ``site_flow.py`` (source sha256
-774fe409a3ca277a7af6e1471765404a602fb8473c01a2fcb3d6f934c676b1a1).  v0.3: the footprint is the unit with its pouch pads
-and every pad-plate candidate (``stowage.UnitPart.outline``); the rule set of the station description:
+``unit_site_check``: the footprint is the unit with its pouch pads and every pad-plate candidate
+(``stowage.UnitPart.outline``); the rules:
   mountable   every ray hit inside the footprint within +-15 mm of the footprint's own (median) plane, i.e. the unit's
-              back sits flat (2 cm grid: a 19 mm handrail is not missed; a coarse check put a unit on a handrail in
-              the holding-screen study); v0.3: the plane is the local one -- on a stepped rack face (the practice module) the unit is seated on
+              back sits flat (2 cm grid: a 19 mm handrail is not missed); the plane is the local one -- on a stepped rack face (the practice module) the unit is seated on
               the panel it covers (``seat``) instead of being judged against the candidate's plane
   clear       nothing more than 20 mm proud of that plane within 0.20 m of the holding screen's frame
   corridor    the unit's volume outside the +-0.45 m tube about the module axis

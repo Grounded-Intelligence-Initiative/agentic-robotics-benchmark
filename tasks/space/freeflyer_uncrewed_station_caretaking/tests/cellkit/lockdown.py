@@ -6,7 +6,7 @@ The review demonstrated, inside the real image, a background process left by the
 now `/opt/ale/tests`, under a root-only `/opt/ale`) and copies the reference program into the still-writable
 `/home/user/submission` WHILE the engine uploads the verify stage -- i.e. before the first line of verify.py runs, so
 no lock inside the grader can be early enough. The copy scored 1.0. Nothing in the engine kills the agent account's
-processes between the agent phase and verify, and a byte comparison with the anchor cannot be a gate because
+processes between the agent phase and verify (Q13), and a byte comparison with the anchor cannot be a gate because
 `ale validate`'s oracle phase legitimately stages the very same files.
 
 What closes it (every function below is used by verify.py's `_early_lockdown`, run as root first thing):

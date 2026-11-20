@@ -1,4 +1,4 @@
-"""budgets.py -- the per-site budgets of the caretaking cell (the interface contract's 'budgets').
+"""budgets.py -- the per-site budgets of the caretaking cell (robot_api.md, budgets).
 
 Every number is read by key from the runtime copy of the task's numbers (tests/cabincell/data/site_spec.json, checked
 against its sha256 file when it is loaded; never a hard-coded hash), never written here:

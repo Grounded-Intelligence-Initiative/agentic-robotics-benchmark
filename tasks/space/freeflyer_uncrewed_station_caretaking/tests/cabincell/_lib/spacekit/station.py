@@ -16,7 +16,7 @@ Flow model (deterministic, mass-balanced, no CFD):
     band holds (2/3 of the velocities in 0.076-0.61 m/s) -- a [G] stand-in for the jets' momentum;
   * the field at a point = sum over fans of (speed fraction) x basis + sum over modules of (cabin-fan fraction) x
     circulation, evaluated in the box that contains the point (nearest box otherwise).
-Fans spin up / down first order (tau 3 s, the spike's estimate).  The cabin fans are ``suction.FanNetwork``
+Fans spin up / down first order (tau 3 s, an estimate).  The cabin fans are ``suction.FanNetwork``
 objects, so the same object sets the return-inlet suction on items.
 
 CO2 (``CO2Balance``): per module a bulk zone and a port zone (fractions of the module volume).  The cabin fan mixes
@@ -39,7 +39,7 @@ __all__ = ["CABIN_BAND", "INLET_VICINITY_MAX", "RETURN_GRILLE_CFM", "SUPPLY_DIFF
            "DESIGN_RETURN_INLET_CFM", "FAN_STOP_RULES", "FlowBox", "StationVentilation", "SimpleFan", "CO2Balance",
            "StationModel", "pp_mmhg", "load_features"]
 
-CABIN_BAND = (0.0762, 0.6096)       # m/s, 2/3 of cabin velocities  [R spike: human integration handbook 6.2.3.3]
+CABIN_BAND = (0.0762, 0.6096)       # m/s, 2/3 of cabin velocities  [R human integration handbook 6.2.3.3]
 INLET_VICINITY_MAX = 0.2032         # m/s near the inlets  [R same]
 RETURN_GRILLE_CFM = 14.375          # per deck return grille  [R measured-design module CFD]
 SUPPLY_DIFFUSER_CFM = 26.88         # per overhead diffuser  [R same]
@@ -49,7 +49,7 @@ DESIGN_RETURN_INLET_CFM = 40.0      # the task station's design flow per return 
 # smoke to the detectors): at most 2 stops per cabin air unit per mission, the station restarts the fan after at most
 # 60 s, and at least 120 s of running between the restart of one stop and the next stop.  [C]
 FAN_STOP_RULES = dict(max_stops_per_unit=2, max_stop_s=60.0, min_gap_s=120.0)
-HATCH_OPENING = 1.27                # m  [V digest]
+HATCH_OPENING = 1.27                # m  [V]
 CO2_PA_PER_KG_M3 = 8.314 * 295.0 / 0.04401   # ideal gas at 22 C
 MMHG = 133.322
 

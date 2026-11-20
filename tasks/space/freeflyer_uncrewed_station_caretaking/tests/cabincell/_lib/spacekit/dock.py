@@ -102,7 +102,7 @@ def attach_dock_v1(spec, dock_pos=(0.0, 0.0, 0.0), dock_quat=(1.0, 0.0, 0.0, 0.0
         moving = par.name != "dock" and par.name.startswith("dock_")
         # display hulls that are not contact surfaces: moving parts, pins, magnets, and the four berth captive-screw
         # heads (one convex hull spanning all four = an 87 mm slab 1.6 mm proud; the heads sit in the robot's relief
-        # pockets, integration substitution S5)
+        # pockets)
         if (g.contype or g.conaffinity) and (moving or "pin_" in g.name or "magnet" in g.name or "captive_screw" in g.name):
             g.contype, g.conaffinity = 0, 0
             silenced.append(g.name)

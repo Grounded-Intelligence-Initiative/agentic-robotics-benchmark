@@ -1,9 +1,5 @@
 """capture(bar_pos, bar_axis, palm_dir) of the task firmware (robot_api.md, capture).
 
-Promoted from the capture study's prototype (source
-sha256 06dde7755ee8ad6f9735fc4d7b07c98dcc4c8e3d128b40d4a0a83d5342e68089: ``Capture``, ``_EstGrasp``; the trial flow of
-its trial script, source sha256 9523faef20137415f1f301495121cd5e81978d0e37185fe5c1c73c54378be753).
-
 Sequence.  The hint (bar centre and axis in the body frame at the call) is mapped into the estimate frame with the
 estimate at the call; the robot holds.  The bar detector (``bars.BarDetector``, firmware.capture.detector_hz) measures
 every visible bar; in any cycle, a bar whose last firmware.capture.lock_mean_of measurements (all taken after the call)

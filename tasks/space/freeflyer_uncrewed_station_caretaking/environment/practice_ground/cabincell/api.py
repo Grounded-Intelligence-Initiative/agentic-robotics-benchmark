@@ -1,4 +1,4 @@
-"""api.py -- the program's calls of the caretaking cell (the interface contract, version 1.1.0).
+"""api.py -- the program's calls of the caretaking cell (the robot API, version 1.1.0).
 
 ``CellAPI(cell).call(method, params)`` carries out one whitelisted call and returns its JSON-able answer: action calls
 ``{code, t, ...}``, query calls a data object.  Arguments are named as in the robot API; a missing, unknown or malformed
@@ -23,11 +23,9 @@ motion, arm, gripper, capture, dock, lamps, status, pose) this module adds what 
 * mission(): the site package's mission members (work order, the 72 h log, the configuration record, the advisory
   log, the register), the as-surveyed map, the start charge and berth.
 
-Promoted from the sketch cell's ``RobotAPI`` and ``Cell.evidence`` (source sha256
-e1346737361c00cb1968d2ae73b358f8f6de5ccfc7a070be91fa913d9943481b) with the localisation study's evidence geometry
-(``evidence_ok``, source sha256 d81cf00bb739a1945b824d579d601d48bb6093f335ebd28f4eb84957817ab4b7);
-changed: the firmware calls are the task firmware's, the codes are the interface contract's, the occlusion rays are
-the firmware's RayTester (whose robot occluder is the maker's mesh since firmware 1.1.0).
+The firmware calls are the task firmware's, the codes are the robot API's (robot_api.md, return codes), the evidence
+geometry is ``evidence_ok``'s, the occlusion rays are the firmware's RayTester (whose robot occluder is the maker's
+mesh since firmware 1.1.0).
 """
 from __future__ import annotations
 
@@ -336,7 +334,7 @@ class CellAPI:
 
     def _hint_error(self, bar_pos, bar_axis) -> dict | None:
         """The hint against the nearest bar of the scene (true body frame at the call): position error [m] and axis
-        error [deg] (a metric for the trial runs' rule table; never an input of the firmware)."""
+        error [deg] (a diagnostic metric; never an input of the firmware)."""
         d, b = self.c.data, self.c.body
         R = d.xmat[b].reshape(3, 3)
         p = d.xpos[b] + R @ np.asarray(bar_pos, float)

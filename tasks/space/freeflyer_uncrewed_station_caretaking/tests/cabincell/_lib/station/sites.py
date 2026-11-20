@@ -1,8 +1,7 @@
 """Site description ``station_site/2`` (station part), its builder and the station part of the validity check.
 
-Vendored from the station library's v0.2 ``sites.py`` (sha256 9c6a0e5307b94613a3b0c532d3d7545d528c64eab530a04c644d6797497f3156;
-format station_site/1) with the v0.3 changes: one stowage unit per module at a unit site (registered or moved)
-instead of the standard bag; no slow-drift item; the scene read from the task's neutral
+Station library v0.3 (format station_site/2; v0.2 wrote station_site/1): one stowage unit per module at a unit site
+(registered or moved); the scene read from the task's neutral
 data (``data``, ``scene``) with an optional look root; the dock and the robot from paths the caller passes (the task's
 vendored reference build); the soft item's loop from spacekit 0.4.0 (``soft_item(loop='edge_mid')``, byte-identical
 to v0.2's insertion); per-circuit lighting with neutral material names; inlet ends over a wall box.

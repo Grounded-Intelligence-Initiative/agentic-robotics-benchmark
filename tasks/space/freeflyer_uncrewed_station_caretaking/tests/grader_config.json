@@ -5,7 +5,7 @@
   "grader.R.hard_force_N": "PH07",
   "grader.R.hard_speed_m_s": "PH07"
  },
- "rule": "Grader thresholds of the task: the 'grader.' section of the task's master value table, exported value by value (do not edit by hand; change the table and re-export). The L criterion is switched by the key 'grader.L.criterion': 'own_footprint_fraction' (default: min_own_fraction of the pouch's own footprint) or 'abs_seal_area' (min_seal_m2_alt). Read by tests/cabincell/grade.py; the cell reads the measurement keys (grader.seal, grader.covered, grader.in_gripper_cage_mm, grader.loss_of_control) through predicates.measure_params.",
+ "rule": "Grader thresholds of the task, generated value by value (do not edit by hand). The L criterion is switched by the key 'grader.L.criterion': 'own_footprint_fraction' (default: min_own_fraction of the pouch's own footprint) or 'abs_seal_area' (min_seal_m2_alt). Read by tests/cabincell/grade.py; the cell reads the measurement keys (grader.seal, grader.covered, grader.in_gripper_cage_mm, grader.loss_of_control) through predicates.measure_params.",
  "schema": "caretaking.grader_config/1",
  "task": "freeflyer_uncrewed_station_caretaking",
  "units": {

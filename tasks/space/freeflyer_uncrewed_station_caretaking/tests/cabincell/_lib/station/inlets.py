@@ -1,5 +1,5 @@
-"""Return-inlet part family of the station scene (vendored from the station library's v0.2 ``inlets.py``, sha256
-a620e7977e2b6a66e4a308fb7e9c6f54b447c7e6318170a85e824cc5ecf1a668; v0.3 changes marked "v0.3").
+"""Return-inlet part family of the station scene (station library v0.3; the changes against
+v0.2 are marked "v0.3").
 
 The part (local frame x = long axis t1, y = b = n x t1, z = n into the cabin, origin = the rack-face point under the
 part centre):

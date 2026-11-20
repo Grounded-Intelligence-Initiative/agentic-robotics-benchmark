@@ -1,4 +1,4 @@
-"""grade.py -- the per-site grader of 07 freeflyer_uncrewed_station_caretaking (the task's scoring rules
+"""grade.py -- the per-site grader of freeflyer_uncrewed_station_caretaking (the task's scoring rules
 and the aggregate over the hidden set).
 
     grade(record, site, ref_energy_wh=None, config=None, runtime=None) -> the site's verdict
@@ -38,11 +38,10 @@ Site score = R x (D + U1 + H + U2 + V + K + L + E), weights 1.00 in total:
 'End' = times.end (the end of the settle after the program).  No negative score; metrics hold finite numbers only;
 missing or non-finite record values never raise a score (predicates.py: conservative readers).
 
-Promoted from the sketch grader (source sha256 06d7d3488b649ba855ef714391a30d3669717477d0bc1f353dbb1e14ba01848d):
-the eight items, R, margins and chain_pass.  Changed against it (the final rules): bags -> holding
-screens and pouch pads by sealed area, the 60 s window for K, L and both U2 branches, e_wind lines
-35 / 120 s, hard-collision thresholds and every other number from grader_config.json, every docking for H,
-the report check of non-finite values, frames looked up by id, a loss of control re-checked on the samples.
+The eight items, R, margins and chain_pass: holding screens and pouch pads by sealed area, the 60 s window for K,
+L and both U2 branches, e_wind lines 35 / 120 s, hard-collision thresholds and every other number from
+grader_config.json, every docking for H, the report check of non-finite values, frames looked up by id, a loss of
+control re-checked on the samples.
 """
 from __future__ import annotations
 
@@ -472,7 +471,7 @@ def margins(record, graded: dict, config: dict | None = None, runtime: dict | No
 
 
 def chain_pass(graded: dict, margins_out: dict) -> dict:
-    """Pass under the rules (raw score 1 and every margin) and the sketch cell's 'chain' pass that leaves out what the blocker's
+    """Pass under the rules (raw score 1 and every margin) and the 'chain' pass that leaves out what the blocker's
     stowage decides (K, U2, V that hangs on U2, E's gate): diagnosis, removal, docking, every pouch, R, fans,
     no violation, e_wind full and the margins."""
     it, b, W, m = graded["items"], graded["binary"], graded["weights"], graded["metrics"]

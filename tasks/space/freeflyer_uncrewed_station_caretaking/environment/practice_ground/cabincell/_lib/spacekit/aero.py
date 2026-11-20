@@ -1,5 +1,4 @@
-"""Aerodynamic forces on loose items in cabin air, and the free-flyer's nozzle exhaust as a velocity field
-(the cabin-mechanics spike's models, ported).
+"""Aerodynamic forces on loose items in cabin air, and the free-flyer's nozzle exhaust as a velocity field.
 
 Item drag (``ItemAero``): every item is described by one or more ``ItemShape`` (box / plate, cylinder, capsule,
 sphere) in its body frame; each shape is represented by sample points that carry a share of its projected areas.
@@ -25,10 +24,10 @@ import numpy as np
 __all__ = ["AIR_DENSITY", "ITEM_CD", "ItemShape", "ItemAero", "jet_velocity", "NozzleJetField", "StillAir",
            "UniformAir", "settle_time_closed_form", "Shelters"]
 
-AIR_DENSITY = 1.2       # kg/m^3 (the spike's value; spacekit.cabin uses 1.225 for the robot's own drag)
+AIR_DENSITY = 1.2       # kg/m^3 (spacekit.cabin uses 1.225 for the robot's own drag)
 ITEM_CD = {"box": 1.2, "plate": 1.2, "cube": 1.05, "cylinder_cross": 1.0, "cylinder_axial": 0.9, "sphere": 0.47}
-JET_B = 6.2             # potential-core length / far-field decay constant (u_c = v0 B d0 / s)  [spike]
-JET_C = 0.114           # 1/e radius growth (r_e = c s); B c = 1/sqrt(2) conserves momentum flux  [spike]
+JET_B = 6.2             # potential-core length / far-field decay constant (u_c = v0 B d0 / s)
+JET_C = 0.114           # 1/e radius growth (r_e = c s); B c = 1/sqrt(2) conserves momentum flux
 
 
 class StillAir:
@@ -236,7 +235,7 @@ class NozzleJetField:
 
     body: robot body id; nozzle_pos / nozzle_dir (12, 3) body-frame exit points and exhaust directions;
     thrust_fn() -> (12,) current thrusts [N]; dp_fn() -> (2,) plenum pressures [Pa] of the two modules (nozzles
-    0-5 module 0, 6-11 module 1); cd_exit (0.9 as the spike's exit-velocity table); data: the MjData whose body
+    0-5 module 0, 6-11 module 1); cd_exit (0.9); data: the MjData whose body
     pose is used (set by ``bind``).  Callable on points (N, 3) -> (N, 3).
     """
 

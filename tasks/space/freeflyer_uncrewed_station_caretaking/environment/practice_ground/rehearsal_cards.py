@@ -29,9 +29,8 @@ service at the reset), its seed the first 8 bytes (little endian) of the text's 
 generator (tests/review/sitegen/gen/cells.py ``_seed``) under a label of its own, so no run can share a seed text
 with a trial site, a debug site or a hidden candidate, and the scene ('practice', module L3) shares no inlet with them.
 
-Adapted from the site generator's draw and register (tests/review/sitegen/gen/draw.py sha256
-81718ed14177c3594072eee2d84ac352c5e26dc140078e200fe58f30c078fa8a, register.py sha256
-e60ec2a9ffbc874e8ec339093b5ef1a1a4d1893cd8369b4651439cd129b8723b): the same placement and telemetry functions of the
+Adapted from the site generator's draw and register (tests/review/sitegen/gen/draw.py, register.py): the same
+placement and telemetry functions of the
 cell (cabincell.site.placement, cabincell.site.items, telemetry_synth.draw_telemetry with no cell row = no decoy),
 one unit instead of three, the training colours, no clutter.  numpy and the cell's own modules.
 """

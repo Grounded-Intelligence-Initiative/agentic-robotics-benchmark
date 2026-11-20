@@ -43,7 +43,7 @@ NAME_MAP = {
     "gripper_site": "gripper_center",
     "dock_site": "site_dock_connector",
     "cameras": {"forward_wide": "cam_fwd_wide", "aft_wide": "cam_aft_wide", "forward_imaging": "cam_fwd_img",
-                "forward_depth": "cam_fwd_depth", "aft_depth": "cam_aft_depth"},   # neutral ids (naming table)
+                "forward_depth": "cam_fwd_depth", "aft_depth": "cam_aft_depth"},   # neutral ids
 }
 
 # Keys looked up in the values file (first match wins) for each plant quantity.  The shared values file of the
@@ -109,7 +109,7 @@ class FreeFlyerSpec:
 
     @classmethod
     def reference_configuration(cls) -> "FreeFlyerSpec":
-        """The reference robot as task 07 flies it: firmware reference constants (propulsion, controller, modes,
+        """The reference robot as freeflyer_uncrewed_station_caretaking flies it: firmware reference constants (propulsion, controller, modes,
         impeller inertia 0.001 kg m^2 -- the firmware's own) with the configured mass properties of the
         reference configuration (platform + perching arm module stowed, 10.450 kg; ``mass.refcfg.*``)
         and the default battery count (``pwr.battery.default_count``), from ``data/reference_configuration.json``

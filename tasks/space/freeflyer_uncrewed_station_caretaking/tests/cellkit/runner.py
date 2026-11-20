@@ -20,7 +20,7 @@ this task executes agent code DURING verify, so the grader itself must
     (`snapshot_tree`, `tree_changes`, `sweep_new_entries`).
 
 No RLIMIT_NPROC (per uid across every container sharing the uid; kills BLAS thread starts, measured
-2026-09-26 by the requirements task). stdlib only.
+2026-09-26 by the requirements lane). stdlib only.
 """
 
 import os

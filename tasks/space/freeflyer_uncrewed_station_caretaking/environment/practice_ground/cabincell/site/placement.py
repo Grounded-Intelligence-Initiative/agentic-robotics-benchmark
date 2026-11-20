@@ -13,8 +13,8 @@ strip's long side crosses the opening's short side), so a draw is filtered on th
   and the seal box) for given body poses, with the sampler's own arithmetic (same arrays, same order, same sums): on
   a scene's body poses it is bit-identical to the scene's sampler at seal 1;
 * ``sampler_area`` -- the same on the poses the builder writes for an item lying flat on its inlet (the builder's
-  6-significant-digit MJCF numbers mirrored), i.e. the analytic replica of the scene's sealed area at t = 0 (the network-settle study's
-  ``covered_flat``; bit-identical to the scene at seal 1 unless a sub-point lies within ~1e-15 m of the opening edge);
+  6-significant-digit MJCF numbers mirrored), i.e. the analytic replica of the scene's sealed area at t = 0
+  (``covered_flat``; bit-identical to the scene at seal 1 unless a sub-point lies within ~1e-15 m of the opening edge);
 * ``geometric_overlap`` -- the exact area of the item's footprint inside the opening (convex clipping), the
   "network calculation" side of the hold check;
 * ``unit_hold`` -- the hold of one item = the unit network's inlet pressure difference x its sealed area (the same
@@ -458,7 +458,7 @@ def place_pouch(rng, pid: str, iid: str, pouch: dict, feats: dict, r_face: float
 
 def pouch_for_hold(feats: dict, iid: str, target_N: float, pouch: dict, others=(), flow_cfm: float = 40.0,
                    r_range=None, pid: str = "pouch_1", values=None) -> dict:
-    """(r_face, columns, end, entry) that gives ``target_N`` on ``iid`` (the network-settle study's pouch_for_hold on the replica's
+    """(r_face, columns, end, entry) that gives ``target_N`` on ``iid`` (pouch_for_hold on the replica's
     sealed area, the pad r_face range of the unit size): the first option of ``pouch_options`` whose r_face solves the
     target inside the range."""
     v = values or SPEC.values()

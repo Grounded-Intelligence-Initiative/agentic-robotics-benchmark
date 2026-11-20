@@ -1,9 +1,9 @@
-"""MJCF fragments of the cabin mechanics (the spike's scene parts, ported with neutral names): crew handrail of the
+"""MJCF fragments of the cabin mechanics (neutral names): crew handrail of the
 measured stadium cross-section, loose items with graspable handrail-profile handles (rigid plate, hinged soft item
 with a centre handle and / or a corner loop, small item), a stowage bag with a spring flap (one flap or a split pair), a hook-and-loop board,
 and a helper that wraps fragments into a stand-alone model for ``MjSpec.attach``.
 
-Measured / published values (spike): handrail section stadium 35.0 mm (off the wall) x 19.0 mm (along the wall),
+Measured / published values: handrail section stadium 35.0 mm (off the wall) x 19.0 mm (along the wall),
 bar inner face 43.9 mm off the wall (public handrail mesh); the gripper needs that gap to wrap behind a bar, so the
 item handles copy it.  Stowage bag rules: flap preload <= ~2.5 mN m, pocket deeper than the flap is long,
 mouth >= 2 cm larger than the item on each side, aim within ~2 cm.  Contact recipe: solref 0.004 1, solimp
@@ -17,7 +17,7 @@ __all__ = ["RAIL_DEPTH", "RAIL_WIDTH", "RAIL_STANDOFF", "CONTACT", "MATERIALS", 
            "plate_item", "soft_item", "small_item", "stowage_bag", "standard_bag", "fiducial_plate", "hook_loop_board",
            "fragment_model", "frame_axes"]
 
-RAIL_DEPTH = 0.0350      # m, stadium section normal to the wall  [V spike: public handrail mesh]
+RAIL_DEPTH = 0.0350      # m, stadium section normal to the wall  [V public handrail mesh]
 RAIL_WIDTH = 0.0190      # m, along the wall
 RAIL_STANDOFF = 0.0439   # m, bar inner face off the wall
 CONTACT = 'solref="0.004 1" solimp="0.95 0.99 0.001" condim="4" priority="1"'

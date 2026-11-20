@@ -39,7 +39,7 @@ from cabincell.site import spec as SPEC
 from . import cells as CE
 from . import register as RG
 
-INHIBIT_REASONS = ("smoke detector check in progress", "equipment cooling requirement")      # the station service (_h.py), [C]
+INHIBIT_REASONS = ("smoke detector check in progress", "equipment cooling requirement")      # the station service, [C]
 LINKS = ("link_h2_l1", "link_h2_l2")
 LIGHT_STATES = ("general", "night")
 

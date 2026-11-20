@@ -1,5 +1,5 @@
 {
- "about": "Station look of task 07's cell: look v2 (the finished hero look) converted for the agent's classic renderer: the meshes and textures of the station modules (three mission modules and the practice module) and the dock's display meshes, referenced by data/station/look_l123.xml and look_l3.xml (meshdir / texturedir = the unpacked 'station' directory). Physics never needs it. Unpack the archive into an asset root; assetroot.py finds and verifies it.",
+ "about": "Station look of the cell: look v2 (the finished hero look) converted for the agent's classic renderer: the meshes and textures of the station modules (three mission modules and the practice module) and the dock's display meshes, referenced by data/station/look_l123.xml and look_l3.xml (meshdir / texturedir = the unpacked 'station' directory). Physics never needs it. Unpack the archive into an asset root; assetroot.py finds and verifies it.",
  "archive": {
   "bytes": 18525852,
   "deterministic": "sorted members, mtime 2026-11-15T00:00:00Z, uid/gid 0, modes 644/755, xz preset 9",

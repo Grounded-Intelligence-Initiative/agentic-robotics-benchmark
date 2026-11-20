@@ -1,12 +1,8 @@
 """The 40 s constant-force fixture of the site generator (the hold-force rule of the sites) and
 one blocker candidate's fixture record.
 
-Promoted from the removal recheck's ``fixture.py`` (source
-sha256 728bd3ff55bf12a5622d42fbe16259ceb2b95caee60c383e4b8686cabb0c4d20; tests promoted from its
-tests, source sha256 13b6301abb1373b3db52bdc828aca785074887c18bc93b07b45ddda65b00b2c7).  Changed: the
-conditions are the final hold-force rule's (the recheck measured an earlier plan's P window and its oblique / drag
-conditions, now gone), the pull-release-pull record of the P tier (recorded only, not a condition), the sheet of the
-candidate (``cabincell.site.items``), the site's angle convention (``bench``), the record in station_site/2 form
+Here: the conditions of the final hold-force rule, the pull-release-pull record of the P tier (recorded only, not a
+condition), the sheet of the candidate (``cabincell.site.items``), the site's angle convention (``bench``), the record in station_site/2 form
 (``fixture_records.blocker``), CPU time per candidate.
 
 One run (``run_const``): the sheet settles ``SETTLE_S`` under suction, then a constant force F acts at the handle's
@@ -21,7 +17,7 @@ Conditions (site_spec world.blocker.fixture):
 Every condition runs on every candidate (no short circuit) so the record says what a rejected candidate violates.
 
 A candidate: dict(tier 'S' | 'P', theta_deg, offset_m [a, b], size, mass, n_inlets, r_face, flow_cfm (40), and
-optionally family, hold_target).  ``draw_candidate`` = the natural candidate stream (the removal re-test's definition: natural
+optionally family, hold_target).  ``draw_candidate`` = the natural candidate stream (natural
 placement, a family sheet, a two- or three-inlet unit with equal odds; P: a hold target drawn in the window and r_face
 solved on the bench's settled sealed area, then one fixed-point step; S: r_face uniform in the element range).
 ``evaluate`` -> the result with the record (``record``) and the decision (``accepted``, ``rejected_by``): rejected if
@@ -184,7 +180,7 @@ def draw_candidate(tier: str, k: int, label: str = DEFAULT_LABEL, values=None) -
 
 
 def solve_r_face(cand: dict) -> tuple:
-    """P: r_face for the hold target on the bench's settled sealed area (one fixed-point step, as the removal re-test).  Returns
+    """P: r_face for the hold target on the bench's settled sealed area (one fixed-point step).  Returns
     (r_face, settled dict)."""
     s0 = B.settle(cand, 66.0)
     A = s0["A_sealed"]

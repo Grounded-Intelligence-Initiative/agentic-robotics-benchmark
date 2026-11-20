@@ -1,6 +1,6 @@
-"""recordkit.py -- synthetic cell records for the grader's replay cases (07 freeflyer_uncrewed_station_caretaking).
+"""recordkit.py -- synthetic cell records for the grader's replay cases (freeflyer_uncrewed_station_caretaking).
 
-A Scenario holds one site -- one of the two worked stations, copied from the contract fixtures:
+A Scenario holds one site -- one of the two fixed example stations:
 sites/site_l1xp.json (L1 x P: pad-type units, CAU-L1 inhibited, three pouches) and sites/site_h2xs.json (H2 x S:
 element-type CAU-H2 with fan stops allowed, two pouches) -- and piecewise-constant timelines of every item, the
 robot's docking, the fans and the events.  record() samples the world every cell.record_period_s from 0 to the end

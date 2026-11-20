@@ -1,26 +1,25 @@
-"""station_service.py -- the station side of the cell of 07 freeflyer_uncrewed_station_caretaking (the station's
-telemetry and requests; interface contract station_request / station_telemetry / mission.config_record, the record's station_requests /
+"""station_service.py -- the station side of the cell of freeflyer_uncrewed_station_caretaking (the station's
+telemetry and requests; the robot API's station_request / station_telemetry / mission.config_record, the record's station_requests /
 fan_stops / violations): on top of spacekit 0.4.0's StationModel (fan-stop rules, inhibited table) it adds
 
   * the station configuration record (per cabin air unit: build, clean reference pressure, advisory limit, whether the
     stop requests are inhibited and why; the commanded lighting of every module);
   * station_request(): cau_fan off / on and lights general / night, with the codes of the robot API (order of the checks
-    INHIBITED -> STATE -> QUOTA -> INTERVAL), the light-request quota and the three flight-rule violations of the telemetry description (a third stop request, a stop request inside the gap that runs from the last restart, a stop that reaches the
+    INHIBITED -> STATE -> QUOTA -> INTERVAL), the light-request quota and the three flight-rule violations (station_handbook.md, flight rules: a third stop request, a stop request inside the gap that runs from the last restart, a stop that reaches the
     automatic restart = overrun).  A request to an inhibited unit, off for a stopped fan and on for a running fan are
     not violations; on for a running fan does nothing;
   * lights: every accepted request sets the commanded state (the lights.<M> channel reports it); a failed light circuit
     (site lighting 'off') accepts the request and stays dark: the effective state handed to the cell's lighting hook
     (localisation feature richness, renderer) does not change;
-  * the live channels of the telemetry description at station.telemetry.live_hz: for each unit the two redundant return-air pressure
+  * the live channels (telemetry_dictionary.md) at station.telemetry.live_hz: for each unit the two redundant return-air pressure
     sensors (+-1 Pa class, each with its own offset, random walk and -- for the slow-drift decoy -- drift, continued
     from the end of the 72 h log of telemetry_synth), fan speed, fan current, state, stops used; CO2, cabin
     temperature and dew point, lights, the static hatch surveys and the advisory log (the station monitor runs on in
     the mission on the minute rows).
 
-Promoted from the sketch cell ``StationService`` (sha256 e1346737361c00cb1968d2ae73b358f8f6de5ccfc7a070be91fa913d9943481b);
-what changed: the robot API's codes and INVALID_ARGS, violation kinds of the record format, the light quota without a violation and
-the failed circuit, channels continued from the log, deterministic per-second noise (independent of how often the
-program polls), fan-stop intervals for the record.
+The robot API's codes and INVALID_ARGS, violation kinds of the record format, the light quota without a violation
+and the failed circuit, channels continued from the log, deterministic per-second noise (independent of how often
+the program polls), fan-stop intervals for the record.
 
 Use (the cell):
     spec = telemetry_synth.load_spec()

@@ -15,7 +15,7 @@ attitude of free objects to be right (without it, 34-149 deg error after 20 min)
 
 ``InertialChiefFrame`` (cross-check / extra-vehicular work): world = chief-centred axes fixed in
 inertial space (the chief's LVLH axes at t = 0); only the exact (Encke) differential gravity and the
-gravity-gradient torque act.  Both formulations agree to 1e-10 m over 1200 s (test_frames.py).
+gravity-gradient torque act.  Both formulations agree to 1e-10 m over 1200 s (the package's tests).
 
 Every frame object is a wrench source: ``accumulate(model, data, W)`` adds its (nbody, 6) wrench to W.
 """

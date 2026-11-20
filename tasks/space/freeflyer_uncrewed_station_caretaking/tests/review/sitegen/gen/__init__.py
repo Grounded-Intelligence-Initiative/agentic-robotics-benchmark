@@ -1,5 +1,5 @@
-"""The site generator of 07 freeflyer_uncrewed_station_caretaking (hidden side, review only; the site
-rules; the site format and its schema).
+"""The site generator of freeflyer_uncrewed_station_caretaking (hidden side, review only; the site
+rules; the site package format).
 
 One candidate of a cell (module x tier of the hidden-set rule) is the first *attempt* drawn from its seed stream that passes
 every generation condition; attempt j of candidate k draws from ``sha256(label / <M>x<T> / k / j)`` (the candidate's
@@ -20,7 +20,7 @@ are ordered by cost, so most rejections are cheap:
   H  pack     the deterministic site package ``<site_id>.site.tar.xz``                     (``mission``, ``sitepack``)
 
 Modules: ``cells`` (labels, seeds, the cell table), ``draw``, ``register``, ``pregrasp``, ``checks``, ``settle``,
-``mission``, ``sitepack`` (byte copy of the contract's reference packer), ``pipeline`` (stages, cost accounting, the
+``mission``, ``sitepack`` (the site package writer), ``pipeline`` (stages, cost accounting, the
 command line), ``freeze`` (the generator's sha256 over its input set).
 
 Every number is read by key from the runtime site_spec (``tests/cabincell/data/site_spec.json``, sha256 self-check by

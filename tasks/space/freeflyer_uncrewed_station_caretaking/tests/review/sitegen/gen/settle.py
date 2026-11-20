@@ -13,13 +13,11 @@
 state0 = {"schema": "caretaking.state0/1", "nq", "nv", "qpos", "qvel", "time", "model_signature": {"nbody", "njnt",
 "names_sha256"}} with the floats as Python floats (``json`` writes their repr: an exact round trip); names_sha256 =
 sha256 of the body names then the joint names of the model, one per line, prefixed 'body:' / 'joint:'.
-``load_state0`` is the reader (the cell, the trial runs).
+``load_state0`` is the reader (the cell).
 
-Promoted from the network-settle study's settle part (source
-sha256 280b6419adaa8cffc804d9e39f52fa276abe1c24e79fc5ebdbc8050df091cadc; the network-settle study sha256
-2eded26217e22592b6c55519bbbdc96ee47d50f359da19eb4d9242ad4beab1dd): settle, then an idle run sampled every second,
-displacement and sealed-area change from the end of the settle.  Changed: the site's own scene and rig (not the network-settle study's trial scene), the per-kind criteria (1 % / 3 mm sheet, 1 mm pouch; the network-settle study had 1 mm for both), the
-dry run from the stored state in a fresh rig (what the cell will start from), state0.
+The check: settle, then an idle run sampled every second that measures the displacement and the sealed-area change
+from the end of the settle, on the site's own scene and rig, against per-kind criteria (1 % / 3 mm sheet, 1 mm
+pouch); the dry run starts from the stored state in a fresh rig (what the cell will start from), state0.
 """
 from __future__ import annotations
 

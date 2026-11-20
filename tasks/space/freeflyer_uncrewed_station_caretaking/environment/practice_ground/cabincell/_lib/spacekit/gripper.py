@@ -1,5 +1,5 @@
 """Perching arm of the free-flyer: spring-closed / tendon-opened gripper, rate-limited arm servo, deploy and stow
-(the cabin-mechanics spike's models, ported to the reference build's names).
+(in the reference build's names).
 
 Gripper principle (published for the real arm): torsional springs close the two two-joint fingers; a tendon wound by
 a small gearmotor opens them, and power-off keeps the grip.  Model: each finger joint has a spring whose reference
@@ -39,14 +39,14 @@ __all__ = ["GRIPPER_DEFAULTS", "ARM_DEFAULTS", "ARM_NAMES", "GRASP_PROFILES", "t
            "touch_opening", "grasp_profile"]
 
 GRIPPER_DEFAULTS = dict(
-    spring_torque_open=(0.1059, 0.0443),   # N m at full opening, proximal / distal  [R arm paper, spike]
-    preload_span=2.0,                      # rad beyond the closed limit  [G spike]
+    spring_torque_open=(0.1059, 0.0443),   # N m at full opening, proximal / distal  [R arm paper]
+    preload_span=2.0,                      # rad beyond the closed limit  [G]
     pad_friction=1.2,                      # silicone pads, calibrated on the 6.43 N pull-off: v1 cage 6.47-6.60 N  [V]
-                                           # (spike box fingers 1.2 -> 7.4 N; v0 CoACD fingers needed 1.8 -> 6.37 N)
+                                           # (v0 CoACD fingers needed 1.8 -> 6.37 N)
     hull_friction=0.4,                     # printed phalanges, posts, springs (models with pad geoms only)  [G]
     pad_suffix="_pad",                     # geom-name suffix of the pads of the part-level fingers
     finger_contact=None,                   # None: the fingers collide with each other iff the model has pad geoms
-    stroke_s=1.0,                          # full open <-> closed  [G spike; 50 rpm tendon motor]
+    stroke_s=1.0,                          # full open <-> closed  [G; 50 rpm tendon motor]
     damping=(0.002, 0.001), armature=(1e-4, 5e-5),
     solreflimit=(0.004, 1.0),
 )
@@ -58,7 +58,7 @@ GRASP_PROFILES = {
     "pads": dict(grasp_depth=-0.082, close_x=-0.090, perch_depth=-0.082, perch_close_x=-0.088),
     "generic": dict(grasp_depth=-0.070, close_x=-0.085, perch_depth=-0.065, perch_close_x=-0.080),   # v0.2 values
 }
-ARM_DEFAULTS = dict(kp=20.0, kv=0.6, effort=1.0, vel=0.12, armature=0.005, damping=0.05)   # spike [G] / URDF limits
+ARM_DEFAULTS = dict(kp=20.0, kv=0.6, effort=1.0, vel=0.12, armature=0.005, damping=0.05)   # [G] / URDF limits
 
 ARM_NAMES = dict(
     joints=("arm_tilt", "arm_pan"), actuators=("act_arm_tilt", "act_arm_pan"),

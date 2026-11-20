@@ -4,7 +4,7 @@ blocker and the register's sheet-like entries) and the tool pouch.
 Soft sheet = 5 hinged strips (``spacekit.fixtures.soft_item(loop="edge_mid")``, hinge 0.002 N m/rad, 4 mm thick), a
 carry strap on the middle strip and the handle loop at the middle of the end strip's outer edge (both tiers keep the
 loop).  Each family has its own corner of the family range (0.28-0.30 x 0.26-0.30 m, 0.08-0.14 kg; one corner per
-family as the holding-screen study's kinds) and its registered colours; the family key is the register class key of station_site/2
+family, the station library's kinds) and its registered colours; the family key is the register class key of station_site/2
 (``blocker.family``), so a site record names the family (the look picks the fabric by it).  Tool pouch = a rigid box 0.18-0.22 x
 0.11-0.14 x 0.02-0.03 m, 0.06-0.15 kg, a 70 mm handle along the long side in the middle of its top face
 (``spacekit.fixtures.small_item``).

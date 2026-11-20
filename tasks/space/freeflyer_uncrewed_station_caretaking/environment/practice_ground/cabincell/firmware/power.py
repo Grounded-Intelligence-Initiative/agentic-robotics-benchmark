@@ -2,15 +2,12 @@
 
 * ``TaskBattery`` -- the simulation package's ``sensors.Battery`` on the 2 h basis (``other_w`` =
   firmware.battery.other_w) that also books the two lamps (firmware.lamp.power_w for each lamp that is on), as the
-  payload load.  Promoted from the sketch cell's ``LampBattery`` (source sha256
-  e1346737361c00cb1968d2ae73b358f8f6de5ccfc7a070be91fa913d9943481b).  The lamps were not booked in the earlier route
-  runs ("its 3.3 W is not booked").
+  payload load.
 * ``Telemetry`` -- a periodic task on the rig's scheduler that samples what status() reports at the rate of the
   sensor behind each field, sample-and-hold in between: battery charge at spec pwr.eps.telemetry_rate (resolution
   firmware.battery.pct_resolution), the two arm joint encoders (spec arm.joint_servo resolution) and the two arm servo
   currents at spec arm.joint_servo telemetry_Hz (current = actuator torque / torque constant, quantised; no
   gripper motor current), the IMU at the firmware rate (the rig's ``Imu``; gyro and accelerometer in the body frame).
-  Promoted from the capture study's ``StatusSampler``.
 """
 from __future__ import annotations
 

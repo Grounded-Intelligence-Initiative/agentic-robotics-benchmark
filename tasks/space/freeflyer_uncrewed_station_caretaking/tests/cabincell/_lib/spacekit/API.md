@@ -7,9 +7,9 @@ v0.2.0 adds the cabin mechanics (`aero`, `suction`, `gripper`, `grasp_rule`, `fi
 (`station`), the zone validator (`zones`), firmware-level primitives (`primitives`) and the optional camera layer
 (`cameras`); v0.3.0 adopts the part-level reference build v1 (reference configuration, finger recipe, the dock v1
 berth `dock`, the propulsion power cut, the fan-stop flight rules, the standard stowage bag, fiducial positioning,
-the render-side `visual_twin`); v0.4.0 fixes the hover wander and the moves that never stop, adds the ruled firmware
-behaviours of task 07 as options, speeds up the suction and dock sources and adds the interfaces the earlier studies asked
-for; see the sections at the end.  Names in these modules are mechanics-level, not an agent-facing API.
+the render-side `visual_twin`); v0.4.0 fixes the hover wander and the moves that never stop, adds the firmware
+behaviours of freeflyer_uncrewed_station_caretaking as options, speeds up the suction and dock sources and adds
+interfaces; see the sections at the end.  Names in these modules are mechanics-level, not an agent-facing API.
 
 Conventions used everywhere:
 
@@ -538,7 +538,7 @@ looking for `build_v1` in the path; `test_gripper`, `test_primitives`, `test_rob
 - Bit for bit: the suction and dock speed-ups, the station's scalar flows, the soft item's default XML.
 
 <!-- spacekit v0.4 -->
-## v0.4 additions (the shared digest's integration: the localiser models, the suction layering, the band rule)
+## v0.4 additions (the localiser models, the suction layering, the band rule)
 
 v0.3.1 (reference build v1.2's `refbuild` text) and the sixteen v0.4 patches are merged; the version is 0.4.0.
 

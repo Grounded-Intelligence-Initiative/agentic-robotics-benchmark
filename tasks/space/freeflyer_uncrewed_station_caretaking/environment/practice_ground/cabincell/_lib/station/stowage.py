@@ -1,11 +1,9 @@
 """Stowage unit of the station scene v0.3: one holding screen in the middle and a pouch pad
 on each side, all three faces in the same plane and fed by the unit's own screen blower.
 
-Promoted from the holding-screen study's ``screen_part.py`` (source
-sha256 7b605cfdacdedf20b7048749190ce2c0b038d8699c9e351f6ba9a7c5280baaea): the screen part, its blower
-network and air, the horizontal unit layout (the study's second fallback).  v0.3 changes: the two pouch pockets are replaced by two
-pouch pads (flat suction faces, no side walls) on the screen's blower network (one FanNetwork with three
-faces); the pad fiducial plate position is a parameter (candidates on the robot's overhang side, chosen by the firmware
+The module holds the screen part with its blower network and air, and the horizontal unit layout: two pouch pads
+(flat suction faces, no side walls) on the screen's blower network (one FanNetwork with three faces); the pad
+fiducial plate position is a parameter (candidates on the robot's overhang side, chosen by the firmware
 package by visibility, site_spec); the unit's approach zone.
 
 The unit (local frame: a = b x n along the rack face, b = 'up' projected into the face plane, n into the cabin; origin
@@ -120,7 +118,7 @@ class UnitNetwork:
 
     @property
     def inlet(self):
-        """The holding screen's face (the holding-screen study's ScreenNetwork.inlet)."""
+        """The holding screen's face."""
         return self.inlets[0]
 
     def sync(self):

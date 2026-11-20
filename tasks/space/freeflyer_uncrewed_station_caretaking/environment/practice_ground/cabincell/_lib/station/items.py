@@ -2,12 +2,9 @@
 free sheet / a sheet or pouch lying on a face, and the geometric sealed area of an item on a face (the measure the
 grader's K / L predicates use: back-face area within 10 mm of the face plane and inside the opening).
 
-Promoted from the holding-screen study's code (KINDS, strip_points, strip_metrics; sha256
-0002545509f1343ad98b93e6753cd5eb8ed9d8bb5bd35a108fa782dd85c1f44a) and the holding-screen study's ``free_sheet_xml`` (sha256
-805c67f6d42797856587efa184104367ff8b8b69348a388a9a0bb3fd2d116f28), and the independent check's ``check_free.py``
-(sheet_on_screen, pouch_xml; source sha256
-eeda9293a7e57cdaf30dc63bbbd74da1574285b91625211e3ced753bbe2e2c97).  v0.3: faces are ``stowage.Face`` objects (holding
-screen or pouch pad); the K-style predicate is the sealed area, the strip count stays a metric.
+Contents: KINDS, strip_points, strip_metrics, free_sheet_xml, sheet_on_screen, pouch_xml.  Faces are
+``stowage.Face`` objects (holding screen or pouch pad); the K-style predicate is the sealed area, the strip count
+stays a metric.
 """
 from __future__ import annotations
 
@@ -16,7 +13,7 @@ import numpy as np
 from .util import quat_from_mat
 
 # soft-sheet kinds of the family (0.28-0.30 x 0.26-0.30 m, 0.08-0.14 kg, 5 strips, hinge 0.002 N m/rad);
-# one corner of the family per kind (the holding-screen study's choice)
+# one corner of the family per kind
 KINDS = {
     "bag": dict(size=(0.30, 0.28, 0.004), mass=0.12, colour="0.90 0.55 0.20 1"),
     "cover": dict(size=(0.28, 0.26, 0.004), mass=0.08, colour="0.15 0.55 0.55 1"),

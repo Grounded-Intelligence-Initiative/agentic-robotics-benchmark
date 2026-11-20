@@ -2,8 +2,8 @@
 
 Two sources, both read by key, never written here as literals:
 
-* the runtime copy of the task's numbers, ``tests/cabincell/data/site_spec.json`` (exported from the task's master
-  value table; checked against ``site_spec.sha256`` when it is loaded, as the contract tool's ``self_check``);
+* the runtime copy of the task's numbers, ``tests/cabincell/data/site_spec.json`` (generated, never edited by
+  hand; checked against ``site_spec.sha256`` when it is loaded);
 * the reference robot's value table, ``tests/cabincell/data/robot/spec_values.json`` (hidden side only).
 
 ``FirmwareSpec.load()`` returns the frozen set the firmware uses; ``apply_dock_defaults(spec)`` puts the berthing cone of
@@ -38,7 +38,7 @@ def _sha(b: bytes) -> str:
 
 
 def load_site_spec(path: str = RUNTIME, sha_path: str = RUNTIME_SHA) -> dict:
-    """The parsed runtime copy after its sha256 check (the same rule as the contract tool's ``self_check``)."""
+    """The parsed runtime copy after its sha256 check."""
     data = open(path, "rb").read()
     want = open(sha_path, "rb").read().decode("ascii").split()[0]
     got = _sha(data)

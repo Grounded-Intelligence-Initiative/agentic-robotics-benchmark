@@ -2,7 +2,7 @@
  "version": "0.3.3",
  "frozen_utc": "2026-11-17T13:03:07Z",
  "by": "the maintainers",
- "naming": "keys use the ids of the platform's naming table; real names only in 'source' and 'note'",
+ "naming": "keys use neutral ids; real names only in 'source' and 'note'",
  "marks": {
   "V": "read in the primary source today (drawing, flight software, paper), or derived today by a script from such values (kind = derived)",
   "R": "read only in a secondary source",
@@ -10,7 +10,7 @@
  },
  "kinds": {
   "published": "a number a source states",
-  "derived": "computed by  from published numbers (method in source/note)"
+  "derived": "computed by the maintainers from published numbers (method in source/note)"
  },
  "sources": {
   "ICD": "NTRS 20190034039, payload mechanical ICD A9SP-1500-M501 rev A (2017-08-29), PDF p.5-8 = sheets 1-4; read as rendered images (pdftoppm 200 dpi) today",
@@ -23,7 +23,7 @@
   "ARMT": "NTRS 20190002821, thermal design of the perching arm (2019), 6 p.",
   "OV19": "NTRS 20200000079, overview slides (2019-11), 68 p.",
   "COM21": "NTRS 20210014015, on-orbit commissioning (SpaceOps 2021), 9 p.",
-  "LL24": "src/ntrs_astrobee/lessons_2024.pdf, operations lessons-learned slides (2024), 29 p.",
+  "LL24": "operations lessons-learned slides (2024), 29 p.",
   "IS16": "NTRS 20160007769, platform paper (iSAIRAS 2016), 8 p.",
   "AI15": "NTRS 20150018250, concept paper (AIAA Space 2015), 10 p.",
   "GSI19": "NTRS 20190002595, guest science interface abstract (2019), 2 p.",
@@ -33,8 +33,8 @@
   "CF25": "NTRS 20250005900, contribution to a joint free-flyer paper (2025), 6 p.",
   "FSW": "public flight software, commit bf43a42d5f89bf0679e51ab25e7a9b7800313e9c (2025-12-02), Apache-2.0; file path given per value",
   "ATM": "arXiv 2501.16973 Table 1 (third-party testbed paper quoting the platform; secondary)",
-  "R2": "the platform's free-flyer research audit (mesh measurements; a secondary source)",
-  "D0": "the maintainers' derivation scripts, from the values marked V"
+  "R2": "the maintainers' measurements of the maker's public meshes (a secondary source)",
+  "D0": "derived by the maintainers from the values marked V"
  },
  "values": {
   "frame.body.origin": {
@@ -1744,7 +1744,7 @@
    },
    "unit": "N, N m",
    "applies_to": "reference build at fan level 3, 4-battery mass properties; Y and Z, torques: weaker sign",
-   "source": "(adoption of the flight-software plant model)",
+   "source": "the maintainers' derivation (adoption of the flight-software plant model)",
    "mark": "V",
    "kind": "derived"
   },
@@ -4313,7 +4313,7 @@
    },
    "unit": "mm",
    "applies_to": "crew handrail the gripper is sized for (public handrail meshes; gap from FSW)",
-   "source": "(mesh bounding boxes); FSW worlds/iss.config world_handrail_wall_min_gap",
+   "source": "mesh bounding boxes; FSW worlds/iss.config world_handrail_wall_min_gap",
    "mark": "R",
    "kind": "published",
    "note": "the gripper is 'sized for grasping a handrail' (SOP26 p.13); no handrail cross-section is published in the papers"
@@ -4753,7 +4753,7 @@
    "source": "FSW worlds/iss.config mass comment (4 batteries); SOP26 p.10",
    "mark": "V",
    "kind": "published",
-   "note": "for task 07 / the simulation kit's default (pwr.battery.count gives the range 2-4)"
+   "note": "for freeflyer_uncrewed_station_caretaking and as the simulation kit's default (pwr.battery.count gives the range 2-4)"
   },
   "pwr.battery.pack_outline_adopted": {
    "value": [
@@ -4763,7 +4763,7 @@
    ],
    "unit": "mm",
    "applies_to": "battery pack outline of the reference build (x, y, insertion z)",
-   "source": "appearance mesh battery handle pieces = frozen assembly-prototype value; DO15 p.60 table gives 79 x 23 x 87",
+   "source": "appearance mesh battery handle pieces (the adopted value); DO15 p.60 table gives 79 x 23 x 87",
    "mark": "V",
    "kind": "derived",
    "note": "the table outline plus 0.5 mm clearance and walls would pass the 3.000 in mating face by 0.07 mm"
@@ -4858,8 +4858,8 @@
     "arm_kg": 0.60659
    },
    "unit": "kg",
-   "applies_to": "modelled parts of each module without the studies' lumped items",
-   "source": "part tables of",
+   "applies_to": "modelled parts of each module without the lumped items",
+   "source": "the reference build's parts, measured by the maintainers",
    "mark": "V",
    "kind": "derived",
    "note": "the lumped items (harness detail, fasteners, adhesive, coatings) close it"
@@ -5040,7 +5040,7 @@
    ],
    "unit": "mm",
    "applies_to": "offset of the description's arm base frame from the drawing's top-aft bay frame (x, y, z_P)",
-   "source": "(mesh mounting ears at the drawing's insert X_P); a maintainers' decision",
+   "source": "mesh mounting ears at the drawing's insert X_P; a maintainers' decision",
    "mark": "V",
    "kind": "derived"
   },
@@ -5052,7 +5052,7 @@
     "public_N": 5.0
    },
    "unit": "N",
-   "applies_to": "quick-release lever: tip force of the reference cam with the assembly prototype's connector force",
+   "applies_to": "quick-release lever: tip force of the reference cam with a 30 N connector force",
    "source": "the maintainers' measurement or derivation",
    "mark": "V",
    "kind": "derived"
@@ -5089,7 +5089,7 @@
    },
    "unit": "mm",
    "applies_to": "propulsion-module locating dowels on the core, round hole + slot in the module",
-   "source": "positions adopted in v1 ( alignment); form from the assembly prototype",
+   "source": "positions adopted in the reference build v1; form chosen by the maintainers",
    "mark": "G",
    "kind": "derived",
    "note": "[C] completed by this project (reference build v1)"
@@ -5121,7 +5121,7 @@
    },
    "unit": "mm",
    "applies_to": "propulsion-module captive screws (module side) and inserts (core side; each face carries the S pattern and its image)",
-   "source": ", integration substitution S2",
+   "source": "simplified in the reference build by the maintainers",
    "mark": "G",
    "kind": "derived",
    "note": "[C] completed by this project (reference build v1)"
@@ -5159,7 +5159,7 @@
    },
    "unit": "in",
    "applies_to": "bay clevises (all four bays): pin along Y_P so that the J-slot lever hooks it",
-   "source": "ICD sh.3 (envelope, pin diameter and height); kit (orientation, S1)",
+   "source": "ICD sh.3 (envelope, pin diameter and height); the interface kit (orientation)",
    "mark": "G",
    "kind": "derived",
    "note": "[C] completed by this project (reference build v1); with an X pin the lever hits it 11 mm above the seat"
@@ -5214,7 +5214,7 @@
    },
    "unit": "mm, deg",
    "applies_to": "berth / robot dock-plate geometry of the reference build",
-   "source": "appearance meshes (cups, lances, pads) measured by; integration substitutions S3 (cup cone), S4 (lance-tip thimbles), S5 (screw reliefs)",
+   "source": "appearance meshes (cups, lances, pads), measured by the maintainers; simplified in the model: the cup cone, the lance-tip thimbles and the screw reliefs",
    "mark": "V",
    "kind": "derived"
   },
@@ -5388,7 +5388,7 @@
    "source": "the maintainers' measurement or derivation",
    "mark": "V",
    "kind": "derived",
-   "note": "the fan time constant 3 s is the spike's estimate [G]"
+   "note": "the fan time constant 3 s is an estimate [G]"
   },
   "iva.catch.limits": {
    "value": {
@@ -5544,7 +5544,7 @@
    "source": "a maintainers' decision; spacekit suction.INLET_BUILDS['prefilter_light']",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] the station is fictional; real return grilles carry about 14.4 cfm; the inlet pressure is a property of the whole fan network; superseded by : see iva.inlet.hold_classes (the hold window and the build here are the  single-window design, kept unchanged)"
+   "note": "[C] the station is fictional; real return grilles carry about 14.4 cfm; the inlet pressure is a property of the whole fan network; superseded: see iva.inlet.hold_classes (the hold window and the build here are the earlier single-window values, kept unchanged)"
   },
   "iva.fan_stop.rules": {
    "value": {
@@ -5856,7 +5856,7 @@
    },
    "unit": "N m s, rad/s",
    "applies_to": "one propulsion channel cut at level 2: the coasting fan's angular momentum goes into the robot (uncompensated body rate about the fan axis)",
-   "source": "spacekit propulsion ( coast_down_study)",
+   "source": "spacekit propulsion (coast_down_study)",
    "mark": "V",
    "kind": "derived"
   },
@@ -5880,7 +5880,7 @@
    "source": "a maintainers' decision",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] the assembly prototype's 30 N gave 7.6 N at the tip; public tip force 5 N"
+   "note": "[C] 30 N gives 7.6 N at the tip; public tip force 5 N"
   },
   "iface.bay.j_slot": {
    "value": {
@@ -5915,7 +5915,7 @@
    "source": "the maintainers' measurement or derivation",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] completed by this project (the assembly prototype's frozen cam); the dwell is a zero-clearance fit (overpull 0.3 mm = radial play 0.3 mm)"
+   "note": "[C] completed by this project (the reference cam); the dwell is a zero-clearance fit (overpull 0.3 mm = radial play 0.3 mm)"
   },
   "iface.bay.engagement": {
    "value": {
@@ -6183,7 +6183,7 @@
   "iface.bay.clevis_x_reference": {
    "value": {
     "centre_x_in": 3.2665,
-    "derivation": "hole row 4.275 - 1.000 - 0.0085 in (geometry base build_brep.py)",
+    "derivation": "hole row 4.275 - 1.000 - 0.0085 in",
     "tables_bay_features_clevis_length_says": "centred on X_P 3.275 (the connector row)"
    },
    "unit": "in",
@@ -6201,7 +6201,7 @@
    },
    "unit": "rpm, rad/s",
    "applies_to": "hardware fan-speed limit (the over-speed protection of the fan drive)",
-   "source": "a maintainers' decision (gap)",
+   "source": "a maintainers' decision (an architecture gap)",
    "mark": "G",
    "kind": "derived",
    "note": "[C] architecture completion of this project"
@@ -6477,7 +6477,7 @@
      "S": 0.8096,
      "P": 0.8133
     },
-    "integration": "registered: the gate's steady-state-impedance RK4; its independent 0.5 ms integration of the winding agrees within 0.02 %; without inductance the closed form (0.5 ms integration 0.8095 / 0.8132 s; 0.3.0's 0.8141 / 0.8178 s came from the kit's 16 ms Euler step, +0.55 %); 2940 rpm, +X runaway state",
+    "integration": "registered: a steady-state-impedance RK4; an independent 0.5 ms integration of the winding agrees within 0.02 %; without inductance the closed form (0.5 ms integration 0.8095 / 0.8132 s; 0.3.0's 0.8141 / 0.8178 s came from the kit's 16 ms Euler step, +0.55 %); 2940 rpm, +X runaway state",
     "inductance_source": "the fan motor's catalogue page (the part of prop.fan.motor_part) [R]"
    },
    "unit": "ohm, H, s",
@@ -6500,7 +6500,7 @@
    "source": "the maintainers' measurement or derivation",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] facility value of the assembly task; the earlier studies'  may refine them"
+   "note": "[C] facility value of the assembly task"
   },
   "asm.facility.air_bearing": {
    "value": {
@@ -6517,14 +6517,14 @@
     "weighing_gate_g": 25.0,
     "weighing_gate_com_mm": 1.5,
     "day_factor_pct": 1.5,
-    "checked_by": "assembly : the 10 criteria hold with these values (carriage inertia 0.056-0.27 kg m^2 all hold); the cradle clearance 60 mm lowered the port in-plane nozzles 2-7 %, >= 150 mm keeps them within 0.14 of the threshold"
+    "checked_by": "checked for the assembly task: the 10 criteria hold with these values (carriage inertia 0.056-0.27 kg m^2 all hold); the cradle clearance 60 mm lowered the port in-plane nozzles 2-7 %, >= 150 mm keeps them within 0.14 of the threshold"
    },
    "unit": "kg, kg m^2, mm, deg, Hz, urad, s, g, %",
    "applies_to": "air-bearing test table, tracker and weighing of the assembly cell (facility values of the assembly task)",
    "source": "the maintainers' measurement or derivation",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] facility value of the assembly task; the earlier studies'  may refine them; verified by the assembly task's  (0.3.1)"
+   "note": "[C] facility value of the assembly task; checked in version 0.3.1 of this table"
   },
   "asm.cell.fixture": {
    "value": {
@@ -6539,7 +6539,7 @@
    "source": "the maintainers' measurement or derivation",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] facility value of the assembly task; the earlier studies'  may refine them"
+   "note": "[C] facility value of the assembly task"
   },
   "dock.push_off_adopted": {
    "value": {
@@ -6589,7 +6589,7 @@
      "removal": "peel by the corner loop, pulled along the surface normal (12 / 14 on the generated stations; outward 45 deg is unreliable from 1.57 N); an oblique strap pull and a drag along the chain also remove it (peel from one side, legal third and fourth ways); a plain normal pull does not (0 / 14)",
      "placement": "natural (not concentrated on the centred, opening-spanning part of the P items)"
     },
-    "status": "(2026-11-15) after the behavior task's : the 1.50-1.80 N window is refuted (3 % yield, drag and oblique pull still remove items); the P class keeps 1.15-1.60 N with natural placement; the S class is unchanged",
+    "status": "(2026-11-15) after the removal was measured again: the 1.50-1.80 N window is refuted (3 % yield, drag and oblique pull still remove items); the P class keeps 1.15-1.60 N with natural placement; the S class is unchanged",
     "one_build_per_fan": true,
     "generation_on_the_40s_constant_force_fixture": {
      "P": {
@@ -6601,14 +6601,14 @@
       "any_pull_not_removed_at_N": 0.61
      }
     },
-    "not_adopted": "the main plan (P 1.50-1.80 N, three fixture conditions; , refuted by)"
+    "not_adopted": "a P window of 1.50-1.80 N with three fixture conditions, refuted by the measurement of 2026-11-15"
    },
    "unit": "Pa s/m, N",
    "applies_to": "hold-force classes of the return inlets in the behavior task (a maintainers' decision)",
    "source": "a maintainers' decision",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] supersedes the single window of"
+   "note": "[C] supersedes the earlier single hold window"
   },
   "iva.inlet.superseded_by_m10": {
    "value": {
@@ -6618,7 +6618,7 @@
      "iva.peel.limit.note (0.8-1.5 N)"
     ],
     "by": "iva.inlet.hold_classes",
-    "also_revised_by": "(P class: natural placement, fixture conditions, legal ways; iva.inlet.hold_classes)"
+    "also_revised_by": "the P class of iva.inlet.hold_classes (natural placement, fixture conditions, legal ways)"
    },
    "unit": "-",
    "applies_to": "older inlet values that a maintainers' decision revised (kept unchanged in their records because a version only adds keys)",
@@ -6657,7 +6657,7 @@
    },
    "unit": "-",
    "applies_to": "how the four task designs confirmed or replaced the open default estimates",
-   "source": "the designs of the requirements, hardware-design and behavior tasks (assumption tables); a maintainers' decision",
+   "source": "a maintainers' decision for the requirements, hardware-design and behavior tasks",
    "mark": "G",
    "kind": "derived",
    "note": "[C] the open records keep their 0.2.x status text"
@@ -6960,7 +6960,7 @@
     },
     "pads_on_rail_after_perch": 0,
     "pan_pointing": "unreliable: pan turns about the rail axis and mostly slips the palm on the rail (+30 deg commanded -> 3.3 deg of camera rotation, +60 deg -> 8 deg, with hysteresis); tilt follows (30 -> 41 deg, 90 -> 89 deg, cumulative), the palm slides 1-4.5 cm along the rail",
-    "supersedes": "iva.perch.limits rotates_about_rail_at_Nm 0.09 (measured on the placeholder robot of the cabin-mechanics spike)"
+    "supersedes": "iva.perch.limits rotates_about_rail_at_Nm 0.09 (measured on a placeholder robot model)"
    },
    "unit": "N m, deg",
    "applies_to": "pure-contact perch of the reference build v1 on the handrail section (cage grasp, 88.1 mm in front of the palm)",
@@ -7057,8 +7057,8 @@
      0.161
     ],
     "fly_rel_then_capture_actor": 0.13,
-    "depth_noise_for_acceptance": "aft depth camera at the nominal model (range error about 1 % of range); first-hint lock rate of the unprivileged pilot 0.983; 3x noise (0.82-0.89) is a stress report only",
-    "not_adopted": "(A) 6 cm / 12 deg: blind sweep 0.235-0.340 under natural placement (behavior)"
+    "depth_noise_for_acceptance": "aft depth camera at the nominal model (range error about 1 % of range); first-hint lock rate 0.983 of a program without privileged reads; 3x noise (0.82-0.89) is a stress report only",
+    "not_adopted": "(A) 6 cm / 12 deg: blind sweep 0.235-0.340 under natural placement"
    },
    "unit": "cm, deg, s, m",
    "applies_to": "the capture() primitive's hint gate of the behavior task (option B)",
@@ -7310,8 +7310,8 @@
      }
     },
     "flap_eq_full_thrust_s": 0.075,
-    "kit": "spacekit FanModule.set_power(False), 62.5 Hz, 600 s, nozzles in the runaway state; closed form = the gate's rundown model",
-    "not_registered": "the reference solution's body-rate set-point (0.7 rad/s, 4) is a design value of the requirements task"
+    "kit": "spacekit FanModule.set_power(False), 62.5 Hz, 600 s, nozzles in the runaway state; closed form = the maintainers' rundown model",
+    "not_registered": "a body-rate set-point of 0.7 rad/s is not a value of this table"
    },
    "unit": "s, N",
    "applies_to": "coast-down after a propulsion power cut, per module and per runaway direction (aero load, impeller 0.001 kg m^2, efficiency 0.52)",
@@ -7326,7 +7326,7 @@
     "cover_annulus": "dia 121.4 mm spigot in the dia 122 mm ring: 0.3 mm radial gap x Cd 0.6 [G] (flange taken as not sealing: upper bound)",
     "thrust_ratio_cover_on": 0.0003,
     "nozzle_plug": "blocks only its own nozzle (its leak share stays with the plenum)",
-    "power_on_test": "no fan aero load at power-on ( governs the coast-down only); F_cal = the static thrust at the quantised fan speed"
+    "power_on_test": "no fan aero load at power-on (it matters for the coast-down only); F_cal = the static thrust at the quantised fan speed"
    },
    "unit": "mm^2",
    "applies_to": "intake throttle model of the assembly task's power-on acceptance (series orifice)",
@@ -7409,7 +7409,7 @@
    "source": "a maintainers' decision",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] task-level values of the hardware-design task (C3: the task's own catalogue)"
+   "note": "[C] task-level values of the hardware-design task (its own catalogue)"
   },
   "refbuild.v1_2.summary": {
    "value": {
@@ -7871,7 +7871,7 @@
    "source": "the maintainers' measurement or derivation",
    "mark": "V",
    "kind": "derived",
-   "note": "the task image's own measurement belongs to the behavior task's integration"
+   "note": "the behavior task measures it in its own task image (its task.toml gives the numbers)"
   },
   "dock.relative_localisation.error_model_v04": {
    "value": {
@@ -8015,7 +8015,7 @@
   },
   "dock.approach_cone.recheck_v04": {
    "value": {
-    "procedure": "the final berthing move from 0.5 m out on the berth axis with a lateral offset (approach angle) and a yaw error, Dock(go_to_approach=False, enforce_cone=False); default map noise + the dock-relative localisation; success = attached (the check move fails); the sweep ( 4.2) covered offset and yaw of the same sign only",
+    "procedure": "the final berthing move from 0.5 m out on the berth axis with a lateral offset (approach angle) and a yaw error, Dock(go_to_approach=False, enforce_cone=False); default map noise + the dock-relative localisation; success = attached (the check move fails); before this check only offset and yaw of the same sign had been sampled",
     "n_trials": 400,
     "cells": [
      {
@@ -8761,7 +8761,7 @@
       ]
      }
     ],
-    "finding": "the registered cone (6 deg / 20 deg, dock.approach_cone) holds for offset and yaw of the same sign and on the axes (consistent model 56 / 56 at 2 cm/s and 18 / 18 at 1-6 cm/s), not where they have opposite signs: at 6 deg / 20 deg 6 / 16 (consistent), 10 / 16 (legacy), 11 / 16 with the v0.3.0 kit on v1 and v1.1 -- an old property of the cone ( never sampled that quadrant), made worse by the consistent model's persistent error; with yaw <= 10 deg every sampled cell holds: 72 / 72 trials inside 6 deg / 10 deg (the opposite-sign cells 2 / 4 / 6 deg x 10 deg and the axis cells; Wilson 95 % lower bound 0.95), and the same-sign quadrant holds up to 20 deg",
+    "finding": "the registered cone (6 deg / 20 deg, dock.approach_cone) holds for offset and yaw of the same sign and on the axes (consistent model 56 / 56 at 2 cm/s and 18 / 18 at 1-6 cm/s), not where they have opposite signs: at 6 deg / 20 deg 6 / 16 (consistent), 10 / 16 (legacy), 11 / 16 with the v0.3.0 kit on v1 and v1.1 -- an old property of the cone (that quadrant had not been sampled before), made worse by the consistent model's persistent error; with yaw <= 10 deg every sampled cell holds: 72 / 72 trials inside 6 deg / 10 deg (the opposite-sign cells 2 / 4 / 6 deg x 10 deg and the axis cells; Wilson 95 % lower bound 0.95), and the same-sign quadrant holds up to 20 deg",
     "proposal_for_the_lead": "not published"
    },
    "unit": "deg, m/s, -",
@@ -8772,7 +8772,7 @@
   },
   "iva.holding_screen.design": {
    "value": {
-    "unit": "stowage unit SB-<module>, one per module: a holding screen in the middle and a pouch pad on each side, on a rack face; layout horizontal (the fallback 2)",
+    "unit": "stowage unit SB-<module>, one per module: a holding screen in the middle and a pouch pad on each side, on a rack face; layout horizontal",
     "screen": {
      "opening_m": [
       0.36,
@@ -8813,7 +8813,7 @@
      "count": 2,
      "takes": "one pouch each",
      "fed_by": "the unit's blower",
-     "status": "placement, release, hold and two-pouch outcomes measured in the behavior task's first trial runs; fallback the pouch pocket"
+     "status": "placement, release, hold and two-pouch outcomes measured in the behavior task's cell; fallback: a pouch pocket"
     },
     "siting_rules": "projection fits (+-15 mm), nothing higher than 20 mm within 0.20 m of the frame, outside the +-0.45 m corridor, >= 0.6 m from a return inlet"
    },
@@ -8822,7 +8822,7 @@
    "source": "a maintainers' decision",
    "mark": "G",
    "kind": "published",
-   "note": "[C] a part of the fictional station designed by the behavior task's  [G]"
+   "note": "[C] a part of the fictional station, designed for the behavior task [G]"
   },
   "iva.holding_screen.datasheet": {
    "value": {
@@ -8862,7 +8862,7 @@
    },
    "unit": "m^2, cfm, m/s, Pa, W, N",
    "applies_to": "the reference build",
-   "source": "a gate measurement part",
+   "source": "measured by the maintainers",
    "mark": "V",
    "kind": "derived",
    "note": "the sink is 2.8 mm/s at 0.15 m: the screen does not pull items from 0.15 m away; a sheet laid on it is held about 10x the required 0.5 N (vacuum-table layout)"
@@ -8953,7 +8953,7 @@
    },
    "unit": "N, count",
    "applies_to": "largest hold forces the reference build v1 robot removed per pull type (P class unless stated), fixture of the behavior task",
-   "source": "its request to the  integration",
+   "source": "measured by the maintainers on the behavior task's fixture",
    "mark": "V",
    "kind": "derived"
   },
@@ -9536,7 +9536,7 @@
    },
    "unit": "m^2, N, Pa s/m, Pa",
    "applies_to": "return-inlet network of the behavior task's station per unit size (two / three inlets per fan)",
-   "source": "a gate measurement A_network_table",
+   "source": "measured by the maintainers (network table)",
    "mark": "V",
    "kind": "derived"
   },
@@ -9553,7 +9553,7 @@
      "Pc_v03": 64.3913,
      "Pc_v04": 64.0958
     },
-    "seen_in": "behavior the check A9: a pouch held 0.19 N through a sheet with the v0.3 kit"
+    "seen_in": "a pouch held 0.19 N through a sheet with the v0.3 kit"
    },
    "unit": "N, m^2, Pa",
    "applies_to": "suction on stacked items (simulation kit 0.4.0 SuctionFaces(occlusion=True))",
@@ -10680,7 +10680,7 @@
    "needed_by": [
     "02"
    ],
-   "status": "accepted as the default estimate (a maintainers' decision); the task's rules confirms or replaces it"
+   "status": "accepted as the default estimate (a maintainers' decision)"
   },
   {
    "key": "bay.payload_mass_limit",
@@ -10692,7 +10692,7 @@
     "01",
     "02"
    ],
-   "status": "accepted as the default estimate (a maintainers' decision); the task's rules confirms or replaces it"
+   "status": "accepted as the default estimate (a maintainers' decision)"
   },
   {
    "key": "bay.connector_pinout",
@@ -10705,7 +10705,7 @@
     "02",
     "03"
    ],
-   "status": "resolved: architecture gap  adopted as proposed (a maintainers' decision)"
+   "status": "resolved: the proposal for this architecture gap adopted (a maintainers' decision)"
   },
   {
    "key": "bay.payload_heat_limit",
@@ -10716,7 +10716,7 @@
    "needed_by": [
     "02"
    ],
-   "status": "accepted as the default estimate (a maintainers' decision); the task's rules confirms or replaces it"
+   "status": "accepted as the default estimate (a maintainers' decision)"
   },
   {
    "key": "mass.module_masses",
@@ -10727,7 +10727,7 @@
     "bumpers_and_skins_kg": 0.45
    },
    "unit": "kg",
-   "basis": "only totals are public; 9.584 kg (4 bat.) - 4 x 0.234 = 8.648 kg split by the  mesh volumes [G]; owns the measurement",
+   "basis": "only totals are public; 9.584 kg (4 bat.) - 4 x 0.234 = 8.648 kg split by the mesh volumes [G]",
    "mark": "G",
    "needed_by": [
     "03"
@@ -10749,7 +10749,7 @@
     "01",
     "07"
    ],
-   "status": "accepted as the default estimate (a maintainers' decision); the task's rules confirms or replaces it"
+   "status": "accepted as the default estimate (a maintainers' decision)"
   },
   {
    "key": "pwr.low_battery_return_threshold",
@@ -10761,7 +10761,7 @@
     "07",
     "01"
    ],
-   "status": "accepted as the default estimate (a maintainers' decision); the task's rules confirms or replaces it"
+   "status": "accepted as the default estimate (a maintainers' decision)"
   },
   {
    "key": "pwr.pdu_undervoltage_cutoff",
@@ -10775,7 +10775,7 @@
    "needed_by": [
     "01"
    ],
-   "status": "accepted as the default estimate (a maintainers' decision); the task's rules confirms or replaces it"
+   "status": "accepted as the default estimate (a maintainers' decision)"
   },
   {
    "key": "prop.thrust_measured",
@@ -10807,7 +10807,7 @@
   },
   {
    "key": "arm.joint_inertias",
-   "proposed": "from  solid models",
+   "proposed": "from the reference build's solid models",
    "unit": "kg m^2",
    "basis": "description uses placeholders (0.02705 isotropic)",
    "mark": "G",
@@ -10815,7 +10815,7 @@
     "03",
     "07"
    ],
-   "status": "resolved: the v1 model's arm link inertials ( parts)"
+   "status": "resolved: the v1 model's arm link inertials (from its parts)"
   },
   {
    "key": "dock.berth_pinout",
@@ -10826,7 +10826,7 @@
    "needed_by": [
     "01"
    ],
-   "status": "resolved: architecture gap  adopted as proposed (a maintainers' decision)"
+   "status": "resolved: the proposal for this architecture gap adopted (a maintainers' decision)"
   },
   {
    "key": "safe.noise_by_fan_level",
@@ -10853,13 +10853,13 @@
    "needed_by": [
     "07"
    ],
-   "status": "accepted as the default estimate (a maintainers' decision); the task's rules confirms or replaces it"
+   "status": "accepted as the default estimate (a maintainers' decision)"
   }
  ],
  "changes": {
   "0.3.3": {
    "date": "2026-11-17",
-   "by": "the behavior task's follow-up",
+   "by": "the maintainers (for the behavior task)",
    "added_keys": [],
    "corrected_keys": [
     "sens.cam_aft_wide.clear_fov"
@@ -10943,7 +10943,7 @@
   },
   "0.3.2": {
    "date": "2026-11-15",
-   "by": "(shared digest swap: reference build v1.2 + spacekit 0.4.0)",
+   "by": "the maintainers (the swap to reference build v1.2 and spacekit 0.4.0)",
    "added_keys": [
     "loc.error_model_v04",
     "ops.sim_step_cost_v04",
@@ -10977,7 +10977,7 @@
   },
   "0.3.1": {
    "date": "2026-11-15",
-   "by": "(reference build v1.2)",
+   "by": "the maintainers (reference build v1.2)",
    "added_keys": [
     "iva.tether_pull.v1",
     "iva.perch.limits_v1",
@@ -11034,7 +11034,7 @@
         ],
         "removal": "peel by the corner loop (fan stops suppressed)"
        },
-       "status": "rule values; filled after the behavior task's earlier",
+       "status": "rule values; filled after the pull measurements for the behavior task",
        "one_build_per_fan": true
       },
       "unit": "Pa s/m, N",
@@ -11042,7 +11042,7 @@
       "source": "a maintainers' decision",
       "mark": "G",
       "kind": "derived",
-      "note": "[C] supersedes the single window of"
+      "note": "[C] supersedes the earlier single hold window"
      },
      "to": {
       "value": {
@@ -11078,7 +11078,7 @@
         "removal": "peel by the corner loop, pulled along the surface normal (12 / 14 on the generated stations; outward 45 deg is unreliable from 1.57 N); an oblique strap pull and a drag along the chain also remove it (peel from one side, legal third and fourth ways); a plain normal pull does not (0 / 14)",
         "placement": "natural (not concentrated on the centred, opening-spanning part of the P items)"
        },
-       "status": "(2026-11-15) after the behavior task's : the 1.50-1.80 N window is refuted (3 % yield, drag and oblique pull still remove items); the P class keeps 1.15-1.60 N with natural placement; the S class is unchanged",
+       "status": "(2026-11-15) after the removal was measured again: the 1.50-1.80 N window is refuted (3 % yield, drag and oblique pull still remove items); the P class keeps 1.15-1.60 N with natural placement; the S class is unchanged",
        "one_build_per_fan": true,
        "generation_on_the_40s_constant_force_fixture": {
         "P": {
@@ -11090,14 +11090,14 @@
          "any_pull_not_removed_at_N": 0.61
         }
        },
-       "not_adopted": "the main plan (P 1.50-1.80 N, three fixture conditions; , refuted by)"
+       "not_adopted": "a P window of 1.50-1.80 N with three fixture conditions, refuted by the measurement of 2026-11-15"
       },
       "unit": "Pa s/m, N",
       "applies_to": "hold-force classes of the return inlets in the behavior task (a maintainers' decision)",
       "source": "a maintainers' decision",
       "mark": "G",
       "kind": "derived",
-      "note": "[C] supersedes the single window of"
+      "note": "[C] supersedes the earlier single hold window"
      },
      "why": "a maintainers' decision (adopting the fallback): P class 1.15-1.60 N with natural placement, two fixture conditions, the oblique pull and the drag as legal ways, r_face by unit size; the S class's limit on small filter units",
      "basis": "a maintainers' decision"
@@ -11154,9 +11154,9 @@
       "source": "a maintainers' decision; spacekit suction.INLET_BUILDS['prefilter_light']",
       "mark": "G",
       "kind": "derived",
-      "note": "[C] the station is fictional; real return grilles carry about 14.4 cfm; the inlet pressure is a property of the whole fan network; superseded by : see iva.inlet.hold_classes (the hold window and the build here are the  single-window design, kept unchanged)"
+      "note": "[C] the station is fictional; real return grilles carry about 14.4 cfm; the inlet pressure is a property of the whole fan network; superseded: see iva.inlet.hold_classes (the hold window and the build here are the earlier single-window values, kept unchanged)"
      },
-     "why": "the single hold window of  is superseded (the value stays as registered)",
+     "why": "the earlier single hold window is superseded (the value stays as registered)",
      "basis": "a maintainers' decision"
     },
     {
@@ -11184,7 +11184,7 @@
         "iva.peel.limit.note (0.8-1.5 N)"
        ],
        "by": "iva.inlet.hold_classes",
-       "also_revised_by": "(P class: natural placement, fixture conditions, legal ways; iva.inlet.hold_classes)"
+       "also_revised_by": "the P class of iva.inlet.hold_classes (natural placement, fixture conditions, legal ways)"
       },
       "unit": "-",
       "applies_to": "older inlet values that a maintainers' decision revised (kept unchanged in their records because a version only adds keys)",
@@ -11192,7 +11192,7 @@
       "mark": "G",
       "kind": "derived"
      },
-     "why": "(the fallback) revised the P class of iva.inlet.hold_classes",
+     "why": "a maintainers' decision (adopting the fallback window) revised the P class of iva.inlet.hold_classes",
      "basis": "a maintainers' decision"
     },
     {
@@ -11232,7 +11232,7 @@
         "S": 0.8096,
         "P": 0.8133
        },
-       "integration": "registered: the gate's steady-state-impedance RK4; its independent 0.5 ms integration of the winding agrees within 0.02 %; without inductance the closed form (0.5 ms integration 0.8095 / 0.8132 s; 0.3.0's 0.8141 / 0.8178 s came from the kit's 16 ms Euler step, +0.55 %); 2940 rpm, +X runaway state",
+       "integration": "registered: a steady-state-impedance RK4; an independent 0.5 ms integration of the winding agrees within 0.02 %; without inductance the closed form (0.5 ms integration 0.8095 / 0.8132 s; 0.3.0's 0.8141 / 0.8178 s came from the kit's 16 ms Euler step, +0.55 %); 2940 rpm, +X runaway state",
        "inductance_source": "the fan motor's catalogue page (the part of prop.fan.motor_part) [R]"
       },
       "unit": "ohm, H, s",
@@ -11242,7 +11242,7 @@
       "kind": "derived",
       "note": "[C] a maintainers' decision: the brake exists only in the requirements task"
      },
-     "why": "a maintainers' decision: the winding inductance is frozen at the motor catalogue's 0.56 mH with 8 pole pairs; at 2940 rpm the reactance (1.38 ohm) exceeds the resistance and the brake is about half as strong; the equivalent times are the gate's closed form (0.3.0's 0.8141 / 0.8178 s came from the kit's 16 ms Euler step)",
+     "why": "a maintainers' decision: the winding inductance is frozen at the motor catalogue's 0.56 mH with 8 pole pairs; at 2940 rpm the reactance (1.38 ohm) exceeds the resistance and the brake is about half as strong; the equivalent times are the closed form (0.3.0's 0.8141 / 0.8178 s came from the kit's 16 ms Euler step)",
      "basis": "a maintainers' decision"
     },
     {
@@ -11268,7 +11268,7 @@
       "source": "the maintainers' measurement or derivation",
       "mark": "G",
       "kind": "derived",
-      "note": "[C] facility value of the assembly task; the earlier studies'  may refine them"
+      "note": "[C] facility value of the assembly task"
      },
      "to": {
       "value": {
@@ -11285,14 +11285,14 @@
        "weighing_gate_g": 25.0,
        "weighing_gate_com_mm": 1.5,
        "day_factor_pct": 1.5,
-       "checked_by": "assembly : the 10 criteria hold with these values (carriage inertia 0.056-0.27 kg m^2 all hold); the cradle clearance 60 mm lowered the port in-plane nozzles 2-7 %, >= 150 mm keeps them within 0.14 of the threshold"
+       "checked_by": "checked for the assembly task: the 10 criteria hold with these values (carriage inertia 0.056-0.27 kg m^2 all hold); the cradle clearance 60 mm lowered the port in-plane nozzles 2-7 %, >= 150 mm keeps them within 0.14 of the threshold"
       },
       "unit": "kg, kg m^2, mm, deg, Hz, urad, s, g, %",
       "applies_to": "air-bearing test table, tracker and weighing of the assembly cell (facility values of the assembly task)",
       "source": "the maintainers' measurement or derivation",
       "mark": "G",
       "kind": "derived",
-      "note": "[C] facility value of the assembly task; the earlier studies'  may refine them; verified by the assembly task's  (0.3.1)"
+      "note": "[C] facility value of the assembly task; checked in version 0.3.1 of this table"
      },
      "why": "a maintainers' decision: the cradle clearance to any panel face is >= 150 mm; the other facility values are confirmed as registered",
      "basis": "a maintainers' decision"
@@ -11302,7 +11302,7 @@
   },
   "0.3.0": {
    "date": "2026-11-15",
-   "by": "(reference build v1.1)",
+   "by": "the maintainers (reference build v1.1)",
    "added_keys": [
     "iface.bay.j_slot",
     "iface.bay.engagement",
@@ -11351,11 +11351,11 @@
      "rule": "62.25 dBA at fan level 3 (2800 rpm) + 50 log10(N / 2800 rpm)"
     }
    ],
-   "note": "additions only (every 0.2.1 value record unchanged) and one correction in 'open' (safe.noise_by_fan_level follows its own 50 log rule): the bay quick-release interface in full with the  lead-ins (iface.bay.*), the requirements task's derived propulsion values (prop.*), the assembly task's facility values (asm.*),  (dock.*),  (iva.inlet.*), the designs' adoptions of the open items, the v1.1 summary (a maintainers' decision)"
+   "note": "additions only (every 0.2.1 value record unchanged) and one correction in 'open' (safe.noise_by_fan_level follows its own 50 log rule): the bay quick-release interface in full with its lead-ins (iface.bay.*), the requirements task's derived propulsion values (prop.*), the assembly task's facility values (asm.*), the dock values (dock.*), the inlet values (iva.inlet.*), the adoptions of the open items, the v1.1 summary (a maintainers' decision)"
   },
   "0.2.1": {
    "date": "2026-11-15",
-   "by": "(simulation kit v0.3 on the reference build v1)",
+   "by": "the maintainers (simulation kit v0.3 on the reference build v1)",
    "added_keys": [
     "iva.direct_pull.limit",
     "iva.peel.limit",
@@ -11388,7 +11388,7 @@
   },
   "0.2.0": {
    "date": "2026-11-15",
-   "by": "(reference build v1 integration)",
+   "by": "the maintainers (reference build v1)",
    "added_keys": [
     "geo.nozzle_plane_offset",
     "geo.bay_opening_mesh",

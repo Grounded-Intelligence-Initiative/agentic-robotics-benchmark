@@ -1,23 +1,19 @@
-"""telemetry_synth.py -- the station-side records of one site of 07 freeflyer_uncrewed_station_caretaking: the 72 h
-telemetry log, the configuration record and the advisory log (the interface contract and
-the site format), the draw of a site's telemetry section under the fixed arrangement of the hidden set, and the state of
+"""telemetry_synth.py -- the station-side records of one site of freeflyer_uncrewed_station_caretaking: the 72 h
+telemetry log, the configuration record and the advisory log (the robot API and
+the site package format), the draw of a site's telemetry section under the fixed arrangement of the hidden set, and the state of
 every sensor at the sortie (read by station_service.py, so the live channels continue the log).
 
-Promoted from (read-only prototypes; the gates ran on build v1 + spacekit 0.3.0):
-  the observability study's log synthesis   source sha256 43484eb3772a4c8b5b0aef70e9601b27c5890c2ce8e64df6e0062257eb12749a
-  the sketch's site records                 source sha256 10415bcd77635a4228e0e95c026e5a3cf14dbbe3d230307aa967cf4437cc583c
-  (synth_log / advisory; the decoy sizing and the re-synthesis until the advisory record agrees with the cell)
-What changed from the prototypes: every number from the runtime copy of site_spec.json (data/site_spec.json, checked
-against its sha256 file); the advisory limit is the unit's registered clean pressure x station.advisory.factor (not a
-fixed 39 Pa); the slow drift is drawn so the advisory points where the hidden-set rule says, with the expected 10 min mean of
+synth_log / advisory: the decoy sizing and the re-synthesis until the advisory record agrees with the cell; every
+number comes from the runtime copy of site_spec.json (data/site_spec.json, checked against its sha256 file); the
+advisory limit is the unit's registered clean pressure x station.advisory.factor; the slow drift is drawn so the advisory points where the hidden-set rule says, with the expected 10 min mean of
 every unit >= n_sigma x sigma_pa away from its limit (decoy: below before its drift starts, above at its end); the
-filter loading is a change of r_face in the network (calc10 7), not a ramp added in Pa; the log has the full channel
-set of the robot API; the extra one-sensor offset step of the telemetry study is not drawn (the telemetry description does not list it).
+filter loading is a change of r_face in the network, not a ramp added in Pa; the log has the full channel
+set of the robot API; a one-sensor offset step is not drawn (the telemetry dictionary does not list one).
 
 Model (all noise-free values are network values, spacekit.suction.FanNetwork, the cell's own construction):
   * a cabin air unit = n parallel inlets of world.inlet.opening_m (K_face world.inlet.k_face, its r_face), design flow
     n x station.ventilation.inlet_flow_cfm x flow_scale, fan_scale 'design_point': a fresh network per r_face, as
-    spacekit.station.StationVentilation builds it from station_service.vent_config(site) (and as calc9 / calc10 do);
+    spacekit.station.StationVentilation builds it from station_service.vent_config(site);
   * covers: the blocker (truth.cover_m2, measured in the scene) from telemetry.onset_min; each pouch (telemetry
     .pouch_cover_m2[id], else columns x the area of one sub-point column) from telemetry.pouch_onsets_min[id]; extra
     telemetry.temporary_covers [{inlet, cover_m2, t_on_min, t_off_min}] (the rehearsal sample's crew occlusion);
@@ -77,8 +73,8 @@ RUNTIME_SHA_PATH = os.path.join(HERE, "data", "site_spec.sha256")
 MODULE_ORDER = ("l2", "h2", "l1", "l3")
 BUILD_LABEL = {"pad": "pad-type", "element": "element-type"}
 
-# Constants the contract does not hold ([G]: estimates of this package; the telemetry study for the sensor model).  Registration as
-# 'station.telemetry.synth' keys is requested; until then they live here, once.
+# Constants the runtime spec does not hold ([G]: estimates of this package, among them the sensor model); they live
+# here, once.
 SYNTH = {
     "dp_resolution_pa": 0.1,          # logged resolution of the pressure channels
     "offset_frac": 0.5,               # fixed sensor offset U(+-offset_frac x accuracy class)
@@ -211,7 +207,7 @@ _NET = {}
 
 def unit_state(n: int, r_face: float, flow_scale: float, covers=(), spec=None) -> tuple:
     """(Pc [Pa], Q [m^3/s], fan air power [W]) of a unit with ``covers`` ((inlet index, sealed m^2), ...): a fresh
-    FanNetwork per r_face (the cell's construction; calc9 / calc10).  Memoised."""
+    FanNetwork per r_face (the cell's construction).  Memoised."""
     s = _spec(spec)
     cov = tuple(sorted((int(i), round(float(a), 10)) for i, a in covers if a > 0))
     key = (int(n), round(float(r_face), 9), round(float(flow_scale), 9), cov, s["_sha256"] if "_sha256" in s else "")
@@ -240,7 +236,7 @@ def clean_pc(n, r_face, flow_scale, spec=None) -> float:
 def registered(clean_true: float, build: str, spec=None) -> tuple:
     """(clean_reference_pa, advisory_limit_pa) as the configuration record carries them: the clean pressure measured
     at the unit's last service and factor x that pressure, each rounded to 0.1 Pa (the limit from the unrounded
-    pressure, as the worked example writes it: 36.14 Pa -> 36.1 / 50.6 Pa)."""
+    pressure: 36.14 Pa -> 36.1 / 50.6 Pa)."""
     f = float(_spec(spec)["station.advisory.factor"][build])
     return round(float(clean_true), 1), round(f * float(clean_true), 1)
 
@@ -988,10 +984,10 @@ def sortie_state(site, spec=None, log=None) -> dict:
 
 # ------------------------------------------------------------------------------------------------ the rehearsal sample
 def l3_sample_site(seed: int, spec=None, build: str = "pad") -> dict:
-    """A rehearsal-module site for the given 72 h telemetry sample (the map generator writes ~/given/telemetry_sample/l3_72h.csv
-    from synth()): one unit CAU-L3 (2 inlets), no blocker, no pouches; one known crew occlusion of an inlet (a
+    """A rehearsal-module site for the given 72 h telemetry sample (the given ~/given/telemetry_sample/l3_72h.csv is
+    written from synth()): one unit CAU-L3 (2 inlets), no blocker, no pouches; one known crew occlusion of an inlet (a
     temporary cover of the blocker's sealed area range, 1-4 h) and one filter change (a negative step, the
-    pad-type medium only), at least 6 h apart.  ``seed`` must not be a candidate or trial seed (the map generator's rule)."""
+    pad-type medium only), at least 6 h apart.  ``seed`` must not be the seed of any other site."""
     s = _spec(spec)
     N = n_min(s)
     g = _rng(seed, 3000)

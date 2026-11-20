@@ -1,10 +1,8 @@
 """ref_log.py -- the reference program's reading of the 72 h log (operator-visible: mission()['log'], the
 configuration record): which cabin air unit's return air stepped up, when, and which route its build allows.
 
-The step detector is the telemetry study's (detectors.onsets / blocker_onset, 306 / 306 synthetic logs right, max error 1.1 min),
-as copied into the sketch program (source
-sha256 0bc61f9e9825481189ff7897cb66f51bedeb56024730cd45c4fe39d1ff5917ba: ``onsets``, ``blocker_onset``).  Changed:
-the log is the cell's mission() document ({t_min: [...], 'cau.<M>.return_dp_a': [...], ...}); the unit is reported
+The step detector: ``onsets``, ``blocker_onset`` (306 / 306 synthetic logs right, max error 1.1 min).  The log is
+the cell's mission() document ({t_min: [...], 'cau.<M>.return_dp_a': [...], ...}); the unit is reported
 by its module name ('L2' | 'H2' | 'L1'); the route of the unit comes from the configuration record (element-type
 with stops allowed: grasp first, then the fan stop; pad-type with stops inhibited: peel).
 """
@@ -14,7 +12,7 @@ import math
 
 import numpy as np
 
-LOGP = dict(k_sigma=6.0, win_min=30, min_step_pa=0.5)        # the telemetry study parameters (unchanged)
+LOGP = dict(k_sigma=6.0, win_min=30, min_step_pa=0.5)        # the step detector's parameters
 
 
 def onsets(t_min, dp_a, dp_b, P=None) -> list:
@@ -74,7 +72,7 @@ def log_units(log: dict) -> dict:
 
 
 def blocker_onset(log: dict, P=None) -> dict | None:
-    """The largest positive step that both sensors of one unit show (the telemetry study rule: each sensor carries more than half
+    """The largest positive step that both sensors of one unit show (each sensor carries more than half
     the step and neither more than twice the other): dict(unit, t, size, size_a, size_b, pre) or None."""
     t = np.asarray(log["t_min"], float)
     best = None

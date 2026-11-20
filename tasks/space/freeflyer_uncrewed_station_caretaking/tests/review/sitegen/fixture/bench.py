@@ -1,19 +1,14 @@
 """The framed-inlet bench of the constant-force fixture (no robot).
 
-Promoted from the removal recheck's bench library (source sha256
-e5adce6f71cfc3eaf844b61bbbdc34e6c20e15138d3fa49a97180fbca0be467d), itself a copy of the removal study's bench
-(source sha256 a5544794a49fc43ec608d3ab62e70c3fa09628af4aa8f59ad752290e0210ebce; its constant-force
-method, source sha256 10ae0b036287507555d82333045d2f8264ad64b6741426cd5b93d16a427f8473).
-Changed in the promotion: the sheet's size and mass are the candidate's (the three families of
-``cabincell.site.items``), the loop comes from spacekit 0.4.0 (``soft_item(loop="edge_mid")``, the same geometry as
-the removal re-test's insertion), the plane angle is the site's (station_site/2: ``theta_deg`` 0 = the chain along the opening's
-short axis b, the chain = cos(theta) b - sin(theta) a; the removal re-test's theta is its negative), the flow per inlet is a
+The sheet's size and mass are the candidate's (the three families of ``cabincell.site.items``), the loop comes from
+spacekit 0.4.0 (``soft_item(loop="edge_mid")``), the plane angle is the site's (station_site/2: ``theta_deg`` 0 = the
+chain along the opening's short axis b, the chain = cos(theta) b - sin(theta) a), the flow per inlet is a
 parameter, the unit-size r_face ranges come from the site_spec.
 
 Bench: flat wall x = 0 (normal +x), one return-inlet frame 0.46 x 0.18 x 0.03 m (solid box) whose front face x = 0.03
 is the opening plane (0.40 x 0.12 m; a = +y, b = +z); one fan network of ``n_inlets`` parallel inlets (this one + the
 others without geometry), K_face 8, r_face per candidate.  The sheet lies on the opening plane 1.5 mm off it at the
-start; suction on the five strip bodies (3 x 14 cells per strip, as the pull study) every physics step, the network
+start; suction on the five strip bodies (3 x 14 cells per strip) every physics step, the network
 re-solved every 5 steps (100 Hz).  Pull directions toward both chain ends: ``tiltNN_e0`` / ``tiltNN_e4`` (NN deg off
 the face normal toward strip 0 / strip 4), ``drag_e0`` / ``drag_e4`` (80 deg), ``out45`` (the loop on strip 0, 45 deg
 toward the strip-0 end), ``normal``.
@@ -88,7 +83,7 @@ def world_xml(wall_half=(1.0, 1.0)) -> str:
 
 
 def item_model(bodies: str, contact: str = "", dt: float = DT):
-    """Wall + frame + the sheet; no robot, no gravity (as the pull study)."""
+    """Wall + frame + the sheet; no robot, no gravity."""
     xml = f"""<mujoco><option timestep="{dt}" gravity="0 0 0" cone="elliptic" impratio="10" integrator="implicitfast"/>
       <asset>{FX.MATERIALS}</asset>
       <default><geom solref="0.004 1" solimp="0.95 0.99 0.001" condim="4"/></default>
@@ -130,7 +125,7 @@ def r_face_max(n_inlets: int = 3, flow_cfm: float = 40.0, hi: float = 1200.0) ->
 
 def r_face_for_hold(target_N: float, A_sealed: float, n_inlets: int = 3, flow_cfm: float = 40.0, lo: float = 0.5,
                     hi: float = 600.0) -> float:
-    """r_face [Pa s/m] that gives the target hold with A_sealed on inlet g0 (the removal re-test's solve)."""
+    """r_face [Pa s/m] that gives the target hold with A_sealed on inlet g0."""
     try:
         make_network(hi, n_inlets, flow_cfm)
     except ValueError:
@@ -179,7 +174,7 @@ def settle(cand: dict, r_face: float, t_settle: float = 2.0) -> dict:
 
 # ------------------------------------------------------------------------------------------------ pull directions
 def pull_dir(kind: str, R) -> np.ndarray:
-    """Unit pull direction in the world; R = sheet_frame.  See the module doc (the removal re-test's set; the pull study's 'tiltNN' / 'drag' are
+    """Unit pull direction in the world; R = sheet_frame.  See the module doc ('tiltNN' / 'drag' are
     aliases of the _e0 ones)."""
     n = np.array([1.0, 0.0, 0.0])
     c = -np.asarray(R)[:, 0]

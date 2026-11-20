@@ -9629,7 +9629,7 @@
   "placement_log_rejections": 545
  },
  "provenance": {
-  "derived_by": "the station data's build",
+  "derived_by": "the maintainers",
   "station_lane_version": "0.2",
   "removed_receptacle_candidates": [
    "sb_l2_c1"

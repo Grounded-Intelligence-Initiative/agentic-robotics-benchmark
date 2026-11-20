@@ -1,5 +1,5 @@
-"""Rule-based grasp constraint for items held in the hand (the benchmark's existing pump-skid pattern, as adapted
-by the cabin-mechanics spike).
+"""Rule-based grasp constraint for items held in the hand (the pattern of the benchmark's
+pump-skid task).
 
 One inactive weld (body1 = the palm body, body2 = world placeholder) is retargeted to an item when the capture
 conditions hold while the gripper closes:

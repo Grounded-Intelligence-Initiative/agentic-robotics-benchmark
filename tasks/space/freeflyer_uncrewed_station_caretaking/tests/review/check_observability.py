@@ -2,7 +2,7 @@
 rules of the hidden set).  Maintainers' tool: the site selection drops a candidate that fails and records why.
 Never part of the grade, never named to the agent.
 
-The owner's rule: no detector and no pilot decides anything here.  Every row is a geometric
+The rule: no detector and no pilot decides anything here.  Every row is a geometric
 predicate (viewpoints, pixel sizes, occlusion rays, segmentation of the rendered frame) or a statistic of the rendered
 frame (brightness, clipping, colour contrast) at the site's own lighting with the robot's lamps and the cameras' auto
 exposure, rendered by the cell's renderer (cabincell.sensors_render: the agent's frames).  The state is the cell's

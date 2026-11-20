@@ -1,13 +1,11 @@
-"""Bars and the firmware's geometric bar detector of the aft depth camera (the robot interface capture, 2.5; no pixels).
+"""Bars and the firmware's geometric bar detector of the aft depth camera (robot_api.md, capture; no pixels).
 
-Promoted from the capture study's prototype (source
-sha256 06dde7755ee8ad6f9735fc4d7b07c98dcc4c8e3d128b40d4a0a83d5342e68089: ``Bar``, ``_Track``, ``BarDetector``) with
-three changes for the task firmware:
+``Bar``, ``_Track``, ``BarDetector``, in the task firmware's form:
 
 * a measurement is taken relative to the robot (body frame: the bar centre, its axis and its face normal, white noise
   firmware.capture.detector_noise per measurement) and mapped into the station frame with the firmware's own pose
   estimate, so the gate, the lock and the approach all live in the estimate's frame (the program's hint is given in the
-  body frame and mapped the same way); the capture study compared in the true frame;
+  body frame and mapped the same way);
 * the face normal is measured too (the same random rotation as the axis), so the approach direction carries no truth;
 * the crew handrails of the map are candidates as well (``StaticBar``; closing depth of a map handrail), not only the
   item handles; candidates out of range are skipped before the ray tests (101 handrails).

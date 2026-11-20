@@ -267,7 +267,7 @@ def _min_margin(units: dict) -> float | None:
 
 
 def summary(S: dict, rec: dict) -> dict:
-    """The attribute row of a site (the trial-site table of the generator's campaign)."""
+    """The attribute row of a site."""
     from cabincell.site import placement as PL
     feats = DR.features()
     m = S["cell"]["module"]

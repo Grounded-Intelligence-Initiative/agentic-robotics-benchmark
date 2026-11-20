@@ -12,7 +12,7 @@
   "robot_values_sha256": "9afc2295e7cd800b5b0480e28f2608facd4f937fc89346337d8d01b4b16f0047",
   "simulation_package": "0.4.0"
  },
- "rule": "Runtime copy of the task's numbers (exported from the task's master value table; do not edit by hand). Values of the reference robot are read by key from the vendored robot value table. Grader thresholds are not in this file.",
+ "rule": "Runtime copy of the task's numbers (generated; do not edit by hand). Values of the reference robot are read by key from the vendored robot value table. Grader thresholds are not in this file.",
  "schema": "caretaking.site_spec_runtime/1",
  "task": "freeflyer_uncrewed_station_caretaking",
  "units": {

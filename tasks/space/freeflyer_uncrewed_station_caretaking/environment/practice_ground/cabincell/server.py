@@ -25,12 +25,8 @@ cell.settle_after_exit_s, takes the last world-state sample at that instant ('en
 (the record format).  The in-process driver (``run_inprocess``) and the wire driver (``run_wire``: the program as a
 child process on JSON lines, cellkit.wire.serve_episode with wire_guard.GuardedProcess) apply the same budgets.
 
-Promoted from the sketch cell ``Cell`` / its runner (sha256 e1346737361c00cb1968d2ae73b358f8f6de5ccfc7a070be91fa913d9943481b /
-6b71fe38b6242724a40a8c971da683a708b7946ab0930f973e5be22eb61031c3) and the network-settle study's trial scene +
-robotrials.py (sha256 01ca5fb266c4a9cc52d6e1839c594c00c72d28b2669070411803f9bc43d8cc98 /
-252f596af9e452add00bf7ec486956bec4bd99f7fb24e848f94fc924150152cc), in the shape of the quadruped task's
-plantcell/server.py (the call boundary, the record, the drivers).  Changed: every part is the published package of its
-owner, the settle is 60 s, the record is the record format's.
+In the shape of the quadruped plant inspection task's plantcell/server.py (the call boundary, the record, the
+drivers); every part is the published package of its owner, the settle is 60 s, the record is the record format's.
 """
 from __future__ import annotations
 
@@ -285,8 +281,7 @@ class Cell:
         return dict(mode="direct", nq=int(model.nq), sha256=_sha(raw))
 
     def _perturb(self, um: float) -> list:
-        """Every free body's start position + um micrometres in a seeded random direction (the hidden-set rule's robustness run;
-        the sketch cell's ``_perturb``)."""
+        """Every free body's start position + um micrometres in a seeded random direction (the hidden-set rule's robustness run)."""
         import mujoco
         m, d = self.model, self.data
         rng = np.random.default_rng([int(self.seed), 1234])

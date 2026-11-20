@@ -23,7 +23,7 @@ The render recipe (each item keyed in the runtime site_spec where it has a key):
       at most 8 lights: the headlight, the lamps that are on and the nearest cabin lights that are on;
   (c) the two lamps as 452 cd spots: MuJoCo diffuse at 1 m = (I / E_general) x E_model, where E_model is the
       general-lighting irradiance (ambient + the cabin spot lights, MuJoCo units) at the eight inlet faces and
-      E_general = 150 lux [G] (the cabin's general illuminance, as the localisation study); inverse-square fall-off, the 22.5 deg
+      E_general = 150 lux [G] (the cabin's general illuminance); inverse-square fall-off, the 22.5 deg
       half beam with a cos^4.5 taper to the 30 deg cut-off (spacekit LAMP_DEFAULTS);
   (d) centre-weighted auto exposure in ``render.exposure_gain`` (1/16 - 8 x), a camera's AE loop: the frame is
       drawn at the camera's last gain, the gain that brings the Gaussian-weighted mean luminance (display values,

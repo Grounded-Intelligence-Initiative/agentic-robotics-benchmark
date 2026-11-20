@@ -34,7 +34,7 @@ RUN export HOME=/root UV_CACHE_DIR=/tmp/uv-cache \
     && { [ ! -d /opt/uv-python ] || chmod -R a+rX /opt/uv-python; } \
     && rm -rf /tmp/uv-cache /tmp/requirements.txt
 # `uv venv` leaves its lock file /opt/venv/.lock world-writable (mode 666): a program could carry what it saw on one
-# scored site into the next through it. Writable by root only (the sibling task's amendment 1).
+# scored site into the next through it. Writable by root only (as in the sibling task).
 RUN [ ! -e /opt/venv/.lock ] || chmod 0644 /opt/venv/.lock
 
 # The rehearsal facility's own account (the service and the task assets below are readable by it).

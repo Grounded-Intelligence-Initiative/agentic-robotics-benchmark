@@ -500,7 +500,7 @@ class Firmware:
     'hold' (v0.3, the flight software's controller) keeps the setpoint as it was, so the stop mode adds the stale
     acceleration feedforward -- after a stop inside a rotation ramp the rate damping then balances J alpha at
     w = alpha / omega_kd (0.0545 rad/s in STANDARD's face-forward turns), above the 0.02 rad/s stopping threshold, and
-    the executive never reports 'stopped' (the localisation study's case D_H2xS_p3 at t = 628 s).  A move that reaches the
+    the executive never reports 'stopped' (observed on a hub site at t = 628 s).  A move that reaches the
     end of its segment is not affected (its last sample has zero rates).
     """
 

@@ -1,4 +1,4 @@
-"""ref_program.py -- the token-privileged reference program of 07 freeflyer_uncrewed_station_caretaking (the
+"""ref_program.py -- the token-privileged reference program of freeflyer_uncrewed_station_caretaking (the
 privileged reference).
 
 It moves only through the public calls (ref_robot.Robot on the cell's own call boundary: every move is a validated
@@ -14,7 +14,7 @@ report first), the module's pouches onto its unit's pouch pads, the blocker afte
 fan off, return pressure < released_below_dp_pa, back off, fan on at once; P: capture the handle loop with the palm
 +z toward the loop's end, peel along the inlet normal) onto the module's holding screen -> arm stowed -> L2 -> dock.
 
-The five deposit rules added to the sketch: (1) the deposit puts the ITEM's centre on the face centre (the
+The five deposit rules: (1) the deposit puts the ITEM's centre on the face centre (the
 held item's pose in the palm, P4), not the bar; (2) after the release the open hand first slides along the bar axis
 (pouch handles: the fingers leave the handle) and then backs off; (3) after every placement the item is checked (P5)
 and placed again, at most reference.retries.placement times, only when it is still between the fingers or stuck on
@@ -23,18 +23,6 @@ cage is empty (P3); (5) a refused pre-grasp or pre-deposit pose is replaced by a
 plate side, pad), the item is never let go in place.  Simplified for spacekit 0.4.0: no periodic re-centring, no own
 time-outs (the firmware's TIMEOUT); moves retried <= reference.retries.move; capture / removal / placement <= their
 retries; the removal probe moves > reference.probe_backoff_min_m.
-
-Promoted from the earlier studies (each named by the sha256 of its source): the sketch program (sha256
-0bc61f9e9825481189ff7897cb66f51bedeb56024730cd45c4fe39d1ff5917ba) and its run driver (sha256
-6b71fe38b6242724a40a8c971da683a708b7946ab0930f973e5be22eb61031c3), the localisation study's route (sha256
-a9863b16a8182173545a27f8c08d6a61498b4fa8045c50344125d573c6409922), the holding-screen study's placement recipe and
-hand-over pose (sha256 2b8f4bdf21d46e45b2f36430e71eb6a3328a81e0f3593c16571d67531ef5c027), the removal recheck's loop
-peel (sha256 5f3f232b4316de94a14e806d3b3bac7f0f5e977357411bfbe6ee9ffcdbd5071f), the removal study's grasp-first fan
-stop (sha256 1c231da916f8ce10eedc2951742f37048b31d3f828d34e8fbfe93a4a9c4ed9ca), the sketch's insertion probe (sha256
-bd66cd0f828b92208ef37a3813a217cf640a46babfea0388a4813e7e3574aac1), the firmware bench sequences (sha256
-6390dac0d03c9a89935e33a49e4c1f2c5e553321a47ba7592d28ca658c89031b: pull_for, remove_blocker, transit_goals of the
-plate study, sha256 8484dc3a1471f428d111797e4d7f4bdcf007d5945302c3ed6dd047af2cd6b362) and the pouch-pad bench's
-recipe (sha256 837221d055b401e8b2ec74cd220a8a601c6a7739d276985c21c39d70d8a5c337).
 """
 from __future__ import annotations
 
@@ -58,19 +46,19 @@ DEFAULTS = dict(
                                      # aft depth camera 0.52-0.57 m from the bar (reference.hint_range_m)
     pouch_pull_m=0.45,               # direct pull of a pouch (18 / 18; the task firmware remove_pouch)
     peel_pull_m=0.50,                # P route: the loop pulled along the inlet normal
-    pull_s=40.0,                     # a held pull re-issued for at most this long (the pull study PullFor)
-    s_pull_s=16.0,                   # S route: the pull after the stop (the sketch cell _fanstop_grasp_first)
+    pull_s=40.0,                     # a held pull re-issued for at most this long
+    s_pull_s=16.0,                   # S route: the pull after the stop
     fan_wait_s=20.0,                 # S route: at most this long for the return pressure to fall
     transit_out_m=0.60,              # deposit transit point out along the face normal
     pre_out_m=0.30,                  # fly_rel pre-deposit point
-    clear_m=dict(pouch=0.10, sheet=0.0),   # rule 2: slide of the open hand along the bar axis (bench: pouch 0.10 m);
+    clear_m=dict(pouch=0.10, sheet=0.0),   # rule 2: slide of the open hand along the bar axis (pouch 0.10 m);
                                      # a sheet's bar runs along the chain and the screen recipe backs off at once
     clear_speed=0.03,
     pouch_insert_speed=0.03,         # reference.place_press speed; 0.06 left the pouch short of the pad
     press_settle=dict(pouch=True, sheet=False),   # a second fly_rel to the press goal after the insert (pouches):
                                      # fly_rel ends inside its end tolerance and the hold after it is on the map, so the
-                                     # pouch can stop short of the pad (the bench held the press on the plate); a sheet is
-                                     # pressed as the holding-screen study did (one insert, the dwell)
+                                     # pouch can stop short of the pad; a sheet is pressed
+                                     # once (one insert, the dwell)
     reseat_backoff_m=0.10,           # a press that did not seat: back off this far (on the plate) and press again -- a
                                      # sheet partly on the screen stays close instead of being pulled out of the cage
     pouch_align="clamped",           # ref_geom.plan_pouch
@@ -82,16 +70,16 @@ DEFAULTS = dict(
                                      # AGILE 0.204, STANDARD 0.158; the generator's loop condition is 0.22 N, 40 s)
     peel_s=60.0,                     # the peel pull re-issued while it makes progress, at most this long
     max_presses=5,                   # presses per item over every face / attitude
-    deposit="aligned",               # 'aligned' (the fix round): a closed loop on the held item's deviation from the
+    deposit="aligned",               # 'aligned': a closed loop on the held item's deviation from the
                                      # face plane (P4) before every press, never a press above align.dev_press; 'legacy'
-                                     # = the first reference program's square wait and re-press from 0.10 m
+                                     # = a square wait and a re-press from 0.10 m
     align=dict(dev_go=dict(sheet=22.0, sheet_fan_stop=60.0, pouch=20.0),     # go for the insert when the item's face is this close to the
                                      # face plane [deg]
                dev_press=dict(sheet=55.0, sheet_fan_stop=60.0, pouch=30.0),   # OPTION F (press-flattening): sheets pressed up to these
                turn_max=dict(sheet=40.0, pouch=35.0),   # the palm turned about the bar by the item's in-hand turn,
                                      # clamped (the body clears the rack face up to ~45 deg; 35 deg for pouches)
                tries=3, settle_s=2.0,   # reads (and turns) at the pre-deposit point, the wait before each read
-               turn_mode="HUSH",     # the turn in HUSH (1 deg/s): the item follows the slow palm [V fix-round study]
+               turn_mode="HUSH",     # the turn in HUSH (1 deg/s): the item follows the slow palm [V]
                near_m=dict(sheet=0.08, pouch=0.06),     # insert leg 1 stops this far off the press point: the last
                                      # check before the press
                backoffs=2,           # leg 1 found the item turned again: back to the pre-deposit point and align again
@@ -104,11 +92,11 @@ DEFAULTS = dict(
                where="pre", transit_settle_s=3.0),   # where the palm turns: out at the transit point (0.6 m beyond
                                      # the pre-deposit point), where the cabin air is the background: a slow turn at the
                                      # pre-deposit point (0.14 m/s rack-face sweep) let strap-held sheets swing over the
-                                     # bar [V fix-round study]; 'pre' = turn at the pre-deposit point
+                                     # bar [V]; 'pre' = turn at the pre-deposit point
     sheet_z_order=dict(fan_stop=("near_b", "far_b", None), peel=("-b", "+b", None)),   # bar directions on the screen:
-                                     # +-b keeps the screen's plates (+-b) on the overhang side (the holding-screen study visibility);
-                                     # None = the bar kept in its in-plane direction.  P route -b first (the
-                                     # fix round): the chain hangs off the loop toward +b, downstream of the air that
+                                     # +-b keeps the screen's plates (+-b) on the overhang side, in view;
+                                     # None = the bar kept in its in-plane direction.  P route -b first:
+                                     # the chain hangs off the loop toward +b, downstream of the air that
                                      # sweeps the rack faces from the overhead supply to the deck-side returns
                                      # (station handbook: top supply, side return; 0.16-0.19 m/s along +b within 0.2 m
                                      # of every screen) instead of upstream into it
@@ -127,15 +115,15 @@ DEFAULTS = dict(
                                      # the bar) in the transit -- a fast swing of the bar's direction flings a loop-held
                                      # sheet's 0.3 m chain round and wedges the bar askew in the cage (P route: bar tilt
                                      # at the pre-deposit point 0.06-0.6 of the cage axis in the failed placements)
-                                     # [V fix-round study]
-    survey="items",                  # 'items' (the fix round): survey stops only at the inlets that hold an item (the
+                                     # [V]
+    survey="items",                  # 'items': survey stops only at the inlets that hold an item (the
                                      # blocked inlet's frame is the report's evidence; P2 says where the items are), and
-                                     # no visit to a module without an item; 'all' = the first reference program's stop at every inlet of every
+                                     # no visit to a module without an item; 'all' = a stop at every inlet of every
                                      # module (the time goes to the closed-loop placements, the hidden-set rule margins)
     battery_wh=196.0,                # the 2 h basis at 98 W [G]
     power_w=98.0,
     dock_berth=1,
-    arm_overlap=True,                # (second fix round) the arm's own motion overlapped with a move instead of waited
+    arm_overlap=True,                # the arm's own motion overlapped with a move instead of waited
                                      # for: after the module's last placement (PLACED, the cage empty, the hand free)
                                      # the stow starts when the move to the centreline starts, so the corridor waits
                                      # only for the rest of it; the module's first capture flies its centreline leg
@@ -260,7 +248,7 @@ class Program:
 
     def exit_band(self, n_dir, label="exit_band", extra: float = 0.05) -> str:
         """After work next to a wall: straight out along n_dir to the nearest point the zone map holds free with the
-        arm's current state (the sketch cell _clear_band; the band rule accepts a segment that leaves the band)."""
+        arm's current state (the band rule accepts a segment that leaves the band)."""
         arm = self.arm_deployed()
         p, q, _ = self.pose()
         n_dir = RG.unit(n_dir)
@@ -606,7 +594,7 @@ class Program:
         return self.stow("blocker", m, ["S"], kind="sheet")
 
     def _pd_away(self, c, a, n):
-        """P route: the palm +z toward the loop's end of the sheet, away from the sheet's centre (the holding-screen study 'away'): the
+        """P route: the palm +z toward the loop's end of the sheet, away from the sheet's centre: the
         chain hangs off the hand on the far side (P2: the strap's pose gives the sheet's middle)."""
         strap = self.T.feature("blocker:strap")
         mid = strap[0] if strap is not None else c
@@ -1011,7 +999,7 @@ class Program:
         again (<= align.backoffs), never a press above it ('NOT_ALIGNED': the caller tries the next attitude / face) --
         then leg 2, the press, the press check (P5): seated, or touching the face -> keep pressing align.more_s more and
         release (the suction seals it); not touching -> back to the pre-deposit point ('AGAIN'); then the open hand
-        slides off the bar (pouches), backs off, and the P5 placement check (PLACED / LOST / the re-grasp of the first reference program)."""
+        slides off the bar (pouches), backs off, and the P5 placement check (PLACED / LOST / the re-grasp)."""
         A = self.P["align"]
         F = self.map.face(m, face)
         fid = f"SB-{m.upper()}-{face}"
@@ -1113,7 +1101,7 @@ class Program:
         return self._release_and_check(item, m, face, kind, z_choice, plates, plan, attempt, F, fid)
 
     def _slipped(self, item, kind, F, fid, face, attempt) -> str:
-        """The item left the hand before the press: free the hand, back off, then the P5 check (the first reference program's block)."""
+        """The item left the hand before the press: free the hand, back off, then the P5 check."""
         if self.r.status().get("interlock"):
             self._act(self.r.gripper(True))
         p, q, _ = self.pose()
@@ -1156,7 +1144,7 @@ class Program:
         return self._regrasp(item, m, face, kind, z_choice, plates, chk, F)
 
     def _regrasp(self, item, m, face, kind, z_choice, plates, chk, F) -> str:
-        """the first reference program's re-grasp after a placement that left the item between the fingers or stuck on the face (a seal below
+        """The re-grasp after a placement that left the item between the fingers or stuck on the face (a seal below
         regrasp_max_fraction); back on the pre-deposit side: 'AGAIN' (the next attempt aligns again) or 'GAVE_UP'."""
         pre = float(self.P["pre_out_m"])
         if chk.get("between_fingers") or chk.get("held"):
@@ -1190,14 +1178,14 @@ class Program:
         return "LOST"
 
     def _deposit(self, item, m, face, kind, z_choice, plates, attempt) -> str:
-        """One placement attempt from the pre-deposit point (the trial drivers' replay calls this too): the closed-loop
-        deposit (default, reference.deposit 'aligned') or the first reference program's ('legacy')."""
+        """One placement attempt from the pre-deposit point: the closed-loop
+        deposit (default, reference.deposit 'aligned') or the legacy one ('legacy')."""
         if self.P.get("deposit") == "aligned":
             return self._deposit_aligned(item, m, face, kind, z_choice, plates, attempt)
         return self._deposit_legacy(item, m, face, kind, z_choice, plates, attempt)
 
     def _deposit_legacy(self, item, m, face, kind, z_choice, plates, attempt) -> str:
-        """the first reference program's insert-release-back-off from the pre-deposit point, then the P5 check: PLACED, AGAIN (still between the
+        """The legacy insert-release-back-off from the pre-deposit point, then the P5 check: PLACED, AGAIN (still between the
         fingers or stuck on the face: re-grasped, ready for another attempt), LOST (floats: not chased), GAVE_UP."""
         F = self.map.face(m, face)
         fid = f"SB-{m.upper()}-{face}"

@@ -13,15 +13,15 @@ and the manuals), nothing is a hidden quantity.
   from the robot's own pose estimate; every move is still a validated fly_to / fly_rel of the firmware;
 * route geometry: survey stops, corridor legs through the hatches, the approach start of a berth.
 
-Promoted from the localisation study's route (source
-sha256 a9863b16a8182173545a27f8c08d6a61498b4fa8045c50344125d573c6409922: ``transit_to``; the localisation study sha256
-d81cf00bb739a1945b824d579d601d48bb6093f335ebd28f4eb84957817ab4b7: ``look_quat``, ``survey_pose``, the hatch points,
-the approach start of berth 1), the sketch program (source sha256
-0bc61f9e9825481189ff7897cb66f51bedeb56024730cd45c4fe39d1ff5917ba: ``_to_centreline``, ``_clear_band``,
-``_home_and_dock``) and the site generator's reach check (tests/review/sitegen/gen/pregrasp.py sha256
-00c1604b87f4c3a3e91d9bae7e7390d6f61008766dd8f818a12d9da1adc15801: ``centreline_point``, the trapezoid check).
-Changed: the station v0.3 catalogue (no corridor record: the centreline height is the module axis'), the task
-firmware's zone rule, both berths.
+The pieces: ``look_quat`` (an attitude from a viewing direction), ``StationMap.survey_pose`` (the survey stop of
+an inlet), ``StationMap.transit_legs`` (the corridor legs through the hatches, by the hatch points below),
+``StationMap.approach_start`` (the start of a dock(berth) call, for both berths), ``StationMap.centreline_point``
+(the point of the module axis at an axial position), ``StationMap.unit_part``, ``face`` and ``plate_frame`` (the
+stowage units at their registered sites) and ``ZonePredictor`` (the firmware's zone rule).
+The centreline point and the trapezoid check are those of the site generator's reach check
+(tests/review/sitegen/gen/pregrasp.py).  The map is the station v0.3 catalogue: the centreline height is the
+module axis'.  Every move of the route is still a validated fly_to / fly_rel of the task firmware, under its zone
+rule.
 """
 from __future__ import annotations
 
@@ -33,11 +33,11 @@ import numpy as np
 from spacekit.rotations import mat_to_quat, quat_to_mat
 
 MODULE_ORDER = ("l2", "h2", "l1")
-HATCH_L2_H2 = (10.936, -2.75, 4.851)       # L2 side of the L2 / H2 hatch (the localisation study, the K-line legs)
+HATCH_L2_H2 = (10.936, -2.75, 4.851)       # L2 side of the L2 / H2 hatch
 H2_HUB = (10.936, -0.011, 4.836)
 H2_L1 = (6.0, 0.0, 4.835)                  # L1 side of the H2 / L1 hatch
-HOME0 = (10.936, -9.0, 4.851)              # L2 centreline in front of the dock (the localisation study home_0 / the sketch cell HOME0)
-APPROACH_START_X_M = 1.0                   # the approach start: 1.0 m out of the berth along its axis (the localisation study home_1)
+HOME0 = (10.936, -9.0, 4.851)              # L2 centreline in front of the dock
+APPROACH_START_X_M = 1.0                   # the approach start: 1.0 m out of the berth along its axis
 APPROACH_START_DZ_M = 0.104                # ... and this far toward the module axis (z 4.40 for berth 1)
 
 
@@ -48,8 +48,8 @@ def unit(v):
 
 
 def look_quat(direction, down=(0.0, 0.0, 1.0)) -> np.ndarray:
-    """Attitude with body +x along ``direction`` and body +z as close as possible to ``down`` (flight frame: +z deck;
-    the localisation study's look_quat)."""
+    """Attitude with body +x along ``direction`` and body +z as close as possible to ``down``
+    (flight frame: +z deck)."""
     x = unit(direction)
     z = np.asarray(down, float) - x * float(np.dot(down, x))
     if np.linalg.norm(z) < 1e-6:
@@ -136,7 +136,7 @@ class StationMap:
 
     def survey_pose(self, iid: str):
         """The survey stop of an inlet: the module centreline at the inlet's axial position, body +x (the forward
-        imaging camera) toward the inlet's face centre (the localisation study survey_pose); (pos, quat, distance)."""
+        imaging camera) toward the inlet's face centre; (pos, quat, distance)."""
         c, _, _ = self.inlet_frame(iid)
         m = self.inlets[iid]["module"]
         p = self.centreline_point(m, c, margin=0.5)
@@ -155,7 +155,7 @@ class StationMap:
                 best, bd = iid, dist
         return best
 
-    # -- transits (the localisation study transit_to)
+    # -- transits
     def transit_legs(self, a: str, b: str) -> list:
         if a == b:
             return []
@@ -183,7 +183,7 @@ class StationMap:
 
     def approach_start(self, berth: int):
         """(pos, quat) of the start of a dock(berth) call: on the berth axis APPROACH_START_X_M out of the berth's
-        body pose, raised toward the module axis (the localisation study DOCK_APPROACH_START for berth 1), at the berth attitude."""
+        body pose, raised toward the module axis, at the berth attitude."""
         p, q = self.berth_pose(berth)
         R = rot_of(self.dock["quat_wxyz"])
         x = R[:, 0]

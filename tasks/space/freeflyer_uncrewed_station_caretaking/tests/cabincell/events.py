@@ -18,11 +18,10 @@ the hidden site package.
                    items touching both the robot and the dock from the first DOCKED on (at KEEPOUT_HZ), and the record
                    (``record()``) with the state and final-qpos hashes.
 
-Promoted from the sketch cell (sha256 e1346737361c00cb1968d2ae73b358f8f6de5ccfc7a070be91fa913d9943481b):
 ``Recorder`` (2 Hz rows, keep-out time, loss of control), ``ContactWatch`` (0.2 s re-arm, robot point velocity along
-the contact normal), ``c_item_touch_dock``.  Changed: the geometry is predicates.py's (sealed area by the first
-layer, covered fraction, the cage), the faces are the stowage units' (no bags or pockets), the rows follow
-the record format, the force is recorded with the speed, the classes are named, the dock check runs through the docked time.
+the contact normal), ``c_item_touch_dock``.  The geometry is predicates.py's (sealed area by the first layer,
+covered fraction, the cage), the faces are the stowage units', the rows follow the record format, the force is
+recorded with the speed, the classes are named, the dock check runs through the docked time.
 
 Measurement parameters come from tests/grader_config.json through ``predicates.measure_params`` (only there: the rehearsal service never reads them);
 the record period and the settle from the runtime site_spec (budgets.py).
@@ -37,7 +36,7 @@ import mujoco
 import numpy as np
 
 RECORD_SCHEMA = "caretaking.record/1"
-REARM_S = 0.2                 # a pair out of contact this long opens a new event (the sketch cell's ContactWatch re-arm) [G]
+REARM_S = 0.2                 # a pair out of contact this long opens a new event (ContactWatch's re-arm) [G]
 KEEPOUT_HZ = 10.0             # keep-out time and the item-dock check run at this rate [G]
 MAX_CONTACT_EVENTS = 5000     # events kept in the record (all are counted in the metrics)
 HATCH_RIM_M = 0.12            # a structure contact within this of a hatch rim (radially and off its plane): hatch_seal [G]
