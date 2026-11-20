@@ -30,7 +30,7 @@ the platform's notes on 2026-11-17; nothing here is a legal opinion.
 | 5 | the designers' bill of materials and assembly guide (version 3) | https://tensegrity.yale.edu/ | `BOM.xlsx`, `3dea5cc931d8758edf7f7f91b350ff498b703577aa277af90cf918284448c613`; `Guide_to_assembly_a_tensegrity_robot_V3.pdf`, `912c44ccae2bd04e7d734ca0d4771612b2ed40e37c9bd8a30f138cbe300de49e` | neither the site nor the files carry a licence or copyright statement | the vendors and part numbers of the three purchased parts the handbook names; the fishing line's rating; the guide's rule on which hook a line or a sensor may hang from (the base's hook assignment is one of the 64 assignments it allows). No text or figure of either is in the task |
 | 6 | the gearmotor's data | Pololu, https://www.pololu.com/product/5192/specs | - | a vendor's public product page | gear ratio, no-load speed and current, stall torque and current, encoder resolution of the simulated motors |
 | 7 | the stretch sensors' cut outlines | figshare data set "Impact-resistant, autonomous robots inspired by tensegrity architecture", DOI 10.6084/m9.figshare.32273583 | - | CC BY 4.0 (the data set's licence field) | a cross-check only: the hole spacings (65 and 130 mm) equal the sensors' rest lengths of row 2. No file of it is used |
-| 8 | the designers' CAD package ("tribar-2" on GrabCAD), as downloaded by the benchmark's owner | https://grabcad.com/library/tribar-2 | - | GrabCAD's site terms: non-commercial internal use, no redistribution | **no file of the package is in this task**, and nothing of the task was derived from it |
+| 8 | the designers' CAD package ("tribar-2" on GrabCAD), as downloaded by the benchmark's maintainers | https://grabcad.com/library/tribar-2 | - | GrabCAD's site terms: non-commercial internal use, no redistribution | **no file of the package is in this task**, and nothing of the task was derived from it |
 
 ### The visual meshes, file by file
 
@@ -84,7 +84,7 @@ given to the agent.
 
 ## Names
 
-By the owner's rule the instruction, the payload, every reply of the station, the practice ground's debriefs and
+By the maintainers' rule the instruction, the payload, every reply of the station, the practice ground's debriefs and
 everything the agent's account can read in the image name neither the robot nor its designers, their schools, labs,
 papers, design names or repositories. The documents call the robot the "RT-3 search tensegrity"; the three purchased
 parts keep their real vendors and part numbers (Pololu 5192; McMaster-Carr 8974K19; Arduino Nano 33 IoT, ABX00027,
@@ -99,6 +99,6 @@ folder in the benchmark's repository would make public: the five mesh files abov
 groups at full resolution) twice, under `tests/voidcell/data/meshes/` and under
 `environment/practice_ground/voidcell/data/meshes/`; the tables measured on that mesh; and the data taken from the
 sources of rows 2 to 4. The mesh is also the source of the geometry that the sibling task
-`tensegrity_cad_design_from_photos` grades. The sources of rows 1 to 3 carry no licence file. Whether and how the
-folder is published is the owner's decision, asked together with the sibling tasks' at the pull request; if that
-decision changes what may be shipped, this file changes with it.
+`tensegrity_cad_design_from_photos` grades. The sources of rows 1 to 3 carry no licence file. The benchmark's
+maintainers decided to publish the folder with these files, as they did for the sibling tasks, which use the same mesh;
+if a later decision changes what may be shipped, this file changes with it.

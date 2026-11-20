@@ -216,8 +216,8 @@ platforms = ["soft"]
 stages = ["hardware-design"]
 
 [tensegrity_collapsed_warehouse_void_search]
-title = "Search a collapsed warehouse with a tensegrity robot"
-summary = "Write the mission program of a three-strut tensegrity rolling robot that reports three points in a collapsed warehouse bay, the last one in a void under a fallen slab that its search camera cannot see into."
+title = "Search warehouse rubble with a tensegrity robot"
+summary = "Write the mission program of a three-strut tensegrity rolling robot that reports three points in a collapsed warehouse bay, the last in a void under a fallen slab the search camera cannot see into."
 platforms = ["soft"]
 stages = ["behavior"]
 

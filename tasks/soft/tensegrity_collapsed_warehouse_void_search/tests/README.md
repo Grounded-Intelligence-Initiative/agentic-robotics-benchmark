@@ -1,8 +1,8 @@
 # tensegrity_collapsed_warehouse_void_search: maintainers' notes
 
-**Version 1.1** (2026-11-19; version 1.0 of 2026-11-17 is in the repository's history). Platform `soft`, stage
-`behavior`. Hidden side: this folder is never staged into the agent's sandbox, so names that the agent must not see
-may appear here; the attribution is in `NOTICE.md`.
+**Version 1.1** (2026-11-19; version 1.0 of 2026-11-17 was not published and is kept in the maintainers' development
+folder). Platform `soft`, stage `behavior`. Hidden side: this folder is never staged into the agent's sandbox, so names
+that the agent must not see may appear here; the attribution is in `NOTICE.md`.
 The measurements these notes quote, and the task's design, are in the maintainers' development folder, which is not
 part of this repository; a path below that starts with `tools/`, `build/`, `evidence/`, `text/` or `repo_tests/` is
 a path in that folder.
@@ -61,7 +61,7 @@ Then the robot is to be brought back to the pad. The grader runs the program on 
 | `review/` | maintainers' tools that nothing runs at verify (its own `README.md` and `SHA256SUMS`): the site generators `w2gen` (the open ground) and `w3gen` (the slab, the three mouths, the void and the rubble), the calibration site's generator `calgen` 0.2.0, the QC scripts, the degenerate submissions, the maintainer variants of the reference with their expected scores. The admission rule and the selection, packaging and oracle-verify tools are not here: they stay in the development folder (section 8 describes what they did) |
 | `README.md`, `NOTICE.md` | these notes; attribution |
 
-Outside this folder: `solution/` (the oracle: a two-line `operate.py` and the 256-bit token), `environment/` (the
+Outside this folder: `solution/` (the oracle: a short `operate.py` and the 256-bit token), `environment/` (the
 image; the payload; `practice_ground/` = the practice service `practiced.py`, a byte copy of `voidcell/` and
 `voidscore/` without the reference and the token, the calibration site `cal`, the practice sites `p1..p3`).
 
@@ -150,7 +150,7 @@ marks a value of the simulation base that no public measurement of the real robo
 | After a bad primitive the robot can end in an orientation from which it cannot roll on | real | the paper; in the simulation these are the two end triangles (16 of 7600 primitives among obstacles, 0 of 4640 on a free floor; the handbook prints the counts) |
 | How far each primitive moves the robot, the stop band of 5 % (the designers' code: 15 %), which end-cap hook carries which cable, the line's stiffness, the 0.911 s rest between primitives, the IMU's axes | base assumption | no calibration data of the real robot is public. The handbook's primitive table is this simulated robot's own measurement on a flat floor, by start face, not the designers' published table (against that table: forward rolls 0.04-0.10 m off in translation, the clockwise turn qualitatively different) |
 | A narrow passage and a low beam | the designers' simulation scenes, not the real robot | only their sizes are borrowed (the tight opening class T and the low slot XL, 0.15 m clear) |
-| The scene: a collapsed warehouse after an earthquake | added | the owner's direction |
+| The scene: a collapsed warehouse after an earthquake | added | the maintainers' choice of setting |
 | The camera on a mast through the roof, 4.95-5.25 m up, tilted 14-17 degrees (the lab: 2.34 m, straight down) | added | it has to cover the open part of the site and see the mouths |
 | The program gets raw RGB-D only and estimates the pose itself (switch `pose_source`, default `estimated`) | added | in the real system a tracker supplies the pose; with a given pose the task would be the designers' published planner |
 | The crawl space out of view: three mouths that look the same (one open), straight passages with dead ends meeting at right angles, a chamber in a back corner whose two walls are the site's own, a blind way of 4-6 m | added | the real experiments ran in view throughout; the paper names navigation on on-board sensing alone as open |
@@ -334,8 +334,10 @@ CRC64; twice, byte for byte the same).
 h03, 1116.25 s, 145 primitives); every selected site's reference time is at most 1800 / 1.6 = 1125 s. The practice
 sites have the same limit; the calibration site max(900, 60 x ceil(1.6 x 872.5 / 60)) = 1440 s.
 
-**Measured programs.** Only these have been run, all through the real `verify.py`. No pilot, probe, baseline ladder or
-non-privileged solver was built or run.
+**Measured programs.** Only these have been run through the real `verify.py`. No pilot, probe, baseline ladder or
+non-privileged solver was built. Besides them, one agent submission was run during the design of this version: version
+1.0's saved episode program, under this version's settings on twelve development sites, as a diagnostic of whether an
+unchanged program is still stopped (mean S 0.19, point 3 on none of the twelve).
 
 | program | what it does | void_search_score | note |
 |---|---|---|---|
@@ -376,8 +378,9 @@ open one, with its own rubble: the same camera rays, hit names, public views, `m
 the cue check reproduced to the digit; the 20 frames of h03 equal in two processes on the development host. In the
 version 1.1 image: 44 of 44 isolation checks (the agent account can neither list nor read the practice service's
 files), the same 20 frames in two containers as on the development host, and the leak scans over the image's
-agent-readable file list without a hit. The first set's QC (2026-11-17) is in the repository's history; its
-results were: Q1-Q6 all held, 92 interface checks, 4892 hidden numbers 0 leaked, 44 isolation checks in the image.
+agent-readable file list without a hit. The first set's QC (2026-11-17, on the unpublished version 1.0) is kept in the
+maintainers' development folder; its results were: Q1-Q6 all held, 92 interface checks, 4892 hidden numbers 0 leaked, 44
+isolation checks in the image.
 
 ## 10. Frozen files, and what to re-run after a change
 
@@ -438,9 +441,11 @@ ten final states of `hidden/seeds.json`; about 57 minutes on the development hos
 
 ## 11. Known limitations
 
-1. **No measurement of difficulty on this version.** By the owner's rule the only evidence built is the privileged
-   reference, the degenerate submissions and the grader's QC. Version 1.0's one model episode read 1.0; this version
-   exists because of it, and its own difficulty is unmeasured until one model episode on it.
+1. **One model episode is the only measurement of difficulty.** By the maintainers' rule the only evidence built is the
+   privileged reference, the degenerate submissions and the grader's QC. Version 1.0's one model episode read 1.0, and
+   this version exists because of it. One model episode on this version (2026-11-19) read 0.23; the pull request that
+   adds this version describes it. It ran on these files as they were before the verdict kit `robotics_grader/` was
+   refreshed on 2026-11-20, a change that touches nothing this grader calls. One episode is one reading, not a mean.
 2. **The time limit is tight by arithmetic.** With k = 1.6 the maintainers' arithmetic (an estimate, not a
    measurement of any program) leaves a careful program that does not know the site, at the reference's pace, about
    16 s for point 3 on an average site when it tries the mouths in the worst order, and about 12 s for the whole trip
@@ -483,9 +488,9 @@ ten final states of `hidden/seeds.json`; about 57 minutes on the development hos
 13. **Costs in the documents** are the version 1.1 image's, the larger of two one-episode runs on a host at load
     19-56 (0.163 s per simulated second, 0.228 s per frame); a busier host is slower. "rolling or standing alike"
     rounds a difference of up to 28 % (0.127 against 0.099 s, 0.163 against 0.146 s per simulated second).
-14. **A neighbouring task.** The benchmark has a search-and-rescue task with a tracked vehicle in an earthquake-struck
-    building; this one differs in the platform, the off-board camera, the unseen void and the rolling primitives.
-    Compare the two cards once before the merge.
+14. **A neighbouring task.** A search-and-rescue task with a tracked vehicle in an earthquake-struck building was in
+    review for this benchmark when this version was published; this one differs in the platform, the off-board camera,
+    the unseen void and the rolling primitives.
 15. **Numbers the leak scan reports.** In the calibration site's plan (`given/calibration_site/site_plan.json`) three
     printed numbers equal hidden values of the frozen sites to four decimals: 0.5593 m, class P's width, which is by
     rule the gap beside every rubble block (and the mouths' width; the instruction says the gap is as wide as the
@@ -503,4 +508,6 @@ ten final states of `hidden/seeds.json`; about 57 minutes on the development hos
 | 2026-11-17 | version 1.0: generator W2; cell, station, reference on 107 candidates (ysim 0.3.1); scoring, verify, practice ground, calibration site; selection and freeze (rule pinned 17:24:06, frozen 18:24:46, anchor 1.0); the grader's QC; the agent's documents; image, layout, two real validations; one model episode (read 1.0) |
 | 2026-11-18 | version 1.1 designed: site family W3 with the rubble, credit 0.20 / 0.40 m, weights 0.05 / 0.15 / 0.80, time-limit factor 1.6, the kernel pin of the program's process; generator, calibration site (calgen 0.2.0), reference 1.1.0 |
 | 2026-11-19 | admission rule pinned 00:51:35; 220 candidate packages, 139 reference runs; the agent's documents rewritten for version 1.1; a text-only revision of the cell, the reference (1.1.1), the generator and the maintainers' files (no computed value changed, final states proven unchanged); the 13 packages regenerated with the clean envelope; frozen 2026-11-19 13:21, anchor 1.0; after it, the grader's QC on the frozen set; the image rebuilt, and from its measurements the documents' cost figures and `task.toml`'s header and verifier timeout (19 100 s); dated revisions of `tests/`, each in the freeze record (the givens' copy and their pins with the cost figures; these notes; `hidden/seeds.json`'s rubble counts, a field nothing reads, and the two pins of its sha256); a real validation through the `docker` wrapper on the final bytes |
-| open | the card for version 1.1; the commit of the packages' files; one model episode on the owner's approval; the art pass |
+| 2026-11-19 | one model episode on the frozen version (read 0.23) |
+| 2026-11-20 | the task's card; the verdict kit `robotics_grader/` refreshed to the repository's current copy (five files, nothing this grader calls changed); these notes brought up to date; a real validation on the final bytes |
+| open | a later version with dressed sites and with heaps of rubble and of spilled fill on the open floor |
