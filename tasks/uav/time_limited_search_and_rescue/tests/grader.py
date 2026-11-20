@@ -58,6 +58,7 @@ MAX_SUBMISSION_FILES = 2000
 PROGRESS_KEYS = ("entered_wing", "mezzanine", "located", "grasped", "lifted", "cargo_return", "delivered")
 ABORTS = ("wall", "inspection", "cargo", "slab", "roof", "throat_entry", "throat_exit", "loading_wall",
           "unsafe_release")
+NUMERICS_OFF = "AVX512F,AVX512CD,AVX512_SKX,AVX512_CLX,AVX512_CNL,AVX512_ICL,AVX512_SPR"
 TOKEN_FILE = ".oracle_token"
 TOKEN_MAX_BYTES = 4096
 VERIFIER_STOPS = {
@@ -232,7 +233,11 @@ def _tail_reader(stream, keep, limit=16384):
 def program_argv(home):
     env = ["PATH=/opt/venv/bin:/usr/bin:/bin", "HOME={}".format(home), "TMPDIR={}/tmp".format(home),
            "LANG=C.UTF-8", "ROBOT_SOCKET={}".format(SOCKET), "MUJOCO_GL=osmesa", "LIBGL_ALWAYS_SOFTWARE=1",
-           "OMP_NUM_THREADS=1", "OPENBLAS_NUM_THREADS=1", "PYTHONNOUSERSITE=1"]
+           "OMP_NUM_THREADS=1", "OPENBLAS_NUM_THREADS=1", "PYTHONNOUSERSITE=1",
+           # One numerics path on every grading host (environment/Dockerfile sets the same two in the agent's
+           # sandbox): without them an image-driven program's arithmetic, and so its flight, differs between an
+           # AVX2 and an AVX-512 machine (measured; tests/review/host_dependence.md).
+           "OPENBLAS_CORETYPE=HASWELL", "NPY_DISABLE_CPU_FEATURES="+NUMERICS_OFF]
     return [RUNUSER, "-u", agent_user(), "--", ENV, "-i"] + env + nonet_argv(["/bin/bash", "run.sh"], PYTHON)
 
 
@@ -271,7 +276,8 @@ def run_mission(index, seed, uid, gid, config, privileged=False):
         cwd=str(RUNTIME), stdout=service_log, stderr=service_log, start_new_session=True,
         env={"PATH": "/opt/venv/bin:/usr/bin:/bin", "HOME": "/root", "LANG": "C.UTF-8", "MUJOCO_GL": "osmesa",
              "LIBGL_ALWAYS_SOFTWARE": "1", "LP_NUM_THREADS": "2", "OPENBLAS_NUM_THREADS": "1",
-             "OMP_NUM_THREADS": "1", "PYTHONNOUSERSITE": "1"})
+             "OMP_NUM_THREADS": "1", "PYTHONNOUSERSITE": "1", "OPENBLAS_CORETYPE": "HASWELL",
+             "NPY_DISABLE_CPU_FEATURES": NUMERICS_OFF})
     record = {"site": index, "infra": False}
     try:
         deadline = time.monotonic()+180

@@ -1,21 +1,124 @@
 # Civilian Rescue: Warehouse Handoff
 
-Recover the rescue mannequin on its rigid medical litter. Deliver it intact to the **receiving station accepting this incident**. A dispatch arrow points toward that station. At receiving, a lowered shutter bears a large cross; an open doorway exposes a horizontal deck. The incident remains fixed during your sortie. You may inspect either approach, change your mind, or use any safe route.
+A small indoor aircraft has to recover a rescue mannequin that lies on a rigid medical litter somewhere in a
+two-storey warehouse wing, and deliver it intact to the **receiving station that is accepting this incident**. The
+radio does not reach inside the wing, so the aircraft flies on its own: you write its flight program.
 
-Entry safety briefing: center on the violet apron, settle at approximately 0.71 m, cross the inspection slot facing into it, and climb only after the aircraft has cleared the frame.
+Leave the program in `/home/user/submission/`, started by `run.sh`. After your session a grader flies it, once, on
+each of **8 sites you have not seen**. The sites differ in where the doorways are open, where the hoist wells and the
+litter are, which fitting the litter carries, which station is open, the room sizes and the aircraft's trim.
 
-**Aircraft and cameras.** `robot_act({"action":[right,forward,up,yaw_left,grip]})` accepts five numbers in [-1,1]. Each action advances 0.2 s. Maximum nominal setpoint increments are 0.32 m on each horizontal axis, 0.19 m vertically and 30 degrees in yaw. Horizontal axes use the heading at the **start** of the action; zero holds. Translation gains vary a few percent, and loaded forward travel can drift sideways by about 0.13 m per metre. Launch is at 1.30 m facing the wing; altitude limits are 0.39-4.69 m above launch.
+## The site
 
-`robot_observe()` and each action return two 256-by-256 RGB views, `frame_id`, `done` and `steps_remaining`; no pose, map or depth. Both cameras rotate with the aircraft and have 94-degree vertical field of view (focal length 119.4 pixels). Camera 0 looks down from 0.46 m forward and 0.145 m below center; right/up in the image are body right/forward. Camera 1 looks forward, pitched 6.9 degrees down, from 0.17 m forward and 0.045 m above center. An attached board can obscure the down view.
+A dispatch arrow near the entrance points toward the open station. At receiving, a lowered shutter bears a large
+cross; an open doorway exposes a horizontal deck. The incident stays fixed during a flight. You may inspect either
+approach, change your mind, or use any safe route.
 
-**Equipment card**
+Entry safety briefing: center on the violet apron, settle at approximately 0.71 m, cross the inspection slot facing
+into it, and climb only after the aircraft has cleared the frame.
+
+## The aircraft
+
+`act([right, forward, up, yaw_left, grip])` takes five numbers in [-1, 1] and advances the flight by 0.2 s. Maximum
+nominal setpoint increments are 0.32 m on each horizontal axis, 0.19 m vertically and 30 degrees in yaw. Horizontal
+axes use the heading at the **start** of the action; zero holds. Translation gains differ from nominal by a few
+percent (fixed for a site). Forward travel drifts sideways by about 0.03 m per metre when unloaded and about
+0.13 m per metre when carrying the litter; the side is fixed for a site. Launch is at 1.30 m facing the wing;
+altitude limits are 0.39-4.69 m above the launch floor.
+
+Every answer (`observe()` and `act(...)`) holds:
+
+| Field | Content |
+|---|---|
+| `images` | Two 256-by-256 RGB PNGs (base64). Both cameras turn with the aircraft and have a 94-degree vertical field of view (focal length 119.4 pixels). Camera 0 looks down from 0.46 m forward and 0.145 m below center; right/up in the image are body right/forward. Camera 1 looks forward, pitched 6.9 degrees down, from 0.17 m forward and 0.045 m above center. An attached board can obscure the down view. |
+| `sensors.altitude_m` | Barometric height above the launch floor: noise 0.015 m (1 sigma) plus a slow drift that stays within 0.06 m. |
+| `sensors.flow_m` | Optical-flow odometer: `[right, forward]` displacement during the last action, in the body frame at that action's start. Scale error up to 2 % per axis (fixed for a site), noise 0.003 m plus 1 % of the displacement (1 sigma). |
+| `sensors.gyro_z_rad_s` | Mean yaw rate during the last action: bias up to 0.004 rad/s (fixed for a site), noise 0.01 rad/s. |
+| `sensors.accel_m_s2` | Mean gravity-compensated acceleration during the last action, `[right, forward, up]`: noise 0.05 m/s^2. |
+| `frame_id`, `steps_remaining`, `done`, `requests_remaining` | Actions flown, actions left, whether the flight has ended, calls left. |
+
+There is no pose, no map and no depth. `observe()` returns the current answer again and passes no time.
+
+## Equipment card
 
 | Equipment | Physical contract |
 |---|---|
 | Litter and heads | Board: 1.80 by 0.44 m; violet end grips 1.62 m apart. The cyan flange under the common dark cover is 8.2 or 18.6 cm across. Small and large split collets fit the corresponding flange. The clamp preserves the actual pickup yaw. |
 | Gripper | Above +0.5 closes, below -0.5 releases, otherwise holds; grip acts before movement. Mount or return a head on its own stand at 0.430 +/- 0.035 m, within 0.085 m horizontally. Latch within 0.135 m of the fitting, aircraft center 0.306 +/- 0.060 m above board center (about 0.40 m above the floor). Steady to at most 0.30 m/s and below 0.30 rad/s. A mismatch does not attach. |
 | Wing | Room pitches 2.60-2.80 m; storeys 2.60 m apart, slab 0.22 m thick. Amber hoist thresholds lead to square bores of 1.08 or 2.34 m; back-wall guides are 1.40 m apart. Ordinary white doorways clear 1.48 m. The violet inspection slot is 1.02 m wide with sill/lintel at 0.43/0.89 m. The blue cargo shutter retracts on a held lift of 0.54 m above the local floor. |
-| Transfer | The turning pocket is 4.20 by 4.60 m. Jambs give 1.10 m width over 0.56 m depth; lime toe strips extend 1.24 m toward their approach. The aircraft, head and entire load must clear structural surfaces. Contact ends the sortie. |
+| Transfer | The turning pocket is 4.20 by 4.60 m. Jambs give 1.10 m width over 0.56 m depth; lime toe strips extend 1.24 m toward their approach. |
 | Handoff | The green deck is 2.50 by 1.48 m. Release with board center no higher than 0.195 m above the floor, speed and yaw rate no greater than 0.34 m/s and 0.34 rad/s. For full credit the released board must physically rest entirely on the deck, center within 0.28 m of the blue target center and at most 0.095 m high, for 0.25 s. The settling limit is 0.16 for the norm of its linear and angular velocities (m/s, rad/s). |
 
-Budget: **4,400 actions, 9,000 total calls, 30 minutes**, no reset. Observing does not advance simulation time. The public client is `/home/user/robot/client.py` with `/opt/venv/bin/python3`. Partial rescue progress is recorded; full credit is the physical handoff, not a particular sequence of visits.
+## What ends a flight
+
+- **Contact.** The aircraft, the mounted head and, once it is carried, the whole litter must clear every structural
+  surface (walls, door and slot frames, slabs, shutters, jambs). The first contact ends the flight.
+- **An unsafe release.** Releasing the litter higher than 0.195 m above the floor, or faster than 0.34 m/s or
+  0.34 rad/s, ends the flight.
+- **The handoff.** The flight ends when the board has rested on the open station's deck as the card says.
+- **The budgets.** 4,400 actions, or 9,000 calls (observations count).
+
+A flight that has ended keeps the progress it had reached.
+
+## Scoring
+
+Each of the 8 flights earns its rescue progress; your score is their mean (a mean of 0.98 or more is full score).
+
+| Reached during the flight | Progress |
+|---|---|
+| Entered the wing (crossed the entrance line without the litter) | 0.12 |
+| Reached the upper storey (0.70 m or more above its floor, inside the wing) | + 0.08 |
+| Reached the litter: before picking it up, flown to within 0.62 m of its center on both horizontal axes, 0.85 m or more above that storey's floor | + 0.10 |
+| Latched the litter | + 0.12 |
+| Lifted it 0.54 m above its floor | + 0.15 |
+| Carried it out of the wing across the entrance line | + 0.20 |
+| Rooms searched: the share of the 4 marked rescue bays flown over (within 0.47 m of the bay's center on both horizontal axes, 0.85 m or more above its floor) | + up to 0.06 |
+| **Handed off on the open station's deck** | **1.00 in total** |
+
+The order of visits is not scored. Without a handoff a flight earns at most 0.83.
+
+## Your program
+
+- `/home/user/submission/run.sh` is started once per site with `bash run.sh`, from a read-only copy of the folder,
+  as an unprivileged account with a fresh empty home and no network. Other files in the folder come along (at most
+  2,000 files, 64 MB).
+- The aircraft is behind the Unix socket named by the environment variable `ROBOT_SOCKET`. The client you have here
+  is at the same path in the grading sandbox: `/opt/visual_robotics/client/client.py` (`Client().observe()`,
+  `Client().act(action)`). Python is `/opt/venv/bin/python3` with numpy, scipy, Pillow, mujoco and trimesh; nothing
+  else can be installed there.
+- Per site the program may use **900 s of its own time** (wall time minus the time the aircraft takes to answer),
+  inside a wall limit of 1,800 s. When either runs out the flight is stopped and keeps its progress. The program is
+  stopped 10 s after a flight has ended.
+- The grading sandbox has 2 CPUs and 4 GB of memory, as this one. An answer takes the aircraft about 0.07 s.
+- Nothing carries over between sites: every site starts the program anew.
+- The program's environment is minimal: `PATH=/opt/venv/bin:/usr/bin:/bin`, one thread for OpenBLAS and OpenMP, and
+  `OPENBLAS_CORETYPE=HASWELL` with NumPy's AVX-512 paths switched off (`NPY_DISABLE_CPU_FEATURES`). This sandbox sets
+  the same two numerics variables, so a program computes the same numbers here and on every grading machine.
+
+## Commissioning aircraft (this sandbox)
+
+The same aircraft is available here on **commissioning sites drawn at random** from the same kind of wing; none of
+them is graded. Use it to learn how the aircraft, its cameras and sensors, the fixtures and the passages behave.
+
+- Calls: `observe()`, `act(action)` and `new_site()`, which abandons the current site and starts at the launch
+  point of a new one. As MCP tools: `robot_observe`, `robot_act`, `robot_new_site`. From code:
+  `/home/user/robot/client.py`.
+- Budget for the whole session: **16,000 actions** and **40 sites**. Answers carry
+  `commissioning_actions_remaining` and `commissioning_sites_remaining`. A flight here ends by the same rules as a
+  graded one; after it, only `observe()` and `new_site()` do anything.
+- The aircraft reports what it senses and nothing else: no pose, no site map, no progress and no score, here or in
+  grading. `done` tells you that a flight has ended, not why.
+
+## Session time
+
+- This session is stopped 2 hours of wall-clock time after it started. What is in `/home/user/submission/` at that
+  moment is graded as it is: keep a complete, runnable submission there from early on and replace it as you improve
+  it.
+- The only clock for this limit is the wall clock. `bash /home/user/session_time.sh` prints the minutes used and
+  the minutes left, from a time stamp written when your sandbox was set up (moments before your session started, so
+  you have slightly more than it says, never less); `date` shows the same clock. Run the script when you begin,
+  again before every decision that depends on the time left, and whenever you pick the work up from notes or from a
+  summary of what was done. Do not estimate the time used from how much you have done.
+- The commissioning budget (actions and sites) and a flight's 4,400 actions are counts, not time; neither tells you
+  how much of the session is left.
+- This sandbox has 2 CPUs and 4 GB of memory, no GPU and no network.

@@ -53,7 +53,9 @@ def main():
             stdout=log, stderr=log, start_new_session=True, cwd=private/"runtime",
             env={"PATH": "/opt/venv/bin:/usr/bin:/bin", "HOME": "/root", "LANG": "C.UTF-8",
                  "MUJOCO_GL": "osmesa", "LIBGL_ALWAYS_SOFTWARE": "1", "LP_NUM_THREADS": "2",
-                 "OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1", "PYTHONNOUSERSITE": "1"},
+                 "OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1", "PYTHONNOUSERSITE": "1",
+                 "OPENBLAS_CORETYPE": "HASWELL",
+                 "NPY_DISABLE_CPU_FEATURES": "AVX512F,AVX512CD,AVX512_SKX,AVX512_CLX,AVX512_CNL,AVX512_ICL,AVX512_SPR"},
         )
     for _ in range(600):
         if process.poll() is not None:
