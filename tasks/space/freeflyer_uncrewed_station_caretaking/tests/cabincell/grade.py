@@ -8,8 +8,8 @@ and the aggregate over the hidden set).
 
 Inputs, and nothing else: the cell's record of one run (the record format, caretaking.record/1: world state
 every cell.record_period_s up to 'end' = program end + the settle, and events), the hidden site description
-(station_site/2, its 'truth'), tests/grader_config.json (every threshold: the 'grader.' section of the task's master
-value table, value by value) and the runtime copy tests/cabincell/data/site_spec.json (the record period and the
+(station_site/2, its 'truth'), tests/grader_config.json (every threshold, generated value by value and never
+edited by hand) and the runtime copy tests/cabincell/data/site_spec.json (the record period and the
 budgets).  Imports the standard library and predicates.py only, never the simulation package.  Every rule reads
 the world state or an event; the program's own word enters only through report().
 

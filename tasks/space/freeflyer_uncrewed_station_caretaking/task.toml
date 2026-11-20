@@ -59,7 +59,8 @@ memory_mb = 16384
 # simulated second unchanged), 400 colour frames x 0.760 s and 300 depth frames x 0.226 s (the p95 of a whole camera()
 # call, render + PNG encoding + evidence inputs, of benches of 120 colour and 80 depth calls; frame time grows with the
 # host's load: on 2026-11-19 0.270-0.304 / 0.145-0.158 s at load about 20-27 and 0.760 / 0.214 s at load 115-163; the
-# depth value is the first run's 0.220 s at load 181-225 with look v04 times look v05's x1.027 at equal load), the
+# depth value is 0.220 s measured at load 181-225 with an earlier station look, times look v05's measured factor
+# 1.027 against it at equal load), the
 # program's 600 s, the 60 s settle and 30 s of clean-up: 3677 s a site; seven runs (six sites and the one rerun after a
 # cell failure) and the fixed steps (import check 120 s, desktop settle 60 s, no-network self-test 60 s, lockdown 10 s):
 # 25 991 s; 29 900 s leaves 15.0 % (the runs of 2026-11-19 alone give the same 29 900 s). The oracle's verify of the

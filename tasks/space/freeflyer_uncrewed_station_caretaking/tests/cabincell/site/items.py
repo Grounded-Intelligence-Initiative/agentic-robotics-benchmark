@@ -10,7 +10,7 @@ family, the station library's kinds) and its registered colours; the family key 
 (``spacekit.fixtures.small_item``).
 
 Colours are names of ``station.sites.COLOURS`` (the builder's RGBA table).  The family ranges are design choices of
-this package inside the site_spec ranges (the tests check that).  numpy only (spacekit is not needed here).
+this package inside the site_spec ranges.  numpy only (spacekit is not needed here).
 """
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 """sitepack.py -- the site package tool: the deterministic site package
-(the site package format), reference implementation.  Standard library only (the site generator and the selection copy it into the published
-generator; the cell's reader needs only ``unpack`` and ``verify``).
+(the site package format), reference implementation.  Standard library only (the cell's reader needs only
+``unpack`` and ``verify``).
 
     pack(members: {name: bytes}, site_id) -> bytes     adds MANIFEST.json; USTAR, mtime 0, uid/gid 0, 0644, sorted; xz CRC64 preset 6
     unpack(data: bytes) -> {name: bytes}

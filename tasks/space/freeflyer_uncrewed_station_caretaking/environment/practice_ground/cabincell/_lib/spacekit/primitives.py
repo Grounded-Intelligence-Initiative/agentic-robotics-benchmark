@@ -462,7 +462,7 @@ class Dock(Action):
 
     berth_speed: speed of the berthing move (the precision mode's 0.02 m/s limit; faster speeds fly it in the
     nominal mode with that desired speed); overshoot: the complete pose lies this far into the dock past the contact
-    pose (the firmware's docked pose is 13.4 mm inside the contact pose, P8).  go_to_approach=False starts the berthing
+    pose (the firmware's docked pose is 13.4 mm inside the contact pose).  go_to_approach=False starts the berthing
     move from where the robot is (sweeps); spin_down=False ends with 'attached'.  With the reference dock v1 the
     berth model is ``dock.BerthDock`` (``fw.magnets``); with ``DockMagnets`` the v0.2 capture rule is used.
     Results: 'docked' (or 'attached'), 'refused_outside_cone' (start beyond the initial tolerance or, with
@@ -1015,8 +1015,8 @@ class FirmwareLayer:
     def check_segment(self, seg, arm_exempt: bool = False) -> tuple:
         """Zone validation of a planned segment as the firmware does it for ``FlyTo``: ``zones.check_segment`` with
         the band rule when ``zone_band_exit`` (v0.4: a robot in the inflated band may leave it or
-        move without getting closer -- ``ZoneMap.check_positions``; 'exit' = the departure rule only (the first
-        draft); False = v0.3), and with the arm-deployed inflation (v0.4) when the zone map has one
+        move without getting closer -- ``ZoneMap.check_positions``; 'exit' = the departure rule only;
+        False = v0.3), and with the arm-deployed inflation (v0.4) when the zone map has one
         (``ZoneMap(inflation_arm=...)``), the arm is deployed (``arm_deployed``) and the caller is not exempt
         (``FlyTo(arm_exempt=True)``).  ('ok', -1) without a zone map."""
         if self.zones is None:

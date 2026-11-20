@@ -62,9 +62,9 @@ the desktop settle, the runner, the per-run wire and clean-up, the gates and the
 Changed for this task: the program is caretake.py on cabinkit; every run setting is read by key from
 the runtime site_spec (never written here) except the route gate's lists, which are the sibling's grader_config
 values; the hidden set comes from hidden/selection.json; the asset root check; the no-network self-test before the
-import check; the per-site gate on simulated time (the first version counted the literal step() calls of each site; now
-every call that advanced the simulated time counts, from the cell's record, so that a program that
-moves the robot with blocking calls only is not failed for writing no step()); the cell is CabinCellServer with the
+import check; the per-site gate on simulated time (every call that advanced the simulated time counts, from the
+cell's record, so that a program that moves the robot with blocking calls only is not failed for writing no
+step()); the cell is CabinCellServer with the
 frame renderer; grading is cabincell.grade; a cell failure is the record's exit cell_error or a cell internal error;
 the honest zero.
 """

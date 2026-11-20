@@ -4,7 +4,7 @@
     run(server) -> {"summary": {...}, "notes": [...], "ops": [...], "reads": {...}, ...}
 
 It drives the robot through the cell's own call boundary (``server.handle``, with the wire's JSON round trip: every
-call is budgeted, logged and recorded like an agent's program's) and reads the five privileged quantities of the privileged-reference rule through ref_truth.Truth only (the true pose, the grasp features, 'in the gripper', the held item's pose,
+call is budgeted, logged and recorded like an agent's program's) and reads the five privileged quantities through ref_truth.Truth only (the true pose, the grasp features, 'in the gripper', the held item's pose,
 'on the face' after a placement).  The program is ref_program.Program (its module doc has the order and the deposit
 changes).  ``REFERENCE_PARAMS`` (environment, JSON) overrides the recipe's own values in tests (e.g.
 {"place_method": "flyby"}); the verifier sets none.

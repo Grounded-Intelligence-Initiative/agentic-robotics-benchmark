@@ -1,8 +1,8 @@
 """Generic thruster allocation helpers (pure numpy).
 
 B (6 x n) maps nonnegative thruster magnitudes u to the body wrench [F; tau] about the CoM.
-``nnls`` is the Lawson-Hanson active-set algorithm (same solution as scipy.optimize.nnls, which is used
-only in the tests).  ``allocate`` adds a Tikhonov term (minimum effort among equal residuals) and
+``nnls`` is the Lawson-Hanson active-set algorithm (same solution as scipy.optimize.nnls).
+``allocate`` adds a Tikhonov term (minimum effort among equal residuals) and
 direction-preserving saturation by uniform scaling.  ``pinv_clip`` is the naive pseudo-inverse + clip
 allocation, kept as a counter-example (median relative wrench error 51 % on 12 nozzles).
 """

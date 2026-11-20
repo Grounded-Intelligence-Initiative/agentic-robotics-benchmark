@@ -21,7 +21,7 @@ charge left. The grader runs the program on six hidden sites (`hidden/selection.
 | `cabincell/` | the cell: `server.py` (CabinCellServer, the wire side of the robot's API), `api.py`, the task firmware (`firmware/`), the station services (`station_service.py`, `telemetry_synth.py`), the site builder (`site/`), the frame renderer (`sensors_render.py`: a render-only twin that shows the maker's robot meshes), the grade (`grade.py`, `predicates.py`), the vendored simulation library (`_lib/spacekit`, `_lib/station`) and the runtime copy of the task's numbers (`data/site_spec.json` with its sha256 file); `data/<component>/ASSETS.json` pin the three model archives |
 | `reference/` | the privileged reference program (`reference.py`, driven by the privileged call `reference_run`) and its modules |
 | `hidden/` | `selection.json` (the fixed hidden set in episode order: package, sha256, the reference's energy on the site; the frozen file list, the per-cell decisions and the recorded amendments), `candidates.json` (all 36 candidates and their verdicts), `sites/*.site.tar.xz` (the six stored site packages), `oracle_token.sha256` |
-| `review/` | maintainers' tools nothing runs at verify: the site generator (`sitegen/`), the selection (`select_set.py`), the observability check and its stored results, the grader's mutants |
+| `review/` | maintainers' tools; nothing here runs at verify: the site generator (`sitegen/`), the selection (`select_set.py`), the observability check and its stored results, the grader's mutants |
 | `cellkit/`, `robotics_grader/` | the verify-stage process kit (lockdown, runner as `nobody`, no-network seccomp filter, network audit, the JSON-lines wire, the freezer) and the benchmark's verdict kit, byte copies of the benchmark's shared code |
 | `setup_payload/`, `given_hashes.json` | the grader's byte copy of `environment/setup/payload/`, and the sha256 of every file the grader's copy of the givens holds (the mirror and the task-asset pictures) |
 | `NOTICE.md` | sources, the fictional station, what is not modelled, the neutral names |
@@ -33,8 +33,8 @@ site score = R x (D 0.14 + U1 0.10 + H 0.10 + U2 0.14 + V 0.08 + K 0.18 + L 0.18
 the blocked inlet, the register item and the onset, with an evidence frame taken before the report; U1: the inlet
 clear for a continuous stretch; H: docked at the end with charge above the line at every docking, nothing held;
 U2: inlet clear and the sheet under control through the final window; V: all fans running, no flight-rule violation;
-K: the sheet fixed on a holding screen; L: the pouches on pouch pads (own footprint fraction); E: energy and fan-stop
-seconds against the reference's. R = 0.85 after hard collisions or keep-out time, else 1. caretaking_score =
+K: the sheet fixed on a holding screen; L: the pouches on pouch pads (own footprint fraction); E: the energy against the
+reference's on the same site, the fan-stop seconds against fixed limits. R = 0.85 after hard collisions or keep-out time, else 1. caretaking_score =
 contract_ok x the mean over the six sites; reward = clamp(score / anchor / 0.95, 0, 1).
 
 ## The verify stage
@@ -74,5 +74,4 @@ image on the measuring host (the comment of `task.toml` gives the numbers).
 
 ## Maintenance
 
-Every file here is written by one of the maintainers' tools: an assembly step makes the asset list, the mirror and
-`given_hashes.json`, and a folder check checks the folder.
+`environment/assets.sha256`, `setup_payload/` and `given_hashes.json` are generated, never edited by hand.

@@ -26,7 +26,7 @@ cell.settle_after_exit_s, takes the last world-state sample at that instant ('en
 child process on JSON lines, cellkit.wire.serve_episode with wire_guard.GuardedProcess) apply the same budgets.
 
 In the shape of the quadruped plant inspection task's plantcell/server.py (the call boundary, the record, the
-drivers); every part is the published package of its owner, the settle is 60 s, the record is the record format's.
+drivers); every part is this folder's own module, the settle is 60 s, the record is the record format's.
 """
 from __future__ import annotations
 

@@ -65,4 +65,4 @@ systems or operations. The real station's modules lend the scene its shape and l
 | localisation modes MAP / FIDUCIAL | MappedLandmarks / ARTags |
 | zone file (keep-in / keep-out boxes) | the flight software's zones file |
 
-Every agent-visible file is scanned for the real names before it is published.
+No agent-visible file carries the real names.

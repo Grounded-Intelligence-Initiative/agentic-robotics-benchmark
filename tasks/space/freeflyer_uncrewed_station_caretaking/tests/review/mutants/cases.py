@@ -33,7 +33,7 @@ G_NO_U1 = float(RK.CONFIG["values"]["grader.L.formula"]["g_without_U1"])
 R_FACTOR = float(RK.CONFIG["values"]["grader.R.factor"])
 
 DESIGN_ROWS = {
-    "M1": "reports the adjacent return inlet → D", "M2": "right inlet, but the cited frame does not show it → D", "M3": "or a frame taken after the removal → D",
+    "M1": "reports the adjacent return inlet → D", "M2": "right inlet, but the cited frame does not show it → D", "M3": "the cited frame was taken after the removal → D",
     "M4": "onset off by 11 min → D loses 0.04", "M5": "a second report corrects the first → the first one counts", "M6": "lets go after the removal → U2, V, K",
     "M7": "the sheet seals only 0.030 m² on the screen → K, U2", "M8": "the sheet reaches the screen only 40 s before the end → K, U2",
     "M9": "the sheet sealed on the screen but still in the closed gripper at the end → K (U2 holds)", "M10": "the sheet grasped again only 30 s before the end → U2 (both branches share one 60 s window)",

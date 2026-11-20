@@ -51,9 +51,8 @@ CAMERA = dict(axis_body=(1.0, 0.0, 0.0), offset_body=(0.20, 0.0, 0.0), fov_deg=1
 LAMP_MODEL = dict(flux_lm=216.0, beam_full_deg=45.0, taper_to_deg=30.0, general_lux=150.0)   # dev.lamp; lux [G]
 LAMP_NAMES = {"forward": "front", "aft": "aft"}                                             # API name -> spec key
 AWC = "cam_aft_wide"
-# The reconstruction's earlier rule (its light appearance mesh closes the aft wide lens 2.0-3.1 mm in front of the
-# camera).  No longer used by the firmware; kept for the replica of the old evidence rule in tests/review/
-# check_observability.py, which imports it.
+# The lens skip of the reconstruction's light appearance mesh, which closes the aft wide lens 2.0-3.1 mm in front of
+# the camera.  No file of this folder uses it.
 LENS_SKIP = 0.0045
 
 

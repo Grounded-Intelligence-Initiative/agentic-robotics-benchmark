@@ -18,8 +18,7 @@ the hidden site package.
                    items touching both the robot and the dock from the first DOCKED on (at KEEPOUT_HZ), and the record
                    (``record()``) with the state and final-qpos hashes.
 
-``Recorder`` (2 Hz rows, keep-out time, loss of control), ``ContactWatch`` (0.2 s re-arm, robot point velocity along
-the contact normal), ``c_item_touch_dock``.  The geometry is predicates.py's (sealed area by the first layer,
+The geometry is predicates.py's (sealed area by the first layer,
 covered fraction, the cage), the faces are the stowage units', the rows follow the record format, the force is
 recorded with the speed, the classes are named, the dock check runs through the docked time.
 
@@ -36,7 +35,7 @@ import mujoco
 import numpy as np
 
 RECORD_SCHEMA = "caretaking.record/1"
-REARM_S = 0.2                 # a pair out of contact this long opens a new event (ContactWatch's re-arm) [G]
+REARM_S = 0.2                 # a pair out of contact this long opens a new event [G]
 KEEPOUT_HZ = 10.0             # keep-out time and the item-dock check run at this rate [G]
 MAX_CONTACT_EVENTS = 5000     # events kept in the record (all are counted in the metrics)
 HATCH_RIM_M = 0.12            # a structure contact within this of a hatch rim (radially and off its plane): hatch_seal [G]

@@ -9,11 +9,11 @@ task firmware on the robot and answers the program's calls; it records the world
 Modules:
   ``server``          CabinCellServer: site -> cell, the call boundary (whitelist, forbidden count), the run's end
                       (firmware stop + settle), the record; in-process and wire drivers
-  ``api``             the calls of the robot API's on top of the task firmware (TIME_UP, budgets, camera frames and
+  ``api``             the calls of the robot API on top of the task firmware (TIME_UP, budgets, camera frames and
                       the evidence predicate's inputs, report, mission, station calls)
   ``budgets``         the per-site budgets of the runtime site_spec (cell.budget.*)
   ``events``          the recorder: world state every cell.record_period_s, contact events at every physics step,
-                      keep-out time, docking, the record of the record's and its hashes
+                      keep-out time, docking, the record and its hashes
   ``wire_guard``      the guard on the program's request lines (cellkit.wire.AgentProcess subclass)
   ``firmware``        the task firmware (imported as the top-level package ``firmware``)
   ``site``            the site parts and the scene builder (``cabincell.site``)

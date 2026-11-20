@@ -5,7 +5,7 @@ It moves only through the public calls (ref_robot.Robot on the cell's own call b
 fly_to / fly_rel of the task firmware, no zone check is ever bypassed) and decides on what the operator sees: the log
 and the configuration record (ref_log: the stepped unit, the onset, the route), the map (ref_nav), the station
 telemetry (the return pressure for the fan stop and the removal), its own pose estimate and covariance (the lamp).
-The five privileged reads of the privileged-reference rule come from ref_truth.Truth only (P1 true pose, P2 grasp features, P3 gripper,
+The five privileged reads come from ref_truth.Truth only (P1 true pose, P2 grasp features, P3 gripper,
 P4 held item attitude, P5 on the face after a placement).
 
 Fixed order: read the log and the configuration record -> one frame of every camera -> the night
@@ -44,7 +44,7 @@ DEFAULTS = dict(
     place_method="press",            # 'press' (reference.place_press) | 'flyby' (reference.place_flyby)
     pregrasp_dists=(0.40, 0.45, 0.35, 0.50, 0.55),   # world.pregrasp.distance_m sampled; ~0.40-0.45 m puts the
                                      # aft depth camera 0.52-0.57 m from the bar (reference.hint_range_m)
-    pouch_pull_m=0.45,               # direct pull of a pouch (18 / 18; the task firmware remove_pouch)
+    pouch_pull_m=0.45,               # direct pull of a pouch (18 / 18)
     peel_pull_m=0.50,                # P route: the loop pulled along the inlet normal
     pull_s=40.0,                     # a held pull re-issued for at most this long
     s_pull_s=16.0,                   # S route: the pull after the stop
@@ -75,7 +75,7 @@ DEFAULTS = dict(
                                      # = a square wait and a re-press from 0.10 m
     align=dict(dev_go=dict(sheet=22.0, sheet_fan_stop=60.0, pouch=20.0),     # go for the insert when the item's face is this close to the
                                      # face plane [deg]
-               dev_press=dict(sheet=55.0, sheet_fan_stop=60.0, pouch=30.0),   # OPTION F (press-flattening): sheets pressed up to these
+               dev_press=dict(sheet=55.0, sheet_fan_stop=60.0, pouch=30.0),   # press-flattening: sheets pressed up to these
                turn_max=dict(sheet=40.0, pouch=35.0),   # the palm turned about the bar by the item's in-hand turn,
                                      # clamped (the body clears the rack face up to ~45 deg; 35 deg for pouches)
                tries=3, settle_s=2.0,   # reads (and turns) at the pre-deposit point, the wait before each read
@@ -504,7 +504,7 @@ class Program:
 
     def pull(self, n_dir, dist: float, T: float, label: str, progress: bool = False) -> float:
         """Back off along n_dir: fly_to a fixed goal, re-issued while the firmware ends it on a tolerance (the item
-        still holds), at most T s (the task firmware pull_for); progress: stop early after 40 s when the last try gained < 1 cm.
+        still holds), at most T s; progress: stop early after 40 s when the last try gained < 1 cm.
         Returns the distance the estimate moved."""
         p0, q0, _ = self.pose()
         goal = p0 + RG.unit(n_dir) * float(dist)

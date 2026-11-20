@@ -1,6 +1,6 @@
 {
  "schema": "spacekit.reference_configuration/1",
- "description": "Firmware configuration of the reference robot (reference configuration = platform + perching arm module, arm stowed, 4 batteries): the configured mass properties the flight controller and allocator use (the reference build's values), copied from the reference robot's shared values file; the kit's tests check the copy against it.",
+ "description": "Firmware configuration of the reference robot (reference configuration = platform + perching arm module, arm stowed, 4 batteries): the configured mass properties the flight controller and allocator use (the reference build's values), a copy of the reference robot's values.",
  "source": {
   "file": "shared values file of the reference robot",
   "version": "0.2.1",

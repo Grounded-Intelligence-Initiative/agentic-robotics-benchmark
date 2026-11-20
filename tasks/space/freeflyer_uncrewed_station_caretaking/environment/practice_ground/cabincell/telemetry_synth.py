@@ -35,7 +35,7 @@ Model (all noise-free values are network values, spacekit.suction.FanNetwork, th
     (supply channel: other loads + fan air power / efficiency, on SYNTH['bus_v']), CO2 (one analyser sampling the
     modules in turn every station.telemetry.co2.period_min; rows repeat the last sample; no source in an uncrewed
     station, so the level is flat), cabin temperature and dew point (flat + slow walk).
-Constants that site_spec.json does not hold are in SYNTH below (estimates [G]; registration requested).
+Constants that site_spec.json does not hold are in SYNTH below (estimates [G]).
 
 API (site = station_site/2 dict; spec = runtime values dict, default the checked runtime copy):
   synth(site, spec=None) -> log dict (columns, data, advisory_log, expected, truth, sortie)
@@ -783,7 +783,7 @@ def check_telemetry(site, spec=None, log=None) -> dict:
 def blocked_unit_margin(site, spec=None) -> dict:
     """Margins of the blocked unit before any noise is drawn: the end level (blocker + every pouch of the unit) and
     the level just before the onset (pouches that landed earlier excluded: all pouches of the unit, the worst case),
-    against round(factor x clean); in Pa and sigma.  the site generator calls it before drawing the telemetry."""
+    against round(factor x clean); in Pa and sigma.  The site generator calls it before drawing the telemetry."""
     s = _spec(spec)
     sig = float(s["station.advisory.margin_sigma"]["sigma_pa"])
     B = site["blocker"]

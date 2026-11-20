@@ -1,6 +1,6 @@
 """Task firmware of the caretaking cell (hidden side only).
 
-The robot calls of ``the robot API`` on top of the simulation package's firmware layer (spacekit 0.4.0
+The robot calls of the robot API on top of the simulation package's firmware layer (spacekit 0.4.0
 ``primitives.FirmwareLayer`` with the arm-deployed zone inflation, the action-scoped fiducial estimate, the holding
 interlock and the band rule all on).  Modules:
 

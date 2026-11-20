@@ -392,7 +392,7 @@ LADDER_TEXT = {
 
 
 def ladder(tier: str, level: str) -> Scenario:
-    """one capability more per level; levels 0a-0c are the three ways to score 0."""
+    """One capability more per level; levels 0a-0c are the three ways to score 0."""
     if level == "7":
         return reference(tier, f"ladder_{tier}_7")
     s = Scenario(tier, f"ladder_{tier}_{level}")

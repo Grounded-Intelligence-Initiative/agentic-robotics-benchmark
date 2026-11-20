@@ -1492,7 +1492,7 @@
    ],
    "practice_rule": {
     "version": 2,
-    "ruling": "the maintainers' practice-module rule of 2026-11-17: the unit sits where all three of its faces can be reached",
+    "ruling": "the unit sits where all three of its faces can be reached",
     "dense_with_dock": {
      "ok": false,
      "ring_max_proud_m": 0.1745249994959368,
@@ -1842,7 +1842,7 @@
     ],
     "exceptions": {
      "dense_with_dock": {
-      "ruling": "the maintainers' exception of 2026-11-17, for the practice module only",
+      "ruling": "an exception for the practice module only",
       "scope": "the practice module L3 only (this rule); no mission rule has it",
       "what": "the training berth's dock may enter the holding screen's clear ring (siting.RULES: nothing more than ring_proud_m proud within ring_m of the screen frame) by up to 5 cm",
       "holds_when": "the dense check without the dock passes; with the dock in the scene it fails by the clear ring alone (mountable, no corridor violation, inlet distance, module); every ring ray more than ring_proud_m proud hits a body of allowed_bodies and lies at most max_depth_into_ring_m inside the ring's outer edge (the dense check's own ray grid)",
@@ -1852,7 +1852,7 @@
       "max_depth_into_ring_m": 0.05,
       "measured": {
        "item": "dense_with_dock",
-       "ruling": "the maintainers' exception of 2026-11-17, for the practice module only",
+       "ruling": "an exception for the practice module only",
        "ok": true,
        "dense_without_dock": true,
        "dense_with_dock": false,

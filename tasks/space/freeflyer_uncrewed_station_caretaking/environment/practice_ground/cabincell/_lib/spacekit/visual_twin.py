@@ -6,7 +6,7 @@ The twin never writes into the physics data: ``sample(rig)`` reads the plant (im
 servos actually reached in response to the allocator's commands) and the executive state into a small vector that a
 recorder stores; ``apply(model, data, sample, phase)`` writes that state into a RENDER copy (qpos of the display
 joints, and -- render model only -- the rgba of the light geoms).  So the physics state is bit-identical with and
-without the twin (the package's tests).
+without the twin.
 
 Mapping (reference build v1): plant nozzle k (firmware order; 0-5 = module 0 = +y = starboard, site ``nozzle_1_{k+1}``)
 -> joints ``pm_s_n{k+1}_{flap_a,flap_b,drive,idler}``, 6-11 -> ``pm_p_n{k-5}_*``; flap joints = the plant's flap

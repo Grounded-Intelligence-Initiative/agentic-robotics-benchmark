@@ -4779,7 +4779,7 @@
   "mass.refcfg.total": {
    "value": 10.449993,
    "unit": "kg",
-   "applies_to": "the reference build",
+   "applies_to": "reference configuration: platform + perching arm module (arm 0.688 kg + 14.2 mm interface base 0.1784 kg), arm stowed",
    "source": "the maintainers' measurement or derivation",
    "mark": "V",
    "kind": "derived",
@@ -4848,7 +4848,7 @@
    "source": "the maintainers' measurement or derivation",
    "mark": "G",
    "kind": "derived",
-   "note": "not published"
+   "note": "checked at part level: the split with the unmodelled mass following the parts is within 1.6 % of these masses, the inertia-consistent split of the part build within 0.7 %"
   },
   "mass.module.parts_only": {
    "value": {
@@ -5159,7 +5159,7 @@
    },
    "unit": "in",
    "applies_to": "bay clevises (all four bays): pin along Y_P so that the J-slot lever hooks it",
-   "source": "ICD sh.3 (envelope, pin diameter and height); the interface kit (orientation)",
+   "source": "ICD sh.3 (envelope, pin diameter and height); the reference build (orientation)",
    "mark": "G",
    "kind": "derived",
    "note": "[C] completed by this project (reference build v1); with an X pin the lever hits it 11 mm above the seat"
@@ -5580,7 +5580,7 @@
    },
    "unit": "N m, N, m",
    "applies_to": "pure-contact perch on the handrail section; the reference build v1 finger model calibration",
-   "source": "ARM17 p.5 (6.43 N, 5 trials); the package's tests",
+   "source": "ARM17 p.5 (6.43 N, 5 trials); measured in the simulation by the maintainers",
    "mark": "V",
    "kind": "derived"
   },
@@ -5607,7 +5607,7 @@
     "pogo_push_off_m_s": 0.034
    },
    "unit": "mm, N, m/s",
-   "applies_to": "berth retention values adopted for the reference dock v1 (the set consistent with the run files)",
+   "applies_to": "berth retention values adopted for the reference dock v1",
    "source": "a maintainers' decision",
    "mark": "G",
    "kind": "derived",
@@ -5631,7 +5631,7 @@
    },
    "unit": "N, mm, m/s",
    "applies_to": "berth physics of the simulation kit (magnets and pins as force laws on the berth axis, lances in the robot's opened cups)",
-   "source": "spacekit dock.BerthDock / rig_dock_spec; the package's tests",
+   "source": "spacekit dock.BerthDock / rig_dock_spec; measured in the simulation by the maintainers",
    "mark": "V",
    "kind": "derived",
    "note": "the dynamic push-off is below 0.034 m/s because the magnets still pull while the carriers retract at 6.2 mm/s; 0.034 m/s is the pins' stored energy"
@@ -5782,7 +5782,7 @@
    },
    "unit": "s, N",
    "applies_to": "undocking: magnets retract, the pins push the robot off, the fans fly it out",
-   "source": "the package's tests",
+   "source": "measured in the simulation by the maintainers",
    "mark": "V",
    "kind": "derived"
   },
@@ -5856,7 +5856,7 @@
    },
    "unit": "N m s, rad/s",
    "applies_to": "one propulsion channel cut at level 2: the coasting fan's angular momentum goes into the robot (uncompensated body rate about the fan axis)",
-   "source": "spacekit propulsion (coast_down_study)",
+   "source": "spacekit propulsion (coast_down)",
    "mark": "V",
    "kind": "derived"
   },
@@ -6102,7 +6102,7 @@
      2.5
     ],
     "rail_t_in": 0.125,
-    "note": "not published"
+    "note": "the posts carry the drawing's rails from the floor inside the payload's own rail slot"
    },
    "unit": "in",
    "applies_to": "rail posts of the bays (they carry the drawing's rails from the floor inside the payload's own rail slot)",
@@ -6175,7 +6175,7 @@
     }
    },
    "unit": "mm, mm^3",
-   "applies_to": "the reference build",
+   "applies_to": "a B-rep insertion sweep of the blank module (lever open, nominal pose) on the Y-pin clevis and, for comparison, on an X-pin clevis",
    "source": "the maintainers' measurement or derivation",
    "mark": "V",
    "kind": "derived"
@@ -6427,7 +6427,7 @@
    "source": "a maintainers' decision (frozen at the simulation kit's value)",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] a change outside 0.45-0.70 is notified to the requirements task"
+   "note": "[C] a change outside 0.45-0.70 is notified to another task of this robot"
   },
   "prop.impeller.momentum": {
    "value": {
@@ -6481,11 +6481,11 @@
     "inductance_source": "the fan motor's catalogue page (the part of prop.fan.motor_part) [R]"
    },
    "unit": "ohm, H, s",
-   "applies_to": "dynamic brake as the requirements task defines it (a catalogue part of that task; not part of the reference build)",
+   "applies_to": "dynamic brake as another task of this robot defines it (a catalogue part of that task; not part of the reference build)",
    "source": "spec prop.fan.motor",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] a maintainers' decision: the brake exists only in the requirements task"
+   "note": "[C] a maintainers' decision: the brake exists only in another task of this robot"
   },
   "asm.redtag.forces": {
    "value": {
@@ -6496,11 +6496,11 @@
     "arm_stow_bracket_press_fit_N": 20.0
    },
    "unit": "N",
-   "applies_to": "pull-out / clip forces of the red-tag ground items and handling parts (facility values of the assembly task)",
+   "applies_to": "pull-out / clip forces of the red-tag ground items and handling parts (facility values of another task of this robot)",
    "source": "the maintainers' measurement or derivation",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] facility value of the assembly task"
+   "note": "[C] facility value of another task of this robot"
   },
   "asm.facility.air_bearing": {
    "value": {
@@ -6517,14 +6517,14 @@
     "weighing_gate_g": 25.0,
     "weighing_gate_com_mm": 1.5,
     "day_factor_pct": 1.5,
-    "checked_by": "checked for the assembly task: the 10 criteria hold with these values (carriage inertia 0.056-0.27 kg m^2 all hold); the cradle clearance 60 mm lowered the port in-plane nozzles 2-7 %, >= 150 mm keeps them within 0.14 of the threshold"
+    "checked_by": "checked for another task of this robot: its 10 criteria hold with these values (carriage inertia 0.056-0.27 kg m^2 all hold); the cradle clearance 60 mm lowered the port in-plane nozzles 2-7 %, >= 150 mm keeps them within 0.14 of the threshold"
    },
    "unit": "kg, kg m^2, mm, deg, Hz, urad, s, g, %",
-   "applies_to": "air-bearing test table, tracker and weighing of the assembly cell (facility values of the assembly task)",
+   "applies_to": "air-bearing test table, tracker and weighing of the assembly cell (facility values of another task of this robot)",
    "source": "the maintainers' measurement or derivation",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] facility value of the assembly task; checked in version 0.3.1 of this table"
+   "note": "[C] facility value of another task of this robot; checked in version 0.3.1 of this table"
   },
   "asm.cell.fixture": {
    "value": {
@@ -6535,11 +6535,11 @@
     "fixture_step_deg": 90.0
    },
    "unit": "deg, mm, s",
-   "applies_to": "four-position rotary fixture and cell timing (facility values of the assembly task)",
+   "applies_to": "four-position rotary fixture and cell timing (facility values of another task of this robot)",
    "source": "the maintainers' measurement or derivation",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] facility value of the assembly task"
+   "note": "[C] facility value of another task of this robot"
   },
   "dock.push_off_adopted": {
    "value": {
@@ -6630,7 +6630,7 @@
    "value": {
     "bay.payload_mass_limit": {
      "01": "adopted (1.0 kg)",
-     "02": "replaced by the per-unit rule of the hardware-design task (superseded-document figure)"
+     "02": "replaced by the per-unit rule of another task of this robot"
     },
     "bay.payload_heat_limit": {
      "02": "adopted (10 W)"
@@ -6656,8 +6656,8 @@
     }
    },
    "unit": "-",
-   "applies_to": "how the four task designs confirmed or replaced the open default estimates",
-   "source": "a maintainers' decision for the requirements, hardware-design and behavior tasks",
+   "applies_to": "how the open default estimates were confirmed or replaced, by task",
+   "source": "a maintainers' decision",
    "mark": "G",
    "kind": "derived",
    "note": "[C] the open records keep their 0.2.x status text"
@@ -6667,7 +6667,7 @@
     "version": "reference build v1.1",
     "date": "2026-11-15",
     "geometry_change": "entry lead-ins of the bay quick-release interface: clevis cheeks, lever plates, module bodies",
-    "integration_substitutions": "not published",
+    "integration_substitutions": "none (every substitution is built)",
     "refcfg_mass_kg": 10.449993497999985,
     "platform_residual_mass_kg": -1.5987211554602254e-14,
     "differences_from_v1": {
@@ -7061,7 +7061,7 @@
     "not_adopted": "(A) 6 cm / 12 deg: blind sweep 0.235-0.340 under natural placement"
    },
    "unit": "cm, deg, s, m",
-   "applies_to": "the capture() primitive's hint gate of the behavior task (option B)",
+   "applies_to": "the capture() primitive's hint gate of the behavior task",
    "source": "a maintainers' decision",
    "mark": "G",
    "kind": "derived",
@@ -7329,11 +7329,11 @@
     "power_on_test": "no fan aero load at power-on (it matters for the coast-down only); F_cal = the static thrust at the quantised fan speed"
    },
    "unit": "mm^2",
-   "applies_to": "intake throttle model of the assembly task's power-on acceptance (series orifice)",
+   "applies_to": "intake throttle model of the power-on acceptance of another task of this robot (series orifice)",
    "source": "a maintainers' decision",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] facility / test model of the assembly task"
+   "note": "[C] facility / test model of another task of this robot"
   },
   "iface.bay.connector_separation_force": {
    "value": 10.0,
@@ -7371,7 +7371,7 @@
     }
    },
    "unit": "mm, deg, N",
-   "applies_to": "measured capture windows of the assembly task's mates",
+   "applies_to": "measured capture windows of the mates of another task of this robot",
    "source": "a maintainers' decision",
    "mark": "V",
    "kind": "derived"
@@ -7405,11 +7405,11 @@
     "with_BL-25_and_two_AP-05_g": 268.9
    },
    "unit": "g",
-   "applies_to": "the purchased parts of the hardware-design task's parts kit (the task's catalogue; neutral names)",
+   "applies_to": "the purchased parts of the parts kit of another task of this robot (that task's catalogue; neutral names)",
    "source": "a maintainers' decision",
    "mark": "G",
    "kind": "derived",
-   "note": "[C] task-level values of the hardware-design task (its own catalogue)"
+   "note": "[C] task-level values of another task of this robot (its own catalogue)"
   },
   "refbuild.v1_2.summary": {
    "value": {
@@ -7867,7 +7867,7 @@
     }
    },
    "unit": "s/s, us",
-   "applies_to": "the reference build",
+   "applies_to": "the simulation kit 0.4.0's cost on a sample station of this task (one host, load 72-90)",
    "source": "the maintainers' measurement or derivation",
    "mark": "V",
    "kind": "derived",
@@ -8762,7 +8762,7 @@
      }
     ],
     "finding": "the registered cone (6 deg / 20 deg, dock.approach_cone) holds for offset and yaw of the same sign and on the axes (consistent model 56 / 56 at 2 cm/s and 18 / 18 at 1-6 cm/s), not where they have opposite signs: at 6 deg / 20 deg 6 / 16 (consistent), 10 / 16 (legacy), 11 / 16 with the v0.3.0 kit on v1 and v1.1 -- an old property of the cone (that quadrant had not been sampled before), made worse by the consistent model's persistent error; with yaw <= 10 deg every sampled cell holds: 72 / 72 trials inside 6 deg / 10 deg (the opposite-sign cells 2 / 4 / 6 deg x 10 deg and the axis cells; Wilson 95 % lower bound 0.95), and the same-sign quadrant holds up to 20 deg",
-    "proposal_for_the_lead": "not published"
+    "proposal_for_the_lead": "cone 6 deg / 10 deg (the full dock sequence starts from the approach pose with a yaw error of a few degrees, so a re-approach would rarely be triggered)"
    },
    "unit": "deg, m/s, -",
    "applies_to": "the dock approach cone of the reference robot's firmware (fictional rule of this project) on reference build v1.2",
@@ -8861,7 +8861,7 @@
     }
    },
    "unit": "m^2, cfm, m/s, Pa, W, N",
-   "applies_to": "the reference build",
+   "applies_to": "the holding screen's blower network (spacekit FanNetwork with one face)",
    "source": "measured by the maintainers",
    "mark": "V",
    "kind": "derived",
@@ -10935,11 +10935,11 @@
       "mark": "V",
       "kind": "derived"
      },
-     "why": "a maintainers' decision: the task firmware's robot occluder and the agent's frames are the maker's mesh (route B); the reconstruction's 0.296 is reproduced by the same script on the reconstruction's display meshes (0.2958)",
+     "why": "a maintainers' decision: the task firmware's robot occluder and the agent's frames are the maker's mesh; the same measurement on the reconstruction's display meshes gives 0.2958 (the earlier value: 0.296)",
      "basis": "a maintainers' decision"
     }
    ],
-   "note": "tasks 01, 02 and 03 keep their vendored 0.3.2"
+   "note": "one [V] record re-measured, nothing else: no key added, removed or renamed, and every other record, table and open item byte-identical to 0.3.2; undoing 'corrections' (each keeps the full 'from' record) gives the 0.3.2 values exactly (base_values_sha256)"
   },
   "0.3.2": {
    "date": "2026-11-15",
@@ -10973,7 +10973,7 @@
    "inputs_sha256": {
     "d1h_values.json": "9236f30de66de9f806ca5cb58a43f3a84211170dd35a12d1a989f3326dfe43ea"
    },
-   "note": "not published"
+   "note": "additions only (no record corrected, no key renamed): the consistent localiser models and the step cost of the simulation kit 0.4.0, the approach-cone trials (dock.approach_cone.recheck_v04), the holding screen, the removal limits per pull type and the inlet network table, the suction layering rule, the zone band rule. Removing 'added_keys' gives the 0.3.1 values exactly (base_values_sha256)"
   },
   "0.3.1": {
    "date": "2026-11-15",
@@ -11208,11 +11208,11 @@
        }
       },
       "unit": "ohm, s",
-      "applies_to": "dynamic brake as the requirements task defines it (a catalogue part of that task; not part of the reference build)",
+      "applies_to": "dynamic brake as another task of this robot defines it (a catalogue part of that task; not part of the reference build)",
       "source": "spec prop.fan.motor",
       "mark": "G",
       "kind": "derived",
-      "note": "[C] a maintainers' decision: the brake exists only in the requirements task"
+      "note": "[C] a maintainers' decision: the brake exists only in another task of this robot"
      },
      "to": {
       "value": {
@@ -11236,11 +11236,11 @@
        "inductance_source": "the fan motor's catalogue page (the part of prop.fan.motor_part) [R]"
       },
       "unit": "ohm, H, s",
-      "applies_to": "dynamic brake as the requirements task defines it (a catalogue part of that task; not part of the reference build)",
+      "applies_to": "dynamic brake as another task of this robot defines it (a catalogue part of that task; not part of the reference build)",
       "source": "spec prop.fan.motor",
       "mark": "G",
       "kind": "derived",
-      "note": "[C] a maintainers' decision: the brake exists only in the requirements task"
+      "note": "[C] a maintainers' decision: the brake exists only in another task of this robot"
      },
      "why": "a maintainers' decision: the winding inductance is frozen at the motor catalogue's 0.56 mH with 8 pole pairs; at 2940 rpm the reactance (1.38 ohm) exceeds the resistance and the brake is about half as strong; the equivalent times are the closed form (0.3.0's 0.8141 / 0.8178 s came from the kit's 16 ms Euler step)",
      "basis": "a maintainers' decision"
@@ -11264,11 +11264,11 @@
        "day_factor_pct": 1.5
       },
       "unit": "kg, kg m^2, mm, deg, Hz, urad, s, g, %",
-      "applies_to": "air-bearing test table, tracker and weighing of the assembly cell (facility values of the assembly task)",
+      "applies_to": "air-bearing test table, tracker and weighing of the assembly cell (facility values of another task of this robot)",
       "source": "the maintainers' measurement or derivation",
       "mark": "G",
       "kind": "derived",
-      "note": "[C] facility value of the assembly task"
+      "note": "[C] facility value of another task of this robot"
      },
      "to": {
       "value": {
@@ -11285,14 +11285,14 @@
        "weighing_gate_g": 25.0,
        "weighing_gate_com_mm": 1.5,
        "day_factor_pct": 1.5,
-       "checked_by": "checked for the assembly task: the 10 criteria hold with these values (carriage inertia 0.056-0.27 kg m^2 all hold); the cradle clearance 60 mm lowered the port in-plane nozzles 2-7 %, >= 150 mm keeps them within 0.14 of the threshold"
+       "checked_by": "checked for another task of this robot: its 10 criteria hold with these values (carriage inertia 0.056-0.27 kg m^2 all hold); the cradle clearance 60 mm lowered the port in-plane nozzles 2-7 %, >= 150 mm keeps them within 0.14 of the threshold"
       },
       "unit": "kg, kg m^2, mm, deg, Hz, urad, s, g, %",
-      "applies_to": "air-bearing test table, tracker and weighing of the assembly cell (facility values of the assembly task)",
+      "applies_to": "air-bearing test table, tracker and weighing of the assembly cell (facility values of another task of this robot)",
       "source": "the maintainers' measurement or derivation",
       "mark": "G",
       "kind": "derived",
-      "note": "[C] facility value of the assembly task; checked in version 0.3.1 of this table"
+      "note": "[C] facility value of another task of this robot; checked in version 0.3.1 of this table"
      },
      "why": "a maintainers' decision: the cradle clearance to any panel face is >= 150 mm; the other facility values are confirmed as registered",
      "basis": "a maintainers' decision"
@@ -11351,7 +11351,7 @@
      "rule": "62.25 dBA at fan level 3 (2800 rpm) + 50 log10(N / 2800 rpm)"
     }
    ],
-   "note": "additions only (every 0.2.1 value record unchanged) and one correction in 'open' (safe.noise_by_fan_level follows its own 50 log rule): the bay quick-release interface in full with its lead-ins (iface.bay.*), the requirements task's derived propulsion values (prop.*), the assembly task's facility values (asm.*), the dock values (dock.*), the inlet values (iva.inlet.*), the adoptions of the open items, the v1.1 summary (a maintainers' decision)"
+   "note": "additions only (every 0.2.1 value record unchanged) and one correction in 'open' (safe.noise_by_fan_level follows its own 50 log rule): the bay quick-release interface in full with its lead-ins (iface.bay.*), the derived propulsion values (prop.*), the assembly cell's facility values (asm.*), the dock values (dock.*), the inlet values (iva.inlet.*), the adoptions of the open items, the v1.1 summary (a maintainers' decision)"
   },
   "0.2.1": {
    "date": "2026-11-15",

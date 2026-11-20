@@ -21,7 +21,7 @@ The rule (``RULE``; the rule file is ``rule`` 's output and must equal it, ``che
   order        per cell, k ascending: the first candidate that passes physics, observability and robustness is the
                cell's site; a candidate that passes physics and observability and has no robustness run yet holds
                the cell (it is never skipped); every dropped candidate keeps its reasons
-  empty cell   never loosened: the cell is reported with its counts and reasons (the maintainers decides: 8 candidates per
+  empty cell   never loosened: the cell is reported with its counts and reasons (the maintainers decide: 8 candidates per
                cell, or the reference)
   contingency  the station look may be replaced by the finished look (physics unchanged): then only the
                observability step is computed again for all 36 candidates under the same rules, and ``reevaluate``
@@ -92,7 +92,7 @@ SKIP_SUFFIX = (".pyc", ".pyo")
 RULE = dict(
     schema=SCHEMA_RULE, rule_version="1.0.0", task="freeflyer_uncrewed_station_caretaking",
     basis=["the task's site, observability and hidden-set rules",
-           "the maintainers' decisions on the reference, the candidates and the look", "every candidate runs once"],
+           "the privileged reference program, six candidates per cell and the station look in force", "every candidate runs once"],
     candidates=dict(label_key=LABEL_KEY, kind=KIND, cells="gen.cells.CELL_ORDER (L2xS, L2xP, H2xS, H2xP, L1xS, L1xP)",
                     per_cell_key="layout.candidates_per_cell", per_cell=6, extra_candidates=0,
                     seed_rule="layout.seed_rule: candidate (cell, k) = the first passing attempt j of sha256('<label>/<cell>/<k>/<j>')",
@@ -112,7 +112,7 @@ RULE = dict(
                        look="the station look of the asset root in force (data/station/ASSETS.json; station_look_v04 at "
                             "the freeze)", independent_of_physics=True),
     robustness=dict(um1="one run as reference_asis with layout.robustness_perturb_um (1 um) on every free body's start",
-                    cpu2="one as-is run on the second CPU generation (this host, Zen 4; the lab host is Zen 5)",
+                    cpu2="one as-is run on the second CPU generation (Zen 4; the as-is runs are made on Zen 5)",
                     pass_rule="raw == 1.000 and score == 1.000, every key of grade()['binary'] equal to the as-is run's "
                               "(the energy line from the as-is run's energy); cpu2 also state_sha256 and qpos_sha256 "
                               "equal to the as-is run's (bit-identical across CPUs)",
@@ -125,7 +125,7 @@ RULE = dict(
                          "must give layout.counts (low battery 3, wrong advisory 2, failed light 2, moved stowage unit 2)",
     empty_cell="no loosening: report the cell's pass counts, every failure reason, and the options (8 candidates in that "
                "cell before a new freeze / a reference change) to the maintainers",
-    contingency_look=dict(ruling="the maintainers' look rule", what="the station look replaced by the finished look, physics unchanged "
+    contingency_look=dict(ruling="the finished look may replace the station look", what="the station look replaced by the finished look, physics unchanged "
                           "(collision hashes equal)", then="observe all 36 candidates again under the same check; "
                           "reevaluate: the same order on the stored physics and robustness verdicts with the fresh "
                           "observability verdicts; held cells get their missing robustness run (once)",
@@ -365,7 +365,7 @@ def _guard(a) -> dict:
 def generate(cell: str, k: int, camp: str, schema_path: str | None, freeze: dict | None, max_attempts: int = MAX_ATTEMPTS,
              label: str | None = None, test_kw: dict | None = None) -> dict:
     """Candidate (cell, k): attempts j = 0.. until one passes (module doc); every attempt record and the candidate
-    record are written under camp/gen.  ``label`` / ``test_kw`` are for the tests only (never the hidden label)."""
+    record are written under camp/gen.  ``label`` / ``test_kw`` never carry the hidden label."""
     from gen import cells as CE
     from gen import freeze as FZ
     from gen import pipeline as PI

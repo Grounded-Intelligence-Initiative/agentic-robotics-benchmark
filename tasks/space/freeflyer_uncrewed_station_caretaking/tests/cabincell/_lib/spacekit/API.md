@@ -197,8 +197,7 @@ Constants: `MODE_IDLE = 0`, `MODE_STOP = 1`, `MODE_NOMINAL = 2`, `MODE_STOPPED =
 ## Data
 
 `data/firmware_reference.json` (schema `spacekit.firmware_reference/1`): `propulsion`, `mass_properties_configured`,
-`control`, `flight_modes`, `planner`, `executive`, `cameras`. Regenerated from the firmware sources by a maintainers'
-script.
+`control`, `flight_modes`, `planner`, `executive`, `cameras`. Regenerated from the firmware sources.
 
 ---
 
@@ -308,9 +307,9 @@ script.
 
 | Name | Description |
 |---|---|
-| `FreeFlyerSpec.reference_configuration()` | Firmware reference constants (propulsion, controller, modes, impeller inertia 0.001 kg m^2 = the firmware's own) with the configured mass properties of the reference configuration (platform + arm module stowed, 10.450 kg, CoM, full inertia tensor: `mass.refcfg.*`) and the default battery count (`pwr.battery.default_count`), from `data/reference_configuration.json` (a copy of the shared values file, cross-checked by the tests). |
+| `FreeFlyerSpec.reference_configuration()` | Firmware reference constants (propulsion, controller, modes, impeller inertia 0.001 kg m^2 = the firmware's own) with the configured mass properties of the reference configuration (platform + arm module stowed, 10.450 kg, CoM, full inertia tensor: `mass.refcfg.*`) and the default battery count (`pwr.battery.default_count`), from `data/reference_configuration.json` (a copy of the reference robot's values). |
 | `FreeFlyerSpec.from_values(path, base=None, firmware_config="refcfg")` | Also configures the firmware with the file's `mass.refcfg.*` (`firmware_config="firmware"` keeps the firmware reference's own); battery count reads `pwr.battery.default_count` first. |
-| `FreeFlyerRig(..., spec=None \| "reference_configuration" \| "firmware" \| FreeFlyerSpec, cutoff_cuts_power=True)` | Default spec = `reference_configuration()`; `"firmware"` = the platform values of the firmware reference.  The over-speed cutoff now cuts the propulsion power (architecture P1). |
+| `FreeFlyerRig(..., spec=None \| "reference_configuration" \| "firmware" \| FreeFlyerSpec, cutoff_cuts_power=True)` | Default spec = `reference_configuration()`; `"firmware"` = the platform values of the firmware reference.  The over-speed cutoff now cuts the propulsion power. |
 | `FreeFlyerRig.set_propulsion_power(on, modules=(0, 1))`, `power_events` | Power / cut the propulsion channels (fan drive, nozzle servos, module board) of the given modules. |
 
 ### spacekit.propulsion (changed)
@@ -347,7 +346,7 @@ script.
 
 | Name | Description |
 |---|---|
-| `DOCK_V1` | Magnets 4 x 12.1 N / (1 + g / 1 mm)^2 at a 0.39 mm working gap, pins 12010 N/m (12.0 N at 1.0 mm, 1.4 mm travel, damping 2 N s/m), retraction 30 mm at 6.2 mm/s re-extending after 8 s, robot cups (mouth r 13.42 mm, 17.4 deg, 22.3 mm deep, 13.2 mm hole), robot dock face at body x -0.1461 m, berth contact poses (P8). |
+| `DOCK_V1` | Magnets 4 x 12.1 N / (1 + g / 1 mm)^2 at a 0.39 mm working gap, pins 12010 N/m (12.0 N at 1.0 mm, 1.4 mm travel, damping 2 N s/m), retraction 30 mm at 6.2 mm/s re-extending after 8 s, robot cups (mouth r 13.42 mm, 17.4 deg, 22.3 mm deep, 13.2 mm hole), robot dock face at body x -0.1461 m, berth contact poses. |
 | `dock_model_path(default=None)`, `attach_dock_v1(spec, dock_pos, dock_quat, xml=None, visual=True)` | Attach the reference build's dock (its robot, keyframes and the robot's mesh assets dropped; moving parts, pins, magnets and the merged screw-head hull without contacts). |
 | `rig_dock_spec(spec, robot_root="core", n_funnel=16)` | Open the robot's dock face for the lances: the dock-plate and mid-band proxies replaced by boxes around two lance channels, cup funnels, through-hole rings, face annuli (an adapter edit; summary). |
 | `berth_contact_pose(dock_pos, dock_quat, berth=1)` | Robot body pose resting on a berth. |
@@ -521,12 +520,6 @@ call; the site with suction every physics step 0.93 -> 0.85 CPU s per simulated 
 |---|---|
 | `ContactEvents(model, bodies_a, bodies_b, min_force=0.0)`, `.attach(sim)`, `.update(data)`, `events`, `active`, `touching(b)` | Per physics step: contact events between two body groups (onset, end, steps, peak normal force, impulse, normal speed at the onset); reads only (physics bit-identical). |
 
-<!-- spacekit v0.4 patch 15 -->
-### The package's tests -- reference build by content
-
-The tests' `rigged_scenes.reference_generation(path=None)` reads the MJCF (the pad finger geoms of the part-level build) instead of
-looking for `build_v1` in the path; `test_gripper`, `test_primitives`, `test_robot` use it.
-
 <!-- spacekit v0.4 patch 16 -->
 ### Changed in v0.4
 
@@ -544,7 +537,6 @@ v0.3.1 (reference build v1.2's `refbuild` text) and the sixteen v0.4 patches are
 
 | Function | Notes |
 |---|---|
-| The tests' `rigged_scenes` | The tests' default reference build is v1.2, else v1.1, else v1; `SPACEKIT_REFERENCE_BUILD` picks another (the older builds keep working: their models have no `refbuild` text, so the adapters still apply the four corrections). `is_part_level(path)` (the earlier name) is `reference_generation(path) == 'v1'`: one implementation. |
 | `dock.DockRelativeLocalizer(..., error_model="consistent", corr_time=60, corr_length=1, corr_angle=1, vio_tau=10)` | the fiducial-relative estimate uses the map localiser's consistent model -- per axis error = the reported std at the current range (1 cm at 0.6 m, proportional, floor 2 mm; 0.5 deg) x a unit-variance critically damped second-order Gauss-Markov state in the error clock ds/dt = 1 / corr_time + \|v\| / corr_length + \|w\| / corr_angle [G]; velocity / rate estimates carry its derivative plus the v0.3 independent noise; within `hold_s` of the last fix the position error integrates an Ornstein-Uhlenbeck velocity error (vio_tau, long-run diffusion `hold_drift`), the attitude error is held; back in view the held error is carried over and re-converges with the clock >= 2 / tau for 2 tau.  `error_model="legacy"` = v0.3 bit for bit.  `de` (the error's rate), `last_clock`, `clock_rate(v, w)`. |
 | `suction.SuctionFaces(..., occlusion=True, occl_tol=1e-4)` | only the layer that directly faces an inlet or a holding-screen face is sucked: a sub-point whose path to the face along the inlet normal crosses the large face of another item in the seal box gets no suction and adds no sealed area (a pouch on a sheet that seals the face: 0.12 N in v0.3, 0 N now).  Bit-identical to v0.3 when no item lies between another and the face (one item, side-by-side items, a soft item's strips lying on or peeling from the face).  `shadowed` {(inlet, body): shadowed sub-points} after each evaluation.  `occlusion=False` = v0.3 / the v0.4 patches' v0.4.  Cost: about 25 us per call on an inlet with a multi-body item (the necessary conditions from the faces' corners), more only when something is shadowed. |
 | `zones.ZoneMap(..., approach_tol=0.01)`, `ZoneMap.check_positions / check_segment(..., band_exit=True \| "exit" \| False)`, `FirmwareLayer(zone_band_exit=True \| "exit" \| False)` | `band_exit=True` (the firmware layer's default) accepts a segment that starts inside the inflated band if it leaves the band by the rule, or if no sample is unknown or inside an occupied cell, it never re-enters the band after leaving it and no in-band sample is closer to the occupied cells than any earlier sample by more than `approach_tol` (along the wall, staying in the band, turning in place: accepted; any approach: refused; the end point may be in the band).  `"exit"` = the departure rule only (the v0.4 patches' draft); `False` = v0.3.  Free starts are validated exactly as before. |
@@ -555,4 +547,3 @@ v0.3.1 (reference build v1.2's `refbuild` text) and the sixteen v0.4 patches are
   and fly-to-plate records); `SuctionFaces(occlusion=True)` and the merged band rule of `FirmwareLayer(zone_band_exit=True)`
   change results only when their condition occurs (an item between another item and a face; a segment that starts in the
   band and does not get closer).  Each has its earlier value as an option.
-- The tests run on reference build v1.2 by default.

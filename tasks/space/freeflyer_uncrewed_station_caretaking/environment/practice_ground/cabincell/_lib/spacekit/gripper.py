@@ -13,7 +13,7 @@ its 'refbuild' text: ``spacekit.refbuild``): the part-level fingers carry separa
 ``hull_friction``, and the two fingers collide with each other, so an empty or caging grip stops where the fingertips
 touch (the description's closing limits would let them cross by about 11 mm).  Calibration on the published 6.43 N
 handrail pull-off (bar centre 76-88 mm in front of the palm origin = an enveloping cage): pad friction 1.2 gives
-6.47-6.60 N, monotonic in the friction (the package's tests).  Models
+6.47-6.60 N, monotonic in the friction (measured in the simulation).  Models
 without pad geoms (the test placeholder's box fingers, the superseded v0 build) keep the v0.2 recipe: every finger
 geom gets the pad friction and the fingers do not collide (v0 needed 1.8: pass ``gripper=dict(pad_friction=1.8)``).
 ``grasp_profile(model)`` returns the grasp depths that go with each recipe.
@@ -53,7 +53,7 @@ GRIPPER_DEFAULTS = dict(
 # Grasp depths (bar centre along the palm x axis; fingers point along -x) and the capture-box entry of each recipe.
 # v1 fingers: the cage closes behind a handrail-section bar 76-88 mm in front of the palm origin (envelopment, 6.5 N);
 # at 68-72 mm the bar is only pinched by the proximal pads (1-5 N); closer than 66 mm the open fingertips reach the
-# wall behind a handrail (bar inner face 43.9 mm off the wall) [V calib_variants].
+# wall behind a handrail (bar inner face 43.9 mm off the wall) [V].
 GRASP_PROFILES = {
     "pads": dict(grasp_depth=-0.082, close_x=-0.090, perch_depth=-0.082, perch_close_x=-0.088),
     "generic": dict(grasp_depth=-0.070, close_x=-0.085, perch_depth=-0.065, perch_close_x=-0.080),   # v0.2 values

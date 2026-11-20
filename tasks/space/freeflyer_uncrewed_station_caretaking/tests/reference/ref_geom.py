@@ -105,7 +105,7 @@ def plan_pouch(geom: dict, face, held: dict, plate_side: str = "+b", standoff: f
     the pouch faces the pad (the cage carries it: 30 / 30 on a test bench, 6 / 6 in the cell when not refused) -- with the
     turn clamped to clamp_deg (a pouch turned edge-on would swing the robot's body toward the face: the zone check
     refused those inserts), the centre placed where the pouch sits once the pad squares the rest of the turn;
-    'palm': the palm square to the pad, no turn; 'item': the site parts' plan unclamped."""
+    'palm': the palm square to the pad, no turn; 'item': the item square to the pad, unclamped."""
     n, fa, fb = _plane_axes(face)
     p_rel, R_rel = held["bodies"][0]
     hz = float(held["half"][2])

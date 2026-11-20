@@ -4,10 +4,10 @@ casting for the depth cameras.
 
 Colour: pinhole cameras with the configured focal lengths and principal point (MuJoCo intrinsic camera:
 ``cam_sensorsize`` = image size in pixels, ``cam_intrinsic`` = (fx, fy, W/2 - cx, H/2 - cy) in pixels; validated
-by projecting known points in the package's tests).  The two wide cameras are fisheye lenses
+by projecting known points).  The two wide cameras are fisheye lenses
 (FOV model, w ~ 1 rad); the pinhole approximation keeps the centre focal length, so it sees less than the lens
 (horizontal 93 deg instead of ~116 deg at 1280 px).  ``fisheye_from_pinhole`` builds the FOV-model image from a
-wider pinhole render by remapping (one larger render + a remap; cost measured by the timing script).
+wider pinhole render by remapping (one larger render + a remap).
 Depth: ``spacekit.sensors.DepthCamera`` rays from the camera pose (z-depth, NaN outside 0.1-4 m).
 Image sizes: published pixel counts (wide 1280 x 960, depth 224 x 171); the imaging camera's intrinsics are for a
 1366 x 1024 image [G].
@@ -98,7 +98,7 @@ def set_intrinsics(model, cam_id: int, K, size) -> None:
     model.cam_sensorsize[cam_id] = (float(W), float(H))
     model.cam_resolution[cam_id] = (int(W), int(H))
     # MuJoCo's principal-point offset is measured from the principal point to the image centre (sign verified by
-    # projecting a marker: the package's tests)
+    # projecting a marker)
     model.cam_intrinsic[cam_id] = (float(K[0][0]), float(K[1][1]), float(W / 2.0 - K[0][2]), float(H / 2.0 - K[1][2]))
 
 

@@ -39,7 +39,7 @@ __all__ = ["DOCK_V1", "dock_model_path", "attach_dock_v1", "rig_dock_spec", "Ber
            "fiducial_visible", "berth_contact_pose", "camera_in_body", "plate_points"]
 
 DOCK_V1 = dict(
-    working_gap_m=0.39e-3,          # magnet face behind the panel skin  [V dock.py, C]
+    working_gap_m=0.39e-3,          # magnet face behind the panel skin  [V, C]
     magnet_peak_N=12.1,             # per magnet at contact  [V DR3 10.9 lbf read as the catalogue contact pull]
     magnet_g1_m=1.0e-3,             # F = F0 / (1 + g / g1)^2  [V]
     magnet_radius_m=0.00476,        # 3/8 in ring magnets; lateral overlap of magnet and strike plate  [V, G law]
@@ -47,13 +47,13 @@ DOCK_V1 = dict(
     pins_k_N_m=12010.2,             # 20 pins as one spring: 12.01 N at 1.0 mm  [V]
     pins_damping_N_s_m=2.0,         # the base model's pin-slide damping  [V MJCF]
     pins_working_compression_m=1.0e-3, pins_travel_m=1.4e-3,
-    net_pull_off_N=13.08, ejection_m_s=0.0339,                    # [V] (checked by the package's tests)
+    net_pull_off_N=13.08, ejection_m_s=0.0339,                    # [V]
     retract_m=0.030, retract_speed_m_s=0.0062, hold_s=8.0,        # carriers' stroke [V DR3], speed [V 0.62 mm / 0.1 s]
-    cup_mouth_r=0.01342, cup_half_angle_deg=17.4, cup_depth=0.0223, hole_r=0.0066,   # robot cups [V S3]
+    cup_mouth_r=0.01342, cup_half_angle_deg=17.4, cup_depth=0.0223, hole_r=0.0066,   # robot cups [V]
     cup_yz=((0.0, 0.03175), (0.0, -0.03175)),                     # cup axes on the robot dock face (body y, z)
     dock_face_x=-0.1461,            # robot dock-plate face (body x): 212.71 - 66.61 mm (the base proxy box is at -0.1460)
     lateral_capture_m=0.0112, roll_capture_deg=20.6, yaw_capture_deg=9.2,
-    contact_pose_dock=((0.21271, 0.254, 0.0), (1.0, 0.0, 0.0, 0.0)),   # berth 1, robot body in the dock frame (P8)
+    contact_pose_dock=((0.21271, 0.254, 0.0), (1.0, 0.0, 0.0, 0.0)),   # berth 1, robot body in the dock frame
     berth2_pose_dock=((0.21271, -0.254, 0.0), (0.0, 1.0, 0.0, 0.0)),
     eps_contact_m=0.2e-3,           # pins compressed by this much = the dock's loopback pins see the robot [G]
 )

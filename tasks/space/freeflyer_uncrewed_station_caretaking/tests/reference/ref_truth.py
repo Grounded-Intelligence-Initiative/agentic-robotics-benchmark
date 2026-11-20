@@ -1,8 +1,7 @@
 """ref_truth.py -- the ONLY place where the reference program reads the cell (token privilege).
 
-the privileged-reference rule allows five privileged quantities; each method below is tagged with the one it reads (``PRIV``), and
-every call is counted (``Truth.reads``, returned in the reference's summary; the maintainers'
-code-review list of privileged reads is generated from this file):
+Five privileged quantities are allowed; each method below is tagged with the one it reads (``PRIV``), and every
+call is counted (``Truth.reads``, returned in the reference's summary):
 
   P1  the robot's true pose (for the capture hints: the true bar pose expressed in the true body frame);
   P2  the true poses of the grasp features (capture hints, pre-grasp poses) -- with their identity: which item a

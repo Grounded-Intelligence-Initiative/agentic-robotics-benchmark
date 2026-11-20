@@ -20,8 +20,7 @@ contact with anything); elsewhere (touching the structure, the robot, the dock o
 face).  The blocker on a pouch pad is 'elsewhere' (the blocker list of the givens has no pouch pad).
 
 Never in the sheet or the record: a pose of the robot or of an item, a trajectory, a sealed or covered area, a score,
-a threshold of the grader, a difference to the reference.  ``FIELDS`` is the whitelist (the maintainers' audit of the
-debriefs checks every returned field against it).  Uses the cell's record (the record format) and
+a threshold of the grader, a difference to the reference.  ``FIELDS`` is the whitelist of the returned fields.  Uses the cell's record (the record format) and
 the cell's live objects at the end; numpy and mujoco.
 """
 from __future__ import annotations

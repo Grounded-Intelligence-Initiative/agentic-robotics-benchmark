@@ -34,7 +34,7 @@ RUN export HOME=/root UV_CACHE_DIR=/tmp/uv-cache \
     && { [ ! -d /opt/uv-python ] || chmod -R a+rX /opt/uv-python; } \
     && rm -rf /tmp/uv-cache /tmp/requirements.txt
 # `uv venv` leaves its lock file /opt/venv/.lock world-writable (mode 666): a program could carry what it saw on one
-# scored site into the next through it. Writable by root only (as in the sibling task).
+# scored site into the next through it. Writable by root only.
 RUN [ ! -e /opt/venv/.lock ] || chmod 0644 /opt/venv/.lock
 
 # The rehearsal facility's own account (the service and the task assets below are readable by it).
@@ -54,8 +54,8 @@ RUN useradd --system --no-create-home --home-dir /opt/rehearsal --shell /usr/sbi
 # below) and nobody but root can write it.
 # Where the files come from (build argument CARETAKE_ASSETS): `hub` = fetch_assets.py (the benchmark's canonical copy,
 # shared/task_assets/) from the asset dataset at the commit pinned in assets.sha256; `local` = the same files placed in
-# the build context at local_assets/<path in assets.sha256> (builds on the maintainers' machines until the files are
-# uploaded; never in git); `auto` (the default) = local when every listed file is there, else hub. Either way every
+# the build context at local_assets/<path in assets.sha256> (a build that has the files at hand;
+# never in git); `auto` (the default) = local when every listed file is there, else hub. Either way every
 # file's sha256 must equal the pinned one, else the build fails.
 ARG CARETAKE_ASSETS=auto
 COPY fetch_assets.py assets.sha256 local_assets* /opt/task-assets/build/
@@ -82,7 +82,7 @@ RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
 
 # The rehearsal facility: the robot cell on the training module L3 (practice_ground/: the service practiced.py, its
 # cards and debriefs, the station map's copy and cabincell/, a byte copy of the grader's cell without the grading
-# module, made by the maintainers' vendoring step), installed for its own account `rehearsal` only: mode 700, so the agent
+# module), installed for its own account `rehearsal` only: mode 700, so the agent
 # account can neither read nor list it. environment/setup/setup.sh starts it before the agent's session (and restarts
 # it should it ever exit); the agent reaches it through the unix socket /run/rehearsal/rehearsal.sock
 # (~/rehearsal/rehearse.py): the robot's public calls, reset(card) and each run's observation sheet.

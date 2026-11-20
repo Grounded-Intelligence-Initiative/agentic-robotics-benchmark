@@ -1,5 +1,5 @@
 """The members of a site package (the site package format): site.json, state0.json and the five mission/ members
-the program reads through ``mission()`` (agent-visible: neutral names only; they pass the platform's real-name check).
+the program reads through ``mission()`` (agent-visible: neutral names only; they carry no real name).
 
   mission/work_order.txt     WORK_ORDER (the same text for every mission site)
   mission/register.json      the register as the program sees it (``register.public``)

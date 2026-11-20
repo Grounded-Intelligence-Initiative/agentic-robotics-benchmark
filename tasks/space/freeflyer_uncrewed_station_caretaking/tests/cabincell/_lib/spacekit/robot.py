@@ -113,7 +113,7 @@ class FreeFlyerSpec:
         impeller inertia 0.001 kg m^2 -- the firmware's own) with the configured mass properties of the
         reference configuration (platform + perching arm module stowed, 10.450 kg; ``mass.refcfg.*``)
         and the default battery count (``pwr.battery.default_count``), from ``data/reference_configuration.json``
-        (a checked copy of the shared values file).  The plant itself takes mass and inertia from the MuJoCo model."""
+        (a copy of the reference robot's values).  The plant itself takes mass and inertia from the MuJoCo model."""
         spec = cls.reference()
         rc = json.loads((Path(__file__).resolve().parent / "data" / "reference_configuration.json").read_text())
         spec.firmware["mass_properties_configured"] = copy.deepcopy(rc["mass_properties_configured"])
@@ -415,7 +415,7 @@ class FreeFlyerRig:
         _, _, _, om_true = self.adapter.true_state(d)
         out = self.firmware.tick(d.time, est, self.plant.impeller_speed)
         if self.cutoff_cuts_power and self.firmware.result == "overspeed_cutoff" and any(self.plant.powered):
-            self.set_propulsion_power(False)          # architecture P1: the computer commands the power unit off
+            self.set_propulsion_power(False)          # the computer commands the power unit off
         self.plant.step(out["impeller_cmd"], out["servo_cmd"], om_true)
         self.battery.update(self.period, self.impeller_power_w(), self._arm_mech_power())
         if self.imu is not None:
@@ -427,7 +427,7 @@ class FreeFlyerRig:
     # -- commands --------------------------------------------------------------------------------------
     def set_propulsion_power(self, on: bool, modules=(0, 1)) -> None:
         """Power / cut the propulsion channels (fan drive, nozzle servos, module board) of the given modules: a cut
-        fan coasts, its flaps hold (``propulsion.FanModule.set_power``).  The over-speed cutoff calls this (P1)."""
+        fan coasts, its flaps hold (``propulsion.FanModule.set_power``).  The over-speed cutoff calls this."""
         self.plant.set_power(on, modules)
         self.power_events.append((float(self.data.time), bool(on), tuple(int(i) for i in modules)))
 
