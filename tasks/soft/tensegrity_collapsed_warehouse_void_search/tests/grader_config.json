@@ -1,0 +1,23 @@
+{
+ "episodes": 10,
+ "limits": {
+  "frames": 600,
+  "cable_length_mm": [100.0, 240.0],
+  "program_time_s": 600.0,
+  "silence_s": 180.0,
+  "cpu_s": 2400.0
+ },
+ "pose_source": "estimated",
+ "render_backend": "classic",
+ "msaa_rgb": true,
+ "privileged_program_time_cap_s": 3600.0,
+ "program_threads": 2,
+ "runner_account": "nobody",
+ "socket_sample_s": 0.5,
+ "route_gate": {
+  "forbidden_calls": ["torch.optim", ".backward(", "jax.grad"],
+  "forbidden_extensions": [".pt", ".pth", ".onnx", ".safetensors", ".ckpt", ".h5", ".pb", ".pkl", ".npz"],
+  "max_submission_mb": 60
+ },
+ "note": "run settings only. `limits` are the cell's budgets (voidcell/_lib/budgets.py keys; mission() announces them): the simulated-time limit is NOT here, it comes from hidden/limits.json (time_limit_s, frozen with the hidden set), and the per-point report budget comes from voidscore/acceptance.yaml (reports_per_point), the single source of every scoring threshold (weights, credit radii, dwell window and still tolerance, retrieval radius and factors). program_time_s caps the program's own time per episode (the wall clock minus the cell's simulation and rendering: cellkit.wire), silence_s the time from a reply to the next request, cpu_s the program's CPU seconds (prlimit). pose_source: 'estimated' (default: pose() answers not_available; the program estimates the pose from the frames) or 'cell' (voidcell/_lib/pose_source.py); the practice ground's configuration carries the same value. privileged_program_time_cap_s caps the oracle's episodes, whose reference program steps the cell inside its one call (reference_run). The practice ground runs the same limits (environment/practice_ground/sites.json carries a copy; the calibration site has its own simulated-time limit)."
+}

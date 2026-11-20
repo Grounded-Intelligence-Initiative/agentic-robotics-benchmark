@@ -1,0 +1,29 @@
+{
+ "time_limit_s": 1800.0,
+ "rule": "60 s x ceil(1.6 x the reference's longest simulated time over the 13 selected sites / 60 s)",
+ "factor": 1.6,
+ "longest_reference_sim_time_s": 1116.25,
+ "longest_site": "h03",
+ "longest_site_n_prims": 145,
+ "reference_sim_time_s": {
+  "h01": 1103.06,
+  "h02": 942.69,
+  "h03": 1116.25,
+  "h04": 1083.9,
+  "h05": 999.93,
+  "h06": 958.9,
+  "h07": 1054.27,
+  "h08": 954.9,
+  "h09": 1006.22,
+  "h10": 1085.42
+ },
+ "practice_reference_sim_time_s": {
+  "p1": 1051.45,
+  "p2": 944.81,
+  "p3": 951.73
+ },
+ "R2": "every selected site's reference time <= time_limit_s / 1.6 = 1125.0 s: holds on all 13 (longest 1116.25 s)",
+ "calibration_time_limit_s": 1440.0,
+ "calibration_rule": "max(900 s, 60 s x ceil(1.6 x the reference's simulated time on the calibration site (872.5 s) / 60 s))",
+ "note": "verify.py reads time_limit_s (required); the practice ground's sites.json carries the same value for p1..p3 and the calibration site's own limit"
+}
