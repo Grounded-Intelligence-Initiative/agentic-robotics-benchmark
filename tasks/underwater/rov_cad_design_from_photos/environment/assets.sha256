@@ -1,6 +1,6 @@
 # endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/ale-robotics-assets
-# revision: 0000000000000000000000000000000000000000
+# revision: 98213bb20b73f3248e1c37246221c5d1d1bc9e22
 # prefix: tasks/underwater/rov_cad_design_from_photos/payload
 3ac92cb9e54dae1098e4ec5995146354138166bfccec4a9fad8ce3d277f965f6  parts_list.md
 627c615f43c822abe3abd2b56cc18c1dc309ff303f73e6e3f967d9fb7233310c  photos/photo_001.jpg
