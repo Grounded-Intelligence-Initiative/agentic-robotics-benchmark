@@ -186,13 +186,56 @@ def copy_submission(source, target):
     return None
 
 
-SCRATCH = ("/tmp", "/var/tmp", "/dev/shm")
+# Where the agent account can write in the verifier image (enumerated with `find / -writable` as that account,
+# tests/review/writable_paths.md): the trees it owns (/usr/local/{include,lib,share,bin}, its home, /tmp/runtime-user),
+# the world-writable directories (/tmp, /var/tmp, /run/lock, /dev/shm, /dev/mqueue), two world-writable lock files,
+# and System V IPC. close_agent_writable() takes the first and third away once; purge_agent_files() empties the
+# rest before every site, so that nothing a program wrote during one site's flight is there for the next.
+SKIP_TREES = ("/proc", "/sys")
+IPCRM = "/usr/bin/ipcrm"
 
 
-def purge_agent_files(uid, home):
-    """Nothing the program wrote during one site's flight is there for the next: the agent account's entries in the
-    shared scratch directories are removed, and its restored home (read once, by copy_submission) is closed to it."""
-    for top in SCRATCH:
+def close_agent_writable(uid, gid):
+    """Once, before any agent code: every file and directory the agent account owns becomes root's (so it can no
+    longer write there), every other file loses its world- and agent-group-write bit, and the directories that stay
+    world-writable are returned for purge_agent_files(). The program's own per-site home is created later."""
+    scratch = []
+    for top, dirs, files in os.walk("/", topdown=True, followlinks=False):
+        dirs[:] = [d for d in dirs if os.path.join(top, d) not in SKIP_TREES and not os.path.ismount(os.path.join(top, d))
+                   or os.path.join(top, d) in ("/dev", "/dev/shm", "/dev/mqueue", "/run", "/tmp")]
+        for name in [".", *dirs, *files]:
+            path = top if name == "." else os.path.join(top, name)
+            try:
+                info = os.lstat(path)
+            except OSError:
+                continue
+            if stat.S_ISLNK(info.st_mode):
+                if info.st_uid == uid:
+                    try:
+                        os.lchown(path, 0, 0)
+                    except OSError:
+                        pass
+                continue
+            mode = stat.S_IMODE(info.st_mode)
+            try:
+                if info.st_uid == uid or info.st_gid == gid:
+                    os.lchown(path, 0 if info.st_uid == uid else info.st_uid, 0 if info.st_gid == gid else info.st_gid)
+                    os.chmod(path, mode & ~0o6000)
+                if stat.S_ISDIR(info.st_mode):
+                    if mode & 0o002 and name == ".":
+                        scratch.append(path)
+                elif mode & 0o002 and not stat.S_ISCHR(info.st_mode) and not stat.S_ISSOCK(info.st_mode) \
+                        and not stat.S_ISFIFO(info.st_mode) and not stat.S_ISBLK(info.st_mode):
+                    os.chmod(path, mode & ~0o002)
+            except OSError:
+                pass
+    return sorted(set(scratch) | {"/dev/mqueue"})
+
+
+def purge_agent_files(uid, scratch):
+    """Before every site: what the agent account left in the world-writable directories, the earlier sites' homes,
+    and System V IPC objects are removed."""
+    for top in [*scratch, str(RUN)]:
         try:
             names = os.listdir(top)
         except OSError:
@@ -208,11 +251,10 @@ def purge_agent_files(uid, home):
                     os.unlink(path)
             except OSError:
                 pass
-    try:
-        os.chown(home, 0, 0)
-        os.chmod(home, 0o700)
-    except OSError:
-        pass
+    if os.path.exists(IPCRM):
+        # As the agent account: a container's root has no CAP_IPC_OWNER, and the owner may always remove its own.
+        subprocess.run([RUNUSER, "-u", agent_user(), "--", ENV, "-i", IPCRM, "--all"], stdin=subprocess.DEVNULL,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=30)
 
 
 def stage_public_client():
@@ -440,8 +482,11 @@ def main():
         elif mismatch:
             log("the submission carries an .oracle_token that does not match: ignored")
         records, cleanup_ok = [], True
+        scratch = close_agent_writable(uid, gid)
+        log("agent account closed out of the image: {} world-writable directories are emptied before every site".format(
+            len(scratch)))
         for index, seed in enumerate(sites):
-            purge_agent_files(uid, account.pw_dir)
+            purge_agent_files(uid, scratch)
             record = run_mission(index, int(seed), uid, gid, config, privileged)
             require(not record["infra"], "site {}: service failure, the site is not flown again ({})".format(
                 index, record.get("reason")))
