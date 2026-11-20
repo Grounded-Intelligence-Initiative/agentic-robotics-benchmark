@@ -213,10 +213,10 @@ class Pilot:
         px, py = L["pocket"]
         lane = py+side*stagger
         self.goto(cx+entry, 0., CRUISE, speed=.6)
-        self.goto(cx+entry, lane, CRUISE, speed=.6, tol=.05)
+        self.goto(cx+entry, lane, CRUISE, speed=.35, tol=.05)     # slow through the 1.10 m throats
         self.align_board(0.)
         pad = L["pads"][str(int(side))]
-        self.goto(pad[0], lane, CRUISE, speed=.6, tol=.05)
+        self.goto(pad[0], lane, CRUISE, speed=.35, tol=.05)
         self.goto(pad[0], pad[1], CRUISE, speed=.6, tol=.03)
         self.align_board(0.)
         if self.mutant != "release_high":
