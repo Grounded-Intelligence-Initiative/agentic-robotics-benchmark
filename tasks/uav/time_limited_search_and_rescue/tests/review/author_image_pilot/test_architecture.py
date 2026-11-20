@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 from scipy import ndimage
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]/"solution"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from architecture import BOOM, FOCAL, patches, translation, wall_face
 
 

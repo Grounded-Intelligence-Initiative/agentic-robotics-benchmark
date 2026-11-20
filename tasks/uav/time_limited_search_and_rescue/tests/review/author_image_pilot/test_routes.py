@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-sys.path.insert(0,str(Path(__file__).resolve().parents[2]/"solution"))
+sys.path.insert(0,str(Path(__file__).resolve().parent))
 from oracle_run import DIRECTIONS, FOCAL, RoomMemory, aperture_width, explore, guide_offset, reverse
 
 

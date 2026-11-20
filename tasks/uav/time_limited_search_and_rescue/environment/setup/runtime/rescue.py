@@ -36,9 +36,10 @@ def basis(yaw):
 class World:
     kind = "rescue"
 
-    def __init__(self, kind, seed, render=True):
+    def __init__(self, kind, seed, render=True, truth=False):
         if kind != self.kind:
             raise ValueError("unknown task")
+        self.truth = bool(truth)
         # Adjacent seeds share the site, gains and launch position but reverse
         # the cross-axis tracking residual. It never affects a hold command.
         self.layout = layout_for(seed >> 1)
@@ -90,6 +91,52 @@ class World:
         self.storey_rooms = set()
         self.well_x = tuple(self.layout.columns[c] for c,_ in self.layout.wells)
         self._observation = None
+        # Onboard sensors other than the cameras: a barometric altimeter, the IMU's yaw gyro and
+        # gravity-compensated accelerometer, and an optical-flow odometer. Their noise is drawn from the
+        # site's own stream, so a site replays identically; scale and bias are fixed for a site.
+        self.noise = np.random.default_rng([seed & 0xFFFFFFFF, (seed >> 32) & 0xFFFFFFFF, 0x53454E53])
+        self.flow_scale = 1.+self.noise.uniform(-.02, .02, 2)
+        self.gyro_bias = float(self.noise.uniform(-.004, .004))
+        self.baro_bias = 0.
+        self.sensors = self.sense(None)
+
+    def sense(self, before):
+        """Sensor readings for the action that started at `before` = (position, yaw, velocity)."""
+        rng = self.noise
+        self.baro_bias = float(np.clip(self.baro_bias+rng.normal(0., .002), -.06, .06))
+        altitude = float(self.position[2])+self.baro_bias+rng.normal(0., .015)
+        flow, turn, accel = np.zeros(2), 0., np.zeros(3)
+        if before is not None:
+            position, yaw, velocity = before
+            flow = basis(yaw).T @ (self.position[:2]-position[:2])
+            turn = (float(self.data.qpos[3])-yaw)/DT
+            change = (self.data.qvel[:3]-velocity)/DT
+            accel = np.array([*(basis(float(self.data.qpos[3])).T @ change[:2]), change[2]])
+        flow = flow*self.flow_scale+rng.normal(0., .003+.01*np.abs(flow))
+        return {"altitude_m": round(altitude, 4),
+                "flow_m": [round(float(v), 4) for v in flow],
+                "gyro_z_rad_s": round(turn+self.gyro_bias+rng.normal(0., .01), 4),
+                "accel_m_s2": [round(float(v), 3) for v in accel+rng.normal(0., .05, 3)]}
+
+    def ground_truth(self):
+        """Privileged state for the token-gated reference only (never in commissioning)."""
+        L = self.layout
+        axis = self.data.geom_xmat[self.board].reshape(3, 3)[:, 1]
+        return {
+            "pose": [round(float(v), 5) for v in self.data.qpos[:4]],
+            "velocity": [round(float(v), 5) for v in self.data.qvel[:4]],
+            "litter": [round(float(v), 5) for v in self.payload] + [round(math.atan2(-axis[0], axis[1]), 5)],
+            "held": self.held, "tool": self.tool, "failure": self.failure,
+            "shutter_open": self.shutter_open, "progress": sorted(self.progress),
+            "layout": {"columns": list(map(float, L.columns)), "rows": list(map(float, L.rows)),
+                       "halls": [[list(a), list(b)] for a, b in sorted(L.halls)],
+                       "wells": [list(v) for v in L.wells], "inlet": int(L.inlet), "outlet": int(L.outlet),
+                       "target": list(map(int, L.target)), "flange": float(L.flange),
+                       "depot": [list(map(float, v)) for v in L.depot],
+                       "docks": [list(map(float, L.dock(i))) for i in range(2)],
+                       "loading": list(map(float, L.loading)), "pocket": list(map(float, L.pocket)),
+                       "pads": {str(s): list(map(float, L.pad_at(s))) for s in (-1, 1)},
+                       "well_half": {str(c): float(L.well_half(c)) for c, _ in L.wells}}}
 
     @property
     def held(self):
@@ -134,7 +181,10 @@ class World:
             self._observation = {
                 "images": [png(frame) for frame in self.images()],
                 "frame_id": self.steps, "steps_remaining": LIMIT-self.steps, "done": self.done,
+                "sensors": self.sensors,
             }
+            if self.truth:
+                self._observation["_gt"] = self.ground_truth()
         return self._observation
 
     def abort(self, reason, body=None):
@@ -358,6 +408,7 @@ class World:
         self.data.ctrl[:] = self.command
         previous_heading = self.data.qpos[3]
         before = self.position.copy()
+        started = (before, float(previous_heading), self.data.qvel[:3].copy())
         for _ in range(round(DT/self.model.opt.timestep)):
             if self.done:
                 break
@@ -371,6 +422,7 @@ class World:
         if not self.done:
             self.observation_progress()
         self.turn_angle += abs(self.data.qpos[3]-previous_heading)
+        self.sensors = self.sense(started)
         if self.steps >= LIMIT:
             self.done = True
         return self.observe()

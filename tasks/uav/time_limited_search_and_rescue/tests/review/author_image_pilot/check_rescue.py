@@ -7,8 +7,8 @@ import sys
 
 import numpy as np
 
-TASK = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(TASK/"environment/setup/runtime"), str(TASK/"solution")]
+TASK = Path(__file__).resolve().parents[3]
+sys.path[:0] = [str(TASK/"environment/setup/runtime"), str(Path(__file__).resolve().parent)]
 from oracle_run import run
 from rescue import World
 
