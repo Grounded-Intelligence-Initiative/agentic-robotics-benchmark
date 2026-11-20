@@ -66,16 +66,16 @@ Each of the 8 flights earns its rescue progress; your score is their mean (a mea
 
 | Reached during the flight | Progress |
 |---|---|
-| Entered the wing (crossed the entrance line without the litter) | 0.12 |
-| Reached the upper storey (0.70 m or more above its floor, inside the wing) | + 0.08 |
-| Reached the litter: before picking it up, flown to within 0.62 m of its center on both horizontal axes, 0.85 m or more above that storey's floor | + 0.10 |
-| Latched the litter | + 0.12 |
-| Lifted it 0.54 m above its floor | + 0.15 |
-| Carried it out of the wing across the entrance line | + 0.20 |
-| Rooms searched: the share of the 4 marked rescue bays flown over (within 0.47 m of the bay's center on both horizontal axes, 0.85 m or more above its floor) | + up to 0.06 |
+| Entered the wing (crossed the entrance line without the litter) | 0.05 |
+| Reached the upper storey (0.70 m or more above its floor, inside the wing) | + 0.04 |
+| Reached the litter: before picking it up, flown to within 0.62 m of its center on both horizontal axes, 0.85 m or more above that storey's floor | + 0.06 |
+| Latched the litter (the mounted head fits its fitting) | + 0.15 |
+| Lifted it 0.54 m above its floor | + 0.10 |
+| Carried it out of the wing across the entrance line | + 0.25 |
+| Rooms searched: the share of the 4 marked rescue bays flown over (within 0.47 m of the bay's center on both horizontal axes, 0.85 m or more above its floor) | + up to 0.03 |
 | **Handed off on the open station's deck** | **1.00 in total** |
 
-The order of visits is not scored. Without a handoff a flight earns at most 0.83.
+The order of visits is not scored. Without a handoff a flight earns at most 0.68: reaching the litter is worth 0.15 in all, and the handoff is the largest single step.
 
 ## Your program
 

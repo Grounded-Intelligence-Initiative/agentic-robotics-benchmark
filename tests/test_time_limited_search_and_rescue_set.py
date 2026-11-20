@@ -119,10 +119,15 @@ class CopiesAndNumbers(unittest.TestCase):
         world = (TASK / "tests/runtime/rescue.py").read_text()
         table = re.search(r"^SCORE = \{(.+?)\}", world, re.M | re.S).group(1)
         weights = {k: float(v) for k, v in re.findall(r'"(\w+)": (\.\d+)', table)}
-        self.assertEqual(weights, {"entered_wing": .12, "mezzanine": .08, "located": .10, "grasped": .12,
-                                   "lifted": .15, "cargo_return": .20})
-        for text in ("| 0.12 |", "| + 0.08 |", "| + 0.10 |", "| + 0.12 |", "| + 0.15 |", "| + 0.20 |",
-                     "| + up to 0.06 |", "at most 0.83"):
+        self.assertEqual(weights, {"entered_wing": .05, "mezzanine": .04, "located": .06, "grasped": .15,
+                                   "lifted": .10, "cargo_return": .25})
+        self.assertEqual(number(r"^ROOMS = (\.\d+)", world), .03)
+        self.assertAlmostEqual(sum(weights.values()) + .03, .68)
+        # reaching the litter is worth little; the handoff is the largest single step
+        self.assertAlmostEqual(weights["entered_wing"] + weights["mezzanine"] + weights["located"], .15)
+        self.assertGreater(1 - sum(weights.values()) - .03, max(weights.values()))
+        for text in ("| 0.05 |", "| + 0.04 |", "| + 0.06 |", "| + 0.15 |", "| + 0.10 |", "| + 0.25 |",
+                     "| + up to 0.03 |", "at most 0.68"):
             self.assertIn(text, INSTRUCTION)
 
     def test_grader_logs_no_seed(self):

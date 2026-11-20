@@ -16,8 +16,11 @@ from rescue_scene import DECK, SLAB, WELL_HALF, POCKET_HALF_DEPTH, START_Z, buil
 LIMIT = 4400
 DT = .2
 INCREMENTS = np.array([.32, .32, .19])
-SCORE = {"entered_wing": .12, "mezzanine": .08, "located": .10, "grasped": .12,
-         "lifted": .15, "cargo_return": .20}
+# Reaching the litter is worth little; the work on the litter carries the credit (weights fixed in a commit of
+# their own, before anything was graded again with them).
+SCORE = {"entered_wing": .05, "mezzanine": .04, "located": .06, "grasped": .15,
+         "lifted": .10, "cargo_return": .25}
+ROOMS = .03
 FAILURES = ("wall", "inspection", "cargo", "slab", "roof",
             "throat_entry", "throat_exit", "loading_wall", "unsafe_release")
 
@@ -433,7 +436,7 @@ class World:
 
     def metrics(self):
         delivered = "delivered" in self.progress
-        partial = sum(SCORE.get(k, 0.) for k in self.progress)+.06*len(self.rooms_seen)/len(self.layout.rooms)
+        partial = sum(SCORE.get(k, 0.) for k in self.progress)+ROOMS*len(self.rooms_seen)/len(self.layout.rooms)
         return {
             "rescue_progress": 1. if delivered else round(partial, 2),
             "success": int(delivered), "delivered": int(delivered),
