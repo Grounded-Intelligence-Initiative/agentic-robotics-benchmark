@@ -438,6 +438,12 @@
     "spec_hash": "sha256:a7b468a63ef51fb16a67f51e6f44777636bf8a4e5e0dfdf3940c1393dffecef9"
   },
   {
+    "content_digest": "sha256:f8f9240f5258742c3732ea99f34c992aae75afce9618ead40c53625ca6054c49",
+    "since": "2026-11-19T22:28:43Z",
+    "slug": "longtail_manipulation_recovery",
+    "spec_hash": "sha256:7289d7a5a53e193f1f780bd3f4ca1fe9285e7f0418323de2b7504f751f190530"
+  },
+  {
     "content_digest": "sha256:f67ec411cffe9fbecf005639499fbed1baf3428d35e8e27fe8e663268c28fbf2",
     "since": "2026-11-19T17:19:38Z",
     "slug": "longtail_manipulation_recovery",
@@ -514,6 +520,12 @@
     "since": "2026-11-17T21:41:19Z",
     "slug": "quadruped_cad_design_from_photos",
     "spec_hash": "sha256:aa97c970e3cbbe9c6f8c3c1d25d7881f1fa315cc126669b894a5d6d0d5b009d1"
+  },
+  {
+    "content_digest": "sha256:d4d5699a1cf4200f5b6c5744fef7dfb9a0fdc5124e8693a74aa0a9af4438e1ac",
+    "since": "2026-11-19T23:54:40Z",
+    "slug": "quadruped_environment_twin_from_real_photos",
+    "spec_hash": "sha256:383367afeeb29cf92ef74414cf1d140e01ae25f4de5520eefff508fbfa185515"
   },
   {
     "content_digest": "sha256:9723dce8cb2e88c56c3c02a2bf6b68bcd44a33253e7b175066048794080450d0",
@@ -646,6 +658,12 @@
     "since": "2026-11-18T01:01:43Z",
     "slug": "racecar_full_assembly_tenth_scale_ur10e",
     "spec_hash": "sha256:4b24178a05c0cd9a72680b2f79c8d8b8f42a5765108b16d368453a7a9a1ca1fc"
+  },
+  {
+    "content_digest": "sha256:596715f88d78fe5ef1f40988a6dbc188f9bbacc04a32d23089d08c46485a9820",
+    "since": "2026-11-19T22:08:06Z",
+    "slug": "racecar_head_to_head_race_on_unseen_track",
+    "spec_hash": "sha256:9a881c596218ac609952452aabd773de4e32b2fb1cb469bab54859e71da98377"
   },
   {
     "content_digest": "sha256:aa8310f79f7d0538bfa5e183c63c428550b778bce42a4e3e1e3465110c649ae2",
@@ -1120,6 +1138,12 @@
     "since": "2026-11-18T21:29:09Z",
     "slug": "tensegrity_requirements_replica_from_photos",
     "spec_hash": "sha256:eeeb9216cbe2ba9ce3606c71403d64d261e9bb4d5005bbc2a27d8368891013e2"
+  },
+  {
+    "content_digest": "sha256:3e005cae0d73ecbc3b3dbdced3bcca3f4bb5928c9eed5e76f09a259bb8cbfddc",
+    "since": "2026-11-20T02:50:21Z",
+    "slug": "tensegrity_strut_assembly_3bar_panda",
+    "spec_hash": "sha256:67cab2d26a82bab11c2be953e8230c5631b9f277a5f92ad5ffd575478a0c83b5"
   },
   {
     "content_digest": "sha256:28eb55d0ab4799029c6a6b78521fdf4cfeb67811e4e844c33c95197eb8931745",
