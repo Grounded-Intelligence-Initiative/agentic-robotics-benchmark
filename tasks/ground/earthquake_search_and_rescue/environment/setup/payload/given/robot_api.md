@@ -13,7 +13,7 @@ sensor requests return what the sensor sees at the current simulated instant (th
 | call | returns |
 |---|---|
 | `describe()` | static facts: limits, rates, the cameras' sizes and intrinsics, the lidar, the budgets, the map frame |
-| `get_state()` | `sim_time`, `done`, `done_reason`; `pose` (odometry, map frame: `x`, `y`, `z`, `yaw`, plus IMU `roll`, `pitch`); `velocity` (`forward`, `lateral`, `yaw_rate`, chassis frame); `imu` (`gyro`, `roll`, `pitch`); `joints` (`gauge`, `flipper_front`, `flipper_rear`, `mast`, `head_pan`, `head_tilt`, `arm` [5], `gripper`); `commands` (`v`, `w`); `tracks` (belt speeds `left`, `right`); `gripper` (`holding`, `load_N`); `arm_moving`; `kit_in_cradle`; `link` (`up`, `rssi_dbm`); `reports_pending` |
+| `get_state()` | `sim_time`, `done`, `done_reason`; `pose` (odometry, map frame: `x`, `y`, `z`, `yaw`, plus IMU `roll`, `pitch`); `velocity` (`forward`, `lateral`, `yaw_rate`, chassis frame, an estimate with noise); `imu` (`gyro`, `roll`, `pitch`, with noise: manual section 6); `joints` (`gauge`, `flipper_front`, `flipper_rear`, `mast`, `head_pan`, `head_tilt`, `arm` [5], `gripper`); `commands` (`v`, `w`); `tracks` (belt speeds `left`, `right`); `gripper` (`holding`, `load_N`); `arm_moving`; `kit_in_cradle`; `link` (`up`, `rssi_dbm`); `reports_pending` |
 
 ## Sensors (each counts against the mission's budget)
 
@@ -42,7 +42,12 @@ the call answers `camera_budget` / `lidar_budget` / `thermal_budget`.
 
 Each axis follows its target at its rated speed (manual sections 2 to 4). Events in `step`'s reply: `grasped`,
 `released`, `slipped`, `grip_slip` (too heavy), `kit_unlatched`, `link_up`, `link_down`, `report_sent`, `collapse`
-(a secondary collapse: the mission is aborted), `robot_overturned`, `robot_fell`, `episode_over`.
+(a secondary collapse: the mission is aborted and scores 0), `protective_stop` (contact with the survivor above the
+limit: the drives stop for good and the mission ends; manual section 8), `robot_overturned`, `robot_fell`,
+`episode_over`.
+
+Every number in a request must be finite: a request carrying `NaN`, an infinity or a malformed parameter is answered
+`bad_params` and changes nothing.
 
 ## The mission
 
@@ -51,17 +56,22 @@ Each axis follows its target at its rated speed (manual sections 2 to 4). Events
 | `report_survivor(x, y, z=0)` | the survivor's position in the map frame; sent to the team at once when the link is up, else queued and sent when it comes up. You may report again: the team holds the last report that reached it. Returns `{"ok", "sent"}` |
 | `finish()` | ends the mission (also done for you when `solve` returns) |
 
-A mission also ends at 1800 s of simulated time or when the robot is lost; calls that move the robot then answer
-`episode_over` / `robot_lost`. After the end your program may still read its state; it should return.
+A mission also ends at 1800 s of simulated time, when the robot is lost, at a protective stop and at a secondary
+collapse; calls that move the robot then answer `episode_over` / `robot_lost`. After the end your program may still read its state; it should return.
 
 ## Running
 
+* Before any mission the grader applies the submission checks of `~/training/submission_checks.py` (listed in the
+  task's instruction: no weight files, no training calls, no networking or process-starting import, no computed
+  import or code); a submission that fails one scores 0 on every site.
 * The grader launches your program as `python -B -E -s` with the client library on `PYTHONPATH`, the working
-  directory = a read-only copy of your submission folder, an empty writable `HOME` and `TMPDIR`, no network, and
-  limits: 120 s (wall) and 120 CPU-s to import `rescue.py`; per mission 1200 s of program time (the wall clock minus
-  the cell's simulation and sensor rendering), 4800 CPU-s, 180 s of silence between requests.
+  directory = a read-only copy of your submission folder (writing a file there raises `PermissionError`), an empty
+  writable `HOME` and `TMPDIR`, no network, and limits: 120 s (wall) and 120 CPU-s to import `rescue.py`; per mission
+  1200 s of program time (the wall clock minus the cell's simulation and sensor rendering), 4800 CPU-s, 180 s of
+  silence between requests.
 * Ordinary prints go to stderr (the launcher binds the wire to the original stdout first): print as much as you like.
 * A submission that ships `run.sh` is started with `bash run.sh` instead; it must then speak the wire itself (one JSON
   request per line on stdout, replies on stdin: see `client.py`).
-* `~/training/run_mission.py` runs your submission on the training ground the same way and prints the debrief;
+* `~/training/run_mission.py` applies the same checks, then runs your submission on the training ground in the same
+  regime (as your account) and prints the robot's mission log; `--check` applies the checks only.
   `connect_training(site)` gives you an interactive `Robot` on a training site (one mission per connection).

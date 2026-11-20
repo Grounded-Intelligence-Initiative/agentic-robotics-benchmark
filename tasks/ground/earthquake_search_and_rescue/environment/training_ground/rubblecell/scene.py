@@ -240,23 +240,10 @@ def build_scene(plan, offscreen=(640, 480)):
             g.size = gd["size"]
             g.material = gd["mat"]
             g.mass = bd["mass"] / len(bd["geoms"])
-            if bd.get("robot_only"):
-                g.contype, g.conaffinity = 4, 2          # held by its weld: touches the robot only, until it falls
-            else:
-                g.contype, g.conaffinity = CT_WORLD, CA_WORLD
+            g.contype, g.conaffinity = CT_WORLD, CA_WORLD
             g.priority = 1
             g.friction = [MAT.get(gd["mat"], (None, None, None, None, 0.7))[4], 0.02, 0.001]
             g.group = GROUP_WORLD
-        if bd["kind"] == "propslab":
-            # held in place by a weld to the world; the weld acts at the slab's own centre (data[0:3] is the anchor in
-            # body2's frame, here the world's: the slab's position), relpose from qpos0 (zero quaternion)
-            eq = spec.add_equality()
-            eq.name = "hold_" + bd["name"]
-            eq.type = mujoco.mjtEq.mjEQ_WELD
-            eq.name1 = bd["name"]
-            eq.objtype = mujoco.mjtObj.mjOBJ_BODY
-            eq.data = [float(bd["pos"][0]), float(bd["pos"][1]), float(bd["pos"][2]), 0, 0, 0, 0, 0, 0, 0, 1.0]
-            eq.active = True
     # the robot and its kit
     st = plan["start"]
     z0 = S.height_at(st["x"], st["y"]) + CRAWLER["track_wheel_r"] + 0.012 + 0.035 + 0.01

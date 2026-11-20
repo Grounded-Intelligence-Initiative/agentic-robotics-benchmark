@@ -1,9 +1,13 @@
 {
  "seeds": [
-  4262001962695810527,
-  509348356188127087,
-  8243428246219919138,
-  4614314506515586962
+  1656914925694907591,
+  5968869831387924541,
+  243798336054176504,
+  2125816647474982220,
+  5693485278995727339,
+  1693966511534288503,
+  5918520667902607595,
+  8811523898313300999
  ],
- "note": "the fixed hidden set: 4 sites selected by the pre-registered rule of selection.json"
+ "note": "the fixed hidden set: 8 sites selected by the pre-registered rule of selection.json (rule version 2, cell 0.3.0)"
 }

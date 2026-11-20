@@ -12,15 +12,16 @@ their reach and brings the robot back to the deployment point). This grader:
      entries elsewhere;
   1. checks the root-owned copy of the givens at /opt/arb (tests/test.sh builds it from setup_payload/) against
      given_hashes.json (a mismatch is a task error);
-  2. gates: contract_ok = rescue.py is a regular file that parses and defines solve, the route gate (no weight files, no
-     training calls, size cap), the network audit (static: no networking import, no computed import; runtime: every
+  2. gates: contract_ok = the submission checks the agent has (the givens' training/submission_checks.py, loaded from
+     the root-owned copy: rescue.py is a regular file that parses and defines solve, the route gate (no weight files, no
+     training calls, size cap), the import audit (static: no networking import, no computed import; runtime: every
      process of the program runs under the no-network seccomp filter (cellkit.nonet), the runner account's remote inet
      sockets are sampled), the module imports under the run regime (120 s, 120 CPU-s), >= 1 step call, no late write,
      no surviving process; before the first episode it waits until the frozen desktop is quiet and proves the
      no-network filter works (a failure is a task error);
   3. the oracle token: submission/.oracle_token whose sha256 equals hidden/oracle_token.sha256 switches the cells to the
      privileged mode (get_state_privileged, reference_run); a wrong token is ignored (stat oracle_token_mismatch);
-  4. takes the `episodes` hidden site seeds pinned in hidden/seeds.json (a fixed hidden set selected by the rule of
+  4. takes the `episodes` hidden site seeds pinned in hidden/seeds.json (a fixed hidden set of 8 selected by the rule of
      hidden/selection.json; a missing or short file is a task error) and runs the agent's program per site on the cell
      (rubblecell.server.RubbleCellServer, mode hidden: the building, its collapse, the obstacles, the survivor and the
      decoys drawn from the seed; sensor-only API) as `nobody` from a read-only copy under an opaque run tag; an episode
@@ -30,8 +31,8 @@ their reach and brings the robot back to the deployment point). This grader:
      the last report that reached the team over the radio link, within 1 m of the survivor (linear to 0 at 3 m), after
      a camera or thermal frame of the program's showed them --, kit 0.25 -- the survival kit at rest within 0.8 m of the
      survivor's head or a hand, not on them --, returned 0.30 -- the robot upright within 3 m of its deployment point at
-     the end, only with located > 0; a secondary collapse or pressing on the survivor scores the site 0), times the
-     gates. A failure on the grader's side of an episode is a TASK ERROR (`fail`); a program that crashes, hangs or
+     the end, only with located > 0; a secondary collapse scores the site 0; a protective stop on the survivor
+     ends the mission, which keeps what the team had, without the return and at most 0.45), times the gates. A failure on the grader's side of an episode is a TASK ERROR (`fail`); a program that crashes, hangs or
      misbehaves ends its own episode, which is scored as it stands. Each episode caps the program's own time
      (`program_time_cap_s`): the wall clock minus the cell's simulation and sensor rendering (cellkit.wire).
 Untouched sandbox: no rescue.py -> contract_ok 0 -> 0. Oracle: the token + reference_run (the privileged reference
@@ -170,8 +171,6 @@ OUT = os.path.join(RECORD_ROOT, "out")
 PROGRAM = "rescue"
 CRITERIA = ["rescue_score"]
 GATES = ["contract_ok"]
-IMPORT_WALL_S = 120          # the import check's limits (instruction.md, cell_api.md): wall seconds and CPU seconds
-IMPORT_CPU_S = 120
 SUSPICIOUS = ("/opt/ale", "ALE_STAGE_DIR", "ALE_VERIFICATION", "hidden/seeds", "oracle_token", "reference_run", "get_state_privileged",
               "ALE_VERIFY", "/opt/ale/tests", ".ale-solution")
 
@@ -227,43 +226,31 @@ def root_payload_ok(expected):
     return not problems, problems
 
 
-def route_gate(cfg, src):
-    rg = cfg.get("route_gate", {})
-    forb_ext = tuple(rg.get("forbidden_extensions", []))
-    calls = rg.get("forbidden_calls", [])
-    total, problems, suspicious = 0, [], 0
+def load_checks():
+    """The submission checks: the module the agent has (~/training/submission_checks.py), loaded from the grader's
+    root-owned copy of the givens after its hash was verified (root_payload_ok). One source for the grader and for the
+    training launcher: what the launcher refuses, the grader refuses, and nothing else."""
+    import importlib.util
+    path = os.path.join(ROOT_PAYLOAD, "training", "submission_checks.py")
+    spec = importlib.util.spec_from_file_location("submission_checks", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def suspicious_lines(src):
+    """A statistic, never a gate: lines of the submission that name the grader's side."""
+    n = 0
     for dp, _, fns in os.walk(src):
         for fn in fns:
             p = os.path.join(dp, fn)
-            try:
-                total += os.lstat(p).st_size
-            except OSError:
-                continue
-            if fn.lower().endswith(forb_ext):
-                problems.append("weight file %s" % os.path.relpath(p, src))
             if fn.endswith((".py", ".sh")) and not os.path.islink(p):
                 try:
                     text = open(p, encoding="utf-8", errors="replace").read()
                 except OSError:
                     continue
-                for c in calls:
-                    if c in text:
-                        problems.append("%s uses %s" % (os.path.relpath(p, src), c))
-                suspicious += sum(1 for line in text.splitlines() if any(s in line for s in SUSPICIOUS))
-    if total > rg.get("max_submission_mb", 60) * 1024 * 1024:
-        problems.append("submission larger than %d MB" % rg.get("max_submission_mb", 60))
-    return problems, suspicious
-
-
-def library_digests():
-    """sha256 of every .py file of the shipped library (a submission may carry copies of it)."""
-    out = set()
-    d = os.path.join(ROOT_GIVEN, "lib", "rubblecell")
-    for dp, _dn, fns in os.walk(d):
-        for fn in fns:
-            if fn.endswith(".py"):
-                out.add(sha256_file(os.path.join(dp, fn)))
-    return out
+                n += sum(1 for line in text.splitlines() if any(x in line for x in SUSPICIOUS))
+    return n
 
 
 class Runner(object):
@@ -316,36 +303,21 @@ class Runner(object):
 
 def contract_check(cfg, rn):
     src = program_source()
-    path = os.path.join(src, PROGRAM + ".py")
-    if not os.path.isfile(path) or os.path.islink(path):
-        return False, "no %s.py (regular file) in the submission" % PROGRAM, 0, []
-    try:
-        tree = ast.parse(open(path, encoding="utf-8", errors="replace").read())
-    except SyntaxError as e:
-        return False, "%s.py does not parse: %s" % (PROGRAM, e), 0, []
-    has_solve = any(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "solve" for n in ast.walk(tree)) or \
-        any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "solve" for t in n.targets) for n in ast.walk(tree)) or \
-        any(isinstance(n, (ast.Import, ast.ImportFrom)) and any((a.asname or a.name) == "solve" for a in n.names) for n in ast.walk(tree))
-    if not has_solve:
-        return False, "%s.py defines no solve" % PROGRAM, 0, []
-    problems, suspicious = route_gate(cfg, src)
-    if problems:
-        return False, "route gate: " + "; ".join(problems[:5]), suspicious, []
-    net = netaudit.scan_imports(src, allow_digests=library_digests())
-    if net:
-        return False, "network audit: networking import(s) %s" % ", ".join("%s: %s" % x for x in net[:5]), suspicious, net
+    checks = load_checks()
+    suspicious = suspicious_lines(src) if os.path.isdir(src) else 0
+    ok, why, net = checks.check_submission(src, os.path.join(ROOT_GIVEN, "lib", "rubblecell"))
+    if not ok:
+        return False, why, suspicious, net
     dirs = rn.prepare("import_check", src)
     before = rn.snapshot((dirs["root"],)) if rn.acct else None
-    code = ("import sys, importlib; sys.path.insert(0, sys.argv[1]); sys.path.insert(0, sys.argv[2]); "
-            "m = importlib.import_module('%s'); assert callable(m.solve)" % PROGRAM)
-    argv = runner.wrap_limits([sys.executable] + runner.PYTHON_FLAGS + ["-c", code, dirs["lib"], dirs["program"]], cpu_s=IMPORT_CPU_S,
+    argv = runner.wrap_limits(checks.import_check_argv(sys.executable, dirs["lib"], dirs["program"]), cpu_s=checks.IMPORT_CPU_S,
                               user=rn.name, nonet=True)
     try:
-        r = subprocess.run(argv, cwd=dirs["program"], env=rn.env(dirs), capture_output=True, text=True, timeout=IMPORT_WALL_S,
+        r = subprocess.run(argv, cwd=dirs["program"], env=rn.env(dirs), capture_output=True, text=True, timeout=checks.IMPORT_WALL_S,
                            start_new_session=True)
         ok, why = r.returncode == 0, ("ok" if r.returncode == 0 else "importing %s.py failed: " % PROGRAM + (r.stderr.strip().splitlines() or ["?"])[-1][:300])
     except subprocess.TimeoutExpired:
-        ok, why = False, "importing %s.py took more than %d s" % (PROGRAM, IMPORT_WALL_S)
+        ok, why = False, "importing %s.py took more than %d s" % (PROGRAM, checks.IMPORT_WALL_S)
     finally:
         rn.cleanup(dirs, before)
     return ok, why, suspicious, []
@@ -465,17 +437,18 @@ def _cell_failed(s):
 
 
 def _episode_with_retry(cfg, seed, rn, privileged, tag, metrics):
-    """One episode; when the cell failed in it (53-scoring-11) it is run once more from scratch (a fresh cell, a fresh
-    program) and the second run counts. A render failure that repeats is the grader's (a task error); an internal
-    error or a physics fault that repeats with the same program is scored as it stands (the program's requests
-    reproduce it)."""
+    """One episode; when the cell failed in it it is run once more from scratch (a fresh cell, a fresh program, the
+    same run folder) and the second run counts. A request cannot make the cell fail: the cell refuses every non-finite
+    or malformed parameter as `bad_params` (rubblecell.server._dispatch), so a program has no way to ask for a second
+    run. A render failure that repeats is the grader's (a task error); an internal error or a physics fault that
+    repeats is scored as it stands."""
     s_a = run_episode(cfg, seed, rn, privileged, tag=tag)
     why = _cell_failed(s_a)
     if not why:
         return s_a
     log("[grader]   %s: the cell failed (%s): the episode is run once more" % (tag, ", ".join(why)))
     metrics["episode_retries"] = metrics.get("episode_retries", 0.0) + 1.0
-    s_b = run_episode(cfg, seed, rn, privileged, tag=tag + "r")
+    s_b = run_episode(cfg, seed, rn, privileged, tag=tag)          # the same run folder: the program cannot tell the runs apart
     why_b = _cell_failed(s_b)
     if "render_failure" in why_b:
         fail("%s: the cell could not render frames in two runs of the episode" % tag)
@@ -500,7 +473,8 @@ def write_verdict(rewards, metrics):
     text = ("contract_ok %.0f (the program imports, exposes solve, passes the route gate and the network audit and steps the "
             "cell; no late write, no surviving process); rescue_score %.4f (the mean over the hidden sites of the mission's "
             "score: survivor located and reported 0.45, survival kit within reach 0.25, robot back at the deployment point 0.30; "
-            "a secondary collapse or pressing on the survivor scores a site 0)") % (rewards["contract_ok"], rewards["rescue_score"])
+            "a secondary collapse scores a site 0; a protective stop on the survivor ends the mission without the return, at most "
+            "0.45)") % (rewards["contract_ok"], rewards["rescue_score"])
     if os.environ.get("ALE_VERIFY_PYTHON"):
         recorded = {}
         for k, v in sorted(verdict["metrics"].items()):
@@ -613,8 +587,8 @@ def _main_locked(cfg, rewards, metrics):
     for i, seed in enumerate(ep_seeds):
         log("[grader] episode %d/%d" % (i + 1, n))
         s_a = _episode_with_retry(cfg, seed, rn, privileged, "ep%02d" % (i + 1), metrics)
-        log("[grader]   score %.3f parts %s voids %s lost %s sim %.1f s wall %.1f s (program %.1f s, cell %.1f s) frames %d lidar %d end %s" % (
-            s_a["episode_score"], s_a["parts"], [v["what"] for v in s_a["voids"]][:3], s_a.get("lost"),
+        log("[grader]   score %.3f parts %s voids %s stops %d lost %s sim %.1f s wall %.1f s (program %.1f s, cell %.1f s) frames %d lidar %d end %s" % (
+            s_a["episode_score"], s_a["parts"], [v["what"] for v in s_a["voids"]][:3], len(s_a.get("stops", [])), s_a.get("lost"),
             s_a["sim_time_s"], s_a["episode_wall_s"], s_a["program_time_s"], s_a["cell_work_s"], s_a["camera_frames_total"],
             s_a["lidar_sweeps"], s_a["end_reason"]))
         agent.append(s_a)
@@ -648,6 +622,7 @@ def _main_locked(cfg, rewards, metrics):
         metrics["report_error_m_mean"] = float(np.mean(errs))
     metrics["seen_rate"] = float(np.mean([1.0 if s.get("seen_frames", 0) > 0 else 0.0 for s in agent]))
     metrics["secondary_collapses"] = float(sum(len(s.get("collapses", [])) for s in agent))
+    metrics["protective_stops"] = float(sum(len(s.get("stops", [])) for s in agent))
     metrics["max_survivor_force_N"] = float(max(s.get("max_survivor_force_N", 0.0) for s in agent))
     metrics["mean_sim_time_s"] = float(np.mean([s["sim_time_s"] for s in agent]))
     metrics["mean_episode_wall_s"] = float(np.mean([s["episode_wall_s"] for s in agent]))

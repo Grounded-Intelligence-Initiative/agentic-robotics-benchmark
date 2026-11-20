@@ -28,7 +28,8 @@ wide and deep enough to swallow a robot. Not every way that looks open goes anyw
   beam or a stack bears on is part of the structure now: pull it out and the load comes down (a secondary collapse)
   on whoever is underneath, the robot included. Move only debris that carries nothing: a beam lying free across a
   doorway, a pipe, a board.
-* **Never drive onto people.** A robot is heavy; approach a person slowly, stop well short of them.
+* **Never drive onto people.** A robot is heavy; approach a person slowly, stop well short of them. The robot's
+  protective stop trips on contact with a person, and a stopped robot stays where it is.
 * **Know where you came from.** The way in is the way out: the robot has to come back, and its report only reaches
   the team where the radio link holds.
 

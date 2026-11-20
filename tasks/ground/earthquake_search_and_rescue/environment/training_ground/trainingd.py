@@ -1,15 +1,16 @@
 """The training ground: the team's rubble training site, for the agent's development missions.
 
-A response-robot team does not deploy an autonomy mode that never ran in rubble: it trains on the standard test lanes
-and on training rubble piles (a training site's buildings are collapsed for exercises, a volunteer plays the trapped
-person), and after each exercise the trainers debrief the team. This service is that training ground. It runs the
-graded robot cell (rubblecell/, a byte copy of the grader's tests/rubblecell/ without the reference program) on the
-sites listed in sites.json: the test lanes and training sites, none of them a graded site or a candidate of the hidden
-set's selection, and answers exactly what the graded cell answers (the robot's public calls), plus `reset(site)`, which
-starts a mission on a site. When a mission ends, the trainers' debrief (where the person was in the robot's map frame,
-how the report, the kit and the return went, any secondary collapse or contact with the person) is sent as the last
-line of the connection and saved, world-readable, in /run/rubblecell/debriefs/. Nothing else of the site (no map, no
-layout) is ever sent.
+A response-robot team does not deploy an autonomy mode that never ran in rubble: it commissions it on the standard
+test lanes and on training rubble piles. This service is that training ground. It runs the graded robot cell
+(rubblecell/, a byte copy of the grader's tests/rubblecell/ without the reference program) on the sites listed in
+sites.json: the test lanes and training sites, none of them a graded site or a candidate of the hidden set's
+selection, and answers exactly what the graded cell answers (the robot's public calls), plus `reset(site)`, which
+starts a mission on a site. It is a commissioning ground, not a rehearsal with an answer sheet: it never says where
+the person was, how far off a report was, where the kit ended up relative to them, or what the mission would have
+scored. When a mission ends, the robot's own mission log (how the mission ended, the simulated time, the reports made
+and received by the team, the events the program already saw on the wire, the budgets used) is sent as the last line
+of the connection and saved, world-readable, in /run/rubblecell/logs/. Nothing of the site (no map, no layout, no
+position of anything) is ever sent.
 
 environment/Dockerfile installs this folder under /opt/rubblecell-training for the account `rubblecell` only (mode 700:
 the agent account can neither read nor list it); environment/setup/setup.sh starts it before the agent's session,
@@ -19,8 +20,8 @@ A connection is one mission. Its first request is reset(site) (a site name or it
 then runs under the graded mission's budgets: the cell's own (simulated time, camera frames, lidar sweeps, thermal
 frames) and the wire's (program time = the wall clock since the reset minus the cell's time inside step and the
 sensors; silence between requests). When a budget ends the mission, the service sends {"event": "mission_over"} with
-the debrief and closes the connection. The allowance: at most `missions` missions in the whole session (counted from
-their reset; the count survives a restart of the service) and at most `open` at a time; the status is in
+the mission log and closes the connection. The allowance: at most `missions` missions in the whole session (counted
+from their reset; the count survives a restart of the service) and at most `open` at a time; the status is in
 /run/rubblecell/training_status.json (world-readable).
 """
 
@@ -37,7 +38,7 @@ sys.path.insert(0, HERE)
 
 SOCKET = os.environ.get("RUBBLECELL_TRAINING_SOCKET", "/run/rubblecell/training.sock")
 STATUS = os.environ.get("RUBBLECELL_TRAINING_STATUS", "/run/rubblecell/training_status.json")
-DEBRIEFS = os.environ.get("RUBBLECELL_TRAINING_DEBRIEFS", "/run/rubblecell/debriefs")
+LOGS = os.environ.get("RUBBLECELL_TRAINING_LOGS", "/run/rubblecell/logs")
 STATE = os.environ.get("RUBBLECELL_TRAINING_STATE", os.path.join(HERE, "state"))
 SITES = json.load(open(os.path.join(HERE, "sites.json")))
 PUBLIC = ("describe", "get_state", "drive", "set_flippers", "set_gauge", "set_mast", "set_head", "set_arm", "arm_to",
@@ -88,7 +89,7 @@ class Ledger(object):
         n = int(SITES["missions"])
         return {"training_missions": n, "missions_used": int(d["missions_used"]),
                 "missions_left": max(0, n - int(d["missions_used"])), "open_at_a_time": int(SITES["open"]),
-                "sites": _site_list(), "debriefs": DEBRIEFS}
+                "sites": _site_list(), "mission_logs": LOGS}
 
     def publish(self):
         with open(self.lock, "a") as lk:
@@ -171,31 +172,22 @@ def _site_index(v):
     return k - 1 if 1 <= k <= len(names) else -1
 
 
-def debrief(server, mission, site_name, reason):
-    """What the trainers tell the team after the exercise (the person's position in the robot's map frame)."""
-    import math
-    s = server.score()
-    tor = server.surv_torso
-    xm, ym, _ = server.odom.to_map(float(tor[0]), float(tor[1]), 0.0)
-    sv = server.plan["survivor"]
-    out = {
+WIRE_EVENTS = ("grasped", "released", "slipped", "grip_slip", "kit_unlatched", "link_up", "link_down", "report_sent",
+               "collapse", "protective_stop", "robot_overturned", "robot_fell")
+
+
+def mission_log(server, mission, site_name, reason):
+    """The robot's own log of the exercise: what the program could already read on the wire, and nothing of the site's
+    truth (no position of the person, no error of a report, no distance of the kit, no score)."""
+    ev = [[round(float(t), 1), e] for t, e in server.events_log if e in WIRE_EVENTS]
+    return {
         "mission": mission, "site": site_name, "ended": reason, "sim_time_s": round(float(server.d.time), 1),
-        "person_position_map_frame": {"x": round(xm, 2), "y": round(ym, 2), "z": 0.0,
-                                      "note": "the middle of the person's torso, in the map frame of this mission"},
-        "person_lying": {"back": "on the back", "side": "on the side", "prone": "face down"}.get(sv.get("pose"), "?"),
-        "report": {"reports_made": s["reports"], "reports_received_by_the_team": s["reports_sent"],
-                   "error_m": None if s["report_error_m"] is None else round(s["report_error_m"], 2),
-                   "person_seen_in_a_frame_before_the_report": s["seen_before_report"]},
-        "kit": {"delivered_within_reach": bool(s["parts"]["kit"] > 0),
-                "distance_to_nearest_head_or_hand_m": None if s["kit_dist_m"] is None else round(s["kit_dist_m"], 2)},
-        "robot": {"back_at_deployment_point": bool(s["home_dist_m"] <= server.cfg["score"]["home_radius_m"]),
-                  "distance_from_deployment_point_m": round(s["home_dist_m"], 2), "lost": server.lost},
-        "safety": [v["what"] for v in s["voids"]],
-        "mission_score": round(float(s["score"]), 3), "score_parts": s["parts"],
+        "reports_made": len(server.reports), "reports_received_by_the_team": sum(1 for r in server.reports if r["sent"]),
+        "kit_left_the_cradle": bool(not server.kit_latched), "robot_lost": server.lost,
+        "events": ev[:400],
+        "budgets_used": {"camera_frames": int(server.frames_used), "lidar_sweeps": int(server.lidar_used),
+                         "thermal_frames": int(server.thermal_used)},
     }
-    if math.isnan(out["mission_score"]):
-        out["mission_score"] = 0.0
-    return out
 
 
 def serve(sock, ledger):
@@ -283,13 +275,13 @@ def serve(sock, ledger):
             if not server.done:
                 server._end(reason or "closed")
             try:
-                db = debrief(server, mission, site_name, reason)
-                os.makedirs(DEBRIEFS, exist_ok=True)
-                _write_json(os.path.join(DEBRIEFS, "mission_%03d.json" % mission), db, 0o644)
+                db = mission_log(server, mission, site_name, reason)
+                os.makedirs(LOGS, exist_ok=True)
+                _write_json(os.path.join(LOGS, "mission_%03d.json" % mission), db, 0o644)
             except Exception as e:  # noqa: BLE001
-                db = {"error": "no debrief (%s)" % type(e).__name__}
+                db = {"error": "no mission log (%s)" % type(e).__name__}
             try:
-                conn.send({"id": None, "event": "mission_over", "reason": reason, "debrief": db}, timeout=5.0)
+                conn.send({"id": None, "event": "mission_over", "reason": reason, "mission_log": db}, timeout=5.0)
             except (OSError, socket.timeout):
                 pass
             log("mission %d: ended (%s) at sim %.1f s, wall %.0f s" % (mission, reason, float(server.d.time), time.time() - t0))
@@ -310,8 +302,8 @@ def main():
         os.unlink(SOCKET)
     except FileNotFoundError:
         pass
-    os.makedirs(DEBRIEFS, exist_ok=True)
-    os.chmod(DEBRIEFS, 0o755)
+    os.makedirs(LOGS, exist_ok=True)
+    os.chmod(LOGS, 0o755)
     srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     srv.bind(SOCKET)
     os.chmod(SOCKET, 0o666)

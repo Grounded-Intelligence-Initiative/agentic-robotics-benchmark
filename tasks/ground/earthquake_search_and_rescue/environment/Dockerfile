@@ -43,7 +43,8 @@ RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
 # and allowance, and the cell library rubblecell/, a byte copy of the grader's cell without the reference program),
 # installed for its own account `rubblecell` only: mode 700, so the agent account can neither read nor list it.
 # environment/setup/setup.sh starts it before the agent's session (and restarts it should it ever exit); the agent
-# reaches it through a unix socket and gets the robot's public calls, reset(site) and each mission's debrief.
+# reaches it through a unix socket and gets the robot's public calls, reset(site) and each mission's log (the robot's
+# own: no truth of the site, no score).
 RUN useradd --system --no-create-home --home-dir /opt/rubblecell-training --shell /usr/sbin/nologin rubblecell
 COPY training_ground /opt/rubblecell-training
 RUN find /opt/rubblecell-training -name '__pycache__' -type d -prune -exec rm -rf {} + \
@@ -80,3 +81,7 @@ RUN export HOME=/root \
     && ! runuser -u user -- cat /opt/rubblecell-training/sites.json > /dev/null 2>&1 \
     && ! runuser -u user -- ls /opt/rubblecell-look > /dev/null 2>&1 \
     && test -z "$(find /home/user -user root -print -quit)"
+
+# The engine's commands start in the image's working directory: keep it out of the agent's home (a root-owned place the
+# agent account cannot write), so that nothing the agent leaves there is picked up by a command run as root.
+WORKDIR /

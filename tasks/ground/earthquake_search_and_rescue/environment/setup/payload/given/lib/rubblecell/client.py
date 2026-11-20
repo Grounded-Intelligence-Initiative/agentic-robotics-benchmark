@@ -20,7 +20,8 @@ raises CellError (a `forbidden` error is counted by the grader as an illegal cal
 Training ground (development only): `connect_training(site)` opens a mission on one of the training ground's sites
 (`robot_manual.md` section 9): the same robot and calls, plus `reset(site)`, which starts the mission. One connection is
 one mission, under the graded mission's budgets; the training ground has a fixed number of missions.
-`~/training/run_mission.py` runs a whole program in a mission the way the grader runs it and prints the debrief.
+`~/training/run_mission.py` runs a whole program in a mission under the grader's checks and run regime and prints the
+robot's mission log.
 """
 
 import base64

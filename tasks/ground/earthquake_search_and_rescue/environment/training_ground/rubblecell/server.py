@@ -51,6 +51,8 @@ PRIVILEGED_METHODS = ("get_state_privileged", "reference_run")
 PRACTICE_METHODS = ("reset", "truth")
 STATE_METHODS = ("drive", "set_flippers", "set_gauge", "set_mast", "set_head", "set_arm", "arm_to", "gripper", "step",
                  "reference_run", "reset")
+COMMAND_METHODS = ("drive", "set_flippers", "set_gauge", "set_mast", "set_head", "set_arm", "arm_to", "gripper",
+                   "report_survivor")
 CTRL_DT = 0.01
 PHYS_DT = 0.002
 
@@ -62,8 +64,8 @@ DEFAULT_CONFIG = {
     "thermal_budget_frames": 1800,
     "score": {"located": 0.45, "kit": 0.25, "returned": 0.30, "report_full_m": 1.0, "report_zero_m": 3.0,
               "seen_px": 40, "seen_range_m": 6.0, "kit_reach_m": 0.8, "home_radius_m": 3.0},
-    "safety": {"survivor_force_N": 60.0, "survivor_ticks": 3, "prop_move_m": 0.05, "overturn_deg": 70.0,
-               "overturn_s": 2.0, "fall_z_m": -0.8},
+    "safety": {"survivor_force_N": 60.0, "survivor_ticks": 3, "stop_score_cap": 0.45, "prop_move_m": 0.05,
+               "overturn_deg": 70.0, "overturn_s": 2.0, "fall_z_m": -0.8},
     "grip": {"min_force_N": 4.0, "payload_kg": 8.0, "slip_force_N": 260.0, "slip_ticks": 20},
     "link": {"tx_dbm": -28.0, "floor_dbm": -85.0, "ext_wall_db": 11.0, "int_wall_db": 7.0, "void_db": 14.0,
              "slab_db": 9.0},
@@ -93,6 +95,24 @@ def _jsonable(x):
     if isinstance(x, (np.integer,)):
         return int(x)
     return x
+
+
+def _finite(x, depth=0):
+    """True when every number of a request's parameters is finite (JSON lets Infinity, NaN and 1e999 through) and the
+    structure is small: a request cannot put a non-finite value into the cell."""
+    if x is None or isinstance(x, (bool, str)):
+        return True
+    if isinstance(x, int):
+        return abs(x) < (1 << 62)
+    if isinstance(x, float):
+        return math.isfinite(x)
+    if depth >= 4:
+        return False
+    if isinstance(x, (list, tuple)):
+        return len(x) <= 64 and all(_finite(v, depth + 1) for v in x)
+    if isinstance(x, dict):
+        return len(x) <= 32 and all(isinstance(k, str) and _finite(v, depth + 1) for k, v in x.items())
+    return False
 
 
 def _wrap(a):
@@ -148,6 +168,8 @@ class RubbleCellServer(object):
         m, d = self.sc.model, self.sc.data
         self.m, self.d = m, d
         self.rng = np.random.default_rng((self.seed * 104729 + 7) & ((1 << 63) - 1))
+        # get_state's own noise stream: reading the state never changes the odometry's or the sensors' noise
+        self.rng_state = np.random.default_rng((self.seed * 7919 + 13) & ((1 << 63) - 1))
         self.robot = Crawler(m, d)
         self.robot.set_initial()
         mujoco.mj_forward(m, d)
@@ -168,8 +190,8 @@ class RubbleCellServer(object):
             self.robot.tick(PHYS_DT)
             mujoco.mj_step(m, d)
         d.time = 0.0
-        for pid, pr in self.props.items():
-            pr["p0"] = d.xpos[pid].copy()           # where the prop stands once the site has settled
+        for pr in self.props.values():
+            pr["p0"] = {b: d.xpos[b].copy() for b in pr["bodies"]}    # where the prop and its slab lie once settled
         p, q = self.robot.pose()
         self.start_xy = np.array(p[:2])
         self._z_ground0 = float(self.sc.site.height_at(st["x"], st["y"]))
@@ -201,6 +223,7 @@ class RubbleCellServer(object):
         self._slip_ticks = 0
         self.violations = []
         self.voids = []
+        self.stops = []
         self.lost = None
         self._surv_press = 0
         self._tilt_t = 0.0
@@ -244,18 +267,24 @@ class RubbleCellServer(object):
             if bd.get("graspable"):
                 self.graspable[bid] = bd
             if bd["kind"] == "prop":
-                self.props[bid] = {"name": bd["name"], "p0": np.array(bd["pos"]), "slabs": []}
+                self.props[bid] = {"name": bd["name"], "bodies": [bid]}
         for bd in site.bodies:
             if bd["kind"] == "propslab":
                 pid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, bd["held_by"])
-                eq = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_EQUALITY, "hold_" + bd["name"])
                 if pid in self.props:
-                    self.props[pid]["slabs"].append(eq)
+                    self.props[pid]["bodies"].append(mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, bd["name"]))
         self.graspable[self.kit_body] = {"name": "kit", "kind": "kit"}
         movers = set(self.robot_geoms)
         mover_bodies = set(self.debris_bodies + [self.kit_body])
         movers |= set(g for g in range(m.ngeom) if int(m.geom_bodyid[g]) in mover_bodies)
         self._movers = np.array(sorted(movers), np.int32)
+        for pr in self.props.values():
+            # a prop and the slab that rests on it touch each other all the time: what counts as a touch is anything
+            # else that moves (the robot, the kit, other debris)
+            own = set(pr["bodies"])
+            pr["grp"] = np.array(sorted(own), np.int32)
+            pr["ext"] = np.array(sorted(g for g in movers if int(m.geom_bodyid[g]) not in own), np.int32)
+            pr["p0"] = {b: self.d.xpos[b].copy() for b in pr["bodies"]}
         self._surv_arr = np.array(sorted(self.survivor_geoms), np.int32)
         self._pad_arr = np.array([self.pad["fl"], self.pad["fr"]], np.int32)
         self._kit_geoms = np.array([g for g in range(m.ngeom) if int(m.geom_bodyid[g]) == self.kit_body], np.int32)
@@ -349,7 +378,10 @@ class RubbleCellServer(object):
         v = d.qvel[self.robot.vadr:self.robot.vadr + 6]
         R = d.xmat[self.chassis].reshape(3, 3)
         vb = R.T @ v[:3]
-        wb = R.T @ v[3:6]
+        wb = np.asarray(v[3:6], float)          # a free joint's angular velocity is already in the body frame
+        ns = self.rng_state
+        vb = vb + ns.normal(0.0, 0.01, 3)       # the velocity estimate's and the gyro's noise (robot_manual.md section 6)
+        wb = wb + ns.normal(0.0, 0.005, 3)
         est = self.odom.est
         r = self.robot
         hold = self.held >= 0
@@ -357,9 +389,10 @@ class RubbleCellServer(object):
         return _jsonable({
             "sim_time": float(d.time), "done": bool(self.done), "done_reason": self.done_reason,
             "pose": {"x": float(est[0]), "y": float(est[1]), "z": float(p[2] - self.start_z_ground()), "yaw": float(est[2]),
-                     "roll": float(roll + self.rng.normal(0, 0.002)), "pitch": float(pitch + self.rng.normal(0, 0.002))},
+                     "roll": float(roll + ns.normal(0, 0.002)), "pitch": float(pitch + ns.normal(0, 0.002))},
             "velocity": {"forward": float(vb[0]), "lateral": float(vb[1]), "yaw_rate": float(wb[2])},
-            "imu": {"gyro": [float(x) for x in wb], "roll": float(roll), "pitch": float(pitch)},
+            "imu": {"gyro": [float(x) for x in wb], "roll": float(roll + ns.normal(0, 0.002)),
+                    "pitch": float(pitch + ns.normal(0, 0.002))},
             "joints": {"gauge": float(r.gauge()), "flipper_front": float((r.q("flip_FL") + r.q("flip_FR")) / 2),
                        "flipper_rear": float((r.q("flip_BL") + r.q("flip_BR")) / 2), "mast": float(r.q("mast")),
                        "head_pan": float(r.q("head_pan")), "head_tilt": float(r.q("head_tilt")),
@@ -472,6 +505,8 @@ class RubbleCellServer(object):
         return {"ok": True}
 
     def step(self, n_ticks=1):
+        if isinstance(n_ticks, bool) or not isinstance(n_ticks, (int, float)) or not math.isfinite(n_ticks):
+            return {"error": "bad_params", "detail": "n_ticks must be a finite number"}
         n = int(n_ticks)
         if n < 1:
             return {"error": "bad_params", "detail": "n_ticks must be >= 1"}
@@ -650,10 +685,20 @@ class RubbleCellServer(object):
         if method not in PUBLIC_METHODS:
             self.illegal_calls += 1
             return {"error": "forbidden"}
+        if params is not None and not isinstance(params, dict):
+            return {"error": "bad_params", "detail": "params must be an object"}
+        if not _finite(params):
+            return {"error": "bad_params", "detail": "every number must be finite"}
         try:
             return getattr(self, method)(**(params or {}))
-        except (TypeError, ValueError, KeyError, IndexError) as e:
+        except (TypeError, ValueError, KeyError, IndexError, OverflowError, ArithmeticError) as e:
             return {"error": "bad_params", "detail": str(e)[:200]}
+        except Exception as e:  # noqa: BLE001
+            # a command that only sets a target does nothing but read its parameters: whatever it raises is the
+            # request's doing (never a cell failure, which the grader answers by running the site again)
+            if method in COMMAND_METHODS:
+                return {"error": "bad_params", "detail": type(e).__name__}
+            raise
 
     # ------------------------------------------------------------------ the tick
     def _event(self, e):
@@ -806,38 +851,38 @@ class RubbleCellServer(object):
         self.max_survivor_force = max(self.max_survivor_force, press)
         if press > S["survivor_force_N"]:
             self._surv_press += 1
-            if self._surv_press >= S["survivor_ticks"] and not any(v["what"] == "survivor_injured" for v in self.voids):
-                self.voids.append({"t": float(d.time), "what": "survivor_injured", "force_N": float(press)})
-                ev.append("_survivor_injured")
+            if self._surv_press >= S["survivor_ticks"] and not self.stops:
+                # the robot's protective stop: contact with a person above the limit stops every drive for good. The
+                # mission ends here; it keeps what the team already has, without the return and under a cap (score)
+                self.stops.append({"t": float(d.time), "what": "protective_stop", "force_N": float(press)})
+                self.robot.cmd["v"] = 0.0
+                self.robot.cmd["w"] = 0.0
+                ev.append("protective_stop")
+                self._end("protective_stop")
         else:
             self._surv_press = 0
-        # load-bearing props: once the robot (or what it holds) has touched one, moving it brings its slab down
+        # load-bearing props: a crate that carries one end of a slab (free bodies: the load is real). Once the robot,
+        # what it holds or other debris has touched the crate or its slab, moving either by more than prop_move_m is
+        # a secondary collapse; before that, the group settling on its own is not the robot's doing.
         for pid, pr in self.props.items():
             if pr.get("fallen"):
                 continue
             if not pr.get("touched"):
-                if self.held == pid:
+                if self.held in pr["bodies"]:
                     pr["touched"] = True
                 elif d.ncon:
                     g1 = d.contact.geom1[:d.ncon]
                     g2 = d.contact.geom2[:d.ncon]
                     b1 = m.geom_bodyid[g1]
                     b2 = m.geom_bodyid[g2]
-                    hit = ((b1 == pid) & np.isin(g2, self._movers)) | ((b2 == pid) & np.isin(g1, self._movers))
+                    hit = (np.isin(b1, pr["grp"]) & np.isin(g2, pr["ext"])) | (np.isin(b2, pr["grp"]) & np.isin(g1, pr["ext"]))
                     if hit.any():
                         pr["touched"] = True
-                        pr["p0"] = pr["p0"] if np.linalg.norm(d.xpos[pid] - pr["p0"]) < 0.02 else d.xpos[pid].copy()
                 if not pr.get("touched"):
-                    pr["p0"] = d.xpos[pid].copy()          # settling on its own is not the robot's doing
+                    pr["p0"] = {b: d.xpos[b].copy() for b in pr["bodies"]}
                     continue
-            if np.linalg.norm(d.xpos[pid] - pr["p0"]) > S["prop_move_m"]:
+            if max(float(np.linalg.norm(d.xpos[b] - pr["p0"][b])) for b in pr["bodies"]) > S["prop_move_m"]:
                 pr["fallen"] = True
-                for eq in pr["slabs"]:
-                    d.eq_active[eq] = 0
-                    sb = int(m.eq_obj1id[eq])
-                    for g in range(m.ngeom):
-                        if int(m.geom_bodyid[g]) == sb:
-                            m.geom_contype[g], m.geom_conaffinity[g] = 1, 3
                 self.collapsed.append({"t": float(d.time), "prop": pr["name"]})
                 self.voids.append({"t": float(d.time), "what": "secondary_collapse", "prop": pr["name"]})
                 ev.append("collapse")
@@ -940,11 +985,16 @@ class RubbleCellServer(object):
         p, q = self.robot.pose()
         home = float(np.linalg.norm(np.array(p[:2]) - self.start_xy))
         upright = self.d.xmat[self.chassis].reshape(3, 3)[2, 2] > 0.5
-        returned = 1.0 if (not self.lost and upright and home <= S["home_radius_m"] and located > 0.0) else 0.0
+        stopped = len(self.stops) > 0
+        returned = 1.0 if (not self.lost and not stopped and upright and home <= S["home_radius_m"] and located > 0.0) else 0.0
         raw = S["located"] * located + S["kit"] * kit_credit + S["returned"] * returned
+        if stopped:
+            # a protective stop on the survivor: what the team already had, at most stop_score_cap
+            raw = min(raw, float(self.cfg["safety"].get("stop_score_cap", 0.45)))
         voided = len(self.voids) > 0
         return {"score": 0.0 if voided else float(raw), "raw_score": float(raw), "voided": voided, "voids": list(self.voids),
-                "parts": {"located": located, "kit": kit_credit, "returned": returned}, "report_error_m": err,
+                "parts": {"located": located, "kit": kit_credit, "returned": returned}, "stops": list(self.stops),
+                "report_error_m": err,
                 "seen_before_report": bool(seen_before), "kit_dist_m": kit_dist, "home_dist_m": home,
                 "reports": len(self.reports), "reports_sent": len(sent)}
 
@@ -956,7 +1006,8 @@ class RubbleCellServer(object):
         summary = {
             "cell_version": CELL_VERSION, "seed": self.seed, "kind": self.kind, "done_reason": self.done_reason,
             "sim_time_s": float(self.d.time), "ticks": int(self.tick_count), "episode_score": s["score"], "raw_score": s["raw_score"],
-            "voided": s["voided"], "voids": s["voids"], "parts": s["parts"], "report_error_m": s["report_error_m"],
+            "voided": s["voided"], "voids": s["voids"], "stops": s["stops"], "parts": s["parts"],
+            "report_error_m": s["report_error_m"],
             "seen_before_report": s["seen_before_report"], "seen_frames": len(self.seen), "seen_best_px": int(seen_best),
             "kit_dist_m": s["kit_dist_m"], "home_dist_m": s["home_dist_m"], "reports": s["reports"], "reports_sent": s["reports_sent"],
             "lost": self.lost, "collapses": list(self.collapsed), "max_survivor_force_N": float(self.max_survivor_force),

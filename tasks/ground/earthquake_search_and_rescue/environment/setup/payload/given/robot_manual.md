@@ -100,7 +100,8 @@ the gripper grasps the kit. To deliver it, set it down on the floor next to the 
 | gripper camera | on the gripper palm, looking along the tool axis | 320 x 240 colour + depth (0.07 .. 3 m) |
 | lidar | on the mast top (does not pan): at mast 0 its optical centre is at chassis (-0.235, -0.050, 0.390), rising with the mast | 16 channels from -15 deg to +15 deg, 0.5 deg azimuth steps (720 per channel), 0.3 .. 25 m, noise 1 cm + 0.2 % of the range, about 2 % dropouts; one sweep per request |
 | odometry | lidar-inertial | the robot's pose (x, y, yaw) in the map frame; drift about 1 % of the distance travelled and a slow heading drift |
-| IMU | chassis | roll, pitch, body rates |
+| IMU | chassis | roll, pitch (noise about 0.002 rad), body rates (`imu.gyro`, chassis frame, noise about 0.005 rad/s) |
+| velocity estimate | lidar-inertial | `velocity`: forward, lateral (noise about 0.01 m/s) and yaw rate (about 0.005 rad/s), chassis frame |
 | joint and belt encoders | | flipper angles, gauge, mast, head, arm joints, gripper opening, belt speeds |
 | radio | antenna on the mast | link up / down and its signal strength (dBm) |
 
@@ -121,11 +122,18 @@ what reached it.
 
 ## 8. Safety rules
 
-* **The survivor.** The robot, the kit or anything the robot moves must never press on the survivor (more than 60 N
-  is an injury: the mission fails). Approach slowly; leave room.
-* **Load-bearing debris.** Never move debris that something rests on: a slab, a beam, a stack above it. Moving such
-  a prop by more than 5 cm brings the structure down (a secondary collapse): the team aborts the mission and it
-  fails. Before you take hold of anything, check what bears on it.
+* **The survivor: protective stop.** The robot, the kit or anything the robot moves must never press on the
+  survivor. The robot watches the contact itself: more than 60 N for 30 ms trips its protective stop. Every drive
+  stops for good, `step` reports `protective_stop` and the mission ends there; the team keeps what it had already
+  received, the robot does not come back, and the mission scores at most 0.45. There is no warning before the stop:
+  the gripper's `load_N` rises only once the contact is there. Approach slowly; leave room; carry the kit high
+  enough to clear the person.
+* **Load-bearing debris.** Never move debris that something rests on: a slab, a beam, a stack above it. Such a prop
+  really carries its load (a slab section of 180 kg bears on a crate with most of a kilonewton), so brushing against
+  it does not shift it, and the robot can still shift it: it pushes with more than its own weight. Once the robot,
+  what it holds or debris it pushes has touched the prop or the slab on it, moving either by more than 5 cm brings
+  the structure down (a secondary collapse, `collapse` in `step`'s events): the team aborts the mission and it
+  scores 0. Before you take hold of anything or push through anything, check what bears on it.
 * **The robot.** It is lost if it overturns (tilted more than 70 deg for 2 s) or drops into an opening in the floor
   (a collapsed floor section into the basement): the mission ends there.
 
@@ -136,7 +144,10 @@ a mission; the site plans are the trainers', not yours). Its sites: `lanes`, the
 facade spill, then one obstacle of each kind in a row: a beam across a doorway, a step, a narrow breach, a floor gap,
 a crawl space under a dropped slab, with a training dummy at the end), and training rubble sites built like the real
 ones (`run_mission.py --list`). A mission there is the same as a graded one: the same budgets, the same start on the
-street, and at the end the trainers' debrief: where the person was (in that mission's map frame), whether your report
-reached the team and its error, where the kit ended up, whether the robot came back, any safety event. The training
-ground allows 40 missions in total and 2 at a time (`/run/rubblecell/training_status.json`); each debrief is also kept
-in `/run/rubblecell/debriefs/`.
+street. The training ground is for commissioning the program on the robot, and it gives no answer sheet: nobody
+tells you where the person was, how far off your report was, where the kit ended up relative to them, or a score.
+At the end you get the robot's own mission log: how the mission ended, the simulated time, how many reports were
+made and how many reached the team, whether the kit left its cradle, the events (`protective_stop`, `collapse`,
+`robot_overturned`, ...) and the budgets used. Judge a mission from what your program sensed and logged: its
+frames, its map, its odometry. The training ground allows 40 missions in total and 2 at a time
+(`/run/rubblecell/training_status.json`); each mission log is also kept in `/run/rubblecell/logs/`.
