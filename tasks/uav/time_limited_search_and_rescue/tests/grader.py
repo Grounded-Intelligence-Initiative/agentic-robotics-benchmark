@@ -38,7 +38,8 @@ sys.path.insert(0, str(HERE))
 
 from nonet import nonet_argv, selftest  # noqa: E402
 from robotics_grader import (  # noqa: E402
-    agent_user, ratio_rewards, read_anchor, require, stage_config, stage_dir, write_verdict, zero_verdict,
+    agent_user, clear_agent_account, ratio_rewards, read_anchor, require, stage_config, stage_dir, write_verdict,
+    zero_verdict,
 )
 from robotics_grader.stage import secure_exec_path  # noqa: E402
 
@@ -183,6 +184,35 @@ def copy_submission(source, target):
     if not (target/"run.sh").is_file():
         return "no run.sh in the submission"
     return None
+
+
+SCRATCH = ("/tmp", "/var/tmp", "/dev/shm")
+
+
+def purge_agent_files(uid, home):
+    """Nothing the program wrote during one site's flight is there for the next: the agent account's entries in the
+    shared scratch directories are removed, and its restored home (read once, by copy_submission) is closed to it."""
+    for top in SCRATCH:
+        try:
+            names = os.listdir(top)
+        except OSError:
+            continue
+        for name in names:
+            path = os.path.join(top, name)
+            try:
+                if os.lstat(path).st_uid != uid:
+                    continue
+                if os.path.isdir(path) and not os.path.islink(path):
+                    shutil.rmtree(path, ignore_errors=True)
+                else:
+                    os.unlink(path)
+            except OSError:
+                pass
+    try:
+        os.chown(home, 0, 0)
+        os.chmod(home, 0o700)
+    except OSError:
+        pass
 
 
 def stage_public_client():
@@ -380,6 +410,9 @@ def main():
         return
     uid, gid = account.pw_uid, account.pw_gid
     secure_exec_path()
+    # The kit's clearing of the agent's account (once per verifier sandbox: every supervisord program off, every
+    # process of the account killed until none comes back), before any agent code is started.
+    clear_agent_account()
     if not stop_agent_processes(uid):
         write_verdict(zero_verdict("agent processes could not be stopped (cleanup_failed)",
                                    anchored=anchor is not None))
@@ -408,6 +441,7 @@ def main():
             log("the submission carries an .oracle_token that does not match: ignored")
         records, cleanup_ok = [], True
         for index, seed in enumerate(sites):
+            purge_agent_files(uid, account.pw_dir)
             record = run_mission(index, int(seed), uid, gid, config, privileged)
             require(not record["infra"], "site {}: service failure, the site is not flown again ({})".format(
                 index, record.get("reason")))

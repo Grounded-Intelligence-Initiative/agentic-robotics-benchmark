@@ -90,7 +90,9 @@ The order of visits is not scored. Without a handoff a flight earns at most 0.83
   inside a wall limit of 1,800 s. When either runs out the flight is stopped and keeps its progress. The program is
   stopped 10 s after a flight has ended.
 - The grading sandbox has 2 CPUs and 4 GB of memory, as this one. An answer takes the aircraft about 0.07 s.
-- Nothing carries over between sites: every site starts the program anew.
+- Nothing carries over between sites: every site starts the program anew, with an empty home and emptied
+  temporary directories. `/home/user` is not readable there; what the program needs must be in the submission folder,
+  which is its working directory.
 - The program's environment is minimal: `PATH=/opt/venv/bin:/usr/bin:/bin`, one thread for OpenBLAS and OpenMP, and
   `OPENBLAS_CORETYPE=HASWELL` with NumPy's AVX-512 paths switched off (`NPY_DISABLE_CPU_FEATURES`). This sandbox sets
   the same two numerics variables, so a program computes the same numbers here and on every grading machine.
