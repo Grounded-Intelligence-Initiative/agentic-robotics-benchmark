@@ -254,9 +254,11 @@ The simulator's and the renderer's own time are not charged: how fast the gradin
 does not change your result. When an order's budget is used up the order ends at that step (the action that
 used it up is not carried out) and is judged as it stands. For scale: an order's step allowance is 6,800 to 8,400
 steps and its budget pays for 6,750 images, so nearly one image per step of the whole allowance, less whatever
-time your own answers take. The budget counts waiting, not computing: your code may go on working between
-requests on the task's 4 CPUs, which it shares with the simulator, and whatever slows the simulator down slows
-only the run. Outside the budgets there is only a safety net: a grading run that is still going after 13,200 s
+time your own answers take. That wait is your controller's own reading and computing between a request and
+its reply, timed on the grading machine: the same controller uses up more of its budget on a slower machine, so
+leave a margin. Work your code does outside that window (between its reply and the next request) is not
+charged; it runs on the task's 4 CPUs, which it shares with the simulator, and whatever slows the simulator
+down slows only the run. Outside the budgets there is only a safety net: a grading run that is still going after 13,200 s
 of wall time stops, and the order under way and those after it score 0. That is far more than the simulator and
 the renderer need: on the machine this task was validated on they took about 5 ms per control step and 0.02 to
 0.03 s per camera image.

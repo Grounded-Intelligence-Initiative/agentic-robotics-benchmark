@@ -202,34 +202,34 @@ def stage_submission(uid, gid):
     return path
 
 
-def free_agent_files(uid, workdir):
-    """Remove what the controller may have filled the disk with: the submission folder's contents
-    and everything the agent account owns in the shared temporary folders. Called only after the
-    orders are over, when the verdict could not be written. Nothing here follows a link."""
-    doomed = []
-    try:
-        doomed += [os.path.join(workdir, name) for name in os.listdir(workdir)]
-    except OSError:
-        pass
-    for folder in ("/tmp", "/var/tmp", "/dev/shm"):
-        try:
-            for name in os.listdir(folder):
+AGENT_WRITABLE = ("/tmp", "/var/tmp", "/dev/shm", "/run/lock", "/var/lock")
+
+
+def free_agent_files(uid, workdir, home=None):
+    """Remove what the controller may have filled the disk with: first stop every process of the
+    agent account (a live one would fill it again), then remove the staged submission's contents
+    and every file the account owns under its home and in the shared writable folders, at any
+    depth. Called only after the orders are over, when the verdict could not be written. Nothing
+    here follows a link, and the folders named here themselves stay."""
+    if os.geteuid() == 0:
+        kill_agent_processes(uid, rounds=8, pause=0.05)
+    roots = [(workdir, True)] + [(folder, False) for folder in ((home,) if home else ()) + AGENT_WRITABLE]
+    for root, everything in roots:
+        if not root or os.path.islink(root):
+            continue
+        for folder, dirs, names in os.walk(root, topdown=False, followlinks=False):
+            for name in names + dirs:
                 path = os.path.join(folder, name)
                 try:
-                    if os.lstat(path).st_uid == uid:
-                        doomed.append(path)
+                    info = os.lstat(path)
+                    if not everything and info.st_uid != uid:
+                        continue
+                    if stat.S_ISDIR(info.st_mode):
+                        os.rmdir(path)      # empty by now unless it holds another account's files
+                    else:
+                        os.unlink(path)
                 except OSError:
                     pass
-        except OSError:
-            pass
-    for path in doomed:
-        try:
-            if os.path.isdir(path) and not os.path.islink(path):
-                shutil.rmtree(path, ignore_errors=True)
-            else:
-                os.unlink(path)
-        except OSError:
-            pass
 
 
 def oracle_token_ok(workdir):
@@ -797,7 +797,7 @@ def main():
     lock = ProbeLock(None, rate=config.get("probe_rate", 0.01), pass_fraction=config.get("probe_pass_fraction", 0.1))
     state = Run([episode["name"] for episode in episodes], lock, anchor, meta, config, truth, secured, t_start)
     if root:
-        state.free_space = lambda: free_agent_files(uid, workdir)
+        state.free_space = lambda: free_agent_files(uid, workdir, home)
     watch = None
     if root and not GuardedSolver.guard:
         watch = state.watch = EgressWatch(uid)      # in the state before the deadline thread can write

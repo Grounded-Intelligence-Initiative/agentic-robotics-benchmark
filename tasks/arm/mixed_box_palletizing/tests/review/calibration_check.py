@@ -37,6 +37,16 @@ constants fitted to the truth. --mark-geometry chooses whether the estimators as
 flat (default: the less a controller is told, the harder) or as thick as pallet_cell.py builds
 them and task_card.md now states.
 
+The figures depend on the rasterizer that draws the images, not only on the cell. In the task's
+image (Mesa llvmpipe, the renderer the lab and the grader use) the maxima over the 8 hidden
+orders are: cameras fused 0.39 / 1.76 / 1.74 mm (infeed / pallet / buffer), joint zeros 0.034
+degrees (q1 to q3) and 0.129 degrees (q4), pad over the pallet 1.23 mm (median 0.50), pallet
+1.28 mm and 0.037 degrees, first carton 0.39 mm and 0.019 degrees; the buffer camera's detector
+finds only 2 or 3 of its 4 marks in 5 of the 8 orders. On a hardware rasterizer (macOS, Apple
+GPU, the same MuJoCo and OpenCV versions), where the estimators were developed, they are several
+times smaller (cameras 0.15 mm, pad 0.21 mm). Only the figures from the task's image bear on
+the task: run it there.
+
 Run it from a scratch directory (MuJoCo writes MUJOCO_LOG.TXT into the working directory, and
 `ale lint` refuses stray files in the task folder); a full run of the 8 hidden orders takes
 about a minute. MuJoCo rendering must work in process.
