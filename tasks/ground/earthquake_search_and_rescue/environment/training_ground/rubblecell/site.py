@@ -1095,13 +1095,15 @@ def _cordon(S):
     x = S.hx0 + 0.2
     while x < S.hx1 - 0.2:
         L = min(seg, S.hx1 - 0.2 - x)
-        S.box((x + L / 2, y, STREET_Z + hh), (L / 2 - 0.02, ht, hh), "concrete", name="barrier")
+        if L / 2 - 0.02 > 1e-6:           # a last piece of 4 cm or less is left out (a box of no size cannot be built)
+            S.box((x + L / 2, y, STREET_Z + hh), (L / 2 - 0.02, ht, hh), "concrete", name="barrier")
         x += L
     for xe in (S.hx0 + 0.45, S.hx1 - 0.45):
         yy = S.hy0 + 0.45 + ht
         while yy < -1.9:
             L = min(seg, -1.9 - yy)
-            S.box((xe, yy + L / 2, STREET_Z + hh), (ht, L / 2 - 0.02, hh), "concrete", name="barrier")
+            if L / 2 - 0.02 > 1e-6:
+                S.box((xe, yy + L / 2, STREET_Z + hh), (ht, L / 2 - 0.02, hh), "concrete", name="barrier")
             yy += L
 
 

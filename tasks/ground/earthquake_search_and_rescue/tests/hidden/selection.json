@@ -2138,5 +2138,17 @@
   },
   "notes": []
  },
- "run": "2026-11-20, cell 0.3.0: one container of the task image per candidate (2 CPUs each), tests/review/select_set.py --run <pool> --index <i>; every candidate of both pools was run"
+ "run": "2026-11-20, cell 0.3.0: one container of the task image per candidate (2 CPUs each), tests/review/select_set.py --run <pool> --index <i>; every candidate of both pools was run",
+ "amendments": [
+  {
+   "n": 1,
+   "date": "2026-11-20",
+   "files": [
+    "tests/rubblecell/server.py",
+    "tests/rubblecell/site.py"
+   ],
+   "what": "after the selection runs: (a) arm_to answers bad_params for a point that has not 3 coordinates (a request check; the reference always sends 3); (b) the cordon leaves out a last barrier piece of 4 cm or less, which made two candidates' sites impossible to build (hidden 15, training 6: 'size 0 must be positive'); a site that built before is built from the same boxes. Neither candidate is admitted after the fact: the sets stay as selected.",
+   "check": "one full reference verify (`ale validate`) on the amended files completes every hidden site, and each site's sim_time_s, kit_dist_m and home_dist_m equal its selection record digit for digit (tests/anchor.json `source`); the six training sites repeat their records likewise"
+  }
+ ]
 }

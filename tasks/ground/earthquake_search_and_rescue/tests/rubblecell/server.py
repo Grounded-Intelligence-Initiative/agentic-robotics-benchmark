@@ -481,6 +481,9 @@ class RubbleCellServer(object):
         e = self._refuse()
         if e:
             return e
+        p = [float(v) for v in p]
+        if len(p) != 3:
+            return {"error": "bad_params", "detail": "p must have 3 coordinates"}
         q_now = self.robot.arm_q()
         roll = float(q_now[4] if roll is None else roll)
         q_ref = list(q_now)
