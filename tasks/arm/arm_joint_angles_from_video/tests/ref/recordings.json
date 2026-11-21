@@ -1,0 +1,353 @@
+{
+ "frames_per_second": 24,
+ "width": 1706,
+ "height": 1440,
+ "labelled": [
+  {
+   "id": "circular_cw_01",
+   "motion": "circular_cw",
+   "frames": 358,
+   "video": "labelled/circular_cw_01/video.mp4",
+   "log": "labelled/circular_cw_01/log.csv"
+  },
+  {
+   "id": "circular_cw_02",
+   "motion": "circular_cw",
+   "frames": 331,
+   "video": "labelled/circular_cw_02/video.mp4",
+   "log": "labelled/circular_cw_02/log.csv"
+  },
+  {
+   "id": "circular_cw_03",
+   "motion": "circular_cw",
+   "frames": 364,
+   "video": "labelled/circular_cw_03/video.mp4",
+   "log": "labelled/circular_cw_03/log.csv"
+  },
+  {
+   "id": "circular_cw_04",
+   "motion": "circular_cw",
+   "frames": 301,
+   "video": "labelled/circular_cw_04/video.mp4",
+   "log": "labelled/circular_cw_04/log.csv"
+  },
+  {
+   "id": "circular_cw_05",
+   "motion": "circular_cw",
+   "frames": 325,
+   "video": "labelled/circular_cw_05/video.mp4",
+   "log": "labelled/circular_cw_05/log.csv"
+  },
+  {
+   "id": "circular_cw_06",
+   "motion": "circular_cw",
+   "frames": 310,
+   "video": "labelled/circular_cw_06/video.mp4",
+   "log": "labelled/circular_cw_06/log.csv"
+  },
+  {
+   "id": "circular_cw_07",
+   "motion": "circular_cw",
+   "frames": 304,
+   "video": "labelled/circular_cw_07/video.mp4",
+   "log": "labelled/circular_cw_07/log.csv"
+  },
+  {
+   "id": "circular_cw_08",
+   "motion": "circular_cw",
+   "frames": 338,
+   "video": "labelled/circular_cw_08/video.mp4",
+   "log": "labelled/circular_cw_08/log.csv"
+  },
+  {
+   "id": "circular_ccw_01",
+   "motion": "circular_ccw",
+   "frames": 380,
+   "video": "labelled/circular_ccw_01/video.mp4",
+   "log": "labelled/circular_ccw_01/log.csv"
+  },
+  {
+   "id": "circular_ccw_02",
+   "motion": "circular_ccw",
+   "frames": 352,
+   "video": "labelled/circular_ccw_02/video.mp4",
+   "log": "labelled/circular_ccw_02/log.csv"
+  },
+  {
+   "id": "circular_ccw_03",
+   "motion": "circular_ccw",
+   "frames": 259,
+   "video": "labelled/circular_ccw_03/video.mp4",
+   "log": "labelled/circular_ccw_03/log.csv"
+  },
+  {
+   "id": "circular_ccw_04",
+   "motion": "circular_ccw",
+   "frames": 305,
+   "video": "labelled/circular_ccw_04/video.mp4",
+   "log": "labelled/circular_ccw_04/log.csv"
+  },
+  {
+   "id": "circular_ccw_05",
+   "motion": "circular_ccw",
+   "frames": 288,
+   "video": "labelled/circular_ccw_05/video.mp4",
+   "log": "labelled/circular_ccw_05/log.csv"
+  },
+  {
+   "id": "circular_ccw_06",
+   "motion": "circular_ccw",
+   "frames": 311,
+   "video": "labelled/circular_ccw_06/video.mp4",
+   "log": "labelled/circular_ccw_06/log.csv"
+  },
+  {
+   "id": "circular_ccw_07",
+   "motion": "circular_ccw",
+   "frames": 322,
+   "video": "labelled/circular_ccw_07/video.mp4",
+   "log": "labelled/circular_ccw_07/log.csv"
+  },
+  {
+   "id": "circular_ccw_08",
+   "motion": "circular_ccw",
+   "frames": 336,
+   "video": "labelled/circular_ccw_08/video.mp4",
+   "log": "labelled/circular_ccw_08/log.csv"
+  },
+  {
+   "id": "backward_forward_01",
+   "motion": "backward_forward",
+   "frames": 551,
+   "video": "labelled/backward_forward_01/video.mp4",
+   "log": "labelled/backward_forward_01/log.csv"
+  },
+  {
+   "id": "backward_forward_02",
+   "motion": "backward_forward",
+   "frames": 563,
+   "video": "labelled/backward_forward_02/video.mp4",
+   "log": "labelled/backward_forward_02/log.csv"
+  },
+  {
+   "id": "backward_forward_03",
+   "motion": "backward_forward",
+   "frames": 607,
+   "video": "labelled/backward_forward_03/video.mp4",
+   "log": "labelled/backward_forward_03/log.csv"
+  },
+  {
+   "id": "backward_forward_04",
+   "motion": "backward_forward",
+   "frames": 397,
+   "video": "labelled/backward_forward_04/video.mp4",
+   "log": "labelled/backward_forward_04/log.csv"
+  },
+  {
+   "id": "backward_forward_05",
+   "motion": "backward_forward",
+   "frames": 355,
+   "video": "labelled/backward_forward_05/video.mp4",
+   "log": "labelled/backward_forward_05/log.csv"
+  },
+  {
+   "id": "backward_forward_06",
+   "motion": "backward_forward",
+   "frames": 455,
+   "video": "labelled/backward_forward_06/video.mp4",
+   "log": "labelled/backward_forward_06/log.csv"
+  },
+  {
+   "id": "backward_forward_07",
+   "motion": "backward_forward",
+   "frames": 439,
+   "video": "labelled/backward_forward_07/video.mp4",
+   "log": "labelled/backward_forward_07/log.csv"
+  },
+  {
+   "id": "backward_forward_08",
+   "motion": "backward_forward",
+   "frames": 460,
+   "video": "labelled/backward_forward_08/video.mp4",
+   "log": "labelled/backward_forward_08/log.csv"
+  },
+  {
+   "id": "go_up_and_stay_still_01",
+   "motion": "go_up_and_stay_still",
+   "frames": 469,
+   "video": "labelled/go_up_and_stay_still_01/video.mp4",
+   "log": "labelled/go_up_and_stay_still_01/log.csv"
+  },
+  {
+   "id": "go_up_and_stay_still_02",
+   "motion": "go_up_and_stay_still",
+   "frames": 556,
+   "video": "labelled/go_up_and_stay_still_02/video.mp4",
+   "log": "labelled/go_up_and_stay_still_02/log.csv"
+  },
+  {
+   "id": "go_up_and_stay_still_03",
+   "motion": "go_up_and_stay_still",
+   "frames": 307,
+   "video": "labelled/go_up_and_stay_still_03/video.mp4",
+   "log": "labelled/go_up_and_stay_still_03/log.csv"
+  },
+  {
+   "id": "go_up_and_stay_still_04",
+   "motion": "go_up_and_stay_still",
+   "frames": 361,
+   "video": "labelled/go_up_and_stay_still_04/video.mp4",
+   "log": "labelled/go_up_and_stay_still_04/log.csv"
+  },
+  {
+   "id": "go_up_and_stay_still_05",
+   "motion": "go_up_and_stay_still",
+   "frames": 359,
+   "video": "labelled/go_up_and_stay_still_05/video.mp4",
+   "log": "labelled/go_up_and_stay_still_05/log.csv"
+  },
+  {
+   "id": "go_up_and_stay_still_06",
+   "motion": "go_up_and_stay_still",
+   "frames": 381,
+   "video": "labelled/go_up_and_stay_still_06/video.mp4",
+   "log": "labelled/go_up_and_stay_still_06/log.csv"
+  },
+  {
+   "id": "go_up_and_stay_still_07",
+   "motion": "go_up_and_stay_still",
+   "frames": 342,
+   "video": "labelled/go_up_and_stay_still_07/video.mp4",
+   "log": "labelled/go_up_and_stay_still_07/log.csv"
+  },
+  {
+   "id": "go_up_and_stay_still_08",
+   "motion": "go_up_and_stay_still",
+   "frames": 366,
+   "video": "labelled/go_up_and_stay_still_08/video.mp4",
+   "log": "labelled/go_up_and_stay_still_08/log.csv"
+  }
+ ],
+ "test": [
+  {
+   "id": "T01",
+   "frames": 466,
+   "video": "test/T01.mp4"
+  },
+  {
+   "id": "T02",
+   "frames": 270,
+   "video": "test/T02.mp4"
+  },
+  {
+   "id": "T03",
+   "frames": 381,
+   "video": "test/T03.mp4"
+  },
+  {
+   "id": "T04",
+   "frames": 567,
+   "video": "test/T04.mp4"
+  },
+  {
+   "id": "T05",
+   "frames": 419,
+   "video": "test/T05.mp4"
+  },
+  {
+   "id": "T06",
+   "frames": 630,
+   "video": "test/T06.mp4"
+  },
+  {
+   "id": "T07",
+   "frames": 357,
+   "video": "test/T07.mp4"
+  },
+  {
+   "id": "T08",
+   "frames": 672,
+   "video": "test/T08.mp4"
+  },
+  {
+   "id": "T09",
+   "frames": 325,
+   "video": "test/T09.mp4"
+  },
+  {
+   "id": "T10",
+   "frames": 417,
+   "video": "test/T10.mp4"
+  },
+  {
+   "id": "T11",
+   "frames": 308,
+   "video": "test/T11.mp4"
+  },
+  {
+   "id": "T12",
+   "frames": 394,
+   "video": "test/T12.mp4"
+  },
+  {
+   "id": "T13",
+   "frames": 486,
+   "video": "test/T13.mp4"
+  },
+  {
+   "id": "T14",
+   "frames": 217,
+   "video": "test/T14.mp4"
+  },
+  {
+   "id": "T15",
+   "frames": 617,
+   "video": "test/T15.mp4"
+  },
+  {
+   "id": "T16",
+   "frames": 537,
+   "video": "test/T16.mp4"
+  },
+  {
+   "id": "T17",
+   "frames": 281,
+   "video": "test/T17.mp4"
+  },
+  {
+   "id": "T18",
+   "frames": 320,
+   "video": "test/T18.mp4"
+  },
+  {
+   "id": "T19",
+   "frames": 385,
+   "video": "test/T19.mp4"
+  },
+  {
+   "id": "T20",
+   "frames": 510,
+   "video": "test/T20.mp4"
+  },
+  {
+   "id": "T21",
+   "frames": 384,
+   "video": "test/T21.mp4"
+  },
+  {
+   "id": "T22",
+   "frames": 579,
+   "video": "test/T22.mp4"
+  },
+  {
+   "id": "T23",
+   "frames": 390,
+   "video": "test/T23.mp4"
+  },
+  {
+   "id": "T24",
+   "frames": 385,
+   "video": "test/T24.mp4"
+  }
+ ]
+}
