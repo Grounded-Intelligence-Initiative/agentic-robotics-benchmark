@@ -5,9 +5,11 @@
     obs = robot.observe()            # does not move the robot
     obs = robot.act([.5, 0.])        # UAV translation in metres; returns down-camera frame
     image = camera_image(obs)
-    obs = robot.new_site()           # commissioning only: another scout-only site
+    obs = robot.new_site()           # commissioning only: another survey site (UAV only)
+    obs = robot.pad()                # commissioning only: a loaded Go1 on the commissioning pad
     obs = robot.advance()            # grading only, one switch to the Go1 after >=4 scout moves
-    obs = robot.act({"target_rad": [0., .9, -1.8]*4, "ticks": 12})  # Go1 pose
+    obs = robot.act({"target_rad": [0., .9, -1.8]*4, "ticks": 12})  # Go1 pose (pad or graded site)
+    image = camera_image(robot.look(3))                             # Go1 mast camera (pad or graded site)
 """
 import base64
 import io
@@ -49,6 +51,10 @@ class Client:
 
     def new_site(self):
         return self.request("new_site")
+
+    def pad(self):
+        """Commissioning only: start a pad episode (a loaded Go1 on a bare floor among bollards)."""
+        return self.request("pad")
 
 
 def camera_image(obs):

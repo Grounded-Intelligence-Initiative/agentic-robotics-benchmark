@@ -1,37 +1,85 @@
-"""Author-only analytical gait; this is not part of the robot service."""
+"""The oracle's gait: an analytical trot from joint targets, with the stance height and the trunk's pitch
+held by feedback on the robot's own joint angles and gravity reading (the payload, the servo stiffness and
+the fittings' clearances differ per site)."""
 import math
 
 import numpy as np
 
+LEG = .213
+FOOT = .023                      # foot radius: trunk height above the tread = stance leg height + FOOT
+GUARD_TOP, SCANNER_LOW = .199, .163
+NOMINAL = .255                   # trunk height on the open floor
 
-STANCE_M = {"ordinary": .265, "crouch": .205, "intermediate": .217}
+
+def leg_height(hip, thigh, calf):
+    """Vertical reach of one leg below its thigh axis, from measured joint angles."""
+    return LEG*(math.cos(thigh)+math.cos(thigh+calf))*math.cos(hip)
 
 
 class Walk:
-    def __init__(self, waypoints, ducts=(), posture="adaptive"):
+    def __init__(self, waypoints, fittings):
         self.waypoints = [np.asarray(p, dtype=float) for p in waypoints]
+        self.fittings = fittings
         self.index = 0
         self.phase = 0.
         self.still = False
         self.stride = np.zeros(2)
-        self.ducts = ducts
-        self.posture = posture
-        self.height = .265
+        self.height = NOMINAL        # wanted trunk height (the corrections are added to it)
+        self.lift = 0.               # integral: commanded minus measured stance height
+        self.trim = 0.               # integral: front-rear height difference that levels the trunk
         self.start_ticks = 0
         self.aligned = False
         self.turn_center = None
 
-    def action(self, xy, yaw, ticks):
-        mode = self.posture
-        if mode == "adaptive":
-            mode = "crouch" if any(abs(xy[0]-x) < .83 for x in self.ducts) else "ordinary"
-        self.height += float(np.clip(STANCE_M[mode]-self.height, -.0025, .0025))
-        # Settle the inspection load on four feet before combining yaw and translation.
-        if self.start_ticks < 500:
+    def wanted_height(self, xy):
+        """Trunk height the place asks for: low under a duct, high on a deck, nominal elsewhere."""
+        for f in self.fittings:
+            if not f["lo"]-.2 < xy[1] < f["hi"]+.2:
+                continue
+            if f["kind"] == "duct" and abs(xy[0]-f["x"]) < .83:
+                # Guard below the soffit, scanner above the floor: split the spare height, the larger
+                # share to the scanner, which swings with the trunk's pitch.
+                spare = f["clearance"]-GUARD_TOP-SCANNER_LOW
+                return f["clearance"]-GUARD_TOP-max(.014, .40*spare), "duct"
+            if f["kind"] == "deck" and abs(xy[0]-f["x"]) < 1.05:
+                # The scanner (0.225-0.393 m ahead of the trunk origin) has to pass over the centre guide,
+                # which climbs from the deck's west edge to its crest: ask for the height that place needs.
+                ahead = xy[0]-f["x"]+.393+.03
+                guide = f["rise"]*min(1., max(0., (ahead+.305)/.366)) if ahead < .64 else 0.
+                # East of the crest the scanner is clear and the trunk is levelled again on the way down.
+                return max(NOMINAL, guide+SCANNER_LOW+.038), "deck" if xy[0] < f["x"]+.30 else "descent"
+        return NOMINAL, "floor"
+
+    def feedback(self, obs, target, level=True, nose_up=0.):
+        q = obs["joint_rad"]
+        stance = [i for i in range(4) if obs["foot_contact"][i]]
+        if len(stance) >= 2:
+            measured = float(np.mean([leg_height(*q[3*i:3*i+3]) for i in stance]))+FOOT
+            self.lift = float(np.clip(self.lift+.02*(target-measured), -.02, .09))
+        pitch = -math.asin(max(-1., min(1., obs["gravity_body_unit"][0])))     # nose up positive
+        # Climbing a deck the trunk follows the slope: there the trim only ever lifts the nose.
+        if level or pitch < nose_up:
+            self.trim = float(np.clip(self.trim+.004*(pitch-nose_up), -.03, .03))
+
+    def stand(self, ticks):
+        angles = []
+        for i in range(4):
+            fore = 1 if i < 2 else -1
+            h = min(.40, self.height+self.lift-fore*self.trim-FOOT)
+            bend = math.acos(h/(2*LEG))
+            angles.extend([0., bend, -2*bend])
+        return {"target_rad": angles, "ticks": ticks}
+
+    def action(self, xy, yaw, obs):
+        ticks = obs["ticks_remaining"]
+        target, where = self.wanted_height(xy)
+        self.height += float(np.clip(target-self.height, -.0008, .0020))      # lower slowly: no undershoot
+        # Under a duct the scanner ahead of the feet is the low point: carry the nose a little high.
+        self.feedback(obs, self.height, where != "deck", .03 if where in ("duct", "deck") else 0.)
+        if self.start_ticks < 600:
             n = min(12, ticks)
             self.start_ticks += n
-            bend = math.acos(self.height/.426)
-            return {"target_rad": [0., bend, -2*bend]*4, "ticks": n}
+            return self.stand(n)
         delta = self.waypoints[self.index]-xy
         final = self.index == len(self.waypoints)-1
         if not final and np.linalg.norm(delta) <= .06:
@@ -41,12 +89,12 @@ class Walk:
         if final and np.linalg.norm(delta) < .070 and abs(yaw) < .19:
             self.still = True
         if self.still:
-            bend = math.acos(self.height/.426)
-            return {"target_rad": [0., bend, -2*bend]*4, "ticks": min(ticks, 32)}
+            return self.stand(min(ticks, 32))
 
         co, si = math.cos(yaw), math.sin(yaw)
         local = np.array([co*delta[0]+si*delta[1], -si*delta[0]+co*delta[1]])
-        wanted = local * min(.62, .108/max(np.linalg.norm(local), 1e-6))
+        speed = .108 if where == "floor" else .085
+        wanted = local * min(.62, speed/max(np.linalg.norm(local), 1e-6))
         self.aligned |= abs(yaw) < .13
         if not self.aligned:
             if self.turn_center is None:
@@ -64,15 +112,16 @@ class Walk:
             fore = 1 if i < 2 else -1
             stride = self.stride + turn*np.array([-.135*side, .185*fore])
             p = (self.phase+offset) % 1.
+            base = min(.40, self.height+self.lift-fore*self.trim-FOOT)
             if p < .59:
-                fraction, height = .5-p/.59, self.height
+                fraction, height = .5-p/.59, base
             else:
                 s = (p-.59)/.41
                 fraction = -.5+s-math.sin(2*math.pi*s)/(2*math.pi)
-                height = self.height-.082*math.sin(math.pi*s)
+                height = base-(.050 if where == "duct" else .082)*math.sin(math.pi*s)
             x, y = stride*fraction + [0., side*.08]
             sag = math.sqrt(max(.01, y*y+height*height-.08**2))
             hip = math.atan2(y, height)-math.atan2(side*.08, sag)
-            bend = math.acos(min(1., math.hypot(x, sag)/(.213*2)))
+            bend = math.acos(min(1., math.hypot(x, sag)/(LEG*2)))
             angles.extend([hip, math.atan2(-x, sag)+bend, -2*bend])
         return {"target_rad": angles, "ticks": ticks}

@@ -1,33 +1,55 @@
-"""ALE author solution: align the two sensor frames before walking."""
+"""The author's privileged oracle: it holds the token whose sha256 only the grader knows, so the graded
+robot service answers its `truth` call (the site as built, the launch pose, the fittings' dimensions). It
+shows that every graded site can be completed with the robot's own commands; it is not a participant
+program and reads nothing a participant can."""
 import math
+import os
+import sys
 
-from client import Client
-from registration import mast_scan, register, rot
-from survey import scan
-from walk import Walk
+import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, "/opt/visual_robotics/client")
+from walk import Walk  # noqa: E402
+
+APPROACH = .53
 
 
-def deploy(robot, survey, align=register, posture="adaptive"):
-    path = survey.route()
-    chart = survey.landmarks()
+def route(t):
+    """West to east through the wide opening of every rack, changing aisles in the open bays."""
+    racks = t["racks"]
+    deck_x = [f["x"] for f in t["fittings"] if f["kind"] == "deck"]
+    is_deck = [any(r["near"]-.12 < x < r["far"]+.12 for x in deck_x) for r in racks]
+    bays = []
+    for i in range(len(racks)-1):
+        far, near = racks[i]["far"], racks[i+1]["near"]
+        fraction = .55 if is_deck[i] else .45 if is_deck[i+1] else .50
+        bays.append(far+fraction*(near-far))
+    path = []
+    for i, r in enumerate(racks):
+        y = sum(r["wide"])/2
+        left = bays[i-1] if i else r["near"]-(.82 if is_deck[i] else APPROACH)
+        right = bays[i] if i < len(bays) else r["far"]+(.82 if is_deck[i] else APPROACH)
+        path += [(left, y), (right, y)]
+    return path+[tuple(t["goal"])]
+
+
+def mission(robot, token):
+    obs = robot.observe()
+    for step in ([.3, 0.], [.3, 0.], [-.3, 0.], [-.3, 0.]):       # the switch needs four scout moves
+        obs = robot.act(step)
     obs = robot.advance()
-    local, offset = mast_scan(robot, obs)
-    pose, diagnostics = align(local, chart, offset)
-    R = rot(pose[2])
-    terrain = survey.terrain()
-    ducts = [item["xy"][0] for item in terrain if item["top_m"] > .30]
-    walk = Walk(path, ducts, posture)
+    t = robot.request("truth", token=token)
+    x0, y0, yaw0 = t["launch_pose"]
+    c, s = math.cos(yaw0), math.sin(yaw0)
+    walk = Walk(route(t), t["fittings"])
     while not obs["done"]:
-        xy = pose[:2]+R @ obs["odom_xy_m"]
-        yaw = pose[2]+obs["odom_yaw_rad"]
-        obs = robot.act(walk.action(xy, math.atan2(math.sin(yaw), math.cos(yaw)), obs["ticks_remaining"]))
-    return {"applied_pose": pose.tolist(), "observed_fittings": terrain, **diagnostics}
-
-
-def main():
-    robot = Client()
-    deploy(robot, scan(robot))
+        ox, oy = obs["odom_xy_m"]
+        xy = np.array([x0+c*ox-s*oy, y0+s*ox+c*oy])
+        yaw = yaw0+obs["odom_yaw_rad"]
+        obs = robot.act(walk.action(xy, math.atan2(math.sin(yaw), math.cos(yaw)), obs))
 
 
 if __name__ == "__main__":
-    main()
+    from client import Client
+    mission(Client(), open(os.path.join(HERE, "token.txt")).read().strip())

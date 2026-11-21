@@ -1,6 +1,17 @@
-# PR37 v8: register the UAV survey and transfer clearance to a loaded native Go1.
-# Scout-only commissioning; first target deployment is in the separate verifier.
-# The official eight site seeds are unchanged.
+# cross_embodiment_adaptation (quadruped): a UAV surveys an unknown warehouse; a loaded Unitree Go1, commanded
+# joint by joint, has to cross it to a dock on its first deployment there, under a duct and over a deck.
+#
+# Each site draws its own load, servo stiffness and strength, floor friction and fitting clearances from stated
+# ranges (tests/runtime/props.py; the instruction and the datasheet state them), so a program has to measure the
+# site and its robot there and correct while it walks. In development the agent has random survey sites (UAV
+# only) and a commissioning pad for the loaded Go1 (bare floor and bollards; 40 episodes, 600,000 ticks): no
+# truth, no score, no debrief. A separate verifier runs the agent's mission program once on each of 8 fixed
+# hidden sites (tests/hidden/, tests/review/selection.md) and removes everything a mission leaves behind before
+# the next (tests/isolation.py). The oracle is privileged: a token whose sha256 only tests/ holds.
+#
+# [agent] timeout_sec: 2 h to write, commission and leave the mission program. [verifier] timeout_sec: 8 missions
+# of at most 1800 s of wall clock each (program time <= 600 s, 48,000 ticks) plus the numerics check, the service
+# starts and the clean-up; the oracle's eight missions take about 3 minutes.
 schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission"]
 

@@ -10,7 +10,13 @@ Runs as root in a SEPARATE verifier sandbox: the engine restores only the declar
   * stops it when the mission has ended (10 s grace), when its program time (wall time minus
     the time the service spends answering) passes the budget, or at the wall cap,
   * kills every process of the agent account (bounded, then frozen: the #64 survivor pattern
-    of arm_hidden_mechanism_box) and reads the mission's outcome from the service's own ledger.
+    of arm_hidden_mechanism_box) and reads the mission's outcome from the service's own ledger,
+  * removes everything the account left behind (files on every writable mount, System V IPC) and
+    restores the files it can write but does not own (tests/isolation.py): a mission starts from
+    the state the first one started from, so no site is a trial for a later one.
+
+Before the first mission the grader checks the machine's arithmetic (tests/numerics_check.py against
+tests/numerics.json) and refuses to grade on a machine that computes differently.
 
 The score is the fraction of hidden missions in which the Go1 safely docked, relative to
 the anchor. A service failure voids the run without redeploying the target.
@@ -31,6 +37,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+from isolation import purge_files, purge_ipc, restore, writable_snapshot  # noqa: E402
 from nonet import nonet_argv, selftest  # noqa: E402
 from robotics_grader import (  # noqa: E402
     agent_user, ratio_rewards, read_anchor, require, stage_config, stage_dir, write_verdict, zero_verdict,
@@ -234,7 +241,7 @@ def program_argv(home):
     return [RUNUSER, "-u", agent_user(), "--", ENV, "-i"] + env + nonet_argv(["/bin/bash", "run.sh"], PYTHON)
 
 
-def run_mission(index, seed, uid, gid, config):
+def run_mission(index, seed, uid, gid, config, token_sha256, snapshot):
     """Run the frozen program once; infra records an error, not a retry."""
     directory = WORK/"mission-{:02d}-0".format(index)
     if directory.exists():
@@ -249,7 +256,8 @@ def run_mission(index, seed, uid, gid, config):
     os.chmod(SOCKET.parent, 0o755)
     service_log = open(directory/"service.log", "wb")
     service_argv = [PYTHON, "-E", "-s", "-B", str(RUNTIME/"service.py"), "--mode", "graded",
-                    "--directory", str(directory), "--socket", str(SOCKET), "--seed-file", str(directory/"seed")]
+                    "--directory", str(directory), "--socket", str(SOCKET), "--seed-file", str(directory/"seed"),
+                    "--token-sha256", token_sha256]
     service = subprocess.Popen(
         service_argv,
         cwd=str(RUNTIME), stdout=service_log, stderr=service_log, start_new_session=True,
@@ -311,6 +319,14 @@ def run_mission(index, seed, uid, gid, config):
                 break
         wall = time.monotonic()-started
         record["cleanup_ok"] = stop_agent_processes(uid)
+        # Nothing the program left may reach the next site (tests/isolation.py).
+        left = purge_files(uid, keep=(str(RUN/"program"),), keep_dirs=(account_home(),)) + purge_ipc(uid)
+        restored, unrestorable = restore(snapshot)
+        record["left_behind"] = left
+        record["files_restored"] = restored
+        if unrestorable:
+            record["cleanup_ok"] = False
+            log("site {}: {} shared file(s) changed and could not be restored".format(index, len(unrestorable)))
         if program.poll() is None:
             try:
                 os.killpg(program.pid, signal.SIGKILL)
@@ -353,6 +369,25 @@ def run_mission(index, seed, uid, gid, config):
             SOCKET.unlink()
 
 
+def account_home():
+    return os.path.normpath(os.path.expanduser("~"+agent_user()))
+
+
+def check_numerics():
+    """Refuse to grade where the simulation or a program's arithmetic differs from the recorded machine."""
+    expected = json.loads((HERE/"numerics.json").read_text())
+    proc = subprocess.run([PYTHON, "-I", "-B", str(HERE/"numerics_check.py")], stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, timeout=600,
+                          env={"PATH": "/opt/venv/bin:/usr/bin:/bin", "HOME": "/root", "LANG": "C.UTF-8",
+                               "MUJOCO_GL": "osmesa", "LIBGL_ALWAYS_SOFTWARE": "1", "LP_NUM_THREADS": "2"})
+    require(proc.returncode == 0, "numerics check failed to run: {}".format(proc.stderr.decode("utf-8", "replace")[-400:]))
+    report = json.loads(proc.stdout.decode().strip().splitlines()[-1])
+    require(report["fingerprint"] == expected["fingerprint"],
+            "this machine computes differently from the recorded one (differs: {}); not graded".format(
+                ", ".join(report.get("differs") or ["?"])))
+    log("numerics fingerprint matches ({})".format(report["fingerprint"][:12]))
+
+
 def main():
     started = time.monotonic()
     config = stage_config()
@@ -377,6 +412,9 @@ def main():
         write_verdict(zero_verdict(problem, anchored=anchor is not None))
         return
     sites = json.loads((HIDDEN/"sites.json").read_text())["seeds"]
+    token_sha256 = (HIDDEN/"oracle_token.sha256").read_text().split()[0]
+    require(len(token_sha256) == 64, "malformed oracle token hash")
+    check_numerics()
     stage = Path(stage_dir())
     stage_mode = stat.S_IMODE(stage.stat().st_mode)
     os.chmod(stage, 0o700)     # nothing of the tests stage is readable while agent code runs
@@ -385,9 +423,18 @@ def main():
         ok, detail = selftest(lambda argv: [RUNUSER, "-u", agent_user(), "--", ENV, "-i",
                                             "PATH=/opt/venv/bin:/usr/bin:/bin"] + argv, PYTHON)
         require(ok, detail)
+        # The submission was copied (root-owned, RUN/program); what the account still owns anywhere goes,
+        # and the files it can write without owning them are recorded, before the first mission.
+        purge_files(uid, keep=(str(RUN/"program"),), keep_dirs=(account_home(),))
+        purge_ipc(uid)
+        as_account = lambda argv: [RUNUSER, "-u", agent_user(), "--", *argv]  # noqa: E731
+        as_account.uid = uid
+        snapshot = writable_snapshot(as_account, skip=(str(RUN), str(WORK)))
+        log("isolation: {} file(s) the account can write without owning them are restored after every site"
+            .format(len(snapshot)))
         records, cleanup_ok = [], True
         for index, seed in enumerate(sites):
-            record = run_mission(index, int(seed), uid, gid, config)
+            record = run_mission(index, int(seed), uid, gid, config, token_sha256, snapshot)
             require(not record["infra"], "site {}: service failure, no redeployment ({})".format(
                 index, record.get("reason")))
             cleanup_ok = cleanup_ok and record.get("cleanup_ok", True)

@@ -25,6 +25,20 @@ def main():
     shutil.copytree(public, home, dirs_exist_ok=True)
     for path in [home, *home.rglob("*")]:
         os.chown(path, 1000, 1000)
+    # Session time: a start stamp the agent's account can read and cannot change, and a script that reads it.
+    session = Path("/run/session")
+    session.mkdir(mode=0o755, exist_ok=True)
+    os.chown(session, 0, 0)
+    session.chmod(0o755)
+    stamp = session/"start"
+    if not stamp.exists():
+        stamp.write_text(str(int(time.time()))+"\n")
+    os.chown(stamp, 0, 0)
+    stamp.chmod(0o444)
+    script = Path("/home/user/session_time.sh")
+    shutil.copyfile(public/"session_time.sh", script)
+    os.chown(script, 0, 0)
+    script.chmod(0o755)
     with (private/"service.log").open("wb") as log:
         process = subprocess.Popen(
             ["/opt/venv/bin/python3", "-E", "-s", str(private/"runtime"/"service.py"), "--mode", "commissioning",

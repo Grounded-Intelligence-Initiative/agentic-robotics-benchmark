@@ -10,13 +10,13 @@ import numpy as np
 from PIL import Image
 
 from scene_assets import asset_root, geom, materials, robot_meshes, vec
-from mobility import BEVEL, CLEARANCE, DUCT, PROTECTED, SUPPORT, TERRAIN_BIT, add_fittings, add_load
+from mobility import BEVEL, DUCT, PROTECTED, SUPPORT, TERRAIN_BIT, add_fittings, add_load
 
 
 LEGS = ("FR", "FL", "RR", "RL")
 JOINTS = tuple(f"{leg}_{part}" for leg in LEGS for part in ("hip", "thigh", "calf"))
 WALL_Z, CAMERA_Z, FOV, PIXELS = .32, 1.65, 78, 256
-MAX_SCOUT, MAX_TICKS, MAX_HOLD = 80, 36000, 40
+MAX_SCOUT, MAX_TICKS, MAX_HOLD = 80, 48000, 40
 DOCK_RADIUS = .17
 POST_Z, POST_R = .72, .105
 MAST_Z, MAST_FOV, MAST_PITCH, MAX_LOOKS = .20, 70, math.radians(36), 16
@@ -163,13 +163,13 @@ class Survey:
 
 
 class Go1:
-    def __init__(self, rng, walls, goal, racks, posts, launch, fittings):
+    def __init__(self, rng, walls, goal, racks, posts, launch, fittings, props=None, budget=MAX_TICKS):
         spec = asset_root()/"unitree_go1/go1.xml"
         root = ET.parse(spec).getroot()
         root.find("compiler").set("meshdir", str(spec.parent/"assets"))
         scene(root, walls, goal, posts, fittings)
         trunk = root.find(".//body[@name='trunk']")
-        add_load(trunk)
+        add_load(trunk, props)
         for i in range(8):
             angle = i*math.pi/4
             # The mast looks up at fixtures. Roll/pitch follow the real trunk.
@@ -181,9 +181,10 @@ class Go1:
         if (tuple(model.actuator(i).name for i in range(model.nu)) != JOINTS
                 or model.nq != 19 or model.nv != 18 or model.neq or model.nmocap):
             raise RuntimeError("expected twelve servos and an unstabilized free-base Go1")
-        gain = rng.uniform(.90, 1.10, size=model.nu)
+        gain = np.asarray(props.servo_gain) if props else rng.uniform(.90, 1.10, size=model.nu)
         model.actuator_gainprm[:, 0] *= gain
         model.actuator_biasprm[:, 1] *= gain
+        self.budget = int(budget)
         self.trunk = model.body("trunk").id
         self.floor = model.geom("floor").id
         obstacles = [*walls, *(f"bollard{i}_{part}" for i in range(len(posts)) for part in ("cap", "stem"))]
@@ -193,6 +194,12 @@ class Go1:
         self.support_ids = {self.floor: "floor"}
         if any(f.kind == "deck" for f in fittings):
             self.support_ids.update({model.geom(name).id: name for name in SUPPORT})
+        if props:
+            model.actuator_forcerange[:] *= props.torque_scale
+            # The walked surface sets the friction of a foot's contact (geom priority), not the foot.
+            for gid in self.support_ids:
+                model.geom_friction[gid, 0] = props.friction
+                model.geom_priority[gid] = 1
         self.protected = {model.geom(name).id: name for name in PROTECTED}
         self.guard_id = model.geom("crown_guard").id
         self.fittings = fittings
@@ -268,7 +275,7 @@ class Go1:
                 if f.kind == "duct" and abs(x-f.x) < f.length/2-.07:
                     it = self.guard_id
                     z = self.data.geom_xpos[it, 2]+abs(self.data.geom_xmat[it, 6:]) @ self.model.geom_size[it]
-                    gap = float(CLEARANCE-z)
+                    gap = float(f.clearance-z)
                     self.min_duct_gap = gap if self.min_duct_gap is None else min(gap, self.min_duct_gap)
             if f.kind in self.fitting_entered and x > f.x+half+.30:
                 self.fitting_cleared.add(f.kind)
@@ -283,7 +290,7 @@ class Go1:
             "joint_rad": self.data.qpos[7:].round(4).tolist(),
             "joint_rad_s": self.data.qvel[6:].round(4).tolist(),
             "foot_contact": [foot in self.contacts for foot in self.feet],
-            "ticks_remaining": MAX_TICKS-self.ticks,
+            "ticks_remaining": self.budget-self.ticks,
         }
 
     def look(self, detent):
@@ -321,7 +328,7 @@ class Go1:
         if not isinstance(action, dict) or set(action) != {"target_rad", "ticks"}:
             raise ValueError("expected target_rad (12 angles) and ticks")
         raw, ticks = action["target_rad"], action["ticks"]
-        if type(ticks) is not int or not 1 <= ticks <= min(MAX_HOLD, MAX_TICKS-self.ticks):
+        if type(ticks) is not int or not 1 <= ticks <= min(MAX_HOLD, self.budget-self.ticks):
             raise ValueError("invalid tick count")
         if not isinstance(raw, list) or len(raw) != 12 or any(type(v) not in (int, float) for v in raw):
             raise ValueError("expected twelve numeric angles")
@@ -357,7 +364,7 @@ class Go1:
                 self.outcome = "fell"
             elif self.dwell*dt >= .45:
                 self.outcome = "docked"
-            elif self.ticks == MAX_TICKS:
+            elif self.ticks >= self.budget:
                 self.outcome = "budget"
             if self.outcome != "running":
                 break

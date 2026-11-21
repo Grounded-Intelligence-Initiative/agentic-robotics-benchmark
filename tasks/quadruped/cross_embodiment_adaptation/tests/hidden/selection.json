@@ -1,7 +1,6 @@
 {
-  "version": 4,
+  "version": 5,
   "rule": "tests/review/selection.md",
-  "policy": "All eight seeds and candidate list retained byte-for-byte from maintainer round-2 head 9d8cc14; no outcome-based reselection",
-  "historical_selection": "tests/review/legacy_round2/tests/hidden/selection.json",
-  "current_measurements": "tests/review/v4_hidden_native.json"
+  "policy": "The eight seeds and the candidate list are those of the round-2 head 9d8cc14, byte for byte. Version 5 (2026-11-20) adds per-site physical properties drawn from each seed by an independent stream (tests/runtime/props.py); the ranges were fixed before any site was generated with them, and no seed was replaced.",
+  "oracle_on_the_set": "8 of 8 (tests/anchor.json)"
 }

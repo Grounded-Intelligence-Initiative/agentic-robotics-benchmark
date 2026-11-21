@@ -1,21 +1,16 @@
 # Author solution (not part of the participant sandbox)
 
-ALE's `solve.sh` installs a public-observation reference into the normal
-submission path. It surveys with the UAV, projects the captured RGB onto
-floor and rack-top grids, and measures the gaps. It searches the passage
-sequences that leave enough lateral clearance for the Go1. At the same
-time it charts identical safety caps from overhead RGB. After deployment
-it pans the mast through eight views while stationary, matches unlabeled
-cap constellations and fits a planar transform using the measured rays.
-It also tracks the two identical service covers across UAV frames.
-Parallax yields each surface height and thus the position of the low duct
-and raised deck. It applies the registration estimate to local odometry,
-uses the open bays to align the loaded body, and changes the leg extension
-near the measured duct. All motion is via native twelve-servo commands.
+`solve.sh` installs the privileged oracle (`oracle/`) as the submission. It holds a token whose sha256 only the
+grader knows (`tests/hidden/oracle_token.sha256`), so the graded robot service answers its `truth` call: the
+site as built (racks, openings, both fittings with their clearances, the dock), the Go1's launch pose and the
+site's physical properties. It plans its route on that truth and walks it with the robot's own commands: an
+analytical trot from twelve joint targets, with the stance height and the trunk's pitch held by feedback on the
+robot's joint angles and gravity reading, low under the duct and high over the deck's guides.
 
-The controls in `tests/review/v8_controls.py` use the same survey, route,
-registration, startup and gait. They fix only the leg-extension set point
-to the ordinary, crouched or intermediate value. The flat counterfactual removes the two
-fittings, not the load or the safety rules. No policy gets a seed, true
-fixture class or pose. Only the author harness reads the private ledger.
-See `tests/review/README.md` for the comparison and its limits.
+It shows that every graded site can be completed; it is not a participant program. No participant program can
+obtain the truth: the commissioning service has no such call, and a graded service started without the token's
+hash (or asked with any other token) answers it like an unknown call.
+
+The earlier reference that used only the public observations (UAV survey, cap registration, a nominal gait) is
+kept as review material in `tests/review/public_reference/`; it assumes the nominal load and clearances and is
+one of the review's controls (`tests/review/README.md`).

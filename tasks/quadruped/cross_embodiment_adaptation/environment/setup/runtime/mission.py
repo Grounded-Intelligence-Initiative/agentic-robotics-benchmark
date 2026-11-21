@@ -3,15 +3,17 @@ import math
 
 import numpy as np
 
-from articulated import Go1, MAX_SCOUT, Survey, fixtures_and_launch, layout
+from articulated import Go1, MAX_SCOUT, MAX_TICKS, Survey, fixtures_and_launch, layout
 from mobility import fittings
+from props import draw
 
 
 class World:
     def __init__(self, seed, *, flat_control=False):
         self.rng, self.racks, self.goal, self.walls = layout(seed)
         self.posts, self.launch = fixtures_and_launch(seed, self.walls)
-        self.fittings = [] if flat_control else fittings(seed, self.racks)
+        self.props = draw(seed)
+        self.fittings = [] if flat_control else fittings(seed, self.racks, self.props)
         self.survey = Survey(self.walls, self.goal, self.posts, self.fittings)
         self.go1 = None
         self.phase = self.scout_actions = 0
@@ -46,7 +48,8 @@ class World:
         if self.phase or self.scout_actions < 4:
             raise ValueError("switch exactly once, after at least four scout moves")
         self.survey.close()
-        self.go1 = Go1(self.rng, self.walls, self.goal, self.racks, self.posts, self.launch, self.fittings)
+        self.go1 = Go1(self.rng, self.walls, self.goal, self.racks, self.posts, self.launch, self.fittings,
+                       self.props, MAX_TICKS)
         self.phase = 1
         return self.observe()
 
@@ -107,7 +110,69 @@ class World:
             "final_goal_distance": dog.dock_error if dog else -1.,
         }
 
+    def truth(self):
+        """The site as built, for the token holder only (the author's oracle): never an observation."""
+        dog = self.go1
+        return {
+            "racks": [{"near": r.near, "far": r.far, "wide": list(r.wide),
+                       "shortcut": list(r.shortcut) if r.shortcut else None} for r in self.racks],
+            "goal": self.goal.tolist(), "posts": [list(map(float, p)) for p in self.posts],
+            "fittings": [{"kind": f.kind, "x": f.x, "lo": f.lo, "hi": f.hi, "length": f.length,
+                          "clearance": f.clearance, "rise": f.rise} for f in self.fittings],
+            "launch": [float(v) for v in self.launch], "props": self.props.public(),
+            "pose": [*map(float, dog.xy), float(dog.heading)] if dog else None,
+            "launch_pose": [*dog.origin.tolist(), float(dog.origin_yaw)] if dog else None,
+            "trunk_z": float(dog.data.xpos[dog.trunk, 2]) if dog else None,
+        }
+
     def close(self):
         self.survey.close()
         if self.go1:
             self.go1.close()
+
+
+class Pad:
+    """The commissioning pad: the same loaded Go1 on a bare floor among bollards, no site.
+
+    One episode is one deployment with its own draw of the properties (the ranges of props.RANGES), a random
+    launch heading, the mast camera and a tick budget. There is no rack, fitting or dock, no truth, no score
+    and no debrief: the observation is the one a graded deployment returns.
+    """
+    LOOKS, TICKS = 16, 48000
+
+    def __init__(self, seed):
+        from articulated import fixtures_and_launch as place, layout as lay
+        rng, _, _, walls = lay(seed)
+        posts, launch = place(seed, walls)
+        self.props = draw(seed, stream=3704)
+        self.go1 = Go1(rng, {}, np.array([1e3, 0.]), [], posts, launch, [], self.props, self.TICKS)
+        self.phase = 1
+
+    @property
+    def done(self):
+        return self.go1.outcome != "running"
+
+    def observe(self):
+        return {"phase": 1, "done": self.done, **self.go1.observe()}
+
+    def act(self, action):
+        if self.done:
+            raise ValueError("this pad episode has ended; start another with pad()")
+        self.go1.act(action)
+        return self.observe()
+
+    def look(self, detent):
+        if self.done:
+            raise ValueError("this pad episode has ended; start another with pad()")
+        return self.go1.look(detent)
+
+    def advance(self):
+        raise ValueError("the pad has no survey; advance() is a graded call")
+
+    def metrics(self):
+        dog = self.go1
+        return {"pad": 1, "target_ticks": dog.ticks, "target_actions": dog.actions, "ground_looks": dog.looks,
+                "target_outcome": dog.outcome}
+
+    def close(self):
+        self.go1.close()
