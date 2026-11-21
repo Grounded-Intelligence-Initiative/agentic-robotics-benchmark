@@ -59,6 +59,12 @@ summary = "Keep a desk sorted with a Franka Panda in Isaac Sim, putting each new
 platforms = ["arm"]
 stages = ["behavior"]
 
+[pantry_jar_refilling]
+title = "Refill screw-top jars with two Pandas"
+summary = "Two Pandas open free-standing screw-top jars, put the listed refill pieces in from a tray and screw each jar's own lid back to a torque band, from RGB cameras and wrist force sensors."
+platforms = ["arm"]
+stages = ["behavior"]
+
 [pump_skid_startup_and_operation]
 title = "Run a pump skid with a rail-mounted arm"
 summary = "Start up, operate and shut down a water plant's pump skid with a Franka Panda on a rail, reading gauges and turning valves through its cameras."
@@ -221,6 +227,12 @@ summary = "Specify eight replicas of a three-strut, cable-driven tensegrity robo
 platforms = ["soft"]
 stages = ["requirements"]
 
+[tensegrity_strut_assembly_3bar_panda]
+title = "Assemble three tensegrity struts with a Panda"
+summary = "Program a Franka Panda to finish the three struts of a small tensegrity rolling robot from their loose modules, guided by its picture manual and the cell's cameras."
+platforms = ["soft"]
+stages = ["assembly"]
+
 [fault_adaptive_spacecraft_docking]
 title = "Dock a spacecraft with faulty thrusters"
 summary = "Dock a planar spacecraft whose six thrusters are wired in an unknown order and degrade in flight, identifying them as it goes."
@@ -232,6 +244,12 @@ title = "Model a cabin free-flyer in CAD"
 summary = "Rebuild the lost CAD of a cube-shaped cabin free-flyer with a stowed perching arm in FreeCAD from photos of its teardown, as 12 tagged parts and a hinged assembly."
 platforms = ["space"]
 stages = ["hardware-design"]
+
+[freeflyer_uncrewed_station_caretaking]
+title = "Tend an uncrewed space station with a free-flyer"
+summary = "Write the autonomous program of a cabin free-flyer that finds a blocked air inlet from station telemetry, clears and stows the item, collects loose pouches and docks with charge left."
+platforms = ["space"]
+stages = ["behavior"]
 
 [hazard_bay_build]
 title = "Rebuild a hazard bay, design and run its fleet"
