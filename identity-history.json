@@ -498,6 +498,12 @@
     "spec_hash": "sha256:7a19fd2daf742a92fb74ec918545fefe6ce4ccdd6191ca5cc16e79bc6f3a7dda"
   },
   {
+    "content_digest": "sha256:58bb89d25d607c75d3cba9f567d200c279447d53b843619968192c57fad85d07",
+    "since": "2026-11-21T01:18:55Z",
+    "slug": "pantry_jar_refilling",
+    "spec_hash": "sha256:19059907e008b01532d94f0fa43fe4077c7358812cceff9d5d3758a279054beb"
+  },
+  {
     "content_digest": "sha256:10adf9451fe296d93f8a2848aac948dd79b4fc9b40654aa7eb530068010edff3",
     "since": "2026-11-21T01:18:47Z",
     "slug": "pantry_jar_refilling",
