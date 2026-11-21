@@ -294,6 +294,12 @@
     "spec_hash": "sha256:d06b4135d5f521e18725939d155f75e62aceb49e0ae15d030fea03c55747a6cf"
   },
   {
+    "content_digest": "sha256:2b3808cc1c5e505b579368d30232566f7a71ab027567ca76bfbcd1b28e2626cb",
+    "since": "2026-11-20T23:15:14Z",
+    "slug": "freeflyer_uncrewed_station_caretaking",
+    "spec_hash": "sha256:ac59bde69254e0de010274d919c326101d8fece9cc20e9093ccd775ac54a2dfe"
+  },
+  {
     "content_digest": "sha256:251b90c248080196b3119bf01b0e8ce81cddc1a4ebe3690e035d8e466f8d2935",
     "since": "2026-11-19T06:49:19Z",
     "slug": "furniture_assembly_from_drawings",
@@ -520,6 +526,12 @@
     "since": "2026-11-17T21:41:19Z",
     "slug": "quadruped_cad_design_from_photos",
     "spec_hash": "sha256:aa97c970e3cbbe9c6f8c3c1d25d7881f1fa315cc126669b894a5d6d0d5b009d1"
+  },
+  {
+    "content_digest": "sha256:d4d5699a1cf4200f5b6c5744fef7dfb9a0fdc5124e8693a74aa0a9af4438e1ac",
+    "since": "2026-11-19T23:54:40Z",
+    "slug": "quadruped_environment_twin_from_real_photos",
+    "spec_hash": "sha256:383367afeeb29cf92ef74414cf1d140e01ae25f4de5520eefff508fbfa185515"
   },
   {
     "content_digest": "sha256:9723dce8cb2e88c56c3c02a2bf6b68bcd44a33253e7b175066048794080450d0",
@@ -1132,6 +1144,12 @@
     "since": "2026-11-18T21:29:09Z",
     "slug": "tensegrity_requirements_replica_from_photos",
     "spec_hash": "sha256:eeeb9216cbe2ba9ce3606c71403d64d261e9bb4d5005bbc2a27d8368891013e2"
+  },
+  {
+    "content_digest": "sha256:3e005cae0d73ecbc3b3dbdced3bcca3f4bb5928c9eed5e76f09a259bb8cbfddc",
+    "since": "2026-11-20T02:50:21Z",
+    "slug": "tensegrity_strut_assembly_3bar_panda",
+    "spec_hash": "sha256:67cab2d26a82bab11c2be953e8230c5631b9f277a5f92ad5ffd575478a0c83b5"
   },
   {
     "content_digest": "sha256:28eb55d0ab4799029c6a6b78521fdf4cfeb67811e4e844c33c95197eb8931745",
