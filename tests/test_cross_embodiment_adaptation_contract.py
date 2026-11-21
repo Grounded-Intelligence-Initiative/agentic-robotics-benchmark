@@ -105,6 +105,11 @@ class Texts(unittest.TestCase):
     def test_session_time(self):
         toml = tomllib.loads((TASK/"task.toml").read_text())
         self.assertEqual(toml["agent"]["timeout_sec"], 7200)
+        sites = len(json.loads((TASK/"tests/hidden/sites.json").read_text())["seeds"])
+        config = json.loads((TASK/"tests/grader_config.json").read_text())
+        self.assertGreaterEqual(toml["verifier"]["timeout_sec"], sites*config["mission_wall_seconds"]+1800)
+        self.assertIn("out of sixteen", self.instruction)
+        self.assertEqual(sites, 16)
         self.assertIn("**2 hours**", self.instruction)
         script = (TASK/"environment/setup/payload/session_time.sh").read_text()
         self.assertIn("120 - used", script)
@@ -150,7 +155,7 @@ class Copies(unittest.TestCase):
     def test_the_graded_set_is_unchanged(self):
         sites = json.loads((TASK/"tests/hidden/sites.json").read_text())["seeds"]
         candidates = json.loads((TASK/"tests/hidden/candidates.json").read_text())["seeds"]
-        self.assertEqual([candidates.index(s) for s in sites], [0, 1, 2, 3, 4, 10, 11, 16])
+        self.assertEqual([candidates.index(s) for s in sites], [0, 1, 2, 3, 4, 10, 11, 16, 5, 6, 7, 8, 9, 12, 13, 14])
         anchor = json.loads((TASK/"tests/anchor.json").read_text())
         self.assertEqual((anchor["value"], anchor["full_at"]), (1.0, 0.98))
 

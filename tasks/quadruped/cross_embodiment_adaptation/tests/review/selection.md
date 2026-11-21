@@ -66,7 +66,7 @@ The rule, written before any site was generated with it:
 | middle rack | two openings (centres 0.66-0.80 m either side of the hall's axis, half-widths 0.42-0.46 m); a 1.2 x 0.8 x 0.14 m pallet on its short edge closes one (bit 30) |
 | pallet moved | bit 27: it stands in the other opening when the Go1 arrives |
 | dock moved | bit 43: 0.10-0.25 m west and 0.10-0.25 m north or south (stream 3706); the beacon moves with it |
-| bollards | eleven in the survey (five round the staging bay, six along the rails); 24 mast exposures a deployment (40 until version 8); bit 37: one of them is gone, or one is added on a rail (stream 3706) |
+| bollards | nine in the survey (five round the staging bay, four along the rails; six along the rails until version 9); 24 mast exposures a deployment (40 until version 8); bit 37: one of them is gone, or one is added on a rail (stream 3706) |
 | odometry | heading error rate within +/-0.80 degrees per second (0.40 until version 8), distance factor 0.94-1.06 (stream 3703) |
 | encoders, IMU | noise 0.002 rad / 0.01 rad/s / 0.01 and constant biases within 0.008 rad / 0.015 rad/s (stream 3705) |
 | UAV tracking | displacement factor 0.97-1.03 (stream 3703) |
@@ -143,3 +143,41 @@ drift changed little: it re-localises often enough. With 24 exposures the progra
 the middle rack and then stands still, which says nothing about the task; with its one constant set to 24 it docks
 7, so fewer fixes do cost it. The chain stopped there; the rail bollards stay six. The oracle and the audit are
 unchanged by the last two steps (the oracle does not use odometry or exposures).
+
+## The graded set grows from eight to sixteen (version 9, 2026-11-21)
+
+A measurement fix, written before any of the new sites was generated or run. With eight sites one site is an
+eighth of the score, and in three versions a fresh program's graded score sat above its level on 32 development
+sites (0.89 against 0.75, 0.64 against 0.41, 0.51 against 0.22). Nothing the agent sees changes except the stated
+number of graded sites.
+
+The rule is the one the set was made by: the candidates of `tests/hidden/candidates.json` in drawn order, each run
+once by the privileged oracle as the grader runs a mission, and a candidate the oracle does not complete is dropped
+and recorded. The second round's two cells described a world that no longer exists and are not applied. The eight
+sites kept so far (orders 0-4, 10, 11, 16) stay, in their places; the next eight are the first eight of the
+remaining orders (5, 6, 7, 8, 9, 12, 13, 14, then 15, 17, ...) that the oracle completes. Anchor and `full_at` are
+unchanged; the verifier's time limit scales with the number of missions.
+
+Result: the oracle completed orders 5, 6, 7, 8, 9, 12, 13 and 14 at the first try (25,850 to 31,040 ticks); none
+was dropped, none beyond 14 was run. They are sites 8 to 15.
+
+| Site | order | pallet moved | dock moved | bollard changed | first fitting |
+|---|---|---|---|---|---|
+| 8 | 5 | yes | yes | yes | deck |
+| 9 | 6 | | | | deck |
+| 10 | 7 | | yes | | duct |
+| 11 | 8 | | | yes | deck |
+| 12 | 9 | yes | yes | | deck |
+| 13 | 12 | yes | | | duct |
+| 14 | 13 | yes | yes | | duct |
+| 15 | 14 | yes | | | duct |
+
+Of the sixteen, three are unchanged since the survey (sites 0, 6, 9).
+
+Re-graded on the sixteen sites without a model call, the version-8 program (4 of 8 on the first eight) docks 7 of
+16. The line set beforehand for taking the re-graded value as the result was 0.40; 7 of 16 is above it, so the
+third step of version 8's chain follows, written here before it is built or run: the rail bollards go from six to
+four (two along each long wall, near x = 2.85 m and x = 4.95 m, each within 0.30 m of that), nine bollards in the
+survey. The audit's line, also set here: at least two caps in view of the mast camera at every 0.4 m of the route
+(two caps with their ranges fix a position and a heading), the pallet in view before the middle rack and the
+beacon before the dock, on every graded site. The oracle has to dock all sixteen.

@@ -1,9 +1,29 @@
-# Review notes: version 8 (maintainers, 2026-11-21)
+# Review notes: version 9 (maintainers, 2026-11-21)
 
 The task: a UAV surveys a warehouse; a loaded Unitree Go1, commanded joint by joint, has to cross it to a dock on
 its first deployment there, crouching under a duct and standing tall over a deck's guides. The survey is out of
 date and not to scale, the Go1's odometry drifts, and each site's robot and fittings differ.
 The graded set and every rule with its range: [selection.md](selection.md).
+
+Version 9 against version 8 (next section): sixteen graded sites instead of eight (a measurement fix: one site is
+a sixteenth of the score), and four bollards along the long walls instead of six (nine in the survey).
+
+## Controls of version 9 (`controls.py`, `replay_submission.py`, `observability.py`)
+
+| controller | graded sites (16) | development sites |
+|---|---|---|
+| oracle (true pose, the site as found) | 16 | 93 of 96 (46 and 47 of 48) |
+| oracle on dead reckoning (true launch pose, then its own odometry) | 0 | |
+| oracle on the surveyed route and dock | 4 (three of them the unchanged sites) | |
+| oracle without stance-height feedback and pitch trim | 9 | |
+| the saved version-8 frontier program (4 of 8 there), replayed: six rail bollards | 7 | 7 of 32 |
+| the same, four rail bollards | 7 | 6 of 32 |
+
+The oracle rows other than the first were measured with six rail bollards; the oracle does not look at them.
+The audit of the mast camera's frames with four rail bollards: at least two caps in view at every 0.4 m of
+the route, the pallet in view before the middle rack and the beacon before the dock, on all sixteen graded sites.
+
+## Version 8 (2026-11-21), kept for the record
 
 Version 8 against version 7 (next section): the lidar stands inside a tubular guard frame and the profiler is a
 line profiler mounted crosswise, which gives the equipment the reach the two boxes of version 6 had; the

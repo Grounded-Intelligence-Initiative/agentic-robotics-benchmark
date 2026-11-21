@@ -106,7 +106,7 @@ def fixtures_and_launch(seed, walls):
     launch = [start.uniform(-.06, .10)+hand*.12, hand*start.uniform(.54, .85),
               -hand*math.radians(start.uniform(42., 70.))]
     # Bollards along both rails of the hall: what the Go1 re-localises on along its way.
-    for nominal in (2.30, 3.95, 5.60):
+    for nominal in (2.85, 4.95):
         for side in (-1, 1):
             posts.append((nominal+fixtures.uniform(-.30, .30), side*rail))
     return posts, launch
