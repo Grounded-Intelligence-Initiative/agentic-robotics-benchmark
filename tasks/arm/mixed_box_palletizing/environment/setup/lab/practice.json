@@ -1,0 +1,256 @@
+{
+ "catalog": {
+  "P01": {
+   "size": [
+    0.398,
+    0.298,
+    0.239
+   ],
+   "mass": 8.0,
+   "com": [
+    0,
+    0
+   ],
+   "stack_limit": 5,
+   "fragile": false,
+   "tone": 3,
+   "brand": "ALVA"
+  },
+  "P02": {
+   "size": [
+    0.597,
+    0.296,
+    0.2
+   ],
+   "mass": 3.5,
+   "com": [
+    0,
+    0
+   ],
+   "stack_limit": 0,
+   "fragile": false,
+   "tone": 1,
+   "brand": "HALDEN"
+  },
+  "P03": {
+   "size": [
+    0.298,
+    0.197,
+    0.199
+   ],
+   "mass": 2.0,
+   "com": [
+    0,
+    0
+   ],
+   "stack_limit": 10,
+   "fragile": true,
+   "tone": 3,
+   "brand": "KESTREL"
+  },
+  "P04": {
+   "size": [
+    0.596,
+    0.397,
+    0.2
+   ],
+   "mass": 14.5,
+   "com": [
+    0,
+    0
+   ],
+   "stack_limit": 40,
+   "fragile": false,
+   "tone": 2,
+   "brand": "MIRO"
+  },
+  "P05": {
+   "size": [
+    0.396,
+    0.197,
+    0.32
+   ],
+   "mass": 6.5,
+   "com": [
+    0,
+    0
+   ],
+   "stack_limit": 40,
+   "fragile": false,
+   "tone": 2,
+   "brand": "NORDIK"
+  },
+  "P06": {
+   "size": [
+    0.598,
+    0.296,
+    0.319
+   ],
+   "mass": 12.0,
+   "com": [
+    0,
+    0
+   ],
+   "stack_limit": 20,
+   "fragile": false,
+   "tone": 3,
+   "brand": "SOLEN"
+  },
+  "P07": {
+   "size": [
+    0.397,
+    0.397,
+    0.199
+   ],
+   "mass": 4.0,
+   "com": [
+    0,
+    0
+   ],
+   "stack_limit": 0,
+   "fragile": true,
+   "tone": 2,
+   "brand": "ALVA"
+  },
+  "P08": {
+   "size": [
+    0.398,
+    0.297,
+    0.2
+   ],
+   "mass": 4.0,
+   "com": [
+    0,
+    0
+   ],
+   "stack_limit": null,
+   "fragile": false,
+   "tone": 1,
+   "brand": "HALDEN"
+  },
+  "P09": {
+   "size": [
+    0.298,
+    0.198,
+    0.319
+   ],
+   "mass": 2.5,
+   "com": [
+    0,
+    0
+   ],
+   "stack_limit": 40,
+   "fragile": false,
+   "tone": 0,
+   "brand": "KESTREL"
+  },
+  "P10": {
+   "size": [
+    0.597,
+    0.397,
+    0.239
+   ],
+   "mass": 8.5,
+   "com": [
+    0,
+    0
+   ],
+   "stack_limit": 40,
+   "fragile": false,
+   "tone": 2,
+   "brand": "MIRO"
+  },
+  "P11": {
+   "size": [
+    0.398,
+    0.196,
+    0.16
+   ],
+   "mass": 4.0,
+   "com": [
+    0,
+    0
+   ],
+   "stack_limit": 20,
+   "fragile": false,
+   "tone": 2,
+   "brand": "NORDIK"
+  },
+  "P12": {
+   "size": [
+    0.598,
+    0.196,
+    0.2
+   ],
+   "mass": 6.5,
+   "com": [
+    -0.05,
+    -0.021
+   ],
+   "stack_limit": 5,
+   "fragile": false,
+   "tone": 0,
+   "brand": "SOLEN"
+  }
+ },
+ "orders": {
+  "p0": [
+   "P04",
+   "P10",
+   "P11",
+   "P07",
+   "P10",
+   "P10",
+   "P04",
+   "P10",
+   "P06",
+   "P07",
+   "P02",
+   "P08",
+   "P09",
+   "P11",
+   "P06",
+   "P01"
+  ],
+  "p1": [
+   "P08",
+   "P06",
+   "P03",
+   "P06",
+   "P09",
+   "P08",
+   "P04",
+   "P04",
+   "P06",
+   "P12",
+   "P05",
+   "P10",
+   "P10",
+   "P05",
+   "P12",
+   "P05",
+   "P09",
+   "P11"
+  ],
+  "p2": [
+   "P10",
+   "P08",
+   "P12",
+   "P05",
+   "P08",
+   "P10",
+   "P12",
+   "P12",
+   "P03",
+   "P05",
+   "P12",
+   "P02",
+   "P05",
+   "P01",
+   "P04",
+   "P10",
+   "P08",
+   "P04"
+  ]
+ }
+}

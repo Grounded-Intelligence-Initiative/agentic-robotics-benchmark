@@ -1,0 +1,18 @@
+{
+ "plugin": "pallet_plugin.py",
+ "instances": "practice.json",
+ "budget": 3,
+ "trial_step_cap": 10000,
+ "trial_wall_s": 3600.0,
+ "idle_timeout_s": 900,
+ "max_connections": 2,
+ "call_timeout_s": 180.0,
+ "env": {
+  "OMP_NUM_THREADS": "1",
+  "MUJOCO_GL": "egl",
+  "PYOPENGL_PLATFORM": "egl",
+  "LP_NUM_THREADS": "2",
+  "MESA_SHADER_CACHE_DISABLE": "true"
+ },
+ "require_seccomp": false
+}
