@@ -16,7 +16,14 @@ RANGES = {
     "friction": (.40, .90),             # sliding friction of every walkable surface
     "duct_clearance_m": (.410, .445),   # underside of the suspended duct above the floor
     "guide_rise_m": (.070, .125),       # crest of the deck's guides above the deck
+    "odom_yaw_drift_deg_s": (-.40, .40),  # leg odometry: a constant yaw-rate error
+    "odom_scale": (.94, 1.06),          # leg odometry: reported distance over true distance
+    "uav_scale": (.97, 1.03),           # survey: reported UAV displacement over true displacement
 }
+# Sensor noise (one standard deviation per reading) and per-site constant biases (uniform within +/- the bound).
+ENCODER_NOISE_RAD, ENCODER_BIAS_RAD = .002, .008
+GYRO_NOISE_RAD_S, GYRO_BIAS_RAD_S = .01, .015
+GRAVITY_NOISE = .01
 SADDLE_KG = .70
 
 
@@ -29,6 +36,9 @@ class Props:
     friction: float
     duct_clearance_m: float
     guide_rise_m: float
+    odom_yaw_drift_deg_s: float
+    odom_scale: float
+    uav_scale: float
 
     def public(self):
         return {**self.__dict__, "servo_gain": list(self.servo_gain)}
@@ -41,4 +51,6 @@ def draw(seed, stream=3703):
     return Props(payload_kg=u("payload_kg"), ballast_x_m=u("ballast_x_m"),
                  servo_gain=tuple(float(v) for v in rng.uniform(*RANGES["servo_gain"], size=12)),
                  torque_scale=u("torque_scale"), friction=u("friction"),
-                 duct_clearance_m=u("duct_clearance_m"), guide_rise_m=u("guide_rise_m"))
+                 duct_clearance_m=u("duct_clearance_m"), guide_rise_m=u("guide_rise_m"),
+                 odom_yaw_drift_deg_s=u("odom_yaw_drift_deg_s"), odom_scale=u("odom_scale"),
+                 uav_scale=u("uav_scale"))

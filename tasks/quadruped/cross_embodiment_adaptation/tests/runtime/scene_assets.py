@@ -19,7 +19,7 @@ def asset_root():
     for candidate in candidates:
         if (candidate/"provenance.json").exists():
             return candidate
-    raise FileNotFoundError("Run prepare_visual_assets.py or fetch_visual_assets.py before rendering")
+    raise FileNotFoundError("the render assets are missing: environment/fetch_assets.py fetches them (environment/assets.sha256)")
 
 
 def vec(values):

@@ -3,7 +3,7 @@ import math
 
 import numpy as np
 
-from articulated import Go1, MAX_SCOUT, MAX_TICKS, Survey, fixtures_and_launch, layout
+from articulated import Go1, MAX_SCOUT, MAX_TICKS, Survey, fixtures_and_launch, layout, site_states
 from mobility import fittings
 from props import draw
 
@@ -14,7 +14,11 @@ class World:
         self.posts, self.launch = fixtures_and_launch(seed, self.walls)
         self.props = draw(seed)
         self.fittings = [] if flat_control else fittings(seed, self.racks, self.props)
-        self.survey = Survey(self.walls, self.goal, self.posts, self.fittings)
+        self.seed = seed
+        self.surveyed, self.found = site_states(seed, self.racks, self.goal, self.posts, self.walls)
+        racks, goal, posts, pallet = self.surveyed
+        self.survey = Survey(self.walls, goal, posts, self.fittings, pallet, self.props.uav_scale)
+        self.racks, self.goal, self.posts, self.pallet = self.found      # what the mission is judged on
         self.go1 = None
         self.phase = self.scout_actions = 0
 
@@ -49,7 +53,7 @@ class World:
             raise ValueError("switch exactly once, after at least four scout moves")
         self.survey.close()
         self.go1 = Go1(self.rng, self.walls, self.goal, self.racks, self.posts, self.launch, self.fittings,
-                       self.props, MAX_TICKS)
+                       self.props, MAX_TICKS, self.pallet, self.seed)
         self.phase = 1
         return self.observe()
 
@@ -116,7 +120,10 @@ class World:
         return {
             "racks": [{"near": r.near, "far": r.far, "wide": list(r.wide),
                        "shortcut": list(r.shortcut) if r.shortcut else None} for r in self.racks],
-            "goal": self.goal.tolist(), "posts": [list(map(float, p)) for p in self.posts],
+            "goal": self.goal.tolist(), "posts": [list(map(float, p)) for p in self.posts if p is not None],
+            "pallet": list(map(float, self.pallet)),
+            "surveyed": {"goal": self.surveyed[1].tolist(), "pallet": list(map(float, self.surveyed[3])),
+                         "posts": [list(map(float, p)) for p in self.surveyed[2]]},
             "fittings": [{"kind": f.kind, "x": f.x, "lo": f.lo, "hi": f.hi, "length": f.length,
                           "clearance": f.clearance, "rise": f.rise} for f in self.fittings],
             "launch": [float(v) for v in self.launch], "props": self.props.public(),
@@ -138,14 +145,21 @@ class Pad:
     launch heading, the mast camera and a tick budget. There is no rack, fitting or dock, no truth, no score
     and no debrief: the observation is the one a graded deployment returns.
     """
-    LOOKS, TICKS = 16, 48000
+    TICKS = 48000
 
     def __init__(self, seed):
         from articulated import fixtures_and_launch as place, layout as lay
         rng, _, _, walls = lay(seed)
         posts, launch = place(seed, walls)
         self.props = draw(seed, stream=3704)
-        self.go1 = Go1(rng, {}, None, [], posts, launch, [], self.props, self.TICKS)
+        # A pallet stack and a dock beacon stand on the pad too, so that seeing them can be commissioned.
+        place = np.random.default_rng([seed & ((1 << 63)-1), 3707])
+        angle = place.uniform(0, 2*math.pi, size=2)
+        reach = place.uniform(1.6, 2.6, size=2)
+        px, py = launch[0]+reach[0]*math.cos(angle[0]), launch[1]+reach[0]*math.sin(angle[0])
+        beacon = np.array([launch[0]+reach[1]*math.cos(angle[1]), launch[1]+reach[1]*math.sin(angle[1])])
+        self.go1 = Go1(rng, {}, None, [], posts, launch, [], self.props, self.TICKS,
+                       (px-.16, px+.16, py-.45, py+.45), seed, tuple(beacon))
         self.phase = 1
 
     @property

@@ -30,6 +30,7 @@ class Walk:
         self.start_ticks = 0
         self.aligned = False
         self.turn_center = None
+        self.origin = None
 
     def wanted_height(self, xy):
         """Trunk height the place asks for: low under a duct, high on a deck, nominal elsewhere."""
@@ -92,9 +93,18 @@ class Walk:
             return self.stand(min(ticks, 32))
 
         co, si = math.cos(yaw), math.sin(yaw)
-        local = np.array([co*delta[0]+si*delta[1], -si*delta[0]+co*delta[1]])
         speed = .108 if where == "floor" else .085
-        wanted = local * min(.62, speed/max(np.linalg.norm(local), 1e-6))
+        # Along the leg to the waypoint at the gait's stride, plus a pull back onto the leg's line: a long
+        # sideways leg in a bay must not creep toward the rack behind.
+        start = self.waypoints[self.index-1] if self.index else self.origin
+        if start is None:
+            start = self.origin = np.array(xy, dtype=float)
+        leg = self.waypoints[self.index]-start
+        along = leg/max(np.linalg.norm(leg), 1e-6)
+        off = (xy-start)-along*float(np.dot(xy-start, along))
+        pull = -off*min(1., .05/max(np.linalg.norm(off), 1e-6)) if np.linalg.norm(off) > .01 else np.zeros(2)
+        world = delta*min(.62, speed/max(np.linalg.norm(delta), 1e-6))+pull
+        wanted = np.array([co*world[0]+si*world[1], -si*world[0]+co*world[1]])
         self.aligned |= abs(yaw) < .13
         if not self.aligned:
             if self.turn_center is None:

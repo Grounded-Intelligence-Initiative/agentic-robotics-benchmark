@@ -31,6 +31,15 @@ RUN SITE=$(/opt/venv/bin/python3 -c "import sysconfig; print(sysconfig.get_paths
     && env -i PATH=/opt/venv/bin:/usr/bin:/bin HOME=/tmp /opt/venv/bin/python3 -I -W error::ImportWarning -c "import os; e = os.environ; assert (e.get('OPENBLAS_NUM_THREADS'), e.get('OMP_NUM_THREADS'), e.get('OPENBLAS_CORETYPE')) == ('1', '1', 'Haswell'), dict(e); import numpy; from numpy._core._multiarray_umath import __cpu_dispatch__ as D, __cpu_features__ as F; off = set(e['NPY_DISABLE_CPU_FEATURES'].split()); assert off == {k for k in D if k.startswith('AVX512')}, D; assert not [k for k in D if F[k] and k in off]; print('[image] arithmetic pin OK')"
 RUN mkdir -p /home/user/submission && chown user:user /home/user/submission
 RUN runuser -u user -- python3 -c "import mujoco; m=mujoco.MjModel.from_xml_string('<mujoco/>'); r=mujoco.Renderer(m,64,64); r.close()"
-COPY visual_assets.json fetch_visual_assets.py /tmp/visual_assets/
-RUN /opt/venv/bin/python3 /tmp/visual_assets/fetch_visual_assets.py /tmp/visual_assets/visual_assets.json /opt/visual_robotics/assets \
-    && chmod 0700 /opt/visual_robotics/assets /tmp/visual_assets
+# ---- task assets: fetched at the dataset commit pinned in assets.sha256, checked file by file (docs/task-assets.md).
+# They are the robot models and textures the service renders with (MuJoCo Menagerie's Go1 and Crazyflie, Poly Haven
+# textures and three baked models; sources and licences: visual_assets/provenance.json and the LICENSE.* files).
+# The agent's account never reads them: the step moves them into a root-only folder and keeps no other copy.
+COPY fetch_assets.py assets.sha256 /opt/task-assets/
+RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload \
+    && mkdir -p /opt/visual_robotics \
+    && mv /opt/task-assets/payload/visual_assets /opt/visual_robotics/assets \
+    && rm -rf /opt/task-assets/payload \
+    && chown -R root:root /opt/visual_robotics/assets && chmod 0700 /opt/visual_robotics/assets \
+    && test -f /opt/visual_robotics/assets/provenance.json \
+    && ! runuser -u user -- ls /opt/visual_robotics/assets >/dev/null 2>&1

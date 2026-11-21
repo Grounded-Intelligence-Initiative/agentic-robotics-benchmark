@@ -44,8 +44,8 @@ class Texts(unittest.TestCase):
     def test_every_range_is_in_the_datasheet(self):
         for key, (lo, hi) in self.ranges.items():
             digits = 3 if key in ("duct_clearance_m", "guide_rise_m") else 2
-            sign = "+" if key == "ballast_x_m" else ""
-            text = "[{}{:.{d}f}, {}{:.{d}f}]".format(sign, lo, sign, hi, d=digits)
+            signed = key in ("ballast_x_m", "odom_yaw_drift_deg_s")
+            text = "[{}, {}]".format(*("{:{s}.{d}f}".format(v, s="+" if signed else "", d=digits) for v in (lo, hi)))
             self.assertIn(text, self.datasheet, key)
 
     def test_the_instruction_states_the_load_and_the_fittings(self):
@@ -57,6 +57,37 @@ class Texts(unittest.TestCase):
         self.assertIn("between {:.3f} and {:.3f} m above the floor".format(lo, hi), self.instruction)
         lo, hi = self.ranges["guide_rise_m"]
         self.assertIn("crest between {:.3f} and {:.3f} m".format(lo, hi), self.instruction)
+
+    def test_the_instruction_states_the_sensing_and_the_changes(self):
+        lo, hi = self.ranges["odom_yaw_drift_deg_s"]
+        self.assertIn("between {:.2f} and +{:.2f} degrees per second".format(lo, hi), self.instruction)
+        lo, hi = self.ranges["odom_scale"]
+        self.assertIn("a factor between {:.2f} and {:.2f} (per site), laid along".format(lo, hi), self.instruction)
+        lo, hi = self.ranges["uav_scale"]
+        self.assertIn("a factor between {:.2f} and {:.2f}".format(lo, hi), self.instruction)
+        noise = _constants(TASK/"tests/runtime/props.py", {"ENCODER_NOISE_RAD", "ENCODER_BIAS_RAD", "GYRO_NOISE_RAD_S",
+                                                            "GYRO_BIAS_RAD_S", "GRAVITY_NOISE"})
+        self.assertIn("`joint_rad` (noise {:.3f} rad, a constant bias within {:.3f} rad per joint)".format(
+            noise["ENCODER_NOISE_RAD"], noise["ENCODER_BIAS_RAD"]), self.instruction)
+        self.assertIn("`gyro_body_rad_s` (noise {:.2f} rad/s, a constant bias within {:.3f} rad/s per axis)".format(
+            noise["GYRO_NOISE_RAD_S"], noise["GYRO_BIAS_RAD_S"]), self.instruction)
+        self.assertIn("(noise {:.2f} per axis)".format(noise["GRAVITY_NOISE"]), self.instruction)
+        scene = _constants(TASK/"tests/runtime/articulated.py", {"PALLET_Z", "BEACON"})
+        self.assertIn("magenta, {:.2f} m tall".format(scene["PALLET_Z"]), self.instruction)
+        self.assertIn("always stands {:.2f} m east and {:.2f} m north of the dock's centre".format(*scene["BEACON"]),
+                      self.instruction)
+        for phrase in ("the pallet stack stands in the middle rack's other opening", "the dock was moved",
+                       "one bollard was taken away, or one was added"):
+            self.assertIn(phrase, self.instruction)
+
+    def test_the_assets_are_pinned(self):
+        listing = (TASK/"environment/assets.sha256").read_text()
+        self.assertRegex(listing, r"# revision: [0-9a-f]{40}\n")
+        self.assertIn("# prefix: tasks/quadruped/cross_embodiment_adaptation/payload", listing)
+        dockerfile = (TASK/"environment/Dockerfile").read_text()
+        self.assertIn("fetch_assets.py /opt/task-assets/assets.sha256", dockerfile)
+        for url in ("polyhaven.org", "githubusercontent", "github.com/google-deepmind"):
+            self.assertNotIn(url, dockerfile)
 
     def test_budgets(self):
         ticks = _constants(TASK/"tests/runtime/articulated.py", {"MAX_TICKS", "MAX_SCOUT", "MAX_LOOKS"})

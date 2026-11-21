@@ -5,11 +5,19 @@ to the blue dock on its first deployment there. The program transfers the route 
 The Go1 has no target map, dock sensor, height command, walking primitive or balance controller: your program
 commands its twelve joints.
 
-Each site's Go1 differs within stated ranges (the load it carries and where the load sits, the stiffness and
-strength of its joints, the floor's friction), and so do the two fittings it has to pass (how low the duct hangs,
-how high the deck's guides rise). None of these values is reported. A program that only replays a gait and
-postures prepared in advance will not fit every site: it has to measure the site from the survey and the robot
-from its own readings there, and correct for them while it walks. `/home/user/robot/go1_datasheet.md` gives the
+Three things make this a job for a program that senses and reacts on site, not for a plan prepared in advance:
+
+- **The survey is out of date and not to scale.** Between the survey and the deployment the site can change: a
+  pallet stack moved from one opening of the middle rack to the other, the dock moved, a bollard taken away or
+  added. The UAV's own tracking over- or under-reads its displacement by a factor that differs per site.
+- **The Go1 does not know where it is.** Its leg odometry drifts in heading and mis-scales distance, its joint
+  encoders and its IMU have noise and bias. It has to find itself again, on its way, from what its mast camera
+  shows.
+- **Each site's Go1 and fittings differ** within stated ranges: the load it carries and where the load sits, the
+  stiffness and strength of its joints, the floor's friction, how low the duct hangs, how high the deck's guides
+  rise.
+
+None of these values is reported. Every range is stated below and in the datasheet. `/home/user/robot/go1_datasheet.md` gives the
 robot's parameters and every range.
 
 ## Session time
@@ -26,10 +34,26 @@ The warehouse workcell is about 8 m by 4 m. The Go1 starts somewhere in the west
 with a yellow east edge is near the east end. Three transverse rack lines separate four bays. The first and
 last rack lines each have a near-centre shortcut and a side passage. Both are real openings, but a clear
 centreline does not mean the Go1's trunk, hips and stepping feet fit. Determine which openings are usable by
-measuring the scene at each rack; the side passage can be north or south independently at the two racks. The
-middle rack forces a return toward the centre. Leave room to align before entering a passage and to clear the
-rack before changing direction. Passage positions, widths and the dock's centre vary. The first frame does not
-show the openings. The orange caps mark actual collision footprints; they do not encode passability.
+measuring the scene at each rack; the side passage can be north or south independently at the two racks. Leave
+room to align before entering a passage and to clear the rack before changing direction. Passage positions,
+widths and the dock's centre vary. The first frame does not show the openings. The orange caps mark actual
+collision footprints; they do not encode passability.
+
+The middle rack has two openings, one north and one south of the centre, each 0.84 to 0.94 m wide. A **pallet
+stack** (magenta, 0.90 m tall, as wide as the opening and a little deeper than the rack) stands in one of them
+and closes it. Touching the stack ends the mission.
+
+**What can have changed when the Go1 arrives** (each on about half of the sites, independently; a site can
+have none or several):
+
+- the pallet stack stands in the middle rack's other opening, so the opening that was free in the survey is
+  closed and the other is free;
+- the dock was moved 0.10 to 0.25 m west and 0.10 to 0.25 m north or south. The **dock beacon**, a post like
+  the bollards with a blue cap (radius 0.105 m, centre 0.72 m above the floor), always stands 0.42 m east and
+  0.50 m north of the dock's centre and moved with it. The mission is judged on the dock where it is;
+- one bollard was taken away, or one was added on a rail.
+
+Nothing else changes: racks, fittings, the other bollards and the bay stay as surveyed.
 
 One wide opening contains a suspended loading duct, the other a raised loading deck; their order varies.
 
@@ -48,18 +72,20 @@ One wide opening contains a suspended loading duct, the other a raised loading d
 Only the UAV uses the survey frame: origin at the UAV's first camera centre projected onto the floor, +X east
 and +Y north. The Go1 is absent during the survey. It deploys with its own launch position and yaw; there is no
 common tracker, compass, launch mark or target pose on the map. To transfer a route, use the same fixed objects
-as seen from above and from the Go1. Around the staging bay are steel bollards with identical green spherical
-safety caps, radius 0.105 m, centres 0.72 m above the floor. Their arrangement varies; the caps carry no
-identifiers.
+as seen from above and from the Go1. Steel bollards with identical green spherical safety caps (radius 0.105 m,
+centres 0.72 m above the floor) stand around the staging bay and along both long walls of the hall, eleven in
+the survey. Their arrangement varies; the caps carry no identifiers.
 
 ## Phase 0: UAV
 
 - `observe()` returns one 256 x 256 nadir RGB PNG in `images` and `tracking_xy_m: [x, y]`. It does not step
-  time. The pinhole camera has a 78-degree vertical field of view and its centre is 1.65 m above the ground.
+  time. `tracking_xy_m` is the UAV's own tracking: its true displacement times a factor between 0.97 and 1.03
+  (per site, the same in x and y). The camera is exact, so two frames of the same object show the factor. The pinhole camera has a 78-degree vertical field of view and its centre is 1.65 m above the ground.
   Image right is +X; image up is +Y. Barrier tops are 0.32 m above the floor. There is no full-site image,
   semantic mask or depth output.
 - `act([dx, dy])` moves the idealized survey UAV at fixed altitude. The displacement's norm cannot exceed
-  0.60 m; the allowed tracking rectangle is `[-0.75, 6.80] x [-1.55, 1.55]`, and a move clips at its edge. The
+  0.60 m (true metres); the allowed rectangle is `[-0.75, 6.80] x [-1.55, 1.55]` (true metres), and a move
+  clips at its edge. The
   action returns a new camera observation. There are 80 moves, counted by `scout_actions_remaining`.
 - In grading, call `advance()` once after at least four scout actions. It retires the UAV for good, deploys
   the Go1 and returns its first observation.
@@ -92,12 +118,17 @@ the legs sag and the trunk pitch under the same joint targets, so the guard and 
 nominal posture would put them. Keep the guard below the duct and the scanner off the floor, the aprons, the
 deck and the guides.
 
-Go1 `observe()`, `advance()` and `act()` return `odom_xy_m` and `odom_yaw_rad`: planar displacement (rounded
-to 1 mm) and counter-clockwise yaw change (wrapped to [-pi, pi]) relative to the **settled launch trunk
-frame**, not to the survey. Both start at zero; initial forward is +x, initial left is +y. The other readings
-are `gravity_body_unit`, `gyro_body_rad_s`, `joint_rad`, `joint_rad_s`, `foot_contact` in leg order and
-`ticks_remaining`. There is no range, absolute heading, absolute position, depth or joint-torque reading.
-`foot_contact` includes contact with the floor, an apron, the deck or a guide.
+Go1 `observe()`, `advance()` and `act()` return `odom_xy_m` and `odom_yaw_rad`: the leg odometry's planar
+displacement (rounded to 1 mm) and counter-clockwise yaw change (wrapped to [-pi, pi]) relative to the
+**settled launch trunk frame**, not to the survey. Both start at zero; initial forward is +x, initial left is
++y. **The odometry drifts:** its heading gains a constant error rate between -0.40 and +0.40 degrees per second
+(per site, also while standing), and it reports each step's length times a factor between 0.94 and 1.06 (per
+site), laid along its own drifting heading. Over a mission that is tens of degrees and tens of centimetres:
+dead reckoning from the launch pose does not reach the dock. The other readings are `gravity_body_unit`
+(noise 0.01 per axis), `gyro_body_rad_s` (noise 0.01 rad/s, a constant bias within 0.015 rad/s per axis),
+`joint_rad` (noise 0.002 rad, a constant bias within 0.008 rad per joint), `joint_rad_s`, `foot_contact` in leg
+order and `ticks_remaining`. There is no range, absolute heading, absolute position, depth or joint-torque
+reading. `foot_contact` includes contact with the floor, an apron, the deck or a guide.
 
 `look(detent)` returns one RGB PNG in `images`, plus `requests_remaining`, with **no physics step**. It does
 not turn the Go1. An ideal pan mount shares one optical centre 0.20 m above the trunk origin along trunk +Z.
@@ -105,7 +136,9 @@ Integer detents 0..7 pan counter-clockwise by `detent * 45` degrees from trunk +
 detent the camera points **36 degrees up** from the trunk's horizontal plane; it tilts with the trunk. Image
 right is clockwise from the pan direction, image up is toward higher elevation. The 256 x 256 undistorted
 pinhole has a 70-degree vertical field of view, principal point (127.5, 127.5) in zero-based pixel-centre
-coordinates, and square pixels. Each deployment allows 16 exposures. Regular Go1 observations carry no image.
+coordinates, and square pixels. The camera sees what stands above its own height: the bollards' green caps,
+the dock beacon's blue cap, the pallet stack, the duct. Each deployment allows 40 exposures. Regular Go1
+observations carry no image.
 Observations in both phases include `phase` (0/1), `done` and `requests_remaining`.
 
 **Budgets per site:** 48,000 physics ticks (96 s of robot time) and 4,000 requests.
@@ -117,7 +150,8 @@ heading within 16 degrees of survey +X, upright (trunk origin above 0.16 m and b
 0.80), below 0.09 m/s linear and 0.35 rad/s angular speed, for 0.45 s continuously. Every other ending scores
 nothing for that site:
 
-- any part of the robot or its saddle touching a barrier, a bollard or the duct;
+- any part of the robot or its saddle touching a barrier, a bollard, the dock beacon, the pallet stack or the
+  duct;
 - the saddle (guard, pedestal, scanner shank or head) touching the floor, an apron, the deck or a guide
   (feet and legs may touch them);
 - a fall: 0.20 s continuously not upright;
@@ -136,8 +170,10 @@ debrief, and the service's code and state are not readable.
 - **Survey sites.** `new_site()` starts another random site with its UAV. `advance()` is refused here: a
   development site has no Go1.
 - **The commissioning pad.** `pad()` starts a pad episode: the loaded Go1 on a bare floor among bollards, with
-  the readings, the mast camera and `act` exactly as on a site, and its own draw of every per-site property
-  from the same ranges (the values are not reported). There is no rack, fitting or dock on the pad. An episode
+  the readings (noise, biases and odometry drift included), the mast camera and `act` exactly as on a site, and
+  its own draw of every per-site property from the same ranges (the values are not reported). A pallet stack
+  (0.32 m by 0.90 m by 0.90 m tall here) and a dock beacon stand somewhere on the pad, 1.6 to 2.6 m from the
+  launch point, so that seeing them can be tried. There is no rack, fitting or dock on the pad. An episode
   ends on a fall, a bollard contact or its tick budget; start the next with `pad()`. The pad's budget for the
   whole session is **40 episodes and 600,000 physics ticks** (20 minutes of robot time); replies carry
   `pad_episodes_remaining` and `pad_ticks_remaining`.

@@ -12,6 +12,8 @@ Run in the task's image as root (the robot models are readable by root only). Co
                            noheight    no stance-height feedback (the sag of a nominal load assumed)
                            notrim      no pitch trim from the gravity reading
                            nominalfit  the fittings' nominal clearances (0.426 m, 0.082 m) instead of the site's
+                           deadreckon  the launch pose from the truth, then the Go1's own (drifting) odometry
+                           surveyroute the route and the dock as surveyed, not as the Go1 finds them
   public                 tests/review/public_reference: UAV survey, cap registration and a gait with nominal
                          postures, all from the public observations; it assumes the nominal load
 
@@ -46,17 +48,35 @@ class Local:
         return self._answer(self.w.observe())
 
     def act(self, action):
-        return self._answer(self.w.act(action))
+        self.last = self._answer(self.w.act(action))
+        return self.last
 
     def look(self, detent):
         return self._answer(self.w.look(detent))
 
     def advance(self):
-        return self._answer(self.w.advance())
+        self.last = self._answer(self.w.advance())
+        return self.last
+
+    mutants = ""
 
     def request(self, method, **_):
         assert method == "truth"
-        return self.w.truth()
+        t = self.w.truth()
+        if "surveyroute" in self.mutants:
+            # The plan of a program that trusts its survey: the opening that was free then, the dock where it was.
+            was = t["surveyed"]["pallet"][2:]
+            middle = t["racks"][1]
+            if abs(was[0]-middle["wide"][0]) < 1e-9:           # the stack stood where the free opening is now
+                middle["wide"] = [v for v in self.w.racks[1].other]
+            t["goal"] = t["surveyed"]["goal"]
+        if "deadreckon" in self.mutants and t["pose"] is not None:
+            import math
+            x0, y0, yaw0 = t["launch_pose"]
+            ox, oy = self.last["odom_xy_m"]
+            c, s = math.cos(yaw0), math.sin(yaw0)
+            t["pose"] = [x0+c*ox-s*oy, y0+s*ox+c*oy, yaw0+self.last["odom_yaw_rad"]]
+        return t
 
 
 def controller(name):
@@ -65,6 +85,7 @@ def controller(name):
         import oracle
         import walk
         mutants = name.split(":")[1] if ":" in name else ""
+        Local.mutants = mutants
         base = walk.Walk
 
         class Mutant(base):
@@ -106,6 +127,8 @@ def main():
             run(robot)
             m = robot.w.metrics()
             row = {"site": i, "outcome": m["target_outcome"], "contact": m["contact_wall"], "part": m["contact_part"],
+                   "moved": [int(robot.w.found[3] != robot.w.surveyed[3]), int(tuple(robot.w.found[1]) != tuple(robot.w.surveyed[1])),
+                             int(robot.w.found[2] != robot.w.surveyed[2])],
                    "ticks": m["target_ticks"], "duct_gap_m": m["min_duct_gap_m"], "deck_feet": m["deck_support_feet"]}
         except Exception as exc:            # a controller that gives up (no route, no registration)
             row = {"site": i, "outcome": "error", "contact": repr(exc)[:80], "part": None, "ticks": 0}

@@ -10,6 +10,7 @@ import numpy as np
 from PIL import Image
 
 from scene_assets import asset_root, geom, materials, robot_meshes, vec
+from props import ENCODER_BIAS_RAD, ENCODER_NOISE_RAD, GRAVITY_NOISE, GYRO_BIAS_RAD_S, GYRO_NOISE_RAD_S
 from mobility import BEVEL, DUCT, PROTECTED, SUPPORT, TERRAIN_BIT, add_fittings, add_load
 
 
@@ -19,9 +20,16 @@ WALL_Z, CAMERA_Z, FOV, PIXELS = .32, 1.65, 78, 256
 MAX_SCOUT, MAX_TICKS, MAX_HOLD = 80, 48000, 40
 DOCK_RADIUS = .17
 POST_Z, POST_R = .72, .105
-MAST_Z, MAST_FOV, MAST_PITCH, MAX_LOOKS = .20, 70, math.radians(36), 16
+MAST_Z, MAST_FOV, MAST_PITCH, MAX_LOOKS = .20, 70, math.radians(36), 40
 LAUNCH_BIT = 1 << 33
 ROUTE_BITS = 3 << 14
+# What changes between the survey and the deployment, by seed bits alone:
+PALLET_BIT = 1 << 30        # which opening of the middle rack the pallet stack closes at survey time
+MOVED_BIT = 1 << 27         # the stack was moved to the other opening afterwards
+DOCK_BIT = 1 << 43          # the dock (with its beacon) was moved afterwards
+POSTS_BIT = 1 << 37         # one bollard was taken away or one was added afterwards
+CHANGE_BITS = PALLET_BIT | MOVED_BIT | DOCK_BIT | POSTS_BIT
+PALLET_Z, BEACON = .90, (.42, .50)      # the stack's height; the beacon's offset from the dock's centre
 
 
 @dataclass(frozen=True)
@@ -30,6 +38,7 @@ class Rack:
     far: float
     wide: tuple
     shortcut: tuple | None = None
+    other: tuple | None = None      # the middle rack's second opening (closed by the pallet stack)
 
     def choice(self, y):
         if self.wide[0] <= y <= self.wide[1]:
@@ -40,7 +49,7 @@ class Rack:
 
 
 def layout(seed):
-    rng = np.random.default_rng(seed & ~(LAUNCH_BIT | ROUTE_BITS | TERRAIN_BIT))
+    rng = np.random.default_rng(seed & ~(LAUNCH_BIT | ROUTE_BITS | TERRAIN_BIT | CHANGE_BITS))
     # Independent uniform seed bits; the fixed evaluation seeds cover each pair twice.
     sides = tuple(1 if (seed >> bit) & 1 else -1 for bit in (14, 15))
     bound = float(rng.uniform(1.86, 1.98))
@@ -66,6 +75,13 @@ def layout(seed):
             shortcut = (center-half, center+half)
         rack = Rack(x-depth/2, x+depth/2, wide, shortcut)
         gaps = sorted((wide, shortcut)) if shortcut else [wide]
+        if i == 1:
+            # Two openings; a pallet stack stands in one of them (which one can change after the survey).
+            south = (-float(rng.uniform(.66, .80)), float(rng.uniform(.42, .47)))
+            north = (float(rng.uniform(.66, .80)), float(rng.uniform(.42, .47)))
+            south, north = ((c-h, c+h) for c, h in (south, north))
+            rack = Rack(x-depth/2, x+depth/2, north, None, south)
+            gaps = [south, north]
         edges = [-bound, *(edge for gap in gaps for edge in gap), bound]
         for j, (lo, hi) in enumerate(zip(edges[::2], edges[1::2])):
             walls[f"rack{i+1}_{j}"] = (rack.near, rack.far, lo, hi)
@@ -75,7 +91,7 @@ def layout(seed):
 
 def fixtures_and_launch(seed, walls):
     # Independent streams: reflecting the launch changes neither rack, fixtures nor servo gains.
-    site = seed & ~(LAUNCH_BIT | ROUTE_BITS | TERRAIN_BIT)
+    site = seed & ~(LAUNCH_BIT | ROUTE_BITS | TERRAIN_BIT | CHANGE_BITS)
     fixtures = np.random.default_rng([site, 3701])
     start = np.random.default_rng([site, 3702])
     hand = 1 if seed & LAUNCH_BIT else -1
@@ -87,7 +103,49 @@ def fixtures_and_launch(seed, walls):
              (fixtures.uniform(.50, 1.00), -bank*rail)]
     launch = [start.uniform(-.06, .10)+hand*.12, hand*start.uniform(.54, .85),
               -hand*math.radians(start.uniform(42., 70.))]
+    # Bollards along both rails of the hall: what the Go1 re-localises on along its way.
+    for nominal in (2.30, 3.95, 5.60):
+        for side in (-1, 1):
+            posts.append((nominal+fixtures.uniform(-.30, .30), side*rail))
     return posts, launch
+
+
+def site_states(seed, racks, goal, posts, walls):
+    """The site as surveyed and as the Go1 finds it: (racks, goal, posts, pallet rectangle) twice.
+
+    Between the two, by seed bits and an independent stream: the pallet stack may have moved to the middle
+    rack's other opening, the dock (with its beacon) may have been moved 0.10-0.25 m west and as far north or south, and
+    one bollard may have been taken away or one added.
+    """
+    site = seed & ~(LAUNCH_BIT | ROUTE_BITS | TERRAIN_BIT | CHANGE_BITS)
+    rng = np.random.default_rng([site, 3706])
+    middle = racks[1]
+    openings = {"north": middle.wide, "south": middle.other}
+    closed = "south" if seed & PALLET_BIT else "north"
+    shift = np.array([-rng.uniform(.10, .25), rng.choice((-1, 1))*rng.uniform(.10, .25)])     # west; north or south
+    take = int(rng.integers(len(posts)))
+    add = bool(rng.integers(2))
+    rail = sum(walls["north"][2:])/2
+    extra = None
+    while extra is None or min(math.dist(extra, post) for post in posts) < .60:
+        extra = (float(rng.uniform(.6, 6.0)), float(rng.choice((-1, 1))*rail))
+
+    def state(closed_now, goal_now, posts_now):
+        other = "north" if closed_now == "south" else "south"
+        rack = Rack(middle.near, middle.far, openings[other], None, openings[closed_now])
+        pallet = (middle.near-.03, middle.far+.03, *openings[closed_now])
+        return [racks[0], rack, racks[2]], goal_now, posts_now, pallet
+
+    survey = state(closed, goal, list(posts))
+    closed_then = ("north" if closed == "south" else "south") if seed & MOVED_BIT else closed
+    posts_then = list(posts)
+    if seed & POSTS_BIT:
+        if add:
+            posts_then.append(extra)
+        else:
+            posts_then[take] = None       # keeps the others' names; a missing post is not built
+    mission = state(closed_then, goal+shift if seed & DOCK_BIT else goal, posts_then)
+    return survey, mission
 
 
 def rotation2(yaw):
@@ -95,7 +153,7 @@ def rotation2(yaw):
     return np.array([[c, -s], [s, c]])
 
 
-def scene(root, walls, goal, posts, fittings):
+def scene(root, walls, goal, posts, fittings, pallet=None, beacon=None):
     world = root.find("worldbody")
     materials(root)
     ET.SubElement(world, "geom", name="floor", type="plane", size="6 5 .1",
@@ -113,8 +171,23 @@ def scene(root, walls, goal, posts, fittings):
         geom(world, "dock", pos=(*goal, .002), size=(.29, .28, .002), rgba=(.035, .28, .89, 1))
         geom(world, "dock_nose", pos=(goal[0]+.261, goal[1], .005), size=(.026, .26, .001),
              rgba=(.88, .81, .09, 1))
+        beacon = (goal[0]+BEACON[0], goal[1]+BEACON[1])
+    if beacon is not None:
+        # The dock's beacon: a blue cap at the bollards' height, at a fixed offset from the dock's centre.
+        bx, by = beacon
+        geom(world, "dock_beacon_stem", "cylinder", (bx, by, POST_Z/2), (.06, POST_Z/2),
+             rgba=(.46, .47, .45, 1), contype=1, conaffinity=1)
+        geom(world, "dock_beacon_cap", "sphere", (bx, by, POST_Z), (POST_R,),
+             rgba=(.06, .25, .92, 1), contype=1, conaffinity=1)
+    if pallet is not None:
+        x0, x1, y0, y1 = pallet
+        geom(world, "pallet_stack", pos=((x0+x1)/2, (y0+y1)/2, PALLET_Z/2),
+             size=((x1-x0)/2, (y1-y0)/2, PALLET_Z/2), rgba=(.80, .10, .62, 1), contype=1, conaffinity=1)
     add_fittings(root, world, fittings)
-    for i, (x, y) in enumerate(posts):
+    for i, post in enumerate(posts):
+        if post is None:
+            continue
+        x, y = post
         geom(world, f"bollard{i}_stem", "cylinder", (x, y, POST_Z/2), (.06, POST_Z/2),
              rgba=(.46, .47, .45, 1), contype=1, conaffinity=1)
         geom(world, f"bollard{i}_cap", "sphere", (x, y, POST_Z), (POST_R,),
@@ -129,9 +202,10 @@ def image64(rgb):
 
 
 class Survey:
-    def __init__(self, walls, goal, posts, fittings):
+    def __init__(self, walls, goal, posts, fittings, pallet=None, scale=1.):
         root = ET.fromstring('<mujoco><asset/><worldbody/></mujoco>')
-        world = scene(root, walls, goal, posts, fittings)
+        world = scene(root, walls, goal, posts, fittings, pallet)
+        self.scale = scale
         uav = ET.SubElement(world, "body", name="uav", mocap="true",
                             pos=vec((0, 0, CAMERA_Z+.12)))
         robot_meshes(root, uav, "drone")
@@ -155,7 +229,8 @@ class Survey:
             mujoco.mj_forward(self.model, self.data)
             self.renderer.update_scene(self.data, camera="down")
             self.cached = image64(self.renderer.render())
-        return {"tracking_xy_m": self.xy.tolist(), "images": [self.cached]}
+        # The UAV's own tracking over-reads or under-reads its displacement by the site's factor.
+        return {"tracking_xy_m": (self.scale*self.xy).round(4).tolist(), "images": [self.cached]}
 
     def close(self):
         if self.renderer is not None:
@@ -164,11 +239,13 @@ class Survey:
 
 
 class Go1:
-    def __init__(self, rng, walls, goal, racks, posts, launch, fittings, props=None, budget=MAX_TICKS):
+    def __init__(self, rng, walls, goal, racks, posts, launch, fittings, props=None, budget=MAX_TICKS,
+                 pallet=None, sense_seed=0, beacon=None):
         spec = asset_root()/"unitree_go1/go1.xml"
         root = ET.parse(spec).getroot()
         root.find("compiler").set("meshdir", str(spec.parent/"assets"))
-        scene(root, walls, goal, posts, fittings)
+        scene(root, walls, goal, posts, fittings, pallet, beacon)
+        has_dock = goal is not None or beacon is not None
         if goal is None:
             goal = np.array([1e3, 0.])      # no dock: the dock test can never hold
         trunk = root.find(".//body[@name='trunk']")
@@ -190,7 +267,12 @@ class Go1:
         self.budget = int(budget)
         self.trunk = model.body("trunk").id
         self.floor = model.geom("floor").id
-        obstacles = [*walls, *(f"bollard{i}_{part}" for i in range(len(posts)) for part in ("cap", "stem"))]
+        obstacles = [*walls, *(f"bollard{i}_{part}" for i, post in enumerate(posts) if post is not None
+                               for part in ("cap", "stem"))]
+        if has_dock:
+            obstacles.extend(("dock_beacon_stem", "dock_beacon_cap"))
+        if pallet is not None:
+            obstacles.append("pallet_stack")
         if any(f.kind == "duct" for f in fittings):
             obstacles.extend(DUCT)
         self.wall_ids = {model.geom(name).id: name for name in obstacles}
@@ -224,6 +306,15 @@ class Go1:
         self.origin = self.xy.copy()
         self.origin_yaw = self.heading
         self.world_to_odom = rotation2(-self.origin_yaw)
+        # Sensing: leg odometry that drifts (a yaw-rate error and a distance factor, constant per site),
+        # encoders and an IMU with noise and constant biases. The stream is the site's, not the layout's.
+        self.sense = np.random.default_rng([int(sense_seed) & ((1 << 63)-1), 3705])
+        self.encoder_bias = self.sense.uniform(-ENCODER_BIAS_RAD, ENCODER_BIAS_RAD, size=12)
+        self.gyro_bias = self.sense.uniform(-GYRO_BIAS_RAD_S, GYRO_BIAS_RAD_S, size=3)
+        self.odom_drift = math.radians(props.odom_yaw_drift_deg_s) if props else 0.
+        self.odom_scale = props.odom_scale if props else 1.
+        self.odom_xy = np.zeros(2)
+        self.odom_yaw = 0.
         self.renderer = None
         self.looks = 0
         self.goal = goal
@@ -284,13 +375,14 @@ class Go1:
                 self.fitting_cleared.add(f.kind)
 
     def observe(self):
-        relative = self.heading-self.origin_yaw
+        noise = self.sense.normal
+        gravity = -self.rotation[2]+noise(0., GRAVITY_NOISE, size=3)
         return {
-            "odom_xy_m": (self.world_to_odom @ (self.xy-self.origin)).round(3).tolist(),
-            "odom_yaw_rad": round(math.atan2(math.sin(relative), math.cos(relative)), 4),
-            "gravity_body_unit": (-self.rotation[2]).round(5).tolist(),
-            "gyro_body_rad_s": self.data.qvel[3:6].round(4).tolist(),
-            "joint_rad": self.data.qpos[7:].round(4).tolist(),
+            "odom_xy_m": self.odom_xy.round(3).tolist(),
+            "odom_yaw_rad": round(math.atan2(math.sin(self.odom_yaw), math.cos(self.odom_yaw)), 4),
+            "gravity_body_unit": (gravity/np.linalg.norm(gravity)).round(5).tolist(),
+            "gyro_body_rad_s": (self.data.qvel[3:6]+self.gyro_bias+noise(0., GYRO_NOISE_RAD_S, size=3)).round(4).tolist(),
+            "joint_rad": (self.data.qpos[7:]+self.encoder_bias+noise(0., ENCODER_NOISE_RAD, size=12)).round(4).tolist(),
             "joint_rad_s": self.data.qvel[6:].round(4).tolist(),
             "foot_contact": [foot in self.contacts for foot in self.feet],
             "ticks_remaining": self.budget-self.ticks,
@@ -342,11 +434,16 @@ class Go1:
         self.actions += 1
         self.data.ctrl[:] = target
         for _ in range(ticks):
-            last = self.xy.copy()
+            last, last_heading = self.xy.copy(), self.heading
             mujoco.mj_step(self.model, self.data)
             mujoco.mj_kinematics(self.model, self.data)
             self.ticks += 1
             self.travel += float(np.linalg.norm(self.xy-last))
+            # Leg odometry: the body-frame step, scaled, laid along a heading that drifts.
+            turn = self.heading-last_heading
+            self.odom_yaw += math.atan2(math.sin(turn), math.cos(turn))+self.odom_drift*self.model.opt.timestep
+            step = rotation2(-last_heading) @ (self.xy-last)
+            self.odom_xy += self.odom_scale*(rotation2(self.odom_yaw) @ step)
             self.max_x = max(self.max_x, float(self.xy[0]))
             self.record_passages()
             self.record_fittings()

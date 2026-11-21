@@ -93,7 +93,8 @@ class Runtime:
                 if params:
                     raise ValueError("pad takes no parameters")
                 return self._answer(self._pad())
-            self.requests += 1
+            if method != "truth":       # the oracle's privileged call is outside a mission's request budget
+                self.requests += 1
             if self.requests > REQUESTS:
                 self.exhausted = True
                 raise ValueError(f"this mission's {REQUESTS} requests are spent; it has ended")

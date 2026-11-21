@@ -16,7 +16,8 @@ APPROACH = .53
 
 
 def route(t):
-    """West to east through the wide opening of every rack, changing aisles in the open bays."""
+    """West to east through the open wide opening of every rack (the middle rack's is the one the pallet
+    stack does not stand in), changing aisles in the open bays."""
     racks = t["racks"]
     deck_x = [f["x"] for f in t["fittings"] if f["kind"] == "deck"]
     is_deck = [any(r["near"]-.12 < x < r["far"]+.12 for x in deck_x) for r in racks]
@@ -39,15 +40,12 @@ def mission(robot, token):
     for step in ([.3, 0.], [.3, 0.], [-.3, 0.], [-.3, 0.]):       # the switch needs four scout moves
         obs = robot.act(step)
     obs = robot.advance()
-    t = robot.request("truth", token=token)
-    x0, y0, yaw0 = t["launch_pose"]
-    c, s = math.cos(yaw0), math.sin(yaw0)
+    t = robot.request("truth", token=token)       # the site as the Go1 finds it, not as it was surveyed
     walk = Walk(route(t), t["fittings"])
     while not obs["done"]:
-        ox, oy = obs["odom_xy_m"]
-        xy = np.array([x0+c*ox-s*oy, y0+s*ox+c*oy])
-        yaw = yaw0+obs["odom_yaw_rad"]
-        obs = robot.act(walk.action(xy, math.atan2(math.sin(yaw), math.cos(yaw)), obs))
+        # The Go1's own odometry drifts and its survey is out of date: the oracle steers on its true pose.
+        x, y, yaw = robot.request("truth", token=token)["pose"]
+        obs = robot.act(walk.action(np.array([x, y]), yaw, obs))
 
 
 if __name__ == "__main__":

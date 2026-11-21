@@ -1,4 +1,43 @@
-# Review notes: version 5 (maintainers, 2026-11-20)
+# Review notes: version 6 (maintainers, 2026-11-21)
+
+The task: a UAV surveys a warehouse; a loaded Unitree Go1, commanded joint by joint, has to cross it to a dock on
+its first deployment there, crouching under a duct and standing tall over a deck's guides. The survey is out of
+date and not to scale, the Go1's odometry drifts, and each site's robot and fittings differ.
+The graded set and every rule with its range: [selection.md](selection.md).
+
+## Why version 6
+
+Version 5 (below) took away a rule no grader could check, gave the agent a commissioning pad and a datasheet and
+made each site's load and clearances differ. One frontier episode on it scored 7 of 8 in 41 of 120 minutes: told
+the ranges, the model built a faithful simulation, measured the two clearances and ran a prepared plan with two
+corrections. Version 6 makes the mission need perception and reaction on site that a prepared plan cannot hold:
+
+| | version 5 | version 6 |
+|---|---|---|
+| the survey | exact, and still true at deployment | its tracking mis-scales (0.97-1.03); by deployment a pallet stack may stand in the middle rack's other opening, the dock may have moved (its beacon with it), a bollard may be gone or added |
+| the Go1's pose | ideal odometry from the launch pose | leg odometry with a heading error rate within 0.40 degrees per second and a distance factor 0.94-1.06; encoders and IMU with noise and bias |
+| landmarks | five bollards round the staging bay, 16 exposures | eleven bollards round the bay and along the hall, a dock beacon, the pallet stack; 40 exposures |
+| the pad | the loaded Go1 among bollards | the same with the sensing's noise and drift, a pallet stack and a beacon to look at |
+| assets | fetched from their sources at build | from the benchmark's asset dataset at a pinned commit |
+
+## Controls of version 6 (`controls.py`, `replay_submission.py`, `observability.py`)
+
+| controller | graded sites (8) | development sites |
+|---|---|---|
+| oracle (true pose, the site as found) | 8 | 91 of 96 |
+| oracle on dead reckoning (true launch pose, then its own odometry) | 1 | |
+| oracle on the surveyed route and dock | 2 (the two unchanged sites) | |
+| oracle without stance-height feedback and pitch trim | 4 | |
+| oracle with the fittings' nominal clearances | 4 | |
+| the saved version-5 frontier program (7 of 8 there), replayed | 1 | 3 of 32 |
+| the saved v8 frontier program, replayed | 0 | 0 of 32 |
+
+The oracle uses 24,634 to 32,228 ticks of 48,000 on the graded sites; its slowest development site takes
+35,904 (two of the 96 run out of ticks, one falls, two touch the floor with the scanner under a low duct). What a program restricted to the stated sensors has to work with is audited in `observability.py`
+(selection.md has the numbers). A saved program's replay is a lower bound on what a change does to a fresh agent,
+not an estimate: version 5's replay of the v8 program said 8 of 32 and the fresh episode scored 7 of 8.
+
+## Version 5 (2026-11-20), kept for the record
 
 The task: a UAV surveys an unknown warehouse; a loaded Unitree Go1, commanded joint by joint, has to cross it to
 a dock on its first deployment there, crouching under a suspended duct and standing tall over a deck's guides.

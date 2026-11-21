@@ -59,11 +59,21 @@ underside) and 1.4 mm above the centre guide's crest (the deck is 0.065 m above 
 
 | reading | what it is |
 |---|---|
-| `joint_rad`, `joint_rad_s` | joint angles and speeds, rounded to 1e-4 |
-| `gravity_body_unit` | unit vector of gravity in the trunk frame, rounded to 1e-5 |
-| `gyro_body_rad_s` | trunk angular velocity in the trunk frame, rounded to 1e-4 |
+| `joint_rad` | joint angles: noise 0.002 rad (one standard deviation per reading), a constant bias per joint within 0.008 rad, rounded to 1e-4 |
+| `joint_rad_s` | joint speeds, rounded to 1e-4 |
+| `gravity_body_unit` | unit vector of gravity in the trunk frame: noise 0.01 per axis before normalising, rounded to 1e-5 |
+| `gyro_body_rad_s` | trunk angular velocity in the trunk frame: noise 0.01 rad/s, a constant bias per axis within 0.015 rad/s, rounded to 1e-4 |
 | `foot_contact` | per foot: touching the floor, an apron, the deck or a guide |
-| `odom_xy_m`, `odom_yaw_rad` | displacement (rounded to 1 mm) and yaw change since the settled launch pose, in the launch frame |
-| mast camera | 256 x 256 RGB pinhole, 70 degree vertical field of view, 0.20 m above the trunk origin, 36 degrees up, eight pan detents of 45 degrees |
+| `odom_xy_m`, `odom_yaw_rad` | leg odometry since the settled launch pose, in the launch frame: each step's body-frame displacement times a distance factor, laid along the odometry's own heading; that heading is the true yaw change plus a constant error rate |
+| odometry heading error rate | **per site in [-0.40, +0.40] degrees per second**, also while standing |
+| odometry distance factor | **per site in [0.94, 1.06]** |
+| mast camera | 256 x 256 RGB pinhole, 70 degree vertical field of view, 0.20 m above the trunk origin, 36 degrees up, eight pan detents of 45 degrees; exact, no noise; 40 exposures per deployment |
 
-No reading has noise or delay beyond the rounding. There is no joint torque, range, depth or absolute pose reading.
+There is no joint torque, range, depth or absolute pose reading.
+
+## Survey UAV
+
+| quantity | value |
+|---|---|
+| nadir camera | 256 x 256 RGB pinhole, 78 degree vertical field of view, 1.65 m above the floor; exact |
+| `tracking_xy_m` | the UAV's true displacement times a factor, **per site in [0.97, 1.03]** |
