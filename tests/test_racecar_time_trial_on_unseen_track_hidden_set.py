@@ -1,10 +1,11 @@
 """racecar_time_trial_on_unseen_track: the repository-level test that guards the hashes of the hidden set.
 
-The hidden set was drawn by a pre-registered selection rule (tests/hidden/selection.prereg.json; the same rule is
-quoted in tests/hidden/selection.json under rule). Its item 8, FROZEN AFTER SELECTION, says that the six world files,
-the six reference records, tests/anchor.json, tests/review/observability.json, the completed selection.json and the
-oracle token's sha256 are frozen by sha256, and that "a repository-level pytest guards the hashes". This is that test,
-and it checks nothing else:
+The hidden set was drawn by a pre-registered selection rule (tests/hidden/selection.prereg.json; the rule is quoted in
+tests/hidden/selection.json under rule, one citation reworded by the record's recorded change 2). Its item 8, FROZEN
+AFTER SELECTION, has the same text in both and says that the six world files, the six reference records,
+tests/anchor.json, tests/review/observability.json, the completed selection.json and the oracle token's sha256 are
+frozen by sha256, and that "a repository-level pytest guards the hashes". This is that test, and it checks nothing
+else:
 
 (a) every file of the record's frozen_after_selection_sha256 table exists and has the sha256 the table gives; the
     table is read from the record, so the test follows the record, and the table holds the world file and the
