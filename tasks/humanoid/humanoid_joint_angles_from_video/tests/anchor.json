@@ -1,0 +1,8 @@
+{
+  "metric": "keypoint_accuracy_5cm",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 1.0,
+  "source": "privileged oracle (solution/ref holds the true joint angles of every test recording): measured keypoint_accuracy_5cm = 1.0 in the oracle episode of `ale validate` run validate-031b374e (engine bfb7505, 2026-11-17; the image fetched the assets from the dataset at the pinned commit)",
+  "note": "The oracle is the ground truth, so it is deterministic and scores 1.0 on every recording (also checked by the author's packaging script before every build); full_at 1.0 makes the reward equal to the metric. The test list is the 24 recordings of tests/ref/recordings.json; any change to it requires a new oracle run."
+}
