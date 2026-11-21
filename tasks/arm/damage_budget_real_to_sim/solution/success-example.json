@@ -1,0 +1,19 @@
+{
+  "kind": "arm",
+  "seed": 101,
+  "source_sha256": "5b5d1238c48a09bf1db65f438e9f988c7f8606e60020895075bb111f4e12fa62",
+  "mode": "scripted_visual_reference",
+  "success": 1.0,
+  "steps": 70,
+  "collisions": 0,
+  "damage_cost": 0,
+  "completed_stages": 0,
+  "reports": 0,
+  "hover_seconds": 0.0,
+  "scout_actions": 0,
+  "post_switch_actions": 0,
+  "stage_0_actions": 70,
+  "reviewer_view": true,
+  "hardware_accuracy_claim": false,
+  "video_playback": "Sampled every three actions at 5 fps; approximately 3x simulated time."
+}
