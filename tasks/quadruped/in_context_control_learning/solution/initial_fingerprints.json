@@ -1,0 +1,134 @@
+{
+  "version": 4,
+  "privileged": true,
+  "runtime_sha256": {
+    "world.py": "e0c8a2fec8e42eb8ac8747373ff1e59d02a54b5ae1621a887454f9254c898164",
+    "service.py": "1d3881e70d7cca1a7c517535a79247cce40c0b0f33e29567c5f8506f56df928b",
+    "geometry.py": "cf4db0fac7a4131c9fe29872f4ab243cb67d00393109cd10935d18b2be3e17c4",
+    "scene_assets.py": "fa88c5f590f0930d89e28778f05588aa2e9eb531f11dd5dff10e261a3057c3ea",
+    "pbr_scene.py": "4e4aee9b33f20436c451b0b4af5ae18a277448c0d7ba17477db3e9dcbbdaedc7",
+    "pbr_renderer.py": "9d73722325be6264b3b4a9aa80627b4a3a43049d8a7546569ffbed9e04c43eae"
+  },
+  "scenes": [
+    {
+      "seed": 1699855537204788234,
+      "scene_index": 0,
+      "image_sha256": "52940c41afe8a50569a2bb8711264c94a518260c0065475948b38ab6c0d2e8ea"
+    },
+    {
+      "seed": 2229355922383608593,
+      "scene_index": 1,
+      "image_sha256": "6cfa1ed6fc3dbc124efce93f4243b0855cd69bebc4a017d0b5efb936db4ee7ba"
+    },
+    {
+      "seed": 3117854851712573436,
+      "scene_index": 2,
+      "image_sha256": "73458edb3dc0a811357c229f18cc69a6f649217d6e804873501df779afd124f3"
+    },
+    {
+      "seed": 3844522432398454582,
+      "scene_index": 3,
+      "image_sha256": "ab9906003f24711ba73854ce8fa1139f0a4e468d1784e9b15b1a79ca5ccf4025"
+    },
+    {
+      "seed": 5358468817331554115,
+      "scene_index": 4,
+      "image_sha256": "d74cf5fa78d3d5885b194fc26747f5a76a20acebdb28ef6056f876b2af007370"
+    },
+    {
+      "seed": 8256325635783275887,
+      "scene_index": 5,
+      "image_sha256": "c0369ea2a2dcaf8972900b93d581dbb66b3f2efdcbeb7e577f87f0e89d25710a"
+    },
+    {
+      "seed": 7486190170843835708,
+      "scene_index": 6,
+      "image_sha256": "95c9d6d7f0763bc071eda30d85860cb8e307137f917477b5600090760dc2612d"
+    },
+    {
+      "seed": 6487103681315208801,
+      "scene_index": 7,
+      "image_sha256": "5cf9331b23f35f8c693e8a79ed9f459e9c705147ecf278fae1bb4bab9f83b4bf"
+    },
+    {
+      "seed": 7008912512945993465,
+      "scene_index": 8,
+      "image_sha256": "b7de18568bf12545a4ff364e396265dea970b809a90f10fd4dfb24ad86403c34"
+    },
+    {
+      "seed": 6426941193577259544,
+      "scene_index": 9,
+      "image_sha256": "35a6870f9d38e6ad602a8aa26a5266880f693163919c01a89b9e1147ac2ec65f"
+    },
+    {
+      "seed": 8282708109924863688,
+      "scene_index": 10,
+      "image_sha256": "04412d0fb746e853a20ff56e15c24dd89b65797607b664fff8148c4f4df9e47c"
+    },
+    {
+      "seed": 3927891534065958740,
+      "scene_index": 11,
+      "image_sha256": "4fcca4b2b7f27f278ee6382f4503746b9910696c8ba308e9bbfdc7b7c5cf6c63"
+    },
+    {
+      "seed": 1899218268343959738,
+      "scene_index": 12,
+      "image_sha256": "038746b9c3508bed292730979124822710b01038282067db77cbf2d7708b5f5e"
+    },
+    {
+      "seed": 4976586442693875003,
+      "scene_index": 13,
+      "image_sha256": "f75838ed8912075866f88a6cd87f6b36c110722427d987237911cd766d5bbd9b"
+    },
+    {
+      "seed": 930144766065130625,
+      "scene_index": 14,
+      "image_sha256": "d0046a35d7844a2afcfb5280e39fa3bc177ef4a8e2979befdbdf228bf6cb2b0b"
+    },
+    {
+      "seed": 4408654623223221836,
+      "scene_index": 15,
+      "image_sha256": "f7dc5f4ac6a129c36fe24397643abb26cd4708e6ace293ed11535149a82abf53"
+    },
+    {
+      "seed": 5087031924090582304,
+      "scene_index": 16,
+      "image_sha256": "2c1b85a64fcd378994e080dbcca17667b6452a0b7840fa31fb0f1d0d18aea058"
+    },
+    {
+      "seed": 589126828417516926,
+      "scene_index": 17,
+      "image_sha256": "e6e5a7f9b19327c17db9a2253c023d38b49c9c95440a8689a06abe89f44e5be3"
+    },
+    {
+      "seed": 554429870211672892,
+      "scene_index": 18,
+      "image_sha256": "09d172afb9cb7a25eacbda51bb8367c20f62c9637f5d6d2b4db2111952809f8f"
+    },
+    {
+      "seed": 8971839241458793674,
+      "scene_index": 19,
+      "image_sha256": "60a72a8381280eb5ce42f646adf762e37949e0d074dfa3457a0b71ee45924bda"
+    },
+    {
+      "seed": 912429114641010550,
+      "scene_index": 20,
+      "image_sha256": "892c9a33d5d45f2a04400d1a672ad203904597f54464ef03501e7799bdc9a902"
+    },
+    {
+      "seed": 8381297888461407884,
+      "scene_index": 21,
+      "image_sha256": "aefe1425da46613ba81f86f4d9876ccb101f9937e270534c19603b15f45fa4d3"
+    },
+    {
+      "seed": 7135684410157558345,
+      "scene_index": 22,
+      "image_sha256": "32337a4b515e043ae79a2993807579663b108cb928c68c55b63230ca29e17d02"
+    },
+    {
+      "seed": 457859454069351470,
+      "scene_index": 23,
+      "image_sha256": "49e9c9012d3818814ad92f7d35191054fac68916249bc3d85749ecd577152742"
+    }
+  ]
+}

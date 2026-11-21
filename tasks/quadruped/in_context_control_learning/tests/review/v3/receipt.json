@@ -1,0 +1,18 @@
+{
+  "version": 3,
+  "argv": [
+    "/task/tests/review/privileged_reference.py",
+    "--all-hidden",
+    "--output",
+    "/evidence/hidden24-initial"
+  ],
+  "all_hidden": true,
+  "source_sha256": {
+    "tests/world.py": "ffe7b9323170f10f119da0179eda13bdc4a021d9cd2ad181a19b69615b9f0e13",
+    "tests/service.py": "91660459255f6aee6f55b079216e68b3a13e9fad9a2be54693c3e4ec22142573",
+    "tests/grader.py": "17697dfcf86ae999173d6c6d7a6c5287d5e1b11056e1e95ea1000ed65aa4be2b",
+    "tests/hidden_scenes.json": "830082139975b5fc35b5089fd8a58f8d725c778bd64e74863b9b0829681e802b",
+    "solution/privileged.py": "4322a90323de07241c0dad353ee6b6e16666fd93dd7e6042a60df7beb96886c8",
+    "tests/review/privileged_reference.py": "bd1adae60787792d33fa0ca16725038dc832f6b78cc66a28d1fdeeaa1db87225"
+  }
+}
