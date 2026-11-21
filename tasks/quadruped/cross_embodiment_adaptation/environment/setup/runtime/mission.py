@@ -145,7 +145,7 @@ class Pad:
         rng, _, _, walls = lay(seed)
         posts, launch = place(seed, walls)
         self.props = draw(seed, stream=3704)
-        self.go1 = Go1(rng, {}, np.array([1e3, 0.]), [], posts, launch, [], self.props, self.TICKS)
+        self.go1 = Go1(rng, {}, None, [], posts, launch, [], self.props, self.TICKS)
         self.phase = 1
 
     @property

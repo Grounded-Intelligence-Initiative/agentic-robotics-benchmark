@@ -109,9 +109,10 @@ def scene(root, walls, goal, posts, fittings):
         # Painted caps mark the exact footprints; no geometry or depth is sent separately.
         geom(world, name+"_paint", pos=(*pos[:2], WALL_Z-.001),
              size=(*size[:2], .0015), rgba=(.90, .18, .045, 1))
-    geom(world, "dock", pos=(*goal, .002), size=(.29, .28, .002), rgba=(.035, .28, .89, 1))
-    geom(world, "dock_nose", pos=(goal[0]+.261, goal[1], .005), size=(.026, .26, .001),
-         rgba=(.88, .81, .09, 1))
+    if goal is not None:        # the commissioning pad has no dock
+        geom(world, "dock", pos=(*goal, .002), size=(.29, .28, .002), rgba=(.035, .28, .89, 1))
+        geom(world, "dock_nose", pos=(goal[0]+.261, goal[1], .005), size=(.026, .26, .001),
+             rgba=(.88, .81, .09, 1))
     add_fittings(root, world, fittings)
     for i, (x, y) in enumerate(posts):
         geom(world, f"bollard{i}_stem", "cylinder", (x, y, POST_Z/2), (.06, POST_Z/2),
@@ -168,6 +169,8 @@ class Go1:
         root = ET.parse(spec).getroot()
         root.find("compiler").set("meshdir", str(spec.parent/"assets"))
         scene(root, walls, goal, posts, fittings)
+        if goal is None:
+            goal = np.array([1e3, 0.])      # no dock: the dock test can never hold
         trunk = root.find(".//body[@name='trunk']")
         add_load(trunk, props)
         for i in range(8):
