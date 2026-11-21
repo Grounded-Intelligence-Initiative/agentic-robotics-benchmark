@@ -2160,7 +2160,8 @@
     "tests/rubblecell/server.py"
    ],
    "what": "after the selection runs, nothing of the physics: (a) the colour images: on every moving body of the robot the geoms of one material are drawn as one mesh (twin.batch_robot) and the sun's shadows are filtered by type 0 (look.LOOK), so that a frame is the same bytes in every process and on every machine; (b) get_state's pose.z carries 1 cm of noise from get_state's own random stream. The reference program reads neither images nor get_state.",
-   "check": "one full reference verify (`ale validate`) on the amended files completes every hidden site with the selection records' mean simulated time to the last digit (tests/anchor.json `source`)"
+   "check": "one full reference verify (`ale validate`) on the amended files completes every hidden site with the selection records' mean simulated time to the last digit (tests/anchor.json `source`)",
+   "result": "validate-ff0d44a6 (2026-11-21 UTC, a clean checkout) on the amended files: 8 of 8 hidden sites at 1.0, mean simulated time 659.0937499978304 s, the selection records' mean to the last digit"
   }
  ]
 }
