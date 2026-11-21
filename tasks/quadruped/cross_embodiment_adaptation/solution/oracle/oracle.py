@@ -17,7 +17,7 @@ APPROACH = .53
 
 def route(t):
     """West to east through the open wide opening of every rack (the middle rack's is the one the pallet
-    stack does not stand in), changing aisles in the open bays."""
+    does not stand in), changing aisles in the open bays."""
     racks = t["racks"]
     deck_x = [f["x"] for f in t["fittings"] if f["kind"] == "deck"]
     is_deck = [any(r["near"]-.12 < x < r["far"]+.12 for x in deck_x) for r in racks]

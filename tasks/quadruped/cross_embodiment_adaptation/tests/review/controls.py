@@ -67,7 +67,7 @@ class Local:
             # The plan of a program that trusts its survey: the opening that was free then, the dock where it was.
             was = t["surveyed"]["pallet"][2:]
             middle = t["racks"][1]
-            if abs(was[0]-middle["wide"][0]) < 1e-9:           # the stack stood where the free opening is now
+            if middle["wide"][0] <= (was[0]+was[1])/2 <= middle["wide"][1]:   # the pallet stood where the free opening is now
                 middle["wide"] = [v for v in self.w.racks[1].other]
             t["goal"] = t["surveyed"]["goal"]
         if "deadreckon" in self.mutants and t["pose"] is not None:

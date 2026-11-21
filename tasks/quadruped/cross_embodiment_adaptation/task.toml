@@ -1,7 +1,7 @@
 # cross_embodiment_adaptation (quadruped): a UAV surveys an unknown warehouse; a loaded Unitree Go1, commanded
 # joint by joint, has to cross it to a dock on its first deployment there, under a duct and over a deck.
 #
-# The survey is out of date when the Go1 arrives (a pallet stack moved to the middle rack's other opening, the dock
+# The survey is out of date when the Go1 arrives (a pallet moved to the middle rack's other opening, the dock
 # moved, a bollard gone or added) and not to scale; the Go1's leg odometry drifts and its encoders and IMU are noisy,
 # so it has to re-localise on what its mast camera shows and re-plan on site. Each site also draws its own load,
 # servo stiffness and strength, floor friction and fitting clearances (tests/runtime/props.py). Every range is in

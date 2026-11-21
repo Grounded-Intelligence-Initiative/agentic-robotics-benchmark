@@ -1,9 +1,33 @@
-# Review notes: version 6 (maintainers, 2026-11-21)
+# Review notes: version 7 (maintainers, 2026-11-21)
 
 The task: a UAV surveys a warehouse; a loaded Unitree Go1, commanded joint by joint, has to cross it to a dock on
 its first deployment there, crouching under a duct and standing tall over a deck's guides. The survey is out of
 date and not to scale, the Go1's odometry drifts, and each site's robot and fittings differ.
 The graded set and every rule with its range: [selection.md](selection.md).
+
+Version 7 is version 6 (next section) with the carried equipment and the barrier in the shapes of real objects: a
+3D lidar head on a mast and a floor profiler under the nose instead of two boxes, a pallet on its short edge
+instead of a block. No rule or range changed. The oracle's step onto a deck's apron is higher than before.
+
+## Controls of version 7 (`controls.py`, `replay_submission.py`, `observability.py`)
+
+| controller | graded sites (8) | development sites |
+|---|---|---|
+| oracle (true pose, the site as found) | 8 | 93 of 96 (47 and 46 of 48) |
+| oracle on dead reckoning (true launch pose, then its own odometry) | 2 | |
+| oracle on the surveyed route and dock | 2 (the two unchanged sites) | |
+| oracle without stance-height feedback and pitch trim | 5 | |
+| oracle with the fittings' nominal clearances | 4 | |
+| the saved version-6 frontier program (1 of 8 there), replayed | 1 | 5 of 32 |
+| the saved version-5 frontier program (7 of 8 there), replayed | 1 | |
+| the saved v8 frontier program, replayed | 0 | |
+
+The oracle uses up to 31,511 ticks of 48,000 on the graded sites and 38,087 on its slowest development site; its
+three development misses are one profiler-on-floor contact under a low duct, one fall and one budget stop on a
+deck's apron. The audit of the mast camera's frames reads as for version 6: at least three caps in view all along
+the route, the pallet before the middle rack and the beacon before the dock, on every graded site.
+
+## Version 6 (2026-11-21), kept for the record
 
 ## Why version 6
 

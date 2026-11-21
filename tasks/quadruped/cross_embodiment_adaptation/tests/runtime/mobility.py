@@ -13,7 +13,13 @@ TERRAIN_BIT = 1 << 39
 SUPPORT = ("deck_table", "deck_west_ramp", "deck_east_ramp", "deck_center_guide",
            "deck_south_shoulder", "deck_north_shoulder")
 DUCT = ("duct_box", "duct_left_shoe", "duct_right_shoe")
-PROTECTED = ("crown_guard", "scanner_head", "scanner_shank", "guard_pedestal")
+# The equipment the Go1 carries (collision envelopes of real devices):
+#   lidar_head       a 3D lidar of the Ouster OS1 class: a cylinder 87 mm in diameter, 74.5 mm tall, 0.447 kg
+#   lidar_mast       its mast, 24 mm in diameter
+#   compute_puck     the compute and IMU unit under the mast, 100 x 80 x 30 mm
+#   profiler_head    a 2D lidar of the SICK TiM561 class used as a floor profiler: 60 x 60 x 86 mm, 0.25 kg
+#   profiler_bracket its bracket under the nose
+PROTECTED = ("lidar_head", "profiler_head", "profiler_bracket", "lidar_mast", "compute_puck")
 
 
 @dataclass(frozen=True)
@@ -41,19 +47,19 @@ def fittings(seed, racks, props=None):
 
 def add_load(trunk, props=None):
     # A fixed child contributes mass and inertia but no joint, actuator or stabilizer.
-    body = ET.SubElement(trunk, "body", name="inspection_saddle")
+    body = ET.SubElement(trunk, "body", name="inspection_equipment")
     if props and props.payload_kg > SADDLE_KG:
-        # The instrument pack on the saddle's rail: mass and inertia only, no collision, not drawn.
-        geom(body, "saddle_ballast", pos=(props.ballast_x_m, 0, .060), size=(.030, .040, .030),
+        # The instrument pack on the trunk's rail: mass and inertia only, no collision, not drawn.
+        geom(body, "instrument_pack", pos=(props.ballast_x_m, 0, .060), size=(.030, .040, .030),
              rgba=(0, 0, 0, 0), mass=props.payload_kg-SADDLE_KG)
-    for name, xyz, half, mass in (
-        ("guard_pedestal", (-.085, 0, .111), (.032, .045, .062), .15),
-        ("crown_guard", (-.055, 0, .183), (.102, .085, .016), .20),
-        ("scanner_shank", (.248, 0, -.087), (.025, .038, .065), .12),
-        ("scanner_head", (.309, 0, -.143), (.084, .088, .020), .23),
+    for name, kind, xyz, size, mass in (
+        ("compute_puck", "box", (0, 0, .072), (.050, .040, .015), .25),
+        ("lidar_mast", "cylinder", (0, 0, .10575), (.012, .01875), .053),
+        ("lidar_head", "cylinder", (0, 0, .16175), (.0435, .03725), .447),      # top 0.199 m above the origin
+        ("profiler_bracket", "box", (.300, 0, -.060), (.075, .020, .010), .10),
+        ("profiler_head", "box", (.360, 0, -.120), (.030, .030, .043), .25),     # bottom 0.163 m below the origin
     ):
-        geom(body, name, pos=xyz, size=half, rgba=(.42, .43, .46, 1), mass=mass,
-             contype=1, conaffinity=1)
+        geom(body, name, kind, xyz, size, rgba=(.42, .43, .46, 1), mass=mass, contype=1, conaffinity=1)
 
 
 def add_fittings(root, world, items):

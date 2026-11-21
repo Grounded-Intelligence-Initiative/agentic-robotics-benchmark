@@ -152,14 +152,14 @@ class Pad:
         rng, _, _, walls = lay(seed)
         posts, launch = place(seed, walls)
         self.props = draw(seed, stream=3704)
-        # A pallet stack and a dock beacon stand on the pad too, so that seeing them can be commissioned.
+        # A pallet on edge and a dock beacon stand on the pad too, so that seeing them can be commissioned.
         place = np.random.default_rng([seed & ((1 << 63)-1), 3707])
         angle = place.uniform(0, 2*math.pi, size=2)
         reach = place.uniform(1.6, 2.6, size=2)
         px, py = launch[0]+reach[0]*math.cos(angle[0]), launch[1]+reach[0]*math.sin(angle[0])
         beacon = np.array([launch[0]+reach[1]*math.cos(angle[1]), launch[1]+reach[1]*math.sin(angle[1])])
         self.go1 = Go1(rng, {}, None, [], posts, launch, [], self.props, self.TICKS,
-                       (px-.16, px+.16, py-.45, py+.45), seed, tuple(beacon))
+                       (px-.07, px+.07, py-.40, py+.40), seed, tuple(beacon))
         self.phase = 1
 
     @property

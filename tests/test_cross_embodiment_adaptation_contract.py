@@ -27,8 +27,9 @@ def _constants(path, names):
     out = {}
     for node in ast.walk(ast.parse(path.read_text())):
         if isinstance(node, ast.Assign):
-            targets = node.targets[0].elts if isinstance(node.targets[0], ast.Tuple) else [node.targets[0]]
-            values = node.value.elts if isinstance(node.value, ast.Tuple) else [node.value]
+            several = isinstance(node.targets[0], ast.Tuple)
+            targets = node.targets[0].elts if several else [node.targets[0]]
+            values = node.value.elts if several and isinstance(node.value, ast.Tuple) else [node.value]
             for target, value in zip(targets, values):
                 if isinstance(target, ast.Name) and target.id in names:
                     out[target.id] = ast.literal_eval(value)
@@ -72,11 +73,13 @@ class Texts(unittest.TestCase):
         self.assertIn("`gyro_body_rad_s` (noise {:.2f} rad/s, a constant bias within {:.3f} rad/s per axis)".format(
             noise["GYRO_NOISE_RAD_S"], noise["GYRO_BIAS_RAD_S"]), self.instruction)
         self.assertIn("(noise {:.2f} per axis)".format(noise["GRAVITY_NOISE"]), self.instruction)
-        scene = _constants(TASK/"tests/runtime/articulated.py", {"PALLET_Z", "BEACON"})
-        self.assertIn("magenta, {:.2f} m tall".format(scene["PALLET_Z"]), self.instruction)
+        scene = _constants(TASK/"tests/runtime/articulated.py", {"PALLET_X", "PALLET_Y", "PALLET_Z", "BEACON"})
+        self.assertIn("(magenta, 1.20 m by 0.80 m by 0.14 m, stood on its short edge so that it is {:.2f} m wide and "
+                      "{:.2f} m tall)".format(scene["PALLET_Y"], scene["PALLET_Z"]), self.instruction)
+        self.assertEqual(scene["PALLET_X"], .14)
         self.assertIn("always stands {:.2f} m east and {:.2f} m north of the dock's centre".format(*scene["BEACON"]),
                       self.instruction)
-        for phrase in ("the pallet stack stands in the middle rack's other opening", "the dock was moved",
+        for phrase in ("the pallet stands in the middle rack's other opening", "the dock was moved",
                        "one bollard was taken away, or one was added"):
             self.assertIn(phrase, self.instruction)
 

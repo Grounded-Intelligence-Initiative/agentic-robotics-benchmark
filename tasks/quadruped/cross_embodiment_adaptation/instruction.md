@@ -8,7 +8,7 @@ commands its twelve joints.
 Three things make this a job for a program that senses and reacts on site, not for a plan prepared in advance:
 
 - **The survey is out of date and not to scale.** Between the survey and the deployment the site can change: a
-  pallet stack moved from one opening of the middle rack to the other, the dock moved, a bollard taken away or
+  pallet moved from one opening of the middle rack to the other, the dock moved, a bollard taken away or
   added. The UAV's own tracking over- or under-reads its displacement by a factor that differs per site.
 - **The Go1 does not know where it is.** Its leg odometry drifts in heading and mis-scales distance, its joint
   encoders and its IMU have noise and bias. It has to find itself again, on its way, from what its mast camera
@@ -39,15 +39,15 @@ room to align before entering a passage and to clear the rack before changing di
 widths and the dock's centre vary. The first frame does not show the openings. The orange caps mark actual
 collision footprints; they do not encode passability.
 
-The middle rack has two openings, one north and one south of the centre, each 0.84 to 0.94 m wide. A **pallet
-stack** (magenta, 0.90 m tall, as wide as the opening and a little deeper than the rack) stands in one of them
-and closes it. Touching the stack ends the mission.
+The middle rack has two openings, one north and one south of the centre, each 0.84 to 0.92 m wide. A **pallet**
+(magenta, 1.20 m by 0.80 m by 0.14 m, stood on its short edge so that it is 0.80 m wide and 1.20 m tall) stands
+inside one of them, in line with the rack, and closes it. Touching the pallet ends the mission.
 
 **What can have changed when the Go1 arrives** (each on about half of the sites, independently; a site can
 have none or several):
 
-- the pallet stack stands in the middle rack's other opening, so the opening that was free in the survey is
-  closed and the other is free;
+- the pallet stands in the middle rack's other opening, so the opening that was free in the survey is closed
+  and the other is free;
 - the dock was moved 0.10 to 0.25 m west and 0.10 to 0.25 m north or south. The **dock beacon**, a post like
   the bollards with a blue cap (radius 0.105 m, centre 0.72 m above the floor), always stands 0.42 m east and
   0.50 m north of the dock's centre and moved with it. The mission is judged on the dock where it is;
@@ -109,14 +109,19 @@ are each 0.213 m along local -Z at zero angle. The home targets are `[0, 0.9, -1
 settled at them. The trunk has six free degrees of freedom. There are no hidden force, yaw, touchdown or
 foot-placement commands. Masses, servo stiffness and damping, torque limits and friction are in the datasheet.
 
-The Go1 carries a rigid inspection saddle. In trunk coordinates its upper guard occupies X [-0.157, 0.047],
-Y [-0.085, 0.085] and reaches Z +0.199 m. The forward scanner head occupies X [0.225, 0.393],
-Y [-0.088, 0.088], Z [-0.163, -0.123] m. A pedestal and a shank connect them to the trunk. On the saddle's
-rail sits an instrument pack: saddle and pack together weigh between 2.50 and 4.50 kg, and the pack sits
-between 0.05 and 0.28 m ahead of the trunk origin (both per site). A heavier or more nose-ward pack makes
-the legs sag and the trunk pitch under the same joint targets, so the guard and the scanner are not where a
-nominal posture would put them. Keep the guard below the duct and the scanner off the floor, the aprons, the
-deck and the guides.
+The Go1 carries inspection equipment, rigidly mounted (trunk coordinates):
+
+- a **3D lidar** on a mast above the trunk origin: a cylinder 0.087 m in diameter and 0.0745 m tall (an Ouster
+  OS1-class head) whose axis is the trunk's Z axis and whose top is at Z +0.199 m; under it a 0.024 m mast and a
+  compute and IMU unit (0.100 x 0.080 x 0.030 m) on the trunk. The mast camera sits on the lidar's cap;
+- a **floor profiler** under the nose: a 2D lidar housing (a SICK TiM561-class unit, 0.060 x 0.060 x 0.086 m) that
+  occupies X [0.330, 0.390], Y [-0.030, 0.030], Z [-0.163, -0.077] m, on a bracket from the trunk;
+- an **instrument pack** on a rail along the trunk. Equipment and pack together weigh between 2.50 and 4.50 kg,
+  and the pack sits between 0.05 and 0.28 m ahead of the trunk origin (both per site).
+
+A heavier or more nose-ward pack makes the legs sag and the trunk pitch under the same joint targets, so the
+lidar and the profiler are not where a nominal posture would put them. Keep the lidar below the duct and the
+profiler off the floor, the aprons, the deck and the guides.
 
 Go1 `observe()`, `advance()` and `act()` return `odom_xy_m` and `odom_yaw_rad`: the leg odometry's planar
 displacement (rounded to 1 mm) and counter-clockwise yaw change (wrapped to [-pi, pi]) relative to the
@@ -137,7 +142,7 @@ detent the camera points **36 degrees up** from the trunk's horizontal plane; it
 right is clockwise from the pan direction, image up is toward higher elevation. The 256 x 256 undistorted
 pinhole has a 70-degree vertical field of view, principal point (127.5, 127.5) in zero-based pixel-centre
 coordinates, and square pixels. The camera sees what stands above its own height: the bollards' green caps,
-the dock beacon's blue cap, the pallet stack, the duct. Each deployment allows 40 exposures. Regular Go1
+the dock beacon's blue cap, the pallet, the duct. Each deployment allows 40 exposures. Regular Go1
 observations carry no image.
 Observations in both phases include `phase` (0/1), `done` and `requests_remaining`.
 
@@ -150,10 +155,10 @@ heading within 16 degrees of survey +X, upright (trunk origin above 0.16 m and b
 0.80), below 0.09 m/s linear and 0.35 rad/s angular speed, for 0.45 s continuously. Every other ending scores
 nothing for that site:
 
-- any part of the robot or its saddle touching a barrier, a bollard, the dock beacon, the pallet stack or the
+- any part of the robot or its equipment touching a barrier, a bollard, the dock beacon, the pallet or the
   duct;
-- the saddle (guard, pedestal, scanner shank or head) touching the floor, an apron, the deck or a guide
-  (feet and legs may touch them);
+- the equipment (lidar, mast, compute unit, profiler or its bracket) touching the floor, an apron, the deck or
+  a guide (feet and legs may touch them);
 - a fall: 0.20 s continuously not upright;
 - the tick or request budget spent, the program exiting before the dock, the program's own computing time
   passing 600 s (the service's time is not counted) or the mission's wall time passing 1,800 s.
@@ -171,9 +176,9 @@ debrief, and the service's code and state are not readable.
   development site has no Go1.
 - **The commissioning pad.** `pad()` starts a pad episode: the loaded Go1 on a bare floor among bollards, with
   the readings (noise, biases and odometry drift included), the mast camera and `act` exactly as on a site, and
-  its own draw of every per-site property from the same ranges (the values are not reported). A pallet stack
-  (0.32 m by 0.90 m by 0.90 m tall here) and a dock beacon stand somewhere on the pad, 1.6 to 2.6 m from the
-  launch point, so that seeing them can be tried. There is no rack, fitting or dock on the pad. An episode
+  its own draw of every per-site property from the same ranges (the values are not reported). A pallet on
+  edge and a dock beacon stand somewhere on the pad, 1.6 to 2.6 m from the launch point, so that seeing them
+  can be tried. There is no rack, fitting or dock on the pad. An episode
   ends on a fall, a bollard contact or its tick budget; start the next with `pad()`. The pad's budget for the
   whole session is **40 episodes and 600,000 physics ticks** (20 minutes of robot time); replies carry
   `pad_episodes_remaining` and `pad_ticks_remaining`.

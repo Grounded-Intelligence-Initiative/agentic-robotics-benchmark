@@ -9,8 +9,8 @@ from dataclasses import dataclass
 import numpy as np
 
 RANGES = {
-    "payload_kg": (2.50, 4.50),         # total mass carried: the 0.70 kg saddle plus its instrument pack
-    "ballast_x_m": (.05, .28),          # fore-aft place of the instrument pack on the saddle, trunk frame
+    "payload_kg": (2.50, 4.50),         # total mass carried: the 1.10 kg of equipment plus the instrument pack
+    "ballast_x_m": (.05, .28),          # fore-aft place of the instrument pack, trunk frame
     "servo_gain": (.85, 1.15),          # per joint: stiffness relative to the datasheet's 100 N m/rad
     "torque_scale": (.85, 1.00),        # per site: every joint's torque limit relative to the datasheet
     "friction": (.40, .90),             # sliding friction of every walkable surface
@@ -24,7 +24,7 @@ RANGES = {
 ENCODER_NOISE_RAD, ENCODER_BIAS_RAD = .002, .008
 GYRO_NOISE_RAD_S, GYRO_BIAS_RAD_S = .01, .015
 GRAVITY_NOISE = .01
-SADDLE_KG = .70
+SADDLE_KG = 1.10          # the fixed equipment: lidar head, mast, compute puck, profiler and bracket
 
 
 @dataclass(frozen=True)

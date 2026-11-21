@@ -48,7 +48,8 @@ class Walk:
                 ahead = xy[0]-f["x"]+.393+.03
                 guide = f["rise"]*min(1., max(0., (ahead+.305)/.366)) if ahead < .64 else 0.
                 # East of the crest the scanner is clear and the trunk is levelled again on the way down.
-                return max(NOMINAL, guide+SCANNER_LOW+.038), "deck" if xy[0] < f["x"]+.30 else "descent"
+                zone = "climb" if xy[0] < f["x"]-.45 else "deck" if xy[0] < f["x"]+.30 else "descent"
+                return max(NOMINAL, guide+SCANNER_LOW+.038), zone
         return NOMINAL, "floor"
 
     def feedback(self, obs, target, level=True, nose_up=0.):
@@ -76,7 +77,7 @@ class Walk:
         target, where = self.wanted_height(xy)
         self.height += float(np.clip(target-self.height, -.0008, .0020))      # lower slowly: no undershoot
         # Under a duct the scanner ahead of the feet is the low point: carry the nose a little high.
-        self.feedback(obs, self.height, where != "deck", .03 if where in ("duct", "deck") else 0.)
+        self.feedback(obs, self.height, where not in ("deck", "climb"), .03 if where in ("duct", "deck", "climb") else 0.)
         if self.start_ticks < 600:
             n = min(12, ticks)
             self.start_ticks += n
@@ -128,7 +129,9 @@ class Walk:
             else:
                 s = (p-.59)/.41
                 fraction = -.5+s-math.sin(2*math.pi*s)/(2*math.pi)
-                height = base-(.050 if where == "duct" else .082)*math.sin(math.pi*s)
+                # A low step under a duct; a high one onto a deck's apron, which starts with a toe.
+                lift = .050 if where == "duct" else .110 if where == "climb" else .082
+                height = base-lift*math.sin(math.pi*s)
             x, y = stride*fraction + [0., side*.08]
             sag = math.sqrt(max(.01, y*y+height*height-.08**2))
             hip = math.atan2(y, height)-math.atan2(side*.08, sag)

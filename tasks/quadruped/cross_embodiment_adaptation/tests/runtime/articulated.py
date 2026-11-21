@@ -24,12 +24,14 @@ MAST_Z, MAST_FOV, MAST_PITCH, MAX_LOOKS = .20, 70, math.radians(36), 40
 LAUNCH_BIT = 1 << 33
 ROUTE_BITS = 3 << 14
 # What changes between the survey and the deployment, by seed bits alone:
-PALLET_BIT = 1 << 30        # which opening of the middle rack the pallet stack closes at survey time
-MOVED_BIT = 1 << 27         # the stack was moved to the other opening afterwards
+PALLET_BIT = 1 << 30        # which opening of the middle rack the pallet closes at survey time
+MOVED_BIT = 1 << 27         # the pallet was moved to the other opening afterwards
 DOCK_BIT = 1 << 43          # the dock (with its beacon) was moved afterwards
 POSTS_BIT = 1 << 37         # one bollard was taken away or one was added afterwards
 CHANGE_BITS = PALLET_BIT | MOVED_BIT | DOCK_BIT | POSTS_BIT
-PALLET_Z, BEACON = .90, (.42, .50)      # the stack's height; the beacon's offset from the dock's centre
+# The barrier: a 1.2 x 0.8 x 0.14 m pallet stood on its short edge inside the opening it closes.
+PALLET_Y, PALLET_Z, PALLET_X = .80, 1.20, .14
+BEACON = (.42, .50)         # the beacon's offset from the dock's centre
 
 
 @dataclass(frozen=True)
@@ -38,7 +40,7 @@ class Rack:
     far: float
     wide: tuple
     shortcut: tuple | None = None
-    other: tuple | None = None      # the middle rack's second opening (closed by the pallet stack)
+    other: tuple | None = None      # the middle rack's second opening (closed by the pallet)
 
     def choice(self, y):
         if self.wide[0] <= y <= self.wide[1]:
@@ -76,9 +78,9 @@ def layout(seed):
         rack = Rack(x-depth/2, x+depth/2, wide, shortcut)
         gaps = sorted((wide, shortcut)) if shortcut else [wide]
         if i == 1:
-            # Two openings; a pallet stack stands in one of them (which one can change after the survey).
-            south = (-float(rng.uniform(.66, .80)), float(rng.uniform(.42, .47)))
-            north = (float(rng.uniform(.66, .80)), float(rng.uniform(.42, .47)))
+            # Two openings; a pallet on edge stands in one of them (which one can change after the survey).
+            south = (-float(rng.uniform(.66, .80)), float(rng.uniform(.42, .46)))
+            north = (float(rng.uniform(.66, .80)), float(rng.uniform(.42, .46)))
             south, north = ((c-h, c+h) for c, h in (south, north))
             rack = Rack(x-depth/2, x+depth/2, north, None, south)
             gaps = [south, north]
@@ -113,7 +115,7 @@ def fixtures_and_launch(seed, walls):
 def site_states(seed, racks, goal, posts, walls):
     """The site as surveyed and as the Go1 finds it: (racks, goal, posts, pallet rectangle) twice.
 
-    Between the two, by seed bits and an independent stream: the pallet stack may have moved to the middle
+    Between the two, by seed bits and an independent stream: the pallet may have moved to the middle
     rack's other opening, the dock (with its beacon) may have been moved 0.10-0.25 m west and as far north or south, and
     one bollard may have been taken away or one added.
     """
@@ -133,7 +135,9 @@ def site_states(seed, racks, goal, posts, walls):
     def state(closed_now, goal_now, posts_now):
         other = "north" if closed_now == "south" else "south"
         rack = Rack(middle.near, middle.far, openings[other], None, openings[closed_now])
-        pallet = (middle.near-.03, middle.far+.03, *openings[closed_now])
+        lo, hi = openings[closed_now]
+        x, y = (middle.near+middle.far)/2, (lo+hi)/2
+        pallet = (x-PALLET_X/2, x+PALLET_X/2, y-PALLET_Y/2, y+PALLET_Y/2)
         return [racks[0], rack, racks[2]], goal_now, posts_now, pallet
 
     survey = state(closed, goal, list(posts))
@@ -181,7 +185,7 @@ def scene(root, walls, goal, posts, fittings, pallet=None, beacon=None):
              rgba=(.06, .25, .92, 1), contype=1, conaffinity=1)
     if pallet is not None:
         x0, x1, y0, y1 = pallet
-        geom(world, "pallet_stack", pos=((x0+x1)/2, (y0+y1)/2, PALLET_Z/2),
+        geom(world, "pallet_barrier", pos=((x0+x1)/2, (y0+y1)/2, PALLET_Z/2),
              size=((x1-x0)/2, (y1-y0)/2, PALLET_Z/2), rgba=(.80, .10, .62, 1), contype=1, conaffinity=1)
     add_fittings(root, world, fittings)
     for i, post in enumerate(posts):
@@ -272,7 +276,7 @@ class Go1:
         if has_dock:
             obstacles.extend(("dock_beacon_stem", "dock_beacon_cap"))
         if pallet is not None:
-            obstacles.append("pallet_stack")
+            obstacles.append("pallet_barrier")
         if any(f.kind == "duct" for f in fittings):
             obstacles.extend(DUCT)
         self.wall_ids = {model.geom(name).id: name for name in obstacles}
@@ -286,7 +290,7 @@ class Go1:
                 model.geom_friction[gid, 0] = props.friction
                 model.geom_priority[gid] = 1
         self.protected = {model.geom(name).id: name for name in PROTECTED}
-        self.guard_id = model.geom("crown_guard").id
+        self.guard_id = model.geom("lidar_head").id
         self.fittings = fittings
         self.fitting_entered = set()
         self.fitting_cleared = set()
@@ -368,7 +372,10 @@ class Go1:
                 self.fitting_entered.add(f.kind)
                 if f.kind == "duct" and abs(x-f.x) < f.length/2-.07:
                     it = self.guard_id
-                    z = self.data.geom_xpos[it, 2]+abs(self.data.geom_xmat[it, 6:]) @ self.model.geom_size[it]
+                    # highest point of the lidar's cylinder (radius, half height) at the trunk's attitude
+                    radius, half = self.model.geom_size[it, :2]
+                    up = self.data.geom_xmat[it, 6:]
+                    z = self.data.geom_xpos[it, 2]+abs(up[2])*half+math.hypot(up[0], up[1])*radius
                     gap = float(f.clearance-z)
                     self.min_duct_gap = gap if self.min_duct_gap is None else min(gap, self.min_duct_gap)
             if f.kind in self.fitting_entered and x > f.x+half+.30:

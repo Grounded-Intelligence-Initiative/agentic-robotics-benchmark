@@ -1,4 +1,4 @@
-# Unitree Go1 with the inspection saddle: datasheet
+# Unitree Go1 with its inspection equipment: datasheet
 
 Values of the robot as simulated (MuJoCo 3.16, 2 ms time step, elliptic friction cones). "Per site" means: drawn
 once for each graded site and for each pad episode, uniformly from the stated range, and not reported; a program
@@ -8,7 +8,7 @@ finds a site's values from what its robot measures there.
 
 | quantity | value |
 |---|---|
-| mass without the saddle | 12.74 kg (trunk 5.20 kg; each leg 1.88 kg: hip 0.68, thigh 1.01, calf and foot 0.19) |
+| mass without the equipment | 12.74 kg (trunk 5.20 kg; each leg 1.88 kg: hip 0.68, thigh 1.01, calf and foot 0.19) |
 | trunk inertia about its centre (x, y, z) | 0.017, 0.063, 0.072 kg m^2 |
 | hip pivots | x = +/-0.1881 m, y = +/-0.04675 m in the trunk frame |
 | thigh axis | 0.08 m outboard of the hip pivot |
@@ -27,13 +27,17 @@ finds a site's values from what its robot measures there.
 | rotor inertia, dry friction | 0.01 kg m^2, 0.2 N m |
 | target range | hip [-0.863, 0.863], thigh [-0.686, 4.501], calf [-2.818, -0.888] rad |
 
-## Load
+## Equipment and load
 
-| quantity | value |
+| part | what it is, and its envelope in the trunk frame |
 |---|---|
-| saddle | 0.70 kg, rigid: pedestal, crown guard, scanner shank and scanner head (dimensions in the instruction) |
-| instrument pack | on the saddle's rail, 0.06 m above the trunk origin, on the centre line |
-| total carried mass (saddle + pack) | **per site in [2.50, 4.50] kg** |
+| 3D lidar | Ouster OS1 class: a cylinder 0.087 m in diameter and 0.0745 m tall, axis on the trunk's Z axis, top at Z +0.199 m; 0.447 kg |
+| lidar mast | a cylinder 0.024 m in diameter between the compute unit and the lidar; 0.053 kg |
+| compute and IMU unit | 0.100 x 0.080 x 0.030 m on the trunk under the mast, top at Z +0.087 m; 0.25 kg |
+| floor profiler | SICK TiM561 class 2D lidar housing, 0.060 x 0.060 x 0.086 m: X [0.330, 0.390], Y [-0.030, 0.030], Z [-0.163, -0.077] m; 0.25 kg |
+| profiler bracket | 0.150 x 0.040 x 0.020 m under the nose: X [0.225, 0.375], Z [-0.070, -0.050] m; 0.10 kg |
+| instrument pack | on a rail 0.06 m above the trunk origin, on the centre line |
+| total carried mass (the 1.10 kg of equipment above + pack) | **per site in [2.50, 4.50] kg** |
 | pack position along the trunk's x axis | **per site in [+0.05, +0.28] m** ahead of the trunk origin |
 
 A heavier or more nose-ward pack makes the legs sag and the trunk pitch under the same joint targets.
