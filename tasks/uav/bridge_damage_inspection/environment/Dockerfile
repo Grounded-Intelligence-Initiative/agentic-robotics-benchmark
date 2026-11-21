@@ -1,0 +1,21 @@
+FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends libosmesa6 mesa-vulkan-drivers libvulkan1 \
+    && rm -rf /var/lib/apt/lists/*
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH=/opt/venv/bin:$PATH
+ENV MUJOCO_GL=osmesa LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2
+ENV OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 PYTHONNOUSERSITE=1
+COPY requirements.txt /tmp/requirements.txt
+RUN python3 -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt \
+    && chmod -R a+rX /opt/venv
+RUN mkdir -p /home/user/submission && chown user:user /home/user/submission
+RUN runuser -u user -- python3 -c "import mujoco; m=mujoco.MjModel.from_xml_string('<mujoco/>'); r=mujoco.Renderer(m,64,64); r.close()"
+COPY visual_assets.json fetch_visual_assets.py /tmp/visual_assets/
+RUN /opt/venv/bin/python3 /tmp/visual_assets/fetch_visual_assets.py /tmp/visual_assets/visual_assets.json /opt/visual_robotics/assets \
+    && chmod -R a+rX /opt/visual_robotics/assets
+# ALE collects root-owned evidence after the agent exits. Do not let the agent
+# shadow the framework's executable names through a writable PATH directory.
+RUN chown root:root /usr/local/bin /usr/local/sbin /opt/venv/bin \
+    && chmod 0755 /usr/local/bin /usr/local/sbin /opt/venv/bin
