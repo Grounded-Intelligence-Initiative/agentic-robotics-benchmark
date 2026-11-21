@@ -749,6 +749,11 @@ order of §13 (§5's platform list predates both).
   0.928, 341 of 341 probes), `hazard_bay_build` (`validate-6a99b757`: 131 of 131 equal) and
   `object_finding_and_organizing_on_messy_desk` (`validate-f6a6c2f3`: 26 of 29 equal, the
   others are controller seconds, 618 of 620 probes).
+  `pantry_jar_refilling` landed on `main` while this was open (#138); it runs the kit's
+  `Solver` and lock, got the kit with the merge of `main` and was validated on that merge
+  (`validate-aa856c6f`, checkout `8ecc6829`: 32 of 33 metrics equal to its last validate, the
+  other is controller seconds, 12 of 12 episodes). `freeflyer_uncrewed_station_caretaking`
+  (#149) uses the kit for its scoring and verdict only.
   `novel_object_6dof_grasp_detection` starts its solvers through `deprivileged` and runs none
   of the changed code; its validate, owed since section 15, ran here too (`validate-9bd36858`,
   with the account clearing of section 15): untouched 0.0, oracle 1.0, 448 of 448 frames
@@ -757,7 +762,9 @@ order of §13 (§5's platform list predates both).
   1.0018); section 12's record is 72.339 on another host, so the two differ in the first
   decimal, which is not explained yet.
 - **Identities**: every task's vendored kit changed, so every task has a new
-  `content_digest`; `identity-history.json` records them.
+  `content_digest`; `identity-history.json` records the 49 of them. `pantry_jar_refilling`
+  is recorded here for the first time, with this kit; its content as merged by #138 has no
+  entry of its own.
 
 ## Open items
 
