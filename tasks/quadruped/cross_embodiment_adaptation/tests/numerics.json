@@ -1,6 +1,6 @@
 {
- "fingerprint": "613c804b4ae0bb22fdf860ec80725628f63012f500251b3f5302d32334344da5",
- "frames": "1cb88842b6b999c4b0feacd3fedb2df97eee6746b2c4713593bcabef13644665",
+ "fingerprint": "2b0ac87255abb34508d5a809faca4b2720fbae6327ad837eb476c786f037decb",
+ "frames": "6092f10b8a539e4a13e574e8a59dd65392e4bd37d00c3d229b747d54f0591028",
  "math": {
   "big": "c7969dbab7b56aa3",
   "exp_float32": "52a3e7bfecf9b1f6",
@@ -21,6 +21,6 @@
   "trig_float32": "e0b44c03f3acd14a",
   "trig_float64": "fa0456f886dc5f31"
  },
- "simulation": "6aeea40758f724bb225fbdc2b6d19d32cdad2f42ce989af6b456e1bb804f0c01",
+ "simulation": "b8ff68776b48168cfd9abaee0431a75acd2813b0bbb20a21e4f36cab7d1c672a",
  "what": "sha256 of `simulation` (a loaded Go1 under a fixed script), `frames` (three camera frames as raw RGB) and `math` (NumPy and SciPy results from a Python started as a mission program is): tests/numerics_check.py"
 }

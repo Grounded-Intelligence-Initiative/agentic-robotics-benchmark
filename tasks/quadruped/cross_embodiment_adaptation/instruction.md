@@ -62,7 +62,7 @@ One wide opening contains a suspended loading duct, the other a raised loading d
 - **Deck.** A 0.62 m level deck 0.065 m above the floor, with a 0.33 m sloping apron at each end ending in a
   0.012 m toe. It has two longitudinal wheel tracks, each 0.150 m wide, centred 0.125 m to either side of the
   passage's centre. Between and outside the tracks, raised guides climb above the deck to a crest between 0.070
-  and 0.125 m (per site). A guide starts at the deck's west edge, reaches its crest 0.061 m east of the deck's
+  and 0.112 m (per site). A guide starts at the deck's west edge, reaches its crest 0.061 m east of the deck's
   centre, holds it for 0.188 m and falls to the deck within the next 0.056 m.
 - Both fittings span their passage. The duct's roof and the deck's centre guide carry the same 0.160 x 0.078 m
   teal service cover, 1.4 mm proud of the surface (on the deck, 0.155 m east of the deck's centre). The covers are
@@ -111,22 +111,25 @@ foot-placement commands. Masses, servo stiffness and damping, torque limits and 
 
 The Go1 carries inspection equipment, rigidly mounted (trunk coordinates):
 
-- a **3D lidar** on a mast above the trunk origin: a cylinder 0.087 m in diameter and 0.0745 m tall (an Ouster
-  OS1-class head) whose axis is the trunk's Z axis and whose top is at Z +0.199 m; under it a 0.024 m mast and a
-  compute and IMU unit (0.100 x 0.080 x 0.030 m) on the trunk. The mast camera sits on the lidar's cap;
-- a **floor profiler** under the nose: a 2D lidar housing (a SICK TiM561-class unit, 0.060 x 0.060 x 0.086 m) that
-  occupies X [0.330, 0.390], Y [-0.030, 0.030], Z [-0.163, -0.077] m, on a bracket from the trunk;
+- a **3D lidar** on a mast above the trunk origin (an Ouster OS1-class head, a cylinder 0.087 m in diameter and
+  0.0745 m tall, on the trunk's Z axis) inside a **tubular guard frame**: a rectangle of 12 mm tube that occupies
+  X [-0.102, 0.102], Y [-0.085, 0.085] with its top at Z +0.199 m, on four corner posts. The frame's top is the
+  highest point of the equipment. Under the lidar are a 0.024 m mast and a compute and IMU unit
+  (0.100 x 0.080 x 0.030 m). The mast camera sits just above the frame;
+- a **floor profiler** under the nose, mounted crosswise: a line-profiler housing (an LMI Gocator 2340-class unit,
+  0.049 x 0.197 x 0.075 m) that occupies X [0.341, 0.390], Y [-0.0985, 0.0985], Z [-0.163, -0.088] m, on a bracket
+  from the trunk. Its underside is the lowest point of the equipment;
 - an **instrument pack** on a rail along the trunk. Equipment and pack together weigh between 2.50 and 4.50 kg,
   and the pack sits between 0.05 and 0.28 m ahead of the trunk origin (both per site).
 
 A heavier or more nose-ward pack makes the legs sag and the trunk pitch under the same joint targets, so the
-lidar and the profiler are not where a nominal posture would put them. Keep the lidar below the duct and the
-profiler off the floor, the aprons, the deck and the guides.
+guard frame and the profiler are not where a nominal posture would put them. Keep the frame below the duct and
+the profiler off the floor, the aprons, the deck and the guides.
 
 Go1 `observe()`, `advance()` and `act()` return `odom_xy_m` and `odom_yaw_rad`: the leg odometry's planar
 displacement (rounded to 1 mm) and counter-clockwise yaw change (wrapped to [-pi, pi]) relative to the
 **settled launch trunk frame**, not to the survey. Both start at zero; initial forward is +x, initial left is
-+y. **The odometry drifts:** its heading gains a constant error rate between -0.40 and +0.40 degrees per second
++y. **The odometry drifts:** its heading gains a constant error rate between -0.80 and +0.80 degrees per second
 (per site, also while standing), and it reports each step's length times a factor between 0.94 and 1.06 (per
 site), laid along its own drifting heading. Over a mission that is tens of degrees and tens of centimetres:
 dead reckoning from the launch pose does not reach the dock. The other readings are `gravity_body_unit`
@@ -142,7 +145,7 @@ detent the camera points **36 degrees up** from the trunk's horizontal plane; it
 right is clockwise from the pan direction, image up is toward higher elevation. The 256 x 256 undistorted
 pinhole has a 70-degree vertical field of view, principal point (127.5, 127.5) in zero-based pixel-centre
 coordinates, and square pixels. The camera sees what stands above its own height: the bollards' green caps,
-the dock beacon's blue cap, the pallet, the duct. Each deployment allows 40 exposures. Regular Go1
+the dock beacon's blue cap, the pallet, the duct. Each deployment allows 24 exposures. Regular Go1
 observations carry no image.
 Observations in both phases include `phase` (0/1), `done` and `requests_remaining`.
 
@@ -157,8 +160,8 @@ nothing for that site:
 
 - any part of the robot or its equipment touching a barrier, a bollard, the dock beacon, the pallet or the
   duct;
-- the equipment (lidar, mast, compute unit, profiler or its bracket) touching the floor, an apron, the deck or
-  a guide (feet and legs may touch them);
+- the equipment (lidar, guard frame, mast, compute unit, profiler or its bracket) touching the floor, an apron,
+  the deck or a guide (feet and legs may touch them);
 - a fall: 0.20 s continuously not upright;
 - the tick or request budget spent, the program exiting before the dock, the program's own computing time
   passing 600 s (the service's time is not counted) or the mission's wall time passing 1,800 s.

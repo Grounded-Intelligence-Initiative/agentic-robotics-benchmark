@@ -49,7 +49,7 @@ class Walk:
                 guide = f["rise"]*min(1., max(0., (ahead+.305)/.366)) if ahead < .64 else 0.
                 # East of the crest the scanner is clear and the trunk is levelled again on the way down.
                 zone = "climb" if xy[0] < f["x"]-.45 else "deck" if xy[0] < f["x"]+.30 else "descent"
-                return max(NOMINAL, guide+SCANNER_LOW+.038), zone
+                return max(NOMINAL, guide+SCANNER_LOW+.043), zone
         return NOMINAL, "floor"
 
     def feedback(self, obs, target, level=True, nose_up=0.):

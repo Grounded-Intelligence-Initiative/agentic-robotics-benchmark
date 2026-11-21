@@ -11,7 +11,7 @@ from PIL import Image
 
 from scene_assets import asset_root, geom, materials, robot_meshes, vec
 from props import ENCODER_BIAS_RAD, ENCODER_NOISE_RAD, GRAVITY_NOISE, GYRO_BIAS_RAD_S, GYRO_NOISE_RAD_S
-from mobility import BEVEL, DUCT, PROTECTED, SUPPORT, TERRAIN_BIT, add_fittings, add_load
+from mobility import BEVEL, CAGE_TOP, DUCT, PROTECTED, SUPPORT, TERRAIN_BIT, add_fittings, add_load
 
 
 LEGS = ("FR", "FL", "RR", "RL")
@@ -20,7 +20,7 @@ WALL_Z, CAMERA_Z, FOV, PIXELS = .32, 1.65, 78, 256
 MAX_SCOUT, MAX_TICKS, MAX_HOLD = 80, 48000, 40
 DOCK_RADIUS = .17
 POST_Z, POST_R = .72, .105
-MAST_Z, MAST_FOV, MAST_PITCH, MAX_LOOKS = .20, 70, math.radians(36), 40
+MAST_Z, MAST_FOV, MAST_PITCH, MAX_LOOKS = .20, 70, math.radians(36), 24
 LAUNCH_BIT = 1 << 33
 ROUTE_BITS = 3 << 14
 # What changes between the survey and the deployment, by seed bits alone:
@@ -290,7 +290,7 @@ class Go1:
                 model.geom_friction[gid, 0] = props.friction
                 model.geom_priority[gid] = 1
         self.protected = {model.geom(name).id: name for name in PROTECTED}
-        self.guard_id = model.geom("lidar_head").id
+        self.guard_ids = [model.geom(name).id for name in CAGE_TOP]
         self.fittings = fittings
         self.fitting_entered = set()
         self.fitting_cleared = set()
@@ -371,11 +371,9 @@ class Go1:
             if abs(x-f.x) < half and f.lo < y < f.hi:
                 self.fitting_entered.add(f.kind)
                 if f.kind == "duct" and abs(x-f.x) < f.length/2-.07:
-                    it = self.guard_id
-                    # highest point of the lidar's cylinder (radius, half height) at the trunk's attitude
-                    radius, half = self.model.geom_size[it, :2]
-                    up = self.data.geom_xmat[it, 6:]
-                    z = self.data.geom_xpos[it, 2]+abs(up[2])*half+math.hypot(up[0], up[1])*radius
+                    # highest point of the guard frame's top bars (boxes) at the trunk's attitude
+                    z = max(self.data.geom_xpos[it, 2]+abs(self.data.geom_xmat[it, 6:]) @ self.model.geom_size[it]
+                            for it in self.guard_ids)
                     gap = float(f.clearance-z)
                     self.min_duct_gap = gap if self.min_duct_gap is None else min(gap, self.min_duct_gap)
             if f.kind in self.fitting_entered and x > f.x+half+.30:

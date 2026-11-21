@@ -31,13 +31,14 @@ finds a site's values from what its robot measures there.
 
 | part | what it is, and its envelope in the trunk frame |
 |---|---|
-| 3D lidar | Ouster OS1 class: a cylinder 0.087 m in diameter and 0.0745 m tall, axis on the trunk's Z axis, top at Z +0.199 m; 0.447 kg |
-| lidar mast | a cylinder 0.024 m in diameter between the compute unit and the lidar; 0.053 kg |
+| 3D lidar | Ouster OS1 class: a cylinder 0.087 m in diameter and 0.0745 m tall, axis on the trunk's Z axis, top at Z +0.187 m; 0.447 kg |
+| lidar guard frame | 12 mm tube: a rectangle X [-0.102, 0.102], Y [-0.085, 0.085] with its top at Z +0.199 m, on four corner posts down to Z +0.057 m; 0.20 kg. The highest point of the equipment |
+| lidar mast | a cylinder 0.024 m in diameter between the compute unit and the lidar; 0.033 kg |
 | compute and IMU unit | 0.100 x 0.080 x 0.030 m on the trunk under the mast, top at Z +0.087 m; 0.25 kg |
-| floor profiler | SICK TiM561 class 2D lidar housing, 0.060 x 0.060 x 0.086 m: X [0.330, 0.390], Y [-0.030, 0.030], Z [-0.163, -0.077] m; 0.25 kg |
+| floor profiler | LMI Gocator 2340 class line profiler, mounted crosswise, 0.049 x 0.197 x 0.075 m: X [0.341, 0.390], Y [-0.0985, 0.0985], Z [-0.163, -0.088] m; 0.74 kg. The lowest point of the equipment |
 | profiler bracket | 0.150 x 0.040 x 0.020 m under the nose: X [0.225, 0.375], Z [-0.070, -0.050] m; 0.10 kg |
 | instrument pack | on a rail 0.06 m above the trunk origin, on the centre line |
-| total carried mass (the 1.10 kg of equipment above + pack) | **per site in [2.50, 4.50] kg** |
+| total carried mass (the 1.77 kg of equipment above + pack) | **per site in [2.50, 4.50] kg** |
 | pack position along the trunk's x axis | **per site in [+0.05, +0.28] m** ahead of the trunk origin |
 
 A heavier or more nose-ward pack makes the legs sag and the trunk pitch under the same joint targets.
@@ -46,7 +47,7 @@ A heavier or more nose-ward pack makes the legs sag and the trunk pitch under th
 
 | quantity | value |
 |---|---|
-| sliding friction of every walked surface (floor, aprons, deck, guides) | **per site in [0.40, 0.90]** |
+| sliding friction of every walked surface (floor, aprons, deck, guides) | **per site in [0.45, 0.90]** |
 | torsional, rolling friction | 0.02, 0.001 |
 
 ## Fittings (see the instruction for the rest of their dimensions)
@@ -54,7 +55,7 @@ A heavier or more nose-ward pack makes the legs sag and the trunk pitch under th
 | quantity | value |
 |---|---|
 | underside of the suspended duct above the floor | **per site in [0.410, 0.445] m** |
-| crest of the deck's guides above the deck | **per site in [0.070, 0.125] m** |
+| crest of the deck's guides above the deck | **per site in [0.070, 0.112] m** |
 
 Both show in the survey: the teal cover lies 1.4 mm above the duct's roof (the roof is 0.068 m above the
 underside) and 1.4 mm above the centre guide's crest (the deck is 0.065 m above the floor).
@@ -69,9 +70,9 @@ underside) and 1.4 mm above the centre guide's crest (the deck is 0.065 m above 
 | `gyro_body_rad_s` | trunk angular velocity in the trunk frame: noise 0.01 rad/s, a constant bias per axis within 0.015 rad/s, rounded to 1e-4 |
 | `foot_contact` | per foot: touching the floor, an apron, the deck or a guide |
 | `odom_xy_m`, `odom_yaw_rad` | leg odometry since the settled launch pose, in the launch frame: each step's body-frame displacement times a distance factor, laid along the odometry's own heading; that heading is the true yaw change plus a constant error rate |
-| odometry heading error rate | **per site in [-0.40, +0.40] degrees per second**, also while standing |
+| odometry heading error rate | **per site in [-0.80, +0.80] degrees per second**, also while standing |
 | odometry distance factor | **per site in [0.94, 1.06]** |
-| mast camera | 256 x 256 RGB pinhole, 70 degree vertical field of view, 0.20 m above the trunk origin, 36 degrees up, eight pan detents of 45 degrees; exact, no noise; 40 exposures per deployment |
+| mast camera | 256 x 256 RGB pinhole, 70 degree vertical field of view, 0.20 m above the trunk origin, 36 degrees up, eight pan detents of 45 degrees; exact, no noise; 24 exposures per deployment |
 
 There is no joint torque, range, depth or absolute pose reading.
 

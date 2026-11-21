@@ -1,6 +1,6 @@
 {
-  "version": 7,
+  "version": 8,
   "rule": "tests/review/selection.md",
-  "policy": "The eight seeds and the candidate list are those of the round-2 head 9d8cc14, byte for byte. Version 5 (2026-11-20) adds per-site physical properties drawn from each seed by an independent stream (tests/runtime/props.py); the ranges were fixed before any site was generated with them, and no seed was replaced. Version 6 (2026-11-21) adds the changes between survey and deployment (seed bits 27, 30, 37, 43 and stream 3706) and the sensing (streams 3703, 3705), by the same rule. Version 7 (2026-11-21) gives the carried equipment and the barrier the shapes of real objects; no rule or range changed.",
+  "policy": "The eight seeds and the candidate list are those of the round-2 head 9d8cc14, byte for byte. Version 5 (2026-11-20) adds per-site physical properties drawn from each seed by an independent stream (tests/runtime/props.py); the ranges were fixed before any site was generated with them, and no seed was replaced. Version 6 (2026-11-21) adds the changes between survey and deployment (seed bits 27, 30, 37, 43 and stream 3706) and the sensing (streams 3703, 3705), by the same rule. Version 7 (2026-11-21) gives the carried equipment and the barrier the shapes of real objects; no rule or range changed. Version 8 (2026-11-21) restores the equipment's reach with a guard frame and a crosswise profiler; the guides' rise ends at 0.112 m and friction starts at 0.45.",
   "oracle_on_the_set": "8 of 8 (tests/anchor.json)"
 }

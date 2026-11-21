@@ -9,14 +9,14 @@ from dataclasses import dataclass
 import numpy as np
 
 RANGES = {
-    "payload_kg": (2.50, 4.50),         # total mass carried: the 1.10 kg of equipment plus the instrument pack
+    "payload_kg": (2.50, 4.50),         # total mass carried: the 1.77 kg of equipment plus the instrument pack
     "ballast_x_m": (.05, .28),          # fore-aft place of the instrument pack, trunk frame
     "servo_gain": (.85, 1.15),          # per joint: stiffness relative to the datasheet's 100 N m/rad
     "torque_scale": (.85, 1.00),        # per site: every joint's torque limit relative to the datasheet
-    "friction": (.40, .90),             # sliding friction of every walkable surface
+    "friction": (.45, .90),             # sliding friction of every walkable surface
     "duct_clearance_m": (.410, .445),   # underside of the suspended duct above the floor
-    "guide_rise_m": (.070, .125),       # crest of the deck's guides above the deck
-    "odom_yaw_drift_deg_s": (-.40, .40),  # leg odometry: a constant yaw-rate error
+    "guide_rise_m": (.070, .112),       # crest of the deck's guides above the deck
+    "odom_yaw_drift_deg_s": (-.80, .80),  # leg odometry: a constant yaw-rate error
     "odom_scale": (.94, 1.06),          # leg odometry: reported distance over true distance
     "uav_scale": (.97, 1.03),           # survey: reported UAV displacement over true displacement
 }
@@ -24,7 +24,7 @@ RANGES = {
 ENCODER_NOISE_RAD, ENCODER_BIAS_RAD = .002, .008
 GYRO_NOISE_RAD_S, GYRO_BIAS_RAD_S = .01, .015
 GRAVITY_NOISE = .01
-SADDLE_KG = 1.10          # the fixed equipment: lidar head, mast, compute puck, profiler and bracket
+SADDLE_KG = 1.77          # the fixed equipment: lidar head, mast, compute unit, guard frame, profiler and bracket
 
 
 @dataclass(frozen=True)

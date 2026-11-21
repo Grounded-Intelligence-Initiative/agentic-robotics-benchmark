@@ -14,12 +14,16 @@ SUPPORT = ("deck_table", "deck_west_ramp", "deck_east_ramp", "deck_center_guide"
            "deck_south_shoulder", "deck_north_shoulder")
 DUCT = ("duct_box", "duct_left_shoe", "duct_right_shoe")
 # The equipment the Go1 carries (collision envelopes of real devices):
-#   lidar_head       a 3D lidar of the Ouster OS1 class: a cylinder 87 mm in diameter, 74.5 mm tall, 0.447 kg
-#   lidar_mast       its mast, 24 mm in diameter
-#   compute_puck     the compute and IMU unit under the mast, 100 x 80 x 30 mm
-#   profiler_head    a 2D lidar of the SICK TiM561 class used as a floor profiler: 60 x 60 x 86 mm, 0.25 kg
-#   profiler_bracket its bracket under the nose
-PROTECTED = ("lidar_head", "profiler_head", "profiler_bracket", "lidar_mast", "compute_puck")
+#   lidar_head        a 3D lidar of the Ouster OS1 class: a cylinder 87 mm in diameter, 74.5 mm tall, 0.447 kg
+#   lidar_mast        its mast, 24 mm in diameter
+#   compute_puck      the compute and IMU unit under the mast, 100 x 80 x 30 mm
+#   lidar_cage_*      a tubular guard frame round the lidar, 12 mm tube: a 0.204 x 0.170 m rectangle at the top
+#                     (front, rear, left, right) on four posts (fl, fr, rl, rr); its top is the equipment's top
+#   profiler_head     a line profiler of the LMI Gocator 2340 class mounted crosswise: 49 x 197 x 75 mm, 0.74 kg
+#   profiler_bracket  its bracket under the nose
+CAGE_TOP = ("lidar_cage_front", "lidar_cage_rear", "lidar_cage_left", "lidar_cage_right")
+CAGE = (*CAGE_TOP, "lidar_cage_fl", "lidar_cage_fr", "lidar_cage_rl", "lidar_cage_rr")
+PROTECTED = ("lidar_head", "profiler_head", "profiler_bracket", "lidar_mast", "compute_puck", *CAGE)
 
 
 @dataclass(frozen=True)
@@ -54,10 +58,19 @@ def add_load(trunk, props=None):
              rgba=(0, 0, 0, 0), mass=props.payload_kg-SADDLE_KG)
     for name, kind, xyz, size, mass in (
         ("compute_puck", "box", (0, 0, .072), (.050, .040, .015), .25),
-        ("lidar_mast", "cylinder", (0, 0, .10575), (.012, .01875), .053),
-        ("lidar_head", "cylinder", (0, 0, .16175), (.0435, .03725), .447),      # top 0.199 m above the origin
+        ("lidar_mast", "cylinder", (0, 0, .09975), (.012, .01275), .033),
+        ("lidar_head", "cylinder", (0, 0, .14975), (.0435, .03725), .447),      # top 0.187 m above the origin
+        # the guard frame: top 0.199 m above the origin
+        ("lidar_cage_front", "box", (.096, 0, .193), (.006, .085, .006), .025),
+        ("lidar_cage_rear", "box", (-.096, 0, .193), (.006, .085, .006), .025),
+        ("lidar_cage_left", "box", (0, .079, .193), (.102, .006, .006), .025),
+        ("lidar_cage_right", "box", (0, -.079, .193), (.102, .006, .006), .025),
+        ("lidar_cage_fl", "box", (.096, .079, .122), (.006, .006, .065), .025),
+        ("lidar_cage_fr", "box", (.096, -.079, .122), (.006, .006, .065), .025),
+        ("lidar_cage_rl", "box", (-.096, .079, .122), (.006, .006, .065), .025),
+        ("lidar_cage_rr", "box", (-.096, -.079, .122), (.006, .006, .065), .025),
         ("profiler_bracket", "box", (.300, 0, -.060), (.075, .020, .010), .10),
-        ("profiler_head", "box", (.360, 0, -.120), (.030, .030, .043), .25),     # bottom 0.163 m below the origin
+        ("profiler_head", "box", (.3655, 0, -.1255), (.0245, .0985, .0375), .74),  # bottom 0.163 m below the origin
     ):
         geom(body, name, kind, xyz, size, rgba=(.42, .43, .46, 1), mass=mass, contype=1, conaffinity=1)
 

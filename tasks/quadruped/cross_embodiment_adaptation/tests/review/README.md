@@ -1,9 +1,40 @@
-# Review notes: version 7 (maintainers, 2026-11-21)
+# Review notes: version 8 (maintainers, 2026-11-21)
 
 The task: a UAV surveys a warehouse; a loaded Unitree Go1, commanded joint by joint, has to cross it to a dock on
 its first deployment there, crouching under a duct and standing tall over a deck's guides. The survey is out of
 date and not to scale, the Go1's odometry drifts, and each site's robot and fittings differ.
 The graded set and every rule with its range: [selection.md](selection.md).
+
+Version 8 against version 7 (next section): the lidar stands inside a tubular guard frame and the profiler is a
+line profiler mounted crosswise, which gives the equipment the reach the two boxes of version 6 had; the
+odometry's heading error rate goes up to 0.8 degrees per second; a deployment has 24 mast exposures instead of
+40; the guides' rise ends at 0.112 m and friction starts at 0.45 (for the oracle, see selection.md).
+
+## Controls of version 8 (`controls.py`, `replay_submission.py`, `observability.py`)
+
+| controller | graded sites (8) | development sites |
+|---|---|---|
+| oracle (true pose, the site as found) | 8 | 93 of 96 (46 and 47 of 48) |
+| oracle on dead reckoning (true launch pose, then its own odometry) | 0 | |
+| oracle on the surveyed route and dock | 2 (the two unchanged sites) | |
+| oracle without stance-height feedback and pitch trim | 4 | |
+| oracle with the fittings' nominal clearances | 8 | |
+| the saved version-7 frontier program (5 of 8 there), replayed as written | 0 | 0 of 32 |
+| the same with its own exposure cap set to 24 | | 7 of 32 |
+| the saved version-6, version-5 and v8 frontier programs, replayed | 0, 0, 0 | |
+
+Read with care: the saved programs spend the old exposure budget and then stand still, so their zeros say that
+they were written for 40 exposures, not that the task is hard. The row that carries information is the
+version-7 program with its one constant changed: 13 of 32 on version 7, 7 of 32 here. With the guides' range
+ending at 0.112 m, the nominal clearances no longer cost the oracle anything; what the fittings ask is carried by
+the load (the row without feedback) and by the duct.
+
+The oracle's slowest development site takes 38,295 ticks of 48,000; its three development misses are two
+profiler-on-floor contacts under a low duct and one fall. The audit of the mast camera's frames: at least three
+caps in view all along the route, the pallet before the middle rack and the beacon before the dock, on every
+graded site.
+
+## Version 7 (2026-11-21), kept for the record
 
 Version 7 is version 6 (next section) with the carried equipment and the barrier in the shapes of real objects: a
 3D lidar head on a mast and a floor profiler under the nose instead of two boxes, a pallet on its short edge

@@ -41,9 +41,9 @@ datasheet; the drawn values are never sent to a program.
 | pack position ahead of the trunk origin | 0.05 - 0.28 m |
 | servo stiffness factor, per joint | 0.85 - 1.15 |
 | torque-limit factor, per site | 0.85 - 1.00 |
-| friction of every walked surface | 0.40 - 0.90 |
+| friction of every walked surface | 0.45 - 0.90 (0.40 - 0.90 until version 8) |
 | duct underside above the floor | 0.410 - 0.445 m |
-| guide crest above the deck | 0.070 - 0.125 m |
+| guide crest above the deck | 0.070 - 0.112 m (to 0.125 m until version 8) |
 
 How the ranges were set (development sites only, before the graded set was run with the final ranges): wide
 enough that a controller with nominal postures and no correction from its own readings fails most sites, and
@@ -66,8 +66,8 @@ The rule, written before any site was generated with it:
 | middle rack | two openings (centres 0.66-0.80 m either side of the hall's axis, half-widths 0.42-0.46 m); a 1.2 x 0.8 x 0.14 m pallet on its short edge closes one (bit 30) |
 | pallet moved | bit 27: it stands in the other opening when the Go1 arrives |
 | dock moved | bit 43: 0.10-0.25 m west and 0.10-0.25 m north or south (stream 3706); the beacon moves with it |
-| bollards | eleven in the survey (five round the staging bay, six along the rails); bit 37: one of them is gone, or one is added on a rail (stream 3706) |
-| odometry | heading error rate within +/-0.40 degrees per second, distance factor 0.94-1.06 (stream 3703) |
+| bollards | eleven in the survey (five round the staging bay, six along the rails); 24 mast exposures a deployment (40 until version 8); bit 37: one of them is gone, or one is added on a rail (stream 3706) |
+| odometry | heading error rate within +/-0.80 degrees per second (0.40 until version 8), distance factor 0.94-1.06 (stream 3703) |
 | encoders, IMU | noise 0.002 rad / 0.01 rad/s / 0.01 and constant biases within 0.008 rad / 0.015 rad/s (stream 3705) |
 | UAV tracking | displacement factor 0.97-1.03 (stream 3703) |
 
@@ -108,3 +108,38 @@ The barrier is a 1.2 x 0.8 x 0.14 m pallet on its short edge (0.80 m wide, 1.20 
 line with the rack. A first draft stood it on its long edge in openings widened to 1.22-1.30 m; replayed on that
 draft, the program a frontier model had written for version 6 (1 of 8 graded, 4 of 32 development sites there)
 docked 4 of 8 and 10 of 24, so the openings went back to version 6's width class before any new episode was run.
+
+## The equipment's reach restored (version 8, 2026-11-21)
+
+Version 7 scored 5 of 8 with a frontier model, and the program it wrote docked 13 of 32 development sites; the
+same program on version 6's sites, where the Go1 carried the two boxes, docked 6 of 32. The slim devices passed
+where the boxes had caught a rack end or the pallet. So the equipment gets its reach back with real parts, fixed
+before any run of version 8:
+
+- a tubular guard frame round the lidar (12 mm tube, 0.204 x 0.170 m, top at 0.199 m above the trunk origin: the
+  old guard's footprint, centred on the lidar), and the lidar's head 12 mm under it;
+- the profiler as a line profiler mounted crosswise (LMI Gocator 2340 class, 0.197 m wide where the scanner box
+  was 0.176 m; 0.74 kg where the TiM-class unit was 0.25 kg).
+
+The measure, also fixed before any run: the version-7 program replayed on 32 development sites, target 8 of 32
+or fewer; if above, in this order and stopping at the first that reaches it while the oracle keeps 8 of 8 graded
+sites and 45 of 48 per development batch and the audit passes: odometry heading error rate to 0.8 degrees per
+second, mast exposures 40 to 24, rail bollards six to four.
+
+For the oracle (no agent-side reason): with 0.49 kg more on the nose its gait stalled on the apron of the tallest
+guides at the lowest frictions (graded 6 of 8; development 45 and 44 of 48). The guides' rise ends at 0.112 m
+instead of 0.125 m and friction starts at 0.45 instead of 0.40; after that 8 of 8 and 46 and 47 of 48.
+
+What the measure gave (the version-7 program on 32 development sites; 13 on version 7):
+
+| step | as written | with its own exposure cap set to the new budget |
+|---|---|---|
+| the reach restored | 13 | |
+| + heading error rate to 0.8 degrees per second | 11 of 31 | |
+| + 24 mast exposures | 0 | 7 |
+
+The reach alone changed nothing for this program: its contacts are its rear legs, not its equipment. The heading
+drift changed little: it re-localises often enough. With 24 exposures the program as written spends them before
+the middle rack and then stands still, which says nothing about the task; with its one constant set to 24 it docks
+7, so fewer fixes do cost it. The chain stopped there; the rail bollards stay six. The oracle and the audit are
+unchanged by the last two steps (the oracle does not use odometry or exposures).
