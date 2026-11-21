@@ -45,7 +45,7 @@
 "about": "a training rubble site (a collapsed building like the real ones)"
 }
 ],
-"missions": 40,
+"missions": 80,
 "open": 2,
 "program_time_cap_s": 1200.0,
 "silence_s": 180.0,

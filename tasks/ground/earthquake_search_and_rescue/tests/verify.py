@@ -21,10 +21,13 @@ their reach and brings the robot back to the deployment point). This grader:
      no-network filter works (a failure is a task error);
   3. the oracle token: submission/.oracle_token whose sha256 equals hidden/oracle_token.sha256 switches the cells to the
      privileged mode (get_state_privileged, reference_run); a wrong token is ignored (stat oracle_token_mismatch);
+  3b. checks that this machine computes a program's arithmetic as the reference machine does (numerics_check.py under
+     the run regime's numerics pin against numerics.json; a difference is a task error);
   4. takes the `episodes` hidden site seeds pinned in hidden/seeds.json (a fixed hidden set of 8 selected by the rule of
      hidden/selection.json; a missing or short file is a task error) and runs the agent's program per site on the cell
      (rubblecell.server.RubbleCellServer, mode hidden: the building, its collapse, the obstacles, the survivor and the
-     decoys drawn from the seed; sensor-only API) as `nobody` from a read-only copy under an opaque run tag; an episode
+     decoys drawn from the seed; sensor-only API) as `nobody` from a read-only copy under an opaque run tag, each
+     episode in a process of its own (the colour renderer keeps state for a process's life); an episode
      in which the cell failed (an internal error, a physics fault, a frame it could not render) is run once more from
      scratch and the second run counts;
   5. criterion: rescue_score = the mean over the sites of the mission's score (rubblecell.server.score: located 0.45 --
@@ -273,8 +276,11 @@ class Runner(object):
         return dirs
 
     def env(self, dirs, extra=None):
-        e = runner.child_env(dirs["home"], dirs["tmp"], dirs["lib"], ROOT_GIVEN, extra=extra)
-        e["LP_NUM_THREADS"] = "2"
+        # the program's environment is the one the agent's launcher builds (submission_checks.run_environment: nothing
+        # of the caller's but PATH, and the numerics pin): one source
+        e = load_checks().run_environment(dirs["home"], dirs["tmp"], dirs["lib"], ROOT_GIVEN)
+        if extra:
+            e.update(extra)
         return e
 
     def snapshot(self, exclude):
@@ -321,6 +327,77 @@ def contract_check(cfg, rn):
     finally:
         rn.cleanup(dirs, before)
     return ok, why, suspicious, []
+
+
+def numerics_check(rn):
+    """(ok, detail): the program's arithmetic on this machine against tests/numerics.json. numerics_check.py --math runs
+    as a mission program does (the runner account, the run regime's environment and no-network filter) from a root-owned
+    copy outside the locked stage folder."""
+    ref = load_json(os.path.join(STAGE_DIR, "numerics.json")).get("math", {})
+    src = os.path.join(RUNS_ROOT, "_numerics")
+    shutil.rmtree(src, ignore_errors=True)
+    os.makedirs(src)
+    shutil.copyfile(os.path.join(STAGE_DIR, "numerics_check.py"), os.path.join(src, "numerics_check.py"))
+    dirs = rn.prepare("numerics", src)
+    argv = runner.wrap_limits([sys.executable] + runner.PYTHON_FLAGS + [os.path.join(dirs["program"], "numerics_check.py"), "--math"],
+                              cpu_s=120, user=rn.name, nonet=True)
+    r = None
+    try:
+        r = subprocess.run(argv, cwd=dirs["program"], env=rn.env(dirs), capture_output=True, text=True, timeout=180,
+                           start_new_session=True)
+        got = json.loads((r.stdout or "").strip().splitlines()[-1]) if r.returncode == 0 else None
+    except (subprocess.TimeoutExpired, ValueError, IndexError):
+        got = None
+    finally:
+        rn.cleanup(dirs, None)
+        shutil.rmtree(src, ignore_errors=True)
+    if got is None:
+        return False, "the numerics check did not run: %s" % (((r.stderr or "").strip().splitlines() or ["?"])[-1][:300] if r is not None else "timeout")
+    differs = sorted(k for k in set(ref) | set(got) if ref.get(k) != got.get(k))
+    return not differs, ("ok" if not differs else "parts that differ: " + ", ".join(differs))
+
+
+RUNNER_COUNTERS = ("killed", "left", "unclean_runs", "stray_files", "symlinks_skipped")
+
+
+def _run_episode_forked(cfg, seed, rn, privileged, tag):
+    """run_episode in a child process of its own. Why: the cell's colour renderer (Filament) keeps state for the life
+    of a process (its frame counter drives the dithering noise, its objects are never all freed), so a site's frames
+    would depend on the sites graded before it in the same process. The training ground forks a process per mission;
+    with a process per graded episode the same site and the same requests give the same frames in training and in
+    grading. The child returns the episode's summary and the runner's counters through a pipe; a task error in the
+    child (exit code 1) is a task error here."""
+    rfd, wfd = os.pipe()
+    sys.stdout.flush()
+    sys.stderr.flush()
+    pid = os.fork()
+    if pid == 0:
+        code = 0
+        try:
+            os.close(rfd)
+            summary = run_episode(cfg, seed, rn, privileged, tag)
+            payload = json.dumps({"summary": summary, "rn": {k: getattr(rn, k) for k in RUNNER_COUNTERS}}, default=float).encode()
+            with os.fdopen(wfd, "wb") as f:
+                f.write(payload)
+        except SystemExit as e:
+            code = int(e.code) if isinstance(e.code, int) else 1
+        except BaseException:  # noqa: BLE001
+            log("[grader] %s: the episode's process failed\n%s" % (tag, traceback.format_exc()))
+            code = 1
+        finally:
+            sys.stdout.flush()
+            sys.stderr.flush()
+            os._exit(code)
+    os.close(wfd)
+    with os.fdopen(rfd, "rb") as f:
+        data = f.read()
+    _, status = os.waitpid(pid, 0)
+    if not os.WIFEXITED(status) or os.WEXITSTATUS(status) != 0 or not data:
+        fail("%s: the episode's process ended abnormally (status %d)" % (tag, status))
+    out = json.loads(data.decode())
+    for k in RUNNER_COUNTERS:
+        setattr(rn, k, out["rn"][k])
+    return out["summary"]
 
 
 def token_state():
@@ -442,13 +519,13 @@ def _episode_with_retry(cfg, seed, rn, privileged, tag, metrics):
     or malformed parameter as `bad_params` (rubblecell.server._dispatch), so a program has no way to ask for a second
     run. A render failure that repeats is the grader's (a task error); an internal error or a physics fault that
     repeats is scored as it stands."""
-    s_a = run_episode(cfg, seed, rn, privileged, tag=tag)
+    s_a = _run_episode_forked(cfg, seed, rn, privileged, tag)
     why = _cell_failed(s_a)
     if not why:
         return s_a
     log("[grader]   %s: the cell failed (%s): the episode is run once more" % (tag, ", ".join(why)))
     metrics["episode_retries"] = metrics.get("episode_retries", 0.0) + 1.0
-    s_b = run_episode(cfg, seed, rn, privileged, tag=tag)          # the same run folder: the program cannot tell the runs apart
+    s_b = _run_episode_forked(cfg, seed, rn, privileged, tag)      # the same run folder: the program cannot tell the runs apart
     why_b = _cell_failed(s_b)
     if "render_failure" in why_b:
         fail("%s: the cell could not render frames in two runs of the episode" % tag)
@@ -581,6 +658,10 @@ def _main_locked(cfg, rewards, metrics):
     metrics["nonet_selftest_ok"] = 1.0 if nn_ok else 0.0
     if not nn_ok:
         fail("the no-network filter for the program does not work here: " + nn_why)
+    num_ok, num_why = numerics_check(rn)
+    metrics["numerics_ok"] = 1.0 if num_ok else 0.0
+    if not num_ok:
+        fail("this machine does not compute a mission program's arithmetic as the reference machine does (%s)" % num_why)
     agent = []
     step_calls = illegal = 0
     metrics["episode_retries"] = 0.0

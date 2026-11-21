@@ -146,6 +146,47 @@ physics model is never rendered and never touched, and no random generator of th
 * **Session**: the sandbox's cores and memory and a "Session time" section in instruction.md, `session_time.sh` with
   a root-owned start stamp; `WORKDIR /` in the image; absolute paths in the training service's restart loop;
   `OPENBLAS_L2_SIZE=256` beside the kernel pin.
-* **Left as it is**: the colour frames are not byte-identical between two fresh processes (tens of pixels of
-  307,200; not the ambient occlusion, the soft shadows, the bloom, address-space randomisation or lavapipe's thread
-  count); depth, thermal and lidar are. The reference program does not read images.
+
+## 9. Round 2 (2026-11-20): frames that are a function of the scene, a pinned program, 80 training missions
+
+**The colour frames.** The same frame came out with 0 to 92 different pixels (of 307,200, up to 24 levels) in two
+fresh processes. Three causes, found by locating the pixels and by switching features off, three processes each:
+
+1. *Draw order of equal depths on the robot.* The differing pixels sat on the track belts' edges: a belt is a loop
+   of box facets whose side faces overlap in one plane, and where two drawn objects have the same depth, the one
+   Filament draws first shows; that order is not a function of the scene. `twin.batch_robot` now merges, on every
+   moving body of the robot, the geoms of one light-level version and one material into one mesh (201 geoms into 25
+   on the lanes): inside one mesh the triangle order is fixed.
+2. *Soft shadows.* With the robot fixed, 1 to 9 pixels along the sun's shadow edges still differed (outdoor frames
+   only). Shadow types 1, 2 and 3 all do it; type 0 (percentage-closer filtering) gives the same bytes in every
+   process. `LOOK` uses type 0 (`look-2`); the shadows are a little harder-edged.
+3. *The renderer's state over a process's life.* Filament's dithering noise follows its frame counter, so a site's
+   frames depended on how many frames the process had drawn before: a site built second in a process differed from
+   the same site built first in about 190,000 pixels by one level. The training ground forks a process per mission;
+   the grader ran its sites in one process. `verify.py` now runs every graded episode in a forked process of its own
+   (`_run_episode_forked`), so the same site and the same requests give the same frames in training and in grading.
+
+Not causes (each tried): ambient occlusion, bloom, fog, address-space randomisation, Python's hash seed, lavapipe's
+thread count (1, 2, 4, 8), the number of CPUs.
+
+| comparison (lanes and training sites A, B; 6 robot poses each, the 4 cameras; frames after the sensor noise) | result |
+|---|---|
+| two fresh processes on one machine | 72 of 72 identical |
+| the same process on the other machine (Zen 3 without AVX-512 / Zen 5 with it; the image built on each) | 72 of 72 identical |
+| every site in a forked process of its own, as the grader runs them, against the same on the other machine with another site order | 72 of 72 identical |
+| a site run again later under the same parent (forked) against its first run, on each machine | 24 of 24 and 24 of 24 identical |
+| the first site of a fresh process against the same site forked | 24 of 24 identical |
+| 2 CPUs against 8 CPUs | 24 of 24 identical |
+| (the old grader's case) a site built second in one process without a fork against the site forked | 0 of 24 identical |
+
+**The program's arithmetic.** `submission_checks.numerics_pin` (in the run regime of the grader and of the training
+launcher, and in the image's environment for the agent's own shell): OpenBLAS on the Haswell kernels, block size 256,
+one thread; NumPy without its AVX-512 dispatch groups (numpy 2.5's names; the image build fails if numpy rejects
+one); OpenCV's IPP at AVX2 and, on a CPU with AVX-512, `OPENCV_CPU_DISABLE=AVX512-SKX`. `numerics_check.py` hashes 20
+groups of NumPy, SciPy and OpenCV results as the runner account in that regime; `verify.py` compares them with
+`numerics.json` before the first mission and refuses to grade on a difference (a task error). The 20 hashes are equal
+on the two machines. The image's pin is set before the look's textures are made at build time.
+
+**Also.** The training allowance is 80 missions (was 40). `get_state`'s `pose.z` carries 1 cm of noise.
+`tests/test_earthquake_search_and_rescue.py` (repository tests) keeps the stated numbers, the byte copies, the
+public contract and the pin in agreement.

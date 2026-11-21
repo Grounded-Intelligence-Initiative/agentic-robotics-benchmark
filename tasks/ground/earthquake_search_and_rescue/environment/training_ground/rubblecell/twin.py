@@ -494,6 +494,73 @@ def _geom_mesh(spec_meshes, g):
     return V * sc, T, F
 
 
+def batch_robot(spec, bank):
+    """Merge, on every moving body of the robot, the geoms of one light-level version that share a material and a
+    shading (flat boxes, smooth primitives) into ONE mesh in the body's frame, and delete the merged geoms.
+
+    Why: a track belt is a loop of box facets whose side faces overlap in one plane, and the chassis parts abut. Where
+    two drawn objects have the same depth at a sample, which one shows is decided by the order Filament happens to
+    draw them in, and that order is not a function of the scene: the same frame came out with a few tens of different
+    pixels (the belts' edges) in two fresh processes. Inside one mesh the triangles are drawn in the mesh's own order,
+    so one object per body, version and material makes the frame a function of the scene. The render twin does
+    kinematics only: the merged bodies get an explicit inertia in place of their geoms' masses."""
+    meshes = {me.name: me for me in spec.meshes}
+    level_of = {}
+    for lv, names in bank.robot_copies.items():
+        for n in names:
+            level_of[n] = lv
+    groups = {}
+    for body in spec.bodies:
+        for g in list(body.geoms):
+            lv = level_of.get(g.name)
+            if lv is None:
+                continue
+            got = _geom_mesh(meshes, g)
+            if got is None:
+                continue
+            smooth = bool(meshes[g.meshname].smoothnormal)
+            groups.setdefault((body.name, lv, g.material, smooth, int(g.group)), (body, []))[1].append((g, got))
+    n_merged = n_new = 0
+    for k, ((bname, lv, mat, smooth, group), (body, items)) in enumerate(sorted(groups.items(), key=lambda kv: kv[0])):
+        if len(items) < 2:
+            continue
+        Vs, Ts, Fs, n = [], [], [], 0
+        for g, (V, T, F) in items:
+            R = _quat_mat(np.asarray(g.quat, float))
+            Vs.append(V @ R.T + np.asarray(g.pos, float))
+            Ts.append(T)
+            Fs.append(F + n)
+            n += len(V)
+        me = spec.add_mesh()
+        me.name = "lkrobot_%d" % k
+        me.uservert = np.concatenate(Vs).flatten().tolist()
+        me.usertexcoord = np.concatenate(Ts).flatten().tolist()
+        me.userface = np.concatenate(Fs).flatten().tolist()
+        me.smoothnormal = smooth
+        try:
+            me.maxhullvert = 8
+        except Exception:  # noqa: BLE001
+            pass
+        _shell(me)
+        names = bank.robot_copies[lv]
+        for g, _ in items:
+            names.remove(g.name)
+            spec.delete(g)
+        body.explicitinertial = True
+        body.mass = 1.0
+        body.inertia = [0.01, 0.01, 0.01]
+        ng = body.add_geom()
+        ng.name = me.name
+        ng.type = mujoco.mjtGeom.mjGEOM_MESH
+        ng.meshname = me.name
+        ng.material = mat
+        ng.contype, ng.conaffinity, ng.group, ng.mass = 0, 0, group, 0.0
+        names.append(ng.name)
+        n_merged += len(items)
+        n_new += 1
+    return n_merged, n_new
+
+
 def batch_statics(spec, bodies):
     """Merge every geom of the static `bodies` (world, decor) that is drawn as a textured mesh into one mesh per
     material, in world coordinates, and delete the merged geoms (a CPU rasteriser pays per drawn object; the render

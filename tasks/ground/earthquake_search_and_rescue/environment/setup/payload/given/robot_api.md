@@ -66,7 +66,8 @@ collapse; calls that move the robot then answer `episode_over` / `robot_lost`. A
   import or code); a submission that fails one scores 0 on every site.
 * The grader launches your program as `python -B -E -s` with the client library on `PYTHONPATH`, the working
   directory = a read-only copy of your submission folder (writing a file there raises `PermissionError`), an empty
-  writable `HOME` and `TMPDIR`, no network, and limits: 120 s (wall) and 120 CPU-s to import `rescue.py`; per mission
+  writable `HOME` and `TMPDIR`, no network, the numerics pin (one BLAS thread on fixed kernels, NumPy without its
+  AVX-512 loops, OpenCV's IPP at AVX2: `numerics_pin` in `submission_checks.py`), and limits: 120 s (wall) and 120 CPU-s to import `rescue.py`; per mission
   1200 s of program time (the wall clock minus the cell's simulation and sensor rendering), 4800 CPU-s, 180 s of
   silence between requests.
 * Ordinary prints go to stderr (the launcher binds the wire to the original stdout first): print as much as you like.

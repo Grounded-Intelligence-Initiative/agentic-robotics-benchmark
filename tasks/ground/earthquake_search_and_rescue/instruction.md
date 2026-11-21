@@ -55,8 +55,17 @@ a training mission.
 The run regime, the same for the import check and for every mission: `python -B -E -s` as an unprivileged account,
 the working directory a **read-only** copy of your submission folder (regular files only; symbolic links are
 dropped), so a program that writes a file next to itself fails with a `PermissionError`; an empty writable `HOME`
-and `TMPDIR`; no file kept from one mission to the next; no network; the client library on `PYTHONPATH`; BLAS
-threads 2.
+and `TMPDIR`; no file kept from one mission to the next; no network; the client library on `PYTHONPATH`.
+
+Your program's arithmetic is pinned, so that it computes the same on the training ground and on the grading
+machine, whatever their CPUs: NumPy's linear algebra on one fixed set of kernels and one thread
+(`OPENBLAS_CORETYPE=Haswell`, `OPENBLAS_L2_SIZE=256`, `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`), NumPy without
+its AVX-512 loops (`NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR"`) and OpenCV's IPP at AVX2
+(`OPENCV_IPP=avx2`). `run_mission.py` sets the same variables, and so does this sandbox's shell. The grader checks
+before the first mission that its machine reproduces a fixed set of NumPy, SciPy and OpenCV results under this pin
+and refuses to grade otherwise. If your program changes these variables or starts its own threads, its results may
+depend on the machine. The robot's sensors are part of the pin: the same robot state gives the same sensor data
+on every machine.
 
 ## How it is graded
 
@@ -107,13 +116,13 @@ to `~/submission`, then runs it in one mission under the grader's run regime (as
 grader's unprivileged one) and prints the robot's mission log: how the mission ended, the simulated time, how many
 reports were made and how many reached the team, the events, the budgets used. `--list` shows the sites and the
 missions left. You can also drive the robot step by step from your own scripts with
-`rubblecell.client.connect_training(site)`. The training ground allows **40 missions** in total, 2 at a time. It
+`rubblecell.client.connect_training(site)`. The training ground allows **80 missions** in total, 2 at a time. It
 runs the same robot and physics as the grader; a mission can take several minutes of wall-clock time.
 
 ## Your sandbox
 
-8 CPU cores, 16 GB of memory, no GPU, no network. `nproc` prints 2 because the image sets `OMP_NUM_THREADS=2`; the
-cores are there. The training ground's robot cell runs on the same cores (its sensor rendering uses several threads),
+8 CPU cores, 16 GB of memory, no GPU, no network. `nproc` prints 1 because the image sets `OMP_NUM_THREADS=1` (the
+numerics pin above); the cores are there. The training ground's robot cell runs on the same cores (its sensor rendering uses several threads),
 so two training missions at once share them with whatever you run.
 
 ## Session time
@@ -127,5 +136,5 @@ so two training missions at once share them with whatever you run.
   before every decision that depends on the time left, and whenever you pick the work up from notes or from a
   summary of what was done. Do not estimate the time used from how much you have done.
 - Three other counts in this task are not your session's time: a mission's 1800 s of simulated time (a few minutes
-  to a quarter of an hour of wall clock), a mission's 1200 s of program time, and the training ground's 40
+  to a quarter of an hour of wall clock), a mission's 1200 s of program time, and the training ground's 80
   missions. None of them says how much of the 4 hours is left.

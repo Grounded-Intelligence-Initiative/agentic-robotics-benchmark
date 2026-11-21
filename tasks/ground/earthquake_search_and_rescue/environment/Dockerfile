@@ -53,6 +53,15 @@ RUN find /opt/rubblecell-training -name '__pycache__' -type d -prune -exec rm -r
     && chown -R rubblecell:rubblecell /opt/rubblecell-training \
     && chmod -R u+rwX,go-rwx /opt/rubblecell-training
 
+# The numerics pin of a mission program (setup/payload/training/submission_checks.py `numerics_pin`, which the grader
+# and the training launcher set for the program they start), here for the agent's own shell and scripts too, so that
+# what it computes while developing is what the graded program computes: fixed OpenBLAS kernels on one thread, NumPy
+# without its AVX-512 loops (the names of numpy 2.5's dispatch groups; the build fails below if this numpy rejects
+# one), OpenCV's IPP at AVX2. The training ground's cell and the grader's set their own environment.
+ENV OPENBLAS_CORETYPE=Haswell OPENBLAS_L2_SIZE=256 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+    NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR" OPENCV_IPP=avx2
+# Set before the look's textures are made, so that they are computed under the pin on whatever machine builds the image.
+
 # The look's texture sets (rubblecell/pbr.py: procedural, from fixed seeds, the same pixels on every machine), made once
 # here for the cell's two users: the grader (root, in its separate verifier sandbox from this image) and the training
 # ground (`rubblecell`). The agent account cannot read them (they are no given).
@@ -66,13 +75,13 @@ RUN export HOME=/root \
 ENV MPLBACKEND=Agg
 ENV MUJOCO_GL=osmesa
 ENV PYOPENGL_PLATFORM=osmesa
-ENV OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 LP_NUM_THREADS=2
-
+ENV LP_NUM_THREADS=2
 # Fail the build early if the toolchain is broken, prove the AGENT account can use the venv, prove a Filament context
 # on lavapipe, prove the training ground's cell builds a site and renders a frame (Filament colour, OSMesa depth) for
 # its own account; finally, the agent account can read neither the training ground nor the look's textures, and
 # nothing in the agent home is root-owned. One import line per -c.
 RUN export HOME=/root \
+    && python3 -W error::ImportWarning -c "import numpy; print('[rubble] numerics pin: numpy', numpy.__version__, 'accepts NPY_DISABLE_CPU_FEATURES')" \
     && python3 -c "import sys; assert sys.version_info >= (3, 12), sys.version; import mujoco, numpy, scipy, PIL, cv2; print('[rubble] import OK mujoco', mujoco.__version__, 'numpy', numpy.__version__, 'cv2', cv2.__version__)" \
     && runuser -u user -- python3 -c "import mujoco, numpy, scipy, PIL, cv2; print('[rubble] agent-UID import OK')" \
     && env -u DISPLAY python3 -c "import mujoco._render_filament as F, mujoco.experimental.studio.window; c = F.Context(F.ContextConfig(graphics_api=F.GraphicsApi.GRAPHICS_API_VULKAN)); print('[rubble] Filament on Vulkan (lavapipe) OK')" \

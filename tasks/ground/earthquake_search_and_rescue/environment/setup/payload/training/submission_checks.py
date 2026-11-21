@@ -16,7 +16,9 @@ The checks (instruction.md, "What a submission must satisfy"):
   4. `import rescue` succeeds within IMPORT_WALL_S seconds and IMPORT_CPU_S CPU-seconds in the run regime below.
 The run regime (`run_environment`, `nonet_argv`): python -B -E -s, the working directory a READ-ONLY copy of the
 submission (regular files only; symbolic links and __pycache__ dropped), an empty writable HOME and TMPDIR, the given
-client library on PYTHONPATH, no network (a seccomp filter: only AF_UNIX sockets), BLAS threads 2.
+client library on PYTHONPATH, no network (a seccomp filter: only AF_UNIX sockets), and the numerics pin
+(`numerics_pin`: one BLAS thread on fixed kernels, NumPy without its AVX-512 loops, OpenCV's IPP at AVX2), so that a
+program computes the same on the training ground and on the grading machine.
 During the missions the grader also requires: at least one `step` call over the missions, no process of the program
 left behind after a mission, no remote network socket.
 """
@@ -219,13 +221,36 @@ def nonet_argv(argv, python=None):
     return [python or sys.executable, "-I", "-B", "-c", NONET_SRC, "--"] + list(argv)
 
 
-def run_environment(home, tmpdir, lib_dir, given_dir, threads=2):
-    """The program's whole environment: nothing of the caller's except PATH."""
-    return {"PATH": os.environ.get("PATH", "/opt/venv/bin:/usr/local/bin:/usr/bin:/bin"),
-            "HOME": home, "TMPDIR": tmpdir, "TMP": tmpdir, "TEMP": tmpdir, "LANG": "C.UTF-8", "MPLBACKEND": "Agg",
-            "PYTHONPATH": lib_dir, "ARB_GIVEN_DIR": given_dir, "MUJOCO_GL": "osmesa", "PYOPENGL_PLATFORM": "osmesa",
-            "OMP_NUM_THREADS": str(int(threads)), "OPENBLAS_NUM_THREADS": str(int(threads)),
-            "MKL_NUM_THREADS": str(int(threads)), "LP_NUM_THREADS": str(int(threads))}
+def _cpu_flags():
+    try:
+        with open("/proc/cpuinfo") as f:
+            for line in f:
+                if line.startswith("flags"):
+                    return set(line.split(":", 1)[1].split())
+    except OSError:
+        pass
+    return set()
+
+
+def numerics_pin():
+    """The variables that make a program's own arithmetic the same on every x86-64 machine: NumPy's linear algebra on
+    one fixed set of kernels and one thread (a threaded product is split by the host's core count), NumPy without its
+    AVX-512 loops (they round arctan2, exp, log and others differently), OpenCV's IPP at AVX2."""
+    pin = {"OPENBLAS_CORETYPE": "Haswell", "OPENBLAS_L2_SIZE": "256", "OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1",
+           "MKL_NUM_THREADS": "1", "NPY_DISABLE_CPU_FEATURES": "X86_V4 AVX512_ICL AVX512_SPR", "OPENCV_IPP": "avx2"}
+    if "avx512f" in _cpu_flags():
+        pin["OPENCV_CPU_DISABLE"] = "AVX512-SKX"
+    return pin
+
+
+def run_environment(home, tmpdir, lib_dir, given_dir):
+    """The program's whole environment: nothing of the caller's except PATH; the numerics pin."""
+    env = {"PATH": os.environ.get("PATH", "/opt/venv/bin:/usr/local/bin:/usr/bin:/bin"),
+           "HOME": home, "TMPDIR": tmpdir, "TMP": tmpdir, "TEMP": tmpdir, "LANG": "C.UTF-8", "MPLBACKEND": "Agg",
+           "PYTHONPATH": lib_dir, "ARB_GIVEN_DIR": given_dir, "MUJOCO_GL": "osmesa", "PYOPENGL_PLATFORM": "osmesa",
+           "LP_NUM_THREADS": "2"}
+    env.update(numerics_pin())
+    return env
 
 
 def import_check_argv(python, lib_dir, program_dir):

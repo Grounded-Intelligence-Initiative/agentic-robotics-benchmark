@@ -48,10 +48,13 @@ __all__ = ["LOOK", "available", "look_mode", "build_twins", "Twins", "Renderer",
 CAM_NEAR, CAM_FAR = 0.01, 400.0
 CALL_TIMEOUT = 300.0
 
+# Shadows: type 0 (percentage-closer filtering). The other types (1 variance, 2 and 3 with a blocker search for soft
+# edges) gave a handful of different pixels along shadow edges in two fresh processes of the same frame (measured on
+# the test lanes, three processes per type); type 0 gave the same bytes every time.
 LOOK = {
-    "version": "look-1",
+    "version": "look-2",
     # Filament view options (read from the twin model's custom numeric / text fields)
-    "view": {"numeric": {"filament.ao.enabled": 1, "filament.ao.quality": 2, "filament.shadows.type": 3,
+    "view": {"numeric": {"filament.ao.enabled": 1, "filament.ao.quality": 2, "filament.shadows.type": 0,
                          "filament.shadows.map_size": 2048, "filament.bloom.enabled": 1,
                          "filament.bloom.strength": 0.06, "filament.msaa.enabled": 0,
                          "filament.cg.contrast": 1.08, "filament.cg.saturation": 0.95,
@@ -263,6 +266,7 @@ def make_rgb_spec(scene, sets, decor_fn=None, batch=True, levels=None):
         if g.type == mujoco.mjtGeom.mjGEOM_HFIELD:
             spec.delete(g)
     bank.batched = _twin.batch_statics(spec, [spec.worldbody, body]) if batch else (0, 0)
+    bank.robot_batched = _twin.batch_robot(spec, bank) if batch else (0, 0)
     for k, v in sorted(LOOK["view"]["numeric"].items()):
         spec.add_numeric(name=k, data=[float(x) for x in (v if isinstance(v, (list, tuple)) else [v])])
     for k, v in sorted(LOOK["view"]["text"].items()):

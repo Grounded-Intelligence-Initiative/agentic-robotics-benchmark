@@ -99,7 +99,7 @@ the gripper grasps the kit. To deliver it, set it down on the floor next to the 
 | rear driving camera | spine tail, looking back, pitched 12 deg down | 320 x 240 colour, 80 deg |
 | gripper camera | on the gripper palm, looking along the tool axis | 320 x 240 colour + depth (0.07 .. 3 m) |
 | lidar | on the mast top (does not pan): at mast 0 its optical centre is at chassis (-0.235, -0.050, 0.390), rising with the mast | 16 channels from -15 deg to +15 deg, 0.5 deg azimuth steps (720 per channel), 0.3 .. 25 m, noise 1 cm + 0.2 % of the range, about 2 % dropouts; one sweep per request |
-| odometry | lidar-inertial | the robot's pose (x, y, yaw) in the map frame; drift about 1 % of the distance travelled and a slow heading drift |
+| odometry | lidar-inertial | the robot's pose (x, y, yaw) in the map frame; drift about 1 % of the distance travelled and a slow heading drift. `pose.z` is the chassis' height above the ground at the deployment point (barometric and inertial; noise about 1 cm, no drift) |
 | IMU | chassis | roll, pitch (noise about 0.002 rad), body rates (`imu.gyro`, chassis frame, noise about 0.005 rad/s) |
 | velocity estimate | lidar-inertial | `velocity`: forward, lateral (noise about 0.01 m/s) and yaw rate (about 0.005 rad/s), chassis frame |
 | joint and belt encoders | | flipper angles, gauge, mast, head, arm joints, gripper opening, belt speeds |
@@ -150,5 +150,5 @@ tells you where the person was, how far off your report was, where the kit ended
 At the end you get the robot's own mission log: how the mission ended, the simulated time, how many reports were
 made and how many reached the team, whether the kit left its cradle, the events (`protective_stop`, `collapse`,
 `robot_overturned`, ...) and the budgets used. Judge a mission from what your program sensed and logged: its
-frames, its map, its odometry. The training ground allows 40 missions in total and 2 at a time
+frames, its map, its odometry. The training ground allows 80 missions in total and 2 at a time
 (`/run/rubblecell/training_status.json`); each mission log is also kept in `/run/rubblecell/logs/`.

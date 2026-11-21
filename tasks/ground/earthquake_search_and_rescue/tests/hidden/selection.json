@@ -2150,6 +2150,17 @@
    "what": "after the selection runs: (a) arm_to answers bad_params for a point that has not 3 coordinates (a request check; the reference always sends 3); (b) the cordon leaves out a last barrier piece of 4 cm or less, which made two candidates' sites impossible to build (hidden 15, training 6: 'size 0 must be positive'); a site that built before is built from the same boxes. Neither candidate is admitted after the fact: the sets stay as selected.",
    "check": "one full reference verify (`ale validate`) on the amended files completes every hidden site, and each site's sim_time_s, kit_dist_m and home_dist_m equal its selection record digit for digit (tests/anchor.json `source`); the six training sites repeat their records likewise",
    "result": "validate-4314eb49 (2026-11-20) on the amended files: 8 of 8 hidden sites at 1.0, mean simulated time 659.0937499978304 s, the selection records' mean to the last digit; the six training sites re-run on the amended files give their records' sim_time_s, kit_dist_m and home_dist_m digit for digit"
+  },
+  {
+   "n": 2,
+   "date": "2026-11-20",
+   "files": [
+    "tests/rubblecell/look.py",
+    "tests/rubblecell/twin.py",
+    "tests/rubblecell/server.py"
+   ],
+   "what": "after the selection runs, nothing of the physics: (a) the colour images: on every moving body of the robot the geoms of one material are drawn as one mesh (twin.batch_robot) and the sun's shadows are filtered by type 0 (look.LOOK), so that a frame is the same bytes in every process and on every machine; (b) get_state's pose.z carries 1 cm of noise from get_state's own random stream. The reference program reads neither images nor get_state.",
+   "check": "one full reference verify (`ale validate`) on the amended files completes every hidden site with the selection records' mean simulated time to the last digit (tests/anchor.json `source`)"
   }
  ]
 }

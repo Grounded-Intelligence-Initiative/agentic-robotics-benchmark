@@ -388,7 +388,8 @@ class RubbleCellServer(object):
         load = grasp.weld_load(self.m, self.d, "grip") if hold else None
         return _jsonable({
             "sim_time": float(d.time), "done": bool(self.done), "done_reason": self.done_reason,
-            "pose": {"x": float(est[0]), "y": float(est[1]), "z": float(p[2] - self.start_z_ground()), "yaw": float(est[2]),
+            "pose": {"x": float(est[0]), "y": float(est[1]), "z": float(p[2] - self.start_z_ground() + ns.normal(0, 0.01)),
+                     "yaw": float(est[2]),
                      "roll": float(roll + ns.normal(0, 0.002)), "pitch": float(pitch + ns.normal(0, 0.002))},
             "velocity": {"forward": float(vb[0]), "lateral": float(vb[1]), "yaw_rate": float(wb[2])},
             "imu": {"gyro": [float(x) for x in wb], "roll": float(roll + ns.normal(0, 0.002)),
