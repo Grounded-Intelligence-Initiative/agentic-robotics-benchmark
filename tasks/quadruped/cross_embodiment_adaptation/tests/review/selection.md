@@ -189,3 +189,51 @@ was measured with (7 of 16 both ways, 7 against 6 of 32) and lowered the audit's
 to two. The rail bollards are six again (near x = 2.30, 3.95 and 5.60 m on each long wall, eleven in the survey),
 and the audit's line is three caps in view at every 0.4 m of the route, the pallet in view before the middle rack
 and the beacon before the dock, on every graded site. The oracle has to dock all sixteen.
+
+## The cameras show the hall (version 10, 2026-11-22)
+
+Written before the task's cameras, contact geometry or audit are changed and before any site is run with them.
+
+What changes. The survey camera and the mast camera draw the warehouse hall the course stands in (walls, roof,
+ducts, cable trays, lamps), its dressing outside the barriers (racks with boxes, two trucks, pallets, a table,
+carts), the course parts as built objects (steel barriers with orange caps, the duct, the tread-plate deck with
+its guides, bollards with green caps, the dock mat, the dock beacon, the pallet, a charging station), a worn
+floor, the Go1 with its equipment and the UAV: `tests/runtime/hall_render.py`, MuJoCo's Filament renderer on the
+CPU. The simulated cameras (place, direction, field of view, 256 px) and everything a mission measures stay.
+
+Rules, each fixed here:
+
+1. No picture shows what the task keeps from the program. The survey shows neither the Go1 nor any mark of its
+   start pose. The charging station stands by the dock's surveyed place in the survey and in the deployment, so
+   the survey says nothing about where the dock will be found. The UAV is not in its own survey images (its camera
+   hangs under it); during the deployment it hovers where the survey ended, at the survey's height.
+2. Every colour cue the instruction names keeps its hue: orange barrier caps, green bollard caps, the blue
+   beacon cap, the magenta pallet, teal covers, the blue dock. The pallet is the same pallet model as the
+   dressing's, in magenta plastic. Where dressing would hide or imitate a cue, the dressing moves, not the cue.
+   The measure: per camera and cue, the CIELAB distance between the cue's median colour and the nearest
+   background colour (2nd percentile over the pixels at least 3 px from any cue), on development sites; the table
+   goes into the review notes with the old cameras' values beside it.
+3. Contact follows what is drawn wherever the robot can reach it. The pallet's collision box takes the model's
+   thickness, 0.144 m (0.140 m before). Its two foot brackets (a floor plate 0.22 x 0.10 x 0.008 m under each end
+   and an upright on each face) get collision boxes; touching one counts as touching the pallet. The dock mat
+   (0.58 x 0.56 m, 4 mm thick) and the strip at its east edge (6 mm) become walked surfaces with the site's
+   friction. Every other drawn course part lies inside or on its collision geom; the dressing and the charging
+   station stand outside the barriers, where a mission has already ended by contact.
+4. The commissioning pad is drawn in the same hall (no barriers, no fittings), with the pad's bollards, pallet
+   and beacon.
+5. The audit (`observability.py`) counts a cap as in view only if the picture shows it: at least 6 pixels of
+   the mast image within a CIELAB distance of 25 of the cap colour's reference, connected, at the place where the
+   cap projects. Its line stays: at least three caps at every 0.4 m of the oracle's route, the pallet seen before
+   the middle rack and the beacon before the dock, on every graded site. If the line fails on a site because of
+   dressing, the dressing is moved for every site alike and the audit is run again; the graded seeds are not
+   exchanged for this reason.
+6. The graded set: the same sixteen seeds, each run once by the privileged oracle as the grader runs a mission.
+   A site the oracle no longer completes is dropped and recorded, and the next candidate in drawn order (15, 17,
+   18, ...) that the oracle completes takes its place. Development sites: batches of 48 consecutive
+   development seeds as before; the oracle has to complete at least 45 of 48 in each batch run. If it does
+   not, the cause is fixed in the oracle or, if it is the new contact geometry, stated and the range of rule 3
+   reconsidered before the graded set is run again.
+7. Images are a function of the site and the state alone: identical bytes for the same state in any process on
+   both validation hosts, checked on development sites before the graded set is run.
+8. Saved programs of earlier versions are replayed for reference only; they were written for other pictures.
+   Anchor and `full_at` are unchanged.
