@@ -58,12 +58,60 @@ is in the scene, what a picture shows, what was measured, and how to repeat the 
 - `tests/review/camera_digests.py` repeats the check (made-up states over every room cell on four headings; in
   order, in reverse, in fresh processes; `--dump` and `--expect` compare two hosts).
 
-RESULTS_DETERMINISM
+Measured on the final runtime (2026-11-22), task image, 2 CPUs / 4 GB, two machines of different CPU families
+(AMD Zen 3 and Zen 5): development sites 8009 and 8018, 164 states each, both cameras (656 images). On each machine:
+0 images differ when drawn again in reverse order, 0 in three (two) fresh processes. Between the machines: 0 of 656
+differ. The privileged pilot's flights on the eight graded sites through the grader repeat the earlier action
+counts (443, 478, 509, 484, 508, 503, 541, 487).
 
 ## What the pictures cost
 
-RESULTS_COST
+Task image, 2 CPUs / 4 GB, on a machine that was busy with other work (load 22 on 32 cores):
+
+| | median | 90th percentile |
+|---|---|---|
+| the two pictures of a state | 0.234 s | 0.262 s |
+| an answer to an action (physics, pictures, PNG) | 0.247 s | 0.270 s |
+
+The former renderer drew a pair in 0.057 s. A site's first answer takes about 10 s (the model with its 106 meshes,
+the worker, the daylight grid). The worker process holds 1.2 GB, the service beside it about 0.4 GB. A flight of
+4,400 actions needs about 1,100 s of the environment's time; the site's wall limit is 2,100 s and the verifier's
+timeout 8 x 2,100 + 1,200 s. The privileged pilot's eight flights through the grader took 1,345 s in all.
 
 ## Information parity
 
-RESULTS_PARITY
+Per group of geoms (by the former scene's segmentation of the same states of a recorded development flight, 144
+states and three made-up ones in the turning pocket) the mean colour in the former pictures and in the new ones;
+per pair that a pipeline has to tell apart the CIELAB distance. The new pictures count everything that now hides a
+group (furniture, the casualty, the yard seen through windows). The signal colours are paint now, so the distances
+are smaller than between display colours; every pair stays apart:
+
+| pair | former | new |
+|---|---|---|
+| purple apron / lower floor | 108 | 61 |
+| blue apron / lower floor | 91 | 54 |
+| amber apron / lower floor | 90 | 35 |
+| amber apron / upper floor | 97 | 25 |
+| white apron / lower floor | 55 | 38 |
+| white apron / upper floor | 54 | 21 |
+| sign / lower floor | 17 | 18 |
+| sign / upper floor | 14 | 32 |
+| bay rail / upper floor | 92 | 33 |
+| bay rail / toe line | 48 | 24 |
+| toe line / lower floor | 108 | 49 |
+| receiving mat / lower floor | 90 | 43 |
+| pad / receiving mat | 153 | 63 |
+| amber wall / wall | 74 | 32 |
+| cargo door / wall | 82 | 59 |
+| cargo wall band / wall | 83 | 52 |
+| throat panel / wall | 23 | 17 |
+| shutter / wall | 68 | 46 |
+| shutter / well frame | 19 | 17 |
+| arrow / its housing | 87 | 69 |
+| arrow housing / wall | 54 | 50 |
+| well frame / upper floor | 61 | 37 |
+| skirting / lower floor | 24 | 15 |
+
+Between backgrounds: wall / lower floor 21 (21), wall / upper floor 10 (18), wall / ceiling 7 (39). A trial with
+the rotors' blur drawn opaque in the forward camera hid the band over the cargo door (52 fell to 4) and was dropped:
+the blur is in neither camera.
