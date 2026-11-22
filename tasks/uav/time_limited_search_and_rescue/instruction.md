@@ -1,6 +1,6 @@
 # Civilian Rescue: Warehouse Handoff
 
-A small indoor aircraft has to recover a rescue mannequin that lies on a rigid medical litter somewhere in a
+A small indoor aircraft has to recover a casualty (a clothed training mannequin under a blanket) that lies on a rigid basket litter somewhere in a
 two-storey warehouse wing, and deliver it intact to the **receiving station that is accepting this incident**. The
 radio does not reach inside the wing, so the aircraft flies on its own: you write its flight program.
 
@@ -39,18 +39,30 @@ Every answer (`observe()` and `act(...)`) holds:
 
 There is no pose, no map and no depth. `observe()` returns the current answer again and passes no time.
 
-The pictures show every structural surface and every fixture where it is, in its own shape: plastered walls with a
-darker dado and a timber skirting, a concrete floor downstairs and a tiled floor upstairs, and the markings and
-fixtures in the colours this document names. Two things are drawn and are not structure: a glazed window in each
-segment of the building's outer walls, and a timber frame round each ordinary doorway, with a head at 2.10 m and
-wall drawn above it (the opening itself is drawn at its true width; structurally it is open up to the slab). A picture
-depends on the site and on the aircraft's state alone: the same state gives the same picture, here and in grading.
+The pictures show the site as it is built and furnished: plastered walls with a painted dado (blue-grey downstairs,
+green upstairs) and a timber skirting, a concrete floor downstairs and a tiled floor upstairs, windows in the
+outer walls with the yard behind them, daylight on floors and walls where the sun comes in, timber door frames,
+ceiling lamps, paper on the floors, and the markings and fixtures in the colours this document names. The colours
+are worn paint, darker and greyer than a display colour, and a door apron's paint is rubbed through in places.
+Three things are drawn and are not structure: the windows are openings in the picture but closed to flight (a
+wall is solid over its whole face), a doorway has a frame with a head at 2.10 m and wall drawn above it (the opening
+is drawn at its true width; structurally it is open up to the slab), and the yard outside. The aircraft's own
+rotors are not in its pictures: both cameras sit clear of the rotor blur. A picture depends on the site and on the
+aircraft's state alone: the same state gives the same picture, here and in grading.
+
+**Stock and furniture** stand in the rooms, along walls: cartons, drawer chests, small tables, chairs, barrels,
+buckets, a gurney, wall cabinets and posters. Each is solid. They follow one rule at every site. Lanes are the
+straight lines that join the centres of two rooms through their doorway, the staging row's centre line, the ways
+to the inspection slot, the cargo door, the turning pocket, both receiving sides, the tool stands and the launch
+point, the litter's own length and the way from it to its room's centre; a hoist well is free over its whole
+bore. Nothing stands within 0.72 m of a lane, and nothing taller than 0.80 m stands within 1.25 m of a room's
+centre, of the turning pocket's centre or of a receiving pad's centre.
 
 ## Equipment card
 
 | Equipment | Physical contract |
 |---|---|
-| Litter and heads | Board: 1.80 by 0.44 m; violet end grips 1.62 m apart. The cyan flange under the common dark cover is 8.2 or 18.6 cm across. Small and large split collets fit the corresponding flange. The clamp preserves the actual pickup yaw. |
+| Litter and heads | Basket litter (orange shell, aluminium rail): 1.80 by 0.44 m; violet end grips 1.62 m apart. Its lifting receiver stands over the casualty's thighs at the litter's centre: a cyan ring, 8.2 or 18.6 cm across, on a post, and 0.05 m above it a dark guide ring with a green band (bore 0.28 m) carried by two hoops. The cyan ring is the flange the head grips; it can be seen from the side and, through the guide ring, from above. Small and large split collets fit the corresponding flange. The clamp preserves the actual pickup yaw. |
 | Gripper | Above +0.5 closes, below -0.5 releases, otherwise holds; grip acts before movement. Mount or return a head on its own stand at 0.430 +/- 0.035 m, within 0.085 m horizontally. Latch within 0.135 m of the fitting, aircraft center 0.306 +/- 0.060 m above board center (about 0.40 m above the floor). Steady to at most 0.30 m/s and below 0.30 rad/s. A mismatch does not attach. |
 | Wing | Room pitches 2.60-2.80 m; storeys 2.60 m apart, slab 0.22 m thick. Amber hoist thresholds lead to square bores of 1.08 or 2.34 m; back-wall guides are 1.40 m apart. Ordinary white doorways clear 1.48 m. The violet inspection slot is 1.02 m wide with sill/lintel at 0.43/0.89 m. The blue cargo shutter retracts on a held lift of 0.54 m above the local floor. |
 | Transfer | The turning pocket is 4.20 by 4.60 m. Jambs give 1.10 m width over 0.56 m depth; lime toe strips extend 1.24 m toward their approach. |
@@ -59,7 +71,8 @@ depends on the site and on the aircraft's state alone: the same state gives the 
 ## What ends a flight
 
 - **Contact.** The aircraft, the mounted head and, once it is carried, the whole litter must clear every structural
-  surface (walls, door and slot frames, slabs, shutters, jambs). The first contact ends the flight.
+  surface (walls, door and slot frames, slabs, shutters, jambs) and every piece of stock and furniture. The first
+  contact ends the flight.
 - **An unsafe release.** Releasing the litter higher than 0.195 m above the floor, or faster than 0.34 m/s or
   0.34 rad/s, ends the flight.
 - **The handoff.** The flight ends when the board has rested on the open station's deck as the card says.
@@ -96,8 +109,8 @@ The order of visits is not scored. Without a handoff a flight earns at most 0.68
 - Per site the program may use **900 s of its own time** (wall time minus the time the aircraft takes to answer),
   inside a wall limit of 2,100 s. When either runs out the flight is stopped and keeps its progress. The program is
   stopped 10 s after a flight has ended.
-- The grading sandbox has 2 CPUs and 4 GB of memory, as this one. An answer takes the aircraft about 0.13 s (its two
-  pictures are drawn on the CPU); the first answer of a site takes about 6 s.
+- The grading sandbox has 2 CPUs and 4 GB of memory, as this one. An answer takes the aircraft about 0.24 s (its two
+  pictures are drawn on the CPU); the first answer of a site takes about 10 s.
 - Nothing carries over between sites: every site starts the program anew, with an empty home; the temporary
   directories, shared memory and message queues are emptied, and nowhere else is writable. `/home/user` is not readable there; what the program needs must be in the submission folder,
   which is its working directory.

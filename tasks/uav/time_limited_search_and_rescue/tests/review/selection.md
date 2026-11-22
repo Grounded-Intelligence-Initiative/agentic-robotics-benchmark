@@ -50,3 +50,8 @@ candidate is flown in the new scene:
   its room's centre and the turning points over the receiving pads and in the pocket as places to keep free.)
 - The eight sites may therefore differ from the earlier eight. Scores measured on the earlier set are history.
 - No image, no model result and no unprivileged pilot's result enters the choice, as before.
+
+Result of amendment 2 (2026-11-22): the privileged pilot handed off all 96 candidates in the new scene, each in
+exactly the number of actions it needed before (it met no stock or furniture, and the drawn models carry no mass),
+so the strata, the ranks and the eight sites are the same as under rule version 1. `selection.json` records rule
+version 2; `candidates.json` and `sites.json` are byte for byte what they were.

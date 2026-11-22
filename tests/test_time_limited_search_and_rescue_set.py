@@ -169,7 +169,7 @@ class CopiesAndNumbers(unittest.TestCase):
         self.assertIn("chmod -R u=rwX,go= /opt/task-assets", docker)
         self.assertIn("! runuser -u user -- ls /opt/task-assets", docker)
         self.assertIn("render_check.py", docker)
-        self.assertIn("An answer takes the aircraft about 0.13 s", INSTRUCTION)
+        self.assertIn("An answer takes the aircraft about 0.24 s", INSTRUCTION)
 
     def test_grader_logs_no_seed(self):
         grader = (TASK / "tests/grader.py").read_text()
