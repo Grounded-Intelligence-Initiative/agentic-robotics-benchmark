@@ -1,12 +1,77 @@
-# Review notes: version 9 (maintainers, 2026-11-21)
+# Review notes: version 10 (maintainers, 2026-11-22)
 
 The task: a UAV surveys a warehouse; a loaded Unitree Go1, commanded joint by joint, has to cross it to a dock on
 its first deployment there, crouching under a duct and standing tall over a deck's guides. The survey is out of
 date and not to scale, the Go1's odometry drifts, and each site's robot and fittings differ.
 The graded set and every rule with its range: [selection.md](selection.md).
 
+Version 10 against version 9 (next section): both cameras draw the hall the course stands in, with its dressing,
+the course parts as built objects, the Go1's equipment and the UAV (`tests/runtime/hall_render.py`, MuJoCo's
+Filament renderer on the CPU; the bundle is `hall_look/` of the task's assets); the rail bollards are six again;
+contact follows what is drawn (the pallet 0.144 m thick with two foot brackets, the dock mat a walked surface);
+the commissioning pad is the bay inside its four boundary barriers. The rules were written first
+(selection.md, "The cameras show the hall").
+
+## Controls of version 10 (`controls.py`, `replay_submission.py`, `observability.py`)
+
+| controller | graded sites (16) | development sites |
+|---|---|---|
+| oracle (true pose, the site as found) | 16 | 93 of 96 (46 and 47 of 48) |
+| oracle on dead reckoning (true launch pose, then its own odometry) | 0 | |
+| oracle on the surveyed route and dock | 4 | |
+| oracle without stance-height feedback and pitch trim | 9 | |
+| the saved version-9 frontier program (2 of 16 there), replayed | 0 | 0 of 32 |
+| the saved version-8 frontier program (7 of 16 on version 9's set), replayed | 1 | 11 of 32 |
+
+The oracle does not look at a picture, so its rows say that the new contact geometry costs it nothing (the same
+three development misses as before: two profiler-on-floor contacts and one fall; slowest site 38,392 ticks of
+48,000). The two saved programs were written for the old pictures and are here for reference only: the version-9
+program walks into the first fitting on nearly every site; the version-8 program docks 11 of 32 development
+sites (7 on version 9) and 1 of the 16 graded (7 on version 9), which is the spread of a single program between
+two site sets, not a measure of the cameras.
+
+The audit of the mast camera's pictures (a cap counts only if the picture shows a connected patch of its colour at
+the place where it projects): at least 3 caps at every 0.4 m of the route on all sixteen graded sites (medians 12
+to 14), the pallet seen before the middle rack and the beacon before the dock on all sixteen. On sixteen
+development sites the same, except the one site where the oracle falls before the dock.
+
+## The colour cues in the new and the old cameras
+
+CIELAB distance from a cue's median colour to the nearest background colour in the same image (2nd percentile over
+the pixels at least 3 px from any cue), median over views and, in brackets, the least. Development sites 1 to 4:
+the mast camera at every 0.8 m of the oracle's route, eight detents; the survey camera on a 60-move sweep. Cue
+pixels are the ones MuJoCo's classic renderer segments as that cue in the same view. "old" is the classic renderer
+on the same models (version 9's cameras).
+
+| camera | cue | views | new: L* a* b* | new: distance | old: distance |
+|---|---|---|---|---|---|
+| mast | green bollard cap | 315 | 25 -31 27 | 40 (0) | 59 (42) |
+| mast | blue beacon cap | 43 | 48 27 -70 | 68 (50) | 83 (53) |
+| mast | magenta pallet | 98 | 25 50 -13 | 47 (43) | 41 (17) |
+| survey | blue beacon cap | 19 | 57 18 -61 | 62 (61) | 88 (10) |
+| survey | magenta pallet | 80 | 24 48 -12 | 49 (46) | 8 (8) |
+| survey | blue dock | 64 | 22 27 -53 | 57 (50) | 88 (45) |
+| survey | orange barrier cap | 240 | 57 48 53 | 72 (40) | 88 (63) |
+| survey | teal cover | 77 | 50 -26 -11 | 27 (26) | 36 (33) |
+
+Every cue keeps a distance of 27 or more at the median. The green caps lose the most (40 against 59): behind them
+are now blue rack uprights, orange beams and cardboard, not a grey backdrop. The least value 0 is a cap seen
+against another cap. The sweep did not reach the rails, so the survey rows have no green cap.
+
+## The renderer: time, memory, sameness
+
+Measured in the task's image on 2 CPUs and 4 GB: a site's renderer process is ready 5.7 s after the first
+request and draws its first image 3.6 s later; then a survey image takes 0.10 s and a mast image 0.13 s (0.16 s
+at most); the process peaks at 1.2 GB. A mission draws at most 80 survey and 24 mast images. 141 images of three
+development sites and their pads (states set, not simulated) have identical bytes in two processes on one host
+and on the second validation host; `tests/numerics_check.py` hashes three camera frames, so the grader refuses a
+machine that draws differently.
+
+## Version 9 (2026-11-21), kept for the record
+
 Version 9 against version 8 (next section): sixteen graded sites instead of eight (a measurement fix: one site is
-a sixteenth of the score), and four bollards along the long walls instead of six (nine in the survey).
+a sixteenth of the score), and four bollards along the long walls instead of six (nine in the survey; version 10
+went back to six).
 
 ## Controls of version 9 (`controls.py`, `replay_submission.py`, `observability.py`)
 
