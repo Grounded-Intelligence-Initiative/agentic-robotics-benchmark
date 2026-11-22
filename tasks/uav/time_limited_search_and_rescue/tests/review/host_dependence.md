@@ -23,3 +23,11 @@ this guarantee.
 
 The privileged reference reads no image and uses no BLAS call that matters: its action counts are the same on both
 machines with or without the pin.
+
+**Since 2026-11-22 (furnished scene, Filament renderer on the CPU).** The pictures were measured again with
+`tests/review/camera_digests.py` on the same two machines: two development sites, 164 made-up states each (every
+room cell of both storeys on four headings), both cameras: 656 images byte-identical between the machines, and on each
+machine identical when drawn again in reverse order and by fresh processes. The daylight computed at a site's build
+and the door aprons' wear pictures are part of those images. The action-tape comparison of the image-driven
+instrument above was not repeated on the new pictures: with identical frames and the numerics pin its inputs are
+identical on both machines, as they were.

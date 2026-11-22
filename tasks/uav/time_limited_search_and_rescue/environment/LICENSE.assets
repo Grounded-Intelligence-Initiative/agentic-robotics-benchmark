@@ -22,6 +22,13 @@ benchmark's asset dataset at a pinned commit) is drawn by MuJoCo 3.16.0's Filame
 - concrete, timber, rubber and wear maps: from Poly Haven scans, CC0-1.0
   (concrete_floor_worn_001, concrete_wall_008, rough_wood, rusty_metal_02, rubber_tiles);
 - six worn floor-paint maps and the window picture: made for this task;
+- look.tar, the models that stand in a site (one OBJ set and its pictures at 256 px per model):
+  furniture, posters and wall cabinets, the yard's fence, vehicles and plants from the "Chernobyl" pack;
+  warehouse stock from the Unity Asset Store packs "Warehouse" and "Factory props"; the airframe from
+  "Realistic Drones"; the casualty from the Microsoft Rocketbox avatar library (MIT) in a pose taken from
+  one frame of the "Ultimate Animation Collection"; cars from "Realistic Car HD 02". The maintainer holds
+  the packs and supplied them for the benchmark; meshes are thinned and re-exported, not the packs' files.
+  The litter, the receiver's frame, the blanket and the paper are made for this task;
 - ibl.ktx: the image light, a two-tone profile over the elevation made for this task and
   prefiltered with Filament's cmgen (Apache-2.0). No probe of a commercial environment is in it.
 
