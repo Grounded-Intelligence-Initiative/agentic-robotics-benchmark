@@ -17,7 +17,7 @@ import numpy as np
 
 __all__ = ["VERSION", "SETS", "TILE_M", "texture_sets", "make_set", "cache_dir"]
 
-VERSION = "pbr-11"
+VERSION = "pbr-12"
 SEED_TAG = "pbr-10"          # the sets' random seeds derive from this tag, not from VERSION: a set no change touched
                              # keeps its pixels from one version to the next
 
@@ -32,7 +32,22 @@ SETS = {
     "facade_plaster": (1024, 6.4), "facade_brick": (1024, 6.4), "facade_panel": (1024, 6.4), "shopfront": (1024, 6.4),
     "foliage": (512, 1.2), "roof": (512, 2.0),
 }
+# Sets that are not made here: photographed surfaces (scans and an art pack's maps: environment/assets, the look pack),
+# shipped as files in the cache folder beside the made ones. set name: (resolution, metres covered by one repeat when a
+# material names no repeat of its own). A missing file is an error: nothing stands in for a photograph.
+SHIPPED = {
+    "concrete": (1024, 2.71), "concrete_dark": (1024, 3.5), "slab": (1024, 3.0), "slab_broken": (1024, 1.6),
+    "ground_concrete": (1024, 3.0), "brick": (1024, 1.5), "tiles": (1024, 2.0), "asphalt": (1024, 4.0),
+    "paving": (1024, 1.8), "rubble": (1024, 2.0), "rubble_dark": (1024, 2.0), "chunk_brick": (512, 1.8),
+    "chunk_plaster": (512, 1.0), "plaster": (1024, 1.85), "plaster_ext": (1024, 4.6), "wall_cream": (1024, 3.0), "wall_green": (1024, 3.0),
+    "wall_pink": (1024, 3.0), "wall_blue": (1024, 3.0), "wall_white": (1024, 3.0), "wood": (1024, 2.0),
+    "wood_dark": (1024, 2.0), "beam": (512, 0.5), "rust": (512, 1.1), "fabric": (512, 0.6), "paint_metal": (512, 1.0),
+    "bag": (512, 0.26),
+}
+for _k in SHIPPED:
+    SETS.pop(_k, None)
 TILE_M = {k: v[1] for k, v in SETS.items()}
+TILE_M.update({k: v[1] for k, v in SHIPPED.items()})
 
 
 def cache_dir():
@@ -714,11 +729,13 @@ def texture_sets(directory=None, names=None):
     from PIL import Image
     directory = os.path.join(directory or cache_dir(), VERSION)
     out = {}
-    for name in names or SETS:
+    for name in names or (list(SETS) + list(SHIPPED)):
         paths = {k: os.path.join(directory, "%s_%s.png" % (name, k)) for k in ("albedo", "normal", "orm")}
         if all(os.path.isfile(p) for p in paths.values()):
             out[name] = {k: np.asarray(Image.open(p).convert("RGB")) for k, p in paths.items()}
             continue
+        if name in SHIPPED:
+            raise RuntimeError("the look pack's texture set %r is missing in %s" % (name, directory))
         s = make_set(name)
         try:
             os.makedirs(directory, exist_ok=True)

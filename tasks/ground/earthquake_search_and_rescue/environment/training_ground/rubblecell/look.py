@@ -52,14 +52,14 @@ CALL_TIMEOUT = 300.0
 # edges) gave a handful of different pixels along shadow edges in two fresh processes of the same frame (measured on
 # the test lanes, three processes per type); type 0 gave the same bytes every time.
 LOOK = {
-    "version": "look-2",
+    "version": "look-3",
     # Filament view options (read from the twin model's custom numeric / text fields)
     "view": {"numeric": {"filament.ao.enabled": 1, "filament.ao.quality": 2, "filament.shadows.type": 0,
                          "filament.shadows.map_size": 2048, "filament.bloom.enabled": 1,
                          "filament.bloom.strength": 0.06, "filament.msaa.enabled": 0,
-                         "filament.cg.contrast": 1.08, "filament.cg.saturation": 0.95,
+                         "filament.cg.contrast": 1.10, "filament.cg.saturation": 0.86,
                          "filament.fog.enabled": 1, "filament.fog.density": 0.0016, "filament.fog.distance": 25.0,
-                         "filament.fog.height": 0.0, "filament.fog.color": [0.62, 0.57, 0.50],
+                         "filament.fog.height": 0.0, "filament.fog.color": [0.60, 0.585, 0.56],
                          "filament.fallback.head_light_intensity": 0.0,
                          "filament.fallback.scene_light_intensity": 0.0,
                          "filament.fallback.environment_light_intensity": 0.0},
@@ -69,25 +69,46 @@ LOOK = {
     "ibl_intensity": 9000.0,
     "lamp_candela": 2200.0,
     # exposure compensation (EV) of a camera by the light level where it stands: a camera's automatic exposure
-    "exposure_ev": {"ext": 0.0, "open": 0.7, "upper": 1.0, "int": 1.5, "void": 2.4},
-    # physics material -> (texture set, tint rgb (sRGB), roughness factor, metallic factor, extra)
+    "exposure_ev": {"ext": 0.0, "open": 0.8, "upper": 1.0, "int": 1.9, "void": 2.8},
+    # physics material -> (texture set, tint rgb (sRGB), metres one repeat covers or None for the set's own). The sets
+    # are photographs (pbr.SHIPPED): the tint is 1 except where one photograph serves several colours.
     "materials": {
-        "concrete": ("concrete", (1.00, 1.00, 1.00)), "concrete_dark": ("concrete", (0.70, 0.69, 0.67)),
-        "slab": ("concrete", (0.95, 0.95, 0.93)), "rubble": ("rubble", (1.0, 1.0, 1.0)),
-        "brick": ("brick", (1.0, 1.0, 1.0)),
-        "plaster_white": ("plaster", (0.98, 0.97, 0.95)), "plaster_cream": ("plaster", (0.98, 0.91, 0.78)),
-        "plaster_blue": ("plaster", (0.74, 0.83, 0.90)), "plaster_green": ("plaster", (0.78, 0.88, 0.76)),
-        "plaster_pink": ("plaster", (0.96, 0.80, 0.78)), "tiles": ("tiles", (1.0, 1.0, 1.0)),
-        "wood": ("wood", (1.0, 1.0, 1.0)), "wood_dark": ("wood", (0.60, 0.55, 0.52)),
-        "asphalt": ("asphalt", (1.0, 1.0, 1.0)), "paving": ("paving", (1.0, 1.0, 1.0)),
-        "fabric_red": ("fabric", (0.60, 0.15, 0.13)), "fabric_blue": ("fabric", (0.20, 0.29, 0.50)),
-        "fabric_grey": ("fabric", (0.45, 0.45, 0.46)), "fabric_green": ("fabric", (0.26, 0.36, 0.24)),
-        "metal_white": ("paint_metal", (0.92, 0.92, 0.90)), "metal_red": ("paint_metal", (0.62, 0.10, 0.08)),
-        "metal_blue": ("paint_metal", (0.14, 0.26, 0.50)), "metal_grey": ("paint_metal", (0.46, 0.47, 0.48)),
-        "rust": ("rust", (1.0, 1.0, 1.0)), "rebar": ("rebar", (1.0, 1.0, 1.0)), "dust": ("dust", (1.0, 1.0, 1.0)),
-        "tarp_orange": ("fabric", (0.95, 0.42, 0.08)), "kit": ("bag", (0.92, 0.32, 0.06)),
-        "yellow": ("paint_metal", (0.92, 0.72, 0.08)), "white_paint": ("road_paint", (1.0, 1.0, 1.0)),
+        "concrete": ("concrete", (1.0, 1.0, 1.0), 2.71), "concrete_dark": ("concrete_dark", (1.0, 1.0, 1.0), 3.5),
+        "slab": ("slab", (1.0, 1.0, 1.0), 3.0), "rubble": ("rubble", (1.0, 1.0, 1.0), 2.0),
+        "brick": ("brick", (1.0, 1.0, 1.0), 1.5),
+        "plaster_white": ("plaster", (0.98, 0.97, 0.95), 3.7), "plaster_cream": ("plaster", (0.98, 0.91, 0.78), 3.7),
+        "plaster_blue": ("plaster", (0.74, 0.83, 0.90), 3.7), "plaster_green": ("plaster", (0.78, 0.88, 0.76), 3.7),
+        "plaster_pink": ("plaster", (0.96, 0.80, 0.78), 3.7), "tiles": ("tiles", (1.0, 1.0, 1.0), 2.0),
+        "wood": ("wood", (1.0, 1.0, 1.0), 2.0), "wood_dark": ("wood_dark", (1.0, 1.0, 1.0), 2.0),
+        "asphalt": ("asphalt", (1.0, 1.0, 1.0), 4.0), "paving": ("paving", (1.0, 1.0, 1.0), 1.8),
+        "fabric_red": ("fabric", (0.75, 0.19, 0.16), 0.6), "fabric_blue": ("fabric", (0.25, 0.36, 0.62), 0.6),
+        "fabric_grey": ("fabric", (0.56, 0.56, 0.57), 0.6), "fabric_green": ("fabric", (0.32, 0.45, 0.30), 0.6),
+        "metal_white": ("paint_metal", (1.0, 1.0, 0.98), 1.0), "metal_red": ("paint_metal", (0.77, 0.12, 0.10), 1.0),
+        "metal_blue": ("paint_metal", (0.17, 0.32, 0.62), 1.0), "metal_grey": ("paint_metal", (0.57, 0.58, 0.60), 1.0),
+        "rust": ("rust", (1.0, 1.0, 1.0), 1.1), "rebar": ("rust", (0.70, 0.62, 0.58), 0.25), "dust": ("dust", (1.0, 1.0, 1.0), None),
+        "tarp_orange": ("fabric", (1.0, 0.52, 0.10), 0.6), "kit": ("bag", (1.0, 1.0, 1.0), 0.26),
+        "yellow": ("paint_metal", (1.0, 0.90, 0.10), 1.0), "white_paint": ("road_paint", (1.0, 1.0, 1.0), None),
     },
+    # the robot's and the kit's drawn parts (the look pack's robot.npz: meshes per body, inside the task's geoms):
+    # look -> (rgb (sRGB), roughness, metallic, emission)
+    "robot_looks": {
+        "robot_paint": ((0.80, 0.36, 0.10), 0.55, 0.0, 0.0), "robot_dark": ((0.085, 0.09, 0.095), 0.50, 0.0, 0.0),
+        "robot_shell": ((0.11, 0.115, 0.12), 0.52, 0.0, 0.0), "robot_alu": ((0.70, 0.71, 0.72), 0.34, 1.0, 0.0),
+        "robot_steel": ((0.55, 0.55, 0.56), 0.32, 1.0, 0.0), "robot_rubber": ((0.045, 0.045, 0.047), 0.78, 0.0, 0.0),
+        "robot_rubber_worn": ((0.075, 0.072, 0.068), 0.85, 0.0, 0.0), "robot_glass": ((0.015, 0.015, 0.02), 0.05, 0.0, 0.0),
+        "robot_lidar_window": ((0.02, 0.02, 0.025), 0.08, 0.0, 0.0), "robot_lens_thermal": ((0.10, 0.05, 0.02), 0.12, 0.6, 0.0),
+        "robot_lamp": ((1.0, 0.97, 0.88), 0.15, 0.0, 4.0), "robot_pad": ((0.07, 0.07, 0.075), 0.70, 0.0, 0.0),
+        "robot_white": ((0.90, 0.90, 0.88), 0.40, 0.0, 0.0),
+        "kit_bag": ((0.72, 0.10, 0.06), 0.75, 0.0, 0.0), "kit_dark": ((0.05, 0.05, 0.055), 0.70, 0.0, 0.0),
+        "kit_strap": ((0.93, 0.93, 0.90), 0.55, 0.0, 0.0), "kit_cross": ((0.80, 0.06, 0.05), 0.50, 0.0, 0.0),
+        "kit_buckle": ((0.16, 0.16, 0.17), 0.35, 0.0, 0.0), "kit_reflect": ((0.86, 0.88, 0.86), 0.25, 0.6, 0.0),
+    },
+    # a room's plaster colour -> the wall it has inside (a wallpaper or a painted wall, one picture a storey high);
+    # the street front and the stubs around a breach keep broken plaster in the room's colour
+    "room_walls": {"plaster_cream": "wall_cream", "plaster_green": "wall_green", "plaster_pink": "wall_pink",
+                   "plaster_blue": "wall_blue", "plaster_white": "wall_white"},
+    # loose chunks by the material the site gave them: (set, repeat)
+    "chunks": {"rubble": ("slab_broken", 1.0), "brick": ("chunk_brick", 1.8), "concrete": ("chunk_plaster", 1.0)},
     # plain materials: rgba (sRGB), roughness, metallic, reflectance, emission
     "plain": {
         "glass": ((0.55, 0.62, 0.66, 0.30), 0.05, 0.0, 0.6, 0.0),
@@ -148,6 +169,8 @@ class _Bank(object):
         self.spec, self.sets, self.levels = spec, sets, dict(levels or _twin.LEVELS)
         self.tex, self.mats = {}, {}
         self.robot_mats = []
+        self.figure_tint = {}       # who -> class -> tint (site.figure_tint)
+        self.paints = {}            # a real vehicle's paint geom -> the site's paint material
 
     def _texture(self, setname, kind, level="ext"):
         key = (setname, kind, level)
@@ -177,8 +200,9 @@ class _Bank(object):
         self.mats[key] = mt.name
         return mt
 
-    def textured(self, setname, tint, level, alpha=1.0, robot=False):
-        key = ("t", setname, _key(tint), level, round(float(alpha), 2))
+    def textured(self, setname, tint, level, alpha=1.0, robot=False, tile=None):
+        tile = float(tile or pbr.TILE_M[setname])
+        key = ("t", setname, _key(tint), level, round(float(alpha), 2), round(tile, 3))
         if key in self.mats:
             return self.mats[key]
         mt = self._new(key)
@@ -186,7 +210,7 @@ class _Bank(object):
         mt.textures[mujoco.mjtTextureRole.mjTEXROLE_NORMAL] = self._texture(setname, "normal")
         mt.textures[mujoco.mjtTextureRole.mjTEXROLE_ORM] = self._texture(setname, "orm", level)
         mt.texuniform = False
-        rep = 1.0 / pbr.TILE_M[setname]
+        rep = 1.0 / tile
         mt.texrepeat = [rep, rep]
         mt.rgba = [float(tint[0]), float(tint[1]), float(tint[2]), float(alpha)]
         mt.roughness, mt.metallic, mt.specular, mt.reflectance = 1.0, 1.0, 0.5, 0.0
@@ -213,12 +237,89 @@ class _Bank(object):
     def hidden(self):
         return self.plain((0.0, 0.0, 0.0, 0.0), 1.0, 0.0, "ext")
 
+    def avatar(self, avatar, part, level, tint=(1.0, 1.0, 1.0)):
+        """A posed body's material: its own colour map (the look pack's avatars/<avatar>_<part>_albedo.png, mapped by
+        the mesh's own texture coordinates), cloth-rough, at a light level."""
+        key = ("a", avatar, part, level, tuple(tint))
+        if key in self.mats:
+            return self.mats[key]
+        tk = ("avatar", avatar, part)
+        if tk not in self.tex:
+            from PIL import Image
+            img = np.asarray(Image.open(os.path.join(pbr.cache_dir(), "avatars", "%s_%s_albedo.png" % (avatar, part))).convert("RGB"))
+            self.tex[tk] = _add_tex(self.spec, "lk_avatar_%s_%s" % (avatar, part), img, True)
+        mt = self._new(key)
+        mt.textures[mujoco.mjtTextureRole.mjTEXROLE_RGB] = self.tex[tk]
+        mt.textures[mujoco.mjtTextureRole.mjTEXROLE_ORM] = self._orm(0.85, 0.0, level)
+        mt.texuniform = False
+        mt.texrepeat = [1.0, 1.0]
+        mt.rgba = [float(tint[0]), float(tint[1]), float(tint[2]), 1.0]
+        mt.roughness, mt.metallic, mt.specular, mt.reflectance = 1.0, 1.0, 0.5, 0.0
+        return mt.name
+
+    def furniture(self, model, level):
+        """A piece of real furniture's material: the look pack's furniture/<model>_albedo.png by the model's own
+        texture coordinates, at a light level."""
+        key = ("f", model, level)
+        if key in self.mats:
+            return self.mats[key]
+        tk = ("furniture", model)
+        if tk not in self.tex:
+            from PIL import Image
+            img = np.asarray(Image.open(os.path.join(pbr.cache_dir(), "furniture", "%s_albedo.png" % model)).convert("RGB"))
+            self.tex[tk] = _add_tex(self.spec, "lk_furn_%s" % model, img, True)
+        mt = self._new(key)
+        mt.textures[mujoco.mjtTextureRole.mjTEXROLE_RGB] = self.tex[tk]
+        mt.textures[mujoco.mjtTextureRole.mjTEXROLE_ORM] = self._orm(0.7, 0.0, level)
+        mt.texuniform = False
+        mt.texrepeat = [1.0, 1.0]
+        mt.rgba = [1.0, 1.0, 1.0, 1.0]
+        mt.roughness, mt.metallic, mt.specular, mt.reflectance = 1.0, 1.0, 0.5, 0.0
+        return mt.name
+
     def assign(self, g, level, robot, what):
         """Set geom g's material; True when it is textured (a box of it is then drawn as a textured mesh)."""
         name = g.material
+        if (g.name or "").startswith("veh_") and g.type == mujoco.mjtGeom.mjGEOM_MESH:   # a real vehicle (scene._vehicle_meshes)
+            cls = g.name.split("_")[-1]
+            if cls == "paint":
+                c = LOOK["materials"].get(self.paints.get(g.name, ""), (None, (0.5, 0.5, 0.52)))[1]
+                c = tuple(0.72 * x + 0.28 * d for x, d in zip(c, (0.62, 0.59, 0.54)))             # dusted
+                g.material = self.plain((c[0], c[1], c[2], 1.0), 0.45, 0.0, level, 0.0, 0.0, robot)
+            else:
+                rgba, rough = {"glass": ((0.05, 0.06, 0.07, 1.0), 0.08), "dark": ((0.05, 0.05, 0.05, 1.0), 0.8),
+                               "lamp": ((0.75, 0.72, 0.68, 1.0), 0.3), "other": ((0.33, 0.33, 0.34, 1.0), 0.6)}[cls]
+                g.material = self.plain(rgba, rough, 0.0, level, 0.0, 0.0, robot)
+            return False
+        if (g.name or "").startswith("furn_") and g.type == mujoco.mjtGeom.mjGEOM_MESH:   # real furniture
+            g.material = self.furniture(g.name.split("_", 2)[2], level)
+            return False
+        if "_body_" in (g.name or "") and g.type == mujoco.mjtGeom.mjGEOM_MESH:      # a posed body (scene._figure_meshes)
+            who, _b, part, cls = g.name.split("_")
+            if cls == "plastic":
+                g.material = self.plain((0.86, 0.82, 0.76, 1.0), 0.32, 0.0, level, 0.5, 0.0, robot)
+            else:
+                from .human import figures
+                g.material = self.avatar(figures()["side"]["avatar"], part, level,
+                                         self.figure_tint.get(who, {}).get(cls, (1.0, 1.0, 1.0)))
+            return False
         if name in LOOK["materials"]:
-            setname, tint = LOOK["materials"][name]
-            g.material = self.textured(setname, tint, level, 1.0, robot)
+            setname, tint, tile = LOOK["materials"][name]
+            gname, bname = g.name or "", (g.parent.name or "") if g.parent is not None else ""
+            if gname.startswith("chunk") and name in LOOK["chunks"]:
+                setname, tile = LOOK["chunks"][name]
+            elif name in LOOK["room_walls"] and level != "ext":
+                if max(float(v) for v in g.size[:3]) >= 0.65:          # a wall of a room (1.3 m or longer)
+                    setname, tint, tile = LOOK["room_walls"][name], (1.0, 1.0, 1.0), 3.0
+                else:
+                    tile = 1.85
+            elif bname.startswith("propslab"):
+                setname, tile = "slab_broken", 1.6
+            elif bname.startswith("prop_") and setname == "wood":
+                tint, tile = (0.95, 0.88, 0.74), 0.9
+            elif bname.startswith("debris") and setname in ("wood", "wood_dark"):
+                setname, tint, tile = "beam", ((1.0, 0.94, 0.87) if setname == "wood" else (0.61, 0.55, 0.51)), 0.5
+            g.material = self.textured(setname, tint, level, 1.0, robot, tile)
             return True
         if name in LOOK["plain"]:
             rgba, rough, metal, refl, emis = LOOK["plain"][name]
@@ -256,6 +357,8 @@ def make_rgb_spec(scene, sets, decor_fn=None, batch=True, levels=None):
     spec = scene.info["spec"].copy()
     _strip_lights(spec)
     bank = _Bank(spec, sets, levels)
+    bank.paints = dict(getattr(scene.site, "vehicle_paint", {}))
+    bank.figure_tint = dict(getattr(scene.site, "figure_tint", {}))
     body = spec.worldbody.add_body()
     body.name = "lk_decor"
     levels = _twin.dress(spec, scene, bank, body)
@@ -265,7 +368,11 @@ def make_rgb_spec(scene, sets, decor_fn=None, batch=True, levels=None):
     for g in list(spec.worldbody.geoms):                      # the heightfield: the terrain meshes draw it
         if g.type == mujoco.mjtGeom.mjGEOM_HFIELD:
             spec.delete(g)
+    for g in list(spec.worldbody.geoms):                      # the capsules inside the posed bodies: contact only
+        if int(g.group) == 3:
+            spec.delete(g)
     bank.batched = _twin.batch_statics(spec, [spec.worldbody, body]) if batch else (0, 0)
+    bank.robot_drawn = _twin.draw_robot(spec, bank, LOOK["robot_looks"])
     bank.robot_batched = _twin.batch_robot(spec, bank) if batch else (0, 0)
     for k, v in sorted(LOOK["view"]["numeric"].items()):
         spec.add_numeric(name=k, data=[float(x) for x in (v if isinstance(v, (list, tuple)) else [v])])

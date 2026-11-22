@@ -11,7 +11,7 @@ import math
 
 import numpy as np
 
-from .human import SHIRT, SKIN, TROUSERS, HAIR, figure_parts, place_parts
+from .human import SHIRT, SKIN, TROUSERS, HAIR, figure_key, figure_layout, figure_parts, place_parts
 from .plan import ROBOT
 
 __all__ = ["build_site", "Site", "CEIL", "STOREY", "HF_RES"]
@@ -103,6 +103,10 @@ class Site(object):
         self.bodies = []           # movable debris: dicts with geoms, pos, quat, mass, kind
         self.meshes = {}           # name -> vertices (n, 3)
         self.parts = {}            # survivor / decoy parts
+        self.figures = []          # the posed bodies the sensors see: who, key (human.figures), x, y, yaw, scale
+        self.figure_tint = {}      # who -> {cloth, skin, hair: (r, g, b)}: tints of a posed body's colour maps
+        self.furn = []             # real furniture (the look pack's furniture.npz): model, pos, quat, size
+        self.vehicles = []         # real vehicles (the look pack's vehicles.npz): name, id, x, y, z, yaw, scale, paint
         self.keepout = []          # (x0, y0, x1, y1, r) corridor segments kept free of clutter
         self.route = []
         self.events = []
@@ -254,6 +258,27 @@ class Site(object):
         return float(self.H[i, j])
 
 
+# the look pack's vehicles (vehicles.npz): id -> (length, width, height) in metres, front at +x
+VEHICLE_DIMS = {5: (5.61, 2.02, 2.37), 6: (4.50, 1.80, 2.01), 7: (4.24, 1.88, 1.72), 9: (5.27, 2.19, 2.13),
+                10: (4.72, 1.96, 1.81), 11: (4.59, 1.99, 1.41), 13: (3.46, 1.79, 1.64)}
+
+
+def have_furniture():
+    """True when the look pack's furniture is installed (the task image): a piece of furniture with a model is then
+    that model for every sensor, scaled into the piece's own box, and the boxes stay what the robot touches."""
+    import os
+    from . import pbr
+    return os.path.isfile(os.path.join(pbr.cache_dir(), "furniture.npz"))
+
+
+def have_vehicles():
+    """True when the look pack's vehicles are installed (the task image): the street's car and van are then real
+    vehicles; without the pack (a development checkout) they are the boxes they used to be."""
+    import os
+    from . import pbr
+    return os.path.isfile(os.path.join(pbr.cache_dir(), "vehicles.npz"))
+
+
 # ============================================================================================================ build
 def build_site(plan):
     S = Site(plan)
@@ -288,15 +313,24 @@ def _street(S):
     cy = -6.5
     yaw = float(rng.uniform(-0.25, 0.25))
     carm = str(rng.choice(["metal_red", "metal_blue", "metal_white", "metal_grey"]))
-    S.box((cx, cy, STREET_Z + 0.42), (2.1, 0.88, 0.30), carm, yaw=yaw, name="car_body", thermal="sunlit_metal")
-    S.box((cx - 0.2, cy, STREET_Z + 0.82), (1.2, 0.80, 0.16), carm, yaw=yaw, pitch=0.05, name="car_cabin", thermal="sunlit_metal")
-    S.box((cx - 0.2, cy, STREET_Z + 0.70), (1.25, 0.82, 0.06), "window", yaw=yaw, collide=False, name="car_glass")
-    for dx in (-1.35, 1.35):
-        for dy in (-0.82, 0.82):
-            p = np.array([cx, cy, 0]) + _rz(yaw) @ np.array([dx, dy, 0])
-            S.cyl((p[0], p[1], STREET_Z + 0.30), 0.30, 0.10, "black", roll=math.pi / 2, yaw=yaw, name="tyre")
+    real = have_vehicles()
+    if real:
+        # a real car (the look pack's saloon scaled to 4.2 m): its mesh is what the sensors see and, as convex pieces,
+        # what the robot would touch
+        sc = 4.2 / VEHICLE_DIMS[11][0]
+        S.vehicles.append({"name": "car", "id": 11, "x": cx, "y": cy, "z": STREET_Z, "yaw": yaw, "scale": sc, "paint": carm})
+        roof = VEHICLE_DIMS[11][2] * sc
+    else:
+        S.box((cx, cy, STREET_Z + 0.42), (2.1, 0.88, 0.30), carm, yaw=yaw, name="car_body", thermal="sunlit_metal")
+        S.box((cx - 0.2, cy, STREET_Z + 0.82), (1.2, 0.80, 0.16), carm, yaw=yaw, pitch=0.05, name="car_cabin", thermal="sunlit_metal")
+        S.box((cx - 0.2, cy, STREET_Z + 0.70), (1.25, 0.82, 0.06), "window", yaw=yaw, collide=False, name="car_glass")
+        for dx in (-1.35, 1.35):
+            for dy in (-0.82, 0.82):
+                p = np.array([cx, cy, 0]) + _rz(yaw) @ np.array([dx, dy, 0])
+                S.cyl((p[0], p[1], STREET_Z + 0.30), 0.30, 0.10, "black", roll=math.pi / 2, yaw=yaw, name="tyre")
+        roof = 0.94
     # slab chunk on the car roof (the facade fell on it)
-    S.box((cx + 0.3, cy + 0.2, STREET_Z + 1.05), (0.9, 0.7, 0.11), "slab", yaw=yaw + 0.4, pitch=0.12, roll=-0.08, name="roofslab")
+    S.box((cx + 0.3, cy + 0.2, STREET_Z + roof + 0.11), (0.9, 0.7, 0.11), "slab", yaw=yaw + 0.4, pitch=0.12, roll=-0.08, name="roofslab")
     # a lamp post down along the far kerb
     lx = float(rng.uniform(-2.0, W - 4.0))
     a = np.array([lx, -9.6, STREET_Z + 0.07])
@@ -304,11 +338,15 @@ def _street(S):
     S.capsule(a, b, 0.07, "metal_grey", name="lamppost")
     # the rescue team's van and a tent at the far west of the street
     vx = -3.4
-    S.box((vx, -7.5, STREET_Z + 1.05), (1.0, 2.6, 0.95), "metal_white", name="van")
-    S.box((vx + 1.01, -7.5, STREET_Z + 1.2), (0.004, 2.4, 0.12), "tarp_orange", collide=False, name="van_stripe")
-    for dy in (-1.7, 1.7):
-        for dx in (-0.9, 0.9):
-            S.cyl((vx + dx, -7.5 + dy, STREET_Z + 0.36), 0.36, 0.12, "black", roll=math.pi / 2, yaw=math.pi / 2, name="vtyre")
+    if real:
+        S.vehicles.append({"name": "van", "id": 6, "x": vx, "y": -7.5, "z": STREET_Z, "yaw": -math.pi / 2, "scale": 1.0,
+                           "paint": "metal_white"})
+    else:
+        S.box((vx, -7.5, STREET_Z + 1.05), (1.0, 2.6, 0.95), "metal_white", name="van")
+        S.box((vx + 1.01, -7.5, STREET_Z + 1.2), (0.004, 2.4, 0.12), "tarp_orange", collide=False, name="van_stripe")
+        for dy in (-1.7, 1.7):
+            for dx in (-0.9, 0.9):
+                S.cyl((vx + dx, -7.5 + dy, STREET_Z + 0.36), 0.36, 0.12, "black", roll=math.pi / 2, yaw=math.pi / 2, name="vtyre")
     # facade rubble spills on the sidewalk in front of the front bays (not the entry: that one is built with its opening)
     entry_x = [o["x"] for o in S.plan["openings"] if o["a"] == "S" and o["on_route"]][0]
     for i in range(S.plan["nx"]):
@@ -874,7 +912,7 @@ def _contents(S):
                     yaw = 0.0
                 r = math.hypot(L, Dp) / 2
                 if S.free_at(x, y, r) and _clear_of_items(S, k, x, y, r):
-                    _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng)
+                    _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng, face=1.0 if side in (1, 2) else -1.0)
                     b.setdefault("items", []).append((x, y, r))
                     break
         # plaster flakes, bricks, paper: visual dressing on the floor
@@ -900,7 +938,7 @@ def _fsize(it, rng):
             "bike": (1.7, 0.4, 1.0)}[it]
 
 
-def _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng):
+def _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng, face=-1.0):
     R = _rz(yaw)
 
     def at(dx, dy):
@@ -908,7 +946,28 @@ def _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng):
         return x + v[0], y + v[1]
 
     tilt = float(rng.uniform(-0.06, 0.06))
-    if it in ("shelf", "cabinet", "fridge"):
+    real = have_furniture()
+    hid = 3 if real else None                      # scene.GROUP_HIDDEN: the boxes of a piece that has a model
+
+    def model(name, c, size, roll=0.0):
+        if real:
+            # a model's front is at its -y; face says on which side of the piece (+y or -y) the room is
+            S.furn.append({"model": name, "pos": [float(v) for v in c], "size": [float(v) for v in size],
+                           "quat": _q_euler(yaw + (math.pi if face > 0 else 0.0), 0.0, -roll if face > 0 else roll)})
+
+    if it in ("shelf", "cabinet"):
+        if void:
+            Hh = min(Hh, 0.45)
+        S.box((x, y, Hh / 2), (L / 2, Dp / 2, Hh / 2), "metal_grey", yaw=yaw, roll=tilt, name=it, group=hid)
+        model(it if not void else "down", (x, y, Hh / 2), (L, Dp, Hh), tilt)
+        if it == "shelf" and not void:
+            for zz in (0.4, 0.8, 1.2, 1.6):
+                for dx in (-0.4, 0.0, 0.4):
+                    if rng.random() < 0.5:
+                        c = at(dx, -0.05)
+                        S.box((c[0], c[1], zz + 0.08), (0.12, 0.1, 0.08), str(rng.choice(["metal_red", "metal_blue", "yellow", "white_paint"])),
+                              yaw=yaw + float(rng.uniform(-0.3, 0.3)), collide=False, name="goods")
+    elif it in ("shelf", "cabinet", "fridge"):
         mat = {"shelf": "metal_grey", "cabinet": "metal_grey", "fridge": "metal_white"}[it]
         if void:
             Hh = min(Hh, 0.45)
@@ -922,38 +981,50 @@ def _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng):
                               yaw=yaw + float(rng.uniform(-0.3, 0.3)), collide=False, name="goods")
     elif it in ("shelf_down", "wardrobe_down", "cabinet_down"):
         mat = "metal_grey" if it != "wardrobe_down" else "wood"
-        S.box((x, y, Hh / 2), (L / 2, Dp / 2, Hh / 2), mat, yaw=yaw, pitch=0.0, roll=tilt, name=it)
+        S.box((x, y, Hh / 2), (L / 2, Dp / 2, Hh / 2), mat, yaw=yaw, pitch=0.0, roll=tilt, name=it, group=hid)
+        model("down", (x, y, Hh / 2), (L, Dp, Hh), tilt)
         for _ in range(4):
             c = at(float(rng.uniform(-L / 2, L / 2)), float(rng.uniform(-0.6, -0.3)))
             S.box((c[0], c[1], 0.05), (0.1, 0.08, 0.05), str(rng.choice(["metal_red", "metal_blue", "yellow", "white_paint", "wood"])),
                   yaw=float(rng.uniform(0, 3)), collide=False, name="spill")
     elif it == "counter" or it == "kitchen":
-        S.box((x, y, Hh / 2), (L / 2, Dp / 2, Hh / 2), "wood_dark" if it == "counter" else "metal_white", yaw=yaw, name=it)
+        S.box((x, y, Hh / 2), (L / 2, Dp / 2, Hh / 2), "wood_dark" if it == "counter" else "metal_white", yaw=yaw, name=it, group=hid)
         c = at(0, 0)
-        S.box((c[0], c[1], Hh + 0.02), (L / 2 + 0.02, Dp / 2 + 0.02, 0.02), "concrete_dark", yaw=yaw, name=it + "top")
+        S.box((c[0], c[1], Hh + 0.02), (L / 2 + 0.02, Dp / 2 + 0.02, 0.02), "concrete_dark", yaw=yaw, name=it + "top", group=hid)
+        if it == "counter":
+            model("counter", (x, y, (Hh + 0.04) / 2), (L + 0.04, Dp + 0.04, Hh + 0.04))
+        else:                                       # two floor cabinets side by side
+            for sx in (-0.25, 0.25):
+                q = at(sx * (L + 0.04), 0.0)
+                model("kitchen", (q[0], q[1], (Hh + 0.04) / 2), ((L + 0.04) / 2, Dp + 0.04, Hh + 0.04))
     elif it == "boxes":
         for dx, dy, dz in ((-0.25, 0, 0.15), (0.25, 0.05, 0.15), (0.0, 0.0, 0.45)):
             c = at(dx, dy)
             S.box((c[0], c[1], dz), (0.22, 0.2, 0.15), "wood", yaw=yaw + float(rng.uniform(-0.3, 0.3)), name="carton")
     elif it == "bed":
-        S.box((x, y, 0.2), (L / 2, Dp / 2, 0.2), "wood", yaw=yaw, name="bedframe")
+        S.box((x, y, 0.2), (L / 2, Dp / 2, 0.2), "wood", yaw=yaw, name="bedframe", group=hid)
         c = at(0, 0)
         S.box((c[0], c[1], 0.47), (L / 2 - 0.05, Dp / 2 - 0.05, 0.08), str(rng.choice(["fabric_blue", "fabric_grey", "fabric_red"])),
-              yaw=yaw, roll=tilt, name="mattress")
+              yaw=yaw, roll=tilt, name="mattress", group=hid)
+        bh = 0.56 if void else 1.0                  # with its head and foot boards where the ceiling still stands
+        model("bed", (x, y, bh / 2), (L, Dp, bh))
     elif it == "table" or it == "desk":
         top = min(Hh, 0.75)
         if void:
             top = min(top, 0.45)
         c = at(0, 0)
-        S.box((c[0], c[1], top - 0.02), (L / 2, Dp / 2, 0.025), "wood", yaw=yaw, roll=tilt, name=it + "top")
+        S.box((c[0], c[1], top - 0.02), (L / 2, Dp / 2, 0.025), "wood", yaw=yaw, roll=tilt, name=it + "top", group=hid)
         for dx in (-L / 2 + 0.05, L / 2 - 0.05):
             for dy in (-Dp / 2 + 0.05, Dp / 2 - 0.05):
                 q = at(dx, dy)
-                S.box((q[0], q[1], (top - 0.04) / 2), (0.025, 0.025, (top - 0.04) / 2), "wood_dark", yaw=yaw, name="leg")
+                S.box((q[0], q[1], (top - 0.04) / 2), (0.025, 0.025, (top - 0.04) / 2), "wood_dark", yaw=yaw, name="leg", group=hid)
+        model("table", (x, y, (top + 0.005) / 2), (L, Dp, top + 0.005), tilt)
     elif it == "sofa":
-        S.box((x, y, 0.22), (L / 2, Dp / 2, 0.22), "fabric_green", yaw=yaw, name="sofa")
+        S.box((x, y, 0.22), (L / 2, Dp / 2, 0.22), "fabric_green", yaw=yaw, name="sofa", group=hid)
         c = at(0, Dp / 2 - 0.1)
-        S.box((c[0], c[1], 0.55), (L / 2, 0.1, 0.33 if not void else 0.15), "fabric_green", yaw=yaw, name="sofaback")
+        S.box((c[0], c[1], 0.55), (L / 2, 0.1, 0.33 if not void else 0.15), "fabric_green", yaw=yaw, name="sofaback", group=hid)
+        sh = 0.88 if not void else 0.70
+        model("sofa", (x, y, sh / 2), (L, Dp, sh))
     elif it == "chair":
         S.box((x, y, 0.45), (0.22, 0.22, 0.025), "wood", yaw=yaw + 0.4, pitch=1.2, name="chairseat")
         c = at(0.1, 0.0)
@@ -977,17 +1048,27 @@ CLOTH_MATS = {}
 def _survivor_and_decoys(S):
     plan, rng = S.plan, S.rng
     sv = plan["survivor"]
-    parts, heads, hands = figure_parts(sv["pose"], scale=float(rng.uniform(0.92, 1.06)), rng=rng)
+    scale = float(rng.uniform(0.96, 1.04))
+    parts, heads, hands = figure_parts(sv["pose"], scale=scale, rng=rng)
+    lay = figure_layout(sv["pose"], scale)
     # the figure's local x (head direction) along the wall it lies against
     yaw = sv["yaw"]
     # shift so the body's middle is at (x, y)
-    off = _rz(yaw) @ np.array([-0.35, 0.0, 0.0])
+    off = _rz(yaw) @ np.array([-float(lay["torso"][0]), 0.0, 0.0])
     px, py = sv["x"] + off[0], sv["y"] + off[1]
     placed = place_parts(parts, px, py, yaw, 0.0)
+    S.figures = [{"who": "survivor", "key": figure_key(sv["pose"]), "x": float(px), "y": float(py), "yaw": float(yaw),
+                  "scale": scale}]
     S.parts["survivor"] = []
     skin = SKIN[sv["skin"]]
     colors = {"skin": skin, "hair": HAIR[sv["skin"] % len(HAIR)], "shirt": SHIRT[sv["shirt"]],
               "trousers": TROUSERS[sv["trousers"]], "shoes": (0.12, 0.1, 0.09)}
+    # the posed body's own colour maps take the site's clothes and skin as tints (people differ from site to site)
+    _lum = lambda c: 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]          # noqa: E731
+    _sh = SHIRT[sv["shirt"]]
+    _f = min(1.0, max(0.45, _lum(skin) / max(_lum(c) for c in SKIN)))
+    S.figure_tint = {"survivor": {"cloth": tuple(round(0.35 + 0.65 * float(v) / max(_sh), 4) for v in _sh),
+                                  "skin": (round(_f, 4),) * 3, "hair": (1.0, 1.0, 1.0)}}
     for p in placed:
         nm = "survivor_" + p["name"]
         rgba = list(colors.get(p["what"], (0.5, 0.5, 0.5))) + [1.0]
@@ -1005,21 +1086,28 @@ def _survivor_and_decoys(S):
     R = _rz(yaw)
     S.survivor_points = {"heads": [(R @ h + np.array([px, py, 0])).tolist() for h in heads],
                          "hands": [(R @ h + np.array([px, py, 0])).tolist() for h in hands],
-                         "torso": (R @ np.array([0.23, 0.0, 0.12]) + np.array([px, py, 0])).tolist()}
+                         "torso": (R @ lay["torso"] + np.array([px, py, 0])).tolist()}
     # legs under debris: a slab piece and bricks over the lower legs (static)
     if sv.get("legs_covered", True):
-        c = R @ np.array([-0.55, 0.05, 0.0]) + np.array([px, py, 0])
-        S.box((c[0], c[1], 0.20), (0.45, 0.42, 0.06), "slab", yaw=yaw + float(rng.uniform(-0.3, 0.3)), pitch=0.08,
-              roll=float(rng.uniform(-0.15, 0.15)), name="legslab")
+        # a slab piece of 0.6 x 0.76 m lying over the lower legs, clear of them by a hand's breadth at its lowest edge
+        c = R @ np.array([lay["legs"][0], lay["legs"][1], 0.0]) + np.array([px, py, 0])
+        zs = lay["legs_top"] + 0.06 + 0.09
+        S.box((c[0], c[1], zs), (0.30, 0.38, 0.06), "slab", yaw=yaw + float(rng.uniform(-0.2, 0.2)), pitch=0.06,
+              roll=float(rng.uniform(-0.10, 0.10)), name="legslab")
         for _ in range(8):
-            q = c + R @ np.array([float(rng.uniform(-0.5, 0.5)), float(rng.uniform(-0.45, 0.45)), 0.0])
-            S.chunk((q[0], q[1], 0.25), float(rng.uniform(0.1, 0.2)), mat=str(rng.choice(["brick", "rubble"])))
+            q = c + R @ np.array([float(rng.uniform(-0.28, 0.28)), float(rng.uniform(-0.34, 0.34)), 0.0])
+            S.chunk((q[0], q[1], zs + 0.07), float(rng.uniform(0.1, 0.2)), mat=str(rng.choice(["brick", "rubble"])))
         # a sturdy piece of furniture that kept the pocket open (a wardrobe on its side), on the wall's side of them
         wall_dir = {"E": np.array([1.0, 0, 0]), "W": np.array([-1.0, 0, 0]), "N": np.array([0, 1.0, 0]),
                     "S": np.array([0, -1.0, 0])}[sv["far"]]
         side = 1.0 if float((R @ np.array([0, 1.0, 0])) @ wall_dir) > 0 else -1.0
-        c2 = R @ np.array([0.45, side * 0.62, 0.0]) + np.array([px, py, 0])
-        S.box((c2[0], c2[1], 0.22), (0.9, 0.28, 0.22), "wood_dark", yaw=yaw + float(rng.uniform(-0.15, 0.15)), name="wardrobe")
+        reach = lay["left"] if side > 0 else lay["right"]              # the body's reach on that side: the wardrobe lies beyond it
+        c2 = R @ np.array([0.45, side * (reach + 0.34), 0.0]) + np.array([px, py, 0])
+        wyaw = yaw + float(rng.uniform(-0.15, 0.15))
+        S.box((c2[0], c2[1], 0.22), (0.9, 0.28, 0.22), "wood_dark", yaw=wyaw, name="wardrobe", group=3 if have_furniture() else None)
+        if have_furniture():
+            S.furn.append({"model": "down", "pos": [float(c2[0]), float(c2[1]), 0.22], "quat": _q_euler(wyaw, 0.0, 0.0),
+                           "size": [1.8, 0.56, 0.44]})
     # decoys: never in a corridor the route or a dead end's way in uses
     for d in plan["decoys"]:
         if d["type"] in ("mannequin", "clothes"):
@@ -1033,8 +1121,10 @@ def _survivor_and_decoys(S):
                 d["type"] = "none"
     for d in plan["decoys"]:
         if d["type"] == "mannequin":
-            parts, _, _ = figure_parts("back", scale=1.0, mannequin=True)
+            parts, _, _ = figure_parts("prone", scale=1.0, mannequin=True)
             placed = place_parts(parts, d["x"], d["y"], d["yaw"], 0.0)
+            S.figures.append({"who": "mannequin", "key": figure_key("prone", True), "x": float(d["x"]), "y": float(d["y"]),
+                              "yaw": float(d["yaw"]), "scale": 1.0})
             S.parts.setdefault("mannequin", [])
             for p in placed:
                 nm = "mannequin_" + p["name"]

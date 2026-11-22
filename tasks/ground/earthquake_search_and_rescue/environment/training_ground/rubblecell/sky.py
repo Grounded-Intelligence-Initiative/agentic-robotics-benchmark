@@ -111,9 +111,56 @@ def _noise2(u, v, seed, octaves=6, base=1.0):
     return out / tot
 
 
+_HDRI = {}
+HDRI_GAIN = 0.65            # the photographed sky's mean radiance over the upper hemisphere, in the made sky's units
+
+
+def _hdri_mips():
+    """{width: (h, w, 3) float32} of the look pack's photographed sky (equirect, rows from the zenith down, the sun's
+    azimuth in the middle column, the sun's disc clipped, mean of the upper hemisphere 1), or None without a pack."""
+    if "m" not in _HDRI:
+        import os
+        from . import pbr
+        d = os.path.join(pbr.cache_dir(), "sky")
+        m = {}
+        for w in (8, 16, 32, 64, 128, 256, 512, 1024):
+            p = os.path.join(d, "sky_%d.npy" % w)
+            if os.path.isfile(p):
+                m[w] = np.load(p).astype(np.float32)
+        _HDRI["m"] = m or None
+    return _HDRI["m"]
+
+
+def _hdri_radiance(d, P, blur, sun_disk):
+    M = _hdri_mips()
+    want = 2.0 * math.pi / max(blur, 1e-4)
+    w = max([k for k in M if k <= max(8.0, want)] or [min(M)])
+    img = M[w]
+    h = img.shape[0]
+    sun = np.asarray(P["sun_to"], float)
+    az = np.arctan2(d[..., 1], d[..., 0]) - math.atan2(sun[1], sun[0])
+    el = np.arcsin(np.clip(d[..., 2], -1.0, 1.0))
+    u = (az / (2.0 * math.pi) + 0.5) % 1.0 * w - 0.5
+    v = np.clip((0.5 - el / math.pi) * h - 0.5, 0.0, h - 1.0)
+    u0, v0 = np.floor(u).astype(int), np.floor(v).astype(int)
+    fu, fv = (u - u0)[..., None], (v - v0)[..., None]
+    v1 = np.minimum(v0 + 1, h - 1)
+    a = img[v0, u0 % w] * (1 - fu) + img[v0, (u0 + 1) % w] * fu
+    b = img[v1, u0 % w] * (1 - fu) + img[v1, (u0 + 1) % w] * fu
+    sky = (a * (1 - fv) + b * fv).astype(np.float64) * HDRI_GAIN
+    if sun_disk:
+        gam = np.arccos(np.clip((d * sun).sum(-1), -1.0, 1.0))
+        disk = np.clip((math.radians(0.55) - gam) / math.radians(0.12), 0.0, 1.0)
+        sky = sky + disk[..., None] * np.asarray(P["sun_rgb"]) * P["disk"]
+    return np.maximum(sky, 0.0)
+
+
 def radiance(d, P, blur=0.0, sun_disk=False):
     """Linear HDR radiance of the sky in world directions d (..., 3), z up. `blur` (radians) widens every feature (for
-    the image light's rough levels)."""
+    the image light's rough levels). With the look pack's photographed sky in the cache folder that sky is used,
+    turned so that its sun stands at the site's sun azimuth; else the made sky below."""
+    if _hdri_mips() is not None:
+        return _hdri_radiance(d, P, blur, sun_disk)
     up = np.clip(d[..., 2], -1.0, 1.0)
     el = np.arcsin(up)
     sun = np.asarray(P["sun_to"], float)

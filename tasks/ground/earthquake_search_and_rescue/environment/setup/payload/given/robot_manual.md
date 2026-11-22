@@ -113,6 +113,12 @@ Surfaces have the temperatures they would have on site: the shaded interior of t
 temperature (8 to 24 C, a little scatter between objects), sun-heated outdoor surfaces warmer (metal in the sun much
 warmer), the survivor's skin about 33-35 C and their clothes about 27-31 C. Appliances can still be warm.
 
+What a person is to each sensor: an adult lying on the floor, on their side, on their back or face down, in everyday
+clothes whose colours, like their skin tone, differ from site to site. Every sensor sees that same body: the colour
+cameras its clothes, skin and hair; the depth camera and the lidar its surface; the thermal camera its bare skin (face,
+neck, hands) at about 33-35 C, hair about 3 C below the skin, clothes at about 27-31 C. Debris can cover part of
+them. A shop mannequin has a person's shape, plain plastic all over, and the room's temperature.
+
 ## 7. The radio link
 
 The team's base station stands at the deployment point. The link's signal falls with distance and with every wall and

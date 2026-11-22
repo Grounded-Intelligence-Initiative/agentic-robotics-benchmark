@@ -397,8 +397,9 @@ class Ref(object):
         heads_hands = np.vstack([s.surv_heads, s.surv_hands])[:, :2]
         blockers = []
         for st in s.sc.site.statics:
-            if st["name"].startswith(("wardrobe", "legslab")):
-                blockers.append(np.array(st["pos"][:2]))
+            if st["name"].startswith(("wardrobe", "legslab", "legstack", "cupboard")):
+                # the piece's own reach (half its diagonal) and a hand's breadth, never less than 0.55 m
+                blockers.append((np.array(st["pos"][:2]), max(0.55, math.hypot(st["size"][0], st["size"][1]) + 0.15)))
         best = None
         for H in heads_hands:
             for a in np.radians(np.arange(0, 360, 15)):
@@ -407,7 +408,7 @@ class Ref(object):
                     continue
                 if min(np.linalg.norm(P - Q) for Q in heads_hands) < 0.22:
                     continue
-                if any(np.linalg.norm(P - B) < 0.55 for B in blockers):
+                if any(np.linalg.norm(P - B) < rb for B, rb in blockers):
                     continue
                 dist = float(np.linalg.norm(P - np.array([x, y])))
                 if best is None or dist < best[0]:

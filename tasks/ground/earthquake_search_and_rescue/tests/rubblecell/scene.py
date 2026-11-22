@@ -16,6 +16,130 @@ __all__ = ["build_scene", "Scene", "GROUP_WORLD", "GROUP_VISUAL"]
 
 GROUP_WORLD = 0
 GROUP_VISUAL = 2
+GROUP_HIDDEN = 3            # collides, and no sensor draws it (the capsules inside a posed body)
+FIGURE_THERMAL = {"skin": "skin", "hair": "hair", "cloth": "cloth", "plastic": "ambient"}
+
+
+def _vehicle_meshes(spec, S):
+    """The street's real vehicles: per vehicle one static mesh geom per material class (paint, glass, dark, lamp,
+    other), named veh_<name>_<class>. Every sensor sees the mesh; the robot collides with each piece's convex hull."""
+    import os
+    from . import pbr
+    path = os.path.join(pbr.cache_dir(), "vehicles.npz")
+    if not getattr(S, "vehicles", None) or not os.path.isfile(path):
+        return
+    z = np.load(path)
+    for v in S.vehicles:
+        for k in sorted(n for n in z.files if n.startswith("V:%d:" % v["id"])):
+            cls = k.split(":")[2]
+            me = spec.add_mesh()
+            me.name = "vehmesh_%s_%s" % (v["name"], cls)
+            V = z[k].astype(np.float64) * float(v["scale"])
+            me.uservert = V.flatten().tolist()
+            me.usernormal = z["N" + k[1:]].astype(np.float64).flatten().tolist()
+            me.usertexcoord = [0.0] * (2 * len(V))
+            me.userface = z["F" + k[1:]].astype(np.int32).flatten().tolist()
+            me.inertia = mujoco.mjtMeshInertia.mjMESH_INERTIA_SHELL
+            g = spec.worldbody.add_geom()
+            g.name = "veh_%s_%s" % (v["name"], cls)
+            g.type = mujoco.mjtGeom.mjGEOM_MESH
+            g.meshname = me.name
+            g.pos = [float(v["x"]), float(v["y"]), float(v["z"])]
+            g.quat = [math.cos(v["yaw"] / 2.0), 0.0, 0.0, math.sin(v["yaw"] / 2.0)]
+            g.rgba = {"paint": [0.6, 0.6, 0.62, 1.0], "glass": [0.05, 0.06, 0.07, 1.0], "dark": [0.05, 0.05, 0.05, 1.0],
+                      "lamp": [0.75, 0.72, 0.68, 1.0], "other": [0.35, 0.35, 0.36, 1.0]}[cls]
+            g.contype, g.conaffinity = CT_WORLD, CA_WORLD
+            g.priority = 1
+            g.friction = [0.8, 0.02, 0.001]
+            g.group = GROUP_WORLD
+            g.mass = 0.0
+            S.thermal[g.name] = "sunlit_metal"
+            S.vehicle_paint = getattr(S, "vehicle_paint", {})
+            S.vehicle_paint[g.name] = v["paint"]
+
+
+def _prop_meshes(spec, S):
+    """The site's models of the look pack (site.Site.prop): per placed model one mesh geom per part, named
+    prop_<k>_<part>_<model>. Every sensor sees them; a colliding one is touched as the convex hull of each part."""
+    from . import props
+    if not getattr(S, "props", None) or not props.have():
+        return
+    made = {}
+    for k, p in enumerate(S.props):
+        sc = np.array(p["scale"], float)
+        for i, (mkey, V, N, T, F) in enumerate(props.parts(p["model"])):
+            key = (p["model"], i, tuple(round(float(v), 4) for v in sc))
+            if key not in made:
+                me = spec.add_mesh()
+                me.name = "propmesh_%d" % len(made)
+                me.uservert = (V * sc).flatten().tolist()
+                Nn = N / sc
+                Nn = Nn / (np.linalg.norm(Nn, axis=1, keepdims=True) + 1e-20)
+                me.usernormal = Nn.flatten().tolist()
+                me.usertexcoord = T.flatten().tolist()
+                me.userface = F.flatten().tolist()
+                me.inertia = mujoco.mjtMeshInertia.mjMESH_INERTIA_SHELL
+                made[key] = me.name
+            g = spec.worldbody.add_geom()
+            g.name = "prop_%d_%d_%s" % (k, i, p["model"])
+            g.type = mujoco.mjtGeom.mjGEOM_MESH
+            g.meshname = made[key]
+            g.pos = [float(v) for v in p["pos"]]
+            g.quat = [float(v) for v in p["quat"]]
+            md = props.material(mkey)
+            g.rgba = [float(v) for v in md.get("rgb", [0.5, 0.48, 0.45])] + [1.0]
+            g.mass = 0.0
+            if p.get("collide"):
+                g.contype, g.conaffinity, g.group = CT_WORLD, CA_WORLD, GROUP_WORLD
+                g.priority = 1
+                g.friction = [0.8, 0.02, 0.001]
+            else:
+                g.contype, g.conaffinity, g.group = 0, 0, GROUP_VISUAL
+            if p.get("thermal"):
+                S.thermal[g.name] = p["thermal"]
+
+
+def _figure_meshes(spec, S):
+    """The posed bodies of the site's figures as drawn-only mesh geoms of the world (names <who>_body_<part>_<class>,
+    so that a survivor's are counted as the survivor by the visibility record and get their temperatures). Returns the
+    figures that got a body. Without the look pack nothing is added and the capsules stay what the sensors see."""
+    import os
+    from . import pbr
+    done = set()
+    seen = {}
+    for fig in getattr(S, "figures", []):
+        path = os.path.join(pbr.cache_dir(), "avatars", fig["key"] + ".npz")
+        if not os.path.isfile(path):
+            continue
+        z = np.load(path)
+        k = seen.get(fig["who"], 0)
+        seen[fig["who"]] = k + 1
+        who = fig["who"] if k == 0 else "%s%d" % (fig["who"], k + 1)
+        for name in sorted(n[2:] for n in z.files if n.startswith("V_")):
+            part, cls = name.split("_")
+            me = spec.add_mesh()
+            me.name = "fig_%s_%s" % (who, name)
+            me.uservert = (z["V_" + name].astype(np.float64) * float(fig["scale"])).flatten().tolist()
+            me.usertexcoord = z["T_" + name].astype(np.float64).flatten().tolist()
+            me.userface = z["F_" + name].astype(np.int32).flatten().tolist()
+            me.smoothnormal = True
+            me.inertia = mujoco.mjtMeshInertia.mjMESH_INERTIA_SHELL
+            try:
+                me.maxhullvert = 8
+            except Exception:  # noqa: BLE001
+                pass
+            g = spec.worldbody.add_geom()
+            g.name = "%s_body_%s" % (who, name)
+            g.type = mujoco.mjtGeom.mjGEOM_MESH
+            g.meshname = me.name
+            g.pos = [float(fig["x"]), float(fig["y"]), 0.0]
+            g.quat = [math.cos(fig["yaw"] / 2.0), 0.0, 0.0, math.sin(fig["yaw"] / 2.0)]
+            g.rgba = {"skin": [0.72, 0.55, 0.45, 1.0], "hair": [0.20, 0.15, 0.11, 1.0], "cloth": [0.45, 0.50, 0.58, 1.0],
+                      "plastic": [0.86, 0.82, 0.76, 1.0]}[cls]
+            g.contype, g.conaffinity, g.group, g.mass = 0, 0, GROUP_VISUAL, 0.0
+            S.thermal[g.name] = FIGURE_THERMAL[cls]
+        done.add(fig["who"])
+    return done
 CT_WORLD, CA_WORLD = 1, 3          # the world touches the robot (contype 2) and the debris
 _TEX_CACHE = {}
 
@@ -201,13 +325,18 @@ def build_scene(plan, offscreen=(640, 480)):
             g.material = st["mat"]
         if st["collide"]:
             g.contype, g.conaffinity = CT_WORLD, CA_WORLD
-            g.group = GROUP_WORLD
+            g.group = GROUP_HIDDEN if st.get("group") == GROUP_HIDDEN else GROUP_WORLD
             g.priority = 1
             g.friction = [MAT[st["mat"]][4] if st.get("mat") in MAT else 0.8, 0.02, 0.001]
         else:
             g.contype, g.conaffinity = 0, 0
             g.group = GROUP_VISUAL
-    # people (static: the survivor cannot move, the decoys are things)
+    # people (static: the survivor cannot move, the decoys are things). What every sensor sees is the posed body (a
+    # mesh per figure from the look pack, split by what the thermal camera tells apart: skin, hair, cloth, plastic),
+    # drawn only; what the robot touches is the capsules along its bones, which no sensor draws (group 3).
+    bodies = _figure_meshes(spec, S)
+    _vehicle_meshes(spec, S)
+    _prop_meshes(spec, S)
     for who, parts in S.parts.items():
         for p in parts:
             g = spec.worldbody.add_geom()
@@ -224,7 +353,7 @@ def build_scene(plan, offscreen=(640, 480)):
             g.contype, g.conaffinity = CT_WORLD, CA_WORLD
             g.priority = 1
             g.friction = [0.7, 0.02, 0.001]
-            g.group = GROUP_WORLD
+            g.group = GROUP_HIDDEN if who in bodies else GROUP_WORLD
     # movable debris
     for bd in S.bodies:
         b = spec.worldbody.add_body()

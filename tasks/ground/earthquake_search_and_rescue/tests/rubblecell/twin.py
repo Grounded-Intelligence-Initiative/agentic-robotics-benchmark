@@ -34,8 +34,8 @@ ROBOT_LEVEL_OF = {"ext": "ext", "open": "ext", "upper": "int", "int": "int", "vo
 STOREY, CEIL, T_EXT = 3.2, 3.0, 0.30
 TERRAIN_DZ = 0.004
 # ground classes of the site's painter -> (texture set, tint)
-GROUND_CLASS = {0: ("asphalt", (1.0, 1.0, 1.0)), 1: ("paving", (1.0, 1.0, 1.0)), 2: ("concrete", (0.86, 0.85, 0.83)),
-                3: ("tiles", (1.0, 1.0, 1.0)), 4: ("rubble", (1.0, 1.0, 1.0)), 5: ("rubble", (0.42, 0.40, 0.38))}
+GROUND_CLASS = {0: ("asphalt", (1.0, 1.0, 1.0)), 1: ("paving", (1.0, 1.0, 1.0)), 2: ("ground_concrete", (1.0, 1.0, 1.0)),
+                3: ("tiles", (1.0, 1.0, 1.0)), 4: ("rubble", (1.0, 1.0, 1.0)), 5: ("rubble_dark", (0.55, 0.54, 0.52))}
 
 
 def _bays(plan):
@@ -494,6 +494,65 @@ def _geom_mesh(spec_meshes, g):
     return V * sc, T, F
 
 
+def draw_robot(spec, bank, looks):
+    """The robot's and the kit's drawn parts from the look pack (robot.npz: per body and look one mesh in the body's
+    frame, every part inside the task geom it stands for: boxes with broken edges, round tubes, one belt per track
+    with its cleats, lenses, the kit as a pouch). On every body the pack knows, the task's own drawn geoms (all light
+    levels) are deleted and one mesh geom per look and light level is added; the bodies get an explicit inertia (the
+    render twin does kinematics only). Returns (geoms removed, geoms added), or None without the pack."""
+    import os
+    from . import pbr
+    path = os.path.join(pbr.cache_dir(), "robot.npz")
+    if not os.path.isfile(path):
+        return None
+    z = np.load(path)
+    per_body = {}
+    for k in z.files:
+        if k.startswith("V:"):
+            _, body, look = k.split(":")
+            per_body.setdefault(body, []).append(look)
+    level_of = {}
+    for lv, names in bank.robot_copies.items():
+        for n in names:
+            level_of[n] = lv
+    removed = added = 0
+    for body in spec.bodies:
+        if body.name not in per_body:
+            continue
+        for g in list(body.geoms):
+            if g.name in level_of:
+                bank.robot_copies[level_of[g.name]].remove(g.name)
+                spec.delete(g)
+                removed += 1
+        body.explicitinertial = True
+        body.mass = 1.0
+        body.inertia = [0.01, 0.01, 0.01]
+        for look in sorted(per_body[body.name]):
+            key = "%s:%s" % (body.name, look)
+            me = spec.add_mesh()
+            me.name = "lkdrawn_%s_%s" % (body.name, look)
+            me.uservert = z["V:" + key].astype(np.float64).flatten().tolist()
+            me.usernormal = z["N:" + key].astype(np.float64).flatten().tolist()
+            me.usertexcoord = [0.0] * (2 * len(z["V:" + key]))          # the materials read an occlusion / roughness texture: any uv
+            me.userface = z["F:" + key].astype(np.int32).flatten().tolist()
+            try:
+                me.maxhullvert = 8
+            except Exception:  # noqa: BLE001
+                pass
+            _shell(me)
+            rgb, rough, metal, emis = looks[look]
+            for lv in ROBOT_LEVELS:
+                ng = body.add_geom()
+                ng.name = "%s@%s" % (me.name, lv)
+                ng.type = mujoco.mjtGeom.mjGEOM_MESH
+                ng.meshname = me.name
+                ng.material = bank.plain((rgb[0], rgb[1], rgb[2], 1.0), rough, metal, lv if emis <= 0 else "ext", 0.0, emis, True)
+                ng.contype, ng.conaffinity, ng.group, ng.mass = 0, 0, 1, 0.0
+                bank.robot_copies[lv].append(ng.name)
+                added += 1
+    return removed, added
+
+
 def batch_robot(spec, bank):
     """Merge, on every moving body of the robot, the geoms of one light-level version that share a material and a
     shading (flat boxes, smooth primitives) into ONE mesh in the body's frame, and delete the merged geoms.
@@ -572,6 +631,8 @@ def batch_statics(spec, bodies):
         for g in list(body.geoms):
             if not g.material or (g.name or "").startswith("dcbatch"):
                 pass
+            if "_body_" in (g.name or "") or (g.name or "").startswith(("veh_", "prop_")):   # posed bodies and vehicles keep their own
+                continue                                                           # smooth-shaded meshes
             got = _geom_mesh(meshes, g)
             if got is None:
                 continue
