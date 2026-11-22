@@ -190,3 +190,40 @@ on the two machines. The image's pin is set before the look's textures are made 
 **Also.** The training allowance is 80 missions (was 40). `get_state`'s `pose.z` carries 1 cm of noise.
 `tests/test_earthquake_search_and_rescue.py` (repository tests) keeps the stated numbers, the byte copies, the
 public contract and the pin in agreement.
+
+## 10. The look pack (cell 0.4.0, 2026-11-22): the site's objects as real models
+
+The owner's rule for the task's pictures: what the robot's cameras see is built from the same assets as the task's
+presentation renders; the only difference is that the cell rasterises on a CPU. So the cell now builds a site from a
+pack of models (`environment/assets.sha256`: one tar of the benchmark's asset dataset, fetched and checked by the
+image build into `/opt/rubblecell-look`, which only root and the training ground's account read).
+
+| what | where it comes in | every sensor | contact |
+|---|---|---|---|
+| walls, floors, ceilings, slabs, street: 27 photographed surface sets | `pbr.SHIPPED`, `look.LOOK` | colour | unchanged |
+| the sky as image light, the sun, the grade | `sky.py`, `look.LOOK` | colour | none |
+| the survivor (three lying poses) and the mannequin: posed bodies; shirt and skin tint by the plan | `human.py`, `figures.json`, `scene._figure_meshes` | colour, depth, lidar, thermal (skin, hair, cloth; the mannequin at room temperature) | the capsules along the bones (no sensor draws them); the protective stop reads their contact |
+| the survivor's arrangement: a broken plate over the lower legs on a rubble heap and one block, a low cupboard beyond the feet or the head, bare floor under a lying figure | `site._trapped`, `site._clear_floor` | all | the plate's and the pieces' hulls, the cupboard's box |
+| the robot's and the kit's drawn parts | `twin.draw_robot` | colour | the robot's own geoms, unchanged |
+| the street's car and van; parked cars, a fire engine, an ambulance beyond the cordon | `scene._vehicle_meshes`, `decor.py` | all | car and van: mesh hulls; the others are out of reach |
+| furniture (shelf, closet, sideboard, counter, kitchen cabinet and stove, bed, table, sofa, chair, fridge, television, cartons, hand truck) | `site._furniture_real` | all | the piece's box |
+| the rescue post, ruin pieces, road barriers | `site._rescue_post`, `site._ruins`, `site._cordon` | all | hulls; the barriers' boxes |
+| window modules on the upper storeys and the neighbours, wall decals (3 mm patches) | `site._module`, `site._decals` | all | none (out of reach; a patch is 3 mm) |
+| apartment blocks around the site | `decor.py` | colour, depth, lidar | out of reach |
+
+Where a model stands for a box (furniture, barriers) the model is scaled into the box, so what a camera or the lidar
+sees lies inside what the robot would touch. Without the pack (a checkout without the image) `props.have()` is false
+and a site is built of the primitives of cell 0.3.0: that is for reading the code, not for grading.
+
+Because the objects of a site changed, the hidden set and the training sites were selected again on the same 48
+candidates (`tests/hidden/selection.json`, amendment 3, registered before any candidate ran): the training sites
+are the same six; of the hidden set candidates 11, 17 and 19 dropped out and 8, 26 and 28 came in. The reference
+program changed with the arrangement round the survivor (the kit spot's keep-clear pieces; its stand before the
+survivor); the amendment says how and on which sites that was developed.
+
+Sources: surface scans, a sky, a steel shelf, a television, a carton and the rescue post's kit from Poly Haven (CC0);
+room surfaces, furniture, window modules, apartment blocks and wall decals from the Unity Asset Store pack
+"Chernobyl"; ruin pieces from "Post Apocalyptic Destroyed Buildings"; a fridge from "ArchVizPRO Interior Vol.6";
+vehicles from a vehicle model archive; the people are Microsoft Rocketbox avatars (MIT) in the end poses of motion
+clips; the robot's and the kit's drawn parts, the cone, the barrier board, the work light and the stretcher were
+modelled for this task.

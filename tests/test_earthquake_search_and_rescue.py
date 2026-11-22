@@ -107,3 +107,29 @@ def test_the_numerics_pin_is_stated_and_set_alike():
         assert ("%s=%s" % (k, pin[k]) in docker) or ('%s="%s"' % (k, pin[k]) in docker), k
     ref = json.loads(_text("tests/numerics.json"))
     assert ref["math"] and all(len(v) == 16 or v == "absent" for v in ref["math"].values())
+
+
+def test_the_look_pack_is_one_pinned_archive_fetched_by_the_image_build():
+    lines = _text("environment/assets.sha256").splitlines()
+    files = [ln.split("  ", 1) for ln in lines if ln and not ln.startswith("#")]
+    assert [f[1] for f in files] == ["look/rubblecell_look_pack.tar"]
+    assert len(files[0][0]) == 64
+    head = dict(ln[2:].split(": ", 1) for ln in lines if ln.startswith("# "))
+    assert head["prefix"] == "tasks/ground/earthquake_search_and_rescue/payload" and len(head["revision"]) == 40
+    docker = _text("environment/Dockerfile")
+    assert "fetch_assets.py /tmp/task-assets/assets.sha256" in docker and "rubblecell_look_pack.tar" in docker
+    assert "rm -rf /tmp/task-assets" in docker                       # no layer keeps the archive
+    assert "chmod -R u+rwX,g+rX,o-rwx /opt/rubblecell-look" in docker  # not readable by the agent's account
+
+
+def test_the_selection_record_is_of_this_cell_and_this_reference():
+    sel = json.loads(_text("tests/hidden/selection.json"))
+    version = re.search(r'^CELL_VERSION = "([^"]+)"', _text("tests/rubblecell/__init__.py"), re.M).group(1)
+    assert sel["cell_version"] == version
+    assert all(r["cell_version"] == version for r in sel["runs"]) and len(sel["runs"]) == 48
+    last = sel["amendments"][-1]
+    assert last["n"] == 3
+    digest = hashlib.sha256((TASK / "tests/reference/reference.py").read_bytes()).hexdigest()
+    assert digest in last["reference"]
+    chosen = sel["chosen"]["hidden"]
+    assert all(r["admitted"] for r in sel["runs"] if r["pool"] == "hidden" and r["index"] in chosen["indices"])
