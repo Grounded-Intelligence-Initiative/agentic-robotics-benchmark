@@ -194,8 +194,8 @@ class Pilot:
             at = np.array(litter[:2])-.46*f
             self.goto(at[0], at[1], floor+CRUISE, yaw=heading, tol=.03, settle=.05)
             width, limit = self.ring_width(0), 119.4*.134/(CRUISE-.145-.26)
-        else:                                                         # the forward camera, 1.5 m before the litter on the way in
-            back = min(1.5, max(dist, .01))
+        else:                                                         # the forward camera, up to 1.5 m before the litter
+            back = min(1.5, dist+.85)                                 # inside the room's turning circle, at cruise height
             at = np.array(litter[:2])-back*f
             self.goto(at[0], at[1], floor+CRUISE, yaw=heading, tol=.03, settle=.05)
             width, limit = self.ring_width(1), 119.4*.134/math.hypot(back-.17, CRUISE+.045-.24)
