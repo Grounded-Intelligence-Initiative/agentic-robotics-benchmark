@@ -494,6 +494,13 @@ def _geom_mesh(spec_meshes, g):
     return V * sc, T, F
 
 
+# the drawn robot's looks that are a texture set of the look (worn paint, coated panels, brushed aluminium, the
+# kit's cloth) with a tint; the others are plain
+ROBOT_SETS = {"robot_paint": ("robot_paint", (0.93, 0.40, 0.05)), "robot_dark": ("robot_dark", (0.17, 0.18, 0.19)),
+              "robot_shell": ("robot_dark", (0.21, 0.22, 0.23)), "robot_pad": ("robot_dark", (0.13, 0.13, 0.14)),
+              "robot_alu": ("alu", (0.82, 0.83, 0.85)), "kit_bag": ("bag", (1.0, 1.0, 1.0))}
+
+
 def draw_robot(spec, bank, looks):
     """The robot's and the kit's drawn parts from the look pack (robot.npz: per body and look one mesh in the body's
     frame, every part inside the task geom it stands for: boxes with broken edges, round tubes, one belt per track
@@ -533,7 +540,11 @@ def draw_robot(spec, bank, looks):
             me.name = "lkdrawn_%s_%s" % (body.name, look)
             me.uservert = z["V:" + key].astype(np.float64).flatten().tolist()
             me.usernormal = z["N:" + key].astype(np.float64).flatten().tolist()
-            me.usertexcoord = [0.0] * (2 * len(z["V:" + key]))          # the materials read an occlusion / roughness texture: any uv
+            # texture coordinates in metres, box-mapped by each vertex's normal (the paint's and the coating's maps)
+            Vr, Nr = z["V:" + key].astype(np.float64), z["N:" + key].astype(np.float64)
+            ax = np.abs(Nr).argmax(1)
+            Tr = np.where((ax == 0)[:, None], Vr[:, [1, 2]], np.where((ax == 1)[:, None], Vr[:, [0, 2]], Vr[:, [0, 1]]))
+            me.usertexcoord = Tr.flatten().tolist()
             me.userface = z["F:" + key].astype(np.int32).flatten().tolist()
             try:
                 me.maxhullvert = 8
@@ -546,7 +557,10 @@ def draw_robot(spec, bank, looks):
                 ng.name = "%s@%s" % (me.name, lv)
                 ng.type = mujoco.mjtGeom.mjGEOM_MESH
                 ng.meshname = me.name
-                ng.material = bank.plain((rgb[0], rgb[1], rgb[2], 1.0), rough, metal, lv if emis <= 0 else "ext", 0.0, emis, True)
+                if look in ROBOT_SETS:
+                    ng.material = bank.textured(ROBOT_SETS[look][0], ROBOT_SETS[look][1], lv, 1.0, True)
+                else:
+                    ng.material = bank.plain((rgb[0], rgb[1], rgb[2], 1.0), rough, metal, lv if emis <= 0 else "ext", 0.0, emis, True)
                 ng.contype, ng.conaffinity, ng.group, ng.mass = 0, 0, 1, 0.0
                 bank.robot_copies[lv].append(ng.name)
                 added += 1
@@ -631,7 +645,7 @@ def batch_statics(spec, bodies):
         for g in list(body.geoms):
             if not g.material or (g.name or "").startswith("dcbatch"):
                 pass
-            if "_body_" in (g.name or "") or (g.name or "").startswith(("veh_", "furn_")):   # posed bodies and vehicles keep their own
+            if "_body_" in (g.name or "") or (g.name or "").startswith(("veh_", "prop_")):   # posed bodies and vehicles keep their own
                 continue                                                           # smooth-shaded meshes
             got = _geom_mesh(meshes, g)
             if got is None:

@@ -105,7 +105,7 @@ class Site(object):
         self.parts = {}            # survivor / decoy parts
         self.figures = []          # the posed bodies the sensors see: who, key (human.figures), x, y, yaw, scale
         self.figure_tint = {}      # who -> {cloth, skin, hair: (r, g, b)}: tints of a posed body's colour maps
-        self.furn = []             # real furniture (the look pack's furniture.npz): model, pos, quat, size
+        self.props = []            # the look pack's models on the site (props.py): model, pos, quat, scale, collide
         self.vehicles = []         # real vehicles (the look pack's vehicles.npz): name, id, x, y, z, yaw, scale, paint
         self.keepout = []          # (x0, y0, x1, y1, r) corridor segments kept free of clutter
         self.route = []
@@ -187,6 +187,21 @@ class Site(object):
                              "mat": mat, "collide": bool(collide), "size": [0, 0, 0]})
         return nm
 
+    def prop(self, model, pos, yaw=0.0, scale=1.0, pitch=0.0, roll=0.0, collide=False, quat=None, fit=None, thermal=None):
+        """A model of the look pack at `pos` (its footprint's centre, its lowest point), turned and scaled (`fit`: the
+        (length, depth, height) it is scaled to). Every sensor sees it; with `collide` the robot touches the convex
+        hull of each of its parts. Returns its size."""
+        from . import props
+        sz = props.size(model)
+        if fit is not None:
+            sc = [float(f) / max(1e-6, m) for f, m in zip(fit, sz)]
+        else:
+            sc = [float(v) for v in (np.ones(3) * np.asarray(scale, float))]
+        self.props.append({"model": model, "pos": [float(v) for v in pos], "scale": sc, "collide": bool(collide),
+                           "quat": [float(v) for v in quat] if quat is not None else _q_euler(yaw, pitch, roll),
+                           "thermal": thermal})
+        return [m * c for m, c in zip(sz, sc)]
+
     def keep(self, a, b, r=0.75):
         self.keepout.append((float(a[0]), float(a[1]), float(b[0]), float(b[1]), float(r)))
 
@@ -263,12 +278,46 @@ VEHICLE_DIMS = {5: (5.61, 2.02, 2.37), 6: (4.50, 1.80, 2.01), 7: (4.24, 1.88, 1.
                 10: (4.72, 1.96, 1.81), 11: (4.59, 1.99, 1.41), 13: (3.46, 1.79, 1.64)}
 
 
-def have_furniture():
-    """True when the look pack's furniture is installed (the task image): a piece of furniture with a model is then
-    that model for every sensor, scaled into the piece's own box, and the boxes stay what the robot touches."""
-    import os
-    from . import pbr
-    return os.path.isfile(os.path.join(pbr.cache_dir(), "furniture.npz"))
+def have_props():
+    """True when the look pack's models are installed (the task image): furniture, ruin pieces, the rescue post, the
+    facade's window modules are then those models for every sensor; without the pack (a development checkout) the
+    site is built of the primitives it used to be."""
+    from . import props
+    return props.have()
+
+
+def _qmul(a, b):
+    w1, x1, y1, z1 = a
+    w2, x2, y2, z2 = b
+    return [w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2, w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+            w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2, w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2]
+
+
+def _qmat(q):
+    w, x, y, z = q
+    return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                     [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                     [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+
+
+def _mat_quat(R):
+    """Quaternion (w, x, y, z) of a rotation matrix."""
+    R = np.asarray(R, float)
+    t = R[0, 0] + R[1, 1] + R[2, 2]
+    if t > 0:
+        r = math.sqrt(1.0 + t)
+        q = [0.5 * r, (R[2, 1] - R[1, 2]) / (2 * r), (R[0, 2] - R[2, 0]) / (2 * r), (R[1, 0] - R[0, 1]) / (2 * r)]
+    else:
+        k = int(np.argmax([R[0, 0], R[1, 1], R[2, 2]]))
+        a, b, c = k, (k + 1) % 3, (k + 2) % 3
+        r = math.sqrt(1.0 + R[a, a] - R[b, b] - R[c, c])
+        v = [0.0, 0.0, 0.0]
+        v[a] = 0.5 * r
+        v[b] = (R[b, a] + R[a, b]) / (2 * r)
+        v[c] = (R[c, a] + R[a, c]) / (2 * r)
+        q = [(R[c, b] - R[b, c]) / (2 * r)] + v
+    n = math.sqrt(sum(x * x for x in q))
+    return [float(x / n) for x in q]
 
 
 def have_vehicles():
@@ -289,6 +338,10 @@ def build_site(plan):
     _contents(S)
     _survivor_and_decoys(S)
     _neighbours(S)
+    if have_props():
+        _rescue_post(S)
+        _ruins(S)
+        _decals(S)
     _route(S)
     return S
 
@@ -699,9 +752,28 @@ def _shop_windows(S, seg, ops):
               str(rng.choice(["metal_red", "metal_blue", "metal_white", "yellow"])), collide=False, name="sign")
 
 
+def _module(S, seg, z0, lo=None, hi=None, height=STOREY):
+    """A window module of the look pack (an exterior shell, 4 m x 3 m) on the outside of an exterior wall segment,
+    scaled to the piece's length and the storey's height, its back on the wall's face."""
+    from . import props
+    lo = seg["lo"] if lo is None else lo
+    hi = seg["hi"] if hi is None else hi
+    model = ["win_18", "win_21", "win_20", "win_22"][int(S.rng.integers(4))]
+    out = -1.0 if seg["A"] is None else 1.0                        # the side without a bay is outside
+    off = out * (T_EXT / 2 + 0.01 + props.size(model)[1] / 2)
+    mid = (lo + hi) / 2
+    if seg["axis"] == "x":
+        pos, yaw = (seg["c"] + off, mid, z0), (math.pi / 2 if out > 0 else -math.pi / 2)
+    else:
+        pos, yaw = (mid, seg["c"] + off, z0), (math.pi if out > 0 else 0.0)
+    S.prop(model, pos, yaw=yaw, fit=(hi - lo, props.size(model)[1], height))
+
+
 def _facade_storey(S, seg, z0):
     rng = S.rng
     lo, hi = seg["lo"], seg["hi"]
+    if have_props():
+        _module(S, seg, z0)
     t = T_EXT
     mid = (lo + hi) / 2
     L = hi - lo
@@ -912,7 +984,7 @@ def _contents(S):
                     yaw = 0.0
                 r = math.hypot(L, Dp) / 2
                 if S.free_at(x, y, r) and _clear_of_items(S, k, x, y, r):
-                    _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng, face=1.0 if side in (1, 2) else -1.0)
+                    _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng, face=1.0 if side in (1, 2) else -1.0, hmax=hmax)
                     b.setdefault("items", []).append((x, y, r))
                     break
         # plaster flakes, bricks, paper: visual dressing on the floor
@@ -931,6 +1003,12 @@ def _clear_of_items(S, k, x, y, r):
 
 def _fsize(it, rng):
     """(length along the wall, depth, height) of a furniture item."""
+    if have_props():                                    # the sizes of the look pack's pieces
+        return {"shelf": (1.2, 0.5, 1.9), "shelf_down": (1.9, 1.0, 0.45), "counter": (1.6, 0.6, 0.95),
+                "boxes": (1.0, 0.65, 0.78), "fridge": (0.7, 0.7, 1.75), "bed": (2.0, 1.0, 0.56), "wardrobe_down": (1.8, 1.75, 0.4),
+                "table": (1.2, 0.75, 0.75), "sofa": (2.3, 1.0, 0.56), "kitchen": (1.8, 0.65, 0.9), "chair": (0.5, 0.5, 0.9),
+                "tv": (1.0, 0.5, 0.95), "desk": (1.4, 0.75, 0.75), "cabinet": (1.0, 0.55, 1.33), "cabinet_down": (1.3, 0.69, 0.58),
+                "bike": (0.6, 0.7, 1.4)}[it]
     return {"shelf": (1.2, 0.4, 1.9), "shelf_down": (1.9, 0.4, 0.45), "counter": (1.6, 0.6, 0.95),
             "boxes": (0.9, 0.6, 0.6), "fridge": (0.65, 0.65, 1.75), "bed": (2.0, 1.4, 0.5), "wardrobe_down": (1.9, 0.6, 0.6),
             "table": (1.2, 0.8, 0.75), "sofa": (1.9, 0.85, 0.85), "kitchen": (1.8, 0.6, 0.9), "chair": (0.5, 0.5, 0.9),
@@ -938,7 +1016,67 @@ def _fsize(it, rng):
             "bike": (1.7, 0.4, 1.0)}[it]
 
 
-def _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng, face=-1.0):
+def _piece(S, model, x, y, yaw, size, face=-1.0, z0=0.0, name="furn", collide=True, thermal=None):
+    """A real piece of furniture: the look pack's model scaled into the box `size` (length, depth, height) standing at
+    (x, y, z0), its front to the room (`face`: on which side of the piece, +y or -y, the room is). Every sensor sees
+    the model; the box is what the robot touches (no sensor draws it)."""
+    L, Dp, Hh = size
+    if collide:
+        S.box((x, y, z0 + Hh / 2), (L / 2, Dp / 2, Hh / 2), "wood", yaw=yaw, name=name, group=3)
+    S.prop(model, (x, y, z0), yaw=yaw + (math.pi if face > 0 else 0.0), fit=size, thermal=thermal)
+
+
+def _furniture_real(S, it, x, y, yaw, L, Dp, Hh, rng, face, hmax):
+    """The item as pieces of the look pack. Hh is the item's height, already cut to the ceiling over it: under a low
+    ceiling a tall piece gives way to a low one."""
+    R = _rz(yaw)
+
+    def at(dx, dy):
+        v = R @ np.array([dx, dy, 0.0])
+        return x + v[0], y + v[1]
+
+    tall = Hh >= _fsize(it, rng)[2] - 1e-6
+    if it in ("shelf", "cabinet", "fridge"):
+        if tall:
+            _piece(S, {"shelf": "shelf", "cabinet": "closet", "fridge": "fridge"}[it], x, y, yaw, (L, Dp, Hh), face, name=it)
+        else:
+            _piece(S, "sideboard", x, y, yaw, (min(1.3, max(L, 1.0)), 0.69, min(Hh, 0.58)), face, name=it)
+    elif it in ("shelf_down", "wardrobe_down", "cabinet_down"):
+        model = {"shelf_down": "shelf_down", "wardrobe_down": "wardrobe_down", "cabinet_down": "sideboard"}[it]
+        _piece(S, model, x, y, yaw, (L, Dp, min(Hh, _fsize(it, rng)[2])), face, name=it)
+    elif it == "counter":
+        _piece(S, "counter", x, y, yaw, (L, Dp, Hh), face, name=it)
+    elif it == "kitchen":
+        a, b = at(-L / 4, 0.0), at(L / 4, 0.0)
+        _piece(S, "kitchen", a[0], a[1], yaw, (L / 2, Dp, Hh), face, name=it)
+        _piece(S, "stove", b[0], b[1], yaw, (L / 2 - 0.1, Dp, Hh), face, name="stove")
+    elif it == "boxes":
+        for k, (dx, dy, dz) in enumerate(((-0.26, 0.0, 0.0), (0.26, 0.03, 0.0), (0.02, 0.0, 0.39))):
+            if dz + 0.39 > Hh:
+                continue
+            c = at(dx, dy)
+            _piece(S, "carton", c[0], c[1], yaw + float(rng.uniform(-0.3, 0.3)), (0.45, 0.6, 0.39), face, z0=dz, name="carton")
+    elif it == "bed":
+        _piece(S, "bed", x, y, yaw, (L, Dp, 1.08 if hmax >= 1.15 else min(Hh, 0.56)), face, name="bed")
+    elif it in ("table", "desk"):
+        _piece(S, "table", x, y, yaw, (L, Dp, Hh), face, name=it)
+    elif it == "sofa":
+        _piece(S, "sofa", x, y, yaw, (L, Dp, Hh), face, name="sofa")
+    elif it == "chair":
+        if Hh >= 0.7:
+            _piece(S, "chair", x, y, yaw + float(rng.uniform(-0.5, 0.5)), (0.5, 0.5, Hh), face, name="chair")
+    elif it == "tv":
+        _piece(S, "sideboard", x, y, yaw, (L, Dp, min(Hh, 0.5)), face, name="tvstand")
+        if Hh >= 0.95 - 1e-6:
+            S.prop("tv", (x, y, 0.5), yaw=yaw + (math.pi if face > 0 else 0.0), scale=1.15)
+    elif it == "bike":
+        if Hh >= 1.4 - 1e-6:
+            _piece(S, "handtruck", x, y, yaw, (L, Dp, Hh), face, name="handtruck")
+
+
+def _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng, face=-1.0, hmax=3.0):
+    if have_props():
+        return _furniture_real(S, it, x, y, yaw, L, Dp, Hh, rng, face, hmax)
     R = _rz(yaw)
 
     def at(dx, dy):
@@ -946,28 +1084,7 @@ def _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng, face=-1.0):
         return x + v[0], y + v[1]
 
     tilt = float(rng.uniform(-0.06, 0.06))
-    real = have_furniture()
-    hid = 3 if real else None                      # scene.GROUP_HIDDEN: the boxes of a piece that has a model
-
-    def model(name, c, size, roll=0.0):
-        if real:
-            # a model's front is at its -y; face says on which side of the piece (+y or -y) the room is
-            S.furn.append({"model": name, "pos": [float(v) for v in c], "size": [float(v) for v in size],
-                           "quat": _q_euler(yaw + (math.pi if face > 0 else 0.0), 0.0, -roll if face > 0 else roll)})
-
-    if it in ("shelf", "cabinet"):
-        if void:
-            Hh = min(Hh, 0.45)
-        S.box((x, y, Hh / 2), (L / 2, Dp / 2, Hh / 2), "metal_grey", yaw=yaw, roll=tilt, name=it, group=hid)
-        model(it if not void else "down", (x, y, Hh / 2), (L, Dp, Hh), tilt)
-        if it == "shelf" and not void:
-            for zz in (0.4, 0.8, 1.2, 1.6):
-                for dx in (-0.4, 0.0, 0.4):
-                    if rng.random() < 0.5:
-                        c = at(dx, -0.05)
-                        S.box((c[0], c[1], zz + 0.08), (0.12, 0.1, 0.08), str(rng.choice(["metal_red", "metal_blue", "yellow", "white_paint"])),
-                              yaw=yaw + float(rng.uniform(-0.3, 0.3)), collide=False, name="goods")
-    elif it in ("shelf", "cabinet", "fridge"):
+    if it in ("shelf", "cabinet", "fridge"):
         mat = {"shelf": "metal_grey", "cabinet": "metal_grey", "fridge": "metal_white"}[it]
         if void:
             Hh = min(Hh, 0.45)
@@ -981,50 +1098,38 @@ def _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng, face=-1.0):
                               yaw=yaw + float(rng.uniform(-0.3, 0.3)), collide=False, name="goods")
     elif it in ("shelf_down", "wardrobe_down", "cabinet_down"):
         mat = "metal_grey" if it != "wardrobe_down" else "wood"
-        S.box((x, y, Hh / 2), (L / 2, Dp / 2, Hh / 2), mat, yaw=yaw, pitch=0.0, roll=tilt, name=it, group=hid)
-        model("down", (x, y, Hh / 2), (L, Dp, Hh), tilt)
+        S.box((x, y, Hh / 2), (L / 2, Dp / 2, Hh / 2), mat, yaw=yaw, pitch=0.0, roll=tilt, name=it)
         for _ in range(4):
             c = at(float(rng.uniform(-L / 2, L / 2)), float(rng.uniform(-0.6, -0.3)))
             S.box((c[0], c[1], 0.05), (0.1, 0.08, 0.05), str(rng.choice(["metal_red", "metal_blue", "yellow", "white_paint", "wood"])),
                   yaw=float(rng.uniform(0, 3)), collide=False, name="spill")
     elif it == "counter" or it == "kitchen":
-        S.box((x, y, Hh / 2), (L / 2, Dp / 2, Hh / 2), "wood_dark" if it == "counter" else "metal_white", yaw=yaw, name=it, group=hid)
+        S.box((x, y, Hh / 2), (L / 2, Dp / 2, Hh / 2), "wood_dark" if it == "counter" else "metal_white", yaw=yaw, name=it)
         c = at(0, 0)
-        S.box((c[0], c[1], Hh + 0.02), (L / 2 + 0.02, Dp / 2 + 0.02, 0.02), "concrete_dark", yaw=yaw, name=it + "top", group=hid)
-        if it == "counter":
-            model("counter", (x, y, (Hh + 0.04) / 2), (L + 0.04, Dp + 0.04, Hh + 0.04))
-        else:                                       # two floor cabinets side by side
-            for sx in (-0.25, 0.25):
-                q = at(sx * (L + 0.04), 0.0)
-                model("kitchen", (q[0], q[1], (Hh + 0.04) / 2), ((L + 0.04) / 2, Dp + 0.04, Hh + 0.04))
+        S.box((c[0], c[1], Hh + 0.02), (L / 2 + 0.02, Dp / 2 + 0.02, 0.02), "concrete_dark", yaw=yaw, name=it + "top")
     elif it == "boxes":
         for dx, dy, dz in ((-0.25, 0, 0.15), (0.25, 0.05, 0.15), (0.0, 0.0, 0.45)):
             c = at(dx, dy)
             S.box((c[0], c[1], dz), (0.22, 0.2, 0.15), "wood", yaw=yaw + float(rng.uniform(-0.3, 0.3)), name="carton")
     elif it == "bed":
-        S.box((x, y, 0.2), (L / 2, Dp / 2, 0.2), "wood", yaw=yaw, name="bedframe", group=hid)
+        S.box((x, y, 0.2), (L / 2, Dp / 2, 0.2), "wood", yaw=yaw, name="bedframe")
         c = at(0, 0)
         S.box((c[0], c[1], 0.47), (L / 2 - 0.05, Dp / 2 - 0.05, 0.08), str(rng.choice(["fabric_blue", "fabric_grey", "fabric_red"])),
-              yaw=yaw, roll=tilt, name="mattress", group=hid)
-        bh = 0.56 if void else 1.0                  # with its head and foot boards where the ceiling still stands
-        model("bed", (x, y, bh / 2), (L, Dp, bh))
+              yaw=yaw, roll=tilt, name="mattress")
     elif it == "table" or it == "desk":
         top = min(Hh, 0.75)
         if void:
             top = min(top, 0.45)
         c = at(0, 0)
-        S.box((c[0], c[1], top - 0.02), (L / 2, Dp / 2, 0.025), "wood", yaw=yaw, roll=tilt, name=it + "top", group=hid)
+        S.box((c[0], c[1], top - 0.02), (L / 2, Dp / 2, 0.025), "wood", yaw=yaw, roll=tilt, name=it + "top")
         for dx in (-L / 2 + 0.05, L / 2 - 0.05):
             for dy in (-Dp / 2 + 0.05, Dp / 2 - 0.05):
                 q = at(dx, dy)
-                S.box((q[0], q[1], (top - 0.04) / 2), (0.025, 0.025, (top - 0.04) / 2), "wood_dark", yaw=yaw, name="leg", group=hid)
-        model("table", (x, y, (top + 0.005) / 2), (L, Dp, top + 0.005), tilt)
+                S.box((q[0], q[1], (top - 0.04) / 2), (0.025, 0.025, (top - 0.04) / 2), "wood_dark", yaw=yaw, name="leg")
     elif it == "sofa":
-        S.box((x, y, 0.22), (L / 2, Dp / 2, 0.22), "fabric_green", yaw=yaw, name="sofa", group=hid)
+        S.box((x, y, 0.22), (L / 2, Dp / 2, 0.22), "fabric_green", yaw=yaw, name="sofa")
         c = at(0, Dp / 2 - 0.1)
-        S.box((c[0], c[1], 0.55), (L / 2, 0.1, 0.33 if not void else 0.15), "fabric_green", yaw=yaw, name="sofaback", group=hid)
-        sh = 0.88 if not void else 0.70
-        model("sofa", (x, y, sh / 2), (L, Dp, sh))
+        S.box((c[0], c[1], 0.55), (L / 2, 0.1, 0.33 if not void else 0.15), "fabric_green", yaw=yaw, name="sofaback")
     elif it == "chair":
         S.box((x, y, 0.45), (0.22, 0.22, 0.025), "wood", yaw=yaw + 0.4, pitch=1.2, name="chairseat")
         c = at(0.1, 0.0)
@@ -1043,6 +1148,97 @@ def _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng, face=-1.0):
 
 # ------------------------------------------------------------------------------------------------- people
 CLOTH_MATS = {}
+
+
+def _clear_floor(S, px, py, yaw, lay, margin=0.25, ramp=0.5):
+    """The floor under a lying figure is the bare floor: a rubble mound that reaches under the body is cut back to
+    `margin` from the body's outline and rises from there over `ramp` (the body lies on the floor, not in a heap)."""
+    c, s_ = math.cos(-yaw), math.sin(-yaw)
+    X, Y = S.GX - px, S.GY - py
+    u, v = c * X - s_ * Y, s_ * X + c * Y
+    du = np.maximum(0.0, np.maximum(lay["x0"] - u, u - lay["x1"]))
+    dv = np.maximum(0.0, np.maximum(-lay["right"] - v, v - lay["left"]))
+    k = np.clip((np.hypot(du, dv) - margin) / ramp, 0.0, 1.0)
+    up = S.H > 0.0
+    S.H = np.where(up, S.H * k, S.H)
+    S.ground[up & (k < 0.2) & (S.ground == 4)] = 2
+
+
+def _trapped(S, sv, lay, px, py, yaw, rng):
+    """How the survivor is trapped, as one arrangement that holds together: they lie along the void's far wall; a
+    broken slab piece bridges their lower legs, resting on a stack of debris either side of the legs and clear of
+    them by a hand's breadth; a low cupboard that kept the pocket open stands against the wall beyond their feet (or
+    beyond their head, where the bay has the room). Nothing passes through the body, the wall or the cupboard."""
+    R = _rz(yaw)
+    o = np.array([px, py, 0.0])
+    b = S.plan["bays"][S.plan["target"]]
+    wall_dir = {"E": np.array([1.0, 0, 0]), "W": np.array([-1.0, 0, 0]), "N": np.array([0, 1.0, 0]),
+                "S": np.array([0, -1.0, 0])}[sv["far"]]
+    side = 1.0 if float((R @ np.array([0, 1.0, 0])) @ wall_dir) > 0 else -1.0
+    from .human import figures, figure_key
+    J = figures()[figure_key(sv["pose"])]["joints"]
+    sc = float(S.figures[0]["scale"])
+    legs = np.array([J[k] for k in ("shin_l", "shin_r", "foot_l", "foot_r")], float) * sc
+    la, lb = float(legs[:, 1].min()) - 0.09, float(legs[:, 1].max()) + 0.09       # the lower legs across the body
+    lx = float(legs[:2, 0].min()) - 0.02 - 0.275                                 # the plate starts just below the knees; the feet show beyond it
+    gap = float(lay["legs_top"]) + 0.07                                          # the slab's underside
+    # the supports: on the wall's side a low heap of rubble (the look pack's, with its bars) along the lower legs; on
+    # the room's side one broken block at the plate's corner beyond the feet, so that from the room the lower legs
+    # show under the plate all the way from the knees
+    dw = 0.75 + side * float(lay["torso"][1]) - 0.15                             # the body's axis to the wall's face
+    span = (lb - la) + 0.70                                                      # the plate across the legs
+    mid = (la + lb) / 2
+    if side * mid + span / 2 > dw - 0.03:                                        # the plate ends short of the wall
+        mid = side * (dw - 0.03 - span / 2)
+    off = 0.62 * span / 2                                                        # the supports stand well under the plate
+    wd = min(0.34, 2 * (dw - 0.04 - abs(mid + side * off)))
+    if wd >= 0.16:
+        c = R @ np.array([lx, mid + side * off, 0.0]) + o
+        S.prop(str(rng.choice(["rubble1", "rubble3"])), (c[0], c[1], 0.0), yaw=yaw + float(rng.uniform(-0.3, 0.3)),
+               fit=(0.50, wd, gap + 0.012), collide=True)
+    else:
+        for dx in (-0.15, 0.15):
+            c = R @ np.array([lx + dx, mid + side * off, 0.0]) + o
+            S.prop("concrete3", (c[0], c[1], 0.0), yaw=float(rng.uniform(0, 2 * math.pi)), fit=(0.2, 0.15, gap + 0.005), collide=True)
+    c = R @ np.array([lx - 0.10, mid - side * off, 0.0]) + o
+    S.prop("concrete3", (c[0], c[1], 0.0), yaw=float(rng.uniform(0, 2 * math.pi)), fit=(0.24, 0.20, gap + 0.005), collide=True)
+    for _ in range(3):                                       # loose bricks beside it
+        q = R @ np.array([lx + float(rng.uniform(-0.45, 0.1)), mid - side * (off + float(rng.uniform(0.15, 0.4))), 0.0]) + o
+        S.chunk((q[0], q[1], 0.04), float(rng.uniform(0.07, 0.12)), mat="brick")
+    # the slab piece on them
+    c = R @ np.array([lx, mid, 0.0]) + o
+    syaw = yaw + math.pi / 2 + float(rng.uniform(-0.12, 0.12))
+    # a broken plate: an uneven outline, the underside's edge broken back, in the slab's own (cracked concrete) material
+    n = 11
+    angs = np.sort(rng.uniform(0, 2 * math.pi, n) * 0.35 + np.arange(n) * 2 * math.pi / n * 0.65 + np.arange(n) * 2 * math.pi / n * 0.35)
+    rad = rng.uniform(0.80, 1.0, n)
+    top = np.stack([np.cos(angs) * rad * span / 2, np.sin(angs) * rad * 0.30, 0.12 + rng.uniform(-0.008, 0.008, n)], 1)
+    bot = np.stack([top[:, 0] * rng.uniform(0.86, 0.97, n), top[:, 1] * rng.uniform(0.86, 0.97, n), np.zeros(n)], 1)
+    nm = S._name("legslab")
+    S.meshes[nm] = np.concatenate([top, bot])
+    S.statics.append({"name": nm, "type": "mesh", "mesh": nm, "pos": [float(c[0]), float(c[1]), float(gap)],
+                      "quat": _q_euler(syaw, 0.0, 0.0), "mat": "slab", "collide": True, "size": [0, 0, 0],
+                      "half": [span / 2, 0.30, 0.06]})
+    Rs = _rz(syaw)
+    for _ in range(3):                                     # reinforcing bars out of one broken edge
+        y0 = float(rng.uniform(-0.25, 0.25))
+        ra = np.array([c[0], c[1], gap + 0.06]) + Rs @ np.array([span / 2 * 0.8, y0, 0.0])
+        rb = ra + Rs @ np.array([float(rng.uniform(0.12, 0.26)), float(rng.uniform(-0.05, 0.05)), float(rng.uniform(-0.06, 0.02))])
+        S.capsule(ra, rb, 0.006, "rebar", collide=False, name="rebar")
+    for _ in range(6):
+        q = c + R @ np.array([float(rng.uniform(-0.2, 0.2)), float(rng.uniform(la - 0.1, lb + 0.1)), 0.0])
+        S.chunk((q[0], q[1], gap + 0.15), float(rng.uniform(0.06, 0.11)), mat=str(rng.choice(["brick", "rubble"])))
+    # the cupboard against the wall, beyond the feet or beyond the head
+    hh = min(0.58, float(b.get("slab_h", 0.8)) - 0.10)
+    for xc in (float(lay["x0"]) - 0.20 - 0.65, float(lay["x1"]) + 0.20 + 0.65):
+        c2 = R @ np.array([xc, side * (dw - 0.345 - 0.02), 0.0]) + o
+        ax = R @ np.array([1.0, 0, 0])
+        ex, ey = (0.65, 0.345) if abs(ax[0]) > 0.5 else (0.345, 0.65)
+        if b["x0"] + 0.1 <= c2[0] - ex and c2[0] + ex <= b["x1"] - 0.1 and b["y0"] + 0.1 <= c2[1] - ey and c2[1] + ey <= b["y1"] - 0.1 \
+                and S.free_at(c2[0], c2[1], 0.7):
+            # its doors face the room: the room is on the side of it away from the wall
+            _piece(S, "sideboard", c2[0], c2[1], yaw, (1.3, 0.69, hh), face=-side, name="cupboard")
+            break
 
 
 def _survivor_and_decoys(S):
@@ -1087,27 +1283,27 @@ def _survivor_and_decoys(S):
     S.survivor_points = {"heads": [(R @ h + np.array([px, py, 0])).tolist() for h in heads],
                          "hands": [(R @ h + np.array([px, py, 0])).tolist() for h in hands],
                          "torso": (R @ lay["torso"] + np.array([px, py, 0])).tolist()}
-    # legs under debris: a slab piece and bricks over the lower legs (static)
-    if sv.get("legs_covered", True):
-        # a slab piece of 0.6 x 0.76 m lying over the lower legs, clear of them by a hand's breadth at its lowest edge
-        c = R @ np.array([lay["legs"][0], lay["legs"][1], 0.0]) + np.array([px, py, 0])
-        zs = lay["legs_top"] + 0.06 + 0.09
-        S.box((c[0], c[1], zs), (0.30, 0.38, 0.06), "slab", yaw=yaw + float(rng.uniform(-0.2, 0.2)), pitch=0.06,
-              roll=float(rng.uniform(-0.10, 0.10)), name="legslab")
-        for _ in range(8):
-            q = c + R @ np.array([float(rng.uniform(-0.28, 0.28)), float(rng.uniform(-0.34, 0.34)), 0.0])
-            S.chunk((q[0], q[1], zs + 0.07), float(rng.uniform(0.1, 0.2)), mat=str(rng.choice(["brick", "rubble"])))
-        # a sturdy piece of furniture that kept the pocket open (a wardrobe on its side), on the wall's side of them
-        wall_dir = {"E": np.array([1.0, 0, 0]), "W": np.array([-1.0, 0, 0]), "N": np.array([0, 1.0, 0]),
-                    "S": np.array([0, -1.0, 0])}[sv["far"]]
-        side = 1.0 if float((R @ np.array([0, 1.0, 0])) @ wall_dir) > 0 else -1.0
-        reach = lay["left"] if side > 0 else lay["right"]              # the body's reach on that side: the wardrobe lies beyond it
-        c2 = R @ np.array([0.45, side * (reach + 0.34), 0.0]) + np.array([px, py, 0])
-        wyaw = yaw + float(rng.uniform(-0.15, 0.15))
-        S.box((c2[0], c2[1], 0.22), (0.9, 0.28, 0.22), "wood_dark", yaw=wyaw, name="wardrobe", group=3 if have_furniture() else None)
-        if have_furniture():
-            S.furn.append({"model": "down", "pos": [float(c2[0]), float(c2[1]), 0.22], "quat": _q_euler(wyaw, 0.0, 0.0),
-                           "size": [1.8, 0.56, 0.44]})
+    if have_props():
+        _clear_floor(S, px, py, yaw, lay)
+    if sv.get("legs_covered", True) and have_props():
+        _trapped(S, sv, lay, px, py, yaw, rng)
+    elif sv.get("legs_covered", True):
+        if sv.get("legs_covered", True):
+            # a slab piece of 0.6 x 0.76 m lying over the lower legs, clear of them by a hand's breadth at its lowest edge
+            c = R @ np.array([lay["legs"][0], lay["legs"][1], 0.0]) + np.array([px, py, 0])
+            zs = lay["legs_top"] + 0.06 + 0.09
+            S.box((c[0], c[1], zs), (0.30, 0.38, 0.06), "slab", yaw=yaw + float(rng.uniform(-0.2, 0.2)), pitch=0.06,
+                  roll=float(rng.uniform(-0.10, 0.10)), name="legslab")
+            for _ in range(8):
+                q = c + R @ np.array([float(rng.uniform(-0.28, 0.28)), float(rng.uniform(-0.34, 0.34)), 0.0])
+                S.chunk((q[0], q[1], zs + 0.07), float(rng.uniform(0.1, 0.2)), mat=str(rng.choice(["brick", "rubble"])))
+            # a sturdy piece of furniture that kept the pocket open (a wardrobe on its side), on the wall's side of them
+            wall_dir = {"E": np.array([1.0, 0, 0]), "W": np.array([-1.0, 0, 0]), "N": np.array([0, 1.0, 0]),
+                        "S": np.array([0, -1.0, 0])}[sv["far"]]
+            side = 1.0 if float((R @ np.array([0, 1.0, 0])) @ wall_dir) > 0 else -1.0
+            reach = lay["left"] if side > 0 else lay["right"]              # the body's reach on that side: the wardrobe lies beyond it
+            c2 = R @ np.array([0.45, side * (reach + 0.34), 0.0]) + np.array([px, py, 0])
+            S.box((c2[0], c2[1], 0.22), (0.9, 0.28, 0.22), "wood_dark", yaw=yaw + float(rng.uniform(-0.15, 0.15)), name="wardrobe")
     # decoys: never in a corridor the route or a dead end's way in uses
     for d in plan["decoys"]:
         if d["type"] in ("mannequin", "clothes"):
@@ -1123,6 +1319,8 @@ def _survivor_and_decoys(S):
         if d["type"] == "mannequin":
             parts, _, _ = figure_parts("prone", scale=1.0, mannequin=True)
             placed = place_parts(parts, d["x"], d["y"], d["yaw"], 0.0)
+            if have_props():
+                _clear_floor(S, d["x"], d["y"], d["yaw"], figure_layout("prone", 1.0, True))
             S.figures.append({"who": "mannequin", "key": figure_key("prone", True), "x": float(d["x"]), "y": float(d["y"]),
                               "yaw": float(d["yaw"]), "scale": 1.0})
             S.parts.setdefault("mannequin", [])
@@ -1164,6 +1362,13 @@ def _neighbours(S):
                 xf = x + (-side) * 2.81 if False else x
                 S.box((x, -1.0 - 0.005 + 0.0, s_ * STOREY + 1.6), (0.6, 0.01, 0.7), "window", collide=False, name="nwin") if False else None
         # facade windows on the street side
+        if have_props():
+            from . import props
+            for s_ in range(int(h / STOREY)):
+                model = ["win_18", "win_21", "win_20"][int(rng.integers(3))]
+                S.prop(model, (x, -2.0 - 0.01 - props.size(model)[1] / 2, s_ * STOREY), yaw=0.0,
+                       fit=(5.6, props.size(model)[1], STOREY))
+            continue
         for s_ in range(1, int(h / STOREY)):
             for k in range(2):
                 xx = x - 1.2 + k * 2.4
@@ -1181,20 +1386,177 @@ def _cordon(S):
     """The rescue cordon: rows of concrete road barriers along the far kerb and across both ends of the street, up to
     the neighbouring buildings, so the site is closed (nothing random is drawn here)."""
     seg, hh, ht = 2.0, 0.42, 0.22
+    real = have_props()
     y = S.hy0 + 0.45
     x = S.hx0 + 0.2
     while x < S.hx1 - 0.2:
         L = min(seg, S.hx1 - 0.2 - x)
         if L / 2 - 0.02 > 1e-6:           # a last piece of 4 cm or less is left out (a box of no size cannot be built)
-            S.box((x + L / 2, y, STREET_Z + hh), (L / 2 - 0.02, ht, hh), "concrete", name="barrier")
+            S.box((x + L / 2, y, STREET_Z + hh), (L / 2 - 0.02, ht, hh), "concrete", name="barrier", group=3 if real else None)
+            if real:
+                S.prop("roadbarrier", (x + L / 2, y, STREET_Z), yaw=0.0, fit=(L - 0.04, 2 * ht, 2 * hh))
         x += L
     for xe in (S.hx0 + 0.45, S.hx1 - 0.45):
         yy = S.hy0 + 0.45 + ht
         while yy < -1.9:
             L = min(seg, -1.9 - yy)
             if L / 2 - 0.02 > 1e-6:
-                S.box((xe, yy + L / 2, STREET_Z + hh), (ht, L / 2 - 0.02, hh), "concrete", name="barrier")
+                S.box((xe, yy + L / 2, STREET_Z + hh), (ht, L / 2 - 0.02, hh), "concrete", name="barrier", group=3 if real else None)
+                if real:
+                    S.prop("roadbarrier", (xe, yy + L / 2, STREET_Z), yaw=math.pi / 2, fit=(L - 0.04, 2 * ht, 2 * hh))
             yy += L
+
+
+def _way_in(S):
+    """The straight way from the deployment point to the entry (two legs), which everything put on the street keeps
+    clear of."""
+    st = S.plan["start"]
+    e = [o for o in S.plan["openings"] if o["a"] == "S" and o["on_route"]]
+    ex = e[0]["x"] if e else st["x"]
+    return [(st["x"], st["y"] - 1.5), (st["x"], st["y"]), (ex, -1.6), (ex, 0.6)]
+
+
+def _off_way(S, x, y, r, clear=1.25):
+    P = _way_in(S)
+    for (x0, y0), (x1, y1) in zip(P[:-1], P[1:]):
+        dx, dy = x1 - x0, y1 - y0
+        L2 = dx * dx + dy * dy
+        t = 0.0 if L2 < 1e-9 else max(0.0, min(1.0, ((x - x0) * dx + (y - y0) * dy) / L2))
+        if math.hypot(x - (x0 + t * dx), y - (y0 + t * dy)) < r + clear:
+            return False
+    for v in S.vehicles:                                    # and of the street's vehicles
+        if math.hypot(x - v["x"], y - v["y"]) < r + 2.7:
+            return False
+    return S.free_at(x, y, r)
+
+
+def _on_street(S, x, y, r):
+    return S.hx0 + 1.0 + r <= x <= S.hx1 - 1.0 - r and S.hy0 + 1.3 + r <= y <= -0.45 - r
+
+
+def _rescue_post(S):
+    """The rescue team's post on the street beside the deployment point, on the side away from the crushed car: a
+    generator with its cans, two work lights on tripods, tool boxes and crates, a hand truck, a stretcher and a
+    medical box on the pavement, barrier boards and cones around it. All of it stands (static), every sensor sees it
+    and the robot would touch it; nothing is nearer than 1.25 m to the way from the deployment point to the entry."""
+    rng = S.rng
+    st = S.plan["start"]
+    car = [v for v in S.vehicles if v["name"] == "car"]
+    s = -1.0 if (car and car[0]["x"] > st["x"]) else 1.0
+    if not car:
+        s = 1.0 if st["x"] < S.W / 2 else -1.0
+    e = [o for o in S.plan["openings"] if o["a"] == "S" and o["on_route"]]
+    ex = e[0]["x"] if e else st["x"]
+    items = [("generator", 2.7, -0.6, 112.0, 0.45), ("jerrycan", 3.45, -1.2, 23.0, 0.2), ("jerrycan", 2.1, 0.15, -70.0, 0.2),
+             ("toolbox", 2.6, 1.0, 71.0, 0.25), ("crate", 3.3, 1.3, 14.0, 0.25), ("crate", 3.7, 1.05, -31.0, 0.25),
+             ("worklight", 2.0, 2.0, None, 0.6), ("worklight", 4.6, 0.3, None, 0.6), ("handtruck", 4.3, -1.1, 205.0, 0.4),
+             ("carton", 3.1, -1.8, 41.0, 0.3), ("board", 5.5, -0.2, 90.0, 1.05), ("board", 3.5, -2.9, 4.0, 1.05),
+             ("cone", 1.6, -2.6, 0.0, 0.2), ("cone", 5.5, -2.7, 0.0, 0.2), ("cone", 5.6, 1.5, 0.0, 0.2),
+             ("cone", 1.5, 2.9, 0.0, 0.2), ("stretcher", 3.4, 3.4, 9.0, 1.1), ("medbox", 4.9, 3.2, -27.0, 0.3),
+             ("tyre", 6.3, 3.7, 0.0, 0.35), ("trashbag", 6.9, 3.3, 33.0, 0.3)]
+    for model, dx, dy, yawd, r in items:
+        x = st["x"] + s * dx + float(rng.uniform(-0.12, 0.12))
+        y = st["y"] + dy + float(rng.uniform(-0.12, 0.12))
+        if not (_on_street(S, x, y, r) and _off_way(S, x, y, r)):
+            continue
+        if yawd is None:                                     # a work light looks at the entry
+            yaw = math.atan2(-0.2 - y, ex - x)
+        else:
+            yaw = math.radians(yawd) * s + float(rng.uniform(-0.2, 0.2))
+        S.prop(model, (x, y, float(S.height_at(x, y))), yaw=yaw, collide=True,
+               thermal="sunlit_metal" if model == "generator" else None)
+
+
+def _ruins(S):
+    """Pieces of the collapsed storeys (the look pack's ruin pieces: rubble with bars, broken walls and slabs, bar
+    grids): on the pavement in front of the damaged bays and in rooms off the route. Static; every sensor sees them
+    and the robot would touch their convex hulls. Kept clear of the way in, of the route's corridors, of the
+    furniture and of the people."""
+    rng = S.rng
+    plan = S.plan
+    people = [(f["x"], f["y"]) for f in S.figures]
+    for d in plan.get("decoys", []):
+        if "x" in d:
+            people.append((d["x"], d["y"]))
+
+    def clear_people(x, y, r):
+        return all(math.hypot(x - px, y - py) > r + 1.6 for px, py in people)
+
+    # the pavement: per front bay up to two pieces
+    kinds = [("rubble1", 0.30, 0.42, 1.4, 0.0), ("rubble3", 0.22, 0.30, 1.2, 0.0), ("rubble2", 0.18, 0.24, 1.3, 0.0),
+             ("broken_wall1", 0.8, 1.0, 1.0, 16.0), ("broken_wall2", 0.8, 1.0, 1.0, 84.0), ("concrete3", 0.4, 0.55, 0.8, 0.0),
+             ("metal_bars", 0.8, 1.0, 1.0, 62.0), ("broken_wall7", 0.5, 0.7, 0.9, 0.0), ("concrete2", 0.5, 0.7, 1.0, 0.0)]
+    for i in range(plan["nx"]):
+        b = _bay(S, (i, 0))
+        n = int(rng.integers(0, 3)) if b.get("dmg", 0.0) > 0.0 or b["state"] in ("void", "filled") else int(rng.integers(0, 2))
+        for _k in range(n):
+            model, s0, s1, r, roll = kinds[int(rng.integers(len(kinds)))]
+            sc = float(rng.uniform(s0, s1))
+            for _try in range(8):
+                x = float(rng.uniform(b["x0"] + 0.3, b["x1"] - 0.3))
+                y = float(rng.uniform(-2.4, -0.9))
+                if _on_street(S, x, y, r * 0.6) and _off_way(S, x, y, r, clear=1.4):
+                    S.prop(model, (x, y, float(S.height_at(x, y)) - 0.03), yaw=float(rng.uniform(0, 2 * math.pi)), scale=sc,
+                           roll=math.radians(roll), collide=True)
+                    break
+    # rooms off the route: a fallen wall or slab piece
+    route = set(tuple(k) for k in plan.get("route_bays", []))
+    inside = [("broken_wall3", 0.45, 0.6, 0.9), ("broken_wall11", 0.35, 0.45, 0.9), ("broken_wall6", 0.4, 0.5, 1.0),
+              ("concrete3", 0.3, 0.4, 0.6)]
+    for k, b in plan["bays"].items():
+        if tuple(k) in route or b["state"] in ("filled", "stair", "void") or rng.random() < 0.45:
+            continue
+        model, s0, s1, r = inside[int(rng.integers(len(inside)))]
+        sc = float(rng.uniform(s0, s1))
+        for _try in range(10):
+            x = float(rng.uniform(b["x0"] + r + 0.3, max(b["x0"] + r + 0.31, b["x1"] - r - 0.3)))
+            y = float(rng.uniform(b["y0"] + r + 0.3, max(b["y0"] + r + 0.31, b["y1"] - r - 0.3)))
+            if S.free_at(x, y, r + 0.2) and _clear_of_items(S, k, x, y, r) and clear_people(x, y, r):
+                S.prop(model, (x, y, float(S.height_at(x, y)) - 0.02), yaw=float(rng.uniform(0, 2 * math.pi)), scale=sc, collide=True)
+                b.setdefault("items", []).append((x, y, r))
+                break
+    # a cloth caught on a first-floor window sill of the street face
+    front = [b for (i, j), b in plan["bays"].items() if j == 0 and b.get("upper", 0) >= 2]
+    if front:
+        b = front[int(rng.integers(len(front)))]
+        S.prop("cloth3", (float(rng.uniform(b["x0"] + 1.0, b["x1"] - 1.0)), -T_EXT / 2 - 0.2, STOREY + 0.9 - 2.0), yaw=0.0, scale=1.0)
+
+
+DECALS = ("decal_01", "decal_03", "decal_05", "decal_07", "decal_09")
+
+
+def _decals(S):
+    """Plaster off the walls (the look pack's wall decals, as thin patches 3 mm in front of the wall they sit on): on
+    the solid wall pieces of the ground storey, where the patch fits the piece with a margin."""
+    from . import props
+    rng = S.rng
+    n = 0
+    for st in list(S.statics):
+        if n >= 36:
+            break
+        if st["type"] != "box" or not st["name"].startswith("wall") or not str(st.get("mat", "")).startswith("plaster"):
+            continue
+        hx, hy, hz = st["size"]
+        thin = 0 if hx < hy else 1
+        length = 2 * (hy if thin == 0 else hx)
+        if min(hx, hy) > 0.2 or length < 1.3 or 2 * hz < 1.6 or rng.random() > 0.5:
+            continue
+        model = DECALS[int(rng.integers(len(DECALS)))]
+        w, _d, h = props.size(model)
+        sc = min(1.0, (length - 0.3) / w, (2 * hz - 0.5) / h)
+        if sc < 0.45:
+            continue
+        w, h = w * sc, h * sc
+        u = float(rng.uniform(-(length - w) / 2 + 0.1, (length - w) / 2 - 0.1)) if length - w > 0.25 else 0.0
+        zc = float(rng.uniform(-hz + 0.35, hz - h - 0.1)) if 2 * hz - h > 0.5 else -hz + 0.3
+        sgn = -1.0 if rng.random() < 0.5 else 1.0                       # which face of the piece
+        if thin == 1:                                                    # the faces are at local y = -hy, +hy
+            local, ql = np.array([u, sgn * (hy + 0.003), zc]), _q_euler(0.0 if sgn < 0 else math.pi)
+        else:
+            local, ql = np.array([sgn * (hx + 0.003), u, zc]), _q_euler(-math.pi / 2 if sgn < 0 else math.pi / 2)
+        pos = np.array(st["pos"]) + _qmat(st["quat"]) @ local
+        S.prop(model, pos, quat=_qmul(st["quat"], ql), scale=sc)
+        n += 1
 
 
 # ------------------------------------------------------------------------------------------------- the reference route
@@ -1250,6 +1612,11 @@ def _route(S):
     d = tor - c
     dn = d / max(1e-6, np.linalg.norm(d))
     goal = tor - dn * 1.25
+    if have_props():
+        # stand in front of the upper body, square to the wall they lie along: clear of the slab over their legs
+        far = {"E": (1.0, 0.0), "W": (-1.0, 0.0), "N": (0.0, 1.0), "S": (0.0, -1.0)}[sv["far"]]
+        head = np.array(S.survivor_points["heads"][0][:2])
+        goal = tor + 0.5 * (head - tor) - np.array(far) * 1.25
     wps.append({"x": float(c[0]), "y": float(c[1]), "cfg": "crawl", "note": "target_bay"})
     wps.append({"x": float(goal[0]), "y": float(goal[1]), "cfg": "crawl", "note": "survivor"})
     S.route = wps

@@ -174,7 +174,7 @@ class _Dresser(object):
         if z is None:
             return False
         looks = {"paint": P(tuple(0.72 * c + 0.28 * d for c, d in zip(paint, (0.62, 0.59, 0.54))), 0.45, 0.0, 0.0),
-                 "glass": P((0.05, 0.06, 0.07), 0.08, 0.0, 0.0), "dark": P((0.05, 0.05, 0.05), 0.8, 0.0, 0.0),
+                 "glass": P((0.42, 0.47, 0.52), 0.05, 1.0, 0.0), "dark": P((0.05, 0.05, 0.05), 0.8, 0.0, 0.0),
                  "lamp": P((0.75, 0.72, 0.68), 0.3, 0.0, 0.0), "other": P((0.33, 0.33, 0.34), 0.6, 0.0, 0.0)}
         q = _quat_yaw(yaw)
         for k in sorted(n for n in z.files if n.startswith("V:%d:" % vid)):
@@ -189,6 +189,36 @@ class _Dresser(object):
                 me = self.spec.add_mesh()
                 me.name = "dcveh_%d_%s_%d" % (vid, cls, len(self.meshes))
                 me.uservert = V.flatten().tolist()
+                me.userface = F.flatten().tolist()
+                try:
+                    me.inertia = mujoco.mjtMeshInertia.mjMESH_INERTIA_SHELL
+                except Exception:  # noqa: BLE001
+                    pass
+                self.meshes[key] = me.name
+            g = self._geom(base)
+            g.type = mujoco.mjtGeom.mjGEOM_MESH
+            g.meshname = self.meshes[key]
+            g.pos = [float(x) for x in center]
+            g.quat = list(q)
+        return True
+
+    def prop(self, model, center, yaw=0.0, scale=1.0, base="prop"):
+        """A model of the look pack (props.py) standing at `center` (its footprint's middle, its lowest point);
+        False without the pack. Render twin: batched by material; sensor twin: one mesh geom per part."""
+        from . import props
+        if not props.have():
+            return False
+        sc = np.ones(3) * np.asarray(scale, float)
+        q = _quat_yaw(yaw)
+        for i, (mkey, V, _N, Tc, F) in enumerate(props.parts(model)):
+            if self.bank is not None:
+                self._batch(self.bank.prop(mkey, "ext"), V * sc, Tc, F, center, q)
+                continue
+            key = ("prop", model, i, tuple(round(float(v), 4) for v in sc))
+            if key not in self.meshes:
+                me = self.spec.add_mesh()
+                me.name = "dcprop_%d" % len(self.meshes)
+                me.uservert = (V * sc).flatten().tolist()
                 me.userface = F.flatten().tolist()
                 try:
                     me.inertia = mujoco.mjtMeshInertia.mjMESH_INERTIA_SHELL
@@ -405,9 +435,28 @@ def build(spec, body, bank, scene, seed):
         if -5.0 < x < W + 5.0:
             continue
         D.box((x, -7.0, STREET_Z + 0.004), (0.75, 0.06, 0.004), T("road_paint"), base="marking")
-    # across the street: a row of buildings facing north
+    # across the street and along our side beyond the neighbours: the look pack's apartment blocks
+    from . import props as _props
+    real = _props.have()
+    blocks = ["block_04", "block_05", "block_06", "block_01", "block_02"]
+    if real:
+        x = -62.0
+        while x < W + 60.0:
+            m = blocks[int(rng.integers(len(blocks)))]
+            L, dp, _h = _props.size(m)
+            D.prop(m, (x + L / 2, FAR_FACADE_Y - dp / 2, 0.0), yaw=math.pi, base="block")
+            x += L + float(rng.uniform(0.5, 3.0))
+        for side in (-1, 1):
+            x = -5.95 if side < 0 else W + 5.95
+            for _k in range(2):
+                m = blocks[int(rng.integers(3))]
+                L, dp, _h = _props.size(m)
+                xc = x - L / 2 if side < 0 else x + L / 2
+                D.prop(m, (xc, FRONT_Y + dp / 2, 0.0), yaw=0.0, base="block")
+                x = x - L - 1.0 if side < 0 else x + L + 1.0
+    # (without the pack) across the street: a row of buildings facing north
     x = -60.0
-    while x < W + 60.0:
+    while not real and x < W + 60.0:
         w = 3.2 * int(rng.integers(3, 6))
         st = int(rng.integers(2, 6))
         style = ["plaster", "brick", "panel", "plaster"][rng.integers(4)]
@@ -416,7 +465,7 @@ def build(spec, body, bank, scene, seed):
     # along our side, beyond the neighbours: buildings facing south
     for side in (-1, 1):
         x = -5.85 if side < 0 else W + 5.85
-        while (x > -60.0 if side < 0 else x < W + 60.0):
+        while not real and (x > -60.0 if side < 0 else x < W + 60.0):
             w = 3.2 * int(rng.integers(3, 6))
             st = int(rng.integers(2, 5))
             style = ["plaster", "brick", "panel"][rng.integers(3)]
@@ -424,7 +473,7 @@ def build(spec, body, bank, scene, seed):
             _building(D, rng, x0, x1, FRONT_Y, 12.0, -1, st, style, damaged=rng.random() < 0.3)
             x = x0 - 0.05 if side < 0 else x1 + 0.05
     # the skyline further out (the haze softens it)
-    for _ in range(70):
+    for _ in range(0 if real else 70):
         ang = float(rng.uniform(0, 2 * math.pi))
         r = float(rng.uniform(70.0, 170.0))
         cx, cy = W / 2 + r * math.cos(ang), Dp / 2 + r * math.sin(ang)

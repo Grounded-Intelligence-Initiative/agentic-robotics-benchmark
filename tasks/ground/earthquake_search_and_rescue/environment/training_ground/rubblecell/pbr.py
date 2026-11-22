@@ -39,7 +39,7 @@ SHIPPED = {
     "concrete": (1024, 2.71), "concrete_dark": (1024, 3.5), "slab": (1024, 3.0), "slab_broken": (1024, 1.6),
     "ground_concrete": (1024, 3.0), "brick": (1024, 1.5), "tiles": (1024, 2.0), "asphalt": (1024, 4.0),
     "paving": (1024, 1.8), "rubble": (1024, 2.0), "rubble_dark": (1024, 2.0), "chunk_brick": (512, 1.8),
-    "chunk_plaster": (512, 1.0), "plaster": (1024, 1.85), "wall_cream": (1024, 3.0), "wall_green": (1024, 3.0),
+    "chunk_plaster": (512, 1.0), "plaster": (1024, 1.85), "plaster_ext": (1024, 4.6), "wall_cream": (1024, 3.0), "wall_green": (1024, 3.0),
     "wall_pink": (1024, 3.0), "wall_blue": (1024, 3.0), "wall_white": (1024, 3.0), "wood": (1024, 2.0),
     "wood_dark": (1024, 2.0), "beam": (512, 0.5), "rust": (512, 1.1), "fabric": (512, 0.6), "paint_metal": (512, 1.0),
     "bag": (512, 0.26),

@@ -58,31 +58,45 @@ def _vehicle_meshes(spec, S):
             S.vehicle_paint[g.name] = v["paint"]
 
 
-def _furniture_meshes(spec, S):
-    """The site's real furniture: per piece one drawn-only mesh geom furn_<k>_<model> (the look pack's model scaled
-    into the piece's own box). Every sensor sees the model; the robot touches the piece's boxes (group 3)."""
-    import os
-    from . import pbr
-    path = os.path.join(pbr.cache_dir(), "furniture.npz")
-    if not getattr(S, "furn", None) or not os.path.isfile(path):
+def _prop_meshes(spec, S):
+    """The site's models of the look pack (site.Site.prop): per placed model one mesh geom per part, named
+    prop_<k>_<part>_<model>. Every sensor sees them; a colliding one is touched as the convex hull of each part."""
+    from . import props
+    if not getattr(S, "props", None) or not props.have():
         return
-    z = np.load(path)
-    for k, f in enumerate(S.furn):
-        me = spec.add_mesh()
-        me.name = "furnmesh_%d" % k
-        me.uservert = (z["V:" + f["model"]].astype(np.float64) * np.array(f["size"], float)).flatten().tolist()
-        me.usertexcoord = z["T:" + f["model"]].astype(np.float64).flatten().tolist()
-        me.userface = z["F:" + f["model"]].astype(np.int32).flatten().tolist()
-        me.inertia = mujoco.mjtMeshInertia.mjMESH_INERTIA_SHELL
-        g = spec.worldbody.add_geom()
-        g.name = "furn_%d_%s" % (k, f["model"])
-        g.type = mujoco.mjtGeom.mjGEOM_MESH
-        g.meshname = me.name
-        g.pos = f["pos"]
-        g.quat = f["quat"]
-        g.rgba = {"sofa": [0.36, 0.40, 0.33, 1.0], "bed": [0.52, 0.50, 0.47, 1.0], "shelf": [0.50, 0.50, 0.50, 1.0]}.get(
-            f["model"], [0.42, 0.33, 0.25, 1.0])
-        g.contype, g.conaffinity, g.group, g.mass = 0, 0, GROUP_VISUAL, 0.0
+    made = {}
+    for k, p in enumerate(S.props):
+        sc = np.array(p["scale"], float)
+        for i, (mkey, V, N, T, F) in enumerate(props.parts(p["model"])):
+            key = (p["model"], i, tuple(round(float(v), 4) for v in sc))
+            if key not in made:
+                me = spec.add_mesh()
+                me.name = "propmesh_%d" % len(made)
+                me.uservert = (V * sc).flatten().tolist()
+                Nn = N / sc
+                Nn = Nn / (np.linalg.norm(Nn, axis=1, keepdims=True) + 1e-20)
+                me.usernormal = Nn.flatten().tolist()
+                me.usertexcoord = T.flatten().tolist()
+                me.userface = F.flatten().tolist()
+                me.inertia = mujoco.mjtMeshInertia.mjMESH_INERTIA_SHELL
+                made[key] = me.name
+            g = spec.worldbody.add_geom()
+            g.name = "prop_%d_%d_%s" % (k, i, p["model"])
+            g.type = mujoco.mjtGeom.mjGEOM_MESH
+            g.meshname = made[key]
+            g.pos = [float(v) for v in p["pos"]]
+            g.quat = [float(v) for v in p["quat"]]
+            md = props.material(mkey)
+            g.rgba = [float(v) for v in md.get("rgb", [0.5, 0.48, 0.45])] + [1.0]
+            g.mass = 0.0
+            if p.get("collide"):
+                g.contype, g.conaffinity, g.group = CT_WORLD, CA_WORLD, GROUP_WORLD
+                g.priority = 1
+                g.friction = [0.8, 0.02, 0.001]
+            else:
+                g.contype, g.conaffinity, g.group = 0, 0, GROUP_VISUAL
+            if p.get("thermal"):
+                S.thermal[g.name] = p["thermal"]
 
 
 def _figure_meshes(spec, S):
@@ -322,7 +336,7 @@ def build_scene(plan, offscreen=(640, 480)):
     # drawn only; what the robot touches is the capsules along its bones, which no sensor draws (group 3).
     bodies = _figure_meshes(spec, S)
     _vehicle_meshes(spec, S)
-    _furniture_meshes(spec, S)
+    _prop_meshes(spec, S)
     for who, parts in S.parts.items():
         for p in parts:
             g = spec.worldbody.add_geom()

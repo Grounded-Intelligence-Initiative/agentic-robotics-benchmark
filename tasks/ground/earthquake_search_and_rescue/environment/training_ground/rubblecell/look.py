@@ -76,9 +76,9 @@ LOOK = {
         "concrete": ("concrete", (1.0, 1.0, 1.0), 2.71), "concrete_dark": ("concrete_dark", (1.0, 1.0, 1.0), 3.5),
         "slab": ("slab", (1.0, 1.0, 1.0), 3.0), "rubble": ("rubble", (1.0, 1.0, 1.0), 2.0),
         "brick": ("brick", (1.0, 1.0, 1.0), 1.5),
-        "plaster_white": ("plaster", (0.98, 0.97, 0.95), 3.7), "plaster_cream": ("plaster", (0.98, 0.91, 0.78), 3.7),
-        "plaster_blue": ("plaster", (0.74, 0.83, 0.90), 3.7), "plaster_green": ("plaster", (0.78, 0.88, 0.76), 3.7),
-        "plaster_pink": ("plaster", (0.96, 0.80, 0.78), 3.7), "tiles": ("tiles", (1.0, 1.0, 1.0), 2.0),
+        "plaster_white": ("plaster", (0.98, 0.97, 0.95), 4.6), "plaster_cream": ("plaster", (0.98, 0.91, 0.78), 4.6),
+        "plaster_blue": ("plaster", (0.74, 0.83, 0.90), 4.6), "plaster_green": ("plaster", (0.78, 0.88, 0.76), 4.6),
+        "plaster_pink": ("plaster", (0.96, 0.80, 0.78), 4.6), "tiles": ("tiles", (1.0, 1.0, 1.0), 2.0),
         "wood": ("wood", (1.0, 1.0, 1.0), 2.0), "wood_dark": ("wood_dark", (1.0, 1.0, 1.0), 2.0),
         "asphalt": ("asphalt", (1.0, 1.0, 1.0), 4.0), "paving": ("paving", (1.0, 1.0, 1.0), 1.8),
         "fabric_red": ("fabric", (0.75, 0.19, 0.16), 0.6), "fabric_blue": ("fabric", (0.25, 0.36, 0.62), 0.6),
@@ -257,20 +257,28 @@ class _Bank(object):
         mt.roughness, mt.metallic, mt.specular, mt.reflectance = 1.0, 1.0, 0.5, 0.0
         return mt.name
 
-    def furniture(self, model, level):
-        """A piece of real furniture's material: the look pack's furniture/<model>_albedo.png by the model's own
-        texture coordinates, at a light level."""
-        key = ("f", model, level)
-        if key in self.mats:
-            return self.mats[key]
-        tk = ("furniture", model)
+    def prop(self, key, level, robot=False):
+        """A look-pack model's material (props.material): its colour map by the model's own texture coordinates, or
+        plain parameters; glass is a dark mirror of the sky's image light."""
+        from . import props
+        d = props.material(key)
+        if "tex" not in d:
+            if d.get("glass"):
+                return self.plain((0.42, 0.47, 0.52, 1.0), 0.05, 1.0, "ext", 0.0, 0.0, robot)
+            c = d["rgb"]
+            return self.plain((c[0], c[1], c[2], 1.0), float(d.get("rough", 0.6)), float(d.get("metal", 0.0)), level, 0.0,
+                              float(d.get("emission", 0.0)), robot)
+        mk = ("pr", key, level)
+        if mk in self.mats:
+            return self.mats[mk]
+        tk = ("prop", key)
         if tk not in self.tex:
             from PIL import Image
-            img = np.asarray(Image.open(os.path.join(pbr.cache_dir(), "furniture", "%s_albedo.png" % model)).convert("RGB"))
-            self.tex[tk] = _add_tex(self.spec, "lk_furn_%s" % model, img, True)
-        mt = self._new(key)
+            img = np.asarray(Image.open(props.texture_path(key)).convert("RGB"))
+            self.tex[tk] = _add_tex(self.spec, "lk_prop_%s" % key, img, True)
+        mt = self._new(mk)
         mt.textures[mujoco.mjtTextureRole.mjTEXROLE_RGB] = self.tex[tk]
-        mt.textures[mujoco.mjtTextureRole.mjTEXROLE_ORM] = self._orm(0.7, 0.0, level)
+        mt.textures[mujoco.mjtTextureRole.mjTEXROLE_ORM] = self._orm(0.75, 0.0, level)
         mt.texuniform = False
         mt.texrepeat = [1.0, 1.0]
         mt.rgba = [1.0, 1.0, 1.0, 1.0]
@@ -287,12 +295,14 @@ class _Bank(object):
                 c = tuple(0.72 * x + 0.28 * d for x, d in zip(c, (0.62, 0.59, 0.54)))             # dusted
                 g.material = self.plain((c[0], c[1], c[2], 1.0), 0.45, 0.0, level, 0.0, 0.0, robot)
             else:
-                rgba, rough = {"glass": ((0.05, 0.06, 0.07, 1.0), 0.08), "dark": ((0.05, 0.05, 0.05, 1.0), 0.8),
+                rgba, rough = {"glass": ((0.42, 0.47, 0.52, 1.0), 0.05), "dark": ((0.05, 0.05, 0.05, 1.0), 0.8),
                                "lamp": ((0.75, 0.72, 0.68, 1.0), 0.3), "other": ((0.33, 0.33, 0.34, 1.0), 0.6)}[cls]
-                g.material = self.plain(rgba, rough, 0.0, level, 0.0, 0.0, robot)
+                g.material = self.plain(rgba, rough, 1.0 if cls == "glass" else 0.0, level, 0.0, 0.0, robot)
             return False
-        if (g.name or "").startswith("furn_") and g.type == mujoco.mjtGeom.mjGEOM_MESH:   # real furniture
-            g.material = self.furniture(g.name.split("_", 2)[2], level)
+        if (g.name or "").startswith("prop_") and g.type == mujoco.mjtGeom.mjGEOM_MESH:   # a look-pack model
+            from . import props
+            _p, _k, i, model = g.name.split("_", 3)
+            g.material = self.prop(props.parts(model)[int(i)][0], level, robot)
             return False
         if "_body_" in (g.name or "") and g.type == mujoco.mjtGeom.mjGEOM_MESH:      # a posed body (scene._figure_meshes)
             who, _b, part, cls = g.name.split("_")
@@ -313,6 +323,10 @@ class _Bank(object):
                     setname, tint, tile = LOOK["room_walls"][name], (1.0, 1.0, 1.0), 3.0
                 else:
                     tile = 1.85
+            elif name in LOOK["room_walls"] and level == "ext":         # a street front: the same wall, calmer
+                setname, tile = "plaster_ext", 4.6
+            elif gname.startswith("legslab"):                        # the broken plate over the survivor's legs
+                setname, tile = "slab_broken", 1.2
             elif bname.startswith("propslab"):
                 setname, tile = "slab_broken", 1.6
             elif bname.startswith("prop_") and setname == "wood":
