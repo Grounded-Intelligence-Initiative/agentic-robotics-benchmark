@@ -24,6 +24,8 @@ RUN /opt/venv/bin/python3 /tmp/visual_assets/fetch_visual_assets.py /tmp/visual_
 # into the agent's home.
 COPY fetch_assets.py assets.sha256 /opt/task-assets/
 RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload \
+    && tar -xf /opt/task-assets/payload/render/look.tar -C /opt/task-assets/payload/render \
+    && rm /opt/task-assets/payload/render/look.tar \
     && chown -R root:root /opt/task-assets && chmod -R u=rwX,go= /opt/task-assets \
     && ! runuser -u user -- ls /opt/task-assets \
     && [ -z "$(find /opt/task-assets -perm /077)" ]

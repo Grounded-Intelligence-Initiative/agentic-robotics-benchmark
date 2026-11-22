@@ -164,6 +164,23 @@ class CopiesAndNumbers(unittest.TestCase):
             self.assertIn("render/paint_%s.png" % colour(name), listed, name)
         self.assertIn("render/mat_%s.png" % colour("TEAL"), listed)
 
+    def test_dressing_rule_is_stated_and_its_models_are_pinned(self):
+        listed = {line.split("  ", 1)[1].strip() for line in (TASK / "environment/assets.sha256").read_text().splitlines()
+                  if line and not line.startswith("#")}
+        for name in ("look.tar", "mark_base.png", "norm_metal.png", "norm_wall.png", "norm_floor.png", "norm_rubber.png"):
+            self.assertIn("render/" + name, listed)
+        self.assertIn("tar -xf /opt/task-assets/payload/render/look.tar", (TASK / "environment/Dockerfile").read_text())
+        rule = (TASK / "tests/runtime/rescue_dressing.py").read_text()
+        self.assertIn("LANE_HALF, LOW_TOP, TURN_R = 0.72, 0.80, 1.25", rule)
+        for words in ("within 0.72 m of a lane", "taller than 0.80 m stands within 1.25 m", "every piece of stock and furniture",
+                      "both cameras sit clear of the rotor blur", "through the guide ring, from above"):
+            self.assertIn(words, " ".join(INSTRUCTION.split()))
+        world = (TASK / "tests/runtime/rescue.py").read_text()
+        self.assertIn('startswith("look_")', world)            # drawn models are not contact pieces
+        self.assertIn('obstacles.append(("prop", name))', rule)
+        for name in ("rescue_dressing.py", "rescue_marks.py", "rescue_render.py", "rescue_look.json", "rescue_scene.py", "rescue.py"):
+            self.assertEqual((TASK / "tests/runtime" / name).read_bytes(), (TASK / "environment/setup/runtime" / name).read_bytes(), name)
+
     def test_render_bundle_is_roots_and_checked_at_build(self):
         docker = (TASK / "environment/Dockerfile").read_text()
         self.assertIn("chmod -R u=rwX,go= /opt/task-assets", docker)

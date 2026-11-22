@@ -1,51 +1,62 @@
 # The cameras' renderer and what it shows
 
-Since 2026-11-21 the aircraft's two cameras are drawn by MuJoCo 3.16's Filament renderer on Mesa's lavapipe (Vulkan
-on the CPU) instead of MuJoCo's own OpenGL renderer. The simulation, the cameras' poses and optics, the sensors, the
-scoring and the eight graded sites are unchanged. This note records what a picture shows now, what was measured, and
-how to repeat the measurements. The module is `tests/runtime/rescue_render.py` (a byte copy in
-`environment/setup/runtime/`); its numbers are in `rescue_look.json` beside it.
+Since 2026-11-22 the site holds the furnished building of the task's approved pictures, and the aircraft's two
+cameras are drawn by MuJoCo 3.16's Filament renderer on Mesa's lavapipe (Vulkan on the CPU). This note records what
+is in the scene, what a picture shows, what was measured, and how to repeat the measurements.
 
-## What is drawn
+## The scene (`tests/runtime/`, byte copies in `environment/setup/runtime/`)
 
-- **Every geom of the site's model, where the simulation has it, in its own shape and size.** Nothing of the model is
-  left out, moved or resized (a moving body's boxes are drawn 0.5 mm smaller per side, so that a part at rest against
-  a standing surface never lies in that surface's plane).
-- **Surfaces instead of plain colours.** Walls: plaster with a darker dado band and timber skirting. Ground floor:
-  worn concrete. Upper floor: tiles. Ceilings: plaster. Painted steel and panels: the model's colour under a wear
-  pattern. Floor markings: worn paint in the model's colour. Signs: the model's own pictures. The litter, its
-  fitting, the mannequin, the collets, the tool stands and the aircraft: the model's shapes and colours.
-- **The wayfinding colours are the model's own values.** The look that people see in the task's videos tones them
-  down and paints the dado blue downstairs and green upstairs; in the cameras the dado is nearly grey, because blue and
-  green are the hue families of the cargo door and of the bays and decks.
-- **Drawn only, not in the simulated model** (the same rule at every site, read from the model's wall boxes):
-  - a glazed window in every wall segment of the outer hull (the wing's west, east and north walls on both storeys
-    and its staging row's west and east walls; not behind the hoist guides);
-  - a timber frame round every ordinary doorway: boards on the walls beside the opening, a head at 2.10 m, and wall
-    above the head up to the slab. The opening is drawn at its structural width. Structurally a doorway is open up
-    to the slab; the pictures show it closed above 2.16 m. The instruction says so.
-- **Not drawn in the cameras, although the task's videos show them:** furniture and props, people, paper and dust,
-  ceiling lamps, the redesigned lifting frame and the blanket on the litter, the doors and windows of the receiving
-  rooms, a second aircraft. The fitting on the litter is the model's flange, stem and cover.
-- **Light.** One image light and ambient occlusion; no lamp and no shadow map. The image light is the same in every
-  compass direction (a brighter tone from above, a darker one from below), because every room has its windows, if
-  any, on other sides. Its level and the six surface maps' gains were fitted so that floors, walls and ceilings of
-  both storeys come out as in path-traced stills of the look through the same two cameras at three states of a
-  development flight: after the fit the six surfaces are within 4 % of the stills per colour channel
-  (display-linear). A site's tone (0.92 to 1.05, as before) scales the light.
+- `rescue_scene.py`: the structure, the markings, the fixtures, as before.
+- `rescue_dressing.py`: what stands in a site besides its structure, from the site alone: cartons, drawer chests,
+  tables, chairs, barrels, buckets along door-less walls of every room, stock in the staging row, a gurney and
+  furniture in the receiving room on the open station's side, posters and wall cabinets, ceiling lamps, paper on
+  the floors, the yard. The rule (stated in the instruction): nothing within 0.72 m of a lane, nothing taller than
+  0.80 m within 1.25 m of a turning point. Lanes: the lines joining two rooms' centres through their doorway, the
+  staging row's centre line, the ways to the inlet, the outlet, the pocket, both receiving sides, the tool stands
+  and the launch point, the litter's length and the way from it to its room's centre; wells are points on both
+  storeys. Turning points: room centres, the pocket's centre, both receiving pads.
+- Every standing thing is one box in the contact check (obstacle kind `prop`) and its model's meshes in the
+  cameras. The models are the render bundle's library (`look/library.json`, one OBJ set and its pictures per model).
+- The litter: a basket litter with a clothed casualty under a blanket and a lifting receiver. The receiver's ring is
+  the site's flange (radius 0.041 or 0.093 m, the task's height and colour), closed at the bottom, on a post from
+  the bed; two hoops outside the collet's reach carry a guide ring with a green band. No part is in the collet's way
+  at any yaw. The flange can be seen from above through the guide ring (bore 0.28 m): in the down camera it is about
+  22 against 10 pixels across from 1.0 m above the litter and 15 against 6.5 from 1.5 m.
+- Contact pieces: the litter's, the casualty's and the aircraft's contact pieces are the task's former geoms of
+  those bodies (board, shell, mannequin boxes, fitting; the airframe meshes, mast, jaws). They are not drawn; the
+  drawn models lie inside them and carry no mass and no contact (`look_*` geoms). The collet meets none of them:
+  the latch is the task's rule on position, speed and the flange's radius, as before. A hidden cylinder `flange`
+  keeps that rule's radius.
+- `rescue_marks.py`: the paints. The model's signal colours are drawn as paint (toned: saturation and value
+  reduced, then greyed by 0.22 and dusted); a door apron's wear pattern follows from the site's seed and the colour.
+
+## What a picture shows (`rescue_render.py`, `rescue_look.json`)
+
+- Every drawn geom of the model where the simulation has it. Walls, floors, ceilings, skirting and door frames carry
+  the approved maps; doors and windows have timber and metal frames by the renderer's rule (a frame's boards, a head
+  at 2.10 m, wall above it; a window's opening with frame and bars in the wall's thickness).
+- Windows of the outer hull, the receiving room's glazed door and window: openings in the drawn walls through which
+  the yard is seen; the walls stay solid in the contact check. No glass is drawn.
+- Light: one image light (the same in every compass direction), ambient occlusion, and daylight computed at the
+  site's build: for a grid of points (1 cm) on floors, floor markings and walls a ray towards the sun (travel
+  azimuth -160 degrees, elevation 25 degrees) that leaves through a hull window without meeting a wall, a slab, a
+  panel or a standing thing's box; sunlit rectangles are drawn 0.6 mm over the surface with the surface's own
+  picture and a glowing copy. The yard is drawn at daylight exposure. Panels inside a hoist well are darker by a
+  fixed factor. No lamp lights anything; no shadow map.
+- Not in the aircraft's own cameras: its rotors' blur (the cameras sit clear of it). Not in the scene: motes in
+  the air, people.
 
 ## A picture is a function of the site and the state
 
-- One worker process draws one site (`rescue_render.Cameras`, started by `rescue.World` and ended with it): every
-  Filament object is made once per process, in one order. Filament's temporal dithering is switched off. Images are
-  drawn at twice their size and averaged in linear light with integer arithmetic.
-- Where two faces of different surfaces lie in one plane, look the same way and overlap (two crossing floor
-  markings, a deck frame's underside in a slab's), one of them is drawn 0.37 mm proud per level, the face alone; a
-  wall's top in a slab's top plane is drawn 2 mm lower. Without this, which face a pixel shows changed from one
-  process to the next.
-- `tests/review/camera_digests.py` repeats the check: for a seed, the aircraft over every room cell of both storeys
-  on four headings (164 states, 328 images), drawn in order, drawn again in reverse order by the same process, and
-  drawn again by fresh processes; `--dump` and `--expect` compare two runs' digests (two hosts).
+- One worker process draws one site; every Filament object is made once, in one order; temporal dithering is off;
+  images are drawn at twice their size and averaged in linear light with integer arithmetic.
+- Everything is drawn with one material (one atlas), and everything that stands still is one mesh and one draw
+  call: the order of two draw calls changes from process to process, and with it which of two surfaces a sample on
+  their common edge shows. A body that moves is one mesh, moved as a whole. No mesh is uploaded after the build.
+- Coplanar faces that overlap are separated by 0.37 mm per level (the face alone).
+- The daylight grid and the apron pictures use elementwise arithmetic and table lookups only.
+- `tests/review/camera_digests.py` repeats the check (made-up states over every room cell on four headings; in
+  order, in reverse, in fresh processes; `--dump` and `--expect` compare two hosts).
 
 RESULTS_DETERMINISM
 

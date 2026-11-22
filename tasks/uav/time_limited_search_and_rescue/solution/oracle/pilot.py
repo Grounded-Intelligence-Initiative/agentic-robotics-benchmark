@@ -23,6 +23,7 @@ TURN = math.radians(30)
 DECK, CRUISE, SLOT_Z = 2.60, 1.30, .725
 MUTANTS = ("stop_after_entry", "stop_upstairs", "stop_over_litter", "stop_after_grasp", "stop_after_lift",
            "stop_after_egress", "wrong_tool", "wrong_station", "no_board_alignment", "release_high",
+           "collet_fixed", "collet_from_down_view", "collet_from_forward_view",
            "pose_noise_10cm", "pose_noise_25cm")
 
 
@@ -160,6 +161,53 @@ class Pilot:
             raise Stop(name)
 
     # --- the mission ------------------------------------------------------------------------- #
+    def ring_width(self, camera):
+        """the cyan ring's width in a picture, in pixels (0: not seen)"""
+        import base64
+        import io
+        from PIL import Image
+        im = np.asarray(Image.open(io.BytesIO(base64.b64decode(self.obs["images"][camera]))).convert("RGB")).astype(int)
+        mask = (im[..., 2]-im[..., 0] > 50) & (im[..., 1]-im[..., 0] > 40) & (im[..., 2] > 90)
+        cols = np.flatnonzero(mask.sum(0) >= 2)
+        return 0 if len(cols) == 0 else int(cols[-1]-cols[0]+1)
+
+    def scout_ring(self):
+        L = self.layout
+        inlet = L["inlet"]
+        slot_x, door_y = L["columns"][inlet], (L["rows"][0]+L["rows"][1])/2
+        self.goto(slot_x, 0., CRUISE, yaw=0.)
+        self.goto(slot_x, 0., SLOT_Z, yaw=0., tol=.02, settle=.05)
+        self.goto(slot_x, door_y+.80, SLOT_Z, yaw=0., speed=.5, tol=.03)
+        first = (inlet, 1, 0)
+        self.goto(*self.xy(first), CRUISE)
+        target = tuple(L["target"])
+        path = self.route(first, target, L["wells"])
+        self.fly_cells(path, 1.)
+        litter = self.gt["litter"]
+        floor = target[2]*DECK
+        centre = np.array(self.xy(target))
+        away = centre-np.array(litter[:2])
+        dist = float(np.linalg.norm(away))
+        heading = math.atan2(-(litter[0]-centre[0]), litter[1]-centre[1]) if dist > .05 else 0.
+        f = np.array([-math.sin(heading), math.cos(heading)])       # the aircraft's forward axis
+        if self.mutant == "collet_from_down_view":                    # the down camera (0.46 m ahead of the centre) over the ring
+            at = np.array(litter[:2])-.46*f
+            self.goto(at[0], at[1], floor+CRUISE, yaw=heading, tol=.03, settle=.05)
+            width, limit = self.ring_width(0), 119.4*.134/(CRUISE-.145-.26)
+        else:                                                         # the forward camera, 1.5 m before the litter on the way in
+            back = min(1.5, max(dist, .01))
+            at = np.array(litter[:2])-back*f
+            self.goto(at[0], at[1], floor+CRUISE, yaw=heading, tol=.03, settle=.05)
+            width, limit = self.ring_width(1), 119.4*.134/math.hypot(back-.17, CRUISE+.045-.24)
+        self.ring_seen = (width, round(limit, 1))
+        self.goto(*centre, floor+CRUISE)
+        self.fly_cells(path[::-1], 1.)
+        self.goto(*self.xy(first), SLOT_Z, yaw=0.)
+        self.goto(slot_x, door_y+.80, SLOT_Z, yaw=0., tol=.03)
+        self.goto(slot_x, 0., SLOT_Z, yaw=0., speed=.5, tol=.03)
+        self.goto(slot_x, 0., CRUISE, yaw=0.)
+        return width > limit
+
     def fly(self):
         L = self.layout
         inlet, outlet = L["inlet"], L["outlet"]
@@ -167,6 +215,14 @@ class Pilot:
         # 1. the collet that fits the flange (truth), from its stand in the staging strip
         fits = [i for i, (throat, seat) in enumerate(L["depot"]) if throat < L["flange"] < seat]
         tool = fits[0] if self.mutant != "wrong_tool" else 1-fits[0]
+        if self.mutant == "collet_fixed":              # always the collet on the first stand
+            tool = 0
+        if self.mutant in ("collet_from_down_view", "collet_from_forward_view"):
+            # the collet is chosen from a picture of the receiver's ring instead of the truth: a first flight to the
+            # litter without a collet, one picture, back out, then the plan as usual
+            wide = self.scout_ring()
+            big = max(range(2), key=lambda i: L["depot"][i][1])
+            tool = big if wide else 1-big
         dock = L["docks"][tool]
         self.goto(dock[0], dock[1], CRUISE)
         self.goto(dock[0], dock[1], dock[2]+.206, speed=.5, tol=.02, settle=.05)
