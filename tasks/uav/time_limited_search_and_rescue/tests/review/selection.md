@@ -23,3 +23,12 @@ committed before the candidates were generated, and `select_sites.py` applies it
 `selection.json` records the candidates' count, how many the reference completed, each stratum's size and the rule's
 version. `candidates.json` keeps, per candidate, the stratum and the reference's action count. `sites.json` holds the
 eight seeds in stratum order. The anchor is the reference's mean progress on the eight sites.
+
+## Amendment 1 (2026-11-21): the cameras' renderer
+
+The aircraft's two cameras are drawn by another renderer since this date (`rendering.md`). The rule above looks at
+no image: the candidates are flown by the privileged pilot, which reads none, in a simulator that draws none
+(`select_sites.py`: `render=False`). The simulation is unchanged, so the candidates' records, the strata and the
+eight sites are unchanged, and `tests/hidden/` is byte for byte what it was. The grader's own flights of the
+privileged pilot on the eight sites with the new cameras repeat the earlier ones action for action (443, 478, 509,
+484, 508, 503, 541 and 487 actions), so the anchor stands. The rule's version stays 1.

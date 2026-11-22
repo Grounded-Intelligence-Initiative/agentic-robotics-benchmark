@@ -39,6 +39,13 @@ Every answer (`observe()` and `act(...)`) holds:
 
 There is no pose, no map and no depth. `observe()` returns the current answer again and passes no time.
 
+The pictures show every structural surface and every fixture where it is, in its own shape: plastered walls with a
+darker dado and a timber skirting, a concrete floor downstairs and a tiled floor upstairs, and the markings and
+fixtures in the colours this document names. Two things are drawn and are not structure: a glazed window in each
+segment of the building's outer walls, and a timber frame round each ordinary doorway, with a head at 2.10 m and
+wall drawn above it (the opening itself is drawn at its true width; structurally it is open up to the slab). A picture
+depends on the site and on the aircraft's state alone: the same state gives the same picture, here and in grading.
+
 ## Equipment card
 
 | Equipment | Physical contract |
@@ -87,9 +94,10 @@ The order of visits is not scored. Without a handoff a flight earns at most 0.68
   `Client().act(action)`). Python is `/opt/venv/bin/python3` with numpy, scipy, Pillow, mujoco and trimesh; nothing
   else can be installed there.
 - Per site the program may use **900 s of its own time** (wall time minus the time the aircraft takes to answer),
-  inside a wall limit of 1,800 s. When either runs out the flight is stopped and keeps its progress. The program is
+  inside a wall limit of 2,100 s. When either runs out the flight is stopped and keeps its progress. The program is
   stopped 10 s after a flight has ended.
-- The grading sandbox has 2 CPUs and 4 GB of memory, as this one. An answer takes the aircraft about 0.07 s.
+- The grading sandbox has 2 CPUs and 4 GB of memory, as this one. An answer takes the aircraft about 0.13 s (its two
+  pictures are drawn on the CPU); the first answer of a site takes about 6 s.
 - Nothing carries over between sites: every site starts the program anew, with an empty home; the temporary
   directories, shared memory and message queues are emptied, and nowhere else is writable. `/home/user` is not readable there; what the program needs must be in the submission folder,
   which is its working directory.

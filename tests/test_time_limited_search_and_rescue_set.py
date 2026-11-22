@@ -1,4 +1,4 @@
-"""time_limited_search_and_rescue: the fixed hidden set, its pre-registered rule, the copies and the stated numbers.
+"""time_limited_search_and_rescue: the fixed hidden set, its pre-registered rule, the copies, the cameras and the stated numbers.
 
 The grader flies the agent's program on the eight sites of tests/hidden/sites.json. They are chosen by the rule in
 tests/review/selection.md (one site per stratum of mirror x open station x flange size, spread over the privileged
@@ -103,8 +103,10 @@ class CopiesAndNumbers(unittest.TestCase):
         self.assertIn("**40 sites**", INSTRUCTION)
         self.assertEqual(config["program_seconds"], 900)
         self.assertIn("**900 s of its own time**", INSTRUCTION)
-        self.assertEqual(config["mission_wall_seconds"], 1800)
-        self.assertIn("wall limit of 1,800 s", INSTRUCTION)
+        self.assertEqual(config["mission_wall_seconds"], 2100)
+        self.assertIn("wall limit of 2,100 s", INSTRUCTION)
+        # the verifier's limit covers eight flights at the wall limit and the start of the verifier
+        self.assertEqual(number(r"^\[verifier\]\ntimeout_sec = (\d+)", (TASK / "task.toml").read_text()), 8 * 2100 + 1200)
 
     def test_session_time_is_one_number(self):
         toml = (TASK / "task.toml").read_text()
@@ -129,6 +131,45 @@ class CopiesAndNumbers(unittest.TestCase):
         for text in ("| 0.05 |", "| + 0.04 |", "| + 0.06 |", "| + 0.15 |", "| + 0.10 |", "| + 0.25 |",
                      "| + up to 0.03 |", "at most 0.68"):
             self.assertIn(text, INSTRUCTION)
+
+    def test_cameras_are_one_worker_process_per_site(self):
+        """A picture is a function of the site and the state: the world draws through a worker process of its
+        own (rescue_render.Cameras), never through a renderer that lives in the service's process."""
+        world = (TASK / "tests/runtime/rescue.py").read_text()
+        self.assertIn("self.renderer = Cameras(seed) if render else None", world)
+        self.assertNotIn("mujoco.Renderer", world)
+        render = (TASK / "tests/runtime/rescue_render.py").read_text()
+        self.assertIn('"--worker"', render)
+        self.assertIn("setd(self.view, 0)", render)             # Filament's temporal dithering is switched off
+        look = json.loads((TASK / "tests/runtime/rescue_look.json").read_text())
+        self.assertFalse(look["render"].get("shadows", False))
+        self.assertNotIn("mark_extras", look)
+        self.assertNotIn("without_extras", look)
+
+    def test_render_bundle_holds_every_map_the_look_names(self):
+        listed = {line.split("  ", 1)[1].strip() for line in (TASK / "environment/assets.sha256").read_text().splitlines()
+                  if line and not line.startswith("#")}
+        look = json.loads((TASK / "tests/runtime/rescue_look.json").read_text())
+        self.assertIn("render/" + look["ibl"]["file"], listed)
+        for name, rule in look["classes"].items():
+            if rule.get("map"):
+                self.assertIn("render/%s.png" % rule["map"], listed, name)
+        # floor markings are worn paint in the model's own colours: one map per colour of rescue_scene.py
+        scene = (TASK / "tests/runtime/rescue_scene.py").read_text()
+
+        def colour(name):
+            r, g, b = re.search(r"^%s = \(([\d.]+), ([\d.]+), ([\d.]+), 1\)" % name, scene, re.M).groups()
+            return "%02x%02x%02x" % tuple(int(round(255 * float(v))) for v in (r, g, b))
+        for name in ("PURPLE", "BLUE", "AMBER", "WHITE", "TEAL", "LIME"):
+            self.assertIn("render/paint_%s.png" % colour(name), listed, name)
+        self.assertIn("render/mat_%s.png" % colour("TEAL"), listed)
+
+    def test_render_bundle_is_roots_and_checked_at_build(self):
+        docker = (TASK / "environment/Dockerfile").read_text()
+        self.assertIn("chmod -R u=rwX,go= /opt/task-assets", docker)
+        self.assertIn("! runuser -u user -- ls /opt/task-assets", docker)
+        self.assertIn("render_check.py", docker)
+        self.assertIn("An answer takes the aircraft about 0.13 s", INSTRUCTION)
 
     def test_grader_logs_no_seed(self):
         grader = (TASK / "tests/grader.py").read_text()

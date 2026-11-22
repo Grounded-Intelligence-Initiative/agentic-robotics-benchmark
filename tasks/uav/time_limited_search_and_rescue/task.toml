@@ -28,10 +28,11 @@ timeout_sec = 7200
 network_mode = "no-network"
 
 # Separate verification: the engine releases the agent's sandbox and scores in a fresh one that holds tests/ and the
-# restored /home/user/submission only. Eight flights, each at most 1,800 s of wall time (tests/grader_config.json),
-# plus the start of the verifier and the per-site services: 8 x 1,800 + 1,200.
+# restored /home/user/submission only. Eight flights, each at most 2,100 s of wall time (tests/grader_config.json:
+# a program's 900 s of its own time, plus the aircraft's answers, about 0.13 s each for up to 4,400 actions), plus the
+# start of the verifier and the per-site services: 8 x 2,100 + 1,200.
 [verifier]
-timeout_sec = 15600
+timeout_sec = 18000
 environment_mode = "separate"
 
 [verifier.environment]

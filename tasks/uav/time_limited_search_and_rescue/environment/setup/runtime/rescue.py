@@ -2,15 +2,12 @@
 import base64
 import io
 import math
-import os
-
-os.environ.setdefault("MUJOCO_GL", "osmesa")
-os.environ.setdefault("LIBGL_ALWAYS_SOFTWARE", "1")
 
 import mujoco
 import numpy as np
 from PIL import Image
 
+from rescue_render import Cameras
 from rescue_scene import DECK, SLAB, WELL_HALF, POCKET_HALF_DEPTH, START_Z, build, layout_for
 
 LIMIT = 4400
@@ -61,7 +58,9 @@ class World:
         x, y, yaw = self.layout.pod
         self.data.qpos[4:11] = (x, y, self.layout.target[2]*DECK+.073, math.cos(yaw/2), 0., 0., math.sin(yaw/2))
         mujoco.mj_forward(self.model, self.data)
-        self.renderer = mujoco.Renderer(self.model, 256, 256) if render else None
+        # The two cameras are drawn by a process of their own, one per site (rescue_render.py): an image is then
+        # a function of the site and the state alone, here and in every other process that draws this site.
+        self.renderer = Cameras(seed) if render else None
         self.kinds, names = zip(*obstacles)
         self.solids = np.array([self.model.geom(name).id for name in names])
         self.throats = np.array([k.startswith("throat_") for k in self.kinds])
@@ -173,11 +172,7 @@ class World:
     def images(self):
         if self.renderer is None:
             return []
-        result = []
-        for camera in ("down", "forward"):
-            self.renderer.update_scene(self.data, camera=camera)
-            result.append(self.renderer.render().copy())
-        return result
+        return self.renderer.images(self.data.qpos, self.data.mocap_pos)     # down, forward
 
     def observe(self):
         if self._observation is None:

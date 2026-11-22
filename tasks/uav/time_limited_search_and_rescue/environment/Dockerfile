@@ -15,7 +15,19 @@ RUN python3 -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt \
     && chmod -R a+rX /opt/venv
 RUN mkdir -p /home/user/submission && chown user:user /home/user/submission
-RUN runuser -u user -- python3 -c "import mujoco; m=mujoco.MjModel.from_xml_string('<mujoco/>'); r=mujoco.Renderer(m,64,64); r.close()"
 COPY visual_assets.json fetch_visual_assets.py /tmp/visual_assets/
 RUN /opt/venv/bin/python3 /tmp/visual_assets/fetch_visual_assets.py /tmp/visual_assets/visual_assets.json /opt/visual_robotics/assets \
     && chmod -R a+rX /opt/visual_robotics/assets
+# ---- the cameras' render bundle (surface maps and the image light; rescue_render.py reads it in place), fetched at
+# the dataset commit pinned in assets.sha256 and checked file by file (docs/task-assets.md). It is part of the
+# aircraft service, not of the agent's files: root reads it, the agent's account does not, and nothing stages it
+# into the agent's home.
+COPY fetch_assets.py assets.sha256 /opt/task-assets/
+RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload \
+    && chown -R root:root /opt/task-assets && chmod -R u=rwX,go= /opt/task-assets \
+    && ! runuser -u user -- ls /opt/task-assets \
+    && [ -z "$(find /opt/task-assets -perm /077)" ]
+# The cameras' renderer starts here as it does in a flight: MuJoCo's Filament on Mesa's lavapipe (Vulkan on the CPU),
+# as root (the aircraft service's account), with the bundle's image light and one of its maps.
+COPY render_check.py /tmp/render_check.py
+RUN /opt/venv/bin/python3 -I -B /tmp/render_check.py /opt/task-assets/payload/render && rm /tmp/render_check.py
