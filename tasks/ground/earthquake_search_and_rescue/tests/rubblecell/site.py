@@ -1180,28 +1180,45 @@ def _trapped(S, sv, lay, px, py, yaw, rng):
     sc = float(S.figures[0]["scale"])
     legs = np.array([J[k] for k in ("shin_l", "shin_r", "foot_l", "foot_r")], float) * sc
     la, lb = float(legs[:, 1].min()) - 0.09, float(legs[:, 1].max()) + 0.09       # the lower legs across the body
-    lx = float(legs[:2, 0].min()) - 0.38                                         # the slab starts just below the knees
+    lx = float(legs[:2, 0].min()) - 0.02 - 0.275                                 # the plate starts just below the knees; the feet show beyond it
     gap = float(lay["legs_top"]) + 0.07                                          # the slab's underside
-    # the supports: a stack of bricks and rubble either side of the lower legs
-    for y0, y1 in ((la - 0.20, la - 0.04), (lb + 0.04, lb + 0.20)):
-        c = R @ np.array([lx, (y0 + y1) / 2, 0.0]) + o
-        S.box((c[0], c[1], gap / 2), (0.32, (y1 - y0) / 2, gap / 2), str(rng.choice(["brick", "rubble"])),
-              yaw=yaw + float(rng.uniform(-0.08, 0.08)), name="legstack")
-    # the slab piece on them (a broken slab of the look pack; what the robot touches is its box)
-    span = (lb - la) + 0.46
-    c = R @ np.array([lx, (la + lb) / 2, 0.0]) + o
+    # the supports: on the wall's side a low heap of rubble (the look pack's, with its bars) along the lower legs; on
+    # the room's side one broken block at the plate's corner beyond the feet, so that from the room the lower legs
+    # show under the plate all the way from the knees
+    dw = 0.75 + side * float(lay["torso"][1]) - 0.15                             # the body's axis to the wall's face
+    span = (lb - la) + 0.70                                                      # the plate across the legs
+    mid = (la + lb) / 2
+    if side * mid + span / 2 > dw - 0.03:                                        # the plate ends short of the wall
+        mid = side * (dw - 0.03 - span / 2)
+    off = 0.62 * span / 2                                                        # the supports stand well under the plate
+    wd = min(0.34, 2 * (dw - 0.04 - abs(mid + side * off)))
+    if wd >= 0.16:
+        c = R @ np.array([lx, mid + side * off, 0.0]) + o
+        S.prop(str(rng.choice(["rubble1", "rubble3"])), (c[0], c[1], 0.0), yaw=yaw + float(rng.uniform(-0.3, 0.3)),
+               fit=(0.50, wd, gap + 0.012), collide=True)
+    else:
+        for dx in (-0.15, 0.15):
+            c = R @ np.array([lx + dx, mid + side * off, 0.0]) + o
+            S.prop("concrete3", (c[0], c[1], 0.0), yaw=float(rng.uniform(0, 2 * math.pi)), fit=(0.2, 0.15, gap + 0.005), collide=True)
+    c = R @ np.array([lx - 0.10, mid - side * off, 0.0]) + o
+    S.prop("concrete3", (c[0], c[1], 0.0), yaw=float(rng.uniform(0, 2 * math.pi)), fit=(0.24, 0.20, gap + 0.005), collide=True)
+    for _ in range(3):                                       # loose bricks beside it
+        q = R @ np.array([lx + float(rng.uniform(-0.45, 0.1)), mid - side * (off + float(rng.uniform(0.15, 0.4))), 0.0]) + o
+        S.chunk((q[0], q[1], 0.04), float(rng.uniform(0.07, 0.12)), mat="brick")
+    # the slab piece on them
+    c = R @ np.array([lx, mid, 0.0]) + o
     syaw = yaw + math.pi / 2 + float(rng.uniform(-0.12, 0.12))
     # a broken plate: an uneven outline, the underside's edge broken back, in the slab's own (cracked concrete) material
     n = 11
     angs = np.sort(rng.uniform(0, 2 * math.pi, n) * 0.35 + np.arange(n) * 2 * math.pi / n * 0.65 + np.arange(n) * 2 * math.pi / n * 0.35)
     rad = rng.uniform(0.80, 1.0, n)
-    top = np.stack([np.cos(angs) * rad * span / 2, np.sin(angs) * rad * 0.40, 0.12 + rng.uniform(-0.008, 0.008, n)], 1)
+    top = np.stack([np.cos(angs) * rad * span / 2, np.sin(angs) * rad * 0.30, 0.12 + rng.uniform(-0.008, 0.008, n)], 1)
     bot = np.stack([top[:, 0] * rng.uniform(0.86, 0.97, n), top[:, 1] * rng.uniform(0.86, 0.97, n), np.zeros(n)], 1)
     nm = S._name("legslab")
     S.meshes[nm] = np.concatenate([top, bot])
     S.statics.append({"name": nm, "type": "mesh", "mesh": nm, "pos": [float(c[0]), float(c[1]), float(gap)],
                       "quat": _q_euler(syaw, 0.0, 0.0), "mat": "slab", "collide": True, "size": [0, 0, 0],
-                      "half": [span / 2, 0.40, 0.06]})
+                      "half": [span / 2, 0.30, 0.06]})
     Rs = _rz(syaw)
     for _ in range(3):                                     # reinforcing bars out of one broken edge
         y0 = float(rng.uniform(-0.25, 0.25))
@@ -1209,10 +1226,9 @@ def _trapped(S, sv, lay, px, py, yaw, rng):
         rb = ra + Rs @ np.array([float(rng.uniform(0.12, 0.26)), float(rng.uniform(-0.05, 0.05)), float(rng.uniform(-0.06, 0.02))])
         S.capsule(ra, rb, 0.006, "rebar", collide=False, name="rebar")
     for _ in range(6):
-        q = c + R @ np.array([float(rng.uniform(-0.3, 0.3)), float(rng.uniform(la - 0.1, lb + 0.1)), 0.0])
-        S.chunk((q[0], q[1], gap + 0.16), float(rng.uniform(0.08, 0.16)), mat=str(rng.choice(["brick", "rubble"])))
+        q = c + R @ np.array([float(rng.uniform(-0.2, 0.2)), float(rng.uniform(la - 0.1, lb + 0.1)), 0.0])
+        S.chunk((q[0], q[1], gap + 0.15), float(rng.uniform(0.06, 0.11)), mat=str(rng.choice(["brick", "rubble"])))
     # the cupboard against the wall, beyond the feet or beyond the head
-    dw = 0.75 + side * float(lay["torso"][1]) - 0.15                             # the body's axis to the wall's face
     hh = min(0.58, float(b.get("slab_h", 0.8)) - 0.10)
     for xc in (float(lay["x0"]) - 0.20 - 0.65, float(lay["x1"]) + 0.20 + 0.65):
         c2 = R @ np.array([xc, side * (dw - 0.345 - 0.02), 0.0]) + o
