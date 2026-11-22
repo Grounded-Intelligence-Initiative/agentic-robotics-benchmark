@@ -1150,6 +1150,20 @@ def _furniture(S, it, x, y, yaw, L, Dp, Hh, void, rng, face=-1.0, hmax=3.0):
 CLOTH_MATS = {}
 
 
+def _clear_floor(S, px, py, yaw, lay, margin=0.25, ramp=0.5):
+    """The floor under a lying figure is the bare floor: a rubble mound that reaches under the body is cut back to
+    `margin` from the body's outline and rises from there over `ramp` (the body lies on the floor, not in a heap)."""
+    c, s_ = math.cos(-yaw), math.sin(-yaw)
+    X, Y = S.GX - px, S.GY - py
+    u, v = c * X - s_ * Y, s_ * X + c * Y
+    du = np.maximum(0.0, np.maximum(lay["x0"] - u, u - lay["x1"]))
+    dv = np.maximum(0.0, np.maximum(-lay["right"] - v, v - lay["left"]))
+    k = np.clip((np.hypot(du, dv) - margin) / ramp, 0.0, 1.0)
+    up = S.H > 0.0
+    S.H = np.where(up, S.H * k, S.H)
+    S.ground[up & (k < 0.2) & (S.ground == 4)] = 2
+
+
 def _trapped(S, sv, lay, px, py, yaw, rng):
     """How the survivor is trapped, as one arrangement that holds together: they lie along the void's far wall; a
     broken slab piece bridges their lower legs, resting on a stack of debris either side of the legs and clear of
@@ -1177,8 +1191,23 @@ def _trapped(S, sv, lay, px, py, yaw, rng):
     span = (lb - la) + 0.46
     c = R @ np.array([lx, (la + lb) / 2, 0.0]) + o
     syaw = yaw + math.pi / 2 + float(rng.uniform(-0.12, 0.12))
-    S.box((c[0], c[1], gap + 0.06), (span / 2, 0.40, 0.06), "slab", yaw=syaw, name="legslab", group=3)
-    S.prop("broken_wall7", (c[0], c[1], gap), yaw=syaw, fit=(span, 0.80, 0.12))
+    # a broken plate: an uneven outline, the underside's edge broken back, in the slab's own (cracked concrete) material
+    n = 11
+    angs = np.sort(rng.uniform(0, 2 * math.pi, n) * 0.35 + np.arange(n) * 2 * math.pi / n * 0.65 + np.arange(n) * 2 * math.pi / n * 0.35)
+    rad = rng.uniform(0.80, 1.0, n)
+    top = np.stack([np.cos(angs) * rad * span / 2, np.sin(angs) * rad * 0.40, 0.12 + rng.uniform(-0.008, 0.008, n)], 1)
+    bot = np.stack([top[:, 0] * rng.uniform(0.86, 0.97, n), top[:, 1] * rng.uniform(0.86, 0.97, n), np.zeros(n)], 1)
+    nm = S._name("legslab")
+    S.meshes[nm] = np.concatenate([top, bot])
+    S.statics.append({"name": nm, "type": "mesh", "mesh": nm, "pos": [float(c[0]), float(c[1]), float(gap)],
+                      "quat": _q_euler(syaw, 0.0, 0.0), "mat": "slab", "collide": True, "size": [0, 0, 0],
+                      "half": [span / 2, 0.40, 0.06]})
+    Rs = _rz(syaw)
+    for _ in range(3):                                     # reinforcing bars out of one broken edge
+        y0 = float(rng.uniform(-0.25, 0.25))
+        ra = np.array([c[0], c[1], gap + 0.06]) + Rs @ np.array([span / 2 * 0.8, y0, 0.0])
+        rb = ra + Rs @ np.array([float(rng.uniform(0.12, 0.26)), float(rng.uniform(-0.05, 0.05)), float(rng.uniform(-0.06, 0.02))])
+        S.capsule(ra, rb, 0.006, "rebar", collide=False, name="rebar")
     for _ in range(6):
         q = c + R @ np.array([float(rng.uniform(-0.3, 0.3)), float(rng.uniform(la - 0.1, lb + 0.1)), 0.0])
         S.chunk((q[0], q[1], gap + 0.16), float(rng.uniform(0.08, 0.16)), mat=str(rng.choice(["brick", "rubble"])))
@@ -1238,6 +1267,8 @@ def _survivor_and_decoys(S):
     S.survivor_points = {"heads": [(R @ h + np.array([px, py, 0])).tolist() for h in heads],
                          "hands": [(R @ h + np.array([px, py, 0])).tolist() for h in hands],
                          "torso": (R @ lay["torso"] + np.array([px, py, 0])).tolist()}
+    if have_props():
+        _clear_floor(S, px, py, yaw, lay)
     if sv.get("legs_covered", True) and have_props():
         _trapped(S, sv, lay, px, py, yaw, rng)
     elif sv.get("legs_covered", True):
@@ -1272,6 +1303,8 @@ def _survivor_and_decoys(S):
         if d["type"] == "mannequin":
             parts, _, _ = figure_parts("prone", scale=1.0, mannequin=True)
             placed = place_parts(parts, d["x"], d["y"], d["yaw"], 0.0)
+            if have_props():
+                _clear_floor(S, d["x"], d["y"], d["yaw"], figure_layout("prone", 1.0, True))
             S.figures.append({"who": "mannequin", "key": figure_key("prone", True), "x": float(d["x"]), "y": float(d["y"]),
                               "yaw": float(d["yaw"]), "scale": 1.0})
             S.parts.setdefault("mannequin", [])

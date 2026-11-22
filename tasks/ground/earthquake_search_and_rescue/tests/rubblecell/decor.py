@@ -473,7 +473,7 @@ def build(spec, body, bank, scene, seed):
             _building(D, rng, x0, x1, FRONT_Y, 12.0, -1, st, style, damaged=rng.random() < 0.3)
             x = x0 - 0.05 if side < 0 else x1 + 0.05
     # the skyline further out (the haze softens it)
-    for _ in range(70):
+    for _ in range(0 if real else 70):
         ang = float(rng.uniform(0, 2 * math.pi))
         r = float(rng.uniform(70.0, 170.0))
         cx, cy = W / 2 + r * math.cos(ang), Dp / 2 + r * math.sin(ang)

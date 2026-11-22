@@ -399,7 +399,8 @@ class Ref(object):
         for st in s.sc.site.statics:
             if st["name"].startswith(("wardrobe", "legslab", "legstack", "cupboard")):
                 # the piece's own reach (half its diagonal) and a hand's breadth, never less than 0.55 m
-                blockers.append((np.array(st["pos"][:2]), max(0.55, math.hypot(st["size"][0], st["size"][1]) + 0.15)))
+                hx, hy = st.get("half", st["size"])[:2]
+                blockers.append((np.array(st["pos"][:2]), max(0.55, math.hypot(hx, hy) + 0.15)))
         best = None
         for H in heads_hands:
             for a in np.radians(np.arange(0, 360, 15)):

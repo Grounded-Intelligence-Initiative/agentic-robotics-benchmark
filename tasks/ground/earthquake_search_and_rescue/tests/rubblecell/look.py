@@ -325,6 +325,8 @@ class _Bank(object):
                     tile = 1.85
             elif name in LOOK["room_walls"] and level == "ext":         # a street front: the same wall, calmer
                 setname, tile = "plaster_ext", 4.6
+            elif gname.startswith("legslab"):                        # the broken plate over the survivor's legs
+                setname, tile = "slab_broken", 1.2
             elif bname.startswith("propslab"):
                 setname, tile = "slab_broken", 1.6
             elif bname.startswith("prop_") and setname == "wood":
