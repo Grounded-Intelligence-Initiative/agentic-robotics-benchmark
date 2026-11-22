@@ -19,7 +19,7 @@ SCORE = {"entered_wing": .05, "mezzanine": .04, "located": .06, "grasped": .15,
          "lifted": .10, "cargo_return": .25}
 ROOMS = .03
 FAILURES = ("wall", "inspection", "cargo", "slab", "roof",
-            "throat_entry", "throat_exit", "loading_wall", "unsafe_release")
+            "throat_entry", "throat_exit", "loading_wall", "prop", "unsafe_release")
 
 
 def png(rgb):

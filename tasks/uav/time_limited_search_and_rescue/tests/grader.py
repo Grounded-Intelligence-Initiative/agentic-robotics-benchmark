@@ -57,7 +57,7 @@ MAX_SUBMISSION_BYTES = 64*1024*1024
 MAX_SUBMISSION_FILES = 2000
 
 PROGRESS_KEYS = ("entered_wing", "mezzanine", "located", "grasped", "lifted", "cargo_return", "delivered")
-ABORTS = ("wall", "inspection", "cargo", "slab", "roof", "throat_entry", "throat_exit", "loading_wall",
+ABORTS = ("wall", "inspection", "cargo", "slab", "roof", "throat_entry", "throat_exit", "loading_wall", "prop",
           "unsafe_release")
 NUMERICS_OFF = "AVX512F,AVX512CD,AVX512_SKX,AVX512_CLX,AVX512_CNL,AVX512_ICL,AVX512_SPR"
 TOKEN_FILE = ".oracle_token"
