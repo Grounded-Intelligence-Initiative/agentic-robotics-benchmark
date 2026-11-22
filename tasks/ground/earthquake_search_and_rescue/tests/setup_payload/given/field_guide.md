@@ -15,6 +15,10 @@ reinforced-concrete frames with brick infill looks like from a small robot, and 
 * **The facade.** Rubble spills onto the pavement in front of the building in mounds; shop windows become openings,
   some blocked by fallen facade panels or heavy rubble. The street in front is cordoned off with concrete road barriers
   along the far kerb and across both ends; the team's vehicles stand inside the cordon.
+  Beside the deployment point the team has its post: a generator with its fuel cans, work lights on tripods, tool
+  boxes and crates, a stretcher, barrier boards and cones. Rubble, pieces of broken wall and slab and bent
+  reinforcement lie on the pavement along the facade and in some rooms; a crushed car stands on the street. All of
+  that is solid and stays where it is: drive round it.
 
 Between rooms there are doorways and breaches in the walls. In the rubble they come in all states: open, partly
 blocked by a fallen concrete block (a narrow slot), blocked by debris that can be moved (a timber beam that fell across
@@ -42,7 +46,9 @@ wide and deep enough to swallow a robot. Not every way that looks open goes anyw
   flat, box-shaped, evenly warm), and outdoors, metal and asphalt in the sun can be warmer than a person.
 * Not everything that looks like a person is one: shop mannequins (cold, smooth, uniform colour), heaps of clothes.
   Combine the camera and the thermal camera: the shape of a person and the warmth of one.
-* Victims lie on the floor, usually against a wall or a piece of furniture, often with their legs pinned under debris.
+* Victims lie on the floor, usually along a wall, often with their lower legs under a broken piece of slab that rests
+  on rubble either side of them, sometimes with a low cupboard standing beyond their feet or their head. That piece
+  of slab is wedged where it lies; do not push against it or the rubble under it.
 * **Report the middle of the person's torso.** The team plans its tunnel from it.
 * **Supplies.** Put the kit down next to the person's head or a free hand, where they can take it: never on them.
 

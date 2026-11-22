@@ -62,12 +62,21 @@ ENV OPENBLAS_CORETYPE=Haswell OPENBLAS_L2_SIZE=256 OPENBLAS_NUM_THREADS=1 OMP_NU
     NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR" OPENCV_IPP=avx2
 # Set before the look's textures are made, so that they are computed under the pin on whatever machine builds the image.
 
-# The look's texture sets (rubblecell/pbr.py: procedural, from fixed seeds, the same pixels on every machine), made once
-# here for the cell's two users: the grader (root, in its separate verifier sandbox from this image) and the training
-# ground (`rubblecell`). The agent account cannot read them (they are no given).
+# The cell's look pack (docs/task-assets.md: fetched at the dataset commit pinned in assets.sha256 and checked by its
+# sha256; one tar): the photographed texture sets, the sky, the posed bodies, the robot's drawn parts, the vehicles and
+# the models of the site (furniture, window modules, ruin pieces, the rescue post, apartment blocks). Then the look's
+# own texture sets (rubblecell/pbr.py: procedural, from fixed seeds, the same pixels on every machine) are made beside
+# them. All of it is for the cell's two users, the grader (root, in its separate verifier sandbox from this image) and
+# the training ground (`rubblecell`); the agent account cannot read it (it is no given), and no layer keeps the tar.
 ENV RUBBLECELL_LOOK_DIR=/opt/rubblecell-look
+COPY fetch_assets.py assets.sha256 /tmp/task-assets/
 RUN export HOME=/root \
+    && python3 /tmp/task-assets/fetch_assets.py /tmp/task-assets/assets.sha256 /tmp/task-assets/files \
+    && mkdir -p /opt/rubblecell-look \
+    && tar -x -C /opt/rubblecell-look -f /tmp/task-assets/files/look/rubblecell_look_pack.tar \
+    && rm -rf /tmp/task-assets \
     && cd /opt/rubblecell-training && python3 -B -s -m rubblecell.pbr /opt/rubblecell-look \
+    && test -s /opt/rubblecell-look/props.npz && test -s /opt/rubblecell-look/vehicles.npz && test -s /opt/rubblecell-look/robot.npz \
     && chown -R root:rubblecell /opt/rubblecell-look \
     && chmod -R u+rwX,g+rX,o-rwx /opt/rubblecell-look
 
