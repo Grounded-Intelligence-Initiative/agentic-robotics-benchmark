@@ -1,6 +1,6 @@
 # endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/ale-robotics-assets
-# revision: 0000000000000000000000000000000000000000
+# revision: 16a8d3d7801a89dce8fb7037ec29545167b0eda8
 # prefix: tasks/humanoid/humanoid_leg_cad_design_from_photos/payload
 96ed3e290a4d3cc1e3a2682720b43a7c11ae4ca19e0611d7d4150da4380dec1c  given/DS-0650/DS-0650.step
 5e6b2aece596045cc86280776c92e3dc254eea0c26698f3adbee1bfec9746f83  given/DS-0650/DS-0650_datasheet.md
