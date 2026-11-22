@@ -65,7 +65,9 @@ class World:
         self.solids = np.array([self.model.geom(name).id for name in names])
         self.throats = np.array([k.startswith("throat_") for k in self.kinds])
         self.refresh_solids()
-        self.parts = {name: np.flatnonzero(self.model.geom_bodyid == self.model.body(name).id)
+        # A body's contact pieces: its own geoms. The drawn models on it (look_*) are for the cameras only.
+        drawn = np.array([(self.model.geom(g).name or "").startswith("look_") for g in range(self.model.ngeom)])
+        self.parts = {name: np.flatnonzero((self.model.geom_bodyid == self.model.body(name).id) & ~drawn)
                       for name in ("uav", "pod", "collet0", "collet1")}
         self.board = self.model.geom("litter_board").id
         self.mats = [self.model.geom(f"receiving_mat{s}").id for s in (-1,1)]

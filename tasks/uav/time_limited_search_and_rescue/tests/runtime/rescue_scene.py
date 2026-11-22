@@ -1,3 +1,4 @@
+import os
 """Procedural local-view training wing and its rendered collision geometry."""
 from collections import deque
 from dataclasses import dataclass
@@ -10,6 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 from pbr_scene import prop
 from floor_finish import install
 from scene_assets import asset_root, geom, materials, robot_meshes
+import rescue_dressing
 
 SIDE = 5
 START_Z = 1.30
@@ -518,4 +520,6 @@ def build(layout):
     for side, x in enumerate((xmin-.52, xmax+.52)):
         prop(root, asset_root(), "utility_box_01", f"cabinet{side}", (x, 0, 0), (.52, .61, .87))
 
+    rescue_dressing.dress(root, layout, obstacles)
     return ET.tostring(root, encoding="unicode"), decals, obstacles, shutters
+

@@ -15,10 +15,10 @@ What is drawn
     it at 2.10 m and wall above the head up to the slab: the opening is drawn at its structural width, and closed
     above 2.16 m where the structure is open to the slab). The rule is the same at every site and reads the model
     alone (_extras).
-Light: an image light (ibl.ktx of the bundle: path-traced probes of the look's rooms, averaged over rooms and over
-the compass, so no room is lit from a side) and ambient occlusion; no lamp, no shadow map (an image has a price in
-time, and shadow maps are most of an image's time on a CPU). The site's tone (the model's light scale) scales the
-image light.
+Light: an image light (ibl.ktx of the bundle: a brighter tone from above, a darker one from below, the same in
+every compass direction, so no room is lit from a side) and ambient occlusion; no lamp, no shadow map (an image has
+a price in time, and shadow maps are most of an image's time on a CPU). The site's tone (the model's light scale)
+scales the image light.
 Cameras: exactly the simulated cameras "down" and "forward": position, axes and frustum are the ones MuJoCo
 computes for the site's model (mjv_updateCamera). An image is drawn at twice its size and averaged over 2 x 2
 blocks in linear light (integer arithmetic).
@@ -27,6 +27,10 @@ An image is a function of the site and the state alone: the same state gives the
 drawn, whatever was drawn before, in whichever process and on whichever host of the same image. Filament's
 temporal dithering is off (_undither); every Filament object is made once per process, in one order; one process
 draws one site: rescue.World starts a worker process of this module per site (Cameras) and ends it with the site.
+Everything is drawn with one material (one atlas of all the maps), and everything that stands still is one mesh and
+one draw call: the order in which Filament draws two draw calls changes from process to process, and with it which
+of two surfaces a sample on their common edge shows. A body that moves is one mesh each, moved as a whole; no mesh
+is uploaded after the site is built (an upload leaks memory in this binding).
 
     cams = Cameras(seed)                 # starts the worker: python3 -I rescue_render.py --worker
     down, forward = cams.images(qpos, mocap_pos)       # uint8 (256, 256, 3) each, rows top-down
@@ -259,7 +263,7 @@ TIE_STEP = 0.00037      # a face that would lie in another's plane and over it s
 MOVING_SHRINK = 0.0005  # a moving body's boxes are drawn this much smaller: at rest against a standing part they never tie
 
 
-def describe(model, look, _boxes=None):
+def describe(model, look, _boxes=None, layout=None, seed=0):
     """(standing parts: Batches in the world frame; {body id: Batches in the body's frame}; material rules by key).
     Reads the model alone."""
     import mujoco
@@ -268,6 +272,9 @@ def describe(model, look, _boxes=None):
     G = mujoco.mjtGeom
     C = look["classes"]
     rules, moving = {}, {}
+    outdoor = float(look.get("sun", {}).get("outdoor", 0.0)) or None
+    furniture = []                                      # look_block_*: the standing things' boxes (they shade the sun)
+    windows = []
     standing = Batches()
     boxes = []                                          # the standing axis-aligned boxes, in the model's order
     floor = None
@@ -282,11 +289,40 @@ def describe(model, look, _boxes=None):
     def plain(rgba, base="plain"):
         return rule("%s_%s" % (base, _hex(rgba)), base, rgb=[float(x) for x in rgba[:3]])
 
+    PA = look.get("paints")                             # the look's paints: the model's signal colours toned, greyed, dusted
+
+    def toned(rgba, kind):
+        import rescue_marks as RM
+        t = RM.tone([float(x) for x in rgba[:3]], *RM.TONES[kind])
+        if kind == "apron":
+            return list(t)
+        l_ = [_linear(c) for c in t]
+        lum = 0.2126 * l_[0] + 0.7152 * l_[1] + 0.0722 * l_[2]
+        ds, du = float(PA["desat"]), float(PA["dust"][kind])
+        dl = [_linear(c) for c in PA["dust_rgb"]]
+        l_ = [(c * (1 - ds) + lum * ds) * (1 - du) + d_ * du for c, d_ in zip(l_, dl)]
+        return [12.92 * c if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055 for c in l_]
+
+    def paint(rgba, kind):
+        """(key) a painted part's rule: the look's paint of its kind (metal, wall, floor, mat), or the first design's"""
+        if not PA:
+            return None
+        t = toned(rgba, kind)
+        return rule("p%s_%s" % (kind, _hex(t)), "paint", rgb=t, map="norm_" + {"metal": "metal", "wall": "wall", "floor": "floor", "mat": "rubber"}[kind],
+                    tint=True, norm2=True, tile={"metal": 1.0, "wall": 2.71, "floor": 3.0, "mat": 0.6}[kind])
+
+    def flat(rgba):
+        """(key) a small or turned painted part in one colour"""
+        return plain(toned(rgba, "metal")) if PA else plain(rgba)
+
     def loose_box(dst, key, R, t, size, still):
         for n, c in box_faces(size):
             dst.quad(key, c @ R.T + t, R @ n, _UNIT)
 
     for g in range(model.ngeom):
+        if (model.geom(g).name or "").startswith("prop_"):   # a standing thing's box: it shades the sun
+            hh = np.abs(data.geom_xmat[g].reshape(3, 3)) @ model.geom_size[g]
+            furniture.append((data.geom_xpos[g] - hh, data.geom_xpos[g] + hh))
         if float(model.geom_rgba[g, 3]) <= 0.0 or int(model.geom_group[g]) > 2:
             continue
         b = int(model.geom_bodyid[g])
@@ -335,10 +371,16 @@ def describe(model, look, _boxes=None):
                 FT = model.mesh_facetexcoord[fa:fa + fn].astype(np.int64)
                 T = model.mesh_texcoord[ta:ta + int(model.mesh_texcoordnum[mid])].astype(float)
                 uv = T[FT.reshape(-1)].copy()
+                uv[:, 1] = 1.0 - uv[:, 1]               # MuJoCo keeps a mesh's v upwards; the atlas runs down a picture
                 key = rule("scan_%d" % tex, "scan", model_tex=tex)
+                if name.startswith("look_yard"):
+                    key = rule("scan_%d_out" % tex, "scan", model_tex=tex, sun=outdoor)
             else:
                 uv = np.zeros((len(P), 2))
                 key = plain(model.mat_rgba[mat] if mat >= 0 else rgba, "plain" if still else "airframe")
+                if name.startswith("look_yard"):
+                    c_ = model.mat_rgba[mat] if mat >= 0 else rgba
+                    key = rule("out_%s" % _hex(c_), "plain", rgb=[float(x) for x in c_[:3]], sun=outdoor)
             dst.add(key, P, Nv, uv, np.arange(len(P)))
             continue
 
@@ -356,7 +398,7 @@ def describe(model, look, _boxes=None):
             raise RenderError("renderer: a geom of a type the cameras do not draw (%s)" % name)
 
         if not still:                                   # a moving body's box, in the body's frame
-            loose_box(dst, plain(rgba, "metal" if dark else "plain"), R, t, np.maximum(size - MOVING_SHRINK, 1e-5), False)
+            loose_box(dst, flat(rgba) if PA else plain(rgba, "metal" if dark else "plain"), R, t, np.maximum(size - MOVING_SHRINK, 1e-5), False)
             continue
         if not np.allclose(np.abs(R), np.eye(3), atol=1e-9):
             # a standing box that is turned (a stowed deck's mat and pad, the arrow's vanes, a shut door's cross)
@@ -370,15 +412,28 @@ def describe(model, look, _boxes=None):
                     else:
                         dst.quad(plain(rgba), c @ R.T + t, R @ n, np.zeros((4, 2)))
             else:
-                loose_box(dst, plain(rgba, "metal" if dark else "plain"), R, t, size, True)
+                if name.startswith("look_"):
+                    loose_box(dst, plain(rgba), R, t, size, True)
+                elif PA and name.startswith("dispatch_") and name != "dispatch_housing":
+                    loose_box(dst, rule("led_white", "window_pane", map=None, rgb=[1.0, 0.97, 0.92]), R, t, size, True)
+                else:
+                    loose_box(dst, flat(rgba) if PA else plain(rgba, "metal" if dark else "plain"), R, t, size, True)
             continue
 
         # ---- a standing box along the axes: classified here, drawn after the ties are settled
         h = np.abs(R) @ size
+        if name.startswith("look_"):
+            for n, c in box_faces(size):
+                standing.quad(plain(rgba), c @ R.T + t, R @ n, np.zeros((4, 2)))
+            continue
         if name.startswith("slab"):
             what = "slab"
         elif name.startswith("roof"):
             what = "roof"
+        elif PA and name.startswith(("pad", "bay", "throat_")) and float(np.min(h)) < 0.01:
+            what = "pfloor"
+        elif PA and name.startswith("solid") and _near(rgba, (.32, .57, .59)):
+            what = "pwall"
         elif name.startswith(FLOOR_MARKS) or ((name.startswith("bay") or "_line" in name) and h[2] < 0.01):
             what = "mark"
         elif name.startswith("solid") and _near(rgba, WALL_RGB):
@@ -391,33 +446,28 @@ def describe(model, look, _boxes=None):
 
     if floor is not None and boxes:                     # the ground plane under the site and 3 m round it
         R, t = floor
-        x0, y0 = np.min([bx["lo"][:2] for bx in boxes], axis=0) - 3.0
-        x1, y1 = np.max([bx["hi"][:2] for bx in boxes], axis=0) + 3.0
+        gm = float(look.get("ground_margin", 3.0))
+        x0, y0 = np.min([bx["lo"][:2] for bx in boxes], axis=0) - gm
+        x1, y1 = np.max([bx["hi"][:2] for bx in boxes], axis=0) + gm
         P4 = np.array([(x0, y0, 0), (x1, y0, 0), (x1, y1, 0), (x0, y1, 0)], float) @ R.T + np.array([0.0, 0.0, t[2]])
         standing.quad(rule("floor_lower", "floor_lower"), P4, R[:, 2], _uv_world(P4, R[:, 2], C["floor_lower"]["tile"]))
     walls = [(0.5 * (bx["lo"] + bx["hi"]), 0.5 * (bx["hi"] - bx["lo"])) for bx in boxes if bx["what"] == "wall"]
     if not look.get("without_extras"):                  # (a review switch: the model's own geoms alone)
-        _extras(model, standing, boxes, walls, rule, C)
+        n_own = len(boxes)
+        windows = _extras(model, standing, boxes, walls, rule, C, panes=not look.get("window_holes"),
+                          own_frames=not look.get("look_frames"), layout=layout)
+        if look.get("sun"):
+            _sun(standing, boxes[:n_own], windows, rule, rules, C, look["sun"], furniture)
     mark_extras = look.get("mark_extras")               # (a review switch: the drawn-only parts in one glowing colour)
 
     # ---- ties. Where two faces lie in one plane, look the same way and overlap, which of them a pixel shows is
     # not a function of the scene. A wall's top in the plane of a slab's top goes 2 mm under it. Of any other such
-    # pair that would not look the same (two different surfaces, or two floor markings), one face is drawn a
-    # fraction of a millimetre proud: the face alone, so that no other face of its box changes its extent.
+    # pair one face is drawn a fraction of a millimetre proud: the face alone, so that no other face of its box changes its extent.
     for bx in boxes:
         if bx["what"] in ("wall", "skirt", "frame", "door", "lintel") and any(abs(bx["hi"][2] - z) < 1e-6 for z in (DECK, 2 * DECK)):
             bx["hi"] = bx["hi"] - np.array([0.0, 0.0, 0.002])
         bx["proud"] = np.zeros((3, 2))
 
-    def same_look(i, j):
-        a_, b_ = boxes[i], boxes[j]
-        if a_["what"] == "mark" or b_["what"] == "mark":
-            return False                                # every marking has its own picture
-        ka = "slab" if a_["what"] in ("slab", "roof") else "wall" if a_["what"] in ("wall", "lintel") else a_["what"]
-        kb = "slab" if b_["what"] in ("slab", "roof") else "wall" if b_["what"] in ("wall", "lintel") else b_["what"]
-        return ka == kb and (ka != "paint" or _hex(a_["rgba"]) == _hex(b_["rgba"]))
-
-    every = not look.get("_ties_between_looks_only")    # (a review switch)
     lo = np.array([bx["lo"] for bx in boxes])
     hi = np.array([bx["hi"] for bx in boxes])
     for k in range(3):
@@ -430,7 +480,7 @@ def describe(model, look, _boxes=None):
                     continue
                 for j in o:
                     m &= (np.minimum(hi[:i, j], hi[i, j]) - np.maximum(lo[:i, j], lo[i, j])) > 1e-6
-                used = {int(level[j]) for j in np.nonzero(m)[0] if every or not same_look(i, int(j))}
+                used = {int(level[j]) for j in np.nonzero(m)[0]}
                 lv = 0
                 while lv in used:
                     lv += 1
@@ -439,6 +489,17 @@ def describe(model, look, _boxes=None):
 
     if _boxes is not None:                              # (for a review tool: the boxes as they are drawn)
         _boxes.extend(boxes)
+    wells_x = _well_columns(model) if look.get("well_dim") else []
+    wall_y = [float(bx["hi"][1]) for bx in boxes if bx["what"] == "wall"]
+    y_north = max(wall_y) if wall_y else 0.0
+
+    def dim_of(bx):
+        """a hoist well is darker than a room: the factor of a part that stands in one"""
+        c_ = 0.5 * (bx["lo"] + bx["hi"])
+        if wells_x and c_[1] > y_north - 2.75 and any(abs(c_[0] - x) < 1.36 for x in wells_x):
+            return float(look["well_dim"])
+        return 0.0
+
     for bx in boxes:
         c, h = 0.5 * (bx["lo"] + bx["hi"]), 0.5 * (bx["hi"] - bx["lo"])
         z0 = float(bx["lo"][2])
@@ -458,6 +519,28 @@ def describe(model, look, _boxes=None):
                 else:
                     base = "concrete"
                 standing.quad(rule(base, base), P4, n, _uv_world(P4, n, C[base]["tile"]))
+        elif what == "skirt" and look.get("look_frames"):
+            continue                                    # the look's own skirting stands there
+        elif what in ("pfloor", "pwall") or (PA and what == "mark" and bx["name"].startswith("receiving_mat")):
+            kind = {"pfloor": "floor", "pwall": "wall", "mark": "mat"}[what]
+            key = paint(rgba, kind)
+            if dim_of(bx):
+                key = rule(key + "_dim", "paint", **{kk: vv for kk, vv in rules[key].items() if kk != "roughness"}, dim=dim_of(bx))
+            tile = float(rules[key]["tile"])
+            for n, P4 in faces:
+                if n[2] < -0.5 and on_floor:
+                    continue
+                standing.quad(key, P4, n, _uv_world(P4, n, tile))
+        elif what == "mark" and PA and bx["name"].startswith("apron"):
+            import hashlib
+            t = toned(rgba, "apron")
+            key = rule("apron_%s" % _hex(t), "floor_paint", apron=t, seed=int(seed))
+            fl = bool(int(hashlib.md5(bx["name"].encode()).hexdigest()[:2], 16) % 2)
+            for n, P4 in faces:
+                if n[2] > 0.5:
+                    standing.quad(key, P4, n, (1.0 - _UPRIGHT) if fl else _UPRIGHT)
+                elif n[2] > -0.5:
+                    standing.quad(plain(t), P4, n, np.zeros((4, 2)))
         elif what == "mark":
             base = "mat" if bx["name"].startswith("receiving_mat") else "floor_paint"
             key = rule("%s_%s" % (base, _hex(rgba)), base, rgb=[float(x) for x in rgba[:3]],
@@ -475,7 +558,38 @@ def describe(model, look, _boxes=None):
                     standing.quad(rule("concrete", "concrete"), P4, n, _uv_world(P4, n, C["concrete"]["tile"]))
                     continue
                 base = "wall_upper" if float(P4[:, 2].mean()) > DECK else "wall_lower"
-                standing.quad(rule(base, base), P4, n, _uv_world(P4, n, C[base]["tile"], storey=True))
+                key = rule(base, base)
+                tile = C[base]["tile"]
+                win = [w_ for w_ in windows if look.get("window_holes") and what == "wall"
+                       and np.all(np.abs(w_["lo"] - bx["lo"]) < 0.01) and np.all(np.abs(w_["hi"] - bx["hi"]) < 0.01)]
+                ka = int(np.argmax(np.abs(n)))
+                if not win or ka != win[0]["k"]:
+                    standing.quad(key, P4, n, _uv_world(P4, n, tile, storey=True))
+                    continue
+                w_ = win[0]
+                ta = 1 - ka
+                t0, t1 = float(P4[:, ta].min()), float(P4[:, ta].max())
+                zl, zh = float(P4[:, 2].min()), float(P4[:, 2].max())
+                a0, a1 = w_["at"] - w_["hw"], w_["at"] + w_["hw"]
+                for u0, u1, v0, v1 in ((t0, a0, zl, zh), (a1, t1, zl, zh), (a0, a1, zl, w_["z0"]), (a0, a1, w_["z1"], zh)):
+                    Q = _rect(ka, float(P4[0, ka]), n, u0, u1, v0, v1)
+                    standing.quad(key, Q, n, _uv_world(Q, n, tile, storey=True))
+                if n[ka] > 0:                           # once per wall: the opening's four sides
+                    k0, k1 = float(bx["lo"][ka]), float(bx["hi"][ka])
+                    for tc_, sg_ in ((a0, 1.0), (a1, -1.0)):
+                        nn = np.zeros(3)
+                        nn[ta] = sg_
+                        Q = _rect(ta, tc_, nn, k0, k1, w_["z0"], w_["z1"])
+                        standing.quad(key, Q, nn, _uv_world(Q, nn, tile, storey=True))
+                    for zc_, sg_ in ((w_["z0"], 1.0), (w_["z1"], -1.0)):
+                        nn = np.array([0.0, 0.0, sg_])
+                        c4 = [(a0, k0), (a1, k0), (a1, k1), (a0, k1)]
+                        Q = np.zeros((4, 3))
+                        for i_, (tt, kk) in enumerate(c4):
+                            Q[i_, ta], Q[i_, ka], Q[i_, 2] = tt, kk, zc_
+                        if np.cross(Q[1] - Q[0], Q[3] - Q[0]) @ nn < 0:
+                            Q = Q[::-1].copy()
+                        standing.quad(rule("concrete", "concrete"), Q, nn, _uv_world(Q, nn, C["concrete"]["tile"]))
         elif what in ("skirt", "door", "frame"):
             base = {"skirt": "skirting", "door": "door_frame", "frame": "window_frame"}[what]
             key = rule(base, base)
@@ -484,7 +598,11 @@ def describe(model, look, _boxes=None):
                     continue
                 standing.quad(key, P4, n, _uv_world(P4, n, C[base].get("tile", 1.0)))
         else:
-            key = rule("paint_%s" % _hex(rgba), "metal" if bx["dark"] else "paint", rgb=[float(x) for x in rgba[:3]])
+            key = paint(rgba, "metal") or rule("paint_%s" % _hex(rgba), "metal" if bx["dark"] else "paint", rgb=[float(x) for x in rgba[:3]])
+            if PA and bx["name"] == "dispatch_housing":
+                key = plain((0.035, 0.037, 0.04))
+            if dim_of(bx):
+                key = rule(key + "_dim", "paint", **{kk: vv for kk, vv in rules[key].items() if kk != "roughness"}, dim=dim_of(bx))
             tile = float(rules[key].get("tile", 1.0))
             for n, P4 in faces:
                 if n[2] < -0.5 and on_floor:
@@ -493,7 +611,139 @@ def describe(model, look, _boxes=None):
     return standing, moving, rules
 
 
-def _extras(model, dst, boxes, wall_boxes, rule, C):
+def _rect(axis, coord, n, u0, u1, v0, v1):
+    """A rectangle in the plane `axis` = coord, facing n: its corners. On a standing plane u runs along the other
+    level axis and v is the height; on a level plane u is x and v is y."""
+    Q = np.zeros((4, 3))
+    ua, va = ((1 - axis), 2) if axis < 2 else (0, 1)
+    for i, (u, v) in enumerate(((u0, v0), (u1, v0), (u1, v1), (u0, v1))):
+        Q[i, axis], Q[i, ua], Q[i, va] = coord, u, v
+    if np.cross(Q[1] - Q[0], Q[3] - Q[0]) @ np.asarray(n, float) < 0:
+        Q = Q[::-1].copy()
+    return Q
+
+
+def _sun(dst, boxes, windows, rule, rules, C, sun, furniture):
+    """Daylight: where a ray from a point of a floor, of a floor marking or of a wall towards the sun leaves through
+    a window of the hull without meeting a wall, a slab, a panel or a standing piece of furniture, and reaches the
+    window from outside, the surface is drawn sunlit (its own picture and a glowing copy of it). Points on a grid of
+    sun["grid"] metres; rows of sunlit points become rectangles 0.6 mm over the surface."""
+    d = np.array(sun["dir"], float)
+    d = d / math.sqrt(float(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]))
+    up = -d
+    res = float(sun.get("grid", 0.02))
+    gain = float(sun.get("gain", 1.0))
+    solid = [bx for bx in boxes if bx["what"] != "mark"]
+    lo = np.array([bx["lo"] for bx in solid] + [f[0] for f in furniture])
+    hi = np.array([bx["hi"] for bx in solid] + [f[1] for f in furniture])
+    marks = [bx for bx in boxes if bx["what"] == "mark"]
+    walls = [bx for bx in boxes if bx["what"] in ("wall", "lintel")]
+    OFF = 0.0006
+
+    def emit(key, axis, coord, n, i0, j0, lit, uv_of):
+        open_ = {}
+        for r in range(lit.shape[0] + 1):
+            runs = set()
+            if r < lit.shape[0]:
+                row = np.concatenate([[False], lit[r], [False]])
+                edges = np.nonzero(row[1:] != row[:-1])[0]
+                runs = {(int(edges[2 * e]), int(edges[2 * e + 1])) for e in range(len(edges) // 2)}
+            for run in sorted(set(open_) - runs):
+                r0 = open_.pop(run)
+                Q = _rect(axis, coord, n, (i0 + run[0]) * res, (i0 + run[1]) * res, (j0 + r0) * res, (j0 + r) * res)
+                dst.quad(key, Q, n, uv_of(Q))
+            for run in sorted(runs - set(open_)):
+                open_[run] = r
+
+    for w in windows:
+        k, t = w["k"], 1 - w["k"]
+        if abs(d[k]) < 1e-6 or d[2] > -1e-6:
+            continue
+        zf = w["floor"]
+        beam = []                                       # the window's corners and where the sun throws them on the floor
+        for a in (-1.0, 1.0):
+            for z in (w["z0"], w["z1"]):
+                q = np.zeros(3)
+                q[k], q[t], q[2] = w["plane"], w["at"] + a * w["hw"], z
+                beam += [q, q + d * ((z - zf) / (-d[2]))]
+        beam = np.array(beam)
+        blo, bhi = beam.min(0) - 0.05, beam.max(0) + 0.05
+        own = np.all(np.abs(lo - w["lo"]) < 0.01, axis=1) & np.all(np.abs(hi - w["hi"]) < 0.01, axis=1)
+        far = np.minimum(blo, blo + up * 8.0), np.maximum(bhi, bhi + up * 8.0)
+        near = np.nonzero(np.all(hi > far[0], axis=1) & np.all(lo < far[1], axis=1) & ~own)[0]
+
+        def lit_on(axis, coord, n, u0, u1, v0, v1):
+            """(first grid indices, the sunlit points) of a rectangle of the plane `axis` = coord"""
+            ua, va = ((1 - axis), 2) if axis < 2 else (0, 1)
+            u0, u1, v0, v1 = max(u0, blo[ua]), min(u1, bhi[ua]), max(v0, blo[va]), min(v1, bhi[va])
+            i0, i1, j0, j1 = int(math.ceil(u0 / res)), int(math.floor(u1 / res)), int(math.ceil(v0 / res)), int(math.floor(v1 / res))
+            if i1 - i0 < 1 or j1 - j0 < 1:
+                return None
+            gu, gv = np.meshgrid((np.arange(i0, i1) + 0.5) * res, (np.arange(j0, j1) + 0.5) * res)
+            O = np.zeros(gu.shape + (3,))
+            O[..., ua], O[..., va], O[..., axis] = gu, gv, coord + 0.001 * n[axis]
+            sw = (w["plane"] - O[..., k]) / up[k]
+            at, z = O[..., t] + up[t] * sw, O[..., 2] + up[2] * sw
+            lit = (sw > 0) & (np.abs(at - w["at"]) < w["hw"] - 0.035) & (z > w["z0"] + 0.035) & (z < w["z1"] - 0.035)
+            for b in near:
+                if not lit.any():
+                    return None
+                t0 = np.zeros(gu.shape)
+                t1 = np.full(gu.shape, 60.0)
+                for ax in range(3):
+                    if abs(up[ax]) < 1e-12:
+                        inside = (O[..., ax] > lo[b, ax]) & (O[..., ax] < hi[b, ax])
+                        t1 = np.where(inside, t1, -1.0)
+                        continue
+                    a0, a1 = (lo[b, ax] - O[..., ax]) / up[ax], (hi[b, ax] - O[..., ax]) / up[ax]
+                    t0 = np.maximum(t0, np.minimum(a0, a1))
+                    t1 = np.minimum(t1, np.maximum(a0, a1))
+                lit &= ~(t0 < t1)
+            return (i0, j0, lit) if lit.any() else None
+
+        up_n = np.array([0.0, 0.0, 1.0])
+        base = "floor_upper" if zf > 1.0 else "floor_lower"
+        got = lit_on(2, zf, up_n, blo[0], bhi[0], blo[1], bhi[1])
+        if got:
+            tile = C[base]["tile"]
+            emit(rule(base + "_sun", base, sun=gain), 2, zf + OFF, up_n, got[0], got[1], got[2], lambda Q, tile=tile: _uv_world(Q, up_n, tile))
+        for bx in marks:                                # a floor marking: its own picture, sunlit
+            top = float(bx["hi"][2])
+            if not (zf - 0.001 < top < zf + 0.05):
+                continue
+            got = lit_on(2, top, up_n, float(bx["lo"][0]), float(bx["hi"][0]), float(bx["lo"][1]), float(bx["hi"][1]))
+            if not got:
+                continue
+            mbase = "mat" if bx["name"].startswith("receiving_mat") else "floor_paint"
+            mkey = "%s_%s" % (mbase, _hex(bx["rgba"]))
+            r_ = dict(rules.get(mkey, C[mbase]))
+            key = rule(mkey + "_sun", mbase, **{kk: vv for kk, vv in r_.items() if kk in ("rgb", "map")}, sun=gain)
+            F0 = np.array([bx["lo"][0], bx["lo"][1]])
+            ext = np.array([bx["hi"][0] - bx["lo"][0], bx["hi"][1] - bx["lo"][1]])
+            emit(key, 2, top + OFF, up_n, got[0], got[1], got[2], lambda Q, F0=F0, ext=ext: (Q[:, :2] - F0) / ext)
+        for bx in walls:                                # the walls' faces that look towards the sun
+            if np.all(np.abs(bx["lo"] - w["lo"]) < 0.01) and np.all(np.abs(bx["hi"] - w["hi"]) < 0.01):
+                continue
+            if np.any(bx["hi"] < blo) or np.any(bx["lo"] > bhi):
+                continue
+            for axis in (0, 1):
+                for sg in (-1.0, 1.0):
+                    if sg * d[axis] >= -1e-6:
+                        continue
+                    n = np.zeros(3)
+                    n[axis] = sg
+                    coord = float(bx["hi"][axis] if sg > 0 else bx["lo"][axis])
+                    oa = 1 - axis
+                    got = lit_on(axis, coord, n, float(bx["lo"][oa]), float(bx["hi"][oa]), float(bx["lo"][2]), float(bx["hi"][2]))
+                    if not got:
+                        continue
+                    wb = "wall_upper" if 0.5 * (bx["lo"][2] + bx["hi"][2]) > DECK else "wall_lower"
+                    tile = C[wb]["tile"]
+                    emit(rule(wb + "_sun", wb, sun=gain), axis, coord + OFF * sg, n, got[0], got[1], got[2],
+                         lambda Q, n=n, tile=tile: _uv_world(Q, n, tile, storey=True))
+
+
+def _extras(model, dst, boxes, wall_boxes, rule, C, panes=True, own_frames=True, layout=None):
     """Drawn only: windows in the outer hull's wall segments and frames in the ordinary doorways. Both follow from
     the model's own plastered wall boxes. The hull: the wing's west, east and north walls on both storeys and its
     staging row's west and east walls (where the wall boxes of the wing end in x and in y), but not behind the
@@ -501,7 +751,7 @@ def _extras(model, dst, boxes, wall_boxes, rule, C):
     stand from the floor to the slab (the hoist wells' thresholds stay open). Frames are added to `boxes`; panes
     are drawn here."""
     if not wall_boxes:
-        return
+        return []
     Wc = np.array([c for c, _ in wall_boxes])
     Wh = np.array([h for _, h in wall_boxes])
     k_of = np.argmin(Wh[:, :2], axis=1)
@@ -512,6 +762,7 @@ def _extras(model, dst, boxes, wall_boxes, rule, C):
     ys = Wc[thin & full & wing & (k_of == 1), 1]
     X0, X1, Y1 = float(xs.min()), float(xs.max()), float(ys.max())
     wells = _well_columns(model)
+    windows = []
     pane = rule("window_pane", "window_pane")
     if C.get("window_pane", {}).get("flat"):
         pane = rule("marked", "window_pane")
@@ -525,13 +776,15 @@ def _extras(model, dst, boxes, wall_boxes, rule, C):
     for c, h in wall_boxes:
         k = int(np.argmin(h[:2]))
         t = 1 - k
-        if h[2] < 1.25 or h[t] < 1.15 or h[k] > 0.08 or c[1] < 0.5 or C.get("_no_windows"):
+        if h[2] < 1.25 or h[t] < 1.15 or h[k] > 0.08 or c[1] < 0.5:
             continue
         if not ((k == 0 and (abs(c[0] - X0) < 0.1 or abs(c[0] - X1) < 0.1)) or (k == 1 and abs(c[1] - Y1) < 0.1)):
             continue
         if k == 1 and any(abs(c[0] - x) < 1.3 for x in wells):
             continue                                    # the hoist guides run up the back wall there
         zb = float(c[2] - h[2])
+        windows.append({"k": k, "plane": float(c[k]), "at": float(c[t]), "floor": zb, "hw": hw, "z0": zb + sill, "z1": zb + head,
+                        "lo": c - h, "hi": c + h})
         for side in (-1.0, 1.0):                        # on both faces of the wall
             n = np.zeros(3)
             n[k] = side
@@ -541,7 +794,8 @@ def _extras(model, dst, boxes, wall_boxes, rule, C):
             right = np.cross(np.array([0.0, 0.0, 1.0]), n)   # to the right of somebody who looks at this face
             P4 = np.array([gc + a * hw * right + np.array([0, 0, bz * (head - sill) / 2])
                            for a, bz in ((-1, -1), (1, -1), (1, 1), (-1, 1))])
-            dst.quad(pane, P4, n, _UPRIGHT)
+            if panes:
+                dst.quad(pane, P4, n, _UPRIGHT)
             for dt, dz, ht, hz in ((-hw + fb / 2, 0, fb / 2, (head - sill) / 2), (hw - fb / 2, 0, fb / 2, (head - sill) / 2),
                                    (0, 0, 0.018, (head - sill) / 2 - fb), (0, (head - sill) / 2 - fb / 2, hw - fb, fb / 2),
                                    (0, -(head - sill) / 2 + fb / 2, hw - fb, fb / 2), (0, 0.12, hw - fb, 0.014)):
@@ -550,12 +804,28 @@ def _extras(model, dst, boxes, wall_boxes, rule, C):
                 fc[2] += dz
                 fc[k] += side * 0.010
                 fh[t], fh[k], fh[2] = ht, 0.014 - (0.002 if abs(dz) == 0.12 else 0.0), hz
-                add("frame", fc, fh)
+                if own_frames:
+                    add("frame", fc, fh)
+    if layout is not None:                              # the receiving room: a glazed double door in its south wall, a window in its west wall
+        pcx, pcy = (float(v) for v in layout.pocket)
+        ps = pcy - 2.30
+        sd = -1.0 if float(layout.receiving_pad[0]) < pcx else 1.0      # the open station's side
+        for c, h in wall_boxes:
+            k = int(np.argmin(h[:2]))
+            zb = float(c[2] - h[2])
+            w_ = None
+            if k == 1 and abs(c[1] - ps) < 0.12 and h[0] > 3.0:
+                w_ = {"at": pcx + sd * (5.45 - 1.25), "hw": 0.70, "z0": zb + 0.04, "z1": zb + 2.08}
+            elif k == 0 and abs(c[0] - (pcx + sd * 5.45)) < 0.12 and h[1] > 2.0:
+                w_ = {"at": ps + 1.25, "hw": hw, "z0": zb + sill, "z1": zb + head}
+            if w_:
+                w_.update({"k": k, "plane": float(c[k]), "floor": zb, "lo": c - h, "hi": c + h})
+                windows.append(w_)
     seen = set()
     for i, (c, h) in enumerate(wall_boxes):
         k = int(np.argmin(h[:2]))
         t = 1 - k
-        if h[k] > 0.08 or h[2] < 1.25 or C.get("_no_doors"):
+        if h[k] > 0.08 or h[2] < 1.25:
             continue
         for j, (c2, h2) in enumerate(wall_boxes):
             if j <= i or int(np.argmin(h2[:2])) != k or abs(c2[k] - c[k]) > 1e-6 or abs(c2[2] - c[2]) > 1e-6 or h2[2] < 1.25:
@@ -585,11 +855,13 @@ def _extras(model, dst, boxes, wall_boxes, rule, C):
             hc, hh = cen.copy(), np.zeros(3)
             hc[2] = zb + 2.13
             hh[t], hh[k], hh[2] = gap / 2 + 0.06, 0.087, 0.03
-            add("door", hc, hh)
+            if own_frames:
+                add("door", hc, hh)
             wc, wh = cen.copy(), np.zeros(3)
             wc[2] = zb + (2.16 + DECK - SLAB) / 2
             wh[t], wh[k], wh[2] = gap / 2, 0.075, (DECK - SLAB - 2.16) / 2
             add("lintel", wc, wh)
+    return windows
 
 
 def _well_columns(model):
@@ -630,6 +902,7 @@ class Worker(object):
     VIEW_GET_DITHERING = "_ZNK8filament4View12getDitheringEv"
 
     def __init__(self, seed, look=None, render_dir=None):
+        self.seed = int(seed)
         import mujoco
         self.mj = mujoco
         self.look = look or json.load(open(LOOK_FILE))
@@ -691,7 +964,7 @@ class Worker(object):
         lp.intensity = float(look["ibl"]["intensity"]) * float(look.get("exposure_scale", 1.0)) * float(self.layout.tone)
         self.ibl = self.ctx.create_light(lp)
         self.fscn.add_light(self.ibl)
-        self._scene(*describe(self.model, look))
+        self._scene(*describe(self.model, look, layout=self.layout, seed=int(getattr(self, 'seed', 0))))
         size = SIZE * self.k
         self.buf = np.zeros((size, size, 3), np.uint8)
         self.tgt = self.ctx.create_render_target(F.RenderTargetConfig(color_format=F.PixelFormat.PIXEL_FORMAT_RGB8))
@@ -722,9 +995,19 @@ class Worker(object):
             except OSError as exc:
                 raise RenderError("renderer: the render bundle lacks %s: %s" % (path, exc))
             if rule.get("tint") and rgb is not None:    # the model's colour (an sRGB value) under the map (a wear pattern), in linear light
-                q = np.array([int(round(65536 * _linear(min(1.0, max(0.0, float(c)))))) for c in rgb[:3]], np.uint64)
+                k2 = 2.0 if rule.get("norm2") else 1.0   # norm2: the map holds half its value (it varies round 1)
+                q = np.array([int(round(65536 * k2 * float(rule.get("dim") or 1.0) * _linear(min(1.0, max(0.0, float(c)))))) for c in rgb[:3]], np.uint64)
                 img = back[np.minimum((fwd[img].astype(np.uint64) * q) >> 16, 65535)]
             return img, "tile" in rule, glow
+        if rule.get("apron"):                           # a door apron: worn paint over the floor's concrete, from the site's seed
+            import rescue_marks as RM
+            from PIL import Image
+            path = os.path.join(self.dir, "mark_base.png")
+            try:
+                base = np.ascontiguousarray(np.asarray(Image.open(path).convert("RGB")))
+            except OSError as exc:
+                raise RenderError("renderer: the render bundle lacks %s: %s" % (path, exc))
+            return np.ascontiguousarray(RM.apron_picture(rule["apron"], int(rule.get("seed", 0)), base, 256)), False, glow
         c = [int(round(255 * min(1.0, max(0.0, float(x))))) for x in (rgb if rgb is not None else (0.5, 0.5, 0.5))[:3]]
         return np.tile(np.array(c, np.uint8), (4, 4, 1)), False, glow
 
@@ -762,6 +1045,11 @@ class Worker(object):
             x0, y0, w, h = place[key]
             pad = np.pad(img, ((G, G), (G, G), (0, 0)), mode="wrap" if tiled else "edge")
             (glowing if glow else colour)[y0 - G:y0 + h + G, x0 - G:x0 + w + G] = pad
+            sun = rules[key].get("sun")
+            if sun:                                     # a sunlit surface: its picture, and the same picture glowing
+                fwd, back = self.tables
+                q = np.uint64(int(round(65536 * float(sun))))
+                glowing[y0 - G:y0 + h + G, x0 - G:x0 + w + G] = back[np.minimum((fwd[pad].astype(np.uint64) * q) >> np.uint64(16), 65535)]
         self.atlas = [self._texture8(colour), self._texture8(glowing)]
 
         def to_atlas(key, uv):
@@ -894,10 +1182,9 @@ class Worker(object):
         if width <= 0.0:
             width = (float(a.frustum_top) - float(a.frustum_bottom)) / 2.0
         F = self.F
-        ns = float(self.look["render"].get("_near_scale", 1.0))        # (a review switch)
         return F.Camera(pos=pos.astype(np.float32), forward=np.asarray(a.forward, np.float32), up=np.asarray(a.up, np.float32),
-                        frustum_center=float(a.frustum_center) * ns, frustum_width=width * ns, frustum_bottom=float(a.frustum_bottom) * ns,
-                        frustum_top=float(a.frustum_top) * ns, frustum_near=float(a.frustum_near) * ns,
+                        frustum_center=float(a.frustum_center), frustum_width=width, frustum_bottom=float(a.frustum_bottom),
+                        frustum_top=float(a.frustum_top), frustum_near=float(a.frustum_near),
                         frustum_far=float(self.look["render"].get("far", 60.0)))
 
     def draw(self, state):
