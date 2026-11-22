@@ -41,6 +41,12 @@ summary = "A fixed Franka Panda must switch and set cooktop burners, ovens and m
 platforms = ["arm"]
 stages = ["behavior"]
 
+[lab_sample_handling]
+title = "Load a centrifuge from a worklist with a Panda"
+summary = "A fixed Franka Panda weighs opaque sample tubes, pairs them by mass and loads them through a centrifuge's single port by turning a one-way rotor whose response is hidden per unit."
+platforms = ["arm"]
+stages = ["behavior"]
+
 [longtail_manipulation_recovery]
 title = "Rescue failed kitchen jobs with a mobile Panda"
 summary = "Write the fallback controller of a mobile Panda: from the exact states where a learned policy failed its kitchen jobs, finish them from the robot's cameras, joint readings and wrist force."
@@ -131,6 +137,12 @@ summary = "Watch an automated car's camera and planner, let the planner drive wh
 platforms = ["ground"]
 stages = ["behavior"]
 
+[earthquake_search_and_rescue]
+title = "Find a quake survivor with a rescue crawler"
+summary = "Program a tracked rescue robot to search a collapsed building with its own sensors, clear debris, find a survivor, leave a kit and come back."
+platforms = ["ground"]
+stages = ["behavior"]
+
 [racecar_cad_design_from_photos]
 title = "Model a tenth-scale race car in CAD"
 summary = "Rebuild the lost CAD of a tenth-scale autonomous race car's 23 made parts in FreeCAD from photos of its staged teardown, and assemble them with its given parts."
@@ -167,6 +179,12 @@ summary = "Plan, from RGB-D images alone, how a dexterous hand posts all eleven 
 platforms = ["hand"]
 stages = ["behavior"]
 
+[dexterous_hand_cad_design_from_photos]
+title = "Model a four-digit robot hand in CAD"
+summary = "Rebuild the lost CAD of a four-digit robot hand's 52 printed parts in FreeCAD from photos of its staged teardown, and assemble them with its 53 bought parts."
+platforms = ["hand"]
+stages = ["hardware-design"]
+
 [hot3d_sharpa_retarget]
 title = "Retarget human hand motion to robot hands"
 summary = "Turn clips of people moving objects with both hands into joint targets that make a pair of Sharpa robot hands move the objects the same way."
@@ -190,6 +208,12 @@ title = "Scout a warehouse and dock a loaded Go1"
 summary = "Survey a warehouse by drone, then walk a loaded quadruped joint by joint under a duct and over a deck to its dock, correcting for a load and clearances that differ per site."
 platforms = ["quadruped"]
 stages = ["behavior"]
+
+[humanoid_leg_cad_design_from_photos]
+title = "Model a humanoid leg in CAD"
+summary = "Rebuild the lost CAD of the 19 made parts of a humanoid robot's right leg in FreeCAD from photos of its staged teardown, and assemble them with its given components and the leg's joints."
+platforms = ["humanoid"]
+stages = ["hardware-design"]
 
 [quadruped_cad_design_from_photos]
 title = "Model a quadruped in CAD"
