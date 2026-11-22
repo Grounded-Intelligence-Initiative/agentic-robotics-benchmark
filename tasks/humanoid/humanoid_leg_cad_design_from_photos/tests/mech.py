@@ -1,4 +1,4 @@
-"""The mechanism criterion of humanoid_cad_design_from_photos (grade.py rules 9-11). The grader never runs FreeCAD's
+"""The mechanism criterion of humanoid_leg_cad_design_from_photos (grade.py rules 9-11). The grader never runs FreeCAD's
 solver: every quantity here is computed from the saved placements of the document and from the given parts' poses.
 
 Pure functions on plain tables (numpy only), so the small cases of the rules can be fed to them directly. Units mm,

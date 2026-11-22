@@ -1,4 +1,4 @@
-"""humanoid_cad_design_from_photos: a process of the agent account that outlives the verify-start kill (the base image's
+"""humanoid_leg_cad_design_from_photos: a process of the agent account that outlives the verify-start kill (the base image's
 supervisord respawns the desktop it runs as that account) is frozen, not held against the submission; one that is still
 running once frozen still voids the run (task error).
 
@@ -29,7 +29,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-TESTS = Path(__file__).resolve().parents[1] / "tasks/humanoid/humanoid_cad_design_from_photos/tests"
+TESTS = Path(__file__).resolve().parents[1] / "tasks/humanoid/humanoid_leg_cad_design_from_photos/tests"
 RUNTIME = TESTS / "lockdown_runtime.py"
 VERIFY = TESTS / "verify.py"
 

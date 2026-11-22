@@ -1,4 +1,4 @@
-"""Grader of humanoid_cad_design_from_photos (the leg as designed is the ground truth). Root, verify stage, agent gone.
+"""Grader of humanoid_leg_cad_design_from_photos (the leg as designed is the ground truth). Root, verify stage, agent gone.
 
 forked from tasks/ground/racecar_cad_design_from_photos/tests/verify.py (benchmark main 850dee3, sha256
 da34edc526dbcbb401358dd193936002d0e0b98630d0d9549ce543a3fc715d9c). Changes: the document is leg.FCStd (set on the vendored,

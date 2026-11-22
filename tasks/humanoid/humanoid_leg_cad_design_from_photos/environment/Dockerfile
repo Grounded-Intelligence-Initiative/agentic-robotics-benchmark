@@ -1,4 +1,4 @@
-# humanoid_cad_design_from_photos's environment image (hardware-design stage of the humanoid platform, FreeCAD MCP
+# humanoid_leg_cad_design_from_photos's environment image (hardware-design stage of the humanoid platform, FreeCAD MCP
 # version).
 #
 # `environment/` without its `setup/` folder is the sole build context and the final stage derives DIRECTLY from the
@@ -107,7 +107,7 @@ RUN printf '%s\n' 'export BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800' 'export CLAUDE_STRE
 # ---- task assets ---------------------------------------------------------------------------------------------------
 # The photo set and the given components' files (the outer thigh shell's BREP file, STEP files, data sheets and
 # drawings) live in the benchmark's Hugging Face asset repository
-# (tasks/humanoid/humanoid_cad_design_from_photos/payload/ there). They are fetched at the commit pinned in
+# (tasks/humanoid/humanoid_leg_cad_design_from_photos/payload/ there). They are fetched at the commit pinned in
 # assets.sha256 and checked file by file; environment/setup/setup.sh stages them into the agent home, and in the
 # separate verifier sandbox the grader reads the given components' files from this folder. fetch_assets.py is the
 # benchmark's canonical copy (shared/task_assets/) and the repository named in assets.sha256 is written from

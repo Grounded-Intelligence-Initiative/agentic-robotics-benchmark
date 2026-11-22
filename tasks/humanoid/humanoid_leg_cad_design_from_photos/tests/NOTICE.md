@@ -1,4 +1,4 @@
-# Sources of humanoid_cad_design_from_photos
+# Sources of humanoid_leg_cad_design_from_photos
 
 This note says where the task's robot leg and its other material come from. The agent never sees this folder; everything
 the agent sees uses generic names and invented part numbers only.
@@ -96,7 +96,7 @@ can follow the leg's poses. None of the set's assets is shipped with the task: o
 ## Where the files are
 
 The payload (photographs, `given/`, `parts_list.md`, `hardware_sheet.md`) is served by the benchmark's asset dataset
-under `tasks/humanoid/humanoid_cad_design_from_photos/payload/`, at the commit pinned in `environment/assets.sha256`.
-The hidden truth is in this folder and in `../solution/reference/` and is never part of the payload. The public source
-files of the robot's model are listed by digest in `public_blocklist.json`; a submission that contains one of them
-scores 0.
+under `tasks/humanoid/humanoid_leg_cad_design_from_photos/payload/`, at the commit pinned in
+`environment/assets.sha256`. The hidden truth is in this folder and in `../solution/reference/` and is never part of the
+payload. The public source files of the robot's model are listed by digest in `public_blocklist.json`; a submission that
+contains one of them scores 0.

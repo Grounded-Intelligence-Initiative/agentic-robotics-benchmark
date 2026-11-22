@@ -1,4 +1,4 @@
-"""Grader of humanoid_cad_design_from_photos: the extracted FreeCAD document of the leg against the leg as designed
+"""Grader of humanoid_leg_cad_design_from_photos: the extracted FreeCAD document of the leg against the leg as designed
 (reference/), in millimetres. Root, verify stage, agent gone; reads data only. FreeCAD's assembly solver is never run:
 every quantity comes from the placements as saved.
 

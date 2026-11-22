@@ -1,4 +1,4 @@
-# humanoid_cad_design_from_photos: grading notes for maintainers
+# humanoid_leg_cad_design_from_photos: grading notes for maintainers
 
 The agent never sees this folder. It holds the grader, the hidden truth of the made parts and the numbers of the
 grading; this note says where each of them is, what a reader of a result should know and how to grade a document by

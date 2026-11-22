@@ -1,4 +1,4 @@
-# humanoid_cad_design_from_photos: the hardware-design (CAD) stage for the right leg of a humanoid robot (an atomic
+# humanoid_leg_cad_design_from_photos: the hardware-design (CAD) stage for the right leg of a humanoid robot (an atomic
 # task). A design engineer re-creates the lost CAD of the leg's made parts (19 parts in 18 shapes: printed polymer,
 # printed steel, machined aluminium, steel bar) in FreeCAD 1.1 from one fixed photo set (rendered with Blender Cycles:
 # the complete leg in three poses, a disassembly sequence, every made part on a cutting mat from both sides, close-ups)
@@ -26,7 +26,7 @@ schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission"]
 
 [task]
-name = "grounded-intelligence-initiative/humanoid_cad_design_from_photos"
+name = "grounded-intelligence-initiative/humanoid_leg_cad_design_from_photos"
 
 [metadata]
 platform = "humanoid"
