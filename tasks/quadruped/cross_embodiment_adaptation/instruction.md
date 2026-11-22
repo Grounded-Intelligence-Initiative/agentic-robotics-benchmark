@@ -73,7 +73,7 @@ Only the UAV uses the survey frame: origin at the UAV's first camera centre proj
 and +Y north. The Go1 is absent during the survey. It deploys with its own launch position and yaw; there is no
 common tracker, compass, launch mark or target pose on the map. To transfer a route, use the same fixed objects
 as seen from above and from the Go1. Steel bollards with identical green spherical safety caps (radius 0.105 m,
-centres 0.72 m above the floor) stand around the staging bay and along both long walls of the hall, nine in
+centres 0.72 m above the floor) stand around the staging bay and along both long walls of the hall, eleven in
 the survey. Their arrangement varies; the caps carry no identifiers.
 
 ## Phase 0: UAV

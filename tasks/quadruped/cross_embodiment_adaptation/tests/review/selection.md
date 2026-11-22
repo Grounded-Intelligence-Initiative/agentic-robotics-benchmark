@@ -66,7 +66,7 @@ The rule, written before any site was generated with it:
 | middle rack | two openings (centres 0.66-0.80 m either side of the hall's axis, half-widths 0.42-0.46 m); a 1.2 x 0.8 x 0.14 m pallet on its short edge closes one (bit 30) |
 | pallet moved | bit 27: it stands in the other opening when the Go1 arrives |
 | dock moved | bit 43: 0.10-0.25 m west and 0.10-0.25 m north or south (stream 3706); the beacon moves with it |
-| bollards | nine in the survey (five round the staging bay, four along the rails; six along the rails until version 9); 24 mast exposures a deployment (40 until version 8); bit 37: one of them is gone, or one is added on a rail (stream 3706) |
+| bollards | eleven in the survey (five round the staging bay, six along the rails; four along the rails in version 9 only); 24 mast exposures a deployment (40 until version 8); bit 37: one of them is gone, or one is added on a rail (stream 3706) |
 | odometry | heading error rate within +/-0.80 degrees per second (0.40 until version 8), distance factor 0.94-1.06 (stream 3703) |
 | encoders, IMU | noise 0.002 rad / 0.01 rad/s / 0.01 and constant biases within 0.008 rad / 0.015 rad/s (stream 3705) |
 | UAV tracking | displacement factor 0.97-1.03 (stream 3703) |
@@ -181,3 +181,11 @@ four (two along each long wall, near x = 2.85 m and x = 4.95 m, each within 0.30
 survey. The audit's line, also set here: at least two caps in view of the mast camera at every 0.4 m of the route
 (two caps with their ranges fix a position and a heading), the pallet in view before the middle rack and the
 beacon before the dock, on every graded site. The oracle has to dock all sixteen.
+
+## The rail bollards back to six (version 10, 2026-11-22)
+
+A revert, written before it is built: the step from six rail bollards to four moved nothing on the program it
+was measured with (7 of 16 both ways, 7 against 6 of 32) and lowered the audit's own line from three caps in view
+to two. The rail bollards are six again (near x = 2.30, 3.95 and 5.60 m on each long wall, eleven in the survey),
+and the audit's line is three caps in view at every 0.4 m of the route, the pallet in view before the middle rack
+and the beacon before the dock, on every graded site. The oracle has to dock all sixteen.
