@@ -1,6 +1,6 @@
 # endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/ale-robotics-assets
-# revision: 0000000000000000000000000000000000000000
+# revision: 3e3af109d4d6eb40f3490af2608b57681c94fa24
 # prefix: tasks/hand/dexterous_hand_full_assembly_16dof_panda/payload
 589e1709bb6a6e5fc2d0e39d92f9b9e1b3cd43da8a3e89826ef5001c7e9f3ca7  given/manual/photo_01.jpg
 c215a9d9229e4a769d856fbd540eb552a2f0ed39e53fa21c4be5ac915396846f  given/manual/photo_02.jpg
