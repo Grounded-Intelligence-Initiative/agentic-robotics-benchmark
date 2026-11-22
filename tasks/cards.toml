@@ -41,6 +41,12 @@ summary = "A fixed Franka Panda must switch and set cooktop burners, ovens and m
 platforms = ["arm"]
 stages = ["behavior"]
 
+[lab_sample_handling]
+title = "Load a centrifuge from a worklist with a Panda"
+summary = "A fixed Franka Panda weighs opaque sample tubes, pairs them by mass and loads them through a centrifuge's single port by turning a one-way rotor whose response is hidden per unit."
+platforms = ["arm"]
+stages = ["behavior"]
+
 [longtail_manipulation_recovery]
 title = "Rescue failed kitchen jobs with a mobile Panda"
 summary = "Write the fallback controller of a mobile Panda: from the exact states where a learned policy failed its kitchen jobs, finish them from the robot's cameras, joint readings and wrist force."
@@ -191,6 +197,12 @@ summary = "Program a Unitree G1 humanoid to clean a studio apartment after a din
 platforms = ["humanoid"]
 stages = ["behavior"]
 
+[humanoid_leg_cad_design_from_photos]
+title = "Model a humanoid leg in CAD"
+summary = "Rebuild the lost CAD of the 19 made parts of a humanoid robot's right leg in FreeCAD from photos of its staged teardown, and assemble them with its given components and the leg's joints."
+platforms = ["humanoid"]
+stages = ["hardware-design"]
+
 [quadruped_cad_design_from_photos]
 title = "Model a quadruped in CAD"
 summary = "Rebuild the lost CAD of a student-modified 12-joint quadruped in FreeCAD from photos of its teardown, so it can be re-printed and simulated."
@@ -292,6 +304,12 @@ title = "Fly a gate course by camera alone"
 summary = "Fly a Crazyflie through four coloured gates in order and hover at a goal, using only its onboard RGB camera."
 platforms = ["uav"]
 stages = ["control"]
+
+[rov_cad_design_from_photos]
+title = "Model an inspection ROV in CAD"
+summary = "Rebuild the lost CAD of an eight-thruster inspection ROV's 31 made parts in FreeCAD from photos of its staged teardown, and assemble them with its 20 purchased modules."
+platforms = ["underwater"]
+stages = ["hardware-design"]
 
 [rov_final_assembly_and_trim_single_arm]
 title = "Assemble and trim an ROV with a 6-DoF arm"

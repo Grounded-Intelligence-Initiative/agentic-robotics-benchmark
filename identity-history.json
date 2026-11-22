@@ -18,6 +18,12 @@
     "spec_hash": "sha256:0666582595f4edfb056b6d64162a915349d51d0fb88d04405fe736614fe59c39"
   },
   {
+    "content_digest": "sha256:98279e7ebaf67d026a2b757d92ae8134343b7533d0a7ed08c6b1e5f474261333",
+    "since": "2026-11-21T01:57:22Z",
+    "slug": "aerial_search_geolocation",
+    "spec_hash": "sha256:924db70bc162482ae10d2710fc78184aa6ea92897643eedabdcb045b4553880f"
+  },
+  {
     "content_digest": "sha256:284d6c020fdcdc0ccd1297970476db24e441bd53b65e961fa025420249bddafd",
     "since": "2026-11-20T23:33:51Z",
     "slug": "aerial_search_geolocation",
@@ -492,6 +498,12 @@
     "spec_hash": "sha256:843c23ff6a0675fefd52325890f73c8978cb6073fabdbddb447002d1a72bcf5d"
   },
   {
+    "content_digest": "sha256:051034fb1873dfdc229d724a01f205377585865b0f7179f9079ff875177c3659",
+    "since": "2026-11-22T06:19:52Z",
+    "slug": "humanoid_leg_cad_design_from_photos",
+    "spec_hash": "sha256:f0d4f456229c98f0bf8bfe0e44cba0c971eeaecf0bbfb6416a2fc7e4c90f7faa"
+  },
+  {
     "content_digest": "sha256:93a0b7571aeacd9fb8fdd71a20bc203af0095f25b3356d576183400d20834e4a",
     "since": "2026-11-20T23:33:51Z",
     "slug": "keyed_nut_peg_assembly",
@@ -532,6 +544,12 @@
     "since": "2026-11-17T04:29:17Z",
     "slug": "kitchen_appliance_tending",
     "spec_hash": "sha256:a7b468a63ef51fb16a67f51e6f44777636bf8a4e5e0dfdf3940c1393dffecef9"
+  },
+  {
+    "content_digest": "sha256:2f63cf392ba77f0bb8818960e7a8510f3155ad03fcedcfecda1825b9b375c457",
+    "since": "2026-11-21T06:45:40Z",
+    "slug": "lab_sample_handling",
+    "spec_hash": "sha256:0d2a96af8a34aea16bcab25acd50759aae60b555106839eaa5c2f88b5d7d0159"
   },
   {
     "content_digest": "sha256:a6ce9d1c8351187067f01e44e0e938009606e98d3c893427fe27e8b23c5f8e75",
@@ -606,8 +624,20 @@
     "spec_hash": "sha256:7a19fd2daf742a92fb74ec918545fefe6ce4ccdd6191ca5cc16e79bc6f3a7dda"
   },
   {
+    "content_digest": "sha256:63148b0f99ecf90781f80de5e7850a7b0f334f4e45ebe8ec4ad1647ebdeff884",
+    "since": "2026-11-21T02:24:44Z",
+    "slug": "pantry_jar_refilling",
+    "spec_hash": "sha256:19059907e008b01532d94f0fa43fe4077c7358812cceff9d5d3758a279054beb"
+  },
+  {
     "content_digest": "sha256:9b349aa8e713d70d1dc25528f8532b111973628ce4aafdd4a7ac9dc91b86968a",
     "since": "2026-11-20T23:33:51Z",
+    "slug": "pantry_jar_refilling",
+    "spec_hash": "sha256:a1dd144b8134ab5a5fd83bda87b795b07af29489ff0cfbd03cb74a1f1d864d6c"
+  },
+  {
+    "content_digest": "sha256:10adf9451fe296d93f8a2848aac948dd79b4fc9b40654aa7eb530068010edff3",
+    "since": "2026-11-20T23:29:03Z",
     "slug": "pantry_jar_refilling",
     "spec_hash": "sha256:a1dd144b8134ab5a5fd83bda87b795b07af29489ff0cfbd03cb74a1f1d864d6c"
   },
@@ -1264,6 +1294,12 @@
     "since": "2026-11-16T05:02:14Z",
     "slug": "robotic_arm_robot_description_from_photos",
     "spec_hash": "sha256:f182662473459046382635e319a3ffcac3319036f3f8cc6ef1a81baff86764aa"
+  },
+  {
+    "content_digest": "sha256:48ff43f4fc9b379b2399312a625641952705fded85be807bee7f6c490062a0b4",
+    "since": "2026-11-21T03:24:10Z",
+    "slug": "rov_cad_design_from_photos",
+    "spec_hash": "sha256:b3c6df02c6687dea5949ed462e45c6709ec6e489230bd3682d38ae8b5595d1e5"
   },
   {
     "content_digest": "sha256:b55d767083dda93b55c4684522d1712480ee05ad0582e0caf23135f1090e52c6",
