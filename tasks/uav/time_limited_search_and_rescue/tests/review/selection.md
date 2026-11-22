@@ -32,3 +32,21 @@ no image: the candidates are flown by the privileged pilot, which reads none, in
 eight sites are unchanged, and `tests/hidden/` is byte for byte what it was. The grader's own flights of the
 privileged pilot on the eight sites with the new cameras repeat the earlier ones action for action (443, 478, 509,
 484, 508, 503, 541 and 487 actions), so the anchor stands. The rule's version stays 1.
+
+## Amendment 2 (2026-11-22): the scene holds furniture, stock and a new litter; written before the candidates were flown again
+
+The site now contains what the approved pictures show: stock and furniture along walls, wall items, ceiling lamps,
+the receiving room's furniture, a yard, a basket litter with a clothed casualty and a lifting receiver
+(`tests/runtime/rescue_dressing.py`). Every standing thing is a box in the contact check (kind `prop`), so a flight
+can now end on one. The cameras see all of it. What this changes for the selection, decided here before any
+candidate is flown in the new scene:
+
+- The rule (steps 1 to 5 above) is unchanged, and so are the candidates: the 96 seeds `39000000 + k`. The rule's
+  version becomes 2 because the simulated scene, and with it step 2's outcome and step 4's action counts, can change.
+- `select_sites.py` is run once on the new scene and writes `tests/hidden/` again. A candidate the privileged pilot
+  does not hand off in the new scene is dropped as step 2 says; neither the pilot nor the placement rule is changed
+  afterwards for the sake of a candidate. (The placement rule was fixed on development seeds 8000 to 8199 only:
+  sixteen of them were flown, two showed a contact, and the rule got the litter's own length, the way from it to
+  its room's centre and the turning points over the receiving pads and in the pocket as places to keep free.)
+- The eight sites may therefore differ from the earlier eight. Scores measured on the earlier set are history.
+- No image, no model result and no unprivileged pilot's result enters the choice, as before.

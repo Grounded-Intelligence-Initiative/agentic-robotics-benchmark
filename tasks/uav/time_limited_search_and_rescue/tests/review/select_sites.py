@@ -11,7 +11,7 @@ sys.path[:0] = [str(TASK/"tests"/"runtime"), str(TASK/"solution"/"oracle")]
 from rescue import World  # noqa: E402
 import pilot as P  # noqa: E402
 
-BASE, COUNT, RULE = 39000000, 96, 1
+BASE, COUNT, RULE = 39000000, 96, 2
 
 
 class InProcess:
