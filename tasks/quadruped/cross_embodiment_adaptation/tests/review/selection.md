@@ -237,3 +237,8 @@ Rules, each fixed here:
    both validation hosts, checked on development sites before the graded set is run.
 8. Saved programs of earlier versions are replayed for reference only; they were written for other pictures.
    Anchor and `full_at` are unchanged.
+
+Amendment to rule 4, written while building and before any pad episode or site was run with the new cameras: the
+pad keeps the bay's four boundary barriers (drawn, and contact with one ends the episode as a bollard does). Without
+them a pad episode could walk into the hall's dressing, which has no contact. The pad's pallet and beacon are drawn
+inside the bay, at least 0.9 m apart.

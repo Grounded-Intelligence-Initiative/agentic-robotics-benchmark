@@ -16,7 +16,7 @@ TOOLS = [
                      "required": ["detent"], "additionalProperties": False}},
     {"name": "robot_new_site", "description": "Commission another survey site (UAV only).",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
-    {"name": "robot_pad", "description": "Start a commissioning-pad episode: a loaded Go1 on a bare floor among bollards.",
+    {"name": "robot_pad", "description": "Start a commissioning-pad episode: a loaded Go1 in a bare bay of the hall among bollards.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
 ]
 

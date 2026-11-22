@@ -74,9 +74,10 @@ class Texts(unittest.TestCase):
             noise["GYRO_NOISE_RAD_S"], noise["GYRO_BIAS_RAD_S"]), self.instruction)
         self.assertIn("(noise {:.2f} per axis)".format(noise["GRAVITY_NOISE"]), self.instruction)
         scene = _constants(TASK/"tests/runtime/articulated.py", {"PALLET_X", "PALLET_Y", "PALLET_Z", "BEACON"})
-        self.assertIn("(magenta, 1.20 m by 0.80 m by 0.14 m, stood on its short edge so that it is {:.2f} m wide and "
-                      "{:.2f} m tall)".format(scene["PALLET_Y"], scene["PALLET_Z"]), self.instruction)
-        self.assertEqual(scene["PALLET_X"], .14)
+        self.assertIn("(magenta plastic, 1.20 m by 0.80 m by {:.3f} m, stood on its short edge so that it is {:.2f} m wide "
+                      "and {:.2f} m tall)".format(scene["PALLET_X"], scene["PALLET_Y"], scene["PALLET_Z"]), self.instruction)
+        self.assertEqual(scene["PALLET_X"], .144)
+        self.assertIn("Touching the pallet or a bracket ends the mission.", self.instruction)
         self.assertIn("always stands {:.2f} m east and {:.2f} m north of the dock's centre".format(*scene["BEACON"]),
                       self.instruction)
         for phrase in ("the pallet stands in the middle rack's other opening", "the dock was moved",

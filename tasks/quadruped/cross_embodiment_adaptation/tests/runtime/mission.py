@@ -3,7 +3,8 @@ import math
 
 import numpy as np
 
-from articulated import Go1, MAX_SCOUT, MAX_TICKS, Survey, fixtures_and_launch, layout, site_states
+from articulated import (CAMERA_Z, Go1, MAX_SCOUT, MAX_TICKS, PALLET_X, Survey, Views, fixtures_and_launch, layout, look_scene,
+                         site_states)
 from mobility import fittings
 from props import draw
 
@@ -17,8 +18,13 @@ class World:
         self.seed = seed
         self.surveyed, self.found = site_states(seed, self.racks, self.goal, self.posts, self.walls)
         racks, goal, posts, pallet = self.surveyed
-        self.survey = Survey(self.walls, goal, posts, self.fittings, pallet, self.props.uav_scale)
         self.racks, self.goal, self.posts, self.pallet = self.found      # what the mission is judged on
+        # The charging station stands by the dock's surveyed place in both states: the survey shows nothing of a move.
+        station = goal[1]-.4
+        self.views = Views({"survey": look_scene(self.walls, goal, posts, self.fittings, pallet, station_y=station),
+                            "found": look_scene(self.walls, self.goal, self.posts, self.fittings, self.pallet,
+                                                station_y=station)})
+        self.survey = Survey(self.walls, goal, posts, self.fittings, pallet, self.props.uav_scale, self.views)
         self.go1 = None
         self.phase = self.scout_actions = 0
 
@@ -53,7 +59,8 @@ class World:
             raise ValueError("switch exactly once, after at least four scout moves")
         self.survey.close()
         self.go1 = Go1(self.rng, self.walls, self.goal, self.racks, self.posts, self.launch, self.fittings,
-                       self.props, MAX_TICKS, self.pallet, self.seed)
+                       self.props, MAX_TICKS, self.pallet, self.seed, views=self.views,
+                       uav=(float(self.survey.xy[0]), float(self.survey.xy[1]), CAMERA_Z+.12))  # it hovers where it ended
         self.phase = 1
         return self.observe()
 
@@ -136,13 +143,15 @@ class World:
         self.survey.close()
         if self.go1:
             self.go1.close()
+        self.views.close()
 
 
 class Pad:
-    """The commissioning pad: the same loaded Go1 on a bare floor among bollards, no site.
+    """The commissioning pad: the same loaded Go1 in a bare bay of the hall among bollards, no site.
 
     One episode is one deployment with its own draw of the properties (the ranges of props.RANGES), a random
-    launch heading, the mast camera and a tick budget. There is no rack, fitting or dock, no truth, no score
+    launch heading, the mast camera and a tick budget. The bay's four boundary barriers stand; there is no rack,
+    fitting or dock, no truth, no score
     and no debrief: the observation is the one a graded deployment returns.
     """
     TICKS = 48000
@@ -152,14 +161,22 @@ class Pad:
         rng, _, _, walls = lay(seed)
         posts, launch = place(seed, walls)
         self.props = draw(seed, stream=3704)
-        # A pallet on edge and a dock beacon stand on the pad too, so that seeing them can be commissioned.
+        # The pad is the hall's bay inside its four boundary barriers: no rack, no fitting, no dock. A pallet on
+        # edge and a dock beacon stand in it too, so that seeing them can be commissioned.
+        bay = {name: walls[name] for name in ("back", "front", "south", "north")}
+        reach_y = walls["north"][2]-.55
         place = np.random.default_rng([seed & ((1 << 63)-1), 3707])
-        angle = place.uniform(0, 2*math.pi, size=2)
-        reach = place.uniform(1.6, 2.6, size=2)
-        px, py = launch[0]+reach[0]*math.cos(angle[0]), launch[1]+reach[0]*math.sin(angle[0])
-        beacon = np.array([launch[0]+reach[1]*math.cos(angle[1]), launch[1]+reach[1]*math.sin(angle[1])])
-        self.go1 = Go1(rng, {}, None, [], posts, launch, [], self.props, self.TICKS,
-                       (px-.07, px+.07, py-.40, py+.40), seed, tuple(beacon))
+        spots = []
+        while len(spots) < 2:
+            angle, reach = place.uniform(0, 2*math.pi), place.uniform(1.6, 2.6)
+            spot = (launch[0]+reach*math.cos(angle), launch[1]+reach*math.sin(angle))
+            if -.45 <= spot[0] <= 6.5 and abs(spot[1]) <= reach_y and all(math.dist(spot, other) >= .9 for other in spots):
+                spots.append(spot)
+        (px, py), beacon = spots
+        pallet = (px-PALLET_X/2, px+PALLET_X/2, py-.40, py+.40)
+        self.views = Views({"found": look_scene(bay, None, posts, [], pallet, tuple(beacon))})
+        self.go1 = Go1(rng, bay, None, [], posts, launch, [], self.props, self.TICKS, pallet, seed, tuple(beacon),
+                       views=self.views)
         self.phase = 1
 
     @property
@@ -190,3 +207,4 @@ class Pad:
 
     def close(self):
         self.go1.close()
+        self.views.close()

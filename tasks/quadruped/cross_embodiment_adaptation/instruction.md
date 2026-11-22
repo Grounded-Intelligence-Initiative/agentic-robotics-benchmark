@@ -31,7 +31,8 @@ especially after a long tool call or when your context has been summarised. Make
 ## Mission
 
 The warehouse workcell is about 8 m by 4 m. The Go1 starts somewhere in the western staging bay. A blue dock
-with a yellow east edge is near the east end. Three transverse rack lines separate four bays. The first and
+with a yellow east edge is near the east end: a mat 0.58 m by 0.56 m and 4 mm thick, its yellow strip 6 mm
+high, both walked on like the floor. Three transverse rack lines separate four bays. The first and
 last rack lines each have a near-centre shortcut and a side passage. Both are real openings, but a clear
 centreline does not mean the Go1's trunk, hips and stepping feet fit. Determine which openings are usable by
 measuring the scene at each rack; the side passage can be north or south independently at the two racks. Leave
@@ -39,9 +40,21 @@ room to align before entering a passage and to clear the rack before changing di
 widths and the dock's centre vary. The first frame does not show the openings. The orange caps mark actual
 collision footprints; they do not encode passability.
 
+**What the cameras show.** The workcell stands on the worn concrete floor of a warehouse hall, and both cameras
+show the hall as it is. The barriers are steel with orange top caps and striped ends at the openings; the
+bollards are yellow and black posts; the dock is a blue mat. Outside the barriers stand tall racks loaded with
+cardboard boxes and wooden pallets (blue uprights, orange beams), a forklift, a reach truck, a table, carts and
+a charging station. Overhead are a dark roof, grey ducts, pipes, cable trays and rows of white strip lamps. The mast
+camera looks up, so the racks, the roof and the lamps fill most of its images, behind and around the caps it is
+meant to find. Nothing outside the barriers can be reached, and nothing there is a cue. The cues are the colours
+this instruction names: orange barrier caps, green bollard caps, the blue beacon cap, the magenta pallet, teal
+covers, the blue dock.
+
 The middle rack has two openings, one north and one south of the centre, each 0.84 to 0.92 m wide. A **pallet**
-(magenta, 1.20 m by 0.80 m by 0.14 m, stood on its short edge so that it is 0.80 m wide and 1.20 m tall) stands
-inside one of them, in line with the rack, and closes it. Touching the pallet ends the mission.
+(magenta plastic, 1.20 m by 0.80 m by 0.144 m, stood on its short edge so that it is 0.80 m wide and 1.20 m tall)
+stands inside one of them, in line with the rack, and closes it. A steel foot bracket holds it near each end: a
+floor plate 0.22 m by 0.10 m and 8 mm thick that reaches 0.04 m beyond each face of the pallet, with an upright
+0.08 m tall against each face. Touching the pallet or a bracket ends the mission.
 
 **What can have changed when the Go1 arrives** (each on about half of the sites, independently; a site can
 have none or several):
@@ -70,7 +83,8 @@ One wide opening contains a suspended loading duct, the other a raised loading d
   fitting and its clearance. A nadir image does not see through a roof.
 
 Only the UAV uses the survey frame: origin at the UAV's first camera centre projected onto the floor, +X east
-and +Y north. The Go1 is absent during the survey. It deploys with its own launch position and yaw; there is no
+and +Y north. The Go1 is absent during the survey, and the UAV is not in its own images. During the deployment
+the UAV hovers where the survey ended, 1.77 m above the floor, and can be in a mast image. It deploys with its own launch position and yaw; there is no
 common tracker, compass, launch mark or target pose on the map. To transfer a route, use the same fixed objects
 as seen from above and from the Go1. Steel bollards with identical green spherical safety caps (radius 0.105 m,
 centres 0.72 m above the floor) stand around the staging bay and along both long walls of the hall, eleven in
@@ -79,7 +93,7 @@ the survey. Their arrangement varies; the caps carry no identifiers.
 ## Phase 0: UAV
 
 - `observe()` returns one 256 x 256 nadir RGB PNG in `images` and `tracking_xy_m: [x, y]`. It does not step
-  time. `tracking_xy_m` is the UAV's own tracking: its true displacement times a factor between 0.97 and 1.03
+  time. The first image of a site takes about ten seconds (the site's renderer starts); later ones about 0.1 s. `tracking_xy_m` is the UAV's own tracking: its true displacement times a factor between 0.97 and 1.03
   (per site, the same in x and y). The camera is exact, so two frames of the same object show the factor. The pinhole camera has a 78-degree vertical field of view and its centre is 1.65 m above the ground.
   Image right is +X; image up is +Y. Barrier tops are 0.32 m above the floor. There is no full-site image,
   semantic mask or depth output.
@@ -145,7 +159,8 @@ detent the camera points **36 degrees up** from the trunk's horizontal plane; it
 right is clockwise from the pan direction, image up is toward higher elevation. The 256 x 256 undistorted
 pinhole has a 70-degree vertical field of view, principal point (127.5, 127.5) in zero-based pixel-centre
 coordinates, and square pixels. The camera sees what stands above its own height: the bollards' green caps,
-the dock beacon's blue cap, the pallet, the duct. Each deployment allows 24 exposures. Regular Go1
+the dock beacon's blue cap, the pallet, the duct, and behind them the hall's racks, roof and lamps. Each
+deployment allows 24 exposures. Regular Go1
 observations carry no image.
 Observations in both phases include `phase` (0/1), `done` and `requests_remaining`.
 
@@ -158,10 +173,10 @@ heading within 16 degrees of survey +X, upright (trunk origin above 0.16 m and b
 0.80), below 0.09 m/s linear and 0.35 rad/s angular speed, for 0.45 s continuously. Every other ending scores
 nothing for that site:
 
-- any part of the robot or its equipment touching a barrier, a bollard, the dock beacon, the pallet or the
-  duct;
-- the equipment (lidar, guard frame, mast, compute unit, profiler or its bracket) touching the floor, an apron,
-  the deck or a guide (feet and legs may touch them);
+- any part of the robot or its equipment touching a barrier, a bollard, the dock beacon, the pallet, one of
+  its foot brackets or the duct;
+- the equipment (lidar, guard frame, mast, compute unit, profiler or its bracket) touching the floor, the dock
+  mat, an apron, the deck or a guide (feet and legs may touch them);
 - a fall: 0.20 s continuously not upright;
 - the tick or request budget spent, the program exiting before the dock, the program's own computing time
   passing 600 s (the service's time is not counted) or the mission's wall time passing 1,800 s.
@@ -177,12 +192,14 @@ debrief, and the service's code and state are not readable.
 
 - **Survey sites.** `new_site()` starts another random site with its UAV. `advance()` is refused here: a
   development site has no Go1.
-- **The commissioning pad.** `pad()` starts a pad episode: the loaded Go1 on a bare floor among bollards, with
+- **The commissioning pad.** `pad()` starts a pad episode: the loaded Go1 in a bare bay of the same hall, inside
+  the bay's four boundary barriers and among bollards, with
   the readings (noise, biases and odometry drift included), the mast camera and `act` exactly as on a site, and
   its own draw of every per-site property from the same ranges (the values are not reported). A pallet on
   edge and a dock beacon stand somewhere on the pad, 1.6 to 2.6 m from the launch point, so that seeing them
   can be tried. There is no rack, fitting or dock on the pad. An episode
-  ends on a fall, a bollard contact or its tick budget; start the next with `pad()`. The pad's budget for the
+  ends on a fall, on touching a barrier, a bollard, the pallet or the beacon, or on its tick budget; start the
+  next with `pad()`. The pad's budget for the
   whole session is **40 episodes and 600,000 physics ticks** (20 minutes of robot time); replies carry
   `pad_episodes_remaining` and `pad_ticks_remaining`.
 

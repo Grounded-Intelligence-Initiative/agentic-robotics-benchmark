@@ -53,7 +53,7 @@ class Client:
         return self.request("new_site")
 
     def pad(self):
-        """Commissioning only: start a pad episode (a loaded Go1 on a bare floor among bollards)."""
+        """Commissioning only: start a pad episode (a loaded Go1 in a bare bay of the hall among bollards)."""
         return self.request("pad")
 
 

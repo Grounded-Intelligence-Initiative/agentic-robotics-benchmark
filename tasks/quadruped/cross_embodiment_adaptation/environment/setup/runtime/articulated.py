@@ -9,6 +9,7 @@ import mujoco
 import numpy as np
 from PIL import Image
 
+import hall_render
 from scene_assets import asset_root, geom, materials, robot_meshes, vec
 from props import ENCODER_BIAS_RAD, ENCODER_NOISE_RAD, GRAVITY_NOISE, GYRO_BIAS_RAD_S, GYRO_NOISE_RAD_S
 from mobility import BEVEL, CAGE_TOP, DUCT, PROTECTED, SUPPORT, TERRAIN_BIT, add_fittings, add_load
@@ -29,8 +30,14 @@ MOVED_BIT = 1 << 27         # the pallet was moved to the other opening afterwar
 DOCK_BIT = 1 << 43          # the dock (with its beacon) was moved afterwards
 POSTS_BIT = 1 << 37         # one bollard was taken away or one was added afterwards
 CHANGE_BITS = PALLET_BIT | MOVED_BIT | DOCK_BIT | POSTS_BIT
-# The barrier: a 1.2 x 0.8 x 0.14 m pallet stood on its short edge inside the opening it closes.
-PALLET_Y, PALLET_Z, PALLET_X = .80, 1.20, .14
+# The barrier: a 1.2 x 0.8 x 0.144 m pallet stood on its short edge inside the opening it closes, held by a foot
+# bracket near each end: a floor plate under the pallet and an upright on each of its faces.
+PALLET_Y, PALLET_Z, PALLET_X = .80, 1.20, .144
+PALLET_FEET = tuple((f"pallet_foot{i}", (0., s*.30, .004), (.11, .05, .004)) for i, s in enumerate((-1, 1)))+tuple(
+    (f"pallet_upright{i}{j}", (sx*.075, s*.30, .04), (.003, .05, .04))
+    for i, s in enumerate((-1, 1)) for j, sx in enumerate((-1, 1)))
+# The dock mat (4 mm) and the strip at its east edge (to 6 mm): walked surfaces.
+DOCK_SURFACES = ("dock", "dock_nose")
 BEACON = (.42, .50)         # the beacon's offset from the dock's centre
 
 
@@ -172,9 +179,10 @@ def scene(root, walls, goal, posts, fittings, pallet=None, beacon=None):
         geom(world, name+"_paint", pos=(*pos[:2], WALL_Z-.001),
              size=(*size[:2], .0015), rgba=(.90, .18, .045, 1))
     if goal is not None:        # the commissioning pad has no dock
-        geom(world, "dock", pos=(*goal, .002), size=(.29, .28, .002), rgba=(.035, .28, .89, 1))
+        geom(world, "dock", pos=(*goal, .002), size=(.29, .28, .002), rgba=(.035, .28, .89, 1),
+             contype=1, conaffinity=1, friction="1 .02 .001")
         geom(world, "dock_nose", pos=(goal[0]+.261, goal[1], .005), size=(.026, .26, .001),
-             rgba=(.88, .81, .09, 1))
+             rgba=(.88, .81, .09, 1), contype=1, conaffinity=1, friction="1 .02 .001")
         beacon = (goal[0]+BEACON[0], goal[1]+BEACON[1])
     if beacon is not None:
         # The dock's beacon: a blue cap at the bollards' height, at a fixed offset from the dock's centre.
@@ -187,6 +195,9 @@ def scene(root, walls, goal, posts, fittings, pallet=None, beacon=None):
         x0, x1, y0, y1 = pallet
         geom(world, "pallet_barrier", pos=((x0+x1)/2, (y0+y1)/2, PALLET_Z/2),
              size=((x1-x0)/2, (y1-y0)/2, PALLET_Z/2), rgba=(.80, .10, .62, 1), contype=1, conaffinity=1)
+        for name, offset, size in PALLET_FEET:
+            geom(world, name, pos=((x0+x1)/2+offset[0], (y0+y1)/2+offset[1], offset[2]), size=size,
+                 rgba=(.25, .26, .27, 1), contype=1, conaffinity=1)
     add_fittings(root, world, fittings)
     for i, post in enumerate(posts):
         if post is None:
@@ -199,6 +210,41 @@ def scene(root, walls, goal, posts, fittings, pallet=None, beacon=None):
     return world
 
 
+def look_scene(walls, goal, posts, fittings, pallet=None, beacon=None, station_y=None):
+    """What hall_render draws for one state of a site (the numbers the collision scene is built from)."""
+    north = walls.get("north")
+    if goal is not None:
+        beacon = (goal[0]+BEACON[0], goal[1]+BEACON[1])
+    return {
+        "walls": {name: [float(v) for v in box] for name, box in walls.items()},
+        "fittings": [[f.kind, f.x, f.lo, f.hi, f.length, f.clearance, f.rise] for f in fittings],
+        "posts": [[float(v) for v in post] for post in posts if post is not None],
+        "goal": None if goal is None else [float(v) for v in goal],
+        "beacon": None if beacon is None else [float(v) for v in beacon],
+        "pallet": None if pallet is None else [float(v) for v in pallet],
+        "bound": float(north[2]) if north else 0.,
+        "lane_y": float(north[3]) if north else None,
+        "station_y": None if station_y is None else float(station_y),
+    }
+
+
+class Views:
+    """The cameras' pictures of one site: a renderer process, started at the first picture and ended with the site."""
+
+    def __init__(self, scenes):
+        self.scenes, self.cameras = scenes, None
+
+    def image(self, scene, **camera):
+        if self.cameras is None:
+            self.cameras = hall_render.Cameras(self.scenes)
+        return self.cameras.image(scene, **camera)
+
+    def close(self):
+        if self.cameras is not None:
+            self.cameras.close()
+            self.cameras = None
+
+
 def image64(rgb):
     buf = io.BytesIO()
     Image.fromarray(rgb).save(buf, format="PNG", compress_level=1)
@@ -206,7 +252,8 @@ def image64(rgb):
 
 
 class Survey:
-    def __init__(self, walls, goal, posts, fittings, pallet=None, scale=1.):
+    def __init__(self, walls, goal, posts, fittings, pallet=None, scale=1., views=None):
+        self.views = views
         root = ET.fromstring('<mujoco><asset/><worldbody/></mujoco>')
         world = scene(root, walls, goal, posts, fittings, pallet)
         self.scale = scale
@@ -217,7 +264,6 @@ class Survey:
                       fovy=str(FOV))
         self.model = mujoco.MjModel.from_xml_string(ET.tostring(root, encoding="unicode"))
         self.data = mujoco.MjData(self.model)
-        self.renderer = None
         self.cached = None
         self.xy = np.zeros(2)
 
@@ -227,24 +273,19 @@ class Survey:
 
     def observe(self):
         if self.cached is None:
-            if self.renderer is None:
-                self.renderer = mujoco.Renderer(self.model, PIXELS, PIXELS)
-            self.data.mocap_pos[0, :2] = self.xy
-            mujoco.mj_forward(self.model, self.data)
-            self.renderer.update_scene(self.data, camera="down")
-            self.cached = image64(self.renderer.render())
+            # The camera hangs 0.12 m under the UAV and looks straight down; image up is north (+y).
+            self.cached = image64(self.views.image("survey", eye=(self.xy[0], self.xy[1], CAMERA_Z), forward=(0., 0., -1.),
+                                                   up=(0., 1., 0.), fovy=FOV, near=.05))
         # The UAV's own tracking over-reads or under-reads its displacement by the site's factor.
         return {"tracking_xy_m": (self.scale*self.xy).round(4).tolist(), "images": [self.cached]}
 
     def close(self):
-        if self.renderer is not None:
-            self.renderer.close()
-            self.renderer = None
+        self.cached = None
 
 
 class Go1:
     def __init__(self, rng, walls, goal, racks, posts, launch, fittings, props=None, budget=MAX_TICKS,
-                 pallet=None, sense_seed=0, beacon=None):
+                 pallet=None, sense_seed=0, beacon=None, views=None, uav=None):
         spec = asset_root()/"unitree_go1/go1.xml"
         root = ET.parse(spec).getroot()
         root.find("compiler").set("meshdir", str(spec.parent/"assets"))
@@ -276,11 +317,13 @@ class Go1:
         if has_dock:
             obstacles.extend(("dock_beacon_stem", "dock_beacon_cap"))
         if pallet is not None:
-            obstacles.append("pallet_barrier")
+            obstacles.extend(("pallet_barrier", *(name for name, _, _ in PALLET_FEET)))
         if any(f.kind == "duct" for f in fittings):
             obstacles.extend(DUCT)
         self.wall_ids = {model.geom(name).id: name for name in obstacles}
         self.support_ids = {self.floor: "floor"}
+        if goal[0] < 1e2:
+            self.support_ids.update({model.geom(name).id: name for name in DOCK_SURFACES})
         if any(f.kind == "deck" for f in fittings):
             self.support_ids.update({model.geom(name).id: name for name in SUPPORT})
         if props:
@@ -319,7 +362,9 @@ class Go1:
         self.odom_scale = props.odom_scale if props else 1.
         self.odom_xy = np.zeros(2)
         self.odom_yaw = 0.
-        self.renderer = None
+        self.views, self.uav = views, uav
+        self.mast_ids = [model.camera(f"mast{i}").id for i in range(8)]
+        self.drawn = {name: model.body(name).id for name in hall_render.BODIES}
         self.looks = 0
         self.goal = goal
         self.ticks = self.dwell = self.tipped = 0
@@ -398,17 +443,21 @@ class Go1:
             raise ValueError("camera detent must be an integer from 0 to 7")
         if self.looks >= MAX_LOOKS:
             raise ValueError("ground camera exposure budget spent")
-        if self.renderer is None:
-            self.renderer = mujoco.Renderer(self.model, PIXELS, PIXELS)
-        mujoco.mj_camlight(self.model, self.data)
-        self.renderer.update_scene(self.data, camera=f"mast{detent}")
+        image = self.picture(detent)
         self.looks += 1
-        return {"images": [image64(self.renderer.render())]}
+        return {"images": [image64(image)]}
+
+    def picture(self, detent):
+        """The mast camera's image at this state (uint8, 256 x 256 x 3); look() is the budgeted call."""
+        mujoco.mj_camlight(self.model, self.data)       # the cameras' poses at this state
+        cam = self.mast_ids[detent]
+        axes = self.data.cam_xmat[cam].reshape(3, 3)
+        bodies = {name: (self.data.xpos[b].copy(), self.data.xmat[b].copy()) for name, b in self.drawn.items()}
+        return self.views.image("found", eye=self.data.cam_xpos[cam], forward=-axes[:, 2], up=axes[:, 1], fovy=MAST_FOV,
+                                near=.02, bodies=bodies, uav=self.uav)
 
     def close(self):
-        if self.renderer is not None:
-            self.renderer.close()
-            self.renderer = None
+        pass
 
     def record_passages(self):
         x, y = self.xy

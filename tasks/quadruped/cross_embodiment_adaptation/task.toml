@@ -6,7 +6,7 @@
 # so it has to re-localise on what its mast camera shows and re-plan on site. Each site also draws its own load,
 # servo stiffness and strength, floor friction and fitting clearances (tests/runtime/props.py). Every range is in
 # the instruction and the datasheet; no value is reported. In development the agent has random survey sites (UAV
-# only) and a commissioning pad for the loaded Go1 (bare floor and bollards; 40 episodes, 600,000 ticks): no
+# only) and a commissioning pad for the loaded Go1 (a bare bay of the hall and bollards; 40 episodes, 600,000 ticks): no
 # truth, no score, no debrief. A separate verifier runs the agent's mission program once on each of 16 fixed
 # hidden sites (tests/hidden/, tests/review/selection.md) and removes everything a mission leaves behind before
 # the next (tests/isolation.py). The oracle is privileged: a token whose sha256 only tests/ holds.
