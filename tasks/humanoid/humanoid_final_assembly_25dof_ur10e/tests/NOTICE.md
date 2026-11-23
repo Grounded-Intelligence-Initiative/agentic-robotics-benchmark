@@ -5,8 +5,9 @@ The robot built in this task is Asimov 1 by Menlo Research (repository menlorese
 handles is made of the makers' own CAD (their full-body STEP), grouped by the bodies of the makers' simulation model.
 The picture meshes differ from the CAD in these ways only: marks are levelled on their own surfaces, broken faces are
 triangulated again on their own surfaces, and bought parts are split along their real moving interfaces. The robot is
-not changed and no variant of it is built. The givens, the instruction and the public card name neither the robot nor
-its makers nor a vendor; this file carries the attribution.
+not changed and no variant of it is built. The givens, the instruction and the public card name neither the robot that
+is built nor its makers nor a vendor of its parts (the arm is named by its class only); this file carries the
+attribution.
 
 The actuators are units of ENCOS; the holding friction the cell simulates is a conservative reading
 of their published test data. The arm is the model library's universal_robots_ur10e (BSD-3-Clause) and the

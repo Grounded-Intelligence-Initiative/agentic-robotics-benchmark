@@ -64,7 +64,8 @@ allowance and the episodes come from the rule and the configuration.
 ## Checks of the grading that ran on a host only
 
 The grader review's rows on long outputs, on a failing render worker and on loopback traffic ran on a host on the fixed
-build, not in the task image; regression tests of the cell keep them. A flood of 48 MiB on the wire ended
+build, not in the task image; regression tests of the development cell, which are not part of this task folder, keep
+them. A flood of 48 MiB on the wire ended
 the episode as a protocol error after 0.08 s with the grader 4.9 MiB larger; a flood of
 standard error left a log of 5242968 bytes; a program that prints 24 MiB while it is
 imported makes the grader grow by less than 8 MiB; a render worker that exits, one that answers
