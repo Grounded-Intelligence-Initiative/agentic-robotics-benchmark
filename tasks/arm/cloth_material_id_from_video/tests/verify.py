@@ -1,8 +1,8 @@
-"""Hidden grader for cloth_material_id_from_video.
+"""Hidden grader for cloth_material_id_from_video (plans in cphys, executes on the real fabric, creal).
 
 Reads /home/user/submission/params.json (numbers only) and scores fabrics A, B, C on the fixed hidden tests
 (tests/ref/fabrics.json): every test is planned by ctasks.plan in a world made of the submitted material and then
-executed once in the world made of the fabric's true material. Metric `material_transfer_score` (mean over fabrics
+executed once on the real fabric (creal, its real material). Metric `material_transfer_score` (mean over fabrics
 of the mean family score, higher is better). Separate verifier sandbox; agent processes are killed first and
 nothing else the agent left is read.
 """

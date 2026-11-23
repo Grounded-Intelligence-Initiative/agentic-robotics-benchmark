@@ -1,7 +1,7 @@
 {
   "metric": "material_transfer_score",
   "direction": "higher",
-  "value": 1.0,
-  "full_at": 0.95,
-  "source": "privileged oracle (the true materials): every hidden test is checked by tests/review/make_ref.py to reach its target when planned with the true material (quality 1.0 on all 18 tests), and the oracle episode of ale validate measures 1.0; full_at 0.95 as in robocasa_object_dynamics_from_video"
+  "value": 0.6613,
+  "full_at": 0.9,
+  "source": "the reference implementation's own measured value: the reference cphys materials (solution/ref/params.json), calibrated by tests/review/make_ref.py against the real fabrics (tests/creal.py) on calibration tests drawn separately from the hidden tests, measured 0.66127 (A 0.790, B 0.793, C 0.401) in the oracle episode of ale validate (validate-2ec6d466, Linux amd64) and identically host-side on arm64 macOS; full_at 0.9 leaves margin for floating-point differences between hosts on the knife-edge drape and hang tests"
 }

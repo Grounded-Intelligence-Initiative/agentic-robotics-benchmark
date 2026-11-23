@@ -2,7 +2,8 @@
 
 Runs once while the task image builds, from a read-only bind mount of environment/gen/ (so neither this file nor
 fabrics.json, which holds the hidden true materials, is left in any image layer). For every fabric (P, A, B, C)
-and clip it simulates the clip in the true material (cphys, byte-identical to the agent's copy), solves the arm's
+and clip it simulates the clip on the real fabric (creal: the real fabric's model, which the agent does not get; its
+cphys is the robot's planning simulator), solves the arm's
 joint angles (carm), renders three calibrated cameras offscreen (MuJoCo, OSMesa), degrades the images like a real
 camera and encodes H.264 with ffmpeg. Output tree (OUT, default /opt/task-assets/payload):
 
@@ -25,6 +26,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import cphys as W  # noqa: E402
+import creal as R  # noqa: E402
 
 W_IMG, H_IMG = 640, 480
 FOCAL = 640.0
@@ -52,9 +54,9 @@ def look_at(pos, target):
 def cameras_json():
     cams = []
     for name, pos, tgt in CAMERAS:
-        R, t = look_at(pos, tgt)
+        Rw, t = look_at(pos, tgt)
         K = [[FOCAL, 0.0, W_IMG / 2], [0.0, FOCAL, H_IMG / 2], [0.0, 0.0, 1.0]]
-        cams.append(dict(name=name, width=W_IMG, height=H_IMG, K=K, dist=[0, 0, 0, 0, 0], R_w2c=R.tolist(),
+        cams.append(dict(name=name, width=W_IMG, height=H_IMG, K=K, dist=[0, 0, 0, 0, 0], R_w2c=Rw.tolist(),
                          t_w2c=t.tolist(), position_world=list(map(float, pos))))
     return {"cameras": cams, "model": "OpenCV pinhole, pixel ~ K (R_w2c X + t_w2c), no distortion; world z up, metres"}
 
@@ -159,7 +161,7 @@ def clip_programs(rng):
     out.append(("shake", pose, W.program_to_traj(keys)))
     # 3, 4: drag along the table and let go while moving
     import ctasks as T
-    for v in (float(rng.uniform(0.35, 0.5)), float(rng.uniform(0.6, 0.8))):
+    for v in (float(rng.uniform(0.15, 0.22)), float(rng.uniform(0.24, 0.30))):
         pose = (float(rng.uniform(0.0, 0.08)), float(rng.uniform(-0.1, 0.1)), float(rng.uniform(-0.3, 0.3)))
         C, _, _ = T.prog_slide(dict(pose=pose, side=-1, d_release=float(rng.uniform(0.09, 0.13))), v)
         out.append(("drag_release", pose, C))
@@ -184,7 +186,7 @@ def clip_programs(rng):
 # render scene
 # ----------------------------------------------------------------------------------------------------------------
 def render_xml(material, mass, cams_xml, arm_assets, arm_body):
-    xml = W.scene_xml(material, mass, texture="fabric_tex")
+    xml = R.scene_xml(material, mass, texture="fabric_tex")
     extra_assets = ('<texture name="fabric_tex" type="2d" file="fabric.png"/>'
                     '<texture name="wood" type="2d" file="wood.png"/><material name="wood" texture="wood" texrepeat="2 2"/>'
                     '<texture name="floor" type="2d" file="floor.png"/><material name="floor" texture="floor" texrepeat="6 6"/>'
@@ -250,7 +252,7 @@ def do_clip(args):
     rng = np.random.default_rng(seed)
     d = os.path.join(out_dir, "data", "fabrics", fid, "clip%02d" % ci)
     os.makedirs(d, exist_ok=True)
-    sim = W.Sim(material, mass)
+    sim = R.Sim(material, mass)
     sim.place_flat(pose)
     rec = sim.run(C, record_every=W.STEPS_PER_FRAME // 2)       # frame states and the half-frame states between
     assert not sim.unstable, (fid, ci)
@@ -298,10 +300,9 @@ def do_clip(args):
         encode(out[c], os.path.join(d, c + ".mp4"))
     np.save(os.path.join(d, "clamp_500hz.npy"), C.astype(np.float64))
     np.save(os.path.join(d, "arm_q.npy"), q.astype(np.float64))
-    info = dict(kind=kind, fps=W.FPS, n_frames=int(n), physics_dt=W.DT, physics_steps=int(len(C)),
-                frame_k_step="k * %d (frame 0 = physics step 0, before it)" % W.STEPS_PER_FRAME,
-                fabric_start=[float(x) for x in pose],
-                fabric_start_note="the fabric lies flat at rest: centre (x, y) and long-axis angle yaw (rad), +z face up")
+    info = dict(kind=kind, fps=W.FPS, n_frames=int(n), clamp_dt=W.DT, clamp_rows=int(len(C)),
+                frame_k_row="k * %d (frame k shows the fabric when the clamp is at row 20 k)" % W.STEPS_PER_FRAME,
+                fabric_start="flat and at rest on the table; its pose is not given")
     json.dump(info, open(os.path.join(d, "clip.json"), "w"), indent=1)
     return fid, ci, n
 

@@ -4,10 +4,11 @@ Byte-identical copies are used by the hidden grader and shipped to you. It holds
 hidden tests only choose poses, corners, directions and targets for these functions.
 
 Every test starts with the fabric lying flat at rest at a pose (x, y, yaw) on the table and has one control value u
-that the robot chooses by planning: `plan(material, mass, test)` simulates the test in a world made of the given
-material and searches u so that the predicted outcome equals the test's target. The grader plans with YOUR
-material and then executes the planned u once in the world made of the TRUE material; the score of the test
-depends only on how far the real outcome lands from the target (`test_quality`).
+that the robot chooses by planning: `plan(material, mass, test)` simulates the test in cphys (the robot's simulator)
+made of the given material and searches u so that the predicted outcome equals the test's target. The grader plans
+with YOUR material and then executes the planned u once on the REAL fabric, which is not a cphys simulation (the
+`world` argument of `outcome` and `run_test`; the grader passes its own model of the real fabric). The score of the
+test depends only on how far the real outcome lands from the target (`test_quality`).
 
 Families (outcome y, control u):
   hang   grasp a corner, lift, hold, lower the clamp to height u, settle;
@@ -23,7 +24,7 @@ import numpy as np
 import cphys as W
 
 TOL = {"hang": 0.003, "slide": 0.006, "drape": 0.005}
-U_RANGE = {"hang": (0.24, 0.52), "slide": (0.12, 0.90), "drape": (0.02, 0.20)}
+U_RANGE = {"hang": (0.24, 0.52), "slide": (0.20, 1.40), "drape": (0.02, 0.20)}
 PLAN_ITERS = 8
 
 
@@ -99,13 +100,14 @@ def prog_drape(test, u):
 # ------------------------------------------------------------------------------------------------------------------
 # outcomes
 # ------------------------------------------------------------------------------------------------------------------
-def outcome(material, mass, test, u):
-    """Simulate `test` with control u in the world made of `material`. Returns y (float) or None if the
-    simulation diverged."""
+def outcome(material, mass, test, u, world=None):
+    """Simulate `test` with control u in `world` (default: cphys, the robot's simulator) made of `material`.
+    Returns y (float) or None if the simulation diverged."""
     fam = test["fam"]
+    S = (world or W).Sim
     if fam == "hang":
         C, s0 = prog_hang(test, u)
-        sim = W.Sim(material, mass)
+        sim = S(material, mass)
         sim.place_flat(test["pose"])
         fr = sim.run(C, record_every=10, start=s0)
         if sim.unstable or not len(fr):
@@ -113,7 +115,7 @@ def outcome(material, mass, test, u):
         return float(np.mean([f[:, 2].min() for f in fr]))
     if fam == "slide":
         C, pr, direction = prog_slide(test, u)
-        sim = W.Sim(material, mass)
+        sim = S(material, mass)
         sim.place_flat(test["pose"])
         fr = sim.run(C, record_every=len(C) - 1)
         if sim.unstable or len(fr) < 2:
@@ -122,7 +124,7 @@ def outcome(material, mass, test, u):
         return float((fr[-1][:, :2] @ d).max() - pr[:2] @ d)
     if fam == "drape":
         C, s0 = prog_drape(test, u)
-        sim = W.Sim(material, mass)
+        sim = S(material, mass)
         sim.place_flat((W.EDGE_X - 0.22, test["y"], 0.0))
         fr = sim.run(C, record_every=10, start=s0)
         if sim.unstable or not len(fr):
@@ -190,8 +192,8 @@ def test_quality(test, y_true):
     return float(np.clip(2.0 - e / TOL[test["fam"]], 0.0, 1.0))
 
 
-def run_test(material, true_material, mass, test):
-    """Plan with `material`, execute once with `true_material`. Returns (quality, info)."""
+def run_test(material, true_material, mass, test, world=None):
+    """Plan with `material` in cphys, execute once with `true_material` in `world`. Returns (quality, info)."""
     u, y_pred = plan(material, mass, test)
-    y_true = outcome(true_material, mass, test, u)
+    y_true = outcome(true_material, mass, test, u, world)
     return test_quality(test, y_true), {"u": u, "predicted": y_pred, "real": y_true, "target": test["target"]}

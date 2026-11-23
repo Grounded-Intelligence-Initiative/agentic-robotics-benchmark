@@ -1,5 +1,8 @@
 """cgrading: strict params.json parser and scoring for cloth_material_id_from_video (hidden grader).
 
+Every test is planned in cphys with the submitted material and executed once on the real fabric (creal, with the
+fabric's real material from ref/fabrics.json).
+
 params.json (numbers only):
 {"fabrics": {"A": {"young": E, "poisson": nu, "thickness": t, "damping": d, "mu": m}, "B": {...}, "C": {...}}}
 Each value is clamped to cphys.RANGES before use.
@@ -11,6 +14,7 @@ import time
 import numpy as np
 
 import cphys as W
+import creal as R
 import ctasks as T
 
 MAX_BYTES = 64 * 1024
@@ -83,7 +87,7 @@ def load_ref(path):
 
 def score_test(material, ref_f, test):
     try:
-        q, info = T.run_test(material, ref_f["material"], ref_f["mass_kg"], test)
+        q, info = T.run_test(material, ref_f["material"], ref_f["mass_kg"], test, R)
         q = float(q) if math.isfinite(q) else 0.0
     except Exception as exc:  # a submitted material that breaks the simulation scores 0 on that test
         q, info = 0.0, {"error": type(exc).__name__}
