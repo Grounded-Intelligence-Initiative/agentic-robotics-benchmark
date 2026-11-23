@@ -1,0 +1,9 @@
+{
+  "metric": "mean_rig_credit",
+  "direction": "higher",
+  "value": 0.9960583678277967,
+  "full_at": 0.9,
+  "source": "Own measurement, 2026-11-23: the reference calibrator (solution/calibrate.py) through the pinned engine (vendor/ale bfb7505), ale validate validate-71ad98fb: mean_rig_credit 0.99606 over 6 hidden rigs drawn from OS entropy (per-rig credits 1.0, 1.0, 0.981, 1.0, 1.0, 0.995; no run timed out; the six concurrent runs took 229 s), untouched 0.0. Never a published figure.",
+  "reference_commit": "the commit that adds tasks/subsystems/multisensor_rig_calibration_from_logs",
+  "note": "Fresh hidden rigs every run, so the measured value varies with the draw. The reference's 6-rig mean on the final tree: 0.9961 (validate-71ad98fb), 0.9931 (validate-101ab660), and 0.988, 0.988, 0.992, 0.988 on four host-side draws of the same generator (24 rigs, plus the three practice rigs at 0.986-0.996); worst ratio 0.988 / 0.9961 = 0.99, worst single rig 0.958. full_at 0.9 keeps the reference at reward 1.0 unless about one rig in six collapses to 0.4 (an earlier version of the reference did that once: validate-e9fcebbe, 0.929, still reward 1.0). The CAD prior alone scores about 0.02 credit (validate-c19fcaae, reward 0.02) and a calibrator that leaves the camera at the prior about 0.49 (reward about 0.55)."
+}
