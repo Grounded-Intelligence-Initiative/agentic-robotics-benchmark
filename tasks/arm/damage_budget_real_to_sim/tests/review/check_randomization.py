@@ -16,6 +16,7 @@ def signature(w):
         "target": w.target.tolist(), "gap": w.bridge_half_gap,
         "width": w.bridge_half_width, "buildings": w.buildings,
         "starts": [p.tolist() for p in w.nav_starts], "radius": w.large_radius,
+        "ballast": (w.arm_mass, w.arm_com) if w.kind == "arm" else None,
     }, sort_keys=True)
 
 

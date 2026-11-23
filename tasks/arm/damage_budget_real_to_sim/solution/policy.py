@@ -112,8 +112,6 @@ def search_detection(im, kind):
 class Controller:
     def __init__(self, kind):
         self.kind, self.last, self.phase = kind, None, 0
-        self.block = self.tray = None
-        self.command = np.array([-1.9, -1.7, 1.])
         self.takeoff_xy = None
         self.last_pose = None
 
@@ -141,32 +139,7 @@ class Controller:
             attitude = np.array([-acceleration[1], acceleration[0]])/9.81/.3
             thrust = (.82 * (9.81 + 2*(goal[2]-p[2])-2*velocity[2]))/8.2 - 1
             return np.clip([thrust, attitude[0], attitude[1], 0], -1, 1).tolist()
-        if self.phase < 3 or self.block is None:
-            observed_block = location(decode(obs), "green")
-            # Partial occlusion by the gripper shifts the visible centroid. Retain
-            # the unobstructed estimate unless the object has materially moved.
-            if self.block is None or (observed_block is not None and
-                                      np.linalg.norm(observed_block-self.block) > .15):
-                self.block = observed_block
-        observed_tray = location(decode(obs), "blue")
-        if self.tray is None or (observed_tray is not None and
-                                 np.linalg.norm(observed_tray-self.tray) > .15):
-            self.tray = observed_tray
-        if self.block is None or self.tray is None:
-            raise ValueError("object or tray not visible")
-        waypoints = [
-            [*self.block, .9], [*self.block, .32], [*self.block, .30],
-            [*self.block, 1.15], [*self.tray, 1.15], [*self.tray, .32],
-            [*self.tray, .30], [self.tray[0], self.tray[1]-.5, .9],
-        ]
-        goal = np.array(waypoints[min(self.phase, 7)])
-        grip = 1 if 2 <= self.phase <= 5 else -1
-        error = goal - p
-        if np.linalg.norm(error) < .075:
-            self.phase += 1
-        command_step = np.clip((goal-self.command)/.14, -1, 1)
-        self.command += command_step*.14
-        return np.r_[command_step, grip].tolist()
+        raise ValueError("expected the flight controller")
 
 
 def navigation_button(occupied, source, target, radius, mapping):
@@ -213,20 +186,17 @@ def navigation_button(occupied, source, target, radius, mapping):
 
 def solve(client, kind, mode="reference", artifacts=None):
     obs = client.observe()
-    if kind in ("flight", "arm"):
+    if kind == "arm":
+        from arm_policy import ArmController
+        from reconstruction import reconstruct
+        if artifacts:
+            return reconstruct(client, obs, Path(artifacts))
+        controller = ArmController()
+        while not obs["done"]:
+            obs = client.act(controller.action(obs) if mode != "noop" else [0.]*4)
+        return obs
+    if kind == "flight":
         ctrl = Controller(kind)
-        if kind == "arm" and artifacts:
-            from reconstruction import create_scene, identify_response
-            top = decode(obs)
-            block, tray = location(top, "green"), location(top, "blue")
-            if block is None or tray is None:
-                raise ValueError("object or tray is not visually detectable")
-            scene = create_scene(top, block, tray)
-            if mode != "initial_image_only":
-                obs, gains, diagnostics = identify_response(client, obs, scene)
-                scene = create_scene(top, block, tray, gains)
-                Path(artifacts, "identification.json").write_text(json.dumps(diagnostics, indent=2))
-            Path(artifacts, "scene.xml").write_text(scene)
         while not obs["done"]:
             obs = client.act([0]*4 if mode == "noop" else ctrl.action(obs))
         return obs
@@ -362,12 +332,17 @@ class ControllerSession:
 
 def controller_main(kind):
     import sys
-    session = ControllerSession(kind)
+    if kind == "arm":
+        from arm_policy import ArmSession
+        new_session = ArmSession
+    else:
+        new_session = lambda: ControllerSession(kind)
+    session = new_session()
     print("READY", flush=True)
     for line in sys.stdin:
         req = json.loads(line)
         if req["type"] == "reset":
-            session = ControllerSession(kind)
+            session = new_session()
             result = {"ok": True}
         elif req["type"] == "act":
             result = {"action": session.act(req["t"], req["obs"])}

@@ -1,5 +1,6 @@
 """Trusted MuJoCo worlds. This module must never be agent-readable in a task."""
 import base64
+import hashlib
 import io
 import math
 import os
@@ -14,10 +15,26 @@ from PIL import Image
 from geometry import SIZE, arm_scene, box, header
 from scene_assets import decorate, sync_visuals
 from pbr_renderer import Renderer
+from arm_dynamics import ArmDynamics
 
 KINDS = ("flight", "arm", "icl", "cross", "bridge", "rescue")
-LIMITS = {"flight": 220, "arm": 180, "icl": 500, "cross": 320,
+LIMITS = {"flight": 220, "arm": 1200, "icl": 500, "cross": 320,
           "bridge": 160, "rescue": 160}
+ARM_PAYLOADS = ("negative_x", "positive_x")
+ARM_CARTRIDGES = ("light", "heavy")
+ARM_MASSES = {"light": (.80, .94), "heavy": (1.43, 1.55)}
+ARM_PROOFS = {"light": 13.0, "heavy": 20.0}
+
+
+def arm_rng(seed, purpose):
+    # Disjoint streams: sensor noise or appearance must not encode the payload.
+    digest = hashlib.blake2b(str(seed).encode("ascii"), person=purpose, digest_size=16)
+    return np.random.default_rng(int.from_bytes(digest.digest(), "little"))
+
+
+def drive_cassette(seed):
+    rng = arm_rng(seed, b"arm-crossed-belt")
+    return int(rng.choice((-1, 1))), float(rng.choice((.8, 1.2))), float(rng.choice((.8, 1.2)))
 
 
 def crossed_gate(previous, current, center=(0., 0.)):
@@ -37,7 +54,9 @@ def png(image):
 
 
 class World:
-    def __init__(self, kind, seed, render=True):
+    def __init__(self, kind, seed, render=True, *, arm_payload=None, arm_cartridge=None,
+                 stop_side=None, stop_parked=False, shipping=True, source_back=None, source_turn=None,
+                 tare_side=None, cassette=None):
         if kind not in KINDS:
             raise ValueError("unknown task")
         self.kind, self.seed = kind, int(seed)
@@ -102,8 +121,57 @@ class World:
             self.goal[:2] = variant_rng.uniform([2., -1.], [2.7, 1.])
             self.goal[2] = 1.3
         elif kind == "arm":
-            # Visually identical initial scenes can have different actuator responses.
-            self.arm_gains = variant_rng.uniform(35., 230., 3)
+            drive = arm_rng(self.seed, b"arm-drives")
+            physical = arm_rng(self.seed, b"arm-payload")
+            layout = arm_rng(self.seed, b"arm-layout")
+            self.block = layout.uniform([-1.66, -.79], [-1.47, -.42])
+            self.tray = layout.uniform([1.36, .49], [1.54, .76])
+            self.obstacle = layout.uniform([-.39, -.47], [-.27, -.31])
+            self.arm_gains = drive.uniform([55., 55., 60.], [175., 175., 88.])
+            self.cassette = drive_cassette(self.seed) if cassette is None else cassette
+            sampled = ARM_PAYLOADS[int(physical.integers(len(ARM_PAYLOADS)))]
+            self.arm_payload = sampled if arm_payload is None else arm_payload
+            load = arm_rng(self.seed, b"arm-cartridge")
+            sampled_load = ARM_CARTRIDGES[int(load.integers(len(ARM_CARTRIDGES)))]
+            self.arm_cartridge = sampled_load if arm_cartridge is None else arm_cartridge
+            self.arm_mass = float(load.uniform(*ARM_MASSES[self.arm_cartridge]))
+            self.arm_proof = ARM_PROOFS[self.arm_cartridge]
+            sign = (-1, 1)[ARM_PAYLOADS.index(self.arm_payload)]
+            self.arm_com = sign*float(physical.uniform(.315, .410))
+            self.arm_settled = 0
+            fixture = arm_rng(self.seed, b"arm-stop")
+            sampled_side = int(fixture.choice((-1, 1)))
+            self.stop_side = sampled_side if stop_side is None else stop_side
+            self.stop_dx = float(fixture.uniform(-.33, .33))
+            self.stop_parked = stop_parked
+            pack = arm_rng(self.seed, b"arm-sleeve")
+            natural_back = int(arm_rng(self.seed, b"arm-sleeve-dir").choice((-1, 1)))
+            self.source_back = natural_back if source_back is None else source_back
+            if self.source_back not in (-1, 1):
+                raise ValueError("source back must be -1 or 1")
+            key = arm_rng(self.seed, b"arm-key-offset")
+            natural_turn = int(arm_rng(self.seed, b"arm-key-turn").choice((-1, 1)))
+            self.source_turn = natural_turn if source_turn is None else source_turn
+            if self.source_turn not in (-1, 1):
+                raise ValueError("source turn must be -1 or 1")
+            # The northern pocket's nearest cheek clears the existing obstacle
+            # even at the southernmost source station and shortest draw.
+            self.key_draw, self.key_travel = float(key.uniform(1.05, 1.35)), float(key.uniform(.34, .54))
+            self.shipping = (float(pack.uniform(-.031, .031)), float(pack.uniform(.175, .198)),
+                             float(pack.uniform(.22, .34)), self.source_back, self.source_turn,
+                             self.key_draw, self.key_travel) if shipping else None
+            self.stop_tool_contacts = self.stop_shell_contacts = 0
+            self.stop_tool_force = self.stop_shell_force = 0.
+            tare_rng = arm_rng(self.seed, b"arm-cradle-tare")
+            natural_tare = int(tare_rng.choice((-1, 1)))
+            tare_side = natural_tare if tare_side is None else tare_side
+            if tare_side not in (-1, 1):
+                raise ValueError("tare side must be -1 or 1")
+            hardware = arm_rng(self.seed, b"arm-rider")
+            self.cradle = (float(tare_side*tare_rng.uniform(1.21,1.37)),
+                           float(hardware.uniform(58.,68.)), float(hardware.uniform(3.25,3.55))) if shipping else None
+            self.got_out = self.arrived = self.rested = self.ever_level = False
+            self.rider_contact_actions = 0
         elif kind in ("icl", "cross"):
             wall_x = float(variant_rng.uniform(-.45, .45))
             narrow = float(variant_rng.uniform(-.45, .45))
@@ -120,7 +188,10 @@ class World:
             self.renderer.close()
         self.radius = .13 if self.phase == 0 else self.large_radius
         if self.kind == "arm":
-            xml = arm_scene(self.block, self.tray, self.obstacle, self.arm_gains)
+            xml = arm_scene(self.block, self.tray, self.obstacle, self.arm_gains,
+                            self.arm_mass, self.arm_com, self.arm_proof,
+                            cassette=self.cassette, stop=(self.stop_side, self.stop_dx),
+                            shipping=self.shipping, cradle=self.cradle)
         else:
             xml = header()
             if self.kind == "flight":
@@ -186,17 +257,28 @@ class World:
                     xml += '<geom type="capsule" fromto="-.25 -.25 0 .25 .25 0" size=".025" mass=".01" rgba=".6 .6 .6 1"/>'
                 xml += "</body>"
             xml += "</worldbody></mujoco>"
-        xml = decorate(xml, self.kind, self.radius if self.kind == "cross" else .13,
-                       seed=self.scene_seed)
+        if self.render_enabled or self.kind != "arm":
+            xml = decorate(xml, self.kind, self.radius if self.kind == "cross" else .13,
+                           seed=self.scene_seed)
         self.model = mujoco.MjModel.from_xml_string(xml)
         self.data = mujoco.MjData(self.model)
         self.agent_id = self.model.body("agent").id
         if self.kind == "flight":
             self.data.qpos[:3] = self.start
         elif self.kind == "arm":
-            self.data.qpos[:3] = [-1.9, -1.7, 1.0]
-            self.command = self.data.qpos[:3].copy()
-            self.data.ctrl[:] = self.command
+            self.arm = ArmDynamics(self.model, self.data)
+            self.stop_joint = self.data.joint("stop_slide")
+            self.stop_ids = {self.model.geom(n).id for n in ("stop_bar", "stop_lug")}
+            self.cup_id = self.model.geom("cup").id
+            if self.cradle:
+                self.hinge = self.data.joint("cradle_pitch")
+                self.rider = self.data.joint("rider_slide")
+                self.pad_ids = tuple(self.model.geom(f"tray_pad{i}").id for i in range(2))
+                self.cradle_ids = {i for i in range(self.model.ngeom) if self.model.geom_bodyid[i] in
+                                   (self.model.body("balance_cradle").id,self.model.body("balance_weight").id)}
+                self.rider_ids = {i for i in self.cradle_ids if self.model.geom_bodyid[i] == self.model.body("balance_weight").id}
+            if self.stop_parked:
+                self.stop_joint.qpos[0] = .69
         else:
             self.data.qpos[:2] = self.nav_starts[self.phase] if self.kind in ("icl", "cross") else [-2.8, -1.8]
         mujoco.mj_forward(self.model, self.data)
@@ -217,6 +299,11 @@ class World:
             option.geomgroup[3] = 0
             self.renderer.update_scene(self.data, camera=camera, scene_option=option)
             im = self.renderer.render().copy()
+            if self.kind == "arm":
+                # Mild deterministic camera read noise, not state or action noise.
+                noise = arm_rng(self.seed, f"{camera}:{self.steps}".encode("ascii"))
+                im = np.clip(im.astype(np.int16) + noise.integers(-2, 3, im.shape),
+                             0, 255).astype(np.uint8)
             if camera == "top" and self.kind in ("icl", "cross", "bridge", "rescue"):
                 xx = (np.arange(SIZE) + .5) / SIZE * 8 - 4
                 yy = 4 - (np.arange(SIZE) + .5) / SIZE * 8
@@ -264,27 +351,17 @@ class World:
     def act(self, action):
         if self.done or self.steps >= LIMITS[self.kind]:
             raise ValueError("episode finished")
+        if self.kind == "arm":
+            return self._act_arm(action)
         if not isinstance(action, list) or not all(isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) for x in action):
             raise ValueError("finite numeric action list required")
-        n = 4 if self.kind in ("flight", "arm") else (1 if self.kind in ("icl", "cross") else 2)
+        n = 4 if self.kind == "flight" else (1 if self.kind in ("icl", "cross") else 2)
         if len(action) != n or any(abs(x) > 1 for x in action):
             raise ValueError("wrong action shape or range")
         if self.kind in ("icl", "cross") and action[0] not in (0., 1/3, 2/3, 1.):
             raise ValueError("buttons must be 0, 1/3, 2/3, or 1")
         self.steps += 1
         previous_position = self.position()
-        if self.kind == "arm":
-            self.command = np.clip(self.command + np.array(action[:3]) * .14,
-                                   [-2.6, -2.6, .17], [2.6, 2.6, 1.5])
-            obj = self.data.body("object").xpos.copy()
-            if action[3] > .5 and not self.grasped and np.linalg.norm(self.position() - obj) < .24 and not self.broken:
-                self.model.eq_data[0, 3:6] = obj - self.position()
-                self.model.eq_data[0, 6:10] = [1, 0, 0, 0]
-                self.data.eq_active[0] = 1
-                self.grasped = True
-            elif action[3] < -.5:
-                self.data.eq_active[0] = 0
-                self.grasped = False
         for _ in range(20):
             self.data.xfrc_applied[:] = 0
             if self.kind == "flight":
@@ -295,9 +372,6 @@ class World:
                 pitch = math.asin(float(np.clip(-rot[2, 0], -1, 1)))
                 yaw = math.atan2(rot[1, 0], rot[0, 0])
                 self.data.xfrc_applied[self.agent_id, 3:] = .5 * (desired - [roll, pitch, yaw]) - .12 * self.data.qvel[3:6]
-            elif self.kind == "arm":
-                self.data.ctrl[:] = self.command
-                self.data.qfrc_applied[:3] = [0, 0, 5.01]
             else:
                 if self.kind in ("icl", "cross"):
                     index = int(round(action[0] * 3))
@@ -309,15 +383,9 @@ class World:
                 self.data.qfrc_applied[:2] = 35 * (velocity - self.data.qvel[:2])
             mujoco.mj_step(self.model, self.data)
             robot_contacts = set()
-            for contact_index, contact in enumerate(self.data.contact):
+            for contact in self.data.contact:
                 names = {self.model.geom(contact.geom1).name, self.model.geom(contact.geom2).name}
-                if self.kind == "arm" and "fragile" in names and not self.broken:
-                    force = np.zeros(6)
-                    mujoco.mj_contactForce(self.model, self.data, contact_index, force)
-                    if np.linalg.norm(force[:3]) > 50:
-                        self.broken = True
-                        self.damage += 20
-                elif self.kind != "arm" and "floor" not in names and (
+                if "floor" not in names and (
                         self.model.geom_bodyid[contact.geom1] == self.agent_id
                         or self.model.geom_bodyid[contact.geom2] == self.agent_id):
                     robot_contacts.add(tuple(sorted((int(contact.geom1), int(contact.geom2)))))
@@ -331,9 +399,6 @@ class World:
                       and np.linalg.norm(self.data.qvel[3:6]) < .5 and not self.collisions)
             self.hover_steps = self.hover_steps + 1 if stable else 0
             self.success = self.hover_steps >= 10
-        elif self.kind == "arm":
-            obj = self.data.body("object").xpos
-            self.success = bool(np.linalg.norm(obj[:2]-self.tray) < .20 and obj[2] < .19 and not self.grasped and not self.broken)
         elif self.kind in ("icl", "cross"):
             reached = np.linalg.norm(p[:2]-self.goal[:2]) < .3
             if reached:
@@ -341,6 +406,62 @@ class World:
             self.success = bool(reached and (self.kind == "icl" and self.phase == 3 or self.kind == "cross" and self.phase == 1))
         self.done = bool(self.success or self.steps >= LIMITS[self.kind] or self.damage > 40 or
                          np.any(np.abs(p[:2]) > 3.8) or self.kind == "flight" and p[2] > 4)
+        return self.observe() if self.render_enabled else {}
+
+    def _act_arm(self, action):
+        self.arm.step(action)
+        self.steps += 1
+        self.grasped, self.broken = self.arm.held, self.arm.broken
+        pads = {self.model.geom("tray_pad0").id, self.model.geom("tray_pad1").id}
+        tool_load = shell_load = 0.
+        shell_on_stop = False
+        loaded_pads, tool_prop, rider_touched = set(), False, False
+        for i, contact in enumerate(self.data.contact):
+            pair = (contact.geom1, contact.geom2)
+            if self.arm.fragile_id in pair:
+                pads.difference_update(pair)
+            if self.cradle and (self.arm.fragile_id in pair or self.cup_id in pair):
+                other = pair[1] if pair[0] in (self.arm.fragile_id,self.cup_id) else pair[0]
+                if self.cradle_ids.intersection(pair) or set(pair) == {self.cup_id,self.arm.fragile_id}:
+                    f = np.zeros(6)
+                    mujoco.mj_contactForce(self.model, self.data, i, f)
+                    if f[0] > .05:
+                        if self.arm.fragile_id in pair and other in self.pad_ids:
+                            loaded_pads.add(other)
+                        tool_prop |= self.cup_id in pair
+                        rider_touched |= self.cup_id in pair and other in self.rider_ids
+            if self.stop_ids.intersection(pair) and (self.cup_id in pair or self.arm.fragile_id in pair):
+                force = np.zeros(6)
+                mujoco.mj_contactForce(self.model, self.data, i, force)
+                load = float(np.linalg.norm(force[:3]))
+                if self.cup_id in pair:
+                    tool_load = max(tool_load, load)
+                else:
+                    shell_on_stop = True
+                    shell_load = max(shell_load, load)
+        self.stop_tool_contacts += int(tool_load > 0.)
+        self.stop_shell_contacts += int(shell_load > 0.)
+        self.stop_tool_force = max(self.stop_tool_force, tool_load)
+        self.stop_shell_force = max(self.stop_shell_force, shell_load)
+        settled = (not pads and self.arm.obj.xmat[8] > .97
+                   and not shell_on_stop and abs(self.stop_joint.qvel[0]) < .035
+                   and np.linalg.norm(self.data.qvel[self.arm.obj_dof:self.arm.obj_dof+6]) < .08
+                   and not self.grasped and not self.broken)
+        if self.cradle:
+            xyz = self.arm.obj.xpos
+            bottom = xyz[2] - abs(self.arm.obj.xmat.reshape(3,3)[2]) @ np.array([.69,.17,.08])
+            self.got_out |= bool(bottom > .24)
+            self.arrived |= bool(np.all(abs(xyz[:2]-self.tray) < [.75,.30]) and xyz[2] > .30)
+            dual_rest = len(loaded_pads)==2 and not self.grasped and not self.broken
+            self.rested |= dual_rest
+            self.rider_contact_actions += int(rider_touched)
+            settled = (settled and dual_rest and not tool_prop and self.pad_gap() <= .065
+                       and abs(self.hinge.qvel[0]) < .055 and abs(self.rider.qvel[0]) < .045)
+        self.arm_settled = self.arm_settled + 1 if settled else 0
+        self.success = self.arm_settled >= (5 if self.cradle else 3)
+        self.ever_level |= self.success
+        self.damage = 20*int(self.broken) + 5*int(self.arm.scuffed)
+        self.done = self.success or self.broken or self.steps >= LIMITS["arm"]
         return self.observe() if self.render_enabled else {}
 
     def advance(self):
@@ -372,8 +493,29 @@ class World:
         self.done = bool(self.success or self.reports >= 3 or self.steps >= LIMITS[self.kind])
         return self.observe()
 
+    def pad_gap(self):
+        a,b = self.pad_ids
+        return float(abs(self.data.geom_xpos[a,2]-self.data.geom_xpos[b,2]))
+
     def metrics(self):
-        return {"success": float(self.success), "steps": self.steps,
+        arm = ({"seal_losses": self.arm.seal_losses,
+                "vacuum_fractures": int(self.arm.break_cause == "vacuum_overload"),
+                "impact_fractures": int(self.arm.break_cause == "impact"),
+                "scuffs": int(self.arm.scuffed), "peak_contact_n": self.arm.peak_contact,
+                "peak_fixture_contact_n": self.arm.peak_fixture,
+                "stop_travel_m": float(self.stop_joint.qpos[0]),
+                "stop_speed_mps": float(abs(self.stop_joint.qvel[0])),
+                "tool_stop_contact_actions": self.stop_tool_contacts,
+                "shell_stop_contact_actions": self.stop_shell_contacts,
+                "sampled_tool_stop_peak_n": self.stop_tool_force,
+                "sampled_shell_stop_peak_n": self.stop_shell_force}
+               if self.kind == "arm" else {})
+        if self.kind == "arm" and self.cradle:
+            arm.update(got_out=int(self.got_out), arrived=int(self.arrived),
+                       supported_after_vent=int(self.rested), level_stable=int(self.ever_level),
+                       final_pad_gap_m=self.pad_gap(), cradle_pitch_rad=float(self.hinge.qpos[0]),
+                       rider_offset_m=float(self.rider.qpos[0]), rider_contact_actions=self.rider_contact_actions)
+        return {**arm, "success": float(self.success), "steps": self.steps,
                 "collisions": self.collisions, "damage_cost": self.damage,
                 "completed_stages": len(self.completed), "reports": self.reports,
                 "hover_seconds": self.hover_steps*.2 if self.kind == "flight" else 0.,

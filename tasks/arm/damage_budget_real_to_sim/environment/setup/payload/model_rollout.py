@@ -1,10 +1,14 @@
-"""Standalone reconstruction simulator: scene.xml plus an action sequence -> object XYZ."""
+"""Standalone reconstruction simulator: scene.xml and actions -> arm/object pose."""
 import json
 from pathlib import Path
 import sys
 import xml.etree.ElementTree as ET
 import mujoco
 import numpy as np
+
+# The verifier runs this immutable entry point in isolated Python mode.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from arm_dynamics import ArmDynamics, SUBSTEPS, drive_matrix, parameter, pose_row
 
 
 def check_asset_paths(scene, active=None):
@@ -30,9 +34,10 @@ def check_asset_paths(scene, active=None):
 def load_model(scene):
     check_asset_paths(scene)
     model = mujoco.MjModel.from_xml_path(scene)
-    if model.ngeom < 3 or model.nq < 6 or model.nu != 3 or model.neq < 1:
+    if model.ngeom < 3 or model.nq < 11 or model.nu != 3 or model.neq < 1:
         raise ValueError("expected a three-actuator Cartesian arm and free object")
     agent, obj = model.body("agent").id, model.body("object").id
+    tool = model.body("tool").id
     if agent <= 0 or obj <= 0:
         raise ValueError("missing agent/object bodies")
     for i in range(3):
@@ -40,12 +45,27 @@ def load_model(scene):
         if (model.jnt_type[joint] != mujoco.mjtJoint.mjJNT_SLIDE
                 or model.jnt_qposadr[joint] != i or model.jnt_dofadr[joint] != i
                 or model.jnt_bodyid[joint] != agent
-                or not np.allclose(model.jnt_axis[joint], np.eye(3)[i])
-                or model.actuator_trnid[i, 0] != joint):
-            raise ValueError("Cartesian joint/actuator contract mismatch")
+                or not np.allclose(model.jnt_axis[joint], np.eye(3)[i])):
+            raise ValueError("Cartesian joint contract mismatch")
+    drive_matrix(model)
+    if (model.actuator_trntype[2] != mujoco.mjtTrn.mjTRN_JOINT
+            or model.actuator_trnid[2, 0] != model.dof_jntid[2]
+            or not np.isclose(model.actuator_gear[2, 0], 1.)):
+        raise ValueError("third actuator must directly drive Z at unit gear")
+    joint = int(model.dof_jntid[3])
+    if (model.jnt_type[joint] != mujoco.mjtJoint.mjJNT_HINGE
+            or model.jnt_bodyid[joint] != tool or model.body_parentid[tool] != agent
+            or not np.allclose(model.jnt_axis[joint], [0, 1, 0])):
+        raise ValueError("tool must have a passive Y-axis pitch joint on agent")
     if (model.eq_type[0] != mujoco.mjtEq.mjEQ_WELD
-            or model.eq_obj1id[0] != agent or model.eq_obj2id[0] != obj):
-        raise ValueError("first equality must weld agent to object")
+            or model.eq_obj1id[0] != tool or model.eq_obj2id[0] != obj):
+        raise ValueError("first equality must weld tool to object")
+    if not np.isclose(model.opt.timestep, .2 / SUBSTEPS):
+        raise ValueError("expected .01-second integration")
+    if model.geom_bodyid[model.geom("fragile").id] != obj:
+        raise ValueError("fragile collision geom must belong to object")
+    for name in ("cup_capacity_n", "cap_proof_n", "impact_limit_n", "scuff_limit_n"):
+        parameter(model, name)
     return model
 
 
@@ -56,28 +76,11 @@ def predict(scene, actions):
 
 def rollout(model, actions):
     data = mujoco.MjData(model)
-    data.qpos[:3] = [-1.9, -1.7, 1.]
-    command = data.qpos[:3].copy()
-    data.ctrl[:] = command
-    mujoco.mj_forward(model, data)
-    held = False
+    arm = ArmDynamics(model, data)
     positions = []
     for action in actions:
-        command = np.clip(command + np.array(action[:3])*.14,
-                          [-2.6, -2.6, .17], [2.6, 2.6, 1.5])
-        obj = data.body("object").xpos.copy()
-        eff = data.body("agent").xpos.copy()
-        if action[3] > .5 and not held and np.linalg.norm(eff-obj) < .24:
-            model.eq_data[0, 3:6] = obj-eff
-            model.eq_data[0, 6:10] = [1, 0, 0, 0]
-            data.eq_active[0], held = 1, True
-        elif action[3] < -.5:
-            data.eq_active[0], held = 0, False
-        for _ in range(20):
-            data.ctrl[:] = command
-            data.qfrc_applied[:3] = [0, 0, 5.01]
-            mujoco.mj_step(model, data)
-        positions.append(np.r_[data.body("agent").xpos, data.body("object").xpos].tolist())
+        arm.step(action)
+        positions.append(pose_row(data).tolist())
     return positions
 
 

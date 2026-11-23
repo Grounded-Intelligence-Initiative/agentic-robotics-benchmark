@@ -31,7 +31,7 @@ def main():
     kind = json.loads((here/"kind.json").read_text())["kind"]
     out = Path("/home/user/submission")
     if kind in ("flight", "arm"):
-        for name in ("policy.py", "coordinates.py"):
+        for name in ("policy.py", "arm_policy.py", "belt_drive.py", "coordinates.py"):
             shutil.copy2(here/name, out/name)
         (out/"run.sh").write_text(
             "#!/usr/bin/env bash\nset -euo pipefail\ncd \"$(dirname \"$0\")\"\n"
@@ -40,6 +40,10 @@ def main():
         (out/"run.sh").chmod(0o755)
         if kind == "arm":
             shutil.copy2(here/"predict.py", out/"predict.py")
+            for name in ("model_rollout.py", "arm_dynamics.py"):
+                shutil.copy2(Path("/home/user/robot", name), out/name)
+            # ALE launches the oracle from its own directory, not the public client.
+            sys.path.append("/home/user/robot")
     result = solve(RecordedClient(out), kind, artifacts=out)
     (out/"reference_result.json").write_text(json.dumps({
         "kind": kind, "done": result["done"],

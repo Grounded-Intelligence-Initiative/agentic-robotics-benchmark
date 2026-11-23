@@ -150,23 +150,19 @@ def gantry(world, agent, obj):
         geom(agent, f"bellow_{i}", "cylinder", (0, 0, .07+i*.025), (.065, .008), rgba=(.07, .09, .1, 1))
     geom(agent, "tool_mount", "cylinder", (-.28, 0, .23), (.08, .045), material="brushed")
     geom(agent, "cantilever", pos=(-.15, 0, .22), size=(.15, .035, .025), material="brushed")
-    geom(agent, "suction_lip", "cylinder", (0, 0, -.025), (.095, .009), rgba=(.12, .13, .14, 1))
-    for g in agent.findall("geom"):
-        if g.get("type") == "capsule":
-            g.set("rgba", "0 0 0 0")
-    fragile = obj.find("geom[@name='fragile']")
-    fragile.set("rgba", "0 0 0 0")
-    geom(obj, "ceramic_body", "cylinder", (0, 0, -.015), (.105, .095), rgba=(.06, .65, .18, 1))
-    geom(obj, "ceramic_base", "cylinder", (0, 0, -.112), (.09, .008), rgba=(.07, .32, .12, 1))
-    geom(obj, "ceramic_lid", "cylinder", (0, 0, .09), (.11, .012), rgba=(.03, .9, .10, 1))
-    geom(obj, "lid_knob", "sphere", (0, 0, .11), (.026,), rgba=(.08, .6, .12, 1))
+    tool = agent.find("body[@name='tool']")
+    geom(tool, "suction_lip", "cylinder", (0, 0, -.025), (.079, .007), rgba=(.12, .13, .14, 1))
+    geom(agent, "robot_marker", "cylinder", (0, 0, .052), (.073, .016), rgba=(.95, .02, .025, 1))
+    for i, x in enumerate((-.57, .57)):
+        geom(obj, f"top_fiducial{i}", pos=(x, 0, .083), size=(.055, .075, .004),
+             rgba=(.005, .95, .028, 1))
+        geom(obj, f"side_fiducial{i}", pos=(x, -.174, 0), size=(.059, .004, .029),
+             rgba=(.005, .95, .028, 1))
+    # A painted centerline is still readable when a fixture hides one end.
+    geom(obj, "side_witness_line", pos=(0, -.175, 0), size=(.50, .004, .022),
+         rgba=(1., .008, .33, 1))
     # Table top coincides with the original contact plane; no additional collision.
     geom(world, "workbench", pos=(0, 0, -.075), size=(3.2, 3.1, .076), rgba=(.50, .53, .55, 1))
-    tray = world.find("geom[@name='tray']")
-    tx, ty, _ = map(float, tray.get("pos").split())
-    for j, (dx, dy, sx, sy) in enumerate(((.28, 0, .025, .29), (-.28, 0, .025, .29),
-                                         (0, .28, .29, .025), (0, -.28, .29, .025))):
-        geom(world, f"tray_rim{j}", pos=(tx+dx, ty+dy, .065), size=(sx, sy, .035), rgba=(.035, .12, .7, 1))
 
 
 def building(world, name, x, y, sx=.4, sy=.4, height=.8):

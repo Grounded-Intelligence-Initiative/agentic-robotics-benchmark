@@ -14,6 +14,7 @@ def main():
         raise RuntimeError("refusing to reset an existing episode")
     private.mkdir(mode=0o700)
     shutil.copytree(stage/"runtime", private/"runtime")
+    shutil.copy2(stage/"payload"/"arm_dynamics.py", private/"runtime"/"arm_dynamics.py")
     public = Path("/opt/visual_robotics/client")
     public.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(stage/"payload", public, dirs_exist_ok=True)

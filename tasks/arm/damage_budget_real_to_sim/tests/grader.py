@@ -1,11 +1,14 @@
 """Trusted scoring; all submission code and XML are executed at the agent UID."""
+import hashlib
 import json
 import math
 import os
 from pathlib import Path
 import secrets
 import selectors
+import shutil
 import signal
+import struct
 import subprocess
 import time
 
@@ -15,6 +18,7 @@ import numpy as np
 import mujoco
 
 from audit import audit_trajectory
+from arm_replay import prepare_arm_inputs
 from submission_snapshot import snapshot_submission
 from robotics_grader import (
     Solver, SolverAborted, SolverMissing, deprivileged, ratio_rewards,
@@ -23,41 +27,6 @@ from robotics_grader import (
 from world import LIMITS, World, png
 
 SUBMISSION = "/opt/visual_robotics/evaluation/submission"
-
-
-def reconstruction_probes(seed):
-    """New action sequences excite both robot motion and object transport."""
-    cases = []
-    rng = np.random.default_rng(seed ^ 0x51E5)
-    for _ in range(3):
-        world = World("arm", seed, render=False)
-        actions, positions = [], []
-        xy = world.block.copy()
-        destination = world.tray + rng.uniform(-.12, .12, 2)
-        lift = float(rng.uniform(.9, 1.25))
-        waypoints = [([*xy, .85], -1), ([*xy, .30], -1),
-                     ([*xy, .30], 1), ([*xy, lift], 1),
-                     ([*destination, lift], 1), ([*destination, .32], 1),
-                     ([*destination, .30], -1)]
-        for goal, grip in waypoints:
-            for step in range(25):
-                error = np.array(goal)-world.position()
-                action = np.r_[np.clip((np.array(goal)-world.command)/.14, -1, 1), grip].tolist()
-                world.act(action)
-                actions.append(action)
-                positions.append(np.r_[world.position(), world.data.body("object").xpos].tolist())
-                if np.linalg.norm(error) < .045 and step > 0:
-                    break
-                if world.done:
-                    break
-            if world.done:
-                break
-        pos = np.array(positions)
-        require(len(pos) > 10 and np.max(np.linalg.norm(pos[:, 3:]-pos[0, 3:], axis=1)) > .3,
-                "reconstruction probe failed to excite object dynamics")
-        cases.append((actions, pos))
-        world.close()
-    return cases
 
 
 def prediction_output(process, actions, timeout=20, byte_limit=2_000_000):
@@ -105,11 +74,11 @@ def parse_prediction(payload, count):
         value = json.loads(payload)
         rows = value["positions"]
         if (not isinstance(rows, list) or len(rows) != count
-                or any(not isinstance(row, list) or len(row) != 6 for row in rows)
+                or any(not isinstance(row, list) or len(row) != 7 for row in rows)
                 or any(isinstance(x, bool) or not isinstance(x, (int, float))
                        or not math.isfinite(x) for row in rows for x in row)):
-            raise ValueError("expected finite numeric N-by-6 position predictions")
-        return np.asarray(rows, dtype=float).reshape(count, 6)
+            raise ValueError("expected finite numeric N-by-7 pose predictions")
+        return np.asarray(rows, dtype=float).reshape(count, 7)
     except (ValueError, KeyError, TypeError, OverflowError, RecursionError) as exc:
         raise ValueError("invalid prediction output") from exc
 
@@ -163,7 +132,7 @@ def counterfactual_observation(world, observation, rng):
     alternate.qpos[:2] += [rng.uniform(.5, .8)*rng.choice((-1, 1)) for _ in range(2)]
     alternate.qpos[:2] = np.clip(alternate.qpos[:2], -3., 3.)
     alternate.qpos[2] = np.clip(alternate.qpos[2]+rng.uniform(.3, .6), .4, 1.8)
-    tray_id, tray_position = None, None
+    tray_ids, tray_positions = [], None
     if world.kind == "arm":
         # Stay below the gantry's front rail and within its reachable workspace;
         # an occluded/out-of-workspace counterfactual is not a valid sensitivity probe.
@@ -171,36 +140,58 @@ def counterfactual_observation(world, observation, rng):
         alternate.qpos[2] = np.clip(alternate.qpos[2], .4, 1.35)
         # A staged setpoint controller can legitimately hold its command while a
         # servo settles. Change its visual task target as well as the arm pose.
-        alternate.qpos[3:5] += [rng.uniform(.35, .6)*rng.choice((-1, 1)) for _ in range(2)]
-        tray_id = world.model.geom("tray").id
-        tray_position = world.model.geom_pos[tray_id].copy()
-        world.model.geom_pos[tray_id, :2] += [rng.uniform(.35, .6)*rng.choice((-1, 1)) for _ in range(2)]
+        obj_joint = world.model.body_jntadr[world.arm.obj.id]
+        start = world.model.jnt_qposadr[obj_joint]
+        alternate.qpos[start:start+2] += [rng.uniform(.35, .6)*rng.choice((-1, 1)) for _ in range(2)]
+        tray_ids = sorted(i for i in world.arm.fixture_geoms if world.model.geom_bodyid[i] == 0)
+        tray_positions = world.model.geom_pos[tray_ids].copy()
+        delta = [rng.uniform(.35, .6)*rng.choice((-1, 1)) for _ in range(2)]
+        world.model.geom_pos[tray_ids, :2] += delta
+        bolt = world.model.body("packing_stop")
+        bolt_position = bolt.pos.copy()
+        bolt.pos[:2] += delta
+        rocker = world.model.body("balance_cradle") if world.cradle else None
+        if rocker is not None:
+            rocker_position = rocker.pos.copy()
+            rocker.pos[:2] += delta
     try:
         mujoco.mj_forward(world.model, alternate)
         world.data = alternate
         return {**observation, "images": [png(im) for im in world.images()]}
     finally:
         world.data = original
-        if tray_id is not None:
-            world.model.geom_pos[tray_id] = tray_position
+        if tray_ids:
+            world.model.geom_pos[tray_ids] = tray_positions
+            bolt.pos[:] = bolt_position
+            if rocker is not None:
+                rocker.pos[:] = rocker_position
 
 
-def evaluate_controller(kind, seeds):
+def evaluate_controller(kind, plan, probe_episode_hex=None):
     results = []
+    if kind == "arm" and (probe_episode_hex is None or len(probe_episode_hex) != len(plan)):
+        raise ValueError("a private probe stream is required for each arm scene")
     with Solver(step_timeout=10, max_restarts=3, submission=SUBMISSION) as solver:
-        for seed in seeds:
-            world = World(kind, seed)
-            lock = ProbeLock(seed_rng(), rate=.1, pass_fraction=.5)
+        for index, (seed, family) in enumerate(plan):
+            ballast, cartridge, side = family if family is not None else (None, None, None)
+            world = World(kind, seed, arm_payload=ballast, arm_cartridge=cartridge, stop_side=side)
+            rng = seed_rng(int(probe_episode_hex[index], 16)) if kind == "arm" else seed_rng()
+            lock = ProbeLock(rng, rate=.1, pass_fraction=.5)
+            applied, probe_steps = hashlib.sha256(), []
             try:
                 solver.reset()
                 obs = world.observe()
                 while not obs["done"]:
-                    if lock.due():
+                    probed = lock.due()
+                    if probed:
+                        probe_steps.append(world.steps)
                         alternative = counterfactual_observation(world, obs, lock.rng)
                         action = lock.probe(solver, world.steps, obs, perturbed=alternative)
                     else:
                         action = solver.act(world.steps, obs)
                     obs = world.act(action)
+                    if kind == "arm":
+                        applied.update(struct.pack("<I?4d", world.steps-1, probed, *action))
                 results.append({**world.metrics(), **lock.rewards(), "aborted": 0})
             except (SolverAborted, ValueError, TypeError, OverflowError) as exc:
                 # An unusable controller loses this episode, not unrelated valid episodes.
@@ -208,22 +199,28 @@ def evaluate_controller(kind, seeds):
                 print(f"[controller-episode-aborted] {exc}", flush=True)
             finally:
                 world.close()
+            if kind == "arm":
+                results[-1].update(probe_steps=probe_steps, applied_actions_sha256=applied.hexdigest())
+                print("[arm-transfer-finished] " + json.dumps(dict(episode=index, **{
+                    k: results[-1][k] for k in ("steps", "success", "damage_cost", "aborted")
+                })), flush=True)
     return results
 
 
-def main():
+def main(*, recorded_arm=None, expected_frozen=None):
     root = Path(stage_dir())
     private = Path("/var/lib/visual_robotics")
     require((private/"state.json").is_file(), "missing protected environment ledger")
-    # Stop the live endpoint before running arbitrary deliverables, closing a side channel.
-    pid = int((private/"pid").read_text())
-    try:
-        os.kill(pid, 0)
-        require(Path(f"/proc/{pid}/stat").read_text().split()[2] != "Z",
-                "world service crashed; this is an environment failure, not an agent failure")
-        os.kill(pid, signal.SIGTERM)
-    except ProcessLookupError:
-        require(False, "world service exited unexpectedly")
+    # ALE has released the participant sandbox. Only the service-owned receipt
+    # travels with the submission; neither its seed nor the tests are public.
+    private.chmod(0o700)
+    require(not Path("/run/visual_robotics/world.sock").exists(), "expected a fresh verifier")
+    # The unprivileged predictor can read these public helpers, never tests/.
+    helpers = Path("/opt/visual_robotics/client")
+    helpers.mkdir(parents=True, exist_ok=True, mode=0o755)
+    for name in ("arm_dynamics.py", "model_rollout.py"):
+        shutil.copyfile(root/name, helpers/name)
+        (helpers/name).chmod(0o444)
     state = json.loads((private/"state.json").read_text())
     kind = json.loads((root/"grader_config.json").read_text())["kind"]
     require(state["kind"] == kind, "wrong service episode")
@@ -241,6 +238,8 @@ def main():
     if kind in ("flight", "arm"):
         try:
             snapshot = snapshot_submission("/home/user/submission", SUBMISSION)
+            require(expected_frozen is None or expected_frozen == snapshot,
+                    "offline replay is not the recorded frozen submission")
             print("[frozen-submission] " + json.dumps(snapshot), flush=True)
         except (ValueError, OSError) as exc:
             write_verdict(zero_verdict(f"invalid submission: {exc}", anchored=anchor is not None))
@@ -251,39 +250,53 @@ def main():
             write_verdict(zero_verdict("missing deliverables", anchored=anchor is not None))
             return
         error, model_error, consistency, reconstruction = 0., 0., 0., 1.
+        stimulus_seed = None
+        probe_keys = None
         if kind == "arm":
             try:
                 if not validate_model():
                     raise ValueError("scene is not a runnable robot-and-object model")
-                errors, model_errors, consistency_errors = [], [], []
-                for actions, expected in reconstruction_probes(state["seed"]):
+                errors, model_errors, consistency_errors, pitch_errors = [], [], [], []
+                scale = np.array([1., 1., 1., 1., 1., 1., .69])
+                inputs, cases = prepare_arm_inputs(state["seed"], recorded_arm)
+                stimulus_seed, plan, probe_keys = (inputs[k] for k in
+                                                   ("stimulus_seed", "transfer_plan", "probe_episode_hex"))
+                print("[arm-private-replay-inputs] " + json.dumps(inputs, separators=(",", ":")), flush=True)
+                for actions, expected in cases:
                     predicted = run_prediction(actions)
                     from_model = run_prediction(actions, model_only=True)
-                    errors.append(np.mean((predicted-expected)**2))
-                    model_errors.append(np.mean((from_model-expected)**2))
-                    consistency_errors.append(np.mean((predicted-from_model)**2))
+                    errors.append(np.mean(((predicted-expected)*scale)**2))
+                    model_errors.append(np.mean(((from_model-expected)*scale)**2))
+                    consistency_errors.append(np.mean(((predicted-from_model)*scale)**2))
+                    pitch_errors.append(np.mean((from_model[:, 6]-expected[:, 6])**2))
                 error = math.sqrt(float(np.mean(errors)))
                 model_error = math.sqrt(float(np.mean(model_errors)))
                 consistency = math.sqrt(float(np.mean(consistency_errors)))
                 reconstruction = float(np.exp(-max(error, model_error)/.15))
+                extra["scene_pitch_rmse_rad"] = math.sqrt(float(np.mean(pitch_errors)))
             except (ValueError, KeyError, OSError, subprocess.TimeoutExpired):
                 write_verdict(zero_verdict("invalid reconstruction", anchored=anchor is not None))
                 return
-        # Seeds exist only in grader memory. The model never receives reset parameters.
-        seeds = ([state["seed"]] if kind == "arm" else []) + [
-            secrets.randbits(64) for _ in range(3 if kind == "arm" else 4)]
+        # No exploration reset, split metadata, or ground truth goes to the controller.
+        if kind != "arm":
+            plan = [(secrets.randbits(64), None) for _ in range(4)]
         try:
-            results = evaluate_controller(kind, seeds)
+            results = evaluate_controller(kind, plan, probe_keys)
         except (SolverMissing, SolverAborted, ValueError, TypeError) as exc:
             write_verdict(zero_verdict(f"controller protocol failure: {exc}", anchored=anchor is not None))
             return
-        print("[evaluation-replay-seeds-post-run] " + json.dumps(seeds), flush=True)
+        print("[evaluation-replay-post-run] " + json.dumps({
+            "stimulus_seed": stimulus_seed, "transfer_plan": plan, "episodes": results,
+        }), flush=True)
         success = float(np.mean([r["success"] for r in results]))
         probes = sum(r["probes_total"] for r in results)
         passed = sum(r["probes_passed"] for r in results)
         locks_ok = probes == 0 or passed/probes >= .5
         total_damage = metrics["damage_cost"] + sum(r["damage_cost"] for r in results)
         measured = success * reconstruction * max(0., 1-total_damage/40)
+        if kind == "arm":
+            for endpoint in ("got_out","arrived","supported_after_vent","level_stable"):
+                extra["transfer_"+endpoint+"_rate"] = float(np.mean([r[endpoint] for r in results]))
         extra.update({"success_rate": success, "prediction_rmse": error,
                       "probes_total": probes, "probes_passed": passed,
                       "match_lock_ok": float(locks_ok),
