@@ -1,7 +1,7 @@
 """THE LEGS' assembly (mates "leg_R" and "leg_L": the leg, carried with its hip-roll unit, onto the hip-pitch output
 rotor's flange, SIDEWAYS: the leg moves inboard along the seat axis into the rotor's shallow pilot; the design bolt
 position; the leg route of record, the leg
-stations of the fixtures package, the coupling's windows) as named phases, each with its checks. ONE FILE FOR BOTH
+stations of the fixtures, the coupling's windows) as named phases, each with its checks. ONE FILE FOR BOTH
 SIDES: LegModule(side) with side "R" or "L" (RIGHT and LEFT below); the runner calls RIGHT.assemble(ctx) /
 LEFT.assemble(ctx). The poses are the TRUE poses of the privileged calls (the part body = the hip-roll unit's bracket
 that carries the flange; the thigh, which the hand holds, is placed from it by the two hip joints' readings and the
@@ -14,25 +14,25 @@ hip chain of data/legs.json); the motion is the API's own (motion.py). Constants
                    stays clear of the stand's front stem and of the other leg)
   PRE_PICK_M       0.12 m: the open hand's straight approach along the grasp's approach axis (the grasp table's)
   VIA_UP_M         0.35 m: the via point above the pre-pick; home -> via by the TUCKED turn: the forearm
-                   folded in first (TUCK_Q), then the pan, then the via (this package's static probe: the short pan turn
+                   folded in first (TUCK_Q), then the pan, then the via (a static check of the poses: the short pan turn
                    at home's posture passes the hand 29 mm into a mounted head; the tucked turn keeps 10 mm off the
                    fully assembled robot); back home the same way in reverse
   APPROACH_V       0.04 m/s: the last 0.12 m of the approach
   EXTRACT_*        the leg station's straight extraction line (data/legs.json, in the station's frame = the leg's part
                    body frame as it stands): 15 mm and 60 mm at 0.02 m/s (off the stops, out of the sole nest; the
-                   fixtures package: contact-free from <= 0.25 mm of travel), a 1 s hold (the slip check), then to
+                   fixtures' design: contact-free from <= 0.25 mm of travel), a 1 s hold (the slip check), then to
                    0.45 m at the carry limits; EXTRACT_BACK_M[side]: from 15 to 60 mm the hand also moves
                    this far BACK from the station's front bar, along the normal of the bar's back face
                    (FRONT_BAR_AWAY, the station's frame: the fixtures' front bar is inclined 30 deg), and keeps
                    the offset up the rest of the line: 0 for the right leg, 35 mm for the left leg (the reason:
                    on the straight line the left knee bears on the bar while the leg turns in the hand, and the
                    knee's drawn-only M3 socket-head screw (U0337) and its washer passed 2.3 / 0.9 mm into the bar
-                   in the true meshes; the true-mesh probe of this change, the left leg alone on the nominal
+                   in the true meshes; this change checked the same way, the left leg alone on the nominal
                    layout: 20 mm back leaves the screw 0.37 mm off the bar, 35 mm leaves it 3.6 mm and the washer
                    5.7 mm, the knee's collision pieces 7.0 mm off the bar; the grasp is unchanged)
   FRONT_M          0.17 m: the front point in front of the pre-insertion pose, at its height (170 mm ahead; the grasp
                    table's front170), and FRONT_OUT_M outboard of it along the seat axis: 0 for the right leg, 0.18 m for
-                   the left leg (this package's static probe: with the RIGHT leg still standing in its station, the
+                   the left leg (a static check of the poses: with the RIGHT leg still standing in its station, the
                    arm's wrist passes through the standing leg's hip end at the left leg's front point 170 mm ahead
                    (42 mm overlap at the nominal layout, a 319 N touch in a measured run); 120 mm outboard keeps
                    8.7 mm on the drawn layout that brings them closest (seed 25), 180 mm keeps more); the carry: the
@@ -53,7 +53,7 @@ hip chain of data/legs.json); the motion is the API's own (motion.py). Constants
   RECENTRE_V       0.005 m/s: the opened hand set back on the thigh's TRUE pose where the grasp put it before it backs
                    out (a straight retreat dragged a mounted thigh about its hip yaw and the foot struck the stand)
   RETREAT_*        30 mm back along the approach drifting 3 mm outboard at 0.02 m/s; then the hand opened to the
-                   grasp width + RETREAT_OPEN_M 20 mm (10 mm per side: this package's static probe of the retreat
+                   grasp width + RETREAT_OPEN_M 20 mm (10 mm per side: a static check of the retreat
                    against the RELEASED leg found the inner pad passing the thigh 0.12-0.49 mm off it with 4 mm per
                    side, 5.96 mm or more with 10 mm; the inner finger's coupler stays 5.6 mm or more from the stand's
                    front stem; opened at the seat instead it comes within 2.7 mm of the stem); then the side's
@@ -65,8 +65,8 @@ hip chain of data/legs.json); the motion is the API's own (motion.py). Constants
                    with 90 mm straight first the pads keep 5.96 mm or more from the released thigh and the arm 26.5 mm
                    or more from a standing right leg on the six layouts), up to the via height, then home by the
                    tucked turn
-The reference always places the leg at its design bolt position (k_offset 0); the k_offset argument exists only for the
-package's one neighbouring-phase trial (a separate trial program), never for the reference."""
+The reference always places the leg at its design bolt position (k_offset 0); the k_offset argument exists only for
+seating it that many bolt positions off (solve(cell, k_offset=...)), never for the reference."""
 import json
 import math
 import os
@@ -118,7 +118,7 @@ SLIP_MAX_M, SLIP_MAX_RAD = 0.008, math.radians(15.0)  # a guard against a FAILIN
                                         # width
 ALIGN_LIMITS = {"lateral_m": 0.0003, "tilt_rad": math.radians(0.2), "residual_rad": math.radians(1.0)}
 STATION_JOINT_DEG = 0.5                 # a leg in its station: every joint within 0.5 deg of its delivered angle (the
-                                        # fixtures package: on a stop or within 0.3 deg; the knees at their limit)
+                                        # fixtures' design: on a stop or within 0.3 deg; the knees at their limit)
 WORD = {"R": "right", "L": "left"}
 
 

@@ -23,7 +23,7 @@ privileged calls; the motion is the API's own (motion.py). Constants and where e
                  whole last 0.5 mm, and a measured run locked 7 um above the face before any contact
   LOCK_WAIT_S    3 s for the coupling's lock after the release (it locks 0.50 s after the lock condition starts)
 The reference always places the head at the design bolt position (k_offset 0); the k_offset argument exists only for
-the package's one neighbouring-phase trial (a separate trial program), never for the reference."""
+seating it that many bolt positions off (solve(cell, k_offset=...)), never for the reference."""
 import math
 
 import numpy as np

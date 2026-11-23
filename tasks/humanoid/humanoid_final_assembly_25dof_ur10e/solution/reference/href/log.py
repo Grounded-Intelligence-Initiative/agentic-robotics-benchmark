@@ -1,6 +1,6 @@
 """The reference's log: every phase with its simulated and wall times, the checks it made, every event the server
 returned. One JSON object per line on stderr, each prefixed "HREF " (the graded run keeps the program's stderr; the
-cell's tests and the package's harness read it back), and the same records in memory (PhaseLog.records)."""
+cell's tests read it back), and the same records in memory (PhaseLog.records)."""
 import contextlib
 import json
 import sys

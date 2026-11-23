@@ -4,7 +4,7 @@ a last privileged read of the states. A failure stops the program where it happe
 so far are logged (never hidden) and the failure goes up to the launcher (which ends the episode with finish()).
 
 ORDER is the reference order of the mates the modules of this folder can assemble (leg_R, leg_L, arm_L,
-arm_R, head); the arms' and legs' packages add their module files and their names here (the legs, one file
+arm_R, head); each module file of the folder assembles its mates (the legs, one file
 module_leg.py for both sides; the arms, one file module_arm.py for both sides)."""
 import os
 import time

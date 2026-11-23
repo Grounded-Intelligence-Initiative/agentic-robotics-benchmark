@@ -6,30 +6,30 @@ own (motion.py). Constants and where each comes from:
 
   GRASP_FORCE_N  125 N per pad commanded (the top of the force register's 10-125 N; the grasp table's torsion margin
                  at 0.5 m/s^2 by the house rule 2 x 0.005 m x 125 N: 1.97 right row 173, 1.78 left row 170). MEASURED
-                 in the runs of record (the arms' acceptance runs and, for the left arm's row 170, its six runs:
+                 in the cell (runs of both arms and, for the left arm's row 170, six runs of its own:
                  hold_in_the_carry, the medians in the carry): once the
                  arm's weight is in the hand the pads press
                    113.2-116.4 N each on the right arm, 128.0-132.9 N each on the left arm (row 170; the arms'
                    row 156 gave 44.2-46.0 N: the arm turned about 4 deg in the grip as it left the cradle),
                  so by the house rule the left grasp's torsion capacity (1.305-1.305 N m) is above the computed 0.700 N m
                  of the arm's off-centre weight and the carry; the measured slip in the carry of the right arm is at most
-                   0.038 mm / 0.024 deg (the arms' acceptance runs)
+                   0.038 mm / 0.024 deg (in the same runs)
   GRASP ROWS     data/grasps.json (the grasp table's rows on the shoulder pitch link from above, closing front to back:
                  usable at the pick and at the mate in all 301 layouts of the fixtures of record; the hand 7.0 mm (right)
-                 / 6.1 mm (left, row 156) clear of the torso when the arm is seated: the arms' static probe; the left row
+                 / 6.1 mm (left, row 156) clear of the torso when the arm is seated (a static check of the seated poses); the left row
                  170 of the same family, 15 mm higher on the link, keeps the pads' force)
   OPEN_CLEAR_M   the open hand = the grasp width + 25 mm (at most the largest opening)
   Z_TRANSIT_M    0.60 m: the tcp height of the carry (the held arm hangs about 0.43 m under the tcp; the joint carry
-                 swings it behind the cell's UR base: this package's static probe found nothing within 15 mm); the carry
+                 swings it behind the cell's UR base: a static check of its poses found nothing within 15 mm); the carry
                  ends above the staging point at that height or, where the UR cannot reach that pose with the grasp as
                  it is, at the highest height under it that it reaches (10 mm steps, at least 0.45 m)
   PRE_PICK_M     0.12 m: the open hand's straight approach from above
-  LIFT           the straight lift out of the rack's half cradle, past its axial shoulders (the fixtures package:
+  LIFT           the straight lift out of the rack's half cradle, past its axial shoulders (the fixtures' design:
                  contact-free from 0.25 mm for a module moved rigidly): the first 6 mm at 2 mm/s while the arm's weight
                  comes into the hand (the ring centre kept on its vertical line, the hand not turned) and up to 30 mm at
                  10 mm/s with the ROOT servoed on its true pose (motion.py's servo rule): the ring centre kept on the vertical
                  line through its rack pose and the ring square to the cradle's groove, its turn about the shoulder axis
-                 left free (the runs of record: the arm turns that way in the grip as it leaves the cradle,
+                 left free (measured: the arm turns that way in the grip as it leaves the cradle,
                    3.8-4.01 deg (right) / 0.84-0.85 deg (left, row 170; 4.07-4.09 deg with row 156), and 5.6-6.41 deg
                    off it (right);
                  without the servo the ring swings 6 mm sideways into the cradle's wall and its flange wedges between
@@ -49,7 +49,7 @@ own (motion.py). Constants and where each comes from:
   RETREAT        the open hand straight up 0.10 m (the first 0.03 m at 0.02 m/s), after it is set back on the module's
                  true pose when it has moved in the hand by more than RECENTRE_M / RECENTRE_RAD
 The reference always places the arm at its design bolt position (k_offset 0); the k_offset argument exists only for
-the package's one neighbouring-phase trial (a separate trial program), never for the reference."""
+seating it that many bolt positions off (solve(cell, k_offset=...)), never for the reference."""
 import math
 
 import numpy as np
@@ -100,8 +100,8 @@ ABOVE_STAGE_MIN_Z = 0.45          # that pose with the grasp as it is (the arm t
 SLIP_GUARD_M = 0.012              # the CARRY's guard against a failing grip (the measured slip is reported; the seat uses the
 SLIP_GUARD_RAD = math.radians(10.0)  # grasp as it is)
 LIFT_RISE_TOL_M = 0.015           # the LIFT's guard against a failing grip: the ring centre must rise with the hand to within
-                                  # 15 mm and the arm's turn in the grip stay under LIFT_TURN_RAD: in the runs of record the
-LIFT_TURN_RAD = math.radians(15.0)  # arm turns in the grip as it leaves the cradle (the arms' acceptance runs, slip_after_lift):
+                                  # 15 mm and the arm's turn in the grip stay under LIFT_TURN_RAD: in the measured runs the
+LIFT_TURN_RAD = math.radians(15.0)  # arm turns in the grip as it leaves the cradle (the report's slip_after_lift):
                                   #   about the shoulder axis 3.8-4.01 deg (right) / 4.07-4.09 deg (left), off it 5.6-6.41 / 1.39-1.58 deg,
                                   #   6.78-7.56 / 4.3-4.37 deg in all; the ring centre moved 9.74-10.82 / 6.12-6.44 mm in the hand;
                                   # the turn is reported and taken out by the alignment 120 mm out
