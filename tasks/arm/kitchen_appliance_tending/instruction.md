@@ -183,10 +183,10 @@ grading run; the episode under way when it runs out, and the episodes after it, 
 controller's own time only: what the grader waits for `READY`, for every reset and for every reply (from the moment
 it starts to write the request until the reply is read), plus a fixed price of 0.03 s for every image an applied
 action asks for, whatever the grading machine takes to draw it. The simulator's and the renderer's own time and the
-pauses are not counted, so the result does not depend on how fast or how busy the grading machine is. A run in
-which every request runs to its deadline has between 54,000 and 63,000 steps: all three images at every step of such
-a run cost 4,860 to 5,670 s of the budget, one image at every step 1,620 to 1,890 s. The render self-test before the
-first episode is not charged. Your
-controller is one process for the whole grading run (it is started again only after a crash, a late answer or a reply
+pauses are not counted, so how fast the grading machine simulates and draws does not matter; your controller's own
+computing does (the sandbox has 4 CPUs, and nothing else runs while a request is outstanding). A run in which every
+request runs to its deadline has between 54,000 and 63,000 steps: all three images at every step of such a run cost
+4,860 to 5,670 s of the budget, one image at every step 1,620 to 1,890 s. The render self-test before the first
+episode is not charged. Your controller is one process for the whole grading run (it is started again only after a crash, a late answer or a reply
 that breaks the protocol, at most 3 times), so it may carry what it learned about a unit in one episode into later
 episodes on the same unit. Only the final controller is scored; trial usage is not.
