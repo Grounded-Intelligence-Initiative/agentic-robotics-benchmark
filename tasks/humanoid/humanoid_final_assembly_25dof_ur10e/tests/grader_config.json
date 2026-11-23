@@ -14,7 +14,7 @@
   "note": "the cell's hidden kit (gt/), never in the repository or the image; until an upload is approved the url is a placeholder and the development form carries the local copy tests/assets/gt.tar.xz",
   "sha256": "54538e668af3328d869af46972816a0a4801bb5b62a18c469b1f0f268f5f65c5",
   "tries": 4,
-  "url": "https://huggingface.co/datasets/grounded-intelligence-initiative/ale-robotics-assets/resolve/0000000000000000000000000000000000000000/tasks/humanoid/humanoid_final_assembly_25dof_ur10e/verifier/gt.tar.xz"
+  "url": "https://huggingface.co/datasets/grounded-intelligence-initiative/ale-robotics-assets/resolve/fce28b8d69650e930e18b995e113d8914a018dfc/tasks/humanoid/humanoid_final_assembly_25dof_ur10e/verifier/gt.tar.xz"
  },
  "oracle_nominal_layout": true,
  "privileged_wall_cap_s": 4826.0,

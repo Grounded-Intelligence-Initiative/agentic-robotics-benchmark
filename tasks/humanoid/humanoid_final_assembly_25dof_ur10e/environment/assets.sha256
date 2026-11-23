@@ -1,6 +1,6 @@
 # endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/ale-robotics-assets
-# revision: 0000000000000000000000000000000000000000
+# revision: fce28b8d69650e930e18b995e113d8914a018dfc
 # prefix: tasks/humanoid/humanoid_final_assembly_25dof_ur10e/payload
 c8caa668770bb88584f2f9c5f63ea96b673e303286e3a7282af3c9db892677dd  given/datasheets/actuator_type_A.png
 040b462a1960d6c687b56f3c5e9e6aae79b280667bc0ba68230840dbc53fd27a  given/datasheets/actuator_type_B.png
