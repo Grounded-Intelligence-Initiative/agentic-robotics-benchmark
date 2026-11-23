@@ -1,0 +1,7 @@
+{
+  "metric": "material_transfer_score",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 0.95,
+  "source": "privileged oracle (the true materials): every hidden test is checked by tests/review/make_ref.py to reach its target when planned with the true material (quality 1.0 on all 18 tests), and the oracle episode of ale validate measures 1.0; full_at 0.95 as in robocasa_object_dynamics_from_video"
+}
