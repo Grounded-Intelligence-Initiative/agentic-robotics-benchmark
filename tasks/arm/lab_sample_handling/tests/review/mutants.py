@@ -47,7 +47,7 @@ ENV = {"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "
 MUTANTS = ("reference", "nominal_rack", "calib_wrist", "calib_fixed", "card_wrist", "card_fixed", "loose_fit",
            "lid_let_go", "robust")
 EXTRA = ("tilt_plus", "tilt_minus")          # run when named
-TILT_DEG = 1.0
+TILT_DEG = float(os.environ.get("LAB_TILT_DEG", "1.0"))
 RESIDUAL_MM = 0.3
 LOOSE_MM = 0.8
 LET_GO_RAD = 0.25
