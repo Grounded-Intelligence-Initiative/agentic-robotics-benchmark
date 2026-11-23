@@ -38,12 +38,13 @@ submission/                            write params.json here
   20 k of `clamp_500hz.npy` (time k/25 s). Each fabric has its own printed pattern on its upper face (the face up when
   it lies flat).
 - **Clips.** Each fabric has 7 clips. At the start of every clip the fabric lies flat and at rest on the table, at a
-  pose that is not given (it is in the first frames). Kinds: `lift_hang` (grasp a
-  corner, lift, hang, lower partway), `shake` (lift by a short edge, three quick vertical strokes, hold),
-  `drag_release` (lift a short edge by 15 mm, drag the fabric slowly along the table and let go while moving),
-  `edge_drape` (hang the fabric beyond the table's front edge and lay it back over the edge; the clamp keeps holding),
-  `rod_drape` (carry the fabric over the rod, lower it on the far side and let go). The clamp's commanded motion is
-  exact; the jaws hold whatever part of the fabric lies between them when they close.
+  pose that is not given (it is in the first frames). Kinds: `lift_hang` (grasp a corner, lift, hang, lower
+  partway), `shake` (lift by a short edge, three quick vertical strokes, hold), `corner_walk` (lift a corner part of
+  the way and carry it across the table while the rest of the fabric drags on the table, then put it down and let go),
+  `edge_release` (hang the fabric beyond the table's front edge, lay it back over the edge, then let go),
+  `rod_drape` (twice: carry the fabric over the rod, lower it on the far side and let go). The clamp's commanded
+  motion is exact; the jaws hold whatever part of the fabric lies between them when they close, and the robot does not
+  place its grasp exactly on the fabric's corner or edge.
 - **The only information about the materials is in the images.** The size and the mass of each fabric are given
   (a ruler and a scale reading); nothing else about the material is.
 - **Practice fabric P** has the same kinds of clips. Its `gt_params.json` is the simulator material the maintainers
