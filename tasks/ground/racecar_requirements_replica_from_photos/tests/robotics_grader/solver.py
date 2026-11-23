@@ -74,9 +74,10 @@ except ImportError:  # pragma: no cover — py2 never runs here
 import threading
 
 from .account import clear_agent_account
-from .stage import agent_home, deprivileged
+from .stage import agent_home, agent_user, deprivileged
 
-__all__ = ["READY_TIMEOUT_FACTOR", "ProbeLock", "Solver", "SolverAborted", "SolverMissing"]
+__all__ = ["LOWEST_NICE", "READY_TIMEOUT_FACTOR", "ProbeLock", "Solver", "SolverAborted", "SolverMissing",
+           "agent_process_count", "replies_differ"]
 
 #: A solver may print library noise before its handshake; tolerate a bounded banner.
 MAX_PRE_READY_LINES = 200
@@ -94,6 +95,99 @@ READY_TIMEOUT_FACTOR = 4
 #: How long `close` waits for the pipe to take its one short message. A solver that reads
 #: its requests takes it at once; one that stopped reading is stopped without it.
 CLOSE_WRITE_TIMEOUT = 1.0
+
+#: The nice value the solver and everything it starts run at. The grader's own simulation and
+#: rendering run on the same CPUs and are not charged to the solver, so a solver that keeps the
+#: CPUs busy (in its own process or in children) must not be able to slow them: at nice 19 a
+#: busy process weighs 15 against the grader's 1024. Nothing the solver's account can do raises
+#: it again (RLIMIT_NICE is 0 for it).
+LOWEST_NICE = 19
+
+#: With `Solver.max_processes` set, the account's processes are counted at every reset and
+#: every this many requests.
+PROCESS_CHECK_EVERY = 64
+
+
+def _own_nice():
+    return os.getpriority(os.PRIO_PROCESS, 0)
+
+
+class _SpawnAtLowestPriority(object):
+    """Lower the calling thread to `LOWEST_NICE` for the length of a spawn, so the child starts
+    there and never runs a single instruction at the grader's priority (a child's nice value is
+    inherited from the thread that forks it, and there is no window for it to fork or leave its
+    process group before a later `setpriority` reaches it). Only root can raise itself back,
+    so without root this does nothing and `Solver._start` lowers the child after the spawn.
+    """
+
+    def __enter__(self):
+        self.old = None
+        if os.geteuid() == 0:
+            try:
+                self.old = _own_nice()
+                os.setpriority(os.PRIO_PROCESS, 0, LOWEST_NICE)
+            except OSError:
+                self.old = None
+        return self
+
+    def __exit__(self, *_exc):
+        if self.old is not None:
+            try:
+                os.setpriority(os.PRIO_PROCESS, 0, self.old)
+            except OSError:  # pragma: no cover — root always may
+                pass
+        return False
+
+
+def _account_pids(uid):
+    """Process ids in this PID namespace whose real UID is `uid` (kernel threads and processes
+    that end while `/proc` is read are skipped)."""
+    pids = []
+    try:
+        names = os.listdir("/proc")
+    except OSError:
+        return pids
+    for name in names:
+        if not name.isdigit():
+            continue
+        try:
+            if os.stat("/proc/" + name).st_uid == uid:
+                pids.append(int(name))
+        except OSError:
+            continue
+    return pids
+
+
+def agent_process_count(uid=None):
+    """How many processes the agent's account has in this sandbox. `uid` defaults to the
+    agent account's."""
+    if uid is None:
+        import pwd
+        uid = pwd.getpwnam(agent_user()).pw_uid
+    return len(_account_pids(uid))
+
+
+def _idle_policy(pids):
+    """Best effort: put `pids` (every thread of each) in the kernel's SCHED_IDLE class, which a
+    child inherits. Returns how many processes took it. Not available everywhere, and never
+    required: the nice value alone holds the bound the kit promises."""
+    policy = getattr(os, "SCHED_IDLE", None)
+    if policy is None or not hasattr(os, "sched_setscheduler"):
+        return 0
+    done = 0
+    for pid in pids:
+        try:
+            tids = [int(t) for t in os.listdir("/proc/{}/task".format(pid))]
+        except (OSError, ValueError):
+            continue
+        ok = True
+        for tid in tids:
+            try:
+                os.sched_setscheduler(tid, policy, os.sched_param(0))
+            except (OSError, PermissionError):
+                ok = False
+        done += int(ok)
+    return done
 
 
 class SolverAborted(Exception):
@@ -129,6 +223,17 @@ class Solver(object):
     `clear_account=False` keeps the session.
     """
 
+    #: `True` (the default): the solver and its descendants run at `LOWEST_NICE` (and in the
+    #: SCHED_IDLE class where the kernel lets the grader set it), so they cannot slow the
+    #: grader's own work. `False` is for a grader that measures the solver's CPU speed itself.
+    lowest_priority = True
+
+    #: More processes than this in the agent's account ends the episode ("too many processes")
+    #: and restarts the solver before the next one. 0 (the default) checks nothing: a task that
+    #: sets it must say the number in its instruction. Counted at every reset and every
+    #: `PROCESS_CHECK_EVERY` requests.
+    max_processes = 0
+
     def __init__(self, step_timeout=30.0, submission=None, entry="run.sh", max_restarts=3,
                  clear_account=True):
         self.submission = submission or os.path.join(agent_home(), "submission")
@@ -144,6 +249,9 @@ class Solver(object):
         self._dead = False     # no more restarts: every later episode aborts at once
         self._closed = False
         self._cut = False      # a request was cut short in the write: the pipe holds part of a line
+        self._requests = 0     # since the last process count
+        self._agent_uid = None
+        self.priority = {"nice": None, "idle": 0}   # what `_start` could set, for the record
         if self.clear_account:
             clear_agent_account()
         self._start()
@@ -165,7 +273,12 @@ class Solver(object):
         )
 
     def _start(self):
-        self.proc = self._spawn()
+        if self.lowest_priority:
+            with _SpawnAtLowestPriority():
+                self.proc = self._spawn()
+            self._lower(self.proc.pid)
+        else:
+            self.proc = self._spawn()
         self._cut = False
         # One queue per process: a late line from a killed process lands in the old queue.
         self._lines = queue.Queue()
@@ -175,6 +288,47 @@ class Solver(object):
         except SolverAborted:
             self._stop(grace=0)        # never leave a solver that did not come up running
             raise
+
+    def _uid(self):
+        if self._agent_uid is None:
+            try:
+                import pwd
+                self._agent_uid = pwd.getpwnam(agent_user()).pw_uid
+            except (KeyError, ImportError):
+                self._agent_uid = -1
+        return self._agent_uid
+
+    def _lower(self, pid):
+        """After the spawn: confirm the nice value (and set it where the spawn could not, i.e.
+        without root), then try the idle class for what runs so far. A failure here never
+        aborts anything: `self.priority` records what held."""
+        try:
+            if os.getpriority(os.PRIO_PROCESS, pid) < LOWEST_NICE:
+                try:
+                    os.setpriority(os.PRIO_PGRP, os.getpgid(pid), LOWEST_NICE)
+                except OSError:
+                    os.setpriority(os.PRIO_PROCESS, pid, LOWEST_NICE)
+            self.priority["nice"] = os.getpriority(os.PRIO_PROCESS, pid)
+        except OSError:
+            self.priority["nice"] = None
+        pids = [pid]
+        uid = self._uid()
+        if os.geteuid() == 0 and uid > 0:
+            pids = sorted(set(pids + _account_pids(uid)))
+        self.priority["idle"] = _idle_policy(pids)
+
+    def _check_processes(self):
+        if self.max_processes <= 0:
+            return
+        uid = self._uid()
+        if uid < 0:
+            return
+        count = len(_account_pids(uid))
+        if count > self.max_processes:
+            self._broken = True
+            raise SolverAborted(
+                "too many processes in the solver's account ({} > {})".format(
+                    count, self.max_processes))
 
     def _restart(self):
         if self.restarts >= self.max_restarts:
@@ -310,6 +464,11 @@ class Solver(object):
     def request(self, message):
         if self._dead:
             raise SolverAborted("solver could not be restarted after an earlier abort")
+        if self.max_processes > 0:
+            self._requests += 1
+            if message.get("type") == "reset" or self._requests >= PROCESS_CHECK_EVERY:
+                self._requests = 0
+                self._check_processes()
         try:
             return self._exchange(message)
         except SolverAborted:
@@ -491,16 +650,9 @@ class ProbeLock(object):
         """
         self.total += 1
         try:
-            if self.canonical is not None:
-                action_probe = self.canonical(action_probe)
-                action_real = self.canonical(action_real)
-            a = [float(x) for x in _flatten(action_probe)]
-            b = [float(x) for x in _flatten(action_real)]
+            moved = replies_differ(action_probe, action_real, self.tolerance, self.canonical)
         except (TypeError, ValueError, OverflowError):
             raise SolverAborted("solver action is not numeric")
-        moved = len(a) == len(b) and max(
-            [abs(x - y) for x, y in zip(a, b)] or [0.0]
-        ) > self.tolerance
         if moved:
             self.passed += 1
         return moved
@@ -521,6 +673,24 @@ class ProbeLock(object):
             "probes_passed": float(self.passed),
             "match_lock_ok": 1.0 if self.ok else 0.0,
         }
+
+
+def replies_differ(first, second, tolerance=1e-4, canonical=None):
+    """The lock's rule for one pair of replies to the same `t`: True when they hold the same
+    count of numbers and at least one differs by more than `tolerance`.
+
+    Two replies of different lengths show nothing about sensitivity, so they do not differ.
+    `canonical` maps a reply to its comparable form first (a task whose action has more than
+    one shape). Raises TypeError / ValueError / OverflowError for a reply that is not a nest of
+    numbers. A practice grader that tells an agent how many of its pairs differed must count
+    with this rule: `tests/test_practice_lock_matches_kit.py` holds every task's copy to it.
+    """
+    if canonical is not None:
+        first = canonical(first)
+        second = canonical(second)
+    a = [float(x) for x in _flatten(first)]
+    b = [float(x) for x in _flatten(second)]
+    return len(a) == len(b) and max([abs(x - y) for x, y in zip(a, b)] or [0.0]) > tolerance
 
 
 def _flatten(value):
