@@ -1,29 +1,28 @@
-"""Minimal MCP stdio bridge to the robot service: observe, press a button, advance. No shell, files or reset."""
+"""Native MCP image and direct joint controls. No operator program or locomotion primitives."""
 import json
 import sys
 from client import Client
 
 TOOLS = [
     {"name": "robot_observe",
-     "description": "Look through the onboard perspective camera without advancing time: one 384x384 image and the "
-                    "delivery status. Uses one of 120 camera frames, not a button press.",
+     "description": "Return one onboard 384x288 RGB image and milestone status. No time passes.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
     {"name": "robot_act",
-     "description": "Hold a button for frames physics ticks (1-120, default 30; each tick is 0.01 s), then return "
-                    "status only (no image). action contains one of 0, 0.3333333333333333, "
-                    "0.6666666666666666 or 1. The unknown, episode-fixed assignment is forward, "
-                    "turn left, turn right and brake. Motion has lag and momentum.",
+     "description": "Hold twelve absolute servo targets (radians) for 1-500 ticks of 2 ms each. "
+                    "Four leg triples: abduction, thigh, knee. Returns milestone status, no image.",
      "inputSchema": {"type": "object",
-                     "properties": {"action": {"type": "array", "items": {"type": "number"},
-                                               "minItems": 1, "maxItems": 1},
-                                    "frames": {"type": "integer", "minimum": 1, "maximum": 120, "default": 30}},
-                     "required": ["action"], "additionalProperties": False}},
+                     "properties": {"target_rad": {"type": "array", "items": {"type": "number"},
+                                                   "minItems": 12, "maxItems": 12},
+                                    "ticks": {"type": "integer", "minimum": 1, "maximum": 500}},
+                     "required": ["target_rad", "ticks"], "additionalProperties": False}},
     {"name": "robot_advance",
-     "description": "After the active delivery point is reached (goal_reached true), light the next one. "
-                    "Returns status only. The robot stays where it is; no budget is restored.",
+     "description": "Leave calibration for the launch line, or activate the next fixture after a completed dock.",
+     "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
+    {"name": "robot_recover",
+     "description": "Re-rack at the start of the current unfinished leg or calibration. No new credit.",
      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
 ]
-METHODS = {"robot_observe": "observe", "robot_act": "act", "robot_advance": "advance"}
+METHODS = {t["name"]: t["name"].removeprefix("robot_") for t in TOOLS}
 
 
 def main():
@@ -37,7 +36,7 @@ def main():
             if method == "initialize":
                 result = {"protocolVersion": req.get("params", {}).get("protocolVersion", "2024-11-05"),
                           "capabilities": {"tools": {}},
-                          "serverInfo": {"name": "delivery_robot", "version": "4.0"}}
+                          "serverInfo": {"name": "delivery_robot", "version": "9.0"}}
             elif method == "tools/list":
                 result = {"tools": TOOLS}
             elif method == "tools/call":
@@ -45,8 +44,8 @@ def main():
                 if name not in METHODS:
                     raise ValueError("unknown tool")
                 arguments = req["params"].get("arguments", {})
-                allowed = {"action", "frames"} if name == "robot_act" else set()
-                if not isinstance(arguments, dict) or not set(arguments) <= allowed:
+                allowed = {"target_rad", "ticks"} if name == "robot_act" else set()
+                if not isinstance(arguments, dict) or set(arguments) != allowed:
                     raise ValueError("unsupported arguments")
                 obs = client.request(METHODS[name], **arguments)
                 images = obs.pop("images", [])

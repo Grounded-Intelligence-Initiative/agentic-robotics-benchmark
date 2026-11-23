@@ -1,17 +1,16 @@
 """Trusted scoring in the separate verifier sandbox. No agent process or agent code runs here.
 
 What the grader reads:
-- the robot service's ledger, /var/lib/visual_robotics/state.json: the task declares it as an artifact, so the engine
+- the service's root-owned journal and receipt (events.jsonl and state.json): the task declares them as artifacts, so the engine
   copies it out of the agent's sandbox (as root; the agent cannot write it) and restores it here, root-owned;
 - the engine's trajectory of the agent session (ALE_TRAJECTORY_PATH), for the direct-control audit;
 - tests/: the hidden scene set, the world model, the anchor.
 
 It replays the ledger's requests against the scene the ledger names (a scene of the hidden set) and scores the
-replayed episode: reward = (deliveries reached / 6) / anchor / full_at, clamped to [0, 1]. A replay that disagrees with
+replayed episode: two calibration checks and an approach and stop at each dock. A replay that disagrees with
 the service's own record is an environment failure (task error), never the agent's low score.
 
-The author oracle reconstructs a private mirror from solution-only metadata. The
-service has no privileged operation, token or ground-truth response.
+The author script uses ordinary service calls. There is no privileged operation or truth response.
 """
 import json
 import os
@@ -20,7 +19,7 @@ from pathlib import Path
 from audit import audit_trajectory
 from robotics_grader import ratio_rewards, read_anchor, require, stage_dir, write_verdict, zero_verdict
 from service import dispatch
-from world import DELIVERIES, KIND, VERSION, World
+from world import KIND, VERSION, World
 
 LEDGER = Path("/var/lib/visual_robotics/state.json")
 
@@ -32,7 +31,7 @@ def replay(state):
     service stores it under the same ledger key. Version 3+ requires a final fingerprint;
     older worlds also require one if either side opts in.
     """
-    world = World(state["seed"], render=False)
+    world = World(state["seed"], render=False, scene_index=state["scene_index"])
     try:
         fingerprint = getattr(world, "state_fingerprint", None)
         for n, event in enumerate(state["events"]):
@@ -41,15 +40,15 @@ def replay(state):
                 error = None
             except (ValueError, TypeError, KeyError, OverflowError) as exc:
                 error = str(exc)
-            require((error is None) == ("error" not in event),
+            require(error == event.get("error"),
                     f"replay diverged from the service at request {n+1}: {error!r} vs {event.get('error')!r}; "
                     "an environment failure, not an agent result")
             if error is None:
                 require((event.get("steps"), event.get("delivered")) == (world.steps, world.delivered),
-                        f"replay diverged from the service at request {n+1} (presses, deliveries); "
+                        f"replay diverged from the service at request {n+1} (poses, deliveries); "
                         "an environment failure, not an agent result")
-            if "state_fingerprint" in event:
-                require(callable(fingerprint) and event["state_fingerprint"] is not None
+            if VERSION >= 5 or "state_fingerprint" in event:
+                require(callable(fingerprint) and event.get("state_fingerprint") is not None
                         and fingerprint() == event["state_fingerprint"],
                         f"replay diverged from the service at request {n+1} (state fingerprint); "
                         "an environment failure, not an agent result")
@@ -77,17 +76,18 @@ def main():
     index = state.get("scene_index")
     require(isinstance(index, int) and 0 <= index < len(hidden["seeds"]) and hidden["seeds"][index] == state["seed"],
             "the ledger's scene is not in the hidden set")
-    events = state["events"]
+    journal = LEDGER.with_name("events.jsonl")
+    require(journal.is_file(), "environment failure: the service journal was not restored")
+    with journal.open() as stream:
+        events = state["events"] = [json.loads(row) for row in stream]
+    require(len(events) == state["requests"], "environment failure: incomplete service journal")
     extra = {"scene_index": index, "requests": state["requests"], "ledger_events": len(events)}
+    metrics = replay(state)
+    require(metrics == state["metrics"], "environment failure: replayed milestone/counter totals differ")
+    extra.update({k: v for k, v in metrics.items() if isinstance(v, (int, float)) and not isinstance(v, bool)})
     if not events:
         write_verdict(zero_verdict("no interaction", anchored=anchor is not None, extra=extra))
         return
-    metrics = replay(state)
-    for key in ("delivered", "steps", "frames", "collisions"):
-        require(metrics[key] == state["metrics"][key],
-                f"replayed {key} {metrics[key]} differs from the service's {state['metrics'][key]}; "
-                "an environment failure, not an agent result")
-    extra.update({k: v for k, v in metrics.items() if isinstance(v, (int, float)) and not isinstance(v, bool)})
     path = os.environ.get("ALE_TRAJECTORY_PATH")
     require(path is not None and Path(path).is_file(), "the engine's trajectory is missing; cannot audit the session")
     trajectory = json.loads(Path(path).read_text())
@@ -108,7 +108,7 @@ def main():
             write_verdict(zero_verdict("direct-control audit failed: " + reason,
                                        anchored=anchor is not None, extra=extra))
             return
-    measured = metrics["delivered"]/DELIVERIES
+    measured = metrics["milestone_fraction"]
     write_verdict(ratio_rewards(measured, anchor, metric_name=calibration["metric"], extra=extra,
                                 full_at=calibration["full_at"]))
 

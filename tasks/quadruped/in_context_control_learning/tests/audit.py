@@ -9,7 +9,7 @@ be an ordered subsequence of the agent's robot_* calls, not equal to them. Unkno
 import json
 import re
 
-ROBOT = {"robot_observe": "observe", "robot_act": "act", "robot_advance": "advance"}
+ROBOT = {"robot_" + op: op for op in ("observe", "act", "advance", "recover")}
 # Note-keeping and read-only tools of the harnesses we run: none of them can reach the robot service or run code.
 HARMLESS = {"TodoWrite", "TodoRead", "TaskCreate", "TaskUpdate", "TaskList", "TaskGet", "TaskOutput", "TaskStop",
             "Read", "Glob", "Grep", "LS", "ToolSearch", "EnterPlanMode", "ExitPlanMode",
@@ -46,18 +46,21 @@ def _tool(call):
 def _arguments(call):
     arguments = call.get("arguments", {})
     if isinstance(arguments, str):
-        arguments = json.loads(arguments) if arguments.strip() else {}
+        try:
+            arguments = json.loads(arguments) if arguments.strip() else {}
+        except ValueError:
+            return {"_unparsed": arguments}  # an argument the harness rejected before dispatch
     return arguments if isinstance(arguments, dict) else {"_raw": arguments}
 
 
 def _same(call_params, event_params):
-    if call_params == event_params:
-        return True
-    try:   # a numerically equal action written differently (1 vs 1.0) is the same press
-        return (set(call_params) == set(event_params) == {"action"}
-                and [float(x) for x in call_params["action"]] == [float(x) for x in event_params["action"]])
-    except (TypeError, ValueError, KeyError):
-        return False
+    # Numeric JSON 1 and 1.0 compare equal; strings and booleans are not joint targets.
+    if isinstance(call_params, dict) and isinstance(event_params, dict):
+        return call_params.keys() == event_params.keys() and all(
+            _same(call_params[k], event_params[k]) for k in call_params)
+    if isinstance(call_params, list) and isinstance(event_params, list):
+        return len(call_params) == len(event_params) and all(map(_same, call_params, event_params))
+    return (type(call_params) is bool) == (type(event_params) is bool) and call_params == event_params
 
 
 def audit_trajectory(payload, events):

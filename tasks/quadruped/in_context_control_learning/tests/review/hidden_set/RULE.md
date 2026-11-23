@@ -1,3 +1,18 @@
+# V5 through V8 use the same registered scene IDs
+
+V8 retains the V7 wiring, route, yaw and gains. Passage dimensions are a separate
+seeded draw independent of outcomes. No hardware or layout was selected for a pass.
+
+V7 keeps the V6 route, initial yaw and gains for each corresponding seed. A
+separate shuffled installation lot assigns each of the 24 possible four-plug
+wirings once across the original ordered 24. No outcome influences that assignment.
+
+The direct-joint revision retains all 24 scene identifiers and their order, and
+the original 40-candidate record, without reselection. Each seed now constructs
+a different physical task. Earlier selection results are not v5 feasibility
+evidence. Use `../reference_check.py --all-hidden --output <new-dir>` to
+evaluate this revision; retain failures.
+
 # Frozen Seed Provenance for v4
 
 The 24 hidden seeds and all 40 candidates below are retained byte-for-byte from

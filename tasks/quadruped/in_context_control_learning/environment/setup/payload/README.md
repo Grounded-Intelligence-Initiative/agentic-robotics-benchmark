@@ -1,5 +1,1 @@
-# Robot service
-
-The robot is driven through the MCP tools `robot_observe`, `robot_act` and `robot_advance` (see the task
-instruction). `client.py` and `mcp_stdio.py` are the bridge those tools run on; they are here for reference only.
-In this task no program may talk to the robot service: every request has to come from your own `robot_*` tool calls.
+Operate through your own direct robot MCP calls: `robot_observe`, `robot_act`, `robot_advance`, `robot_recover`. See the task instruction for the joint order, limits and milestones. The Python files here are the tool transport, not a participant programming interface.

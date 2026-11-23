@@ -1,29 +1,25 @@
 """Single-threaded, root-owned world service with an append-only private ledger.
 
-The ledger (state.json) records every request in order, with its parameters and outcome. It is the one record of the
-agent phase that the verifier reads: the task declares it as an artifact, the engine copies it out of the agent's
-sandbox when the agent stops and restores it, root-owned, in the fresh verifier sandbox, which replays its requests
-against the same scene to score the episode.
+events.jsonl grows by one row per service call; state.json is its atomic final receipt.
+Both are root-owned artifacts restored together into the separate verifier.
 """
 import argparse
-import base64
 import json
 import os
 from pathlib import Path
 import socketserver
 
-from world import KIND, REQUEST_LIMIT, VERSION, World
+from world import KIND, VERSION, World
 
 
-ALLOWED = {"observe": set(), "act": {"action"}, "advance": set()}
-OPTIONAL = {"observe": set(), "act": {"frames"}, "advance": set()}
+ALLOWED = {"observe": set(), "act": {"target_rad", "ticks"}, "advance": set(), "recover": set()}
 
 
 def dispatch(world, method, params):
     """One request against the world; the verifier's replay calls the same function."""
     if (not isinstance(method, str) or method not in ALLOWED or not isinstance(params, dict)
-            or not ALLOWED[method] <= set(params) <= ALLOWED[method] | OPTIONAL[method]):
-        raise ValueError("operation/arguments not allowed; reset is never available")
+            or set(params) != ALLOWED[method]):
+        raise ValueError("operation or arguments not allowed")
     return getattr(world, method)(**params)
 
 
@@ -33,15 +29,15 @@ class Runtime:
         self.directory.mkdir(parents=True, mode=0o700, exist_ok=True)
         os.chmod(self.directory, 0o700)
         self.seed, self.scene_index = int(seed), int(scene_index)
-        self.world = World(self.seed, render=render)
+        self.world = World(self.seed, render=render, scene_index=self.scene_index)
         self.count = 0
-        self.events = []
-        (self.directory/"frames").mkdir(exist_ok=True, mode=0o700)
+        self.journal = self.directory/"events.jsonl"
+        self.journal.touch(mode=0o600, exist_ok=False)
         self.flush()
 
     def flush(self):
         state = {"kind": KIND, "version": VERSION, "seed": self.seed, "scene_index": self.scene_index,
-                 "requests": self.count, "events": self.events, "metrics": self.world.metrics(),
+                 "requests": self.count, "metrics": self.world.metrics(),
                  "state_fingerprint": self.world.state_fingerprint()}
         temp = self.directory/"state.tmp"
         temp.write_text(json.dumps(state))
@@ -49,34 +45,24 @@ class Runtime:
         temp.replace(self.directory/"state.json")
 
     def call(self, req):
-        self.count += 1
-        if self.count > REQUEST_LIMIT:
-            self.flush()
-            raise ValueError("request budget exhausted")
         if not isinstance(req, dict) or set(req) != {"method", "params"}:
-            self.flush()
             raise ValueError("invalid request envelope")
         method, params = req["method"], req["params"]
+        self.count += 1
         event = {"method": method, "params": params}
-        self.events.append(event)
         try:
-            result = self.dispatch(method, params)
+            result = dispatch(self.world, method, params)
             event["frame_id"] = result["frame_id"]
             event["steps"], event["delivered"] = self.world.steps, self.world.delivered
-            result["requests_remaining"] = REQUEST_LIMIT-self.count
             return result
         except (ValueError, TypeError, KeyError, OverflowError) as exc:
             event["error"] = str(exc)
             raise
         finally:
             event["state_fingerprint"] = self.world.state_fingerprint()
+            with self.journal.open("a") as stream:
+                stream.write(json.dumps(event, separators=(",", ":"))+"\n")
             self.flush()
-
-    def dispatch(self, method, params):
-        result = dispatch(self.world, method, params)
-        for i, encoded in enumerate(result.get("images", [])):
-            (self.directory/"frames"/f'{result["frame_id"]:04d}-{i}.png').write_bytes(base64.b64decode(encoded))
-        return result
 
 
 class Handler(socketserver.StreamRequestHandler):

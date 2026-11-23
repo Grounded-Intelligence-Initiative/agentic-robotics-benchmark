@@ -1,9 +1,7 @@
 schema_version = "1.4+ale.1"
-# The robot service's ledger is the record the grader scores: every request in order, written by the root-owned
-# service under /var/lib/visual_robotics (0700, the agent cannot read or write it). Declared as an artifact, the
-# engine copies it out of the agent's sandbox when the agent stops and restores it, root-owned, in the verifier.
+# The service journal and final state receipt are inaccessible to the agent and restored in the fresh verifier.
 # /home/user/submission is declared only because the agent's home is otherwise absent there; nothing in it is scored.
-artifacts = ["/home/user/submission", "/var/lib/visual_robotics/state.json"]
+artifacts = ["/home/user/submission", "/var/lib/visual_robotics/state.json", "/var/lib/visual_robotics/events.jsonl"]
 
 [task]
 name = "grounded-intelligence-initiative/in_context_control_learning"
@@ -25,10 +23,7 @@ transport = "stdio"
 command = "/opt/venv/bin/python3"
 args = ["/opt/visual_robotics/client/mcp_stdio.py"]
 
-# Six hours, stated in instruction.md. The session is at most 660 robot requests (500 presses, 120 camera frames),
-# one tool call each. On the earlier ceiling-camera version Opus 5.5 high needed 8 s per model call and made five
-# presses per call; with a frame to read and a pose to keep, a careful run may spend a minute on a call and make
-# 300 calls. The presses and the frames, not the clock, are what a run is meant to use up.
+# Retain PR36's wall-clock envelope; there is no episode quota on direct poses, observations or recovery.
 [agent]
 timeout_sec = 21600
 network_mode = "no-network"
@@ -39,7 +34,8 @@ network_mode = "no-network"
 # the grader. setup.sh does not run there and no agent code runs: the grader replays the restored ledger against the
 # hidden scene it names (tests/hidden_scenes.json, the world model in tests/) and audits the engine's trajectory.
 [verifier]
-timeout_sec = 900
+# The verifier may need to replay an entire six-hour uncapped interaction on the same CPU allocation.
+timeout_sec = 25200
 environment_mode = "separate"
 
 [verifier.environment]

@@ -24,8 +24,7 @@ def load_module(name, path):
 
 # Import the real dispatcher and grader without importing MuJoCo or constructing a world.
 world_module = types.ModuleType("world")
-world_module.KIND, world_module.VERSION = "icl", 3
-world_module.DELIVERIES, world_module.REQUEST_LIMIT = 6, 560
+world_module.KIND, world_module.VERSION = "icl", 5
 world_module.World = None
 with mock.patch.dict(sys.modules, {"world": world_module}):
     service = load_module("security_service", STAGE/"service.py")
@@ -47,9 +46,10 @@ def trajectory(*calls):
 
 class AuditTests(unittest.TestCase):
     def setUp(self):
+        self.params = {"target_rad": [0, .9, -1.8]*4, "ticks": 10}
         self.events = [{"method": "observe", "params": {}},
-                       {"method": "act", "params": {"action": [1]}}]
-        self.robot = [call("mcp__robot__robot_observe"), call("mcp__robot__robot_act", {"action": [1.]})]
+                       {"method": "act", "params": self.params}]
+        self.robot = [call("mcp__robot__robot_observe"), call("mcp__robot__robot_act", self.params)]
 
     def test_legitimate_read_only_and_discovery_tools(self):
         names = ("Read", "Glob", "Grep", "LS", "TodoWrite", "TodoRead", "TaskCreate", "TaskUpdate",
@@ -81,7 +81,7 @@ class AuditTests(unittest.TestCase):
 
     def test_engine_mcp_metadata_and_string_arguments(self):
         calls = [call("sanitized_observe", mcp={"server": "robot", "tool": "robot_observe"}),
-                 call("sanitized_act", json.dumps({"action": [1]}),
+                 call("sanitized_act", json.dumps(self.params),
                       mcp={"server": "robot", "tool": "robot_act"})]
         self.assertTrue(audit_trajectory(trajectory(*calls), self.events)[0])
 
@@ -91,6 +91,14 @@ class AuditTests(unittest.TestCase):
         self.assertFalse(audit_trajectory(trajectory(*reversed(self.robot)), self.events)[0])
         self.assertFalse(audit_trajectory(trajectory(*self.robot), self.events + [self.events[1]])[0])
 
+    def test_ticks_joint_vectors_and_recovery_are_bound(self):
+        for key, changed in (("ticks", 11), ("target_rad", [False, .9, -1.8]*4),
+                             ("target_rad", [0, .91, -1.8]*4)):
+            calls = [self.robot[0], call("mcp__robot__robot_act", {**self.params, key: changed})]
+            self.assertFalse(audit_trajectory(trajectory(*calls), self.events)[0])
+        self.assertTrue(audit_trajectory(trajectory(call("mcp__robot__robot_recover")),
+                                         [{"method": "recover", "params": {}}])[0])
+
 
 class FakeWorld:
     def __init__(self):
@@ -98,9 +106,9 @@ class FakeWorld:
         self.memory = 0.
         self.closed = False
 
-    def act(self, action):
+    def act(self, target_rad, ticks):
         self.steps += 1
-        self.memory = float(action[0])
+        self.memory = float(target_rad[0])
 
     def observe(self):
         return {}
@@ -121,18 +129,20 @@ class FakeWorld:
 class ReplayTests(unittest.TestCase):
     def setUp(self):
         self.world = FakeWorld()
-        self.state = {"seed": 1, "events": [
-            {"method": "act", "params": {"action": [1]}, "steps": 1, "delivered": 0},
+        self.state = {"seed": 1, "scene_index": 0, "events": [
+            {"method": "act", "params": {"target_rad": [1], "ticks": 1}, "steps": 1, "delivered": 0},
             {"method": "observe", "params": {}, "steps": 1, "delivered": 0},
             {"method": "advance", "params": {}, "error": "not reached"}],
             "state_fingerprint": {"qpos": [0., 0.], "qvel": [0., 0.], "actuator": [1.]}}
+        for event in self.state["events"]:
+            event["state_fingerprint"] = copy.deepcopy(self.state["state_fingerprint"])
 
     def replay(self, state):
         with mock.patch.object(grader, "World", return_value=self.world) as factory:
             try:
                 return grader.replay(state)
             finally:
-                factory.assert_called_once_with(1, render=False)
+                factory.assert_called_once_with(1, render=False, scene_index=0)
                 self.assertTrue(self.world.closed)
 
     def assert_task_error(self, state, message):
@@ -155,7 +165,8 @@ class ReplayTests(unittest.TestCase):
         initial = copy.deepcopy(self.state["state_fingerprint"])
         initial["actuator"] = [.5]
         self.state["events"][0]["state_fingerprint"] = initial
-        self.state["events"].append({"method": "act", "params": {"action": [0]}, "steps": 2, "delivered": 0})
+        self.state["events"].append({"method": "act", "params": {"target_rad": [0], "ticks": 1},
+                                     "steps": 2, "delivered": 0})
         self.state["state_fingerprint"]["actuator"] = [0.]
         self.assert_task_error(self.state, "request 1 (state fingerprint)")
         self.assertEqual(self.world.steps, 1)
@@ -166,6 +177,10 @@ class ReplayTests(unittest.TestCase):
 
     def test_null_event_fingerprint_fails(self):
         self.state["events"][0]["state_fingerprint"] = None
+        self.assert_task_error(self.state, "request 1 (state fingerprint)")
+
+    def test_v5_event_fingerprint_cannot_be_omitted(self):
+        del self.state["events"][0]["state_fingerprint"]
         self.assert_task_error(self.state, "request 1 (state fingerprint)")
 
     def test_actuator_drift_fails_even_when_all_counters_match(self):
@@ -183,22 +198,24 @@ class ReplayTests(unittest.TestCase):
 
     def test_ledger_fingerprint_requires_world_support(self):
         self.world.state_fingerprint = None
-        self.assert_task_error(self.state, "replay world does not")
+        self.assert_task_error(self.state, "state fingerprint")
 
     def test_legacy_world_without_fingerprints(self):
         self.world.state_fingerprint = None
         del self.state["state_fingerprint"]
+        for event in self.state["events"]:
+            del event["state_fingerprint"]
         with mock.patch.object(grader, "VERSION", 2):
             self.assertEqual(self.replay(self.state)["steps"], 1)
 
     def test_new_version_cannot_opt_out_of_fingerprints(self):
         self.world.state_fingerprint = None
         del self.state["state_fingerprint"]
-        self.assert_task_error(self.state, "replay world does not")
+        self.assert_task_error(self.state, "state fingerprint")
 
     def test_existing_counter_check_still_fails_as_task_error(self):
         self.state["events"][0]["steps"] = 2
-        self.assert_task_error(self.state, "presses, deliveries")
+        self.assert_task_error(self.state, "poses, deliveries")
 
 
 if __name__ == "__main__":

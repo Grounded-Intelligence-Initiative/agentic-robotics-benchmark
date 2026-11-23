@@ -1,124 +1,35 @@
-# In-Context Control Learning: precision delivery
+# Commission and walk a Go1 through six inspection docks
 
-Teleoperate a Go1-shaped delivery robot through six sequential docking stops.
-Learn its four-button remote and its motion from onboard images, then drive it
-yourself, one button press per tool call. This is a stabilized planar base with
-realistic Go1 visual meshes, NOT simulated articulated walking gait.
+You are the operator. Commission the robot and park its body-mounted camera for inspection at six marked bays. Use the robot MCP tools yourself in this one conversation. The free-base Go1 has gravity, foot contact and a rigid guard over the inspection camera. There is no built-in gait, balance aid, velocity command or autonomous controller.
 
-## Observation and Bay
+**The controls.** `robot_act` takes exactly `{"target_rad": [twelve numbers], "ticks": integer}`. This holds one absolute joint pose for 1-500 physics ticks (2 ms per tick), then pauses. Each consecutive triple is a leg's hip abduction, thigh and knee, in radians. Their respective ranges are [-0.863, 0.863], [-0.686, 4.501], [-2.818, -0.888]. A more negative knee bends the leg more. The settled factory stance is [0, 0.9, -1.8] on each leg. This is a standing pose, not a walking command.
 
-Each `robot_observe` reply includes one 384 x 384 RGB perspective image from a camera rigidly
-mounted on the robot, 0.88 m above the floor and 0.12 m behind its centre. It looks
-forward and 35 degrees down with a 100-degree vertical field of view. The view
-turns and translates with the body. There is no overhead view, global pixel-to-map
-conversion, map, compass, odometry, position, velocity, or numeric goal bearing.
-Observe does not advance time, stop motion, or accumulate docking time.
+The four **connector ports** are the four triples in the order you send them. Each operates one entire leg. After service, any port may be plugged into any physical leg: front right (FR), front left (FL), rear right (RR) or rear left (RL). Each leg is plugged in exactly once. Joint order within a plug never changes and no joint is inverted. The wiring and each servo's stiffness (within 12% of nominal) stay fixed through recovery and all six stops. You may use anything you learn in this conversation.
 
-The illuminated bay is a fenced 7.1 m square. Two parallel, 0.24 m thick partition
-walls split it into three rooms. Each has a narrow opening 0.62-0.72 m wide and a
-wide opening 1.0-1.25 m wide. Their locations vary by episode and remain fixed.
-The robot's collision footprint is a disc of radius 0.16 m. The blue-grey walls
-are solid. Contacts cause sliding or stopping, but do not damage the robot or
-directly reduce the score. The camera and beacon can see over the low partitions;
-seeing a destination does not imply a clear route to it.
+**Launch fixture.** Four optical pickups sit in the floor under the standing feet. The board ahead is labelled by **physical floor position**, not connector: front left/right across the top, rear left/right below. A cyan window means a sole is within 2.5 cm of the floor and within 7.5 cm of that pickup's centre; amber means the spot is clear. All four should be cyan at rest. Bending one leg away from the floor can clear its pickup; moving the whole body can clear others as well. Look before and after a small, short perturbation. You can re-rack between comparisons. These are real local proximity readings, not a map of the plugs. The board is stowed when commissioning ends. There is no score for declaring a wiring diagram or using a prescribed probe sequence.
 
-The active dock has a blue 0.5 m square floor pad, a white direction arrow and
-centre cross, and a small blue beacon 1.1 m above it. These are physical objects,
-subject to perspective, field of view and occlusion. No marker is drawn through
-an occluder or at a screen position computed from hidden coordinates.
+**Finding the inspection bays.** `robot_observe` returns a single 384 x 288 onboard RGB image, looking forward and 25 degrees down from 0.11 m forward and 0.16 m above the trunk origin. Vertical field of view is 82 degrees. The camera moves and tilts with the body: pivot the robot to look around. There is no overhead view, separate camera-pan tool, numeric joint feedback, position, attitude, distance or velocity readout.
 
-## The Four Buttons
+The amber floor stripe connects the bays; its chevrons point along the travel route. After each advance, a black departure sign stands ahead and to the right of the **previous** pad's required facing direction. The yellow pointer runs from a blue tail pin to its arrowhead. Read it facing the sign from that pad: up means straight, left/right means turn that way, down means back along your previous heading. It gives the initial travel direction, not a live bearing. The sign stays put as you move. An initially off-camera destination is normal.
 
-`robot_act` takes `{"action": [b], "frames": n}`. The four exact values of b are
-0, 0.3333333333333333, 0.6666666666666666 and 1. Their assignment is unknown, but
-each always has one of these meanings for the entire episode, including loading:
+Only the active bay has a blue pad and four lit corner posts. The **white arrow on the blue pad** gives the inspection heading, which can differ substantially from the route you walked. Relative to that arrow the front-left post is pink, front-right cyan, rear-left red, rear-right green. Their offsets from the pad centre are 0.52 m fore/aft and 0.29 m left/right; each post has reflectors at heights 0.20 and 0.46 m. These physical, non-contact markers remain useful when the pad is below the camera. Floor paint is guidance, not an extra scoring requirement.
 
-- Forward: apply forward drive, with a zero yaw-rate target.
-- Turn left: apply counterclockwise steering, with a zero forward-drive target.
-- Turn right: apply clockwise steering, with a zero forward-drive target.
-- Brake: target zero forward and angular motion. Braking is not instantaneous.
+**Commissioning at the launch line.** You start upright. The two optional acceptance checks are sequential; each takes 0.20 continuous simulated seconds at low speed, within 0.22 m of the launch centre:
+1. Crouch level: trunk origin 0.17-0.225 m above the floor, up-axis within about 14 degrees of vertical.
+2. Bank toward the robot's left: lower the left side so the left axis slopes down by at least 7 degrees. Keep fore-aft pitch below about 8.6 degrees and stay upright.
 
-There is no reverse or sideways command. Turning can rotate a stopped robot in
-place; when moving it produces a curved, slipping path until forward motion
-decays. Opposite steering first counters existing yaw momentum. Forward and brake
-also take time to remove existing yaw. The base has physical mass and inertia,
-bounded force and torque, and separate drive/steering response filters. A press
-does not assign a displacement or instantly set a velocity. Equal presses from
-different histories need not produce equal motion.
+`calibration_checks` latches each success. You can keep experimenting even after both. Call `robot_advance` whenever ready, including before passing either check. The rack restores the initial settled stance at the launch line; you keep the same robot, loom, credit and conversation. You cannot return to commissioning.
 
-`frames` is an integer from 1 to 120, default 30. Each frame advances 0.01 s, so
-presses last 0.01-1.2 s. Short presses permit fine corrections. Simulation pauses
-between calls: thinking or observing does not coast or brake the robot. Adjacent
-identical commands have the same physics as their combined duration, but every
-call counts as a press.
+**Split inspection deck at dock 1.** The first blue arrow crosses the bed and far lip of an open service hatch, 31.5 cm long and 4.5 cm deep. Park above it with weight on **both steel runners**. The nearer runner, with cream edges, is about 12 cm to one side of the launch line; the violet-edged runner is about 24 cm to the other side. Look from the launch rack when the board stows: the wide side can be left or right. The plates are 13.4 and 10 cm wide and start from opposite lips, with their ends staggered by 7 cm. Their tops are flush with the slab to within 1 mm. Beveled webs support the plates. Outside their outer edges is solid concrete; between the inner edges is the open trench. There is no floor at slab height in the gaps. A sole below an edge may need unloading and lifting to regain the top. Past the far lip is solid space to step off before turning toward the duct. There is no required foot, step order, or penalty for touching the bed.
 
-## Terrain and Loading
+**Other service equipment.** To reach dock 2, turn through the bay's only doorway, under the black/yellow overhead duct. The opening is 0.75-0.81 m wide and 0.38-0.39 m high. The camera hood extends 0.182 m above the trunk origin. Lower the body while moving and leave clearance for pitch; the posts, rails and duct are solid. At dock 3 the blue pad is on the flat top of a raised cable inspection cover, 4.6-5.6 cm above the floor. Its beveled apron has a short 1.8 cm toe lip and yellow edge marks. Step up, park on top, then step off on the way to dock 4. The equipment stays in place. Contacts are ordinary physics: a brush or stumble has no fee, and no particular posture sequence is required.
 
-The ordinary grey floor is dry. The broad turquoise band with dark stripes is
-slippery: drive force, lateral grip and steering response are weaker, and actuator
-lag is longer. The ochre striped band is rough: forward speed is lower, lateral
-grip is stronger and steering response differs. Both bands are visible physical
-floor surfaces spanning the bay, with fixed locations. Their effects depend on
-the base centre, with a 0.04 m transition hysteresis on either side of the painted
-boundary. Crossing back over the edge may briefly retain the preceding response.
+**Six inspection stops.** First make a straight arrival about 0.5 m ahead. The remaining five stops are 0.74-0.87 m apart, with bends in both directions. Some routes double back across a parallel aisle. At an offset or return-facing inspection, pivot or reposition to face the white arrow, not just the direction of arrival. Only the active pad counts. Each awards two irreversible milestones:
+1. **Approach:** stay upright within 0.24 m of the pad centre for 0.08 continuous seconds.
+2. **Dock:** stay upright within 0.14 m and 18 degrees of the arrow, at low speed, for 0.35 continuous seconds. At dock 1, soles must carry at least 8 N of upward load on each runner top throughout that dwell (about 0.8 kg of weight per runner). A scrape against the side is not support. Dock 3 requires at least two soles supported on the flat top throughout its dwell. Low speed means trunk translation at most 0.12 m/s and angular speed at most 0.50 rad/s. Upright means the trunk is higher than 0.15 m above the floor datum (the bed over the opening, the slab elsewhere) and its up-axis is within about 39 degrees of vertical.
 
-Unloaded dry-floor forward speed is approximately 0.96-1.20 m/s; left/right turn
-targets are independently 1.05-1.35 rad/s. Dry actuator time constants are
-0.18-0.30 s for drive and 0.16-0.26 s for steering. Slippery terrain uses 90% of
-the dry speed target, 43% drive traction, 60% yaw response and 1.45 times the
-actuator lag; rough terrain uses 62%, 85%, 78% and 1.15 times respectively. Lateral
-damping is 38 on dry, 7 on slippery and 48 on rough floor (N per m/s). Actual
-transients also depend on inertia and force limits: drive force is capped at
-22 N times terrain traction, and yaw torque at 1.8 Nm times terrain yaw response.
+Checks use the simulated body every physics tick. A successful dock pauses motion. `robot_advance` moves the fixture to the next station, without moving the robot. The sixth dock ends the run. If the robot is not upright for 0.20 continuous seconds, motion pauses with `fallen: true`. At any unfinished stage, `robot_recover` re-racks the robot at that stage's **starting** physical state. Recovery never awards a milestone or takes one away; repeating a milestone earns nothing. Observe/advance/recover do not run physics. An act may stop early at a fall or a completed dock. Act, advance and recover return milestone status, not an image.
 
-Advancing after the third delivery loads the robot. Its initial mass of 8 kg
-and all planar inertias increase by the reciprocal of a fixed factor between
-0.60 and 0.75. Forward speed targets decrease by that factor and turn-rate
-targets by its square root. Loading does not teleport or rotate the robot, clear
-its filters, change the assignment, reset velocity, or restore any budget.
-`loaded` becomes true. These dynamics remain for deliveries four through six.
+**Score and rules.** Each of the two commissioning checks, six approaches and six docks counts once: score = milestones / 14. Skipping calibration leaves its unearned points on the table. There are no fees for looking, moving, or recovering, and no task-wide cap on calls, camera frames or simulated ticks. Only a single pose hold is limited to one second; it may be repeated. The ALE agent wall-clock limit is six hours. Recovery and phase changes never restart that clock or refund accumulated calls, images or simulated time.
 
-## Precision Docking
-
-Only the active pad can score. Enter within 0.16 m of its centre and within
-12 degrees of its arrow heading to arm docking. Once armed, a small hysteresis
-margin applies: remain within 0.19 m and 16 degrees. Leaving either margin
-disarms docking and resets the timer. While armed, translation speed must remain
-at or below 0.045 m/s and angular speed at or below 0.08 rad/s for 0.50 continuous
-simulated seconds. Exceeding either speed resets the timer. Conditions are checked
-every physics frame, not just at the end of a press. A fly-through, wrong heading,
-or brief stop is not a delivery. Brake presses advance time; observations do not.
-
-The reply then reports `goal_reached: true`. Credit is permanent; the same pad
-cannot score again. Call `robot_advance` to activate the next pad. Consecutive pads
-are in different rooms and some legs cross both partitions. The sixth completed
-dock ends the episode. Earlier successful docks retain their partial credit.
-
-## Tools and Limits
-
-- `robot_observe`: image and status without advancing physics; costs one camera frame.
-- `robot_act`: one button held for the specified physics ticks, then status only (no image).
-- `robot_advance`: activate the next dock after reaching the current one; status only.
-
-Public status contains `frame_id`, `delivery`, `deliveries`, `delivered`,
-`goal_reached`, `loaded`, `steps_remaining`, `frames_remaining`, `requests_remaining`
-and `done`. `frame_id` counts camera observations, not physics ticks.
-There is no reset. Limits are 500 button presses, 120 camera observations,
-660 total service requests (including invalid requests), and 6 hours of wall-clock
-time. The `frames` argument of `robot_act` counts physics ticks, not camera images;
-longer presses do not cost extra presses or camera frames. After camera exhaustion,
-actions and advances remain available within their other budgets.
-
-## Direct-Control Rules and Scoring
-
-Drive using your own direct `robot_observe`, `robot_act` and `robot_advance` calls.
-Do perception and planning in your reasoning from the images in this conversation.
-Do not run commands or code, use scripts or other socket clients, write or edit
-files, or start other agents. To-do lists and read-only file tools are allowed;
-the private service, scene metadata and records are not participant-readable.
-
-The grader audits the session against the private service ledger. A forbidden
-tool or a service request not accounted for by your own direct robot tool calls
-scores zero. Harness-rejected calls that never reached the service do not require
-a ledger event. Otherwise your score is the fraction of the six completed docks.
-Presses, requests and contacts carry no additional penalty.
+Use only your own direct robot MCP calls for the interaction. Reason from the images and tool replies; harness read-only file/discovery and to-do tools are permitted. Do not execute or submit code, call a script or another socket client, write files, use web/desktop tools, or delegate to another agent. The private service journal is the submission; no file needs to be written. The verifier checks the engine's trajectory against the journal. Forbidden tools or service calls not accounted for by your own robot calls score zero. Calls rejected before reaching the service need no journal event.

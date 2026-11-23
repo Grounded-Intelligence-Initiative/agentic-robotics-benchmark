@@ -1,4 +1,4 @@
-"""The robot service's socket client, used by the MCP bridge. The socket accepts only observe, act and advance."""
+"""Transport for the native MCP bridge and the engine-staged author oracle."""
 import json
 import socket
 
@@ -23,8 +23,11 @@ class Client:
     def observe(self):
         return self.request("observe")
 
-    def act(self, action, frames=30):
-        return self.request("act", action=action, frames=frames)
+    def act(self, target_rad, ticks):
+        return self.request("act", target_rad=target_rad, ticks=ticks)
+
+    def recover(self):
+        return self.request("recover")
 
     def advance(self):
         return self.request("advance")

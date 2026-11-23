@@ -1,53 +1,31 @@
-# PRIVILEGED v4 Feasibility Reference
+# Scripted author feasibility reference
 
-`solve.sh` runs `oracle_run.py`. This is deliberately privileged author code,
-not an image-only policy and not evidence of model difficulty. It reads hidden
-scene metadata and exact dynamic state from an oracle-only mirror. The user
-expressly authorized this distinction for the v4 feasibility proof.
+Only the engine oracle receives this directory. It operates the same four
+requests as the participant MCP bridge. It gets one onboard RGB image per
+observation and public milestone bits; no world import, seed, layout index,
+joint feedback, collision sensor or recorded participant trajectory. The
+participant must make its own direct tool calls, not submit or execute a
+policy. The separate verifier replays the private journal for both actors.
 
-The pinned ALE engine uploads `solution/` only when the selected harness is
-`oracle` (`episode_protocol.py`, `_run_agent`/`_upload_oracle`). None of this
-directory is copied by participant setup or the Dockerfile. No privileged
-operation was added to the public socket/MCP protocol. The service accepts only
-observe, act (with optional frames), and advance. The engine-recorded oracle
-trajectory is the existing separate-verifier audit exemption, not an agent
-environment variable or a task-provided identity claim.
+The reference identifies the four leg ports with the optical launch rack and
+uses the inferred map throughout. For the first inspection it reads which side
+has the violet steel nosing from the onboard view, steps sideways on the slab,
+and widens its foot track as it crosses. It uses the known launch alignment
+and the visible corner posts to steer and park. After parking it steps the rear
+feet onto the landing before turning. If that walk-off ends in a physical
+fall, it re-racks and tries turning sooner; this is not a scene-index lookup.
+The service has no operation for any of
+these movements. Colored vertical reflectors and the departure
+placard supply egocentric guidance. The published route tells both operators
+where the duct and cable cover are; their precise dimensions are not passed to
+the controller. Under the duct the reference lowers the trunk while stepping.
+It uses a slow, single-foot swing pattern while climbing, then parks in a
+stable stance on the deck and resumes ordinary walking for the remaining bays.
+On a detected fall the reference can re-rack and try the unfinished leg with
+a different initial support phase, at most twice. Spent resources and credit
+are not restored. These are choices of the author, not required actions.
 
-An exact SHA-256 of the first ordinary RGB observation selects a hidden seed from
-`initial_fingerprints.json`. Source hashes must also match. Unknown images fail
-closed; there is no nearest-image guess. The bundled `private/` modules mirror
-the live dynamics, and `privileged.py` plans through the wide openings, predicts
-actuator lag and coasting on separate MuJoCo data, and stops at each pose. All real
-actions go through the same budgeted socket operations as the task; no pose,
-velocity, filter, budget or completion state is changed by the controller.
-
-## Evidence and Reproduction
-
-Run `tests/review/privileged_reference.py --all-hidden --output <new-directory>`
-in the task image on remote CPU. It runs all 24 fixed seeds in registered order
-and writes every ledger, metric, failure, replay result and source digest. This
-is offline feasibility; `tests/review/run_episode.sh` additionally exercises the
-actual root-owned service, unprivileged oracle process and separate replay.
-
-`tests/review/build_oracle_fingerprints.py --output <new-directory>` renders all
-24 initial frames without success filtering. Its JSON belongs only in this
-oracle directory, never in participant payload. Runtime/private/test copy parity
-must hold after every dynamics or renderer change.
-
-## Historical References
-
-The round2 image-only reference, privileged token reference, selection, baseline
-and margin evidence are archived byte-for-byte under
-`tests/review/legacy/round2-8b7195d/`. They are NOT current entrypoints or v4
-evidence. Round2's image policy relies on removed compass/coordinate outputs;
-its token-based truth service is deliberately absent from v4. The earlier ceiling
-policy remains in git history. No current image-only success claim is made.
-
-The round2 hidden 24 seeds, all 40 candidates and their order are preserved
-exactly, with no selection based on v4 results. The v3 checkpoint evidence uses
-the previous seed set and cannot establish v4 feasibility. The oracle consumes
-one of the 120 separately budgeted camera observations; its subsequent act and
-advance replies contain status only. All ordinary requests count toward 660.
-
-The Go1 meshes and pinned visual assets are preserved. Dynamics are a force-driven
-planar base with yaw, inertia and slip, not articulated locomotion or actual gait.
+All targets are individual native Go1 joint setpoints. There is no gait,
+macro, floor sensor readout or hidden policy in the participant tools.
+See [author checks](../tests/review/README.md) for the physical score,
+offline controls and measured call counts.
