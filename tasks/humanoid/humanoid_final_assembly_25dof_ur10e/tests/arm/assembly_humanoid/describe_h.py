@@ -297,7 +297,7 @@ for _k in ("length", "angle", "time", "speed"):
     _ROWS.append(("fastening.table_units.%s" % _k, "-", "-", "coupling_h.capture_table units", _G))
 FIELD_TABLE = {k: {"unit": u, "frame": f, "source": s, "design": g} for k, u, f, s, g in _ROWS}
 
-# what the design withholds, and the test that shows it is absent (cell_tests/test_episode.py)
+# what the design withholds, and the test that shows it is absent
 WITHHELD = {
     "mating graph, design poses, design phases (bolt positions that count)": "no key 'interfaces' / 'design' / 'phase' / 'k'; the "
         "graph's seat frames' translations do not occur among describe()'s numbers",

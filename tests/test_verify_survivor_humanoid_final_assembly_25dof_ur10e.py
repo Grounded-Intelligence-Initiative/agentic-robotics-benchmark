@@ -20,7 +20,7 @@ from pathlib import Path
 SLUG = "humanoid_final_assembly_25dof_ur10e"
 _HERE = Path(__file__).resolve()
 # the task folder: tasks/humanoid/<slug> beside this file's tests/ folder in the benchmark repository, else <slug> two
-# folders up from this file (the development tree)
+# folders up from this file
 _CANDIDATES = [_HERE.parents[1] / "tasks" / "humanoid" / SLUG, _HERE.parents[2] / SLUG]
 TASK = next((p for p in _CANDIDATES if (p / "tests" / "verify.py").is_file()), _CANDIDATES[0])
 VERIFY = TASK / "tests" / "verify.py"
