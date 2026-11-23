@@ -14926,6 +14926,196 @@
     }
    },
    "pre_registered_commit": "58d1788a"
+  },
+  {
+   "amended_utc": "2026-11-23T18:16:06Z",
+   "what": "The shared verify-stage kit and the probe copy (2026-11-23). (1) tests/robotics_grader/ is replaced by the benchmark's current copies of shared/robotics_grader/: the controller is started at nice 19 (and in the kernel's idle scheduling class where it can be set), so a controller that keeps the CPUs busy cannot slow the grader's own simulation and rendering; the match lock's comparison is the kit's replies_differ, unchanged in what it counts; two new modules (probe.py, deadline.py) that this grader does not call. (2) tests/keyed_env.py (and its copy in the commissioning service): the probe copy's gripper and wrist-camera poses are the kinematics of the joint positions before the last physics step plus the copy's joint offsets, as the real observation's poses are, instead of the exact kinematics of the copy's joints; the environment remembers those positions at every physics step. The simulation, the observation, the credit rule, the kits, the plan, this grader's own module and the reference do not change; the random draws of a probe copy are the same and in the same order. The kits themselves are unchanged, so the rule runs on the same candidates.",
+   "rule": "Pre-registered before any candidate ran on the amended files: this amendment (what changed, the frozen files' sha256, the candidates, the development candidates) was committed first. The selection's own rule runs again, unchanged, on the same 16 candidates in the same order (those in force before this amendment: the kits themselves are unchanged): the frozen reference runs each ONCE through the grader itself (tests/review/regrade.sh, a fresh container of the amended task image, a one-episode plan); a candidate is kept when the reference completes its kit (kit_complete 1, no abort, no fault, no controller-budget cut), now within the amended episode length; the hidden set is the first 10 kept in drawn order; should fewer than 10 be kept, 8 more candidates are drawn from os.urandom, appended and run. The anchor is the reference's full verify of that set, which must repeat every kept run (kit_complete, nuts assembled, steps).",
+   "frozen": {
+    "solution/solve.sh": "3314b1a8f01970ba663e10a8162e5c73fb1fdf8095d1d27cfed2bffc66153db5",
+    "solution/solver/oracle_ctrl.py": "f7e75e7f60b895a3057b34c43606cc2a76e446dfcecf499ed96af988a7c77428",
+    "solution/solver/oracle_main.py": "a8c574a80dbb4e7f7d8db8f5ffa806e20419985949870bf3a56e159d514b33b0",
+    "tests/keyed_env.py": "98becb99243f810b9fa3b6a08bbbbcd4491bec7e2bdee325d3682b36a3a9cadb",
+    "tests/keyed_credit.py": "2ab4fc524109ccc8296da4c8d27ec573be8b976806c30ab32ea9342dd1d4d638",
+    "tests/verify.py": "567572027f1de4e0d87b06f3a3604231cb4567e34fe4dd7dcde68d768b7884e4",
+    "tests/grader_config.json": "93be308d9cf781cc2fc1f59ba4a1315883181d2c8207ef4572486ed477417bb9",
+    "tests/nonet_exec.py": "f959b15c69a01e60a79c6f3c2cf83e8b84e40e061dc038d78b1e1e30746c96fc",
+    "tests/test.sh": "da73eea923aef8fc51f2baee4409bc3b89d3f4416adf7d60d432a125d9ad5437",
+    "tests/oracle_token.sha256": "0ddff0649335e27124af8c298fa54afb13b91aa2154f9e7950a343186166bbaa",
+    "tests/keyed_render.py": "18c1efc58d81cba4dbeed502fc4e7d3e731299a4d6e298d8cd894d19fd1e2a75",
+    "tests/keyed_look.json": "73c42d55dbc33d602d1b408a470358320f896e75191ac952de3d18cb4f49ef45",
+    "environment/Dockerfile": "d0a6dd3122e05b01466c812a6430a7cbc2b001adbc38fa250c15a1694418b141",
+    "environment/requirements.txt": "f8044709e08e9c3deb83d17f5e92c891916f210af48a4d8c4a03fd1d5e03c92d",
+    "environment/assets.sha256": "5ceb1437cdaa46cfc2a6f1ffb40b2349f1f3efba175135dae4843aa27b87cb8b",
+    "tests/robotics_grader/__init__.py": "3da7054ed158b7c082f5bde0291b8f0dbb098a7fdda7540b4b71ce13e2e8ff98",
+    "tests/robotics_grader/account.py": "7951366893446c36a01e2dfc4549eaf3c6eb59dbb3e4c4f6c9cf93ff386f4d8c",
+    "tests/robotics_grader/deadline.py": "144155712c967799eb9f5be53074498efc88ac99bb140327c9961735c56989cc",
+    "tests/robotics_grader/probe.py": "3b02abe3184b1f36acd3b9135057221d19e79f90e2ea038ceee4ac9aa82df653",
+    "tests/robotics_grader/scoring.py": "9353682eb3536df264b3cb5ec3bf2be24a410f88af5b20cf86cb31796930a83b",
+    "tests/robotics_grader/seeds.py": "b795f63404d14f0c90ca0098582e80afabd251396b1f4d6ababf4e7f6037b5e1",
+    "tests/robotics_grader/selftest.py": "e4f3a75353f2c73a738a8a3efad137b86752b7fffcb38c89cf264367e9a0ba7f",
+    "tests/robotics_grader/solver.py": "50bcc6ebfb8f4af680447d2ae111b92ee262cb21a96a3dbc6acda420dc5c3587",
+    "tests/robotics_grader/stage.py": "977429b9cd490c3cab06628a1a093dce3bb8080c102f60bc7e47a4e84012057d"
+   },
+   "changed": [
+    "tests/keyed_env.py",
+    "tests/robotics_grader/__init__.py",
+    "tests/robotics_grader/deadline.py",
+    "tests/robotics_grader/probe.py",
+    "tests/robotics_grader/selftest.py",
+    "tests/robotics_grader/solver.py"
+   ],
+   "development_kits": {
+    "rule": "The commissioning service's development kits (environment/commission_service/kits.json) are chosen like the hidden set, from their own candidates: candidate i (id D01 ...) is keyed_env.sample_kit(numpy.random.default_rng(7001 + i), id) with layout and noise seed 11001 + i, in order; the frozen reference runs each ONCE through the grader; the development kits are the first 16 it completes, in order (should fewer be kept, the next seeds follow). No development seed is a hidden candidate's, and no development kit has a hidden candidate's grooves.",
+    "seed0": 7001,
+    "layout_seed0": 11001,
+    "candidates": [
+     {
+      "i": 0,
+      "id": "D01",
+      "kit_seed": 7001,
+      "layout_seed": 11001
+     },
+     {
+      "i": 1,
+      "id": "D02",
+      "kit_seed": 7002,
+      "layout_seed": 11002
+     },
+     {
+      "i": 2,
+      "id": "D03",
+      "kit_seed": 7003,
+      "layout_seed": 11003
+     },
+     {
+      "i": 3,
+      "id": "D04",
+      "kit_seed": 7004,
+      "layout_seed": 11004
+     },
+     {
+      "i": 4,
+      "id": "D05",
+      "kit_seed": 7005,
+      "layout_seed": 11005
+     },
+     {
+      "i": 5,
+      "id": "D06",
+      "kit_seed": 7006,
+      "layout_seed": 11006
+     },
+     {
+      "i": 6,
+      "id": "D07",
+      "kit_seed": 7007,
+      "layout_seed": 11007
+     },
+     {
+      "i": 7,
+      "id": "D08",
+      "kit_seed": 7008,
+      "layout_seed": 11008
+     },
+     {
+      "i": 8,
+      "id": "D09",
+      "kit_seed": 7009,
+      "layout_seed": 11009
+     },
+     {
+      "i": 9,
+      "id": "D10",
+      "kit_seed": 7010,
+      "layout_seed": 11010
+     },
+     {
+      "i": 10,
+      "id": "D11",
+      "kit_seed": 7011,
+      "layout_seed": 11011
+     },
+     {
+      "i": 11,
+      "id": "D12",
+      "kit_seed": 7012,
+      "layout_seed": 11012
+     },
+     {
+      "i": 12,
+      "id": "D13",
+      "kit_seed": 7013,
+      "layout_seed": 11013
+     },
+     {
+      "i": 13,
+      "id": "D14",
+      "kit_seed": 7014,
+      "layout_seed": 11014
+     },
+     {
+      "i": 14,
+      "id": "D15",
+      "kit_seed": 7015,
+      "layout_seed": 11015
+     },
+     {
+      "i": 15,
+      "id": "D16",
+      "kit_seed": 7016,
+      "layout_seed": 11016
+     },
+     {
+      "i": 16,
+      "id": "D17",
+      "kit_seed": 7017,
+      "layout_seed": 11017
+     },
+     {
+      "i": 17,
+      "id": "D18",
+      "kit_seed": 7018,
+      "layout_seed": 11018
+     },
+     {
+      "i": 18,
+      "id": "D19",
+      "kit_seed": 7019,
+      "layout_seed": 11019
+     },
+     {
+      "i": 19,
+      "id": "D20",
+      "kit_seed": 7020,
+      "layout_seed": 11020
+     },
+     {
+      "i": 20,
+      "id": "D21",
+      "kit_seed": 7021,
+      "layout_seed": 11021
+     },
+     {
+      "i": 21,
+      "id": "D22",
+      "kit_seed": 7022,
+      "layout_seed": 11022
+     },
+     {
+      "i": 22,
+      "id": "D23",
+      "kit_seed": 7023,
+      "layout_seed": 11023
+     },
+     {
+      "i": 23,
+      "id": "D24",
+      "kit_seed": 7024,
+      "layout_seed": 11024
+     }
+    ]
+   }
   }
  ]
 }
