@@ -1,6 +1,6 @@
 """THE LEGS' assembly (mates "leg_R" and "leg_L": the leg, carried with its hip-roll unit, onto the hip-pitch output
 rotor's flange, SIDEWAYS: the leg moves inboard along the seat axis into the rotor's shallow pilot; the design bolt
-position; the route of the leg gate studies, the leg
+position; the leg route of record, the leg
 stations of the fixtures package, the coupling's windows) as named phases, each with its checks. ONE FILE FOR BOTH
 SIDES: LegModule(side) with side "R" or "L" (RIGHT and LEFT below); the runner calls RIGHT.assemble(ctx) /
 LEFT.assemble(ctx). The poses are the TRUE poses of the privileged calls (the part body = the hip-roll unit's bracket
@@ -8,12 +8,12 @@ that carries the flange; the thigh, which the hand holds, is placed from it by t
 hip chain of data/legs.json); the motion is the API's own (motion.py). Constants and where each comes from:
 
   GRASP_FORCE_N    125 N per pad (the force register's top; the leg is 6.97 kg): the pads' torsion capacity 2 x 0.005 m
-                   x 125 N = 1.25 N m; the grasp is the reach study's row of data/grasps.json (its rule there)
-  OPEN_CLEAR_M     25 mm: the open hand at the approach = the grasp width + 25 mm (the reach study's open hand)
+                   x 125 N = 1.25 N m; the grasp is a row of data/grasps.json (its rule there)
+  OPEN_CLEAR_M     25 mm: the open hand at the approach = the grasp width + 25 mm (the grasp table's open hand)
   RELEASE_CLEAR_M  8 mm: the hand opened at the release to the grasp width + 8 mm, 4 mm per side (the inner finger
                    stays clear of the stand's front stem and of the other leg)
-  PRE_PICK_M       0.12 m: the open hand's straight approach along the grasp's approach axis (the reach study's)
-  VIA_UP_M         0.35 m: the via point above the pre-pick (the gate study's via); home -> via by the TUCKED turn: the forearm
+  PRE_PICK_M       0.12 m: the open hand's straight approach along the grasp's approach axis (the grasp table's)
+  VIA_UP_M         0.35 m: the via point above the pre-pick; home -> via by the TUCKED turn: the forearm
                    folded in first (TUCK_Q), then the pan, then the via (this package's static probe: the short pan turn
                    at home's posture passes the hand 29 mm into a mounted head; the tucked turn keeps 10 mm off the
                    fully assembled robot); back home the same way in reverse
@@ -30,19 +30,19 @@ hip chain of data/legs.json); the motion is the API's own (motion.py). Constants
                    in the true meshes; the true-mesh probe of this change, the left leg alone on the nominal
                    layout: 20 mm back leaves the screw 0.37 mm off the bar, 35 mm leaves it 3.6 mm and the washer
                    5.7 mm, the knee's collision pieces 7.0 mm off the bar; the grasp is unchanged)
-  FRONT_M          0.17 m: the front point in front of the pre-insertion pose, at its height (the gate study's FRONT_DX; the reach
-                   study's front170), and FRONT_OUT_M outboard of it along the seat axis: 0 for the right leg, 0.18 m for
+  FRONT_M          0.17 m: the front point in front of the pre-insertion pose, at its height (170 mm ahead; the grasp
+                   table's front170), and FRONT_OUT_M outboard of it along the seat axis: 0 for the right leg, 0.18 m for
                    the left leg (this package's static probe: with the RIGHT leg still standing in its station, the
                    arm's wrist passes through the standing leg's hip end at the left leg's front point 170 mm ahead
-                   (42 mm overlap at the nominal layout, a 319 N touch in development run 5); 120 mm outboard keeps
+                   (42 mm overlap at the nominal layout, a 319 N touch in a measured run); 120 mm outboard keeps
                    8.7 mm on the drawn layout that brings them closest (seed 25), 180 mm keeps more); the carry: the
                    end of the extraction -> above the front point (its height kept) -> the front point (Cartesian lines
-                   at the carry limits, the gate study's) -> a straight line to the pre-insertion pose at PRE_LINE_V 0.05 m/s
-  PRE_OUT_M        18 mm: the pre-insertion pose, the lateral gap open: 18 mm outboard of the seat along its axis (the gate study,
-                   the reach study's lat18); there the leg is set right on its seat by the true pose (ALIGN_*)
+                   at the carry limits) -> a straight line to the pre-insertion pose at PRE_LINE_V 0.05 m/s
+  PRE_OUT_M        18 mm: the pre-insertion pose, the lateral gap open: 18 mm outboard of the seat along its axis (the leg
+                   route's lateral gap, the grasp table's lat18); there the leg is set right on its seat by the true pose (ALIGN_*)
   ALIGN2_M         4 mm outboard: a second setting-right before the pilot engages (it engages 2.5 mm out: the graph's
                    pilot overlap)
-  INSERT_V         0.008 m/s from 18 to 4 mm and 0.005 m/s from 4 to 1.5 mm (the gate study's 8 mm/s; slower into the pilot)
+  INSERT_V         0.008 m/s from 18 to 4 mm and 0.005 m/s from 4 to 1.5 mm (8 mm/s first; slower into the pilot)
   SLOW_LAST_M      1.5 mm at SEAT_V 1 mm/s (the frozen numbers' stand.last_insertion_mm_at_1_mm_s; reference behaviour
                    'slows the last 1.5 mm of an insertion to 1 mm/s'), aimed OVERTRAVEL_M 1.0 mm past the face
                    (the frozen numbers' stand.flange_overtravel_mm); the line stops when the coupling reports the lock
@@ -61,7 +61,7 @@ hip chain of data/legs.json); the motion is the API's own (motion.py). Constants
                    the left leg 60 mm straight back, then 60 mm back with 180 mm outboard (straight back all the way
                    the wrist passed 4.5 mm from the hip end of a right leg still standing in its station on the
                    nominal layout and overlapped it 1.3 mm on seed 82; drifting outboard from the first 30 mm on, the
-                   inner pad dragged the released thigh: the left leg alone on seed 82 in the package's second batch;
+                   inner pad dragged the released thigh: the left leg alone on seed 82 in a measured run;
                    with 90 mm straight first the pads keep 5.96 mm or more from the released thigh and the arm 26.5 mm
                    or more from a standing right leg on the six layouts), up to the via height, then home by the
                    tucked turn
@@ -112,7 +112,7 @@ SLIP_MAX_M, SLIP_MAX_RAD = 0.008, math.radians(15.0)  # a guard against a FAILIN
                                         # read at the grasp centre after the extraction: the leg turns in the hand about the
                                         # closing axis as it leaves its tilted station (the gravity torque there is above the pads'
                                         # 1.25 N m of torsion, and the shank drags on the front bar while the knee is still on it):
-                                        # development runs 1-3 measured 3.98 deg / 0.88 mm (right) and 7.03 deg / 3.52 mm (left);
+                                        # three measured runs gave 3.98 deg / 0.88 mm (right) and 7.03 deg / 3.52 mm (left);
                                         # the carry and the seat use the grasp as it is and the hand is set back on the thigh's
                                         # true pose before it backs out. 8 mm keeps the grasp centre inside the pads' 13.5 mm half
                                         # width

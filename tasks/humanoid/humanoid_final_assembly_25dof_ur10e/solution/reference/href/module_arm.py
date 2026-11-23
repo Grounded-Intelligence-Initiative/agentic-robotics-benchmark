@@ -1,10 +1,10 @@
 """The arms' assembly (mates "arm_R" / "arm_L": the arm's shoulder ring 04B into the torso shell's shoulder socket, slid
-in along the shoulder axis and fastened while it is held, the way the arms' gate study settled) as
+in along the shoulder axis and fastened while it is held) as
 named phases, each with its checks. ONE FILE FOR BOTH SIDES: the side is the mate id. The poses are the TRUE poses of
 the privileged calls (the module's root body = the mate's part body, the torso = its carrier); the motion is the API's
 own (motion.py). Constants and where each comes from:
 
-  GRASP_FORCE_N  125 N per pad commanded (the top of the force register's 10-125 N; the reach study's torsion margin
+  GRASP_FORCE_N  125 N per pad commanded (the top of the force register's 10-125 N; the grasp table's torsion margin
                  at 0.5 m/s^2 by the house rule 2 x 0.005 m x 125 N: 1.97 right row 173, 1.78 left row 170). MEASURED
                  in the runs of record (the arms' acceptance runs and, for the left arm's row 170, its six runs:
                  hold_in_the_carry, the medians in the carry): once the
@@ -14,7 +14,7 @@ own (motion.py). Constants and where each comes from:
                  so by the house rule the left grasp's torsion capacity (1.305-1.305 N m) is above the computed 0.700 N m
                  of the arm's off-centre weight and the carry; the measured slip in the carry of the right arm is at most
                    0.038 mm / 0.024 deg (the arms' acceptance runs)
-  GRASP ROWS     data/grasps.json (the reach study's rows on the shoulder pitch link from above, closing front to back:
+  GRASP ROWS     data/grasps.json (the grasp table's rows on the shoulder pitch link from above, closing front to back:
                  usable at the pick and at the mate in all 301 layouts of the fixtures of record; the hand 7.0 mm (right)
                  / 6.1 mm (left, row 156) clear of the torso when the arm is seated: the arms' static probe; the left row
                  170 of the same family, 15 mm higher on the link, keeps the pads' force)
@@ -27,18 +27,18 @@ own (motion.py). Constants and where each comes from:
   LIFT           the straight lift out of the rack's half cradle, past its axial shoulders (the fixtures package:
                  contact-free from 0.25 mm for a module moved rigidly): the first 6 mm at 2 mm/s while the arm's weight
                  comes into the hand (the ring centre kept on its vertical line, the hand not turned) and up to 30 mm at
-                 10 mm/s with the ROOT servoed on its true pose (the arms' gate study's servo rule): the ring centre kept on the vertical
+                 10 mm/s with the ROOT servoed on its true pose (motion.py's servo rule): the ring centre kept on the vertical
                  line through its rack pose and the ring square to the cradle's groove, its turn about the shoulder axis
                  left free (the runs of record: the arm turns that way in the grip as it leaves the cradle,
                    3.8-4.01 deg (right) / 0.84-0.85 deg (left, row 170; 4.07-4.09 deg with row 156), and 5.6-6.41 deg
                    off it (right);
                  without the servo the ring swings 6 mm sideways into the cradle's wall and its flange wedges between
-                 the axial shoulders, 0.2 mm each side: the development runs); then on to 60 mm
+                 the axial shoulders, 0.2 mm each side, in the measured runs); then on to 60 mm
   STAGE_M        0.120 m: the carry ends ON the shoulder axis this far outboard of the seat (the stator's
                  inboard end 11.7 mm beyond the collar's mouth; a descent onto a point nearer drives the stator through
                  the collar wall)
   ENTRY_M        0.060 m: the second alignment on the axis before the ring meets the collar's mouth (about 56 mm out)
-  SLIDE_V        0.015 m/s along the axis (0.03 m/s outside the collar), servoed on the true pose (the gate study's rule:
+  SLIDE_V        0.015 m/s along the axis (0.03 m/s outside the collar), servoed on the true pose (motion.py's servo rule:
                  every 2 ticks 0.5 x the lateral and angular error, at most 0.5 mm / 0.1 deg), the slide through the
                  socket guarded on the wrist force (GUARD_INSERT_DF_N 15 N change)
   SLOW_FROM_M    0.0015 m: the last 1.5 mm at SLOW_V 1 mm/s (the frozen numbers' reference behaviour), under a guard on
@@ -47,7 +47,7 @@ own (motion.py). Constants and where each comes from:
   HOLD           the arm is HELD at its seat until the cell reports the lock (without the hold: a
                  released arm cocks 0.88-0.91 deg, backs out 0.86-1.06 mm and is never fastened); LOCK_WAIT_S 4 s
   RETREAT        the open hand straight up 0.10 m (the first 0.03 m at 0.02 m/s), after it is set back on the module's
-                 true pose when it has moved in the hand by more than RECENTRE_M / RECENTRE_RAD (a lesson of the leg gate study)
+                 true pose when it has moved in the hand by more than RECENTRE_M / RECENTRE_RAD
 The reference always places the arm at its design bolt position (k_offset 0); the k_offset argument exists only for
 the package's one neighbouring-phase trial (a separate trial program), never for the reference."""
 import math
@@ -66,11 +66,11 @@ APPROACH_V = 0.05
 LIFT_SLOW_M = 0.06
 LIFT_SLOW_V = 0.01
 LIFT_TRANSFER_M = 0.006           # the first 6 mm at 2 mm/s: the arm's weight comes into the hand (the tcp sags about 4.4 mm
-LIFT_TRANSFER_V = 0.002           # and the tool turns about 0.4 deg under it: the first development run) while the servo
+LIFT_TRANSFER_V = 0.002           # and the tool turns about 0.4 deg under it: the first measured run) while the servo
                                   # keeps the ring centre on its vertical line, the hand not turned (cap_rad 0)
 LIFT_SERVO_M = 0.030              # the servo up to 30 mm: the ring flange leaves the cradle's groove between the axial
                                   # shoulders (0.2 mm each side: a turn of the ring by 0.22 deg jams it there [computed]; the first
-                                  # development run: the tool's turn under the load wedged the left arm's flange, 548 N)
+                                  # measured run: the tool's turn under the load wedged the left arm's flange, 548 N)
 STAGE_M = 0.120
 ENTRY_M = 0.060
 SLIDE_V = 0.015
@@ -93,9 +93,9 @@ RECENTRE_M = 0.001
 RECENTRE_RAD = math.radians(0.5)
 ABOVE_STAGE_DZ = 0.01             # the carry ends above the staging point at the transit height or, when the UR cannot reach
 ABOVE_STAGE_MIN_Z = 0.45          # that pose with the grasp as it is (the arm turned in the grip), at the highest height under
-                                  # it that it reaches, in steps of 10 mm, not under 0.45 m (the third batch's run R_s25: the
+                                  # it that it reaches, in steps of 10 mm, not under 0.45 m (a measured run: the
                                   # right stage 1.03 m out from the UR's base, the arm turned 6.9 deg in the grip: no IK at
-                                  # 0.60 m, IK at 0.59 m; dev/diag_carry.py, dev/run_inproc.py); the descent from there is
+                                  # 0.60 m, IK at 0.59 m); the descent from there is
                                   # the same vertical line
 SLIP_GUARD_M = 0.012              # the CARRY's guard against a failing grip (the measured slip is reported; the seat uses the
 SLIP_GUARD_RAD = math.radians(10.0)  # grasp as it is)
@@ -109,7 +109,7 @@ ALIGN_LIMITS = {"lateral_m": 0.00010, "tilt_rad": math.radians(0.05), "residual_
 ALIGN_STOP = {"m": 3e-5, "rad": math.radians(0.01)}
 HELD = {"tol_p": 0.010, "tol_r": 0.035}   # a move with the arm in the hand ends when the COMMANDED tcp is at the target and the
                                           # arm is at rest; the actual tcp then sags under the 4.4 kg module by about 4-5 mm
-                                          # and 0.4 deg (the first development run: 4.39 mm, 0.41 deg), reported; more than
+                                          # and 0.4 deg (the first measured run: 4.39 mm, 0.41 deg), reported; more than
                                           # 10 mm / 2 deg would mean something holds the arm back
 
 
@@ -184,7 +184,7 @@ class Arm(object):
         return float(np.linalg.norm(pb - pa)), tf.angle(T_tcp_part_a[:3, :3].T @ T_tcp_part_b[:3, :3])
 
     def errors(self, st=None):
-        st = st or self.truth.read()            # a FRESH read (truth.last may be from before a hold: the development runs)
+        st = st or self.truth.read()            # a FRESH read (truth.last may be from before a hold)
         e = self.truth.seat_errors(self.mate, st)
         return {"axial_mm": e["axial_m"] * 1e3, "lateral_mm": e["lateral_m"] * 1e3, "tilt_deg": math.degrees(e["tilt_rad"]),
                 "clock_deg": math.degrees(e["clock_rad"]), "residual_deg": math.degrees(e["residual_rad"]), "k_near": e["k_near"]}
@@ -314,7 +314,7 @@ class Arm(object):
             # the ROOT is kept on the vertical line through its rack pose (the ring centre's x and y) and square to the
             # cradle's groove (its turns about the world x and z), while its turn about the shoulder axis (world y: the
             # ring turning in its own plane, harmless in the groove) is left free: the arm turns 3-4 deg about that axis
-            # in the grip as it leaves the cradle (the development runs: the pads on the pitch link's convex pieces),
+            # in the grip as it leaves the cradle (measured: the pads on the pitch link's convex pieces),
             # which without the servo swings the ring 6 mm sideways into the cradle's wall while it is still in its groove
             truth, mid = self.truth, self.mid
             T_root0 = truth.module_T(mid, truth.read())

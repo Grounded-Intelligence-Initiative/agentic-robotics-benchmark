@@ -1,5 +1,5 @@
-"""The cell's fixtures at run time: the fixture design of record (fixtures/fixtures.json,
-written by fixtures/gen_fixtures.py) + one layout draw -> the data contract's FIXTURE records, the base's placement on
+"""The cell's fixtures at run time: the fixture design of record (gt/fixtures/fixtures.json,
+the hidden kit's) + one layout draw -> the data contract's FIXTURE records, the base's placement on
 its stand and every module's rest placement in its fixture.
 
 Two more fixture records, the cell furniture that collides: "camera_portal" (posts, braces, beam:
@@ -47,7 +47,7 @@ FIXTURE_ORDER = ("stand", "leg_station_R", "leg_station_L", "leg_bench", "arm_ra
                  "rack_table", "floor_board", "camera_portal", "top_camera")
 FURNITURE = ("camera_portal", "top_camera")      # static collision bodies of the cell furniture
 # the module bodies that rest on a fixture face (the whole-body reading of the rest rule; with a collision model
-# kit_adapter flags the collision model's 'rest' pieces instead and accepts this table only for the prototype pieces)
+# kit_adapter flags the collision model's 'rest' pieces instead and accepts this table only for a source without a collision model)
 REST_BODIES = {"leg_R": ("right_ankle_roll_link", "right_ankle_pitch_link", "right_knee_link"),
                "leg_L": ("left_ankle_roll_link", "left_ankle_pitch_link", "left_knee_link"),
                "arm_R": ("right_arm_root", "right_shoulder_yaw_link", "right_elbow_link"),

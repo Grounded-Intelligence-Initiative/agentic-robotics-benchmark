@@ -8,7 +8,7 @@ and composes what the earlier packages handed over, through their OWN defaults a
     -> the layout's draws: the fixtures' draw  fixtures_h.draw_layout(numpy default_rng(seed), cfg)  (the stream the
        fixture, reach and camera proofs used for their seeds 0..299) and the camera mount's draw
        arm.assembly_info.layout_info.draw_cameras(seed, <the cameras block of record>)  (the precedents' camera draw
-       and the coverage study's draws: the same function, the same configuration, so seed s gives its camera s);
+       and the camera coverage measurement's draws: the same function, the same configuration, so seed s gives its camera s);
        nominal=True: the nominal layout and the nominal cameras (the privileged reference's layout)
     -> layout["top_camera_T"] = (world_T_cam drawn, world_T_cam nominal) (OpenCV convention for both): the overhead
        camera's housing follows its PHYSICAL mount draw and its hanger is rebuilt up to the beam

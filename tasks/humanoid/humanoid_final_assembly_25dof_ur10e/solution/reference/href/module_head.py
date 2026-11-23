@@ -5,11 +5,11 @@ privileged calls; the motion is the API's own (motion.py). Constants and where e
   GRASP_FORCE_N  80 N per pad (the force register's range 10-125 N): torsion capacity 2 x 0.005 m x 80 N = 0.8 N m
                  against about 0.07 N m about the closing axis at the carry limit's 0.5 m/s^2 (the head's centre of mass
                  about 107 mm under the grasp axis, 5 mm off it); slip capacity 2 x 0.7 x 80 N = 112 N against 11.9 N
-  OPEN_CLEAR_M   the open hand = the grasp width + 25 mm, at most the largest opening (the reach study's open hand)
+  OPEN_CLEAR_M   the open hand = the grasp width + 25 mm, at most the largest opening (the grasp table's open hand)
   Z_TRANSIT_M    0.62 m: the tcp height of every carry and free move above the cell (the held head hangs about 0.19 m
                  under the tcp; the tallest things it passes over are the arm modules on their racks, top at about
                  0.20 m, and the torso at 0.34 m)
-  PRE_PICK_M     0.12 m: the open hand's straight approach along the grasp's approach axis (the reach study's 0.12 m)
+  PRE_PICK_M     0.12 m: the open hand's straight approach along the grasp's approach axis (the grasp table's 0.12 m)
   LIFT_SLOW_M    0.06 m at 0.04 m/s: the straight lift out of the nest's locating skirt (0.3 mm off the head, 45 mm tall)
   PRE_SEAT_M     6 mm above the seat: where the head is set right on its seat by the true pose (two corrections)
   GUARD_FROM_M   2 mm above the seat: from there a guarded descent at 1 mm/s (the last 1.5 mm of an insertion at 1 mm/s,
@@ -20,7 +20,7 @@ privileged calls; the motion is the API's own (motion.py). Constants and where e
                  under its own weight and the cell fastens it by itself (the coupling's release table: the head locks by
                  itself; the head is the mate seated by gravity from above). Held inside the lock window the
                  head would be fastened in the hand: at 1 mm/s the lock condition (relative speed under 5 mm/s) runs the
-                 whole last 0.5 mm, and a first development run locked 7 um above the face before any contact
+                 whole last 0.5 mm, and a measured run locked 7 um above the face before any contact
   LOCK_WAIT_S    3 s for the coupling's lock after the release (it locks 0.50 s after the lock condition starts)
 The reference always places the head at the design bolt position (k_offset 0); the k_offset argument exists only for
 the package's one neighbouring-phase trial (a separate trial program), never for the reference."""

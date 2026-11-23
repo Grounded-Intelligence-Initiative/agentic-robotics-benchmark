@@ -8,7 +8,7 @@ the server changes. Backends here:
   "null"    no picture: every frame raises RenderUnavailable (the server answers {"error": "camera_unavailable"} and
             the frame counts against the budget). The default on a host without GL.
   "mujoco"  MuJoCo's classic renderer (mujoco.Renderer, needs EGL or OSMesa) on the cell's own model; it draws a
-            different picture from the given render layer and exists for development only.
+            different picture from the given render layer, which the grader uses.
   "blank"   tests only: a uniform grey RGB frame and an all-invalid depth frame of the camera's configured size, encoded
             exactly as a real frame is (PNG rgb, 16-bit PNG depth in mm, 0 = invalid), so that the reply format and the
             budget can be tested without a renderer.
@@ -134,8 +134,8 @@ CV_TO_MJ = np.diag([1.0, -1.0, -1.0])
 def given_layer_session(cell, cfg, log=None):
     """the seam of the given render layer: a session object with .frame(camera_dict, depth, index, state=None) ->
     {"rgb", "depth_mm"} and .close(). Without cfg["cameras"]["given_layer"] this raises RenderUnavailable. With it, the
-    session is a WORKER PROCESS running the given render layer (the development cell's render_worker.py: room/tools
-    hview.render_spec + open_view, the render twin, the room and the look) on the episode's own layout. The worker's file
+    session is a WORKER PROCESS running the given render layer (in this task tests/render_seam/twin_worker.py:
+    the given layer's open_view, the render twin, the room and the look) on the episode's own layout. The worker's file
     descriptor 1 (where the Filament library writes its native log) is a log FILE, its replies come back on a separate
     pipe: nothing it prints can reach the server's process, its wire to the agent's program (that program's own stdin /
     stdout pipes) or the server's own stdout. Every wait for a reply has a deadline (cfg["cameras"]["given_layer"]

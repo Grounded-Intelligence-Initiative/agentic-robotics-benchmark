@@ -1,7 +1,7 @@
 """The kit-to-cell adapter: the hidden kit
 (schema humanoid-asm-kit/1, kit.json + the drawn STL meshes; default the kit of record) and the collision model
 (schema humanoid-asm03-collision/1; default collision model 5, of record) into the cell's data contract (humanoid-cell-data/1,
-cell/README.txt) for scene.build_cell.
+scene.py's module text) for scene.build_cell.
 
 THE ONE PLACE TO SWITCH THE COLLISION MODEL is COLLISION_SOURCE_OF_RECORD below (collision model 5, of
 record; model 3 before it); the environment variable HUMANOID_COLLISION_PIECES or collision_source= override it.
@@ -26,8 +26,8 @@ New file of this task. What it does, and the three rules it keeps:
     head_delivered_deg), not from the kit's delivered_state; the base's waist at 0 and its three output rotors at the
     kit's start clock (start_q_rad) when the kit carries it, else 0.
   * COLLISION GEOMETRY COMES THROUGH ONE FUNCTION, collision_geoms(unit, body). Without a collision model
-    it returns the PROTOTYPE pieces of the leg gate studies (precomputed per kit body by a prototype script into
-    <scratch>/proto_pieces/: the gate studies' CoACD pieces, else convex hull pieces, mirrored for 200_06C /
+    it returns the FALLBACK pieces (precomputed per kit body into a pieces folder:
+    CoACD pieces, else convex hull pieces, mirrored for 200_06C /
     600_26B; the hip-pitch actuators 200_12X / 11X as exact stator prisms, the hip-pitch output rotors as an
     exact rotor boss, each leg root with an exact bracket and without the CoACD pieces crossing the rotor's exact
     volume; fasteners, inserts and the six duplicate screws carry no piece; the neck-yaw rotor none). A collision model
@@ -210,7 +210,7 @@ def delivered_q(kit, frozen):
 
 def joint_range(kit, jname, model=None):
     """the joint's cell range (rad): the collision model's joint_limits_deg where it names the joint (the four hip
-    joints); else the kit's cell_range_rad (provisional, prototype pieces only) or the MJCF range_rad"""
+    joints); else the kit's cell_range_rad (provisional, the fallback pieces only) or the MJCF range_rad"""
     if model is None and kit.get("_collision_model") is not None:
         model = kit["_collision_model"]
     if model is not None and jname in model.get("joint_limits_deg", {}):
@@ -241,7 +241,7 @@ def _rot(axis, ang):
 
 def unit_fk_m(kit, unit, q):
     """{body: 4 x 4 (metres)} of the unit's bodies in its CAD frame at joint state q (the root at identity; a child
-    turns by (q - ref_rad_cad_pose) about its hinge through the anchor, kit/README.txt)"""
+    turns by (q - ref_rad_cad_pose) about its hinge through the anchor)"""
     out = {}
     for b in kit["units"][unit]["bodies"]:
         B = kit["bodies"][b]
@@ -285,7 +285,7 @@ _MODELS = {}
 
 
 def collision_model(source=None):
-    """the collision model's collision_model.json of the source folder (None for a source without one: the prototype
+    """the collision model's collision_model.json of the source folder (None for a source without one: the fallback
     pieces), checked (schema; the hip limits of record)"""
     src = source or PIECES_SOURCE
     if src not in _MODELS:
@@ -394,8 +394,8 @@ def assembly(kit, unit, cfg, frozen, placement=None, visual=False, collision=Tru
     the base / modules at the CAD placement: frame 'cad', identity). With a collision model: the pieces' own
     'rest' flags mark what rests on a fixture, the model's exclude_pairs inside this unit go into the record's
     exclude_pairs, the hip joints get the model's limits, and `rest_bodies` is not used (it is only for a source
-    without a model, the prototype pieces: every collision geom of those bodies is flagged 'rest'). self_collide False
-    = no contacts inside the module (the prototypes' reading); the collision model is built for self_collide True."""
+    without a model, the fallback pieces: every collision geom of those bodies is flagged 'rest'). self_collide False
+    = no contacts inside the module (the fallback pieces' reading); the collision model is built for self_collide True."""
     check_joint_model(kit, cfg)
     cm = collision_model(collision_source) if collision else None
     if cm is not None:

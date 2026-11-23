@@ -285,7 +285,7 @@ def weld_name(iface_id):
 
 
 def weld_records(interfaces):
-    """the scene data's WELD records (cell/README.txt): one inactive weld per interface, body1 = the carrier body,
+    """the scene data's WELD records (scene.py's data contract): one inactive weld per interface, body1 = the carrier body,
     body2 = the module's flange body; the builder gives it the configuration's weld impedance; the coupling writes
     all 11 data entries at the lock (a weld without explicit data compiles with a wrong anchor)"""
     return [{"name": weld_name(x["id"]), "body1": x["carrier_body"], "body2": x["part_body"], "active": False}

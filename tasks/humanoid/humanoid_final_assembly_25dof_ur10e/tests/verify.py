@@ -666,7 +666,7 @@ def cell_config(cfg, scratch):
     over = json.loads(json.dumps(cfg.get("cell_overrides") or {}))
     over.setdefault("cameras", {})["given_layer"] = gl
     c = CF.load_config(overrides=over)
-    # the grader's worker block REPLACES the development configuration's own (the cell's deep merge would carry that
+    # the grader's worker block REPLACES any such block of the cell configuration (a deep merge would carry that
     # block's host environment, e.g. its Vulkan driver file, into the worker)
     c["cameras"]["given_layer"] = gl
     return c
@@ -709,7 +709,7 @@ def runner_socket_count(uid, proc_net="/proc/net"):
 
 class RunnerSockets(object):
     """`with RunnerSockets(uid, period_s):` samples runner_socket_count(uid) every period_s (no sampling for uid None:
-    a development run as the grader's own account); .max_seen, .samples"""
+    a run as the grader's own account); .max_seen, .samples"""
 
     def __init__(self, uid=None, period_s=0.5, proc_net="/proc/net"):
         self.uid, self.period_s, self.proc_net = uid, float(period_s), proc_net

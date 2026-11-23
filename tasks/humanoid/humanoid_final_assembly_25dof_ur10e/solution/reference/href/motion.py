@@ -246,7 +246,7 @@ class Motion(object):
         part_now() is compared with part_want(s) (s = the travel commanded so far) and `gain` x the world correction
         (part_correction: lateral and angular, axial only when asked, the turn about rot_free left out; capped per
         correction) is added to the streamed
-        pose (the arms' gate study's servo: every 2 ticks, 0.5 x the error, at most 0.5 mm / 0.1 deg). Optional guard: the wrist force's
+        pose (the servo rule: every 2 ticks, 0.5 x the error, at most 0.5 mm / 0.1 deg). Optional guard: the wrist force's
         change from F0 (|F - F0|, N) reaching guard_df stops the line where it is commanded; optional stop_when()
         (checked every `stop_every` ticks) stops it. Returns {"stop": "distance" | "force" | "condition", "ticks",
         "travel_m", "dF_N_max", "n_corr", "corr_m_max", "corr_rad_max", "T_end"}"""

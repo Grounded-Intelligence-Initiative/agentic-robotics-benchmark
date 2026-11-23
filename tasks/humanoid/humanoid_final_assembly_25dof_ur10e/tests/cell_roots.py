@@ -1,7 +1,7 @@
 """The data roots of the cell's code in this stage folder (stdlib only).
 
-The cell's package (arm/assembly_humanoid/) is used as it is; its module-level defaults name the folders it was
-developed in. bind() points every one of them at the files of this verify stage before any episode is built: the
+The cell's package (arm/assembly_humanoid/) is used as it is; its module-level defaults are no paths of this
+stage. bind() points every one of them at the files of this verify stage before any episode is built: the
 cell's hidden kit unpacked into gt/ (the kit index, the collision model, the mating graph, the fixtures' design and
 meshes, the frozen numbers) and the given robot models of the root-owned copy of the givens. It changes no value of
 the cell, and it refuses a root that is missing. check() lists what is bound."""

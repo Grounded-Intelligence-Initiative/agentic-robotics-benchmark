@@ -4,7 +4,7 @@ New file of this task (not a vendored one). It takes the place of the precedent 
 (arm/assembly_car/cell.py `build_spec`, the ROV cell's `RovCell`), which read their own kit formats; the vendored
 packages are used as they are: the UR10e with the house wide gripper (`arm.assembly_rov.gripper_wide.add_ur_wide`, its
 controller `WideController` = `arm.assembly_rov.ur_controller.URController` + the force register). The data contract
-(schema `humanoid-cell-data/1`) is written out in cell/README.txt; in short:
+(schema `humanoid-cell-data/1`) is, in short:
 
   data = {"schema": "humanoid-cell-data/1", "name": str,
           "base": ASSEMBLY (mount "fixed"),  "modules": [ASSEMBLY (mount "free")],  "props": [ASSEMBLY (mount "free")],
@@ -34,7 +34,7 @@ The physics of record come from the ONE configuration (config.load_config: cell_
 intended range: compare int() joint types, count the joints checked, cover every hinge and slide of the model); the
 0.5 ms step and the 10 ms control tick (20 steps, the arm's computed torque recomputed before every step); the
 unpowered joint model (frictionloss, damping, armature by actuator type) with the pinned friction
-impedance on every such joint; solref 0.002 (with the impedance of the arms' gate study) on both geoms of every resting pair (a fixture
+impedance on every such joint; solref 0.002 (with the configuration's resting impedance) on both geoms of every resting pair (a fixture
 flagged rest_surface, a module geom flagged rest); the house gripper's pad contact (condim 4, friction 0.7 / 0.005 /
 0.0001, solref 1 ms), passed to the gripper's own patch function and asserted after the compile, together with the
 gripper tables' physics (`gripper_wide.physics_mismatch` must be empty).
