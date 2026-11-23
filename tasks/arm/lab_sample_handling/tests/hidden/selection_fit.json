@@ -60,9 +60,106 @@
   "d1": 0,
   "d2": 0
  },
- "recheck": {},
+ "recheck": {
+  "u0": {
+   "kept": true,
+   "history": [
+    {
+     "replace": 0,
+     "props": {
+      "bore_clearance": 0.9507,
+      "bore_friction": 0.4577,
+      "lid_friction": 0.3319
+     },
+     "episodes_at_1": 20,
+     "mean": 1.0,
+     "failed": []
+    }
+   ]
+  },
+  "u1": {
+   "kept": true,
+   "history": [
+    {
+     "replace": 4,
+     "props": {
+      "bore_clearance": 0.8972,
+      "bore_friction": 0.5147,
+      "lid_friction": 0.5894
+     },
+     "episodes_at_1": 20,
+     "mean": 1.0,
+     "failed": []
+    }
+   ]
+  },
+  "u2": {
+   "kept": true,
+   "history": [
+    {
+     "replace": 1,
+     "props": {
+      "bore_clearance": 0.8257,
+      "bore_friction": 0.387,
+      "lid_friction": 0.9716
+     },
+     "episodes_at_1": 20,
+     "mean": 1.0,
+     "failed": []
+    }
+   ]
+  },
+  "u3": {
+   "kept": true,
+   "history": [
+    {
+     "replace": 0,
+     "props": {
+      "bore_clearance": 0.6431,
+      "bore_friction": 0.5511,
+      "lid_friction": 0.8917
+     },
+     "episodes_at_1": 20,
+     "mean": 1.0,
+     "failed": []
+    }
+   ]
+  },
+  "u4": {
+   "kept": true,
+   "history": [
+    {
+     "replace": 0,
+     "props": {
+      "bore_clearance": 0.6856,
+      "bore_friction": 0.4933,
+      "lid_friction": 0.6901
+     },
+     "episodes_at_1": 20,
+     "mean": 1.0,
+     "failed": []
+    }
+   ]
+  },
+  "u5": {
+   "kept": true,
+   "history": [
+    {
+     "replace": 0,
+     "props": {
+      "bore_clearance": 0.7803,
+      "bore_friction": 0.392,
+      "lid_friction": 1.1401
+     },
+     "episodes_at_1": 20,
+     "mean": 1.0,
+     "failed": []
+    }
+   ]
+  }
+ },
  "bench_redraws": [],
- "rechecked_utc": "2026-11-21T00:58:49Z",
+ "rechecked_utc": "2026-11-23T20:17:52Z",
  "offset": {
   "rule": "tests/review/unit_fit.py (module docstring), rule 4b",
   "drawn_utc": "2026-11-23T18:04:32Z",
