@@ -1,0 +1,9 @@
+{
+  "metric": "mean_route_credit",
+  "direction": "higher",
+  "value": 0.9133333333333333,
+  "full_at": 0.8,
+  "source": "Own measurement, 2026-11-23: the reference router (solution/router.py) through the pinned engine (vendor/ale bfb7505), ale validate validate-aa5e246a with the anchor null: mean_route_credit 0.9133 over 20 hidden episodes drawn from OS entropy (16 full routes, no connector damage, no aborted episode, every probe pair differing), untouched 0.0. Never a published figure.",
+  "reference_commit": "the commit that adds tasks/arm/cable_routing_through_clips",
+  "note": "Fresh hidden episodes every run, so the measured value varies with the draw. Three independent 20-episode runs of the reference: 0.8792 (validate-2c603fce), 0.9133 (validate-aa5e246a), 0.9233 (validate-3b36a5d0); worst ratio 0.8792 / 0.9133 = 0.96. Per-episode credits are 0, partial or 1 (a missed fixture ends the route), so the 20-episode mean moves by about 0.07 from run to run; full_at 0.8 keeps the reference at reward 1.0 unless a run's mean falls below about 0.73."
+}

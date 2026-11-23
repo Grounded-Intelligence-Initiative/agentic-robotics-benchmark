@@ -1,0 +1,31 @@
+schema_version = "1.4+ale.1"
+
+# Where the agent leaves its work: a controller program (run.sh and whatever it needs).
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/cable_routing_through_clips"
+
+[metadata]
+platform = "arm"
+
+# 8 CPUs, no GPU: the agent develops its controller against its own copy of the cell simulator
+# (MuJoCo, CPU), several episodes at a time.
+[environment]
+cpus = 8
+memory_mb = 16384
+
+[agent]
+timeout_sec = 10800
+network_mode = "no-network"
+
+# Verify: 20 hidden episodes, each at most 1200 control steps (120 s simulated, about 45 s of
+# simulation on one core plus the controller's own replies).
+[verifier]
+timeout_sec = 3600
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 4
+memory_mb = 8192
+gpus = 0
