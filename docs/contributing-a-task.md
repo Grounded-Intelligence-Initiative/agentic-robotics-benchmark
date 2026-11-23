@@ -116,6 +116,18 @@ Nothing you print to stdout is a scoring input. The grader computes the metric u
 physics and writes the result to `/logs/verifier`, which the engine empties and gives to root
 alone before scoring, so your solution can neither pre-create nor overwrite it.
 
+**Verify in a separate sandbox.** Set `[verifier] environment_mode = "separate"` (with a
+`[verifier.environment]` giving the verifier its `cpus`/`memory_mb`), as the template and
+every task here do. Shared verification runs the grader as root in the agent's own sandbox,
+where the base image leaves `/usr/local/bin` agent-writable and ahead of `/usr/bin` on root's
+PATH: a program the agent dropped there would run as root before the grader and score itself
+1.0. A separate verifier is fresh, with only your declared `artifacts` restored — so stage
+anything verify needs in `tests/` or an artifact, because `setup.sh` does not run there. If
+your grader drives a solver over the wire (closed_loop), each request has a single deadline
+(`step_timeout_s`) fixed when it is sent: blank or partial output is charged against it and
+cannot extend it, so a stalling submission aborts its episode instead of running out the
+verify budget.
+
 Files too large for git (photo sets, document scans, meshes the agent receives) go to the
 benchmark's Hugging Face dataset and are fetched while the image builds, pinned by commit and
 sha256: [`task-assets.md`](task-assets.md). Hidden material never goes there.
@@ -152,6 +164,39 @@ nowhere else: `metric` is the key your grader reports, `direction` is `higher` o
 - The metric is on a positive scale. A negative anchor inverts the ratio, so a better result
   scores lower. Report a negative reward as a positive cost with the anchor's `direction` set
   to `lower`.
+
+Hardware invariance also covers the libraries the grader computes with. A Python wheel can bundle its own
+OpenBLAS (numpy, scipy, opencv-python and cvxopt each do), each copy picks its kernels by CPU
+when it loads, and an old copy can compute wrong products on a newer CPU. If your task has to
+carry an old numpy, scipy, opencv-python or cvxopt wheel, check which OpenBLAS each one
+bundles, pin `OPENBLAS_CORETYPE` in the image and in every process the grader starts (solver
+and scoring alike), and let the verify stage check the products before it scores.
+`tasks/arm/novel_object_6dof_grasp_detection` is the worked example (`environment/Dockerfile`,
+`tests/verify.py`'s `NUMERICS_ENV`, `tests/numerics_check.py`; `PROGRESS.md` section 12).
+
+When the grader runs a submitted program (a controller, a mission, an assembly program), the program's own
+arithmetic has to repeat on every grading host as well, or the same submission gets different scores on
+different machines. Three things decide it, and the kernel pin covers only the first:
+
+- OpenBLAS: `OPENBLAS_CORETYPE=Haswell`, and with numpy 2.5.2 to 2.5.5 always together with
+  `OPENBLAS_L2_SIZE=256`; one thread (`OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`), because a threaded
+  product is split by the host's core count.
+- NumPy's own loops: `np.arctan2`, `exp`, `log`, `power`, `arcsin` and others round differently in the last bit
+  where NumPy's AVX-512 loops are on. `NPY_DISABLE_CPU_FEATURES` takes them out, by names that depend on the
+  numpy version: numpy 2.5 knows `X86_V4 AVX512_ICL AVX512_SPR`; numpy 1.23 and 2.2 know `AVX512F AVX512CD
+  AVX512_SKX AVX512_CLX AVX512_CNL AVX512_ICL` (measured; for another version read
+  `numpy._core._multiarray_umath.__cpu_dispatch__`). A name the numpy does not know is rejected with an
+  `ImportWarning` that nobody sees, and then nothing is disabled. Let the image build fail on that warning
+  (`python3 -W error::ImportWarning -c "import numpy"` with the variable set), and check on an AVX-512 host.
+  `tests/test_numerics_pin_names.py` checks every literal pin against the task's numpy.
+- OpenCV: `OPENCV_IPP=avx2` (its IPP picks code by CPU).
+
+Set them where the program's process gets them: a program started with a scrubbed environment sees no image
+`ENV`, so use a `.pth` in the task's Python that sets each as a default, or put them into the environment the
+grader starts the program with. State the pin in `instruction.md`, and let the verify stage hash a set of
+NumPy, SciPy and OpenCV results from a Python started as the program is and refuse to grade when they differ
+from the recorded ones. `tasks/arm/pantry_jar_refilling` is the worked example (`environment/Dockerfile`,
+`tests/numerics_check.py`, `tests/numerics.json`).
 
 ## 6. The anchor bootstrap
 
@@ -192,13 +237,16 @@ raise the engineering or perception challenge and test again; do not suppress sc
 arbitrary penalties, and keep the task completable by a human expert under the stated
 conditions. Before reading a failed run as a model limitation, fix what is not the task:
 environment failures, missing dependencies, unclear instructions. Keep the run instructions
-and the results for the pull request.
+and the results for the pull request, and record each run's trajectories as
+`skills/agent-trajectory-archiving/SKILL.md` describes (`scripts/trajectories.py`: one trajectory
+per task and agent, with the agent's whole session, its score and its cost).
 
 Three limits of the `claude-code` harness and the engine lowered scores without any error
-at the previous pin (`90a7c1c`). Re-checked in the code of the current pin (`1cdbc02`,
-2026-11-03; paths relative to `vendor/ale/packages/ale-run/src/ale/run/`), the stream cut-off
-moved from 300 s to 600 s, the `PATH` limit is gone, and the 30-minute request bound and the
-CLI's response cap hold. Check for each before trusting a run:
+at an earlier pin (`90a7c1c`). Re-checked in the code of `1cdbc02` (2026-11-03) and again of
+the current pin (`bfb7505`, 2026-11-09; paths relative to
+`vendor/ale/packages/ale-run/src/ale/run/`), the stream cut-off moved from 300 s to 600 s, the
+`PATH` limit is gone, and the 30-minute request bound and the CLI's response cap hold. Check
+for each before trusting a run:
 
 - **The stream cut-off is 600 s now, not 300 s.** The harness sets
   `BUN_CONFIG_HTTP_IDLE_TIMEOUT=600` and `CLAUDE_STREAM_IDLE_TIMEOUT_MS=600000` itself
@@ -206,13 +254,13 @@ CLI's response cap hold. Check for each before trusting a run:
   comment to the CLI after every 15 s of upstream silence (`gateway/server.py:51-63`,
   `:444-453`). A stream on which the CLI sees no byte for 600 s still ends the episode
   (`API Error: Stream idle timeout`). The harness's values win over an image `ENV` or an
-  `[environment].env` entry of the same names (`guestd/main.py:112-113`,
-  `protocol/episode_protocol.py:1750`), so the earlier workaround, those two variables in an
+  `[environment].env` entry of the same names (`guestd/main.py:124-125`,
+  `protocol/episode_protocol.py:1760`), so the earlier workaround, those two variables in an
   evaluation copy of the Dockerfile, no longer changes anything.
 - **The agent's `PATH` keeps the image's.** The harness puts its own `~/.local/bin` in front
-  of the `PATH` the agent account inherits from the image (`harnesses/_npm.py:70-76`, used at
+  of the `PATH` the agent account inherits from the image (`harnesses/_npm.py:83-89`, used at
   `harnesses/claude_code/adapter.py:126`), so an image with `ENV PATH=/opt/venv/bin:$PATH` (the
-  template's) gives the agent the venv's `python3`. At the previous pin the harness replaced
+  template's) gives the agent the venv's `python3`. At `90a7c1c` the harness replaced
   `PATH` with its own directories plus `/usr/local/bin:/usr/bin:/bin`. A `ModuleNotFoundError`
   in the agent's transcript is still the first thing to look for.
 - **One model request still ends after 30 minutes, and the response cap is the CLI's.** The
@@ -220,14 +268,14 @@ CLI's response cap hold. Check for each before trusting a run:
   engine sets no output-token cap: the harness does not set `CLAUDE_CODE_MAX_OUTPUT_TOKENS`
   (`harnesses/claude_code/adapter.py:150-200`) and the gateway forwards the CLI's own
   `max_tokens` unchanged (`gateway/server.py:649-670`). The pinned CLI is still Claude Code
-  2.1.227 (`harnesses/claude_code/adapter.py:29`); at the previous pin it capped one response
+  2.1.227 (`harnesses/claude_code/adapter.py:29`); at `90a7c1c` it capped one response
   at 64k output tokens. A model that thinks for longer than that before acting gets
   back a response with no text and no tool call, and can loop on it until the agent budget
   runs out with nothing in `/home/user/submission/`. Look for `stop_reason: max_tokens` and
   calls with a `latency_ms` near 1800000 in the episode's `trace.transport.jsonl`. An
   `ENV CLAUDE_CODE_MAX_OUTPUT_TOKENS=...` in an evaluation copy of the Dockerfile still
   reaches the CLI, and helps only up to what fits in 30 minutes. On the spacecraft task
-  (2026-10-15, previous pin), Fable 5.1 and Fable 5 never acted at 64k, 100k or 128k; Opus 5.5
+  (2026-10-15, at `90a7c1c`), Fable 5.1 and Fable 5 never acted at 64k, 100k or 128k; Opus 5.5
   and Opus 5 did. Treat such a zero as an evaluation failure, not as difficulty.
 
 ## 8. Submit
@@ -245,7 +293,12 @@ few confirmations. Nothing else belongs in the pull request: no notes, no `__pyc
 
 CI (`.github/workflows/pr-checks.yml`) runs `ale lint` over `tasks/` and `templates/`, the
 domain lint (metric, anchor, visible surface, image hygiene, placement), the kit comparison,
-the registry identity cross-check (a new slug is a notice) and the test suite. It needs no
+the registry identity cross-check (a new slug is a notice), the GPU-model check (every
+`gpu_types` name accepts a real model), the task-card check and the test suite. Before the merge a maintainer adds the task's card to `tasks/cards.toml`: its readable
+title, a one-sentence summary, the platforms it involves and the one stage it is filed under
+([`task-cards.md`](task-cards.md)), then labels the pull request `ready-to-merge`, which makes
+the card check strict. Suggest a title in the pull request if you like; the card is no part of
+the task's identity. It needs no
 secrets, so it runs on forks too. It does not build your image or run `ale validate`.
 
 A maintainer then reads `tests/` and `solution/`, re-runs `ale lint` and `ale validate` on

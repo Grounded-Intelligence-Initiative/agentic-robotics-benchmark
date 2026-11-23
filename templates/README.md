@@ -65,10 +65,19 @@ them; the authoring spec says how.
 
 ## What the engine provides at verify time
 
-Verification is shared: once the agent is done, the engine uploads `tests/` into the same
-sandbox at `/opt/ale/tests` (root-only, like all of `/opt/ale`) and runs `bash test.sh`
-there as root, with that folder as cwd and the network open. Before the script starts, the
-engine
+Verification runs in a **separate** sandbox, the recommended default this template ships
+(`[verifier] environment_mode = "separate"`): once the agent is done, the engine releases
+the agent's sandbox, provisions a fresh verifier from the task image that the agent never
+touched, restores only the declared `artifacts` into it, uploads `tests/` to
+`/opt/ale/tests` (root-only, like all of `/opt/ale`) and runs `bash test.sh` there as root,
+with that folder as cwd and the network open. Shared verification (omit the key) instead
+runs `test.sh` in the agent's own sandbox, where a program the agent planted on root's PATH
+(the base image leaves `/usr/local/bin` agent-writable and ahead of `/usr/bin`) would run
+as root before the grader and bypass it; separate verification closes that, so prefer it for
+every task. Two consequences of the fresh sandbox: `environment/setup/setup.sh` does **not**
+run in the verifier, and nothing the agent left outside the declared `artifacts` is there —
+so anything verify reads must be staged by the task (in `tests/`, or a declared artifact),
+not assumed from setup. Before the script starts, the engine
 
 - stages its own `ale_verify` package into the first interpreter that is Python 3.12 or
   newer, `python3`, else `python3.12`, and names that interpreter in `ALE_VERIFY_PYTHON`.
@@ -109,9 +118,23 @@ instead, for a run outside the engine (a host-side dry run, the kit's selftest);
 ## The closed_loop wire
 
 `Solver` speaks one JSON object per line to the agent's `run.sh`, launched as `bash run.sh`
-with cwd `/home/user/submission` at the agent's UID. `READY` must arrive within
+with cwd `/home/user/submission` at the agent's UID. Before the first launch the kit clears
+the agent's account (`clear_agent_account`): the sandbox's desktop session, which runs as
+that account under a supervisor that restarts it, is taken down for good, so that nothing
+of the account runs but what the grader starts (`docs/security-model.md`). A grader does not
+draw on the sandbox's desktop while agent code runs; one that starts agent code with a
+launcher of its own, without `Solver` or `deprivileged`, calls `clear_agent_account()`
+first. `READY` must arrive within
 `READY_TIMEOUT_FACTOR` (4) step deadlines of launch, 120 s with the template's
-`step_timeout_s: 30` (`tests/grader_config.json`), and every reply within one step deadline:
+`step_timeout_s: 30` (`tests/grader_config.json`), and every reply within one step deadline.
+That deadline is a **single per-request budget**, fixed the moment the request is written
+(and the `READY` wait likewise): blank lines, a partial line or a trickle of output are all
+charged against the same `step_timeout` and cannot extend it — and a flood of blank lines is
+capped — so a solver can never stall verification by dribbling output. Missing the deadline
+aborts the episode exactly as a slow reply does. The deadline starts before the request is
+written and the write does not block, so a solver that stops reading (a request longer than
+the pipe holds waits for its reader) costs the same one deadline; `close` never waits on
+such a solver either: it stops it.
 
 ```
 {"type": "reset"}                        -> {"ok": true}
@@ -122,7 +145,10 @@ with cwd `/home/user/submission` at the agent's UID. `READY` must arrive within
 `t` is the step index inside the episode, owned by the grader's loop and restarting at 0
 after each `reset`. Nothing on the wire marks a probe. `ProbeLock.probe(solver, t, obs)`
 asks a probed step twice with the same `t`, the real observation and a perturbed copy in a
-hidden order, applies only the real reply and compares the two. The instruction tells the
+hidden order, applies only the real reply and compares the two: the values, and two replies
+with a different count of numbers show nothing (a task whose action has more than one valid
+shape gives the lock a `canonical=` function that maps a reply to the fixed-length list that
+is compared). The instruction tells the
 agent exactly this, so an honest solver needs no special case. The lock catches a policy
 that ignores its input; it is not a proof of honesty (a solver can notice a repeated `t`
 and vary its answer on purpose), and isolation, not the lock, keeps the score honest. The
@@ -132,7 +158,7 @@ After an aborted episode (a missed deadline, a crash, a malformed or missing act
 next `reset` stops the solver's whole process group and launches `run.sh` again, which must
 print `READY` again: a late reply left on the wire must not answer the next request. After
 `max_restarts` (3) restarts, or a restart that fails, every remaining episode aborts at
-once. Say so in the instruction, and charge an aborted episode a real cost (the template
+once, and the solver is stopped first. Say so in the instruction, and charge an aborted episode a real cost (the template
 charges what standing still would cost), never drop it: a dropped episode lets a weak
 policy abort its bad starts and average only its good ones.
 
@@ -239,12 +265,21 @@ field.
    is one of the benchmark's platforms (`tasks/platforms.json`, listed in the manifest's
    comment) and names the `tasks/<platform>/` folder the task lands in. A new key needs a
    maintainer.
-2. Budgets and network. Size `[environment]` (`cpus`, `memory_mb`, and `gpus` when the
-   task needs them), `[agent].timeout_sec` (the agent's whole budget, training included)
-   and `[verifier].timeout_sec` (every scored episode plus probes). Keep
-   `network_mode = "no-network"` unless the task needs a host: `allowlist` names it in
-   `allowed_hosts`, and `public` needs `[metadata].network_justification`. Setup has no
-   field; the engine bounds it at 1800 s.
+2. Budgets and network. Size `[environment]` (`cpus`, `memory_mb`, and `gpus` when the task
+   needs them), `[agent].timeout_sec` (the agent's whole budget, training included) and
+   `[verifier].timeout_sec` (every scored episode plus probes). A GPU task names, in
+   `gpu_types` in `[environment]` and `[verifier.environment]`, the models it has been
+   tested on, cheapest first: Daytona tries them in that order, and a host without one of
+   them refuses the task before it starts. It leaves the key out only when every model
+   tested runs it. Test the H100 and Daytona's RTX 4090, RTX 5090, RTX PRO 6000 and H200 by
+   running what uses the GPU on each: the simulator's start, a frame compared with one from
+   a model already validated, and the agent's own GPU libraries. A model can lack a
+   library's kernels, render differently or run too slowly for the budgets, and rendering
+   also needs the graphics part of the host's NVIDIA driver, which compute-only installs
+   leave out. CI checks that each name accepts a real model (`scripts/gpu_types.py check`;
+   `list` prints every GPU task's models). Keep `network_mode = "no-network"` unless the task needs a host: `allowlist`
+   names it in `allowed_hosts`, and `public` needs `[metadata].network_justification`. Setup
+   has no field; the engine bounds it at 1800 s.
 3. Image. Make `environment/Dockerfile` your environment: the simulator and every stable
    dependency, FROM the ALE base at an exact version; Python packages go in
    `environment/requirements.txt`. Keep the py3.12 `/opt/venv` with a world-traversable
