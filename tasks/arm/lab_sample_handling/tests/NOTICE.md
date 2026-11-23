@@ -18,6 +18,10 @@
   Since 2026-11-20 a unit also has three fit properties (the rotor bores' clearance and friction, the lid hinge's
   friction) and a calibration error per camera (`lab_sim.FIT_PROPS`, `lab_sim.CALIB`): `review/unit_fit.py` is the
   rule, `hidden/selection_fit.json` its record (the key, the values, the reference's recheck on 20 seeds per unit).
+  Since 2026-11-24 each camera also has an offset per unit (`lab_sim.OFFSET`, rule 4b of `review/unit_fit.py`, a
+  second key in the same record): the pose on file is the equipment sheet's nominal pose times the offset, and the
+  true camera is the pose on file with the calibration error taken out, so that the nominal pose against the pose
+  on file no longer gives the error.
   The development units have draws of their own by the same rule (`bench.json`'s `fit_draw`). `review/mutants.py`
   runs the reference with one thing wrong at a time on the fixed set.
 - **The development units** (environment/commission_service/bench.json: d0-d2) are a separate Latin hypercube over

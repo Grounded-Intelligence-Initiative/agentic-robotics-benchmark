@@ -1123,6 +1123,32 @@ UNIT_NOMINAL = {"bore_clearance": 1.0, "bore_friction": 0.6, "lid_friction": 0.5
 # rack cameras. The images are drawn from the true cameras.
 CALIB = {"wrist": (2.0, 0.5), "fixed": (5.0, 0.5)}
 CALIB_CAMS = ("left", "right", "wrist", "rack")
+# Where a unit's cameras stand (since 2026-11-24). The equipment sheet gives each camera's nominal pose (the fixed
+# cameras' place and look-at point, the wrist camera of the robot's model); no unit's camera is mounted exactly
+# there. Per unit and per camera the pose on file is the nominal pose times an offset, a rotation vector (deg, each
+# component within +-OFFSET[...][1]) and a translation (mm, each component within +-OFFSET[...][0]) in the camera's
+# own frame, and the camera's true pose is the pose on file times the inverse of the unit's calibration error
+# (CALIB). The offset and the error are drawn independently, so the pose on file against the sheet's nominal pose
+# (which a controller can compute) says nothing about the error: before this, the fixed cameras stood exactly at
+# the sheet's poses and that comparison gave the error to the last digit.
+OFFSET = {"wrist": (4.0, 1.5), "fixed": (20.0, 2.0)}
+
+
+def place_camera(model, cid, offset, error):
+    """Mount camera `cid` of a compiled model for a unit: its pose becomes nominal @ offset @ inv(error), with
+    `offset` and `error` 4 x 4 in the camera's OpenCV frame (calib_matrix). The model's pose is MuJoCo's (the
+    camera looks along -z): the OpenCV frame is that frame turned by diag(1, -1, -1)."""
+    flip = np.diag([1.0, -1.0, -1.0, 1.0])
+    X = flip @ offset @ np.linalg.inv(error) @ flip
+    R = np.empty(9)
+    mujoco.mju_quat2Mat(R, model.cam_quat[cid])
+    T = np.eye(4)
+    T[:3, :3], T[:3, 3] = R.reshape(3, 3), model.cam_pos[cid]
+    T = T @ X
+    q = np.empty(4)
+    mujoco.mju_mat2Quat(q, np.ascontiguousarray(T[:3, :3]).flatten())
+    model.cam_pos[cid] = T[:3, 3]
+    model.cam_quat[cid] = q
 
 
 def calib_matrix(err):
