@@ -165,6 +165,39 @@ nowhere else: `metric` is the key your grader reports, `direction` is `higher` o
   scores lower. Report a negative reward as a positive cost with the anchor's `direction` set
   to `lower`.
 
+Hardware invariance also covers the libraries the grader computes with. A Python wheel can bundle its own
+OpenBLAS (numpy, scipy, opencv-python and cvxopt each do), each copy picks its kernels by CPU
+when it loads, and an old copy can compute wrong products on a newer CPU. If your task has to
+carry an old numpy, scipy, opencv-python or cvxopt wheel, check which OpenBLAS each one
+bundles, pin `OPENBLAS_CORETYPE` in the image and in every process the grader starts (solver
+and scoring alike), and let the verify stage check the products before it scores.
+`tasks/arm/novel_object_6dof_grasp_detection` is the worked example (`environment/Dockerfile`,
+`tests/verify.py`'s `NUMERICS_ENV`, `tests/numerics_check.py`; `PROGRESS.md` section 12).
+
+When the grader runs a submitted program (a controller, a mission, an assembly program), the program's own
+arithmetic has to repeat on every grading host as well, or the same submission gets different scores on
+different machines. Three things decide it, and the kernel pin covers only the first:
+
+- OpenBLAS: `OPENBLAS_CORETYPE=Haswell`, and with numpy 2.5.2 to 2.5.5 always together with
+  `OPENBLAS_L2_SIZE=256`; one thread (`OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`), because a threaded
+  product is split by the host's core count.
+- NumPy's own loops: `np.arctan2`, `exp`, `log`, `power`, `arcsin` and others round differently in the last bit
+  where NumPy's AVX-512 loops are on. `NPY_DISABLE_CPU_FEATURES` takes them out, by names that depend on the
+  numpy version: numpy 2.5 knows `X86_V4 AVX512_ICL AVX512_SPR`; numpy 1.23 and 2.2 know `AVX512F AVX512CD
+  AVX512_SKX AVX512_CLX AVX512_CNL AVX512_ICL` (measured; for another version read
+  `numpy._core._multiarray_umath.__cpu_dispatch__`). A name the numpy does not know is rejected with an
+  `ImportWarning` that nobody sees, and then nothing is disabled. Let the image build fail on that warning
+  (`python3 -W error::ImportWarning -c "import numpy"` with the variable set), and check on an AVX-512 host.
+  `tests/test_numerics_pin_names.py` checks every literal pin against the task's numpy.
+- OpenCV: `OPENCV_IPP=avx2` (its IPP picks code by CPU).
+
+Set them where the program's process gets them: a program started with a scrubbed environment sees no image
+`ENV`, so use a `.pth` in the task's Python that sets each as a default, or put them into the environment the
+grader starts the program with. State the pin in `instruction.md`, and let the verify stage hash a set of
+NumPy, SciPy and OpenCV results from a Python started as the program is and refuse to grade when they differ
+from the recorded ones. `tasks/arm/pantry_jar_refilling` is the worked example (`environment/Dockerfile`,
+`tests/numerics_check.py`, `tests/numerics.json`).
+
 ## 6. The anchor bootstrap
 
 The scoring denominator is the reference implementation's own measured value, never a figure
@@ -260,7 +293,12 @@ few confirmations. Nothing else belongs in the pull request: no notes, no `__pyc
 
 CI (`.github/workflows/pr-checks.yml`) runs `ale lint` over `tasks/` and `templates/`, the
 domain lint (metric, anchor, visible surface, image hygiene, placement), the kit comparison,
-the registry identity cross-check (a new slug is a notice) and the test suite. It needs no
+the registry identity cross-check (a new slug is a notice), the GPU-model check (every
+`gpu_types` name accepts a real model), the task-card check and the test suite. Before the merge a maintainer adds the task's card to `tasks/cards.toml`: its readable
+title, a one-sentence summary, the platforms it involves and the one stage it is filed under
+([`task-cards.md`](task-cards.md)), then labels the pull request `ready-to-merge`, which makes
+the card check strict. Suggest a title in the pull request if you like; the card is no part of
+the task's identity. It needs no
 secrets, so it runs on forks too. It does not build your image or run `ale validate`.
 
 A maintainer then reads `tests/` and `solution/`, re-runs `ale lint` and `ale validate` on

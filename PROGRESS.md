@@ -7,9 +7,11 @@
 > before every hand-off. Where it disagrees with the code or `git log`, the code wins: fix
 > this file.
 >
-> Last updated: 2026-11-09 (§11: `vendor/ale` @ `bfb7505`, a task names its GPU models).
-> Before that: 2026-11-07 (§10: the asset dataset is renamed `ale-robotics-assets`);
-> 2026-11-03 (§8: the tasks move to the Harbor-based engine, `vendor/ale` @ `1cdbc02`).
+> Last updated: 2026-11-17 (§14: one stage per task card; `driving` and `ground` become one
+> platform, `ground` "Ground vehicle"). Before that: 2026-11-16 (§13: task cards in
+> `tasks/cards.toml`, the `ground` platform, the merge gate and the GPU-model check); 2026-11-14 (§12: the grasp task pins OpenBLAS
+> to its Haswell kernels); 2026-11-09 (§11: `vendor/ale` @ `bfb7505`, a task names its GPU
+> models); 2026-11-07 (§10: the asset dataset is renamed `ale-robotics-assets`).
 
 ## 0. 2026-09-07 — created by the rebrand from "ALE Robotics"
 
@@ -462,6 +464,309 @@ before it starts. `1cdbc02` refused the key as an unsupported Harbor field.
     on the H100).
 - Next: run `hazard_bay_build`'s missions on an H100 on a quiet host, and add `H100` if they
   pass.
+## 12. 2026-11-14 — the grasp task pins OpenBLAS; wrong matrix products on recent Intel CPUs
+
+A collaborator's `ale validate` of `tasks/arm/novel_object_6dof_grasp_detection` on an Intel
+Xeon Platinum 8490H ended `oracle_not_full`: reference mean AP 63.5 against the anchor run's
+72.339 (reward 0.88), the same in three runs, no environment error in the logs. The cause is
+wrong matrix products, not rounding. The fix is the pull request from branch
+`hardening/novel-object-6dof-grasp-detection-openblas-kernels` (its commit `da9fb88`).
+
+- **Cause.** `/opt/grasp` carries numpy 1.23.5 (graspnetAPI 1.2.11's evaluation needs
+  numpy < 1.24), whose wheel bundles OpenBLAS 0.3.20
+  (`numpy.libs/libopenblas64_p-r0-742d56dc.3.20.so`). OpenBLAS picks its kernels by CPU when it
+  loads. In 0.3.20 (`driver/others/dynamic.c`) Sapphire Rapids with AVX512_BF16 gets the
+  Cooperlake kernels, and so does, by the feature-based fallback, any CPU with AVX512_BF16 it
+  does not know. With those kernels DGEMM returns products with a relative error of about 1.5:
+  `np.matmul(T, X.T)` (T 4x4, X (N, 4)) is wrong from N = 193 up on one thread (tried up to
+  100000) and for N = 193 to 10000 with the default thread count; the contiguous layout only for
+  N >= 93750 on one thread; the stacked `(G,N,3) @ (G,3,3)` product was right at every size
+  tried. The Haswell, SkylakeX and Zen kernels of the same copy are correct to 4e-16. The
+  OpenBLAS 0.3.22 changelog lists a fix for the run-time selection of Cooperlake in
+  DYNAMIC_ARCH builds; the defect inside OpenBLAS was not confirmed by rebuilding it.
+- **Effect.** That product is graspnetAPI's `utils.eval_utils.transform_points`. On hidden frame
+  0160_0005, 93,558 of the 93,750 table points and most points of every object model with more
+  than 192 points were more than 1 mm off, up to 1.29 m. Under those kernels the grader scores
+  the same correct reference predictions 37.137 instead of 72.156 mean AP (28 frames, lower on
+  all 28); the reference, labelling against the corrupted scene, flags 42.0 % of its candidates
+  empty instead of 6.8 %; reference and grader together give 65.37 instead of 72.48 mean AP on
+  56 frames (-7.11, standard error 0.89), the collaborator's result in direction and size (the
+  448 frames were not run under those kernels). Replacing only `transform_points` by an einsum
+  version restored bit-identical reference output and per-frame AP (7 of 7 frames each). The
+  gradient-boosted scorer is not involved: its inputs and outputs are bit-identical under all
+  kernels.
+- **Four copies.** A `/opt/grasp` process maps four OpenBLAS copies, each choosing for itself:
+  numpy 0.3.20, scipy 0.3.18, opencv-python 0.3.3, cvxopt 0.3.23. Without a pin a Xeon 8490H
+  selects numpy Cooperlake, scipy Prescott, opencv Prescott, cvxopt Cooperlake (from the
+  sources); this host's AMD Zen 4 numpy Zen, scipy Zen, opencv Barcelona, cvxopt Cooperlake
+  (measured); the anchor machine's AMD Zen 5 Barcelona for numpy, scipy and opencv and
+  Cooperlake for cvxopt (from the sources). Only numpy's 0.3.20 on Cooperlake computed wrong
+  products; cvxopt's 0.3.23 on Cooperlake was correct.
+- **How it was measured.** Every run was on an AMD Ryzen Threadripper 7960X (Zen 4, AVX-512
+  with AVX512_BF16) in the task image's Python environment. `OPENBLAS_CORETYPE=Cooperlake` is a
+  name 0.3.20 does not know, so it falls back to its feature-based choice, Cooperlake: the
+  kernels a Xeon 8490H selects. Nothing was run on a real Xeon 8490H.
+- **The fix.** `OPENBLAS_CORETYPE=Haswell`, which all four copies honour: an image `ENV`; a
+  `.pth` in `/opt/grasp`'s site-packages that sets it when the variable is missing (an explicit
+  value wins; `python -S` skips it); `tests/verify.py`'s `NUMERICS_ENV`, in `CHILD_ENV` (every
+  solver process, reference and submissions alike) and in the scoring subprocess's
+  environment; the practice check. New `tests/numerics_check.py`, which `verify.py` runs in the
+  solver and in the scoring environment after the early zero for a missing `solver.py` and
+  before the hidden frames are fetched: on x86-64 every mapped OpenBLAS copy must report
+  Haswell, and BLAS-backed products must agree with einsum in the evaluation's layouts for 1 to
+  100000 points; otherwise the stage ends as a task error. `instruction.md` gains one
+  Environment bullet; `tests/anchor.json` changes in its `source` text only (`value`, `full_at`
+  and `baseline_mean_ap` unchanged); `tests/test_numerics_pin_novel_object_6dof_grasp_detection.py`
+  is a repository test (no Docker).
+- **Measured for the fix.** With `OPENBLAS_CORETYPE=Haswell` all four copies use their Haswell
+  kernels. The reference output is bit-identical under the Haswell, SkylakeX and Zen kernels and
+  the anchor machine's selection (28 of 28 frames). The starting detector gives
+  `baseline_mean_ap` 7.866108398398201 exactly on all 448 frames under Haswell; under the Zen 5
+  native selection (Barcelona) it gives 7.868463118375316 (4 frames differ), so with the pin
+  the constant is exact there too. The scoring of a given array did not depend on the OpenBLAS
+  thread count (1 versus default, 8-CPU container) or on the kernel family, Cooperlake
+  excepted. `numerics_check.py` passes under Haswell with 1 thread and with default threads,
+  fails under Cooperlake at every thread count and CPU limit tried, and fails on the kernel
+  family with the variable unset and the `.pth` absent; about 3.5 s per run. At `da9fb88`:
+  `pytest` 464 passed, 12 skipped; `ale lint`, `scripts/lint_domain.py` and
+  `scripts/task_assets.py check` (0 problems) ok; `tests/robotics_grader` byte-identical to
+  `shared/robotics_grader`. At the pinned engine (`bfb7505`, docker provider) the image `ENV`
+  reaches the setup, agent, oracle and verify commands (read in the engine source, tried with
+  its guestd).
+- **numpy's own SIMD paths are left alone.** numpy 1.23.5 computes float64 sin, cos, exp, log
+  and arccos on an AVX-512 path where the CPU has one. Switching those paths off changes the
+  reference's candidates in the last bit and its per-frame AP by -1.75 to +1.97 (7 frames,
+  +0.16 on the mean), the size of the cross-machine difference `anchor.json` already recorded
+  (16 frames, at most 2.0 per frame, -0.31 on the mean); the starting detector's AP and the
+  scoring of a given array (7 frames) did not change. So `NPY_DISABLE_CPU_FEATURES` is not set,
+  `full_at` 0.98 covers the difference and the anchor value stays. For anyone who does set it,
+  the names are numpy-version specific: 1.23.5 knows AVX512F, AVX512CD, AVX512_SKX, AVX512_CLX,
+  AVX512_CNL and AVX512_ICL and warns about names it does not know or that the CPU lacks;
+  numpy 2.2 knows the same names, numpy 2.5 knows X86_V4, AVX512_ICL and AVX512_SPR instead and
+  disables nothing when given the older ones (measured 2026-11-20 with 2.2.5, 2.2.6, 2.5.3 and 2.5.4 on a
+  Zen 5 host; `tests/test_numerics_pin_names.py`).
+- **Scope and limits.** Scores of this task from machines with AVX512_BF16 Intel CPUs before
+  this change are not valid, agent runs included: the grader itself was wrong there. Runs on
+  the AMD hosts used so far are not affected. No other task is affected: every other task
+  image uses numpy >= 1.26 for its interpreter (requirements files and Dockerfiles on `main` at
+  `b7b55ac`). x86-64 CPUs without AVX2 and FMA can no longer run this task (the Haswell kernels
+  end the process; the verify stage then ends as a task error, and the image build's
+  self-check fails). An explicitly empty `OPENBLAS_CORETYPE` is kept by the defaults (the
+  `.pth`, the practice check), and OpenBLAS then chooses by CPU features again; the graded
+  processes are not affected, because `verify.py` sets the value itself.
+- **Validated.** `ale validate` of `da9fb88` on the Threadripper 7960X host (run
+  `validate-f444851d`, engine `bfb7505`, 2026-11-15 UTC): untouched 0.0, oracle 1.0. The
+  reference reads mean AP 72.33897 over the 448 hidden frames (ap_gain 64.47286, ratio
+  0.9999993 to the anchor's 64.4729), 448 of 448 frames valid, no timeout, slowest call 131.0 s
+  of its 300 s, prediction 3416 s, scoring 556 s: the anchor run of 2026-11-07, made on another
+  CPU, to its last recorded digit. The grader's log shows the numerics check passing in both
+  environments, all four OpenBLAS copies on Haswell, largest relative error 3.4e-16.
+  `identity-history.json` carries the task's new record, exported from the clean branch.
+- **Still to do.** The collaborator re-runs `ale validate` on the Xeon 8490H, the only
+  confirmation on real hardware.
+
+## 13. 2026-11-16 — task cards, the `ground` platform, the merge gate, the GPU-model check
+
+- **Task cards** (`tasks/cards.toml`, rules in `docs/task-cards.md`): each task on main has a
+  card with a readable `title`, a one-sentence `summary`, the `platforms` it involves (the
+  folder's first, then cross-references) and the `stages` it covers (several in workflow
+  order, or `end-to-end` alone). The file is outside every task folder, so cards change no
+  `spec_hash` or `content_digest`. The website reads the file. 26 cards, one per task on main.
+- **`scripts/task_cards.py`** (`check [--strict]`, `todo`, `context TASK`) and
+  `schemas/task-cards.schema.json`; `tests/test_task_cards.py`.
+- **The merge gate**: the maintainer who finishes a task's pull request adds its card (and a
+  GPU task's tested `gpu_types`) on the branch and labels it `ready-to-merge`. CI's card check
+  is strict on a labelled pull request and on `main`; until then a missing card is a warning,
+  so a contributor's checks stay green. The workflow re-runs on `labeled` / `unlabeled`.
+- **`scripts/gpu_types.py`** (`check`, `list`): every `gpu_types` name accepts a known GPU
+  model, asked of the pinned engine (`ale.run.gpu.accepts_model`), so CI runs it in the
+  engine-lint job; a GPU table without the key is a notice. `tests/test_gpu_types.py`.
+- **`ground`** ("Ground robot (UGV/AMR)") joins `tasks/platforms.json` after `driving`:
+  wheeled and tracked ground robots that are not car-like vehicles driving a road or a track.
+  No task folder moves; `hazard_bay_build` and `robotic_arm_environment_twin_from_real_photo`
+  name it as a cross-reference. The claim order (legged → `quadruped`/`humanoid`; driving
+  tasks → `driving`; other wheeled or tracked → `ground`) is in `CONTRIBUTING.md` step 3 and
+  `docs/task-cards.md`.
+- **Next**: with branch protection on `main` (required checks `engine-lint` and
+  `static-checks`), nothing merges around the gate; it is off today.
+
+## 14. 2026-11-17 — one stage per task; `driving` and `ground` become one platform
+
+Owner decisions of 2026-11-17; they supersede the stage rule and the `driving` / `ground` claim
+order of §13 (§5's platform list predates both).
+
+- **One stage per task.** A card's `stages` is a list of exactly one entry: the last stage of the
+  workflow that the task's score depends on. A job task that also has the agent rebuild a scene
+  or pick hardware on the way is filed by the job; `assembly` means building the robot's own
+  body, and assembling furniture or parts with a robot is `behavior`. `end-to-end` stays the
+  category of a task that runs the whole chain (no task uses it). `scripts/task_cards.py check`
+  fails any other `stages`, and the schema says the same (`minItems` = `maxItems` = 1).
+  `hazard_bay_build` (was hardware-design + environment + behavior) is `behavior`.
+- **Ground vehicle.** `driving` ("Autonomous driving") and `ground` ("Ground robot (UGV/AMR)")
+  are one platform, key `ground`, label "Ground vehicle", in `driving`'s place after `uav`: any
+  wheeled or tracked ground vehicle or robot (a car at any scale on a road or a track, AMR /
+  AGV / UGV, rovers, wheeled mobile manipulators). The key `driving` is gone:
+  `driving_safety_supervisor` moves to `tasks/ground/driving_safety_supervisor/` with
+  `[metadata].platform = "ground"`, and its card's platforms are `["ground"]`. The new
+  platform value and the new asset pin change the task's `spec_hash` and `content_digest`
+  (the slug is unchanged); `identity-history.json` keeps its old records and carries the new
+  one, exported from a clean work tree of the branch. An asset list's `# prefix:` must name the
+  task's folder (`scripts/task_assets.py check`), so the task's 19 files were copied server
+  side to `tasks/ground/driving_safety_supervisor/payload/` on the asset dataset (commit
+  `4c7c4d8b`, every sha256 unchanged) and the list is re-pinned there. The old folder stays on
+  the dataset until this merges; then it is deleted and the dataset card's rows are fixed.
+- `tasks/arm/object_finding_and_organizing_on_messy_desk/task.toml` still lists `driving` in a
+  comment; it is left as it is, since editing it would change that task's identity.
+
+## 15. 2026-11-17 — the kit clears the agent's account before it starts agent code
+
+- **The finding** (review of the contributed `longtail_manipulation_recovery`, pull request
+  #80). A controller that the grader starts under a no-network seccomp filter got code run
+  outside the filter, as the same account, in two ways. Both go through the base image's
+  supervisord (PID 1), which runs the desktop session as the agent's account with
+  `autorestart`: (1) replace `/usr/local/bin/start-gnome.sh` (the directory is the agent's in
+  `container-ubuntu22-base` 0.1.1) and kill the session; (2) write an entry into
+  `~/.config/autostart` and kill the session. The restarted code had `NoNewPrivs: 0` and
+  opened an `AF_INET` socket that the controller could not. Route 2 needs nothing but the
+  account's own home, so it holds for every grader that runs agent code as the agent's
+  account, with or without `secure_exec_path`. A live session is a third way (its D-Bus, X
+  and terminal services take requests from the account). Stopping the session (SIGSTOP), as
+  several graders do, does not hold either: the agent's code may kill what was stopped.
+- **The fix** (`shared/robotics_grader/account.py`, `clear_agent_account`). Once per sandbox,
+  before the first agent process: every supervisord program gets `autostart=false` and
+  `autorestart=false` in supervisord's configuration files, supervisord reloads (SIGHUP) and
+  starts nothing, and every process of the account that the grader did not start is killed
+  until none comes back. `Solver.__init__` and `deprivileged` call it, so a grader that
+  subclasses `Solver` with a launcher of its own gets it too; `clear_account=False` opts out.
+  It acts only as root in the engine's verify stage (`ALE_VERIFY_PYTHON`), keeps its report
+  in a root-only marker file (`/run/robotics_grader/`), and reports `cleared: False` instead
+  of failing under an init it does not know.
+- **Measured** in containers of the first verifier image of pull request #80 (the base
+  image's desktop, 45 processes of the account), with the review's two probe controllers
+  started through that task's seccomp launcher. Before: both probes got their code run with
+  `NoNewPrivs: 0` and `AF_INET socket: allowed`. After `clear_agent_account`: 45 processes
+  killed, 7 programs disabled, reload confirmed by supervisord's new pid file, 3 to 5 s;
+  probe 1 could still replace the start script when root's PATH was left as it was, and
+  nothing ran it; probe 2's autostart entry never ran; no process of the account existed
+  outside the launcher. An honest controller through the kit's own `Solver` (a helper process,
+  a file in its folder, a local socket pair, one restart) ran as before. The same clearing
+  worked on the CAD tasks' desktop variant (12 processes, openbox).
+- **Which graders change behaviour**: the ones that start agent code through `Solver` or
+  `deprivileged`: `arm_hidden_mechanism_box`, `kitchen_appliance_tending`,
+  `novel_object_6dof_grasp_detection`, `object_finding_and_organizing_on_messy_desk`,
+  `driving_safety_supervisor`, `fault_adaptive_spacecraft_docking`, `hazard_bay_build`,
+  `aerial_search_geolocation`, `visual_low_level_flight_control`, `keyed_nut_peg_assembly`
+  (merged while this was open), and the template. Their
+  verifier sandbox loses its desktop session (and root's system D-Bus) when the solver first
+  starts. None draws on the sandbox's display by its code (the renderers drop `DISPLAY`, the
+  Unreal simulators render offscreen, as their own accounts).
+- **Re-validated with this kit** (2026-11-18 and 19, `ale validate` on engine `bfb7505`, the
+  branch at `f708f443`; later heads differ only outside the kit and these task folders):
+  untouched 0.0 and the oracle at its recorded score in `arm_hidden_mechanism_box`
+  (`validate-021564f8`), `kitchen_appliance_tending` (`validate-a34a9d1b`),
+  `fault_adaptive_spacecraft_docking` (`validate-6eb7d128`),
+  `visual_low_level_flight_control` (`validate-c36ffcc0`: 7 of 8 fresh scenes, inside the
+  spread its anchor records), `driving_safety_supervisor` (`validate-cdc35a8a`),
+  `aerial_search_geolocation` (`validate-b5cf1b37`),
+  `object_finding_and_organizing_on_messy_desk` (`validate-75ff606d`) and `hazard_bay_build`
+  (`validate-e4ec5969`: 131 of 131 metrics equal to the record). In each oracle episode the
+  only kind of line that the verifier's log has and the recorded run does not is the kit's
+  `agent account ... cleared` (2.0 to 6.5 s); the two Unreal simulators, which are up before
+  the solver starts, ran on under it. `keyed_nut_peg_assembly` too (`validate-e6a2ee01`: the
+  ten kits complete with the steps of its record); its selection record freezes the kit's
+  files, so the kit update is amendment 6 of `tests/hidden/selection.json`, pre-registered
+  and run by the task's own rule: every candidate repeats its earlier run, the hidden set and
+  the development kits are unchanged. There the clearing (3.7 s) falls inside the first
+  kit's solver start and is charged to that kit's controller time (600 s budget).
+  `novel_object_6dof_grasp_detection` is to be validated after the merge, when a machine has
+  the memory for it: its reference holds 52 to 54 GB for most of an hour, and two runs were
+  stopped before any score when the machines ran short.
+- **Not covered**: graders that start agent code with their own launcher and never through
+  the kit's two calls (the assembly cells, the cell kits, the twin and description tasks). By
+  their code they run it as `nobody` from a read-only copy while a thread keeps the agent's
+  account stopped; `nobody` can neither write the account's files nor signal its processes,
+  so the two routes are not open to them. Probed on 2026-11-18 with the launchers of an
+  assembly cell (`robotic_arm_full_assembly_so101_panda`) and a cell kit
+  (`pump_skid_startup_and_operation`), each in its own image with the session running: 48
+  writes on the files the session starts from and 18 on autostart and profile files refused,
+  every signal refused, nothing run even after root restarted the session, while the same
+  program run as the agent's account got both routes. The stopped session matters as much
+  as the other account: a running session's X display takes any local account
+  (`docs/security-model.md`). A call to
+  `clear_agent_account()` at their start would remove the session for good; that is a change
+  of each task. And the network: root in the sandbox cannot make a network namespace
+  (`unshare(CLONE_NEWNET)`: EPERM, no `CAP_SYS_ADMIN`), so a solver's network is still the
+  engine's to close (`docs/security-model.md` §4).
+- **Identities**: every task's vendored kit changed, so every task has a new
+  `content_digest`; `identity-history.json` records them.
+
+## 16. 2026-11-20 — the kit never waits on a solver that does not read; the lock compares values
+
+- **The findings.** The validation review of #80 (fixed in that task's own subclass by #146)
+  and the review of #138 named four paths in `shared/robotics_grader/solver.py`:
+  (1) `_exchange` wrote a request with a blocking `write` and `flush` and started the request's
+  deadline afterwards; a request longer than the pipe (64 KiB), or any request once the pipe
+  is full, waits for the solver to read, so a solver that stopped reading held the grader
+  until the verifier's timeout, with no verdict; (2) `close()` wrote its message the same
+  way; (3) with no restart left, `_restart` raised before it stopped the old process, which
+  then ran on through every remaining episode; (4) `ProbeLock.record` counted two replies
+  with a different count of numbers as differing, so a solver could pass the lock without
+  reading its observation by answering a repeated `t` in two of its action shapes.
+- **The fix.** `Solver._send` writes to the pipe's descriptor without blocking (`O_NONBLOCK`,
+  `select`, `os.write`, the flag restored) and gives up at a deadline; not through the text
+  wrapper, which keeps what it could not write and writes it, blocking, when it is closed.
+  `_exchange` starts the request's one deadline before the write. `close()` sends its message
+  through `_send` for at most 1 s (`CLOSE_WRITE_TIMEOUT`), not at all after a request was cut
+  short in the write or once the solver was given up on, and stops a solver it did not ask at
+  once. `_restart` stops the old process before it raises. `ProbeLock.record` treats a length
+  mismatch as showing nothing; `ProbeLock(canonical=...)` lets a task with more than one
+  action shape map a reply to the fixed-length list that is compared. A grader that replaced
+  `proc.stdin` with an object of its own (the docking task's `BoundedStdin`) is written to
+  through that object as before.
+- **What a solver sees.** One that reads its requests and answers in one shape: nothing. The
+  time a solver takes to read a request now counts toward that request's deadline.
+- **Tests.** `tests/test_kit_solver_bounded_writes.py`: 11 tests over the real wire against
+  child processes, 8 of which fail on the kit as it was (an unread 2 MB request, `close()`
+  after it and on a full pipe, the solver left running with no restart left, the read time
+  outside the deadline, the two lock cases). Five new checks in the kit's selftest.
+- **`keyed_nut_peg_assembly`**: amendment 8 of its selection record, pre-registered
+  (`58d1788a`) and run by the task's rule (`5cc3c611`): all 16 candidates and all 24
+  development candidates repeat amendment 7's runs to the step, the hidden set and the
+  development kits are unchanged, the anchor's verify repeats (1.0, 10 of 10).
+- **Re-validated with this kit** (2026-11-20, `ale validate` on engine `bfb7505`, a clean
+  checkout of `5cc3c611`, one task at a time; the later commits change nothing under
+  `shared/`, `templates/` or these task folders): every grader that runs the kit's `Solver`
+  or `ProbeLock` printed `ok`, untouched 0.0 and the oracle 1.0, no episode aborted, and the
+  oracle's verifier log has no kind of line that its last recorded validate does not have.
+  `arm_hidden_mechanism_box` (`validate-5bbc2efc`: 37 of 39 metrics equal, the other two
+  count probes over wall time, 109 of 109 passed), `kitchen_appliance_tending`
+  (`validate-643fa43b`: 40 of 40 equal), `keyed_nut_peg_assembly` (`validate-b31fcd96`: the
+  ten kits to the step), `fault_adaptive_spacecraft_docking` (`validate-745b7aad`: 66 of 70
+  equal, the others are wall-clock timings; its `BoundedStdin` path),
+  `visual_low_level_flight_control` (`validate-95dc011e`: 8 of 8 fresh scenes, 133 of 185
+  probes, inside the spread of its earlier runs), `longtail_manipulation_recovery`
+  (`validate-8c43f38c`: 15 of 16 equal, the other is controller seconds; this grader has its
+  own write and close paths), `driving_safety_supervisor` (`validate-e6006d1f`: ratio 1.004,
+  24 of 24 episodes), `aerial_search_geolocation` (`validate-3dd270f7`: geolocation score
+  0.928, 341 of 341 probes), `hazard_bay_build` (`validate-6a99b757`: 131 of 131 equal) and
+  `object_finding_and_organizing_on_messy_desk` (`validate-f6a6c2f3`: 26 of 29 equal, the
+  others are controller seconds, 618 of 620 probes).
+  `pantry_jar_refilling` landed on `main` while this was open (#138); it runs the kit's
+  `Solver` and lock, got the kit with the merge of `main` and was validated on that merge
+  (`validate-aa856c6f`, checkout `8ecc6829`: 32 of 33 metrics equal to its last validate, the
+  other is controller seconds, 12 of 12 episodes). `freeflyer_uncrewed_station_caretaking`
+  (#149) uses the kit for its scoring and verdict only.
+  `novel_object_6dof_grasp_detection` starts its solvers through `deprivileged` and runs none
+  of the changed code; its validate, owed since section 15, ran here too (`validate-9bd36858`,
+  with the account clearing of section 15): untouched 0.0, oracle 1.0, 448 of 448 frames
+  valid, no timeout, no restart, prediction 4722 s on a loaded machine (slowest call 209.9 s
+  of 300 s), the container at most 59 GB. The reference reads mean AP 72.458 there (ratio
+  1.0018); section 12's record is 72.339 on another host, so the two differ in the first
+  decimal, which is not explained yet.
+- **Identities**: every task's vendored kit changed, so every task has a new
+  `content_digest`; `identity-history.json` records the 49 of them. `pantry_jar_refilling`
+  is recorded here for the first time, with this kit; its content as merged by #138 has no
+  entry of its own.
 
 ## Open items
 
@@ -623,6 +928,14 @@ commit 2278f3f until that run is scored; the changes below live in `setup/payloa
   `harness/ale_onboard.py` reads that as `needs_anchor` with the measured value.
 - A task that hands the agent a copy of its simulator must seed episodes with 64 bits and
   draw hidden values through a keyed hash; an LCG or a 31-bit seed gives the episode away.
+- A Python wheel can bundle its own OpenBLAS (numpy, scipy, opencv-python and cvxopt each do),
+  and each copy picks its kernels by CPU when it loads, so one process can run several copies
+  on different kernels, and an old copy can be wrong on a CPU newer than it: numpy 1.23.5's
+  OpenBLAS 0.3.20 computes wrong matrix products on Intel CPUs with AVX512_BF16 (section 12).
+  A task that has to carry such a wheel pins `OPENBLAS_CORETYPE` to a correct kernel family in
+  the image and in every process its grader starts, and lets the verify stage check the
+  products before it scores (`tasks/arm/novel_object_6dof_grasp_detection`: the Dockerfile,
+  `tests/verify.py`'s `NUMERICS_ENV`, `tests/numerics_check.py`).
 
 ### 2026-10-23 — provisional anchor
 - Oracle a5c3982 measured through the task's verify stage (task image, network off): episode 0 S = 0.641 (O 0.72, R 0.56); episodes 1–2 running. Anchor recorded as 0.641058, full_at 0.8 (template default), marked provisional.
