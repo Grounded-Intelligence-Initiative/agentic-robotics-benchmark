@@ -768,6 +768,42 @@ order of §13 (§5's platform list predates both).
   is recorded here for the first time, with this kit; its content as merged by #138 has no
   entry of its own.
 
+## 17. 2026-11-23 — the solver cannot slow the grader; one rule for probe pairs; probe copies as real observations
+
+- **The findings** (validation reviews of #158 and #81, which name `pantry_jar_refilling` and
+  `lab_sample_handling` too). (1) The grader's own simulation and rendering are not charged to
+  the solver and share the sandbox's CPUs with it; a solver that keeps them busy slowed the
+  grader many-fold (measured here on two CPUs: 9-fold with 24 busy children, 136-fold with
+  250), far enough to pass the verifier's timeout with no verdict. (2) Practice graders
+  counted two replies of different lengths as differing; since #147 the lock does not, so a
+  practice count could look fine for a controller the lock fails. (3) A probe copy whose
+  poses were the exact kinematics of its offset joints had a residual of exactly zero, while
+  a real observation's poses come from the joint positions before the last physics step: a
+  threshold told them apart (400 of 400 moving pairs on `arm_hidden_mechanism_box` and
+  `keyed_nut_peg_assembly`).
+- **The fix.** `Solver._start` spawns the solver at nice 19 (`LOWEST_NICE`): the grader's
+  thread lowers itself for the spawn and raises itself back, so the solver and everything it
+  starts never run at the grader's priority, whatever `_spawn` a task's subclass uses; then
+  SCHED_IDLE where the kernel lets the grader set it. After: 0.8-fold and 1.4-fold in the same
+  measurement. `Solver.max_processes` (0 = off) ends an episode when the solver's account holds
+  more processes; nothing counts unless a task sets it and says the number in its instruction.
+  `replies_differ` is the lock's rule as a function; `ProbeLock.record` uses it, and
+  `tests/test_kit_priority_lock_probe.py` runs every practice grader's `differ` against it.
+  `probe.stale_copy` gives a copy's poses from the older positions plus the copy's offsets.
+  `deadline.VerifierDeadline` is a last deadline for a grader that arms it.
+- **Tasks.** The practice graders of `pantry_jar_refilling` and `arm_hidden_mechanism_box`
+  count by the lock's rule and give each request one deadline with a non-blocking write.
+  `arm_hidden_mechanism_box` and `keyed_nut_peg_assembly` build their probe copies from the
+  older positions (after: the real observation has the larger residual in 199 and 215 of 400
+  moving pairs, 189 and 159 of 400 at rest). `keyed_nut_peg_assembly` amendment 9: same hidden
+  set, same development kits, the anchor's verify repeats to the step. The kit is re-vendored
+  into every task and the template.
+- **Left.** `nonet_exec.py` is unchanged (a frozen file in four tasks; the priority does not
+  need it). `lab_sample_handling`, `kitchen_appliance_tending` and `grocery_shelf_restocking`
+  change their own practice graders and probe copies in their own pull requests.
+  `pantry_jar_refilling`'s probe copy keeps its first-order form. No task's `verify.py` arms
+  `VerifierDeadline` yet, and no task sets `max_processes`.
+
 ## Open items
 
 - Website, display-only pull request: remove the backend (API, database service, sign-in,
