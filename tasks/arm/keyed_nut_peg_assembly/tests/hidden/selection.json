@@ -14928,8 +14928,8 @@
    "pre_registered_commit": "58d1788a"
   },
   {
-   "amended_utc": "2026-11-23T18:16:06Z",
-   "what": "The shared verify-stage kit and the probe copy (2026-11-23). (1) tests/robotics_grader/ is replaced by the benchmark's current copies of shared/robotics_grader/: the controller is started at nice 19 (and in the kernel's idle scheduling class where it can be set), so a controller that keeps the CPUs busy cannot slow the grader's own simulation and rendering; the match lock's comparison is the kit's replies_differ, unchanged in what it counts; two new modules (probe.py, deadline.py) that this grader does not call. (2) tests/keyed_env.py (and its copy in the commissioning service): the probe copy's gripper and wrist-camera poses are the kinematics of the joint positions before the last physics step plus the copy's joint offsets, as the real observation's poses are, instead of the exact kinematics of the copy's joints; the environment remembers those positions at every physics step. The simulation, the observation, the credit rule, the kits, the plan, this grader's own module and the reference do not change; the random draws of a probe copy are the same and in the same order. The kits themselves are unchanged, so the rule runs on the same candidates.",
+   "amended_utc": "2026-11-23T18:45:26Z",
+   "what": "The shared verify-stage kit and the probe copy (2026-11-23). (1) tests/robotics_grader/ is replaced by the benchmark's current copies of shared/robotics_grader/: the controller is started at nice 19 (and in the kernel's idle scheduling class where it can be set), so a controller that keeps the CPUs busy cannot slow the grader's own simulation and rendering; the match lock's comparison is the kit's replies_differ, unchanged in what it counts; two new modules (probe.py, deadline.py) that this grader does not call. (2) tests/keyed_env.py (and its copy in the commissioning service): the probe copy's gripper and wrist-camera poses are the kinematics of the joint positions before the last physics step plus the copy's joint offsets, as the real observation's poses are, instead of the exact kinematics of the copy's joints; the environment remembers those positions at every physics step. The simulation, the observation, the credit rule, the kits, the plan, this grader's own module and the reference do not change; the random draws of a probe copy are the same and in the same order. The kits themselves are unchanged, so the rule runs on the same candidates, hidden and development (the development candidates are amendment 8's: kit seed 9001 + i, id U01 ...). A first pre-registration of this amendment (commit 879cefd6) named the first amendment's development candidates (kit seed 7001 + i) by mistake; its runs are discarded and none of its results is used.",
    "rule": "Pre-registered before any candidate ran on the amended files: this amendment (what changed, the frozen files' sha256, the candidates, the development candidates) was committed first. The selection's own rule runs again, unchanged, on the same 16 candidates in the same order (those in force before this amendment: the kits themselves are unchanged): the frozen reference runs each ONCE through the grader itself (tests/review/regrade.sh, a fresh container of the amended task image, a one-episode plan); a candidate is kept when the reference completes its kit (kit_complete 1, no abort, no fault, no controller-budget cut), now within the amended episode length; the hidden set is the first 10 kept in drawn order; should fewer than 10 be kept, 8 more candidates are drawn from os.urandom, appended and run. The anchor is the reference's full verify of that set, which must repeat every kept run (kit_complete, nuts assembled, steps).",
    "frozen": {
     "solution/solve.sh": "3314b1a8f01970ba663e10a8162e5c73fb1fdf8095d1d27cfed2bffc66153db5",
@@ -14966,153 +14966,153 @@
     "tests/robotics_grader/solver.py"
    ],
    "development_kits": {
-    "rule": "The commissioning service's development kits (environment/commission_service/kits.json) are chosen like the hidden set, from their own candidates: candidate i (id D01 ...) is keyed_env.sample_kit(numpy.random.default_rng(7001 + i), id) with layout and noise seed 11001 + i, in order; the frozen reference runs each ONCE through the grader; the development kits are the first 16 it completes, in order (should fewer be kept, the next seeds follow). No development seed is a hidden candidate's, and no development kit has a hidden candidate's grooves.",
-    "seed0": 7001,
-    "layout_seed0": 11001,
+    "rule": "The commissioning service's development kits (environment/commission_service/kits.json) are chosen like the hidden set, from their own candidates: candidate i (id U01 ...) is keyed_env.sample_kit(numpy.random.default_rng(9001 + i), id) with layout and noise seed 13001 + i, in order; the frozen reference runs each ONCE through the grader; the development kits are the first 16 it completes, in order (should fewer be kept, the next seeds follow). No development seed is a hidden candidate's, and no development kit has a hidden candidate's grooves.",
+    "seed0": 9001,
+    "layout_seed0": 13001,
     "candidates": [
      {
       "i": 0,
-      "id": "D01",
-      "kit_seed": 7001,
-      "layout_seed": 11001
+      "id": "U01",
+      "kit_seed": 9001,
+      "layout_seed": 13001
      },
      {
       "i": 1,
-      "id": "D02",
-      "kit_seed": 7002,
-      "layout_seed": 11002
+      "id": "U02",
+      "kit_seed": 9002,
+      "layout_seed": 13002
      },
      {
       "i": 2,
-      "id": "D03",
-      "kit_seed": 7003,
-      "layout_seed": 11003
+      "id": "U03",
+      "kit_seed": 9003,
+      "layout_seed": 13003
      },
      {
       "i": 3,
-      "id": "D04",
-      "kit_seed": 7004,
-      "layout_seed": 11004
+      "id": "U04",
+      "kit_seed": 9004,
+      "layout_seed": 13004
      },
      {
       "i": 4,
-      "id": "D05",
-      "kit_seed": 7005,
-      "layout_seed": 11005
+      "id": "U05",
+      "kit_seed": 9005,
+      "layout_seed": 13005
      },
      {
       "i": 5,
-      "id": "D06",
-      "kit_seed": 7006,
-      "layout_seed": 11006
+      "id": "U06",
+      "kit_seed": 9006,
+      "layout_seed": 13006
      },
      {
       "i": 6,
-      "id": "D07",
-      "kit_seed": 7007,
-      "layout_seed": 11007
+      "id": "U07",
+      "kit_seed": 9007,
+      "layout_seed": 13007
      },
      {
       "i": 7,
-      "id": "D08",
-      "kit_seed": 7008,
-      "layout_seed": 11008
+      "id": "U08",
+      "kit_seed": 9008,
+      "layout_seed": 13008
      },
      {
       "i": 8,
-      "id": "D09",
-      "kit_seed": 7009,
-      "layout_seed": 11009
+      "id": "U09",
+      "kit_seed": 9009,
+      "layout_seed": 13009
      },
      {
       "i": 9,
-      "id": "D10",
-      "kit_seed": 7010,
-      "layout_seed": 11010
+      "id": "U10",
+      "kit_seed": 9010,
+      "layout_seed": 13010
      },
      {
       "i": 10,
-      "id": "D11",
-      "kit_seed": 7011,
-      "layout_seed": 11011
+      "id": "U11",
+      "kit_seed": 9011,
+      "layout_seed": 13011
      },
      {
       "i": 11,
-      "id": "D12",
-      "kit_seed": 7012,
-      "layout_seed": 11012
+      "id": "U12",
+      "kit_seed": 9012,
+      "layout_seed": 13012
      },
      {
       "i": 12,
-      "id": "D13",
-      "kit_seed": 7013,
-      "layout_seed": 11013
+      "id": "U13",
+      "kit_seed": 9013,
+      "layout_seed": 13013
      },
      {
       "i": 13,
-      "id": "D14",
-      "kit_seed": 7014,
-      "layout_seed": 11014
+      "id": "U14",
+      "kit_seed": 9014,
+      "layout_seed": 13014
      },
      {
       "i": 14,
-      "id": "D15",
-      "kit_seed": 7015,
-      "layout_seed": 11015
+      "id": "U15",
+      "kit_seed": 9015,
+      "layout_seed": 13015
      },
      {
       "i": 15,
-      "id": "D16",
-      "kit_seed": 7016,
-      "layout_seed": 11016
+      "id": "U16",
+      "kit_seed": 9016,
+      "layout_seed": 13016
      },
      {
       "i": 16,
-      "id": "D17",
-      "kit_seed": 7017,
-      "layout_seed": 11017
+      "id": "U17",
+      "kit_seed": 9017,
+      "layout_seed": 13017
      },
      {
       "i": 17,
-      "id": "D18",
-      "kit_seed": 7018,
-      "layout_seed": 11018
+      "id": "U18",
+      "kit_seed": 9018,
+      "layout_seed": 13018
      },
      {
       "i": 18,
-      "id": "D19",
-      "kit_seed": 7019,
-      "layout_seed": 11019
+      "id": "U19",
+      "kit_seed": 9019,
+      "layout_seed": 13019
      },
      {
       "i": 19,
-      "id": "D20",
-      "kit_seed": 7020,
-      "layout_seed": 11020
+      "id": "U20",
+      "kit_seed": 9020,
+      "layout_seed": 13020
      },
      {
       "i": 20,
-      "id": "D21",
-      "kit_seed": 7021,
-      "layout_seed": 11021
+      "id": "U21",
+      "kit_seed": 9021,
+      "layout_seed": 13021
      },
      {
       "i": 21,
-      "id": "D22",
-      "kit_seed": 7022,
-      "layout_seed": 11022
+      "id": "U22",
+      "kit_seed": 9022,
+      "layout_seed": 13022
      },
      {
       "i": 22,
-      "id": "D23",
-      "kit_seed": 7023,
-      "layout_seed": 11023
+      "id": "U23",
+      "kit_seed": 9023,
+      "layout_seed": 13023
      },
      {
       "i": 23,
-      "id": "D24",
-      "kit_seed": 7024,
-      "layout_seed": 11024
+      "id": "U24",
+      "kit_seed": 9024,
+      "layout_seed": 13024
      }
     ]
    }
