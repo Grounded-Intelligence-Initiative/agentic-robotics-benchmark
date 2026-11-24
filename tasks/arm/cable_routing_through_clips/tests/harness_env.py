@@ -107,6 +107,13 @@ GRASP_SITE_Z = 0.0170              # grip site above the board's top PLUS the ca
 JAW_APEX_IN = 0.0015               # the groove's apex stands this far inward of the stock pad's centre plane
 GROOVE_BELOW_SITE = 0.017          # the groove's axis below the grip site
 
+# Cameras: one fixed over the board looking straight down (the image's top is the far side of the board, +x), and the
+# hand's own camera (robosuite's eye-in-hand). name: (model camera, width, height)
+OVERHEAD_POS = (0.49, 0.0, 1.05)
+OVERHEAD_FOVY = 45.0
+CAMERAS = {"overhead": ("overhead", 960, 720), "wrist": ("r_eye_in_hand", 480, 360)}
+CAMERA_NAMES = ("overhead", "wrist")
+
 # Bench furniture with contact (the cable or the arm can reach it): name, type, centre (x, y, z of the centre), size
 FURNITURE = (
     ("reel_blue", "cylinder", (0.88, 0.42, 0.020), (0.062, 0.020)),
@@ -397,6 +404,7 @@ def _xml(ep):
   <visual><global offwidth="640" offheight="480"/></visual>
   <worldbody>
     <light pos="0.5 0 1.8" dir="0 0 -1" diffuse=".9 .9 .9" castshadow="false"/>
+    <camera name="overhead" pos="{ocx} {ocy} {ocz}" xyaxes="0 -1 0 1 0 0" fovy="{ofov}"/>
     <geom name="floor" type="plane" size="4 4 .1" pos="0 0 {fz}" rgba=".5 .5 .5 1"/>
     <geom name="bench" type="box" size="{bx} {by} 0.02" pos="{bcx} {bcy} -0.02" rgba=".8 .68 .5 1" friction="0.6 0.01 0.001"/>
     <geom name="board" type="box" size="{bhx} {bhy} {bt2}" pos="{bdx} {bdy} {bt2}" rgba=".93 .92 .88 1" friction="{fr} 0.01 0.001"/>
@@ -417,7 +425,7 @@ def _xml(ep):
     </body>
     {fixtures}
   </worldbody>
-</mujoco>""".format(dt=TIMESTEP, iters=int(SOLVER_ITERATIONS), impratio=IMPRATIO, noslip=NOSLIP_ITERATIONS, jd=JOINT_DAMPING_40 * N_SEG / 40.0, fz=-BENCH_H, bx=bx[0], by=bx[1], bcx=(BENCH_X[0] + BENCH_X[1]) / 2, bcy=(BENCH_Y[0] + BENCH_Y[1]) / 2,
+</mujoco>""".format(dt=TIMESTEP, ocx=OVERHEAD_POS[0], ocy=OVERHEAD_POS[1], ocz=OVERHEAD_POS[2], ofov=OVERHEAD_FOVY, iters=int(SOLVER_ITERATIONS), impratio=IMPRATIO, noslip=NOSLIP_ITERATIONS, jd=JOINT_DAMPING_40 * N_SEG / 40.0, fz=-BENCH_H, bx=bx[0], by=bx[1], bcx=(BENCH_X[0] + BENCH_X[1]) / 2, bcy=(BENCH_Y[0] + BENCH_Y[1]) / 2,
                     bhx=BOARD_HALF[0], bhy=BOARD_HALF[1], bt2=BOARD_T / 2, bdx=BOARD_C[0], bdy=BOARD_C[1], fr=ep.friction,
                     furniture="\n    ".join(fur), ax=ep.conn_pos[0], ay=ep.conn_pos[1], zc=BOARD_T + R, cx=-0.012 * ch, cy=-0.012 * sh,
                     hd=ep.conn_heading, hx=ch, hy=sh, bt=BOOT_TRAVEL, bk=BOOT_STIFFNESS, bd_=BOOT_DAMPING, b1x=0.02 * ch, b1y=0.02 * sh, br=R + 0.001, verts=verts, tw=ep.twist, bd=ep.bend, R=R, rho=ep.density, fixtures="\n    ".join(fx))
