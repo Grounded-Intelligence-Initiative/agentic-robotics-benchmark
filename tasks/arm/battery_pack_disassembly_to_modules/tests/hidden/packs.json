@@ -1,0 +1,35 @@
+{
+ "packs": [
+  {
+   "seed": 2175579996611470860,
+   "variant": "P4",
+   "harness": "lid"
+  },
+  {
+   "seed": 18166115029290013393,
+   "variant": "P4",
+   "harness": "busbars"
+  },
+  {
+   "seed": 9429699338181942882,
+   "variant": "P5",
+   "harness": "none"
+  },
+  {
+   "seed": 2668488664467343524,
+   "variant": "P5",
+   "harness": "lid"
+  },
+  {
+   "seed": 10067437286830775329,
+   "variant": "P6",
+   "harness": "busbars"
+  },
+  {
+   "seed": 12647498776139476245,
+   "variant": "P6",
+   "harness": "none"
+  }
+ ],
+ "note": "the fixed hidden set: tests/review/select_set.py"
+}

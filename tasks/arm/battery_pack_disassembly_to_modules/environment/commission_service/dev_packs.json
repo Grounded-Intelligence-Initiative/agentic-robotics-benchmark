@@ -1,0 +1,31 @@
+{
+ "sessions": 10,
+ "idle_s": 900,
+ "start_timeout_s": 900,
+ "cell": {
+  "sim_cap_s": 2700.0,
+  "frame_budget": 400
+ },
+ "packs": [
+  {
+   "seed": 3568923343520947252,
+   "variant": "P4",
+   "harness": "busbars"
+  },
+  {
+   "seed": 9797708121656264220,
+   "variant": "P5",
+   "harness": "lid"
+  },
+  {
+   "seed": 17798573044613270937,
+   "variant": "P6",
+   "harness": "none"
+  },
+  {
+   "seed": 17793151088624002925,
+   "variant": "P6",
+   "harness": "lid"
+  }
+ ]
+}

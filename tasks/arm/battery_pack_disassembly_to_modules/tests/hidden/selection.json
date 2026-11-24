@@ -1,0 +1,231 @@
+{
+ "key_hex": "fb40aca7b3a5996090fa15a8b3f20548161ed66662cd340753b157114d261862",
+ "rule": "tests/review/select_set.py (its docstring)",
+ "series_version": "0.1.0",
+ "summaries": [
+  {
+   "variant": "P4",
+   "fasteners": 28,
+   "missing": 1,
+   "corroded": 1,
+   "heads": {
+    "S10": 11,
+    "S13": 6,
+    "T30": 9,
+    "T40": 1
+   },
+   "harness": "lid",
+   "harness_covers": [
+    "L05",
+    "L06"
+   ],
+   "placement": {
+    "dx": 0.0,
+    "dy": 0.00765,
+    "yaw_deg": 1.087
+   },
+   "value": 74.75
+  },
+  {
+   "variant": "P4",
+   "fasteners": 28,
+   "missing": 2,
+   "corroded": 6,
+   "heads": {
+    "S10": 19,
+    "S13": 6,
+    "T30": 1,
+    "T40": 0
+   },
+   "harness": "busbars",
+   "harness_covers": [
+    "B01a",
+    "B01b",
+    "B02a"
+   ],
+   "placement": {
+    "dx": 0.00461,
+    "dy": 0.0102,
+    "yaw_deg": -0.7006
+   },
+   "value": 74.5
+  },
+  {
+   "variant": "P5",
+   "fasteners": 34,
+   "missing": 0,
+   "corroded": 4,
+   "heads": {
+    "S10": 19,
+    "S13": 2,
+    "T30": 5,
+    "T40": 8
+   },
+   "harness": "none",
+   "harness_covers": [],
+   "placement": {
+    "dx": 0.00528,
+    "dy": -0.00456,
+    "yaw_deg": 0.7378
+   },
+   "value": 89.5
+  },
+  {
+   "variant": "P5",
+   "fasteners": 34,
+   "missing": 2,
+   "corroded": 2,
+   "heads": {
+    "S10": 5,
+    "S13": 7,
+    "T30": 19,
+    "T40": 1
+   },
+   "harness": "lid",
+   "harness_covers": [
+    "L01",
+    "L02"
+   ],
+   "placement": {
+    "dx": -0.00824,
+    "dy": -0.00517,
+    "yaw_deg": 0.9233
+   },
+   "value": 90.0
+  },
+  {
+   "variant": "P6",
+   "fasteners": 40,
+   "missing": 3,
+   "corroded": 1,
+   "heads": {
+    "S10": 5,
+    "S13": 3,
+    "T30": 21,
+    "T40": 8
+   },
+   "harness": "busbars",
+   "harness_covers": [
+    "B03a",
+    "B03b",
+    "B04a"
+   ],
+   "placement": {
+    "dx": -0.00906,
+    "dy": -0.00272,
+    "yaw_deg": -0.3323
+   },
+   "value": 105.25
+  },
+  {
+   "variant": "P6",
+   "fasteners": 40,
+   "missing": 0,
+   "corroded": 3,
+   "heads": {
+    "S10": 13,
+    "S13": 1,
+    "T30": 15,
+    "T40": 11
+   },
+   "harness": "none",
+   "harness_covers": [],
+   "placement": {
+    "dx": 0.00295,
+    "dy": -0.00315,
+    "yaw_deg": -0.0439
+   },
+   "value": 105.0
+  }
+ ],
+ "dev_summaries": [
+  {
+   "variant": "P4",
+   "fasteners": 28,
+   "missing": 1,
+   "corroded": 4,
+   "heads": {
+    "S10": 2,
+    "S13": 8,
+    "T30": 17,
+    "T40": 0
+   },
+   "harness": "busbars",
+   "harness_covers": [
+    "B02a",
+    "B02b"
+   ],
+   "placement": {
+    "dx": -0.00104,
+    "dy": 0.01186,
+    "yaw_deg": -0.7528
+   },
+   "value": 74.75
+  },
+  {
+   "variant": "P5",
+   "fasteners": 34,
+   "missing": 4,
+   "corroded": 7,
+   "heads": {
+    "S10": 17,
+    "S13": 0,
+    "T30": 4,
+    "T40": 9
+   },
+   "harness": "lid",
+   "harness_covers": [
+    "L03"
+   ],
+   "placement": {
+    "dx": -0.01199,
+    "dy": -0.0016,
+    "yaw_deg": -1.0821
+   },
+   "value": 89.5
+  },
+  {
+   "variant": "P6",
+   "fasteners": 40,
+   "missing": 1,
+   "corroded": 6,
+   "heads": {
+    "S10": 5,
+    "S13": 10,
+    "T30": 23,
+    "T40": 1
+   },
+   "harness": "none",
+   "harness_covers": [],
+   "placement": {
+    "dx": 0.0007,
+    "dy": 0.00121,
+    "yaw_deg": 1.1963
+   },
+   "value": 104.75
+  },
+  {
+   "variant": "P6",
+   "fasteners": 40,
+   "missing": 2,
+   "corroded": 6,
+   "heads": {
+    "S10": 5,
+    "S13": 10,
+    "T30": 22,
+    "T40": 1
+   },
+   "harness": "lid",
+   "harness_covers": [
+    "L03",
+    "L04"
+   ],
+   "placement": {
+    "dx": -0.00977,
+    "dy": -0.00437,
+    "yaw_deg": 1.2752
+   },
+   "value": 105.5
+  }
+ ]
+}

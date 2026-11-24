@@ -1,0 +1,65 @@
+# battery_pack_disassembly_to_modules (Physical Execution, robotic arm; NVIDIA Isaac Sim).
+#
+# A UR20 with a tool changer (a nutrunner with exchangeable bits, a parallel gripper) takes plug-in hybrid battery
+# packs apart to module level in a disassembly cell: the lid's bolts, the lid, the service disconnect, the low-voltage
+# plugs, the busbars, the module brackets, then every module to a rack and every other component to its bin. The agent
+# is the cell's automation engineer and gets what one would have: the pack series' workshop manual (drawings, nominal
+# positions, the torque table, the high-voltage isolation procedure), the tool catalog, the cell's interface document
+# with exact calibration, the robot's model, and a commissioning service that runs the cell on four development packs
+# for ten sessions, with no ground truth and no credit. It delivers a program (run.sh) that the grader drives step by
+# step over a stdio wire on a fixed hidden set of six packs. On the wire are the robot's joint readings, the wrench at
+# the flange, the nutrunner's torque, angle and stroke, the gripper's opening, and RGB-D frames of an overhead and a
+# wrist camera on request; never a part's pose or a fastener's state. Each pack differs in its variant (4, 5 or 6
+# modules), its placement on the fixture, every fastener's position within its tolerance, the head type of every
+# fastener (the bit has to be chosen from the picture), corroded and missing fasteners, and a harness remnant that may
+# lie over fasteners. Fasteners are rule-based constraints (the right bit, the axes aligned, enough axial force, enough
+# loosening turns; a wrong bit or a bad alignment strips the head); everything else is rigid-body physics (PhysX on the
+# CPU), and the GPU renders the cameras. The metric, mean_pack_credit (tests/anchor.json), is the value-weighted
+# fraction of a pack's components that lie undamaged in the right rack, stand or bin at the end, read from the physics
+# engine's state and averaged over the packs. A tool that touches a live busbar before isolation, or a dropped module,
+# ends that pack with the credit earned so far; there is no other term. Design notes: tests/README.md.
+#
+# Needs one NVIDIA RTX GPU in the agent's sandbox (the commissioning service) and in the verifier (the graded cell).
+
+schema_version = "1.4+ale.1"
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/battery_pack_disassembly_to_modules"
+
+[metadata]
+platform = "arm"
+
+# gpu_types names the GPU models the task has been run on. So far that is one model, the author's RTX 6000 Ada
+# (natively, outside the engine: tests/README.md, section 6); the models the benchmark's cloud hosts offer have not
+# been tried, and the list has to grow by testing before a run on one of them (tests/README.md, section 5).
+[environment]
+cpus = 8
+memory_mb = 32768
+gpus = 1
+gpu_types = ["RTX-6000-Ada"]
+
+# Setup (environment/setup/setup.sh: the givens into the agent home, the commissioning service started; under a
+# minute) has no field: the engine bounds it at 1800 s. [agent] timeout_sec: 6 h; the ten commissioning sessions take
+# at most 15 to 20 minutes of wall clock each (2700 s of simulated time at 10 to 15 ms a control tick, plus the cell's
+# start). [verifier] timeout_sec: a canary cell (start and first render on a cold cache: a few minutes), then six
+# packs, each a fresh cell process (start and build: 1 to 4 min) with at most 2700 s of simulated time (54,000 control
+# ticks: 9 to 14 min of wall clock), 400 frames (about 0.2 s each) and 1200 s of the controller's own time: about
+# 2,400 s a pack at the bounds, 14,400 s for the six, 15,000 s with the canary; 6 h leaves 6,600 s of margin. The
+# reference's packs take about 600 to 900 s of simulated time each; its whole verify is about half an hour.
+[agent]
+timeout_sec = 21600
+network_mode = "no-network"
+
+[verifier]
+timeout_sec = 21600
+# Separate verification: a fresh verifier sandbox from the same image, which the agent never touched; only the
+# declared artifact (/home/user/submission) is restored into it. environment/setup/setup.sh does not run there (the
+# grader starts its own cell processes and needs none of the givens).
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 8
+memory_mb = 32768
+gpus = 1
+gpu_types = ["RTX-6000-Ada"]

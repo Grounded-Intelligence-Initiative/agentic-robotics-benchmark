@@ -347,7 +347,9 @@ class Cell(object):
             self.stops += 1
             self.lock_ticks = int(round(cfg["stop_lock_s"] / S.TICK))
             self.q_cmd = self.q_hist[0].copy() if self.q_hist else self.q.copy()
-            r.log("protective_stop", force=round(float(np.linalg.norm(self.f_ext)), 1), joint_error=round(err, 4))
+            r.log("protective_stop", force=[round(float(v), 1) for v in self.f_ext], torque=[round(float(v), 1) for v in self.t_ext],
+                  joint_error=round(err, 4), tcp=[round(float(v), 3) for v in (self.flange_T @ self.tcp_offset())[:3, 3]],
+                  holding=r.grasp)
         elif self.lock_ticks > 0:
             self.lock_ticks -= 1
         if self.busy_ticks > 0:

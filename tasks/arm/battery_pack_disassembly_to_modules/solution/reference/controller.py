@@ -78,6 +78,15 @@ def down(c):
     return np.stack([[-c[1], c[0], 0.0], c, [0.0, 0.0, -1.0]], axis=1)
 
 
+def split(n, far):
+    """A motion that needs n ticks, as equal actions of at most MAXT ticks: (the fraction to cover in the next
+    action, its ticks). No action is shorter than 4 ticks unless the motion is tiny: a short action has no room to
+    start and stop smoothly, and the jerk of a sudden one overloads the arm when it carries a module."""
+    k = int(math.ceil(n / float(MAXT)))
+    ticks = int(math.ceil(n / float(k)))
+    return 1.0 / k, max(ticks, 4 if far else 1)
+
+
 DOCK_R = down([0.0, -1.0])       # the tool's x axis along the world's x axis, as the docks ask
 
 
@@ -88,6 +97,7 @@ class Reference(object):
 
     def reset(self):
         self.gen, self.t, self.maker, self.o, self.tr = None, None, None, None, None
+        self.dropped = {}
 
     # ------------------------------------------------------------------ the wire
     def act(self, t, obs):
@@ -139,7 +149,7 @@ class Reference(object):
             if dist < 3e-4 and ang < 2e-3:
                 return "ok"
             n = max(1, int(math.ceil(1.5 * dist / (speed * TICK))), int(math.ceil(1.5 * ang / (rot_speed * TICK))))
-            frac, n = min(1.0, float(MAXT) / n), min(n, MAXT)
+            frac, n = split(n, dist > 0.004 or ang > 0.02)
             way = mk(rotvec_R(frac * np.array(d[3:])) @ cur[:3, :3], cur[:3, 3] + frac * np.array(d[:3]))
 
             def maker(ob, way=way, n=n):
@@ -168,7 +178,7 @@ class Reference(object):
             if m < 1e-4:
                 return "ok"
             n = max(1, int(math.ceil(1.5 * m / (speed * TICK))))
-            frac, n = min(1.0, float(MAXT) / n), min(n, MAXT)
+            frac, n = split(n, m > 0.01)
             way = cur + frac * d
             o = yield from self.do(lambda ob, way=way, n=n: dict({"move": {"type": "joint", "delta": [float(v) for v in way - np.array(ob["q_target"])], "ticks": n}}, **(extra or {})))
             yield from self.settle(o)
@@ -371,10 +381,16 @@ class Reference(object):
         yield from self.lift(z_safe, speed=0.25)
         return bool(self.o["gripper"]["holding"])
 
-    def drop_in_bin(self, name, z_safe, offset=(0.0, 0.0), R=None):
+    def drop_in_bin(self, name, z_safe, offset=None, R=None):
+        """Let the held part fall into bin `name`. Successive parts go to different spots of the bin, so that they
+        do not pile up under the gripper."""
         b = CELL["bins"][name]
+        if offset is None:
+            k = self.dropped.get(name, 0)
+            self.dropped[name] = k + 1
+            offset = (0.055 * (k % 3 - 1), 0.055 * ((k // 3) % 3 - 1))
         cur = T_of(self.tr["tcp_target"])
-        goal = mk(cur[:3, :3] if R is None else R, [b["center"][0] + offset[0], b["center"][1] + offset[1], TZ + b["wall_h"] + 0.04])
+        goal = mk(cur[:3, :3] if R is None else R, [b["center"][0] + offset[0], b["center"][1] + offset[1], TZ + b["wall_h"] + 0.06])
         yield from self.go(goal, z_safe, speed=0.5)
         yield from self.open_wait()
         yield from self.lift(z_safe)
@@ -407,7 +423,7 @@ class Reference(object):
         # 3. isolate: the service disconnect out, then the low-voltage plugs while the pack discharges
         for pid in ("msd", "J1", "J2"):
             if (yield from self.pick(pid, Z_PART, pull=True)):
-                yield from self.drop_in_bin("electronics", Z_PART, offset=(-0.08 if pid == "msd" else 0.08, 0.0))
+                yield from self.drop_in_bin("electronics", Z_PART, offset={"msd": (-0.10, -0.06), "J1": (0.10, -0.06), "J2": (0.04, -0.06)}[pid])
         while not self.tr["isolated"]:
             if self.tr["msd_out_at"] is None:
                 self.log("the service disconnect is still in: stopping before the live parts")
