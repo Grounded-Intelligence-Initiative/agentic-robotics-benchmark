@@ -259,7 +259,7 @@ ones are in neither the image nor the sandbox.
 
 ## 7. Status log
 
-Newest first. Each entry says where the numbers come from; "here" is the development server (arrakis: Ubuntu 22.04,
+Newest first. Each entry says where the numbers come from; "here" is the development server (Ubuntu 22.04,
 RTX 6000 Ada, NVIDIA driver 570.195.03, Isaac Sim 6.2.0.0 + Isaac Lab 3.0.0 in a native Python 3.12 venv, no root,
 no Docker).
 
