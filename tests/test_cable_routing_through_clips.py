@@ -213,6 +213,8 @@ class Statements(unittest.TestCase):
         self.assertIn("Your controller has **3600 s of its own time** for the whole set", INSTRUCTION)
         self.assertIn("**0.2 s for every picture you ask for**", INSTRUCTION)
         self.assertIn("within 30 s", INSTRUCTION)
+        self.assertEqual(CONFIG["solver_max_processes"], 64)
+        self.assertIn("with at most 64 processes of your account at a time", INSTRUCTION)
         self.assertEqual((CONFIG["probe_rate"], CONFIG["probe_pass_fraction"]), (0.01, 0.1))
         self.assertIn("identical in more than 90 % of the pairs that command any motion scores 0", INSTRUCTION)
         self.assertIn("a fixed hidden set of 20 boards with 3 or 4 fixtures each", INSTRUCTION)

@@ -7,5 +7,6 @@
   "image_cost_s": 0.2,
   "solver_nproc_limit": 0,
   "max_reruns": 2,
-  "scoring_cap": 1.5
+  "scoring_cap": 1.5,
+  "solver_max_processes": 64
 }

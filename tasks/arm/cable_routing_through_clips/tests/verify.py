@@ -4,9 +4,11 @@ Runs as root in a SEPARATE verifier sandbox, whose image (tests/Dockerfile) star
 the agent's account exists there, and the engine restores only the declared artifact /home/user/submission. Structure
 and safeguards follow lab_sample_handling's grader: it reclaims root's PATH directories, clears and kills the
 agent's account, hands the restored submission (size-capped) to that account in place, starts `bash run.sh` through
-nonet_exec.py (a seccomp filter: only AF_UNIX sockets; a process cap) at the agent's UID and at a lower priority
-than the grader's own processes, and speaks the kit wire (Solver, per-request deadline, restarts; a ProbeLock that
-does not count a pair in which both replies command no motion). During the episodes every process of the account
+nonet_exec.py (a seccomp filter: only AF_UNIX sockets) at the agent's UID, at the lowest priority (the kit: the
+grader's own simulation and drawing run on the same CPUs and are served first) and with at most
+`solver_max_processes` processes in the account (the kit's count at every reset and every 64 requests: more ends
+the episode and restarts the controller), and speaks the kit wire (Solver, per-request deadline, restarts; a
+ProbeLock that does not count a pair in which both replies command no motion). During the episodes every process of the account
 must carry the launcher's no_new_privs mark; one without it is killed, that episode and every later one score 0.
 
 The cell: harness_env.py is the physics (a Panda at a bench, a harness board with clips and posts, a cable fixed at
@@ -99,7 +101,6 @@ NUMERICS_REF = os.path.join(STAGE, "numerics.json")
 NUMERICS_TIMEOUT_S = 300
 QUIET_S = 5.0               # after the verify-start kill nothing of the agent's account may appear by itself this long
 CHECK_EVERY = 10            # control steps between two looks at the agent account's processes
-CONTROLLER_NICE = 5         # the controller's processes run at this niceness: the grader's own are served first
 
 
 def log(msg):
@@ -247,7 +248,7 @@ class GuardedSolver(Solver):
         secure_exec_path()               # again before every start: nothing agent-writable ahead of root's tools
         uid, gid = _agent_ids()
         cmd = [sys.executable, "-I", NONET, "--uid", str(uid), "--gid", str(gid), "--rlimit-nproc", str(self.nproc),
-               "--cwd", self.submission, "--", "/usr/bin/nice", "-n", str(CONTROLLER_NICE), "bash", self.entry]
+               "--cwd", self.submission, "--", "bash", self.entry]
         if not self.guard:
             cmd = ["/usr/sbin/runuser", "-u", agent_user(), "--", "/usr/bin/env", "-i",
                    "PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin", "HOME=/home/user", "LANG=C.UTF-8",
@@ -528,6 +529,7 @@ def run_episodes(config, uid, egress_mode, workdir, truth, seeds):
     records = []
     GuardedSolver.guard = egress_mode == "seccomp"
     GuardedSolver.nproc = int(config.get("solver_nproc_limit", 0))
+    GuardedSolver.max_processes = int(config.get("solver_max_processes", 64))
     solver = clock.timed(GuardedSolver, step_timeout=config.get("step_timeout_s", 30), submission=workdir)
     try:
         for n, seed in enumerate(seeds):

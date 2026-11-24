@@ -12,7 +12,8 @@ You have no simulator of the cell. You have this document, a commissioning servi
 ## 1. What you hand in
 
 A folder `/home/user/submission/` with a `run.sh`. The grader starts `bash run.sh` in that folder (as your account,
-with `PATH`, `HOME` and `LANG` only, no network, at a lower priority than its own processes) and talks to it over
+with `PATH`, `HOME` and `LANG` only, no network, at the lowest priority, with at most 64 processes of your account
+at a time: more ends the episode) and talks to it over
 standard input and output, one JSON object per line:
 
 | the grader writes | your program answers |
