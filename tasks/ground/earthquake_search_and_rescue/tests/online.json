@@ -1,0 +1,16 @@
+{
+ "note": "the dual mode's graded episode, for the verifier's cross-check of the record (tests/verify.py). The graded episode is one mission of the offline grader's fixed hidden set (hidden/seeds.json: eight sites, ep01..ep08 in the grader's order), drawn once with OS entropy; the episode and its seed live root-only in environment/setup/online/episode.json, where the graded episode's service reads them. seed_sha256 = sha256 of the seed's decimal string.",
+ "format": "arb-online-record/1",
+ "task": "earthquake_search_and_rescue",
+ "episode": "ep04",
+ "seed_sha256": "fe700f568369125773f5fa3b72e0c4a7ab178b18e25fda413c76e749f20e16b5",
+ "draw": {
+  "when_utc": "2026-11-24T04:01:17Z",
+  "from": "hidden/seeds.json['seeds'] (sha256 f2d164059b5075a3d62f3f67d2731aced68c63939da514c1995818cdae97b455), the offline grader's 8 hidden sites in order",
+  "how": "python3 -I: secrets.randbelow(8) (OS entropy), once; index 3 -> ep04",
+  "rule": "the plain draw (rule O1): the training ground never runs a hidden site, so practice covers none of the hidden instances and pitfall 4's unseen-instance draw does not apply"
+ },
+ "record": "/var/lib/arb-online/record.json",
+ "prep_s": 14400,
+ "graded_s": 10800
+}

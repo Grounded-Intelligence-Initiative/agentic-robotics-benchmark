@@ -15,13 +15,15 @@ charge left. The grader runs the program on six hidden sites (`hidden/selection.
 | path | what |
 |---|---|
 | `test.sh` | closes the stage and its parent before Python starts; builds the root-owned givens at `/opt/arb` from `setup_payload/` and the image's task-asset pictures (`/opt/task-assets/payload`); OSMesa, 8 rasteriser threads, one BLAS / OpenMP thread and the CPU pins of the runtime key `cell.recipe.env`; names the asset root (`CABINCELL_ASSET_ROOT`, default `/opt/task-assets`); `exec python3 -s verify.py` |
-| `verify.py` | the grader's driver (below) |
+| `verify.py` | the dual-mode grader (section "Dual mode"): main's grading of the frozen program through `offline_verify.py`, then the graded episode's record |
+| `offline_verify.py` | main's `verify.py` (the grader's driver, below) with two hooks: `VERDICT_SINK` (the verdict handed back instead of written) and `main(finish=False)` |
+| `online.json`, `anchor_offline.json`, `anchor_online.json` | the graded episode the record must name (episode, seed digest, the record's paths and limits); main's `anchor.json`; the live item's anchor |
 | `grader_config.json` | every threshold and weight of the grader (generated, never edited by hand; never read by the cell's run settings or the rehearsal facility) |
-| `anchor.json` | metric `caretaking_score` (higher), `value` = the reference's score on the hidden set (1.0 by the selection rule of `review/select_set.py`), `full_at` 0.95 |
+| `anchor.json` | dual mode: metric `dual_mode_score` (higher), `value` 1.0, `full_at` 1.0 (main's `anchor.json`, metric `caretaking_score`, `value` = the reference's score on the hidden set, 1.0 by the selection rule of `review/select_set.py`, `full_at` 0.95, is `anchor_offline.json`) |
 | `cabincell/` | the cell: `server.py` (CabinCellServer, the wire side of the robot's API), `api.py`, the task firmware (`firmware/`), the station services (`station_service.py`, `telemetry_synth.py`), the site builder (`site/`), the frame renderer (`sensors_render.py`: a render-only twin that shows the maker's robot meshes), the grade (`grade.py`, `predicates.py`), the vendored simulation library (`_lib/spacekit`, `_lib/station`) and the runtime copy of the task's numbers (`data/site_spec.json` with its sha256 file); `data/<component>/ASSETS.json` pin the three model archives |
 | `reference/` | the privileged reference program (`reference.py`, driven by the privileged call `reference_run`) and its modules |
 | `hidden/` | `selection.json` (the fixed hidden set in episode order: package, sha256, the reference's energy on the site; the frozen file list, the per-cell decisions and the recorded amendments), `candidates.json` (all 36 candidates and their verdicts), `sites/*.site.tar.xz` (the six stored site packages), `oracle_token.sha256` |
-| `review/` | maintainers' tools; nothing here runs at verify: the site generator (`sitegen/`), the selection (`select_set.py`), the observability check and its stored results, the grader's mutants |
+| `review/` | maintainers' tools; nothing here runs at verify: the site generator (`sitegen/`), the selection (`select_set.py`), the observability check and its stored results, the grader's mutants, the dual mode's copy check (`dual_copies.py`) |
 | `cellkit/`, `robotics_grader/` | the verify-stage process kit (lockdown, runner as `nobody`, no-network seccomp filter, network audit, the JSON-lines wire, the freezer) and the benchmark's verdict kit, byte copies of the benchmark's shared code |
 | `setup_payload/`, `given_hashes.json` | the grader's byte copy of `environment/setup/payload/`, and the sha256 of every file the grader's copy of the givens holds (the mirror and the task-asset pictures) |
 | `NOTICE.md` | sources, the fictional station, what is not modelled, the neutral names |
@@ -37,14 +39,50 @@ K: the sheet fixed on a holding screen; L: the pouches on pouch pads (own footpr
 reference's on the same site, the fan-stop seconds against fixed limits. R = 0.85 after hard collisions or keep-out time, else 1. caretaking_score =
 contract_ok x the mean over the six sites; reward = clamp(score / anchor / 0.95, 0, 1).
 
+## Dual mode (experimental)
+
+Two scoring items of one task, one session, one verify (the benchmark's experimental dual mode; never on main): the
+program, graded by main's grader on the six hidden sites, and one graded episode that the agent flies itself during
+its session. reward = (offline_reward + online_reward) / 2, each normalised by its own anchor (`anchor_offline.json`,
+`anchor_online.json`).
+
+- **The graded episode**: the site `hidden_l2xp_1` of the hidden set (entry 2 of 6, drawn once on 2026-11-24 with
+  `secrets.randbelow(6)`), with the grader's own seed rule and run label; `online.json` names it.
+- **The service** (`environment/setup/online/graded_service.py`, started by `setup.sh` after the rehearsal facility): a
+  root supervisor (binds the socket `/run/arb-graded/graded.sock`, restarts the worker, freezes the submission) and a
+  worker that reads the hidden episode as root and drops to the account `arbgraded` (the image creates it), keeping
+  the task assets' group only; AF_UNIX-only seccomp, not dumpable. Its data folder (`online/data` -> `/opt/arb-graded`,
+  mode 0700) holds byte copies of this folder's cell, grader configuration, reference and station map, the drawn
+  site's package and the oracle token's digest (`review/dual_copies.py` checks them). The cell is built as `run_site`
+  builds a site's cell, with the program's two wall-clock budgets (program time, silence) switched off; every other
+  per-site budget and rule is the grader's. The agent's client is `~/given/lib/cabinkit/graded.py` (`connect_graded`:
+  the `Robot` proxy plus `graded_status`, `graded_start`, `graded_finish`).
+- **Windows**: the preparation window (main's 4 h agent budget, from the service's first start) and the graded window
+  (3 h from the start); `[agent] timeout_sec` = 7 h.
+- **Practice closes at the start**: the worker creates `/run/arb-graded/flags/practice_closed` (the service account's
+  directory, mode 0755) before the start is persisted; the rehearsal facility (`practiced.py`, `REHEARSAL_CLOSED_FLAG`)
+  then ends an open run and refuses new ones (`practice_closed`).
+- **The freeze**: before the start is charged (or when the preparation window closes without a start) the supervisor
+  copies `/home/user/submission` into `/var/lib/arb-online/submission_snapshot` (no symlink followed; main's 60 MB
+  cap: `too_large` scores the program 0; a failed copy refuses the start; a failed window-close copy scores the program
+  0, never the session-end submission). `verify.py` grades the snapshot (its digest checked against the record).
+- **The end** of the graded episode is a scored run's end when its program stops: the firmware's stop and hold, the
+  60 s settle, the cell's record (`cell_record.json`), graded by `cabincell.grade` with the reference's energy on the
+  site. The service also writes every call that reaches the cell (all but the four pure queries) to `calls.jsonl`
+  with its reply's code and mission time and the physics state's digest after it: when the session (or a failure of
+  the worker) ends the episode first, `verify.py` re-simulates it from that log in its own fresh cell (no renderer),
+  checks every reply and digest, and ends and grades it there. The record directory `/var/lib/arb-online` (the
+  service account's, mode 0700) is the second declared artifact.
+
 ## The verify stage
 
 Separate verification (`task.toml`): a fresh verifier sandbox from the task image, with only `/home/user/submission`
-restored. `verify.py`: the early lockdown; the task's inputs, each a task error when broken (the runtime numbers and
-the grader configuration, the numeric pins, `/opt/arb` against `given_hashes.json`, the hidden set, the three asset
-components in the asset root checked file by file against their pins, the no-network self-test); the form gates
-(`caretake.py` parses and defines `solve`, the route gate, the static and runtime network audit, the import check as
-`nobody`); the oracle token; then per site, in the set's order, a fresh cell with the frame renderer, the program as
+restored (dual mode: and the graded episode's record directory). `offline_verify.py` (main's `verify.py`, run by
+`verify.py` on the frozen program): the early lockdown; the task's inputs, each a task error when broken (the runtime
+numbers and the grader configuration, the numeric pins, `/opt/arb` against `given_hashes.json`, the hidden set, the
+three asset components in the asset root checked file by file against their pins, the no-network self-test); the form
+gates (`caretake.py` parses and defines `solve`, the route gate, the static and runtime network audit, the import check
+as `nobody`); the oracle token; then per site, in the set's order, a fresh cell with the frame renderer, the program as
 `nobody` from a read-only copy under an opaque run tag, on the cellkit wire with the runtime spec's budgets; a site
 whose cell failed runs once more (at most one rerun per verify); a program that advanced no simulated time on a site
 fails the contract. Records: `/opt/arb-verify` (root only).
@@ -66,7 +104,8 @@ restart loop.
 
 ## Time limits
 
-The agent has 14 400 s, no network. The verifier's limit (task.toml) follows the time-limit formula: per site the build, the
+The agent has 25 200 s (dual mode: the 14 400 s preparation window of main, then the 10 800 s graded window), no
+network. The verifier's limit (task.toml) follows the time-limit formula: per site the build, the
 simulated-time budget at the measured wall seconds per simulated second, the colour and depth frame budgets at the
 measured p95 frame times, the program-time budget, the settle and the clean-up; seven runs (six sites and the one
 rerun) plus the fixed steps, and at least 15 % margin, from the worst values measured in a container of the task

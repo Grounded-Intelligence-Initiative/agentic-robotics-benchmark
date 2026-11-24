@@ -26,6 +26,14 @@ the cell's time, program time, silence, a line that is not a request, and the se
 (``rehearsal_failure``): should a run's process die (killed, out of memory), the service sends that reason with the
 latest snapshot of the sheet (kept every SNAPSHOT_EVERY_S of wall clock, marked ``snapshot``).
 
+Rehearsal closes when the graded episode starts (the task's dual mode): all rehearsal comes before the scored runs, so
+the moment the graded episode's service starts the graded episode it creates the flag file CLOSED_FLAG (in a directory
+that only that service's account can write).  From then on this service ends a run that is open, with the reason
+``practice_closed`` (its last line, the sheet and the station record as at any other end; the ledger charges the
+program's simulated time), and answers every new connection's request with the error ``practice_closed``.  It looks
+for the flag before every request, at least once a second while a run waits for its next request, and before it takes
+a new connection.
+
 The allowance (runtime site_spec ``rehearsal.budget``): ``sim_min`` simulated minutes in the whole session, at most
 ``per_run_max_min`` per run, at most ``max_runs`` runs, at most ``max_concurrent`` at a time.  A reset RESERVES
 min(per-run maximum, what is left) under an exclusive lock (the ledger survives a restart of the service); the run's
@@ -69,6 +77,18 @@ SNAPSHOT_EVERY_S = float(os.environ.get("REHEARSAL_SNAPSHOT_S", "60"))
 RUNNING = os.path.join(STATE, "running")
 LAST_LINE_TIMEOUT_S = 60.0
 FIRST_LINE_S = 30.0                 # the reset must come this soon after the connection
+CLOSED_FLAG = os.environ.get("REHEARSAL_CLOSED_FLAG", "/run/arb-graded/flags/practice_closed")
+CLOSED_POLL_S = 1.0                 # how often a waiting run looks for the flag
+CLOSED_DETAIL = "the graded episode has started: the rehearsal facility is closed for the rest of the session"
+
+
+class PracticeClosed(Exception):
+    """The graded episode started while this run waited for its next request (CLOSED_FLAG appeared)."""
+
+
+def practice_closed() -> bool:
+    """True once the graded episode's service has created CLOSED_FLAG."""
+    return bool(CLOSED_FLAG) and os.path.lexists(CLOSED_FLAG)
 
 
 def log(msg):
@@ -133,7 +153,7 @@ class Ledger(object):
                 "sim_minutes_total": float(ALLOW["sim_min"]), "sim_minutes_left": round(left / 60.0, 2),
                 "per_run_max_min": float(ALLOW["per_run_max_min"]), "at_a_time": int(ALLOW["max_concurrent"]),
                 "open_runs": open_, "program_time_cap_s": PROGRAM_TIME_CAP_S, "silence_s": SILENCE_S,
-                "debriefs": DEBRIEFS}
+                "debriefs": DEBRIEFS, "closed": practice_closed()}
 
     def publish(self):
         with open(self.lock, "a") as lk:
@@ -145,6 +165,8 @@ class Ledger(object):
         with open(self.lock, "a") as lk:
             fcntl.flock(lk, fcntl.LOCK_EX)
             d = self._read()
+            if practice_closed():
+                return None, "closed", self.status(d)
             if int(d["runs_used"]) >= int(ALLOW["max_runs"]):
                 return None, "runs", self.status(d)
             left = 60.0 * float(ALLOW["sim_min"]) - float(d["charged_s"])
@@ -282,14 +304,23 @@ class Conn(object):
         self.sock = sock
         self.buf = b""
 
-    def read(self, timeout):
+    def read(self, timeout, closed=None):
+        """The next request object; None at the end of the connection.  socket.timeout after ``timeout`` s without
+        one; with ``closed``, PracticeClosed as soon as closed() is true (looked at every CLOSED_POLL_S at least)."""
         deadline = time.time() + timeout
         while b"\n" not in self.buf:
             left = deadline - time.time()
             if left <= 0:
                 raise socket.timeout()
-            self.sock.settimeout(left)
-            chunk = self.sock.recv(1 << 20)
+            if closed is not None and closed():
+                raise PracticeClosed()
+            self.sock.settimeout(min(left, CLOSED_POLL_S) if closed is not None else left)
+            try:
+                chunk = self.sock.recv(1 << 20)
+            except socket.timeout:
+                if closed is None:
+                    raise
+                continue
             if not chunk:
                 return None
             self.buf += chunk
@@ -378,7 +409,10 @@ def serve(sock, ledger):
             else:
                 wait = FIRST_LINE_S
             try:
-                req = conn.read(wait)
+                req = conn.read(wait, closed=practice_closed)
+            except PracticeClosed:
+                reason = "practice_closed"
+                break
             except socket.timeout:
                 reason = "silence" if server is None or (time.time() - t0) - float(server.work_wall) < cap \
                     else "program_time_cap"
@@ -394,6 +428,12 @@ def serve(sock, ledger):
             rid, params = _plain_id(req.get("id")), req.get("params")
             if params is None:
                 params = {}
+            if practice_closed():
+                if server is None:            # no run yet: the request is answered, then the connection closes
+                    conn.send({"id": rid, "error": "practice_closed", "detail": CLOSED_DETAIL}, timeout=silence)
+                    sent_last = True
+                reason = "practice_closed"
+                break
             if method == "reset":
                 if server is not None:
                     res = {"error": "one_run_per_connection", "detail": "this connection's run has begun: open a new one"}
@@ -404,10 +444,11 @@ def serve(sock, ledger):
                     r, what, st = ledger.take(card)
                     if r is None:
                         res = {"error": {"runs": "rehearsal_runs_used", "minutes": "rehearsal_minutes_used",
-                                         "busy": "busy"}[what],
+                                         "busy": "busy", "closed": "practice_closed"}[what],
                                "detail": {"runs": "all %d rehearsal runs are used" % int(ALLOW["max_runs"]),
                                           "minutes": "the rehearsal's simulated minutes are used",
-                                          "busy": "at most %d rehearsal runs at a time" % int(ALLOW["max_concurrent"])}[what]}
+                                          "busy": "at most %d rehearsal runs at a time" % int(ALLOW["max_concurrent"]),
+                                          "closed": CLOSED_DETAIL}[what]}
                         card = None
                     else:
                         run, reserve = r, what
@@ -478,7 +519,7 @@ def serve(sock, ledger):
                 server.close()
             except Exception:  # noqa: BLE001
                 pass
-        else:
+        elif not sent_last:
             try:
                 conn.send({"id": None, "event": "run_over", "reason": reason or "closed", "debrief": None},
                           timeout=5.0)
@@ -594,6 +635,23 @@ def _busy(conn, helpers):
     helpers.add(pid)
 
 
+def _closed_reply(conn, helpers):
+    """Answer one connection's first request with 'practice_closed' (in a short-lived child, as _busy)."""
+    pid = os.fork()
+    if pid == 0:
+        try:
+            c = Conn(conn)
+            req = c.read(10.0)
+            c.send({"id": _plain_id((req or {}).get("id")), "error": "practice_closed", "detail": CLOSED_DETAIL},
+                   timeout=5.0)
+        except Exception:  # noqa: BLE001
+            pass
+        finally:
+            os._exit(0)
+    conn.close()
+    helpers.add(pid)
+
+
 def _reap_helpers(helpers):
     for pid in list(helpers):
         try:
@@ -626,15 +684,23 @@ def main(argv=None):
     children = {}                       # pid -> a copy of its connection's descriptor (for the fallback last line)
     helpers = set()                     # the short-lived children that answer 'busy'
     srv.settimeout(1.0)
+    closed_seen = False
     while True:
         _reap(children, ledger)
         _reap_helpers(helpers)
+        if not closed_seen and practice_closed():
+            closed_seen = True
+            log("the graded episode started: rehearsal closed")
+            ledger.publish()
         try:
             conn, _ = srv.accept()
         except socket.timeout:
             continue
         conn.settimeout(None)
         _reap(children, ledger)
+        if practice_closed():
+            _closed_reply(conn, helpers)
+            continue
         if len(children) >= int(ALLOW["max_concurrent"]):
             _busy(conn, helpers)
             continue

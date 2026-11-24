@@ -20,6 +20,15 @@ Wire: one JSON object per line. Request {"id": ..., "method": ..., "params": {..
 or {"id": ..., "error": code, "detail": text}. Methods: status, reset {unit, episode}, step {action}, look {cams}
 (the cameras now, no step), probe (a perturbed copy of the last observation, as the grader's repeated requests
 carry), close.
+
+The dual mode (experiment): the service closes when the graded episode starts (rule O13 of the online episode:
+offline, a controller is never commissioned in the middle of its graded run). The graded episode's service
+(environment/setup/online/graded_service.py) writes the flag GRADED_FLAG the moment the agent starts the graded
+episode (before anything of it is simulated), in a directory only that service's account can write. From then on
+every open bench ends (it is closed at once, also while its connection waits for a request: a connection looks at the
+flag at every request and at least once a second), every request is answered {"error": "commissioning_closed"} and
+the connection is closed, and a new connection's first request gets the same answer; commission_status.json says
+commissioning_closed. A flag that cannot be checked counts as set.
 """
 
 import fcntl
@@ -60,6 +69,21 @@ SILENCE_S = float(BENCH["silence_s"])
 MAX_LINE = 1 << 16
 FLUSH = 50
 PUBLIC = ("status", "reset", "step", "look", "probe", "close")
+GRADED_FLAG = "/run/labgrade/flags/started"       # written by the graded episode's service at the graded start
+FLAG_POLL_S = 1.0
+CLOSED = ("the graded episode has started: commissioning has ended for this session (the service closes when the "
+          "graded episode starts)")
+
+
+def commissioning_closed():
+    """True once the graded episode has started (GRADED_FLAG exists); a flag that cannot be checked counts as set."""
+    try:
+        os.stat(GRADED_FLAG)
+        return True
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
 
 
 def episode_seed(unit, number):
@@ -93,7 +117,7 @@ def write_status(open_benches):
         json.dump({"window_steps": WINDOW_STEPS, "steps_used": led["steps_used"],
                    "steps_left": max(0, WINDOW_STEPS - led["steps_used"]), "resets": led["resets"],
                    "reset_steps": RESET_STEPS, "max_benches": MAX_BENCHES, "benches_open": open_benches,
-                   "units": sorted(UNITS), "episodes": EPISODES}, f)
+                   "units": sorted(UNITS), "episodes": EPISODES, "commissioning_closed": commissioning_closed()}, f)
     os.chmod(tmp, 0o644)
     os.replace(tmp, STATUS)
 
@@ -125,14 +149,21 @@ class Bench(object):
 
     # -- the wire
     def read(self):
+        deadline = time.monotonic() + SILENCE_S
         while b"\n" not in self.buf:
-            ready, _, _ = select.select([self.conn], [], [], SILENCE_S)
-            if not ready:
+            if self.env is not None and commissioning_closed():
+                self.end_bench()                # the graded episode started while this bench waited (O13)
+            left = deadline - time.monotonic()
+            if left <= 0:
                 return None
+            ready, _, _ = select.select([self.conn], [], [], min(left, FLAG_POLL_S))
+            if not ready:
+                continue
             chunk = self.conn.recv(65536)
             if not chunk or len(self.buf) + len(chunk) > MAX_LINE:
                 return None
             self.buf += chunk
+            deadline = time.monotonic() + SILENCE_S     # as before: SILENCE_S without any data closes the bench
         line, self.buf = self.buf.split(b"\n", 1)
         try:
             msg = json.loads(line.decode("utf-8"))
@@ -149,6 +180,13 @@ class Bench(object):
         w = E.to_wire(obs)
         w["unit"] = self.unit
         return w
+
+    def end_bench(self):
+        """The bench ends now (the service has closed): its steps are counted, its simulator released."""
+        self.flush(force=True)
+        if self.env is not None:
+            self.env.close()
+        self.env, self.obs, self.done = None, None, True
 
     def flush(self, force=False):
         if self.pending and (force or self.pending >= FLUSH):
@@ -220,6 +258,10 @@ class Bench(object):
                 if msg is None:
                     break
                 rid, method, params = msg.get("id"), msg.get("method"), msg.get("params") or {}
+                if commissioning_closed():          # O13: nothing more is served once the graded episode started
+                    self.end_bench()
+                    self.send(rid, error="commissioning_closed", detail=CLOSED)
+                    break
                 if method not in PUBLIC or not isinstance(params, dict):
                     self.send(rid, error="forbidden", detail="methods: " + ", ".join(PUBLIC))
                     continue
@@ -266,20 +308,41 @@ def main():
     os.chmod(SOCK, 0o666)
     srv.listen(16)
     children = set()
+    refusing = set()                            # children that answer commissioning_closed (O13), not benches
     write_status(0)
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     while True:
         ready, _, _ = select.select([srv], [], [], 2.0)
-        for pid in list(children):
-            try:
-                if os.waitpid(pid, os.WNOHANG)[0] == pid:
-                    children.discard(pid)
-            except ChildProcessError:
-                children.discard(pid)
+        for group in (children, refusing):
+            for pid in list(group):
+                try:
+                    if os.waitpid(pid, os.WNOHANG)[0] == pid:
+                        group.discard(pid)
+                except ChildProcessError:
+                    group.discard(pid)
         write_status(len(children))
         if not ready:
             continue
         conn, _ = srv.accept()
+        if commissioning_closed():
+            # O13: a new connection's first request is answered commissioning_closed (by a child, so that the service
+            # never waits on a client), and the connection is closed
+            pid = os.fork()
+            if pid == 0:
+                srv.close()
+                signal.signal(signal.SIGTERM, signal.SIG_DFL)
+                try:
+                    conn.settimeout(10.0)
+                    msg = Bench(conn).read()
+                    conn.sendall((json.dumps({"id": (msg or {}).get("id"), "error": "commissioning_closed",
+                                              "detail": CLOSED}) + "\n").encode("utf-8"))
+                except Exception:  # noqa: BLE001
+                    pass
+                finally:
+                    os._exit(0)
+            conn.close()
+            refusing.add(pid)
+            continue
         if len(children) >= MAX_BENCHES:
             time.sleep(0.5)                     # a bench that has just been closed frees its place
             for pid in list(children):

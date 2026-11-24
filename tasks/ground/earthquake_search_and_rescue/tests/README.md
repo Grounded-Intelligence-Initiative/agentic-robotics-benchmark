@@ -227,3 +227,34 @@ room surfaces, furniture, window modules, apartment blocks and wall decals from 
 vehicles from a vehicle model archive; the people are Microsoft Rocketbox avatars (MIT) in the end poses of motion
 clips; the robot's and the kit's drawn parts, the cone, the barrier board, the work light and the stretcher were
 modelled for this task.
+
+## 11. Dual mode (experimental, 2026-11-24; an experiment branch, never merged into main)
+
+One session, one verify, two scoring items, reward = their mean (each normalised by its own anchor):
+
+* **The program item** is main's grading of sections 1-10, unchanged: `offline_verify.py` is main's `verify.py` with
+  two hooks (`ARB_OFFLINE_ANCHOR` names `anchor_offline.json`, a byte copy of main's `anchor.json`;
+  `ARB_OFFLINE_VERDICT` names the file its verdict goes to). `verify.py` runs it as a process of its own on the
+  program frozen at the earlier of the graded start and the close of the start window.
+* **The online item** is the graded episode the agent drives itself through the graded episode's service
+  (`environment/setup/online/graded_service.py`, started by `setup.sh`): site ep04 of the fixed hidden set, drawn once
+  with OS entropy (`online.json`; the seed root-only in `environment/setup/online/episode.json`). The service runs the
+  grader's own cell (the image's byte copy of `tests/rubblecell/`, copied root-only at setup and checked against
+  `online/service.json`'s digests) with the grader's configuration (`online/grader_config.json`, a byte copy of
+  `grader_config.json`) and numerics, as the account `rubblegrade` (Dockerfile), and writes its record to
+  `/var/lib/arb-online` (a declared artifact). The site and its look are built as root at setup, before the privilege
+  drop; the reference program (`online/reference/reference.py`, a byte copy of `reference/reference.py`) is loaded
+  then too, for the oracle's privileged `reference_run`.
+* **The freeze**: before the start is charged (or when the 4-hour start window closes without a start) the service's
+  root supervisor copies `/home/user/submission` into `/var/lib/arb-online/submission_snapshot`; the window's close is
+  persisted before the copy, so a copy that fails scores the program 0 and never lets the session-end submission
+  stand in.
+* **Practice ends at the start** (O13): the start writes `/run/rubblecell-graded/flags/started`; `trainingd.py` ends
+  its open missions (reason `practice_closed`) and refuses new ones.
+* **The static check** (2026-11-24, the task image): between requests nothing in the cell changes (no simulated time
+  passes outside `step`; a sequence of requests gives the same frames, sweeps, state, link and report times with 2 s
+  of wall clock between requests as without); with `drive(0, 0)` the robot holds: under 1 mm of drift in 60-120 s of
+  simulated time on level ground (the lanes, training site A at 151 s and 301 s), about 0.4 mm per simulated second on
+  the street's 14-16 degree rubble slope. The radio link is a function of the robot's pose, updated every 10 ticks of
+  simulated time; nothing in the episode runs on the wall clock (the program's time, CPU and silence budgets are the
+  wire's, and the graded episode has none of them).

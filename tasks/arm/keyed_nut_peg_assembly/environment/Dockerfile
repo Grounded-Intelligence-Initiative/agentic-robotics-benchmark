@@ -61,6 +61,10 @@ RUN python3 -c "import numpy, scipy, cv2, mujoco; print('[image] mujoco', mujoco
 # unix socket and gets the public wire's observations and how an episode ended: no ground truth, no
 # score, no completion verdict.
 RUN useradd --system --no-create-home --home-dir /opt/keyedcell-commission --shell /usr/sbin/nologin keyedcell
+# The dual mode (experiment, never merged into main): the graded episode's service
+# (environment/setup/online/graded_service.py) serves the agent's one graded episode as its own account, never root,
+# never the agent, and not `keyedcell`, whose service answers the agent's commissioning episodes.
+RUN useradd --system --user-group --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin keyedgrade
 COPY commission_service /opt/keyedcell-commission
 RUN find /opt/keyedcell-commission -name '__pycache__' -type d -prune -exec rm -rf {} + \
     && rm -rf /opt/keyedcell-commission/state \

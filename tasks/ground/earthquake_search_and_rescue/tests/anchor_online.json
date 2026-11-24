@@ -1,0 +1,8 @@
+{
+ "metric": "rescue_score",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 0.98,
+ "source": "Measured: the privileged reference program (tests/reference/reference.py; environment/setup/online/reference/reference.py is its byte copy) inside the graded episode's service on the graded episode ep04 (tests/online.json), driven through the agent-side client (solution/solve.sh, solution/reference/online_oracle.py), in the task image built from environment/ (2026-11-24, 8 CPUs): episode_score 1.0 (located 1, kit 1, returned 1; 683.0 s simulated; no void, no protective stop, no lost robot), the offline selection run of the same site to the last digit (tests/hidden/selection.json: hidden candidate 8, seed 110203644969488577: score 1.0, 683.0 s simulated). `ale validate`'s oracle pass confirmed it: validate-c4458a44 (2026-11-24, engine bfb7505, a clean checkout of aaf26432): episode_score 1.0, 683.0 s simulated.",
+ "note": "rescue_score of the online item is one mission's score, already on [0, 1]: rubblecell.server.score of the graded episode as it ended (located 0.45, kit 0.25, returned 0.30; a secondary collapse scores it 0; a protective stop ends it without the return, at most 0.45), as the offline grader scores each site. A site replays the same numbers (the cell is deterministic given the site and the requests; the service's numerics are pinned as the grader's), so full_at 0.98 only absorbs a last-digit difference between machines, as main's anchor does."
+}

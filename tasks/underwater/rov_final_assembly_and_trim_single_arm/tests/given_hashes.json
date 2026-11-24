@@ -37,6 +37,7 @@
  "given/lib/arm/assembly_rov/agent_look.json": "19c18a07c6e442abb09344c30381fea83b435d404650f331285f0e844b6a569c",
  "given/lib/arm/assembly_rov/agent_render.py": "b1751489405ba32ac6aea5e7ab0aafcf656675c474d7725ba262fee9e28d0b73",
  "given/lib/arm/assembly_rov/cell_client_ext.py": "72c2d69c0ea33d9e7d993df11c6c80b2e461a113747bc8d9642f5e2d788c9e0d",
+ "given/lib/arm/assembly_rov/graded.py": "7f769a396d1f3b9c67ee2ffda95b671dade723646ec0dac5696f7080d3019d67",
  "given/lib/arm/assembly_rov/gripper_tables.json": "6587616d7904cf8426286b8649447ce1268e90ac19643e6bd4a333179ecebc37",
  "given/lib/arm/assembly_rov/gripper_wide.py": "c6ca965723c359289807c25b6fc8ad0578f6d03773fd3da6e9745ec2cfbb774f",
  "given/lib/arm/assembly_rov/twin_session.py": "838bb7964d352ea924c550f5145fa42f1a03742f2fd1ce230d56694fc805cea2",

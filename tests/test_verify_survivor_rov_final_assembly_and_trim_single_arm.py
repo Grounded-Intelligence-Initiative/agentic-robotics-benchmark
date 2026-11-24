@@ -22,7 +22,8 @@ _HERE = Path(__file__).resolve()
 # in the benchmark repository: tests/<this file> beside tasks/underwater/<slug>; in the development tree: <slug>-dev/repo_tests/
 _CANDIDATES = [_HERE.parents[1] / "tasks" / "underwater" / SLUG, _HERE.parents[2] / SLUG]
 TASK = next((p for p in _CANDIDATES if (p / "tests" / "verify.py").is_file()), _CANDIDATES[0])
-VERIFY = TASK / "tests" / "verify.py"
+# the dual mode (an experimental branch) keeps main's grader byte for byte as tests/offline_verify.py
+VERIFY = TASK / "tests" / ("offline_verify.py" if (TASK / "tests" / "offline_verify.py").is_file() else "verify.py")
 FAMILY = "contract"   # "contract": the survivor reason zeroes contract_ok; "void": a survivor raises a task error
 
 

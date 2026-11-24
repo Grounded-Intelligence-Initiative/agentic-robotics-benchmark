@@ -1,0 +1,5 @@
+{
+ "note": "The graded episode of the dual mode (hidden: root-only at /opt/ale/setup/online while the agent works; the graded episode's service reads it as root before it drops privileges). Drawn once on 2026-11-24T04:00:21Z with OS entropy, python3 -c 'import secrets; print(secrets.randbits(63))', from the offline grader's hidden episode set: its episodes are 63-bit seeds drawn per verify run from OS entropy (tests/verify.py: seed_rng().derive(\"episodes\").seeds(3, bits=63)), and a seed fixes the episode (the units' places and turns around the hidden bench plan with the reach check's redraws, the stand, the output pulleys, the cameras' mounts and intrinsics, the lights, the F/T bias, the sensor noise). tests/online.json holds this id and the sha256 of the seed's decimal text.",
+ "episode": "graded-01",
+ "seed": 7188140245279358379
+}

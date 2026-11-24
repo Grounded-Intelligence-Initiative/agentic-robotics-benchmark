@@ -9,6 +9,13 @@ unchanged since (their sha256 in that record). The anchor is the reference's rec
 repeated every kept selection run. The grader's simulator carries no ground-truth accessor and no score; the credit
 rule is the grader's own module. The commissioning service's side is in test_keyed_nut_peg_assembly_commissioning.py.
 
+DUAL MODE (experimental branch, 2026-11-24): main's program item and one live graded episode in one session and one
+verify. Main's tests/verify.py lives on byte for byte as tests/offline_verify.py (the dual verify.py runs it for the
+program item), main's anchor.json as anchor_offline.json; anchor.json is the combined metric's (dual_mode_score, 1.0).
+Of the frozen files only those the dual mode had to change differ (DUAL_CHANGED: the image's service account for the
+graded episode, the oracle's entry, which also plays the graded episode, and the verifier's entry); the program item's
+grader is the frozen tests/verify.py, unchanged.
+
 Standard library only (the host-side suite has no numpy or mujoco): the task's Python files are read as text or syntax
 trees, never imported.
 """
@@ -23,7 +30,9 @@ from pathlib import Path
 TASK = Path(__file__).resolve().parents[1] / "tasks/arm/keyed_nut_peg_assembly"
 SELECTION = json.loads((TASK / "tests/hidden/selection.json").read_text())
 EPISODES = json.loads((TASK / "tests/ref/episodes.json").read_text())["episodes"]
-ANCHOR = json.loads((TASK / "tests/anchor.json").read_text())
+ANCHOR = json.loads((TASK / "tests/anchor_offline.json").read_text())      # main's anchor (the program item)
+#: The frozen files the dual mode changed (see the module docstring).
+DUAL_CHANGED = ("environment/Dockerfile", "solution/solve.sh", "tests/verify.py")
 #: The record in force: the latest amendment, or the selection itself.
 LATEST = SELECTION["amendments"][-1] if SELECTION.get("amendments") else SELECTION
 #: An amendment is committed before its runs (pre-registration); until they are recorded, the set's checks wait.
@@ -82,7 +91,12 @@ class HiddenSet(unittest.TestCase):
 
     def test_frozen_files_unchanged(self):
         for rel, digest in LATEST["frozen"].items():
+            if rel in DUAL_CHANGED:
+                continue
             self.assertEqual(sha256(TASK / rel), digest, "%s changed since the selection: record an amendment" % rel)
+        self.assertTrue(set(DUAL_CHANGED) <= set(LATEST["frozen"]))
+        # the dual mode grades the program with main's verifier, unchanged
+        self.assertEqual(sha256(TASK / "tests/offline_verify.py"), LATEST["frozen"]["tests/verify.py"])
 
     def test_amendments_name_what_changed(self):
         before = SELECTION["frozen"]
@@ -121,7 +135,7 @@ class Grader(unittest.TestCase):
             self.assertNotIn(name, methods)
 
     def test_grader_scores_with_the_credit_module(self):
-        verify = (TASK / "tests/verify.py").read_text()
+        verify = (TASK / "tests/offline_verify.py").read_text()     # main's verifier (the dual mode's program item)
         self.assertIn("KC.GradedNutEnv(", verify)
         self.assertIn("KC.ground_truth(env, wire)", verify)
         self.assertNotIn("E.NutEnv(", verify)

@@ -31,12 +31,15 @@ _HERE = Path(__file__).resolve()
 _CANDIDATES = [_HERE.parents[1] / "tasks" / "underwater" / SLUG, _HERE.parents[2] / SLUG]
 TASK = next((p for p in _CANDIDATES if (p / "tests" / "verify.py").is_file()), _CANDIDATES[0])
 TESTS = TASK / "tests"
-VERIFY = TESTS / "verify.py"
+# the dual mode (an experimental branch) keeps main's grader byte for byte as tests/offline_verify.py and main's anchor as
+# tests/anchor_offline.json; tests/verify.py and tests/anchor.json are then the dual mode's own
+DUAL = (TESTS / "offline_verify.py").is_file()
+VERIFY = TESTS / ("offline_verify.py" if DUAL else "verify.py")
 HIDDEN = TESTS / "hidden"
 SET_PATH = HIDDEN / "episodes.json"
 SELECTION_PATH = HIDDEN / "selection.json"
 CONFIG = json.loads((TESTS / "grader_config.json").read_text())
-ANCHOR = json.loads((TESTS / "anchor.json").read_text())
+ANCHOR = json.loads((TESTS / ("anchor_offline.json" if DUAL else "anchor.json")).read_text())
 TABLE = json.loads((TESTS / "trim_table.json").read_text())
 TEXT_EXT = (".md", ".txt", ".json", ".py", ".sh", ".toml", ".yaml", ".yml", ".xml", ".csv", ".mtl", ".cfg", ".ini")
 CONSTS = ("SET_FORMAT", "STRATA", "DOME_ENDS", "SEED_LIMIT", "WATER_T_RANGE_C", "WATER_SP_RANGE", "UNIT_RE")
@@ -88,6 +91,10 @@ def _agent_visible_texts():
     env = TASK / "environment"
     for dp, dns, fns in os.walk(env):
         dns[:] = [d for d in dns if d != "__pycache__"]
+        if Path(dp) == env / "setup":
+            # the dual mode's graded-episode service (environment/setup/online/) is root-only while the agent works
+            # (/opt/ale/setup) and never enters the image: not agent-visible
+            dns[:] = [d for d in dns if d != "online"]
         for fn in fns:
             q = Path(dp) / fn
             if q.suffix.lower() in TEXT_EXT or fn.startswith(("Dockerfile", "requirements")):

@@ -1,8 +1,8 @@
 {
+ "metric": "dual_mode_score",
  "direction": "higher",
+ "value": 1.0,
  "full_at": 1.0,
- "metric": "assembly_score",
- "note": "assembly_score is the episode mean of the fastened slots' weight / 22 times the gates, already on [0, 1]; ratio = score / 1.0, reward = ratio",
- "source": "the oracle's own assembly_score: the privileged reference program fastens all 16 slots on the nominal layout (ale validate on vendor/ale 1cdbc02, validate-a12b69c2, 2026-11-09: 16 / 16 on each of the three oracle episodes, no safety event, no unplanned robot contact)",
- "value": 1.0
+ "source": "1.0 by construction (the mean of the program item, main's assembly_score against main's anchor in anchor_offline.json, and the live item, the graded episode's assembly_score against the online anchor in anchor_online.json, each normalised by its own measured anchor), confirmed 2026-11-24 by ale validate validate-42783404 (engine bfb7505, the dual mode at 8ddeb9d2): the oracle scored dual_mode_score 1.0 (offline_reward 1.0: main's privileged reference program frozen at the graded start, 3 episodes, 16 / 16 slots each; online_reward 1.0: the privileged reference program on graded-01, 16 / 16); untouched 0.0",
+ "note": "dual mode: reward = (offline_reward + online_reward) / 2; the components' anchors are anchor_offline.json (main's anchor.json, byte-identical) and anchor_online.json (the live item's)"
 }

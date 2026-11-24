@@ -25,6 +25,7 @@
  "given/figures/stowage_unit.png": "04b2da7a262d5fadcd0687663c1fb40b91ccea8ecda010d893e073aa033925fe",
  "given/lib/cabinkit/__init__.py": "f00e916a11eae5ab26fde799d8568e64055db963469b2e9fb5ab20ff43164bbb",
  "given/lib/cabinkit/client.py": "0e36bf07c9c6f1e5967e0147894fd78773c4f8fda4bd12c53c19eeeac273aa8f",
+ "given/lib/cabinkit/graded.py": "e373404b505938758640d7377a4f7c936a384252294fd727230965049ee43c45",
  "given/lost_item_register.md": "257b128d489100048d893b06d57f2fc4be7b0e0420476327c4cbb263dde8505c",
  "given/rehearsal_guide.md": "3c8e814065d3eddc6f8f48f32129c4aacf224344e7c2d34ee037c803e928da8e",
  "given/robot_api.md": "0c845bafa8af3ab38780179721b4cf0fa8ec4222bfa15f3d7c40e8436e79fe19",

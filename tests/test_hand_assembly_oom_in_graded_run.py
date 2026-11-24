@@ -147,7 +147,10 @@ class TestProgramIsTheMemoryKillersFirstChoice(unittest.TestCase):
             err = open(os.path.join(rec, "grader_stderr.log")).read() if os.path.isfile(os.path.join(rec, "grader_stderr.log")) else ""
             self.assertEqual(open(os.path.join(rec, "test_rc.txt")).read().strip(), "0", (r.stdout + r.stderr + err)[-4000:])
             verdict = json.load(open(os.path.join(stage, "verdict.local.json")))
-            self.assertEqual(verdict["metrics"]["contract_ok"], 1.0, err[-3000:])
+            # dual mode (experimental): the verdict is the mean of the two items; the program's grading (main's) is the
+            # offline item, its metrics prefixed offline_ (no graded episode was played here: the online item is 0)
+            offline = {k[len("offline_"):]: v for k, v in verdict["metrics"].items() if k.startswith("offline_")}
+            self.assertEqual(offline["contract_ok"], 1.0, err[-3000:])
             obs = open(os.path.join(rec, "observer.log")).read().splitlines()
             # the interpreter's processes only (argv[0]); the forked child's own write of 0 is excluded by its pid
             prog = [l for l in obs if l.startswith("uid 65534 ") and re.search(r" cmd \S*python[0-9.]* ", l)]
@@ -165,7 +168,7 @@ class TestProgramIsTheMemoryKillersFirstChoice(unittest.TestCase):
             self.assertTrue(m, text[-2000:])
             self.assertEqual(m.group(2), "1000", "the forked child did not inherit the floor: " + m.group(0))
             self.assertRegex(text, r"\[probe\] child ended: signal 9")   # SIGKILLed by the sampler for lowering its value
-            self.assertGreaterEqual(verdict["metrics"]["runner_oom_adj_killed"], 1.0)
+            self.assertGreaterEqual(offline["runner_oom_adj_killed"], 1.0)
             m = re.search(r"\[probe\] env (\[.*\])", text)
             self.assertTrue(m, text[-2000:])
             self.assertEqual(json.loads(m.group(1)), ENV_KEYS)

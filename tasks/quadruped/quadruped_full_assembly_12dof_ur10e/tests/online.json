@@ -1,0 +1,10 @@
+{
+ "note": "The graded episode the record must name (verify.py checks format, task, episode and seed_sha256 against the record; the seed itself lives only in environment/setup/online/graded_episode.json, root-only while the agent works). seed_sha256 = sha256 of the seed's decimal text. record / record_max_bytes: where the engine restores the record and the largest record verify.py reads; snapshot_dir: the program frozen at the graded start (or when the preparation window closed), which the program item grades.",
+ "format": "arb-online-record/1",
+ "task": "quadruped_full_assembly_12dof_ur10e",
+ "episode": "graded-01",
+ "seed_sha256": "0663d74d56743f79f1cd6207beb005cd4c3a14e03d676023e8080fc7623167fe",
+ "record": "/var/lib/arb-online/record.json",
+ "record_max_bytes": 1048576,
+ "snapshot_dir": "/var/lib/arb-online/submission_snapshot"
+}

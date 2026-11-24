@@ -67,9 +67,11 @@ class TaskLayout(unittest.TestCase):
         self.assertEqual(cfg["schema_version"], "1.4+ale.1")
         self.assertEqual(cfg["task"]["name"], "grounded-intelligence-initiative/" + SLUG)
         self.assertEqual(cfg["metadata"]["platform"], "hand")
-        self.assertEqual(cfg["artifacts"], ["/home/user/submission"])
+        # dual mode (experimental): the graded episode's record directory is the second artifact, and the session is
+        # main's 6 h (the start window) plus the 3 h graded window
+        self.assertEqual(cfg["artifacts"], ["/home/user/submission", "/var/lib/arb-online"])
         self.assertEqual((cfg["environment"]["cpus"], cfg["environment"]["memory_mb"]), (8, 16384))
-        self.assertEqual((cfg["agent"]["timeout_sec"], cfg["agent"]["network_mode"]), (21600, "no-network"))
+        self.assertEqual((cfg["agent"]["timeout_sec"], cfg["agent"]["network_mode"]), (21600 + 10800, "no-network"))
         self.assertEqual((cfg["verifier"]["environment_mode"], cfg["verifier"]["timeout_sec"]), ("separate", 14400))
         ve = cfg["verifier"]["environment"]
         self.assertEqual((ve["cpus"], ve["memory_mb"], ve["gpus"]), (8, 24576, 0))
@@ -149,6 +151,33 @@ class TaskLayout(unittest.TestCase):
         self.assertEqual((cfg["scope"]["name"], cfg["scope"]["mates"]), ("default", None))
         self.assertTrue(re.match(r"^[0-9a-f]{64}$", cfg["agent_render"]["omit_list_sha256"]))
 
+
+    def test_online_cell_is_the_verifiers_byte_for_byte(self):
+        """dual mode: the graded episode's service serves the verifier's own cell (environment/setup/online/cell is a
+        byte copy of the cell's code and data in tests/), its episode is the one tests/online.json names, and the oracle
+        token it accepts is the task's"""
+        online = TASK / "environment" / "setup" / "online"
+        cell = online / "cell"
+        want = {}
+        for pkg in ("arm", "common", "render", "render_filament", "room"):
+            want.update({pkg + "/" + r: h for r, h in _tree(TASK / "tests" / pkg).items()})
+        for src, dst in (("episode_trace.py", "episode_trace.py"), ("grader_config.json", "grader_config.json"),
+                         ("kit_info.json", "kit_info.json"), ("hidden/bench_plan.json", "bench_plan.json")):
+            want[dst] = _sha(TASK / "tests" / src)
+        self.assertEqual(_tree(cell), want)
+        ep = json.loads((online / "episode.json").read_text(encoding="utf-8"))
+        rec = json.loads((TASK / "tests" / "online.json").read_text(encoding="utf-8"))
+        self.assertEqual((ep["episode"], ep["seed_sha256"]), (rec["episode"], rec["seed_sha256"]))
+        self.assertEqual(hashlib.sha256(str(int(ep["seed"])).encode("ascii")).hexdigest(), ep["seed_sha256"])
+        self.assertLess(int(ep["seed"]), 1 << 63)
+        pinned = (TASK / "tests" / "hidden" / "oracle_token.sha256").read_text(encoding="utf-8").split()[0]
+        self.assertEqual(ep["oracle_token_sha256"], pinned)
+        cfg = json.loads((online / "online.json").read_text(encoding="utf-8"))
+        task = tomllib.loads((TASK / "task.toml").read_text(encoding="utf-8"))
+        self.assertEqual(cfg["prep_s"] + cfg["graded_s"], task["agent"]["timeout_sec"])
+        self.assertEqual(cfg["task"], SLUG)
+        offline = json.loads((TASK / "tests" / "anchor_offline.json").read_text(encoding="utf-8"))
+        self.assertEqual(offline["metric"], "assembly_score")
 
     def test_run_folder_is_not_named_by_the_seed(self):
         """the program's working directory, HOME, TMPDIR and PYTHONPATH lie in the run folder rn.prepare makes; its name

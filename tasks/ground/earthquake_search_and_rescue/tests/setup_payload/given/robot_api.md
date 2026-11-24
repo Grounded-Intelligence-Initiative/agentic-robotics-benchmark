@@ -76,3 +76,15 @@ collapse; calls that move the robot then answer `episode_over` / `robot_lost`. A
 * `~/training/run_mission.py` applies the same checks, then runs your submission on the training ground in the same
   regime (as your account) and prints the robot's mission log; `--check` applies the checks only.
   `connect_training(site)` gives you an interactive `Robot` on a training site (one mission per connection).
+
+## The graded episode (this session only)
+
+`connect_graded()` gives you the graded episode's `Robot` (the task's instruction, "The graded episode"): the calls
+above, live, on one hidden site, plus `start()` (once per session: it freezes `/home/user/submission`, then the
+mission begins) and `status()` (started, ended, end, done_reason, steps, sim_time_s, the sensor budgets used and left,
+the time left in its start window and in its graded window, what was frozen; never a score). The episode lives in its
+service: `close()` or the end of your script leaves it where it is, and the next `connect_graded()` resumes it; one
+connection at a time (`busy`); `finish()` ends it. The limits under "Running" (the submission checks, the import
+check, program time, CPU time, silence) bind a program; the graded episode has none of them. The simulated-time cap,
+the sensor budgets and the 500 ticks per `step` apply as on any mission. The training ground closes for the rest of the
+session when the graded episode starts (`practice_closed`).

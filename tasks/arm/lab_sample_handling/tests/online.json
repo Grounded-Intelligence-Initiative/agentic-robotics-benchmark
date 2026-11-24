@@ -1,0 +1,18 @@
+{
+ "note": "the dual mode's graded episode, for the verifier's cross-check of the record (tests/verify.py). The graded episode is one episode of the offline grader's fixed hidden set (hidden/episodes.json: 12 episodes, 2 on each of the 6 hidden units, in the grader's order), drawn once with OS entropy; the episode, its unit's properties and its seed live root-only in environment/setup/online/episode.json, where the graded episode's service reads them. seed_sha256 = sha256 of the seed's decimal string.",
+ "format": "arb-online-record/1",
+ "task": "lab_sample_handling",
+ "episode": "hidden-02",
+ "unit": "u1",
+ "seed_sha256": "cd3bc9c0db796c7ea2296ab73800f48289033a3ca8d8c6980e295049fd5c9859",
+ "draw": {
+  "when_utc": "2026-11-24T09:22:44Z",
+  "from": "hidden/episodes.json['episodes'] (sha256 1462f0662aa81eacbcb4b53713a7424c242b48ea59416f74f2247ddec0284328), the offline grader's 12 hidden episodes in its order (draw 3 of main's selection, #177)",
+  "how": "python3: secrets.randbelow(12) (OS entropy), once; index 2 -> hidden-02 (unit u1)",
+  "why_plain": "the commissioning service's units (d0, d1, d2) are none of the hidden units, so no practice covers a hidden unit: the plain draw (pitfall 4's unseen-instance draw is for tasks whose practice covers the hidden instances)",
+  "void": "the first draw, 2026-11-24T03:55:36Z (entry 7 of the previous hidden set: hidden-07, unit u2, seed sha256 23d27cd8930daf1998fa29cb97729e0b38d04f08856832814ffefb87f5c1d903), is void: #177 replaced the hidden set (draw 3 of its selection) and that episode is not in it; run dual-lab-opus55-high-r1-20261124 was played on it, on the version before #177"
+ },
+ "record": "/var/lib/arb-online/record.json",
+ "prep_s": 7200,
+ "graded_s": 10800
+}

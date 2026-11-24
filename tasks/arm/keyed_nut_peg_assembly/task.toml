@@ -1,5 +1,15 @@
 schema_version = "1.4+ale.1"
-artifacts = ["/home/user/submission"]
+# DUAL MODE (experiment, branch exp/dual-mode-scoring; never merged into main): one session, one verify, two items, the
+# reward their mean. The program item is main's, unchanged: the controller in /home/user/submission/ on the 10 hidden
+# kits (tests/offline_verify.py, main's tests/verify.py), on the program frozen when the agent starts the graded episode
+# (the graded episode's root supervisor copies /home/user/submission into the root-only
+# /var/lib/arb-online/submission_snapshot/ before the start is charged), or when the start window closes without a
+# start, or the session-end submission if the session ends before that. The online item is one graded episode, the
+# hidden kit F01 of that set, assembled live through the graded episode's service (environment/setup/online/);
+# commissioning closes when it starts (O13). tests/verify.py grades both (main's grading, then the record) and writes
+# one reward. The declared artifacts: where the agent leaves its controller, and the graded episode's record with the
+# frozen program (the service's directory, which the agent can neither read nor write).
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/keyed_nut_peg_assembly"
@@ -11,10 +21,15 @@ platform = "arm"
 cpus = 4
 memory_mb = 12288
 
+# [agent] timeout_sec = prep_s + graded_s: main's 8 h for the controller and the agent's preparation (the window in
+# which the graded episode must be started, counted from the service's start, a little before the session's) plus the
+# 3 h graded window that follows the start (the default; one kit of at most 850 steps needs minutes of it).
 [agent]
-timeout_sec = 28800
+timeout_sec = 39600
 network_mode = "no-network"
 
+# main's verifier: main's offline grading runs again (10 kits, its 12000 s wall-clock safety net); the record takes
+# seconds.
 [verifier]
 timeout_sec = 12600
 environment_mode = "separate"

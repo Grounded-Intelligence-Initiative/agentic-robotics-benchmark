@@ -2,7 +2,7 @@
 supervisord respawns the desktop it runs as that account, as fast as it is killed) is stopped, not held against the
 submission; one that is still running once stopped still fails the run (cleanup_failed), before and after the solver.
 
-Runs the grader's own `stop_agent_processes` (and its helpers), taken from tests/verify.py by name, against a
+Runs the grader's own `stop_agent_processes` (and its helpers), taken from main's verifier by name, against a
 stand-in for the account's process list and real child processes playing the respawned desktop (each SIGKILL starts
 the next one, as supervisord does). The clock runs five times as fast, so the 5 s kill takes 1 s. Stdlib only:
 tests/verify.py imports the simulator (mujoco, numpy) that the host venv does not have.
@@ -16,7 +16,9 @@ import types
 import unittest
 from pathlib import Path
 
-VERIFY = Path(__file__).resolve().parents[1] / "tasks/arm/keyed_nut_peg_assembly/tests/verify.py"
+# main's verifier: tests/verify.py on main; in the dual mode (experimental branch) it lives on byte for byte as
+# tests/offline_verify.py, which the dual tests/verify.py runs for the program item
+VERIFY = Path(__file__).resolve().parents[1] / "tasks/arm/keyed_nut_peg_assembly/tests/offline_verify.py"
 
 
 class _Desktop:

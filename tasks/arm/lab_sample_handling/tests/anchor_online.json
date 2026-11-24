@@ -1,0 +1,8 @@
+{
+ "metric": "mean_episode_credit",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 0.98,
+ "source": "reference (solution/oracle's worklist reference on the token truth, driven by solution/play_graded.py through ~/graded/client.py with the reference's token, as solution/solve.sh runs it after main's oracle) on the dual mode's graded episode hidden-02 (unit u1; drawn again after #177 replaced the hidden set), measured on 2026-11-24 in a container of this task's image after the merge of origin/main (setup.sh as root, then solve.sh as the agent account, 4 CPUs, 12 GB): credit 1.0 (the run complete, every pair balanced under the shut lid, the cold tubes in place, no tube moved, no simulation fault; 9398 steps, the episode ended 20 steps after the lid was shut, 264 s); value = that (never a published figure). Confirmed after the re-sync by validate-e3598358: the oracle's graded episode credit 1.0 in the same 9398 steps. Before #177: credit 1.0 on hidden-07 (unit u2) of the previous set, in a container and in validate-4166b5fd. full_at 0.98 as on main.",
+ "note": "the dual mode's graded-episode item: mean_episode_credit of the ONE graded episode the agent plays itself (episode.Episode.score: the centrifuge run's share times 0.8 + 0.2 x the cold tubes in place; 0 without a startable run, after a moved tube or at an unstable simulation), read from the graded episode's record (/var/lib/arb-online/record.json); ratio = credit / value, reward = clamp(ratio / full_at, 0, 1). full_at 0.98 as on main (anchor_offline.json)."
+}

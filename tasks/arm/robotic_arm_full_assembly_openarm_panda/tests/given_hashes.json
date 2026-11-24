@@ -1,5 +1,5 @@
 {
- "given/cell/cell_api.md": "dd7220f3305f5698e2a5f76197050a5cf55355ba3916e85cde4b4af61246bde4",
+ "given/cell/cell_api.md": "56822cc056a89ab1df719ea1df9e4257c092e34ba628d88cc22b7e8804ba15dd",
  "given/cell/cell_config.json": "434f952c82575232d8fca4373e715b128f2750e6b51e8f5161a81ebc136a9ec7",
  "given/cell/cell_manual.md": "826fcc7c8ccf94cf0ffe2ec87f4152eb4fc07145e4852c8f7c5401dd96571551",
  "given/collision/l_EE/l_C8_000.stl": "48e919d341be74ce790c7c1397b63a3a35f2ab0f4f7ec56f307b235bec68c5bb",
@@ -2941,6 +2941,7 @@
  "given/lib/arm/assembly_openarm/agent_look.json": "b11e89f196b6653301e82f4649640cdf89ea1da8396cb4c19be61f64a6ca0737",
  "given/lib/arm/assembly_openarm/agent_render.py": "58112859c442894d2ab952575c541899f454b1d925b465873dc023ec6395e73d",
  "given/lib/arm/assembly_openarm/client.py": "9eae12e59cceec51371569450765de1848242eeed5145a455484c654a6bd9c27",
+ "given/lib/arm/assembly_openarm/graded.py": "2dbef132b602c580ba5c42786f8b03d28f836939b6aace9c46da7f2403465a3b",
  "given/lib/common/__init__.py": "86b3842cdd3d1ffa79d29455801fb7499e772203111efbdb3908f1f1123cea60",
  "given/lib/render/__init__.py": "2ae23b0b9fb1055e6b58f2180bffdf67a0a937175ede59a21bacd1b98e874784",
  "given/lib/render/backends/__init__.py": "3324fc90bcc2b8e6f803ec58c8be6dfb14e0bcf352e334a3577a8d2db8bc4c9b",

@@ -85,6 +85,10 @@ RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
 # box_transport_env.py, lab_render.py and lab_look.json), the development units and the ledger. The credit rule (tests/episode.py) is not in it.
 # setup.sh starts it. The grading sandbox has its own image (tests/Dockerfile) without this folder.
 RUN useradd --system --no-create-home --home-dir /opt/labbench-commission --shell /usr/sbin/nologin labbench
+# The dual mode (experiment): the graded episode's service (environment/setup/online/graded_service.py, started by
+# setup.sh) serves the agent's one graded episode as its own account: never root, never the agent, and not `labbench`,
+# whose service answers the agent's commissioning benches.
+RUN useradd --system --user-group --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin labgrade
 COPY commission_service /opt/labbench-commission
 RUN rm -rf /opt/labbench-commission/state /opt/labbench-commission/__pycache__ \
     && mkdir -p /opt/labbench-commission/state \
@@ -118,6 +122,7 @@ RUN install -d -o labbench -g labbench -m 700 /tmp/labbench-check \
     && ! runuser -u user -- cat /opt/labbench-commission/lab_sim.py \
     && ! runuser -u user -- ls /opt/task-assets \
     && ! runuser -u user -- cat /opt/task-assets/payload/render/room.json \
+    && ! runuser -u labgrade -- ls /opt/labbench-commission \
     && [ -z "$(find /opt/task-assets -perm /007)" ] \
     && [ -z "$(find /opt/labbench-commission ! -user labbench)" ] \
     && [ -z "$(find /opt/labbench-commission -perm /077)" ]

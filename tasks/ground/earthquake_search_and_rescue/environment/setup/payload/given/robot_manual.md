@@ -157,4 +157,6 @@ At the end you get the robot's own mission log: how the mission ended, the simul
 made and how many reached the team, whether the kit left its cradle, the events (`protective_stop`, `collapse`,
 `robot_overturned`, ...) and the budgets used. Judge a mission from what your program sensed and logged: its
 frames, its map, its odometry. The training ground allows 80 missions in total and 2 at a time
-(`/run/rubblecell/training_status.json`); each mission log is also kept in `/run/rubblecell/logs/`.
+(`/run/rubblecell/training_status.json`); each mission log is also kept in `/run/rubblecell/logs/`. It closes for
+the rest of the session when the graded episode starts (the task's instruction): an open mission then ends (reason
+`practice_closed`) and a new one is refused (`practice_closed`).

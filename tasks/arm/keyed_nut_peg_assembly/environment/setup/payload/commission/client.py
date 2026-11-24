@@ -16,6 +16,19 @@ episode ended. It answers no object pose, no groove, no score and no completion 
 `probe_obs` (in `ep.probe_obs`): the perturbed copy of the observation's readings that the grader would send with a
 repeated step index; `run_kit.py` uses it to query a controller the way the grader does.
 
+The graded episode (the task's second scoring item; see the task instruction): `connect_graded()` connects to the
+graded episode's service, a hidden kit of the graded set that you assemble yourself, live. The episode lives in the
+service, not in the connection: closing the connection (or a script ending) leaves it where it is, and the next
+`connect_graded()` resumes it; one connection at a time (a second one raises GradedError("busy")).
+
+    from client import connect_graded
+    g = connect_graded()                  # resumes the episode if it has started
+    print(g.status())                     # started, ended, steps, image charges, the windows' time left
+    obs = g.start()                       # ONCE per session: your controller is frozen, commissioning ends
+    while not g.done:
+        obs = g.step([0, 0, 0, 0, 0, 0, -1, 0])        # the public action format; obs is the next observation
+    g.close()                             # or g.finish() to end the graded episode now
+
 Standard library only (NumPy only inside `decode_image`).
 """
 
@@ -24,6 +37,7 @@ import socket
 
 SOCKET = "/run/keyedcell/commission.sock"
 STATUS = "/run/keyedcell/commission_status.json"
+GRADED_SOCKET = "/run/keyedcell-graded/graded.sock"
 
 
 class CommissioningError(Exception):
@@ -113,3 +127,111 @@ class Episode(object):
                 pass
         self.ended = res.get("ended")
         return res
+
+
+class GradedError(Exception):
+    """The graded episode's service refused a request: `code` is its error word (busy, not_started, already_started,
+    prep_window_closed, episode_over, bad_action, bad_params, forbidden, internal, closed), `detail` its sentence."""
+
+    def __init__(self, code, detail=""):
+        Exception.__init__(self, "%s: %s" % (code, detail) if detail else str(code))
+        self.code = code
+        self.detail = detail
+
+
+class GradedEpisode(object):
+    """A connection to the graded episode's service (connect_graded()). `obs` is the latest observation it returned
+    (wire form), `done` whether the episode is over."""
+
+    def __init__(self, socket_path=GRADED_SOCKET, timeout=600.0):
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sock.settimeout(timeout)
+        try:
+            self.sock.connect(socket_path)
+        except OSError as e:
+            self.sock.close()
+            raise GradedError("closed", "the graded episode's service is not reachable at %s (%s)" % (socket_path, e))
+        self.file = self.sock.makefile("rwb")
+        self.n = 0
+        self.obs = None
+        self.done = False
+        try:
+            st = self.status()                 # the episode is ours, or another connection holds it (busy)
+        except GradedError:
+            self.close()
+            raise
+        self.done = bool(st.get("ended"))
+
+    def _call(self, method, params=None):
+        self.n += 1
+        try:
+            self.file.write((json.dumps({"id": self.n, "method": method, "params": params or {}}) + "\n").encode("utf-8"))
+            self.file.flush()
+        except OSError:
+            pass                               # the service closed the connection: its last word, if any, follows
+        line = self.file.readline()
+        if not line:
+            raise GradedError("closed", "the graded episode's service closed the connection")
+        reply = json.loads(line.decode("utf-8"))
+        if "error" in reply:
+            if reply["error"] == "episode_over":
+                self.done = True
+            raise GradedError(reply["error"], reply.get("detail", ""))
+        return reply["result"]
+
+    def status(self):
+        """{"started", "ended", "end", "steps", "max_steps", "images_requested", "image_charge_used_s",
+        "image_charge_left_s", "prep_window_left_s", "graded_window_left_s", "program_frozen"}: no score."""
+        return self._call("status")
+
+    def start(self):
+        """Start the graded episode: ONCE per session, within its start window. It freezes the submission folder (your
+        controller) and ends commissioning first, then is charged at once and never refunded. Returns the first
+        observation (all three images)."""
+        res = self._call("start")
+        self.obs, self.done = res["obs"], False
+        return self.obs
+
+    def step(self, action):
+        """Apply one action (8 numbers, the public format); returns the next observation, or None when the step's
+        images would take the image charges past the kit's budget (the step is not applied and the episode is over).
+        Sets `done` once the episode is over. A malformed action raises GradedError("bad_action") and simulates nothing."""
+        res = self._call("step", {"action": [float(a) for a in action]})
+        self.obs = res["obs"]
+        if res["done"]:
+            self.done = True
+        return self.obs
+
+    def observe(self):
+        """The latest observation again, as the last step (or the start) returned it, images included; nothing is
+        simulated."""
+        res = self._call("observe")
+        self.obs, self.done = res["obs"], bool(res["done"])
+        return self.obs
+
+    def finish(self):
+        """End the graded episode now: it is judged as it stands, nothing is simulated afterwards."""
+        res = self._call("finish")
+        self.done = True
+        return res
+
+    def close(self):
+        """Close this connection; the episode stays where it is."""
+        try:
+            self.file.close()
+            self.sock.close()
+        except OSError:
+            pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+        return False
+
+
+def connect_graded(socket_path=GRADED_SOCKET):
+    """A connection to the graded episode's service (GradedEpisode); raises GradedError("busy") while another
+    connection holds the episode."""
+    return GradedEpisode(socket_path)

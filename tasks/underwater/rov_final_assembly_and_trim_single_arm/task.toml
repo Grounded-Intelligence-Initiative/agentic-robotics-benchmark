@@ -23,9 +23,34 @@
 # unpacks it at verify start from the benchmark's asset dataset (pinned by sha256), or from the local development copy
 # tests/assets/gt.tar.xz when that is present. The grader and the fixed set: tests/README.md; sources and
 # attributions: tests/NOTICE.md.
+#
+# DUAL MODE (experimental, 2026-11-24; never merged into main): one session, one verify, two scoring items, reward =
+# their mean, each normalised by its own anchor (tests/anchor_offline.json = main's anchor.json,
+# tests/anchor_online.json; the combined dual_mode_score in tests/anchor.json is 1.0 by construction).
+# * The offline item is main's grading above, unchanged (tests/offline_verify.py = main's tests/verify.py byte for byte,
+#   run by tests/verify.py in a root-only copy of tests/ laid out as main's), of the program FROZEN at the earlier of the
+#   graded start and the start window's close (prep_s after the service's start): then (before a start is charged) the
+#   graded episode's service has its root supervisor copy /home/user/submission into
+#   /var/lib/arb-online/submission_snapshot (regular files and directories, no link followed, main's 60 MB cap), so the
+#   program keeps main's preparation time; the submission at the session's end is graded only when the session ends
+#   before the window closes, without a start, or there is no usable record.
+# * The online item is the graded episode the agent plays itself during its session, through the graded episode's cell
+#   service (environment/setup/online/service.py, started by environment/setup/setup.sh; the cell a byte copy of the
+#   cell's part of tests/, its hidden kit fetched at setup as the verifier fetches it, served as the dedicated `arbcell`
+#   account over a unix socket; the client ~/given/lib/arm/assembly_rov/graded.py, connect_graded()): episode E3 of the
+#   fixed hidden set (drawn once with OS entropy, tests/online.json), the same rules and score as an offline episode; it
+#   can be started once, within prep_s = 21600 s (main's agent budget, shared by the program and the preparation) of the
+#   service's start, and ends at the agent's finish, at the cell's own end, graded_s = 10800 s after its start, or when
+#   the session ends (the last record applies). Its record goes to /var/lib/arb-online, which the agent can neither read
+#   nor write.
+# There is no practice facility. The oracle (solution/solve.sh) leaves main's reference program in the submission, then
+# starts the graded episode with the oracle token and runs the privileged reference program through the client.
 
 schema_version = "1.4+ale.1"
-artifacts = ["/home/user/submission"]
+# Where the agent leaves its work (assemble.py and its helpers), and the graded episode's record directory (record.json,
+# requests.jsonl, the program frozen at the start in submission_snapshot/, the replay record trace/), written by the
+# service as its own account and by its root supervisor; the engine collects both as root after the agent phase.
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/rov_final_assembly_and_trim_single_arm"
@@ -65,20 +90,26 @@ cpus = 8
 memory_mb = 24576
 gpus = 0
 
-# [agent] timeout_sec: 6 h.
+# [agent] timeout_sec (dual mode): prep_s + graded_s = 21600 + 10800 = 32400 s: main's 6 h for the program and the
+# preparation (the start window, counted from the graded episode's service's start), then 3 h for the graded episode
+# (the online variant's graded window; the reference program's episode takes about 4 min of wall clock).
 # [verifier] timeout_sec: an agent's program runs 4 x (cell build + program <= the wall cap of 2400 s) inside the
 # verifier. Measured in the real sandbox (8 CPUs, 24 GB, separate verifier; host load 68-114): the sandbox's provision
 # and setup 4.2 s, the verify stage outside the episodes 7.5 s, a cell build <= 1.23 s, the overshoot past the wall cap
 # <= 20.6 s (the longest single call 19.3 s), the episode trace's save 4.6 s per episode: worst 9717 s, 78 min below
 # 14400 s (the design asks >= 60 min). The oracle's verify (4 x the reference program, 216-301 s simulated) took about
 # 690 s of wall clock. The kit's download (not measurable while the asset is unpublished) is bounded by its retries.
+# Dual mode: the verify stage runs main's grading again (its time above) and reads the graded episode's record (seconds).
+# The agent's sandbox (below) also holds the graded episode's service: about 0.9 GB while it waits, about 5-6 GB once the
+# cameras are used (the cell and its Filament camera session).
 [agent]
-timeout_sec = 21600
+timeout_sec = 32400
 network_mode = "no-network"
 
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
-# touched, with only the declared artifact (the submission) restored into it, so nothing else the agent left (a file,
-# a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there: tests/test.sh
+# touched, with only the declared artifacts (the submission and the graded episode's record directory, both written
+# root-owned by the engine) restored into it, so nothing else the agent left (a file, a process, a program planted on
+# root's PATH) reaches it. environment/setup/setup.sh does not run there: tests/test.sh
 # builds the grader's root-owned copy of the givens itself, and the grader fetches the cell's hidden kit (verification
 # has network). The agent's program runs during verify (beside the cell and the Filament renderer), so the verifier
 # gets at least the agent's resources (CPU rendering: no GPU).

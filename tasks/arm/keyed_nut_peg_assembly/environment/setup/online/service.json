@@ -1,0 +1,53 @@
+{
+ "note": "the graded episode's service (graded_service.py): public constants only; the hidden episode is episode.json, which only the worker reads. cell_sha256 pins online/cell/, byte copies of tests/keyed_env.py, keyed_render.py, keyed_look.json and keyed_credit.py (the grader's cell, its cameras and its credit rule). env is the grader's rendering and thread environment (the image's ENV and tests/test.sh's MESA_SHADER_CACHE_DISABLE). image_charge_s and image_budget_s are tests/grader_config.json's image_charge_s and controller_budget_s: the graded episode charges every image a step asks for against the kit's 600 s, as the grader does (the controller's own time, which the grader also counts, does not exist here). prep_s is the agent's budget on main ([agent] timeout_sec 28800): the episode must be started within it; graded_s is the window from the start to the episode's latest end. practice_flag (O13): the graded episode's start writes it, and the commissioning service ends its episodes and refuses new ones once it exists. The dual mode's freeze (DM3): at the graded start, or when the start window closes without one, the root supervisor copies submission_dir into record_dir/snapshot_name (no link followed, only what the agent's account owns; snapshot_max_files and snapshot_max_bytes are main's caps, 5000 files and 200 MiB; entries and depth bounded so that the copy finishes and stays within the engine's artifact limits).",
+ "task": "keyed_nut_peg_assembly",
+ "user": "keyedgrade",
+ "agent_user": "user",
+ "socket": "/run/keyedcell-graded/graded.sock",
+ "record_dir": "/var/lib/arb-online",
+ "work_dir": "/run/keyedcell-graded/work",
+ "prep_s": 28800,
+ "graded_s": 10800,
+ "episode_file": "episode.json",
+ "cell_dir": "cell",
+ "cell_sha256": {
+  "keyed_credit.py": "2ab4fc524109ccc8296da4c8d27ec573be8b976806c30ab32ea9342dd1d4d638",
+  "keyed_env.py": "0440b881ba380fb149b4041fb1ad06c7cb4ed36bf35348ef0e4b8fd4f196d185",
+  "keyed_look.json": "73c42d55dbc33d602d1b408a470358320f896e75191ac952de3d18cb4f49ef45",
+  "keyed_render.py": "18c1efc58d81cba4dbeed502fc4e7d3e731299a4d6e298d8cd894d19fd1e2a75"
+ },
+ "env": {
+  "MUJOCO_GL": "egl",
+  "PYOPENGL_PLATFORM": "egl",
+  "MPLBACKEND": "Agg",
+  "OMP_NUM_THREADS": "1",
+  "LP_NUM_THREADS": "2",
+  "MESA_SHADER_CACHE_DISABLE": "true",
+  "KEYED_RENDER_DIR": "/opt/task-assets/payload/render",
+  "PYTHONNOUSERSITE": "1"
+ },
+ "image_charge_s": {
+  "left": 0.45,
+  "right": 0.45,
+  "wrist": 0.35
+ },
+ "image_budget_s": 600,
+ "practice_flag": "/run/keyedcell-graded/flags/started",
+ "submission_dir": "/home/user/submission",
+ "max_restarts": 3,
+ "start_timeout_s": 300,
+ "record_interval_s": 1.0,
+ "requests_log_cap_bytes": 33554432,
+ "record_max_bytes": 1000000,
+ "reply_timeout_s": 120,
+ "idle_s": 900,
+ "snapshot_name": "submission_snapshot",
+ "snapshot_max_bytes": 209715200,
+ "snapshot_max_files": 5000,
+ "snapshot_max_entries": 20000,
+ "snapshot_max_depth": 32,
+ "snapshot_timeout_s": 120,
+ "window_freeze_tries": 5,
+ "window_freeze_retry_s": 30,
+ "reserve_bytes": 1048576
+}

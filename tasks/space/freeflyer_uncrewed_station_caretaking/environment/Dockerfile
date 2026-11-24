@@ -80,12 +80,21 @@ RUN set -eu; B=/opt/task-assets/build; R=/opt/task-assets; mode="$CARETAKE_ASSET
 # episode, untouched validation passes included).
 RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
 
+# The graded episode's service account (the dual mode: environment/setup/online/graded_service.py). The service's
+# worker runs as it, with the task assets' group (rehearsal) as its only other group, which the service sets itself
+# (setgroups) to read the cell's model files; it owns the service's data folder (/opt/arb-graded, installed by
+# environment/setup/setup.sh with mode 0700) and its record directory (/var/lib/arb-online, mode 0700). No login, no
+# home; the agent account can read nothing of it.
+RUN useradd --system --user-group --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin arbgraded
+
 # The rehearsal facility: the robot cell on the training module L3 (practice_ground/: the service practiced.py, its
 # cards and debriefs, the station map's copy and cabincell/, a byte copy of the grader's cell without the grading
 # module), installed for its own account `rehearsal` only: mode 700, so the agent
 # account can neither read nor list it. environment/setup/setup.sh starts it before the agent's session (and restarts
 # it should it ever exit); the agent reaches it through the unix socket /run/rehearsal/rehearsal.sock
-# (~/rehearsal/rehearse.py): the robot's public calls, reset(card) and each run's observation sheet.
+# (~/rehearsal/rehearse.py): the robot's public calls, reset(card) and each run's observation sheet. It closes when the
+# graded episode starts (the flag file /run/arb-graded/flags/practice_closed, which only the graded episode's service
+# writes): an open run ends, new ones are refused ("practice_closed").
 COPY practice_ground /opt/rehearsal
 RUN find /opt/rehearsal -name '__pycache__' -type d -prune -exec rm -rf {} + \
     && rm -rf /opt/rehearsal/state \

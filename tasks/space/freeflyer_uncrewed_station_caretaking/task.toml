@@ -25,10 +25,19 @@
 # its own account: training module L3, five cards, 150 simulated minutes in at most 30 runs, an observation sheet of
 # categories after each); the simulator's code, the site generator and every ground truth of a scored site stay out of
 # its reach.
+# Dual mode (experimental; two scoring items of one task, one session, one verify): the agent also flies ONE hidden
+# site of the set itself, live, through the graded episode's service (environment/setup/online/: a root supervisor and
+# a worker under its own account that serves the offline grader's own cell on a Unix socket; the agent can read
+# neither the service's data nor its record). Its program is frozen at the earlier of the graded start and the close
+# of the 4 h preparation window; the graded window is 3 h. reward = (the program item, main's grading of the frozen
+# program on the six sites, + the live item, main's site grader on the cell's record of the graded episode) / 2,
+# each against its own anchor (tests/verify.py).
 
 schema_version = "1.4+ale.1"
-# Where the agent leaves its work (caretake.py and its helper modules).
-artifacts = ["/home/user/submission"]
+# Where the agent leaves its work (caretake.py and its helper modules), and the graded episode's record directory
+# (record.json, the cell's record, the call log, the frozen program), which the service writes and the agent cannot
+# read; the engine collects both as root after the agent phase and restores them root-owned in the verifier.
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/freeflyer_uncrewed_station_caretaking"
@@ -45,9 +54,10 @@ tags = ["space-station", "free-flyer", "cabin-ventilation", "telemetry-diagnosis
 cpus = 8
 memory_mb = 16384
 
-# setup (no field: the engine bounds it at a fixed 1800 s): the givens in the agent home and the rehearsal facility
-# (measured: under 10 s).
-# [agent] timeout_sec: 4 h, the agent's working time (tests/README.md, "Time limits").
+# setup (no field: the engine bounds it at a fixed 1800 s): the givens in the agent home, the rehearsal facility and the
+# graded episode's service, which builds the graded site's cell before it serves (measured: 17 s in a dev container).
+# [agent] timeout_sec: 7 h = the preparation window (main's 4 h agent budget: the program and the preparation of the
+# graded episode) + the graded window (3 h); the graded episode's service enforces both windows itself.
 # [verifier] timeout_sec: the verifier's limit by the formula of tests/README.md ("Time limits"), from
 # the worst values measured in containers of the task image (station look v05, the task assets from the build context's
 # local_assets; runs on 2026-11-17, 2026-11-18 and 2026-11-19; a value measured later only ever raises the limit) on
@@ -67,16 +77,18 @@ memory_mb = 16384
 # six took 7755 s in such a container on 2026-11-19 (745-1851 s of wall clock a site for 1263-1878 simulated s, every
 # site 1.000, peak memory 2.0 GB); the example program's verify 756 s, the untouched submission's under 1 s.
 [agent]
-timeout_sec = 14400
+timeout_sec = 25200
 network_mode = "no-network"
 
 [verifier]
 timeout_sec = 29900
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
-# touched, with only the declared artifact (the submission) restored into it, so nothing else the agent left (a file,
-# a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there: tests/test.sh
-# builds the grader's root-owned copy of the givens itself. The agent's program runs during verify, so the verifier
-# gets the agent's resources (CPU rendering: no GPU).
+# touched, with only the declared artifacts (the submission and the graded episode's record directory) restored into
+# it, so nothing else the agent left (a file, a process, a program planted on root's PATH) reaches it. The dual verify
+# runs main's offline grading unchanged (the limit below is main's) and then grades the graded episode's cell record
+# (seconds), or re-simulates it from its call log when the session ended before the episode did.
+# environment/setup/setup.sh does not run there: tests/test.sh builds the grader's root-owned copy of the givens itself.
+# The agent's program runs during verify, so the verifier gets the agent's resources (CPU rendering: no GPU).
 environment_mode = "separate"
 
 [verifier.environment]

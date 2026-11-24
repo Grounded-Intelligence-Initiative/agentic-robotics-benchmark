@@ -1,8 +1,8 @@
 {
+ "metric": "dual_mode_score",
  "direction": "higher",
- "full_at": 0.95,
- "metric": "caretaking_score",
- "note": "caretaking_score is the contract gate times the mean over the six hidden sites of the site score R x (D + U1 + H + U2 + V + K + L + E) (diagnosis 0.14, removal 0.10, docking 0.10, hold 0.14, ventilation 0.08, the sheet fixed on a holding screen 0.18, the pouches on pouch pads 0.18, economy 0.08; R = 1.0, else 0.85), already on [0, 1]; ratio = score / value, reward = clamp(ratio / full_at, 0, 1). full_at 0.95: the house value for a task that runs programs.",
- "source": "design target (the task's scoring rules; the hidden set is selected so that the privileged reference scores 1.000 on every site), written on 2026-11-17 before any verify on the hidden set and measured with one full verify of the oracle submission (solution/) in a fresh container of the task image; a different measured value reopens it",
- "value": 1.0
+ "value": 1.0,
+ "full_at": 1.0,
+ "source": "1.0 by construction (the mean of the program item, main's caretaking_score against main's anchor in anchor_offline.json, and the live item, the graded episode's site score against the online anchor in anchor_online.json, each normalised by its own measured anchor), confirmed 2026-11-24 by ale validate validate-79e32884 (engine bfb7505, the dual mode at 429961f1): the oracle scored dual_mode_score 1.0 (offline_reward 1.0: main's privileged reference program frozen at the graded start, 1.000 on each of the 6 hidden sites; online_reward 1.0: the privileged reference program on the graded site hidden_l2xp_1, site score 1.000); the untouched sandbox scored 0.0",
+ "note": "dual mode: reward = (offline_reward + online_reward) / 2; the components' anchors are anchor_offline.json (main's anchor.json, byte-identical) and anchor_online.json (the live item's)"
 }

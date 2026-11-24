@@ -1,7 +1,8 @@
 {
-  "metric": "kit_success_rate",
-  "direction": "higher",
-  "value": 1.0,
-  "full_at": 0.98,
-  "source": "Privileged reference solution (solution/, token-gated ground truth) on the 10 fixed hidden kits of tests/ref/episodes.json, the pre-registered selection of tests/hidden/selection.json as amended on 2026-11-17 (amendment 4: an 85 s takt of 850 steps on amendment 3's cell: every episode a real kit on the cell of the day within the data sheet's tolerances, a locating fit of the nut on its shaft, the hand's fingers one mechanism). The kits are unchanged, so the rule ran again on amendment 3's 16 os.urandom candidates, each once through the grader on the amended image; the frozen reference completed the same 12 within the takt, each with the steps of its earlier run (600 to 802), and the first 10 in drawn order are the set, the same ten kits. One full verify of its submission in a fresh container of the task image in the separate verifier's layout (tests/review/regrade.sh, 2026-11-17, recorded under the amendment's anchor_verify) completed 10 of 10 kits (30 of 30 nuts), every episode with the same steps as its selection run: measured 1.0. The reference is deterministic on the set (it acts on the real observation's proprioception and the real groove and poses from _gt; layout, tolerances and noise follow from each episode's seed), so full_at 0.98."
+ "metric": "dual_mode_score",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 1.0,
+ "note": "dual mode (experiment, never merged into main): dual_mode_score = (offline_reward + online_reward) / 2, the mean of the task's two items, each already normalised by its own anchor, cap and full_at: the program item by anchor_offline.json (main's anchor: kit_success_rate over the 10 hidden kits) and the graded-episode item by anchor_online.json (kit_success_rate of the one live graded episode, the kit F01). So the reference reaches 1.0 on both, and the combined anchor is 1.0 by construction; reward = clamp(dual_mode_score / 1.0, 0, 1).",
+ "source": "by construction from the two component anchors, each the reference's own measured value (never a published figure): anchor_offline.json is main's (1.0, full_at 0.98) and anchor_online.json the reference's measured score on the graded episode F01 (1.0); confirmed by this dual mode's validate, validate-6a0715af (engine bfb7505, commit e594730a): the oracle's program item, frozen at the graded start (4 files), completed 10 of 10 hidden kits (kit_success_rate 1.0, offline_reward 1.0) and its graded episode completed F01 at step 738 (kit_success_rate 1.0, online_reward 1.0), so dual_mode_score 1.0; untouched 0.0."
 }

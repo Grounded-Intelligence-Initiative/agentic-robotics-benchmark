@@ -6,7 +6,10 @@
     and the givens' hashes;
   * the public contract: the instruction names every weight-file extension and training-call string that the
     submission checks refuse;
-  * the numerics pin: the variables the run regime sets are the ones the instruction and the image name.
+  * the numerics pin: the variables the run regime sets are the ones the instruction and the image name;
+  * the dual mode (experiment branch): main's anchor is the program item's (tests/anchor_offline.json), and the graded
+    episode's service runs the grader's cell, configuration and reference program (the digests and byte copies of
+    environment/setup/online/) on a site of the hidden set.
 """
 import ast
 import hashlib
@@ -66,7 +69,7 @@ def test_the_hidden_set_is_eight_sites_from_the_selection_record():
     assert training == sel["chosen"]["training"]["seeds"]
     assert not set(training) & set(sel["candidates"]["hidden"])
     assert "on **%d hidden sites**" % SITES in _text("instruction.md")
-    assert json.loads(_text("tests/anchor.json"))["full_at"] == 0.98
+    assert json.loads(_text("tests/anchor_offline.json"))["full_at"] == 0.98     # dual mode: main's anchor.json
 
 
 def test_the_training_ground_runs_the_graders_cell_and_numbers():
@@ -133,3 +136,19 @@ def test_the_selection_record_is_of_this_cell_and_this_reference():
     assert digest in last["reference"]
     chosen = sel["chosen"]["hidden"]
     assert all(r["admitted"] for r in sel["runs"] if r["pool"] == "hidden" and r["index"] in chosen["indices"])
+
+
+def test_the_graded_episode_runs_the_graders_cell_on_a_hidden_site():
+    online = TASK / "environment" / "setup" / "online"
+    svc = json.loads(_text("environment/setup/online/service.json"))
+    assert svc["cell_sha256"] == _files(TASK / "tests" / "rubblecell")
+    assert svc["reference_sha256"] == _files(TASK / "tests" / "reference")
+    assert (online / "grader_config.json").read_bytes() == (TASK / "tests" / "grader_config.json").read_bytes()
+    assert svc["cell_config_sha256"] == hashlib.sha256((TASK / "tests" / "grader_config.json").read_bytes()).hexdigest()
+    assert _files(online / "reference") == _files(TASK / "tests" / "reference")
+    ep = json.loads(_text("environment/setup/online/episode.json"))
+    rec = json.loads(_text("tests/online.json"))
+    seeds = json.loads(_text("tests/hidden/seeds.json"))["seeds"]
+    assert ep["episode"] == rec["episode"] == "ep%02d" % (seeds.index(ep["seed"]) + 1)
+    assert ep["seed_sha256"] == rec["seed_sha256"] == hashlib.sha256(str(ep["seed"]).encode()).hexdigest()
+    assert ep["oracle_token_sha256"] == _text("tests/hidden/oracle_token.sha256").strip()

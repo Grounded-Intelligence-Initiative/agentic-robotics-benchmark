@@ -1,8 +1,8 @@
 {
  "direction": "higher",
- "full_at": 0.97,
- "metric": "assembly_score",
- "note": "assembly_score is contract_ok x the episode mean of ((the counted structural mates' weight + 4.5 x trim) / 15.5 x hard_ok) over the four fixed hidden episodes, already on [0, 1]; ratio = score / 1.0, reward = min(ratio / full_at, 1). full_at 0.97 (DESIGN v1.2 section 3.1, design brief rule 7): the score is discrete, and one lost trim tier in one episode (0.978) or one lost guard in one episode (0.984) still saturates, one lost thruster (0.976) too, a lost enclosure (0.952) does not",
- "source": "the reference program's own assembly_score by construction: with the token, the privileged reference program inside the cell fastens all 7 structural places and trims the vehicle into all three windows on each of the four fixed hidden episodes, which the hidden-set selection requires of every kept episode (DESIGN v1.2 section 3.5 (a)); the measured value of that run is filed by the hidden-set and integration packages (P20, P32)",
+ "full_at": 1.0,
+ "metric": "dual_mode_score",
+ "note": "dual mode (experimental): reward = (offline reward + online reward) / 2, each the item's unrounded reward (robotics_grader.ratio_rewards against its own anchor and full_at: tests/anchor_offline.json, main's anchor.json byte for byte, for the program on the four fixed hidden episodes; tests/anchor_online.json for the graded episode); the mean is written through ratio_rewards once more against this anchor with cap 1.0 and full_at 1.0, so the reward is the mean itself. The offline item grades the program frozen at the earlier of the graded start and the start window's close (or at the session's end when the session ends first) exactly as main does; the online item scores the graded episode's record.",
+ "source": "by construction, confirmed by ale validate's oracle pass: validate-8349a947 (2026-11-24, engine bfb7505, a clean checkout of 6946b377 made with umask 022): dual_mode_score 1.0 = (offline reward 1.0 + online reward 1.0) / 2. The offline item graded the reference program frozen at the graded start (2 files) on the four fixed hidden episodes as main does: assembly_score 1.0 (tests/anchor_offline.json's value), contract_ok 1, main's verify 661 s; the online item scored the graded episode E3: 7 / 7 places, trim 1.0, hard_ok, 300.7 s simulated, assembly_score 1.0 (tests/anchor_online.json's value). Untouched: 0.0. Each item is normalised by its own anchor, so an oracle that reaches both anchors scores 1.0.",
  "value": 1.0
 }

@@ -7,6 +7,11 @@ observation only: no ground truth, no credit, no word on how a worklist went. Th
 equipment's sheets, the service's client and a runner; none of them holds the simulator or says how to do the job.
 
 Standard library only (the host-side suite has no numpy): the service is read as text and a syntax tree, not run.
+
+Dual mode (experiment, branch exp/dual-mode-scoring): main's grader is tests/offline_verify.py (byte-identical to
+main's tests/verify.py), the commissioning service closes when the graded episode starts (its status gains
+`commissioning_closed`), the agent's home gains the graded episode's client and runner (graded/), and the session is
+the 2-hour start window plus the graded episode's 3 hours (test_lab_sample_handling_dual.py tests the rest).
 """
 
 import ast
@@ -181,7 +186,7 @@ class CommissioningService(unittest.TestCase):
                 keys |= {k.value for k in node.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)}
         self.assertEqual(keys, {"id", "result", "error", "detail", "obs", "unit", "episode", "steps_left", "done",
                                 "ended", "closed", "window_steps", "steps_used", "resets", "reset_steps",
-                                "max_benches", "benches_open", "units", "episodes"})
+                                "max_benches", "benches_open", "units", "episodes", "commissioning_closed"})
 
     def test_the_observation_carries_no_truth(self):
         tree = ast.parse((TASK / "tests/lab_env.py").read_text())
@@ -240,7 +245,8 @@ class AgentSide(unittest.TestCase):
         files = sorted(p.relative_to(PAYLOAD).as_posix() for p in PAYLOAD.rglob("*")
                        if p.is_file() and "__pycache__" not in p.parts)
         self.assertEqual(files, ["NOTICE.md", "commission/__init__.py", "commission/client.py",
-                                 "commission/run_bench.py", "helpers/wire_skeleton.py", "session_time.sh",
+                                 "commission/run_bench.py", "graded/__init__.py", "graded/client.py",
+                                 "graded/run_graded.py", "helpers/wire_skeleton.py", "session_time.sh",
                                  "task_card.md"])
         for rel in files:
             text = (PAYLOAD / rel).read_text()
@@ -249,27 +255,34 @@ class AgentSide(unittest.TestCase):
                 self.assertNotIn(word, text, "%s holds %s" % (rel, word))
 
     def test_instruction_names_only_what_the_agent_has(self):
-        for name in ("task_card.md", "commission/client.py", "commission/run_bench.py", "helpers/wire_skeleton.py",
-                     "session_time.sh"):
+        for name in ("task_card.md", "commission/client.py", "commission/run_bench.py", "graded/client.py",
+                     "graded/run_graded.py", "helpers/wire_skeleton.py", "session_time.sh"):
             self.assertIn(name, INSTRUCTION)
             self.assertTrue((PAYLOAD / name).is_file(), name)
         for gone in ("lab_sim.py", "lab_env.py", "episode.py", "units.json", "practice", "box_transport_env.py"):
             self.assertNotIn(gone, INSTRUCTION)
 
     def test_session_time_is_the_engines_limit(self):
-        """The instruction's session limit, the script's and the engine's agent timeout are one number; the stamp the
-        script reads is written by setup.sh into a folder that is root's (the agent's account reads it and can
-        neither change nor replace it)."""
+        """The instruction's session limit, the script's and the engine's agent timeout are one number, and so are
+        the start window's (the dual mode: main's 2 hours for the controller and the preparation, then the graded
+        episode's 3 hours); the stamp the script reads is written by setup.sh into a folder that is root's (the
+        agent's account reads it and can neither change nor replace it)."""
         toml = (TASK / "task.toml").read_text()
         agent = toml[toml.index("[agent]"):]
         timeout = int(re.search(r"^timeout_sec\s*=\s*(\d+)", agent, re.M).group(1))
         script = (PAYLOAD / "session_time.sh").read_text()
         limit = int(re.search(r"^LIMIT_MIN=(\d+)$", script, re.M).group(1))
+        prep = int(re.search(r"^PREP_MIN=(\d+)$", script, re.M).group(1))
+        service = json.loads((TASK / "environment/setup/online/service.json").read_text())
         self.assertEqual(limit * 60, timeout)
-        self.assertEqual(timeout, 2 * 3600)
+        self.assertEqual(timeout, 5 * 3600)
+        self.assertEqual(prep * 60, service["prep_s"])
+        self.assertEqual(service["prep_s"] + service["graded_s"], timeout)
+        self.assertEqual(service["prep_s"], 2 * 3600)                 # main's agent budget
         text = flat(INSTRUCTION)
-        for words in ("You have 2 hours of wall-clock time", "This session is stopped 2 hours of wall-clock time after it started",
-                      "bash /home/user/session_time.sh", "How much of the 2 hours is left".lower()):
+        for words in ("The session lasts 5 hours of wall-clock time: 2 hours for the controller and your preparation",
+                      "This session is stopped 5 hours of wall-clock time after it started",
+                      "bash /home/user/session_time.sh", "how much of the session or of the start window is left"):
             self.assertIn(words.lower(), text.lower())
         stamp = re.search(r"^STAMP=(\S+)$", script, re.M).group(1)
         self.assertEqual(stamp, "/run/session/start")
@@ -353,7 +366,7 @@ class Grader(unittest.TestCase):
         """The kit's clearing takes seconds in an image with a desktop session. It runs before the empty-account
         check and before the controller's clock exists, so it is never charged to the controller's time budget
         (Solver.__init__ calls it again inside the timed start and gets the first call's report back)."""
-        src = (TASK / "tests/verify.py").read_text()
+        src = (TASK / "tests/offline_verify.py").read_text()            # main's grader (dual mode)
         main = src[src.index("\ndef main():"):]
         clear, kill, check = (main.index("cleared = clear_agent_account()"), main.index("kill_agent_processes(uid)"),
                               main.index("require_empty_account(uid)"))
@@ -391,7 +404,7 @@ class Grader(unittest.TestCase):
         check = (TASK / "tests/numerics_check.py").read_text()
         self.assertIn('CONTROLLER_ENV = {"PATH": "/opt/venv/bin:/usr/local/bin:/usr/bin:/bin", "HOME": "/tmp", "LANG": "C.UTF-8"}', check)
         self.assertIn('"PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin", "HOME=/home/user", "LANG=C.UTF-8"',
-                      (TASK / "tests/verify.py").read_text())
+                      (TASK / "tests/offline_verify.py").read_text())
 
 
 if __name__ == "__main__":

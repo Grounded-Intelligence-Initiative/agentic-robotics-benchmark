@@ -46,6 +46,10 @@ RUN mkdir -p /home/user/submission && chown -R user:user /home/user/submission
 # reaches it through a unix socket and gets the robot's public calls, reset(site) and each mission's log (the robot's
 # own: no truth of the site, no score).
 RUN useradd --system --no-create-home --home-dir /opt/rubblecell-training --shell /usr/sbin/nologin rubblecell
+# The dual mode (experiment): the graded episode's service (environment/setup/online/graded_service.py) serves the
+# agent's one graded episode as its own account, never root, never the agent, and not `rubblecell`, whose service runs
+# the agent's training missions (and closes when the graded episode starts: trainingd.py's practice flag).
+RUN useradd --system --user-group --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin rubblegrade
 COPY training_ground /opt/rubblecell-training
 RUN find /opt/rubblecell-training -name '__pycache__' -type d -prune -exec rm -rf {} + \
     && rm -rf /opt/rubblecell-training/state \

@@ -1,93 +1,75 @@
-"""Hidden grader for keyed_nut_peg_assembly (closed loop, hidden nuts, fixed hidden episodes).
+"""Grader for keyed_nut_peg_assembly, dual mode (experimental; never merged into main): one verify for the two items.
 
-Runs as root in a SEPARATE verifier sandbox (SPEC 14.10: no agent process exists there; the engine
-restores only the declared artifact /home/user/submission). Defensively it still stops any agent-UID
-process first (rev-leak R14, SPEC L3), then hands the
-restored submission (size-capped) to the agent account in place, at /home/user/submission, the folder the
-instruction names (ownership changes never follow a symlink). It owns its own copy of
-the robot cell (keyed_env.py; the agent never reads it: its sandbox has the cell's data sheet and a commissioning
-service that runs a byte copy of this file on development kits, under an account of its own) and the credit rule
-(keyed_credit.py, grader-only), plays the fixed hidden episodes of tests/ref/episodes.json in order (each: a
-kit of three nuts and its work order, drawn with the public `sample_kit` from a seed, and the layout and
-noise seed; the set and its pre-registered selection: tests/hidden/selection.json), drives the agent's
-controller over the kit wire at the agent's UID, and scores every episode from its own simulator state
-(`GradedNutEnv.episode_score`: 1 if the whole kit was assembled, every nut on its own peg, else 0). The
-metric is the fraction of complete kits; the fraction of nuts assembled and the staged
-`GradedNutEnv.progress` are reported as diagnostics only.
+Runs as root in a SEPARATE verifier sandbox. The agent had one session for two scoring items, scored together:
+  * the program (main's task): the controller it left in /home/user/submission/, graded by main's own grader,
+    unchanged (tests/offline_verify.py, byte-identical to main's tests/verify.py: the 10 fixed hidden kits of
+    ref/episodes.json, the kit wire with its probe lock, the seccomp launcher, the per-kit controller budget and image
+    charges, the wall-clock safety net), against main's anchor (tests/anchor_offline.json, main's anchor.json);
+  * the graded episode: one hidden kit of that set it assembled itself, live, through the graded episode's service
+    (environment/setup/online/graded_service.py, the account `keyedgrade`), whose record the service wrote to
+    /var/lib/arb-online/record.json, against the online anchor (tests/anchor_online.json).
+The program is frozen at the earlier of the graded start and the close of the start window: the service's root
+supervisor copied the submission folder into /var/lib/arb-online/submission_snapshot/ before the start was charged, or
+when the start window closed without a start (the record holds the trigger, the status, the counts and the digest; the
+service's state.json holds the same). The engine collected that directory and the submission as declared artifacts
+after the agent phase and restored them here, root-owned.
 
-Time: every kit has a controller budget (grader_config.json controller_budget_s): the time the grader waits
-for the controller (launch to READY and the reset reply, then every reply) plus a fixed charge per image the
-controller asks for (image_charge_s, per camera). The simulator's own time is not charged, so the grading
-machine's speed does not change a score; a kit whose controller exhausts its budget stops at that step and is
-scored on the state it reached. A wall-clock cap on the whole run (wall_cap_s, below the stage timeout) is only
-a safety net: the episode under way when it is reached and the ones after it score 0.
-
-Reference-solution access: if the submission holds a file `oracle_token` whose SHA-256 equals
-tests/oracle_token.sha256, every observation also carries `_gt` (the ground-truth scene state). Only
-solution/ has the token; the hash is useless without it. The probe lock is recorded, never gating.
-
-No memory between episodes: every episode starts a new controller process from a fresh copy of the
-submission as restored (kept root-only), after every agent-UID process has been stopped and every
-file the agent account owns in the writable places outside the submission has been removed.
-
-Additions to the kit wire (the vendored kit stays byte-identical):
-  * GuardedSolver: the solver is started through nonet_exec.py, which installs a seccomp filter
-    (only AF_UNIX sockets), drops to the agent account and execs `bash run.sh` with a whitelist
-    environment. Reply lines are capped at 64 KiB.
-  * A start-up self-test proves the network block (`egress_guard`); if the filter cannot be
-    installed, /proc/net is polled every step and any agent-UID internet socket zeroes the run.
-  * Every agent-UID process is killed (bounded, fail-closed) before the solver starts and after it
-    closes. One that outlives the bounded kill (the base image's supervisord respawns the account's
-    desktop as fast as it is killed) is stopped; only one still running once stopped fails the run.
-  * The per-kit controller budget and the wall-clock safety net above.
-  * Every path agent behaviour can reach is charged as a score, never a crash.
+In this order: stop every agent-UID process (as main's grader does); read and check the record (a regular file of at
+most 1 MB, strict JSON, this task's format, task, episode and seed digest as tests/online.json); if the record (or,
+failing it, state.json) records a freeze, the program graded is the snapshot: it must be status ok and match the
+record's counts and digest (a missing or altered copy is a task error), and it replaces the restored submission; a
+freeze that is too_large, failed or still pending scores the program item 0 without a run; when nothing was frozen
+(the session ended before the start window closed, or there is no usable record of a freeze) the restored session-end
+submission is graded, as on main. Main's grader runs on it, its verdict captured instead of written. The graded
+episode's item is the record's episode_score (0 without a valid, started record; a record that says the cell itself
+failed is a task error, as a failure of the offline grader's renderer is). Every agent-UID process is stopped again.
+reward = the mean of the two items' rewards, each normalised by its own anchor, cap and full_at, written once through
+the kit against tests/anchor.json (dual_mode_score, 1.0 when both items reach their anchors).
+Untouched sandbox: no record, an empty submission -> 0 + 0. Oracle: the reference controller frozen at the start (main's
+oracle) and the reference on the graded episode -> 1 + 1.
 """
 
+import hashlib
 import json
 import math
 import os
 import pwd
 import shutil
 import signal
-import subprocess
+import stat
 import sys
-import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import hashlib  # noqa: E402
-
-import keyed_credit as KC  # noqa: E402
-import keyed_env as E  # noqa: E402
 from robotics_grader import (  # noqa: E402
-    ProbeLock,
-    Solver,
-    SolverAborted,
-    SolverMissing,
     agent_user,
-    clear_agent_account,
     ratio_rewards,
     read_anchor,
-    seed_rng,
     stage_config,
     write_verdict,
     zero_verdict,
 )
+from robotics_grader.stage import fail  # noqa: E402
 
 STAGE = os.path.dirname(os.path.abspath(__file__))
-MAX_SUBMISSION_BYTES = 200 * 1024 * 1024
-MAX_SUBMISSION_FILES = 5000
-NONET = os.path.join(STAGE, "nonet_exec.py")
-EPISODES = os.path.join(STAGE, "ref", "episodes.json")
-TOKEN_HASH = os.path.join(STAGE, "oracle_token.sha256")
-MAX_LINE = 65536
+ONLINE = os.path.join(STAGE, "online.json")
+ONLINE_DIR = "/var/lib/arb-online"
+RECORD = os.path.join(ONLINE_DIR, "record.json")
+STATE = os.path.join(ONLINE_DIR, "state.json")
+SNAPSHOT = os.path.join(ONLINE_DIR, "submission_snapshot")
+RECORD_FORMAT = "arb-online-record/1"
+MAX_RECORD_BYTES = 1 << 20
+METRIC = "kit_success_rate"           # both items' metric (main's, and the graded episode's on the same scale)
+END_REASONS = ("done", "finish", "graded_window", "worker_restart")
 
 
 def log(msg):
     print("[grader] " + msg, file=sys.stderr, flush=True)
 
 
+# ---------------------------------------------------------------------------------------------- the agent's processes
+# (main's own functions, as tests/offline_verify.py has them)
 def _agent_ids():
     pw = pwd.getpwnam(agent_user())
     return pw.pw_uid, pw.pw_gid
@@ -103,8 +85,6 @@ def _agent_pids(uid):
                 zombie = False
                 for line in f:
                     if line.startswith("State:"):
-                        # a zombie runs no code; it only waits to be reaped (r5: a zombie made the
-                        # bounded kill report cleanup_failed in 1 of 24 oracle runs under load)
                         zombie = line.split()[1].startswith(("Z", "X"))
                     elif line.startswith("Uid:"):
                         if int(line.split()[1]) == uid and not zombie:
@@ -143,8 +123,8 @@ def _proc_state(pid):
 
 
 def _still_running(uid, bound_s=3.0):
-    """SIGSTOP every live process of `uid` until a pass finds none still running (a respawn that appears meanwhile is
-    stopped by the next pass) or `bound_s` elapsed; returns the PIDs still running (empty: every one is stopped)."""
+    """SIGSTOP every live process of `uid` until a pass finds none still running or `bound_s` elapsed; returns the
+    PIDs still running (empty: every one is stopped)."""
     deadline = time.monotonic() + float(bound_s)
     while True:
         for pid in _agent_pids(uid):
@@ -159,10 +139,8 @@ def _still_running(uid, bound_s=3.0):
 
 
 def stop_agent_processes(uid):
-    """kill_agent_processes, then: True when none is left or every one left is stopped. The base image's supervisord
-    respawns the agent account's desktop as fast as it is killed, so in the separate verifier a process that outlives
-    the bounded kill is the image's own; it is stopped (a stopped process does not exit, so it is not respawned) and
-    only one still running once stopped fails the run (cleanup_failed), as before."""
+    """kill_agent_processes, then: True when none is left or every one left is stopped (the base image's supervisord
+    respawns the agent account's desktop as fast as it is killed; a stopped process is not respawned)."""
     if kill_agent_processes(uid):
         return True
     running = _still_running(uid)
@@ -171,388 +149,291 @@ def stop_agent_processes(uid):
     return not running
 
 
-def image_charge(action, charges):
-    """(charge in s, count) of the images an action asks for; (0, 0) for a malformed action (env.step rejects it)."""
+# ---------------------------------------------------------------------------------------------- the record
+def _no_constants(name):
+    raise ValueError("non-finite constant")
+
+
+def load_record(path=RECORD):
+    """(object, None) for a regular file of at most 1 MB holding a JSON object (never read through a link), else
+    (None, why); why is "missing" when there is no file."""
     try:
-        _mv, _g, render = E.parse_action(action)
-    except (E.ActionError, TypeError, ValueError, OverflowError):
-        return 0.0, 0
-    return sum(float(charges[c]) for c in render), len(render)
-
-
-class GuardedSolver(Solver):
-    """The kit Solver, spawned through the seccomp launcher, with a reply-line cap."""
-
-    guard = True
-    nproc = 0
-
-    def _spawn(self):
-        uid, gid = _agent_ids()
-        cmd = [sys.executable, "-I", NONET, "--uid", str(uid), "--gid", str(gid), "--rlimit-nproc", str(self.nproc),
-               "--cwd", self.submission, "--", "bash", self.entry]
-        if not self.guard:
-            cmd = ["/usr/sbin/runuser", "-u", agent_user(), "--", "/usr/bin/env", "-i",
-                   "PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin", "HOME=/home/user", "LANG=C.UTF-8",
-                   "bash", self.entry]
-        try:
-            return subprocess.Popen(cmd, cwd=self.submission, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                    stderr=subprocess.DEVNULL, universal_newlines=True, bufsize=1,
-                                    start_new_session=True, env={"PATH": "/usr/bin:/bin"})
-        except OSError as exc:
-            raise SolverAborted("solver could not be started: {}".format(exc))
-
-    @staticmethod
-    def _pump(proc, lines):
-        while True:
-            try:
-                line = proc.stdout.readline(MAX_LINE + 1)
-            except (ValueError, OSError, UnicodeDecodeError):
-                break
-            if not line:
-                break
-            if len(line) > MAX_LINE and not line.endswith("\n"):
-                break          # oversize reply: treated as a closed wire (episode aborts)
-            lines.put(line)
-        lines.put(None)
-
-
-def egress_self_test(uid, gid, nproc=0):
-    """True if a probe started through the launcher cannot open an internet socket."""
-    probe = ("import socket,sys\n"
-             "bad=0\n"
-             "for fam in (socket.AF_INET, socket.AF_INET6, 40):\n"
-             "    try:\n"
-             "        socket.socket(fam, socket.SOCK_STREAM).close(); bad=1\n"
-             "    except OSError:\n"
-             "        pass\n"
-             "try:\n"
-             "    socket.socket(socket.AF_UNIX, socket.SOCK_STREAM).close()\n"
-             "except OSError:\n"
-             "    bad=1\n"
-             "sys.exit(3 if bad else 0)\n")
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return None, "missing"
+    except OSError as e:
+        return None, "unreadable ({})".format(type(e).__name__)
+    if not stat.S_ISREG(st.st_mode):
+        return None, "not a regular file"
+    if st.st_size > MAX_RECORD_BYTES:
+        return None, "larger than 1 MB"
     try:
-        r = subprocess.run([sys.executable, "-I", NONET, "--uid", str(uid), "--gid", str(gid),
-                            "--rlimit-nproc", str(nproc), "--cwd", "/",
-                            "--", sys.executable, "-I", "-c", probe],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60,
-                           env={"PATH": "/usr/bin:/bin"})
-        return r.returncode == 0
-    except (OSError, subprocess.SubprocessError):
-        return False
-
-
-def agent_inet_sockets(uid):
-    """Count agent-UID internet sockets with a non-loopback peer (detection fallback)."""
-    n = 0
-    for name in ("tcp", "tcp6", "udp", "udp6", "raw", "raw6"):
-        try:
-            with open("/proc/net/" + name) as f:
-                next(f, None)
-                for line in f:
-                    parts = line.split()
-                    if len(parts) < 8 or int(parts[7]) != uid:
-                        continue
-                    rem = parts[2].split(":")[0]
-                    if rem.strip("0") == "" or rem in ("0100007F", "00000000000000000000000001000000"):
-                        continue
-                    n += 1
-        except (OSError, ValueError, StopIteration):
-            continue
-    return n
-
-
-def stage_submission(uid, gid):
-    """Make the restored submission the agent account's own folder, in place at ~user/submission: the
-    folder the instruction names, where run.sh is started and where the controller may write, as it can in
-    a commissioning run. Ownership changes never follow a symlink (lchown, a walk that does not
-    follow links); size and file count are capped. Returns the path, or None if there is no usable
-    submission."""
-    src = os.path.join(os.path.expanduser("~" + agent_user()), "submission")
-    if not os.path.isdir(src) or os.path.islink(src):
-        return None
-    total = files = 0
-    for dp, dns, fns in os.walk(src, followlinks=False):
-        for fn in fns:
-            fp = os.path.join(dp, fn)
-            files += 1
-            if not os.path.islink(fp):
-                try:
-                    total += os.lstat(fp).st_size
-                except OSError:
-                    pass
-        if files > MAX_SUBMISSION_FILES or total > MAX_SUBMISSION_BYTES:
-            return None
-    for dp, dns, fns in os.walk(src, followlinks=False):
-        for name in dns + fns:
-            os.lchown(os.path.join(dp, name), uid, gid)
-    os.lchown(src, uid, gid)
-    os.chmod(src, 0o700)
-    return src
-
-
-def oracle_access(workdir):
-    """True if the submission carries the reference solution's token (see the module docstring)."""
-    p = os.path.join(workdir, "oracle_token")
-    try:
-        if os.path.islink(p) or not os.path.isfile(p) or os.path.getsize(p) > 256:
-            return False
-        with open(p, "rb") as fh:
-            tok = fh.read().strip()
-        with open(TOKEN_HASH) as fh:
-            want = fh.read().strip()
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     except OSError:
-        return False
-    return hashlib.sha256(tok).hexdigest() == want
-
-
-SCRUB_ROOTS = ("/tmp", "/var/tmp", "/dev/shm", "/usr/local", "/run", "/var/lock")
-
-
-def _agent_entries(uid, home):
-    """Paths the agent account owns under the writable roots and its home (never following a symlink),
-    except the submission folder and what is inside it."""
-    sub = os.path.join(home, "submission")
-    found = set()
-    for root in list(SCRUB_ROOTS) + [home]:
-        for dp, dns, fns in os.walk(root, topdown=True, followlinks=False):
-            dns[:] = [d for d in dns if os.path.join(dp, d) != sub]
-            for name in dns + fns:
-                path = os.path.join(dp, name)
-                try:
-                    if os.lstat(path).st_uid == uid:
-                        found.add(path)
-                except OSError:
-                    continue
-    return found
-
-
-def scrub_agent_files(uid, home, baseline):
-    """Remove every file or directory the agent account owns there that was not there before grading
-    started (`baseline`): what the image ships is never touched."""
-    for path in sorted(_agent_entries(uid, home) - baseline, key=len):
-        try:
-            if os.path.isdir(path) and not os.path.islink(path):
-                shutil.rmtree(path, ignore_errors=True)
-            elif os.path.lexists(path):
-                os.unlink(path)
-        except OSError:
-            pass
-
-
-def fresh_submission(pristine, workdir, uid, gid):
-    """Replace the submission folder with a fresh copy of the restored one, owned by the agent."""
-    shutil.rmtree(workdir, ignore_errors=True)
-    shutil.copytree(pristine, workdir, symlinks=True)
-    for dp, dns, fns in os.walk(workdir, followlinks=False):
-        for name in dns + fns:
-            os.lchown(os.path.join(dp, name), uid, gid)
-    os.lchown(workdir, uid, gid)
-    os.chmod(workdir, 0o700)
-
-
-def run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt, pristine=None, gid=None,
-                 baseline=None):
-    budget = float(config.get("controller_budget_s", 600))
-    charges = dict(config.get("image_charge_s", {"left": 0.45, "right": 0.45, "wrist": 0.35}))
-    wall_cap = float(config.get("wall_cap_s", 12000))
-    lock = ProbeLock(rng, rate=config.get("probe_rate", 0.01),
-                     pass_fraction=config.get("probe_pass_fraction", 0.1), tolerance=1e-4)
-    scores, aborted, faults = [], 0, 0
-    per_nut = {}
-    per_stage = {}
-    progress = []
-    nuts_done = []
-    egress_hits = 0
-    wall_cap_hit = False
-    controller_s, budget_cut, images = [], 0, 0
-    GuardedSolver.guard = egress_mode == "seccomp"
-    GuardedSolver.nproc = int(config.get("solver_nproc_limit", 0))
-    solver = None
+        return None, "unreadable"
     try:
-        for ep, item in enumerate(plan):
-            if solver is not None:
-                try:
-                    solver.close()
-                except Exception:  # noqa: BLE001 - closing a broken solver must not crash the grader
-                    pass
-            if pristine is not None:
-                stop_agent_processes(uid)
-                scrub_agent_files(uid, os.path.dirname(workdir), baseline or set())
-                fresh_submission(pristine, workdir, uid, gid)
-            solver = None
-            nut = item["id"]
-            if time.monotonic() - t_start > wall_cap:
-                wall_cap_hit = True
-                scores.append(0.0)
-                per_nut.setdefault(nut, []).append(0.0)
-                log("episode {} ({}): not run, the grading wall-clock cap ({:.0f} s) was reached".format(ep, nut, wall_cap))
-                continue
-            env = KC.GradedNutEnv(specs[nut]["nuts"], early_end=True)
-            score = 0.0
-            prog = 0.0
-            ndone = 0
-            reason = "ok"
-            spent = 0.0              # this kit's controller time: start-up, replies, image charges
-            try:
-                obs = env.reset(int(item["seed"]), specs[nut]["order"])
-                started = time.monotonic()
-                solver = GuardedSolver(step_timeout=config.get("step_timeout_s", 30), submission=workdir,
-                                       max_restarts=0)
-                solver.reset()
-                spent += time.monotonic() - started
-                for t in range(env.max_steps):
-                    if time.monotonic() - t_start > wall_cap:
-                        wall_cap_hit = True
-                        raise SolverAborted("grading wall-clock cap reached")
-                    if egress_mode == "detect" and agent_inet_sockets(uid):
-                        egress_hits += 1
-                    wire = E.to_wire(obs)
-                    if with_gt:
-                        wire["_gt"] = KC.ground_truth(env, wire)
-                    other = None
-                    if lock.due():
-                        other = E.to_wire(env.perturbed_observation(obs, rng))
-                        if with_gt:
-                            other["_gt"] = wire["_gt"]
-                    asked = time.monotonic()           # the controller's time starts once the request is ready
-                    if other is not None:
-                        action = lock.probe(solver, t, wire, perturbed=other)
-                    else:
-                        action = solver.act(t, wire)
-                    spent += time.monotonic() - asked
-                    charge, n_img = image_charge(action, charges)
-                    spent += charge
-                    if spent > budget:
-                        budget_cut += 1
-                        reason = "controller budget ({:.0f} s) used up at t={}".format(budget, t)
-                        break
-                    images += n_img
-                    obs, done, info = env.step(action)
-                    if done:
-                        break
-                if env.fault is not None:
-                    faults += 1
-                    reason = "sim fault: " + env.fault
-                    score = 0.0
-                else:
-                    score = env.episode_score()
-                    prog = env.progress()
-                    ndone = env.nuts_assembled()
-            except (SolverAborted, SolverMissing, E.ActionError, ValueError, TypeError, OverflowError, KeyError,
-                    AttributeError, RecursionError) as exc:
-                aborted += 1
-                score = 0.0
-                reason = "aborted: {}".format(str(exc)[:160])
-            finally:
-                env.close()
-            if not (isinstance(score, float) and math.isfinite(score)) or score < 0:
-                score = 0.0
-            scores.append(score)
-            per_nut.setdefault(nut, []).append(score)
-            progress.append(prog)
-            nuts_done.append(ndone)
-            controller_s.append(spent)
-            log("episode {} ({}): kit_complete={:.0f} nuts_assembled={} progress={:.3f} steps={} controller_s={:.1f} {}".format(
-                ep, nut, score, ndone, prog, getattr(env, "t", 0), spent, reason))
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            return None, "not a regular file"
+        raw = os.read(fd, MAX_RECORD_BYTES + 1)
     finally:
-        try:
-            if solver is not None:
-                solver.close()
-        except Exception:  # noqa: BLE001 - closing a broken solver must not crash the grader
-            pass
-    per_stage["nuts_assembled_fraction"] = [n / float(E.NUTS) for n in nuts_done]
-    timing = {"controller_s_max": max(controller_s) if controller_s else 0.0,
-              "controller_s_mean": sum(controller_s) / len(controller_s) if controller_s else 0.0,
-              "controller_budget_cuts": float(budget_cut), "images_requested": float(images)}
-    return scores, aborted, faults, per_nut, per_stage, egress_hits, wall_cap_hit, lock, progress, timing
+        os.close(fd)
+    if len(raw) > MAX_RECORD_BYTES:
+        return None, "larger than 1 MB"
+    try:
+        obj = json.loads(raw.decode("utf-8"), parse_constant=_no_constants)
+    except (ValueError, UnicodeDecodeError, RecursionError):
+        return None, "not valid JSON"
+    if not isinstance(obj, dict):
+        return None, "not a JSON object"
+    return obj, None
+
+
+def record_state(rec, why, online):
+    """missing | invalid (unreadable, or not this task's graded episode) | not_started | started."""
+    if rec is None:
+        return "missing" if why == "missing" else "invalid"
+    if rec.get("format") != RECORD_FORMAT or any(rec.get(k) != online[k] for k in ("task", "episode", "seed_sha256")):
+        return "invalid"
+    return "started" if rec.get("started") is True else "not_started"
+
+
+def check_record(rec, online):
+    """None for a record of this task's graded episode that was started with a finite episode_score >= 0, else why."""
+    if rec.get("format") != RECORD_FORMAT:
+        return "the graded-episode record has another format"
+    for key in ("task", "episode", "seed_sha256"):
+        if rec.get(key) != online[key]:
+            return "the graded-episode record's {} differs from tests/online.json".format(key)
+    if rec.get("started") is not True:
+        return "the graded episode was never started"
+    score = rec.get("episode_score")
+    if isinstance(score, bool) or not isinstance(score, (int, float)) or not math.isfinite(score) or score < 0:
+        return "the graded-episode record has no finite episode_score >= 0"
+    return None
+
+
+def _number(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
+def record_metrics(rec):
+    """The record's counters, how the episode ended and its per-episode sub-metrics, as finite numbers."""
+    out = {}
+    for key in ("steps", "sim_time_s", "requests", "wall_s_since_start", "started_after_s"):
+        if _number(rec.get(key)):
+            out[key] = float(rec[key])
+    out["episode_ended"] = 1.0 if rec.get("ended") is True else 0.0
+    for reason in END_REASONS:
+        out["end_" + reason] = 1.0 if rec.get("end_reason") == reason else 0.0
+    out["privileged"] = 1.0 if rec.get("privileged") is True else 0.0
+    metrics = rec.get("metrics")
+    if isinstance(metrics, dict):
+        for key, v in sorted(metrics.items()):
+            if isinstance(key, str) and _number(v) and key not in out:
+                out[key] = float(v)
+    return out
+
+
+# ---------------------------------------------------------------------------------------------- the freeze
+def snapshot_digest(entries):
+    """The graded episode's service's digest (graded_service.snapshot_digest): the sorted (path, size, sha256) list."""
+    h = hashlib.sha256()
+    for rel, size, sha in sorted(entries):
+        h.update(rel.encode("utf-8", "surrogateescape") + b"\0" + str(int(size)).encode() + b"\0" + sha.encode() + b"\n")
+    return h.hexdigest()
+
+
+def snapshot_listing(root):
+    """(entries, files, bytes, problems) of a restored snapshot: its regular files; a link or a special file is a
+    problem (the service copies neither)."""
+    entries, nbytes, problems = [], 0, []
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        for name in list(dirnames):
+            if os.path.islink(os.path.join(dirpath, name)):
+                problems.append("link " + name)
+                dirnames.remove(name)
+        for name in filenames:
+            p = os.path.join(dirpath, name)
+            st = os.lstat(p)
+            if not stat.S_ISREG(st.st_mode):
+                problems.append("not a regular file: " + os.path.relpath(p, root))
+                continue
+            h = hashlib.sha256()
+            with open(p, "rb") as f:
+                for b in iter(lambda: f.read(1 << 20), b""):
+                    h.update(b)
+            entries.append((os.path.relpath(p, root).replace(os.sep, "/"), st.st_size, h.hexdigest()))
+            nbytes += st.st_size
+    return entries, len(entries), nbytes, problems
+
+
+def freeze_decision(rec, rstate, state, root=SNAPSHOT):
+    """(frozen_by, snapshot fields, why the program item scores 0 or None). frozen_by is graded_start,
+    prep_window_closed or None (nothing frozen: the session-end submission is graded). The freeze comes from a usable
+    record (this task's graded episode: started, or not started with freeze prep_window_closed), else from the
+    service's state.json; with neither, nothing counts as frozen. Neither file is writable from the agent's account.
+    A copy recorded ok that is missing or does not match its record is a task error (fail)."""
+    frozen_by, fields = None, {}
+    if rstate == "started" or (rstate == "not_started" and rec.get("freeze") == "prep_window_closed"):
+        frozen_by = "graded_start" if rstate == "started" else "prep_window_closed"
+        fields = {k: rec.get(k) for k in ("snapshot_status", "snapshot_files", "snapshot_bytes", "snapshot_sha256")}
+    elif isinstance(state, dict) and (state.get("started") is True or state.get("frozen") == "prep_window_closed"):
+        frozen_by = "graded_start" if state.get("started") is True else "prep_window_closed"
+        sn = state.get("snapshot") if isinstance(state.get("snapshot"), dict) else {}
+        fields = {"snapshot_status": sn.get("status"), "snapshot_files": sn.get("files"),
+                  "snapshot_bytes": sn.get("bytes"), "snapshot_sha256": sn.get("sha256")}
+    if frozen_by is None:
+        return None, {}, None
+    status = fields.get("snapshot_status")
+    when = "the graded episode started" if frozen_by == "graded_start" else "the start window closed"
+    if status == "too_large":
+        return frozen_by, fields, ("the submission folder was larger than the program's caps (5000 files, 200 MiB, or too "
+                                   "many entries or folders) when {}: nothing was frozen".format(when))
+    if status != "ok":
+        return frozen_by, fields, "the submission folder was not frozen when {} (status {!r})".format(when, status)
+    if os.path.islink(root) or not os.path.isdir(root):
+        fail("the program frozen when {} is missing from the restored artifacts".format(when))
+    entries, nfiles, nbytes, problems = snapshot_listing(root)
+    if problems or snapshot_digest(entries) != fields.get("snapshot_sha256") or nfiles != fields.get("snapshot_files") \
+            or nbytes != fields.get("snapshot_bytes"):
+        fail("the program frozen when {} does not match its record ({} files, {} bytes; {})".format(
+            when, nfiles, nbytes, "; ".join(problems[:3]) or "digest"))
+    return frozen_by, fields, None
+
+
+def install_snapshot(src, dst):
+    """Replace the restored submission folder `dst` with the frozen program (as root): `dst` is removed without
+    following links, then the snapshot's folders and regular files are copied, each file with its mode. Main's grader
+    then hands the folder to the agent account, as it does with a restored submission."""
+    if os.path.islink(dst) or (os.path.lexists(dst) and not os.path.isdir(dst)):
+        os.unlink(dst)
+    elif os.path.isdir(dst):
+        shutil.rmtree(dst)
+    os.mkdir(dst, 0o755)
+    for dirpath, dirnames, filenames in os.walk(src, followlinks=False):
+        rel = os.path.relpath(dirpath, src)
+        target = dst if rel == "." else os.path.join(dst, rel)
+        for name in dirnames:
+            if not os.path.islink(os.path.join(dirpath, name)):
+                os.mkdir(os.path.join(target, name), 0o755)
+        for name in filenames:
+            sp, tp = os.path.join(dirpath, name), os.path.join(target, name)
+            st = os.lstat(sp)
+            if stat.S_ISREG(st.st_mode):
+                shutil.copyfile(sp, tp, follow_symlinks=False)
+                os.chmod(tp, stat.S_IMODE(st.st_mode) & 0o755)
+    os.chmod(dst, 0o755)
+
+
+# ---------------------------------------------------------------------------------------------- the two items
+def run_offline():
+    """Main's grader (tests/offline_verify.py, unchanged) on /home/user/submission: its verdict and diagnostic,
+    captured instead of written; it reads main's anchor (tests/anchor_offline.json)."""
+    import offline_verify as OV
+    captured = []
+
+    def capture(verdict, path=None, diagnostic=None):
+        captured.append((verdict, diagnostic))
+
+    OV.write_verdict = capture
+    OV.read_anchor = lambda name="anchor.json": read_anchor("anchor_offline.json")
+    OV.main()
+    if not captured:
+        fail("main's grader wrote no verdict")
+    verdict, diagnostic = captured[-1]
+    return verdict, diagnostic if diagnostic is not None else verdict.get("diagnostic")
+
+
+def online_component(rec, reason, config):
+    """The graded episode's item: its record scored against the online anchor, or 0 with the reason."""
+    anchor, meta = read_anchor("anchor_online.json")
+    if reason is not None:
+        return zero_verdict(reason=reason, anchored=anchor is not None)
+    return ratio_rewards(float(rec["episode_score"]), anchor, cap=config.get("scoring_cap", 1.5),
+                         higher_is_better=True, metric_name=METRIC, locks_ok=True, extra=record_metrics(rec),
+                         full_at=meta.get("full_at", 1.0))
 
 
 def main():
-    t_start = time.monotonic()
     config = stage_config()
-    rng = seed_rng()
     anchor, meta = read_anchor()
+    with open(ONLINE) as fh:
+        online = json.load(fh)
     try:
-        uid, gid = _agent_ids()
+        uid, _gid = _agent_ids()
     except KeyError:
         write_verdict(zero_verdict(reason="no agent account", anchored=anchor is not None))
         return
-    # The kit's clearing of the agent's account (once per verifier sandbox, a few seconds: every supervisord program
-    # off, every process of the account killed until none comes back) is done here, before any kit's clock exists.
-    # Solver.__init__ asks for it again inside the first kit's timed start and gets this report back at once, so
-    # none of its seconds is counted against that kit's controller budget.
-    clear_agent_account()
-    if not stop_agent_processes(uid):
+    if not stop_agent_processes(uid):                                            # 1
         write_verdict(zero_verdict(reason="agent processes could not be stopped (cleanup_failed)",
                                    anchored=anchor is not None))
         return
-    with open(EPISODES) as fh:
-        plan = json.load(fh)["episodes"]
-    specs = {}
-    for item in plan:
-        kit = item["kit"]
-        specs[item["id"]] = {"nuts": [E.check_nut_spec(sp) for sp in kit["nuts"]],
-                             "order": [int(b) for b in kit["order"]]}
-    try:
-        workdir = stage_submission(uid, gid)
-    except OSError as exc:
-        log("staging the submission failed: {}".format(type(exc).__name__))
-        workdir = None
-    if workdir is None or not os.path.isfile(os.path.join(workdir, "run.sh")):
-        write_verdict(zero_verdict(reason="no usable submission", anchored=anchor is not None))
-        return
-    pristine = os.path.join(tempfile.mkdtemp(prefix="keyed-pristine-"), "submission")   # root-only (umask 077)
-    try:
-        shutil.copytree(workdir, pristine, symlinks=True)
-        os.chmod(pristine, 0o700)
-    except OSError as exc:
-        log("copying the submission failed: {}".format(type(exc).__name__))
-        write_verdict(zero_verdict(reason="no usable submission", anchored=anchor is not None))
-        return
-    baseline = _agent_entries(uid, os.path.dirname(workdir))      # before any controller has run
-    with_gt = oracle_access(workdir)
-    if with_gt:
-        log("reference-solution token present: observations carry _gt")
-    egress_mode = "seccomp" if egress_self_test(uid, gid, int(config.get("solver_nproc_limit", 0))) else "detect"
-    log("egress guard: " + egress_mode)
-    try:
-        (scores, aborted, faults, per_nut, per_stage, egress_hits, wall_cap_hit,
-         lock, progress, timing) = run_episodes(config, rng, uid, egress_mode, t_start, specs, plan, workdir, with_gt,
-                                                pristine=pristine, gid=gid, baseline=baseline)
-    except (SolverMissing, SolverAborted) as exc:
-        stop_agent_processes(uid)
-        write_verdict(zero_verdict(reason=str(exc)[:200], anchored=anchor is not None))
-        return
+    rec, why = load_record()                                                     # 2
+    rstate = record_state(rec, why, online)
+    if rec is None:
+        online_reason = ("no graded-episode record: the graded episode was never started" if why == "missing"
+                         else "the graded-episode record is {}".format(why))
+    else:
+        online_reason = check_record(rec, online)
+    if rstate == "started" and rec.get("cell_error") is True:
+        fail("the graded episode's cell failed during the episode ({}): an error of the task, as a failure of the "
+             "offline grader's renderer is".format(((rec.get("detail") or {}).get("cell_error") or "?")[:200]))
+    state, _ = load_record(STATE)
+    frozen_by, snap, freeze_why = freeze_decision(rec, rstate, state)            # 3
+    submission = os.path.join(os.path.expanduser("~" + agent_user()), "submission")
+    if frozen_by and freeze_why is None:
+        install_snapshot(SNAPSHOT, submission)
+        program = "snapshot"
+        log("the program item grades the copy frozen when {} ({} files, {} bytes)".format(
+            "the graded episode started" if frozen_by == "graded_start" else "the start window closed",
+            snap.get("snapshot_files"), snap.get("snapshot_bytes")))
+    elif frozen_by:
+        program = "none"
+        log("program item 0: " + freeze_why)
+    else:
+        program = "session_end"
+        log("nothing was frozen (the session ended before the start window closed, or no usable record of a freeze): "
+            "the program item grades the session-end submission")
+    if program == "none":                                                        # 4
+        off, off_diag = zero_verdict(reason=freeze_why, anchored=True), None
+    else:
+        off, off_diag = run_offline()
+    on = online_component(rec, online_reason, config)                            # 5
     cleanup_ok = stop_agent_processes(uid)
-    measured = sum(scores) / len(scores) if scores else 0.0
-    if egress_hits or not cleanup_ok or not math.isfinite(measured) or measured < 0:
-        measured = 0.0
-    extra = dict(lock.rewards(),
-                 episodes_scored=float(len(scores) - aborted),
-                 episodes_aborted=float(aborted),
-                 sim_faults=float(faults),
-                 egress_guard_seccomp=1.0 if egress_mode == "seccomp" else 0.0,
-                 egress_detected=float(egress_hits),
-                 cleanup_failed=0.0 if cleanup_ok else 1.0,
-                 wall_cap_hit=1.0 if wall_cap_hit else 0.0,
-                 controller_s_max=round(timing["controller_s_max"], 3),
-                 controller_s_mean=round(timing["controller_s_mean"], 3),
-                 controller_budget_cuts=timing["controller_budget_cuts"],
-                 images_requested=timing["images_requested"],
-                 grading_wall_s=round(time.monotonic() - t_start, 1),
-                 probe_lock_ok=1.0 if lock.ok else 0.0,
-                 reference_token=1.0 if with_gt else 0.0,
-                 mean_progress=sum(progress) / len(progress) if progress else 0.0)
-    for key, vals in sorted(per_stage.items()):
-        if vals:
-            extra[key] = sum(vals) / len(vals)
-    verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5), higher_is_better=True,
-                            metric_name="kit_success_rate", locks_ok=True, extra=extra,
-                            full_at=meta.get("full_at", 1.0))
-    write_verdict(verdict)
-    log("measured={:.5f} anchor={} ratio={:.3f} reward={:.3f} lock={} aborted={} faults={} egress={}".format(
-        measured, anchor, verdict["metrics"]["ratio"], verdict["rewards"]["reward"], lock.ok, aborted, faults,
-        egress_mode))
+    off_r, on_r = float(off["rewards"]["reward"]), float(on["rewards"]["reward"])
+    combined = (off_r + on_r) / 2.0                                              # 6
+    if not cleanup_ok:
+        combined = 0.0
+    r = rec or {}
+    extra = {"offline_reward": off_r, "online_reward": on_r, "cleanup_failed": 0.0 if cleanup_ok else 1.0,
+             "program_snapshot": 1.0 if program == "snapshot" else 0.0,
+             "program_session_end": 1.0 if program == "session_end" else 0.0,
+             "program_none": 1.0 if program == "none" else 0.0,
+             "frozen_at_graded_start": 1.0 if frozen_by == "graded_start" else 0.0,
+             "frozen_at_window_close": 1.0 if frozen_by == "prep_window_closed" else 0.0,
+             "episode_started": 1.0 if rstate == "started" else 0.0}
+    for status in ("ok", "too_large", "failed", "pending"):
+        extra["snapshot_" + status] = 1.0 if snap.get("snapshot_status") == status else 0.0
+    for key in ("snapshot_files", "snapshot_bytes"):
+        if _number(snap.get(key)):
+            extra[key] = float(snap[key])
+    for reason in END_REASONS:
+        extra["online_end_" + reason] = 1.0 if r.get("end_reason") == reason else 0.0
+    for key, v in sorted((off.get("metrics") or {}).items()):
+        extra["offline_" + key] = v
+    for key, v in sorted((on.get("metrics") or {}).items()):
+        extra["online_" + key] = v
+    verdict = ratio_rewards(combined, anchor, cap=1.0, higher_is_better=True, metric_name="dual_mode_score",
+                            locks_ok=True, extra=extra, full_at=meta.get("full_at", 1.0))
+    diagnostic = ("dual mode: reward = mean(program item {:.4f}, graded episode item {:.4f}) = {:.4f}. The program ({}): "
+                  "{} The graded episode ({}; ended {}, {}): {}").format(
+        off_r, on_r, combined,
+        {"snapshot": "frozen at " + str(frozen_by), "session_end": "the session-end submission",
+         "none": "not graded"}[program],
+        off_diag or off.get("diagnostic") or "graded.", r.get("episode"), r.get("ended"), r.get("end_reason"),
+        on.get("diagnostic") or "scored")
+    write_verdict(verdict, diagnostic=diagnostic)
+    log("{} anchor={} reward={:.3f}".format(diagnostic, anchor, verdict["rewards"]["reward"]))
 
 
 if __name__ == "__main__":

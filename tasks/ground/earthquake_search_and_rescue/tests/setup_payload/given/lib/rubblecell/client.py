@@ -1,5 +1,6 @@
-"""Agent-side proxy of the SR-2 rescue crawler + the program launcher + the training-ground connection (the one module
-of the robot cell the agent gets; the simulation runs in the grader and in the training-ground service, out of sight).
+"""Agent-side proxy of the SR-2 rescue crawler + the program launcher + the training-ground and graded-episode
+connections (the one module of the robot cell the agent gets; the simulation runs in the grader, in the training-ground
+service and in the graded episode's service, out of sight).
 
     def solve(robot):                                  # in /home/user/submission/rescue.py
         info = robot.describe()
@@ -21,7 +22,19 @@ Training ground (development only): `connect_training(site)` opens a mission on 
 (`robot_manual.md` section 9): the same robot and calls, plus `reset(site)`, which starts the mission. One connection is
 one mission, under the graded mission's budgets; the training ground has a fixed number of missions.
 `~/training/run_mission.py` runs a whole program in a mission under the grader's checks and run regime and prints the
-robot's mission log.
+robot's mission log. The training ground closes for the rest of the session when the graded episode starts.
+
+The graded episode (this session only): `connect_graded()` connects to the graded episode's service (one hidden site)
+and returns a Robot with the same calls plus `start()` and `status()`. The episode lives in the service: closing the
+connection, or the end of your script, leaves it where it is (no simulated time passes), and the next
+`connect_graded()` resumes it. One connection at a time (a second one raises CellError "busy").
+
+    robot = connect_graded()                           # resumes the episode if it has started
+    robot.status()                                     # started, ended, steps, sim_time_s, budgets used, windows left
+    robot.start()                                      # ONCE per session: freezes ~/submission, starts the episode
+    robot.get_state(); robot.drive(0.2, 0.0); robot.step(100)   # the calls above, live
+    robot.close()                                      # the episode stays where it is
+    robot.finish()                                     # ends the graded episode: scored as it stands
 """
 
 import base64
@@ -32,13 +45,14 @@ import sys
 import traceback
 
 __all__ = ["Robot", "CellError", "decode_frame", "decode_lidar", "decode_thermal", "connect_stdio", "connect_training",
-           "main", "BOOTSTRAP", "launcher_argv", "TRAINING_SOCKET", "TRAINING_STATUS"]
+           "connect_graded", "main", "BOOTSTRAP", "launcher_argv", "TRAINING_SOCKET", "TRAINING_STATUS", "GRADED_SOCKET"]
 
 BOOTSTRAP = ("import sys; sys.path.insert(0, sys.argv[1]); from rubblecell.client import main; "
              "sys.exit(main(sys.argv[2:]))")
 PYTHON_FLAGS = ["-B", "-E", "-s"]
 TRAINING_SOCKET = "/run/rubblecell/training.sock"
 TRAINING_STATUS = "/run/rubblecell/training_status.json"
+GRADED_SOCKET = "/run/rubblecell-graded/graded.sock"
 
 
 class CellError(RuntimeError):
@@ -148,6 +162,17 @@ class Robot(object):
         per connection; it uses one mission of the training ground's allowance."""
         return self._call("reset", site=str(site))
 
+    # ---- the graded episode's service only (the other cells answer {"error": "forbidden"})
+    def start(self):
+        """Start the graded episode: the robot on the street at sim_time 0. Once per session, within the start window;
+        before the start is charged, the program in /home/user/submission is frozen (the copy that is graded)."""
+        return self._call("start")
+
+    def status(self):
+        """The graded episode's state: started, ended, end, done_reason, steps, sim_time_s, the sensor budgets used and
+        left, start_window_left_s, graded_window_left_s, program_frozen (nothing else: no score)."""
+        return self._call("status")
+
     def close(self):
         closer = getattr(self, "_close", None)
         if closer is not None:
@@ -241,6 +266,59 @@ def connect_training(site=None, path=None):
     robot._close = close
     if site is not None:
         robot.reset(site)
+    return robot
+
+
+def connect_graded(path=None):
+    """A connection to the graded episode's service (a Robot: the robot's calls, plus `start()` and `status()`). The
+    episode lives in the service: closing this connection leaves it where it is, and the next connect_graded() resumes
+    it. One connection at a time: while another holds the episode this raises CellError("busy: ...")."""
+    import socket
+    path = path or GRADED_SOCKET
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        sock.connect(path)
+    except OSError as e:
+        sock.close()
+        raise CellError("the graded episode's service is not reachable at %s (%s)" % (path, e))
+    rf = sock.makefile("r", encoding="utf-8", newline="\n")
+    wf = sock.makefile("w", encoding="utf-8", newline="\n")
+
+    def send(text):
+        try:
+            wf.write(text)
+            wf.flush()
+        except OSError as e:
+            raise CellError("the graded episode's service closed the connection (%s): connect_graded() again" % e)
+
+    def recv():
+        try:
+            return rf.readline()
+        except OSError:
+            return ""
+
+    def close():
+        for f in (wf, rf):
+            try:
+                f.close()
+            except OSError:
+                pass
+        sock.close()
+
+    robot = Robot(send, recv)
+    robot._close = close
+    try:                                       # the first reply: the episode is this connection's, or another holds it
+        robot._id += 1
+        send(json.dumps({"id": robot._id, "method": "status", "params": {}}) + "\n")
+        line = recv()
+        reply = json.loads(line) if line else {}
+        if "error" in reply:
+            raise CellError(str(reply["error"]) + ((": " + str(reply["detail"])) if reply.get("detail") else ""))
+        if reply.get("id") != robot._id or "result" not in reply:
+            raise CellError("the graded episode's service closed the connection")
+    except (CellError, ValueError) as e:
+        close()
+        raise CellError(str(e))
     return robot
 
 

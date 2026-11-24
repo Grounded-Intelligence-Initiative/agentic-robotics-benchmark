@@ -1,0 +1,7 @@
+{
+ "note": "the graded episode of the dual mode, read by graded_service.py's worker only (as root, before it drops privileges; /opt/ale/setup is root-only while the agent works). It is episode ep04 of the offline grader's fixed hidden set (tests/hidden/seeds.json: eight sites, ep01..ep08 in the grader's order), drawn once on 2026-11-24T04:01:17Z with OS entropy (secrets.randbelow(8) -> index 3); the same episode serves every model. seed_sha256 = sha256 of the seed's decimal string (tests/online.json holds it for the verifier's cross-check); oracle_token_sha256 = tests/hidden/oracle_token.sha256 (the reference program's token).",
+ "episode": "ep04",
+ "seed": 110203644969488577,
+ "seed_sha256": "fe700f568369125773f5fa3b72e0c4a7ab178b18e25fda413c76e749f20e16b5",
+ "oracle_token_sha256": "dc15d6a2f20b82579a5ddc2ba8da383554f1382431b9814cfe6c7110f92a2f59"
+}
