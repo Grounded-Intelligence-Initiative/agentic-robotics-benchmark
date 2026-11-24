@@ -27,7 +27,11 @@ class CellProcess(object):
         self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=stderr, env=env, cwd=cwd,
                                      start_new_session=True)
         self.buf = b""
-        hello = self._read(start_timeout)
+        try:
+            hello = self._read(start_timeout)
+        except CellError:
+            self.kill()                 # never leave a simulator that did not come up running
+            raise
         if not hello.get("ready"):
             self.kill()
             raise CellError("the cell did not start: %s" % str(hello)[:1500])
