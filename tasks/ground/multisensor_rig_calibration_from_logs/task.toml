@@ -7,7 +7,7 @@ artifacts = ["/home/user/submission"]
 name = "grounded-intelligence-initiative/multisensor_rig_calibration_from_logs"
 
 [metadata]
-platform = "subsystems"
+platform = "ground"
 
 # 8 CPUs, no GPU: the agent develops and tests its calibration program on the three practice rigs.
 [environment]

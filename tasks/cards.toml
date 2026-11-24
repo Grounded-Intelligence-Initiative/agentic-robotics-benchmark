@@ -362,5 +362,5 @@ stages = ["behavior"]
 [multisensor_rig_calibration_from_logs]
 title = "Calibrate a robot sensor rig from its logs"
 summary = "Write a program that recovers a robot's camera and IMU extrinsics, sensor clock offsets and drift and IMU biases from driving logs, and flags faulty stretches, on rigs it has never seen."
-platforms = ["subsystems"]
+platforms = ["ground"]
 stages = ["robot-description"]
