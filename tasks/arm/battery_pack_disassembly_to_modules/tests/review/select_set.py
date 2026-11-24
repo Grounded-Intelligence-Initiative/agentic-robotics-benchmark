@@ -2,6 +2,8 @@
 """Draw the fixed hidden set and the development packs (maintainers' tool; nothing runs it at grading).
 
     python3 select_set.py --write          # draws a new key and writes both sets (only when the sets are to change)
+    python3 select_set.py --refresh        # the same key: rewrites the files and the record's summaries (after a change
+                                           # of packcell/series.py that leaves the seeds as they are)
     python3 select_set.py                  # re-derives both sets from the recorded key and checks the files
 
 The rule, fixed before any pack was drawn or run:
@@ -55,7 +57,8 @@ def main():
         sel = json.load(f)
     key = bytes.fromhex(sel["key_hex"])
     hidden, dev = draw(key, b"hidden", HIDDEN), draw(key, b"dev", DEV)
-    if "--write" in sys.argv[1:]:
+    if "--write" in sys.argv[1:] or "--refresh" in sys.argv[1:]:
+        sel["series_version"] = S.VERSION
         with open(PACKS, "w") as f:
             json.dump({"packs": hidden, "note": "the fixed hidden set: tests/review/select_set.py"}, f, indent=1)
             f.write("\n")

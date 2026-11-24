@@ -225,6 +225,12 @@ What holds what:
 - a plug J1, J2: its latch; it comes out when pulled straight up with more than 30 N.
 
 A component that is still held does not come away; pulling harder only overloads the robot (the cell stops it).
+
+Appearance: the lid is dark grey with a yellow handle bar; the tray is bare aluminium; a module is grey with a
+lighter top plate, a yellow handle bar and two copper terminal posts at its service-bay end; busbars are copper
+with an orange sleeve; brackets are yellow-passivated steel blocks; the service disconnect is orange with a black
+handle on an orange base; the BMS is a black box, J1 a grey and J2 a white plug with a black latch; the junction
+blocks are red; fasteners are zinc-plated (bright) unless corroded.
 """)
     for v in sorted(S.VARIANTS):
         nom = S.nominal(v)

@@ -446,6 +446,7 @@ def main():
                  packs_live_contact=float(sum(1 for r in records if r["ended"] == "live_contact")),
                  packs_module_dropped=float(sum(1 for r in records if r["ended"] == "module_dropped")),
                  packs_out_of_sim_span=float(sum(1 for r in records if r["ended"] == "sim_cap")),
+                 packs_given_up=float(sum(1 for r in records if r["ended"] == "given_up")),
                  cell_retries=float(sum(1 for r in records if r.get("cell_retried"))),
                  protective_stops=float(sum(r.get("protective_stops", 0) for r in records)),
                  fasteners_stripped=float(sum(r.get("stripped", 0) for r in records)),

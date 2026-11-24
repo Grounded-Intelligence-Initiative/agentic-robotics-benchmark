@@ -93,6 +93,12 @@ What holds what:
 
 A component that is still held does not come away; pulling harder only overloads the robot (the cell stops it).
 
+Appearance: the lid is dark grey with a yellow handle bar; the tray is bare aluminium; a module is grey with a
+lighter top plate, a yellow handle bar and two copper terminal posts at its service-bay end; busbars are copper
+with an orange sleeve; brackets are yellow-passivated steel blocks; the service disconnect is orange with a black
+handle on an orange base; the BMS is a black box, J1 a grey and J2 a white plug with a black latch; the junction
+blocks are red; fasteners are zinc-plated (bright) unless corroded.
+
 ### HVB-P4
 
 | fastener | thread | x | y | seat z | holds |
@@ -363,14 +369,14 @@ hole, as the wrist camera sees them from about 0.25 m. The example pack is not o
 
 | component | goes to | value |
 |---|---|---|
-| module | a bay of the module rack, standing on the bay's floor (one module per bay) | 10 |
-| lid | the lid stand, lying flat | 4 |
+| module | a bay of the module rack, standing on the bay's floor (one module per bay) | 8 |
+| lid | the lid stand, lying flat | 5 |
 | service disconnect | electronics bin | 3 |
 | busbar | copper bin | 2 |
 | bracket | steel bin | 1 |
 | plug J1, J2 | electronics bin | 1 |
 | harness remnant | electronics bin | 1 |
-| fastener | either fasteners bin | 0.25 |
+| fastener | either fasteners bin | 0.5 |
 
 A component counts when it lies undamaged where it belongs. Damaged means: a fastener with a stripped head, a harness
 chafed by the nutrunner, a module that was dropped.

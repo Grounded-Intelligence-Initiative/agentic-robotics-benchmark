@@ -604,7 +604,13 @@ class Cell(object):
         return t
 
     def score(self):
-        self._settle() if self.ended else None
+        """The pack's credit as things lie now. After the end (or when the grader has given the controller up: it
+        says so with `final`) the bodies are first left to come to rest, the arm holding its pose."""
+        return self._score(final=bool(self.ended))
+
+    def _score(self, final):
+        if final:
+            self._settle()
         poses, fposes = self.poses(), self.fastener_poses()
         credit, detail = self.rules.credit(poses, fposes)
         r = self.rules

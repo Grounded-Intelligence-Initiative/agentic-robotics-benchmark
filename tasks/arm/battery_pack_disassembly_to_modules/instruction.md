@@ -96,9 +96,9 @@ own time (the time the grader waits for your answers, summed; simulation and ren
 A pack ends when your program sends `done`, when its simulated time is used up, when a tool touches a live part
 before isolation, when a module falls, or when your program is given up on. Then every component of the pack counts
 if it lies undamaged where it belongs (service manual, section 9; `cell_interface.md`, section 7): a module standing
-in a bay of the rack (value 10), the lid on its stand (4), the service disconnect in the electronics bin (3), a
+in a bay of the rack (value 8), the lid on its stand (5), the service disconnect in the electronics bin (3), a
 busbar in the copper bin (2), a bracket in the steel bin (1), a low-voltage plug or the harness remnant in the
-electronics bin (1 each), a fastener in a fasteners bin (0.25). The pack's credit is the value that counts divided
+electronics bin (1 each), a fastener in a fasteners bin (0.5). The pack's credit is the value that counts divided
 by the value of everything in the pack; nothing is subtracted for anything, and what was sorted before a pack ended
 early still counts. Where things are is read from the physics engine, not from pictures.
 

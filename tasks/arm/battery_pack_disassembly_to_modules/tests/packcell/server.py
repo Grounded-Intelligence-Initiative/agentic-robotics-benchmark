@@ -6,7 +6,7 @@ It speaks one JSON object per line: requests on stdin, replies on the descriptor
     {"cmd": "reset", "pack": <pack>, "config": {...}, "render": true}  -> {"obs": <observation>, "info": {...}}
     {"cmd": "step", "action": <action>}                                -> {"obs": <observation>}
     {"cmd": "truth"}        (--grader only)                            -> {"truth": {...}}
-    {"cmd": "score"}        (--grader only)                            -> {"score": {...}}
+    {"cmd": "score"}        (--grader only)                            -> {"score": {...}}   ("final": true ends the pack first)
     {"cmd": "close"}                                                   -> {"ok": true}, then exit
 
 A bad action is answered with {"error": "bad action: ..."} and changes nothing. An internal failure is answered
@@ -86,6 +86,8 @@ def main():
             elif cmd == "truth" and grader and cell is not None:
                 reply({"truth": cell.truth()})
             elif cmd == "score" and grader and cell is not None:
+                if msg.get("final") and not cell.ended:
+                    cell.ended = "given_up"            # the grader gave the controller up: nothing moves any more
                 reply({"score": cell.score()})
             elif cmd == "close":
                 reply({"ok": True})

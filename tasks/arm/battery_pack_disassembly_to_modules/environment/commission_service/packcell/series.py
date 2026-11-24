@@ -173,8 +173,8 @@ VARIANTS = {
            "ribs": [("y", -0.14), ("y", 0.14), ("x", -0.30), ("x", 0.30)]},
 }
 
-VALUES = {"module": 10.0, "lid": 4.0, "msd": 3.0, "busbar": 2.0, "bracket": 1.0, "connector": 1.0, "harness": 1.0,
-          "fastener": 0.25}
+VALUES = {"module": 8.0, "lid": 5.0, "msd": 3.0, "busbar": 2.0, "bracket": 1.0, "connector": 1.0, "harness": 1.0,
+          "fastener": 0.5}
 DEST = {"module": "rack", "lid": "lid_stand", "msd": "electronics", "connector": "electronics", "harness": "electronics",
         "busbar": "copper", "bracket": "steel", "fastener": "fasteners"}
 ISOLATION_WAIT_S = 30.0

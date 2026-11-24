@@ -169,9 +169,49 @@ value measured natively on the author's server, outside the engine; it has to be
   once per tick.
 - **The task name is provisional** (not yet registered in the coordination sheet); it appears only in the folder
   name and in `task.toml`.
-- **The values** (module 10, lid 4, service disconnect 3, busbar 2, bracket 1, plug 1, harness 1, fastener 0.25)
-  are the author's; modules carry about 55 % of a pack's value. A reviewer may prefer another weighting.
+- **The values** (module 8, lid 5, service disconnect 3, busbar 2, bracket 1, plug 1, harness 1, fastener 0.5)
+  are the author's. In an HVB-P5 the lid with its bolts is about 12 % of the pack's value, the service disconnect
+  and the plugs 6 %, the busbars with their bolts 20 %, the brackets with theirs 17 %, the modules 45 %: the
+  modules are what the line is there for, and every earlier stage still shows in the credit. A reviewer may prefer
+  another weighting; it lives in `packcell/series.py` (`VALUES`) and the documents follow it
+  (`review/make_documents.py`).
 
 ## 6. Status log
 
 (Newest last. Times are the author's server's, EST.)
+
+**2026-11-24, 02:50 to 03:40. The stack and the cell's skeleton.** Read the reference tasks (`hazard_bay_build`
+for Isaac Sim, `pump_skid_startup_and_operation` and `pantry_jar_refilling` for arm cells, documents and the
+commissioning service). Probed Isaac Sim 6.2 natively (`/common/users/zl1308/venvs/arb-isaac`): the UR20 asset
+loads and articulates on CPU PhysX with two links added to its articulation; 240 physics steps in 0.2 s; the
+incoming joint force of the added tool carrier is the flange wrench in the carrier's frame (checked with the tool
+down and tilted 90 degrees: 32.4 N for 3.3 kg); a kinematic body can be made dynamic at run time; a fixed joint
+between a link and a body can be created and removed at run time; two cameras render in 0.05 s a frame set once
+`/exts/omni.replicator.core/maxAssetLoadingTime` is set to 1 before Replicator loads (the 100 s stall did not
+occur). Wrote `kin.py`, `series.py`, `scene.py`, `rules.py`, `cell.py`, `wire.py`, `server.py`.
+
+**03:40 to 04:20. The reference, and what it found in the cell.** A sleeping articulation reports stale joint
+speeds and forces (the dock's "at rest" check failed for it): the arm's sleep threshold is 0 and joint speeds are
+differences over the tick. A fastener's body moved by the tensor API came back to its seat when it was made
+dynamic: bodies the rules move are moved by authoring their pose on the stage. A fastener leaving its seat in the
+tick in which its part was freed flung the lid away (a kinematic body sweeping through a dynamic one): a freed
+fastener's colliders are off while it waits, and a part is freed one tick after its last fastener is out. After a
+protective stop the arm kept pressing with its target at the stopped pose: it now backs off to where it was 0.25 s
+earlier. Straight Cartesian transfers past the base ran the arm through its shoulder singularity: the reference
+turns the first joint instead. A gripper taking a bracket by its short side hit the tray's wall (the body is long
+along the closing axis): the reference takes brackets by the long side. Parts dropped on one spot of a bin piled up
+under the gripper: the reference spreads them. A one-tick remainder of a long move jerked a carried module into a
+protective stop: the reference splits moves evenly and never sends a short action for a real distance.
+First complete pack natively: credit 1.0 (a P4, 28 fasteners, 21 parts), 611 s of simulated time, 827 steps, 150 s
+of wall clock.
+
+**04:20 to 04:40. Grader, service, documents.** `verify.py` and `pack_grade.py` ran natively through the kit's
+`Solver` and probe lock on hidden pack 0 (credit 1.0, 978 steps, lock 11 of 11 counted pairs, 8 idle pairs not
+counted). That run showed 44 protective stops when the harness on the lid was gripped: the harness' ramp over a
+bolt cut through the head's edge, and the harness is pushed out when it becomes dynamic. The harness now bridges a
+head level (wider than any head) and keeps clear of every fastener it does not cover (`review/test_rules.py`
+checks 360 draws); the same pack then ran with no stop. `ale lint` on the folder: ok. `scripts/lint_domain.py`: only
+the two messages of a null anchor. The kit copy is byte-identical. Wrote the Dockerfile (after
+`hazard_bay_build`'s), `setup.sh`, the commissioning service, the client library, `run_session.py`, the example
+program, the documents' generator, the drawings and photographs, `select_set.py` (the hidden and development sets
+drawn under its rule), `test_rules.py` (36 checks, no simulator).

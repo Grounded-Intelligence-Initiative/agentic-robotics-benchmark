@@ -117,7 +117,7 @@ def run_pack(solver, lock, clock, index, entry, truth, config, start_cell, log):
                 t += 1
         except SolverAborted as exc:
             rec["aborted"] = str(exc)[:200]
-        score = cell.request({"cmd": "score"}, timeout=120.0)["score"]
+        score = cell.request({"cmd": "score", "final": True}, timeout=120.0)["score"]
         rec.update(credit=float(score["credit"]), ended=score["ended"], steps=t, sim_s=score["time"],
                    frames=score["frames"], protective_stops=score["protective_stops"], stripped=len(score["stripped"]),
                    placed=sum(1 for v in score["detail"].values() if v), items=len(score["detail"]),
