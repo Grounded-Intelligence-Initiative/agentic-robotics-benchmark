@@ -1,7 +1,8 @@
 """Grader of pump_skid_startup_and_operation (a rail-mounted Panda operating a pump skid, camera-only): runs as ROOT in the
 verify stage. Dual mode (experiment): this is main's tests/verify.py, the program item, run by tests/verify.py as a
-process of its own on /home/user/submission (which tests/verify.py first replaces with the copy frozen at the graded
-start, when the graded episode started). Two hooks differ from main, both set only by tests/verify.py:
+process of its own on /home/user/submission (which tests/verify.py first replaces with the copy frozen at the earlier
+of the graded start and the close of the start window, when one was made). Two hooks differ from main, both set only
+by tests/verify.py:
 ARB_OFFLINE_ANCHOR names the anchor file (anchor_offline.json, main's anchor) and ARB_OFFLINE_VERDICT the file the
 verdict goes to (instead of the engine's result, which tests/verify.py writes once for both items).
 Verification is separate (task.toml): this runs in a fresh verifier sandbox from the task image, with only the agent's

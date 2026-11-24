@@ -3,7 +3,7 @@
   "direction": "higher",
   "value": 1.0,
   "full_at": 1.0,
-  "source": "Dual mode (2026-11-18): the mean of two items, each normalised by its own measured anchor, so the reference reaches 1.0 by construction when it reaches both: the offline item against anchor_offline.json (main's anchor, the privileged reference's mean_episode_score 0.9079890 on the three hidden episodes) and the online item against anchor_online.json (its episode_score 0.8974577 on the graded episode hidden-1). Confirmed by the dual mode's own ale validate (see the PR).",
-  "reference_commit": "the dual mode's validate",
+  "source": "Dual mode (2026-11-18): the mean of two items, each normalised by its own measured anchor, so the reference reaches 1.0 by construction when it reaches both: the offline item against anchor_offline.json (main's anchor, the privileged reference's mean_episode_score 0.9079890 on the three hidden episodes) and the online item against anchor_online.json (its episode_score 0.8974577 on the graded episode hidden-1). Confirmed by the dual mode's own ale validate: validate-207bc0e7 (engine bfb7505, 7af68229) measured the oracle at 1.0 = (offline 1.0, mean_episode_score 0.9079890 of the program frozen at the graded start + online 1.0, episode_score 0.8974577 over all 20000 steps) / 2, untouched 0.0.",
+  "reference_commit": "the dual mode's validate validate-207bc0e7 (7af68229)",
   "note": "The component anchors live beside this file: anchor_offline.json (byte-identical to main's anchor.json) and anchor_online.json (the online variant's anchor.json). verify.py scores each item with its own anchor, cap and full_at, then writes ratio_rewards(mean, this anchor, cap 1.0, full_at 1.0)."
 }

@@ -8,13 +8,13 @@ empty writable `$HOME` / `$TMPDIR`, a minimal environment (`PATH`, `HOME`, `TMPD
 the launcher `python3 -B -E -s -c <bootstrap> <lib> packer` (the bootstrap puts `<lib>` on `sys.path` and calls
 `shoecell.client.main`, which imports `packer` from the current directory), or `bash run.sh` when you ship one.
 `cell` is a proxy (`shoecell.client.Cell`): every method is one JSON-lines request on the process's original stdout,
-answered on stdin by the grader's physics server; `print()` goes to stderr. A reply carrying `error` raises
-`shoecell.client.CellError`. The same proxy serves your development and the graded episode:
-`LocalCell(seed=...)` (`shoecell.local`: a practice cell in your own process, plus `truth()`), `~/practice/grade.py`
-(runs your program over the real wire against the practice cell, as the grader runs it) and
-`shoecell.client.connect_graded()` (the graded episode, section "The graded episode" below; the program graded is
-your submission folder as it was when the graded episode started, or when its start window closed if it was never
-started).
+answered on stdin by the grader's physics server; `print()` goes to stderr, and so does anything else written to
+file descriptor 1 (native libraries' output included). A reply carrying `error` raises `shoecell.client.CellError`.
+The same proxy serves your development and the graded episode: `LocalCell(seed=...)` (`shoecell.local`: a practice
+cell in your own process, plus `truth()`), `~/practice/grade.py` (runs your program over the real wire against the
+practice cell, as the grader runs it) and `shoecell.client.connect_graded()` (the graded episode, section "The graded
+episode" below; the program graded is your submission folder as it was when the graded episode started, or when its
+start window closed if it was never started).
 
 Units on the API: metres, radians, seconds, quaternions `wxyz`; the cell frame = the bench-top centre, z up, x along
 the bench, y across it, the arms behind the +y edge (see `cell_manual.md`). `arm` is `"left"` (the gripper arm) or

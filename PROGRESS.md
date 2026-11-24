@@ -7,20 +7,27 @@
 > before every hand-off. Where it disagrees with the code or `git log`, the code wins: fix
 > this file.
 >
-> Last updated: 2026-11-17 (§14: one stage per task card; `driving` and `ground` become one
-> platform, `ground` "Ground vehicle"). Before that: 2026-11-16 (§13: task cards in
+> Last updated: 2026-11-23 (the platform key `subsystems` is removed from
+> `tasks/platforms.json`: no task was filed under it; eleven platforms remain). Before that:
+> 2026-11-17 (§14: one stage per task card; `driving` and `ground` become one
+> platform, `ground` "Ground vehicle"); 2026-11-16 (§13: task cards in
 > `tasks/cards.toml`, the `ground` platform, the merge gate and the GPU-model check); 2026-11-14 (§12: the grasp task pins OpenBLAS
 > to its Haswell kernels); 2026-11-09 (§11: `vendor/ale` @ `bfb7505`, a task names its GPU
 > models); 2026-11-07 (§10: the asset dataset is renamed `ale-robotics-assets`).
 >
-> **This branch, `exp/online-graded-episode` (2026-11-17), is an experiment and is never merged
-> into main.** It gives seven quasi-static behavior tasks an online variant: the agent plays one
-> hidden graded episode itself, during its session, through a service it can neither read nor
-> write, and the separate verifier scores the record that service leaves in `/var/lib/arb-online`
-> (a declared artifact). The tasks: `arm_hidden_mechanism_box`, `kitchen_appliance_tending`,
+> **This branch, `exp/dual-mode-scoring` (2026-11-18), is an exploration line and is never merged
+> into main.** It gives static tasks (the robot can hold still safely and the world does not change
+> by itself while it waits) a dual form: one session and one verify. The program the agent leaves is
+> frozen when the graded episode starts (or when the preparation window closes) and scored offline
+> on the hidden set exactly as main scores it; the agent also plays one hidden graded episode itself,
+> through a service it can neither read nor write, and the separate verifier scores the record that
+> service leaves in `/var/lib/arb-online` (a declared artifact). The reward is the mean of the two
+> items. Dynamic tasks (continuous control at the system's own rate, or a world that moves by itself)
+> stay offline only. The first seven tasks: `arm_hidden_mechanism_box`, `kitchen_appliance_tending`,
 > `shoe_lacing_and_boxing`, `object_finding_and_organizing_on_messy_desk`,
-> `furniture_assembly_from_drawings`, `house_cleaning_with_tools`,
-> `pump_skid_startup_and_operation`. The rules and the per-task status are in the pull request.
+> `furniture_assembly_from_drawings`, `house_cleaning_with_tools`, `pump_skid_startup_and_operation`;
+> the static behavior and assembly tasks added to main since then follow. Each task folder here is
+> main's current task plus its dual form. The rules and the per-task status are in the pull request.
 
 ## 0. 2026-09-07 — created by the rebrand from "ALE Robotics"
 
@@ -551,7 +558,9 @@ wrong matrix products, not rounding. The fix is the pull request from branch
   `full_at` 0.98 covers the difference and the anchor value stays. For anyone who does set it,
   the names are numpy-version specific: 1.23.5 knows AVX512F, AVX512CD, AVX512_SKX, AVX512_CLX,
   AVX512_CNL and AVX512_ICL and warns about names it does not know or that the CPU lacks;
-  numpy 2.x knows X86_V4, AVX512_ICL and AVX512_SPR.
+  numpy 2.2 knows the same names, numpy 2.5 knows X86_V4, AVX512_ICL and AVX512_SPR instead and
+  disables nothing when given the older ones (measured 2026-11-20 with 2.2.5, 2.2.6, 2.5.3 and 2.5.4 on a
+  Zen 5 host; `tests/test_numerics_pin_names.py`).
 - **Scope and limits.** Scores of this task from machines with AVX512_BF16 Intel CPUs before
   this change are not valid, agent runs included: the grader itself was wrong there. Runs on
   the AMD hosts used so far are not affected. No other task is affected: every other task
@@ -624,6 +633,156 @@ order of §13 (§5's platform list predates both).
   the dataset until this merges; then it is deleted and the dataset card's rows are fixed.
 - `tasks/arm/object_finding_and_organizing_on_messy_desk/task.toml` still lists `driving` in a
   comment; it is left as it is, since editing it would change that task's identity.
+
+## 15. 2026-11-17 — the kit clears the agent's account before it starts agent code
+
+- **The finding** (review of the contributed `longtail_manipulation_recovery`, pull request
+  #80). A controller that the grader starts under a no-network seccomp filter got code run
+  outside the filter, as the same account, in two ways. Both go through the base image's
+  supervisord (PID 1), which runs the desktop session as the agent's account with
+  `autorestart`: (1) replace `/usr/local/bin/start-gnome.sh` (the directory is the agent's in
+  `container-ubuntu22-base` 0.1.1) and kill the session; (2) write an entry into
+  `~/.config/autostart` and kill the session. The restarted code had `NoNewPrivs: 0` and
+  opened an `AF_INET` socket that the controller could not. Route 2 needs nothing but the
+  account's own home, so it holds for every grader that runs agent code as the agent's
+  account, with or without `secure_exec_path`. A live session is a third way (its D-Bus, X
+  and terminal services take requests from the account). Stopping the session (SIGSTOP), as
+  several graders do, does not hold either: the agent's code may kill what was stopped.
+- **The fix** (`shared/robotics_grader/account.py`, `clear_agent_account`). Once per sandbox,
+  before the first agent process: every supervisord program gets `autostart=false` and
+  `autorestart=false` in supervisord's configuration files, supervisord reloads (SIGHUP) and
+  starts nothing, and every process of the account that the grader did not start is killed
+  until none comes back. `Solver.__init__` and `deprivileged` call it, so a grader that
+  subclasses `Solver` with a launcher of its own gets it too; `clear_account=False` opts out.
+  It acts only as root in the engine's verify stage (`ALE_VERIFY_PYTHON`), keeps its report
+  in a root-only marker file (`/run/robotics_grader/`), and reports `cleared: False` instead
+  of failing under an init it does not know.
+- **Measured** in containers of the first verifier image of pull request #80 (the base
+  image's desktop, 45 processes of the account), with the review's two probe controllers
+  started through that task's seccomp launcher. Before: both probes got their code run with
+  `NoNewPrivs: 0` and `AF_INET socket: allowed`. After `clear_agent_account`: 45 processes
+  killed, 7 programs disabled, reload confirmed by supervisord's new pid file, 3 to 5 s;
+  probe 1 could still replace the start script when root's PATH was left as it was, and
+  nothing ran it; probe 2's autostart entry never ran; no process of the account existed
+  outside the launcher. An honest controller through the kit's own `Solver` (a helper process,
+  a file in its folder, a local socket pair, one restart) ran as before. The same clearing
+  worked on the CAD tasks' desktop variant (12 processes, openbox).
+- **Which graders change behaviour**: the ones that start agent code through `Solver` or
+  `deprivileged`: `arm_hidden_mechanism_box`, `kitchen_appliance_tending`,
+  `novel_object_6dof_grasp_detection`, `object_finding_and_organizing_on_messy_desk`,
+  `driving_safety_supervisor`, `fault_adaptive_spacecraft_docking`, `hazard_bay_build`,
+  `aerial_search_geolocation`, `visual_low_level_flight_control`, `keyed_nut_peg_assembly`
+  (merged while this was open), and the template. Their
+  verifier sandbox loses its desktop session (and root's system D-Bus) when the solver first
+  starts. None draws on the sandbox's display by its code (the renderers drop `DISPLAY`, the
+  Unreal simulators render offscreen, as their own accounts).
+- **Re-validated with this kit** (2026-11-18 and 19, `ale validate` on engine `bfb7505`, the
+  branch at `f708f443`; later heads differ only outside the kit and these task folders):
+  untouched 0.0 and the oracle at its recorded score in `arm_hidden_mechanism_box`
+  (`validate-021564f8`), `kitchen_appliance_tending` (`validate-a34a9d1b`),
+  `fault_adaptive_spacecraft_docking` (`validate-6eb7d128`),
+  `visual_low_level_flight_control` (`validate-c36ffcc0`: 7 of 8 fresh scenes, inside the
+  spread its anchor records), `driving_safety_supervisor` (`validate-cdc35a8a`),
+  `aerial_search_geolocation` (`validate-b5cf1b37`),
+  `object_finding_and_organizing_on_messy_desk` (`validate-75ff606d`) and `hazard_bay_build`
+  (`validate-e4ec5969`: 131 of 131 metrics equal to the record). In each oracle episode the
+  only kind of line that the verifier's log has and the recorded run does not is the kit's
+  `agent account ... cleared` (2.0 to 6.5 s); the two Unreal simulators, which are up before
+  the solver starts, ran on under it. `keyed_nut_peg_assembly` too (`validate-e6a2ee01`: the
+  ten kits complete with the steps of its record); its selection record freezes the kit's
+  files, so the kit update is amendment 6 of `tests/hidden/selection.json`, pre-registered
+  and run by the task's own rule: every candidate repeats its earlier run, the hidden set and
+  the development kits are unchanged. There the clearing (3.7 s) falls inside the first
+  kit's solver start and is charged to that kit's controller time (600 s budget).
+  `novel_object_6dof_grasp_detection` is to be validated after the merge, when a machine has
+  the memory for it: its reference holds 52 to 54 GB for most of an hour, and two runs were
+  stopped before any score when the machines ran short.
+- **Not covered**: graders that start agent code with their own launcher and never through
+  the kit's two calls (the assembly cells, the cell kits, the twin and description tasks). By
+  their code they run it as `nobody` from a read-only copy while a thread keeps the agent's
+  account stopped; `nobody` can neither write the account's files nor signal its processes,
+  so the two routes are not open to them. Probed on 2026-11-18 with the launchers of an
+  assembly cell (`robotic_arm_full_assembly_so101_panda`) and a cell kit
+  (`pump_skid_startup_and_operation`), each in its own image with the session running: 48
+  writes on the files the session starts from and 18 on autostart and profile files refused,
+  every signal refused, nothing run even after root restarted the session, while the same
+  program run as the agent's account got both routes. The stopped session matters as much
+  as the other account: a running session's X display takes any local account
+  (`docs/security-model.md`). A call to
+  `clear_agent_account()` at their start would remove the session for good; that is a change
+  of each task. And the network: root in the sandbox cannot make a network namespace
+  (`unshare(CLONE_NEWNET)`: EPERM, no `CAP_SYS_ADMIN`), so a solver's network is still the
+  engine's to close (`docs/security-model.md` §4).
+- **Identities**: every task's vendored kit changed, so every task has a new
+  `content_digest`; `identity-history.json` records them.
+
+## 16. 2026-11-20 — the kit never waits on a solver that does not read; the lock compares values
+
+- **The findings.** The validation review of #80 (fixed in that task's own subclass by #146)
+  and the review of #138 named four paths in `shared/robotics_grader/solver.py`:
+  (1) `_exchange` wrote a request with a blocking `write` and `flush` and started the request's
+  deadline afterwards; a request longer than the pipe (64 KiB), or any request once the pipe
+  is full, waits for the solver to read, so a solver that stopped reading held the grader
+  until the verifier's timeout, with no verdict; (2) `close()` wrote its message the same
+  way; (3) with no restart left, `_restart` raised before it stopped the old process, which
+  then ran on through every remaining episode; (4) `ProbeLock.record` counted two replies
+  with a different count of numbers as differing, so a solver could pass the lock without
+  reading its observation by answering a repeated `t` in two of its action shapes.
+- **The fix.** `Solver._send` writes to the pipe's descriptor without blocking (`O_NONBLOCK`,
+  `select`, `os.write`, the flag restored) and gives up at a deadline; not through the text
+  wrapper, which keeps what it could not write and writes it, blocking, when it is closed.
+  `_exchange` starts the request's one deadline before the write. `close()` sends its message
+  through `_send` for at most 1 s (`CLOSE_WRITE_TIMEOUT`), not at all after a request was cut
+  short in the write or once the solver was given up on, and stops a solver it did not ask at
+  once. `_restart` stops the old process before it raises. `ProbeLock.record` treats a length
+  mismatch as showing nothing; `ProbeLock(canonical=...)` lets a task with more than one
+  action shape map a reply to the fixed-length list that is compared. A grader that replaced
+  `proc.stdin` with an object of its own (the docking task's `BoundedStdin`) is written to
+  through that object as before.
+- **What a solver sees.** One that reads its requests and answers in one shape: nothing. The
+  time a solver takes to read a request now counts toward that request's deadline.
+- **Tests.** `tests/test_kit_solver_bounded_writes.py`: 11 tests over the real wire against
+  child processes, 8 of which fail on the kit as it was (an unread 2 MB request, `close()`
+  after it and on a full pipe, the solver left running with no restart left, the read time
+  outside the deadline, the two lock cases). Five new checks in the kit's selftest.
+- **`keyed_nut_peg_assembly`**: amendment 8 of its selection record, pre-registered
+  (`58d1788a`) and run by the task's rule (`5cc3c611`): all 16 candidates and all 24
+  development candidates repeat amendment 7's runs to the step, the hidden set and the
+  development kits are unchanged, the anchor's verify repeats (1.0, 10 of 10).
+- **Re-validated with this kit** (2026-11-20, `ale validate` on engine `bfb7505`, a clean
+  checkout of `5cc3c611`, one task at a time; the later commits change nothing under
+  `shared/`, `templates/` or these task folders): every grader that runs the kit's `Solver`
+  or `ProbeLock` printed `ok`, untouched 0.0 and the oracle 1.0, no episode aborted, and the
+  oracle's verifier log has no kind of line that its last recorded validate does not have.
+  `arm_hidden_mechanism_box` (`validate-5bbc2efc`: 37 of 39 metrics equal, the other two
+  count probes over wall time, 109 of 109 passed), `kitchen_appliance_tending`
+  (`validate-643fa43b`: 40 of 40 equal), `keyed_nut_peg_assembly` (`validate-b31fcd96`: the
+  ten kits to the step), `fault_adaptive_spacecraft_docking` (`validate-745b7aad`: 66 of 70
+  equal, the others are wall-clock timings; its `BoundedStdin` path),
+  `visual_low_level_flight_control` (`validate-95dc011e`: 8 of 8 fresh scenes, 133 of 185
+  probes, inside the spread of its earlier runs), `longtail_manipulation_recovery`
+  (`validate-8c43f38c`: 15 of 16 equal, the other is controller seconds; this grader has its
+  own write and close paths), `driving_safety_supervisor` (`validate-e6006d1f`: ratio 1.004,
+  24 of 24 episodes), `aerial_search_geolocation` (`validate-3dd270f7`: geolocation score
+  0.928, 341 of 341 probes), `hazard_bay_build` (`validate-6a99b757`: 131 of 131 equal) and
+  `object_finding_and_organizing_on_messy_desk` (`validate-f6a6c2f3`: 26 of 29 equal, the
+  others are controller seconds, 618 of 620 probes).
+  `pantry_jar_refilling` landed on `main` while this was open (#138); it runs the kit's
+  `Solver` and lock, got the kit with the merge of `main` and was validated on that merge
+  (`validate-aa856c6f`, checkout `8ecc6829`: 32 of 33 metrics equal to its last validate, the
+  other is controller seconds, 12 of 12 episodes). `freeflyer_uncrewed_station_caretaking`
+  (#149) uses the kit for its scoring and verdict only.
+  `novel_object_6dof_grasp_detection` starts its solvers through `deprivileged` and runs none
+  of the changed code; its validate, owed since section 15, ran here too (`validate-9bd36858`,
+  with the account clearing of section 15): untouched 0.0, oracle 1.0, 448 of 448 frames
+  valid, no timeout, no restart, prediction 4722 s on a loaded machine (slowest call 209.9 s
+  of 300 s), the container at most 59 GB. The reference reads mean AP 72.458 there (ratio
+  1.0018); section 12's record is 72.339 on another host, so the two differ in the first
+  decimal, which is not explained yet.
+- **Identities**: every task's vendored kit changed, so every task has a new
+  `content_digest`; `identity-history.json` records the 49 of them. `pantry_jar_refilling`
+  is recorded here for the first time, with this kit; its content as merged by #138 has no
+  entry of its own.
 
 ## Open items
 

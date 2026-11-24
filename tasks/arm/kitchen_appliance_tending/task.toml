@@ -27,10 +27,15 @@ memory_mb = 12288
 timeout_sec = 18000
 network_mode = "no-network"
 
-# Main's: the verifier runs main's grading of the program again (18 episodes, its own 6000 s budget, the solver's
-# start, the egress self-test and the stops), then reads the record.
+# Main's: the verifier runs main's grading of the program again, then reads the record (seconds). Main's grading:
+# 18 episodes (2 per hidden unit), each at most 3 x 1500 control steps. The 6000 s of grader_config.json are the
+# controller's own time (its waits plus 0.03 s per image asked for); the grader's simulation, drawing and pauses come
+# on top. The worst case on a quiet 4-CPU sandbox: 63,000 steps with all three images (about 0.085 s of the grader's
+# own time each, 5,400 s), the pauses (about 300 s), the controller's remaining own time (330 s) and the start, about
+# 6,100 s; a controller that asks for no image and spends the whole budget thinking needs about 6,500 s. 21,600 s
+# leaves a factor of three for a busy grading machine.
 [verifier]
-timeout_sec = 7200
+timeout_sec = 21600
 environment_mode = "separate"
 
 [verifier.environment]

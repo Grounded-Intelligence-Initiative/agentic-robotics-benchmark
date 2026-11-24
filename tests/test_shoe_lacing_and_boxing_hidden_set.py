@@ -9,8 +9,9 @@ tests/review/select_set.py), and verify.py runs that list as it stands. The cell
 agent's givens and the grader's copy of the givens) are byte-identical and pinned by tests/given_hashes.json, and the
 lid tray's delivery spot keeps even the biggest lid inside the rim. The files the set was selected with (the reference, the cell, the grader, the
 image's inputs) are unchanged since (their sha256 in the selection record), or changed only by a recorded amendment
-that touched the cameras' renderer alone, or the grader's verify-start lockdown alone, and after which the reference's
-full verify on the amended image repeated every selection run (score, simulated time, ticks and per-pair detail).
+that touched the cameras' renderer alone, or the grader's verify-start lockdown alone, or the program launcher's wire
+binding alone (with the given-file pins it changed recorded), and after which the reference's full verify on the amended image repeated every selection run (score,
+simulated time, ticks and per-pair detail).
 The anchor is the lowest work_score of the recorded full verifies of the privileged submission on the set, with a
 full_at under which those verifies still read reward 1.0. Nothing the agent sees names the token, the set or its selection; the cell library's own mentions of its
 privileged calls (the PR author's public cell code, byte-identical to the grader's) are pinned as they are.
@@ -67,15 +68,36 @@ AMENDMENTS = SELECTION.get("amendments", [])
 RENDER_ONLY = ("tests/shoecell/cameras.py", "tests/shoecell/physics.py", "tests/shoecell/look.py",
                "tests/given_hashes.json", "environment/Dockerfile")
 # ... or the grader's verify-start lockdown alone (kind "lockdown": tests/verify.py, nothing an episode runs or scores)
-AMENDABLE = {"renderer": RENDER_ONLY, "lockdown": ("tests/verify.py",)}
+# ... or the program launcher's wire binding alone (kind "wire": the given client's connect_stdio also points file
+# descriptor 1 at stderr, so native output cannot corrupt the wire; tests/shoecell/client.py and its given-file pins in
+# tests/given_hashes.json; nothing an episode runs or scores for a program that does not write to fd 1 itself)
+AMENDABLE = {"renderer": RENDER_ONLY, "lockdown": ("tests/verify.py",),
+             "wire": ("tests/shoecell/client.py", "tests/given_hashes.json")}
+# the given-file pins a "wire" amendment may change in tests/given_hashes.json (it records them: given_pins)
+WIRE_GIVEN = ("given/lib/shoecell/client.py", "given/cell/cell_api.md")
 # the frozen files the online variant changes (the physics, the scoring, the reference and the configuration stay as
 # frozen): the verifier and its entry (the record instead of the episodes), the oracle's entry (the graded episode
 # through the agent's client), the image (the service account), the agent's client (connect_graded) and its pin
 ONLINE_CHANGED = ("environment/Dockerfile", "solution/solve.sh", "tests/given_hashes.json", "tests/shoecell/client.py",
                   "tests/verify.py")     # the dual mode: tests/test.sh is main's again, main's verify.py offline_verify.py
+# the dual mode's own givens (connect_graded in the client; the graded episode in cell_api.md and cell_manual.md) at
+# main's pins (main's tests/given_hashes.json when this branch last merged origin/main, 2026-11-23): main's file is this
+# one with these three pins put back (main_given)
+DUAL_GIVEN_MAIN_PINS = {
+    "given/cell/cell_api.md": "47664cfbeaf31d9f2313f0d97612418453723713f33f7bd2379ffd4d260f59f8",
+    "given/cell/cell_manual.md": "2f43b27366329f2e900252350134a221b78c9ea67f3a4df0d5a5d74775cef208",
+    "given/lib/shoecell/client.py": "2e2b61d8a2c136a5a36268022081718df456843a49dea0ca386f289338558f80",
+}
 ONLINE = json.loads((TASK / "tests/online.json").read_text())
 ONLINE_DIR = TASK / "environment/setup/online"
 GRADED = json.loads((ONLINE_DIR / "episode.json").read_text())
+
+
+def main_given():
+    """main's tests/given_hashes.json: this one with the dual mode's own givens at main's pins."""
+    given = json.loads((TASK / "tests/given_hashes.json").read_text())
+    given.update(DUAL_GIVEN_MAIN_PINS)
+    return given
 
 
 def current_frozen():
@@ -265,8 +287,11 @@ class FrozenTests(unittest.TestCase):
                              "set and the anchor were measured with the frozen file".format(rel))
         self.assertTrue(set(ONLINE_CHANGED) <= set(frozen))
         self.assertEqual(sorted(frozen), select_set.frozen_paths(str(TASK)))
-        # the dual mode runs main's verifier unchanged for the program item, from main's test.sh
+        # the dual mode runs main's verifier unchanged for the program item, from main's test.sh; its given pins differ
+        # from main's only in the dual mode's own givens
         self.assertEqual(sha256(TASK / "tests/offline_verify.py"), frozen["tests/verify.py"])
+        text = json.dumps(main_given(), indent=1, sort_keys=True) + "\n"
+        self.assertEqual(hashlib.sha256(text.encode()).hexdigest(), frozen["tests/given_hashes.json"])
         self.assertEqual(sha256(TASK / "tests/test.sh"), frozen["tests/test.sh"])
 
     def test_every_amendment_changed_only_what_its_kind_allows_and_the_reference_repeated_every_run(self):
@@ -277,7 +302,7 @@ class FrozenTests(unittest.TestCase):
             allowed = AMENDABLE[am.get("kind", "renderer")]
             self.assertTrue(set(changed) <= set(allowed), set(changed) - set(allowed))
             self.assertTrue(am.get("what"))
-            runs = [v for v in ANCHOR["verifies"] if v["run"] == am["check"]["run"]]
+            runs = [v for v in OFFLINE_ANCHOR["verifies"] if v["run"] == am["check"]["run"]]
             self.assertEqual(len(runs), 1, "the amendment's check names one recorded verify")
             v = runs[0]
             self.assertEqual(v["image_id"], am["image"]["id"])
@@ -285,6 +310,35 @@ class FrozenTests(unittest.TestCase):
             for e in v["episodes"]:
                 self.assertTrue(e["equals_selection_run"] and e["same_trajectory"], e["seed"])
             prev = am["frozen"]
+
+    def test_a_wire_amendment_changed_only_the_given_pins_it_records(self):
+        """Kind "wire": tests/given_hashes.json differs from its version before the amendment only in the pins the
+        amendment records (given_pins, before and after; the launcher and cell_api.md at most). The earlier version is
+        rebuilt from the later one and those pins, and must hash to the earlier frozen digest. The walk goes back from
+        the last amendment and ends at the first one that changed given_hashes.json without recording its pins."""
+        given = main_given()        # (the dual mode: main's pins of its own givens put back)
+        frozen_before = [SELECTION["frozen"]] + [am["frozen"] for am in AMENDMENTS[:-1]]
+        checked = 0
+        for am, before in reversed(list(zip(AMENDMENTS, frozen_before))):
+            if "tests/given_hashes.json" not in am["changed"]:
+                continue
+            if am.get("kind") != "wire":
+                break
+            pins = am["given_pins"]
+            self.assertTrue(pins)
+            self.assertTrue(set(pins) <= set(WIRE_GIVEN), set(pins) - set(WIRE_GIVEN))
+            for key, pin in sorted(pins.items()):
+                self.assertEqual(given[key], pin["after"], key)
+                self.assertNotEqual(pin["before"], pin["after"], key)
+                given[key] = pin["before"]
+            text = json.dumps(given, indent=1, sort_keys=True) + "\n"
+            self.assertEqual(hashlib.sha256(text.encode()).hexdigest(), before["tests/given_hashes.json"],
+                             "given_hashes.json before the wire amendment differs in more than its given_pins")
+            checked += 1
+        # the last amendment that changed given_hashes.json is the one checked, whatever came after it
+        touched = [am for am in AMENDMENTS if "tests/given_hashes.json" in am["changed"]]
+        if touched and touched[-1].get("kind") == "wire":
+            self.assertGreaterEqual(checked, 1)
 
     def test_every_reference_and_cell_file_is_frozen(self):
         frozen = set(current_frozen())
@@ -361,20 +415,14 @@ class AnchorTests(unittest.TestCase):
         self.assertEqual((DUAL_ANCHOR["value"], DUAL_ANCHOR["full_at"]), (1.0, 1.0))
         self.assertEqual((OFFLINE_ANCHOR["metric"], ANCHOR["metric"]), ("work_score", "work_score"))
         self.assertEqual(OFFLINE_ANCHOR["value"], ANCHOR["offline"]["value"])   # main's, also kept in the online one
-        self.assertEqual(OFFLINE_ANCHOR["verifies"], ANCHOR["verifies"])
+        n = len(ANCHOR["verifies"])     # the online variant was measured before main's later verifies
+        self.assertEqual(OFFLINE_ANCHOR["verifies"][:n], ANCHOR["verifies"])
 
-    def test_the_offline_anchor_is_main_s(self):
-        """anchor_offline.json is main's anchor.json: the lowest recorded verify of the set."""
+    def test_the_anchor_is_the_lowest_recorded_verify_of_the_set(self):
+        """main's test, on anchor_offline.json (main's anchor.json)."""
         verifies = OFFLINE_ANCHOR["verifies"]
         self.assertGreaterEqual(len(verifies), 1)
         self.assertEqual(OFFLINE_ANCHOR["value"], min(v["work_score"] for v in verifies))
-        self.assertEqual(OFFLINE_ANCHOR["full_at"], 0.98)
-
-    def test_the_anchor_is_the_lowest_recorded_verify_of_the_set(self):
-        """The offline anchor, kept as `offline`."""
-        verifies = ANCHOR["verifies"]
-        self.assertGreaterEqual(len(verifies), 1)
-        self.assertEqual(ANCHOR["offline"]["value"], min(v["work_score"] for v in verifies))
         for v in verifies:
             self.assertEqual([e["seed"] for e in v["episodes"]], SEEDS["seeds"])
             mean = sum(e["work_score"] for e in v["episodes"]) / len(v["episodes"])
@@ -384,17 +432,19 @@ class AnchorTests(unittest.TestCase):
         self.assertIn(recorded_images()[-1], [v["image_id"] for v in verifies])   # a verify on the current image
 
     def test_full_at_follows_the_verifies_against_the_selection_runs(self):
+        """main's test, on anchor_offline.json; then the online item's anchor on the oracle's graded episode."""
         runs = {c["seed"]: c["result"] for c in SELECTION["candidates"] if c["status"] == "kept"}
-        identical = all(e["work_score"] == runs[e["seed"]]["work_score"] for v in ANCHOR["verifies"] for e in v["episodes"])
-        for v in ANCHOR["verifies"]:
+        identical = all(e["work_score"] == runs[e["seed"]]["work_score"] for v in OFFLINE_ANCHOR["verifies"]
+                        for e in v["episodes"])
+        for v in OFFLINE_ANCHOR["verifies"]:
             for e in v["episodes"]:
                 self.assertEqual(e["equals_selection_run"], e["work_score"] == runs[e["seed"]]["work_score"])
         if identical:
-            self.assertEqual(ANCHOR["full_at"], 0.98)
+            self.assertEqual(OFFLINE_ANCHOR["full_at"], 0.98)
         else:
-            self.assertLess(ANCHOR["full_at"], 0.98)
-        for v in ANCHOR["verifies"]:  # the oracle's own verifies read reward 1.0 (half-up, two decimals)
-            reward = min(1.0, max(0.0, v["work_score"] / ANCHOR["offline"]["value"] / ANCHOR["full_at"]))
+            self.assertLess(OFFLINE_ANCHOR["full_at"], 0.98)
+        for v in OFFLINE_ANCHOR["verifies"]:  # the oracle's own verifies read reward 1.0 (half-up, two decimals)
+            reward = min(1.0, max(0.0, v["work_score"] / OFFLINE_ANCHOR["value"] / OFFLINE_ANCHOR["full_at"]))
             self.assertGreaterEqual(reward, 0.995)
         reward = min(1.0, max(0.0, ANCHOR["online"]["episode_score"] / ANCHOR["value"] / ANCHOR["full_at"]))
         self.assertGreaterEqual(reward, 0.995)  # ... and so does the oracle's graded episode
