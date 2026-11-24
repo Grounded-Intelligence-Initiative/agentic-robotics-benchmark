@@ -37,7 +37,7 @@ RUN printf '%s\n' \
     && chmod 0644 /opt/venv/lib/python3.12/site-packages/cable_numerics_pin.py /opt/venv/lib/python3.12/site-packages/cable_numerics_pin.pth \
     && env -i PATH=/opt/venv/bin:/usr/bin:/bin HOME=/tmp /opt/venv/bin/python3 -I -W error::ImportWarning -c "import os; e = os.environ; assert (e.get('OPENBLAS_CORETYPE'), e.get('OPENBLAS_L2_SIZE'), e.get('OPENBLAS_NUM_THREADS'), e.get('OMP_NUM_THREADS'), e.get('OPENCV_IPP')) == ('Haswell', '256', '1', '1', 'avx2'), dict(e); import numpy; from numpy._core._multiarray_umath import __cpu_dispatch__ as D, __cpu_features__ as F; assert set(e['NPY_DISABLE_CPU_FEATURES'].split()) == set(D) - {'X86_V3'}, D; assert [k for k in D if F[k]] in ([], ['X86_V3']), [k for k in D if F[k]]; print('[image] numerics pin OK', D)"
 
-# CPU rendering for the agent's own debugging views (MuJoCo through OSMesa).
+# CPU rendering for the practice cell and the grader (MuJoCo through OSMesa).
 RUN apt-get update && apt-get install -y --no-install-recommends libosmesa6 libgl1 \
     && rm -rf /var/lib/apt/lists/*
 ENV MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa OMP_NUM_THREADS=1 MPLBACKEND=Agg

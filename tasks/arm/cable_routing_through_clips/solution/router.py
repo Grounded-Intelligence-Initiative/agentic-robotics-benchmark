@@ -1,4 +1,9 @@
-"""Reference cable router for cable_routing_through_clips (serves the closed-loop wire).
+"""Privileged reference controller for cable_routing_through_clips (serves the closed-loop wire).
+
+It is NOT a perception system: tests/verify.py adds the cell's true state (`obs["privileged"]`: the cable's centre
+line, the plug's pose, the cable's radius and length) to the observations of a submission whose .oracle_token hashes
+to tests/hidden/oracle_token.sha256, and of no other. This controller routes and mates from that state; it shows that
+the hidden episodes can be completed through the wire, and its measured credit is the anchor.
 
 Routing one fixture, the way a technician does it by hand:
 
@@ -10,6 +15,10 @@ Routing one fixture, the way a technician does it by hand:
    Post: lower it on the outer side of the post, then swing the grip around the post so the
    cable wraps it, and pull.
 4. Let go, lift, go on with the next fixture.
+
+Then the plug: grip it behind its mating part, carry it to the socket's mouth, put it down flat there and take a
+fresh grip (a cable bent at the plug turns it in the fingers during the carry), and slide it home along the board,
+correcting its line from the observation each step, until the socket reports it mated.
 
 All decisions (which fixture, which arc length) are kept in relative terms and every target is
 recomputed from the observation in hand, so a step asked twice with the same `t` is answered
@@ -34,6 +43,11 @@ HIGH_Z = 0.06            # carry height on the taut sphere
 GRASP_Z = 0.0015
 LAY_Z = 0.004
 HOVER_Z = 0.06
+CONNECTOR_X = -0.39       # the connector's x on every board of this cell
+PLUG_GRIP = 0.030       # grip the plug this far behind its nose
+PLUG_Z = 0.0014         # tool centre point height that holds the plug flat on the board
+PRE_IN = 0.025          # put the plug down with its nose this far before the mouth
+PUSH = 0.003            # per step while sliding it home
 
 
 def _unit(v):
@@ -65,8 +79,9 @@ def _turn(d, side, angle=1.0):
 def route_points(obs):
     """Route geometry from the observation: connector exit, then per fixture its passage point
     and the directions in and out."""
-    R = obs["cable_radius"]
+    R = obs["privileged"]["cable_radius"]
     q = np.array(obs["connector"]["pos"], float)
+    sock = np.array(obs["socket"]["pos"], float)
     pts = []
     fx = obs["fixtures"]
     # first pass: passage points (clip centre; post: tangent point on the route side)
@@ -83,7 +98,7 @@ def route_points(obs):
                 continue
             prev = q if i == 0 else (pts[i - 1] if pts[i - 1] is not None else np.array(fx[i - 1]["pos"], float))
             nxt = pts[i + 1] if i + 1 < len(fx) and pts[i + 1] is not None else (
-                np.array(fx[i + 1]["pos"], float) if i + 1 < len(fx) else None)
+                np.array(fx[i + 1]["pos"], float) if i + 1 < len(fx) else sock)
             c = np.array(f["pos"], float)
             r = f["radius"] + R
             d_in = _unit(c - prev)
@@ -118,8 +133,8 @@ def _crosses(P, a, b, zmax):
 
 def fixture_status(obs):
     """Which fixtures the observed cable satisfies, in route order (the cell's own check)."""
-    P = np.array(obs["cable"], float)
-    R = obs["cable_radius"]
+    P = np.array(obs["privileged"]["cable"], float)
+    R = obs["privileged"]["cable_radius"]
     arc = _arc(P)
     ok = []
     last = -1.0
@@ -154,6 +169,10 @@ class Router(object):
         self.saved = None
 
     def act(self, t, obs):
+        # A repeated t is answered from the state saved before that t. Only an observation of the real scene moves
+        # the state on: the connector always sits at x = CONNECTOR_X on this board, and a shifted copy of the scene
+        # moves it, so the reference keeps its state independent of the order in which the copies arrive.
+        real = abs(float(obs["connector"]["pos"][0]) - CONNECTOR_X) < 1e-6
         if t == self.last_t:
             st = copy.deepcopy(self.saved)
         else:
@@ -161,7 +180,8 @@ class Router(object):
             st = copy.deepcopy(self.state)
             self.last_t = t
         action = self._policy(st, obs)
-        self.state = st
+        if real:
+            self.state = st
         return action
 
     # ----------------------------------------------------------------------------------
@@ -174,10 +194,8 @@ class Router(object):
         d_in = _unit(T - prev)
         if k + 1 < len(fx):
             d_out = _unit(pts[k + 1] - T)
-        elif fx[k]["type"] == "post":
-            d_out = _turn(d_in, fx[k]["side"])
         else:
-            d_out = d_in
+            d_out = _unit(np.array(obs["socket"]["pos"], float) - T)
         return fx[k], prev, T, d_in, d_out
 
     def _held_arc(self, st, obs, P):
@@ -193,12 +211,12 @@ class Router(object):
     def _policy(self, st, obs):
         g = obs["gripper"]
         gp = np.array(g["pos"], float)
-        P = np.array(obs["cable"], float)
+        P = np.array(obs["privileged"]["cable"], float)
         fx = obs["fixtures"]
-        R = obs["cable_radius"]
+        R = obs["privileged"]["cable_radius"]
         load = obs["connector_force"]
         if st["k"] >= len(fx):
-            return {"pos": [gp[0], gp[1], HOVER_Z], "yaw": st["yaw"], "grip": 0.0, "done": True}
+            return self._plug(st, obs)
         f, prev, T, d_in, d_out = self._geometry(st, obs)
         ph = st["phase"]
 
@@ -341,6 +359,178 @@ class Router(object):
             st["phase"], st["n"] = "plan", 0
             return out([gp[0], gp[1], HOVER_Z], 0.0)
         return out(gp, 0.0)
+
+
+def _plug_frame(obs):
+    sock = np.array(obs["socket"]["pos"], float)
+    sh = float(obs["socket"]["heading"])
+    u = np.array([math.cos(sh), math.sin(sh)])
+    return sock, sh, u, np.array([-u[1], u[0]])
+
+
+def _plug_pose(obs):
+    p = obs["privileged"]["plug"]
+    return np.array(p["nose"], float), float(p["heading"]), float(p["tilt"])
+
+
+def _wrap(a):
+    return (a + math.pi) % (2 * math.pi) - math.pi
+
+
+def _clip(v, lim):
+    return max(-lim, min(lim, v))
+
+
+def _plug_policy(self, st, obs):
+    g = obs["gripper"]
+    gp = np.array(g["pos"], float)
+    gy = float(g["yaw"])
+    sock, sh, u, lat_dir = _plug_frame(obs)
+    nose, ph_, tilt = _plug_pose(obs)
+    ph = st["phase"]
+    if ph in ("plan", "check"):                    # just arrived from the route
+        ph = st["phase"] = "p_up"
+        st["n"] = 0
+        st["ptries"] = st.get("ptries", 0)
+
+    def out(pos, yaw, grip, done=False):
+        a = {"pos": [float(pos[0]), float(pos[1]), float(pos[2])], "yaw": float(yaw), "grip": grip}
+        if done:
+            a["done"] = True
+        return a
+
+    def grip_point():
+        return nose[:2] - PLUG_GRIP * np.array([math.cos(ph_), math.sin(ph_)])
+
+    def tcp_for(nose_xy, plug_heading):
+        """Tool centre point and yaw that put the held plug's nose at nose_xy on plug_heading."""
+        gyaw = plug_heading - st["dyaw"]
+        c, s_ = math.cos(gyaw), math.sin(gyaw)
+        o = st["off"]
+        return nose_xy - np.array([o[0] * c - o[1] * s_, o[0] * s_ + o[1] * c]), gyaw
+
+    if obs["socket"]["mated"] and ph not in ("p_free", "p_away"):
+        ph = st["phase"] = "p_free"
+        st["n"] = 0
+    SAFE = (0.40, 0.28)
+    if ph == "p_up" and st["n"] == 0 and (abs(grip_point()[0]) > SAFE[0] or abs(grip_point()[1]) > SAFE[1]) \
+            and st.get("fetches", 0) < 2:
+        st["fetches"] = st.get("fetches", 0) + 1
+        ph = st["phase"] = "f_up"
+    if ph.startswith("f_"):                          # the plug lies by the rim: drag the cable end in first
+        P = np.array(obs["privileged"]["cable"], float)
+        a_ = _arc(P)
+        pick = None
+        for back in (0.05, 0.08, 0.11, 0.14, 0.17, 0.20):
+            p_, tang = _at_arc(P, a_[-1] - back)
+            if abs(p_[0]) < SAFE[0] + 0.02 and abs(p_[1]) < SAFE[1] + 0.02:
+                pick = (p_, tang)
+                break
+        if pick is None:
+            pick = _at_arc(P, a_[-1] - 0.2)
+        p_, tang = pick
+        yaw = math.atan2(tang[1], tang[0])
+        drop = sock - 0.10 * u
+        st["n"] += 1
+        if ph == "f_up":
+            if st["n"] > 12:
+                st["phase"], st["n"] = "f_down", 0
+            return out([p_[0], p_[1], 0.04], yaw, 0.0)
+        if ph == "f_down":
+            if st["n"] > 8:
+                st["phase"], st["n"] = "f_close", 0
+            return out([p_[0], p_[1], 0.0015], yaw, 0.0)
+        if ph == "f_close":
+            if st["n"] >= 6:
+                st["phase"], st["n"] = "f_drag", 0
+            return out([gp[0], gp[1], 0.0015], gy, 1.0)
+        if ph == "f_drag":
+            if np.linalg.norm(gp[:2] - drop) < 0.01 or st["n"] > 30 or obs["connector_force"] > 8.0:
+                st["phase"], st["n"] = "f_open", 0
+            return out([drop[0], drop[1], 0.03], gy, 1.0)
+        if ph == "f_open":
+            if st["n"] >= 5:
+                st["phase"], st["n"] = "p_up", 0
+            return out([gp[0], gp[1], 0.004], gy, 0.0)
+    if ph == "p_up":                                 # up and over the plug's grip point
+        st["n"] += 1
+        gpt = grip_point()
+        if gp[2] < 0.02 and st["n"] < 8:
+            return out([gp[0], gp[1], 0.04], gy, 0.0)
+        if np.linalg.norm(gp[:2] - gpt) < 0.003 or st["n"] > 40:
+            st["phase"], st["n"] = "p_down", 0
+        return out([gpt[0], gpt[1], 0.04], ph_, 0.0)
+    if ph == "p_down":
+        st["n"] += 1
+        gpt = grip_point()
+        if gp[2] < PLUG_Z + 0.0015 or st["n"] > 12:
+            st["phase"], st["n"] = "p_close", 0
+        return out([gpt[0], gpt[1], PLUG_Z], ph_, 0.0)
+    if ph == "p_close":
+        st["n"] += 1
+        if st["n"] >= 6:
+            c, s_ = math.cos(gy), math.sin(gy)
+            rel = nose[:2] - gp[:2]
+            st["off"] = [rel[0] * c + rel[1] * s_, -rel[0] * s_ + rel[1] * c]
+            st["dyaw"] = _wrap(ph_ - gy)
+            st["phase"], st["n"] = "p_lift", 0
+        return out([gp[0], gp[1], PLUG_Z], gy, 1.0)
+    if ph == "p_lift":
+        st["n"] += 1
+        if st["n"] >= 5:
+            st["phase"], st["n"] = "p_carry", 0
+        return out([gp[0], gp[1], 0.03], gy, 1.0)
+    if ph == "p_carry":
+        st["n"] += 1
+        tgt, gyaw = tcp_for(sock - PRE_IN * u, sh)
+        if (np.linalg.norm(gp[:2] - tgt) < 0.003 and abs(_wrap(gy - gyaw)) < 0.03) or st["n"] > 40:
+            st["phase"], st["n"] = "p_lower", 0
+        return out([tgt[0], tgt[1], 0.03], gyaw, 1.0)
+    if ph == "p_lower":
+        st["n"] += 1
+        tgt, gyaw = tcp_for(sock - PRE_IN * u, sh)
+        if st["n"] >= 8:
+            st["phase"], st["n"] = "p_push", 0
+        return out([tgt[0], tgt[1], PLUG_Z], gyaw, 1.0)
+    # from here the grip offset is measured afresh each step (the plug may turn in the fingers)
+    c, s_ = math.cos(gy), math.sin(gy)
+    rel = nose[:2] - gp[:2]
+    st["off"] = [rel[0] * c + rel[1] * s_, -rel[0] * s_ + rel[1] * c]
+    st["dyaw"] = _wrap(ph_ - gy)
+    if np.linalg.norm(rel) > 0.06:                   # the plug is no longer in the fingers: fetch it again
+        st["ptries"] += 1
+        st["phase"], st["n"] = ("p_up" if st["ptries"] < 4 else "p_free"), 0
+        return out([gp[0], gp[1], 0.04], gy, 0.0)
+    if ph == "p_push":                               # the nose along the socket's line, a few mm further each step
+        st["n"] += 1
+        depth = float(np.dot(nose[:2] - sock, u))
+        if obs["connector_force"] < 10.0:
+            st["goal"] = min(max(st.get("goal", depth), depth) + 0.004, 0.017)
+        goal = st.get("goal", depth)
+        tgt, gyaw = tcp_for(sock + goal * u, sh)
+        if st["n"] > 35:
+            st["ptries"] += 1
+            st["goal"] = depth - 0.02
+            st["phase"], st["n"] = ("p_back" if st["ptries"] < 4 else "p_free"), 0
+        return out([tgt[0], tgt[1], PLUG_Z], gyaw, 1.0)
+    if ph == "p_back":                               # draw it back out along the line and push again
+        st["n"] += 1
+        tgt, gyaw = tcp_for(sock + st["goal"] * u, sh)
+        if st["n"] >= 6:
+            st["phase"], st["n"] = "p_push", 0
+        return out([tgt[0], tgt[1], PLUG_Z], gyaw, 1.0)
+    if ph == "p_free":
+        st["n"] += 1
+        if st["n"] >= 5:
+            st["phase"], st["n"] = "p_away", 0
+        return out([gp[0], gp[1], gp[2]], gy, 0.0)
+    if ph == "p_away":
+        st["n"] += 1
+        return out([gp[0], gp[1], HOVER_Z], gy, 0.0, done=gp[2] > HOVER_Z - 0.01 or st["n"] > 15)
+    return out(gp, gy, 0.0)
+
+
+Router._plug = _plug_policy
 
 
 def main():

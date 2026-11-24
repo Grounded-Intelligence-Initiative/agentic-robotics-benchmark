@@ -36,8 +36,8 @@ platforms = ["arm"]
 stages = ["behavior"]
 
 [cable_routing_through_clips]
-title = "Route a cable through clips and around posts"
-summary = "Write a controller that lays a loose cable along a harness board, through snap-in clips and around posts on the given side, in order, without overloading its connector."
+title = "Route a cable and mate its plug"
+summary = "Seeing a harness board only through two RGB-D cameras, lay a loose cable through snap-in clips and around posts in order, then push its plug home in the socket without overloading the connector."
 platforms = ["arm"]
 stages = ["behavior"]
 

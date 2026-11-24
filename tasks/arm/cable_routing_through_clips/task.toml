@@ -9,20 +9,21 @@ name = "grounded-intelligence-initiative/cable_routing_through_clips"
 [metadata]
 platform = "arm"
 
-# 8 CPUs, no GPU: the agent develops its controller against its own copy of the cell simulator
-# (MuJoCo, CPU), several episodes at a time.
+# 8 CPUs, no GPU: the agent develops its controller against the practice cell (a MuJoCo service started by setup,
+# up to four episodes at a time, frames drawn on the CPU).
 [environment]
 cpus = 8
 memory_mb = 16384
 
+# 4 hours (instruction.md "Session time", environment/setup/payload/session_time.sh LIMIT_MIN=240).
 [agent]
-timeout_sec = 10800
+timeout_sec = 14400
 network_mode = "no-network"
 
-# Verify: 20 hidden episodes, each at most 1200 control steps (120 s simulated, about 45 s of
-# simulation on one core plus the controller's own replies).
+# Verify: 12 fixed hidden episodes, each at most 1500 control steps; a step is about 0.3 s of simulation and drawing
+# plus the controller's reply, and the controller's replies may take 3600 s in all (tests/grader_config.json).
 [verifier]
-timeout_sec = 3600
+timeout_sec = 10800
 environment_mode = "separate"
 
 [verifier.environment]

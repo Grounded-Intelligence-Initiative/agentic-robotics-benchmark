@@ -1,12 +1,18 @@
-"""A controller that only hovers above the cable's free end: it shows the wire, not a strategy."""
+"""A controller that hovers above the socket and looks at its frames: it shows the wire, not a strategy."""
 
 import json
 import sys
 
+import numpy as np
+
 
 def act(t, obs):
-    end = obs["cable"][-1]
-    return {"pos": [end[0], end[1], 0.08], "yaw": 0.0, "grip": 0.0, "done": t >= 30}
+    rgb = np.load(obs["frames"]["overhead"]["rgb"])          # (480, 640, 3) uint8
+    depth = np.load(obs["frames"]["overhead"]["depth"])      # (480, 640) float32, metres along the optical axis
+    if t == 0:
+        print("overhead frame %s, depth %.3f-%.3f m" % (rgb.shape, depth.min(), depth.max()), file=sys.stderr)
+    s = obs["socket"]["pos"]
+    return {"pos": [s[0], s[1], 0.08], "yaw": 0.0, "grip": 0.0, "done": t >= 30}
 
 
 def main():
