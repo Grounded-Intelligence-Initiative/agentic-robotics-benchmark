@@ -351,9 +351,11 @@ class Reference(object):
         p = self.tr["parts"][pid]
         Rp, pos = np.array(p["R"]), np.array(p["pos"])
         if p["kind"] == "harness":
+            # the longest level stretch of the cable nearest to its middle
             pts = [np.array(q) for q in p["path"]]
-            mid = len(pts) // 2
-            a, b = pts[mid - 1], pts[mid]
+            c = np.mean(pts, axis=0)
+            segs = [(a, b) for a, b in zip(pts[:-1], pts[1:]) if abs(a[2] - b[2]) < 1e-3 and np.linalg.norm(b - a) > 0.02]
+            a, b = min(segs or list(zip(pts[:-1], pts[1:])), key=lambda s: float(np.linalg.norm((s[0] + s[1]) / 2 - c)))
             seg = (b - a) / np.linalg.norm(b - a)
             return (a + b) / 2, np.cross(seg, [0.0, 0.0, 1.0]), 0.012
         g = p["grasps"][which]

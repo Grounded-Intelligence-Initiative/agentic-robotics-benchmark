@@ -293,17 +293,20 @@ def _harness_path(s, on, nom, fasteners):
         a, b = row[k], row[k + 1]
         cover = [a] if s.chance(0.5) else [a, b]
         z_flat = Z["lid_seat"] + r
-        pts = []
-        y0 = cover[0]["pos"][1] - s.uniform(0.05, 0.09)
-        pts.append([side * (0.30 - s.uniform(0.05, 0.10)), y0, z_flat])
+        x_in = lambda: side * (0.30 - s.uniform(0.06, 0.14))        # noqa: E731 - an end of the cable, inside the bolt line
+        y_lim = TRAY["size"][1] / 2 - 0.06                          # clear of the bolts of the short sides
+        y0 = cover[0]["pos"][1] - 0.040
+        pts = [[x_in(), max(-y_lim, y0 - s.uniform(0.02, 0.05)), z_flat]]
         for f in cover:
-            top = Z["lid_seat"] + HEADS[f["head"]]["height"] + r + 0.0005
-            pts.append([f["pos"][0] + s.uniform(-0.002, 0.002), f["pos"][1] - 0.022, z_flat])
-            pts.append([f["pos"][0] + s.uniform(-0.002, 0.002), f["pos"][1], top])
-            pts.append([f["pos"][0] + s.uniform(-0.002, 0.002), f["pos"][1] + 0.022, z_flat])
-        y1 = cover[-1]["pos"][1] + s.uniform(0.05, 0.09)
-        pts.append([side * (0.30 - s.uniform(0.05, 0.12)), y1, z_flat])
-        pts.append([side * (0.30 - s.uniform(0.13, 0.20)), y1 + s.uniform(0.03, 0.06), z_flat])
+            # the cable bridges the head: level over it (wider than any head), a ramp down on either side
+            top = Z["lid_seat"] + HEADS[f["head"]]["height"] + r + 0.0008
+            x = f["pos"][0] + s.uniform(-0.002, 0.002)
+            pts.append([x, f["pos"][1] - 0.040, z_flat])
+            pts.append([x, f["pos"][1] - 0.017, top])
+            pts.append([x, f["pos"][1] + 0.017, top])
+            pts.append([x, f["pos"][1] + 0.040, z_flat])
+        y1 = cover[-1]["pos"][1] + 0.040
+        pts.append([x_in(), min(y_lim, y1 + s.uniform(0.02, 0.05)), z_flat])
     else:
         # along the busbar row over two or three neighbouring bolts, both ends dropping onto the module tops
         row = sorted([f for f in fasteners if f["group"] == "busbar" and abs(f["nominal"][0] - (MODULE["x"] + MODULE["post"][0])) < 1e-6],
@@ -311,7 +314,7 @@ def _harness_path(s, on, nom, fasteners):
         count = 2 + int(s.u64() % 2)
         k = int(s.u64() % (len(row) - count + 1))
         cover = row[k:k + count]
-        z_top = Z["busbar_seat"] + max(HEADS[f["head"]]["height"] for f in cover) + r + 0.0005
+        z_top = Z["busbar_seat"] + max(HEADS[f["head"]]["height"] for f in cover) + r + 0.0008
         z_mod = TRAY["bottom"] + MODULE["size"][2] + r
         pts = [[cover[0]["pos"][0] + s.uniform(0.06, 0.10), cover[0]["pos"][1] - s.uniform(0.03, 0.05), z_mod],
                [cover[0]["pos"][0] + 0.022, cover[0]["pos"][1] - 0.012, z_top]]

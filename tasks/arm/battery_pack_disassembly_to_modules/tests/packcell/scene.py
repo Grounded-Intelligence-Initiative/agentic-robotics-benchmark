@@ -27,13 +27,13 @@ LOOKS = {
     "bin_grey": ((0.45, 0.47, 0.50), 0.0, 0.50),
     "rack": ((0.85, 0.80, 0.70), 0.0, 0.60),
     "pedestal": ((0.15, 0.16, 0.18), 0.3, 0.50),
-    "tray": ((0.63, 0.64, 0.66), 0.9, 0.45),
+    "tray": ((0.50, 0.51, 0.53), 0.7, 0.50),
     "lid": ((0.055, 0.060, 0.070), 0.2, 0.42),
     "lid_rib": ((0.075, 0.080, 0.090), 0.2, 0.42),
     "handle": ((0.85, 0.83, 0.10), 0.0, 0.50),
     "hole": ((0.01, 0.01, 0.01), 0.0, 0.90),
     "module": ((0.20, 0.21, 0.23), 0.5, 0.50),
-    "module_top": ((0.70, 0.71, 0.72), 0.8, 0.40),
+    "module_top": ((0.55, 0.56, 0.58), 0.7, 0.45),
     "strap": ((0.02, 0.02, 0.02), 0.0, 0.70),
     "copper": ((0.78, 0.45, 0.22), 1.0, 0.30),
     "hv_orange": ((1.00, 0.36, 0.02), 0.0, 0.45),
@@ -43,7 +43,7 @@ LOOKS = {
     "bracket": ((0.74, 0.66, 0.30), 0.9, 0.40),
     "insulator": ((0.75, 0.10, 0.08), 0.0, 0.55),
     "harness": ((0.10, 0.22, 0.80), 0.0, 0.55),
-    "zinc": ((0.80, 0.80, 0.83), 1.0, 0.28),
+    "zinc": ((0.72, 0.72, 0.75), 1.0, 0.35),
     "rust": ((0.42, 0.17, 0.06), 0.2, 0.92),
     "rust_stain": ((0.33, 0.14, 0.05), 0.0, 0.95),
     "recess": ((0.005, 0.005, 0.005), 0.0, 0.90),
@@ -112,11 +112,19 @@ class Builder(object):
         c.CreateAxisAttr(axis)
         self.place(c.GetPrim(), pos, quat)
         self.bind(c.GetPrim(), look)
+        self.smooth(c.GetPrim())
         if collide:
             UsdPhysics.CollisionAPI.Apply(c.GetPrim())
         if not visible:
             UsdGeom.Imageable(c.GetPrim()).MakeInvisible()
         return c.GetPrim()
+
+    @staticmethod
+    def smooth(prim):
+        """Ask the renderer for a finer tessellation of a round primitive (a cylinder is otherwise drawn with about
+        ten sides, which reads as a polygon on a fastener's head)."""
+        prim.CreateAttribute("refinementEnableOverride", Sdf.ValueTypeNames.Bool).Set(True)
+        prim.CreateAttribute("refinementLevel", Sdf.ValueTypeNames.Int).Set(2)
 
     def capsule(self, path, r, a, b, look=None, collide=False):
         """A capsule from point a to point b (parent frame)."""
@@ -135,6 +143,7 @@ class Builder(object):
         c.CreateAxisAttr("Z")
         self.place(c.GetPrim(), (a + b) / 2, kin.R_quat(R))
         self.bind(c.GetPrim(), look)
+        self.smooth(c.GetPrim())
         if collide:
             UsdPhysics.CollisionAPI.Apply(c.GetPrim())
         return c.GetPrim()
@@ -270,11 +279,11 @@ def build(stage, pack, robot_usd, render=True):
     # ------------------------------------------------------------------ lights
     if render:
         dome = UsdLux.DomeLight.Define(stage, "/World/Lights/Dome")
-        dome.CreateIntensityAttr(220.0)
+        dome.CreateIntensityAttr(150.0)
         dome.CreateColorAttr(Gf.Vec3f(0.95, 0.97, 1.0))
         for i, (lx, ly) in enumerate(((0.3, -0.9), (0.3, 0.9), (1.5, 0.0), (-0.9, 0.0))):
             r = UsdLux.RectLight.Define(stage, "/World/Lights/Panel%d" % i)
-            r.CreateIntensityAttr(9000.0)
+            r.CreateIntensityAttr(5500.0)
             r.CreateWidthAttr(1.2)
             r.CreateHeightAttr(0.5)
             b.place(r.GetPrim(), (lx, ly, 2.3))      # a rect light shines along its -z: straight down
