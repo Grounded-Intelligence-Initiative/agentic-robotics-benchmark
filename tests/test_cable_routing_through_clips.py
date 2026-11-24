@@ -162,9 +162,9 @@ class HiddenSet(unittest.TestCase):
                     self.assertNotIn(token, text)
                     for s in self.set:
                         self.assertNotIn(str(s), text, "%s holds a graded seed" % p)
-        for name in ("Dockerfile",):
-            for d in ("environment", "tests"):
-                self.assertNotIn("hidden", (TASK / d / name).read_text().replace("hidden set", "").replace("hidden boards", ""))
+        for d in ("environment", "tests"):          # no instruction of an image names the hidden folder or the token
+            code = [line for line in (TASK / d / "Dockerfile").read_text().splitlines() if not line.lstrip().startswith("#")]
+            self.assertFalse([line for line in code if "hidden" in line or "oracle_token" in line])
 
     def test_grader_log_names_no_seed(self):
         src = (TASK / "tests/verify.py").read_text()
