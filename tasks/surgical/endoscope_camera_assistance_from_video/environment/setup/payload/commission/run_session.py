@@ -9,7 +9,8 @@ sends `{"type": "act", "t": t, "obs": obs}` and applies the action of the reply 
 perturbed copy, in a random order, and applies only the true reply: exactly what the grader does.
 
 It uses one of the service's sessions (see `--status`). It prints how the session ended, the controller's reply times
-and how many of the repeated requests changed the action. It does not, and cannot, tell you how good the view was:
+and how many of the repeated requests changed the action, counted by the grader's own rule (`differ`). It does not,
+and cannot, tell you how good the view was:
 the service gives no ground truth. --save keeps every --every-th frame and a log of joints and actions to look at.
 """
 
@@ -26,6 +27,7 @@ import time
 
 sys.path.insert(0, os.path.join(os.path.expanduser("~"), "given"))
 from endocam_client import Commissioning, CommissioningError  # noqa: E402
+from holder_model import clip_command  # noqa: E402
 
 STEP_TIMEOUT_S = 10.0
 READY_TIMEOUT_S = 40.0
@@ -88,6 +90,15 @@ def action_of(reply):
     return [float(x) for x in a]
 
 
+def differ(first, second, tolerance=1e-4):
+    """The grader's rule for the two replies to one repeated step: True when the two commands, clipped to the
+    holder's rate limits as the grader clips them, hold the same count of numbers and at least one differs by more
+    than `tolerance`. Two replies that differ only beyond a limit command the same motion and do not differ."""
+    a = [float(x) for x in clip_command(first)]
+    b = [float(x) for x in clip_command(second)]
+    return len(a) == len(b) and max([abs(x - y) for x, y in zip(a, b)] or [0.0]) > tolerance
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("procedure", nargs="?")
@@ -124,7 +135,7 @@ def main():
                     action = action_of(wire.ask({"type": "act", "t": t, "obs": obs}))
                     other = action_of(wire.ask({"type": "act", "t": t, "obs": copy}))
                 probes += 1
-                changed += int(max(abs(x - y) for x, y in zip(action, other)) > 1e-4)
+                changed += int(differ(action, other))
             else:
                 action = action_of(wire.ask({"type": "act", "t": t, "obs": obs}))
             times.append(time.monotonic() - t0)
