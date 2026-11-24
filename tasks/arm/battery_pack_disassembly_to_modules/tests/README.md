@@ -198,7 +198,7 @@ value measured natively on the author's server, outside the engine; it has to be
 
 **2026-11-24, 02:50 to 03:40. The stack and the cell's skeleton.** Read the reference tasks (`hazard_bay_build`
 for Isaac Sim, `pump_skid_startup_and_operation` and `pantry_jar_refilling` for arm cells, documents and the
-commissioning service). Probed Isaac Sim 6.2 natively (`/common/users/zl1308/venvs/arb-isaac`): the UR20 asset
+commissioning service). Probed Isaac Sim 6.2 natively (the author's Python 3.12 venv): the UR20 asset
 loads and articulates on CPU PhysX with two links added to its articulation; 240 physics steps in 0.2 s; the
 incoming joint force of the added tool carrier is the flange wrench in the carrier's frame (checked with the tool
 down and tilted 90 degrees: 32.4 N for 3.3 kg); a kinematic body can be made dynamic at run time; a fixed joint
