@@ -108,35 +108,44 @@ LOWEST_NICE = 19
 PROCESS_CHECK_EVERY = 64
 
 
-def _own_nice():
-    return os.getpriority(os.PRIO_PROCESS, 0)
+def _spawn_at_lowest_priority(spawn, idle=False):
+    """Run `spawn()` on a thread of its own that has lowered itself to `LOWEST_NICE` first, and
+    return what it returned (or raise what it raised).
 
-
-class _SpawnAtLowestPriority(object):
-    """Lower the calling thread to `LOWEST_NICE` for the length of a spawn, so the child starts
-    there and never runs a single instruction at the grader's priority (a child's nice value is
-    inherited from the thread that forks it, and there is no window for it to fork or leave its
-    process group before a later `setpriority` reaches it). Only root can raise itself back,
-    so without root this does nothing and `Solver._start` lowers the child after the spawn.
+    A child's nice value is inherited from the *thread* that forks it, and on Linux a nice value
+    belongs to a thread. So the child starts at the lowest priority and never runs a single
+    instruction at the grader's — there is no window in which it could fork, or leave its
+    process group, before a later `setpriority` reached it — while the grader's own threads keep
+    theirs. Nothing has to be raised back afterwards: the thread ends. That matters, because
+    root in a sandbox does not hold CAP_SYS_NICE and cannot raise a priority it has lowered.
+    With `idle=True` the thread also enters the kernel's SCHED_IDLE class, which the child
+    inherits too.
     """
+    box = {}
 
-    def __enter__(self):
-        self.old = None
-        if os.geteuid() == 0:
+    def run():
+        try:
+            os.setpriority(os.PRIO_PROCESS, threading.get_native_id(), LOWEST_NICE)
+            box["nice"] = True
+        except (OSError, AttributeError):
+            box["nice"] = False
+        if idle:
             try:
-                self.old = _own_nice()
-                os.setpriority(os.PRIO_PROCESS, 0, LOWEST_NICE)
-            except OSError:
-                self.old = None
-        return self
+                os.sched_setscheduler(0, os.SCHED_IDLE, os.sched_param(0))
+                box["idle"] = True
+            except (OSError, AttributeError):
+                box["idle"] = False
+        try:
+            box["proc"] = spawn()
+        except BaseException as exc:  # noqa: BLE001 — handed to the caller's thread
+            box["error"] = exc
 
-    def __exit__(self, *_exc):
-        if self.old is not None:
-            try:
-                os.setpriority(os.PRIO_PROCESS, 0, self.old)
-            except OSError:  # pragma: no cover — root always may
-                pass
-        return False
+    worker = threading.Thread(target=run, name="solver-spawn")
+    worker.start()
+    worker.join()
+    if "error" in box:
+        raise box["error"]
+    return box["proc"], bool(box.get("idle"))
 
 
 def _account_pids(uid):
@@ -165,29 +174,6 @@ def agent_process_count(uid=None):
         import pwd
         uid = pwd.getpwnam(agent_user()).pw_uid
     return len(_account_pids(uid))
-
-
-def _idle_policy(pids):
-    """Best effort: put `pids` (every thread of each) in the kernel's SCHED_IDLE class, which a
-    child inherits. Returns how many processes took it. Not available everywhere, and never
-    required: the nice value alone holds the bound the kit promises."""
-    policy = getattr(os, "SCHED_IDLE", None)
-    if policy is None or not hasattr(os, "sched_setscheduler"):
-        return 0
-    done = 0
-    for pid in pids:
-        try:
-            tids = [int(t) for t in os.listdir("/proc/{}/task".format(pid))]
-        except (OSError, ValueError):
-            continue
-        ok = True
-        for tid in tids:
-            try:
-                os.sched_setscheduler(tid, policy, os.sched_param(0))
-            except (OSError, PermissionError):
-                ok = False
-        done += int(ok)
-    return done
 
 
 class SolverAborted(Exception):
@@ -223,10 +209,14 @@ class Solver(object):
     `clear_account=False` keeps the session.
     """
 
-    #: `True` (the default): the solver and its descendants run at `LOWEST_NICE` (and in the
-    #: SCHED_IDLE class where the kernel lets the grader set it), so they cannot slow the
-    #: grader's own work. `False` is for a grader that measures the solver's CPU speed itself.
+    #: `True` (the default): the solver and its descendants run at `LOWEST_NICE`, so they cannot
+    #: slow the grader's own work. `False` is for a grader that measures the solver's CPU speed.
     lowest_priority = True
+
+    #: `True`: the solver also runs in the kernel's SCHED_IDLE class. Off by default: nice 19
+    #: already holds the bound, and the idle class costs a solver that is alone on its CPUs a
+    #: little when the host is busy.
+    idle_class = False
 
     #: More processes than this in the agent's account ends the episode ("too many processes")
     #: and restarts the solver before the next one. 0 (the default) checks nothing: a task that
@@ -274,9 +264,11 @@ class Solver(object):
 
     def _start(self):
         if self.lowest_priority:
-            with _SpawnAtLowestPriority():
-                self.proc = self._spawn()
-            self._lower(self.proc.pid)
+            self.proc, idle = _spawn_at_lowest_priority(self._spawn, self.idle_class)
+            try:
+                self.priority = {"nice": os.getpriority(os.PRIO_PROCESS, self.proc.pid), "idle": int(idle)}
+            except OSError:
+                self.priority = {"nice": None, "idle": int(idle)}
         else:
             self.proc = self._spawn()
         self._cut = False
@@ -297,25 +289,6 @@ class Solver(object):
             except (KeyError, ImportError):
                 self._agent_uid = -1
         return self._agent_uid
-
-    def _lower(self, pid):
-        """After the spawn: confirm the nice value (and set it where the spawn could not, i.e.
-        without root), then try the idle class for what runs so far. A failure here never
-        aborts anything: `self.priority` records what held."""
-        try:
-            if os.getpriority(os.PRIO_PROCESS, pid) < LOWEST_NICE:
-                try:
-                    os.setpriority(os.PRIO_PGRP, os.getpgid(pid), LOWEST_NICE)
-                except OSError:
-                    os.setpriority(os.PRIO_PROCESS, pid, LOWEST_NICE)
-            self.priority["nice"] = os.getpriority(os.PRIO_PROCESS, pid)
-        except OSError:
-            self.priority["nice"] = None
-        pids = [pid]
-        uid = self._uid()
-        if os.geteuid() == 0 and uid > 0:
-            pids = sorted(set(pids + _account_pids(uid)))
-        self.priority["idle"] = _idle_policy(pids)
 
     def _check_processes(self):
         if self.max_processes <= 0:

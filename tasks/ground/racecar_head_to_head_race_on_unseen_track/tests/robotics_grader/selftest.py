@@ -643,8 +643,13 @@ def test_solver_wire():
             check("the solver runs at the lowest nice value",
                   os.getpriority(os.PRIO_PROCESS, solver.proc.pid) == solver_mod.LOWEST_NICE,
                   "nice {}".format(os.getpriority(os.PRIO_PROCESS, solver.proc.pid)))
-            check("the grader keeps its own priority", os.getpriority(os.PRIO_PROCESS, 0) < solver_mod.LOWEST_NICE
-                  or _START_NICE == solver_mod.LOWEST_NICE)
+            threads = [os.getpriority(os.PRIO_PROCESS, int(t)) for t in os.listdir("/proc/self/task")]
+            check("the grader keeps its own priority, on every thread",
+                  all(n == _START_NICE for n in threads), "nice {} (started at {})".format(threads, _START_NICE))
+            later = subprocess.run(["sh", "-c", "cut -d' ' -f19 /proc/$$/stat"], stdout=subprocess.PIPE,
+                                   universal_newlines=True)
+            check("what the grader starts afterwards runs at the grader's priority",
+                  later.stdout.strip() == str(_START_NICE), later.stdout.strip())
 
     with tempfile.TemporaryDirectory() as tmp:
         with _LocalSolver(_write(tmp, _NOISY_SOLVER)) as solver:

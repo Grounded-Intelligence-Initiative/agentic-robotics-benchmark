@@ -90,15 +90,43 @@ def test_solver_and_its_children_run_at_the_lowest_nice_value(tmp_path):
         assert own == solver_mod.LOWEST_NICE
         assert child == solver_mod.LOWEST_NICE
         assert solver.priority["nice"] == solver_mod.LOWEST_NICE
-    assert os.getpriority(os.PRIO_PROCESS, 0) < solver_mod.LOWEST_NICE or os.getpriority(os.PRIO_PROCESS, 0) == 19
 
 
 def test_the_grader_keeps_its_own_priority_after_a_spawn(tmp_path):
-    before = os.getpriority(os.PRIO_PROCESS, 0)
+    """Every thread of the grader, not only the caller: the spawn lowers a thread of its own, which ends. (Root in
+    a sandbox cannot raise a priority back, so nothing of the grader's may be lowered at all.)"""
+    def nices():
+        return {int(t): os.getpriority(os.PRIO_PROCESS, int(t)) for t in os.listdir("/proc/self/task")}
+
+    before = nices()
     with LocalSolver(script(tmp_path, REPORTER)) as solver:
         solver.reset()
-        assert os.getpriority(os.PRIO_PROCESS, 0) == before
-    assert os.getpriority(os.PRIO_PROCESS, 0) == before
+        during = nices()
+        assert all(during[t] == n for t, n in before.items() if t in during)
+        assert os.getpriority(os.PRIO_PROCESS, 0) == before[os.getpid()]
+        assert max(during.values()) < solver_mod.LOWEST_NICE or before[os.getpid()] == solver_mod.LOWEST_NICE
+    assert os.getpriority(os.PRIO_PROCESS, 0) == before[os.getpid()]
+
+
+def test_the_idle_class_is_off_unless_asked_for(tmp_path):
+    with LocalSolver(script(tmp_path, REPORTER)) as solver:
+        assert os.sched_getscheduler(solver.proc.pid) == os.SCHED_OTHER and solver.priority["idle"] == 0
+
+    class Idle(LocalSolver):
+        idle_class = True
+
+    with Idle(script(tmp_path, REPORTER)) as solver:
+        assert os.sched_getscheduler(solver.proc.pid) == os.SCHED_IDLE and solver.priority["idle"] == 1
+    assert os.sched_getscheduler(0) == os.SCHED_OTHER
+
+
+def test_a_spawn_that_fails_raises_in_the_callers_thread(tmp_path):
+    class Broken(LocalSolver):
+        def _spawn(self):
+            raise OSError("no such launcher")
+
+    with pytest.raises(OSError, match="no such launcher"):
+        Broken(script(tmp_path, REPORTER))
 
 
 def test_priority_can_be_left_alone(tmp_path):
