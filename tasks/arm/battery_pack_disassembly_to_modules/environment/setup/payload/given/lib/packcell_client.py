@@ -14,11 +14,12 @@ commissioning service (and in the grader), not in your account.
 import base64
 import json
 import math
+import os
 import socket
 
 import numpy as np
 
-SOCKET = "/run/packcell/commission.sock"
+SOCKET = os.environ.get("PACKCELL_SOCKET", "/run/packcell/commission.sock")
 STATUS = "/run/packcell/status.json"
 
 
