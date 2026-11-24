@@ -36,8 +36,8 @@ platforms = ["arm"]
 stages = ["behavior"]
 
 [cable_routing_through_clips]
-title = "Route a cable through clips and around posts"
-summary = "Write a controller that lays a loose cable along a harness board, through snap-in clips and around posts on the given side, in order, without overloading its connector."
+title = "Route a cable on a harness board with a Panda"
+summary = "A Franka Panda must route a cable through the clips and round the posts of a harness board from two cameras and a wrist force sensor, on boards it has never seen, without overloading the connector."
 platforms = ["arm"]
 stages = ["behavior"]
 

@@ -1,0 +1,8 @@
+# endpoint: https://huggingface.co
+# repo: grounded-intelligence-initiative/ale-robotics-assets
+# revision: 5ed615ab83ec016e832929d8780de438a095d0ff
+# prefix: tasks/arm/cable_routing_through_clips/payload
+19f6c1ed72bd29eccf24abcc41c50fee1ba6cf7455428a5a28ad7a3ec09ce595  render/ibl.ktx
+cc39e959d5ca84482d8c4a80597157b044aea5431518c2668f232bf96bcd4618  render/room.json
+64b774c7fd8c6b410ee49a1d491dd758428a45b19eec766e5e6d16e0ccb18546  render/room.npz
+da20aa5a6a443af164e852afa3d69af5b109a8074b038b6c595b8ec8702ffe3e  render/textures.npz
