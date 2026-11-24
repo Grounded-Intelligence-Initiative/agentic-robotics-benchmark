@@ -1,0 +1,9 @@
+{
+ "task": "uav_assembly_agipix_xarm7",
+ "episode": "graded-01",
+ "seed_sha256": "2c07f1c9a7f4fdccd2abbd82b89361625e10e0a5bb38d4d70687c27f0dbb876c",
+ "record": "/var/lib/arb-online/record.json",
+ "format": "arb-online-record/1",
+ "draw": "2026-11-24T04:03:26Z, with OS entropy: python3 -c 'import secrets; print(secrets.randbits(63))', in the offline verifier's own seed width (tests/verify.py draws secrets.randbits(63) for each of its 3 episodes per run); the workcell is cell.Cell(seed=<the seed>, jitter=True), as for any agent episode. seed_sha256 is the sha256 of the seed in its decimal ASCII form. The seed itself lives root-only in environment/setup/online/episode.json (the service's worker reads it as root before it drops privileges).",
+ "note": "the graded episode of the dual mode, the same for every model: verify.py checks the record's task, episode and seed_sha256 against this file"
+}

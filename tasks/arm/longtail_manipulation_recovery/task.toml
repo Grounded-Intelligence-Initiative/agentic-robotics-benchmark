@@ -1,10 +1,25 @@
 schema_version = "1.4+ale.1"
-artifacts = ["/home/user/submission"]
+# Where the agent leaves its controller (the controller item grades it as frozen at the graded start or at the close
+# of the start window, or as it is at the session's end if the session ends before either) and the graded episode's
+# record with the frozen controller (the service's directory, which the agent can neither read nor write).
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 # A closed-loop recovery controller for a RoboCasa PandaOmron mobile manipulator: it takes over from real end-of-rollout
 # failure states of a frozen learned policy, restored exactly, in RoboCasa's held-out kitchens (fixed hidden set in
 # tests/hidden/, selected by the rule and the amendments recorded in tests/hidden/selection.json), from cameras,
 # proprioception and wrist force.
+#
+# DUAL MODE (experiment, branch exp/dual-mode-scoring; never merged into main): one session, one verify, two items, the
+# reward their mean. The controller item is main's, unchanged: the controller on the 27 hidden states with main's
+# deadlines, caps, pauses and launcher rules (tests/offline_verify.py, byte-identical to main's tests/verify.py), on
+# the controller frozen when the agent starts the graded episode (the graded episode's root supervisor copies
+# /home/user/submission into the root-only /var/lib/arb-online/submission_snapshot/ before the start is charged), or
+# when the 8-hour start window closes without a start, or on the session-end submission if the session ends before
+# either. The online item is one state of the hidden set (h22, PickPlaceCounterToStove, drawn once with OS entropy),
+# played live through the graded episode's service (environment/setup/online/: the grader's own kitchen process on a
+# second RoboCasa tree with the graded kitchens, closed to the agent). tests/verify.py grades both (main's grading,
+# then the record) and writes one reward.
+
 [task]
 name = "grounded-intelligence-initiative/longtail_manipulation_recovery"
 
@@ -19,18 +34,21 @@ oracle_kind = "token-privileged"
 cpus = 4
 memory_mb = 12288
 
-# 8 hours, as the merged arm controller tasks: perception, grasping and placing must be developed against a practice
-# simulator whose kitchen build takes about 10 s and whose 1500-step practice episode takes 1 to 3 minutes.
+# prep_s 28800 (main's 8 hours, as the merged arm controller tasks, shared by the controller and the preparation:
+# perception, grasping and placing must be developed against a practice simulator whose kitchen build takes about 10 s
+# and whose 1500-step practice episode takes 1 to 3 minutes; the graded episode must start within it) + graded_s 10800
+# (the graded episode's own window after its start, the default: its kitchen's build and 1500 steps need minutes).
 [agent]
-timeout_sec = 28800
+timeout_sec = 39600
 network_mode = "no-network"
 
-# Verification runs in its own sandbox built from tests/Dockerfile, which holds the graded kitchens' assets the agent's
-# image does not carry and starts no desktop session. Timeout arithmetic (measured on the authoring host, i9-14900KF,
+# Verification runs in its own sandbox built from tests/Dockerfile, which holds the graded kitchens' assets (the agent's
+# image carries them only in the graded episode's service's tree, closed to the agent) and starts no desktop session. Timeout arithmetic (measured on the authoring host, i9-14900KF,
 # CPU rendering, on the 32 states the set had before amendment A4): a controller that requested every camera with depth
 # at every step took 4,993 s (about 156 s per state for build, prefix replay, simulation, rendering and the wire, with
 # other grading runs sharing the machine); the worst case per state adds the 400 s controller cap and a 40 s restart,
-# about 600 s, so about 16,100 s for the 27 states of the set; 28,800 s leaves a factor of 1.8.
+# about 600 s, so about 16,100 s for the 27 states of the set; 28,800 s leaves a factor of 1.8. Dual mode: main's
+# timeout, since main's grading runs again (on the frozen controller); reading the record takes seconds.
 [verifier]
 timeout_sec = 28800
 environment_mode = "separate"

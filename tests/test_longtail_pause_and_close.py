@@ -77,7 +77,9 @@ def _load(name, path, folder):
     return mod
 
 
-V = _load("longtail_verify", TASK / "tests/verify.py", TASK / "tests")
+# Dual mode (experiment, branch exp/dual-mode-scoring): main's grader is tests/offline_verify.py, byte-identical to
+# main's tests/verify.py (tests/verify.py runs it for the controller item and scores the graded episode).
+V = _load("longtail_verify", TASK / "tests/offline_verify.py", TASK / "tests")
 G = _load("longtail_practice_grade", TASK / "environment/setup/payload/practice_grader/grade.py",
           TASK / "environment/setup/payload")
 

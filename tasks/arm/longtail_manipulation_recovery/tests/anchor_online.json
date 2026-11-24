@@ -1,0 +1,8 @@
+{
+ "metric": "job_balanced_recovered_fraction",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 1.0,
+ "source": "reference (solution/oracle_main.py's replay of the state's recorded rescue, driven by solution/play_graded.py through ~/graded/client.py with the reference's token, as solution/solve.sh runs it after main's oracle) on the dual mode's graded episode h22 (PickPlaceCounterToStove), measured on 2026-11-24 in a container of this task's image (environment/Dockerfile, built from a clean checkout of commit 5ff2fcc6; setup.sh as root, then solve.sh as the agent account, 4 CPUs, 12 GB): recovered (the job's success check held for 10 consecutive steps at step 398 of the 1500-step budget; the rescue recorded 404 actions), the restored prefix equal to the recording (prefix_max_err 0.0), the kitchen built from the graded kitchens' tree in 92 s; the same in a container of main's image with main's verifier tree installed the same way (step 398, kitchen built in 35 s). value = recovered, 1.0 (never a published figure). Confirmed by this dual mode's validate (cited in anchor.json). full_at 1.0 as on main.",
+ "note": "the dual mode's graded-episode item: job_balanced_recovered_fraction of the ONE graded episode the agent plays itself, which for one state is whether it was recovered (1 or 0: the job's success check held for 10 consecutive control steps within the 1500-step budget), read from the graded episode's record (/var/lib/arb-online/record.json); ratio = value / anchor, reward = clamp(ratio / full_at, 0, 1). full_at 1.0 as on main (anchor_offline.json)."
+}

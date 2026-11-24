@@ -20,9 +20,34 @@
 # the privileged physical reference (tests/reference.py, tests/motion.py) runs inside the cell on the nominal layout; it
 # reads ground-truth poses to plan and moves the components only through the arm's bounded actuators and pad friction.
 # Grader knobs live in tests/grader_config.json.
+#
+# DUAL MODE (experimental, 2026-11-24; never merged into main): one session, one verify, two scoring items, reward =
+# their mean, each normalised by its own anchor (tests/anchor_offline.json = main's anchor.json,
+# tests/anchor_online.json; the combined dual_mode_score in tests/anchor.json is 1.0 by construction).
+# * The offline item is main's grading above, unchanged (tests/offline_verify.py = main's tests/verify.py byte for byte,
+#   run by tests/verify.py in a root-only copy of tests/ laid out as main's), of the program FROZEN at the earlier of the
+#   graded start and the start window's close (prep_s after the service's start): then (before a start is charged) the
+#   graded episode's service has its root supervisor copy /home/user/submission into
+#   /var/lib/arb-online/submission_snapshot (regular files and directories, no link followed, main's 60 MiB cap), so the
+#   program keeps main's preparation time; the submission at the session's end is graded only when the session ends
+#   before the window closes, without a start, or there is no usable record.
+# * The online item is the graded episode the agent plays itself during its session, through the graded episode's cell
+#   service (environment/setup/online/service.py, started by environment/setup/setup.sh; the cell a byte copy of the
+#   cell's part of tests/, served as the dedicated `arbcell` account over a unix socket; the client ~/graded_client.py,
+#   connect_graded()): one workcell drawn as the offline verifier draws its episodes, its 63-bit seed drawn once with OS
+#   entropy (tests/online.json), the same rules and score as an offline episode; it can be started once, within prep_s =
+#   21600 s (main's agent budget, shared by the program and the preparation) of the service's start, and ends at the
+#   agent's finish, at the workcell's own end, graded_s = 10800 s after its start, or when the session ends (the last
+#   record applies). Its record goes to /var/lib/arb-online, which the agent can neither read nor write.
+# There is no practice facility. The oracle (solution/solve.sh) leaves main's reference program in the submission, then
+# starts the graded episode with the oracle token and runs the privileged reference through the client (on the nominal
+# layout of the episode's seed, as the offline grader runs a privileged program).
 
 schema_version = "1.4+ale.1"
-artifacts = ["/home/user/submission"]
+# Where the agent leaves its work (assemble.py and its helpers), and the graded episode's record directory (record.json,
+# requests.jsonl, the program frozen at the start in submission_snapshot/, the episode record trace/), written by the
+# service as its own account and by its root supervisor; the engine collects both as root after the agent phase.
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/uav_assembly_agipix_xarm7"
@@ -55,18 +80,25 @@ source_platform = "AGiPix-derived mechanical assembly kit"
 cpus = 8
 memory_mb = 16384
 
-# [agent] timeout_sec: 6 h. [verifier] timeout_sec 25200 s (7 h): an agent's verify is 3 workcells x (the cell build and
-# camera session, under a minute, + the program's <= 7200 s wall cap) = at most ~21800 s; the oracle's is 3 x the
-# privileged reference, ~25-80 min each by host load (a fresh 23/23 run: 1132 s simulated, 1438 s wall on an idle
-# 24-core host, about 3x that on a loaded one), each capped at 10800 s (a cap for one runaway episode, not for three).
-# The verifier sandbox's start and tests/test.sh's copy of the givens count against it too.
+# [agent] timeout_sec (dual mode): prep_s + graded_s = 21600 + 10800 = 32400 s: main's 6 h for the program and the
+# preparation (the start window, counted from the graded episode's service's start), then 3 h for the graded episode
+# (the online variant's graded window; the privileged reference's episode takes about 25-80 min by host load, within
+# it). The agent's sandbox also holds the graded episode's service: about 1.4 GB while it waits, about 6.5 GB once its
+# cameras have rendered (the workcell and its Filament camera session).
+# [verifier] timeout_sec 25200 s (7 h): an agent's verify is 3 workcells x (the cell build and camera session, under a
+# minute, + the program's <= 7200 s wall cap) = at most ~21800 s; the oracle's is 3 x the privileged reference, ~25-80
+# min each by host load (a fresh 23/23 run: 1132 s simulated, 1438 s wall on an idle 24-core host, about 3x that on a
+# loaded one), each capped at 10800 s (a cap for one runaway episode, not for three). The verifier sandbox's start and
+# tests/test.sh's copy of the givens count against it too. Dual mode: the verify stage runs main's grading again (its
+# time above) and reads the graded episode's record (seconds).
 [agent]
-timeout_sec = 21600
+timeout_sec = 32400
 network_mode = "no-network"
 
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
-# touched, with only the declared artifact (the submission) restored into it, so nothing else the agent left (a file,
-# a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there: tests/test.sh
+# touched, with only the declared artifacts (the submission and the graded episode's record directory, both written
+# root-owned by the engine) restored into it, so nothing else the agent left (a file, a process, a program planted on
+# root's PATH) reaches it. environment/setup/setup.sh does not run there: tests/test.sh
 # builds the grader's root-owned copy of the givens itself. The agent's program runs during verify (beside the cell and
 # the cell's own Filament camera session), so the verifier gets the agent's CPUs (CPU rendering: no GPU) and 24 GB: a
 # program that renders through the given layer and the cell's camera session share it (in a local graded rehearsal of
