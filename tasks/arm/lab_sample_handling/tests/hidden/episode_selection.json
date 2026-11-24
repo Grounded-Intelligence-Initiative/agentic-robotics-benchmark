@@ -5,9 +5,9 @@
   "tests/verify.py": "0a715fd77cb95a12180797ae333a1f34922c2721403edd0b2b387d7ecc6f57e4",
   "tests/episode.py": "6490a04f2caf129be10aface13d4092ddb7248db443b43c024b4ac9fb9a3df2c",
   "tests/lab_env.py": "ddf3e24a587733f8208122aba6e8d2259f7e925bff941eeb25f9e5e0360e94ec",
-  "tests/lab_sim.py": "f19ca8a1343034bad78da00ac84e27d47e6f83abeb382c9d9ee9209c79b871d6",
+  "tests/lab_sim.py": "b0a2b6604d2bdcba67beb5bf76c92a65a296486c2dad06c46144f9e7849c0294",
   "tests/box_transport_env.py": "d58137c62f2799cd0355ed811323f36b351af1329f97632abc6df5ec522b18cc",
-  "tests/lab_render.py": "2daea4e829db37334e846b18406b1b2842a282dd49f3647079426907329eeee6",
+  "tests/lab_render.py": "36de23c28e3d2fc1d90edab8965748d9839f60d7fa4492f88f1e7c5e8f15c577",
   "tests/lab_look.json": "25012c7369fe8e96ccca04bca098f019139a4ad4cb21d93a79cbd8464357abec",
   "tests/units.json": "8f38202ab591aef6512934bc8b8278fd8b1a9904c4b57be61826f2c0785f8c53",
   "tests/grader_config.json": "52d07117c2d9dc40e78ba22ba17d3edf01db8e462de7b6e700c5ec77bff365ba",
@@ -17,8 +17,8 @@
   "solution/oracle/episode.py": "6490a04f2caf129be10aface13d4092ddb7248db443b43c024b4ac9fb9a3df2c",
   "solution/oracle/fill_read.py": "3c63a1dcb5aa1dfbca27ea7cac8af9e0e88c667d7610d6802202340adbb545ac",
   "solution/oracle/lab_env.py": "ddf3e24a587733f8208122aba6e8d2259f7e925bff941eeb25f9e5e0360e94ec",
-  "solution/oracle/lab_render.py": "2daea4e829db37334e846b18406b1b2842a282dd49f3647079426907329eeee6",
-  "solution/oracle/lab_sim.py": "f19ca8a1343034bad78da00ac84e27d47e6f83abeb382c9d9ee9209c79b871d6",
+  "solution/oracle/lab_render.py": "36de23c28e3d2fc1d90edab8965748d9839f60d7fa4492f88f1e7c5e8f15c577",
+  "solution/oracle/lab_sim.py": "b0a2b6604d2bdcba67beb5bf76c92a65a296486c2dad06c46144f9e7849c0294",
   "solution/oracle/localize_probe.py": "9796601fcb8988401557d12ea1fe999705b8390496286f20a20d47dc3e382069",
   "solution/oracle/mass_probe.py": "09696e20f98133a35a2b7d9b2768f0c9f5f71d90f4780261cd19615e3829796c",
   "solution/oracle/oracle_main.py": "fb8c02f30aecd78f5918dabd18d5469d8431e395d8dd3e4743a09d36d6164837",
@@ -32,7 +32,7 @@
   "solution/oracle/units.json": "8f38202ab591aef6512934bc8b8278fd8b1a9904c4b57be61826f2c0785f8c53",
   "solution/solve.sh": "6a0a95126aae46ca0fe1f591e6db1181347d1daea5ef6fc890443a7fe440eaa4"
  },
- "frozen_commit": "bc73d983bd4f11fb13149cc71e0be4a240e2d1cc",
+ "frozen_commit": "c6595c50eff25ba6bdb809326ddc02f3e3f1f7df",
  "draws": [
   {
    "draw": 1,
@@ -3670,6 +3670,207 @@
       1.0,
       1.0
      ]
+    }
+   }
+  },
+  {
+   "amendment": 6,
+   "amended_utc": "2026-11-24T03:19:51Z",
+   "draw": 3,
+   "commit": "c6595c50eff25ba6bdb809326ddc02f3e3f1f7df",
+   "reason": "The cameras' drawing was made the same in every process (2026-11-24; the maintainers' decision: keep tests/hidden/episodes.json byte-identical). A ring's wall, the shield and the cabinet's walls are each drawn as one mesh (lab_sim.add_ring_walls, lab_sim.add_drawn_boxes; mesh geoms without contact or mass; lab_render hides the boxes they stand for): the boxes pass through each other where they meet, and which of two crossing faces a pixel showed depended on the process (a few pixels of some wrist images). The simulation is unchanged bit for bit (mass arrays and 400-step states on every unit), so no episode's bench, worklist, fills, unit or credit changes; the reference's step counts on the set are the same as before the change.",
+   "changed": {
+    "tests/lab_sim.py": {
+     "recorded": "f19ca8a1343034bad78da00ac84e27d47e6f83abeb382c9d9ee9209c79b871d6",
+     "now": "b0a2b6604d2bdcba67beb5bf76c92a65a296486c2dad06c46144f9e7849c0294"
+    },
+    "tests/lab_render.py": {
+     "recorded": "2daea4e829db37334e846b18406b1b2842a282dd49f3647079426907329eeee6",
+     "now": "36de23c28e3d2fc1d90edab8965748d9839f60d7fa4492f88f1e7c5e8f15c577"
+    },
+    "solution/oracle/lab_render.py": {
+     "recorded": "2daea4e829db37334e846b18406b1b2842a282dd49f3647079426907329eeee6",
+     "now": "36de23c28e3d2fc1d90edab8965748d9839f60d7fa4492f88f1e7c5e8f15c577"
+    },
+    "solution/oracle/lab_sim.py": {
+     "recorded": "f19ca8a1343034bad78da00ac84e27d47e6f83abeb382c9d9ee9209c79b871d6",
+     "now": "b0a2b6604d2bdcba67beb5bf76c92a65a296486c2dad06c46144f9e7849c0294"
+    }
+   },
+   "frozen_before": {
+    "tests/verify.py": "0a715fd77cb95a12180797ae333a1f34922c2721403edd0b2b387d7ecc6f57e4",
+    "tests/episode.py": "6490a04f2caf129be10aface13d4092ddb7248db443b43c024b4ac9fb9a3df2c",
+    "tests/lab_env.py": "ddf3e24a587733f8208122aba6e8d2259f7e925bff941eeb25f9e5e0360e94ec",
+    "tests/lab_sim.py": "f19ca8a1343034bad78da00ac84e27d47e6f83abeb382c9d9ee9209c79b871d6",
+    "tests/box_transport_env.py": "d58137c62f2799cd0355ed811323f36b351af1329f97632abc6df5ec522b18cc",
+    "tests/lab_render.py": "2daea4e829db37334e846b18406b1b2842a282dd49f3647079426907329eeee6",
+    "tests/lab_look.json": "25012c7369fe8e96ccca04bca098f019139a4ad4cb21d93a79cbd8464357abec",
+    "tests/units.json": "8f38202ab591aef6512934bc8b8278fd8b1a9904c4b57be61826f2c0785f8c53",
+    "tests/grader_config.json": "52d07117c2d9dc40e78ba22ba17d3edf01db8e462de7b6e700c5ec77bff365ba",
+    "solution/oracle/bench_estimators.py": "e7567da9cc84a4dbc84f08db944ac2a3460ee6ff9460143ff62d7bd7292485a3",
+    "solution/oracle/box_transport_env.py": "d58137c62f2799cd0355ed811323f36b351af1329f97632abc6df5ec522b18cc",
+    "solution/oracle/centrifuge_probe.py": "2ea79194dbd872e59d35be6d885f8a12ff192a29723a1566d04805ed111fa02b",
+    "solution/oracle/episode.py": "6490a04f2caf129be10aface13d4092ddb7248db443b43c024b4ac9fb9a3df2c",
+    "solution/oracle/fill_read.py": "3c63a1dcb5aa1dfbca27ea7cac8af9e0e88c667d7610d6802202340adbb545ac",
+    "solution/oracle/lab_env.py": "ddf3e24a587733f8208122aba6e8d2259f7e925bff941eeb25f9e5e0360e94ec",
+    "solution/oracle/lab_render.py": "2daea4e829db37334e846b18406b1b2842a282dd49f3647079426907329eeee6",
+    "solution/oracle/lab_sim.py": "f19ca8a1343034bad78da00ac84e27d47e6f83abeb382c9d9ee9209c79b871d6",
+    "solution/oracle/localize_probe.py": "9796601fcb8988401557d12ea1fe999705b8390496286f20a20d47dc3e382069",
+    "solution/oracle/mass_probe.py": "09696e20f98133a35a2b7d9b2768f0c9f5f71d90f4780261cd19615e3829796c",
+    "solution/oracle/oracle_main.py": "fb8c02f30aecd78f5918dabd18d5469d8431e395d8dd3e4743a09d36d6164837",
+    "solution/oracle/rotor_angle.py": "7526168efca73cdd8a66c37e3129c5c6972cf7d74b61bb514113a90f3e029173",
+    "solution/oracle/tube_insert_probe.py": "347ea341de6319115012cf5ad2c0807a585cf79bc3f1e76b069dc95485fa9366",
+    "solution/oracle/turn_probe.py": "e05380e99a561d9fa0d68c3c2e805c58d49479682a4f5917b2800f9927caff6b",
+    "solution/oracle/wire_world.py": "e0c4fc68093aaae6839c4390248b95823b63857076fb65f5872226702cbff8d7",
+    "solution/oracle/worklist_probe.py": "aa9db96f7542b485c5fb99b5911509b59f1c53ed88819801527574a96a6d9fd3",
+    "solution/oracle/worklist_scene.py": "913b78713c3b690a7221749508c8f73b8f85c7ac18ac92bc74dbb8b2d93fcc24",
+    "solution/oracle/lab_look.json": "25012c7369fe8e96ccca04bca098f019139a4ad4cb21d93a79cbd8464357abec",
+    "solution/oracle/units.json": "8f38202ab591aef6512934bc8b8278fd8b1a9904c4b57be61826f2c0785f8c53",
+    "solution/solve.sh": "6a0a95126aae46ca0fe1f591e6db1181347d1daea5ef6fc890443a7fe440eaa4"
+   },
+   "frozen_commit_before": "bc73d983bd4f11fb13149cc71e0be4a240e2d1cc",
+   "rule": "one full verify of the privileged reference on the made set as the grader runs it, with the frozen files of the commit; every episode scored credit 1.0 again",
+   "evidence": {
+    "what": "one full verify of the privileged reference on the made set as the grader runs it (ale validate, pinned engine bfb7505, the separate verifier's own image built from tests/Dockerfile, the real wire, the grader's probe schedule), with the frozen files of the commit",
+    "run": "validate-e53b3fd8",
+    "commit": "afc20604",
+    "reward": 1.0,
+    "reward_exact": 1.0,
+    "mean_episode_credit": 1.0,
+    "episodes_scored": 12.0,
+    "episodes_aborted": 0.0,
+    "sim_faults": 0.0,
+    "probes_total": 1168.0,
+    "probes_passed": 988.0,
+    "processes_outside_launcher": 0.0,
+    "numerics_ok": 1.0,
+    "render_selftest": 1.0,
+    "budget_exhausted": 0.0,
+    "agent_account_cleared": 1.0,
+    "episodes": [
+     {
+      "index": 0,
+      "unit": "u2",
+      "credit": 1.0,
+      "steps": 13389,
+      "reason": "ok"
+     },
+     {
+      "index": 1,
+      "unit": "u4",
+      "credit": 1.0,
+      "steps": 14187,
+      "reason": "ok"
+     },
+     {
+      "index": 2,
+      "unit": "u1",
+      "credit": 1.0,
+      "steps": 9407,
+      "reason": "ok"
+     },
+     {
+      "index": 3,
+      "unit": "u3",
+      "credit": 1.0,
+      "steps": 8060,
+      "reason": "ok"
+     },
+     {
+      "index": 4,
+      "unit": "u3",
+      "credit": 1.0,
+      "steps": 11338,
+      "reason": "ok"
+     },
+     {
+      "index": 5,
+      "unit": "u4",
+      "credit": 1.0,
+      "steps": 9230,
+      "reason": "ok"
+     },
+     {
+      "index": 6,
+      "unit": "u2",
+      "credit": 1.0,
+      "steps": 14448,
+      "reason": "ok"
+     },
+     {
+      "index": 7,
+      "unit": "u0",
+      "credit": 1.0,
+      "steps": 7378,
+      "reason": "ok"
+     },
+     {
+      "index": 8,
+      "unit": "u0",
+      "credit": 1.0,
+      "steps": 8842,
+      "reason": "ok"
+     },
+     {
+      "index": 9,
+      "unit": "u5",
+      "credit": 1.0,
+      "steps": 6225,
+      "reason": "ok"
+     },
+     {
+      "index": 10,
+      "unit": "u5",
+      "credit": 1.0,
+      "steps": 9455,
+      "reason": "ok"
+     },
+     {
+      "index": 11,
+      "unit": "u1",
+      "credit": 1.0,
+      "steps": 7489,
+      "reason": "ok"
+     }
+    ],
+    "before_the_change": {
+     "run": "validate-5b459699",
+     "note": "the same set and probe schedule with the files as they were recorded (another host)",
+     "probes_total": 1168.0,
+     "probes_passed": 988.0,
+     "steps": [
+      13389,
+      14187,
+      9407,
+      8060,
+      11338,
+      9230,
+      14448,
+      7378,
+      8842,
+      6225,
+      9455,
+      7489
+     ],
+     "credit": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "verify_stage_seconds": 3558
+    },
+    "verify_stage": {
+     "exit_code": 0,
+     "seconds": 1930.2
     }
    }
   }
