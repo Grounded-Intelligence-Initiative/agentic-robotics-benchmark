@@ -131,7 +131,8 @@ class Reference(object):
 
     def move(self, goal, speed=0.45, rot_speed=1.2, guard_stroke=None, guard_force=None, extra=None):
         """Bring the commanded tool pose to `goal` on a straight line, in as many actions as it takes."""
-        for _ in range(60):
+        stops = 0
+        for _ in range(40):
             cur = T_of(self.tr["tcp_target"])
             d = delta(goal, cur)
             dist, ang = float(np.linalg.norm(d[:3])), float(np.linalg.norm(d[3:]))
@@ -151,7 +152,11 @@ class Reference(object):
             o = yield from self.do(maker)
             if o["status"]["guard"]:
                 return "guard"
+            if o["status"]["stopped"]:
+                stops += 1
             yield from self.settle(o)
+            if stops >= 2:
+                return "stopped"
         return "fail"
 
     def move_joints(self, q_goal, speed=0.9, extra=None):
@@ -351,7 +356,10 @@ class Reference(object):
             c = -c
         goal = mk(down(c), gp)
         w = min(OPEN, width + 0.03)
-        yield from self.go(goal, z_safe, final_speed=0.15, extra={"gripper": w})
+        if (yield from self.go(goal, z_safe, final_speed=0.15, extra={"gripper": w})) != "ok":
+            self.log("could not reach", pid)
+            yield from self.lift(z_safe)
+            return False
         yield from self.wait(0.2, extra={"gripper": w})
         held = yield from self.close_on(pid)
         if not held:
@@ -416,7 +424,8 @@ class Reference(object):
             return
         for kind, where in (("busbar", "copper"), ("bracket", "steel")):
             for pid in sorted(p for p, v in self.tr["parts"].items() if v["kind"] == kind):
-                if not self.tr["parts"][pid]["locked"] and (yield from self.pick(pid, Z_PART)):
+                # a bracket is taken by its long side: the gripper's body then clears the tray's wall
+                if not self.tr["parts"][pid]["locked"] and (yield from self.pick(pid, Z_PART, which=1 if kind == "bracket" else 0)):
                     yield from self.drop_in_bin(where, Z_PART)
         bay = 0
         for pid in sorted(p for p, v in self.tr["parts"].items() if v["kind"] == "module"):

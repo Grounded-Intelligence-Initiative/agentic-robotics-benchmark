@@ -112,6 +112,7 @@ class Cell(object):
         self.f_ext, self.t_ext = np.zeros(3), np.zeros(3)
         self.wall = {"physics": 0.0, "render": 0.0, "rules": 0.0}
         self.fingers_dirty = True
+        self.q_hist = []
         # check that the views follow the order they were asked in
         tfs = np.array(self.pv.get_transforms())
         d = float(np.max(np.linalg.norm(tfs[:, :3] - self.seat_pos, axis=1)))
@@ -297,6 +298,7 @@ class Cell(object):
         self.tick_n += 1
         r.t = self.tick_n * S.TICK
         self._read()
+        self.q_hist = (self.q_hist + [self.q.copy()])[-6:]
         t1 = time.time()
         self.wall["physics"] += t1 - t0
         tfs = np.array(self.pv.get_transforms())
@@ -341,9 +343,10 @@ class Cell(object):
         err = float(np.max(np.abs(self.q_cmd - self.q)))
         if (np.linalg.norm(self.f_ext) > cfg["overload_force"] or np.linalg.norm(self.t_ext) > cfg["overload_torque"]
                 or err > cfg["overload_joint_error"]) and self.lock_ticks == 0:
+            # the arm backs off to where it was a quarter of a second before and stays there for the lock time
             self.stops += 1
             self.lock_ticks = int(round(cfg["stop_lock_s"] / S.TICK))
-            self.q_cmd = self.q.copy()
+            self.q_cmd = self.q_hist[0].copy() if self.q_hist else self.q.copy()
             r.log("protective_stop", force=round(float(np.linalg.norm(self.f_ext)), 1), joint_error=round(err, 4))
         elif self.lock_ticks > 0:
             self.lock_ticks -= 1
