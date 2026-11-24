@@ -65,9 +65,10 @@ can read. One process is one pack: Isaac Sim 6.2 headless, PhysX on the CPU (`en
   T30 in a T40 recess), an engagement outside the tolerances (up to 3.5 / 2.5 mm, 8 degrees), a cammed-out Torx bit
   and a tightening run above the head's limit wear the head; at wear 1 it is stripped and only the extractor bit
   removes it. Thread engagement, the fastener rising as it turns and the socket sliding over the head are not
-  simulated: the bit's collider stands on the head's, and that contact has a high friction (3.0, combine mode max)
-  that stands in for the socket closing over the head, so a seated bit does not skate off under a side load (with
-  PhysX's default friction a bit pressed on a bracket bolt was kicked off the head now and then).
+  simulated: the bit's collider is a capsule whose round end stands on the head's flat top (a flat-ended
+  cylinder on a head of nearly its own radius was thrown off sideways now and then: section 6), and that contact
+  has a high friction (3.0, combine mode max), which stands in for the socket closing over the head. A part whose
+  last fastener has just come out is freed only when the bit has lifted off it.
 - *A part is held until what holds it is out.* The lid by all its bolts, a busbar by two, a bracket by one, a module
   by its two brackets and its two busbars (they have to leave their seats), the service disconnect and the plugs by
   a latch that gives at a pull of 60 N / 30 N along their axis. A held part is a kinematic body: pulling on it

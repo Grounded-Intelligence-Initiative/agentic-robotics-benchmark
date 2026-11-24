@@ -83,7 +83,8 @@ An action is a JSON object; every key is optional:
   keeps the commanded pose. The displacement always starts from the commanded target (`tcp_target`, `q_target`),
   not from the measured pose. Speed limits: 0.6 m/s and 2 rad/s at the tool centre point, joints [1.5, 1.5, 2.0, 2.5, 2.5, 2.5] rad/s; a move
   that would exceed them, or that the arm cannot follow (near a singularity, at a joint limit, out of reach), is
-  shortened and the observation says `clipped`.
+  shortened and the observation says `clipped`. A move of one or two ticks has no room for a smooth start and
+  stop: keep such moves small, a sudden large one jerks the arm (and can overload it when it carries a module).
 - **guards.** `guard_force` ends the move when the wrench's force has changed by more than that many newtons since
   the move began; `guard_stroke_mm` ends it when the nutrunner's spindle is compressed further than that. The
   observation then says `guard`.
