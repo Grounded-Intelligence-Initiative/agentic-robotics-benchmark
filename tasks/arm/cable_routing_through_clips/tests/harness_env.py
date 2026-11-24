@@ -59,7 +59,10 @@ BARB_REST = math.radians(35.0)
 BARB_RANGE = 1.1
 BARB_T = 0.0006                    # half thickness
 BARB_W = 0.005                     # half width along the passage
-BARB_SPRING = 0.004                # N m / rad
+BARB_SPRING = 0.0015               # N m / rad
+LEAD_LEN = 0.007                   # a lead-in fin rises outward at LEAD_ANGLE from each pin's top (a funnel over the slot)
+LEAD_ANGLE = math.radians(50.0)    # from horizontal
+LEAD_T = 0.0006                    # half thickness
 POST_R = 0.012
 POST_H = 0.030
 POST_CAP_R = 0.018
@@ -70,9 +73,21 @@ CLIP_AXIS_TOL = math.radians(8.0)  # a clip's passage axis is within this of the
 TENSION_LIMIT = 40.0               # N
 TENSION_WINDOW = 0.1               # s: the connector is damaged when the mean tension over this window passes the limit
 SETTLE_S = 2.0
-JAW_HALF = (0.008, 0.002, 0.009)   # cable jaws under the stock finger pads
-JAW_DZ = 0.012
-GRASP_SITE_Z = 0.0195              # grip site above the board when the jaws' lower edge is 1.5 mm above it
+# The cable gripper on the Panda hand: on each finger a carrier plate under the stock pad and a V groove (two faces at
+# JAW_V_ANGLE from the closing direction, JAW_V_LEN long) whose axis lies along the cable. A cable lying on the board
+# is scooped into the groove as the fingers close and cannot leave it sideways, up or down; it can slide along its
+# axis once the pull passes the slip force (grip force and face friction below; measured: see the datasheet).
+JAW_HALF_X = 0.008                 # half length of the groove along the cable
+JAW_V_ANGLE = math.radians(45.0)
+JAW_V_LEN = 0.0065
+JAW_V_T = 0.0012                   # half thickness of a groove face
+JAW_V_DZ = 0.020                   # groove axis below the stock pad's centre (toward the fingertip)
+JAW_FRICTION = 0.90                # groove faces (they govern the cable-jaw contact: priority)
+GRIP_KP = 40000.0                  # N/m, finger servo (stiff enough that the limit below is what grips)
+GRIP_FORCE = 30.0                  # N, finger servo limit (grip force per finger)
+GRIP_DAMPING = 120.0               # N s/m, finger joints
+GRASP_SITE_Z = 0.0226              # grip site above the board when the groove's lower edge is 1 mm above it
+GROOVE_BELOW_SITE = 0.017          # the groove's axis below the grip site
 
 # Bench furniture with contact (the cable or the arm can reach it): name, type, centre (x, y, z of the centre), size
 FURNITURE = (
@@ -299,6 +314,9 @@ def _clip_xml(i, f, radius):
     for sgn, nm in ((1, "a"), (-1, "b")):
         out.append('<geom name="pin%d%s" type="capsule" fromto="0 %.6f 0 0 %.6f %.6f" size="%.6f" rgba=".75 .76 .78 1" %s/>'
                    % (i, nm, sgn * off, sgn * off, PIN_H, PIN_R, st))
+        out.append('<geom name="lead%d%s" type="box" size="%.6f %.6f %.6f" pos="0 %.6f %.6f" euler="%.6f 0 0" rgba=".92 .92 .88 1" %s/>'
+                   % (i, nm, BARB_W, LEAD_LEN / 2, LEAD_T, sgn * (off + (LEAD_LEN / 2) * math.cos(LEAD_ANGLE)),
+                      PIN_H + (LEAD_LEN / 2) * math.sin(LEAD_ANGLE), sgn * LEAD_ANGLE, st))
         out.append('<body name="barb%d%s" pos="0 %.6f %.6f" euler="%.6f 0 0">' % (i, nm, sgn * (off - PIN_R), PIN_H, sgn * BARB_REST))
         out.append('<joint name="jb%d%s" type="hinge" axis="%d 0 0" range="0 %.3f" stiffness="%.6f" damping="0.0005" armature="1e-6"/>'
                    % (i, nm, sgn, BARB_RANGE, BARB_SPRING))
@@ -371,16 +389,32 @@ def build_model(ep):
             robot.delete(cam)
     for nm in ("finger1_pad_collision", "finger2_pad_collision"):
         pg = grip.geom(nm)
-        j = pg.parent.add_geom()
-        j.name = nm.replace("pad_collision", "jaw")
-        j.type = mujoco.mjtGeom.mjGEOM_BOX
-        j.size = list(JAW_HALF)
-        j.pos = [pg.pos[0], pg.pos[1], pg.pos[2] + JAW_DZ]
-        j.quat = list(pg.quat)
-        j.friction = [2.0, 0.05, 0.0001]
-        j.condim = 4
-        j.rgba = [0.1, 0.1, 0.1, 1]
-        j.mass = 0.005
+        inward = 1.0 if nm.startswith("finger1") else -1.0       # the body's y toward the other finger
+        base = nm.replace("pad_collision", "")
+        plate = pg.parent.add_geom()
+        plate.name = base + "jaw"
+        plate.type = mujoco.mjtGeom.mjGEOM_BOX
+        plate.size = [JAW_HALF_X, 0.0015, 0.012]
+        plate.pos = [pg.pos[0], pg.pos[1] - inward * 0.0015, pg.pos[2] + JAW_V_DZ - 0.006]
+        plate.rgba = [0.1, 0.1, 0.1, 1]
+        plate.mass = 0.004
+        plate.friction = [JAW_FRICTION, 0.02, 0.0001]
+        for tag, sgn in (("lower", 1.0), ("upper", -1.0)):
+            f = pg.parent.add_geom()
+            f.name = base + "groove_" + tag
+            f.type = mujoco.mjtGeom.mjGEOM_BOX
+            f.size = [JAW_HALF_X, JAW_V_T, JAW_V_LEN / 2]
+            f.pos = [pg.pos[0], pg.pos[1] + inward * (JAW_V_LEN / 2) * math.cos(JAW_V_ANGLE),
+                     pg.pos[2] + JAW_V_DZ + sgn * (JAW_V_LEN / 2) * math.sin(JAW_V_ANGLE)]
+            th = -sgn * inward * (math.pi / 2 - JAW_V_ANGLE)
+            f.quat = [math.cos(th / 2), math.sin(th / 2), 0.0, 0.0]
+            f.friction = [JAW_FRICTION, 0.02, 0.0001]
+            f.condim = 4
+            f.priority = 1
+            f.solref = [0.002, 1.0]                          # a hard face: a squeezed cable must not work through it
+            f.solimp = [0.98, 0.999, 0.0003, 0.5, 2.0]
+            f.rgba = [0.15, 0.15, 0.17, 1]
+            f.mass = 0.001
     robot.body("right_hand").add_frame().attach_body(grip.body("right_gripper"), "g_", "")
     w.worldbody.add_frame(pos=[0.0, 0.0, 0.0]).attach_body(robot.body("base"), "r_", "")
     site = w.body("cB_first").add_site()
@@ -392,6 +426,15 @@ def build_model(ep):
     s.objname = "conn_site"
     m = w.compile()
     m.site_rgba[:, 3] = 0.0
+    # the hand's grip: robosuite's finger servos (1000 N/m, 20 N) hold a 9 mm cable with under 3 N a finger; a Panda
+    # hand grips with tens of newtons. Stiffer servos with a 40 N limit and joint damping (GRIP_KP, GRIP_FORCE).
+    for nm in ("r_g_gripper_finger_joint1", "r_g_gripper_finger_joint2"):
+        a = m.actuator(nm).id
+        m.actuator_gainprm[a, 0] = GRIP_KP
+        m.actuator_biasprm[a, 1] = -GRIP_KP
+        m.actuator_forcerange[a] = [-GRIP_FORCE, GRIP_FORCE]
+    for nm in ("r_g_finger_joint1", "r_g_finger_joint2"):
+        m.dof_damping[m.joint(nm).dofadr[0]] = GRIP_DAMPING
     # the hand's colliding geoms also meet the barbs (collision bit 2)
     hand = m.body("r_g_right_gripper").id
     for g in range(m.ngeom):
