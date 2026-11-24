@@ -174,9 +174,9 @@ def practice_graders():
     return out
 
 
-#: Practice graders whose pair count is being changed in their own pull requests (the tasks' maintainers' fix rounds);
-#: each must leave this list when that pull request merges.
-PENDING = {"kitchen_appliance_tending"}
+#: Practice graders whose pair count is being changed in a pull request of their own; each must leave this set
+#: when that pull request merges. Empty now.
+PENDING: set = set()
 
 
 @pytest.mark.parametrize("path", practice_graders(), ids=lambda p: p.parents[4].name)
