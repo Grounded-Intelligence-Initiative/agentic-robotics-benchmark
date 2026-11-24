@@ -41,6 +41,39 @@ for i, p in enumerate(S.get("props", [])):
     g.location = Vector(p["pos"]); g.rotation_euler = (0, 0, p.get("yaw", 0.0))
 for x in S.get("extra", []):
     imp(x)
+# movers: vehicles (USD props) and walking people (one mesh per pose of the walk cycle); shown per shot
+MOV = []
+for k, m in enumerate(S.get("movers", [])):
+    if m["kind"] == "vehicle":
+        g, _ = imp(m["usd"]); MOV.append({"kind": "vehicle", "obj": g})
+    else:
+        import numpy as np
+        z = np.load(m["npz"])
+        mat = bpy.data.materials.get("person_" + os.path.basename(m["npz"]))
+        if mat is None:
+            mat = bpy.data.materials.new("person_" + os.path.basename(m["npz"])); mat.use_nodes = True
+            bsdf = mat.node_tree.nodes["Principled BSDF"]; bsdf.inputs["Roughness"].default_value = 0.7
+            if m.get("tex") and os.path.isfile(m["tex"]):
+                tn = mat.node_tree.nodes.new("ShaderNodeTexImage"); tn.image = bpy.data.images.load(m["tex"])
+                mat.node_tree.links.new(tn.outputs["Color"], bsdf.inputs["Base Color"])
+        g = bpy.data.objects.new("person_%d" % k, None); sc.collection.objects.link(g)
+        poses = []
+        F = z["F"]; UV = z["UV"].reshape(-1, 2)
+        for pi in range(z["V"].shape[0]):
+            me = bpy.data.meshes.new("p%d_%d" % (k, pi))
+            me.from_pydata(z["V"][pi].tolist(), [], F.tolist()); me.update()
+            uvl = me.uv_layers.new(name="uv")
+            uvl.data.foreach_set("uv", UV.ravel().tolist())
+            for poly in me.polygons:
+                poly.use_smooth = True
+            me.materials.append(mat)
+            o = bpy.data.objects.new("p%d_%d" % (k, pi), me); sc.collection.objects.link(o); o.parent = g; o.hide_render = True
+            poses.append(o)
+        MOV.append({"kind": "person", "obj": g, "poses": poses})
+def _hide(g, flag):
+    g.hide_render = flag
+    for ch in g.children_recursive:
+        ch.hide_render = flag
 for i, l in enumerate(S.get("lamps", [])):
     d = bpy.data.lights.new("lamp_%d" % i, "POINT"); d.energy = S.get("lamp_w", 400.0); d.shadow_soft_size = 0.4; d.color = (1.0, 0.96, 0.9)
     try:
@@ -66,6 +99,18 @@ F = Matrix(((1, 0, 0), (0, -1, 0), (0, 0, -1)))
 for s in Q["shots"]:
     R = Matrix(s["R"]) @ F
     M = R.to_4x4(); M.translation = Vector(s["eye"]); co.matrix_world = M
+    on = {mv[0]: mv for mv in s.get("movers", [])}
+    for k, m in enumerate(MOV):
+        if k not in on:
+            _hide(m["obj"], True); continue
+        _, pose, x, y, yaw = on[k]
+        m["obj"].location = Vector((x, y, 0.0)); m["obj"].rotation_euler = (0, 0, yaw)
+        if m["kind"] == "vehicle":
+            _hide(m["obj"], False)
+        else:
+            m["obj"].hide_render = False
+            for pi, o in enumerate(m["poses"]):
+                o.hide_render = (pi != pose)
     sc.render.filepath = os.path.join(out, s["name"] + ".png"); os.makedirs(os.path.dirname(sc.render.filepath), exist_ok=True)
     bpy.ops.render.render(write_still=True)
 import time as _t

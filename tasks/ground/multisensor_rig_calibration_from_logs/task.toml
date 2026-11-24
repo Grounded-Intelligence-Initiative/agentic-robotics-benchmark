@@ -15,14 +15,14 @@ cpus = 8
 memory_mb = 16384
 
 [agent]
-timeout_sec = 7200
+timeout_sec = 14400
 network_mode = "no-network"
 
 # Verify: fetch the six hidden rigs' logs (one pinned archive, about 0.7 GB), run the submission on all six at
-# once (900 s of its own processor time each, a wall-clock stop at 3600 s), then measure (under a minute). The
+# once (1800 s of its own processor time each, a wall-clock stop at 7200 s), then measure (under a minute). The
 # reference is token-privileged and finishes in seconds.
 [verifier]
-timeout_sec = 5400
+timeout_sec = 10800
 environment_mode = "separate"
 
 [verifier.environment]

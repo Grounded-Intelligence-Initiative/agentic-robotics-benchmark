@@ -2,24 +2,17 @@
  "faults": [
   {
    "sequence": "seq_01",
-   "sensor": "wheel_odom",
-   "type": "odom_glitch",
-   "start_s": 164.16876127735983,
-   "end_s": 165.68876127735984
+   "sensor": "camera",
+   "type": "camera_frozen",
+   "start_s": 253.65978464141344,
+   "end_s": 256.5602978900329
   },
   {
    "sequence": "seq_02",
    "sensor": "camera",
    "type": "camera_time_jump",
-   "start_s": 306.1439948737811,
-   "end_s": 308.5429584822922
-  },
-  {
-   "sequence": "seq_02",
-   "sensor": "imu",
-   "type": "imu_axis_swap",
-   "start_s": 301.18531661433286,
-   "end_s": 304.0303166143329
+   "start_s": 359.89542266725215,
+   "end_s": 362.99544164195424
   }
  ]
 }

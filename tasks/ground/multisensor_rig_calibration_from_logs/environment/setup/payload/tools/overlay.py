@@ -6,8 +6,9 @@
 Without --calibration it uses the rig's rough_prior.yaml. The scan drawn is the one whose stamp is
 nearest to the frame's stamp after both are mapped to the reference clock with the calibration's
 clock models (the prior has none, so raw stamps are compared). Points are coloured by range.
-Neither the sweep's own skew (each column has its own time) nor the motion between the two capture
-times is compensated: use frames taken at rest for a clean check.
+Without --calibration the camera is the nominal one (not the true one). Neither the sweep's own skew
+(each column has its own time), nor the rolling shutter, nor the motion between the two capture times
+is compensated: use frames taken at rest for a clean check.
 """
 
 import argparse
@@ -34,10 +35,14 @@ def main():
     seq = rig.sequence(a.seq)
     T = np.array(rig.prior["T_lidar_camera"], float)
     co = cd = lo = ld = 0.0
+    K = dist = None
     if a.calibration:
         with open(a.calibration) as fh:
             cal = yaml.safe_load(fh)
         T = np.array(cal["T_lidar_camera"], float)
+        c = cal["camera"]
+        K = np.array([[c["fx"], 0.0, c["cx"]], [0.0, c["fy"], c["cy"]], [0.0, 0.0, 1.0]])
+        dist = np.array(c["distortion"], float)
         co, cd = cal["time"]["camera"]["offset_s"], cal["time"]["camera"]["drift_ppm"] * 1e-6
         lo, ld = cal["time"]["lidar"]["offset_s"], cal["time"]["lidar"]["drift_ppm"] * 1e-6
     tc = (seq.cam_stamps[a.frame] - co) / (1 + cd)
@@ -49,7 +54,7 @@ def main():
     m = pc[:, 2] > 0.3
     pc = pc[m]
     pc = pc[(np.abs(pc[:, 0] / pc[:, 2]) < 0.9) & (np.abs(pc[:, 1] / pc[:, 2]) < 0.7)]     # the lens model holds near the image only
-    uv = rig.project(pc)
+    uv = rig.project(pc, K, dist)
     u, v = uv[:, 0], uv[:, 1]
     img = seq.image(a.frame)[:, :, ::-1].copy()
     big = cv2.resize(img, None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR)

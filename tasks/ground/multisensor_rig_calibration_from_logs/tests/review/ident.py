@@ -25,13 +25,15 @@ from scipy.spatial import cKDTree
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "gen"))
 import rigsim, rigsite
 ap = argparse.ArgumentParser()
-for k in ("root", "set", "index", "name", "hall", "props", "husky", "cache", "tests", "out"):
+for k in ("root", "set", "index", "name", "hall", "props", "husky", "people", "cache", "tests", "out"):
     ap.add_argument("--" + k, required=True)
 ap.add_argument("--no-camera", action="store_true"); ap.add_argument("--stride", type=int, default=1)
+ap.add_argument("--odom", type=int, default=1); ap.add_argument("--knock", type=int, default=0)
 a = ap.parse_args()
 sys.path.insert(0, a.tests); import rigmetrics as RM
 site = rigsite.Site(a.hall, a.props, a.cache)
-rig = rigsim.make_rig(rigsim.rig_seed(a.set, a.index), site)
+rigsite.PEOPLE_DIR = os.path.abspath(a.people)
+rig = rigsim.make_rig(rigsim.rig_seed(a.set, a.index), site, has_odom=bool(a.odom), knock=bool(a.knock))
 rd, td = os.path.join(a.root, a.set, a.name), os.path.join(a.root, a.set + "_truth", a.name)
 faults = json.load(open(os.path.join(td, "faults.json")))["faults"]
 DIRS = rigsim.lidar_ray_dirs().reshape(rigsim.LIDAR_RINGS, rigsim.LIDAR_COLS, 3)
@@ -93,9 +95,22 @@ def icp(src, dst, tree, dn, T, iters=12):
 
 
 # ------------------------------------------------------------------ A: sweeps against the gyro
+# A 16-beam sweep registers poorly to the next one; each sweep is registered to the site's own surface instead (points
+# sampled on the triangles the LiDAR was cast on: privileged association, as a map built from the logs would give),
+# started at its true pose. The relative rotations of consecutive sweeps then go against the gyro.
+site.build(rig.props)
+_tr = site.caster.tris.astype(np.float64); _n = site.caster.n
+_ar = 0.5 * np.linalg.norm(np.cross(_tr[:, 1] - _tr[:, 0], _tr[:, 2] - _tr[:, 0]), axis=1)
+_rs = np.random.default_rng(0)
+_cnt = _rs.poisson(_ar * 150.0)
+_idx = np.repeat(np.arange(len(_tr)), _cnt)
+_u = _rs.uniform(size=(len(_idx), 2)); _fl = _u.sum(1) > 1; _u[_fl] = 1 - _u[_fl]
+MAP_P = _tr[_idx, 0] + _u[:, :1] * (_tr[_idx, 1] - _tr[_idx, 0]) + _u[:, 1:] * (_tr[_idx, 2] - _tr[_idx, 0]); MAP_N = _n[_idx]
+MAP_T = cKDTree(MAP_P)
+print("[ident] map: %d points on %d triangles, %.0f s" % (len(MAP_P), len(_tr), time.time() - t0))
 SEQ = []
-for k in range(rig.n_visible):
-    name = "seq_%02d" % k; sd = os.path.join(rd, name); traj = rig.trajs[k]; T0 = rig.seq_starts[k]
+for k in rig.given:
+    name = "seq_%02d" % (k - 1); sd = os.path.join(rd, name); traj = rig.trajs[k]; T0 = rig.seq_starts[k]
     lst = col(os.path.join(sd, "lidar", "timestamps.csv"), "stamp_s")
     tau_true = rigsim.sensor_to_ref(lst, rig.lidar_offset, rig.lidar_drift) - T0          # privileged: for association and deskew only
     imu = np.loadtxt(os.path.join(sd, "imu.csv"), delimiter=",", skiprows=1)
@@ -103,18 +118,17 @@ for k in range(rig.n_visible):
     prev = None
     for i in range(0, lst.size, a.stride):
         p, _, _, _, _ = deskewed(traj, os.path.join(sd, "lidar", "scans", "%06d.npz" % i), tau_true[i])
-        p = voxel(p[(np.linalg.norm(p, axis=1) > 1.0) & (np.linalg.norm(p, axis=1) < 40.0)], 0.2)
-        tree = cKDTree(p); nrm = normals(p, tree)
-        if prev is not None and not bad(name, "lidar", lst[prev[0]], lst[i]) and not bad(name, "imu", T0 + tau_true[prev[0]], T0 + tau_true[i]):
-            Ra, pa = lidar_pose(traj, tau_true[prev[0]]); Rb, pb = lidar_pose(traj, tau_true[i])
-            Tt = np.eye(4); Tt[:3, :3] = Ra[0].T @ Rb[0]; Tt[:3, 3] = Ra[0].T @ (pb[0] - pa[0])   # true pose of sweep i in sweep prev
-            T = icp(p, prev[1], prev[2], prev[3], Tt.copy())
-            if T is not None:
-                rel.append((lst[prev[0]], lst[i], rigsim.log_so3(T[:3, :3]), rigsim.log_so3(Tt[:3, :3])))
-        prev = (i, p, tree, nrm)
-    SEQ.append({"name": name, "T0": T0, "imu": imu, "rel": rel, "lst": lst})
+        p = voxel(p[(np.linalg.norm(p, axis=1) > 1.0) & (np.linalg.norm(p, axis=1) < 40.0)], 0.1)
+        Ra, pa = lidar_pose(traj, tau_true[i])
+        Tt = np.eye(4); Tt[:3, :3] = Ra[0]; Tt[:3, 3] = pa[0]                               # the sweep's true pose in the world
+        T = icp(p, MAP_P, MAP_T, MAP_N, Tt.copy())
+        ok = T is not None and not bad(name, "lidar", lst[i] - 0.05, lst[i] + 0.15)
+        if ok and prev is not None and not bad(name, "imu", T0 + tau_true[prev[0]], T0 + tau_true[i]):
+            rel.append((lst[prev[0]], lst[i], rigsim.log_so3(prev[1][:3, :3].T @ T[:3, :3]), rigsim.log_so3(prev[2][:3, :3].T @ Tt[:3, :3])))
+        prev = (i, T, Tt) if ok else None
+    SEQ.append({"name": name, "T0": T0, "imu": imu, "rel": rel, "lst": lst, "c": k})
     e = np.array([np.linalg.norm(r[2] - r[3]) for r in rel])
-    print("[ident] %s: %d sweep pairs, ICP rotation error median %.4f deg, %.0f s" % (name, len(rel), math.degrees(np.median(e)), time.time() - t0))
+    print("[ident] %s: %d sweep pairs, registration rotation error median %.4f deg, %.0f s" % (name, len(rel), math.degrees(np.median(e)), time.time() - t0))
 
 
 def gyro_rot(imu, ta, tb, bias):
@@ -144,7 +158,7 @@ xA = sol.x
 R_li_hat = rigsim.exp_so3(xA[:3]) @ R_li; bg_hat = rig.gyro_bias_scored + xA[3:6]
 tm = np.array([S["T0"] + 13.0 for S in SEQ]); eo = xA[6:]                                  # clock error at each sequence's middle
 cA = np.polyfit(tm, eo, 1) if len(SEQ) > 1 else np.array([0.0, eo[0]])
-th = rig.seq_starts[rig.n_visible] + 13.0
+th = rig.seq_starts[rig.held["B"]] + 13.0
 RES = {"A": {"imu_rot_deg": math.degrees(np.linalg.norm(xA[:3])), "gyro_bias_err_rps": float(np.linalg.norm(xA[3:6])),
              "lidar_clock_err_per_sequence_ms": (eo * 1e3).round(3).tolist(), "lidar_drift_err_ppm": float(cA[0] * 1e6),
              "lidar_clock_err_at_heldout_ms": float(np.polyval(cA, th) * 1e3), "sweep_pairs": sum(len(S["rel"]) for S in SEQ)}}
@@ -155,7 +169,7 @@ lid_o = rig.lidar_offset + (cA[1])                                              
 # ------------------------------------------------------------------ B: accelerometer
 acc_rest = []
 for k, S in enumerate(SEQ):
-    for ra, rb in rig.rests[k]:
+    for ra, rb in rig.rests[S["c"]]:
         m = (S["imu"][:, 0] > S["T0"] + ra + 0.6) & (S["imu"][:, 0] < S["T0"] + rb - 0.2)
         if m.sum() > 50 and not bad(S["name"], "imu", S["T0"] + ra, S["T0"] + rb):
             acc_rest.append(S["imu"][m, 4:7])
@@ -165,7 +179,7 @@ ba_hat = acc_rest.mean(0) - R_bi_hat.T @ np.array([0.0, 0.0, rigsim.G])
 # lever arm: accel_imu - b - R_il (a_L - g)_L = R_il (alpha x t + w x (w x t)), linear in t (LiDAR frame); true LiDAR acceleration
 Arows, yrows = [], []
 for k, S in enumerate(SEQ):
-    traj = rig.trajs[k]; imu = S["imu"]; tau = imu[:, 0] - S["T0"]
+    traj = rig.trajs[S["c"]]; imu = S["imu"]; tau = imu[:, 0] - S["T0"]
     mv = np.abs(np.interp(tau, traj.tau, traj.w)) > 0.25
     for f in faults:
         if f["sequence"] == S["name"] and f["sensor"] == "imu":
@@ -187,13 +201,14 @@ RES["B"] = {"accel_bias_err_mps2": float(np.linalg.norm(ba_hat - rig.accel_bias_
 print("[ident] B:", json.dumps(RES["B"]), "%.0f s" % (time.time() - t0))
 T_li_hat = np.eye(4); T_li_hat[:3, :3] = R_li_hat; T_li_hat[:3, 3] = t_li_hat
 
-# ------------------------------------------------------------------ C: camera
-T_lc_hat = rig.T_lidar_camera.copy(); cam_o, cam_d = rig.cam_offset, rig.cam_drift
+# ------------------------------------------------------------------ C: camera (mount, intrinsics, distortion, readout, clock)
+T_lc_hat = rig.T_lidar_camera.copy(); T_lcb_hat = rig.T_lidar_camera_before.copy(); cam_o, cam_d = rig.cam_offset, rig.cam_drift
+intr_hat = [rig.K[0, 0], rig.K[1, 1], rig.K[0, 2], rig.K[1, 2], rig.dist.copy(), rig.readout]
 if not a.no_camera:
     import cv2
-    K, D = rig.K, rig.dist; W, H = rigsim.IMG_W, rigsim.IMG_H
+    W, H = rigsim.IMG_W, rigsim.IMG_H
     def edges(path):
-        """LiDAR edge points of a sweep: depth steps (the near side) and reflectivity steps along each ring; ring, column kept"""
+        """LiDAR edge points of a sweep: depth steps (the near side) and reflectivity steps along each ring; column kept"""
         z = np.load(path); r = z["range_mm"].astype(float) / 1000.0; refl = z["reflectivity"].astype(float) / 255.0
         rn = np.roll(r, -1, axis=1); fn = np.roll(refl, -1, axis=1)
         both = (r > 0.8) & (rn > 0.8) & (r < 30) & (rn < 30)
@@ -207,71 +222,99 @@ if not a.no_camera:
             out.append((mid * rng_[ring, cc][:, None], wgt[ring, cc], cc))
         return np.concatenate([o[0] for o in out]), np.concatenate([o[1] for o in out]), np.concatenate([o[2] for o in out])
     def edge_img(path):
-        g = cv2.cvtColor(cv2.undistort(cv2.imread(path), K, D), cv2.COLOR_BGR2GRAY).astype(np.float64) / 255.0
+        g = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2GRAY).astype(np.float64) / 255.0       # the frame as logged (distorted)
         gx = cv2.Sobel(g, cv2.CV_64F, 1, 0, ksize=3); gy = cv2.Sobel(g, cv2.CV_64F, 0, 1, ksize=3); e = np.sqrt(gx * gx + gy * gy)
         e = cv2.GaussianBlur(e / max(np.percentile(e, 99), 1e-6), (0, 0), 1.5); return e / max(e.max(), 1e-9)
     def bil(img, u, v):
         u0 = np.floor(u).astype(int); v0 = np.floor(v).astype(int); x = u - u0; y = v - v0
         return (1 - x) * (1 - y) * img[v0, u0] + x * (1 - y) * img[v0, u0 + 1] + (1 - x) * y * img[v0 + 1, u0] + x * y * img[v0 + 1, u0 + 1]
     FR = []
-    for k, S in enumerate(SEQ):
-        sd = os.path.join(rd, S["name"]); traj = rig.trajs[k]; T0 = S["T0"]
+    for S in SEQ:
+        k = S["c"]; sd = os.path.join(rd, S["name"]); traj = rig.trajs[k]; T0 = S["T0"]
         cst = col(os.path.join(sd, "camera", "timestamps.csv"), "stamp_s")
         tl = rigsim.sensor_to_ref(S["lst"], rig.lidar_offset, rig.lidar_drift) - T0
         for ci in range(8, cst.size - 8, 2):
             if bad(S["name"], "camera", cst[ci] - 0.2, cst[ci] + 0.2):
                 continue
             tc = rigsim.sensor_to_ref(cst[ci], rig.cam_offset, rig.cam_drift) - T0
-            if ci % 6 and abs(float(np.interp(tc, traj.tau, traj.v))) + abs(float(np.interp(tc, traj.tau, traj.w))) <= 0.2:
+            if rig.knock is not None and k == rig.knock["c"] and abs(tc - rig.knock["tau"]) < 0.15:
+                continue
+            sp = abs(float(np.interp(tc, traj.tau, traj.v))) + abs(float(np.interp(tc, traj.tau, traj.w)))
+            if ci % 6 and sp <= 0.2:
                 continue                                                                   # at rest: every sixth frame is enough
             li = int(np.argmin(np.abs(tl + 0.05 - tc)))
             if bad(S["name"], "lidar", S["lst"][li] - 0.2, S["lst"][li] + 0.2):
                 continue
             pts, w, cc = edges(os.path.join(sd, "lidar", "scans", "%06d.npz" % li))
             Rj, pj = lidar_pose(traj, tl[li] + CDT[cc]); pw = np.einsum("nij,nj->ni", Rj, pts) + pj      # true motion: each edge point in the world
-            sp = abs(float(np.interp(tc, traj.tau, traj.v))) + abs(float(np.interp(tc, traj.tau, traj.w)))
-            FR.append({"k": k, "stamp": cst[ci], "tc": tc, "pw": pw, "w": w, "img": edge_img(os.path.join(sd, "camera", "frames", "%06d.jpg" % ci)), "traj": traj, "moving": sp > 0.2})
-    def score(frames, T_lc, dts=None):
+            after = rig.knock is None or k > rig.knock["c"] or (k == rig.knock["c"] and tc >= rig.knock["tau"])
+            FR.append({"k": k, "tc": tc, "pw": pw, "w": w, "img": edge_img(os.path.join(sd, "camera", "frames", "%06d.jpg" % ci)), "traj": traj, "moving": sp > 0.2, "after": after})
+    def score(frames, T_lc, intr, dts=0.0):
+        fx, fy, cx, cy, dist, ro = intr
         tot, cnt = 0.0, 0
-        for n_, fr in enumerate(frames):
-            tc = fr["tc"] + (0.0 if dts is None else dts)
-            Rl, pl = lidar_pose(fr["traj"], tc)
-            pc = ((fr["pw"] - pl[0]) @ Rl[0] - T_lc[:3, 3]) @ T_lc[:3, :3]
-            z = pc[:, 2]; ok = z > 0.5; zs = np.where(ok, z, 1.0)
-            u = K[0, 0] * pc[:, 0] / zs + K[0, 2]; v = K[1, 1] * pc[:, 1] / zs + K[1, 2]
-            ok &= (u > 3) & (u < W - 4) & (v > 3) & (v < H - 4)
+        for fr in frames:
+            v = np.full(len(fr["pw"]), (H - 1) / 2.0)
+            for _ in range(2):                                                             # the row a point falls in sets its time
+                tau = fr["tc"] + dts + (v - (H - 1) / 2.0) / H * ro / (1.0 + rig.cam_drift)
+                Rl, pl = lidar_pose(fr["traj"], tau)
+                pc = np.einsum("nji,nj->ni", Rl, fr["pw"] - pl); pc = (pc - T_lc[:3, 3]) @ T_lc[:3, :3]
+                z = pc[:, 2]; ok = z > 0.5; zs = np.where(ok, z, 1.0)
+                x = np.clip(pc[:, 0] / zs, -2, 2); y = np.clip(pc[:, 1] / zs, -2, 2)
+                xd, yd = RM._distort(x, y, dist)
+                u = fx * xd + cx; v = np.clip(fy * yd + cy, -H, 2 * H)
+            ok &= (u > 3) & (u < W - 4) & (v > 3) & (v < H - 4) & (np.abs(x) < 0.8) & (np.abs(y) < 0.55)
             if ok.sum() < 50:
                 continue
             tot += float(bil(fr["img"], u[ok], v[ok]) @ fr["w"][ok]) / float(fr["w"][ok].sum()); cnt += 1
         return tot / max(cnt, 1)
-    def pert(x):
-        T = rig.T_lidar_camera.copy(); T[:3, :3] = rigsim.exp_so3(x[:3]) @ T[:3, :3]; T[:3, 3] = T[:3, 3] + x[3:]; return T
-    st = np.array([0.002] * 3 + [0.01] * 3)
-    res = minimize(lambda z: -score(FR, pert(z * st)), np.zeros(6), method="Powell", options={"xtol": 1e-2, "ftol": 1e-6, "maxfev": 1500})
-    xC = res.x * st; T_lc_hat = pert(xC)
-    # camera clock per sequence: the score over a time shift, true extrinsic, moving frames
+    TRUE_INTR = [rig.K[0, 0], rig.K[1, 1], rig.K[0, 2], rig.K[1, 2], rig.dist.copy(), rig.readout]
+    def pert(T0_, x):
+        T = T0_.copy(); T[:3, :3] = rigsim.exp_so3(x[:3]) @ T[:3, :3]; T[:3, 3] = T[:3, 3] + x[3:6]; return T
+    def intr_of(x):
+        d = rig.dist.copy(); d[0] += x[3]; d[1] += x[4]
+        return [rig.K[0, 0] + x[0], rig.K[1, 1] + x[0], rig.K[0, 2] + x[1], rig.K[1, 2] + x[2], d, rig.readout + x[5]]
+    FA = [f for f in FR if f["after"]][::2]; FB = [f for f in FR if not f["after"]][::2]
+    st = np.array([0.002] * 3 + [0.01] * 3 + [4.0, 3.0, 3.0, 0.01, 0.01, 0.003])
+    res = minimize(lambda z: -score(FA, pert(rig.T_lidar_camera, (z * st)[:6]), intr_of((z * st)[6:])), np.zeros(12), method="Powell", options={"xtol": 2e-2, "ftol": 1e-6, "maxfev": 1500})
+    xC = res.x * st; T_lc_hat = pert(rig.T_lidar_camera, xC[:6]); intr_hat = intr_of(xC[6:])
+    RES["C"] = {"camera_rot_err_deg": math.degrees(np.linalg.norm(xC[:3])), "camera_trans_err_m": float(np.linalg.norm(xC[3:6])),
+                "focal_err_px": float(xC[6]), "pp_err_px": [float(xC[7]), float(xC[8])], "k1_err": float(xC[9]), "k2_err": float(xC[10]), "readout_err_ms": float(xC[11] * 1e3),
+                "score_at_truth": score(FA, rig.T_lidar_camera, TRUE_INTR), "score_at_optimum": score(FA, T_lc_hat, intr_hat),
+                "score_at_cad_and_nominal": score(FA, rig.T_lidar_camera_prior, [rigsim.F_NOMINAL, rigsim.F_NOMINAL, W / 2.0, H / 2.0, np.zeros(5), 0.02]),
+                "frames_after": len(FA), "frames_before": len(FB), "evals": int(res.nfev)}
+    T_lcb_hat = T_lc_hat.copy()
+    if rig.knock is not None:
+        st6 = st[:6]
+        rb = minimize(lambda z: -score(FB, pert(rig.T_lidar_camera_before, z * st6), intr_hat), np.zeros(6), method="Powell", options={"xtol": 2e-2, "ftol": 1e-6, "maxfev": 600})
+        T_lcb_hat = pert(rig.T_lidar_camera_before, rb.x * st6)
+        RES["C"]["before_rot_err_deg"] = math.degrees(np.linalg.norm((rb.x * st6)[:3])); RES["C"]["before_trans_err_m"] = float(np.linalg.norm((rb.x * st6)[3:]))
+        RES["C"]["knock_score_before_frames_with_after_mount"] = score(FB, rig.T_lidar_camera, TRUE_INTR); RES["C"]["knock_score_before_frames_with_before_mount"] = score(FB, rig.T_lidar_camera_before, TRUE_INTR)
+    # camera clock per sequence: the score over a time shift, true mount and intrinsics, moving frames
     eo = []
-    for k in range(len(SEQ)):
-        fr = [f for f in FR if f["k"] == k and f["moving"]]
-        ds = np.arange(-0.012, 0.0121, 0.001); sc = np.array([score(fr, rig.T_lidar_camera, d) for d in ds])
+    for S in SEQ:
+        fr = [f for f in FR if f["k"] == S["c"] and f["moving"]]
+        fa = [f for f in fr if f["after"]]; fb = [f for f in fr if not f["after"]]
+        ds = np.arange(-0.012, 0.0121, 0.001)
+        sc = np.array([(score(fa, rig.T_lidar_camera, TRUE_INTR, d) * len(fa) + score(fb, rig.T_lidar_camera_before, TRUE_INTR, d) * len(fb)) / max(len(fr), 1) for d in ds])
         j = int(np.argmax(sc)); d = ds[j]
         if 0 < j < len(ds) - 1:
             den = sc[j - 1] - 2 * sc[j] + sc[j + 1]; d = ds[j] + (0.0005 * (sc[j - 1] - sc[j + 1]) / den if den < 0 else 0.0)
-        eo.append(-d)                                                                      # the frame is best explained d later: the clock reads d too early
+        eo.append(-d)
     eo = np.array(eo); cC = np.polyfit(tm, eo, 1) if len(SEQ) > 1 else np.array([0.0, eo[0]])
     cam_o = rig.cam_offset + cC[1]; cam_d = rig.cam_drift + cC[0]
-    RES["C"] = {"camera_rot_err_deg": math.degrees(np.linalg.norm(xC[:3])), "camera_trans_err_m": float(np.linalg.norm(xC[3:])),
-                "score_at_truth": score(FR, rig.T_lidar_camera), "score_at_optimum": score(FR, T_lc_hat), "score_at_cad": score(FR, rig.T_lidar_camera_prior),
-                "camera_clock_err_per_sequence_ms": (eo * 1e3).round(3).tolist(), "camera_drift_err_ppm": float(cC[0] * 1e6),
-                "camera_clock_err_at_heldout_ms": float(np.polyval(cC, th) * 1e3), "frames": len(FR), "moving_frames": int(sum(f["moving"] for f in FR))}
+    RES["C"]["camera_clock_err_per_sequence_ms"] = (eo * 1e3).round(3).tolist(); RES["C"]["camera_drift_err_ppm"] = float(cC[0] * 1e6)
     print("[ident] C:", json.dumps(RES["C"]), "%.0f s" % (time.time() - t0))
 
 # ------------------------------------------------------------------ the task's metrics of the settled calibration
 truth, ho = RM.load_truth_files(rd, td)
-cal = {"T_lidar_camera": T_lc_hat, "T_lidar_imu": T_li_hat, "camera_offset": cam_o, "camera_drift": cam_d,
+cal = {"T_lidar_camera": T_lc_hat, "T_lidar_camera_before": T_lcb_hat if rig.knock is not None else None, "T_lidar_imu": T_li_hat,
+       "cam_fx": intr_hat[0], "cam_fy": intr_hat[1], "cam_cx": intr_hat[2], "cam_cy": intr_hat[3], "cam_dist": intr_hat[4], "cam_readout_s": intr_hat[5],
+       "camera_offset": cam_o, "camera_drift": cam_d,
        "lidar_offset": rig.lidar_offset + cA[1], "lidar_drift": rig.lidar_drift + cA[0], "gyro_bias": bg_hat, "accel_bias": ba_hat}
 RES["metrics_settled"] = RM.calibration_metrics(truth, ho, cal)
-calT = dict(cal, T_lidar_camera=rig.T_lidar_camera, T_lidar_imu=T_li, camera_offset=rig.cam_offset, camera_drift=rig.cam_drift, lidar_offset=rig.lidar_offset,
+calT = dict(cal, T_lidar_camera=rig.T_lidar_camera, T_lidar_camera_before=rig.T_lidar_camera_before if rig.knock is not None else None, T_lidar_imu=T_li,
+            cam_fx=rig.K[0, 0], cam_fy=rig.K[1, 1], cam_cx=rig.K[0, 2], cam_cy=rig.K[1, 2], cam_dist=rig.dist, cam_readout_s=rig.readout,
+            camera_offset=rig.cam_offset, camera_drift=rig.cam_drift, lidar_offset=rig.lidar_offset,
             lidar_drift=rig.lidar_drift, gyro_bias=rig.gyro_bias_scored, accel_bias=rig.accel_bias_scored)
 RES["metrics_truth"] = RM.calibration_metrics(truth, ho, calT)
 print("[ident] settled:", {k: float("%.4g" % v) for k, v in RES["metrics_settled"].items()})

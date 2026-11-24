@@ -11,7 +11,7 @@ archive, `verifier/hidden_rigs.tar`, pinned in `tests/grader_config.json`) were 
   from Clearpath Robotics' `husky_description` (BSD 3-Clause). They appear in the task only as the LiDAR's
   self-occlusion (the returns the body blocks).
 - **Sensor models named in the task** (figures from their datasheets, listed in `tests/gen/README.md`): FLIR
-  Blackfly S BFS-U3-16S2C, Ouster OS1-32, Bosch BMI088. No vendor file is part of the task.
+  Blackfly S BFS-U3-63S4C, Velodyne VLP-16, Bosch BMI088. No vendor file is part of the task.
 - **Renderers**: Blender 5.3 (EEVEE) for the camera frames; Embree for the LiDAR rays.
 
 `tests/review/author_calibrator_v1.py` and `author_rigsim_v1.py` are the task author's first reference calibrator

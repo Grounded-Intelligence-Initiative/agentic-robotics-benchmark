@@ -1,25 +1,25 @@
 {
-  "run_cpu_s": 900,
-  "run_wall_s": 3600,
+  "run_cpu_s": 1800,
+  "run_wall_s": 7200,
   "run_memory_mb": 6144,
   "scoring_cap": 1.5,
   "fault_weight": 0.1,
   "credit": {
     "projection_px": [
-      3.0,
-      8.0
+      2.0,
+      4.0
     ],
     "rpe_rot_deg": [
       0.2,
-      0.5
+      0.4
     ],
     "rpe_trans_m": [
-      0.03,
-      0.25
+      0.02,
+      0.06
     ],
     "time_rms_s": [
       0.003,
-      0.03
+      0.009
     ]
   },
   "hidden": {
@@ -31,8 +31,8 @@
       "rig_04",
       "rig_05"
     ],
-    "url": "https://huggingface.co/datasets/grounded-intelligence-initiative/ale-robotics-assets/resolve/73b073e85f2dbdb1bb14b0428484d1f116bfcecd/tasks/ground/multisensor_rig_calibration_from_logs/verifier/hidden_rigs.tar",
-    "sha256": "8aeb9056236698259cad6351c8ebc81590542e1aa83a524673310f820da63b51",
-    "bytes": 688199680
+    "url": "https://huggingface.co/datasets/grounded-intelligence-initiative/ale-robotics-assets/resolve/ba330eff7e9c9134ae546012cfda89cc4a35ca6f/tasks/ground/multisensor_rig_calibration_from_logs/verifier/hidden_rigs.tar",
+    "sha256": "3675fa5950231863f274c6cf0e1007358a206eee77a8961703a6cdd17ede7893",
+    "bytes": 620441600
   }
 }

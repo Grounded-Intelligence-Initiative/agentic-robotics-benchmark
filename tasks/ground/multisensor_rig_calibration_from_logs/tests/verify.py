@@ -28,7 +28,8 @@ run there, and the engine restores only the declared artifact /home/user/submiss
        credit = 0.10 * faults + 0.90 * (c_projection * c_motion * c_time) ** (1/3)
 
    c_projection = c(projection_px), c_motion = mean of c(rpe_rot_deg) and c(rpe_trans_m),
-   c_time = c(time_rms_s); c(e) = clamp(log(zero/e) / log(zero/full), 0, 1) with the `full` and
+   c_time = c(time_rms_s), all over the two held-out drives (one before
+   the given sequences, one after; on a rig with a knock the mount differs between them); c(e) = clamp(log(zero/e) / log(zero/full), 0, 1) with the `full` and
    `zero` points of grader_config.json `credit`. The three are measured on the held-out sequence and
    each needs several parameters right together; their geometric mean is zero when one is. A
    calibration.yaml that is missing or does not parse earns 0 on that part; a missing or malformed
@@ -271,8 +272,8 @@ def run_submission(rig_dirs, out_dirs, truth_dirs, uid, gid, config):
     (its session, or its RIGCAL_RUN mark), read from /proc every 0.2 s, the largest value seen per process. A
     process of the agent account that carries neither is charged to every run. Returns (status, tails):
     status[i] = (how, exit code, wall seconds, cpu seconds)."""
-    cpu_limit = float(config.get("run_cpu_s", 900))
-    wall_limit = float(config.get("run_wall_s", 3600))
+    cpu_limit = float(config.get("run_cpu_s", 1800))
+    wall_limit = float(config.get("run_wall_s", 7200))
     mem_mb = int(config.get("run_memory_mb", 6144))
     procs = []
     logs = []

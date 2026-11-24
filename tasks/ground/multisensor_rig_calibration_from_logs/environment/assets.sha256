@@ -1,5 +1,5 @@
 # endpoint: https://huggingface.co
 # repo: grounded-intelligence-initiative/ale-robotics-assets
-# revision: 73b073e85f2dbdb1bb14b0428484d1f116bfcecd
+# revision: ba330eff7e9c9134ae546012cfda89cc4a35ca6f
 # prefix: tasks/ground/multisensor_rig_calibration_from_logs/payload
-5708be9fcad90bb38e13a29c80c613423be6bc3d94a115dadf810d17d16e63bc  practice_rigs.tar
+42a567f666b944aacc05980577f50abf6724c38cbf9c88705cb6766f2afef6fd  practice_rigs.tar

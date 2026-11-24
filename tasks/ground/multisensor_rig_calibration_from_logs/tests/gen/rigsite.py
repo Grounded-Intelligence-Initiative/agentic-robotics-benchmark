@@ -240,3 +240,84 @@ def hall_lamps(site, grid=5.0):
         m = (key == k).all(1)
         out.append([float(V[m, 0].mean()), float(V[m, 1].mean()), float(V[m, 2].min() - 0.35)])
     return out
+
+
+# ---------------------------------------------------------------------------------------------- movers
+VEHICLES = ["forklift", "reach_truck", "pallet_truck", "cart", "handtruck", "pallet_jack"]
+PEOPLE = ["walk_M", "walk_F"]
+PEOPLE_DIR = None                              # set by the driver: the folder with walk_M.npz, walk_F.npz
+
+
+def _occupancy_with_props(site, props, cell):
+    occ, _ = site.hall_occupancy()
+    occ = occ.copy()
+    for name, x, y, yaw in props:
+        q = footprint(site.table, name, x, y, yaw)
+        lo, hi = q.min(0), q.max(0)
+        gx = np.arange(lo[0], hi[0] + cell, cell); gy = np.arange(lo[1], hi[1] + cell, cell)
+        G = np.stack(np.meshgrid(gx, gy, indexing="ij"), -1).reshape(-1, 2); G = G[_pt_in(q, G)]
+        ix, iy = Site.cell_index(G[:, 0], G[:, 1], cell)
+        ok = (ix >= 0) & (iy >= 0) & (ix < occ.shape[0]) & (iy < occ.shape[1])
+        occ[ix[ok], iy[ok]] = True
+    return occ
+
+
+def sample_movers(rng, site, zone, props, traj, duration):
+    """Vehicles and walking people of one drive: each runs a straight leg back and forth, clear of the props and
+    the hall's things by 0.4 m, never nearer than 1.2 m to the robot nor 1.0 m to another mover."""
+    from scipy import ndimage
+    import rigsim
+    cell = 0.05
+    clear = ndimage.distance_transform_edt(~_occupancy_with_props(site, props, cell)) * cell
+    tt = np.arange(0.0, duration + 0.2, 0.2)
+    rob = np.stack([np.interp(tt, traj.tau, traj.pos[:, 0]), np.interp(tt, traj.tau, traj.pos[:, 1])], 1)
+    out, tracks = [], []
+    n_v, n_p = int(rng.integers(4, 8)), 0          # vehicles only (pre-registration, round 2, amendment 2: no walking people yet)
+    want = [("vehicle", VEHICLES[int(rng.integers(0, len(VEHICLES)))]) for _ in range(n_v)] + [("person", PEOPLE[int(rng.integers(0, 2))]) for _ in range(n_p)]
+    for kind, name in want:
+        if kind == "vehicle":
+            lo, hi = np.array(site.table[name]["lo"][:2]), np.array(site.table[name]["hi"][:2])
+            half_w, half_l = float(min(hi - lo)) / 2, float(max(hi - lo)) / 2
+            yaw0 = -math.pi / 2 if (hi - lo)[1] > (hi - lo)[0] else 0.0
+        else:
+            half_w, half_l, yaw0 = 0.3, 0.3, 0.0
+        for _ in range(400):
+            L = float(rng.uniform(6.0, 25.0)); h = float(rng.uniform(-math.pi, math.pi))
+            p0 = np.array([rng.uniform(zone[0] - 3, zone[1] + 3), rng.uniform(zone[2] - 3, zone[3] + 3)])
+            d = np.array([math.cos(h), math.sin(h)])
+            pts = p0 + np.arange(-half_l, L + half_l + 0.2, 0.2)[:, None] * d
+            ix, iy = Site.cell_index(pts[:, 0], pts[:, 1], cell)
+            if ix.min() < 20 or iy.min() < 20 or ix.max() >= clear.shape[0] - 20 or iy.max() >= clear.shape[1] - 20:
+                continue
+            if clear[ix, iy].min() < half_w + 0.4:
+                continue
+            m = {"kind": kind, "name": name, "p0": [float(p0[0]), float(p0[1])], "heading": h, "length": L,
+                 "speed": float(rng.uniform(0.5, 2.0)) if kind == "vehicle" else rigsim.WALK_SPEED,
+                 "s0": float(rng.uniform(0.0, 2 * L)), "phase": float(rng.uniform(0.0, 20.0)), "yaw0": yaw0, "half": max(half_w, half_l)}
+            x, y, _, _ = rigsim.mover_state(m, tt)
+            tr = np.stack([x, y], 1)
+            if np.linalg.norm(tr - rob, axis=1).min() < 1.2 + m["half"]:
+                continue
+            if any(np.linalg.norm(tr - o, axis=1).min() < 1.0 + m["half"] + oh for o, oh in tracks):
+                continue
+            out.append(m); tracks.append((tr, m["half"]))
+            break
+    return out
+
+
+def _mover_caster(self, m, pose):
+    key = (m["name"], pose if m["kind"] == "person" else 0)
+    if not hasattr(self, "_mc"):
+        self._mc = {}
+    if key not in self._mc:
+        if m["kind"] == "person":
+            z = np.load(os.path.join(PEOPLE_DIR, m["name"] + ".npz"))
+            tris = z["V"][pose].astype(np.float64)[z["F"]]; nir = 0.45
+        else:
+            a = assets.load(os.path.join(self.props_dir, m["name"] + ".usdc"), self.cache)
+            tris = a["V"][a["F"]]; nir = nir_of(m["name"])
+        self._mc[key] = (Caster(tris, np.zeros(len(tris), np.int32)), nir)
+    return self._mc[key]
+
+
+Site.mover_caster = _mover_caster

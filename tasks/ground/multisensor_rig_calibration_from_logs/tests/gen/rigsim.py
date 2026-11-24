@@ -1,8 +1,10 @@
-"""rigsim: deterministic generator of multi-sensor robot logs for rig calibration (version 2).
+"""rigsim: deterministic generator of multi-sensor robot logs for rig calibration (version 3).
 
 One *rig* is a wheeled robot (a Clearpath Husky A200 with a sensor arch) carrying a spinning LiDAR (the rig's
-reference frame; an Ouster OS1-32), an RGB camera (a FLIR Blackfly S BFS-U3-16S2C, binned 2x2, 4 mm lens) and an IMU
-(a Bosch BMI088), driving through a warehouse hall with props. A rig has a set of true parameters (camera and IMU
+reference frame; a Velodyne VLP-16), an RGB camera (a FLIR Blackfly S BFS-U3-63S4C: rolling shutter, binned 4x4, 6 mm
+lens, re-focused: its intrinsics are not the nominal ones) and an IMU (a Bosch BMI088), driving through a warehouse
+hall with props, vehicles that drive and people who walk. Some rigs have no wheel odometry; on some the camera
+bracket is knocked once during the session. A rig has a set of true parameters (camera and IMU
 extrinsics, sensor clock offsets and drifts, IMU biases), a CAD prior that is off by a few degrees and centimetres,
 several recorded sequences that may contain injected faults, and one held-out sequence that the grader keeps to
 itself.
@@ -35,12 +37,13 @@ import numpy as np
 G = 9.80665
 GRAVITY_W = np.array([0.0, 0.0, -G])
 
-IMG_W, IMG_H = 720, 540
+IMG_W, IMG_H = 768, 512
+F_NOMINAL = 625.0            # 6 mm lens on 9.6 um binned pixels
 RENDER_SS = 1.5               # the pinhole source image is rendered at this multiple of the focal length
 JPEG_QUALITY = 92
-LIDAR_RINGS = 32
-LIDAR_COLS = 1024
-LIDAR_ELEV_DEG = np.linspace(-22.5, 22.5, LIDAR_RINGS)
+LIDAR_RINGS = 16
+LIDAR_COLS = 1800
+LIDAR_ELEV_DEG = np.linspace(-15.0, 15.0, LIDAR_RINGS)
 LIDAR_AZ_DEG = np.arange(LIDAR_COLS) * (360.0 / LIDAR_COLS)
 LIDAR_MIN_RANGE = 0.5
 LIDAR_MAX_RANGE = 60.0
@@ -54,8 +57,12 @@ SWEEP = 0.1                   # LiDAR: column j is taken j / LIDAR_COLS * SWEEP 
 CAM_TRIGGER_JITTER = 0.0003
 LIDAR_TRIGGER_JITTER = 0.00005
 STAMP_JITTER = 0.0002
+EXTRA_EDGE = 2.0              # and up to this much more (frame_trim)
 LOG_EDGE = (0.2, 1.0)         # a sensor's log starts this long after a sequence's start and ends this long before its end
 
+KNOCK_TYPE = "camera_bracket_shift"
+BRACKET_STATES = (0.0, 90.0, -90.0, 180.0)   # as designed; a quarter turn left; a quarter turn right; back to front
+WALK_SPEED = 1.3
 FAULT_TYPES = ("camera_frozen", "camera_time_jump", "lidar_degraded", "imu_axis_swap",
                "odom_glitch")
 FAULT_SENSOR = {"camera_frozen": "camera", "camera_time_jump": "camera",
@@ -381,7 +388,7 @@ def _rng(seed_words, *path):
 
 def rig_seed(set_name, index):
     """The pre-registered seed of rig `index` (an int, or "i.j" for the j-th replacement of a rejected rig i)."""
-    h = hashlib.sha256(("ale-robotics/multisensor_rig_calibration_from_logs/v2/%s/%s" % (set_name, index)).encode()).digest()
+    h = hashlib.sha256(("ale-robotics/multisensor_rig_calibration_from_logs/v3/%s/%s" % (set_name, index)).encode()).digest()
     return [int.from_bytes(h[4 * i:4 * i + 4], "big") for i in range(4)]
 
 
@@ -389,18 +396,20 @@ class Rig(object):
     pass
 
 
-def make_rig(seed_words, site, n_sequences=3, styles=None):
+def make_rig(seed_words, site, n_sequences=3, styles=None, has_odom=True, knock=False):
     """Sample every parameter of one rig (no rendering). `site`: rigsite.Site (the hall's occupancy and the props'
     footprints), or None for a rig without a site (unit tests of the motion and clock models)."""
     rig = Rig()
     rig.seed_words = [int(s) for s in seed_words]
     rp = _rng(rig.seed_words, 1)
     # camera intrinsics (given exactly in the manifest)
-    f = rp.uniform(565.0, 595.0)
-    rig.K = np.array([[f * rp.uniform(0.998, 1.002), 0.0, IMG_W / 2.0 + rp.uniform(-8, 8)],
-                      [0.0, f, IMG_H / 2.0 + rp.uniform(-8, 8)], [0.0, 0.0, 1.0]])
-    rig.dist = np.array([rp.uniform(-0.14, -0.08), rp.uniform(0.02, 0.07), rp.uniform(-0.0008, 0.0008),
-                         rp.uniform(-0.0008, 0.0008), 0.0])
+    rig.has_odom = bool(has_odom)
+    f = F_NOMINAL * (1.0 + rp.uniform(-0.06, 0.06))       # a re-focused lens: NOT given, to be calibrated
+    rig.K = np.array([[f * rp.uniform(0.9985, 1.0015), 0.0, IMG_W / 2.0 + rp.uniform(-20, 20)],
+                      [0.0, f, IMG_H / 2.0 + rp.uniform(-20, 20)], [0.0, 0.0, 1.0]])
+    rig.dist = np.array([rp.uniform(-0.32, -0.08), rp.uniform(-0.02, 0.14), rp.uniform(-0.0015, 0.0015),
+                         rp.uniform(-0.0015, 0.0015), rp.uniform(-0.02, 0.02)])
+    rig.readout = float(rp.uniform(0.010, 0.030))         # rolling shutter: first row to last row
     # LiDAR mount, known exactly (the arch's top bar carries it; risers of 0..60 mm under the arch's feet)
     rig.T_body_lidar = make_T(rz(math.radians(rp.uniform(-1.0, 1.0))),
                               np.array([rp.uniform(0.05, 0.20), rp.uniform(-0.03, 0.03),
@@ -413,7 +422,10 @@ def make_rig(seed_words, site, n_sequences=3, styles=None):
     rig.T_lidar_camera_prior = make_T(R_nom, t_nom)
     dR = exp_so3(random_unit(rp) * math.radians(rp.uniform(2.0, 10.0)))
     dt_ = random_unit(rp) * rp.uniform(0.02, 0.08)
-    rig.T_lidar_camera = make_T(R_nom @ dR, t_nom + dt_)
+    # the bracket's state: as designed, or refitted a quarter or half turn about the mast's vertical axis (the LiDAR's z)
+    rig.bracket_deg = float(BRACKET_STATES[int(rp.integers(0, 4))])
+    Rq = rz(math.radians(rig.bracket_deg))
+    rig.T_lidar_camera = make_T(Rq @ R_nom @ dR, Rq @ (t_nom + dt_))
     # IMU: axis-aligned CAD orientation, true mount differs
     rots = axis_aligned_rotations()
     R_inom = rots[int(rp.integers(0, len(rots)))]
@@ -423,9 +435,9 @@ def make_rig(seed_words, site, n_sequences=3, styles=None):
     dti = random_unit(rp) * rp.uniform(0.01, 0.04)
     rig.T_lidar_imu = make_T(R_inom @ dRi, t_inom + dti)
     # clocks
-    rig.cam_offset = float(rp.choice([-1, 1]) * rp.uniform(0.015, 0.100))
+    rig.cam_offset = float(rp.choice([-1, 1]) * rp.uniform(0.02, 0.5))
     rig.cam_drift = float(rp.uniform(-200e-6, 200e-6))
-    rig.lidar_offset = float(rp.choice([-1, 1]) * rp.uniform(0.005, 0.060))
+    rig.lidar_offset = float(rp.choice([-1, 1]) * rp.uniform(0.02, 0.5))
     rig.lidar_drift = float(rp.uniform(-100e-6, 100e-6))
     rig.cam_phase = float(rp.uniform(0.0, PERIOD))        # sensor time of the camera's frame 0, modulo the period
     rig.lidar_phase = float(rp.uniform(0.0, PERIOD))
@@ -460,25 +472,28 @@ def make_rig(seed_words, site, n_sequences=3, styles=None):
         while len(styles) < n_sequences:
             styles.append("mixed")
     rt = _rng(rig.seed_words, 4)
+    # the session, in time: held-out drive A, the given sequences, held-out drive B (index c = 0 .. n + 1)
     starts = []
     tcur = rt.uniform(10.0, 30.0)
     durations = []
-    for k in range(n_sequences + 1):
+    for c in range(n_sequences + 2):
         d = float(rt.uniform(24.0, 28.0))
         starts.append(float(tcur))
         durations.append(d)
         tcur += d + rt.uniform(70.0, 130.0)
-    rig.seq_styles = styles + ["mixed"]
+    rig.seq_styles = ["mixed"] + styles + ["mixed"]
     rig.seq_starts = starts
     rig.seq_durations = durations
     rig.n_visible = n_sequences
+    rig.given = list(range(1, n_sequences + 1))
+    rig.held = {"A": 0, "B": n_sequences + 1}
     rig.session_end = float(tcur)
     clear = cell = None
     if site is not None:
         clear, cell = site.clearance_map()
     rig.trajs = []
     rig.rests = []
-    for k in range(n_sequences + 1):
+    for k in range(n_sequences + 2):
         tr, rests = gen_trajectory(_rng(rig.seed_words, 5, k), rig.seq_styles[k], durations[k], rig.zone,
                                    clear, cell if cell else 0.05)
         rig.trajs.append(tr)
@@ -495,22 +510,68 @@ def make_rig(seed_words, site, n_sequences=3, styles=None):
     rig.gyro_walk = np.cumsum(rw.normal(0.0, rig.gyro_rw, size=(nk, 3)), axis=0)
     rig.accel_walk = np.cumsum(rw.normal(0.0, rig.accel_rw, size=(nk, 3)), axis=0)
     # the scored biases: the mean over the given sequences
-    tt = np.concatenate([starts[k] + np.arange(0.0, durations[k], 0.05) for k in range(n_sequences)])
+    tt = np.concatenate([starts[k] + np.arange(0.0, durations[k], 0.05) for k in rig.given])
     rig.gyro_bias_scored = rig.gyro_bias + np.array([np.interp(tt, rig.rw_t, rig.gyro_walk[:, i]).mean() for i in range(3)])
     rig.accel_bias_scored = rig.accel_bias + np.array([np.interp(tt, rig.rw_t, rig.accel_walk[:, i]).mean() for i in range(3)])
-    # faults (visible sequences only)
+    # the knock: the camera bracket shifts once, during the second given sequence, while the robot moves
+    rig.knock = None
+    rig.T_lidar_camera_before = rig.T_lidar_camera.copy()
+    if knock:
+        rk = _rng(rig.seed_words, 13)
+        c = rig.given[1]; tr = rig.trajs[c]
+        for _ in range(200):
+            tk = float(rk.uniform(8.0, 18.0))
+            if abs(np.interp(tk, tr.tau, tr.v)) + 0.5 * abs(np.interp(tk, tr.tau, tr.w)) > 0.2:
+                break
+        dRk = exp_so3(random_unit(rk) * math.radians(rk.uniform(1.5, 4.0)))
+        dtk = random_unit(rk) * rk.uniform(0.002, 0.008)
+        after = rig.T_lidar_camera
+        rig.T_lidar_camera_before = make_T(after[:3, :3] @ dRk, after[:3, 3] + dtk)
+        rig.knock = {"c": c, "tau": tk, "t": starts[c] + tk}
+    # movers: vehicles that drive and people who walk, per drive
+    rig.movers = [[] for _ in rig.trajs]
+    if site is not None:
+        import rigsite
+        for c, tr in enumerate(rig.trajs):
+            rig.movers[c] = rigsite.sample_movers(_rng(rig.seed_words, 14, c), site, rig.zone, rig.props, tr, durations[c])
+    # faults (given sequences only)
     rig.faults = sample_faults(_rng(rig.seed_words, 8), rig)
     return rig
 
 
+def T_lidar_camera_at(rig, c, tau):
+    """The camera's mount at local time tau of drive c (the knock changes it once)."""
+    k = rig.knock
+    if k is None:
+        return rig.T_lidar_camera
+    before = (c < k["c"]) or (c == k["c"] and tau < k["tau"])
+    return rig.T_lidar_camera_before if before else rig.T_lidar_camera
+
+
+def mover_state(m, tau):
+    """Position (x, y), heading and pose index of a mover at local time tau: it runs its straight leg back and
+    forth (a vehicle reverses, a person turns round)."""
+    L, v = m["length"], m["speed"]
+    s = (m["s0"] + v * np.asarray(tau, float)) % (2 * L)
+    fwd = s <= L
+    d = np.where(fwd, s, 2 * L - s)
+    x = m["p0"][0] + d * math.cos(m["heading"]); y = m["p0"][1] + d * math.sin(m["heading"])
+    if m["kind"] == "person":
+        yaw = np.where(fwd, m["heading"], m["heading"] + math.pi)
+        pose = (np.floor((m["phase"] + np.asarray(tau, float) * 25.0)) % 20).astype(int)
+    else:
+        yaw = np.full(np.shape(d), m["heading"] + m.get("yaw0", 0.0)); pose = np.zeros(np.shape(d), int)
+    return x, y, yaw, pose
+
+
 def sample_faults(rng, rig):
     n = int(rng.choice([1, 2, 2, 3]))
-    types = list(rng.permutation(len(FAULT_TYPES)))[:n]
+    types = [t for t in rng.permutation(len(FAULT_TYPES)) if rig.has_odom or FAULT_TYPES[int(t)] != "odom_glitch"][:n]
     faults = []
     for ti in types:
         ftype = FAULT_TYPES[int(ti)]
         for _ in range(50):
-            k = int(rng.integers(0, rig.n_visible))
+            k = int(rig.given[int(rng.integers(0, rig.n_visible))])
             dur = rig.seq_durations[k]
             length = float(rng.uniform(1.5, 3.5))
             a = float(rng.uniform(4.0, dur - 4.0 - length))
@@ -572,7 +633,17 @@ def frame_times(rig, k, sensor):
     s_event = phase + n * PERIOD + r.normal(0.0, wj, size=n.size)
     tau = sensor_to_ref(s_event, o, d) - T0
     stamp = s_event + r.normal(0.0, STAMP_JITTER, size=n.size)
-    return tau, stamp
+    a, b = frame_trim(rig, k, sensor)
+    return tau[a:tau.size - b], stamp[a:stamp.size - b]
+
+
+def frame_trim(rig, k, sensor):
+    """Frames dropped from the start and the end of a sensor's log of a drive, beyond LOG_EDGE: 0..2 s more at each
+    end, drawn per sensor and drive from a stream of their own (so the frames that stay are the same events). With
+    clock offsets of up to half a second, edges of 0.2..1 s alone would bound an offset to about 0.1 s from where the
+    log starts and ends against the drive's reference times."""
+    r = _rng(rig.seed_words, 15, k, 1 if sensor == "camera" else 2)
+    return int(r.uniform(0.0, EXTRA_EDGE) / PERIOD), int(r.uniform(0.0, EXTRA_EDGE) / PERIOD)
 
 
 # ----------------------------------------------------------------------------- LiDAR
@@ -597,7 +668,7 @@ def sensor_pose_w(rig, traj, tau, T_body_sensor):
     return R, p
 
 
-def render_lidar(rig, site, traj, tau, rng, degrade=None, noise=True):
+def render_lidar(rig, site, traj, tau, rng, degrade=None, noise=True, movers=()):
     """One sweep whose column 0 is taken at local reference time tau: range (rings, cols) in metres (0 = no
     return) and reflectivity (0..1). Every column is cast from the LiDAR's pose at its own time (the driver does not
     motion-compensate). Hits: the site's triangles or the robot's own body, whichever is nearer."""
@@ -613,6 +684,16 @@ def render_lidar(rig, site, traj, tau, rng, degrade=None, noise=True):
         t = np.where(own, rig.self_range.reshape(-1), t)
         cosi = np.where(own, rig.self_cos.reshape(-1), cosi)
         nir = np.where(own, rig.self_nir.reshape(-1), nir)
+    for m in movers:                                                            # vehicles and people, each at the column's time
+        mx, my, myaw, mpose = mover_state(m, tj)
+        cy_, sy_ = np.cos(myaw), np.sin(myaw)
+        ox = np.broadcast_to((p[:, 0] - mx)[None], d_w.shape[:2]); oy = np.broadcast_to((p[:, 1] - my)[None], d_w.shape[:2])
+        o_m = np.stack([cy_ * ox + sy_ * oy, -sy_ * ox + cy_ * oy, np.broadcast_to(p[:, 2][None], d_w.shape[:2])], -1)
+        d_m = np.stack([cy_ * d_w[..., 0] + sy_ * d_w[..., 1], -sy_ * d_w[..., 0] + cy_ * d_w[..., 1], d_w[..., 2]], -1)
+        caster, mnir = site.mover_caster(m, int(mpose[LIDAR_COLS // 2]))
+        tm, cm, _ = caster.cast(o_m.reshape(-1, 3), d_m.reshape(-1, 3))
+        own = tm < t
+        t = np.where(own, tm, t); cosi = np.where(own, cm, cosi); nir = np.where(own, mnir, nir)
     t = t.reshape(LIDAR_RINGS, LIDAR_COLS); cosi = cosi.reshape(t.shape); nir = nir.reshape(t.shape)
     true_range = t.copy()
     if not noise:
@@ -624,7 +705,7 @@ def render_lidar(rig, site, traj, tau, rng, degrade=None, noise=True):
         edge = np.abs(nb - tf) > 0.3
         mix = edge & (rng.uniform(size=t.shape) < 0.065)
         t = np.where(mix, tf + rng.uniform(size=t.shape) * (nb - tf), t)
-    sigma = 0.01 + 0.02 * np.clip((tf - 20.0) / 40.0, 0.0, 1.0)
+    sigma = 0.02 + 0.01 * np.clip((tf - 20.0) / 40.0, 0.0, 1.0)
     rng_ = t + rng.normal(0.0, 1.0, size=t.shape) * sigma
     refl = nir * np.clip(cosi, 0.0, 1.0) ** 0.5
     refl = np.clip(np.where(cosi > 0, np.maximum(refl, 0.35 * nir), refl) + rng.normal(0.0, 0.02, size=t.shape), 0.0, 1.0)
@@ -663,7 +744,7 @@ def camera_source(rig):
     xy = cv2.undistortPoints(pts, K, D).reshape(-1, 2)                          # normalised pinhole coordinates
     fx, fy = K[0, 0] * RENDER_SS, K[1, 1] * RENDER_SS
     x0, x1, y0, y1 = xy[:, 0].min(), xy[:, 0].max(), xy[:, 1].min(), xy[:, 1].max()
-    pad = 4.0
+    pad = 40.0                                                                  # room for the rolling shutter's shift
     cx, cy = -x0 * fx + pad, -y0 * fy + pad
     w = int(math.ceil((x1 - x0) * fx + 2 * pad)); h = int(math.ceil((y1 - y0) * fy + 2 * pad))
     w += w % 2; h += h % 2
@@ -672,12 +753,18 @@ def camera_source(rig):
     return {"w": w, "h": h, "fx": float(fx), "fy": float(fy), "cx": float(cx), "cy": float(cy), "map_x": mx, "map_y": my}
 
 
-def camera_shots(rig, k):
-    """The frames of sequence k for the renderer: [{name, eye, R (world from optical frame)}], with the plan
-    (tau, stamps, which frames are frozen copies) for finish_camera."""
-    traj = rig.trajs[k]
-    faults = [f for f in rig.faults if f["seq"] == k and f["sensor"] == "camera"]
-    tau, stamps = frame_times(rig, k, "camera")
+def row_dt(rig):
+    """Reference-time offset of each image row from the frame's stamp (rolling shutter, top row first)."""
+    return (np.arange(IMG_H) - (IMG_H - 1) / 2.0) / IMG_H * rig.readout / (1.0 + rig.cam_drift)
+
+
+def camera_shots(rig, c):
+    """The frames of drive c for the renderer: [{name, eye, R (world from optical frame), movers}] at the middle of
+    each frame's readout, with the plan (tau, stamps, which frames are frozen copies) for finish_camera."""
+    traj = rig.trajs[c]
+    name = "seq_%02d" % (c - 1)
+    faults = [f for f in rig.faults if f["seq"] == c and f["sensor"] == "camera"]
+    tau, stamps = frame_times(rig, c, "camera")
     frozen = np.zeros(tau.size, bool)
     recs = []
     for f in faults:
@@ -686,22 +773,81 @@ def camera_shots(rig, k):
         if f["type"] == "camera_time_jump":
             stamps[m] += f["jump"]
         else:
-            frozen[idx[1:]] = True                                              # the first frame of the stretch is the last good one's copy source
-            frozen[idx[0]] = True
-        recs.append({"sequence": "seq_%02d" % k, "sensor": "camera", "type": f["type"],
+            frozen[idx] = True
+        recs.append({"sequence": name, "sensor": "camera", "type": f["type"],
                      "start_s": float(stamps[idx[0]]), "end_s": float(stamps[idx[-1]])})
-    T_body_cam = rig.T_body_lidar @ rig.T_lidar_camera
-    R, p = sensor_pose_w(rig, traj, tau, T_body_cam)
-    shots = [{"name": "%06d" % i, "eye": [float(x) for x in p[i]], "R": [[float(x) for x in row] for row in R[i]]}
-             for i in range(tau.size) if not frozen[i]]
-    return {"tau": tau, "stamps": stamps, "frozen": frozen, "shots": shots, "records": recs}
+    if rig.knock is not None and rig.knock["c"] == c:
+        sk = float(sensor_stamp(rig.knock["t"], rig.cam_offset, rig.cam_drift))
+        recs.append({"sequence": name, "sensor": "camera", "type": KNOCK_TYPE, "start_s": sk, "end_s": sk})
+    shots = []
+    for i in range(tau.size):
+        if frozen[i]:
+            continue
+        T_bc = rig.T_body_lidar @ T_lidar_camera_at(rig, c, tau[i])
+        R, p = sensor_pose_w(rig, traj, tau[i:i + 1], T_bc)
+        mv = []
+        for k, m in enumerate(rig.movers[c]):
+            x, y, yaw, pose = mover_state(m, tau[i])
+            mv.append([k, int(pose), float(x), float(y), float(yaw)])
+        shots.append({"name": "%06d" % i, "eye": [float(x) for x in p[0]], "R": [[float(x) for x in row] for row in R[0]], "movers": mv})
+    return {"tau": tau, "stamps": stamps, "frozen": frozen, "shots": shots, "records": recs, "c": c}
 
 
-def finish_frame(rig, src_bgr, src, rng):
+def frame_depth(rig, site, c, tau, src, sub=2):
+    """Depth along the optical axis of the renderer's pinhole image at local time tau (every sub-th pixel), by ray
+    casting on the site and the movers: what the rolling shutter's row-by-row re-projection needs."""
+    traj = rig.trajs[c]
+    T_bc = rig.T_body_lidar @ T_lidar_camera_at(rig, c, tau)
+    R, p = sensor_pose_w(rig, traj, np.array([tau]), T_bc); R, p = R[0], p[0]
+    us = (np.arange(0, src["w"], sub) + 0.5 * (sub - 1)); vs = (np.arange(0, src["h"], sub) + 0.5 * (sub - 1))
+    uu, vv = np.meshgrid(us, vs)
+    d_c = np.stack([(uu - src["cx"]) / src["fx"], (vv - src["cy"]) / src["fy"], np.ones_like(uu)], -1).reshape(-1, 3)
+    nrm = np.linalg.norm(d_c, axis=1)
+    d_w = (d_c / nrm[:, None]) @ R.T
+    o_w = np.broadcast_to(p, d_w.shape)
+    t, _, _ = site.caster.cast(o_w, d_w)
+    for m in rig.movers[c]:
+        mx, my, myaw, mpose = mover_state(m, tau)
+        cy_, sy_ = math.cos(float(myaw)), math.sin(float(myaw))
+        ox, oy = o_w[:, 0] - float(mx), o_w[:, 1] - float(my)
+        o_m = np.stack([cy_ * ox + sy_ * oy, -sy_ * ox + cy_ * oy, o_w[:, 2]], -1)
+        d_m = np.stack([cy_ * d_w[:, 0] + sy_ * d_w[:, 1], -sy_ * d_w[:, 0] + cy_ * d_w[:, 1], d_w[:, 2]], -1)
+        tm, _, _ = site.mover_caster(m, int(mpose))[0].cast(o_m, d_m)
+        t = np.minimum(t, tm)
+    z = np.where(np.isfinite(t), t, 80.0) / nrm
+    return z.reshape(uu.shape).astype(np.float32)
+
+
+def rolling_shutter_maps(rig, c, tau, src, depth):
+    """For every pixel of the logged (distorted) image: where its light is in the renderer's mid-readout pinhole
+    image. Row v is taken row_dt[v] from the frame's stamp, from the camera's pose at that time; the scene point is
+    found with the mid-readout depth (looked up twice), so a static scene is exact to first order in the motion."""
+    import cv2
+    traj = rig.trajs[c]
+    T_bc = rig.T_body_lidar @ T_lidar_camera_at(rig, c, tau)
+    R0, p0 = sensor_pose_w(rig, traj, np.array([tau]), T_bc); R0, p0 = R0[0], p0[0]
+    Rv, pv = sensor_pose_w(rig, traj, tau + row_dt(rig), T_bc)                  # (H,3,3), (H,3)
+    Rrel = np.einsum("ji,vjk->vik", R0, Rv)                                     # row camera -> mid camera
+    trel = np.einsum("ji,vj->vi", R0, pv - p0)
+    x = (src["map_x"] - src["cx"]) / src["fx"]; y = (src["map_y"] - src["cy"]) / src["fy"]   # the pixel's ray in its row's camera
+    ray = np.stack([x, y, np.ones_like(x)], -1)                                 # (H,W,3)
+    dh, dw = depth.shape
+    sx, sy = dw / float(src["w"]), dh / float(src["h"])
+    mx, my = src["map_x"], src["map_y"]
+    for _ in range(2):
+        z = cv2.remap(depth, (mx * sx).astype(np.float32), (my * sy).astype(np.float32), cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+        X = np.einsum("vij,vwj->vwi", Rrel, ray * z[..., None]) + trel[:, None, :]
+        zz = np.maximum(X[..., 2], 0.05)
+        mx = (X[..., 0] / zz * src["fx"] + src["cx"]).astype(np.float32); my = (X[..., 1] / zz * src["fy"] + src["cy"]).astype(np.float32)
+    return mx, my
+
+
+def finish_frame(rig, src_bgr, src, rng, maps=None):
     """The logged frame from the renderer's pinhole image: lens distortion, vignetting, exposure, sensor noise,
     8 bits, JPEG. Returns the file's bytes."""
     import cv2
-    img = cv2.remap(src_bgr, src["map_x"], src["map_y"], cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    mx, my = (src["map_x"], src["map_y"]) if maps is None else maps
+    img = cv2.remap(src_bgr, mx, my, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
     lin = (img.astype(np.float32) / 255.0) ** 2.2
     yy, xx = np.mgrid[0:IMG_H, 0:IMG_W].astype(np.float32)
     r2 = ((xx - rig.K[0, 2]) ** 2 + (yy - rig.K[1, 2]) ** 2) / float((IMG_W / 2.0) ** 2 + (IMG_H / 2.0) ** 2)
@@ -784,15 +930,16 @@ def savez(path, **arrays):
             zf.writestr(zi, buf.getvalue(), compresslevel=6)
 
 
-def write_sequence(rig, site, k, seq_dir):
-    """Write visible sequence k but the camera's frames (finish_camera does those after the renderer has drawn
-    them). Returns the fault records in stamp terms and the camera plan."""
+def write_sequence(rig, site, c, seq_dir):
+    """Write given drive c (chronological index) but the camera's frames (finish_camera does those after the
+    renderer has drawn them). Returns the fault records in stamp terms and the camera plan."""
     os.makedirs(os.path.join(seq_dir, "camera", "frames"), exist_ok=True)
     os.makedirs(os.path.join(seq_dir, "lidar", "scans"), exist_ok=True)
-    traj = rig.trajs[k]
-    T0 = rig.seq_starts[k]
-    faults = [f for f in rig.faults if f["seq"] == k]
-    plan = camera_shots(rig, k)
+    traj = rig.trajs[c]
+    T0 = rig.seq_starts[c]
+    name = "seq_%02d" % (c - 1)
+    faults = [f for f in rig.faults if f["seq"] == c]
+    plan = camera_shots(rig, c)
     records = list(plan["records"])
     with open(os.path.join(seq_dir, "camera", "timestamps.csv"), "w") as fh:
         fh.write("frame,stamp_s\n")
@@ -800,8 +947,8 @@ def write_sequence(rig, site, k, seq_dir):
             fh.write("%06d.jpg,%s\n" % (i, _fmt(plan["stamps"][i])))
 
     # lidar
-    noise = _rng(rig.seed_words, 10, k, 2)
-    tau_l, lst = frame_times(rig, k, "lidar")
+    noise = _rng(rig.seed_words, 10, c, 2)
+    tau_l, lst = frame_times(rig, c, "lidar")
     with open(os.path.join(seq_dir, "lidar", "timestamps.csv"), "w") as fh:
         fh.write("scan,stamp_s\n")
         for i, tl in enumerate(tau_l):
@@ -809,22 +956,22 @@ def write_sequence(rig, site, k, seq_dir):
             for f in faults:
                 if f["type"] == "lidar_degraded" and f["tau0"] <= tl <= f["tau1"]:
                     deg = f["fraction"]
-            rimg, refl = render_lidar(rig, site, traj, tl, noise, degrade=deg)
-            name = "%06d.npz" % i
-            savez(os.path.join(seq_dir, "lidar", "scans", name),
+            rimg, refl = render_lidar(rig, site, traj, tl, noise, degrade=deg, movers=rig.movers[c])
+            fn = "%06d.npz" % i
+            savez(os.path.join(seq_dir, "lidar", "scans", fn),
                   range_mm=np.round(rimg * 1000.0).astype(np.uint16),
                   reflectivity=np.round(refl * 255.0).astype(np.uint8))
-            fh.write("%s,%s\n" % (name, _fmt(lst[i])))
+            fh.write("%s,%s\n" % (fn, _fmt(lst[i])))
     for f in faults:
         if f["type"] == "lidar_degraded":
             m = (tau_l >= f["tau0"]) & (tau_l <= f["tau1"])
             idx = np.nonzero(m)[0]
-            records.append({"sequence": "seq_%02d" % k, "sensor": "lidar", "type": f["type"],
+            records.append({"sequence": name, "sensor": "lidar", "type": f["type"],
                             "start_s": float(lst[idx[0]]), "end_s": float(lst[idx[-1]])})
 
     # imu
-    noise = _rng(rig.seed_words, 10, k, 3)
-    tau_i = np.arange(0.0, rig.seq_durations[k], 1.0 / IMU_RATE)
+    noise = _rng(rig.seed_words, 10, c, 3)
+    tau_i = np.arange(0.0, rig.seq_durations[c], 1.0 / IMU_RATE)
     gyro, accel = sim_imu(rig, traj, tau_i, T0, noise, faults)
     with open(os.path.join(seq_dir, "imu.csv"), "w") as fh:
         fh.write("stamp_s,gx,gy,gz,ax,ay,az\n")
@@ -836,42 +983,45 @@ def write_sequence(rig, site, k, seq_dir):
         if f["type"] == "imu_axis_swap":
             m = (tau_i >= f["tau0"]) & (tau_i <= f["tau1"])
             idx = np.nonzero(m)[0]
-            records.append({"sequence": "seq_%02d" % k, "sensor": "imu", "type": f["type"],
+            records.append({"sequence": name, "sensor": "imu", "type": f["type"],
                             "start_s": float(T0 + tau_i[idx[0]]), "end_s": float(T0 + tau_i[idx[-1]])})
 
-    # wheel odometry
-    noise = _rng(rig.seed_words, 10, k, 4)
-    tau_o = np.arange(0.0, rig.seq_durations[k], 1.0 / ODOM_RATE)
-    vm, wm = sim_odom(rig, traj, tau_o, noise, faults)
-    with open(os.path.join(seq_dir, "wheel_odom.csv"), "w") as fh:
-        fh.write("stamp_s,v_mps,yaw_rate_rps\n")
-        for i in range(tau_o.size):
-            fh.write("%s,%.4f,%.4f\n" % (_fmt(T0 + tau_o[i]), vm[i], wm[i]))
-    for f in faults:
-        if f["type"] == "odom_glitch":
-            m = (tau_o >= f["tau0"]) & (tau_o <= f["tau1"])
-            idx = np.nonzero(m)[0]
-            records.append({"sequence": "seq_%02d" % k, "sensor": "wheel_odom", "type": f["type"],
-                            "start_s": float(T0 + tau_o[idx[0]]), "end_s": float(T0 + tau_o[idx[-1]])})
+    # wheel odometry (not on every rig)
+    if rig.has_odom:
+        noise = _rng(rig.seed_words, 10, c, 4)
+        tau_o = np.arange(0.0, rig.seq_durations[c], 1.0 / ODOM_RATE)
+        vm, wm = sim_odom(rig, traj, tau_o, noise, faults)
+        with open(os.path.join(seq_dir, "wheel_odom.csv"), "w") as fh:
+            fh.write("stamp_s,v_mps,yaw_rate_rps\n")
+            for i in range(tau_o.size):
+                fh.write("%s,%.4f,%.4f\n" % (_fmt(T0 + tau_o[i]), vm[i], wm[i]))
+        for f in faults:
+            if f["type"] == "odom_glitch":
+                m = (tau_o >= f["tau0"]) & (tau_o <= f["tau1"])
+                idx = np.nonzero(m)[0]
+                records.append({"sequence": name, "sensor": "wheel_odom", "type": f["type"],
+                                "start_s": float(T0 + tau_o[idx[0]]), "end_s": float(T0 + tau_o[idx[-1]])})
     return records, plan
 
 
-def finish_camera(rig, k, seq_dir, plan, src_dir):
-    """The camera's log of sequence k from the renderer's pinhole images in src_dir (<name>.png)."""
+def finish_camera(rig, site, c, seq_dir, plan, src_dir):
+    """The camera's log of drive c from the renderer's pinhole images in src_dir (<name>.png): rolling shutter, lens,
+    vignetting, noise, JPEG."""
     import cv2
     src = camera_source(rig)
-    noise = _rng(rig.seed_words, 10, k, 1)
+    noise = _rng(rig.seed_words, 10, c, 1)
     last = None
     for i in range(plan["tau"].size):
-        name = "%06d.jpg" % i
+        fn = "%06d.jpg" % i
         if plan["frozen"][i] and last is not None:
             data = last                                                         # the driver re-sends the last good image
         else:
             img = cv2.imread(os.path.join(src_dir, "%06d.png" % i), cv2.IMREAD_COLOR)
             assert img is not None and img.shape[1] == src["w"] and img.shape[0] == src["h"], (src_dir, i)
-            data = finish_frame(rig, img, src, noise)
+            depth = frame_depth(rig, site, c, plan["tau"][i], src)
+            data = finish_frame(rig, img, src, noise, rolling_shutter_maps(rig, c, plan["tau"][i], src, depth))
         last = data
-        with open(os.path.join(seq_dir, "camera", "frames", name), "wb") as fo:
+        with open(os.path.join(seq_dir, "camera", "frames", fn), "wb") as fo:
             fo.write(data)
 
 
@@ -882,18 +1032,18 @@ def _mat_list(T):
 def manifest(rig, rig_id):
     return {
         "rig_id": rig_id,
-        "format_version": 2,
+        "format_version": 3,
         "reference_clock": "base controller clock; stamps imu.csv and wheel_odom.csv",
-        "sequences": [{"name": "seq_%02d" % k, "approx_start_s": round(rig.seq_starts[k], 1),
-                       "approx_duration_s": round(rig.seq_durations[k], 1)}
-                      for k in range(rig.n_visible)],
-        "camera": {"sensor": "FLIR Blackfly S BFS-U3-16S2C (Sony IMX273), 2x2 binned, 4 mm lens",
+        "sequences": [{"name": "seq_%02d" % (c - 1), "approx_start_s": round(rig.seq_starts[c], 1),
+                       "approx_duration_s": round(rig.seq_durations[c], 1)} for c in rig.given],
+        "camera": {"sensor": "FLIR Blackfly S BFS-U3-63S4C (Sony IMX178, rolling shutter), 4x4 binned, 6 mm lens (re-focused after the repair)",
                    "width": IMG_W, "height": IMG_H, "nominal_rate_hz": CAMERA_RATE,
                    "model": "pinhole with Brown-Conrady distortion (OpenCV: k1, k2, p1, p2, k3), optical frame x right, y down, z forward",
-                   "K": _mat_list(rig.K), "distortion": [float("%.7f" % x) for x in rig.dist],
-                   "global_shutter": True, "exposure_ms": 2.0, "stamp": "middle of the exposure, on the camera's clock",
-                   "file_format": "JPEG, quality %d" % JPEG_QUALITY},
-        "lidar": {"sensor": "Ouster OS1-32, 1024 columns x 10 Hz",
+                   "nominal_focal_px": F_NOMINAL, "nominal_principal_point_px": [IMG_W / 2.0, IMG_H / 2.0],
+                   "intrinsics": "NOT calibrated: focal length within 6 % of nominal (fx / fy within 0.3 %), principal point within 20 px of nominal, k1 -0.32..-0.08, k2 -0.02..0.14, p1 and p2 within 0.0015, k3 within 0.02",
+                   "rolling_shutter": "rows are read top to bottom; the readout of a frame takes between 0.010 and 0.030 s (not calibrated); the stamp is the middle of the readout, on the camera's clock",
+                   "exposure_ms": 2.0, "file_format": "JPEG, quality %d" % JPEG_QUALITY},
+        "lidar": {"sensor": "Velodyne VLP-16, 600 rpm",
                   "rings": LIDAR_RINGS, "columns": LIDAR_COLS, "nominal_rate_hz": LIDAR_RATE,
                   "elevation_deg": [round(float(e), 6) for e in LIDAR_ELEV_DEG],
                   "azimuth_deg": "column j points at azimuth 360*j/columns deg, counter-clockwise from +x",
@@ -904,33 +1054,42 @@ def manifest(rig, rig_id):
                   "scan_model": "not motion-compensated: the stamp is the time of column 0 on the LiDAR's clock, column j is taken j/columns*sweep_s later"},
         "imu": {"sensor": "Bosch BMI088", "nominal_rate_hz": IMU_RATE, "gyro_unit": "rad/s", "accel_unit": "m/s^2",
                 "accel_measures": "specific force (reads +9.81 along up when at rest)"},
-        "wheel_odom": {"nominal_rate_hz": ODOM_RATE,
-                       "fields": "v_mps: forward speed of the body; yaw_rate_rps: body yaw rate"},
+        "wheel_odom": ({"present": True, "nominal_rate_hz": ODOM_RATE,
+                        "fields": "v_mps: forward speed of the body; yaw_rate_rps: body yaw rate"} if rig.has_odom
+                       else {"present": False, "note": "this rig's base controller logs no wheel odometry"}),
         "T_body_lidar": _mat_list(rig.T_body_lidar),
         "gravity_mps2": G,
     }
 
 
 def prior_dict(rig):
+    Tp = rig.T_lidar_imu_prior.copy(); Tp[:3, :3] = np.eye(3)
     return {
         "T_lidar_camera": _mat_list(rig.T_lidar_camera_prior),
-        "T_lidar_imu": _mat_list(rig.T_lidar_imu_prior),
+        "T_lidar_imu": _mat_list(Tp),
         "error_bounds": {
-            "T_lidar_camera": {"rotation_deg": 10.0, "translation_m": 0.08},
-            "T_lidar_imu": {"rotation_deg": 5.0, "translation_m": 0.04},
+            "T_lidar_camera": {"rotation_deg": 10.0, "translation_m": 0.08,
+                               "bracket": "the bracket may have been refitted on another face of the mast: the true mount is the CAD mount, or the CAD mount turned by a quarter turn (either way) or a half turn about the LiDAR's z axis, and then off by up to rotation_deg and translation_m"},
+            "T_lidar_imu": {"translation_m": 0.04,
+                            "rotation": "NOT documented (the rotation block above is a placeholder): the board sits in one of the 24 axis-aligned orientations, off by up to 5 deg"},
         },
     }
 
 
 def truth_dict(rig):
-    return {
+    out = {
         "T_lidar_camera": _mat_list(rig.T_lidar_camera),
         "T_lidar_imu": _mat_list(rig.T_lidar_imu),
+        "camera": {"fx": float(rig.K[0, 0]), "fy": float(rig.K[1, 1]), "cx": float(rig.K[0, 2]), "cy": float(rig.K[1, 2]),
+                   "distortion": [float(x) for x in rig.dist], "readout_s": float(rig.readout)},
         "time": {"camera": {"offset_s": rig.cam_offset, "drift_ppm": rig.cam_drift * 1e6},
                  "lidar": {"offset_s": rig.lidar_offset, "drift_ppm": rig.lidar_drift * 1e6}},
         "imu": {"gyro_bias_rps": [float(x) for x in rig.gyro_bias_scored],
                 "accel_bias_mps2": [float(x) for x in rig.accel_bias_scored]},
     }
+    if rig.knock is not None:
+        out["changes"] = [{"type": KNOCK_TYPE, "T_lidar_camera_before": _mat_list(rig.T_lidar_camera_before)}]
+    return out
 
 
 def _dump_yaml(obj, path):
@@ -940,85 +1099,79 @@ def _dump_yaml(obj, path):
 
 
 def write_rig(rig, site, rig_id, out_dir):
-    """Write the agent-visible rig folder but the camera frames. Returns (fault records, [camera plan per sequence])."""
+    """Write the agent-visible rig folder but the camera frames. Returns (fault records, {drive: camera plan})."""
     os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(out_dir, "manifest.json"), "w") as fh:
         json.dump(manifest(rig, rig_id), fh, indent=1)
     _dump_yaml(prior_dict(rig), os.path.join(out_dir, "rough_prior.yaml"))
-    records, plans = [], []
-    for k in range(rig.n_visible):
-        r, p = write_sequence(rig, site, k, os.path.join(out_dir, "seq_%02d" % k))
+    records, plans = [], {}
+    for c in rig.given:
+        r, p = write_sequence(rig, site, c, os.path.join(out_dir, "seq_%02d" % (c - 1)))
         records += r
-        plans.append(p)
+        plans[c] = p
     return records, plans
 
 
 # ----------------------------------------------------------------------------- held-out data
 
-def heldout(rig, site, n_pairs=36, pts_per_pair=600):
-    """Evaluation data from the held-out sequence; never written into an agent-visible rig.
-
-    The fine body trajectory, IMU samples (true parameters, no faults), the camera and LiDAR stamps of the
-    sequence, and LiDAR points (as logged: each in the LiDAR's frame at its own column's time) paired with camera
-    frames for the projection check."""
-    k = rig.n_visible
-    traj = rig.trajs[k]
-    T0 = rig.seq_starts[k]
-    noise = _rng(rig.seed_words, 11)
-    tau_i = np.arange(0.0, rig.seq_durations[k], 1.0 / IMU_RATE)
+def heldout_drive(rig, site, c, n_pairs=36, pts_per_pair=600):
+    """Evaluation data of held-out drive c: the fine body trajectory, IMU samples (true parameters, no faults), the
+    camera and LiDAR stamps, and LiDAR points (as logged: each in the LiDAR's frame at its own column's time) paired
+    with camera frames for the projection check (points the camera sees, by the true lens and readout)."""
+    import cv2
+    traj = rig.trajs[c]
+    T0 = rig.seq_starts[c]
+    noise = _rng(rig.seed_words, 11, c)
+    tau_i = np.arange(0.0, rig.seq_durations[c], 1.0 / IMU_RATE)
     gyro, accel = sim_imu(rig, traj, tau_i, T0, noise)
-    tau_c, cam_st = frame_times(rig, k, "camera")
-    tau_l, lid_st = frame_times(rig, k, "lidar")
+    tau_c, cam_st = frame_times(rig, c, "camera")
+    tau_l, lid_st = frame_times(rig, c, "lidar")
     cdt = column_dt(rig)
-    sel = np.linspace(5, tau_c.size - 6, n_pairs).round().astype(int)
+    # frames taken while the robot moves (at rest neither a clock nor the readout time shows)
+    mv = np.abs(np.interp(tau_c, traj.tau, traj.v)) + 0.5 * np.abs(np.interp(tau_c, traj.tau, traj.w)) > 0.3
+    cand = np.nonzero(mv & (np.arange(tau_c.size) >= 5) & (np.arange(tau_c.size) < tau_c.size - 5))[0]
+    sel = cand[np.unique(np.linspace(0, cand.size - 1, n_pairs).round().astype(int))]
     pairs = []
-    T_body_cam = rig.T_body_lidar @ rig.T_lidar_camera
     for ci in sel:
+        T_body_cam = rig.T_body_lidar @ T_lidar_camera_at(rig, c, tau_c[ci])
         li = int(np.argmin(np.abs(tau_l + 0.5 * SWEEP - tau_c[ci])))
-        rimg, _ = render_lidar(rig, site, traj, tau_l[li], noise)
+        rimg, _ = render_lidar(rig, site, traj, tau_l[li], noise, movers=())      # the static site only: a mover's point has no fixed place
         pts, col = lidar_points(rimg)
-        # keep points that the camera sees at its own capture time (each point from the LiDAR's pose at its column's time)
         Rl, pl = sensor_pose_w(rig, traj, tau_l[li] + cdt[col], rig.T_body_lidar)
         Rc, pc = sensor_pose_w(rig, traj, np.array([tau_c[ci]]), T_body_cam)
         pw = np.einsum("nij,nj->ni", Rl, pts) + pl
         pcam = (pw - pc[0]) @ Rc[0]
         z = pcam[:, 2]
-        with np.errstate(divide="ignore", invalid="ignore"):
-            u = rig.K[0, 0] * pcam[:, 0] / z + rig.K[0, 2]
-            v = rig.K[1, 1] * pcam[:, 1] / z + rig.K[1, 2]
-        m = (z > 0.5) & (u >= 0) & (u < IMG_W) & (v >= 0) & (v < IMG_H)
-        idx = np.nonzero(m)[0]
+        front = z > 0.5
+        xn = np.where(front[:, None], pcam[:, :2] / np.where(front, z, 1.0)[:, None], 9.0)
+        near = front & (np.abs(xn[:, 0]) < 0.75) & (np.abs(xn[:, 1]) < 0.5)        # inside the lens model's range
+        idx = np.nonzero(near)[0]
+        uv = cv2.projectPoints(pcam[idx].reshape(-1, 1, 3), np.zeros(3), np.zeros(3), rig.K, rig.dist)[0].reshape(-1, 2)
+        ok = (uv[:, 0] >= 8) & (uv[:, 0] < IMG_W - 8) & (uv[:, 1] >= 8) & (uv[:, 1] < IMG_H - 8)
+        idx = idx[ok]
         if idx.size > pts_per_pair:
             idx = np.sort(noise.choice(idx, size=pts_per_pair, replace=False))
         pairs.append({"cam_idx": int(ci), "lidar_idx": li, "points": pts[idx], "cols": col[idx]})
-    return {
-        "seq_start": T0,
-        "traj": traj,
-        "imu_tau": tau_i,
-        "gyro": gyro,
-        "accel": accel,
-        "cam_tau": tau_c,
-        "cam_stamp": cam_st,
-        "lidar_tau": tau_l,
-        "lidar_stamp": lid_st,
-        "pairs": pairs,
-    }
+    return {"seq_start": T0, "traj": traj, "imu_tau": tau_i, "gyro": gyro, "accel": accel, "cam_tau": tau_c,
+            "cam_stamp": cam_st, "lidar_tau": tau_l, "lidar_stamp": lid_st, "pairs": pairs}
 
 
-def save_heldout(ho, path):
-    """Compact npz form of `heldout()`."""
-    tr = ho["traj"]
-    arrays = {
-        "seq_start": np.array(ho["seq_start"]),
-        "traj_tau": tr.tau, "traj_pos": tr.pos, "traj_ypr": tr.ypr,
-        "traj_v": tr.v, "traj_w": tr.w,
-        "imu_tau": ho["imu_tau"], "gyro": ho["gyro"], "accel": ho["accel"],
-        "cam_tau": ho["cam_tau"], "cam_stamp": ho["cam_stamp"],
-        "lidar_tau": ho["lidar_tau"], "lidar_stamp": ho["lidar_stamp"],
-        "pair_cam_idx": np.array([p["cam_idx"] for p in ho["pairs"]]),
-        "pair_lidar_idx": np.array([p["lidar_idx"] for p in ho["pairs"]]),
-        "pair_npts": np.array([len(p["points"]) for p in ho["pairs"]]),
-        "pair_points": np.concatenate([p["points"] for p in ho["pairs"]], axis=0),
-        "pair_cols": np.concatenate([p["cols"] for p in ho["pairs"]], axis=0).astype(np.int32),
-    }
+def save_heldout(rig, site, path):
+    """Both held-out drives (A before the given sequences, B after) in one npz."""
+    arrays = {}
+    for tag, c in rig.held.items():
+        ho = heldout_drive(rig, site, c)
+        tr = ho["traj"]
+        d = {"seq_start": np.array(ho["seq_start"]),
+             "traj_tau": tr.tau, "traj_pos": tr.pos, "traj_ypr": tr.ypr,
+             "imu_tau": ho["imu_tau"], "gyro": ho["gyro"], "accel": ho["accel"],
+             "cam_tau": ho["cam_tau"], "cam_stamp": ho["cam_stamp"],
+             "lidar_tau": ho["lidar_tau"], "lidar_stamp": ho["lidar_stamp"],
+             "pair_cam_idx": np.array([p["cam_idx"] for p in ho["pairs"]]),
+             "pair_lidar_idx": np.array([p["lidar_idx"] for p in ho["pairs"]]),
+             "pair_npts": np.array([len(p["points"]) for p in ho["pairs"]]),
+             "pair_points": np.concatenate([p["points"] for p in ho["pairs"]], axis=0),
+             "pair_cols": np.concatenate([p["cols"] for p in ho["pairs"]], axis=0).astype(np.int32)}
+        for k, v in d.items():
+            arrays["%s_%s" % (tag, k)] = v
     savez(path, **arrays)

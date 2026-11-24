@@ -28,7 +28,9 @@ import numpy as np
 GRAVITY_W = np.array([0.0, 0.0, -9.80665])
 SENSORS = ("camera", "lidar", "imu", "wheel_odom")
 FAULT_TYPES = ("camera_frozen", "camera_time_jump", "lidar_degraded", "imu_axis_swap",
-               "odom_glitch")
+               "odom_glitch", "camera_bracket_shift")
+KNOCK_TYPE = "camera_bracket_shift"
+KNOCK_PAD_S = 0.5
 MAX_FAULTS = 50
 RPE_WINDOW_S = 1.0
 RPE_STRIDE_S = 0.5
@@ -187,6 +189,28 @@ def parse_calibration(text):
         raise CalibrationError("calibration.yaml has no imu mapping")
     out["gyro_bias"] = _vector3(imu.get("gyro_bias_rps"), "imu.gyro_bias_rps")
     out["accel_bias"] = _vector3(imu.get("accel_bias_mps2"), "imu.accel_bias_mps2")
+    cam = doc.get("camera")
+    if not isinstance(cam, dict):
+        raise CalibrationError("calibration.yaml has no camera mapping")
+    for key in ("fx", "fy", "cx", "cy", "readout_s"):
+        out["cam_" + key] = _number(cam.get(key), "camera." + key)
+    if out["cam_fx"] <= 1.0 or out["cam_fy"] <= 1.0:
+        raise CalibrationError("camera.fx and camera.fy must be positive focal lengths in pixels")
+    if not 0.0 <= out["cam_readout_s"] <= 0.1:
+        raise CalibrationError("camera.readout_s must be between 0 and 0.1 s")
+    dist = cam.get("distortion")
+    if not isinstance(dist, (list, tuple)) or len(dist) != 5:
+        raise CalibrationError("camera.distortion is not a list of 5 numbers [k1, k2, p1, p2, k3]")
+    out["cam_dist"] = np.array([_number(x, "camera.distortion[%d]" % i) for i, x in enumerate(dist)])
+    out["T_lidar_camera_before"] = None
+    changes = doc.get("changes")
+    if changes is not None:
+        if not isinstance(changes, list) or len(changes) > 1:
+            raise CalibrationError("changes must be a list of at most one entry")
+        for ch in changes:
+            if not isinstance(ch, dict) or ch.get("type") != KNOCK_TYPE:
+                raise CalibrationError("changes[0].type must be %s" % KNOCK_TYPE)
+            out["T_lidar_camera_before"] = _matrix(ch.get("T_lidar_camera_before"), "changes[0].T_lidar_camera_before")
     return out
 
 
@@ -223,67 +247,102 @@ def _to_ref(stamp, offset, drift):
     return (stamp - offset) / (1.0 + drift)
 
 
+def _distort(x, y, d):
+    """Brown-Conrady (OpenCV's order k1, k2, p1, p2, k3) on normalised pinhole coordinates."""
+    k1, k2, p1, p2, k3 = d
+    r2 = x * x + y * y
+    rad = 1.0 + r2 * (k1 + r2 * (k2 + r2 * k3))
+    return (x * rad + 2 * p1 * x * y + p2 * (r2 + 2 * x * x), y * rad + p1 * (r2 + 2 * y * y) + 2 * p2 * x * y)
+
+
+def _pixels(pw, t_frame, T_lc, intr, drift, track, T_bl, height):
+    """Pixels of world points in a rolling-shutter frame whose middle is at local reference time t_frame: a point is
+    seen by the row it falls in, and that row is taken (row - mid) / height * readout from the frame's stamp."""
+    fx, fy, cx, cy, dist, readout = intr
+    v = np.full(len(pw), (height - 1) / 2.0)
+    for _ in range(4):
+        tau = t_frame + (v - (height - 1) / 2.0) / height * readout / (1.0 + drift)
+        Rb, pb = track.pose(tau)
+        Rl = Rb @ T_bl[:3, :3]
+        pl = pb + np.einsum("nij,j->ni", Rb, T_bl[:3, 3])
+        Rc = Rl @ T_lc[:3, :3]
+        pc = pl + np.einsum("nij,j->ni", Rl, T_lc[:3, 3])
+        q = np.einsum("nji,nj->ni", Rc, pw - pc)
+        z = q[:, 2]
+        ok = z > 0.05
+        zs = np.where(ok, z, 1.0)
+        x = np.clip(q[:, 0] / zs, -3.0, 3.0)
+        y = np.clip(q[:, 1] / zs, -3.0, 3.0)
+        xd, yd = _distort(x, y, dist)
+        u = fx * xd + cx
+        v = np.clip(fy * yd + cy, -height, 2.0 * height)
+    return np.stack([u, fy * yd + cy], axis=1), ok
+
+
 def projection_px(truth, ho, cal):
-    """Median reprojection error (px) of held-out LiDAR points in held-out camera frames."""
-    K = truth["K"]
-    track = ho["track"]
-    T0 = ho["seq_start"]
+    """Median reprojection error (px, in the frame's own distorted pixels) of held-out LiDAR points in held-out
+    camera frames; per held-out drive, and the worse of the drives."""
     T_bl = truth["T_body_lidar"]
-    errs = []
-    for pair in ho["pairs"]:
-        pts = pair["points"]
-        if len(pts) == 0:
-            continue
-        ci, li = pair["cam_idx"], pair["lidar_idx"]
-        t_c, t_l = ho["cam_tau"][ci], ho["lidar_tau"][li]
-        s_c, s_l = ho["cam_stamp"][ci], ho["lidar_stamp"][li]
-        tc_hat = _to_ref(s_c, cal["camera_offset"], cal["camera_drift"]) - T0
-        # a point of column j is taken j / columns * sweep (LiDAR clock) after the scan's stamp
-        dcol = pair["cols"] / float(truth["lidar_columns"]) * truth["lidar_sweep_s"]
-        tl_true = t_l + dcol / (1.0 + truth["lidar_drift"])
-        tl_hat = _to_ref(s_l + dcol, cal["lidar_offset"], cal["lidar_drift"]) - T0
+    H = truth["image_height"]
+    true_intr = (truth["K"][0, 0], truth["K"][1, 1], truth["K"][0, 2], truth["K"][1, 2], truth["dist"], truth["readout"])
+    est_intr = (cal["cam_fx"], cal["cam_fy"], cal["cam_cx"], cal["cam_cy"], cal["cam_dist"], cal["cam_readout_s"])
+    worst = 0.0
+    for tag, d in ho["drives"].items():
+        track, T0 = d["track"], d["seq_start"]
+        before = tag == "A"
+        T_true = truth["T_lidar_camera_before"] if before and truth["T_lidar_camera_before"] is not None else truth["T_lidar_camera"]
+        T_est = cal["T_lidar_camera_before"] if before and cal["T_lidar_camera_before"] is not None else cal["T_lidar_camera"]
+        errs = []
+        for pair in d["pairs"]:
+            pts = pair["points"]
+            if len(pts) == 0:
+                continue
+            ci, li = pair["cam_idx"], pair["lidar_idx"]
+            t_c, t_l = d["cam_tau"][ci], d["lidar_tau"][li]
+            s_c, s_l = d["cam_stamp"][ci], d["lidar_stamp"][li]
+            tc_hat = _to_ref(s_c, cal["camera_offset"], cal["camera_drift"]) - T0
+            # a point of column j is taken j / columns * sweep (LiDAR clock) after the scan's stamp
+            dcol = pair["cols"] / float(truth["lidar_columns"]) * truth["lidar_sweep_s"]
+            tl_true = t_l + dcol / (1.0 + truth["lidar_drift"])
+            tl_hat = _to_ref(s_l + dcol, cal["lidar_offset"], cal["lidar_drift"]) - T0
 
-        def lidar_pose(tau):
-            Rb, pb = track.pose(np.atleast_1d(tau))
-            return Rb @ T_bl[:3, :3], pb + np.einsum("nij,j->ni", Rb, T_bl[:3, 3])
+            def world(t_lid):
+                Rb, pb = track.pose(t_lid)
+                Rl = Rb @ T_bl[:3, :3]
+                return np.einsum("nij,nj->ni", Rl, pts) + pb + np.einsum("nij,j->ni", Rb, T_bl[:3, 3])
 
-        def project(t_cam, t_lid, T_lc):
-            Rl, pl = lidar_pose(t_lid)
-            pw = np.einsum("nij,nj->ni", Rl, pts) + pl
-            Rlc, plc = lidar_pose(t_cam)
-            Rc = Rlc[0] @ T_lc[:3, :3]
-            pc = plc[0] + Rlc[0] @ T_lc[:3, 3]
-            q = (pw - pc) @ Rc
-            z = q[:, 2]
-            ok = z > 0.05
-            zs = np.where(ok, z, 1.0)
-            u = K[0, 0] * q[:, 0] / zs + K[0, 2]
-            v = K[1, 1] * q[:, 1] / zs + K[1, 2]
-            return np.stack([u, v], axis=1), ok
-
-        uv_true, ok_t = project(t_c, tl_true, truth["T_lidar_camera"])
-        uv_hat, ok_h = project(tc_hat, tl_hat, cal["T_lidar_camera"])
-        e = np.linalg.norm(uv_hat - uv_true, axis=1)
-        e = np.where(ok_h, np.minimum(e, PROJ_FAIL_PX), PROJ_FAIL_PX)
-        errs.append(e[ok_t])
-    if not errs:
-        return PROJ_FAIL_PX
-    return float(np.median(np.concatenate(errs)))
+            uv_true, ok_t = _pixels(world(tl_true), t_c, T_true, true_intr, truth["camera_drift"], track, T_bl, H)
+            uv_hat, ok_h = _pixels(world(tl_hat), tc_hat, T_est, est_intr, cal["camera_drift"], track, T_bl, H)
+            e = np.linalg.norm(uv_hat - uv_true, axis=1)
+            e = np.where(ok_h & np.isfinite(e), np.minimum(e, PROJ_FAIL_PX), PROJ_FAIL_PX)
+            errs.append(e[ok_t])
+        worst = max(worst, float(np.median(np.concatenate(errs))) if errs else PROJ_FAIL_PX)
+    return worst
 
 
 def time_rms_s(truth, ho, cal):
-    """The worse of the camera's and the LiDAR's RMS reference-time error (s) on held-out stamps."""
-    T0 = ho["seq_start"]
+    """The worse of the camera's and the LiDAR's RMS reference-time error (s) on the held-out stamps of both drives."""
     out = {}
-    for sensor, tau, st in (("camera", ho["cam_tau"], ho["cam_stamp"]),
-                            ("lidar", ho["lidar_tau"], ho["lidar_stamp"])):
-        t_hat = _to_ref(st, cal[sensor + "_offset"], cal[sensor + "_drift"])
-        out[sensor] = float(np.sqrt(np.mean((t_hat - (T0 + tau)) ** 2)))
+    for sensor in ("camera", "lidar"):
+        e = []
+        for d in ho["drives"].values():
+            tau, st = (d["cam_tau"], d["cam_stamp"]) if sensor == "camera" else (d["lidar_tau"], d["lidar_stamp"])
+            e.append(_to_ref(st, cal[sensor + "_offset"], cal[sensor + "_drift"]) - (d["seq_start"] + tau))
+        out[sensor] = float(np.sqrt(np.mean(np.concatenate(e) ** 2)))
     return max(out["camera"], out["lidar"]), out
 
 
 def rpe(truth, ho, cal):
-    """Mean rotation (deg) and translation (m) error of IMU-propagated LiDAR relative poses."""
+    """Mean rotation (deg) and translation (m) error of IMU-propagated LiDAR relative poses, over both held-out drives."""
+    rot, trans = [], []
+    for d in ho["drives"].values():
+        r, t = _rpe_drive(truth, d, cal)
+        rot.append(r)
+        trans.append(t)
+    return float(np.mean(np.concatenate(rot))), float(np.mean(np.concatenate(trans)))
+
+
+def _rpe_drive(truth, ho, cal):
     track = ho["track"]
     T_bl = truth["T_body_lidar"]
     tau_i = ho["imu_tau"]
@@ -326,7 +385,7 @@ def rpe(truth, ho, cal):
     # relative-pose errors: compare the motion over the window, expressed in the start frame
     rot_err = _angle_batch(np.einsum("nji,njk->nik", R_wl1, R_pred))
     trans_err = np.linalg.norm(np.einsum("nji,nj->ni", R_wl, p_pred - p_wl1), axis=1)
-    return float(np.mean(rot_err)), float(np.mean(trans_err))
+    return rot_err, trans_err
 
 
 def imu_errors(truth, cal):
@@ -359,7 +418,8 @@ def fault_f1(true_faults, reported):
         for j, r in enumerate(reported):
             if r["sequence"] != t["sequence"] or r["sensor"] != t["sensor"]:
                 continue
-            iou = _iou(t["start_s"], t["end_s"], r["start_s"], r["end_s"])
+            pad = KNOCK_PAD_S if t["type"] == KNOCK_TYPE else 0.05      # a knock is an instant: a report within 0.5 s matches
+            iou = _iou(t["start_s"], t["end_s"], r["start_s"], r["end_s"], pad)
             if iou >= FAULT_IOU:
                 cands.append((iou, i, j))
     cands.sort(reverse=True)
@@ -399,7 +459,7 @@ def calibration_metrics(truth, ho, cal):
 # ----------------------------------------------------------------------------- truth files
 
 def load_truth_files(rig_dir, truth_dir):
-    """Truth and held-out data of a practice rig from its folders (practice checker)."""
+    """Truth and held-out data (both held-out drives) of a rig from its folders."""
     import os
     import yaml
     with open(os.path.join(rig_dir, "manifest.json")) as fh:
@@ -408,34 +468,44 @@ def load_truth_files(rig_dir, truth_dir):
         gt = yaml.safe_load(fh)
     with open(os.path.join(truth_dir, "faults.json")) as fh:
         faults = json.load(fh)
-    z = np.load(os.path.join(truth_dir, "heldout.npz"))
     if isinstance(faults, dict):
         faults = faults["faults"]
+    z = np.load(os.path.join(truth_dir, "heldout.npz"))
+    cam = gt["camera"]
+    changes = gt.get("changes") or []
     truth = {
-        "K": np.array(man["camera"]["K"], float),
+        "K": np.array([[cam["fx"], 0.0, cam["cx"]], [0.0, cam["fy"], cam["cy"]], [0.0, 0.0, 1.0]]),
+        "dist": np.array(cam["distortion"], float),
+        "readout": float(cam["readout_s"]),
+        "image_height": int(man["camera"]["height"]),
         "lidar_columns": int(man["lidar"]["columns"]),
         "lidar_sweep_s": float(man["lidar"]["sweep_s"]),
         "lidar_drift": float(gt["time"]["lidar"]["drift_ppm"]) * 1e-6,
+        "camera_drift": float(gt["time"]["camera"]["drift_ppm"]) * 1e-6,
         "T_body_lidar": np.array(man["T_body_lidar"], float),
         "T_lidar_camera": np.array(gt["T_lidar_camera"], float),
+        "T_lidar_camera_before": np.array(changes[0]["T_lidar_camera_before"], float) if changes else None,
         "T_lidar_imu": np.array(gt["T_lidar_imu"], float),
         "gyro_bias": np.array(gt["imu"]["gyro_bias_rps"], float),
         "accel_bias": np.array(gt["imu"]["accel_bias_mps2"], float),
         "faults": faults,
     }
-    pairs = []
-    off = 0
-    for ci, li, n in zip(z["pair_cam_idx"], z["pair_lidar_idx"], z["pair_npts"]):
-        pairs.append({"cam_idx": int(ci), "lidar_idx": int(li),
-                      "points": z["pair_points"][off:off + int(n)],
-                      "cols": z["pair_cols"][off:off + int(n)].astype(float)})
-        off += int(n)
-    ho = {
-        "seq_start": float(z["seq_start"]),
-        "track": BodyTrack(z["traj_tau"], z["traj_pos"], z["traj_ypr"]),
-        "imu_tau": z["imu_tau"], "gyro": z["gyro"], "accel": z["accel"],
-        "cam_tau": z["cam_tau"], "cam_stamp": z["cam_stamp"],
-        "lidar_tau": z["lidar_tau"], "lidar_stamp": z["lidar_stamp"],
-        "pairs": pairs,
-    }
-    return truth, ho
+    drives = {}
+    for tag in ("A", "B"):
+        g = lambda k: z["%s_%s" % (tag, k)]  # noqa: E731
+        pairs = []
+        off = 0
+        for ci, li, n in zip(g("pair_cam_idx"), g("pair_lidar_idx"), g("pair_npts")):
+            pairs.append({"cam_idx": int(ci), "lidar_idx": int(li),
+                          "points": g("pair_points")[off:off + int(n)],
+                          "cols": g("pair_cols")[off:off + int(n)].astype(float)})
+            off += int(n)
+        drives[tag] = {
+            "seq_start": float(g("seq_start")),
+            "track": BodyTrack(g("traj_tau"), g("traj_pos"), g("traj_ypr")),
+            "imu_tau": g("imu_tau"), "gyro": g("gyro"), "accel": g("accel"),
+            "cam_tau": g("cam_tau"), "cam_stamp": g("cam_stamp"),
+            "lidar_tau": g("lidar_tau"), "lidar_stamp": g("lidar_stamp"),
+            "pairs": pairs,
+        }
+    return truth, {"drives": drives}

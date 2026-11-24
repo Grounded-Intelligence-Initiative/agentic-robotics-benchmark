@@ -1,4 +1,4 @@
-# The practice rigs (logs, truth and held-out data of three rigs) are generated once, offline, and fetched here as
+# The practice rigs (logs only: no truth, no held-out data) are generated once, offline, and fetched here as
 # one pinned archive; the generator (tests/gen/) never enters the agent's image, and the hidden rigs never enter
 # any image (the verify stage fetches their logs; tests/verify.py).
 FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1
@@ -46,7 +46,7 @@ RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt
     && mkdir -p /opt/rigcal \
     && tar -xf /opt/task-assets/payload/practice_rigs.tar -C /opt/rigcal \
     && rm -rf /opt/task-assets/payload \
-    && test -f /opt/rigcal/practice/rig_a/manifest.json && test -f /opt/rigcal/practice_truth/rig_c/heldout.npz \
+    && test -f /opt/rigcal/practice/rig_a/manifest.json && test ! -e /opt/rigcal/practice_truth \
     && chown -R root:root /opt/rigcal && chmod -R u=rwX,go=rX /opt/rigcal
 
 ENV OPENBLAS_CORETYPE=Haswell OPENBLAS_L2_SIZE=256 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
