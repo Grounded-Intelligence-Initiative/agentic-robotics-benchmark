@@ -1,0 +1,128 @@
+{
+ "steps": 800,
+ "sessions": 12,
+ "record_every": 2,
+ "procedures": [
+  {
+   "name": "dev01",
+   "seed": 8907710286807293362,
+   "factors": {
+    "kind": "dissection",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": true
+   },
+   "touch": false
+  },
+  {
+   "name": "dev02",
+   "seed": 2167591856198951776,
+   "factors": {
+    "kind": "dissection",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": false,
+    "smoke": true
+   },
+   "touch": true
+  },
+  {
+   "name": "dev03",
+   "seed": 5649290150132198067,
+   "factors": {
+    "kind": "suturing",
+    "scope": "0",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false
+   },
+   "touch": false
+  },
+  {
+   "name": "dev04",
+   "seed": 767897244675440509,
+   "factors": {
+    "kind": "suturing",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false
+   },
+   "touch": true
+  },
+  {
+   "name": "dev05",
+   "seed": 3830936350364840469,
+   "factors": {
+    "kind": "exploration",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false
+   },
+   "touch": false
+  },
+  {
+   "name": "dev06",
+   "seed": 7880595029608344007,
+   "factors": {
+    "kind": "exploration",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false
+   },
+   "touch": false
+  },
+  {
+   "name": "dev07",
+   "seed": 107629019024087489,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "0",
+    "exchanges": 2,
+    "assistant": true,
+    "smoke": true
+   },
+   "touch": true
+  },
+  {
+   "name": "dev08",
+   "seed": 6948252800760808566,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false
+   },
+   "touch": false
+  },
+  {
+   "name": "dev09",
+   "seed": 154927457081376394,
+   "factors": {
+    "kind": "dissection",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": false
+   },
+   "touch": false
+  },
+  {
+   "name": "dev10",
+   "seed": 5878921590009016022,
+   "factors": {
+    "kind": "suturing",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": true
+   },
+   "touch": false
+  }
+ ],
+ "note": "the development procedures, drawn once by the task's make_sets tool on 2026-11-24 with the same rule as the graded set (a balanced table of factors, one os.urandom seed per row, no draw rejected); none of them is graded"
+}

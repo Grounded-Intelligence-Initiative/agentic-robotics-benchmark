@@ -1,0 +1,369 @@
+"""The grader of endoscope_camera_assistance_from_video. Runs as root in the verify stage, in a fresh verifier sandbox
+that holds only the agent's /home/user/submission (task.toml: separate verification).
+
+closed_loop: the grader owns the simulator. It plays the fixed hidden set of recorded procedures (hidden/
+procedures.json: the same procedures for every submission), and for every control step hands the submission's
+controller one observation (the endoscope's frame, one control step old, and the holder's four joint readings) and
+applies the rate command it answers. The frames are drawn by an Isaac Sim process of its own account (endosim/
+render_server.py); the view is judged from the simulator's state, never from pixels (endosim/episode.py):
+
+    useful_view_fraction = usable steps / steps, over all procedures
+
+What keeps the number honest:
+
+* tests/ was absent while the agent worked; the controller runs as the agent's account (robotics_grader.Solver), the
+  renderer as a third account, each unable to read the others' files or memory. The controller is never given the
+  procedure, only frames and joint readings.
+* Nothing the controller prints is a scoring input. A controller that stops answering, answers a malformed action or
+  uses up its time is charged what standing still costs: the rest of that procedure runs with the holder commanded
+  to stop, and is judged like any other step.
+* The match lock (robotics_grader.ProbeLock): on some steps the same step index is asked twice, once with the true
+  observation and once with a copy whose picture is shifted and whose pan, tilt and roll readings are offset, in a
+  hidden order; only the true reply moves the holder. A controller that does not read its input fails the lock.
+* A renderer that fails is restarted and the frame drawn again; a renderer that cannot draw what the public camera
+  model says (the canary) is a task error, never a zero.
+
+The reference submission carries a token (solution/); for it alone every observation also holds `privileged`, what a
+perfect perception system would have read from the same frame.
+
+`grade()` is also what tests/review/run_native.py calls outside the engine, with its own launchers.
+"""
+
+import hashlib
+import hmac
+import json
+import os
+import pwd
+import shutil
+import stat
+import subprocess
+import sys
+import time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+
+from endosim import model, procedure  # noqa: E402
+from endosim.render_client import Renderer, RendererError  # noqa: E402
+from endosim.session import Session  # noqa: E402
+from robotics_grader import (  # noqa: E402
+    ProbeLock,
+    Solver,
+    SolverAborted,
+    SolverMissing,
+    agent_user,
+    fail,
+    ratio_rewards,
+    read_anchor,
+    seed_rng,
+    stage_config,
+    write_verdict,
+    zero_verdict,
+)
+
+RENDER_USER = "endosim"
+RENDER_ROOT = "/opt/endosim-verify"       # the renderer account's own folder (0700), outside /opt/ale
+KIT_SHARED = "/opt/venv/lib/python3.12/site-packages/isaacsim/kit"   # Kit's cache / logs / data folders
+RENDER_FILES = ("__init__.py", "model.py", "tissue.py", "looks.py", "scene.py", "post.py", "render_server.py")
+
+
+def log(*parts):
+    print("[grader]", *parts, file=sys.stderr, flush=True)
+
+
+class BudgetExhausted(Exception):
+    """The controller has used its whole reply-time budget."""
+
+
+class TimedSolver(Solver):
+    """The kit's Solver with one budget of reply time for the whole evaluation."""
+
+    budget_s = float("inf")
+    used_s = 0.0
+    requests = 0
+    slowest_s = 0.0
+
+    def act(self, t, obs):
+        cls = TimedSolver                 # one account for every subclass (a maintainer's local launcher included)
+        if cls.used_s >= cls.budget_s:
+            raise BudgetExhausted("the controller's reply-time budget ({:g} s) is used up".format(cls.budget_s))
+        start = time.monotonic()
+        try:
+            return super().act(t, obs)
+        finally:
+            took = time.monotonic() - start
+            cls.used_s += took
+            cls.requests += 1
+            cls.slowest_s = max(cls.slowest_s, took)
+
+
+def canonical_action(action):
+    """A reply's action as four finite floats (what the lock compares), or a protocol error."""
+    try:
+        return [float(x) for x in model.clip_command(action)]
+    except (TypeError, ValueError, OverflowError):
+        raise SolverAborted("malformed action: {!r}".format(action)[:160])
+
+
+# ------------------------------------------------------------------------------------------- the renderer's account
+def token_state(submission):
+    """True when the submission carries the reference's token (hidden/oracle_token.sha256)."""
+    path, want = os.path.join(submission, ".oracle_token"), os.path.join(HERE, "hidden", "oracle_token.sha256")
+    try:
+        if not stat.S_ISREG(os.lstat(path).st_mode) or os.path.getsize(path) > 4096:
+            return False
+        with open(path, "rb") as f:
+            got = hashlib.sha256(f.read().strip()).hexdigest()
+        with open(want) as f:
+            return hmac.compare_digest(got, f.read().strip())
+    except OSError:
+        return False
+
+
+def _clean_shm(user):
+    """Remove what an account left in /dev/shm (Kit opens shared memory there under predictable names)."""
+    try:
+        uid = pwd.getpwnam(user).pw_uid
+    except KeyError:
+        return
+    for e in os.scandir("/dev/shm") if os.path.isdir("/dev/shm") else []:
+        try:
+            if e.stat(follow_symlinks=False).st_uid != uid:
+                continue
+            if e.is_dir(follow_symlinks=False):
+                shutil.rmtree(e.path, ignore_errors=True)
+            else:
+                os.remove(e.path)
+        except OSError:
+            pass
+
+
+def _seal_shm(user):
+    """Close the renderer's shared memory in /dev/shm to every other account (Kit creates it open to all)."""
+    try:
+        uid = pwd.getpwnam(user).pw_uid
+    except KeyError:
+        return
+    for e in os.scandir("/dev/shm") if os.path.isdir("/dev/shm") else []:
+        try:
+            st = e.stat(follow_symlinks=False)
+            if st.st_uid == uid and not stat.S_ISLNK(st.st_mode) and stat.S_IMODE(st.st_mode) & 0o077:
+                os.chmod(e.path, stat.S_IMODE(st.st_mode) & 0o700)
+        except OSError:
+            pass
+
+
+def engine_renderer(config):
+    """The renderer as its own account, from a copy of the renderer's files that only that account can read."""
+    try:
+        pw = pwd.getpwnam(RENDER_USER)
+    except KeyError:
+        subprocess.run(["/usr/sbin/useradd", "--system", "--no-create-home", "--home-dir", RENDER_ROOT, "--shell",
+                        "/usr/sbin/nologin", RENDER_USER], check=True)
+        pw = pwd.getpwnam(RENDER_USER)
+    _clean_shm(agent_user())
+    shutil.rmtree(RENDER_ROOT, ignore_errors=True)
+    pkg = os.path.join(RENDER_ROOT, "endosim")
+    for d in (RENDER_ROOT, pkg, os.path.join(RENDER_ROOT, "home"), os.path.join(RENDER_ROOT, "tmp"), os.path.join(RENDER_ROOT, "optix")):
+        os.makedirs(d, exist_ok=True)
+        os.chown(d, pw.pw_uid, pw.pw_gid)
+        os.chmod(d, 0o700)
+    for name in RENDER_FILES:           # the scene and the image code only: no procedure generator, no episode
+        dst = os.path.join(pkg, name)
+        shutil.copy(os.path.join(HERE, "endosim", name), dst)
+        os.chown(dst, pw.pw_uid, pw.pw_gid)
+        os.chmod(dst, 0o600)
+    for d in ("cache", "logs", "data"):  # Kit's own folders: the renderer account's alone while grading
+        path = os.path.join(KIT_SHARED, d)
+        shutil.rmtree(path, ignore_errors=True)
+        os.makedirs(path, exist_ok=True)
+        os.chown(path, pw.pw_uid, pw.pw_gid)
+        os.chmod(path, 0o700)
+    env = {"HOME": os.path.join(RENDER_ROOT, "home"), "PATH": "/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+           "LANG": "C.UTF-8", "OMNI_KIT_ACCEPT_EULA": "YES", "ACCEPT_EULA": "Y", "PRIVACY_CONSENT": "Y",
+           "TMPDIR": os.path.join(RENDER_ROOT, "tmp"), "OPTIX_CACHE_PATH": os.path.join(RENDER_ROOT, "optix"),
+           "NVIDIA_DRIVER_CAPABILITIES": os.environ.get("NVIDIA_DRIVER_CAPABILITIES", ""),
+           "NVIDIA_VISIBLE_DEVICES": os.environ.get("NVIDIA_VISIBLE_DEVICES", "")}
+    log_path = os.path.join(RENDER_ROOT, "renderer.log")
+    renderer = Renderer(RENDER_ROOT, python="/opt/venv/bin/python3", prefix=["/usr/sbin/runuser", "-u", RENDER_USER, "--"], env=env,
+                        log_path=log_path, start_timeout=float(config.get("renderer_start_timeout_s", 2400)),
+                        render_timeout=float(config.get("render_timeout_s", 120)), max_restarts=int(config.get("renderer_restarts", 3)),
+                        cwd=os.path.join(RENDER_ROOT, "home"))
+    _seal_shm(RENDER_USER)
+    return renderer, log_path
+
+
+def check_canary(result, config):
+    """The renderer must draw a marker where the public camera model puts it, for both scopes."""
+    tol = float(config.get("canary_max_error_px", 2.5))
+    problems = []
+    if not result.get("ok"):
+        problems.append("the frame clock was not readable")
+    for scope, r in sorted(result.get("scopes", {}).items()):
+        if r["found"] < r["markers"]:
+            problems.append("scope {}: {} of {} markers found".format(scope, r["found"], r["markers"]))
+        elif r["max_error_px"] is None or r["max_error_px"] > tol:
+            problems.append("scope {}: marker {} px from where the camera model puts it (limit {})".format(scope, r["max_error_px"], tol))
+        if r.get("mean_level") is None or not 1.0 <= r["mean_level"] <= 250.0:
+            problems.append("scope {}: frame level {}".format(scope, r.get("mean_level")))
+    return problems
+
+
+# ------------------------------------------------------------------------------------------------------ the episodes
+def run_procedure(index, item, steps, solver, renderer, lock, config, privileged, state):
+    """One hidden procedure. Returns its record; never raises for anything the controller does."""
+    proc = procedure.generate(item["seed"], item.get("factors"), steps=steps)
+    session = Session(proc, renderer, frame_delay=int(config.get("frame_delay_steps", 1)), privileged=privileged)
+    rng = lock.rng
+    reason = None
+    try:
+        if state["budget_exhausted"]:
+            raise BudgetExhausted("the controller's reply-time budget was used up in an earlier procedure")
+        solver.reset()
+        while not session.done:
+            obs = session.observation()
+            action = None
+            if lock.due():
+                sx, sy = config.get("probe_shift_x_px", [128, 224]), config.get("probe_shift_y_px", [72, 144])
+                lo, hi = config.get("probe_joint_offset_rad", [0.2, 0.4])
+                shift = (rng.choice((-1.0, 1.0)) * rng.uniform(sx[0], sx[1]), rng.choice((-1.0, 1.0)) * rng.uniform(sy[0], sy[1]))
+                offsets = [rng.choice((-1.0, 1.0)) * rng.uniform(lo, hi) for _ in range(3)]
+                try:
+                    copy = session.probe_copy(obs, shift, offsets)
+                except RendererError as exc:       # the frame is gone (a renderer restart): no probe on this step
+                    log("procedure {} step {}: no probe copy ({})".format(index, session.t, str(exc)[:120]))
+                    copy = None
+                if copy is not None:
+                    action = lock.probe(solver, session.t, obs, perturbed=copy)
+            if action is None:
+                action = solver.act(session.t, obs)
+            session.step(canonical_action(action))
+    except BudgetExhausted as exc:
+        state["budget_exhausted"] = True
+        reason = str(exc)
+    except SolverAborted as exc:
+        reason = str(exc)
+    if reason is not None:
+        at = session.t
+        session.finish_idle()                      # the rest of the procedure with the holder standing still
+        log("procedure {} aborted at step {} ({}); the remaining {} steps ran with the holder stopped".format(index, at, reason[:200], steps - at))
+    rec = session.episode.summary()
+    rec.update(index=index, aborted=reason is not None, abort_reason=reason, facts=proc.facts())
+    log("procedure {} ({} scope {}): useful_view_fraction {:.4f} | failed: lens {:.3f} zone {:.3f} zoom {:.3f} horizon {:.3f} motion {:.3f} | "
+        "lens contacts {} cleanings {}".format(index, proc.kind, proc.scope, rec["useful_view_fraction"], rec["failed_lens"], rec["failed_zone"],
+                                               rec["failed_zoom"], rec["failed_horizon"], rec["failed_motion"], rec["lens_contacts"],
+                                               rec["lens_cleanings"]))
+    return rec
+
+
+def grade(submission, config, make_solver, make_renderer, only=None):
+    """Play the hidden set against the submission's controller. Returns (records, lock, extra metrics, diagnostic).
+    Raises SolverMissing / SolverAborted when there is no controller to drive, RendererError when the environment
+    cannot render."""
+    with open(os.path.join(HERE, "hidden", "procedures.json")) as f:
+        hidden = json.load(f)
+    items = hidden["procedures"] if only is None else [hidden["procedures"][i] for i in only]
+    steps = int(hidden["steps"])
+    if not os.path.isfile(os.path.join(submission, "run.sh")):
+        raise SolverMissing("no submission at {}/run.sh".format(submission))
+    privileged = token_state(submission)
+    t0 = time.time()
+    renderer, render_log = make_renderer(config)
+    started = dict(renderer.started or {})
+    log("renderer up in {:.0f} s".format(time.time() - t0))
+    try:
+        t1 = time.time()
+        canary = renderer.canary()
+        problems = check_canary(canary, config)
+        log("render canary ({:.0f} s): {}".format(time.time() - t1, json.dumps(canary)[:600]))
+        if problems:
+            raise RendererError("the render canary failed: " + "; ".join(problems))
+        rng = seed_rng()
+        lock = ProbeLock(rng, rate=float(config.get("probe_rate", 0.06)), pass_fraction=float(config.get("probe_pass_fraction", 0.25)),
+                         canonical=canonical_action)
+        TimedSolver.budget_s = float(config.get("controller_budget_s_per_step", 0.25)) * steps * len(items)
+        TimedSolver.used_s, TimedSolver.requests, TimedSolver.slowest_s = 0.0, 0, 0.0
+        solver = make_solver(float(config.get("step_timeout_s", 10)))          # raises SolverMissing / SolverAborted
+        state = {"budget_exhausted": False}
+        records = []
+        try:
+            for i, item in enumerate(items):
+                records.append(run_procedure(i, item, steps, solver, renderer, lock, config, privileged, state))
+        finally:
+            solver.close()
+        info = {}
+        try:
+            info = renderer.info()
+        except RendererError:
+            pass
+    except RendererError:
+        tail = ""
+        try:
+            with open(render_log, "rb") as f:
+                f.seek(max(0, os.path.getsize(render_log) - 3000))
+                tail = f.read().decode("utf-8", "replace")
+        except OSError:
+            pass
+        log("renderer log tail:\n" + tail)
+        raise
+    finally:
+        renderer.close()
+    n = max(1, renderer.frames)
+    extra = dict(lock.rewards())
+    extra.update(
+        procedures=float(len(records)), steps_per_procedure=float(steps),
+        episodes_aborted=float(sum(r["aborted"] for r in records)),
+        budget_exhausted=float(state["budget_exhausted"]), privileged=float(privileged),
+        controller_seconds=round(TimedSolver.used_s, 1), controller_requests=float(TimedSolver.requests),
+        controller_slowest_reply_s=round(TimedSolver.slowest_s, 3), solver_restarts=float(solver.restarts),
+        lens_contacts=float(sum(r["lens_contacts"] for r in records)), lens_cleanings=float(sum(r["lens_cleanings"] for r in records)),
+        renderer_restarts=float(renderer.restarts), render_ms_per_frame=round(renderer.render_ms / n, 1),
+        extra_renders_per_frame=round(renderer.extra_renders / n, 3), renderer_start_s=float(started.get("start_s", 0.0)),
+        wall_seconds=round(time.time() - t0, 1),
+    )
+    for c in ("lens", "zone", "zoom", "horizon", "motion"):
+        extra["failed_" + c] = sum(r["failed_" + c] for r in records) / max(1, len(records))
+    for r in records:
+        extra["procedure_{:02d}".format(r["index"])] = round(r["useful_view_fraction"], 4)
+    lines = ["hidden set: {} procedures of {} steps; renderer {}".format(len(records), steps, info.get("gpu", "?"))]
+    for r in records:
+        f = r["facts"]
+        lines.append("procedure {:02d} {:<12} scope {:>2} exchanges {} assistant {} smoke {}: {:.4f}{}".format(
+            r["index"], f["kind"], f["scope"], f["exchanges"], int(f["assistant"]), int(f["smoke"]), r["useful_view_fraction"],
+            " (aborted: {})".format(r["abort_reason"][:120]) if r["aborted"] else ""))
+    return records, lock, extra, "\n".join(lines)
+
+
+def score(records, lock, extra, diagnostic, config, anchor, meta, path=None):
+    usable = sum(r["usable_steps"] for r in records)
+    steps = sum(r["steps"] for r in records)
+    measured = usable / max(1, steps)
+    verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5),
+                            higher_is_better=meta.get("direction", "higher") == "higher", metric_name=meta.get("metric", "useful_view_fraction"),
+                            locks_ok=lock.ok, extra=extra, full_at=meta.get("full_at", 1.0))
+    if not lock.ok:
+        diagnostic += "\nmatch lock failed: {} of {} probes changed the action".format(lock.passed, lock.total)
+    write_verdict(verdict, path=path, diagnostic=diagnostic)
+    log("useful_view_fraction {:.4f} anchor {} ratio {:.3f} reward {:.3f} lock {} ({}/{}) aborted {}".format(
+        measured, anchor, verdict["metrics"]["ratio"], verdict["rewards"]["reward"], lock.ok, lock.passed, lock.total,
+        int(extra["episodes_aborted"])))
+    return verdict
+
+
+def main():
+    config = stage_config()
+    anchor, meta = read_anchor()
+    submission = os.path.join(os.environ.get("ALE_HOME", "/home/user"), "submission")
+    try:
+        records, lock, extra, diagnostic = grade(submission, config, lambda timeout: TimedSolver(step_timeout=timeout), engine_renderer)
+    except (SolverMissing, SolverAborted) as exc:
+        # no controller to drive (an untouched sandbox, a run.sh that never says READY): an honest zero
+        write_verdict(zero_verdict(reason=str(exc), anchored=anchor is not None))
+        return
+    except RendererError as exc:
+        fail("the grading environment could not render: {}".format(str(exc)[:1500]))
+    score(records, lock, extra, diagnostic, config, anchor, meta)
+
+
+if __name__ == "__main__":
+    main()

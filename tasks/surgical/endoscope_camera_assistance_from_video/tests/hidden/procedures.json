@@ -1,0 +1,127 @@
+{
+ "steps": 800,
+ "generator": "endosim-procedure/0.1",
+ "procedures": [
+  {
+   "seed": 8877293235906980051,
+   "factors": {
+    "kind": "dissection",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": true
+   }
+  },
+  {
+   "seed": 400074138918612267,
+   "factors": {
+    "kind": "exploration",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false
+   }
+  },
+  {
+   "seed": 864822573943602624,
+   "factors": {
+    "kind": "dissection",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": true
+   }
+  },
+  {
+   "seed": 6166477890003432265,
+   "factors": {
+    "kind": "suturing",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false
+   }
+  },
+  {
+   "seed": 935531142032414302,
+   "factors": {
+    "kind": "suturing",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false
+   }
+  },
+  {
+   "seed": 8385952325679332116,
+   "factors": {
+    "kind": "dissection",
+    "scope": "0",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": true
+   }
+  },
+  {
+   "seed": 8753995334648852267,
+   "factors": {
+    "kind": "suturing",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false
+   }
+  },
+  {
+   "seed": 193914488821008829,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "30",
+    "exchanges": 2,
+    "assistant": true,
+    "smoke": true
+   }
+  },
+  {
+   "seed": 1751314099948688522,
+   "factors": {
+    "kind": "exploration",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": false
+   }
+  },
+  {
+   "seed": 893602452644095910,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false
+   }
+  },
+  {
+   "seed": 1768593358093277859,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "30",
+    "exchanges": 2,
+    "assistant": true,
+    "smoke": true
+   }
+  },
+  {
+   "seed": 1587353831828850233,
+   "factors": {
+    "kind": "exploration",
+    "scope": "0",
+    "exchanges": 0,
+    "assistant": false,
+    "smoke": false
+   }
+  }
+ ],
+ "note": "the fixed hidden set: 12 procedures drawn once by tests/review/make_sets.py on 2026-11-24 (rule and record: selection.json); the same procedures for every submission"
+}
