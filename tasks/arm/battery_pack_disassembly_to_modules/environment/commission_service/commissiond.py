@@ -110,7 +110,8 @@ def serve(conn):
                     send({"error": "this connection already has a session"})
                 elif isinstance(k, bool) or not isinstance(k, int) or not 1 <= k <= len(CONF["packs"]):
                     send({"error": "pack must be an integer from 1 to %d" % len(CONF["packs"])})
-                elif not BUSY.acquire(blocking=False):
+                elif not BUSY.acquire(timeout=float(CONF.get("busy_wait_s", 120))):
+                    # (a session that has just closed needs some seconds to stop its cell: wait for it)
                     send({"error": "busy: one session at a time"})
                 else:
                     held = True

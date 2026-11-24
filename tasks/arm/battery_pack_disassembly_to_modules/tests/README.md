@@ -65,7 +65,9 @@ can read. One process is one pack: Isaac Sim 6.2 headless, PhysX on the CPU (`en
   T30 in a T40 recess), an engagement outside the tolerances (up to 3.5 / 2.5 mm, 8 degrees), a cammed-out Torx bit
   and a tightening run above the head's limit wear the head; at wear 1 it is stripped and only the extractor bit
   removes it. Thread engagement, the fastener rising as it turns and the socket sliding over the head are not
-  simulated.
+  simulated: the bit's collider stands on the head's, and that contact has a high friction (3.0, combine mode max)
+  that stands in for the socket closing over the head, so a seated bit does not skate off under a side load (with
+  PhysX's default friction a bit pressed on a bracket bolt was kicked off the head now and then).
 - *A part is held until what holds it is out.* The lid by all its bolts, a busbar by two, a bracket by one, a module
   by its two brackets and its two busbars (they have to leave their seats), the service disconnect and the plugs by
   a latch that gives at a pull of 60 N / 30 N along their axis. A held part is a kinematic body: pulling on it
@@ -153,9 +155,22 @@ value measured natively on the author's server, outside the engine; it has to be
   logic, the isolation order, a long horizon with limited commissioning), not through penalties; whether it lands
   there, and whether it is too hard, is open until `ale run`.
 - **No perception-based solution exists yet.** The reference is privileged. That a non-privileged program can do
-  the job rests on the frames carrying the information (section 6 records what was looked at), not on a
-  demonstration. A human-expert baseline (a perception pipeline plus the reference's motion skills) is the most
-  valuable next piece of work, and the fairest calibration of the 2 mm / 1.2 mm tolerances.
+  the job rests on a measurement of what the frames carry (`review/check_observability.py`, section 6: the lid's
+  fasteners found, located within the bits' tolerances and classified by a plain colour-and-blob pipeline, with
+  two misses on one pack that a careful program has to handle), not on a demonstration of the whole job. The same
+  measurement has not been made for the fasteners inside the pack (bright heads on copper, orange and aluminium),
+  for the variant, or for the harness. A human-expert baseline (a perception pipeline plus the reference's motion
+  skills) is the most valuable next piece of work, and the fairest calibration of the 2 mm / 1.2 mm tolerances.
+- **The head type can also be found by trial.** A bit that does not fit a head turns freely and harms nothing
+  (only the two loose combinations and a bad alignment wear a head), so a program can run one bit over a whole group
+  and come back with the other for the heads that did not turn. That costs a second pass, not credit. The brief's
+  "the bit has to be chosen from the image" therefore holds for a program that wants to be quick, not for one that
+  only wants to be right; making a wrong family harmful would not be true to the tools. Left as it is for the
+  owner to decide.
+- **Levers if frontier models turn out to do too well** (none used): the cameras' calibration could carry a
+  per-cell mounting error to be identified; lighting, dirt and label clutter could vary per pack; the fixture's
+  placement tolerance could grow; fastener heads could be partly hidden by sealant. All are perception or
+  engineering, none a penalty.
 - **GPU models.** Run only on an RTX 6000 Ada with driver 570 (DLSS falls back to an older denoiser preset there),
   so `gpu_types` names only that model. The cloud models (RTX 4090, RTX 5090, RTX PRO 6000, H100, H200) are
   untested; `hazard_bay_build`, on the same Isaac Sim stack, validates on the first three. Each model has to be
@@ -215,3 +230,42 @@ the two messages of a null anchor. The kit copy is byte-identical. Wrote the Doc
 `hazard_bay_build`'s), `setup.sh`, the commissioning service, the client library, `run_session.py`, the example
 program, the documents' generator, the drawings and photographs, `select_set.py` (the hidden and development sets
 drawn under its rule), `test_rules.py` (36 checks, no simulator).
+
+**04:40 to 05:50. The whole hidden set, and what it found.** The first native verify of all six packs (the tree of
+04:34, old values) gave 1.0, 0.866, 0.997, 1.0, 0.347, 1.0: the reference itself was not robust. Causes, each
+found with an in-process trace, and the fixes:
+
+- The reference turned the gripper to each part's direction by the shortest rotation from wherever the last joint
+  stood; over a P6's many transfers the joint ran into its 360 degree limit, moves were clipped, parts were not
+  reached, and a module was lowered across a rack divider (1600 N, a protective stop). It now picks, among the
+  turns a task allows (exact, half-turn symmetric for the gripper, free for the nutrunner and for a part over a
+  bin), the one that leaves the last joint nearest its middle, and makes it together with the first joint's turn.
+- A plug that hung still on the gripper for a while stayed in the air when the gripper opened: the body had gone to
+  sleep and a sleeping body does not notice that its joint is gone. The cell now wakes a part when it is released.
+- A harness on the busbars could reach under a module's handle bar (it then pressed down on the tool when gripped).
+  Its ends now stay short of the handles (`review/test_rules.py` checks it on 360 draws).
+- A bit pressed on a bracket bolt was now and then kicked 16 mm off the head (a lateral 230 N, the wrist's drive
+  saturated). The bit-on-head contact now has the high friction described in section 2.
+- The pull on a plug raised the force from under 60 N to over 220 N within one tick (release and overload in the
+  same tick): the reference pulls the first 4 mm at 4 mm/s.
+
+After these, packs 0, 1, 2 and 4 each ran to credit 1.0 with no protective stop (direct runs of the reference).
+The values were rebalanced (section 5) and the documents regenerated.
+
+**What the frames carry** (`review/check_observability.py`, two development packs, public means only: one overhead
+frame, the published calibration, one wrist frame per candidate; compared with the truth afterwards):
+
+| pack | lid fasteners and holes found | overhead position error (median / max) | wrist position error (median / max) | head kind right | rust right |
+|---|---|---|---|---|---|
+| development pack 3 (P6, no harness) | 14 of 14 | 0.60 / 1.46 mm | 0.23 / 1.22 mm | 14 of 14 | 14 of 14 |
+| development pack 2 (P5, harness on the lid over L03, three holes) | 11 of 12 (the one under the harness is the one not found) | 0.75 / 2.39 mm | 0.97 / 1.11 mm | 10 of 10 | 7 of 7 |
+
+On the second pack one corroded hexagon was found from above (2.4 mm off) but not again by the script's wrist
+step; hexagon heads are located about 1 mm off by the wrist step (the script takes the centre of the visible blob,
+and the camera looks at the head 11 degrees off its axis), Torx heads within 0.5 mm. The bits' tolerances are
+2.0 mm (socket) and 1.2 mm (Torx). The script is a measurement, not a solution: it does nothing about the variant,
+the inside of the pack or the harness.
+
+**The manual's photographs** were taken with the cell's cameras on an example pack (`review/make_photos.py`); round
+primitives are drawn with a finer tessellation since (a fastener's head read as a ten-sided polygon before), and
+the lights were turned down (the tray and the plated heads were blown out).

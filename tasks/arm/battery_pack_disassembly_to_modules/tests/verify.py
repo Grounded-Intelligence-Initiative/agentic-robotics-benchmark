@@ -361,6 +361,26 @@ def canary(host, config):
     return round(t1 - t0, 1), round(time.monotonic() - t1, 1)
 
 
+def keep_records(records):
+    """Every pack's record (which items count, the cell's events, counts and times; no seed) for maintainers: in the
+    engine a root-only folder outside /opt/ale (the engine deletes the staged tests before it keeps a sandbox), in a
+    maintainer's own run beside the verdict. Never a reason to fail the grading."""
+    try:
+        if ROOT:
+            folder = "/opt/arb-verify/battery_pack_disassembly_to_modules"
+            os.makedirs(folder, mode=0o700, exist_ok=True)
+            os.chmod(folder, 0o700)
+            path = os.path.join(folder, "records.json")
+        else:
+            path = (os.environ.get("ROBOTICS_GRADER_VERDICT_PATH") or os.path.join(tempfile.gettempdir(), "verdict.json")) + ".records.json"
+        with open(path, "w") as f:
+            json.dump(records, f)
+        if ROOT:
+            os.chmod(path, 0o600)
+    except (OSError, TypeError, ValueError) as exc:
+        log("the packs' records were not kept: {}".format(type(exc).__name__))
+
+
 def main():
     t_start = time.monotonic()
     secured = {"root_path_dirs_secured": float(len(secure_exec_path()))}   # before anything else runs
@@ -463,6 +483,7 @@ def main():
     verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5), higher_is_better=True,
                             metric_name="mean_pack_credit", locks_ok=lock.ok, extra=extra,
                             full_at=meta.get("full_at", 1.0))
+    keep_records(records)
     lines = ["pack {} ({}): credit {:.4f}, ended {}, {} of {} items placed, {} steps, {} s simulated{}".format(
         r["index"], r["variant"], r["credit"], r["ended"], r.get("placed", 0), r.get("items", 0), r["steps"],
         r.get("sim_s", 0), ", ABORTED: " + r["aborted"] if r["aborted"] else "") for r in records]

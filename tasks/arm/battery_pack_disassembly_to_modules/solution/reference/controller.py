@@ -327,20 +327,27 @@ class Reference(object):
         return ok
 
     def eject(self, z_safe=-0.10):
+        """Let the fastener on the bit fall into the nearer fasteners bin: the bit goes down between the bin's
+        walls first (a fastener dropped from above the walls can bounce off the pile and out), and successive
+        fasteners go to different spots."""
         cur = T_of(self.tr["tcp_target"])
         best = None
         for name in ("fasteners_left", "fasteners_right"):
             b = CELL["bins"][name]
-            lo = np.array(b["center"]) - np.array(b["size"]) / 2 + 0.06
-            hi = np.array(b["center"]) + np.array(b["size"]) / 2 - 0.06
+            lo = np.array(b["center"]) - np.array(b["size"]) / 2 + 0.07
+            hi = np.array(b["center"]) + np.array(b["size"]) / 2 - 0.07
             p = np.minimum(np.maximum(cur[:2, 3], lo), hi)
             d = float(np.linalg.norm(p - cur[:2, 3]))
             if best is None or d < best[0]:
-                best = (d, p, b)
-        _, p, b = best
-        yield from self.go(mk(cur[:3, :3], [p[0], p[1], TZ + b["wall_h"] + 0.05]), z_safe, speed=0.55, yaw="free")
+                best = (d, p, b, name, lo, hi)
+        _, p, b, name, lo, hi = best
+        k = self.dropped.get(name, 0)
+        self.dropped[name] = k + 1
+        p = np.minimum(np.maximum(p + [0.025 * (k % 3 - 1), 0.025 * ((k // 3) % 3 - 1)], lo), hi)
+        yield from self.go(mk(cur[:3, :3], [p[0], p[1], TZ + 0.07]), z_safe, speed=0.55, yaw="free")
         yield from self.command("eject", tries=1)
         yield from self.wait(0.15)
+        yield from self.lift(TZ + b["wall_h"] + 0.05)
 
     def fasteners(self, group_filter):
         """Take out every seated fastener that `group_filter` accepts, bit by bit, nearest first."""
