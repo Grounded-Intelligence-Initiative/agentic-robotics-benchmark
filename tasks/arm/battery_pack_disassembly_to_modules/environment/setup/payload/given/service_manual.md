@@ -363,7 +363,9 @@ free before it is lifted. Sort everything that comes off (section 9).
 
 `manual/photo_example_lid.jpg` and `manual/photo_example_inside.jpg`: an example pack (an HVB-P5) under the cell's
 overhead camera, lid on and lid off. `manual/photo_heads.jpg`: the four head types, clean and corroded, and an empty
-hole, as the wrist camera sees them from about 0.25 m. The example pack is not one of the packs you will meet.
+hole, as the wrist camera sees them from about 0.35 m (cropped and enlarged). For these photographs the example
+pack's lid was fitted with M8 heads as well, which a lid never carries. The example pack is not one of the packs you
+will meet.
 
 ## 9. Sorting and recovered value
 

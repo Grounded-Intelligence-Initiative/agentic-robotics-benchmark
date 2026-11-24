@@ -12,6 +12,8 @@ this frame unless a document says otherwise. The floor is at z = -0.8, the surfa
 at z = -0.4.
 
 - **Fixture.** A pack's frame (service manual, section 3) sits nominally at [0.86, 0.0, -0.4], axes parallel to the base frame's.
+- **Tables** (x from, x to, y from, y to; all at table height): fixture [0.45, 1.27, -0.56, 0.56]; right [0.1, 1.06, -0.88, -0.58]; left [0.48, 1.06, 0.58, 0.86]; rack [-0.62, 0.44, 0.6, 0.98]; lid_stand [-1.3, -0.6, -0.55, 0.55]; tool_stand [-0.56, 0.08, -0.86, -0.6]. The robot's pedestal is a column of 0.16 m
+  radius under the base.
 - **Bins** (open boxes standing on the tables, floor at table height):
 
 | bin | centre x, y (m) | inner size x by y (m) | walls (m) |

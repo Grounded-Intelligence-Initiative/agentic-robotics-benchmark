@@ -4,7 +4,7 @@ It is a privileged reference: the grader adds `truth` to its observations (where
 head a fastener has) because the submission carries the reference's token. With that it skips the perception a
 submission has to do, and nothing else: every motion, every tool and bit exchange, every fastener and every part goes
 through the same actions, rules and physics as any program's, and what it decides about a fastener while it turns
-(stalled, free, out) it decides from the nutrunner's torque and angle. Without `truth` it holds still.
+(stalled, free, out) it decides from the nutrunner's torque and angle. Without `truth` it ends the pack at once.
 
 Structure: `Reference.act(t, obs)` answers one request. A step may be asked twice with the same `t` and slightly
 different readings; the program advances once per `t` and builds each answer from the observation it came with: the
@@ -87,6 +87,20 @@ def split(n, far):
     return 1.0 / k, max(ticks, 4 if far else 1)
 
 
+def wrap(a):
+    return (a + math.pi) % (2 * math.pi) - math.pi
+
+
+def yaw_of(R):
+    """The direction of the tool's y axis in the horizontal plane (the tool pointing down)."""
+    return math.atan2(R[1, 1], R[0, 1])
+
+
+def rot_z(a):
+    c, s = math.cos(a), math.sin(a)
+    return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+
+
 DOCK_R = down([0.0, -1.0])       # the tool's x axis along the world's x axis, as the docks ask
 
 
@@ -102,7 +116,7 @@ class Reference(object):
     # ------------------------------------------------------------------ the wire
     def act(self, t, obs):
         if not isinstance(obs, dict) or obs.get("truth") is None:
-            return HOLD
+            return {"cmd": "done"}              # not a reference run: nothing to work from
         if t != self.t:
             self.t, self.o, self.tr = t, obs, obs["truth"]
             try:
@@ -184,23 +198,42 @@ class Reference(object):
             yield from self.settle(o)
         return "fail"
 
-    def go(self, goal, z_safe, speed=0.5, final_speed=None, extra=None):
+    def go(self, goal, z_safe, speed=0.5, final_speed=None, extra=None, yaw="goal"):
         """Up to z_safe, round the base to the goal's direction (a turn of the first joint: a straight line that
-        passes near the base's axis would run the arm through its shoulder singularity), across, down to `goal`."""
+        passes near the base's axis would run the arm through its shoulder singularity), across, down to `goal`.
+
+        The tool points down throughout. Its turn about its own axis is the last joint's alone, and that joint
+        must not wind up over a pack's many transfers: `yaw` says how free the turn is. "goal": the goal's
+        orientation exactly (the docks). "symmetric": the goal's or the one half a turn from it (a parallel gripper
+        on a part). "free": whatever the first joint's turn leaves (the nutrunner, a part over a bin). Of the
+        turns that are allowed, the one that leaves the last joint nearest its middle is taken, together with the
+        first joint's turn."""
         cur = T_of(self.tr["tcp_target"])
         z = max(z_safe, cur[2, 3])
+        R_goal = goal[:3, :3]
         if np.linalg.norm(cur[:2, 3] - goal[:2, 3]) > 2e-3 or np.linalg.norm(R_rotvec(goal[:3, :3] @ cur[:3, :3].T)) > 5e-3:
             if cur[2, 3] < z_safe - 1e-3:
                 yield from self.move(mk(cur[:3, :3], [cur[0, 3], cur[1, 3], z]), speed, extra=extra)
-            da = math.atan2(goal[1, 3], goal[0, 3]) - math.atan2(cur[1, 3], cur[0, 3])
-            da = (da + math.pi) % (2 * math.pi) - math.pi
-            if abs(da) > 0.3:
-                q = np.array(self.tr["q_target"])
-                if abs(q[0] + da) > 3.4:                # stay well inside the first joint's range
-                    da -= math.copysign(2 * math.pi, da)
-                yield from self.move_joints(q + [da, 0, 0, 0, 0, 0], speed=1.0, extra=extra)
-            yield from self.move(mk(goal[:3, :3], [goal[0, 3], goal[1, 3], z]), speed, extra=extra)
-        return (yield from self.move(goal, final_speed or speed, extra=extra))
+            q = np.array(self.tr["q_target"])
+            da = wrap(math.atan2(goal[1, 3], goal[0, 3]) - math.atan2(cur[1, 3], cur[0, 3]))
+            if abs(da) <= 0.3:
+                da = 0.0
+            elif abs(q[0] + da) > 3.4:                  # stay well inside the first joint's range
+                da -= math.copysign(2 * math.pi, da)
+            after = yaw_of(cur[:3, :3]) + da            # the first joint turns the tool with it
+            if yaw == "free":
+                theta, R_goal = 0.0, rot_z(da) @ cur[:3, :3]
+            else:
+                dpsi = wrap(yaw_of(R_goal) - after)
+                steps = (-2, -1, 0, 1, 2) if yaw == "symmetric" else (-2, 0, 2)
+                k = min(steps, key=lambda k: abs(q[5] - (dpsi + k * math.pi)))
+                theta = -(dpsi + k * math.pi)           # the last joint turns the tool the other way round
+                if k % 2:
+                    R_goal = rot_z(math.pi) @ R_goal
+            if abs(da) > 1e-4 or abs(theta) > 1e-4:
+                yield from self.move_joints(q + [da, 0, 0, 0, 0, theta], speed=1.0, extra=extra)
+            yield from self.move(mk(R_goal, [goal[0, 3], goal[1, 3], z]), speed, extra=extra)
+        return (yield from self.move(mk(R_goal, goal[:3, 3]), final_speed or speed, extra=extra))
 
     def lift(self, z, speed=0.4, extra=None):
         cur = T_of(self.tr["tcp_target"])
@@ -260,15 +293,13 @@ class Reference(object):
         th = THREADS[f["thread"]]
         top = np.array(f["top"])
         torx = f["head"].startswith("T")
-        cur = T_of(self.tr["tcp_target"])
-        R = down(cur[:3, 1]) if abs(cur[2, 2] + 1) < 1e-3 else DOCK_R
-
         def press(limit):
             return (10.0 + 1.5 * limit + 8.0) if torx else 30.0
 
         limit = 1.3 * th["tighten"]
         stroke = press(limit) / SPRING
-        yield from self.go(mk(R, top + [0, 0, 0.012]), z_safe)
+        yield from self.go(mk(DOCK_R, top + [0, 0, 0.012]), z_safe, yaw="free")
+        R = T_of(self.tr["tcp_target"])[:3, :3]
         yield from self.move(mk(R, top - [0, 0, stroke]), 0.03)
         start = self.o["spindle"]["angle_deg"]
         stalls = 0
@@ -307,7 +338,7 @@ class Reference(object):
             if best is None or d < best[0]:
                 best = (d, p, b)
         _, p, b = best
-        yield from self.go(mk(cur[:3, :3], [p[0], p[1], TZ + b["wall_h"] + 0.05]), z_safe, speed=0.55)
+        yield from self.go(mk(cur[:3, :3], [p[0], p[1], TZ + b["wall_h"] + 0.05]), z_safe, speed=0.55, yaw="free")
         yield from self.command("eject", tries=1)
         yield from self.wait(0.15)
 
@@ -363,12 +394,9 @@ class Reference(object):
 
     def pick(self, pid, z_safe, which=0, pull=False):
         gp, c, width = self.grasp_pose(pid, which)
-        cur = T_of(self.tr["tcp_target"])
-        if np.dot(c[:2], cur[:2, 1]) < 0:
-            c = -c
         goal = mk(down(c), gp)
         w = min(OPEN, width + 0.03)
-        if (yield from self.go(goal, z_safe, final_speed=0.15, extra={"gripper": w})) != "ok":
+        if (yield from self.go(goal, z_safe, final_speed=0.15, extra={"gripper": w}, yaw="symmetric")) != "ok":
             self.log("could not reach", pid)
             yield from self.lift(z_safe)
             return False
@@ -379,7 +407,9 @@ class Reference(object):
             yield from self.lift(z_safe)
             return False
         if pull:                                    # a plug: pull it straight out of its latch, slowly
-            yield from self.move(mk(goal[:3, :3], gp + [0, 0, 0.04]), 0.03)
+            R = T_of(self.tr["tcp_target"])[:3, :3]
+            yield from self.move(mk(R, gp + [0, 0, 0.004]), 0.004)
+            yield from self.move(mk(R, gp + [0, 0, 0.04]), 0.04)
         yield from self.lift(z_safe, speed=0.25)
         return bool(self.o["gripper"]["holding"])
 
@@ -393,7 +423,7 @@ class Reference(object):
             offset = (0.055 * (k % 3 - 1), 0.055 * ((k // 3) % 3 - 1))
         cur = T_of(self.tr["tcp_target"])
         goal = mk(cur[:3, :3] if R is None else R, [b["center"][0] + offset[0], b["center"][1] + offset[1], TZ + b["wall_h"] + 0.06])
-        yield from self.go(goal, z_safe, speed=0.5)
+        yield from self.go(goal, z_safe, speed=0.5, yaw="free" if R is None else "symmetric")
         yield from self.open_wait()
         yield from self.lift(z_safe)
 
@@ -475,9 +505,7 @@ class Reference(object):
 
     def rack_module(self, bay, z_safe):
         c = CELL["rack"]["bay_centers"][bay]
-        cur = T_of(self.tr["tcp_target"])
-        cx = [1.0, 0.0] if cur[0, 1] >= 0 else [-1.0, 0.0]
-        goal = mk(down(cx), [c[0], c[1], TZ + 0.055 + 0.077 + 0.003])
-        yield from self.go(goal, z_safe, speed=0.35, final_speed=0.10)
+        goal = mk(down([1.0, 0.0]), [c[0], c[1], TZ + 0.055 + 0.077 + 0.003])
+        yield from self.go(goal, z_safe, speed=0.35, final_speed=0.10, yaw="symmetric")
         yield from self.open_wait()
         yield from self.lift(z_safe)

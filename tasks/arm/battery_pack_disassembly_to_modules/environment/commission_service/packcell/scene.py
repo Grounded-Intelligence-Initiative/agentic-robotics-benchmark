@@ -173,6 +173,22 @@ class Builder(object):
         self.bind(m.GetPrim(), look)
         return m.GetPrim()
 
+    def grip(self, prim):
+        """Bind the high-friction physics material to a collider. A bit on a fastener's head is such a pair: the
+        friction stands in for the socket closing over the head (or the Torx bit sitting in its recess), which
+        the colliders do not model, so a seated bit does not skate off the head under a side load."""
+        path = "/World/Looks/physics_grip"
+        if not self.st.GetPrimAtPath(path).IsValid():
+            m = UsdShade.Material.Define(self.st, path)
+            api = UsdPhysics.MaterialAPI.Apply(m.GetPrim())
+            api.CreateStaticFrictionAttr(3.0)
+            api.CreateDynamicFrictionAttr(3.0)
+            api.CreateRestitutionAttr(0.0)
+            px = PhysxSchema.PhysxMaterialAPI.Apply(m.GetPrim())
+            px.CreateFrictionCombineModeAttr("max")
+            px.CreateRestitutionCombineModeAttr("min")
+        UsdShade.MaterialBindingAPI.Apply(prim).Bind(UsdShade.Material(self.st.GetPrimAtPath(path)), UsdShade.Tokens.weakerThanDescendants, "physics")
+
     def body(self, prim, mass, kinematic=True, com=None, inertia=None):
         rb = UsdPhysics.RigidBodyAPI.Apply(prim)
         rb.CreateKinematicEnabledAttr(bool(kinematic))
@@ -328,7 +344,7 @@ def build(stage, pack, robot_usd, render=True):
     b.body(sp, nr["spindle_mass"], kinematic=False, com=(0, 0, 0.06), inertia=(4e-4, 4e-4, 2e-5))
     total = nr["spindle_len"] + nr["bit_len"]
     b.cyl(R + "/spindle_link/rod", 0.0055, nr["spindle_len"], (0, 0, nr["spindle_len"] / 2), "steel")
-    b.cyl(R + "/spindle_link/collider", nr["collider_r"], total, (0, 0, total / 2), None, collide=True, visible=False)
+    b.grip(b.cyl(R + "/spindle_link/collider", nr["collider_r"], total, (0, 0, total / 2), None, collide=True, visible=False))
     for name in S.BITS:
         r = S.BIT_LOOK[name]["r"]
         root = R + "/spindle_link/bit_" + name
@@ -533,7 +549,7 @@ def build(stage, pack, robot_usd, render=True):
         r_col = fastener_shapes(b, path, f["head"], "rust" if f["corroded"] else "zinc")
         if f["corroded"]:
             b.cyl(path + "/stain", r_col + 0.0035, 0.0003, (0, 0, 0.00015), "rust_stain")
-        b.cyl(path + "/col_head", r_col, h, (0, 0, h / 2), None, collide=True, visible=False)
+        b.grip(b.cyl(path + "/col_head", r_col, h, (0, 0, h / 2), None, collide=True, visible=False))
         b.cyl(path + "/col_shank", thread["shank_r"], thread["shank_len"], (0, 0, -thread["shank_len"] / 2), None, collide=True, visible=False)
         index["fasteners"][fid] = path
     index["pack_T"] = T.tolist()

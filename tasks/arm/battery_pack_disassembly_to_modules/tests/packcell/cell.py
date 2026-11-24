@@ -390,6 +390,10 @@ class Cell(object):
     def _detach(self):
         if self.grasp_joint is not None:
             self.stage.RemovePrim("/World/GraspJoint")
+            # a part that hung still on the joint may have gone to sleep, and a sleeping body does not notice that
+            # its joint is gone: writing its velocity wakes it
+            i = np.array([self.part_order[self.grasp_joint]], dtype=np.int32)
+            self.pv.set_velocities(np.array(self.pv.get_velocities(), dtype=np.float32), i)
             self.grasp_joint = None
 
     def _set_pose(self, path, T):

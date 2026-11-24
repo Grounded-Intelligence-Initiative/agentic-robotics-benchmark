@@ -250,6 +250,10 @@ def main():
                     continue
                 h = p["parts"][-1]
                 pts = [np.array(q) for q in h["path"]]
+                if harness == "busbars":            # short of the modules' handle bars
+                    assert max(q[0] for q in pts) + S.HARNESS_R < S.MODULE["x"] - 0.05 - 0.005, (seed, variant)
+                else:                               # on the lid, inside its outline and away from its handle
+                    assert all(abs(q[0]) < 0.31 and abs(q[1]) < 0.47 and (abs(q[0]) > 0.09 or abs(q[1]) > 0.05) for q in pts)
                 for f in p["fasteners"]:
                     if f["missing"]:
                         continue

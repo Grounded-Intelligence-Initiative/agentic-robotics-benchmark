@@ -2,7 +2,7 @@
 
 Speaks the grader's wire (one JSON object per line on stdin, one reply per line on stdout; logs on stderr): READY,
 then {"type": "reset"} -> {"ok": true}, {"type": "act", "t", "obs"} -> {"action": {...}}, {"type": "close"} ->
-{"ok": true} and exit. Without `truth` in the observation (not a token run) it holds still. See `controller.py`.
+{"ok": true} and exit. Without `truth` in the observation (not a token run) it ends every pack at once. See `controller.py`.
 """
 
 import json

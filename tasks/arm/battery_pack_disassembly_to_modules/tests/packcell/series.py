@@ -316,12 +316,13 @@ def _harness_path(s, on, nom, fasteners):
         cover = row[k:k + count]
         z_top = Z["busbar_seat"] + max(HEADS[f["head"]]["height"] for f in cover) + r + 0.0008
         z_mod = TRAY["bottom"] + MODULE["size"][2] + r
-        pts = [[cover[0]["pos"][0] + s.uniform(0.06, 0.10), cover[0]["pos"][1] - s.uniform(0.03, 0.05), z_mod],
+        # (the ends stay short of the modules' handle bars, which begin 0.085 m from the bolt row)
+        pts = [[cover[0]["pos"][0] + s.uniform(0.04, 0.07), cover[0]["pos"][1] - s.uniform(0.03, 0.05), z_mod],
                [cover[0]["pos"][0] + 0.022, cover[0]["pos"][1] - 0.012, z_top]]
         for f in cover:
             pts.append([f["pos"][0] + s.uniform(-0.002, 0.002), f["pos"][1], z_top])
         pts.append([cover[-1]["pos"][0] + 0.022, cover[-1]["pos"][1] + 0.012, z_top])
-        pts.append([cover[-1]["pos"][0] + s.uniform(0.06, 0.10), cover[-1]["pos"][1] + s.uniform(0.03, 0.05), z_mod])
+        pts.append([cover[-1]["pos"][0] + s.uniform(0.04, 0.07), cover[-1]["pos"][1] + s.uniform(0.03, 0.05), z_mod])
     pts = [[round(float(c), 5) for c in p] for p in pts]
     return pts, [f["id"] for f in cover]
 

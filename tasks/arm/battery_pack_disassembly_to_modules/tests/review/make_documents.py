@@ -303,7 +303,9 @@ free before it is lifted. Sort everything that comes off (section 9).
 
 `manual/photo_example_lid.jpg` and `manual/photo_example_inside.jpg`: an example pack (an HVB-P5) under the cell's
 overhead camera, lid on and lid off. `manual/photo_heads.jpg`: the four head types, clean and corroded, and an empty
-hole, as the wrist camera sees them from about 0.25 m. The example pack is not one of the packs you will meet.
+hole, as the wrist camera sees them from about 0.35 m (cropped and enlarged). For these photographs the example
+pack's lid was fitted with M8 heads as well, which a lid never carries. The example pack is not one of the packs you
+will meet.
 """)
     t.append("""## 9. Sorting and recovered value
 
@@ -458,6 +460,8 @@ this frame unless a document says otherwise. The floor is at z = %g, the surface
 at z = %g.
 
 - **Fixture.** A pack's frame (service manual, section 3) sits nominally at %s, axes parallel to the base frame's.
+- **Tables** (x from, x to, y from, y to; all at table height): %s. The robot's pedestal is a column of 0.16 m
+  radius under the base.
 - **Bins** (open boxes standing on the tables, floor at table height):
 
 %s
@@ -628,7 +632,7 @@ Every process of the image, the grader's and yours, runs with `OPENBLAS_CORETYPE
 and `OMP_NUM_THREADS=1` unless it sets them otherwise; the grader starts `run.sh` with `PATH`, `HOME` and `LANG`
 only, so set them in `run.sh` if your arithmetic depends on them. The physics engine and the renderer are not
 bit-reproducible across machines: build a program that closes its loops on what it measures.
-""" % (S.FLOOR_Z, S.TABLE_Z, c["pack_nominal"], bins, c["rack"]["bay_size"][0], c["rack"]["bay_size"][1], c["rack"]["bay_centers"][0][1],
+""" % (S.FLOOR_Z, S.TABLE_Z, c["pack_nominal"], "; ".join("%s %s" % (k, list(v)) for k, v in c["tables"].items()), bins, c["rack"]["bay_size"][0], c["rack"]["bay_size"][1], c["rack"]["bay_centers"][0][1],
        ", ".join("%g" % round(b[0], 3) for b in c["rack"]["bay_centers"]), c["rack"]["divider_h"], c["lid_stand"]["center"],
        c["lid_stand"]["size"][0], c["lid_stand"]["size"][1], c["docks"]["nutrunner"], c["docks"]["gripper"], c["bit_station"], c["home_q"],
        D["max_ticks"], S.TICK, D["tcp_speed_max"], D["tcp_rot_speed_max"], D["joint_speed_max"],
