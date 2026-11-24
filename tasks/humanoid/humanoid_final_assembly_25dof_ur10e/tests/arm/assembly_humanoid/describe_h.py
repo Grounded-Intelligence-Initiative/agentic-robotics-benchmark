@@ -1,4 +1,4 @@
-"""describe()'s public description and its FIELD TABLE (task item 9).
+"""describe()'s public description and its FIELD TABLE.
 
 New file of this task. describe() gives what the design gives (the robot, the control, the cameras' nominal mounts and
 their draw bounds, the fastening rules and the measured windows by seat class, how each module is presented and how far

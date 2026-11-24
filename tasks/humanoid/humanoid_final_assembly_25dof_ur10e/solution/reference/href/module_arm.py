@@ -7,17 +7,17 @@ own (motion.py). Constants and where each comes from:
   GRASP_FORCE_N  125 N per pad commanded (the top of the force register's 10-125 N; the grasp table's torsion margin
                  at 0.5 m/s^2 by the house rule 2 x 0.005 m x 125 N: 1.97 right row 173, 1.78 left row 170). MEASURED
                  in the cell (runs of both arms and, for the left arm's row 170, six runs of its own:
-                 hold_in_the_carry, the medians in the carry): once the
+                 the medians of the pad forces in the carry): once the
                  arm's weight is in the hand the pads press
-                   113.2-116.4 N each on the right arm, 128.0-132.9 N each on the left arm (row 170; the arms'
-                   row 156 gave 44.2-46.0 N: the arm turned about 4 deg in the grip as it left the cradle),
+                   113.2-116.4 N each on the right arm, 128.0-132.9 N each on the left arm (row 170; an earlier,
+                   superseded grasp of the left arm gave 44.2-46.0 N: the arm turned about 4 deg in the grip as it left the cradle),
                  so by the house rule the left grasp's torsion capacity (1.305-1.305 N m) is above the computed 0.700 N m
                  of the arm's off-centre weight and the carry; the measured slip in the carry of the right arm is at most
                    0.038 mm / 0.024 deg (in the same runs)
   GRASP ROWS     data/grasps.json (the grasp table's rows on the shoulder pitch link from above, closing front to back:
                  usable at the pick and at the mate in all 301 layouts of the fixtures of record; the hand 7.0 mm (right)
-                 / 6.1 mm (left, row 156) clear of the torso when the arm is seated (a static check of the seated poses); the left row
-                 170 of the same family, 15 mm higher on the link, keeps the pads' force)
+                 / 6.1 mm (left, an earlier, superseded grasp) clear of the torso when the arm is seated (a static check of the seated poses);
+                 the left row 170 of the same family, 15 mm higher on the link, keeps the pads' force)
   OPEN_CLEAR_M   the open hand = the grasp width + 25 mm (at most the largest opening)
   Z_TRANSIT_M    0.60 m: the tcp height of the carry (the held arm hangs about 0.43 m under the tcp; the joint carry
                  swings it behind the cell's UR base: a static check of its poses found nothing within 15 mm); the carry
@@ -30,7 +30,7 @@ own (motion.py). Constants and where each comes from:
                  10 mm/s with the ROOT servoed on its true pose (motion.py's servo rule): the ring centre kept on the vertical
                  line through its rack pose and the ring square to the cradle's groove, its turn about the shoulder axis
                  left free (measured: the arm turns that way in the grip as it leaves the cradle,
-                   3.8-4.01 deg (right) / 0.84-0.85 deg (left, row 170; 4.07-4.09 deg with row 156), and 5.6-6.41 deg
+                   3.8-4.01 deg (right) / 0.84-0.85 deg (left, row 170; 4.07-4.09 deg with the earlier, superseded grasp), and 5.6-6.41 deg
                    off it (right);
                  without the servo the ring swings 6 mm sideways into the cradle's wall and its flange wedges between
                  the axial shoulders, 0.2 mm each side, in the measured runs); then on to 60 mm

@@ -1,4 +1,4 @@
-"""The robot models the cell's model loads (task item 4).
+"""The robot models the cell's model loads.
 
 New file of this task. The UR10e's six joint caps (five cap meshes) carry the arm maker's logo as relief and the wide
 gripper's base carries its maker's name as relief; in this task every copy of those meshes the cell simulates is

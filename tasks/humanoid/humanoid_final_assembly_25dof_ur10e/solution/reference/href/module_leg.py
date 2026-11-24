@@ -30,8 +30,8 @@ hip chain of data/legs.json); the motion is the API's own (motion.py). Constants
                    in the true meshes; this change checked the same way, the left leg alone on the nominal
                    layout: 20 mm back leaves the screw 0.37 mm off the bar, 35 mm leaves it 3.6 mm and the washer
                    5.7 mm, the knee's collision pieces 7.0 mm off the bar; the grasp is unchanged)
-  FRONT_M          0.17 m: the front point in front of the pre-insertion pose, at its height (170 mm ahead; the grasp
-                   table's front170), and FRONT_OUT_M outboard of it along the seat axis: 0 for the right leg, 0.18 m for
+  FRONT_M          0.17 m: the front point in front of the pre-insertion pose, at its height (170 mm ahead), and
+                   FRONT_OUT_M outboard of it along the seat axis: 0 for the right leg, 0.18 m for
                    the left leg (a static check of the poses: with the RIGHT leg still standing in its station, the
                    arm's wrist passes through the standing leg's hip end at the left leg's front point 170 mm ahead
                    (42 mm overlap at the nominal layout, a 319 N touch in a measured run); 120 mm outboard keeps
@@ -39,7 +39,7 @@ hip chain of data/legs.json); the motion is the API's own (motion.py). Constants
                    end of the extraction -> above the front point (its height kept) -> the front point (Cartesian lines
                    at the carry limits) -> a straight line to the pre-insertion pose at PRE_LINE_V 0.05 m/s
   PRE_OUT_M        18 mm: the pre-insertion pose, the lateral gap open: 18 mm outboard of the seat along its axis (the leg
-                   route's lateral gap, the grasp table's lat18); there the leg is set right on its seat by the true pose (ALIGN_*)
+                   route's lateral gap); there the leg is set right on its seat by the true pose (ALIGN_*)
   ALIGN2_M         4 mm outboard: a second setting-right before the pilot engages (it engages 2.5 mm out: the graph's
                    pilot overlap)
   INSERT_V         0.008 m/s from 18 to 4 mm and 0.005 m/s from 4 to 1.5 mm (8 mm/s first; slower into the pilot)
@@ -49,7 +49,7 @@ hip chain of data/legs.json); the motion is the API's own (motion.py). Constants
                    (the cell locks a module slower than 5 mm/s inside the lock window after 0.50 s: at 1 mm/s that is at
                    the face, while the leg is still held), or on the wrist force (GUARD_DF_N 40 N of change
                    from the reading at rest before the line: a jam), or at its end
-  HOLD_AFTER_LOCK_S 0.6 s in the hand after the lock (the design's 'held >= 0.6 s')
+  HOLD_AFTER_LOCK_S 0.6 s in the hand after the lock (held at least 0.6 s)
   RECENTRE_V       0.005 m/s: the opened hand set back on the thigh's TRUE pose where the grasp put it before it backs
                    out (a straight retreat dragged a mounted thigh about its hip yaw and the foot struck the stand)
   RETREAT_*        30 mm back along the approach drifting 3 mm outboard at 0.02 m/s; then the hand opened to the

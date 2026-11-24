@@ -2,7 +2,7 @@
 
 New file of this task. It takes the place of the precedent servers' `reset(seed)` (arm/assembly_car/server.py
 `CarInfoServer.reset`, arm/assembly_rov/server.py `RovInfoServer.reset`: layout draw -> the cell -> the routed tick)
-and composes what the earlier packages handed over, through their OWN defaults and nothing else:
+and composes the cell's parts, each through its OWN defaults and nothing else:
 
   seed (an integer; at verify one per episode from OS entropy: os_seed())
     -> the layout's draws: the fixtures' draw  fixtures_h.draw_layout(numpy default_rng(seed), cfg)  (the stream the

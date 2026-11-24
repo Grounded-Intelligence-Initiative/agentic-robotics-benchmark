@@ -1,19 +1,19 @@
 """The kit-to-cell adapter: the hidden kit
 (schema humanoid-asm-kit/1, kit.json + the drawn STL meshes; default the kit of record) and the collision model
-(schema humanoid-asm03-collision/1; default collision model 5, of record) into the cell's data contract (humanoid-cell-data/1,
+(schema humanoid-asm03-collision/1; default the collision model of record) into the cell's data contract (humanoid-cell-data/1,
 scene.py's module text) for scene.build_cell.
 
-THE ONE PLACE TO SWITCH THE COLLISION MODEL is COLLISION_SOURCE_OF_RECORD below (collision model 5, of
-record; model 3 before it); the environment variable HUMANOID_COLLISION_PIECES or collision_source= override it.
+THE ONE PLACE TO SWITCH THE COLLISION MODEL is COLLISION_SOURCE_OF_RECORD below (the collision model of
+record; an earlier one before it); the environment variable HUMANOID_COLLISION_PIECES or collision_source= override it.
 From the collision model the adapter reads: per piece 'exact', 'rest' and 'rest_contact' (a rest piece gets the
 rest-contact impedance; the fixture side of the pair is flagged by fixtures_h, so both geoms of a resting pair carry it);
 model-wide 'exclude_pairs' (into each assembly's exclude_pairs), 'joint_limits_deg' (the cell ranges of the four
 hip joints: they replace the kit's provisional cell_range_rad and must equal the values of record HIP_LIMITS_OF_RECORD_DEG,
 asserted) and 'delivered_state_deg' (the state the model was carved at: asserted equal to the adapter's own
-delivered state within DELIVERED_TOL_DEG, 0.01 deg per joint: the model of record was carved at v1.2's state with the v1.2
-amendment, v1.3's settled leg angles differ from it by at most 0.0035 deg). The joint model (friction,
+delivered state within DELIVERED_TOL_DEG, 0.01 deg per joint: the model of record was carved at an earlier delivered state with
+its amendment; the settled leg angles of record differ from it by at most 0.0035 deg). The joint model (friction,
 damping, armature) still comes from the configuration only.
-The delivered states come from the frozen numbers (the delivered states of versions 1.3 and 1.4
+The delivered states come from the frozen numbers (the delivered states of their earlier versions
 unchanged: the knees at 0).
 
 New file of this task. What it does, and the three rules it keeps:
@@ -63,15 +63,15 @@ KIT_DIR = os.environ.get("HUMANOID_KIT_DIR", "<bound at verify start by tests/ce
 HERE = os.path.dirname(os.path.abspath(__file__))
 FROZEN_PATH = os.path.normpath(os.path.join(HERE, "..", "..", "..", "frozen_numbers.json"))     # the frozen numbers, version 1.5
 FROZEN_AMEND_PATH = os.path.normpath(os.path.join(HERE, "..", "..", "..", "frozen_numbers_amendment.json"))
-# >>> THE ONE PLACE TO SWITCH THE COLLISION MODEL (collision model 5, of record; model 3 before it) <<<
+# >>> THE ONE PLACE TO SWITCH THE COLLISION MODEL (the collision model of record; an earlier one before it) <<<
 COLLISION_SOURCE_OF_RECORD = "<bound at verify start by tests/cell_roots.py>"
 PIECES_SOURCE = os.environ.get("HUMANOID_COLLISION_PIECES", COLLISION_SOURCE_OF_RECORD)
 COLLISION_SCHEMA = "humanoid-asm03-collision/1"
-# the cell's hip limits of record (the ruled hip limits): the collision model's
+# the cell's hip limits of record: the collision model's
 # joint_limits_deg must equal them
 HIP_LIMITS_OF_RECORD_DEG = {"right_hip_roll_joint": [-20.5, 7.5], "left_hip_roll_joint": [-7.5, 20.5],
                             "right_hip_yaw_joint": [-38.0, 43.5], "left_hip_yaw_joint": [-43.5, 38.0]}
-DELIVERED_TOL_DEG = 0.01        # the model of record's carve state vs v1.3 (<= 0.0035 deg)
+DELIVERED_TOL_DEG = 0.01        # the model of record's carve state vs the settled leg angles (<= 0.0035 deg)
 UNITS = ("base", "leg_R", "leg_L", "arm_R", "arm_L", "head")
 ROTOR_MASS_KG = 1e-6
 ROTOR_INERTIA_KGM2 = 1e-10
@@ -159,7 +159,7 @@ def check_joint_model(kit, cfg, tol=TOL):
 
 
 def load_frozen(path=None, amend_path=None, amend=True):
-    """the frozen numbers (schema 1.5 asserted; versions 1.4 and 1.3 before it): it carries the v1.2 amendment merged (the two knees at
+    """the frozen numbers (schema 1.5 asserted): it carries the earlier amendment merged (the two knees at
     their limit 0), so no amendment step is applied; amend_path and amend are kept for the callers and not
     read (FROZEN_AMEND_PATH stays: tests read the amendment file itself)"""
     with open(path or FROZEN_PATH) as f:

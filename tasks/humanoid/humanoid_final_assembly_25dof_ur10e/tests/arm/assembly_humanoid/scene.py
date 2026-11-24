@@ -612,7 +612,7 @@ def build_cell(data, cfg=None, arrays=None, data_dir=None, robot=True, robot_mod
     gripper open, every assembly at its placement and delivered joint state, settled for physics.settle_s and the
     clock reset to 0 when `settle`). `data["welds"]` = [{"name", "body1", "body2", "active": false}]: weld equalities
     with the configuration's weld impedance (the coupling's locks: one inactive weld per mate candidate, as the
-    precedent); `spec_hook(spec, names)` is called just before the compile (anything else a later package adds)."""
+    precedent); `spec_hook(spec, names)` is called just before the compile (for anything else to add)."""
     import mujoco
     log = log or (lambda s: None)
     cfg = CF.load_config() if cfg is None else CF.check_config(cfg)
@@ -642,7 +642,7 @@ def build_cell(data, cfg=None, arrays=None, data_dir=None, robot=True, robot_mod
             for el in els:
                 if el.name:
                     B.names.setdefault(what, set()).add(el.name)
-        # the wrist camera's vertical field of the cameras block (the design's hfov 80 deg at
+        # the wrist camera's vertical field of the cameras block (hfov 80 deg at
         # 640 x 480) set on the robot's model camera BEFORE the compile (the vendored gripper_wide.py gives 70 deg and is
         # not edited); asserted after the compile (wrist_fovy below)
         wrist_fovy = ((cfg.get("cameras") or {}).get("mounts") or {}).get("wrist", {}).get("fovy_deg")

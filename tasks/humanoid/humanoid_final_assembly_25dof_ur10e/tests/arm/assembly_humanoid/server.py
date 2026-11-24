@@ -52,9 +52,9 @@ CELL_VERSION = "humanoid-assembly-cell/0.2.0"
 PUBLIC_METHODS = ("describe", "get_state", "set_control", "command", "step", "get_camera", "finish")
 # the shared servers' privileged calls (arm/assembly_car/server.py, arm/assembly_rov/server.py): only with the
 # oracle token (the server's `privileged`, set by the episode builder from episode.token_state); otherwise each answers
-# {"error": "forbidden"} and is counted as an illegal call. There is no in-cell call reference_assemble (the reference
-# program runs over the wire like any program and reads the truth through these two calls); a call of that name is an
-# ordinary forbidden call
+# {"error": "forbidden"} and is counted as an illegal call. There is no in-cell call that assembles the reference (the
+# reference program runs over the wire like any program and reads the truth through these two calls); a call of such a
+# name is an ordinary forbidden call
 PRIVILEGED_METHODS = ("get_state_privileged", "describe_privileged")
 MAX_METHOD_KEYS = 64                # distinct forbidden method names kept by name in the counters
 BIG_INT = 2 ** 53

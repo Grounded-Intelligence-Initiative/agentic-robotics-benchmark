@@ -727,7 +727,7 @@ class FilamentViewSession(RenderSession):
         ro = self._rolloff_params() if (ef > 1.0 or (tp or {}).get("mode") == "two_renders") else None
         rgb = self._render_once(cam, rq, rd, ef) if ro is None else None
         if ro is not None:
-            # the wrist camera's tone path in linear FLOAT, quantised once (items 4 and 6):
+            # the wrist camera's tone path in linear FLOAT, quantised once:
             #   x  = the scene-linear frame at the camera's exposure ef, from two renders of the same state: one at
             #        ef x B (ARB_FILAMENT_BRACKET, default 4: the dark tones with B times the 8-bit codes of a render at ef) and,
             #        where that one reaches the top of its 8-bit range, one at exposure 1 (x ef: the highlights up to ef);

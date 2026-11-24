@@ -222,8 +222,8 @@ def interfaces_from_graph(graph, design_phase=None, body_name=None, cfg=None):
     records of the coupling, one per mate, in the graph's order of reference. A change of the graph's format changes this
     function only.
 
-    design_phase: {mate: option name} for mates whose design phase is still open in the graph (status 'RULING
-    NEEDED'); a mate with a single option takes it. body_name: f(graph body name) -> the cell's body name (default
+    design_phase: {mate: option name} for mates whose design phase is still open in the graph (no option
+    chosen); a mate with a single option takes it. body_name: f(graph body name) -> the cell's body name (default
     identity; the kit-to-cell adapter knows its naming). cfg: the configuration (default load_config()): the
     graph's copy of the frozen windows must equal the configuration's (two copies of one rule must not drift; the
     configuration is the one source)."""
