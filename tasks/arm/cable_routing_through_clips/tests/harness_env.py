@@ -76,6 +76,13 @@ SEATED_Z = 0.013                   # a clip counts when the cable's centre line 
 POST_TOL = 0.010                   # the cable within this of the post's surface, below its top
 MOUNT_TOL = 0.012                  # m: a fixture or the connector is mounted within this of its printed place
 CLIP_AXIS_TOL = math.radians(8.0)  # a clip's passage axis is within this of the printed one
+# The strain-relief boot at the connector: the cable's fixed end is held by a flexible boot that stretches along the
+# connector's axis before the conductors take the load. Stiffness from the boot itself: a TPE boot of Shore 60 A
+# (Young's modulus about 3.6 MPa), 35 mm long, 1 mm wall over a 9 mm cable (section about 31 mm^2): E A / L =
+# 3.6e6 * 31e-6 / 0.035 = 3.2 kN/m. It stretches at most 20 % of its length (7 mm), then the cable's conductors stop it.
+BOOT_STIFFNESS = 3200.0            # N/m
+BOOT_TRAVEL = 0.007                # m
+BOOT_DAMPING = 15.0                # N s/m
 TENSION_LIMIT = 40.0               # N
 TENSION_WINDOW = 0.1               # s: the connector is damaged when the mean tension over this window passes the limit
 SETTLE_S = 2.0
@@ -382,6 +389,9 @@ def _xml(ep):
     {furniture}
     <body name="connector" pos="{ax} {ay} {zc}">
       <geom name="connector_shell" type="box" size="0.012 0.009 0.008" pos="{cx} {cy} 0.0035" euler="0 0 {hd}" rgba=".12 .12 .14 1" contype="0" conaffinity="0"/>
+      <body name="strain_relief" pos="0 0 0">
+      <joint name="strain_relief" type="slide" axis="{hx} {hy} 0" range="0 {bt}" stiffness="{bk}" damping="{bd_}" armature="0.002"/>
+      <geom name="boot" type="capsule" fromto="0 0 0 {b1x} {b1y} 0" size="{br}" rgba=".1 .1 .1 1" mass="0.004" contype="0" conaffinity="0"/>
       <composite prefix="c" type="cable" vertex="{verts}" initial="ball">
         <plugin plugin="mujoco.elasticity.cable">
           <config key="twist" value="{tw}"/><config key="bend" value="{bd}"/><config key="vmax" value="0"/>
@@ -389,13 +399,14 @@ def _xml(ep):
         <joint kind="main" damping="{jd}" armature="1e-5"/>
         <geom type="capsule" size="{R}" rgba=".9 .35 .1 1" contype="3" conaffinity="3" condim="4" friction="{fr} 0.01 0.001" density="{rho}" solref="0.004 1" solimp="0.95 0.99 0.0005"/>
       </composite>
+      </body>
     </body>
     {fixtures}
   </worldbody>
 </mujoco>""".format(dt=TIMESTEP, iters=int(SOLVER_ITERATIONS), impratio=IMPRATIO, noslip=NOSLIP_ITERATIONS, jd=JOINT_DAMPING_40 * N_SEG / 40.0, fz=-BENCH_H, bx=bx[0], by=bx[1], bcx=(BENCH_X[0] + BENCH_X[1]) / 2, bcy=(BENCH_Y[0] + BENCH_Y[1]) / 2,
                     bhx=BOARD_HALF[0], bhy=BOARD_HALF[1], bt2=BOARD_T / 2, bdx=BOARD_C[0], bdy=BOARD_C[1], fr=ep.friction,
                     furniture="\n    ".join(fur), ax=ep.conn_pos[0], ay=ep.conn_pos[1], zc=BOARD_T + R, cx=-0.012 * ch, cy=-0.012 * sh,
-                    hd=ep.conn_heading, verts=verts, tw=ep.twist, bd=ep.bend, R=R, rho=ep.density, fixtures="\n    ".join(fx))
+                    hd=ep.conn_heading, hx=ch, hy=sh, bt=BOOT_TRAVEL, bk=BOOT_STIFFNESS, bd_=BOOT_DAMPING, b1x=0.02 * ch, b1y=0.02 * sh, br=R + 0.001, verts=verts, tw=ep.twist, bd=ep.bend, R=R, rho=ep.density, fixtures="\n    ".join(fx))
 
 
 def build_model(ep):
@@ -718,7 +729,8 @@ class HarnessEnv(object):
             fx.append(e)
         return {"fixtures": fx, "connector": {"pos": [float(ep.conn_pos[0]), float(ep.conn_pos[1])], "heading": float(ep.conn_heading)},
                 "cable": self.cable_points().tolist(), "radius": ep.radius, "length": ep.length, "EI": ep.EI,
-                "friction": ep.friction, "density": ep.density, "tension_mean": self.mean_tension, "damaged": self.damaged}
+                "friction": ep.friction, "density": ep.density, "tension_mean": self.mean_tension, "damaged": self.damaged,
+                "boot_stretch": float(self.data.qpos[self.model.joint("strain_relief").qposadr[0]])}
 
     # -- scoring ------------------------------------------------------------------------
     def finish(self):
