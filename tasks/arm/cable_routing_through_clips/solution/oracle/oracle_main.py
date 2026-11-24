@@ -5,9 +5,11 @@ Speaks the grader's wire (one JSON object per line on stdin, one reply per line 
 and exit. The program is fitter.Fitter (a generator of actions fed with the observation and the grader's token
 truth). Without `truth` in the observation (not a token run) it hands the job over at once.
 
-A step that is asked twice with the same `t` (the grader's probe pair) advances the program once: the second
-reply is the first one moved by the difference of the two observations' hand positions, which is what the program's
-last line (a step toward a target from where the hand is) would give.
+The program runs on the real observation, which the token truth carries (`truth.obs`), so over the wire it does
+exactly what it does in process, where the graded set was chosen. Each reply is the program's action moved by the
+difference between the hand's position in the request and in the real observation: nothing for the real request,
+and for the other request of a probe pair what the program's last line (a step toward a target from where the
+hand is) would give for it.
 
 A file `variant` beside this one names a control program (fitter.variant: stop_after_1, stop_after_2,
 no_tension_watch, wrong_post_side, wrong_clip_orientation, nominal_positions); absent = the reference.
@@ -44,24 +46,25 @@ class Oracle(object):
     def act(self, t, obs):
         if "truth" not in obs or self.done:
             return list(HAND_OVER)
-        if t == self.t:                       # the other request of a probe pair
-            a = list(self.action)
-            if len(a) == 8:
-                for k in range(3):
-                    a[k] -= obs["tcp"]["pos"][k] - self.pos[k]
-            return a
-        try:
-            if self.gen is None:
-                self.st = {"obs": obs, "truth": obs["truth"]}
-                self.gen = self.cls(obs["job"]).run(self.st)
-                a = next(self.gen)
-            else:
-                a = self.gen.send((obs, obs["truth"]))
-            a = [float(x) for x in a[:7]] + [0]
-        except StopIteration:
-            self.done = True
-            a = list(HAND_OVER)
-        self.t, self.action, self.pos = t, a, list(obs["tcp"]["pos"])
+        truth = obs["truth"]
+        real = truth["obs"]
+        if t != self.t:
+            try:
+                if self.gen is None:
+                    self.st = {"obs": real, "truth": truth}
+                    self.gen = self.cls(obs["job"]).run(self.st)
+                    a = next(self.gen)
+                else:
+                    a = self.gen.send((real, truth))
+                a = [float(x) for x in a[:7]] + [0]
+            except StopIteration:
+                self.done = True
+                a = list(HAND_OVER)
+            self.t, self.action = t, a
+        a = list(self.action)
+        if len(a) == 8:
+            for k in range(3):
+                a[k] -= obs["tcp"]["pos"][k] - real["tcp"]["pos"][k]
         return a
 
 

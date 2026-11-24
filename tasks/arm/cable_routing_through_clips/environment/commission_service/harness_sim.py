@@ -152,7 +152,13 @@ class Cell(object):
         return out
 
     def truth(self):
-        return self.env.truth()
+        """Token runs only: the cell's truth, and `obs`: the real observation's numbers. Both requests of a probe
+        pair carry the same truth, so the reference's program runs on the real observation whichever request comes
+        first, exactly as it runs in process (tests/review/select_set.py); its replies still differ with what each
+        request shows (solution/oracle/oracle_main.py)."""
+        t = self.env.truth()
+        t["obs"] = {k: self.last[k] for k in ("t", "time", "q", "dq", "gripper_width", "tcp", "wrench")}
+        return t
 
     def finish(self):
         res = self.env.finish()
