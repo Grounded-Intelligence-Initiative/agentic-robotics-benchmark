@@ -48,11 +48,12 @@ and output, one JSON object per line. Your program first prints `READY` (within 
 Standard output is the wire: write logs to standard error. `t` is the step index of the pack, owned by the grader,
 starting at 0 after each `reset`.
 
-**A step may be asked more than once with the same `t`.** A repeated request carries an observation whose robot
-readings (`q`, `q_target`, `tcp`, `tcp_target`, `wrench`) are shifted by a small hidden amount (joints up to 0.02
-rad, positions up to 12 mm, rotations up to 0.03 rad, forces up to 3 N), the same shift for the measured and the
-commanded values of one observation; the other reading is the true one, and nothing on the wire says which is which
-or which comes first. Only the answer to the true observation is executed. Answer every request from the
+**A step may be asked more than once with the same `t`.** A repeated request carries the observation the cell
+would give with the robot's joints shifted by a small hidden amount (up to 0.01 rad a joint, the same shift for the
+measured and the commanded angles): `q` and `q_target` are shifted, and `tcp`, `tcp_target` and a wrist frame's
+`pose` are those of the shifted joints, so the readings of one observation agree with each other as they always
+do. Everything else in it is unchanged. The other request carries the true observation, and nothing on the wire
+says which is which or which comes first. Only the answer to the true observation is executed. Answer every request from the
 observation it carries, and advance your own state once per `t`, not once per request. A program whose motions do
 not depend on the robot's readings it is sent (a replayed list of actions, absolute joint targets worked out in
 advance) is recognised by this and scores nothing: compute each displacement from the `tcp_target` or `q_target`

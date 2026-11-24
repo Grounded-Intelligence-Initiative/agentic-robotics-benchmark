@@ -123,22 +123,73 @@ def is_idle(a):
     return m["type"] == "hold" or all(abs(v) < 1e-9 for v in m["delta"])
 
 
-def perturbed(obs, rng):
-    """A copy of an observation in which the robot's own readings are shifted by a hidden amount, the same for the
-    measured and the commanded values: joints by up to 0.02 rad, the tool centre point by up to 12 mm and 0.03 rad,
-    the wrench by up to 3 N and 0.3 N m. Images, the spindle's and the gripper's readings are left as they are.
-    `rng` gives uniform(lo, hi)."""
+PROBE_SHIFT_RAD = 0.01
+
+
+def _tool_T(name):
+    """The mounted tool's centre point in the flange frame, as `cell.tcp_offset` has it."""
+    return kin.pose(np.eye(3), np.array([0.0, 0.0, S.TOOLS[name]["tcp_z"] if name in S.TOOLS else 0.0]))
+
+
+def _wrist_T():
+    """The wrist camera in the flange frame, as `cell.frames` has it."""
+    return kin.pose(S.camera_R("wrist"), np.array(S.CAMERAS["wrist"]["pos"]))
+
+
+def perturbed(obs, rng, exact=None):
+    """A copy of an observation as the cell would report it with the robot's joints shifted by a hidden amount: up
+    to `PROBE_SHIFT_RAD` a joint, the same for the measured and the commanded angles (a shift that would take an
+    angle past its limit is applied with the other sign).
+
+    The copy is built the way the cell builds an observation (`cell.observe`, `cell.frames`): from joint angles that
+    are not rounded, the angles are written rounded, `tcp` is `kin.flange(q)` times the mounted tool, `tcp_target`
+    the same of `q_target`, and a wrist frame's `pose` is `kin.flange(q)` times the camera's mounting. So a copy's
+    poses agree with its joint readings exactly as a true observation's do, down to the rounding, and the robot's
+    model, which the agent holds, cannot tell the two apart (`residual`; a copy whose poses were shifted
+    independently of its joints was recognised by that). The wrench, the joint speeds (differences of readings),
+    the pictures, the spindle's and the gripper's readings are left as they are.
+
+    `exact` are the cell's own angles before rounding (`cell.joints()`: the grader asks for them); the shifted
+    angles are those plus the shift, and the shift is a whole number of the readings' last digit (1e-6 rad). So what
+    a reading hides behind its last digit is the same in the copy as in the true observation, whether that is
+    nothing (a commanded angle with round digits) or anything: measured on 4000 observations of each kind, the true
+    one had the larger `residual` in 50 % of the pairs. Without `exact` (the agent's library has only the
+    observation) each reading stands for an angle within half a digit of it, drawn afresh. `rng` gives
+    uniform(lo, hi)."""
     out = dict(obs)
-    dq = [rng.uniform(-0.02, 0.02) for _ in range(6)]
-    dp = [rng.uniform(-0.012, 0.012) for _ in range(3)]
-    dr = np.array([rng.uniform(-0.03, 0.03) for _ in range(3)])
-    dw = [rng.uniform(-3.0, 3.0) for _ in range(3)] + [rng.uniform(-0.3, 0.3) for _ in range(3)]
-    for k in ("q", "q_target"):
-        out[k] = [round(v + d, 6) for v, d in zip(obs[k], dq)]
-    for k in ("tcp", "tcp_target"):
-        T = pose_T(obs[k])
-        T[:3, :3] = kin.rotvec_R(dr) @ T[:3, :3]
-        T[:3, 3] += dp
-        out[k] = pose6(T)
-    out["wrench"] = [round(v + d, 3) for v, d in zip(obs["wrench"], dw)]
+    q, qt = [float(v) for v in obs["q"]], [float(v) for v in obs["q_target"]]
+    dq = []
+    for i in range(6):
+        d = round(rng.uniform(-PROBE_SHIFT_RAD, PROBE_SHIFT_RAD), 6)      # whole digits of a reading: see below
+        lo, hi = float(kin.Q_LIMITS[i][0]), float(kin.Q_LIMITS[i][1])
+        if not (lo <= q[i] + d <= hi and lo <= qt[i] + d <= hi):
+            d = -d
+        dq.append(d)
+    if exact is not None:
+        q, qt = [float(v) for v in exact["q"]], [float(v) for v in exact["q_target"]]
+    else:
+        q = [v + rng.uniform(-0.5e-6, 0.5e-6) for v in q]
+        qt = [v + rng.uniform(-0.5e-6, 0.5e-6) for v in qt]
+    q1, qt1 = [a + d for a, d in zip(q, dq)], [a + d for a, d in zip(qt, dq)]
+    tool = _tool_T(obs.get("tool"))
+    out["q"] = [round(v, 6) for v in q1]
+    out["q_target"] = [round(v, 6) for v in qt1]
+    out["tcp"] = pose6(kin.flange(q1) @ tool)
+    out["tcp_target"] = pose6(kin.flange(qt1) @ tool)
+    wrist = (obs.get("images") or {}).get("wrist")
+    if isinstance(wrist, dict) and "pose" in wrist:
+        out["images"] = dict(obs["images"], wrist=dict(wrist, pose=pose6(kin.flange(q1) @ _wrist_T())))
     return out
+
+
+def residual(obs):
+    """How far an observation's poses are from the ones the cell's rule gives for its own joint readings: the
+    largest difference of a matrix entry (metres, for a position). Rounding on the wire leaves about 1e-6. The
+    grader records it for the true and for the copied observation of every probed step (`probe_residual_true`,
+    `probe_residual_copy` in the verdict's metrics): the two have to look alike, or the copy can be recognised."""
+    tool = _tool_T(obs.get("tool"))
+    pairs = [(obs["q"], obs["tcp"], tool), (obs["q_target"], obs["tcp_target"], tool)]
+    wrist = (obs.get("images") or {}).get("wrist")
+    if isinstance(wrist, dict) and "pose" in wrist:
+        pairs.append((obs["q"], wrist["pose"], _wrist_T()))
+    return max(float(np.abs(kin.flange([float(v) for v in q]) @ T - pose_T(p)).max()) for q, p, T in pairs)

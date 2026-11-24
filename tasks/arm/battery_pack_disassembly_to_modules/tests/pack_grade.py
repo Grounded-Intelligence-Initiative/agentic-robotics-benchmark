@@ -8,8 +8,11 @@ its time budget used up). In every case the pack's credit is what lies where it 
 (`rules.Rules.credit`, read from the physics engine's state); nothing is subtracted.
 
 - The probe lock (`IdleAwareProbeLock`): a step is asked twice with the same `t`, the true and a perturbed
-  observation (`wire.perturbed`: the robot's own readings shifted) in a hidden order; only the true reply is applied.
+  observation (`wire.perturbed`: the joints shifted, the poses those of the shifted joints, built as the cell builds
+  an observation and from the cell's own angles before rounding) in a hidden order; only the true reply is applied.
   Which steps, the order and the shift come from one stream per pack, a function of the pack's index and seed alone.
+  `wire.residual` of both observations of every probed step is kept with the pack's record, and how often the true
+  one's is the larger: a copy must not differ from a true observation in it.
 - `truth` (the cell's privileged view) is added to every observation only in a token run (the caller decides).
 - The budget (`controller_budget_s`, per pack) is the controller's own time, kept by a `Clock`: what the grader waits
   for each reset and each reply. The cell's simulation and rendering are not charged.
@@ -49,9 +52,9 @@ class IdleAwareProbeLock(ProbeLock):
     tool is exchanged or the pack discharges shows nothing either way.
 
     Which controllers fail it (fewer than `pass_fraction` of the counted pairs differ): any whose motions do not
-    depend on the robot's own readings (joint angles, tool pose, wrench), the parts the perturbed copy shifts. A
-    replayed action stream does; a controller whose every displacement is computed from the observed tool pose or
-    joint angles toward a target passes."""
+    depend on the robot's own readings (the joint angles and the tool poses that follow from them), the parts the
+    perturbed copy shifts. A replayed action stream does; a controller whose every displacement is computed from
+    the observed tool pose or joint angles toward a target passes."""
 
     def __init__(self, *args, **kwargs):
         ProbeLock.__init__(self, *args, **kwargs)
@@ -84,7 +87,8 @@ def probe_stream(index, seed):
 def run_pack(solver, lock, clock, index, entry, truth, config, start_cell, log):
     """One pack. Returns its record: credit, why it ended, steps, the cell's own counts."""
     pack = S.draw_pack(entry["seed"], variant=entry.get("variant"), harness=entry.get("harness"))
-    rec = {"index": index, "variant": pack["variant"], "credit": 0.0, "ended": None, "aborted": None, "steps": 0}
+    rec = {"index": index, "variant": pack["variant"], "credit": 0.0, "ended": None, "aborted": None, "steps": 0,
+           "probe_residual_true": 0.0, "probe_residual_copy": 0.0, "probe_copies": 0, "probe_true_residual_larger": 0}
     lock.rng = probe_stream(index, entry["seed"])
     budget = float(config["controller_budget_s"])
     used0 = clock.s
@@ -105,7 +109,13 @@ def run_pack(solver, lock, clock, index, entry, truth, config, start_cell, log):
                 if truth:
                     obs["truth"] = cell.request({"cmd": "truth"}, timeout=60.0)["truth"]
                 if lock.due():
-                    other = wire.perturbed(obs, lock.rng)
+                    exact = cell.request({"cmd": "joints"}, timeout=60.0)["joints"]
+                    other = wire.perturbed(obs, lock.rng, exact)
+                    r_true, r_copy = wire.residual(obs), wire.residual(other)
+                    rec["probe_residual_true"] = max(rec["probe_residual_true"], r_true)
+                    rec["probe_residual_copy"] = max(rec["probe_residual_copy"], r_copy)
+                    rec["probe_copies"] += 1
+                    rec["probe_true_residual_larger"] += int(r_true > r_copy)
                     action = clock.timed(lock.probe, solver, t, obs, perturbed=other)
                 else:
                     action = clock.timed(solver.act, t, obs)

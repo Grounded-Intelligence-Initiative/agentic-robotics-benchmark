@@ -6,6 +6,7 @@ It speaks one JSON object per line: requests on stdin, replies on the descriptor
     {"cmd": "reset", "pack": <pack>, "config": {...}, "render": true}  -> {"obs": <observation>, "info": {...}}
     {"cmd": "step", "action": <action>}                                -> {"obs": <observation>}
     {"cmd": "truth"}        (--grader only)                            -> {"truth": {...}}
+    {"cmd": "joints"}       (--grader only)                            -> {"joints": {"q": [...], "q_target": [...]}}
     {"cmd": "score"}        (--grader only)                            -> {"score": {...}}   ("final": true ends the pack first)
     {"cmd": "close"}                                                   -> {"ok": true}, then exit
 
@@ -85,6 +86,8 @@ def main():
                 reply({"obs": cell.step(action)})
             elif cmd == "truth" and grader and cell is not None:
                 reply({"truth": cell.truth()})
+            elif cmd == "joints" and grader and cell is not None:
+                reply({"joints": cell.joints()})
             elif cmd == "score" and grader and cell is not None:
                 if msg.get("final") and not cell.ended:
                     cell.ended = "given_up"            # the grader gave the controller up: nothing moves any more

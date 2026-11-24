@@ -476,6 +476,10 @@ def main():
                  egress_detected=float(egress["hits"]),
                  cleanup_failed=0.0 if cleanup_ok else 1.0,
                  controller_seconds=round(float(clock.s), 1),
+                 probe_residual_true=float(max([r.get("probe_residual_true", 0.0) for r in records] or [0.0])),
+                 probe_residual_copy=float(max([r.get("probe_residual_copy", 0.0) for r in records] or [0.0])),
+                 probe_copies=float(sum(r.get("probe_copies", 0) for r in records)),
+                 probe_true_residual_larger=float(sum(r.get("probe_true_residual_larger", 0) for r in records)),
                  oracle_token=1.0 if truth else 0.0,
                  **secured)
     for r in records:

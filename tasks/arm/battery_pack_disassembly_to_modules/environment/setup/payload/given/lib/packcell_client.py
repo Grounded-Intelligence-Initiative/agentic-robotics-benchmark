@@ -2,7 +2,7 @@
 wire. Standard library, NumPy and OpenCV only. Nothing of the cell itself is in here: the cell runs in the
 commissioning service (and in the grader), not in your account.
 
-    from packcell_client import Session, decode_rgb, decode_depth, pose_T, T_pose
+    from packcell_client import Session, decode_rgb, decode_depth, pose_T, T_pose, flange_T
     s = Session(pack=1)                       # opens a commissioning session on development pack 1 (it is counted)
     obs = s.obs                               # the first observation
     obs = s.step({"move": {"type": "tcp", "delta": [0, 0, -0.05, 0, 0, 0], "ticks": 10}, "cams": ["wrist"]})
@@ -149,21 +149,80 @@ def tcp_delta(goal_T, current_T):
     return [float(v) for v in goal_T[:3, 3] - current_T[:3, 3]] + [float(v) for v in R_rotvec(goal_T[:3, :3] @ current_T[:3, :3].T)]
 
 
+# ------------------------------------------------------------------------------------------------- the robot's model
+_FILES = {}
+
+
+def _given(*parts):
+    """A JSON file of `~/given`, read once (this library lies in `~/given/lib`)."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", *parts)
+    if path not in _FILES:
+        with open(path) as f:
+            _FILES[path] = json.load(f)
+    return _FILES[path]
+
+
+def _quat_R(q):
+    w, x, y, z = q
+    n = math.sqrt(w * w + x * x + y * y + z * z)
+    w, x, y, z = w / n, x / n, y / n, z / n
+    return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                     [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                     [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+
+
+def flange_T(q):
+    """The tool flange's pose in the base frame (4x4) for joint angles `q` (rad), from `~/given/robot/ur20.json`:
+    each joint frame in its parent link, then a turn about that frame's z axis. The cell reports `tcp` as this
+    times the mounted tool's centre point (`tool_centre_point_z` along the flange's z axis), `tcp_target` as the
+    same of `q_target`, and a wrist frame's `pose` as this times the camera's mounting (`cell.json`)."""
+    T = np.eye(4)
+    for joint, angle in zip(_given("robot", "ur20.json")["joints"], q):
+        J = np.eye(4)
+        J[:3, :3] = _quat_R(joint["quaternion_wxyz"])
+        J[:3, 3] = joint["translation"]
+        c, s = math.cos(float(angle)), math.sin(float(angle))
+        Z = np.eye(4)
+        Z[:3, :3] = [[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]]
+        T = T @ J @ Z
+    return T
+
+
+PROBE_SHIFT_RAD = 0.01
+
+
 def perturbed(obs, rng):
     """The copy of an observation a repeated step may carry (see the cell's interface document, section 2): the
-    robot's own readings shifted by a hidden amount, the same for the measured and the commanded values. `rng` has
-    uniform(lo, hi). The commissioning launcher uses this to repeat steps the way grading does."""
+    observation the cell would give with the robot's joints shifted by a hidden amount, up to `PROBE_SHIFT_RAD` a
+    joint, the same for the measured and the commanded angles (with the other sign where it would pass a joint's
+    limit). `q` and `q_target` are the shifted angles; `tcp`, `tcp_target` and a wrist frame's `pose` are the poses
+    of the shifted angles (`flange_T`), so the copy's readings agree with each other as a true observation's do.
+    Everything else is unchanged. `rng` has uniform(lo, hi). The commissioning launcher uses this to repeat steps
+    the way grading does."""
+    robot = _given("robot", "ur20.json")
     out = dict(obs)
-    dq = [rng.uniform(-0.02, 0.02) for _ in range(6)]
-    dp = [rng.uniform(-0.012, 0.012) for _ in range(3)]
-    dr = np.array([rng.uniform(-0.03, 0.03) for _ in range(3)])
-    dw = [rng.uniform(-3.0, 3.0) for _ in range(3)] + [rng.uniform(-0.3, 0.3) for _ in range(3)]
-    for k in ("q", "q_target"):
-        out[k] = [round(v + d, 6) for v, d in zip(obs[k], dq)]
-    for k in ("tcp", "tcp_target"):
-        T = pose_T(obs[k])
-        T[:3, :3] = rotvec_R(dr) @ T[:3, :3]
-        T[:3, 3] += dp
-        out[k] = [round(v, 6) for v in T_pose(T)]
-    out["wrench"] = [round(v + d, 3) for v, d in zip(obs["wrench"], dw)]
+    q, qt = [float(v) for v in obs["q"]], [float(v) for v in obs["q_target"]]
+    dq = []
+    for i in range(6):
+        d = round(rng.uniform(-PROBE_SHIFT_RAD, PROBE_SHIFT_RAD), 6)      # whole digits of a reading
+        lo, hi = robot["limits_rad"][i]
+        if not (lo <= q[i] + d <= hi and lo <= qt[i] + d <= hi):
+            d = -d
+        dq.append(d)
+    # a reading is rounded to 1e-6: the angle behind it is anywhere within half a digit
+    q = [v + rng.uniform(-0.5e-6, 0.5e-6) for v in q]
+    qt = [v + rng.uniform(-0.5e-6, 0.5e-6) for v in qt]
+    q1, qt1 = [a + d for a, d in zip(q, dq)], [a + d for a, d in zip(qt, dq)]
+    tool = np.eye(4)
+    tool[2, 3] = robot["tool_centre_point_z"].get(obs.get("tool") or "none", 0.0)
+    out["q"] = [round(v, 6) for v in q1]
+    out["q_target"] = [round(v, 6) for v in qt1]
+    out["tcp"] = [round(v, 6) for v in T_pose(flange_T(q1) @ tool)]
+    out["tcp_target"] = [round(v, 6) for v in T_pose(flange_T(qt1) @ tool)]
+    wrist = (obs.get("images") or {}).get("wrist")
+    if isinstance(wrist, dict) and "pose" in wrist:
+        cam = _given("cell", "cell.json")["cameras"]["wrist"]
+        mount = np.eye(4)
+        mount[:3, :3], mount[:3, 3] = cam["R"], cam["pos"]
+        out["images"] = dict(obs["images"], wrist=dict(wrist, pose=[round(v, 6) for v in T_pose(flange_T(q1) @ mount)]))
     return out

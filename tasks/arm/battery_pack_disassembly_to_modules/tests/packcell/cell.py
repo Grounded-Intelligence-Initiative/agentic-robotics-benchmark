@@ -599,6 +599,12 @@ class Cell(object):
         return obs
 
     # ------------------------------------------------------------------ grader only
+    def joints(self):
+        """The measured and the commanded joint angles as the cell holds them: an observation gives them rounded to
+        1e-6 and computes its poses from these. The grader builds a probe's copy from them (`wire.perturbed`), so
+        that the copy is rounded once, as a true observation is."""
+        return {"q": [float(v) for v in self.q], "q_target": [float(v) for v in self.q_cmd]}
+
     def truth(self):
         t = self.rules.truth(self.poses())
         t["tip"] = [round(float(v), 5) for v in self.tip()[0]] if self.tool == "nutrunner" else None

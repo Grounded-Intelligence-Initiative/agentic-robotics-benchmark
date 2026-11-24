@@ -231,14 +231,52 @@ def main():
          "gripper": 0.03, "cmd": "eject", "cams": ["wrist"]}
     assert len(wire.canonical(a)) == 15 and wire.canonical(a) != wire.canonical(dict(a, cmd="done"))
     assert wire.is_idle({"cmd": "done"}) and wire.is_idle({"move": {"type": "tcp", "delta": [0] * 6, "ticks": 3}}) and not wire.is_idle(a)
-    obs = {"q": [0.1] * 6, "q_target": [0.1] * 6, "tcp": [0.5, 0.1, 0.2, 3.1, 0.0, 0.0], "tcp_target": [0.5, 0.1, 0.2, 3.1, 0.0, 0.0],
-           "wrench": [0.0] * 6, "images": {"x": 1}}
-    other = wire.perturbed(obs, random.Random(1))
-    assert other["images"] is obs["images"] and other["tcp"] != obs["tcp"] and obs["tcp"] == [0.5, 0.1, 0.2, 3.1, 0.0, 0.0]
-    d1 = np.array(other["tcp"][:3]) - np.array(obs["tcp"][:3])
-    d2 = np.array(other["tcp_target"][:3]) - np.array(obs["tcp_target"][:3])
-    assert np.allclose(d1, d2, atol=1e-6) and 1e-4 < np.linalg.norm(d1) < 0.025
-    checks += 4
+    # the probe's copy: built as the cell builds an observation, so its poses agree with its joints as a true
+    # observation's do (the robot's model cannot tell them apart), and the agent's library builds the same copy
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(HERE)), "environment", "setup", "payload", "given", "lib"))
+    import packcell_client as pc
+    from packcell import kin
+    draw, res_true, res_copy, moved = random.Random(5), [], [], []
+    for k in range(300):
+        q = [draw.uniform(lo + 0.05, hi - 0.05) for lo, hi in kin.Q_LIMITS]
+        qt = [v + draw.uniform(-0.03, 0.03) for v in q]
+        tool = ("none", "nutrunner", "gripper")[k % 3]
+        obs = {"q": [round(v, 6) for v in q], "q_target": [round(v, 6) for v in qt], "tool": tool,
+               "tcp": wire.pose6(kin.flange(q) @ wire._tool_T(tool)), "tcp_target": wire.pose6(kin.flange(qt) @ wire._tool_T(tool)),
+               "wrench": [0.3, -0.2, 1.0, 0.0, 0.01, 0.0], "qd": [0.1] * 6,
+               "images": {"wrist": {"rgb": "x", "pose": wire.pose6(kin.flange(q) @ wire._wrist_T())}} if k % 2 else {}}
+        keep = repr(obs)
+        other = wire.perturbed(obs, random.Random(k))
+        assert repr(obs) == keep                                           # the true observation is not touched
+        assert other["wrench"] == obs["wrench"] and other["qd"] == obs["qd"] and other["tool"] == tool
+        assert max(abs(a - b) for a, b in zip(other["q"], obs["q"])) <= wire.PROBE_SHIFT_RAD + 1e-6
+        d = [a - b for a, b in zip(other["q"], obs["q"])]
+        assert max(abs((a - b) - x) for a, b, x in zip(other["q_target"], obs["q_target"], d)) < 2.1e-6   # one shift
+        if k % 2:
+            assert other["images"]["wrist"]["rgb"] == "x" and other["images"]["wrist"]["pose"] != obs["images"]["wrist"]["pose"]
+        else:
+            assert other["images"] is obs["images"]
+        res_true.append(wire.residual(obs))
+        res_copy.append(wire.residual(other))
+        moved.append(float(np.linalg.norm(np.array(other["tcp"][:3]) - np.array(obs["tcp"][:3]))))
+        mine = pc.perturbed(obs, random.Random(k))                         # the agent's library: the same copy
+        for key in ("q", "q_target", "tcp", "tcp_target"):
+            assert np.abs(wire.pose_T(mine[key]) - wire.pose_T(other[key])).max() < 3e-6 if key.startswith("tcp") else mine[key] == other[key]
+        if k % 2:
+            # cell.json gives the camera's mounting to nine decimals, and a rotation vector near a half turn
+            # magnifies that: the library's camera pose is the cell's to 2e-5, not to the last digit
+            assert np.abs(wire.pose_T(mine["images"]["wrist"]["pose"]) - wire.pose_T(other["images"]["wrist"]["pose"])).max() < 2e-5
+        assert np.abs(pc.flange_T(q) - kin.flange(q)).max() < 1e-9
+    # the residual of a copy is the residual of a true observation: rounding on the wire and nothing else
+    assert max(res_true) < 5e-6 and max(res_copy) < 5e-6, (max(res_true), max(res_copy))
+    assert abs(float(np.median(res_true)) - float(np.median(res_copy))) < 3e-7, (np.median(res_true), np.median(res_copy))
+    assert float(np.percentile(moved, 5)) > 1e-3 and max(moved) < 0.05, (np.percentile(moved, 5), max(moved))
+    # a shift never takes a joint past its limit
+    edge = {"q": [float(hi) - 0.001 for lo, hi in kin.Q_LIMITS], "q_target": [float(hi) - 0.001 for lo, hi in kin.Q_LIMITS], "tool": "none",
+            "tcp": [0.0] * 6, "tcp_target": [0.0] * 6, "wrench": [0.0] * 6, "images": {}}
+    for k in range(50):
+        assert all(v <= float(hi) + 1e-9 for v, (lo, hi) in zip(wire.perturbed(edge, random.Random(k))["q"], kin.Q_LIMITS))
+    checks += 5
     # 14. the draw: reproducible, the forced cases hold, a harness never starts inside a head it bridges
     for seed in range(40):
         for variant in sorted(S.VARIANTS):

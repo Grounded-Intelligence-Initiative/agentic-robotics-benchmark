@@ -41,8 +41,8 @@ gripper's opening and whether it holds something, the cell's status and messages
 for (RGB and depth, PNG in base64). It never carries where a part is or what state a fastener is in.
 
 **A step may be asked more than once with the same `t`.** One of the requests then carries an observation whose
-robot readings (joint angles, tool pose, wrench) are shifted by a small hidden amount; nothing on the wire says
-which, and only the answer to the true one is executed. Answer every request from the observation it carries, and
+robot readings (the joint angles and, with them, the tool poses) are shifted by a small hidden amount; nothing on
+the wire says which, and only the answer to the true one is executed. Answer every request from the observation it carries, and
 advance your own state once per `t`, not once per request. A program whose motions do not depend on the robot
 readings it is sent scores nothing; compute every displacement from the `tcp_target` or `q_target` of the
 observation you are answering. Standard output is the wire: log to standard error.
