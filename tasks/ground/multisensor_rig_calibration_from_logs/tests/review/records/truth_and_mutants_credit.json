@@ -1,0 +1,167 @@
+{
+ "truth": {
+  "practice/rig_a": 1.0,
+  "practice/rig_b": 1.0,
+  "practice/rig_c": 1.0,
+  "hidden/rig_00": 1.0,
+  "hidden/rig_01": 1.0,
+  "hidden/rig_02": 1.0,
+  "hidden/rig_03": 1.0,
+  "hidden/rig_04": 1.0,
+  "hidden/rig_05": 1.0
+ },
+ "truth, no fault report": {
+  "practice/rig_a": 0.9,
+  "practice/rig_b": 0.9,
+  "practice/rig_c": 0.9,
+  "hidden/rig_00": 0.9,
+  "hidden/rig_01": 0.9,
+  "hidden/rig_02": 0.9,
+  "hidden/rig_03": 0.9,
+  "hidden/rig_04": 0.9,
+  "hidden/rig_05": 0.9
+ },
+ "CAD prior, clocks and biases zero, no faults": {
+  "practice/rig_a": 0.0,
+  "practice/rig_b": 0.0,
+  "practice/rig_c": 0.0,
+  "hidden/rig_00": 0.0,
+  "hidden/rig_01": 0.0,
+  "hidden/rig_02": 0.0,
+  "hidden/rig_03": 0.0,
+  "hidden/rig_04": 0.0,
+  "hidden/rig_05": 0.0
+ },
+ "truth, camera extrinsic at CAD": {
+  "practice/rig_a": 0.1,
+  "practice/rig_b": 0.1,
+  "practice/rig_c": 0.1,
+  "hidden/rig_00": 0.1,
+  "hidden/rig_01": 0.1,
+  "hidden/rig_02": 0.1,
+  "hidden/rig_03": 0.1,
+  "hidden/rig_04": 0.1,
+  "hidden/rig_05": 0.1
+ },
+ "truth, IMU extrinsic at CAD": {
+  "practice/rig_a": 0.6715,
+  "practice/rig_b": 0.1,
+  "practice/rig_c": 0.1,
+  "hidden/rig_00": 0.9005,
+  "hidden/rig_01": 0.3068,
+  "hidden/rig_02": 0.5961,
+  "hidden/rig_03": 0.1,
+  "hidden/rig_04": 0.1,
+  "hidden/rig_05": 0.1
+ },
+ "truth, clocks zero": {
+  "practice/rig_a": 0.1,
+  "practice/rig_b": 0.1,
+  "practice/rig_c": 0.1,
+  "hidden/rig_00": 0.1,
+  "hidden/rig_01": 0.1,
+  "hidden/rig_02": 0.1,
+  "hidden/rig_03": 0.1,
+  "hidden/rig_04": 0.1,
+  "hidden/rig_05": 0.1
+ },
+ "truth, drifts zero (offsets true)": {
+  "practice/rig_a": 0.3801,
+  "practice/rig_b": 0.2939,
+  "practice/rig_c": 0.1,
+  "hidden/rig_00": 0.1,
+  "hidden/rig_01": 0.1,
+  "hidden/rig_02": 0.1,
+  "hidden/rig_03": 0.1,
+  "hidden/rig_04": 0.1,
+  "hidden/rig_05": 0.1
+ },
+ "truth, offsets zero (drifts true)": {
+  "practice/rig_a": 0.1,
+  "practice/rig_b": 0.1,
+  "practice/rig_c": 0.1,
+  "hidden/rig_00": 0.1,
+  "hidden/rig_01": 0.1,
+  "hidden/rig_02": 0.1,
+  "hidden/rig_03": 0.1,
+  "hidden/rig_04": 0.1,
+  "hidden/rig_05": 0.1
+ },
+ "truth, biases zero": {
+  "practice/rig_a": 0.5978,
+  "practice/rig_b": 0.6355,
+  "practice/rig_c": 0.7388,
+  "hidden/rig_00": 0.8588,
+  "hidden/rig_01": 0.6164,
+  "hidden/rig_02": 0.6596,
+  "hidden/rig_03": 0.8143,
+  "hidden/rig_04": 0.6614,
+  "hidden/rig_05": 0.6558
+ },
+ "truth, camera extrinsic at CAD and clocks zero (the hard part skipped)": {
+  "practice/rig_a": 0.1,
+  "practice/rig_b": 0.1,
+  "practice/rig_c": 0.1,
+  "hidden/rig_00": 0.1,
+  "hidden/rig_01": 0.1,
+  "hidden/rig_02": 0.1,
+  "hidden/rig_03": 0.1,
+  "hidden/rig_04": 0.1,
+  "hidden/rig_05": 0.1
+ },
+ "IMU side only: IMU extrinsic and biases true, LiDAR clock true; camera at CAD, camera clock zero": {
+  "practice/rig_a": 0.1,
+  "practice/rig_b": 0.1,
+  "practice/rig_c": 0.1,
+  "hidden/rig_00": 0.1,
+  "hidden/rig_01": 0.1,
+  "hidden/rig_02": 0.1,
+  "hidden/rig_03": 0.1,
+  "hidden/rig_04": 0.1,
+  "hidden/rig_05": 0.1
+ },
+ "everything true but the camera clock (zero)": {
+  "practice/rig_a": 0.1,
+  "practice/rig_b": 0.1,
+  "practice/rig_c": 0.1,
+  "hidden/rig_00": 0.9876,
+  "hidden/rig_01": 0.1,
+  "hidden/rig_02": 0.6178,
+  "hidden/rig_03": 0.1,
+  "hidden/rig_04": 0.1,
+  "hidden/rig_05": 0.285
+ },
+ "everything true but the LiDAR clock (zero)": {
+  "practice/rig_a": 0.9434,
+  "practice/rig_b": 0.9121,
+  "practice/rig_c": 0.7705,
+  "hidden/rig_00": 0.1,
+  "hidden/rig_01": 0.1,
+  "hidden/rig_02": 0.1,
+  "hidden/rig_03": 0.1,
+  "hidden/rig_04": 0.1,
+  "hidden/rig_05": 0.1
+ },
+ "CAD prior with true clocks and biases": {
+  "practice/rig_a": 0.1,
+  "practice/rig_b": 0.1,
+  "practice/rig_c": 0.1,
+  "hidden/rig_00": 0.1,
+  "hidden/rig_01": 0.1,
+  "hidden/rig_02": 0.1,
+  "hidden/rig_03": 0.1,
+  "hidden/rig_04": 0.1,
+  "hidden/rig_05": 0.1
+ },
+ "truth, faults only (no calibration file)": {
+  "practice/rig_a": 0.1,
+  "practice/rig_b": 0.1,
+  "practice/rig_c": 0.1,
+  "hidden/rig_00": 0.1,
+  "hidden/rig_01": 0.1,
+  "hidden/rig_02": 0.1,
+  "hidden/rig_03": 0.1,
+  "hidden/rig_04": 0.1,
+  "hidden/rig_05": 0.1
+ }
+}

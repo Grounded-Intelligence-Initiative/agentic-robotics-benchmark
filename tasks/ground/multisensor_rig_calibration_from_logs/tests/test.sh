@@ -12,5 +12,13 @@
 # into. Run by hand outside the engine (in the image, with ROBOTICS_GRADER_VERDICT_PATH set),
 # the variable is unset and `python3` stands in.
 set -euo pipefail
+# The engine uploads this folder world-readable. Before the interpreter starts, close it and its parent to every
+# other account: the hidden rigs' truth is in hidden/, and the hidden logs' archive is downloaded here.
+STAGE="$(pwd -P)"
+chmod 700 "$STAGE"
+PARENT="$(dirname "$STAGE")"
+if [ "$PARENT" != "/" ] && [ "$PARENT" != "${ALE_HOME:-/home/user}" ]; then
+  chmod 700 "$PARENT"
+fi
 
 exec "${ALE_VERIFY_PYTHON:-python3}" verify.py

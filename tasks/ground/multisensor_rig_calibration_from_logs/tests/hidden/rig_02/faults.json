@@ -1,0 +1,11 @@
+{
+ "faults": [
+  {
+   "sequence": "seq_02",
+   "sensor": "camera",
+   "type": "camera_time_jump",
+   "start_s": 275.5749077252909,
+   "end_s": 277.37496305359025
+  }
+ ]
+}

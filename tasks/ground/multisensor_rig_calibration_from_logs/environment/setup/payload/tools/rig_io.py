@@ -3,8 +3,11 @@
     import sys; sys.path.insert(0, "/home/user/tools"); import rig_io
     rig = rig_io.Rig("/opt/rigcal/practice/rig_a")
     seq = rig.sequence("seq_00")
-    xyz, refl = seq.scan_points(0)        # LiDAR scan 0: points (N,3) in the LiDAR frame, reflectivity 0..1
-    img = seq.image(0)                    # camera frame 0: uint8 (240, 320, 3), RGB
+    xyz, refl, col = seq.scan_points(0)   # LiDAR sweep 0: points (N,3) in the LiDAR frame AS LOGGED (each at its own
+                                          # column's time: not motion-compensated), reflectivity 0..1, column index
+    dt = rig.column_delay_s[col]          # how long after the sweep's stamp each point was taken (LiDAR clock)
+    img = seq.image(0)                    # camera frame 0: uint8 (540, 720, 3), RGB, as logged (distorted)
+    uv = rig.project(xyz_in_camera)       # pixels of camera-frame points, through K and the distortion
 """
 
 import csv
@@ -27,11 +30,24 @@ class Rig(object):
         az = np.radians(np.arange(lid["columns"]) * 360.0 / lid["columns"])[None, :]
         self.ray_dirs = np.stack([np.cos(el) * np.cos(az), np.cos(el) * np.sin(az),
                                   np.sin(el) * np.ones_like(az)], axis=-1)   # (rings, columns, 3)
+        self.column_delay_s = np.arange(lid["columns"]) / float(lid["columns"]) * float(lid["sweep_s"])
         self.K = np.array(self.manifest["camera"]["K"], float)
+        self.dist = np.array(self.manifest["camera"]["distortion"], float)
         self.T_body_lidar = np.array(self.manifest["T_body_lidar"], float)
 
     def sequence(self, name):
         return Sequence(self, os.path.join(self.path, name))
+
+    def project(self, pts_cam):
+        """Pixels (N,2) of points (N,3) in the camera's optical frame, through K and the lens distortion."""
+        import cv2
+        uv, _ = cv2.projectPoints(np.asarray(pts_cam, float).reshape(-1, 1, 3), np.zeros(3), np.zeros(3), self.K, self.dist)
+        return uv.reshape(-1, 2)
+
+    def undistort(self, img):
+        """The frame as a pinhole camera with K would see it."""
+        import cv2
+        return cv2.undistort(img, self.K, self.dist)
 
     @property
     def sequence_names(self):
@@ -63,7 +79,7 @@ class Sequence(object):
     def scan_points(self, i):
         r, refl = self.scan(i)
         m = r > 0
-        return self.rig.ray_dirs[m] * r[m][:, None], refl[m]
+        return self.rig.ray_dirs[m] * r[m][:, None], refl[m], np.nonzero(m)[1]
 
     def image(self, i):
         import cv2

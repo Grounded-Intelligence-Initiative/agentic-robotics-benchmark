@@ -1,0 +1,27 @@
+{
+ "summary": {
+  "camera": {
+   "rigs": 9,
+   "rms_zero_drift_ppm": 137.2268130353093,
+   "rms_zero_offset_s": 0.05897838856850629,
+   "error_over_zero": {
+    "drift, spacing": 1.6716083830373771,
+    "drift, sequence bounds": 13.205113709291744,
+    "offset, sequence bounds (line)": 5.1654664640779915,
+    "offset, sequence bounds (mean)": 1.2409084800012071
+   }
+  },
+  "lidar": {
+   "rigs": 9,
+   "rms_zero_drift_ppm": 75.4457167338623,
+   "rms_zero_offset_s": 0.04362309581797024,
+   "error_over_zero": {
+    "drift, spacing": 1.7519826766638469,
+    "drift, sequence bounds": 11.586775196456552,
+    "offset, sequence bounds (line)": 4.051236224963486,
+    "offset, sequence bounds (mean)": 2.334510336567843
+   }
+  }
+ },
+ "pass": true
+}

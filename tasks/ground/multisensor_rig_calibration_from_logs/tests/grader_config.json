@@ -1,17 +1,38 @@
 {
-  "rigs": 6,
-  "gen_workers": 6,
-  "run_timeout_s": 900,
+  "run_cpu_s": 900,
+  "run_wall_s": 3600,
   "run_memory_mb": 6144,
   "scoring_cap": 1.5,
-  "weights": {"alignment": 0.35, "downstream": 0.30, "time_sync": 0.15, "imu": 0.10, "faults": 0.10},
+  "fault_weight": 0.1,
   "credit": {
-    "projection_px": [0.5, 8.0],
-    "rpe_rot_deg": [0.02, 0.5],
-    "rpe_trans_m": [0.012, 0.25],
-    "time_rms_s": [0.001, 0.030],
-    "imu_rot_deg": [0.1, 3.0],
-    "gyro_bias_err_rps": [0.0003, 0.01],
-    "accel_bias_err_mps2": [0.015, 0.15]
+    "projection_px": [
+      3.0,
+      8.0
+    ],
+    "rpe_rot_deg": [
+      0.2,
+      0.5
+    ],
+    "rpe_trans_m": [
+      0.03,
+      0.25
+    ],
+    "time_rms_s": [
+      0.003,
+      0.03
+    ]
+  },
+  "hidden": {
+    "rigs": [
+      "rig_00",
+      "rig_01",
+      "rig_02",
+      "rig_03",
+      "rig_04",
+      "rig_05"
+    ],
+    "url": "https://huggingface.co/datasets/grounded-intelligence-initiative/ale-robotics-assets/resolve/73b073e85f2dbdb1bb14b0428484d1f116bfcecd/tasks/ground/multisensor_rig_calibration_from_logs/verifier/hidden_rigs.tar",
+    "sha256": "8aeb9056236698259cad6351c8ebc81590542e1aa83a524673310f820da63b51",
+    "bytes": 688199680
   }
 }

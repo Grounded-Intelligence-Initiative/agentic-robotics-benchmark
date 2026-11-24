@@ -1,43 +1,49 @@
-"""Hidden grader for multisensor_rig_calibration_from_logs (artifact rollout on hidden rigs).
+"""Hidden grader for multisensor_rig_calibration_from_logs (artifact rollout on a fixed set of hidden rigs).
 
 Runs as root in a SEPARATE verifier sandbox: no agent process exists there, the setup stage has not
 run there, and the engine restores only the declared artifact /home/user/submission.
 
-1. Draws `rigs` fresh rig seeds (four 31-bit words each) from the kit's seed stream (OS entropy,
-   never on disk while the submission runs; the verdict's diagnostic names them afterwards, so a
-   maintainer can regenerate a rig with rigsim.make_rig) and generates the rigs with rigsim.py, in parallel worker processes: each rig's
-   agent-visible folder (same schema as the practice rigs) goes into a fresh world-readable work
-   folder; its true parameters, injected faults and held-out sequence stay in this process's memory.
-2. Clears the agent's account (robotics_grader.account.clear_agent_account) and then runs the
-   submission's `bash run.sh --input <rig> --output <out>` once per rig, all rigs at once, each at the
-   agent's UID through nonet_exec.py (a seccomp filter: AF_UNIX sockets only, so no network), with
-   cwd /home/user/submission, a wall-clock limit of `run_timeout_s` and an address-space limit of
-   `run_memory_mb`. A run that is still going at its limit is killed with its process group and
-   scores on whatever files it has left (normally none).
-3. Reads each rig's calibration.yaml and fault_report.json (regular files only, at most 1 MiB, as
+1. Checks the numerics fingerprint (numerics_check.py against numerics.json): a host that does not
+   reproduce it is a task error, never a score.
+2. Fetches the hidden rigs' logs: ONE archive, named and pinned (size, sha256) in grader_config.json
+   `hidden`, downloaded into this root-only folder and unpacked into a fresh work folder; every
+   unpacked file is checked against hidden/<rig>/sha256.json. The rigs are a FIXED set, generated once
+   (tests/gen/, pre-registered seeds); their true parameters, faults and held-out sequences are in
+   hidden/<rig>/ and never leave this folder (but for the reference, see 4).
+3. Clears the agent's account (robotics_grader.account.clear_agent_account) and runs the submission's
+   `bash run.sh --input <rig> --output <out>` once per rig, all rigs at once, each at the agent's UID
+   through nonet_exec.py (a seccomp filter: AF_UNIX sockets only, so no network), at the lowest
+   scheduling priority, with cwd /home/user/submission, an address-space limit of `run_memory_mb`
+   and a limit of `run_cpu_s` seconds of the run's OWN processor time (user + system of every process
+   of the run, sampled from /proc; the grader's work and other runs do not count), plus a wall-clock
+   stop at `run_wall_s`. A run that reaches a limit is killed with its processes and scores on
+   whatever files it has left (normally none).
+4. The reference (solution/solve.sh) is token-privileged: when the submission's .oracle_token hashes
+   to hidden/oracle_token.sha256, each run also gets `--truth <dir>` with that rig's true parameters
+   and fault list. No other submission ever sees them.
+5. Reads each rig's calibration.yaml and fault_report.json (regular files only, at most 1 MiB, as
    data: yaml.safe_load / json) and measures them with rigmetrics.py (byte-identical to the agent's
    practice copy). Each rig earns a credit in [0, 1]:
 
-       0.35 * alignment  (projection_px)
-     + 0.30 * downstream (mean of rpe_rot_deg and rpe_trans_m credits)
-     + 0.15 * time_sync  (time_rms_s)
-     + 0.10 * imu        (mean of imu_rot_deg, gyro_bias_err_rps, accel_bias_err_mps2 credits)
-     + 0.10 * faults     (fault_f1)
+       credit = 0.10 * faults + 0.90 * (c_projection * c_motion * c_time) ** (1/3)
 
-   each error credit being clamp(log(zero/e) / log(zero/full), 0, 1) with the `full` and `zero`
-   points of grader_config.json `credit`. A calibration.yaml that is missing or does not parse
-   earns 0 on the four calibration terms of that rig; a missing or malformed fault_report.json
-   earns 0 on the fault term.
-4. The metric `mean_rig_credit` (higher is better) is the mean over the rigs; the kit turns it into
+   c_projection = c(projection_px), c_motion = mean of c(rpe_rot_deg) and c(rpe_trans_m),
+   c_time = c(time_rms_s); c(e) = clamp(log(zero/e) / log(zero/full), 0, 1) with the `full` and
+   `zero` points of grader_config.json `credit`. The three are measured on the held-out sequence and
+   each needs several parameters right together; their geometric mean is zero when one is. A
+   calibration.yaml that is missing or does not parse earns 0 on that part; a missing or malformed
+   fault_report.json earns 0 on the fault term.
+6. The metric `mean_rig_credit` (higher is better) is the mean over the rigs; the kit turns it into
    the reward against the anchor.
 
-Nothing the submission prints is read. The grader's own failures (a rig that cannot be generated,
-an account that cannot be cleared) are task errors (`fail`), never a zero.
+Nothing the submission prints is read. The log names rigs by index only. The grader's own failures
+(the archive cannot be fetched or does not match, an account that cannot be cleared, a fingerprint
+mismatch) are task errors (`fail`), never a zero.
 """
 
+import hashlib
 import json
 import math
-import multiprocessing
 import os
 import pwd
 import shutil
@@ -45,17 +51,19 @@ import signal
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
+import urllib.request
 
-# One BLAS thread everywhere: the generator's arithmetic must not depend on the host's core count.
+# One BLAS thread everywhere: the measurement's arithmetic must not depend on the host's core count.
 for _k in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
     os.environ[_k] = "1"
 
 STAGE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, STAGE)
 
-from robotics_grader import (agent_user, fail, ratio_rewards, read_anchor, seed_rng,  # noqa: E402
+from robotics_grader import (agent_user, fail, ratio_rewards, read_anchor,  # noqa: E402
                              stage_config, write_verdict, zero_verdict)
 from robotics_grader.account import clear_agent_account  # noqa: E402
 from robotics_grader.stage import secure_exec_path  # noqa: E402
@@ -63,6 +71,9 @@ from robotics_grader.stage import secure_exec_path  # noqa: E402
 HOME = os.environ.get("ALE_HOME", "/home/user")
 SUBMISSION = os.path.join(HOME, "submission")
 NONET = os.path.join(STAGE, "nonet_exec.py")
+HIDDEN = os.path.join(STAGE, "hidden")
+TOKEN_SHA = os.path.join(HIDDEN, "oracle_token.sha256")
+CLK_TCK = os.sysconf("SC_CLK_TCK")
 MAX_READ = 1 << 20
 
 
@@ -106,34 +117,85 @@ def kill_agent_processes(uid, rounds=20, pause=0.25):
     return not _agent_pids(uid)
 
 
-# ----------------------------------------------------------------------------- generation
+# ----------------------------------------------------------------------------- the hidden rigs
 
-def _generate(args):
-    """Worker: write one hidden rig's agent-visible folder; return its truth and held-out data."""
-    seed_words, rig_id, out_dir = args
-    import numpy as np  # noqa: F401
-    import rigsim
-    import rigmetrics
-    rig = rigsim.make_rig(seed_words)
-    records = rigsim.write_rig(rig, rig_id, out_dir)
-    ho = rigsim.heldout(rig)
-    tr = ho["traj"]
-    truth = {
-        "K": rig.K, "T_body_lidar": rig.T_body_lidar,
-        "T_lidar_camera": rig.T_lidar_camera, "T_lidar_imu": rig.T_lidar_imu,
-        "gyro_bias": rig.gyro_bias, "accel_bias": rig.accel_bias, "faults": records,
-        "clock": {"camera_offset_s": rig.cam_offset, "camera_drift_ppm": rig.cam_drift * 1e6,
-                  "lidar_offset_s": rig.lidar_offset, "lidar_drift_ppm": rig.lidar_drift * 1e6},
-    }
-    held = {
-        "seq_start": ho["seq_start"],
-        "track": rigmetrics.BodyTrack(tr.tau, tr.pos, tr.ypr),
-        "imu_tau": ho["imu_tau"], "gyro": ho["gyro"], "accel": ho["accel"],
-        "cam_tau": ho["cam_tau"], "cam_stamp": ho["cam_stamp"],
-        "lidar_tau": ho["lidar_tau"], "lidar_stamp": ho["lidar_stamp"],
-        "pairs": ho["pairs"],
-    }
-    return truth, held
+def _sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def fetch_hidden(cfg, work):
+    """Download the hidden rigs' logs (one pinned archive) into this root-only folder, unpack them under
+    work/rigs and check every file against hidden/<rig>/sha256.json. Returns the rig names."""
+    spec = cfg["hidden"]
+    rigs = list(spec["rigs"])
+    arc = os.path.join(STAGE, "hidden_logs.tar")
+    local = os.environ.get("RIGCAL_HIDDEN_ARCHIVE")          # a maintainer's local copy (never set by the engine)
+    last = None
+    for attempt in range(4):
+        try:
+            if local:
+                shutil.copyfile(local, arc)
+            else:
+                req = urllib.request.Request(spec["url"], headers={"User-Agent": "rigcal-verify"})
+                with urllib.request.urlopen(req, timeout=120) as r, open(arc, "wb") as f:
+                    shutil.copyfileobj(r, f, 1 << 20)
+            if os.path.getsize(arc) == int(spec["bytes"]) and _sha256(arc) == spec["sha256"]:
+                last = None
+                break
+            last = "size or sha256 mismatch"
+        except Exception as exc:  # network errors of any kind: retry, then a task error
+            last = "{}: {}".format(type(exc).__name__, str(exc)[:200])
+        time.sleep(5 * (attempt + 1))
+    if last is not None:
+        fail("the hidden rigs' archive could not be fetched: " + last)
+    os.chmod(arc, 0o600)
+    root = os.path.join(work, "rigs")
+    os.makedirs(root)
+    with tarfile.open(arc) as tf:
+        tf.extractall(root, filter="data")
+    os.remove(arc)
+    for name in rigs:
+        with open(os.path.join(HIDDEN, name, "sha256.json")) as f:
+            want = json.load(f)
+        rd = os.path.join(root, name)
+        have = {}
+        for dirpath, _dirs, files in os.walk(rd):
+            for fn in files:
+                p = os.path.join(dirpath, fn)
+                have[os.path.relpath(p, rd)] = _sha256(p)
+        if have != want:
+            fail("hidden rig {} does not match its file list ({} files against {})".format(name, len(have), len(want)))
+    extra = sorted(set(os.listdir(root)) - set(rigs))
+    if extra:
+        fail("the hidden archive holds unexpected entries: {}".format(extra[:5]))
+    return rigs
+
+
+def oracle_token_ok():
+    """True when the submission's .oracle_token (a regular file, not followed if a link, at most 256 bytes)
+    hashes to hidden/oracle_token.sha256: the reference, and nothing else."""
+    try:
+        fd = os.open(os.path.join(SUBMISSION, ".oracle_token"), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        return False
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            return False
+        data = os.read(fd, 257)
+    finally:
+        os.close(fd)
+    if len(data) > 256:
+        return False
+    try:
+        with open(TOKEN_SHA) as f:
+            want = f.read().split()[0]
+    except (OSError, IndexError):
+        return False
+    return hashlib.sha256(data.strip()).hexdigest() == want
 
 
 def _open_tree(root):
@@ -170,8 +232,47 @@ def _read_small(path):
         os.close(fd)
 
 
-def run_submission(rig_dirs, out_dirs, uid, gid, config):
-    timeout = float(config.get("run_timeout_s", 900))
+def _proc_cpu(uid):
+    """{(pid, starttime): (session id, user + system ticks, run marker or None)} of the agent account's processes."""
+    out = {}
+    for name in os.listdir("/proc"):
+        if not name.isdigit():
+            continue
+        try:
+            if os.stat("/proc/" + name).st_uid != uid:
+                continue
+            with open("/proc/{}/stat".format(name), "rb") as f:
+                rest = f.read().rsplit(b")", 1)[1].split()
+            sid, ticks, start = int(rest[3]), int(rest[11]) + int(rest[12]), int(rest[19])
+            marker = None
+            try:
+                with open("/proc/{}/environ".format(name), "rb") as f:
+                    for item in f.read().split(b"\0"):
+                        if item.startswith(b"RIGCAL_RUN="):
+                            marker = int(item[11:])
+                            break
+            except (OSError, ValueError):
+                pass
+            out[(int(name), start)] = (sid, ticks, marker)
+        except (OSError, ValueError, IndexError):
+            continue
+    return out
+
+
+def _lowest_priority():
+    try:
+        os.nice(19)
+    except OSError:
+        pass
+
+
+def run_submission(rig_dirs, out_dirs, truth_dirs, uid, gid, config):
+    """All rigs at once. Each run is charged its OWN processor time: user + system of every process of the run
+    (its session, or its RIGCAL_RUN mark), read from /proc every 0.2 s, the largest value seen per process. A
+    process of the agent account that carries neither is charged to every run. Returns (status, tails):
+    status[i] = (how, exit code, wall seconds, cpu seconds)."""
+    cpu_limit = float(config.get("run_cpu_s", 900))
+    wall_limit = float(config.get("run_wall_s", 3600))
     mem_mb = int(config.get("run_memory_mb", 6144))
     procs = []
     logs = []
@@ -179,27 +280,43 @@ def run_submission(rig_dirs, out_dirs, uid, gid, config):
         lp = os.path.join(os.path.dirname(od), "run_%d.log" % i)
         fh = open(lp, "wb")
         cmd = [sys.executable, "-I", NONET, "--uid", str(uid), "--gid", str(gid), "--cwd", SUBMISSION,
-               "--rlimit-as-mb", str(mem_mb), "--", "bash", "run.sh", "--input", rd, "--output", od]
+               "--rlimit-as-mb", str(mem_mb), "--env", "RIGCAL_RUN=%d" % i, "--",
+               "bash", "run.sh", "--input", rd, "--output", od]
+        if truth_dirs is not None:
+            cmd += ["--truth", truth_dirs[i]]
         p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT,
-                             start_new_session=True, env={"PATH": "/usr/bin:/bin"})
+                             start_new_session=True, env={"PATH": "/usr/bin:/bin"}, preexec_fn=_lowest_priority)
         procs.append(p)
         logs.append((fh, lp))
     t0 = time.monotonic()
+    sid_run = {p.pid: i for i, p in enumerate(procs)}
+    seen = {}                                  # (pid, start) -> (run index or -1, ticks)
     status = [None] * len(procs)
+
+    def cpu_of(i):
+        return sum(t for (r, t) in seen.values() if r == i or r == -1) / float(CLK_TCK)
+
     while any(s is None for s in status):
+        for key, (sid, ticks, marker) in _proc_cpu(uid).items():
+            run = sid_run.get(sid, marker if marker is not None and 0 <= marker < len(procs) else -1)
+            old = seen.get(key)
+            seen[key] = (run if old is None or old[0] == -1 else old[0], max(ticks, old[1] if old else 0))
+        now = time.monotonic() - t0
         for i, p in enumerate(procs):
-            if status[i] is None:
-                rc = p.poll()
-                if rc is not None:
-                    status[i] = ("exit", rc, time.monotonic() - t0)
-                elif time.monotonic() - t0 > timeout:
-                    try:
-                        os.killpg(p.pid, signal.SIGKILL)
-                    except OSError:
-                        pass
-                    p.wait()
-                    status[i] = ("timeout", None, time.monotonic() - t0)
-        time.sleep(0.5)
+            if status[i] is not None:
+                continue
+            rc = p.poll()
+            used = cpu_of(i)
+            if rc is not None:
+                status[i] = ("exit", rc, now, used)
+            elif used > cpu_limit or now > wall_limit:
+                try:
+                    os.killpg(p.pid, signal.SIGKILL)
+                except OSError:
+                    pass
+                p.wait()
+                status[i] = ("cpu limit" if used > cpu_limit else "wall limit", None, now, used)
+        time.sleep(0.2)
     kill_agent_processes(uid)
     tails = []
     for fh, lp in logs:
@@ -227,19 +344,17 @@ def credit(err, full, zero):
 
 def rig_credit(m, cfg):
     c = cfg["credit"]
-    w = cfg["weights"]
+    w_f = float(cfg.get("fault_weight", 0.10))
     terms = {
-        "alignment": credit(m.get("projection_px"), *c["projection_px"]),
-        "downstream": 0.5 * (credit(m.get("rpe_rot_deg"), *c["rpe_rot_deg"])
-                             + credit(m.get("rpe_trans_m"), *c["rpe_trans_m"])),
-        "time_sync": credit(m.get("time_rms_s"), *c["time_rms_s"]),
-        "imu": (credit(m.get("imu_rot_deg"), *c["imu_rot_deg"])
-                + credit(m.get("gyro_bias_err_rps"), *c["gyro_bias_err_rps"])
-                + credit(m.get("accel_bias_err_mps2"), *c["accel_bias_err_mps2"])) / 3.0,
+        "projection": credit(m.get("projection_px"), *c["projection_px"]),
+        "motion": 0.5 * (credit(m.get("rpe_rot_deg"), *c["rpe_rot_deg"])
+                         + credit(m.get("rpe_trans_m"), *c["rpe_trans_m"])),
+        "time": credit(m.get("time_rms_s"), *c["time_rms_s"]),
         "faults": float(m.get("fault_f1", 0.0)),
     }
-    total = sum(w[k] * terms[k] for k in terms)
-    return total, terms
+    joint = (terms["projection"] * terms["motion"] * terms["time"]) ** (1.0 / 3.0)
+    terms["joint"] = joint
+    return w_f * terms["faults"] + (1.0 - w_f) * joint, terms
 
 
 def score_rig(truth, held, out_dir, cfg):
@@ -270,12 +385,28 @@ def score_rig(truth, held, out_dir, cfg):
 
 # ----------------------------------------------------------------------------- main
 
+def check_numerics():
+    """A host whose arithmetic differs from the pinned fingerprint cannot grade: a task error."""
+    with open(os.path.join(STAGE, "numerics.json")) as f:
+        want = json.load(f)
+    try:
+        r = subprocess.run([sys.executable, "-I", os.path.join(STAGE, "numerics_check.py")], capture_output=True,
+                           text=True, timeout=300, env={"PATH": "/opt/venv/bin:/usr/bin:/bin"})
+        got = json.loads(r.stdout.strip().splitlines()[-1])
+    except Exception as exc:
+        fail("the numerics fingerprint could not be computed: {}: {}".format(type(exc).__name__, str(exc)[:200]))
+    if got.get("fingerprint") != want.get("fingerprint"):
+        diff = sorted(k for k in want.get("math", {}) if got.get("math", {}).get(k) != want["math"][k])
+        fail("this host does not reproduce the numerics fingerprint (parts that differ: {})".format(diff[:8]))
+    log("numerics fingerprint ok")
+
+
 def main():
     secure_exec_path()
     cfg = stage_config()
     anchor, meta = read_anchor()
     anchored = anchor is not None
-    n_rigs = int(cfg.get("rigs", 6))
+    check_numerics()
     run_sh = os.path.join(SUBMISSION, "run.sh")
     if not os.path.isfile(run_sh):
         write_verdict(zero_verdict(reason="no /home/user/submission/run.sh", anchored=anchored),
@@ -294,22 +425,19 @@ def main():
     if not kill_agent_processes(uid):
         fail("processes of the agent account could not be stopped before grading")
 
-    rng = seed_rng()
-    seeds = [[rng.seed(bits=31) for _ in range(4)] for _ in range(n_rigs)]
     work = tempfile.mkdtemp(prefix="rigcal_", dir="/tmp")
     os.chmod(work, 0o755)
-    rig_dirs = [os.path.join(work, "rigs", "rig_%02d" % i) for i in range(n_rigs)]
-    out_dirs = [os.path.join(work, "out", "rig_%02d" % i) for i in range(n_rigs)]
     t0 = time.monotonic()
-    procs = min(n_rigs, max(1, int(cfg.get("gen_workers", 6))))
-    ctx = multiprocessing.get_context("fork")
+    names = fetch_hidden(cfg, work)
+    n_rigs = len(names)
+    log("fetched and checked {} hidden rigs in {:.0f} s".format(n_rigs, time.monotonic() - t0))
+    import rigmetrics
+    rig_dirs = [os.path.join(work, "rigs", n) for n in names]
+    out_dirs = [os.path.join(work, "out", "rig_%02d" % i) for i in range(n_rigs)]
     try:
-        with ctx.Pool(procs) as pool:
-            results = pool.map(_generate, [(seeds[i], "rig_%02d" % i, rig_dirs[i]) for i in range(n_rigs)],
-                               chunksize=1)
-    except Exception as exc:  # the grader's own generator failing is a task error
-        fail("generating the hidden rigs failed: {}: {}".format(type(exc).__name__, str(exc)[:300]))
-    log("generated {} hidden rigs in {:.0f} s".format(n_rigs, time.monotonic() - t0))
+        results = [rigmetrics.load_truth_files(rig_dirs[i], os.path.join(HIDDEN, names[i])) for i in range(n_rigs)]
+    except Exception as exc:
+        fail("a hidden rig's truth could not be read: {}: {}".format(type(exc).__name__, str(exc)[:300]))
     _open_tree(os.path.join(work, "rigs"))
     os.makedirs(os.path.join(work, "out"), exist_ok=True)
     os.chmod(os.path.join(work, "out"), 0o755)
@@ -317,18 +445,30 @@ def main():
         os.makedirs(od)
         os.chown(od, uid, gid)
         os.chmod(od, 0o755)
+    truth_dirs = None
+    privileged = oracle_token_ok()
+    if privileged:                                           # the reference alone is handed the truth
+        truth_dirs = []
+        for i in range(n_rigs):
+            td = os.path.join(work, "truth", "rig_%02d" % i)
+            os.makedirs(td)
+            for fn in ("ground_truth.yaml", "faults.json"):
+                shutil.copyfile(os.path.join(HIDDEN, names[i], fn), os.path.join(td, fn))
+            truth_dirs.append(td)
+        _open_tree(os.path.join(work, "truth"))
 
     t1 = time.monotonic()
-    status, tails = run_submission(rig_dirs, out_dirs, uid, gid, cfg)
+    status, tails = run_submission(rig_dirs, out_dirs, truth_dirs, uid, gid, cfg)
     log("submission runs finished in {:.0f} s: {}".format(time.monotonic() - t1,
-                                                           [(s[0], s[1], round(s[2])) for s in status]))
+                                                           [(s[0], s[1], round(s[2]), round(s[3])) for s in status]))
 
     credits, per_terms, per_metrics, notes_all = [], [], [], []
     for i in range(n_rigs):
         truth, held = results[i]
         total, terms, m, notes = score_rig(truth, held, out_dirs[i], cfg)
-        if status[i][0] == "timeout":
-            notes.append("run exceeded %.0f s and was killed" % float(cfg.get("run_timeout_s", 900)))
+        if status[i][0] != "exit":
+            notes.append("run reached its %s (%.0f s of its own processor time, %.0f s on the clock) and was killed"
+                         % (status[i][0], status[i][3], status[i][2]))
         elif status[i][1] != 0:
             notes.append("run.sh exited with status %s" % status[i][1])
         credits.append(total)
@@ -340,8 +480,8 @@ def main():
             {k: round(v, 6) for k, v in m.items()}, notes))
     measured = sum(credits) / len(credits)
 
-    extra = {"rigs": float(n_rigs)}
-    for k in ("alignment", "downstream", "time_sync", "imu", "faults"):
+    extra = {"rigs": float(n_rigs), "oracle_token": 1.0 if privileged else 0.0}
+    for k in ("projection", "motion", "time", "joint", "faults"):
         extra["term_" + k] = sum(t[k] for t in per_terms) / n_rigs
     for i, c in enumerate(credits):
         extra["rig_%02d_credit" % i] = c
@@ -352,7 +492,9 @@ def main():
             vals.sort()
             extra["median_" + key] = vals[len(vals) // 2]
         extra["rigs_with_" + key] = float(len(vals))
-    extra["runs_timed_out"] = float(sum(1 for s in status if s[0] == "timeout"))
+    extra["runs_timed_out"] = float(sum(1 for s in status if s[0] != "exit"))
+    extra["max_run_cpu_s"] = max(s[3] for s in status)
+    extra["max_run_wall_s"] = max(s[2] for s in status)
     extra["runs_failed"] = float(sum(1 for s in status if s[0] == "exit" and s[1] != 0))
 
     verdict = ratio_rewards(measured, anchor, cap=cfg.get("scoring_cap", 1.5), higher_is_better=True,
@@ -360,8 +502,8 @@ def main():
                             full_at=meta.get("full_at", 1.0))
     lines = ["mean_rig_credit %.4f over %d hidden rigs" % (measured, n_rigs)]
     for i in range(n_rigs):
-        lines.append("rig_%02d (seed %s): credit %.3f %s %s%s" % (
-            i, ",".join(str(w) for w in seeds[i]), credits[i], {k: round(v, 3) for k, v in per_terms[i].items()},
+        lines.append("rig_%02d: credit %.3f %s %s%s" % (
+            i, credits[i], {k: round(v, 3) for k, v in per_terms[i].items()},
             {k: (round(v, 5) if isinstance(v, float) else v) for k, v in per_metrics[i].items()},
             (" | " + "; ".join(notes_all[i])) if notes_all[i] else ""))
         if not per_metrics[i] and tails[i].strip():

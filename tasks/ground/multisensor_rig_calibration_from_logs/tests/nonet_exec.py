@@ -1,7 +1,7 @@
 """Launch the agent's calibration program without network access.
 
-Copied from tasks/arm/pantry_jar_refilling/tests/nonet_exec.py, with an address-space limit added
-(--rlimit-as-mb).
+Copied from tasks/arm/pantry_jar_refilling/tests/nonet_exec.py, with an address-space limit
+(--rlimit-as-mb) and extra environment entries (--env) added.
 
 Run by the grader as root:
 
@@ -95,6 +95,7 @@ def main():
     ap.add_argument("--rlimit-nproc", type=int, default=0, help="0 = leave unchanged (the limit is per host UID and "
                     "would be shared by concurrent sandboxes)")
     ap.add_argument("--rlimit-as-mb", type=int, default=0, help="0 = leave unchanged")
+    ap.add_argument("--env", action="append", default=[], help="KEY=VALUE added to the fixed environment (the grader's run mark)")
     ap.add_argument("cmd", nargs=argparse.REMAINDER)
     a = ap.parse_args()
     cmd = a.cmd[1:] if a.cmd and a.cmd[0] == "--" else a.cmd
@@ -124,7 +125,11 @@ def main():
         sys.exit("nonet_exec: cannot change user without root")
     if a.cwd:
         os.chdir(a.cwd)
-    os.execvpe(cmd[0], cmd, dict(WHITELIST_ENV))
+    env = dict(WHITELIST_ENV)
+    for item in a.env:
+        k, _, v = item.partition("=")
+        env[k] = v
+    os.execvpe(cmd[0], cmd, env)
 
 
 if __name__ == "__main__":

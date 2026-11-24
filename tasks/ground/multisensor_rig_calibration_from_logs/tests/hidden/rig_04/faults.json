@@ -1,0 +1,18 @@
+{
+ "faults": [
+  {
+   "sequence": "seq_01",
+   "sensor": "lidar",
+   "type": "lidar_degraded",
+   "start_s": 160.15630889616335,
+   "end_s": 161.95622879957958
+  },
+  {
+   "sequence": "seq_02",
+   "sensor": "camera",
+   "type": "camera_frozen",
+   "start_s": 271.07255781102646,
+   "end_s": 273.97203093351317
+  }
+ ]
+}

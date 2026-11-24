@@ -1,0 +1,524 @@
+{
+ "hidden.rig_00": {
+  "A": {
+   "imu_rot_deg": 0.02574912885030739,
+   "gyro_bias_err_rps": 0.0008698306037713941,
+   "lidar_clock_err_per_sequence_ms": [
+    0.57,
+    -0.111,
+    0.482
+   ],
+   "lidar_drift_err_ppm": -0.326158305453452,
+   "lidar_clock_err_at_heldout_ms": 0.22278494818204939,
+   "sweep_pairs": 764
+  },
+  "B": {
+   "accel_bias_err_mps2": 0.009587171837362844,
+   "imu_position_err_m": 0.015328081128246466,
+   "rest_samples": 2495,
+   "moving_samples": 3541
+  },
+  "C": {
+   "camera_rot_err_deg": 0.07034889124950104,
+   "camera_trans_err_m": 0.002437868086406475,
+   "score_at_truth": 0.22253488340329639,
+   "score_at_optimum": 0.22418149591528733,
+   "score_at_cad": 0.12756756519710183,
+   "camera_clock_err_per_sequence_ms": [
+    0.89,
+    0.458,
+    -0.146
+   ],
+   "camera_drift_err_ppm": -4.052595167178736,
+   "camera_clock_err_at_heldout_ms": -0.7259744281252537,
+   "frames": 286,
+   "moving_frames": 247
+  },
+  "metrics_settled": {
+   "projection_px": 0.5805427529880596,
+   "time_rms_s": 0.0005240916276754228,
+   "time_rms_camera_s": 0.0007642968253958378,
+   "time_rms_lidar_s": 0.00028388642995500775,
+   "rpe_rot_deg": 0.06446501672877972,
+   "rpe_trans_m": 0.00400296150282813,
+   "imu_rot_deg": 0.025737750499526417,
+   "gyro_bias_err_rps": 0.0008698306037713941,
+   "accel_bias_err_mps2": 0.009587171837362844
+  },
+  "metrics_truth": {
+   "projection_px": 0.02092246297336558,
+   "time_rms_s": 0.00019799965446984353,
+   "time_rms_camera_s": 0.00020114149542087455,
+   "time_rms_lidar_s": 0.00019485781351881253,
+   "rpe_rot_deg": 0.03855342316409424,
+   "rpe_trans_m": 0.00377802467282481,
+   "imu_rot_deg": 0.0,
+   "gyro_bias_err_rps": 0.0,
+   "accel_bias_err_mps2": 0.0
+  }
+ },
+ "hidden.rig_01": {
+  "A": {
+   "imu_rot_deg": 0.2791360597724196,
+   "gyro_bias_err_rps": 0.0005642640609748744,
+   "lidar_clock_err_per_sequence_ms": [
+    0.553,
+    0.39,
+    0.827
+   ],
+   "lidar_drift_err_ppm": 1.3572497355873805,
+   "lidar_clock_err_at_heldout_ms": 0.8920917131479326,
+   "sweep_pairs": 726
+  },
+  "B": {
+   "accel_bias_err_mps2": 0.04382498981781607,
+   "imu_position_err_m": 0.016296882365008786,
+   "rest_samples": 2823,
+   "moving_samples": 2893
+  },
+  "C": {
+   "camera_rot_err_deg": 0.018762249203252885,
+   "camera_trans_err_m": 0.0012747731792577303,
+   "score_at_truth": 0.21495379646083473,
+   "score_at_optimum": 0.21521284265062138,
+   "score_at_cad": 0.12221213205225738,
+   "camera_clock_err_per_sequence_ms": [
+    -0.421,
+    1.197,
+    0.557
+   ],
+   "camera_drift_err_ppm": 4.6092449238681334,
+   "camera_clock_err_at_heldout_ms": 1.4705979910725133,
+   "frames": 239,
+   "moving_frames": 192
+  },
+  "metrics_settled": {
+   "projection_px": 0.20366097689566215,
+   "time_rms_s": 0.00119507305106914,
+   "time_rms_camera_s": 0.0014829599170651329,
+   "time_rms_lidar_s": 0.0009071861850731472,
+   "rpe_rot_deg": 0.10675602444287854,
+   "rpe_trans_m": 0.005927467776658627,
+   "imu_rot_deg": 0.27913820408857776,
+   "gyro_bias_err_rps": 0.0005642640609748742,
+   "accel_bias_err_mps2": 0.04382498981781607
+  },
+  "metrics_truth": {
+   "projection_px": 0.03363140848443076,
+   "time_rms_s": 0.0001938432733471511,
+   "time_rms_camera_s": 0.00019999845482236475,
+   "time_rms_lidar_s": 0.00018768809187193745,
+   "rpe_rot_deg": 0.04206082715640926,
+   "rpe_trans_m": 0.004872861474000011,
+   "imu_rot_deg": 0.0010982370209535767,
+   "gyro_bias_err_rps": 0.0,
+   "accel_bias_err_mps2": 0.0
+  }
+ },
+ "hidden.rig_02": {
+  "A": {
+   "imu_rot_deg": 0.39958096573719126,
+   "gyro_bias_err_rps": 0.0007122321314495507,
+   "lidar_clock_err_per_sequence_ms": [
+    0.473,
+    -0.039,
+    0.551
+   ],
+   "lidar_drift_err_ppm": 0.027664581075269815,
+   "lidar_clock_err_at_heldout_ms": 0.3359289899683651,
+   "sweep_pairs": 773
+  },
+  "B": {
+   "accel_bias_err_mps2": 0.03784964977804982,
+   "imu_position_err_m": 0.018987046698634776,
+   "rest_samples": 2525,
+   "moving_samples": 2515
+  },
+  "C": {
+   "camera_rot_err_deg": 0.05333156534460523,
+   "camera_trans_err_m": 0.002673000902812864,
+   "score_at_truth": 0.19430179365990663,
+   "score_at_optimum": 0.195065403271181,
+   "score_at_cad": 0.10936092418898402,
+   "camera_clock_err_per_sequence_ms": [
+    -0.004,
+    -0.231,
+    -0.942
+   ],
+   "camera_drift_err_ppm": -3.712629544604067,
+   "camera_clock_err_at_heldout_ms": -1.3783628980290545,
+   "frames": 256,
+   "moving_frames": 210
+  },
+  "metrics_settled": {
+   "projection_px": 0.5548335265089174,
+   "time_rms_s": 0.0009011685785463158,
+   "time_rms_camera_s": 0.001390958985344222,
+   "time_rms_lidar_s": 0.00041137817174840944,
+   "rpe_rot_deg": 0.07983801887207011,
+   "rpe_trans_m": 0.005312116266779601,
+   "imu_rot_deg": 0.3995813529026998,
+   "gyro_bias_err_rps": 0.0007122321314495504,
+   "accel_bias_err_mps2": 0.03784964977804982
+  },
+  "metrics_truth": {
+   "projection_px": 0.025055287161403088,
+   "time_rms_s": 0.00020551388837631147,
+   "time_rms_camera_s": 0.0002009884212742997,
+   "time_rms_lidar_s": 0.00021003935547832324,
+   "rpe_rot_deg": 0.044296397982166245,
+   "rpe_trans_m": 0.006365451284151815,
+   "imu_rot_deg": 0.0005642158474168075,
+   "gyro_bias_err_rps": 0.0,
+   "accel_bias_err_mps2": 0.0
+  }
+ },
+ "hidden.rig_03": {
+  "A": {
+   "imu_rot_deg": 0.07273201493344901,
+   "gyro_bias_err_rps": 0.0007275350839348122,
+   "lidar_clock_err_per_sequence_ms": [
+    -0.189,
+    1.141,
+    0.393
+   ],
+   "lidar_drift_err_ppm": 2.738775452400006,
+   "lidar_clock_err_at_heldout_ms": 1.0927200012757272,
+   "sweep_pairs": 763
+  },
+  "B": {
+   "accel_bias_err_mps2": 0.010073107286327968,
+   "imu_position_err_m": 0.021313307281145475,
+   "rest_samples": 2335,
+   "moving_samples": 2798
+  },
+  "C": {
+   "camera_rot_err_deg": 0.10638562158739152,
+   "camera_trans_err_m": 0.009286552777547573,
+   "score_at_truth": 0.19730503918781647,
+   "score_at_optimum": 0.19975821001379843,
+   "score_at_cad": 0.1328121151420463,
+   "camera_clock_err_per_sequence_ms": [
+    -0.3,
+    2.899,
+    0.056
+   ],
+   "camera_drift_err_ppm": 1.7397067049671773,
+   "camera_clock_err_at_heldout_ms": 1.2943312456113798,
+   "frames": 301,
+   "moving_frames": 273
+  },
+  "metrics_settled": {
+   "projection_px": 0.9334929777339045,
+   "time_rms_s": 0.0012035301161232139,
+   "time_rms_camera_s": 0.0013140947598659649,
+   "time_rms_lidar_s": 0.0010929654723804629,
+   "rpe_rot_deg": 0.05346302629164933,
+   "rpe_trans_m": 0.00457707268586715,
+   "imu_rot_deg": 0.07272624218440253,
+   "gyro_bias_err_rps": 0.0007275350839348124,
+   "accel_bias_err_mps2": 0.010073107286327968
+  },
+  "metrics_truth": {
+   "projection_px": 0.027614476991797636,
+   "time_rms_s": 0.00019995313243776423,
+   "time_rms_camera_s": 0.00020227360197341775,
+   "time_rms_lidar_s": 0.00019763266290211072,
+   "rpe_rot_deg": 0.03969831737791419,
+   "rpe_trans_m": 0.008439260352383543,
+   "imu_rot_deg": 0.0,
+   "gyro_bias_err_rps": 0.0,
+   "accel_bias_err_mps2": 0.0
+  }
+ },
+ "hidden.rig_04": {
+  "A": {
+   "imu_rot_deg": 0.16006920393070587,
+   "gyro_bias_err_rps": 0.0008644808782681775,
+   "lidar_clock_err_per_sequence_ms": [
+    -0.127,
+    1.157,
+    -1.229
+   ],
+   "lidar_drift_err_ppm": -4.07929242494709,
+   "lidar_clock_err_at_heldout_ms": -1.093281777950652,
+   "sweep_pairs": 702
+  },
+  "B": {
+   "accel_bias_err_mps2": 0.02895596941666838,
+   "imu_position_err_m": 0.021989284399075198,
+   "rest_samples": 2611,
+   "moving_samples": 3210
+  },
+  "C": {
+   "camera_rot_err_deg": 0.020698207806281507,
+   "camera_trans_err_m": 0.0012533167106002373,
+   "score_at_truth": 0.18677050608319612,
+   "score_at_optimum": 0.18717855135468867,
+   "score_at_cad": 0.09690663168232076,
+   "camera_clock_err_per_sequence_ms": [
+    0.496,
+    1.721,
+    -0.321
+   ],
+   "camera_drift_err_ppm": -2.9670286666790515,
+   "camera_clock_err_at_heldout_ms": -0.11496971778803834,
+   "frames": 232,
+   "moving_frames": 196
+  },
+  "metrics_settled": {
+   "projection_px": 0.23467296113595548,
+   "time_rms_s": 0.0006622602089208638,
+   "time_rms_camera_s": 0.0002226182239168511,
+   "time_rms_lidar_s": 0.0011019021939248765,
+   "rpe_rot_deg": 0.06350549394134333,
+   "rpe_trans_m": 0.006662836441162106,
+   "imu_rot_deg": 0.16006608763522245,
+   "gyro_bias_err_rps": 0.0008644808782681774,
+   "accel_bias_err_mps2": 0.02895596941666838
+  },
+  "metrics_truth": {
+   "projection_px": 0.031385290070042635,
+   "time_rms_s": 0.00020302938613885353,
+   "time_rms_camera_s": 0.00020464058542358577,
+   "time_rms_lidar_s": 0.0002014181868541213,
+   "rpe_rot_deg": 0.030208057543262647,
+   "rpe_trans_m": 0.007159690693391288,
+   "imu_rot_deg": 0.0,
+   "gyro_bias_err_rps": 0.0,
+   "accel_bias_err_mps2": 0.0
+  }
+ },
+ "hidden.rig_05": {
+  "A": {
+   "imu_rot_deg": 0.40073140843483956,
+   "gyro_bias_err_rps": 0.0013200723592011476,
+   "lidar_clock_err_per_sequence_ms": [
+    0.452,
+    1.777,
+    -0.612
+   ],
+   "lidar_drift_err_ppm": -4.543664526127518,
+   "lidar_clock_err_at_heldout_ms": -0.5399276849324861,
+   "sweep_pairs": 704
+  },
+  "B": {
+   "accel_bias_err_mps2": 0.059837330913974876,
+   "imu_position_err_m": 0.01766099323059137,
+   "rest_samples": 2134,
+   "moving_samples": 3181
+  },
+  "C": {
+   "camera_rot_err_deg": 0.041632498498086506,
+   "camera_trans_err_m": 0.0017615421484442355,
+   "score_at_truth": 0.19603607852454222,
+   "score_at_optimum": 0.19711849465626438,
+   "score_at_cad": 0.07868396150549088,
+   "camera_clock_err_per_sequence_ms": [
+    -0.153,
+    1.002,
+    1.187
+   ],
+   "camera_drift_err_ppm": 5.04505108352278,
+   "camera_clock_err_at_heldout_ms": 1.8763921371012358,
+   "frames": 288,
+   "moving_frames": 267
+  },
+  "metrics_settled": {
+   "projection_px": 0.5539189232881322,
+   "time_rms_s": 0.0012339732483113324,
+   "time_rms_camera_s": 0.001892081888702643,
+   "time_rms_lidar_s": 0.0005758646079200219,
+   "rpe_rot_deg": 0.11249539546005916,
+   "rpe_trans_m": 0.008225774930320865,
+   "imu_rot_deg": 0.40073339088632937,
+   "gyro_bias_err_rps": 0.0013200723592011474,
+   "accel_bias_err_mps2": 0.059837330913974876
+  },
+  "metrics_truth": {
+   "projection_px": 0.038211767828218834,
+   "time_rms_s": 0.00020188979491966754,
+   "time_rms_camera_s": 0.00020327103105870147,
+   "time_rms_lidar_s": 0.00020050855878063365,
+   "rpe_rot_deg": 0.04334118125610611,
+   "rpe_trans_m": 0.005422249006521658,
+   "imu_rot_deg": 0.0012594559078350895,
+   "gyro_bias_err_rps": 0.0,
+   "accel_bias_err_mps2": 0.0
+  }
+ },
+ "practice.rig_a": {
+  "A": {
+   "imu_rot_deg": 0.09513979230060472,
+   "gyro_bias_err_rps": 0.0009840753126798552,
+   "lidar_clock_err_per_sequence_ms": [
+    0.958,
+    0.64,
+    0.033
+   ],
+   "lidar_drift_err_ppm": -3.5081407485063463,
+   "lidar_clock_err_at_heldout_ms": -0.3185307902492378,
+   "sweep_pairs": 675
+  },
+  "B": {
+   "accel_bias_err_mps2": 0.01719753038497293,
+   "imu_position_err_m": 0.014869803738771224,
+   "rest_samples": 2060,
+   "moving_samples": 2978
+  },
+  "C": {
+   "camera_rot_err_deg": 0.04263379357732815,
+   "camera_trans_err_m": 0.0023641669686591408,
+   "score_at_truth": 0.2051927889574205,
+   "score_at_optimum": 0.20605064338367798,
+   "score_at_cad": 0.10113632490544462,
+   "camera_clock_err_per_sequence_ms": [
+    -0.08,
+    -0.691,
+    -0.674
+   ],
+   "camera_drift_err_ppm": -2.4615130801177383,
+   "camera_clock_err_at_heldout_ms": -1.0866569148465848,
+   "frames": 254,
+   "moving_frames": 232
+  },
+  "metrics_settled": {
+   "projection_px": 0.4922056241683329,
+   "time_rms_s": 0.001111314892526443,
+   "time_rms_camera_s": 0.001111314892526443,
+   "time_rms_lidar_s": 0.00037639535954079456,
+   "rpe_rot_deg": 0.0755819249746613,
+   "rpe_trans_m": 0.004579845839459259,
+   "imu_rot_deg": 0.09512244591242543,
+   "gyro_bias_err_rps": 0.0009840753126798554,
+   "accel_bias_err_mps2": 0.01719753038497293
+  },
+  "metrics_truth": {
+   "projection_px": 0.019344529347793033,
+   "time_rms_s": 0.0001952951642929858,
+   "time_rms_camera_s": 0.0001952951642929858,
+   "time_rms_lidar_s": 0.00017890697409450834,
+   "rpe_rot_deg": 0.02498845488324539,
+   "rpe_trans_m": 0.007091770092000018,
+   "imu_rot_deg": 0.0,
+   "gyro_bias_err_rps": 0.0,
+   "accel_bias_err_mps2": 0.0
+  }
+ },
+ "practice.rig_b": {
+  "A": {
+   "imu_rot_deg": 0.2551692492452887,
+   "gyro_bias_err_rps": 0.0007055101770140562,
+   "lidar_clock_err_per_sequence_ms": [
+    1.778,
+    0.402,
+    -0.252
+   ],
+   "lidar_drift_err_ppm": -8.88610643621017,
+   "lidar_clock_err_at_heldout_ms": -1.6997134277869317,
+   "sweep_pairs": 627
+  },
+  "B": {
+   "accel_bias_err_mps2": 0.00718061403231766,
+   "imu_position_err_m": 0.012594267066187112,
+   "rest_samples": 2176,
+   "moving_samples": 2637
+  },
+  "C": {
+   "camera_rot_err_deg": 0.12123804210452305,
+   "camera_trans_err_m": 0.009839524609809606,
+   "score_at_truth": 0.2038656744949835,
+   "score_at_optimum": 0.20670808550964792,
+   "score_at_cad": 0.09810201531096797,
+   "camera_clock_err_per_sequence_ms": [
+    -0.398,
+    0.126,
+    -0.276
+   ],
+   "camera_drift_err_ppm": 0.43300252556999247,
+   "camera_clock_err_at_heldout_ms": -0.06854529655875712,
+   "frames": 225,
+   "moving_frames": 190
+  },
+  "metrics_settled": {
+   "projection_px": 0.8433581717602754,
+   "time_rms_s": 0.000966935213952063,
+   "time_rms_camera_s": 0.0002143503350705878,
+   "time_rms_lidar_s": 0.0017195200928335384,
+   "rpe_rot_deg": 0.05439976013484354,
+   "rpe_trans_m": 0.006340400245613319,
+   "imu_rot_deg": 0.25516374790330326,
+   "gyro_bias_err_rps": 0.0007055101770140564,
+   "accel_bias_err_mps2": 0.00718061403231766
+  },
+  "metrics_truth": {
+   "projection_px": 0.02474741424814946,
+   "time_rms_s": 0.00020250472501415475,
+   "time_rms_camera_s": 0.00020011741478208678,
+   "time_rms_lidar_s": 0.00020489203524622272,
+   "rpe_rot_deg": 0.033062076865315995,
+   "rpe_trans_m": 0.0037498637087772396,
+   "imu_rot_deg": 0.0,
+   "gyro_bias_err_rps": 0.0,
+   "accel_bias_err_mps2": 0.0
+  }
+ },
+ "practice.rig_c": {
+  "A": {
+   "imu_rot_deg": 0.10597400810724823,
+   "gyro_bias_err_rps": 0.0009349078355809379,
+   "lidar_clock_err_per_sequence_ms": [
+    1.078,
+    0.035,
+    0.965
+   ],
+   "lidar_drift_err_ppm": -0.16618712584294376,
+   "lidar_clock_err_at_heldout_ms": 0.6487539157135233,
+   "sweep_pairs": 682
+  },
+  "B": {
+   "accel_bias_err_mps2": 0.012883567184295076,
+   "imu_position_err_m": 0.01946711262994482,
+   "rest_samples": 2554,
+   "moving_samples": 2391
+  },
+  "C": {
+   "camera_rot_err_deg": 0.04631085092801314,
+   "camera_trans_err_m": 0.002069076916284209,
+   "score_at_truth": 0.1878813661412919,
+   "score_at_optimum": 0.18872595762255467,
+   "score_at_cad": 0.0987880097526842,
+   "camera_clock_err_per_sequence_ms": [
+    -0.689,
+    -0.604,
+    -0.087
+   ],
+   "camera_drift_err_ppm": 2.2789721844685693,
+   "camera_clock_err_at_heldout_ms": 0.14311561530899558,
+   "frames": 242,
+   "moving_frames": 197
+  },
+  "metrics_settled": {
+   "projection_px": 0.44961935091780014,
+   "time_rms_s": 0.000449205340323512,
+   "time_rms_camera_s": 0.0002437384752608523,
+   "time_rms_lidar_s": 0.0006546722053861716,
+   "rpe_rot_deg": 0.07564409020009114,
+   "rpe_trans_m": 0.007896429337413255,
+   "imu_rot_deg": 0.10596698162401053,
+   "gyro_bias_err_rps": 0.0009349078355809381,
+   "accel_bias_err_mps2": 0.012883567184295076
+  },
+  "metrics_truth": {
+   "projection_px": 0.020856668884746618,
+   "time_rms_s": 0.0002061885746141572,
+   "time_rms_camera_s": 0.00020238495494261327,
+   "time_rms_lidar_s": 0.00020999219428570113,
+   "rpe_rot_deg": 0.043821622567066905,
+   "rpe_trans_m": 0.004349776022981885,
+   "imu_rot_deg": 0.0,
+   "gyro_bias_err_rps": 0.0,
+   "accel_bias_err_mps2": 0.0
+  }
+ }
+}

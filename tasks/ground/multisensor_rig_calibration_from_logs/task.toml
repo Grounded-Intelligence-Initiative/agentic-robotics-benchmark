@@ -9,7 +9,7 @@ name = "grounded-intelligence-initiative/multisensor_rig_calibration_from_logs"
 [metadata]
 platform = "ground"
 
-# 8 CPUs, no GPU: the agent develops and tests its calibration program on the three practice rigs.
+# 8 CPUs, 16 GB, no GPU, no network: the agent develops and tests its calibration program on the three practice rigs.
 [environment]
 cpus = 8
 memory_mb = 16384
@@ -18,11 +18,11 @@ memory_mb = 16384
 timeout_sec = 7200
 network_mode = "no-network"
 
-# Verify: generate 6 hidden rigs (about 3 min on 6 CPUs), run the submission on all 6 at once with
-# 900 s each, then measure (under a minute). The reference calibrator needs about 4 min per rig when
-# six run together.
+# Verify: fetch the six hidden rigs' logs (one pinned archive, about 0.7 GB), run the submission on all six at
+# once (900 s of its own processor time each, a wall-clock stop at 3600 s), then measure (under a minute). The
+# reference is token-privileged and finishes in seconds.
 [verifier]
-timeout_sec = 2700
+timeout_sec = 5400
 environment_mode = "separate"
 
 [verifier.environment]

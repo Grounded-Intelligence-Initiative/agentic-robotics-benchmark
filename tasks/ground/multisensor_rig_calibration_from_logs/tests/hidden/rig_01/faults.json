@@ -1,0 +1,18 @@
+{
+ "faults": [
+  {
+   "sequence": "seq_00",
+   "sensor": "camera",
+   "type": "camera_frozen",
+   "start_s": 29.061386312128285,
+   "end_s": 31.961683249917577
+  },
+  {
+   "sequence": "seq_00",
+   "sensor": "imu",
+   "type": "imu_axis_swap",
+   "start_s": 34.30900606569981,
+   "end_s": 36.094006065699816
+  }
+ ]
+}

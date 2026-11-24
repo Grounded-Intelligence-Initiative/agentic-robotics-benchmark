@@ -6,12 +6,13 @@ true parameters and its held-out sequence:
 
 * projection_px      median pixel distance between where held-out LiDAR points land in
                      the held-out camera frames with the submitted calibration and where
-                     they really appear (extrinsic and both clocks together);
+                     they really appear (extrinsic and both clocks together; every point at
+                     its own column's time within the sweep);
 * rpe_rot_deg,       mean error of the LiDAR's relative pose over 1 s windows of the
   rpe_trans_m        held-out sequence, predicted by strapdown integration of the held-out
                      IMU samples with the submitted IMU extrinsic and biases;
 * time_rms_s         RMS error of the reference times recovered from the held-out camera
-                     and LiDAR stamps with the submitted clock models (mean of the two);
+                     and LiDAR stamps with the submitted clock models (the worse of the two);
 * imu_rot_deg, gyro_bias_err_rps, accel_bias_err_mps2
                      the IMU mount rotation and bias errors;
 * fault_f1           F1 of the reported faulty intervals against the injected ones.
@@ -237,18 +238,21 @@ def projection_px(truth, ho, cal):
         t_c, t_l = ho["cam_tau"][ci], ho["lidar_tau"][li]
         s_c, s_l = ho["cam_stamp"][ci], ho["lidar_stamp"][li]
         tc_hat = _to_ref(s_c, cal["camera_offset"], cal["camera_drift"]) - T0
-        tl_hat = _to_ref(s_l, cal["lidar_offset"], cal["lidar_drift"]) - T0
+        # a point of column j is taken j / columns * sweep (LiDAR clock) after the scan's stamp
+        dcol = pair["cols"] / float(truth["lidar_columns"]) * truth["lidar_sweep_s"]
+        tl_true = t_l + dcol / (1.0 + truth["lidar_drift"])
+        tl_hat = _to_ref(s_l + dcol, cal["lidar_offset"], cal["lidar_drift"]) - T0
 
         def lidar_pose(tau):
-            Rb, pb = track.pose(np.array([tau]))
-            return Rb[0] @ T_bl[:3, :3], pb[0] + Rb[0] @ T_bl[:3, 3]
+            Rb, pb = track.pose(np.atleast_1d(tau))
+            return Rb @ T_bl[:3, :3], pb + np.einsum("nij,j->ni", Rb, T_bl[:3, 3])
 
         def project(t_cam, t_lid, T_lc):
             Rl, pl = lidar_pose(t_lid)
-            pw = pts @ Rl.T + pl
+            pw = np.einsum("nij,nj->ni", Rl, pts) + pl
             Rlc, plc = lidar_pose(t_cam)
-            Rc = Rlc @ T_lc[:3, :3]
-            pc = plc + Rlc @ T_lc[:3, 3]
+            Rc = Rlc[0] @ T_lc[:3, :3]
+            pc = plc[0] + Rlc[0] @ T_lc[:3, 3]
             q = (pw - pc) @ Rc
             z = q[:, 2]
             ok = z > 0.05
@@ -257,7 +261,7 @@ def projection_px(truth, ho, cal):
             v = K[1, 1] * q[:, 1] / zs + K[1, 2]
             return np.stack([u, v], axis=1), ok
 
-        uv_true, ok_t = project(t_c, t_l, truth["T_lidar_camera"])
+        uv_true, ok_t = project(t_c, tl_true, truth["T_lidar_camera"])
         uv_hat, ok_h = project(tc_hat, tl_hat, cal["T_lidar_camera"])
         e = np.linalg.norm(uv_hat - uv_true, axis=1)
         e = np.where(ok_h, np.minimum(e, PROJ_FAIL_PX), PROJ_FAIL_PX)
@@ -268,14 +272,14 @@ def projection_px(truth, ho, cal):
 
 
 def time_rms_s(truth, ho, cal):
-    """Mean over camera and LiDAR of the RMS reference-time error (s) on held-out stamps."""
+    """The worse of the camera's and the LiDAR's RMS reference-time error (s) on held-out stamps."""
     T0 = ho["seq_start"]
     out = {}
     for sensor, tau, st in (("camera", ho["cam_tau"], ho["cam_stamp"]),
                             ("lidar", ho["lidar_tau"], ho["lidar_stamp"])):
         t_hat = _to_ref(st, cal[sensor + "_offset"], cal[sensor + "_drift"])
         out[sensor] = float(np.sqrt(np.mean((t_hat - (T0 + tau)) ** 2)))
-    return 0.5 * (out["camera"] + out["lidar"]), out
+    return max(out["camera"], out["lidar"]), out
 
 
 def rpe(truth, ho, cal):
@@ -405,8 +409,13 @@ def load_truth_files(rig_dir, truth_dir):
     with open(os.path.join(truth_dir, "faults.json")) as fh:
         faults = json.load(fh)
     z = np.load(os.path.join(truth_dir, "heldout.npz"))
+    if isinstance(faults, dict):
+        faults = faults["faults"]
     truth = {
         "K": np.array(man["camera"]["K"], float),
+        "lidar_columns": int(man["lidar"]["columns"]),
+        "lidar_sweep_s": float(man["lidar"]["sweep_s"]),
+        "lidar_drift": float(gt["time"]["lidar"]["drift_ppm"]) * 1e-6,
         "T_body_lidar": np.array(man["T_body_lidar"], float),
         "T_lidar_camera": np.array(gt["T_lidar_camera"], float),
         "T_lidar_imu": np.array(gt["T_lidar_imu"], float),
@@ -418,7 +427,8 @@ def load_truth_files(rig_dir, truth_dir):
     off = 0
     for ci, li, n in zip(z["pair_cam_idx"], z["pair_lidar_idx"], z["pair_npts"]):
         pairs.append({"cam_idx": int(ci), "lidar_idx": int(li),
-                      "points": z["pair_points"][off:off + int(n)]})
+                      "points": z["pair_points"][off:off + int(n)],
+                      "cols": z["pair_cols"][off:off + int(n)].astype(float)})
         off += int(n)
     ho = {
         "seq_start": float(z["seq_start"]),
