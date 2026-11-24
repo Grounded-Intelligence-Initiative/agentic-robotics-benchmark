@@ -1,0 +1,9 @@
+{
+ "episode": "h01",
+ "package": "h01.tar.xz",
+ "package_sha256": "6cc32fede6622050786cbe363d2ebce76075cf4b74d39f3869b7e351f11a0a6e",
+ "seed": 6713670793581045746,
+ "seed_sha256": "709e360649d79b03ef9855579b3ca85ba53334c8bb5a2aa36304825793df8896",
+ "oracle_token_sha256": "68d788ef9b9fce95addc83ed79cbe33851d999990a1c9e94c79ed2cf805945d2",
+ "note": "the graded episode of the dual mode: site 1 of the offline grader's fixed hidden set (tests/hidden/seeds.json, index 0: site package hidden/sites/h01.tar.xz, byte-copied here as h01.tar.xz, with its pinned noise seed), drawn 2026-11-24T04:01:17Z with secrets.randbelow(12) -> 0; root-only at /opt/ale/setup while the agent works, read by the service's worker as root before it drops privileges; tests/online.json holds the id and the seed's sha256 (of its decimal ASCII form); oracle_token_sha256 is tests/hidden/oracle_token.sha256"
+}

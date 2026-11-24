@@ -23,10 +23,37 @@
 # library, and a practice ground (a black-box service under its own account: a training hall and three training
 # sites, 30 missions, a debrief per item after each); the simulator's code, the site generator and every ground truth
 # of a graded site stay out of its reach.
+#
+# DUAL MODE (experimental, 2026-11-23; never merged into main): one session, one verify, two scoring items, reward =
+# their mean, each normalised by its own anchor (tests/anchor_offline.json = main's, tests/anchor_online.json; the
+# combined dual_mode_score in tests/anchor.json is 1.0 by construction).
+# * The offline item is main's grading above, unchanged (tests/offline_verify.py = main's tests/verify.py with two
+#   hooks), of the program FROZEN at the earlier of the graded start and the start window's close (prep_s after the
+#   service's start): then (before a start is charged) the graded episode's service has its root supervisor copy
+#   /home/user/submission into /var/lib/arb-online/submission_snapshot (regular files and folders of the agent's
+#   account, no link followed, main's 60 MB cap), so the program keeps main's preparation time; the submission at the
+#   session's end is graded only when the session ends before the window closes without a start, or there is no
+#   usable record.
+# * The online item is the graded episode the agent plays itself during its session, through the graded episode's
+#   service (environment/setup/online/graded_service.py, started by environment/setup/setup.sh; the cell the grader's
+#   own, a byte copy of tests/plantcell checked file by file, served as the dedicated account `plantgrade` over a unix
+#   socket; the client ~/given/lib/plantcell/graded.py's connect_graded()): site h01 of the fixed hidden set (drawn
+#   once with OS entropy, tests/online.json), with its pinned noise seed, the same rules and score as an offline
+#   mission; it can be started once, within prep_s = 14400 s (main's agent budget, shared by the program and the
+#   preparation) of the service's start, and ends at the agent's finish, at the cell's own end of the mission, graded_s
+#   = 10800 s after its start, or when the session ends (the last record applies). Its record goes to
+#   /var/lib/arb-online, which the agent can neither read nor write. The program's wall-clock budgets (program time,
+#   silence, CPU time) and its contract do not apply to it; the simulation advances only inside `step`.
+# * Practice closes at the graded start (O13): the start writes /run/plantgrade/flags/started and the practice ground
+#   (environment/practice_ground/practiced.py) ends its open missions and refuses new ones (practice_closed).
+# The oracle (solution/solve.sh) leaves main's reference program in the submission, then starts the graded episode
+# with the oracle token and runs the same privileged reference call sequence through the client.
 
 schema_version = "1.4+ale.1"
-# Where the agent leaves its work (patrol.py and its helper modules).
-artifacts = ["/home/user/submission"]
+# Where the agent leaves its work (patrol.py and its helper modules), and the graded episode's record directory
+# (record.json, requests.jsonl, state.json, the program frozen at the start in submission_snapshot/), written by the
+# service as its own account and by its root supervisor; the engine collects both as root after the agent phase.
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/quadruped_hazardous_plant_inspection"
@@ -43,8 +70,12 @@ tags = ["inspection", "nuclear-plant", "legged-robot", "gait-modes", "outdated-m
 cpus = 8
 memory_mb = 16384
 
-# setup (no field: the engine bounds it at a fixed 1800 s): the givens in the agent home and the practice ground.
-# [agent] timeout_sec: 4 h.
+# setup (no field: the engine bounds it at a fixed 1800 s): the givens in the agent home, the graded episode's service
+# (it builds its mission: seconds) and the practice ground.
+# [agent] timeout_sec (dual mode): prep_s + graded_s = 14400 + 10800 = 25200 s: main's 4 h for the program and the
+# preparation (the start window, counted from the service's start), then 3 h for the graded episode (the online
+# variant's default graded window; the mission's 1350 s of simulated time take about 10 minutes of simulation, its
+# frames about as much again, the oracle's whole mission about 10 minutes of wall clock).
 # [verifier] timeout_sec (version 2.1: twelve hidden sites and a 1350 s mission limit; version 2.0's
 # 24100 s was derived the same way for six sites at 2400 s), from numbers measured on the grading machine in a
 # container of the final task image of version 2.0 (image 67ad975eb0c4, the render bundle
@@ -70,14 +101,15 @@ memory_mb = 16384
 # 879-1146 s simulated; the oracle's verify of the twelve took 5290 s on 2026-11-17 15:24-16:52 EST at host load
 # 29-305).
 [agent]
-timeout_sec = 14400
+timeout_sec = 25200
 network_mode = "no-network"
 
 [verifier]
 timeout_sec = 37400
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
-# touched, with only the declared artifact (the submission) restored into it, so nothing else the agent left (a file,
-# a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there: tests/test.sh
+# touched, with only the declared artifacts (the submission and the graded episode's record directory) restored into
+# it, so nothing else the agent left (a file, a process, a program planted on root's PATH) reaches it.
+# environment/setup/setup.sh does not run there: tests/test.sh
 # builds the grader's root-owned copy of the givens itself. The agent's program runs during verify, so the verifier
 # gets the agent's resources (CPU rendering: no GPU).
 environment_mode = "separate"

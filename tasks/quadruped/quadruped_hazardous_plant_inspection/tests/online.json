@@ -1,0 +1,15 @@
+{
+ "note": "the dual mode's graded episode, for the verifier's cross-check of the record (tests/verify.py). The graded episode is one mission of the offline grader's fixed hidden set (hidden/seeds.json: twelve sites, ep01..ep12 = h01..h12 in the grader's order), drawn once with OS entropy; the mission (its site package and its pinned noise seed) lives root-only in environment/setup/online/episode.json and h01.tar.xz, where the graded episode's service reads it. seed_sha256 = sha256 of the seed's decimal string.",
+ "format": "arb-online-record/1",
+ "task": "quadruped_hazardous_plant_inspection",
+ "episode": "h01",
+ "seed_sha256": "709e360649d79b03ef9855579b3ca85ba53334c8bb5a2aa36304825793df8896",
+ "draw": {
+  "when_utc": "2026-11-24T04:01:17Z",
+  "from": "hidden/seeds.json (sha256 0da08d651795e57f3690b33d1dde83816bdd1d06817192437c316999d805f681): the offline grader's 12 hidden sites in episode order",
+  "how": "python3 -c 'import secrets; print(secrets.randbelow(12))' (OS entropy), once; 0 -> the first site, h01 (candidate c01, package sha256 6cc32fede6622050786cbe363d2ebce76075cf4b74d39f3869b7e351f11a0a6e, seed 6713670793581045746); the plain draw: the practice ground's sites are disjoint from the hidden set, so no unseen-instance order is needed"
+ },
+ "record": "/var/lib/arb-online/record.json",
+ "prep_s": 14400,
+ "graded_s": 10800
+}

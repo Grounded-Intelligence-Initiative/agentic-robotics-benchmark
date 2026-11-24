@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Setup: trusted root, cwd = this staged folder, before the agent phase. Stages the givens (the robot's documents, the
 # plant's documents and instrument catalogue, the training hall's sheets, the client library, the example program and
-# the practice launcher) into the agent home, owned by the agent, and starts the practice ground (below). The grader
+# the practice launcher) into the agent home, owned by the agent, and starts the graded episode's service (dual mode,
+# below) and the practice ground (below). The grader
 # never reads these copies: verification is separate (task.toml), and tests/test.sh builds the grader's own ROOT-OWNED
 # read-only copy of the same givens in the fresh verifier sandbox, from tests/setup_payload/ (a byte copy of payload/
 # here: change both together, then tests/given_hashes.json).
@@ -16,6 +17,44 @@ for entry in payload/* payload/.[!.]*; do
 done
 mkdir -p "$HOME_DIR/submission" && chown "$AGENT_USER:$AGENT_USER" "$HOME_DIR/submission"
 echo "[setup] givens staged in $HOME_DIR (owner $AGENT_USER)" >&2
+
+# Dual mode (experimental): the graded episode's service (online/graded_service.py), ONE mission of the grader's fixed
+# hidden set (online/episode.json and its site package, root-only here) that the agent plays itself through
+# plantcell.graded.connect_graded(). It runs the grader's own cell: the image's practice ground holds a byte copy of
+# tests/plantcell (/opt/plantcell-practice/plantcell), copied here, before any other account runs, to /opt/plantgrade
+# with the privileged reference program (online/reference, a byte copy of tests/reference, which the oracle's token
+# unlocks), owned by root and readable by the service's account `plantgrade` only (the worker checks every file
+# against online/cell_manifest.json before it imports the cell). Started as root, it builds the mission, then serves
+# as `plantgrade` (environment/Dockerfile: not the practice ground's `plantcell`) through /run/plantgrade/graded.sock
+# and writes the mission's record to /var/lib/arb-online (owner plantgrade, 0700), which task.toml declares an
+# artifact and tests/verify.py scores. The program freezes at the earlier of the graded start and the start window's
+# close: the service's root supervisor copies /home/user/submission into /var/lib/arb-online/submission_snapshot. The
+# command returns once the service serves. Practice ends when the graded episode starts (O13): the start writes
+# /run/plantgrade/flags/started, and the practice ground below ends its missions and refuses new ones once that flag
+# exists; checked here: the practice ground's account sees the flag's directory and the flag is not set.
+GRADED="$PWD/online"
+CELL_ROOT=/opt/plantgrade
+id -u plantgrade > /dev/null 2>&1 || { echo "[setup] the image lacks the account plantgrade" >&2; exit 1; }
+[ -d /opt/plantcell-practice/plantcell ] || { echo "[setup] the image lacks the practice ground's cell" >&2; exit 1; }
+chown -R root:root "$GRADED"
+chmod -R go-rwx "$GRADED"
+rm -rf "$CELL_ROOT"
+install -d -o root -g plantgrade -m 750 "$CELL_ROOT"
+cp -r /opt/plantcell-practice/plantcell "$CELL_ROOT/plantcell"
+cp -r "$GRADED/reference" "$CELL_ROOT/reference"
+find "$CELL_ROOT" -name '__pycache__' -type d -prune -exec rm -rf {} +
+chown -R root:plantgrade "$CELL_ROOT"
+find "$CELL_ROOT" -type d -exec chmod 750 {} +
+find "$CELL_ROOT" -type f -exec chmod 640 {} +
+env -i PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 HOME=/nonexistent \
+    /opt/venv/bin/python3 -I -B "$GRADED/graded_service.py" --config "$GRADED/service.json" < /dev/null > /dev/null 2>&1 \
+  || { echo "[setup] the graded episode's service did not come up (/var/lib/arb-online/service.log)" >&2; exit 1; }
+[ -S /run/plantgrade/graded.sock ] || { echo "[setup] the graded episode's service has no socket" >&2; exit 1; }
+runuser -u plantcell -- test -d /run/plantgrade/flags -a -x /run/plantgrade/flags -a ! -e /run/plantgrade/flags/started \
+  || { echo "[setup] the practice flag's directory is not as the practice ground needs it" >&2; exit 1; }
+! runuser -u "$AGENT_USER" -- ls "$CELL_ROOT" > /dev/null 2>&1 \
+  || { echo "[setup] the agent account can list $CELL_ROOT" >&2; exit 1; }
+echo "[setup] graded episode's service listening on /run/plantgrade/graded.sock" >&2
 
 # The practice ground: the image installs it under /opt/plantcell-practice for the account `plantcell` only (the agent
 # account can neither read nor list it); setup starts it now, to run through the agent's session, under a loop that

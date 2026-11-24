@@ -28,6 +28,15 @@ same reason with the latest snapshot of the debrief (taken every SNAPSHOT_EVERY_
 The allowance: at most `missions`
 missions in the whole session (counted from their reset; the count survives a restart of the service) and at most
 `open` at a time; the status is in /run/plantcell/practice_status.json (world-readable).
+
+Practice ends when the graded episode starts (dual mode, experimental; the online rule O13): offline, a program never
+practises in the middle of its graded mission. The graded episode's service (environment/setup/online/
+graded_service.py) writes the flag GRADED_FLAG the moment the agent starts the graded episode (before anything of it
+is simulated), in a directory only that service's account can write. From then on this service ends every open
+mission (the last line mission_over with the reason practice_closed and the mission's debrief, as at any other end;
+an open mission looks at the flag at every request and at least once a second while it waits) and answers every new
+connection's first request {"error": "practice_closed"} for the rest of the session, using no mission;
+practice_status.json says practice_closed. A flag that cannot be checked counts as set.
 """
 
 import fcntl
@@ -59,6 +68,26 @@ MAX_LINE = 4 * 1024 * 1024
 SNAPSHOT_EVERY_S = float(os.environ.get("PLANTCELL_PRACTICE_SNAPSHOT_S", "30"))
 RUNNING = os.path.join(STATE, "running")
 LAST_LINE_TIMEOUT_S = 60.0
+# O13 (dual mode): the flag the graded episode's service writes at the graded start; checked at least this often
+GRADED_FLAG = os.environ.get("PLANTCELL_GRADED_FLAG", "/run/plantgrade/flags/started")
+FLAG_POLL_S = 1.0
+PRACTICE_CLOSED = ("the graded episode has started: the practice ground is closed for the rest of this session "
+                   "(practice ends when the graded episode starts)")
+
+
+class PracticeClosed(Exception):
+    """The graded episode started while a mission waited for its next request."""
+
+
+def practice_closed():
+    """True once the graded episode has started (GRADED_FLAG exists); a flag that cannot be checked counts as set."""
+    try:
+        os.stat(GRADED_FLAG)
+        return True
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
 
 
 def log(msg):
@@ -112,7 +141,7 @@ class Ledger(object):
         return {"practice_missions": n, "missions_used": int(d["missions_used"]),
                 "missions_left": max(0, n - int(d["missions_used"])), "open_at_a_time": int(SITES["open"]),
                 "program_time_cap_s": float(SITES["program_time_cap_s"]), "silence_s": float(SITES["silence_s"]),
-                "sites": _site_list(), "debriefs": DEBRIEFS}
+                "sites": _site_list(), "debriefs": DEBRIEFS, "practice_closed": practice_closed()}
 
     def mission_of(self, pid):
         """The mission a mission's process (its pid) took, from the ledger; None if it took none."""
@@ -154,14 +183,23 @@ class Conn(object):
         self.sock = sock
         self.buf = b""
 
-    def read(self, timeout):
+    def read(self, timeout, closed=None):
+        """The next request object; None on EOF; raises socket.timeout on silence, ValueError on a malformed line, and
+        PracticeClosed once `closed()` is true (asked at least once a second while it waits)."""
         deadline = time.time() + timeout
         while b"\n" not in self.buf:
             left = deadline - time.time()
             if left <= 0:
                 raise socket.timeout()
-            self.sock.settimeout(left)
-            chunk = self.sock.recv(1 << 20)
+            if closed is not None and closed():
+                raise PracticeClosed()
+            self.sock.settimeout(min(left, FLAG_POLL_S) if closed is not None else left)
+            try:
+                chunk = self.sock.recv(1 << 20)
+            except socket.timeout:
+                if closed is None:
+                    raise
+                continue
             if not chunk:
                 return None
             self.buf += chunk
@@ -278,7 +316,10 @@ def serve(sock, ledger):
             else:
                 wait = silence
             try:
-                req = conn.read(wait)
+                req = conn.read(wait, closed=practice_closed if server is not None else None)
+            except PracticeClosed:
+                reason = "practice_closed"          # the graded episode started: this mission ends here (O13)
+                break
             except socket.timeout:
                 reason = "silence" if server is None or (time.time() - t0) - float(server.work_wall) < cap \
                     else "program_time_cap"
@@ -294,6 +335,11 @@ def serve(sock, ledger):
             rid, params = _plain_id(req.get("id")), req.get("params")
             if params is None:
                 params = {}                 # anything else that is not an object is the cell's bad_params
+            if practice_closed():           # O13: no request is served once the graded episode has started
+                if server is None:
+                    conn.send({"id": rid, "error": "practice_closed", "detail": PRACTICE_CLOSED}, timeout=5.0)
+                reason = "practice_closed"
+                break
             if method == "reset" and not isinstance(params, dict):
                 res = {"error": "bad_params", "detail": "reset(site): params must be an object"}
             elif method == "reset":
@@ -484,6 +530,17 @@ def _reap(children, ledger):
             _tell_failure(fd, pid, status, ledger)
 
 
+def _reap_refusers(pids):
+    """Collect the children that answered a connection practice_closed (O13)."""
+    for pid in list(pids):
+        try:
+            done, _st = os.waitpid(pid, os.WNOHANG)
+        except ChildProcessError:
+            done = pid
+        if done:
+            pids.discard(pid)
+
+
 def main():
     ledger = Ledger()
     try:
@@ -500,15 +557,40 @@ def main():
     log("listening on %s: %d sites, %d missions, %d at a time" % (SOCKET, len(SITES["sites"]), SITES["missions"],
                                                                  SITES["open"]))
     children = {}                       # pid -> a copy of its connection's descriptor (for the fallback last line)
-    srv.settimeout(1.0)
+    refusers = set()                    # children that answer a connection practice_closed
+    closed_published = False
+    srv.settimeout(FLAG_POLL_S)
     while True:
         _reap(children, ledger)
+        _reap_refusers(refusers)
+        if not closed_published and practice_closed():
+            closed_published = True     # O13: the status file says so once the graded episode has started
+            ledger.publish()
+            log("practice closed: the graded episode has started")
         try:
             conn, _ = srv.accept()
         except socket.timeout:
             continue
         conn.settimeout(None)
         _reap(children, ledger)
+        if practice_closed():
+            # O13: every new connection's first request is answered practice_closed (by a child, so that the service
+            # never waits on a client), and the connection is closed; no mission is used
+            pid = os.fork()
+            if pid == 0:
+                srv.close()
+                try:
+                    c = Conn(conn)
+                    req = c.read(10.0)
+                    c.send({"id": _plain_id((req or {}).get("id")), "error": "practice_closed",
+                            "detail": PRACTICE_CLOSED}, timeout=5.0)
+                except Exception:  # noqa: BLE001
+                    pass
+                finally:
+                    os._exit(0)
+            refusers.add(pid)
+            conn.close()
+            continue
         if len(children) >= int(SITES["open"]):
             pid = os.fork()
             if pid == 0:

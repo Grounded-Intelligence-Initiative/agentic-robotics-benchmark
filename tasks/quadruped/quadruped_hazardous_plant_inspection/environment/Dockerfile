@@ -42,6 +42,10 @@ RUN [ ! -e /opt/venv/.lock ] || chmod 0644 /opt/venv/.lock
 
 # The practice ground's own account (the service and the render bundle below are readable by it).
 RUN useradd --system --no-create-home --home-dir /opt/plantcell-practice --shell /usr/sbin/nologin plantcell
+# Dual mode (experimental): the graded episode's service (environment/setup/online/graded_service.py, started by
+# environment/setup/setup.sh) serves the agent's one graded mission as its own account, never root, never the agent,
+# and not `plantcell`, whose service answers the agent's practice missions.
+RUN useradd --system --user-group --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin plantgrade
 
 # ---- task assets: the cell's render bundle (version 2: the buildings' look; albedo maps, meshes and a
 # manifest with each file's sha256, made by the maintainers' bundle tool from the licensed art packs).
