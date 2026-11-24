@@ -11,7 +11,13 @@
   "roughness_scale": 1.0,
   "metallic_scale": 1.0,
   "specular": 0.3,
-  "gain_by_look": {}
+  "gain_by_look": {
+   "cable": [
+    1.0,
+    2.2,
+    3.0
+   ]
+  }
  },
  "filament_numeric": {
   "filament.ao.enabled": 1,
@@ -35,9 +41,7 @@
   "supersample": 2,
   "lavapipe_threads": 4,
   "supersample_by_camera": {
-   "overhead": 1,
-   "front": 1,
-   "side": 1
+   "overhead": 1
   }
  }
 }

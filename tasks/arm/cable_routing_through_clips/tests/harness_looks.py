@@ -3,8 +3,8 @@
   base  [r, g, b] linear            col  (map of the render bundle, linear mean the map is tinted to, or None)
   metal, rough                      rgh  (unused, mean roughness, unused): the mean is the surface's roughness
   tile  metres per repeat of a map (part uv are metres); uv "own": the part's uv run 0..1 over the map
-The cable keeps the task's colour (an orange jacket); a clip's lead-in fins and retaining tabs are off-white nylon on
-steel pins; a post is anodised with a black cap.
+The cable keeps the task's colour (an orange jacket); a clip's lead-in fins are black nylon (off-white fins on the off-white board gave
+a CIELAB distance of 5 to 6 in the overhead camera), its retaining tabs off-white nylon, on steel pins; a post is anodised with a black cap.
 """
 
 
@@ -26,7 +26,7 @@ LOOKS = {
     'screw': {'base': [0.55, 0.55, 0.56], 'metal': 1.0, 'rough': 0.3},
     # ---- fixtures
     'pin_steel': {'base': STEEL, 'metal': 1.0, 'rgh': (None, 0.24, 0.5), 'tile': 0.02},
-    'fin_nylon': {'base': S(0.86, 0.85, 0.80), 'rgh': (None, 0.46, 0.6), 'tile': 0.03},
+    'fin_nylon': {'base': S(0.07, 0.07, 0.08), 'rgh': (None, 0.46, 0.6), 'tile': 0.03},
     'tab_nylon': {'base': S(0.80, 0.79, 0.74), 'rgh': (None, 0.46, 0.6), 'tile': 0.03},
     'post_alu': {'base': S(0.42, 0.36, 0.29), 'metal': 1.0, 'rgh': (None, 0.30, 0.5), 'tile': 0.03},
     'post_cap': {'base': S(0.10, 0.10, 0.11), 'rgh': (None, 0.55, 0.6), 'tile': 0.02},

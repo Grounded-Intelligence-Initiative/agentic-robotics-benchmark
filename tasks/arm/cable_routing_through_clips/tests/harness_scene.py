@@ -267,7 +267,9 @@ def parts(ep, m):
 
     # ---- the cable: per segment a tube piece along its body's x and a ball at its joint; a ferrule on the free end
     seg = ep.length / H.N_SEG
-    piece = G.merge(P.smooth_cyl([0, 0, 0], [seg, 0, 0], R, nseg=20, caps=False), P.ball([0, 0, 0], R, nlat=6, nlon=20))
+    # the joint's ball is 0.05 mm under the tube's radius: at the same radius its surface lies in the tubes' and a
+    # pixel of the highlight differs by a level between processes
+    piece = G.merge(P.smooth_cyl([0, 0, 0], [seg, 0, 0], R, nseg=20, caps=False), P.ball([0, 0, 0], R - 0.00005, nlat=6, nlon=20))
     names = [m.body(b).name for b in range(m.nbody) if m.body(b).name.startswith("cB")]
     for bn in names:
         put(bn, "cable", piece, "cable")
@@ -317,7 +319,10 @@ def parts(ep, m):
                 put(body, "panda_%d" % g, mesh, look)
         elif t == BOX and (name.endswith("_jaw") or "groove" in name):
             Rg = quat_mat(m.geom_quat[g])
-            put(body, "jaw", G.transform(G.bevel_box(m.geom_size[g][:3], 0.0002), Rg, m.geom_pos[g]), "jaw" if name.endswith("_jaw") else "jaw_face")
+            half = np.array(m.geom_size[g][:3], float)
+            if not name.endswith("_jaw"):
+                half[0] -= 0.0003       # a groove face ends 0.3 mm inside the carrier's end: drawn flush, the two end faces lie in one plane and the picture differs between processes in a pixel
+            put(body, "jaw", G.transform(G.bevel_box(half, 0.0002), Rg, m.geom_pos[g]), "jaw" if name.endswith("_jaw") else "jaw_face")
     return out
 
 
