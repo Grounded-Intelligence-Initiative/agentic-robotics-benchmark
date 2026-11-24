@@ -40,12 +40,12 @@ gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000"]
 # starts the commissioning service, waiting for its renderer (Isaac Sim's start; on a cold cache the RTX pipelines
 # compile, measured for this stack by hazard_bay_build at about 7 minutes in a fresh container; 20 s here, warm).
 # [agent] timeout_sec: 4 h. The development set records in the background during the first minutes (ten procedures,
-# 400 frames each, about 0.1 s a frame here); a commissioning session takes 2 to 4 minutes of wall clock.
+# 401 frames each: 7 min 15 s here); a commissioning session takes 1 to 3 minutes of wall clock.
 # [verifier] timeout_sec: the renderer's start (cold, up to renderer_start_timeout_s = 2400 s), the canary (seconds),
-# then 12 procedures x 800 steps: each step one frame (about 0.1 s here, measured: tests/README.md) plus the
-# controller's reply, whose total is capped at 2400 s (0.25 s a step), plus the scenes' loading (about 7 s each):
-# 2400 + 9600 x 0.1 + 2400 + 12 x 7 = about 5900 s at the bounds, 20 to 25 minutes for the reference on a warm cache.
-# 9000 s leaves room for a host that renders at half this speed.
+# then 12 procedures x 800 steps: each step one frame (0.07 to 0.09 s here on a shared machine, measured:
+# tests/README.md) plus the controller's reply, whose total is capped at 2400 s (0.25 s a step), plus the scenes'
+# loading (about 7 s each): 2400 + 9600 x 0.09 + 2400 + 12 x 7 = about 5750 s at the bounds; the reference's whole
+# verify took 13 to 15 minutes here on a warm cache. 9000 s leaves room for a host that renders at half this speed.
 [agent]
 timeout_sec = 14400
 network_mode = "no-network"

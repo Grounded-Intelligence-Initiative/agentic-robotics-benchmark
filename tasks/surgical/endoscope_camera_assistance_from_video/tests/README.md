@@ -126,7 +126,7 @@ it (RTX 6000 Ada, driver 570, 2026-11-24):
   warm cache. A cold cache (a fresh container) was not measured here; `hazard_bay_build` measured about 7 minutes
   for the same stack.
 * **The camera is what the model says.** The canary (below) puts a marker ball at known points and compares where
-  it lands in the frame with `model.project`: within 0.75 px for both scopes here.
+  it lands in the frame with `model.project`: within 1.1 px for both scopes in every run here.
 
 ## 3. What the grader checks (`tests/verify.py`, `endosim/episode.py`)
 
@@ -189,7 +189,22 @@ during fine work, and withdraws to clean a smeared lens. The anchor is what perf
 task's information rule; what it loses, it loses to the holder's speed on long moves and to the first seconds of
 each procedure.
 
-The anchor's value, its spread and their source are in `anchor.json` and in the status log.
+The anchor's value, its spread and their source are in `anchor.json` and in the status log. Because the reference
+reads the state and never the picture, its score is the same number on every run and with or without rendering
+(`tests/review/fast_eval.py` plays the same sessions with a null renderer in about a minute; that is how it was
+tuned). A submission that reads the picture has no such luck: its frames differ from run to run in their last bits.
+
+**A pixel baseline** (`tests/review/pixel_baseline/`, maintainers' evidence, not part of grading): what the task
+looks like from the public interface. A 1.3 M parameter net, trained for 95 s on eight development recordings as an
+agent could train it (tip heat maps for the left and the right instrument, their apparent size, the smeared lens),
+feeds the reference's own control law in place of the privileged observation, works out the scope from how the
+rebuilt tips drift when the camera moves, and gets no token. On the two held-out development recordings it finds
+98 % of the tips, 3.6 px off in the median. On the hidden set it scores useful_view_fraction 0.342 (reward 0.39),
+per procedure 0.04 to 0.67, against the reference's 0.903: the zoom band fails on 34 % of the steps (the apparent
+size, and with it the depth, is the weakest thing it reads), the safe zone on 42 %, the steadiness rule on 23 % (a
+detection that jitters moves the camera during fine work). So the task can be done from the frames, a first learned
+detector is far from enough, and what is missing is engineering an agent can do: filtering in time, a better
+reading of depth, looks the development set does not show. It was written once and never tuned in closed loop.
 
 ## 5. The agent's side
 
@@ -214,8 +229,17 @@ ones are in neither the image nor the sandbox.
   and the commissioning service have not run as their accounts, `ale validate` and `ale run` have not run, and the
   anchor was measured natively. See the status log for exactly what was and was not exercised.
 * **Difficulty is unmeasured.** The target is a frontier-model reward of roughly 0.3 or below from perception and
-  control; no frontier model has been run. If a model saturates the task, the levers that keep it honest are in the
-  generator (more looks per procedure, denser smoke, more assistant interference, longer exchanges), not penalties.
+  control; no frontier model has been run. The one data point is the pixel baseline of section 4 (reward 0.39 with
+  the reference's control law handed to it, which an agent does not have). If a model saturates the task, the levers
+  that keep it honest are in the generator (the looks pool, denser smoke, more assistant interference, longer
+  exchanges, tips buried deeper), not penalties.
+* **Numerics are not pinned.** The simulator and the reference compute with numpy's default kernels; on another CPU
+  a threshold can flip on a step. The reference repeats to the last digit here; `full_at` 0.98 is the margin.
+* **The controller is not confined to no network.** It runs through the kit's `Solver` as the agent's account; the
+  engine opens egress during verify (`docs/security-model.md` section 4). `hazard_bay_build`'s `nonet_exec.py` is the
+  model if a maintainer wants a seccomp filter here; it was not added because it could not be tested on this server.
+* **No repository-level test.** The rule here was one folder per pull request, so the copy check lives in
+  `tests/review/check_copies.py` instead of the repository's `tests/` (compare `tests/test_pump_skid_commissioning.py`).
 * **GPU models.** `task.toml` names RTX-4090, RTX-5090 and RTX-PRO-6000 from `hazard_bay_build`'s validation of the
   same Isaac Sim stack; this task has run on none of them (status log).
 * **Recorded surgeon motion.** The instruments move by procedural primitives. Real recordings (JIGSAWS kinematics,
@@ -235,4 +259,116 @@ ones are in neither the image nor the sandbox.
 
 ## 7. Status log
 
-(newest first; see the entries below)
+Newest first. Each entry says where the numbers come from; "here" is the development server (arrakis: Ubuntu 22.04,
+RTX 6000 Ada, NVIDIA driver 570.195.03, Isaac Sim 6.2.0.0 + Isaac Lab 3.0.0 in a native Python 3.12 venv, no root,
+no Docker).
+
+### 2026-11-24: version 0.1 built; verified natively, not yet in the engine
+
+**Verified here.**
+
+* `ale lint` on the folder (pinned engine `bfb7505`, run from the main checkout's `vendor/ale`): ok.
+* `scripts/lint_domain.py` on the folder: no problem. `scripts/task_assets.py check`: 0 problems (the task has no
+  assets). `scripts/gpu_types.py check` (engine environment): the three names accept real models.
+* The kit: `tests/robotics_grader/` byte-identical to `shared/robotics_grader/` (`diff -r`; also
+  `tests/review/check_copies.py`, which checks the commissioning service's copy of `endosim/` and the two payload
+  copies of `model.py` as well); the kit's selftest passes.
+* The grader's entry point on an untouched home (`tests/verify.py` itself, natively): the kit's zero verdict, exit
+  0, at once, no renderer started.
+* **The grader's episode loop, natively** (`tests/review/run_native.py`: `verify.grade` and `verify.score` unchanged,
+  the same hidden set, sessions, probes, budgets, renderer and canary; only the two launchers differ: the controller
+  and the renderer run as the calling account instead of through `runuser`). Every run below was inside a mount
+  namespace that shows GPU 0 only and an empty network namespace with a loopback (no route out):
+
+  | submission | procedures | useful_view_fraction | reward | notes |
+  |---|---|---|---|---|
+  | none | - | (zero verdict) | 0 | no `run.sh`: the honest zero |
+  | never moves (`~/example`) | 4 | 0.0000 | 0 | lock fails, 0 of 210 probes; render-free, all 12: 0.0000 each |
+  | reference, run 1 | 12 | 0.9034375 | 1.0 | 8673 of 9600 steps; probes 570/570; 794 s wall, 68.7 ms a frame |
+  | reference, run 2 | 12 | 0.9034375 | 1.0 | probes 578/578; 836 s wall |
+  | reference, run 3 | 12 | 0.9034375 | 1.0 | probes 534/534; the renderer lost the GPU once and was restarted (below); 919 s wall |
+  | pixel baseline (section 4) | 12 | 0.3422 | 0.39 | probes 585/589; 508 s of controller time |
+  | `bad:diver` | 1 | 0.0000 | 0 | 1623 lens contacts, lens rule fails on 96 % of the steps; lock fails |
+  | `bad:cleaner` | 1 | 0.0000 | 0 | one cleaning counted after 4 s in the cannula |
+  | `bad:crash` | 2 | 0.0000 | 0 | aborted at step 100 twice, the rest stood still; one restart between |
+  | `bad:garbage` | 1 | 0.0000 | 0 | malformed action at step 50: aborted, the rest stood still |
+  | `bad:slow` | 1 | 0.0000 | 0 | reply budget (200 s for one procedure) used up at step 319, the rest stood still |
+  | `bad:jitter` | 1 | 0.0013 | 0.00 | random rates pass the lock (56/56), as documented, and earn nothing |
+
+  The reference's three runs are the same number: it reads the state, not the picture, and its memory is keyed by
+  the step index, so neither the renderer nor the probes move it. The render-free loop (`fast_eval.py --hidden`)
+  gives the same 0.9034 and the same per-procedure values (0.939 0.865 0.953 0.926 0.878 0.914 0.838 0.934 0.875
+  0.928 0.926 0.868; `hidden/selection.json`). A camera parked at the best fixed pose found by a grid search with
+  the hidden set in hand scores 0.111.
+* The render canary in every run: all ten markers found, at most 1.11 px from where `model.project` puts them.
+* **A renderer failure, recovered.** In the reference's third run the renderer lost the GPU after 833 s
+  (`VkResult: ERROR_DEVICE_LOST`, "A GPU crash occurred"; the GPU is shared with other users' and another
+  session's Isaac processes). The grader started a fresh renderer, rebuilt the scene, drew the frame again and
+  finished the run on the same number (`renderer_restarts` 1 in the verdict's metrics). One loss in about
+  85 000 frames rendered here; an evaluation allows three restarts.
+* An earlier full run of the reference in a network namespace whose loopback was down: the same score, the
+  renderer's start 244 s instead of 14 to 22 s.
+* The commissioning service, natively (the daemon as the calling account, its paths overridden by environment
+  variables): renderer up and canary passed in 24 to 40 s; the development set recorded in 7 min 15 s (ten
+  recordings, 4010 frames, 322 MB; labels checked against the pictures by overlay); `status`, a session refused
+  while recording, an unknown procedure refused, a session through `~/commission/run_session.py` with the example
+  controller (the session counted, 12 to 11; repeated requests asked and compared; frames and log saved).
+* `solution/solve.sh` against a copy of the payload: the reference submission is built and its `run.sh` speaks the
+  wire.
+
+**Not verified: none of this could be done on this server.**
+
+* **The Docker image.** `environment/Dockerfile` has never been built. It follows `hazard_bay_build`'s line by line
+  for the Isaac install; the account `endosim`, the 0700 service folder and the self-checks at its end are new and
+  untested.
+* **`environment/setup/setup.sh`** as root in a sandbox: staging, the service started through `runuser`, the wait for
+  its renderer inside the engine's 1800 s bound. A cold cache in a fresh container was not measured.
+* **`ale validate`** (the untouched and the oracle episode), and with it: the engine's stages, separate
+  verification and the restore of `/home/user/submission`, `tests/test.sh` under `ALE_VERIFY_PYTHON`,
+  `verify.engine_renderer` (the renderer as `endosim` through `runuser`, Kit's folders handed to that account, the
+  shared memory sealed), the kit's `Solver` through `runuser` with the agent's account cleared, the timeouts of
+  `task.toml`.
+* **`ale run` with frontier models.** The difficulty target is unmeasured.
+* **A cloud-listed GPU model** (RTX 4090, RTX 5090, RTX PRO 6000, H100, H200). Everything above was rendered on an
+  RTX 6000 Ada with driver 570, which makes DLSS fall back to an older denoiser preset: the frames here are not
+  the frames an evaluation host draws. The score does not read frames, but a model-specific failure (a crash at the
+  first render, a darker picture, a renderer too slow for the budgets) would show only there.
+
+**`gpu_types`.** `task.toml` names `["RTX-4090", "RTX-5090", "RTX-PRO-6000"]`, cheapest first, in both tables. The
+reason is not a test of this task: it is the list on which `hazard_bay_build` validated the same Isaac Sim 6.2 RTX
+stack, and it keeps the task off the H100 and H200, where that stack's rendering is unproven or known to fail for
+other Isaac tasks. To make the list this task's own, per model: `ale validate` (the canary's numbers are in the
+oracle episode's `verification.json` trace and the grader's log), a frame from `tests/review/render_preview.py`
+compared with one from a validated model, and the verify wall time against `[verifier].timeout_sec`. A model is
+added or dropped on that evidence; the key is left out only if all five run it.
+
+**The anchor.** `anchor.json` holds 0.9034 with `full_at` 0.98, measured natively as above. It has to be measured
+again through `ale validate` before the task is submitted; if the engine's value differs, the engine's is the anchor.
+
+**Decisions made without the owner, to confirm.**
+
+* The task name is provisional (folder name and `task.toml` only).
+* `gpu_types` as above. Agent budget 4 h, verifier 9000 s, 8 CPUs, 32 GB, one GPU.
+* The graded procedures draw their looks from a wider pool than the development set (section 2). It was added after
+  the first pixel baseline showed that perception was easy when both came from one pool. The manual and the
+  instruction say so.
+* The match lock's perturbed copy is recognisable by its joint readings, and the instruction tells the agent how to
+  keep it out of its controller's memory.
+* The development set is recorded at setup on the sandbox's GPU instead of being fetched from the asset dataset
+  (nothing to upload, the frames come from the renderer that grades; it costs the first 7 minutes of the session).
+* No recorded surgeon motion and no dataset (section 6).
+
+**Next, in order.** (1) Build the image on a machine with Docker and an RTX GPU; fix what the build shows. (2)
+`ale validate`; read the canary and the timings; re-measure the anchor. (3) The same on each cloud GPU model;
+settle `gpu_types`. (4) `ale run` with frontier models; if they are above about 0.3, raise the perception
+challenge in the generator. (5) Register the name in the coordination sheet; open the pull request. A card for the
+maintainers, as a suggestion: title "Hold a laparoscope by video alone", summary "Write the controller of a
+four-joint camera holder that keeps a surgeon's instruments in a usable view through recorded procedures, from the
+endoscope's video and its own joints alone.", platforms `["surgical"]`, stages `["behavior"]`. Until the card is in
+`tasks/cards.toml`, the repository's `tests/test_task_cards.py::test_the_repository_has_a_card_for_every_task`
+fails for this folder, as for any contributed task.
+
+**How the native runs were isolated.** Isaac Sim opens a context of about 436 MiB on every GPU of the machine,
+whatever `active_gpu` says. Every Isaac process of this task was therefore started inside
+`unshare -r -m` with `/dev/null` bound over the other GPUs' device nodes (then mapped back to the caller's uid), and,
+for the measurements above, inside an empty network namespace with the loopback up.

@@ -70,7 +70,7 @@ program's **stdout is the wire**: print `READY` when you are ready, then only re
   with the holder standing still.
 * Your program runs in a fresh copy of this environment that holds nothing of yours but `/home/user/submission`: no
   `~/given`, no commissioning service, no file you left elsewhere, no network. The same GPU and the same Python are
-  there. Keep the folder small (model weights included) and load quickly.
+  there. Keep the folder small (model weights included), load quickly, and write scratch files under `/tmp` only.
 
 ## What you are given
 
