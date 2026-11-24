@@ -78,7 +78,8 @@ POST_H = 0.030
 POST_CAP_R = 0.018
 SEATED_Z = 0.013                   # a clip counts when the cable's centre line crosses between the pins below this (above the board)
 POST_TOL = 0.010                   # the cable within this of the post's surface, below its top
-MOUNT_TOL = 0.012                  # m: a fixture or the connector is mounted within this of its printed place
+MOUNT_TOL = 0.020                  # m: a fixture or the connector is mounted within this of its printed place
+BUILT_TRIES = 20                   # draws of the mounting errors for one drawing before the drawing is dropped
 CLIP_AXIS_TOL = math.radians(8.0)  # a clip's passage axis is within this of the printed one
 # The strain-relief boot at the connector: the cable's fixed end is held by a flexible boot that stretches along the
 # connector's axis before the conductors take the load. Stiffness from the boot itself: a TPE boot of Shore 60 A
@@ -180,6 +181,40 @@ def _disc(rng, r):
     return np.array([rad * math.cos(ang), rad * math.sin(ang)])
 
 
+def _built_ok(conn, built, end, length):
+    """Is the board as built (every mount moved within MOUNT_TOL of the print) still a fair board for its drawing?
+    The passage points (a clip's place, a post's corner) in route order: every leg 9 to 23 cm; no two fixtures
+    nearer than 7 cm; no leg within 3 cm of a fixture that is not at one of its ends; a post still turns the route
+    to its printed side by at least 0.45 rad and a clip by at most 0.9 rad; the route still fits the cable."""
+    pts = [np.asarray(conn, float)] + [np.asarray(g["corner"] if g["type"] == "post" else g["pos"], float) for g in built]
+    pts.append(np.asarray(end, float))
+    legs = [float(np.linalg.norm(b - a)) for a, b in zip(pts[:-1], pts[1:])]
+    if min(legs[1:-1] or [1.0]) < 0.09 or max(legs[1:-1] or [0.0]) > 0.23 or legs[0] < 0.10:
+        return False
+    if sum(legs) + 0.12 > length:
+        return False
+    P = np.array([g["pos"] for g in built])
+    n = len(built)
+    if min(np.linalg.norm(P[i] - P[j]) for i in range(n) for j in range(i + 1, n)) < 0.07:
+        return False
+    for i in range(len(pts) - 1):
+        for j, g in enumerate(built):
+            if j in (i - 1, i):
+                continue
+            if _seg_dist(g["pos"], pts[i], pts[i + 1]) < 0.03:
+                return False
+    for k, g in enumerate(built):
+        a, b, c = pts[k], pts[k + 1], pts[k + 2]
+        d_in, d_out = math.atan2(b[1] - a[1], b[0] - a[0]), math.atan2(c[1] - b[1], c[0] - b[0])
+        turn = (d_out - d_in + math.pi) % (2 * math.pi) - math.pi
+        if g["type"] == "post":
+            if (turn > 0) != (g["side"] == "left") or abs(turn) < 0.45:
+                return False
+        elif abs(turn) > 0.9:
+            return False
+    return True
+
+
 def make_episode(seed, n_fixtures=None):
     """The episode of `seed`. `n_fixtures`: None = 3 to 5, or a fixed count (the development boards use 3)."""
     seed = int(seed) & ((1 << 64) - 1)
@@ -250,15 +285,27 @@ def make_episode(seed, n_fixtures=None):
             continue
         ep.nominal = {"connector": {"pos": conn0, "heading": heading}, "fixtures": fixtures, "route": A}
         # the cell as built: every mount within tolerance of the print
-        built = []
-        for f in fixtures:
-            g = dict(f)
-            g["pos"] = f["pos"] + _disc(rng, MOUNT_TOL)
-            if f["type"] == "clip":
-                g["axis"] = f["axis"] + float(rng.uniform(-CLIP_AXIS_TOL, CLIP_AXIS_TOL))
-            built.append(g)
+        # (drawn again, up to BUILT_TRIES times, until the board as built is still a board a fitter could have put
+        # together to this drawing: _built_ok; a drawing for which that never happens is dropped)
+        for _mount in range(BUILT_TRIES):
+            built = []
+            for f in fixtures:
+                g = dict(f)
+                g["pos"] = f["pos"] + _disc(rng, MOUNT_TOL)
+                if f["type"] == "clip":
+                    g["axis"] = f["axis"] + float(rng.uniform(-CLIP_AXIS_TOL, CLIP_AXIS_TOL))
+                else:
+                    g["corner"] = f["corner"] + (g["pos"] - f["pos"])
+                built.append(g)
+            conn_b = conn0 + _disc(rng, MOUNT_TOL)
+            ep.mount_draws = _mount + 1
+            if _built_ok(conn_b, built, pts[-1], ep.length):
+                break
+        else:
+            ep.rejected_built = getattr(ep, "rejected_built", 0) + 1
+            continue
         ep.fixtures_ab = built
-        ep.conn_ab = conn0 + _disc(rng, MOUNT_TOL)
+        ep.conn_ab = conn_b
         ep.conn_heading_ab = heading + float(rng.uniform(-CLIP_AXIS_TOL, CLIP_AXIS_TOL))
         ep.initial_ab = _initial_shape(rng, ep)
         if ep.initial_ab is not None:

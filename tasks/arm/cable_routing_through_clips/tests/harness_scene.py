@@ -267,10 +267,9 @@ def parts(ep, m):
 
     # ---- the cable: per segment a tube piece along its body's x and a ball at its joint; a ferrule on the free end
     seg = ep.length / H.N_SEG
-    # the joint's ball is 0.05 mm under the tube's radius: at the same radius its surface lies in the tubes' and a
-    # pixel of the highlight differs by a level between processes
-    piece = G.merge(P.smooth_cyl([0, 0, 0], [seg, 0, 0], R, nseg=20, caps=False), P.ball([0, 0, 0], R - 0.00005, nlat=6, nlon=20))
+    # the joint's ball is 0.05 mm under the tube's radius: at the same radius its surface lies in the tubes'
     names = [m.body(b).name for b in range(m.nbody) if m.body(b).name.startswith("cB")]
+    piece = G.merge(P.smooth_cyl([0, 0, 0], [seg, 0, 0], R, nseg=20, caps=False), P.ball([0, 0, 0], R - 0.00005, nlat=6, nlon=20))
     for bn in names:
         put(bn, "cable", piece, "cable")
     put(names[-1], "cable_end", P.smooth_cyl([seg - 0.001, 0, 0], [seg + 0.004, 0, 0], R * 0.72, nseg=20, caps=True), "cable_end")
@@ -366,8 +365,35 @@ class Collector(object):
         return out
 
 
+SKINNED = ("cable",)                # looks drawn as ONE mesh whose vertices follow their bodies (see items)
+
+
 def items(ep, m):
+    """The parts as the renderer's items: merged per frame and material. The cable is one item of its own kind
+    (frame "skin", with `bone`: the body of every vertex): its forty segments overlap at every joint, and as forty
+    meshes they were drawn in an order that could change from process to process, so that a pixel on a line where
+    two of them cross differed by a level. As one mesh, moved by the renderer vertex by vertex, its triangles are
+    always drawn in the same order."""
     col = Collector()
+    skin = {}
     for body, _name, mesh, look, opt in parts(ep, m):
+        if look in SKINNED and body != "world":
+            V, N, UV, F = [np.asarray(x) for x in mesh]
+            g = skin.setdefault(look, {"V": [], "N": [], "U": [], "F": [], "bone": [], "nv": 0})
+            g["V"].append(V.astype(np.float64)); g["N"].append(N.astype(np.float64)); g["U"].append(UV.astype(np.float64))
+            g["F"].append(F.reshape(-1, 3).astype(np.int64) + g["nv"])
+            g["bone"].append(np.full(len(V), int(m.body(body).id), np.int32))
+            g["nv"] += len(V)
+            continue
         col.add("world" if body == "world" else ("body", int(m.body(body).id)), look, mesh, opt)
-    return col.items({"board_print": board_print(ep)})
+    out = col.items({"board_print": board_print(ep)})
+    for look, g in skin.items():
+        rgb, rough, metal, emis, stex, tile = material(look)
+        N = np.concatenate(g["N"])
+        out.append({"frame": "skin", "look": look, "tex": None, "mat": (rgb, rough, metal, emis),
+                    "bone": np.concatenate(g["bone"]),
+                    "mesh": (np.ascontiguousarray(np.concatenate(g["V"]), np.float32),
+                             np.ascontiguousarray(N / (np.linalg.norm(N, axis=1, keepdims=True) + 1e-12), np.float32),
+                             np.ascontiguousarray(np.concatenate(g["U"]) / (tile or 1.0), np.float32),
+                             np.ascontiguousarray(np.concatenate(g["F"]).reshape(-1), np.uint32))})
+    return out

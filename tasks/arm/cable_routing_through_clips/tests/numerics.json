@@ -1,5 +1,5 @@
 {
- "fingerprint": "2961ff33173801d6349f7d8a7f9c14d828f508d12d8e3e20f6bf39e422c1effd",
+ "fingerprint": "4ebe8c95b146a0508ee99f5fc288204edd9ad9faa1ee7c733a9cdfd70a4fa6df",
  "math": {
   "big": "c7969dbab7b56aa3",
   "cv2": "2dde0760d4da31a3",
@@ -22,7 +22,7 @@
   "trig_float64": "fa0456f886dc5f31"
  },
  "seed": 20261124,
- "simulation": "2efd1dc7c4a97b168a50c33c8ba6ec95d310cf957eb008867469e21178876ccb",
+ "simulation": "0e9f52f5304744b4a6f823f6a5b003fa78a7f8e608195c840fcd89c51e366b19",
  "steps": 120,
  "what": "fingerprint: sha256 of `simulation` (the sha256 of qpos and qvel after each of the script's control steps, OPENBLAS_CORETYPE=Haswell) and of `math` (hashes of NumPy, SciPy and OpenCV results from a Python started as a controller is: tests/numerics_check.py)"
 }

@@ -55,7 +55,8 @@ is `z = 0`. Lengths in metres, angles in radians.
   pushes the tabs aside and they close over it; in tests they kept it in under a pull of 9 N on the cable, and the
   cable can still slide along the passage. The fins guide a cable that comes down within about 5 mm of the slot's
   centre line; 8 mm off, half of the presses fail; 11 mm off, all do. The clip's passage axis is the direction in
-  which the cable runs through it. **A clip is made when the settled cable's centre line passes between the two
+  which the cable runs through it; it follows the route, and a cable that arrives along the route from the fixture
+  before enters the clip: the axis does not have to be measured. **A clip is made when the settled cable's centre line passes between the two
   pins lower than 13 mm above the board.**
 - **Post**: an anodised post of 12 mm radius and 30 mm height with a black cap of 18 mm radius, 6 mm thick. The cable
   has to pass it on the stated side. **A post is made when the settled cable comes within 10 mm of the post's
@@ -71,7 +72,7 @@ is `z = 0`. Lengths in metres, angles in radians.
   board, the grip site has to be 17 mm plus the cable's radius above the board's top, with the cable between the
   open jaws. Each finger presses with up to 60 N; a gripped cable does not slip in the groove below a pull of 60 N,
   so the connector's limit is reached before the grip slips.
-- **Mounting tolerances**: the connector and every fixture are mounted within 12 mm of their printed places, a
+- **Mounting tolerances**: the connector and every fixture are mounted within 20 mm of their printed places, a
   clip's passage axis within 8 degrees (0.14 rad) of the printed one. The print and the job sheet give the nominal
   places; where the fixtures really are you find from the pictures.
 
@@ -99,10 +100,11 @@ picture's right, +y up):
 - `overhead`, 960 x 720, fixed 1.05 m above the board's centre, looking straight down; the picture's top is the far
   side of the board (+x), its right is -y. It shows the whole board and a strip of bench round it. **The arm reaches
   over the board from the picture's bottom edge and hides what is under it**, at the start pose the middle of the
-  board's near half. A clip is about 10 pixels across in it: enough for its place, not for its axis.
+  board's near half. A clip is about 10 pixels across in it: enough to find it, not to place a cable in
+  its slot.
 - `wrist`, 480 x 360, on the hand (its pose is given in the grip site's frame), looking out of the hand along the
   grip site's `z`. The lowest sixth of its picture is the hand's own flange, and the two jaws show at the lower
-  edge. From 15 to 30 cm above the board it shows a fixture large enough to measure its place and axis.
+  edge. From 15 to 30 cm above the board it shows a fixture large enough to measure its place.
 
 There are no shadows of a lamp in the pictures; the light is even.
 

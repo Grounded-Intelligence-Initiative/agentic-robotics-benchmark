@@ -418,11 +418,14 @@ class _Filament(object):
         stat = np.load(os.path.join(RENDER_DIR, "textures.npz"))
         texs = {}
         self.rend = []
+        self.skins = []
 
         def texture(key, img):
             if key not in texs:
                 texs[key] = self._texture(img)
             return texs[key]
+
+        mats = {}
 
         def add(mesh, mat, tex, frame, look):
             V, N, U, I = mesh
@@ -430,15 +433,29 @@ class _Filament(object):
             gain = np.broadcast_to(np.asarray(rl.get("gain_by_look", {}).get(look, rl.get("gain", 1.0)), float), (3,))
             rgba = np.ones(4, np.float32)
             rgba[:3] = srgb_from_linear(linear_from_srgb(np.asarray(rgb, float)[:3]) * gain)
-            m = self._mesh(V, N, U, I)
-            material = F.Material(color=rgba, roughness=float(np.clip(rough * rl.get("roughness_scale", 1.0), 0.05, 1.0)),
-                                  metallic=float(metal) * float(rl.get("metallic_scale", 1.0)), specular=float(rl.get("specular", 0.3)),
-                                  emissive=float(emis), color_texture=tex)
+            if frame == "skin":
+                cfg = self._mesh_config(len(V), len(I))
+                m = self.ctx.create_mesh(cfg)
+                self._mesh_upload(m, cfg, V, N, U, I)
+            else:
+                m = self._mesh(V, N, U, I)
+            # one material object per look and texture, shared by every part that has it (the cable's forty
+            # segments): parts with materials of their own were drawn in an order that changed from process to
+            # process, and where two of them cross (neighbouring cable segments at a joint) a pixel on the crossing
+            # line then differed by a level
+            mkey = (look, id(tex), tuple(np.round(rgba, 6)), float(rough), float(metal), float(emis))
+            material = mats.get(mkey)
+            if material is None:
+                material = mats[mkey] = F.Material(
+                    color=rgba, roughness=float(np.clip(rough * rl.get("roughness_scale", 1.0), 0.05, 1.0)),
+                    metallic=float(metal) * float(rl.get("metallic_scale", 1.0)), specular=float(rl.get("specular", 0.3)),
+                    emissive=float(emis), color_texture=tex)
             r = self.ctx.create_renderable(F.RenderableParams(cast_shadow=False, receive_shadow=True))
             r.set_mesh(m, 0, len(I))
             r.set_material(material)
             self.scn.add_renderable(r)
             self.rend.append((r, frame, m, material))
+            return m, (cfg if frame == "skin" else None), r
 
         for it in sc.items:
             tex = None
@@ -446,7 +463,10 @@ class _Filament(object):
                 key = it["tex"]
                 img = it["image"] if key[0] == "image" else stat[key[1]]
                 tex = texture(key, img)
-            add(it["mesh"], it["mat"], tex, it["frame"], it["look"])
+            m_, cfg_, r_ = add(it["mesh"], it["mat"], tex, it["frame"], it["look"])
+            if it["frame"] == "skin":           # one mesh that follows many bodies: its vertices are set at every draw
+                V_, N_, U_, I_ = it["mesh"]
+                self.skins.append((m_, cfg_, V_.astype(np.float32), N_.astype(np.float32), U_, I_, np.asarray(it["bone"]), r_))
         for k, (mesh, mat, img, cls) in enumerate(self._room()):
             add(mesh, mat, None if img is None else texture(("room", k), img), "world", cls)
         self.textures = texs
@@ -475,6 +495,10 @@ class _Filament(object):
         xp, xm = poses["xpos"], poses["xmat"]
         for r, k in self.moving:
             r.set_pose(xp[k], xm[k])
+        for mesh, cfg, V, N, U, I, bone, r in self.skins:
+            Rb = xm.reshape(-1, 3, 3)[bone]
+            self._mesh_upload(mesh, cfg, np.einsum("nij,nj->ni", Rb, V) + xp[bone], np.einsum("nij,nj->ni", Rb, N), U, I)
+            r.set_mesh(mesh, 0, len(I))          # the renderable takes the mesh's new bounds (it is culled by them)
         tgt, read, buf = self._target(width, height)
         cam = F.Camera(pos=np.asarray(pos, np.float32), forward=np.asarray(forward, np.float32),
                        up=np.asarray(up, np.float32), frustum_center=frustum[0], frustum_width=frustum[1],
@@ -577,7 +601,7 @@ class _Filament(object):
 
     def _shutdown(self):
         self.targets.clear()
-        self.rend, self.moving, self.textures = [], [], {}
+        self.rend, self.moving, self.textures, self.skins = [], [], {}, []
         self.ibl = None
         self.scn = None
         self.look_model = None
