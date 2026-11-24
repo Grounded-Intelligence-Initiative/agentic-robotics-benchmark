@@ -224,6 +224,13 @@ class Statements(unittest.TestCase):
         self.assertIn("cpus = 4", toml)
         self.assertIn("this machine has 4 CPUs and 12 GB", INSTRUCTION)
 
+    def test_job_sheet_carries_no_clip_axis(self):
+        src = (TASK / "tests/harness_env.py").read_text()
+        fn = src[src.index("def job_sheet(ep):"):src.index("def barb_length")]
+        self.assertNotIn("axis", fn.replace("to_world_angle(nom[\"connector\"][\"heading\"])", ""))
+        self.assertNotIn("clip_axis_tolerance", INSTRUCTION)
+        self.assertIn("the axis does not have to be measured", INSTRUCTION)
+
     def test_stamp_is_roots(self):
         setup = (TASK / "environment/setup/setup.sh").read_text()
         self.assertIn("install -d -o root -g root -m 755 /run/session", setup)

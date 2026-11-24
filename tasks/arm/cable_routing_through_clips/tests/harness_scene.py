@@ -122,7 +122,8 @@ def board_print(ep):
     """uint8 RGB image of the board's top face, rows bottom-up (row 0 = the face's v = 0: the edge at the lowest y),
     columns along +x. An off-white laminate with a faint 5 cm grid, the route as a blue line with arrow heads from the
     connector's printed place through the fixtures' printed places, a box at each clip turned to its printed axis, a
-    ring at each post with a tick on the side the post has to be on, and the fixture's number beside it."""
+    ring at each post with a tick on the side the post has to be on, and the fixture's number beside it; then the
+    marks of use (_worn)."""
     import cv2
     hx, hy = H.BOARD_HALF
     W, Hh = int(round(2 * hx * PRINT_PX_PER_M)), int(round(2 * hy * PRINT_PX_PER_M))
@@ -157,7 +158,8 @@ def board_print(ep):
     for k, f in enumerate(sheet["fixtures"]):
         p = np.array(f["pos"])
         if f["type"] == "clip":
-            e, n = np.array([math.cos(f["axis"]), math.sin(f["axis"])]), np.array([-math.sin(f["axis"]), math.cos(f["axis"])])
+            ax = H.to_world_angle(nom["fixtures"][k]["axis"])        # the drawing's own; the job sheet does not carry it
+            e, n = np.array([math.cos(ax), math.sin(ax)]), np.array([-math.sin(ax), math.cos(ax)])
             box = np.array([px(p - 0.012 * e + 0.018 * n), px(p + 0.012 * e + 0.018 * n), px(p + 0.012 * e - 0.018 * n), px(p - 0.012 * e - 0.018 * n)], np.int32)
             cv2.polylines(img, [box], True, ink2, 3, cv2.LINE_AA)
         else:
@@ -174,7 +176,55 @@ def board_print(ep):
         if 0 <= y0 and y0 + 40 <= Hh and 0 <= x0 and x0 + 40 <= W:
             m_ = lab[:, :, 0:1].astype(np.float32) / 255.0
             img[y0:y0 + 40, x0:x0 + 40] = (img[y0:y0 + 40, x0:x0 + 40] * (1 - m_) + np.array(ink2, np.float32) * m_).astype(np.uint8)
-    return np.ascontiguousarray(img)
+    return np.ascontiguousarray(_worn(img, ep))
+
+
+def _worn(img, ep):
+    """The print on a board that has been in use: soiling in broad patches, fine scratches, a few rubbed stretches
+    where cables were dragged, and filled screw holes of earlier fixtures (pale plugs, none nearer than 4 cm to a
+    printed fixture). Drawn from the board's seed; the ink keeps its contrast (the marks are faint and thin)."""
+    import cv2
+    rng = np.random.default_rng(np.random.SeedSequence([int(ep.seed), 7]))
+    Hh, W = img.shape[:2]
+    f = img.astype(np.float32)
+    # soiling: low-frequency darkening and a warm cast, up to 6 %
+    low = cv2.resize(rng.normal(0.0, 1.0, (Hh // 96 + 2, W // 96 + 2)).astype(np.float32), (W, Hh), interpolation=cv2.INTER_CUBIC)
+    low = np.clip(0.5 + 0.35 * low, 0.0, 1.0)
+    f *= (1.0 - 0.06 * low)[..., None] * np.array([1.0, 0.992, 0.97], np.float32)[None, None, :]
+    marks = np.zeros((Hh, W), np.float32)
+    for _ in range(int(rng.integers(45, 70))):                       # fine scratches, 2 to 14 cm, mostly along the board
+        c = np.array([rng.uniform(0, W), rng.uniform(0, Hh)])
+        ang = rng.normal(math.pi / 2, 0.5) if rng.uniform() < 0.7 else rng.uniform(0, math.pi)
+        L = rng.uniform(0.02, 0.14) * PRINT_PX_PER_M
+        d = 0.5 * L * np.array([math.cos(ang), math.sin(ang)])
+        bend = rng.normal(0.0, 0.06) * L * np.array([-math.sin(ang), math.cos(ang)])
+        pts = np.array([c - d, c + bend, c + d]).round().astype(np.int32)
+        cv2.polylines(marks, [pts], False, float(rng.uniform(0.25, 0.8)), 1, cv2.LINE_AA)
+    for _ in range(int(rng.integers(5, 9))):                         # rubbed stretches: wider, fainter
+        c = np.array([rng.uniform(0.1, 0.9) * W, rng.uniform(0.1, 0.9) * Hh])
+        ang = rng.uniform(0, math.pi)
+        d = rng.uniform(0.03, 0.08) * PRINT_PX_PER_M * np.array([math.cos(ang), math.sin(ang)])
+        cv2.line(marks, tuple((c - d).round().astype(int).tolist()), tuple((c + d).round().astype(int).tolist()),
+                 float(rng.uniform(0.10, 0.22)), int(rng.integers(8, 20)), cv2.LINE_AA)
+    marks = cv2.GaussianBlur(marks, (0, 0), 0.6)
+    f *= (1.0 - 0.16 * np.clip(marks, 0.0, 1.0))[..., None]
+    hx, hy = H.BOARD_HALF
+    fixed = [H.to_world(g["corner"] if g["type"] == "post" else g["pos"]) for g in ep.nominal["fixtures"]]
+    fixed.append(H.to_world(ep.nominal["connector"]["pos"]))
+    n_holes, tries = int(rng.integers(6, 11)), 0
+    while n_holes > 0 and tries < 200:                               # filled holes of earlier fixtures: pairs 16 mm apart
+        tries += 1
+        c = np.array([H.BOARD_C[0] + rng.uniform(-hx + 0.04, hx - 0.04), H.BOARD_C[1] + rng.uniform(-hy + 0.04, hy - 0.04)])
+        if min(float(np.linalg.norm(c - q)) for q in fixed) < 0.04:
+            continue
+        ang = rng.uniform(0, math.pi)
+        for sgn in (-1.0, 1.0):
+            q = c + sgn * 0.008 * np.array([math.cos(ang), math.sin(ang)])
+            px_ = (int(round((q[0] - (H.BOARD_C[0] - hx)) * PRINT_PX_PER_M)), int(round((q[1] - (H.BOARD_C[1] - hy)) * PRINT_PX_PER_M)))
+            cv2.circle(f, px_, 5, (203.0, 198.0, 186.0), -1, cv2.LINE_AA)
+            cv2.circle(f, px_, 5, (176.0, 172.0, 162.0), 1, cv2.LINE_AA)
+        n_holes -= 1
+    return np.clip(f + 0.5, 0, 255).astype(np.uint8)
 
 
 # ------------------------------------------------------------------------------------------------------------

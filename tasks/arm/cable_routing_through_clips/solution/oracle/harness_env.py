@@ -375,9 +375,7 @@ def job_sheet(ep):
     for f in nom["fixtures"]:
         w = to_world(f["pos"])
         e = {"type": f["type"], "pos": [round(float(w[0]), 4), round(float(w[1]), 4)]}
-        if f["type"] == "clip":
-            e["axis"] = round(float(to_world_angle(f["axis"])), 4)
-        else:
+        if f["type"] == "post":
             e["side"] = f["side"]
         fx.append(e)
     c = to_world(nom["connector"]["pos"])
@@ -385,7 +383,7 @@ def job_sheet(ep):
                           "heading": round(float(to_world_angle(nom["connector"]["heading"])), 4)},
             "fixtures": fx,
             "cable": {"radius": round(ep.radius, 5), "length": round(ep.length, 4)},
-            "mount_tolerance": MOUNT_TOL, "clip_axis_tolerance": round(CLIP_AXIS_TOL, 5)}
+            "mount_tolerance": MOUNT_TOL}
 
 
 def barb_length(gap, radius):

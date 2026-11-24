@@ -41,7 +41,8 @@ is `z = 0`. Lengths in metres, angles in radians.
 - **Board**: 0.52 x 0.92 m and 12 mm thick, centred at (0.49, 0): its top is `z = 0.012`. Its print shows a faint
   5 cm grid, the route as a blue line with arrow heads from the connector on, a box at each clip turned to the
   clip's passage, a ring at each post with a tick on the side on which the cable has to pass, and each fixture's
-  number in route order.
+  number in route order. The board has been in use: it carries soiling, fine scratches, rubbed stretches and the
+  filled screw holes of earlier fixtures (pale dots in pairs); the bench top is scratched and stained.
 - **Cable**: orange, round, 0.70 to 0.90 m long, radius 3.5 to 5.0 mm (this board's values are on the job sheet).
   Its bending stiffness is between 0.0008 and 0.003 N m^2, its friction coefficient between 0.5 and 1.0 and its
   density between 1200 and 2000 kg/m^3; these three are not told. It starts lying on the board in a loose curve,
@@ -72,9 +73,8 @@ is `z = 0`. Lengths in metres, angles in radians.
   board, the grip site has to be 17 mm plus the cable's radius above the board's top, with the cable between the
   open jaws. Each finger presses with up to 60 N; a gripped cable does not slip in the groove below a pull of 60 N,
   so the connector's limit is reached before the grip slips.
-- **Mounting tolerances**: the connector and every fixture are mounted within 20 mm of their printed places, a
-  clip's passage axis within 8 degrees (0.14 rad) of the printed one. The print and the job sheet give the nominal
-  places; where the fixtures really are you find from the pictures.
+- **Mounting tolerances**: the connector and every fixture are mounted within 20 mm of their printed places. The
+  print and the job sheet give the nominal places; where the fixtures really are you find from the pictures.
 
 ## 3. Observation and action
 
@@ -91,8 +91,8 @@ Every observation `obs` holds:
 | `job` | the job sheet, the same in every observation of an episode |
 
 `job`: `connector` (`pos` [x, y], `heading`: the direction in which the cable leaves it), `fixtures` in route order
-(`type` "clip" with `pos` and `axis`, or "post" with `pos` and `side`), all nominal; `cable` (`radius`, `length`);
-`mount_tolerance`, `clip_axis_tolerance`; `max_steps` (1500), `control_dt` (0.1); `cameras`.
+(`type` "clip" with `pos`, or "post" with `pos` and `side`), all nominal; `cable` (`radius`, `length`);
+`mount_tolerance`; `max_steps` (1500), `control_dt` (0.1); `cameras`.
 
 **Cameras** (`job.cameras`: `pos`, `quat`, `fovy_deg`, `w`, `h`; a camera looks along its own -z axis, +x to the
 picture's right, +y up):

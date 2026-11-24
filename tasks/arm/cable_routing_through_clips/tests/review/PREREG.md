@@ -115,6 +115,23 @@ is therefore neither scored nor asked for; a control without a mechanism proves 
 - A simulation process that ends by itself is run again with the same seed (tests/verify.py); the walk does the
   same (a candidate whose process ends by itself is run once more and the event is recorded).
 
+## Amendment after the draw (rendering and job sheet only)
+
+After the set was drawn (commit `532d0c02`) and validated, two things changed in files this document froze, none
+of them in the physics, the route generator or the reference's program:
+
+- the pictures: the board's print carries marks of use (`harness_scene._worn`: soiling, scratches, rubbed
+  stretches, filled screw holes, drawn from the board's seed through a stream of its own) and the worktop's map is
+  the worn one; the cable is drawn as one mesh;
+- the job sheet no longer carries a clip's `axis` or `clip_axis_tolerance` (`harness_env.job_sheet`): the axis is
+  neither scored nor needed, and nothing should suggest measuring it. The board's print keeps its clip boxes,
+  drawn from the drawing itself. The control "trusts the printed places" takes a clip's axis from the truth for
+  its own seated check (it had it from the sheet).
+
+Shown after the change: the numerics fingerprint's simulation part is unchanged, and the reference over the wire
+completes 20 of 20 boards with the step count it had on every board when the set was drawn. Had one step count
+moved, the draw would have been void.
+
 ## The walk's tool and record
 
 `tests/review/select_set.py` walks the candidates and writes `tests/hidden/episodes.json` (the set, in the order

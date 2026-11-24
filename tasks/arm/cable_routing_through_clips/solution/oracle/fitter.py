@@ -57,7 +57,7 @@ class Fitter(object):
             fx = [dict(f) for f in self.sheet["fixtures"]]
             for f, g in zip(fx, truth["fixtures"]):
                 if f["type"] == "clip":
-                    f["gap"] = g["gap"]
+                    f["gap"], f["axis"] = g["gap"], g["axis"]      # the job sheet gives a clip's place only
             conn = self.sheet["connector"]["pos"]
         else:
             fx = [dict(f) for f in truth["fixtures"]]
