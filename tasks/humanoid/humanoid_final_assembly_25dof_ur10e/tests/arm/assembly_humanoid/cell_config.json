@@ -573,7 +573,7 @@
  },
  "fixtures": {
   "schema": "humanoid-cell-fixtures/1",
-  "design_sha256": "95a00e571196a22fb1cf5bcb278c6e8fe86322a5894feb68f48d4e1a548d27d4",
+  "design_sha256": "1146a11d807855e6fa8c4acc1ed606f718a2f1076a7173a6e69687f3a59792b8",
   "layout_jitter": {
    "stand_mm": 15,
    "stand_yaw_deg": 2,

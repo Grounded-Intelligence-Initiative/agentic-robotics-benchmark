@@ -12,9 +12,9 @@
   "backoff_s": 5.0,
   "files": 116,
   "note": "the cell's hidden kit (gt/), never in the repository or the image: the verifier fetches this archive at verify start from the url, which names the pinned commit of the benchmark's asset dataset, and checks it by its sha256 and its number of files before any episode",
-  "sha256": "d86eae983b8449ad318078e86a6b1e0b6bfd53a8e292070b939b3679df261a44",
+  "sha256": "9cdecdd5105935e68d4e012f3dfdffc75a015fa9cbfdf7aa5c6447ab6aebd7c8",
   "tries": 4,
-  "url": "https://huggingface.co/datasets/grounded-intelligence-initiative/ale-robotics-assets/resolve/47911fed4ced976be6a064c2c7f9800e7609d46b/tasks/humanoid/humanoid_final_assembly_25dof_ur10e/verifier/gt.tar.xz"
+  "url": "https://huggingface.co/datasets/grounded-intelligence-initiative/ale-robotics-assets/resolve/40e06ef3156e5db8b90b481bea0e1378186ad566/tasks/humanoid/humanoid_final_assembly_25dof_ur10e/verifier/gt.tar.xz"
  },
  "oracle_nominal_layout": true,
  "privileged_wall_cap_s": 4826.0,
