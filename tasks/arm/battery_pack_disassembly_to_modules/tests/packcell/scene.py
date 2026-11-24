@@ -283,7 +283,10 @@ def build(stage, pack, robot_usd, render=True):
     rob = stage.DefinePrim("/World/Robot", "Xform")
     rob.GetReferences().AddReference(robot_usd)
     R = "/World/Robot"
-    PhysxSchema.PhysxArticulationAPI.Apply(stage.OverridePrim(R + "/root_joint")).CreateEnabledSelfCollisionsAttr(False)
+    art = PhysxSchema.PhysxArticulationAPI.Apply(stage.OverridePrim(R + "/root_joint"))
+    art.CreateEnabledSelfCollisionsAttr(False)
+    art.CreateSleepThresholdAttr(0.0)              # never asleep: a sleeping arm reports stale forces and speeds
+    art.CreateStabilizationThresholdAttr(0.0)
     # position drives (stiffness in N m per degree), torque limits as on the UR20's data sheet
     for jn, (k, d, mf) in {"shoulder_pan_joint": (12000.0, 60.0, 738.0), "shoulder_lift_joint": (12000.0, 60.0, 738.0),
                            "elbow_joint": (12000.0, 60.0, 433.0), "wrist_1_joint": (4000.0, 30.0, 107.0),

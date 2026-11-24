@@ -250,8 +250,10 @@ class Cell(object):
     def _read(self):
         """Read the robot's state and the external wrench at the flange after a tick."""
         q = np.array(self.art.get_dof_positions()[0], dtype=float)
-        qd = np.array(self.art.get_dof_velocities()[0], dtype=float)
-        self.q, self.qd = q[self.dof], qd[self.dof]
+        q_new = q[self.dof]
+        # joint speeds by differences over the tick, as a controller computes them from its encoders
+        self.qd = (q_new - self.q) / S.TICK if getattr(self, "q", None) is not None else np.zeros(6)
+        self.q = q_new
         self.stroke = max(0.0, -float(q[self.dof_spindle])) if self.tool == "nutrunner" else 0.0
         links = np.array(self.art.get_link_transforms()[0])
         self.ee_T = tf_T(links[self.link_ee])
@@ -299,6 +301,11 @@ class Cell(object):
         self.wall["physics"] += t1 - t0
         tfs = np.array(self.pv.get_transforms())
         poses = Poses(tfs, self.part_order)
+        # what holds the parts (before the spindle's rule: a fastener that comes out in this tick frees its part in
+        # the next one, when its body has left the seat)
+        moved = np.nonzero(np.linalg.norm(tfs[:, :3] - self.seat_pos, axis=1) > 0.02)[0]
+        for pid in r.unlock([self.part_ids[i] for i in moved], self.f_ext):
+            self._free(pid)
         # the nutrunner
         self.spindle_torque, self.spindle_speed = 0.0, 0.0
         if self.tool == "nutrunner":
@@ -327,10 +334,6 @@ class Cell(object):
             elif ev is not None and ev[0] == "detach":
                 self._detach()
             r.hv_check(r.grip_points(tcp))
-        # what holds the parts
-        moved = np.nonzero(np.linalg.norm(tfs[:, :3] - self.seat_pos, axis=1) > 0.02)[0]
-        for pid in r.unlock([self.part_ids[i] for i in moved], self.f_ext):
-            self._free(pid)
         if self.module_idx:
             vel = np.array(self.pv.get_velocities())
             r.drop_check({pid: float(vel[i, 2]) for pid, i in self.module_idx})
@@ -384,31 +387,38 @@ class Cell(object):
             self.stage.RemovePrim("/World/GraspJoint")
             self.grasp_joint = None
 
+    def _set_pose(self, path, T):
+        """Move a kinematic body by authoring its pose on the stage (the physics engine reads a kinematic body's
+        pose from there, also when the body is made dynamic afterwards)."""
+        from pxr import Gf
+        ops = self.UsdGeom.Xformable(self._prim(path)).GetOrderedXformOps()
+        q = kin.R_quat(T[:3, :3])
+        ops[0].Set(Gf.Vec3d(float(T[0, 3]), float(T[1, 3]), float(T[2, 3])))
+        ops[1].Set(Gf.Quatd(float(q[0]), float(q[1]), float(q[2]), float(q[3])))
+
     def _capture(self, fid):
         """A freed fastener leaves its seat: its body waits out of the way, a copy rides on the bit."""
         i = self.fast_order[fid]
-        tf = np.array(self.fv.get_transforms())
-        tf[i, :3] = PARK + [0.05 * i, 0.0, 0.0]
-        self.fv.set_transforms(tf, np.array([i], dtype=np.int32))
+        path = self.index["fasteners"][fid]
+        for name in ("col_head", "col_shank"):
+            self._collide(path + "/" + name, False)
+        self._set_pose(path, kin.pose(np.eye(3), PARK + [0.05 * i, 0.0, 0.0]))
         self._show_tool()
 
     def _eject(self):
         fid = self.rules.eject()
         if fid is None:
             return False
-        i = self.fast_order[fid]
         head = S.HEADS[self.rules.fast[fid]["head"]]
         tip, axis = self.tip()
         # head toward the tool, clear of the bit, then it falls
         Rb = self.sp_T[:3, :3] @ np.diag([1.0, -1.0, -1.0])
-        T = kin.pose(Rb, tip + axis * (head["height"] + 0.004))
-        tf = np.array(self.fv.get_transforms())
-        tf[i] = T_tf(T)
-        self.fv.set_transforms(tf, np.array([i], dtype=np.int32))
-        vel = np.array(self.fv.get_velocities())
-        vel[i] = 0.0
-        self.fv.set_velocities(vel, np.array([i], dtype=np.int32))
-        self._set_kinematic(self.index["fasteners"][fid], False)
+        path = self.index["fasteners"][fid]
+        self._set_pose(path, kin.pose(Rb, tip + axis * (head["height"] + 0.004)))
+        self.sim.step(render=False)            # the body is at the bit before it is let go
+        for name in ("col_head", "col_shank"):
+            self._collide(path + "/" + name, True)
+        self._set_kinematic(path, False)
         self._show_tool()
         return True
 
@@ -590,9 +600,12 @@ class Cell(object):
 
     def score(self):
         self._settle() if self.ended else None
-        credit, detail = self.rules.credit(self.poses(), self.fastener_poses())
+        poses, fposes = self.poses(), self.fastener_poses()
+        credit, detail = self.rules.credit(poses, fposes)
         r = self.rules
-        return {"credit": credit, "detail": detail, "ended": self.ended, "events": r.events, "time": round(r.t, 2),
+        where = {pid: [round(float(v), 3) for v in poses[pid][:3, 3]] for pid in self.part_ids}
+        where.update({fid: [round(float(v), 3) for v in T[:3, 3]] for fid, T in fposes.items()})
+        return {"credit": credit, "detail": detail, "where": where, "ended": self.ended, "events": r.events, "time": round(r.t, 2),
                 "ticks": self.tick_n, "frames": self.frames_used, "protective_stops": self.stops,
                 "stripped": sorted(fid for fid, f in r.fast.items() if f["stripped"]),
                 "wall": {k: round(v, 1) for k, v in self.wall.items()}}

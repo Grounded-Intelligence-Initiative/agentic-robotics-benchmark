@@ -154,7 +154,7 @@ class Reference(object):
             yield from self.settle(o)
         return "fail"
 
-    def move_joints(self, q_goal, speed=0.9):
+    def move_joints(self, q_goal, speed=0.9, extra=None):
         q_goal = np.array(q_goal, dtype=float)
         for _ in range(40):
             cur = np.array(self.tr["q_target"])
@@ -165,17 +165,25 @@ class Reference(object):
             n = max(1, int(math.ceil(1.5 * m / (speed * TICK))))
             frac, n = min(1.0, float(MAXT) / n), min(n, MAXT)
             way = cur + frac * d
-            o = yield from self.do(lambda ob, way=way, n=n: {"move": {"type": "joint", "delta": [float(v) for v in way - np.array(ob["q_target"])], "ticks": n}})
+            o = yield from self.do(lambda ob, way=way, n=n: dict({"move": {"type": "joint", "delta": [float(v) for v in way - np.array(ob["q_target"])], "ticks": n}}, **(extra or {})))
             yield from self.settle(o)
         return "fail"
 
     def go(self, goal, z_safe, speed=0.5, final_speed=None, extra=None):
-        """Up to z_safe, across, down to `goal`."""
+        """Up to z_safe, round the base to the goal's direction (a turn of the first joint: a straight line that
+        passes near the base's axis would run the arm through its shoulder singularity), across, down to `goal`."""
         cur = T_of(self.tr["tcp_target"])
         z = max(z_safe, cur[2, 3])
         if np.linalg.norm(cur[:2, 3] - goal[:2, 3]) > 2e-3 or np.linalg.norm(R_rotvec(goal[:3, :3] @ cur[:3, :3].T)) > 5e-3:
             if cur[2, 3] < z_safe - 1e-3:
                 yield from self.move(mk(cur[:3, :3], [cur[0, 3], cur[1, 3], z]), speed, extra=extra)
+            da = math.atan2(goal[1, 3], goal[0, 3]) - math.atan2(cur[1, 3], cur[0, 3])
+            da = (da + math.pi) % (2 * math.pi) - math.pi
+            if abs(da) > 0.3:
+                q = np.array(self.tr["q_target"])
+                if abs(q[0] + da) > 3.4:                # stay well inside the first joint's range
+                    da -= math.copysign(2 * math.pi, da)
+                yield from self.move_joints(q + [da, 0, 0, 0, 0, 0], speed=1.0, extra=extra)
             yield from self.move(mk(goal[:3, :3], [goal[0, 3], goal[1, 3], z]), speed, extra=extra)
         return (yield from self.move(goal, final_speed or speed, extra=extra))
 
@@ -197,30 +205,39 @@ class Reference(object):
 
     # ------------------------------------------------------------------ tools and bits
     def change_tool(self, to):
-        if self.o["tool"] == to:
-            return
-        if self.o["tool"] != "none":
-            name = self.o["tool"]
-            z = CELL["tools"][name]["tcp_z"]
-            dock = np.array(CELL["docks"][name])
-            yield from self.go(mk(DOCK_R, dock - [0, 0, z]), dock[2] - z + 0.14, final_speed=0.12)
-            yield from self.wait(0.4)
-            yield from self.command("tool_release")
-        dock = np.array(CELL["docks"][to])
-        yield from self.go(mk(DOCK_R, dock), dock[2] + 0.14, final_speed=0.12)
-        yield from self.wait(0.4)
-        yield from self.command("tool_lock")
-        z = CELL["tools"][to]["tcp_z"]
-        yield from self.move(mk(DOCK_R, dock - [0, 0, z] + [0, 0, 0.14]), 0.3)
+        """Park the mounted tool in its dock and take `to` from its dock. Returns True when `to` is mounted."""
+        for _ in range(3):
+            if self.o["tool"] == to:
+                return True
+            if self.o["tool"] != "none":
+                name = self.o["tool"]
+                z = CELL["tools"][name]["tcp_z"]
+                dock = np.array(CELL["docks"][name])
+                yield from self.go(mk(DOCK_R, dock - [0, 0, z]), dock[2] - z + 0.14, final_speed=0.12)
+                yield from self.wait(0.5)
+                if not (yield from self.command("tool_release")):
+                    yield from self.lift(dock[2] - z + 0.14)
+                    continue
+            dock = np.array(CELL["docks"][to])
+            yield from self.go(mk(DOCK_R, dock), dock[2] + 0.14, final_speed=0.12)
+            yield from self.wait(0.5)
+            if (yield from self.command("tool_lock")):
+                z = CELL["tools"][to]["tcp_z"]
+                yield from self.move(mk(DOCK_R, dock - [0, 0, z] + [0, 0, 0.14]), 0.3)
+            else:
+                yield from self.lift(dock[2] + 0.14)
+        return self.o["tool"] == to
 
     def change_bit(self, bit):
-        if self.o["bit"] == bit:
-            return
         st = np.array(CELL["bit_station"])
-        yield from self.go(mk(DOCK_R, st), st[2] + 0.12, final_speed=0.12)
-        yield from self.wait(0.4)
-        yield from self.command("bit:" + bit)
-        yield from self.lift(st[2] + 0.12)
+        for _ in range(3):
+            if self.o["bit"] == bit:
+                return True
+            yield from self.go(mk(DOCK_R, st), st[2] + 0.12, final_speed=0.12)
+            yield from self.wait(0.5)
+            yield from self.command("bit:" + bit)
+            yield from self.lift(st[2] + 0.12)
+        return self.o["bit"] == bit
 
     # ------------------------------------------------------------------ fasteners
     def unscrew(self, fid, z_safe=-0.10):
@@ -287,7 +304,9 @@ class Reference(object):
             ids = [fid for fid in todo if self.tr["fasteners"][fid]["head"] == head]
             if not ids:
                 continue
-            yield from self.change_bit(head)
+            if not (yield from self.change_bit(head)):
+                self.log("bit not mounted", head)
+                continue
             while ids:
                 cur = T_of(self.tr["tcp_target"])[:2, 3]
                 ids.sort(key=lambda fid: float(np.linalg.norm(np.array(self.tr["fasteners"][fid]["top"][:2]) - cur)))
@@ -354,52 +373,59 @@ class Reference(object):
 
     # ------------------------------------------------------------------ the job
     def program(self):
+        yield from self.job()
+        yield from self.do(lambda ob: {"cmd": "done"})
+
+    def job(self):
         tr = self.tr
         self.log("pack", tr["variant"], "fasteners", len(tr["fasteners"]))
-        parts = tr["parts"]
-        harness = parts.get("harness")
-        Z_BOLT, Z_PART, Z_MODULE, Z_LID = -0.10, -0.10, 0.02, 0.17
+        harness = tr["parts"].get("harness")
+        Z_PART, Z_MODULE, Z_LID = -0.10, 0.02, 0.17
         # 1. a harness remnant on the lid goes first (it covers lid bolts)
         if harness is not None and "lid" in [tr["fasteners"][f]["group"] for f in harness["covers"]]:
-            yield from self.change_tool("gripper")
+            if not (yield from self.change_tool("gripper")):
+                return
             yield from self.remove_harness(Z_PART)
-            yield from self.change_tool("nutrunner")
         # 2. the lid's bolts, then the lid to its stand
+        if not (yield from self.change_tool("nutrunner")):
+            return
         yield from self.fasteners(lambda f: f["group"] == "lid")
-        yield from self.change_tool("gripper")
-        if not self.tr["parts"]["lid"]["locked"]:
-            yield from self.remove_lid(Z_LID)
-            # 3. isolate: the service disconnect out, then the low-voltage plugs while the pack discharges
-            for pid in ("msd", "J1", "J2"):
-                if (yield from self.pick(pid, Z_PART, pull=True)):
-                    yield from self.drop_in_bin("electronics", Z_PART, offset=(-0.08 if pid == "msd" else 0.08, 0.0))
-            while not self.tr["isolated"]:
-                if self.tr["msd_out_at"] is None:
-                    self.log("the service disconnect is still in: stopping before the live parts")
-                    return
-                yield from self.wait(1.0)
-            if "harness" in self.tr["parts"] and not self.tr["parts"]["harness"]["left_seat"]:
-                yield from self.remove_harness(Z_PART)
-            # 4. busbar and bracket fasteners
-            yield from self.change_tool("nutrunner")
-            yield from self.fasteners(lambda f: f["group"] in ("busbar", "bracket"))
-            # 5. busbars, brackets, modules
-            yield from self.change_tool("gripper")
-            for pid in sorted(p for p, v in self.tr["parts"].items() if v["kind"] == "busbar"):
+        if self.tr["parts"]["lid"]["locked"] or not (yield from self.change_tool("gripper")):
+            self.log("the lid stays on")
+            return
+        yield from self.remove_lid(Z_LID)
+        if not self.tr["parts"]["lid"]["left_seat"]:
+            return
+        # 3. isolate: the service disconnect out, then the low-voltage plugs while the pack discharges
+        for pid in ("msd", "J1", "J2"):
+            if (yield from self.pick(pid, Z_PART, pull=True)):
+                yield from self.drop_in_bin("electronics", Z_PART, offset=(-0.08 if pid == "msd" else 0.08, 0.0))
+        while not self.tr["isolated"]:
+            if self.tr["msd_out_at"] is None:
+                self.log("the service disconnect is still in: stopping before the live parts")
+                return
+            yield from self.wait(1.0)
+        if "harness" in self.tr["parts"] and not self.tr["parts"]["harness"]["left_seat"]:
+            yield from self.remove_harness(Z_PART)
+        # 4. busbar and bracket fasteners
+        if not (yield from self.change_tool("nutrunner")):
+            return
+        yield from self.fasteners(lambda f: f["group"] in ("busbar", "bracket"))
+        # 5. busbars, brackets, modules
+        if not (yield from self.change_tool("gripper")):
+            return
+        for kind, where in (("busbar", "copper"), ("bracket", "steel")):
+            for pid in sorted(p for p, v in self.tr["parts"].items() if v["kind"] == kind):
                 if not self.tr["parts"][pid]["locked"] and (yield from self.pick(pid, Z_PART)):
-                    yield from self.drop_in_bin("copper", Z_PART)
-            for pid in sorted(p for p, v in self.tr["parts"].items() if v["kind"] == "bracket"):
-                if not self.tr["parts"][pid]["locked"] and (yield from self.pick(pid, Z_PART)):
-                    yield from self.drop_in_bin("steel", Z_PART)
-            bay = 0
-            for pid in sorted(p for p, v in self.tr["parts"].items() if v["kind"] == "module"):
-                if self.tr["parts"][pid]["locked"]:
-                    self.log("module still held", pid)
-                    continue
-                if (yield from self.pick(pid, Z_MODULE)):
-                    yield from self.rack_module(bay, Z_MODULE)
-                    bay += 1
-        yield from self.do(lambda ob: {"cmd": "done"})
+                    yield from self.drop_in_bin(where, Z_PART)
+        bay = 0
+        for pid in sorted(p for p, v in self.tr["parts"].items() if v["kind"] == "module"):
+            if self.tr["parts"][pid]["locked"]:
+                self.log("module still held", pid)
+                continue
+            if (yield from self.pick(pid, Z_MODULE)):
+                yield from self.rack_module(bay, Z_MODULE)
+                bay += 1
 
     def remove_harness(self, z_safe):
         if (yield from self.pick("harness", z_safe)):

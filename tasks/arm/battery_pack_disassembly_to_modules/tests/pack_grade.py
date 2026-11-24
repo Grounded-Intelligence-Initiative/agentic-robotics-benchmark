@@ -1,0 +1,157 @@
+"""battery_pack_disassembly_to_modules: the grader's episode loop over the closed_loop wire (used by verify.py).
+
+One hidden pack is one episode. For each pack a fresh cell process (`packcell/server.py`, Isaac Sim) is started, the
+controller is reset, and the loop asks the controller for one action per step and hands it to the cell until the
+pack ends: the controller says `done`, the cell's simulated time is used up, a tool touches a live busbar before
+isolation, a module falls, or the controller is given up on (a missed deadline, a closed wire, a malformed action,
+its time budget used up). In every case the pack's credit is what lies where it belongs at that moment
+(`rules.Rules.credit`, read from the physics engine's state); nothing is subtracted.
+
+- The probe lock (`IdleAwareProbeLock`): a step is asked twice with the same `t`, the true and a perturbed
+  observation (`wire.perturbed`: the robot's own readings shifted) in a hidden order; only the true reply is applied.
+  Which steps, the order and the shift come from one stream per pack, a function of the pack's index and seed alone.
+- `truth` (the cell's privileged view) is added to every observation only in a token run (the caller decides).
+- The budget (`controller_budget_s`, per pack) is the controller's own time, kept by a `Clock`: what the grader waits
+  for each reset and each reply. The cell's simulation and rendering are not charged.
+- A failure of the cell itself (`cellproc.CellError`) is the grader's own: the pack is run once more from the start
+  with a fresh cell and a restarted controller; a second failure propagates (a task error).
+"""
+
+import hashlib
+import time
+
+from packcell import cellproc, wire
+from packcell import series as S
+from robotics_grader import ProbeLock, SolverAborted, seed_rng
+
+PROBE_TAG = b"battery_pack_disassembly_to_modules verify probe schedule 1"
+CONFIG = {"probe_rate": 0.02, "probe_pass_fraction": 0.1, "step_timeout_s": 30, "controller_budget_s": 1200.0,
+          "max_steps": 20000, "cell": {}, "cell_start_timeout_s": 900.0, "cell_reply_timeout_s": 600.0}
+
+
+class Clock(object):
+    """The controller's own time (s): what the grader waited for the controller."""
+
+    def __init__(self):
+        self.s = 0.0
+
+    def timed(self, fn, *args, **kwargs):
+        t0 = time.monotonic()
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            self.s += time.monotonic() - t0
+
+
+class IdleAwareProbeLock(ProbeLock):
+    """The kit's ProbeLock on the cell's action (compared as `wire.canonical`'s 15 numbers), except that a pair in
+    which both replies command no motion is not counted: a controller that holds still while the spindle turns, a
+    tool is exchanged or the pack discharges shows nothing either way.
+
+    Which controllers fail it (fewer than `pass_fraction` of the counted pairs differ): any whose motions do not
+    depend on the robot's own readings (joint angles, tool pose, wrench), the parts the perturbed copy shifts. A
+    replayed action stream does; a controller whose every displacement is computed from the observed tool pose or
+    joint angles toward a target passes."""
+
+    def __init__(self, *args, **kwargs):
+        ProbeLock.__init__(self, *args, **kwargs)
+        self.idle_skipped = 0
+
+    def record(self, action_probe, action_real):
+        if wire.is_idle(action_probe) and wire.is_idle(action_real):
+            self.idle_skipped += 1
+            return False
+        return ProbeLock.record(self, action_probe, action_real)
+
+    def rewards(self):
+        out = ProbeLock.rewards(self)
+        out["probes_idle_skipped"] = float(self.idle_skipped)
+        return out
+
+
+def canonical(action):
+    try:
+        return wire.canonical(action)
+    except ValueError as exc:
+        raise SolverAborted("malformed action: {}".format(exc))
+
+
+def probe_stream(index, seed):
+    digest = hashlib.blake2b(b"%s|%d|%d" % (PROBE_TAG, int(index), int(seed)), digest_size=32).digest()
+    return seed_rng(entropy=int.from_bytes(digest, "little"))
+
+
+def run_pack(solver, lock, clock, index, entry, truth, config, start_cell, log):
+    """One pack. Returns its record: credit, why it ended, steps, the cell's own counts."""
+    pack = S.draw_pack(entry["seed"], variant=entry.get("variant"), harness=entry.get("harness"))
+    rec = {"index": index, "variant": pack["variant"], "credit": 0.0, "ended": None, "aborted": None, "steps": 0}
+    lock.rng = probe_stream(index, entry["seed"])
+    budget = float(config["controller_budget_s"])
+    used0 = clock.s
+    cell = start_cell()
+    t0 = time.monotonic()
+    try:
+        reply = cell.request({"cmd": "reset", "pack": pack, "config": config.get("cell") or {}},
+                             timeout=float(config["cell_start_timeout_s"]))
+        obs = reply["obs"]
+        t = 0
+        try:
+            clock.timed(solver.reset)
+            while not obs["ended"]:
+                if clock.s - used0 > budget:
+                    raise SolverAborted("controller time budget of the pack used up")
+                if t >= int(config["max_steps"]):
+                    raise SolverAborted("step limit of the pack reached")
+                if truth:
+                    obs["truth"] = cell.request({"cmd": "truth"}, timeout=60.0)["truth"]
+                if lock.due():
+                    other = wire.perturbed(obs, lock.rng)
+                    action = clock.timed(lock.probe, solver, t, obs, perturbed=other)
+                else:
+                    action = clock.timed(solver.act, t, obs)
+                canonical(action)
+                reply = cell.request({"cmd": "step", "action": action}, timeout=float(config["cell_reply_timeout_s"]))
+                if "error" in reply:
+                    raise SolverAborted(str(reply["error"])[:200])
+                obs = reply["obs"]
+                t += 1
+        except SolverAborted as exc:
+            rec["aborted"] = str(exc)[:200]
+        score = cell.request({"cmd": "score"}, timeout=120.0)["score"]
+        rec.update(credit=float(score["credit"]), ended=score["ended"], steps=t, sim_s=score["time"],
+                   frames=score["frames"], protective_stops=score["protective_stops"], stripped=len(score["stripped"]),
+                   placed=sum(1 for v in score["detail"].values() if v), items=len(score["detail"]),
+                   detail=score["detail"], events=score["events"], cell_wall=score["wall"])
+    finally:
+        cell.close()
+    rec.update(wall=round(time.monotonic() - t0, 1), controller_s=round(clock.s - used0, 1))
+    if log:
+        # the variant only: the log is kept with a run's records, and a seed of the fixed set must not be in it
+        log("pack {} ({}): credit={:.4f} ended={} steps={} sim={:.0f}s stops={} placed={}/{} wall={:.0f}s{}".format(
+            index, rec["variant"], rec["credit"], rec["ended"], rec["steps"], rec.get("sim_s", 0.0),
+            rec.get("protective_stops", 0), rec.get("placed", 0), rec.get("items", 0), rec["wall"],
+            " ABORTED: " + rec["aborted"] if rec["aborted"] else ""))
+    return rec
+
+
+def run_packs(solver, packs, truth, config, start_cell, log=None, clock=None, on_pack=None):
+    """Every pack of the set in order over one controller. Returns (records, lock)."""
+    cfg = dict(CONFIG)
+    cfg.update({k: v for k, v in (config or {}).items() if k in CONFIG})
+    clock = Clock() if clock is None else clock
+    lock = IdleAwareProbeLock(None, rate=cfg["probe_rate"], pass_fraction=cfg["probe_pass_fraction"], tolerance=1e-4,
+                              canonical=canonical)
+    records = []
+    for index, entry in enumerate(packs):
+        if on_pack is not None:
+            on_pack(index)
+        try:
+            rec = run_pack(solver, lock, clock, index, entry, truth, cfg, start_cell, log)
+        except cellproc.CellError as exc:
+            if log:
+                log("pack {}: the cell failed ({}); running the pack once more".format(index, str(exc)[:300]))
+            solver._broken = True             # a fresh controller for the repeated pack
+            rec = run_pack(solver, lock, clock, index, entry, truth, cfg, start_cell, log)
+            rec["cell_retried"] = True
+        records.append(rec)
+    return records, lock

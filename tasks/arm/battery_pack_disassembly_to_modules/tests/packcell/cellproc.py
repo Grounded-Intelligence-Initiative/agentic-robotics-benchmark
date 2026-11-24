@@ -18,9 +18,10 @@ class CellError(Exception):
 
 
 class CellProcess(object):
-    def __init__(self, grader=False, env=None, python=None, user=None, cwd=None, stderr=None, start_timeout=900.0):
+    def __init__(self, grader=False, env=None, python=None, user=None, cwd=None, stderr=None, start_timeout=900.0,
+                 server=None):
         here = os.path.dirname(os.path.abspath(__file__))
-        cmd = [python or sys.executable, "-I", "-s", os.path.join(here, "server.py")] + (["--grader"] if grader else [])
+        cmd = [python or sys.executable, "-I", "-s", server or os.path.join(here, "server.py")] + (["--grader"] if grader else [])
         if user:
             cmd = ["/usr/sbin/runuser", "-u", user, "--"] + cmd
         self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=stderr, env=env, cwd=cwd,
