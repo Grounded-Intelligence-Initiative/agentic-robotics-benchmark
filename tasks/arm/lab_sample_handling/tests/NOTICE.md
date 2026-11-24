@@ -1,7 +1,7 @@
 # NOTICE - sources of this task's code and units (verify / maintainers only; never shown to the agent)
 
 - **The robot** is the Franka Panda model of robosuite 1.5.2 (MIT), installed unmodified in the task image.
-- **The bench** is built from MuJoCo primitives and one generated mesh (`lab_sim.py`); no third-party assets.
+- **The bench** is built from MuJoCo primitives and generated meshes (`lab_sim.py`); no third-party assets.
 - **The cameras' pictures** are drawn by `lab_render.py` (MuJoCo 3.16's Filament renderer on Mesa's lavapipe) with
   the numbers of `lab_look.json`, from a render bundle that both images fetch at the dataset commit pinned in
   `environment/assets.sha256` and `tests/assets.sha256` (the benchmark's Hugging Face asset dataset,
