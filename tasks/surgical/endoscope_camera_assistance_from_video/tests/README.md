@@ -253,7 +253,9 @@ ones are in neither the image nor the sandbox.
 * The lens touches tissue only (not instruments, not the wall above); the scope's shaft collides with nothing.
 * The instruments do not wait for the camera: a real surgeon slows down when the view lags.
 * The fine-work rule is a rule on tip motion (observable), not a surgical phase label.
-* The match lock's copy can be recognised by its joint readings; that is stated to the agent and is by design.
+* The match lock's copy can be recognised by its joint readings; that is stated to the agent and is by design. It
+  is not "built the way the real observation is" (upstream #173's rule for probe copies): the status log's entry
+  on that kit says why it was left so and what the alternative is.
 * The development set is rendered at setup time on the sandbox's GPU: it costs the first minutes of the session and
   differs in its pixels from run to run (the labels do not).
 
@@ -262,6 +264,43 @@ ones are in neither the image nor the sandbox.
 Newest first. Each entry says where the numbers come from; "here" is the development server (Ubuntu 22.04,
 RTX 6000 Ada, NVIDIA driver 570.195.03, Isaac Sim 6.2.0.0 + Isaac Lab 3.0.0 in a native Python 3.12 venv, no root,
 no Docker).
+
+### 2026-11-24, evening: the kit of upstream #173 (tree `67c47c8`; the native runs have not been repeated on it)
+
+`upstream/main` moved to `1c13a47` after this branch was cut: #173 changed `shared/robotics_grader/` (the solver
+and everything it starts run at nice 19; `replies_differ` is the lock's one rule; `probe.stale_copy`;
+`deadline.VerifierDeadline`) and copied it into every task. The branch was merged with `upstream/main` and the kit
+copied again (byte-identical to `shared/`). The task against #173's three findings:
+
+1. *The solver's priority.* The kit's own. `verify.TimedSolver` keeps the kit's `_spawn`, and the native tool's
+   `LocalSolver` replaces `_spawn` only, which the kit starts from its low-priority thread like any other. Nothing
+   to change. The controller now runs at nice 19 beside the renderer; on a loaded host its replies may take
+   longer, and they are what the 2400 s budget counts.
+2. *One rule for probe pairs, in practice too.* `~/commission/run_session.py` printed how many repeated requests
+   changed the action and counted from the raw replies, while the lock compares the commands clipped to the
+   holder's rate limits: two replies that differ only beyond a limit counted as changed there and do not for the
+   grader. The launcher now has `differ(first, second)`, the lock's rule on the clipped commands, and
+   `tests/review/check_runner_rule.py` holds it against the kit's `replies_differ` (8 pairs, no simulator).
+3. *A probe copy must be built the way the real observation is.* **This task's copy is not, on purpose, and that
+   is a point for the maintainers.** The copy is the same frame shifted in the image plane with the pan, tilt and
+   roll readings offset by 0.2 to 0.4 rad: more than the holder can turn in a step, and unrelated to the shift of
+   the picture. The instruction says so and tells the agent to keep such an observation out of its controller's
+   memory (section 3 has the reason: the right controller stands still inside a dead zone, and a perturbation
+   small enough to be possible would not move it). #173's rule is written for copies that are meant to pass for
+   true observations; this one is declared. What it cannot do is catch a program that recognises the copy and
+   answers it differently without reading the picture otherwise; nothing here needs that, since no procedure can
+   be replayed (the graded ones are in neither the image nor the sandbox). If the maintainers want the rule to
+   hold here as written, the way is to render the copy as a true second observation (the frame the camera would
+   give with the holder a small, possible step away, with the joints of that pose) and to size the lock for it.
+   Left as it is.
+
+What ran on `67c47c8`: `ale lint` ok; `scripts/lint_domain.py` ok; the kit comparison; `scripts/gpu_types.py
+check`; `scripts/task_assets.py check`; the kit's selftest; `review/check_copies.py`; `review/check_runner_rule.py`.
+
+**Not run on this tree: the native runs.** The series (the reference, no submission, the camera that never moves,
+random rates, a commissioning session through the changed launcher) was started and stopped within a minute,
+because the server's free GPU had just been taken by another job. The numbers of the entry below are the earlier
+tree's. The grader's own code is unchanged since then; the kit differs in the solver's priority.
 
 ### 2026-11-24: version 0.1 built; verified natively, not yet in the engine
 
