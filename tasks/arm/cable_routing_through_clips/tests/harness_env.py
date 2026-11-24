@@ -52,7 +52,13 @@ BOARD_C = (0.49, 0.0)
 BOARD_HALF = (0.26, 0.46)          # x, y
 ROUTE_HALF = (0.38, 0.17)          # the job sheet's frame: a along the board (world -y), b across (world +x)
 
-N_SEG = 40
+N_SEG = 40                         # cable segments (set before reset; the resolution study varies it)
+LAYOUT_SEG = 40                    # the starting layout is drawn with this many steps, whatever N_SEG is
+SOLVER_ITERATIONS = 100            # the constraint solver's iteration limit (MuJoCo's default)
+IMPRATIO = 10.0                    # friction-to-normal constraint impedance ratio
+JAW_SOLIMP_D = 0.98                # impedance of the groove faces' contact (closer to 1 = less creep of a gripped cable)
+NOSLIP_ITERATIONS = 0              # the solver's no-slip pass (the resolution study decides)
+JOINT_DAMPING_40 = 0.003           # cable joint damping at 40 segments; scaled with the segment count
 PIN_R = 0.002
 PIN_H = 0.020
 BARB_REST = math.radians(35.0)
@@ -78,15 +84,16 @@ SETTLE_S = 2.0
 # is scooped into the groove as the fingers close and cannot leave it sideways, up or down; it can slide along its
 # axis once the pull passes the slip force (grip force and face friction below; measured: see the datasheet).
 JAW_HALF_X = 0.008                 # half length of the groove along the cable
-JAW_V_ANGLE = math.radians(45.0)
-JAW_V_LEN = 0.0065
+JAW_V_ANGLE = math.radians(60.0)
+JAW_V_LEN = 0.0036
 JAW_V_T = 0.0012                   # half thickness of a groove face
 JAW_V_DZ = 0.020                   # groove axis below the stock pad's centre (toward the fingertip)
-JAW_FRICTION = 0.90                # groove faces (they govern the cable-jaw contact: priority)
+JAW_FRICTION = 1.20                # groove faces (they govern the cable-jaw contact: priority)
 GRIP_KP = 40000.0                  # N/m, finger servo (stiff enough that the limit below is what grips)
-GRIP_FORCE = 30.0                  # N, finger servo limit (grip force per finger)
+GRIP_FORCE = 60.0                  # N, finger servo limit (grip force per finger)
 GRIP_DAMPING = 120.0               # N s/m, finger joints
-GRASP_SITE_Z = 0.0226              # grip site above the board when the groove's lower edge is 1 mm above it
+GRASP_SITE_Z = 0.0170              # grip site above the board's top PLUS the cable's radius when the groove's axis is level with a cable lying on the board (see grasp_site_z)
+JAW_APEX_IN = 0.0015               # the groove's apex stands this far inward of the stock pad's centre plane
 GROOVE_BELOW_SITE = 0.017          # the groove's axis below the grip site
 
 # Bench furniture with contact (the cable or the arm can reach it): name, type, centre (x, y, z of the centre), size
@@ -105,6 +112,11 @@ class EnvError(Exception):
 
 class Episode(object):
     """Everything an episode is made of (drawn from its seed by `make_episode`)."""
+
+
+def grasp_site_z(radius):
+    """Grip site height above the board at which the groove's axis is level with the axis of a cable lying on it."""
+    return GROOVE_BELOW_SITE + radius
 
 
 def robosuite_assets():
@@ -250,7 +262,7 @@ def make_episode(seed, n_fixtures=None):
 def _initial_shape(rng, ep):
     """A smooth random planar curve from the connector (as built) that keeps clear of every fixture and stays on the
     board."""
-    seg = ep.length / N_SEG
+    seg = ep.length / LAYOUT_SEG
     ha, hb = BOARD_HALF[1] - 0.02, BOARD_HALF[0] - 0.02
     P = np.array([f["pos"] for f in ep.fixtures_ab])
     for _attempt in range(600):
@@ -259,7 +271,7 @@ def _initial_shape(rng, ep):
         pts = [ep.conn_ab.copy()]
         curv = 0.0
         good = True
-        for i in range(N_SEG):
+        for i in range(LAYOUT_SEG):
             if 3 <= i < 9:
                 h += (bend_to - ep.conn_heading_ab) / 6.0
             elif i >= 9:
@@ -277,8 +289,15 @@ def _initial_shape(rng, ep):
                 break
             pts.append(nxt)
         if good:
-            return np.array(pts)
+            return resample(np.array(pts), N_SEG)
     return None
+
+
+def resample(P, n):
+    """The polyline P at n + 1 points equally spaced along its length."""
+    a = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(P, axis=0), axis=1))])
+    s = np.linspace(0.0, a[-1], n + 1)
+    return np.stack([np.interp(s, a, P[:, k]) for k in range(P.shape[1])], axis=1)
 
 
 def job_sheet(ep):
@@ -352,7 +371,7 @@ def _xml(ep):
 <mujoco model="harness_cell">
   <compiler angle="radian"/>
   <extension><plugin plugin="mujoco.elasticity.cable"/></extension>
-  <option timestep="{dt}" integrator="implicitfast" cone="elliptic" impratio="10"/>
+  <option timestep="{dt}" integrator="implicitfast" cone="elliptic" impratio="{impratio}" noslip_iterations="{noslip}" iterations="{iters}"/>
   <size memory="128M"/>
   <visual><global offwidth="640" offheight="480"/></visual>
   <worldbody>
@@ -367,13 +386,13 @@ def _xml(ep):
         <plugin plugin="mujoco.elasticity.cable">
           <config key="twist" value="{tw}"/><config key="bend" value="{bd}"/><config key="vmax" value="0"/>
         </plugin>
-        <joint kind="main" damping="0.003" armature="1e-5"/>
+        <joint kind="main" damping="{jd}" armature="1e-5"/>
         <geom type="capsule" size="{R}" rgba=".9 .35 .1 1" contype="3" conaffinity="3" condim="4" friction="{fr} 0.01 0.001" density="{rho}" solref="0.004 1" solimp="0.95 0.99 0.0005"/>
       </composite>
     </body>
     {fixtures}
   </worldbody>
-</mujoco>""".format(dt=TIMESTEP, fz=-BENCH_H, bx=bx[0], by=bx[1], bcx=(BENCH_X[0] + BENCH_X[1]) / 2, bcy=(BENCH_Y[0] + BENCH_Y[1]) / 2,
+</mujoco>""".format(dt=TIMESTEP, iters=int(SOLVER_ITERATIONS), impratio=IMPRATIO, noslip=NOSLIP_ITERATIONS, jd=JOINT_DAMPING_40 * N_SEG / 40.0, fz=-BENCH_H, bx=bx[0], by=bx[1], bcx=(BENCH_X[0] + BENCH_X[1]) / 2, bcy=(BENCH_Y[0] + BENCH_Y[1]) / 2,
                     bhx=BOARD_HALF[0], bhy=BOARD_HALF[1], bt2=BOARD_T / 2, bdx=BOARD_C[0], bdy=BOARD_C[1], fr=ep.friction,
                     furniture="\n    ".join(fur), ax=ep.conn_pos[0], ay=ep.conn_pos[1], zc=BOARD_T + R, cx=-0.012 * ch, cy=-0.012 * sh,
                     hd=ep.conn_heading, verts=verts, tw=ep.twist, bd=ep.bend, R=R, rho=ep.density, fixtures="\n    ".join(fx))
@@ -389,13 +408,13 @@ def build_model(ep):
             robot.delete(cam)
     for nm in ("finger1_pad_collision", "finger2_pad_collision"):
         pg = grip.geom(nm)
-        inward = 1.0 if nm.startswith("finger1") else -1.0       # the body's y toward the other finger
+        inward = -1.0 if nm.startswith("finger1") else 1.0       # the finger body's y toward the other finger (measured: tools/probe_groove.py)
         base = nm.replace("pad_collision", "")
         plate = pg.parent.add_geom()
         plate.name = base + "jaw"
         plate.type = mujoco.mjtGeom.mjGEOM_BOX
-        plate.size = [JAW_HALF_X, 0.0015, 0.012]
-        plate.pos = [pg.pos[0], pg.pos[1] - inward * 0.0015, pg.pos[2] + JAW_V_DZ - 0.006]
+        plate.size = [JAW_HALF_X, 0.0015 + JAW_APEX_IN / 2, 0.0115]
+        plate.pos = [pg.pos[0], pg.pos[1] - inward * (0.0015 - JAW_APEX_IN / 2), pg.pos[2] + JAW_V_DZ - 0.0085]
         plate.rgba = [0.1, 0.1, 0.1, 1]
         plate.mass = 0.004
         plate.friction = [JAW_FRICTION, 0.02, 0.0001]
@@ -404,7 +423,7 @@ def build_model(ep):
             f.name = base + "groove_" + tag
             f.type = mujoco.mjtGeom.mjGEOM_BOX
             f.size = [JAW_HALF_X, JAW_V_T, JAW_V_LEN / 2]
-            f.pos = [pg.pos[0], pg.pos[1] + inward * (JAW_V_LEN / 2) * math.cos(JAW_V_ANGLE),
+            f.pos = [pg.pos[0], pg.pos[1] + inward * (JAW_APEX_IN + (JAW_V_LEN / 2) * math.cos(JAW_V_ANGLE)),
                      pg.pos[2] + JAW_V_DZ + sgn * (JAW_V_LEN / 2) * math.sin(JAW_V_ANGLE)]
             th = -sgn * inward * (math.pi / 2 - JAW_V_ANGLE)
             f.quat = [math.cos(th / 2), math.sin(th / 2), 0.0, 0.0]
@@ -412,7 +431,7 @@ def build_model(ep):
             f.condim = 4
             f.priority = 1
             f.solref = [0.002, 1.0]                          # a hard face: a squeezed cable must not work through it
-            f.solimp = [0.98, 0.999, 0.0003, 0.5, 2.0]
+            f.solimp = [JAW_SOLIMP_D, max(JAW_SOLIMP_D, 0.999), 0.0003, 0.5, 2.0]
             f.rgba = [0.15, 0.15, 0.17, 1]
             f.mass = 0.001
     robot.body("right_hand").add_frame().attach_body(grip.body("right_gripper"), "g_", "")
