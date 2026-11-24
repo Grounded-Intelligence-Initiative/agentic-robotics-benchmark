@@ -4,7 +4,7 @@ The agent-facing contract is `instruction.md`; the pack series is described in
 `environment/setup/payload/given/service_manual.md`, the tools in `tool_catalog.md`, the cell and its wire in
 `cell/cell_interface.md`. This page records the design decisions, what the grader checks and why, what is known to be
 rough, what was and was not verified, and a dated status log (version 0.1.0, 2026-11-24; built in one unattended
-session on a server without Docker, so the engine's own gates are still owed: section 6).
+session on a server without Docker, so the engine's own gates are still owed: sections 6 and 7).
 
 **Design rule: the agent gets what the automation engineer of a real disassembly cell would have, and nothing
 else.** It gets the pack series' workshop manual (drawings, nominal positions, the torque table, the isolation
@@ -303,10 +303,124 @@ packs on `7d2ef4e`: `mean_pack_credit` 0.99920 (1.0, 1.0, 1.0, 1.0, 1.0, 0.9952;
 a bin), lock 85 of 85, 1332 s for the stage; but 4 and 3 protective stops on packs 1 and 3, all with the bit
 pressed on a fastener: the bit was thrown 15 mm sideways with 250 to 2500 N in a tick in which nothing was
 commanded. 160 scripted presses with centred, converged approaches never showed it, at any friction, so it is not
-friction (the note on friction in the list above stays true but was not the cause). Two changes: the bit's collider
-is a capsule (a round end on a flat head: one contact point with the head's normal; a flat-ended cylinder on a head
-of nearly its own radius is a degenerate pair for the contact generator), and a part whose last fastener has just
-come out is not freed while the bit still presses on it (a 0.12 kg busbar squeezed between the bit and its post
-was shot out). After both, packs 1 and 3 ran with no stop, credit 1.0 each.
+friction (the note on friction in the list above stays true but was not the cause). The cause was not isolated;
+two suspects were removed together: the bit's collider is a capsule (a round end on a flat head: one contact point
+with the head's normal; the suspicion is that a flat-ended cylinder on a head of nearly its own radius is a
+degenerate pair for the contact generator), and a part whose last fastener has just come out is not freed while the
+bit still presses on it (the suspicion: a 0.12 kg busbar squeezed between the bit and its post is shot out). After
+both, packs 1 and 3 ran with no stop, credit 1.0 each. Which of the two did it, or whether a third cause is only
+hidden, is not known: the evidence is that all six packs have run without a stop since (the entries below).
 
 (The session was interrupted here from 07:15 to 14:50; nothing was running in between.)
+
+**14:50 to 15:40. Resumed; a cell that did not start; the run the anchor is taken from.** The changes above were
+committed (`82837d8`). Hidden pack 5, the one that had lost a busbar bolt in the run on `7d2ef4e`, ran directly
+with the new tip: credit 1.0, no stop. The first attempt at three full runs then failed at its first cell ("the
+cell did not answer within 900 s"): other users' jobs had the server at a load average of 50 on its 32 cores, and a
+bare start of Isaac Sim took 348 s at that moment (17 s when the machine is idle). The failure showed a defect:
+`CellProcess` left a simulator that had not come up running, so the next run started a second one beside it. A cell
+that does not come up is now stopped (`230187b`). `grader_config.json` keeps its 900 s (a cell that does not start
+is a task error or a pack that is run once more, never a zero); the native runs since were made on a stage copy
+with 3000 s, the only difference from the committed `tests/`.
+
+One native verify of the whole hidden set on `230187b`: `mean_pack_credit` 1.00000, every pack 1.0 (49, 48, 59,
+58, 67 and 69 of their items placed), no protective stop, no stripped fastener, the lock 77 of 77 counted pairs
+(50 idle pairs not counted), 852 to 1185 steps and 601 to 813 s of simulated time a pack, 6 s of the reference's
+own time, 1166 s for the stage. `tests/anchor.json` records that value (`21ac344`), `full_at` 0.95.
+
+**15:40 to 16:30. Repeats, and every check again with the anchor recorded** (the tree of `21ac344`; cell, grader
+and reference are those of `230187b`).
+
+| submission | set | result |
+|---|---|---|
+| the reference, second full run | six packs | `mean_pack_credit` 1.00000, reward 1.0, lock 77 of 77, stage 1077 s |
+| the reference, third full run | six packs | `mean_pack_credit` 1.00000, reward 1.0, lock 77 of 77, stage 1076 s |
+| none (an empty `/home/user/submission`) | six packs | "no usable submission": reward 0.0, no simulator started |
+| the example program (one frame, then `done`) | six packs | credit 0 on every pack, reward 0.0, stage 140 s |
+| the reference without its token | hidden pack 2 | no `truth`, it ends the pack at once: credit 0, reward 0.0 |
+| the reference, its applied actions recorded | hidden pack 2 | credit 1.0 (59 of 59), 1040 steps, lock 11 of 11 (9 idle), reward 1.0 |
+| a blind replay of those recorded actions | hidden pack 2 | the same credit, 1.0, in the same 1040 steps, and **the lock fails, 0 of 11**: reward 0.0 |
+
+The three full runs are the same run three times: every pack took the same number of steps and the same simulated
+time in each (PhysX on the CPU repeats on this machine), so they show no spread, and they say nothing about another
+CPU. What a change of the tree does is visible one entry up: the run on `7d2ef4e` had lost one bolt (0.99920).
+`full_at` 0.95 is therefore a judgment, not a measured spread (the anchor's `note`). The reference asks for no
+camera frame (it reads `truth`), so in its runs the renderer works only in the canary; frames inside a pack were
+exercised by the example program, the commissioning sessions and `review/check_observability.py`.
+
+The commissioning service ran natively again on this tree, with the same result as at 06:15 (the example program
+through `run_session.py` on development pack 2 in 22 s; an interactive session on pack 1 right after: no `truth`
+in an observation, both cameras decode, a malformed action refused, `truth` and `score` unknown requests; two
+sessions counted, eight left).
+
+The image's asset step ran natively: `environment/fetch_isaac_assets.py` with `environment/isaac_assets.sha256`
+downloaded the UR20's seven files from NVIDIA's public bucket, every digest matched, and the files are the ones
+the native runs used.
+
+Static gates on this tree: `ale lint` on `tasks/` ok; `scripts/lint_domain.py` ok; `tests/robotics_grader/`
+byte-identical to `shared/robotics_grader/`; `scripts/task_assets.py check` 0 problems; `scripts/gpu_types.py
+check` 0 errors; `review/check_copies.py` ok; `review/test_rules.py` 36 checks ok. The repository's `pytest`: all
+pass but two. `tests/test_task_cards.py` fails because this task has no card in `tasks/cards.toml` (a maintainer's
+step before the merge; the author was told not to edit that file). `tests/test_longtail_pause_and_close.py` fails
+on this server only: its temporary folder is on NFS and cannot be removed while a file in it is open; with
+`TMPDIR` on a local disk it passes. It does not touch this task.
+
+## 7. Final report (2026-11-24, 16:30 EST)
+
+**State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
+pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops
+here because everything left needs Docker and the engine, which the author's server does not have.
+
+**Verified on the author's server (native, outside the engine; RTX 6000 Ada, driver 570.195.03, Isaac Sim
+6.2.0.0, PhysX on the CPU, every simulator process confined to GPU 0):**
+
+- The static gates listed in the last status entry.
+- The grader's episode loop end to end (`tests/verify.py` as an ordinary account: the kit's `Solver`, the probe
+  lock, one fresh cell process per pack, the kit's scoring and verdict): no submission scores 0.0; the example
+  program scores 0.0; the reference scores `mean_pack_credit` 1.00000 = reward 1.0, three times; the reference
+  without its token scores 0; a blind replay of the reference's own actions earns the same credit and is refused by
+  the probe lock.
+- The commissioning service with the agent's client library and `run_session.py`, as the author's account.
+- The image's download of the robot model.
+- What a non-privileged program can read from the frames, for the lid's fasteners only (section 6, the table).
+
+**Not verified, because it cannot be here:**
+
+- **The Docker image.** `environment/Dockerfile` was written after `hazard_bay_build`'s and never built. Unknown
+  until it is: that the build succeeds, the agent-UID import check, the pinned settings' effect in the container.
+- **Everything the verify stage does only as root**: the cell under its own account `packcell` from a private
+  copy, the seccomp launcher `nonet_exec.py` around the submission (the native runs print `egress guard: none`),
+  the kit's clearing of the agent account and securing of the path, the records under `/opt/arb-verify`, the
+  verdict through `ale_verify` into `/logs/verifier`.
+- **`environment/setup/setup.sh`** and the commissioning service under its own account behind the image's
+  permissions (that the agent cannot read the service's folder or the development packs' draws rests on file modes
+  that were never exercised).
+- **`ale validate`**: the untouched sandbox at 0.0 and the oracle at 1.0 inside the engine. The anchor has to be
+  measured again there; if the engine's hosts give the reference less than 1.0 on some pack, the anchor and
+  `full_at` follow that measurement, not this one.
+- **`ale run` with frontier models.** The difficulty is unmeasured. The target (0.3 or below) is a design intent.
+- **A human-expert, perception-based solution.** None exists; the reference is privileged (section 5).
+- **Any GPU model but the RTX 6000 Ada**, and any CPU but this server's.
+
+**`gpu_types`.** Both tables name `["RTX-6000-Ada"]`, the one model the task has run on. The engine matches a name
+by its words in order, so this accepts exactly that model. The models the benchmark's cloud hosts offer (RTX 4090,
+RTX 5090, RTX PRO 6000, H100, H200) are not named because they were not tried: the task needs an RTX-capable GPU
+for the cameras, the renderer is not repeatable even on one GPU, and a perception program's behaviour can depend on
+the denoiser the driver picks. Before a model is added: the canary's frames on it and one reference pack.
+`hazard_bay_build`, on the same Isaac Sim stack, lists the first three (`RTX-4090`, `RTX-5090`, `RTX-PRO-6000`),
+which is the reason to expect them to work and to try them first; it does not list H100 or H200, and whether Isaac
+Sim's renderer runs on those was not looked into here: they should be named only after a run. As long as the list
+holds only the RTX 6000 Ada, a host without that model cannot run the task, so the first step of validation is to
+try the image on a cloud model and extend the list.
+
+**Decisions left to the owner** (the conservative choice was taken in each; section 5 has the reasons): the task's
+name; the value weights; that the head type can be found by trial at the cost of time; `full_at`; which GPU models
+to admit; whether to make the task harder or easier once models have run it.
+
+**Next commands** (on a host with Docker, from `vendor/ale`):
+
+```bash
+VIRTUAL_ENV= uv run ale lint ../../tasks
+VIRTUAL_ENV= DOCKER_HOST=unix:///var/run/docker.sock uv run ale validate \
+    ../../tasks/arm/battery_pack_disassembly_to_modules --runs-dir /tmp/ale-runs
+```

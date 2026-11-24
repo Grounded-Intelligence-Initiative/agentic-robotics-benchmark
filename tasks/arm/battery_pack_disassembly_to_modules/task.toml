@@ -46,7 +46,7 @@ gpu_types = ["RTX-6000-Ada"]
 # packs, each a fresh cell process (start and build: 1 to 4 min) with at most 2700 s of simulated time (54,000 control
 # ticks: 9 to 14 min of wall clock), 400 frames (about 0.2 s each) and 1200 s of the controller's own time: about
 # 2,400 s a pack at the bounds, 14,400 s for the six, 15,000 s with the canary; 6 h leaves 6,600 s of margin. The
-# reference's packs take about 600 to 900 s of simulated time each; its whole verify is about half an hour.
+# reference's packs take about 600 to 900 s of simulated time each; its whole verify took 18 to 22 minutes natively.
 [agent]
 timeout_sec = 21600
 network_mode = "no-network"
