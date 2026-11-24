@@ -306,7 +306,8 @@ class Cell(object):
         # what holds the parts (before the spindle's rule: a fastener that comes out in this tick frees its part in
         # the next one, when its body has left the seat)
         moved = np.nonzero(np.linalg.norm(tfs[:, :3] - self.seat_pos, axis=1) > 0.02)[0]
-        for pid in r.unlock([self.part_ids[i] for i in moved], self.f_ext):
+        held = r.pressed_parts(self.tip()[0]) if self.tool == "nutrunner" and self.stroke > 3e-4 else ()
+        for pid in r.unlock([self.part_ids[i] for i in moved], self.f_ext, held):
             self._free(pid)
         # the nutrunner
         self.spindle_torque, self.spindle_speed = 0.0, 0.0

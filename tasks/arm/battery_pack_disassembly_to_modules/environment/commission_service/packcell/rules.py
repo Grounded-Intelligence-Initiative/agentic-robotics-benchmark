@@ -289,10 +289,16 @@ class Rules(object):
         return None
 
     # ------------------------------------------------------------------ what holds a part
-    def unlock(self, moved, f_ext):
+    def pressed_parts(self, tip, radius=0.02):
+        """The parts whose fastener seats the bit's tip is at (within `radius`): a part the bit still presses on
+        stays where it is until the bit lifts off."""
+        return set(f["holds"] for f in self.fast.values() if np.linalg.norm(f["top"] - tip) < radius)
+
+    def unlock(self, moved, f_ext, held=()):
         """Free the parts that nothing holds any more; returns their ids. `moved`: ids of the parts that are more
         than 0.02 m from their seats; `f_ext`: the external force on the tool (world, N): a plug comes out when
-        the gripper pulls it along its axis harder than its latch holds."""
+        the gripper pulls it along its axis harder than its latch holds; `held`: parts the nutrunner's bit is
+        pressing on at this moment, which are not freed yet."""
         out = []
         for pid in moved:
             p = self.part[pid]
@@ -313,7 +319,7 @@ class Rules(object):
                 free = p["grasped"] and float(np.dot(f_ext, self.n)) < -lock["force"]
             else:
                 free = False
-            if free:
+            if free and pid not in held:
                 p["locked"] = False
                 out.append(pid)
                 self.log("freed", id=pid)

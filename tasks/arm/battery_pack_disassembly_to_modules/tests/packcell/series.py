@@ -95,7 +95,7 @@ TOOLS = {
         "tcp_z": 0.300,                       # the bit's tip with the spindle uncompressed
         "stroke": 0.025, "spring_N_per_m": 4000.0, "spring_damping": 120.0,
         "speed_max_rpm": 300.0, "torque_max": 60.0,
-        "collider_r": 0.007,
+        "collider_r": 0.006,
     },
     "gripper": {
         "mass": 2.6, "com": [0.0, 0.0, 0.07],

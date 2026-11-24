@@ -269,3 +269,43 @@ the inside of the pack or the harness.
 **The manual's photographs** were taken with the cell's cameras on an example pack (`review/make_photos.py`); round
 primitives are drawn with a finer tessellation since (a fastener's head read as a ten-sided polygon before), and
 the lights were turned down (the tray and the plated heads were blown out).
+
+**05:50 to 06:20. The verify stage's small checks (native, null anchor, the tree of `6a08a7e`).**
+
+| submission | set | result |
+|---|---|---|
+| none (an empty `/home/user/submission`) | six packs | "no usable submission": the honest zero, no simulator started |
+| the example program (takes one frame, says `done`) | six packs | credit 0 on every pack (0 of 49, 48, 59, 58, 67, 69 items), `mean_pack_credit` 0; the whole stage 186 s |
+| the reference without its token | hidden pack 2 | no `truth`, it ends the pack at once: credit 0 |
+| the reference, its applied actions recorded | hidden pack 2 | credit 0.9944 (58 of 59), 1007 steps, the lock 11 of 11 counted pairs (9 idle pairs not counted) |
+| a blind replay of those recorded actions | hidden pack 2 | the same credit to the last digit, 0.9944, in the same 1007 steps (PhysX repeated the pack exactly on this machine), and **the lock fails: 0 of 11 pairs**, so the reward is 0 |
+
+The one item the recorded reference lost was a busbar bolt that bounced off the pile in the fasteners bin and out
+over the wall (ejected 5 cm above the walls, always at the same corner). The reference now lowers the bit between
+the walls and spreads the fasteners; the pack then ran to 1.0.
+
+The commissioning service's first native run showed that a session opened right after another had closed was
+refused as busy (the service was still stopping the first cell): `open` now waits up to 120 s for the cell to stop.
+
+**06:15. The commissioning service, natively** (`commissiond.py` as the author's account with its run and state
+folders redirected; the agent's own `packcell_client.py` and `run_session.py` against it): the status file and
+request; `run_session.py` with the example program on development pack 2 (session 1: READY, reset, two steps, one
+overhead frame, `done`; 28 s of wall clock); then an interactive session on pack 1 opened right after (it waited
+for the first cell to stop): the first observation carries no `truth`, the overhead frame decodes to 1440 x 1080
+with depth up to 2.05 m, a move and a wrist frame work and the frame count goes down, a malformed action is
+refused without effect, and `truth` and `score` are unknown requests on this wire. Two sessions counted, eight
+left, the count kept in the state file. Not run: the service under its own account behind the image's permissions
+(`setup.sh` as root), which needs the image.
+
+**06:20 to 07:15. A first full run on the frozen tree, and the bit's collider.** One native verify of all six
+packs on `7d2ef4e`: `mean_pack_credit` 0.99920 (1.0, 1.0, 1.0, 1.0, 1.0, 0.9952; one busbar bolt of pack 5 not in
+a bin), lock 85 of 85, 1332 s for the stage; but 4 and 3 protective stops on packs 1 and 3, all with the bit
+pressed on a fastener: the bit was thrown 15 mm sideways with 250 to 2500 N in a tick in which nothing was
+commanded. 160 scripted presses with centred, converged approaches never showed it, at any friction, so it is not
+friction (the note on friction in the list above stays true but was not the cause). Two changes: the bit's collider
+is a capsule (a round end on a flat head: one contact point with the head's normal; a flat-ended cylinder on a head
+of nearly its own radius is a degenerate pair for the contact generator), and a part whose last fastener has just
+come out is not freed while the bit still presses on it (a 0.12 kg busbar squeezed between the bit and its post
+was shot out). After both, packs 1 and 3 ran with no stop, credit 1.0 each.
+
+(The session was interrupted here from 07:15 to 14:50; nothing was running in between.)

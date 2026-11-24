@@ -344,7 +344,13 @@ def build(stage, pack, robot_usd, render=True):
     b.body(sp, nr["spindle_mass"], kinematic=False, com=(0, 0, 0.06), inertia=(4e-4, 4e-4, 2e-5))
     total = nr["spindle_len"] + nr["bit_len"]
     b.cyl(R + "/spindle_link/rod", 0.0055, nr["spindle_len"], (0, 0, nr["spindle_len"] / 2), "steel")
-    b.grip(b.cyl(R + "/spindle_link/collider", nr["collider_r"], total, (0, 0, total / 2), None, collide=True, visible=False))
+    # the bit's collider is a capsule: its round end stands on a head at one point with the head's own normal. (A
+    # flat-ended cylinder on a head of nearly its own radius is a degenerate pair for the contact generator: now
+    # and then the contact normal came out sideways and threw the bit off the head with hundreds of newtons.)
+    cr = nr["collider_r"]
+    cap = b.capsule(R + "/spindle_link/collider", cr, (0, 0, 0.02), (0, 0, total - cr), None, collide=True)
+    UsdGeom.Imageable(cap).MakeInvisible()
+    b.grip(cap)
     for name in S.BITS:
         r = S.BIT_LOOK[name]["r"]
         root = R + "/spindle_link/bit_" + name
