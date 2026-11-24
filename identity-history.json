@@ -522,6 +522,12 @@
     "spec_hash": "sha256:6222d85efac6f26f5080591098aeb1583f9a3287d5d3e0c589502a9ee6757a73"
   },
   {
+    "content_digest": "sha256:e78070ff9dcd6e5d5890fc689f348b72c7fd21397475205e0f8829f4435e8493",
+    "since": "2026-11-24T20:03:30Z",
+    "slug": "grocery_shelf_restocking",
+    "spec_hash": "sha256:16b5ee03ed62063b1ff07888516a11716b724570c514a0a14a05b9d66b48ae3a"
+  },
+  {
     "content_digest": "sha256:a0917a9d5f7ad45a54679319b0edbbf48cc2df64f0c9056a08ba746e5f72258a",
     "since": "2026-11-24T20:01:10Z",
     "slug": "grocery_shelf_restocking",
@@ -754,6 +760,12 @@
     "since": "2026-11-19T17:19:38Z",
     "slug": "longtail_manipulation_recovery",
     "spec_hash": "sha256:38b19175b3b7233a66d299ab48e844f08b76fad5e43ac42e54577a3ef7b6fd16"
+  },
+  {
+    "content_digest": "sha256:46b3c1805c8b650ccc15fbf3902fffc321bf6f8d862f7352e9158b70b4e19b1e",
+    "since": "2026-11-24T20:03:30Z",
+    "slug": "multisensor_rig_calibration_from_logs",
+    "spec_hash": "sha256:5870874cbe4ed036f3c97ac6bdb8e43466feaa1096d1e72c5cc273b5293b18dd"
   },
   {
     "content_digest": "sha256:acbaf62cc6b5cdd97efeca519a6d0f0e149cb8555b062bd150d3770d85d99c12",
