@@ -113,7 +113,14 @@ cell's messages).
   internet socket), one action per step until the pack ends. The probe lock (`IdleAwareProbeLock`, rate 0.02, pass
   fraction 0.1): a probed step is asked twice with the same `t`, once with the robot's readings shifted
   (`wire.perturbed`), in a hidden order; pairs in which neither reply commands a motion are not counted. The
-  schedule is a function of the pack's index and seed, so the grader adds no randomness.
+  schedule is a function of the pack's index and seed, so the grader adds no randomness. The copy is the
+  observation the cell would give with its joints shifted (up to 0.01 rad a joint, a whole number of the readings'
+  last digit): the grader asks the cell for its angles before rounding (`joints`, a grader-only request) and writes
+  the angles, both tool poses and a wrist frame's pose from them as `cell.observe` does; the wrench is left as it
+  is. So a copy's poses agree with its joints as a true observation's do, and the robot's model, which the agent
+  holds, does not tell them apart (upstream #173; the measurement is in section 6). `probe_residual_true`,
+  `probe_residual_copy` and `probe_true_residual_larger` of `probe_copies` in the verdict's metrics show it for
+  every run.
 - The credit (`rules.Rules.credit`): after the end and 1.5 s of settling, the value of the components that lie
   undamaged where they belong over the value of everything in the pack, from the bodies' poses in PhysX. A module:
   centre over a bay, bottom on the bay's floor (-5 to +15 mm), upright within 8 degrees. The lid: centre within
@@ -365,7 +372,64 @@ step before the merge; the author was told not to edit that file). `tests/test_l
 on this server only: its temporary folder is on NFS and cannot be removed while a file in it is open; with
 `TMPDIR` on a local disk it passes. It does not touch this task.
 
+**18:20 to 19:00. The kit of upstream #173, and the probe's copy rebuilt (tree `7e59d13`; the native verify has
+not been repeated on it).** `upstream/main` moved to `1c13a47` after this branch was cut: #173 changed
+`shared/robotics_grader/` (the solver and everything it starts run at nice 19; `replies_differ` is the lock's one
+rule; `probe.stale_copy`; `deadline.VerifierDeadline`) and copied it into every task. The branch was merged with
+`upstream/main` and the kit copied again (byte-identical to `shared/`). The task against #173's three findings:
+
+1. *The solver's priority.* The kit's own: `GuardedSolver` only replaces `_spawn`, and the kit starts whatever
+   `_spawn` a task has from its low-priority thread. Nothing to change.
+2. *One rule for probe pairs, in practice too.* `~/commission/run_session.py` repeats steps but counts no pairs,
+   so there is no second rule. Nothing to change.
+3. *A probe copy must be built the way the real observation is.* This task's copy was not. `wire.perturbed`
+   shifted the joint readings (up to 0.02 rad) and, independently, the tool poses (up to 12 mm and 0.03 rad) and
+   the wrench (up to 3 N). The cell reports `tcp` as the kinematics of its own joint reading times the tool, so a
+   true observation's pose and joints agree to the rounding (about 1e-6) and the copy's disagreed by millimetres:
+   one line with the robot's model, which is among the givens, named the copy every time. A program could have
+   answered the copy differently on purpose and replayed everything else.
+
+The copy is now the observation the cell would give with its joints shifted (section 3): `q` and `q_target` by
+one shift, `tcp`, `tcp_target` and a wrist frame's `pose` from the shifted angles as `cell.observe` builds them,
+the wrench, the joint speeds and the pictures unchanged. Two finer points were measured and closed on the way.
+Building the copy from the rounded readings made the hidden digits of `q` and `q_target` the same number (true
+observations' are independent), and a copy of a commanded angle with round digits had hidden digits where the true
+one has none (a threshold on that pair's residual named the copy in 86 % of 4000 observations). So the grader
+takes the cell's angles before rounding (`cell.joints`, served only to the grader, like `truth`) and the shift is
+a whole number of the readings' last digit: what a reading hides is then the same in both. Measured without the
+simulator, on 4000 observations built as the cell builds them, with the grader's builder:
+
+| commanded angles | the true observation has the larger residual | best single threshold on the residual names the copy |
+|---|---|---|
+| any digits (the usual case: a target from inverse kinematics) | 1984 of 4000 (49.6 %) | 51.0 % (50 % is chance) |
+| round digits (a joint move by a round amount) | 1979 of 4000 (49.5 %) | 50.9 % |
+
+The tool centre point of a copy lies 9 mm from the true one in the median (3 mm at the 5th percentile, 31 mm at
+most), so a program that works from the observed poses answers differently. The agent's library
+(`packcell_client.perturbed`, used by `run_session.py`) builds the same copy from `ur20.json` and `cell.json`; it
+has only the rounded readings, so its copies are right in the usual case and not in the round-digits one, which
+does not matter for a rehearsal. The interface document and the instruction say what a repeated request carries.
+`review/test_rules.py` (37 checks) holds the copy to these properties and the library to the grader's builder.
+
+What ran on `7e59d13`: `ale lint` ok; `scripts/lint_domain.py` ok; the kit comparison; `scripts/gpu_types.py
+check`; `scripts/task_assets.py check`; the kit's selftest; `review/check_copies.py`; `review/test_rules.py`; and
+the grader's loop (`pack_grade.run_packs`) against a stand-in cell without a simulator: a controller that works
+from the observed angles, 81 of 81 probed pairs differing; one that does not, 0 of 81 and the lock fails; the
+cell asked for its angles once per probe; the residuals of both observations about 1.5e-6.
+
+**Not run on this tree: the native verify.** The series was started and stopped within a minute, because the
+server's free GPU had just been taken by another job. So the reference's three runs at 1.00000 (trees `230187b`
+and `21ac344`, above) are from before this change. What the change touches is which steps are probed and what the
+copied observation holds; the cell's physics and the actions executed on true observations are the same code.
+That the reference still scores 1.0 and passes the lock on the new copies is expected and not yet measured. To do
+on a free GPU: the reference on the whole hidden set, then the small checks (no submission, the example, the
+reference without its token, the recorded reference and its blind replay, a commissioning session).
+
 ## 7. Final report (2026-11-24, 16:30 EST)
+
+**Since this report:** the kit of upstream #173 and a rebuilt probe copy (the last entry of section 6). The static
+gates pass on that tree; the native verify has not been repeated on it yet, so the numbers below are the earlier
+tree's.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops
