@@ -116,12 +116,21 @@
     "smoke": true,
     "sites": 7,
     "path_m": 0.306,
+    "pool": "all",
+    "palette": "pale",
+    "shafts": [
+     "teal",
+     "gold",
+     "blue",
+     "blue"
+    ],
+    "clutter": 3,
     "fine_fraction": 0.831,
     "both_active_fraction": 0.838,
-    "generator": "endosim-procedure/0.1"
+    "generator": "endosim-procedure/0.2"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.94,
+   "reference_render_free": 0.9387,
    "reference_lens_contacts": 0
   },
   {
@@ -137,12 +146,20 @@
     "smoke": false,
     "sites": 12,
     "path_m": 0.731,
-    "fine_fraction": 0.578,
+    "pool": "all",
+    "palette": "dusky",
+    "shafts": [
+     "black",
+     "satin",
+     "gold"
+    ],
+    "clutter": 4,
+    "fine_fraction": 0.579,
     "both_active_fraction": 1.0,
-    "generator": "endosim-procedure/0.1"
+    "generator": "endosim-procedure/0.2"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.8612,
+   "reference_render_free": 0.865,
    "reference_lens_contacts": 0
   },
   {
@@ -158,12 +175,21 @@
     "smoke": true,
     "sites": 7,
     "path_m": 0.28,
+    "pool": "all",
+    "palette": "liver",
+    "shafts": [
+     "yellow",
+     "gold",
+     "teal",
+     "teal"
+    ],
+    "clutter": 6,
     "fine_fraction": 0.784,
     "both_active_fraction": 1.0,
-    "generator": "endosim-procedure/0.1"
+    "generator": "endosim-procedure/0.2"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9513,
+   "reference_render_free": 0.9525,
    "reference_lens_contacts": 0
   },
   {
@@ -179,12 +205,20 @@
     "smoke": false,
     "sites": 9,
     "path_m": 0.435,
+    "pool": "all",
+    "palette": "pink",
+    "shafts": [
+     "blue",
+     "steel",
+     "satin"
+    ],
+    "clutter": 2,
     "fine_fraction": 0.595,
     "both_active_fraction": 1.0,
-    "generator": "endosim-procedure/0.1"
+    "generator": "endosim-procedure/0.2"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.925,
+   "reference_render_free": 0.9263,
    "reference_lens_contacts": 0
   },
   {
@@ -200,12 +234,21 @@
     "smoke": false,
     "sites": 8,
     "path_m": 0.406,
-    "fine_fraction": 0.63,
+    "pool": "all",
+    "palette": "pink",
+    "shafts": [
+     "graphite",
+     "steel",
+     "yellow",
+     "gold"
+    ],
+    "clutter": 3,
+    "fine_fraction": 0.629,
     "both_active_fraction": 0.831,
-    "generator": "endosim-procedure/0.1"
+    "generator": "endosim-procedure/0.2"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.88,
+   "reference_render_free": 0.8775,
    "reference_lens_contacts": 0
   },
   {
@@ -221,9 +264,17 @@
     "smoke": true,
     "sites": 7,
     "path_m": 0.304,
+    "pool": "all",
+    "palette": "liver",
+    "shafts": [
+     "steel",
+     "graphite",
+     "yellow"
+    ],
+    "clutter": 0,
     "fine_fraction": 0.807,
     "both_active_fraction": 1.0,
-    "generator": "endosim-procedure/0.1"
+    "generator": "endosim-procedure/0.2"
    },
    "never_moves": 0.0,
    "reference_render_free": 0.9137,
@@ -242,12 +293,20 @@
     "smoke": false,
     "sites": 10,
     "path_m": 0.5,
+    "pool": "all",
+    "palette": "red",
+    "shafts": [
+     "white",
+     "white",
+     "green"
+    ],
+    "clutter": 7,
     "fine_fraction": 0.545,
     "both_active_fraction": 1.0,
-    "generator": "endosim-procedure/0.1"
+    "generator": "endosim-procedure/0.2"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.8387,
+   "reference_render_free": 0.8375,
    "reference_lens_contacts": 0
   },
   {
@@ -263,12 +322,22 @@
     "smoke": true,
     "sites": 8,
     "path_m": 0.404,
-    "fine_fraction": 0.811,
-    "both_active_fraction": 0.729,
-    "generator": "endosim-procedure/0.1"
+    "pool": "all",
+    "palette": "pink",
+    "shafts": [
+     "green",
+     "yellow",
+     "blue",
+     "black",
+     "blue"
+    ],
+    "clutter": 8,
+    "fine_fraction": 0.816,
+    "both_active_fraction": 0.736,
+    "generator": "endosim-procedure/0.2"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9525,
+   "reference_render_free": 0.9337,
    "reference_lens_contacts": 0
   },
   {
@@ -283,13 +352,22 @@
     "assistant": true,
     "smoke": false,
     "sites": 12,
-    "path_m": 0.839,
-    "fine_fraction": 0.63,
+    "path_m": 0.729,
+    "pool": "all",
+    "palette": "dusky",
+    "shafts": [
+     "green",
+     "steel",
+     "teal",
+     "gold"
+    ],
+    "clutter": 0,
+    "fine_fraction": 0.646,
     "both_active_fraction": 0.835,
-    "generator": "endosim-procedure/0.1"
+    "generator": "endosim-procedure/0.2"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.8425,
+   "reference_render_free": 0.875,
    "reference_lens_contacts": 0
   },
   {
@@ -305,12 +383,21 @@
     "smoke": false,
     "sites": 8,
     "path_m": 0.538,
-    "fine_fraction": 0.795,
+    "pool": "all",
+    "palette": "pale",
+    "shafts": [
+     "gold",
+     "black",
+     "maroon",
+     "blue"
+    ],
+    "clutter": 5,
+    "fine_fraction": 0.794,
     "both_active_fraction": 0.859,
-    "generator": "endosim-procedure/0.1"
+    "generator": "endosim-procedure/0.2"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9313,
+   "reference_render_free": 0.9275,
    "reference_lens_contacts": 0
   },
   {
@@ -326,12 +413,22 @@
     "smoke": true,
     "sites": 8,
     "path_m": 0.387,
-    "fine_fraction": 0.829,
-    "both_active_fraction": 0.694,
-    "generator": "endosim-procedure/0.1"
+    "pool": "all",
+    "palette": "red",
+    "shafts": [
+     "graphite",
+     "yellow",
+     "green",
+     "black",
+     "maroon"
+    ],
+    "clutter": 3,
+    "fine_fraction": 0.83,
+    "both_active_fraction": 0.693,
+    "generator": "endosim-procedure/0.2"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9275,
+   "reference_render_free": 0.9263,
    "reference_lens_contacts": 0
   },
   {
@@ -347,13 +444,22 @@
     "smoke": false,
     "sites": 12,
     "path_m": 0.956,
-    "fine_fraction": 0.578,
+    "pool": "all",
+    "palette": "red",
+    "shafts": [
+     "steel",
+     "yellow",
+     "green"
+    ],
+    "clutter": 8,
+    "fine_fraction": 0.579,
     "both_active_fraction": 1.0,
-    "generator": "endosim-procedure/0.1"
+    "generator": "endosim-procedure/0.2"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.87,
+   "reference_render_free": 0.8675,
    "reference_lens_contacts": 0
   }
- ]
+ ],
+ "record_measured": "2026-11-24"
 }

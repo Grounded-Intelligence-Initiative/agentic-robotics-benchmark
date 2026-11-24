@@ -24,8 +24,8 @@ K = 100.0                     # stage units per metre
 SHAFT_LEN = 0.40              # m, from the wrist up through the trocar
 CLOCK_SLOTS = 8
 CLOCK_U0, CLOCK_PITCH, CLOCK_V, CLOCK_PX = 10.0, 10.0, 12.0, 8.0     # slot centres (px), quad size (px)
-CLOCK_DEPTH = 0.012           # m in front of the lens
-NEAR_CLIP = 0.004
+CLOCK_DEPTH = 0.002           # m in front of the lens: nearer than anything but a shaft run through the lens itself
+NEAR_CLIP = 0.001
 
 
 def _material(stage, path, rgb=None, metallic=0.0, roughness=0.5, clearcoat=0.0, emissive=None, colour_map=None,
@@ -175,6 +175,22 @@ class Scene(object):
         mesh = _grid_mesh(stage, "/World/Tissue/Floor", pts, len(xs), len(ys), st, st_fine, nrm.reshape(-1, 3))
         _bind(mesh.GetPrim(), _material(stage, "/World/Looks/tissue", roughness=look["roughness"], clearcoat=look["clearcoat"],
                                         colour_map=paths["tissue"][0], normal_map=paths["tissue"][1]))
+        # what lies in the field: gauze swabs and clips, on the tissue (they breathe with it)
+        for i, item in enumerate(self.spec.get("clutter") or []):
+            path = "/World/Tissue/Clutter%d" % i
+            x = UsdGeom.Xform.Define(stage, path)
+            x.AddTranslateOp(UsdGeom.XformOp.PrecisionDouble).Set(Gf.Vec3d(*[float(v) * K for v in item["pos"]]))
+            x.AddRotateZOp(UsdGeom.XformOp.PrecisionDouble).Set(math.degrees(float(item["yaw"])))
+            if item["kind"] == "gauze":
+                mat = _material(stage, "/World/Looks/clutter%d" % i, rgb=item["rgb"], roughness=1.0)
+                _box(stage, path + "/Swab", (item["size"][0], item["size"][1], 0.003), (0.0, 0.0, 0.0), mat)
+            else:
+                mat = _material(stage, "/World/Looks/clutter%d" % i, rgb=item["rgb"], metallic=1.0, roughness=0.3)
+                c = UsdGeom.Cylinder.Define(stage, path + "/Clip")
+                c.CreateRadiusAttr(float(item["size"][1]) * K)
+                c.CreateHeightAttr(float(item["size"][0]) * K)
+                c.CreateAxisAttr("X")
+                _bind(c.GetPrim(), mat)
         # the abdominal wall: the upper half of the ellipsoid, seen from inside
         cx, cy, cz = WALL_CENTRE
         ax, ay, az = WALL_AXES
@@ -273,8 +289,13 @@ class Scene(object):
             grp = UsdGeom.Xform.Define(stage, base)
             mp = "/World/Looks/%s_%d_" % (role, lid)
             shaft = _material(stage, mp + "shaft", rgb=look["shaft_rgb"], metallic=look["shaft_metallic"], roughness=look["shaft_rough"])
-            wrist = _material(stage, mp + "wrist", rgb=look["wrist_rgb"], metallic=1.0, roughness=look["wrist_rough"])
-            jawm = _material(stage, mp + "jaw", rgb=look["jaw_rgb"], metallic=1.0, roughness=look["jaw_rough"])
+            # blood and tissue on the working end: the wrist and the jaws go from bare metal towards a wet dark red
+            st = float(look.get("stain") or 0.0)
+            blood = np.array(self.spec["look"]["vessel"]) * 0.9
+            stained = lambda rgb, k: [float(v) for v in (1.0 - k) * np.array(rgb) + k * blood]   # noqa: E731
+            wrist = _material(stage, mp + "wrist", rgb=stained(look["wrist_rgb"], 0.7 * st), metallic=1.0 - 0.7 * st, roughness=look["wrist_rough"])
+            jawm = _material(stage, mp + "jaw", rgb=stained(look["jaw_rgb"], st), metallic=1.0 - st, roughness=look["jaw_rough"],
+                             clearcoat=0.6 * st)
             r = 0.5 * model.SHAFT_DIAMETER
             jl, wl, jaw = look["jaw_len"], look["wrist_len"], look["jaw"]
             ops = []

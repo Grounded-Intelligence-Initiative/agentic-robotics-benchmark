@@ -41,7 +41,7 @@ chown -h "$AGENT_USER:$AGENT_USER" "$HOME_DIR/given/dev_procedures"
 
 setsid runuser -u endosim -- env HOME="$STATE/home" TMPDIR="$STATE/tmp" OPTIX_CACHE_PATH="$STATE/optix" \
     OMNI_KIT_ACCEPT_EULA=YES ACCEPT_EULA=Y PRIVACY_CONSENT=Y PYTHONDONTWRITEBYTECODE=1 \
-    /bin/bash -c 'umask 077; cd /var/lib/endocam; while :; do /opt/venv/bin/python3 -B -s /opt/endosim-commission/commissiond.py; sleep 5; done' \
+    /bin/bash -c 'umask 022; cd /var/lib/endocam; while :; do /opt/venv/bin/python3 -B -s /opt/endosim-commission/commissiond.py; sleep 5; done' \
     < /dev/null > /dev/null 2>&1 &
 
 for _ in $(seq 1 750); do

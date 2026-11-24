@@ -12,6 +12,7 @@ from . import model
 from .scene import CLOCK_PITCH, CLOCK_PX, CLOCK_SLOTS, CLOCK_U0, CLOCK_V
 
 DISK_RADIUS = 310.0
+MOTION_BLUR_SHUTTER = 0.5     # the fraction of a control step the shutter is open
 AE_TARGET = 96.0              # the automatic exposure's centre-weighted mean level (of 255)
 JPEG_QUALITY = 90
 
@@ -93,6 +94,17 @@ class Post(object):
                 a = a + dens * 0.5 * np.exp(-d2 / (2.0 * 95.0 ** 2)) * (0.5 + field)
             a = np.clip(a, 0.0, 0.92)[..., None]
             img = img * (1.0 - a) + self.tint * a
+        flow = state.get("flow_px") or (0.0, 0.0)
+        length = min(MOTION_BLUR_SHUTTER * float(np.hypot(flow[0], flow[1])), 28.0)
+        if length > 1.5:
+            # the camera moved during the exposure: the picture is smeared along its own motion
+            n = int(2 * round(length / 2) + 1)
+            kern = np.zeros((n, n), np.float32)
+            c = n // 2
+            ang = float(np.arctan2(flow[1], flow[0]))
+            cv2.line(kern, (int(round(c - c * np.cos(ang))), int(round(c - c * np.sin(ang)))),
+                     (int(round(c + c * np.cos(ang))), int(round(c + c * np.sin(ang)))), 1.0, 1)
+            img = cv2.filter2D(img, -1, kern / max(float(kern.sum()), 1.0), borderType=cv2.BORDER_REPLICATE)
         smear = int(state.get("smear") or 0)
         if smear:
             m, tint = self._smear_map(smear)

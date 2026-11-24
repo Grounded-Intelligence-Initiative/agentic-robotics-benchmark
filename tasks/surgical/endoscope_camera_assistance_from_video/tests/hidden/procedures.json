@@ -1,6 +1,6 @@
 {
  "steps": 800,
- "generator": "endosim-procedure/0.1",
+ "generator": "endosim-procedure/0.2",
  "procedures": [
   {
    "seed": 8877293235906980051,

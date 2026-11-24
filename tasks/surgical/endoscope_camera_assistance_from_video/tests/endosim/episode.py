@@ -40,6 +40,7 @@ class Episode(object):
         self.smear_serial = 0
         self.trace = []                       # per judged step: (usable, failed criteria bitmask)
         self._pose = model.camera_pose(self.holder.q, self.scope)
+        self._prev_pose = self._pose
 
     # -- state ----------------------------------------------------------------------------------------------------
     @property
@@ -101,6 +102,7 @@ class Episode(object):
             else:
                 self.clean_s = 0.0
         self._pose = model.camera_pose(self.holder.q, self.scope)
+        self._prev_pose = prev_pose
         return self._judge(prev_pose)
 
     def _judge(self, prev_pose):
@@ -151,7 +153,14 @@ class Episode(object):
         r_wc, p = self._pose
         tip = self.proc.tip["right"][t]
         src = model.project(tip[None, :], self._pose, self.scope)[0]
+        # how far the camera's own motion moved the picture during the last control step (for the motion blur): the
+        # image displacement of a point 8 cm in front of the lens
+        ahead = (p + r_wc @ np.array([0.0, 0.0, -0.08]))[None, :]
+        was = model.project(ahead, self._prev_pose, self.scope)[0]
+        k = model.SCOPES[self.scope]
+        flow = [float(k["cx"] - was[0]), float(k["cy"] - was[1])] if was[2] > 0 else [0.0, 0.0]
         return {
+            "flow_px": flow,
             "serial": int(serial), "step": int(t),
             "cam": {"r": [[float(x) for x in row] for row in r_wc], "p": [float(x) for x in p]},
             "inst": self.proc.roles_state(t),

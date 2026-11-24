@@ -63,7 +63,7 @@ def main():
             doc = json.load(open(path))
             item = doc["procedures"][a.hidden if a.hidden is not None else a.dev]
             seed, factors, steps = item["seed"], item.get("factors") or {}, doc.get("steps", steps)
-        proc = procedure.generate(seed, factors, steps=steps)
+        proc = procedure.generate(seed, factors, steps=steps, pool="dev" if a.dev is not None else "all")
         print("procedure:", proc.facts(), flush=True)
         ctl = ref.Controller()
         t0 = time.time()

@@ -1,7 +1,7 @@
 {
  "metric": "useful_view_fraction",
  "direction": "higher",
- "value": null,
- "full_at": 0.97,
- "source": "TODO"
+ "value": 0.9028,
+ "full_at": 0.98,
+ "source": "PROVISIONAL, measured natively outside the engine and to be re-measured through `ale validate`: the reference controller (solution/reference: privileged tips in place of perception, rate commands through the public wire) played the fixed hidden set (tests/hidden/procedures.json, 12 procedures x 800 steps) through tests/verify.py's own loop (tests/review/run_native.py) with Isaac Sim 6.2.0.0 rendering on an RTX 6000 Ada, driver 570.195.03, on 2026-11-24: useful_view_fraction 0.9028125 (8667 of 9600 steps). Status and repeats: tests/README.md section 7."
 }

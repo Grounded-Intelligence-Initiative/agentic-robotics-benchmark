@@ -30,7 +30,8 @@ is back at its place); the assistant's third instrument, when there is one, neve
 place where the surgeon works travels through the cavity: a camera that stays where it is sees almost nothing usable.
 The procedures differ in kind (dissection, suturing, exploration, clipping and cutting), in the instruments and
 their look, in the tissue, in smoke and highlights, in the scope fitted, in whether instruments are exchanged, and in
-whether an assistant's instrument is in the field (manual, section 7).
+whether an assistant's instrument is in the field (manual, section 7). The graded procedures show instrument
+finishes, tissue colourings, blood-stained instruments and clutter that the development set does not show.
 
 ## What you produce
 

@@ -36,8 +36,8 @@ class Assistant(object):
         self.roll_band = math.radians(rng.uniform(4.0, 9.0))
         self.seen = []
         self.moving = False
-        self.touch_at = rng.integers(int(0.25 * episode.steps), int(0.75 * episode.steps)) if touch else -1
-        self.mode, self.wait = "follow", 0
+        self.touch_at = rng.integers(int(0.25 * episode.steps), int(0.6 * episode.steps)) if touch else -1
+        self.mode, self.wait, self.touched, self.dive_until = "follow", 0, False, 0
 
     def act(self):
         ep, scope = self.ep, self.ep.scope
@@ -45,15 +45,20 @@ class Assistant(object):
         k = model.SCOPES[scope]
         roll_err = model.level_roll(q[0], q[1]) - q[3]
         roll = float(np.clip(1.5 * roll_err, -model.RATE_MAX[3], model.RATE_MAX[3])) if abs(roll_err) > self.roll_band else 0.0
-        # the lens: an accident, some time to notice it, the withdrawal, the wait in the cannula
-        if ep.t == self.touch_at and self.mode == "follow":
-            self.mode = "dive"
+        # the lens: an accident (the scope driven at the tissue under the work), some time to notice it, the
+        # withdrawal, the wait in the cannula
+        if ep.t >= self.touch_at >= 0 and self.mode == "follow" and not self.touched and ep.active_tips():
+            below = np.mean(np.array(ep.active_tips()), axis=0) - np.array([0.0, 0.0, 0.03])
+            if np.linalg.norm(below) < model.Q_MAX[2] - 0.01:          # within the scope's reach from here
+                self.mode, self.dive_until, self.touched = "dive", ep.t + 80, True
         if self.mode == "dive":
             if ep.smeared:
                 self.mode, self.wait = "unaware", int(Rng(ep.t, "notice").uniform(8, 22))
-            elif q[2] >= model.Q_MAX[2] - 1e-3 or ep.t > self.touch_at + 60:
+            elif ep.t > self.dive_until or not ep.active_tips():
                 self.mode = "follow"                         # nothing in the way this time
-            return np.array([0.0, 0.0, model.RATE_MAX[2], roll])
+            else:
+                below = np.mean(np.array(ep.active_tips()), axis=0) - np.array([0.0, 0.0, 0.03])
+                return np.concatenate([self._towards(below, 0.0, 2.5), [roll]])
         if ep.smeared and self.mode == "follow":
             self.mode, self.wait = "unaware", int(Rng(ep.t, "notice").uniform(8, 22))
         if self.mode == "unaware":
@@ -73,10 +78,7 @@ class Assistant(object):
         spread = float(np.linalg.norm(tips[0] - tips[-1])) if len(tips) > 1 else 0.0
         want_depth = max(k["fx"] * model.SHAFT_DIAMETER / self.want_px, 0.02 + 1.2 * spread)
 
-        def view(qq):
-            return model.project(target[None, :], model.camera_pose(np.array([qq[0], qq[1], qq[2], q[3]]), scope), scope)[0]
-
-        now = view(q[:3])
+        now = model.project(target[None, :], ep.pose(), scope)[0]
         err = np.array([k["cx"] - now[0], k["cy"] - now[1], want_depth - now[2]])
         off = math.hypot(err[0], err[1])
         if self.moving and off < 0.35 * self.dead_px and abs(err[2]) < 0.006:
@@ -85,16 +87,29 @@ class Assistant(object):
             self.moving = True
         if not self.moving:
             return np.array([0.0, 0.0, 0.0, roll])
+        return np.concatenate([self._towards(target, want_depth, self.gain), [roll]])
+
+    def _towards(self, target, want_depth, gain):
+        """Pan, tilt and insertion rates that bring `target` to the image centre at `want_depth` (resolved rate)."""
+        ep, scope = self.ep, self.ep.scope
+        q = ep.holder.q
+        k = model.SCOPES[scope]
+
+        def view(qq):
+            return model.project(target[None, :], model.camera_pose(np.array([qq[0], qq[1], qq[2], q[3]]), scope), scope)[0]
+
+        now = view(q[:3])
+        err = np.array([k["cx"] - now[0], k["cy"] - now[1], want_depth - now[2]])
         jac = np.zeros((3, 3))
         for i, eps in enumerate((1e-4, 1e-4, 1e-5)):
             d = np.zeros(3)
             d[i] = eps
             jac[:, i] = (view(q[:3] + d) - view(q[:3] - d)) / (2.0 * eps)
         try:
-            rate3 = np.linalg.solve(jac, self.gain * err)
+            rate3 = np.linalg.solve(jac, gain * err)
         except np.linalg.LinAlgError:
             rate3 = np.zeros(3)
-        return np.clip(np.concatenate([rate3, [roll]]), -model.RATE_MAX, model.RATE_MAX)
+        return np.clip(rate3, -model.RATE_MAX[:3], model.RATE_MAX[:3])
 
 
 def record(procedure, renderer, out_dir, name, every=2, operator_seed=0, touch=False, log=None):

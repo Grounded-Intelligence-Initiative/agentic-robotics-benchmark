@@ -42,8 +42,13 @@ IDLE_S = 120.0
 FRAME_DELAY = 1
 
 
+def private(path, flags=os.O_WRONLY | os.O_CREAT | os.O_APPEND):
+    """A file of the service's own (0600): the state folder can be traversed by other accounts, not read."""
+    return os.fdopen(os.open(path, flags, 0o600), "a" if flags & os.O_APPEND else "w")
+
+
 def log(*parts):
-    with open(os.path.join(STATE_DIR, "service.log"), "a") as f:
+    with private(os.path.join(STATE_DIR, "service.log")) as f:
         f.write(time.strftime("%Y-%m-%dT%H:%M:%S ") + " ".join(str(p) for p in parts) + "\n")
 
 
@@ -66,13 +71,14 @@ class Service(object):
 
     def save(self):
         tmp = self.state_path + ".tmp"
-        with open(tmp, "w") as f:
+        with private(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC) as f:
             json.dump(self.state, f)
         os.replace(tmp, self.state_path)
 
     def start_renderer(self):
-        self.renderer = Renderer(HERE, python=PYTHON, log_path=os.path.join(STATE_DIR, "renderer.log"), start_timeout=1500.0,
-                                 cwd=STATE_DIR)
+        log_path = os.path.join(STATE_DIR, "renderer.log")
+        private(log_path).close()
+        self.renderer = Renderer(HERE, python=PYTHON, log_path=log_path, start_timeout=1500.0, cwd=STATE_DIR)
         canary = self.renderer.canary()
         log("renderer up", json.dumps(self.renderer.started), "canary", json.dumps(canary)[:500])
         bad = [s for s, r in canary.get("scopes", {}).items() if r["found"] < r["markers"] or (r["max_error_px"] or 99) > 2.5]
@@ -88,7 +94,7 @@ class Service(object):
             if item["name"] in self.state["recorded"]:
                 continue
             with self.lock:
-                proc = procedure.generate(item["seed"], item.get("factors"), steps=self.steps)
+                proc = procedure.generate(item["seed"], item.get("factors"), steps=self.steps, pool="dev")
                 recorder.record(proc, self.renderer, out, item["name"], every=int(self.doc.get("record_every", 2)),
                                 operator_seed=item["seed"], touch=bool(item.get("touch")), log=log)
             for root, dirs, files in os.walk(os.path.join(out, item["name"])):
@@ -153,7 +159,7 @@ class Service(object):
                         number = self.state["sessions_used"]
                         self.save()
                     item = self.items[name]
-                    proc = procedure.generate(item["seed"], item.get("factors"), steps=self.steps)
+                    proc = procedure.generate(item["seed"], item.get("factors"), steps=self.steps, pool="dev")
                     session = Session(proc, self.renderer, frame_delay=FRAME_DELAY, privileged=False)
                     log("session", number, name, "started")
                     reply({"ok": True, "session": number, "sessions_left": left - 1, "steps": self.steps, "t": 0, "obs": session.observation()})
@@ -197,7 +203,6 @@ class Service(object):
 
 
 def main():
-    os.umask(0o077)                 # the service's own files (state, logs) are its account's alone
     os.makedirs(STATE_DIR, exist_ok=True)
     svc = Service()
     os.makedirs(os.path.dirname(SOCKET), exist_ok=True)
@@ -220,8 +225,9 @@ def main():
         except Exception:  # noqa: BLE001
             svc.failure = "the commissioning service failed: " + traceback.format_exc()[-600:]
             log(svc.failure)
-            with open(os.path.join(STATE_DIR, "failed"), "w") as f:
-                f.write(svc.failure)
+            if not svc.ready:              # (setup waits for one of the two markers)
+                with open(os.path.join(STATE_DIR, "failed"), "w") as f:
+                    f.write(svc.failure)
 
     threading.Thread(target=bring_up, daemon=True).start()
     while True:

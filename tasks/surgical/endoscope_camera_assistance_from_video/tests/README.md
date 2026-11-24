@@ -71,11 +71,22 @@ cut. Events: an instrument exchange (one hand withdraws through its trocar, stay
 possibly as another instrument; it does not count while away), the assistant's third instrument (never counts;
 holds beside the work, follows a move late or not at all, dabs into the middle now and then), smoke bursts with
 dissection. Drawn per procedure: the kind, the scope, the events, the port placement (within 12 mm of nominal), the
-cavity, every instrument's look (jaw type, shaft colour and finish, marker bands), the tissue's look (palette, fat,
-vessels, wetness, relief), the light, the camera's white balance and noise. Everything comes from a keyed BLAKE2b
-stream per seed, in plain float64 arithmetic, so a seed gives the same procedure on every machine and numpy
-version. The fixed sets pin kind, scope and events per procedure in a balanced table and draw the rest
-(`tests/review/make_sets.py`: the rule, written before the draw; no draw rejected).
+cavity, every instrument's look (jaw type, shaft colour and finish, marker bands, how much blood covers the working
+end), the tissue's look (palette, fat, vessels, wetness, relief), what lies in the field (gauze swabs, clips), the
+light, the camera's white balance and noise. The tips work at the tissue (1 to 9 mm above its resting surface), so
+the breathing tissue buries a low tip from time to time. Everything comes from a keyed BLAKE2b stream per seed, in
+plain float64 arithmetic, so a seed gives the same procedure on every machine and numpy version. The fixed sets pin
+kind, scope and events per procedure in a balanced table and draw the rest (`tests/review/make_sets.py`: the rule,
+written before the draw; no draw rejected).
+
+**Two pools of looks.** `generate(..., pool="dev")` draws a development procedure's looks from a narrower pool than
+a graded procedure's (`pool="all"`): 5 of the 11 shaft finishes, 3 of the 6 tissue palettes, staining of the working
+end up to half-way to the tissue's colour (up to 0.9 when graded), less clutter. The geometry, the ports, the kinds of
+procedure and the gestures are the same. The manual says so (section 7), without the lists. This is where the
+perception difficulty is meant to come from: a detector fitted to the ten development recordings meets instruments
+and tissue it has not seen, as a holder sold to another hospital would. It was added after the first pixel baseline
+(status log): a small net trained for two minutes on eight development recordings found 99 % of the tips in the two
+held-out ones, within 4 px in the median, when development and graded looks came from one pool.
 
 **Rendering** (`scene.py`, `render_server.py`, `post.py`). One headless Isaac Sim 6.2 process draws the frames: the
 RTX Real-Time path tracer through a Replicator render product at 640 x 480, one subframe per frame, the render
@@ -83,9 +94,10 @@ product's settings pinned (`RENDER_SETTINGS`), physics never stepped. The scene 
 floor and wall (colour and normal maps generated per procedure, `looks.py`), instruments built from primitives with
 hinged jaws, a cannula at every trocar, the scope rig (camera, three small sphere lights round the lens as the
 coaxial light). Nothing of NVIDIA's asset library is used. Image-space effects after the render (`post.py`): the
-camera head's automatic exposure, smoke (a drifting haze and a plume above the instrument that makes it), a smeared
-lens (blur and stains), white balance, sensor noise, the endoscope's image disk, JPEG at quality 90. Facts measured
-while building it (RTX 6000 Ada, driver 570, 2026-11-24):
+camera head's automatic exposure, smoke (a drifting haze and a plume above the instrument that makes it), motion blur
+along the camera's own image motion (the shutter is open for half a control step), a smeared lens (blur and
+stains), white balance, sensor noise, the endoscope's image disk, JPEG at quality 90. Facts measured while building
+it (RTX 6000 Ada, driver 570, 2026-11-24):
 
 * **The stage is in centimetres.** With `metersPerUnit = 1` the renderer ignored sphere lights a few millimetres
   across (the picture stayed black however high the intensity); with the same scene authored in centimetres the
@@ -94,8 +106,12 @@ while building it (RTX 6000 Ada, driver 570, 2026-11-24):
   change on 20 to 35 % of captures (3 % with `/app/hydraEngine/waitIdle`, 0 % with three subframes at three times the
   cost). Hence the frame clock: a small emissive quad in the camera's own frame, in the top-left corner outside the
   image disk, whose slot encodes the frame's serial number modulo 8, in front of a black plate that reflects nothing.
-  The server reads the clock back from every frame and renders again until it shows the serial it was asked for (at
-  most 8 renders; then the renderer is restarted). The corner is masked before a frame leaves the server.
+  The server makes one plain app update after posing the stage, captures, reads the clock back and renders again
+  until it shows the serial it was asked for (at most 8 renders; then the renderer is restarted). With the update,
+  0.6 to 0.8 % of the frames need a second render. The clock sits 2 mm in front of the lens; when something at the
+  lens hides it (the scope run through an instrument's shaft, which nothing prevents), the third capture of the
+  unchanged stage is taken as it is (the lag was never more than one capture). The corner is masked before a frame
+  leaves the server.
 * **Pixels do not repeat.** Two renders of one state on one GPU differ in about half their pixels by a small amount
   (the brief's measurement: mean absolute difference 0.36 of 255). Nothing scored reads a pixel.
 * **Replicator's first-frame wait.** The orchestrator waits for "asset loading" before its first frame, up to
@@ -103,6 +119,12 @@ while building it (RTX 6000 Ada, driver 570, 2026-11-24):
   with physics playing). The server sets it to 5 s; with this scene the first frame came in under a second.
 * **Kit opens a context on every GPU of the machine**, whatever `active_gpu` says: natively the renderer is run in a
   mount namespace that hides the other GPUs (status log). A sandbox has one GPU.
+* **No network is needed, a loopback is.** In an empty network namespace with the loopback up, the renderer starts
+  as fast as with a network (18 s on a warm cache) and renders the same; with the loopback down its start took 244 s.
+* **Cost.** About 66 to 70 ms per delivered frame here (one app update, one capture, the image effects, the JPEG),
+  7 s to build a procedure's scene (two texture pairs generated and loaded), 16 to 29 s to start Isaac Sim on a
+  warm cache. A cold cache (a fresh container) was not measured here; `hazard_bay_build` measured about 7 minutes
+  for the same stack.
 * **The camera is what the model says.** The canary (below) puts a marker ball at known points and compares where
   it lands in the frame with `model.project`: within 0.75 px for both scopes here.
 
@@ -175,7 +197,8 @@ The anchor's value, its spread and their source are in `anchor.json` and in the 
 * `~/given/dev_procedures/`: ten development procedures recorded as video with labels, by the commissioning service
   on the sandbox's own GPU during the first minutes of the session (so the frames come from the renderer the grader
   will use; nothing is fetched or committed). The camera in them is held by a scripted, deliberately ordinary
-  assistant (`recorder.Assistant`); three recordings include a lens touching tissue and its cleaning.
+  assistant (`recorder.Assistant`: its view is usable on 52 to 84 % of the steps); two recordings include a lens
+  touching tissue and its cleaning (76 smeared frames). 4010 frames, about 320 MB.
 * The commissioning service (`environment/commission_service/commissiond.py`, account `endosim`, started by
   `setup.sh`): the grader's simulator on the ten development procedures, 12 sessions, one at a time, the grader's
   observations and limits, no ground truth, no labels, no score, no summary. `~/commission/run_session.py` runs a

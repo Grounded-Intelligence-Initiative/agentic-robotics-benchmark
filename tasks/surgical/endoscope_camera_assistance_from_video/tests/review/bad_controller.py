@@ -23,13 +23,11 @@ MODE = os.environ.get("BAD_MODE", "diver")
 
 def main():
     print("READY", flush=True)
-    phase = "dive"
     for line in sys.stdin:
         if not line.strip():
             continue
         msg = json.loads(line)
         if msg["type"] == "reset":
-            phase = "dive"
             print(json.dumps({"ok": True}), flush=True)
             continue
         if msg["type"] == "close":

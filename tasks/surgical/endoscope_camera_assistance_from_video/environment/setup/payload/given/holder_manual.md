@@ -64,7 +64,9 @@ The joint readings you receive are the joints at the moment the observation is s
 
 The picture is 640 x 480, rectified (no lens distortion), delivered as a JPEG. The endoscope's round field shows as a
 disk of radius 310 px about the image centre; outside it the picture is black. The camera head has automatic
-exposure, and the light comes from the scope's own tip, so what is near is bright and what is far is dim.
+exposure, and the light comes from the scope's own tip, so what is near is bright and what is far is dim. The
+shutter is open for half a control step: when the holder moves the picture fast, the picture is blurred along its
+motion.
 
 Which scope is fitted is decided by the surgical team for each procedure and is not reported to the holder: the two
 are told apart by how the picture moves when the holder does.
@@ -87,7 +89,9 @@ the same observation are current.
 * The assistant's trocar, when there is an assistant's instrument, is on one flank, nominally at (+-0.125, 0.070) m,
   on either side.
 * Every instrument has a straight shaft 5 mm in diameter that pivots in its trocar. Its tip is the far end of the
-  instrument on the shaft's axis (the end of the closed jaws, of a hook, of a suction tube).
+  instrument on the shaft's axis (the end of the closed jaws, of a hook, of a suction tube). The instruments work at
+  the tissue: a tip is often partly sunk into it, or hidden when the tissue rises with a breath.
+* Things lie in the field: gauze swabs (white, or soaked with blood) and metal clips, on the tissue near the work.
 
 ## 6. When a view is usable
 
@@ -132,6 +136,12 @@ highlights; the scope (0 or 30 degrees) and its light; whether instruments are e
 assistant has a third instrument in the field, where it comes from, and what it does (it holds near the work, it
 stays behind when the work moves on, it reaches into the middle of the field now and then). The graded procedures are
 not among the development procedures, and they differ from them in all of this.
+
+**The development set shows only part of this range.** Its recordings use fewer shaft finishes and fewer tissue
+colourings than the graded procedures bring, their instruments are cleaner (in a graded procedure an instrument's
+working end may be covered with blood nearly to the colour of the tissue), and less is left lying in the field. What
+the development and the graded procedures share is the instruments' geometry, where they come from, and how they are
+used.
 
 ## 8. The development set (`~/given/dev_procedures/`)
 

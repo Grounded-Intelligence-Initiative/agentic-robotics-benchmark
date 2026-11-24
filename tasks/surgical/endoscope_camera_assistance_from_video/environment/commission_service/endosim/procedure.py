@@ -35,7 +35,7 @@ KINDS = ("dissection", "suturing", "exploration", "clip_and_cut")
 HANDS = ("left", "right")
 ROLES = ("left", "right", "assistant")
 JAWS = ("grasper", "scissors", "hook", "needle_driver", "clip_applier", "suction")
-GENERATOR_VERSION = "endosim-procedure/0.1"
+GENERATOR_VERSION = "endosim-procedure/0.2"
 
 
 class Rng(object):
@@ -77,21 +77,29 @@ class Rng(object):
 
 
 # ---------------------------------------------------------------------------------------------------------- looks
-_SHAFTS = (  # (name, rgb, metallic, roughness)
+_SHAFTS = (  # (name, rgb, metallic, roughness); the first DEV_SHAFTS are the finishes the development set shows
     ("black", (0.025, 0.025, 0.03), 0.0, 0.45), ("graphite", (0.12, 0.12, 0.13), 0.3, 0.4),
-    ("steel", (0.72, 0.72, 0.74), 1.0, 0.28), ("satin", (0.55, 0.56, 0.58), 1.0, 0.45),
-    ("white", (0.82, 0.82, 0.80), 0.0, 0.35), ("blue", (0.05, 0.16, 0.42), 0.2, 0.35),
-    ("green", (0.06, 0.30, 0.16), 0.1, 0.4), ("gold", (0.65, 0.48, 0.18), 1.0, 0.3),
+    ("steel", (0.72, 0.72, 0.74), 1.0, 0.28), ("white", (0.82, 0.82, 0.80), 0.0, 0.35),
+    ("blue", (0.05, 0.16, 0.42), 0.2, 0.35),
+    ("satin", (0.55, 0.56, 0.58), 1.0, 0.45), ("green", (0.06, 0.30, 0.16), 0.1, 0.4), ("gold", (0.65, 0.48, 0.18), 1.0, 0.3),
+    ("maroon", (0.30, 0.07, 0.08), 0.1, 0.4), ("teal", (0.05, 0.35, 0.36), 0.1, 0.35), ("yellow", (0.75, 0.62, 0.10), 0.0, 0.4),
 )
+DEV_SHAFTS = 5
 _BANDS = ((0.85, 0.75, 0.10), (0.10, 0.55, 0.80), (0.85, 0.85, 0.85), (0.80, 0.25, 0.10), (0.20, 0.70, 0.25))
+BLOOD = (0.33, 0.035, 0.045)
 
 
-def draw_instrument_look(rng, jaw=None):
-    name, rgb, metallic, rough = rng.choice(_SHAFTS)
+def draw_instrument_look(rng, jaw=None, pool="all"):
+    """One instrument's look. `pool`: "dev" draws from what the development set shows (fewer shaft finishes, lighter
+    staining), "all" from everything a graded procedure may bring."""
+    dev = pool == "dev"
+    name, rgb, metallic, rough = rng.choice(_SHAFTS[:DEV_SHAFTS] if dev else _SHAFTS)
     jaw = jaw or rng.choice(JAWS[:5])
     steel = rng.uniform(0.55, 0.8)
+    # blood and tissue on the working end: the jaws and the wrist take on the colour of what they work in
+    stain = rng.uniform(0.15, 0.5 if dev else 0.9) if rng.chance(0.6) else 0.0
     look = {
-        "jaw": jaw, "shaft": name,
+        "jaw": jaw, "shaft": name, "stain": stain,
         "shaft_rgb": [float(c) for c in rgb], "shaft_metallic": metallic, "shaft_rough": rough + rng.uniform(-0.08, 0.08),
         "wrist_len": rng.uniform(0.008, 0.018), "wrist_rgb": [steel, steel, steel + 0.02], "wrist_rough": rng.uniform(0.2, 0.45),
         "jaw_len": {"grasper": rng.uniform(0.014, 0.019), "scissors": rng.uniform(0.012, 0.016), "hook": rng.uniform(0.010, 0.014),
@@ -104,17 +112,20 @@ def draw_instrument_look(rng, jaw=None):
     return look
 
 
-_PALETTES = (  # (name, base, dark, pale, fat, vessel)
+_PALETTES = (  # (name, base, dark, pale, fat, vessel); the first DEV_PALETTES are the ones the development set shows
     ("pink", (0.74, 0.36, 0.34), (0.50, 0.16, 0.15), (0.86, 0.60, 0.55), (0.86, 0.72, 0.36), (0.42, 0.06, 0.08)),
     ("red", (0.66, 0.22, 0.20), (0.40, 0.09, 0.09), (0.80, 0.45, 0.40), (0.84, 0.68, 0.30), (0.33, 0.03, 0.06)),
     ("liver", (0.50, 0.20, 0.16), (0.30, 0.09, 0.08), (0.68, 0.38, 0.30), (0.80, 0.66, 0.34), (0.26, 0.04, 0.05)),
     ("pale", (0.80, 0.52, 0.46), (0.58, 0.28, 0.25), (0.90, 0.72, 0.66), (0.90, 0.80, 0.48), (0.50, 0.12, 0.14)),
     ("fatty", (0.80, 0.60, 0.36), (0.62, 0.36, 0.22), (0.88, 0.74, 0.52), (0.92, 0.82, 0.42), (0.52, 0.10, 0.10)),
+    ("dusky", (0.46, 0.20, 0.27), (0.27, 0.09, 0.15), (0.64, 0.40, 0.44), (0.78, 0.68, 0.42), (0.22, 0.04, 0.10)),
 )
+DEV_PALETTES = 3
 
 
-def draw_scene_look(rng):
-    name, base, dark, pale, fat, vessel = rng.choice(_PALETTES)
+def draw_scene_look(rng, pool="all"):
+    dev = pool == "dev"
+    name, base, dark, pale, fat, vessel = rng.choice(_PALETTES[:DEV_PALETTES] if dev else _PALETTES)
     return {
         "palette": name, "base": list(base), "dark": list(dark), "pale": list(pale), "fat": list(fat), "vessel": list(vessel),
         "texture_seed": rng.integers(0, 1 << 30), "fat_cover": rng.uniform(0.05, 0.45), "vessels": rng.integers(18, 60),
@@ -123,6 +134,26 @@ def draw_scene_look(rng):
         "light": rng.uniform(0.75, 1.35), "white_balance": [rng.uniform(0.94, 1.06), 1.0, rng.uniform(0.92, 1.06)],
         "noise_sigma": rng.uniform(1.0, 3.0), "smoke_tint": [rng.uniform(0.78, 0.9)] * 3,
     }
+
+
+def draw_clutter(rng, tissue, sites, pool="all"):
+    """What a procedure leaves lying in the field: gauze swabs (white, sometimes blood-soaked) and metal clips, on
+    the tissue near the work. They are not instruments, and a detector has to know it."""
+    out = []
+    for _ in range(rng.integers(0, 2 if pool == "dev" else 4)):
+        site = rng.choice(sites)
+        d = rng.unit2() * rng.uniform(0.020, 0.050)
+        x, y = float(site.c[0] + d[0]), float(site.c[1] + d[1])
+        soak = rng.uniform(0.0, 0.8) if rng.chance(0.5) else 0.0
+        out.append({"kind": "gauze", "pos": [x, y, float(tissue.height(x, y)) + 0.0015], "size": [rng.uniform(0.018, 0.034), rng.uniform(0.014, 0.028)],
+                    "yaw": rng.uniform(0.0, math.pi), "rgb": [0.92 - 0.5 * soak, 0.90 - 0.78 * soak, 0.88 - 0.76 * soak]})
+    for _ in range(rng.integers(0, 3 if pool == "dev" else 7)):
+        site = rng.choice(sites)
+        d = rng.unit2() * rng.uniform(0.006, 0.030)
+        x, y = float(site.c[0] + d[0]), float(site.c[1] + d[1])
+        out.append({"kind": "clip", "pos": [x, y, float(tissue.height(x, y)) + 0.0012], "size": [rng.uniform(0.006, 0.010), 0.0011],
+                    "yaw": rng.uniform(0.0, math.pi), "rgb": [0.78, 0.78, 0.80]})
+    return out
 
 
 # ------------------------------------------------------------------------------------------------- small helpers
@@ -156,7 +187,7 @@ class _Site(object):
         self.station = {}
         for hand, sign in (("left", -1.0), ("right", 1.0)):
             p = self.c + sign * 0.5 * self.sep * self.lat + rng.uniform(-0.004, 0.004) * self.fwd
-            p[2] = float(tissue.height(p[0], p[1])) + rng.uniform(0.007, 0.014)
+            p[2] = float(tissue.height(p[0], p[1])) + rng.uniform(0.001, 0.009)     # at the tissue: breathing buries a low tip
             self.station[hand] = p
 
 
@@ -237,7 +268,7 @@ class _Builder(object):
                 s = np.concatenate([np.zeros(lead), _minjerk(n - lead)])
             p = a[None, :] + s[:, None] * (b - a)[None, :]
             p[:, 2] += lift * np.sin(math.pi * s) ** 2
-            floor = self.tissue.height(p[:, 0], p[:, 1]) + 0.006
+            floor = self.tissue.height(p[:, 0], p[:, 1]) + 0.003
             p[:, 2] = np.maximum(p[:, 2], floor)
             pos[h] = p
         jaw = {h: np.full(n, rng.uniform(0.05, 0.3)) for h in HANDS}
@@ -442,20 +473,24 @@ class Procedure(object):
 
     def scene_spec(self):
         """What the renderer builds once per procedure (JSON-serialisable; no trajectory in it)."""
-        return {"tissue": self.tissue.params, "look": self.scene_look, "instrument_looks": self.looks,
+        return {"tissue": self.tissue.params, "look": self.scene_look, "instrument_looks": self.looks, "clutter": self.clutter,
                 "trocars": {r: [float(v) for v in self.trocars[r]] for r in ROLES}, "scope": self.scope}
 
     def facts(self):
         return {"seed": int(self.seed), "kind": self.kind, "scope": self.scope, "steps": int(self.steps),
                 "exchanges": int(self.exchanges), "assistant": bool(self.assistant), "smoke": bool(self.smoke_on),
-                "sites": len(self.sites_xy), "path_m": round(float(self.path_m), 3),
+                "sites": len(self.sites_xy), "path_m": round(float(self.path_m), 3), "pool": self.pool,
+                "palette": self.scene_look["palette"], "shafts": [k["shaft"] for k in self.looks], "clutter": len(self.clutter),
                 "fine_fraction": round(float(self.fine[1:].mean()), 3),
                 "both_active_fraction": round(float((self.active["left"][1:] & self.active["right"][1:]).mean()), 3),
                 "generator": GENERATOR_VERSION}
 
 
-def generate(seed, factors=None, steps=800):
-    """The procedure of `seed`. `factors` may pin: kind, scope, exchanges (0-2), assistant (bool), smoke (bool)."""
+def generate(seed, factors=None, steps=800, pool="all"):
+    """The procedure of `seed`. `factors` may pin: kind, scope, exchanges (0-2), assistant (bool), smoke (bool).
+    `pool`: "all" for a graded procedure, "dev" for a development procedure, whose looks come from the narrower
+    development pool (fewer shaft finishes and tissue colourings, lighter staining, less clutter): the graded
+    procedures show things the development set does not."""
     f = dict(factors or {})
     rng = Rng(seed, "procedure")
     kind = f.get("kind") or rng.choice(KINDS)
@@ -476,9 +511,9 @@ def generate(seed, factors=None, steps=800):
     lrng = Rng(seed, "looks")
     work_jaws = {"dissection": ("grasper", "hook"), "suturing": ("grasper", "needle_driver"),
                  "exploration": ("grasper", "grasper"), "clip_and_cut": ("grasper", "scissors")}[kind]
-    looks = [draw_instrument_look(lrng, work_jaws[0]), draw_instrument_look(lrng, work_jaws[1]),
-             draw_instrument_look(lrng, lrng.choice(("suction", "suction", "grasper")))]
-    scene_look = draw_scene_look(Rng(seed, "scene"))
+    looks = [draw_instrument_look(lrng, work_jaws[0], pool), draw_instrument_look(lrng, work_jaws[1], pool),
+             draw_instrument_look(lrng, lrng.choice(("suction", "suction", "grasper")), pool)]
+    scene_look = draw_scene_look(Rng(seed, "scene"), pool)
 
     count = {"dissection": 7, "suturing": 8, "exploration": 12, "clip_and_cut": 8}[kind]
     prng = Rng(seed, "path")
@@ -524,7 +559,7 @@ def generate(seed, factors=None, steps=800):
                 b.hold(site, k, g.uniform(0.8, 1.5))
         if k in x_sites:
             hand = "right" if (kind != "exploration" and g.chance(0.75)) else g.choice(HANDS)
-            looks.append(draw_instrument_look(lrng, g.choice(x_jaw)))
+            looks.append(draw_instrument_look(lrng, g.choice(x_jaw), pool))
             b.exchange(hand, site, k, len(looks) - 1)
             b.hold(site, k, g.uniform(1.0, 2.0))
         k += 1
@@ -543,10 +578,11 @@ def generate(seed, factors=None, steps=800):
         smoke += np.where(t >= 0, peak * rise * np.exp(-np.clip(t, 0, None) * model.DT / decay), 0.0)
     smoke = np.clip(smoke, 0.0, 1.0)
 
+    clutter = draw_clutter(Rng(seed, "clutter"), tissue, sites, pool)
     used = sorted(set(int(s) for s in site_of_step))
     path = sum(float(np.linalg.norm(sites[b_].c - sites[a_].c)) for a_, b_ in zip(used[:-1], used[1:]))
     return Procedure(seed=int(seed), kind=kind, scope=scope, steps=int(steps), exchanges=len(x_sites), assistant=assistant,
-                     smoke_on=smoke_on, tissue=tissue, trocars=trocars, looks=looks, scene_look=scene_look,
+                     smoke_on=smoke_on, tissue=tissue, trocars=trocars, looks=looks, scene_look=scene_look, clutter=clutter, pool=pool,
                      tip=tip, jaw=jaw, active=active, present=present, look=look, smoke=smoke,
                      fine=_fine_flags(tip, active), site_of_step=site_of_step, sites_xy=[list(map(float, s.c[:2])) for s in sites],
                      path_m=path, gestures=b.gestures)

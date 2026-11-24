@@ -84,6 +84,7 @@ def main():
         items = [(p["seed"], p.get("factors"), doc.get("steps", a.steps)) for p in doc["procedures"]]
     else:
         items = [(int(s), None, a.steps) for s in a.seeds.split(",")]
+    pool = "dev" if a.dev else "all"
     if a.controller == "reference":
         import controller as ref
         ctl = ref.Controller()
@@ -91,7 +92,7 @@ def main():
         ctl = Idle()
     vals = []
     for seed, factors, steps in items:
-        proc = procedure.generate(seed, factors, steps=steps)
+        proc = procedure.generate(seed, factors, steps=steps, pool=pool)
         res = run(proc, ctl, probe_rate=a.probe_rate, rng=random.Random(seed), verbose=a.verbose)
         vals.append(res["useful_view_fraction"])
         f = proc.facts()

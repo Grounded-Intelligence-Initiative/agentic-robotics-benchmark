@@ -2,6 +2,8 @@
 
     python3 tests/review/make_sets.py hidden     -> tests/hidden/procedures.json, tests/hidden/selection.json
     python3 tests/review/make_sets.py dev        -> environment/commission_service/dev_procedures.json
+    python3 tests/review/make_sets.py remeasure  -> the same seeds and order, the records measured again (after a change
+                                                    of the simulator; nothing is drawn)
 
 The rule. A set is a balanced design: a table of factor rows (procedure kind, scope, number of instrument exchanges,
 assistant instrument, smoke), fixed below. Each row gets one 63-bit seed from os.urandom, in table order; the hidden
@@ -65,13 +67,13 @@ def factors(row):
     return {"kind": row[0], "scope": row[1], "exchanges": row[2], "assistant": row[3], "smoke": row[4]}
 
 
-def measure(items):
+def measure(items, pool="all"):
     import controller as ref
     import fast_eval
     from endosim import procedure
     out = []
     for item in items:
-        proc = procedure.generate(item["seed"], item["factors"], steps=STEPS)
+        proc = procedure.generate(item["seed"], item["factors"], steps=STEPS, pool=pool)
         idle = fast_eval.run(proc, fast_eval.Idle())["useful_view_fraction"]
         res = fast_eval.run(proc, ref.Controller(), probe_rate=0.06, rng=random.Random(1))
         out.append({"facts": proc.facts(), "never_moves": round(idle, 4), "reference_render_free": round(res["useful_view_fraction"], 4),
@@ -100,12 +102,26 @@ def main():
             json.dump(sel, f, indent=1)
     elif which == "dev":
         items = [{"name": "dev%02d" % (i + 1), "seed": draw_seed(), "factors": factors(r), "touch": r[5]} for i, r in enumerate(DEV)]
-        record = measure(items)
+        record = measure(items, pool="dev")
         doc = {"steps": STEPS, "sessions": DEV_SESSIONS, "record_every": RECORD_EVERY, "procedures": items,
                "note": "the development procedures, drawn once by the task's make_sets tool on {} with the same rule as the graded set "
                        "(a balanced table of factors, one os.urandom seed per row, no draw rejected); none of them is graded".format(today)}
         with open(os.path.join(TASK, "environment", "commission_service", "dev_procedures.json"), "w") as f:
             json.dump(doc, f, indent=1)
+    elif which == "remeasure":
+        hp, sp = os.path.join(TASK, "tests", "hidden", "procedures.json"), os.path.join(TASK, "tests", "hidden", "selection.json")
+        dp = os.path.join(TASK, "environment", "commission_service", "dev_procedures.json")
+        doc, sel, dev = json.load(open(hp)), json.load(open(sp)), json.load(open(dp))
+        items = doc["procedures"]
+        record = measure(items)
+        doc["generator"] = record[0]["facts"]["generator"]
+        sel["record"] = [dict(index=i, seed=it["seed"], **rec) for i, (it, rec) in enumerate(zip(items, record))]
+        sel["record_measured"] = today
+        json.dump(doc, open(hp, "w"), indent=1)
+        json.dump(sel, open(sp, "w"), indent=1)
+        dev_record = measure(dev["procedures"], pool="dev")
+        print("development procedures (not written anywhere): reference {:.4f}, never-moves {:.4f}".format(
+            sum(r["reference_render_free"] for r in dev_record) / len(dev_record), sum(r["never_moves"] for r in dev_record) / len(dev_record)))
     else:
         raise SystemExit(__doc__)
     for i, (it, rec) in enumerate(zip(items, record)):

@@ -35,6 +35,7 @@ RENDER_SETTINGS = {
     "omni:rtx:rt:ecoMode:enabled": False,
 }
 MAX_TRIES = 8                 # renders of one frame before the clock must have caught up
+HIDDEN_CLOCK_CAPTURES = 3     # captures of an unchanged stage after which a frame is taken without its clock
 KEEP_FRAMES = 6               # finished frames kept for probe copies
 
 
@@ -143,11 +144,22 @@ class Server(object):
             self.app.update()
         finally:
             self.settings.set_bool("/app/player/playSimulations", True)
+        hidden = 0
         for k in range(1, MAX_TRIES + 1):
             rgb = self._capture()
-            if rgb is not None and post.read_clock(rgb) == int(serial) % CLOCK_SLOTS:
+            slot = post.read_clock(rgb) if rgb is not None else -1
+            if slot == int(serial) % CLOCK_SLOTS:
                 return rgb, k
-            self.stats["stale"] += 1
+            if slot is None:
+                # the clock cannot be read: something sits right at the lens (the scope run into an instrument's
+                # shaft). The annotator lags by one capture at most (measured), so the third capture of an
+                # unchanged stage shows it as it is.
+                hidden += 1
+                if hidden >= HIDDEN_CLOCK_CAPTURES:
+                    self.stats["clock_hidden"] = self.stats.get("clock_hidden", 0) + 1
+                    return rgb, k
+            else:
+                self.stats["stale"] += 1
         raise RuntimeError("the frame clock did not reach serial %d in %d renders" % (serial, MAX_TRIES))
 
     # -- commands --------------------------------------------------------------------------------------------------
@@ -277,6 +289,8 @@ def main():
             log(traceback.format_exc())
             _send({"ok": False, "error": traceback.format_exc()[-1500:]})
     try:
+        import shutil
+        shutil.rmtree(server.tmp, ignore_errors=True)
         server.app.close()
     except Exception:  # noqa: BLE001
         pass
