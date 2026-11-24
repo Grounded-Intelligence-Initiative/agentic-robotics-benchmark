@@ -53,6 +53,8 @@ BOARD_HALF = (0.26, 0.46)          # x, y
 ROUTE_HALF = (0.38, 0.17)          # the job sheet's frame: a along the board (world -y), b across (world +x)
 
 N_SEG = 40                         # cable segments (set before reset; the resolution study varies it)
+STUDY_RADIUS = 0.0                 # m; see make_episode
+STUDY_LENGTH_SCALE = 1.0
 LAYOUT_SEG = 40                    # the starting layout is drawn with this many steps, whatever N_SEG is
 SOLVER_ITERATIONS = 100            # the constraint solver's iteration limit (MuJoCo's default)
 IMPRATIO = 10.0                    # friction-to-normal constraint impedance ratio
@@ -63,7 +65,9 @@ PIN_R = 0.002
 PIN_H = 0.020
 BARB_REST = math.radians(35.0)
 BARB_RANGE = 1.1
-BARB_T = 0.0006                    # half thickness
+BARB_T = 0.0003                    # half thickness (a 0.6 mm tab)
+BARB_OVERLAP = 0.0030              # m: at rest a tab reaches this far over the cable's side
+CLIP_GAP_OVER = (0.0043, 0.0047)   # m: the slot's width over the cable's diameter (side play 2.15-2.35 mm)
 BARB_W = 0.005                     # half width along the passage
 BARB_SPRING = 0.0015               # N m / rad
 LEAD_LEN = 0.007                   # a lead-in fin rises outward at LEAD_ANGLE from each pin's top (a funnel over the slot)
@@ -177,6 +181,9 @@ def make_episode(seed, n_fixtures=None):
     ep.seed = seed
     ep.length = float(rng.uniform(0.70, 0.90))
     ep.radius = float(rng.uniform(0.0035, 0.0050))
+    if STUDY_RADIUS > 0:                 # studies only (0 in the task): the same board with another cable
+        ep.radius = STUDY_RADIUS
+    ep.length *= STUDY_LENGTH_SCALE      # studies only (1 in the task): moves the segment joints along the cable
     ep.EI = float(rng.uniform(0.0008, 0.003))            # bending stiffness, N m^2
     ep.bend = ep.EI / (math.pi * ep.radius ** 4 / 4.0)   # the plugin's Young's modulus
     ep.twist = ep.bend / 2.6
@@ -203,7 +210,7 @@ def make_episode(seed, n_fixtures=None):
                 turn = float(rng.choice([-1, 1]) * rng.uniform(0.7, 1.3))
             d_out = d_in + turn
             if kind == "clip":
-                gap = 2 * ep.radius + float(rng.uniform(0.0040, 0.0050))
+                gap = 2 * ep.radius + float(rng.uniform(CLIP_GAP_OVER[0], CLIP_GAP_OVER[1]))
                 fixtures.append({"type": "clip", "pos": nxt.copy(), "axis": 0.5 * (d_in + d_out), "gap": gap})
             else:
                 side = "left" if turn > 0 else "right"
@@ -328,7 +335,11 @@ def job_sheet(ep):
 
 
 def barb_length(gap, radius):
-    return (gap - 0.8 * radius) / 2.0 / math.cos(BARB_REST)
+    """A clip is the size for its cable (one family, the slot and the retaining tabs scaled with the cable): the slot is
+    CLIP_GAP_OVER wider than the cable, so the cable can lie up to half of that to one side; each tab, at rest, reaches
+    BARB_OVERLAP over the cable's side, more than that side play, so a seated cable cannot leave past a tab however it
+    lies in the slot."""
+    return (gap - (2 * radius - 2 * BARB_OVERLAP)) / 2.0 / math.cos(BARB_REST)
 
 
 def _clip_xml(i, f, radius):
@@ -344,10 +355,13 @@ def _clip_xml(i, f, radius):
                    % (i, nm, BARB_W, LEAD_LEN / 2, LEAD_T, sgn * (off + (LEAD_LEN / 2) * math.cos(LEAD_ANGLE)),
                       PIN_H + (LEAD_LEN / 2) * math.sin(LEAD_ANGLE), sgn * LEAD_ANGLE, st))
         out.append('<body name="barb%d%s" pos="0 %.6f %.6f" euler="%.6f 0 0">' % (i, nm, sgn * (off - PIN_R), PIN_H, sgn * BARB_REST))
-        out.append('<joint name="jb%d%s" type="hinge" axis="%d 0 0" range="0 %.3f" stiffness="%.6f" damping="0.0005" armature="1e-6"/>'
-                   % (i, nm, sgn, BARB_RANGE, BARB_SPRING))
+        # the tab's stop is rigid: MuJoCo's default joint limit is soft in proportion to the moving inertia, and a 0.5 g
+        # tab swung up past its stop under a 10 N pull (the cable left under it). A stiff limit and a little armature.
+        out.append('<joint name="jb%d%s" type="hinge" axis="%d 0 0" range="0 %.3f" stiffness="%.6f" damping="0.0005" armature="1e-5" '
+                   'solreflimit="0.004 1" solimplimit="0.9999 0.9999 0.001"/>' % (i, nm, sgn, BARB_RANGE, BARB_SPRING))
         out.append('<geom name="barb%d%s" type="box" size="%.6f %.6f %.6f" pos="0 %.6f 0" rgba=".92 .92 .88 1" mass="0.0005" '
-                   'contype="2" conaffinity="2" %s/>' % (i, nm, BARB_W, L / 2, BARB_T, -sgn * L / 2, st))
+                   'contype="2" conaffinity="2" priority="1" %s/>' % (i, nm, BARB_W, L / 2, BARB_T, -sgn * L / 2,
+                                                          st.replace('solimp="0.95 0.99 0.0005"', 'solimp="0.999 0.9999 0.0003"').replace('friction="0.3"', 'friction="0.3 0.005 0.0001"')))
         out.append('</body>')
     out.append('</body>')
     return "\n    ".join(out)
