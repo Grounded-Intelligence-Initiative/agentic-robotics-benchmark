@@ -27,6 +27,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import cphys as W  # noqa: E402
 import creal as R  # noqa: E402
+import ctasks as T  # noqa: E402
 
 W_IMG, H_IMG = 640, 480
 FOCAL = 640.0
@@ -130,11 +131,13 @@ def png_bytes(img):
     return buf.tobytes()
 
 
-TEXTURE_KIND = {"P": "plaid", "A": "floral", "B": "twill", "C": "knit"}
+# The print on a fabric says nothing about its material: the four prints are dealt to the ids in a fixed cycle.
+FABRIC_IDS = "PABCDEFGHIJ"
+TEXTURE_KIND = {fid: ("plaid", "floral", "twill", "knit")[i % 4] for i, fid in enumerate(FABRIC_IDS)}
 
 
 # ----------------------------------------------------------------------------------------------------------------
-# clip programs (observation clips; the scored tests are different, see ctasks.py)
+# clip programs (observation clips; see clip_programs)
 # ----------------------------------------------------------------------------------------------------------------
 def _jitter_grasp(p, yaw, pose, rng):
     """The robot's grasp is not placed exactly: shift the clamp along the fabric edge by up to 2 cm, in or out by up to
@@ -146,18 +149,48 @@ def _jitter_grasp(p, yaw, pose, rng):
 
 
 def clip_programs(rng):
-    """List of (kind, fabric_start pose, clamp trajectory). None of them is a scored test program (ctasks)."""
+    """List of (kind, fabric_start pose, clamp trajectory): eight clips per fabric.
+
+    0-2  drag_release    the handling the slide tests use, at three speeds inside their range (one in each of 0.35-0.55,
+                         0.60-0.80 and 0.85-1.05 m/s), with a lift, an acceleration distance and a release distance of
+                         their own;
+    3-4  pull_over_edge  the handling the overhang tests use, to two overhangs inside their range (0.04-0.07 and
+                         0.08-0.12 m), with a lift and a pulling speed of their own;
+    5    lift_hang, 6 shake, 7 rod_drape   other handling of the same fabric.
+    The grasp of every clip is placed with scatter (_jitter_grasp), so none is a scored test program and the
+    clamp's motion does not give the fabric's start pose away."""
     out = []
-    # 0, 1: lift by a corner, hang, lower partway
-    for i in range(2):
-        pose = (float(rng.uniform(-0.12, 0.02)), float(rng.uniform(-0.08, 0.08)), float(rng.uniform(-np.pi, np.pi)))
-        p, yaw = _jitter_grasp(*W.corner_grasp(pose, int(rng.choice([-1, 1])), int(rng.choice([-1, 1]))), pose, rng)
-        top = np.array([p[0], p[1], 0.44])
-        low = np.array([p[0] + 0.05, p[1], float(rng.uniform(0.33, 0.37))])
-        keys = [(0.0, p, yaw, 0, 0), (0.2, p, yaw, 0, 1), (1.4, top, yaw, 0, 1), (3.2, top, yaw, 0, 1),
-                (4.0, low, yaw, 0, 1), (5.6, low, yaw, 0, 1)]
-        out.append(("lift_hang", pose, W.program_to_traj(keys)))
-    # 2: shake: lift by a short edge, three quick vertical strokes, hold
+    order = rng.permutation(3)
+    bands = [(0.35, 0.55), (0.60, 0.80), (0.85, 1.05)]
+    for k in order:
+        pose = (float(rng.uniform(0.0, 0.10)), float(rng.uniform(-0.12, 0.12)), float(rng.uniform(-0.35, 0.35)))
+        p, yaw = _jitter_grasp(*W.edge_grasp(pose, -1), pose, rng)
+        v = float(rng.uniform(*bands[k]))
+        C, _ = T.fling_traj(p, yaw, pose[2] + np.pi, v, float(rng.uniform(0.05, 0.08)), float(rng.uniform(0.08, 0.15)),
+                            lift=float(rng.uniform(0.010, 0.020)))
+        out.append(("drag_release", pose, C))
+    for lo, hi in ((0.04, 0.07), (0.08, 0.12)):
+        pose = (float(rng.uniform(0.10, 0.13)), float(rng.uniform(-0.12, 0.12)), float(rng.uniform(-0.12, 0.12)))
+        p, yaw = _jitter_grasp(*W.edge_grasp(pose, +1), pose, rng)
+        d = np.array([np.cos(pose[2]), np.sin(pose[2]), 0.0])
+        u = float(rng.uniform(lo, hi))
+        dist = (W.EDGE_X + u - (pose[0] + np.cos(pose[2]) * W.SIZE_X / 2)) / np.cos(pose[2])
+        up = p + np.array([0.0, 0.0, float(rng.uniform(0.010, 0.022))])
+        end = up + d * dist
+        t1 = 0.6 + dist / float(rng.uniform(0.07, 0.15))
+        away = end + np.array([0.05, 0.0, 0.10])
+        keys = [(0.0, p, yaw, 0, 0), (0.2, p, yaw, 0, 1), (0.6, up, yaw, 0, 1), (t1, end, yaw, 0, 1), (t1 + 0.5, end, yaw, 0, 1),
+                (t1 + 0.501, end, yaw, 0, 0), (t1 + 1.0, away, yaw, 0, 0), (t1 + 3.2, away, yaw, 0, 0)]
+        out.append(("pull_over_edge", pose, W.program_to_traj(keys)))
+    # lift by a corner, hang, lower partway
+    pose = (float(rng.uniform(-0.12, 0.02)), float(rng.uniform(-0.08, 0.08)), float(rng.uniform(-np.pi, np.pi)))
+    p, yaw = _jitter_grasp(*W.corner_grasp(pose, int(rng.choice([-1, 1])), int(rng.choice([-1, 1]))), pose, rng)
+    top = np.array([p[0], p[1], 0.44])
+    low = np.array([p[0] + 0.05, p[1], float(rng.uniform(0.33, 0.37))])
+    keys = [(0.0, p, yaw, 0, 0), (0.2, p, yaw, 0, 1), (1.4, top, yaw, 0, 1), (3.2, top, yaw, 0, 1),
+            (4.0, low, yaw, 0, 1), (5.6, low, yaw, 0, 1)]
+    out.append(("lift_hang", pose, W.program_to_traj(keys)))
+    # shake: lift by a short edge, three quick vertical strokes, hold
     pose = (float(rng.uniform(-0.10, 0.0)), float(rng.uniform(-0.06, 0.06)), float(rng.uniform(-0.4, 0.4)))
     p, yaw = _jitter_grasp(*W.edge_grasp(pose, +1), pose, rng)
     top = np.array([p[0] + 0.05, p[1], 0.42])
@@ -168,36 +201,17 @@ def clip_programs(rng):
         t += 0.36
     keys += [(t + 0.2, top, yaw, 0, 1), (t + 2.2, top, yaw, 0, 1)]
     out.append(("shake", pose, W.program_to_traj(keys)))
-    # 3: lift a corner partway and walk it across: the rest of the fabric drags on the table, then put it back down
-    pose = (float(rng.uniform(-0.12, -0.02)), float(rng.uniform(-0.06, 0.06)), float(rng.uniform(-0.5, 0.5)))
-    p, yaw = _jitter_grasp(*W.corner_grasp(pose, +1, int(rng.choice([-1, 1]))), pose, rng)
-    up = p + [0.0, 0.0, float(rng.uniform(0.10, 0.14))]
-    walk = up + [float(rng.uniform(0.08, 0.12)), float(rng.uniform(-0.05, 0.05)), 0.0]
-    keys = [(0.0, p, yaw, 0, 0), (0.2, p, yaw, 0, 1), (1.2, up, yaw, 0, 1), (2.6, walk, yaw, 0, 1),
-            (3.4, walk - [0, 0, up[2] - 0.006], yaw, 0, 1), (3.402, walk - [0, 0, up[2] - 0.006], yaw, 0, 0),
-            (4.0, walk + [0, 0, 0.10], yaw, 0, 0), (5.0, walk + [0, 0, 0.10], yaw, 0, 0)]
-    out.append(("corner_walk", pose, W.program_to_traj(keys)))
-    # 4: lay over the table's front edge, then let go: the overhang pulls the fabric (or does not)
-    y0 = float(rng.uniform(-0.08, 0.08))
-    pose = (W.EDGE_X - 0.22, y0, 0.0)
+    # hang over the rod and let go on the far side
+    zf = float(rng.uniform(0.10, 0.16))
+    pose = (float(rng.uniform(0.0, 0.06)), float(rng.uniform(-0.06, 0.06)), float(rng.uniform(-0.2, 0.2)))
     p, yaw = _jitter_grasp(*W.edge_grasp(pose, -1), pose, rng)
-    above = np.array([W.EDGE_X + float(rng.uniform(0.07, 0.09)), p[1], 0.24])
-    land = np.array([float(rng.uniform(0.05, 0.09)), p[1], 0.006])
-    keys = [(0.0, p, yaw, 0, 0), (0.2, p, yaw, 0, 1), (0.7, p + [0, 0, 0.12], yaw, 0, 1), (1.7, above, yaw, 0, 1),
-            (2.5, above, yaw, 0, 1), (4.1, land, yaw, 0, 1), (4.6, land, yaw, 0, 1), (4.602, land, yaw, 0, 0),
-            (5.2, land + [0, 0, 0.12], yaw, 0, 0), (7.0, land + [0, 0, 0.12], yaw, 0, 0)]
-    out.append(("edge_release", pose, W.program_to_traj(keys)))
-    # 5, 6: hang over the rod and let go on the far side, at two lowering heights
-    for zf in (float(rng.uniform(0.10, 0.12)), float(rng.uniform(0.15, 0.17))):
-        pose = (float(rng.uniform(0.0, 0.06)), float(rng.uniform(-0.06, 0.06)), float(rng.uniform(-0.2, 0.2)))
-        p, yaw = _jitter_grasp(*W.edge_grasp(pose, -1), pose, rng)
-        up = np.array([p[0], p[1], 0.34])
-        over = np.array([W.ROD_X + 0.10, p[1], 0.34])
-        far = np.array([W.ROD_X - 0.06, p[1], zf])
-        keys = [(0.0, p, yaw, 0, 0), (0.2, p, yaw, 0, 1), (1.2, up, yaw, 0, 1), (2.4, over, yaw, 0, 1),
-                (3.6, far, yaw, 0, 1), (4.4, far, yaw, 0, 1), (4.402, far, yaw, 0, 0), (5.0, far + [0.0, 0, 0.15], yaw, 0, 0),
-                (6.4, far + [0.0, 0, 0.15], yaw, 0, 0)]
-        out.append(("rod_drape", pose, W.program_to_traj(keys)))
+    up = np.array([p[0], p[1], 0.34])
+    over = np.array([W.ROD_X + 0.10, p[1], 0.34])
+    far = np.array([W.ROD_X - 0.06, p[1], zf])
+    keys = [(0.0, p, yaw, 0, 0), (0.2, p, yaw, 0, 1), (1.2, up, yaw, 0, 1), (2.4, over, yaw, 0, 1),
+            (3.6, far, yaw, 0, 1), (4.4, far, yaw, 0, 1), (4.402, far, yaw, 0, 0), (5.0, far + [0.0, 0, 0.15], yaw, 0, 0),
+            (6.4, far + [0.0, 0, 0.15], yaw, 0, 0)]
+    out.append(("rod_drape", pose, W.program_to_traj(keys)))
     return out
 
 
@@ -334,7 +348,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out")
     ap.add_argument("--workers", type=int, default=4)
-    ap.add_argument("--only", default="P,A,B,C")
+    ap.add_argument("--only", default=",".join(FABRIC_IDS))
     ap.add_argument("--frames-max", type=int, default=0)
     a = ap.parse_args()
     os.makedirs(os.path.join(a.out, "data"), exist_ok=True)

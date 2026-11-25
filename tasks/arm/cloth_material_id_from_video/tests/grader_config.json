@@ -1,5 +1,4 @@
 {
-  "budget_s": 3000,
-  "procs": 4,
+  "procs": 8,
   "scoring_cap": 1.5
 }

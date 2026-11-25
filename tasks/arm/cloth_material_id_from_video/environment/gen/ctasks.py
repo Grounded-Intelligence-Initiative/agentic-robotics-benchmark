@@ -1,7 +1,7 @@
-"""ctasks: the manipulation tasks the grader scores (cloth_material_id_from_video).
+"""ctasks: the two handling skills the grader scores (cloth_material_id_from_video).
 
 Byte-identical copies are used by the hidden grader and shipped to you. It holds no hidden values: the grader's
-hidden tests only choose poses, corners, directions and targets for these functions.
+hidden tests only choose poses, release distances, lifts, speeds and targets for these functions.
 
 Every test starts with the fabric lying flat at rest at a pose (x, y, yaw) on the table and has one control value u
 that the robot chooses by planning: `plan(material, mass, test)` simulates the test in cphys (the robot's simulator)
@@ -11,38 +11,26 @@ with YOUR material and then executes the planned u once on the REAL fabric, whic
 test depends only on how far the real outcome lands from the target (`test_quality`).
 
 Families (outcome y, control u):
-  hang   grasp a corner, lift, hold, lower the clamp to height u, settle;
-         y = height of the fabric's lowest point above the table.                tolerance 3 mm
-  slide  grasp the middle of a short edge, lift it 15 mm, drag it along the table, reaching speed u, let go while
-         moving; y = how far the fabric's leading point ends up beyond the release point.   tolerance 6 mm
-  drape  grasp a short edge, hang the fabric beyond the table's front edge, lay it back over the edge until the
-         clamp is at x = u on the table (the clamp keeps holding); y = height of the lowest point of the part
-         hanging over the edge (negative: below the table top).                tolerance 5 mm
+  slide     grasp the middle of a short edge, lift it 15 mm, drag the fabric along the table, reaching speed u
+            (0.3 to 1.1 m/s), let go while moving; y = how far the fabric's leading point ends up beyond the
+            release point.                                                              tolerance 3 mm
+  overhang  grasp the middle of the short edge nearest the table's front edge, lift it a little, pull the fabric
+            along its long axis until that edge is u (0.03 to 0.13 m) beyond the table's front edge, wait, let go;
+            y = the mean height of that edge above the table top once the fabric has settled (negative: it hangs
+            below the table top).                                                       tolerance 6 mm
 """
 import numpy as np
 
 import cphys as W
 
-TOL = {"hang": 0.003, "slide": 0.006, "drape": 0.005}
-U_RANGE = {"hang": (0.24, 0.52), "slide": (0.20, 1.40), "drape": (0.02, 0.20)}
+TOL = {"slide": 0.003, "overhang": 0.006}
+U_RANGE = {"slide": (0.30, 1.10), "overhang": (0.03, 0.13)}
 PLAN_ITERS = 8
 
 
 # ------------------------------------------------------------------------------------------------------------------
 # programs
 # ------------------------------------------------------------------------------------------------------------------
-def prog_hang(test, u):
-    """test: pose, corner [sx, sy]. Returns (traj, first recorded step of the settled window)."""
-    pose = test["pose"]
-    p, yaw = W.corner_grasp(pose, *test["corner"])
-    top = np.array([p[0], p[1], 0.45])
-    low = np.array([p[0], p[1], float(u)])
-    keys = [(0.0, p, yaw, 0, 0), (0.1, p, yaw, 0, 1), (1.2, top, yaw, 0, 1), (2.4, top, yaw, 0, 1),
-            (3.4, low, yaw, 0, 1), (5.4, low, yaw, 0, 1)]
-    C = W.program_to_traj(keys)
-    return C, len(C) - int(0.2 / W.DT)
-
-
 def fling_traj(p0, yaw, direction, v, d_acc, d_release, lift=0.015):
     """Grasp at p0, lift by `lift`, accelerate along `direction` (world yaw) to speed v over d_acc, keep the speed,
     open the jaws d_release from the start while still moving, then rise and slow down. Returns (traj, release point)."""
@@ -85,14 +73,23 @@ def prog_slide(test, u):
     return C, pr, direction
 
 
-def prog_drape(test, u):
-    """test: y (fabric centre y; the fabric starts with its long axis along x, back edge towards -x), hang_x."""
-    pose = (W.EDGE_X - 0.22, test["y"], 0.0)
-    p, yaw = W.edge_grasp(pose, -1)
-    above = np.array([W.EDGE_X + test["hang_x"], test["y"], 0.22])
-    land = np.array([float(u), test["y"], 0.006])
-    keys = [(0.0, p, yaw, 0, 0), (0.1, p, yaw, 0, 1), (0.6, p + [0, 0, 0.12], yaw, 0, 1), (1.6, above, yaw, 0, 1),
-            (2.4, above, yaw, 0, 1), (4.0, land, yaw, 0, 1), (5.6, land, yaw, 0, 1)]
+def prog_overhang(test, u):
+    """test: pose (fabric centre x, y, yaw; long axis about along x, its +x short edge towards the table's front edge),
+    lift (m), speed (m/s). The clamp takes the middle of the +x short edge, lifts it by `lift`, pulls the fabric
+    along its long axis at `speed` until that edge's middle is u beyond the table's front edge, waits 0.4 s, opens,
+    and moves away. Returns (traj, first recorded step of the settled window)."""
+    pose = test["pose"]
+    p, yaw = W.edge_grasp(pose, +1)
+    d = np.array([np.cos(pose[2]), np.sin(pose[2]), 0.0])
+    front_x = pose[0] + np.cos(pose[2]) * W.SIZE_X / 2
+    dist = (W.EDGE_X + float(u) - front_x) / np.cos(pose[2])
+    up = p + np.array([0.0, 0.0, test["lift"]])
+    end = up + d * dist
+    t1 = 0.5 + dist / test["speed"]
+    away = end + np.array([0.05, 0.0, 0.10])
+    keys = [(0.0, p, yaw, 0, 0), (0.1, p, yaw, 0, 1), (0.5, up, yaw, 0, 1), (t1, end, yaw, 0, 1),
+            (t1 + 0.4, end, yaw, 0, 1), (t1 + 0.401, end, yaw, 0, 0), (t1 + 0.9, away, yaw, 0, 0),
+            (t1 + 3.4, away, yaw, 0, 0)]
     C = W.program_to_traj(keys)
     return C, len(C) - int(0.2 / W.DT)
 
@@ -105,14 +102,6 @@ def outcome(material, mass, test, u, world=None):
     Returns y (float) or None if the simulation diverged."""
     fam = test["fam"]
     S = (world or W).Sim
-    if fam == "hang":
-        C, s0 = prog_hang(test, u)
-        sim = S(material, mass)
-        sim.place_flat(test["pose"])
-        fr = sim.run(C, record_every=10, start=s0)
-        if sim.unstable or not len(fr):
-            return None
-        return float(np.mean([f[:, 2].min() for f in fr]))
     if fam == "slide":
         C, pr, direction = prog_slide(test, u)
         sim = S(material, mass)
@@ -122,14 +111,16 @@ def outcome(material, mass, test, u, world=None):
             return None
         d = np.array([np.cos(direction), np.sin(direction)])
         return float((fr[-1][:, :2] @ d).max() - pr[:2] @ d)
-    if fam == "drape":
-        C, s0 = prog_drape(test, u)
+    if fam == "overhang":
+        C, s0 = prog_overhang(test, u)
         sim = S(material, mass)
-        sim.place_flat((W.EDGE_X - 0.22, test["y"], 0.0))
+        sim.place_flat(test["pose"])
         fr = sim.run(C, record_every=10, start=s0)
         if sim.unstable or not len(fr):
             return None
-        return float(np.mean([f[:, 2].min() for f in fr]))
+        nx, ny = (world or W).NX, (world or W).NY
+        edge = fr.reshape(len(fr), nx, ny, 3)[:, -1, :, 2]       # the pulled edge: the fabric's +x row of vertices
+        return float(edge.mean())
     raise ValueError("unknown family %r" % fam)
 
 

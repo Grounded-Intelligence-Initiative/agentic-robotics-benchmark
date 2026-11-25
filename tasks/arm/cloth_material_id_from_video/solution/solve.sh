@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Privileged reference: writes the true materials of the fixed hidden fabrics (solution/ref/params.json, the task's
-# defined answer) as the submission.
+# Privileged reference: writes the reference materials of the ten hidden fabrics (solution/ref/params.json: each
+# calibrated against the hidden model of the real fabric by tests/review/make_set.py) as the submission.
 set -euo pipefail
 cd "$(dirname "$0")"
 mkdir -p /home/user/submission

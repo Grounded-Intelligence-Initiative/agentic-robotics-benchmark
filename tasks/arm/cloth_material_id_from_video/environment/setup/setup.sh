@@ -23,3 +23,9 @@ for entry in payload/*; do
   find "$tgt" -exec touch -h -d '2026-01-01 00:00:00 UTC' {} +
 done
 mkdir -p "$HOME_DIR/submission" && chown "$AGENT_USER:$AGENT_USER" "$HOME_DIR/submission"
+# The session's time stamp (session_time.sh in the agent's home reads it): written now, a few minutes before the
+# agent's session starts, in a folder that is root's, so that the agent's account can read it and cannot change it.
+install -d -o root -g root -m 755 /run/session
+date -u +%s > /run/session/start
+chown root:root /run/session/start && chmod 0444 /run/session/start
+chmod 0755 "$HOME_DIR/session_time.sh"

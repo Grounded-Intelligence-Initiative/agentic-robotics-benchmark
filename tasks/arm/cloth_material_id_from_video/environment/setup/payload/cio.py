@@ -3,10 +3,11 @@
     import cio
     cams = cio.cameras()                         # list of dicts: name, K, R_w2c, t_w2c, width, height
     fab = cio.fabric_info("A")                   # size_m, grid, mass_kg, n_clips
-    clip = cio.clip_info("A", 0)                 # kind, fps, n_frames, fabric_start, clamp_500hz (M, 8), arm_q (N, 7)
+    clip = cio.clip_info("A", 0)                 # kind, fps, n_frames, clamp_500hz (M, 8), arm_q (N, 7); no start pose
     frames = cio.load_video("A", 0, "cam1")      # (N, H, W, 3) uint8 RGB
     uv = cio.project(cams[0], X_world)           # (n, 2) pixels of world points (n, 3)
-    cio.write_params({"A": {...}, "B": {...}, "C": {...}})
+    cio.write_params({"A": {...}, ..., "J": {...}})
+    cio.check_params()                           # the format check of ~/submission/params.json (python3 cio.py runs it)
 """
 import json
 import math
@@ -83,3 +84,45 @@ def write_params(fabrics):
     with open(SUBMISSION, "w") as f:
         json.dump({"fabrics": out}, f, indent=1)
     return SUBMISSION
+
+
+FABRICS = tuple("ABCDEFGHIJ")
+
+
+def check_params(path=SUBMISSION):
+    """Format check of the submission, by the grader's own rules (it says nothing about how good the materials are).
+    Returns a list of problems; an empty list means the file will be read and every fabric scored."""
+    import cphys
+    problems = []
+    try:
+        if os.path.islink(path) or not os.path.isfile(path):
+            return ["%s is not a regular file" % path]
+        if os.path.getsize(path) > 64 * 1024:
+            return ["larger than 64 kB"]
+        with open(path) as f:
+            doc = json.load(f, parse_constant=lambda name: (_ for _ in ()).throw(ValueError("non-finite number %s" % name)))
+    except (OSError, ValueError) as exc:
+        return ["not readable as JSON: %s" % exc]
+    if not isinstance(doc, dict) or not isinstance(doc.get("fabrics"), dict):
+        return ["the top level must be an object with a 'fabrics' object"]
+    for k in FABRICS:
+        e = doc["fabrics"].get(k)
+        if not isinstance(e, dict):
+            problems.append("fabric %s is missing (it scores 0)" % k)
+            continue
+        for key in KEYS:
+            v = e.get(key)
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(float(v)):
+                problems.append("fabric %s: %s must be a finite number (the fabric scores 0)" % (k, key))
+            else:
+                lo, hi = cphys.RANGES[key]
+                if not lo <= float(v) <= hi:
+                    problems.append("fabric %s: %s = %g is outside [%g, %g] and will be clamped" % (k, key, v, lo, hi))
+    return problems
+
+
+if __name__ == "__main__":
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    bad = check_params()
+    print("\n".join(bad) if bad else "params.json: format OK (ten fabrics, five numbers each)")

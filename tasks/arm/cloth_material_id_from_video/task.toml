@@ -10,19 +10,20 @@ platform = "arm"
 [environment]
 cpus = 4
 memory_mb = 8192
-build_timeout_sec = 10800
 
 [agent]
 timeout_sec = 28800
 network_mode = "no-network"
 
-# Fixed hidden fabrics: the grader reads the true materials and its tests from tests/ref (staged only at verify) in a
+# Fixed hidden fabrics and tests (tests/PREREG.md): the grader reads them from tests/ref (staged only at verify) in a
 # fresh verifier sandbox; it never trusts anything the agent left besides params.json.
 [verifier]
-timeout_sec = 3600
+# 80 tests, each planned in the simulator (up to 10 runs) and executed once on the real fabric: about 20 minutes on 8
+# cores. There is no deadline inside the grader; this timeout is the only bound, and a stage that reaches it has no score.
+timeout_sec = 7200
 environment_mode = "separate"
 
 [verifier.environment]
-cpus = 4
+cpus = 8
 memory_mb = 8192
 gpus = 0

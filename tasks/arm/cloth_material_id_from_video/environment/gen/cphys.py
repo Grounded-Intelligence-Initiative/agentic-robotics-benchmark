@@ -24,7 +24,7 @@ Typical use (replaying a clip with your own material):
 
     import numpy as np, json, cphys
     sim = cphys.Sim(material, mass_kg=0.012)
-    sim.place_flat(pose_xy_yaw)                  # clip.json "fabric_start": [x, y, yaw] of the fabric centre
+    sim.place_flat(pose_xy_yaw)                  # [x, y, yaw] of the fabric centre; a clip's start pose is not given
     C = np.load(".../clamp_500hz.npy")
     frames = sim.run(C, record_every=cphys.STEPS_PER_FRAME)   # (n_frames, NX*NY, 3) vertex positions
 

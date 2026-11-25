@@ -1,5 +1,7 @@
 """cgrading: strict params.json parser and scoring for cloth_material_id_from_video (hidden grader).
 
+Ten fabrics A-J, four tests per family (slide, overhang) each; a fabric's score is the product of its two family means.
+
 Every test is planned in cphys with the submitted material and executed once on the real fabric (creal, with the
 fabric's real material from ref/fabrics.json).
 
@@ -18,8 +20,8 @@ import creal as R
 import ctasks as T
 
 MAX_BYTES = 64 * 1024
-FABRICS = ("A", "B", "C")
-FAMS = ("hang", "slide", "drape")
+FABRICS = tuple("ABCDEFGHIJ")
+FAMS = ("slide", "overhang")
 
 
 class InvalidSubmission(ValueError):
@@ -95,21 +97,10 @@ def score_test(material, ref_f, test):
 
 
 def aggregate(qs_by_test, tests):
-    """Fabric score = mean over families of the mean test quality in that family."""
+    """Fabric score = the product over the two families of the family's mean test quality: a material is worth
+    planning with for a fabric only if its plans transfer in both kinds of handling."""
     fam_q = {}
     for q, t in zip(qs_by_test, tests):
         fam_q.setdefault(t["fam"], []).append(q)
-    fm = {f: float(np.mean(v)) for f, v in fam_q.items()}
-    return float(np.mean(list(fm.values()))), fm
-
-
-def score_fabric(ref_f, material, deadline=None):
-    qs, unscored = [], 0
-    for t in ref_f["tests"]:
-        if deadline is not None and time.time() > deadline:
-            qs.append(0.0)
-            unscored += 1
-            continue
-        qs.append(score_test(material, ref_f, t)[0])
-    s, fm = aggregate(qs, ref_f["tests"])
-    return s, dict(families=fm, unscored=unscored)
+    fm = {f: float(np.mean(fam_q[f])) if f in fam_q else 0.0 for f in FAMS}
+    return float(np.prod([fm[f] for f in FAMS])), fm
