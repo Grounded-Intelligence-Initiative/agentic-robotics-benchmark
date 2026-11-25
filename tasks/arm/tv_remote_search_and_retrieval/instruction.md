@@ -13,9 +13,9 @@ who has lost a remote works it out. Whatever is in the room may be moved, opened
 graded episodes the remote is always in a place a remote could plausibly have got to in a living
 room, and the robot can get it out of every one of them with what is in the room.
 
-**The remote is not the only small thing in this room.** In every graded episode a phone and a
-glasses case lie somewhere too, out of sight like the remote. Taking one of them out earns
-nothing: only the remote counts.
+**The remote is not the only small thing in this room.** In every graded episode other small
+things lie somewhere too, some of them dark and about the remote's size (the simulator's model
+has them). Taking one of them out earns nothing: only the remote counts.
 
 Your controller sees the room through two RGB-D cameras (a fixed overview and one on the wrist),
 the joint readings and a wrist force/torque sensor. It gets no object poses of any kind. **The
@@ -31,7 +31,7 @@ is up. The sandbox has 4 CPU cores, 12 GB of memory, no GPU and no network.
 
 | Path | What it is |
 |---|---|
-| `remote_env.py` | The simulator, complete: the room's geometry as named constants, the robot and its controller, the cameras, how a scene is drawn from a seed (`make_scene(seed, remote)`: you say where the remote is), how an episode is judged (`Env.progress`, `Env.score`). The grader runs a byte-identical copy and adds only its own rule for where the remote, the phone and the glasses case are. Read it: it is the data sheet. Copy it into your submission if your controller imports it. |
+| `remote_env.py` | The simulator, complete: the room's geometry as named constants, the robot and its controller, the cameras, how a scene is drawn from a seed (`make_scene(seed, remote)`: you say where the remote is), how an episode is judged (`Env.progress`, `Env.score`). The grader runs a byte-identical copy and adds only its own rule for where the remote and the other small things are. Read it: it is the data sheet. Copy it into your submission if your controller imports it. |
 | `practice_grader/grade.py` | Runs your controller over the grading wire on scenes of your own, with the remote where you put it, and prints the raw metric (see "Checking your work"). |
 | `example_controller/controller.py` | A minimal controller for the wire that holds still and decodes one pair of images. |
 
@@ -44,39 +44,30 @@ the CPU (`MUJOCO_GL=egl`, already set). The room's meshes and textures are in `/
 World frame: metres and radians, quaternions (w, x, y, z). x points from the rail to the settee, y
 to the robot's left, z up; the floor is z = 0. All numbers below are constants of `remote_env.py`.
 
-The positions below are the **nominal layout**. In an episode the settee, with its pads, is
-that layout turned about the vertical through the middle of its front face and then shifted; the
-chest, with its drawers, the hanger and the hat, likewise about the middle of its front. For each of the two, independently and
-uniformly: the shift is -1 to +5 cm along x and -5 to +5 cm along y, the turn -0.09 to +0.09 rad
-(about 5 degrees) (`LAYOUT_RANGE`, `place`). A point 0.3 m from a pivot can so be 6 cm from where
-the nominal layout has it. The robot, its rail and the overview camera do not move.
+The positions below are the **nominal layout**. In an episode the settee, with everything that
+belongs to it, is that layout turned about the vertical through the middle of its front face and
+then shifted; the chest, with everything that belongs to it, likewise about the middle of its
+front. For each of the two, independently and uniformly: the shift is -1 to +5 cm along x and -5
+to +5 cm along y, the turn -0.09 to +0.09 rad (about 5 degrees) (`LAYOUT_RANGE`, `place`). A point
+0.3 m from a pivot can so be 6 cm from where the nominal layout has it. The robot, its rail and
+the overview camera do not move.
 
 - **Robot.** The Panda's base stands 0.30 m above the floor on a pedestal that rides a rail along
   y at x = 0 (pedestal y from -1.75 to 1.10). The rail's beam is 14 cm wide and 4 cm tall. The
   hand opens to 8 cm; each finger presses with at most 35 N.
 - **Settee.** Its front face is the plane x = 0.36, its armrests' outer faces are at y = -0.32 and
-  0.82. The seat deck is flat, at z = 0.25; the two seat pads (46 x 49 x 6.5 cm, 0.55 kg,
-  loose) lie on it side by side, their front edges 3 cm proud of the front face. The settee's
-  underside is 6 cm above the floor, on four legs at its corners.
+  0.82.
 - **Chest.** Its front is at x = 0.38 and its middle at y = -0.85; it is 0.57 m wide and 0.73 m
-  tall. Each of its three drawers slides out toward the robot by up to 0.36 m and has two round
-  knobs.
-- **Hanger.** A flat wooden hanger, 44 cm long, hangs by its wire hook on a peg on the chest's
-  outer side (the side away from the settee), 0.56 m above the floor.
-- **Hat.** A cloth sun hat, 41 x 44 cm across its brim and 15.5 cm tall, 0.12 kg, lies on the
-  chest's top. Its brim is wavy: 2 to 3 cm above the top at the ends toward and away from the
-  robot.
-- **Remote.** 17 x 4.4 x 1.8 cm, 0.20 kg, dark.
-- **Phone.** 15 x 7.4 x 0.9 cm, 0.18 kg, dark. **Glasses case.** 16 x 7 x 3.4 cm, 0.09 kg, dark
-  blue. All three lie flat, in any direction; things that lie in one place are at least 4 cm
-  apart and none lies on another.
+  tall.
+- **Remote.** 17 x 4.4 x 1.8 cm, 0.20 kg, dark. It lies flat, in any direction.
+- **Everything else** the room holds, fixed or loose, with its sizes, weights and how it moves,
+  is in the simulator's model: `remote_env.py` is the whole description, and this page does not
+  repeat it.
 
-Things are solid, and their collision shapes follow what the cameras show (the settee's and the
-hat's are convex decompositions of the drawn models): the arm cannot pass through the furniture,
-a pad or a hat that is pushed falls where it falls, and the pedestal cannot drive through a
-drawer that stands open. The settee and the chest themselves do not move when pushed. One
-simplification, as the seat pads stand for soft cushions: a pad does not collide with the remote
-or the phone (`remote_env.py`, the contact bits).
+Things are solid, and their collision shapes follow what the cameras show: the arm cannot pass
+through the furniture, a loose thing that is pushed falls where it falls, and the pedestal cannot
+drive through something that stands in its way. The settee and the chest themselves do not move
+when pushed.
 
 ## Observation and action
 
@@ -119,7 +110,7 @@ The grader's own simulator decides; nothing your controller prints counts.
 - Otherwise 0. An episode in which the controller crashes, answers late or malformed, or drives
   an arm joint faster than 8 rad/s scores 0.
 
-Your result is the **mean score over 12 graded episodes**, in a fixed order, with seeds and
+Your result is the **mean score over 14 graded episodes**, in a fixed order, with seeds and
 places for the remote that you do not know. It is compared with a reference controller's result on the
 same episodes; the reference retrieves the remote in every one of them.
 
@@ -165,7 +156,7 @@ and is scored as it stands.
 runs your controller over the same wire, with the same deadlines and a few repeated-`t` queries,
 on scenes of your own, and prints the raw metric with how each episode went. `--remote` is where
 you put the remote (x, y, z, yaw in the world frame; it is put there and let go), `--scenes` a
-JSON list of scenes for more than one place, with a phone and a glasses case if you want them
-(the script's head says how). The example above has the remote lying in the open on the floor.
+JSON list of scenes for more than one place, with the other small things placed too if you want
+them (the script's head says how). The example above has the remote lying in the open on the floor.
 Which places are worth practising is your call: the practice grader knows neither the graded
 episodes' places nor what the reference achieves.

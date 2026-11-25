@@ -2,7 +2,7 @@
 
 This file is the grader's alone. The simulator the agent has (remote_env.py) puts the remote
 wherever its caller says and holds no rule for it; this is the rule. An episode is a seed and one
-of six hiding spots:
+of seven hiding spots:
 
 * ``left_cushion`` / ``right_cushion``: on the seat deck, under one of the two loose seat pads
   (left is +y), under the pad's front half. A pad is soft: it lies flat on the deck over the
@@ -12,6 +12,9 @@ of six hiding spots:
 * ``under_sofa``: on the floor under the sofa, 15 to 19 cm behind its front face, deeper than the
   hand reaches. The wooden clothes hanger on the chest's outer side reaches it.
 * ``under_hat``: on top of the chest, under the crown of the sun hat that lies there.
+* ``under_chest``: on the floor under the chest, between its legs, pointing in, its near end 10
+  to 11.5 cm behind the chest's front: out of sight from above. The carcass is 10.8 cm above the
+  floor: the hand fits in lying flat, not from above.
 
 The phone lies under a seat pad, in one of the three drawers or (when the remote is not there)
 under the hat; the glasses case in one of the three drawers. Either may share its place with the
@@ -23,7 +26,8 @@ Nothing of the remote is visible in either camera when an episode starts.
 
 import math
 
-HIDING_SPOTS = ("left_cushion", "right_cushion", "upper_drawer", "lower_drawer", "under_sofa", "under_hat")
+HIDING_SPOTS = ("left_cushion", "right_cushion", "upper_drawer", "lower_drawer", "under_sofa", "under_hat",
+                "under_chest")
 CLUTTER_GAP = 0.04
 PHONE_SPOTS = ("left_cushion", "right_cushion", "upper_drawer", "mid_drawer", "lower_drawer", "under_hat")
 CASE_SPOTS = ("upper_drawer", "mid_drawer", "lower_drawer")
@@ -111,6 +115,11 @@ def make_episode(E, seed, hiding_spot):
     elif hiding_spot == "under_hat":
         # Under the crown: anywhere it fits, in any direction.
         xy = (hat_xy[0] + pose.uniform(-0.005, 0.005), hat_xy[1] + pose.uniform(-0.005, 0.005))
+    elif hiding_spot == "under_chest":
+        # Between the chest's legs, pointing in, its near end far enough behind the chest's
+        # front that nothing of it shows from above.
+        xy = (E.CAB_X0 + pose.uniform(0.190, 0.200), E.CAB_CY + pose.uniform(-0.11, 0.11))
+        yaw = pose.uniform(-0.2, 0.2) + (math.pi if pose.uniform() < 0.5 else 0.0)
     else:
         xy = (E.SOFA_X0 + pose.uniform(0.15, 0.19), pose.uniform(E.SOFA_Y[0] + 0.34, E.SOFA_Y[1] - 0.36))
     swing = pose.uniform(-0.06, 0.06)

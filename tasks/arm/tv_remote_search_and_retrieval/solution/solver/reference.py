@@ -1,4 +1,4 @@
-"""The reference controller's behaviour: search the five places and retrieve the remote."""
+"""The reference controller's behaviour: search the seven places and retrieve the remote."""
 
 import math
 import os
@@ -17,7 +17,10 @@ TILT = 52
 PAD_SHIFT = 0.0
 FLIP = 86
 DIP = 0.10
-
+UNDER_TILT = 15                 # degrees the flat hand points down when it reaches in under the chest
+UNDER_DEPTH = 0.135             # how far behind the chest's front the fingers take the remote
+UNDER_Z = 0.018
+UNDER_OUT = 0.26                # the remote's near end is drawn out to this far in front of the chest
 
 class Reference(Robot):
     def run(self, obs):
@@ -39,10 +42,12 @@ class Reference(Robot):
             world = self.kin.to_world((centre[0], centre[1], 0.0))
             self.kin.model.qpos0[adr:adr + 2] = world[:2]
             self.kin.data.qpos[adr:adr + 2] = world[:2]
-        order = getattr(self, "order", ("under", "lower", "hat", "upper", "left", "right"))
+        order = getattr(self, "order", ("under", "chest", "lower", "hat", "upper", "left", "right"))
         for name in order:
             if name == "under":
                 found = yield from self.search_under()
+            elif name == "chest":
+                found = yield from self.search_under_chest()
             elif name == "hat":
                 found = yield from self.search_hat()
             elif name in ("lower", "upper"):
@@ -240,6 +245,99 @@ class Reference(Robot):
         yield from self.sweep(best)
         return True
 
+    def search_under_chest(self):
+        """Look under the chest with the wrist camera held low; if the remote is there, reach in
+        for it."""
+        self.kin.use("cabinet")
+        low = rot_from_axes((1, 0, 0), (0, -1, 0))       # camera on the hand's lower side
+        y = CAB_CY
+        rails = [y + 0.5, y - 0.5, y + 0.4, y - 0.4]
+        self.grip_cmd = 0.0
+        ok = yield from self.move_pose((0.10, y, 0.40), low, rails=rails, sym=False, then=(0.07, 0, -0.31))
+        yield from self.move_line((0.10, y, 0.09), step=0.008)
+        yield from self.move_line((0.17, y, 0.09), step=0.008)
+        hit = yield from self.see_remote((0.004, 0.035), ((E.CAB_X0 + 0.06, E.CAB_X0 + 0.34),
+                                                          (CAB_CY - 0.22, CAB_CY + 0.22)), min_points=25, sized=False)
+        self.log.append(("chest", ok, hit))
+        yield from self.move_line((0.10, y, 0.09), step=0.008)
+        yield from self.move_line((0.10, y, 0.40), step=0.008)
+        if hit is None:
+            return False
+        found = yield from self.reach_under(hit)
+        return found
+
+    def reach_under(self, hit):
+        """The remote lies under the chest, pointing in. The carcass is high enough for the hand
+        lying flat: it goes in between the legs, fingers first and a little nose down, takes the
+        remote's near end, draws it out along the floor and lets go; then the remote is picked
+        up from above like any other on the floor."""
+        (_, ry), _, _ = hit
+        t = math.radians(UNDER_TILT)
+        ahead = np.array([math.cos(t), 0.0, -math.sin(t)])
+        flat = rot_from_axes(tuple(ahead), (0, 1, 0))
+        grasp = np.array([E.CAB_X0 + UNDER_DEPTH, ry, UNDER_Z])
+        pre = grasp - 0.22 * ahead
+        # A posture for the flat hand at the floor, and a way to it: the tucked arm turns about
+        # its first joint, unfolds to a pose above and behind the place, comes straight down and
+        # goes straight in.
+        above = pre + np.array([-0.05, 0.0, 0.30])
+        plan = None
+        for offset in (-0.35, 0.35, 0.2, -0.2, 0.5, -0.5):
+            rail = self.rail(ry + offset)
+            home = self.home_at(rail)
+            for rot in (flat @ np.diag([-1.0, -1.0, 1.0]), flat):
+                for j1 in (-1.3, -0.8, -0.3, 0.3, 0.8, 1.3):
+                    for j7 in (0.785, -0.785, 2.3, -2.3):
+                        seed = self.kin.home.copy()
+                        seed[1], seed[7] = j1, j7
+                        q_pre, ep, er = self.kin.ik(pre, rot, seed, rail=rail, iters=300)
+                        if ep > 2e-3 or er > 2e-2 or self.kin.collides(q_pre, 0.08):
+                            continue
+                        q_in, ep, er = self.kin.ik(grasp, rot, q_pre, rail=rail, iters=300, posture=q_pre)
+                        if ep > 2e-3 or er > 2e-2 or self.kin.collides(q_in, 0.08):
+                            continue
+                        q_up, ep, er = self.kin.ik(above, rot, q_pre, rail=rail, iters=300, posture=q_pre)
+                        if ep > 2e-3 or er > 2e-2 or self.kin.collides(q_up, 0.08):
+                            continue
+                        q_mid = home.copy()
+                        q_mid[1] = q_up[1]
+                        if (self.path_free(home, q_mid, clearance=0.0) and self.path_free(q_mid, q_up, clearance=0.0)
+                                and self.path_free(q_up, q_pre, clearance=0.0)):
+                            plan = (rail, q_mid, q_up, rot)
+                            break
+                    if plan:
+                        break
+                if plan:
+                    break
+            if plan:
+                break
+        self.log.append(("reach_plan", plan is not None))
+        if plan is None:
+            return False
+        rail, q_mid, q_up, flat = plan
+        yield from self.go_home(rail)
+        self.grip_cmd = 0.08
+        yield from self.move_q(q_mid, speed=0.6, settle=False)
+        yield from self.move_q(q_up, speed=0.6)
+        yield from self.move_line(pre, flat, step=0.008)
+        yield from self.move_line(grasp, step=0.005)
+        yield from self.grip(0.0, steps=18)
+        out = E.CAB_X0 - UNDER_OUT
+        yield from self.move_line((out + UNDER_DEPTH, ry, UNDER_Z + 0.004), step=0.005)
+        yield from self.grip(0.08, steps=12)
+        yield from self.move_line((out + UNDER_DEPTH - 0.10, ry, 0.10), step=0.008)
+        yield from self.move_line((out + UNDER_DEPTH - 0.10, ry, 0.35), step=0.01)
+        rails = [ry + o for o in (-0.4, 0.4, -0.3, 0.3, -0.5, 0.5)]
+        box = ((0.10, E.CAB_X0 - 0.005), (ry - 0.25, ry + 0.25))
+        hit2 = yield from self.look_down((out + UNDER_DEPTH + 0.06, ry), 0.0, (0.006, 0.035), box, rails, height=0.50, dark=True)
+        self.log.append(("floor", hit2))
+        if hit2 is None:
+            return False
+        # From where the arm looked down, without tucking it first: the place is close to the
+        # chest's front and under the hat's brim.
+        yield from self.pick(hit2, 0.0, rails, drag=0.13, direct=True)
+        return True
+
     def fetch_hanger(self):
         self.kin.use("cabinet")
         y_plane = E.CAB_Y[0] - E.HANG_OFFSET
@@ -356,15 +454,20 @@ class Reference(Robot):
         hit = yield from self.see_remote(z_range, xy_box, dark=dark)
         return hit
 
-    def pick(self, hit, surface_z, rails, lift=0.16):
-        """Top-down pick of the remote at `hit` (centre, long-axis yaw) lying on `surface_z`."""
+    def pick(self, hit, surface_z, rails, lift=0.16, drag=0.0, direct=False):
+        """Top-down pick of the remote at `hit` (centre, long-axis yaw) lying on `surface_z`. With
+        `drag`, the held remote is first drawn that far toward the robot just above the surface
+        (part of it may still be under something)."""
         (cx, cy), yaw, _ = hit
         rot = down(yaw + 0.5 * math.pi)
         self.grip_cmd = 0.075
-        ok = yield from self.move_pose((cx, cy, surface_z + 0.13), rot, rails=rails, then=(0, 0, -0.118))
+        ok = yield from self.move_pose((cx, cy, surface_z + 0.13), rot, rails=rails, then=(0, 0, -0.118), direct=direct)
         self.log.append(("pick_ik", ok))
         yield from self.move_line((cx, cy, surface_z + 0.012), step=0.006)
         yield from self.grip(0.0, steps=18)
+        if drag:
+            cx = cx - drag
+            yield from self.move_line((cx, cy, surface_z + 0.016), step=0.005)
         yield from self.move_line((cx, cy, surface_z + lift), step=0.006)
         yield from self.wait(E.HOLD_STEPS + 6)
         return ok

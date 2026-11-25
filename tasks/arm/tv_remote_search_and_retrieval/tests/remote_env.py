@@ -103,6 +103,10 @@ CAB_PANEL_W = 0.272                     # outer faces of the side panels between
 CAB_Y = (CAB_CY - CAB_HALF_W, CAB_CY + CAB_HALF_W)
 CAB_DEPTH = 0.457
 CAB_H = 0.727
+CAB_UNDER = 0.108                       # floor to the underside of the carcass
+CAB_LEG_X = (0.049, 0.410)              # the four legs: front and back pair, in the cabinet frame
+CAB_LEG_Y = 0.2685                      # ... at -y and +y
+CAB_LEG_HALF = (0.046, 0.0295)          # a leg's half sizes (its foot's), in x and y
 DRAWERS = ("upper", "mid", "lower")
 DRAWER_FRONT_X = (0.045, 0.069)         # a closed drawer's front panel, in the cabinet frame
 DRAWER_TRAVEL = 0.36
@@ -438,9 +442,6 @@ def _pad(name, yc):
     z = DECK_Z + half[2]
     volume = PAD_SIZE[0] * PAD_SIZE[1] * PAD_SIZE[2]
     return ('<body name="pad_{n}" pos="{p}"><freejoint name="pad_{n}_free"/>'
-            # A pad stands for a soft cushion. The contact bits of the pads and of the remote
-            # and the phone are chosen so that a pad touches neither of those two, and each
-            # still touches everything else (the pads one another too).
             '<geom name="pad_{n}" type="box" size="{s}" density="{d}" {h} contype="5" conaffinity="6" '
             'friction="0.9 0.01 0.0001" solref="0.01 1" condim="4"/>{look}</body>').format(
                 n=name, p=_fmt((x, yc, z)), s=_fmt(half), d=_fmt((PAD_MASS / volume,)), h=HIDDEN,
@@ -452,8 +453,12 @@ def _cabinet():
     hw = CAB_PANEL_W
     t = 0.02
     parts = []
+    # The carcass stands on four legs: its side panels end at the bottom board's underside.
+    low = CAB_UNDER
     for name, ys in (("cab_side_r", -hw + 0.5 * t), ("cab_side_l", hw - 0.5 * t)):
-        parts.append(_box(name, (0.5 * CAB_DEPTH + 0.01, ys, 0.5 * CAB_H), (0.5 * CAB_DEPTH - 0.01, 0.5 * t, 0.5 * CAB_H)))
+        parts.append(_box(name, (0.5 * CAB_DEPTH + 0.01, ys, 0.5 * (CAB_H + low)), (0.5 * CAB_DEPTH - 0.01, 0.5 * t, 0.5 * (CAB_H - low))))
+    for i, (xs, ys) in enumerate(((CAB_LEG_X[0], -1), (CAB_LEG_X[0], 1), (CAB_LEG_X[1], -1), (CAB_LEG_X[1], 1))):
+        parts.append(_box("cab_leg{}".format(i), (xs, ys * CAB_LEG_Y, 0.5 * low), CAB_LEG_HALF + (0.5 * low,)))
     # The four corner posts stand a little proud of the side panels.
     for i, (xs, ys) in enumerate(((0.058, -1), (0.058, 1), (0.402, -1), (0.402, 1))):
         parts.append(_box("cab_post{}".format(i), (xs, ys * 0.5 * (CAB_PANEL_W + CAB_HALF_W), 0.40),
