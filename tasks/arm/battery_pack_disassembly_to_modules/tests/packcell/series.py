@@ -566,6 +566,7 @@ def public_cell():
         "bits": list(BITS),
         "cameras": cams,
         "calibration_plates": CAL_PLATES,
+        "hall_light": {"gain": list(APPEARANCE["gain"]), "kelvin": list(APPEARANCE["kelvin"]), "lamp": list(APPEARANCE["lamp"])},
         "limits": {k: d[k] for k in ("tcp_speed_max", "tcp_rot_speed_max", "joint_speed_max", "overload_force", "overload_torque",
                                      "overload_joint_error", "stop_lock_s", "tool_change_s", "bit_change_s", "sim_cap_s", "frame_budget")},
         "isolation_wait_s": ISOLATION_WAIT_S,
