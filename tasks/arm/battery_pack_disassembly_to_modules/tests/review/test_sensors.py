@@ -320,15 +320,25 @@ def appearance_checks():
         assert all(not fast[d]["corroded"] and not fast[d]["missing"] for d in a["dusty"])
     # the same surface under a dimmer and a brighter hall: the same dropouts (the colour scaled by the light, the
     # sensor told the light); without the correction a dim hall would lose the dark lid's readings
-    zt, rgb, K = scene("overhead", 1.65, 300, 300, grey=50)
+    zt, rgb, K = scene("overhead", 1.65, 300, 300, grey=46)
     lost = []
+    # a render under gain g: the nominal colour through the display curve the other way (inverse of display_lut)
+    lin = np.interp((np.arange(256) / 255.0) ** 2.2, sensors._ACES_Y, sensors._ACES_X)
+
+    def render(img, g):
+        lut = np.clip(np.round(255.0 * sensors._aces(lin * g) ** (1.0 / 2.2)), 0, 255).astype(np.uint8)
+        return lut[img]
     for g in (0.6, 1.0, 1.3):
-        dim = np.clip(np.round(rgb.astype(float) * g), 0, 255).astype(np.uint8)
+        dim = render(rgb, g)
         lost.append(float((sensors.measure(zt, dim, K, S.SENSORS["overhead"], np.random.default_rng(1), light_gain=g) == 0).mean()))
         if g == 0.6:
             uncorrected = float((sensors.measure(zt, dim, K, S.SENSORS["overhead"], np.random.default_rng(1)) == 0).mean())
-    assert max(lost) - min(lost) < 0.02 and uncorrected > 0.2, (lost, uncorrected)
-    print("appearance: 150 draws within the manual's ranges, labels clear of bolts, handle and ribs; a grey-50 surface "
+    assert max(lost) - min(lost) < 0.02 and uncorrected > 0.1, (lost, uncorrected)
+    zt, rgb, K = scene("wrist", 0.35, 200, 200, grey=205)
+    bright = [float((sensors.measure(zt, render(rgb, g), K, S.SENSORS["wrist"], np.random.default_rng(2), light_gain=g) == 0).mean())
+              for g in (0.6, 1.0, 1.3)]
+    assert max(bright) - min(bright) < 0.06, bright
+    print("appearance: 150 draws within the manual's ranges, labels clear of bolts, handle and ribs; a grey-46 surface "
           "loses %.0f %% of its readings at any hall light (%.0f %% in a dim hall without the correction)" % (100 * max(lost), 100 * uncorrected))
     return 1
 

@@ -57,7 +57,8 @@ def measure(z_true, rgb, K, spec, rng, light_gain=1.0):
     optical axis; 0 or non-finite where the renderer saw nothing), the registered colour image `rgb` (H x W x 3
     uint8) and the camera matrix `K`, by the data sheet `spec` (series.SENSORS[name]). `light_gain` is the hall's
     light against the nominal (series.APPEARANCE): an active sensor's reading depends on the surface, not on the
-    room's light, so the colour image is taken back to the nominal light before it decides about dark and bright."""
+    room's light, so the colour image is taken back to the nominal light (`to_nominal_light`, through the renderer's
+    display curve) before it decides about dark and bright."""
     z = np.where(np.isfinite(z_true), z_true, 0.0).astype(np.float64)
     H, W = z.shape
     f = float(K[0][0])
@@ -75,7 +76,7 @@ def measure(z_true, rgb, K, spec, rng, light_gain=1.0):
     # 4b. the second view's occlusion
     valid &= ~_occluded(z, f, spec["baseline_m"])
     # 4c. dark and bright surfaces, in blobs
-    rgbf = rgb[..., :3].astype(np.float64) / float(light_gain)
+    rgbf = to_nominal_light(rgb[..., :3], light_gain).astype(np.float64)
     luma = 0.299 * rgbf[..., 0] + 0.587 * rgbf[..., 1] + 0.114 * rgbf[..., 2]
     top = rgbf.max(axis=2)
     d0, d1 = spec["dark"]
@@ -94,6 +95,31 @@ def measure(z_true, rgb, K, spec, rng, light_gain=1.0):
         zq = np.where(dq > 0, fb / np.maximum(dq, 1e-12), 0.0)
     out = np.where(valid & (zq >= lo) & (zq <= hi), zq, 0.0)
     return out.astype(np.float32)
+
+
+def _aces(x):
+    """The renderer's display curve (the ACES approximation the cell's render settings name), on linear light."""
+    return np.clip(x * (2.51 * x + 0.03) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0)
+
+
+_ACES_X = np.linspace(0.0, 20.0, 200001)
+_ACES_Y = _aces(_ACES_X)
+
+
+def display_lut(gain):
+    """For each 8-bit colour value under a hall light of `gain` times the nominal, the value the same surface shows
+    under the nominal light: through a 2.2 gamma and the display curve back to linear light, divided by the gain,
+    and forward again (it predicts a dimmed render within about two levels)."""
+    v = np.arange(256) / 255.0
+    x = np.interp(v ** 2.2, _ACES_Y, _ACES_X)
+    return np.clip(np.round(255.0 * _aces(x / float(gain)) ** (1.0 / 2.2)), 0, 255)
+
+
+def to_nominal_light(rgb, gain):
+    """The colour image taken back to the hall's nominal light (`display_lut`); unchanged for gain 1."""
+    if abs(float(gain) - 1.0) < 1e-9:
+        return rgb
+    return display_lut(gain)[rgb.astype(np.intp)]
 
 
 def _phi_fast(x):
