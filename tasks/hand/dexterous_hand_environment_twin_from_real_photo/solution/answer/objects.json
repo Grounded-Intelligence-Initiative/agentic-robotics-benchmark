@@ -1,0 +1,15 @@
+{
+ "bodies": {
+  "candy_box": "candy_box",
+  "clog": "clog",
+  "cup": "cup",
+  "fork": "fork",
+  "small_bottle": "small_bottle",
+  "teapot": "teapot",
+  "tin": "tin",
+  "toy_remote": "toy_remote",
+  "tube": "tube",
+  "wine_glass": "wine_glass"
+ },
+ "format": "hand-twin-objects/1"
+}

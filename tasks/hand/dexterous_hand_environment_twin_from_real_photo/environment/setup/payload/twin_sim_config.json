@@ -1,0 +1,49 @@
+{
+ "format": "hand-twin-sim/1",
+ "note": "The standard simulation applied to every twin (lengths in mm unless the key says m; angles in deg; times in s).",
+ "sim": {
+  "timestep": 0.001,
+  "integrator": "implicitfast",
+  "cone": "elliptic",
+  "impratio": 10.0,
+  "solver": "Newton",
+  "iterations": 100,
+  "ls_iterations": 50,
+  "tolerance": 1e-08,
+  "noslip_iterations": 5,
+  "gravity_m_s2": 9.81,
+  "gravity_frame": "support_top",
+  "disable_flags": ["autoreset"],
+  "enable_flags": [],
+  "note": "mjOption is reset to MuJoCo's defaults first (density, viscosity, wind, magnetic, flags, o_* overrides), then these values are applied. Gravity points along -z of the support's top frame (support_frame), whatever the twin's own world axes are."
+ },
+ "contact": {
+  "condim": 4,
+  "solref": [0.004, 1.0],
+  "solimp": [0.95, 0.99, 0.001, 0.5, 2.0],
+  "margin_m": 0.0,
+  "gap_m": 0.0,
+  "priority": 0,
+  "solmix": 1.0,
+  "contype": 1,
+  "conaffinity": 1,
+  "override_friction": true,
+  "friction": [0.6, 0.005, 0.0001],
+  "note": "every colliding geom gets these values, so every pair touches with sliding friction 0.6, torsional 0.005 and rolling 0.0001; visual geoms (contype = conaffinity = 0) stay non-colliding"
+ },
+ "kinematic": {
+  "armature": 10000.0,
+  "note": "held things get this armature on their dofs (then mj_setConst) and have qpos / qvel written before every step; every other dof has no armature, damping or friction loss, every joint no stiffness, every body no gravity compensation, every geom no surface velocity, adhesion or fluid coefficients"
+ },
+ "settle": {
+  "seconds": 2.0,
+  "explode_window_s": 2.0,
+  "explode_speed_m_s": 3.0,
+  "explode_disp_mm": 300.0,
+  "note": "the settle blows up when the state becomes non-finite, MuJoCo reports a warning, or inside the window a thing moves faster than explode_speed_m_s or further than explode_disp_mm"
+ },
+ "pieces": {
+  "primitive_max_gap_mm": 0.1,
+  "note": "a sphere, capsule, cylinder or ellipsoid becomes a circumscribed polyhedron: the primitive lies inside it and the two surfaces are at most primitive_max_gap_mm apart"
+ }
+}
