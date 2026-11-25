@@ -192,9 +192,10 @@ along the camera's +x by the baseline, cannot see the point (a band beside tall 
 colour image's luma, 0.299 R + 0.587 G + 0.114 B, is below 40, more often the darker, never a reading below 12); and
 on specular highlights (where a colour channel is above 215, more often the brighter, never a reading above 245). These
 thresholds hold for the colour image under the hall's nominal light: the sensors light the scene themselves, so a
-surface's readings do not change with the hall's light (below). Lost readings come in small blobs. The noise is independent from frame to frame: the mean of many frames of a still scene
-approaches the true depth, smoothed as stated. The colour image is the renderer's: a path tracer with a denoiser, so
-two frames of the same scene differ slightly in their pixel values.
+surface's readings do not change with the hall's light (below). Lost readings come in small blobs. The noise is
+independent from frame to frame: the mean of many frames of a still scene approaches the true depth, smoothed as
+stated. The colour image is the renderer's: a path tracer with a denoiser, so two frames of the same scene differ
+slightly in their pixel values.
 
 **The hall's light.** The cell stands in an open hall, and its light differs from pack to pack (daylight, which lamps
 are on): the overall brightness lies between 0.6 and 1.3 times the nominal, the four lamps over the cell have a colour
