@@ -1,0 +1,1 @@
+{"metric":"mean_cleaning_score","direction":"higher","value":1.0,"full_at":1.0,"source":"Observed complete RGB-only reference rollouts on development seeds 11, 12 and 13 at 150 shared ticks; 1.0 denotes the literal completion of all goals."}
