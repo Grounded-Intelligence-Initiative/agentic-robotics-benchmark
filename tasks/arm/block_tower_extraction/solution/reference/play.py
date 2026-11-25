@@ -35,6 +35,7 @@ STAGE_TOP = 0.115
 AXIS_XY = np.array([0.65, 0.0])
 HOME = [0.0, -0.5, 0.0, -2.3, 0.0, 1.8, 0.785]
 TICK = 0.01
+MAX_LEVEL = 24              # build at most up to level 23 (24 levels): higher is at the edge of the arm's reach
 
 
 def log(*a):
@@ -149,14 +150,25 @@ class Ref(object):
         self.move("tcp", [xy[0], xy[1], self.safe_z() + dz], quat, speed=0.3)
 
     def prepose(self, low_pos, quat):
-        r = self.c.ik(low_pos, quat, seed=HOME)
-        if r["pos_error_m"] > 5e-4 or r["rot_error_rad"] > 5e-3:
+        """Before a long descent with the hand tilted: an arm posture that reaches the low goal, chosen close to the
+        current one (a far one would sweep the arm through the tower on the way), taken in joint space while the hand
+        is still high and in front of the tower, and kept as the redundancy target."""
+        cur = list(self.st["q"])
+        best = None
+        for seed in (cur, HOME):
+            r = self.c.ik(low_pos, quat, seed=seed)
+            if r["pos_error_m"] > 5e-4 or r["rot_error_rad"] > 5e-3:
+                continue
+            r2 = self.c.ik(list(self.tcp()), quat, seed=r["q"])
+            if r2["pos_error_m"] > 5e-4 or r2["rot_error_rad"] > 5e-3:
+                continue
+            jump = max(abs(a - b) for a, b in zip(r2["q"], cur))
+            if jump <= 0.6 and (best is None or jump < best[0]):
+                best = (jump, r["q"], r2["q"])
+        if best is None:
             return False
-        r2 = self.c.ik(list(self.tcp()), quat, seed=r["q"])
-        if r2["pos_error_m"] > 5e-4 or r2["rot_error_rad"] > 5e-3:
-            return False
-        self.pose_q(r2["q"], 0.8)
-        self.st = self.c.step(posture=r["q"], n=0)
+        self.pose_q(best[2], 0.8)
+        self.st = self.c.step(posture=best[1], n=0)
         return True
 
     # ---------------------------------------------------------------- choice
@@ -164,9 +176,12 @@ class Ref(object):
         self.truth()
         lb = self.pv["legal_below"]
         out = []
+        top = max(b["level"] for b in self.blocks if b["state"] == "tower")
+        if top >= MAX_LEVEL or (top == MAX_LEVEL - 1 and len(self.members(top)) == 3):
+            return out                       # the next level would be beyond a comfortable reach of the arm
         for b in self.blocks:
-            if b["state"] != "tower" or b["level"] >= lb:
-                continue
+            if b["state"] != "tower" or b["level"] >= lb or b.get("placed"):
+                continue                     # a block already placed on top counts once: never move it again
             if b["load_above_N"] >= LOOSE_N or b["gap_above_m"] <= MIN_GAP:
                 continue
             rest = sorted(o["slot"] for o in self.members(b["level"]) if o["id"] != b["id"])

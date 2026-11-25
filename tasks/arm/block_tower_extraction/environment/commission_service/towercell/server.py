@@ -252,7 +252,7 @@ class CellServer(object):
             b = c.ids[i]
             blocks.append({"id": i, "pos": _r(c.d.xpos[b], 7), "xmat": _r(c.d.xmat[b], 7),
                            "h": c.tower["blocks"][i]["h"], "state": c.state[i], "level": c.level[i],
-                           "slot": c.slot[i], "load_above_N": round(float(loads[i]), 5),
+                           "slot": c.slot[i], "placed": bool(c.placed[i]), "load_above_N": round(float(loads[i]), 5),
                            "gap_above_m": round(float(gaps[i]), 7)})
         return {"blocks": blocks, "legal_below": c.legal_below(), "collapsed": c.collapsed}
 
