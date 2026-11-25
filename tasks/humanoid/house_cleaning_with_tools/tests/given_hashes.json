@@ -1,5 +1,5 @@
 {
- "given/cell/cell_api.md": "a23961375b3bdfa740f124ffe96b990396d1e8695a088a9f105a48186b99fc26",
+ "given/cell/cell_api.md": "9b538c156cd64814baa41e773c6bb6ef1e5a07460b0fc3dfd0adb1e00e7f71a3",
  "given/cell/cell_manual.md": "61f57d4a2e088c7e8ced999dd40e6841727b84ac4d0b49e442a5fe55e6aa9a46",
  "given/cell/describe.json": "e970040b377dd315f027cc407ddcc5ef90c33a585f53ce13c9f48828fa3eea32",
  "given/cell/survey/README.md": "ea566303e6f8efa0a607de3c478a49d6a87d869c1bcc3a76fc94c76dcc82b62d",
@@ -57,8 +57,8 @@
  "given/cell/survey/scene_b/head_start.json": "3d0ae614d413f60e89cfbcfc34d6dcb0a2c10b142711b5971ef97edebfad1493",
  "given/cell/survey/scene_b/head_start_depth_mm.png": "9cfe6ca0040fe2ef29185b3f4dbc58ef7f08aaa6603e67a539a2acc3f1180dad",
  "given/cell/survey/scene_b/head_start_rgb.png": "8efbb239b998441b4ac725ee677851b0d194278d60bf0cd4a2c69d02753ccbda",
- "given/lib/house_client/__init__.py": "9bb833644c7819c94184538e1520bc49edfa96e0b3bd3a3b49a696c73b4112ee",
- "given/lib/house_client/client.py": "fc4c7735d39b8b6fe0bc535ab147e78447faf698c62a90b5e1506731cff1cc60",
+ "given/lib/house_client/__init__.py": "5431ff6a0e90c9f3155284da4f74c71ccb102fb2af8c3e29cabec45ad9460f87",
+ "given/lib/house_client/client.py": "28fe040474f79dcab002ffea2575f85c73ae7d764107d0fa7e368d21461f3150",
  "given/robot/unitree_g1/CHANGELOG.md": "241370c50dde400cc6a5f7835825eb16b9457d2d069c1546164eb0e2ccdadcf9",
  "given/robot/unitree_g1/LICENSE": "98335465f43a20b5850e4651db6e74c4aa1e9fc8e8813d38f345178045c0da50",
  "given/robot/unitree_g1/README.md": "e0ca5e85f68ff9554631c3ea6ac624b469d6018a37e273daa1234e43e3ad4395",

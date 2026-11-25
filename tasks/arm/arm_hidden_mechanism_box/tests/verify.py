@@ -1,61 +1,59 @@
-"""Hidden grader for arm_hidden_mechanism_box (closed loop, hidden boxes).
+"""Grader for arm_hidden_mechanism_box, dual mode (experimental): one verify for the two scoring items.
 
-Runs as root in a SEPARATE verifier sandbox (SPEC 14.10: no lab and no agent process exist there;
-the engine restores only the declared artifact /home/user/submission). It never talks to the lab.
-Defensively it still stops any lab or agent-UID process first (rev-leak R14, SPEC L3), then hands the
-restored submission (size-capped) to the agent account in place, at /home/user/submission, the folder the
-instruction names (ownership changes never follow a symlink). It owns its own copy of
-the robot environment (box_env.py, byte-identical to the agent's dev sim) and builds the hidden boxes
-from tests/ref/boxes.json with mech.py, draws 64-bit episode seeds from OS entropy (kit `seed_rng`:
-box placement jitter and sensor noise), drives the agent's controller over the kit wire at the agent's
-UID, and scores every episode from its own simulator state (fraction of the box's stages unlocked).
+Runs as root in a SEPARATE verifier sandbox. The agent had one session for two items, scored together:
+  * the program (the offline item, main's task): the controller it left in /home/user/submission/, graded by main's
+    own grader, unchanged (tests/offline_verify.py, byte-identical to main's tests/verify.py: 8 episodes on the four
+    hidden boxes with fresh seeds, the kit's wire with the probe lock, the seccomp launcher, the budgets);
+  * the graded episode (the online item): one hidden episode it played itself through the lab
+    (environment/setup/lab/alelab/server.py, the account `alelab`), whose record the lab wrote to
+    /var/lib/arb-online/record.json.
+The program is frozen at the earlier of the graded start and the close of the start window: the lab's root supervisor
+copied the submission folder into /var/lib/arb-online/submission_snapshot/ before the start was charged, or when the
+start window closed without a start (the record holds the trigger, the status, the counts and the digest);
+the engine collected that directory and the submission as declared artifacts after the agent phase and restored them
+here, root-owned.
 
-Additions to the kit wire (the vendored kit stays byte-identical):
-  * GuardedSolver: the solver is started through nonet_exec.py, which installs a seccomp filter
-    (only AF_UNIX sockets), drops to the agent account and execs `bash run.sh` with a whitelist
-    environment. Reply lines are capped at 64 KiB.
-  * A start-up self-test proves the network block (`egress_guard`); if the filter cannot be
-    installed, /proc/net is polled every step and any agent-UID internet socket zeroes the run.
-  * Every agent-UID process is killed (bounded, fail-closed) before the solver starts and after it
-    closes. One that outlives the bounded kill (the base image's supervisord respawns the account's
-    desktop as fast as it is killed) is stopped; only one still running once stopped fails the run.
-  * A wall-clock budget below the stage timeout: on overrun the remaining episodes count 0.
-  * Every path agent behaviour can reach is charged as a score, never a crash.
+In this order: stop every agent-UID process (as main's grader does); read the record; if it records a freeze (at
+the start or at the close of the start window), the program graded is the snapshot (its digest checked against the
+record; a snapshot that is not "ok" or does not match scores the program 0), else (the session ended before the
+window closed, or there is no usable record) the restored session-end submission, as on main; run main's grader on
+it, its verdict
+captured instead of written (its anchor: tests/anchor_offline.json, main's anchor.json); score the record as the
+online variant does (tests/anchor_online.json; 0 without a record or a start); stop the agent account's processes
+again; reward = the mean of the two items' rewards, written once through the kit against tests/anchor.json
+(dual_mode_score, 1.0 when both items reach their anchors).
 """
 
+import hashlib
 import json
 import math
 import os
 import pwd
+import shutil
 import signal
-import subprocess
+import stat
 import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import box_env as E  # noqa: E402
-import mech  # noqa: E402
 from robotics_grader import (  # noqa: E402
-    ProbeLock,
-    Solver,
-    SolverAborted,
-    SolverMissing,
     agent_user,
     ratio_rewards,
     read_anchor,
-    seed_rng,
     stage_config,
     write_verdict,
     zero_verdict,
 )
 
 STAGE = os.path.dirname(os.path.abspath(__file__))
-MAX_SUBMISSION_BYTES = 200 * 1024 * 1024
-MAX_SUBMISSION_FILES = 5000
-NONET = os.path.join(STAGE, "nonet_exec.py")
-BOXES = os.path.join(STAGE, "ref", "boxes.json")
-MAX_LINE = 65536
+ONLINE = os.path.join(STAGE, "online.json")
+RECORD = "/var/lib/arb-online/record.json"
+SNAPSHOT = "/var/lib/arb-online/submission_snapshot"
+RECORD_FORMAT = "arb-online-record/1"
+MAX_RECORD_BYTES = 1 << 20
+METRIC = "mean_opening_progress"  # both items' metric (main's, and the graded episode's on the same scale)
+END_REASONS = ("done", "finish", "graded_window", "worker_restart")
 
 
 def log(msg):
@@ -145,211 +143,170 @@ def stop_agent_processes(uid):
     return not running
 
 
-class GuardedSolver(Solver):
-    """The kit Solver, spawned through the seccomp launcher, with a reply-line cap."""
-
-    guard = True
-    nproc = 0
-
-    def _spawn(self):
-        uid, gid = _agent_ids()
-        cmd = [sys.executable, "-I", NONET, "--uid", str(uid), "--gid", str(gid), "--rlimit-nproc", str(self.nproc),
-               "--cwd", self.submission, "--", "bash", self.entry]
-        if not self.guard:
-            cmd = ["/usr/sbin/runuser", "-u", agent_user(), "--", "/usr/bin/env", "-i",
-                   "PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin", "HOME=/home/user", "LANG=C.UTF-8",
-                   "bash", self.entry]
-        try:
-            return subprocess.Popen(cmd, cwd=self.submission, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                    stderr=subprocess.DEVNULL, universal_newlines=True, bufsize=1,
-                                    start_new_session=True, env={"PATH": "/usr/bin:/bin"})
-        except OSError as exc:
-            raise SolverAborted("solver could not be started: {}".format(exc))
-
-    @staticmethod
-    def _pump(proc, lines):
-        while True:
-            try:
-                line = proc.stdout.readline(MAX_LINE + 1)
-            except (ValueError, OSError, UnicodeDecodeError):
-                break
-            if not line:
-                break
-            if len(line) > MAX_LINE and not line.endswith("\n"):
-                break          # oversize reply: treated as a closed wire (episode aborts)
-            lines.put(line)
-        lines.put(None)
+def _no_constants(name):
+    raise ValueError("non-finite constant")
 
 
-def egress_self_test(uid, gid, nproc=0):
-    """True if a probe started through the launcher cannot open an internet socket."""
-    probe = ("import socket,sys\n"
-             "bad=0\n"
-             "for fam in (socket.AF_INET, socket.AF_INET6, 40):\n"
-             "    try:\n"
-             "        socket.socket(fam, socket.SOCK_STREAM).close(); bad=1\n"
-             "    except OSError:\n"
-             "        pass\n"
-             "try:\n"
-             "    socket.socket(socket.AF_UNIX, socket.SOCK_STREAM).close()\n"
-             "except OSError:\n"
-             "    bad=1\n"
-             "sys.exit(3 if bad else 0)\n")
+def load_record(path):
+    """The record as a JSON object (a regular file of at most 1 MB, never through a link), or (None, reason)."""
     try:
-        r = subprocess.run([sys.executable, "-I", NONET, "--uid", str(uid), "--gid", str(gid),
-                            "--rlimit-nproc", str(nproc), "--cwd", "/",
-                            "--", sys.executable, "-I", "-c", probe],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60,
-                           env={"PATH": "/usr/bin:/bin"})
-        return r.returncode == 0
-    except (OSError, subprocess.SubprocessError):
-        return False
-
-
-def agent_inet_sockets(uid):
-    """Count agent-UID internet sockets with a non-loopback peer (detection fallback)."""
-    n = 0
-    for name in ("tcp", "tcp6", "udp", "udp6", "raw", "raw6"):
-        try:
-            with open("/proc/net/" + name) as f:
-                next(f, None)
-                for line in f:
-                    parts = line.split()
-                    if len(parts) < 8 or int(parts[7]) != uid:
-                        continue
-                    rem = parts[2].split(":")[0]
-                    if rem.strip("0") == "" or rem in ("0100007F", "00000000000000000000000001000000"):
-                        continue
-                    n += 1
-        except (OSError, ValueError, StopIteration):
-            continue
-    return n
-
-
-def stop_lab():
-    """Stop the lab service (rev-leak R14) before anything else; True when it is gone."""
+        st = os.lstat(path)
+    except OSError:
+        return None, "no graded-episode record (the lab wrote none)"
+    if not stat.S_ISREG(st.st_mode):
+        return None, "the graded-episode record is not a regular file"
+    if st.st_size > MAX_RECORD_BYTES:
+        return None, "the graded-episode record exceeds 1 MB"
     try:
-        from alelab_stop import stop_all
-        stop_all(agent_user=agent_user())
-        return True
-    except Exception as exc:  # noqa: BLE001 - a failed stop is recorded, the agent kill still runs
-        log("lab stop: {}".format(type(exc).__name__))
-        return False
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        return None, "the graded-episode record cannot be opened"
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            return None, "the graded-episode record is not a regular file"
+        raw = os.read(fd, MAX_RECORD_BYTES + 1)
+    finally:
+        os.close(fd)
+    if len(raw) > MAX_RECORD_BYTES:
+        return None, "the graded-episode record exceeds 1 MB"
+    try:
+        rec = json.loads(raw.decode("utf-8"), parse_constant=_no_constants)
+    except (ValueError, UnicodeDecodeError):
+        return None, "the graded-episode record is not valid JSON"
+    if not isinstance(rec, dict):
+        return None, "the graded-episode record is not a JSON object"
+    return rec, None
 
 
-def stage_submission(uid, gid):
-    """Make the restored submission the agent account's own folder, in place at ~user/submission: the
-    folder the instruction names, where run.sh is started and where the controller may write, as it can in
-    the lab and the practice grader. Ownership changes never follow a symlink (lchown, a walk that does not
-    follow links); size and file count are capped. Returns the path, or None if there is no usable
-    submission."""
-    src = os.path.join(os.path.expanduser("~" + agent_user()), "submission")
-    if not os.path.isdir(src) or os.path.islink(src):
-        return None
-    total = files = 0
-    for dp, dns, fns in os.walk(src, followlinks=False):
+def check_record(rec, online):
+    """None for a record of this task's graded episode that was started with a finite score >= 0, else the reason."""
+    if rec.get("format") != RECORD_FORMAT:
+        return "the graded-episode record has another format"
+    for key in ("task", "episode", "seed_sha256"):
+        if rec.get(key) != online[key]:
+            return "the graded-episode record's {} differs from tests/online.json".format(key)
+    if rec.get("started") is not True:
+        return "the graded episode was never started"
+    score = rec.get("episode_score")
+    if isinstance(score, bool) or not isinstance(score, (int, float)) or not math.isfinite(score) or score < 0:
+        return "the graded-episode record has no finite episode_score >= 0"
+    return None
+
+
+def _number(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
+def record_metrics(rec):
+    """The record's counters, how the episode ended and the per-episode sub-metrics, as finite numbers."""
+    out = {}
+    for key in ("steps", "steps_rejected", "sim_time_s", "requests", "wall_s_since_start", "started_after_s"):
+        if _number(rec.get(key)):
+            out[key] = float(rec[key])
+    out["episode_ended"] = 1.0 if rec.get("ended") is True else 0.0
+    for reason in END_REASONS:
+        out["end_" + reason] = 1.0 if rec.get("end_reason") == reason else 0.0
+    out["privileged"] = 1.0 if rec.get("privileged") is True else 0.0
+    metrics = rec.get("metrics")
+    if isinstance(metrics, dict):
+        for key, v in sorted(metrics.items()):
+            if isinstance(key, str) and _number(v) and key not in out:
+                out[key] = float(v)
+    return out
+
+
+def snapshot_digest(root):
+    """(files, bytes, sha256) of a snapshot tree, computed as the lab computes it: sha256 over the lines
+    "<path>\\0<size>\\0<sha256 of content>\\n" of its regular files in sorted path order (no link is followed)."""
+    listing = []
+    for dp, dns, fns in os.walk(root, followlinks=False):
         for fn in fns:
             fp = os.path.join(dp, fn)
-            files += 1
-            if not os.path.islink(fp):
-                try:
-                    total += os.lstat(fp).st_size
-                except OSError:
-                    pass
-        if files > MAX_SUBMISSION_FILES or total > MAX_SUBMISSION_BYTES:
-            return None
-    for dp, dns, fns in os.walk(src, followlinks=False):
-        for name in dns + fns:
-            os.lchown(os.path.join(dp, name), uid, gid)
-    os.lchown(src, uid, gid)
-    os.chmod(src, 0o700)
-    return src
-
-
-def episode_plan(config, rng, ids):
-    reps = int(config.get("episodes_per_box", 2))
-    plan = [j for j in sorted(ids) for _ in range(reps)]
-    for i in range(len(plan) - 1, 0, -1):          # Fisher-Yates with the keyed grader RNG
-        k = int(rng.random() * (i + 1))
-        plan[i], plan[k] = plan[k], plan[i]
-    return plan
-
-
-def run_episodes(config, rng, uid, egress_mode, t_start, specs, workdir):
-    budget = float(config.get("grader_budget_s", 6000))
-    plan = episode_plan(config, rng, specs)
-    lock = ProbeLock(rng, rate=config.get("probe_rate", 0.01),
-                     pass_fraction=config.get("probe_pass_fraction", 0.1), tolerance=1e-4)
-    scores, aborted, faults = [], 0, 0
-    per_box = {}
-    per_stage = {}
-    egress_hits = 0
-    budget_exhausted = False
-    GuardedSolver.guard = egress_mode == "seccomp"
-    GuardedSolver.nproc = int(config.get("solver_nproc_limit", 0))
-    solver = GuardedSolver(step_timeout=config.get("step_timeout_s", 30), submission=workdir)
-    try:
-        for ep, box in enumerate(plan):
-            if time.monotonic() - t_start > budget:
-                budget_exhausted = True
-                scores.append(0.0)
-                per_box.setdefault(box, []).append(0.0)
+            st = os.lstat(fp)
+            if not stat.S_ISREG(st.st_mode):
                 continue
-            env = E.BoxEnv(specs[box], box_id=box, early_end=True)
-            score = 0.0
-            reason = "ok"
-            try:
-                obs = env.reset(rng.seed(bits=64))
-                solver.reset()
-                for t in range(env.max_steps):
-                    if time.monotonic() - t_start > budget:
-                        budget_exhausted = True
-                        raise SolverAborted("grader budget exhausted")
-                    if egress_mode == "detect" and agent_inet_sockets(uid):
-                        egress_hits += 1
-                    wire = E.to_wire(obs)
-                    if lock.due():
-                        other = E.to_wire(env.perturbed_observation(obs, rng))
-                        action = lock.probe(solver, t, wire, perturbed=other)
-                    else:
-                        action = solver.act(t, wire)
-                    obs, done, info = env.step(action)
-                    if done:
-                        break
-                if env.fault is not None:
-                    faults += 1
-                    reason = "sim fault: " + env.fault
-                    score = 0.0
-                else:
-                    score = env.episode_score()
-                for (st, _qa), ok in zip(env.stages, env.achieved):
-                    per_stage.setdefault(box + "_" + st["id"], []).append(1.0 if (ok and env.fault is None) else 0.0)
-            except (SolverAborted, E.ActionError, ValueError, TypeError, OverflowError, KeyError,
-                    AttributeError, RecursionError) as exc:
-                aborted += 1
-                score = 0.0
-                reason = "aborted: {}".format(str(exc)[:160])
-            finally:
-                env.close()
-            if not (isinstance(score, float) and math.isfinite(score)) or score < 0:
-                score = 0.0
-            scores.append(score)
-            per_box.setdefault(box, []).append(score)
-            log("episode {} ({}): score={:.4f} steps={} {}".format(ep, box, score, getattr(env, "t", 0), reason))
-    finally:
-        try:
-            solver.close()
-        except Exception:  # noqa: BLE001 - closing a broken solver must not crash the grader
-            pass
-    return scores, aborted, faults, per_box, per_stage, egress_hits, budget_exhausted, lock
+            h, size = hashlib.sha256(), 0
+            with open(fp, "rb") as fh:
+                for block in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(block)
+                    size += len(block)
+            listing.append((os.path.relpath(fp, root), size, h.hexdigest()))
+    digest = hashlib.sha256()
+    for rel, size, content_sha in sorted(listing):
+        digest.update(("%s\0%d\0%s\n" % (rel, size, content_sha)).encode("utf-8", "surrogateescape"))
+    return len(listing), sum(x[1] for x in listing), digest.hexdigest()
+
+
+def check_snapshot(rec, root=SNAPSHOT):
+    """None when the record says the program was frozen ("ok") and the restored snapshot matches its counts and
+    digest, else the reason (the program item then scores 0)."""
+    status = rec.get("snapshot_status")
+    if status != "ok":
+        return "the program was not frozen at the graded start (snapshot {})".format(status)
+    if not os.path.isdir(root) or os.path.islink(root):
+        return "the frozen program is missing from the artifacts"
+    files, size, digest = snapshot_digest(root)
+    if (files, size, digest) != (rec.get("snapshot_files"), rec.get("snapshot_bytes"), rec.get("snapshot_sha256")):
+        return "the frozen program does not match the record's digest"
+    return None
+
+
+def install_snapshot(root, dest):
+    """Replace the restored submission folder `dest` with the frozen program (as root): `dest` is removed without
+    following links, then the snapshot's directories and regular files are copied with their modes. Main's grader
+    then hands the folder to the agent account, as it does with a restored submission."""
+    if os.path.islink(dest) or (os.path.lexists(dest) and not os.path.isdir(dest)):
+        os.unlink(dest)
+    elif os.path.isdir(dest):
+        shutil.rmtree(dest)
+    os.mkdir(dest, 0o700)
+    for dp, dns, fns in os.walk(root, followlinks=False):
+        rel = os.path.relpath(dp, root)
+        target = dest if rel == "." else os.path.join(dest, rel)
+        for dn in dns:
+            if not os.path.islink(os.path.join(dp, dn)):
+                os.mkdir(os.path.join(target, dn), 0o700)
+        for fn in fns:
+            sp, tp = os.path.join(dp, fn), os.path.join(target, fn)
+            st = os.lstat(sp)
+            if stat.S_ISREG(st.st_mode):
+                shutil.copyfile(sp, tp, follow_symlinks=False)
+                os.chmod(tp, stat.S_IMODE(st.st_mode))
+
+
+def run_offline():
+    """Main's grader (tests/offline_verify.py, unchanged) on /home/user/submission: its verdict and diagnostic,
+    captured instead of written; it reads main's anchor (tests/anchor_offline.json)."""
+    import offline_verify as OV
+    captured = []
+
+    def capture(verdict, path=None, diagnostic=None):
+        captured.append((verdict, diagnostic))
+
+    OV.write_verdict = capture
+    OV.read_anchor = lambda name="anchor.json": read_anchor("anchor_offline.json")
+    OV.main()
+    if not captured:
+        raise RuntimeError("main's grader wrote no verdict")
+    verdict, diagnostic = captured[-1]
+    return verdict, diagnostic if diagnostic is not None else verdict.get("diagnostic")
+
+
+def online_component(rec, reason, config):
+    """The graded episode's item: its record scored against the online anchor, or 0 with the reason."""
+    anchor, meta = read_anchor("anchor_online.json")
+    if reason is not None:
+        return zero_verdict(reason=reason, anchored=anchor is not None)
+    return ratio_rewards(float(rec["episode_score"]), anchor, cap=config.get("scoring_cap", 1.5),
+                         higher_is_better=True, metric_name=METRIC, locks_ok=True, extra=record_metrics(rec),
+                         full_at=meta.get("full_at", 1.0))
 
 
 def main():
-    t_start = time.monotonic()
     config = stage_config()
-    lab_stopped = stop_lab()
-    rng = seed_rng()
     anchor, meta = read_anchor()
+    with open(ONLINE) as fh:
+        online = json.load(fh)
     try:
         uid, gid = _agent_ids()
     except KeyError:
@@ -359,53 +316,61 @@ def main():
         write_verdict(zero_verdict(reason="agent processes could not be stopped (cleanup_failed)",
                                    anchored=anchor is not None))
         return
-    with open(BOXES) as fh:
-        cfgs = json.load(fh)
-    specs = {}
-    for bid, cfg in sorted(cfgs.items()):
-        box = mech.Box(cfg)
-        specs[bid] = {"xml": box.xml(), "meta": box.meta()}
-    try:
-        workdir = stage_submission(uid, gid)
-    except OSError as exc:
-        log("staging the submission failed: {}".format(type(exc).__name__))
-        workdir = None
-    if workdir is None:
-        write_verdict(zero_verdict(reason="no usable submission", anchored=anchor is not None))
-        return
-    egress_mode = "seccomp" if egress_self_test(uid, gid, int(config.get("solver_nproc_limit", 0))) else "detect"
-    log("egress guard: " + egress_mode)
-    try:
-        (scores, aborted, faults, per_box, per_stage, egress_hits, budget_exhausted,
-         lock) = run_episodes(config, rng, uid, egress_mode, t_start, specs, workdir)
-    except (SolverMissing, SolverAborted) as exc:
-        kill_agent_processes(uid)
-        write_verdict(zero_verdict(reason=str(exc)[:200], anchored=anchor is not None))
-        return
+    rec, load_reason = load_record(RECORD)
+    started = rec is not None and rec.get("started") is True
+    online_reason = load_reason if rec is None else check_record(rec, online)
+    # the program graded: the one frozen at the earlier of the start and the close of the start window; the
+    # session-end submission only when the session ended before that (a usable record with no freeze) or when there
+    # is no usable record
+    usable = rec is not None and rec.get("format") == RECORD_FORMAT and rec.get("task") == online["task"]
+    frozen = usable and (started or rec.get("snapshot_status") is not None)
+    program = "session_end"
+    offline_reason = None
+    if frozen:
+        offline_reason = check_snapshot(rec)
+        if offline_reason is None:
+            install_snapshot(SNAPSHOT, os.path.join(os.path.expanduser("~" + agent_user()), "submission"))
+            program = "snapshot"
+    if offline_reason is None:
+        off, off_diag = run_offline()
+    else:
+        log("program item: " + offline_reason)
+        off, off_diag = zero_verdict(reason=offline_reason, anchored=True), None
+        program = "none"
+    on = online_component(rec, online_reason, config)
     cleanup_ok = stop_agent_processes(uid)
-    measured = sum(scores) / len(scores) if scores else 0.0
-    if egress_hits or not cleanup_ok or not math.isfinite(measured) or measured < 0:
-        measured = 0.0
-    extra = dict(lock.rewards(),
-                 episodes_scored=float(len(scores) - aborted),
-                 episodes_aborted=float(aborted),
-                 sim_faults=float(faults),
-                 egress_guard_seccomp=1.0 if egress_mode == "seccomp" else 0.0,
-                 egress_detected=float(egress_hits),
-                 cleanup_failed=0.0 if cleanup_ok else 1.0,
-                 lab_stopped=1.0 if lab_stopped else 0.0,
-                 budget_exhausted=1.0 if budget_exhausted else 0.0)
-    for box, vals in sorted(per_box.items()):
-        extra["score_" + box] = sum(vals) / len(vals)
-    for key, vals in sorted(per_stage.items()):
-        extra["stage_" + key] = sum(vals) / len(vals)
-    verdict = ratio_rewards(measured, anchor, cap=config.get("scoring_cap", 1.5), higher_is_better=True,
-                            metric_name="mean_opening_progress", locks_ok=lock.ok, extra=extra,
-                            full_at=meta.get("full_at", 1.0))
-    write_verdict(verdict)
-    log("measured={:.5f} anchor={} ratio={:.3f} reward={:.3f} lock={} aborted={} faults={} egress={}".format(
-        measured, anchor, verdict["metrics"]["ratio"], verdict["rewards"]["reward"], lock.ok, aborted, faults,
-        egress_mode))
+    off_r, on_r = float(off["rewards"]["reward"]), float(on["rewards"]["reward"])
+    combined = (off_r + on_r) / 2.0
+    if not cleanup_ok:
+        combined = 0.0
+    extra = {"offline_reward": off_r, "online_reward": on_r, "cleanup_failed": 0.0 if cleanup_ok else 1.0,
+             "program_snapshot": 1.0 if program == "snapshot" else 0.0,
+             "program_session_end": 1.0 if program == "session_end" else 0.0,
+             "snapshot_at_start": 1.0 if (rec or {}).get("snapshot_trigger") == "start" else 0.0,
+             "snapshot_at_window_close": 1.0 if (rec or {}).get("snapshot_trigger") == "prep_window"
+             else 0.0,
+             "episode_started": 1.0 if started else 0.0}
+    for status in ("ok", "too_large", "missing"):
+        extra["snapshot_" + status] = 1.0 if (rec or {}).get("snapshot_status") == status else 0.0
+    for key in ("snapshot_files", "snapshot_bytes"):
+        if _number((rec or {}).get(key)):
+            extra[key] = float(rec[key])
+    for reason in END_REASONS:
+        extra["online_end_" + reason] = 1.0 if (rec or {}).get("end_reason") == reason else 0.0
+    for key, v in sorted((off.get("metrics") or {}).items()):
+        extra["offline_" + key] = v
+    for key, v in sorted((on.get("metrics") or {}).items()):
+        extra["online_" + key] = v
+    verdict = ratio_rewards(combined, anchor, cap=1.0, higher_is_better=True, metric_name="dual_mode_score",
+                            locks_ok=True, extra=extra, full_at=meta.get("full_at", 1.0))
+    diagnostic = ("dual mode: program {} ({} at {}; reward {:.4f}), graded episode {} (reward {:.4f}; {}), "
+                  "mean {:.4f}; program item: {}; graded episode item: {}").format(
+        program, (rec or {}).get("snapshot_status"), (rec or {}).get("snapshot_trigger"), off_r,
+        (rec or {}).get("episode"), on_r,
+        (rec or {}).get("end_reason"), combined, off_diag or off.get("diagnostic") or "graded",
+        on.get("diagnostic") or "scored")
+    write_verdict(verdict, diagnostic=diagnostic)
+    log("{} anchor={} reward={:.3f}".format(diagnostic, anchor, verdict["rewards"]["reward"]))
 
 
 if __name__ == "__main__":

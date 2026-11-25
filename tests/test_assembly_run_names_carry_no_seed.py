@@ -35,7 +35,10 @@ SERVERS = ("FullArmInfoServer", "OpenArmServer", "QuadInfoServer", "StrutInfoSer
 
 
 def _verify(task):
-    return REPO / "tasks" / task / "tests" / "verify.py"
+    """the task's grader; in the dual mode (the experimental branch) main's grader is tests/offline_verify.py"""
+    tests = REPO / "tasks" / task / "tests"
+    dual = tests / "offline_verify.py"
+    return dual if dual.is_file() else tests / "verify.py"
 
 
 def _run_episode_node(task):

@@ -24,7 +24,9 @@ from pathlib import Path
 import pytest
 
 TASK = Path(__file__).resolve().parents[1] / "tasks/uav/uav_assembly_agipix_xarm7"
-_NAMES = ("netaudit", "verify", "verify_freeze")
+# the dual mode (an experimental branch) keeps main's grader byte for byte as tests/offline_verify.py
+_GRADER = "offline_verify" if (TASK / "tests" / "offline_verify.py").is_file() else "verify"
+_NAMES = ("netaudit", _GRADER, "verify_freeze")
 
 
 def _load():
@@ -35,9 +37,9 @@ def _load():
     sys.dont_write_bytecode = True
     try:
         sys.path.insert(0, str(TASK / "tests"))
+        import importlib
         import netaudit
-        import verify
-        return netaudit, verify
+        return netaudit, importlib.import_module(_GRADER)
     finally:
         for name in _NAMES:
             sys.modules.pop(name, None)
@@ -100,9 +102,12 @@ def test_the_shipped_programs_scan_clean(tmp_path):
     # the supplied render library (given/lib) is the cell's own rendering code, not the submission's: its scene builder
     # imports by name, its GL probe starts a python, its context release calls malloc_trim (ctypes)
     hits = N.scan_imports(str(TASK / "environment/setup/payload"))
-    assert [hit for hit in hits if not hit[0].startswith("given/lib/")] == []
+    # the dual mode's graded_client.py (an experimental branch) opens the graded episode's unix socket in the session;
+    # a program never uses it, and a byte copy of it in a submission is exempt like the rest of setup_payload/
+    shipped = ("graded_client.py",) if (TASK / "tests/offline_verify.py").is_file() else ()
+    assert [hit for hit in hits if not hit[0].startswith("given/lib/") and hit[0] not in shipped] == []
     assert N.scan_imports(str(TASK / "solution")) == []      # the oracle's program
-    for name in ("cell_client.py", "cell_runner.py"):
+    for name in ("cell_client.py", "cell_runner.py") + shipped:
         (tmp_path / name).write_bytes((TASK / "tests/setup_payload" / name).read_bytes())
     (tmp_path / "assemble.py").write_bytes((TASK / "solution/assemble.py").read_bytes())
     shutil.copytree(TASK / "tests/setup_payload/given/lib", tmp_path / "vendored_lib")   # byte copies: exempt

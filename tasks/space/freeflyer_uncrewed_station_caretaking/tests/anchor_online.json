@@ -1,0 +1,8 @@
+{
+ "metric": "caretaking_score",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 0.95,
+ "source": "measured 2026-11-24 by the oracle (the privileged reference program driving the graded episode hidden_l2xp_1 through the agent-side client, solution/solve.sh step 2) in a container of the task image: episode_score 1.0 (every term earned, R 1.0; docked at 1724.8 s simulated with 37.4 % of charge; energy 49.308 Wh, the hidden set's ref_energy_wh of the site to the last digit), as the hidden set's selection rule records for the site; confirmed by the dual validate validate-79e32884 (engine bfb7505, the dual mode at 429961f1): the oracle's graded episode scored 1.000, ended by graded_finish at 1724.8 s simulated",
+ "note": "caretaking_score of the one graded episode: the site score R x (D + U1 + H + U2 + V + K + L + E) of main's grader on the cell's record of the episode; full_at as main's"
+}

@@ -1,0 +1,17 @@
+{
+ "note": "the dual mode's graded episode, for the verifier's cross-check of the record (tests/verify.py). The graded episode is one failure state of the offline grader's fixed hidden set (hidden/states.json: 27 states in the grader's order), drawn once with OS entropy; the state's entry and files live root-only in environment/setup/online/, where the graded episode's service reads them. seed_sha256 = sha256 of the RoboCasa seed's decimal string.",
+ "format": "arb-online-record/1",
+ "task": "longtail_manipulation_recovery",
+ "episode": "h22",
+ "job": "PickPlaceCounterToStove",
+ "seed_sha256": "9f2af99c9cc5d093c312a69bb5516197b3c4b82127969ef79870b5171ffad667",
+ "draw": {
+  "when_utc": "2026-11-24T04:35:04Z",
+  "from": "hidden/states.json['states'] (sha256 3744935cd48acc7a4837a13f1d30381b63f4014a826cd25719299086e8229414), the offline grader's 27 hidden failure states in its order",
+  "how": "python3: secrets.randbelow(27) (OS entropy), once; index 17 -> h22 (PickPlaceCounterToStove)",
+  "why_plain": "the practice states are failures in RoboCasa's pretrain kitchens, none of the hidden states' held-out kitchens, so no practice covers a hidden state: the plain draw (pitfall 4's unseen-instance draw is for tasks whose practice covers the hidden instances)"
+ },
+ "record": "/var/lib/arb-online/record.json",
+ "prep_s": 28800,
+ "graded_s": 10800
+}

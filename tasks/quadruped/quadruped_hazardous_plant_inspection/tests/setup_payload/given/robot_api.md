@@ -382,6 +382,9 @@ No event names an instrument or a place.
 After the mission has ended, `describe`, `mission`, `get_state` and `step` still answer (`step` returns `done: true`
 without advancing); every other call answers `mission_over`. Your program should then return.
 
+Once the graded episode has started (section 12), the practice ground answers `practice_closed` (section 10). The
+graded episode's own codes are in section 12.
+
 ## 9. How your program is run
 
 <!-- BEGIN GENERATED regime -->
@@ -566,9 +569,81 @@ Should the debrief itself fail to compute at a mission's end, the latest snapsho
 
 The debrief has no score and no drawing of the building as it is.
 
+**Practice ends when the graded episode starts** (section 12). The moment `start()` of the graded episode is accepted,
+the practice ground closes for the rest of the session: a practice mission still open then ends (its last line has the
+reason `practice_closed` and its debrief, as at any other end; an open mission notices within a second), and every
+later connection's first request, `reset` included, is answered with the error `practice_closed`, using no mission of
+the allowance. The status file then carries `practice_closed: true`. `~/training/run_mission.py` reports the same.
+
 ## 11. What no reply contains
 
 No reply of a mission, scored or practice, carries a true value, a true pose, a credit, the name of an instrument in
 an event, or anything about the building beyond its documents. Nothing identifies an instrument's tag plate but its
 tag: there is no marker id and no code for an instrument anywhere (the grid marker plates keep their `marker_id`). A
 program learns about the building through the robot's sensors.
+
+## 12. The graded episode (`plantcell.graded`)
+
+The graded episode is one more mission that you drive yourself, live, during your session: one site of the same hidden
+set as your program's twelve scored missions, with the same robot, gait, sensors, cell and rules as a scored mission
+(sections 2 to 8 and `robot_manual.md`): 1350 s of simulated time, the frame and report budgets of section 9, the dose
+rating, the protective behaviours and the hold after a `blocked`, at most 500 ticks per `step`, the same score. It runs
+in your sandbox, in a service under an account that is not yours, behind the unix socket `/run/plantgrade/graded.sock`;
+you drive it with the client library, from as many short scripts as you like:
+
+```python
+import sys
+sys.path.insert(0, "/home/user/given/lib")
+from plantcell.graded import connect_graded
+
+robot = connect_graded()          # the same Robot proxy (sections 3 to 7), plus start / status / close
+print(robot.status())             # started, ended, steps, sim_time, frames_used, the time left in each window
+robot.start()                     # ONCE per session: freezes your program, then the graded mission begins
+docs = robot.mission()
+r = robot.step(100)               # 1 s of simulated time
+robot.close()                     # disconnects: the mission stays exactly where it is
+```
+
+A later script connects again with `connect_graded()` and goes on from there. A program's `solve(robot)` runs on it
+unchanged, as `solve(connect_graded())` after `start()`; a program that calls `finish()` at its end ends the graded
+mission there (in a scored mission the launcher does that for you, section 1).
+
+- **`start()`** starts the graded mission once per session; it is charged the moment it is accepted, before anything
+  is simulated, and never refunded (a second call answers `already_started`). Before the start the robot's calls
+  answer `not_started`; `status()` answers at any time. The start first freezes your program (the instruction says
+  what that means); if that copy fails the start is refused and nothing is charged.
+- **The mission persists.** It lives in the service, not in your connection: a closed connection or a script that
+  ends or crashes leaves it where it is. Between requests nothing happens: simulated time passes only inside `step`,
+  a walking command stays in force until changed, and the robot's own gait holds it on its feet. One client at a time:
+  a second connection gets `CellError` `busy`. A connection that sends nothing for 15 minutes is closed by the service
+  (the mission stays; the proxy connects again by itself on its next call).
+- **It ends** at `finish()`; when the robot cell ends the mission (1350 s of simulated time, the robot lost, the dose
+  rating reached: `step` then reports `done` and the event); when the graded window closes; or when your session ends.
+  In every case the mission ends as a scored mission whose program stops at that moment ends: the link has its last
+  look, reports still queued are then lost, nothing is simulated afterwards, and the mission is scored as it stands.
+  After the end every call answers `episode_over`, and `finish()` answers `{"ok": true, "ended": true}`.
+- **What you learn**: the replies of sections 3 to 7, and `status()`. Never a score, a credit or a debrief.
+- **What does not apply**: section 9's run regime and contract, the program time, the silence limit and the CPU time
+  (also listed in `mission()["budgets"]` as `program_time_s` and `silence_s`: they bound your program in a scored
+  mission, not the graded episode, which has only its two windows), and section 2's rule for the wire after the end.
+
+| field of `status()` | content |
+|---|---|
+| `service` | the service's name and version |
+| `started`, `ended`, `end_reason` | whether the graded mission has started and ended, and why it ended: `finish`, `done` (the robot cell ended the mission: `get_state()` said why), `graded_window`, `worker_restart` (the service's own failure), null while it runs |
+| `steps`, `sim_time`, `frames_used.*` | `step` calls made, simulated seconds, frames and sweeps taken (as `get_state()["frames_used"]`) |
+| `start_window_s`, `start_window_left_s` | how long after the service's start `start()` is accepted, and how much of that is left (null once started or closed) |
+| `graded_window_s`, `graded_window_left_s` | how long the graded mission may run after its start, and how much of that is left (null unless it runs) |
+| `program_frozen.status`, `program_frozen.files`, `program_frozen.bytes` | what was frozen of your submission folder (null before): `ok`, or `too_large` (over the program's cap: nothing was copied) |
+
+| `CellError.code` (graded episode) | when |
+|---|---|
+| `not_started` | a robot call before `start()` |
+| `already_started` | a second `start()` |
+| `start_window_closed` | `start()` after the start window closed (the program was frozen then) |
+| `episode_over` | a call after the graded mission ended |
+| `busy` | another client is connected |
+| `bad_params` | `start()` or `status()` with parameters |
+| `bad_request`, `line_too_long` | a line that is not one request, or one longer than 4 MiB |
+| `internal_error` | the service's own failure; at a start: nothing was started |
+| `unreachable` | raised by the proxy: the service's socket cannot be reached |

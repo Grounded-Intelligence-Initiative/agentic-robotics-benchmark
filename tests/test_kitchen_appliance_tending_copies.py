@@ -23,6 +23,9 @@ COPIES = ("tests", "environment/setup/payload", "environment/setup/lab", "soluti
 SHARED = ("appliance_env.py", "episode.py", "kitchen_render.py", "kitchen_fx.py", "kitchen_scene.py",
           "kitchen_look.json")
 RENDER_CHECK = ("appliance_env.py", "kitchen_render.py", "kitchen_fx.py", "kitchen_scene.py", "kitchen_look.json")
+# The program's grader: tests/verify.py on main; in the dual-mode variant (the exploration branch) main's grader is kept
+# byte-identical as tests/offline_verify.py and tests/verify.py is the dual verifier that runs it.
+GRADER = "tests/offline_verify.py" if (TASK / "tests/offline_verify.py").is_file() else "tests/verify.py"
 BUNDLE = ("render/room.npz", "render/room.json", "render/ibl.ktx", "render/sky.ktx")
 RENDER_DIR = "/opt/task-assets/payload/render"
 
@@ -62,7 +65,7 @@ class Budget(unittest.TestCase):
     def setUp(self):
         self.config = json.loads((TASK / "tests/grader_config.json").read_text())
         self.instruction = (TASK / "instruction.md").read_text()
-        self.verify = (TASK / "tests/verify.py").read_text()
+        self.verify = (TASK / GRADER).read_text()
         self.practice = (TASK / "environment/setup/payload/practice_grader/grade.py").read_text()
 
     def test_the_budget_is_controller_time_with_a_fixed_image_price(self):
@@ -111,7 +114,7 @@ class Numerics(unittest.TestCase):
             self.assertIn(needle, docker)
         ref = json.loads((TASK / "tests/numerics.json").read_text())
         self.assertEqual(len(ref["fingerprint"]), 64)
-        verify = (TASK / "tests/verify.py").read_text()
+        verify = (TASK / GRADER).read_text()
         self.assertIn("check_numerics()", verify)
         instruction = (TASK / "instruction.md").read_text()
         for name in ("OPENBLAS_CORETYPE=Haswell", "OPENBLAS_L2_SIZE=256", "OPENBLAS_NUM_THREADS=1", "OMP_NUM_THREADS=1",

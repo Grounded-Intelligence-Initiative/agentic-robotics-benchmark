@@ -1,0 +1,8 @@
+{
+ "metric": "assembly_score",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 1.0,
+ "source": "measured 2026-11-24 in the task image (a local run of the graded episode's service, environment/setup/online, with the oracle driving it through the agent-side client): the privileged reference program on the graded episode graded-01 (its own layout, not the bench plan's nominal one) scored episode_score 1.0 (16 / 16 slots, no safety violation, no unplanned contact, 302.3 s simulated, 787 s of wall clock on a loaded host); the same in ale validate validate-42783404 (engine bfb7505, the dual mode at 8ddeb9d2)",
+ "note": "assembly_score is already on [0, 1]; the live item: the score of the one graded episode (the fastened slots' weight / 22, 0 after a safety violation)"
+}

@@ -14,6 +14,20 @@
 > `tasks/cards.toml`, the `ground` platform, the merge gate and the GPU-model check); 2026-11-14 (§12: the grasp task pins OpenBLAS
 > to its Haswell kernels); 2026-11-09 (§11: `vendor/ale` @ `bfb7505`, a task names its GPU
 > models); 2026-11-07 (§10: the asset dataset is renamed `ale-robotics-assets`).
+>
+> **This branch, `exp/dual-mode-scoring` (2026-11-18), is an exploration line and is never merged
+> into main.** It gives static tasks (the robot can hold still safely and the world does not change
+> by itself while it waits) a dual form: one session and one verify. The program the agent leaves is
+> frozen when the graded episode starts (or when the preparation window closes) and scored offline
+> on the hidden set exactly as main scores it; the agent also plays one hidden graded episode itself,
+> through a service it can neither read nor write, and the separate verifier scores the record that
+> service leaves in `/var/lib/arb-online` (a declared artifact). The reward is the mean of the two
+> items. Dynamic tasks (continuous control at the system's own rate, or a world that moves by itself)
+> stay offline only. The first seven tasks: `arm_hidden_mechanism_box`, `kitchen_appliance_tending`,
+> `shoe_lacing_and_boxing`, `object_finding_and_organizing_on_messy_desk`,
+> `furniture_assembly_from_drawings`, `house_cleaning_with_tools`, `pump_skid_startup_and_operation`;
+> the static behavior and assembly tasks added to main since then follow. Each task folder here is
+> main's current task plus its dual form. The rules and the per-task status are in the pull request.
 
 ## 0. 2026-09-07 — created by the rebrand from "ALE Robotics"
 

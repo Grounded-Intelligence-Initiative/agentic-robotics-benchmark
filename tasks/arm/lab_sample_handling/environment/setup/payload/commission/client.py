@@ -12,7 +12,8 @@
 The observations are the ones your controller gets when it is graded (`unit` names the development unit). The service
 tells nothing else: no pose, no mass, no rotor angle, no unit property, no credit and no word on how a worklist went.
 `BenchError.code` is one of: busy, bad_params, no_episode, malformed_action, commissioning_window_used, bench_fault,
-forbidden, closed.
+forbidden, closed, commissioning_closed (the graded episode has started: the service closed for the rest of the
+session).
 """
 
 import base64

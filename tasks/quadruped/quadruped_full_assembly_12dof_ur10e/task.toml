@@ -14,9 +14,36 @@
 # inside the cell on the bench plan's nominal layout. Grader knobs live in tests/grader_config.json; the cell's kit
 # (tests/gt/, the units' meshes and collision pieces) is not in the repository: the grader downloads it at verify start
 # from the benchmark's asset dataset, pinned there by commit and sha256.
+#
+# DUAL MODE (experimental; never merged into main): one session, one verify, two scoring items, reward = their mean,
+# each normalised by its own anchor (tests/anchor_offline.json = main's, tests/anchor_online.json; the combined
+# dual_mode_score in tests/anchor.json is 1.0 by construction).
+# * The program item is main's grading above, unchanged (tests/offline_verify.py = main's verify.py with a verdict
+#   hook), of the program FROZEN at the earlier of the graded start and the preparation window's close (prep_s after
+#   the service's start): then (before a start is charged) the graded episode's service has its root supervisor copy
+#   /home/user/submission into /var/lib/arb-online/submission_snapshot (regular files and directories, no link
+#   followed, main's 60 MB cap), so the program keeps main's preparation time; the submission at the session's end is
+#   graded only when the session ends before the window closes, without a start, or there is no usable record.
+# * The live item is the graded episode the agent plays itself during its session, through the graded episode's service
+#   (environment/setup/online/graded_server.py, started by environment/setup/setup.sh: the offline grader's own cell,
+#   a byte copy of tests/arm, tests/render, tests/render_filament, tests/common, tests/room and tests/episode_trace.py
+#   in environment/setup/online/cell, with the grader's configuration, hidden bench plan and parts' colour, and the
+#   cell's hidden kit fetched at setup with the grader's pin; served as the dedicated `arbcell` account over a Unix
+#   socket; the client ~/given/lib arm.assembly_info.client.connect_graded()): ONE hidden episode, graded-01, a 63-bit
+#   seed drawn once with OS entropy like the offline grader's (tests/online.json), the same rules and score as an
+#   offline episode; it can be started once, within prep_s = 21600 s (main's agent budget, shared by the program and
+#   the preparation) of the service's start, and ends at the agent's finish, at the cell's own end (1200 s simulated),
+#   graded_s = 10800 s after its start, or when the session ends (the last record applies). Its record goes to
+#   /var/lib/arb-online, which the agent can neither read nor write. There is no practice facility.
+# The oracle (solution/solve.sh) leaves main's reference program (with its token) in the submission, then starts the
+# graded episode with the oracle token and runs the privileged reference program through the client.
 
 schema_version = "1.4+ale.1"
-artifacts = ["/home/user/submission"]
+# The agent's program (graded as frozen at the graded start; the separate verifier gets the restored folder, used only
+# when the session ended before the preparation window closed) and the graded episode's record directory (its record
+# and the frozen program; written by the graded episode's service, collected by the engine as root and restored
+# root-owned in the verifier).
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/quadruped_full_assembly_12dof_ur10e"
@@ -47,20 +74,29 @@ expert_time_hours = 80
 siblings = ["robotic_arm_full_assembly_so101_panda", "robotic_arm_full_assembly_openarm_panda"]
 tags = ["assembly", "mujoco", "ur10e", "code-as-policy", "camera-only", "rgbd", "calibration", "picture-manual", "quadruped", "oracle-token"]
 
+# Dual mode: 24 GB (main: 16 GB). The graded episode's cell runs in the agent's sandbox: measured in the task image, its
+# service holds about 2 GB before the start and about 8 GB once its cameras have taken a frame, beside the agent's own
+# work (a twin of the cell with its render session takes about 5-7 GB); the verifier got 24 GB on main for the same
+# pairing (the grader's cell and a program's twin).
 [environment]
 cpus = 8
-memory_mb = 16384
+memory_mb = 24576
 
-# [agent] timeout_sec: 6 h. [verifier] timeout_sec: an agent's program 3 x (cell build + reach check ~40 s + program
-# <= 2400 s wall); the oracle's verify 3 x the reference program (~300 s simulated, ~8 min wall each). The verifier
-# sandbox's start, tests/test.sh's copy of the givens and the kit's download count against it too.
+# setup (no field: the engine bounds it at a fixed 1800 s): the agent's givens, the cell's hidden kit (a download of
+# seconds), and the graded episode's service (its worker builds the graded episode's cell, about 50 s, before it serves).
+# [agent] timeout_sec (dual mode) = prep_s + graded_s = 21600 + 10800 s: main's 6 h for the program and the
+# preparation (the start window, counted from the service's start), then 3 h for the graded episode (the privileged
+# reference program's episode takes about 8 min of wall clock). [verifier] timeout_sec is main's: an agent's program
+# 3 x (cell build + reach check ~40 s + program <= 2400 s wall); the oracle's verify 3 x the reference program (~300 s
+# simulated, ~8 min wall each); reading the graded episode's record takes seconds. The verifier sandbox's start,
+# tests/test.sh's copy of the givens and the kit's download count against it too.
 [agent]
-timeout_sec = 21600
+timeout_sec = 32400
 network_mode = "no-network"
 
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
-# touched, with only the declared artifact (the submission) restored into it, so nothing else the agent left (a file,
-# a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there: tests/test.sh
+# touched, with only the declared artifacts (the submission and the graded episode's record directory) restored into it,
+# so nothing else the agent left (a file, a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there: tests/test.sh
 # builds the grader's root-owned copy of the givens itself, and the grader downloads the cell's kit (verification has
 # network). The agent's program runs during verify, beside the cell and its own camera renderer, so the verifier
 # gets the agent's CPUs and more memory than the agent: 24 GB (at 16 GB a program that held a twin session of its

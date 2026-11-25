@@ -19,6 +19,21 @@ recorded, or from the cameras' images of the final state (--final-images DIR sav
 at the end as PNG files). --record FILE writes every observation's readings (no images) and every applied action as
 JSON lines. Since nothing here judges completion, the episode runs all its steps unless a safety stop, an abort or
 the budget ends it (the grader ends an episode as soon as its kit is complete).
+
+The graded episode (the task's second scoring item):
+
+    /opt/venv/bin/python3 /home/user/commission/run_kit.py --graded [--start] [--steps N] [--finish]
+        [--submission /home/user/submission] [--record FILE]
+
+runs your controller in the graded episode instead of a commissioning episode. With --start it first starts the
+graded episode (once per session: that freezes the submission folder as it is and ends commissioning); without it,
+it continues the episode where it stands, from its latest observation. The controller is started from a fresh copy of
+--submission and gets `reset`, then `act` with the episode's own step index (not 0 when it continues an episode).
+The wire's deadlines apply (READY within 120 s, each reply within 30 s, a reply line at most 64 KiB); a missed one
+stops the run with nothing applied for that step, and the episode stays where it is. There is no controller budget
+and no repeated-step query; the images it asks for are charged against the kit's image budget by the service. It
+stops when the episode is over, after --steps N steps, or on a wire failure; with --finish it then ends the graded
+episode. It prints the steps it ran and the episode's status (no verdict).
 """
 
 import argparse
@@ -35,7 +50,7 @@ import threading
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from client import CommissioningError, Episode, decode_image, status  # noqa: E402
+from client import CommissioningError, Episode, GradedError, connect_graded, decode_image, status  # noqa: E402
 
 READY_TIMEOUT = 120.0
 STEP_TIMEOUT = 30.0
@@ -167,13 +182,79 @@ def differ(a, b):
     return len(aa) != len(bb) or max([abs(x - y) for x, y in zip(aa, bb)] or [0.0]) > 1e-4
 
 
+def graded(a):
+    """--graded: the controller in the graded episode (the module docstring)."""
+    if not os.path.isfile(os.path.join(a.submission, "run.sh")):
+        print(json.dumps({"error": "no run.sh in {}".format(a.submission)}))
+        return 2
+    tmp = tempfile.mkdtemp(prefix="graded-")
+    work = os.path.join(tmp, "submission")
+    shutil.copytree(a.submission, work, symlinks=True)
+    wire = g = rec = None
+    ran, stopped, images = 0, None, 0
+    t0 = time.monotonic()
+    try:
+        g = connect_graded()
+        if a.start:
+            g.start()
+        else:
+            g.observe()                                      # where the episode stands (GradedError if not started)
+        obs = g.obs
+        wire = Wire(work)
+        wire.request({"type": "reset"})
+        rec = open(a.record, "a") if a.record else None
+        while not g.done and obs is not None and (a.steps is None or ran < a.steps):
+            t = int(obs["t"])
+            act = wire.act(t, obs)
+            cams = check_action(act)
+            if rec is not None:
+                rec.write(json.dumps({"t": t, "obs": {k: v for k, v in obs.items() if k not in CAMERA_NAMES},
+                                      "action": act}) + "\n")
+                rec.flush()
+            obs = g.step(act)
+            ran += 1
+            images += len(cams)
+    except WireError as exc:
+        stopped = "the controller's wire failed: {}".format(str(exc)[:200])
+    except GradedError as exc:
+        stopped = "the graded episode's service refused: {}".format(exc)
+    finally:
+        if rec is not None:
+            rec.close()
+        if wire is not None:
+            wire.stop(polite=stopped is None)
+        st = None
+        if g is not None:
+            try:
+                if a.finish and not g.done:
+                    g.finish()
+                st = g.status()
+            except (GradedError, OSError):
+                pass
+            g.close()
+        shutil.rmtree(tmp, ignore_errors=True)
+    print(json.dumps({"steps_run": ran, "images_asked_for": images, "stopped": stopped, "status": st,
+                      "wall_s": round(time.monotonic() - t0, 1),
+                      "note": "the graded episode: this reports where it stands, never whether the kit was assembled"},
+                     indent=1))
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--kit", type=int, required=True, help="the development kit (1 .. the number of kits)")
+    ap.add_argument("--graded", action="store_true", help="run the controller in the graded episode (see the docstring)")
+    ap.add_argument("--start", action="store_true", help="with --graded: start the graded episode first (once per session)")
+    ap.add_argument("--steps", type=int, default=None, help="with --graded: stop after this many steps")
+    ap.add_argument("--finish", action="store_true", help="with --graded: end the graded episode when the run stops")
+    ap.add_argument("--kit", type=int, default=None, help="the development kit (1 .. the number of kits)")
     ap.add_argument("--submission", default="/home/user/submission")
     ap.add_argument("--final-images", default=None, help="save the three cameras' images of the final state here")
     ap.add_argument("--record", default=None, help="write the observations' readings and the actions here (JSON lines)")
     a = ap.parse_args()
+    if a.graded:
+        return graded(a)
+    if a.kit is None:
+        ap.error("--kit is required (or --graded)")
     if not os.path.isfile(os.path.join(a.submission, "run.sh")):
         print(json.dumps({"error": "no run.sh in {}".format(a.submission)}))
         return 2

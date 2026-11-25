@@ -1,0 +1,8 @@
+{
+ "direction": "higher",
+ "full_at": 0.97,
+ "metric": "assembly_score",
+ "note": "assembly_score of the graded episode (dual mode, the online item) is one episode's score, already on [0, 1]: (the counted structural places' weight + 4.5 x trim) / 15.5 x hard_ok of the episode as it ended, main's per-episode term (tests/offline_verify.py assembly_score, before the mean over the episodes and the program's contract gate); ratio = score / 1.0, reward = min(ratio / full_at, 1) with main's full_at 0.97 (tests/anchor_offline.json). In one episode a lost guard gives 0.935 (reward 0.964), a lost thruster 0.903 (0.931), a lost pitch or roll tier of the trim 0.913 (0.941)",
+ "source": "the reference program's own score on the graded episode E3 (tests/online.json), by construction: the privileged reference program inside the cell fastens all 7 structural places and trims the vehicle into all three windows on each of the four fixed hidden episodes, which the hidden-set selection requires of every kept episode (tests/README.md). Measured 2026-11-24 in the task image (the cell's code as environment/setup/online/cell copies it, the kit at its pinned sha256): E3 with the privileged calls enabled after the build, as the graded episode's service enables them at an oracle start, stage 1.0 (7 / 7 places, trim 1.0, net buoyancy, pitch and roll in their windows), hard_ok, 300.7 s simulated, 206 s of wall clock for reference_assemble; confirmed in the graded episode's own service by validate-8349a947's oracle pass (the reference started with the token through the agent-side client: episode_score 1.0, 7 / 7 places, trim 1.0, 300.7 s simulated)",
+ "value": 1.0
+}

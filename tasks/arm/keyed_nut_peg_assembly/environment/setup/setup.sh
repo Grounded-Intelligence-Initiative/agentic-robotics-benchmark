@@ -19,6 +19,30 @@ for entry in payload/* payload/.[!.]*; do
 done
 mkdir -p "$HOME_DIR/submission" && chown "$AGENT_USER:$AGENT_USER" "$HOME_DIR/submission"
 
+# The dual mode (experiment): the graded episode's service (online/graded_service.py), ONE episode of the grader's
+# hidden set (online/episode.json) that the agent plays itself through ~/commission/client.py's connect_graded(). It
+# runs the grader's own cell: online/cell/ holds byte copies of the grader's simulator, cameras and credit rule, which
+# the worker checks against online/service.json's digests and imports as root. Started as root, it reads the episode,
+# builds it, then serves as its own account `keyedgrade` (environment/Dockerfile: not the commissioning service's
+# `keyedcell`) through /run/keyedcell-graded/graded.sock and writes the episode's record, and the submission folder
+# frozen at the graded start (or at the close of the start window), to /var/lib/arb-online (owner keyedgrade, 0700),
+# which task.toml declares an artifact and tests/verify.py grades. The command returns once the service serves.
+# Practice ends when the graded episode starts (O13): the start writes /run/keyedcell-graded/flags/started, and the
+# commissioning service below ends its episodes and refuses new ones once that flag exists; checked here: the
+# commissioning account sees the flag's directory and the flag is not set.
+GRADED="$PWD/online"
+id -u keyedgrade > /dev/null 2>&1 || { echo "[setup] the image lacks the account keyedgrade" >&2; exit 1; }
+chown -R root:root "$GRADED"
+chmod -R go-rwx "$GRADED"
+env -i PATH=/opt/venv/bin:/usr/bin:/bin LANG=C.UTF-8 HOME=/nonexistent \
+    /opt/venv/bin/python3 -I -B "$GRADED/graded_service.py" --config "$GRADED/service.json" < /dev/null > /dev/null 2>&1 \
+  || { echo "[setup] the graded episode's service did not come up (/var/lib/arb-online/service.log)" >&2; exit 1; }
+[ -S /run/keyedcell-graded/graded.sock ] || { echo "[setup] the graded episode's service has no socket" >&2; exit 1; }
+runuser -u keyedcell -- test -d /run/keyedcell-graded/flags -a -x /run/keyedcell-graded/flags \
+    -a ! -e /run/keyedcell-graded/flags/started \
+  || { echo "[setup] the practice flag's directory is not as the commissioning service needs it" >&2; exit 1; }
+echo "[setup] graded episode's service listening on /run/keyedcell-graded/graded.sock" >&2
+
 # The commissioning service: the cell on its development kits (never a graded kit). The image installs
 # it under /opt/keyedcell-commission for the account `keyedcell` only (the agent account can neither read
 # nor list it); setup starts it now, to run through the agent's session, under a loop that restarts it

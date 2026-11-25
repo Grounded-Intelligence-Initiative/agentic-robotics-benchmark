@@ -32,6 +32,50 @@ execute is accepted and before any simulation. Disconnects, bad later steps, plu
 worker restarts never refund. A restarted worker reads the counter back from the lab-only state
 file; a missing or corrupt state file after the first start means zero trials (fail closed).
 
+Graded episode (only when the config has a "graded" section): ONE hidden episode, fixed by a root-only
+episode file ({"episode", "instance", "seed"}, read by the worker as root before the privilege drop), that
+the agent plays itself through these ops; the lab writes its outcome to a record the agent cannot read.
+  {"op": "graded_start"}                        -> starts it (once per session) -> obs
+  {"op": "graded_step", "action": ...}          -> obs, done, steps (one simulated step)
+  {"op": "graded_observe"}                      -> the latest observation again (nothing is simulated)
+  {"op": "graded_status"}                       -> started / ended, steps, simulated time, time left
+  {"op": "graded_finish"}                       -> ends it now
+  * One shot: the start is persisted (fsync) before anything is simulated and never refunded; it is
+    refused once `prep_s` have passed since the lab's start.
+  * Practice ends when it starts: the start ends every open lab trial, and reset / execute are refused
+    (`practice_closed`) for the rest of the session, a restarted worker included (hello and budget still
+    answer). Trial ops and the start are serialized by one lock, so no trial advances after the start.
+  * The program freezes at the earlier of the start and the close of the start window (dual mode, when
+    `snapshot_source` is set): before the start is charged, or once `prep_s` have passed without a start
+    (the worker's timer; a failed copy there is retried for about a minute, then recorded as failed), the
+    worker asks the root supervisor, over a socketpair made before the fork, to copy the agent's submission
+    into `record_dir`/submission_snapshot (root-owned; the record directory is the lab account's 0700). The
+    supervisor never reads hidden data; it walks the submission by file descriptor with O_NOFOLLOW (no link
+    is followed, whatever the agent swaps in meanwhile), copies only regular files and directories the agent
+    owns, and applies the program's caps (files, bytes): over a cap it copies nothing (`too_large`), with no
+    submission folder `missing`. A failed copy refuses the start and charges nothing (`snapshot_failed`).
+    The record gains snapshot_trigger (start | prep_window), snapshot_utc, snapshot_status, snapshot_files,
+    snapshot_bytes, snapshot_skipped and snapshot_sha256 (sha256 of the lines
+    "<path>\\0<size>\\0<sha256 of content>\\n" of the copied files in sorted path order).
+  * An order instead of one episode: the episode file may hold {"order": [{"episode", "instance", "seed",
+    "index"}, ...]}; graded_start then takes the first entry whose instance is not the instance of any lab
+    trial charged before the start (the budget file keeps the instance of every charge), so the graded
+    instance is one the agent never practised on. The choice (its position) and those trial instances are
+    persisted with the start and written into the record (order_index, trial_units).
+  * The episode lives in the worker, not in a connection: a disconnect leaves it where it is and any
+    later connection resumes it; one connection holds it at a time (another one gets `busy`) until that
+    connection closes. Every graded op but graded_status claims it.
+  * It ends at its own end (the plugin's `done`), at graded_finish, `graded_s` after its start (a timer
+    ends it even without requests), or when the session ends (the last record stands). A worker that
+    dies or restarts ends it with its last record (end_reason `worker_restart`, no resume).
+  * The record (`record_dir`/record.json, written atomically by the lab account after every simulated
+    step, the start and the end, at most `record_interval_s` late for a rejected step) holds the
+    episode's score as if it ended now, its sub-metrics and its counters; `requests.jsonl` beside it is
+    an append-only request log (capped). Replies never carry the score, the record, the episode id or
+    the seed. A token whose sha256 is `oracle_token_sha256` (graded_start's optional "token") makes the
+    episode privileged: every graded observation then also carries the plugin's `truth` (the reference
+    solution's channel; without the token nothing of it is sent).
+
 Plugin contract (a Python file named in the config; see tools/lab/examples/toy_mass/plugin.py):
   make_plugin(instances: dict, api) -> plugin object with
     SCHEMA: {"info": {...}, "reset": {...}, "step": {...}, "execute": {...}}   (whitelist)
@@ -42,6 +86,13 @@ Plugin contract (a Python file named in the config; see tools/lab/examples/toy_m
     validate_plan(plan) -> plan                     raise api.BadRequest(code) on bad input
     reset(instance) -> (episode, obs)               episode.step(action) -> (obs, done)
     execute(instance, plan) -> outcome
+    graded_reset(instance, seed) -> (episode, obs)  the graded episode, exactly as the task's offline grader
+                                                    runs it; besides step(): result() -> {"score",
+                                                    "metrics", "detail"} as if the episode ended now;
+                                                    optional finish() (the grader's end for a finish or a
+                                                    closed window; default result()), truth() (privileged
+                                                    observation field), close()
+  A plugin may add a "graded" SCHEMA section for graded observations (default: "step").
   Every reply payload is checked against SCHEMA before it is sent (exact keys, types, shapes,
   finiteness); a mismatch is answered with {"error": "internal"} and logged lab-side only.
   validate_* see only the request (no instance id, no episode) and must use public constants only;
@@ -57,6 +108,9 @@ Dependencies: Python 3.12 standard library (numpy only if the plugin uses it).
 import argparse
 import base64
 import ctypes
+import datetime
+import hashlib
+import hmac
 import importlib.util
 import inspect
 import json
@@ -67,6 +121,7 @@ import pwd
 import re
 import resource
 import select
+import shutil
 import signal
 import socket
 import stat
@@ -77,7 +132,9 @@ import time
 import traceback
 
 PROTOCOL = 1
+SERVICE_VERSION = "alelab-1+graded-1"
 OPS = ("hello", "budget", "reset", "step", "execute", "close")
+GRADED_OPS = ("graded_start", "graded_step", "graded_observe", "graded_status", "graded_finish")
 REQUEST_KEYS = {
     "hello": {"op"},
     "budget": {"op"},
@@ -85,7 +142,13 @@ REQUEST_KEYS = {
     "step": {"op", "action"},
     "execute": {"op", "instance", "plan"},
     "close": {"op"},
+    "graded_start": {"op"},
+    "graded_step": {"op", "action"},
+    "graded_observe": {"op"},
+    "graded_status": {"op"},
+    "graded_finish": {"op"},
 }
+REQUEST_OPTIONAL = {"graded_start": {"token"}}
 ERRORS = {
     "bad_json": "request is not one valid JSON object on one line",
     "line_too_long": "request line exceeds the size limit",
@@ -102,7 +165,34 @@ ERRORS = {
     "busy": "too many open connections",
     "rate_limited": "too many requests per second",
     "internal": "internal lab error",
+    "graded_busy": "another connection holds the graded episode",
+    "not_started": "the graded episode has not been started (graded_start)",
+    "already_started": "the graded episode was started already; it starts once per session (resume it with graded_observe)",
+    "graded_over": "the graded episode has ended",
+    "window_closed": "the graded episode can no longer be started: its start window has closed",
+    "practice_closed": "lab practice has ended: the graded episode has started, so no trial runs for the rest of the session",
+    "snapshot_failed": "the submission folder could not be frozen, so the graded episode did not start (nothing was charged)",
 }
+GRADED_DEFAULTS = {
+    "episode": None,  # root-only episode file (relative to the config file): {"episode", "instance", "seed"}
+    "task": None,  # the task's slug, written into the record
+    "record_dir": "/var/lib/arb-online",
+    "prep_s": None,  # the episode must be started within this many seconds of the lab's start
+    "graded_s": 10800.0,  # and ends at most this many seconds after its start
+    "oracle_token_sha256": None,  # sha256 (hex) of the token that makes the episode privileged; None: no token
+    "requests_log_cap": 32 << 20,  # bytes of requests.jsonl; later requests are no longer logged (still served)
+    "record_interval_s": 10.0,  # a request that simulates nothing is recorded at most this late
+    "snapshot_source": None,  # dual mode: the agent's submission folder, frozen at the start; None: no freeze
+    "snapshot_max_files": 5000,  # the program's caps (the offline grader's): over one, nothing is copied
+    "snapshot_max_bytes": 200 << 20,
+    "snapshot_timeout_s": 600.0,
+}
+SNAPSHOT_DIR = "submission_snapshot"  # inside record_dir
+SNAPSHOT_MAX_DEPTH = 64  # the engine's artifact depth limit
+SNAPSHOT_MAX_DIRS = 20000
+EPISODE_ID_RE = re.compile(r"^[A-Za-z0-9_.:@#-]{1,64}$")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+MAX_RECORD_BYTES = 1 << 20
 DEFAULTS = {
     "plugin": None,  # path to the plugin .py (relative to the config file)
     "plugin_factory": "make_plugin",
@@ -130,6 +220,7 @@ DEFAULTS = {
     "max_instances_bytes": 64 << 20,
     "max_log_bytes": 64 << 20,
     "validation_check": True,  # F1: validate_* decisions must not depend on instance/state
+    "graded": None,  # the graded episode (GRADED_DEFAULTS); None: the lab serves trials only
 }
 INSTANCE_RE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 MAX_ARRAY_ELEMS = 16_000_000
@@ -440,7 +531,42 @@ def load_config(path):
         raise ValueError("env must map strings to strings")
     if not isinstance(cfg["min_reply_s"], dict):
         raise ValueError("min_reply_s must be an object")
+    if cfg["graded"] is not None:
+        cfg["graded"] = _graded_config(cfg["graded"], base)
     return cfg
+
+
+def _graded_config(raw, base):
+    if not isinstance(raw, dict):
+        raise ValueError("graded must be an object")
+    unknown = set(raw) - set(GRADED_DEFAULTS)
+    if unknown:
+        raise ValueError("unknown graded keys: %s" % sorted(unknown))
+    g = dict(GRADED_DEFAULTS)
+    g.update(raw)
+    if not isinstance(g["episode"], str) or not g["episode"]:
+        raise ValueError("graded needs 'episode'")
+    g["episode"] = os.path.normpath(os.path.join(base, g["episode"]))
+    if not isinstance(g["task"], str) or not INSTANCE_RE.match(g["task"]):
+        raise ValueError("graded needs the task's slug as 'task'")
+    rdir = g["record_dir"]
+    if not isinstance(rdir, str) or not os.path.isabs(rdir) or os.path.normpath(rdir) != rdir:
+        raise ValueError("graded record_dir must be a normalized absolute path")
+    if os.path.dirname(rdir) in ("/", "/tmp", "/var/tmp", "/dev/shm", "/run"):
+        raise ValueError("graded record_dir must live in a root-owned directory (e.g. /var/lib/)")
+    for key in ("prep_s", "graded_s", "record_interval_s", "requests_log_cap", "snapshot_max_files",
+                "snapshot_max_bytes", "snapshot_timeout_s"):
+        v = g[key]
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0:
+            raise ValueError("graded %s must be a positive number" % key)
+    src = g["snapshot_source"]
+    if src is not None and (not isinstance(src, str) or not os.path.isabs(src) or os.path.normpath(src) != src
+                            or src == "/"):
+        raise ValueError("graded snapshot_source must be a normalized absolute path or null")
+    tok = g["oracle_token_sha256"]
+    if tok is not None and (not isinstance(tok, str) or not SHA256_RE.match(tok)):
+        raise ValueError("graded oracle_token_sha256 must be 64 lowercase hex digits or null")
+    return g
 
 
 def _secure_dir(path, mode, uid, gid):
@@ -489,15 +615,20 @@ class Budget:
             self.used = int(data["used"])
             if self.total < 0 or self.used < 0:
                 raise ValueError("negative")
+            charged = data.get("charged", [])
+            if not isinstance(charged, list) or not all(isinstance(x, str) for x in charged):
+                raise ValueError("charged")
+            self.charged = list(charged)  # the instance of every charge, in order
         except Exception as exc:  # fail closed: never reset to full
             self.total, self.used, self.broken = 0, 0, True
+            self.charged = []
             log.write(kind="budget_state_unreadable", err=type(exc).__name__)
 
     @staticmethod
     def initialize(path, total, uid, gid):
         if os.path.lexists(path):
             return False
-        Budget._write(path, {"total": total, "used": 0, "version": 1})
+        Budget._write(path, {"total": total, "used": 0, "charged": [], "version": 1})
         os.chown(path, uid, gid)
         return True
 
@@ -521,15 +652,25 @@ class Budget:
         with self.lock:
             return 0 if self.broken else max(0, self.total - self.used)
 
-    def charge(self):
-        """Returns the remaining count after charging one trial, or None when exhausted."""
+    def charged_instances(self):
+        """The sorted distinct instances of the trials charged so far, or None when they are not known (an
+        unreadable or unpersisted budget state, or counts that disagree)."""
+        with self.lock:
+            if self.broken or len(self.charged) != self.used:
+                return None
+            return sorted(set(self.charged))
+
+    def charge(self, instance=None):
+        """Returns the remaining count after charging one trial (on `instance`), or None when exhausted."""
         with self.lock:
             if self.broken or self.used >= self.total:
                 return None
             self.used += 1
+            self.charged.append(instance if isinstance(instance, str) else "")
             try:
                 self._write(
-                    self.path, {"total": self.total, "used": self.used, "version": 1}
+                    self.path,
+                    {"total": self.total, "used": self.used, "charged": self.charged, "version": 1},
                 )
             except OSError as exc:
                 self.broken = (
@@ -605,7 +746,8 @@ def parse_request(line, cfg):
         raise ReplyError("bad_request")
     if op not in REQUEST_KEYS:
         raise ReplyError("unknown_op")
-    if set(obj) != REQUEST_KEYS[op]:
+    keys, need = set(obj), REQUEST_KEYS[op]
+    if not need <= keys <= need | REQUEST_OPTIONAL.get(op, set()):
         raise ReplyError("bad_request")
     return obj
 
@@ -722,6 +864,668 @@ def build_payload(schema, kind, value):
     return check_value(spec, value, kind)
 
 
+_JSON_KEY_RE = re.compile(r"^[A-Za-z0-9_.:@#-]{1,64}$")
+
+
+def check_json(value, max_depth=8, max_items=20000):
+    """Plain JSON data (finite numbers, bools, None, short printable strings, lists, dicts with simple keys),
+    bounded in depth and size: the plugin's result detail (lab-side record only) and the privileged truth."""
+    count = [0]
+
+    def walk(v, depth):
+        count[0] += 1
+        if depth > max_depth or count[0] > max_items:
+            raise TypeError("too large or too deep")
+        if v is None or isinstance(v, bool):
+            return v
+        if hasattr(v, "tolist") and not isinstance(v, (str, bytes)):
+            v = v.tolist()
+            if v is None or isinstance(v, bool):
+                return v
+        if isinstance(v, int):
+            if abs(v) > 2**63:
+                raise TypeError("integer out of range")
+            return int(v)
+        if isinstance(v, float):
+            if not math.isfinite(v):
+                raise TypeError("non-finite number")
+            return float(v)
+        if isinstance(v, str):
+            if len(v) > 256 or not all(32 <= ord(c) < 127 for c in v):
+                raise TypeError("string not short printable ASCII")
+            return v
+        if isinstance(v, (list, tuple)):
+            return [walk(x, depth + 1) for x in v]
+        if isinstance(v, dict):
+            out = {}
+            for k, x in v.items():
+                if not isinstance(k, str) or not _JSON_KEY_RE.match(k):
+                    raise TypeError("bad key")
+                out[k] = walk(x, depth + 1)
+            return out
+        raise TypeError("unsupported type %s" % type(v).__name__)
+
+    return walk(value, 1)
+
+
+def _iso(t):
+    if t is None:
+        return None
+    return datetime.datetime.fromtimestamp(t, datetime.timezone.utc).isoformat(timespec="milliseconds")
+
+
+def _fsync_dir(path):
+    dfd = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(dfd)
+    finally:
+        os.close(dfd)
+
+
+def _atomic_write(path, data, tmp_name=None):
+    """Write bytes to `path` atomically: a temp file in the same directory, fsync, rename, fsync the directory."""
+    d = os.path.dirname(path)
+    tmp = os.path.join(d, tmp_name or ("." + os.path.basename(path) + ".tmp"))
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    try:
+        os.write(fd, data)
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    os.replace(tmp, path)
+    _fsync_dir(d)
+
+
+def load_graded_episode(path, ids):
+    """The graded episode(s) from the root-only file, read as root: one episode {"episode": id, "instance": one of
+    `ids`, "seed": 0 <= int < 2**64}, or an order {"order": [such entries, each with an optional "index", its
+    position in the task's hidden set]} (other keys, such as how they were drawn, are ignored; a "seed_sha256" must
+    match its seed). Returns {"single": bool, "order": [{"episode", "instance", "seed", "seed_sha256", "index"}]}."""
+    with open(path, "rb") as fh:
+        data = json.loads(fh.read(1 << 16))
+    if not isinstance(data, dict):
+        raise ValueError("graded episode file must hold an object")
+    if "order" not in data:
+        return {"single": True, "order": [_graded_entry(data, ids)]}
+    raw = data["order"]
+    if not isinstance(raw, list) or not 0 < len(raw) <= 1000:
+        raise ValueError("graded order must be a non-empty list")
+    order = [_graded_entry(e, ids) for e in raw]
+    if len({e["episode"] for e in order}) != len(order) or len({e["seed"] for e in order}) != len(order):
+        raise ValueError("graded order repeats an episode id or a seed")
+    return {"single": False, "order": order}
+
+
+def _graded_entry(data, ids):
+    if not isinstance(data, dict):
+        raise ValueError("graded episode entry must be an object")
+    eid, inst, seed = data.get("episode"), data.get("instance"), data.get("seed")
+    if not isinstance(eid, str) or not EPISODE_ID_RE.match(eid):
+        raise ValueError("graded episode id")
+    if not isinstance(inst, str) or inst not in ids:
+        raise ValueError("graded episode instance is not a lab instance")
+    if isinstance(seed, bool) or not isinstance(seed, int) or not 0 <= seed < 2**64:
+        raise ValueError("graded episode seed must be a 64-bit unsigned integer")
+    digest = hashlib.sha256(str(seed).encode()).hexdigest()
+    if data.get("seed_sha256") not in (None, digest):
+        raise ValueError("graded episode seed_sha256 does not match its seed")
+    index = data.get("index")
+    if index is not None and (isinstance(index, bool) or not isinstance(index, int) or index < 0):
+        raise ValueError("graded episode index must be a non-negative integer")
+    return {"episode": eid, "instance": inst, "seed": seed, "seed_sha256": digest, "index": index}
+
+
+class GradedState:
+    """The graded episode's lab-only state (0600 in state_dir): when the lab started (the start window counts from
+    there), whether and when the episode started, whether and why it ended. Rewritten atomically with fsync; the
+    start is persisted before anything is simulated. An unreadable state after the first start means no start
+    (fail closed)."""
+
+    FIELDS = ("service_start_wall", "service_start_mono", "started", "started_wall", "started_mono",
+              "privileged", "ended", "end_reason", "ended_wall", "ended_mono", "snapshot", "choice", "trial_units")
+
+    def __init__(self, path, log):
+        self.path, self.log = path, log
+        self.broken = False
+        try:
+            with open(path, "rb") as fh:
+                data = json.loads(fh.read(1 << 16))
+            if not isinstance(data, dict) or not isinstance(data.get("service_start_mono"), (int, float)):
+                raise ValueError("graded state")
+            self.data = {k: data.get(k) for k in self.FIELDS}
+            self.data["started"] = bool(self.data["started"])
+            self.data["ended"] = bool(self.data["ended"])
+            self.data["privileged"] = bool(self.data["privileged"])
+        except Exception as exc:  # fail closed: the episode cannot be started
+            self.broken = True
+            self.data = {k: None for k in self.FIELDS}
+            self.data.update(started=False, ended=False, privileged=False)
+            log.write(kind="graded_state_unreadable", err=type(exc).__name__)
+
+    @staticmethod
+    def initialize(path, uid, gid):
+        if os.path.lexists(path):
+            return False
+        data = {k: None for k in GradedState.FIELDS}
+        data.update(service_start_wall=time.time(), service_start_mono=time.monotonic(), started=False,
+                    privileged=False, ended=False, version=1)
+        _atomic_write(path, json.dumps(data).encode())
+        os.chown(path, uid, gid)
+        return True
+
+    def save(self):
+        _atomic_write(self.path, json.dumps(dict(self.data, version=1)).encode())
+
+
+class RecordDir:
+    """record.json (rewritten atomically) and requests.jsonl (append-only, capped) in the record directory,
+    written by the lab account."""
+
+    def __init__(self, directory, log_cap, log):
+        self.dir = directory
+        self.path = os.path.join(directory, "record.json")
+        self.log = log
+        self.cap = int(log_cap)
+        fd = os.open(os.path.join(directory, "requests.jsonl"),
+                     os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1:
+            os.close(fd)
+            raise RuntimeError("requests log is not a plain file")
+        self.req_fh = os.fdopen(fd, "a", buffering=1)
+        self.req_size = st.st_size
+        self.truncated = self.req_size >= self.cap
+
+    def load(self):
+        """The record on disk (a plain file of at most 1 MB holding an object), or None."""
+        try:
+            fd = os.open(self.path, os.O_RDONLY | os.O_NOFOLLOW)
+        except OSError:
+            return None
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                return None
+            raw = os.read(fd, MAX_RECORD_BYTES + 1)
+        finally:
+            os.close(fd)
+        try:
+            data = json.loads(raw) if len(raw) <= MAX_RECORD_BYTES else None
+        except ValueError:
+            return None
+        return data if isinstance(data, dict) else None
+
+    def write(self, record):
+        data = json.dumps(record, allow_nan=False, separators=(",", ":"), sort_keys=True).encode()
+        if len(data) > MAX_RECORD_BYTES:
+            record = dict(record, detail=None)
+            data = json.dumps(record, allow_nan=False, separators=(",", ":"), sort_keys=True).encode()
+        _atomic_write(self.path, data)
+
+    def request(self, rec):
+        if self.truncated:
+            return
+        line = json.dumps(dict(rec, t=round(time.time(), 3)), allow_nan=False, separators=(",", ":")) + "\n"
+        if self.req_size + len(line) > self.cap:
+            self.truncated = True
+            return
+        try:
+            self.req_fh.write(line)
+            self.req_size += len(line)
+        except OSError:
+            pass
+
+
+def _action_for_log(action):
+    """A step's action for the request log: a list of at most 16 finite numbers, else only its kind."""
+    if isinstance(action, list) and len(action) <= 16 and all(
+            isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) for x in action):
+        return [float(x) for x in action]
+    return {"kind": type(action).__name__}
+
+
+class Graded:
+    """The session's one graded episode (module docstring). Lives in the worker; every graded op runs under
+    `self.lock`, and plugin calls under it go through the worker's plugin lock (lock order: graded, plugin)."""
+
+    def __init__(self, gcfg, plan, state, record, log, control_dt):
+        self.cfg, self.plan, self.state, self.record, self.log = gcfg, plan, state, record, log
+        self.spec = self._chosen()  # the graded episode: the only one, or (an order) the one chosen at the start
+        self.control_dt = float(control_dt)
+        self.worker = None
+        self.lock = threading.Lock()
+        self.owner = None  # the connection that holds the episode
+        self.episode = None  # the plugin's episode while it runs
+        self.last_obs = None  # the latest observation payload
+        self.requests = 0
+        self.steps = 0
+        self.rejected = 0
+        self.result = {"score": 0.0, "metrics": {}, "detail": None}
+        self.last_write = 0.0
+        self.dirty = False
+        self.snap_sock = None  # the socketpair end to the root supervisor (dual mode: the freeze)
+        self.snap_seq = 0
+        self.snap_attempts = 0  # failed freezes at the close of the start window (retried, then recorded)
+        self.snap_retry_at = 0.0
+
+    def _request_snapshot(self):
+        """Ask the root supervisor to freeze the agent's submission; its reply, or {"status": "failed"}."""
+        failed = {"status": "failed", "files": 0, "bytes": 0, "skipped": 0, "sha256": None}
+        sock = self.snap_sock
+        if sock is None:
+            self.log.write(kind="snapshot_no_channel")
+            return failed
+        self.snap_seq += 1
+        seq = self.snap_seq
+        deadline = time.monotonic() + float(self.cfg["snapshot_timeout_s"])
+        try:
+            sock.settimeout(max(1.0, deadline - time.monotonic()))
+            sock.sendall(("SNAPSHOT %d\n" % seq).encode())
+            buf = b""
+            while True:
+                while b"\n" not in buf:
+                    sock.settimeout(max(0.1, deadline - time.monotonic()))
+                    chunk = sock.recv(4096)
+                    if not chunk:
+                        raise OSError("the supervisor closed the snapshot channel")
+                    buf += chunk
+                    if len(buf) > 65536:
+                        raise ValueError("snapshot reply too long")
+                line, buf = buf.split(b"\n", 1)
+                reply = json.loads(line)
+                if isinstance(reply, dict) and reply.get("seq") == seq:
+                    break  # a late reply to an earlier request is dropped
+        except (OSError, ValueError) as exc:
+            self.log.write(kind="snapshot_request_failed", err=type(exc).__name__)
+            return failed
+        out = {}
+        for key in ("files", "bytes", "skipped"):
+            v = reply.get(key)
+            out[key] = int(v) if isinstance(v, int) and not isinstance(v, bool) and v >= 0 else 0
+        out["status"] = reply.get("status") if reply.get("status") in ("ok", "too_large", "missing") else "failed"
+        sha = reply.get("sha256")
+        out["sha256"] = sha if isinstance(sha, str) and SHA256_RE.match(sha) else None
+        if out["status"] == "ok" and out["sha256"] is None:
+            out["status"] = "failed"
+        return out
+
+    def _chosen(self):
+        if self.plan["single"]:
+            return self.plan["order"][0]
+        st = self.state.data
+        c = st.get("choice")
+        if st["started"] and isinstance(c, int) and not isinstance(c, bool) and 0 <= c < len(self.plan["order"]):
+            return self.plan["order"][c]
+        return None
+
+    # -- clocks
+    def _since_service(self):
+        return time.monotonic() - float(self.state.data["service_start_mono"])
+
+    def _since_start(self):
+        st = self.state.data
+        if not st["started"] or st["started_mono"] is None:
+            return None
+        end = st["ended_mono"] if st["ended"] and st["ended_mono"] is not None else time.monotonic()
+        return max(0.0, end - float(st["started_mono"]))
+
+    def _prep_over(self):
+        """The start window has closed (an unreadable state never reports so: nothing is frozen on it)."""
+        st = self.state.data
+        return (not self.state.broken and st["service_start_mono"] is not None
+                and self._since_service() > float(self.cfg["prep_s"]))
+
+    def _freeze_at_window_close(self):
+        """The start window closed without a start: freeze the program now, as a start would have. Under self.lock.
+        A failed copy is retried every 5 s up to 12 times, then recorded as failed (the program item then scores 0)."""
+        snapshot = self._request_snapshot()
+        if snapshot["status"] == "failed":
+            self.snap_attempts += 1
+            if self.snap_attempts < 12:
+                self.snap_retry_at = time.monotonic() + 5.0
+                return
+        st = self.state.data
+        st["snapshot"] = dict(snapshot, trigger="prep_window", utc=time.time())
+        try:
+            self.state.save()
+        except OSError as exc:
+            self.log.write(kind="graded_state_persist_failed", err=str(exc))
+        self.log.write(kind="snapshot_at_window_close", status=snapshot["status"], attempts=self.snap_attempts + 1)
+        self._req("snapshot", trigger="prep_window", status=snapshot["status"])
+        self._write()
+
+    def _window_over(self):
+        s = self._since_start()
+        return s is not None and s > float(self.cfg["graded_s"])
+
+    # -- the record
+    def _record(self):
+        st = self.state.data
+        started_after = None
+        if st["started"] and st["started_mono"] is not None and st["service_start_mono"] is not None:
+            started_after = round(float(st["started_mono"]) - float(st["service_start_mono"]), 3)
+        since = self._since_start()
+        return {
+            "format": "arb-online-record/1",
+            "task": self.cfg["task"],
+            "episode": None if self.spec is None else self.spec["episode"],
+            "seed_sha256": None if self.spec is None else self.spec["seed_sha256"],
+            "order_index": st["choice"],
+            "trial_units": st["trial_units"],
+            "started": bool(st["started"]),
+            "ended": bool(st["ended"]),
+            "end_reason": st["end_reason"],
+            "requests": self.requests,
+            "steps": self.steps,
+            "steps_rejected": self.rejected,
+            "sim_time_s": round(self.steps * self.control_dt, 6),
+            "wall_s_since_start": None if since is None else round(since, 3),
+            "episode_score": float(self.result["score"]),
+            "metrics": dict(self.result["metrics"]),
+            "detail": self.result.get("detail"),
+            "privileged": bool(st["privileged"]),
+            "snapshot_trigger": (st["snapshot"] or {}).get("trigger"),
+            "snapshot_utc": _iso((st["snapshot"] or {}).get("utc")),
+            "snapshot_status": (st["snapshot"] or {}).get("status"),
+            "snapshot_files": (st["snapshot"] or {}).get("files"),
+            "snapshot_bytes": (st["snapshot"] or {}).get("bytes"),
+            "snapshot_skipped": (st["snapshot"] or {}).get("skipped"),
+            "snapshot_sha256": (st["snapshot"] or {}).get("sha256"),
+            "prep_s": float(self.cfg["prep_s"]),
+            "graded_s": float(self.cfg["graded_s"]),
+            "started_after_s": started_after,
+            "service_started_utc": _iso(st["service_start_wall"]),
+            "started_utc": _iso(st["started_wall"]),
+            "ended_utc": _iso(st["ended_wall"]),
+            "updated_utc": _iso(time.time()),
+            "requests_log_truncated": bool(self.record.truncated),
+            "service_version": SERVICE_VERSION,
+        }
+
+    def _write(self, force=True):
+        now = time.monotonic()
+        if not force and now - self.last_write < float(self.cfg["record_interval_s"]):
+            self.dirty = True
+            return
+        try:
+            self.record.write(self._record())
+            self.last_write, self.dirty = now, False
+        except (OSError, TypeError, ValueError) as exc:
+            self.dirty = True
+            self.log.write(kind="graded_record_write_failed", err=type(exc).__name__)
+
+    def _req(self, kind, **extra):
+        rec = {"n": self.requests, "kind": kind, "steps": self.steps,
+               "sim_time_s": round(self.steps * self.control_dt, 6)}
+        rec.update(extra)
+        self.record.request(rec)
+
+    # -- start-up of a worker
+    def boot(self, worker):
+        """At every worker start: take the counters back from a record of this episode; end an episode that a
+        previous worker left running (O4: its last record stands, no resume); write the first record."""
+        self.worker = worker
+        st = self.state.data
+        rec = self.record.load()
+        if rec is not None and self.spec is not None and rec.get("episode") == self.spec["episode"] \
+                and rec.get("started") is True:
+            for key in ("requests", "steps", "steps_rejected"):
+                v = rec.get(key)
+                if isinstance(v, int) and not isinstance(v, bool) and v >= 0:
+                    setattr(self, "rejected" if key == "steps_rejected" else key, v)
+            score = rec.get("episode_score")
+            metrics = rec.get("metrics")
+            if isinstance(score, (int, float)) and not isinstance(score, bool) and math.isfinite(score) \
+                    and score >= 0 and isinstance(metrics, dict):
+                try:
+                    self.result = {"score": float(score), "metrics": {str(k): float(v) for k, v in metrics.items()},
+                                   "detail": check_json(rec.get("detail"))}
+                except (TypeError, ValueError):
+                    pass
+        if st["started"] and not st["ended"]:
+            reason = "graded_window" if self._window_over() else "worker_restart"
+            self.log.write(kind="graded_end_after_restart", reason=reason)
+            self._end_state(reason)
+            self._req("end", reason=reason)
+            self._write()
+        elif rec is None:
+            self._write()
+
+    def _end_state(self, reason):
+        st = self.state.data
+        st.update(ended=True, end_reason=reason, ended_wall=time.time(), ended_mono=time.monotonic())
+        try:
+            self.state.save()
+        except OSError as exc:
+            self.log.write(kind="graded_state_persist_failed", err=str(exc))
+
+    # -- helpers under self.lock
+    def _claim(self, cid):
+        if self.owner is None:
+            self.owner = cid
+        elif self.owner != cid:
+            raise ReplyError("graded_busy")
+
+    def release(self, cid):
+        with self.lock:
+            if self.owner == cid:
+                self.owner = None
+
+    def _fatal(self, op):
+        """A plugin failure inside the graded episode: the worker exits and its successor ends the episode with
+        its last record (end_reason worker_restart)."""
+        self.log.write(kind="graded_plugin_error", op=op, tb=traceback.format_exc(limit=20))
+        os._exit(75)
+
+    def _payload(self, obs):
+        w = self.worker
+        section = "graded" if isinstance(w.schema.get("graded"), dict) else "step"
+        payload = build_payload(w.schema, section, obs)
+        if self.state.data["privileged"]:
+            payload["truth"] = check_json(w.call(self.episode.truth))
+        return payload
+
+    def _update_result(self, fn_name="result"):
+        fn = getattr(self.episode, fn_name, None)
+        if not callable(fn):
+            fn = self.episode.result
+        res = self.worker.call(fn)
+        score = float(res["score"])
+        if not math.isfinite(score) or score < 0:
+            score = 0.0
+        metrics = {}
+        for k, v in (res.get("metrics") or {}).items():
+            v = float(v)
+            if isinstance(k, str) and _JSON_KEY_RE.match(k) and math.isfinite(v):
+                metrics[k] = v
+        self.result = {"score": score, "metrics": metrics, "detail": check_json(res.get("detail"))}
+
+    def _finalize(self, reason):
+        """End the running episode: its result (finish() for a finish or a closed window, else result()), its
+        resources freed, the state persisted, the record written."""
+        if self.episode is not None:
+            try:
+                self._update_result("finish" if reason in ("finish", "graded_window") else "result")
+            except Exception:  # noqa: BLE001 - the last recorded result stands
+                self.log.write(kind="graded_result_failed", reason=reason, tb=traceback.format_exc(limit=20))
+            close = getattr(self.episode, "close", None)
+            if callable(close):
+                try:
+                    self.worker.call(close)
+                except Exception:  # noqa: BLE001
+                    self.log.write(kind="graded_close_failed", tb=traceback.format_exc(limit=20))
+            self.episode = None
+        self._end_state(reason)
+        self._req("end", reason=reason)
+        self._write()
+
+    def _running(self):
+        st = self.state.data
+        if not st["started"]:
+            raise ReplyError("not_started")
+        if not st["ended"] and self._window_over():
+            self._finalize("graded_window")
+        if st["ended"] or self.episode is None:
+            raise ReplyError("graded_over")
+
+    def status(self, cid):
+        st = self.state.data
+        prep_left = None
+        if not st["started"]:
+            prep_left = 0.0 if self.state.broken else max(0.0, float(self.cfg["prep_s"]) - self._since_service())
+        since = self._since_start()
+        graded_left = None
+        if st["started"]:
+            graded_left = 0.0 if st["ended"] else max(0.0, float(self.cfg["graded_s"]) - since)
+        holder = None if self.owner is None else ("you" if self.owner == cid else "other")
+        return {"started": bool(st["started"]), "ended": bool(st["ended"]), "end_reason": st["end_reason"],
+                "steps": self.steps, "sim_time_s": round(self.steps * self.control_dt, 6),
+                "prep_left_s": None if prep_left is None else round(prep_left, 1),
+                "graded_left_s": None if graded_left is None else round(graded_left, 1), "holder": holder}
+
+    # -- the ops (Worker.op_graded_*)
+    def op_start(self, req, cid):
+        with self.lock:
+            self._claim(cid)
+            self.requests += 1
+            st = self.state.data
+            if self.state.broken:
+                raise ReplyError("internal")
+            if st["started"]:
+                raise ReplyError("already_started")
+            if self._since_service() > float(self.cfg["prep_s"]):
+                self._req("start_refused", error="window_closed")
+                raise ReplyError("window_closed")
+            privileged = False
+            if "token" in req:
+                want, tok = self.cfg["oracle_token_sha256"], req["token"]
+                if want is None or not isinstance(tok, str) or not 0 < len(tok) <= 256:
+                    raise ReplyError("bad_request")
+                if not hmac.compare_digest(hashlib.sha256(tok.strip().encode()).hexdigest(), want):
+                    raise ReplyError("bad_request")
+                privileged = True
+            snapshot = None
+            if self.cfg["snapshot_source"]:  # the freeze, before anything is charged (a failure charges nothing)
+                snapshot = self._request_snapshot()
+                if snapshot["status"] == "failed":
+                    self._req("start_refused", error="snapshot_failed")
+                    raise ReplyError("snapshot_failed")
+                snapshot = dict(snapshot, trigger="start", utc=time.time())
+            w = self.worker
+            with w.practice_lock:
+                # The trials charged so far are read while no trial op can run, and practice closes in the same step
+                # (O13), so no trial is charged or advances between the choice and the start.
+                units = w.budget.charged_instances()
+                if units is None:
+                    self.log.write(kind="graded_trial_units_unknown")
+                    raise ReplyError("internal")
+                if self.plan["single"]:
+                    choice = 0
+                else:  # the first entry of the order on an instance no lab trial used
+                    choice = next((k for k, e in enumerate(self.plan["order"]) if e["instance"] not in units), None)
+                    if choice is None:
+                        self.log.write(kind="graded_no_entry_left", trial_units=units)
+                        raise ReplyError("internal")
+                # the charge: persisted before anything is simulated, never refunded
+                st.update(started=True, started_wall=time.time(), started_mono=time.monotonic(),
+                          privileged=privileged, snapshot=snapshot, choice=choice, trial_units=units)
+                try:
+                    self.state.save()
+                except OSError as exc:
+                    st.update(started=False, started_wall=None, started_mono=None, privileged=False, snapshot=None,
+                              choice=None, trial_units=None)
+                    self.log.write(kind="graded_state_persist_failed", err=str(exc))
+                    raise ReplyError("internal")
+                self.spec = self.plan["order"][choice]
+                w.close_practice_locked()  # O13: every open lab trial ends; no trial starts from now on
+            self.log.write(kind="graded_start", conn=cid, privileged=privileged,
+                           snapshot=None if snapshot is None else snapshot["status"], choice=choice, trial_units=units)
+            self._req("start", privileged=privileged)
+            self._write()
+            try:
+                self.episode, obs = self.worker.call(self.worker.plugin.graded_reset, self.spec["instance"],
+                                                     self.spec["seed"])
+                payload = self._payload(obs)
+                self._update_result()
+            except Exception:  # noqa: BLE001 - ends the episode through a worker restart
+                self._fatal("graded_start")
+            self.last_obs = payload
+            self._write()
+            return {"obs": payload, "done": False, "steps": self.steps}
+
+    def op_step(self, req, cid):
+        with self.lock:
+            self._claim(cid)
+            self.requests += 1
+            self._running()
+            try:
+                action = self.worker._plugin_validate("validate_action", req["action"], "bad_action")
+            except ReplyError:
+                self.rejected += 1
+                self._req("step_rejected", action=_action_for_log(req["action"]))
+                self._write(force=False)
+                raise
+            try:
+                obs, done = self.worker.call(self.episode.step, action)
+                payload = self._payload(obs)
+            except Exception:  # noqa: BLE001 - ends the episode through a worker restart
+                self._fatal("graded_step")
+            self.steps += 1
+            self.last_obs = payload
+            self._req("step", action=_action_for_log(action))
+            done = bool(done)
+            if done:
+                self._finalize("done")
+            else:
+                try:
+                    self._update_result()
+                except Exception:  # noqa: BLE001
+                    self._fatal("graded_step")
+                self._write()
+            return {"obs": payload, "done": done, "steps": self.steps}
+
+    def op_observe(self, req, cid):
+        with self.lock:
+            self._claim(cid)
+            self.requests += 1
+            self._running()
+            self._req("observe")
+            return {"obs": self.last_obs, "done": False, "steps": self.steps}
+
+    def op_status(self, req, cid):
+        with self.lock:
+            self.requests += 1
+            st = self.state.data
+            if st["started"] and not st["ended"] and self._window_over():
+                self._finalize("graded_window")
+            return {"status": self.status(cid)}
+
+    def op_finish(self, req, cid):
+        with self.lock:
+            self._claim(cid)
+            self.requests += 1
+            self._running()
+            self._finalize("finish")
+            return {"status": self.status(cid)}
+
+    def timer(self):
+        """Ends the episode when its window closes, even without requests; freezes the program when the start window
+        closes without a start; flushes a lagging record."""
+        while True:
+            time.sleep(1.0)
+            with self.lock:
+                try:
+                    st = self.state.data
+                    if st["started"] and not st["ended"] and self._window_over():
+                        self._finalize("graded_window")
+                    elif (not st["started"] and st["snapshot"] is None and self.cfg["snapshot_source"]
+                          and time.monotonic() >= self.snap_retry_at and self._prep_over()):
+                        self._freeze_at_window_close()
+                    elif self.dirty and not st["ended"]:
+                        self._write(force=False)
+                except Exception:  # noqa: BLE001 - the timer keeps running
+                    self.log.write(kind="graded_timer_error", tb=traceback.format_exc(limit=20))
+
+
 # ----------------------------------------------------------------------------------------------
 # worker: serving
 
@@ -740,7 +1544,7 @@ class Trial:
 
 class Worker:
     def __init__(
-        self, cfg, plugin, schema, log, trials_log, budget, listener, messages=None
+        self, cfg, plugin, schema, log, trials_log, budget, listener, messages=None, graded=None
     ):
         self.cfg, self.plugin, self.schema = cfg, plugin, schema
         self.messages = dict(messages or {})
@@ -759,6 +1563,15 @@ class Worker:
                 schema.get(op), dict
             ):
                 self.supported.append(op)
+        self.graded = graded
+        if graded is not None:
+            self.supported.extend(GRADED_OPS)
+        # Practice (lab trials) ends once the graded episode has started, for the rest of the session: read back from
+        # the persisted graded state (fail closed when it is unreadable). Trial ops and close_practice run under
+        # practice_lock; open_trials maps a connection id to its state while it holds a trial.
+        self.practice_lock = threading.Lock()
+        self.open_trials = {}
+        self.practice_is_closed = graded is not None and bool(graded.state.broken or graded.state.data["started"])
 
     # -- plugin calls under one lock, watched for wall-clock overruns
     def call(self, fn, *args):
@@ -787,6 +1600,8 @@ class Worker:
 
     def serve(self):
         threading.Thread(target=self.watchdog, daemon=True).start()
+        if self.graded is not None:
+            threading.Thread(target=self.graded.timer, daemon=True).start()
         self.listener.settimeout(None)
         while True:
             try:
@@ -875,15 +1690,10 @@ class Worker:
         except (OSError, socket.timeout):
             pass
         finally:
-            trial = state.get("trial")
-            if trial is not None:
-                self.trials_log.write(
-                    kind="trial_end",
-                    conn=cid,
-                    instance=trial.instance,
-                    steps=trial.steps,
-                    reason="disconnect",
-                )
+            with self.practice_lock:
+                self._end_trial(state, cid, "disconnect")
+            if self.graded is not None:
+                self.graded.release(cid)  # the graded episode stays where it is
             try:
                 conn.close()
             except OSError:
@@ -958,7 +1768,7 @@ class Worker:
             if "info" in self.schema
             else {}
         )
-        return {
+        out = {
             "protocol": PROTOCOL,
             "ops": list(self.supported),
             "instances": list(self.instances),
@@ -970,24 +1780,36 @@ class Worker:
                 "max_connections": int(self.cfg["max_connections"]),
             },
         }
+        if self.graded is not None:
+            out["graded"] = {"prep_s": float(self.cfg["graded"]["prep_s"]),
+                             "graded_s": float(self.cfg["graded"]["graded_s"])}
+        return out
 
     def op_budget(self, req, state, cid):
         return {"remaining": self.budget.remaining()}
 
+    def op_graded_start(self, req, state, cid):
+        return self.graded.op_start(req, cid)
+
+    def op_graded_step(self, req, state, cid):
+        return self.graded.op_step(req, cid)
+
+    def op_graded_observe(self, req, state, cid):
+        return self.graded.op_observe(req, cid)
+
+    def op_graded_status(self, req, state, cid):
+        return self.graded.op_status(req, cid)
+
+    def op_graded_finish(self, req, state, cid):
+        return self.graded.op_finish(req, cid)
+
     def op_close(self, req, state, cid):
-        trial = state.get("trial")
-        if trial is not None:
-            self.trials_log.write(
-                kind="trial_end",
-                conn=cid,
-                instance=trial.instance,
-                steps=trial.steps,
-                reason="close",
-            )
-            state["trial"] = None
+        with self.practice_lock:
+            self._end_trial(state, cid, "close")
         return {}
 
     def _end_trial(self, state, cid, reason):
+        """Under practice_lock."""
         trial = state.get("trial")
         if trial is not None:
             self.trials_log.write(
@@ -998,9 +1820,32 @@ class Worker:
                 reason=reason,
             )
         state["trial"] = None
+        self.open_trials.pop(cid, None)
+
+    def close_practice_locked(self):
+        """Under practice_lock: the graded episode has started (O13): every open lab trial ends now, and reset /
+        execute are refused (practice_closed) for the rest of the session. Called by Graded.op_start once the start
+        is persisted; holding practice_lock means no trial op is in flight, so no trial advances after the start."""
+        if self.practice_is_closed:
+            return
+        self.practice_is_closed = True
+        ended = 0
+        for cid, st in sorted(self.open_trials.items()):
+            ended += 1 if st.get("trial") is not None else 0
+            self._end_trial(st, cid, "practice_closed")
+        self.open_trials.clear()
+        self.trials_log.write(kind="practice_closed", trials_ended=ended)
+
+    def _practice_open(self, state, cid, op):
+        """Under practice_lock: refuse a trial op once practice has ended, ending the connection's trial if it has
+        one (nothing is charged)."""
+        if self.practice_is_closed:
+            self._end_trial(state, cid, "practice_closed")
+            self.trials_log.write(kind="refused", conn=cid, op=op, reason="practice_closed")
+            raise ReplyError("practice_closed")
 
     def _charge(self, cid, op, inst):
-        remaining = self.budget.charge()
+        remaining = self.budget.charge(inst)
         if remaining is None:
             self.trials_log.write(
                 kind="refused",
@@ -1016,6 +1861,24 @@ class Worker:
         return remaining
 
     def op_reset(self, req, state, cid):
+        with self.practice_lock:
+            self._practice_open(state, cid, "reset")
+            out = self._op_reset(req, state, cid)
+            if state.get("trial") is not None:
+                self.open_trials[cid] = state
+            return out
+
+    def op_step(self, req, state, cid):
+        with self.practice_lock:
+            self._practice_open(state, cid, "step")
+            return self._op_step(req, state, cid)
+
+    def op_execute(self, req, state, cid):
+        with self.practice_lock:
+            self._practice_open(state, cid, "execute")
+            return self._op_execute(req, state, cid)
+
+    def _op_reset(self, req, state, cid):
         inst = self._instance(req)
         self._end_trial(state, cid, "replaced")
         remaining = self._charge(cid, "reset", inst)
@@ -1034,7 +1897,7 @@ class Worker:
         state["trial"] = Trial(episode, inst)
         return {"instance": inst, "obs": payload, "remaining": remaining}
 
-    def op_step(self, req, state, cid):
+    def _op_step(self, req, state, cid):
         trial = state.get("trial")
         if trial is None:
             raise ReplyError("no_trial")
@@ -1063,7 +1926,7 @@ class Worker:
             self._end_trial(state, cid, "done")
         return {"obs": payload, "done": done, "step": trial.steps}
 
-    def op_execute(self, req, state, cid):
+    def _op_execute(self, req, state, cid):
         inst = self._instance(req)
         plan = self._plugin_validate("validate_plan", req["plan"], "bad_plan")
         remaining = self._charge(cid, "execute", inst)
@@ -1081,7 +1944,7 @@ class Worker:
         return {"instance": inst, "outcome": payload, "remaining": remaining}
 
 
-def run_worker(cfg, listener, ready_fd, lab):
+def run_worker(cfg, listener, ready_fd, lab, snap_sock=None):
     """Forked from the supervisor as root: load the hidden instances, drop privileges, serve."""
     _set_comm("alelab-worker")
     os.umask(0o077)
@@ -1157,6 +2020,13 @@ def run_worker(cfg, listener, ready_fd, lab):
             raise RuntimeError(
                 "validate_* decisions differ between instances/states (rev-leak F1)"
             )
+        graded_plan = None
+        if cfg["graded"] is not None:
+            if not callable(getattr(plugin, "graded_reset", None)):
+                raise TypeError("the config has a graded episode but the plugin has no graded_reset")
+            graded_plan = load_graded_episode(cfg["graded"]["episode"], ids)  # as root, before the drop
+            control_dt = float((plugin.info() or {}).get("control_dt", 0.0)) if callable(
+                getattr(plugin, "info", None)) else 0.0
         # -- privilege drop (irreversible)
         os.chdir("/")
         os.setgroups([])
@@ -1186,9 +2056,24 @@ def run_worker(cfg, listener, ready_fd, lab):
                 "seccomp self-test failed: an AF_INET socket could be created"
             )
         budget = Budget(os.path.join(state_dir, "budget.json"), log)
+        graded = None
+        if graded_plan is not None:
+            graded = Graded(
+                cfg["graded"],
+                graded_plan,
+                GradedState(os.path.join(state_dir, "graded.json"), log),
+                RecordDir(cfg["graded"]["record_dir"], cfg["graded"]["requests_log_cap"], log),
+                log,
+                control_dt,
+            )
         worker = Worker(
-            cfg, plugin, schema, log, trials_log, budget, listener, messages
+            cfg, plugin, schema, log, trials_log, budget, listener, messages, graded
         )
+        if graded is not None:
+            graded.snap_sock = snap_sock
+            graded.boot(worker)
+            log.write(kind="graded_ready", started=graded.state.data["started"],
+                      ended=graded.state.data["ended"])
     except Exception:
         log.write(kind="worker_start_failed", tb=traceback.format_exc(limit=30))
         os.write(ready_fd, b"F")
@@ -1200,6 +2085,187 @@ def run_worker(cfg, listener, ready_fd, lab):
     except Exception:
         log.write(kind="worker_crashed", tb=traceback.format_exc(limit=30))
     os._exit(1)
+
+
+# ----------------------------------------------------------------------------------------------
+# the freeze (dual mode): the supervisor copies the agent's submission on the worker's request
+
+
+class SnapshotTooLarge(Exception):
+    pass
+
+
+def snapshot_digest_line(rel, size, content_sha):
+    return ("%s\0%d\0%s\n" % (rel, size, content_sha)).encode("utf-8", "surrogateescape")
+
+
+def take_snapshot(source, dest_dir, agent_uid, max_files, max_bytes):
+    """Copy the agent's folder `source` into `dest_dir`/SNAPSHOT_DIR, as root, without following any link.
+
+    The walk goes by file descriptor: every directory and file is opened relative to its parent's descriptor with
+    O_NOFOLLOW (a directory also with O_DIRECTORY, a file with O_NONBLOCK), so a link the agent puts or swaps in
+    anywhere is never followed; only regular files and directories owned by `agent_uid` are copied (links, other
+    file types and anything another account owns are skipped). The caps are the offline grader's: every
+    non-directory entry counts as a file and the bytes of every non-link entry count, as its stage_submission counts
+    them; over a cap nothing is kept. The copy is built in a temporary directory and renamed into place, then
+    synced. Returns {"status": "ok" | "too_large" | "missing", "files", "bytes", "skipped", "sha256"}; raises OSError
+    when the copy fails."""
+    parent, name = os.path.split(source)
+    final, tmp = SNAPSHOT_DIR, SNAPSHOT_DIR + ".tmp"
+    dfd = os.open(dest_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        for old in (tmp, final):
+            if os.path.lexists(os.path.join(dest_dir, old)):
+                shutil.rmtree(old, dir_fd=dfd)
+        try:
+            pfd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        except OSError:
+            return {"status": "missing", "files": 0, "bytes": 0, "skipped": 0, "sha256": None}
+        try:
+            try:
+                sfd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=pfd)
+            except OSError:
+                return {"status": "missing", "files": 0, "bytes": 0, "skipped": 0, "sha256": None}
+        finally:
+            os.close(pfd)
+        count = {"files": 0, "bytes": 0, "skipped": 0, "dirs": 0}
+        listing = []
+        try:
+            if os.fstat(sfd).st_uid != agent_uid:
+                return {"status": "missing", "files": 0, "bytes": 0, "skipped": 0, "sha256": None}
+            os.mkdir(tmp, 0o700, dir_fd=dfd)
+            tfd = os.open(tmp, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=dfd)
+            try:
+                _snapshot_tree(sfd, tfd, "", 1, agent_uid, int(max_files), int(max_bytes), count, listing)
+            finally:
+                os.close(tfd)
+        except SnapshotTooLarge:
+            shutil.rmtree(tmp, dir_fd=dfd)
+            return {"status": "too_large", "files": count["files"], "bytes": count["bytes"],
+                    "skipped": count["skipped"], "sha256": None}
+        finally:
+            os.close(sfd)
+        digest = hashlib.sha256()
+        for rel, size, content_sha in sorted(listing):
+            digest.update(snapshot_digest_line(rel, size, content_sha))
+        os.rename(tmp, final, src_dir_fd=dfd, dst_dir_fd=dfd)
+        os.sync()
+        return {"status": "ok", "files": len(listing), "bytes": sum(x[1] for x in listing),
+                "skipped": count["skipped"], "sha256": digest.hexdigest()}
+    finally:
+        os.close(dfd)
+
+
+def _snapshot_tree(sfd, tfd, rel, depth, agent_uid, max_files, max_bytes, count, listing):
+    if depth > SNAPSHOT_MAX_DEPTH:
+        raise SnapshotTooLarge()
+    with os.scandir(sfd) as it:
+        names = sorted(entry.name for entry in it)
+    for name in names:
+        try:
+            st = os.stat(name, dir_fd=sfd, follow_symlinks=False)
+        except OSError:
+            count["skipped"] += 1
+            continue
+        sub = rel + "/" + name if rel else name
+        if stat.S_ISDIR(st.st_mode):
+            count["dirs"] += 1
+            if count["dirs"] > SNAPSHOT_MAX_DIRS:
+                raise SnapshotTooLarge()
+            if st.st_uid != agent_uid:
+                count["skipped"] += 1
+                continue
+            try:
+                cfd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=sfd)
+            except OSError:
+                count["skipped"] += 1
+                continue
+            try:
+                if os.fstat(cfd).st_uid != agent_uid:
+                    count["skipped"] += 1
+                    continue
+                os.mkdir(name, 0o700, dir_fd=tfd)
+                dfd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=tfd)
+                try:
+                    _snapshot_tree(cfd, dfd, sub, depth + 1, agent_uid, max_files, max_bytes, count, listing)
+                finally:
+                    os.close(dfd)
+            finally:
+                os.close(cfd)
+            continue
+        count["files"] += 1  # the offline grader counts every non-directory entry ...
+        if not stat.S_ISLNK(st.st_mode):
+            count["bytes"] += st.st_size  # ... and the bytes of every non-link entry
+        if count["files"] > max_files or count["bytes"] > max_bytes:
+            raise SnapshotTooLarge()
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != agent_uid:
+            count["skipped"] += 1
+            continue
+        _snapshot_file(sfd, tfd, name, sub, agent_uid, max_bytes, count, listing)
+
+
+def _snapshot_file(sfd, tfd, name, rel, agent_uid, max_bytes, count, listing):
+    try:
+        ffd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC, dir_fd=sfd)
+    except OSError:
+        count["skipped"] += 1
+        return
+    try:
+        st = os.fstat(ffd)
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != agent_uid:
+            count["skipped"] += 1
+            return
+        mode = 0o700 if st.st_mode & 0o100 else 0o600
+        out = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, mode, dir_fd=tfd)
+        digest, size = hashlib.sha256(), 0
+        try:
+            while True:
+                block = os.read(ffd, 1 << 20)
+                if not block:
+                    break
+                size += len(block)
+                if size > max_bytes:  # a file that grows while it is copied
+                    raise SnapshotTooLarge()
+                digest.update(block)
+                view = memoryview(block)
+                while view:
+                    view = view[os.write(out, view):]
+            os.fchmod(out, mode)
+        finally:
+            os.close(out)
+        listing.append((rel, size, digest.hexdigest()))
+    finally:
+        os.close(ffd)
+
+
+def serve_snapshot_request(sock, snap, log):
+    """Supervisor side: answer one snapshot request from the worker ("SNAPSHOT <n>"). Returns False once the worker's
+    end is closed."""
+    try:
+        line = b""
+        while not line.endswith(b"\n"):
+            chunk = sock.recv(64)
+            if not chunk:
+                return False
+            line += chunk
+            if len(line) > 64:
+                return False
+        parts = line.decode("ascii", "replace").split()
+        if len(parts) != 2 or parts[0] != "SNAPSHOT" or not parts[1].isdigit():
+            return False
+        t0 = time.monotonic()
+        try:
+            out = take_snapshot(snap["source"], snap["dest"], snap["uid"], snap["max_files"], snap["max_bytes"])
+        except Exception as exc:  # noqa: BLE001 - a failed copy refuses the start
+            out = {"status": "failed", "files": 0, "bytes": 0, "skipped": 0, "sha256": None}
+            log.write(kind="snapshot_failed", err=type(exc).__name__, detail=str(exc)[:200])
+        out["seq"] = int(parts[1])
+        log.write(kind="snapshot", seconds=round(time.monotonic() - t0, 3),
+                  **{k: out[k] for k in ("status", "files", "bytes", "skipped", "sha256")})
+        sock.sendall((json.dumps(out) + "\n").encode())
+        return True
+    except OSError:
+        return False
 
 
 # ----------------------------------------------------------------------------------------------
@@ -1260,6 +2326,16 @@ def run_supervisor(cfg, lab, notify_fd):
         caps_trimmed=caps_trimmed,
     )
 
+    snap = None  # dual mode: the freeze, done here (root, never reads hidden data) on the worker's request
+    g = cfg.get("graded")
+    if g is not None and g.get("snapshot_source"):
+        try:
+            snap = {"source": g["snapshot_source"], "dest": g["record_dir"],
+                    "uid": pwd.getpwnam(cfg["agent_user"]).pw_uid,
+                    "max_files": int(g["snapshot_max_files"]), "max_bytes": int(g["snapshot_max_bytes"])}
+        except KeyError:
+            sup_log.write(kind="snapshot_no_agent_account")
+
     stopping = {"flag": False, "child": None}
 
     def on_term(signum, frame):
@@ -1278,9 +2354,14 @@ def run_supervisor(cfg, lab, notify_fd):
     restarts, first = 0, True
     while not stopping["flag"]:
         r, w = os.pipe()
+        snap_sup = snap_wrk = None
+        if snap is not None:
+            snap_sup, snap_wrk = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
         pid = os.fork()
         if pid == 0:
             os.close(r)
+            if snap_sup is not None:
+                snap_sup.close()
             try:
                 sup_log.fh.close()
             except OSError:
@@ -1292,9 +2373,11 @@ def run_supervisor(cfg, lab, notify_fd):
                     pass
             signal.signal(signal.SIGTERM, signal.SIG_DFL)
             signal.signal(signal.SIGINT, signal.SIG_DFL)
-            run_worker(cfg, listener, w, lab)
+            run_worker(cfg, listener, w, lab, snap_wrk)
             os._exit(1)
         os.close(w)
+        if snap_wrk is not None:
+            snap_wrk.close()
         stopping["child"] = pid
         status = b""
         try:
@@ -1312,14 +2395,25 @@ def run_supervisor(cfg, lab, notify_fd):
                     pass
                 notify_fd = None
         while True:
+            if snap_sup is not None:  # serve the worker's snapshot requests while waiting for it
+                try:
+                    ready, _, _ = select.select([snap_sup], [], [], 0.5)
+                except (OSError, ValueError):
+                    ready = []
+                if ready and not serve_snapshot_request(snap_sup, snap, sup_log):
+                    snap_sup.close()
+                    snap_sup = None
             try:
-                _, code = os.waitpid(pid, 0)
-                break
+                wpid, code = os.waitpid(pid, os.WNOHANG if snap_sup is not None else 0)
             except ChildProcessError:
                 code = -1
                 break
             except InterruptedError:
                 continue
+            if wpid == pid:
+                break
+        if snap_sup is not None:
+            snap_sup.close()
         stopping["child"] = None
         sup_log.write(kind="worker_exit", pid=pid, status=code, ready=status == b"R")
         if stopping["flag"]:
@@ -1362,6 +2456,18 @@ def start(config_path):
             lab.pw_uid,
             lab.pw_gid,
         )
+        if cfg["graded"] is not None:
+            # the record directory: the lab account's own (0700) in a root-owned parent that only root can write
+            rdir = cfg["graded"]["record_dir"]
+            os.makedirs(os.path.dirname(rdir), exist_ok=True)
+            pst = os.lstat(os.path.dirname(rdir))
+            if not stat.S_ISDIR(pst.st_mode) or pst.st_uid != 0 or pst.st_mode & 0o022:
+                raise RuntimeError("the record directory's parent must be root's and not group/other-writable")
+            _secure_dir(rdir, 0o700, lab.pw_uid, lab.pw_gid)
+            # the start window counts from here (the lab's first start)
+            GradedState.initialize(
+                os.path.join(cfg["state_dir"], "graded.json"), lab.pw_uid, lab.pw_gid
+            )
     except Exception as exc:
         print("alelab: configuration error: %s" % type(exc).__name__, file=sys.stderr)
         return 1

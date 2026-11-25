@@ -1,0 +1,7 @@
+{
+ "episode": "hidden-1",
+ "seed": 6790790475345571576,
+ "seed_sha256": "689c4898cc0d52c414e63d0e58bed9789acb7368bbd95b4f49ef7037ff6df67e",
+ "oracle_token_sha256": "7f07852be868f399d475b4c69b0c3514032e8e8411547f0e82880d8987b99195",
+ "note": "the graded episode of the online variant: scene 1 of the offline verifier's fixed hidden set (tests/hidden/seeds.json, index 0), drawn 2026-11-18 04:37:47Z with secrets.randbelow(3); root-only at /opt/ale/setup while the agent works, read by the service's worker as root before it drops privileges; tests/online.json holds the id and the seed's sha256 (of its decimal ASCII form)"
+}

@@ -1,0 +1,8 @@
+{
+ "direction": "higher",
+ "full_at": 1.0,
+ "metric": "assembly_score",
+ "note": "assembly_score of the online item is one episode's score, already on [0, 1]: the fastened mates' weight of the scope / the scope's total weight (the nine units: 9 mates, 10.5) of the graded episode as it ended, an episode with a safety violation keeping 30 % of it, as tests/verify.py scores each episode. The oracle starts the graded episode with the oracle token, so the service builds the privileged cell as the offline grader does for a submission with the token: the nominal layout (grader_config.json oracle_nominal_layout) and the call reference_assemble; ratio = score / 1.0, reward = ratio",
+ "source": "the oracle's measured episode_score on the graded episode graded-01 (tests/online.json), in the task image built from environment/ (2026-11-24, 8 CPUs, 16 GB): the service started by environment/setup/setup.sh, solution/solve.sh as the agent account, the start with the oracle token (the privileged cell: the nominal layout), reference_assemble inside one call: all 9 mates fastened, no safety event, 208.3 s simulated, 380 s of wall clock for the reference call; episode_score 1.0, as main's oracle on its three episodes (tests/anchor_offline.json); confirmed by `ale validate`'s oracle pass validate-6a2532d0 (episode_score 1.0, the same 9 mates, finish at 208.3 s simulated)",
+ "value": 1.0
+}

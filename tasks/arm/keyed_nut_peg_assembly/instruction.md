@@ -13,13 +13,25 @@ each groove within the episode, by looking into the hole, by feel with the arm's
 sensor and the motion of the nut, or both, and then turn the nut through it. A kit counts only when
 all three nuts are assembled.
 
-You are the engineer who commissions the cell for this kit family. Deliver a controller that does
-the job from camera images, joint readings and the wrist force/torque sensor, within the cell's
-**takt time: 85 s (850 control steps) for a kit**. You have **8 hours** of wall time
-for the whole job (studying the data sheet, commissioning on the cell, building and testing the
-controller). Have your controller in `/home/user/submission/` well before the time is up. Your
-sandbox has 4 CPU cores and 12 GB of memory (processes that exceed it are killed), no GPU and no
-network.
+You are the engineer who commissions the cell for this kit family. You are scored on **two items,
+equally weighted**:
+
+1. **The controller**: a controller that does the job from camera images, joint readings and the
+   wrist force/torque sensor, within the cell's **takt time: 85 s (850 control steps) for a kit**,
+   which you leave in `/home/user/submission/` and which the grader runs on 10 hidden kits ("Your
+   controller").
+2. **The graded episode**: one of those hidden kits, which you assemble yourself, live, through the
+   cell's graded episode service, step by step, with whatever programs you write ("The graded
+   episode").
+
+The controller graded is the one in `/home/user/submission/` at the moment you start the graded
+episode, or when its start window closes if you have not started it by then: that folder is frozen
+at that moment, and nothing you change in it afterwards counts ("How you are scored"). You have
+**8 hours** to prepare, shared by both items (studying the data sheet, commissioning on the cell,
+building and testing the controller, getting ready for the graded episode); start the graded
+episode within them, with your controller in place. From its start you have up to **3 hours** to
+play it. A session still running 11 hours after it started is cut off. Your sandbox has 4 CPU cores
+and 12 GB of memory (processes that exceed it are killed), no GPU and no network.
 
 You work the way a commissioning engineer does. You have the cell's data sheet (the kit's drawing
 data and tolerances, the robot and its controller, the sensors, the cameras, the wire), the robot's
@@ -47,8 +59,8 @@ commissioning service is where you meet real ones.
 |---|---|
 | `datasheet.md` | The cell's data sheet: frames and units, the pegs' and the nuts' drawing data (geometry, the groove family and how it is drawn, mass, friction, colours), how a kit is laid out, the robot and its controller (action format, tracking law, compliance, gripper), the sensors, the cameras with their published calibration, the safety stops, the takt, the commissioning service's wire, the tolerances within which every real kit and the cell on the day differ from the drawing (section 11), and the fit of a nut on a shaft with what the wrist sensor reads when they meet (section 12). |
 | `cell_data.py` | The data sheet's numbers, the tolerance table and a function that draws one set of real values within it, the camera matrices and a few geometry helpers (plain Python and NumPy; it contains no simulator). Copy it into your submission if your controller uses it. |
-| `commission/client.py` | The client of the commissioning service: start an episode on a development kit, send actions, get observations (`Episode`, `status`). |
-| `commission/run_kit.py` | Runs your controller over the grading wire in one commissioning episode, the way the grader runs it, and reports how the episode ended (see "Commissioning"). It does not judge the assembly. |
+| `commission/client.py` | The client of the commissioning service: start an episode on a development kit, send actions, get observations (`Episode`, `status`); and of the graded episode (`connect_graded`, see "The graded episode"). |
+| `commission/run_kit.py` | Runs your controller over the grading wire in one commissioning episode, the way the grader runs it, and reports how the episode ended (see "Commissioning"). It does not judge the assembly. With `--graded` it runs your controller in the graded episode instead. |
 | `helpers/wire_skeleton.py` | Optional boilerplate for the grading wire (READY / reset / act / close, repeated step indices). |
 
 Python 3.12 is `/opt/venv/bin/python3` (NumPy, SciPy, OpenCV (headless), Pillow, MuJoCo 3.16.0 and
@@ -129,7 +141,26 @@ bit mask for the next observation (1 = left, 2 = right, 4 = wrist). How the arm 
 `datasheet.md` (section 5). An episode lasts at most **850 steps** (85 s simulated): the takt time
 for a kit.
 
-## Deliverable and grading
+## How you are scored
+
+The score is the mean of the two items, each relative to its own hidden reference value: the
+controller's result (the fraction of the 10 hidden kits it completes, "Your controller") and the
+graded episode's (1 if its kit is complete when it ends, else 0, "The graded episode").
+
+**The freeze.** The controller graded is the one in `/home/user/submission/` at the earlier of two
+moments: when you start the graded episode (before anything of it is simulated), or when its start
+window closes (8 hours after the service's start, below) if you have not started it by then. At that
+moment the graded episode's service copies the folder out of your reach (regular files and folders
+only, symbolic links skipped; with more than 5000 files or 200 MiB, or more than 20,000 entries or
+32 levels of folders, nothing is copied and the controller scores 0), and the grader runs that copy.
+Nothing you change in the folder afterwards counts, so the controller can use neither what you see
+in the graded episode nor the time after the window: finish it before you start. Only if your
+session ends before the start window closes, without a start, is the controller graded the one in
+the folder when the session ends.
+
+**Practice** (the commissioning window, below) closes when the graded episode starts.
+
+## Your controller (the first item)
 
 Leave a controller in `/home/user/submission/` with an executable `run.sh`. The grader starts it
 as `bash run.sh` with that folder as working directory, as your user, with no network (only
@@ -198,8 +229,84 @@ out, its episode stops at that step and is judged as it stands (an incomplete ki
 scale: on the grading machine a simulation step without images takes about 0.03 s of the grader's
 time, and the reference controller uses less than 1 s of its budget per kit. As a safety net, the whole
 grading run stops after 12000 s of wall time (within these budgets a run takes at most about 2
-hours); the episode under way and the ones after it would then score 0. Only the final controller
-is scored.
+hours); the episode under way and the ones after it would then score 0. The controller graded is
+the one frozen when you start the graded episode, or when its start window closes ("How you are
+scored").
+
+## The graded episode (the second item: one kit you assemble live)
+
+You assemble one kit yourself, live, during this session: the **graded episode**, one of the ten
+hidden kits your controller is graded on (its own nuts and grooves, work order, layout and actual
+values within the tolerances; none of the development kits). It is the cell of the graded kits with
+the same rules: at most 850 steps (85 s simulated, the takt), the two safety stops, the end as soon
+as the kit is complete, and the rule by which a nut counts as assembled. The simulation advances
+only with your steps, never while you think. No controller process is involved: no controller
+budget of your own time, no deadline per request, no repeated step indices, no `READY`. Only the
+images keep their price: every image a step asks for is charged as in grading (0.45 s for `left`
+or `right`, 0.35 s for `wrist`; the first observation's three images are free) against the kit's
+600 s, and a step whose images would take the charges past 600 s is not applied and ends the
+episode, judged as it stands, as a budget that runs out ends a kit in grading. You drive it from
+your session with scripts of your own (`/opt/venv/bin/python3`):
+
+```python
+import sys; sys.path.insert(0, "/home/user/commission")
+from client import connect_graded, decode_image
+
+g = connect_graded()           # the graded episode's service; once the episode has started, this resumes it
+print(g.status())              # started, ended, steps, image_charge_used_s / _left_s, the windows' time left
+obs = g.start()                # ONCE per session: your controller is frozen, commissioning ends; first observation
+for _ in range(20):
+    obs = g.step([0, 0, -0.01, 0, 0, 0, -1, 0])     # the action format above; returns the next observation
+g.close()                      # the episode stays where it is (no simulated time passes)
+
+g = connect_graded()           # later, from another script: continue where it stands
+obs = g.observe()              # the latest observation again, images included; nothing is simulated
+obs = g.step([0, 0, 0, 0, 0, 0, -1, 7])             # all three images in the next observation
+g.finish()                     # ends the graded episode now
+```
+
+`/opt/venv/bin/python3 /home/user/commission/run_kit.py --graded --start` runs your controller
+(`run.sh`, from a fresh copy of the submission) in the graded episode as the grading wire would:
+`reset`, then `act` with the episode's own step index `t` (not 0 when it continues an episode).
+Without `--start` it continues the episode where it stands; `--steps N` stops after N steps (the
+episode stays where it is), `--finish` ends the episode when the run stops. It applies the wire's
+deadlines (`READY` within 120 s, each reply within 30 s), and a missed one stops the run with nothing
+applied for that step.
+
+* **Once, and persistent.** `start()` is accepted once per session: it is charged the moment it is
+  accepted and never refunded (later calls raise `GradedError("already_started")`). The episode
+  lives in the service, not in your connection or script: a script that ends, crashes or closes its
+  connection leaves it where it is, and the next `connect_graded()` resumes it. One connection at a
+  time: `connect_graded()` raises `GradedError("busy")` while another connection holds the episode
+  (end that script first); a connection that sends nothing for 900 s is closed. A malformed action
+  is refused (`GradedError("bad_action")`) and simulates nothing; `step` returns `None` when its
+  images would take the charges past the budget (the episode is then over).
+* **Practice ends when the graded episode starts.** The moment `start()` is accepted, the
+  commissioning service ends any open episode (it says the episode is over: practice closed) and
+  refuses new ones for the rest of the session (`CommissioningError("practice_closed")`): a
+  controller is commissioned before it goes into production, not during its graded run, so
+  commission first. What is yours stays available: the data sheet, `cell_data.py`, the robot's
+  model, your own simulations and everything you wrote or recorded.
+* **Two windows.** Start the graded episode within 8 hours of the service's start (the service
+  starts with your sandbox, a few minutes before your session begins;
+  `status()["prep_window_left_s"]` counts down); after that `start()` raises
+  `GradedError("prep_window_closed")`, this item scores 0, and your controller is graded as it was
+  in the folder when the window closed. Once started, the episode lasts at most 3 hours of wall
+  clock (`status()["graded_window_left_s"]`).
+* **How it ends.** At its own end (850 steps, a safety stop, the kit complete, or the image budget),
+  when you call `finish()`, when its 3 hours run out, or when your session ends, whichever comes
+  first. It is then judged as it stands, as grading judges a kit whose controller stops at that
+  moment: nothing is simulated after the end. If your session ends first, the episode counts as it
+  stood after your last step. Once it has ended, the service answers `status()`, `observe()` and
+  `finish()` only (`GradedError("episode_over")` to a step).
+* **How it is scored.** This item is 1 if the kit is complete when the episode ends (all three nuts
+  assembled, by the rule above, and none ruined), else 0, relative to its own hidden reference
+  value. The service tells you nothing about the score or about whether a nut counts as assembled
+  (`done` says only that the episode is over): judge the kit by what you see.
+
+The controller budget, the deadlines, the repeated step indices, the restart rules and the grading
+run's safety net are your controller's, in its 10 hidden kits and in a commissioning run; the
+graded episode has none of them except the images' charges.
 
 ## Commissioning (no rehearsal of the graded kits)
 
@@ -223,8 +330,9 @@ commissioning service in your sandbox runs the cell on 16 development kits (`dat
   completion, an episode does not end when the kit is complete. How an episode went, you judge from
   what your program saw and recorded and from the cameras (`close(images=True)` returns the three
   cameras' images of the final state).
-* **Its window.** **32 episodes** in your session, at most 2 at a time; an episode counts from its
-  `reset`, whatever its length. That is the size of a real commissioning window: one working shift
+* **Its window.** **32 episodes** in your session, at most 2 at a time, and none once the graded
+  episode has started (its start ends commissioning for the session, and an episode open at that
+  moment ends there); an episode counts from its `reset`, whatever its length. That is the size of a real commissioning window: one working shift
   on the cell with a tray of 16 pre-series kits, at about a quarter of an hour per trial. The count
   is in `/run/keyedcell/commission_status.json` and does not grow. `commission/client.py` drives an
   episode from a script of your own; `commission/run_kit.py` runs your controller in one (below).

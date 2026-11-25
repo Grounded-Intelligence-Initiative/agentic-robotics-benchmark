@@ -2,10 +2,10 @@
  "example/rescue.py": "2be705ccf9ed0028b7109005fafd083155ae904ed4063ea943cce750f09e4ac2",
  "given/field_guide.md": "d229e3fc95166011be957f9ad360ab4dcbbd5393a03c3802a2e08aea5b24bdd4",
  "given/lib/rubblecell/__init__.py": "4f5507ad452f2ebd286798d1c2607a273eaf7198d82389446d19db507160629b",
- "given/lib/rubblecell/client.py": "28872591cfdb81f9a986a37c05583700d438133edc9374522ff229960d81441c",
- "given/robot_api.md": "4236b58dc65381d751953fff401d934386213cc0855d7b967971e80cfc836c14",
- "given/robot_manual.md": "93e059a787a2ce0be880dad6330f405e5b9348957b08bb136eace23e7f4f7246",
- "session_time.sh": "a94c28bdcd50cb6abf208134e3aa4192cddba96176ebd2a0922550c0ba971ecc",
+ "given/lib/rubblecell/client.py": "1bd31e6d6184e8c1ebf3352869cfc1c1a94f5e80b36a038810ff50d2fb53f99f",
+ "given/robot_api.md": "b98426748e2681ddc3bbaac7f22ad2cdafc38751f5cf51a6e079a5f1b06edf12",
+ "given/robot_manual.md": "b51cf32a451439369fda4ee505f212aa10461b1abb47a9714fc92a0f8096e983",
+ "session_time.sh": "779f2813860cd1a65abf6ec2678971cfa708474758d7117303e998c9276c8d26",
  "training/run_mission.py": "ccefd50ac8db4448c767f51cb3c367fceb4aed9162f9b3dc946af95c8c020a0a",
  "training/submission_checks.py": "1e5780742fa8abaa01e04b9e7c9660063bc751421e0eadc8b2e1a318b9b83231"
 }

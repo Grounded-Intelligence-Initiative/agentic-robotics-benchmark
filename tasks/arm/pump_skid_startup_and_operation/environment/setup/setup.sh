@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Setup: trusted root, cwd = this staged folder, before the agent phase. Stages the givens (the cell documents, the
 # client library, the instrument catalog, the commissioning launcher and the example program) into the agent home, owned
-# by the agent, and starts the commissioning service (below). The grader
+# by the agent, and starts the graded episode's service and the commissioning service (below). The grader
 # never reads these copies: verification is separate (task.toml), and tests/test.sh builds the grader's own ROOT-OWNED read-only
 # copy of the same givens in the fresh verifier sandbox, from tests/setup_payload/ (a byte copy of payload/ here: change
 # both together, then tests/given_hashes.json) and the image's robot model (/opt/task-assets/panda).
@@ -21,12 +21,40 @@ done
 mkdir -p "$HOME_DIR/submission" && chown "$AGENT_USER:$AGENT_USER" "$HOME_DIR/submission"
 echo "[setup] givens staged in $HOME_DIR (owner $AGENT_USER)" >&2
 
+# The online variant: the graded episode's service (online/graded_service.py), ONE episode of the grader's hidden set
+# (online/episode.json) that the agent plays itself through skidcell.client.connect_graded(). It runs the grader's own
+# cell: the image's byte copy of tests/skidcell/ (/opt/skidcell-commission/skidcell/), copied here, root-only, before
+# any other account runs (the worker checks it against online/service.json's digests and imports it as root). Started
+# as root, it reads the episode, then serves as its own account `skidgrade` (environment/Dockerfile: not the
+# commissioning service's `skidcell`, which serves the agent's commissioning shifts) through
+# /run/skidcell-graded/graded.sock and writes the episode's record to /var/lib/arb-online (owner skidgrade, 0700), which
+# task.toml declares an artifact and tests/verify.py scores. The command returns once the service serves. Practice ends
+# when the graded episode starts (O13): the start writes /run/skidcell-graded/flags/started, and the commissioning
+# service below ends its shifts and refuses new ones once that flag exists; checked here: the commissioning account sees
+# the flag's directory and the flag is not set.
+GRADED="$PWD/online"
+id -u skidgrade > /dev/null 2>&1 || { echo "[setup] the image lacks the account skidgrade" >&2; exit 1; }
+rm -rf "$GRADED/skidcell"
+install -d -o root -g root -m 700 "$GRADED/skidcell"
+cp /opt/skidcell-commission/skidcell/*.py "$GRADED/skidcell/"
+chown -R root:root "$GRADED"
+chmod -R go-rwx "$GRADED"
+env -i PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 HOME=/nonexistent \
+    /opt/venv/bin/python3 -I -B "$GRADED/graded_service.py" --config "$GRADED/service.json" < /dev/null > /dev/null 2>&1 \
+  || { echo "[setup] the graded episode's service did not come up (/var/lib/arb-online/service.log)" >&2; exit 1; }
+[ -S /run/skidcell-graded/graded.sock ] || { echo "[setup] the graded episode's service has no socket" >&2; exit 1; }
+runuser -u skidcell -- test -d /run/skidcell-graded/flags -a -x /run/skidcell-graded/flags \
+    -a ! -e /run/skidcell-graded/flags/started \
+  || { echo "[setup] the practice flag's directory is not as the commissioning service needs it" >&2; exit 1; }
+echo "[setup] graded episode's service listening on /run/skidcell-graded/graded.sock" >&2
+
 # The commissioning service (v0.6), the series' cell on its development sites (sister sites, never a graded one): the
 # image installs it under /opt/skidcell-commission for the account `skidcell` only (the agent account can neither read
 # nor list it); setup starts it now, to run through the agent's session, under a loop that restarts it should it ever
 # exit. The agent reaches it through the socket /run/skidcell/commission.sock (skidcell.client.connect_commissioning,
 # ~/commission/run_shift.py): the cell's public calls and reset(site), with the graded episode's budgets and a fixed
-# number of shifts; no ground truth, no score, no debrief. Its numerics are pinned as the grader pins them.
+# number of shifts; no ground truth, no score, no debrief. Its numerics are pinned as the grader pins them. It closes
+# for the rest of the session once the graded episode starts (O13: the flag above).
 SERVICE=/opt/skidcell-commission
 [ -f "$SERVICE/commissiond.py" ] || { echo "[setup] the image lacks the commissioning service ($SERVICE)" >&2; exit 1; }
 install -d -o skidcell -g skidcell -m 755 /run/skidcell

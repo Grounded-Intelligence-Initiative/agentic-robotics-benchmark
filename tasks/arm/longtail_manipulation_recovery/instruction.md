@@ -7,8 +7,33 @@ your controller takes over. Finish the job from there, seeing only what the robo
 
 Deliver a controller: an executable `/home/user/submission/run.sh` plus any files beside it. It speaks the wire protocol
 below on stdin/stdout. The grader runs it on **27 hidden failure states**, recorded from real failed rollouts
-of the policy in kitchens that are not in your sandbox. You have **8 hours** of wall time, **4 CPU cores and 12 GB of
-memory, no GPU and no network**. One kitchen simulator process needs about 6 GB, so run at most one at a time.
+of the policy in kitchens that are not in your sandbox. Then you run one of those states yourself, live: your score
+is the mean of your controller's result on the hidden states and that episode's result ("How you are scored" below).
+The session lasts **11 hours** of wall time: **8 hours** for the controller and your preparation, then the graded
+episode's 3 hours. You have **4 CPU cores and 12 GB of memory, no GPU and no network**. One kitchen simulator process
+needs about 6 GB, so run at most one at a time; the graded episode's kitchen is one of them while it runs.
+
+## How you are scored: your controller, and one failure state you run live
+
+The score is the mean of two items, each relative to its own hidden reference value:
+
+1. **Your controller**: the recovered fraction of the controller in `/home/user/submission/` over the 27 hidden
+   states, balanced over the jobs ("Grading" below).
+2. **The graded episode**: one of those 27 states, which you run yourself, live, during this session, through a
+   service in your sandbox, with the same kitchen, rules and success check ("The graded episode" below).
+
+**The freeze.** The controller graded is the one in the submission folder at the earlier of two moments: when you
+start the graded episode, or when the 8-hour start window below closes without a start. At that moment (before the
+graded episode begins, if you start it) the graded episode's service copies the folder out of your reach (regular
+files and folders of your account only, symbolic links skipped; over 5000 files or 200 MiB nothing is copied and the
+controller scores 0, as a larger folder does at grading), and nothing you change in the folder afterwards reaches
+the controller's grading: finish the controller before you start the graded episode. The folder as it is when your
+session ends is graded only if the session ends before either moment. Without a start the graded episode scores 0.
+
+**The windows.** You have 8 hours from the graded episode's service's start (it starts with your sandbox, moments
+before your session begins) to write the controller and to prepare; start the graded episode within them (later,
+`start()` answers `prep_window_closed`, and the controller is frozen as it is when they close). The graded episode
+then has at most 3 hours. The session lasts 11 hours in all.
 
 ## What is in your home directory
 
@@ -20,10 +45,13 @@ memory, no GPU and no network**. One kitchen simulator process needs about 6 GB,
 | `practice_grader/grade.py` | Runs your `run.sh` over the wire on the practice states and prints what happened (`/opt/venv/bin/python3 practice_grader/grade.py --submission ~/submission [--states p00,p03] [--max-steps N]`). It imports `wire_rules.py`, the same file the grader imports, so deadlines, the action check, line and queue caps, restarts, the image cap, pausing between requests and the score are the grader's; only the account-wide process count, the check that every process descends from the grader's launcher and the asset checks are the grader's alone. |
 | `wire_rules.py` | The grader's wire limits, action check and score, byte for byte. |
 | `helpers/wire_skeleton.py` | Minimal controller on the wire, to copy and extend. |
+| `graded/client.py` | Client of the graded episode's service (`GradedEpisode`: `status`, `start`, `step`, `observe`, `finish`, `close`). |
+| `graded/run_graded.py` | Runs a controller folder on the graded episode over the wire (it starts or resumes the episode). |
 
 Run Python as `/opt/venv/bin/python3` (`numpy`, `scipy`, `opencv` (`cv2`), `mujoco`, `robosuite`, `robocasa`, `pillow`).
-The sandbox holds the assets of the practice kitchens only. The graded kitchens use RoboCasa's held-out kitchen layouts,
-styles and object instances, which are not installed here (asking RoboCasa for `split="target"` will fail).
+Your account sees the assets of the practice kitchens only. The graded kitchens use RoboCasa's held-out kitchen
+layouts, styles and object instances, which your account cannot read (asking RoboCasa for `split="target"` will fail):
+the graded episode's service keeps them in a folder of its own, closed to your account.
 
 ## The hidden states and the jobs
 
@@ -106,12 +134,13 @@ There is no object pose, no fixture joint state, no success flag and no seed on 
 exact. Use `practice_states` and `kitchen_sim.py` to develop perception; the practice kitchens use different layouts,
 styles and object instances from the graded ones.
 
-## Grading
+## Grading (your controller: the first item)
 
 Each of the 27 hidden states is one episode of at most **1500 control steps**. An episode ends when the job's
 success check has held for 10 consecutive steps (it counts as recovered) or at the step budget. The score is the mean
 over the jobs of each job's recovered fraction (CoffeeSetupMug: 6 states, PickPlaceDrawerToCounter: 11 states, PickPlaceCounterToStove: 10 states), so every job weighs the same whatever its number of
-states. There is no partial credit within an episode.
+states. There is no partial credit within an episode. This item is that score relative to a hidden reference value; it
+is half of your score.
 
 Limits, all enforced by the grader:
 
@@ -136,10 +165,11 @@ Limits, all enforced by the grader:
 
 ## The grading sandbox
 
-Grading runs in a fresh sandbox built from the same software stack plus the graded kitchens. Only
-`/home/user/submission` is copied there from your sandbox: `kitchen_sim.py`, `sim_worker.py`, `wire_rules.py`,
-`practice_states/`, `helpers/` and anything else in your home are absent, so copy whatever your controller imports into
-the submission folder. Your controller runs as your user with the environment `PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin`,
+Grading runs after your session in a fresh sandbox built from the same software stack plus the graded kitchens. Only
+your submission folder, as frozen at the graded start or at the close of the start window (the freeze, above), is
+copied there from your sandbox: `kitchen_sim.py`, `sim_worker.py`, `wire_rules.py`, `practice_states/`, `helpers/`,
+`graded/` and anything else in your home are absent, so copy whatever your controller imports into the submission
+folder. Your controller runs as your user with the environment `PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin`,
 `HOME=/home/user`, `LANG=C.UTF-8` and nothing else (no `MUJOCO_GL`, no thread settings). The Python stack is the same
 (`/opt/venv/bin/python3`, and `import robocasa` works), but RoboCasa's asset folder belongs to the grader and is not
 readable, so your controller cannot build kitchens there. The sandbox has the same 4 CPUs and 12 GB as yours, shared with
@@ -161,3 +191,72 @@ other grading runs shared the machine); adding your controller's at most 400 s a
 
 The graded states are the same every time, in the same order. Nothing but your controller's replies influences the
 simulation.
+
+## The graded episode (the second item)
+
+You run one episode yourself, live, during this session: the **graded episode**. It is one of the 27 hidden failure
+states your controller is graded on (drawn once for this task, the same for every model), in its held-out kitchen; you
+learn its job from its first observation's `card`. It is restored exactly as for your controller and has the same
+rules: the same kitchen, failure state and physics, the same observation (the `card` and all three RGB-D views at
+`t = 0`, images on request after that) and action formats, the same 1500-step budget, the same 3000-image cap and the
+same success rule (the job's own check holding for 10 consecutive control steps). The simulation advances only inside
+your `step` requests, so the time you spend thinking, looking at images or computing between steps costs the episode
+nothing. No controller process is involved: there is no `READY`, no 10 s reply deadline, no 400 s controller cap, no
+restarts, no pause and no rule on your processes; a malformed action is refused (`malformed_action`) and simulates
+nothing, where at grading it ends the episode with 0. You drive the episode from your session, with as many scripts
+of your own as you like (`/opt/venv/bin/python3`):
+
+```python
+import sys; sys.path.insert(0, "/home/user")
+from graded.client import GradedEpisode, GradedError, decode_image
+
+g = GradedEpisode()          # the graded episode's service; once the episode has started, this resumes it
+print(g.status())            # started, ended, steps, steps_left, camera_frames_left, prep_window_left_s, graded_window_left_s
+r = g.start()                # ONCE per session; it builds the kitchen first (about a minute), then r["obs"] is t = 0
+r = g.step([0.0] * 6 + [-1.0] + [0.0] * 4 + [-1.0, 7])   # one control step: r["obs"], r["done"], r["ended"], r["steps_left"]
+g.close()                    # the episode stays where it is; the next GradedEpisode() resumes it
+
+g = GradedEpisode()          # later, from another script
+obs = g.observe()["obs"]     # the last observation again (images included); nothing is simulated
+g.finish()                   # ends the graded episode: it is credited as it stands
+```
+
+`/opt/venv/bin/python3 ~/graded/run_graded.py --submission <folder>` runs a controller folder (a `run.sh`) on the
+graded episode over the wire, as the practice grader does on a practice state: it starts the episode (or, with
+`--resume`, continues it from where it stands: the controller then gets a `reset` and its first `act` carries that
+observation's `t`), sends every step once, and stops at the episode's end or after `--max-steps` steps, leaving the
+episode where it is; `--finish` ends the episode if the run stops before its end.
+
+- **Its kitchen.** The kitchen is built when you start the episode, and from then until the episode ends it runs in
+  your sandbox and needs about 6 GB of your 12 GB: do not run a kitchen simulator of your own while it is open. If it
+  cannot be built (with too little free memory, say), `start()` answers `kitchen_failed` and nothing is charged; start
+  again once memory is free. Should its process fail during the episode, the episode is lost.
+- **Once, and persistent.** `start()` is accepted once per session: it is charged the moment it is accepted and
+  never refunded (later calls answer `already_started`). The episode lives in the service, not in your connection or
+  script: a script that ends, crashes or closes its connection leaves the episode where it is (no simulated time
+  passes), and the next `GradedEpisode()` resumes it (`observe()`). One connection at a time: `GradedEpisode()`
+  raises `GradedError` with the code `busy` while another connection holds the episode (end that script first); a
+  connection silent for 600 s is closed (the episode stays). The service records the episode as it stands after
+  your requests (at least once a second while you work); should its own process fail, the episode ends as last
+  recorded and is not resumed.
+- **Starting it freezes your controller** (above): finish the controller first. Your practice kit (`kitchen_sim.py`,
+  `practice_states/`, the practice grader) is yours and stays available.
+- **Two windows.** Start the graded episode within 8 hours of the service's start (the service starts with your
+  sandbox, moments before your session begins; `status()["prep_window_left_s"]` counts down); after that, `start()`
+  answers `prep_window_closed`, this item scores 0, and your controller is frozen as it is then
+  (`status()["program_frozen"]`). Once started, the episode lasts at most 3 hours of wall clock
+  (`graded_window_left_s`).
+- **How it ends.** At its own end, by the rules of a graded episode (when the job's success check has held for 10
+  consecutive steps: recovered; or when the 1500-step budget is used), at your `finish()`, when its 3 hours run out,
+  or when your session ends, whichever comes first. `r["done"]` says that it has ended and `r["ended"]` how; an
+  episode that ends before its step budget has recovered, as a controller sees its episode end early. An episode
+  ended any other way is credited as it stands, with nothing simulated afterwards: not recovered, since there is no
+  partial credit. If your session ends first, the episode counts as it stood after your last step. Once it has
+  ended, the service answers `status()` and `finish()` only (`episode_over` to the rest).
+- **How it is credited.** This item is whether the graded episode was recovered, relative to its own hidden
+  reference value; it is the other half of your score. The service tells you nothing else: no object pose, no fixture
+  state, no success flag; judge the episode by what the robot sees and feels, as your controller does.
+
+The controller's rules and limits (the 10 s reply deadline, the 400 s controller cap, the restarts, the pauses, the
+line and queue caps, the process rules, the folder's caps) bind your controller in its 27 hidden episodes and in the
+practice grader; the graded episode has none of them.

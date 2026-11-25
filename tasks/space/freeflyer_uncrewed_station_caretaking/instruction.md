@@ -12,8 +12,9 @@ spring-closed gripper, cameras and lamps. It reads the station's telemetry, and 
 of a cabin air unit or to switch a module's lights. It has no sense of touch and no sensor that says whether its
 gripper holds anything.
 
-You are the team's robotics engineer. **Write the robot's autonomous program for a sortie.** Nobody can steer the
-robot during a sortie. On each sortie your program has to:
+You are the team's robotics engineer. **Write the robot's autonomous program for a sortie**: nobody can steer the
+robot during the program's sorties. You also fly one sortie yourself, through the graded episode's service (below). On
+each sortie the robot has to:
 
 1. **diagnose the blockage**: work out from the telemetry which cabin air unit is affected and since when, find the
    blocked return inlet, identify the blocking item in the lost-item register, and report all of it with a camera
@@ -26,6 +27,22 @@ robot during a sortie. On each sortie your program has to:
    contact with the station; and leave every cabin air unit running;
 6. **dock** again, with charge left and nothing in the gripper.
 
+## How you are scored: two items, each half of the score
+
+1. **The program.** After your session the grader runs your program (`/home/user/submission/caretake.py`, below) on
+   **6 hidden sites**, a sortie on each.
+2. **The graded episode.** During this session you fly **one hidden site** yourself, a sortie of the same robot,
+   through the graded episode's service, with whatever scripts you like (below).
+
+Your score is the mean of the two: (the program's score + the graded episode's score) / 2.
+
+**The program is frozen when you start the graded episode.** At the moment `graded_start()` succeeds, the contents of
+`/home/user/submission/` are copied, and that copy is the program the grader runs; nothing you change in the folder
+afterwards counts. If you never start the graded episode, the program is frozen when the preparation window closes (4
+hours after the graded episode's service started, which is just before your session began; if that copy fails, the
+program scores 0), or at the end of your session if that comes first. So finish the program before you start the
+graded episode.
+
 ## What you are given
 
 | path | content |
@@ -37,7 +54,7 @@ robot during a sortie. On each sortie your program has to:
 | `~/given/lost_item_register.md`, `catalogue/` | the register's entries and what they are worth, the classes of items and their grasp bars; catalogue photographs with `index.json` |
 | `~/given/station_map/` | the as-surveyed map: `zones.json`, `fixtures.json`, `landmarks.json`, and pictures in `views/` |
 | `~/given/rehearsal_guide.md` | the rehearsal facility: the module, the cards, the allowance, every field a run gives back |
-| `~/given/lib/cabinkit/` | the client library (`cabinkit.client`): the `Robot` proxy and the program launcher |
+| `~/given/lib/cabinkit/` | the client library: `cabinkit.client` (the `Robot` proxy and the program launcher) and `cabinkit.graded` (the graded episode's robot, `connect_graded`) |
 | `~/example/caretake.py`, `~/rehearsal/rehearse.py` | a minimal program that runs and scores nothing; the tool that runs your submission on a rehearsal card |
 
 Each site's own documents come at run time from `robot.mission()`: the work order, the telemetry log of the 72 h
@@ -85,13 +102,16 @@ and no training call (`torch.optim`, `.backward(`, `jax.grad`); your own `.py` f
 `os.exec*`, `os.spawn*`, `os.posix_spawn*`); on every site the program lets simulated time pass (any call inside which
 time passes counts); it leaves no process behind and opens no network socket.
 
-Your submission must be final when your session ends: the folder is then copied out of this sandbox and run in a fresh
-one that holds nothing else of yours.
+The program graded is the copy of the folder taken at the freeze (above): its regular files (symbolic links are not
+copied), run in a fresh sandbox that holds nothing else of yours. A folder over 60 MB at the freeze is not copied, and
+the program then scores 0. The contract covers every `.py` file of the folder: keep the scripts you write to fly the
+graded episode outside it (for example in `~/work/`) unless they keep the contract too.
 
-## How it is graded
+## How the program is graded
 
 Your program is run on **6 hidden sites**, a sortie on each: the same station, each time with its own blocked inlet,
-its own items, cabin air units, telemetry, lights, start charge and berth, none of which you have here. A run ends
+its own items, cabin air units, telemetry, lights, start charge and berth, none of which you have here (the graded
+episode, below, is one of them). A run ends
 when `solve` returns or raises, when the site's 2400 s of simulated time are used up, or when your program exceeds its
 program time or its silence budget or breaks the protocol. Then the firmware stops the robot and holds it where it is
 (a docked robot stays docked), and the station runs on for **60 s**. The site is judged on what happened in the run
@@ -114,7 +134,8 @@ changes nothing. A site on which the robot's cell itself failed is run 1 more ti
 | a `step` | at most 5 s |
 | after the run's end: the station runs on, then the site is judged (not part of your simulated time) | 60 s |
 
-A site's score is **S = R × (D + U1 + H + U2 + V + K + L + E)**:
+A site's score, on each of the program's sites and on the graded episode's site, is
+**S = R × (D + U1 + H + U2 + V + K + L + E)**:
 
 | term | weight | what earns it |
 |---|---|---|
@@ -164,15 +185,78 @@ The blocked inlet is the return inlet on which the sheet-like item lies at the s
   handrail are not counted. The robot is inside a keep-out box while its body origin is inside the box as the map
   gives it.
 
-Your result (`caretaking_score`) is the mean of S over the 6 sites, 0 if the contract is broken: a number from 0 to 1,
-and higher is better. It is compared with the measured value of a reference program on the same sites. That value is
-not disclosed; full credit is reached slightly below it. The reference program was written with knowledge your program
-does not have (the robot's true pose, the true place of every grasp bar and the register entry of its item, whether
-the hand holds something and how the held item is turned, whether a placed item lies on its face), but it moves the
-robot only through the calls of `robot_api.md`, under the same firmware and the same budgets, and it takes its
+The program's result (`caretaking_score`) is the mean of S over the 6 sites, 0 if the contract is broken: a number from
+0 to 1, and higher is better. It is compared with the measured value of a reference program on the same sites. That
+value is not disclosed; full credit is reached slightly below it. The reference program was written with knowledge your
+program does not have (the robot's true pose, the true place of every grasp bar and the register entry of its item,
+whether the hand holds something and how the held item is turned, whether a placed item lies on its face), but it moves
+the robot only through the calls of `robot_api.md`, under the same firmware and the same budgets, and it takes its
 decisions from the log, the configuration record and the live telemetry, as yours must. On every scored site it earned
 every term with R at 1, was docked within 2040 s with at least 20 % of charge, used at most 50 % of each frame budget,
 at most 15 captures and at most 30 s of fan stops, made no hard contact and entered no keep-out box.
+
+## The graded episode
+
+The second item is **one of the 6 hidden sites** of the program's runs, the same in every session of this task, which
+you fly yourself during this session through the graded episode's service. It runs the same robot, firmware and
+station services as a scored run, under the same rules of a site: 2400 s of simulated time, 400 colour and 300 depth
+frames, 20 captures that start, 2 fan stops for each cabin air unit, 6 `lights` requests, the first valid `report`, a
+`step` of at most 5 s, the same calls and replies (`robot_api.md`), and the same end and judgement (below). The
+program's budgets of program time (600 s), silence (120 s) and CPU time, and the program's contract, do not apply to
+the graded episode: simulated time passes only inside your calls, so between two calls you may look at frames, think
+and write code for as long as the windows below allow, and the robot and the station wait. While simulated time
+passes the robot does what its firmware does on its own (`robot_manual.md`, section 7).
+
+```python
+import os, sys
+sys.path.insert(0, os.path.expanduser("~/given/lib"))
+from cabinkit.client import CellError
+from cabinkit.graded import connect_graded
+
+robot = connect_graded()           # connects to the graded episode's service; starts nothing
+print(robot.graded_status())       # where the episode stands (below)
+robot.graded_start()               # freezes the program, then starts THE graded episode: once per session
+m = robot.mission()                # from here on, the calls of robot_api.md, as a program makes them
+r = robot.undock()
+robot.step(5.0)
+robot.close()                      # closes this connection only: the episode stays exactly where it is
+```
+
+A program written as `solve(robot)` runs on it unchanged: `solve(connect_graded())`.
+
+* **One start.** `graded_start()` first freezes the program (the copy of `/home/user/submission/` above; if the copy
+  fails, it raises `CellError` with the code `snapshot_failed`, nothing is charged and you may try again), then starts
+  the graded episode. It works once per session and is never undone or refunded; a second `graded_start()` raises
+  `already_started`. Before the start, every call except `graded_status()` and `graded_start()` raises `not_started`.
+* **Rehearsal ends with the start.** All rehearsal comes before the graded episode: the moment `graded_start()`
+  succeeds, the rehearsal facility ends a run that is open and refuses new ones for the rest of the session
+  (`practice_closed`). Your own code and tools, and anything you built from the givens, stay available.
+* **Persistent, one connection at a time.** The episode lives in the service, not in your connection: closing the
+  connection (`close()`, or the end or crash of your script) leaves it exactly where it is, and the next
+  `connect_graded()` resumes it, so you can fly it from many short scripts. While one connection is open, another
+  `connect_graded()` raises `CellError` with the code `busy` (a connection that has been idle for 10 minutes gives way
+  to a new one). `graded_finish()` ends the episode for good: do not put it in a `finally:` block of a script that you
+  may want to run again.
+* **Status.** `graded_status()` answers at any time (before, during and after the episode) with `started`, `ended`,
+  `end` (how it ended), `sim_time` and `sim_time_max` (mission seconds), `steps`, `colour_frames_used`,
+  `depth_frames_used` and `captures_used` with their `_max`, `prep_window_left_s` and `graded_window_left_s` (seconds;
+  `None` where a window does not apply) and `submission_frozen` (`"ok"`, or `"too_large"` when the folder was over
+  60 MB; `None` before the freeze). It tells you nothing about the site.
+* **Two windows.** The preparation window, for the program and your preparation of the graded episode: the graded
+  episode must be started within 4 hours of the start of its service, which starts just before your session
+  (`prep_window_left_s`); a later `graded_start()` raises `prep_window_closed`, and the graded episode then scores 0
+  (the program, frozen when the window closed, is still graded). The graded window: once started, the episode runs for
+  at most 3 hours of wall-clock time (`graded_window_left_s`); then the service ends it itself.
+* **How it ends.** The episode ends at the first of: your `graded_finish()`; the end of its 2400 s of simulated time
+  (the call that uses them up answers `TIME_UP`); the end of the graded window; a failure of the robot's cell; the end
+  of your session. It ends as a scored run ends when `solve` returns: the firmware stops the robot and holds it where
+  it is (a docked robot stays docked), the station runs on for 60 s (`graded_finish()` returns about a minute later),
+  and the site is judged on what happened in the episode and on the state at the end of those 60 s. If your session
+  ends while the episode runs, it ends in the same way from the state after your last call. From then on the robot's
+  calls raise `episode_over`, and `graded_status()` says how it ended.
+
+The graded episode's score is that site's S, compared with the reference program's value on the site as the
+program's result is (not disclosed; full credit slightly below it); 0 if you never start the episode.
 
 ## What you can rely on at a site
 
@@ -210,7 +294,8 @@ session, at most 15 min in a run, at most 30 runs, at most 2 at the same time. A
 printed, every frame it took, the station's record of the run and an observation sheet: for each item where it ended
 up, as a category; the fan stops and the violations the station booked; whether the robot docked and with what charge;
 the hard contacts. It gives no score, no true pose and no area. `rehearsal_guide.md` has the cards, the allowance and
-every field.
+every field. The facility closes when you start the graded episode (above): an open run ends, and every later request
+is refused with `practice_closed`.
 
 ## Notes
 
@@ -219,12 +304,15 @@ every field.
 - Do not modify the given files in your home directory; the scored runs use their own copies.
 - Environment facts (harness limits): a tool call whose input runs above roughly 25-30k tokens is dropped by the
   harness (it is never executed and no error comes back), and a response that reaches the 64k output-token limit is
-  lost and, after at most a few retries, ends the session with whatever is in `/home/user/submission/` at that moment.
-  Write large files in several parts (one function group per write), keep every response well below that limit, write
-  a complete submission early and refine it.
-- Session time: this session is stopped after 4 hours of wall-clock time from its start. A session stopped by that
-  limit is graded on whatever the submission folder holds at that moment, so a file left unfinished then is what runs.
-  Note the start time with `date` when you begin, keep a complete submission in place from early on, and end the
-  session yourself (stop working and say that you are done) at least 15 minutes before the limit.
+  lost and, after at most a few retries, ends the session (and with it a graded episode that is still running; a
+  program not yet frozen is then taken as the submission folder holds it at that moment). Write large files in several
+  parts (one function group per write), keep every response well below that limit, write a complete submission early
+  and refine it.
+- Session time: this session is stopped after 7 hours of wall-clock time from its start (the preparation window of 4
+  hours, then the graded window of 3 hours). Note the start time with `date` when you begin and keep a complete
+  submission in place from early on. If the session ends while the graded episode is still running, the episode ends
+  there, as it stood after your last call. Once the graded episode has ended, end the session yourself (stop working
+  and say that you are done).
 
-You have 4 hours. Save your work in `/home/user/submission/` as you go.
+You have 7 hours: up to 4 for the program and your preparation, then up to 3 for the graded episode. Save your work in
+`/home/user/submission/` as you go.

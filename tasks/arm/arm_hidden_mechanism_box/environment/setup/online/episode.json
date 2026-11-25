@@ -1,0 +1,9 @@
+{
+ "format": "arb-online-episode/1",
+ "task": "arm_hidden_mechanism_box",
+ "episode": "i1@d5f4f392d5ad",
+ "instance": "i1",
+ "seed": 2673715282639566367,
+ "seed_sha256": "d5f4f392d5ad49117d6b50c634121b9f32d859c7c73123c3ed9580a8288ef324",
+ "source": "Drawn 2026-11-18T04:37:06+00:00 with OS entropy (Python secrets): the box uniformly from the four hidden boxes (sorted keys of ref/boxes.json, the same file as tests/ref/boxes.json; secrets.randbelow(4) gave index 1) and one fixed 64-bit seed (secrets.randbits(64)), as the offline grader draws an episode's seed per run from OS entropy. seed_sha256 = sha256 of the seed's decimal digits."
+}

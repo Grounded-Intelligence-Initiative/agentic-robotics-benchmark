@@ -11,6 +11,18 @@ Python 3 standard library only; numpy is used only if you pass numpy arrays or a
         obs, done = lab.step([0.1])        # free inside the trial (step and time caps apply)
         out = lab.execute("inst_a", plan)  # costs ONE trial; runs an open-loop plan
 
+The graded episode (one per session; see the task's instructions):
+        obs = lab.graded_start()           # once: freezes the submission folder, starts it -> first obs
+        obs, done = lab.graded_step(a)     # one simulated step of the graded episode
+        obs, done = lab.graded_observe()   # the latest observation again (nothing is simulated)
+        print(lab.graded_status())         # started / ended, steps, simulated time, time left
+        lab.graded_finish()                # ends it now
+    The graded episode lives in the lab, not in your connection: closing the connection (or this
+    client) leaves it where it is, and a later connection resumes it. One connection holds it at a
+    time; another one gets the error `graded_busy` until the first one closes. Starting it ends lab
+    practice: every open trial ends then, and reset (and execute) answer `practice_closed` for the
+    rest of the session (hello and budget still answer).
+
 Command line:
     python3 labclient.py hello | budget
     python3 labclient.py reset <instance>      # SPENDS a trial and ends it at once: this command closes its
@@ -18,6 +30,9 @@ Command line:
                                                # trial. You get one observation and no step. To use a trial, keep
                                                # one LabClient open from reset() through every step() (as above).
     python3 labclient.py execute <instance> <plan.json | ->
+    python3 labclient.py graded_status | graded_finish
+    python3 labclient.py graded_start | graded_observe [--out reply.json]
+        (prints the reply with each image's data replaced by its shape; --out saves it whole)
     python3 labclient.py raw '<one JSON request>'
 
 Trials are counted by the lab, not by this client: reconnecting, restarting your program or a
@@ -135,9 +150,47 @@ class LabClient:
             "outcome"
         ]
 
+    # -- the graded episode
+    def graded_start(self):
+        """Start the graded episode (once per session, never refunded); returns its first observation. It first
+        freezes /home/user/submission (the program graded is the one there now); if that copy fails the episode
+        does not start and nothing is charged (`snapshot_failed`). Without a start, the lab freezes the folder
+        when the start window closes."""
+        return self.request({"op": "graded_start"})["obs"]
+
+    def graded_step(self, action):
+        """One step of the graded episode; returns (obs, done)."""
+        r = self.request({"op": "graded_step", "action": action})
+        return r["obs"], r["done"]
+
+    def graded_observe(self):
+        """The graded episode's latest observation again (nothing is simulated); returns (obs, done)."""
+        r = self.request({"op": "graded_observe"})
+        return r["obs"], r["done"]
+
+    def graded_status(self):
+        """{"started", "ended", "end_reason", "steps", "sim_time_s", "prep_left_s", "graded_left_s",
+        "holder"} ("holder": "you", "other" or None: the connection that holds the episode)."""
+        return self.request({"op": "graded_status"})["status"]
+
+    def graded_finish(self):
+        """End the graded episode now; returns its final status."""
+        return self.request({"op": "graded_finish"})["status"]
+
     def close(self):
-        """End the current trial (if any) and the connection."""
+        """End the current trial (if any) and the connection (a graded episode stays where it is)."""
         self.__exit__(None, None, None)
+
+
+def _shapes_only(value):
+    """The reply with every image's data replaced by its shape (for printing)."""
+    if isinstance(value, dict):
+        if set(value) == {"dtype", "shape", "b64"}:
+            return {"dtype": value["dtype"], "shape": value["shape"]}
+        return {k: _shapes_only(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_shapes_only(v) for v in value]
+    return value
 
 
 def main(argv):
@@ -145,6 +198,9 @@ def main(argv):
         print(__doc__)
         return 2
     cmd, args = argv[0], argv[1:]
+    save = None
+    if cmd in ("graded_start", "graded_observe") and len(args) == 2 and args[0] == "--out":
+        save, args = args[1], []
     with LabClient() as lab:
         try:
             if cmd == "hello":
@@ -158,6 +214,8 @@ def main(argv):
                 out = lab.request(
                     {"op": "execute", "instance": args[0], "plan": json.loads(text)}
                 )
+            elif cmd in ("graded_status", "graded_finish", "graded_start", "graded_observe") and not args:
+                out = lab.request({"op": cmd})
             elif cmd == "raw" and len(args) == 1:
                 out = lab.request(json.loads(args[0]))
             else:
@@ -166,7 +224,10 @@ def main(argv):
         except LabError as exc:
             print(json.dumps({"ok": False, "error": exc.code, "message": exc.message}))
             return 1
-    print(json.dumps(out))
+    if save is not None:
+        with open(save, "w") as fh:
+            json.dump(out, fh)
+    print(json.dumps(_shapes_only(out) if cmd in ("graded_start", "graded_observe") else out))
     return 0
 
 

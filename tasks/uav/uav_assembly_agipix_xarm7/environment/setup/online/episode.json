@@ -1,0 +1,7 @@
+{
+ "episode": "graded-01",
+ "seed": 5747171317740947538,
+ "seed_sha256": "2c07f1c9a7f4fdccd2abbd82b89361625e10e0a5bb38d4d70687c27f0dbb876c",
+ "oracle_token_sha256": "c3fd4976cc69b33ebbbf99c25aa3b8efc6b990d05dfb3ab4d4f4f2670a1207bf",
+ "note": "the graded episode of the dual mode: one workcell of the offline verifier's episode distribution (tests/verify.py draws a 63-bit seed per episode with secrets.randbits(63); cell.Cell builds the workcell from it, jittered), the seed drawn once, 2026-11-24T04:03:26Z, with secrets.randbits(63); root-only at /opt/ale/setup while the agent works, read by the service's worker as root before it drops privileges; tests/online.json holds the id and the seed's sha256 (of its decimal ASCII form)"
+}

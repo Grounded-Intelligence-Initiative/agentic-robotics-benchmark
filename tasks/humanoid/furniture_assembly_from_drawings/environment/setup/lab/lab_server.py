@@ -23,6 +23,12 @@ The server
     connection;
   * counts the episodes in a persisted counter (<state>/episodes_used.json) and refuses new ones once
     `practice_episodes_max` are used: {"error": "practice_budget"};
+  * closes for good once the graded episode has started (the graded episode's service creates the flag file named by
+    --closed-flag, in a directory the agent can neither read nor write, before it starts the episode): an open
+    episode ends at once (the request that meets the closure, or the connection's next request within `silence_s`,
+    is answered {"error": "practice_closed"}, then the connection closes), and every later cell call answers
+    {"error": "practice_closed"} (status adds "practice_closed": true). Offline, all practice happens before grading;
+    the graded episode is played during the session, so practice must not go on beside it;
   * runs every episode in a forked child: a crash or a hang of an episode costs that episode, never the server. The
     parent imports everything (numpy, mujoco, the cell) once at start-up, so the lab keeps working whatever happens
     to files later, and never renders (no GL context crosses a fork).
@@ -35,6 +41,7 @@ program_time_cap_s, silence_s) come from lab_config.json next to this file and e
 
 import argparse
 import collections
+import gc
 import importlib
 import json
 import os
@@ -72,6 +79,20 @@ FORBIDDEN = {"truth", "reference_assemble", "score", "finalize"}
 ERROR_KEYS = frozenset(("error", "detail"))     # the grader's wire: an answer with only these keys is an error reply
 
 STOP = [False]
+CLOSED_FLAG = [None]                    # --closed-flag: once this path exists, practice is over (the graded episode runs)
+CLOSED_DETAIL = "the graded episode has started: practice is over for this session"
+CLOSED_POLL_S = 0.5                     # how often an idle episode looks for the flag
+
+
+def practice_closed():
+    """True once the graded episode has started (its service created the flag)."""
+    flag = CLOSED_FLAG[0]
+    if not flag:
+        return False
+    try:
+        return os.path.lexists(flag)
+    except OSError:
+        return False
 
 
 class Log(object):
@@ -276,14 +297,19 @@ class LineTooLong(Exception):
     pass
 
 
+class PracticeClosed(Exception):
+    """The graded episode started while the episode waited for a request."""
+
+
 class LineReader(object):
     def __init__(self, sock, initial=b""):
         self.sock = sock
         self.buf = bytearray(initial)
         self.eof = False
 
-    def readline(self, timeout):
-        """The next line (str), None at end of stream; raises TimeoutError, LineTooLong, OSError."""
+    def readline(self, timeout, poll=None):
+        """The next line (str), None at end of stream; raises TimeoutError, LineTooLong, OSError, and PracticeClosed
+        when `poll()` turns true while no complete line is buffered (checked every CLOSED_POLL_S)."""
         deadline = time.monotonic() + timeout
         while True:
             i = self.buf.find(b"\n")
@@ -301,11 +327,18 @@ class LineReader(object):
                     self.buf.clear()
                     return line.decode("utf-8", "replace")
                 return None
+            if poll is not None and poll():
+                raise PracticeClosed()
             left = deadline - time.monotonic()
             if left <= 0:
                 raise TimeoutError()
-            self.sock.settimeout(left)
-            chunk = self.sock.recv(1 << 16)
+            self.sock.settimeout(left if poll is None else min(left, CLOSED_POLL_S))
+            try:
+                chunk = self.sock.recv(1 << 16)
+            except TimeoutError:
+                if poll is None:
+                    raise
+                continue
             if not chunk:
                 self.eof = True
             else:
@@ -367,14 +400,17 @@ def run_episode(conn, pending, seed, number, cfg, status, CellServer):
     def program_time():                                 # the grader's wire: the wall clock minus the cell's own work
         return (time.monotonic() - t0) - float(getattr(srv, "work_wall", 0.0))
 
-    n_req, reason = 0, None
+    n_req, reason, closed_rid = 0, None, None
     while True:
         remaining = program_cap - program_time()
         if remaining <= 0:
             reason = "program_time_cap"
             break
         try:
-            line = reader.readline(min(silence, remaining))
+            line = reader.readline(min(silence, remaining), poll=practice_closed)
+        except PracticeClosed:
+            reason = "practice_closed"
+            break
         except TimeoutError:
             reason = "program_time_cap" if program_time() >= program_cap else "silence"
             break
@@ -397,6 +433,9 @@ def run_episode(conn, pending, seed, number, cfg, status, CellServer):
             break
         rid, method, params = req
         n_req += 1
+        if practice_closed():
+            reason, closed_rid = "practice_closed", [rid]
+            break
         if method == "status":
             reply = {"id": rid, "result": dict(status)}
         elif method.startswith("_") or method in FORBIDDEN:
@@ -429,20 +468,42 @@ def run_episode(conn, pending, seed, number, cfg, status, CellServer):
                 break
     srv.wall_used = time.time() - t0_wall
     srv.program_used = program_time()
+
+    def end_episode():
+        out = {}
+        signal.alarm(int(REQUEST_CAP_S))
+        try:
+            if not srv.done:
+                srv._end(reason)
+            out = finalize(srv) or {}                       # frees the renderers; the record stays in this process
+        except Exception:  # noqa: BLE001
+            LOG("episode %d: finalize raised\n%s" % (number, traceback.format_exc()))
+        signal.alarm(0)
+        return out
+
+    rec = None
+    if reason == "practice_closed":
+        # the graded episode has started: this episode is over and its cell is freed at once; the request that met the
+        # closure, or the connection's next request within silence_s, gets the fixed reply, then the connection closes
+        rec = end_episode()
+        srv.cell = None
+        gc.collect()
+        if closed_rid is None:
+            try:
+                line = reader.readline(silence)
+                req = parse_request(line) if line is not None else None
+                closed_rid = [req[0] if req else None] if line is not None else None
+            except Exception:  # noqa: BLE001 - a timeout or a broken connection: nobody to tell
+                closed_rid = None
+        if closed_rid is not None:
+            send({"id": closed_rid[0], "error": "practice_closed", "detail": CLOSED_DETAIL})
     try:
         conn.shutdown(socket.SHUT_RDWR)
     except OSError:
         pass
     conn.close()
-    rec = {}
-    signal.alarm(int(REQUEST_CAP_S))
-    try:
-        if not srv.done:
-            srv._end(reason)
-        rec = finalize(srv) or {}                           # frees the renderers; the record stays in this process
-    except Exception:  # noqa: BLE001
-        LOG("episode %d: finalize raised\n%s" % (number, traceback.format_exc()))
-    signal.alarm(0)
+    if rec is None:
+        rec = end_episode()
     LOG("episode %d: end %s after %d requests; build %.1f s, wall %.0f s, sim %.1f s, frames %s, steps %s, "
         "bad params %s, illegal %s, internal errors %s" % (
             number, reason, n_req, build_s, time.monotonic() - t0, float(rec.get("sim_time_s", float("nan"))),
@@ -487,6 +548,19 @@ class Lab(object):
         self.waiting = collections.deque()   # connections that asked for an episode, in order
         self.active = None                   # the running episode: {"pid", "t0", "number", "conn"}
         self.n_conn = 0
+        self.closed = False                  # the graded episode has started: no practice from now on
+
+    def status(self):
+        st = self.budget.status()
+        if self.closed:
+            st["practice_closed"] = True
+        return st
+
+    def check_closed(self):
+        if not self.closed and practice_closed():
+            self.closed = True
+            LOG("the graded episode has started: practice closed (%d waiting, episode %s running)" % (
+                len(self.waiting), self.active["number"] if self.active else "none"))
 
     # -- connections before their episode
     def accept(self):
@@ -585,7 +659,7 @@ class Lab(object):
             rid, method, _params = req
             if method == "status":
                 c.buf = rest
-                if not self._reply(c, {"id": rid, "result": self.budget.status()}):
+                if not self._reply(c, {"id": rid, "result": self.status()}):
                     self.close(c, "disconnected")
                     return
                 continue
@@ -593,6 +667,13 @@ class Lab(object):
                 self._reply(c, {"id": rid, "result": {"ok": True}})
                 self.close(c, "finish before any episode")
                 return
+            if self.closed or practice_closed():
+                self.check_closed()
+                c.buf = rest
+                if not self._reply(c, {"id": rid, "error": "practice_closed", "detail": CLOSED_DETAIL}):
+                    self.close(c, "disconnected")
+                    return
+                continue
             if not self.budget.available():
                 c.buf = rest
                 if not self._reply(c, {"id": rid, "error": "practice_budget"}):
@@ -624,13 +705,16 @@ class Lab(object):
                     pass
                 LOG("connection %d left before its episode" % c.number)
                 continue
-            if not self.budget.available():
+            self.check_closed()
+            if self.closed or not self.budget.available():
                 req = parse_request(c.pending.split(b"\n", 1)[0].decode("utf-8", "replace"))
                 c.buf = c.pending.split(b"\n", 1)[1] if b"\n" in c.pending else b""
                 c.pending = b""
                 self.idle[c.sock.fileno()] = c
                 self.sel.register(c.sock, selectors.EVENT_READ, c)
-                if not self._reply(c, {"id": req[0] if req else None, "error": "practice_budget"}):
+                refusal = ({"error": "practice_closed", "detail": CLOSED_DETAIL} if self.closed
+                           else {"error": "practice_budget"})
+                if not self._reply(c, dict({"id": req[0] if req else None}, **refusal)):
                     self.close(c, "disconnected")
                     continue
                 c.last = time.monotonic()
@@ -707,6 +791,7 @@ class Lab(object):
                     elif key.fileobj.fileno() in self.idle:
                         self.read(key.data)
                 self.reap()
+                self.check_closed()
                 self.start_next()
                 self.expire_idle()
             except Exception:  # noqa: BLE001 - the lab outlives any single connection
@@ -750,7 +835,11 @@ def main(argv=None):
     ap.add_argument("--allow-user", action="append", default=[],
                     help="an account allowed to connect besides root (repeatable; none given: every account)")
     ap.add_argument("--no-selftest", action="store_true")
+    ap.add_argument("--closed-flag", default=None,
+                    help="practice closes for good once this path exists (the graded episode's service creates it "
+                         "when the graded episode starts)")
     args = ap.parse_args(argv)
+    CLOSED_FLAG[0] = args.closed_flag
     os.umask(0o077)
     global LOG
     LOG = Log(args.log)

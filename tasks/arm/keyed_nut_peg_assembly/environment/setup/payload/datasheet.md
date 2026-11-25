@@ -204,8 +204,10 @@ same tolerances: every development kit is a real kit, with its own actual values
 the development kits are draws from the family of section 3 that the reference controller completed within the
 takt, like the graded kits, and none of them is a graded kit.
 
-- **The window.** 32 episodes in your session, at most 2 at a time. An episode counts from its `reset`. The count
-  is in `/run/keyedcell/commission_status.json` and does not grow. (The size is that of a
+- **The window.** 32 episodes in your session, at most 2 at a time, and none once the graded episode (task
+  instruction) has started: its start ends commissioning for the session. An episode counts from its `reset`. The
+  count is in `/run/keyedcell/commission_status.json` (`practice_closed` once the graded episode has started) and
+  does not grow. (The size is that of a
   real commissioning window: one working shift on the cell with a tray of 16 pre-series kits, at about a quarter
   of an hour per trial: lay the kit out, run one takt, look at the result, clear the pegs, change the program.)
 - **A kit's episode.** `reset(kit)` lays development kit `kit` (1 to 16) out. Each kit has its own layout, its
@@ -249,7 +251,8 @@ line (`~/commission/client.py` speaks it).
   are open; no episode is used), `commissioning_window_used`, `no_episode` (a `step` before `reset`),
   `one_episode_per_connection`, `bad_action` (not 8 finite numbers with an integer camera mask 0 to 7; the step is
   not applied and the episode goes on), `episode_over`, `forbidden` (any other method), `cell_fault`, `bad_request`
-  (a line that is not one JSON request object of at most 64 KiB; the connection closes).
+  (a line that is not one JSON request object of at most 64 KiB; the connection closes), `practice_closed` (the
+  graded episode has started; an episode open at that moment ends with the event below).
 - When a limit ends the episode while the service waits, it sends `{"id": null, "event": "episode_over",
   "reason": ...}` and closes the connection.
 

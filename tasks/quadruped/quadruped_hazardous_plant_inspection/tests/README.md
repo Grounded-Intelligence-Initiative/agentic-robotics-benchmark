@@ -1,5 +1,39 @@
 # quadruped_hazardous_plant_inspection: maintainers' notes
 
+**Dual mode (experimental, 2026-11-23; this branch only, never merged into main).** One session, one verify, two
+scoring items, reward = their mean (each normalised by its own anchor):
+
+- **The program item** is main's grading, unchanged: `offline_verify.py` is main's `verify.py` with two hooks
+  (`ARB_OFFLINE_ANCHOR` names `anchor_offline.json`, main's `anchor.json`; `ARB_OFFLINE_VERDICT` takes its verdict),
+  run by the new `verify.py` as a process of its own on the program frozen at the earlier of the graded start and the
+  start window's close (`/var/lib/arb-online/submission_snapshot`, restored as a declared artifact and checked against
+  the record's digest, then placed root-owned at `/home/user/submission`). Main's hidden set, budgets, gates, network
+  audit and re-run rule apply as they are.
+- **The online item** is the graded episode the agent drives itself, live, through
+  `environment/setup/online/graded_service.py`: site `h01` of `hidden/seeds.json` with its pinned noise seed (drawn
+  2026-11-24T04:01:17Z with `secrets.randbelow(12)` -> 0; `online.json`), the grader's own cell (the image's practice
+  ground holds the same bytes as `plantcell/`; `setup.sh` copies it to `/opt/plantgrade`, and the service's worker
+  checks every file against `environment/setup/online/cell_manifest.json`), built and scored as `verify.py` on main
+  builds and scores a mission (mode hidden, `grader_config.json`'s byte copy, the numerics and render pins of
+  `test.sh`). The service builds the mission as root, then serves as the account `plantgrade` behind
+  `/run/plantgrade/graded.sock`; its record goes to `/var/lib/arb-online` (0700, `plantgrade`), unreadable by the
+  agent. The record's `episode_score` is the mission's S as if the mission ended at that moment (the cell's end of a
+  mission, the link's last look included, computed on a copy of the reports), and at a real end the cell's own
+  `finalize()` record. Not carried over from the program run: the program time, the silence limit, the CPU time, the
+  contract, the wire's after-the-end allowance. A cell failure inside the live mission (`internal_errors_live`, a
+  physics fault) is a task error: main re-runs such a mission, a live one cannot be. `anchor_online.json`: the
+  reference's S on `h01` (1.0, the offline selection's), confirmed by the dual validate.
+- **Practice closes at the graded start** (O13): the start writes `/run/plantgrade/flags/started`; the practice
+  ground (`environment/practice_ground/practiced.py`) ends its open missions with the reason `practice_closed` and
+  answers every later connection `practice_closed`.
+- **The oracle** (`solution/solve.sh`) installs main's reference submission, then plays the graded episode with the
+  oracle token (`solution/reference/online_oracle.py`: the same call sequence as the offline oracle's mission, then
+  `finish`).
+- **Static check** (2026-11-23, the cell on practice site t1): with no walking command the robot stands still
+  (2.5 cm and 0.9 degrees of drift over 300 s simulated; after a stop 0.8 cm over 120 s; the other modes alike, no
+  protective event), and nothing changes with wall-clock time between requests (30 s without a request left the
+  state digest, the dose and the simulated time unchanged).
+
 **Version 2.1** (2026-11-17). Version 2.0 (the text below) was measured once at reward 0.65 on its sealed bytes (engine
 content digest sha256:b2140bdef406c0be...), then amended (amendment 1, section 10) and sealed again
 (sha256:5aa95ba4b24fcac1...); it stays on record as version 2.0. Version 2.1 differs from it in exactly two things:

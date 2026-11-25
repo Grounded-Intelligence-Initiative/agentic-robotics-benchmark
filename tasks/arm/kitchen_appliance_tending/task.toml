@@ -1,11 +1,14 @@
 # Kitchen appliance tending: a fixed Panda in front of a kitchen appliance it has not seen (a cooktop, a microwave or
 # a wall oven) turns burners on, off and to a setting, preheats, sets and turns off the oven and starts and stops the
-# microwave, on text requests, from its cameras and wrist force sensor. The agent reaches the nine scored units only
-# through one lab trial and leaves a controller that the grader drives over a stdio wire on a fixed hidden set of 18
-# episodes. Structure after tasks/arm/arm_hidden_mechanism_box.
+# microwave, on text requests, from its cameras and wrist force sensor. Dual mode (experimental variant): one session,
+# one verify, two scoring items: the controller the agent leaves in /home/user/submission (main's task, graded by
+# main's grader on the fixed hidden set of 18 episodes), frozen at the graded start, and one hidden graded episode it
+# plays itself through the lab (the first entry of a random order of that set whose unit no lab trial used); the
+# reward is the mean of the two. The verifier reads the snapshot and the lab's record from /var/lib/arb-online (a
+# declared artifact). Structure after tasks/arm/arm_hidden_mechanism_box.
 
 schema_version = "1.4+ale.1"
-artifacts = ["/home/user/submission"]
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/kitchen_appliance_tending"
@@ -17,12 +20,14 @@ platform = "arm"
 cpus = 4
 memory_mb = 12288
 
-# 2 h: exploring the practice units in the dev sim, one lab trial on the nine scored units (one of them can be
-# visited before grading: the controller meets the other eight unseen), writing and testing the controller.
+# prep_s 7200 (main's 2 h budget, shared by the program and the preparation: exploring the practice units in the
+# dev sim, the one lab trial, writing and testing the controller and the tools; the graded episode must start
+# within it) + graded_s 10800 (the episode's own window after its start).
 [agent]
-timeout_sec = 7200
+timeout_sec = 18000
 network_mode = "no-network"
 
+# Main's: the verifier runs main's grading of the program again, then reads the record (seconds). Main's grading:
 # 18 episodes (2 per hidden unit), each at most 3 x 1500 control steps. The 6000 s of grader_config.json are the
 # controller's own time (its waits plus 0.03 s per image asked for); the grader's simulation, drawing and pauses come
 # on top. The worst case on a quiet 4-CPU sandbox: 63,000 steps with all three images (about 0.085 s of the grader's

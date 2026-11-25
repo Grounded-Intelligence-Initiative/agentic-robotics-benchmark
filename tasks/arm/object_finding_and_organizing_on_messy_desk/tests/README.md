@@ -5,6 +5,96 @@ the geometry in `environment/setup/payload/task_card.md`. The code is `env.py` (
 its state machine) and `messy_desk_score.py` (the score), both in this folder; the agent has
 neither (see "The desk lab instead of the practice simulator" below).
 
+## Dual mode (experimental branch `exp/dual-mode-scoring`, 2026-11-18)
+
+One task, one session, one verify, two scoring items; the reward is their mean (rules DM1-DM8 on top of the online
+rules below).
+
+- **The offline item is main's grading, unchanged.** `offline_verify.py` is byte-identical to main's `verify.py`
+  (sha256 eb08b182...; the repository test pins it), with main's `grader_config.json`, `episodes.json`, budgets,
+  probe lock and `anchor_offline.json` (byte-identical to main's `anchor.json`, 0.908). `verify.py`'s
+  `offline_item()` is main's `main()` returning the verdict instead of writing it.
+- **The freeze** (corrected 2026-11-18: at the earlier of the graded start and the close of the preparation window,
+  so the program keeps main's preparation time whether or not the episode is played). At the graded start, just
+  before the start is charged, or when the preparation window (`prep_s` after the service starts serving) closes with
+  no start, the service's root supervisor copies `/home/user/submission` into
+  `/var/lib/arb-online/submission_snapshot/` (inside the record directory, so the agent can neither read nor write
+  it; root-owned, permission bits kept) on the worker's request over a socketpair made at the worker's fork; the
+  supervisor still never reads hidden data and never accepts a connection. A window that closes with no start leaves
+  a record of the freeze only (`started` false, `prep_window_closed` true, `snapshot_at` "prep_window"); later starts
+  are refused (`start_window_closed`). Every entry is
+  opened relative to its parent with `O_NOFOLLOW` on both sides: links are skipped, never followed, and so is
+  anything not a regular file or directory or not owned by the agent account. Limits: 99,000 entries (the engine's
+  own artifact walk stops at 100,000, and the record directory needs room beside the copy), 64 levels (the engine's
+  depth limit) and 16 GiB; over a limit the record says `snapshot_status` "too_large", nothing is kept and the
+  offline item scores 0. A failed copy refuses the start and charges nothing. The record gains `snapshot_status`,
+  `snapshot_files`, `snapshot_bytes`, `snapshot_sha256` (the sha256 of the sorted lines "path NUL size NUL
+  content-sha256"), `snapshot_skipped`, `snapshot_note` and `snapshot_at` ("start" or "prep_window").
+- **`verify.py`**: the record (O9); then the program: the snapshot whenever a usable record says the program was
+  frozen (`started`, or `prep_window_closed`), provided its digest matches the record's (it replaces the restored
+  session-end folder; a mismatch, or a freeze on record without a usable snapshot, is a task error); no program
+  (offline 0) for a too-large snapshot; the session-end folder only with no usable record of a freeze (the session
+  ended before the window closed, the record directory did not arrive - `service.log`, written at setup, tells - or
+  the record is not this episode's); then main's grading of that program; then the record's online item (`anchor_online.json`, 0.897458); then
+  `ratio_rewards((offline + online) / 2, anchor.json = 1.0, cap 1.0, full_at 1.0)`, with both items' rewards, raw
+  metrics and sub-metrics in the verdict's metrics (`offline_*`, `online_*`, `program_*`).
+- **Time**: `prep_s` 3600 (main's agent budget, for the program and the preparation), `graded_s` 14400, session
+  18000 s; `[verifier]` is main's again (36000 s, the GPU).
+- **The reference** (`solution/solve.sh`): main's installation of the privileged controller into the submission
+  first, then the online variant's drive of the graded episode, so the snapshot holds the reference program.
+
+## Online variant (experimental branch `exp/online-graded-episode`, 2026-11-17)
+
+On this branch the agent plays ONE hidden episode itself, during its session, and the verifier scores
+the record of that episode; no program of the agent runs after the session.
+
+- **The graded episode** is `hidden-1`, the second of the three seeds in `episodes.json` (the offline
+  verifier's fixed hidden set), drawn 2026-11-18T04:41:49Z with `secrets.randbelow(3)`. `online.json`
+  here holds its id and the sha256 of the seed's decimal digits; the seed itself is root-only in
+  `environment/setup/online/episode.json` (`/opt/ale/setup` while the agent works).
+- **The service** (`environment/setup/online/server.py`, started by `setup.sh` as root) follows the
+  alelab daemon pattern: a root supervisor that never reads the episode; a worker that reads it, copies
+  the simulator into its own state directory, drops to the `arbonline` account for good (not dumpable,
+  no core files) and serves `/run/arb-online/online.sock`, one client at a time; everything under a
+  seccomp filter that allows only AF_UNIX sockets, inherited by the simulator. The simulator and the
+  scorer are the offline verifier's own files, byte-identical copies of `env.py`, `sim_client.py` and
+  `messy_desk_score.py` in this folder (env.py sha256 f03c8dba..., sim_client.py 4f22514e...,
+  messy_desk_score.py db15ecc6...). The simulator runs as `arbonline` with a clean environment and its
+  Kit data, cache and logs under `--portable-root /var/lib/arb-online-sim/kit` (lab-only), never in the
+  world-writable `omni/cache` the agent's desk lab writes. On its first start the service launches the
+  simulator once with a public seed to compile the renderer's shaders, then closes it, so setup takes as
+  long as a cold start (270-620 s measured) and the episode's own launch takes seconds.
+- **What carries over**: the simulator, the seed, the horizon (20000), the per-episode rules and
+  `EpisodeScorer` (S = O * R). **What does not**: the program's budgets (the 3000 s controller budget
+  with its 0.1 s hi-res charge, the 30 s reply deadline), the probe lock, restarts, the program contract.
+  Hi-res frames therefore cost only wall time inside the graded window. A malformed action is refused
+  instead of aborting the episode.
+- **Windows**: the start must come within `prep_s` = 3600 s of the service's start (the end of its
+  warm-up, i.e. the start of the agent phase); the episode then has `graded_s` = 14400 s. 4 h rather
+  than the default 3 h because the simulation itself takes about an hour (0.15-0.25 s a step measured on
+  an RTX 4090 host; the privileged reference's own episode took 3468 s in validate-abe7f0f5, with nothing
+  else running in its sandbox). `[agent] timeout_sec` = 18000.
+- **The end**: at step 20000 (`done`), at the agent's finish, at the end of the graded window, or when
+  the worker or its simulator dies (`worker_restart`). Ended early, the episode is scored as this
+  folder's grader on main scores an episode it cuts (a controller out of budget): the state reached,
+  scaled by steps / 20000. Nothing is simulated after the end. If the session ends first, the last
+  record (rewritten at most 1 s after every change) applies.
+- **The record**: `/var/lib/arb-online/record.json` (format `arb-online-record/1`), `requests.jsonl`
+  and `service.log` beside it, all `arbonline`-owned in a 0700 directory; declared in `task.toml`
+  `artifacts`, collected by the engine as root and restored root-owned in the separate verifier, where
+  `verify.py` checks it against `online.json` and scores `episode_score` with the kit (metric
+  `mean_episode_score`, the mean over one episode).
+- **The reference**: `solution/solve.sh` runs `solution/privileged/oracle.py` unchanged through
+  `solution/drive_oracle.py`, which starts the episode through the agent's own client with the
+  reference token; the service then adds the same `privileged` block the offline grader adds.
+- **Practice (rule O13, practice ends when the graded episode starts)** closes nothing here: the task's
+  one practice facility, the desk lab, is the agent's own tool (code staged into its home, run under its
+  account, no episode and no hidden instance in it; a program could carry it, as the offline controller
+  could), so it stays available during the graded episode. The instruction says so beside the one-shot
+  rule.
+- **GPU**: the agent's desk lab and the episode's simulator are two Isaac processes on one GPU, about
+  6 GB of VRAM each (5.9-6.3 GB measured per process).
+
 ## Entities
 
 | kind | what | scored |

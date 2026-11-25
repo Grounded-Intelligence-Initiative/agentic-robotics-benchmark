@@ -19,9 +19,34 @@
 # token: it runs inside the cell on the nominal layout. Grader knobs live in tests/grader_config.json; the cell's kit
 # (gt/: the units' meshes, collision pieces, joints and frames) is never in the image: the grader fetches it at verify
 # start (pinned by its digest and file count).
+#
+# DUAL MODE (experimental, 2026-11-24; never merged into main): one session, one verify, two scoring items, reward =
+# their mean, each normalised by its own anchor (tests/anchor_offline.json = main's, tests/anchor_online.json; the
+# combined dual_mode_score in tests/anchor.json is 1.0 by construction).
+# * The offline item is main's grading above, unchanged, of the program FROZEN at the earlier of the graded start and the
+#   start window's close (prep_s after the service's start): then (before a start is charged) the graded episode's
+#   service has its root supervisor copy /home/user/submission into /var/lib/arb-online/submission_snapshot (regular
+#   files and folders the agent owns, no link followed, main's caps: 60 MB, 10000 entries, 4000-byte paths), so the
+#   program keeps main's preparation time; the submission at the session's end is graded only when the session ends
+#   before the window closes without a start, or there is no usable record.
+# * The online item is the graded episode the agent plays itself during its session, through the graded episode's cell
+#   service (environment/setup/online/service.py, started by environment/setup/setup.sh: the cell a byte copy of the
+#   verifier's in tests/, the kit downloaded at setup as the verifier downloads it, served as the dedicated `arbcell`
+#   account over a unix socket; the client ~/given/lib/graded_episode.py connect_graded()): one more hidden episode
+#   (graded-01, one 63-bit seed drawn once with OS entropy, tests/online.json), the same rules and per-episode score as
+#   an offline episode; it can be started once, within prep_s = 21600 s (main's agent budget, shared by the program and
+#   the preparation) of the service's start, and ends at the agent's finish, at the cell's 1200 s of simulated time,
+#   graded_s = 10800 s after its start, or when the session ends (the last record applies). Its record goes to
+#   /var/lib/arb-online, which the agent can neither read nor write.
+# There is no practice facility. The oracle (solution/solve.sh) leaves main's reference program in the submission, then
+# starts the graded episode with the oracle token (the privileged cell: the nominal layout and reference_assemble, as
+# the offline grader gives a submission with the token) and runs the reference program through the client.
 
 schema_version = "1.4+ale.1"
-artifacts = ["/home/user/submission"]
+# Where the agent leaves its program (assemble.py and its helper modules), and the graded episode's record directory
+# (record.json, requests.jsonl, the episode's trace, the program frozen at the start in submission_snapshot/), written by
+# the service as its own account and by its root supervisor; the engine collects both as root after the agent phase.
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/dexterous_hand_full_assembly_16dof_panda"
@@ -53,7 +78,10 @@ tags = ["assembly", "mujoco", "panda", "code-as-policy", "camera-only", "rgbd", 
 cpus = 8
 memory_mb = 16384
 
-# [agent] timeout_sec: 21600 s = 6 h.
+# [agent] timeout_sec (dual mode): prep_s + graded_s = 21600 + 10800 = 32400 s: main's 6 h for the program and the
+# preparation (the start window, counted from the graded episode's service's start), then 3 h for the graded episode.
+# setup (no field: the engine bounds it at a fixed 1800 s): the agent's givens, the download of the cell's kit (a few
+# seconds) and the graded episode's cell service with the episode's cell built (about 10 s).
 # [verifier] timeout_sec: 14400 s. The worst case of an agent's program, term by term:
 #     the source audit (grader_config.json parse_limits.total_s)             1800 s
 #   + the import check (verify.py contract_check: timeout)                    120 s
@@ -61,11 +89,12 @@ memory_mb = 16384
 #     = 3 x 2424 s
 #   = 9192 s, which leaves 5208 s for the verifier sandbox's start, tests/test.sh's copy of the givens and the
 #     kit's fetch (0.5 s measured from the local copy).
+# Dual mode: the verify is main's (the offline item's grading runs as on main; the online item only reads its record).
 # The reference submission's verify, measured: 1003 s in validate-92ed8b66 (3 episodes of the reference program, about
 # 208 s simulated and 332 s of wall clock each); 709-1446 s over the last four validates, by host load.
 # The reference's own wall cap is privileged_wall_cap_s, 7200 s per episode.
 [agent]
-timeout_sec = 21600
+timeout_sec = 32400
 network_mode = "no-network"
 
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never

@@ -361,7 +361,7 @@ class Cameras(unittest.TestCase):
         self.assertIn("reload_fail", review)
 
     def test_the_account_is_cleared_before_the_first_kits_clock(self):
-        verify = (TASK / "tests/verify.py").read_text()
+        verify = (TASK / "tests/offline_verify.py").read_text()     # main's verifier (the dual mode's program item)
         main = verify[verify.index("\ndef main():"):]
         self.assertIn("clear_agent_account()", main)
         self.assertLess(main.index("clear_agent_account()"), main.index("run_episodes("))

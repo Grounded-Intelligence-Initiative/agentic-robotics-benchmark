@@ -1,0 +1,8 @@
+{
+ "direction": "higher",
+ "full_at": 1.0,
+ "metric": "assembly_score",
+ "note": "assembly_score of the online item is one episode's score, already on [0, 1]: the cell's stage score of the graded episode as it ended (the fastened mates' weight / 22, a flange counted when bolted in its design rotation), 0 with a safety violation, as the offline verifier scores each episode; ratio = score / 1.0, reward = ratio.",
+ "source": "Measured: the privileged program (tests/arm/assembly_openarm/reference.py; environment/setup/online/cell is its byte copy) inside the graded episode's cell service on graded-01 (tests/online.json), started with the oracle token (the privileged mode, as offline: the cell built from the episode's seed on the bench plan's nominal layout) and driven through the agent-side client (solution/solve.sh), in the task image as setup.sh starts the service (2026-11-24): episode_score 1.0, all 18 mates fastened, no safety violation, 650.6 s simulated, about 79 min of wall clock on a loaded host. Confirmed by ale validate's oracle pass, validate-772562af (2026-11-24, engine bfb7505, a clean checkout of 7a41ffba): episode_score 1.0, 18 / 18 mates, 650.6 s simulated, 51.7 min of agent phase.",
+ "value": 1.0
+}

@@ -1,4 +1,17 @@
-"""Grader of dexterous_hand_full_assembly_16dof_panda (a four-digit, 16-joint robot hand built from its bolt-on
+"""DUAL MODE (experimental; never merged into main): main's grader with four hooks into tests/dual_mode.py, which
+make one verify of the two scoring items, reward = their mean (tests/dual_mode.py says how):
+  (a) `DUAL = dual_mode.prepare(SUBMISSION, AGENT_USER)`, the line before `EARLY = _early_lockdown()`: the agent
+      account's processes stopped, the graded episode's record read, the program the offline item grades put in
+      place of the restored submission (the one frozen at the earlier of the graded start and the start window's
+      close), the online item scored;
+  (b) write_verdict reads main's anchor from tests/anchor_offline.json (main's tests/anchor.json, byte-identical);
+  (c) write_verdict hands its verdict to dual_mode.keep_offline() instead of writing it, in a dual run only;
+  (d) `dual_mode.run(main)` in place of `main()`: main's grading, then the one verdict of both items.
+Everything else is main's, unchanged, and grades the offline item exactly as main grades the task.
+
+Main's description follows.
+
+Grader of dexterous_hand_full_assembly_16dof_panda (a four-digit, 16-joint robot hand built from its bolt-on
 modules onto the palm's bottom shell on a raised fixture, camera-only): runs as ROOT in the verify stage. Built from
 the tensegrity strut assembly task's grader (tensegrity_strut_assembly_3bar_panda, itself built on the quadruped
 assembly task's: a kit downloaded at verify start); the physics is this task's arm/assembly_hand.
@@ -88,6 +101,7 @@ LATE_GATE_MAX_GAP_S = 600.0
 from arm.assembly_cell import runner  # noqa: E402  (stdlib only)
 from arm.assembly_six import lockdown  # noqa: E402  (stdlib only)
 from arm import verify_freeze  # noqa: E402  (stdlib only)
+import dual_mode  # noqa: E402  (stdlib only: the dual mode's program choice and its two items)
 
 FREEZER = [None]        # the agent account's verify_freeze.AgentFreezer: started by _early_lockdown, stopped after the verdict
 SCOPE = ["digits"]      # grader_config.json's scope name (set in _main_locked): "digits" (the four digit seats) | "default" (every mate)
@@ -343,6 +357,8 @@ def _early_lockdown():
     return out
 
 
+# dual mode (a): the program the offline item grades is put in place before main's lockdown walks the submission
+DUAL = dual_mode.prepare(SUBMISSION, AGENT_USER) if __name__ == "__main__" else None
 EARLY = _early_lockdown() if __name__ == "__main__" else {"saved": None, "parent": None, "reasons": [], "late": [], "t_ref": None}
 
 import hashlib  # noqa: E402
@@ -1178,7 +1194,7 @@ def write_verdict(rewards, metrics):
     from robotics_grader import ratio_rewards, read_anchor
     from robotics_grader import write_verdict as kit_write_verdict
     overall = float(rewards["assembly_score"])
-    anchor, meta = read_anchor()
+    anchor, meta = read_anchor(dual_mode.OFFLINE_ANCHOR)        # dual mode (b): main's anchor
     extra = {k: float(v) for k, v in metrics.items()}
     extra.update({k: float(rewards[k]) for k in GATES + CRITERIA})
     verdict = ratio_rewards(overall, anchor, higher_is_better=meta.get("direction", "higher") == "higher",
@@ -1188,6 +1204,8 @@ def write_verdict(rewards, metrics):
             "(scope %s) on the hidden episodes, an episode with a safety violation keeping %g of it)") % (
                 rewards["contract_ok"], rewards["assembly_score"], float(metrics.get("scope_weight", 0.0)), SCOPE[0],
                 float(metrics.get("safety_violation_factor", 0.0)))
+    if dual_mode.keep_offline(verdict, text):  # dual mode (c): kept for the one verdict of both items
+        return overall
     if os.environ.get("ALE_VERIFY_PYTHON"):
         recorded = {}
         for k, v in sorted(verdict["metrics"].items()):
@@ -1452,4 +1470,4 @@ def _finish_stats(rn, metrics, t_start):
 
 
 if __name__ == "__main__":
-    main()
+    dual_mode.run(main)                         # dual mode (d)

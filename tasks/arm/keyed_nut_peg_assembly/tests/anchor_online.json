@@ -1,0 +1,8 @@
+{
+ "metric": "kit_success_rate",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 0.98,
+ "note": "the dual mode's graded-episode item: kit_success_rate of the ONE graded episode the agent plays itself (1 when its kit is complete at the end, every nut on its own peg's collar, else 0; keyed_credit.GradedNutEnv.episode_score), read from the graded episode's record (/var/lib/arb-online/record.json); ratio = score / value, reward = clamp(ratio / full_at, 0, 1). full_at as on main.",
+ "source": "the privileged reference (solution/solve.sh: main's reference controller, oracle_ctrl.KitOracle, acting on the token's _gt) played by the oracle through the agent-side client on the graded episode F01: measured kit_success_rate 1.0 (the kit complete at step 738, all three nuts assembled, none ruined, no images, no fault) in a container of the dual mode's task image on 2026-11-24, the same step count as F01's selection run and anchor verify on main (738 steps; tests/hidden/selection.json, amendment 8), so the graded episode reproduces the offline episode step for step; confirmed by the dual mode's validate, validate-6a0715af (engine bfb7505, commit e594730a): kit_success_rate 1.0 on F01, the kit complete at step 738."
+}

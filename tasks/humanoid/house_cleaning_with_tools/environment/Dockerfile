@@ -3,10 +3,12 @@
 # (from MuJoCo Menagerie) and the room's decor (from the benchmark's asset dataset).
 #
 # `environment/` (less its `setup/`) is the sole build context and the final stage derives DIRECTLY from the official
-# ALE base, at an exact version. Nothing hidden is here: the house cell's code, the grader and the reference program
-# live in tests/ and solution/ (absent from the image; the agent's session runs no cell, there is no practice lab); the
-# givens are staged by environment/setup/setup.sh. The image is furniture_assembly_from_drawings's (the same room, the
-# same G1 and the same renderer, which the grader's cell uses in the verifier): no CAD or mesh toolchain.
+# ALE base, at an exact version. Nothing hidden is here: the grader and the reference program live in tests/ and
+# solution/ (absent from the image), and the graded episode's cell service with its copy of the house cell and the
+# hidden episode lives in environment/setup/online/ (staged root-only at /opt/ale/setup; environment/setup/setup.sh
+# starts it, as the `arbcell` account created below; there is no practice lab); the givens are staged by
+# environment/setup/setup.sh too. The image is furniture_assembly_from_drawings's (the same room, the same G1 and the
+# same renderer, which the cell uses): no CAD or mesh toolchain.
 FROM ghcr.io/agentslastexam/container-ubuntu22-base:0.1.1
 
 COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /usr/local/bin/uv
@@ -145,3 +147,7 @@ ENV BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800 CLAUDE_STREAM_IDLE_TIMEOUT_MS=1800000
 RUN printf '%s\n' 'export BUN_CONFIG_HTTP_IDLE_TIMEOUT=1800' 'export CLAUDE_STREAM_IDLE_TIMEOUT_MS=1800000' \
         > /etc/profile.d/99-ale-idle-timeouts.sh \
     && chmod 0644 /etc/profile.d/99-ale-idle-timeouts.sh
+
+# The online graded episode's cell service (environment/setup/online/service.py) serves as this dedicated account: never
+# root, never the agent, while it holds the hidden episode (arm_hidden_mechanism_box's alelab pattern).
+RUN useradd --system --user-group --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin arbcell

@@ -13,6 +13,13 @@ worker's start-up validation resets every unit, so the renderer starts (its firs
 is proven before the lab serves; a renderer that cannot start fails the lab's start. A renderer failure later, in a
 reset or a step (appliance_env.RenderError), is the lab's own error: the server answers `internal` and logs the
 traceback lab-side; it is never reported as anything the agent's action caused.
+
+The graded episode (graded_reset; the lab chooses it at the start from the random order of the fixed hidden set in
+environment/setup/online/order.json: the first entry on a unit no lab trial used) runs exactly as the offline grader
+runs an episode of that set, and is scored as it scores one (the mean request credit, 0 after an unstable
+simulation). With the oracle token (lab.json "graded" oracle_token_sha256) every graded observation also carries the
+unit's truth, as the offline grader gives a tokened submission; a renderer failure in the graded episode restarts
+the worker, which ends it.
 """
 
 import os
@@ -76,6 +83,68 @@ class _Episode(object):
         return self.obs(obs), bool(done)
 
 
+class _GradedEpisode(_Episode):
+    """The graded episode, run as the offline grader (tests/verify.py on main) runs an episode of its fixed hidden set:
+    Episode(ApplianceEnv(spec, None, render=True), seed). It ends when its last request closes; an unstable simulation
+    ends it and scores 0."""
+
+    def __init__(self, ep, uid):
+        _Episode.__init__(self, ep, uid)
+        self.fault = False
+        self.done = False
+
+    def step(self, action):
+        obs, done, _info = self.ep.step(action)
+        if self.ep.env.unstable():
+            self.fault = True
+            done = True
+        self.done = bool(done)
+        return self.obs(obs), self.done
+
+    def result(self):
+        """The grader's score of one episode were it to end now: the mean credit of its requests (episode.py), 0 after
+        an unstable simulation. Ended before its last request closed, the episode is scored as if it ended at that
+        moment, with nothing simulated afterwards: the open request closes then (reached if its state has held for
+        the last REACH_HOLD steps; completed only if it already was) and a request not yet opened earns 0, out of
+        K_MAX requests. The sub-metrics are the grader's for one episode, and each request's outcome."""
+        ep = self.ep
+        reqs = []
+        for r in ep.requests:
+            closed = r["t_close"] is not None
+            reached = bool(r["reached"]) if closed else r["run_reach"] >= EP.REACH_HOLD
+            completed = bool(r["completed"])
+            credit = 0.5 * reached + 0.5 * completed
+            reqs.append({"id": r["id"], "what": r["what"], "target": r["target"], "t_open": r["t_open"],
+                         "t_close": r["t_close"], "closed": closed, "reached": bool(reached),
+                         "completed": completed, "credit": credit,
+                         "outcome": "completed" if completed else ("reached" if reached else "missed")})
+        n = len(reqs) if self.done else max(EP.K_MAX, len(reqs))
+        score = 0.0 if (self.fault or not n) else float(sum(q["credit"] for q in reqs) / n)
+        metrics = {"score_" + self.uid: score, "sim_faults": 1.0 if self.fault else 0.0,
+                   "requests_opened": float(len(reqs)),
+                   "requests_reached": float(sum(1 for q in reqs if q["reached"])),
+                   "requests_completed": float(sum(1 for q in reqs if q["completed"]))}
+        if not self.fault:
+            per = {}
+            for q in reqs:
+                per.setdefault(q["what"], []).append(q["credit"])
+            for what, vals in sorted(per.items()):
+                metrics["request_" + what] = sum(vals) / len(vals)
+        return {"score": score, "metrics": metrics,
+                "detail": {"t": int(ep.env.t), "unstable": self.fault, "done": self.done, "requests": reqs}}
+
+    def finish(self):
+        return self.result()
+
+    def truth(self):
+        """The oracle token's channel (as tests/verify.py on main gives a tokened submission): the unit's placement
+        jitter, its joint values and the microwave's flag."""
+        return self.ep.env.truth()
+
+    def close(self):
+        self.ep.env.close()
+
+
 class ApplianceLab(object):
     def __init__(self, instances, api):
         if E._KR is None:                           # the renderer must be importable before the privilege drop
@@ -116,6 +185,13 @@ class ApplianceLab(object):
         obs = ep.reset()
         e = _Episode(ep, instance)
         return e, e.obs(obs)
+
+    def graded_reset(self, instance, seed):
+        """The graded episode: the hidden unit `instance` at its fixed 64-bit `seed` from the hidden set."""
+        ep = EP.Episode(E.ApplianceEnv(self.specs[instance], None, render=True), seed)
+        obs = ep.reset()
+        g = _GradedEpisode(ep, instance)
+        return g, g.obs(obs)
 
 
 def make_plugin(instances, api):

@@ -8,9 +8,22 @@
 # account, a socket with the public wire only, three development units, 48000 control steps, no truth and no
 # credit). The grader drives the agent's controller over a stdio wire on a fixed hidden set of 12 episodes.
 # Structure after tasks/arm/kitchen_appliance_tending; the service after tasks/arm/pump_skid_startup_and_operation.
+#
+# DUAL MODE (experiment, branch exp/dual-mode-scoring; never merged into main): one session, one verify, two items, the
+# reward their mean. The controller item is main's, unchanged: the controller on the 12 hidden episodes with main's
+# budgets, probe lock and gates (tests/offline_verify.py, byte-identical to main's tests/verify.py), on the controller
+# frozen when the agent starts the graded episode (the graded episode's root supervisor copies /home/user/submission
+# into the root-only /var/lib/arb-online/submission_snapshot/ before the start is charged), or when the 2-hour start
+# window closes without a start, or on the session-end submission if the session ends before either. The online item
+# is one episode of the hidden set (hidden-02, unit u1, drawn with OS entropy), played live through the graded
+# episode's service (environment/setup/online/); the commissioning service closes when it starts (O13).
+# tests/verify.py grades both (main's grading, then the record) and writes one reward.
 
 schema_version = "1.4+ale.1"
-artifacts = ["/home/user/submission"]
+# Where the agent leaves its controller (the controller item grades it as frozen at the graded start or at the close
+# of the start window, or as it is at the session's end if the session ends before either) and the graded episode's
+# record with the frozen controller (the service's directory, which the agent can neither read nor write).
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/lab_sample_handling"
@@ -22,10 +35,12 @@ platform = "arm"
 cpus = 4
 memory_mb = 12288
 
-# 2 h, as the appliance task; no trials on the hidden units (the commissioning service's development units are
-# other units of the series).
+# prep_s 7200 (main's 2 h, as the appliance task, shared by the controller and the preparation: commissioning on the
+# development units, which are other units of the series, writing and testing the controller; the graded episode must
+# start within it) + graded_s 10800 (the graded episode's own window after its start, the default: the episode's
+# simulation needs at most about 10-20 minutes of it, 20000 steps at 30-45 ms plus the images asked for).
 [agent]
-timeout_sec = 7200
+timeout_sec = 18000
 network_mode = "no-network"
 
 # 12 episodes (2 per hidden unit), each at most 20000 control steps. The grader's budget (grader_config.json:
@@ -34,7 +49,8 @@ network_mode = "no-network"
 # over the wire on a busy 4-CPU sandbox) = 10800 s of simulation; 9000 s of controller time (if the whole budget
 # went into images, 45000 of them, drawing them at 0.10-0.15 s each would take less than that); the numerics check,
 # the empty-account check and the render self-test 30 s. 19830 s; with 35 % margin 26800 s. The reference's whole
-# verify takes about 80 minutes. The verifier image (tests/Dockerfile) runs no desktop session.
+# verify takes about 80 minutes. The verifier image (tests/Dockerfile) runs no desktop session. Dual mode: main's
+# timeout, since main's grading runs again (on the frozen controller); reading the record takes seconds.
 [verifier]
 timeout_sec = 27000
 environment_mode = "separate"

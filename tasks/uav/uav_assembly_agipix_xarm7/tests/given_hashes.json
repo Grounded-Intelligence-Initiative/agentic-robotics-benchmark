@@ -3127,6 +3127,7 @@
   "given/xarm7/xarm7.png": "636e9e7a4396b54580231399dd64bb35d817814599eb160cede5886c63516228",
   "given/xarm7/xarm7.xml": "ac6b369e0b9c5abdaca55d2c6c048102f2e1133bf550b059a8622afa4b9da433",
   "given/xarm7/xarm7_nohand.xml": "90bcc0e2fbbe5fa95dbbafb74e56bd0106ecc6f5767a4dc3e7c511016efc023c",
+  "graded_client.py": "d59f5fffcd582d466e7d938d11dbdde1d93ad68b2bd672e6863d6d360e632bd7",
   "render/oak/oak_veneer_01_arm_4k.jpg": "114a5f9f9422c4fe12339ea98ec72ccd8ce1a1cf7d3b33b5fbe567e448a06586",
   "render/oak/oak_veneer_01_diff_4k.jpg": "7e8c64811e580ef6664c20524606359c739e6fe030eff5c2c06c3482ecc8b1cf",
   "render/oak/oak_veneer_01_nor_gl_4k.jpg": "e9bb26f63682773895ce3f0dfd9a43554a719c4caae65b6bcf41712ecfaf3d26",

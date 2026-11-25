@@ -1,0 +1,9 @@
+{
+ "task": "rov_final_assembly_and_trim_single_arm",
+ "episode": "E3",
+ "seed_sha256": "72c1ed277e44009f1299c271a534b69a1005348a4d88c7dcffc1bf1ad57d5a11",
+ "record": "/var/lib/arb-online/record.json",
+ "format": "arb-online-record/1",
+ "draw": "2026-11-24T04:03:26Z, with OS entropy: python3 -c 'import secrets; print(secrets.randbelow(4))' -> 2, i.e. the third of the four episodes of the offline verifier's fixed hidden set (tests/hidden/episodes.json, in its order E1..E4): E3. seed_sha256 is the sha256 of the episode's seed in its decimal ASCII form. The episode itself (seed, dome end, work order, deviation, layout digest) lives root-only in environment/setup/online/episode.json (the service's worker reads it as root before it drops privileges).",
+ "note": "the graded episode of the dual mode, the same for every model: verify.py checks the record's task, episode and seed_sha256 against this file"
+}

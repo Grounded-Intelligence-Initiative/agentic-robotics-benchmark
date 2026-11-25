@@ -23,10 +23,35 @@
 # commissioning service under its own account: the test lanes and six training rubble sites, the robot's own mission
 # log after each exercise, no truth of the site, no score, no debrief); the simulator's code, the site plans and every
 # ground truth stay out of its reach.
+#
+# DUAL MODE (experimental, 2026-11-24; never merged into main): one session, one verify, two scoring items, reward =
+# their mean, each normalised by its own anchor (tests/anchor_offline.json = main's, tests/anchor_online.json; the
+# combined dual_mode_score in tests/anchor.json is 1.0 by construction).
+# * The offline item is main's grading above, unchanged (tests/offline_verify.py: main's verify.py with two hooks), of
+#   the program FROZEN at the earlier of the graded start and the start window's close (prep_s after the service's
+#   start): then (before a start is charged) the graded episode's service has its root supervisor copy
+#   /home/user/submission into /var/lib/arb-online/submission_snapshot (the agent's regular files and folders, no link
+#   followed, main's 60 MB cap), so the program keeps main's preparation time; the submission at the session's end is
+#   graded only when the session ends before the window closes, without a start.
+# * The online item is the graded episode the agent drives itself during its session, through the graded episode's
+#   service (environment/setup/online/graded_service.py, started by environment/setup/setup.sh; the grader's cell, the
+#   image's byte copy of tests/rubblecell, served as the dedicated `rubblegrade` account over a unix socket; the client
+#   ~/given/lib/rubblecell's connect_graded()): site ep04 of the fixed hidden set (drawn once with OS entropy,
+#   tests/online.json), the same robot, physics, budgets, safety rules and score as an offline mission; it can be
+#   started once, within prep_s = 14400 s (main's agent budget, shared by the program and the preparation) of the
+#   service's start, and ends at the agent's finish, at the cell's own end, graded_s = 10800 s after its start, or when
+#   the session ends (the last record applies). Its record goes to /var/lib/arb-online, which the agent can neither read
+#   nor write. The simulation advances only inside the agent's step requests: between requests nothing moves.
+# * Practice ends at the graded start (O13): the start writes /run/rubblecell-graded/flags/started and the training
+#   ground ends its open missions and refuses new ones (environment/training_ground/trainingd.py).
+# The oracle (solution/solve.sh) leaves main's reference program in the submission, then starts the graded episode with
+# the oracle token and runs the privileged reference program through the client.
 
 schema_version = "1.4+ale.1"
-# Where the agent leaves its work (rescue.py and its helper modules).
-artifacts = ["/home/user/submission"]
+# Where the agent leaves its work (rescue.py and its helper modules), and the graded episode's record directory
+# (record.json, state.json, requests.jsonl, traj.npz, the program frozen at the start in submission_snapshot/), written
+# by the service as its own account and by its root supervisor; the engine collects both as root after the agent phase.
+artifacts = ["/home/user/submission", "/var/lib/arb-online"]
 
 [task]
 name = "grounded-intelligence-initiative/earthquake_search_and_rescue"
@@ -42,9 +67,13 @@ tags = ["search-and-rescue", "earthquake", "rubble", "tracked-robot", "flippers"
 cpus = 8
 memory_mb = 16384
 
-# setup (no field: the engine bounds it at a fixed 1800 s): the givens in the agent home and the training ground.
-# [agent] timeout_sec: 4 h. [verifier] timeout_sec: the import check (at most 120 s), the desktop settle (at most 60 s),
-# then 8 hidden sites, each a site build with its look (the render and sensor twins, the sky: about 15 s on 8 CPUs;
+# setup (no field: the engine bounds it at a fixed 1800 s): the givens in the agent home, the graded episode's service
+# (its site and look built as root: about 40-50 s on 8 CPUs) and the training ground.
+# [agent] timeout_sec (dual mode): prep_s + graded_s = 14400 + 10800 = 25200 s: main's 4 h for the program and the
+# preparation (the start window, counted from the service's start), then 3 h for the graded episode (the oracle's
+# episode takes about 7 min of wall clock). [verifier] timeout_sec: main's, since main's offline grading runs again
+# (reading the graded episode's record takes seconds): the import check (at most 120 s), the desktop settle (at most 60
+# s), then 8 hidden sites, each a site build with its look (the render and sensor twins, the sky: about 15 s on 8 CPUs;
 # the first colour frame's shaders and textures: about 15 s more) plus the program within its 1200 s program-time cap,
 # which does not count the cell's simulation (1800 s simulated at most, at 2-5x real time here: up to about 15 min of
 # wall clock) and sensor rendering (700 camera frames at 0.5-0.9 s: Filament colour on lavapipe, classic depth, the
@@ -55,15 +84,16 @@ memory_mb = 16384
 # every site is far from any run seen; the oracle's sites run the reference program inside one privileged call (about
 # 3-6 min each here).
 [agent]
-timeout_sec = 14400
+timeout_sec = 25200
 network_mode = "no-network"
 
 [verifier]
 timeout_sec = 39600
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
-# touched, with only the declared artifact (the submission) restored into it, so nothing else the agent left reaches
-# it. environment/setup/setup.sh does not run there: tests/test.sh builds the grader's root-owned copy of the givens
-# itself. The agent's program runs during verify, so the verifier gets the agent's resources (CPU rendering: no GPU).
+# touched, with only the declared artifacts (the submission and the graded episode's record directory) restored into
+# it, so nothing else the agent left reaches it. environment/setup/setup.sh does not run there:
+# tests/test.sh builds the grader's root-owned copy of the givens itself. The agent's program runs during verify, so
+# the verifier gets the agent's resources (CPU rendering: no GPU).
 environment_mode = "separate"
 
 [verifier.environment]

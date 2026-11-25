@@ -1,0 +1,85 @@
+{
+ "note": "the dual mode's graded episode (experiment), read by graded_service.py's worker only (as root, before it drops privileges; /opt/ale/setup is root-only while the agent works). It is entry 2 (0-based) of the offline grader's fixed hidden set (tests/hidden/episodes.json: 12 episodes, 2 on each of the 6 hidden units, in the grader's order; draw 3 of main's selection, #177), drawn on 2026-11-24T09:22:44Z with OS entropy (secrets.randbelow(12) -> 2); the same episode serves every model. The first draw (2026-11-24T03:55:36Z: entry 7 of the previous set, unit u2) is void: #177 replaced the hidden set and that episode left it. unit_props = tests/units.json's entry for that unit; seed_sha256 = sha256 of the seed's decimal string (tests/online.json holds it for the verifier's cross-check); oracle_token_sha256 = tests/hidden/oracle_token.sha256 (the reference's token).",
+ "episode": "hidden-02",
+ "index": 2,
+ "unit": "u1",
+ "unit_props": {
+  "rotor_friction": 0.3752,
+  "handle_play": 13.8518,
+  "rotor_inertia": 0.0144,
+  "bore_clearance": 0.8972,
+  "bore_friction": 0.5147,
+  "lid_friction": 0.5894,
+  "calib": {
+   "left": [
+    0.371,
+    -0.404,
+    0.345,
+    -1.335,
+    -4.203,
+    2.999
+   ],
+   "right": [
+    0.04,
+    0.48,
+    -0.431,
+    -1.065,
+    -0.124,
+    -3.081
+   ],
+   "wrist": [
+    -0.348,
+    -0.306,
+    -0.167,
+    1.867,
+    -0.652,
+    -1.739
+   ],
+   "rack": [
+    0.212,
+    -0.328,
+    -0.27,
+    -1.485,
+    -0.247,
+    2.511
+   ]
+  },
+  "offset": {
+   "left": [
+    0.974,
+    1.781,
+    -0.272,
+    -11.995,
+    -14.26,
+    4.205
+   ],
+   "right": [
+    1.106,
+    1.18,
+    -0.625,
+    -12.186,
+    19.018,
+    -9.496
+   ],
+   "wrist": [
+    1.162,
+    -0.368,
+    1.331,
+    1.192,
+    -3.982,
+    -0.898
+   ],
+   "rack": [
+    1.617,
+    1.784,
+    0.621,
+    15.328,
+    2.119,
+    -12.987
+   ]
+  }
+ },
+ "seed": 7823992391036206671,
+ "seed_sha256": "cd3bc9c0db796c7ea2296ab73800f48289033a3ca8d8c6980e295049fd5c9859",
+ "oracle_token_sha256": "a3d1245b191a75ba2bae35f3b10dc433424b5373c0750db290ef274e0a3d609b"
+}

@@ -1,0 +1,24 @@
+{
+ "episode": "E3",
+ "entry": {
+  "seed": 660604125411048196,
+  "stratum": "E3",
+  "dome_end_deg": 0,
+  "work_order": {
+   "unit": "ROV-B07-1527",
+   "delivery_site": {
+    "water_temperature_C": 5.2,
+    "salinity_psu": 35.3
+   }
+  },
+  "deviation": {
+   "dm_kg": -0.178,
+   "dx_mm": -6.93,
+   "dy_mm": 3.92
+  },
+  "layout_digest": "86e1fac6a7bb60ebe9e1a5dd5a38ca5e327e03e801d92e06edb58f4ac0f7c132"
+ },
+ "seed_sha256": "72c1ed277e44009f1299c271a534b69a1005348a4d88c7dcffc1bf1ad57d5a11",
+ "oracle_token_sha256": "87a0fa23427f8e9f248877758bd78ce174fbca45779db93480451d51f29bc9c4",
+ "note": "the graded episode of the dual mode: episode 3 of the offline verifier's fixed hidden set (tests/hidden/episodes.json, stratum E3; its seed, dome end, work order, per-unit deviation and layout digest copied unchanged), drawn 2026-11-24T04:03:26Z with secrets.randbelow(4) -> 2 (0-based); root-only at /opt/ale/setup while the agent works, read by the service's worker as root before it drops privileges; tests/online.json holds the id and the seed's sha256 (of its decimal ASCII form)"
+}

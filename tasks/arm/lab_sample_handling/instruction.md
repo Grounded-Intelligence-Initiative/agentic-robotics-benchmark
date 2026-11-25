@@ -4,8 +4,10 @@ You are a lab-automation engineer. A Franka Panda at a lab bench has to work thr
 sample tubes. It sees through cameras, feels with a wrist force sensor and can weigh on a bench scale. Write the
 controller that does the job. It runs closed loop on the bench and is graded on centrifuge units and benches you
 have not seen. The bench is simulated, and the simulator is not in your sandbox: you have the equipment's sheets
-and a commissioning window on three other centrifuges of the same series. You have 2 hours of wall-clock time (see
-"Session time" below).
+and a commissioning window on three other centrifuges of the same series. Then you run one graded episode yourself,
+live: your score is the mean of your controller's credit on the hidden benches and that episode's credit ("How you
+are scored" below). The session lasts 5 hours of wall-clock time: 2 hours for the controller and your preparation,
+then the graded episode's 3 hours (see "Session time" below).
 
 **The bench.** Nothing stands in exactly the same place twice:
 - the incoming rack (one row, positions A1-A10);
@@ -67,6 +69,30 @@ like, not what a scored unit's values are. Nothing measured on a commissioning b
 your controller has to find out on site, in every episode, where things are, whether a tube is seated and
 whether the lid is shut (`task_card.md` says what each sensor shows of it).
 
+## How you are scored: your controller, and one episode you run live
+
+The score is the mean of two items, each relative to its own hidden reference value:
+
+1. **Your controller**: the mean credit of the controller in `/home/user/submission/` over the 12 hidden episodes
+   (what you deliver and how it is graded: "Your controller and its grading" below).
+2. **The graded episode**: one of those 12 episodes, which you run yourself, live, during this session, through a
+   service in your sandbox, with the same bench, rules and credit ("The graded episode" below).
+
+**The freeze.** The controller graded is the one in the submission folder at the earlier of two moments: when you
+start the graded episode, or when the 2-hour start window below closes without a start. At that moment (before the
+graded episode begins, if you start it) the graded episode's service copies the folder out of your reach (regular
+files and folders of your account only, symbolic links skipped; over 5000 files or 200 MiB nothing is copied and the
+controller scores 0, as a larger folder does at grading), and nothing you change in the folder afterwards reaches
+the controller's grading: finish the controller before you start the graded episode. The folder as it is when your
+session ends is graded only if the session ends before either moment. Without a start the graded episode scores 0.
+
+**The commissioning service** (next section) closes when the graded episode starts.
+
+**The windows.** You have 2 hours from the graded episode's service's start (it starts with your sandbox, moments
+before your session begins) to write the controller and to prepare, commissioning included; start the graded
+episode within them (later, `start()` answers `prep_window_closed`, and the controller is frozen as it is when they
+close). The graded episode then has at most 3 hours. The session lasts 5 hours in all.
+
 ## Commissioning
 
 There is no simulator of the bench in your sandbox, and no model of it other than what `task_card.md` states. What
@@ -96,6 +122,10 @@ limited time.
 - **Benches at a time.** Two connections, each with one bench; a third is answered `busy`. A connection silent for
   120 s is closed. The benches run on your sandbox's CPUs; a control step takes about 30 ms of wall time
   (more when images are drawn), on one bench as on two.
+- **When the graded episode starts** the service closes for the rest of the session: an open bench ends at that
+  moment, and every request is answered `commissioning_closed` (`commission_status.json` says
+  `commissioning_closed`). A controller graded on its benches is never commissioned in the middle of its graded run.
+  What is yours stays: the equipment's sheets, your own code and anything you recorded.
 - **At grading** the service is not there: your controller meets the scored benches with what is in its folder.
 
 `commission/run_bench.py` runs your submission folder on a development bench the way the grader runs it (a fresh
@@ -110,8 +140,10 @@ how the worklist went. `--images DIR` saves what the cameras show at the start a
 | `task_card.md` | The equipment sheets: the robot and its control, the cameras, the tubes, the racks, the centrifuge, the scale; sizes, nominal places, and the range of everything that varies. |
 | `commission/client.py` | Client of the commissioning service (`Bench`: `status`, `reset`, `step`, `look`, `probe`, `close`). |
 | `commission/run_bench.py` | Runs your submission on a development bench over the grading wire. |
+| `graded/client.py` | Client of the graded episode's service (`GradedEpisode`: `status`, `start`, `step`, `observe`, `finish`, `close`). |
+| `graded/run_graded.py` | Runs a controller folder on the graded episode over the grading wire (it starts or resumes the episode). |
 | `helpers/wire_skeleton.py` | Optional boilerplate for the wire (no control logic). |
-| `session_time.sh` | Prints the minutes of your session used and left (see "Session time"). |
+| `session_time.sh` | Prints the minutes of your session and of its start window used and left (see "Session time"). |
 
 Python is `/opt/venv/bin/python3` (MuJoCo 3.16, numpy, scipy, OpenCV, Pillow; robosuite 1.5.2's model files, the
 Panda's among them). There is no network. The sandbox has 4 CPUs and 12 GB of memory, while grading too. Every
@@ -155,7 +187,8 @@ An episode ends:
   0.5 rad);
 - at an unstable simulation (an arm joint faster than 8 rad/s), which scores 0.
 
-The score is the mean credit over the graded episodes.
+Your controller's item is the mean credit over its 12 graded episodes; the graded episode's item is that one
+episode's credit ("How you are scored" above).
 
 ## Observation and action
 
@@ -194,27 +227,34 @@ large (the rack image alone is about 1.2 MB on the wire), so ask for one only wh
 
 ## Session time
 
-- This session is stopped 2 hours of wall-clock time after it started. What is in `/home/user/submission/` at
-  that moment is graded as it is: keep a complete, runnable submission there from early on and replace it as you
-  improve it.
-- The only clock for this limit is the wall clock. `bash /home/user/session_time.sh` prints the minutes used and
-  the minutes left, from a time stamp written when your sandbox was set up (moments before your session started,
-  so you have slightly more than it says, never less); `date` shows the same clock. Run the script when you begin,
-  again before every decision that depends on the time left, and whenever you pick the work up from notes or from
-  a summary of what was done. Do not estimate the time used from how much you have done.
+- This session is stopped 5 hours of wall-clock time after it started: the 2-hour start window for your controller
+  and your preparation, then the graded episode's 3 hours. Your controller is graded as frozen at the graded start,
+  or at the close of the start window if you do not start (the freeze, above): keep a complete, runnable submission
+  in the folder from early on and replace it as you improve it. Should the session stop while the graded episode
+  runs, that episode is credited as it stood after your last step.
+- The only clock for these limits is the wall clock. `bash /home/user/session_time.sh` prints the minutes used and
+  the minutes left of the session and of the start window, from a time stamp written when your sandbox was set up
+  (moments before your session started and before the graded episode's service started, so you have slightly more
+  than it says, never less); `date` shows the same clock, and the graded episode's `status()` gives both windows'
+  seconds left. Run the script when you begin, again before every decision that depends on the time left, and
+  whenever you pick the work up from notes or from a summary of what was done. Do not estimate the time used from
+  how much you have done.
 - Three other counts in this task are not your session's time: the commissioning window (48,000 control steps;
   its "80 minutes of bench time" pass several times faster than real time, at about 30 ms a step), an episode's
   length (20000 steps are 33 simulated minutes and about 10 minutes of wall time on a development bench) and
-  the controller's 9000 s budget at grading. None of them says how much of the 2 hours is left.
+  the controller's 9000 s budget at grading. None of them says how much of the session or of the start window is
+  left.
 
-## Deliverable and grading
+## Your controller and its grading (the first item)
 
 Put your controller in `/home/user/submission/` with a `run.sh`. Everything it needs must be inside that folder (at
-most 5000 files and 200 MiB; a larger folder scores 0), and the controller may write there. It is graded in a fresh
-sandbox: nothing else of your home directory is there (no `task_card.md`, no `commission/`: copy what you use into
-the folder), the commissioning service does not run, there is no desktop session, and the only processes of your
-account are the ones `run.sh` starts. A process of your account that was started any other way ends the run: that
-episode and every later one score 0.
+most 5000 files and 200 MiB; a larger folder scores 0), and the controller may write there. The folder graded is the
+copy frozen at the graded start, or at the close of the start window if you do not start (the freeze, above). It is
+graded after your session in a fresh sandbox: nothing else of your home directory is there (no `task_card.md`, no
+`commission/`, no `graded/`: copy what you use into the folder), neither the commissioning service nor the graded
+episode's service runs, there is no desktop session, and the only processes of your account are the ones `run.sh`
+starts. A process of your account that was started any other way ends the run: that episode and every later one
+score 0.
 
 The grader starts the controller with `bash run.sh` in that folder, as your user, with only local (AF_UNIX) sockets,
 and speaks one JSON object per line on its stdin and stdout:
@@ -250,3 +290,70 @@ to one request, 9 or 15 to the other) counts among the pairs and not as differin
   reports the same sum for one episode (`controller_seconds`).
 - Your controller is one process for the whole run, so it may carry what it learns about a unit, or a rotor, from
   one episode to the next.
+- This item is the mean credit relative to a hidden reference value; it is half of your score.
+
+## The graded episode (the second item)
+
+You run one episode yourself, live, during this session: the **graded episode**. It is one of the 12 hidden
+episodes your controller is graded on (drawn once for this task, the same for every model), on a scored unit you
+have not seen; you learn which unit from its first observation (`unit`). It is the bench of everything above, with
+the same rules: the same bench, worklist, tubes, fills, rotor, lid, sensor noise and physics, the same observation
+and action formats, the same end rules and the same credit ("Credit"). The simulation advances only inside your
+`step` requests, so the time you spend thinking, looking at images or computing between steps costs the episode
+nothing. No controller process is involved: there is no `READY`, no 30 s reply deadline, no controller-time budget
+and no price per image, no repeated requests, no restarts and no rule on your processes; a malformed action is
+refused (`malformed_action`) and simulates nothing, where at grading it scores the episode 0. As for a controller,
+images come only with a step whose `cams` bits ask for them (the first observation has all four); there is no `look`
+and no `probe`. You drive the episode from your session, with as many scripts of your own as you like
+(`/opt/venv/bin/python3`):
+
+```python
+import sys; sys.path.insert(0, "/home/user")
+from graded.client import GradedEpisode, GradedError, decode_image
+
+g = GradedEpisode()          # the graded episode's service; once the episode has started, this resumes it
+print(g.status())            # started, ended, steps, sim_time_s, steps_left, prep_window_left_s, graded_window_left_s
+r = g.start()                # ONCE per session: r["obs"] is the first observation (all four images)
+r = g.step([0, 0, 0, 0, 0, 0, -1, 0])     # one control step: r["obs"], r["done"], r["ended"], r["steps_left"]
+g.close()                    # the episode stays where it is; the next GradedEpisode() resumes it
+
+g = GradedEpisode()          # later, from another script
+obs = g.observe()["obs"]     # the last observation again (images included); nothing is simulated
+g.finish()                   # ends the graded episode: it is credited as it stands
+```
+
+`/opt/venv/bin/python3 ~/graded/run_graded.py --submission <folder>` runs a controller folder (a `run.sh`) on the
+graded episode over the grading wire, as `commission/run_bench.py` does on a development bench: it starts the
+episode (or, with `--resume`, continues it from where it stands: the controller then gets a `reset` and its first
+`act` carries that observation's `t`), sends every step once, and stops at the episode's end or after `--max-steps`
+steps, leaving the episode where it is; `--finish` ends the episode if the run stops before its end.
+
+- **Once, and persistent.** `start()` is accepted once per session: it is charged the moment it is accepted and
+  never refunded (later calls answer `already_started`). The episode lives in the service, not in your connection or
+  script: a script that ends, crashes or closes its connection leaves the episode where it is (no simulated time
+  passes), and the next `GradedEpisode()` resumes it (`observe()`). One connection at a time: `GradedEpisode()`
+  raises `GradedError` with the code `busy` while another connection holds the episode (end that script first); a
+  connection silent for 600 s is closed (the episode stays). The service records the episode as it stands after
+  your requests (at least once a second while you work); should its own process fail, the episode ends as last
+  recorded and is not resumed.
+- **Starting it freezes your controller and closes the commissioning service** (above): finish the controller
+  first.
+- **Two windows.** Start the graded episode within 2 hours of the service's start (the service starts with your
+  sandbox, moments before your session begins; `status()["prep_window_left_s"]` counts down); after that, `start()`
+  answers `prep_window_closed`, this item scores 0, and your controller is frozen as it is then
+  (`status()["program_frozen"]`). Once started, the episode lasts at most 3 hours of wall clock
+  (`graded_window_left_s`).
+- **How it ends.** At its own end, by the rules of a graded episode (after 20000 control steps, 20 steps after the
+  lid is shut once it has been open, or at an unstable simulation, which scores 0: `r["done"]` and `r["ended"]` say
+  which), at your `finish()`, when its 3 hours run out, or when your session ends, whichever comes first. It is then
+  credited as it stands: nothing is simulated after the end, and a run counts only under a shut lid. If your session
+  ends first, the episode counts as it stood after your last step. Once it has ended, the service answers `status()`
+  and `finish()` only (`episode_over` to the rest).
+- **How it is credited.** This item is the episode's credit by the rules of "Credit" above, relative to its own
+  hidden reference value; it is the other half of your score. The service tells you nothing about the credit: judge
+  the episode by what the cameras, the wrist and the scale show, as your controller does.
+
+The controller's rules and budgets (the 30 s reply deadline, the 9000 s budget with its 0.2 s per image, the repeated
+requests, the restarts, the rules on processes, the folder's caps) bind your controller in its 12 hidden episodes and
+on the commissioning benches (`commission/run_bench.py` runs it the way the grader does); the graded episode has none
+of them.

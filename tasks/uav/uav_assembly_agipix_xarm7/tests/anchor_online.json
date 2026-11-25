@@ -1,0 +1,8 @@
+{
+ "direction": "higher",
+ "full_at": 1.0,
+ "metric": "assembly_score",
+ "note": "assembly_score of the graded episode (dual mode, the online item) is one workcell's score, already on [0, 1]: the fastened mates' weight / 23 of the workcell as it ended, 0 for an unsafe episode, main's per-episode term (tests/offline_verify.py: the episode mean's term cell.result()['score']); ratio = score / 1.0, reward = ratio (main's full_at 1.0, tests/anchor_offline.json)",
+ "source": "the privileged physical reference's own score, as main's anchor: started with the oracle token, the graded episode's workcell is built as the offline grader builds a privileged program's (reference_nominal_layout: the nominal layout of the episode's seed), and the reference fastens all 23 mates from a fresh nominal workcell (tests/anchor_offline.json); confirmed in the graded episode's own service by validate-3ec2f03f's oracle pass (the reference started with the token through the agent-side client, on the nominal layout of the graded seed: episode_score 1.0, 23 / 23 mates, 1009.8 s simulated, 45.5 min of wall clock)",
+ "value": 1.0
+}

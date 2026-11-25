@@ -1,0 +1,31 @@
+{
+ "task": "house_cleaning_with_tools",
+ "episode": "episode.json",
+ "cell_dir": ".",
+ "cell_config": "cell_config.json",
+ "user": "arbcell",
+ "agent_user": "user",
+ "socket": "/run/arb-online/cell.sock",
+ "state_dir": "/var/lib/arb-online",
+ "prep_s": 14400,
+ "graded_s": 10800,
+ "idle_timeout_s": 900,
+ "send_timeout_s": 300,
+ "call_timeout_s": 900,
+ "record_min_interval_s": 0.5,
+ "requests_log_max_bytes": 33554432,
+ "max_restarts": 3,
+ "start_timeout_s": 600,
+ "require_seccomp": true,
+ "env": {
+  "OPENBLAS_CORETYPE": "Haswell",
+  "OMP_NUM_THREADS": "1",
+  "OPENBLAS_NUM_THREADS": "1",
+  "MKL_NUM_THREADS": "1",
+  "MUJOCO_GL": "osmesa",
+  "PYOPENGL_PLATFORM": "osmesa",
+  "ARB_G1_DIR": "/opt/arb-assets/unitree_g1",
+  "ARB_ROOM_DECOR_DIR": "/opt/arb-assets/room_decor",
+  "MESA_SHADER_CACHE_DISABLE": "true"
+ }
+}

@@ -1,0 +1,10 @@
+{
+ "note": "The graded episode (hidden; root-only at /opt/ale/setup and the service account's only at /opt/arb-graded while the agent works): one site of the hidden set (tests/hidden/selection.json `set`, entry 2 of 6), drawn once on 2026-11-24T04:04:27Z with secrets.randbelow(6) over the set in episode order; every model gets the same episode. package: a byte copy of the set's package (sha256 as the set records it); seed null: the grader's own rule (server.noise_seed_for of the package's sha256), seed_sha256 = sha256 of that seed's decimal text (tests/online.json holds the same); label: the run tag the offline grader gives this site (ep02); ref_energy_wh: the reference program's energy on the site, the set's value (the energy line of E).",
+ "episode": "hidden_l2xp_1",
+ "label": "ep02",
+ "package": "sites/hidden_l2xp_1.site.tar.xz",
+ "sha256": "f7643f7a87dfd5e230233ae548708d253680947b25466a82da1cf67a9d6be972",
+ "seed": null,
+ "seed_sha256": "d438122393be316f7fc0ce8a3fac9aed6497fae296286db6821f236262a6d6c7",
+ "ref_energy_wh": 49.30814690844709
+}

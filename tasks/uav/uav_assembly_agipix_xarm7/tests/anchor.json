@@ -1,8 +1,8 @@
 {
  "direction": "higher",
  "full_at": 1.0,
- "metric": "assembly_score",
- "note": "assembly_score is the episode mean of the fastened mates' weight / 23, zeroed for an unsafe episode, already on [0, 1]; ratio = score / 1.0, reward = ratio",
- "source": "the oracle's own measured assembly_score under ale validate: the privileged physical reference fastens all 23 mates on every episode from a fresh nominal cell (2026-11-08)",
+ "metric": "dual_mode_score",
+ "note": "dual mode (experimental): reward = (offline reward + online reward) / 2, each the item's unrounded reward (robotics_grader.ratio_rewards against its own anchor and full_at: tests/anchor_offline.json, main's anchor.json byte for byte, for the program on 3 workcells drawn as main draws them; tests/anchor_online.json for the graded episode); the mean is written through ratio_rewards once more against this anchor with cap 1.0 and full_at 1.0, so the reward is the mean itself. The offline item grades the program frozen at the earlier of the graded start and the start window's close (or at the session's end when the session ends first) exactly as main does; the online item scores the graded episode's record.",
+ "source": "by construction, confirmed by ale validate's oracle pass: validate-3ec2f03f (2026-11-24, engine bfb7505, a clean checkout of 6cffa426 made with umask 022): dual_mode_score 1.0 = (offline reward 1.0 + online reward 1.0) / 2. The offline item graded the reference program frozen at the graded start (2 files) on 3 workcells drawn as main draws them: assembly_score 1.0 (23 / 23 mates on each, the privileged reference, network audit ok; tests/anchor_offline.json's value); the online item scored the graded episode graded-01: 23 / 23 mates, safe, 1009.8 s simulated, assembly_score 1.0 (tests/anchor_online.json's value). Untouched: 0.0. Each item is normalised by its own anchor, so an oracle that reaches both anchors scores 1.0.",
  "value": 1.0
 }

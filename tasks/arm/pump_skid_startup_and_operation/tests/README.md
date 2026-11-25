@@ -350,3 +350,105 @@ protective stop), `full_at` 0.98.
   sites 2001-2008 the r1 program (written with v0.3's practice service) scored 0.681 on the v0.6 rules (0.571 on
   v0.5.3) when given v0.5's wrist-load format; with the new format it cannot turn a valve (it reads the two old
   scalars) and scores 0; the latest no-practice program scores 0 on both, now without voids.
+
+## 7. The online variant (experiment, 2026-11-17; never merged into main)
+
+On the experiment branch `exp/online-graded-episode` the agent no longer leaves a program for this grader: it plays
+ONE graded episode itself, during its session, and `verify.py` scores the record of that episode. Everything above
+(the cell, the hidden set, the reference program, the givens) is unchanged, and so is the commissioning service until
+the graded episode starts (it then closes, O13 below); the offline grader is `verify.py` on main.
+
+* **The episode.** Episode ep08 of the hidden set (`hidden/seeds.json`, the grader's order), drawn once on
+  2026-11-18 with `secrets.randbelow(8)` (OS entropy); the same episode serves every model. The seed and the oracle
+  token's digest live root-only in `environment/setup/online/episode.json`; `online.json` holds the episode id and the
+  seed's sha256 (of its decimal string) for the record's cross-check.
+* **The service** (`environment/setup/online/graded_service.py`, started by `setup.sh` as root before the session;
+  the alelab daemon pattern of arm_hidden_mechanism_box): a root supervisor (AF_UNIX-only seccomp, trimmed
+  capabilities; it never reads the episode) binds `/run/skidcell-graded/graded.sock` in its own root-owned directory and
+  forks the worker, which reads the episode, imports and checks the grader's cell (the image's byte copy of
+  `tests/skidcell/`, copied root-only by `setup.sh` and pinned by `online/service.json`'s digests) and the reference
+  program (`online/reference/`, a byte copy of `reference/`, likewise pinned), builds the episode's cell as `verify.py`
+  builds one (mode hidden, the grader's cell configuration, the numerics pins of `test.sh`), and drops to its own
+  account `skidgrade` (created in the image, `environment/Dockerfile`; not `skidcell`, whose unhardened service
+  answers the agent's commissioning shifts). It serves one client at a time; the episode lives in the worker, so a
+  disconnect leaves it where it is.
+* **The rules.** One start per session, persisted before anything is simulated, within `prep_s` = 14400 s (main's agent
+  budget) of the service's start; the episode ends at the cell's own end (the sim cap, a physics fault, an internal
+  error), at the agent's `finish`, `graded_s` = 10800 s after its start, or with the session (then the last record
+  stands); a worker restart ends it with its last record. It ends as `verify.py` ends an episode whose program stops
+  (`_end`, then the score as it stands; nothing simulated after). What does not carry over: the program's time, CPU and
+  silence budgets, the allowance after the end, the import check and the contract gates, and the rerun of an episode
+  in which the cell failed (a one-shot episode cannot be run again; such an episode is scored as it stands, and the
+  record's metrics show the failure). `[agent] timeout_sec` = prep_s + graded_s = 25200.
+* **Practice ends when the graded episode starts (O13, 2026-11-18).** Offline, a program never practises in the middle
+  of its graded shift; online, the agent could pause the graded site and try a recovery on a commissioning shift. So
+  the graded start first writes `/run/skidcell-graded/flags/started` (world-readable, in a directory owned by
+  `skidgrade` inside the root-owned socket directory: the agent can neither forge nor remove it; a start whose flag
+  cannot be written is refused, nothing charged), then persists the start. `commissiond.py` stats the flag at every
+  request and at least once a second while an open shift waits: an open shift ends (the event `shift_over`, reason
+  `practice_closed`, then the connection closes; the ledger records the reason), and every later connection's first
+  request is answered `{"error": "practice_closed"}`; `commission_status.json` gains `practice_closed`. A flag that
+  cannot be checked counts as set (practice fails closed); `setup.sh` checks that the commissioning account sees the
+  flag's directory and that the flag is not set. This is the image's only change besides the account `skidgrade`.
+* **The record.** `/var/lib/arb-online` (owner `skidgrade`, 0700; declared in `task.toml` `artifacts`):
+  `record.json` (`arb-online-record/1`: the episode, `seed_sha256`, started / ended / end_reason, requests, steps,
+  sim_time_s, wall_s_since_start, `episode_score` = `Monitor.summary(...)["score"]` as if the episode ended at that
+  moment, the per-episode metrics under the offline grader's names, a bounded detail of the parts and events), written
+  atomically at the start, at most once a second while requests change the episode and within a second of the last one,
+  and at the end; `requests.jsonl` (method, arguments, sim time; capped at 32 MB); `state.json`; the service's logs.
+* **The verifier** (`verify.py`, `test.sh`): reads the record (a regular file of at most 1 MB, strict JSON), checks
+  `format` / `task` / `episode` / `seed_sha256` against `online.json`, `started` and a finite `episode_score` >= 0,
+  and scores it with `ratio_rewards` against `anchor.json` (metric, direction and `full_at` unchanged); a missing or
+  invalid record scores 0 with the reason.
+* **The oracle** (`solution/solve.sh` -> `solution/reference/play_graded.py`): as the agent account, it connects with
+  `connect_graded()`, starts the episode with the oracle token (the service then gives the cell the privileged calls,
+  as the offline grader does for the token), runs the reference submission (`operate.py`: describe, two frames,
+  `reference_run`) and finishes. Measured by `ale validate` (validate-86bd2023) and in a container of the task image
+  on 2026-11-18, the same to the last digit: 0.9999999999998129 for ep08 (the hidden set's selection run: 1.0), about
+  100 s of wall clock; `anchor.json` holds it rounded to 1.0.
+* **The givens** (with their copies under `setup_payload/`, `skidcell/client.py` and `given_hashes.json`): the client
+  adds `connect_graded()`, `Cell.start()`, `Cell.status()`; `cell_api.md`, `cell_manual.md` (sections 6 and 8) and
+  `run_shift.py`'s docstring no longer say that a program-time, silence or import time-out ends or zeroes the graded
+  episode, or that an episode is run again after a cell failure (those budgets are a commissioned program's), and they
+  name `practice_closed`. The instruction's session note says what O6 says: a session that stops while the graded
+  episode runs leaves it scored as it stood after the last request.
+
+## 8. The dual mode (experiment, 2026-11-18; never merged into main)
+
+On the branch `exp/dual-mode-scoring` the task has two items, one session and one verify; the reward is their mean
+(each normalised by its own anchor, cap and `full_at`).
+
+* **The program item** is main's offline grading, unchanged: `offline_verify.py` is main's `verify.py` with two hooks
+  that only `verify.py` sets (`ARB_OFFLINE_ANCHOR` = `anchor_offline.json`, main's anchor; `ARB_OFFLINE_VERDICT` = the
+  root-only file its verdict goes to, instead of the engine's result). `test.sh` is main's again; `[verifier]` is
+  main's (21600 s, 8 CPUs, 16 GB). It grades the program frozen at the graded start, or the session-end submission if
+  the graded episode never started.
+* **The online item** is section 7's graded episode (`anchor_online.json`, the online variant's anchor), scored from
+  the record as there.
+* **The freeze.** At the graded start, before anything is charged, the worker asks the root supervisor (one byte on a
+  pipe; the supervisor takes no other input and never reads the episode) to copy `/home/user/submission` into the
+  root-only `/var/lib/arb-online/submission_snapshot/` (`graded_service.snapshot_submission`: every path opened
+  relative to its parent's descriptor with `O_NOFOLLOW`, so no link is followed; links, sockets, fifos and devices
+  skipped and counted; main's 60 MB cap, plus at most 10,000 entries and 32 levels so the copy ends in bounded time and
+  the record directory stays within the engine's artifact limits; over a cap: `too_large`, no copy). A copy that fails
+  refuses the start, nothing charged; then the practice flag (O13), then the charge. The program freezes at the
+  earlier of the graded start and the close of the start window (the coordinator's correction of 2026-11-18): when
+  `prep_s` runs out with no start, the worker's timer has the supervisor make the same copy then and writes a record
+  with `started` false and `freeze` `prep_window_closed`, which `verify.py` grades; the session-end submission is graded
+  only when nothing was frozen (the session ended first) or no usable record of a freeze exists. The record gains
+  `snapshot_status`, `snapshot_files`, `snapshot_bytes`, `snapshot_sha256` (the sorted list of path, size and content
+  sha256) and `snapshot_skipped`. Measured in a container: 3 ms for a 1 MB submission; three symbolic links (to
+  `/etc/passwd`, to the root-only episode file, to `/opt`) and a fifo skipped; a submission folder replaced by a link
+  froze as an empty folder; 61 MB froze as `too_large`; the agent account could read neither the snapshot nor the
+  record; a program rewritten after the start did not reach the program item (8 of 8 episodes ran the frozen one).
+* **`verify.py`, in order:** stop the agent account's processes (`cellkit.lockdown`, as main); read and check the record;
+  if the episode started (the record or `state.json`), check the snapshot against its digest and replace the restored
+  `/home/user/submission` with a root-owned copy of it (main's late-write gate skips root-owned entries, as it does
+  every restored entry); a `too_large`, missing or altered snapshot scores the program item 0 without a run; run main's
+  grading as a process of its own; score the record; write one verdict, `ratio_rewards(mean, anchor.json = 1.0, cap
+  1.0, metric dual_mode_score, full_at 1.0)`, with both items' metrics (prefixes `offline_` and `online_`).
+* **The oracle** (`solution/solve.sh`): main's steps first (the reference program and its token into the submission),
+  then the graded episode with the token (section 7), so the snapshot holds the reference program.
+* **The givens** say both: the program run (main's text: the grader, the import check, the budgets, the rerun) for the
+  program item, and that the graded episode has none of it; commissioning shifts run under the hidden episodes'
+  budgets and close at the graded start (`practice_closed`).

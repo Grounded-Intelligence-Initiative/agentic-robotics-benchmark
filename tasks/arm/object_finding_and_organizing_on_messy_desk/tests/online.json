@@ -1,0 +1,9 @@
+{
+ "task": "object_finding_and_organizing_on_messy_desk",
+ "episode": "hidden-1",
+ "seed_sha256": "bb244c6be2d7d21ca6ab7d84efd40165b80d32db641a769c9205440adaa2e910",
+ "record": "/var/lib/arb-online/record.json",
+ "max_record_bytes": 1048576,
+ "source": "The graded episode of the online variant: drawn 2026-11-18T04:41:49Z with secrets.randbelow(3) (OS entropy) over the seeds of episodes.json (the offline verifier's fixed hidden set, in its order), index 1. seed_sha256 is sha256 of the seed's decimal digits; the seed itself is root-only in environment/setup/online/episode.json, which the service reads as root before it drops privileges.",
+ "snapshot": "/var/lib/arb-online/submission_snapshot"
+}

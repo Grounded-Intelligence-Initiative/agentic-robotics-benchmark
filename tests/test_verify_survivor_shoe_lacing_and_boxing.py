@@ -19,7 +19,9 @@ import types
 import unittest
 from pathlib import Path
 
-VERIFY = Path(__file__).resolve().parents[1] / "tasks/arm/shoe_lacing_and_boxing/tests/verify.py"
+# the dual mode (experimental branch): main's tests/verify.py lives on byte for byte as tests/offline_verify.py, which
+# the dual verify.py runs for the program item
+VERIFY = Path(__file__).resolve().parents[1] / "tasks/arm/shoe_lacing_and_boxing/tests/offline_verify.py"
 FAMILY = "contract"   # "contract": the survivor reason zeroes contract_ok; "void": a survivor raises a task error
 QUIET = {"AGENT_QUIET_S": 0.8, "AGENT_QUIET_MAX_S": 3.0}   # verify.py: 5 s and 30 s
 

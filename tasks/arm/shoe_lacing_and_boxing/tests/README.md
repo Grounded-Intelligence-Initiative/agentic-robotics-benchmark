@@ -5,6 +5,9 @@ its wire in `cell_api.md`. This page records the design decisions, what the grad
 known to be rough in version 0.2 (2026-10-30, Yuanfang Peng; reference lacing and the lace physics reworked 2026-11-05;
 the lid tray's delivery spot 2026-11-07).
 
+**This copy is the DUAL MODE (experimental branch, 2026-11-18; section 7)**: main's program item (sections 1-5,
+unchanged) and the online graded episode (section 6) in one session and one verify, the reward the mean of the two.
+
 ## 1. The job and why it is worth measuring
 
 Lacing is the last manual operation of a sneaker line (Adidas's Speedfactory left it to people; Pou Chen and Solomon
@@ -367,3 +370,106 @@ anchor is the oracle's full or near-full score with `full_at` near 1. Here:
   (`box_skills._shift_lid_away`) stays for a lid a wall fold meets, and its `LID_TRAY_IN` comment still describes the
   old delivery.
 * Three-row batches need a longer lace (section 2).
+
+## 6. The online variant (experimental, 2026-11-17)
+
+The owner's experiment on seven quasi-static behavior tasks: instead of leaving a program that a verifier runs on the
+hidden episodes, the agent plays ONE hidden episode itself during its session. Rules O1-O12 of the experiment's
+contract; what they became here:
+
+* **The graded episode (O1).** Drawn once from the offline hidden set (`hidden/seeds.json`, six seeds run as
+  ep01-ep06) with OS entropy on 2026-11-18T04:36:44Z: `python3 -c 'import secrets; print(secrets.randbelow(6))'`
+  printed 0, so the graded episode is ep01, seed 2122884573269676624 (the offline anchor's verifies ran it in
+  463.68 s simulated, 46368 ticks, work_score 1.0). The seed lives in `environment/setup/online/episode.json`
+  (root-only at `/opt/ale/setup` while the agent works); `online.json` holds the id and the sha256 of the seed's
+  decimal digits, which the verifier checks against the record. Every model meets this episode.
+* **The service (O3-O8)**, `environment/setup/online/server.py`, started by `environment/setup/setup.sh`: the alelab
+  daemon pattern of `arm_hidden_mechanism_box` (a root supervisor that never reads the episode, binds
+  `/run/arb-online/cell.sock` and restarts the worker at most 5 times; a worker that reads the episode, the reference
+  token's digest, the grader's cell configuration (`online/grader_config.json`, a byte copy of `grader_config.json`)
+  and the givens' pins (`online/given_hashes.json`, a byte copy of `given_hashes.json`) as root, checks its own
+  root-owned copy of the givens (`/opt/arb-online`, built by setup.sh from the payload and the image's Panda) file by
+  file, drops to the account `arbonline` (created in the Dockerfile) irreversibly, not dumpable, under the AF_UNIX-only
+  seccomp filter, then builds the cell, `ShoeCellServer(given, config, mode="hidden")` + `reset(seed)` exactly as
+  `run_episode` of the offline verifier did). Requests are the cell's own JSON-lines wire (`shoecell.client`:
+  `connect_graded()` returns a `GradedCell`, the same proxy, plus `status`, `start`, `close`) and go to the cell's own
+  dispatch (`ShoeCellServer.handle`). One client at a time (`busy`), the episode persists across connections, one start
+  per session (persisted with fsync in `/var/lib/arb-online/state.json` before anything is simulated), the start window
+  `prep_s` = 14400 s (the offline agent budget) from the service's first start, the graded window `graded_s` = 10800 s
+  (the default; the oracle's episode takes 10-20 min), `[agent] timeout_sec` = 25200. What does not carry over from the
+  offline wire (O2): the program-time cap, the silence limit, the CPU backstop, the program-contract gates (route gate,
+  network audit, run account); what does: everything the cell enforces (sim cap, step cap, frame budget, safety, the
+  work score) and the after-done limits of the wire (50 steps / 200 requests after the cell's own end).
+* **The end (O6).** The offline grader ends an episode whose program stops with `server._end(reason)` and scores it
+  with `finalize()`, simulating nothing more; the service does the same at `finish`, at the graded window's end
+  (`end_reason graded_window`) and at the cell's own end (`done`). A worker that dies ends the episode with its last
+  record (`worker_restart`). If the session ends first, the last record applies.
+* **The record (O7)**, `/var/lib/arb-online/record.json` (the directory `arbonline`'s, 0700, created by setup.sh,
+  declared in `task.toml` `artifacts`): rewritten atomically at the start, after a changing request once 2 s have passed
+  since the last write or the connection has been quiet for 0.5 s or has closed, and at the end; `episode_score` is
+  `work.summary(violations)["work_score"]`, the same function `finalize()` calls, computed as if the episode ended
+  then (the scene's scoring queries only read the state: the physics is not perturbed). `requests.jsonl` logs every
+  request (the token redacted) up to 32 MB.
+* **The verifier (O9)**, `verify.py`: reads the record, checks it against `online.json`, scores `episode_score` with
+  `ratio_rewards` against `anchor.json` (unchanged metric, direction and full_at); no record, a malformed one or one
+  that never started scores 0. It runs no program; the offline machinery (`shoecell/`, `cellkit/`, `setup_payload/`,
+  `reference/`, `hidden/`, `review/`) stays in this folder unused, as the record of the offline task.
+* **The oracle (O10)**: `solution/solve.sh` runs `solution/graded.py` as the agent account: `connect_graded()`, `start`
+  with the 256-bit token (the service compares its sha256 with `online/oracle_token.sha256`, a byte copy of
+  `hidden/oracle_token.sha256`, and on a match sets the cell's `privileged` and `reference_dir` =
+  `/opt/arb-online/private`, the copy of `online/reference/` (byte copies of `reference/`) that only `arbonline` can
+  read), then the unchanged `reference/packer.py` (describe, two frames, `reference_run`) and `finish`. The anchor's
+  value is the oracle's measured `episode_score` in a validate of this variant (`anchor.json` `online`).
+* **Practice when the graded episode starts (O13, added 2026-11-18).** Every practice service that runs hidden code
+  or hidden instances must close at the start. This task has none: its practice facilities, `LocalCell` and
+  `practice/grade.py`, run the given cell code in the agent's own processes on seeds the agent chooses (the rule's
+  "local cell whose code it was given", which stays available), and the graded service offers no practice. Nothing is
+  closed; the instruction says so beside the one-shot rule.
+* **The agent's side (O11, O12)**: `instruction.md` replaces the deliverable and the grading sections with the graded
+  episode; `client.py` gains `connect_graded` / `GradedCell`, `cell_api.md` the section "The graded episode",
+  `cell_manual.md` one sentence on the budgets (the three copies and `given_hashes.json` follow). The practice
+  facilities (`LocalCell`, `practice/grade.py`, the example) are unchanged.
+
+## 7. The dual mode (experimental, 2026-11-18)
+
+The owner's decision: offline and online are two scoring items of one task, scored as their mean, in one session and
+one verify, with the program frozen at the start (rules DM1-DM8 of the experiment). What they became here:
+
+* **One verify** (`verify.py`, DM5): (1) the agent account's processes stopped as main's verifier starts
+  (`cellkit.lockdown.stop_and_kill_uid`, the account freezer); (2) the record read and checked (O9); (3) the program
+  graded: the frozen copy when the record says the program was frozen (at the start or at the window's close;
+  checked file by file against the record's `snapshot_sha256`), an empty folder when it was over the cap
+  (`too_large`), the restored submission without a usable record; (4) main's grading, unchanged: `offline_verify.py` is main's `tests/verify.py` byte
+  for byte and runs as its own program in `/opt/arb-offline/tests`, a root-only copy of this folder laid out as main's
+  (`offline_verify.py` as `verify.py`, `anchor_offline.json` as `anchor.json`), so its lockdown, gates, network audit,
+  hidden set, budgets, oracle token and reference value apply as they are, and its envelope (`verdict.local.json`)
+  gives `offline_reward`; (5) the record's `episode_score` against `anchor_online.json` gives `online_reward`; (6)
+  `reward = (offline_reward + online_reward) / 2`, written once through `ratio_rewards` against `anchor.json`
+  (`dual_mode_score`, value 1.0, cap 1.0, full_at 1.0). A task error of main's grading is the verify's task error.
+* **The anchors** (DM2): `anchor_offline.json` is main's `anchor.json` byte for byte, `anchor_online.json` the online
+  variant's `anchor.json` byte for byte; `anchor.json` is the combined metric's, 1.0 by construction (the oracle reaches
+  both items' reference values) and confirmed by the validate's oracle.
+* **The freeze** (DM3, as corrected on 2026-11-18): the program freezes at the earlier of the graded start and the
+  close of the start window (`prep_s` after the service's start), so the program item keeps main's preparation time
+  whether or not the agent plays the graded episode. Before the start is charged, or the moment the window closes
+  without a start, the worker sends one byte on a pipe to the root supervisor, which copies `/home/user/submission`
+  into `/var/lib/arb-online/submission_snapshot` (root-owned 0700 / 0600: neither the
+  agent nor the service account can read it) with main's snapshot rules (`cellkit.lockdown.snapshot_dir`: regular
+  files and folders only; links, special files and `__pycache__` dropped), opening every entry relative to an open
+  folder with `O_NOFOLLOW` (no link is followed at any level), within main's 60 MB route-gate cap (over it:
+  `too_large`, no copy, the program item scores 0) and below the engine's artifact bounds (50000 entries, depth 32;
+  names of printable ASCII). A failed copy refuses the start and charges nothing (`snapshot_failed`); at the window's
+  close it is tried three times, then recorded as `error`, which the verifier treats as a task error. A window that
+  closes without a start leaves a record saying so (`started` false, `prep_window_closed` true, the snapshot fields);
+  the restored submission is graded only without a usable record (the session ended before the window closed). The record and
+  `state.json` carry `snapshot_status`, `snapshot_files`, `snapshot_bytes`, `snapshot_sha256` (the sha256 of the sorted
+  "path NUL size NUL sha256" lines) and `snapshot_skipped`; the agent learns its frozen program's files and bytes
+  (`status()["program_frozen"]`). The supervisor never reads the graded episode; the worker never regains root.
+* **Time** (DM4): `prep_s` 14400 s (main's agent budget) for the program and the preparation, then `graded_s`
+  10800 s; `[agent] timeout_sec` 25200; `[verifier]` main's (32400 s, 8 CPUs, 16 GB).
+* **The oracle** (DM7): `solution/solve.sh` puts the reference program and its token into the submission folder (main's
+  `solve.sh`), then plays the graded episode with it (`graded.py`), so the frozen copy holds the reference program.
+* **The instruction**: the two items and their mean, the freeze, main's program section (its contract, with the freeze
+  in place of "final when your session ends"), the graded episode's section, the scoring of both items, the windows;
+  no "not graded" sentence. The physics-fault rule stays as it is (owner, 2026-11-18).
+

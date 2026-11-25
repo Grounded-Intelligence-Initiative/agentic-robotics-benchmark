@@ -8,21 +8,32 @@ the parts must be operated in the right order and the right way. There are four 
 only through a lab with a limited number of trials, seeing them through cameras and feeling them
 through the arm.
 
-Deliver a controller that opens each box from camera images, joint readings and the wrist
-force/torque sensor. You have **8 hours** of wall time for the whole job (exploring, lab trials,
-building and testing the controller); have your controller in `/home/user/submission/` well before
-the time is up.
+You are scored on **two items, equally weighted**:
+
+1. **The program**: a controller that opens each box from camera images, joint readings and the wrist force/torque
+   sensor, which you leave in `/home/user/submission/` and which the grader runs on 8 hidden episodes (The program).
+2. **The graded episode**: one episode on one of the four boxes, at a hidden placement, drawn once before your session
+   (the same episode for every model), that you play yourself, through the lab, step by step, with whatever programs
+   you write (The graded episode).
+
+The program graded is the one in `/home/user/submission/` at the moment you start the graded episode, or when its
+start window closes (8 hours after the lab's start) if you have not started it by then: the lab freezes that folder
+at that moment, and nothing you change in it afterwards counts. You have **8 hours** to prepare, shared by the
+program and your preparation for the graded episode (exploring, lab trials, building and testing the controller and
+your tools); start the graded episode within them, with your controller in place. From its start you have up to
+**3 hours** to play it.
 
 ## What is in your home directory
 
 | Path | What it is |
 |---|---|
-| `box_env.py` | The complete robot environment: the LIBERO kitchen tabletop scene, the Panda arm and gripper (robosuite models), the operational-space controller, cameras, sensor noise and the credit rule. The lab and the grader run this exact file; only the box they load differs. Read its docstrings: frames, units, action and observation formats, camera matrices. |
+| `box_env.py` | The complete robot environment: the LIBERO kitchen tabletop scene, the Panda arm and gripper (robosuite models), the operational-space controller, cameras, sensor noise and the credit rule. The lab (its trials and the graded episode) and the grader run this exact file; only the box they load differs. Read its docstrings: frames, units, action and observation formats, camera matrices. |
 | `practice_box.json` | A practice box (`xml`: its MJCF body, `meta`: its stages, `config`: its mechanism) for `BoxEnv(json.load(open(...)))`. Its mechanism: a front push button blocks a slide bolt; the bolt blocks the lid; the lever knob is a decoy. It is an example of how such boxes are built, not one of the four boxes. |
-| `practice_grader/grade.py` | Runs your controller over the grading wire against the practice box (or any box spec you pass with `--box`) on visible seeds and prints the raw progress. |
+| `practice_grader/grade.py` | Runs your controller over the grading wire against the practice box (or any box spec you pass with `--box`) on visible seeds and prints the raw progress. It applies the rules of the program's grading run (deadlines, repeated step indices, restarts, the time budget); none of them apply to the graded episode. |
 | `labclient.py` | Client for the lab (library and command line). |
 | `helpers/lab_bridge.py` | Optional boilerplate: runs your controller (`run.sh`) for one lab trial and logs every observation and action. |
 | `helpers/wire_skeleton.py` | Optional boilerplate for the grading wire (READY / reset / act / close, repeated step indices). |
+| `helpers/graded_bridge.py` | Optional boilerplate: runs your controller (`run.sh`) in the graded episode, or continues the episode with it, and logs every observation and action. |
 
 Run Python as `/opt/venv/bin/python3` (it is not on your `PATH`). `box_env.py` renders its cameras
 with MuJoCo's Filament renderer (physically based) on the CPU; the first image of a process takes
@@ -102,9 +113,27 @@ otherwise the boxes behave deterministically. Lab episodes never end early, and 
 reports scores, stages or part positions: only observations. A step takes about 0.01 s plus about
 0.07 s per image; one with all three images returns about 0.8 MB. When the budget is used up,
 `reset` answers `budget_exhausted`. The lab boxes are exactly the boxes you are scored on. The lab
-is gone when grading starts.
+also serves the graded episode (below); its trials end when the graded episode starts, and it is gone when your
+program is graded.
 
-## Deliverable and grading
+## Stages and credit
+
+**The stages of a box** are: every part that must be operated to open it (the parts on its interlock chain, plus
+any cover plate that hides one of them) and the opening itself (lid at least 60 degrees open, or drawer at least
+56 mm out). The **credit position** of a part is at least 80 % of its travel (knob: 72 degrees), or inside its
+release window if it has one (within 0.02 mm of either edge; knob: 0.05 degrees); that of the opening is the lid at
+least 60 degrees open or the drawer at least 56 mm out. A stage **reaches** its credit position once it has been
+there for 3 consecutive steps **while every part upstream of it in the chain (the parts that block it, the parts
+that block those, and so on) was in its own credit position** during those steps (chain rule: for example, a part
+whose window blocker has been moved out of its window reaches nothing until the blocker is back inside, and neither
+does anything downstream of it). The opening and a part without a release window count once they reach their
+credit position. A part with a release window counts only once a part it blocks reaches its credit position (by the
+chain rule it was then inside its window): moving it into or through its window counts nothing by itself. A counted
+stage stays counted. Decoys never count. Each box has 3 or 4 part stages. The episode score is 0.5 x (fraction of
+the box's part stages done) + 0.5 x (1 if the opening is done, else 0). An episode in which the simulation becomes
+unstable (any arm joint faster than 8 rad/s or any box part faster than 30 units/s) ends there and scores 0.
+
+## The program (scoring item 1)
 
 Leave a controller in `/home/user/submission/` with an executable `run.sh` (started as `bash
 run.sh` with that folder as working directory, as your user, with no network: only AF_UNIX
@@ -122,26 +151,100 @@ scores 0: a controller that ignores its input, or answers a repeated `t` from a 
 
 The grader runs 8 episodes: 2 on each box with fresh hidden placements, in a hidden order (the
 observation names the box). An episode ends after 2500 steps or as soon as all of the box's stages
-are done. **The stages of a box** are: every part that must be operated to open it (the parts on its
-interlock chain, plus any cover plate that hides one of them) and the opening itself (lid at least
-60 degrees open, or drawer at least 56 mm out). The **credit position** of a part is at least 80 %
-of its travel (knob: 72 degrees), or inside its release window if it has one (within 0.02 mm of
-either edge; knob: 0.05 degrees); that of the opening is the lid at least 60 degrees open or the
-drawer at least 56 mm out. A stage **reaches** its credit position once it has been there for 3
-consecutive steps **while every part upstream of it in the chain (the parts that block it, the
-parts that block those, and so on) was in its own credit position** during those steps (chain rule:
-for example, a part whose window blocker has been moved out of its window reaches nothing until the
-blocker is back inside, and neither does anything downstream of it). The opening and a part without
-a release window count once they reach their credit position. A part with a release window counts
-only once a part it blocks reaches its credit position (by the chain rule it was then inside its
-window): moving it into or through its window counts nothing by itself. A counted stage stays
-counted. Decoys never count. Each box has 3 or 4 part stages. The episode score is 0.5 x (fraction
-of the box's part stages done) + 0.5 x (1 if the opening is done, else 0); your result is the mean
-over the 8 episodes. An episode in which the controller crashes, answers late or malformed, or makes the simulation unstable (any arm
-joint faster than 8 rad/s or any box part faster than 30 units/s) scores 0; after 3 restarts of
+are done; its score is the episode score of Stages and credit, and the program's result is the mean
+over the 8 episodes. An episode in which the controller crashes, answers late or malformed, or makes the simulation
+unstable (any arm joint faster than 8 rad/s or any box part faster than 30 units/s) scores 0; after 3 restarts of
 your controller the remaining episodes score 0. The whole grading run must finish within 6000 s
 (budget it at about 750 s per episode including your controller's thinking time); the episode under
 way when it runs out, and the episodes after it, score 0. Your controller is one process for the whole grading run (it is started
 again only after a crash), so it may carry what it learned about a box in one episode into later
-episodes on the same box: online adaptation during execution is allowed and intended. Only the
-final controller is scored; trial usage is not.
+episodes on the same box: online adaptation during execution is allowed and intended. Trial usage is not scored.
+
+**The freeze.** The controller graded is the one in `/home/user/submission/` at the earlier of two moments: when you
+call `graded_start` (before the graded episode is charged), or when the graded episode's start window closes (8 hours
+after the lab's start) if you have not started it by then. The lab copies the folder at that moment (regular files
+and folders only; links are not copied), and the grader runs that copy. Nothing you change in the folder afterwards
+counts, so the program can use neither what you see in the graded episode nor the time after the window. If the
+folder holds more than 5000 files or 200 MiB at that moment, nothing is copied and the program scores 0. Only if
+your session ends before the start window closes, without a start, is the controller graded the one in the folder at
+the end of your session.
+
+## The graded episode (scoring item 2)
+
+The graded episode is one episode on one of the four boxes, drawn once before your session: a box chosen
+uniformly at random, with one fixed seed for its placement (the draw described in The boxes) and its sensor noise.
+Every model plays this same episode. Its first observation names the box (`box`). It is an episode like a lab trial on
+that box (the same box, robot, controller, action and observation formats, cameras, sensor noise and physics, the
+same 2500-step limit), except that it **ends as soon as all of the box's stages are done**, and it is not one of
+your 16 trials.
+
+The calls (`labclient.py`; the requests are JSON lines on the lab socket, `{"op": "graded_start"}` and so on):
+
+- `obs = lab.graded_start()`: starts the graded episode and returns its first observation (all three images). It
+  can be started **once per session**: the start is recorded before anything is simulated and is never given back,
+  whatever happens afterwards (a crash of your script, a lost connection). **Starting it freezes your program**
+  (The program: the freeze). **Starting it ends lab practice**: every
+  open lab trial ends at that moment, and `reset` is refused (`practice_closed`) for the rest of the session, as no
+  practice happens during a graded run (`hello` and `budget` still answer). Your own tools stay available: the dev
+  sim `box_env.py`, the practice box, the practice grader and anything you wrote.
+- `obs, done = lab.graded_step(action)`: one control step (0.1 s simulated) with an action in the format above;
+  `obs` is the next observation and `done` is true once the episode has ended. A malformed action is refused
+  (`bad_action`) and simulates nothing.
+- `obs, done = lab.graded_observe()`: the latest observation again, as the last step returned it (images
+  included); nothing is simulated. Use it to continue from a new script.
+- `lab.graded_status()`: `started`, `ended`, `end_reason`, `steps`, `sim_time_s`, `prep_left_s` (seconds left to
+  start it), `graded_left_s` (seconds left in it) and `holder` (`"you"`, `"other"` or none: the connection that
+  holds it).
+- `lab.graded_finish()`: ends the graded episode now.
+
+From the shell: `python3 labclient.py graded_status`, `graded_finish`, `graded_start --out first.json` (prints the
+reply with each image's data replaced by its shape and saves it whole), `graded_observe --out now.json`.
+`helpers/graded_bridge.py` runs a wire controller (`run.sh`) in the graded episode, as `helpers/lab_bridge.py`
+does for a trial (`--resume` continues the episode where it stands; `--steps N` stops after N steps; `--finish`
+ends the episode if the run stops before its end). A short example:
+
+```python
+import sys; sys.path.insert(0, "/home/user")
+from labclient import LabClient
+
+with LabClient() as lab:
+    obs = lab.graded_start()                                  # once per session
+    for _ in range(20):
+        obs, done = lab.graded_step([0, 0, -0.01, 0, 0, 0, -1, 0])
+
+# later, from another script: continue where the episode stands
+with LabClient() as lab:
+    obs, done = lab.graded_observe()
+    obs, done = lab.graded_step([0, 0, 0, 0, 0, 0, -1, 7])     # all three images in the next observation
+    print(lab.graded_status())
+    lab.graded_finish()                                       # when you are done
+```
+
+The episode lives in the lab, not in your connection or program: closing a connection or ending a script leaves it
+where it is, and any later connection continues it. Simulated time advances only with your steps, never while you
+think. One connection holds the episode at a time: while one holds it, graded calls from another one are answered
+`graded_busy` (`graded_status` still answers) until the first one closes. The lab serves at most two connections at
+a time and closes a connection that sent nothing for 900 s. If the lab itself fails during the episode, the episode
+ends there and is scored as it stood.
+
+**Two windows.** The graded episode must be started within 8 hours of the lab's start (a few seconds before your
+session starts); a later `graded_start` is refused (`window_closed`), and then the graded episode scores 0 (the
+program is still graded: the one in the folder when the window closed). Once started, the episode ends:
+
+- at its own end: all of the box's stages done, 2500 steps, or an unstable simulation (which scores 0);
+- when you call `graded_finish`;
+- 3 hours after its start (the lab ends it then, with or without a request);
+- when your session ends (at the latest 11 hours after it started).
+
+After its end the lab refuses further graded steps (`graded_over`).
+
+**Score.** The graded episode's score is its episode score (Stages and credit) at the moment it ends. Nothing is
+simulated after the end: counted stages stay counted, so ending it early (a finish, the 3 hours, the end of your
+session) scores what is counted at that moment, as holding still until step 2500 would. If your session ends while
+the episode is running, it is scored as it stood after your last step. The lab never reports the score, the stages
+or the box's state, only observations.
+
+## Your score
+
+Your result is the mean of the two items: the program's result (the mean over its 8 episodes) and the graded
+episode's score. Lab trials are not scored.

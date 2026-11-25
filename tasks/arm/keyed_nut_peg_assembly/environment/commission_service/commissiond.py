@@ -31,6 +31,15 @@ its account only) records the episodes' kits, times and end reasons.
 
 Wire: JSON lines {"id": n, "method": ..., "params": {...}} -> {"id": n, "result": ...} or {"id": n, "error": ...,
 "detail": ...} (~/commission/client.py in the agent's home speaks it).
+
+Practice ends when the graded episode starts (the dual mode's rule O13, experimental branch): offline, a controller is
+commissioned before it is graded, never during its graded run. The graded episode's service
+(environment/setup/online/graded_service.py) writes the flag GRADED_FLAG the moment the agent starts the graded episode
+(before anything of it is simulated), in a directory only that service's account can write. From then on this service
+ends every open episode (the event episode_over with the reason practice closed, then the connection closes; an open
+episode looks at the flag at every request and at least once a second while it waits) and answers every new
+connection's first request {"error": "practice_closed"} for the rest of the session; commission_status.json says
+practice_closed. A flag that cannot be checked counts as set.
 """
 
 import fcntl
@@ -59,6 +68,25 @@ AFTER_DONE_MAX_REQUESTS = 20
 MAX_LINE = 65536                 # a request line (an action is 8 numbers)
 SEND_TIMEOUT_S = 60.0
 BUSY_GRACE_S = 2.0               # a new connection waits this long for a slot before it is answered `busy`
+GRADED_FLAG = os.environ.get("KEYEDCELL_GRADED_FLAG", "/run/keyedcell-graded/flags/started")
+FLAG_POLL_S = 1.0
+PRACTICE_CLOSED = ("the graded episode has started: commissioning has ended for this session (practice ends when the "
+                   "graded episode starts)")
+
+
+class PracticeClosed(Exception):
+    """The graded episode started while an episode waited for its next request."""
+
+
+def practice_closed():
+    """True once the graded episode has started (GRADED_FLAG exists); a flag that cannot be checked counts as set."""
+    try:
+        os.stat(GRADED_FLAG)
+        return True
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
 
 
 def log(msg):
@@ -97,7 +125,7 @@ class Ledger(object):
         n = int(KITS["episodes"])
         return {"commissioning_episodes": n, "episodes_used": int(d["episodes_used"]),
                 "episodes_left": max(0, n - int(d["episodes_used"])), "development_kits": len(KITS["kits"]),
-                "open_at_a_time": int(KITS["open"])}
+                "open_at_a_time": int(KITS["open"]), "practice_closed": practice_closed()}
 
     def publish(self):
         with open(self.lock, "a") as lk:
@@ -151,15 +179,23 @@ class Conn(object):
         self.sock = sock
         self.buf = b""
 
-    def read(self, timeout):
-        """The next request object; None on EOF; raises socket.timeout on silence, ValueError on a malformed line."""
+    def read(self, timeout, closed=None):
+        """The next request object; None on EOF; raises socket.timeout on silence, ValueError on a malformed line, and
+        PracticeClosed once `closed()` is true (asked at least once a second while it waits)."""
         deadline = time.monotonic() + timeout
         while b"\n" not in self.buf:
             left = deadline - time.monotonic()
             if left <= 0:
                 raise socket.timeout()
-            self.sock.settimeout(left)
-            chunk = self.sock.recv(1 << 16)
+            if closed is not None and closed():
+                raise PracticeClosed()
+            self.sock.settimeout(min(left, FLAG_POLL_S) if closed is not None else left)
+            try:
+                chunk = self.sock.recv(1 << 16)
+            except socket.timeout:
+                if closed is None:
+                    raise
+                continue
             if not chunk:
                 return None
             self.buf += chunk
@@ -251,7 +287,12 @@ def serve(sock, ledger):
             else:
                 wait = max(0.0, AFTER_DONE_MAX_S - (time.monotonic() - done_since))
             try:
-                req = conn.read(wait)
+                req = conn.read(wait, closed=practice_closed if env is not None and ended is None else None)
+            except PracticeClosed:
+                spent += time.monotonic() - last_sent
+                ended = "practice closed at step {}: the graded episode has started".format(env.t)
+                close_reason = "practice_closed"            # O13: this episode ends here
+                break
             except socket.timeout:
                 if env is not None and ended is None:
                     spent += time.monotonic() - last_sent
@@ -272,6 +313,14 @@ def serve(sock, ledger):
                 break
             rid, method, params = req.get("id"), str(req.get("method")), req.get("params")
             params = params if isinstance(params, dict) else {}
+            if practice_closed():                           # O13: no request is served once the graded episode started
+                if env is None:
+                    conn.send({"id": rid, "error": "practice_closed", "detail": PRACTICE_CLOSED}, timeout=5.0)
+                elif ended is None:
+                    spent += time.monotonic() - last_sent
+                    ended = "practice closed at step {}: the graded episode has started".format(env.t)
+                close_reason = "practice_closed"
+                break
             if env is not None and ended is None:
                 spent += time.monotonic() - last_sent
             last = False
@@ -355,7 +404,7 @@ def serve(sock, ledger):
         if env is not None:
             if ended is None:
                 ended = "connection closed at step {}".format(env.t)
-            if close_reason in ("timeout", "after the end"):
+            if close_reason in ("timeout", "after the end", "practice_closed"):
                 try:                                # a limit ended the episode: say so before the connection closes
                     conn.send({"id": None, "event": "episode_over", "reason": ended}, timeout=5.0)
                 except (OSError, socket.timeout):
@@ -385,11 +434,13 @@ def main():
     srv.bind(SOCKET)
     os.chmod(SOCKET, 0o666)
     srv.listen(16)
+    srv.settimeout(FLAG_POLL_S)
     ledger.publish()
     log("listening on %s: %d development kits, %d episodes, %d at a time" % (
         SOCKET, len(KITS["kits"]), KITS["episodes"], KITS["open"]))
     children = set()
     busy = set()
+    closed_published = False
 
     def reap():
         for pids in (children, busy):
@@ -402,8 +453,35 @@ def main():
                     pids.discard(pid)
 
     while True:
-        conn, _ = srv.accept()
+        try:
+            conn, _ = srv.accept()
+        except socket.timeout:
+            reap()
+            if not closed_published and practice_closed():
+                closed_published = True             # O13: the status file says so once the graded episode started
+                ledger.publish()
+                log("practice closed: the graded episode has started")
+            continue
+        conn.settimeout(None)
         reap()
+        if practice_closed():
+            # O13: every new connection's first request is answered practice_closed (by a child, so that the service
+            # never waits on a client), and the connection is closed; no episode is used
+            pid = os.fork()
+            if pid == 0:
+                srv.close()
+                try:
+                    c = Conn(conn)
+                    req = c.read(10.0)
+                    c.send({"id": (req or {}).get("id"), "error": "practice_closed", "detail": PRACTICE_CLOSED},
+                           timeout=5.0)
+                except Exception:  # noqa: BLE001
+                    pass
+                finally:
+                    os._exit(0)
+            busy.add(pid)
+            conn.close()
+            continue
         grace = time.monotonic() + BUSY_GRACE_S     # an episode that has just been closed is still leaving
         while len(children) >= int(KITS["open"]) and time.monotonic() < grace:
             time.sleep(0.05)

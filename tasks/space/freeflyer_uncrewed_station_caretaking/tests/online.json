@@ -1,0 +1,14 @@
+{
+ "note": "The graded episode the record must name (verify.py checks format, task, episode and seed_sha256 against the record; the episode is the site of hidden/selection.json whose tag it names, entry 2 of 6, drawn once on 2026-11-24T04:04:27Z with secrets.randbelow(6); seed_sha256 = sha256 of the decimal text of its noise seed, the grader's rule server.noise_seed_for of the package's sha256, as the set's seed is null). record / record_max_bytes: where the engine restores the record and the largest record verify.py reads; record_dir: the graded episode's record directory (cell_record.json, calls.jsonl); snapshot_dir: the program frozen at the graded start (or when the preparation window closed), which the program item grades; cell_limits: the cell's budget overrides of the graded episode (the program's two wall-clock budgets switched off, as environment/setup/online/service.json sets them), which a re-simulation from the call log uses too.",
+ "format": "arb-online-record/1",
+ "task": "freeflyer_uncrewed_station_caretaking",
+ "episode": "hidden_l2xp_1",
+ "seed_sha256": "d438122393be316f7fc0ce8a3fac9aed6497fae296286db6821f236262a6d6c7",
+ "record": "/var/lib/arb-online/record.json",
+ "record_max_bytes": 1048576,
+ "record_dir": "/var/lib/arb-online",
+ "cell_record_max_bytes": 268435456,
+ "calls_max_bytes": 268435456,
+ "snapshot_dir": "/var/lib/arb-online/submission_snapshot",
+ "cell_limits": {"silence_s": 1000000000000.0, "program_compute_s": 1000000000000.0}
+}

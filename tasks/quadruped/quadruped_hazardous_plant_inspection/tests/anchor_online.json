@@ -1,0 +1,8 @@
+{
+ "metric": "inspection_score",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 0.95,
+ "source": "The privileged reference program's score on the graded episode's mission, h01 (online.json): 1.0, measured 2026-11-23 through the graded episode's service (environment/setup/online/graded_service.py, started by setup.sh in a container with the task's pinned Python packages and render bundle), solution/solve.sh run as the agent account: 928.3 s simulated, all ten items delivered with full credit, R 1.0, 0.2557 of the dose rating; the mission's final state digest 8a8477cbfd4db63a... equals the offline admission's record of the reference on that site bit for bit (hidden/selection.json candidates/c01/reference/final_state_sha256; set_detail: S 1.0, 928.3 s). Confirmed by `ale validate`'s oracle pass on the dual task: validate-a6acf217 (2026-11-24, a clean checkout of e44cc89d): the graded episode h01 scored 1.0 (928.3 s simulated, 14254 step calls, ended at finish).",
+ "note": "inspection_score of the graded episode is one mission's score S = R x sum(w x c), already on [0, 1], read from the mission as it ended; full_at is main's (0.95: full credit slightly below the reference's value, as for the program item)."
+}

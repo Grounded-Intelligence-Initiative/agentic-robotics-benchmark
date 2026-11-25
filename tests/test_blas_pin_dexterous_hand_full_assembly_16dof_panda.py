@@ -153,7 +153,16 @@ class BlasPin(unittest.TestCase):
         for n in before:
             mods |= {a.name for a in n.names} if isinstance(n, ast.Import) else {n.module}
         self.assertTrue(mods <= {"ast", "json", "math", "os", "pwd", "shutil", "stat", "subprocess", "sys", "time",
-                                 "traceback", "arm.assembly_cell", "arm.assembly_six", "arm", "hashlib"}, mods)
+                                 "traceback", "arm.assembly_cell", "arm.assembly_six", "arm", "hashlib", "dual_mode"}, mods)
+        # dual mode (experimental): tests/dual_mode.py and its tests/online_record.py import the standard library only
+        for name in ("dual_mode.py", "online_record.py"):
+            top = [n for n in ast.parse((TESTS / name).read_text(encoding="utf-8")).body
+                   if isinstance(n, (ast.Import, ast.ImportFrom))]
+            got = set()
+            for n in top:
+                got |= {a.name for a in n.names} if isinstance(n, ast.Import) else {n.module}
+            self.assertTrue(got <= {"hashlib", "json", "math", "os", "pwd", "shutil", "stat", "sys", "time",
+                                    "online_record"}, (name, got))
         fin = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_finish_stats"][0]
         calls = [c.func.id for c in ast.walk(fin) if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)]
         self.assertIn("blas_pin_stats", calls)

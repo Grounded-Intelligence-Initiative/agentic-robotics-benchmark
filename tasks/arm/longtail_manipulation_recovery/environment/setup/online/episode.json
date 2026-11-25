@@ -1,0 +1,21 @@
+{
+ "note": "the dual mode's graded episode (experiment), read by graded_service.py's worker only (as root, before it drops privileges; /opt/ale/setup is root-only while the agent works). It is entry 17 (0-based) of the offline grader's fixed hidden set (tests/hidden/states.json: 27 failure states in the grader's order), drawn once on 2026-11-24T04:35:04Z with OS entropy (secrets.randbelow(27) -> 17); the same episode serves every model. state = that entry, unchanged; its three files (online/state/, byte copies of tests/hidden/) are copied by setup.sh into the service's own folder for its kitchen process. seed_sha256 = sha256 of the RoboCasa seed's decimal string (tests/online.json holds it for the verifier's cross-check); oracle_token_sha256 = tests/oracle_token.sha256 (the reference's token, hashed over the token file's bytes as the grader hashes it).",
+ "episode": "h22",
+ "index": 17,
+ "state": {
+  "id": "h22",
+  "task": "PickPlaceCounterToStove",
+  "seed": 750773350,
+  "split": "target",
+  "prefix": "h22_prefix.npz",
+  "qpos": "h22_state.npz",
+  "card": "h22_card.json",
+  "roles": {
+   "counter_2_left_group": "support",
+   "stove_left_group": "target"
+  }
+ },
+ "step_budget": 1500,
+ "seed_sha256": "9f2af99c9cc5d093c312a69bb5516197b3c4b82127969ef79870b5171ffad667",
+ "oracle_token_sha256": "d01c7702b16d8208d4e445345ef87e9882eb3f7c4847ef05bf3a2e92a96fe9a3"
+}

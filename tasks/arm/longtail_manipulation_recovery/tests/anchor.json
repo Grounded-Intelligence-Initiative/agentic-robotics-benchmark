@@ -1,8 +1,8 @@
 {
-  "metric": "job_balanced_recovered_fraction",
-  "direction": "higher",
-  "value": 1.0,
-  "full_at": 1.0,
-  "source": "measured: the token-gated reference (solution/) on the fixed hidden states with this grader in the verifier image (CPU rendering, 4 CPUs, 12 GB): job_balanced_recovered_fraction 1.0. On the 27 states of the set after amendment A4 (the mug must be upright; tests/hidden/selection.json): 27 of 27 in a standalone grading run of 2026-11-17 on the maintainers' machine (AMD Threadripper PRO 5975WX; 0 episodes aborted, prefix error 0.0, 1,349 s), every state at the step count of the earlier runs. On the 32 states before A4: 32 of 32 in each of 2 standalone grading runs (2026-11-11, the author's machine, identical step counts per state) and in the ale validate oracle on both machines; during selection every kept state's replay recovered in 3 of 3 runs and in 2 of 2 runs with 1e-9 restore noise",
-  "note": "full_at 1.0: the oracle is an exact replay and shows no spread on either host; clause C6 keeps only states whose replay survives a 1e-9 perturbation of the restored joint positions, and the grader fails as a task error (never a silent oracle loss) if a host's replayed prefix differs from the recording by more than 1e-9."
+ "metric": "dual_mode_score",
+ "direction": "higher",
+ "value": 1.0,
+ "full_at": 1.0,
+ "source": "by construction from the two component anchors, each the reference's own measured value (never a published figure): anchor_offline.json is main's anchor.json (byte-identical: job_balanced_recovered_fraction 1.0 over the 27 hidden states, full_at 1.0) and anchor_online.json the reference's measured value on the graded episode h22 (recovered, 1.0). Confirmed by this dual mode's validate, validate-abdb0fba (engine bfb7505, a clean checkout of commit 93ad1f6c): the oracle's controller item recovered 27 of 27 hidden states (job_balanced_recovered_fraction 1.0, no episode aborted, the token matched, the replayed prefixes equal to the recordings; offline_reward 1.0) and its graded episode was recovered (step 398, prefix_max_err 0.0, the kitchen built in 20 s; online_reward 1.0), so dual_mode_score 1.0; untouched 0.0 (no freeze, no record: the session-end submission, empty, scored 0 by main's grading, and the graded episode 0). The verify took 1515 s.",
+ "note": "dual mode (experiment): dual_mode_score = (offline_reward + online_reward) / 2, the mean of the task's two items, each already normalised by its own anchor, cap and full_at: the controller item by anchor_offline.json (main's anchor: job_balanced_recovered_fraction over the 27 hidden states, main's grading in tests/offline_verify.py) and the graded-episode item by anchor_online.json (the one live graded episode, recovered or not). So the reference reaches 1.0 on both, and the combined anchor is 1.0 by construction; reward = clamp(dual_mode_score / 1.0, 0, 1)."
 }

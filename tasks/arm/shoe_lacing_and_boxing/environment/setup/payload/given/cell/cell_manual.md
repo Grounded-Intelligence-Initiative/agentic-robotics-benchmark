@@ -165,7 +165,8 @@ action: the step event `physics_fault`) ends the episode: pairs already shipped 
 fault counts. Budgets (`describe()["budgets"]`): 900 s of simulated time; 1200 s of program time (the episode's
 wall clock minus the cell's own time inside `step`, simulating, and inside `get_camera`, rendering: your program's
 computation and all its other requests count); 120 s from a reply to the next request; 500 ticks per `step`; 450 camera
-frames per episode.
+frames per episode. The program-time and silence budgets are a program's (on the grader's hidden episodes and on
+the practice wire); the graded episode has neither (`cell_api.md`, "The graded episode").
 
 ## 8. What is not given
 

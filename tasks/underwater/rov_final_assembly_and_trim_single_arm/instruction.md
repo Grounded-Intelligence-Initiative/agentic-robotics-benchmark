@@ -13,9 +13,10 @@ follow at the next station.
 You have what a manufacturing engineer really has: the vehicle as it arrives and every unit as an STL file, a packing
 list, 7 drawings, the vehicle's trim sheet, a water-density chart and a propeller data sheet (all images), the shop's
 picture manual (16 photographs with scale references in view), the integrator's description of the cell, and the
-robot's models and control library. Today's job is the station's program: for whatever vehicle is on the fork and
-whatever water its work order names, it ballasts the vehicle and fits the enclosure, the thrusters and the guards the
-way the drawings and the manual show.
+robot's models and control library. Today's job has two parts, scored together: the station's program, which for
+whatever vehicle is on the fork and whatever water its work order names ballasts the vehicle and fits the enclosure,
+the thrusters and the guards the way the drawings and the manual show; and then one more vehicle, the graded episode,
+which you drive through the same cell yourself, during this session, through the cell's service.
 
 Nothing gives the answer directly. There is no ballast plan for the vehicle on the fork, no water density, no mass and
 no centre of mass of that vehicle (every vehicle differs from the trim sheet's table within the range the sheet
@@ -28,14 +29,14 @@ cell's cameras are mounted and calibrated differently.
 ## What you produce (in `/home/user/submission/`)
 
 `assemble.py` exposing `solve(cell) -> None` (plus any helper modules, data files, optional `run.sh`). The grader runs
-it once per hidden episode (4 episodes) in its own cell. It talks to the cell through `cell` (API in
-`~/given/cell/cell_api.md`): the run's work order, the robot's own state, a noisy force/torque sensor at the flange,
-the positioner's index position and the three load cells under it, and two RGB-D cameras (an overhead camera that sees
-the whole bench and a wrist camera); no unit poses, nothing about what is fastened, nothing about the trim. Per
-episode: 1200 s of simulated time, 2400 s of wall clock (camera rendering counts), 120 s of silence at most (counted
-from the program's start or the cell's reply to a request until the program's next request: the cell's own time inside
-a request does not count, and any request, `get_state()` being the cheapest, resets it), 600 camera frames in total, 4
-turns of the positioner.
+it once per hidden episode (4 episodes, the graded episode's among them) in its own cell, after your session. It talks
+to the cell through `cell` (API in `~/given/cell/cell_api.md`): the run's work order, the robot's own state, a noisy
+force/torque sensor at the flange, the positioner's index position and the three load cells under it, and two RGB-D
+cameras (an overhead camera that sees the whole bench and a wrist camera); no unit poses, nothing about what is
+fastened, nothing about the trim. Per episode: 1200 s of simulated time, 2400 s of wall clock (camera rendering counts),
+120 s of silence at most (counted from the program's start or the cell's reply to a request until the program's next
+request: the cell's own time inside a request does not count, and any request, `get_state()` being the cheapest, resets
+it), 600 camera frames in total, 4 turns of the positioner.
 
 How the program is run: a fresh process under a dedicated unprivileged account that is not yours, from a per-run
 directory with a read-only copy of your submission folder (regular files only), an empty writable HOME / TMPDIR, a
@@ -43,10 +44,83 @@ minimal environment (`PATH`, `HOME`, `TMPDIR`, `LANG`, `MUJOCO_GL`, `PYTHONPATH`
 `ARB_GIVEN_DIR` = a read-only copy of `~/given`) and the launcher `python3 -B -E -s -c <bootstrap> <lib> assemble` (or
 `bash run.sh`). The process cannot open an Internet socket. Resolve given files through
 `os.environ.get("ARB_GIVEN_DIR", os.path.expanduser("~/given"))`, write only under the run's HOME / TMPDIR. A program
-that crashes ends that episode with what it achieved; the other episodes still run. Your submission must be final when
-your session ends: at verify start every process of your account is stopped and killed, the submission is snapshotted
-root-owned, a submission entry written after that time voids the contract gate, and a surviving process of yours or of
-the run account voids it too.
+that crashes ends that episode with what it achieved; the other episodes still run. **The program graded is the one
+frozen when you start the graded episode, or when the start window closes if you have not started by then** (below):
+nothing you change in the submission folder after that moment is graded. Only if your session ends before the start
+window closes, without a start, is it the program in the submission folder when your session ends. At verify start
+every process of your account is stopped and killed, and a surviving process of yours or of the run account voids the
+contract gate.
+
+## The graded episode
+
+One episode of the cell: one of the four hidden episodes your program is graded on (a vehicle, its work order and the
+cell's layout drawn as in every run; the same episode for every run of this task), with the cell's own rules: 1200 s of
+simulated time, 600 camera frames, at most 500 ticks per `step` call (more are clamped to 500), 4 turns of the
+positioner, the fastening, scrap and safety rules of `cell_manual.md`. It runs in this sandbox, in a cell service that
+runs as an account that is not yours, behind a unix socket; you drive it with the station's proxy, from as many short
+scripts as you like (your program's `solve(cell)` runs on it as `solve(connect_graded())`, if you want):
+
+```python
+import sys
+sys.path.insert(0, "/home/user/given/lib")
+from arm.assembly_rov.graded import connect_graded
+from arm.assembly_rov.cell_client_ext import decode_frame
+
+cell = connect_graded()          # the graded episode's cell: the calls of cell_api.md, plus start / status / close
+print(cell.status())             # started, ended, steps, sim_time, camera_frames, the time left in each window
+cell.start()                     # ONCE per session: freezes your program, then starts the graded episode
+info = cell.describe()           # this vehicle's work order, the robot, the cameras, ...
+rgb, depth = decode_frame(cell.get_camera("top"))
+cell.set_control("cartesian", 0.5)
+r = cell.step(50)                # 0.5 s of simulated time; r["sim_time"], r["done"], r["events"]
+cell.close()                     # disconnects: the episode stays exactly where it is
+```
+
+A later script connects again with `connect_graded()` and goes on from there; `cell.finish()` ends the episode.
+
+* **Start once.** `start()` starts the graded episode. It is charged the moment it is accepted, before anything is
+  simulated, and is never refunded: a second `start()` raises `already_started`. Before the start the cell's calls
+  raise `not_started`; `status()` answers at any time. No practice facility exists, before or during the graded
+  episode (no practice cell, no answer key, no checker); what you build yourself (a twin of the cell, a stand-in cell,
+  your scripts) stays yours throughout.
+* **The freeze.** Your program freezes at the earlier of two moments: when `start()` is accepted (before the episode is
+  charged), or when the start window closes (below) if you have not started by then. At that moment the service copies
+  your submission folder: that copy is the program graded on the 4 hidden episodes, and nothing you change in
+  `/home/user/submission/` afterwards is graded, so nothing you see in the graded episode can go into the program. The
+  copy takes regular files and folders only (symbolic links, special files, `__pycache__`, folders more than 32 levels
+  deep and names that are not plain UTF-8 text without line breaks are left out), and only within the program's size
+  limit (60 MB, and at most 20,000 entries): over it nothing is copied and the program scores 0. If the copy fails, the
+  start is refused and nothing is charged. `start()` and `status()` report what was frozen (`program_frozen`: its
+  status, files and bytes). If the start window closes without a start, the graded episode can no longer be started
+  (it scores 0) and the program frozen then is graded.
+* **The episode persists.** It lives in the service, not in your connection: a closed connection, or a script that
+  ends or crashes, leaves it where it is. Nothing moves between requests: the robot holds its last targets and the
+  simulation advances only inside `step`, so your thinking costs no simulated time. One client at a time: a second
+  connection gets `CellError` `busy`. A connection that sends nothing for 15 minutes is closed by the service (the
+  episode stays; the proxy connects again by itself on its next call).
+* **Two windows, in wall-clock time.** The start window: `start()` is accepted within 6 hours of the service's start
+  (it starts during the sandbox's setup, a little before your session; `status()["start_window_left_s"]` gives the
+  time left); those 6 hours are for your program and for your preparation of the graded episode alike, and your
+  program freezes when they end at the latest. A later start is refused, and the graded episode then scores 0. The
+  graded window: the episode ends 3 hours after its start (`status()["graded_window_left_s"]`) whatever its state;
+  your thinking time counts against it, simulated time does not.
+* **How it ends.** At `finish()`; when it reaches 1200 s of simulated time (`step` then reports `done` and the event
+  `episode_over`); when the graded window closes; or when your session ends. In every case the vehicle is scored as it
+  stands after your last request, as an episode whose program stops is scored: nothing is simulated afterwards, a unit
+  that is not fastened by then counts nothing, and a block that is not fastened is not on the vehicle. After the end
+  the cell's calls raise `episode_over` (`finish()` answers `{"ok": true}`).
+* **What you learn.** What your program would learn in the episode: the replies of `cell_api.md` (camera frames, the
+  robot's own state, the positioner's index and the load cells, `step` events: only `safety:<what>` and
+  `episode_over`), and `status()`. Never the score, nothing about captures, fastening or the trim.
+* **Budgets.** The program's wall-clock cap (2400 s, rendering counted), its 120 s silence rule and its run regime
+  (above; also in `cell_api.md`, `cell_manual.md` and `describe()`'s `budgets`) bound your program on the hidden
+  episodes; the graded episode you drive has none of them, only its two windows. The 1200 s of simulated time, the
+  600 frames, the 500 ticks per `step` and the 4 turns apply to both. A request the service cannot read (not one JSON
+  object) is refused with `bad_request` and the episode goes on; a call the cell does not offer answers `forbidden`
+  and is counted, as for your program.
+* **Your scripts and your program.** Keep the scripts that drive the graded episode out of `/home/user/submission/`, or
+  free of networking modules: the program's code check (below) reads every `.py` file there. `connect_graded()` exists
+  only in this session; your program's graded runs get their cell from the grader, so `solve(cell)` must not call it.
 
 ## What you are given
 
@@ -63,37 +137,47 @@ the run account voids it too.
 | `~/given/cell/cell_manual.md` | the integrator's cell description: bench, robot base pose (exact), the gripper's fingers, the datum boards, the positioner with the vehicle's pose (exact), the turning procedure, the load cells with their noise and the conditions under which a reading is valid, the ballast box (exact), the nominal places of the thruster tray and the racks and how much they vary, cameras with resolution, nominal field of view and approximate mounts, depth-sensor and force-sensor noise figures, the fastening rules with every window and the entry behaviour measured in the cell, every difference between the cell's collision shapes and the drawn vehicle, safety rules, budgets |
 | `~/given/cell/cell_api.md`, `cell_config.json` | the cell's programming manual (the wire API); the cell's configuration as far as it is public |
 | `~/given/robot/` | the robot's MuJoCo models: the arm (`universal_robots_ur10e/`) and the wide gripper (`wide_gripper/`), each with its licence |
-| `~/given/lib/` | the cell's client and helper code: `arm.assembly_rov.cell_client_ext` (this station's proxy and the launcher), `arm.assembly_info.client` (the general camera-cell proxy that it extends, `decode_frame`), `arm.assembly_rov` (the cell's own arm model builder, its controller and the gripper module with its measured tables), `arm.assembly_cell` / `arm.assembly_six` (physics building blocks of an earlier cell), `render` (the camera rendering layer; it renders like the cell's cameras: `arm.assembly_rov.agent_render` is the cell cameras' own render session for your twin of the cell, `render.filament.view` renders any scene of yours the same way; MuJoCo's own renderer, `mujoco.Renderer` or the render layer's `mujoco` backend, draws a different picture than the cell's cameras (no workshop, MuJoCo's default lights, flat colours, no reflections), so image processing tuned on its frames may behave differently on the cell's frames; `cell_api.md`, "Rendering your own frames") |
+| `~/given/lib/` | the cell's client and helper code: `arm.assembly_rov.cell_client_ext` (this station's proxy and the launcher), `arm.assembly_rov.graded` (`connect_graded()`: the same proxy on the graded episode), `arm.assembly_info.client` (the general camera-cell proxy that it extends, `decode_frame`), `arm.assembly_rov` (the cell's own arm model builder, its controller and the gripper module with its measured tables), `arm.assembly_cell` / `arm.assembly_six` (physics building blocks of an earlier cell), `render` (the camera rendering layer; it renders like the cell's cameras: `arm.assembly_rov.agent_render` is the cell cameras' own render session for your twin of the cell, `render.filament.view` renders any scene of yours the same way; MuJoCo's own renderer, `mujoco.Renderer` or the render layer's `mujoco` backend, draws a different picture than the cell's cameras (no workshop, MuJoCo's default lights, flat colours, no reflections), so image processing tuned on its frames may behave differently on the cell's frames; `cell_api.md`, "Rendering your own frames") |
 | `~/render/` | the scenery of the cell cameras' renderer, which the given render layer uses too (the workshop around the cell as meshes and baked textures, the bench top's maps); nothing about the vehicle |
 
 Tools: Python 3.12 (`/opt/venv`, on PATH) with numpy, scipy, OpenCV (`cv2`, headless), scikit-image, MuJoCo 3.14,
 trimesh, manifold3d, Pillow, matplotlib. No network in your session.
 
-## How you are graded (verify runs 4 hidden episodes)
+## How you are graded
 
-Gates (multiply the score; a failed gate makes the whole run score zero): `contract_ok` = `assemble.py` is a regular
-file that parses and defines `solve`, passes the route gate (no weight files: `.pt`, `.pth`, `.onnx`, `.safetensors`,
-`.ckpt`, `.h5`, `.pb`, `.pkl`, `.npz`; no training calls; submission <= 60 MB), imports under the run regime above,
-makes at least one `step` call over the episodes, causes no network activity during any episode (the grader reads the
-container's outbound network counters before and after each episode and samples the program's sockets), and your own
-`.py` files import no networking module (`socket`, `ssl`, `urllib`, `http`, `requests`, `asyncio`, `ctypes`,
-`subprocess`, ...), load no module under a computed name, execute no computed code (`exec` / `eval` / `compile` of a
-non-literal) and start no other program (`os.system`, `os.exec*`, `os.spawn*`, ...), and nothing of the submission was
-written after your session ended. The code check parses your `.py` files (`~/given/lib/arm/assembly_info/netaudit.py`)
-and counts only the built-ins `exec(...)`, `eval(...)` and `compile(...)` called by their bare names with a
-non-literal argument, so a method of the same name, such as MuJoCo's `spec.compile()`, is fine.
+The score is the mean of two items, each from 0 to 1: **the program** on the 4 hidden episodes, and **the graded
+episode** you drove. Each item is its `assembly_score` (below) scaled against what the task's reference program
+achieves (it fastens all seven places and trims every vehicle into all three windows).
 
-Per episode, two things zero that episode: a robot link other than the gripper's pads pressing with more than 30 N on
-the vehicle, the positioner, a fixture, the bench or a unit; and a unit pressed on the environment or on another unit
-with a contact force of more than 150 N for 0.2 s. Only contact forces count for the second: the force with which the
-cell itself holds or fastens a captured unit does not. `cell_manual.md`, "Safety", says how the contact forces of each
-rule are added up. Dropping a unit does not zero the episode but scraps the unit: a loose unit whose centre of mass
-moves faster than 3 m/s, or that falls off the bench, or that is on the vehicle and not fastened when the positioner
-starts to turn, can no longer be fastened and no longer counts; the episode goes on with the other units. The dome of
-the electronics enclosure must not be touched: anything that presses on it with more than 20 N for 0.05 s scraps the
-enclosure.
+The program (verify runs it on the 4 hidden episodes, the graded episode's among them; the freeze keeps what you see in
+the graded episode out of the program). Gates (multiply the program's score; a failed gate makes the program item zero):
+`contract_ok` = `assemble.py` is a regular file that parses and defines `solve`, passes the route gate (no weight files:
+`.pt`, `.pth`, `.onnx`, `.safetensors`, `.ckpt`, `.h5`, `.pb`, `.pkl`, `.npz`; no training calls; submission <= 60 MB),
+imports under the run regime above, makes at least one `step` call over the episodes, causes no network activity during
+any episode (the grader reads the container's outbound network counters before and after each episode and samples the
+program's sockets), and your own `.py` files import no networking module (`socket`, `ssl`, `urllib`, `http`, `requests`,
+`asyncio`, `ctypes`, `subprocess`, ...), load no module under a computed name, execute no computed code (`exec` / `eval`
+/ `compile` of a non-literal) and start no other program (`os.system`, `os.exec*`, `os.spawn*`, ...), and nothing of the
+submission was written after your session ended. The code check parses your `.py` files
+(`~/given/lib/arm/assembly_info/netaudit.py`) and counts only the built-ins `exec(...)`, `eval(...)` and `compile(...)`
+called by their bare names with a non-literal argument, so a method of the same name, such as MuJoCo's `spec.compile()`,
+is fine.
 
-`assembly_score` = the mean over the episodes of
+The graded episode: its episode term below, `(the weights of the places that count + 4.5 x trim) / 15.5`, read from the
+vehicle as it stands when the episode ends; a hard safety violation at any time in the episode makes it 0. No program
+gate applies to it.
+
+Per episode (the program's and the graded one), two things zero that episode: a robot link other than the gripper's pads
+pressing with more than 30 N on the vehicle, the positioner, a fixture, the bench or a unit; and a unit pressed on the
+environment or on another unit with a contact force of more than 150 N for 0.2 s. Only contact forces count for the
+second: the force with which the cell itself holds or fastens a captured unit does not. `cell_manual.md`, "Safety", says
+how the contact forces of each rule are added up. Dropping a unit does not zero the episode but scraps the unit: a loose
+unit whose centre of mass moves faster than 3 m/s, or that falls off the bench, or that is on the vehicle and not
+fastened when the positioner starts to turn, can no longer be fastened and no longer counts; the episode goes on with
+the other units. The dome of the electronics enclosure must not be touched: anything that presses on it with more than
+20 N for 0.05 s scraps the enclosure.
+
+`assembly_score` = the mean over the episodes (the program's four; the graded episode's one) of
 
     ( the weights of the places that count + 4.5 x trim ) / 15.5
 
@@ -127,9 +211,9 @@ ends is not on the vehicle.
 What the ballast alone is worth: a program that ballasts the vehicle and fits nothing else can reach 4.5 / 15.5 = 0.29
 of an episode and no more. The ballast box and the vehicle on the positioner stand at exact, documented places.
 
-The reward is `assembly_score` x the gate. Stats (not scored): per-place rates, units fastened in an orientation or
-with a propeller that does not count, scrapped units, the fastened blocks and dB, pitch and roll per episode, turns of
-the positioner, frames used per camera, sim / wall time, illegal calls, safety events, the largest sustained contact
+The program item is `assembly_score` x the gate. Stats (not scored): per-place rates, units fastened in an orientation
+or with a propeller that does not count, scrapped units, the fastened blocks and dB, pitch and roll per episode, turns
+of the positioner, frames used per camera, sim / wall time, illegal calls, safety events, the largest sustained contact
 force, network counters.
 
 ## Rules of the cell (details in `cell_manual.md` / `cell_api.md`)
@@ -166,7 +250,8 @@ force, network counters.
 ## No practice
 
 There is no practice cell, no answer key and no checker: everything known about this vehicle and this station is in
-the given files, and the only run of your program on the cell is the graded one.
+the given files. The graded episode is the only time anything runs the cell in your session, and the runs of your
+program on the hidden episodes after your session are its only runs on the cell.
 
 ## Notes
 
@@ -175,15 +260,18 @@ the given files, and the only run of your program on the cell is the graded one.
   box are exact, the tool plate's pose within its mounting tolerance; everything else about the cameras, the thruster
   tray, the racks and the units' poses must be measured in each episode.
 - Do not modify the given files in your home directory; the grader reads its own copies.
-- Machine: your session's sandbox has 8 CPUs and 24 GB of memory, no GPU and no network. The grading machine has the
+- Machine: your session's sandbox has 8 CPUs and 24 GB of memory, no GPU and no network. The graded episode's service
+  shares it with you: about 1 GB while it waits, about 6 GB once its cameras have rendered. The grading machine has the
   same size, and there your program shares it with the cell and its camera renderer, which take about 8 GB between
   them.
 - Environment facts (harness limits): a single tool call whose input runs above roughly 25-30k tokens is dropped by
   the harness (it is never executed and no error comes back), and a response that reaches the 64k output-token limit
-  is lost and, after at most a few retries, ends the session with whatever is in `/home/user/submission/` at that
-  moment. Write large files in several parts (one function group per write), keep every single response well below
-  that limit, write a first complete submission early and refine it.
-- Session time: this session is stopped after 6 hours of wall-clock time from its start. A session stopped by that
-  limit is graded on whatever the submission folder holds at that moment, so a file left half-written then is what
-  runs. Note the start time with `date` when you begin, keep a complete submission in place from early on, and end the
-  session yourself (stop working and say that you are done) at least 15 minutes before the limit.
+  is lost and, after at most a few retries, ends the session (the graded episode then ends as it stands; the program
+  graded is the frozen one, or, if nothing was frozen yet, the one in `/home/user/submission/` at that moment). Write
+  large files in several parts (one function group per write), keep every single response well below that limit,
+  write a first complete submission early and refine it before you start the graded episode.
+- Session time: this session is stopped after 9 hours of wall-clock time from its start (the 6-hour start window and
+  the 3-hour graded window). If the session ends while the graded episode is still running, stopped by that limit or
+  ended by you, the episode is scored as it stood after your last request. Note the start time with `date` when you
+  begin; when you are done with the graded episode, finish it (`finish()`) and end the session yourself (stop working
+  and say that you are done).
