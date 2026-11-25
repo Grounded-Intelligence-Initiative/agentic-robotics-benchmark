@@ -66,7 +66,10 @@ class Server(object):
     def __init__(self):
         t0 = time.time()
         from isaacsim import SimulationApp
-        cfg = {"headless": True, "multi_gpu": False}
+        # Omniverse RTX refuses to render on an NVIDIA driver older than R550 ("rtx driver verification failed"). The
+        # check is off: whether the frames are usable is the canary's to decide (markers within 2.5 px), not the
+        # driver's version. On a supported driver it would pass anyway.
+        cfg = {"headless": True, "multi_gpu": False, "extra_args": ["--/rtx/verifyDriverVersion/enabled=false"]}
         if os.environ.get("ENDOSIM_GPU"):
             cfg["active_gpu"] = cfg["physics_gpu"] = int(os.environ["ENDOSIM_GPU"])
         self.app = SimulationApp(cfg)

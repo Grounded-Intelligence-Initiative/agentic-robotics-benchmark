@@ -24,8 +24,9 @@ name = "grounded-intelligence-initiative/endoscope_camera_assistance_from_video"
 platform = "surgical"
 
 # gpu_types: the cloud models on which the benchmark has validated this same Isaac Sim 6.2 RTX stack
-# (tasks/swarm/hazard_bay_build), cheapest first. THIS TASK HAS NOT RUN ON ANY OF THEM YET: it was developed and
-# measured natively on an RTX 6000 Ada (not a cloud-listed model), without Docker. The list is the conservative
+# (tasks/swarm/hazard_bay_build), cheapest first, then RTX-3090, the model of the author's validate run (driver 535,
+# below Omniverse's R550 floor: the renderer's driver check is off, tests/endosim/render_server.py). THIS TASK HAS NOT
+# RUN ON ANY CLOUD MODEL YET: it was developed and measured natively on an RTX 6000 Ada. The cloud list is the conservative
 # starting point for the first `ale validate`: it keeps the task off the H100 and H200, where RTX rendering of this
 # stack is unproven (hazard_bay_build's missions did not run on a loaded H100 host; other Isaac tasks crash or render
 # darker there). A maintainer confirms or corrects the list with the render canary and a validate per model
@@ -34,7 +35,7 @@ platform = "surgical"
 cpus = 8
 memory_mb = 32768
 gpus = 1
-gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000"]
+gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-3090"]
 
 # Setup (environment/setup/setup.sh) has no field: the engine bounds it at a fixed 1800 s. It stages the givens and
 # starts the commissioning service, waiting for its renderer (Isaac Sim's start; on a cold cache the RTX pipelines
@@ -61,4 +62,4 @@ environment_mode = "separate"
 cpus = 8
 memory_mb = 32768
 gpus = 1
-gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000"]
+gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-3090"]
