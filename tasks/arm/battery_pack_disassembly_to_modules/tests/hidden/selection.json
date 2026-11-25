@@ -14,6 +14,7 @@
     "T30": 9,
     "T40": 1
    },
+   "sealed": 9,
    "harness": "lid",
    "harness_covers": [
     "L05",
@@ -37,6 +38,7 @@
     "T30": 1,
     "T40": 0
    },
+   "sealed": 10,
    "harness": "busbars",
    "harness_covers": [
     "B01a",
@@ -61,6 +63,7 @@
     "T30": 5,
     "T40": 8
    },
+   "sealed": 8,
    "harness": "none",
    "harness_covers": [],
    "placement": {
@@ -81,6 +84,7 @@
     "T30": 19,
     "T40": 1
    },
+   "sealed": 11,
    "harness": "lid",
    "harness_covers": [
     "L01",
@@ -104,6 +108,7 @@
     "T30": 21,
     "T40": 8
    },
+   "sealed": 12,
    "harness": "busbars",
    "harness_covers": [
     "B03a",
@@ -128,6 +133,7 @@
     "T30": 15,
     "T40": 11
    },
+   "sealed": 7,
    "harness": "none",
    "harness_covers": [],
    "placement": {
@@ -150,6 +156,7 @@
     "T30": 17,
     "T40": 0
    },
+   "sealed": 4,
    "harness": "busbars",
    "harness_covers": [
     "B02a",
@@ -173,6 +180,7 @@
     "T30": 4,
     "T40": 9
    },
+   "sealed": 5,
    "harness": "lid",
    "harness_covers": [
     "L03"
@@ -195,6 +203,7 @@
     "T30": 23,
     "T40": 1
    },
+   "sealed": 9,
    "harness": "none",
    "harness_covers": [],
    "placement": {
@@ -215,6 +224,7 @@
     "T30": 22,
     "T40": 1
    },
+   "sealed": 11,
    "harness": "lid",
    "harness_covers": [
     "L03",
@@ -230,5 +240,8 @@
  ],
  "cells_key_hex": "e02d9bc572e6ea794e22a4a7cdc5408efc854590dc640a99eddac6a8beae0deb",
  "cells_rule": "tests/review/select_set.py (its docstring), rule 2",
- "cells_drawn_utc": "2026-11-25T19:17:17Z"
+ "cells_drawn_utc": "2026-11-25T19:17:17Z",
+ "sealant_key_hex": "0b241455612e5e9f57538134bd5e43fc3afcef72b0c8cfbe9b9d5b4af43f9da3",
+ "sealant_rule": "tests/review/select_set.py (its docstring), rule 3",
+ "sealant_drawn_utc": "2026-11-25T20:37:35Z"
 }
