@@ -54,6 +54,8 @@ LOOKS = {
     "steel": ((0.72, 0.72, 0.74), 1.0, 0.25),
     "changer": ((0.70, 0.05, 0.05), 0.4, 0.40),
     "alu": ((0.80, 0.81, 0.83), 1.0, 0.35),
+    "plate_white": ((0.82, 0.82, 0.80), 0.0, 0.80),
+    "plate_black": ((0.02, 0.02, 0.02), 0.0, 0.85),
 }
 
 
@@ -295,6 +297,16 @@ def build(stage, pack, robot_usd, render=True):
         b.box("/World/Cell/ToolStand/fork_" + name, (0.12, 0.10, 0.008), (d[0], d[1] - 0.04, d[2] - 0.024), "pedestal")
     bs = S.CELL["bit_station"]
     b.box("/World/Cell/ToolStand/bit_block", (0.20, 0.07, bs[2] - 0.02 - tz), (bs[0], bs[1] - 0.07, (bs[2] - 0.02 + tz) / 2), "tool_black")
+    # the calibration plates on the fixture (looks only: 1 mm thin, nothing collides with them)
+    for name, cp in S.CAL_PLATES.items():
+        (nx, ny), sq, mg = cp["squares"], cp["square"], cp["margin"]
+        ox, oy, oz = cp["origin"]
+        root = "/World/Cell/CalPlate_" + name
+        b.box(root + "/plate", (nx * sq + 2 * mg, ny * sq + 2 * mg, 0.0008), (ox + nx * sq / 2, oy + ny * sq / 2, oz - 0.0004), "plate_white")
+        for i in range(nx):
+            for j in range(ny):
+                if (i + j) % 2 == 0:
+                    b.box("%s/sq_%d_%d" % (root, i, j), (sq, sq, 0.0002), (ox + (i + 0.5) * sq, oy + (j + 0.5) * sq, oz + 0.0001), "plate_black")
 
     # ------------------------------------------------------------------ lights
     if render:
@@ -438,9 +450,11 @@ def build(stage, pack, robot_usd, render=True):
             cam.CreateFocalLengthAttr(0.5 * hap / math.tan(math.radians(c["hfov_deg"]) / 2))
             cam.CreateClippingRangeAttr(Gf.Vec2f(*c["clip"]))
             cam.CreateFStopAttr(0.0)
-            Rc = S.camera_R(name)                               # OpenCV axes; a USD camera looks along -z with +y up
+            # the cell's own camera: the nominal mounting times this cell's mounting offset (series.MOUNT_TOL)
+            Tc = S.camera_mount(name, (pack.get("cameras") or {}).get(name))
+            Rc = Tc[:3, :3]                                     # OpenCV axes; a USD camera looks along -z with +y up
             Ru = np.stack([Rc[:, 0], -Rc[:, 1], -Rc[:, 2]], axis=1)
-            b.place(cam.GetPrim(), c["pos"], kin.R_quat(Ru))
+            b.place(cam.GetPrim(), Tc[:3, 3], kin.R_quat(Ru))
             index["cam_" + name] = path
 
     # ------------------------------------------------------------------ the pack

@@ -86,7 +86,7 @@ def probe_stream(index, seed):
 
 def run_pack(solver, lock, clock, index, entry, truth, config, start_cell, log):
     """One pack. Returns its record: credit, why it ended, steps, the cell's own counts."""
-    pack = S.draw_pack(entry["seed"], variant=entry.get("variant"), harness=entry.get("harness"))
+    pack = S.draw_pack(entry["seed"], variant=entry.get("variant"), harness=entry.get("harness"), cameras=entry.get("cameras"))
     rec = {"index": index, "variant": pack["variant"], "credit": 0.0, "ended": None, "aborted": None, "steps": 0,
            "probe_residual_true": 0.0, "probe_residual_copy": 0.0, "probe_copies": 0, "probe_true_residual_larger": 0}
     lock.rng = probe_stream(index, entry["seed"])

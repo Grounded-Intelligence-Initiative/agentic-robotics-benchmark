@@ -8,6 +8,7 @@ commissioning service (and in the grader), not in your account.
     obs = s.step({"move": {"type": "tcp", "delta": [0, 0, -0.05, 0, 0, 0], "ticks": 10}, "cams": ["wrist"]})
     rgb = decode_rgb(obs["images"]["wrist"])  # H x W x 3 uint8 (RGB)
     depth = decode_depth(obs["images"]["wrist"])   # H x W float32, metres along the optical axis, 0 = no reading
+                                              # (an active-stereo sensor's: noisy, quantized, with holes)
     s.close()
 """
 
@@ -182,7 +183,8 @@ def flange_T(q):
     """The tool flange's pose in the base frame (4x4) for joint angles `q` (rad), from `~/given/robot/ur20.json`:
     each joint frame in its parent link, then a turn about that frame's z axis. The cell reports `tcp` as this
     times the mounted tool's centre point (`tool_centre_point_z` along the flange's z axis), `tcp_target` as the
-    same of `q_target`, and a wrist frame's `pose` as this times the camera's mounting (`cell.json`)."""
+    same of `q_target`, and a wrist frame's `pose` as this times the camera's nominal mounting (`cell.json`; the
+    cell's own mounting offset is not in it, see the interface document, section 5)."""
     T = np.eye(4)
     for joint, angle in zip(_given("robot", "ur20.json")["joints"], q):
         J = np.eye(4)

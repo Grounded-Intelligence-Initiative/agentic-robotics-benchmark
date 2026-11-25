@@ -18,6 +18,13 @@ see it:
 - **corroded** fasteners, which need more torque than the default allows, and **missing** ones;
 - a **harness remnant** that may lie on the lid or inside the pack over fasteners and has to go first.
 
+And you see it through real sensors. Every cell's cameras sit off their nominal mounting by an offset of their own
+(up to 15 mm and 1.5 degrees overhead, 4 mm and 1 degree on the wrist): through the nominal poses a point is
+centimetres off, so a program identifies the cameras of the cell it runs in, in every pack, from the calibration
+plates on the fixture and the robot's exact kinematics. The depth images are an active-stereo sensor's: noisy (about
+2.5 mm at the fixture from the overhead camera, 0.3 mm from the wrist camera close up), quantized, with no reading
+on dark and shiny surfaces, at edges and in the stereo pair's shadows (`cell_interface.md`, section 5).
+
 A wrong bit or a bit that is not square on a head wears the head until it is stripped. A tool that touches a busbar
 before the pack is isolated, or a module that falls, ends the work on that pack.
 
@@ -59,7 +66,7 @@ where it is and `run.sh` is started again for the next pack, at most three times
 |---|---|
 | `~/given/service_manual.md`, `~/given/manual/` | the pack series: variants, the pack frame, every component's and fastener's nominal place, grip features, what holds what, the fasteners' heads and torque table, the isolation procedure, the order of work, what a field pack may look like, where everything goes and what it is worth; drawings of the three variants, photographs of an example pack and of the fastener heads |
 | `~/given/tool_catalog.md` | the tool changer, the nutrunner and its bits (what each bit does on each head, the engagement tolerances, the forces), the gripper (how a grip works) |
-| `~/given/cell/cell_interface.md`, `cell.json` | the cell: frames and places (fixture, bins, rack, lid stand, tool stand), the wire, actions and observations, protective stops, what ends a pack, the cameras with their exact calibration, the budgets, how a pack is judged, the commissioning service |
+| `~/given/cell/cell_interface.md`, `cell.json` | the cell: frames and places (fixture, bins, rack, lid stand, tool stand, calibration plates), the wire, actions and observations, protective stops, what ends a pack, the cameras (exact intrinsics, nominal mounting and how far a cell's own may be off it, the depth sensors' data sheets), the budgets, how a pack is judged, the commissioning service |
 | `~/given/robot/ur20.json`, `~/given/robot/ur20_usd/` | the robot: its kinematic model and its USD description |
 | `~/given/lib/packcell_client.py` | the commissioning connection, frame decoding, the wire's pose arithmetic |
 | `~/commission/run_session.py` | runs your `run.sh` in a commissioning session the way it is run when it is graded |
@@ -74,9 +81,10 @@ Your program is graded on packs it has never met. Before that you can commission
 would, on the cell itself: a commissioning service in your sandbox runs the cell on four development packs of the
 series (`cell_interface.md`, section 8).
 
-- It is the graded cell (the same robot, tools, rules, physics and cameras) behind the same actions and
-  observations. The development packs have their own variants, placements, heads, corrosion, missing fasteners and
-  harness remnants; none of them is a graded pack.
+- It is the graded cell's build (the same robot, tools, rules, physics, cameras and calibration plates) behind the
+  same actions and observations. The development packs have their own variants, placements, heads, corrosion,
+  missing fasteners and harness remnants, and each is taken apart in a cell of its own, with its own camera mounting;
+  none of them is a graded pack or a graded cell.
 - It gives you what a commissioning engineer has at the cell: frames, readings, the cell's messages. It gives no
   ground truth, no credit and no debrief. How a session went you judge from what your program saw.
 - **Ten sessions in all, one at a time.** A session is one pack from its arrival to its end, counted when it opens:
@@ -89,8 +97,8 @@ simulations of your own with.
 
 ## How you are graded
 
-The grader runs your program on a fixed hidden set of **six packs**, one after the other, each in its own cell,
-with these limits per pack: 2700 s of simulated time, 400 camera frames, 20000 steps, and 1200 s of your program's
+The grader runs your program on a fixed hidden set of **six packs**, one after the other, each in its own cell (with
+its own camera mounting), with these limits per pack: 2700 s of simulated time, 400 camera frames, 20000 steps, and 1200 s of your program's
 own time (the time the grader waits for your answers, summed; simulation and rendering are not counted).
 
 A pack ends when your program sends `done`, when its simulated time is used up, when a tool touches a live part

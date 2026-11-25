@@ -233,6 +233,11 @@
      -1.0
     ]
    ],
+   "pose_is": "nominal",
+   "mount_tolerance": {
+    "mm": 15.0,
+    "deg": 1.5
+   },
    "K": [
     [
      1712.8123160686312,
@@ -252,10 +257,27 @@
    ],
    "width": 1440,
    "height": 1080,
-   "clip": [
-    0.3,
-    6.0
-   ]
+   "depth": {
+    "range_m": [
+     0.5,
+     3.0
+    ],
+    "noise_sigma_m_per_m2": 0.0009,
+    "baseline_m": 0.1,
+    "disparity_step_px": 0.0625,
+    "correlation_px": 2.0,
+    "lateral_blur_px": 1.0,
+    "edge_px": 2.0,
+    "dark_luma": [
+     12,
+     40
+    ],
+    "dim_luma": 80,
+    "bright_rgb": [
+     215,
+     245
+    ]
+   }
   },
   "wrist": {
    "parent": "flange",
@@ -281,6 +303,11 @@
      0.981627183
     ]
    ],
+   "pose_is": "nominal",
+   "mount_tolerance": {
+    "mm": 4.0,
+    "deg": 1.0
+   },
    "K": [
     [
      1394.0212212843949,
@@ -300,10 +327,55 @@
    ],
    "width": 960,
    "height": 720,
-   "clip": [
-    0.03,
-    4.0
-   ]
+   "depth": {
+    "range_m": [
+     0.07,
+     1.0
+    ],
+    "noise_sigma_m_per_m2": 0.0025,
+    "baseline_m": 0.018,
+    "disparity_step_px": 0.0625,
+    "correlation_px": 2.0,
+    "lateral_blur_px": 1.0,
+    "edge_px": 2.0,
+    "dark_luma": [
+     12,
+     40
+    ],
+    "dim_luma": 80,
+    "bright_rgb": [
+     215,
+     245
+    ]
+   }
+  }
+ },
+ "calibration_plates": {
+  "near": {
+   "origin": [
+    0.46,
+    -0.1,
+    -0.399
+   ],
+   "squares": [
+    5,
+    20
+   ],
+   "square": 0.01,
+   "margin": 0.008
+  },
+  "far": {
+   "origin": [
+    1.208,
+    -0.1,
+    -0.399
+   ],
+   "squares": [
+    5,
+    20
+   ],
+   "square": 0.01,
+   "margin": 0.008
   }
  },
  "limits": {

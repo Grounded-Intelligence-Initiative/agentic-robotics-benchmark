@@ -132,8 +132,9 @@ def _tool_T(name):
 
 
 def _wrist_T():
-    """The wrist camera in the flange frame, as `cell.frames` has it."""
-    return kin.pose(S.camera_R("wrist"), np.array(S.CAMERAS["wrist"]["pos"]))
+    """The wrist camera's nominal mounting in the flange frame, which `cell.frames` writes a wrist frame's `pose` with
+    (a cell's own mounting offset is never on the wire)."""
+    return S.camera_mount("wrist")
 
 
 def perturbed(obs, rng, exact=None):

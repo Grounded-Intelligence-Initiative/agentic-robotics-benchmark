@@ -86,6 +86,55 @@ def camera_K(name):
     return [[f, 0.0, c["width"] / 2.0], [0.0, f, c["height"] / 2.0], [0.0, 0.0, 1.0]]
 
 
+# The cameras' depth channel as their data sheets state it (`sensors.measure` applies it; the colour image is the
+# renderer's). The overhead camera is a long-range industrial active-stereo RGB-D camera, the wrist camera a
+# short-range one: noise sigma_k z^2 (1 sigma, z in m), quantization one `subpixel` disparity step at `baseline_m`,
+# readings lost at discontinuities, in the second view's occlusion, on dark and on bright (specular) surfaces.
+# Why these sizes: at 1.65 m (the fixture under the overhead camera) the noise is 2.5 mm, so one overhead frame does
+# not tell a 4.5 mm head from a 6 mm one (1.35 mm) but several frames do; at 0.35 m (a close wrist view) it is
+# 0.3 mm (tests/README.md, section 2).
+SENSORS = {
+    "overhead": {"range_m": [0.5, 3.0], "sigma_k": 0.0009, "baseline_m": 0.10, "subpixel": 0.0625, "corr_px": 2.0,
+                 "blur_px": 1.0, "edge_px": 2.0, "dark": [12, 40], "dim": 80, "bright": [215, 245]},
+    "wrist": {"range_m": [0.07, 1.0], "sigma_k": 0.0025, "baseline_m": 0.018, "subpixel": 0.0625, "corr_px": 2.0,
+              "blur_px": 1.0, "edge_px": 2.0, "dark": [12, 40], "dim": 80, "bright": [215, 245]},
+}
+
+# A cell's cameras are mounted by hand: each sits off its nominal mounting (CAMERAS: in the base frame for the
+# overhead camera, in the flange frame for the wrist camera) by an offset of its own, six numbers in the camera's own
+# frame (x right, y down, z forward): a translation (mm) and a rotation vector (degrees), each component within
+# +-MOUNT_TOL. The true camera is nominal @ offset. Every pack is taken apart in a cell of its own (the hidden set's
+# six and the four development packs alike); the offsets are drawn under tests/review/select_set.py's rule 2 with a
+# key of their own and are never published. The calibration plates below and the robot's exact kinematics are what a
+# program identifies them with.
+MOUNT_TOL = {"overhead": {"mm": 15.0, "deg": 1.5}, "wrist": {"mm": 4.0, "deg": 1.0}}
+
+# Calibration plates fixed to the fixture's surface on the two strips a pack never covers (nearest to and farthest
+# from the robot), surveyed in the base frame. A plate is a checkerboard of `squares` [along x, along y] squares of
+# `square` metres; its frame is parallel to the base frame with its origin at the board's corner of least x and y,
+# on the plate's surface; the square (i, j) (i along x, j along y, from 0) is black when i + j is even. The white
+# plate reaches `margin` beyond the board on every side.
+CAL_PLATES = {
+    "near": {"origin": [0.460, -0.100, TABLE_Z + 0.001], "squares": [5, 20], "square": 0.010, "margin": 0.008},
+    "far": {"origin": [1.208, -0.100, TABLE_Z + 0.001], "squares": [5, 20], "square": 0.010, "margin": 0.008},
+}
+
+
+def mount_offset_T(off):
+    """The 4x4 of a mounting offset [dx, dy, dz (mm), rx, ry, rz (deg, a rotation vector)] (camera frame)."""
+    from . import kin
+    off = [0.0] * 6 if off is None else [float(v) for v in off]
+    return kin.pose(kin.rotvec_R(np.radians(off[3:6])), np.array(off[:3]) / 1000.0)
+
+
+def camera_mount(name, offset=None):
+    """Camera `name` in its parent frame (4x4, OpenCV axes): the nominal mounting of CAMERAS, times the cell's
+    mounting `offset` when one is given (the true camera)."""
+    from . import kin
+    T = kin.pose(camera_R(name), np.array(CAMERAS[name]["pos"], dtype=float))
+    return T @ mount_offset_T(offset) if offset is not None else T
+
+
 # --------------------------------------------------------------------------------------------- the tools (flange frame)
 TOOLS = {
     "nutrunner": {
@@ -327,9 +376,12 @@ def _harness_path(s, on, nom, fasteners):
     return pts, [f["id"] for f in cover]
 
 
-def draw_pack(seed, variant=None, harness=None):
+def draw_pack(seed, variant=None, harness=None, cameras=None):
     """One pack: the nominal pack of its variant plus its hidden differences. `variant` and `harness` ("none",
-    "lid", "busbars") may be fixed by the caller (the selection of a set); everything else comes from the seed."""
+    "lid", "busbars") may be fixed by the caller (the selection of a set); everything else comes from the seed.
+    `cameras` are the mounting offsets of the cell the pack is taken apart in ({name: 6 numbers}, MOUNT_TOL; drawn
+    with the set under a key of their own, not from the seed); without them the cameras sit at their nominal
+    mounting."""
     s = Stream(seed, "pack")
     v = s.choice(sorted(VARIANTS))
     variant = variant or v
@@ -361,7 +413,8 @@ def draw_pack(seed, variant=None, harness=None):
     parts = [dict(p) for p in nom["parts"]]
     out = {"version": VERSION, "seed": int(seed), "variant": variant, "modules": nom["modules"],
            "module_ys": nom["module_ys"], "msd_y": nom["msd_y"], "bms_y": nom["bms_y"], "ribs": nom["ribs"],
-           "placement": placement, "group_head": group_head, "parts": parts, "fasteners": fasteners, "harness": None}
+           "placement": placement, "group_head": group_head, "parts": parts, "fasteners": fasteners, "harness": None,
+           "cameras": {name: [float(v) for v in (cameras or {}).get(name, [0.0] * 6)] for name in sorted(CAMERAS)}}
     if harness != "none":
         hs = Stream(seed, "harness")
         pts, covers = _harness_path(hs, harness, nom, fasteners)
@@ -405,8 +458,13 @@ def public_cell():
     from . import wire
     cams = {}
     for name, c in CAMERAS.items():
+        sd = SENSORS[name]
         cams[name] = {"parent": c["parent"], "pos": c["pos"], "R": [[round(float(v), 9) for v in row] for row in camera_R(name)],
-                      "K": camera_K(name), "width": c["width"], "height": c["height"], "clip": c["clip"]}
+                      "pose_is": "nominal", "mount_tolerance": {"mm": MOUNT_TOL[name]["mm"], "deg": MOUNT_TOL[name]["deg"]},
+                      "K": camera_K(name), "width": c["width"], "height": c["height"],
+                      "depth": {"range_m": sd["range_m"], "noise_sigma_m_per_m2": sd["sigma_k"], "baseline_m": sd["baseline_m"],
+                                "disparity_step_px": sd["subpixel"], "correlation_px": sd["corr_px"], "lateral_blur_px": sd["blur_px"],
+                                "edge_px": sd["edge_px"], "dark_luma": sd["dark"], "dim_luma": sd["dim"], "bright_rgb": sd["bright"]}}
     d = wire.DEFAULTS
     return {
         "version": VERSION,
@@ -420,6 +478,7 @@ def public_cell():
                   "gripper": {k: TOOLS["gripper"][k] for k in ("mass", "tcp_z", "open_max", "speed", "close_axis", "finger_len", "finger_w")}},
         "bits": list(BITS),
         "cameras": cams,
+        "calibration_plates": CAL_PLATES,
         "limits": {k: d[k] for k in ("tcp_speed_max", "tcp_rot_speed_max", "joint_speed_max", "overload_force", "overload_torque",
                                      "overload_joint_error", "stop_lock_s", "tool_change_s", "bit_change_s", "sim_cap_s", "frame_budget")},
         "isolation_wait_s": ISOLATION_WAIT_S,

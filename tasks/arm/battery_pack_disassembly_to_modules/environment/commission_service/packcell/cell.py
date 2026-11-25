@@ -16,7 +16,7 @@ import time
 
 import numpy as np
 
-from . import kin, rules, scene, wire
+from . import kin, rules, scene, sensors, wire
 from . import series as S
 
 G = 9.81
@@ -106,6 +106,8 @@ class Cell(object):
         self.tool = "nutrunner"
         self._show_tool()
         self.rng = np.random.default_rng([int(pack["seed"]) & 0xFFFFFFFF, int(pack["seed"]) >> 32, 0x5EED])
+        # the depth sensors' noise and dropouts: a stream of their own, so that frames leave the wrench's noise as it is
+        self.cam_rng = np.random.default_rng([int(pack["seed"]) & 0xFFFFFFFF, int(pack["seed"]) >> 32, 0xDE97])
         self.tick_n, self.frames_used, self.stops, self.lock_ticks, self.busy_ticks = 0, 0, 0, 0, 0
         self.ended, self.grasp_joint, self.grip_target = None, None, S.TOOLS["gripper"]["open_max"]
         self.spindle_torque, self.spindle_speed, self.stroke = 0.0, 0.0, 0.0
@@ -232,6 +234,8 @@ class Cell(object):
             if img.ndim != 3 or img.shape[0] != c["height"] or img.shape[1] != c["width"] or d.shape[:2] != img.shape[:2]:
                 raise RuntimeError("camera %s returned no frame (rgb %s, depth %s)" % (name, img.shape, d.shape))
             d = np.where(np.isfinite(d) & (d < 6.5), d, 0.0)
+            # what the sensor makes of the true depth: noise, quantization, lost readings (sensors.py, series.SENSORS)
+            d = sensors.measure(d, img[..., :3], S.camera_K(name), S.SENSORS[name], self.cam_rng)
             d16 = np.clip(np.round(d * 1e4), 0, 65535).astype(np.uint16)          # 0.1 mm per count, 0 = no reading
             ok1, png = cv2.imencode(".png", cv2.cvtColor(img[..., :3], cv2.COLOR_RGB2BGR), [cv2.IMWRITE_PNG_COMPRESSION, 1])
             ok2, dpng = cv2.imencode(".png", d16, [cv2.IMWRITE_PNG_COMPRESSION, 1])
@@ -241,7 +245,8 @@ class Cell(object):
                          "depth": base64.b64encode(dpng.tobytes()).decode("ascii"),
                          "depth_unit_m": 1e-4, "t": round(self.rules.t, 3)}
             if name == "wrist":
-                T = self.flange_T @ kin.pose(S.camera_R("wrist"), np.array(S.CAMERAS["wrist"]["pos"]))
+                # the nominal mounting (the cell's own offset is not on the wire): wire.perturbed builds it so too
+                T = self.flange_T @ S.camera_mount("wrist")
                 out[name]["pose"] = wire.pose6(T)
             self.frames_used += 1
         self.wall["render"] += time.time() - t0

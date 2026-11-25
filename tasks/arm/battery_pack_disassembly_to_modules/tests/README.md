@@ -8,8 +8,10 @@ session on a server without Docker, so the engine's own gates are still owed: se
 
 **Design rule: the agent gets what the automation engineer of a real disassembly cell would have, and nothing
 else.** It gets the pack series' workshop manual (drawings, nominal positions, the torque table, the isolation
-procedure), the tool catalog with the tools' tolerances, the cell's interface document with exact calibration, the
-robot's model, and a commissioning service that runs the cell on development packs. It does not get the cell's code,
+procedure), the tool catalog with the tools' tolerances, the cell's interface document (the cameras' exact
+intrinsics, their nominal mounting and how far a cell's own may be off it, the depth sensors' data sheets, two
+surveyed calibration plates), the robot's model, and a commissioning service that runs the cell on development
+packs. It does not get the cell's code,
 any ground truth (a part's pose, a fastener's head, state or wear), a credit or a debrief of any session, or a
 rehearsal on a graded pack.
 
@@ -51,8 +53,47 @@ can read. One process is one pack: Isaac Sim 6.2 headless, PhysX on the CPU (`en
   articulation's incoming joint force on the tool carrier, the tool's own weight taken out; protective stops; the
   cameras (Replicator render products with pinned RTX settings; depth is `distance_to_image_plane`); the
   observation; `truth()` and `score()` for the grader only.
+- **`sensors.py`**: what the cameras' depth channel makes of the renderer's exact depth (below). NumPy and OpenCV
+  only; `review/test_sensors.py` holds it to its data sheet without a simulator.
 - **`wire.py`**, **`server.py`**, **`cellproc.py`**: the action's schema, the cell as a process, and the client the
   grader and the service start it with.
+
+**The cameras: a sensor's depth and a cell's own mounting (since 2026-11-25).** Until then the depth frames were the
+renderer's exact distances and the cameras stood exactly at their published poses. A perception baseline written in
+about an hour typed every head by its height above its seat in one overhead frame and located everything through
+the published calibration, and scored 1.0 on the hidden set (section 6, the entry "2026-11-25, 10:00 to 11:35"). A
+real cell offers neither shortcut. Two changes, both perception and engineering, neither a penalty:
+
+- *The depth is an active-stereo sensor's* (`packcell/sensors.py`; data sheet `series.SENSORS`, stated in the
+  interface document's section 5 the way a data sheet states it; also in `cell.json`). The renderer's exact depth
+  goes through a lateral smoothing of 1 pixel; temporal noise of sigma_k z^2 (overhead 0.0009 per metre: 2.5 mm at the
+  fixture, 1.65 m away; wrist 0.0025: 0.3 mm at 0.35 m), correlated over about 2 pixels, independent from frame to
+  frame, up to twice as large on dim surfaces; quantization to the disparity grid (1/16 pixel at a 0.10 m and a
+  0.018 m baseline: steps of 1.0 mm at the fixture, 0.3 mm at 0.35 m); and no reading outside the working range, at
+  depth jumps of more than 2 disparity pixels, in the stereo pair's occlusion band beside tall edges, on dark
+  surfaces (luma 40 down to 12) and on specular highlights (a colour channel 215 up to 245), lost in blobs. The sizes
+  are those of industrial active-stereo cameras at these distances, a long-range model overhead and a short-range
+  one on the wrist. The dark and bright dropouts are keyed to the rendered colour image (a sensor's own infrared
+  image is not rendered); the stated thresholds let a program predict where it will have no reading. The colour
+  image is unchanged. What this does to the job (`review/test_sensors.py`; section 6): one overhead frame types
+  about a third of the heads wrong even when the head's centre is known, 32 averaged overhead frames or one close
+  wrist frame type them right; the plated heads lose part of their top face's readings in a wrist frame (their
+  highlights), so a centre from depth alone is up to about 1.6 mm off and the colour image's outline is what brings
+  it within the Torx bit's 1.2 mm.
+- *The cameras' poses on file are nominal* (as upstream #177 did for `lab_sample_handling`). A cell's overhead
+  camera sits off its nominal pose by up to 15 mm and 1.5 degrees per component, its wrist camera off its nominal
+  place on the flange by up to 4 mm and 1 degree (`series.MOUNT_TOL`, an offset in the camera's own frame: true =
+  nominal times offset). Located through the nominal poses, a point on the fixture is typically 4 cm off (up to
+  8 cm), a point 0.35 m in front of the wrist camera 6 mm (up to 13 mm). Every pack is taken apart in a cell of its
+  own, graded and development packs alike, so a program identifies its cameras in every pack. What it identifies
+  them with is on file and exact: two checkerboard plates on the fixture's strips that no pack covers
+  (`series.CAL_PLATES`, 5 x 20 squares of 10 mm, surveyed; drawn only, nothing collides with them), the intrinsics,
+  the robot's kinematic model and its joint readings. A wrist frame's `pose` on the wire is the nominal pose (the
+  flange's pose times the nominal mounting), which is how `wire.perturbed` and the agent's library build a probe's
+  copy too. The offsets were drawn under `review/select_set.py`'s rule 2 with a key of their own, after the rule was
+  committed. Measured with standard OpenCV on a probe cell with hand-picked offsets (section 6): the two plates in
+  one overhead frame give the overhead camera to 0.3 to 0.6 mm on the lid, and five whole-plate wrist views give the
+  wrist camera's mounting to 0.2 mm.
 
 **What is rule-based (the stated simplifications).**
 
@@ -109,7 +150,8 @@ cell's messages).
   brightness, depth present), the robot follows a small move. A failure is a task error, never a zero.
 - The fixed hidden set `hidden/packs.json`: six packs (each variant twice, each harness case twice), the same for
   every submission, drawn by `review/select_set.py` under a rule fixed before any pack was run; no pack was chosen
-  or dropped for how the reference does on it.
+  or dropped for how the reference does on it. Each pack carries the camera offsets of the cell it is taken apart in
+  (rule 2 of the same script, drawn with a key of its own); `verify.py` refuses a set without them.
 - Per pack a fresh cell and the kit's `Solver` (the controller at the agent's UID through `nonet_exec.py`: no
   internet socket), one action per step until the pack ends. The probe lock (`IdleAwareProbeLock`, rate 0.02, pass
   fraction 0.1): a probed step is asked twice with the same `t`, once with the robot's readings shifted
@@ -192,10 +234,11 @@ value measured natively on the author's server, outside the engine; it has to be
   "the bit has to be chosen from the image" therefore holds for a program that wants to be quick, not for one that
   only wants to be right; making a wrong family harmful would not be true to the tools. Left as it is for the
   owner to decide.
-- **Levers if frontier models turn out to do too well** (none used): the cameras' calibration could carry a
-  per-cell mounting error to be identified; lighting, dirt and label clutter could vary per pack; the fixture's
-  placement tolerance could grow; fastener heads could be partly hidden by sealant. All are perception or
-  engineering, none a penalty.
+- **Levers if frontier models turn out to do too well.** Two are used since 2026-11-25 (section 2, "The cameras"):
+  the cameras' poses on file are nominal and each cell's own mounting offset has to be identified, and the depth is
+  an active-stereo sensor's. Not used: lighting, dirt and label clutter varying per pack; a wider placement
+  tolerance of the fixture; fastener heads partly hidden by sealant. All are perception or engineering, none a
+  penalty.
 - **GPU models.** Run only on an RTX 6000 Ada with driver 570 (DLSS falls back to an older denoiser preset there),
   so `gpu_types` names only that model. The cloud models (RTX 4090, RTX 5090, RTX PRO 6000, H100, H200) are
   untested; `hazard_bay_build`, on the same Isaac Sim stack, validates on the first three. Each model has to be

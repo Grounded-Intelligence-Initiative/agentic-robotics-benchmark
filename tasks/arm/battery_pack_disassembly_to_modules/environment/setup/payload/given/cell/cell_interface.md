@@ -12,6 +12,8 @@ this frame unless a document says otherwise. The floor is at z = -0.8, the surfa
 at z = -0.4.
 
 - **Fixture.** A pack's frame (service manual, section 3) sits nominally at [0.86, 0.0, -0.4], axes parallel to the base frame's.
+- **Calibration plates.** Two checkerboard plates are fixed to the fixture's surface on the strips that no pack
+  covers, one nearest to the robot and one farthest from it, surveyed in the base frame (section 5).
 - **Tables** (x from, x to, y from, y to; all at table height): fixture [0.45, 1.27, -0.56, 0.56]; right [0.1, 1.06, -0.88, -0.58]; left [0.48, 1.06, 0.58, 0.86]; rack [-0.62, 0.44, 0.6, 0.98]; lid_stand [-1.3, -0.6, -0.55, 0.55]; tool_stand [-0.56, 0.08, -0.86, -0.6]. The robot's pedestal is a column of 0.16 m
   radius under the base.
 - **Bins** (open boxes standing on the tables, floor at table height):
@@ -142,13 +144,56 @@ Frames are rendered only when an action asks for them, at most 400 per pack in a
 counts one). `rgb` is a PNG (base64), `depth` a 16-bit PNG (base64) of the distance along the optical axis in units
 of 0.1 mm, 0 where there is no reading. `packcell_client.decode_rgb` and `decode_depth` read them.
 
-- `overhead`: 1440 x 1080 pixels, fx = fy = 1712.81, cx = 720, cy = 540, no distortion; mounted on the cell (base frame) at [0.86, 0.0, 1.25] (m), camera axes (x right, y down, z forward) as the columns of R = [[0.0, -1.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, -1.0]]. Depth from 0.3 to 6 m.
-- `wrist`: 960 x 720 pixels, fx = fy = 1394.02, cx = 480, cy = 360, no distortion; mounted on the flange (in the flange frame) at [0.07, 0.0, 0.045] (m), camera axes (x right, y down, z forward) as the columns of R = [[0.0, -0.9816, -0.1908], [1.0, 0.0, 0.0], [0.0, -0.1908, 0.9816]]. Depth from 0.03 to 4 m.
+- `overhead`: 1440 x 1080 pixels, fx = fy = 1712.81, cx = 720, cy = 540, no distortion; nominally mounted on the cell (base frame) at [0.86, 0.0, 1.25] (m), camera axes (x right, y down, z forward) as the columns of R = [[0.0, -1.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, -1.0]].
+- `wrist`: 960 x 720 pixels, fx = fy = 1394.02, cx = 480, cy = 360, no distortion; nominally mounted on the flange (in the flange frame) at [0.07, 0.0, 0.045] (m), camera axes (x right, y down, z forward) as the columns of R = [[0.0, -0.9816, -0.1908], [1.0, 0.0, 0.0], [0.0, -0.1908, 0.9816]].
 
-A pixel (u, v) with depth d is the camera-frame point ((u - cx) d / fx, (v - cy) d / fy, d). The wrist frame's
-`pose` is the wrist camera's pose in the base frame when the frame was taken (from the measured joint angles). The
-calibration is exact. The renderer is a path tracer with a denoiser: two frames of the same scene differ slightly
-in their pixel values.
+A pixel (u, v) with depth d is the camera-frame point ((u - cx) d / fx, (v - cy) d / fy, d). Depth is registered
+to the colour image: the same pixel grid and intrinsics. The intrinsics are exact (the cameras' factory
+calibration).
+
+**The mounting above is nominal.** A cell's cameras are mounted by hand, and each sits off its nominal pose by an
+offset of its own: up to 15 mm along and 1.5 degrees about each of its own axes for the overhead camera, up to 4 mm
+and 1 degree for the wrist camera (against its nominal place on the flange). The true pose is the nominal pose
+times the offset (a translation and a rotation in the camera's own frame). The offset belongs to the cell: it is
+the same throughout a pack and differs from cell to cell. Every pack is taken apart in a cell of its own, the graded
+packs and each development pack alike, so a program identifies the cameras of the cell it is running in, in every
+pack. Located through the nominal poses, a point on the fixture seen by the overhead camera is typically 4 cm off
+(up to about 8 cm), and a point 0.35 m in front of the wrist camera typically 6 mm (up to about 13 mm). What is
+exact: the robot's kinematic model (`../robot/ur20.json`) and its joint readings, the intrinsics, and the
+calibration plates:
+
+| plate | origin (m) | squares (x by y) | square (mm) | white margin (mm) |
+|---|---|---|---|---|
+| near | [0.46, -0.1, -0.399] | 5 x 20 | 10 | 8 |
+| far | [1.208, -0.1, -0.399] | 5 x 20 | 10 | 8 |
+
+A plate's frame is parallel to the base frame, with its origin at the board's corner of least x and least y, on the
+plate's surface. The square (i, j), counted from 0 with i along x and j along y, is black when i + j is even; the
+white plate reaches the margin beyond the board on every side. The overhead camera sees both plates (when the arm is
+not in the way); the wrist camera sees one when the robot brings it over it. A wrist frame's `pose` is the wrist
+camera's nominal pose when the frame was taken: the flange's pose at the measured joint angles times the nominal
+mounting. It does not contain the cell's offset.
+
+**Depth.** Both cameras are active-stereo RGB-D cameras. From their data sheets (also in `cell.json`, `depth`):
+
+|  | overhead | wrist |
+|---|---|---|
+| working range | 0.5 to 3 m | 0.07 to 1 m |
+| depth noise (1 sigma, temporal, on a well-lit surface; z in m) | 0.0009 z^2 m (2.5 mm at 1.65 m) | 0.0025 z^2 m (0.3 mm at 0.35 m) |
+| noise on dim surfaces | rising as the colour image's luma falls below 80, up to twice at 12 | the same |
+| noise correlation | over about 2 pixels (Gaussian) | the same |
+| lateral smoothing of depth | about 1 pixel (Gaussian) | the same |
+| stereo baseline, along the camera's +x | 0.1 m | 0.018 m |
+| disparity resolution (depth steps: z^2 x step / (f x baseline)) | 1/16 pixel (1.0 mm at 1.65 m) | 1/16 pixel (0.31 mm at 0.35 m) |
+| no reading at depth jumps | of more than 2 disparity pixels within 5 x 5 pixels (32 mm at 1.65 m) | the same (10 mm at 0.35 m) |
+
+A pixel has no reading (0) outside the working range; at a depth jump; where the stereo pair's second view, displaced
+along the camera's +x by the baseline, cannot see the point (a band beside tall edges); on dark surfaces (where the
+colour image's luma, 0.299 R + 0.587 G + 0.114 B, is below 40, more often the darker, never a reading below 12); and
+on specular highlights (where a colour channel is above 215, more often the brighter, never a reading above 245). Lost
+readings come in small blobs. The noise is independent from frame to frame: the mean of many frames of a still scene
+approaches the true depth, smoothed as stated. The colour image is the renderer's: a path tracer with a denoiser, so
+two frames of the same scene differ slightly in their pixel values.
 
 ## 6. Budgets
 
@@ -173,6 +218,8 @@ not in the pack). Nothing is subtracted for anything.
 
 The commissioning service in your sandbox runs this cell on 4 development packs of the series: packs with their own
 placements, head types, corroded and missing fasteners and harness remnants, none of them a pack you are graded on.
+Each development pack is taken apart in a cell of its own: its cameras' mounting offsets (section 5) are the same in
+every session on that pack and differ from those of the other development packs and of every graded cell.
 You get what a commissioning engineer has at the cell: the same actions and observations as above, the camera
 frames, the robot's and the tools' readings. You get no ground truth, no credit and no debrief.
 

@@ -441,11 +441,30 @@ def cell_interface():
                  [[k, "%g, %g" % tuple(b["center"]), "%g x %g" % tuple(b["size"]), "%g" % b["wall_h"]] for k, b in c["bins"].items()])
     cam = []
     for name, k in c["cameras"].items():
-        cam.append("- `%s`: %d x %d pixels, fx = fy = %.2f, cx = %g, cy = %g, no distortion; mounted on the %s at %s (m), camera axes (x right, "
-                   "y down, z forward) as the columns of R = %s. Depth from %g to %g m." % (
+        cam.append("- `%s`: %d x %d pixels, fx = fy = %.2f, cx = %g, cy = %g, no distortion; nominally mounted on the %s at %s (m), camera "
+                   "axes (x right, y down, z forward) as the columns of R = %s." % (
                        name, k["width"], k["height"], k["K"][0][0], k["K"][0][2], k["K"][1][2],
                        "cell (base frame)" if k["parent"] == "world" else "flange (in the flange frame)", k["pos"],
-                       [[round(v, 4) for v in row] for row in k["R"]], k["clip"][0], min(k["clip"][1], 6.5)))
+                       [[round(v, 4) for v in row] for row in k["R"]]))
+    plates = table(["plate", "origin (m)", "squares (x by y)", "square (mm)", "white margin (mm)"],
+                   [[k, "%s" % [round(v, 4) for v in p["origin"]], "%d x %d" % tuple(p["squares"]), "%g" % (p["square"] * 1000),
+                     "%g" % (p["margin"] * 1000)] for k, p in c["calibration_plates"].items()])
+    so, sw = S.SENSORS["overhead"], S.SENSORS["wrist"]
+    Ko, Kw = S.camera_K("overhead")[0][0], S.camera_K("wrist")[0][0]
+    zo, zw = 1.65, 0.35
+    sheet = table(["", "overhead", "wrist"], [
+        ["working range", "%g to %g m" % tuple(so["range_m"]), "%g to %g m" % tuple(sw["range_m"])],
+        ["depth noise (1 sigma, temporal, on a well-lit surface; z in m)", "%g z^2 m (%.1f mm at %g m)" % (so["sigma_k"], so["sigma_k"] * zo ** 2 * 1e3, zo),
+         "%g z^2 m (%.1f mm at %g m)" % (sw["sigma_k"], sw["sigma_k"] * zw ** 2 * 1e3, zw)],
+        ["noise on dim surfaces", "rising as the colour image's luma falls below %d, up to twice at %d" % (so["dim"], so["dark"][0]), "the same"],
+        ["noise correlation", "over about %g pixels (Gaussian)" % so["corr_px"], "the same"],
+        ["lateral smoothing of depth", "about %g pixel (Gaussian)" % so["blur_px"], "the same"],
+        ["stereo baseline, along the camera's +x", "%g m" % so["baseline_m"], "%g m" % sw["baseline_m"]],
+        ["disparity resolution (depth steps: z^2 x step / (f x baseline))", "1/%d pixel (%.1f mm at %g m)" % (round(1 / so["subpixel"]), zo ** 2 * so["subpixel"] / (Ko * so["baseline_m"]) * 1e3, zo),
+         "1/%d pixel (%.2f mm at %g m)" % (round(1 / sw["subpixel"]), zw ** 2 * sw["subpixel"] / (Kw * sw["baseline_m"]) * 1e3, zw)],
+        ["no reading at depth jumps", "of more than %g disparity pixels within 5 x 5 pixels (%.0f mm at %g m)" % (so["edge_px"], so["edge_px"] * zo ** 2 / (Ko * so["baseline_m"]) * 1e3, zo),
+         "the same (%.0f mm at %g m)" % (sw["edge_px"] * zw ** 2 / (Kw * sw["baseline_m"]) * 1e3, zw)],
+    ])
     return """# Disassembly cell: interface document
 
 The cell: a Universal Robots UR20 on a pedestal, a fixture that holds one battery pack in front of it, a tool stand
@@ -460,6 +479,8 @@ this frame unless a document says otherwise. The floor is at z = %g, the surface
 at z = %g.
 
 - **Fixture.** A pack's frame (service manual, section 3) sits nominally at %s, axes parallel to the base frame's.
+- **Calibration plates.** Two checkerboard plates are fixed to the fixture's surface on the strips that no pack
+  covers, one nearest to the robot and one farthest from it, surveyed in the base frame (section 5).
 - **Tables** (x from, x to, y from, y to; all at table height): %s. The robot's pedestal is a column of 0.16 m
   radius under the base.
 - **Bins** (open boxes standing on the tables, floor at table height):
@@ -586,10 +607,41 @@ of 0.1 mm, 0 where there is no reading. `packcell_client.decode_rgb` and `decode
 
 %s
 
-A pixel (u, v) with depth d is the camera-frame point ((u - cx) d / fx, (v - cy) d / fy, d). The wrist frame's
-`pose` is the wrist camera's pose in the base frame when the frame was taken (from the measured joint angles). The
-calibration is exact. The renderer is a path tracer with a denoiser: two frames of the same scene differ slightly
-in their pixel values.
+A pixel (u, v) with depth d is the camera-frame point ((u - cx) d / fx, (v - cy) d / fy, d). Depth is registered
+to the colour image: the same pixel grid and intrinsics. The intrinsics are exact (the cameras' factory
+calibration).
+
+**The mounting above is nominal.** A cell's cameras are mounted by hand, and each sits off its nominal pose by an
+offset of its own: up to %g mm along and %g degrees about each of its own axes for the overhead camera, up to %g mm
+and %g degree for the wrist camera (against its nominal place on the flange). The true pose is the nominal pose
+times the offset (a translation and a rotation in the camera's own frame). The offset belongs to the cell: it is
+the same throughout a pack and differs from cell to cell. Every pack is taken apart in a cell of its own, the graded
+packs and each development pack alike, so a program identifies the cameras of the cell it is running in, in every
+pack. Located through the nominal poses, a point on the fixture seen by the overhead camera is typically 4 cm off
+(up to about 8 cm), and a point 0.35 m in front of the wrist camera typically 6 mm (up to about 13 mm). What is
+exact: the robot's kinematic model (`../robot/ur20.json`) and its joint readings, the intrinsics, and the
+calibration plates:
+
+%s
+
+A plate's frame is parallel to the base frame, with its origin at the board's corner of least x and least y, on the
+plate's surface. The square (i, j), counted from 0 with i along x and j along y, is black when i + j is even; the
+white plate reaches the margin beyond the board on every side. The overhead camera sees both plates (when the arm is
+not in the way); the wrist camera sees one when the robot brings it over it. A wrist frame's `pose` is the wrist
+camera's nominal pose when the frame was taken: the flange's pose at the measured joint angles times the nominal
+mounting. It does not contain the cell's offset.
+
+**Depth.** Both cameras are active-stereo RGB-D cameras. From their data sheets (also in `cell.json`, `depth`):
+
+%s
+
+A pixel has no reading (0) outside the working range; at a depth jump; where the stereo pair's second view, displaced
+along the camera's +x by the baseline, cannot see the point (a band beside tall edges); on dark surfaces (where the
+colour image's luma, 0.299 R + 0.587 G + 0.114 B, is below %d, more often the darker, never a reading below %d); and
+on specular highlights (where a colour channel is above %d, more often the brighter, never a reading above %d). Lost
+readings come in small blobs. The noise is independent from frame to frame: the mean of many frames of a still scene
+approaches the true depth, smoothed as stated. The colour image is the renderer's: a path tracer with a denoiser, so
+two frames of the same scene differ slightly in their pixel values.
 
 ## 6. Budgets
 
@@ -614,6 +666,8 @@ not in the pack). Nothing is subtracted for anything.
 
 The commissioning service in your sandbox runs this cell on %d development packs of the series: packs with their own
 placements, head types, corroded and missing fasteners and harness remnants, none of them a pack you are graded on.
+Each development pack is taken apart in a cell of its own: its cameras' mounting offsets (section 5) are the same in
+every session on that pack and differ from those of the other development packs and of every graded cell.
 You get what a commissioning engineer has at the cell: the same actions and observations as above, the camera
 frames, the robot's and the tools' readings. You get no ground truth, no credit and no debrief.
 
@@ -639,7 +693,8 @@ bit-reproducible across machines: build a program that closes its loops on what 
        c["lid_stand"]["size"][0], c["lid_stand"]["size"][1], c["docks"]["nutrunner"], c["docks"]["gripper"], c["bit_station"], c["home_q"],
        D["max_ticks"], S.TICK, D["tcp_speed_max"], D["tcp_rot_speed_max"], D["joint_speed_max"],
        D["overload_force"], D["overload_torque"], D["overload_joint_error"], D["stop_lock_s"], D["sim_cap_s"], D["frame_budget"],
-       "\n".join(cam), D["sim_cap_s"], D["frame_budget"], GRADER["max_steps"], GRADER["controller_budget_s"],
+       "\n".join(cam), S.MOUNT_TOL["overhead"]["mm"], S.MOUNT_TOL["overhead"]["deg"], S.MOUNT_TOL["wrist"]["mm"], S.MOUNT_TOL["wrist"]["deg"],
+       plates, sheet, so["dark"][1], so["dark"][0], so["bright"][0], so["bright"][1], D["sim_cap_s"], D["frame_budget"], GRADER["max_steps"], GRADER["controller_budget_s"],
        len(DEV["packs"]), len(DEV["packs"]), DEV["sessions"], DEV["idle_s"])
 
 

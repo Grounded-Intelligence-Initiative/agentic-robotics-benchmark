@@ -14,6 +14,11 @@ does with public means only (the frames, the published calibration, the manual's
    axis), takes a wrist frame, finds the head in it again and classifies it: a dark six-lobe recess in the middle
    (Torx) or none (hexagon); rust-coloured or not; an empty hole.
 
+(Written for version 0.1.0, whose cameras stood exactly at the published poses and whose depth was exact; the table
+it produced is in tests/README.md, section 6, the entry "04:40 to 05:50". Since 2026-11-25 the published poses are
+nominal and the depth is a sensor's (section 2): this script still locates through the nominal poses, so on the
+current cell its position errors include the cell's camera offsets. It is kept as the record of that measurement.)
+
 Then it reports, against the cell's truth: how many of the lid's fasteners were found, the position error of the
 overhead estimate and of the wrist estimate (mm), and the classification's hits. The tool catalog's tolerances are
 2.0 mm (socket) and 1.2 mm (Torx).
