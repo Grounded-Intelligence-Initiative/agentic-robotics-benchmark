@@ -243,5 +243,8 @@
  "cells_drawn_utc": "2026-11-25T19:17:17Z",
  "sealant_key_hex": "0b241455612e5e9f57538134bd5e43fc3afcef72b0c8cfbe9b9d5b4af43f9da3",
  "sealant_rule": "tests/review/select_set.py (its docstring), rule 3",
- "sealant_drawn_utc": "2026-11-25T20:37:35Z"
+ "sealant_drawn_utc": "2026-11-25T20:37:35Z",
+ "appearance_key_hex": "588b5308fd0e5908a38de23de2487b83cab12d118322ed755feaa6caebfa4182",
+ "appearance_rule": "tests/review/select_set.py (its docstring), rule 4",
+ "appearance_drawn_utc": "2026-11-25T22:27:10Z"
 }
