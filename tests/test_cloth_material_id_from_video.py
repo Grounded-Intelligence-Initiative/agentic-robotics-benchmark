@@ -35,6 +35,15 @@ class Copies(unittest.TestCase):
         self.assertEqual(sha256(TASK / "environment/gen/carm.py"), sha256(TASK / "environment/setup/payload/carm.py"))
         self.assertEqual(sha256(TASK / "environment/gen/creal.py"), sha256(TASK / "tests/creal.py"))
 
+    def test_the_looks_do_not_follow_the_materials(self):
+        scene = (TASK / "environment/gen/cscene.py").read_text()
+        body = scene[scene.index("def fabric_looks"):]
+        body = body[:body.index("\ndef ", 1)] if "\ndef " in body[1:] else body
+        for word in ("material", "young", "thickness", "mass"):
+            self.assertNotIn(word + "[", body)
+            self.assertNotIn("fabrics.json", body)
+        self.assertIn("DRAW_THICKNESS = 0.0015", (TASK / "environment/gen/render_clips.py").read_text())
+
     def test_nothing_hidden_is_in_the_agents_home(self):
         payload = TASK / "environment/setup/payload"
         names = sorted(p.name for p in payload.rglob("*") if p.is_file())

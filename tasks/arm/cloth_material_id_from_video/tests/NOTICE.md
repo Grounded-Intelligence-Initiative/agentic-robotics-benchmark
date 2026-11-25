@@ -3,9 +3,12 @@
 - **The robot** in the videos and in `carm.py` is the Franka Panda model of the robosuite 1.5.2 package (MIT licence,
   https://github.com/ARISE-Initiative/robosuite), installed unmodified in the task image from PyPI; only its MJCF and
   mesh files are used. The fabric clamp on its flange is this task's own geometry.
-- **Everything else is this task's own and synthetic**: the scene (table, floor, wall), the eleven fabrics, their
-  materials, the clip programs, the hidden tests and every texture. The textures are generated procedurally by
-  `environment/gen/render_clips.py` from fixed seeds.
+- **The scene in the recordings** is drawn from a render bundle (`environment/gen/render_bundle.sha256` lists its
+  files; it is published beside the recordings in the asset repository under `render/` and is not fetched by the task
+  image): a loft work space with its furniture (decimated from a purchased environment pack the maintainers hold the
+  rights to; the same room other tasks of this benchmark draw), the bench's laminate, a library of twelve fabric
+  looks (canvas, denim, felt, coated fabric; generated maps), the camera bodies and an image light. The fabrics,
+  their materials, the clip programs and the hidden tests are this task's own and synthetic.
 - **The real fabrics** are `tests/creal.py` (copy: `environment/gen/creal.py`): a finer sheet than the agent's
   `cphys` (41 x 21 vertices, 1 ms, softer contact), in air (quadratic normal drag), with speed-dependent friction
   (static above kinetic). The agent never gets this model; it plans in `cphys`, as the grader does.
@@ -15,10 +18,10 @@
   with the key before any candidate was simulated. `solution/ref/params.json` (the references of A-J) and
   `environment/gen/fabrics.json` (real materials and masses, for the renderer) are written by the same run.
 - **The recordings** (11 fabrics x 7 clips x 3 cameras, the clamp's and the arm's motion) were rendered once by
-  `environment/gen/render_clips.py` from the real fabrics (creal) with MuJoCo 3.16's native renderer on OSMesa, in the
-  task image's Python under the image's numerics pin, and are published in the benchmark's asset repository;
-  `environment/assets.sha256` pins the commit and every file. `environment/gen/` is in no image layer. The print on a
-  fabric is dealt to the ids in a fixed cycle and does not depend on the material.
+  `environment/gen/render_clips.py` from the real fabrics (creal) with MuJoCo 3.16's Filament renderer on the CPU, in
+  the task image's Python under the image's numerics pin, and are published in the benchmark's asset repository;
+  `environment/assets.sha256` pins the commit and every file. `environment/gen/` is in no image layer. A fabric's
+  look is a function of its id alone (tests/PREREG.md, amendment 1) and does not depend on the material.
 - **Copies that must stay byte-identical:** `environment/setup/payload/{cphys,ctasks}.py` = `tests/{cphys,ctasks}.py`
   = `environment/gen/{cphys,ctasks}.py`, `environment/setup/payload/carm.py` = `environment/gen/carm.py`, and
   `tests/creal.py` = `environment/gen/creal.py` (`tests/review/check_copies.py`; the repository's test).

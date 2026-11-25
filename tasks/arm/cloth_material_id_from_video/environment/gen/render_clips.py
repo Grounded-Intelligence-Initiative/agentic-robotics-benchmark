@@ -1,20 +1,23 @@
-"""Build-time generator of the agent's recordings for cloth_material_id_from_video.
+"""Generator of the agent's recordings for cloth_material_id_from_video (maintainers' side; in no image layer).
 
-Runs once while the task image builds, from a read-only bind mount of environment/gen/ (so neither this file nor
-fabrics.json, which holds the hidden true materials, is left in any image layer). For every fabric (P, A, B, C)
-and clip it simulates the clip on the real fabric (creal: the real fabric's model, which the agent does not get; its
-cphys is the robot's planning simulator), solves the arm's
-joint angles (carm), renders three calibrated cameras offscreen (MuJoCo, OSMesa), degrades the images like a real
-camera and encodes H.264 with ffmpeg. Output tree (OUT, default /opt/task-assets/payload):
+Run once by the maintainers; the recordings are published in the asset repository and the task image fetches them
+by checksum (environment/assets.sha256). For every fabric (P, A ... J) and clip it simulates the clip on the real
+fabric (creal: the real fabric's model, which the agent does not get; its cphys is the robot's planning simulator),
+solves the arm's joint angles (carm), lays the drawn fabric on the real model's vertices (csheet), draws the three
+calibrated cameras with the Filament renderer of the approved scene (crender, cscene and the render bundle at
+CLOTH_RENDER_DIR; lavapipe, no GPU), degrades the pictures like a real camera and encodes H.264 with ffmpeg.
+Output tree (OUT):
 
   data/cameras.json
   data/fabrics/<ID>/fabric.json                         size, grid, mass, number of clips
   data/fabrics/<ID>/clipNN/{clip.json, clamp_500hz.npy, arm_q.npy, cam0.mp4, cam1.mp4, cam2.mp4}
 
-Everything here is deterministic: fixed seeds, fixed clip programs. Textures are procedural (no external files).
-usage: python3 render_clips.py OUT [--workers N] [--only P,A] [--frames-max K]
+Everything here is deterministic: fixed seeds, fixed clip programs, one clip per process. A fabric's look is a
+function of its id alone (cscene.fabric_looks), never of its material; every fabric is drawn 1.5 mm thick.
+usage: python3 render_clips.py OUT [--workers N] [--only P,A] [--frames-max K]      (workers: cores / 4)
 """
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -214,7 +217,6 @@ def render_xml(material, mass, cams_xml, arm_assets, arm_body):
                     '<texture name="wood" type="2d" file="wood.png"/><material name="wood" texture="wood" texrepeat="2 2"/>'
                     '<texture name="floor" type="2d" file="floor.png"/><material name="floor" texture="floor" texrepeat="6 6"/>'
                     '<texture name="sky" type="skybox" builtin="gradient" rgb1="0.75 0.78 0.82" rgb2="0.35 0.36 0.4" width="256" height="256"/>'
-                    + sheet_assets() + '<material name="fabric_under" rgba="0.78 0.76 0.72 1" specular="0.05" shininess="0.1"/>'
                     + arm_assets)
     tx, ty = W.TABLE_HALF
     cx = W.EDGE_X - tx
@@ -228,8 +230,6 @@ def render_xml(material, mass, cams_xml, arm_assets, arm_body):
              '<geom type="plane" size="3 3 0.1" pos="0 0 -0.78" material="floor" contype="0" conaffinity="0" group="1"/>'
              '<geom type="box" size="0.02 2.5 1.2" pos="-1.6 0 0.4" rgba="0.82 0.8 0.76 1" contype="0" conaffinity="0" group="1"/>'
              '<geom name="probe" type="sphere" size="0.0015" pos="0 0 -5" contype="0" conaffinity="0" rgba="0 0 0 0" group="3"/>'
-             '<geom name="sheet_top" type="mesh" mesh="sheet_top" material="fabric" contype="0" conaffinity="0" group="1"/>'
-             '<geom name="sheet_bot" type="mesh" mesh="sheet_bot" material="fabric_under" contype="0" conaffinity="0" group="1"/>'
              + legs + pedestal + cams_xml + arm_body)
     xml = xml.replace('<asset>', '<asset>' + extra_assets, 1)
     xml = xml.replace('rgba="0.55 0.45 0.35 1" group="1"/>', 'material="wood" group="1"/>', 1)
@@ -277,41 +277,6 @@ def encode(frames, path):
 DRAW_NX, DRAW_NY = 4 * (R.NX - 1) + 1, 4 * (R.NY - 1) + 1
 DRAW_THICKNESS = 0.0015          # one drawn thickness for every fabric: what is drawn says nothing about the material
 TABLE_BOX = ([W.EDGE_X - W.TABLE_HALF[0], 0.0, -0.02], [W.TABLE_HALF[0], W.TABLE_HALF[1], 0.02])
-
-
-def sheet_assets():
-    """MJCF of the two meshes of the drawn fabric (the printed face; the under side with the rim), flat at the origin.
-    Their vertices are rewritten for every frame (set_sheet)."""
-    uv, f_top, ring, inner, f_edge = CS.topology(DRAW_NX, DRAW_NY)
-    ii, jj = np.meshgrid(np.arange(DRAW_NX), np.arange(DRAW_NY), indexing="ij")
-    flat = np.stack([ii * 0.002, jj * 0.002, 0.0 * ii], -1).reshape(-1, 3)
-    nr = len(ring)
-    vb = np.concatenate([flat, flat[ring] + [0, 0, 0.001]])
-    n0 = DRAW_NX * DRAW_NY
-    fb = np.concatenate([f_top[:, ::-1], np.where(f_edge < nr, ring[np.minimum(f_edge, nr - 1)], n0 + (f_edge - nr))[:, ::-1]])
-    txt = lambda a, fmt="%.6g": " ".join(fmt % v for v in np.asarray(a).ravel())  # noqa: E731
-    return ('<mesh name="sheet_top" vertex="%s" face="%s" texcoord="%s" inertia="shell"/>' % (txt(flat), txt(f_top, "%d"), txt(uv))
-            + '<mesh name="sheet_bot" vertex="%s" face="%s" inertia="shell"/>' % (txt(vb), txt(fb, "%d")))
-
-
-def set_sheet(m, con, V, clamp_row):
-    """Lay the drawn fabric on the real model's vertices V (one frame) and hand the two meshes to the renderer."""
-    import mujoco
-    sh = CS.shell(V, (R.NX, R.NY), R.RADIUS, DRAW_THICKNESS, TABLE_BOX, clamp_row, W.JAW_W / 2)
-    top, bot, n = sh["top"].reshape(-1, 3), sh["bot"].reshape(-1, 3), sh["n"].reshape(-1, 3)
-    ring = CS.topology(DRAW_NX, DRAW_NY)[2]
-    for name, vert, norm in (("sheet_top", top, n), ("sheet_bot", np.concatenate([bot, top[ring]]), np.concatenate([-n, -n[ring]]))):
-        mid = m.mesh(name).id
-        a, k = m.mesh_vertadr[mid], m.mesh_vertnum[mid]
-        assert k == len(vert) and m.mesh_normalnum[mid] == k
-        m.mesh_vert[a:a + k] = vert
-        na = m.mesh_normaladr[mid]
-        m.mesh_normal[na:na + k] = norm
-        g = m.geom(name).id
-        m.geom_pos[g] = 0.0
-        m.geom_quat[g] = [1.0, 0.0, 0.0, 0.0]
-        mujoco.mjr_uploadMesh(m, con, mid)
-    return sh
 
 
 def arm_check(m, d, rows, q, frames):
@@ -385,24 +350,24 @@ def do_clip(args):
         chk = arm_check(m, dd, rows, q, frames[:n])
         os.makedirs(os.environ["CLIP_CHECK_DIR"], exist_ok=True)
         json.dump(dict(fabric=fid, clip=ci, kind=kind, **chk), open(os.path.join(os.environ["CLIP_CHECK_DIR"], "%s_clip%02d.json" % (fid, ci)), "w"))
-    renderer = mujoco.Renderer(m, H_IMG, W_IMG)
-    opt = mujoco.MjvOption()                       # the model's own flex is not drawn: the drawn fabric is the shell
-    for flag in (mujoco.mjtVisFlag.mjVIS_FLEXVERT, mujoco.mjtVisFlag.mjVIS_FLEXEDGE, mujoco.mjtVisFlag.mjVIS_FLEXFACE,
-                 mujoco.mjtVisFlag.mjVIS_FLEXSKIN):
-        opt.flags[flag] = 0
-    opt.geomgroup[:] = [1, 1, 1, 0, 0, 0]
+    import crender
+    import cscene
+    look = cscene.fabric_looks(FABRIC_IDS, 12)[fid]          # the fabric's look: a function of the ids alone
+    clip = crender.open_clip(m, cameras_json()["cameras"], look)
     half_rows = C[W.STEPS_PER_FRAME // 2::W.STEPS_PER_FRAME]
     looks = [camera_look(rng) for _ in carm_cams()]
     out = {c: [] for c in carm_cams()}
+    digest = hashlib.sha256()
 
     def draw(P, qa, row):
-        set_sheet(m, renderer._mjr_context, P, row)
+        sh = CS.shell(P, (R.NX, R.NY), R.RADIUS, DRAW_THICKNESS, TABLE_BOX, row, W.JAW_W / 2)
         carm.set_arm(m, dd, qa)
-        mujoco.mj_forward(m, dd)
+        mujoco.mj_forward(m, dd)                     # the renderer reads the arm's body poses
         imgs = {}
         for c in carm_cams():
-            renderer.update_scene(dd, c, scene_option=opt)
-            imgs[c] = renderer.render().astype(np.float32) / 255.0
+            im = clip.draw(c, sh, dd, row, thickness=DRAW_THICKNESS)
+            digest.update(np.ascontiguousarray(im).tobytes())
+            imgs[c] = im.astype(np.float32) / 255.0
         return imgs
 
     for k in range(n):
@@ -410,7 +375,8 @@ def do_clip(args):
         B = (draw(half[k], qh[k], half_rows[k]) if k < len(half) and k < len(qh) and k < len(half_rows) else A)
         for i, c in enumerate(carm_cams()):
             out[c].append(degrade([A[c], B[c]], looks[i], rng))
-    renderer.close()
+    if os.environ.get("CLIP_CHECK_DIR"):          # the digest of every picture before the camera effects (determinism record)
+        open(os.path.join(os.environ["CLIP_CHECK_DIR"], "%s_clip%02d.digest" % (fid, ci)), "w").write(digest.hexdigest() + "\n")
     for c in carm_cams():
         encode(out[c], os.path.join(d, c + ".mp4"))
     np.save(os.path.join(d, "clamp_500hz.npy"), C.astype(np.float64))
@@ -446,7 +412,7 @@ def main():
                        texture_face="+z (up when flat)"), open(os.path.join(fd, "fabric.json"), "w"), indent=1)
         for ci, (kind, pose, C) in enumerate(progs):
             jobs.append((fid, ci, kind, pose, C, fab[fid]["material"], fab[fid]["mass_kg"], a.out, a.frames_max))
-    with ProcessPoolExecutor(a.workers) as ex:
+    with ProcessPoolExecutor(a.workers, max_tasks_per_child=1) as ex:      # one clip per process (crender)
         for fid, ci, n in ex.map(do_clip, jobs):
             print("[gen] %s clip%02d %d frames" % (fid, ci, n), flush=True)
 

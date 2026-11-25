@@ -74,3 +74,25 @@ The hidden draw depends on the physics only (`cphys`, `creal`, `ctasks`, the key
 rendered once from the drawn fabrics and published by checksum. A later re-render with other art (the same fabric
 states, cameras, arm motion and camera degradations) replaces the recordings and their checksums and is followed by a
 new validate; it does not touch the hidden set, the reference or the anchor.
+
+## Amendment 1 (2026-11-26): the recordings' look; rendering only
+
+After the draw, the checks and a first set of recordings (MuJoCo's native renderer, procedural prints), the
+recordings are rendered again with the scene approved for this task: a workshop room, a white bench, the robot's
+pedestal, the clamp as a machined part, drawn by MuJoCo's Filament renderer on the CPU from a render bundle
+(`environment/gen/crender.py`, `cscene.py`, `cgeom.py`, `cprim.py`, `clook.json`; the bundle's checksums are in
+`environment/gen/render_bundle.sha256`). This is the re-render the section above announced.
+
+- **Nothing of the physics, the hidden set, the reference or the anchor changes.** `tests/cphys.py`, `tests/creal.py`,
+  `tests/ctasks.py`, `tests/review/make_set.py`, `tests/ref/key.json`, `tests/ref/fabrics.json`,
+  `tests/ref/selection.json` and `solution/ref/params.json` are the bytes of the draw's commit; the fabric states in
+  the recordings are the same simulations (the clamp programs, the seeds and the camera effects' random numbers are
+  unchanged), and so are the cameras and the arm's joint angles.
+- **The looks.** The fabrics' looks are drawn from a library of twelve (four classes: canvas, denim, felt, coated
+  fabric; three colours each; `looks.json` in the bundle). A fabric's look is a function of the fabric ids alone: the
+  ids are put in the order of sha256("cloth_material_id_from_video/look/v1/" + id) and the k-th wears look k mod 12
+  (`cscene.fabric_looks`). The ids were dealt before the materials were drawn, so a look carries nothing of a
+  fabric's stiffness, weight or friction. Every fabric is drawn 1.5 mm thick.
+- **What must hold and is checked again:** the reference scores 1.0 with the same outcome on every hidden test
+  (`ale validate`; the grader does not read the recordings); the arm checks of every clip; the readability of the two
+  scored quantities in the new pictures; the recordings' determinism.

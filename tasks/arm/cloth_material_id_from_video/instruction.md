@@ -16,8 +16,9 @@ installed. MuJoCo offscreen rendering works out of the box (`MUJOCO_GL=osmesa`, 
 
 Each fabric is a 0.30 x 0.15 m rectangle. They are firm sheet fabrics of the kind used for bags, covers, upholstery
 and workwear (canvas, denim, felt, coated cloth and the like): stiff enough that a few centimetres of unsupported
-fabric hold some shape, each with its own weight, stiffness and surface. The print on a fabric tells its pieces apart
-and says nothing about its material.
+fabric hold some shape, each with its own weight, stiffness and surface. A fabric's look (its weave and colour) says
+nothing about its material: the looks were dealt to the fabrics without regard to it, and every fabric is drawn
+equally thick.
 
 ## What you get (`/home/user`)
 
@@ -38,10 +39,11 @@ submission/                            write params.json here
 - **Cameras.** `cameras.json` gives, per camera, the OpenCV pinhole model: pixel ~ K (R_w2c X + t_w2c), no lens
   distortion. World frame: the table top is the plane z = 0 for x <= 0.30 (its front edge is the line x = 0.30), z up,
   metres. The calibration is exact.
-- **Videos.** Rendered images of the table, the robot and the fabric; the robot occludes parts of the scene.
+- **Videos.** Rendered images of a workshop: the bench (the table), the robot on its pedestal and the fabric; the
+  robot occludes parts of the scene.
   They are degraded like a real camera: motion blur, optical blur, vignetting, white balance and exposure differences
   between cameras, sensor noise and video compression. Frame k of a clip shows the fabric when the clamp is at row
-  20 k of `clamp_500hz.npy` (time k/25 s). The print is on the fabric's upper face (the face up when it lies flat).
+  20 k of `clamp_500hz.npy` (time k/25 s). A fabric's face (up when it lies flat) and its back look different.
 - **Clips.** Each fabric has 7 clips. At the start of every clip the fabric lies flat and at rest on the table, at a
   pose that is not given (it is in the first frames). Kinds:
   - `drag_release` (three clips): the clamp takes the short edge that leads, lifts it 10 to 20 mm, drags the fabric
@@ -74,7 +76,8 @@ given), with MuJoCo's shell elasticity, Rayleigh damping and one friction coeffi
 not collide with itself. The table has zero friction of its own, so the fabric's coefficient decides every contact. The clamp holds the vertices inside its jaws with stiff equality constraints and never touches
 anything. `cphys.Sim` builds this world from **your** material and replays a clamp program, so you can simulate any
 clip with your own material. The table, clamp, robot, cameras and clamp programs are the same as in the videos.
-One simulation of a clip or of a scored handling takes about 4 to 8 s on one core.
+One simulation of a clip or of a scored handling takes about 5 to 15 s on one core (a pull over the edge is the
+longest); planning one test takes up to ten of them.
 
 ## Deliverable
 
