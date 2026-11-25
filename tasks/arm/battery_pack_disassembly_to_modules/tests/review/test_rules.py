@@ -6,7 +6,8 @@
 Each check drives `packcell/rules.py` the way the cell does (a bit's tip pose, an axial force, a spindle command per
 0.05 s tick) and looks at what the rule decides: a matching bit frees a fastener in its number of turns, a stalled
 spindle does no harm, a loose bit, a misaligned bit and a cammed-out Torx bit strip the head, the extractor removes
-a stripped fastener, the live-parts check, the locks, the grip, the credit, the action schema and the probe's copy.
+a stripped fastener, the live-parts check, the locks, the grip, the credit, the action schema, the probe's copy and
+the conversion of a pose near a half turn.
 """
 
 import math
@@ -19,7 +20,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
-from packcell import rules, wire  # noqa: E402
+from packcell import kin, rules, wire  # noqa: E402
 from packcell import series as S  # noqa: E402
 
 DOWN = np.array([0.0, 0.0, -1.0])
@@ -49,6 +50,55 @@ def run(r, fid, bit, turns, limit, force, offset=(0.0, 0.0), tilt_deg=0.0, speed
         if f["status"] != "seated":
             break
     return out
+
+
+def unit(rng):
+    v = np.array([rng.gauss(0.0, 1.0) for _ in range(3)])
+    return v / np.linalg.norm(v)
+
+
+def acos_rotvec(R):
+    """`kin.R_rotvec` before 2026-11-24 (acos of the trace, a division by sin): within about 1e-5 rad of a half turn
+    a pose written with it and read back was off by up to 2e-3 in a matrix entry."""
+    c = max(-1.0, min(1.0, (R[0, 0] + R[1, 1] + R[2, 2] - 1.0) / 2.0))
+    a = math.acos(c)
+    if a < 1e-9:
+        return np.zeros(3)
+    if math.pi - a < 1e-6:
+        M = (R + np.eye(3)) / 2.0
+        i = int(np.argmax(np.diag(M)))
+        return M[:, i] / math.sqrt(max(M[i, i], 1e-12)) * a
+    return np.array([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]]) / (2 * math.sin(a)) * a
+
+
+def downward_states(n, seed):
+    """The reference's states at a fastener: the nutrunner commanded straight down (`kin.ik_step` from home to a pose
+    whose rotation is a half turn), the measured joints behind by a following error of 0 to 1e-3 rad (its size on a
+    log scale), observed as the cell observes, and a probe's copy of each. Returns how many true observations and
+    how many copies have a residual above 1e-5, and in how many pairs the true one is the larger. With
+    `acos_rotvec` in place of `kin.R_rotvec` the same 400 states gave 82, 0 and 267."""
+    rng = random.Random(seed)
+    tool, home = wire._tool_T("nutrunner"), np.array(S.CELL["home_q"], dtype=float)
+    p0 = (kin.flange(home) @ tool)[:3, 3]
+    big_true = big_copy = larger = 0
+    for k in range(n):
+        R = kin.Rz(rng.uniform(-math.pi, math.pi)) @ np.diag([1.0, -1.0, -1.0])
+        T = kin.pose(R, p0 + np.array([rng.uniform(-0.15, 0.15), rng.uniform(-0.15, 0.15), rng.uniform(-0.1, 0.05)]))
+        qt = home.copy()
+        for _ in range(30):
+            qt, err = kin.ik_step(qt, T, tool)
+        assert np.abs(err).max() < 1e-6, err
+        m = 0.0 if k % 10 == 0 else 10 ** rng.uniform(-7.0, -3.0)
+        q = qt + np.array([rng.uniform(-m, m) for _ in range(6)])
+        obs = {"q": [round(float(v), 6) for v in q], "q_target": [round(float(v), 6) for v in qt], "tool": "nutrunner",
+               "tcp": wire.pose6(kin.flange(q) @ tool), "tcp_target": wire.pose6(kin.flange(qt) @ tool),
+               "images": {"wrist": {"rgb": "x", "pose": wire.pose6(kin.flange(q) @ wire._wrist_T())}} if k % 2 else {}}
+        other = wire.perturbed(obs, random.Random(1000 + k), exact={"q": [float(v) for v in q], "q_target": [float(v) for v in qt]})
+        r_true, r_copy = wire.residual(obs), wire.residual(other)
+        big_true += r_true > 1e-5
+        big_copy += r_copy > 1e-5
+        larger += r_true > r_copy
+    return big_true, big_copy, larger
 
 
 def main():
@@ -263,9 +313,8 @@ def main():
         for key in ("q", "q_target", "tcp", "tcp_target"):
             assert np.abs(wire.pose_T(mine[key]) - wire.pose_T(other[key])).max() < 3e-6 if key.startswith("tcp") else mine[key] == other[key]
         if k % 2:
-            # cell.json gives the camera's mounting to nine decimals, and a rotation vector near a half turn
-            # magnifies that: the library's camera pose is the cell's to 2e-5, not to the last digit
-            assert np.abs(wire.pose_T(mine["images"]["wrist"]["pose"]) - wire.pose_T(other["images"]["wrist"]["pose"])).max() < 2e-5
+            # the camera's mounting comes from cell.json (nine decimals): the library's camera pose is the cell's
+            assert np.abs(wire.pose_T(mine["images"]["wrist"]["pose"]) - wire.pose_T(other["images"]["wrist"]["pose"])).max() < 3e-6
         assert np.abs(pc.flange_T(q) - kin.flange(q)).max() < 1e-9
     # the residual of a copy is the residual of a true observation: rounding on the wire and nothing else
     assert max(res_true) < 5e-6 and max(res_copy) < 5e-6, (max(res_true), max(res_copy))
@@ -305,6 +354,32 @@ def main():
                             if lateral < rad + S.HARNESS_R - 1e-4:
                                 assert q[2] - S.HARNESS_R >= top - 1e-6, (seed, variant, harness, f["id"], lateral, q[2] - S.HARNESS_R - top)
     checks += 1
+    # 15. poses near a half turn (the tool pointing straight down is one): written on the wire and read back, a pose
+    #     is the pose to the rounding at every angle; away from a half turn the conversion is the earlier one; in
+    #     near-downward states a true observation's residual and a copy's are alike
+    draw = random.Random(17)
+    for gap in (1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 0.0):
+        for _ in range(200):
+            T = kin.pose(kin.rotvec_R(unit(draw) * (math.pi - gap)), np.array([0.3, -0.2, 0.1]))
+            err = float(np.abs(wire.pose_T(wire.pose6(T)) - T).max())
+            assert err < 2e-6, (gap, err)
+    for _ in range(5000):
+        a = draw.uniform(1e-6, math.pi - 1e-3) if draw.random() < 0.8 else 10 ** draw.uniform(-6.0, -3.0)
+        R = kin.rotvec_R(unit(draw) * a)
+        assert np.abs(kin.R_rotvec(R) - acos_rotvec(R)).max() < 2e-9, a
+    big_true, big_copy, larger = downward_states(400, 23)
+    assert big_true == 0 and big_copy == 0 and 160 <= larger <= 240, (big_true, big_copy, larger)
+    # the agent's library and the reference convert as the cell does
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "reference_controller", os.path.join(os.path.dirname(os.path.dirname(HERE)), "solution", "reference", "controller.py"))
+    ref = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ref)
+    for gap in (1e-1, 1e-3, 1e-5, 1e-6, 1e-7, 0.0):
+        for _ in range(50):
+            R = kin.rotvec_R(unit(draw) * (math.pi - gap))
+            assert np.array_equal(pc.R_rotvec(R), kin.R_rotvec(R)) and np.array_equal(ref.R_rotvec(R), kin.R_rotvec(R)), gap
+    checks += 4
     print("ok: %d checks" % checks)
 
 

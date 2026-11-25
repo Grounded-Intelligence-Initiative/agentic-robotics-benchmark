@@ -65,18 +65,23 @@ def rotvec_R(v):
 
 
 def R_rotvec(R):
-    """Rotation vector (axis times angle, angle in [0, pi]) of a rotation matrix."""
-    c = max(-1.0, min(1.0, (R[0, 0] + R[1, 1] + R[2, 2] - 1.0) / 2.0))
-    a = math.acos(c)
+    """Rotation vector (axis times angle, angle in [0, pi]) of a rotation matrix, accurate at every angle: the angle
+    from atan2 of the antisymmetric part's norm and the trace; within 1e-3 rad of a half turn the axis from the
+    symmetric part, signed by the antisymmetric one (acos and a division by sin lose up to 2e-3 there)."""
+    w = np.array([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]])
+    s = 0.5 * float(np.linalg.norm(w))
+    c = 0.5 * (R[0, 0] + R[1, 1] + R[2, 2] - 1.0)
+    a = math.atan2(s, c)
     if a < 1e-9:
-        return np.zeros(3)
-    if math.pi - a < 1e-6:                      # near pi: the axis from the symmetric part
-        M = (R + np.eye(3)) / 2.0
-        i = int(np.argmax(np.diag(M)))
-        k = M[:, i] / math.sqrt(max(M[i, i], 1e-12))
-        return k * a
-    k = np.array([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]]) / (2 * math.sin(a))
-    return k * a
+        return 0.5 * w
+    if a < math.pi - 1e-3:
+        return w / (2.0 * s) * a
+    B = 0.5 * (R + R.T) - c * np.eye(3)              # (1 - cos a) k k^T
+    i = int(np.argmax(np.diag(B)))
+    k = B[:, i] / math.sqrt(max(B[i, i], 1e-300))
+    if float(np.dot(k, w)) < 0.0:
+        k = -k
+    return k / np.linalg.norm(k) * a
 
 
 def Rz(a):
