@@ -18,7 +18,7 @@ import controller as C  # noqa: E402
 idx, OUT = int(sys.argv[1]), sys.argv[2]
 os.makedirs(OUT, exist_ok=True)
 e = json.load(open(TASK + "/environment/commission_service/dev_packs.json"))["packs"][idx]
-pack = S.draw_pack(e["seed"], variant=e["variant"], harness=e["harness"])
+pack = S.draw_pack(e["seed"], variant=e["variant"], harness=e["harness"], cameras=e.get("cameras"))
 cell = cellproc.CellProcess(grader=True, stderr=open(OUT + "/cell.err", "w"))
 obs = cell.request({"cmd": "reset", "pack": pack, "config": {"frame_budget": 3000}})["obs"]
 meta = {"pack": idx, "variant": e["variant"], "harness": e["harness"], "frames": [], "first_obs": {k: v for k, v in obs.items() if k != "images"}}
