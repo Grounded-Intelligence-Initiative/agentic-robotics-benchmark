@@ -32,7 +32,7 @@ import ctasks as T  # noqa: E402
 W_IMG, H_IMG = 640, 480
 FOCAL = 640.0
 CAMERAS = [  # name, position, look-at target (world)
-    ("cam0", (0.60, 0.70, 0.65), (0.10, -0.10, 0.0)),
+    ("cam0", (0.60, 0.70, 0.65), (0.10, -0.10, 0.10)),
     ("cam1", (0.85, 0.32, 0.22), (0.20, 0.0, 0.0)),
     ("cam2", (-0.70, 0.55, 0.62), (-0.12, 0.0, 0.12)),
 ]
@@ -218,12 +218,15 @@ def render_xml(material, mass, cams_xml, arm_assets, arm_body):
     cx = W.EDGE_X - tx
     legs = "".join('<geom type="box" size="0.025 0.025 0.37" pos="%g %g -0.41" rgba="0.3 0.25 0.2 1" contype="0" conaffinity="0" group="1"/>'
                    % (cx + sx * (tx - 0.05), sy * (ty - 0.05)) for sx in (-1, 1) for sy in (-1, 1))
+    import carm as _carm
+    bx, by = float(_carm.ROBOT_BASE[0]), float(_carm.ROBOT_BASE[1])
+    pedestal = ('<geom type="box" size="0.11 0.11 0.39" pos="%g %g -0.39" rgba="0.32 0.33 0.36 1" contype="0" conaffinity="0" group="1"/>' % (bx, by))
     world = ('<light pos="0.6 -0.4 1.6" dir="-0.35 0.25 -1" diffuse="0.75 0.73 0.7" specular="0.2 0.2 0.2" castshadow="true"/>'
              '<light pos="-0.8 0.8 1.4" dir="0.5 -0.5 -1" diffuse="0.35 0.37 0.42" castshadow="false"/>'
              '<geom type="plane" size="3 3 0.1" pos="0 0 -0.78" material="floor" contype="0" conaffinity="0" group="1"/>'
              '<geom type="box" size="0.02 2.5 1.2" pos="-1.6 0 0.4" rgba="0.82 0.8 0.76 1" contype="0" conaffinity="0" group="1"/>'
              '<geom name="probe" type="sphere" size="0.0015" pos="0 0 -5" contype="0" conaffinity="0" rgba="0 0 0 0" group="3"/>'
-             + legs + cams_xml + arm_body)
+             + legs + pedestal + cams_xml + arm_body)
     xml = xml.replace('<asset>', '<asset>' + extra_assets, 1)
     xml = xml.replace('rgba="0.55 0.45 0.35 1" group="1"/>', 'material="wood" group="1"/>', 1)
     xml = xml.replace('<visual><global offwidth="1280" offheight="960"/>',
