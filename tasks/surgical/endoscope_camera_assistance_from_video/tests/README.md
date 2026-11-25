@@ -152,14 +152,22 @@ There is no other term, weight or penalty: a smeared lens costs exactly the step
 remaining steps run with the holder commanded to stop, without rendering, and are judged like any other step. The
 kit restarts the controller before the next procedure (three restarts). Nothing is dropped from the average.
 
-**The match lock.** On 6 % of the steps the step is asked twice with the same `t`: the true observation and a copy
-whose picture is shifted inside the disk (128-224 px, 72-144 px) and whose pan, tilt and roll readings are offset
-(0.2-0.4 rad), in a hidden order; a quarter of the pairs must differ in the action. The perturbation is large on
-purpose: the right controller for this job stands still inside a dead zone, and a small perturbation would not move
-it. It is also physically impossible (the holder cannot turn 0.2 rad in a step), and the instruction says so: a
-controller keeps its memory by step index and lets only a possible observation become memory (`~/example` shows the
-pattern; the reference's score is identical with and without probes). As everywhere, the lock catches a controller
-that ignores its input and proves nothing more; isolation keeps the score honest.
+**The match lock.** On 6 % of the steps the step is asked twice with the same `t`, the true observation and a copy
+in a hidden order, and a tenth of the pairs must differ in the action (after clipping to the rate limits). The copy
+is built the way an observation is (upstream #173's rule; `Session.probe_copy`): the frame the observation shows,
+rendered again at the same moment from the same camera pose, with the same joint readings, and with each instrument
+in the picture where it would be had it moved over that frame's last step as it moved over another step of the
+procedure, drawn among the steps with the same instruments in, the same fine work and the same counted hands (a
+draw that would put a tip into the tissue is drawn again; a step with no instrument in has no probe). The joints
+are left alone because they are predictable: they follow from the public holder model and the controller's own
+commands, so any offset in them would name the copy. What differs is what only the surgeon decides; the tips move
+by 16 px in the median (2 to 78 px, 10th to 90th percentile). Both observations are possible, so a controller with
+memory keeps what each request leaves and chooses when the next step's frame arrives (`~/example` shows the
+pattern; the reference and the pixel baseline take the memory whose tips the new frame continues). The fraction is
+a tenth because the right controller for this job stands still inside a dead zone, and a still pair does not
+differ: the reference stands still on both requests of about 70 % of the pairs, and when it moves it answers the
+copy differently 97 % of the time. As everywhere, the lock catches a controller that ignores its input and proves
+nothing more; isolation keeps the score honest.
 
 **The canary.** Before the controller starts, the renderer draws a marker ball at five known points for each scope
 and reports where it landed; `check_canary` requires every marker found within 2.5 px of `model.project` and a frame
@@ -190,9 +198,11 @@ task's information rule; what it loses, it loses to the holder's speed on long m
 each procedure.
 
 The anchor's value, its spread and their source are in `anchor.json` and in the status log. Because the reference
-reads the state and never the picture, its score is the same number on every run and with or without rendering
-(`tests/review/fast_eval.py` plays the same sessions with a null renderer in about a minute; that is how it was
-tuned). A submission that reads the picture has no such luck: its frames differ from run to run in their last bits.
+reads the state and never the picture, its score does not depend on the rendering (`tests/review/fast_eval.py`
+plays the same sessions with a null renderer in about a minute; that is how it was tuned). It depends a little on
+which steps are probed: when the memory it keeps after a repeated step is the copy's (about one time in ten), its
+next commands differ. Over ten draws of the probes, render-free, its mean was 0.9029 to 0.9037. A submission that
+reads the picture has more spread: its frames differ from run to run in their last bits.
 
 **A pixel baseline** (`tests/review/pixel_baseline/`, maintainers' evidence, not part of grading): what the task
 looks like from the public interface. A 1.3 M parameter net, trained for 95 s on eight development recordings as an
@@ -204,7 +214,9 @@ per procedure 0.04 to 0.67, against the reference's 0.903: the zoom band fails o
 size, and with it the depth, is the weakest thing it reads), the safe zone on 42 %, the steadiness rule on 23 % (a
 detection that jitters moves the camera during fine work). So the task can be done from the frames, a first learned
 detector is far from enough, and what is missing is engineering an agent can do: filtering in time, a better
-reading of depth, looks the development set does not show. It was written once and never tuned in closed loop.
+reading of depth, looks the development set does not show. It was written once and never tuned in closed loop. A
+second run, on `763919b` (2026-11-25), scored 0.379 (reward 0.43) with the same weights; the per-procedure values
+moved both ways, which is the run-to-run spread of a controller that reads the picture.
 
 ## 5. The agent's side
 
@@ -229,8 +241,8 @@ ones are in neither the image nor the sandbox.
   and the commissioning service have not run as their accounts, `ale validate` and `ale run` have not run, and the
   anchor was measured natively. See the status log for exactly what was and was not exercised.
 * **Difficulty is unmeasured.** The target is a frontier-model reward of roughly 0.3 or below from perception and
-  control; no frontier model has been run. The one data point is the pixel baseline of section 4 (reward 0.39 with
-  the reference's control law handed to it, which an agent does not have). If a model saturates the task, the levers
+  control; no frontier model has been run. The one data point is the pixel baseline of section 4 (reward 0.39 and
+  0.43 in two runs, with the reference's control law handed to it, which an agent does not have). If a model saturates the task, the levers
   that keep it honest are in the generator (the looks pool, denser smoke, more assistant interference, longer
   exchanges, tips buried deeper), not penalties.
 * **Numerics are not pinned.** The simulator and the reference compute with numpy's default kernels; on another CPU
@@ -253,9 +265,12 @@ ones are in neither the image nor the sandbox.
 * The lens touches tissue only (not instruments, not the wall above); the scope's shaft collides with nothing.
 * The instruments do not wait for the camera: a real surgeon slows down when the view lags.
 * The fine-work rule is a rule on tip motion (observable), not a surgical phase label.
-* The match lock's copy can be recognised by its joint readings; that is stated to the agent and is by design. It
-  is not "built the way the real observation is" (upstream #173's rule for probe copies): the status log's entry
-  on that kit says why it was left so and what the alternative is.
+* The match lock's copy is a possible observation (section 3), but it is drawn, not simulated: an instrument's
+  motion over the frame's last step is taken from another step of the same procedure with the same kind of work.
+  A controller that tracks the instruments closely can sometimes tell which of the two observations continues the
+  previous frame better (the reference does so for its memory, and picks the copy's about one time in ten); what it
+  could gain by it is only to answer the copy on purpose, which the lock does not claim to prevent. The lock's
+  fraction is a tenth of the pairs (section 3 has why).
 * The development set is rendered at setup time on the sandbox's GPU: it costs the first minutes of the session and
   differs in its pixels from run to run (the labels do not).
 
@@ -264,6 +279,60 @@ ones are in neither the image nor the sandbox.
 Newest first. Each entry says where the numbers come from; "here" is the development server (Ubuntu 22.04,
 RTX 6000 Ada, NVIDIA driver 570.195.03, Isaac Sim 6.2.0.0 + Isaac Lab 3.0.0 in a native Python 3.12 venv, no root,
 no Docker).
+
+### 2026-11-25: the probe's copy made a possible observation (tree `763919b`)
+
+The owner chose to make the copy follow #173's rule as written (the previous entry, item 3, had left it for the
+maintainers). The joints could not be the perturbed part: they follow from the public holder model and the
+controller's own commands, so a controller that runs the model knows them to the last digit, and any offset names
+the copy. The copy now keeps the joint readings and the camera pose and renders the frame again with the instruments
+moved differently over its last step (section 3; `Session.probe_copy`, the privileged view of the moved tips through
+`episode.tip_view`, which `Episode.privileged` uses too). The renderer's picture-shift path is gone. Both
+observations of a repeated step are possible, so the reference, the pixel baseline and `~/example` keep the memory
+each request leaves and choose when the next step arrives (the first two: the memory whose tips the new frame
+continues); the instruction, the example, the commissioning service's `probe_copy` (now without arguments) and the
+launcher say what a repeated request carries. `probe_pass_fraction` is 0.1 (it was 0.25).
+
+**Render-free first** (`tests/review/fast_eval.py`, which now counts the pairs as the lock does, on the hidden set):
+the reference 0.9031 with the fixed seeds of that tool (0.9034 before), 161 of 539 pairs differing (29.9 %); a still
+camera 0 of 539. Over three draws of 1693 pairs in all, the pairs that did not differ were 1184 in which the
+reference stood still for both requests and 14 in which both commands were clipped to the same limits; the memory
+it kept after a repeated step was the copy's 173 times in 1691. The tips moved in the picture by 16 px in the median
+(2.3 px at the 10th percentile, 78 px at the 90th). Over ten draws of the probes the reference's mean was 0.90292 to
+0.90365 (standard deviation 0.00026) and its differing pairs 26.4 % to 33.2 %, hence the lock's fraction of a tenth.
+
+**The native runs** (02:35 to 04:23 on 2026-11-25, one Isaac process at a time, GPU 3 only as in the previous
+entry, shared with another user's job). The series started on the clean tree of `763919b`; the jitter controller's
+and the pixel baseline's runs also read this entry's new `anchor.json` value (0.903; nothing else that the runs read
+had changed), so their reward is against 0.903, the others' against 0.9034:
+
+| submission | procedures | on `763919b` | on `0d27fe0` (the previous entry) |
+|---|---|---|---|
+| reference | 12 | **0.9030208**, reward 1.0 against the anchor of then (0.9034); probe pairs 163 of 589 differing (27.7 %); 8669 of 9600 steps; 1922 s wall, 172.3 ms a frame | 0.9034375; 567 of 567 |
+| none | - | the zero verdict, reward 0 | the same |
+| never moves (`~/example`) | 4 | 0.0000, reward 0; the lock fails, 0 of 172 | 0.0000; 0 of 188 |
+| `bad:jitter` | 1 | 0.0000, reward 0; random rates pass the lock (53 of 53) | 0.0000; 49 of 49 |
+| pixel baseline (section 4) | 12 | 0.3794, reward 0.43; pairs 213 of 530 differing; 1585 s of controller time, 3527 s wall | 0.3422, reward 0.39 (`e73ccce`); 585 of 589 (the copy then); 508 s |
+
+The reference per procedure: 0.9387 0.8650 0.9525 0.9250 0.8762 0.9137 0.8375 0.9337 0.8738 0.9275 0.9263 0.8662
+(before: 0.9387 0.8650 0.9525 0.9263 0.8775 0.9137 0.8375 0.9337 0.8750 0.9275 0.9263 0.8675); four procedures lost
+one step each, where the memory after a probe was the copy's. No probe copy failed to render, no renderer was
+restarted, and the canary found all ten markers in every run (at most 0.75 px off). The pixel baseline is the same
+net (the same weights file) and control law; only its memory over a repeated step changed, and that changes nothing
+on a step without a probe. Its per-procedure values moved both ways (0.50 0.34 0.37 0.60 0.70 0.20 0.25 0.44 0.10
+0.45 0.30 0.30, against 0.25 0.27 0.40 0.46 0.62 0.32 0.06 0.67 0.04 0.52 0.20 0.30): two runs of a controller that
+reads the picture differ because the frames differ in their last bits and a lost track compounds, so 0.34 and 0.38
+are two draws of its spread, not an effect of the copy. Its controller time tripled on the shared GPU (the net's
+inference beside another user's job), still inside the 2400 s budget.
+
+The session launcher against the commissioning service (the service's renderer up, its canary passed, the
+development set already recorded; the example controller on `dev05`, stopped after 200 steps as asked): "repeated
+requests: 10 asked, 0 changed the action (the grader wants at least a tenth to, over the whole evaluation)". The
+service built each copy with the new `probe_copy`, and a controller that stands still answered both requests
+alike, as the grader's 0 of 172 above.
+
+*What was decided.* `tests/anchor.json` holds 0.903, the reference's value in this run (0.9034 before); `full_at`
+stays 0.98, far above the spread over probe draws.
 
 ### 2026-11-24, evening: the kit of upstream #173 (tree `67c47c8`; run natively on `0d27fe0`, the same task files)
 
@@ -282,7 +351,7 @@ copied again (byte-identical to `shared/`). The task against #173's three findin
    grader. The launcher now has `differ(first, second)`, the lock's rule on the clipped commands, and
    `tests/review/check_runner_rule.py` holds it against the kit's `replies_differ` (8 pairs, no simulator).
 3. *A probe copy must be built the way the real observation is.* **This task's copy is not, on purpose, and that
-   is a point for the maintainers.** The copy is the same frame shifted in the image plane with the pan, tilt and
+   is a point for the maintainers** (superseded on 2026-11-25: the entry above). The copy is the same frame shifted in the image plane with the pan, tilt and
    roll readings offset by 0.2 to 0.4 rad: more than the holder can turn in a step, and unrelated to the shift of
    the picture. The instruction says so and tells the agent to keep such an observation out of its controller's
    memory (section 3 has the reason: the right controller stands still inside a dead zone, and a perturbation
