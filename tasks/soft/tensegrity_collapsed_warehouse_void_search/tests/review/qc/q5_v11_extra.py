@@ -1,10 +1,13 @@
-"""QC Q5, the hidden quantities that task version 1.1 added (a supplement to the development folder's tools/scan/scan.py,
-which keeps the word list and the full numeric scan).
+"""QC Q5, the hidden quantities that task versions 1.1 and 2.0 added (a supplement to the maintainers' leak
+scan, not published, which keeps the word list and the full numeric scan). Version 2.0 adds the W4 candidate names
+(w4_s####) and the heaps of the open floor: every heap's rectangle, centre, top, line, yaw and scale (and its box
+record's aabb), matched like the rubble coordinates.
 
     q5_v11_extra.py OUT.json [--replies FILE.jsonl ...] [--debriefs FILE.json ...] [--image-list FILE]
 
 Hidden tokens, from the 13 frozen packages (tests/hidden/sites/h01-h10, environment/practice_ground/sites/p1-p3) and
-the selection (tests/hidden/selection.json): every site seed and its candidate name (w3_s####, and the pattern itself:
+the selection (tests/hidden/selection.json): every site seed and its candidate name (w3_s#### and w4_s####, and the
+pattern itself:
 no candidate name of the pools may appear), the first 12 hex digits of every archive / site.json / site.xml sha256 (the
 frozen packages, the admission packages and the regenerated ones the selection lists), every coordinate of every
 rubble box under the slab (its aabb, printed to 3 decimals: a printed number with >= 4 decimals equal to it is a strong
@@ -12,7 +15,7 @@ hit, one with exactly 3 equal decimals a weak hit), and the hidden names (rubble
 a word, plug__, support__void_fill, void.rubble).
 Channels: AGENT-VISIBLE = instruction.md, every file of environment/setup/payload/ (text; a binary's printable runs),
 the given client (tests/voidcell/client.py), interface replies (--replies) and practice debriefs (--debriefs): any
-strong hit fails. The rubble coordinates are matched against the STATIC files only (as scan.py's numeric check): the
+strong hit fails. The rubble coordinates are matched against the STATIC files only (as the leak scan's numeric check): the
 replies and debriefs carry sensor readings, poses and distances with 4 decimals by design (a telemetry sample equal
 to a coordinate at 4 decimals is chance), and mission(), the one reply that carries layout-like numbers, is checked
 against every hidden number of its site, the rubble included, by q4_interface.py. IMAGE = every file under environment/ (the files the image is built from; --image-list adds a
@@ -32,14 +35,14 @@ import tarfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEV = os.path.normpath(os.path.join(HERE, "..", ".."))
-TASK = DEV[:-len("-dev")]
+TASK = os.path.join(os.environ["ARB_SRC_ROOT"], os.path.basename(DEV)[:-len("-dev")]) if os.environ.get("ARB_SRC_ROOT") else DEV[:-len("-dev")]
 TESTS = os.path.join(TASK, "tests")
 ENV = os.path.join(TASK, "environment")
 PG = os.path.join(ENV, "practice_ground")
 PAYLOAD = os.path.join(ENV, "setup", "payload")
 NAMES = ("rubble__void_debris", "void_debris", "plug__", "support__void_fill", "void.rubble")
 WORD_RX = re.compile(r"(?i)\bdebris\b")
-CAND_RX = re.compile(r"w3_s\d{4}")
+CAND_RX = re.compile(r"w[34]_s\d{4}")
 NUM_RX = re.compile(r"(?<![A-Za-z0-9_.])(\d+\.\d+)(?![0-9])")
 INT_RX = re.compile(r"(?<![A-Za-z0-9_.])(\d{3})(?![0-9.])")
 SEED_CTX = re.compile(r"(?i)seed|site|candidate|w3|layout")
@@ -68,12 +71,22 @@ def tokens():
         tag = os.path.basename(p)[:-len(".tar.xz")]
         seeds[str(int(site["seed"]))] = tag
         names["w3_s%04d" % int(site["seed"])] = tag
+        names["w4_s%04d" % int(site["seed"])] = tag
         for lab, b in (("archive", raw), ("site.json", mem["site.json"]), ("site.xml", mem["site.xml"])):
             hexes[sha(b)[:12]] = "%s %s" % (tag, lab)
         for b in site["boxes"]:
             if b["name"].startswith("rubble__void_debris"):
                 for k, v in zip(("x0", "x1", "y0", "y1"), b["aabb"][:4]):
                     coords.append((float(v), "%s %s %s" % (tag, b["name"], k)))
+            if b["name"].startswith("heap__"):
+                for k, v in zip(("x0", "x1", "y0", "y1", "z0", "z1"), b.get("aabb") or []):
+                    coords.append((float(v), "%s %s box %s" % (tag, b["name"], k)))
+        for h in (site.get("heaps") or {}).get("heaps") or []:
+            vals = list(zip(("x0", "x1", "y0", "y1"), h.get("rect") or []))
+            vals += [(k, h[k]) for k in ("cx", "top_m", "y_line", "yaw_deg", "scale") if isinstance(h.get(k), (int, float))
+                     and not isinstance(h.get(k), bool)]
+            for k, v in vals:
+                coords.append((float(v), "%s %s %s" % (tag, h["name"], k)))
     for part in ("hidden", "practice"):
         for r in sel["set"][part]:
             for k in ("frozen_archive_sha256", "site_json_sha256", "site_xml_sha256", "regenerated_package_sha256",
@@ -178,7 +191,7 @@ def main():
             if len(parts) == 2 and parts[0] in hidden_content:
                 img.append(dict(image_path=parts[1].strip(), equals=hidden_content[parts[0]]))
     strong_agent = [h for h in rows_agent if h["strength"] == "strong"]
-    out = {"package": "QC Q5 supplement (version 1.1 hidden quantities)",
+    out = {"package": "QC Q5 supplement (version 1.1 and 2.0 hidden quantities)",
            "n_tokens": {"seeds": len(toks[0]), "candidate_names": len(toks[1]), "sha256_prefixes": len(toks[2]),
                         "rubble_coordinates": len(toks[3])},
            "agent_visible_files": [os.path.relpath(p, TASK) if p.startswith(TASK) else p for p in agent],

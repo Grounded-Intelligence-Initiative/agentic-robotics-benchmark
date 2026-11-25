@@ -36,8 +36,9 @@ are the rated values of this unit.
 ## What to expect in a frame
 
 - The colour image and the depth image are taken at the same instant and are aligned pixel for pixel.
-- Depth is missing (0) at depth edges, as the table says: around the outline of everything that stands up from the
-  floor, the robot included.
+- Depth is missing (0) at depth edges, as the table says: around the outline of everything that stands up steeply
+  from the floor, the robot included. Where a surface slopes down to the floor, as the flank of a mound of fill does,
+  depth is missing at a few pixels at most.
 - The station's renderer adds no noise, blur or lens distortion to the colour image; what varies from site to site is
   the light (`site_briefing.md`).
 - The pose in `mission()` is a calibration, not the truth: a site point computed from a pixel carries the calibration's

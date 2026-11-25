@@ -11,15 +11,17 @@ The submission:
   oracle               solution/solve.sh (operate.py and the real token)
   oracle-no-token      the oracle's operate.py without any token (its privileged call must be refused)
   oracle-wrong-token   the oracle's operate.py with a token that is not the task's (must be ignored)
-  <dir>                a program folder (the degenerate submissions of the development folder's tools/degenerate/)
+  <dir>                a program folder (the degenerate submissions of tests/review/degenerate/)
 --variant NAME / --variant-file PLAN.json (with --submission oracle): the maintainers' switch of reference_run: the
 stage's reference/reference.py is replaced by variants/qc_reference.py (next to this file) and the plan (NAME of
 variants/plans.json, or the plan file itself: the degenerate submissions that need the true pose keep their plan in
-their own folder of tools/degenerate/) is written next to it as reference/qc_variant.json (the reference's library
+their own folder of tests/review/degenerate/) is written next to it as reference/qc_variant.json (the reference's library
 _lib/ stays the task's bytes).
 Runs as the current account (no root: no lockdown, no account switch; the no-network filter and every other gate as in
 the image). The verify process gets the numerics of tests/test.sh (Haswell, L2 256, the NPY cap; BLAS 2, OMP 1,
-LP 8). Writes DIR/summary_<tag>.json: the verdict, every episode's score details (c, F, per-report rows with the
+LP 8). As tests/test.sh does, the hidden sites' plate bundles come from the stage's local copy
+assets/plates.tar.xz when it is there (ARB_HIDDEN_PLATES_TARBALL is set to the stage's copy; verify.py only reads it
+and checks it against the sha256 and the file count that grader_config.json pins). Writes DIR/summary_<tag>.json: the verdict, every episode's score details (c, F, per-report rows with the
 distance and the dwell reasons, retrieval), reports, the reference summary (with the variant's log), final state
 sha256 and its comparison with the admission run pinned in seeds.json, cell failures, and every file under the stage,
 the home and the givens copy whose name says 'debrief' other than code.
@@ -35,7 +37,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEV = os.path.normpath(os.path.join(HERE, "..", ".."))
-TASK = DEV[:-len("-dev")]
+TASK = os.path.join(os.environ["ARB_SRC_ROOT"], os.path.basename(DEV)[:-len("-dev")]) if os.environ.get("ARB_SRC_ROOT") else DEV[:-len("-dev")]
 T_TESTS = os.path.join(TASK, "tests")
 SOLVE = os.path.join(TASK, "solution", "solve.sh")
 ORACLE_OPERATE = os.path.join(TASK, "solution", "reference", "operate.py")
@@ -154,6 +156,9 @@ def main():
                 "NUMEXPR_NUM_THREADS": "1", "OPENBLAS_CORETYPE": "Haswell", "OPENBLAS_L2_SIZE": "256",
                 "NPY_DISABLE_CPU_FEATURES": "X86_V4 AVX512_ICL AVX512_SPR"})
     env.pop("ALE_VERIFY_PYTHON", None)
+    plates = os.path.join(stage, "assets", "plates.tar.xz")
+    if os.path.isfile(plates):                   # as tests/test.sh: the local copy replaces the pinned download
+        env["ARB_HIDDEN_PLATES_TARBALL"] = plates
     t0 = time.time()
     started = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     log_path = os.path.join(a.work, "verify_%s.log" % a.tag)

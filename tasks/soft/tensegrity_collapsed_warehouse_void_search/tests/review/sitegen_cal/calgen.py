@@ -1,16 +1,42 @@
-"""The calibration site `cal` of task 07, version 1.1 (calgen 0.2.0): one hand-laid site package built from the
+"""The calibration site `cal` of task 07, version 2.0 (calgen 0.4.0): one hand-laid site package built from the
 families' own parts (w2gen: boxes, opening classes, the camera rule, lighting, MJCF, the free-block spacing rule;
 w3gen: the site depth, the camera rectangle, the plan radius and clear heights of the slab, point 3's clearance, the
-blind-route window), every dimension public (the calibration page states them; it never says what passes).
+blind-route window; w4gen: the heap library, the placement transform, the heaps' collision bodies and their
+measurements on the compiled model), every dimension public (the calibration page states them; it never says what
+passes).
 
     python -I -B calgen.py --out <dir> [--no-render] [--envelope <capability table json>]
                            [--passage-length L]   (not the calibration site unless L = PASSAGE_LEN)
 
 writes <dir>/cal/{site.json, site.xml, qc.json}, <dir>/cal.tar.xz (the package the practice ground serves; members
-cal/site.json, cal/site.xml; deterministic: sorted, mtime 0, uid / gid 0) and <dir>/plan.json (the public plan: every
-dimension, for the calibration page; no friction, no 'passes' / 'does not pass'). The envelope is the family's
-(w2gen.envelope.load(): the simulation base's capability sheet, the table every scored site of W2 and W3 is sized
-from); --envelope replaces it with a local table (then the generator string says so: not the calibration site).
+cal/site.json, cal/site.xml; deterministic: sorted, mtime 0, uid / gid 0), <dir>/plan.json (the public plan: every
+dimension, for the calibration page; no friction, no 'passes' / 'does not pass') and <dir>/heap_pieces.json (the
+maintainers' table: which library piece made each heap; never part of the package). The envelope is the family's
+(w2gen.envelope.load(): the simulation base's capability sheet, the table every scored site of W2, W3 and W4 is sized
+from); --envelope replaces it with a local table (then the generator string says so: not the calibration site). The
+heap library is the one w4gen reads (w4gen.library.Library(): its registry, by default the library of version 3, and
+its piece files, every file checked against the registry's sha256).
+
+calgen 0.4.0 against 0.3.0: only the heap library and the two pieces change (heap library version 3: rubble heaps of
+real bricks dropped against a wall, mounds of fill with a natural toe and no rim); the heaps' places are 0.3.0's; the
+class geometry is w4gen 0.3.0's (heapchecks: rubble heaps by the edge rule and the core, mounds of fill by their depth,
+their gap to the line, the registered scale and the piece's trial verdict; no slope band for either class); the fit
+line of G24 is the registry's per class. Everything else (every other collision body, the camera, the marks) is
+0.3.0's byte for byte.
+
+Version 2.0 against version 1.1: everything of version 1.1 stays where it was (the flat floor, the marks, the ridge
+and its openings, the roofed room, passage, block and chamber, the crates, the strips, the chips, camera and light,
+byte for byte the same collision bodies), except
+  * two heaps of the scored sites' two kinds on the open floor, hand-laid, each leaning on a line, both seen by the
+    camera (HEAPS): a rubble heap against the site's south wall in the south-east corner, flush with the blue crate's
+    west face (the only stretch of a perimeter wall in the picture that is neither the flat floor nor next to a ridge
+    opening: the ridge's two faces lie within 0.40 m of an opening's floor point everywhere), and a mound of fill
+    against the free-standing wall's south face, centred on it. Both at scale 1.0: the library pieces exactly as their
+    trials ran them. Their collision bodies are inline height fields (w4gen's transform and writing: the piece's
+    5 mm grid, sunk 10 mm, a ring of zero cells, max == size[2]); their occupancy for every rule is the placed
+    rectangle, and every rule is judged again on the compiled model (qc: heaps_G20 ... heaps_G24).
+  * the free-standing wall stands 0.30 m further north (y 3.50-3.65; version 1.1: 3.20-3.35), so that the mound in
+    front of it stands on the concrete, clear of the gravel strip and of search point 2's keep-out.
 
 Layout (4.4 x 5.8 m; the camera rule of the families on the camera rectangle 4.4 x 4.0 m, CAMERA_SEED 9001 as in
 version 1.0, so the camera is version 1.0's; floor friction 0.80; x east, y north, origin south-west corner):
@@ -18,8 +44,9 @@ version 1.0, so the camera is version 1.0's; floor friction 0.80; x east, y nort
            1; a dust strip
   ridge    (unchanged) y 1.60-2.15, west to east: gap_XN (A), gap_T (B), gap_P (C, open), slot_XL (D, covered,
            clear 0.15), a covered mouth closed at depth 0.30 (E, class B), tunnel_P (F, covered, flat roof, 0.55)
-  north    (unchanged up to y 3.0) the roofed room x 2.80-4.40, y 2.15-3.00 behind tunnel_P; a free-standing wall;
-           a gravel strip; search point 2; the red crate; six colour chips
+  north    (unchanged up to y 3.0) the roofed room x 2.80-4.40, y 2.15-3.00 behind tunnel_P; a free-standing wall
+           (y 3.50-3.65) with the mound of fill against its south face; a gravel strip; search point 2; six colour
+           chips (the red crate and the rubble heap stand in the south band)
   roofed   (new) from the room's north-west corner a roofed passage x 2.80-3.65 northward (0.85 wide, 1.40 long:
            see PASSAGE_LEN), in it one rubble block against its west wall (rubble__passage_block:
            x 2.80 to 2.80 + (0.85 - P), along it 0.25 m centred on the passage's length, floor to roof; the clear
@@ -54,8 +81,16 @@ from w2gen import mjcf, predicates  # noqa: E402
 from w3gen import GENERATOR_VERSION as W3_VERSION  # noqa: E402
 from w3gen import family as w3fam  # noqa: E402
 from w3gen import predicates as w3p  # noqa: E402
+from w4gen import GENERATOR_VERSION as W4_VERSION  # noqa: E402
+from w4gen import heapchecks as hc  # noqa: E402
+from w4gen import library as libmod  # noqa: E402
+from w4gen import measure as ms  # noqa: E402
+from w4gen import mjcf as w4mjcf  # noqa: E402
 
-CAL_VERSION = "calgen 0.2.0"
+if "heap" not in gridmod.SOLID_KINDS:
+    gridmod.SOLID_KINDS = tuple(gridmod.SOLID_KINDS) + ("heap",)      # run time: a heap is a solid for every route
+
+CAL_VERSION = "calgen 0.4.0"
 LX, LY = 4.4, w3fam.LY                 # 4.4 x 5.8: the W3 site rectangle
 LY_CAM = w3fam.LY_CAM                  # 4.0: the camera rule's rectangle (as every W3 site)
 CAMERA_SEED = 9001                     # the camera rule's draw for this one site (version 1.0's: the camera is unchanged)
@@ -73,7 +108,8 @@ PASSAGE_X = (2.80, 3.65)               # 0.85 wide, from the room's north-west c
 PASSAGE_LEN = 1.40                     # y 3.00-4.40 (a first layout with 1.20 m was laid before it; the blind route
                                        # measured 3.755 m with either length)
 BLOCK_ALONG = 0.25                     # the passage block's length along the passage, centred on its length
-FREE_WALL = dict(x0=0.55, x1=2.05, y0=3.20, y1=3.35, h=0.60)
+FREE_WALL = dict(x0=0.55, x1=2.05, y0=3.50, y1=3.65, h=0.60)          # version 1.1: y 3.20-3.35 (moved 0.30 m north)
+FREE_WALL_MOVED = "0.30 m north: y 3.20-3.35 in version 1.1"
 GRAVEL = dict(x0=0.15, x1=1.25, y0=2.40, y1=3.00)        # 1.10 x 0.60
 DUST = dict(x0=3.75, x1=4.35, y0=0.30, y1=1.20)          # 0.60 x 0.90 (0.90 x 0.60 turned)
 FLAT = dict(x0=0.70, x1=3.70, y0=0.05, y1=1.55)          # 3.0 x 1.5
@@ -98,6 +134,34 @@ CHIPS = [("red", "disc", 0.040, (1.55, 0.95)), ("green", "square", 0.050, (2.85,
 LINE_W, LINE_T = 0.012, 0.0008
 MARK_GROUP = 2                          # visual only, rendered by the search camera (as the family's chips)
 TOL = 1e-6 + 1e-9                       # package coordinates are rounded to 1e-6 m
+# the two heaps (hand-laid). piece = the library piece (for the maintainers only: the package never names it), scale 1.0
+# (the piece as its trials ran it), line = the side of the heap the line it leans on is on; S0's place: its east end
+# flush with the blue crate's west face (x1 = BLUE x0), its south side on the site's south wall (y = 0); N0's place:
+# its north side on the free-standing wall's south face, centred on the wall (both places are calgen 0.3.0's). The
+# pieces (heap library version 3): per class the usable pieces ranked by how central they are (the sum over the
+# registered rectangle's width and depth and the registered top of |value - the class's median| / the class's spread
+# of that value); the most central one whose placed rectangle at scale 1.0 passes every rule at its place. Rubble
+# heaps: the most central piece (0.353 x 0.320 m) is 0.020 m too deep for the south-east corner (it reaches the dust
+# strip, and north of the crate it leaves a gap of open floor in [0.15, 0.60) m to the east wall), and at the other
+# lines of the picture (the free-standing wall's ends, its north face) it breaks the gap promise or is unseen; the
+# second (0.330 x 0.290 m) passes. Mounds of fill: the most central piece passes. Mirror: the one whose collision body
+# fits the piece's mesh better (the fit bound's share within 3 mm).
+HEAPS = (
+    dict(name="heap__S0", band="south", cls="R", piece="R83", scale=1.0, mirror=True, line="south",
+         against="site wall", stands="against the site's south wall", x1=BLUE["x0"]),
+    dict(name="heap__N0", band="north", cls="M", piece="M56", scale=1.0, mirror=False, line="north",
+         against="free-standing wall", stands="against the free-standing wall's south face",
+         cx=0.5 * (FREE_WALL["x0"] + FREE_WALL["x1"])),
+)
+HEAP_KIND = {"R": "rubble heap", "M": "mound of fill"}
+FIT_SHARE = dict(hc.FIT_SHARE_BY_CLASS)  # fallback fit lines (share of points within 3 mm) per class; the registry's
+                                        # own (doc.classes.<cls>.fit, heapchecks.fit_line) are the ones judged
+FIT_MAX_MM = 8.0
+VERTEX_MM = 0.5
+PUBLIC_STEP, PUBLIC_Z = 0.001, 0.001    # the public outline: a 1 mm lattice of the compiled surface, > 1 mm above floor
+HEAP_KEEP = (("pad", 0.45), ("point 1", 0.40), ("point 2", 0.40))     # the families' keep-outs (W4: G21)
+OPEN_KEEP, OPEN_OFF = 0.40, 0.25        # around the floor points 0.25 m before / behind every ridge opening
+VIS_MIN = 0.70
 
 
 def r6(x):
@@ -275,7 +339,7 @@ def build(env, passage_len=PASSAGE_LEN, crates=None):
                              axis="y"))
     plug_op = [o for o in ops if o["cls"] == "B"][0]
     weights = w3fam.WEIGHTS
-    gen = "%s (parts of %s, %s)" % (CAL_VERSION, W2_VERSION, W3_VERSION)
+    gen = "%s (parts of %s, %s, %s)" % (CAL_VERSION, W2_VERSION, W3_VERSION, W4_VERSION)
     if abs(passage_len - PASSAGE_LEN) > 1e-9:
         gen += " [passage length %.2f m: not the calibration site]" % passage_len
     site = dict(
@@ -316,22 +380,93 @@ def build(env, passage_len=PASSAGE_LEN, crates=None):
         chamber=dict(interior=dict(C), size_m=[r6(C["x1"] - C["x0"]), r6(C["y1"] - C["y0"])], clear_h=r6(hz)),
         side_wall=dict(L["side"], t=SIDE_T, h=r6(hz)),
         passage_fill=dict(L["fill"], h=r6(hz)),
-        free_wall=dict(FREE_WALL),
+        free_wall=dict(FREE_WALL, moved=FREE_WALL_MOVED),
     )
     marks_xml, marks = visual_marks()
     site["marks"] = marks
     return site, marks_xml
 
 
-def site_xml(site, marks_xml):
-    """The family's MJCF (mjcf.world_fragment) plus the calibration marks (visual only)."""
+# ------------------------------------------------------------------------------------------------ heaps
+def heap_box(h):
+    x0, x1, y0, y1 = h["rect"]
+    return fam._box(h["name"].split("__", 1)[1], "heap", x0, x1, y0, y1, 0.0, h["top_m"], rgb=w4mjcf.HEAP_RGB[h["cls"]],
+                    heap=dict(cls=h["cls"], band=h["band"], line=h["line"], against=h["against"]))
+
+
+def place_heaps(site, lib, heaps=HEAPS):
+    """Add the hand-laid heaps to the site (records in site['heaps'], box records of kind heap in site['boxes'] for
+    the routes and the cell's truth); (grids by heap name, the maintainers' piece table by heap name)."""
+    grids, pieces, recs = {}, {}, []
+    for k, spec in enumerate(heaps):
+        pid = spec["piece"]
+        if pid not in lib.pieces:
+            raise SystemExit("heap library: piece %s is not usable (%s)" % (pid, lib.excluded.get(pid, "not registered")))
+        piece = lib.pieces[pid]
+        sig = float(spec["scale"])
+        lo, hi = piece["scale"]
+        if not lo - 1e-9 <= sig <= hi + 1e-9:
+            raise SystemExit("heap %s: scale %.4f outside the piece's interval [%.4f, %.4f]" % (spec["name"], sig, lo, hi))
+        W = sig * piece["W"]
+        if spec["line"] == "south":
+            yaw, y_line = 180, 0.0
+        else:
+            yaw, y_line = 0, FREE_WALL["y0"]
+        cx = spec["cx"] if "cx" in spec else spec["x1"] - W / 2
+        place = dict(scale=sig, mirror=bool(spec["mirror"]), yaw_deg=yaw, cx=cx, y_line=y_line)
+        rect = libmod.placed_rect(piece, sig, yaw, cx, y_line)
+        place["rect"] = rect
+        g = libmod.collision_grid(lib, pid, place)
+        rec = dict(name=spec["name"], cls=spec["cls"], kind=HEAP_KIND[spec["cls"]], band=spec["band"], line=spec["line"],
+                   against=spec["against"], stands=spec["stands"], rect=[r6(q) for q in rect], top_m=r6(g["top_m"]),
+                   yaw_deg=yaw, mirror=bool(spec["mirror"]), scale=sig, x_mode="hand-laid", y_line=r6(y_line), cx=r6(cx),
+                   grid=dict(origin=[r6(q) for q in g["origin"]], shape=list(g["shape"]), cell_m=r6(g["grid"]),
+                             sink_m=r6(-g["base_z"]), size_z=r6(g["size_z"])))
+        recs.append(rec)
+        grids[rec["name"]] = g
+        pieces[rec["name"]] = dict(piece=pid, scale=sig, mirror=bool(spec["mirror"]), yaw_deg=yaw,
+                                   scale_interval_used=[r6(q) for q in piece["scale"]],
+                                   scale_interval_registered=piece["scale_registered"],
+                                   trials_verdict_ok=bool((piece.get("trials_verdict") or {}).get("ok")))
+    site["boxes"] = [b for b in site["boxes"] if b["kind"] != "heap"] + [heap_box(h) for h in recs]
+    site["heaps"] = dict(
+        n=len(recs), by_band={b: sum(1 for h in recs if h["band"] == b) for b in ("south", "north")},
+        by_class={c: sum(1 for h in recs if h["cls"] == c) for c in "RM"}, heaps=recs,
+        library=dict(sha256=lib.sha256, version=lib.version),
+        classes={c: dict(w=list(lib.classes[c]["w"]), d=list(lib.classes[c]["d"]), top=list(lib.classes[c]["top"]))
+                 for c in ("R", "M")},
+        collision=dict(kind="inline height field per heap: the library piece's 5 mm grid turned, mirrored and scaled "
+                            "vertex for vertex (cell 0.005 m x scale)", piece_cell_m=libmod.GRID, sink_m=libmod.SINK,
+                       zero_ring=True, max_equals_size_z=True, elevation_rows="from +y to -y", geom="heap__<band><k>",
+                       field="field_<band><k>"),
+        rule="hand-laid: one rubble heap (class R) and one mound of fill (class M), scale 1.0, each leaning on a line "
+             "over its whole width (the site's south wall; the free-standing wall's south face); occupancy for every "
+             "rule = the placed rectangle; the families' keep-outs (pad 0.45 m, search points 1-2 0.40 m, 0.40 m around "
+             "the floor points 0.25 m before / behind every ridge opening), not on the dust strip nor on the flat floor, "
+             "rectangle spacing 0 or >= W_SWEEP + 0.18 to every other solid (the line not counted; a gap that a third "
+             "solid fills from side to side is no gap of open floor), the gap promise < 0.15 m or >= 0.60 m and the "
+             "camera's view (>= 0.70 of the surface and the top) judged on the compiled model")
+    return grids, pieces
+
+
+def site_xml(site, marks_xml, grids=None):
+    """The family's MJCF (mjcf.world_fragment) plus the calibration marks (visual only) and the heaps (w4gen's
+    writing: one inline height field per heap in the asset block, its hfield geom after everything else, so every other
+    geom keeps version 1.1's index)."""
     lt = site["lighting"]
     a = lt["ambient"]
     head = ['<mujoco model="cal">', '  <visual>', '    <global offwidth="640" offheight="480"/>',
             '    <quality shadowsize="4096"/>',
             '    <headlight ambient="%s" diffuse="0 0 0" specular="0 0 0"/>' % mjcf._v([a, a, a]),
             '    <map znear="0.01" zfar="50"/>', '  </visual>']
-    body = ['  <worldbody>', mjcf.world_fragment(site, extra=marks_xml), '  </worldbody>', '</mujoco>']
+    s = dict(site)
+    s["boxes"] = [b for b in site["boxes"] if b["kind"] != "heap"]
+    extra = marks_xml
+    if site.get("heaps", {}).get("heaps"):
+        assets, geoms = w4mjcf.heap_fragments(site, grids)
+        head += ['  <asset>'] + ['    ' + q for q in assets] + ['  </asset>']
+        extra = marks_xml + "".join("\n    " + g for g in geoms)
+    body = ['  <worldbody>', mjcf.world_fragment(s, extra=extra), '  </worldbody>', '</mujoco>']
     return "\n".join(head + body) + "\n"
 
 
@@ -389,6 +524,176 @@ def crate_rule(site, c, m=None, d=None, cpos=None):
     return dict(pass_=bool(ok), name=c["name"], rect=[r6(q) for q in rect], gap_violations=bad_gap,
                 keep_out_violations=bad_keep, on_strip=on_patch, on_flat_floor=on_flat, in_camera_rectangle=in_cam_rect,
                 top_seen_fraction=seen, clearance_m=clr)
+
+
+def _screened(a, b, screens):
+    """True when one rectangle of `screens` fills the open floor between rectangles a and b from side to side (so
+    their gap is no gap of open floor)."""
+    xo = min(a[1], b[1]) - max(a[0], b[0])
+    yo = min(a[3], b[3]) - max(a[2], b[2])
+    if yo > 1e-9:
+        reg = (min(a[1], b[1]), max(a[0], b[0]), max(a[2], b[2]), min(a[3], b[3]))
+    elif xo > 1e-9:
+        reg = (max(a[0], b[0]), min(a[1], b[1]), min(a[3], b[3]), max(a[2], b[2]))
+    else:
+        return False
+    return any(s[0] <= reg[0] + 1e-9 and s[1] >= reg[1] - 1e-9 and s[2] <= reg[2] + 1e-9 and s[3] >= reg[3] - 1e-9
+               for s in screens)
+
+
+def heap_keepouts(site):
+    pad = site["pad"]["xy"]
+    sp = {s["id"]: s["xy"] for s in site["search_points"]}
+    pts = dict(zip(("pad", "point 1", "point 2"), (pad, sp[1], sp[2])))
+    keep = [(nm, tuple(pts[nm]), r) for nm, r in HEAP_KEEP]
+    for g in site["r1"]["openings"]:
+        gx = 0.5 * (g["x0"] + g["x1"])
+        keep += [(g["id"] + " south", (gx, g["y0"] - OPEN_OFF), OPEN_KEEP),
+                 (g["id"] + " north", (gx, g["y1"] + OPEN_OFF), OPEN_KEEP)]
+    return keep
+
+
+def heap_public(m, d, gid, h):
+    """The public numbers of one heap, measured on the compiled model: the bounding rectangle of its outline (a 1 mm
+    lattice of vertical-ish rays at its geom alone; outline = more than 1 mm above the floor and not inside a solid:
+    a lattice point strictly inside the rectangle of a floor box whose top is at least the heap's height there is
+    buried in that box, where neither a ray nor the robot reaches: the height field's roll-off over its last cell
+    beyond the line it leans on) and its highest point (the compiled height field's highest vertex: geom z + size[2]
+    x max(data))."""
+    x0, x1, y0, y1 = h["rect"]
+    xs = np.round(np.arange(round(x0 - 0.01, 3), x1 + 0.01 + 1e-9, PUBLIC_STEP), 6)
+    ys = np.round(np.arange(round(y0 - 0.01, 3), y1 + 0.01 + 1e-9, PUBLIC_STEP), 6)
+    X, Y = np.meshgrid(xs, ys)
+    hit = ms.lattice_hits(m, d, gid, np.c_[X.ravel(), Y.ravel()])
+    z = hit[:, 2]
+    sel = np.isfinite(z) & (z > PUBLIC_Z)
+    boxes, tops = ms.floor_boxes(m, d), ms.floor_box_tops(m, d)
+    px_all, py_all = X.ravel(), Y.ravel()
+    inside = np.zeros(len(z), bool)
+    for nm, r in boxes:
+        inside |= ((px_all > r[0] + 1e-9) & (px_all < r[1] - 1e-9) & (py_all > r[2] + 1e-9) & (py_all < r[3] - 1e-9)
+                   & (tops.get(nm, -1.0) >= np.where(np.isfinite(z), z, 0.0)))
+    bur = sel & inside
+    keep = sel & ~inside
+    px, py = px_all[keep], py_all[keep]
+    cg = ms.compiled_grid(m, gid)
+    top = float(d.geom_xpos[gid][2]) + cg["max_height_m"]
+    beyond = np.maximum.reduce([px_all - x1, x0 - px_all, py_all - y1, y0 - py_all, np.zeros(len(z))])
+    bd = float(beyond[bur].max()) if bur.any() else 0.0
+    buried_in = sorted({nm for nm, r in boxes if bool((bur & (px_all > r[0] + 1e-9) & (px_all < r[1] - 1e-9)
+                                                       & (py_all > r[2] + 1e-9) & (py_all < r[3] - 1e-9)).any())})
+    return dict(x0=round(float(px.min()), 3), x1=round(float(px.max()), 3), y0=round(float(py.min()), 3),
+                y1=round(float(py.max()), 3), top_height_m=round(top, 3), top_exact_m=r6(top),
+                lattice_m=PUBLIC_STEP, outline_above_floor_m=PUBLIC_Z, n_rays=int(len(z)),
+                lattice_max_m=round(float(np.nanmax(z)), 6), lattice_max_open_floor_m=round(float(np.max(z[keep])), 6),
+                n_buried=int(bur.sum()), buried_beyond_rect_max_m=round(bd, 6), buried_in=buried_in)
+
+
+def heap_qc(site, xml, lib, grids, pieces):
+    """The heaps' predicates on the compiled model (W4's G20-G24 as they apply to a hand-laid site):
+      heaps_G20  class geometry (w4gen.heapchecks, by class: rectangle in the class's w / d, compiled footprint inside
+                 it to within one placed cell, top in the class's range; R: edge rule >= 95 % on every exposed side and
+                 the core; M, natural toe: compiled depth >= 0.28 m, gap to the line <= 0.05 m, scale in the registered
+                 interval, the piece's trial verdict; no slope band)
+      heaps_G21  keep-outs on the compiled occupancy (5 mm lattice, > 3 mm above the floor), nothing on the dust strip
+                 or the flat floor, no chip in a heap's rectangle, rectangle spacing (0 or >= the clearance, the line
+                 not counted, a gap filled by a third solid from side to side not counted), the gap promise
+                 (< 0.15 m or >= 0.60 m; measure.gap_promise with the heap's line run as one entity)
+      heaps_G22  the camera sees >= 0.70 of each heap's surface and its top; no heap under the roof
+      heaps_G23  each heap leans on its line (the run of boxes behind it covers its width; its occupancy comes within
+                 0.03 m of the line, median per column <= 0.05 m)
+      heaps_G24  zero ring, max == size[2], 200 vertices against the piece's grid <= 0.5 mm, the fit bound against the
+                 piece's mesh (share within 3 mm >= the class's line, max <= 8 mm), scale in the piece's interval
+    and the public numbers (heap_public)."""
+    m, d = ms.compile_xml(xml)
+    ids = ms.geom_ids(m, "heap__")
+    cpos, Rcam = predicates.cam_pose(site)
+    cam = (Rcam, site["camera"]["model"])
+    heaps = site["heaps"]["heaps"]
+    boxes = ms.floor_boxes(m, d)
+    clr = site["classes"]["free_block_clearance"]
+    keep = heap_keepouts(site)
+    solids = [(nm, r) for nm, r in _solids(site) if not nm.startswith("heap__")]
+    dust = [p for p in site["patches"] if p["name"] == "dust"]
+    gravel = [p for p in site["patches"] if p["name"] == "gravel"]
+    roof = site["void"]["slab"]
+    q20, q21, q22, q23, q24, pub = {}, {}, {}, {}, {}, {}
+    occ, lines = {}, {}
+
+    def n_in(P, r):
+        return int(((P[:, 0] > r["x0"]) & (P[:, 0] < r["x1"]) & (P[:, 1] > r["y0"]) & (P[:, 1] < r["y1"])).sum())
+
+    for k, h in enumerate(heaps):
+        gid = ids[h["name"]]
+        pid = pieces[h["name"]]["piece"]
+        piece = lib.pieces[pid]
+        H, meta = lib.grid(pid)
+        a20, a24 = hc.heap_shape(m, d, gid, h, lib.classes, piece, H, meta, 0, k, lib.mesh(pid))
+        line_fit = hc.fit_line(lib.classes, h["cls"])
+        a24["fit_line_share_le_3mm"] = line_fit
+        a24["pass_"] = bool(a24["zero_ring"] and a24["max_is_size_z"] and a24["vertices"]["nan"] == 0
+                            and a24["vertices"]["maxdiff_mm"] <= VERTEX_MM and a24["fit"]["share_le_3mm"] >= line_fit
+                            and a24["fit"]["max_mm"] <= FIT_MAX_MM and a24["scale_ok"])
+        q20[h["name"]], q24[h["name"]] = a20, a24
+        r = tuple(h["rect"])
+        P = ms.heap_occupancy(m, d, gid, r)
+        occ[h["name"]] = P
+        dk = {nm: round(float(np.min(np.hypot(P[:, 0] - p[0], P[:, 1] - p[1]))), 4) for nm, p, _r in keep}
+        keep_bad = [nm for nm, _p, rr in keep if dk[nm] < rr - 1e-9]
+        if h["line"] == "north":
+            near = [(nm, q) for nm, q in solids if q[2] < h["y_line"] - 1e-9]
+        else:
+            near = [(nm, q) for nm, q in solids if q[3] > h["y_line"] + 1e-9]
+        others = near + [(o["name"], tuple(o["rect"])) for o in heaps if o["name"] != h["name"]]
+        screens = [q for _nm, q in solids] + [tuple(o["rect"]) for o in heaps if o["name"] != h["name"]]
+        bad_sp, screened = [], []
+        for nm, o in others:
+            if fam._rect_overlap(r, o):
+                bad_sp.append((nm, "overlap"))
+                continue
+            gp = fam._rect_gap(r, o)
+            if 0.0 < gp < clr - 1e-9:
+                if _screened(r, o, [s for s in screens if s != o]):
+                    screened.append((nm, round(gp, 4)))
+                else:
+                    bad_sp.append((nm, round(gp, 4)))
+        chips_in = [c["name"] for c in site.get("chips", []) if r[0] < c["xy"][0] < r[1] and r[2] < c["xy"][1] < r[3]]
+        F = dict(x0=FLAT["x0"], x1=FLAT["x1"], y0=FLAT["y0"], y1=FLAT["y1"])
+        q21[h["name"]] = dict(keepout_dist_m=dk, keepout_violations=keep_bad, dust_points=sum(n_in(P, p) for p in dust),
+                              flat_floor_points=n_in(P, F), gravel_points=sum(n_in(P, p) for p in gravel),
+                              chips_in_rect=chips_in, spacing_violations=bad_sp, gaps_filled_by_a_third_solid=screened,
+                              n_occupied=int(len(P)))
+        run, cover = ms.line_run(boxes, r, h["line"], h["y_line"])
+        lines[h["name"]] = run
+        per = []
+        for x in np.unique(np.round(P[:, 0], 6)):
+            yy = P[np.abs(P[:, 0] - x) < 1e-7, 1]
+            per.append(h["y_line"] - yy.max() if h["line"] == "north" else yy.min() - h["y_line"])
+        per = np.asarray(per)
+        lg = dict(min_m=round(float(per.min()), 4), median_m=round(float(np.median(per)), 4))
+        q23[h["name"]] = dict(line_run=run, line_cover=round(cover, 6), line_gap=lg,
+                              pass_=bool(cover >= 1.0 - 1e-6 and lg["min_m"] <= 0.03 and lg["median_m"] <= 0.05))
+        vis = ms.visibility(m, d, gid, r, cpos, cam)
+        q22[h["name"]] = dict(visible_share=round(vis["share"], 4), top_seen=vis["top_seen"],
+                              in_frame_share=round(vis["in_frame_share"], 4), points_under_roof=n_in(P, roof))
+        pub[h["name"]] = heap_public(m, d, gid, h)
+    gp = ms.gap_promise(occ, boxes, lines)
+    for n, row in q21.items():
+        row["gaps"] = gp["pairs"].get(n, {})
+        row["gap_ok"] = bool(all(v["ok"] for v in row["gaps"].values()))
+        row["pass_"] = bool(not row["keepout_violations"] and row["dust_points"] == 0 and row["flat_floor_points"] == 0
+                            and not row["chips_in_rect"] and not row["spacing_violations"] and row["gap_ok"])
+    for n, row in q22.items():
+        row["pass_"] = bool(row["visible_share"] >= VIS_MIN and row["top_seen"] and row["points_under_roof"] == 0)
+    out = {}
+    for name, per_h, extra in (("heaps_G20", q20, {}), ("heaps_G21", q21, dict(rule=gp["rule"])), ("heaps_G22", q22, {}),
+                               ("heaps_G23", q23, {}),
+                               ("heaps_G24", q24, dict(fit_lines={c: hc.fit_line(lib.classes, c) for c in "RM"}))):
+        out[name] = dict(pass_=bool(heaps and all(v["pass_"] for v in per_h.values())), heaps=per_h, **extra)
+    out["heaps_public"] = dict(heaps=pub, what="public numbers of each heap, measured on the compiled model "
+                                               "(outline: 1 mm lattice, > 1 mm above the floor, not inside a solid; top: "
+                                               "highest vertex)")
+    return out
 
 
 def blind_route(site, with_block=True):
@@ -545,8 +850,9 @@ def qc(site, xml, render=True):
 
 
 # ------------------------------------------------------------------------------------------------ public plan
-def public_plan(site):
-    """Every dimension of the calibration site (the calibration page and its figure), nothing else."""
+def public_plan(site, heaps_pub=None):
+    """Every dimension of the calibration site (the calibration page and its figure), nothing else. heaps_pub = the
+    heaps' public numbers measured on the compiled model (qc heaps_public)."""
     def rect(b):
         return dict(x0=b["x0"], x1=b["x1"], y0=b["y0"], y1=b["y1"])
     ops = []
@@ -613,6 +919,12 @@ def public_plan(site):
         crates=[dict(colour=b["name"].split("_")[-1], x0=b["aabb"][0], x1=b["aabb"][1], y0=b["aabb"][2], y1=b["aabb"][3],
                      height_m=b["aabb"][5]) for b in site["boxes"] if b["kind"] == "crate"],
         chips=[dict(colour=c["colour"], shape=c["shape"], size_m=c["size_m"], xy=c["xy"]) for c in site["chips"]],
+        heaps=[dict(label="heap %d" % (k + 1), kind=h["kind"], x0=heaps_pub[h["name"]]["x0"],
+                    x1=heaps_pub[h["name"]]["x1"], y0=heaps_pub[h["name"]]["y0"], y1=heaps_pub[h["name"]]["y1"],
+                    top_height_m=heaps_pub[h["name"]]["top_height_m"], stands=h["stands"])
+               for k, h in enumerate(site.get("heaps", {}).get("heaps", []))] if heaps_pub else [],
+        heaps_what="the bounding rectangle of each heap's outline (where it stands more than 1 mm above the floor) and "
+                   "its highest point, measured to 1 mm on the site's collision bodies",
         time_limit_s=None,
         note="dimensions only; the page built from this file states no 'passes' or 'does not pass'",
     )
@@ -717,6 +1029,25 @@ def plan_vs_site(plan, site):
     fl = plan["flat_floor"]
     for k in ("x0", "x1", "y0", "y1"):
         eq("flat." + k, fl[k], FLAT[k])
+    # the heaps: one plan row per heap of the package, its kind, its measured outline inside the placed rectangle (to
+    # within one placed cell: the height field's roll-off beyond its last raised vertex, as G20), its highest point =
+    # the package's top (to the plan's 1 mm)
+    sh = site.get("heaps", {}).get("heaps", [])
+    if len(plan.get("heaps", [])) != len(sh):
+        out.append("heaps: plan %d, site %d" % (len(plan.get("heaps", [])), len(sh)))
+    for p, h in zip(plan.get("heaps", []), sh):
+        n[0] += 1
+        if p["kind"] != HEAP_KIND[h["cls"]]:
+            out.append("%s kind: plan %r, site %r" % (p["label"], p["kind"], h["cls"]))
+        tcell = libmod.GRID * float(h["scale"]) + 1e-6     # G20's footprint tolerance: one placed cell (roll-off)
+        for k, i, sgn in (("x0", 0, 1), ("x1", 1, -1), ("y0", 2, 1), ("y1", 3, -1)):
+            n[0] += 1
+            if sgn * (p[k] - h["rect"][i]) < -tcell:
+                out.append("%s.%s: plan %r outside the placed rectangle %r by more than one cell"
+                           % (p["label"], k, p[k], h["rect"][i]))
+        n[0] += 1
+        if abs(p["top_height_m"] - h["top_m"]) > 0.0005 + 1e-9:
+            out.append("%s.top: plan %r, site %r" % (p["label"], p["top_height_m"], h["top_m"]))
     return n[0], out
 
 
@@ -767,7 +1098,7 @@ def load_envelope(path=None):
         bad = [k for k, s in env["source"].items() if s != "capability_sheet"]
     if bad:
         raise SystemExit("envelope keys not from the expected table: %s" % bad)
-    # no key uses the provisional values: their provenance note (development paths) does not go into the package
+    # no key uses the provisional values: their provenance note does not go into the package
     env = dict(env)
     env.pop("provisional_source", None)
     return env
@@ -784,12 +1115,15 @@ def main(argv=None):
     site, marks_xml = build(env, passage_len=a.passage_length)
     if a.envelope:
         site["generator"] += " [local envelope table: not the calibration site]"
-    xml = site_xml(site, marks_xml)
+    lib = libmod.Library()
+    grids, pieces = place_heaps(site, lib)
+    xml = site_xml(site, marks_xml, grids)
     q = qc(site, xml, render=not a.no_render)
-    plan = public_plan(site)
+    q.update(heap_qc(site, xml, lib, grids, pieces))
+    plan = public_plan(site, q["heaps_public"]["heaps"])
     n_cmp, bad = plan_vs_site(plan, site)
     q["plan_vs_site"] = dict(pass_=not bad, compared=n_cmp, mismatches=bad)
-    q["pass"] = bool(q["pass"] and not bad)
+    q["pass"] = bool(all(v_.get("pass_") is not False for v_ in q.values() if isinstance(v_, dict)))
     q["failed"] = [k for k, v in q.items() if isinstance(v, dict) and v.get("pass_") is False]
     d = os.path.join(a.out, "cal")
     os.makedirs(d, exist_ok=True)
@@ -804,12 +1138,22 @@ def main(argv=None):
     sha = write_archive(os.path.join(a.out, "cal.tar.xz"), {"site.json": sj, "site.xml": sx})
     with open(os.path.join(a.out, "plan.json"), "w") as fh:
         fh.write(dumps(plan))
+    with open(os.path.join(a.out, "heap_pieces.json"), "w") as fh:
+        fh.write(dumps(dict(site="cal", generator=site["generator"], library_sha256=lib.sha256, library_version=lib.version,
+                            heaps=[dict(name=nm, **v) for nm, v in pieces.items()])))
+    hp = q["heaps_public"]["heaps"]
     print(json.dumps(_clean(dict(pass_=q["pass"], failed=q["failed"], G2=q["G2"]["corner_margin_px"],
                                  G3=q["G3"].get("as_built", {}).get("max_px") if isinstance(q["G3"], dict) else None,
                                  routes=q["routes"], roofed_unseen={k: q["roofed_unseen"][k] for k in
                                                                     ("rays_on_block", "rays_ending_inside")},
                                  blind=q["blind_route"], block=q["passage_block"]["gap_east_m"],
                                  sp3=q["sp3_clearance"]["clearance_m"], crates=[r["pass_"] for r in q["crates"]["rows"]],
+                                 heaps={n: dict(G20=q["heaps_G20"]["heaps"][n]["pass_"], G21=q["heaps_G21"]["heaps"][n]["pass_"],
+                                                G22=q["heaps_G22"]["heaps"][n]["visible_share"],
+                                                G23=q["heaps_G23"]["heaps"][n]["pass_"],
+                                                G24=q["heaps_G24"]["heaps"][n]["fit"]["share_le_3mm"],
+                                                public=[hp[n][k] for k in ("x0", "x1", "y0", "y1", "top_height_m")])
+                                        for n in hp},
                                  plan_vs_site=[n_cmp, len(bad)], archive_sha256=sha))))
     return 0
 

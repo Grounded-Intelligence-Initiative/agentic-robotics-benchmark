@@ -48,6 +48,14 @@ and one plan replaces the reference's legs:
                                         progress, dwell (25 s), report the listed points there, finish in place (an
                                         attack on the credit rule and on the cell: the robot pressed against a
                                         hidden box)
+  custom "heap_press"    {pre_margin}   (task version 2.0, degenerate submission D10) plan (true occupancy) from the
+                                        pad to a pose before the heap on the open floor NEAREST the pad (its front,
+                                        the side away from the line it leans on; else a flank), then push towards
+                                        the middle of its rectangle until the time limit, never report, never
+                                        finish (the episode must score 0 and the cell, its stuck reading and the
+                                        scoring must show nothing abnormal while the robot leans on a heap's slope);
+                                        the record carries the cell-side monitor's contact samples with every
+                                        heap__ geom (as D9 carries the rubble boxes')
 
 The summary's "qc_variant" records every injected call, its reply, the moved coordinates, the pushes (every
 primitive, its predicted and actual motion, the boxes touched), the report poses with their distances to the three
@@ -542,6 +550,91 @@ def run_debris_press(server, station, plan, C, log):
     return dict(summary=summary, rows=rows, events=[])
 
 
+HEAP_PRE = 0.10              # the heap pre-goal: r_hard + this before the heap's rectangle (task version 2.0, D10)
+
+
+def nearest_heap(site):
+    """The heap on the open floor nearest the pad's centre (rectangle to point), with its front (the side away from
+    the line it leans on) and its flanks as candidate approach sides (task version 2.0, D10)."""
+    pad = site["pad"]["xy"]
+    hs = (site.get("heaps") or {}).get("heaps") or []
+    best = None
+    for h in hs:
+        x0, x1, y0, y1 = h["rect"]
+        dx = max(x0 - pad[0], 0.0, pad[0] - x1)
+        dy = max(y0 - pad[1], 0.0, pad[1] - y1)
+        d = math.hypot(dx, dy)
+        if best is None or d < best[0]:
+            best = (d, h)
+    return best
+
+
+def run_heap_press(server, station, plan, C, log):
+    """custom 'heap_press' (D10): pad -> before the nearest heap -> push into it until the time limit; no report, no
+    finish."""
+    dr = Drive(server, station, C, log)
+    dr.mon.attach()
+    qlog = []
+    t_wall0 = time.time()
+    site = server.site
+    found = nearest_heap(site)
+    if found is None:
+        raise RuntimeError("heap_press: the site has no heap on the open floor")
+    d_pad, h = found
+    x0, x1, y0, y1 = [float(v) for v in h["rect"]]
+    north = h["line"] == "north"
+    m = dr.r_hard + float(plan.get("pre_margin", HEAP_PRE))
+    cx, cy = 0.5 * (x0 + x1), 0.5 * (y0 + y1)
+    pres = [("front", (cx, (y0 - m) if north else (y1 + m)))]
+    flanks = [("west", (x0 - m, cy)), ("east", (x1 + m, cy))]
+    pad = site["pad"]["xy"]
+    flanks.sort(key=lambda f: math.hypot(f[1][0] - pad[0], f[1][1] - pad[1]))
+    pres += flanks
+    target = (cx, cy)
+    qlog.append(dict(kind="heap_target", t=dr.t(), heap=h["name"], cls=h.get("cls"), rect=[x0, x1, y0, y1],
+                     line=h["line"], d_pad_m=round(d_pad, 4), pre_goals=[[n, [round(v, 4) for v in p]] for n, p in pres],
+                     target=[round(v, 4) for v in target]))
+    approach = []
+    side = None
+    for nm, pre in pres:
+        if dr.over():
+            break
+        g = dr.goto(pre, 0.08, 0.12, "to_heap_" + nm)
+        approach.append(dict(side=nm, **g))
+        if g["reached"]:
+            side = nm
+            break
+    p = dr.push(target, "heap_push", 10 ** 7, 10 ** 9)
+    idle = 0
+    while not server.done and not dr.over():
+        if station.step(10.0)["done"]:
+            break
+        idle += 1
+    at = dr.where(target)
+    mrep = dr.mon.report()
+    heap_samples = {k: v for k, v in mrep.get("contact_box_samples", {}).items() if k.startswith("heap__")}
+    qlog.append(dict(kind="pressed_to_the_limit", t=dr.t(), approach=approach, side=side, push=p, idle_steps_10s=idle,
+                     at=at, heap_contact_samples=heap_samples, done=bool(server.done), done_reason=server.done_reason,
+                     reports_sent=0, finish_sent=False))
+    dr.mon.detach()
+    from voidref import monitor as mon
+    from voidref import VERSION
+    rows = dr.rows
+    stuck = []
+    for k in range(2, len(rows)):
+        last = rows[k - 2:k + 1]
+        if all(r["moved_m"] < C.STUCK_D for r in last):
+            stuck.append(rows[k]["k"])
+    summary = dict(reference=dict(version="qc variant over voidref %s" % VERSION), sim_time_s=round(server.X.t(), 3),
+                   n_prims=len(rows), n_under_slab=sum(1 for r in rows if server.site_truth.under_slab(r["actual"])),
+                   aborted=None if (side is not None or p["n"]) else "no approach",
+                   stuck_rows_reference_rule=stuck, run_wall_s=round(time.time() - t_wall0, 2),
+                   inline_score=mon.inline_score(server), monitor=mrep, heap_contact_samples=heap_samples,
+                   done_reason=server.done_reason,
+                   qc_variant=dict(name=plan.get("name"), plan=plan, log=qlog, rows=rows))
+    return dict(summary=summary, rows=rows, events=[])
+
+
 def run(server, log=None):
     if LIB not in sys.path:
         sys.path.insert(0, LIB)
@@ -551,6 +644,8 @@ def run(server, log=None):
         plan = json.load(fh)
     if plan.get("custom") == "debris_press":
         return run_debris_press(server, connect_handler(server.handle), plan, C, log)
+    if plan.get("custom") == "heap_press":
+        return run_heap_press(server, connect_handler(server.handle), plan, C, log)
     saved = (C.DWELL_STEPS, C.LEGS)
     C.REFERENCE_DWELL_STEPS = C.DWELL_STEPS
     station = Proxy(server, connect_handler(server.handle), plan, C)

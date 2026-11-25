@@ -50,8 +50,8 @@ The team has no list of which.
 
 **Blocked openings.** An opening that leads under a slab can be blocked by fallen material a short way inside. From
 outside it looks like an opening that is free, and the search camera cannot see the difference. This is so for the
-openings under the slab's front edge: there are three, alike from outside; one of them leads into the crawl space and
-the other two are blocked.
+openings under the slab's front edge: there are three, alike in width, height and cover; one of them leads into the
+crawl space and the other two are blocked.
 
 **The crawl space.** The racking stood in rows parallel to the hall's walls, and what the collapse has left open under
 the slab follows them: straight passages, parallel to the site's walls, that meet at right angles. They are wider than
@@ -63,8 +63,20 @@ are two of its walls. No block stands in the chamber. Search point 3 lies in tha
 and these two walls is clear, and nothing stands within 0.6 m of the point. From the opening that leads in, the way to
 the chamber is several metres long and turns more than once.
 
-**Loose blocks and crates.** A few single blocks and crates may stand on the open floor. Some crates are red or
-blue.
+**Crates.** A few crates may stand on the open floor; some are red or blue.
+
+**Heaps.** Heaps stand on the open floor, each of one of two kinds. A **rubble heap** is bricks and lumps of broken
+concrete; a **mound of fill** is dumped earth. A heap is between 0.14 and 0.30 m high at its top and at most 0.60 m
+long in x and in y, and its outline is irregular. A mound of fill has sloping sides; a rubble heap can have upright
+faces. The robot cannot get over a heap: it has to go around it. What a roll against a heap does to the robot is in
+the handbook, section 8.
+
+**Where heaps stand.** Every heap stands against a wall, against the ridge or against the slab's front edge; none
+stands in the crawl space. Between a heap and anything else that stands on the floor, the floor is either less than
+0.15 m wide, far too narrow for the robot, or at least 0.60 m wide. No heap stands within 0.45 m of the pad's centre
+or within 0.40 m of search point 1 or 2. No heap stands within 0.40 m of the floor point 0.25 m in front of or behind
+the middle of an opening of the ridge. In front of each opening under the slab the floor is free of heaps over the
+opening's width and 0.70 m southwards. No heap lies on a patch of dust; one can stand right at a patch's edge.
 
 **The floor.** Level concrete everywhere, without steps, kerbs or slopes; its friction differs somewhat from site to
 site (the handbook gives the range). On it lie:
@@ -72,10 +84,13 @@ site (the handbook gives the range). On it lie:
 - **patches of loose ground**, dust and gravel, flush with the concrete; in the camera's picture a patch is an area of
   another colour. The robot moves differently on them than on concrete (handbook, section 8);
 - **plastic chips**: flat pieces a few centimetres across, discs and squares, in red, green and blue, the colours of
-  the robot's end caps, scattered over the floor by the collapse. They do not hinder the robot.
+  the robot's end caps, scattered over the floor by the collapse. They do not hinder the robot;
+- **thin litter**: loose pages, flattened cardboard, film, strapping, spilled powder, grit, and the earth and grit
+  strewn around the foot of a heap. It is flat and does not affect the robot.
 
-**The light.** Daylight through the roof holes, no direct sun. Its direction and strength differ from site to site,
-and with them the shadows and the brightness of everything in the picture. It does not change during an episode.
+**The light.** Daylight through the holes in the roof. The sun can reach the floor in patches, with hard shadows
+beside them, and there is dust in the air; direction and strength differ from site to site and do not change during
+an episode.
 
 ## 4. What the camera sees and what it does not
 
@@ -83,6 +98,7 @@ and with them the shadows and the brightness of everything in the picture. It do
   from the south wall to about 4 m north of it, from the west wall to the east wall; the site rectangle reaches
   further north, and that part lies under the slab, outside the picture.
 - The pad and search points 1 and 2 lie in the open, in the camera's view.
+- The camera sees every heap: its top and, seen from straight above, at least two thirds of the area the heap covers.
 - The camera sees the top of the rubble, the front part of the slab's top, and the south side of what stands. It does
   not see behind high rubble where that hides the floor, and it does not see under a cover: of a covered opening it
   sees the south face and at most a narrow strip of floor inside.
@@ -91,7 +107,7 @@ and with them the shadows and the brightness of everything in the picture. It do
 
 ## 5. What the team does not know
 
-- the layout of a site in numbers: where the blocks stand, how wide and how high each opening is;
+- the layout of a site in numbers: where the blocks and the heaps stand, how wide and how high each opening is;
 - which openings the robot can pass;
 - which of the three openings under the slab leads into the crawl space;
 - how the passages of the crawl space run: where they turn, where they end blind, how long and how wide they are,

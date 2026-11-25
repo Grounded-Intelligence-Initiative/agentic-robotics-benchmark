@@ -1,5 +1,5 @@
 """Validation against the authors' published per-primitive displacement table, in full SE(2) (ysim 0.3.0; re-run on
-0.3.1, notes/sim_base_data/validation_v031.json).
+0.3.1; the results are not shipped with this copy).
 
 Protocol: for each of the 11 primitives P and each of the six rollable start faces F, N executions; execution j
 starts from a fresh simulator: stand() (rest state), the j-th preparation sequence of PREP[F] (published primitives

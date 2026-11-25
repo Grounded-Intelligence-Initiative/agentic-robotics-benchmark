@@ -269,9 +269,17 @@ about a robot that touches something.
 - **Loose ground.** On dust and on gravel the table does not hold. Rolls come out with another length and drift
   sideways, the turns turn less, and at the edge of a patch, with some end caps on it and some off, a turn can come to
   almost nothing. No table is given for loose ground. The calibration site has a strip of each kind.
-- **Walls and blocks.** A robot that has rolled against a wall or a block does not get further by rolling on the same
-  way: it has to be turned first. A roll into an obstacle can leave the robot on any of the six rollable faces and,
-  rarely, on an end triangle.
+- **Walls, blocks and heaps.** A robot that has rolled against a wall, a block or a heap does not get further by
+  rolling on the same way: it has to be turned first. A roll into an obstacle can leave the robot on any of the six
+  rollable faces and, rarely, on an end triangle. A roll against a heap can also leave the robot leaning on it, with
+  one end cap up on its flank; the lower end of each strut is then still what its accelerometer shows, and the robot
+  gets off the heap as it gets away from a wall: by turning away and rolling on. A roll that touched a heap can turn
+  the robot by tens of degrees: the table does not hold for it.
+
+<!-- BEGIN GENERATED heaps -->
+- **Heaps, measured.** In 540 runs against heaps of the two kinds (240 against mounds of fill, 300 against rubble heaps) the robot never got onto or across one: its centre came at most 0.11 m inside a mound's outline and never inside a rubble heap's. 444 of 2361 rolls that touched a heap left an end cap resting on it; 3 of 2361 ended on an end triangle. After a roll that touched a heap the robot's heading differed from the table's by 10° in the median, by more than 20° in one roll of ten, and by 139° at most. After each run the robot was turned away from the heap and rolled three times: in 535 of the 540 runs it then stood on a rollable face on the floor, clear of the heap.
+<!-- END GENERATED heaps -->
+
 - **No reply says that a primitive failed.** A primitive that did not tip the robot, or that pushed it against
   something, ends like any other: the states run, the robot returns to the rest shape, the hold passes. What your
   program can look at is the camera, while the robot is in view, and the telemetry anywhere. A roll that tipped the

@@ -11,7 +11,7 @@ every episode. The camera hangs where `mission()` says, like the camera of any s
 the south wall to about 4 m north of it; the north part of this site is outside the picture.
 
 <!-- BEGIN GENERATED plan -->
-Site rectangle 4.4 × 5.8 m; perimeter wall 0.20 m thick and 0.90 m high, standing outside the rectangle; simulated time limit 1440 s.
+Site rectangle 4.4 × 5.8 m; perimeter wall 0.20 m thick and 0.90 m high, standing outside the rectangle; simulated time limit 1400 s.
 
 **The ridge** runs across the whole width from y = 1.60 to y = 2.15 m. From west to east:
 
@@ -43,7 +43,7 @@ The covers of the covered openings are 0.10 m thick.
 
 **The side wall**: x 2.62 to 2.80 m, y 2.15 to 5.80 m (0.18 m thick), up to the roof's underside. **One roof**, 0.12 m thick, covers the roofed room, the roofed passage and the roofed chamber: x 2.62 to 4.40 m, y 2.15 to 5.80 m.
 
-**The free-standing wall**: x 0.55 to 2.05 m, y 3.20 to 3.35 m (1.50 m long), 0.60 m high.
+**The free-standing wall**: x 0.55 to 2.05 m, y 3.50 to 3.65 m (1.50 m long), 0.60 m high.
 
 **Ground strips** (flush with the floor):
 
@@ -69,6 +69,13 @@ The covers of the covered openings are 0.10 m thick.
 |---|---|---|---|---|---|
 | red | 0.15 | 0.45 | 0.20 | 0.48 | 0.30 |
 | blue | 4.12 | 4.40 | 0.00 | 0.30 | 0.36 |
+
+**Heaps** on the open floor (for each heap the bounding rectangle of its outline, where it stands more than 1 mm above the floor, and the height of its highest point, measured to 1 mm):
+
+| heap | kind | x from (m) | x to (m) | y from (m) | y to (m) | highest point (m) | stands |
+|---|---|---|---|---|---|---|---|
+| heap 1 | rubble heap | 3.791 | 4.120 | 0.001 | 0.294 | 0.272 | against the site's south wall |
+| heap 2 | mound of fill | 1.051 | 1.554 | 3.178 | 3.500 | 0.197 | against the free-standing wall's south face |
 
 **Plastic chips** (flat, lying on the floor, in the end caps' colours):
 
@@ -99,3 +106,4 @@ The covers of the covered openings are 0.10 m thick.
 - The gravel strip and the dust strip are the two kinds of loose ground of the sites.
 - North of y = 4.0 m and west of the roofed part (x 0 to 2.62 m, y 4.0 to 5.8 m) the floor is open, level concrete
   with nothing on it; the camera shows only its southern edge.
+- The rubble heap and the mound of fill on the open floor are the two kinds of heaps of the sites.

@@ -8,10 +8,11 @@
 #
 # The grader runs as root with nothing of the agent home on its import or configuration paths: HOME and the XDG /
 # matplotlib folders point at root's own, PYTHONNOUSERSITE=1 and `-s` keep any user site-packages out. The cell renders
-# the search camera through MuJoCo's classic renderer on OSMesa (the practice ground's cell uses the same path and
-# settings) and never writes Mesa's shader cache. Every thread count is pinned here, so that grading does not depend on
-# the image's variables: the physics is single-threaded (the simulation base), 8 rasteriser threads for the frames
-# (0.20-0.25 s a frame), BLAS 2 (numpy, scipy: the privileged reference's planner).
+# the search camera on the CPU (the practice ground's cell uses the same path and settings): the robot's depth and mask
+# by MuJoCo's classic renderer on OSMesa, the robot's colour by MuJoCo's physically based renderer on Mesa's software
+# Vulkan driver, into the site's plate bundle; it never writes Mesa's shader cache. Every thread count is pinned here,
+# so that grading does not depend on the image's variables: the physics is single-threaded (the simulation base), 8
+# rasteriser threads for the frames, BLAS 2 (numpy, scipy: the privileged reference's planner).
 set -euo pipefail
 STAGE="$(pwd -P)"
 export ARB_STAGE_MODE="$(stat -c %a "$STAGE")"
@@ -31,6 +32,13 @@ mkdir -p "$ROOT_PAYLOAD"
 cp -r "$STAGE/setup_payload/." "$ROOT_PAYLOAD/"
 chown -R root:root "$ROOT_PAYLOAD"
 chmod -R u+rwX,go+rX,go-w "$ROOT_PAYLOAD"
+# The hidden sites' plate bundles (plates.tar.xz) before they are on the asset dataset: the local copy in this folder
+# replaces the download (verify.py checks it against the sha256 and the file count grader_config.json pins, exactly as
+# a download; with no hidden_plates in grader_config.json nothing is fetched). Once published, assets/ is not in the
+# task folder and the pinned URL is used.
+if [ -f "$STAGE/assets/plates.tar.xz" ]; then
+  export ARB_HIDDEN_PLATES_TARBALL="$STAGE/assets/plates.tar.xz"
+fi
 export HOME=/root PYTHONNOUSERSITE=1 XDG_CONFIG_HOME=/root/.config XDG_CACHE_HOME=/root/.cache \
   MPLCONFIGDIR=/root/.config/matplotlib
 export MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa MESA_SHADER_CACHE_DISABLE=true LP_NUM_THREADS=8 \

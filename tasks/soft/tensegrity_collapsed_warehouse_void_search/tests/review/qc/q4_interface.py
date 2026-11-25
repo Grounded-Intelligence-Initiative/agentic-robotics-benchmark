@@ -1,6 +1,10 @@
-"""QC Q4: the station's interface on the FROZEN hidden sites does not leak (task version 1.1).
+"""QC Q4: the station's interface on the FROZEN hidden sites does not leak (task version 2.0).
 
-    q4_interface.py OUT_DIR [--sites h01,...,h10] [--detail-sites h01,h04]
+    q4_interface.py OUT_DIR [--sites h01,...,h10] [--detail-sites h01,h04] [--plate-root DIR]
+
+With the plate backend (grader_config.json render_backend plate_filament) the servers that render need the installed
+bundles of the hidden sites: --plate-root is the absolute path of such a plate root (verify.py installs one only
+inside its own stage; grader_config.json's plate_root is a path under the stage).
 
 In-process cells (tests/voidcell/server.py VoidCellServer, mode hidden, the task's grader_config.json and the hidden
 limits.json; the station through voidcell.client.connect_handler, i.e. the wire's JSON round trip) on frozen hidden
@@ -9,11 +13,21 @@ site packages. Checks, each a row of OUT_DIR/q4_interface.json:
      not an object): the reply is {"error": "bad_argument", "detail"} and nothing changes (state hash, clock, budgets)
   W  every reply of every call made here (valid, refused, bad) has keys inside protocol.REPLY_KEYS / NESTED_KEYS and
      an error code inside protocol.ERROR_CODES; the whitelist itself has no layout word
-  M  mission() on every site of --sites: exactly the whitelisted keys, no layout key at any depth, no number of the
-     site's hidden layout (boxes with the rubble under the slab, openings, slab, the void's runs, pockets and chamber,
-     plug, patches, chips, frictions, true extrinsic, seeds) among its numbers; the announced constants are the
+  M  mission() on every site of --sites (default: the ten hidden sites h01-h10; --detail-sites does not change it):
+     exactly the whitelisted keys, no layout key at any depth, no number of the site's hidden layout (hidden_numbers:
+     boxes with the rubble under the slab, openings, slab, the void's runs, pockets and chamber, plug, patches, chips,
+     frictions, the heaps of the open floor (rectangle, centre, top, line, grid, placement); it does not walk
+     site["camera"], and its 3rd-decimal filter drops integers such as seeds) among its numbers; the given pose
+     differs from the true one in translation and in rotation; the announced constants are the
      acceptance file's (weights 0.05 / 0.15 / 0.80, credit radii 0.20 / 0.40 m, dwell 20 s, still 0.02 m, 3 reports
      per point) and the hidden time limit; the site rectangle is the family's [4.4, 5.8] m
+     Given by design in the row "no number of the hidden layout": the pad and search-point coordinates, by value
+     wherever they stand in mission() (the rule of version 1.1), and the twelve numbers of the upper 3 x 4 of
+     mission()["camera"]["T_world_camera"], by location, these only when the given pose lies within the generator's
+     bounds of the true pose (translation error <= 5 mm + 2e-6 m, rotation angle <= 0.2 + 0.005 deg; outside them the
+     row fails). A hidden number at any other place of mission(), the rest of the camera block included, fails, also
+     when the same value stands among the twelve, unless it equals a pad or search-point coordinate. Every hidden
+     number equal to a given number is listed, whether it also fails or not.
   R  the station's command refusals (invalid_name, invalid_bottom, busy, out_of_range, budget_exhausted for
      frames and the fourth report, dt off the grid) change nothing; state calls after the end answer episode_over
   P  privileged and practice calls without the token: reference_run -> forbidden, reset -> forbidden, unknown method
@@ -26,6 +40,7 @@ site packages. Checks, each a row of OUT_DIR/q4_interface.json:
 Every reply (frames without their pixel blobs) is appended to OUT_DIR/replies.jsonl for the leak scan (Q5); no reply
 holds the hidden box names (rubble__void_debris, plug__, support__void_fill) or the word void_debris.
 The refusal, privileged, bad-argument checks run on the first of --detail-sites, the pose checks on the second.
+Tool version 2.1 on task 2.0: the given pose is exempt by location within the calibration bounds.
 """
 import argparse
 import ast
@@ -37,7 +52,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEV = os.path.normpath(os.path.join(HERE, "..", ".."))
-TASK = DEV[:-len("-dev")]
+TASK = os.path.join(os.environ["ARB_SRC_ROOT"], os.path.basename(DEV)[:-len("-dev")]) if os.environ.get("ARB_SRC_ROOT") else DEV[:-len("-dev")]
 TESTS = os.path.join(TASK, "tests")
 sys.path.insert(0, TESTS)
 
@@ -50,8 +65,13 @@ from voidcell._lib import protocol as proto  # noqa: E402
 LAYOUT_WORDS = ("box", "boxes", "opening", "openings", "slab", "void", "gallery", "plug", "mouth", "r1", "r2", "patch",
                 "patches", "chip", "chips", "friction", "true", "seed", "cls", "class", "decoy", "blind", "tunnel",
                 "gap", "slot", "rubble", "crate", "support", "roof", "wall", "envelope", "lighting", "light", "debris",
-                "chamber", "pocket", "pockets", "runs", "corridor", "cavity", "dead_end", "partition", "fill")
+                "chamber", "pocket", "pockets", "runs", "corridor", "cavity", "dead_end", "partition", "fill",
+                "heap", "heaps")
+PLATE_ROOT = None
 HIDDEN_NAMES = ("rubble__void_debris", "void_debris", "plug__", "support__void_fill")
+# the site generator's calibration error (sitegen draw_camera: |dt| <= 5 mm, angle <= 0.2 deg) + the 6-decimal rounding
+POSE_T_BOUND_M = 0.005 + 2e-6
+POSE_R_BOUND_DEG = 0.2 + 0.005
 
 
 class Rec(object):
@@ -88,6 +108,8 @@ def load_cfg():
     lim = json.load(open(os.path.join(TESTS, "hidden", "limits.json")))
     c = {k: cfg[k] for k in ("limits", "pose_source", "render_backend", "msaa_rgb") if k in cfg}
     c["limits"] = dict(c.get("limits") or {}, time_limit_s=float(lim["time_limit_s"]))
+    if PLATE_ROOT:
+        c["plate_root"] = PLATE_ROOT
     return c
 
 
@@ -176,11 +198,14 @@ def check_bad_arguments(R, tag):
 
 
 def hidden_numbers(site):
-    """Every number of the site's hidden layout with at least three significant decimals (rounded to 4 decimals):
-    params, bands, both rows' openings, the void, patches, boxes, lighting, physics, chips, free blocks. mission()
-    gives the pad, the search points, the site size and the calibrated (given) extrinsic by design; the true
-    extrinsic is checked separately (it must differ from the given one); the family constants (envelope, classes),
-    the draw statistics and the generator's bookkeeping are not layout."""
+    """The numbers of the site's hidden layout (rounded to 4 decimals, each with its path) under the keys params,
+    bands, both rows' openings, the void, patches, boxes, lighting, physics, chips, free blocks and the heaps of the
+    open floor (every heap's rect, cx, top_m, y_line, grid and the placement's numbers). Only numbers with
+    abs(v) >= 0.05 and round(v, 3) != round(v, 2) are kept: integers such as seeds, numbers with two decimals or fewer
+    and numbers within 0.0005 of a two-decimal number (e.g. 0.4501) are dropped. site["camera"] is not walked: the true
+    extrinsic is not among these numbers (check_mission compares it with the given pose instead); check_mission says
+    which numbers of mission() are given by design; the family constants (envelope, classes), the draw statistics and
+    the generator's bookkeeping are not layout."""
     out = set()
 
     def walk(o, path):
@@ -195,7 +220,7 @@ def hidden_numbers(site):
             if math.isfinite(v) and abs(v) >= 0.05 and round(v, 3) != round(v, 2):
                 out.add((round(v, 4), "/".join(path)))
     for k in ("params", "bands", "r1", "r2", "void", "patches", "boxes", "lighting", "physics", "chips",
-              "free_blocks"):
+              "free_blocks", "heaps"):
         if k in site:
             walk(site[k], (k,))
     return out
@@ -226,6 +251,23 @@ def keys_of(o, path=()):
     return out
 
 
+def pose_error(T_true, T_given):
+    """(|t_given - t_true| in m, the rotation angle of R_given R_true^T in degrees) of two 4 x 4 poses; (inf, inf) when
+    either is not a finite 4 x 4. The angle is 2 asin(|R_given - R_true|_F / (2 sqrt 2)): for two rotations that norm is
+    |R_given R_true^T - I|_F = 2 sqrt(2) sin(angle / 2), so it is accurate near zero (no arccos of a number near 1), it
+    is zero for equal matrices (neither is exactly orthonormal after the 6-decimal rounding), and a change of any entry
+    counts (a matrix that is not a rotation is not read as a small rotation)."""
+    try:
+        A, B = np.asarray(T_given, dtype=float), np.asarray(T_true, dtype=float)
+    except (TypeError, ValueError):
+        return math.inf, math.inf
+    if A.shape != (4, 4) or B.shape != (4, 4) or not (np.isfinite(A).all() and np.isfinite(B).all()):
+        return math.inf, math.inf
+    t = float(np.linalg.norm(A[:3, 3] - B[:3, 3]))
+    s = float(np.linalg.norm(A[:3, :3] - B[:3, :3])) / (2.0 * math.sqrt(2.0))
+    return t, math.degrees(2.0 * math.asin(min(1.0, s)))
+
+
 def check_mission(R, tag):
     srv = server(tag, render=False)
     m = raw(srv, R, tag, "mission", {})
@@ -237,15 +279,33 @@ def check_mission(R, tag):
     hv = {}
     for v, p in hid:
         hv.setdefault(v, []).append(p)
+    Tt = srv.site["camera"]["true"]["T_world_camera"]
+    Tg = m["camera"]["T_world_camera"]
+    t_err, r_err = pose_error(Tt, Tg)
+    in_bounds = t_err <= POSE_T_BOUND_M and r_err <= POSE_R_BOUND_DEG
     shown = sorted(set(round(v, 4) for v in numbers_of(m)))
     given = set(round(v, 4) for v in numbers_of({"pad": m["pad"]["xy"], "sp": [p["xy"] for p in m["search_points"]]}))
-    lay = {v: hv[v] for v in shown if v in hv and v not in given}
-    coinc = {v: hv[v] for v in shown if v in hv and v in given}
-    R.check("M", not lay, site=tag, what="no number of the hidden layout (>= 3 significant decimals) in mission()",
+    rest = json.loads(json.dumps(m))      # mission() without the exempt places (the pose's bottom row stays)
+    pose12 = set()
+    if in_bounds:
+        pose12 = set(round(v, 4) for v in numbers_of(Tg[:3]))
+        rest["camera"]["T_world_camera"] = rest["camera"]["T_world_camera"][3:]
+    others = sorted(set(round(v, 4) for v in numbers_of(rest)))
+    lay = {v: hv[v] for v in others if v in hv and v not in given}
+    coinc = {v: hv[v] for v in shown if v in hv and (v in given or v in pose12)}
+    R.check("M", not lay and in_bounds, site=tag,
+            what="no number of the hidden layout (>= 3 significant decimals) in mission()",
             n_numbers=len(shown), layout_hits={str(k): v[:4] for k, v in lay.items()},
             given_coordinates_equal_to_a_hidden_number={str(k): v[:4] for k, v in coinc.items()},
-            note="pad / search-point coordinates (%d numbers) are given by design; a hidden number derived from one of "
-                 "them (point 3's clearance = its distance to a site wall) is listed, not failed" % len(given))
+            pose_within_calibration_bounds=bool(in_bounds),
+            **({} if in_bounds else {"why": "the given pose is outside the generator's bounds of the true pose: its "
+                                            "twelve numbers are not exempt"}),
+            note="pad / search-point coordinates (%d numbers, by value wherever they stand in mission()) and, within "
+                 "the calibration bounds, the twelve numbers of the given pose's upper 3 x 4 (by location) are given "
+                 "by design; a hidden number equal to one of them (point 3's clearance = its distance to a site wall; "
+                 "a chance equality at the 4th decimal with the calibrated pose) is listed; it fails when the same "
+                 "value also stands at a place of mission() that is not exempt and it is not a pad or search-point "
+                 "coordinate" % len(given))
     acc = load_acceptance()
     lim = json.load(open(os.path.join(TESTS, "hidden", "limits.json")))
     want_w = {int(k): float(v) for k, v in acc["weights"].items()}
@@ -262,12 +322,12 @@ def check_mission(R, tag):
             what="mission() announces the acceptance file's constants and the hidden time limit",
             weights=got_w, credit_radius_m=m["credit_radius_m"], dwell_s=m["dwell_s"],
             time_limit_s=m["limits"]["time_limit_s"], reports_per_point=m["limits"]["reports_per_point"])
-    Tt = srv.site["camera"]["true"]["T_world_camera"]
-    Tg = m["camera"]["T_world_camera"]
     dt = max(abs(float(Tt[i][3]) - float(Tg[i][3])) for i in range(3))
     dR = max(abs(float(Tt[i][j]) - float(Tg[i][j])) for i in range(3) for j in range(3))
-    R.check("M", dt > 1e-6 or dR > 1e-6, site=tag, what="mission() gives the calibrated extrinsic, not the true one",
-            max_translation_diff_m=round(dt, 6), max_rotation_entry_diff=round(dR, 6))
+    R.check("M", t_err > 1e-6 and r_err > 1e-4, site=tag,
+            what="mission() gives the calibrated extrinsic, not the true one",
+            max_translation_diff_m=round(dt, 6), max_rotation_entry_diff=round(dR, 6),
+            translation_error_m=round(t_err, 6), rotation_angle_deg=round(r_err, 6))
     srv.close()
     return m
 
@@ -441,7 +501,15 @@ def main():
     ap.add_argument("out")
     ap.add_argument("--sites", default=",".join("h%02d" % k for k in range(1, 11)))
     ap.add_argument("--detail-sites", default="h01,h04")
+    ap.add_argument("--plate-root", default=None)
     a = ap.parse_args()
+    global PLATE_ROOT
+    if a.plate_root:
+        if not os.path.isabs(a.plate_root) or not os.path.isdir(a.plate_root):
+            raise SystemExit("q4: --plate-root must be an absolute path of an existing folder")
+        PLATE_ROOT = a.plate_root
+    elif load_cfg().get("render_backend") == "plate_filament":
+        raise SystemExit("q4: the plate backend needs --plate-root (the installed bundles of the hidden sites)")
     os.makedirs(a.out, exist_ok=True)
     R = Rec(a.out)
     tags = a.sites.split(",")
@@ -460,7 +528,7 @@ def main():
     R.check("W", not any(h in txt for h in HIDDEN_NAMES), what="no reply holds a hidden box name or void_debris",
             hits=[h for h in HIDDEN_NAMES if h in txt])
     n_ok = sum(1 for r in R.rows if r["ok"])
-    out = {"package": "QC Q4 (version 1.1)", "sites": tags, "detail_sites": det, "n_checks": len(R.rows), "n_ok": n_ok, "pass": n_ok == len(R.rows),
+    out = {"package": "QC Q4 (version 2.1)", "sites": tags, "detail_sites": det, "n_checks": len(R.rows), "n_ok": n_ok, "pass": n_ok == len(R.rows),
            "n_replies": R.n_replies, "rows": R.rows,
            "replies_sha256": hashlib.sha256(open(os.path.join(a.out, "replies.jsonl"), "rb").read()).hexdigest()}
     with open(os.path.join(a.out, "q4_interface.json"), "w") as fh:

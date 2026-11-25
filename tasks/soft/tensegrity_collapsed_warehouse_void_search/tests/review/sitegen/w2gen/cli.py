@@ -1,7 +1,7 @@
 """Command line of the W2 generator.
 
-  python -I -B tools/sitegen/w2gen/cli.py --seed 11 --out DIR          one site package in DIR/w2_s0011/
-  python -I -B tools/sitegen/w2gen/cli.py --batch 101-180 --out DIR    one package per seed + DIR/batch_101_180.json
+  python -I -B cli.py --seed 11 --out DIR          one site package in DIR/w2_s0011/
+  python -I -B cli.py --batch 101-180 --out DIR    one package per seed + DIR/batch_101_180.json
 
 A site package = site.json (every coordinate and the truth: which mouth is open, the plug, frictions, lighting,
 true and given camera extrinsics), site.xml (the world only, no robot) and qc.json (G1-G11).

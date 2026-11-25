@@ -1,7 +1,7 @@
 """Command line of the W3 generator (version 1.1 site family, rubble included).
 
-  python -I -B tools/sitegen/w3gen/cli.py --seed 11 --out DIR            one package DIR/w3_s0011/
-  python -I -B tools/sitegen/w3gen/cli.py --batch 1-60 --out DIR         one package per seed + DIR/batch_1_60.json
+  python -I -B cli.py --seed 11 --out DIR            one package DIR/w3_s0011/
+  python -I -B cli.py --batch 1-60 --out DIR         one package per seed + DIR/batch_1_60.json
   options: --seeds 1,5,9 (instead of the range), --no-render (skip G3), --cf-render (G7c also compares the classic
            renderer's RGB and depth frames of the three counterfactual sites), --no-rubble (regression only: the
            sites without the last assembly step; not version 1.1 sites), --tag w3, --pool (allow the hidden and

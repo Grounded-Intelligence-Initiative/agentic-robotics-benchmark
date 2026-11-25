@@ -1,6 +1,6 @@
 """Maintainer variants of the privileged reference, for the grader's own QC (QC Q2 / Q3).
 
-NOT run by verify.py and never given to anyone: the QC runner (development folder, tools/qc/qc_verify.py) copies this
+NOT run by verify.py and never given to anyone: the QC runner (qc_verify.py, the maintainers' tool) copies this
 file over reference/reference.py of a SCRATCH copy of tests/ (the stage's `reference_dir`, the maintainers' switch of
 VoidCellServer.reference_run) and writes the chosen plan next to it as qc_variant.json. Everything else of the stage
 is the task's own bytes: verify.py, the cell, the scoring, the frozen hidden set, the oracle's submission and token.

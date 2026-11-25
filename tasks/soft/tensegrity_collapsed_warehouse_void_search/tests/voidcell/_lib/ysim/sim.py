@@ -414,7 +414,7 @@ class Simulator:
     # ---------------- determinism ----------------
     def state_hash(self):
         """SHA-256 of the full MuJoCo integration state + cable rest lengths and stiffnesses + motor and controller
-        state (idea from the frozen kit tkit/validity.py state_hash)."""
+        state (idea taken from an earlier kit that is not published)."""
         spec = mujoco.mjtState.mjSTATE_INTEGRATION
         buf = np.zeros(mujoco.mj_stateSize(self.m, spec))
         mujoco.mj_getState(self.m, self.d, buf, spec)

@@ -6,7 +6,7 @@ the practice debrief (a hidden episode has none).
 For each practice site (environment/practice_ground/sites/pN.tar.xz, pinned in sites.json): one in-process cell in
 mode practice (the practice ground's configuration from sites.json: limits, time limit, reports per point from
 acceptance.yaml), the D9 plan of the maintainer variant of the privileged reference (variants/qc_reference.py next
-to this file, with the plan file of the development folder's tools/degenerate/D9/) as the cell's privileged call,
+to this file, with the plan file of tests/review/degenerate/D9/) as the cell's privileged call,
 the practice ground's debrief recorder attached from the reset, and the practice debrief built at the end exactly as
 the practice service builds it (voidscore.debrief.build, kind practice: the schema check runs inside). Checks per
 site: the debrief builds and passes its schema (each debrief is written next to OUT.json as debrief_<site>.json, for
@@ -23,7 +23,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEV = os.path.normpath(os.path.join(HERE, "..", ".."))
-TASK = DEV[:-len("-dev")]
+TASK = os.path.join(os.environ["ARB_SRC_ROOT"], os.path.basename(DEV)[:-len("-dev")]) if os.environ.get("ARB_SRC_ROOT") else DEV[:-len("-dev")]
 TESTS = os.path.join(TASK, "tests")
 PG = os.path.join(TASK, "environment", "practice_ground")
 VARIANTS = os.path.join(HERE, "variants")

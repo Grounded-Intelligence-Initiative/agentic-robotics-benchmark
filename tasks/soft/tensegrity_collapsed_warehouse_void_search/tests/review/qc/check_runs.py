@@ -1,7 +1,12 @@
-"""Read the QC verify runs on task version 1.1 and judge them (Q1 oracle runs, Q2 / Q3 variants, degenerate
-submissions D0-D6, D8, D9).
+"""Read the QC verify runs on task version 2.0 and judge them (Q1 oracle runs, Q2 / Q3 variants, degenerate
+submissions D0-D6, D8, D9, D10).
 
-    check_runs.py --runs DIR [--oracle-dir DIR2 --oracle TAG ...] [--frames A.json B.json] --out OUT.json
+    check_runs.py --runs DIR [--oracle-dir DIR2 --oracle TAG ...] [--frames A.json B.json | --frames-compare CMP.json]
+                  --out OUT.json
+
+Tags: D0-D4, D8, D9, D10 as named; D5 / D6 as D5_no_token / D6_wrong_token or D5 / D6. --frames-compare is the output
+of q1_frames.py compare (the plate backend's reading: depth hash and the bytes outside the robot window equal, >= 99 %
+of the window's pixels within 8 levels); --frames compares the two runs' rgb + depth hashes (the classic camera).
 
 DIR holds the summary_<tag>.json files of qc_verify.py and their stages (stage_<tag>/out/episodes.json: the cell's
 full record of every episode); the oracle runs (the freeze's two anchor runs through the same verify.py) may sit in
@@ -12,7 +17,7 @@ zero 0.40 m), the weights 0.05 / 0.15 / 0.80, the last accepted report per point
 points and the pad are the site package's (from the frozen archive), except where a maintainer variant moved them
 (its log in the reference summary gives the new coordinates). Expected values: oracle S = 1 everywhere; the
 variants' from variants/plans.json (next to this file); the degenerate submissions 0 (D8 and D9: their plan files in
-the development folder's tools/degenerate/).
+tests/review/degenerate/).
 Record mutants (Q2's motion row in isolation, on real records with a counted, valid report of point 3): one 10 Hz
 truth sample inside the window of that report moved by 0.03 m -> c3 = 0 with the only reason 'moved_in_window'; by
 0.019 m -> no change; both through tests/voidscore.scoring.score_record (the grader's function) and this file's own
@@ -22,6 +27,10 @@ against it; every report of point 3 there gives c3 = 0 (and would give 0 with a 
 D9's stuck reading: the debrief's rule (acceptance.yaml `stuck`: 3 primitives in a row each moving < 0.03 m and
 turning < 5 deg) applied here to the record (the 10 Hz centroid and heading at each primitive's start and end); a
 hidden episode has no debrief, so this is the reading a practice debrief would give from the same motion.
+D10's check (heap_press): the plan found a heap of the open floor and pushed into it until the time limit, no report
+and no finish were sent, the cell-side monitor counted contact samples with the pressed heap (the count is kept for
+the read-out tool's heap-contact line), the episode ended at the time limit with 0 internal errors; the stuck reading
+as for D9.
 """
 import argparse
 import copy
@@ -35,7 +44,7 @@ import tarfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEV = os.path.normpath(os.path.join(HERE, "..", ".."))
-TASK = DEV[:-len("-dev")]
+TASK = os.path.join(os.environ["ARB_SRC_ROOT"], os.path.basename(DEV)[:-len("-dev")]) if os.environ.get("ARB_SRC_ROOT") else DEV[:-len("-dev")]
 TESTS = os.path.join(TASK, "tests")
 DEGEN = os.path.join(DEV, "tools", "degenerate")
 
@@ -348,18 +357,40 @@ def judge_d9(rec, mine, qv):
     return out
 
 
+def judge_d10(rec, mine, qv):
+    log = (qv or {}).get("log") or []
+    tg = [e for e in log if e["kind"] == "heap_target"]
+    pr = [e for e in log if e["kind"] == "pressed_to_the_limit"]
+    heap = tg[0]["heap"] if tg else None
+    mon = ((rec.get("reference") or {}).get("monitor") or {}).get("contact_box_samples") or {}
+    heap_samples = {k: int(v) for k, v in mon.items() if k.startswith("heap__")}
+    out = {"heap_cls": tg[0].get("cls") if tg else None, "approach_side": pr[0].get("side") if pr else None,
+           "push_n": (pr[0].get("push") or {}).get("n") if pr else None,
+           "heap_contact_samples_10hz": heap_samples, "pressed_heap_samples_10hz": heap_samples.get(heap, 0),
+           "reports_sent": len(rec.get("reports") or []), "finish_sent": pr[0].get("finish_sent") if pr else None,
+           "done_reason": rec.get("done_reason"), "sim_time_s": rec.get("sim_time_s"),
+           "accepted_reports_mine": sum(1 for r in mine["reports"] if r["accepted"]),
+           "stuck_reading": stuck_reading(rec)}
+    out["ok"] = bool(tg) and bool(pr) and out["pressed_heap_samples_10hz"] >= 1 and out["reports_sent"] == 0 and \
+        out["accepted_reports_mine"] == 0 and pr[0].get("finish_sent") is False and \
+        str(rec.get("done_reason")).startswith("time_limit") and int(rec.get("internal_errors") or 0) == 0 and \
+        int(rec.get("internal_errors_live") or 0) == 0
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", required=True)
     ap.add_argument("--oracle", nargs="*", default=["oracleA", "oracleB"])
     ap.add_argument("--oracle-dir", default=None, help="where the oracle runs' summaries are (default: --runs)")
     ap.add_argument("--frames", nargs=2, default=None)
+    ap.add_argument("--frames-compare", default=None, help="q1_frames.py compare's output (the plate backend)")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     seeds = json.load(open(os.path.join(TESTS, "hidden", "seeds.json")))
     anchor = json.load(open(os.path.join(TESTS, "anchor.json")))
     plans = json.load(open(os.path.join(HERE, "variants", "plans.json")))["variants"]
-    out = {"package": "the grader's QC on version 1.1: Q1 / Q2 / Q3 and the degenerate submissions", "runs_dir": a.runs,
+    out = {"package": "the grader's QC on version 2.0: Q1 / Q2 / Q3 and the degenerate submissions", "runs_dir": a.runs,
            "anchor": {k: anchor.get(k) for k in ("metric", "value", "full_at")}}
     # ---- Q1: the oracle runs
     q1 = {"runs": {}}
@@ -395,6 +426,12 @@ def main():
                         "indices": [x["index"] for x in fa["frames"]], "env": fa["env"],
                         "ok": all(same) and len(same) == 20 and fa["state_hash"] == fb["state_hash"]
                         and fa["pid"] != fb["pid"]}
+    if a.frames_compare:
+        fc = json.load(open(a.frames_compare))
+        q1["frames"] = {k: fc.get(k) for k in ("n", "processes_differ", "state_equal", "depth_equal", "outside_equal",
+                                               "windows", "window_min_share", "window_max_diff", "rgb_hash_equal",
+                                               "distinct_frames", "lines")}
+        q1["frames"]["ok"] = bool(fc.get("pass_")) and fc.get("n") == 20
     q1["ok"] = all(v and v["all_S_1"] and v["all_same_as_my_scorer"] and v["all_equal_admission_hash"] and
                    not v["debrief_files"] and all(m["ok"] for m in v["mutants_on_record"])
                    for v in q1["runs"].values()) and q1["runs_hash_equal"] and q1["anchor_reproduced"] and \
@@ -434,9 +471,13 @@ def main():
     # ---- degenerate submissions
     deg = {}
     expect = {"D0": (0.0, 0.0), "D1": (1.0, 0.0), "D2": (1.0, 0.0), "D3": (1.0, 0.0), "D4": (0.0, 0.0),
-              "D5_no_token": (1.0, 0.0), "D6_wrong_token": (1.0, 0.0), "D8": (1.0, 1.0), "D9": (1.0, 1.0)}
+              "D5_no_token": (1.0, 0.0), "D6_wrong_token": (1.0, 0.0), "D8": (1.0, 1.0), "D9": (1.0, 1.0),
+              "D10": (1.0, 1.0)}
+    alias = {"D5_no_token": "D5", "D6_wrong_token": "D6"}
     for tag, (ec, epriv) in expect.items():
         s, recs = load_run(a.runs, tag)
+        if s is None and tag in alias:
+            s, recs = load_run(a.runs, alias[tag])
         if s is None:
             deg[tag] = None
             continue
@@ -464,13 +505,13 @@ def main():
         if tag in ("D5_no_token", "D6_wrong_token"):
             deg[tag]["illegal_calls_per_episode"] = [r["illegal_call_count"] for r in rows]
             ok = ok and all(int(r["illegal_call_count"] or 0) >= 1 for r in rows)
-        if tag in ("D8", "D9"):
+        if tag in ("D8", "D9", "D10"):
             per = []
             for rec, r in zip(recs, rows):
                 site = site_of(os.path.join(TESTS, "hidden", [p for p in seeds["sites"] if p["tag"] == r["tag"]][0]["archive"]))
                 pts, pad, qv = moved_coords(rec, site)
                 mine = my_score(rec, pts, pad)
-                j = (judge_d8 if tag == "D8" else judge_d9)(rec, mine, qv)
+                j = {"D8": judge_d8, "D9": judge_d9, "D10": judge_d10}[tag](rec, mine, qv)
                 j["tag"] = r["tag"]
                 j["internal_errors"] = r["internal_errors"]
                 per.append(j)

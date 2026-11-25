@@ -14,7 +14,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEV = os.path.normpath(os.path.join(HERE, "..", ".."))
-TASK = DEV[:-len("-dev")]
+TASK = os.path.join(os.environ["ARB_SRC_ROOT"], os.path.basename(DEV)[:-len("-dev")]) if os.environ.get("ARB_SRC_ROOT") else DEV[:-len("-dev")]
 SRC_CELL = os.path.join(TASK, "tests", "voidcell")
 SRC_SCORE = os.path.join(TASK, "tests", "voidscore")
 PG = os.path.join(TASK, "environment", "practice_ground")

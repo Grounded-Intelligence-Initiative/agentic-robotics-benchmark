@@ -7,14 +7,22 @@ exceptions: the practice ground's copy of the cell (environment/practice_ground/
 tests/voidscore/ as voidcell/voidscore/, installed for the practice ground's own account only, mode 700), the given
 client library (environment/setup/payload/given/lib/voidcell/client.py = tests/voidcell/client.py) and
 tests/setup_payload/ (the grader's byte copy of the givens). The practice ground holds no reference program, no token
-and no hidden site package. Every agent-visible file is a small text file or picture in git (no asset dataset, no
-fetched payload). tests/given_hashes.json, the grader's pin of the givens, equals the givens. The image installs only
-requirements.txt and practice_ground/ and derives from the pinned base. Stdlib only; nothing is downloaded or run.
+and no hidden site package. Every given in the agent home is a small text file or picture in git. The plate bundles
+(the search camera's offline environment of each site) are not in git: the calibration and practice sites' four come
+from the benchmark's asset dataset through environment/assets.sha256 and the vendored fetcher (byte-identical to the
+repository's shared/task_assets/fetch_assets.py), installed into the practice ground (readable by its own account
+only) in the same image step that removes the download; the hidden sites' ten are one tarball pinned in
+grader_config.json (hidden_plates), fetched by verify.py, and only its local copy tests/assets/plates.tar.xz may sit in
+the task folder before it is published. No other plate file and no development bundle is in the task folder.
+tests/given_hashes.json, the grader's pin of the givens, equals the givens. The image installs only requirements.txt,
+practice_ground/ and the asset list with its fetcher, and derives from the pinned base. Stdlib only; nothing is
+downloaded or run.
 """
 import hashlib
 import json
 import os
 import re
+import tarfile
 import tomllib
 import unittest
 from pathlib import Path
@@ -28,6 +36,11 @@ PRACTICE = ENV / "practice_ground"
 TESTS = TASK / "tests"
 SOLUTION = TASK / "solution"
 EMPTY = hashlib.sha256(b"").hexdigest()
+FETCHER = REPO / "shared" / "task_assets" / "fetch_assets.py"
+PRACTICE_BUNDLES = ("cal", "p1", "p2", "p3")
+# the files of a plate bundle (the plate backend's format): none of them may sit in the task folder outside tests/assets/
+PLATE_FILES = ("meta.json", "plate_ldr.png", "plate_lin.npz", "depth.npz", "depth4.npz", "sunfrac.npz", "air.npz",
+               "sunvis.npz", "light.json")
 
 
 def _sha(path):
@@ -73,8 +86,7 @@ class TaskLayout(unittest.TestCase):
         self.assertEqual(found, [])
 
     def test_givens_are_small_files_in_git(self):
-        self.assertFalse((ENV / "assets.sha256").exists(), "this task fetches no payload")
-        self.assertFalse((ENV / "fetch_assets.py").exists())
+        self.assertFalse((PAYLOAD.parent / "assets").exists())
         tree = _tree(PAYLOAD)
         self.assertTrue(tree)
         total = 0
@@ -90,6 +102,60 @@ class TaskLayout(unittest.TestCase):
                      "given/lib/voidcell/__init__.py", "given/lib/voidcell/client.py", "example/operate.py",
                      "training/run_mission.py"):
             self.assertIn(want, tree)
+
+    def test_the_plate_bundles_are_fetched_not_in_git(self):
+        # the practice side: the asset list names the four bundles only, under plates/<name>/, pinned at one revision
+        self.assertEqual(_sha(ENV / "fetch_assets.py"), _sha(FETCHER))
+        head, rows = {}, []
+        for ln in (ENV / "assets.sha256").read_text(encoding="utf-8").splitlines():
+            if ln.startswith("#"):
+                k, _, v = ln[1:].partition(":")
+                head[k.strip()] = v.strip()
+            elif ln.strip():
+                digest, rel = ln.split(None, 1)
+                self.assertRegex(digest, r"^[0-9a-f]{64}$")
+                rows.append(rel.strip())
+        self.assertEqual(head.get("prefix"), "tasks/soft/%s/payload" % SLUG)
+        self.assertRegex(head.get("revision", ""), r"^[0-9a-f]{40}$")
+        self.assertNotEqual(head.get("revision"), "0" * 40, "the asset list still names the placeholder revision")
+        self.assertTrue(rows)
+        self.assertEqual(sorted({r.split("/")[1] for r in rows}), sorted(PRACTICE_BUNDLES))
+        self.assertTrue(all(r.split("/")[0] == "plates" and r.count("/") >= 2 for r in rows), rows)
+        for name in PRACTICE_BUNDLES:
+            self.assertIn("plates/%s/meta.json" % name, rows)
+        # the hidden side: one tarball of the asset dataset, pinned in grader_config.json (url, sha256, files)
+        cfg = json.loads((TESTS / "grader_config.json").read_text(encoding="utf-8"))
+        self.assertEqual(cfg["render_backend"], "plate_filament")
+        self.assertEqual(cfg["plate_root"], "hidden/plates")
+        spec = cfg["hidden_plates"]
+        self.assertRegex(spec["sha256"], r"^[0-9a-f]{64}$")
+        self.assertTrue(isinstance(spec["files"], int) and not isinstance(spec["files"], bool) and spec["files"] > 0)
+        m = re.match(r"^https://huggingface\.co/datasets/([^/]+/[^/]+)/resolve/([0-9a-f]{40})/(.+)$", spec["url"])
+        self.assertTrue(m, spec["url"])
+        self.assertEqual(m.group(1), head.get("repo"))
+        self.assertEqual(m.group(2), head.get("revision"))
+        self.assertEqual(m.group(3), "tasks/soft/%s/verifier/plates.tar.xz" % SLUG)
+        # the local copy (only until the tarball is published): exactly the pinned bytes, regular files of h01 ... h10
+        assets = TESTS / "assets"
+        if assets.exists():
+            self.assertEqual(sorted(p.name for p in assets.iterdir()), ["plates.tar.xz"])
+            self.assertEqual(_sha(assets / "plates.tar.xz"), spec["sha256"])
+            with tarfile.open(assets / "plates.tar.xz", "r:xz") as tf:
+                members = tf.getmembers()
+            self.assertTrue(all(mb.isfile() for mb in members))
+            self.assertEqual(len(members), spec["files"])
+            self.assertEqual(sorted({mb.name.split("/")[0] for mb in members}), ["h%02d" % i for i in range(1, 11)])
+        # the practice ground's sites.json names the same backend and its own plate root
+        practice = json.loads((PRACTICE / "sites.json").read_text(encoding="utf-8"))
+        self.assertEqual(practice["config"]["render_backend"], "plate_filament")
+        self.assertEqual(practice["config"]["plate_root"], "plates")
+        # no plate file and no development bundle anywhere else in the task folder
+        stray = [str(p.relative_to(TASK)) for p in TASK.rglob("*")
+                 if p.is_file() and not p.is_relative_to(assets) and (p.suffix == ".ktx" or p.name in PLATE_FILES)]
+        self.assertEqual(stray, [])
+        self.assertFalse((ENV / "assets").exists())
+        self.assertFalse((PRACTICE / "plates").exists())
+        self.assertFalse((TESTS / "hidden" / "plates").exists())
 
     def test_the_given_client_is_the_graders(self):
         self.assertEqual(_sha(PAYLOAD / "given" / "lib" / "voidcell" / "client.py"), _sha(TESTS / "voidcell" / "client.py"))
@@ -170,7 +236,20 @@ class TaskLayout(unittest.TestCase):
         copies = [ln.split()[1:] for ln in body if re.match(r"^(COPY|ADD)\b", ln)]
         self.assertEqual(copies, [["--from=ghcr.io/astral-sh/uv:0.11", "/uv", "/usr/local/bin/uv"],
                                   ["requirements.txt", "/tmp/requirements.txt"],
-                                  ["practice_ground", "/opt/voidcell-practice"]])
+                                  ["practice_ground", "/opt/voidcell-practice"],
+                                  ["fetch_assets.py", "assets.sha256", "/opt/task-assets/"]])
+        # the practice ground's bundles: fetched to a temporary folder, installed into the practice ground (before the
+        # step that gives the folder to its own account), the download and the list removed in the same step
+        code = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#"))
+        runs = [i for i in re.split(r"(?m)^(?=[A-Z]+\b)", code) if i.startswith("RUN")]
+        fetch = [r for r in runs if "fetch_assets.py" in r]
+        self.assertEqual(len(fetch), 1)
+        self.assertIn("plate_install.py practice /tmp/plates-fetch/plates", fetch[0])
+        self.assertIn("/opt/voidcell-practice/plates /opt/voidcell-practice/sites.json", fetch[0])
+        self.assertIn("rm -rf /tmp/plates-fetch /opt/task-assets", fetch[0])
+        self.assertLess(text.index("plate_install.py practice"), text.index("chown -R voidcell:voidcell /opt/voidcell-practice"))
+        self.assertIn("! runuser -u user -- ls /opt/voidcell-practice/plates", text)
+        self.assertNotIn("/opt/task-assets/payload", text)
         self.assertFalse([ln for ln in body if re.match(r"^\s*ENTRYPOINT\b", ln)])
         self.assertIn("chown -R voidcell:voidcell /opt/voidcell-practice", text)
         self.assertIn("chmod -R u+rwX,go-rwx /opt/voidcell-practice", text)

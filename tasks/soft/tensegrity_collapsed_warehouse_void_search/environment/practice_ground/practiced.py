@@ -246,6 +246,8 @@ def _open_episode(k):
     if site.get("sha256") and _sha256(pkg) != site["sha256"]:
         raise RuntimeError("practice package %s does not match sites.json" % site["package"])
     cfg = dict(SITES.get("config") or {})
+    if cfg.get("plate_root"):                    # the plate bundles of the practice sites (plate_filament)
+        cfg["plate_root"] = os.path.normpath(os.path.join(SITES_DIR, str(cfg["plate_root"])))
     limits = dict(cfg.get("limits") or {})
     limits["reports_per_point"] = int(acc["reports_per_point"])
     cfg["limits"] = limits

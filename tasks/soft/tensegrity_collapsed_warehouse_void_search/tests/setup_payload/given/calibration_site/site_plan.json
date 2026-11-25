@@ -5,7 +5,7 @@
   4.4,
   5.8
  ],
- "time_limit_s": 1440.0,
+ "time_limit_s": 1400.0,
  "perimeter_wall": {
   "thickness_m": 0.2,
   "height_m": 0.9
@@ -404,8 +404,8 @@
  "free_standing_wall": {
   "x0": 0.55,
   "x1": 2.05,
-  "y0": 3.2,
-  "y1": 3.35,
+  "y0": 3.5,
+  "y1": 3.65,
   "height_m": 0.6,
   "length_m": 1.5
  },
@@ -498,5 +498,28 @@
     0.85
    ]
   }
- ]
+ ],
+ "heaps": [
+  {
+   "label": "heap 1",
+   "kind": "rubble heap",
+   "x0": 3.791,
+   "x1": 4.12,
+   "y0": 0.001,
+   "y1": 0.294,
+   "top_height_m": 0.272,
+   "stands": "against the site's south wall"
+  },
+  {
+   "label": "heap 2",
+   "kind": "mound of fill",
+   "x0": 1.051,
+   "x1": 1.554,
+   "y0": 3.178,
+   "y1": 3.5,
+   "top_height_m": 0.197,
+   "stands": "against the free-standing wall's south face"
+  }
+ ],
+ "heaps_what": "the bounding rectangle of each heap's outline (where it stands more than 1 mm above the floor) and its highest point, measured to 1 mm on the site's collision bodies"
 }

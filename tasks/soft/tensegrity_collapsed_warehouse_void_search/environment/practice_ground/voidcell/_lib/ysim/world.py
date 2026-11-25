@@ -17,7 +17,7 @@ Builders (each returns a list of records; composite builders also write the clea
     bumps                   seeded fixed small bumps (buried sphere caps) for rough ground
     heightfield_patch       seeded band-limited relief layer (MuJoCo hfield) with its own friction
 World helpers: ``plot_top`` (top-view figure for documents), ``segment_hits`` (which records a straight tendon
-passes through; used to detect lines cutting obstacles), ``from_concept07`` (a W1 site JSON record).
+passes through; used to detect lines cutting obstacles), ``from_concept07`` (a site JSON record of an earlier family).
 
 Physics conventions: every world geom has priority 1, so its own friction is the contact friction against the
 robot (MuJoCo otherwise takes the max of the pair; the robot's geoms carry the floor default 0.8). Contact
@@ -574,13 +574,13 @@ class World:
         return path
 
 
-# ----------------------------------------------------------------------------- W1 site-record import
+# ----------------------------------------------------------------------------- earlier site-record import
 _C07_MATERIAL = {"wall": "wall", "rubble": "rubble", "support": "support", "roof": "slab", "crate": "concrete"}
 
 
 def from_concept07(site, gravel_seed=None):
-    """Build a World from a W1 site record (dict or path of a
-    W1_seed<N>.json). Every box keeps its
+    """Build a World from a site record of an earlier family (dict or path of a
+    site JSON file). Every box keeps its
     name, art kind and pose; red / blue crates keep their colour; the dust patch becomes a friction patch (mu 0.35),
     the gravel patch a relief hfield (rms 8 mm, mu 0.60; seeded by the site seed unless gravel_seed is given).
     The camera, pad, search points and chamber go to World.meta."""

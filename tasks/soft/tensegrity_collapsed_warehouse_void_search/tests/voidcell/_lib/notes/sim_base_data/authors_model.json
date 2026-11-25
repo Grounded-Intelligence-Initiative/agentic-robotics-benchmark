@@ -43,7 +43,7 @@
    "s_5_2"
   ]
  },
- "extraction_script": "extract_authors_model.py (a development script of ysim 0.3.0; not shipped)",
+ "extraction_script": "a script of ysim 0.3.0 (not shipped)",
  "nodes_m": {
   "0": [
    0.07965476900000001,
@@ -76,7 +76,7 @@
    0.02445036
   ]
  },
- "note": "data copied from the authors' MJCF by extract_authors_model.py (ysim 0.3.0); ysim reads this file instead of the authors' source file at run time",
+ "note": "data copied from the authors' MJCF by a script of ysim 0.3.0 (not shipped); ysim reads this file instead of the authors' source file at run time",
  "sites_m": {
   "s0": [
    0.07965476900000001,

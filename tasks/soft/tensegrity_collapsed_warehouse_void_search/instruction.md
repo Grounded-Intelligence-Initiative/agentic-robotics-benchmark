@@ -68,7 +68,7 @@ a program sends can bring that about.
 <!-- BEGIN GENERATED budgets -->
 | budget | per episode |
 |---|---|
-| simulated time | 1800 s (calibration site: 1440 s) |
+| simulated time | 1820 s (calibration site: 1400 s) |
 | program time: the wall clock minus the station's own work inside `step`, `get_frame`, `telemetry`, `pose` | 600 s |
 | silence: from the start, or from a reply, to your next request | 180 s |
 | CPU time of your program, all threads together | 2400 s |
@@ -112,8 +112,8 @@ The team states this of every site, scored or practice (details in `~/given/site
 - **The site.** A rectangle of floor inside the ruin, enclosed by a perimeter wall; the site frame has x east, y
   north, z up and its origin at the south-west floor corner. The camera's mast stands at the south side, and the north
   side is the warehouse's back wall. The floor is level concrete: no steps, no kerbs, no slopes. What stands on it is
-  rubble that the robot cannot move: blocks, fallen panels resting on supports, crates. Nothing on a site moves but
-  the robot, and the light does not change during an episode.
+  rubble that the robot cannot move: blocks, fallen panels resting on supports, crates, rubble heaps and mounds of
+  fill. Nothing on a site moves but the robot, and the light does not change during an episode.
 - **What the mission gives is right.** The site rectangle, the pad's centre and the three search points are surveyed
   coordinates in the site frame; the camera's intrinsics are exact and its pose is calibrated to the accuracy stated
   in the camera's datasheet. Neither the pad nor a search point is marked on the floor.
@@ -131,20 +131,29 @@ The team states this of every site, scored or practice (details in `~/given/site
   the slab's front edge. Search point 3 lies in a chamber of the crawl space in one of the site's two back corners:
   the back wall and the east or west wall of the site are two of the chamber's walls, the floor between the point and
   these two walls is clear, and nothing stands within 0.6 m of the point. The crawl space is entered from the south,
-  through openings under the slab's front edge. There are three of them, alike from outside; one leads in, the other
-  two are blocked by fallen material a short way inside, and the camera cannot see that from outside. From the opening
-  that leads in, the way to search point 3 is several metres long and turns more than once.
+  through openings under the slab's front edge. There are three of them, alike in width, height and cover; one leads
+  in, the other two are blocked by fallen material a short way inside, and the camera cannot see that from outside.
+  From the opening that leads in, the way to search point 3 is several metres long and turns more than once.
+- **Heaps.** Heaps stand on the open floor, each a rubble heap (bricks and lumps of broken concrete) or a mound of
+  fill (dumped earth). Each stands against a wall, against the ridge or against the slab's front edge; none
+  stands in the crawl space. A heap is between 0.14 and 0.30 m high at its top and at most 0.60 m long in x and in y,
+  with an irregular outline; a mound of fill has sloping sides, a rubble heap can have upright faces. The robot cannot
+  get over a heap: go around it. Between a heap and anything else that stands on the floor, the floor is either less
+  than 0.15 m wide, far too narrow for the robot, or at least 0.60 m wide. No heap stands within 0.45 m of the pad's
+  centre or within 0.40 m of search point 1 or 2, and in front of each opening under the slab the floor is free of
+  heaps over the opening's width and 0.70 m southwards. The camera sees every heap.
 - **The ground.** Patches of loose ground lie on the concrete, flush with it: dust and gravel, each visible as an area
   of another colour. On loose ground the robot does not move as the handbook's table says. Scattered over the floor
   lie flat chips of plastic, a few centimetres across, in the three colours of the robot's end caps; they do not
-  affect the robot.
+  affect the robot. Thin litter lies on the floor as well (loose pages, flattened cardboard, film, strapping, spilled
+  powder, grit, and the earth and grit strewn around the foot of a heap): it is flat and does not affect the robot.
 - **The robot and the link.** The robot is the handbook's robot. At the start it stands in its rest shape on one of
   its rollable faces, near the pad's centre, at any heading. The radio link holds everywhere on a site, under the
   slab too: commands arrive and the telemetry keeps coming.
 
-What the team does not know of a site, and no given file tells: its layout in numbers, which of its openings the robot
-can pass, which opening under the slab leads into the crawl space, how the passages of the crawl space run and where
-they are narrowed, and how the robot moves on its loose ground.
+What the team does not know of a site, and no given file tells: its layout in numbers, where its heaps stand, which
+of its openings the robot can pass, which opening under the slab leads into the crawl space, how the passages of the
+crawl space run and where they are narrowed, and how the robot moves on its loose ground.
 
 ## The practice ground
 
@@ -154,10 +163,10 @@ station and rules as the scored episodes on four sites, none of them a scored si
 <!-- BEGIN GENERATED practice -->
 | number | name | what | simulated time limit |
 |---|---|---|---|
-| 1 | `cal` | the calibration site | 1440 s |
-| 2 | `p1` | a practice site | 1800 s |
-| 3 | `p2` | a practice site | 1800 s |
-| 4 | `p3` | a practice site | 1800 s |
+| 1 | `cal` | the calibration site | 1400 s |
+| 2 | `p1` | a practice site | 1820 s |
+| 3 | `p2` | a practice site | 1820 s |
+| 4 | `p3` | a practice site | 1820 s |
 
 Allowance: 30 practice episodes in your whole session, at most 2 running at the same time.
 <!-- END GENERATED practice -->
@@ -167,9 +176,9 @@ painted grid lines and four surveyed crosses; a ridge with six openings side by 
 widths, a low covered slot, a covered mouth that ends at a back wall, a covered passage); behind the passage a roofed
 room, and from that room a roofed passage, narrowed at one place by a block against its west wall, to a roofed chamber
 in the site's north-east corner, none of which the camera can see into, with the site's third search point in the
-chamber; a free-standing wall; a strip of gravel and a strip of dust; two crates and six plastic chips. Its page
-states the dimensions and nothing else: what the robot can pass is for you to find out. The three practice sites are
-sites like the scored ones; between them they show every kind of opening that the scored sites have.
+chamber; a free-standing wall; a strip of gravel and a strip of dust; two crates, a rubble heap, a mound of fill and
+six plastic chips. Its page states the dimensions and nothing else: what the robot can pass is for you to find out.
+The three practice sites are sites like the scored ones.
 
 `/opt/venv/bin/python3 ~/training/run_mission.py --site cal` runs `~/submission` in one practice episode the way a
 scored episode runs it, returns when the episode is over (also when your program hangs: the silence limit ends the
@@ -184,7 +193,7 @@ failed, and the credit; whether the robot was retrieved; the periods in which it
 events. It gives no total, no layout and no path. A scored episode has no debrief.
 
 <!-- BEGIN GENERATED costs -->
-With one episode running, the station takes about 0.16 s of wall clock per simulated second (rolling or standing alike) and about 0.23 s per camera frame. An episode that uses all 1800 s of simulated time therefore takes about 4.9 minutes for the simulation alone, a full calibration-site episode about 3.9, and all 600 frames add about 2.3 minutes, before your program's own computing. The whole allowance spent on full-length episodes with every frame taken, 2 at a time, would come to about 1.8 hours: end a practice episode (`finish()`) as soon as it has shown what you wanted. The sandbox has 8 CPUs and 16 GB of memory, which your program shares with the station, in a practice run as in a scored episode; inside either, the numerical libraries are held to 2 threads.
+With one episode running, the station takes about 0.23 s of wall clock per simulated second (rolling or standing alike) and about 0.44 s per camera frame. An episode that uses all 1820 s of simulated time therefore takes about 6.9 minutes for the simulation alone, a full calibration-site episode about 5.3, and all 600 frames add about 4.4 minutes, before your program's own computing. The whole allowance spent on full-length episodes with every frame taken, 2 at a time, would come to about 2.8 hours: end a practice episode (`finish()`) as soon as it has shown what you wanted. The sandbox has 8 CPUs and 16 GB of memory, which your program shares with the station, in a practice run as in a scored episode; inside either, the numerical libraries are held to 2 threads.
 <!-- END GENERATED costs -->
 
 ## Notes

@@ -4,7 +4,7 @@
  "floor_mu": 0.8,
  "settle_after_s": 0.911,
  "frame": "dx, dy in the start frame (x = heading = the start principal axis, y = heading + 90 deg = the rolling direction of a forward roll); dtheta + = counter-clockwise seen from above; t = own states + rest phase + the settle_after hold (0.92 s as stepped)",
- "source": "the base's capability sheet: FINAL for ysim 0.3.1: capability sheet of the final model (l",
+ "source": "the simulation base's capability measurements on the final model ysim 0.3.1 (not published)",
  "source_sha256": "563efedf6128adacd9c1f246d90af1554445a0079fb735d467959be92e6b7f62",
  "envelope": {
   "W_SWEEP": 0.4193,

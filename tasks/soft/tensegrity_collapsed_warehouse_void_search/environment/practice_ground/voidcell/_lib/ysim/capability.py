@@ -50,20 +50,20 @@ CAPABILITY_REV = "0.3.1-sheet1"   # protocol revision of this module; the robot 
 STUCK_WINDOW = 3          # the debrief's stuck rule (voidscore/acceptance.yaml, block stuck): 3 primitives in a row with COM moving < 0.03 m
 STUCK_DIST = 0.03
 # ysim 0.3.1: the forward roll with the smallest heading change from the faces the robot lives on after its first
-# primitive (035 / 125 / 134): +0.7 +- 1.5 deg (validation_v031.json; re-measured in the
-# capability sheet's PRIM_TABLE). 0.3.0 used roll_100_120 (now -3.3 deg), 0.2.0 roll_120_140 (now -5.9 deg).
+# primitive (035 / 125 / 134): +0.7 +- 1.5 deg (the 0.3.1 validation; re-measured in the
+# capability measurements' primitive table). 0.3.0 used roll_100_120 (now -3.3 deg), 0.2.0 roll_120_140 (now -5.9 deg).
 STRAIGHT = "roll_100_140"
 STRAIGHT_V030 = "roll_100_120"     # the 0.3.0 straightest roll (the 0.3.0 protocols)
 STRAIGHT_V020 = "roll_120_140"     # the 0.2.0 protocols' roll, kept for side-by-side re-runs
 REV_STRAIGHT = "roll_140_100"      # reverse roll of the 0.2.0 face pre-sequences (trial_face only); 0.3.1 reverse
-                                   # table: the capability sheet's items.reverse_rolls
+                                   # table: the reverse-roll table of the capability measurements (not shipped)
 # the two face classes of the authors' six rollable faces: two even nodes + one odd (the faces the authors' next_nodes
 # names; reached only at a start / drop or by reverse rolls) and one even + two odd (where every primitive lands):
 # measured on 0.3.0 and on 0.3.1; unchanged in 0.3.1
 CLASS_A = ((0, 2, 5), (0, 3, 4), (1, 2, 4))
 CLASS_B = ((0, 3, 5), (1, 2, 5), (1, 3, 4))
-# measured face transitions (deterministic in every execution; 0.3.0 face_transitions_v030.json, re-measured unchanged
-# on 0.3.1: validation_v031.json face_transitions and every PRIM_TABLE execution of the 0.3.1 capability batch)
+# measured face transitions (deterministic in every execution; measured on 0.3.0, re-measured unchanged
+# on 0.3.1 in the validation and in every PRIM_TABLE execution of the 0.3.1 capability measurements)
 FACE_NEXT_ROLL = {(0, 2, 5): (1, 2, 5), (1, 2, 4): (1, 3, 4), (0, 3, 4): (0, 3, 5),
                   (1, 2, 5): (1, 3, 4), (1, 3, 4): (0, 3, 5), (0, 3, 5): (1, 2, 5)}
 FACE_NEXT_TURN = {(0, 2, 5): (0, 3, 5), (1, 2, 4): (1, 2, 5), (0, 3, 4): (1, 3, 4),
@@ -1147,7 +1147,7 @@ def trial_pocket(seed, width, depth, clear_h, method, table, rev_name=None, rev_
                         the pocket axis, at most out_max;
       "reverse_gait":   set_targets shapes (set_targets_mm, as the 07 cell) = the authors' reverse gait of a forward
                         roll, then the rest shape; the roll per current face from rev_by_face {face_key: name} (the
-                        sheet's reverse-roll table by start face, rule in make_table.py), else rev_name; at most
+                        sheet's reverse-roll table by start face, by a stated rule of the maintainers, not shipped), else rev_name; at most
                         shape_tries times;
       "reversed_order": set_targets shapes = that roll's own mapped shapes played in reversed order; at most
                         shape_tries times.

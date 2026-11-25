@@ -46,13 +46,13 @@ Execution mode (`run_primitive(name, mode=...)`, default `params.execution_mode`
 | `hardware` | 15 % (35 % for rolls with a range >= 130; a turn and the rest phase keep the last roll's band) | none | the authors' control code rss25 |
 | `authors_sim` | 10 % or 10 mm, min length 90/100/80 mm, k_p 6, no rest phase | as tracked | hybrid_mppi `get_3bar_prims_se2_data` (diagnostic) |
 
-Faces (deterministic in every execution measured; 0.3.1 re-measured, unchanged from 0.3.0: `../notes/sim_base_data/validation_v031.json` `face_transitions`): a forward
+Faces (deterministic in every execution measured; 0.3.1 re-measured, unchanged from 0.3.0, in the base's validation, not shipped with this copy): a forward
 roll lands on the face class the authors' `next_nodes` predicts, always on the pair member 125 / 134 / 035
 (025 -> 125, 124 -> 134, 034 -> 035, 125 -> 134, 134 -> 035, 035 -> 125); a turn keeps the class: from 025 / 124 /
 034 it moves to the pair partner (035 / 125 / 134), from 035 / 125 / 134 it stays. So after its first primitive
 the robot lives on 125 / 134 / 035; 124 and 034 are reached only through the authors' reverse rolls, 025 only at
 the start. Read the face with `S.bottom()` after the primitive (or predict its class with `gaits.NEXT_NODES`; the
-mapping needs only the class). Displacement tables must be read per start face (`validation_v031.json`).
+mapping needs only the class). Displacement tables must be read per start face (the 0.3.1 validation, not shipped).
 
 ## Modules
 
@@ -70,7 +70,7 @@ mapping needs only the class). Displacement tables must be read per start face (
 | `validate.py` | full-SE(2) validation against the published table, per primitive and start face |
 | `health.py` | rest, 10-minute run, timestep study with the same-dt floor, determinism, real-time factor |
 | `render.py` | classic-renderer recorder / tracking camera (inspection media) |
-| `world.py` | blockout world records (box, portal, tunnel, step, ramp, friction patch, bumps, relief hfield), MJCF export, top-view plot, tendon-cut test, W1 site-record import |
+| `world.py` | blockout world records (box, portal, tunnel, step, ramp, friction patch, bumps, relief hfield), MJCF export, top-view plot, tendon-cut test, site-record import of an earlier family |
 | `camera.py` | fixed overhead RGB-D camera (authors' calibration by default), renderer-agnostic backend interface, classic backend |
 | `capability.py` | capability protocols (the 0.3.0 extension, completed for 0.3.1; `CAPABILITY_REV` "0.3.1-sheet1"): placement (`place`, `place_on_face` = the 07 drop start), `set_floor_friction`, collision envelope, tick-hook tracker, the two measuring devices (`privileged_steer_plan`: true pose after every primitive, PRIVILEGED; `dead_reckon_plan`: a fixed open-loop sequence from a believed start), `set_targets_mm` / `primitive_shapes_mm` (one target shape in mm through the same PID, normalised as the 07 cell does), the `trial_*` protocols. The capability sheet measured with them is FINAL for 0.3.1 (not shipped with this copy); `STRAIGHT = "roll_100_140"` |
 
@@ -120,13 +120,13 @@ pocket. `capability.py` (`CAPABILITY_REV` "0.3.1-sheet1"): `STRAIGHT = "roll_100
 RANGE 100 mm; the 0.3.0 extension had 140 mm); `trial_prim(..., reverse=True)` (the reverse-roll table by start face);
 `trial_pocket` stops entering after two primitives touched the plug (was: stuck or 10 primitives, which let the robot
 grind and turn against the plug) and chooses the set_targets reverse shapes per current face (`rev_by_face`).
-CLASS_A / CLASS_B / FACE_NEXT_* re-checked on 0.3.1 (unchanged). Tests: `test_capability.py` checks the sheet's
+CLASS_A / CLASS_B / FACE_NEXT_* re-checked on 0.3.1 (unchanged). Tests (not shipped with this copy) check the sheet's
 layout, that it was measured on exactly these robot files (sha256), that STRAIGHT is the sheet's straightest roll, and
 the set_targets normalisation.
 
 **0.3.1** (2026-11-17; fix round 2 after the second independent verification). The model
 changes in exactly two declared places; with `ModelConfig(hook_rule="guide_side_v030")` and
-`run_primitive(settle_after=1.0)` 0.3.0's recorded executions come out unchanged (test `test_v030_reproduction.py`).
+`run_primitive(settle_after=1.0)` 0.3.0's recorded executions come out unchanged (a test of the base, not shipped).
 - Hook roles are an ASSUMPTION (`params.hook_roles`), set by a stated geometric rule: the assembly guide leaves the
   hooks free (the line on any hook, the long sensor opposite it, the short sensors on the other two: 8 per end, 64 per
   strut, `geometry.allowed_end_assignments`); the rule takes the allowed assignment whose attachment sites lie nearest
@@ -151,7 +151,7 @@ changes in exactly two declared places; with `ModelConfig(hook_rule="guide_side_
   named among its candidate causes.
 - Provenance: the slack rule (not a verbatim copy of the authors' test), the premise of `mesh_end_to_node`; the
   timestep re-checked on 0.3.1. Sensitivities of every ASSUMPTION and of the Rule-S members (+-30 %) re-measured on
-  0.3.1 (`sensitivity_v031.json`): the long-sensor stiffness x1.3 stops roll_100_100 / roll_100_120 tipping.
+  0.3.1 (not shipped with this copy): the long-sensor stiffness x1.3 stops roll_100_100 / roll_100_120 tipping.
 - Statements: the model's cw differs qualitatively from the table (the table's cw flips and translates 0.166 m, the
   model's turns in place); translation errors are quoted for forward rolls only (0.04-0.10 m in 0.3.1).
 - API: `run_primitive(settle_after=None)` and `capability.run_shapes(settle_after=None)` default to
@@ -168,8 +168,8 @@ about to change (0.3.1). What it left: `capability.py` extended with protocols f
 the dead-end pocket with set_targets recovery, creep, the 07 per-site floor friction), the two labelled measuring
 devices and `place_on_face`; `capability.STRAIGHT = "roll_100_120"` (0.3.0's straightest roll). It imports and its
 unit tests pass, but it is unfinished: **the sheet was not re-issued** - the capability sheet file
-still holds the 0.2.0 measurements and is marked SUPERSEDED (now by 0.3.1); the same content is archived as
-`capability_sheet_v020.json`. (An earlier version of this entry said the sheet was current again; that was not so.)
+still holds the 0.2.0 measurements and is marked SUPERSEDED (now by 0.3.1); the same content is
+kept in an archived copy (not shipped). (An earlier version of this entry said the sheet was current again; that was not so.)
 
 **0.3.0** (2026-11-17; the fix round after the first independent verification)
 - End of a primitive as on the real robot: after its own states the robot is driven back to the rest shape
@@ -184,10 +184,10 @@ still holds the 0.2.0 measurements and is marked SUPERSEDED (now by 0.3.1); the 
   the 5 % band stays a declared ASSUMPTION (re-derived by the same ladder rule: 3 / 72 / 97 / 108 of 108 at
   15 / 10 / 7 / 5 %).
 - Validation in full SE(2) (distance, heading and direction of travel), per primitive and start face, 4 executions
-  per cell (`validate.py`, `validation_v030.json`).
+  per cell (`validate.py`; its results are not shipped with this copy).
 - Sensitivities for battery voltage, spool layering, motor hold, rotor inertia, line EA and the integrator.
 - No run-time dependence on scratch: node and site data in `authors_model.json`, collision hull in
-  `collision_hull_elec.json` (test `test_no_scratch.py`).
+  `collision_hull_elec.json` (a test of the base, not shipped with this copy).
 - `mesh_end_to_node` declared with its evidence (micro-USB socket at the mesh +z end); three citations corrected
   (line capacity 0.225 m, friction sources, decimation input 1 061 293 faces).
 - `start_states` raises `gaits.NotRollableFace` on a bottom triple outside the authors' table (no silent mapping);

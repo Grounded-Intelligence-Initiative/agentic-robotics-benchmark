@@ -2,8 +2,8 @@
 
 * Small data tables (parameters, measured strut geometry, the data copied from the authors' MJCF, decoded authors'
   tables, collision hull, validation results) live next to the package, under ``notes/sim_base_data/``.
-  The physics model (``ModelConfig(visual=False)``) is built from these tables alone (ysim 0.3.0; test
-  ``test_no_scratch.py``).
+  The physics model (``ModelConfig(visual=False)``) is built from these tables alone (ysim 0.3.0; checked by a
+  test of the base that is not shipped).
 * Large derived meshes (visual only) live outside the package in an asset directory: ``$YSIM_ASSETS`` if set, else
   the default ``SCRATCH/work/ysim_assets``. They are produced by
   ``ysim.assets.build`` from the authors' strut mesh and checked against the hashes recorded in

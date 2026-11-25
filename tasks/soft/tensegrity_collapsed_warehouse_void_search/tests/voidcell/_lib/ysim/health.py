@@ -1,8 +1,8 @@
 """Health checks of the simulation base: stable rest, long mixed-primitive run, timestep study (displacement,
 heading and peak line tension against the timestep, with the same-dt perturbation floor), determinism (state
 hashes), real-time factor on one core.
-The settle/validity ideas follow an earlier in-house tensegrity kit (its validity.py: SettleDetector,
-state_hash, light monitor), re-implemented here for this robot (not imported).
+The settle/validity ideas follow an earlier tensegrity kit that is not published (a settle detector, a state
+hash, a light monitor), re-implemented here for this robot (not imported).
 
 usage: from ysim import health; health.check_rest() / check_long() / check_dt() / scripted_hashes() / check_rtf()
 """

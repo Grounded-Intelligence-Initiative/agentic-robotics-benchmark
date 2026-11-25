@@ -52,7 +52,7 @@ __all__ = ["VoidCellServer", "noise_seed_for", "derive_seed"]
 
 LOG_HZ = 10.0
 NUM_MAX = 1.0e6
-CONFIG_KEYS = ("limits", "pose_source", "render_backend", "msaa_rgb")
+CONFIG_KEYS = ("limits", "pose_source", "render_backend", "msaa_rgb", "plate_root")
 _MASK63 = (1 << 63) - 1
 
 
@@ -136,7 +136,8 @@ class VoidCellServer(object):
     def __init__(self, config=None, mode="hidden", privileged=False, allow_reset=False, render=True, log=None,
                  reference_dir=None, workdir=None, scorer=None):
         """config: the grader's run settings (grader_config.json): 'limits' (budgets.DEFAULTS keys), 'pose_source'
-        ('estimated' | 'cell'), 'render_backend' (default 'classic'), 'msaa_rgb' (default true). mode: hidden |
+        ('estimated' | 'cell'), 'render_backend' (default 'classic'), 'msaa_rgb' (default true), 'plate_root' (the
+        folder of the plate bundles, absolute; read by the 'plate_filament' backend only). mode: hidden |
         practice. privileged: the oracle token's calls. reference_dir: the folder of the privileged reference
         (tests/reference). scorer: callable(record) -> {"S": ...} (tests/voidscore; None = no score in the record)."""
         self.config = dict(config or {})
@@ -147,6 +148,7 @@ class VoidCellServer(object):
         self.pose_source = ps
         self.render_backend = self.config.get("render_backend", "classic")
         self.msaa_rgb = bool(self.config.get("msaa_rgb", True))
+        self.plate_root = self.config.get("plate_root")
         self.mode = mode
         self.privileged = bool(privileged)
         self.allow_reset = bool(allow_reset)
@@ -203,8 +205,12 @@ class VoidCellServer(object):
         self.clock = cmod.ExposureClock(float(self.site["camera"]["model"]["rate_hz"]))
         self.cam = None
         if self.render_enabled:
+            bkw = {"msaa_rgb": self.msaa_rgb}
+            if self.render_backend != "classic":     # the plate backend picks the site's bundle by these
+                bkw.update(site_sha256=self.site_sha, site_json_sha256=self.prov["site_json_sha256"],
+                           site_xml_sha256=self.prov["site_xml_sha256"], plate_root=self.plate_root)
             self.cam = cmod.SearchCamera(self.site, xml, MESH_DIR, derive_seed(self.seed, "camera"),
-                                         backend=self.render_backend, backend_kw={"msaa_rgb": self.msaa_rgb})
+                                         backend=self.render_backend, backend_kw=bkw)
             self.clock.listeners.append(self.cam.on_exposure)
         cam_pos = np.asarray(self.site["camera"]["true"]["T_world_camera"], float)[:3, 3]
         self.pose = pmod.PoseSource(S, cam_pos, derive_seed(self.seed, "pose"), self._cap_radius())

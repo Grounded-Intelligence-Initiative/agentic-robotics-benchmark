@@ -17,7 +17,10 @@ camera `search` (principalpixel form) is the same camera; the QC of the generato
 Backends. A backend is any object with `name`, `version()` and `open(model, spec) -> session`; a session has
 `render(data) -> (rgb uint8 H x W x 3, depth float32 H x W metres along the optical axis, 0 = nothing hit)` and
 `close()`. `register_backend(name, factory)`; "classic" = MuJoCo's classic OpenGL renderer (OSMesa / EGL via
-MUJOCO_GL). A Filament or baked backend would replace only this object.
+MUJOCO_GL). "plate_filament" (plate_filament.py) = the site's offline plate (the search camera's environment
+rendered once per site, its bundle picked by the site package's sha256) with the robot rendered per frame; it takes
+the episode's site package identity and the plate root as keyword arguments (backend_kw) and raises when the
+bundle is missing or foreign: there is no fall-back to the classic image.
 
 Sensor model (rated values of this simulated unit, given/camera_datasheet.md): depth along the optical axis, range 0.25-9.0 m
 (outside: 0); at every jump of more than 0.05 m between 4-neighbours the farther pixel reads 0 (one-pixel dropout at
@@ -85,6 +88,16 @@ class _ClassicSession:
 
 
 register_backend("classic", lambda **kw: ClassicBackend(**kw))
+
+
+def _plate_filament(**kw):
+    """The plate backend (plate_filament.py); kw: msaa_rgb (ignored), site_sha256, site_json_sha256,
+    site_xml_sha256, plate_root (the server passes them, server.py reset)."""
+    from . import plate_filament
+    return plate_filament.PlateFilamentBackend(**kw)
+
+
+register_backend("plate_filament", _plate_filament)
 
 
 # ---------------------------------------------------------------------------------------------- the camera

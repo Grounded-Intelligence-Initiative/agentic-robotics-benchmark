@@ -11,7 +11,7 @@ on the renderer. Its modules are in _lib/voidref/ (planner, controller, monitor,
 in the cell's folder or in the practice ground's copy of the cell.
 
 The summary (kept by the cell's record as record["reference"]) carries the run's facts for the selection
-predicates R1-R7 (review/select/select_set.py): the inline score, the primitive counts (all, under the slab), stuck
+predicates R1-R7 (the selection tools, not published): the inline score, the primitive counts (all, under the slab), stuck
 and end-triangle events, the strut-axis and tendon penetration, the planning wall time.
 """
 

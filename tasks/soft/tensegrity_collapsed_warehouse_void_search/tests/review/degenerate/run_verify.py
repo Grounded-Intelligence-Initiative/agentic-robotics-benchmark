@@ -30,7 +30,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEV = os.path.normpath(os.path.join(HERE, "..", ".."))
-TASK = DEV[:-len("-dev")]
+TASK = os.path.join(os.environ["ARB_SRC_ROOT"], os.path.basename(DEV)[:-len("-dev")]) if os.environ.get("ARB_SRC_ROOT") else DEV[:-len("-dev")]
 T_TESTS = os.path.join(TASK, "tests")
 DEV_TOKEN = b"development-oracle-token-of-run_verify-not-the-task-token-00000000000"
 CLIENT_INIT = '"""voidcell (the team\'s copy): only the station\'s client, voidcell.client."""\n'

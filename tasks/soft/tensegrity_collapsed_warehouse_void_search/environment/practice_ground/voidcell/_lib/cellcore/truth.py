@@ -15,7 +15,7 @@ import numpy as np
 
 from . import world as wmod
 
-SOLID_KINDS = ("rubble", "support", "crate", "plug", "wall")
+SOLID_KINDS = ("rubble", "support", "crate", "plug", "wall", "heap")
 EXTRA_CLEAR_H = 0.02          # a covered opening counts as solid when its clear height < H_ROLL + this
 
 

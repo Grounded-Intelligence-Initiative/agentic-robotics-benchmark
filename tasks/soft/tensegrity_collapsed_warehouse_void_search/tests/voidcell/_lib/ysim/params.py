@@ -41,7 +41,7 @@ RAL = "RA-L 2026 text (sha256 962ac50e...)"
 DIFF = SRC + "/gh_nchen9191_tensegrity_diff_physics_public/repo/diff_physics_engine/simulators/configs"
 GEO = "notes/sim_base_data/strut_geometry.json"
 FIX = "ysim/README.md, Changelog (0.3.1: the second fix round; 0.3.0: the first fix round)"
-SENS = ("notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, "
+SENS = ("the maintainers' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, "
         "paired with the base): ")
 
 KG_CM = 9.80665e-2   # N*m per kg*cm
@@ -91,7 +91,7 @@ _p("line_EA", 0.5 * 100 * LBF / 0.04, "N", "assumption",
    "stiffness is about half the secant to break [G]. Range carried: 0.5x-2x (2.8-11.1 kN; 2x = no toe). "
    "Fixed before any run of ysim 0.3.0; not fitted to the primitive table",
    uncertain=True,
-   sensitivity="notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, paired with the base): EA x0.5 (2.8 kN) / x2 (11.1 kN): roll distance -0.1 % (single executions -2.2...+3.0 %) / +0.3 % (single executions -1.5...+3.0 %), heading -0.7 deg (mean |change| 1.2 deg) / -0.9 deg (mean |change| 1.0 deg), turns -0.8 / +1.6 deg, duration +0.2 / -0.1 %, peak line tension -3 / +6 % (max 60 / 65 N); faces unchanged 33/33 / 33/33. In this range the result hardly depends on EA (ysim 0.2.0's 1000 N/m was outside it: the verification measured -17...-19 % roll distance going from 1000 to 4e4 N/m)")
+   sensitivity="the maintainers' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, paired with the base): EA x0.5 (2.8 kN) / x2 (11.1 kN): roll distance -0.1 % (single executions -2.2...+3.0 %) / +0.3 % (single executions -1.5...+3.0 %), heading -0.7 deg (mean |change| 1.2 deg) / -0.9 deg (mean |change| 1.0 deg), turns -0.8 / +1.6 deg, duration +0.2 / -0.1 %, peak line tension -3 / +6 % (max 60 / 65 N); faces unchanged 33/33 / 33/33. In this range the result hardly depends on EA (ysim 0.2.0's 1000 N/m was outside it: the verification measured -17...-19 % roll distance going from 1000 to 4e4 N/m)")
 _p("line_inner_length", 0.0083, "m", "mesh",
    GEO + " features.winch_pz / guide_pz: the free line between the drum tangent point and the ring cable guide: "
    "sqrt(d^2 - r^2) with d = 8.92 mm (drum axis to guide centre, in the strut cross-section) and r = 3.175 mm "
@@ -116,16 +116,16 @@ _p("tendon_damping", 1000 * MODEL_C * math.sqrt(SIMILARITY), "N*s/m", "derived",
    "%s line 30: tendon default damping 1000 (model units), applies to all 15 tendons" % MJCF_DS0,
    "x1e-3 (model->SI) x sqrt(10) (Rule S); kept for the line too (damping ratio of the line mode about 0.04 with "
    "the material stiffness)", uncertain=True,
-   sensitivity='notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, paired with the base): tendon damping x0.7 / x1.3: roll distance +0.4 % (single executions -2.5...+5.5 %) / -0.5 % (single executions -2.3...+2.1 %), heading -0.4 deg (mean |change| 1.1 deg) / +0.0 deg (mean |change| 0.6 deg), turns +0.6 / -0.5 deg, duration +0.2 / +0.0 %, peak line tension +2 / -2 % (max 73 / 42 N); faces unchanged 33/33 / 33/33')
+   sensitivity='the maintainers\' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, paired with the base): tendon damping x0.7 / x1.3: roll distance +0.4 % (single executions -2.5...+5.5 %) / -0.5 % (single executions -2.3...+2.1 %), heading -0.4 deg (mean |change| 1.1 deg) / +0.0 deg (mean |change| 0.6 deg), turns +0.6 / -0.5 deg, duration +0.2 / +0.0 %, peak line tension +2 / -2 % (max 73 / 42 N); faces unchanged 33/33 / 33/33')
 _p("short_sensor_stiffness", 1000 * MODEL_K * SIMILARITY, "N/m", "derived",
    "%s lines 278, 282, 286, 290, 294, 298: td_6..td_11 stiffness 1000" % MJCF_DS0, "x1e-3 x10 (Rule S)", uncertain=True,
-   sensitivity='notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, paired with the base): short-sensor stiffness x0.7 / x1.3: roll distance +0.2 % (single executions -3.5...+4.6 %) / -0.2 % (single executions -3.6...+4.2 %), heading -0.0 deg (mean |change| 1.4 deg) / -0.1 deg (mean |change| 0.9 deg), turns +0.5 / +0.3 deg, duration +1.2 / -1.1 %, peak line tension +3 / -3 % (max 57 / 50 N); faces unchanged 33/33 / 33/33')
+   sensitivity='the maintainers\' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, paired with the base): short-sensor stiffness x0.7 / x1.3: roll distance +0.2 % (single executions -3.5...+4.6 %) / -0.2 % (single executions -3.6...+4.2 %), heading -0.0 deg (mean |change| 1.4 deg) / -0.1 deg (mean |change| 0.9 deg), turns +0.5 / +0.3 deg, duration +1.2 / -1.1 %, peak line tension +3 / -3 % (max 57 / 50 N); faces unchanged 33/33 / 33/33')
 _p("short_sensor_rest", 0.065, "m", "authors",
    "%s lines 278-298: springlength 0.65 dm; equals the 65 mm hole spacing of the authors' laser-cut sensor outline "
    "(figshare 10.6084/m9.figshare.32273583, Sensor Fabrication.zip, short sensors.DXF)" % MJCF_DS0)
 _p("long_sensor_stiffness", 20000 * MODEL_K * SIMILARITY, "N/m", "derived",
    "%s lines 302, 306, 310: td_12..td_14 (passive long sensors) stiffness 20000" % MJCF_DS0, "x1e-3 x10 (Rule S)", uncertain=True,
-   sensitivity='notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, paired with the base): long-sensor stiffness x0.7 / x1.3: roll distance -0.3 % (single executions -5.0...+2.8 %) / -15.7 % (single executions -82.6...+3.2 %), heading +0.0 deg (mean |change| 1.5 deg) / +1.7 deg (mean |change| 2.6 deg), turns -0.3 / +0.8 deg, duration -4.1 / +4.2 %, peak line tension -28 / +21 % (max 31 / 88 N); faces unchanged 33/33 / 28/33: the most sensitive member - at x1.3 roll_100_100 does not tip from 025 (3/3) and roll_100_120 only switches to the pair partner from 125, so the tipping margin of those two rolls at the 5 % band is small')
+   sensitivity='the maintainers\' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, paired with the base): long-sensor stiffness x0.7 / x1.3: roll distance -0.3 % (single executions -5.0...+2.8 %) / -15.7 % (single executions -82.6...+3.2 %), heading +0.0 deg (mean |change| 1.5 deg) / +1.7 deg (mean |change| 2.6 deg), turns -0.3 / +0.8 deg, duration -4.1 / +4.2 %, peak line tension -28 / +21 % (max 31 / 88 N); faces unchanged 33/33 / 28/33: the most sensitive member - at x1.3 roll_100_100 does not tip from 025 (3/3) and roll_100_120 only switches to the pair partner from 125, so the tipping margin of those two rolls at the 5 % band is small')
 _p("long_sensor_rest", 0.130, "m", "authors",
    "%s lines 302-310: springlength 1.3 dm; equals the 130 mm hole spacing of the long sensor DXF (figshare)" % MJCF_DS0)
 _p("tendons_tension_only", True, "-", "authors",
@@ -138,30 +138,30 @@ _p("friction", 0.8, "-", "authors",
    "(..._v1.json line 489, ..._v2.json line 465); the RA-L text names friction among the identified contact "
    "parameters (%s lines 183-184) but prints no value. Other authors' files use 0.4 (CRGS dataset_0 line 28) and "
    "1.2 (hybrid_mppi)" % (MJCF_REPO, DIFF, RAL), uncertain=True,
-   sensitivity='notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, paired with the base): friction x0.7 / x1.3: roll distance +1.6 % (single executions -1.6...+4.7 %) / -0.4 % (single executions -2.8...+3.5 %), heading -2.3 deg (mean |change| 2.3 deg) / +1.0 deg (mean |change| 1.6 deg), turns -0.2 / +3.4 deg, duration -0.5 / +0.2 %, peak line tension -3 / +0 % (max 57 / 45 N); faces unchanged 33/33 / 33/33')
+   sensitivity='the maintainers\' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, paired with the base): friction x0.7 / x1.3: roll distance +1.6 % (single executions -1.6...+4.7 %) / -0.4 % (single executions -2.8...+3.5 %), heading -2.3 deg (mean |change| 2.3 deg) / +1.0 deg (mean |change| 1.6 deg), turns -0.2 / +3.4 deg, duration -0.5 / +0.2 %, peak line tension -3 / +0 % (max 57 / 45 N); faces unchanged 33/33 / 33/33')
 _p("contact_solref_k", 5000.0 * SIMILARITY, "1/s^2", "derived",
    "%s line 27: solref=\"-5000 -50\" (direct stiffness, unit-free in length)" % MJCF_REPO, "x10 (Rule S: time x1/sqrt(10))", uncertain=True,
-   sensitivity='notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, paired with the base): contact stiffness x0.7 / x1.3: roll distance +0.4 % (single executions -1.2...+2.7 %) / -0.5 % (single executions -4.1...+1.1 %), heading -0.2 deg (mean |change| 0.8 deg) / +0.0 deg (mean |change| 1.0 deg), turns +0.6 / +0.7 deg, duration +0.2 / -0.0 %, peak line tension -1 / +1 % (max 42 / 54 N); faces unchanged 33/33 / 33/33')
+   sensitivity='the maintainers\' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, paired with the base): contact stiffness x0.7 / x1.3: roll distance +0.4 % (single executions -1.2...+2.7 %) / -0.5 % (single executions -4.1...+1.1 %), heading -0.2 deg (mean |change| 0.8 deg) / +0.0 deg (mean |change| 1.0 deg), turns +0.6 / +0.7 deg, duration +0.2 / -0.0 %, peak line tension -1 / +1 % (max 42 / 54 N); faces unchanged 33/33 / 33/33')
 _p("contact_solref_b", 50.0 * math.sqrt(SIMILARITY), "1/s", "derived",
    "%s line 27: solref damping 50" % MJCF_REPO, "x sqrt(10) (Rule S)", uncertain=True,
-   sensitivity='notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, paired with the base): contact damping x0.7 / x1.3: roll distance -0.6 % (single executions -6.4...+2.5 %) / -0.3 % (single executions -5.2...+2.7 %), heading +0.8 deg (mean |change| 1.3 deg) / -0.5 deg (mean |change| 1.1 deg), turns +2.3 / -0.3 deg, duration -0.5 / +0.0 %, peak line tension +1 / +2 % (max 59 / 60 N); faces unchanged 33/33 / 33/33')
+   sensitivity='the maintainers\' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, paired with the base): contact damping x0.7 / x1.3: roll distance -0.6 % (single executions -6.4...+2.5 %) / -0.3 % (single executions -5.2...+2.7 %), heading +0.8 deg (mean |change| 1.3 deg) / -0.5 deg (mean |change| 1.1 deg), turns +2.3 / -0.3 deg, duration -0.5 / +0.0 %, peak line tension +1 / +2 % (max 59 / 60 N); faces unchanged 33/33 / 33/33')
 _p("contact_condim", 3, "-", "authors",
    "%s line 27: condim 6 with torsional and rolling friction 0 = sliding friction only (condim 3); cone elliptic (line 15)" % MJCF_DS0)
 # ---------------- integration ----------------
 _p("timestep", 0.00025, "s", "derived",
-   "notes/sim_base_data/dt_study_v030.json: the 11 primitives from stand, two executions each, plus a 12-primitive "
+   "the maintainers' timestep study (ysim 0.3.0, not published): the 11 primitives from stand, two executions each, plus a 12-primitive "
    "chain, at dt 1 / 0.5 / 0.25 ms against 0.125 ms, with the material line; same-dt floor = the same runs with the "
    "start shifted by 1e-7 m",
    "largest dt whose median differences against 0.125 ms lie within about the same-dt perturbation floor (translation "
    "and heading) with a median peak-tension difference <= 2 %: 0.25 ms gives 1.9 mm / 0.7 deg / 1.7 % (floor "
    "1.7 mm / 0.3 deg / 0.6 %); 0.5 ms 5.0 mm / 1.35 deg / 2.3 %; 1 ms 12.6 mm / 2.3 deg / 6.6 % (max 42 mm, "
    "5.4 deg, 29 %). ysim 0.2.0 used 1 ms with its Rule-S line (1000 N/m). Re-checked on ysim 0.3.1 "
-   "(notes/sim_base_data/health_v031.json dt): 0.25 ms against 0.125 ms median 2.1 mm / 0.56 deg / 1.1 %, inside the "
+   "(the base's health checks on 0.3.1, dt): 0.25 ms against 0.125 ms median 2.1 mm / 0.56 deg / 1.1 %, inside the "
    "same-dt floor 2.7 mm / 0.79 deg / 1.8 %; faces 22/22 and a 12-primitive chain 12/12 the same")
 _p("integrator", "implicitfast, Newton solver, 50 iterations, tolerance 1e-10", "-", "assumption",
    "the authors' MJCF uses solver Newton and integrator Euler at 10 ms in dm units (%s lines 13-17)" % MJCF_DS0,
    "implicitfast integrates the tendon damping implicitly (MuJoCo's recommendation for velocity-dependent forces)",
-   sensitivity="notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, paired with the base): integrator 'implicit' / 'Euler': roll distance +0.1 % (single executions -2.1...+2.7 %) / +0.0 % (single executions -2.4...+1.7 %), heading +0.1 deg (mean |change| 0.4 deg) / +0.1 deg (mean |change| 0.6 deg), turns +0.3 / +0.2 deg, duration +0.1 / +0.0 %, peak line tension +0 / +1 % (max 60 / 67 N); faces unchanged 33/33 / 33/33")
+   sensitivity="the maintainers' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, paired with the base): integrator 'implicit' / 'Euler': roll distance +0.1 % (single executions -2.1...+2.7 %) / +0.0 % (single executions -2.4...+1.7 %), heading +0.1 deg (mean |change| 0.4 deg) / +0.1 deg (mean |change| 0.6 deg), turns +0.3 / +0.2 deg, duration +0.1 / +0.0 %, peak line tension +0 / +1 % (max 60 / 67 N); faces unchanged 33/33 / 33/33")
 # ---------------- strut geometry (authors' mesh) ----------------
 _p("sock_radius", 0.0175, "m", "mesh", GEO + " collision.sock_*: sphere fit, residual rms < 1e-4 mm")
 _p("node_offset", 0.14540, "m", "mesh", GEO + " collision.sock_*: sphere centres at z = +-145.40 mm (node = end-cap cover centre); "
@@ -171,7 +171,7 @@ _p("motor_housing_radius", 0.0200, "m", "mesh", GEO + " collision.encA_*: cylind
 _p("hook_radius", 0.010120, "m", "mesh", GEO + " features.hooks_*: centroids of the four hook tabs of each end cap")
 _p("spool_radius", 0.003175, "m", "mesh",
    GEO + " features.winch_*: drum radius 3.175 mm about the winch axis; equals %s %s src/run_tensegrity_Astar.py line 62 "
-   "winch_diameter = 6.35. (The authors' simulators use winch_r 3.5 mm: contradiction C07)" % (CTRL, RSS25))
+   "winch_diameter = 6.35. (The authors' simulators use winch_r 3.5 mm: a contradiction between the authors' files)" % (CTRL, RSS25))
 # ---------------- motor (vendor, Pololu #5192) ----------------
 _p("motor_gear_ratio", 150.58, "-", "vendor", POLOLU + ": exact ratio (25x32x34x35x38)/(12x11x14x13x10) = 150.58")
 _p("motor_rated_voltage", 6.0, "V", "vendor", POLOLU + ": HPCB 6V")
@@ -185,18 +185,18 @@ _p("motor_model", "quasi-static linear torque-speed line through the vendor's tw
    "voltage; output torque balances the line tension times the spool radius", "-", "assumption",
    "vendor two-point DC-motor line (standard brushed-DC model); rotor and gearbox inertia and back-drive friction "
    "are not published and are left out", "neglects rotor inertia (no data)",
-   sensitivity='notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, paired with the base): a first-order lag of the spool speed with a mechanical time constant of 20 ms / 50 ms [G: a 10 x 12 mm brushed motor, rotor about 0.15 g cm^2, gives about 40 ms]: roll distance +0.2 % (single executions -4.3...+3.0 %) / +1.0 % (single executions -14.1...+20.2 %), heading -0.1 deg (mean |change| 1.7 deg) / -1.5 deg (mean |change| 2.5 deg), turns +0.4 / +0.3 deg, duration +1.0 / +3.7 %, peak line tension +7 / +11 % (max 96 / 91 N); faces unchanged 33/33 / 33/33')
+   sensitivity='the maintainers\' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, paired with the base): a first-order lag of the spool speed with a mechanical time constant of 20 ms / 50 ms [G: a 10 x 12 mm brushed motor, rotor about 0.15 g cm^2, gives about 40 ms]: roll distance +0.2 % (single executions -4.3...+3.0 %) / +1.0 % (single executions -14.1...+20.2 %), heading -0.1 deg (mean |change| 1.7 deg) / -1.5 deg (mean |change| 2.5 deg), turns +0.4 / +0.3 deg, duration +1.0 / +3.7 %, peak line tension +7 / +11 % (max 96 / 91 N); faces unchanged 33/33 / 33/33')
 _p("spool_layering", "constant winding radius 3.175 mm", "-", "assumption", "line diameter and layering not published",
    "the radius of the wound line is the drum radius; real layers would raise it with wound length",
-   sensitivity='notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, paired with the base): effective radius 3.20 / 3.45 / 3.70 mm (about 225 mm of a ~0.5 mm line on a ~5 mm wide drum: 1-2 layers [G]): roll distance -0.1 / -0.5 / -0.4 %, heading +0.2 / +0.2 / -0.4 deg, duration -0.6 / -6.1 / -10.4 %; faces unchanged 33/33 / 33/33 / 33/33')
+   sensitivity='the maintainers\' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, paired with the base): effective radius 3.20 / 3.45 / 3.70 mm (about 225 mm of a ~0.5 mm line on a ~5 mm wide drum: 1-2 layers [G]): roll distance -0.1 / -0.5 / -0.4 %, heading +0.2 / +0.2 / -0.4 deg, duration -0.6 / -6.1 / -10.4 %; faces unchanged 33/33 / 33/33 / 33/33')
 _p("motor_hold_when_idle", True, "-", "assumption",
    "TB6612 short-brake at PWM 0 (firmware drives IN1/IN2 with PWM low) + 150:1 gear train",
    "an idle (braked) motor holds the line unless the load torque exceeds the vendor's rated instantaneous torque "
    "(2 kg*cm); no public back-drive data",
-   sensitivity='notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, paired with the base): hold limit 1 kg*cm: roll distance +0.2 % (single executions -1.9...+2.8 %), heading +0.0 deg (mean |change| 0.6 deg), faces unchanged 33/33; 4 kg*cm: roll distance +0.0 %, faces 33/33 (the limit is reached only in peaks: the largest line tension of the 10-minute run, 59.5 N, is 1.93 kg*cm on the spool); no static hold at all (the short brake only damps, b_m): roll distance +0.0 % (single executions -9.3...+6.6 %), heading -3.5 deg (mean |change| 3.6 deg), turns +3.1 deg, duration +2.4 %, peak line tension +11 % (max 51 N), faces unchanged 30/33 (ccw from 025 stays on 025)')
+   sensitivity='the maintainers\' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, paired with the base): hold limit 1 kg*cm: roll distance +0.2 % (single executions -1.9...+2.8 %), heading +0.0 deg (mean |change| 0.6 deg), faces unchanged 33/33; 4 kg*cm: roll distance +0.0 %, faces 33/33 (the limit is reached only in peaks: the largest line tension of the 10-minute run, 59.5 N, is 1.93 kg*cm on the spool); no static hold at all (the short brake only damps, b_m): roll distance +0.0 % (single executions -9.3...+6.6 %), heading -3.5 deg (mean |change| 3.6 deg), turns +3.1 deg, duration +2.4 %, peak line tension +11 % (max 51 N), faces unchanged 30/33 (ccw from 025 stays on 025)')
 _p("battery_voltage", 7.4, "V", "assumption", "BOM: 4 x 1S 220 mAh LiPo per strut; board nets: a 2S motor pack and a 2S logic pack "
    "[the authors' BOM]", "nominal 2S voltage held constant (no discharge curve published)",
-   sensitivity='notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, paired with the base): 2S at 6.6 V / 8.4 V (empty / full): roll distance +0.6 % (single executions -1.4...+3.0 %) / -1.0 % (single executions -3.3...+1.3 %), heading +0.1 deg (mean |change| 0.8 deg) / -0.3 deg (mean |change| 0.7 deg), turns +0.8 / +0.4 deg, duration +11.2 / -11.2 %, peak line tension -3 / +6 % (max 62 / 65 N); faces unchanged 33/33 / 33/33')
+   sensitivity='the maintainers\' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, paired with the base): 2S at 6.6 V / 8.4 V (empty / full): roll distance +0.6 % (single executions -1.4...+3.0 %) / -1.0 % (single executions -3.3...+1.3 %), heading +0.1 deg (mean |change| 0.8 deg) / -0.3 deg (mean |change| 0.7 deg), turns +0.8 / +0.4 deg, duration +11.2 / -11.2 %, peak line tension -3 / +6 % (max 62 / 65 N); faces unchanged 33/33 / 33/33')
 _p("motor_pack_capacity", 2 * 3.7 * 0.220 * 3600, "J", "derived",
    "BOM row LiPo 220 mAh x4 per strut, motor pack = 2S (2 cells in series) [the authors' BOM]",
    "2 x 3.7 V x 0.220 Ah = 1.628 Wh = 5861 J per strut for the two motors (the logic pack holds another 1.628 Wh; "
@@ -229,7 +229,7 @@ _p("end_of_primitive", "after its own states the robot is driven back to the res
    "settle_after. Basis: the mean re-planning delay (settle_after, 0.911 s) is longer than the rest phase lasts in this "
    "model (median 0.27 s, p90 0.59 s, max 1.30 s over 264 validation executions), so on the robot the rest phase normally completes before the plan arrives; the skip "
    "only happens when a plan comes back faster than the rest phase", uncertain=True,
-   sensitivity="the hardware's early-plan case at its extreme (notes/sim_base_data/sensitivity_v031.json rest_skip: every forward roll 3 times in succession, the first two with neither rest phase nor hold, against the base): the composed 3-roll displacement moves by 7-50 mm and 0.9-4.2 deg, the 3-roll distance -3.1...+1.7 %, the face sequence is the same 9/9, the time -14 %. Rest-phase duration in this model (notes/sim_base_data/validation_v031.json, 264 executions): median 0.27 s, p90 0.59 s, max 1.30 s; 5 of 264 longer than the 0.911 s re-planning delay")
+   sensitivity="the hardware's early-plan case at its extreme (the maintainers' sensitivity measurements, not published, case rest_skip: every forward roll 3 times in succession, the first two with neither rest phase nor hold, against the base): the composed 3-roll displacement moves by 7-50 mm and 0.9-4.2 deg, the 3-roll distance -3.1...+1.7 %, the face sequence is the same 9/9, the time -14 %. Rest-phase duration in this model (the base's 0.3.1 validation, not published, 264 executions): median 0.27 s, p90 0.59 s, max 1.30 s; 5 of 264 longer than the 0.911 s re-planning delay")
 _p("settle_after", round(1.0 / 7.0 + 0.768, 3), "s", "assumption",
    "no settle time is written in the authors' code or papers (ysim 0.3.0 cited 'RA-L: primitives settle 1.0 s'; the "
    "RA-L text has no such statement, found by the second independent verification). What the authors give: the pose is passed to the A* "
@@ -239,7 +239,7 @@ _p("settle_after", round(1.0 / 7.0 + 0.768, 3), "s", "assumption",
    "the authors' re-planning delay: one pose period at 7 Hz + the planner's mean time = 1/7 s + 0.768 s = 0.911 s, "
    "held braked after the rest phase (executed in whole 10 ms control ticks: 0.92 s). It is the time the robot stands "
    "at rest between two primitives; it enters every primitive's duration t_total", uncertain=True,
-   sensitivity='notes/sim_base_data/sensitivity_v031.json (ysim 0.3.1; 11 primitives x 3 successive executions from stand, paired with the base): hold 0 / 0.5 / 2 s: duration -13.1 / -5.8 / +15.0 %, roll distance +0.1 / +0.1 / -0.0 %, heading +0.4 / -0.0 / -0.2 deg (mean |change| 0.7 / 0.4 / 0.5 deg); faces unchanged 33/33 / 33/33 / 33/33. The robot is not perfectly still after the hold: in the next 8 s of braking its nodes move 0.7-6.1 mm and its centroid 0.3-2.1 mm (sensitivity_v031.json creep, one execution per primitive)')
+   sensitivity='the maintainers\' sensitivity measurements (ysim 0.3.1, not published; 11 primitives x 3 successive executions from stand, paired with the base): hold 0 / 0.5 / 2 s: duration -13.1 / -5.8 / +15.0 %, roll distance +0.1 / +0.1 / -0.0 %, heading +0.4 / -0.0 / -0.2 deg (mean |change| 0.7 / 0.4 / 0.5 deg); faces unchanged 33/33 / 33/33 / 33/33. The robot is not perfectly still after the hold: in the next 8 s of braking its nodes move 0.7-6.1 mm and its centroid 0.3-2.1 mm (the creep case of the sensitivity measurements, one execution per primitive)')
 _p("slack_rule", "a motor asked to pay out a slack line gets command 0 at that control tick (not latched); a state "
    "ends at the first control tick at which every motor is done or zeroed this way, or at the state timeout", "-", "authors",
    "%s %s src/gnn_simulator/mujoco_physics_engine/pid.py lines 98-99 (slack = current_length < rest_length and "
@@ -255,7 +255,7 @@ _p("control_rate", 100.0, "Hz", "authors",
    "src/mujoco_simulator/README_UDP_SIMULATOR.md: sensor packets at 100 Hz. The hardware loop is event-driven "
    "(one PID update per UDP packet, rate not documented)" % (CTRL, HYB))
 _p("execution_mode", "tracked", "-", "derived",
-   "notes/sim_base_data/band_study_v031.json (ysim 0.3.1: hook rule params hook_roles, material line, rest phase, "
+   "the maintainers' band study (ysim 0.3.1, not published: hook rule params hook_roles, material line, rest phase, "
    "dt 0.25 ms; 9 forward rolls x 6 start faces x 2 preparations per level; the 07 task starts episodes on any of the "
    "6 rollable faces, so every rollable face is a face the robot lives on)",
    "the default is the authors' own code (mode 'hardware') if with it every published forward roll reaches the next "
@@ -264,14 +264,14 @@ _p("execution_mode", "tracked", "-", "derived",
 _p("track_tol", 0.05, "-", "assumption",
    "the authors' control code stops a motor once |pos - target| < 0.15 (0.35 for ranges >= 130; "
    "%s %s src/run_tensegrity_Astar.py lines 56-57, 569-572); with that band no forward roll of this model reaches "
-   "the next face (band_study_v031.json, 0 / 108; ysim 0.3.0 and 0.2.0 found the same)" % (CTRL, RSS25),
+   "the next face (the band study, 0 / 108; ysim 0.3.0 and 0.2.0 found the same)" % (CTRL, RSS25),
    "mode 'tracked' runs the same published target states, ranges, PID and motors to within this band of the range for "
    "every target, with the authors' simulator slack rule (params slack_rule), and ends with the rest phase at the same "
    "band. Value = the widest band of the ladder 15 / 10 / 7 / 5 % at which every published forward roll reaches the "
    "next face class (the class the authors' next_nodes predicts) in every execution from every rollable face (the "
    "faces the robot lives on: 07 starts on any of the six); chosen on that tipping criterion only, never on the table's "
    "distances; re-run on ysim 0.3.1 with the same rule: still 5 %", uncertain=True,
-   sensitivity="band_study_v031.json (0.3.1), rolls reaching the next face: 15 % 21/108 (only roll_140_140 12/12 and "
+   sensitivity="the band study (0.3.1), rolls reaching the next face: 15 % 21/108 (only roll_140_140 12/12 and "
                "roll_120_140 9/12), 10 % 80/108 (the rolls with right range 100 fail), 7 % 100/108 (roll_100_100 4/12), "
                "5 % 108/108; the authors' band (mode hardware) 0/108. ysim 0.3.0 with the 0.3.0 hook rule: 3 / 72 / 97 / "
                "108. Where a roll tips its distance hardly depends on the band (mean 0.246 / 0.243 / 0.240 / 0.234 m at "
@@ -340,7 +340,7 @@ _p("hook_roles", "S_out = the hook nearest the line guide; about the strut's +z 
    "run this odd-end I / L exchange once as a sensitivity; its result is not an input). Fixed on "
    "geometry alone before any dynamics run of the candidates ("
    "2026-11-17 09:41 UTC)", uncertain=True,
-   sensitivity="notes/sim_base_data/hook_assignments_v031.json (ysim 0.3.1; every one of the 64 assignments the guide allows: 11 primitives x 4 successive executions from stand in the default mode, and the 9 forward rolls from the stand face and after one roll with the authors' code (mode hardware) and with a uniform 15 % band; consequences, never used to choose): all 64 rest stably (44/44 at rest, 0 timeouts, 0 end triangles); mean heading per forward roll on the faces the robot lives on -25.7...+1.2 deg (median -11.6, quartiles -16.1...-9.5; single rolls -63.1...+31.2 deg), the 8 nearest the authors' model -15.7...-8.9 deg, the chosen -12.2 deg, 0.3.0's rule -21.3 deg; distance per roll 0.225-0.265 m, duration 7.2-9.5 s; with the default 5 % band 46 of 64 tip every roll in every execution; with the authors' 15 % band 0-18 of 18 rolls tip (median 6; the chosen 3, 0.3.0's 0; (4, 6) and (4, 7) all 18), with the authors' code verbatim some rolls tip in 16 of 64 assignments (at most 13 / 18, (4, 6)). This spread is the model's real uncertainty: there is no public record of how the real robot is strung")
+   sensitivity="the maintainers' measurement of the hook assignments (ysim 0.3.1, not published; every one of the 64 assignments the guide allows: 11 primitives x 4 successive executions from stand in the default mode, and the 9 forward rolls from the stand face and after one roll with the authors' code (mode hardware) and with a uniform 15 % band; consequences, never used to choose): all 64 rest stably (44/44 at rest, 0 timeouts, 0 end triangles); mean heading per forward roll on the faces the robot lives on -25.7...+1.2 deg (median -11.6, quartiles -16.1...-9.5; single rolls -63.1...+31.2 deg), the 8 nearest the authors' model -15.7...-8.9 deg, the chosen -12.2 deg, 0.3.0's rule -21.3 deg; distance per roll 0.225-0.265 m, duration 7.2-9.5 s; with the default 5 % band 46 of 64 tip every roll in every execution; with the authors' 15 % band 0-18 of 18 rolls tip (median 6; the chosen 3, 0.3.0's 0; (4, 6) and (4, 7) all 18), with the authors' code verbatim some rolls tip in 16 of 64 assignments (at most 13 / 18, (4, 6)). This spread is the model's real uncertainty: there is no public record of how the real robot is strung")
 
 def value(name):
     return P[name]["value"]

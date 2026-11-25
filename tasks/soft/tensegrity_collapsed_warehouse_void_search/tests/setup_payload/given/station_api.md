@@ -84,7 +84,7 @@ calibration site:
  "credit_radius_m": [0.2, 0.4],
  "still_tolerance_m": 0.02,
  "camera": {"width": 640, "height": 480, "K": [607.686, 607.987, 326.55, 250.662], "depth_unit_m": 0.00025, "depth_range_m": [0.25, 9.0], "rate_hz": 7.0, "T_world_camera": [[0.999813, -0.018677, 0.004915, 2.236767], [-0.019313, -0.966275, 0.256788, 0.313129], [-4.6e-05, -0.256835, -0.966455, 5.085189], [0.0, 0.0, 0.0, 1.0]]},
- "limits": {"time_limit_s": 1440.0, "frames": 600, "reports_per_point": 3, "cable_length_mm": [100.0, 240.0], "program_time_s": 600.0, "silence_s": 180.0, "cpu_s": 2400.0},
+ "limits": {"time_limit_s": 1400.0, "frames": 600, "reports_per_point": 3, "cable_length_mm": [100.0, 240.0], "program_time_s": 600.0, "silence_s": 180.0, "cpu_s": 2400.0},
  "pose_source": "estimated"
 }
 ```
@@ -210,7 +210,7 @@ limit), `run_primitive`, `set_targets`, `stop`, `report_point` and `step` raise 
 <!-- BEGIN GENERATED errors -->
 | code | how it arrives | when |
 |---|---|---|
-| `busy` | result / raised | `run_primitive` or `set_targets` while a command is executing: wait, or `stop()` first (result); in the practice ground a connection opened while the allowed number of episodes is running (raised) |
+| `busy` | result / raised | `run_primitive` or `set_targets` while a command is executing: wait, or `stop()` first (result); in the practice ground a connection opened while the allowed number of episodes is running (raised); an episode counts as running until about a second after its last line, so open the connection again |
 | `invalid_name` | result | `run_primitive` with a name that is not one of the eleven primitives |
 | `invalid_bottom` | result | `run_primitive` with three distinct node numbers that are not a rollable face |
 | `out_of_range` | result | `set_targets` with a length outside the cable-length limits |
@@ -255,7 +255,7 @@ Reach the given files from your program through `os.environ.get("ARB_GIVEN_DIR",
 <!-- BEGIN GENERATED budgets -->
 | budget | per episode |
 |---|---|
-| simulated time | 1800 s (calibration site: 1440 s) |
+| simulated time | 1820 s (calibration site: 1400 s) |
 | program time: the wall clock minus the station's own work inside `step`, `get_frame`, `telemetry`, `pose` | 600 s |
 | silence: from the start, or from a reply, to your next request | 180 s |
 | CPU time of your program, all threads together | 2400 s |
@@ -302,10 +302,10 @@ The practice ground is a service in your sandbox that runs the scored episodes' 
 <!-- BEGIN GENERATED practice -->
 | number | name | what | simulated time limit |
 |---|---|---|---|
-| 1 | `cal` | the calibration site | 1440 s |
-| 2 | `p1` | a practice site | 1800 s |
-| 3 | `p2` | a practice site | 1800 s |
-| 4 | `p3` | a practice site | 1800 s |
+| 1 | `cal` | the calibration site | 1400 s |
+| 2 | `p1` | a practice site | 1820 s |
+| 3 | `p2` | a practice site | 1820 s |
+| 4 | `p3` | a practice site | 1820 s |
 
 Allowance: 30 practice episodes in your whole session, at most 2 running at the same time.
 <!-- END GENERATED practice -->
@@ -372,7 +372,7 @@ draws a new set-down and new sensor noise every time; it has a debrief; and your
 (section 8).
 
 <!-- BEGIN GENERATED costs -->
-With one episode running, the station takes about 0.16 s of wall clock per simulated second (rolling or standing alike) and about 0.23 s per camera frame. An episode that uses all 1800 s of simulated time therefore takes about 4.9 minutes for the simulation alone, a full calibration-site episode about 3.9, and all 600 frames add about 2.3 minutes, before your program's own computing. The whole allowance spent on full-length episodes with every frame taken, 2 at a time, would come to about 1.8 hours: end a practice episode (`finish()`) as soon as it has shown what you wanted. The sandbox has 8 CPUs and 16 GB of memory, which your program shares with the station, in a practice run as in a scored episode; inside either, the numerical libraries are held to 2 threads.
+With one episode running, the station takes about 0.23 s of wall clock per simulated second (rolling or standing alike) and about 0.44 s per camera frame. An episode that uses all 1820 s of simulated time therefore takes about 6.9 minutes for the simulation alone, a full calibration-site episode about 5.3, and all 600 frames add about 4.4 minutes, before your program's own computing. The whole allowance spent on full-length episodes with every frame taken, 2 at a time, would come to about 2.8 hours: end a practice episode (`finish()`) as soon as it has shown what you wanted. The sandbox has 8 CPUs and 16 GB of memory, which your program shares with the station, in a practice run as in a scored episode; inside either, the numerical libraries are held to 2 threads.
 <!-- END GENERATED costs -->
 
 ## 11. What no reply contains

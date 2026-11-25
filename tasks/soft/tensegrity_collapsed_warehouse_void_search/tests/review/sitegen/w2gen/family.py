@@ -244,7 +244,7 @@ def _draw(rng, env, cls, lx, ly, stratum):
     Mx0, Mx1 = F["M"][0] + SUP, F["M"][1] - SUP
     Bx0, Bx1 = F["Bm"][0] + SUP, F["Bm"][1] - SUP
 
-    # ---------------- search point 3 (K1); the mode is the seed's stratum (drawn once, not redrawn on rejection)
+    # ---------------- search point 3; the mode is the seed's stratum (drawn once, not redrawn on rejection)
     mode = stratum["sp3_mode"]
     if mode == "near_blind":
         sp3x = cxB + U(-0.10, 0.10)

@@ -1,6 +1,6 @@
 """Robot envelope numbers used by the site family, read from ONE table.
 
-Order: the capability sheet of the simulation base if it exists, else the local table build/capability_local.json,
+Order: the capability sheet of the simulation base if it exists, else the maintainers' local table (LOCAL_PATH),
 else the provisional values below (the site family's first estimates). The choice is made per key (a sheet that lacks
 a key falls back for that key only) and recorded in every site package (the label and sha256 of each table read).
 """

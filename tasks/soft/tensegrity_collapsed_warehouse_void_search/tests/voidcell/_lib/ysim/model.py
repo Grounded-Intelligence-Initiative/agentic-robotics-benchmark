@@ -2,8 +2,8 @@
 the authors' tendon net mapped onto the real hooks and line guides, Earth gravity, SI units.
 
 The tendon-net code (dead-band springs as tension-only tendons, sites from measured features) is new; the idea of
-generating the whole model as one MJCF string with name->id tables follows an earlier in-house tensegrity kit
-(its model.py, not imported).
+generating the whole model as one MJCF string with name->id tables follows an earlier tensegrity kit that is not
+published (not imported).
 """
 import math
 import os
@@ -22,7 +22,7 @@ class ModelConfig:
     mesh_res: str = "dec"              # "dec" (decimated copy) or "full" (authors' full-resolution triangles)
     visual: bool = True                # include the visual meshes (False -> collision primitives only, no asset dir)
     cap_hulls: bool = False            # add the end-cap convex hulls as collision geoms (asset dir; diagnostic)
-    timestep: float = None             # None -> params "timestep" (evidence: dt_study_v030.json)
+    timestep: float = None             # None -> params "timestep" (evidence: the 0.3.0 timestep study, health.py)
     integrator: str = "implicitfast"   # params "integrator"
     iterations: int = 50
     gravity: float = None              # None -> params gravity

@@ -4,7 +4,7 @@
 
 Builds WORKDIR/ref_<name>/ = a copy of tests/reference/ with reference.py replaced by variants/qc_reference.py (next to
 this file) and the plan (VARIANT of variants/plans.json, or the plan file: the degenerate submissions that need the
-true pose keep theirs in their folder of tools/degenerate/) written as qc_variant.json (what qc_verify.py does in a
+true pose keep theirs in their folder of tests/review/degenerate/) written as qc_variant.json (what qc_verify.py does in a
 stage), then runs it as the privileged call of a hidden-mode cell on one frozen hidden site (the camera off: the
 reference never takes a frame) and prints the score and the variant's log. Only to find mistakes in a variant before
 the real runs through verify.py; its numbers are not evidence.
@@ -17,7 +17,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEV = os.path.normpath(os.path.join(HERE, "..", ".."))
-TASK = DEV[:-len("-dev")]
+TASK = os.path.join(os.environ["ARB_SRC_ROOT"], os.path.basename(DEV)[:-len("-dev")]) if os.environ.get("ARB_SRC_ROOT") else DEV[:-len("-dev")]
 TESTS = os.path.join(TASK, "tests")
 VARIANTS = os.path.join(HERE, "variants")
 sys.path.insert(0, TESTS)

@@ -3,8 +3,13 @@
 #
 # A small rolling robot made of three struts joined by cables (the robot is the authors' published whole-strut mesh,
 # three times, decimated for the camera; six motors shorten or lengthen six cables; MuJoCo on CPU, single-threaded
-# physics, the classic renderer on OSMesa) is set down on a pad at the front of a collapsed warehouse bay. A fixed
-# overhead RGB-D search camera on a mast sees the bay from above; the robot carries no camera. The agent writes the
+# physics) is set down on a pad at the front of a collapsed warehouse bay. A fixed overhead RGB-D search camera on a
+# mast sees the bay from above; the robot carries no camera. The camera's picture is the dressed ruin, computed
+# offline once for each site and stored as the site's plate (the plates are files of the benchmark's asset dataset,
+# not of this folder), with the robot and its shadow rendered into it at every frame on the CPU (MuJoCo's physically
+# based renderer for the robot's colour, its classic renderer on OSMesa for the robot's depth). What the robot touches
+# is the site package's boxes and, for the heaps of rubble and of fill on the open floor, height fields made from
+# the meshes that the picture shows. The agent writes the
 # operator's OFF-BOARD program (operate.py, solve(station)): it reads the camera's raw RGB-D frames and the robot's
 # telemetry, estimates the robot's pose itself, commands the robot's rolling primitives and cable targets, works out
 # which openings lead into the void under the fallen slab, dead-reckons through the part the camera cannot see, dwells
@@ -23,25 +28,27 @@
 #
 # setup (no field: the engine bounds it at a fixed 1800 s): the givens in the agent home and the practice ground.
 # [agent] timeout_sec: 4 h.
-# [verifier] timeout_sec, from numbers measured in containers of the task image with the verifier's 8 CPUs and 16 GB:
-# version 1.1's image (2be78b3799c7, built from environment/ of these bytes), 2026-11-19 16:17-16:39 UTC, host load
-# 19-56 of 48 cores, and version 1.0's (the same cell code with its own practice sites), 2026-11-17 21:18-21:31 UTC,
-# host load 42-91 (the maintainers' bench_operate.py through ~/training/run_mission.py on practice sites: one episode
-# alone, then two at once; every call timed from the program's side of the wire; recorded in the maintainers'
-# costs.json files; every input below is the largest measured in either image): the fixed steps (the import check at
-# most 120 s, the no-network self-test at most 60 s, the desktop settle at most 60 s, the lockdown, the copy and check
-# of the givens and the acceptance file: 260 s), then the ten hidden sites, each at the bounds of the configuration
-# (tests/grader_config.json limits and hidden/limits.json: 1800 s simulated, 600 frames, 600 s program time): the
-# cell's build from its stored site package and its first frame (10 s), the program within its 600 s program-time cap,
-# which does not count the cell's simulation and rendering (1800 s simulated at 0.1922 s of wall clock per simulated
-# second, the slowest whole-episode pace of the bench with a primitive running and the wire included: 346 s) and every
-# frame of the budget (600 x 0.3552 s, the p95 cost of get_frame, encoding and wire included: 213 s), the wire's 60 s
-# grace after the episode is over and 30 s of end, scoring and clean-up: 1259 s a site; eleven episodes (verify.py
-# runs at most one episode again after a cell failure; a second one is a task error: MAX_RERUNS_PER_VERIFY) and the
-# fixed steps: 14109 s; 19100 s is 1.35 times that (and is above the 16200 s floor for ten serial worst-case episodes
-# and one re-run).
-# The oracle's episodes run the reference program inside one privileged call (its cap 3600 s each); the freeze's two
-# oracle runs of tests/verify.py took 3375 and 3398 s of wall clock for the ten on the development host (two at once).
+# [verifier] timeout_sec = safety factor x (fixed steps + (episodes + MAX_RERUNS_PER_VERIFY) x the bound of one site).
+# Every measured input is taken in containers of the task image with the verifier's CPUs and memory (the maintainers'
+# bench program through ~/training/run_mission.py on practice sites: one episode alone, then two at once; every
+# call timed from the program's side of the wire) and is kept, with the image it was measured in and the host's load,
+# by the maintainers; the field below is set from this formula when the costs of this version's image
+# are measured.
+#   fixed steps: the import check (at most IMPORT_WALL_S of tests/verify.py), the no-network self-test, the desktop
+#     settle, the lockdown, the copy and check of the givens and the acceptance file, and fetching, checking and
+#     unpacking the hidden sites' plates (tests/grader_config.json hidden_plates);
+#   the bound of one site, at the limits of the configuration (tests/grader_config.json limits and
+#     tests/hidden/limits.json: time_limit_s simulated, frames frames, program_time_s of program time):
+#       the cell's build from its stored site package and its first frame (the site's plate is opened and checked)
+#     + program_time_s, the program's own time, which does not count the cell's simulation and rendering
+#     + time_limit_s x the slowest whole-episode pace of the bench (wall clock per simulated second, a primitive
+#       running, the wire included)
+#     + frames x the cost of get_frame that the bench measured (its upper percentile; encoding and wire included)
+#     + the wire's grace after the episode is over + the end, scoring and clean-up of an episode;
+#   episodes + MAX_RERUNS_PER_VERIFY: tests/grader_config.json episodes, and verify.py runs at most one episode again
+#     after a cell failure (a second one is a task error).
+# The oracle's episodes run the reference program inside one privileged call (tests/grader_config.json
+# privileged_program_time_cap_s each).
 
 schema_version = "1.4+ale.1"
 # Where the agent leaves its work (operate.py and its helper modules).
@@ -67,7 +74,7 @@ timeout_sec = 14400
 network_mode = "no-network"
 
 [verifier]
-timeout_sec = 19100
+timeout_sec = 22600
 # Separate verification: the grader runs as root in a fresh verifier sandbox from the task image that the agent never
 # touched, with only the declared artifact (the submission) restored into it, so nothing else the agent left (a file,
 # a process, a program planted on root's PATH) reaches it. environment/setup/setup.sh does not run there: tests/test.sh

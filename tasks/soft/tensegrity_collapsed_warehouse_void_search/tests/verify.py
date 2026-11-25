@@ -15,7 +15,10 @@ three search points after a 20 s dwell and brings the robot back to the retrieva
   1. checks the root-owned copy of the givens at /opt/arb against given_hashes.json (the client library handed to the
      programs comes from it; a mismatch is a task error), and that the cell's announced constants (mission(): dwell,
      credit radii, still tolerance, retrieval radius; the per-point report budget) equal the acceptance file's
-     (voidscore/acceptance.yaml, the single source of every threshold; a difference is a task error);
+     (voidscore/acceptance.yaml, the single source of every threshold; a difference is a task error); with
+     "hidden_plates" in grader_config.json (the search camera's plate backend) it then fetches the hidden sites' plate
+     bundles, checks them and installs them under plate_root (fetch_hidden_plates; any failure is a task error), and
+     before the first episode it checks that every pinned site has its bundle;
   2. gates: contract_ok = operate.py is a regular file that parses and defines solve, the route gate (no weight files,
      no training calls, size cap), every .py file of the submission readable by the parser, the network audit (static:
      no networking import, no computed import, no computed code, no program start; runtime: every process of the
@@ -176,9 +179,9 @@ CRITERIA = ["void_search_score"]
 GATES = ["contract_ok"]
 IMPORT_WALL_S = 120          # the import check's limits (instruction.md, station_api.md): wall seconds and CPU seconds
 IMPORT_CPU_S = 120
-# the kernel's first choice when the sandbox's memory runs out is the program, never the grader (precedent, E1)
+# the kernel's first choice when the sandbox's memory runs out is the program, never the grader (as in the precedent)
 OOM_FIRST = ["choom", "-n", "1000", "--"]
-# what ast.parse raises for a source it cannot read (precedent, E2): the contract fails, the grader goes on
+# what ast.parse raises for a source it cannot read (as in the precedent): the contract fails, the grader goes on
 PARSE_ERRORS = (SyntaxError, RecursionError, MemoryError, ValueError)
 # the numerics of the program's process, the same on every x86-64 CPU (tests/test.sh exports the same values for this
 # process; ~/training/run_mission.py gives the program the same three in a practice run): OpenBLAS's Haswell kernel
@@ -300,7 +303,8 @@ def hidden_sites(n):
 
 def cell_config(cfg):
     """The cell's run settings: grader_config's limits, pose_source, render_backend, msaa_rgb; the simulated-time
-    limit from hidden/limits.json (the selection's); the per-point report budget from the acceptance file."""
+    limit from hidden/limits.json (the selection's); the per-point report budget from the acceptance file; with a
+    plate_root (the plate backend's bundles of the hidden sites), that folder resolved under this stage."""
     try:
         lim = load_json(os.path.join(HIDDEN, "limits.json"))
         t_lim = float(lim["time_limit_s"])
@@ -315,7 +319,77 @@ def cell_config(cfg):
     for k in ("pose_source", "render_backend", "msaa_rgb"):
         if k in cfg:
             out[k] = cfg[k]
+    if cfg.get("plate_root"):                    # the plate bundles of the hidden set (plate_filament backend)
+        root = os.path.normpath(os.path.join(STAGE_DIR, str(cfg["plate_root"])))
+        if not root.startswith(STAGE_DIR + os.sep) or os.path.islink(root) or not os.path.isdir(root):
+            fail("grader_config.json plate_root %r is not a folder under the staged tests/" % cfg["plate_root"])
+        out["plate_root"] = root
     return out
+
+
+def fetch_hidden_plates(cfg):
+    """The plate bundles of the hidden sites (the plate backend's offline environment of each site) are not in the
+    repository: one tarball in the benchmark's asset dataset, pinned in grader_config.json ("hidden_plates": the URL at a
+    dataset commit, its sha256 and its file count). It is downloaded here, before the cell is configured and outside
+    every episode's network count, checked, unpacked into a temporary folder of this root-only stage and installed into
+    plate_root (voidcell/_lib/plate_install.py, the same code as the practice ground's image step: each bundle folder
+    h01 ... h10 renamed to the site package sha256 its meta.json records, which must be the sha256 hidden/seeds.json
+    pins for the site of the same name). A failed download, a hash mismatch, a member that is not a regular file of a
+    bundle folder, another file count or a bundle of another site is a task error, and so is a plate_root that exists and
+    holds anything but installed bundles (it is replaced, never merged). ARB_HIDDEN_PLATES_TARBALL (the local
+    copy tests/assets/plates.tar.xz that tests/test.sh points at before the bundles are published; checked the same way)
+    replaces the download. Returns (files, seconds)."""
+    from voidcell._lib import plate_install
+    spec = cfg.get("hidden_plates")
+    if not isinstance(spec, dict) or not cfg.get("plate_root"):
+        fail("grader_config.json hidden_plates must be an object (url, sha256, files) next to a plate_root")
+    root = os.path.normpath(os.path.join(STAGE_DIR, str(cfg["plate_root"])))
+    if not root.startswith(STAGE_DIR + os.sep) or os.path.islink(root):
+        fail("grader_config.json plate_root %r is not a folder under the staged tests/" % cfg["plate_root"])
+    n_want = spec.get("files")
+    if not isinstance(n_want, int) or isinstance(n_want, bool) or n_want <= 0:
+        fail("grader_config.json hidden_plates.files is not a number of files")
+    if os.path.lexists(root) and not plate_install.holds_only_bundles(root):
+        fail("grader_config.json plate_root %r exists and holds something other than plate bundles" % cfg["plate_root"])
+    try:
+        rows = load_json(os.path.join(HIDDEN, "seeds.json"))["sites"]
+        expect = {}
+        for row in rows:
+            name = os.path.basename(str(row["archive"]))
+            expect[name[:-len(".tar.xz")] if name.endswith(".tar.xz") else name] = str(row["sha256"]).lower()
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        fail("hidden/seeds.json is unusable for the plate bundles: %s" % e)
+    t0 = time.time()
+    tarball = os.path.join(STAGE_DIR, ".plates.tar.xz")
+    part = os.path.join(STAGE_DIR, ".plates.part")
+    shutil.rmtree(part, ignore_errors=True)
+    shutil.rmtree(root, ignore_errors=True)
+    local = os.environ.get("ARB_HIDDEN_PLATES_TARBALL")
+    try:
+        plate_install.fetch_tarball(spec, tarball, local=local, log=lambda s: log("[grader] " + s))
+        folders, n = plate_install.unpack_tarball(tarball, part)
+        if n != n_want:
+            fail("the hidden sites' plate bundles: the tarball holds %d files; grader_config.json expects %d" % (n, n_want))
+        plate_install.install(folders, root, expect)
+    except (plate_install.PlateInstallError, OSError) as e:
+        fail("the hidden sites' plate bundles: %s" % e)
+    finally:
+        shutil.rmtree(part, ignore_errors=True)
+        if os.path.lexists(tarball):
+            os.remove(tarball)
+    os.chmod(root, 0o700)
+    dt = time.time() - t0
+    log("[grader] the hidden sites' plate bundles: %d files, %d sites, in %.1f s" % (n, len(expect), dt))
+    return n, dt
+
+
+def plates_for_sites(root, sites):
+    """Every pinned hidden site has its bundle <plate_root>/<site package sha256>/meta.json before the first episode
+    (the camera checks the whole bundle again when it opens)."""
+    missing = [name for _seed, path, name in sites
+               if not os.path.isfile(os.path.join(root, sha256_file(path), "meta.json"))]
+    if missing:
+        fail("grader_config.json plate_root holds no plate bundle for the hidden site(s) %s" % missing)
 
 
 def route_gate(cfg, src):
@@ -455,7 +529,7 @@ def _parse_error(e):
 
 
 def unparsable_files(src):
-    """[(relpath, error text)] of the submission's .py files the parser cannot read at all (precedent, E2)."""
+    """[(relpath, error text)] of the submission's .py files the parser cannot read at all (see precedent)."""
     out = []
     for dp, dns, fns in os.walk(src):
         dns[:] = sorted(d for d in dns if d != "__pycache__")
@@ -778,6 +852,11 @@ def _main_locked(cfg, rewards, metrics):
     metrics["root_payload_ok"] = 1.0 if ok_root else 0.0
     if not ok_root:
         fail("the root-owned copy of the givens at %s is unusable: %s" % (ROOT_PAYLOAD, "; ".join(problems[:5])))
+    if "hidden_plates" in cfg:
+        pl_files, pl_s = fetch_hidden_plates(cfg)
+        metrics["hidden_plates_files"] = float(pl_files)
+        metrics["hidden_plates_fetch_s"] = float(pl_s)
+        metrics["hidden_plates_local_copy"] = 1.0 if os.environ.get("ARB_HIDDEN_PLATES_TARBALL") else 0.0
     ccfg = cell_config(cfg)
     lim = cell_budgets.merged(ccfg["limits"])
     rn = Runner(cfg, cpu_s=lim["cpu_s"])
@@ -799,6 +878,8 @@ def _main_locked(cfg, rewards, metrics):
     log("[grader] contract_ok=%s (%s); privileged %s; runner %s; lock latency %.0f ms" % (ok, why, privileged, rn.name or "self", metrics["stage_lock_latency_ms"]))
     n = int(cfg.get("episodes", 10))
     ep_seeds, sites = hidden_sites(n)
+    if ccfg.get("plate_root"):
+        plates_for_sites(ccfg["plate_root"], sites)
     stream = seed_rng(pinned=ep_seeds)
     metrics.update(stream.stats())
     if not ok:
