@@ -372,8 +372,8 @@ step before the merge; the author was told not to edit that file). `tests/test_l
 on this server only: its temporary folder is on NFS and cannot be removed while a file in it is open; with
 `TMPDIR` on a local disk it passes. It does not touch this task.
 
-**18:20 to 19:00. The kit of upstream #173, and the probe's copy rebuilt (tree `7e59d13`; the native verify has
-not been repeated on it).** `upstream/main` moved to `1c13a47` after this branch was cut: #173 changed
+**18:20 to 19:00. The kit of upstream #173, and the probe's copy rebuilt (tree `7e59d13`; the native verify ran
+on `152fdf7`, the same task files).** `upstream/main` moved to `1c13a47` after this branch was cut: #173 changed
 `shared/robotics_grader/` (the solver and everything it starts run at nice 19; `replies_differ` is the lock's one
 rule; `probe.stale_copy`; `deadline.VerifierDeadline`) and copied it into every task. The branch was merged with
 `upstream/main` and the kit copied again (byte-identical to `shared/`). The task against #173's three findings:
@@ -417,19 +417,42 @@ the grader's loop (`pack_grade.run_packs`) against a stand-in cell without a sim
 from the observed angles, 81 of 81 probed pairs differing; one that does not, 0 of 81 and the lock fails; the
 cell asked for its angles once per probe; the residuals of both observations about 1.5e-6.
 
-**Not run on this tree: the native verify.** The series was started and stopped within a minute, because the
-server's free GPU had just been taken by another job. So the reference's three runs at 1.00000 (trees `230187b`
-and `21ac344`, above) are from before this change. What the change touches is which steps are probed and what the
-copied observation holds; the cell's physics and the actions executed on true observations are the same code.
-That the reference still scores 1.0 and passes the lock on the new copies is expected and not yet measured. To do
-on a free GPU: the reference on the whole hidden set, then the small checks (no submission, the example, the
-reference without its token, the recorded reference and its blind replay, a commissioning session).
+**The native verify on this tree** (`152fdf7`: the task files of `7e59d13` and this entry; 18:42 to 19:19, one
+Isaac process at a time, confined to GPU 3 of the author's server, which other users' jobs shared). The first
+attempt, at 18:34, was stopped within a minute because the GPU it was confined to had just been filled by another
+job. What the change touches is which steps are probed and what the copied observation holds; the cell's physics
+and the actions executed on true observations are the same code, and the runs show it:
+
+| submission | set | result on `152fdf7` | on `21ac344` |
+|---|---|---|---|
+| the reference | six packs | `mean_pack_credit` 1.00000, reward 1.0, the lock 83 of 83 (53 idle pairs not counted), stage 1394 s | 1.00000, lock 77 of 77 (50 idle), stage 1076 s |
+| none (an empty `/home/user/submission`) | six packs | "no usable submission": reward 0.0 | the same |
+| the reference without its token | hidden pack 2 | no `truth`, it ends the pack at once: credit 0, reward 0.0 | the same |
+| the reference, its applied actions recorded | hidden pack 2 | credit 1.0 (59 of 59), 1040 steps, lock 10 of 10 (6 idle), reward 1.0 | lock 11 of 11 (9 idle) |
+| a blind replay of those recorded actions | hidden pack 2 | credit 1.0 in 1040 steps, **the lock fails, 0 of 10**: reward 0.0 | 0 of 11 |
+| the example program (one frame, then `done`) | six packs | credit 0 on every pack, reward 0.0, stage 188 s | the same, 140 s |
+
+Every pack of the reference's run took the same number of steps as on `21ac344` (921, 852, 1040, 1066, 1151 and
+1185) and the same simulated time (601 to 813 s), with every item placed, no protective stop and no stripped
+fastener; the reference's own time was 6 s. Which steps are probed is drawn afresh, so the lock's counts differ
+from the earlier tree's; the longer wall times are the shared GPU's. The commissioning service, started from this
+worktree, behaved as before: the example program through `run_session.py` on development pack 2 (2 steps, 1
+frame, 0 repeated, 27 s); an interactive session on pack 1 right after: no `truth` in an observation, both
+cameras decode (overhead 1440 x 1080, wrist 960 x 720), a malformed action refused ("move.type must be one of
+hold, tcp, joint"), `truth` and `score` unknown requests; two sessions counted, eight left.
+
+What the grader recorded about the copies (`probe_*` in the verdict's metrics) did not match the measurement
+without the simulator above: of 136 copies (one for every probed step, idle pairs included), the true observation
+had the larger residual in 81 (59.6 %; for a fair coin 68 ± 5.8, so 2.2 standard deviations above half), and the
+largest true residual was 4.6e-4 to 8.0e-4 (an entry of a rotation matrix) on five of the six packs (one copy, on
+pack 4, reached 6.9e-4), where the rounding leaves about 1e-6. The cause is the conversion of a pose near a half
+turn (the next entry).
 
 ## 7. Final report (2026-11-24, 16:30 EST)
 
-**Since this report:** the kit of upstream #173 and a rebuilt probe copy (the last entry of section 6). The static
-gates pass on that tree; the native verify has not been repeated on it yet, so the numbers below are the earlier
-tree's.
+**Since this report:** the kit of upstream #173 and a rebuilt probe copy (section 6, the entry "18:20 to 19:00").
+The static gates pass on that tree, and the native verify was repeated on it (`152fdf7`) with the same results: the
+reference 1.00000 on every pack in the same steps, the lock passed, the small checks as before.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops
