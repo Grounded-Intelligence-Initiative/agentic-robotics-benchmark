@@ -558,8 +558,10 @@ def build(stage, pack, robot_usd, render=True):
                 top = S.LID["t"] / 2
                 for i, pa in enumerate(appear.get("patches", [])):
                     ca, sa = math.cos(pa["angle"]), math.sin(pa["angle"])
-                    ell = [(pa["x"] + pa["a"] * math.cos(t) * ca - pa["b"] * math.sin(t) * sa,
-                            pa["y"] + pa["a"] * math.cos(t) * sa + pa["b"] * math.sin(t) * ca)
+                    # an ellipse, cut at the lid's edge (grime ends where the lid does)
+                    hx, hy = sx / 2 - 0.0005, sy / 2 - 0.0005
+                    ell = [(min(hx, max(-hx, pa["x"] + pa["a"] * math.cos(t) * ca - pa["b"] * math.sin(t) * sa)),
+                            min(hy, max(-hy, pa["y"] + pa["a"] * math.cos(t) * sa + pa["b"] * math.sin(t) * ca)))
                            for t in [2 * math.pi * k / 28 for k in range(28)]]
                     b.prism(path + "/patch%d" % i, ell, top, top + 0.00012 + 0.00001 * i, look=pa["kind"])
                 for i, lb in enumerate(appear.get("labels", [])):
