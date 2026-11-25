@@ -27,8 +27,11 @@ turned by a small angle about the vertical through `SOFA_PIVOT` and shifted; the
 drawers, the hanger, the hat and whatever lies in or on it, likewise about `CAB_PIVOT`
 (`LAYOUT_RANGE`, `place`). An observation does not say by how much: the cameras show it.
 
-This file is the simulator and the judge of an episode (`Env.progress`, `Env.score`); the grader
-imports its own copy, and the copy in the agent's home is for development.
+This file is the simulator and the judge of an episode (`Env.progress`, `Env.score`). It is the
+grader's: the agent does not get it, nor the room's meshes, nor any simulator of the room. What
+the agent gets is the robot alone (`build_robot_xml`, written to a file by
+tests/review/build_given.py), a few first observations of episodes that are not graded, and
+the remote's model. The reference controller of solution/ carries its own copy of this file.
 """
 
 import base64
@@ -47,7 +50,7 @@ import mujoco  # noqa: E402
 
 __all__ = [
     "HIDING_SPOTS", "EpisodeSpec", "make_episode", "Env", "CAMERAS", "ACTION_SIZE", "CONTROL_DT",
-    "MAX_STEPS", "camera_intrinsics", "decode_image", "build_xml", "place",
+    "MAX_STEPS", "camera_intrinsics", "decode_image", "build_xml", "build_robot_xml", "place",
 ]
 
 HIDING_SPOTS = ("left_cushion", "right_cushion", "upper_drawer", "lower_drawer", "under_sofa", "under_hat")
@@ -408,9 +411,9 @@ def _asset_root():
 
 
 def room_dir():
-    """The folder with the room's meshes and textures (REMOTE_ROOM_DIR, else /opt/room, else
-    `room/` beside this file)."""
-    for path in (os.environ.get("REMOTE_ROOM_DIR"), "/opt/room",
+    """The folder with the room's meshes and textures (REMOTE_ROOM_DIR, else `room/` beside this
+    file)."""
+    for path in (os.environ.get("REMOTE_ROOM_DIR"),
                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "room")):
         if path and os.path.isfile(os.path.join(path, "sofa_frame.obj")):
             return path
@@ -663,9 +666,7 @@ def _look_at(pos, target):
     return tuple(right) + tuple(up)
 
 
-def build_xml():
-    """The MJCF of the room. The look of an episode is set on the compiled model at reset."""
-    assets, arm = _panda(_asset_root())
+def _actuators():
     actuators = ['<general name="act_rail" joint="rail" biastype="affine" gainprm="30000" '
                  'biasprm="0 -30000 -3000" forcerange="-800 800" ctrlrange="{}"/>'.format(_fmt(RAIL_RANGE))]
     for i in range(7):
@@ -674,6 +675,70 @@ def build_xml():
                              n=i + 1, kp=ARM_KP[i], kv=ARM_KV[i], f=ARM_FORCE[i], lo=ARM_LIMITS[i][0], hi=ARM_LIMITS[i][1]))
     actuators.append('<position name="act_f1" joint="finger_joint1" kp="1500" ctrlrange="0 0.04" forcerange="-{f} {f}"/>'.format(f=FINGER_FORCE))
     actuators.append('<position name="act_f2" joint="finger_joint2" kp="1500" ctrlrange="-0.04 0" forcerange="-{f} {f}"/>'.format(f=FINGER_FORCE))
+    return actuators
+
+
+_ROBOT_BODY = """<geom name="rail_beam" type="box" pos="0 {rail_mid} 0.02" size="0.07 {rail_half} 0.02" material="rail"/>
+    <camera name="overview" pos="{cam_pos}" xyaxes="{cam_axes}" fovy="{cam_fovy}"/>
+    <body name="pedestal" pos="0 0 0">
+      <joint name="rail" type="slide" axis="0 1 0" range="{rail_lo} {rail_hi}" damping="50" armature="2"/>
+      <inertial pos="0 0 0.15" mass="40" diaginertia="2 2 2"/>
+      <geom name="pedestal" type="box" pos="0 0 {ped_z}" size="0.11 0.11 {ped_half}" material="rail"/>
+      <body name="arm_mount" pos="0 0 {base_z}">
+        {arm}
+      </body>
+    </body>"""
+
+
+def _robot_body(arm):
+    return _ROBOT_BODY.format(
+        arm=arm, rail_mid=0.5 * (RAIL_RANGE[0] + RAIL_RANGE[1]), rail_half=0.5 * (RAIL_RANGE[1] - RAIL_RANGE[0]) + 0.15,
+        rail_lo=RAIL_RANGE[0], rail_hi=RAIL_RANGE[1],
+        ped_z=0.04 + 0.5 * (BASE_Z - 0.04), ped_half=0.5 * (BASE_Z - 0.04), base_z=BASE_Z,
+        cam_pos=_fmt(OVERVIEW_POS), cam_axes=_fmt(_look_at(OVERVIEW_POS, OVERVIEW_LOOKAT)),
+        cam_fovy=CAMERAS["overview"][3])
+
+
+def build_robot_xml():
+    """The MJCF of the robot alone on an empty floor: the rail, the pedestal, the Panda with its
+    hand and wrist camera, the overview camera, the actuators and the wrist sensor, exactly as
+    in the room's model. This is the model the agent is given."""
+    assets, arm = _panda(_asset_root())
+    return """<mujoco model="panda_on_rail">
+  <compiler angle="radian" autolimits="true"/>
+  <option timestep="{dt}" integrator="implicitfast" cone="elliptic" impratio="20" noslip_iterations="10"/>
+  <visual>
+    <global offwidth="1280" offheight="960"/>
+    <headlight ambient="0.36 0.36 0.36" diffuse="0.28 0.28 0.28" specular="0 0 0"/>
+    <map znear="0.01" zfar="12"/>
+  </visual>
+  <asset>
+    {assets}
+    <material name="rail" rgba="0.3 0.31 0.33 1" specular="0.4" shininess="0.5"/>
+  </asset>
+  <worldbody>
+    <light name="lamp" pos="-0.4 0 2.6" dir="0.25 0 -1" diffuse="0.72 0.7 0.67"/>
+    <geom name="floor" type="plane" size="4 4 0.1" rgba="0.6 0.6 0.6 1" friction="0.5 0.01 0.0001" condim="4"/>
+    {robot}
+  </worldbody>
+  <contact>
+    <exclude body1="pedestal" body2="link0"/>
+    <exclude body1="pedestal" body2="link1"/>
+  </contact>
+  <actuator>
+    {actuators}
+  </actuator>
+  <sensor>
+    <force name="wrist_force" site="ft_frame"/>
+    <torque name="wrist_torque" site="ft_frame"/>
+  </sensor>
+</mujoco>""".format(dt=SIM_DT, assets=assets, robot=_robot_body(arm), actuators="\n    ".join(_actuators()))
+
+
+def build_xml():
+    """The MJCF of the room. The look of an episode is set on the compiled model at reset."""
+    assets, arm = _panda(_asset_root())
+    actuators = _actuators()
     room = room_dir()
     pad = "{} {} {}".format(*PAD_SIZE)
     return """<mujoco model="living_room">
@@ -732,16 +797,7 @@ def build_xml():
     <geom name="wall_right" type="box" pos="-0.5 -2.4 1.2" size="2 0.02 1.2" material="wall"/>
     <geom name="skirting_back" type="box" pos="{skirt_x} 0 0.05" size="0.012 3 0.05" rgba="0.93 0.93 0.91 1" contype="0" conaffinity="0"/>
     <geom name="skirting_right" type="box" pos="-0.5 -2.37 0.05" size="2 0.012 0.05" rgba="0.93 0.93 0.91 1" contype="0" conaffinity="0"/>
-    <geom name="rail_beam" type="box" pos="0 {rail_mid} 0.02" size="0.07 {rail_half} 0.02" material="rail"/>
-    <camera name="overview" pos="{cam_pos}" xyaxes="{cam_axes}" fovy="{cam_fovy}"/>
-    <body name="pedestal" pos="0 0 0">
-      <joint name="rail" type="slide" axis="0 1 0" range="{rail_lo} {rail_hi}" damping="50" armature="2"/>
-      <inertial pos="0 0 0.15" mass="40" diaginertia="2 2 2"/>
-      <geom name="pedestal" type="box" pos="0 0 {ped_z}" size="0.11 0.11 {ped_half}" material="rail"/>
-      <body name="arm_mount" pos="0 0 {base_z}">
-        {arm}
-      </body>
-    </body>
+    {robot}
     <body name="sofa" pos="0 0 0">
       {sofa}
     </body>
@@ -770,7 +826,7 @@ def build_xml():
     <torque name="wrist_torque" site="ft_frame"/>
   </sensor>
 </mujoco>""".format(
-        dt=SIM_DT, assets=assets, arm=arm, room=room, pad=pad, sofa=_sofa(), cabinet=_cabinet(),
+        dt=SIM_DT, assets=assets, robot=_robot_body(arm), room=room, pad=pad, sofa=_sofa(), cabinet=_cabinet(),
         pad_left=_pad("left", PAD_Y["left"]), pad_right=_pad("right", PAD_Y["right"]),
         drawer_upper=_drawer("upper"), drawer_mid=_drawer("mid"), drawer_lower=_drawer("lower"),
         hanger=_hanger(), remote=_remote(), hat=_hat(), clutter=_clutter(),
@@ -784,12 +840,7 @@ def build_xml():
                                for i in range(HAT_PARTS)),
         cab_pos=_fmt((CAB_X0, CAB_CY, 0)),
         wall_x=SOFA_X0 + 0.82, skirt_x=SOFA_X0 + 0.79,
-        actuators="\n    ".join(actuators),
-        rail_mid=0.5 * (RAIL_RANGE[0] + RAIL_RANGE[1]), rail_half=0.5 * (RAIL_RANGE[1] - RAIL_RANGE[0]) + 0.15,
-        rail_lo=RAIL_RANGE[0], rail_hi=RAIL_RANGE[1],
-        ped_z=0.04 + 0.5 * (BASE_Z - 0.04), ped_half=0.5 * (BASE_Z - 0.04), base_z=BASE_Z,
-        cam_pos=_fmt(OVERVIEW_POS), cam_axes=_fmt(_look_at(OVERVIEW_POS, OVERVIEW_LOOKAT)),
-        cam_fovy=CAMERAS["overview"][3])
+        actuators="\n    ".join(actuators))
 
 
 # ================================================================================================
@@ -962,10 +1013,9 @@ class Env(object):
             mujoco.mj_step(m, d)
         self.steps = 0
         self.stopped = None
-        self.progress = {"seen": False, "hanger_taken": False, "revealed": False, "retrieved": False}
+        self.progress = {"seen": False, "revealed": False, "retrieved": False}
         self._hold = 0
         self._reveal_run = 0
-        self._taken_run = 0
         self._pending = dict.fromkeys(CAMERAS, True)
         return self.observation()
 
@@ -1160,7 +1210,7 @@ class Env(object):
                     hit = False
                     break
                 gb = int(m.geom_bodyid[geomid[0]])
-                if gb in self.robot_bodies or gb == self.body["hanger"]:
+                if gb in self.robot_bodies:
                     origin = origin + np.array([0.0, 0.0, dist + 0.002])
                     continue
                 break
@@ -1172,20 +1222,12 @@ class Env(object):
         m, d = self.model, self.data
         spot = self.spec.hiding_spot
         progress = self.progress
-        # Revealed: the remote lies open to above (pad lifted off it, drawer pulled out, or swept
-        # out from under the sofa).
+        # Revealed: the remote lies open to above (a pad or the hat off it, its drawer pulled out,
+        # or brought out from under the sofa).
         if not progress["revealed"]:
             self._reveal_run = self._reveal_run + 1 if self.remote_exposed() else 0
             if self._reveal_run >= 5:
                 progress["revealed"] = True
-        # Hanger taken: held by both finger pads, clear of the peg, the cabinet and the floor.
-        if not progress["hanger_taken"]:
-            touching = self._contacts(self.body["hanger"])
-            held = all(p in touching for p in self.pad_geoms)
-            others = [g for g in touching if m.geom_bodyid[g] not in self.robot_bodies]
-            self._taken_run = self._taken_run + 1 if (held and not others) else 0
-            if self._taken_run >= 5:
-                progress["hanger_taken"] = True
         # Retrieved: the remote held by both finger pads, touching nothing else, lifted clear of
         # its hiding surface and out from under the sofa, for HOLD_STEPS in a row.
         touching = self._contacts(self.body["remote"])
@@ -1205,11 +1247,9 @@ class Env(object):
             return 0.0
         if p["retrieved"]:
             return 1.0
-        if self.spec.hiding_spot == "under_sofa":
-            if p["revealed"] or (p["seen"] and p["hanger_taken"]):
-                return PARTIAL_REVEALED
-            return PARTIAL_SEEN if p["seen"] else 0.0
-        return PARTIAL_REVEALED if p["revealed"] else 0.0
+        if p["revealed"]:
+            return PARTIAL_REVEALED
+        return PARTIAL_SEEN if p["seen"] else 0.0
 
     def close(self):
         for renderer in self._renderers.values():

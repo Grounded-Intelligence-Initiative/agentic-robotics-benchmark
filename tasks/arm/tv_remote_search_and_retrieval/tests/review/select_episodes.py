@@ -6,7 +6,7 @@ solution/ plays each candidate once, in process, on the simulator of tests/remot
 episodes. Every candidate and its outcome is recorded in tests/hidden/selection.json, so the
 reference's own failure rate on unselected draws is on record.
 
-    REMOTE_ROOM_DIR=environment/room python3 tests/review/select_episodes.py
+    REMOTE_ROOM_DIR=tests/room python3 tests/review/select_episodes.py
 """
 
 import json
@@ -17,7 +17,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 TASK = os.path.dirname(os.path.dirname(HERE))
 sys.path[:0] = [os.path.join(TASK, "tests"), os.path.join(TASK, "solution", "solver")]
-os.environ.setdefault("REMOTE_ROOM_DIR", os.path.join(TASK, "environment", "room"))
+os.environ.setdefault("REMOTE_ROOM_DIR", os.path.join(TASK, "tests", "room"))
 
 import remote_env as E  # noqa: E402
 from reference import Reference  # noqa: E402

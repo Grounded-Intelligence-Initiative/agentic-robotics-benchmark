@@ -3,7 +3,7 @@
 It shows the wire (READY, reset, act, close), how a repeated step index is answered without
 advancing anything, and how the images of an observation are decoded. It retrieves nothing.
 
-    run.sh:   exec /opt/venv/bin/python3 controller.py
+    run.sh:   cd "$(dirname "$0")" && exec /opt/venv/bin/python3 controller.py
 """
 
 import base64

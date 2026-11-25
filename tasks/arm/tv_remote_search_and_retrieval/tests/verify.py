@@ -1,12 +1,12 @@
 """Hidden grader for tv_remote_search_and_retrieval (closed loop, fixed hidden episodes).
 
-Runs as root in a separate verifier sandbox, after the agent is gone. It owns its own copy of the
-living room (remote_env.py, byte-identical to the copy the agent developed against), plays the
-fixed hidden episodes of hidden/episodes.json in order (each a seed and a hiding spot: two per
-spot, twelve in all), drives the agent's controller over the stdio wire at the agent's UID
-(`robotics_grader.Solver`) and scores every episode from its own simulator state
-(`Env.score`): 1 when the remote was retrieved, a part of it for laying the remote open (or, under
-the sofa, for seeing it and taking the hanger), else 0. The metric is the mean over the episodes.
+Runs as root in a separate verifier sandbox, after the agent is gone. It owns the living room
+(remote_env.py and room/: the agent never had a simulator of the room, nor its meshes, nor the
+list of hiding spots), plays the fixed hidden episodes of hidden/episodes.json in order (each a
+seed and a hiding spot: two per spot, twelve in all), drives the agent's controller over the
+stdio wire at the agent's UID (`robotics_grader.Solver`) and scores every episode from its own
+simulator state (`Env.score`): 1 when the remote was retrieved, 0.4 for laying it open, 0.2 for
+getting it into an image the controller asked for, else 0. The metric is the mean over the episodes.
 
 Time: every episode has a controller budget (grader_config.json `controller_budget_s`): the time
 the grader waits for the controller's replies plus a fixed charge for every image the controller

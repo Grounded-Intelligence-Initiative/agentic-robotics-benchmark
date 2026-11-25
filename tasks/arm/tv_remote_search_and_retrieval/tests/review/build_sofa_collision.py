@@ -1,6 +1,6 @@
 """The settee's collision shapes: a convex decomposition (CoACD) of its drawn mesh."""
 import os, numpy as np, trimesh, coacd
-OUT = "/home/lingjun/ale/agentic-robotics-benchmark/tasks/arm/tv_remote_search_and_retrieval/environment/room"
+OUT = "/home/lingjun/ale/agentic-robotics-benchmark/tasks/arm/tv_remote_search_and_retrieval/tests/room"
 m = trimesh.load(f"{OUT}/sofa_frame.obj", process=False)
 parts = coacd.run_coacd(coacd.Mesh(m.vertices, m.faces), threshold=0.03, max_convex_hull=72, preprocess_resolution=100)
 for f in os.listdir(OUT):

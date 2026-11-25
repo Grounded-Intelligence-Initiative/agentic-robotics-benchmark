@@ -13,7 +13,7 @@ import sys
 import numpy as np
 import trimesh
 
-OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "environment", "room")
+OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "tests", "room")
 # Full sizes (x, y, z): 2 x PHONE_HALF and 2 x CASE_HALF of remote_env.py.
 SIZES = {"phone": (0.150, 0.074, 0.009), "glasses_case": (0.160, 0.070, 0.034)}
 FACES = {"phone": None, "glasses_case": 6000}
