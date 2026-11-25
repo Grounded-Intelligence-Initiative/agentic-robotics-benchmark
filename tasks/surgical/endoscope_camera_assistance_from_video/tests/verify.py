@@ -187,7 +187,10 @@ def engine_renderer(config):
            "NVIDIA_DRIVER_CAPABILITIES": os.environ.get("NVIDIA_DRIVER_CAPABILITIES", ""),
            "NVIDIA_VISIBLE_DEVICES": os.environ.get("NVIDIA_VISIBLE_DEVICES", "")}
     log_path = os.path.join(RENDER_ROOT, "renderer.log")
-    renderer = Renderer(RENDER_ROOT, python="/opt/venv/bin/python3", prefix=["/usr/sbin/runuser", "-u", RENDER_USER, "--"], env=env,
+    # runuser sets HOME from the account's passwd entry (/var/lib/endocam, which only setup makes, in the solver's
+    # sandbox; Omniverse RTX keeps its texture cache there): env puts it back to the renderer's own folder.
+    prefix = ["/usr/sbin/runuser", "-u", RENDER_USER, "--", "/usr/bin/env", "HOME=" + env["HOME"]]
+    renderer = Renderer(RENDER_ROOT, python="/opt/venv/bin/python3", prefix=prefix, env=env,
                         log_path=log_path, start_timeout=float(config.get("renderer_start_timeout_s", 2400)),
                         render_timeout=float(config.get("render_timeout_s", 120)), max_restarts=int(config.get("renderer_restarts", 3)),
                         cwd=os.path.join(RENDER_ROOT, "home"))
