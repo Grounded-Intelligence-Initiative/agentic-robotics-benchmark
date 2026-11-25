@@ -237,9 +237,9 @@ ones are in neither the image nor the sandbox.
 
 ## 6. Known limitations and open items (version 0.1)
 
-* **Nothing here has run in the engine.** No Docker on the development server: the image has not been built, setup
-  and the commissioning service have not run as their accounts, `ale validate` and `ale run` have not run, and the
-  anchor was measured natively. See the status log for exactly what was and was not exercised.
+* **The engine has run it on one host only.** `ale validate` passed on an RTX 3090 with driver 535 and rootless Docker
+  that limits the CPUs by affinity instead of a quota (status log, 2026-11-25, evening); the anchor is that run's.
+  `ale run` has not run, and no agent phase has run in the engine (the oracle's takes milliseconds).
 * **Difficulty is unmeasured.** The target is a frontier-model reward of roughly 0.3 or below from perception and
   control; no frontier model has been run. The one data point is the pixel baseline of section 4 (reward 0.39 and
   0.43 in two runs, with the reference's control law handed to it, which an agent does not have). If a model saturates the task, the levers
@@ -253,7 +253,8 @@ ones are in neither the image nor the sandbox.
 * **No repository-level test.** The rule here was one folder per pull request, so the copy check lives in
   `tests/review/check_copies.py` instead of the repository's `tests/` (compare `tests/test_pump_skid_commissioning.py`).
 * **GPU models.** `task.toml` names RTX-4090, RTX-5090 and RTX-PRO-6000 from `hazard_bay_build`'s validation of the
-  same Isaac Sim stack; this task has run on none of them (status log).
+  same Isaac Sim stack, then RTX-3090, the one model this task has run on in the engine; it has run on none of the
+  three cloud models (status log).
 * **Recorded surgeon motion.** The instruments move by procedural primitives. Real recordings (JIGSAWS kinematics,
   Cholec80 / CholecT50, EndoVis, SurgT and similar) would be more convincing, but no dataset's licence has been
   checked for redistribution in a public benchmark image, so none was downloaded or shipped. Open question for the
@@ -279,6 +280,48 @@ ones are in neither the image nor the sandbox.
 Newest first. Each entry says where the numbers come from; "here" is the development server (Ubuntu 22.04,
 RTX 6000 Ada, NVIDIA driver 570.195.03, Isaac Sim 6.2.0.0 + Isaac Lab 3.0.0 in a native Python 3.12 venv, no root,
 no Docker).
+
+### 2026-11-25, evening: the first `ale validate`, on an RTX 3090 (trees `5faaf03`, `4f91966`)
+
+Where: the author's second server (Ubuntu 22.04, Intel i9-12900K, one RTX 3090 24 GB, NVIDIA driver 535.183.01), the
+pinned engine `bfb7505`, Docker 29.10.1 in rootless mode (the account has no root). Two things of that host differ
+from an evaluation host and belong to this record:
+
+* The driver is below Omniverse RTX's floor ("R550 Omniverse RTX driver requirement on Linux ... unsupported driver
+  range [0.00, 550.90.07)"), and the renderer refused to draw. `5faaf03` turns the check off in both copies of
+  `endosim/render_server.py` (`--/rtx/verifyDriverVersion/enabled=false`, a setting NVIDIA's own streaming apps
+  carry); the canary still judges the frames. A smoke scene rendered with the check off matched the RTX 6000 Ada /
+  driver 570 frame (rgb mean 191.95 against 192.11, the same depths), natively and in this task's image as `endosim`.
+* Rootless Docker there cannot set a CPU quota (the cgroup cpu controller is not delegated to user services), and
+  the engine passes `--cpus 8` to every sandbox. A wrapper in front of the docker CLI dropped `--cpus` (once per
+  sandbox), and a wrapper around runc pinned every process started through `docker exec` (guestd, and with it every
+  stage command) to 8 CPUs, one hyperthread of each performance core, through the OCI field `execCPUAffinity`; the
+  container's own init (the base image's desktop) was not pinned. The lock records `cpus = 8` as requested; the
+  limit was an affinity, not a quota. Memory (32 GB) and the GPU lease were the engine's own.
+
+**First run** (`validate-fa5430e3`, tree `5faaf03`): untouched 0.0; the oracle a task error at the canary, "the grading
+environment could not render": omni.rtx "Failed to create texture cache folder /var/lib/endocam/.cache/ov/texturecache",
+then Replicator's orchestrator missing at the first capture. The cause was the task's: `runuser -u endosim` sets HOME
+from the account's passwd entry, `/var/lib/endocam`, which only setup creates, in the solver's sandbox; the separate
+verifier sandbox has no such folder. The native runner never met it, since it starts the renderer without runuser.
+`4f91966` ends the verifier's launch prefix with `env HOME=/opt/endosim-verify/home`, as `setup.sh` does for the
+commissioning service (checked first in the image: the smoke scene renders as `endosim` with HOME set).
+
+**Second run** (`validate-3f6c0b60`, tree `4f91966`):
+
+    ok    grounded-intelligence-initiative/endoscope_camera_assistance_from_video: untouched={'reward': 0.0}, oracle={'reward': 1.0}
+
+The untouched verdict: "no submission at /home/user/submission/run.sh". The oracle's `verification.json`:
+`useful_view_fraction` 0.9030208 (8669 of 9600 steps; per procedure 0.9387 0.8662 0.9525 0.9250 0.8775 0.9125 0.8363
+0.9337 0.8725 0.9275 0.9263 0.8675), ratio 1.00002, reward 1.0; probe pairs 179 of 555 differing; no aborted
+procedure, no lens contact, no renderer restart; the canary found 10 of 10 markers, at most 1.10 px off (0.75 px
+natively); the renderer up in 123 s in a fresh sandbox, 122.5 ms a frame, verify 1448 s; setup 127 s (the
+commissioning service's renderer up and its canary passed, the development set recording). The mean is the native
+run's on `763919b` to the last digit; six procedures are one step apart either way, as different probe draws make them.
+
+*What was decided.* `tests/anchor.json` keeps 0.903, its source now this run; `full_at` stays 0.98. RTX-3090 stays in
+`gpu_types`. Not exercised: an agent phase in the engine (the commissioning sessions and the development set as the
+agent reads them), `ale run`, any cloud GPU model, a host with a CPU quota.
 
 ### 2026-11-25: the probe's copy made a possible observation (tree `763919b`)
 
