@@ -84,7 +84,7 @@ ENV OPENBLAS_CORETYPE=Haswell OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 # agent's: nothing root-owned in it). No GPU at build time: the simulator itself is first started by setup.
 RUN HOME=/tmp/selfcheck python3 -c "import isaacsim, cv2, numpy, scipy; print('[image] isaacsim ok, numpy', numpy.__version__, 'cv2', cv2.__version__)" \
     && runuser -u user -- python3 -c "import isaacsim, cv2, numpy, scipy; print('[image] agent-UID import OK')" \
-    && runuser -u packcell -- /opt/venv/bin/python3 -I -s -c "import sys; sys.path.insert(0, '/opt/packcell-commission'); import packcell.series, packcell.rules, packcell.wire, packcell.kin, packcell.scene; print('[image] the cell imports for its account')" \
+    && runuser -u packcell -- /opt/venv/bin/python3 -I -s -c "import sys; sys.path.insert(0, '/opt/packcell-commission'); import packcell.series, packcell.rules, packcell.wire, packcell.kin, packcell.scene, packcell.sensors; print('[image] the cell imports for its account')" \
     && test -f /opt/assets/isaac/Isaac/Robots/UniversalRobots/ur20/ur20.usd \
     && ! runuser -u user -- ls /opt/packcell-commission > /dev/null 2>&1 \
     && ! runuser -u user -- cat /opt/packcell-commission/dev_packs.json > /dev/null 2>&1 \

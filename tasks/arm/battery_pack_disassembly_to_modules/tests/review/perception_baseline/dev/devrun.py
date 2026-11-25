@@ -84,12 +84,14 @@ while t < max_steps and not obs["ended"]:
           [round(v, 1) for v in obs["wrench"]], obs["tool"]))
     if obs["events"]:
         P("events", obs["time"], obs["events"])
-    if os.environ.get("DEVRUN_TRACE") and obs["tool"] == "gripper":
+    w0, w1 = float(os.environ.get("DEVRUN_TRACE_FROM", "1e9")), float(os.environ.get("DEVRUN_TRACE_TO", "-1"))
+    if os.environ.get("DEVRUN_TRACE") and (obs["tool"] == "gripper" or w0 <= obs["time"] <= w1):
         # a maintainer's trace (truth): where the gripper is against the parts' grip points
         tr = cell.request({"cmd": "truth"})["truth"]
         with open(OUT + "/trace.jsonl", "a") as fh:
             fh.write(json.dumps({"t": t, "time": obs["time"], "action": a, "tcp": obs["tcp"], "tcp_target": obs["tcp_target"], "q": obs["q"],
-                                 "gripper": obs["gripper"], "status": obs["status"], "lid": tr["parts"].get("lid"),
+                                 "gripper": obs["gripper"], "status": obs["status"], "lid": tr["parts"].get("lid"), "tool": obs["tool"],
+                                 "spindle": obs["spindle"], "tip": tr.get("tip"), "captured": tr.get("captured"),
                                  "fast_lid": {k: v["status"] for k, v in tr["fasteners"].items() if v["group"] == "lid"}}) + "\n")
     if obs["time"] - last_log >= 60:
         last_log = obs["time"]

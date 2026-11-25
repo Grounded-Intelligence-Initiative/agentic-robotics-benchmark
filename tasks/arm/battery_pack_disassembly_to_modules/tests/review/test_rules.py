@@ -267,6 +267,9 @@ def main():
     parts["M1"] = at(rk["bay_centers"][0][0] + 0.09, rk["bay_centers"][0][1], S.TABLE_Z + 0.055)
     want = 1.0 - (S.VALUES["fastener"] + 2 * S.VALUES["module"]) / total
     assert abs(r.credit(parts, fast)[0] - want) < 1e-12
+    # a missing fastener is not in the pack: not in the denominator, and nothing is lost for it
+    assert any(f["missing"] for f in r.fast.values())
+    assert abs(total - (sum(q["value"] for q in r.part.values()) + S.VALUES["fastener"] * sum(1 for f in r.fast.values() if not f["missing"]))) < 1e-12
     checks += 3
     # 13. the wire: the schema, the 15 numbers, the probe's copy
     assert wire.check_action({})["move"] == {"type": "hold", "delta": [0.0] * 6, "ticks": 1, "guard_force": None, "guard_stroke_mm": None}

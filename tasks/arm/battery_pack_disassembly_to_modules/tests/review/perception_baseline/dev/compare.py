@@ -3,7 +3,7 @@ truth at its arrival (truth0.json), and the credit by stage (result.json).
 
     python3 compare.py <devrun out dir> [...]
 """
-import json, math, sys
+import json, math, os, sys
 import numpy as np
 
 STAGES = {"lid": ["lid"], "isolation": ["msd", "J1", "J2", "harness"], "busbars": ["busbar"], "brackets": ["bracket"], "modules": ["module"]}
@@ -33,6 +33,23 @@ for d in sys.argv[1:]:
                       np.round(np.array(h["path"])[:, :3] - PT[:3, 3], 3).tolist() if h else "")
         if h and not pk.get("harness_lid") and not pk.get("harness_in"):
             print("harness NOT SEEN; truth covers", h["covers"])
+        # the cell's own cameras as the program identified them, against the development cell's true mounting
+        if est["dbg"].get("cal_overhead") is not None and os.environ.get("TASK"):
+            sys.path.insert(0, os.environ["TASK"] + "/tests")
+            from packcell import series as S
+            entry = json.load(open(os.environ["TASK"] + "/environment/commission_service/dev_packs.json"))["packs"][r["pack"]]
+            To, Tc = S.camera_mount("overhead", entry["cameras"]["overhead"]), np.array(est["dbg"]["cal_overhead"])
+            Wt, Wc = S.camera_mount("wrist", entry["cameras"]["wrist"]), np.array(est["dbg"]["cal_mount"])
+
+            def hit(Tcam, Tref, p):
+                pc = Tref[:3, :3].T @ (p - Tref[:3, 3])
+                ray = Tcam[:3, :3] @ (pc / pc[2])
+                return Tcam[:3, 3] + (p[2] - Tcam[2, 3]) / ray[2] * ray
+            pts = [np.array([x, y, -0.236]) for x in (0.56, 0.86, 1.16) for y in (-0.45, 0.0, 0.45)]
+            eo = max(1000 * np.linalg.norm(hit(Tc, To, q)[:2] - q[:2]) for q in pts)
+            q = np.array([0.0, 0.0, 0.35, 1.0])
+            ew = 1000 * np.linalg.norm((Wc @ q)[:3] - (Wt @ q)[:3])
+            print("calibration: overhead, a lid point off by at most %.2f mm; wrist mounting, a point 0.35 m ahead off by %.2f mm" % (eo, ew))
         dbg = est["dbg"]["fasteners"]
         rows = {"overhead": [], "wrist": []}
         wrong = []
