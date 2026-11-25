@@ -77,6 +77,48 @@ The recordings draw a shell laid on the model's vertices (`environment/gen/cshee
 differs from the scored quantity by 0.001 mm (stop position) and by 0.3 mm on average, 0.45 mm at most (edge height),
 against tolerances of 3 and 6 mm.
 
+## The recordings after amendment 1 (the approved scene; rendering only)
+
+- **Unchanged by construction and checked:** the generator's physics, clip programs and seeds; of the 77 clips'
+  files, `clamp_500hz.npy`, `arm_q.npy` and `clip.json` are byte-equal to the first recordings' (77 of 77), and so
+  is `cameras.json`. `tests/cphys.py`, `creal.py`, `ctasks.py`, `review/make_set.py`, `ref/key.json`,
+  `ref/fabrics.json`, `ref/selection.json` and `solution/ref/params.json` are the bytes of the draw's commit; the
+  grader does not read the recordings, and `ale validate` gives the reference 1.0 on every fabric again.
+- **The step in the new pictures** (`observability_pictures.py`, `observability_pictures.json`): each fabric's best
+  clip and camera, the settled state drawn for the real material and for the stepped one (friction x 1.05 for the
+  drag, thickness x 1.08 for the pull), before the camera effects. Pixels that differ by more than 24 levels, and
+  their mean difference:
+
+| fabric | drag_release | pull_over_edge |
+|---|---|---|
+| A | cam0, 1619 px, 70 levels | cam1, 1961 px, 66 levels |
+| B | cam0, 805 px, 110 levels | cam1, 1400 px, 108 levels |
+| C | cam0, 997 px, 54 levels | cam1, 4902 px, 62 levels |
+| D | cam0, 2081 px, 62 levels | cam1, 3158 px, 63 levels |
+| E | cam0, 1514 px, 49 levels | cam1, 4431 px, 53 levels |
+| F | cam0, 3354 px, 45 levels | cam1, 4254 px, 82 levels |
+| G | cam0, 439 px, 96 levels | cam1, 690 px, 55 levels |
+| H | cam0, 2706 px, 51 levels | cam1, 3337 px, 85 levels |
+| I | cam1, 2417 px, 95 levels | cam1, 2211 px, 51 levels |
+| J | cam0, 723 px, 113 levels | cam1, 2940 px, 96 levels |
+
+  Every step changes several hundred to several thousand pixels by 45 to 113 levels, against camera noise of 2 to 4
+  levels; the smallest are the limpest fabric G (439 and 690 pixels), as in the geometric table above. The geometric
+  shifts of that table are unchanged (same cameras, same states).
+- **Edge contrast** (measured by the lane that built the scene: CIELAB distance between the fabric just inside a
+  scored edge and what lies just outside it, minimum over the twelve looks against the minimum over the four prints
+  of the first recordings): the hanging edge 20.4 against 15.0 (cam0) and 26.5 against 15.7 (cam1; cam2 does not see
+  it, before or after); the leading edge at rest after a slide 17.0 / 12.2 / 15.8 against 12.7 / 9.2 / 12.0 (cam0 /
+  cam1 / cam2). The scored edges are at least as readable as before.
+- **Looks and materials:** a fabric's look follows from its id alone (`cscene.fabric_looks`); every fabric is drawn
+  1.5 mm thick.
+- **Do the pictures repeat?** Within a process every picture repeats to the byte (2,880 pictures drawn twice: no
+  difference). Between fresh processes cam1 and cam2 gave one digest in twelve processes; cam0 gave four, differing
+  in one or two pixels at a fixed place of the background furniture (around pixel (450, 206); 45 to 129 levels), and
+  in three clips drawn three times one to three of 240 pictures differed that way. The published recordings are one
+  render's bytes, pinned by checksum, and go through noise and H.264 after that; a re-render is not expected to
+  reproduce them to the byte.
+
 ## The arm in the recordings (`clip_checks.json`, written by the renderer)
 
 77 clips: the arm follows the clamp to 0.97 mm and 0.015 degrees at worst, stays 0.13 rad or more from
