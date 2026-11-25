@@ -15,6 +15,8 @@ from pxr import Gf, PhysxSchema, Sdf, UsdGeom, UsdLux, UsdPhysics, UsdShade
 from . import kin
 from . import series as S
 
+FASTENER_MAX_DEPENETRATION = 0.3      # m/s: how fast the solver may push a fastener out of an overlap (PhysX default 3)
+
 LOOKS = {
     # name: (diffuse rgb, metallic, roughness)
     "floor": ((0.42, 0.42, 0.40), 0.0, 0.85),
@@ -189,9 +191,11 @@ class Builder(object):
             px.CreateRestitutionCombineModeAttr("min")
         UsdShade.MaterialBindingAPI.Apply(prim).Bind(UsdShade.Material(self.st.GetPrimAtPath(path)), UsdShade.Tokens.weakerThanDescendants, "physics")
 
-    def body(self, prim, mass, kinematic=True, com=None, inertia=None):
+    def body(self, prim, mass, kinematic=True, com=None, inertia=None, max_depenetration=None):
         rb = UsdPhysics.RigidBodyAPI.Apply(prim)
         rb.CreateKinematicEnabledAttr(bool(kinematic))
+        if max_depenetration is not None:
+            PhysxSchema.PhysxRigidBodyAPI.Apply(prim).CreateMaxDepenetrationVelocityAttr(float(max_depenetration))
         m = UsdPhysics.MassAPI.Apply(prim)
         m.CreateMassAttr(float(mass))
         if com is not None:
@@ -543,14 +547,18 @@ def build(stage, pack, robot_usd, render=True):
             raise ValueError(kind)
         rigid(pid, part, shapes)
 
-    # fasteners: a head on its seat (a missing one leaves the hole); bodies are kinematic until ejected
+    # fasteners: a head on its seat (a missing one leaves the hole); bodies are kinematic until ejected.
+    # An eject places the body just under the bit, and the bit can be lowered into a pile of fasteners let go there
+    # before (the copy riding on the bit collides with nothing), so the body can appear inside others. The solver then
+    # pushes them apart, by default at up to 3 m/s, which threw fasteners out of their bin; a real fastener let go
+    # onto a pile settles on it. A fastener is therefore pushed out of an overlap at walking pace at most.
     for f in pack["fasteners"]:
         if f["missing"]:
             continue
         fid, head, thread = f["id"], S.HEADS[f["head"]], S.THREADS[f["thread"]]
         path = "/World/Fasteners/" + fid
         prim = b.xform(path, tfm(T, f["pos"]), qP)
-        b.body(prim, 0.012 if f["thread"] == "M6" else 0.028, kinematic=True)
+        b.body(prim, 0.012 if f["thread"] == "M6" else 0.028, kinematic=True, max_depenetration=FASTENER_MAX_DEPENETRATION)
         h = head["height"]
         r_col = fastener_shapes(b, path, f["head"], "rust" if f["corroded"] else "zinc")
         if f["corroded"]:
