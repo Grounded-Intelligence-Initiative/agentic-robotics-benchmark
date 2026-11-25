@@ -17,7 +17,8 @@ idx, prog, OUT = int(sys.argv[1]), sys.argv[2], sys.argv[3]
 max_steps = int(sys.argv[4]) if len(sys.argv) > 4 else 20000
 os.makedirs(OUT, exist_ok=True)
 e = json.load(open(TASK + "/environment/commission_service/dev_packs.json"))["packs"][idx]
-pack = S.draw_pack(e["seed"], variant=e["variant"], harness=e["harness"], cameras=e.get("cameras"), sealant_seed=e.get("sealant_seed"))
+pack = S.draw_pack(e["seed"], variant=e["variant"], harness=e["harness"], cameras=e.get("cameras"), sealant_seed=e.get("sealant_seed"),
+                   appearance_seed=e.get("appearance_seed"))
 cell = cellproc.CellProcess(grader=True, stderr=open(OUT + "/cell.err", "w"))
 obs = cell.request({"cmd": "reset", "pack": pack})["obs"]
 truth0 = cell.request({"cmd": "truth"})["truth"]

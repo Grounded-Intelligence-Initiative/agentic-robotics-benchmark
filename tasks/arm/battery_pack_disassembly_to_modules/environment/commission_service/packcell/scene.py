@@ -55,6 +55,11 @@ LOOKS = {
     "changer": ((0.70, 0.05, 0.05), 0.4, 0.40),
     "alu": ((0.80, 0.81, 0.83), 1.0, 0.35),
     "sealant": ((0.34, 0.34, 0.36), 0.0, 0.90),
+    "grime": ((0.024, 0.023, 0.021), 0.0, 0.95),
+    "dust": ((0.30, 0.29, 0.27), 0.0, 0.95),
+    "label": ((0.90, 0.90, 0.86), 0.0, 0.60),
+    "label_ink": ((0.03, 0.03, 0.03), 0.0, 0.60),
+    "dusty_zinc": ((0.48, 0.47, 0.45), 0.4, 0.75),
     "plate_white": ((0.82, 0.82, 0.80), 0.0, 0.80),
     "plate_black": ((0.02, 0.02, 0.02), 0.0, 0.85),
 }
@@ -341,14 +346,19 @@ def build(stage, pack, robot_usd, render=True):
                 if (i + j) % 2 == 0:
                     b.box("%s/sq_%d_%d" % (root, i, j), (sq, sq, 0.0002), (ox + (i + 0.5) * sq, oy + (j + 0.5) * sq, oz + 0.0001), "plate_black")
 
-    # ------------------------------------------------------------------ lights
+    # ------------------------------------------------------------------ lights (the hall's light of this pack: series.APPEARANCE)
+    appear = pack.get("appearance") or {}
+    gain, lamps = appear.get("gain", 1.0), appear.get("lamps", [1.0] * 4)
+    lamp_rgb = S.kelvin_rgb(appear["kelvin"]) if "kelvin" in appear else [1.0, 1.0, 1.0]
     if render:
         dome = UsdLux.DomeLight.Define(stage, "/World/Lights/Dome")
-        dome.CreateIntensityAttr(150.0)
+        dome.CreateIntensityAttr(150.0 * gain)
         dome.CreateColorAttr(Gf.Vec3f(0.95, 0.97, 1.0))
         for i, (lx, ly) in enumerate(((0.3, -0.9), (0.3, 0.9), (1.5, 0.0), (-0.9, 0.0))):
             r = UsdLux.RectLight.Define(stage, "/World/Lights/Panel%d" % i)
-            r.CreateIntensityAttr(5500.0)
+            r.CreateIntensityAttr(5500.0 * gain * lamps[i])
+            if "kelvin" in appear:
+                r.CreateColorAttr(Gf.Vec3f(*lamp_rgb))
             r.CreateWidthAttr(1.2)
             r.CreateHeightAttr(0.5)
             b.place(r.GetPrim(), (lx, ly, 2.3))      # a rect light shines along its -z: straight down
@@ -544,6 +554,27 @@ def build(stage, pack, robot_usd, render=True):
                 for fid in part["lock"]["ids"]:
                     f = fast_by_id[fid]
                     hole(path, fid, f["pos"], S.LID["t"] / 2, f["thread"])
+                # a field pack's grime, dust and labels (series.APPEARANCE): drawn only, they leave with the lid
+                top = S.LID["t"] / 2
+                for i, pa in enumerate(appear.get("patches", [])):
+                    ca, sa = math.cos(pa["angle"]), math.sin(pa["angle"])
+                    ell = [(pa["x"] + pa["a"] * math.cos(t) * ca - pa["b"] * math.sin(t) * sa,
+                            pa["y"] + pa["a"] * math.cos(t) * sa + pa["b"] * math.sin(t) * ca)
+                           for t in [2 * math.pi * k / 28 for k in range(28)]]
+                    b.prism(path + "/patch%d" % i, ell, top, top + 0.00012 + 0.00001 * i, look=pa["kind"])
+                for i, lb in enumerate(appear.get("labels", [])):
+                    ca, sa = math.cos(lb["angle"]), math.sin(lb["angle"])
+
+                    def rect(x0, x1, y0, y1, lb=lb, ca=ca, sa=sa):
+                        return [(lb["x"] + u * ca - v * sa, lb["y"] + u * sa + v * ca) for u, v in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))]
+                    w, h = lb["w"], lb["h"]
+                    b.prism(path + "/label%d" % i, rect(-w / 2, w / 2, -h / 2, h / 2), top, top + 0.0002, look="label")
+                    u = -w / 2 + 0.008
+                    for k, bw in enumerate(lb["bars"]):
+                        if u + bw > w / 2 - 0.008:
+                            break
+                        b.prism(path + "/label%d_bar%d" % (i, k), rect(u, u + bw, -h / 2 + 0.006, h / 2 - 0.012), top + 0.0002, top + 0.00025, look="label_ink")
+                        u += bw + 0.0015
         elif kind == "msd":
             def shapes(path, part=part):
                 b.box(path + "/plug", (0.06, 0.04, 0.045), (0, 0, 0), "hv_orange", collide=True)
@@ -607,7 +638,7 @@ def build(stage, pack, robot_usd, render=True):
         prim = b.xform(path, tfm(T, f["pos"]), qP)
         b.body(prim, 0.012 if f["thread"] == "M6" else 0.028, kinematic=True, max_depenetration=FASTENER_MAX_DEPENETRATION)
         h = head["height"]
-        r_col = fastener_shapes(b, path, f["head"], "rust" if f["corroded"] else "zinc")
+        r_col = fastener_shapes(b, path, f["head"], "rust" if f["corroded"] else ("dusty_zinc" if fid in appear.get("dusty", ()) else "zinc"))
         if f["corroded"]:
             b.cyl(path + "/stain", r_col + 0.0035, 0.0003, (0, 0, 0.00015), "rust_stain")
         if f.get("sealant"):

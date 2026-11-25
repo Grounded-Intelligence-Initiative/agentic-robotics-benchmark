@@ -18,9 +18,9 @@ this grader. Before the first pack a canary cell is started on a pack outside th
 
 Packs: the fixed hidden set tests/hidden/packs.json, the same for every submission: per pack a 64-bit seed with the
 variant and the harness case fixed by the set's rule, the camera offsets of the cell it is taken apart in (rule 2) and
-the seed of its fasteners' sealant (rule 3; tests/review/select_set.py), run in the file's order. The probe
-schedule of a pack is a function of its index and seed alone (pack_grade.probe_stream), so the grader adds no
-randomness of its own.
+the seeds of its fasteners' sealant (rule 3) and of its appearance (rule 4; tests/review/select_set.py), run in the
+file's order. The probe schedule of a pack is a function of its index and seed alone (pack_grade.probe_stream), so
+the grader adds no randomness of its own.
 
 The metric `mean_pack_credit` is the mean over the set of each pack's credit: the value of the components that lie
 undamaged in the rack, on the stand or in the bin they belong in, over the value of every component of the pack
@@ -268,6 +268,8 @@ def load_set(path=PACKS):
             raise RuntimeError("tests/hidden/packs.json: a pack without its cell's camera offsets within series.MOUNT_TOL")
         if not isinstance(p.get("sealant_seed"), int) or not 0 <= p["sealant_seed"] < 2 ** 64:
             raise RuntimeError("tests/hidden/packs.json: a pack without its sealant seed (rule 3)")
+        if not isinstance(p.get("appearance_seed"), int) or not 0 <= p["appearance_seed"] < 2 ** 64:
+            raise RuntimeError("tests/hidden/packs.json: a pack without its appearance seed (rule 4)")
     return packs
 
 

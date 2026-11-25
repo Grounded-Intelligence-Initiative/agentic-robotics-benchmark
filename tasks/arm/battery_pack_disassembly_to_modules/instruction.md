@@ -17,6 +17,7 @@ see it:
 - every fastener's **head type** (hexagon or Torx, per fastener: the bit has to be chosen from the picture);
 - **corroded** fasteners, which need more torque than the default allows, and **missing** ones;
 - **sealant** dabbed over part of some heads, which hides part of the head from the cameras;
+- the **look** of the pack: grime, dust and labels on the lid, dull heads, and the hall's light (brightness and colour);
 - a **harness remnant** that may lie on the lid or inside the pack over fasteners and has to go first.
 
 And you see it through real sensors. Every cell's cameras sit off their nominal mounting by an offset of their own

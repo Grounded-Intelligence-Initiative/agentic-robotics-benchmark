@@ -232,6 +232,65 @@ VARIANTS = {
 SEALANT = {"p": {"lid": 0.35, "busbar": 0.25, "bracket": 0.25}, "d": (0.3, 0.9), "r": (0.6, 1.0), "above": (0.0010, 0.0025)}
 
 
+# A pack's appearance (the fourth lever; tests/README.md, section 2). The cell stands in an open hall whose light
+# varies from pack to pack, and a field pack comes dirty and labelled. Per pack (tests/review/select_set.py's rule 4,
+# `appearance_seed`): the light's brightness `gain` (every lamp and the dome) and colour temperature `kelvin`, and
+# each of the four lamps' own share `lamp`; patches of dark grime and of light dust on the lid (ellipses with semi-axes
+# `patch_axes`, anywhere on it); service labels on the lid (white, `label_size`, black bars printed on them), clear of
+# its bolts, handle and ribs by `label_clear`; a dusty film on some clean zinc heads (`dusty_p`). All drawn only, all
+# on the lid or its bolts except the light. A surface's depth reading does not depend on the hall's light
+# (`sensors.measure`'s `light_gain`).
+APPEARANCE = {"gain": (0.6, 1.3), "kelvin": (3500.0, 6500.0), "lamp": (0.75, 1.25), "patches": (4, 9),
+              "patch_axes": (0.015, 0.07), "labels": (1, 4), "label_size": ((0.06, 0.12), (0.03, 0.06)),
+              "label_clear": 0.025, "dusty_p": 0.3}
+
+
+def kelvin_rgb(k):
+    """The colour of a light of colour temperature k (K), normalized to its largest channel (a fit to the
+    blackbody locus, good to a few percent between 1000 and 15000 K)."""
+    t = k / 100.0
+    r = 1.0 if t <= 66 else min(1.0, 1.292936 * (t - 60) ** -0.1332047592)
+    g = (0.39008157 * math.log(t) - 0.63184144) if t <= 66 else 1.129890861 * (t - 60) ** -0.0755148492
+    b = 1.0 if t >= 66 else (0.0 if t <= 19 else 0.543206789 * math.log(t - 10) - 1.19625409)
+    c = [max(0.0, min(1.0, v)) for v in (r, g, b)]
+    m = max(c)
+    return [round(v / m, 4) for v in c]
+
+
+def _appearance(seed, variant, fasteners):
+    """The appearance of a pack from its seed (rule 4): see APPEARANCE."""
+    A = APPEARANCE
+    st = Stream(seed, "appearance")
+    out = {"gain": round(st.uniform(*A["gain"]), 4), "kelvin": round(st.uniform(*A["kelvin"]), 1),
+           "lamps": [round(st.uniform(*A["lamp"]), 4) for _ in range(4)], "patches": [], "labels": [], "dusty": []}
+    for _ in range(A["patches"][0] + int(st.u64() % (A["patches"][1] - A["patches"][0] + 1))):
+        out["patches"].append({"x": round(st.uniform(-0.29, 0.29), 4), "y": round(st.uniform(-0.48, 0.48), 4),
+                               "a": round(st.uniform(*A["patch_axes"]), 4), "b": round(st.uniform(*A["patch_axes"]), 4),
+                               "angle": round(st.uniform(0, math.pi), 4), "kind": st.choice(["grime", "dust"])})
+    bolts = [f["nominal"] for f in fasteners if f["group"] == "lid"]
+    ribs = VARIANTS[variant]["ribs"]
+    want = A["labels"][0] + int(st.u64() % (A["labels"][1] - A["labels"][0] + 1))
+    for _ in range(400):
+        if len(out["labels"]) >= want:
+            break
+        w, h = st.uniform(*A["label_size"][0]), st.uniform(*A["label_size"][1])
+        x, y, ang = st.uniform(-0.26, 0.26), st.uniform(-0.44, 0.44), st.uniform(-0.17, 0.17)
+        bars = [round(st.uniform(0.0005, 0.003), 4) for _ in range(8 + int(st.u64() % 6))]
+        rad = 0.5 * math.hypot(w, h)
+        ok = abs(x) + rad < 0.29 and abs(y) + rad < 0.48
+        ok = ok and all(math.hypot(x - bx, y - by) > rad + A["label_clear"] for bx, by in bolts)
+        ok = ok and not (abs(x) < 0.07 + rad + A["label_clear"] and abs(y) < 0.02 + rad + A["label_clear"])   # the handle
+        for axis, c in ribs:                                                                                   # the ribs
+            ok = ok and abs((y if axis == "x" else x) - c) > 0.015 + rad
+        ok = ok and all(math.hypot(x - l["x"], y - l["y"]) > rad + 0.5 * math.hypot(l["w"], l["h"]) + 0.01 for l in out["labels"])
+        if ok:
+            out["labels"].append({"x": round(x, 4), "y": round(y, 4), "w": round(w, 4), "h": round(h, 4), "angle": round(ang, 4), "bars": bars})
+    for f in fasteners:
+        if st.chance(A["dusty_p"]) and not f["missing"] and not f["corroded"]:
+            out["dusty"].append(f["id"])
+    return out
+
+
 def head_top_radius(head):
     h = HEADS[head]
     return h["af"] / 2 if h["kind"] == "hex" else h["head_r"]
@@ -391,13 +450,14 @@ def _harness_path(s, on, nom, fasteners):
     return pts, [f["id"] for f in cover]
 
 
-def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None):
+def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None, appearance_seed=None):
     """One pack: the nominal pack of its variant plus its hidden differences. `variant` and `harness` ("none",
     "lid", "busbars") may be fixed by the caller (the selection of a set); everything else comes from the seed.
     `cameras` are the mounting offsets of the cell the pack is taken apart in ({name: 6 numbers}, MOUNT_TOL; drawn
     with the set under a key of their own, not from the seed); without them the cameras sit at their nominal
     mounting. `sealant_seed` (rule 3, a key of its own) gives the dabs of sealant (SEALANT); without it there are
-    none."""
+    none. `appearance_seed` (rule 4) gives the hall's light, the grime, dust and labels (APPEARANCE); without it the
+    pack is clean under the nominal light."""
     s = Stream(seed, "pack")
     v = s.choice(sorted(VARIANTS))
     variant = variant or v
@@ -439,7 +499,8 @@ def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None)
     out = {"version": VERSION, "seed": int(seed), "variant": variant, "modules": nom["modules"],
            "module_ys": nom["module_ys"], "msd_y": nom["msd_y"], "bms_y": nom["bms_y"], "ribs": nom["ribs"],
            "placement": placement, "group_head": group_head, "parts": parts, "fasteners": fasteners, "harness": None,
-           "cameras": {name: [float(v) for v in (cameras or {}).get(name, [0.0] * 6)] for name in sorted(CAMERAS)}}
+           "cameras": {name: [float(v) for v in (cameras or {}).get(name, [0.0] * 6)] for name in sorted(CAMERAS)},
+           "appearance": None if appearance_seed is None else _appearance(appearance_seed, variant, fasteners)}
     if harness != "none":
         hs = Stream(seed, "harness")
         pts, covers = _harness_path(hs, harness, nom, fasteners)

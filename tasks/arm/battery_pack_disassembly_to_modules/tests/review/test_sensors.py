@@ -10,7 +10,9 @@
    overhead frame does not tell a 4.5 mm head from a 6 mm one (a third typed wrong at best), 32 averaged frames do,
    and so does one close wrist frame.
 2. Sealant partly over heads (rule 3): how often, how large, how much of a head it covers, as the manual says.
-3. The calibration is not in the numbers a program has: every graded and development pack carries its cell's camera
+3. A pack's appearance (rule 4): the hall's light, grime, dust and labels within the manual's ranges; the depth
+   independent of the light.
+4. The calibration is not in the numbers a program has: every graded and development pack carries its cell's camera
    offsets, drawn under tests/review/select_set.py's rule 2, within series.MOUNT_TOL; what a program can compute from
    the visible files is the nominal mounting (cell.json, the client library, a wrist frame's `pose`), and the true
    camera is that times the cell's offset, which no visible file holds; located through the nominal poses, a point
@@ -222,7 +224,7 @@ def leak_checks():
     nums = set(re.findall(r"-?\d+\.\d+", text))
     found = [v for cams in cells for off in cams.values() for v in off if abs(v) >= 0.1 and ("%g" % v) in nums]
     assert not found, ("an offset's value appears in a visible file", found)
-    seeds = [str(p[k]) for p in hidden + dev for k in ("seed", "sealant_seed") if k in p]
+    seeds = [str(p[k]) for p in hidden + dev for k in ("seed", "sealant_seed", "appearance_seed") if k in p]
     assert not any(sd in text for sd in seeds), "a pack's seed appears in a visible file"
     assert not any("commission_service" in p for p in visible_files())
     checks += 1
@@ -292,8 +294,47 @@ def sealant_checks():
     return checks
 
 
+def appearance_checks():
+    """4. A pack's appearance (series.APPEARANCE, rule 4): the draw within the manual's ranges, labels clear of bolts,
+    handle and ribs, and a surface's depth readings the same under any hall light."""
+    A = S.APPEARANCE
+    rng = np.random.default_rng(5)
+    for k in range(150):
+        variant = ("P4", "P5", "P6")[k % 3]
+        p = S.draw_pack(int(rng.integers(0, 2 ** 63)), variant=variant, harness="none", appearance_seed=int(rng.integers(0, 2 ** 63)))
+        a = p["appearance"]
+        assert A["gain"][0] <= a["gain"] <= A["gain"][1] and A["kelvin"][0] <= a["kelvin"] <= A["kelvin"][1]
+        assert len(a["lamps"]) == 4 and all(A["lamp"][0] <= v <= A["lamp"][1] for v in a["lamps"])
+        assert A["patches"][0] <= len(a["patches"]) <= A["patches"][1]
+        assert all(A["patch_axes"][0] <= q[ax] <= A["patch_axes"][1] for q in a["patches"] for ax in ("a", "b"))
+        assert A["labels"][0] <= len(a["labels"]) <= A["labels"][1], len(a["labels"])
+        bolts = [f["nominal"] for f in p["fasteners"] if f["group"] == "lid"]
+        for lb in a["labels"]:
+            rad = 0.5 * math.hypot(lb["w"], lb["h"])
+            # every corner of the label clear of every bolt's hole (2 mm tolerance) and head by the clearance
+            assert all(math.hypot(lb["x"] - bx, lb["y"] - by) > rad + A["label_clear"] for bx, by in bolts)
+            assert abs(lb["x"]) + rad < 0.29 and abs(lb["y"]) + rad < 0.48
+            for axis, c in S.VARIANTS[variant]["ribs"]:
+                assert abs((lb["y"] if axis == "x" else lb["x"]) - c) > 0.015 + rad
+        fast = {f["id"]: f for f in p["fasteners"]}
+        assert all(not fast[d]["corroded"] and not fast[d]["missing"] for d in a["dusty"])
+    # the same surface under a dimmer and a brighter hall: the same dropouts (the colour scaled by the light, the
+    # sensor told the light); without the correction a dim hall would lose the dark lid's readings
+    zt, rgb, K = scene("overhead", 1.65, 300, 300, grey=50)
+    lost = []
+    for g in (0.6, 1.0, 1.3):
+        dim = np.clip(np.round(rgb.astype(float) * g), 0, 255).astype(np.uint8)
+        lost.append(float((sensors.measure(zt, dim, K, S.SENSORS["overhead"], np.random.default_rng(1), light_gain=g) == 0).mean()))
+        if g == 0.6:
+            uncorrected = float((sensors.measure(zt, dim, K, S.SENSORS["overhead"], np.random.default_rng(1)) == 0).mean())
+    assert max(lost) - min(lost) < 0.02 and uncorrected > 0.2, (lost, uncorrected)
+    print("appearance: 150 draws within the manual's ranges, labels clear of bolts, handle and ribs; a grey-50 surface "
+          "loses %.0f %% of its readings at any hall light (%.0f %% in a dim hall without the correction)" % (100 * max(lost), 100 * uncorrected))
+    return 1
+
+
 def main():
-    checks = noise_checks() + sealant_checks() + leak_checks()
+    checks = noise_checks() + sealant_checks() + appearance_checks() + leak_checks()
     print("ok: %d checks" % checks)
 
 

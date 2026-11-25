@@ -358,6 +358,11 @@ free before it is lifted. Sort everything that comes off (section 9).
   width across flats, or a pan head's radius). It covers part of the head's top, typically a fifth and at most about
   half, and runs over the head's edge onto the seat. It is soft: a bit goes through it and engages as it would
   without it, and the dab comes away with its fastener. It hides part of the head from the cameras.
+- **Grime, dust and labels.** Field packs come back dirty: 4 to 9 patches of dark grime or light dust lie on the
+  lid (roughly elliptical, 30 to 140 mm across), anywhere, over bolts too; 1 to 4 service labels (white, with a
+  printed bar code) are stuck to the lid's flat areas, never over a bolt, its handle or a rib; and some clean heads
+  carry a dull film of dust (about 30 %) that takes the shine off them. None of it holds anything or changes how a
+  bit engages.
 - **A harness remnant.** Some packs carry a piece of blue low-voltage harness (cable 12 mm thick, 0.2 to 0.4 m long,
   a grey plug shell at each end) that was cut and left behind: lying on the lid over one or two lid bolts, or inside
   the pack along the busbars over two or three busbar bolts. It is loose. A bolt under it cannot be reached; take

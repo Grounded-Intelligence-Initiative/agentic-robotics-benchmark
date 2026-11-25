@@ -73,7 +73,7 @@ def main():
     with open(os.path.join(TASK, "environment", "commission_service", "dev_packs.json")) as f:
         entry = json.load(f)["packs"][index]
     pack = S.draw_pack(entry["seed"], variant=entry["variant"], harness=entry["harness"], cameras=entry.get("cameras"),
-                         sealant_seed=entry.get("sealant_seed"))
+                         sealant_seed=entry.get("sealant_seed"), appearance_seed=entry.get("appearance_seed"))
     cell = cellproc.CellProcess(grader=True, stderr=open(os.devnull, "wb"))
     obs = cell.request({"cmd": "reset", "pack": pack, "config": {"frame_budget": 1000}})["obs"]
 

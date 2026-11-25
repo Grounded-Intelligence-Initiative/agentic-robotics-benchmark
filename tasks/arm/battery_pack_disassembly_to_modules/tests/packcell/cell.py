@@ -235,7 +235,8 @@ class Cell(object):
                 raise RuntimeError("camera %s returned no frame (rgb %s, depth %s)" % (name, img.shape, d.shape))
             d = np.where(np.isfinite(d) & (d < 6.5), d, 0.0)
             # what the sensor makes of the true depth: noise, quantization, lost readings (sensors.py, series.SENSORS)
-            d = sensors.measure(d, img[..., :3], S.camera_K(name), S.SENSORS[name], self.cam_rng)
+            d = sensors.measure(d, img[..., :3], S.camera_K(name), S.SENSORS[name], self.cam_rng,
+                                light_gain=(self.pack.get("appearance") or {}).get("gain", 1.0))
             d16 = np.clip(np.round(d * 1e4), 0, 65535).astype(np.uint16)          # 0.1 mm per count, 0 = no reading
             ok1, png = cv2.imencode(".png", cv2.cvtColor(img[..., :3], cv2.COLOR_RGB2BGR), [cv2.IMWRITE_PNG_COMPRESSION, 1])
             ok2, dpng = cv2.imencode(".png", d16, [cv2.IMWRITE_PNG_COMPRESSION, 1])

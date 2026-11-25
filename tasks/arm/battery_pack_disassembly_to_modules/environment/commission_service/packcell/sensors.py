@@ -52,10 +52,12 @@ def _occluded(z, f, baseline, tol_px=0.5):
     return m < x2 - tol_px
 
 
-def measure(z_true, rgb, K, spec, rng):
+def measure(z_true, rgb, K, spec, rng, light_gain=1.0):
     """The sensor's depth frame (float32 metres, 0 = no reading) for the true depth `z_true` (H x W, metres along the
     optical axis; 0 or non-finite where the renderer saw nothing), the registered colour image `rgb` (H x W x 3
-    uint8) and the camera matrix `K`, by the data sheet `spec` (series.SENSORS[name])."""
+    uint8) and the camera matrix `K`, by the data sheet `spec` (series.SENSORS[name]). `light_gain` is the hall's
+    light against the nominal (series.APPEARANCE): an active sensor's reading depends on the surface, not on the
+    room's light, so the colour image is taken back to the nominal light before it decides about dark and bright."""
     z = np.where(np.isfinite(z_true), z_true, 0.0).astype(np.float64)
     H, W = z.shape
     f = float(K[0][0])
@@ -73,7 +75,7 @@ def measure(z_true, rgb, K, spec, rng):
     # 4b. the second view's occlusion
     valid &= ~_occluded(z, f, spec["baseline_m"])
     # 4c. dark and bright surfaces, in blobs
-    rgbf = rgb[..., :3].astype(np.float64)
+    rgbf = rgb[..., :3].astype(np.float64) / float(light_gain)
     luma = 0.299 * rgbf[..., 0] + 0.587 * rgbf[..., 1] + 0.114 * rgbf[..., 2]
     top = rgbf.max(axis=2)
     d0, d1 = spec["dark"]

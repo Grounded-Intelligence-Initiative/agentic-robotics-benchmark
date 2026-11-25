@@ -111,6 +111,19 @@ to what remains. It is drawn only (section 2's list); the bit's rules are unchan
 `review/select_set.py` with a key of its own, after the rule was committed; `review/test_sensors.py` checks the
 draw against the manual's statement.
 
+**A pack's look (since 2026-11-25, the fourth lever).** With the sealant too, the revised baseline took all four
+development packs apart completely after about three hours of work in all (section 6): a program that has found its
+way through calibration, noise and sealant is then left with fixed colours (a dark hole is dark, a plated head
+bright, the harness's blue a known blue). A recycling line does not offer that either. Per pack (`series.APPEARANCE`,
+rule 4; interface document section 5, service manual section 7): the hall's light has a brightness 0.6 to 1.3 times
+the nominal and a colour temperature of 3500 to 6500 K, and the four lamps differ by up to a quarter; 4 to 9 patches
+of dark grime or light dust (30 to 140 mm across) lie anywhere on the lid, over bolts too; 1 to 4 white service
+labels with a printed bar code are stuck to the lid's flat areas, clear of bolts, handle and ribs; about 30 % of the
+clean zinc heads carry a dull film of dust. All of it is drawn only, on the lid or its bolts. The depth does not follow
+the hall's light: `sensors.measure` takes the colour image back to the nominal light before it decides about dark and
+bright surfaces (an active sensor lights the scene itself), and the interface document says so. A program has to
+read colours relative to their surroundings, under a light it does not know.
+
 **What is rule-based (the stated simplifications).**
 
 - *Fasteners are rule-based constraints.* A fastener's body sits on its seat (its head is a real collider the bit
@@ -253,11 +266,12 @@ value measured natively on the author's server, outside the engine; it has to be
   "the bit has to be chosen from the image" therefore holds for a program that wants to be quick, not for one that
   only wants to be right; making a wrong family harmful would not be true to the tools. Left as it is for the
   owner to decide.
-- **Levers if frontier models turn out to do too well.** Three are used since 2026-11-25 (section 2, "The cameras"
-  and "Sealant"): the cameras' poses on file are nominal and each cell's own mounting offset has to be identified;
-  the depth is an active-stereo sensor's; fastener heads are partly hidden by sealant. Not used: lighting, dirt and
-  label clutter varying per pack; a wider placement tolerance of the fixture. All are perception or engineering,
-  none a penalty.
+- **Levers if frontier models turn out to do too well.** Four are used since 2026-11-25 (section 2, "The cameras",
+  "Sealant" and "A pack's look"): the cameras' poses on file are nominal and each cell's own mounting offset has to
+  be identified; the depth is an active-stereo sensor's; fastener heads are partly hidden by sealant; the hall's
+  light, grime, dust and labels vary from pack to pack. Not used: a wider placement tolerance of the fixture (a
+  program that finds the pack from its silhouette meets it anyway). All are perception or engineering, none a
+  penalty.
 - **GPU models.** Run only on an RTX 6000 Ada with driver 570 (DLSS falls back to an older denoiser preset there),
   so `gpu_types` names only that model. The cloud models (RTX 4090, RTX 5090, RTX PRO 6000, H100, H200) are
   untested; `hazard_bay_build`, on the same Isaac Sim stack, validates on the first three. Each model has to be

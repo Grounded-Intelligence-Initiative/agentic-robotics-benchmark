@@ -6,6 +6,7 @@
                                            # of packcell/series.py that leaves the seeds as they are)
     python3 select_set.py --draw-cells     # rule 2, once: draws the cells' key and writes every pack's camera offsets
     python3 select_set.py --draw-sealant   # rule 3, once: draws the sealant key and writes every pack's sealant seed
+    python3 select_set.py --draw-appearance   # rule 4, once: the appearance key and every pack's appearance seed
     python3 select_set.py                  # re-derives both sets from the recorded keys and checks the files
 
 Rule 1, fixed before any pack was drawn or run:
@@ -49,6 +50,17 @@ and the measurements on its tree). Some fasteners carry a dab of sealant (packce
 - The seeds go into each pack's entry (`sealant_seed`) of tests/hidden/packs.json and
   environment/commission_service/dev_packs.json. None is drawn again or changed for any value it turns out to have
   or for how any program does with it.
+
+Rule 4, a pack's appearance (2026-11-25; written and committed before any value was drawn, after rule 3's draw and
+the measurements on its tree): the hall's light, grime, dust and labels (packcell/series.py, `APPEARANCE`).
+
+- A fourth key of 32 random bytes (os.urandom) is drawn once (`--draw-appearance`) and recorded in
+  tests/hidden/selection.json as `appearance_key_hex`, independent of the other keys and of every seed.
+- Pack k of the hidden set gets the appearance seed = the first 8 bytes of BLAKE2b("appearance|hidden|k", key = the
+  fourth key) read little-endian, development pack k the same with "dev". The light, the patches, the labels and the
+  dusty heads follow from that seed (`draw_pack`'s `appearance_seed`, `series._appearance`).
+- The seeds go into each pack's entry (`appearance_seed`) of the two files above. None is drawn again or changed for
+  any value it turns out to have or for how any program does with it.
 """
 
 import hashlib
@@ -99,6 +111,14 @@ def with_cells(sel, tag, packs):
     if "cells_key_hex" in sel:
         offs = cells(bytes.fromhex(sel["cells_key_hex"]), tag, len(packs))
         packs = [dict(p, cameras=o) for p, o in zip(packs, offs)]
+    if "appearance_key_hex" in sel:
+        key4 = bytes.fromhex(sel["appearance_key_hex"])
+        packs = [dict(p, appearance_seed=int.from_bytes(hashlib.blake2b(b"appearance|%s|%d" % (tag, k), key=key4, digest_size=8).digest(), "little"))
+                 for k, p in enumerate(packs)]
+    if "appearance_key_hex" in sel:
+        key4 = bytes.fromhex(sel["appearance_key_hex"])
+        packs = [dict(p, appearance_seed=int.from_bytes(hashlib.blake2b(b"appearance|%s|%d" % (tag, k), key=key4, digest_size=8).digest(), "little"))
+                 for k, p in enumerate(packs)]
     if "sealant_key_hex" in sel:
         key3 = bytes.fromhex(sel["sealant_key_hex"])
         packs = [dict(p, sealant_seed=int.from_bytes(hashlib.blake2b(b"sealant|%s|%d" % (tag, k), key=key3, digest_size=8).digest(), "little"))
@@ -107,6 +127,18 @@ def with_cells(sel, tag, packs):
 
 
 def main():
+    if "--draw-appearance" in sys.argv[1:]:
+        with open(SEL) as f:
+            sel = json.load(f)
+        if "appearance_key_hex" in sel:
+            raise SystemExit("the appearance key is drawn already (rule 4: once)")
+        sel["appearance_key_hex"] = os.urandom(32).hex()
+        sel["appearance_rule"] = "tests/review/select_set.py (its docstring), rule 4"
+        sel["appearance_drawn_utc"] = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        with open(SEL, "w") as f:
+            json.dump(sel, f, indent=1)
+            f.write("\n")
+        sys.argv.append("--refresh")
     if "--draw-sealant" in sys.argv[1:]:
         with open(SEL) as f:
             sel = json.load(f)

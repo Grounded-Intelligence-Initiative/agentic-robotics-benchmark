@@ -298,6 +298,11 @@ free before it is lifted. Sort everything that comes off (section 9).
   width across flats, or a pan head's radius). It covers part of the head's top, typically a fifth and at most about
   half, and runs over the head's edge onto the seat. It is soft: a bit goes through it and engages as it would
   without it, and the dab comes away with its fastener. It hides part of the head from the cameras.
+- **Grime, dust and labels.** Field packs come back dirty: %d to %d patches of dark grime or light dust lie on the
+  lid (roughly elliptical, %d to %d mm across), anywhere, over bolts too; %d to %d service labels (white, with a
+  printed bar code) are stuck to the lid's flat areas, never over a bolt, its handle or a rib; and some clean heads
+  carry a dull film of dust (about %d %%) that takes the shine off them. None of it holds anything or changes how a
+  bit engages.
 - **A harness remnant.** Some packs carry a piece of blue low-voltage harness (cable 12 mm thick, 0.2 to 0.4 m long,
   a grey plug shell at each end) that was cut and left behind: lying on the lid over one or two lid bolts, or inside
   the pack along the busbars over two or three busbar bolts. It is loose. A bolt under it cannot be reached; take
@@ -305,7 +310,10 @@ free before it is lifted. Sort everything that comes off (section 9).
   bit pressed on the cable chafes it through. A harness lying on the busbars lies on live parts until the pack is
   isolated.
 """ % (round(100 * S.SEALANT["p"]["lid"]), round(100 * S.SEALANT["p"]["busbar"]), S.SEALANT["d"][0], S.SEALANT["d"][1],
-       S.SEALANT["r"][0], S.SEALANT["r"][1], 1000 * S.SEALANT["above"][0], 1000 * S.SEALANT["above"][1]))
+       S.SEALANT["r"][0], S.SEALANT["r"][1], 1000 * S.SEALANT["above"][0], 1000 * S.SEALANT["above"][1],
+       S.APPEARANCE["patches"][0], S.APPEARANCE["patches"][1], round(2000 * S.APPEARANCE["patch_axes"][0]),
+       round(2000 * S.APPEARANCE["patch_axes"][1]), S.APPEARANCE["labels"][0], S.APPEARANCE["labels"][1],
+       round(100 * S.APPEARANCE["dusty_p"])))
     t.append("""## 8. Photographs
 
 `manual/photo_example_lid.jpg` and `manual/photo_example_inside.jpg`: an example pack (an HVB-P5) under the cell's
@@ -645,10 +653,17 @@ mounting. It does not contain the cell's offset.
 A pixel has no reading (0) outside the working range; at a depth jump; where the stereo pair's second view, displaced
 along the camera's +x by the baseline, cannot see the point (a band beside tall edges); on dark surfaces (where the
 colour image's luma, 0.299 R + 0.587 G + 0.114 B, is below %d, more often the darker, never a reading below %d); and
-on specular highlights (where a colour channel is above %d, more often the brighter, never a reading above %d). Lost
-readings come in small blobs. The noise is independent from frame to frame: the mean of many frames of a still scene
-approaches the true depth, smoothed as stated. The colour image is the renderer's: a path tracer with a denoiser, so
-two frames of the same scene differ slightly in their pixel values.
+on specular highlights (where a colour channel is above %d, more often the brighter, never a reading above %d). These
+thresholds hold for the colour image under the hall's nominal light: the sensors light the scene themselves, so a
+surface's readings do not change with the hall's light (below). Lost readings come in small blobs. The noise is
+independent from frame to frame: the mean of many frames of a still scene approaches the true depth, smoothed as
+stated. The colour image is the renderer's: a path tracer with a denoiser, so two frames of the same scene differ
+slightly in their pixel values.
+
+**The hall's light.** The cell stands in an open hall, and its light differs from pack to pack (daylight, which lamps
+are on): the overall brightness lies between %g and %g times the nominal, the four lamps over the cell have a colour
+temperature between %d and %d K, and each lamp's share varies between %g and %g of its nominal. It stays the same
+throughout a pack. The colour image shows all of it; the depth does not depend on it.
 
 ## 6. Budgets
 
@@ -701,7 +716,9 @@ bit-reproducible across machines: build a program that closes its loops on what 
        D["max_ticks"], S.TICK, D["tcp_speed_max"], D["tcp_rot_speed_max"], D["joint_speed_max"],
        D["overload_force"], D["overload_torque"], D["overload_joint_error"], D["stop_lock_s"], D["sim_cap_s"], D["frame_budget"],
        "\n".join(cam), S.MOUNT_TOL["overhead"]["mm"], S.MOUNT_TOL["overhead"]["deg"], S.MOUNT_TOL["wrist"]["mm"], S.MOUNT_TOL["wrist"]["deg"],
-       plates, sheet, so["dark"][1], so["dark"][0], so["bright"][0], so["bright"][1], D["sim_cap_s"], D["frame_budget"], GRADER["max_steps"], GRADER["controller_budget_s"],
+       plates, sheet, so["dark"][1], so["dark"][0], so["bright"][0], so["bright"][1],
+       S.APPEARANCE["gain"][0], S.APPEARANCE["gain"][1], S.APPEARANCE["kelvin"][0], S.APPEARANCE["kelvin"][1],
+       S.APPEARANCE["lamp"][0], S.APPEARANCE["lamp"][1], D["sim_cap_s"], D["frame_budget"], GRADER["max_steps"], GRADER["controller_budget_s"],
        len(DEV["packs"]), len(DEV["packs"]), DEV["sessions"], DEV["idle_s"])
 
 
