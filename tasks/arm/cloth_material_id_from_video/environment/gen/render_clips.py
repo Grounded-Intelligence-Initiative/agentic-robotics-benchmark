@@ -28,6 +28,7 @@ sys.path.insert(0, HERE)
 import cphys as W  # noqa: E402
 import creal as R  # noqa: E402
 import ctasks as T  # noqa: E402
+import csheet as CS  # noqa: E402
 
 W_IMG, H_IMG = 640, 480
 FOCAL = 640.0
@@ -213,6 +214,7 @@ def render_xml(material, mass, cams_xml, arm_assets, arm_body):
                     '<texture name="wood" type="2d" file="wood.png"/><material name="wood" texture="wood" texrepeat="2 2"/>'
                     '<texture name="floor" type="2d" file="floor.png"/><material name="floor" texture="floor" texrepeat="6 6"/>'
                     '<texture name="sky" type="skybox" builtin="gradient" rgb1="0.75 0.78 0.82" rgb2="0.35 0.36 0.4" width="256" height="256"/>'
+                    + sheet_assets() + '<material name="fabric_under" rgba="0.78 0.76 0.72 1" specular="0.05" shininess="0.1"/>'
                     + arm_assets)
     tx, ty = W.TABLE_HALF
     cx = W.EDGE_X - tx
@@ -226,6 +228,8 @@ def render_xml(material, mass, cams_xml, arm_assets, arm_body):
              '<geom type="plane" size="3 3 0.1" pos="0 0 -0.78" material="floor" contype="0" conaffinity="0" group="1"/>'
              '<geom type="box" size="0.02 2.5 1.2" pos="-1.6 0 0.4" rgba="0.82 0.8 0.76 1" contype="0" conaffinity="0" group="1"/>'
              '<geom name="probe" type="sphere" size="0.0015" pos="0 0 -5" contype="0" conaffinity="0" rgba="0 0 0 0" group="3"/>'
+             '<geom name="sheet_top" type="mesh" mesh="sheet_top" material="fabric" contype="0" conaffinity="0" group="1"/>'
+             '<geom name="sheet_bot" type="mesh" mesh="sheet_bot" material="fabric_under" contype="0" conaffinity="0" group="1"/>'
              + legs + pedestal + cams_xml + arm_body)
     xml = xml.replace('<asset>', '<asset>' + extra_assets, 1)
     xml = xml.replace('rgba="0.55 0.45 0.35 1" group="1"/>', 'material="wood" group="1"/>', 1)
@@ -268,6 +272,48 @@ def encode(frames, path):
 
 
 # ----------------------------------------------------------------------------------------------------------------
+# the drawn fabric: one closed shell per frame (csheet), not the model's own facets
+# ----------------------------------------------------------------------------------------------------------------
+DRAW_NX, DRAW_NY = 4 * (R.NX - 1) + 1, 4 * (R.NY - 1) + 1
+DRAW_THICKNESS = 0.0015          # one drawn thickness for every fabric: what is drawn says nothing about the material
+TABLE_BOX = ([W.EDGE_X - W.TABLE_HALF[0], 0.0, -0.02], [W.TABLE_HALF[0], W.TABLE_HALF[1], 0.02])
+
+
+def sheet_assets():
+    """MJCF of the two meshes of the drawn fabric (the printed face; the under side with the rim), flat at the origin.
+    Their vertices are rewritten for every frame (set_sheet)."""
+    uv, f_top, ring, inner, f_edge = CS.topology(DRAW_NX, DRAW_NY)
+    ii, jj = np.meshgrid(np.arange(DRAW_NX), np.arange(DRAW_NY), indexing="ij")
+    flat = np.stack([ii * 0.002, jj * 0.002, 0.0 * ii], -1).reshape(-1, 3)
+    nr = len(ring)
+    vb = np.concatenate([flat, flat[ring] + [0, 0, 0.001]])
+    n0 = DRAW_NX * DRAW_NY
+    fb = np.concatenate([f_top[:, ::-1], np.where(f_edge < nr, ring[np.minimum(f_edge, nr - 1)], n0 + (f_edge - nr))[:, ::-1]])
+    txt = lambda a, fmt="%.6g": " ".join(fmt % v for v in np.asarray(a).ravel())  # noqa: E731
+    return ('<mesh name="sheet_top" vertex="%s" face="%s" texcoord="%s" inertia="shell"/>' % (txt(flat), txt(f_top, "%d"), txt(uv))
+            + '<mesh name="sheet_bot" vertex="%s" face="%s" inertia="shell"/>' % (txt(vb), txt(fb, "%d")))
+
+
+def set_sheet(m, con, V, clamp_row):
+    """Lay the drawn fabric on the real model's vertices V (one frame) and hand the two meshes to the renderer."""
+    import mujoco
+    sh = CS.shell(V, (R.NX, R.NY), R.RADIUS, DRAW_THICKNESS, TABLE_BOX, clamp_row, W.JAW_W / 2)
+    top, bot, n = sh["top"].reshape(-1, 3), sh["bot"].reshape(-1, 3), sh["n"].reshape(-1, 3)
+    ring = CS.topology(DRAW_NX, DRAW_NY)[2]
+    for name, vert, norm in (("sheet_top", top, n), ("sheet_bot", np.concatenate([bot, top[ring]]), np.concatenate([-n, -n[ring]]))):
+        mid = m.mesh(name).id
+        a, k = m.mesh_vertadr[mid], m.mesh_vertnum[mid]
+        assert k == len(vert) and m.mesh_normalnum[mid] == k
+        m.mesh_vert[a:a + k] = vert
+        na = m.mesh_normaladr[mid]
+        m.mesh_normal[na:na + k] = norm
+        g = m.geom(name).id
+        m.geom_pos[g] = 0.0
+        m.geom_quat[g] = [1.0, 0.0, 0.0, 0.0]
+        mujoco.mjr_uploadMesh(m, con, mid)
+    return sh
+
+
 def arm_check(m, d, rows, q, frames):
     """Maintainers' record for one clip: how well the arm follows the clamp (IK error, the smallest margin to a joint
     limit) and how close the arm comes to the table and to the fabric. The clamp's own parts are left out of both
@@ -339,31 +385,29 @@ def do_clip(args):
         chk = arm_check(m, dd, rows, q, frames[:n])
         os.makedirs(os.environ["CLIP_CHECK_DIR"], exist_ok=True)
         json.dump(dict(fabric=fid, clip=ci, kind=kind, **chk), open(os.path.join(os.environ["CLIP_CHECK_DIR"], "%s_clip%02d.json" % (fid, ci)), "w"))
-    rs = W.Sim.__new__(W.Sim)          # reuse Sim's vertex bookkeeping on the render model
-    rs.m, rs.d = m, dd
-    f = 0
-    a, nv = m.flex_vertadr[f], m.flex_vertnum[f]
-    rs.vbody = m.flex_vertbodyid[a:a + nv].copy()
-    rs.vq = np.array([m.jnt_qposadr[m.body_jntadr[b]] for b in rs.vbody])
-    rs.vd = np.array([m.jnt_dofadr[m.body_jntadr[b]] for b in rs.vbody])
-    rs.body0 = m.body_pos[rs.vbody].copy()
     renderer = mujoco.Renderer(m, H_IMG, W_IMG)
+    opt = mujoco.MjvOption()                       # the model's own flex is not drawn: the drawn fabric is the shell
+    for flag in (mujoco.mjtVisFlag.mjVIS_FLEXVERT, mujoco.mjtVisFlag.mjVIS_FLEXEDGE, mujoco.mjtVisFlag.mjVIS_FLEXFACE,
+                 mujoco.mjtVisFlag.mjVIS_FLEXSKIN):
+        opt.flags[flag] = 0
+    opt.geomgroup[:] = [1, 1, 1, 0, 0, 0]
+    half_rows = C[W.STEPS_PER_FRAME // 2::W.STEPS_PER_FRAME]
     looks = [camera_look(rng) for _ in carm_cams()]
     out = {c: [] for c in carm_cams()}
 
-    def draw(P, qa):
-        rs.set_vertices(P)
+    def draw(P, qa, row):
+        set_sheet(m, renderer._mjr_context, P, row)
         carm.set_arm(m, dd, qa)
         mujoco.mj_forward(m, dd)
         imgs = {}
         for c in carm_cams():
-            renderer.update_scene(dd, c)
+            renderer.update_scene(dd, c, scene_option=opt)
             imgs[c] = renderer.render().astype(np.float32) / 255.0
         return imgs
 
     for k in range(n):
-        A = draw(frames[k], q[k])
-        B = draw(half[k] if k < len(half) else frames[k], qh[k] if k < len(qh) else q[k])
+        A = draw(frames[k], q[k], rows[k])
+        B = (draw(half[k], qh[k], half_rows[k]) if k < len(half) and k < len(qh) and k < len(half_rows) else A)
         for i, c in enumerate(carm_cams()):
             out[c].append(degrade([A[c], B[c]], looks[i], rng))
     renderer.close()
