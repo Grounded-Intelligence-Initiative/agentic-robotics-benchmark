@@ -58,6 +58,13 @@ QUARANTINE = os.path.join(RUNS_ROOT, "_quarantine")
 STICKY_DIRS = [d for d in ("/tmp", "/dev/shm", "/var/tmp", "/run/lock") if os.path.isdir(d)]
 WATCH_ROOTS = STICKY_DIRS + [HOME]
 LATE_GATE_MAX_GAP_S = 600.0
+# the image's desktop session (the base image's supervisord: Xvnc, D-Bus, GNOME, PulseAudio) keeps writing these under
+# /tmp as the agent's account from the moment the sandbox boots, also in the separate verifier sandbox where nothing of
+# the agent ever ran (measured: /tmp/runtime-user/dconf/user rewritten 25 s after boot). They are the image's, not late
+# writes of the agent's session: the late-write gate skips them (the account is cleared and frozen below anyway).
+DESKTOP_SESSION_PATHS = tuple(os.path.join("/tmp", n) for n in (
+    "runtime-" + (os.path.basename(HOME.rstrip("/")) or "user"), ".X11-unix", ".ICE-unix", ".X1-lock", ".X0-lock",
+    "dbus-session-bus-address", "logind-tmpl.log", "logind-mock.log", "gnome-ready"))
 
 from cellkit import lockdown, runner, verify_freeze  # noqa: E402  (stdlib only)
 
@@ -148,9 +155,10 @@ def _early_lockdown():
     if gate_active:
         q = 0
         for root in WATCH_ROOTS:
-            late = lockdown.late_entries(root, t_ref, exclude=(SUBMISSION, RUNS_ROOT, STAGE_DIR))
+            late = lockdown.late_entries(root, t_ref, exclude=(SUBMISSION, RUNS_ROOT, STAGE_DIR) + DESKTOP_SESSION_PATHS)
             if late:
-                log("[grader] %d late entr%s under %s quarantined" % (len(late), "y" if len(late) == 1 else "ies", root))
+                log("[grader] %d late entr%s under %s quarantined: %s" % (
+                    len(late), "y" if len(late) == 1 else "ies", root, ", ".join(e[0] for e in late[:10])))
                 q += lockdown.quarantine(root, late, QUARANTINE)
         out["late_writes_quarantined"] = float(q)
     out["stage_lock_latency_ms"] = lockdown.process_age_ms()

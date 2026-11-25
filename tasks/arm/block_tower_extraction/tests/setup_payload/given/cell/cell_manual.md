@@ -34,8 +34,9 @@ tower collapsing. Every number below is also in `cell_config.json` (`describe()`
   posture: `home_q`. The cell's controller moves a tool frame along a straight line to a goal pose (orientation turned
   at a capped rate), or the joints to joint goals (`cell_api.md`).
 * Tool frames: `tcp`, the point between the finger pads, 0.1034 m along the hand's z axis from the hand's origin;
-  `rod_tip`, the tip of the pusher rod.
-* **Gripper**: parallel fingers, opening 0 - 0.08 m; open to a width, or close with a squeeze force (N, up to 40).
+  `rod_tip`, the very tip of the pusher rod's rounded end (on its surface, on the rod's axis).
+* **Gripper**: parallel fingers, opening 0 - 0.08 m; open to a width, or close with a squeeze force (N, up to 40;
+  closed on nothing, the fingers stop at zero opening).
   The finger pads are 17 mm wide (along the hand's x axis) and 17 mm tall.
 * **Pusher rod**: a 6 mm rod mounted under the palm, along the hand's +x axis, 14 mm above the tcp (toward the
   palm), from 0.02 m to 0.14 m along the hand's x axis. It can be deployed or stowed; stowed, it touches nothing.

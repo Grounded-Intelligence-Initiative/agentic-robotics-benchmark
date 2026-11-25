@@ -19,8 +19,17 @@ over the towers x the contract gate; reward = ratio against the anchor (the orac
 * `cellkit/`: the program's isolation and wire (see NOTICE.md); `pauser.py` stops the program while the cell works.
 * `verify.py`, `test.sh`, `grader_config.json`, `anchor.json`, `numerics_check.py` + `numerics.json`,
   `given_hashes.json`, `setup_payload/` (byte copy of environment/setup/payload/), `hidden/`.
-* `review/`: maintainers' tools (nothing runs them at verify): `make_given.py`, `make_sets.py`, `phase_a/` (the physics
-  prototype, its oracle and the sanity baselines).
+* `review/`: maintainers' tools (nothing runs them at verify): `make_given.py`, `make_sets.py`, `check_task.py`
+  (pins, seed disjointness, token, copies, numerics; `--oracle` re-measures the anchor in-process), `regress_grader.py`
+  (pause bypass, billed parallel compute, wall cap + call price, bad parameters, crash / over-long request line),
+  `baselines/ft_reference/` (a NON-privileged program: touch calibration, force-limited probing, force-guided pull;
+  the evidence that the task can be done from the given sensors), `phase_a/` (the physics prototype).
+
+## Verify-start late-write gate
+The verifier sandbox is separate (task.toml): the image's desktop session (the base image's supervisord, as the agent's
+account) keeps writing its own files under /tmp (runtime-user/, .X11-unix/, .ICE-unix/, ...) from boot, so a few of them
+can be newer than the stage upload. verify.py's late-write gate skips exactly those paths (DESKTOP_SESSION_PATHS) and
+logs the names of anything it does quarantine; the account is cleared and frozen before anything runs anyway.
 
 ## The oracle
 `solution/solve.sh` copies `solution/reference/play.py` and the 256-bit token. With the token the cell answers

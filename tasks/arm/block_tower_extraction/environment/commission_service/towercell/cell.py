@@ -80,6 +80,9 @@ def build_spec(tower, panda_dir):
     for b in spec.bodies:
         if b.name != "world":
             b.gravcomp = 1.0
+    # the two fingers never collide with each other (closed on nothing they meet at the joints' stop; with contacts
+    # between their convex hulls a squeeze drove them through each other and they stayed locked)
+    spec.add_exclude(bodyname1="left_finger", bodyname2="right_finger")
     rob = CONFIG["robot"]
     tcp = rob["tcp_offset_m"]
     pu = rob["pusher"]
@@ -231,6 +234,8 @@ class Cell(object):
         self.grip_mode = ("open", width)
 
     def grip_close(self, force=20.0):
+        """Squeeze with `force` (force mode). Closed on nothing, the fingers stop at their joints' stop (they do not
+        collide with each other: build_spec excludes that pair)."""
         m = self.m
         force = float(min(max(force, 1.0), CONFIG["robot"]["grip_force_max_N"]))
         m.actuator_gainprm[7, 0] = 1.0
