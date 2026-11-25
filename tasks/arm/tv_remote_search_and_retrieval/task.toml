@@ -17,10 +17,10 @@ platform = "arm"
 cpus = 4
 memory_mb = 12288
 
-# 6 hours: the agent has no simulator of the room and no practice episode (only the robot's
-# model, three recorded first observations and the remote's model), so the search and every
-# manipulation skill have to be reasoned out, built against a rig of the agent's own if it
-# wants one, and made robust without a trial in the room.
+# 6 hours: the agent is not told where the remote may be; it has to work the places out and
+# develop the manipulation each one takes (lifting a seat pad, pulling a drawer by its knob,
+# fetching the hanger and sweeping with it) against the simulator, whose episodes of up to 3600
+# control steps take one to three minutes each with camera images.
 [agent]
 timeout_sec = 21600
 network_mode = "no-network"

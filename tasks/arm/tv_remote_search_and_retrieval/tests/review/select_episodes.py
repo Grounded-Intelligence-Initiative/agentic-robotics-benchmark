@@ -6,7 +6,7 @@ solution/ plays each candidate once, in process, on the simulator of tests/remot
 episodes. Every candidate and its outcome is recorded in tests/hidden/selection.json, so the
 reference's own failure rate on unselected draws is on record.
 
-    REMOTE_ROOM_DIR=tests/room python3 tests/review/select_episodes.py
+    REMOTE_ROOM_DIR=environment/room python3 tests/review/select_episodes.py
 """
 
 import json
@@ -17,8 +17,9 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 TASK = os.path.dirname(os.path.dirname(HERE))
 sys.path[:0] = [os.path.join(TASK, "tests"), os.path.join(TASK, "solution", "solver")]
-os.environ.setdefault("REMOTE_ROOM_DIR", os.path.join(TASK, "tests", "room"))
+os.environ.setdefault("REMOTE_ROOM_DIR", os.path.join(TASK, "environment", "room"))
 
+import episodes as R  # noqa: E402
 import remote_env as E  # noqa: E402
 from reference import Reference  # noqa: E402
 
@@ -45,14 +46,14 @@ def play(env, spec):
 def main():
     env = E.Env()
     record, chosen = [], {}
-    for spot in E.HIDING_SPOTS:
+    for spot in R.HIDING_SPOTS:
         chosen[spot] = []
         for _ in range(CANDIDATES):
             seed = struct.unpack("<Q", os.urandom(8))[0]
-            env.reset(E.make_episode(seed, spot))
+            env.reset(R.make_episode(E, seed, spot))
             if max(env._remote_pixels(name) for name in E.CAMERAS) > 0:
                 raise SystemExit("the remote shows at the start of {} {}".format(spot, seed))
-            score, steps, ended = play(env, E.make_episode(seed, spot))
+            score, steps, ended = play(env, R.make_episode(E, seed, spot))
             picked = score >= 1.0 and len(chosen[spot]) < PER_SPOT
             if picked:
                 chosen[spot].append(seed)
@@ -62,7 +63,7 @@ def main():
         if len(chosen[spot]) < PER_SPOT:
             raise SystemExit("too few episodes for " + spot)
     # Graded order: the spots in turn, twice.
-    episodes = [{"seed": chosen[spot][i], "spot": spot} for i in range(PER_SPOT) for spot in E.HIDING_SPOTS]
+    episodes = [{"seed": chosen[spot][i], "spot": spot} for i in range(PER_SPOT) for spot in R.HIDING_SPOTS]
     with open(os.path.join(TASK, "tests", "hidden", "episodes.json"), "w") as handle:
         json.dump({"episodes": episodes}, handle, indent=1)
     with open(os.path.join(TASK, "tests", "hidden", "selection.json"), "w") as handle:

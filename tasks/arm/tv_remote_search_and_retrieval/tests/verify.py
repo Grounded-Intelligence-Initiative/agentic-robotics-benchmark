@@ -1,12 +1,14 @@
 """Hidden grader for tv_remote_search_and_retrieval (closed loop, fixed hidden episodes).
 
-Runs as root in a separate verifier sandbox, after the agent is gone. It owns the living room
-(remote_env.py and room/: the agent never had a simulator of the room, nor its meshes, nor the
-list of hiding spots), plays the fixed hidden episodes of hidden/episodes.json in order (each a
-seed and a hiding spot: two per spot, twelve in all), drives the agent's controller over the
-stdio wire at the agent's UID (`robotics_grader.Solver`) and scores every episode from its own
-simulator state (`Env.score`): 1 when the remote was retrieved, 0.4 for laying it open, 0.2 for
-getting it into an image the controller asked for, else 0. The metric is the mean over the episodes.
+Runs as root in a separate verifier sandbox, after the agent is gone. It owns its own copy of the
+living room (remote_env.py, byte-identical to the copy the agent developed against) and the rule
+for where the remote is (episodes.py, which the agent never had: its simulator puts the remote
+wherever its caller says). It plays the fixed hidden episodes of hidden/episodes.json in order
+(each a seed and a hiding spot: two per spot, twelve in all), drives the agent's controller over
+the stdio wire at the agent's UID (`robotics_grader.Solver`) and scores every episode from its
+own simulator state (`Env.score`): 1 when the remote was retrieved, 0.4 for laying it open, 0.2
+for getting it into an image the controller asked for, else 0. The metric is the mean over the
+episodes.
 
 Time: every episode has a controller budget (grader_config.json `controller_budget_s`): the time
 the grader waits for the controller's replies plus a fixed charge for every image the controller
@@ -137,6 +139,7 @@ def main():
         return
 
     # The simulator is imported only now: an untouched sandbox is judged without it.
+    import episodes as episodes_rule
     import remote_env as E
 
     lock = ProbeLock(rng, rate=config.get("probe_rate", 0.01),
@@ -149,7 +152,7 @@ def main():
     with VerifierDeadline(float(config.get("wall_cap_s", 6000)), out_of_time):
         try:
             for index, item in enumerate(episodes):
-                spec = E.make_episode(int(item["seed"]), item["spot"])
+                spec = episodes_rule.make_episode(E, int(item["seed"]), item["spot"])
                 try:
                     score, steps, ended = run_episode(env, E, solver, lock, spec, config, rng, state)
                 except SolverAborted as exc:

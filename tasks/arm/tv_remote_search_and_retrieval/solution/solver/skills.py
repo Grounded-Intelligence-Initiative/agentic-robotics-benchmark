@@ -41,7 +41,7 @@ class Locator(object):
     def __init__(self):
         self.env = E.Env()
         env = self.env
-        env.spec = E.make_episode(0, "under_hat")
+        env.spec = E.make_scene(0, remote=E.OUT_OF_ROOM[0])
         env._apply_look(env.spec)
         self.renderer = env._renderer("overview")
         self.fx = E.camera_intrinsics("overview")

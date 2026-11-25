@@ -1,37 +1,26 @@
 """The living room of tv_remote_search_and_retrieval: a Franka Panda on a floor rail in front of a
-two-seat settee and a chest of three drawers, and a TV remote that is hidden in one of six places.
+two-seat settee and a chest of three drawers, with the loose things of a living room, and a TV
+remote that lies somewhere in it.
 
 World frame: metres, radians, quaternions (w, x, y, z). x points from the robot's rail to the sofa,
 y to the robot's left, z up; the floor is z = 0. The rail runs along y at x = 0.
 
-The six hiding spots (`HIDING_SPOTS`):
+A scene is a `Scene` = `make_scene(seed, remote)`: where the settee and the chest stand
+(`sofa_pose`, `cabinet_pose`), how the hanger hangs, where the hat lies, the look of the room
+(fabric, wood, floor, wall and lamp), all drawn from the seed, and where the remote is, which the
+caller says. A phone and a glasses case are in the model too; `make_scene` puts them where the
+caller says, or out of the room. This file holds no rule for where the remote is in a graded
+episode: that is the grader's, and you can put the remote wherever you want to practise.
 
-* ``left_cushion`` / ``right_cushion``: on the seat deck, under one of the two loose seat pads
-  (left is +y). A pad is soft: it lies flat on the deck over the remote (in the model a pad
-  and the remote do not touch each other).
-* ``upper_drawer`` / ``lower_drawer``: inside the top or the bottom one of the chest's three closed drawers.
-* ``under_sofa``: on the floor under the sofa, deeper than the hand reaches. A wooden clothes hanger
-  hangs on a peg on the cabinet's outer side.
-* ``under_hat``: on top of the cabinet, under the crown of the sun hat that lies there.
-
-Nothing of the remote is visible in either camera when an episode starts.
-
-An episode is defined by `EpisodeSpec` = `make_episode(seed, spot)`: the hiding spot, the remote's
-pose inside it, where the settee and the chest stand (`sofa_pose`, `cabinet_pose`), how the
-hanger hangs and the look of the room (fabric, wood, floor, wall and lamp).
-
-The furniture's shape is the same in every episode; where it stands is not. Every constant below
+The furniture's shape is the same in every scene; where it stands is not. Every constant below
 that places something (SOFA_X0, PAD_Y, CAB_CY, KNOB_Y, PEG_X, ...) describes the **nominal
-layout**. In an episode the settee, with its pads and whatever lies on or under it, is that layout
-turned by a small angle about the vertical through `SOFA_PIVOT` and shifted; the chest, with its
-drawers, the hanger, the hat and whatever lies in or on it, likewise about `CAB_PIVOT`
-(`LAYOUT_RANGE`, `place`). An observation does not say by how much: the cameras show it.
+layout**. In a scene the settee, with its pads, is that layout turned by a small angle about the
+vertical through `SOFA_PIVOT` and shifted; the chest, with its drawers, the hanger and the hat,
+likewise about `CAB_PIVOT` (`LAYOUT_RANGE`, `place`). An observation does not say by how much: the
+cameras show it.
 
-This file is the simulator and the judge of an episode (`Env.progress`, `Env.score`). It is the
-grader's: the agent does not get it, nor the room's meshes, nor any simulator of the room. What
-the agent gets is the robot alone (`build_robot_xml`, written to a file by
-tests/review/build_given.py), a few first observations of episodes that are not graded, and
-the remote's model. The reference controller of solution/ carries its own copy of this file.
+This file is the simulator and the judge of an episode (`Env.progress`, `Env.score`); the grader
+imports its own copy, and the copy in the agent's home is for development.
 """
 
 import base64
@@ -49,11 +38,11 @@ os.environ.setdefault("MUJOCO_GL", "egl")
 import mujoco  # noqa: E402
 
 __all__ = [
-    "HIDING_SPOTS", "EpisodeSpec", "make_episode", "Env", "CAMERAS", "ACTION_SIZE", "CONTROL_DT",
-    "MAX_STEPS", "camera_intrinsics", "decode_image", "build_xml", "build_robot_xml", "place",
+    "Scene", "make_scene", "Env", "CAMERAS", "ACTION_SIZE", "CONTROL_DT",
+    "MAX_STEPS", "camera_intrinsics", "decode_image", "build_xml", "place",
 ]
 
-HIDING_SPOTS = ("left_cushion", "right_cushion", "upper_drawer", "lower_drawer", "under_sofa", "under_hat")
+
 
 # ----------------------------------------------------------------------------------------------
 # Timing
@@ -104,8 +93,7 @@ SEAT_MID_Y = 0.5 * (SOFA_Y[0] + SOFA_Y[1])
 PAD_Y = {"left": 0.5 * (SEAT_MID_Y + SOFA_Y[1] - ARM_W), "right": 0.5 * (SOFA_Y[0] + ARM_W + SEAT_MID_Y)}
 
 # ----------------------------------------------------------------------------------------------
-# Side cabinet: a chest of three drawers (Poly Haven "Gothic Commode 01", CC0). The remote is
-# only ever in the upper or the lower drawer; the middle one is empty.
+# Side cabinet: a chest of three drawers (Poly Haven "Gothic Commode 01", CC0).
 # Cabinet frame: x from its front, y from its middle, z from the floor.
 # ----------------------------------------------------------------------------------------------
 CAB_X0 = 0.38                           # x of the cabinet frame's origin (its front)
@@ -179,19 +167,13 @@ REMOTE_HALF = (0.086, 0.022, 0.009)
 REMOTE_MASS = 0.20
 
 # ----------------------------------------------------------------------------------------------
-# Distractors: a phone and a glasses case (Objaverse "SmartPhone" by shedmon and "Spectacles
-# case" by lib.test, both CC BY 4.0, scaled). Each lies somewhere a remote could be, in every
-# episode: the phone under a seat pad, in one of the three drawers or (when the remote is not
-# there) under the hat; the case in one of the three drawers. Either may share its place with the
-# remote: nothing lies on anything else, and things in one place are at least CLUTTER_GAP apart.
+# A phone and a glasses case (Objaverse "SmartPhone" by shedmon and "Spectacles case" by lib.test,
+# both CC BY 4.0, scaled): two more small dark things a living room has.
 # ----------------------------------------------------------------------------------------------
 PHONE_HALF = (0.075, 0.037, 0.0045)
 PHONE_MASS = 0.18
 CASE_HALF = (0.080, 0.035, 0.017)
 CASE_MASS = 0.09
-CLUTTER_GAP = 0.04
-PHONE_SPOTS = ("left_cushion", "right_cushion", "upper_drawer", "mid_drawer", "lower_drawer", "under_hat")
-CASE_SPOTS = ("upper_drawer", "mid_drawer", "lower_drawer")
 
 # ----------------------------------------------------------------------------------------------
 # Cameras
@@ -212,9 +194,10 @@ DEPTH_MAX_MM = 6000
 # ----------------------------------------------------------------------------------------------
 SEEN_PIXELS = 60                        # remote pixels in a delivered image that count as "seen"
 HOLD_STEPS = 20                         # 1 s of holding the remote clear of everything
-LIFT_CLEAR = 0.08                       # the held remote's centre above its hiding surface
-PARTIAL_SEEN = 0.2
-PARTIAL_REVEALED = 0.4
+LIFT_CLEAR = 0.08                       # the held remote's centre above the surface it lay on
+PARTIAL_SEEN = 0.2                      # score for the remote seen in a delivered image
+PARTIAL_REVEALED = 0.4                  # score for the remote laid open
+OUT_OF_ROOM = ((6.0, 6.0, 1.0, 0.0), (7.0, 6.0, 1.0, 0.0))   # where the phone and the case are when a scene has none
 
 _MASK = (1 << 64) - 1
 
@@ -223,23 +206,19 @@ _MASK = (1 << 64) - 1
 # Episode specification
 # ================================================================================================
 @dataclass(frozen=True)
-class EpisodeSpec:
+class Scene:
     seed: int
-    hiding_spot: str
     sofa_pose: tuple        # (dx, dy, turn) of the settee from the nominal layout, about SOFA_PIVOT
     cabinet_pose: tuple     # (dx, dy, turn) of the chest, about CAB_PIVOT
-    # The next five are in the nominal layout: `place` gives them as they are in the episode.
-    remote_xy: tuple        # x, y of the remote's centre (drawers: with the drawer closed)
-    remote_yaw: float
     hanger_swing: float     # rad, the hanger's initial rotation about the peg
+    # The hat's place is in the nominal layout: `place` gives it as it is in the scene.
     hat_xy: tuple           # x, y of the hat's axis on the cabinet's top
     hat_yaw: float          # direction of the hat's x axis
-    phone_spot: str         # where the phone lies (one of PHONE_SPOTS), and its pose there
-    phone_xy: tuple
-    phone_yaw: float
-    case_spot: str          # where the glasses case lies (one of CASE_SPOTS), and its pose there
-    case_xy: tuple
-    case_yaw: float
+    # World frame, as they are in the scene: (x, y, z of the centre, yaw). A thing is put there
+    # and let go; it comes to rest on whatever is below it.
+    remote: tuple
+    phone: tuple
+    case: tuple
     fabric_rgb: tuple       # tints: each multiplies a surface's texture
     pad_rgb: tuple
     wood_rgb: tuple
@@ -255,8 +234,7 @@ class EpisodeSpec:
 
 
 class _Draw(object):
-    """Uniform numbers from a keyed hash: an episode's hidden values cannot be recovered from
-    the values an observation shows."""
+    """Uniform numbers from a keyed hash of a seed and a stream's name."""
 
     def __init__(self, seed, stream):
         self._key = struct.pack("<Q", int(seed) & _MASK)
@@ -286,107 +264,31 @@ def _shade(rgb, factor):
     return tuple(min(1.0, max(0.0, c * factor)) for c in rgb)
 
 
-def _corners(xy, yaw, half):
-    c, s = math.cos(yaw), math.sin(yaw)
-    return [(xy[0] + c * a - s * b, xy[1] + s * a + c * b)
-            for a, b in ((half[0], half[1]), (half[0], -half[1]), (-half[0], -half[1]), (-half[0], half[1]))]
-
-
-def _apart(one, other, gap):
-    """True when two rectangles (xy, yaw, half sizes) are at least `gap` apart (separating axes)."""
-    ca, cb = _corners(*one), _corners(*other)
-    for yaw in (one[1], one[1] + 0.5 * math.pi, other[1], other[1] + 0.5 * math.pi):
-        ax, ay = math.cos(yaw), math.sin(yaw)
-        pa = [x * ax + y * ay for x, y in ca]
-        pb = [x * ax + y * ay for x, y in cb]
-        if min(pa) - max(pb) >= gap or min(pb) - max(pa) >= gap:
-            return True
-    return False
-
-
-def _spot_area(spot, hat_xy):
-    """((x0, x1), (y0, y1)) a thing in `spot` has to lie within, in the nominal layout."""
-    if spot.endswith("_cushion"):
-        centre = PAD_Y["left" if spot == "left_cushion" else "right"]
-        return (SOFA_X0 + 0.02, SOFA_X0 + 0.40), (centre - 0.21, centre + 0.21)
-    if spot.endswith("_drawer"):
-        x0 = CAB_X0 + DRAWER_FRONT_X[1]
-        return (x0 + 0.008, x0 + DRAWER_INNER[0] - 0.008), (CAB_CY - 0.5 * DRAWER_INNER[1] + 0.008, CAB_CY + 0.5 * DRAWER_INNER[1] - 0.008)
-    return (hat_xy[0] - 0.09, hat_xy[0] + 0.09), (hat_xy[1] - 0.09, hat_xy[1] + 0.09)      # under the crown
-
-
-def _lay(draw, spot, half, hat_xy, others):
-    """A pose in `spot` for a thing of half sizes `half`, clear of `others` already there (None
-    when 400 draws find none)."""
-    (x0, x1), (y0, y1) = _spot_area(spot, hat_xy)
-    for _ in range(400):
-        if spot == "under_hat":
-            xy = (hat_xy[0] + draw.uniform(-0.005, 0.005), hat_xy[1] + draw.uniform(-0.005, 0.005))
-        else:
-            xy = (draw.uniform(x0, x1), draw.uniform(y0, y1))
-        yaw = draw.uniform(-math.pi, math.pi)
-        inside = spot == "under_hat" or all(x0 <= x <= x1 and y0 <= y <= y1 for x, y in _corners(xy, yaw, half))
-        if inside and all(_apart((xy, yaw, half), other, CLUTTER_GAP) for other in others):
-            return xy, yaw
-    return None
-
-
-def make_episode(seed, hiding_spot):
-    """The episode of `seed` with the remote in `hiding_spot`."""
-    if hiding_spot not in HIDING_SPOTS:
-        raise ValueError("unknown hiding spot: {!r}".format(hiding_spot))
-    pose = _Draw(seed, "pose:" + hiding_spot)
+def make_scene(seed, remote, phone=None, case=None, hanger_swing=None):
+    """The scene of `seed` with the remote at `remote` = (x, y, z, yaw), world frame, as the
+    furniture stands in this scene (`place` turns a point of the nominal layout into it).
+    `phone` and `case` likewise, or None for a scene without them. The layout, the hat, the
+    hanger's swing (unless given) and the look are drawn from the seed."""
     look = _Draw(seed, "look")
-    yaw = pose.uniform(-math.pi, math.pi)
     # The hat lies on the cabinet's top, one of the brim's raised ends toward the robot and
     # standing out 4 to 5.5 cm over the top's front edge.
     room = _Draw(seed, "room")
     hat_xy = (CAB_X0 + room.uniform(0.150, 0.165), CAB_CY + room.uniform(-0.06, 0.06))
     hat_yaw = room.uniform(-0.35, 0.35) + (math.pi if room.uniform() < 0.5 else 0.0)
-    if hiding_spot in ("left_cushion", "right_cushion"):
-        centre = PAD_Y["left" if hiding_spot == "left_cushion" else "right"]
-        # The front part of a pad's recess: what stays clear when the pad is stood up against
-        # the backrest.
-        xy = (pose.uniform(SOFA_X0 + 0.11, SOFA_X0 + 0.24), centre + pose.uniform(-0.12, 0.12))
-    elif hiding_spot in ("upper_drawer", "lower_drawer"):
-        # Toward the front of the drawer: where a hand reaches it once the drawer is out.
-        xy = (CAB_X0 + DRAWER_FRONT_X[1] + pose.uniform(0.115, 0.18), CAB_CY + pose.uniform(-0.09, 0.09))
-    elif hiding_spot == "under_hat":
-        # Under the crown: anywhere it fits, in any direction.
-        xy = (hat_xy[0] + pose.uniform(-0.005, 0.005), hat_xy[1] + pose.uniform(-0.005, 0.005))
-    else:
-        xy = (SOFA_X0 + pose.uniform(0.15, 0.19), pose.uniform(SOFA_Y[0] + 0.34, SOFA_Y[1] - 0.36))
     fabric = _shade(look.choice(FABRICS), look.uniform(0.88, 1.0))
     layout = _Draw(seed, "layout")
-    # The distractors. (The remote's own draw does not depend on them.)
-    clutter = _Draw(seed, "clutter")
-    remote = (xy, yaw, REMOTE_HALF[:2])
-    things = {hiding_spot: [remote]}
-    placed = {}
-    for name, spots, half in (("phone", PHONE_SPOTS, PHONE_HALF[:2]), ("case", CASE_SPOTS, CASE_HALF[:2])):
-        spots = [s for s in spots if not (s == "under_hat" and hiding_spot == "under_hat")]
-        first = spots.index(clutter.choice(spots))
-        for spot in spots[first:] + spots[:first]:      # the drawn place, or the next with room
-            lay = _lay(clutter, spot, half, hat_xy, things.get(spot, []))
-            if lay is not None:
-                break
-        else:
-            raise RuntimeError("no room for the " + name)
-        things.setdefault(spot, []).append((lay[0], lay[1], half))
-        placed[name] = (spot,) + lay
-    (phone_spot, phone_xy, phone_yaw), (case_spot, case_xy, case_yaw) = placed["phone"], placed["case"]
-    return EpisodeSpec(
+    if hanger_swing is None:
+        hanger_swing = _Draw(seed, "hanger").uniform(-0.06, 0.06)
+    return Scene(
         seed=int(seed) & _MASK,
-        hiding_spot=hiding_spot,
         sofa_pose=tuple(layout.uniform(lo, hi) for lo, hi in LAYOUT_RANGE),
         cabinet_pose=tuple(layout.uniform(lo, hi) for lo, hi in LAYOUT_RANGE),
-        remote_xy=xy,
-        remote_yaw=yaw,
-        hanger_swing=pose.uniform(-0.06, 0.06),
+        hanger_swing=float(hanger_swing),
         hat_xy=hat_xy,
         hat_yaw=hat_yaw,
-        phone_spot=phone_spot, phone_xy=phone_xy, phone_yaw=phone_yaw,
-        case_spot=case_spot, case_xy=case_xy, case_yaw=case_yaw,
+        remote=tuple(float(v) for v in remote),
+        phone=tuple(float(v) for v in (phone if phone is not None else OUT_OF_ROOM[0])),
+        case=tuple(float(v) for v in (case if case is not None else OUT_OF_ROOM[1])),
         fabric_rgb=fabric,
         pad_rgb=_shade(fabric, look.uniform(0.90, 1.0)),
         wood_rgb=_shade(look.choice(WOODS), look.uniform(0.85, 1.0)),
@@ -411,9 +313,9 @@ def _asset_root():
 
 
 def room_dir():
-    """The folder with the room's meshes and textures (REMOTE_ROOM_DIR, else `room/` beside this
-    file)."""
-    for path in (os.environ.get("REMOTE_ROOM_DIR"),
+    """The folder with the room's meshes and textures (REMOTE_ROOM_DIR, else /opt/room, else
+    `room/` beside this file)."""
+    for path in (os.environ.get("REMOTE_ROOM_DIR"), "/opt/room",
                  os.path.join(os.path.dirname(os.path.abspath(__file__)), "room")):
         if path and os.path.isfile(os.path.join(path, "sofa_frame.obj")):
             return path
@@ -536,9 +438,9 @@ def _pad(name, yc):
     z = DECK_Z + half[2]
     volume = PAD_SIZE[0] * PAD_SIZE[1] * PAD_SIZE[2]
     return ('<body name="pad_{n}" pos="{p}"><freejoint name="pad_{n}_free"/>'
-            # A pad is soft: it lies flat over a remote under it. The pads' and the remote's
-            # contact bits are chosen so that those two do not touch each other, and each still
-            # touches everything else (the pads one another too).
+            # A pad stands for a soft cushion. The contact bits of the pads and of the remote
+            # and the phone are chosen so that a pad touches neither of those two, and each
+            # still touches everything else (the pads one another too).
             '<geom name="pad_{n}" type="box" size="{s}" density="{d}" {h} contype="5" conaffinity="6" '
             'friction="0.9 0.01 0.0001" solref="0.01 1" condim="4"/>{look}</body>').format(
                 n=name, p=_fmt((x, yc, z)), s=_fmt(half), d=_fmt((PAD_MASS / volume,)), h=HIDDEN,
@@ -666,7 +568,9 @@ def _look_at(pos, target):
     return tuple(right) + tuple(up)
 
 
-def _actuators():
+def build_xml():
+    """The MJCF of the room. The look of an episode is set on the compiled model at reset."""
+    assets, arm = _panda(_asset_root())
     actuators = ['<general name="act_rail" joint="rail" biastype="affine" gainprm="30000" '
                  'biasprm="0 -30000 -3000" forcerange="-800 800" ctrlrange="{}"/>'.format(_fmt(RAIL_RANGE))]
     for i in range(7):
@@ -675,70 +579,6 @@ def _actuators():
                              n=i + 1, kp=ARM_KP[i], kv=ARM_KV[i], f=ARM_FORCE[i], lo=ARM_LIMITS[i][0], hi=ARM_LIMITS[i][1]))
     actuators.append('<position name="act_f1" joint="finger_joint1" kp="1500" ctrlrange="0 0.04" forcerange="-{f} {f}"/>'.format(f=FINGER_FORCE))
     actuators.append('<position name="act_f2" joint="finger_joint2" kp="1500" ctrlrange="-0.04 0" forcerange="-{f} {f}"/>'.format(f=FINGER_FORCE))
-    return actuators
-
-
-_ROBOT_BODY = """<geom name="rail_beam" type="box" pos="0 {rail_mid} 0.02" size="0.07 {rail_half} 0.02" material="rail"/>
-    <camera name="overview" pos="{cam_pos}" xyaxes="{cam_axes}" fovy="{cam_fovy}"/>
-    <body name="pedestal" pos="0 0 0">
-      <joint name="rail" type="slide" axis="0 1 0" range="{rail_lo} {rail_hi}" damping="50" armature="2"/>
-      <inertial pos="0 0 0.15" mass="40" diaginertia="2 2 2"/>
-      <geom name="pedestal" type="box" pos="0 0 {ped_z}" size="0.11 0.11 {ped_half}" material="rail"/>
-      <body name="arm_mount" pos="0 0 {base_z}">
-        {arm}
-      </body>
-    </body>"""
-
-
-def _robot_body(arm):
-    return _ROBOT_BODY.format(
-        arm=arm, rail_mid=0.5 * (RAIL_RANGE[0] + RAIL_RANGE[1]), rail_half=0.5 * (RAIL_RANGE[1] - RAIL_RANGE[0]) + 0.15,
-        rail_lo=RAIL_RANGE[0], rail_hi=RAIL_RANGE[1],
-        ped_z=0.04 + 0.5 * (BASE_Z - 0.04), ped_half=0.5 * (BASE_Z - 0.04), base_z=BASE_Z,
-        cam_pos=_fmt(OVERVIEW_POS), cam_axes=_fmt(_look_at(OVERVIEW_POS, OVERVIEW_LOOKAT)),
-        cam_fovy=CAMERAS["overview"][3])
-
-
-def build_robot_xml():
-    """The MJCF of the robot alone on an empty floor: the rail, the pedestal, the Panda with its
-    hand and wrist camera, the overview camera, the actuators and the wrist sensor, exactly as
-    in the room's model. This is the model the agent is given."""
-    assets, arm = _panda(_asset_root())
-    return """<mujoco model="panda_on_rail">
-  <compiler angle="radian" autolimits="true"/>
-  <option timestep="{dt}" integrator="implicitfast" cone="elliptic" impratio="20" noslip_iterations="10"/>
-  <visual>
-    <global offwidth="1280" offheight="960"/>
-    <headlight ambient="0.36 0.36 0.36" diffuse="0.28 0.28 0.28" specular="0 0 0"/>
-    <map znear="0.01" zfar="12"/>
-  </visual>
-  <asset>
-    {assets}
-    <material name="rail" rgba="0.3 0.31 0.33 1" specular="0.4" shininess="0.5"/>
-  </asset>
-  <worldbody>
-    <light name="lamp" pos="-0.4 0 2.6" dir="0.25 0 -1" diffuse="0.72 0.7 0.67"/>
-    <geom name="floor" type="plane" size="4 4 0.1" rgba="0.6 0.6 0.6 1" friction="0.5 0.01 0.0001" condim="4"/>
-    {robot}
-  </worldbody>
-  <contact>
-    <exclude body1="pedestal" body2="link0"/>
-    <exclude body1="pedestal" body2="link1"/>
-  </contact>
-  <actuator>
-    {actuators}
-  </actuator>
-  <sensor>
-    <force name="wrist_force" site="ft_frame"/>
-    <torque name="wrist_torque" site="ft_frame"/>
-  </sensor>
-</mujoco>""".format(dt=SIM_DT, assets=assets, robot=_robot_body(arm), actuators="\n    ".join(_actuators()))
-
-
-def build_xml():
-    """The MJCF of the room. The look of an episode is set on the compiled model at reset."""
-    assets, arm = _panda(_asset_root())
-    actuators = _actuators()
     room = room_dir()
     pad = "{} {} {}".format(*PAD_SIZE)
     return """<mujoco model="living_room">
@@ -797,7 +637,16 @@ def build_xml():
     <geom name="wall_right" type="box" pos="-0.5 -2.4 1.2" size="2 0.02 1.2" material="wall"/>
     <geom name="skirting_back" type="box" pos="{skirt_x} 0 0.05" size="0.012 3 0.05" rgba="0.93 0.93 0.91 1" contype="0" conaffinity="0"/>
     <geom name="skirting_right" type="box" pos="-0.5 -2.37 0.05" size="2 0.012 0.05" rgba="0.93 0.93 0.91 1" contype="0" conaffinity="0"/>
-    {robot}
+    <geom name="rail_beam" type="box" pos="0 {rail_mid} 0.02" size="0.07 {rail_half} 0.02" material="rail"/>
+    <camera name="overview" pos="{cam_pos}" xyaxes="{cam_axes}" fovy="{cam_fovy}"/>
+    <body name="pedestal" pos="0 0 0">
+      <joint name="rail" type="slide" axis="0 1 0" range="{rail_lo} {rail_hi}" damping="50" armature="2"/>
+      <inertial pos="0 0 0.15" mass="40" diaginertia="2 2 2"/>
+      <geom name="pedestal" type="box" pos="0 0 {ped_z}" size="0.11 0.11 {ped_half}" material="rail"/>
+      <body name="arm_mount" pos="0 0 {base_z}">
+        {arm}
+      </body>
+    </body>
     <body name="sofa" pos="0 0 0">
       {sofa}
     </body>
@@ -826,7 +675,7 @@ def build_xml():
     <torque name="wrist_torque" site="ft_frame"/>
   </sensor>
 </mujoco>""".format(
-        dt=SIM_DT, assets=assets, robot=_robot_body(arm), room=room, pad=pad, sofa=_sofa(), cabinet=_cabinet(),
+        dt=SIM_DT, assets=assets, arm=arm, room=room, pad=pad, sofa=_sofa(), cabinet=_cabinet(),
         pad_left=_pad("left", PAD_Y["left"]), pad_right=_pad("right", PAD_Y["right"]),
         drawer_upper=_drawer("upper"), drawer_mid=_drawer("mid"), drawer_lower=_drawer("lower"),
         hanger=_hanger(), remote=_remote(), hat=_hat(), clutter=_clutter(),
@@ -840,7 +689,12 @@ def build_xml():
                                for i in range(HAT_PARTS)),
         cab_pos=_fmt((CAB_X0, CAB_CY, 0)),
         wall_x=SOFA_X0 + 0.82, skirt_x=SOFA_X0 + 0.79,
-        actuators="\n    ".join(actuators))
+        actuators="\n    ".join(actuators),
+        rail_mid=0.5 * (RAIL_RANGE[0] + RAIL_RANGE[1]), rail_half=0.5 * (RAIL_RANGE[1] - RAIL_RANGE[0]) + 0.15,
+        rail_lo=RAIL_RANGE[0], rail_hi=RAIL_RANGE[1],
+        ped_z=0.04 + 0.5 * (BASE_Z - 0.04), ped_half=0.5 * (BASE_Z - 0.04), base_z=BASE_Z,
+        cam_pos=_fmt(OVERVIEW_POS), cam_axes=_fmt(_look_at(OVERVIEW_POS, OVERVIEW_LOOKAT)),
+        cam_fovy=CAMERAS["overview"][3])
 
 
 # ================================================================================================
@@ -932,7 +786,7 @@ class Env(object):
 
     # ------------------------------------------------------------------------------------------
     def reset(self, spec):
-        """Start the episode `spec` (an `EpisodeSpec`); returns the first observation, which
+        """Start the episode of the scene `spec` (a `Scene`); returns the first observation, which
         carries both cameras' images."""
         m, d = self.model, self.data
         self.spec = spec
@@ -974,40 +828,16 @@ class Env(object):
         turned = np.empty(4)
         mujoco.mju_mulQuat(turned, _quat_yaw(cab[2]), np.array([math.cos(0.5 * swing), 0.0, math.sin(0.5 * swing), 0.0]))
         d.qpos[adr + 3:adr + 7] = turned
-        # The remote in its hiding spot.
-        spot = spec.hiding_spot
-        if spot in ("left_cushion", "right_cushion"):
-            z = DECK_Z + REMOTE_HALF[2] + 0.0005
-        elif spot == "upper_drawer":
-            z = DRAWER_FLOOR_Z["upper"] + REMOTE_HALF[2] + 0.0005
-        elif spot == "lower_drawer":
-            z = DRAWER_FLOOR_Z["lower"] + REMOTE_HALF[2] + 0.0005
-        elif spot == "under_hat":
-            z = CAB_H + REMOTE_HALF[2] + 0.0005
-        else:
-            z = REMOTE_HALF[2] + 0.0005
         adr = self.free_qadr["hat"]
         (hx, hy), yaw = place(CAB_PIVOT, cab, spec.hat_xy, spec.hat_yaw)
         d.qpos[adr:adr + 3] = (hx, hy, CAB_H + 0.001)
         d.qpos[adr + 3:adr + 7] = _quat_yaw(yaw)
-        on_sofa = spot in ("left_cushion", "right_cushion", "under_sofa")
-        (rx, ry), yaw = place(SOFA_PIVOT if on_sofa else CAB_PIVOT, sofa if on_sofa else cab,
-                              spec.remote_xy, spec.remote_yaw)
-        adr = self.free_qadr["remote"]
-        d.qpos[adr:adr + 3] = (rx, ry, z)
-        d.qpos[adr + 3:adr + 7] = _quat_yaw(yaw)
-        self.hiding_z = z
-        # The distractors.
-        surface = {"left_cushion": DECK_Z, "right_cushion": DECK_Z, "under_hat": CAB_H,
-                   "upper_drawer": DRAWER_FLOOR_Z["upper"], "mid_drawer": DRAWER_FLOOR_Z["mid"],
-                   "lower_drawer": DRAWER_FLOOR_Z["lower"]}
-        for name, where, xy, turn, half in (("phone", spec.phone_spot, spec.phone_xy, spec.phone_yaw, PHONE_HALF),
-                                            ("case", spec.case_spot, spec.case_xy, spec.case_yaw, CASE_HALF)):
-            on_sofa = where.endswith("_cushion")
-            (cx, cy), yaw = place(SOFA_PIVOT if on_sofa else CAB_PIVOT, sofa if on_sofa else cab, xy, turn)
+        # The remote, the phone and the glasses case where the scene has them.
+        for name, pose in (("remote", spec.remote), ("phone", spec.phone), ("case", spec.case)):
             adr = self.free_qadr[name]
-            d.qpos[adr:adr + 3] = (cx, cy, surface[where] + half[2] + 0.0005)
-            d.qpos[adr + 3:adr + 7] = _quat_yaw(yaw)
+            d.qpos[adr:adr + 3] = pose[:3]
+            d.qpos[adr + 3:adr + 7] = _quat_yaw(pose[3])
+        self.start_z = float(spec.remote[2])
         mujoco.mj_forward(m, d)
         for _ in range(500):                       # 1 s for the loose things to settle
             mujoco.mj_step(m, d)
@@ -1220,21 +1050,20 @@ class Env(object):
 
     def _judge(self):
         m, d = self.model, self.data
-        spot = self.spec.hiding_spot
         progress = self.progress
-        # Revealed: the remote lies open to above (a pad or the hat off it, its drawer pulled out,
-        # or brought out from under the sofa).
+        # Laid open: nothing but the robot is above the remote.
         if not progress["revealed"]:
             self._reveal_run = self._reveal_run + 1 if self.remote_exposed() else 0
             if self._reveal_run >= 5:
                 progress["revealed"] = True
         # Retrieved: the remote held by both finger pads, touching nothing else, lifted clear of
-        # its hiding surface and out from under the sofa, for HOLD_STEPS in a row.
+        # the surface it lay on at the start, with nothing but the robot above it, for HOLD_STEPS
+        # in a row.
         touching = self._contacts(self.body["remote"])
         held = all(p in touching for p in self.pad_geoms)
         others = [g for g in touching if g not in self.finger_geoms]
         pos = d.xpos[self.body["remote"]]
-        base = 0.0 if spot == "under_sofa" else self.hiding_z - REMOTE_HALF[2]
+        base = self.start_z - REMOTE_HALF[2]
         clear = pos[2] - base >= LIFT_CLEAR and self.remote_exposed()
         self._hold = self._hold + 1 if (held and not others and clear) else 0
         if self._hold >= HOLD_STEPS:

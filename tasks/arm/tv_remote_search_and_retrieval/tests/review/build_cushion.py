@@ -2,7 +2,7 @@
 a fabric texture cut from the sofa's own cushion area."""
 import numpy as np, trimesh
 from PIL import Image
-RAW = "/home/lingjun/ale/dev/assets_raw"; OUT = "/home/lingjun/ale/agentic-robotics-benchmark/tasks/arm/tv_remote_search_and_retrieval/tests/room"
+RAW = "/home/lingjun/ale/dev/assets_raw"; OUT = "/home/lingjun/ale/agentic-robotics-benchmark/tasks/arm/tv_remote_search_and_retrieval/environment/room"
 size = np.array([0.46, 0.49, 0.065]); r = 0.016; n = 14
 half = 0.5 * size; inner = half - r
 verts, uvs, faces = [], [], []
