@@ -23,7 +23,8 @@ over the towers x the contract gate; reward = ratio against the anchor (the orac
   (pins, seed disjointness, token, copies, numerics; `--oracle` re-measures the anchor in-process), `regress_grader.py`
   (pause bypass, billed parallel compute, wall cap + call price, bad parameters, crash / over-long request line),
   `baselines/ft_reference/` (a NON-privileged program: touch calibration, force-limited probing, force-guided pull;
-  the evidence that the task can be done from the given sensors), `phase_a/` (the physics prototype).
+  the evidence that the task can be done from the given sensors; through the grader on this head: 0 / 0 / 0 / 7
+  blocks, towers 1-3 collapsed, block_score 0.058), `phase_a/` (the physics prototype).
 
 ## Verify-start late-write gate
 The verifier sandbox is separate (task.toml): the image's desktop session (the base image's supervisord, as the agent's

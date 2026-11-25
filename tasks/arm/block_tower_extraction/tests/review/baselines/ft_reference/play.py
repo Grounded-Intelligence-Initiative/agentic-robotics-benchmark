@@ -37,7 +37,8 @@ TICK = 0.01
 F_TOUCH = 0.08          # N: contact detected
 F_TOUCH_SIDE = 0.035    # N: contact on a tower side face (calibration)
 F_ABORT = 0.6           # N: a block that resists more than this while pushed is bearing
-FT_BAND = 0.08
+FT_BAND = 0.15
+GRIP_PULL_N = 6.0
 GRACE_S = 0.2
 MAX_BLOCKS = 14
 MAX_LEVEL = 23
@@ -411,7 +412,7 @@ class FtRef(object):
         self.move("tcp", g, qg, speed=0.02)
         self.wait(0.3)
         fz0 = float(self.force()[2])
-        self.st = self.c.step(grip_close=20.0, n=40)
+        self.st = self.c.step(grip_close=GRIP_PULL_N, n=60)        # a gentle squeeze: less of a jolt to the block
         g = self.ft_relax(g, qg, fz0)
         total = L - PROTRUDE + 0.012
         done = 0.0
