@@ -150,6 +150,15 @@ modules. Transfers go round the base by a turn of the first joint (a straight li
 through its shoulder singularity). It answers a repeated step from the observation it comes with: its plan yields a
 function of an observation, and every displacement is a planned waypoint minus that observation's commanded pose.
 
+**A perception-based baseline** (`review/perception_baseline/`, maintainers' evidence; nothing runs it in grading)
+does the same job from what a submission gets: no token, no `truth`, only the frames with the published
+calibration, the manual's tables, the cell's messages and the nutrunner's readings. It keeps the reference's motion
+skills and order and replaces every value the reference reads from `truth`: the variant from the lid's ribs, the
+pack's placement from the silhouette of its top, each fastener's place, presence and head from the overhead and
+wrist depth frames (a head's height above its seat tells its type), the harness from its blue cable, "out" from the
+nutrunner's trace. On the hidden set it scored `mean_pack_credit` 1.00000, as the reference does, in 24 to 28 % more
+steps (section 6, the entry "2026-11-25, 10:00 to 11:35").
+
 The anchor and its spread: see the status log (section 6) for the measured runs. `tests/anchor.json` holds the
 value measured natively on the author's server, outside the engine; it has to be re-measured through `ale validate`.
 
@@ -163,13 +172,20 @@ value measured natively on the author's server, outside the engine; it has to be
   perception and engineering (millimetre localisation from RGB-D, per-fastener head classification, torque-trace
   logic, the isolation order, a long horizon with limited commissioning), not through penalties; whether it lands
   there, and whether it is too hard, is open until `ale run`.
-- **No perception-based solution exists yet.** The reference is privileged. That a non-privileged program can do
-  the job rests on a measurement of what the frames carry (`review/check_observability.py`, section 6: the lid's
-  fasteners found, located within the bits' tolerances and classified by a plain colour-and-blob pipeline, with
-  two misses on one pack that a careful program has to handle), not on a demonstration of the whole job. The same
-  measurement has not been made for the fasteners inside the pack (bright heads on copper, orange and aluminium),
-  for the variant, or for the harness. A human-expert baseline (a perception pipeline plus the reference's motion
-  skills) is the most valuable next piece of work, and the fairest calibration of the 2 mm / 1.2 mm tolerances.
+- **The job can be done without the privileged view** (since 2026-11-25; section 6, the entry "2026-11-25, 10:00 to
+  11:35"). `review/perception_baseline/` takes every pack apart from what a tested agent is given and scored
+  `mean_pack_credit` 1.00000 on the hidden set without the token (one run, of a program frozen on the development
+  packs before it), as the reference does. What made that straightforward is a finding about the difficulty: the
+  depth frames are exact (0.1 mm steps, no noise), so a head's type follows from its height above its seat alone
+  (4.5 against 6 mm, 6 against 8 mm), its centre from the depth points of its top face in one wrist frame (0.44 mm at
+  worst on the development packs; the Torx bits need 1.2 mm), and the pack's placement from the silhouette of its top
+  (0.44 mm, 0.001 degrees); the parts sit at the manual's places in the pack's frame; the nutrunner's trace separates
+  breakaway, stall and run-out cleanly. The baseline was written in about an hour by the task's author, with a tool a
+  tested agent does not have (the development packs' truth to compare with) and the reference's motion code to start
+  from, so it shows that the task is solvable, not how hard it is for an agent with six hours, ten sessions and no
+  truth: that is still for `ale run` (the bullet above). If frontier models turn out to do too well, noise on the
+  depth frames is the lever this baseline points to first, next to those listed below; whether to use it is the
+  owner's decision.
 - **The head type can also be found by trial.** A bit that does not fit a head turns freely and harms nothing
   (only the two loose combinations and a bad alignment wear a head), so a program can run one bit over a whole group
   and come back with the other for the heads that did not turn. That costs a second pass, not credit. The brief's
@@ -567,6 +583,94 @@ the only spread measured is still the perturbation of `15d8694`, and its 0.56 % 
 0.95 leaves room for another CPU's contact simulation. Section 5 keeps what remains of the simplification (the
 released body appears where the bit is, also inside a pile, and is pushed out slowly).
 
+**2026-11-25, 10:00 to 11:35. A perception-based baseline (`review/perception_baseline/`, frozen at `82e5f2f`; GPU
+3 of the server only, as above).** The question a reviewer asks of a privileged reference: can the job be done from
+what a tested agent has? The answer is a program, measured on the hidden set like the reference.
+
+*The program.* A submission folder (`run.sh`, `main.py`, `controller.py`, `vision.py`, `manual.json`, `cell.json`).
+It reads only its own folder, the observations and replies on the wire; it carries no token and runs without one.
+`cell.json` is the agent's copy of the cell's configuration, `manual.json` the service manual's tables
+(transcribed by `dev/parse_manual.py`). NumPy and OpenCV only. The motion skills and the order of the job are the
+reference's (copied, with a line saying so); every value the reference takes from `truth` comes from perception, the
+manual or the program's own bookkeeping instead (the folder's README has the table):
+
+- the pack's placement: the silhouette of the pack's top in an overhead depth frame (the lid at 164 mm, the tray's
+  walls at 160 mm once it is off), its four sides fitted as lines in the base frame;
+- the variant: each variant's rib lines (manual, section 2) sampled for a 2 to 6 mm rise on the lid; after the lid,
+  the module handles that stand where the manual puts them;
+- each fastener: a bump at the manual's place in the overhead depth frame, its height above the seat giving the head
+  (M6: S10 6 mm, T30 4.5 mm; M8: S13 8 mm, T40 6 mm), none for a missing or hidden one; then one wrist frame with the
+  head on the camera's axis (the bit's tip 0.105 m above it, the camera on the side where nothing stands in the way:
+  along the bracket for the brackets' bolts), and the depth points of the head's top face give its centre and height
+  again, or an empty hole; a head that shows less than 93 % of its top face, or lies 1.4 mm from the overhead
+  estimate, is looked at again from the other side;
+- corroded or not: not needed; a fastener that stalls at 1.3 times the assembly torque is pressed again with the
+  limit at twice the assembly torque, within the "never exceed" value;
+- "out": the breakaway, the manual's turns to free and a free-running spindle in the nutrunner's trace (the first
+  quarter turn slowly, so that a bit that slips or turns free is stopped before it wears the head), confirmed by
+  `eject: ok`;
+- the harness: the blue cable in the overhead frame, a grasp across a straight, level stretch at its centre's height
+  (other places along it if a grasp fails);
+- grip points and isolation: the manual's places in the pack's frame; the service disconnect's pull plus 30 s;
+- the commanded pose: the program's own record after a completed move; a wrist frame's pose is used only when it
+  agrees with that record within 1.5 mm, so a repeated step's copy, whose readings are shifted, is never taken for
+  the camera's pose.
+
+*How it was developed* (development packs only; the cell with the grader's switch is used by the tools in `dev/`,
+never by the program). Three survey sessions (`dev/survey.py` on development packs 3, 1 and 2, in the service's numbering 1 to 4; a
+fourth on pack 4 was stopped as it started): the reference does the job while the tool takes overhead frames at the stages and wrist
+frames over every fastener, with the truth beside them. The perception was written and measured offline on those
+frames (from above: the variant right on three of three, every seated head typed right, lid heads within 1.02 mm and
+inner ones within 1.30 mm; from the wrist: 0.27 mm median, with outliers up to 1.75 mm only where a busbar or a
+module hid part of a bracket's head from one of the survey's two fixed camera sides, a side the program does not use,
+and on the one bolt the survey looked at with the harness still on it). Then closed-loop runs
+(`dev/devrun.py`: `run.sh` behind the wire with the grader's deadlines and repeated steps, the truth only afterwards,
+`dev/compare.py`, `dev/stage_table.py`): round r1 of the first complete program and round r2 of the frozen one (two
+retries added that the development packs never needed). Eleven cell sessions in all; a tested agent gets ten.
+
+| development pack | lid (+ bolts) | MSD, plugs, harness | busbars (+ bolts) | brackets (+ bolts) | modules | credit r1 / r2 | simulated s, steps, frames (r2) |
+|---|---|---|---|---|---|---|---|
+| 1: P4, harness on the busbars | 9.5/9.5 | 6/6 | 15/15 | 12/12 | 32/32 | 1.0 / 1.0 | 711, 1084, 32 |
+| 2: P5, harness on the lid | 9.5/9.5 | 6/6 | 18/18 | 14.5/14.5 | 40/40 | 1.0 / 1.0 | 859, 1289, 38 |
+| 3: P6, no harness | 12/12 | 5/5 | 21/21 | 17.5/17.5 | 48/48 | 1.0 / 1.0 | 947, 1479, 43 |
+| 4: P6, harness on the lid | 11.5/11.5 | 6/6 | 21/21 | 17.5/17.5 | 48/48 | 1.0 / 1.0 | 991, 1521, 44 |
+
+(Value recovered per stage over the value in the pack; fasteners 0.5 each with their group.) Perception against the
+development truth, the same in both rounds: the variant 4 of 4; the placement within 0.44 mm and 0.001 degrees;
+134 of 134 seated heads typed right; 8 of 8 missing fasteners seen as holes; overhead position error median 0.64 to
+0.72 mm, at most 1.30 mm; wrist position error median 0.27 to 0.28 mm, at most 0.44 mm (the bits need 2.0 and
+1.2 mm). Every fastener was driven at the first press; the 23 corroded ones stalled at the first limit and broke away
+at the raised one (M6 16.0 to 18.8 N m, M8 38.0 to 40.7 N m). No protective stop, nothing stripped, no wrist frame
+taken a second time.
+
+*The hidden set*, run once (`hidden1`: staged as `full_runs.sh` stages the reference, `tests/` copied fresh from
+`82e5f2f` with nothing uncommitted, the six program files in `home/submission`, no token, the same start timeout;
+then the native verify stage):
+
+| pack | variant, harness | credit | steps (reference) | simulated s (reference) | frames | program s | placed |
+|---|---|---|---|---|---|---|---|
+| 0 | P4, lid | 1.0000 | 1139 (921) | 768 (666) | 32 | 5.8 | 49/49 |
+| 1 | P4, busbars | 1.0000 | 1079 (852) | 712 (601) | 32 | 5.4 | 48/48 |
+| 2 | P5, none | 1.0000 | 1301 (1040) | 847 (730) | 37 | 6.2 | 59/59 |
+| 3 | P5, lid | 1.0000 | 1326 (1066) | 882 (757) | 38 | 6.4 | 58/58 |
+| 4 | P6, busbars | 1.0000 | 1471 (1151) | 961 (804) | 44 | 7.3 | 67/67 |
+| 5 | P6, none | 1.0000 | 1493 (1185) | 954 (813) | 43 | 7.3 | 69/69 |
+
+`mean_pack_credit` **1.00000**, ratio 1.000, **reward 1.0**; the probe lock 96 of 96 counted pairs (74 idle pairs
+not counted); no protective stop, no stripped fastener, no live contact, no dropped module; the program's own time
+38.6 s for the six packs (the budget is 1200 s a pack); stage 1476 s. Of the 170 probe copies the true observation
+had the larger residual in 92 (1.1 standard deviations above half), the largest residual 1.6e-6 for both, as for the
+reference. There was no second run: nothing failed. The program's stderr is not kept by the verify stage, so the
+hidden packs have no perception record; what the baseline gets wrong there is nothing that cost credit.
+
+*What it does not do, and what it says.* It never needed and so never exercised: the extractor bit (it has no code
+for a stripped head), its retries (another grasp along the harness, a second pick, the lid's second look), a frame
+taken again because of a repeated step. It does not tell rust from the picture (the stall does). It leans on exact
+depth: with noisy depth the head-by-height rule and the top-face centre would need another method, untried. The
+task is therefore solvable from what a tested agent is given, by a program of about 950 lines of controller and 300
+of perception. How hard that is for an agent without the development truth and without the reference's code to
+start from is not measured here (section 5).
+
 ## 7. Final report (2026-11-24, 16:30 EST)
 
 **Since this report:** the kit of upstream #173 and a rebuilt probe copy (section 6, the entry "18:20 to 19:00"),
@@ -576,6 +680,10 @@ physics pushes a fastener out of an overlap (the entry "2026-11-25, 01:20 to 02:
 released into its own pile, section 5), and 1.00000 on `8439170`, which has the cap. The anchor is 1.0 again,
 measured on `8439170`; the small checks and the probe lock are as before on every tree. The numbers below are the
 earlier trees'.
+Then a perception-based baseline (`review/perception_baseline/`, the entry "2026-11-25, 10:00 to 11:35") scored
+`mean_pack_credit` 1.00000 on the hidden set without the token, reward 1.0, lock 96 of 96: the task can be solved
+from what a tested agent is given (this supersedes "A human-expert, perception-based solution. None exists" below).
+The task's files, the reference and the anchor are unchanged.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops
