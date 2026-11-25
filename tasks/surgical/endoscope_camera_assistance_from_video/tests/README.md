@@ -265,7 +265,7 @@ Newest first. Each entry says where the numbers come from; "here" is the develop
 RTX 6000 Ada, NVIDIA driver 570.195.03, Isaac Sim 6.2.0.0 + Isaac Lab 3.0.0 in a native Python 3.12 venv, no root,
 no Docker).
 
-### 2026-11-24, evening: the kit of upstream #173 (tree `67c47c8`; the native runs have not been repeated on it)
+### 2026-11-24, evening: the kit of upstream #173 (tree `67c47c8`; run natively on `0d27fe0`, the same task files)
 
 `upstream/main` moved to `1c13a47` after this branch was cut: #173 changed `shared/robotics_grader/` (the solver
 and everything it starts run at nice 19; `replies_differ` is the lock's one rule; `probe.stale_copy`;
@@ -297,10 +297,35 @@ copied again (byte-identical to `shared/`). The task against #173's three findin
 What ran on `67c47c8`: `ale lint` ok; `scripts/lint_domain.py` ok; the kit comparison; `scripts/gpu_types.py
 check`; `scripts/task_assets.py check`; the kit's selftest; `review/check_copies.py`; `review/check_runner_rule.py`.
 
-**Not run on this tree: the native runs.** The series (the reference, no submission, the camera that never moves,
-random rates, a commissioning session through the changed launcher) was started and stopped within a minute,
-because the server's free GPU had just been taken by another job. The numbers of the entry below are the earlier
-tree's. The grader's own code is unchanged since then; the kit differs in the solver's priority.
+**The native runs on this tree** (`0d27fe0`: the task files of `67c47c8` and this entry; 18:42 to 19:33, one Isaac
+process at a time, inside a mount namespace that shows GPU 3 only and an empty network namespace with a loopback;
+other users' jobs and the battery task's cell shared that GPU). A first attempt, at 18:34, was stopped within a
+minute because the GPU it was confined to had just been filled by another job. `tests/review/run_native.py` as in
+the entry below; the grader's own code is unchanged since then, the kit differs in the solver's priority:
+
+| submission | procedures | on `0d27fe0` | on `e73ccce` (the entry below) |
+|---|---|---|---|
+| reference | 12 | 0.9034375, reward 1.0; probes 567/567; 2001 s wall, 193.9 ms a frame | 0.9034375 three times; probes 570/570, 578/578, 534/534; 794 to 919 s, 68.7 to 74.6 ms a frame |
+| none | - | the zero verdict, reward 0 | the same |
+| never moves (`~/example`) | 4 | 0.0000, reward 0; lock fails, 0 of 188 probes | 0.0000; 0 of 210 |
+| `bad:jitter` | 1 | 0.0000, reward 0; random rates pass the lock (49/49) | 0.0013, reward 0.00; 56/56 |
+
+The reference's twelve per-procedure values are the earlier ones to the last digit (0.9387 0.8650 0.9525 0.9263
+0.8775 0.9137 0.8375 0.9337 0.8750 0.9275 0.9263 0.8675). No renderer was restarted; the canary of every run
+found all ten markers, at most 0.77 px from where `model.project` puts them. The longer wall times are the shared
+GPU's (about 195 ms a frame against about 70). The controller at nice 19 beside the renderer took 19.2 s for the
+whole reference run (15.2 to 15.9 s before), its slowest reply 0.06 s (at most 0.025 s before), far inside the
+2400 s budget. Which steps are probed is drawn afresh, so the probe counts differ; the jitter controller's rates are
+unseeded random draws, so its 0.0013 and 0.0000 are two draws of nothing.
+
+The session launcher against the commissioning service, the last step: the series' own attempt at 19:30 failed in
+the series script, not in the task (a socket and a `COMPLETE` marker left from the 05:16 test made its wait end
+before the daemon listened, and the launcher's connection was refused). Repeated at 19:32 with those removed: the
+daemon's renderer up in 21.6 s, canary passed (ten of ten markers, at most 0.68 px), the development set already
+recorded, the session counted (two used); the example controller on `dev05`, stopped after 200 steps as asked. The
+launcher printed "controller time: 0.005 s a step on average, 0.018 s at most" and "repeated requests: 12 asked, 0
+changed the action (the grader wants at least a quarter to)": the lock's rule (`differ`) on a controller that never
+moves, which agrees with the grader's 0 of 188 above.
 
 ### 2026-11-24: version 0.1 built; verified natively, not yet in the engine
 
