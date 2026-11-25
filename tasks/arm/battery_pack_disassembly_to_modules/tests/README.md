@@ -61,7 +61,8 @@ can read. One process is one pack: Isaac Sim 6.2 headless, PhysX on the CPU (`en
   axis is within 2.0 mm (socket) or 1.2 mm (Torx) and 3 degrees of the fastener's, the axial force (spindle stroke
   times spring rate) is at least 8 N (Torx: 10 N + 1.5 N per N m), and the torque limit reaches the fastener's
   breakaway torque; then loosening turns accumulate and after 7 (M6) or 9 (M8) turns the fastener is out and rides
-  on the bit until `eject` turns it into a falling rigid body. A loose bit (a 13 mm socket on a 10 mm hexagon, a
+  on the bit until `eject` turns it into a falling rigid body (whose body is pushed out of an overlap at 0.3 m/s
+  at most, so one let go into a pile settles on it instead of being thrown off: section 5). A loose bit (a 13 mm socket on a 10 mm hexagon, a
   T30 in a T40 recess), an engagement outside the tolerances (up to 3.5 / 2.5 mm, 8 degrees), a cammed-out Torx bit
   and a tightening run above the head's limit wear the head; at wear 1 it is stripped and only the extractor bit
   removes it. Thread engagement, the fastener rising as it turns and the socket sliding over the head are not
@@ -187,15 +188,16 @@ value measured natively on the author's server, outside the engine; it has to be
   it is not expected to be bit-identical, and the renderer is not repeatable even on one GPU. The credit tolerates
   that (it reads where bodies lie), a program's behaviour may not: an agent whose perception is marginal can score
   differently on different hosts.
-- **A fastener released into a pile can be thrown out of its bin** (measured: section 6, the entry "19:10 to
-  20:30"). `eject` places the fastener's body at the bit and makes it dynamic at once; where that place overlaps
-  fasteners already lying there, the physics engine pushes the bodies apart at up to several metres a second. The
-  reference releases 70 mm above the table on nine spots per bin and lost five fasteners of two packs this way on
-  `15d8694`, so its value is 0.9944, not 1.0. Two ways out, each needing a full re-measurement: the reference's drop
-  rule (more spots, or a release above its own pile, which brings back the bounce over the walls if it goes above
-  them), or the cell (place the released body only where it is free, or cap the separation speed with PhysX's
-  maximum depenetration velocity, which is not set now), which changes what every program meets. Left as it is
-  for the owner.
+- **A fastener let go into a pile appears inside it, and is pushed out slowly** (section 6, the entries "19:10 to
+  20:30" and "2026-11-25, 01:20 to 02:40"). `eject` places the fastener's body at the bit and makes it dynamic at
+  once, and the copy that rides on the bit collides with nothing, so a bit lowered into a pile lets the body
+  appear inside the fasteners lying there. With PhysX's default separation speed (3 m/s) that threw five fasteners
+  of two packs out of their bins on `15d8694` (the reference releases 70 mm above the table on nine spots per bin),
+  and the reference's value fell to 0.9944. Since `8439170` every fastener's body carries a maximum depenetration
+  velocity of 0.3 m/s: the overlap is undone without throwing anything, and the reference scores 1.0 again. What
+  remains is the simplification itself: a real fastener on a bit pushed into a pile would meet the pile, here it
+  appears in it and is pushed up and aside. A reviewer may prefer the cell to release the body only above what lies
+  there; that changes what every program meets and needs the full series again.
 - **Simplifications that a reviewer may want changed**: no finger colliders; no slip; the socket does not slide
   over the head; a harness is rigid; the robot does not collide with itself; the live-parts check is geometric and
   once per tick.
@@ -532,14 +534,48 @@ this tree is 0.99440 / 0.9944 = 1.000, reward 1.0 (computed from the run above, 
 the committed tree: `ale lint` ok, `scripts/lint_domain.py` ok, the kit comparison, `review/check_copies.py`,
 `review/test_rules.py` 41 checks.
 
+**2026-11-25, 01:20 to 02:40. The fasteners' depenetration cap (tree `8439170`; GPU 3 of the server only, as
+above).** The owner chose to change the cell rather than keep 0.9944. `packcell/scene.py` now gives every
+fastener's body PhysX's `maxDepenetrationVelocity` of 0.3 m/s (`FASTENER_MAX_DEPENETRATION`; the schema's default
+is 3 m/s), and nothing else changed: the parts, the robot, the rules, the grader and the reference are those of
+`15d8694`. The cap bounds only the speed the solver adds to undo an overlap (a fastener on its seat is kinematic
+and does not meet it at all).
+
+First a run of packs 0 and 1 from a stage copy with `_eject` instrumented as in the third run above (the tree of
+`9fa0782` with the change not yet committed): both packs 1.0 (49 of 49, 48 of 48) in the same 921 and 852 steps.
+Of the 53 ejects, the fastest fastener body within ten ticks of one moved at 0.94 m/s (a body that falls freely
+moves at 0.49 m/s after those ten ticks), against 5.6, 1.9 and 1.6 m/s before; the release of R3af exactly over
+L08 and B03a, which had thrown L08 to the floor, now moved B03a at 0.75 m/s, and nothing left a bin.
+
+The native series on `8439170`:
+
+| submission | set | result on `8439170` | on `15d8694` |
+|---|---|---|---|
+| the reference | six packs | `mean_pack_credit` **1.00000** (every pack 1.0, in the steps of every tree since `21ac344`: 921, 852, 1040, 1066, 1151 and 1185), the lock 83 of 83 (53 idle), no protective stop, stage 1674 s | 0.99440 |
+| none | six packs | "no usable submission": reward 0.0 | the same |
+| the reference without its token | hidden pack 2 | credit 0, reward 0.0 | the same |
+| the reference, its applied actions recorded | hidden pack 2 | credit 1.0 (59 of 59), lock 10 of 10 (6 idle), reward 1.0 | the same |
+| a blind replay of those recorded actions | hidden pack 2 | credit 1.0, **the lock fails, 0 of 10**: reward 0.0 | the same |
+| the example program | six packs | credit 0 on every pack, reward 0.0, stage 196 s | the same |
+
+The commissioning service behaved as before (the example program in 28 s; the interactive session as above; two
+sessions counted, eight left). The probe's copies balance as on `15d8694`: the true observation had the larger
+residual in 63 of 136 (46.3 %, 0.9 standard deviations below half), the largest residual 1.6e-6 for both.
+
+*What was decided.* `tests/anchor.json` holds 1.0 again, the reference's value on this tree. `full_at` stays 0.95:
+the only spread measured is still the perturbation of `15d8694`, and its 0.56 % came from the defect fixed here;
+0.95 leaves room for another CPU's contact simulation. Section 5 keeps what remains of the simplification (the
+released body appears where the bit is, also inside a pile, and is pushed out slowly).
+
 ## 7. Final report (2026-11-24, 16:30 EST)
 
 **Since this report:** the kit of upstream #173 and a rebuilt probe copy (section 6, the entry "18:20 to 19:00"),
-then an exact conversion of a pose near a half turn (the entry "19:10 to 20:30"). On the first tree (`152fdf7`) the
-reference scored 1.00000 again; on the second (`15d8694`) 0.99440, because five fasteners of two packs were thrown
-out of the bins when the reference released into its own pile (section 5). The anchor is now 0.9944, measured on
-`15d8694`; the small checks and the probe lock are as before on both trees. The numbers below are the earlier
-trees'.
+then an exact conversion of a pose near a half turn (the entry "19:10 to 20:30"), then a cap on how fast the
+physics pushes a fastener out of an overlap (the entry "2026-11-25, 01:20 to 02:40"). The reference scored
+1.00000 on `152fdf7`, 0.99440 on `15d8694` (five fasteners of two packs thrown out of the bins when the reference
+released into its own pile, section 5), and 1.00000 on `8439170`, which has the cap. The anchor is 1.0 again,
+measured on `8439170`; the small checks and the probe lock are as before on every tree. The numbers below are the
+earlier trees'.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops
