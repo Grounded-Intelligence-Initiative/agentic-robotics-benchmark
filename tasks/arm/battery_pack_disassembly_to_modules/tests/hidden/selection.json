@@ -227,5 +227,8 @@
    },
    "value": 104.0
   }
- ]
+ ],
+ "cells_key_hex": "e02d9bc572e6ea794e22a4a7cdc5408efc854590dc640a99eddac6a8beae0deb",
+ "cells_rule": "tests/review/select_set.py (its docstring), rule 2",
+ "cells_drawn_utc": "2026-11-25T19:17:17Z"
 }
