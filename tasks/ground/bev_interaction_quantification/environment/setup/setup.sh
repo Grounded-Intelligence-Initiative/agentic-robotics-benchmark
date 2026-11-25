@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Setup (root): stage the agent's tools and the videos (agent-visible data only) into the agent home.
+set -euo pipefail
+umask 077
+export HOME=/root PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1
+unset PYTHONPATH PYTHONSTARTUP
+cd "$(dirname "$0")"
+HOME_DIR="${ALE_HOME:-/home/user}"
+AGENT_USER="$(basename "$HOME_DIR")"
+# fixed order (sorted)
+(cd payload && find . -type d | LC_ALL=C sort | while read -r d; do mkdir -p "$HOME_DIR/$d"; done)
+(cd payload && find . -type f | LC_ALL=C sort | while read -r f; do cp "$f" "$HOME_DIR/$f"; done)
+# the videos fetched into the image (environment/assets.sha256, docs/task-assets.md)
+if [ -d /opt/task-assets/payload ]; then
+  cp -r /opt/task-assets/payload/. "$HOME_DIR/"
+fi
+# IEDD's own code, fetched from GitHub at a pinned commit by environment/Dockerfile
+cp -r /opt/iedd_reference "$HOME_DIR/iedd_reference"
+for entry in payload/* /opt/task-assets/payload/* /opt/iedd_reference; do
+  [ -e "$entry" ] || continue
+  tgt="$HOME_DIR/$(basename "$entry")"
+  chown -R "$AGENT_USER:$AGENT_USER" "$tgt"
+  find "$tgt" -type d -exec chmod 0755 {} + ; find "$tgt" -type f -exec chmod 0644 {} +
+  find "$tgt" -exec touch -h -d '2026-01-01 00:00:00 UTC' {} +
+done
+mkdir -p "$HOME_DIR/submission" && chown "$AGENT_USER:$AGENT_USER" "$HOME_DIR/submission"
