@@ -1,0 +1,9 @@
+{
+  "metric": "mean_retrieval_score",
+  "direction": "higher",
+  "value": 1.0,
+  "full_at": 0.98,
+  "source": "The reference controller of solution/ (it finds the remote in the camera images it asks for; nothing is privileged) on the 12 fixed hidden episodes of tests/hidden/episodes.json, measured by `ale validate`. The episodes are draws the reference retrieves the remote in (tests/review/select_episodes.py and its record tests/hidden/selection.json), so the value is 1.0 by construction and the oracle's run repeats it. Measured: mean_retrieval_score 1.0 (12 of 12 retrieved) in the oracle episode of validate-9dfed200 on engine bfb7505, 2026-11-25.",
+  "reference_commit": "pending",
+  "note": "The metric is the mean over the episodes of an episode's score: 1 for the remote retrieved, 0.4 for the remote laid open (or, under the sofa, seen and the hanger taken), 0.2 for the remote under the sofa seen only, else 0. A fixed episode set and a deterministic simulator leave no seed spread: full_at 0.98 only absorbs rounding."
+}

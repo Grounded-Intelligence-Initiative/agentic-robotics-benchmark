@@ -1,0 +1,245 @@
+{
+ "rule": "first 2 of 5 os.urandom candidates per spot that the reference retrieves",
+ "candidates": [
+  {
+   "spot": "left_cushion",
+   "seed": 3198457791579763223,
+   "reference_score": 1.0,
+   "steps": 2383,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "left_cushion",
+   "seed": 3472792186959080421,
+   "reference_score": 1.0,
+   "steps": 2384,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "left_cushion",
+   "seed": 15562411372970982989,
+   "reference_score": 1.0,
+   "steps": 2359,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "left_cushion",
+   "seed": 3777480196232360582,
+   "reference_score": 1.0,
+   "steps": 2355,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "left_cushion",
+   "seed": 6894854188635005720,
+   "reference_score": 1.0,
+   "steps": 2364,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "right_cushion",
+   "seed": 17746197648009911482,
+   "reference_score": 1.0,
+   "steps": 3032,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "right_cushion",
+   "seed": 10616070565216252403,
+   "reference_score": 1.0,
+   "steps": 2725,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "right_cushion",
+   "seed": 16679616504540116265,
+   "reference_score": 1.0,
+   "steps": 2750,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "right_cushion",
+   "seed": 2899029119391821709,
+   "reference_score": 1.0,
+   "steps": 2663,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "right_cushion",
+   "seed": 8009385663322811502,
+   "reference_score": 1.0,
+   "steps": 2687,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "upper_drawer",
+   "seed": 433322831668354131,
+   "reference_score": 1.0,
+   "steps": 1825,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "upper_drawer",
+   "seed": 12663503046535042438,
+   "reference_score": 1.0,
+   "steps": 1805,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "upper_drawer",
+   "seed": 5512975093728993325,
+   "reference_score": 1.0,
+   "steps": 1766,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "upper_drawer",
+   "seed": 15875321358468016564,
+   "reference_score": 1.0,
+   "steps": 1780,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "upper_drawer",
+   "seed": 1683932707291354969,
+   "reference_score": 1.0,
+   "steps": 1785,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "lower_drawer",
+   "seed": 14662531886596290554,
+   "reference_score": 1.0,
+   "steps": 856,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "lower_drawer",
+   "seed": 5963545394817841926,
+   "reference_score": 1.0,
+   "steps": 873,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "lower_drawer",
+   "seed": 3740948517809723289,
+   "reference_score": 1.0,
+   "steps": 874,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "lower_drawer",
+   "seed": 11834718448202758420,
+   "reference_score": 1.0,
+   "steps": 855,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "lower_drawer",
+   "seed": 2659962658740627757,
+   "reference_score": 1.0,
+   "steps": 876,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "under_sofa",
+   "seed": 95155483813922813,
+   "reference_score": 1.0,
+   "steps": 1496,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "under_sofa",
+   "seed": 9668418341255919864,
+   "reference_score": 1.0,
+   "steps": 1472,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "under_sofa",
+   "seed": 14046513618804829803,
+   "reference_score": 1.0,
+   "steps": 1482,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "under_sofa",
+   "seed": 9926074989034158552,
+   "reference_score": 1.0,
+   "steps": 1471,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "under_sofa",
+   "seed": 10813508728670776728,
+   "reference_score": 1.0,
+   "steps": 1490,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "under_hat",
+   "seed": 10494722765831161230,
+   "reference_score": 0.0,
+   "steps": 1135,
+   "ended": null,
+   "selected": false
+  },
+  {
+   "spot": "under_hat",
+   "seed": 5351699795665711862,
+   "reference_score": 1.0,
+   "steps": 1598,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "under_hat",
+   "seed": 16573826618486888469,
+   "reference_score": 1.0,
+   "steps": 1501,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "under_hat",
+   "seed": 2665140850278146252,
+   "reference_score": 1.0,
+   "steps": 1490,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "under_hat",
+   "seed": 10972595006303681878,
+   "reference_score": 1.0,
+   "steps": 1496,
+   "ended": "retrieved",
+   "selected": false
+  }
+ ]
+}

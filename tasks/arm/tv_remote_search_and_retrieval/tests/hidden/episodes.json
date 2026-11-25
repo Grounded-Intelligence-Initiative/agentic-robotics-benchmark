@@ -1,0 +1,52 @@
+{
+ "episodes": [
+  {
+   "seed": 3198457791579763223,
+   "spot": "left_cushion"
+  },
+  {
+   "seed": 17746197648009911482,
+   "spot": "right_cushion"
+  },
+  {
+   "seed": 433322831668354131,
+   "spot": "upper_drawer"
+  },
+  {
+   "seed": 14662531886596290554,
+   "spot": "lower_drawer"
+  },
+  {
+   "seed": 95155483813922813,
+   "spot": "under_sofa"
+  },
+  {
+   "seed": 5351699795665711862,
+   "spot": "under_hat"
+  },
+  {
+   "seed": 3472792186959080421,
+   "spot": "left_cushion"
+  },
+  {
+   "seed": 10616070565216252403,
+   "spot": "right_cushion"
+  },
+  {
+   "seed": 12663503046535042438,
+   "spot": "upper_drawer"
+  },
+  {
+   "seed": 5963545394817841926,
+   "spot": "lower_drawer"
+  },
+  {
+   "seed": 9668418341255919864,
+   "spot": "under_sofa"
+  },
+  {
+   "seed": 16573826618486888469,
+   "spot": "under_hat"
+  }
+ ]
+}
