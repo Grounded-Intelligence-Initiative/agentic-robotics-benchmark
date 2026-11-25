@@ -70,6 +70,7 @@ from robotics_grader import (  # noqa: E402
     zero_verdict,
 )
 from robotics_grader.stage import secure_exec_path  # noqa: E402
+from robotics_grader.solver import _spawn_at_lowest_priority  # noqa: E402
 
 STAGE = os.path.dirname(os.path.abspath(__file__))
 NONET = os.path.join(STAGE, "nonet_exec.py")
@@ -458,7 +459,9 @@ class GuardedSolver(Solver):
             raise SolverAborted("solver could not be started: {}".format(exc))
 
     def _start(self):
-        self.proc = self._spawn()
+        # At the lowest priority, as the kit's own start: a process that continues itself during a pause runs until
+        # the next request finds it, and must not slow the simulator meanwhile.
+        self.proc, _idle = _spawn_at_lowest_priority(self._spawn)
         self._lines = queue.Queue(maxsize=W.MAX_QUEUED_LINES)
         threading.Thread(target=self._pump, args=(self.proc, self._lines), daemon=True).start()
         try:

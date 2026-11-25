@@ -173,7 +173,8 @@ at such a pause, abort the episode (it scores 0, and so does every later episode
 Before the next request is written the grader checks that the pause held: every thread it stopped is still there
 and stopped and has not run since (the scheduler's record of its run time), and no new thread has appeared. A
 process that continued itself during the pause (a timer that sends it SIGCONT, for example) aborts the episode in
-the same way. The time it takes to stop your processes after a reply counts as controller time, like the reply.
+the same way. The time it takes to stop your processes after a reply counts as controller time, like the reply. Your controller's
+processes run at the lowest scheduling priority (nice 19).
 
 The grader runs 18 episodes: 2 on each unit, a fixed hidden set (each episode's seed is the same for every
 submission, so are its placement, initial state, lighting and camera offsets), in a hidden order (the observation

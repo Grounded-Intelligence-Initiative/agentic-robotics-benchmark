@@ -152,7 +152,8 @@ holds only once every thread of every process of your account shows as stopped; 
 ends the episode. Before the next request is written the grader checks that the pause held: every thread it stopped
 is still there and stopped and has not run since (the scheduler's record of its run time), and no new thread has
 appeared. A process that continued itself during the pause (a timer that sends it SIGCONT, for example) ends the
-episode. The practice grader starts `run.sh` with the same three variables and the same deadlines (it pauses
+episode. Your controller's processes run at the lowest scheduling priority (nice 19). The practice grader starts
+`run.sh` with the same three variables and the same deadlines (it pauses
 only `run.sh`'s process group, where the grader pauses every process of your account, and it does not check that the
 pause holds, look again before the next request or apply the 5 s rule).
 
