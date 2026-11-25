@@ -126,7 +126,8 @@ def serve(conn):
                         st["log"].append({"pack": k, "opened": time.strftime("%H:%M:%S")})
                         public = save(st)
                     entry = CONF["packs"][k - 1]
-                    pack = S.draw_pack(entry["seed"], variant=entry["variant"], harness=entry["harness"], cameras=entry["cameras"])
+                    pack = S.draw_pack(entry["seed"], variant=entry["variant"], harness=entry["harness"], cameras=entry["cameras"],
+                                        sealant_seed=entry["sealant_seed"])
                     env, work = cell_env()
                     try:
                         with open(os.path.join(work, "cell.log"), "wb") as err:

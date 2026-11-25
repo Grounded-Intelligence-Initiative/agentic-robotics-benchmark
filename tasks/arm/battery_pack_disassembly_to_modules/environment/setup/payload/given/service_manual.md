@@ -352,6 +352,12 @@ free before it is lifted. Sort everything that comes off (section 9).
   about z of the nominal position.
 - **Fastener positions.** Holes are drilled within 2 mm of their nominal positions.
 - **Head types** vary as described in section 5; some fasteners are corroded, some are missing.
+- **Sealant.** Packs resealed in service carry a dab of grey sealant on some fasteners (about 35 % of the lid's bolts,
+  25 % of the busbars' and the brackets'): a dome standing on the seat, its centre 0.3 to 0.9 head radii off the
+  fastener's axis, 0.6 to 1 head radii in radius, its top 1 to 2.5 mm above the head's top (a head's radius: half its
+  width across flats, or a pan head's radius). It covers part of the head's top, typically a fifth and at most about
+  half, and runs over the head's edge onto the seat. It is soft: a bit goes through it and engages as it would
+  without it, and the dab comes away with its fastener. It hides part of the head from the cameras.
 - **A harness remnant.** Some packs carry a piece of blue low-voltage harness (cable 12 mm thick, 0.2 to 0.4 m long,
   a grey plug shell at each end) that was cut and left behind: lying on the lid over one or two lid bolts, or inside
   the pack along the busbars over two or three busbar bolts. It is loose. A bolt under it cannot be reached; take
@@ -362,10 +368,10 @@ free before it is lifted. Sort everything that comes off (section 9).
 ## 8. Photographs
 
 `manual/photo_example_lid.jpg` and `manual/photo_example_inside.jpg`: an example pack (an HVB-P5) under the cell's
-overhead camera, lid on and lid off. `manual/photo_heads.jpg`: the four head types, clean and corroded, and an empty
-hole, as the wrist camera sees them from about 0.35 m (cropped and enlarged). For these photographs the example
-pack's lid was fitted with M8 heads as well, which a lid never carries. The example pack is not one of the packs you
-will meet.
+overhead camera, lid on and lid off. `manual/photo_heads.jpg`: the four head types, clean and corroded, an empty hole,
+and three heads with a dab of sealant (section 7), as the wrist camera sees them from about 0.35 m (cropped and
+enlarged). For these photographs the example pack's lid was fitted with M8 heads as well, which a lid never carries.
+The example pack is not one of the packs you will meet.
 
 ## 9. Sorting and recovered value
 

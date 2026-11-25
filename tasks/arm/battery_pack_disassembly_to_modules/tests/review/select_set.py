@@ -5,6 +5,7 @@
     python3 select_set.py --refresh        # the same key: rewrites the files and the record's summaries (after a change
                                            # of packcell/series.py that leaves the seeds as they are)
     python3 select_set.py --draw-cells     # rule 2, once: draws the cells' key and writes every pack's camera offsets
+    python3 select_set.py --draw-sealant   # rule 3, once: draws the sealant key and writes every pack's sealant seed
     python3 select_set.py                  # re-derives both sets from the recorded keys and checks the files
 
 Rule 1, fixed before any pack was drawn or run:
@@ -33,6 +34,19 @@ taken apart in a cell of its own, and a cell's two cameras sit off their nominal
   MOUNT_TOL[c]["mm"] for j < 3 and MOUNT_TOL[c]["deg"] otherwise (overhead 15 mm and 1.5 degrees, wrist 4 mm and
   1.0 degree).
 - The offsets go into each pack's entry (`cameras`) of tests/hidden/packs.json and
+  environment/commission_service/dev_packs.json. None is drawn again or changed for any value it turns out to have
+  or for how any program does with it.
+
+Rule 3, sealant partly over heads (2026-11-25; written and committed before any value was drawn, after rule 2's draw
+and the measurements on its tree). Some fasteners carry a dab of sealant (packcell/series.py, `SEALANT`):
+
+- A third key of 32 random bytes (os.urandom) is drawn once (`--draw-sealant`) and recorded in
+  tests/hidden/selection.json as `sealant_key_hex`. It is independent of the other keys and of every seed.
+- Pack k of the hidden set gets the sealant seed = the first 8 bytes of BLAKE2b("sealant|hidden|k", key = the third
+  key) read little-endian, development pack k the same with "dev". Which fasteners carry a dab and its place, size
+  and height follow from that seed (`draw_pack`'s `sealant_seed`: per fastener, in the pack's order, a chance of
+  SEALANT["p"] for its group and four uniform draws within SEALANT's ranges; a missing fastener carries none).
+- The seeds go into each pack's entry (`sealant_seed`) of tests/hidden/packs.json and
   environment/commission_service/dev_packs.json. None is drawn again or changed for any value it turns out to have
   or for how any program does with it.
 """
@@ -82,13 +96,29 @@ def cells(key2, tag, n):
 
 
 def with_cells(sel, tag, packs):
-    if "cells_key_hex" not in sel:
-        return packs
-    offs = cells(bytes.fromhex(sel["cells_key_hex"]), tag, len(packs))
-    return [dict(p, cameras=o) for p, o in zip(packs, offs)]
+    if "cells_key_hex" in sel:
+        offs = cells(bytes.fromhex(sel["cells_key_hex"]), tag, len(packs))
+        packs = [dict(p, cameras=o) for p, o in zip(packs, offs)]
+    if "sealant_key_hex" in sel:
+        key3 = bytes.fromhex(sel["sealant_key_hex"])
+        packs = [dict(p, sealant_seed=int.from_bytes(hashlib.blake2b(b"sealant|%s|%d" % (tag, k), key=key3, digest_size=8).digest(), "little"))
+                 for k, p in enumerate(packs)]
+    return packs
 
 
 def main():
+    if "--draw-sealant" in sys.argv[1:]:
+        with open(SEL) as f:
+            sel = json.load(f)
+        if "sealant_key_hex" in sel:
+            raise SystemExit("the sealant key is drawn already (rule 3: once)")
+        sel["sealant_key_hex"] = os.urandom(32).hex()
+        sel["sealant_rule"] = "tests/review/select_set.py (its docstring), rule 3"
+        sel["sealant_drawn_utc"] = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        with open(SEL, "w") as f:
+            json.dump(sel, f, indent=1)
+            f.write("\n")
+        sys.argv.append("--refresh")
     if "--draw-cells" in sys.argv[1:]:
         with open(SEL) as f:
             sel = json.load(f)
@@ -131,7 +161,8 @@ def main():
         for k, p in enumerate(packs):
             s = S.summary(S.draw_pack(**p))
             print(name, k, s["variant"], "harness", s["harness"], s["harness_covers"], "missing", s["missing"], "corroded", s["corroded"],
-                  s["heads"], "value", s["value"], "cameras", "drawn" if "cameras" in p else "NOT DRAWN")
+                  s["heads"], "value", s["value"], "cameras", "drawn" if "cameras" in p else "NOT DRAWN", "sealed",
+                  s["sealed"] if "sealant_seed" in p else "NOT DRAWN")
     print("files match the key:", ok)
     return 0 if ok else 1
 

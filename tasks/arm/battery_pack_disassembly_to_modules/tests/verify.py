@@ -17,8 +17,8 @@ this grader. Before the first pack a canary cell is started on a pack outside th
 (robotics_grader.stage.fail: no reward written), never a 0 for the submission.
 
 Packs: the fixed hidden set tests/hidden/packs.json, the same for every submission: per pack a 64-bit seed with the
-variant and the harness case fixed by the set's rule, and the camera offsets of the cell it is taken apart in (rule 2;
-tests/review/select_set.py), run in the file's order. The probe
+variant and the harness case fixed by the set's rule, the camera offsets of the cell it is taken apart in (rule 2) and
+the seed of its fasteners' sealant (rule 3; tests/review/select_set.py), run in the file's order. The probe
 schedule of a pack is a function of its index and seed alone (pack_grade.probe_stream), so the grader adds no
 randomness of its own.
 
@@ -266,6 +266,8 @@ def load_set(path=PACKS):
         if not isinstance(cams, dict) or sorted(cams) != sorted(S.CAMERAS) or any(
                 len(v) != 6 or any(abs(float(x)) > S.MOUNT_TOL[k][u] for x, u in zip(v, ["mm"] * 3 + ["deg"] * 3)) for k, v in cams.items()):
             raise RuntimeError("tests/hidden/packs.json: a pack without its cell's camera offsets within series.MOUNT_TOL")
+        if not isinstance(p.get("sealant_seed"), int) or not 0 <= p["sealant_seed"] < 2 ** 64:
+            raise RuntimeError("tests/hidden/packs.json: a pack without its sealant seed (rule 3)")
     return packs
 
 

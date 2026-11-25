@@ -9,11 +9,13 @@
    in the stereo pair's occlusion, on dark and on bright surfaces, and what that leaves of a head's height: one
    overhead frame does not tell a 4.5 mm head from a 6 mm one (a third typed wrong at best), 32 averaged frames do,
    and so does one close wrist frame.
-2. The calibration is not in the numbers a program has: every graded and development pack carries its cell's camera
+2. Sealant partly over heads (rule 3): how often, how large, how much of a head it covers, as the manual says.
+3. The calibration is not in the numbers a program has: every graded and development pack carries its cell's camera
    offsets, drawn under tests/review/select_set.py's rule 2, within series.MOUNT_TOL; what a program can compute from
    the visible files is the nominal mounting (cell.json, the client library, a wrist frame's `pose`), and the true
    camera is that times the cell's offset, which no visible file holds; located through the nominal poses, a point
-   is off by millimetres to centimetres in every cell; no two cells share an offset.
+   is off by millimetres to centimetres in every cell; no two cells share an offset. Neither an offset nor a sealant
+   seed is in a visible file.
 """
 
 import glob
@@ -220,6 +222,8 @@ def leak_checks():
     nums = set(re.findall(r"-?\d+\.\d+", text))
     found = [v for cams in cells for off in cams.values() for v in off if abs(v) >= 0.1 and ("%g" % v) in nums]
     assert not found, ("an offset's value appears in a visible file", found)
+    seeds = [str(p[k]) for p in hidden + dev for k in ("seed", "sealant_seed") if k in p]
+    assert not any(sd in text for sd in seeds), "a pack's seed appears in a visible file"
     assert not any("commission_service" in p for p in visible_files())
     checks += 1
     print("calibration: %d cells (6 graded, %d development), each camera off its nominal mounting; located through the "
@@ -229,8 +233,67 @@ def leak_checks():
     return checks
 
 
+def covered_fraction(head, sl, res=0.0001):
+    """The share of a head's top under a dab of sealant (where the dome stands above the head's top)."""
+    import cv2
+    hd = S.HEADS[head]
+    g = np.arange(-0.02, 0.02, res)
+    X, Y = np.meshgrid(g, g)
+    if hd["kind"] == "hex":
+        ac = hd["af"] / math.sqrt(3)
+        pts = np.array([[ac * math.cos(math.radians(60 * k)), ac * math.sin(math.radians(60 * k))] for k in range(6)])
+        m = np.zeros(X.shape, np.uint8)
+        cv2.fillPoly(m, [((pts + 0.02) / res).astype(np.int32)], 1)
+        top = m > 0
+    else:
+        top = np.hypot(X, Y) < hd["head_r"]
+    cx, cy = sl["d"] * math.cos(sl["angle"]), sl["d"] * math.sin(sl["angle"])
+    q = 1 - ((X - cx) ** 2 + (Y - cy) ** 2) / sl["r"] ** 2
+    z = np.where(q > 0, sl["h"] * np.sqrt(np.maximum(q, 0)), 0.0)
+    return float((top & (z > hd["height"])).sum()) / float(top.sum())
+
+
+def sealant_checks():
+    """3. Sealant (series.SEALANT, rule 3): how often, where and how large, as the service manual states it."""
+    checks = 0
+    seen = {g: [0, 0] for g in S.SEALANT["p"]}
+    cover = []
+    rng = np.random.default_rng(3)
+    for k in range(240):
+        variant, harness = ("P4", "P5", "P6")[k % 3], ("none", "lid", "busbars")[(k // 3) % 3]
+        p = S.draw_pack(int(rng.integers(0, 2 ** 63)), variant=variant, harness=harness, sealant_seed=int(rng.integers(0, 2 ** 63)))
+        for f in p["fasteners"]:
+            sl = f.get("sealant")
+            if f["missing"]:
+                assert sl is None
+                continue
+            seen[f["group"]][1] += 1
+            if not sl:
+                continue
+            seen[f["group"]][0] += 1
+            R = S.head_top_radius(f["head"])
+            above = sl["h"] - S.HEADS[f["head"]]["height"]
+            assert S.SEALANT["d"][0] * R - 1e-6 <= sl["d"] <= S.SEALANT["d"][1] * R + 1e-6
+            assert S.SEALANT["r"][0] * R - 1e-6 <= sl["r"] <= S.SEALANT["r"][1] * R + 1e-6
+            assert S.SEALANT["above"][0] - 1e-6 <= above <= S.SEALANT["above"][1] + 1e-6
+            if len(cover) < 600:
+                cover.append(covered_fraction(f["head"], sl))
+    for g, (n_on, n) in seen.items():
+        assert abs(n_on / float(n) - S.SEALANT["p"][g]) < 0.04, (g, n_on, n)
+    med, top = float(np.median(cover)), float(np.max(cover))
+    assert 0.12 <= med <= 0.28 and top <= 0.55, (med, top)
+    # without a sealant seed (the canary, the photographs' example pack) there is none
+    p = S.draw_pack(7, variant="P5", harness="none")
+    assert not any(f.get("sealant") for f in p["fasteners"])
+    checks += 1
+    print("sealant: on %s of the fasteners (lid, busbar, bracket); a dab covers a median %.0f %% of a head's top, at "
+          "most %.0f %% in %d dabs" % (", ".join("%.2f" % (seen[g][0] / float(seen[g][1])) for g in ("lid", "busbar", "bracket")),
+                                     100 * med, 100 * top, len(cover)))
+    return checks
+
+
 def main():
-    checks = noise_checks() + leak_checks()
+    checks = noise_checks() + sealant_checks() + leak_checks()
     print("ok: %d checks" % checks)
 
 

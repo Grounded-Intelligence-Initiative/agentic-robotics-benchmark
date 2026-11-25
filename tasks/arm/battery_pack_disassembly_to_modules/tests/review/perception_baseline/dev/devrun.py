@@ -17,7 +17,7 @@ idx, prog, OUT = int(sys.argv[1]), sys.argv[2], sys.argv[3]
 max_steps = int(sys.argv[4]) if len(sys.argv) > 4 else 20000
 os.makedirs(OUT, exist_ok=True)
 e = json.load(open(TASK + "/environment/commission_service/dev_packs.json"))["packs"][idx]
-pack = S.draw_pack(e["seed"], variant=e["variant"], harness=e["harness"], cameras=e.get("cameras"))
+pack = S.draw_pack(e["seed"], variant=e["variant"], harness=e["harness"], cameras=e.get("cameras"), sealant_seed=e.get("sealant_seed"))
 cell = cellproc.CellProcess(grader=True, stderr=open(OUT + "/cell.err", "w"))
 obs = cell.request({"cmd": "reset", "pack": pack})["obs"]
 truth0 = cell.request({"cmd": "truth"})["truth"]
@@ -83,6 +83,13 @@ while t < max_steps and not obs["ended"]:
           [round(v, 1) for v in obs["wrench"]], obs["tool"]))
     if obs["events"]:
         P("events", obs["time"], obs["events"])
+    if os.environ.get("DEVRUN_TRACE") and obs["tool"] == "gripper":
+        # a maintainer's trace (truth): where the gripper is against the parts' grip points
+        tr = cell.request({"cmd": "truth"})["truth"]
+        with open(OUT + "/trace.jsonl", "a") as fh:
+            fh.write(json.dumps({"t": t, "time": obs["time"], "action": a, "tcp": obs["tcp"], "tcp_target": obs["tcp_target"], "q": obs["q"],
+                                 "gripper": obs["gripper"], "status": obs["status"], "lid": tr["parts"].get("lid"),
+                                 "fast_lid": {k: v["status"] for k, v in tr["fasteners"].items() if v["group"] == "lid"}}) + "\n")
     if obs["time"] - last_log >= 60:
         last_log = obs["time"]
         sc = cell.request({"cmd": "score"})["score"]

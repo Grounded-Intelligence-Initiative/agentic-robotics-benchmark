@@ -222,6 +222,21 @@ VARIANTS = {
            "ribs": [("y", -0.14), ("y", 0.14), ("x", -0.30), ("x", 0.30)]},
 }
 
+# Sealant partly over heads (a field pack's resealing in service; service manual, section 7). A dab of grey sealant
+# is an ellipsoidal dome standing on the fastener's seat: its centre `d` from the fastener's axis in the direction
+# `angle`, its radius `r` on the seat, its top `h` above the seat (the head's height plus `above`). It covers part of
+# the head's top and runs over the head's edge onto the seat. It is drawn only (no collider, no mass): soft, a bit
+# goes through it, and it comes out with its fastener. Sizes in units of the head's top radius (a hexagon's half
+# width across flats, a pan head's radius). Drawn per pack under tests/review/select_set.py's rule 3 (a seed of its
+# own per pack, `sealant_seed`).
+SEALANT = {"p": {"lid": 0.35, "busbar": 0.25, "bracket": 0.25}, "d": (0.3, 0.9), "r": (0.6, 1.0), "above": (0.0010, 0.0025)}
+
+
+def head_top_radius(head):
+    h = HEADS[head]
+    return h["af"] / 2 if h["kind"] == "hex" else h["head_r"]
+
+
 VALUES = {"module": 8.0, "lid": 5.0, "msd": 3.0, "busbar": 2.0, "bracket": 1.0, "connector": 1.0, "harness": 1.0,
           "fastener": 0.5}
 DEST = {"module": "rack", "lid": "lid_stand", "msd": "electronics", "connector": "electronics", "harness": "electronics",
@@ -376,12 +391,13 @@ def _harness_path(s, on, nom, fasteners):
     return pts, [f["id"] for f in cover]
 
 
-def draw_pack(seed, variant=None, harness=None, cameras=None):
+def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None):
     """One pack: the nominal pack of its variant plus its hidden differences. `variant` and `harness` ("none",
     "lid", "busbars") may be fixed by the caller (the selection of a set); everything else comes from the seed.
     `cameras` are the mounting offsets of the cell the pack is taken apart in ({name: 6 numbers}, MOUNT_TOL; drawn
     with the set under a key of their own, not from the seed); without them the cameras sit at their nominal
-    mounting."""
+    mounting. `sealant_seed` (rule 3, a key of its own) gives the dabs of sealant (SEALANT); without it there are
+    none."""
     s = Stream(seed, "pack")
     v = s.choice(sorted(VARIANTS))
     variant = variant or v
@@ -410,6 +426,15 @@ def draw_pack(seed, variant=None, harness=None, cameras=None):
                  breakaway=round(factor * THREADS[f["thread"]]["tighten"], 3), value=VALUES["fastener"],
                  dest=DEST["fastener"])
         fasteners.append(f)
+    if sealant_seed is not None:
+        st = Stream(sealant_seed, "sealant")
+        for f in fasteners:
+            on = st.chance(SEALANT["p"][f["group"]])
+            angle, d, r, above = st.uniform(0, 2 * math.pi), st.uniform(*SEALANT["d"]), st.uniform(*SEALANT["r"]), st.uniform(*SEALANT["above"])
+            if on and not f["missing"]:
+                R = head_top_radius(f["head"])
+                f["sealant"] = {"angle": round(angle, 5), "d": round(d * R, 6), "r": round(r * R, 6),
+                                "h": round(HEADS[f["head"]]["height"] + above, 6)}
     parts = [dict(p) for p in nom["parts"]]
     out = {"version": VERSION, "seed": int(seed), "variant": variant, "modules": nom["modules"],
            "module_ys": nom["module_ys"], "msd_y": nom["msd_y"], "bms_y": nom["bms_y"], "ribs": nom["ribs"],
@@ -447,6 +472,7 @@ def summary(pack):
     return {"variant": pack["variant"], "fasteners": len(fs), "missing": sum(f["missing"] for f in fs),
             "corroded": sum(f["corroded"] for f in fs),
             "heads": {h: sum(1 for f in fs if f["head"] == h and not f["missing"]) for h in sorted(HEADS)},
+            "sealed": sum(1 for f in fs if f.get("sealant")),
             "harness": pack["harness"]["on"] if pack["harness"] else "none",
             "harness_covers": pack["harness"]["covers"] if pack["harness"] else [],
             "placement": pack["placement"], "value": round(total_value(pack), 2)}

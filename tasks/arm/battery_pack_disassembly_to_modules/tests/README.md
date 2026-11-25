@@ -42,6 +42,8 @@ can read. One process is one pack: Isaac Sim 6.2 headless, PhysX on the CPU (`en
   (the group's head, replaced by the other head of the same thread with probability 0.12), corroded (lid 0.15,
   busbar 0.08, bracket 0.12; breakaway 1.6 to 1.9 times the assembly torque) or missing (lid 0.06, bracket 0.05);
   a harness remnant (none, on the lid over one or two lid bolts, or along the busbars over two or three bolts).
+  Two more draws come with a set's entry, each from a key of its own (`review/select_set.py`): the camera offsets of
+  the cell a pack is taken apart in (rule 2) and a seed for the dabs of sealant over some heads (rule 3, `SEALANT`).
 - **`scene.py`**: the USD stage (pxr only): the UR20 of NVIDIA's asset library, referenced unmodified, with two
   links added to its articulation: `ee_link` (the tool carrier, fixed to the flange) and `spindle_link` (the
   nutrunner's spindle on a prismatic joint with a spring drive: the 25 mm float of a real nutrunner). Both tools'
@@ -95,6 +97,20 @@ real cell offers neither shortcut. Two changes, both perception and engineering,
   one overhead frame give the overhead camera to 0.3 to 0.6 mm on the lid, and five whole-plate wrist views give the
   wrist camera's mounting to 0.2 mm.
 
+**Sealant partly over heads (since 2026-11-25, the third lever).** With the two changes above, a revised
+perception baseline still took three of four development packs apart completely after about an hour and a half of
+work (section 6): a close wrist frame's depth gives a head's outline, its centre and its type. A resealed field pack
+breaks that: about a third of the lid's bolts and a quarter of the others carry a dab of grey sealant
+(`series.SEALANT`; service manual, section 7), a dome standing on the seat with its centre 0.3 to 0.9 head radii off
+the axis, 0.6 to 1.0 head radii wide and 1 to 2.5 mm above the head's top. It covers a median 22 % of a head's top
+(at most about half) and runs over the edge onto the seat, so the region that stands above the seat is the head and
+part of the dab: its centre is a millimetre off in the median and up to 3 mm, more than a Torx bit's 1.2 mm, and part
+of a Torx recess may be hidden. A program has to tell the sealant from the head (its matte grey against plated zinc
+or rust, its round dome against the head's flat top and straight or circular edge) and fit the head's known outline
+to what remains. It is drawn only (section 2's list); the bit's rules are unchanged. Drawn per pack under rule 3 of
+`review/select_set.py` with a key of its own, after the rule was committed; `review/test_sensors.py` checks the
+draw against the manual's statement.
+
 **What is rule-based (the stated simplifications).**
 
 - *Fasteners are rule-based constraints.* A fastener's body sits on its seat (its head is a real collider the bit
@@ -127,6 +143,9 @@ real cell offers neither shortcut. Two changes, both perception and engineering,
 - *A dropped module* is a free, unheld module moving down faster than 0.7 m/s.
 - *The harness remnant* is one rigid body (capsules along a polyline), kinematic where it lies until it is first
   gripped; a turning bit pressed on it marks it damaged.
+- *Sealant over a head* (since 2026-11-25) is drawn only: a dome mesh under the fastener's body, no collider and no
+  mass, so a bit seats on the head as it would without it, and the dab leaves with its fastener. It is soft sealant
+  in the manual's words; what it does is hide part of the head from the cameras (below).
 
 Everything else is rigid-body physics: the arm with its position drives and torque limits, contacts of the tool
 with the pack, the bins and the tables (which is what the wrench shows and what triggers protective stops), parts
@@ -234,11 +253,11 @@ value measured natively on the author's server, outside the engine; it has to be
   "the bit has to be chosen from the image" therefore holds for a program that wants to be quick, not for one that
   only wants to be right; making a wrong family harmful would not be true to the tools. Left as it is for the
   owner to decide.
-- **Levers if frontier models turn out to do too well.** Two are used since 2026-11-25 (section 2, "The cameras"):
-  the cameras' poses on file are nominal and each cell's own mounting offset has to be identified, and the depth is
-  an active-stereo sensor's. Not used: lighting, dirt and label clutter varying per pack; a wider placement
-  tolerance of the fixture; fastener heads partly hidden by sealant. All are perception or engineering, none a
-  penalty.
+- **Levers if frontier models turn out to do too well.** Three are used since 2026-11-25 (section 2, "The cameras"
+  and "Sealant"): the cameras' poses on file are nominal and each cell's own mounting offset has to be identified;
+  the depth is an active-stereo sensor's; fastener heads are partly hidden by sealant. Not used: lighting, dirt and
+  label clutter varying per pack; a wider placement tolerance of the fixture. All are perception or engineering,
+  none a penalty.
 - **GPU models.** Run only on an RTX 6000 Ada with driver 570 (DLSS falls back to an older denoiser preset there),
   so `gpu_types` names only that model. The cloud models (RTX 4090, RTX 5090, RTX PRO 6000, H100, H200) are
   untested; `hazard_bay_build`, on the same Isaac Sim stack, validates on the first three. Each model has to be

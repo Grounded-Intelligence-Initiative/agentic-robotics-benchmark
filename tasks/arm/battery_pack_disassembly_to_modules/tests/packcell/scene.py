@@ -54,6 +54,7 @@ LOOKS = {
     "steel": ((0.72, 0.72, 0.74), 1.0, 0.25),
     "changer": ((0.70, 0.05, 0.05), 0.4, 0.40),
     "alu": ((0.80, 0.81, 0.83), 1.0, 0.35),
+    "sealant": ((0.34, 0.34, 0.36), 0.0, 0.90),
     "plate_white": ((0.82, 0.82, 0.80), 0.0, 0.80),
     "plate_black": ((0.02, 0.02, 0.02), 0.0, 0.85),
 }
@@ -167,6 +168,38 @@ class Builder(object):
             idx += [2 * n + 1, n + i, n + j]         # top fan
             counts.append(3)
             idx += [2 * n, j, i]                     # bottom fan
+        m = UsdGeom.Mesh.Define(self.st, path)
+        m.CreatePointsAttr(pts)
+        m.CreateFaceVertexCountsAttr(counts)
+        m.CreateFaceVertexIndicesAttr(idx)
+        m.CreateSubdivisionSchemeAttr("none")
+        m.CreateDoubleSidedAttr(True)
+        self.place(m.GetPrim(), pos)
+        self.bind(m.GetPrim(), look)
+        return m.GetPrim()
+
+    def dome(self, path, r, h, pos=(0, 0, 0), look=None, rings=8, sectors=32):
+        """The upper half of an ellipsoid (radius r on its base, height h), its base on z = 0: a dab of sealant."""
+        pts = [Gf.Vec3f(0.0, 0.0, float(h))]
+        for i in range(1, rings + 1):
+            a = 0.5 * math.pi * i / rings                     # from the top down to the base
+            for k in range(sectors):
+                b = 2 * math.pi * k / sectors
+                pts.append(Gf.Vec3f(float(r * math.sin(a) * math.cos(b)), float(r * math.sin(a) * math.sin(b)), float(h * math.cos(a))))
+        pts.append(Gf.Vec3f(0.0, 0.0, 0.0))
+        counts, idx = [], []
+        for k in range(sectors):
+            counts.append(3)
+            idx += [0, 1 + k, 1 + (k + 1) % sectors]
+        for i in range(rings - 1):
+            for k in range(sectors):
+                a0, a1 = 1 + i * sectors, 1 + (i + 1) * sectors
+                counts.append(4)
+                idx += [a0 + k, a1 + k, a1 + (k + 1) % sectors, a0 + (k + 1) % sectors]
+        base, last = len(pts) - 1, 1 + (rings - 1) * sectors
+        for k in range(sectors):
+            counts.append(3)
+            idx += [base, last + (k + 1) % sectors, last + k]
         m = UsdGeom.Mesh.Define(self.st, path)
         m.CreatePointsAttr(pts)
         m.CreateFaceVertexCountsAttr(counts)
@@ -577,6 +610,10 @@ def build(stage, pack, robot_usd, render=True):
         r_col = fastener_shapes(b, path, f["head"], "rust" if f["corroded"] else "zinc")
         if f["corroded"]:
             b.cyl(path + "/stain", r_col + 0.0035, 0.0003, (0, 0, 0.00015), "rust_stain")
+        if f.get("sealant"):
+            # a dab of sealant over part of the head and its seat (series.SEALANT): drawn only, it leaves with the fastener
+            sl = f["sealant"]
+            b.dome(path + "/sealant", sl["r"], sl["h"], (sl["d"] * math.cos(sl["angle"]), sl["d"] * math.sin(sl["angle"]), 0.0001), "sealant")
         b.grip(b.cyl(path + "/col_head", r_col, h, (0, 0, h / 2), None, collide=True, visible=False))
         b.cyl(path + "/col_shank", thread["shank_r"], thread["shank_len"], (0, 0, -thread["shank_len"] / 2), None, collide=True, visible=False)
         index["fasteners"][fid] = path

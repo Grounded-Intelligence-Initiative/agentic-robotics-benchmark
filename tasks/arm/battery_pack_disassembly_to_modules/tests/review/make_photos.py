@@ -8,7 +8,8 @@ dresses its lid bolts with every head type, clean and corroded, and one empty ho
 
     photo_example_lid.jpg      the overhead camera's frame, the robot turned out of the view
     photo_example_inside.jpg   the same with the lid taken away
-    photo_heads.jpg            the wrist camera's view of each head from about 0.25 m, cropped and labelled
+    photo_heads.jpg            the wrist camera's view of each head from about 0.25 m, cropped and labelled (the four
+                               types clean and corroded, an empty hole, three heads with a dab of sealant)
 
 Then `make_documents.py --photos <out_dir>` copies them into the givens.
 """
@@ -26,7 +27,11 @@ sys.path.insert(0, os.path.join(TASK, "tests"))
 
 EXAMPLE_SEED = 5150
 HEADS = [("L01", "S10", False), ("L02", "S10", True), ("L03", "T30", False), ("L04", "T30", True),
-         ("L06", "S13", False), ("L07", "S13", True), ("L08", "T40", False), ("L09", "T40", True), ("L05", None, False)]
+         ("L06", "S13", False), ("L07", "S13", True), ("L08", "T40", False), ("L09", "T40", True), ("L05", None, False),
+         ("L10", "S10", False), ("L11", "T30", False), ("L12", "T40", True)]
+# the last three carry a dab of sealant (series.SEALANT): its direction, centre and radius in head radii, its top
+# above the head (m)
+SEALED = {"L10": (0.9, 0.6, 0.9, 0.0020), "L11": (2.5, 0.5, 0.8, 0.0015), "L12": (4.2, 0.7, 0.9, 0.0025)}
 
 
 def main():
@@ -52,6 +57,10 @@ def main():
         f.update(missing=head is None, corroded=corroded)
         if head:
             f["head"] = head
+        if fid in SEALED:
+            a, d, r, above = SEALED[fid]
+            R = S.head_top_radius(head)
+            f["sealant"] = {"angle": a, "d": d * R, "r": r * R, "h": S.HEADS[head]["height"] + above}
     for f in pack["fasteners"]:
         if f["group"] == "lid" and f["id"] not in [h[0] for h in HEADS]:
             f.update(missing=False, corroded=False)
@@ -88,12 +97,12 @@ def main():
         u, v = c["width"] // 2, c["height"] // 2
         crop = img[v - 110:v + 110, u - 110:u + 110]
         crop = cv2.resize(crop, (330, 330), interpolation=cv2.INTER_CUBIC)
-        label = "empty hole" if head is None else "%s%s" % (head, " corroded" if corroded else "")
+        label = "empty hole" if head is None else "%s%s%s" % (head, " corroded" if corroded else "", ", sealant" if fid in SEALED else "")
         cv2.rectangle(crop, (0, 0), (329, 26), (255, 255, 255), -1)
         cv2.putText(crop, label, (6, 19), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1, cv2.LINE_AA)
         tiles.append(crop)
         cv2.imwrite(os.path.join(out, "wrist_%s.png" % fid), img)
-    rows = [np.hstack(tiles[0:3]), np.hstack(tiles[3:6]), np.hstack(tiles[6:9])]
+    rows = [np.hstack(tiles[k:k + 3]) for k in range(0, len(tiles), 3)]
     cv2.imwrite(os.path.join(out, "photo_heads.jpg"), np.vstack(rows), [cv2.IMWRITE_JPEG_QUALITY, 90])
     # the overhead photographs, the arm turned away
     cur = wire.pose_T(cell.observe()["tcp_target"])
