@@ -37,7 +37,7 @@ the larger of its proposal and, up to its cap (250 N, 300 N,
 
 The reference program holds a token and reads the true poses through two privileged calls
 (`get_state_privileged()`, `describe_privileged()`); it moves the arm only through the public calls, takes a frame of each
-camera at the start, and is graded by the same server, monitor and budgets as any program. Without the token the
+camera at the start, and is graded by the same server and monitor as any program, with the same simulated-time cap and a wall-clock cap of its own (4826 s against 8074 s). Without the token the
 privileged calls answer as forbidden calls and are counted. It plans in closed form on the true poses with fixed
 waypoints: no sampling planner and no dependence on wall-clock time. Its order is leg_R, leg_L, arm_L, arm_R, head. Its complete
 episodes of record: 5 of 5 mates fastened at the design bolt position in every episode, no
