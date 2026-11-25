@@ -187,6 +187,15 @@ value measured natively on the author's server, outside the engine; it has to be
   it is not expected to be bit-identical, and the renderer is not repeatable even on one GPU. The credit tolerates
   that (it reads where bodies lie), a program's behaviour may not: an agent whose perception is marginal can score
   differently on different hosts.
+- **A fastener released into a pile can be thrown out of its bin** (measured: section 6, the entry "19:10 to
+  20:30"). `eject` places the fastener's body at the bit and makes it dynamic at once; where that place overlaps
+  fasteners already lying there, the physics engine pushes the bodies apart at up to several metres a second. The
+  reference releases 70 mm above the table on nine spots per bin and lost five fasteners of two packs this way on
+  `15d8694`, so its value is 0.9944, not 1.0. Two ways out, each needing a full re-measurement: the reference's drop
+  rule (more spots, or a release above its own pile, which brings back the bounce over the walls if it goes above
+  them), or the cell (place the released body only where it is free, or cap the separation speed with PhysX's
+  maximum depenetration velocity, which is not set now), which changes what every program meets. Left as it is
+  for the owner.
 - **Simplifications that a reviewer may want changed**: no finger colliders; no slip; the socket does not slide
   over the head; a harness is rigid; the robot does not collide with itself; the live-parts check is geometric and
   once per tick.
@@ -448,11 +457,89 @@ largest true residual was 4.6e-4 to 8.0e-4 (an entry of a rotation matrix) on fi
 pack 4, reached 6.9e-4), where the rounding leaves about 1e-6. The cause is the conversion of a pose near a half
 turn (the next entry).
 
+**19:10 to 20:30. A pose's rotation vector near a half turn (tree `15d8694`), and fasteners thrown out of the
+bins.** The cause of the residuals above is `kin.R_rotvec`, the conversion of a rotation matrix to a rotation vector
+that `wire.pose6` uses for every pose of an observation (and `kin.pose_error` for the cell's inverse kinematics). It
+took the angle from `acos` of the trace and the axis from a division by `sin`; within about 1e-6 to 1e-5 rad of a
+half turn both lose precision, and a pose written on the wire and read back was off by up to 2e-3 in a matrix
+entry. The tool pointing straight down is a rotation of nearly exactly a half turn, and with the drives' small
+following error the measured tool pose lands in that band, while a probe's copy, its joints shifted by up to 0.01
+rad, is out of it: the true observation carried the large residual, the copy did not. The wrist camera, tilted 11
+degrees from the tool's axis, is far from a half turn in those states.
+
+The angle now comes from `atan2` of the antisymmetric part's norm and the trace, and within 1e-3 rad of a half
+turn the axis from the symmetric part, signed by the antisymmetric one: in `tests/packcell/kin.py` (copied to the
+commissioning service by `review/check_copies.py --sync`), in the agent's library (`packcell_client.R_rotvec`) and
+in the reference. Nothing else in the folder converts a matrix to a rotation vector (`rules.angle_deg` is the angle
+between two vectors, for the tilt rules). Measured without the simulator (`review/test_rules.py`, now 41 checks,
+which fail with the old conversion; the round trip is the largest entry difference over 200 random axes):
+
+| | the old conversion (`acos`) | the new one |
+|---|---|---|
+| a pose written and read back, angle pi - 1e-2 to pi - 1e-4 | 6e-7 | 6e-7 |
+| at pi - 1e-5 | 2.1e-5 | 6.7e-7 |
+| at pi - 2e-6 | 5.6e-4 | 6.4e-7 |
+| at pi - 1e-6 | 1.9e-3 | 6.5e-7 |
+| at pi - 1e-7, at pi | 7.6e-7, 6.4e-7 | 7.0e-7, 6.4e-7 |
+| 400 near-downward states (`downward_states`): true residuals above 1e-5, copies above 1e-5, the true one the larger | 82, 0, 267 (67 %) | 0, 0, 184 (46 %) |
+
+Away from a half turn (angles 1e-6 to pi - 1e-3) the two agree to 7e-10. Below about 1.5e-8 rad the old one
+returned exactly zero (`acos` of a trace that rounds to 1) where the new one returns the rotation. The library's
+copy of a wrist pose is now the grader's exactly; it was up to 7e-6 off at random joint angles, which a check had
+put down to `cell.json`'s nine decimals, and was the conversion.
+
+The native series on `15d8694` (19:30 to 20:04, GPU 3 only, as above):
+
+| submission | set | result on `15d8694` | on `152fdf7` |
+|---|---|---|---|
+| the reference | six packs | `mean_pack_credit` **0.99440** (packs 0 and 1: 0.97315 and 0.99324, packs 2 to 5: 1.0), reward 1.0 (against the anchor of then, 1.0), the lock 83 of 83 (53 idle), no protective stop, no stripped fastener, stage 1330 s | 1.00000, 83 of 83 |
+| none | six packs | "no usable submission": reward 0.0 | the same |
+| the reference without its token | hidden pack 2 | credit 0, reward 0.0 | the same |
+| the reference, its applied actions recorded | hidden pack 2 | credit 1.0 (59 of 59), 1040 steps, lock 10 of 10 (6 idle), reward 1.0 | the same |
+| a blind replay of those recorded actions | hidden pack 2 | credit 1.0 in 1040 steps, **the lock fails, 0 of 10**: reward 0.0 | the same |
+| the example program | six packs | credit 0 on every pack, reward 0.0, stage 168 s | the same |
+
+The commissioning service behaved as before (the example program in 26 s; the interactive session as above; two
+sessions counted, eight left). The probe's copies now balance: the true observation had the larger residual in 66
+of 136 (48.5 %; 0.3 standard deviations below half, against 2.2 above on `152fdf7`), and the largest residual was
+1.6e-6 for both (8.0e-4 and 6.9e-4 before).
+
+*The five fasteners.* Every pack took the same number of steps as on `152fdf7`, and every fastener came out (the
+same `fastener_out` events, within 0.05 s): the plan ran as before, and what changed is where released fasteners
+came to rest. A second run of packs 0 and 1, from a stage copy whose `pack_grade.py` also keeps the cell's `where`,
+lost the same five: three on the floor 1 to 2.5 m away (L08, B03a and R3af of pack 0), two on the table 10 and 20
+cm beside a bin (B00a of pack 0, R4af of pack 1). A third run of pack 0, with the cell's `_eject` instrumented in
+a stage copy, showed how. The reference releases every fastener with the bit's tip 70 mm above the table (between
+the walls: the fix for the bounce of the 05:50 entry), on nine spots per bin that it uses in turn, so from the
+tenth fastener of a bin on, a released one appears exactly over earlier ones (0.0 to 0.1 mm apart horizontally),
+and once two lie there its shank is inside them. The cell places the ejected body at the bit and makes it dynamic
+at once, and the physics engine pushes overlapping bodies apart fast: a normal release has fallen at 0.49 m/s
+after its first tick; the release of R3af over L08 and B03a threw L08 at 5.6 m/s, and it ended on the floor 2.3 m
+away with the other two; two more releases into a pile reached 1.9 and 1.6 m/s. The earlier trees used the same
+spots, and their piles lay differently by chance: the trajectories differ in detail now (the poses near a half
+turn are read exactly, and the inverse kinematics sees rotation errors below 1.5e-8 rad that were zero before),
+and nothing had left a bin.
+
+*What was decided* (nothing about the reference or the cell was changed; both would need several full runs, and
+the cell's physics is the owner's to decide). The conversion stays fixed: it is right, and the probe's balance
+shows it. The lost fasteners are a weak spot that the earlier runs hid, of the reference's drop rule (a fixed
+height, reused spots) and of the cell's `eject`, which makes a body dynamic wherever it is, also inside another one;
+a program of the agent's that releases into its own pile meets the same (section 5). `tests/anchor.json` now holds
+the reference's value on this tree, 0.9944 (1.0 before, measured on the earlier trees). `full_at` stays 0.95: the
+only spread measured so far is this one, a small perturbation of the reference's trajectory that cost 0.56 % of
+the mean and 2.7 % of one pack, and 0.95 leaves about nine times that. With that value the reference's ratio on
+this tree is 0.99440 / 0.9944 = 1.000, reward 1.0 (computed from the run above, not run again). Static gates on
+the committed tree: `ale lint` ok, `scripts/lint_domain.py` ok, the kit comparison, `review/check_copies.py`,
+`review/test_rules.py` 41 checks.
+
 ## 7. Final report (2026-11-24, 16:30 EST)
 
-**Since this report:** the kit of upstream #173 and a rebuilt probe copy (section 6, the entry "18:20 to 19:00").
-The static gates pass on that tree, and the native verify was repeated on it (`152fdf7`) with the same results: the
-reference 1.00000 on every pack in the same steps, the lock passed, the small checks as before.
+**Since this report:** the kit of upstream #173 and a rebuilt probe copy (section 6, the entry "18:20 to 19:00"),
+then an exact conversion of a pose near a half turn (the entry "19:10 to 20:30"). On the first tree (`152fdf7`) the
+reference scored 1.00000 again; on the second (`15d8694`) 0.99440, because five fasteners of two packs were thrown
+out of the bins when the reference released into its own pile (section 5). The anchor is now 0.9944, measured on
+`15d8694`; the small checks and the probe lock are as before on both trees. The numbers below are the earlier
+trees'.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops
