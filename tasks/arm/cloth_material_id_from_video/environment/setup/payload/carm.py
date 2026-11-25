@@ -14,15 +14,16 @@ import mujoco
 import numpy as np
 
 RS = os.path.join(importlib.util.find_spec("robosuite").submodule_search_locations[0], "models", "assets")
-ROBOT_BASE = np.array([0.0, -0.56, 0.0])
+ROBOT_BASE = np.array([0.30, -0.62, 0.0])
 TOOL_TILT = np.radians(50)
 TOOL_TIP = 0.05
 ARM_JOINTS = ["r_joint%d" % i for i in range(1, 8)]
 Q_HOME = np.array([0.0, 0.2, 0.0, -2.2, 0.0, 2.4, 0.785])
 
 _s, _c = np.sin(TOOL_TILT), np.cos(TOOL_TILT)
-# eef axes expressed in the clamp frame (columns): z_eef points forward-down, y_eef along the jaws
-R_CLAMP_EEF = np.array([[-_s, 0.0, _c], [0.0, 1.0, 0.0], [-_c, 0.0, -_s]])
+# eef axes expressed in the clamp frame (columns): z_eef points forward-down; the clamp is mounted a quarter turn
+# about the tool axis, which keeps the arm's last joint inside its range over the whole working area
+R_CLAMP_EEF = np.array([[-_s, 0.0, _c], [0.0, 1.0, 0.0], [-_c, 0.0, -_s]]) @ np.array([[0.0, 1.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
 
 
 def _abs_files(xml, base):
@@ -107,7 +108,23 @@ def eef_target(clamp_row):
     return np.asarray(clamp_row[:3], float) - R_e[:, 2] * TOOL_TIP, R_e
 
 
-def solve_ik(m, d, clamp_rows, q0=Q_HOME, iters=30, damping=1e-3):
+def first_pose(m, d, clamp_row, starts=6, iters=300):
+    """Joint angles for one clamp pose: the best of several starts (the arm has more than one way to reach a pose)."""
+    sid = m.site("r_eef_site").id
+    best = None
+    p_t, R_t = eef_target(clamp_row)
+    for s in range(starts):
+        q0 = Q_HOME + np.array([0.9 * (s - (starts - 1) / 2), 0, 0, 0, 0, 0, 0.8 * ((s % 3) - 1)])
+        q = solve_ik(m, d, [clamp_row], q0=q0, iters=iters)[0]
+        set_arm(m, d, q)
+        R = d.site_xmat[sid].reshape(3, 3)
+        e = float(np.linalg.norm(d.site_xpos[sid] - p_t)) + 0.5 * float(np.arccos(np.clip((np.trace(R.T @ R_t) - 1) / 2, -1, 1)))
+        if best is None or e < best[0]:
+            best = (e, q)
+    return best[1]
+
+
+def solve_ik(m, d, clamp_rows, q0=Q_HOME, iters=60, damping=1e-3):
     """Joint angles (N, 7) following clamp poses (N, 8 rows) by damped least squares, warm-started frame to frame."""
     sid = m.site("r_eef_site").id
     qadr = np.array([m.jnt_qposadr[m.joint(n).id] for n in ARM_JOINTS])

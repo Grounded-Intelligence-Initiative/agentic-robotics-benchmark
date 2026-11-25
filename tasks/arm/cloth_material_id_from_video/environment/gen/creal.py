@@ -17,7 +17,7 @@ exactly (a sim-to-real gap):
   - the clamp holds it with the same jaws and the same equality constraints.
 
 A real fabric is described by the same five MuJoCo numbers (young, poisson, thickness, damping, mu) of THIS model; they
-are not the cphys material that best reproduces it (see tests/review/make_ref.py: calibrate()).
+are not the cphys material that best reproduces it (see tests/review/make_set.py: the reference).
 
 The interface mirrors cphys.Sim: run() takes the commanded clamp rows at cphys.DT (2 ms) and record_every / start in
 those rows, so ctasks.outcome(..., world=creal) and the renderer use it unchanged.
@@ -67,8 +67,6 @@ def scene_xml(material, mass_kg, texture=None):
   <worldbody>
     <geom name="table" type="box" size="{tx} {ty} 0.02" pos="{W.EDGE_X - tx} 0 -0.02" friction="0 0 0" condim="3"
           rgba="0.55 0.45 0.35 1" group="1"/>
-    <geom name="rod" type="cylinder" size="{W.ROD_R} 0.30" pos="{W.ROD_X} 0 {W.ROD_Z}" quat="0.70710678 0.70710678 0 0"
-          friction="0 0 0" condim="3" rgba="0.7 0.7 0.72 1" group="1"/>
     <flexcomp name="fabric" type="grid" count="{NX} {NY} 1" spacing="{SPACING} {SPACING} {SPACING}" pos="0 0 {RADIUS}"
               dim="2" radius="{RADIUS}" mass="{mass_kg:.9g}" dof="full" rgba="0.8 0.8 0.8 1"{mat_attr}>
       <elasticity young="{m['young']:.9g}" poisson="{m['poisson']:.9g}" thickness="{m['thickness']:.9g}"

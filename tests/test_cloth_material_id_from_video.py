@@ -118,7 +118,7 @@ class Recordings(unittest.TestCase):
         want = {"data/cameras.json"}
         for fid in SCORED + ("P",):
             want.add("data/fabrics/{}/fabric.json".format(fid))
-            for i in range(8):
+            for i in range(7):
                 for name in ("clip.json", "clamp_500hz.npy", "arm_q.npy", "cam0.mp4", "cam1.mp4", "cam2.mp4"):
                     want.add("data/fabrics/{}/clip{:02d}/{}".format(fid, i, name))
         self.assertEqual(listed, want)
@@ -126,7 +126,7 @@ class Recordings(unittest.TestCase):
 
     def test_the_instruction_matches(self):
         text = (TASK / "instruction.md").read_text()
-        for phrase in ("ten fabrics", "8 clips", "product of its two skill means", "| 3 mm |", "| 6 mm |", "session_time.sh",
+        for phrase in ("ten fabrics", "7 clips", "product of its two skill means", "| 3 mm |", "| 6 mm |", "session_time.sh",
                        "comes with no\n  answer", "no score feedback"):
             self.assertIn(phrase, text)
         self.assertIsNone(re.search(r'"young":\s*[0-9]', text), "the instruction prints no material")

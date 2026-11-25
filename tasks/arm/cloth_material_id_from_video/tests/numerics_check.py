@@ -29,7 +29,7 @@ import ctasks as T  # noqa: E402
 
 MATERIAL = dict(young=7.0e4, poisson=0.31, thickness=0.0052, damping=0.0027, mu=0.47)
 MASS = 0.0093
-TEST = dict(fam="slide", pose=[0.04, -0.03, 0.17], side=-1, d_release=0.10)
+TEST = dict(fam="slide", pose=[-0.19, -0.07, 0.17], side=+1, d_release=0.10)
 U = 0.62
 
 

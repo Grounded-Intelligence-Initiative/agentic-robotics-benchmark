@@ -32,7 +32,7 @@ import ctasks as T  # noqa: E402
 W_IMG, H_IMG = 640, 480
 FOCAL = 640.0
 CAMERAS = [  # name, position, look-at target (world)
-    ("cam0", (0.72, -0.55, 0.62), (0.0, 0.0, 0.10)),
+    ("cam0", (0.60, 0.70, 0.65), (0.10, -0.10, 0.0)),
     ("cam1", (0.85, 0.32, 0.22), (0.20, 0.0, 0.0)),
     ("cam2", (-0.70, 0.55, 0.62), (-0.12, 0.0, 0.12)),
 ]
@@ -149,28 +149,28 @@ def _jitter_grasp(p, yaw, pose, rng):
 
 
 def clip_programs(rng):
-    """List of (kind, fabric_start pose, clamp trajectory): eight clips per fabric.
+    """List of (kind, fabric_start pose, clamp trajectory): seven clips per fabric.
 
     0-2  drag_release    the handling the slide tests use, at three speeds inside their range (one in each of 0.35-0.55,
-                         0.60-0.80 and 0.85-1.05 m/s), with a lift, an acceleration distance and a release distance of
-                         their own;
+                         0.60-0.80 and 0.85-1.05 m/s, in a drawn order), with a lift, an acceleration distance and a
+                         release distance of their own;
     3-4  pull_over_edge  the handling the overhang tests use, to two overhangs inside their range (0.04-0.07 and
                          0.08-0.12 m), with a lift and a pulling speed of their own;
-    5    lift_hang, 6 shake, 7 rod_drape   other handling of the same fabric.
+    5    lift_hang, 6 shake   other handling of the same fabric.
     The grasp of every clip is placed with scatter (_jitter_grasp), so none is a scored test program and the
-    clamp's motion does not give the fabric's start pose away."""
+    clamp's motion does not give the fabric's start pose away. Every pose is inside the arm's working area (the same
+    ranges as the hidden tests: tests/review/make_set.py, and tests/review/clip_check.py for the arm)."""
     out = []
-    order = rng.permutation(3)
     bands = [(0.35, 0.55), (0.60, 0.80), (0.85, 1.05)]
-    for k in order:
-        pose = (float(rng.uniform(0.0, 0.10)), float(rng.uniform(-0.12, 0.12)), float(rng.uniform(-0.35, 0.35)))
-        p, yaw = _jitter_grasp(*W.edge_grasp(pose, -1), pose, rng)
+    for k in rng.permutation(3):
+        pose = (float(rng.uniform(-0.24, -0.14)), float(rng.uniform(-0.20, 0.0)), float(rng.uniform(-0.25, 0.25)))
+        p, yaw = _jitter_grasp(*W.edge_grasp(pose, +1), pose, rng)
         v = float(rng.uniform(*bands[k]))
-        C, _ = T.fling_traj(p, yaw, pose[2] + np.pi, v, float(rng.uniform(0.05, 0.08)), float(rng.uniform(0.08, 0.15)),
+        C, _ = T.fling_traj(p, yaw, pose[2], v, float(rng.uniform(0.05, 0.08)), float(rng.uniform(0.08, 0.15)),
                             lift=float(rng.uniform(0.010, 0.020)))
         out.append(("drag_release", pose, C))
     for lo, hi in ((0.04, 0.07), (0.08, 0.12)):
-        pose = (float(rng.uniform(0.10, 0.13)), float(rng.uniform(-0.12, 0.12)), float(rng.uniform(-0.12, 0.12)))
+        pose = (float(rng.uniform(0.10, 0.13)), float(rng.uniform(-0.20, 0.0)), float(rng.uniform(-0.12, 0.12)))
         p, yaw = _jitter_grasp(*W.edge_grasp(pose, +1), pose, rng)
         d = np.array([np.cos(pose[2]), np.sin(pose[2]), 0.0])
         u = float(rng.uniform(lo, hi))
@@ -178,22 +178,22 @@ def clip_programs(rng):
         up = p + np.array([0.0, 0.0, float(rng.uniform(0.010, 0.022))])
         end = up + d * dist
         t1 = 0.6 + dist / float(rng.uniform(0.07, 0.15))
-        away = end + np.array([0.05, 0.0, 0.10])
+        away = end + d * 0.03 + np.array([0.0, 0.0, 0.08])
         keys = [(0.0, p, yaw, 0, 0), (0.2, p, yaw, 0, 1), (0.6, up, yaw, 0, 1), (t1, end, yaw, 0, 1), (t1 + 0.5, end, yaw, 0, 1),
                 (t1 + 0.501, end, yaw, 0, 0), (t1 + 1.0, away, yaw, 0, 0), (t1 + 3.2, away, yaw, 0, 0)]
         out.append(("pull_over_edge", pose, W.program_to_traj(keys)))
-    # lift by a corner, hang, lower partway
-    pose = (float(rng.uniform(-0.12, 0.02)), float(rng.uniform(-0.08, 0.08)), float(rng.uniform(-np.pi, np.pi)))
-    p, yaw = _jitter_grasp(*W.corner_grasp(pose, int(rng.choice([-1, 1])), int(rng.choice([-1, 1]))), pose, rng)
-    top = np.array([p[0], p[1], 0.44])
-    low = np.array([p[0] + 0.05, p[1], float(rng.uniform(0.33, 0.37))])
+    # lift by a corner of the edge nearest the table's front edge, hang, lower partway
+    pose = (float(rng.uniform(-0.05, 0.05)), float(rng.uniform(-0.18, -0.04)), float(rng.uniform(-0.3, 0.3)))
+    p, yaw = _jitter_grasp(*W.corner_grasp(pose, +1, int(rng.choice([-1, 1]))), pose, rng)
+    top = np.array([p[0], p[1], 0.40])
+    low = np.array([p[0] + 0.03, p[1], float(rng.uniform(0.31, 0.35))])
     keys = [(0.0, p, yaw, 0, 0), (0.2, p, yaw, 0, 1), (1.4, top, yaw, 0, 1), (3.2, top, yaw, 0, 1),
             (4.0, low, yaw, 0, 1), (5.6, low, yaw, 0, 1)]
     out.append(("lift_hang", pose, W.program_to_traj(keys)))
-    # shake: lift by a short edge, three quick vertical strokes, hold
-    pose = (float(rng.uniform(-0.10, 0.0)), float(rng.uniform(-0.06, 0.06)), float(rng.uniform(-0.4, 0.4)))
+    # shake: lift by that short edge, three quick vertical strokes, hold
+    pose = (float(rng.uniform(-0.05, 0.05)), float(rng.uniform(-0.18, -0.04)), float(rng.uniform(-0.3, 0.3)))
     p, yaw = _jitter_grasp(*W.edge_grasp(pose, +1), pose, rng)
-    top = np.array([p[0] + 0.05, p[1], 0.42])
+    top = np.array([p[0] + 0.03, p[1], 0.38])
     keys = [(0.0, p, yaw, 0, 0), (0.2, p, yaw, 0, 1), (1.3, top, yaw, 0, 1), (2.0, top, yaw, 0, 1)]
     t = 2.0
     for k in range(3):
@@ -201,17 +201,6 @@ def clip_programs(rng):
         t += 0.36
     keys += [(t + 0.2, top, yaw, 0, 1), (t + 2.2, top, yaw, 0, 1)]
     out.append(("shake", pose, W.program_to_traj(keys)))
-    # hang over the rod and let go on the far side
-    zf = float(rng.uniform(0.10, 0.16))
-    pose = (float(rng.uniform(0.0, 0.06)), float(rng.uniform(-0.06, 0.06)), float(rng.uniform(-0.2, 0.2)))
-    p, yaw = _jitter_grasp(*W.edge_grasp(pose, -1), pose, rng)
-    up = np.array([p[0], p[1], 0.34])
-    over = np.array([W.ROD_X + 0.10, p[1], 0.34])
-    far = np.array([W.ROD_X - 0.06, p[1], zf])
-    keys = [(0.0, p, yaw, 0, 0), (0.2, p, yaw, 0, 1), (1.2, up, yaw, 0, 1), (2.4, over, yaw, 0, 1),
-            (3.6, far, yaw, 0, 1), (4.4, far, yaw, 0, 1), (4.402, far, yaw, 0, 0), (5.0, far + [0.0, 0, 0.15], yaw, 0, 0),
-            (6.4, far + [0.0, 0, 0.15], yaw, 0, 0)]
-    out.append(("rod_drape", pose, W.program_to_traj(keys)))
     return out
 
 
@@ -229,13 +218,12 @@ def render_xml(material, mass, cams_xml, arm_assets, arm_body):
     cx = W.EDGE_X - tx
     legs = "".join('<geom type="box" size="0.025 0.025 0.37" pos="%g %g -0.41" rgba="0.3 0.25 0.2 1" contype="0" conaffinity="0" group="1"/>'
                    % (cx + sx * (tx - 0.05), sy * (ty - 0.05)) for sx in (-1, 1) for sy in (-1, 1))
-    posts = "".join('<geom type="cylinder" size="0.008 %g" pos="%g %g %g" rgba="0.6 0.6 0.62 1" contype="0" conaffinity="0" group="1"/>'
-                    % (W.ROD_Z / 2, W.ROD_X, sy * 0.30, W.ROD_Z / 2) for sy in (-1, 1))
     world = ('<light pos="0.6 -0.4 1.6" dir="-0.35 0.25 -1" diffuse="0.75 0.73 0.7" specular="0.2 0.2 0.2" castshadow="true"/>'
              '<light pos="-0.8 0.8 1.4" dir="0.5 -0.5 -1" diffuse="0.35 0.37 0.42" castshadow="false"/>'
              '<geom type="plane" size="3 3 0.1" pos="0 0 -0.78" material="floor" contype="0" conaffinity="0" group="1"/>'
              '<geom type="box" size="0.02 2.5 1.2" pos="-1.6 0 0.4" rgba="0.82 0.8 0.76 1" contype="0" conaffinity="0" group="1"/>'
-             + legs + posts + cams_xml + arm_body)
+             '<geom name="probe" type="sphere" size="0.0015" pos="0 0 -5" contype="0" conaffinity="0" rgba="0 0 0 0" group="3"/>'
+             + legs + cams_xml + arm_body)
     xml = xml.replace('<asset>', '<asset>' + extra_assets, 1)
     xml = xml.replace('rgba="0.55 0.45 0.35 1" group="1"/>', 'material="wood" group="1"/>', 1)
     xml = xml.replace('<visual><global offwidth="1280" offheight="960"/>',
@@ -277,6 +265,49 @@ def encode(frames, path):
 
 
 # ----------------------------------------------------------------------------------------------------------------
+def arm_check(m, d, rows, q, frames):
+    """Maintainers' record for one clip: how well the arm follows the clamp (IK error, the smallest margin to a joint
+    limit) and how close the arm comes to the table and to the fabric. The clamp's own parts are left out of both
+    distances: its jaws close on the fabric where it lies, the lower one in the plane of the table top."""
+    import mujoco
+    import carm
+    sid = m.site("r_eef_site").id
+    jid = [m.joint(n).id for n in carm.ARM_JOINTS]
+    lo, hi = m.jnt_range[jid, 0], m.jnt_range[jid, 1]
+    clamp_body = m.body("r_clamp_vis").id
+    arm_bodies = [b for b in range(m.nbody) if m.body(b).name.startswith("r_") and b != clamp_body]
+    arm_geoms = [g for g in range(m.ngeom) if m.geom_bodyid[g] in arm_bodies]
+    table = m.geom("table").id
+    ft = np.zeros(6)
+    out = dict(ik_err_mm=0.0, ik_rot_deg=0.0, joint_margin_rad=9.0, arm_table_mm=1e9, arm_fabric_mm=1e9)
+    for k in range(len(rows)):
+        carm.set_arm(m, d, q[k])
+        mujoco.mj_forward(m, d)
+        p_t, R_t = carm.eef_target(rows[k])
+        R = d.site_xmat[sid].reshape(3, 3)
+        out["ik_err_mm"] = max(out["ik_err_mm"], 1000 * float(np.linalg.norm(d.site_xpos[sid] - p_t)))
+        out["ik_rot_deg"] = max(out["ik_rot_deg"], float(np.degrees(np.arccos(np.clip((np.trace(R.T @ R_t) - 1) / 2, -1, 1)))))
+        out["joint_margin_rad"] = min(out["joint_margin_rad"], float(np.min(np.minimum(q[k] - lo, hi - q[k]))))
+        if k % 2:
+            continue
+        P = np.asarray(frames[k])
+        for g in arm_geoms:
+            dt = mujoco.mj_geomDistance(m, d, g, table, 0.5, ft)
+            out["arm_table_mm"] = min(out["arm_table_mm"], 1000 * float(dt))
+            c, r = d.geom_xpos[g], float(m.geom_rbound[g])
+            near = P[np.linalg.norm(P - c, axis=1) < r + 0.05]
+            if not len(near):
+                out["arm_fabric_mm"] = min(out["arm_fabric_mm"], 1000 * float(np.linalg.norm(P - c, axis=1).min() - r))
+                continue
+            # distance from the geom to each nearby fabric vertex, through a probe sphere placed at the vertex
+            pid = m.geom("probe").id
+            for X in near[::2]:
+                d.geom_xpos[pid] = X
+                dv = mujoco.mj_geomDistance(m, d, g, pid, 0.1, ft)
+                out["arm_fabric_mm"] = min(out["arm_fabric_mm"], 1000 * float(dv))
+    return out
+
+
 def do_clip(args):
     import mujoco
     import carm
@@ -299,8 +330,12 @@ def do_clip(args):
               "wood.png": png_bytes(wood_texture(11)), "floor.png": png_bytes(floor_texture(13))}
     m = mujoco.MjModel.from_xml_string(xml, assets)
     dd = mujoco.MjData(m)
-    q = carm.solve_ik(m, dd, rows)
+    q = carm.solve_ik(m, dd, rows, q0=carm.first_pose(m, dd, rows[0]))
     qh = carm.solve_ik(m, dd, C[W.STEPS_PER_FRAME // 2::W.STEPS_PER_FRAME][:n], q0=q[0])
+    if os.environ.get("CLIP_CHECK_DIR"):
+        chk = arm_check(m, dd, rows, q, frames[:n])
+        os.makedirs(os.environ["CLIP_CHECK_DIR"], exist_ok=True)
+        json.dump(dict(fabric=fid, clip=ci, kind=kind, **chk), open(os.path.join(os.environ["CLIP_CHECK_DIR"], "%s_clip%02d.json" % (fid, ci)), "w"))
     rs = W.Sim.__new__(W.Sim)          # reuse Sim's vertex bookkeeping on the render model
     rs.m, rs.d = m, dd
     f = 0

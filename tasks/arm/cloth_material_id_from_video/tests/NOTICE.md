@@ -3,7 +3,7 @@
 - **The robot** in the videos and in `carm.py` is the Franka Panda model of the robosuite 1.5.2 package (MIT licence,
   https://github.com/ARISE-Initiative/robosuite), installed unmodified in the task image from PyPI; only its MJCF and
   mesh files are used. The fabric clamp on its flange is this task's own geometry.
-- **Everything else is this task's own and synthetic**: the scene (table, rod, floor, wall), the eleven fabrics, their
+- **Everything else is this task's own and synthetic**: the scene (table, floor, wall), the eleven fabrics, their
   materials, the clip programs, the hidden tests and every texture. The textures are generated procedurally by
   `environment/gen/render_clips.py` from fixed seeds.
 - **The real fabrics** are `tests/creal.py` (copy: `environment/gen/creal.py`): a finer sheet than the agent's
@@ -14,7 +14,7 @@
   `tests/review/make_set.py` from the key `tests/ref/key.json` by the rule of `tests/PREREG.md`, which was committed
   with the key before any candidate was simulated. `solution/ref/params.json` (the references of A-J) and
   `environment/gen/fabrics.json` (real materials and masses, for the renderer) are written by the same run.
-- **The recordings** (11 fabrics x 8 clips x 3 cameras, the clamp's and the arm's motion) were rendered once by
+- **The recordings** (11 fabrics x 7 clips x 3 cameras, the clamp's and the arm's motion) were rendered once by
   `environment/gen/render_clips.py` from the real fabrics (creal) with MuJoCo 3.16's native renderer on OSMesa, in the
   task image's Python under the image's numerics pin, and are published in the benchmark's asset repository;
   `environment/assets.sha256` pins the commit and every file. `environment/gen/` is in no image layer. The print on a

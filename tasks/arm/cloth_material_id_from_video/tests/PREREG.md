@@ -1,5 +1,12 @@
 # Pre-registration of the hidden set (verify / maintainers only; never shown to the agent)
 
+This is the second registration. A first one (commit `9304ab1e`) was followed by a draw that was stopped about ten
+minutes after its start, before any of its results was read: a check of the arm found that drags towards the far
+side of the table took the arm through the rod that stood there and that pulls over the front edge were outside
+the arm's reach for half of the registered range. The rod is gone from the scene, the robot stands at the table's
+front corner, the drags run towards the front edge and every fabric pose lies in the arm's working area; these
+change files the first registration froze, so that draw is void and the key below is a new one.
+
 Written and committed before any candidate of the hidden draw was simulated. The commit that adds this file also
 adds the key (`tests/ref/key.json`) and the generator (`tests/review/make_set.py`); the hidden set
 (`tests/ref/fabrics.json`, `tests/ref/selection.json`) comes in a later commit. A change of `tests/cphys.py`,
@@ -22,7 +29,10 @@ Every random number comes from `sha256(key + "/" + label)`; the labels are in `m
    uniform 0.06-0.40 kg/m2, Young's modulus log-uniform 1e4-5e5 Pa (the thickness follows from the three), Poisson's
    ratio uniform 0.2-0.4, damping log-uniform 1e-3 to 8e-3 s, friction uniform 0.2-0.9.
 2. Each candidate gets three calibration tests and eight test candidates per skill, each with the real outcome on
-   nine control values. A candidate fabric is rejected if a real simulation of a calibration test fails.
+   nine control values. Test poses are drawn in the arm's working area: slide, the fabric's centre at x -0.24 to
+   -0.14 m, y -0.20 to 0 m, turned by up to 0.25 rad, dragged by its leading short edge towards the front edge,
+   released after 0.09 to 0.14 m; overhang, the centre at x 0.10 to 0.13 m, y -0.20 to 0 m, turned by up to 0.12 rad,
+   lifted 12 to 20 mm, pulled at 0.08 to 0.14 m/s. A candidate fabric is rejected if a real simulation of a calibration test fails.
 3. A test candidate gets a target if its real curve has a monotone stretch between two neighbouring control values
    with both outcomes inside the skill's band (slide 35-110 mm; overhang 12-80 mm below the table top) and more than
    2 mm apart; one such stretch and a control value on it are drawn, and the target is the real outcome there.

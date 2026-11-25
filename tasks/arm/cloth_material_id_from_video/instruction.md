@@ -1,8 +1,7 @@
 # Cloth material identification from video
 
 A Franka Panda robot with a flat fabric clamp handles pieces of fabric on a table: it drags them across the table and
-lets go, pulls them out over the table's front edge, lifts them by a corner, shakes them and hangs them over a rod. The
-robot plans every fabric-handling motion in a cloth simulator, `cphys`. A plan works on the real fabric only if the
+lets go, pulls them out over the table's front edge, lifts them by a corner and shakes them. The robot plans every fabric-handling motion in a cloth simulator, `cphys`. A plan works on the real fabric only if the
 material the simulator is given makes it predict what the real fabric does. You have **RGB video** of the robot
 handling ten fabrics, **A** to **J**. For each of them, choose the simulator material the robot should plan with. Your
 materials are scored by what the robot then achieves on the real fabrics in two handling skills, when it plans with
@@ -39,25 +38,26 @@ submission/                            write params.json here
 - **Cameras.** `cameras.json` gives, per camera, the OpenCV pinhole model: pixel ~ K (R_w2c X + t_w2c), no lens
   distortion. World frame: the table top is the plane z = 0 for x <= 0.30 (its front edge is the line x = 0.30), z up,
   metres. The calibration is exact.
-- **Videos.** Rendered images of the table, the rod, the robot and the fabric; the robot occludes parts of the scene.
+- **Videos.** Rendered images of the table, the robot and the fabric; the robot occludes parts of the scene.
   They are degraded like a real camera: motion blur, optical blur, vignetting, white balance and exposure differences
   between cameras, sensor noise and video compression. Frame k of a clip shows the fabric when the clamp is at row
   20 k of `clamp_500hz.npy` (time k/25 s). The print is on the fabric's upper face (the face up when it lies flat).
-- **Clips.** Each fabric has 8 clips. At the start of every clip the fabric lies flat and at rest on the table, at a
+- **Clips.** Each fabric has 7 clips. At the start of every clip the fabric lies flat and at rest on the table, at a
   pose that is not given (it is in the first frames). Kinds:
-  - `drag_release` (three clips): the clamp takes a short edge, lifts it 10 to 20 mm, drags the fabric along the
-    table and lets go while moving, once at each of three speeds between 0.35 and 1.05 m/s;
+  - `drag_release` (three clips): the clamp takes the short edge that leads, lifts it 10 to 20 mm, drags the fabric
+    along the table towards the table's front edge and lets go while moving, once at each of three speeds between
+    0.35 and 1.05 m/s;
   - `pull_over_edge` (two clips): the clamp takes the short edge nearest the table's front edge, lifts it a little,
     pulls the fabric out until that edge is 0.04 to 0.12 m beyond the table's edge, waits and lets go;
-  - `lift_hang` (grasp a corner, lift, hang, lower partway), `shake` (lift by a short edge, three quick vertical
-    strokes, hold) and `rod_drape` (carry the fabric over the rod, lower it on the far side and let go), one each.
+  - `lift_hang` (grasp a corner, lift, hang, lower partway) and `shake` (lift by a short edge, three quick vertical
+    strokes, hold), one each.
 
   The clamp's commanded motion is exact; the jaws hold whatever part of the fabric lies between them when they close,
   and the robot does not place its grasp exactly on the fabric's corner or edge (it is off by up to 2 cm along the
   edge, 4 mm inward and 5 degrees).
 - **The only information about the materials is in the images.** The size and the mass of each fabric are given (a
   ruler and a scale reading); nothing else about a material is.
-- **Fabric P** is one more fabric of the same kind with the same eight clips. It is not scored and comes with no
+- **Fabric P** is one more fabric of the same kind with the same seven clips. It is not scored and comes with no
   answer: use it to build and try your method.
 
 ## The robot's simulator and the real fabrics
@@ -71,10 +71,9 @@ succeed on the real fabric** in the two scored skills.
 `cphys.py`: MuJoCo 3.16.0, timestep 2 ms, the `discrete` integrator, the CG solver, elliptic friction cones. A fabric
 is simulated as a MuJoCo `flexcomp` grid of 21 x 11 vertices (2D shell, every vertex a point mass, the total mass
 given), with MuJoCo's shell elasticity, Rayleigh damping and one friction coefficient for all of its contacts; it does
-not collide with itself. The table and the rod have zero friction of their own, so the fabric's coefficient decides
-every contact. The clamp holds the vertices inside its jaws with stiff equality constraints and never touches
+not collide with itself. The table has zero friction of its own, so the fabric's coefficient decides every contact. The clamp holds the vertices inside its jaws with stiff equality constraints and never touches
 anything. `cphys.Sim` builds this world from **your** material and replays a clamp program, so you can simulate any
-clip with your own material. The table, rod, clamp, robot, cameras and clamp programs are the same as in the videos.
+clip with your own material. The table, clamp, robot, cameras and clamp programs are the same as in the videos.
 One simulation of a clip or of a scored handling takes about 4 to 8 s on one core.
 
 ## Deliverable
@@ -106,7 +105,7 @@ predicted outcome hits the test's target, and then executes that value once on t
 
 | Skill | What the robot does | Control value it plans | Outcome that must hit the target | Tolerance |
 |---|---|---|---|---|
-| slide | takes a short edge, lifts it 15 mm, drags the fabric along the table and lets go while moving | the drag speed, 0.3 to 1.1 m/s | how far the fabric's leading point stops beyond the release point (targets between 35 and 110 mm) | 3 mm |
+| slide | takes the short edge that leads, lifts it 15 mm, drags the fabric along the table towards the table's front edge and lets go while moving | the drag speed, 0.3 to 1.1 m/s | how far the fabric's leading point stops beyond the release point (targets between 35 and 110 mm) | 3 mm |
 | overhang | takes the short edge nearest the table's front edge, lifts it 12 to 20 mm, pulls the fabric along its long axis out over the edge, waits 0.4 s and lets go | how far that edge is pulled beyond the table's edge, 0.03 to 0.13 m | the mean height of that edge once the fabric has settled (targets between 12 and 80 mm below the table top) | 6 mm |
 
 - A test scores q = clip(2 - error / tolerance, 0, 1): full marks within the tolerance, nothing at twice the

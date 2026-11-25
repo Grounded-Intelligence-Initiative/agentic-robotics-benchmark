@@ -4,13 +4,13 @@ Byte-identical copies are used by the hidden grader, by the program that rendere
 It holds no hidden values.
 
 World frame: the table top is the plane z = 0 for x <= EDGE_X (the table's front edge is the line x = EDGE_X,
-running along y), z up, metres. A horizontal rod (radius ROD_R) runs along y at x = ROD_X, z = ROD_Z.
+running along y), z up, metres.
 
 A fabric is a rectangle of SIZE_X x SIZE_Y metres, simulated as a MuJoCo flexcomp grid of NX x NY vertices
 (dim 2, every vertex a free point mass, total mass given per fabric), with MuJoCo's shell elasticity
 (young, poisson, thickness: stretch, shear and bending all follow from these three), Rayleigh damping
-(damping) and one friction coefficient (mu) that applies to every contact of the fabric (table, table edge,
-rod and the fabric itself). These five numbers are the material:
+(damping) and one friction coefficient (mu) that applies to every contact of the fabric (the table and its
+edges). These five numbers are the material:
 
     material = {"young": Pa, "poisson": -, "thickness": m, "damping": s, "mu": -}
 
@@ -42,7 +42,6 @@ SIZE_X, SIZE_Y = (NX - 1) * SPACING, (NY - 1) * SPACING      # 0.30 x 0.15 m
 RADIUS = 0.002              # contact half-thickness of the fabric (m)
 EDGE_X = 0.30               # table front edge (table top z = 0 for x <= EDGE_X)
 TABLE_HALF = (0.40, 0.45)   # table top half sizes (x, y); centre x = EDGE_X - TABLE_HALF[0]
-ROD_X, ROD_Z, ROD_R = -0.22, 0.20, 0.010
 JAW_W, JAW_D, JAW_GAP = 0.10, 0.024, 0.012
 HOLD_SOLREF = 0.004      # time constant of the jaws' hold on each held vertex (s)
 G = 9.81
@@ -88,8 +87,6 @@ def scene_xml(material, mass_kg, texture=None):
   <worldbody>
     <geom name="table" type="box" size="{tx} {ty} 0.02" pos="{EDGE_X - tx} 0 -0.02" friction="0 0 0" condim="3"
           rgba="0.55 0.45 0.35 1" group="1"/>
-    <geom name="rod" type="cylinder" size="{ROD_R} 0.30" pos="{ROD_X} 0 {ROD_Z}" quat="0.70710678 0.70710678 0 0"
-          friction="0 0 0" condim="3" rgba="0.7 0.7 0.72 1" group="1"/>
     <flexcomp name="fabric" type="grid" count="{NX} {NY} 1" spacing="{SPACING} {SPACING} {SPACING}" pos="0 0 {RADIUS}"
               dim="2" radius="{RADIUS}" mass="{mass_kg:.9g}" dof="full" rgba="0.8 0.8 0.8 1"{mat_attr}>
       <elasticity young="{m['young']:.9g}" poisson="{m['poisson']:.9g}" thickness="{m['thickness']:.9g}"

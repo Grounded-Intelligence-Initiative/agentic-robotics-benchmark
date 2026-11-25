@@ -44,7 +44,7 @@ RUN printf '%s\n' 'import os' \
     && chmod 0644 /opt/venv/lib/python3.12/site-packages/cloth_numerics_pin.py /opt/venv/lib/python3.12/site-packages/cloth_numerics_pin.pth \
     && env -i PATH=/opt/venv/bin:/usr/bin:/bin HOME=/tmp /opt/venv/bin/python3 -W error::ImportWarning -c "import os, numpy; e = os.environ; assert e.get('NPY_DISABLE_CPU_FEATURES') == 'X86_V4 AVX512_ICL AVX512_SPR' and e.get('OPENBLAS_CORETYPE') == 'Haswell' and e.get('OPENBLAS_L2_SIZE') == '256', dict(e); print('[image] numerics pin OK, numpy', numpy.__version__)"
 
-# ---- the recordings: 11 fabrics x 8 clips x 3 cameras, with the clamp's and the arm's motion (agent-visible data only)
+# ---- the recordings: 11 fabrics x 7 clips x 3 cameras, with the clamp's and the arm's motion (agent-visible data only)
 COPY fetch_assets.py assets.sha256 /opt/task-assets/
 RUN python3 /opt/task-assets/fetch_assets.py /opt/task-assets/assets.sha256 /opt/task-assets/payload \
     && chmod -R a+rX /opt/task-assets
@@ -55,4 +55,4 @@ RUN python3 -c "import numpy, scipy, mujoco, cv2, skimage; print('[image] mujoco
     && python3 -c "import site, sys; assert not site.ENABLE_USER_SITE or sys.prefix != sys.base_prefix" \
     && runuser -u user -- python3 -c "import numpy, scipy, mujoco, cv2; print('[image] agent-UID import OK')" \
     && runuser -u user -- env HOME=/tmp python3 -c "import mujoco; m = mujoco.MjModel.from_xml_string('<mujoco><worldbody><light pos=\"0 0 1\"/><geom type=\"sphere\" size=\".1\"/></worldbody></mujoco>'); d = mujoco.MjData(m); mujoco.mj_forward(m, d); r = mujoco.Renderer(m, 48, 64); r.update_scene(d); im = r.render(); assert im.max() > 0; print('[image] agent-UID MuJoCo OSMesa render OK', im.shape)" \
-    && test -s /opt/task-assets/payload/data/fabrics/J/clip07/cam2.mp4
+    && test -s /opt/task-assets/payload/data/fabrics/J/clip06/cam2.mp4

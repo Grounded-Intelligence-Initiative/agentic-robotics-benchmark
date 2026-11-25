@@ -11,9 +11,9 @@ with YOUR material and then executes the planned u once on the REAL fabric, whic
 test depends only on how far the real outcome lands from the target (`test_quality`).
 
 Families (outcome y, control u):
-  slide     grasp the middle of a short edge, lift it 15 mm, drag the fabric along the table, reaching speed u
-            (0.3 to 1.1 m/s), let go while moving; y = how far the fabric's leading point ends up beyond the
-            release point.                                                              tolerance 3 mm
+  slide     grasp the middle of the short edge that leads, lift it 15 mm, drag the fabric along the table towards
+            the table's front edge, reaching speed u (0.3 to 1.1 m/s), let go while moving; y = how far the fabric's
+            leading point ends up beyond the release point.                             tolerance 3 mm
   overhang  grasp the middle of the short edge nearest the table's front edge, lift it a little, pull the fabric
             along its long axis until that edge is u (0.03 to 0.13 m) beyond the table's front edge, wait, let go;
             y = the mean height of that edge above the table top once the fabric has settled (negative: it hangs
@@ -60,7 +60,7 @@ def fling_traj(p0, yaw, direction, v, d_acc, d_release, lift=0.015):
     pr = pl + u * x
     for i in range(int(2.0 / W.DT)):
         tt = (i + 1) * W.DT
-        add(pr + u * v * 0.1 * (1 - np.exp(-tt / 0.1)) + [0, 0, 0.3 * min(1.0, tt / 0.5)], 0)
+        add(pr + u * v * 0.1 * (1 - np.exp(-tt / 0.1)) + [0, 0, 0.12 * min(1.0, tt / 0.5)], 0)
     return np.array(rows), pr
 
 
@@ -86,7 +86,7 @@ def prog_overhang(test, u):
     up = p + np.array([0.0, 0.0, test["lift"]])
     end = up + d * dist
     t1 = 0.5 + dist / test["speed"]
-    away = end + np.array([0.05, 0.0, 0.10])
+    away = end + d * 0.03 + np.array([0.0, 0.0, 0.08])
     keys = [(0.0, p, yaw, 0, 0), (0.1, p, yaw, 0, 1), (0.5, up, yaw, 0, 1), (t1, end, yaw, 0, 1),
             (t1 + 0.4, end, yaw, 0, 1), (t1 + 0.401, end, yaw, 0, 0), (t1 + 0.9, away, yaw, 0, 0),
             (t1 + 3.4, away, yaw, 0, 0)]

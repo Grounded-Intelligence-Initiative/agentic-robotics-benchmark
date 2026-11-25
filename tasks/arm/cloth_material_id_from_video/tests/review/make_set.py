@@ -72,9 +72,9 @@ def draw_fabric(rng):
 
 def draw_test(fam, rng):
     if fam == "slide":
-        return dict(fam=fam, pose=[float(rng.uniform(0.0, 0.10)), float(rng.uniform(-0.12, 0.12)), float(rng.uniform(-0.35, 0.35))],
-                    side=-1, d_release=float(rng.uniform(0.09, 0.14)))
-    return dict(fam=fam, pose=[float(rng.uniform(0.10, 0.13)), float(rng.uniform(-0.12, 0.12)), float(rng.uniform(-0.12, 0.12))],
+        return dict(fam=fam, pose=[float(rng.uniform(-0.24, -0.14)), float(rng.uniform(-0.20, 0.0)), float(rng.uniform(-0.25, 0.25))],
+                    side=+1, d_release=float(rng.uniform(0.09, 0.14)))
+    return dict(fam=fam, pose=[float(rng.uniform(0.10, 0.13)), float(rng.uniform(-0.20, 0.0)), float(rng.uniform(-0.12, 0.12))],
                 lift=float(rng.uniform(0.012, 0.020)), speed=float(rng.uniform(0.08, 0.14)))
 
 
