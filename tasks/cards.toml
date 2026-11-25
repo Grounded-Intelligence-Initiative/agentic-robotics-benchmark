@@ -29,6 +29,30 @@ summary = "Specify seven upgraded replicas of a two-arm robot that has left the 
 platforms = ["arm"]
 stages = ["requirements"]
 
+[cabinet_door_hanging]
+title = "Replace a cabinet door with two Pandas"
+summary = "Two fixed Franka Pandas replace a cabinet door on loose-pin hinges: a vacuum cup holds the hanging door while a gripper pulls the old pins and drives in new ones, from cameras and wrist force."
+platforms = ["arm"]
+stages = ["behavior"]
+
+[dual_arm_parcel_sorting_on_conveyor]
+title = "Turn parcels label-up with a dual-arm robot"
+summary = "A fixed dual-arm robot must turn each rigid or soft parcel on a moving belt so its shipping label faces up at the line's scanner, within 5 s of delay, seeing the station only through four cameras."
+platforms = ["arm"]
+stages = ["behavior"]
+
+[cable_routing_through_clips]
+title = "Route a cable on a harness board with a Panda"
+summary = "A Franka Panda must route a cable through the clips and round the posts of a harness board from two cameras and a wrist force sensor, on boards it has never seen, without overloading the connector."
+platforms = ["arm"]
+stages = ["behavior"]
+
+[grocery_shelf_restocking]
+title = "Restock a grocery shelf with a lifted Panda"
+summary = "A Franka Panda on a vertical lift restocks a three-shelf bay from a nearly full tote, reading tiny date codes to rotate the stock oldest-first and facing each lane, from cameras and wrist force."
+platforms = ["arm"]
+stages = ["behavior"]
+
 [keyed_nut_peg_assembly]
 title = "Assemble bayonet nut kits with a Panda"
 summary = "A Franka Panda must fit three bayonet nuts onto their pegs within the cell's takt time, working out each nut's hidden groove from camera images and a wrist force sensor on kits it has never seen."
@@ -38,6 +62,12 @@ stages = ["behavior"]
 [kitchen_appliance_tending]
 title = "Tend unfamiliar kitchen appliances with a Panda"
 summary = "A fixed Franka Panda must switch and set cooktop burners, ovens and microwaves it has never seen, from camera images and its wrist force sensor, after a single lab trial on one of them."
+platforms = ["arm"]
+stages = ["behavior"]
+
+[lab_sample_handling]
+title = "Load a centrifuge from a worklist with a Panda"
+summary = "A fixed Franka Panda weighs opaque sample tubes, pairs them by mass and loads them through a centrifuge's single port by turning a one-way rotor whose response is hidden per unit."
 platforms = ["arm"]
 stages = ["behavior"]
 
@@ -56,6 +86,12 @@ stages = ["behavior"]
 [object_finding_and_organizing_on_messy_desk]
 title = "Sort and retrieve objects on a busy desk"
 summary = "Keep a desk sorted with a Franka Panda in Isaac Sim, putting each new object in its class's container, and fetch requested items without upsetting the order."
+platforms = ["arm"]
+stages = ["behavior"]
+
+[pantry_jar_refilling]
+title = "Refill screw-top jars with two Pandas"
+summary = "Two Pandas open free-standing screw-top jars, put the listed refill pieces in from a tray and screw each jar's own lid back to a torque band, from RGB cameras and wrist force sensors."
 platforms = ["arm"]
 stages = ["behavior"]
 
@@ -125,6 +161,12 @@ summary = "Watch an automated car's camera and planner, let the planner drive wh
 platforms = ["ground"]
 stages = ["behavior"]
 
+[earthquake_search_and_rescue]
+title = "Find a quake survivor with a rescue crawler"
+summary = "Program a tracked rescue robot to search a collapsed building with its own sensors, clear debris, find a survivor, leave a kit and come back."
+platforms = ["ground"]
+stages = ["behavior"]
+
 [racecar_cad_design_from_photos]
 title = "Model a tenth-scale race car in CAD"
 summary = "Rebuild the lost CAD of a tenth-scale autonomous race car's 23 made parts in FreeCAD from photos of its staged teardown, and assemble them with its given parts."
@@ -161,6 +203,18 @@ summary = "Plan, from RGB-D images alone, how a dexterous hand posts all eleven 
 platforms = ["hand"]
 stages = ["behavior"]
 
+[dexterous_hand_cad_design_from_photos]
+title = "Model a four-digit robot hand in CAD"
+summary = "Rebuild the lost CAD of a four-digit robot hand's 52 printed parts in FreeCAD from photos of its staged teardown, and assemble them with its 53 bought parts."
+platforms = ["hand"]
+stages = ["hardware-design"]
+
+[dexterous_hand_full_assembly_16dof_panda]
+title = "Assemble a four-digit robot hand with a Panda"
+summary = "Program a Franka Panda to build a four-digit robot hand from its nine bolt-on modules onto its palm, guided by its picture manual and the cell's cameras."
+platforms = ["hand"]
+stages = ["assembly"]
+
 [hot3d_sharpa_retarget]
 title = "Retarget human hand motion to robot hands"
 summary = "Turn clips of people moving objects with both hands into joint targets that make a pair of Sharpa robot hands move the objects the same way."
@@ -178,6 +232,24 @@ title = "Clean a studio apartment with a humanoid"
 summary = "Program a Unitree G1 humanoid to clean a studio apartment after a dinner: sort the trash, wash up, wipe a spill and sweep, from its cameras alone."
 platforms = ["humanoid"]
 stages = ["behavior"]
+
+[cross_embodiment_adaptation]
+title = "Scout a warehouse and dock a loaded Go1"
+summary = "Survey a warehouse by drone, then walk a loaded quadruped joint by joint under a duct and over a deck to its dock, correcting for a load and clearances that differ per site."
+platforms = ["quadruped"]
+stages = ["behavior"]
+
+[humanoid_final_assembly_25dof_ur10e]
+title = "Assemble a humanoid robot with a 6-DoF arm"
+summary = "Program a 6-DoF arm to build a humanoid robot from five finished modules, two legs, two arms and the head, on its clamped base, guided by dimension drawings, a picture manual and the cell's cameras."
+platforms = ["humanoid"]
+stages = ["assembly"]
+
+[humanoid_leg_cad_design_from_photos]
+title = "Model a humanoid leg in CAD"
+summary = "Rebuild the lost CAD of the 19 made parts of a humanoid robot's right leg in FreeCAD from photos of its staged teardown, and assemble them with its given components and the leg's joints."
+platforms = ["humanoid"]
+stages = ["hardware-design"]
 
 [quadruped_cad_design_from_photos]
 title = "Model a quadruped in CAD"
@@ -245,6 +317,12 @@ summary = "Rebuild the lost CAD of a cube-shaped cabin free-flyer with a stowed 
 platforms = ["space"]
 stages = ["hardware-design"]
 
+[freeflyer_uncrewed_station_caretaking]
+title = "Tend an uncrewed space station with a free-flyer"
+summary = "Write the autonomous program of a cabin free-flyer that finds a blocked air inlet from station telemetry, clears and stows the item, collects loose pouches and docks with charge left."
+platforms = ["space"]
+stages = ["behavior"]
+
 [hazard_bay_build]
 title = "Rebuild a hazard bay, design and run its fleet"
 summary = "Rebuild a plant's hazard bay in Isaac Sim from photos, design a fleet of flying and ground robots from a catalog, and program it through the job."
@@ -254,6 +332,12 @@ stages = ["behavior"]
 [aerial_search_geolocation]
 title = "Find and geolocate targets from a drone"
 summary = "Fly a quadrotor to the things a ground team describes, confirm each from above and report where it is, or say with confidence that it is not there."
+platforms = ["uav"]
+stages = ["behavior"]
+
+[time_limited_search_and_rescue]
+title = "Find and evacuate a mannequin by drone"
+summary = "Write the flight program of a small indoor drone that searches two warehouse floors with its cameras, fits the right rescue head, and carries a mannequin on its litter to the open receiving station."
 platforms = ["uav"]
 stages = ["behavior"]
 
@@ -281,6 +365,12 @@ summary = "Fly a Crazyflie through four coloured gates in order and hover at a g
 platforms = ["uav"]
 stages = ["control"]
 
+[rov_cad_design_from_photos]
+title = "Model an inspection ROV in CAD"
+summary = "Rebuild the lost CAD of an eight-thruster inspection ROV's 31 made parts in FreeCAD from photos of its staged teardown, and assemble them with its 20 purchased modules."
+platforms = ["underwater"]
+stages = ["hardware-design"]
+
 [rov_final_assembly_and_trim_single_arm]
 title = "Assemble and trim an ROV with a 6-DoF arm"
 summary = "Program a 6-DoF arm to ballast an inspection ROV for the water on its work order, weighing it on load cells, and to fit its enclosure, vertical thrusters and guards by camera."
@@ -298,3 +388,9 @@ title = "Isolate a subsea manifold leak with an ROV"
 summary = "Program an inspection ROV to find a subsea manifold by sonar, trace the gas plume to the leaking branch, close its valves by rolling the vehicle and latch a hot stab."
 platforms = ["underwater"]
 stages = ["behavior"]
+
+[multisensor_rig_calibration_from_logs]
+title = "Calibrate a warehouse robot's sensors from logs"
+summary = "Write a program that recovers a warehouse robot's camera and IMU mounts, sensor clocks and IMU biases from its driving logs, and flags faulty stretches, on robots it has never seen."
+platforms = ["ground"]
+stages = ["robot-description"]
