@@ -222,6 +222,12 @@
     "spec_hash": "sha256:6f50e78650ad63dcb90181ebb568da7f2cfcf336edbd672226d5cf9c648b77e8"
   },
   {
+    "content_digest": "sha256:ceb89eccaae7f66e9cea26518bb13e1ec30f47df28fe45753b45a3fb9720cf90",
+    "since": "2026-11-25T00:42:22Z",
+    "slug": "cabinet_door_hanging",
+    "spec_hash": "sha256:a5209933f0fdb657c20d5a095e7110e569df4350fd43a1942bbfc1f29a25ccf5"
+  },
+  {
     "content_digest": "sha256:1e2a5bab3d5f3547fa9c2060d3b290c7c086074c39d122b9a445c649816c65d3",
     "since": "2026-11-24T14:22:28Z",
     "slug": "cross_embodiment_adaptation",
@@ -646,6 +652,12 @@
     "since": "2026-11-16T04:44:07Z",
     "slug": "house_cleaning_with_tools",
     "spec_hash": "sha256:843c23ff6a0675fefd52325890f73c8978cb6073fabdbddb447002d1a72bcf5d"
+  },
+  {
+    "content_digest": "sha256:7d8cc1a6c774d589805f1679219263fee61c119c6f2ca1ce0beaf9a0d39ec85a",
+    "since": "2026-11-25T03:36:58Z",
+    "slug": "humanoid_final_assembly_25dof_ur10e",
+    "spec_hash": "sha256:b7dcd0524207a70cad3879df3cbe5aba01bdfbc724a2694703bd8d3101d9baaa"
   },
   {
     "content_digest": "sha256:9d6db35c217f6477b82268b34f97cfcf359abd11983dd47f054e2dc15a21756e",
