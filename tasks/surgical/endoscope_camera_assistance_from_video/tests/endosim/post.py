@@ -118,11 +118,8 @@ class Post(object):
             img = img + (sigma if self.rng.random() < 0.5 else -sigma) * np.roll(n, (dy, dx), axis=(0, 1))
         return np.clip(img, 0.0, 255.0)
 
-    def deliver(self, frame, shift=None):
-        """The masked JPEG of a finished frame; `shift` (dx, dy) moves the picture inside the disk (probe copies)."""
-        if shift is not None:
-            m = np.float32([[1, 0, float(shift[0])], [0, 1, float(shift[1])]])
-            frame = cv2.warpAffine(frame, m, (model.IMAGE_W, model.IMAGE_H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+    def deliver(self, frame):
+        """The masked JPEG of a finished frame."""
         out = (frame * self.mask + 0.5).astype(np.uint8)
         ok, buf = cv2.imencode(".jpg", cv2.cvtColor(out, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])
         if not ok:

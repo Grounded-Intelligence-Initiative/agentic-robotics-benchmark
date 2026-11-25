@@ -18,8 +18,10 @@ What keeps the number honest:
   uses up its time is charged what standing still costs: the rest of that procedure runs with the holder commanded
   to stop, and is judged like any other step.
 * The match lock (robotics_grader.ProbeLock): on some steps the same step index is asked twice, once with the true
-  observation and once with a copy whose picture is shifted and whose pan, tilt and roll readings are offset, in a
-  hidden order; only the true reply moves the holder. A controller that does not read its input fails the lock.
+  observation and once with a copy built as an observation is (endosim/session.py `probe_copy`: the same frame
+  rendered again with the instruments moved over its last step as over another step of the procedure, the joints
+  unchanged), in a hidden order; only the true reply moves the holder. A controller that does not read its input
+  fails the lock.
 * A renderer that fails is restarted and the frame drawn again; a renderer that cannot draw what the public camera
   model says (the canary) is a task error, never a zero.
 
@@ -224,13 +226,9 @@ def run_procedure(index, item, steps, solver, renderer, lock, config, privileged
             obs = session.observation()
             action = None
             if lock.due():
-                sx, sy = config.get("probe_shift_x_px", [128, 224]), config.get("probe_shift_y_px", [72, 144])
-                lo, hi = config.get("probe_joint_offset_rad", [0.2, 0.4])
-                shift = (rng.choice((-1.0, 1.0)) * rng.uniform(sx[0], sx[1]), rng.choice((-1.0, 1.0)) * rng.uniform(sy[0], sy[1]))
-                offsets = [rng.choice((-1.0, 1.0)) * rng.uniform(lo, hi) for _ in range(3)]
                 try:
-                    copy = session.probe_copy(obs, shift, offsets)
-                except RendererError as exc:       # the frame is gone (a renderer restart): no probe on this step
+                    copy = session.probe_copy(obs, rng)       # None: no instrument in, or no step like this one
+                except RendererError as exc:        # the renderer failed: no probe on this step
                     log("procedure {} step {}: no probe copy ({})".format(index, session.t, str(exc)[:120]))
                     copy = None
                 if copy is not None:
@@ -279,7 +277,7 @@ def grade(submission, config, make_solver, make_renderer, only=None):
         if problems:
             raise RendererError("the render canary failed: " + "; ".join(problems))
         rng = seed_rng()
-        lock = ProbeLock(rng, rate=float(config.get("probe_rate", 0.06)), pass_fraction=float(config.get("probe_pass_fraction", 0.25)),
+        lock = ProbeLock(rng, rate=float(config.get("probe_rate", 0.06)), pass_fraction=float(config.get("probe_pass_fraction", 0.1)),
                          canonical=canonical_action)
         TimedSolver.budget_s = float(config.get("controller_budget_s_per_step", 0.25)) * steps * len(items)
         TimedSolver.used_s, TimedSolver.requests, TimedSolver.slowest_s = 0.0, 0, 0.0

@@ -6,7 +6,8 @@
 It starts `bash run.sh` in the controller folder, waits for READY (40 s), sends `reset`, then for every control step
 sends `{"type": "act", "t": t, "obs": obs}` and applies the action of the reply (10 s per request). On about
 --probe-rate of the steps it asks the step twice with the same t, once with the true observation and once with a
-perturbed copy, in a random order, and applies only the true reply: exactly what the grader does.
+copy the service builds as the grader does (the same frame rendered again with the instruments moved differently over
+its last step, the joints unchanged), in a random order, and applies only the true reply: exactly what the grader does.
 
 It uses one of the service's sessions (see `--status`). It prints how the session ended, the controller's reply times
 and how many of the repeated requests changed the action, counted by the grader's own rule (`differ`). It does not,
@@ -125,9 +126,8 @@ def main():
     try:
         while obs is not None:
             t0 = time.monotonic()
-            if rng.random() < a.probe_rate:
-                shift = (rng.choice((-1, 1)) * rng.uniform(128, 224), rng.choice((-1, 1)) * rng.uniform(72, 144))
-                copy = service.probe_copy(shift, [rng.choice((-1, 1)) * rng.uniform(0.2, 0.4) for _ in range(3)])
+            copy = service.probe_copy() if rng.random() < a.probe_rate else None
+            if copy is not None:
                 if rng.random() < 0.5:
                     other = action_of(wire.ask({"type": "act", "t": t, "obs": copy}))
                     action = action_of(wire.ask({"type": "act", "t": t, "obs": obs}))
@@ -158,7 +158,8 @@ def main():
     print("session over: {}".format(ended))
     print("controller time: {:.3f} s a step on average, {:.3f} s at most; the grader allows {:.2f} s a step on average over the "
           "whole evaluation and {:.0f} s for any one request".format(sum(times) / n, max(times or [0.0]), BUDGET_S_PER_STEP, STEP_TIMEOUT_S))
-    print("repeated requests: {} asked, {} changed the action (the grader wants at least a quarter to)".format(probes, changed))
+    print("repeated requests: {} asked, {} changed the action (the grader wants at least a tenth to, over the whole "
+          "evaluation)".format(probes, changed))
 
 
 if __name__ == "__main__":

@@ -61,10 +61,11 @@ class Commissioning(object):
         self.t = reply["t"]
         return None if reply["done"] else reply["obs"]
 
-    def probe_copy(self, shift, joint_offset):
-        """A perturbed copy of the current observation, as the grader makes them for its repeated requests: the
-        picture shifted by `shift` = (dx, dy) pixels, the pan, tilt and roll readings offset by `joint_offset`."""
-        return self._call({"cmd": "probe_copy", "shift": list(shift), "joint_offset": list(joint_offset)})["obs"]
+    def probe_copy(self):
+        """A copy of the current observation as the grader makes them for its repeated requests: the same frame
+        rendered again with the instruments moved over its last step as they moved over another step of the
+        procedure, the joint readings unchanged. None when the step can have none (no instrument in the picture)."""
+        return self._call({"cmd": "probe_copy"})["obs"]
 
     def close(self):
         try:

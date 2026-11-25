@@ -112,28 +112,48 @@ def step(mem, q, dets, smear_p):
     return m, [float(x) for x in rate]
 
 
+def continued(memories, dets):
+    """Of the memories the requests of the last step left, the one whose tips this step's detections continue best
+    (a repeated step's copy shows the instruments moved differently over the frame's last step)."""
+    if len(memories) == 1:
+        return memories[0]
+    costs = []
+    for m in memories:
+        c, kk = m.control, model.SCOPES[m.scope]
+        cost = 0.0
+        if c.q_prev is not None:
+            r_wc, p = model.camera_pose(c.q_prev, m.scope)                # this frame was taken at the last step's joints
+            for k, hand in enumerate(HANDS):
+                u, v, size, conf = dets[k]
+                if hand in c.tips and conf > CONF and 6.0 < size < 120.0:
+                    d = kk["fx"] * model.SHAFT_DIAMETER / size
+                    cam = np.array([(u - kk["cx"]) / kk["fx"] * d, -(v - kk["cy"]) / kk["fy"] * d, -d])
+                    cost += float(np.linalg.norm(p + r_wc @ cam - (c.tips[hand] + c.vel[hand] * model.DT)))
+        costs.append(cost)
+    return memories[int(np.argmin(costs))]
+
+
 def main():
     eyes = Eyes()
-    memory, before = Memory(), {}
+    memory, before, after = Memory(), {}, []
     print("READY", flush=True)
     for line in sys.stdin:
         if not line.strip():
             continue
         msg = json.loads(line)
         if msg["type"] == "reset":
-            memory, before = Memory(), {}
+            memory, before, after = Memory(), {}, []
             print(json.dumps({"ok": True}), flush=True)
         elif msg["type"] == "act":
             t, obs = int(msg["t"]), msg["obs"]
-            if t not in before:
-                before = {t: memory}
-            base = before[t]
             q = np.asarray(obs["joints"], dtype=float)
             dets, smear_p = eyes(obs)
-            new, action = step(base, q, dets, smear_p)
-            ref_q = model.Q_HOME if base.control.q_prev is None else base.control.q_prev
-            if np.all(np.abs(q - ref_q) <= model.RATE_MAX * model.DT * 1.5 + 1e-3):
-                memory = new                    # a perturbed copy of a step is not physically possible: it is not kept
+            if t not in before:
+                if after:
+                    memory = continued(after, dets)
+                before, after = {t: memory}, []
+            new, action = step(before[t], q, dets, smear_p)
+            after.append(new)
             print(json.dumps({"action": action}), flush=True)
         elif msg["type"] == "close":
             print(json.dumps({"ok": True}), flush=True)

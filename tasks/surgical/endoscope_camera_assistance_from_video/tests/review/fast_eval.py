@@ -22,8 +22,9 @@ sys.path.insert(0, os.path.join(TASK, "solution", "reference"))
 
 import numpy as np  # noqa: E402
 
-from endosim import procedure  # noqa: E402
+from endosim import model, procedure  # noqa: E402
 from endosim.session import NullRenderer, Session  # noqa: E402
+from robotics_grader import replies_differ  # noqa: E402
 
 
 class Idle(object):
@@ -38,21 +39,24 @@ def run(proc, controller, probe_rate=0.0, rng=None, frame_delay=1, verbose=False
     rng = rng or random.Random(0)
     sess = Session(proc, NullRenderer(), frame_delay=frame_delay, privileged=True)
     controller.reset()
+    probes = changed = 0
     while not sess.done:
         obs = sess.observation()
-        if rng.random() < probe_rate:
-            shift = (rng.choice((-1, 1)) * rng.uniform(128, 224), rng.choice((-1, 1)) * rng.uniform(72, 144))
-            fake = sess.probe_copy(obs, shift, [rng.choice((-1, 1)) * rng.uniform(0.2, 0.4) for _ in range(3)])
+        fake = sess.probe_copy(obs, rng) if rng.random() < probe_rate else None
+        if fake is not None:
             if rng.random() < 0.5:
-                controller.act(sess.t, fake)
+                other = controller.act(sess.t, fake)
                 action = controller.act(sess.t, obs)
             else:
                 action = controller.act(sess.t, obs)
-                controller.act(sess.t, fake)
+                other = controller.act(sess.t, fake)
+            probes += 1
+            changed += int(replies_differ(other, action, canonical=lambda a: [float(x) for x in model.clip_command(a)]))
         else:
             action = controller.act(sess.t, obs)
         sess.step(action)
     out = sess.episode.summary()
+    out.update(probes=probes, probes_changed=changed)
     if verbose:
         tr = sess.episode.trace
         runs, k = [], 0
@@ -90,20 +94,22 @@ def main():
         ctl = ref.Controller()
     else:
         ctl = Idle()
-    vals = []
+    vals, probes, changed = [], 0, 0
     for seed, factors, steps in items:
         proc = procedure.generate(seed, factors, steps=steps, pool=pool)
         res = run(proc, ctl, probe_rate=a.probe_rate, rng=random.Random(seed), verbose=a.verbose)
         vals.append(res["useful_view_fraction"])
+        probes, changed = probes + res["probes"], changed + res["probes_changed"]
         f = proc.facts()
         print("{:>20} {:<12} scope {:>2} x{} a{} s{} | {:.3f} | fail lens {:.2f} zone {:.2f} zoom {:.2f} hor {:.2f} mot {:.2f} | contacts {} first {}".format(
             seed, f["kind"], f["scope"], f["exchanges"], int(f["assistant"]), int(f["smoke"]), res["useful_view_fraction"],
             res["failed_lens"], res["failed_zone"], res["failed_zoom"], res["failed_horizon"], res["failed_motion"],
-            res["lens_contacts"], res["first_usable_step"]))
+            res["lens_contacts"], res["first_usable_step"]) + " | probes {} changed {}".format(res["probes"], res["probes_changed"]))
         if a.verbose:
             print("    ", res["bad_runs"])
             print("    ", [g for g in proc.gestures if g[0] <= steps])
     print("mean useful_view_fraction {:.4f}  (min {:.3f}, max {:.3f}, n {})".format(float(np.mean(vals)), min(vals), max(vals), len(vals)))
+    print("probe pairs {}, of which the action differed in {} ({:.1%})".format(probes, changed, changed / max(1, probes)))
 
 
 if __name__ == "__main__":

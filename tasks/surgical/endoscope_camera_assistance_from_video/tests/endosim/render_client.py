@@ -140,9 +140,6 @@ class Renderer(object):
         jpeg = payload[:head["jpeg_len"]]
         return (jpeg, payload[head["jpeg_len"]:]) if raw else jpeg
 
-    def variant(self, serial, shift):
-        return self._call({"cmd": "variant", "serial": int(serial), "shift": [float(shift[0]), float(shift[1])]}, self.render_timeout)[1]
-
     def canary(self):
         try:
             return self._call({"cmd": "canary"}, 900.0)[0]

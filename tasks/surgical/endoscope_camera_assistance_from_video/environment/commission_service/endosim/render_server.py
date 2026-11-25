@@ -36,7 +36,6 @@ RENDER_SETTINGS = {
 }
 MAX_TRIES = 8                 # renders of one frame before the clock must have caught up
 HIDDEN_CLOCK_CAPTURES = 3     # captures of an unchanged stage after which a frame is taken without its clock
-KEEP_FRAMES = 6               # finished frames kept for probe copies
 
 
 def _send(header, payload=b""):
@@ -83,7 +82,6 @@ class Server(object):
         import omni.replicator.core as rep
         self.rep = rep
         self.rp = self.annot = self.scene = self.post = None
-        self.frames = {}
         self.tmp = os.path.join(os.environ.get("TMPDIR", "/tmp"), "endosim_tex_%d" % os.getpid())
         os.makedirs(self.tmp, exist_ok=True)
         self.start_s = round(time.time() - t0, 1)
@@ -170,7 +168,6 @@ class Server(object):
         self.scene = scene.Scene(stage, spec, self.tmp)
         self._product(stage)
         self.post = post.Post(spec["look"], spec["look"]["texture_seed"])
-        self.frames = {}
         return {"ok": True, "load_s": round(time.time() - t0, 2), "pinned": self.pinned, "absent": self.absent}
 
     def render(self, state, raw=False):
@@ -178,9 +175,6 @@ class Server(object):
         self.scene.apply(state)
         rgb, tries = self._fresh(state["serial"])
         frame = self.post.finish(rgb, state)
-        self.frames[int(state["serial"])] = frame
-        for old in sorted(self.frames)[:-KEEP_FRAMES]:
-            del self.frames[old]
         self.stats["frames"] += 1
         jpeg = self.post.deliver(frame)
         head = {"ok": True, "tries": tries, "ms": round(1000.0 * (time.perf_counter() - t0), 1), "jpeg_len": len(jpeg)}
@@ -190,12 +184,6 @@ class Server(object):
             head["raw_len"] = len(png)
             return head, jpeg + png.tobytes()
         return head, jpeg
-
-    def variant(self, serial, shift):
-        frame = self.frames.get(int(serial))
-        if frame is None:
-            raise RuntimeError("frame %s is no longer kept" % serial)
-        return {"ok": True}, self.post.deliver(frame, shift=shift)
 
     def canary(self):
         """Is this renderer usable, and does it draw what the public camera model says? For each scope: a marker
@@ -275,9 +263,6 @@ def main():
                 _send(server.load(msg["spec"]))
             elif cmd == "render":
                 head, payload = server.render(msg["state"], raw=bool(msg.get("raw")))
-                _send(head, payload)
-            elif cmd == "variant":
-                head, payload = server.variant(msg["serial"], msg["shift"])
                 _send(head, payload)
             elif cmd == "canary":
                 _send(server.canary())

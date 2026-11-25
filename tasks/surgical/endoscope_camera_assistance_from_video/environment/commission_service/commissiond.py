@@ -14,7 +14,7 @@ development procedures of dev_procedures.json, never on a graded one, and does t
     {"cmd": "status"}                                          {"ok": true, "ready": .., "recorded": n, "sessions_left": n, "procedures": [..], ..}
     {"cmd": "start", "procedure": "dev03"}                     {"ok": true, "session": k, "steps": N, "t": 0, "obs": {...}}
     {"cmd": "step", "action": [pan, tilt, insertion, roll]}    {"ok": true, "t": t, "done": false, "obs": {...}}   (no obs once done)
-    {"cmd": "probe_copy", "shift": [dx, dy], "joint_offset": [a, b, c]}   {"ok": true, "obs": {...}}   a perturbed copy of the current observation
+    {"cmd": "probe_copy"}                                      {"ok": true, "obs": {...} or null}   a copy of the current observation, as the grader makes it
 
 A session ends with the procedure, when the connection closes, or after IDLE_S without a request; it counts from
 `start` whatever happens next.
@@ -22,6 +22,7 @@ A session ends with the procedure, when the connection closes, or after IDLE_S w
 
 import json
 import os
+import random
 import socket
 import sys
 import threading
@@ -40,6 +41,7 @@ SOCKET = os.environ.get("ENDOCAM_SOCKET", "/run/endocam/commission.sock")
 PYTHON = os.environ.get("ENDOCAM_PYTHON", "/opt/venv/bin/python3")
 IDLE_S = 120.0
 FRAME_DELAY = 1
+PROBE_RNG = random.Random()   # which other step a probe copy borrows the instruments' motion from
 
 
 def private(path, flags=os.O_WRONLY | os.O_CREAT | os.O_APPEND):
@@ -184,9 +186,7 @@ class Service(object):
                         reply({"ok": False, "error": "no procedure is running"})
                         continue
                     try:
-                        shift = [float(v) for v in msg.get("shift")][:2]
-                        offs = [float(v) for v in msg.get("joint_offset")][:3]
-                        reply({"ok": True, "obs": session.probe_copy(session.observation(), shift, offs)})
+                        reply({"ok": True, "obs": session.probe_copy(session.observation(), PROBE_RNG)})
                     except (ValueError, TypeError, RendererError) as exc:
                         reply({"ok": False, "error": str(exc)[:200]})
                 else:

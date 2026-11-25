@@ -8,13 +8,25 @@ controller meets the same observations everywhere:
 The image is `frame_delay` control steps old (the video chain's latency); the joint readings are current. A session
 opened with `privileged=True` (the grader does this for the reference submission only) adds `obs["privileged"]`: what a
 perfect perception system would have read from that same delayed frame.
+
+`probe_copy` gives the match lock its second observation of a step, built the way an observation is built: the frame
+the observation shows, rendered again at the same moment from the same camera pose (the joint readings are the same),
+with each instrument where it would be had it moved over that frame's last step as it moved over another step of the
+procedure. The holder's joints follow from the public holder model and the commands, so they are the same in both;
+what differs is what nobody but the surgeon decides.
 """
 
 import base64
 import collections
+import copy
+
+import numpy as np
 
 from . import model
-from .episode import Episode
+from .episode import Episode, tip_view
+from .procedure import HANDS, ROLES
+
+PROBE_TRIES = 64              # draws of another step before a probe copy is given up for this step
 
 
 class NullRenderer(object):
@@ -24,9 +36,6 @@ class NullRenderer(object):
         pass
 
     def render(self, state):
-        return b""
-
-    def variant(self, serial, shift):
         return b""
 
     def close(self):
@@ -40,7 +49,7 @@ class Session(object):
         self.delay = int(frame_delay)
         self.with_privileged = bool(privileged)
         self._serial = 0
-        self._frames = collections.deque(maxlen=self.delay + 1)   # (serial, jpeg, privileged) of the latest steps
+        self._frames = collections.deque(maxlen=self.delay + 1)   # (serial, jpeg, privileged, state, step) per step
         self._rendered_step = -1
         renderer.load(procedure.scene_spec())
 
@@ -57,14 +66,15 @@ class Session(object):
         if self._rendered_step == ep.t:
             return
         self._serial += 1
-        jpeg = self.renderer.render(ep.render_state(self._serial))
-        self._frames.append((self._serial, jpeg, ep.privileged() if self.with_privileged else None))
+        state = ep.render_state(self._serial)
+        jpeg = self.renderer.render(state)
+        self._frames.append((self._serial, jpeg, ep.privileged() if self.with_privileged else None, state, ep.t))
         self._rendered_step = ep.t
 
     def observation(self):
         """The observation of the current step (rendering it if that has not happened yet)."""
         self._capture()
-        _, jpeg, priv = self._frames[0]         # the oldest kept frame: `delay` steps old once the run is under way
+        _, jpeg, priv, _, _ = self._frames[0]   # the oldest kept frame: `delay` steps old once the run is under way
         obs = {"image": base64.b64encode(jpeg).decode("ascii"), "joints": self.episode.joints()}
         if priv is not None:
             obs["privileged"] = priv
@@ -75,26 +85,60 @@ class Session(object):
         self._capture()
         return self._frames[0][0]
 
-    def probe_copy(self, obs, shift, joint_offset):
-        """A perturbed copy of the current observation for the match lock: the same frame with its picture shifted by
-        `shift` pixels inside the endoscope's disk, and the pan, tilt and roll readings offset."""
-        jpeg = self.renderer.variant(self.shown_serial(), shift)
+    def probe_copy(self, obs, rng):
+        """The match lock's copy of the current observation `obs`, or None when this step cannot have one.
+
+        The frame `obs` shows is that of step f. For another step k of the procedure, drawn with `rng` among the steps
+        with the same instruments in at k - 1 and k as at f - 1 and f, the same fine work and the same counted hands,
+        every instrument that is in at f - 1 and f is put at its place of f - 1 plus its motion from k - 1 to k
+        (a draw that would put a tip into the tissue is drawn again). The frame is rendered again with the
+        instruments there and everything else as it was: the camera pose, the tissue's breathing, the smoke, the lens.
+        The joint readings are those of `obs`; a privileged observation reads the moved tips from the same pose."""
+        self._capture()
+        _, _, priv, state, f = self._frames[0]
+        proc = self.episode.proc
+        if f < 1:
+            return None
+        moving = [r for r in ROLES if proc.present[r][f] and proc.present[r][f - 1]]
+        if not moving:
+            return None
+        time_s = self.episode.time_s(f)
+        tissue = proc.tissue
+        tips = None
+        for _ in range(PROBE_TRIES):
+            k = 1 + int(rng.random() * proc.steps)
+            if k == f or bool(proc.fine[k]) != bool(proc.fine[f]):
+                continue
+            if any(bool(proc.present[r][k]) != bool(proc.present[r][f]) or bool(proc.present[r][k - 1]) != bool(proc.present[r][f - 1])
+                   for r in ROLES):
+                continue
+            if any(bool(proc.active[h][k]) != bool(proc.active[h][f]) for h in HANDS):
+                continue
+            cand = {r: np.asarray(proc.tip[r][f - 1], dtype=float) + (np.asarray(proc.tip[r][k], dtype=float) - np.asarray(proc.tip[r][k - 1], dtype=float))
+                    for r in moving}
+            if any(tissue.clearance(cand[r], time_s) < min(0.0, tissue.clearance(proc.tip[r][f], time_s)) for r in moving):
+                continue
+            tips = cand
+            break
+        if tips is None:
+            return None
+        scope = self.episode.scope
+        pose = (np.array(state["cam"]["r"], dtype=float), np.array(state["cam"]["p"], dtype=float))
+        moved = copy.deepcopy(state)
+        for r in moving:
+            moved["inst"][r]["tip"] = [float(v) for v in tips[r]]
+        if "right" in tips:
+            src = model.project(tips["right"][None, :], pose, scope)[0]
+            moved["smoke_px"] = [float(src[0]), float(src[1])] if src[2] > 0 else None
+        self._serial += 1
+        moved["serial"] = int(self._serial)
         out = dict(obs)
-        out["image"] = base64.b64encode(jpeg).decode("ascii")
-        j = list(obs["joints"])
-        for i, d in zip((0, 1, 3), joint_offset):
-            j[i] = round(j[i] + float(d), 5)
-        out["joints"] = j
-        if "privileged" in obs:
-            # the reference reads its tips from here: shift them as the picture is shifted
-            import copy
-            p = copy.deepcopy(obs["privileged"])
+        out["image"] = base64.b64encode(self.renderer.render(moved)).decode("ascii")
+        if priv is not None:
+            p = copy.deepcopy(priv)
             for item in p["instruments"]:
-                item["tip_px"] = [item["tip_px"][0] + shift[0], item["tip_px"][1] + shift[1]]
-                k = model.SCOPES[p["scope"]]
-                d = max(item["depth"], 1e-6)
-                item["tip_cam"] = [item["tip_cam"][0] + shift[0] * d / k["fx"], item["tip_cam"][1] - shift[1] * d / k["fy"],
-                                   item["tip_cam"][2]]
+                if item["role"] in tips:
+                    item.update(tip_view(tips[item["role"]], pose, scope))
             out["privileged"] = p
         return out
 

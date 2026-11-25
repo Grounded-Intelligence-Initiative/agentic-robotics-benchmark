@@ -23,6 +23,15 @@ from .procedure import HANDS, ROLES
 CRITERIA = ("lens", "zone", "zoom", "horizon", "motion")
 
 
+def tip_view(tip, pose, scope):
+    """An instrument tip as a perfect perception system reads it from a frame taken from `pose`: in the image, its
+    depth, and in the camera frame (the privileged observation's fields)."""
+    tip = np.asarray(tip, dtype=float)
+    uvd = model.project(tip[None, :], pose, scope)[0]
+    pc = model.to_camera(tip[None, :], pose)[0]
+    return {"tip_px": [float(uvd[0]), float(uvd[1])], "depth": float(uvd[2]), "tip_cam": [float(x) for x in pc]}
+
+
 class Episode(object):
     def __init__(self, procedure):
         self.proc = procedure
@@ -176,11 +185,9 @@ class Episode(object):
         t = self.t
         items = []
         for r in ROLES:
-            tip = self.proc.tip[r][t]
-            uvd = model.project(tip[None, :], self._pose, self.scope)[0]
-            pc = model.to_camera(tip[None, :], self._pose)[0]
-            items.append({"role": r, "present": bool(self.proc.present[r][t]), "tip_px": [float(uvd[0]), float(uvd[1])],
-                          "depth": float(uvd[2]), "tip_cam": [float(x) for x in pc]})
+            item = {"role": r, "present": bool(self.proc.present[r][t])}
+            item.update(tip_view(self.proc.tip[r][t], self._pose, self.scope))
+            items.append(item)
         return {"scope": self.scope, "lens_smeared": bool(self.smeared), "instruments": items}
 
     def annotation(self):

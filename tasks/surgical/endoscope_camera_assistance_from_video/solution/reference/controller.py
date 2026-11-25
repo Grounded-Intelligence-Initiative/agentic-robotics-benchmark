@@ -18,8 +18,10 @@ What it does each step:
 * stands still while the tips do, and moves the image slowly when it has to move during fine work;
 * withdraws into the cannula when the lens is smeared, waits until it is clean, and comes back.
 
-State is keyed by the step index: a step asked twice is answered twice from the observation each request carries,
-and only the request whose joint readings are physically possible becomes the controller's memory.
+State is keyed by the step index: a step asked twice is answered twice from the observation each request carries.
+Both observations of such a step are possible (the copy shows the instruments as they would be had they moved
+differently over the frame's last step), so each request's memory is kept, and when the next step arrives the one
+whose tips the new frame continues becomes the controller's memory.
 """
 
 import json
@@ -219,20 +221,38 @@ class Controller(object):
 
     def reset(self):
         self.before = {}              # t -> the state before step t
+        self.after = []               # the states the requests of the latest step left, one per request
         self.state = State()
-        self.t_last = -1
 
     def act(self, t, obs):
         if t not in self.before:
+            self.state = self._continued(obs)
             self.before = {t: self.state}
-        base = self.before[t]
+            self.after = []
         q = np.asarray(obs["joints"], dtype=float)
-        new, rate = advance(base, q, obs["privileged"])
-        ref = model.Q_HOME if base.q_prev is None else base.q_prev
-        possible = np.all(np.abs(q - ref) <= model.RATE_MAX * model.DT * 1.5 + 1e-3)
-        if possible:                  # a perturbed copy of a step never is: it must not become memory
-            self.state = new
+        new, rate = advance(self.before[t], q, obs["privileged"])
+        self.after.append(new)
         return [float(x) for x in rate]
+
+    def _continued(self, obs):
+        """Of the states the requests of the last step left, the one whose tips this step's frame continues best
+        (the tips it held, moved on by their velocity, against the tips this frame shows)."""
+        if not self.after:
+            return self.state
+        if len(self.after) == 1:
+            return self.after[0]
+        priv = obs["privileged"]
+        items = {i["role"]: i for i in priv["instruments"]}
+        costs = []
+        for s in self.after:
+            r_wc, p = model.camera_pose(s.q_prev, priv["scope"])     # this frame was taken at the last step's joints
+            cost = 0.0
+            for h in HANDS:
+                if h in s.tips and items[h]["present"]:
+                    seen = p + r_wc @ np.asarray(items[h]["tip_cam"], dtype=float)
+                    cost += float(np.linalg.norm(seen - (s.tips[h] + s.vel[h] * model.DT)))
+            costs.append(cost)
+        return self.after[int(np.argmin(costs))]
 
 
 def main():

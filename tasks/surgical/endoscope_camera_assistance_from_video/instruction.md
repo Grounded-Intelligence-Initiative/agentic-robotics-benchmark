@@ -53,13 +53,16 @@ program's **stdout is the wire**: print `READY` when you are ready, then only re
   the holder's rate limits (0.5, 0.5, 0.05, 0.8) and held for one control step.
 * `t` is the control step inside the procedure, counted by the grader, 0 after every `reset`. **A step may be asked
   more than once with the same `t`.** On about one step in sixteen the grader asks the step twice, once with the true
-  observation and once with a perturbed copy (the picture shifted by 128 to 224 px sideways and 72 to 144 px up or
-  down, and the pan, tilt and roll readings each offset by 0.2 to 0.4 rad), in either order, and nothing on the wire
-  says which is which. Only the reply to the true observation moves the holder. Answer every request from the
-  observation it carries, count steps by `t` and not by requests, and do not let the copy become your controller's
-  memory (its joint readings are not physically possible: the holder cannot turn 0.2 rad in one step). Over the whole
-  evaluation at least a quarter of these pairs must differ in the action (by more than 1e-4 in some component), or the
-  evaluation scores 0: this checks that the controller reads its input, nothing else.
+  observation and once with a copy, in either order, and nothing on the wire says which is which. The copy is
+  rendered like any frame, at the same moment and from the same camera pose, with the same joint readings; only the
+  instruments differ: each instrument in the picture is where it would be had it moved over the frame's last step as
+  it moved over another step of the same procedure (one with the same kind of work). Both are possible observations.
+  Only the reply to the true observation moves the holder. Answer every request from the observation it carries,
+  count steps by `t` and not by requests, and do not let one request of a step overwrite the other in your
+  controller's memory blindly: keep what each leaves and decide once the next step's frame shows which one it
+  continues. Over the whole evaluation at least a tenth of these pairs must differ in the action (by more than 1e-4
+  in some component, after clipping to the rate limits), or the evaluation scores 0: this checks that the controller
+  reads its input, nothing else. A controller that stands still on both requests of a pair does not differ.
 * Time: every reply within 10 s; all replies together within 2400 s (0.25 s a step on average over the 9600 steps;
   the repeated requests count). The grader's clock runs only while it waits for you: the procedure does not move
   while you compute, but when the total is used up the holder is commanded to stand still for everything that is
