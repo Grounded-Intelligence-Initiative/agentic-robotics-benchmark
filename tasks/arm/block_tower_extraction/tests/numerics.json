@@ -1,0 +1,1 @@
+{"fingerprint": "372ebf15c0129e657b32f9df21b1da9067b009711d4e2bcd0396a6552b40899a", "note": "tests/numerics_check.py fingerprint, measured 2026-11-24 in the authoring venv (numpy 2.5.4, scipy 1.18.1, mujoco 3.16.0, opencv 5.0.0.93, the numerics pin); re-checked in the task image"}

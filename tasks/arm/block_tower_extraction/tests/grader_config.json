@@ -1,0 +1,16 @@
+{
+ "runner_account": "btrun1",
+ "runner_accounts": ["btrun1", "btrun2", "btrun3", "btrun4"],
+ "cpu_cap_factor": 4.0,
+ "socket_sample_s": 0.5,
+ "budgets": {
+  "frame_price_s": 0.2,
+  "start_s": 120.0,
+  "call_price_s": 0.005,
+  "episode_wall_cap_s": 2700.0
+ },
+ "route_gate": {
+  "forbidden_extensions": [".pt", ".onnx", ".safetensors", ".ckpt", ".h5", ".pb", ".pkl", ".npz"],
+  "max_submission_mb": 60
+ }
+}

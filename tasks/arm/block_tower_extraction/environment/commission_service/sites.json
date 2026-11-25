@@ -1,0 +1,45 @@
+{
+ "rule": "practice towers: tests/review/make_sets.py",
+ "salt_hex": "49c3e151a388133b",
+ "shifts": 10,
+ "open": 2,
+ "budgets": {
+  "silence_s": 20.0,
+  "start_s": 120.0,
+  "frame_price_s": 0.2,
+  "call_price_s": 0.005,
+  "episode_wall_cap_s": 2700.0
+ },
+ "sites": [
+  {
+   "site": 1,
+   "seed": 17645279424768579810,
+   "duration_s": 2400.0
+  },
+  {
+   "site": 2,
+   "seed": 7476837552074865655,
+   "duration_s": 2400.0
+  },
+  {
+   "site": 3,
+   "seed": 3583358002730447857,
+   "duration_s": 2400.0
+  },
+  {
+   "site": 4,
+   "seed": 12978620709531917735,
+   "duration_s": 2400.0
+  },
+  {
+   "site": 5,
+   "seed": 5649285619357138952,
+   "duration_s": 2400.0
+  },
+  {
+   "site": 6,
+   "seed": 15927729367338111216,
+   "duration_s": 2400.0
+  }
+ ]
+}

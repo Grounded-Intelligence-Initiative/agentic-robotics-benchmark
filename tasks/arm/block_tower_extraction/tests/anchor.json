@@ -1,0 +1,8 @@
+{
+ "metric": "block_score",
+ "direction": "higher",
+ "value": null,
+ "full_at": 0.98,
+ "source": "to be measured: the oracle (solution/solve.sh) on the four hidden towers",
+ "note": "block_score = the mean over the four hidden towers of the tower score (0 when the tower collapsed at any time, else the blocks legally relocated to its top / N_cap, N_cap = 30). ratio = score / value, reward = clamp(ratio / full_at, 0, 1)."
+}

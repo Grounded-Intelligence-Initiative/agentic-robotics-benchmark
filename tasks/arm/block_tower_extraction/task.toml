@@ -1,0 +1,50 @@
+# block_tower_extraction (a robot cell rebuilds a wooden block tower from its own loose blocks; tests/README.md).
+#
+# A Franka Panda (MuJoCo, CPU, MuJoCo's classic renderer on OSMesa for three RGB-D cameras) with a deployable pusher rod,
+# a wrist force/torque sensor, a turntable under the tower and a staging post takes blocks out of the lower levels of an
+# 18-level tower and stacks them on its top. Which blocks carry the tower is hidden geometry (heights differing by
+# 0.12-0.30 mm), as are every block's friction, mass and offsets and the tower's placement on the turntable; the
+# program finds them by touch and with the cameras. Per tower: 0 when any block ever falls or tilts (collapse), else
+# the blocks legally relocated / N_cap (30); block_score = the mean over four fixed hidden towers; the reward is that
+# score against the reference program's measured value (the reference reads the true poses and loads through an oracle
+# token). The agent writes the cell's program offline (play.py, solve(cell)); a commissioning service runs the same
+# cell on six practice towers.
+
+schema_version = "1.4+ale.1"
+# Where the agent leaves its work (play.py and its helper modules).
+artifacts = ["/home/user/submission"]
+
+[task]
+name = "grounded-intelligence-initiative/block_tower_extraction"
+
+[metadata]
+# One of the benchmark's platform keys (tasks/platforms.json); the metric (block_score, higher) lives in
+# tests/anchor.json.
+platform = "arm"
+tags = ["block-tower", "contact-rich", "force-sensing", "hidden-parameters", "rgbd", "panda", "mujoco",
+        "code-as-policy", "commissioning", "turntable", "oracle-token"]
+
+[environment]
+cpus = 8
+memory_mb = 16384
+
+# [agent] timeout_sec: 4 h (the commissioning service's full practice episodes take about 20-40 min of wall time each).
+[agent]
+timeout_sec = 14400
+network_mode = "no-network"
+
+# [verifier] timeout_sec: the four hidden towers run IN PARALLEL (one process and one runner account each); every
+# episode ends at 2 700 s of the grader's wall clock at the latest (grader_config.json budgets.episode_wall_cap_s), so
+#   T = (one parallel round 2 700 s + 1 re-run of a tower whose cell failed 2 700 s) + 400 s fixed (numerics check,
+#       nonet self-test, import check, cell builds, final settles) = 5 800 s; x 1.35 = 7 830 s -> 7 800 s.
+# Measured: the reference program takes 15-18 min of wall time per tower with four towers sharing the machine.
+[verifier]
+timeout_sec = 7800
+# Separate verification: a fresh verifier sandbox from the task image, only the declared artifact restored.
+# environment/setup/setup.sh does not run there: tests/test.sh builds the grader's root-owned copy of the givens.
+environment_mode = "separate"
+
+[verifier.environment]
+cpus = 8
+memory_mb = 16384
+gpus = 0

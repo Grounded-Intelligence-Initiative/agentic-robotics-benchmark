@@ -1,0 +1,21 @@
+{
+ "note": "the fixed hidden set (tests/review/make_sets.py)",
+ "towers": [
+  {
+   "file": "towers/standard.json",
+   "sha256": "c6782ac3f2ab15d16fc972edba2dd5d5499afafa76d7bc53ea47b2f83465d02e"
+  },
+  {
+   "file": "towers/mid_tight.json",
+   "sha256": "cbeae0adf20937e9574e28a9ce89501e6ecd4a92405931aa272d1a84d2f23b7b"
+  },
+  {
+   "file": "towers/low_friction.json",
+   "sha256": "468a2caa1e41541ca1ce12fd603182deef7175961d4bfb2974ddda27f5754a23"
+  },
+  {
+   "file": "towers/tight_grippy.json",
+   "sha256": "2e34ba5472345fe396900efb85a3b4730fa745679f504ae703cfc4f872743715"
+  }
+ ]
+}
