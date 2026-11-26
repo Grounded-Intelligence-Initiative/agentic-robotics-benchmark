@@ -1,8 +1,13 @@
 {
   "metric": "strict_placement_fraction",
   "direction": "higher",
-  "value": null,
-  "full_at": 1.0,
-  "source": "Public V4 controller rollout under the task's native contact, lift, release and support scorer. Measurement pending.",
-  "reference_commit": null
+  "value": 0.9375,
+  "full_at": 0.9333333333333333,
+  "unit": "strict physical placements per scheduled episode",
+  "reference_commit": "f7f391e71cf7a41ab0e5c5cd7124aeb8e9cbfeba",
+  "source": "The public V4 reference completed four fresh 16-start ALE panels (N0\u2013N3 with null anchor). Successful placements in order: [15, 16, 15, 16]. N0 sets the denominator (15/16). The registered one-episode margin below the minimum sets full credit at 14/16.",
+  "measurement": "review/anchor_measurement.json",
+  "measurement_sha256": "8e25f7ef88e2f48ca9173d97d0fee53ae87f185bdba34c127eb1369f0836c3bf",
+  "protocol": "review/anchor_protocol.json",
+  "protocol_sha256": "76ea735c58e276107b6d3c13b00cfa3793b4c14e85321e373b0416ebd276c200"
 }

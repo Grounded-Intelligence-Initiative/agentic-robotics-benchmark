@@ -1,0 +1,31 @@
+{
+  "reward": 0.0,
+  "metrics": {
+    "ratio": 0.0,
+    "anchor_recorded": 0.0,
+    "strict_placement_fraction": 0.9375,
+    "episodes": 16.0,
+    "placed": 15.0,
+    "lifted": 16.0,
+    "falls": 0.0,
+    "episodes_aborted": 0.0,
+    "time_limits": 1.0,
+    "applied_native_rows": 9269.0,
+    "probes_total": 128.0,
+    "probes_passed": 87.0,
+    "duplicate_probes": 16.0,
+    "duplicate_changes": 0.0,
+    "missed_reached_probe_opportunities": 0.0,
+    "probe_change_fraction": 0.6796875,
+    "duplicate_change_fraction": 0.0,
+    "match_lock_ok": 1.0,
+    "mean_max_lift_m": 0.16023249915475435,
+    "mean_goal_error_xy_m": 0.023647788545106095,
+    "mean_release_hold_s": 0.23437500000000017,
+    "box_episodes": 8.0,
+    "box_placed": 7.0,
+    "cylinder_episodes": 8.0,
+    "cylinder_placed": 8.0,
+    "reward_exact": 0.0
+  }
+}

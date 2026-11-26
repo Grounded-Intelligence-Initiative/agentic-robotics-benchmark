@@ -7,7 +7,7 @@ Each episode contains one box or one cylinder. The starting object position, pad
 - **Lift.** Raise the object at least 4 cm. For 40 consecutive ms, two parts of the same hand must make opposing contacts (the palm can count as one). The hands must carry at least half the object's weight, and other supports at most 5%.
 - **Place.** Release the object fully inside the green pad. Either end of the box or cylinder can face up. For 250 consecutive ms the object must stay nearly vertical and still, with no hand contact, while the pad carries at least half its weight.
 
-An episode ends on successful placement, a fall or at 750 control ticks (15 simulated seconds). The raw metric is the fraction of episodes with a successful placement. The verifier also checks that your body codes respond reproducibly to the observations. Failing that check gives zero reward for the panel even when physical placements were recorded.
+An episode ends on successful placement, a fall or at 750 control ticks (15 simulated seconds). The official panel has 16 fresh starts, eight boxes and eight cylinders. Each successful native placement contributes one to the count. A fall, time limit or solver abort contributes zero. The raw metric `r` is successful placements divided by 16. A controller that passes the feedback check earns `min(1, min(1.5, r / A) / F)`, where the verifier measures the reference placement fraction `A` and its full-credit ratio `F` on separate calibration panels. The reported reward rounds half up to two decimal places. A failed feedback check gives the panel zero reward.
 
 ## Start here
 
@@ -50,7 +50,7 @@ One row advances one physical tick. You may send one to five rows, up to the nex
 
 The host may ask about several observations at the **same** tick, in either order. Produce an action for each input from the same pre-tick state. If your policy carries recurrent memory, cache each candidate next state by `obs["observation_id"]`. When `t` advances, `obs["last_observation_id"]` identifies which candidate the host applied. At reset it is `null`. A timeout, malformed action or crash aborts the episode and it counts as a failed placement. The host can restart your process up to three times for subsequent episodes. It must print `READY` on each launch.
 
-The feedback check compares changes in the **first row's body codes** across two observations with changes on identical repeated inputs. If your controller samples actions, reusing the random draw for all observations at one tick lets the check distinguish your response to the scene from sampling noise.
+The verifier compares the **first row's 64 body codes** on two different physical observations at the same tick. A change in any coordinate counts once. It also repeats identical observations to measure variation from action sampling. Across the panel, the different-input change fraction minus the identical-input change fraction must reach 0.12, with at least 16 different-input comparisons and 8 identical-input controls. Reusing a random draw across all observations queried at the same tick can help a stochastic controller show how it responds to the scene.
 
 ## Observations
 
