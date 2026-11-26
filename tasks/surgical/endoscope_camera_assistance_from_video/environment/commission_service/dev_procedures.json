@@ -11,7 +11,19 @@
     "scope": "0",
     "exchanges": 1,
     "assistant": true,
-    "smoke": true
+    "smoke": true,
+    "rig": {
+     "head_deg": 23.875,
+     "latency_steps": 2,
+     "shaft_mm": [
+      10,
+      5,
+      5,
+      5,
+      10,
+      10
+     ]
+    }
    },
    "touch": false
   },
@@ -23,7 +35,19 @@
     "scope": "30",
     "exchanges": 0,
     "assistant": false,
-    "smoke": true
+    "smoke": true,
+    "rig": {
+     "head_deg": -35.624,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      10,
+      5,
+      5
+     ]
+    }
    },
    "touch": true
   },
@@ -35,7 +59,19 @@
     "scope": "0",
     "exchanges": 0,
     "assistant": true,
-    "smoke": false
+    "smoke": false,
+    "rig": {
+     "head_deg": 22.617,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      5,
+      5,
+      5
+     ]
+    }
    },
    "touch": false
   },
@@ -47,7 +83,19 @@
     "scope": "30",
     "exchanges": 1,
     "assistant": false,
-    "smoke": false
+    "smoke": false,
+    "rig": {
+     "head_deg": 34.625,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      10,
+      5,
+      5,
+      5,
+      5
+     ]
+    }
    },
    "touch": true
   },
@@ -59,7 +107,19 @@
     "scope": "30",
     "exchanges": 0,
     "assistant": true,
-    "smoke": false
+    "smoke": false,
+    "rig": {
+     "head_deg": -20.211,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      5,
+      10,
+      10
+     ]
+    }
    },
    "touch": false
   },
@@ -71,7 +131,19 @@
     "scope": "0",
     "exchanges": 1,
     "assistant": false,
-    "smoke": false
+    "smoke": false,
+    "rig": {
+     "head_deg": 20.87,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      5,
+      5,
+      5
+     ]
+    }
    },
    "touch": false
   },
@@ -83,7 +155,19 @@
     "scope": "0",
     "exchanges": 2,
     "assistant": true,
-    "smoke": true
+    "smoke": true,
+    "rig": {
+     "head_deg": -34.586,
+     "latency_steps": 2,
+     "shaft_mm": [
+      10,
+      5,
+      5,
+      5,
+      10,
+      10
+     ]
+    }
    },
    "touch": true
   },
@@ -95,7 +179,19 @@
     "scope": "30",
     "exchanges": 1,
     "assistant": false,
-    "smoke": false
+    "smoke": false,
+    "rig": {
+     "head_deg": 14.481,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      5,
+      10,
+      5
+     ]
+    }
    },
    "touch": false
   },
@@ -107,7 +203,19 @@
     "scope": "30",
     "exchanges": 1,
     "assistant": true,
-    "smoke": false
+    "smoke": false,
+    "rig": {
+     "head_deg": 5.522,
+     "latency_steps": 2,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      5,
+      10,
+      5
+     ]
+    }
    },
    "touch": false
   },
@@ -119,10 +227,27 @@
     "scope": "0",
     "exchanges": 1,
     "assistant": true,
-    "smoke": true
+    "smoke": true,
+    "rig": {
+     "head_deg": -24.166,
+     "latency_steps": 2,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      5,
+      5,
+      10
+     ]
+    }
    },
    "touch": false
   }
  ],
- "note": "the development procedures, drawn once by the task's make_sets tool on 2026-11-24 with the same rule as the graded set (a balanced table of factors, one os.urandom seed per row, no draw rejected); none of them is graded"
+ "note": "the development procedures, drawn once by the task's make_sets tool on 2026-11-24 with the same rule as the graded set (a balanced table of factors, one os.urandom seed per row, no draw rejected); none of them is graded",
+ "rig_draw": {
+  "drawn": "2026-11-26",
+  "key": 16933116259670986098,
+  "rule": "endosim/procedure.py draw_rig; procedure i: draw_rig(Rng(key, 'rig-<i>')); tests/review/draw_rigs.py"
+ }
 }

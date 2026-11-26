@@ -9,7 +9,19 @@
     "scope": "0",
     "exchanges": 1,
     "assistant": false,
-    "smoke": true
+    "smoke": true,
+    "rig": {
+     "head_deg": -18.35,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      5,
+      10,
+      5
+     ]
+    }
    }
   },
   {
@@ -19,7 +31,19 @@
     "scope": "30",
     "exchanges": 0,
     "assistant": true,
-    "smoke": false
+    "smoke": false,
+    "rig": {
+     "head_deg": -20.906,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      10,
+      10,
+      5,
+      5,
+      5
+     ]
+    }
    }
   },
   {
@@ -29,7 +53,19 @@
     "scope": "30",
     "exchanges": 1,
     "assistant": true,
-    "smoke": true
+    "smoke": true,
+    "rig": {
+     "head_deg": 30.294,
+     "latency_steps": 2,
+     "shaft_mm": [
+      10,
+      5,
+      5,
+      10,
+      5,
+      5
+     ]
+    }
    }
   },
   {
@@ -39,7 +75,19 @@
     "scope": "30",
     "exchanges": 0,
     "assistant": true,
-    "smoke": false
+    "smoke": false,
+    "rig": {
+     "head_deg": 37.422,
+     "latency_steps": 1,
+     "shaft_mm": [
+      10,
+      5,
+      5,
+      5,
+      10,
+      10
+     ]
+    }
    }
   },
   {
@@ -49,7 +97,19 @@
     "scope": "0",
     "exchanges": 1,
     "assistant": false,
-    "smoke": false
+    "smoke": false,
+    "rig": {
+     "head_deg": -31.421,
+     "latency_steps": 3,
+     "shaft_mm": [
+      10,
+      10,
+      10,
+      5,
+      10,
+      5
+     ]
+    }
    }
   },
   {
@@ -59,7 +119,19 @@
     "scope": "0",
     "exchanges": 0,
     "assistant": true,
-    "smoke": true
+    "smoke": true,
+    "rig": {
+     "head_deg": -4.636,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      10,
+      5,
+      5
+     ]
+    }
    }
   },
   {
@@ -69,7 +141,19 @@
     "scope": "30",
     "exchanges": 0,
     "assistant": true,
-    "smoke": false
+    "smoke": false,
+    "rig": {
+     "head_deg": -20.148,
+     "latency_steps": 2,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      5,
+      5,
+      5
+     ]
+    }
    }
   },
   {
@@ -79,7 +163,19 @@
     "scope": "30",
     "exchanges": 2,
     "assistant": true,
-    "smoke": true
+    "smoke": true,
+    "rig": {
+     "head_deg": 31.441,
+     "latency_steps": 1,
+     "shaft_mm": [
+      10,
+      5,
+      10,
+      10,
+      5,
+      10
+     ]
+    }
    }
   },
   {
@@ -89,7 +185,19 @@
     "scope": "0",
     "exchanges": 1,
     "assistant": true,
-    "smoke": false
+    "smoke": false,
+    "rig": {
+     "head_deg": 11.634,
+     "latency_steps": 1,
+     "shaft_mm": [
+      10,
+      5,
+      5,
+      5,
+      10,
+      5
+     ]
+    }
    }
   },
   {
@@ -99,7 +207,19 @@
     "scope": "0",
     "exchanges": 1,
     "assistant": false,
-    "smoke": false
+    "smoke": false,
+    "rig": {
+     "head_deg": 5.48,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      5,
+      5,
+      5
+     ]
+    }
    }
   },
   {
@@ -109,7 +229,19 @@
     "scope": "30",
     "exchanges": 2,
     "assistant": true,
-    "smoke": true
+    "smoke": true,
+    "rig": {
+     "head_deg": 32.637,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      10,
+      5,
+      5,
+      10,
+      5
+     ]
+    }
    }
   },
   {
@@ -119,9 +251,26 @@
     "scope": "0",
     "exchanges": 0,
     "assistant": false,
-    "smoke": false
+    "smoke": false,
+    "rig": {
+     "head_deg": 17.483,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      5,
+      5,
+      5
+     ]
+    }
    }
   }
  ],
- "note": "the fixed hidden set: 12 procedures drawn once by tests/review/make_sets.py on 2026-11-24 (rule and record: selection.json); the same procedures for every submission"
+ "note": "the fixed hidden set: 12 procedures drawn once by tests/review/make_sets.py on 2026-11-24 (rule and record: selection.json); the same procedures for every submission",
+ "rig_draw": {
+  "drawn": "2026-11-26",
+  "key": 10556249565426065709,
+  "rule": "endosim/procedure.py draw_rig; procedure i: draw_rig(Rng(key, 'rig-<i>')); tests/review/draw_rigs.py"
+ }
 }
