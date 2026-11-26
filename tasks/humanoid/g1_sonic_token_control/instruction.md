@@ -30,7 +30,7 @@ For a full rollout omit `--steps`. Try both `box_to_pad` and `cylinder_to_pad` w
 
 ## Process and actions
 
-The host starts `bash run.sh` in your submission directory as an unprivileged user. Print the literal line `READY` and flush it within 60 seconds. Then read one JSON request per line from stdin, emit one JSON reply per line within 15 seconds, and flush stdout after each reply. Send diagnostics to stderr.
+The host starts `bash run.sh` in your submission directory as an unprivileged user. Print the literal line `READY` and flush it within 60 seconds. Then read one JSON request per line from stdin, emit one JSON reply per line within 15 seconds, and flush stdout after each reply. Keep each reply under 64 KiB. Send diagnostics to stderr.
 
 | Request | Reply |
 | --- | --- |
@@ -46,7 +46,7 @@ reply = {"action": {"rows": [{"codes": [16] * 64, "hand": [0.0, 0.0]}]}}
 
 One row advances one physical tick. You may send one to five rows, up to the next camera boundary or the end of the episode. At `t=0` the limit is five, at `t=3` it is two, and at `t=4` it is one. The host validates the entire chunk before applying any row and stops on a physical terminal event. The next request's `t` is the number of ticks actually executed since reset.
 
-The host may ask about several observations at the **same** tick, in either order. Produce an action for each input from the same pre-tick state. If your policy carries recurrent memory, cache each candidate next state by `obs["observation_id"]`. When `t` advances, `obs["last_observation_id"]` identifies which candidate the host applied. At reset it is `null`. A timeout, malformed action or crash aborts the episode and it counts as a failed placement. Make the process safe to restart.
+The host may ask about several observations at the **same** tick, in either order. Produce an action for each input from the same pre-tick state. If your policy carries recurrent memory, cache each candidate next state by `obs["observation_id"]`. When `t` advances, `obs["last_observation_id"]` identifies which candidate the host applied. At reset it is `null`. A timeout, malformed action or crash aborts the episode and it counts as a failed placement. The host can restart your process up to three times for subsequent episodes. It must print `READY` on each launch.
 
 ## Observations
 
