@@ -282,11 +282,10 @@ ones are in neither the image nor the sandbox.
 
 ## 6. Known limitations and open items (version 0.1)
 
-* **Version 0.2 has not run in the engine.** `ale validate` passed on version 0.1 (`a5acf5e`) on an RTX 3090 with
-  driver 535 and rootless Docker that limits the CPUs by affinity instead of a quota (status log, 2026-11-25,
-  evening), and the one frontier episode ran on that version. Version 0.2 changes the build inputs under
-  `environment/` (the simulator's copy, the manual, the model, the practice launcher), so the image has to be rebuilt,
-  validated and the anchor taken from that validate's oracle; then a frontier episode on the new tip.
+* **Validated in the engine on one host.** `ale validate` passed on version 0.2 (`88705800`, status log, 2026-11-26,
+  morning) as on version 0.1 (`a5acf5e`), both on an RTX 3090 with driver 535 and rootless Docker that limits the
+  CPUs by affinity instead of a quota; the anchor is version 0.2's validate oracle. Not exercised: any cloud GPU
+  model, a host with a CPU quota.
 * **Difficulty is measured by proxies only for version 0.2.** The target is a frontier-model reward of roughly 0.3 or
   below. Version 0.1 was saturated by one Opus 5.5 episode (reward 1.0, status log). For 0.2 the evidence is the
   frozen program of that episode, the unchanged pixel baseline and a baseline adapted to 0.2 on development material
@@ -338,6 +337,33 @@ ones are in neither the image nor the sandbox.
 Newest first. Each entry says where the numbers come from; "here" is the development server (Ubuntu 22.04,
 RTX 6000 Ada, NVIDIA driver 570.195.03, Isaac Sim 6.2.0.0 + Isaac Lab 3.0.0 in a native Python 3.12 venv, no root,
 no Docker).
+
+### 2026-11-26, morning: version 0.2 through `ale validate`, on the RTX 3090 host (tree `88705800`)
+
+Where: the host of the 2026-11-25 evening entry below (one RTX 3090 24 GB, NVIDIA driver 535.183.01, Intel
+i9-12900K, the pinned engine `bfb7505`, Docker 29.10.1 in rootless mode), with the same two deviations from an
+evaluation host: the renderer's driver check off (`5faaf03`, still in both copies of `endosim/render_server.py`), and
+the CPUs limited by an affinity of 8 instead of a quota. The image was rebuilt from scratch (`environment/` changed).
+
+**Run** `validate-7485b98b` (09:03 to 09:52, the image build included), first try:
+
+    ok    grounded-intelligence-initiative/endoscope_camera_assistance_from_video: untouched={'reward': 0.0}, oracle={'reward': 1.0}
+
+The untouched verdict: "no submission at /home/user/submission/run.sh", verify 6 s. Setup took 129 to 133 s in both
+episodes (the commissioning service's renderer up, its canary passed, the development set recording). The oracle, in
+the separate verifier sandbox: the renderer up in 12 s, the canary 10 of 10 markers (at most 0.83 px off for the
+0-degree scope, 1.24 px for the 30-degree one), the agent account cleared (46 processes), the controller behind the
+network filter (`tests/nonet_exec.py`, version 0.2's S2: on in the engine too). `useful_view_fraction` 0.8760417, ratio
+1.00005, reward 1.0; per procedure 0.8788 0.8500 0.9137 0.9163 0.7950 0.8562 0.7887 0.9325 0.8750 0.9275 0.9113 0.8675;
+probe pairs 187 of 580 differing; no aborted procedure, no lens contact, no renderer or solver restart (so the
+shared-memory sealing after a restart, S1, did not have to act); 121 ms a frame, 0.81 extra renders a frame (the
+probe copies), the controller 11.3 s over 10,180 requests; verify 1453 s. The mean is the native run's on `582152e4`
+to the last digit; single procedures are a step or so apart either way, as different probe draws make them.
+
+*What was decided.* `tests/anchor.json` keeps 0.876, its source now this run; `full_at` stays 0.98. RTX-3090 stays in
+`gpu_types`. A confirmation `ale validate` on the commit of this entry follows; its `ok` line goes into the pull
+request's description, and a frontier episode on the pushed commit after it. Not exercised: a renderer restart in the
+engine (the S1 path), any cloud GPU model, a host with a CPU quota.
 
 ### 2026-11-26: version 0.2, made harder after the first frontier episode (trees `046ea06` to `582152e`; measured on `582152e`)
 
