@@ -2,7 +2,7 @@
 
 This humanoid task evaluates whether a submitted program can control a free-standing G1 through the native token space of the released GEAR-SONIC V1 decoder. It receives synchronized RGB and robot proprioception, then sends integer body codes and two hand commands. A strict placement requires load-bearing grasp, lift, release and stable support on the pad.
 
-**For the participant**, [instruction.md](instruction.md) is the complete task prompt, including a runnable starter, the action and observation formats, camera calibration and a local decoder example. This README is for contributors and reviewers.
+**For the participant**, [instruction.md](../../instruction.md) is the complete task prompt, including a runnable starter, the action and observation formats, camera calibration and a local decoder example. This README is for contributors and reviewers.
 
 ## Reproduce a practice rollout
 
@@ -27,7 +27,7 @@ Change `v4` to `p1` for the visual planner, or `box_to_pad` to `cylinder_to_pad`
 | **V4 — direct token prediction** | A recurrent visual policy takes three native 128×96 images and robot state, and predicts five consecutive body-token and hand rows. |
 | **P1 — visual planning** | A calibrated three-view planner estimates the object and pad from 480×360 images. It evaluates candidate codes against the public decoder history and sends one body-token and hand row at a time. |
 
-Both references are ordinary JSONL submissions. Their implementation, model provenance and installation instructions are in [solution/README.md](solution/README.md).
+Both references are ordinary JSONL submissions. Their implementation, model provenance and installation instructions are in [solution/README.md](../../solution/README.md).
 
 ## Run the official benchmark gates
 
@@ -43,8 +43,8 @@ python3 scripts/task_assets.py check
 uv run pytest -q
 ```
 
-A successful validation produces an untouched reward of 0.0 and an oracle reward of 1.0. The verifier uses a fresh sandbox, restoring only `/home/user/submission`. Read the oracle episode's `verification.json` for the raw `strict_placement_fraction`, the normalized reward and feedback diagnostics. The benchmark model-difficulty run is a separate `ale run` with an authenticated harness. The repository's [contribution guide](../../../CONTRIBUTING.md) describes its configuration and the evidence requested in a pull request.
+A successful validation produces an untouched reward of 0.0 and an oracle reward of 1.0. The verifier uses a fresh sandbox, restoring only `/home/user/submission`. Read the oracle episode's `verification.json` for the raw `strict_placement_fraction`, the normalized reward and feedback diagnostics. The benchmark model-difficulty run is a separate `ale run` with an authenticated harness. The repository's [contribution guide](../../../../../CONTRIBUTING.md) describes its configuration and the evidence requested in a pull request.
 
 ## Assets and reproducibility
 
-The runtime uses the unmodified NVIDIA body decoder and the Unitree G1/Dex3 description from MuJoCo Menagerie. The Docker build checks every model and mesh against the committed hashes and includes the original licenses. The simulator samples object and pad layouts from named, keyed draws over a 64-bit episode seed. Pick a practice seed to reproduce a layout in this task version. Input frames are rendered at each advertised resolution. The scorer tests forces, footprint and motion at 2 ms intervals; control rows last 20 ms. [Asset notice](environment/NOTICE) · [Checksums](environment/public_assets.sha256)
+The runtime uses the unmodified NVIDIA body decoder and the Unitree G1/Dex3 description from MuJoCo Menagerie. The Docker build checks every model and mesh against the committed hashes and includes the original licenses. The simulator samples object and pad layouts from named, keyed draws over a 64-bit episode seed. Pick a practice seed to reproduce a layout in this task version. Input frames are rendered at each advertised resolution. The scorer tests forces, footprint and motion at 2 ms intervals; control rows last 20 ms. [Asset notice](../../environment/NOTICE) · [Checksums](../../environment/public_assets.sha256)
