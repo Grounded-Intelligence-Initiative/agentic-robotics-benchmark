@@ -1,0 +1,76 @@
+{
+  "public_key": 766704419,
+  "baseline": "ca752caeba8a7accf1f9b2438820d6ebc0fcfb6d",
+  "baseline_sha256": "fba1321abea8b1297f4222166176fabab1d93e2d814034ac3d57764aa0f68b23",
+  "updated_sha256": "c4d503c837bc1a72179029cd0ea30b7fc958661873db55d41d81d1a56ed1ef7b",
+  "synthetic": {
+    "offered": 10,
+    "applied": 7,
+    "simulated_seconds": 0.14,
+    "executed_fsq_scalars": 448,
+    "body_code_comparisons": 384,
+    "body_code_changes": 6,
+    "joint_acceleration_samples": 3,
+    "body_code_churn_fraction": 0.015625,
+    "joint_acceleration_rms_rad_s2": 6172.857253060908
+  },
+  "reference": "Public V4 via solution/solve.sh; same two fresh real/shadow pairs before/after; source git show ca752cae.",
+  "equality": "All original verdict metrics/terminal fields, full real and shadow physics qpos/qvel at each applied tick, native controls and measured dq are byte-identical across versions.",
+  "diagnostics": {
+    "simulated_seconds": 21.98,
+    "executed_fsq_scalars": 70336,
+    "body_code_comparisons": 70208,
+    "body_code_changes": 1489,
+    "joint_acceleration_samples": 1091,
+    "body_code_churn_fraction": 0.02120840929808569,
+    "joint_acceleration_rms_rad_s2": 2.445063892732347
+  },
+  "old_metrics": {
+    "episodes": 2,
+    "placed": 2,
+    "lifted": 2,
+    "falls": 0,
+    "episodes_aborted": 0,
+    "time_limits": 0,
+    "applied_native_rows": 1099,
+    "probes_total": 16,
+    "probes_passed": 13,
+    "duplicate_probes": 2,
+    "duplicate_changes": 0,
+    "missed_reached_probe_opportunities": 0,
+    "probe_change_fraction": 0.8125,
+    "duplicate_change_fraction": 0.0,
+    "match_lock_ok": 1,
+    "mean_max_lift_m": 0.16623259136753338,
+    "mean_goal_error_xy_m": 0.027722457040109724,
+    "mean_release_hold_s": 0.25000000000000017,
+    "box_episodes": 1,
+    "box_placed": 1,
+    "cylinder_episodes": 1,
+    "cylinder_placed": 1
+  },
+  "real_trajectories": [
+    {
+      "task": "box_to_pad_challenge",
+      "seed": "7058326583258965771",
+      "qpos_qvel": "ec633d6003540d0f3ea1816ae3d22dc133ac3ce1014a9387a16e6e401e420bab",
+      "codes": "0a59efe1b530baa444d3b089baa0ea2ff2a59afbfa1883318da028e2bcdeb684",
+      "hands": "56acfaa7840ed19f26d21867cf9596ec5ff5b1909a7c82e7828a242dfce5cf68",
+      "dq": "a51226454198681ca1c6db946a337aef24fbf7705e64f51da57a3b7f481b9377",
+      "ticks": 546,
+      "reason": "success"
+    },
+    {
+      "task": "cylinder_to_pad_challenge",
+      "seed": "17814194044215668136",
+      "qpos_qvel": "417078b2c25a9316e473660b003cba3afa027c0a03aae5b7bdabe6dc4a30780a",
+      "codes": "f8e0d0d4caac6e958b38e36ab0d458f4bd51918455fcd15990bab4c6b1416d42",
+      "hands": "23107bbac45c770a9cff30102b56c52f984d11807ca9bbd050e3ae939be35493",
+      "dq": "9bc25e3c3a691bb00fa94ce55e95489157f502f36161f4ad51feebfd33361046",
+      "ticks": 553,
+      "reason": "success"
+    }
+  ],
+  "clear_account": false,
+  "uid": 1000
+}
