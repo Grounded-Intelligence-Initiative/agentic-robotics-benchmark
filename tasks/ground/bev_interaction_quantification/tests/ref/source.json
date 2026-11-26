@@ -1,0 +1,730 @@
+{
+ "T01": {
+  "scene": "waymo_train/scene_87164",
+  "row": 7,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.7,
+  "vehicles": [
+   "715",
+   "761"
+  ],
+  "vqa_id": "waymo_train_scene_87164_row0007_t0.0-8.7",
+  "video": "waymo_train_scene_87164_row0007_t0.0-8.7.mp4"
+ },
+ "T02": {
+  "scene": "waymo_train/scene_86986",
+  "row": 23,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "2305",
+   "2307"
+  ],
+  "vqa_id": "waymo_train_scene_86986_row0023_t0.0-9.0",
+  "video": "waymo_train_scene_86986_row0023_t0.0-9.0.mp4"
+ },
+ "T03": {
+  "scene": "waymo_train/scene_77561",
+  "row": 78,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "1233",
+   "1404"
+  ],
+  "vqa_id": "waymo_train_scene_77561_row0078_t0.0-9.0",
+  "video": "waymo_train_scene_77561_row0078_t0.0-9.0.mp4"
+ },
+ "T04": {
+  "scene": "waymo_train/scene_79543",
+  "row": 18,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.9,
+  "vehicles": [
+   "515",
+   "538"
+  ],
+  "vqa_id": "waymo_train_scene_79543_row0018_t0.0-8.9",
+  "video": "waymo_train_scene_79543_row0018_t0.0-8.9.mp4"
+ },
+ "T05": {
+  "scene": "waymo_train/scene_79294",
+  "row": 2,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 1.0,
+  "vehicles": [
+   "1161",
+   "1162"
+  ],
+  "vqa_id": "waymo_train_scene_79294_row0002_t0.0-1.0",
+  "video": "waymo_train_scene_79294_row0002_t0.0-1.0.mp4"
+ },
+ "T06": {
+  "scene": "waymo_train/scene_79046",
+  "row": 6,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.9,
+  "vehicles": [
+   "776",
+   "784"
+  ],
+  "vqa_id": "waymo_train_scene_79046_row0006_t0.0-8.9",
+  "video": "waymo_train_scene_79046_row0006_t0.0-8.9.mp4"
+ },
+ "T07": {
+  "scene": "waymo_train/scene_82916",
+  "row": 11,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "1794",
+   "2025"
+  ],
+  "vqa_id": "waymo_train_scene_82916_row0011_t0.0-9.0",
+  "video": "waymo_train_scene_82916_row0011_t0.0-9.0.mp4"
+ },
+ "T08": {
+  "scene": "waymo_train/scene_87547",
+  "row": 20,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "170",
+   "173"
+  ],
+  "vqa_id": "waymo_train_scene_87547_row0020_t0.0-9.0",
+  "video": "waymo_train_scene_87547_row0020_t0.0-9.0.mp4"
+ },
+ "T09": {
+  "scene": "waymo_train/scene_77912",
+  "row": 5,
+  "source": "waymo",
+  "start_s": 0.4,
+  "end_s": 9.0,
+  "vehicles": [
+   "337",
+   "348"
+  ],
+  "vqa_id": "waymo_train_scene_77912_row0005_t0.4-9.0",
+  "video": "waymo_train_scene_77912_row0005_t0.4-9.0.mp4"
+ },
+ "T10": {
+  "scene": "waymo_train/scene_79653",
+  "row": 4,
+  "source": "waymo",
+  "start_s": 2.5,
+  "end_s": 8.2,
+  "vehicles": [
+   "691",
+   "702"
+  ],
+  "vqa_id": "waymo_train_scene_79653_row0004_t2.5-8.2",
+  "video": "waymo_train_scene_79653_row0004_t2.5-8.2.mp4"
+ },
+ "T11": {
+  "scene": "waymo_train/scene_76760",
+  "row": 4,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.2,
+  "vehicles": [
+   "1041",
+   "1090"
+  ],
+  "vqa_id": "waymo_train_scene_76760_row0004_t0.0-8.2",
+  "video": "waymo_train_scene_76760_row0004_t0.0-8.2.mp4"
+ },
+ "T12": {
+  "scene": "waymo_train/scene_80598",
+  "row": 34,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.9,
+  "vehicles": [
+   "1655",
+   "1735"
+  ],
+  "vqa_id": "waymo_train_scene_80598_row0034_t0.0-8.9",
+  "video": "waymo_train_scene_80598_row0034_t0.0-8.9.mp4"
+ },
+ "T13": {
+  "scene": "waymo_train/scene_83913",
+  "row": 0,
+  "source": "waymo",
+  "start_s": 3.3,
+  "end_s": 8.5,
+  "vehicles": [
+   "512",
+   "531"
+  ],
+  "vqa_id": "waymo_train_scene_83913_row0000_t3.3-8.5",
+  "video": "waymo_train_scene_83913_row0000_t3.3-8.5.mp4"
+ },
+ "T14": {
+  "scene": "waymo_train/scene_77420",
+  "row": 16,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "6171",
+   "6201"
+  ],
+  "vqa_id": "waymo_train_scene_77420_row0016_t0.0-9.0",
+  "video": "waymo_train_scene_77420_row0016_t0.0-9.0.mp4"
+ },
+ "T15": {
+  "scene": "waymo_train/scene_77530",
+  "row": 6,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.9,
+  "vehicles": [
+   "1409",
+   "1481"
+  ],
+  "vqa_id": "waymo_train_scene_77530_row0006_t0.0-8.9",
+  "video": "waymo_train_scene_77530_row0006_t0.0-8.9.mp4"
+ },
+ "T16": {
+  "scene": "waymo_train/scene_78283",
+  "row": 4,
+  "source": "waymo",
+  "start_s": 0.2,
+  "end_s": 8.9,
+  "vehicles": [
+   "1702",
+   "1796"
+  ],
+  "vqa_id": "waymo_train_scene_78283_row0004_t0.2-8.9",
+  "video": "waymo_train_scene_78283_row0004_t0.2-8.9.mp4"
+ },
+ "T17": {
+  "scene": "waymo_train/scene_79499",
+  "row": 12,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "764",
+   "825"
+  ],
+  "vqa_id": "waymo_train_scene_79499_row0012_t0.0-9.0",
+  "video": "waymo_train_scene_79499_row0012_t0.0-9.0.mp4"
+ },
+ "T18": {
+  "scene": "waymo_train/scene_84941",
+  "row": 0,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 3.5,
+  "vehicles": [
+   "2181",
+   "2182"
+  ],
+  "vqa_id": "waymo_train_scene_84941_row0000_t0.0-3.5",
+  "video": "waymo_train_scene_84941_row0000_t0.0-3.5.mp4"
+ },
+ "T19": {
+  "scene": "waymo_train/scene_76925",
+  "row": 23,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "1300",
+   "1392"
+  ],
+  "vqa_id": "waymo_train_scene_76925_row0023_t0.0-9.0",
+  "video": "waymo_train_scene_76925_row0023_t0.0-9.0.mp4"
+ },
+ "T20": {
+  "scene": "waymo_train/scene_77912",
+  "row": 8,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.9,
+  "vehicles": [
+   "302",
+   "328"
+  ],
+  "vqa_id": "waymo_train_scene_77912_row0008_t0.0-8.9",
+  "video": "waymo_train_scene_77912_row0008_t0.0-8.9.mp4"
+ },
+ "T21": {
+  "scene": "waymo_train/scene_82084",
+  "row": 19,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.2,
+  "vehicles": [
+   "583",
+   "589"
+  ],
+  "vqa_id": "waymo_train_scene_82084_row0019_t0.0-8.2",
+  "video": "waymo_train_scene_82084_row0019_t0.0-8.2.mp4"
+ },
+ "T22": {
+  "scene": "waymo_train/scene_80955",
+  "row": 2,
+  "source": "waymo",
+  "start_s": 0.2,
+  "end_s": 8.3,
+  "vehicles": [
+   "903",
+   "966"
+  ],
+  "vqa_id": "waymo_train_scene_80955_row0002_t0.2-8.3",
+  "video": "waymo_train_scene_80955_row0002_t0.2-8.3.mp4"
+ },
+ "T23": {
+  "scene": "waymo_train/scene_80338",
+  "row": 23,
+  "source": "waymo",
+  "start_s": 1.9,
+  "end_s": 2.0,
+  "vehicles": [
+   "925",
+   "942"
+  ],
+  "vqa_id": "waymo_train_scene_80338_row0023_t1.9-2.0",
+  "video": "waymo_train_scene_80338_row0023_t1.9-2.0.mp4"
+ },
+ "T24": {
+  "scene": "waymo_train/scene_76217",
+  "row": 13,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.5,
+  "vehicles": [
+   "2303",
+   "2318"
+  ],
+  "vqa_id": "waymo_train_scene_76217_row0013_t0.0-8.5",
+  "video": "waymo_train_scene_76217_row0013_t0.0-8.5.mp4"
+ },
+ "L01": {
+  "scene": "waymo_train/scene_80149",
+  "row": 0,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.9,
+  "vehicles": [
+   "897",
+   "901"
+  ],
+  "vqa_id": "waymo_train_scene_80149_row0000_t0.0-8.9",
+  "video": "waymo_train_scene_80149_row0000_t0.0-8.9.mp4"
+ },
+ "L02": {
+  "scene": "waymo_train/scene_79546",
+  "row": 12,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.9,
+  "vehicles": [
+   "499",
+   "510"
+  ],
+  "vqa_id": "waymo_train_scene_79546_row0012_t0.0-8.9",
+  "video": "waymo_train_scene_79546_row0012_t0.0-8.9.mp4"
+ },
+ "L03": {
+  "scene": "waymo_train/scene_77710",
+  "row": 0,
+  "source": "waymo",
+  "start_s": 0.2,
+  "end_s": 4.3,
+  "vehicles": [
+   "2291",
+   "2293"
+  ],
+  "vqa_id": "waymo_train_scene_77710_row0000_t0.2-4.3",
+  "video": "waymo_train_scene_77710_row0000_t0.2-4.3.mp4"
+ },
+ "L04": {
+  "scene": "waymo_train/scene_87872",
+  "row": 11,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "895",
+   "924"
+  ],
+  "vqa_id": "waymo_train_scene_87872_row0011_t0.0-9.0",
+  "video": "waymo_train_scene_87872_row0011_t0.0-9.0.mp4"
+ },
+ "L05": {
+  "scene": "waymo_train/scene_79415",
+  "row": 5,
+  "source": "waymo",
+  "start_s": 0.1,
+  "end_s": 8.7,
+  "vehicles": [
+   "1332",
+   "1339"
+  ],
+  "vqa_id": "waymo_train_scene_79415_row0005_t0.1-8.7",
+  "video": "waymo_train_scene_79415_row0005_t0.1-8.7.mp4"
+ },
+ "L06": {
+  "scene": "waymo_train/scene_79805",
+  "row": 0,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 6.2,
+  "vehicles": [
+   "240",
+   "275"
+  ],
+  "vqa_id": "waymo_train_scene_79805_row0000_t0.0-6.2",
+  "video": "waymo_train_scene_79805_row0000_t0.0-6.2.mp4"
+ },
+ "L07": {
+  "scene": "waymo_train/scene_79160",
+  "row": 0,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 5.5,
+  "vehicles": [
+   "314",
+   "334"
+  ],
+  "vqa_id": "waymo_train_scene_79160_row0000_t0.0-5.5",
+  "video": "waymo_train_scene_79160_row0000_t0.0-5.5.mp4"
+ },
+ "L08": {
+  "scene": "waymo_train/scene_84892",
+  "row": 8,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "487",
+   "488"
+  ],
+  "vqa_id": "waymo_train_scene_84892_row0008_t0.0-9.0",
+  "video": "waymo_train_scene_84892_row0008_t0.0-9.0.mp4"
+ },
+ "L09": {
+  "scene": "waymo_train/scene_78276",
+  "row": 62,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "3179",
+   "3207"
+  ],
+  "vqa_id": "waymo_train_scene_78276_row0062_t0.0-9.0",
+  "video": "waymo_train_scene_78276_row0062_t0.0-9.0.mp4"
+ },
+ "L10": {
+  "scene": "waymo_train/scene_80272",
+  "row": 20,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "842",
+   "784"
+  ],
+  "vqa_id": "waymo_train_scene_80272_row0020_t0.0-9.0",
+  "video": "waymo_train_scene_80272_row0020_t0.0-9.0.mp4"
+ },
+ "L11": {
+  "scene": "waymo_train/scene_78262",
+  "row": 11,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "1034",
+   "1007"
+  ],
+  "vqa_id": "waymo_train_scene_78262_row0011_t0.0-9.0",
+  "video": "waymo_train_scene_78262_row0011_t0.0-9.0.mp4"
+ },
+ "L12": {
+  "scene": "waymo_train/scene_87210",
+  "row": 11,
+  "source": "waymo",
+  "start_s": 0.1,
+  "end_s": 8.9,
+  "vehicles": [
+   "1719",
+   "1941"
+  ],
+  "vqa_id": "waymo_train_scene_87210_row0011_t0.1-8.9",
+  "video": "waymo_train_scene_87210_row0011_t0.1-8.9.mp4"
+ },
+ "L13": {
+  "scene": "waymo_train/scene_84381",
+  "row": 17,
+  "source": "waymo",
+  "start_s": 6.0,
+  "end_s": 6.5,
+  "vehicles": [
+   "1879",
+   "1907"
+  ],
+  "vqa_id": "waymo_train_scene_84381_row0017_t6.0-6.5",
+  "video": "waymo_train_scene_84381_row0017_t6.0-6.5.mp4"
+ },
+ "L14": {
+  "scene": "waymo_train/scene_79867",
+  "row": 1,
+  "source": "waymo",
+  "start_s": 2.7,
+  "end_s": 8.6,
+  "vehicles": [
+   "215",
+   "221"
+  ],
+  "vqa_id": "waymo_train_scene_79867_row0001_t2.7-8.6",
+  "video": "waymo_train_scene_79867_row0001_t2.7-8.6.mp4"
+ },
+ "L15": {
+  "scene": "waymo_train/scene_81581",
+  "row": 68,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "2362",
+   "2367"
+  ],
+  "vqa_id": "waymo_train_scene_81581_row0068_t0.0-9.0",
+  "video": "waymo_train_scene_81581_row0068_t0.0-9.0.mp4"
+ },
+ "L16": {
+  "scene": "waymo_train/scene_82640",
+  "row": 64,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "1754",
+   "1766"
+  ],
+  "vqa_id": "waymo_train_scene_82640_row0064_t0.0-9.0",
+  "video": "waymo_train_scene_82640_row0064_t0.0-9.0.mp4"
+ },
+ "L17": {
+  "scene": "waymo_train/scene_85716",
+  "row": 22,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.8,
+  "vehicles": [
+   "760",
+   "794"
+  ],
+  "vqa_id": "waymo_train_scene_85716_row0022_t0.0-8.8",
+  "video": "waymo_train_scene_85716_row0022_t0.0-8.8.mp4"
+ },
+ "L18": {
+  "scene": "waymo_train/scene_78502",
+  "row": 14,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "1687",
+   "1750"
+  ],
+  "vqa_id": "waymo_train_scene_78502_row0014_t0.0-9.0",
+  "video": "waymo_train_scene_78502_row0014_t0.0-9.0.mp4"
+ },
+ "L19": {
+  "scene": "waymo_train/scene_81361",
+  "row": 32,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "546",
+   "670"
+  ],
+  "vqa_id": "waymo_train_scene_81361_row0032_t0.0-9.0",
+  "video": "waymo_train_scene_81361_row0032_t0.0-9.0.mp4"
+ },
+ "L20": {
+  "scene": "waymo_train/scene_87252",
+  "row": 8,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.8,
+  "vehicles": [
+   "982",
+   "985"
+  ],
+  "vqa_id": "waymo_train_scene_87252_row0008_t0.0-8.8",
+  "video": "waymo_train_scene_87252_row0008_t0.0-8.8.mp4"
+ },
+ "L21": {
+  "scene": "waymo_train/scene_76950",
+  "row": 3,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.3,
+  "vehicles": [
+   "3",
+   "8"
+  ],
+  "vqa_id": "waymo_train_scene_76950_row0003_t0.0-8.3",
+  "video": "waymo_train_scene_76950_row0003_t0.0-8.3.mp4"
+ },
+ "L22": {
+  "scene": "waymo_train/scene_78126",
+  "row": 4,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 5.2,
+  "vehicles": [
+   "2488",
+   "2497"
+  ],
+  "vqa_id": "waymo_train_scene_78126_row0004_t0.0-5.2",
+  "video": "waymo_train_scene_78126_row0004_t0.0-5.2.mp4"
+ },
+ "L23": {
+  "scene": "waymo_train/scene_78502",
+  "row": 5,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "1682",
+   "1750"
+  ],
+  "vqa_id": "waymo_train_scene_78502_row0005_t0.0-9.0",
+  "video": "waymo_train_scene_78502_row0005_t0.0-9.0.mp4"
+ },
+ "L24": {
+  "scene": "waymo_train/scene_78775",
+  "row": 4,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 5.0,
+  "vehicles": [
+   "365",
+   "368"
+  ],
+  "vqa_id": "waymo_train_scene_78775_row0004_t0.0-5.0",
+  "video": "waymo_train_scene_78775_row0004_t0.0-5.0.mp4"
+ },
+ "L25": {
+  "scene": "waymo_train/scene_77559",
+  "row": 13,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "1564",
+   "1581"
+  ],
+  "vqa_id": "waymo_train_scene_77559_row0013_t0.0-9.0",
+  "video": "waymo_train_scene_77559_row0013_t0.0-9.0.mp4"
+ },
+ "L26": {
+  "scene": "waymo_train/scene_79016",
+  "row": 21,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.9,
+  "vehicles": [
+   "1475",
+   "1525"
+  ],
+  "vqa_id": "waymo_train_scene_79016_row0021_t0.0-8.9",
+  "video": "waymo_train_scene_79016_row0021_t0.0-8.9.mp4"
+ },
+ "L27": {
+  "scene": "waymo_train/scene_78638",
+  "row": 53,
+  "source": "waymo",
+  "start_s": 0.3,
+  "end_s": 8.9,
+  "vehicles": [
+   "523",
+   "549"
+  ],
+  "vqa_id": "waymo_train_scene_78638_row0053_t0.3-8.9",
+  "video": "waymo_train_scene_78638_row0053_t0.3-8.9.mp4"
+ },
+ "L28": {
+  "scene": "waymo_train/scene_79330",
+  "row": 12,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 8.7,
+  "vehicles": [
+   "2103",
+   "2301"
+  ],
+  "vqa_id": "waymo_train_scene_79330_row0012_t0.0-8.7",
+  "video": "waymo_train_scene_79330_row0012_t0.0-8.7.mp4"
+ },
+ "L29": {
+  "scene": "waymo_train/scene_78126",
+  "row": 1,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 5.2,
+  "vehicles": [
+   "2478",
+   "2496"
+  ],
+  "vqa_id": "waymo_train_scene_78126_row0001_t0.0-5.2",
+  "video": "waymo_train_scene_78126_row0001_t0.0-5.2.mp4"
+ },
+ "L30": {
+  "scene": "waymo_train/scene_76445",
+  "row": 7,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 5.7,
+  "vehicles": [
+   "731",
+   "754"
+  ],
+  "vqa_id": "waymo_train_scene_76445_row0007_t0.0-5.7",
+  "video": "waymo_train_scene_76445_row0007_t0.0-5.7.mp4"
+ },
+ "L31": {
+  "scene": "waymo_train/scene_79844",
+  "row": 7,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "1250",
+   "1342"
+  ],
+  "vqa_id": "waymo_train_scene_79844_row0007_t0.0-9.0",
+  "video": "waymo_train_scene_79844_row0007_t0.0-9.0.mp4"
+ },
+ "L32": {
+  "scene": "waymo_train/scene_76526",
+  "row": 23,
+  "source": "waymo",
+  "start_s": 0.0,
+  "end_s": 9.0,
+  "vehicles": [
+   "1626",
+   "1646"
+  ],
+  "vqa_id": "waymo_train_scene_76526_row0023_t0.0-9.0",
+  "video": "waymo_train_scene_76526_row0023_t0.0-9.0.mp4"
+ }
+}

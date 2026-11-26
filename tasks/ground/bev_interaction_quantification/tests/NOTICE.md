@@ -2,7 +2,7 @@
 
 - **Events.** The IEDD-VQA test split of IEDD: H. Feng, X. Zhang, M. Tian, P. Zhang, Z. Li, J. Huang, X. Wang,
   J. Zhu, J. Wang, D. Yin, L. Xiong, "An interactive enhanced driving dataset for autonomous driving",
-  arXiv 2602.20575 (v2, 2026-07-18). Files of the Hugging Face dataset `Egikk/IEDD` at commit TODO(author), which
+  arXiv 2602.20575 (v2, 2026-07-18). Files of the Hugging Face dataset `Egikk/IEDD` at commit b0b604d6b8e904a0b43edef3b96c45df6e7a3c6d, which
   are the files of Zenodo record 10.5281/zenodo.18742437 (v1, 2026-02-23, CC BY 4.0): `IEDD-VQA_test.json` (one
   sample per clip, with IEDD-VQA's own answers), `IEDD-VQA_test_videos.zip` (the clips) and `IEDD-waymo.zip` (the
   `interaction.csv` annotations; every sample of the split is from Waymo Open Motion, `waymo_train`).
