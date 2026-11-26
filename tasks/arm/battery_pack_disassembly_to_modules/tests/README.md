@@ -1212,7 +1212,10 @@ fasteners, centre within 0.30 mm.
 *The reference* (GPU 3, shared with another job of the account from 12:55). `final1` on `87ad1f2d`:
 `mean_pack_credit` 1.00000, every pack 1.0 (steps 919, 843, 1067, 1062, 1149, 1208; 584 to 823 s simulated), lock 85
 of 85 (52 idle), no stop, nothing stripped or sheared, no vent, 34 working cycles in all, the swollen modules counted
-in their seats. REF2
+in their seats. `final2` on `dca001d1` (the cell with the pad cut, `e4927a6e`): 1.00000 again, every pack in the
+same steps as `final1`, lock 85 of 85; both stages about 1600 s with GPU 3 shared. `tests/anchor.json` is unchanged
+(1.0, its source the `ale validate` run of `33ce4599`'s tree; the validate host records the anchor from its oracle
+again).
 
 *The frozen Opus program* (`4c00590b`'s submission, rebuilt from its trajectory: every write into `~/submission`
 replayed in order; all nine files have the sizes of the episode's last listing and `mission.py` matches the three

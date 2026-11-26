@@ -120,6 +120,35 @@ them it had placed the pack 2 cm and 1.9 degrees off, and every bit missed its h
 written for (exact depth and calibration): 1.0 on every development pack, `mean_pack_credit` 1.00000 on the hidden
 set (`tests/README.md`, section 6, the entry "2026-11-25, 10:00 to 11:35").
 
+## The third version (2026-11-26)
+
+The second hardening round (`tests/README.md`, section 2, "The second round") added three conditions the second
+version had no answer to; it was adapted in place, keeping everything else:
+
+- **Seized fasteners and the shear torque.** The second version raised a stalled fastener's limit to twice the
+  assembly torque (20 N m for M6: the new shear torque) and gave up after four stalls. Now the limit goes to the
+  highest that harms nothing (97.5 % of the shear torque, below the head's limit), and a fastener that stalls there
+  is worked as the manual's section 5 says (`unscrew`): a loosening stall at 90 % of the shear torque for 0.6 s, a
+  tightening stall at 110 % of the assembly torque for 0.35 s, a try at the safe limit; up to eight cycles. All
+  from the nutrunner's trace.
+- **Foam pads.** A pad is told from a head by the ring 10 to 12 mm around the fastener's nominal place in the first
+  wrist frame (`vision.pad_at`), and the fastener under it is found by touch (`probe`, `touch`): presence and head
+  type from the tip's resting height, the centre from the head's edges along x and y (five halvings each way).
+- **Swollen modules.** After the inner fasteners and before the busbars are lifted, each module's top plate in two
+  close wrist frames, a plane through its rim and the manual's bump shape fitted above it (`vision.module_bump`,
+  `measure_modules`); the module with the highest bump, at 0.48 mm or more, stays in its seat.
+
+**Development** (the four development packs only; the development truth only in `dev/devrun.py`'s comparison
+afterwards; about an hour and a half of the levers' designer's work and six development sessions, after checks of
+the new code against the rules in a kinematic stub, outside the repository):
+
+| round | dev 0 | dev 1 | dev 2 | dev 3 | what it showed |
+|---|---|---|---|---|---|
+| nb1 (`ee8e62a7`) | 0.993 | 1.0 | 0.0 | 1.0 | the pad over L03 found by touch (S10, 1.78 mm off nominal) and the seized L06, R5bf, B01b worked loose in two cycles each; swollen M5 read 2.44 mm and stayed; healthy modules read 0.02 to 0.14 mm high; dev 2: the overhead camera not calibrated (a pad's overhang over the near plate: a defect of the lever, fixed in the cell, `e4927a6e`); dev 0: one bracket bolt ejected outside the bin (as in round 1) |
+| nb2 (`e4927a6e`) | | 0.909 | 0.691 | | dev 2 calibrated, its pad by touch (T30, 1.56 mm off), M3 read 2.42 mm; both packs vented: a threshold in the wrong unit (fixed in `3be3069b`, frozen) |
+
+RESULTS
+
 ## What it does not do
 
 - It has no code for a stripped head (the extractor bit): nothing it did stripped one, and no field pack arrives
