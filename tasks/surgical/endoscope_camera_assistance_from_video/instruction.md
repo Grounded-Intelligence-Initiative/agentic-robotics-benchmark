@@ -10,8 +10,11 @@ readings**, and answers with joint rates. It is never told where the instruments
 field, what the surgeon is doing or about to do, which of the two scopes (0 or 30 degrees) is fitted, at what angle
 the camera head is clamped on the scope (within +-40 degrees; it turns the picture), how old the frame is (1, 2 or 3
 control steps: the operating room's video chain), or which instruments are 5 mm and which 10 mm ones (a 10 mm one is
-the same instrument at twice the size). Each of these is fixed for a procedure and differs between procedures
-(`~/given/holder_manual.md`, sections 4 and 5, states them as a datasheet would).
+the same instrument at twice the size). Each of these differs between procedures, and the camera head is knocked to
+another angle once or twice during a procedure. The tissue moves, and not as one piece: it breathes irregularly, more
+towards the head, and where an instrument holds it, it follows the instrument; instruments work in it, hidden but for
+their shafts, and energy devices hide their tips in smoke. `~/given/holder_manual.md`, sections 4 and 5, states all
+this as a datasheet would.
 
 ## What a usable view is
 
@@ -21,22 +24,29 @@ A control step's view is usable when (`~/given/holder_manual.md`, section 6, has
    and of its height);
 2. the tips are at a working distance inside the zoom band (where a 5 mm shaft shows 22 to 44 px wide at the tip; a
    10 mm shaft shows twice that);
-3. the horizon of the picture as the surgeon sees it is level within 15 degrees;
-4. while the surgeon does fine work (the tips stay put), the camera does not move the picture faster than 48 px/s;
+3. the horizon of the picture as the surgeon sees it is level within 10 degrees;
+4. while the surgeon does fine work (the tips stay put), the camera does not move the picture faster than 32 px/s;
 5. the lens is clean. A lens that touches tissue is smeared: the picture is blurred and stained and no view is usable
-   until the scope has been held withdrawn in its cannula for 4 s. Nothing reports a smeared lens but the picture.
+   until the scope has been held withdrawn in its cannula for 10 s. Nothing reports a smeared lens but the picture.
+
+Some mistakes end a procedure for the holder: **the surgeon takes the camera back**, and no later step of that
+procedure is usable. That happens when the lens is driven into the tissue (it reaches the tissue closing faster than
+15 mm/s), when the lens touches the tissue a second time in a procedure, and when a critical action (a clip being
+applied, a needle bite, the first second of an energy activation) is seen with a usable view on fewer than a quarter
+of its steps (manual, section 6, has the exact rules and what announces a critical action).
 
 An instrument that is being exchanged does not count while it is away (from the moment it starts to withdraw until it
 is back at its place); the assistant's third instrument, when there is one, never counts.
 
 **Your score is the fraction of control steps with a usable view, over 12 recorded procedures you have not seen**
-(800 steps each). There are no other terms. Every procedure starts with the scope withdrawn at the home pose, and the
-place where the surgeon works travels through the cavity: a camera that stays where it is sees almost nothing usable.
-The procedures differ in kind (dissection, suturing, exploration, clipping and cutting), in the instruments, their
-look and their size, in the tissue, in smoke and highlights, in the scope fitted, the camera head's angle and the
-video latency, in whether instruments are exchanged, and in whether an assistant's instrument is in the field
-(manual, section 7). The graded procedures show instrument
-finishes, tissue colourings, blood-stained instruments and clutter that the development set does not show.
+(800 steps each). There are no other terms: a takeover subtracts nothing, it leaves the rest of
+that procedure unusable. Every procedure starts with the scope withdrawn at the home pose, and the place where the
+surgeon works travels through the cavity: a camera that stays where it is sees almost nothing usable. The procedures
+differ in kind (dissection, suturing, exploration, clipping and cutting), in the instruments, their look and their
+size, in the tissue and how it moves, in smoke and highlights, in the scope fitted, the camera head's angle and when
+it is knocked, the video latency, in whether instruments are exchanged, and in whether an assistant's instrument is in
+the field (manual, section 7). The graded procedures show instrument finishes, tissue colourings, blood-stained
+instruments and clutter that the development set does not show; the commissioning procedures show them too.
 
 ## What you produce
 
@@ -88,16 +98,16 @@ program's **stdout is the wire**: print `READY` when you are ready, then only re
 |---|---|
 | `~/given/holder_manual.md` | the holder's kinematics and servo, the two scopes and their intrinsics, the operating-room set-up, the exact view rules, what varies between procedures, the development set's format, the commissioning service |
 | `~/given/holder_model.py` | the reference implementation of the manual: kinematics, projection, the horizon, the servo, every constant (the grader computes with this same file) |
-| `~/given/dev_procedures/` | the development set: ten recorded procedures as endoscope video (a frame every second control step) with labels (every instrument's tip in the image, its size, which instruments count, fine work, a smeared lens, how the rules judge the frame) and each recording's camera head angle and video latency as measured in the lab. It is written during the first minutes of your session; `COMPLETE` appears when it is whole |
+| `~/given/dev_procedures/` | the development set: ten recorded procedures as endoscope video (a frame every second control step) with an annotation team's labels on every fourth step (where each visible tip was marked by hand, which instruments are in and count, their catalogue size, a smeared lens; no depth and no judgement of the view) and each recording's camera head angles and video latency as measured in the lab. It is written during the first minutes of your session; `COMPLETE` appears when it is whole |
 | `~/given/endocam_client.py` | the client of the commissioning service |
 | `~/commission/run_session.py` | runs a controller folder through one commissioning session the way the grader will run it |
 | `~/example/` | a minimal controller that speaks the wire and holds the camera still (it scores about 0): a starting point |
 
-The **commissioning service** plays the ten development procedures for your controller, with the grader's
-observations, servo and lens and each recording's own camera head and latency, and gives no ground truth, no labels
-and no judgement of the view. You have 12
-sessions, one at a time, each one procedure long at most. The graded procedures are not among the development
-procedures.
+The **commissioning service** plays ten commissioning procedures of its own for your controller (`c01` to `c10`: not
+the recorded ones; drawn like the graded procedures, nothing about them on file), with the grader's observations,
+servo, lens and takeovers, and gives no ground truth, no labels and no judgement of the view; a session that the
+surgeon takes back just ends. You have 12 sessions, one at a time, each one procedure long at most. The graded
+procedures are among neither set.
 
 Tools: Python 3.12 at `/opt/venv/bin/python3` (call it by that path) with numpy, OpenCV, Pillow, PyTorch and
 torchvision on the sandbox's GPU. No network. Your session is limited to 4 hours; what is in

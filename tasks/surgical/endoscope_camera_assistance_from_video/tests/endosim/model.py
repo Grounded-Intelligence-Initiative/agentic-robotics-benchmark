@@ -53,15 +53,20 @@ LATENCY_STEPS = (1, 2, 3)     # the video chain's latency, in control steps
 SAFE_ZONE = 0.30              # a tip is inside when |u - cx| <= 0.30 W and |v - cy| <= 0.30 H
 ZOOM_BAND_PX = (22.0, 44.0)   # apparent shaft diameter at the tip, fx * 5 mm / depth
 HORIZON_REF_DEG = 45.0        # the display's up reference r = (0, cos 45, sin 45) in W
-HORIZON_LIMIT_DEG = 15.0
+HORIZON_LIMIT_DEG = 10.0
 FINE_WINDOW_S = 1.0           # fine work: every active tip stayed within FINE_RADIUS of its mean over this window
 FINE_RADIUS = 0.009
-IMAGE_SPEED_LIMIT = 48.0      # px/s the camera may move the image of the working point during fine work
+IMAGE_SPEED_LIMIT = 32.0      # px/s the camera may move the image of the working point during fine work
 
 # the lens
 LENS_CLEARANCE = 0.004        # m from the tissue at which the lens touches it
 CLEAN_INSERTION = 0.025       # the lens is wiped while insertion <= this ...
-CLEAN_TIME_S = 4.0            # ... for this long, continuously
+CLEAN_TIME_S = 10.0           # ... for this long, continuously
+
+# the surgeon takes the camera back (the holder's control of the procedure ends; every step after it is not usable)
+LENS_INJURY_SPEED = 0.015     # m/s: the lens reaching the tissue faster than this injures it
+LENS_CONTACTS_TOLERATED = 1   # a contact after this many in one procedure ends it
+CRITICAL_MIN_USABLE = 0.25    # a critical action seen with a usable view on fewer than this share of its steps ends it
 
 
 def rx(a):

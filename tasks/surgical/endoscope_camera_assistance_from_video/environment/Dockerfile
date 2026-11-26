@@ -57,9 +57,10 @@ RUN mkdir -p /opt/assets/isaac && chmod -R a+rX /opt/assets \
 # sticky here; the grader makes them the renderer account's alone before it starts its renderer.
 RUN for d in cache logs data; do install -d -m 1777 /opt/venv/lib/python3.12/site-packages/isaacsim/kit/$d; done
 
-# The commissioning service: the benchmark's simulator (endosim/, a byte copy of the grader's) on the development
-# procedures, a device engineer's test bench. Installed for its own account `endosim` only (mode 700): the agent's
-# account can neither read nor list it, so the procedure generator and the development seeds stay out of its reach.
+# The commissioning service: the benchmark's simulator (endosim/, a byte copy of the grader's), which records the
+# development set and plays commissioning procedures of its own, a device engineer's test bench. Installed for its own
+# account `endosim` only (mode 700): the agent's account can neither read nor list it, so the procedure generator, the
+# development and commissioning seeds and the commissioning procedures' rigs stay out of its reach.
 # environment/setup/setup.sh starts it for the agent's session. The grader's renderer runs as this account too.
 RUN useradd --system --no-create-home --home-dir /var/lib/endocam --shell /usr/sbin/nologin endosim
 COPY commission_service /opt/endosim-commission
@@ -80,5 +81,6 @@ RUN HOME=/tmp/selfcheck python3 -c "import numpy, cv2, torch, isaacsim; print('[
     && runuser -u endosim -- env HOME=/tmp/selfcheck /opt/venv/bin/python3 -B -s -c "import sys; sys.path.insert(0, '/opt/endosim-commission'); import endosim.procedure, endosim.session, endosim.recorder, endosim.render_client; print('[image] commissioning service imports OK for its account')" \
     && ! runuser -u user -- ls /opt/endosim-commission > /dev/null 2>&1 \
     && ! runuser -u user -- cat /opt/endosim-commission/dev_procedures.json > /dev/null 2>&1 \
+    && ! runuser -u user -- cat /opt/endosim-commission/commission_procedures.json > /dev/null 2>&1 \
     && rm -rf /tmp/selfcheck /home/user/.nvidia-omniverse /home/user/.cache \
     && chown -R user:user /home/user

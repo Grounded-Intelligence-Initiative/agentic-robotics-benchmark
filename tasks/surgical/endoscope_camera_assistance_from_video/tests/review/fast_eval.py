@@ -55,6 +55,8 @@ def run(proc, controller, probe_rate=0.0, rng=None, frame_delay=None, verbose=Fa
         else:
             action = controller.act(sess.t, obs)
         sess.step(action)
+        if sess.episode.taken_over:
+            sess.finish_idle()                # as the grader: no more requests after a takeover
     out = sess.episode.summary()
     out.update(probes=probes, probes_changed=changed)
     if verbose:
@@ -104,7 +106,8 @@ def main():
         print("{:>20} {:<12} scope {:>2} x{} a{} s{} | {:.3f} | fail lens {:.2f} zone {:.2f} zoom {:.2f} hor {:.2f} mot {:.2f} | contacts {} first {}".format(
             seed, f["kind"], f["scope"], f["exchanges"], int(f["assistant"]), int(f["smoke"]), res["useful_view_fraction"],
             res["failed_lens"], res["failed_zone"], res["failed_zoom"], res["failed_horizon"], res["failed_motion"],
-            res["lens_contacts"], res["first_usable_step"]) + " | probes {} changed {}".format(res["probes"], res["probes_changed"]))
+            res["lens_contacts"], res["first_usable_step"]) + " | probes {} changed {}".format(res["probes"], res["probes_changed"])
+            + " | takeover {} | critical {} least seen {}".format(res["takeover"], res["critical_actions"], res["critical_min_seen"]))
         if a.verbose:
             print("    ", res["bad_runs"])
             print("    ", [g for g in proc.gestures if g[0] <= steps])

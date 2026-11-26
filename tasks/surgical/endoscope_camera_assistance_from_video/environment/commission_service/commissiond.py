@@ -1,18 +1,21 @@
-"""The commissioning service: the camera holder on development procedures, for the agent's own trials.
+"""The commissioning service: the camera holder on commissioning procedures, for the agent's own trials.
 
 Installed for the account `endosim` alone (the agent's account can neither read nor list this folder) and started by
 environment/setup/setup.sh. It runs the benchmark's simulator (endosim/, a byte copy of the grader's) on the
-development procedures of dev_procedures.json, never on a graded one, and does two things:
+procedures of its own, never on a graded one, and does two things:
 
-1. on its first start it records the development set (endosim/recorder.py: every development procedure as video
-   with labels) into /var/lib/endocam/dev_procedures, which the agent reads as ~/given/dev_procedures;
-2. it serves commissioning sessions on the Unix socket /run/endocam/commission.sock: one development procedure played
-   for the caller's controller with the grader's observations, latency and limits. A fixed number of sessions, one at
-   a time. No ground truth, no labels, no score, no summary: a session answers observations and nothing else.
+1. on its first start it records the development set (endosim/recorder.py: every development procedure of
+   dev_procedures.json as video with labels) into /var/lib/endocam/dev_procedures, which the agent reads as
+   ~/given/dev_procedures;
+2. it serves commissioning sessions on the Unix socket /run/endocam/commission.sock: one commissioning procedure of
+   commission_procedures.json (version 0.3: not a recorded one; drawn like the graded procedures, their look pool,
+   rigs of their own, nothing about them on file) played for the caller's controller with the grader's observations,
+   latency and limits. A fixed number of sessions, one at a time. No ground truth, no labels, no score, no summary: a
+   session answers observations and nothing else.
 
     request (one JSON object per line)                         reply
     {"cmd": "status"}                                          {"ok": true, "ready": .., "recorded": n, "sessions_left": n, "procedures": [..], ..}
-    {"cmd": "start", "procedure": "dev03"}                     {"ok": true, "session": k, "steps": N, "t": 0, "obs": {...}}
+    {"cmd": "start", "procedure": "c03"}                       {"ok": true, "session": k, "steps": N, "t": 0, "obs": {...}}
     {"cmd": "step", "action": [pan, tilt, insertion, roll]}    {"ok": true, "t": t, "done": false, "obs": {...}}   (no obs once done)
     {"cmd": "probe_copy"}                                      {"ok": true, "obs": {...} or null}   a copy of the current observation, as the grader makes it
 
@@ -56,9 +59,11 @@ def log(*parts):
 class Service(object):
     def __init__(self):
         with open(os.path.join(HERE, "dev_procedures.json")) as f:
-            self.doc = json.load(f)
-        self.items = {p["name"]: p for p in self.doc["procedures"]}
-        self.steps = int(self.doc["steps"])
+            self.doc = json.load(f)                                   # the recorded development set
+        with open(os.path.join(HERE, "commission_procedures.json")) as f:
+            self.cdoc = json.load(f)                                  # what the sessions play
+        self.items = {p["name"]: p for p in self.cdoc["procedures"]}
+        self.steps = int(self.cdoc["steps"])
         self.state_path = os.path.join(STATE_DIR, "state.json")
         self.state = {"sessions_used": 0, "recorded": []}
         if os.path.isfile(self.state_path):
@@ -80,11 +85,15 @@ class Service(object):
         log_path = os.path.join(STATE_DIR, "renderer.log")
         private(log_path).close()
         self.renderer = Renderer(HERE, python=PYTHON, log_path=log_path, start_timeout=1500.0, cwd=STATE_DIR)
-        canary = self.renderer.canary()
-        log("renderer up", json.dumps(self.renderer.started), "canary", json.dumps(canary)[:500])
-        bad = [s for s, r in canary.get("scopes", {}).items() if r["found"] < r["markers"] or (r["max_error_px"] or 99) > 2.5]
-        if bad or not canary.get("ok"):
-            raise RendererError("the render canary failed: {}".format(json.dumps(canary)[:400]))
+        for attempt in (1, 2):
+            canary = self.renderer.canary()
+            log("renderer up", json.dumps(self.renderer.started), "canary", json.dumps(canary)[:500])
+            bad = [s for s, r in canary.get("scopes", {}).items() if r["found"] < r["markers"] or (r["max_error_px"] or 99) > 2.5]
+            if not bad and canary.get("ok"):
+                return
+            if attempt == 1:
+                self.renderer.restart("the render canary failed")     # one fresh renderer before giving up
+        raise RendererError("the render canary failed: {}".format(json.dumps(canary)[:400]))
 
     def record_all(self):
         """The development set, once: every development procedure as video with labels."""
@@ -97,7 +106,8 @@ class Service(object):
             with self.lock:
                 proc = procedure.generate(item["seed"], item.get("factors"), steps=self.steps, pool="dev")
                 recorder.record(proc, self.renderer, out, item["name"], every=int(self.doc.get("record_every", 2)),
-                                operator_seed=item["seed"], touch=bool(item.get("touch")), log=log)
+                                operator_seed=item["seed"], touch=bool(item.get("touch")), log=log,
+                                label_every=int(self.doc.get("label_every", 4)))
             for root, dirs, files in os.walk(os.path.join(out, item["name"])):
                 os.chmod(root, 0o755)
                 for name in files:
@@ -113,7 +123,7 @@ class Service(object):
     def status(self):
         with self.state_lock:
             return {"ok": True, "ready": self.ready, "failure": self.failure, "recorded": len(self.state["recorded"]),
-                    "recordings": len(self.doc["procedures"]), "sessions_left": int(self.doc["sessions"]) - int(self.state["sessions_used"]),
+                    "recordings": len(self.doc["procedures"]), "sessions_left": int(self.cdoc["sessions"]) - int(self.state["sessions_used"]),
                     "procedures": sorted(self.items), "steps": self.steps, "busy": self.lock.locked()}
 
     # -- one connection ------------------------------------------------------------------------------------------------
@@ -150,7 +160,7 @@ class Service(object):
                         continue
                     holding = True
                     with self.state_lock:
-                        left = int(self.doc["sessions"]) - int(self.state["sessions_used"])
+                        left = int(self.cdoc["sessions"]) - int(self.state["sessions_used"])
                         if left <= 0:
                             reply({"ok": False, "error": "no commissioning sessions left"})
                             self.lock.release()
@@ -160,7 +170,7 @@ class Service(object):
                         number = self.state["sessions_used"]
                         self.save()
                     item = self.items[name]
-                    proc = procedure.generate(item["seed"], item.get("factors"), steps=self.steps, pool="dev")
+                    proc = procedure.generate(item["seed"], item.get("factors"), steps=self.steps, pool="all")
                     session = Session(proc, self.renderer, privileged=False)      # the procedure's own video latency
                     log("session", number, name, "started")
                     reply({"ok": True, "session": number, "sessions_left": left - 1, "steps": self.steps, "t": 0, "obs": session.observation()})
@@ -173,12 +183,15 @@ class Service(object):
                     except (ValueError, TypeError) as exc:
                         reply({"ok": False, "error": str(exc)})
                         continue
-                    out = {"ok": True, "t": session.t, "done": session.done}
-                    if not session.done:
+                    taken = session.episode.taken_over       # the surgeon took the camera back: the session is over
+                    out = {"ok": True, "t": session.t, "done": session.done or taken}
+                    if taken:
+                        out["ended"] = "the surgeon took the camera back"
+                    elif not session.done:
                         out["obs"] = session.observation()
                     reply(out)
-                    if session.done:
-                        log("session ended: procedure complete")
+                    if session.done or taken:
+                        log("session ended:", "takeover" if taken else "procedure complete")
                         break
                 elif cmd == "probe_copy":
                     if session is None or session.done:

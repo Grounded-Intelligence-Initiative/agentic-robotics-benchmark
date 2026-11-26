@@ -1,6 +1,6 @@
 """Run a controller through one commissioning session, the way the grader will run it.
 
-    /opt/venv/bin/python3 ~/commission/run_session.py dev03 [--controller /home/user/submission]
+    /opt/venv/bin/python3 ~/commission/run_session.py c03 [--controller /home/user/submission]
                           [--save DIR] [--every 10] [--probe-rate 0.06] [--stop-after N]
 
 It starts `bash run.sh` in the controller folder, waits for READY (40 s), sends `reset`, then for every control step
@@ -169,6 +169,8 @@ def main():
             if a.stop_after and t >= a.stop_after:
                 ended = "stopped after {} steps as asked".format(t)
                 break
+        if obs is None and getattr(service, "ended", None):
+            ended = "{} at step {}".format(service.ended, t)
     except (RuntimeError, ValueError, CommissioningError, OSError) as exc:
         ended = "ended at step {}: {}".format(t, exc)
     finally:

@@ -2,8 +2,8 @@
 
     from endocam_client import Commissioning, decode_image
     c = Commissioning()
-    print(c.status())                   # which development procedures, how many sessions are left
-    obs = c.start("dev03")              # one session = one development procedure, from its first step
+    print(c.status())                   # which commissioning procedures, how many sessions are left
+    obs = c.start("c03")                # one session = one commissioning procedure, from its first step
     while obs is not None:
         frame = decode_image(obs)       # RGB uint8 (480, 640, 3), one control step old
         obs = c.step([0.0, 0.0, 0.0, 0.0])
@@ -35,6 +35,7 @@ class Commissioning(object):
         self.rfile = self.sock.makefile("r", encoding="utf-8")
         self.steps = None
         self.t = None
+        self.ended = None
 
     def _call(self, message):
         self.sock.sendall((json.dumps(message) + "\n").encode("utf-8"))
@@ -50,7 +51,7 @@ class Commissioning(object):
         return self._call({"cmd": "status"})
 
     def start(self, procedure):
-        """Start a session on a development procedure ("dev01" ...); returns the first observation."""
+        """Start a session on a commissioning procedure ("c01" ...); returns the first observation."""
         reply = self._call({"cmd": "start", "procedure": procedure})
         self.steps, self.t = reply["steps"], reply["t"]
         return reply["obs"]
@@ -59,6 +60,7 @@ class Commissioning(object):
         """Apply rates [pan, tilt, insertion, roll] for one control step; the next observation, or None at the end."""
         reply = self._call({"cmd": "step", "action": [float(a) for a in action]})
         self.t = reply["t"]
+        self.ended = reply.get("ended")       # set when the session ended early: the surgeon took the camera back
         return None if reply["done"] else reply["obs"]
 
     def probe_copy(self):

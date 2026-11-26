@@ -48,6 +48,7 @@ sys.path.insert(0, HERE)
 
 from endosim import model, procedure  # noqa: E402
 from endosim.render_client import Renderer, RendererError  # noqa: E402
+from endosim.episode import TAKEOVERS  # noqa: E402
 from endosim.session import Session  # noqa: E402
 from robotics_grader.stage import secure_exec_path  # noqa: E402
 from robotics_grader import (  # noqa: E402
@@ -315,6 +316,8 @@ def run_procedure(index, item, steps, solver, renderer, lock, config, privileged
             if action is None:
                 action = solver.act(session.t, obs)
             session.step(canonical_action(action))
+            if session.episode.taken_over:
+                break                                  # the surgeon took the camera back: no more requests
     except BudgetExhausted as exc:
         state["budget_exhausted"] = True
         reason = str(exc)
@@ -324,13 +327,19 @@ def run_procedure(index, item, steps, solver, renderer, lock, config, privileged
         at = session.t
         session.finish_idle()                      # the rest of the procedure with the holder standing still
         log("procedure {} aborted at step {} ({}); the remaining {} steps ran with the holder stopped".format(index, at, reason[:200], steps - at))
+    elif session.episode.taken_over:
+        at = session.t
+        session.finish_idle()                      # every step after a takeover is not usable
+        log("procedure {}: the surgeon took the camera back at step {} ({}); the remaining {} steps are not usable".format(
+            index, at, session.episode.takeover, steps - at))
     rec = session.episode.summary()
     rec.update(index=index, aborted=reason is not None, abort_reason=reason, facts=proc.facts())
     LIVE["session"] = None
     log("procedure {} ({} scope {}): useful_view_fraction {:.4f} | failed: lens {:.3f} zone {:.3f} zoom {:.3f} horizon {:.3f} motion {:.3f} | "
-        "lens contacts {} cleanings {}".format(index, proc.kind, proc.scope, rec["useful_view_fraction"], rec["failed_lens"], rec["failed_zone"],
-                                               rec["failed_zoom"], rec["failed_horizon"], rec["failed_motion"], rec["lens_contacts"],
-                                               rec["lens_cleanings"]))
+        "lens contacts {} cleanings {} | takeover {} at {} | critical actions {} (least seen {})".format(
+            index, proc.kind, proc.scope, rec["useful_view_fraction"], rec["failed_lens"], rec["failed_zone"], rec["failed_zoom"],
+            rec["failed_horizon"], rec["failed_motion"], rec["lens_contacts"], rec["lens_cleanings"], rec["takeover"], rec["takeover_step"],
+            rec["critical_actions"], rec["critical_min_seen"]))
     return rec
 
 
@@ -354,6 +363,13 @@ def grade(submission, config, make_solver, make_renderer, only=None, set_file=No
         canary = renderer.canary()
         problems = check_canary(canary, config)
         log("render canary ({:.0f} s): {}".format(time.time() - t1, json.dumps(canary)[:600]))
+        if problems:
+            # one fresh renderer and a second canary before the sandbox is declared unable to render
+            log("render canary failed ({}); restarting the renderer once".format("; ".join(problems)))
+            renderer.restart("the render canary failed: " + "; ".join(problems))
+            canary = renderer.canary()
+            problems = check_canary(canary, config)
+            log("render canary, second try: {}".format(json.dumps(canary)[:600]))
         if problems:
             raise RendererError("the render canary failed: " + "; ".join(problems))
         rng = seed_rng()
@@ -397,20 +413,26 @@ def grade(submission, config, make_solver, make_renderer, only=None, set_file=No
         controller_slowest_reply_s=round(TimedSolver.slowest_s, 3), solver_restarts=float(solver.restarts),
         network_filter=float(bool(TimedSolver.filtered)),
         lens_contacts=float(sum(r["lens_contacts"] for r in records)), lens_cleanings=float(sum(r["lens_cleanings"] for r in records)),
+        lens_smears=float(sum(r["lens_smears"] for r in records)),
+        takeovers=float(sum(r["takeover"] is not None for r in records)),
+        critical_actions=float(sum(r["critical_actions"] for r in records)),
         renderer_restarts=float(renderer.restarts), render_ms_per_frame=round(renderer.render_ms / n, 1),
         extra_renders_per_frame=round(renderer.extra_renders / n, 3), renderer_start_s=float(started.get("start_s", 0.0)),
         wall_seconds=round(time.time() - t0, 1),
     )
-    for c in ("lens", "zone", "zoom", "horizon", "motion"):
+    for c in ("lens", "zone", "zoom", "horizon", "motion", "takeover"):
         extra["failed_" + c] = sum(r["failed_" + c] for r in records) / max(1, len(records))
+    for why in TAKEOVERS:
+        extra["takeover_" + why] = float(sum(r["takeover"] == why for r in records))
     for r in records:
         extra["procedure_{:02d}".format(r["index"])] = round(r["useful_view_fraction"], 4)
     lines = ["hidden set: {} procedures of {} steps; renderer {}".format(len(records), steps, info.get("gpu", "?"))]
     for r in records:
         f = r["facts"]
-        lines.append("procedure {:02d} {:<12} scope {:>2} exchanges {} assistant {} smoke {}: {:.4f}{}".format(
+        lines.append("procedure {:02d} {:<12} scope {:>2} exchanges {} assistant {} smoke {}: {:.4f}{}{}".format(
             r["index"], f["kind"], f["scope"], f["exchanges"], int(f["assistant"]), int(f["smoke"]), r["useful_view_fraction"],
-            " (aborted: {})".format(r["abort_reason"][:120]) if r["aborted"] else ""))
+            " (aborted: {})".format(r["abort_reason"][:120]) if r["aborted"] else "",
+            " (the surgeon took the camera back at step {}: {})".format(r["takeover_step"], r["takeover"]) if r["takeover"] else ""))
     return records, lock, extra, "\n".join(lines)
 
 

@@ -29,13 +29,13 @@ import struct
 import numpy as np
 
 from . import model
-from .tissue import WORK_X, WORK_Y, Tissue, trocar_point
+from .tissue import WORK_X, WORK_Y, Tissue, follow_weight, trocar_point
 
 KINDS = ("dissection", "suturing", "exploration", "clip_and_cut")
 HANDS = ("left", "right")
 ROLES = ("left", "right", "assistant")
 JAWS = ("grasper", "scissors", "hook", "needle_driver", "clip_applier", "suction")
-GENERATOR_VERSION = "endosim-procedure/0.3"
+GENERATOR_VERSION = "endosim-procedure/0.4"
 
 
 class Rng(object):
@@ -84,7 +84,7 @@ _SHAFTS = (  # (name, rgb, metallic, roughness); the first DEV_SHAFTS are the fi
     ("satin", (0.55, 0.56, 0.58), 1.0, 0.45), ("green", (0.06, 0.30, 0.16), 0.1, 0.4), ("gold", (0.65, 0.48, 0.18), 1.0, 0.3),
     ("maroon", (0.30, 0.07, 0.08), 0.1, 0.4), ("teal", (0.05, 0.35, 0.36), 0.1, 0.35), ("yellow", (0.75, 0.62, 0.10), 0.0, 0.4),
 )
-DEV_SHAFTS = 5
+DEV_SHAFTS = 3
 _BANDS = ((0.85, 0.75, 0.10), (0.10, 0.55, 0.80), (0.85, 0.85, 0.85), (0.80, 0.25, 0.10), (0.20, 0.70, 0.25))
 BLOOD = (0.33, 0.035, 0.045)
 
@@ -97,7 +97,7 @@ def draw_instrument_look(rng, jaw=None, pool="all"):
     jaw = jaw or rng.choice(JAWS[:5])
     steel = rng.uniform(0.55, 0.8)
     # blood and tissue on the working end: the jaws and the wrist take on the colour of what they work in
-    stain = rng.uniform(0.15, 0.5 if dev else 0.9) if rng.chance(0.6) else 0.0
+    stain = rng.uniform(0.15, 0.3 if dev else 0.9) if rng.chance(0.6) else 0.0
     look = {
         "jaw": jaw, "shaft": name, "stain": stain,
         "shaft_rgb": [float(c) for c in rgb], "shaft_metallic": metallic, "shaft_rough": rough + rng.uniform(-0.08, 0.08),
@@ -120,7 +120,7 @@ _PALETTES = (  # (name, base, dark, pale, fat, vessel); the first DEV_PALETTES a
     ("fatty", (0.80, 0.60, 0.36), (0.62, 0.36, 0.22), (0.88, 0.74, 0.52), (0.92, 0.82, 0.42), (0.52, 0.10, 0.10)),
     ("dusky", (0.46, 0.20, 0.27), (0.27, 0.09, 0.15), (0.64, 0.40, 0.44), (0.78, 0.68, 0.42), (0.22, 0.04, 0.10)),
 )
-DEV_PALETTES = 3
+DEV_PALETTES = 2
 
 
 RIG_SHAFTS = 6                # shaft sizes drawn per procedure: one per instrument look (3, plus one per exchange)
@@ -139,6 +139,42 @@ def draw_rig(rng):
 
 
 NOMINAL_RIG = {"head_deg": 0.0, "latency_steps": 1, "shaft_mm": [5] * RIG_SHAFTS}   # a procedure whose set names none
+
+HEAD_CHANGE_TURN_STEPS = 3    # a knocked camera head turns to its new angle over this many control steps
+HEAD_CHANGE_MIN_DEG = 15.0    # a change worth the name: at least this far from the angle before
+
+
+def draw_head_changes(rng, head_deg):
+    """Version 0.3: the camera head is knocked on the eyepiece during the procedure (holder_manual.md, section 4), once
+    or twice, equally likely: the first time at a moment uniform in 8 to 40 s, the second uniform from 15 s after the
+    first to 76 s; each time it turns, over HEAD_CHANGE_TURN_STEPS control steps, to an angle uniform within
+    +-HEAD_ANGLE_MAX_DEG and at least HEAD_CHANGE_MIN_DEG from the angle before (drawn again until it is). Returns
+    [[step, new angle in degrees], ...] (the step at which the turn begins)."""
+    times = [rng.uniform(8.0, 40.0)]
+    if rng.chance(0.5) and times[0] + 15.0 < 76.0:
+        times.append(rng.uniform(times[0] + 15.0, 76.0))
+    out, cur = [], float(head_deg)
+    for when in times:
+        while True:
+            new = rng.uniform(-model.HEAD_ANGLE_MAX_DEG, model.HEAD_ANGLE_MAX_DEG)
+            if abs(new - cur) >= HEAD_CHANGE_MIN_DEG:
+                break
+        out.append([int(round(when / model.DT)), round(float(new), 3)])
+        cur = new
+    return out
+
+
+def head_track(rig, total):
+    """The camera head's angle at every step (rad), from the rig's first angle and its changes."""
+    head = np.full(int(total), math.radians(float(rig["head_deg"])))
+    for step, deg in rig.get("head_changes") or []:
+        step = int(step)
+        if step >= total:
+            continue
+        old, new = float(head[step]), math.radians(float(deg))
+        ramp = np.clip((np.arange(int(total)) - step + 1) / float(HEAD_CHANGE_TURN_STEPS), 0.0, 1.0)
+        head = np.where(np.arange(int(total)) >= step, old + ramp * (new - old), head)
+    return head
 
 
 def draw_scene_look(rng, pool="all"):
@@ -192,8 +228,12 @@ def _steps(seconds):
     return max(1, int(round(seconds / model.DT)))
 
 
+P_SINK = {"left": 0.20, "right": 0.35}   # version 0.3: the chance that a hand works into the tissue at a site
+
+
 class _Site(object):
-    """A working site: where on the tissue, how the two hands stand at it."""
+    """A working site: where on the tissue, how the two hands stand at it. Since version 0.3 a hand may work into the
+    tissue (P_SINK): its tip 2 to 6 mm under the resting surface, hidden but for its shaft."""
 
     def __init__(self, rng, tissue, xy):
         self.c = np.array([xy[0], xy[1], float(tissue.height(xy[0], xy[1]))])
@@ -205,7 +245,8 @@ class _Site(object):
         self.station = {}
         for hand, sign in (("left", -1.0), ("right", 1.0)):
             p = self.c + sign * 0.5 * self.sep * self.lat + rng.uniform(-0.004, 0.004) * self.fwd
-            p[2] = float(tissue.height(p[0], p[1])) + rng.uniform(0.001, 0.009)     # at the tissue: breathing buries a low tip
+            above = -rng.uniform(0.002, 0.006) if rng.chance(P_SINK[hand]) else rng.uniform(0.001, 0.009)
+            p[2] = float(tissue.height(p[0], p[1])) + above                          # at the tissue, or in it
             self.station[hand] = p
 
 
@@ -242,8 +283,11 @@ class _Builder(object):
         self.active = {h: [] for h in HANDS}
         self.present = {h: [] for h in HANDS}
         self.look = {h: [] for h in HANDS}
+        self.grip = {h: [] for h in HANDS}   # per step: the tissue point a hand holds (at rest), NaN when none
         self.cur_look = {"left": 0, "right": 1}
         self.smoke_events = []        # (step, peak, decay_s)
+        self.critical = []            # [start, end, kind]: the critical actions (version 0.3)
+        self.travels = []             # [start, end] of every travel between sites
         self.site_of_step = []
         self.gestures = []            # (start step, name) for the maintainers' record
         self.n = 0
@@ -251,11 +295,14 @@ class _Builder(object):
     def done(self):
         return self.n >= self.total
 
-    def _put(self, name, pos, jaw=None, active=None, present=None, site=-1):
-        """Append one segment: pos {hand: (n, 3)}; jaw {hand: (n,)}; active / present {hand: (n,) bool}."""
+    def _put(self, name, pos, jaw=None, active=None, present=None, site=-1, grip=()):
+        """Append one segment: pos {hand: (n, 3)}; jaw {hand: (n,)}; active / present {hand: (n,) bool}; `grip`: the
+        hands that hold the tissue through the segment, where their tips were when it began."""
         n = len(pos["left"])
         self.gestures.append((self.n, name))
         for h in HANDS:
+            anchor = self.last(h) if h in grip and self.tip[h] else np.full(3, np.nan)
+            self.grip[h].append(np.repeat(np.asarray(anchor, dtype=float)[None, :], n, 0))
             self.tip[h].append(np.asarray(pos[h], dtype=float))
             self.jaw[h].append(np.full(n, 0.08) if jaw is None or h not in jaw else np.asarray(jaw[h], dtype=float))
             self.active[h].append(np.ones(n, bool) if active is None or h not in active else np.asarray(active[h], bool))
@@ -285,11 +332,13 @@ class _Builder(object):
             if h == "left" and lead:
                 s = np.concatenate([np.zeros(lead), _minjerk(n - lead)])
             p = a[None, :] + s[:, None] * (b - a)[None, :]
+            line = p[:, 2].copy()
             p[:, 2] += lift * np.sin(math.pi * s) ** 2
             floor = self.tissue.height(p[:, 0], p[:, 1]) + 0.003
-            p[:, 2] = np.maximum(p[:, 2], floor)
+            p[:, 2] = np.maximum(p[:, 2], np.minimum(floor, line))       # above the tissue, but for a station in it
             pos[h] = p
         jaw = {h: np.full(n, rng.uniform(0.05, 0.3)) for h in HANDS}
+        self.travels.append([self.n, self.n + n])
         self._put("travel", pos, jaw=jaw, site=k)
 
     def hold(self, site, k, seconds):
@@ -325,7 +374,7 @@ class _Builder(object):
         if smoke and rng.chance(0.75):
             for _ in range(rng.integers(1, 3)):
                 self.smoke_events.append((self.n + rng.integers(2, max(3, n - 5)), rng.uniform(0.35, 0.95), rng.uniform(3.0, 6.0)))
-        self._put("dissect", {"left": left, "right": right}, jaw=jaw, site=k)
+        self._put("dissect", {"left": left, "right": right}, jaw=jaw, site=k, grip=("left",))
 
     def suture(self, site, k, bites):
         rng = self.rng
@@ -337,13 +386,14 @@ class _Builder(object):
             loop = r * (np.sin(th)[:, None] * e[None, :] + (1.0 - np.cos(th))[:, None] * site.up[None, :])
             loop = np.concatenate([loop, np.zeros((rest, 3))])
             m = n + rest
+            self.critical.append([self.n, self.n + n // 2, "needle"])        # the needle passing through the tissue
             right = self.last("right")[None, :] + loop + _tremor(rng, m, 0.0002)
             left = self.last("left")[None, :] + 0.003 * np.sin(np.linspace(0.0, math.pi, m))[:, None] * site.lat[None, :] \
                 + _tremor(rng, m, 0.0003)
             jaw = {"right": np.full(m, 0.04), "left": np.full(m, 0.10)}
             self._put("suture", {"left": left, "right": right}, jaw=jaw, site=k)
 
-    def _excursion(self, name, hand, site, k, vec, out_s, hold_s, jaw_hold=0.03):
+    def _excursion(self, name, hand, site, k, vec, out_s, hold_s, jaw_hold=0.03, grip=()):
         """One hand goes out by `vec`, holds, comes back; the other hand holds."""
         rng = self.rng
         a, h, b = _steps(out_s), _steps(hold_s), _steps(out_s)
@@ -353,7 +403,7 @@ class _Builder(object):
         pos = {hand: self.last(hand)[None, :] + prof[:, None] * vec[None, :] + _tremor(rng, n, 0.0002),
                other: self.last(other)[None, :] + _tremor(rng, n, 0.0003)}
         jaw = {hand: np.full(n, jaw_hold), other: np.full(n, 0.05)}
-        self._put(name, pos, jaw=jaw, site=k)
+        self._put(name, pos, jaw=jaw, site=k, grip=grip)
 
     def pull(self, site, k):
         rng = self.rng
@@ -365,12 +415,14 @@ class _Builder(object):
         rng = self.rng
         lat = rng.uniform(0.010, max(0.012, 0.062 - site.sep))
         vec = -lat * site.lat + rng.uniform(0.008, 0.020) * site.up + rng.uniform(-0.008, 0.008) * site.fwd
-        self._excursion("stretch", "left", site, k, vec, rng.uniform(0.9, 1.3), rng.uniform(2.0, 4.0))
+        self._excursion("stretch", "left", site, k, vec, rng.uniform(0.9, 1.3), rng.uniform(2.0, 4.0), grip=("left",))
 
     def clip(self, site, k):
         rng = self.rng
         vec = rng.uniform(0.007, 0.011) * site.fwd - rng.uniform(0.0, 0.003) * site.up
-        self._excursion("clip", "right", site, k, vec, rng.uniform(0.7, 0.9), rng.uniform(1.2, 2.0), jaw_hold=0.0)
+        out_s, hold_s = rng.uniform(0.7, 0.9), rng.uniform(1.2, 2.0)
+        self.critical.append([self.n + _steps(out_s), self.n + _steps(out_s) + _steps(hold_s), "clip"])   # jaws closed on the clip
+        self._excursion("clip", "right", site, k, vec, out_s, hold_s, jaw_hold=0.0, grip=("right",))
 
     def exchange(self, hand, site, k, new_look):
         """`hand` withdraws through its trocar, stays out, returns (as look `new_look`) to its station."""
@@ -399,7 +451,8 @@ class _Builder(object):
     def arrays(self):
         cut = self.total
         cat = lambda d: {h: np.concatenate(d[h])[:cut] for h in HANDS}   # noqa: E731
-        return cat(self.tip), cat(self.jaw), cat(self.active), cat(self.present), cat(self.look), np.array(self.site_of_step[:cut])
+        return (cat(self.tip), cat(self.jaw), cat(self.active), cat(self.present), cat(self.look), np.array(self.site_of_step[:cut]),
+                cat(self.grip))
 
 
 def _assistant(rng, tissue, trocar, sites, site_of_step, hands_tip, total, wanted):
@@ -415,7 +468,7 @@ def _assistant(rng, tissue, trocar, sites, site_of_step, hands_tip, total, wante
 
     def hold_point(k):
         s = sites[k]
-        p = s.c + side * rng.uniform(0.030, 0.055) * s.lat + rng.uniform(-0.01, 0.035) * s.fwd
+        p = s.c + side * rng.uniform(0.018, 0.040) * s.lat + rng.uniform(-0.01, 0.035) * s.fwd
         p[2] = float(tissue.height(p[0], p[1])) + rng.uniform(0.012, 0.028)
         return p
 
@@ -436,7 +489,7 @@ def _assistant(rng, tissue, trocar, sites, site_of_step, hands_tip, total, wante
                 follow = (t + _steps(rng.uniform(1.5, 5.0)), k) if rng.chance(0.7) else None
             if follow is not None and t >= follow[0]:
                 target, follow = hold_point(follow[1]), None
-            if dab is None and rng.chance(0.004):
+            if dab is None and rng.chance(0.012):
                 mid = 0.5 * (hands_tip["left"][t] + hands_tip["right"][t])
                 dab = (t + _steps(rng.uniform(1.5, 3.0)), mid + np.array([0.0, 0.0, rng.uniform(0.004, 0.010)]))
             if dab is not None and t >= dab[0]:
@@ -450,6 +503,33 @@ def _assistant(rng, tissue, trocar, sites, site_of_step, hands_tip, total, wante
         present[t] = float(np.linalg.norm(pos - out_pt)) > 0.02
     tip += _tremor(rng, total, 0.00035) * present[:, None]
     return tip, present, np.full(total, 0.05)
+
+
+CRITICAL_ENERGY_S = 1.0       # an energy activation's critical window: from the smoke's first rise, this long
+CRITICAL_AFTER_START_S = 10.0  # no critical action is judged in the first seconds of a procedure ...
+CRITICAL_AFTER_TRAVEL_S = 3.0  # ... nor in the first seconds at a new site ...
+CRITICAL_AFTER_HEAD_S = 4.0    # ... nor in the seconds after the camera head was knocked (the team's doing, not the holder's)
+
+
+def _critical_actions(b, total, head_changes=()):
+    """Version 0.3: the critical actions of a procedure, the moments the surgeon must see (holder_manual.md, section
+    6): a clip applier's jaws closed on its clip, the first half of a needle's bite, the first second of an energy
+    activation (when its smoke starts to rise). Those within CRITICAL_AFTER_START_S of the start, within
+    CRITICAL_AFTER_TRAVEL_S of the end of a travel between sites, or overlapping the CRITICAL_AFTER_HEAD_S from the start
+    of a camera head's change are not judged. [[start, end, kind], ...]."""
+    out = [[at, at + _steps(CRITICAL_ENERGY_S), "energy"] for at, _, _ in b.smoke_events]
+    out += b.critical
+    keep = []
+    for start, end, kind in sorted(out):
+        start, end = int(start), int(end)
+        if start < _steps(CRITICAL_AFTER_START_S) or end >= total or end <= start:
+            continue
+        if any(t0 <= start < t1 + _steps(CRITICAL_AFTER_TRAVEL_S) for t0, t1 in b.travels):
+            continue
+        if any(start <= int(h) + _steps(CRITICAL_AFTER_HEAD_S) and end >= int(h) for h, _ in head_changes):
+            continue
+        keep.append([start, end, kind])
+    return keep
 
 
 def _fine_flags(tips, active):
@@ -482,11 +562,22 @@ class Procedure(object):
         self.__dict__.update(kw)
 
     def roles_state(self, t):
-        """The instruments at step t for the renderer: tip, the trocar it pivots in, jaw, look, presence."""
+        """The instruments at step t for the renderer: tip, the trocar it pivots in, jaw, look, presence, and the
+        tissue point a hand holds (its grip, at rest; None when it holds none)."""
         out = {}
         for r in ROLES:
+            g = self.grip[r][t]
             out[r] = {"tip": [float(v) for v in self.tip[r][t]], "jaw": float(self.jaw[r][t]), "look": int(self.look[r][t]),
-                      "present": bool(self.present[r][t])}
+                      "present": bool(self.present[r][t]), "grip": None if np.isnan(g).any() else [float(v) for v in g]}
+        return out
+
+    def grips(self, t, tips=None):
+        """The traction at step t: (grasped point at rest, grasping tip) per hand that holds the tissue."""
+        out = []
+        for r in HANDS:
+            g = self.grip[r][t]
+            if self.present[r][t] and not np.isnan(g).any():
+                out.append((g, self.tip[r][t] if tips is None or r not in tips else tips[r]))
         return out
 
     def scene_spec(self):
@@ -502,17 +593,25 @@ class Procedure(object):
                 "fine_fraction": round(float(self.fine[1:].mean()), 3),
                 "both_active_fraction": round(float((self.active["left"][1:] & self.active["right"][1:]).mean()), 3),
                 "head_deg": float(self.rig["head_deg"]), "latency_steps": int(self.latency),
+                "head_changes": [list(c) for c in self.rig.get("head_changes") or []],
+                "critical_actions": len(self.critical),
+                "breath_mm": round(1000.0 * float(np.max(self.tissue.breaths[:, 1])), 2),
+                "hidden_fraction": {h: round(float(self.sunk[h][1:].mean()), 3) for h in HANDS},
                 "shafts_mm": [int(k["shaft_mm"]) for k in self.looks], "generator": GENERATOR_VERSION}
 
 
 def generate(seed, factors=None, steps=800, pool="all"):
     """The procedure of `seed`. `factors` may pin: kind, scope, exchanges (0-2), assistant (bool), smoke (bool), and
-    `rig` (draw_rig's record: the camera head's angle, the video latency, the shafts' sizes; NOMINAL_RIG without it).
+    `rig` (draw_rig's record: the camera head's angle, the video latency, the shafts' sizes, and since version 0.3 the
+    camera head's changes during the procedure, `head_changes`; NOMINAL_RIG without it), and `salt` (version 0.3: a key
+    drawn for the fixed sets after the rules were written, mixed into every stream of the procedure).
     `pool`: "all" for a graded procedure, "dev" for a development procedure, whose looks come from the narrower
     development pool (fewer shaft finishes and tissue colourings, lighter staining, less clutter): the graded
     procedures show things the development set does not."""
     f = dict(factors or {})
-    rng = Rng(seed, "procedure")
+    salt = f.get("salt")
+    R = (lambda label: Rng(seed, label)) if salt is None else (lambda label: Rng(seed, "{}:{}".format(int(salt), label)))  # noqa: E731
+    rng = R("procedure")
     kind = f.get("kind") or rng.choice(KINDS)
     scope = str(f.get("scope") or rng.choice(("0", "30")))
     default_x = {"dissection": rng.integers(0, 2), "suturing": rng.integers(0, 2), "exploration": 0, "clip_and_cut": 2}[kind]
@@ -521,27 +620,27 @@ def generate(seed, factors=None, steps=800, pool="all"):
     smoke_on = bool(f["smoke"]) if "smoke" in f else (kind in ("dissection", "clip_and_cut") and rng.chance(0.7))
     total = int(steps) + 1
 
-    tissue = Tissue.draw(Rng(seed, "tissue"))
-    trng = Rng(seed, "ports")
+    tissue = Tissue.draw(R("tissue"))
+    trng = R("ports")
     jit = lambda: trng.uniform(-0.012, 0.012)   # noqa: E731
     a_side = trng.choice((-1.0, 1.0))
     trocars = {"left": trocar_point(-0.075 + jit(), -0.045 + jit()), "right": trocar_point(0.075 + jit(), -0.045 + jit()),
                "assistant": trocar_point(a_side * (0.125 + jit()), 0.070 + jit())}
 
-    lrng = Rng(seed, "looks")
+    lrng = R("looks")
     work_jaws = {"dissection": ("grasper", "hook"), "suturing": ("grasper", "needle_driver"),
                  "exploration": ("grasper", "grasper"), "clip_and_cut": ("grasper", "scissors")}[kind]
     looks = [draw_instrument_look(lrng, work_jaws[0], pool), draw_instrument_look(lrng, work_jaws[1], pool),
              draw_instrument_look(lrng, lrng.choice(("suction", "suction", "grasper")), pool)]
-    scene_look = draw_scene_look(Rng(seed, "scene"), pool)
+    scene_look = draw_scene_look(R("scene"), pool)
 
     count = {"dissection": 7, "suturing": 8, "exploration": 12, "clip_and_cut": 8}[kind]
-    prng = Rng(seed, "path")
+    prng = R("path")
     sites_xy = _site_path(prng, kind, count)
-    srng = Rng(seed, "sites")
+    srng = R("sites")
     sites = [_Site(srng, tissue, xy) for xy in sites_xy]
 
-    g = Rng(seed, "gestures")
+    g = R("gestures")
     b = _Builder(g, tissue, trocars, total)
     # which sites carry an exchange (never the first site; at most `exchanges`)
     x_sites = set()
@@ -588,12 +687,20 @@ def generate(seed, factors=None, steps=800, pool="all"):
     for i, lk in enumerate(looks):
         lk["shaft_mm"] = int(rig["shaft_mm"][i]) if i < len(rig["shaft_mm"]) else 5
 
-    tip, jaw, active, present, look, site_of_step = b.arrays()
-    a_tip, a_present, a_jaw = _assistant(Rng(seed, "assistant"), tissue, trocars["assistant"], sites, site_of_step, tip, total,
+    tip, jaw, active, present, look, site_of_step, grip = b.arrays()
+    a_tip, a_present, a_jaw = _assistant(R("assistant"), tissue, trocars["assistant"], sites, site_of_step, tip, total,
                                          assistant)
     tip["assistant"], jaw["assistant"] = a_tip, a_jaw
     present["assistant"], active["assistant"] = a_present, np.zeros(total, bool)
     look["assistant"] = np.full(total, 2, dtype=int)
+    grip["assistant"] = np.full((total, 3), np.nan)
+    # the hands work on the breathing tissue and move with it (version 0.3); hidden: a tip under the resting surface
+    sunk = {h: tip[h][:, 2] < tissue.height(tip[h][:, 0], tip[h][:, 1]) for h in HANDS}
+    times = np.arange(total) * model.DT
+    for r in ROLES:
+        shift = np.array([tissue.breath_shift(p[0], p[1], ts) for p, ts in zip(tip[r], times)])
+        weight = np.array([follow_weight(p[2]) for p in tip[r]])
+        tip[r] = tip[r] + weight[:, None] * shift
 
     smoke = np.zeros(total)
     for at, peak, decay in b.smoke_events:
@@ -601,8 +708,9 @@ def generate(seed, factors=None, steps=800, pool="all"):
         rise = np.clip(t / _steps(0.6), 0.0, 1.0)
         smoke += np.where(t >= 0, peak * rise * np.exp(-np.clip(t, 0, None) * model.DT / decay), 0.0)
     smoke = np.clip(smoke, 0.0, 1.0)
+    critical = _critical_actions(b, total, rig.get("head_changes") or [])
 
-    clutter = draw_clutter(Rng(seed, "clutter"), tissue, sites, pool)
+    clutter = draw_clutter(R("clutter"), tissue, sites, pool)
     used = sorted(set(int(s) for s in site_of_step))
     path = sum(float(np.linalg.norm(sites[b_].c - sites[a_].c)) for a_, b_ in zip(used[:-1], used[1:]))
     return Procedure(seed=int(seed), kind=kind, scope=scope, steps=int(steps), exchanges=len(x_sites), assistant=assistant,
@@ -610,4 +718,4 @@ def generate(seed, factors=None, steps=800, pool="all"):
                      tip=tip, jaw=jaw, active=active, present=present, look=look, smoke=smoke,
                      fine=_fine_flags(tip, active), site_of_step=site_of_step, sites_xy=[list(map(float, s.c[:2])) for s in sites],
                      path_m=path, gestures=b.gestures, rig=rig, head=math.radians(float(rig["head_deg"])),
-                     latency=int(rig["latency_steps"]))
+                     head_at=head_track(rig, total), latency=int(rig["latency_steps"]), grip=grip, sunk=sunk, critical=critical)

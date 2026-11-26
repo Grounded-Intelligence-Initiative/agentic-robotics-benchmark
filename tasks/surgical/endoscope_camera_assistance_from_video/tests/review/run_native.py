@@ -75,8 +75,13 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--only", help="indices of the hidden procedures to run (default: all)")
     ap.add_argument("--tag", default="")
-    ap.add_argument("--dev", action="store_true", help="the development set (commissioning's procedures, dev looks) instead")
+    ap.add_argument("--dev", action="store_true", help="the development set (the recorded procedures, dev looks) instead")
+    ap.add_argument("--commission", action="store_true", help="the commissioning set (what the sessions play, graded looks) instead")
+    ap.add_argument("--blind", action="store_true", help="write and print no judgement (as a commissioning session: for work "
+                                                       "under the agent's information rule); only whether a procedure ended early")
     a = ap.parse_args()
+    if a.blind:
+        verify.log = lambda *parts: None          # the grader's own lines judge the view: not shown
     os.makedirs(a.out, exist_ok=True)
     os.environ["ARB_PYTHON"] = sys.executable
     config = stage_config()
@@ -95,7 +100,8 @@ def main():
     try:
         records, lock, extra, diagnostic = verify.grade(
             sub, config, lambda timeout: LocalSolver(step_timeout=timeout, submission=sub, clear_account=False), make_renderer, only=only,
-            set_file=os.path.join(TASK, "environment", "commission_service", "dev_procedures.json") if a.dev else None,
+            set_file=os.path.join(TASK, "environment", "commission_service", "dev_procedures.json") if a.dev else
+            os.path.join(TASK, "environment", "commission_service", "commission_procedures.json") if a.commission else None,
             pool="dev" if a.dev else "all")
     except (SolverMissing, SolverAborted) as exc:
         write_verdict(zero_verdict(reason=str(exc), anchored=anchor is not None), path=out)
@@ -103,6 +109,11 @@ def main():
         return
     except RendererError as exc:
         raise SystemExit("the grading environment could not render: {}".format(exc))
+    if a.blind:
+        for r in records:
+            print("procedure {}: {}".format(r["index"], "ended early at step {} (the surgeon took the camera back)".format(r["takeover_step"])
+                                             if r["takeover"] else "played to the end"))
+        return
     verdict = verify.score(records, lock, extra, diagnostic, config, anchor, meta, path=out)
     with open(os.path.join(a.out, "records_{}.json".format(name)), "w") as f:
         json.dump({"records": records, "diagnostic": diagnostic}, f, indent=1)

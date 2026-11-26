@@ -3,10 +3,10 @@
 A recording is a development procedure (never a graded one) played with a scripted camera assistant at the holder,
 `Assistant` below, standing in for the person who held the camera when the procedure was recorded. It is deliberately
 ordinary: it reacts late, it lets the work drift off centre before it corrects, its horizon is only roughly level,
-and in some recordings it runs the lens into tissue and has to withdraw and clean. The labels are the simulator's
-truth for the frame they belong to (episode.Episode.annotation): every instrument's tip in the image, which
-instruments count, whether the surgeon is doing fine work, whether the lens is smeared, and how the view rules judge
-the frame.
+and in some recordings it runs the lens into tissue and has to withdraw and clean. Since version 0.3 the labels are
+what an annotation team makes (episode.Episode.annotation), on every `label_every`-th step: the tips it can see,
+marked by hand with a small error, which instruments are in and count and their catalogue size, the joints, the
+scope, the lab's camera head angle, a smeared lens; no depth and no judgement of the view.
 
 Used by the commissioning service's set-up (environment/commission_service/commissiond.py); the grader never records.
 """
@@ -112,15 +112,17 @@ class Assistant(object):
         return np.clip(rate3, -model.RATE_MAX[:3], model.RATE_MAX[:3])
 
 
-def record(procedure, renderer, out_dir, name, every=2, operator_seed=0, touch=False, log=None):
+def record(procedure, renderer, out_dir, name, every=2, operator_seed=0, touch=False, log=None, label_every=4):
     """Play `procedure` with the scripted assistant and write <out_dir>/<name>/: frames/<step>.jpg for every
-    `every`-th step, labels.jsonl (one line per frame), meta.json. Returns the recording's summary."""
+    `every`-th step, labels.jsonl (one line per labelled frame: every `label_every`-th step), meta.json. Returns the
+    recording's summary."""
     root = os.path.join(out_dir, name)
     os.makedirs(os.path.join(root, "frames"), exist_ok=True)
     renderer.load(procedure.scene_spec())
     ep = Episode(procedure)
     op = Assistant(operator_seed, ep, touch=touch)
-    serial = 0
+    marker = Rng(operator_seed, "annotator")
+    serial, labelled = 0, 0
     with open(os.path.join(root, "labels.jsonl"), "w") as labels:
         while True:
             if ep.t % every == 0:
@@ -129,9 +131,11 @@ def record(procedure, renderer, out_dir, name, every=2, operator_seed=0, touch=F
                 fname = "%06d.jpg" % ep.t
                 with open(os.path.join(root, "frames", fname), "wb") as f:
                     f.write(jpeg)
-                lab = ep.annotation()
-                lab["frame"] = "frames/" + fname
-                labels.write(json.dumps(lab) + "\n")
+                if ep.t % label_every == 0:
+                    lab = ep.annotation(marker)
+                    lab["frame"] = "frames/" + fname
+                    labels.write(json.dumps(lab) + "\n")
+                    labelled += 1
             if ep.done:
                 break
             ep.step(model.clip_command(op.act()))
@@ -140,16 +144,19 @@ def record(procedure, renderer, out_dir, name, every=2, operator_seed=0, touch=F
     meta = {
         "name": name, "scope": procedure.scope, "view_deg": k["view_deg"], "intrinsics": {"fx": k["fx"], "fy": k["fy"], "cx": k["cx"], "cy": k["cy"]},
         "image": [model.IMAGE_W, model.IMAGE_H], "step_s": model.DT, "steps": procedure.steps, "recorded_every": every,
-        "procedure_kind": procedure.kind,
-        "camera_head_deg": float(procedure.rig["head_deg"]), "video_latency_steps": int(procedure.latency),
-        "rig": "measured in the lab for this recording: the camera head's angle on the eyepiece and the video chain's latency "
-               "(the frames here are as captured, without it; the commissioning service plays this procedure with it)",
+        "labelled_every": label_every, "procedure_kind": procedure.kind,
+        "camera_head_deg": float(procedure.rig["head_deg"]),
+        "camera_head_changes": [[int(a), float(b)] for a, b in procedure.rig.get("head_changes") or []],
+        "video_latency_steps": int(procedure.latency),
+        "rig": "measured in the lab for this recording: the camera head's angle on the eyepiece at the start, the steps at "
+               "which it was knocked and the angle it was turned to (each turn takes 3 steps from that step), and the video "
+               "chain's latency (the frames here are as captured, without it)",
         "camera": "held by a scripted assistant; its view was usable on {:.0%} of the steps".format(summary["useful_view_fraction"]),
         "labels": "labels.jsonl: one JSON object per recorded frame, for the state the frame shows (holder_manual.md, section 8)",
     }
     with open(os.path.join(root, "meta.json"), "w") as f:
         json.dump(meta, f, indent=1)
     if log:
-        log("recorded {}: {} frames, the assistant's useful_view_fraction {:.3f}, lens contacts {}".format(
-            name, serial, summary["useful_view_fraction"], summary["lens_contacts"]))
+        log("recorded {}: {} frames ({} labelled), the assistant's useful_view_fraction {:.3f}, lens contacts {}".format(
+            name, serial, labelled, summary["useful_view_fraction"], summary["lens_contacts"]))
     return summary

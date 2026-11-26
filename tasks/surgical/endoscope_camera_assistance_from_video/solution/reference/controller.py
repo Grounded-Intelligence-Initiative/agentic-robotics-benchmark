@@ -38,7 +38,7 @@ NOMINAL_TROCAR = {"left": np.array([-0.075, -0.045, -0.035]), "right": np.array(
 TARGET_PX = 31.0            # the apparent shaft diameter aimed for (the zoom band is 22-44 px)
 COMFORT_U, COMFORT_V = 70.0, 50.0   # the working point may sit this far from the image centre before the view moves
 FINE_SAMPLES = 9            # frames (0.8 s) over which the tips must stay put to count as fine work (the rule: 1.0 s)
-CALM_IMAGE_SPEED = 36.0     # px/s the view may move the working point during fine work (limit 48)
+CALM_IMAGE_SPEED = 0.75 * model.IMAGE_SPEED_LIMIT   # px/s the view may move the working point during fine work
 
 
 class State(object):

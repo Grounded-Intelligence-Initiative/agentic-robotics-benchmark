@@ -1,6 +1,11 @@
 """The rendered scene: the cavity, the instruments, the scope with its coaxial light, as a USD stage.
 
-Runs inside the Isaac Sim process (render_server.py). The stage is authored in centimetres (metersPerUnit 0.01): with
+Runs inside the Isaac Sim process (render_server.py).
+
+The tissue moves (version 0.3): the floor mesh's vertices are its resting surface moved by tissue.Tissue.displacement,
+the breathing and the traction of a hand that holds the tissue, recomputed every frame from the frame's time and the
+instruments' tips in the state (so a probe copy's moved instrument drags the tissue as the true one would), with the
+normals recomputed from the moved heights; what lies on the tissue moves with it. The stage is authored in centimetres (metersPerUnit 0.01): with
 a stage in metres the RTX renderer ignores light sources a few millimetres across, which is what a scope's light is
 (measured, tests/README.md section 2). Nothing in the stage has a physics schema: every prim is posed kinematically
 from the episode's state, once per frame.
@@ -175,16 +180,21 @@ class Scene(object):
         # one texture over the whole floor (about 0.14 mm a texel), the relief map aligned with the colour map
         st = np.stack([(gx - xs[0]) / (xs[-1] - xs[0]), (gy - ys[0]) / (ys[-1] - ys[0])], axis=-1).reshape(-1, 2)
         st_fine = st
-        root = UsdGeom.Xform.Define(stage, "/World/Tissue")
-        self.breath_op = root.AddTranslateOp(UsdGeom.XformOp.PrecisionDouble)
+        UsdGeom.Xform.Define(stage, "/World/Tissue")
         mesh = _grid_mesh(stage, "/World/Tissue/Floor", pts, len(xs), len(ys), st, st_fine, nrm.reshape(-1, 3))
+        self.tissue, self.floor = tissue, mesh
+        self.rest = (gx, gy, z)
+        self.floor_points, self.floor_normals = mesh.GetPointsAttr(), mesh.GetNormalsAttr()
+        self.clutter_ops = []
         _bind(mesh.GetPrim(), _material(stage, "/World/Looks/tissue", roughness=look["roughness"], clearcoat=look["clearcoat"],
                                         colour_map=paths["tissue"][0], normal_map=paths["tissue"][1]))
         # what lies in the field: gauze swabs and clips, on the tissue (they breathe with it)
         for i, item in enumerate(self.spec.get("clutter") or []):
             path = "/World/Tissue/Clutter%d" % i
             x = UsdGeom.Xform.Define(stage, path)
-            x.AddTranslateOp(UsdGeom.XformOp.PrecisionDouble).Set(Gf.Vec3d(*[float(v) * K for v in item["pos"]]))
+            op = x.AddTranslateOp(UsdGeom.XformOp.PrecisionDouble)
+            op.Set(Gf.Vec3d(*[float(v) * K for v in item["pos"]]))
+            self.clutter_ops.append((op, np.array(item["pos"], dtype=float)))
             x.AddRotateZOp(UsdGeom.XformOp.PrecisionDouble).Set(math.degrees(float(item["yaw"])))
             if item["kind"] == "gauze":
                 mat = _material(stage, "/World/Looks/clutter%d" % i, rgb=item["rgb"], roughness=1.0)
@@ -351,6 +361,23 @@ class Scene(object):
         return Gf.Matrix4d(m.tolist())
 
     # -- one frame ---------------------------------------------------------------------------------------------------
+    def _move_tissue(self, state):
+        """The floor's vertices and normals, and the clutter, where the moving tissue has them at this frame."""
+        time_s = float(state["time_s"])
+        grips = [(s["grip"], s["tip"]) for r, s in state["inst"].items() if s.get("grip") is not None and s["present"]]
+        gx, gy, z = self.rest
+        d = self.tissue.displacement(gx, gy, time_s, grips)
+        pts = np.stack([gx + d[..., 0], gy + d[..., 1], z + d[..., 2]], axis=-1)
+        zz = z + d[..., 2]
+        dzdy, dzdx = np.gradient(zz, MESH_STEP, MESH_STEP)
+        nrm = np.stack([-dzdx, -dzdy, np.ones_like(zz)], axis=-1)
+        nrm /= np.linalg.norm(nrm, axis=-1, keepdims=True)
+        self.floor_points.Set(Vt.Vec3fArray.FromNumpy(np.ascontiguousarray(pts.reshape(-1, 3) * K, dtype=np.float32)))
+        self.floor_normals.Set(Vt.Vec3fArray.FromNumpy(np.ascontiguousarray(nrm.reshape(-1, 3), dtype=np.float32)))
+        for op, pos in self.clutter_ops:
+            dp = self.tissue.displacement(np.array([pos[0]]), np.array([pos[1]]), time_s, grips)[0]
+            op.Set(Gf.Vec3d(*[float(v) * K for v in pos + dp]))
+
     def apply(self, state):
         with Sdf.ChangeBlock():
             r = np.array(state["cam"]["r"], dtype=float)
@@ -359,7 +386,7 @@ class Scene(object):
             m[0, :3], m[1, :3], m[2, :3], m[3, :3] = r[:, 0], r[:, 1], r[:, 2], p * K
             self.scope_op.Set(Gf.Matrix4d(m.tolist()))
             self.clock_op.Set(self.clock_position(state["serial"]))
-            self.breath_op.Set(Gf.Vec3d(0.0, 0.0, float(state["breath"]) * K))
+            self._move_tissue(state)
             for role, s in state["inst"].items():
                 rec = self.inst[role]
                 shown = (bool(s["present"]), int(s["look"]))

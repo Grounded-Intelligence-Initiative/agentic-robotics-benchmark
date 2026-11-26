@@ -152,10 +152,22 @@ class Renderer(object):
         return (jpeg, payload[head["jpeg_len"]:]) if raw else jpeg
 
     def canary(self):
+        """The render canary's result. A renderer that fails or hangs during it is restarted once and asked again
+        (version 0.3; a validate run lost an evaluation to a renderer that hung at its first frames)."""
         try:
-            return self._call({"cmd": "canary"}, 900.0)[0]
+            try:
+                return self._call({"cmd": "canary"}, 900.0)[0]
+            except RendererError as exc:
+                self.spec = None
+                self._recover(exc)
+                return self._call({"cmd": "canary"}, 900.0)[0]
         finally:
             self.spec = None
+
+    def restart(self, why):
+        """A fresh renderer (counted as a restart), e.g. before a second canary after one that found the frames wrong."""
+        self.spec = None
+        self._recover(RendererError(why))
 
     def info(self):
         return self._call({"cmd": "info"}, 60.0)[0]

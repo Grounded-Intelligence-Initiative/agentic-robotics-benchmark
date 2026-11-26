@@ -105,6 +105,7 @@ class Session(object):
             return None
         time_s = self.episode.time_s(f)
         tissue = proc.tissue
+        grips = proc.grips(f)
         tips = None
         for _ in range(PROBE_TRIES):
             k = 1 + int(rng.random() * proc.steps)
@@ -117,7 +118,7 @@ class Session(object):
                 continue
             cand = {r: np.asarray(proc.tip[r][f - 1], dtype=float) + (np.asarray(proc.tip[r][k], dtype=float) - np.asarray(proc.tip[r][k - 1], dtype=float))
                     for r in moving}
-            if any(tissue.clearance(cand[r], time_s) < min(0.0, tissue.clearance(proc.tip[r][f], time_s)) for r in moving):
+            if any(tissue.clearance(cand[r], time_s, grips) < min(0.0, tissue.clearance(proc.tip[r][f], time_s, grips)) for r in moving):
                 continue
             tips = cand
             break

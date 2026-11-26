@@ -20,7 +20,12 @@ import numpy as np
 from . import model
 from .procedure import HANDS, ROLES
 
-CRITERIA = ("lens", "zone", "zoom", "horizon", "motion")
+CRITERIA = ("lens", "zone", "zoom", "horizon", "motion", "takeover")
+TAKEOVERS = ("lens_injury", "second_contact", "critical_unseen")
+DISK_RADIUS_PX = 305.0        # a tip an annotator can mark lies inside the image disk (post.DISK_RADIUS 310, its edge)
+SMOKE_HIDES = 0.45            # the smoke density above which the plume hides the tip that makes it
+ANNOTATION_SD_PX = 1.5        # a hand-marked tip's error (px), per coordinate ...
+ANNOTATION_MAX_PX = 4.0       # ... at most this
 
 
 def tip_view(tip, pose, scope):
@@ -36,7 +41,9 @@ class Episode(object):
     def __init__(self, procedure):
         self.proc = procedure
         self.scope = procedure.scope
-        self.head = float(getattr(procedure, "head", 0.0))     # the camera head's angle on the eyepiece (rad)
+        self.head_at = getattr(procedure, "head_at", None)      # the camera head's angle on the eyepiece per step (rad)
+        if self.head_at is None:
+            self.head_at = np.full(procedure.steps + 1, float(getattr(procedure, "head", 0.0)))
         self.holder = model.Holder()
         self.t = 0
         self.smeared = False
@@ -48,11 +55,20 @@ class Episode(object):
         self.failed = {c: 0 for c in CRITERIA}
         self.first_usable = None
         self.smear_serial = 0
+        self.takeover = None                  # why the surgeon took the camera back, once it happened (version 0.3)
+        self.takeover_step = None
+        self.critical = list(getattr(procedure, "critical", None) or [])   # [start, end, kind] of each critical action
+        self.critical_seen = []               # per critical action judged: the share of its steps with a usable view
         self.trace = []                       # per judged step: (usable, failed criteria bitmask)
         self._pose = model.camera_pose(self.holder.q, self.scope, self.head)
         self._prev_pose = self._pose
 
     # -- state ----------------------------------------------------------------------------------------------------
+    @property
+    def head(self):
+        """The camera head's angle at the current step (rad): it changes when the head is knocked (version 0.3)."""
+        return float(self.head_at[min(self.t, len(self.head_at) - 1)])
+
     @property
     def steps(self):
         return self.proc.steps
@@ -63,6 +79,14 @@ class Episode(object):
 
     def time_s(self, t=None):
         return (self.t if t is None else t) * model.DT
+
+    @property
+    def taken_over(self):
+        return self.takeover is not None
+
+    def _take_over(self, why):
+        if self.takeover is None:
+            self.takeover, self.takeover_step = why, self.t
 
     def joints(self):
         return [round(float(v), 5) for v in self.holder.q]
@@ -84,12 +108,21 @@ class Episode(object):
         h = model.DT / model.SUBSTEPS
         prev_pose = self._pose
         tissue = self.proc.tissue
+        grips = self.proc.grips(self.t)
         for k in range(model.SUBSTEPS):
             q, v = self.holder.tick(command, h)
             now = self.time_s() + (k + 1) * h
-            if tissue.clearance(model.lens_position(q), now) < model.LENS_CLEARANCE:
-                # the lens meets tissue: the scope stops where it was, and the lens is smeared
-                if tissue.clearance(model.lens_position(self.holder.q), now) < model.LENS_CLEARANCE:
+            new_clear = tissue.clearance(model.lens_position(q), now, grips)
+            if new_clear < model.LENS_CLEARANCE:
+                # the lens meets tissue: the scope stops where it was, and the lens is smeared. Driven into it (closing
+                # faster than LENS_INJURY_SPEED), or touching it again after a cleaning, it ends the holder's procedure
+                old_clear = tissue.clearance(model.lens_position(self.holder.q), now - h, grips)
+                closing = (old_clear - new_clear) / h
+                if closing > model.LENS_INJURY_SPEED and old_clear >= model.LENS_CLEARANCE:
+                    self._take_over("lens_injury")
+                elif not self.smeared and self.smear_serial >= model.LENS_CONTACTS_TOLERATED:
+                    self._take_over("second_contact")
+                if tissue.clearance(model.lens_position(self.holder.q), now, grips) < model.LENS_CLEARANCE:
                     # the breathing tissue rose onto a lens held too close: back the scope off along its own axis
                     q = self.holder.q.copy()
                     q[2] = max(model.Q_MIN[2], q[2] - 0.002)
@@ -119,6 +152,8 @@ class Episode(object):
         t, scope = self.t, self.scope
         tips = self.active_tips()
         fail = set()
+        if self.taken_over:
+            fail.add("takeover")
         if self.smeared:
             fail.add("lens")
         if tips:
@@ -148,6 +183,13 @@ class Episode(object):
         if ok and self.first_usable is None:
             self.first_usable = t
         self.trace.append(sorted(fail))
+        # a critical action ends at this step: was it seen? (the trace holds step k at index k - 1)
+        for start, end, kind in self.critical:
+            if int(end) == t and not self.taken_over:
+                seen = float(np.mean([not f for f in self.trace[int(start) - 1:int(end)]]))
+                self.critical_seen.append(seen)
+                if seen < model.CRITICAL_MIN_USABLE:
+                    self._take_over("critical_unseen")
         return ok
 
     def run_idle(self):
@@ -174,7 +216,7 @@ class Episode(object):
             "serial": int(serial), "step": int(t),
             "cam": {"r": [[float(x) for x in row] for row in r_wc], "p": [float(x) for x in p]},
             "inst": self.proc.roles_state(t),
-            "breath": float(self.proc.tissue.breathing(self.time_s())),
+            "time_s": float(self.time_s()),
             "smoke": float(self.proc.smoke[t]), "smoke_px": [float(src[0]), float(src[1])] if src[2] > 0 else None,
             "smear": int(self.smear_serial) if self.smeared else 0,
         }
@@ -191,27 +233,57 @@ class Episode(object):
             items.append(item)
         return {"scope": self.scope, "camera_head_deg": math.degrees(self.head), "lens_smeared": bool(self.smeared), "instruments": items}
 
-    def annotation(self):
-        """A development recording's label for the current step (the dev set only; never on a graded wire)."""
+    def visible(self, role, t=None):
+        """Whether an annotator sees the tip of `role` in the frame of step t: the instrument in, its tip in front of
+        the lens and inside the image disk, above the moving tissue with nothing of the tissue between it and the lens,
+        and, for the instrument that makes the smoke, not inside a dense plume (density above SMOKE_HIDES)."""
+        t = self.t if t is None else t
+        proc = self.proc
+        if not proc.present[role][t]:
+            return False
+        tip = np.asarray(proc.tip[role][t], dtype=float)
+        u, v, depth = model.project(tip[None, :], self._pose, self.scope)[0]
+        if depth <= 0.002 or math.hypot(u - 0.5 * (model.IMAGE_W - 1), v - 0.5 * (model.IMAGE_H - 1)) > DISK_RADIUS_PX:
+            return False
+        time_s, grips = self.time_s(t), proc.grips(t)
+        tissue = proc.tissue
+        if tissue.clearance(tip, time_s, grips) < 0.0005:
+            return False
+        lens = self._pose[1]
+        s = np.linspace(0.05, 1.0 - 0.0015 / max(float(np.linalg.norm(tip - lens)), 1e-6), 48)
+        pts = lens[None, :] + s[:, None] * (tip - lens)[None, :]
+        if np.any(pts[:, 2] < tissue.surface_z(pts[:, 0], pts[:, 1], time_s, grips)):
+            return False
+        if role == "right" and float(proc.smoke[t]) > SMOKE_HIDES:
+            return False
+        return True
+
+    def annotation(self, rng):
+        """A development recording's label for the current step (the dev set only; never on a graded wire), as an
+        annotation team makes it (version 0.3): the tips it can see, marked by hand (`rng` draws the marking's error,
+        ANNOTATION_SD_PX, at most ANNOTATION_MAX_PX), which instruments are in and count and their catalogue size, the
+        holder's joints, the scope, the lab's camera head angle, a smeared lens. No depth, no judgement of the view."""
         t = self.t
-        out = self.privileged()
-        for item in out["instruments"]:
-            r = item["role"]
-            u, v = item["tip_px"]
-            item["in_image"] = bool(item["present"] and item["depth"] > 0 and 0 <= u < model.IMAGE_W and 0 <= v < model.IMAGE_H)
-            item["apparent_px"] = float(model.apparent_diameter(item["depth"], self.scope)) if item["depth"] > 0 else None
-            item["active"] = bool(self.proc.active[r][t])
-            item["shaft_mm"] = int(self.proc.looks[int(self.proc.look[r][t])]["shaft_mm"]) if item["present"] else None
-            del item["tip_cam"]
-        out.update(step=int(t), joints=self.joints(), fine_work=bool(self.proc.fine[t]),
-                   horizon_error_deg=math.degrees(model.horizon_error(self.holder.q, self.scope, self.head)),
-                   usable=None if t == 0 else not self.trace[-1], failed=[] if t == 0 else list(self.trace[-1]))
-        return out
+        items = []
+        for r in ROLES:
+            present = bool(self.proc.present[r][t])
+            item = {"role": r, "present": present, "active": bool(self.proc.active[r][t]),
+                    "shaft_mm": int(self.proc.looks[int(self.proc.look[r][t])]["shaft_mm"]) if present else None,
+                    "visible": False, "tip_px": None}
+            if present and self.visible(r, t):
+                u, v, _ = model.project(np.asarray(self.proc.tip[r][t], dtype=float)[None, :], self._pose, self.scope)[0]
+                du, dv = [max(-ANNOTATION_MAX_PX, min(ANNOTATION_MAX_PX, ANNOTATION_SD_PX * rng.normal())) for _ in range(2)]
+                item.update(visible=True, tip_px=[round(float(u + du), 1), round(float(v + dv), 1)])
+            items.append(item)
+        return {"step": int(t), "joints": self.joints(), "scope": self.scope, "camera_head_deg": round(math.degrees(self.head), 3),
+                "lens_smeared": bool(self.smeared), "instruments": items}
 
     def summary(self):
         n = max(1, self.judged)
         out = {"steps": int(self.judged), "usable_steps": int(self.usable), "useful_view_fraction": self.usable / n,
-               "lens_contacts": int(self.contacts), "lens_cleanings": int(self.cleanings),
-               "first_usable_step": self.first_usable}
+               "lens_contacts": int(self.contacts), "lens_smears": int(self.smear_serial), "lens_cleanings": int(self.cleanings),
+               "first_usable_step": self.first_usable, "takeover": self.takeover, "takeover_step": self.takeover_step,
+               "critical_actions": len(self.critical_seen),
+               "critical_min_seen": round(min(self.critical_seen), 4) if self.critical_seen else None}
         out.update({"failed_" + c: self.failed[c] / n for c in CRITERIA})
         return out
