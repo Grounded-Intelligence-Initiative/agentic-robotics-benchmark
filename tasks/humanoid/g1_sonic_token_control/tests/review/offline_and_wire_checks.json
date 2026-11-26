@@ -1,0 +1,78 @@
+{
+  "source_commit": "b439ab6dad43f4eb47a5dc482080884d91befedf",
+  "offline_bootstrap_sha256": "41dd444561ab008d51d2c976baabd4e41af3f6f0bf7d2439f9e3705efcad819d",
+  "execution": {
+    "image_sha256": "c29e3b9018abb5247ddf8a56464df06563d8d6f552605f110c98465d46b91a0d",
+    "container_user": "user",
+    "outer_filesystem": "read-only with temporary /tmp",
+    "outer_network": "none",
+    "launcher": "Read the root-owned offline_exec.py as CODE, run /opt/venv/bin/python3 -I -S -c CODE /dev/stdin under user with env -i, and run the descendant probes through /bin/bash stdin.",
+    "runtime_test": "Create fresh IPv4 and IPv6 stream sockets and check EPERM, then open a local socketpair. In this same descendant instantiate a keyed cylinder scene, read its live six RGB streams, and execute a zero token and open hands through the released decoder. Capture the 29-target and uncompressed RGB digests."
+  },
+  "deployed_child": {
+    "image": "c29e3b9018abb5247ddf8a56464df06563d8d6f552605f110c98465d46b91a0d",
+    "uid": 1000,
+    "sockets": {
+      "AF_INET": 1,
+      "AF_INET6": 1,
+      "local_socketpair": "succeeded"
+    },
+    "onnxruntime": "1.22.1",
+    "numpy": "1.26.4",
+    "decoder_sha256": "c7241a123eaa36b5d64bad19540efde93cac1ad443bd4572fd12ca99898118ed",
+    "target_count": 29,
+    "target_f32_sha256": "d1e6e169d8fd895ee78a87d9376a6ef58262394d32df470fd2e9b6baf020f6ce",
+    "resident_tick": 1,
+    "hand_rgb_sha256": "5e7ae7a1f4db9aa14b079488872f9f0c16a7530faf774626de3114867a92730e",
+    "min_pixel": 19,
+    "max_pixel": 255,
+    "first_capture": 0,
+    "numeric_env": {
+      "OPENBLAS_CORETYPE": "Haswell",
+      "OPENBLAS_NUM_THREADS": "1",
+      "NPY_DISABLE_CPU_FEATURES": "AVX512F AVX512CD AVX512_KNL AVX512_KNM AVX512_SKX AVX512_CLX AVX512_CNL AVX512_ICL",
+      "GALLIUM_DRIVER": "llvmpipe",
+      "LP_NUM_THREADS": "2",
+      "MUJOCO_GL": "egl"
+    }
+  },
+  "untouched_image_verdict": {
+    "rewards": {
+      "reward": 0.0
+    },
+    "metrics": {
+      "ratio": 0.0,
+      "anchor_recorded": 0.0,
+      "episodes": 16.0,
+      "episodes_aborted": 16.0
+    },
+    "diagnostic": "scoring 0: no submission at /home/user/submission/run.sh"
+  },
+  "atomic_wire_and_control_fixture": {
+    "contract_source_git": "b439ab6d",
+    "malformed_batch_atomic": [
+      "negative",
+      "too_high",
+      "bool",
+      "fraction",
+      "missing",
+      "hand_nan",
+      "hand_inf",
+      "hand_negative",
+      "hand_bool",
+      "hand_over",
+      "empty",
+      "oversized",
+      "next_camera",
+      "horizon",
+      "unknown_field"
+    ],
+    "all_aborted_zero_placements": 16,
+    "zero_probe_lock": 0,
+    "missing_duplicate_lock": 0,
+    "noise_only_lock": 0,
+    "real_response_only_lock": 1,
+    "terminal_truncation_rows": 2,
+    "shadow_terminal_truncation_rows": 1
+  }
+}
