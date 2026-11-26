@@ -24,8 +24,9 @@ tools/score.py                   the scoring rule on the labelled events, and a 
 submission/                      write answers.csv here
 ```
 
-- **Videos.** H.264, 10 frames per second, one frame per trajectory sample (0.1 s), from the start to the end of the
-  event's interval. Each frame is a 2000 x 2000 pixel Matplotlib figure with equal-aspect axes labelled `X (m)` and
+- **Videos.** H.264, 10 frames per second, one frame per trajectory sample (0.1 s) of the event's interval. `clips.json`
+  gives the interval's ends rounded to 0.1 s, so a clip can hold one frame fewer than they suggest; the text box of
+  every frame gives its time. Each frame is a 2000 x 2000 pixel Matplotlib figure with equal-aspect axes labelled `X (m)` and
   `Y (m)` and tick labels in metres (world coordinates). The axes span 160 m by 160 m centred on one vehicle of the
   event, and only vehicles within 80 m of it are drawn; in a frame where that vehicle has no valid state, the axes
   show the whole scene instead. Every vehicle is an outlined rectangle around its centre and heading, drawn at 1.8

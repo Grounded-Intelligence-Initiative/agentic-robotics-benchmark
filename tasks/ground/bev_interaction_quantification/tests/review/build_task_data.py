@@ -13,13 +13,14 @@ doi 10.5281/zenodo.18742437, CC BY 4.0):
   python3 build_task_data.py --csv-dir iedd/csv --videos iedd/clips --vqa-json iedd/IEDD-VQA_test.json \
       --task-dir <repo>/tasks/ground/bev_interaction_quantification --out upload
 
-Options: [--sources waymo] [--n-test 24] [--n-labelled 32] [--max-per-scene 2] [--seed 20261125]. Without
+Options: [--sources waymo] [--n-test 24] [--n-labelled 32] [--max-per-scene 2] [--min-seconds 3] [--seed 20261125].
+Without
 --vqa-json any IEDD clips are used (IEDD-traj2VisAct.py's "<csv tag>__<scene>_row<rrrr>_t<start>-<end>.mp4" names
 work too): a row's clip is found by its row number, its interval and its scene's name.
 
 An event is one pairwise row of an interaction.csv (Car-follow, Merging, Crossing or Head-on; not Multi) with an
-intensity series, whose scene has no other row for the same two vehicles over the same interval, and whose clip
-exists. With --vqa-json the row must be an IEDD-VQA sample whose answers agree with the row: the same two vehicles,
+intensity series, an interval of at least --min-seconds (a clip of a few frames does not show the motion that IEDD's
+intensity is computed from), no other row of its scene for the same two vehicles over the same interval, and a clip. With --vqa-json the row must be an IEDD-VQA sample whose answers agree with the row: the same two vehicles,
 the same type, and a peak intensity within 0.006 of the row's (IEDD-VQA prints two decimals).
 
 The agent is given the event's two vehicle ids: a clip draws one vehicle in red and the others in black, and the same
@@ -151,7 +152,7 @@ def disagreement(ev, ref):
     return None
 
 
-def candidates(csv_dir, videos, sources, vqa=None):
+def candidates(csv_dir, videos, sources, vqa=None, min_seconds=0.0):
     index = collections.defaultdict(list)
     for p in glob.glob(os.path.join(videos, "**", "*.mp4"), recursive=True):
         name = os.path.basename(p)
@@ -177,6 +178,8 @@ def candidates(csv_dir, videos, sources, vqa=None):
                 stats["source not allowed"] += 1
             elif len(set(ids)) != 2 or not m:
                 stats["no pair or interval"] += 1
+            elif float(m.group(2)) - float(m.group(1)) < min_seconds - 1e-9:
+                stats["shorter than --min-seconds"] += 1
             elif seen[(r.get("Scene"), frozenset(ids), (r.get("Time Interval") or "").strip())] > 1:
                 stats["another row for the same pair and interval"] += 1
             else:
@@ -272,6 +275,7 @@ def main():
     ap.add_argument("--n-test", type=int, default=24)
     ap.add_argument("--n-labelled", type=int, default=32)
     ap.add_argument("--max-per-scene", type=int, default=2)
+    ap.add_argument("--min-seconds", type=float, default=3.0)
     ap.add_argument("--seed", type=int, default=20261125)
     a = ap.parse_args()
     sources = {s.strip().lower() for s in a.sources.split(",") if s.strip()}
@@ -279,7 +283,7 @@ def main():
     if vqa is not None:
         print("IEDD-VQA samples: %d (%d with a peak)" % (len(vqa), sum(v["peak"] is not None for v in vqa.values())))
 
-    events, stats = candidates(a.csv_dir, a.videos, sources, vqa)
+    events, stats = candidates(a.csv_dir, a.videos, sources, vqa, a.min_seconds)
     print("rows:", dict(stats))
     rng = random.Random(a.seed)
     test = pick(rng, events, a.n_test, a.max_per_scene)

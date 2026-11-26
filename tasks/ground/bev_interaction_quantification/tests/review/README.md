@@ -29,7 +29,8 @@ python3 scripts/task_assets.py list tasks/ground/bev_interaction_quantification 
 ```
 
 Selection rules (also in `build_task_data.py`'s docstring and in `../NOTICE.md`): a pairwise row with an intensity
-series, no other row of its scene for the same pair and interval, a clip, and IEDD-VQA answers that agree with the row
+series, an interval of at least 3 s, no other row of its scene for the same pair and interval, a clip, and IEDD-VQA
+answers that agree with the row
 (the same two vehicles, the same type, a peak within 0.006). Test and labelled events come from disjoint sets of
 scenes, at most two per scene, round-robin over the types and over equal-width bins of the peak, seed 20261125.
 

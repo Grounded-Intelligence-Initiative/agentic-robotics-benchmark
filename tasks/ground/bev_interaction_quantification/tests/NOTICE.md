@@ -15,7 +15,8 @@
   raw source data. TODO(author): the maintainers confirmed on <date> that re-hosting these CC BY 4.0 renderings in
   the benchmark's asset dataset is acceptable alongside the Waymo Open Dataset terms.
 - **Selection.** `tests/review/build_task_data.py` (seed 20261125): pairwise rows (Car-follow, Merging, Crossing,
-  Head-on) with an intensity series, no other row of the scene for the same pair and interval, a clip, and IEDD-VQA
+  Head-on) with an intensity series, an interval of at least 3 s, no other row of the scene for the same pair and
+  interval, a clip, and IEDD-VQA
   answers that agree with the row (the same two vehicles, the same type, a peak within 0.006 of the row's); 24 test
   events and the labelled events from disjoint sets of scenes, at most two per scene, round-robin over the types and
   over equal-width bins of the peak. `ref/source.json` maps every event to its IEDD scene, row, interval, vehicles,
