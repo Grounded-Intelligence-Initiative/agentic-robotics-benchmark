@@ -1,0 +1,20 @@
+{
+  "metric": "strict_mobile_placement_fraction",
+  "unit": "successful uninterrupted walk, dock, contact-qualified lift and released stable placement per allocated episode",
+  "source": "ALE 0.1.1, engine commit bfb75050aca2c54b45c5ab23bae6028a834a468a",
+  "episodes_per_panel": 16,
+  "roster": {"box": 8, "cylinder": 8},
+  "hidden_resets": "Fresh OS-entropy seeded 64-bit keys allocated before each panel. Each shadow has a distinct reset.",
+  "development_scout": {"all_shape_seed_pairs": 16, "box_success": 8, "cylinder_success": 7, "included_in_anchor": false},
+  "panels": [
+    {"id":"N0","command":"ale validate","anchor":"null","purpose":"Measure the published reference denominator using the bootstrap oracle arm. Retain the untouched arm."},
+    {"id":"N1–N3","command":"ale run --agent oracle --episodes 3 --episode-retries 0","anchor":"null","purpose":"Independently sample the reference spread. Retain all three completed panels."},
+    {"id":"G0 and G1","command":"ale validate twice","anchor":"frozen","purpose":"Measure independent untouched and oracle runs after calibration with the same frozen inputs."}
+  ],
+  "anchor_value": "N0.strict_mobile_placements / 16",
+  "full_credit_count": "max(1, minimum strict_mobile_placements among N0,N1,N2,N3 minus one placement)",
+  "full_at": "full_credit_count / N0.strict_mobile_placements",
+  "required": "N0 and the spread panels must contain full-roster finite physical measurements with passing observation-sensitivity controls. Preserve all completed measurements and separately identify infrastructure failures. N0 must have at least one strict placement.",
+  "reward": "min(1, min(1.5, raw/anchor_value)/full_at) when observation controls pass; otherwise zero. Raw strict count and denominator remain available.",
+  "cost_and_quality": "Applied native rows and individual integer codes, changed coordinates and absolute bin jumps, simulated time, pelvis travel/acceleration and decoder target-step RMS are reported alongside the physical outcome."
+}

@@ -1,0 +1,8 @@
+{
+  "metric": "strict_mobile_placement_fraction",
+  "direction": "higher",
+  "value": null,
+  "full_at": 1.0,
+  "source": "Fresh hidden continuous mobile walk, dock, grasp, lift and released placement episodes.",
+  "reference_commit": null
+}

@@ -1,0 +1,47 @@
+{
+  "episodes": 16,
+  "shapes": [
+    "box",
+    "cylinder"
+  ],
+  "horizon": 1100,
+  "step_timeout_s": 15,
+  "verifier_deadline_s": 5100,
+  "probe_windows": [
+    [
+      255,
+      295
+    ],
+    [
+      295,
+      335
+    ],
+    [
+      335,
+      375
+    ],
+    [
+      375,
+      415
+    ],
+    [
+      415,
+      455
+    ],
+    [
+      455,
+      495
+    ],
+    [
+      495,
+      535
+    ],
+    [
+      535,
+      575
+    ]
+  ],
+  "minimum_probe_fraction": 0.12,
+  "minimum_probe_opportunities_per_episode": 1,
+  "scoring_cap": 1.5
+}
