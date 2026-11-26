@@ -237,8 +237,8 @@ stalled (and raises the torque limit, as the manual says for corroded fasteners)
 (`captured`), which parts are locked or have left their seat, whether the pack is isolated and its waypoints' exact
 targets it takes from `truth` (its displacements are taken from the observation it answers, so the lock is honest).
 Its order: a harness on the lid, the lid's bolts by head type, the lid to its stand (a half turn of the first
-joint), the service disconnect and the plugs, the wait for isolation, a harness on the busbars, the busbar and bracket bolts, the busbars, brackets and
-modules. Transfers go round the base by a turn of the first joint (a straight line near the base's axis runs the arm
+joint), the service disconnect and the plugs, the wait for isolation, a harness on the busbars, the busbar and
+bracket bolts, the busbars, brackets and modules. Transfers go round the base by a turn of the first joint (a straight line near the base's axis runs the arm
 through its shoulder singularity). It answers a repeated step from the observation it comes with: its plan yields a
 function of an observation, and every displacement is a planned waypoint minus that observation's commanded pose.
 
@@ -974,6 +974,75 @@ program (about 1,700 lines here: 1,070 of control, 450 of perception, 200 of cal
 sessions and no truth, and the expert's effort, five hours with every advantage, is the only proxy available here.
 The frontier-model runs (`ale run`) decide it.
 
+**2026-11-26, 02:50 to 04:10. The independent review of `846a4f49`, and what changed** (the user chose the scope:
+the documents, the GPU list and two grader gaps; the grader on `f2703af6`, the rest on `bfc4b3c0`; GPU 3 of the server
+only, every measurement from a clean `git archive` of the committed tree). The review's findings, each with what
+was done:
+
+- *B1* (no `ale validate`, no frontier run): not here (no Docker on this server); the validate host does both.
+- *B2* (`gpu_types` named only `RTX-6000-Ada`, which no cloud host offers): both tables list `RTX-4090`, `RTX-5090`,
+  `RTX-PRO-6000` (the models on which the benchmark validated this Isaac Sim 6.2 stack, `hazard_bay_build`) and
+  `RTX-6000-Ada`, the one model this task has run on; the notes in `task.toml` and section 5 say so.
+  `scripts/gpu_types.py check`: 0 errors.
+- *S1* (three aborts said to restart `run.sh` do not): the documents now say what the code does. A missed deadline,
+  a closed output, a line that is not a JSON object, an answer without `action` and (new) too many processes
+  restart it; an invalid or rejected action, the budget and the step limit end the pack and the same program gets
+  the next one. No change of behaviour.
+- *S2* (the budget is checked before a request): stated in the instruction and section 6 of the interface document.
+- *S3* (the practice launcher): `run_session.py` writes a request without blocking against its one 30 s deadline,
+  sums and prints the program's own time against the budget, stops at the step limit and counts the repeated pairs
+  that differ by the grader's rule, from a copy of `wire.canonical` and `is_idle` in `packcell_client`
+  (`replies_differ`); the interface document states the rule (1e-4 on the action's 15 numbers, a tenth of the
+  compared pairs). `review/test_practice.py` (8 checks, no simulator): the copy gives the grader's values on 4000
+  random actions and 2000 pairs; a program that stops reading is given up on at the deadline (4.3 s with a 3 s
+  deadline and a 4 MB request; a blocking write hung for good in the review's test), its own time is printed, a
+  program that follows its observation has 30 of 31 pairs differ and a replayed stream 0 of 31.
+- *S4* (the submission's limits): "at most 5000 files and 200 MB in all; a larger folder is not run and scores 0"
+  in the instruction; the zero verdict's reason names both.
+- *S5* (no last-resort deadline; busy processes): `verify.py` arms the kit's `VerifierDeadline` at
+  `verifier_deadline_s` = 20,400 s (1,200 s inside `[verifier] timeout_sec`); its `on_expire` writes the verdict
+  from the packs graded so far, the rest at 0, `verifier_deadline_expired` 1. The kit Solver's `max_processes` is
+  64 (the reference and the baseline run one process each behind `exec`). Both are in the instruction.
+  `review/test_grader.py` (15 checks, a stub cell, the real kit Solver): `verify.main` with the deadline cut to 7 s
+  ends with status 0 at 7.3 s and a verdict of 2 packs graded, `mean_pack_credit` 2/6; with no deadline reached it
+  writes all six itself; a controller that starts 40 children has the next pack ended at its reset as a score and
+  is started again. Threads are not counted and the controller is not paused: section 5.
+- *S6* (a cell failure caused by the controller charged to the environment): on a `CellError` the controller is
+  stopped with its process group (as root every process of its account) before a fresh cell starts, and that
+  restart is not one of its three; a second failure on the pack counts the pack 0 and grading goes on when the
+  controller was started again before it (its GPU memory, memory, disk or load), could not be stopped, or (as root)
+  holds 64 MiB or more of files while a disk the cell writes to is nearly full; only a second failure with nothing
+  of the submission running is `fail()`. As `longtail_manipulation_recovery` (a disk filled by the controller is a
+  score) and `kitchen_appliance_tending` (what the controller can cause is a score). The instruction gives the GPU
+  and memory share (below 12 GB of GPU memory and 16 GB of memory). `review/test_grader.py`: no process of the
+  controller (nor its helper) is alive when the fresh cell starts; the retried pack is graded in full; restarts 1
+  of 4 after one failure, 2 of 5 after two; a second failure while the controller ran is `cell_failed` with credit
+  0 and the next pack is graded; a second failure at the cell's start with nothing running raises; with the files
+  rule it is scored.
+- *S7* (`anchor.json`'s `source` named `8439170`): it names `9cc3b1c` (the measurement), `846a4f49` (the review's
+  repeat) and `f2703af6` (this one).
+- *S8* (the OpenBLAS pins did not reach the graded cell): the grader's cell gets `OPENBLAS_CORETYPE=Haswell`,
+  `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1` as root, as the commissioning cell does; the interface document no
+  longer says the controller gets them (it gets `PATH`, `HOME` and `LANG`; the reference and the baseline set them
+  in `run.sh`). Only the root path changes, which no native run exercises.
+- *S9* (the bit "has to be chosen from the picture"): the instruction and `task.toml` say the head type can also be
+  found by trying bits in an order that harms no head, at the cost of exchanges, and which bits wear a head.
+- *S10*, *S11*, the reviewer's open question on CUDA's abstract socket and the nits: known limitations in section 5,
+  with the review's numbers. Fixed among the nits: the reference's description (it skips perception and state
+  estimation: "out", the locks and the isolation come from `truth`; section 4, `solve.sh`), "more torque than the
+  default allows" (there is no default: "than a clean one's breakaway"), the stage times in `task.toml` (18 to 34
+  minutes), the PR draft's facts.
+
+*The reference on `f2703af6`* (`harder/final10`): `mean_pack_credit` 1.00000, reward 1.0; every pack 1.0 in 921, 852, 1040, 1066, 1151 and 1185 steps (the steps of every tree since `21ac344`), 49, 48, 59, 58, 67 and 69 items placed; no protective stop, no cell retry, no restart; the probe lock 83 of 83 (53 idle pairs not counted); probe copies 136, the true observation's residual the larger in 63; the controller's own time 7.1 s; stage 1429 s. The anchor (1.0, `full_at` 0.95) is unchanged.
+
+*The small checks on `bfc4b3c0`* (`harder/small_checks2.log`): as on every earlier tree: no submission 0 (the zero verdict now names the 5000-file and 200 MB limits); the reference without its token 0 (it ends at once); the reference recorded on hidden pack 2: credit 1.0, lock 10 of 10 (6 idle); its blind replay: the same credit 1.0 in the same 1040 steps and the lock 0 of 10, so reward 0; the example program 0 on all six packs; the commissioning service: `run_session.py` with the example on development pack 2 (it now prints the program's own time, 0.0 s, and the pair count), an interactive session (a move, frames, a refused action), `truth` and `score` unknown on its wire, two sessions counted.
+
+*Gates on the tree of this entry:* `ale lint` on the folder ok; `scripts/lint_domain.py` ok; the kit identical to
+`shared/robotics_grader/`; `scripts/gpu_types.py check` 0 errors; `scripts/task_assets.py check` 0 problems;
+`review/test_rules.py` 41, `review/test_sensors.py` 11, `review/check_numbers.py` (19 statements, 4 documents),
+`review/check_copies.py`, `review/test_grader.py` 15, `review/test_practice.py` 8, all ok; the scan for private
+names finds nothing.
+
 ## 7. Final report (2026-11-24, 16:30 EST)
 
 **Since this report:** the kit of upstream #173 and a rebuilt probe copy (section 6, the entry "18:20 to 19:00"),
@@ -992,6 +1061,14 @@ a sensor's depth, each cell's own camera mounting identified from calibration pl
 look. The reference scored 1.00000 on every new tree in the same steps (the anchor is unchanged); the first
 baseline, unchanged, scores 0.00000; the revised baseline scored `mean_pack_credit` 1.00000 on the hidden set (reward 1.0; one run of a program frozen on the development packs before it). The validator's checks that need no Docker
 are in section 5.
+Then (the entry "2026-11-26, 02:50 to 04:10") an independent review of `846a4f49` and its fixes: the documents say
+which aborts restart `run.sh` and which do not, that the budget is checked before a request, the submission's limits
+and the bit by trial; the grader arms the kit's deadline, caps the account's processes at 64, charges a cell
+failure to the submission only when it can have caused it, and gives the graded cell the image's OpenBLAS pins; the
+practice launcher runs a pack as grading does (deadline, own time, the pair count); `gpu_types` lists `RTX-4090`,
+`RTX-5090`, `RTX-PRO-6000` and `RTX-6000-Ada` (the task has run on the last only). The reference scored 1.00000 on
+`f2703af6` in the same steps; the anchor is unchanged; the small checks are as before on `bfc4b3c0`. The `gpu_types`
+paragraph below is superseded by section 5.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops
