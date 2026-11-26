@@ -59,7 +59,10 @@ says which is which or which comes first. Only the answer to the true observatio
 observation it carries, and advance your own state once per `t`, not once per request. A program whose motions do
 not depend on the robot's readings it is sent (a replayed list of actions, absolute joint targets worked out in
 advance) is recognised by this and scores nothing: compute each displacement from the `tcp_target` or `q_target`
-of the observation you answer. Requests that command no motion are not compared.
+of the observation you answer. Requests that command no motion are not compared. Two replies differ when one of
+the 15 numbers the grader reads from an action differs by more than 1e-4 (`packcell_client.replies_differ` is the
+grader's rule); if fewer than 0.1 of the compared pairs, over all the packs, differ, the reward is 0.
+`~/commission/run_session.py` prints the count of a session.
 
 A pack ends early on your program's side in two ways; in both, what has been sorted so far still counts:
 

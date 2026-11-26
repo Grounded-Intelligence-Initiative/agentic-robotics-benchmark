@@ -1,5 +1,6 @@
-"""Client side of the disassembly cell: the commissioning connection, frame decoding and the pose arithmetic of the
-wire. Standard library, NumPy and OpenCV only. Nothing of the cell itself is in here: the cell runs in the
+"""Client side of the disassembly cell: the commissioning connection, frame decoding, the pose arithmetic of the
+wire and the grader's rule for a repeated step's two replies (`replies_differ`). Standard library, NumPy and OpenCV
+only. Nothing of the cell itself is in here: the cell runs in the
 commissioning service (and in the grader), not in your account.
 
     from packcell_client import Session, decode_rgb, decode_depth, pose_T, T_pose, flange_T
@@ -235,3 +236,93 @@ def perturbed(obs, rng):
         mount[:3, :3], mount[:3, 3] = cam["R"], cam["pos"]
         out["images"] = dict(obs["images"], wrist=dict(wrist, pose=[round(v, 6) for v in T_pose(flange_T(q1) @ mount)]))
     return out
+
+
+# The grader's comparison of the two replies to a repeated step (the cell's interface document, section 2), as the
+# grader computes it: an action as a fixed list of 15 numbers, and a pair counted only if one of them moves the robot.
+MAX_TICKS = 40
+CAMS = ("overhead", "wrist")
+CMDS = ("eject", "tool_release", "tool_lock", "done", "bit:S10", "bit:S13", "bit:T30", "bit:T40", "bit:EX")
+MOVES = ("hold", "tcp", "joint")
+PAIR_TOLERANCE = 1e-4
+PAIR_PASS_FRACTION = 0.1
+
+
+def _num(x, what, lo=-math.inf, hi=math.inf):
+    if isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) or not lo <= x <= hi:
+        raise ValueError("%s must be a number in [%g, %g]" % (what, lo, hi))
+    return float(x)
+
+
+def check_action(a, max_ticks=MAX_TICKS):
+    """The action in full form (every key present), or ValueError saying what is wrong with it (the cell's rule)."""
+    if not isinstance(a, dict):
+        raise ValueError("an action is a JSON object")
+    extra = set(a) - {"move", "spindle", "gripper", "cmd", "cams"}
+    if extra:
+        raise ValueError("unknown action key(s): %s" % ", ".join(sorted(str(k) for k in extra)))
+    m = a.get("move") or {"type": "hold"}
+    if not isinstance(m, dict) or m.get("type", "hold") not in MOVES:
+        raise ValueError("move.type must be one of %s" % ", ".join(MOVES))
+    if set(m) - {"type", "delta", "ticks", "guard_force", "guard_stroke_mm"}:
+        raise ValueError("unknown key in move")
+    kind = m.get("type", "hold")
+    ticks = m.get("ticks", 1)
+    if isinstance(ticks, bool) or not isinstance(ticks, int) or not 1 <= ticks <= max_ticks:
+        raise ValueError("move.ticks must be an integer from 1 to %d" % max_ticks)
+    delta = m.get("delta", [0.0] * 6)
+    if kind == "hold":
+        delta = [0.0] * 6
+    if not isinstance(delta, list) or len(delta) != 6:
+        raise ValueError("move.delta must be a list of 6 numbers")
+    lim = [2.0] * 3 + [math.pi] * 3 if kind == "tcp" else [2 * math.pi] * 6
+    delta = [_num(v, "move.delta[%d]" % i, -lim[i], lim[i]) for i, v in enumerate(delta)]
+    out = {"move": {"type": kind, "delta": delta, "ticks": ticks,
+                    "guard_force": None if m.get("guard_force") is None else _num(m["guard_force"], "move.guard_force", 0.5, 1000.0),
+                    "guard_stroke_mm": None if m.get("guard_stroke_mm") is None else _num(m["guard_stroke_mm"], "move.guard_stroke_mm", 0.1, 25.0)}}
+    sp = a.get("spindle")
+    if sp is not None:
+        if not isinstance(sp, dict) or set(sp) - {"speed_rpm", "torque_limit"}:
+            raise ValueError("spindle is {speed_rpm, torque_limit}")
+        sp = {"speed_rpm": _num(sp.get("speed_rpm"), "spindle.speed_rpm", -1000.0, 1000.0),
+              "torque_limit": _num(sp.get("torque_limit"), "spindle.torque_limit", 0.0, 1000.0)}
+    out["spindle"] = sp
+    g = a.get("gripper")
+    out["gripper"] = None if g is None else _num(g, "gripper", 0.0, 1.0)
+    cmd = a.get("cmd")
+    if cmd is not None and cmd not in CMDS:
+        raise ValueError("cmd must be one of %s" % ", ".join(CMDS))
+    out["cmd"] = cmd
+    cams = a.get("cams") or []
+    if not isinstance(cams, list) or any(c not in CAMS for c in cams) or len(set(cams)) != len(cams):
+        raise ValueError("cams is a list of distinct camera names from %s" % ", ".join(CAMS))
+    out["cams"] = list(cams)
+    return out
+
+
+def canonical(a):
+    """An action as the fixed list of 15 numbers the grader compares. Raises ValueError on a bad action."""
+    a = check_action(a)
+    m, sp = a["move"], a["spindle"]
+    return ([float(MOVES.index(m["type"]))] + m["delta"] + [float(m["ticks"]),
+            -1.0 if m["guard_force"] is None else m["guard_force"], -1.0 if m["guard_stroke_mm"] is None else m["guard_stroke_mm"],
+            sp["speed_rpm"] if sp else 0.0, sp["torque_limit"] if sp else 0.0,
+            -1.0 if a["gripper"] is None else a["gripper"], float(CMDS.index(a["cmd"]) + 1 if a["cmd"] else 0),
+            float(sum(1 << CAMS.index(c) for c in a["cams"]))])
+
+
+def is_idle(a):
+    """True when the action commands no motion: a pair of two such replies is not compared."""
+    try:
+        m = check_action(a)["move"]
+    except ValueError:
+        return False
+    return m["type"] == "hold" or all(abs(v) < 1e-9 for v in m["delta"])
+
+
+def replies_differ(first, second, tolerance=PAIR_TOLERANCE):
+    """The grader's rule for the two replies to one repeated step: True when one of their 15 numbers differs by more
+    than `tolerance`. Raises ValueError for a reply that is not a valid action. A program passes when at least
+    `PAIR_PASS_FRACTION` of its compared pairs (pairs in which both replies are idle are not compared) differ."""
+    a, b = canonical(first), canonical(second)
+    return len(a) == len(b) and max([abs(x - y) for x, y in zip(a, b)] or [0.0]) > tolerance

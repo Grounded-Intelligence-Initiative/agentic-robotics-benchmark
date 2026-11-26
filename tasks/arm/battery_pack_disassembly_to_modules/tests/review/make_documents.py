@@ -535,7 +535,10 @@ says which is which or which comes first. Only the answer to the true observatio
 observation it carries, and advance your own state once per `t`, not once per request. A program whose motions do
 not depend on the robot's readings it is sent (a replayed list of actions, absolute joint targets worked out in
 advance) is recognised by this and scores nothing: compute each displacement from the `tcp_target` or `q_target`
-of the observation you answer. Requests that command no motion are not compared.
+of the observation you answer. Requests that command no motion are not compared. Two replies differ when one of
+the 15 numbers the grader reads from an action differs by more than 1e-4 (`packcell_client.replies_differ` is the
+grader's rule); if fewer than %g of the compared pairs, over all the packs, differ, the reward is 0.
+`~/commission/run_session.py` prints the count of a session.
 
 A pack ends early on your program's side in two ways; in both, what has been sorted so far still counts:
 
@@ -731,7 +734,7 @@ loops on what it measures.
 """ % (S.FLOOR_Z, S.TABLE_Z, c["pack_nominal"], "; ".join("%s %s" % (k, list(v)) for k, v in c["tables"].items()), bins, c["rack"]["bay_size"][0], c["rack"]["bay_size"][1], c["rack"]["bay_centers"][0][1],
        ", ".join("%g" % round(b[0], 3) for b in c["rack"]["bay_centers"]), c["rack"]["divider_h"], c["lid_stand"]["center"],
        c["lid_stand"]["size"][0], c["lid_stand"]["size"][1], c["docks"]["nutrunner"], c["docks"]["gripper"], c["bit_station"], c["home_q"],
-       GRADER["max_processes"], GRADER["verifier_deadline_s"],
+       GRADER["probe_pass_fraction"], GRADER["max_processes"], GRADER["verifier_deadline_s"],
        D["max_ticks"], S.TICK, D["tcp_speed_max"], D["tcp_rot_speed_max"], D["joint_speed_max"],
        D["overload_force"], D["overload_torque"], D["overload_joint_error"], D["stop_lock_s"], D["sim_cap_s"], D["frame_budget"],
        "\n".join(cam), S.MOUNT_TOL["overhead"]["mm"], S.MOUNT_TOL["overhead"]["deg"], S.MOUNT_TOL["wrist"]["mm"], S.MOUNT_TOL["wrist"]["deg"],

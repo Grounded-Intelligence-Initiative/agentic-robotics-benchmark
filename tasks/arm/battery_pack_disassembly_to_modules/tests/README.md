@@ -193,7 +193,8 @@ cell's messages).
   last digit): the grader asks the cell for its angles before rounding (`joints`, a grader-only request) and writes
   the angles, both tool poses and a wrist frame's pose from them as `cell.observe` does; the wrench is left as it
   is. So a copy's poses agree with its joints as a true observation's do, and the robot's model, which the agent
-  holds, does not tell them apart (upstream #173; the measurement is in section 6). `probe_residual_true`,
+  holds, does not tell them apart in a single observation (upstream #173; the measurement is in section 6); across
+  steps it can (section 5). `probe_residual_true`,
   `probe_residual_copy` and `probe_true_residual_larger` of `probe_copies` in the verdict's metrics show it for
   every run.
 - The credit (`rules.Rules.credit`): after the end and 1.5 s of settling, the value of the components that lie
@@ -207,19 +208,36 @@ cell's messages).
   A controller that does nothing earns 0 (nothing lies where it belongs when a pack arrives).
 - Pixels are never scored. Measured on the author's server: two renders of one scene on the same GPU differ in
   about half the pixels (mean absolute difference 0.36 of 255).
-- A failure of the cell itself runs that pack once more with a fresh cell and a restarted controller; a second
-  failure is a task error.
+- A failure of the cell itself (`cellproc.CellError`): the controller is stopped with its process group (as root,
+  every process of its account) before a fresh cell starts, and the pack runs once more with a restarted
+  controller; that restart is the grader's, not one of the controller's three. A second failure on that pack is
+  scored when the submission can have caused it: it came after the controller was started again (its GPU memory,
+  memory, disk or load beside the cell), or the controller could not be stopped completely, or (as root) the
+  account holds 64 MiB or more of files while a disk the cell writes to has less than 1 GiB (or a tenth) free. The
+  pack then counts 0 (`ended` `cell_failed`) and grading goes on. Only a second failure with nothing of the
+  submission running is a task error. This follows `longtail_manipulation_recovery` (a kitchen that cannot be built
+  because the controller's files filled the disk is a score, any other simulator failure a task error) and
+  `kitchen_appliance_tending` (an unstable simulation ends the episode as a score; a renderer failure, which its
+  paused controller cannot cause, is a task error). `review/test_grader.py` checks it against a stub cell.
+- More than 64 processes of the agent's account (the kit Solver's `max_processes`, counted at every reset and every
+  64 requests) end the pack as a score and restart the controller. Threads are not counted (section 5).
+- The kit's `VerifierDeadline`, armed at the start with `verifier_deadline_s` (20,400 s, 1,200 s inside
+  `[verifier] timeout_sec`): if grading is still running then, the verdict is written from the packs graded so far,
+  the others count 0, and `verifier_deadline_expired` is 1. `review/test_grader.py` runs `verify.main` with the
+  deadline cut to 7 s.
 
 ## 4. The reference program and the anchor
 
 `solution/reference/controller.py` is a privileged reference in the sense of the pump skid and pantry tasks: the
 submission carries a 256-bit token, the grader then adds `truth` (every part's pose and grip features, every
 fastener's head and seat, the harness' path, the exact commanded targets) to its observations. With that it skips
-perception and nothing else: it works through the public actions, pays for every tool and bit exchange, presses and
-turns every fastener under the same rules, and decides from the nutrunner's torque and angle that a fastener is
-stalled (and raises the torque limit, as the manual says for corroded fasteners) or out. Its order: a harness on the
-lid, the lid's bolts by head type, the lid to its stand (a half turn of the first joint), the service disconnect and
-the plugs, the wait for isolation, a harness on the busbars, the busbar and bracket bolts, the busbars, brackets and
+perception and state estimation: it works through the public actions, pays for every tool and bit exchange, presses
+and turns every fastener under the same rules, and decides from the nutrunner's torque and angle that a fastener is
+stalled (and raises the torque limit, as the manual says for corroded fasteners); that a fastener is out
+(`captured`), which parts are locked or have left their seat, whether the pack is isolated and its waypoints' exact
+targets it takes from `truth` (its displacements are taken from the observation it answers, so the lock is honest).
+Its order: a harness on the lid, the lid's bolts by head type, the lid to its stand (a half turn of the first
+joint), the service disconnect and the plugs, the wait for isolation, a harness on the busbars, the busbar and bracket bolts, the busbars, brackets and
 modules. Transfers go round the base by a turn of the first joint (a straight line near the base's axis runs the arm
 through its shoulder singularity). It answers a repeated step from the observation it comes with: its plan yields a
 function of an observation, and every displacement is a planned waypoint minus that observation's commanded pose.
@@ -266,13 +284,17 @@ value measured natively on the author's server, outside the engine; it has to be
   1. *Numbers.* `review/check_numbers.py` holds every number of the hand-written instruction (tolerances, the
      cameras' mounting ranges and noise, deadlines, budgets, the set, the sessions, the values) to the code, and
      the generated documents (`service_manual.md`, `tool_catalog.md`, `cell_interface.md`, `cell.json`) to what
-     `make_documents.py` writes from the code now: 15 statements, 4 documents, no difference.
+     `make_documents.py` writes from the code now: 19 statements (since 2026-11-26 also the submission's limits, the
+     process cap and the grader's deadline), 4 documents, no difference.
   2. *Commissioning against grading.* The blind replay of the reference's recorded actions on hidden pack 2 ran once
      through the grader (the small checks) and once through a commissioning daemon whose one development pack was set
      to that pack (a copy of the service's folder, natively), with `run_session.py` and its own repeated steps: 1040
      steps, 730 s of simulated time and no protective stop both ways (the service shows no credit by design).
-     `run_session.py` puts one 30 s deadline on each request, as the kit does, and counts repeated steps without
-     comparing their replies, so there is no second rule for probe pairs.
+     Since 2026-11-26 `run_session.py` writes a request as the kit does (without blocking, against the request's one
+     30 s deadline), sums and prints the program's own time against the 1200 s budget, stops at the step limit, and
+     counts the repeated pairs that differ by the grader's rule (`packcell_client.replies_differ`, the client's copy
+     of `wire.canonical` and `is_idle`); `review/test_practice.py` holds the copy to the grader's on 4000 actions and
+     runs the launcher against a stub session.
   3. *Nothing hidden within reach.* The hidden set and every key (`key_hex`, `cells_key_hex`, `sealant_key_hex`,
      `appearance_key_hex`) are only in `tests/hidden/`, which never enters the image; the development packs' values
      are in the commissioning service's folder, which the image installs for the account `packcell` alone and
@@ -306,20 +328,21 @@ value measured natively on the author's server, outside the engine; it has to be
   baseline's own (section 6). A program that is right only for one order can score differently from run to run.
 - **The head type can also be found by trial.** A bit that does not fit a head turns freely and harms nothing
   (only the two loose combinations and a bad alignment wear a head), so a program can run one bit over a whole group
-  and come back with the other for the heads that did not turn. That costs a second pass, not credit. The brief's
-  "the bit has to be chosen from the image" therefore holds for a program that wants to be quick, not for one that
-  only wants to be right; making a wrong family harmful would not be true to the tools. Left as it is for the
-  owner to decide.
+  and come back with the other for the heads that did not turn. That costs a second pass, not credit. Since
+  2026-11-26 the instruction and `task.toml` say so (the review's S9); making a wrong family harmful would not be
+  true to the tools. Left as it is for the owner to decide.
 - **Levers if frontier models turn out to do too well.** Four are used since 2026-11-25 (section 2, "The cameras",
   "Sealant" and "A pack's look"): the cameras' poses on file are nominal and each cell's own mounting offset has to
   be identified; the depth is an active-stereo sensor's; fastener heads are partly hidden by sealant; the hall's
   light, grime, dust and labels vary from pack to pack. Not used: a wider placement tolerance of the fixture (a
   program that finds the pack from its silhouette meets it anyway). All are perception or engineering, none a
   penalty.
-- **GPU models.** Run only on an RTX 6000 Ada with driver 570 (DLSS falls back to an older denoiser preset there),
-  so `gpu_types` names only that model. The cloud models (RTX 4090, RTX 5090, RTX PRO 6000, H100, H200) are
-  untested; `hazard_bay_build`, on the same Isaac Sim stack, validates on the first three. Each model has to be
-  tried (the canary's frames, one reference pack) before it is added.
+- **GPU models.** The task has run on one model only: natively, on the author's RTX 6000 Ada with driver 570 (DLSS
+  falls back to an older denoiser preset there). Since 2026-11-26 `gpu_types` lists `RTX-4090`, `RTX-5090` and
+  `RTX-PRO-6000`, the cloud models on which the benchmark validated the same Isaac Sim 6.2 RTX stack
+  (`hazard_bay_build`), and `RTX-6000-Ada`; the three cloud models follow that validation of the stack, not a run of
+  this task. H100 and H200 stay out (RTX rendering of this stack is unproven there). A model that does not render
+  fails the canary as a task error, never as a 0; a validate per model confirms or corrects the list.
 - **Reproducibility.** PhysX on the CPU repeated the reference's packs on this one machine (section 6); across CPUs
   it is not expected to be bit-identical, and the renderer is not repeatable even on one GPU. The credit tolerates
   that (it reads where bodies lie), a program's behaviour may not: an agent whose perception is marginal can score
@@ -334,6 +357,45 @@ value measured natively on the author's server, outside the engine; it has to be
   remains is the simplification itself: a real fastener on a bit pushed into a pile would meet the pile, here it
   appears in it and is pushed up and aside. A reviewer may prefer the cell to release the body only above what lies
   there; that changes what every program meets and needs the full series again.
+- **The baseline shows that the information suffices, not that the job fits the stated conditions** (the
+  independent review of `846a4f49`, S10). It was developed with the development packs' truth (the survey and trace
+  tools compare estimates with it), the reference's motion code, 29 development sessions and the knowledge of the
+  levers' designer; a tested agent has ten sessions, no truth and six hours. The reviewer re-ran it on `846a4f49`:
+  1.00000 on all six packs, with at most 77 frames of 400, 1649 steps of 20000, 1099 s of simulated time of 2700 and
+  68 s of program time of 1200 a pack. A development round without truth within ten sessions was not done: the
+  frontier runs answer the question.
+- **The probe's copy can be told from the true observation by continuity** (review S11). One observation does not
+  tell them apart (the pose-against-joints residual is at chance: 48.8 % of 6000 synthetic pairs, 63 of 136 of the
+  grader's), but a program that remembers its previous observation and the action it sent can predict the
+  commanded tool pose and pick the candidate whose `tcp_target` is nearer: the reviewer's rule labelled 136 of the
+  grader's 136 pairs in the reference run and 5980 of 6000 synthetic pairs built with `wire.perturbed`. It earns
+  nothing by itself (a replayed stream still cannot follow the hidden packs); it means that the lock rejects only
+  programs that do not try to pass it. Not changed.
+- **Busy threads.** The process cap (64) counts processes, not threads, and the controller is neither paused nor
+  in the idle class between requests, only at nice 19. The reviewer measured a nice-0 loop's share of one CPU at
+  3.65, 2.33, 1.08 and 0.34 s in 4 s against 0, 15, 60 and 250 busy nice-19 loops, so a controller with hundreds of
+  busy threads can slow the cell's CPU physics; since 2026-11-26 the grader's deadline turns that into a score (the
+  packs graded by then) instead of a run without one. Pausing the account between requests, as
+  `kitchen_appliance_tending` and `longtail_manipulation_recovery` do, was not done.
+- **GPU memory and memory are shared, not partitioned.** The instruction asks a program to stay below 12 GB of GPU
+  memory and 16 GB of memory (the cell took about 3.5 GB and 6 GB in the reviewer's run); nothing enforces it, and a
+  program that takes more risks the cell-failure rule (section 3: the pack counts 0).
+- **Numerics.** Since 2026-11-26 the graded cell runs with the image's `OPENBLAS_CORETYPE=Haswell`,
+  `OPENBLAS_NUM_THREADS=1` and `OMP_NUM_THREADS=1`, as the commissioning cell does (review S8: 3000 `kin.ik_step`
+  calls gave the same bits unset and with Haswell on the reviewer's Zen 3 CPU, other bits with Sandybridge kernels).
+  The full pin of `docs/contributing-a-task.md` section 5 (`NPY_DISABLE_CPU_FEATURES`, `OPENCV_IPP`, a fingerprint
+  check) is not used: PhysX and the renderer differ across hosts anyway. The controller gets `PATH`, `HOME` and
+  `LANG` only, as the interface document says.
+- **CUDA's abstract socket** (review, not checked). The cell process listens on CUDA's abstract unix socket
+  `@cuda-uvmfd-<ns>-<pid>`; the seccomp filter allows AF_UNIX, so the controller can connect to it in the verifier.
+  Whether CUDA authenticates the peer was not examined; it is engine-wide rather than this task's, a question for
+  the maintainers.
+- **Smaller points of the review, left as they are:** the 1 MiB cap on a reply line (`verify.py`) is not stated (an
+  action is a few hundred bytes); the oracle token is a static file in a public repository (the accepted pattern,
+  as in `pump_skid_startup_and_operation` and `pantry_jar_refilling`); `full_at` 0.95 is not sized from a measured
+  spread (the reference repeats step for step here; `ale validate` runs on the evaluation hosts must size it); this
+  README is long, and section 7's report keeps statements that later entries supersede (its "Since this report"
+  says which).
 - **Simplifications that a reviewer may want changed**: no finger colliders; no slip; the socket does not slide
   over the head; a harness is rigid; the robot does not collide with itself; the live-parts check is geometric and
   once per tick.
