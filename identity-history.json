@@ -252,6 +252,12 @@
     "spec_hash": "sha256:6150e869f30239af8af4779cf3cd6038fab179baa8b36e4bc0fbcca90c17b80a"
   },
   {
+    "content_digest": "sha256:b8e3a59b9bac5c82bc36e753bb1997276162f0fcf2257e9a0fca5248325555f2",
+    "since": "2026-11-26T08:19:06Z",
+    "slug": "cloth_material_id_from_video",
+    "spec_hash": "sha256:2f11dc6dcdbe8d809d44b478676a4de587c4d454d986918b87d746eafbfb06ae"
+  },
+  {
     "content_digest": "sha256:1e2a5bab3d5f3547fa9c2060d3b290c7c086074c39d122b9a445c649816c65d3",
     "since": "2026-11-24T14:22:28Z",
     "slug": "cross_embodiment_adaptation",
