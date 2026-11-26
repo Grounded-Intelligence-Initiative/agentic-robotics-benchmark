@@ -1,0 +1,336 @@
+{
+ "steps": 800,
+ "sessions": 12,
+ "note": "What the commissioning sessions play (version 0.3): drawn like the graded procedures (their look pool), rigs of their own; not recorded; the agent's documents name them and nothing else.",
+ "procedures": [
+  {
+   "name": "c01",
+   "seed": 5262725068491470848,
+   "factors": {
+    "kind": "dissection",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": true,
+    "rig": {
+     "head_deg": -8.86,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      10,
+      5,
+      5,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       183,
+       32.421
+      ],
+      [
+       589,
+       -6.464
+      ]
+     ]
+    },
+    "salt": 430331291865890
+   }
+  },
+  {
+   "name": "c02",
+   "seed": 5558168657227717632,
+   "factors": {
+    "kind": "dissection",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": false,
+    "smoke": true,
+    "rig": {
+     "head_deg": 13.12,
+     "latency_steps": 2,
+     "shaft_mm": [
+      10,
+      5,
+      10,
+      5,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       249,
+       -38.066
+      ],
+      [
+       622,
+       9.983
+      ]
+     ]
+    },
+    "salt": 83346712485975
+   }
+  },
+  {
+   "name": "c03",
+   "seed": 4316587286307961856,
+   "factors": {
+    "kind": "suturing",
+    "scope": "0",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false,
+    "rig": {
+     "head_deg": 8.112,
+     "latency_steps": 2,
+     "shaft_mm": [
+      5,
+      5,
+      10,
+      5,
+      5,
+      10
+     ],
+     "head_changes": [
+      [
+       96,
+       39.705
+      ]
+     ]
+    },
+    "salt": 3165956412175374
+   }
+  },
+  {
+   "name": "c04",
+   "seed": 3584577310339087360,
+   "factors": {
+    "kind": "suturing",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false,
+    "rig": {
+     "head_deg": 34.49,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      10,
+      5,
+      5,
+      10,
+      5
+     ],
+     "head_changes": [
+      [
+       202,
+       -21.63
+      ],
+      [
+       501,
+       35.067
+      ]
+     ]
+    },
+    "salt": 3935051917281321
+   }
+  },
+  {
+   "name": "c05",
+   "seed": 9222938588186723328,
+   "factors": {
+    "kind": "exploration",
+    "scope": "30",
+    "exchanges": 0,
+    "assistant": true,
+    "smoke": false,
+    "rig": {
+     "head_deg": -37.79,
+     "latency_steps": 2,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      10,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       335,
+       14.596
+      ]
+     ]
+    },
+    "salt": 3866081853034113
+   }
+  },
+  {
+   "name": "c06",
+   "seed": 8040472542110014464,
+   "factors": {
+    "kind": "exploration",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false,
+    "rig": {
+     "head_deg": -31.921,
+     "latency_steps": 3,
+     "shaft_mm": [
+      5,
+      10,
+      10,
+      5,
+      5,
+      10
+     ],
+     "head_changes": [
+      [
+       141,
+       26.076
+      ],
+      [
+       569,
+       -33.815
+      ]
+     ]
+    },
+    "salt": 6766812649736762
+   }
+  },
+  {
+   "name": "c07",
+   "seed": 6359266094182906880,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "0",
+    "exchanges": 2,
+    "assistant": true,
+    "smoke": true,
+    "rig": {
+     "head_deg": 33.017,
+     "latency_steps": 2,
+     "shaft_mm": [
+      10,
+      5,
+      10,
+      5,
+      10,
+      5
+     ],
+     "head_changes": [
+      [
+       203,
+       -5.009
+      ],
+      [
+       549,
+       36.649
+      ]
+     ]
+    },
+    "salt": 7564738532811570
+   }
+  },
+  {
+   "name": "c08",
+   "seed": 8970036818142879744,
+   "factors": {
+    "kind": "clip_and_cut",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": false,
+    "smoke": false,
+    "rig": {
+     "head_deg": -37.32,
+     "latency_steps": 2,
+     "shaft_mm": [
+      5,
+      10,
+      10,
+      5,
+      5,
+      10
+     ],
+     "head_changes": [
+      [
+       394,
+       -20.95
+      ]
+     ]
+    },
+    "salt": 5536822220433951
+   }
+  },
+  {
+   "name": "c09",
+   "seed": 1674664125144286208,
+   "factors": {
+    "kind": "dissection",
+    "scope": "30",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": false,
+    "rig": {
+     "head_deg": -20.881,
+     "latency_steps": 1,
+     "shaft_mm": [
+      10,
+      5,
+      10,
+      5,
+      10,
+      10
+     ],
+     "head_changes": [
+      [
+       88,
+       -3.56
+      ]
+     ]
+    },
+    "salt": 488805925041467
+   }
+  },
+  {
+   "name": "c10",
+   "seed": 6738162855514326016,
+   "factors": {
+    "kind": "suturing",
+    "scope": "0",
+    "exchanges": 1,
+    "assistant": true,
+    "smoke": true,
+    "rig": {
+     "head_deg": 26.719,
+     "latency_steps": 1,
+     "shaft_mm": [
+      5,
+      5,
+      5,
+      5,
+      5,
+      5
+     ],
+     "head_changes": [
+      [
+       261,
+       -31.976
+      ],
+      [
+       754,
+       -7.245
+      ]
+     ]
+    },
+    "salt": 6296405748079417
+   }
+  }
+ ],
+ "v3_draw": {
+  "drawn": "2026-11-26",
+  "key": 3379130351603837604,
+  "rule": "tests/review/draw_v3.py (its docstring); endosim/procedure.py draw_head_changes, draw_rig"
+ }
+}

@@ -50,7 +50,9 @@ def main():
                 f.write("\n")
         key = doc["rig_draw"]["key"]
         want = rigs(key, len(items))
-        bad = [i for i, (item, rig) in enumerate(zip(items, want)) if item["factors"].get("rig") != rig]
+        # (version 0.3 adds `head_changes` to each rig from a key of its own: tests/review/draw_v3.py checks those)
+        bad = [i for i, (item, rig) in enumerate(zip(items, want))
+               if {k: v for k, v in item["factors"].get("rig", {}).items() if k != "head_changes"} != rig]
         print("{}: {} rigs, key {}, {}".format(name, len(items), key, "ok" if not bad else "MISMATCH at {}".format(bad)))
         for i, item in enumerate(items):
             r = item["factors"]["rig"]

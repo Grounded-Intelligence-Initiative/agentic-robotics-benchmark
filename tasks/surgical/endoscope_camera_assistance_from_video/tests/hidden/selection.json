@@ -115,30 +115,46 @@
     "assistant": false,
     "smoke": true,
     "sites": 7,
-    "path_m": 0.306,
+    "path_m": 0.268,
     "pool": "all",
-    "palette": "pale",
+    "palette": "pink",
     "shafts": [
-     "teal",
-     "gold",
-     "blue",
-     "blue"
+     "graphite",
+     "black",
+     "white",
+     "maroon"
     ],
-    "clutter": 3,
-    "fine_fraction": 0.831,
-    "both_active_fraction": 0.838,
+    "clutter": 0,
+    "fine_fraction": 0.8,
+    "both_active_fraction": 0.924,
     "head_deg": -18.35,
     "latency_steps": 3,
+    "head_changes": [
+     [
+      392,
+      22.329
+     ],
+     [
+      621,
+      -25.091
+     ]
+    ],
+    "critical_actions": 11,
+    "breath_mm": 6.35,
+    "hidden_fraction": {
+     "left": 0.268,
+     "right": 0.181
+    },
     "shafts_mm": [
      5,
      5,
      5,
      5
     ],
-    "generator": "endosim-procedure/0.3"
+    "generator": "endosim-procedure/0.4"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.88,
+   "reference_render_free": 0.8438,
    "reference_lens_contacts": 0
   },
   {
@@ -153,28 +169,40 @@
     "assistant": true,
     "smoke": false,
     "sites": 12,
-    "path_m": 0.731,
+    "path_m": 0.737,
     "pool": "all",
-    "palette": "dusky",
+    "palette": "fatty",
     "shafts": [
-     "black",
-     "satin",
-     "gold"
+     "teal",
+     "graphite",
+     "graphite"
     ],
-    "clutter": 4,
-    "fine_fraction": 0.579,
+    "clutter": 6,
+    "fine_fraction": 0.575,
     "both_active_fraction": 1.0,
     "head_deg": -20.906,
     "latency_steps": 1,
+    "head_changes": [
+     [
+      129,
+      -1.668
+     ]
+    ],
+    "critical_actions": 0,
+    "breath_mm": 6.44,
+    "hidden_fraction": {
+     "left": 0.177,
+     "right": 0.319
+    },
     "shafts_mm": [
      5,
      10,
      10
     ],
-    "generator": "endosim-procedure/0.3"
+    "generator": "endosim-procedure/0.4"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.85,
+   "reference_render_free": 0.8037,
    "reference_lens_contacts": 0
   },
   {
@@ -189,30 +217,42 @@
     "assistant": true,
     "smoke": true,
     "sites": 7,
-    "path_m": 0.28,
+    "path_m": 0.268,
     "pool": "all",
-    "palette": "liver",
+    "palette": "pink",
     "shafts": [
-     "yellow",
-     "gold",
-     "teal",
-     "teal"
+     "steel",
+     "white",
+     "blue",
+     "maroon"
     ],
     "clutter": 6,
-    "fine_fraction": 0.784,
-    "both_active_fraction": 1.0,
+    "fine_fraction": 0.769,
+    "both_active_fraction": 0.84,
     "head_deg": 30.294,
     "latency_steps": 2,
+    "head_changes": [
+     [
+      156,
+      -1.757
+     ]
+    ],
+    "critical_actions": 8,
+    "breath_mm": 6.26,
+    "hidden_fraction": {
+     "left": 0.128,
+     "right": 0.375
+    },
     "shafts_mm": [
      10,
      5,
      5,
      10
     ],
-    "generator": "endosim-procedure/0.3"
+    "generator": "endosim-procedure/0.4"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.915,
+   "reference_render_free": 0.8862,
    "reference_lens_contacts": 0
   },
   {
@@ -227,28 +267,44 @@
     "assistant": true,
     "smoke": false,
     "sites": 9,
-    "path_m": 0.435,
+    "path_m": 0.482,
     "pool": "all",
-    "palette": "pink",
+    "palette": "dusky",
     "shafts": [
-     "blue",
-     "steel",
+     "yellow",
+     "gold",
      "satin"
     ],
-    "clutter": 2,
-    "fine_fraction": 0.595,
+    "clutter": 1,
+    "fine_fraction": 0.54,
     "both_active_fraction": 1.0,
     "head_deg": 37.422,
     "latency_steps": 1,
+    "head_changes": [
+     [
+      377,
+      8.406
+     ],
+     [
+      735,
+      26.936
+     ]
+    ],
+    "critical_actions": 0,
+    "breath_mm": 4.1,
+    "hidden_fraction": {
+     "left": 0.166,
+     "right": 0.324
+    },
     "shafts_mm": [
      10,
      5,
      5
     ],
-    "generator": "endosim-procedure/0.3"
+    "generator": "endosim-procedure/0.4"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9163,
+   "reference_render_free": 0.695,
    "reference_lens_contacts": 0
   },
   {
@@ -263,30 +319,46 @@
     "assistant": false,
     "smoke": false,
     "sites": 8,
-    "path_m": 0.406,
+    "path_m": 0.314,
     "pool": "all",
     "palette": "pink",
     "shafts": [
+     "black",
+     "white",
      "graphite",
-     "steel",
-     "yellow",
-     "gold"
+     "satin"
     ],
-    "clutter": 3,
-    "fine_fraction": 0.629,
-    "both_active_fraction": 0.831,
+    "clutter": 8,
+    "fine_fraction": 0.611,
+    "both_active_fraction": 0.823,
     "head_deg": -31.421,
     "latency_steps": 3,
+    "head_changes": [
+     [
+      123,
+      -11.157
+     ],
+     [
+      733,
+      15.793
+     ]
+    ],
+    "critical_actions": 0,
+    "breath_mm": 9.52,
+    "hidden_fraction": {
+     "left": 0.119,
+     "right": 0.107
+    },
     "shafts_mm": [
      10,
      10,
      10,
      5
     ],
-    "generator": "endosim-procedure/0.3"
+    "generator": "endosim-procedure/0.4"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.7937,
+   "reference_render_free": 0.7675,
    "reference_lens_contacts": 0
   },
   {
@@ -301,28 +373,44 @@
     "assistant": true,
     "smoke": true,
     "sites": 7,
-    "path_m": 0.304,
+    "path_m": 0.317,
     "pool": "all",
-    "palette": "liver",
+    "palette": "pink",
     "shafts": [
-     "steel",
-     "graphite",
-     "yellow"
+     "satin",
+     "black",
+     "steel"
     ],
-    "clutter": 0,
-    "fine_fraction": 0.807,
+    "clutter": 6,
+    "fine_fraction": 0.799,
     "both_active_fraction": 1.0,
     "head_deg": -4.636,
     "latency_steps": 3,
+    "head_changes": [
+     [
+      375,
+      -27.086
+     ],
+     [
+      664,
+      21.82
+     ]
+    ],
+    "critical_actions": 12,
+    "breath_mm": 9.07,
+    "hidden_fraction": {
+     "left": 0.299,
+     "right": 0.314
+    },
     "shafts_mm": [
      5,
      5,
      5
     ],
-    "generator": "endosim-procedure/0.3"
+    "generator": "endosim-procedure/0.4"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.855,
+   "reference_render_free": 0.8287,
    "reference_lens_contacts": 0
   },
   {
@@ -337,28 +425,44 @@
     "assistant": true,
     "smoke": false,
     "sites": 10,
-    "path_m": 0.5,
+    "path_m": 0.489,
     "pool": "all",
-    "palette": "red",
+    "palette": "dusky",
     "shafts": [
-     "white",
-     "white",
-     "green"
+     "yellow",
+     "maroon",
+     "satin"
     ],
-    "clutter": 7,
-    "fine_fraction": 0.545,
+    "clutter": 2,
+    "fine_fraction": 0.477,
     "both_active_fraction": 1.0,
     "head_deg": -20.148,
     "latency_steps": 2,
+    "head_changes": [
+     [
+      193,
+      30.752
+     ],
+     [
+      644,
+      -18.764
+     ]
+    ],
+    "critical_actions": 0,
+    "breath_mm": 8.35,
+    "hidden_fraction": {
+     "left": 0.278,
+     "right": 0.214
+    },
     "shafts_mm": [
      5,
      5,
      10
     ],
-    "generator": "endosim-procedure/0.3"
+    "generator": "endosim-procedure/0.4"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.7875,
+   "reference_render_free": 0.7275,
    "reference_lens_contacts": 0
   },
   {
@@ -373,21 +477,33 @@
     "assistant": true,
     "smoke": true,
     "sites": 8,
-    "path_m": 0.404,
+    "path_m": 0.436,
     "pool": "all",
-    "palette": "pink",
+    "palette": "fatty",
     "shafts": [
-     "green",
-     "yellow",
-     "blue",
      "black",
-     "blue"
+     "satin",
+     "steel",
+     "white",
+     "maroon"
     ],
-    "clutter": 8,
-    "fine_fraction": 0.816,
-    "both_active_fraction": 0.736,
+    "clutter": 6,
+    "fine_fraction": 0.811,
+    "both_active_fraction": 0.755,
     "head_deg": 31.441,
     "latency_steps": 1,
+    "head_changes": [
+     [
+      158,
+      0.187
+     ]
+    ],
+    "critical_actions": 5,
+    "breath_mm": 6.18,
+    "hidden_fraction": {
+     "left": 0.184,
+     "right": 0.059
+    },
     "shafts_mm": [
      10,
      5,
@@ -395,10 +511,10 @@
      10,
      5
     ],
-    "generator": "endosim-procedure/0.3"
+    "generator": "endosim-procedure/0.4"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9325,
+   "reference_render_free": 0.8512,
    "reference_lens_contacts": 0
   },
   {
@@ -413,30 +529,46 @@
     "assistant": true,
     "smoke": false,
     "sites": 12,
-    "path_m": 0.729,
+    "path_m": 0.662,
     "pool": "all",
-    "palette": "dusky",
+    "palette": "pink",
     "shafts": [
-     "green",
+     "white",
      "steel",
-     "teal",
+     "gold",
      "gold"
     ],
-    "clutter": 0,
-    "fine_fraction": 0.646,
-    "both_active_fraction": 0.835,
+    "clutter": 7,
+    "fine_fraction": 0.647,
+    "both_active_fraction": 0.84,
     "head_deg": 11.634,
     "latency_steps": 1,
+    "head_changes": [
+     [
+      206,
+      -16.666
+     ],
+     [
+      704,
+      4.514
+     ]
+    ],
+    "critical_actions": 0,
+    "breath_mm": 5.39,
+    "hidden_fraction": {
+     "left": 0.122,
+     "right": 0.266
+    },
     "shafts_mm": [
      10,
      5,
      5,
      5
     ],
-    "generator": "endosim-procedure/0.3"
+    "generator": "endosim-procedure/0.4"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.875,
+   "reference_render_free": 0.8612,
    "reference_lens_contacts": 0
   },
   {
@@ -451,30 +583,46 @@
     "assistant": false,
     "smoke": false,
     "sites": 8,
-    "path_m": 0.538,
+    "path_m": 0.475,
     "pool": "all",
-    "palette": "pale",
+    "palette": "red",
     "shafts": [
-     "gold",
-     "black",
+     "satin",
+     "white",
      "maroon",
-     "blue"
+     "satin"
     ],
-    "clutter": 5,
-    "fine_fraction": 0.794,
-    "both_active_fraction": 0.859,
+    "clutter": 7,
+    "fine_fraction": 0.802,
+    "both_active_fraction": 0.829,
     "head_deg": 5.48,
     "latency_steps": 1,
+    "head_changes": [
+     [
+      335,
+      34.213
+     ],
+     [
+      660,
+      9.267
+     ]
+    ],
+    "critical_actions": 5,
+    "breath_mm": 4.19,
+    "hidden_fraction": {
+     "left": 0.0,
+     "right": 0.154
+    },
     "shafts_mm": [
      5,
      5,
      5,
      5
     ],
-    "generator": "endosim-procedure/0.3"
+    "generator": "endosim-procedure/0.4"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9287,
+   "reference_render_free": 0.9113,
    "reference_lens_contacts": 0
   },
   {
@@ -489,21 +637,33 @@
     "assistant": true,
     "smoke": true,
     "sites": 8,
-    "path_m": 0.387,
+    "path_m": 0.364,
     "pool": "all",
-    "palette": "red",
+    "palette": "pink",
     "shafts": [
-     "graphite",
-     "yellow",
-     "green",
-     "black",
-     "maroon"
+     "maroon",
+     "teal",
+     "steel",
+     "teal",
+     "satin"
     ],
-    "clutter": 3,
-    "fine_fraction": 0.83,
-    "both_active_fraction": 0.693,
+    "clutter": 8,
+    "fine_fraction": 0.819,
+    "both_active_fraction": 0.695,
     "head_deg": 32.637,
     "latency_steps": 1,
+    "head_changes": [
+     [
+      365,
+      -33.113
+     ]
+    ],
+    "critical_actions": 4,
+    "breath_mm": 8.37,
+    "hidden_fraction": {
+     "left": 0.41,
+     "right": 0.34
+    },
     "shafts_mm": [
      5,
      10,
@@ -511,10 +671,10 @@
      5,
      10
     ],
-    "generator": "endosim-procedure/0.3"
+    "generator": "endosim-procedure/0.4"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.9113,
+   "reference_render_free": 0.8225,
    "reference_lens_contacts": 0
   },
   {
@@ -529,28 +689,44 @@
     "assistant": false,
     "smoke": false,
     "sites": 12,
-    "path_m": 0.956,
+    "path_m": 0.772,
     "pool": "all",
-    "palette": "red",
+    "palette": "liver",
     "shafts": [
-     "steel",
-     "yellow",
-     "green"
+     "maroon",
+     "gold",
+     "gold"
     ],
-    "clutter": 8,
-    "fine_fraction": 0.579,
+    "clutter": 7,
+    "fine_fraction": 0.564,
     "both_active_fraction": 1.0,
     "head_deg": 17.483,
     "latency_steps": 1,
+    "head_changes": [
+     [
+      160,
+      -30.488
+     ],
+     [
+      691,
+      20.907
+     ]
+    ],
+    "critical_actions": 0,
+    "breath_mm": 8.94,
+    "hidden_fraction": {
+     "left": 0.03,
+     "right": 0.27
+    },
     "shafts_mm": [
      5,
      5,
      10
     ],
-    "generator": "endosim-procedure/0.3"
+    "generator": "endosim-procedure/0.4"
    },
    "never_moves": 0.0,
-   "reference_render_free": 0.8688,
+   "reference_render_free": 0.735,
    "reference_lens_contacts": 0
   }
  ],
