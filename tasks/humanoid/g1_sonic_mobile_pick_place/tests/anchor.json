@@ -1,8 +1,8 @@
 {
   "metric": "strict_mobile_placement_fraction",
   "direction": "higher",
-  "value": null,
-  "full_at": 1.0,
-  "source": "Fresh hidden continuous mobile walk, dock, grasp, lift and released placement episodes.",
-  "reference_commit": null
+  "value": 0.625,
+  "full_at": 0.9,
+  "source": "ALE null-anchor bootstrap oracle N0; three independently allocated spread panels N1\u2013N3. See review/measured_calibration.json and review/anchor_protocol.json.",
+  "reference_commit": "e6ffc25f1e2b063703fe571658b219875e222360"
 }

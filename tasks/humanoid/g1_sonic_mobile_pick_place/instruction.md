@@ -13,7 +13,7 @@ One action row advances 20 ms. The episode ends on a strict placement, a fall, a
 
 The verifier also checks whether the body commands respond to the current sensors. Across the 16 episodes, it requires at least 16 same-tick comparisons between different sensor packets and at least eight comparisons of identical packets. A response counts as changed when any of the 64 body codes in its first row differs by at least one bin. Subtract the fraction of identical-packet comparisons that changed from the fraction of different-packet comparisons that changed. This difference must be at least 0.12. Only the response to the live packet advances the real robot. Missing the comparison counts or the 0.12 threshold gives a panel reward of zero.
 
-With the observation check passed, the final reward is the number of strict placements divided by the calibrated placement count for full credit, capped at 1. Calibration records the physical outcome on independent reference panels.
+With the observation check passed, the final reward is the number of strict placements divided by 9, capped at 1. At least 9 strict placements across the 16 episodes earn full credit. Calibration records the physical outcome on independent reference panels.
 
 ## Start here
 

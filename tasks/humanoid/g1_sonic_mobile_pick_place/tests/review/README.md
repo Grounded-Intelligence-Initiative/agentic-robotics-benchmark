@@ -67,3 +67,5 @@ runs_dir="$PWD/../g1-mobile-validation-runs"
 ```
 
 The validation runs untouched and oracle submissions in separate sandboxes. Inspect the raw `strict_mobile_placement_fraction`, physical stage counts, observation controls, native motion diagnostics and normalized `reward` in the generated per-arm `verification.json` files. The full-credit threshold uses the frozen four-panel procedure. [Calibration protocol](anchor_protocol.json)
+
+The null-anchor bootstrap and spread panels produced 10 / 10 / 13 / 13 strict placements out of 16 in order. The nominal reference fraction is 0.625 and full credit requires 9 placements with a passing observation check. [Measured calibration receipts](measured_calibration.json)
