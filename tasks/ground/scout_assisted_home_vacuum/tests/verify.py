@@ -67,6 +67,7 @@ def main():
         "mean_clean_fraction": sum(sum(r["clean"].values()) / 3 for r in rows) / n,
         "episodes_aborted": aborted,
         "episodes": n,
+        "unscuffed_rate": sum(r.get("scuffed_runners") == 0 for r in rows) / n,
     }
     wins = [r["ticks"] for r in rows if r["success"]]
     if wins:

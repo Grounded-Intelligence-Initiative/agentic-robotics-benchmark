@@ -60,7 +60,7 @@ if __name__ == "__main__":
         choices=["adaptive", "fixed", "solo"],
         default=["solo", "fixed", "adaptive"],
     )
-    p.add_argument("--ticks", type=int, default=150)
+    p.add_argument("--ticks", type=int, default=200)
     p.add_argument("--flight", type=int, default=36)
     p.add_argument("--preview", type=Path)
     args = p.parse_args()

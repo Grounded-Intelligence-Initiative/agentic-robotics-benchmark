@@ -1,1 +1,1 @@
-{"metric":"mean_cleaning_score","direction":"higher","value":1.0,"full_at":1.0,"source":"Observed complete RGB-only reference rollouts on development seeds 11, 12 and 13 at 150 shared ticks; 1.0 denotes the literal completion of all goals."}
+{"metric":"mean_cleaning_score","direction":"higher","value":1.0,"full_at":1.0,"source":"Measured completion by the RGB-only joint controller on development apartments at the published 200-tick limit; 1.0 requires all five spills removed, correct carton placement, return to dock and undamaged runners."}

@@ -14,18 +14,19 @@ DIR = ("N", "E", "S", "W")
 PALETTE = {
     k: tuple(bytes.fromhex(v))
     for k, v in {
-        "hall": "b6ae9e",
-        "oak": "c99762",
-        "sage": "87af90",
-        "slate": "849db5",
-        "rose": "c095aa",
+        "hall": "c5bba5",
+        "oak": "bc936b",
+        "sage": "98ad95",
+        "slate": "8b9eac",
+        "rose": "c2a2a4",
         "wall": "656577",
-        "furniture": "285750",
+        "furniture": "2f403f",
         "dust": "684127",
         "box": "e4ac29",
         "red": "cb4d5d",
         "blue": "397ecb",
         "dock": "24a99c",
+        "runner": "945078",
     }.items()
 }
 ROOMS = {"oak", "sage", "slate", "rose"}
@@ -35,9 +36,13 @@ ROOMS = {"oak", "sage", "slate", "rose"}
 def paint(rgb):
     if max(rgb) < 35:
         return None
-    return min(
-        PALETTE, key=lambda k: sum((a - b) ** 2 for a, b in zip(rgb, PALETTE[k]))
-    )
+    def cost(k):
+        ref=PALETTE[k]
+        scale=sum(a*b for a,b in zip(rgb,ref))/sum(v*v for v in ref)
+        scale=max(.76,min(1.26,scale))
+        return sum((a-scale*b)**2 for a,b in zip(rgb,ref)) + 20*(scale-1)**2
+    hit = min(PALETTE,key=cost)
+    return hit if cost(hit)<=13**2 else "furniture"
 
 
 def add(p, d, k=1):
@@ -57,6 +62,11 @@ def read_view(encoded, origin, r):
             mark = paint(px[i * s + s // 2, j * s + s // 2])
             if mark is not None:
                 base = paint(px[i * s + s // 4, j * s + s // 4])
+                # A multicoloured table/cushion can share one swatch with a marker.
+                # The footing and surrounding texture disambiguate its footprint.
+                corners = [paint(px[i*s+x,j*s+y]) for x in (1,s-2) for y in (1,s-2)]
+                if mark in ROOMS | {"hall"} and corners.count("furniture") >= 2:
+                    mark = "furniture"
                 yield (origin[0] + i - r, origin[1] + j - r), mark, base
 
 
@@ -178,7 +188,7 @@ class Team:
         self.a = add(self.a, self.previous[1], obs["moved"][1])
         if self.g != oldg and self.g == self.box:
             self.box = add(self.g, self.previous[0])
-        if self.g in self.dirt or self.g == self.initial_box:
+        if self.previous[3] and (self.g in self.dirt or self.g == self.initial_box):
             self.cleaned.add(self.g)
         if obs["air"] and self.mode != "solo":
             self.absorb(obs["air"], self.a, 3, True)
@@ -235,7 +245,9 @@ class Team:
             else:
                 g = reach.get((0, 0), "")[:1] or "stay"
         a, stride = self.scout(obs, req, target)
-        self.previous = [g, a, stride, True]
+        dest = add(self.g,g)
+        brush = (dest in self.dirt or dest == self.initial_box) and dest not in self.cleaned
+        self.previous = [g, a, stride, brush]
         return self.previous
 
 

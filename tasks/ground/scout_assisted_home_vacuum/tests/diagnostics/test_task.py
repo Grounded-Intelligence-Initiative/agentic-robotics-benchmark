@@ -8,15 +8,14 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "tests"), str(ROOT / "solution")]
 from PIL import Image
 from cameras import Cameras
-from controller import read_view
-from world import Home
+from controller import deliver, read_view
+from world import Home, VEC, connected, plus
 
 
 class Contracts(unittest.TestCase):
     def test_shared_clock_and_battery(self):
         w = Home(10, ticks=2, flight=1)
-        x = w.dock[0]
-        inward = "E" if x == 1 else "W"
+        inward = next(d for d,v in VEC.items() if plus(w.dock,v) in w.mats.values())
         w.advance([inward, inward, 2, False])
         self.assertEqual((w.t, w.motion, w.fuel), (1, [1, 2], 0))
         p = w.air
@@ -28,8 +27,11 @@ class Contracts(unittest.TestCase):
     def test_push_then_clean_and_terminal_goal(self):
         w = Home(22)
         b = w.box
-        w.ground = (b[0] - 1, b[1])
-        w.advance(["E", "stay", 0, False])
+        d,v = next((d,v) for d,v in VEC.items() if d!="stay"
+                   and all(not w.blocked((b[0]+j*v[0],b[1]+j*v[1])) and
+                           (b[0]+j*v[0],b[1]+j*v[1]) not in w.furniture for j in (-1,1)))
+        w.ground = (b[0]-v[0],b[1]-v[1])
+        w.advance([d, "stay", 0, False])
         self.assertEqual(w.ground, b)
         self.assertNotEqual(w.box, b)
         self.assertIn(b, w.dust)
@@ -67,6 +69,30 @@ class Contracts(unittest.TestCase):
         for action in (["jump", "stay", 0, True], ["stay", "N", 3, True], [0, 0], None):
             with self.assertRaises(ValueError):
                 Home(1).advance(action)
+
+    def test_runner_brush_is_a_real_constraint(self):
+        w=Home(203)
+        w.ground=next(iter(w.rugs))
+        w.advance(["stay","stay",0,False])
+        self.assertFalse(w.scuffs)
+        w.advance(["stay","stay",0,True])
+        w.ground,w.box=w.dock,w.mats[w.target]
+        w.dust.clear()
+        self.assertFalse(w.result()["success"])
+        self.assertAlmostEqual(w.result()["score"],.70)
+
+    def test_generated_passages_and_goal_access(self):
+        orientations=set()
+        for seed in range(100):
+            w=Home(seed)
+            free=set(w.area)-w.wall-set(w.furniture)
+            self.assertTrue(connected(free),seed)
+            self.assertFalse(w.rugs & (w.dust | set(w.mats.values()) | {w.dock}))
+            self.assertGreaterEqual(len(w.pieces),12)
+            self.assertTrue((w.dust | w.rugs | {w.box,w.dock} | set(w.mats.values())) <= free)
+            self.assertTrue(deliver(w.dock,w.box,w.mats[w.target],free),seed)
+            orientations.add(next(d for d,v in VEC.items() if plus(w.dock,v) in w.mats.values()))
+        self.assertEqual(len(orientations),4)
 
     def test_scout_has_no_xray_or_cleaning_credit(self):
         w = Home(42)
