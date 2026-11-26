@@ -1,0 +1,14 @@
+{
+  "disposition": "Freeze before the first official run. Run every panel to completion with the shipped solver and record all outcomes.",
+  "reference_gait_sha256": "0d1066e0b248eebf63a754fbaae7ee724bf196971a96060ab80592ad0458f84c",
+  "episodes_per_panel": 16,
+  "straight": "8 fresh 64-bit resets, one uniform command in each equal-width stratum of 4.5 to 5.5 metres. Exact public practice command 5 m.",
+  "right_turn": "8 fresh 64-bit resets, one uniform magnitude in each equal-width stratum of 75 to 105 degrees, clockwise signed negative. Exact public practice command -90 degrees.",
+  "raw": "strict native stops / all 16 scheduled trials, including every timeout, fall, path violation and rejected solver episode. No time or token charge in the reward.",
+  "N0": "Official ale validate with null anchor. Its default oracle's successful-stop count n0 establishes the denominator n0 / 16.",
+  "N1_N2_N3": "Three additional fresh official oracle runs, no outcome-triggered retry or substitutions. Keep all per-route raw counts and sensitivity, native time, code, smoothness and foot-contact measurements.",
+  "full_credit_count": "max(12, min(n0,n1,n2,n3)-1). The one-episode margin allows a fresh start of sampling variation. The 12/16 floor keeps full credit out of reach for methods solving only one route family.",
+  "full_at": "full_credit_count / n0. If n0 is zero, the reference misses either route family, the cap of 1.5 is exceeded, or the floor is demonstrably unattainable, retain the outcome as an inadmissible reference version.",
+  "G0_G1": "Two fresh official ale validate invocations on exactly the final anchor and task. Neither may alter normalization, source, thresholds, or case selection.",
+  "feedback": "Eight hidden time bands compare real public input with a prior native measurement (8 to 30 control ticks old) rebased to the current tick, holding the original world goal fixed. One identical-input repeat/trial estimates action noise. Two route-progress observations provide other reachable distances or angles of the same course family on the very same physical observation. Both net response fractions must be at least 0.10, with >=16 real history comparisons and >=8 identical-input and same-family-goal comparisons per 16 trials. Across-family probes are reported separately."
+}

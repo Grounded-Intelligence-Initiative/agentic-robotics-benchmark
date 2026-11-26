@@ -1,0 +1,12 @@
+{
+  "episodes": 16,
+  "horizon": 1250,
+  "step_timeout_s": 15,
+  "verifier_deadline_s": 1740,
+  "straight_distance_m": [4.5, 5.5],
+  "right_turn_degrees": [75.0, 105.0],
+  "state_probe_windows": [[30, 70], [85, 125], [145, 185], [200, 245], [265, 310], [330, 390], [410, 475], [505, 575]],
+  "state_probe_min_signal": 0.10,
+  "within_goal_min_signal": 0.10,
+  "scoring_cap": 1.5
+}

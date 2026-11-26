@@ -1,0 +1,7 @@
+{
+  "metric": "strict_stop_fraction",
+  "direction": "higher",
+  "value": null,
+  "full_at": 1.0,
+  "source": "Pending official native locomotion reference measurement."
+}
