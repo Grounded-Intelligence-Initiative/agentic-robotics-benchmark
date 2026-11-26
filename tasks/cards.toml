@@ -29,9 +29,33 @@ summary = "Specify seven upgraded replicas of a two-arm robot that has left the 
 platforms = ["arm"]
 stages = ["requirements"]
 
+[bimanual_tray_carry_controller_from_docs]
+title = "Write a two-arm robot's tray-carrying controller"
+summary = "Write the joint-level controller with which an OpenArm 2.0 pair carries trays to a shelf and declines those it cannot carry, from the documents, on units it has never run on."
+platforms = ["arm"]
+stages = ["control"]
+
+[cabinet_door_hanging]
+title = "Replace a cabinet door with two Pandas"
+summary = "Two fixed Franka Pandas replace a cabinet door on loose-pin hinges: a vacuum cup holds the hanging door while a gripper pulls the old pins and drives in new ones, from cameras and wrist force."
+platforms = ["arm"]
+stages = ["behavior"]
+
+[cloth_material_id_from_video]
+title = "Identify fabric materials from video"
+summary = "Choose the simulator material of ten fabrics from multi-view video of a robot arm handling them, so that a planner using it hits its targets on new slide and overhang handling of the real fabrics."
+platforms = ["arm"]
+stages = ["environment"]
+
 [dual_arm_parcel_sorting_on_conveyor]
 title = "Turn parcels label-up with a dual-arm robot"
 summary = "A fixed dual-arm robot must turn each rigid or soft parcel on a moving belt so its shipping label faces up at the line's scanner, within 5 s of delay, seeing the station only through four cameras."
+platforms = ["arm"]
+stages = ["behavior"]
+
+[cable_routing_through_clips]
+title = "Route a cable on a harness board with a Panda"
+summary = "A Franka Panda must route a cable through the clips and round the posts of a harness board from two cameras and a wrist force sensor, on boards it has never seen, without overloading the connector."
 platforms = ["arm"]
 stages = ["behavior"]
 
@@ -227,6 +251,12 @@ summary = "Survey a warehouse by drone, then walk a loaded quadruped joint by jo
 platforms = ["quadruped"]
 stages = ["behavior"]
 
+[humanoid_final_assembly_25dof_ur10e]
+title = "Assemble a humanoid robot with a 6-DoF arm"
+summary = "Program a 6-DoF arm to build a humanoid robot from five finished modules, two legs, two arms and the head, on its clamped base, guided by dimension drawings, a picture manual and the cell's cameras."
+platforms = ["humanoid"]
+stages = ["assembly"]
+
 [humanoid_leg_cad_design_from_photos]
 title = "Model a humanoid leg in CAD"
 summary = "Rebuild the lost CAD of the 19 made parts of a humanoid robot's right leg in FreeCAD from photos of its staged teardown, and assemble them with its given components and the leg's joints."
@@ -269,6 +299,12 @@ summary = "Rebuild the lost CAD of one strut of a small three-strut tensegrity r
 platforms = ["soft"]
 stages = ["hardware-design"]
 
+[tensegrity_collapsed_warehouse_void_search]
+title = "Search warehouse rubble with a tensegrity robot"
+summary = "Write the mission program of a three-strut tensegrity rolling robot that reports three points in a collapsed warehouse bay, the last in a void under a fallen slab the search camera cannot see into."
+platforms = ["soft"]
+stages = ["behavior"]
+
 [tensegrity_requirements_replica_from_photos]
 title = "Specify replicas of a tensegrity robot"
 summary = "Specify eight replicas of a three-strut, cable-driven tensegrity robot that was taken apart, from its teardown photos, firmware and board data, down to its cable net and a bill of materials."
@@ -292,6 +328,18 @@ title = "Model a cabin free-flyer in CAD"
 summary = "Rebuild the lost CAD of a cube-shaped cabin free-flyer with a stowed perching arm in FreeCAD from photos of its teardown, as 12 tagged parts and a hinged assembly."
 platforms = ["space"]
 stages = ["hardware-design"]
+
+[freeflyer_environment_twin_from_flight_images]
+title = "Build a sim twin of a cabin from flight frames"
+summary = "Build a static MuJoCo collision twin of a pressurised module and its stowage from the camera frames of one real cabin free-flyer flight, and declare the wide camera's pose at all 1068 frames."
+platforms = ["space"]
+stages = ["environment"]
+
+[freeflyer_estimator_and_controller_from_docs]
+title = "Write a free-flyer's estimator and controller"
+summary = "Write the state estimator and controller of a cabin free-flyer from its documents, earlier flight records and photographs, with no simulator; hidden sessions then fly the code and score it."
+platforms = ["space"]
+stages = ["control"]
 
 [freeflyer_uncrewed_station_caretaking]
 title = "Tend an uncrewed space station with a free-flyer"
@@ -355,7 +403,7 @@ stages = ["assembly"]
 
 [rov_requirements_engineering_from_tender]
 title = "Evaluate eight bids for an inspection ROV"
-summary = "Evaluate eight bids for an inspection ROV at a cold, deep reservoir intake from site records, datasheets and a budgeted enquiry desk, award one and write its factory acceptance schedule."
+summary = "Evaluate eight bids for an inspection ROV at a cold, deep reservoir intake from site records, datasheets and a budgeted enquiry desk, award one and write each accepted bid's acceptance schedule."
 platforms = ["underwater"]
 stages = ["requirements"]
 
