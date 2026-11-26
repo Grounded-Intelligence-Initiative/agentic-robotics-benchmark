@@ -1,7 +1,13 @@
 {
   "metric": "strict_stop_fraction",
   "direction": "higher",
-  "value": null,
-  "full_at": 1.0,
-  "source": "Pending official native locomotion reference measurement."
+  "value": 1.0,
+  "full_at": 0.875,
+  "unit": "successful physical route stops per scheduled trial",
+  "reference_commit": "a0b478e7241867fd52adb028854a16aac5cea3aa",
+  "source": "Four independent official ALE panels of 16 scheduled trials produced [16, 15, 16, 16] successful physical stops. N0 (16/16) defines the reference. The registered floor and one-episode allowance require 14/16 for full credit.",
+  "measurement": "review/anchor_measurement.json",
+  "measurement_sha256": "630199f539229489a6a80a4c0e135b88fa81ab029b638ae7f2bd9fd721295735",
+  "preregistration": "review/anchor_protocol.json",
+  "preregistration_sha256": "a3ab4874e8d64c76861e8c48c70d7bb324be614ec2a9af051c3cb876d4dd2c39"
 }
