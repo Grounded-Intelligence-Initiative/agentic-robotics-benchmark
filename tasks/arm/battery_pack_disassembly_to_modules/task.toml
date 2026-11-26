@@ -32,17 +32,18 @@ name = "grounded-intelligence-initiative/battery_pack_disassembly_to_modules"
 platform = "arm"
 
 # gpu_types: the cloud models on which the benchmark has validated this same Isaac Sim 6.2 RTX stack
-# (tasks/swarm/hazard_bay_build), cheapest first, then RTX-6000-Ada, the only model THIS TASK HAS RUN ON: natively,
-# outside the engine, on the author's server (tests/README.md, section 6). The three cloud models follow
-# hazard_bay_build's validation of the stack, not a run of this task; they keep it off the H100 and H200, where RTX
-# rendering of this stack is unproven. The canary (tests/verify.py) fails a model that does not render as a task
-# error, never as a 0; a maintainer confirms or corrects the list with a validate per model (tests/README.md,
-# section 5).
+# (tasks/swarm/hazard_bay_build), cheapest first, then RTX-6000-Ada, the model this task was developed and measured on:
+# natively, outside the engine, on the author's server (tests/README.md, section 6), and RTX-3090, the model of the
+# author's validate run (driver 535, below Omniverse's R550 floor: the cell's driver check is off,
+# tests/packcell/server.py). The three cloud models follow hazard_bay_build's validation of the stack, not a run of
+# this task; they keep it off the H100 and H200, where RTX rendering of this stack is unproven. The canary
+# (tests/verify.py) fails a model that does not render as a task error, never as a 0; a maintainer confirms or
+# corrects the list with a validate per model (tests/README.md, section 5).
 [environment]
 cpus = 8
 memory_mb = 32768
 gpus = 1
-gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-6000-Ada"]
+gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-6000-Ada", "RTX-3090"]
 
 # Setup (environment/setup/setup.sh: the givens into the agent home, the commissioning service started; under a
 # minute) has no field: the engine bounds it at 1800 s. [agent] timeout_sec: 6 h; the ten commissioning sessions take
@@ -69,4 +70,4 @@ environment_mode = "separate"
 cpus = 8
 memory_mb = 32768
 gpus = 1
-gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-6000-Ada"]
+gpu_types = ["RTX-4090", "RTX-5090", "RTX-PRO-6000", "RTX-6000-Ada", "RTX-3090"]

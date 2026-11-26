@@ -39,7 +39,10 @@ def main():
     t0 = time.time()
     try:
         from isaacsim import SimulationApp
-        cfg = {"headless": True, "multi_gpu": False}
+        # Omniverse RTX refuses to render on an NVIDIA driver older than R550 ("rtx driver verification failed"). The
+        # check is off: whether the frames are usable is the canary's to decide (tests/verify.py), not the driver's
+        # version. On a supported driver it would pass anyway.
+        cfg = {"headless": True, "multi_gpu": False, "extra_args": ["--/rtx/verifyDriverVersion/enabled=false"]}
         gpu = os.environ.get("PACKCELL_GPU")
         if gpu not in (None, ""):
             cfg.update(active_gpu=int(gpu), physics_gpu=int(gpu))
@@ -47,8 +50,8 @@ def main():
         if kit:
             for d in ("cache", "data", "logs"):
                 os.makedirs(os.path.join(kit, d), exist_ok=True)
-            cfg["extra_args"] = ["--/app/folder/cache=%s/cache" % kit, "--/app/folder/data=%s/data" % kit,
-                                 "--/app/folder/logs=%s/logs" % kit]
+            cfg["extra_args"] += ["--/app/folder/cache=%s/cache" % kit, "--/app/folder/data=%s/data" % kit,
+                                  "--/app/folder/logs=%s/logs" % kit]
         app = SimulationApp(cfg)
         from packcell import series as S
         from packcell import wire
