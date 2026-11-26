@@ -8,6 +8,7 @@ import json
 import sys
 
 from PIL import Image
+import numpy as np
 
 V = {"N": (0, -1), "E": (1, 0), "S": (0, 1), "W": (-1, 0), "stay": (0, 0)}
 DIR = ("N", "E", "S", "W")
@@ -25,11 +26,97 @@ PALETTE = {
         "box": "e4ac29",
         "red": "cb4d5d",
         "blue": "397ecb",
+        "jade": "36b44a",
+        "violet": "9b54e0",
         "dock": "24a99c",
         "runner": "945078",
     }.items()
 }
 ROOMS = {"oak", "sage", "slate", "rose"}
+INK = {
+    "oak": "f68c18",
+    "sage": "00d9ec",
+    "slate": "7042fa",
+    "rose": "f62ac4",
+    "jade": "36b44a",
+    "violet": "9b54e0",
+    "red": "cb4d5d",
+    "blue": "397ecb",
+}
+
+
+def as_image(frame):
+    return (
+        frame
+        if isinstance(frame, Image.Image)
+        else Image.open(BytesIO(base64.b64decode(frame))).convert("RGB")
+    )
+
+
+def infer_mount(im, r):
+    size = im.width // (2 * r + 1)
+    cell = np.asarray(
+        im.crop((r * size, r * size, (r + 1) * size, (r + 1) * size)), dtype=float
+    )
+    red, green, blue = cell.transpose(2, 0, 1)
+    yy, xx = np.where(
+        (red > 140) & (green > 130) & (red > 2.3 * blue) & (green > 2.3 * blue)
+    )
+    if not len(xx):
+        return 0
+    dx, dy = xx.mean() - (size - 1) / 2, yy.mean() - (size - 1) / 2
+    north = ("E" if dx > 0 else "W") if abs(dx) > abs(dy) else ("S" if dy > 0 else "N")
+    return (-DIR.index(north)) % 4
+
+
+def north_up(im, k):
+    return (
+        im
+        if not k
+        else im.transpose(
+            (
+                None,
+                Image.Transpose.ROTATE_270,
+                Image.Transpose.ROTATE_180,
+                Image.Transpose.ROTATE_90,
+            )[k]
+        )
+    )
+
+
+def read_card(im, origin):
+    a = np.asarray(im, dtype=float)
+    red, green, blue = a.transpose(2, 0, 1)
+    rim = (green > 125) & (green > 1.23 * red) & (red > 3 * blue) & (red > 70)
+    candidates = np.argwhere(rim.reshape(7, 12, 7, 12).sum(axis=(1, 3)) >= 5)
+
+    def swatch(rgb, names):
+        best = None
+        for name in names:
+            ref = np.array(tuple(bytes.fromhex(INK[name])))
+            scale = np.clip(rgb @ ref / (ref @ ref), 0.65, 1.24)
+            dist = float(np.linalg.norm(rgb - scale * ref))
+            if best is None or dist < best[0]:
+                best = dist, name
+        return best[1] if best[0] < 31 else None
+
+    for j, i in candidates:
+        cell = a[j * 12 : (j + 1) * 12, i * 12 : (i + 1) * 12]
+        values = [
+            swatch(cell[y : y + 2, x : x + 2].mean(axis=(0, 1)), names)
+            for x, y, names in (
+                (3, 3, ROOMS),
+                (7, 3, ROOMS),
+                (3, 7, ("jade", "violet")),
+                (7, 7, ("red", "blue")),
+            )
+        ]
+        if all(values) and values[0] != values[1]:
+            return ({values[0], values[1]}, values[2], values[3]), (
+                origin[0] + int(i) - 3,
+                origin[1] + int(j) - 3,
+            )
+    return None
 
 
 @lru_cache(maxsize=1024)
@@ -58,7 +145,7 @@ def distance(p, q):
 
 
 def read_view(encoded, origin, r):
-    im = Image.open(BytesIO(base64.b64decode(encoded))).convert("RGB")
+    im = as_image(encoded)
     px = im.load()
     s = im.width // (2 * r + 1)
     for j in range(2 * r + 1):
@@ -116,6 +203,11 @@ class Team:
     def __init__(self, mode="adaptive"):
         self.mode = mode
         self.g = self.a = (0, 0)
+        self.mount = (0, 0)
+        self.last_wire = ["stay", "stay", 0, False]
+        self.order = ({"oak", "sage"}, "jade", "red") if mode == "solo" else None
+        self.card_pos = None
+        self.hall_direction = None
         self.previous = ["stay", "stay", 0, True]
         self.cells = {}
         self.air_cells = {}
@@ -131,6 +223,9 @@ class Team:
 
     def absorb(self, img, p, r, from_air):
         for q, mark, base in read_view(img, p, r):
+            if q == self.card_pos:
+                self.cells[q] = "furniture"
+                continue
             surface = mark if mark in {"wall", "furniture"} else "floor"
             self.cells[q] = surface
             if from_air:
@@ -143,13 +238,17 @@ class Team:
                 self.box = q
                 if self.initial_box is None:
                     self.initial_box = q
-            if mark in ("red", "blue"):
+            if mark in ("red", "blue", "jade", "violet"):
                 self.pads[mark] = q
 
     def scout(self, obs, requested, target):
         if not obs["flight"] or self.mode == "solo":
             return "stay", 0
         cells = self.air_cells if self.mode == "fixed" else self.cells
+        if self.order is None and self.hall_direction:
+            d = self.hall_direction
+            if cells.get(add(self.a, d)) != "wall":
+                return d, 2
         reach = paths(self.a, {p for p, v in cells.items() if v != "wall"})
         front = [
             p for p in reach if reach[p] and any(add(p, d) not in cells for d in DIR)
@@ -188,7 +287,7 @@ class Team:
 
     def choose(self, t, obs):
         if t == self.last_t:
-            return self.previous
+            return self.last_wire
         self.last_t = t
         oldg = self.g
         self.g = add(self.g, self.previous[0], obs["moved"][0])
@@ -197,14 +296,30 @@ class Team:
             self.box = add(self.g, self.previous[0])
         if self.previous[3] and (self.g in self.dirt or self.g == self.initial_box):
             self.cleaned.add(self.g)
-        if obs["air"] and self.mode != "solo":
-            self.absorb(obs["air"], self.a, 3, True)
-        self.absorb(obs["ground"], self.g, 1, False)
+        ground = as_image(obs["ground"])
+        air = as_image(obs["air"]) if obs["air"] and self.mode != "solo" else None
+        if t == 0:
+            self.mount = infer_mount(ground, 1), infer_mount(air, 3) if air else 0
+        if air:
+            air = north_up(air, self.mount[1])
+            if self.order is None:
+                reading = read_card(air, self.a)
+                if reading:
+                    self.order, self.card_pos = reading
+            self.absorb(air, self.a, 3, True)
+        self.absorb(north_up(ground, self.mount[0]), self.g, 1, False)
+        if t == 0 and air:
+
+            def axis(d):
+                return 12 * (self.cells.get(add((0, 0), d, -1)) == "wall") + sum(
+                    (2 if self.rooms.get(add((0, 0), d, n)) == "hall" else 0)
+                    - 5 * (self.cells.get(add((0, 0), d, n)) == "wall")
+                    for n in (1, 2, 3)
+                )
+
+            self.hall_direction = max(DIR, key=axis)
         self.scout_visits[self.a] = self.scout_visits.get(self.a, 0) + 1
-        req = {k for k in ROOMS if k in obs["instruction"].split()}
-        words = obs["instruction"].split()
-        first = words[words.index("room") - 1]
-        final = "red" if first == "blue" else "blue"
+        req, first, final = self.order or (set(), None, None)
         if (
             not self.staged
             and self.pads.get(first) is not None
@@ -221,7 +336,7 @@ class Team:
             for p, r in self.dirt.items()
             if r in req | {"hall"} and p not in self.cleaned and p in reach
         ]
-        finished = all(
+        finished = bool(req) and all(
             sum(self.dirt.get(p) == r for p in self.cleaned) >= 2 for r in req
         )
         if self.initial_box not in self.cleaned:
@@ -264,10 +379,21 @@ class Team:
         a, stride = self.scout(obs, req, target)
         dest = add(self.g, g)
         brush = (
-            dest in self.dirt or dest == self.initial_box
+            (dest in self.dirt and self.dirt[dest] in req | {"hall"})
+            or dest == self.initial_box
         ) and dest not in self.cleaned
         self.previous = [g, a, stride, brush]
-        return self.previous
+
+        def local(d, k):
+            return "stay" if d == "stay" else DIR[(DIR.index(d) - k) % 4]
+
+        self.last_wire = [
+            local(g, self.mount[0]),
+            local(a, self.mount[1]),
+            stride,
+            brush,
+        ]
+        return self.last_wire
 
 
 if __name__ == "__main__":

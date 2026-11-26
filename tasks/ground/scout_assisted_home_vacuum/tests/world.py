@@ -77,7 +77,7 @@ def reversible_carton_cells(free, start, dock):
 
 
 class Home:
-    def __init__(self, seed, ticks=200, flight=36, _attempt=0):
+    def __init__(self, seed, ticks=200, flight=36, order_key=None, _attempt=0):
         rng = random.Random(seed)
         w, h = rng.choice((17, 19, 21)), rng.choice((15, 17))
         mid = h // 2 + rng.choice((-1, 0, 1))
@@ -183,11 +183,11 @@ class Home:
             floor = sorted(interior - occupied)
             self.original[room] = set(rng.sample(floor, 2))
             rug_candidates.append(rng.choice(sorted(set(floor) - self.original[room])))
-        self.request = tuple(rng.sample(ROOMS, 2))
-        self.target = rng.choice(("red", "blue"))
         pads = [(2, mid), (w - 3, mid)]
         rng.shuffle(pads)
         self.dock = (rng.choice((1, w - 2)), mid)
+        self.card = (w - 2 if self.dock[0] == 1 else 1, mid + rng.choice((-1, 1)))
+        self.furniture[self.card] = "dispatch cabinet"
         center_bays = [(x, mid) for x in range(3, w - 3)]
         self.box = rng.choice(center_bays)
         free = set(self.area) - self.wall - set(self.furniture)
@@ -196,20 +196,20 @@ class Home:
         candidates = [
             p
             for p, n in reversible.items()
-            if self.area[p] in self.request and p not in already_dirty and n >= 4
+            if self.area[p] in ROOMS and p not in already_dirty and n >= 4
         ]
-        if not candidates:
+        if len({self.area[p] for p in candidates}) < 2:
             # Keep the challenge consistent; do not replace an unreachable indoor goal
             # with a trivial hall target or include such homes in the denominator.
             if _attempt >= 63:
                 raise RuntimeError("could not generate a reversible indoor route")
-            self.__init__(rng.getrandbits(128), ticks, flight, _attempt + 1)
+            self.__init__(rng.getrandbits(128), ticks, flight, order_key, _attempt + 1)
             return
-        self.stage = "blue" if self.target == "red" else "red"
         candidates.sort(key=lambda p: (min(7, reversible[p]), abs(p[1] - mid), p))
         first = rng.choice(candidates[-min(8, len(candidates)) :])
-        hall_pad = max(pads, key=lambda p: abs(p[0] - first[0]))
-        self.mats = {self.stage: first, self.target: hall_pad}
+        others = [p for p in candidates if self.area[p] != self.area[first]]
+        second = rng.choice(others[-min(8, len(others)) :])
+        self.mats = {"jade": first, "violet": second, "red": pads[0], "blue": pads[1]}
         self.staged = False
         self.original["hall"] = {self.box}
         self.dust = set.union(*self.original.values())
@@ -220,6 +220,12 @@ class Home:
         self.rugs -= self.dust | set(self.mats.values()) | {self.dock}
         self.scuffs = set()
         turns = rng.randrange(4)
+        self.mount = (rng.randrange(4), rng.randrange(4))
+        order = random.Random(rng.getrandbits(128) if order_key is None else order_key)
+        self.request = tuple(order.sample(ROOMS, 2))
+        self.stage = order.choice(("jade", "violet"))
+        self.target = order.choice(("red", "blue"))
+        self.disturbed = set()
 
         def rotate(p):
             x, y = p
@@ -239,15 +245,17 @@ class Home:
         self.rugs, self.dust = set(map(rotate, self.rugs)), set(map(rotate, self.dust))
         self.mats = {k: rotate(p) for k, p in self.mats.items()}
         self.dock, self.box = rotate(self.dock), rotate(self.box)
+        self.card = rotate(self.card)
         self.ground = self.air = self.dock
         self.t, self.budget, self.fuel = 0, ticks, flight
         self.motion = [0, 0]
         self.distance = 0
         self.prompt = (
-            f"Vacuum the visible dust in the {self.request[0]} and {self.request[1]} "
-            f"rooms and the entrance hall. Stage the supply carton on the {self.stage} "
-            f"room mat first. Then park it on the {self.target} hall mat. "
-            "Keep the brush off on woven runners. Return to the dock."
+            "Read today's four swatches from the top of the dispatch cabinet at the "
+            "far end of the entrance hall. Clean the two rooms on the card and the "
+            "hall spill. Leave treatment powder in the other rooms untouched. Stage "
+            "the carton on the selected room mat, then park it on the selected hall "
+            "mat. Protect the runners and return the vacuum to its dock."
         )
 
     def blocked(self, p):
@@ -273,6 +281,11 @@ class Home:
         ):
             raise ValueError("bad stride or suction switch")
         self.motion = [0, 0]
+        directions = ("N", "E", "S", "W")
+        if g != "stay":
+            g = directions[(directions.index(g) + self.mount[0]) % 4]
+        if a != "stay":
+            a = directions[(directions.index(a) + self.mount[1]) % 4]
         if g != "stay":
             dest = plus(self.ground, VEC[g])
             if not self.blocked(dest) and dest not in self.furniture:
@@ -288,6 +301,10 @@ class Home:
                     self.distance += 1
                     self.motion[0] = 1
         if brush:
+            if self.ground in self.dust and self.area.get(self.ground) in set(
+                ROOMS
+            ) - set(self.request):
+                self.disturbed.add(self.ground)
             self.dust.discard(self.ground)
             if self.ground in self.rugs:
                 self.scuffs.add(self.ground)
@@ -308,9 +325,16 @@ class Home:
         }
         parked = self.staged and self.box == self.mats[self.target]
         docked = self.ground == self.dock
-        success = min(clean.values()) == 1 and parked and docked and not self.scuffs
+        preserved = 1 - len(self.disturbed) / 4
+        success = (
+            min(clean.values()) == 1
+            and parked
+            and docked
+            and not self.scuffs
+            and not self.disturbed
+        )
         score = (
-            0.45 * sum(clean.values()) / 3
+            0.45 * sum(clean.values()) / 3 * preserved
             + 0.125 * (int(self.staged) + int(parked))
             + 0.30 * success
         )
@@ -318,6 +342,7 @@ class Home:
             clean=clean,
             parked=parked,
             staged=self.staged,
+            treatment_preserved=preserved,
             docked=docked,
             success=success,
             score=score,

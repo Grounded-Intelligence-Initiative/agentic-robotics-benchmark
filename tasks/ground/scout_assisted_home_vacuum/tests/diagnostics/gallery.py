@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "tests"), str(ROOT / "solution")]
 from cameras import Cameras
-from controller import Team
+from controller import Team, as_image, north_up, read_card
 from world import Home
 
 
@@ -24,7 +24,7 @@ def font(size, bold=False):
         return ImageFont.load_default(size=size)
 
 
-def make(seed, preview, examples):
+def make(seed, preview, examples, dispatch=None):
     w = Home(seed)
     cam, team, frames = Cameras(w, overview=True), Team(), []
     try:
@@ -38,11 +38,71 @@ def make(seed, preview, examples):
                 inside.save(
                     preview.with_name(preview.stem + "-" + room + ".jpg"), quality=93
                 )
-        for _ in range(30):
+        captured = False
+        for _ in range(36):
             obs = cam.observation()
-            if w.t in (0, 4, 9, 14, 19, 24, 29):
+            action = team.choose(w.t, obs)
+            first = not captured and team.card_pos is not None
+            if w.t in (0, 4, 9, 14, 19, 24, 29) or first:
                 frames.append({"type": "act", "t": w.t, "obs": obs})
-            w.advance(team.choose(w.t, obs))
+            if first:
+                captured = True
+                if dispatch:
+                    native = as_image(obs["air"])
+                    oriented = north_up(native, team.mount[1])
+                    order, offset = read_card(oriented, (0, 0))
+                    x, y = (offset[0] + 3) * 12, (offset[1] + 3) * 12
+                    card = oriented.crop((x, y, x + 12, y + 12))
+                    panel = Image.new("RGB", (620, 313), "#202927")
+                    draw = ImageDraw.Draw(panel)
+                    draw.text(
+                        (18, 12),
+                        "Reading the dispatch card",
+                        font=font(21, True),
+                        fill="#f1f3eb",
+                    )
+                    panel.paste(
+                        native.resize((168, 168), Image.Resampling.NEAREST), (20, 58)
+                    )
+                    panel.paste(
+                        card.resize((144, 144), Image.Resampling.NEAREST), (218, 70)
+                    )
+                    draw.text(
+                        (20, 236),
+                        "Actual scout frame",
+                        font=font(14, True),
+                        fill="#d8dfda",
+                    )
+                    draw.text(
+                        (215, 236),
+                        "Card, north-up",
+                        font=font(14, True),
+                        fill="#d8dfda",
+                    )
+                    for j, line in enumerate(
+                        [
+                            "This example only:",
+                            ", ".join(sorted(order[0])),
+                            f"Stage: {order[1]}",
+                            f"Park: {order[2]}",
+                        ]
+                    ):
+                        draw.text(
+                            (393, 86 + 27 * j),
+                            line,
+                            font=font(16, j == 0),
+                            fill="#e1e9de",
+                        )
+                    draw.text(
+                        (20, 276),
+                        f"Public apartment {seed}  |  tick {w.t}  |  nearest-neighbor enlargement",
+                        font=font(13),
+                        fill="#b5c8bb",
+                    )
+                    panel.save(dispatch)
+            w.advance(action)
+        if dispatch and not captured:
+            raise ValueError("public example did not acquire the dispatch card")
     finally:
         cam.close()
     if examples:
@@ -107,5 +167,6 @@ if __name__ == "__main__":
     ap.add_argument("--seed", type=int, required=True)
     ap.add_argument("--preview", type=Path)
     ap.add_argument("--examples", type=Path)
+    ap.add_argument("--dispatch", type=Path)
     args = ap.parse_args()
-    make(args.seed, args.preview, args.examples)
+    make(args.seed, args.preview, args.examples, args.dispatch)

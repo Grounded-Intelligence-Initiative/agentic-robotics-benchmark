@@ -8,13 +8,14 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "tests"), str(ROOT / "solution")]
 from PIL import Image
 from cameras import Cameras
-from controller import deliver, read_view
-from world import Home, VEC, connected, plus
+from controller import as_image, deliver, infer_mount, north_up, read_card, read_view
+from world import Home, ROOMS, VEC, connected, plus
 
 
 class Contracts(unittest.TestCase):
     def test_shared_clock_and_battery(self):
         w = Home(10, ticks=2, flight=1)
+        w.mount = (0, 0)
         inward = next(
             d
             for d, v in VEC.items()
@@ -31,6 +32,7 @@ class Contracts(unittest.TestCase):
 
     def test_push_then_clean_and_terminal_goal(self):
         w = Home(22)
+        w.mount = (0, 0)
         b = w.box
         d, v = next(
             (d, v)
@@ -99,6 +101,7 @@ class Contracts(unittest.TestCase):
         orientations = set()
         for seed in range(100):
             w = Home(seed)
+            w.mount = (0, 0)
             free = set(w.area) - w.wall - set(w.furniture)
             self.assertTrue(connected(free), seed)
             self.assertFalse(w.rugs & (w.dust | set(w.mats.values()) | {w.dock}))
@@ -106,7 +109,8 @@ class Contracts(unittest.TestCase):
             self.assertTrue(
                 (w.dust | w.rugs | {w.box, w.dock} | set(w.mats.values())) <= free
             )
-            self.assertIn(w.area[w.mats[w.stage]], w.request)
+            self.assertIn(w.area[w.mats[w.stage]], ROOMS)
+            self.assertNotEqual(w.area[w.mats["jade"]], w.area[w.mats["violet"]])
             self.assertEqual(w.area[w.mats[w.target]], "hall")
             orientations.add(
                 (
@@ -127,6 +131,7 @@ class Contracts(unittest.TestCase):
 
     def test_scout_has_no_xray_or_cleaning_credit(self):
         w = Home(42)
+        w.mount = (0, 0)
         start = next(
             (x, y)
             for x, y in w.area
@@ -146,6 +151,54 @@ class Contracts(unittest.TestCase):
             self.assertEqual(w.result()["score"], 0)
         finally:
             c.close()
+
+    def test_visual_work_order_is_counterfactual_and_scout_only(self):
+        images = []
+        layouts = []
+        for order in (1, 2):
+            w = Home(211, order_key=order)
+            layouts.append(
+                (w.card, w.dock, w.mats, w.request, w.stage, w.target, w.prompt)
+            )
+            w.mount = (order, (order + 1) % 4)
+            c = Cameras(w)
+            try:
+                obs = c.observation()
+                self.assertEqual(
+                    (
+                        infer_mount(as_image(obs["ground"]), 1),
+                        infer_mount(as_image(obs["air"]), 3),
+                    ),
+                    w.mount,
+                )
+                w.air = w.card
+                w.ground = next(
+                    plus(w.card, v)
+                    for d, v in VEC.items()
+                    if d != "stay"
+                    and not w.blocked(plus(w.card, v))
+                    and plus(w.card, v) not in w.furniture
+                )
+                obs = c.observation()
+                answer = read_card(north_up(as_image(obs["air"]), w.mount[1]), (0, 0))
+                self.assertEqual(answer, ((set(w.request), w.stage, w.target), (0, 0)))
+                images.append(north_up(as_image(obs["ground"]), w.mount[0]).tobytes())
+            finally:
+                c.close()
+        self.assertEqual(layouts[0][:3], layouts[1][:3])
+        self.assertNotEqual(layouts[0][3:6], layouts[1][3:6])
+        self.assertEqual(layouts[0][6], layouts[1][6])
+        self.assertEqual(images[0], images[1])
+
+    def test_protected_treatment_cannot_be_swept_back_into_place(self):
+        w = Home(14)
+        r = next(r for r in ROOMS if r not in w.request)
+        w.ground = next(iter(w.original[r]))
+        w.advance(["stay", "stay", 0, True])
+        self.assertEqual(w.result()["treatment_preserved"], 0.75)
+        w.staged, w.ground, w.box = True, w.dock, w.mats[w.target]
+        w.dust.clear()
+        self.assertFalse(w.result()["success"])
 
 
 if __name__ == "__main__":

@@ -258,6 +258,7 @@ def populate(w, root, asset, files):
             conaffinity="0",
         )
 
+    object_at("kitchenCabinetDrawer", *w.card, 0.02, 0.91, 0.88, 1.42, 0)
     for x, y, sx, sy, m, a in w.pieces:
         # A rug pad is an ordinary visible object below furniture, not a synthetic label.
         # Keep it low so thin shelves, chair legs and their shadows remain visible.

@@ -65,6 +65,8 @@ def main():
         "full_success_rate": sum(r["success"] for r in rows) / n,
         "carton_parked_rate": sum(r["parked"] for r in rows) / n,
         "carton_staged_rate": sum(r.get("staged", False) for r in rows) / n,
+        "mean_treatment_preserved": sum(r.get("treatment_preserved", 0) for r in rows)
+        / n,
         "mean_clean_fraction": sum(sum(r["clean"].values()) / 3 for r in rows) / n,
         "episodes_aborted": aborted,
         "episodes": n,

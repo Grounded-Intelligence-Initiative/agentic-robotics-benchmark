@@ -1,4 +1,4 @@
-"""North-up rectified onboard views of a furnished MuJoCo scene (CPU / OSMesa)."""
+"""Rectified onboard cameras with independent mounts in a furnished MuJoCo home."""
 
 import base64
 from io import BytesIO
@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 os.environ.setdefault("MUJOCO_GL", "osmesa")
 os.environ.setdefault("PYOPENGL_PLATFORM", "osmesa")
 import mujoco as mj
+import numpy as np
 from PIL import Image
 from interior import add_materials, decorate, populate, sweepings
 
@@ -23,6 +24,8 @@ PAINT = {
     "box": "e4ac29",
     "red": "cb4d5d",
     "blue": "397ecb",
+    "jade": "36b44a",
+    "violet": "9b54e0",
     "dock": "24a99c",
     "runner": "945078",
 }
@@ -235,6 +238,21 @@ class Cameras:
             geom(root, x, y, 0.014, ".43 .42 .014", paint)
             for dx in (-0.36, 0.36):
                 geom(root, x + dx, y, 0.033, ".012 .37 .006", "d8d5bd")
+        x, y = w.dock
+        geom(root, x, y - 0.255, 0.04, ".10 .062 .007", "f7ec36")
+        x, y = w.card
+        geom(root, x, y, 0.035, ".46 .45 .035", "433e38")
+        geom(root, x, y, 1.455, ".47 .46 .015", "5e5851")
+        geom(root, x, y, 1.477, ".45 .44 .006", "aaff14", group="4")
+        geom(root, x, y, 1.490, ".375 .365 .006", "303532", group="4")
+        ink = {"oak": "f68c18", "sage": "00d9ec", "slate": "7042fa", "rose": "f62ac4"}
+        for dx, dy, swatch in (
+            (-0.18, -0.18, ink[w.request[0]]),
+            (0.18, -0.18, ink[w.request[1]]),
+            (-0.18, 0.18, w.stage),
+            (0.18, 0.18, w.target),
+        ):
+            geom(root, x + dx, y + dy, 1.505, ".15 .145 .007", swatch, group="4")
         for x, y in w.dust:
             ET.SubElement(
                 root,
@@ -329,6 +347,8 @@ class Cameras:
         ground = name == "ground"
         rad, pos = (1, self.w.ground) if ground else (3, self.w.air)
         pitch = 84 // (2 * rad + 1)
+        # The elevated label faces upward. The rectified low camera does not see its top.
+        self.pov.geomgroup[4] = int(not ground)
         self.renderer.update_scene(self.data, camera=name, scene_option=self.pov)
         im = self.renderer.render()
         for j in range(2 * rad + 1):
@@ -336,7 +356,7 @@ class Cameras:
                 p = (pos[0] + i - rad, pos[1] + j - rad)
                 if not self.w.visible(pos, p, not ground):
                     im[j * pitch : (j + 1) * pitch, i * pitch : (i + 1) * pitch] = 0
-        return im
+        return np.ascontiguousarray(np.rot90(im, self.w.mount[0 if ground else 1]))
 
     def observation(self):
         self.sync()
@@ -359,6 +379,7 @@ class Cameras:
         self.sync()
         opt = mj.MjvOption()
         opt.geomgroup[3] = 1
+        opt.geomgroup[4] = 1
         opt.geomgroup[5] = int(ceiling)
         self.model.vis.headlight.ambient[:] = (0.43, 0.45, 0.47)
         self.model.light("daylight").diffuse[:] = (0.72, 0.68, 0.60)

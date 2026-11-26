@@ -14,7 +14,8 @@ from world import Home
 
 
 def run(seed, mode, budget, flight):
-    w = Home(seed, budget, 0 if mode == "solo" else flight)
+    no_scout = mode in ("solo", "informed-solo")
+    w = Home(seed, budget, 0 if no_scout else flight)
     signature = hashlib.sha256(
         repr(
             (
@@ -27,11 +28,19 @@ def run(seed, mode, budget, flight):
                 sorted(w.pieces),
                 w.prompt,
                 w.dock,
+                w.card,
+                w.mount,
+                w.request,
+                w.stage,
+                w.target,
             )
         ).encode()
     ).hexdigest()[:16]
     cam = Cameras(w)
     team = Team(mode)
+    if mode == "informed-solo":
+        # Explicit diagnostic intervention: isolate loss of the shared map from loss of the work order.
+        team.order = (set(w.request), w.stage, w.target)
     air_moves = 0
     try:
         while w.t < budget:
@@ -45,7 +54,7 @@ def run(seed, mode, budget, flight):
             scene=signature,
             mode=mode,
             budget=budget,
-            flight=flight if mode != "solo" else 0,
+            flight=0 if no_scout else flight,
             air_moves=air_moves,
             **w.result(),
         )
@@ -59,8 +68,8 @@ if __name__ == "__main__":
     p.add_argument(
         "--modes",
         nargs="+",
-        choices=["adaptive", "fixed", "solo"],
-        default=["solo", "fixed", "adaptive"],
+        choices=["adaptive", "fixed", "solo", "informed-solo"],
+        default=["solo", "informed-solo", "fixed", "adaptive"],
     )
     p.add_argument("--ticks", type=int, default=200)
     p.add_argument("--flight", type=int, default=36)
