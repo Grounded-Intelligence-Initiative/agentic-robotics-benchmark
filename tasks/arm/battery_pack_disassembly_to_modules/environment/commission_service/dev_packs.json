@@ -30,7 +30,13 @@
     ]
    },
    "appearance_seed": 13391746283779386786,
-   "sealant_seed": 8295829281675844877
+   "sealant_seed": 8295829281675844877,
+   "seized_seed": 10930412434778924226,
+   "seized_n": 1,
+   "swollen_seed": 15517668385087035473,
+   "swollen": false,
+   "foam_seed": 3529281338838201071,
+   "foam_n": 1
   },
   {
    "seed": 9797708121656264220,
@@ -55,7 +61,13 @@
     ]
    },
    "appearance_seed": 13662135936151147396,
-   "sealant_seed": 320466118958779123
+   "sealant_seed": 320466118958779123,
+   "seized_seed": 143801132595100736,
+   "seized_n": 1,
+   "swollen_seed": 14736940971175351817,
+   "swollen": true,
+   "foam_seed": 18125025595993364632,
+   "foam_n": 0
   },
   {
    "seed": 17798573044613270937,
@@ -80,7 +92,13 @@
     ]
    },
    "appearance_seed": 13121727920211623673,
-   "sealant_seed": 11976045519532333797
+   "sealant_seed": 11976045519532333797,
+   "seized_seed": 12404570737525312709,
+   "seized_n": 1,
+   "swollen_seed": 1315847420237412763,
+   "swollen": true,
+   "foam_seed": 10018564363627777156,
+   "foam_n": 1
   },
   {
    "seed": 17793151088624002925,
@@ -105,7 +123,13 @@
     ]
    },
    "appearance_seed": 8359982453493250201,
-   "sealant_seed": 15761097942397740676
+   "sealant_seed": 15761097942397740676,
+   "seized_seed": 7674402105468596569,
+   "seized_n": 1,
+   "swollen_seed": 16425975927992332712,
+   "swollen": false,
+   "foam_seed": 8643183492836509116,
+   "foam_n": 0
   }
  ]
 }

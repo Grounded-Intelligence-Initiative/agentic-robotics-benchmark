@@ -15,6 +15,17 @@
     "T40": 1
    },
    "sealed": 9,
+   "seized": [
+    "L01",
+    "L02"
+   ],
+   "swollen": [
+    "M2"
+   ],
+   "pads": [
+    "L09",
+    "L10"
+   ],
    "harness": "lid",
    "harness_covers": [
     "L05",
@@ -39,6 +50,16 @@
     "T40": 0
    },
    "sealed": 10,
+   "seized": [
+    "B02a",
+    "R3af"
+   ],
+   "swollen": [
+    "M1"
+   ],
+   "pads": [
+    "L09"
+   ],
    "harness": "busbars",
    "harness_covers": [
     "B01a",
@@ -64,6 +85,16 @@
     "T40": 8
    },
    "sealed": 8,
+   "seized": [
+    "L11",
+    "R1af",
+    "R4bf",
+    "R5bf"
+   ],
+   "swollen": [],
+   "pads": [
+    "B04a"
+   ],
    "harness": "none",
    "harness_covers": [],
    "placement": {
@@ -85,6 +116,17 @@
     "T40": 1
    },
    "sealed": 11,
+   "seized": [
+    "B04a",
+    "R2bf"
+   ],
+   "swollen": [
+    "M1"
+   ],
+   "pads": [
+    "L11",
+    "L04"
+   ],
    "harness": "lid",
    "harness_covers": [
     "L01",
@@ -109,6 +151,14 @@
     "T40": 8
    },
    "sealed": 12,
+   "seized": [
+    "L12",
+    "R3af"
+   ],
+   "swollen": [
+    "M2"
+   ],
+   "pads": [],
    "harness": "busbars",
    "harness_covers": [
     "B03a",
@@ -134,6 +184,15 @@
     "T40": 11
    },
    "sealed": 7,
+   "seized": [
+    "B01b",
+    "L07",
+    "R3af"
+   ],
+   "swollen": [],
+   "pads": [
+    "L10"
+   ],
    "harness": "none",
    "harness_covers": [],
    "placement": {
@@ -157,6 +216,13 @@
     "T40": 0
    },
    "sealed": 4,
+   "seized": [
+    "L06"
+   ],
+   "swollen": [],
+   "pads": [
+    "L03"
+   ],
    "harness": "busbars",
    "harness_covers": [
     "B02a",
@@ -181,6 +247,13 @@
     "T40": 9
    },
    "sealed": 5,
+   "seized": [
+    "R5bf"
+   ],
+   "swollen": [
+    "M5"
+   ],
+   "pads": [],
    "harness": "lid",
    "harness_covers": [
     "L03"
@@ -204,6 +277,15 @@
     "T40": 1
    },
    "sealed": 9,
+   "seized": [
+    "R3bf"
+   ],
+   "swollen": [
+    "M3"
+   ],
+   "pads": [
+    "L03"
+   ],
    "harness": "none",
    "harness_covers": [],
    "placement": {
@@ -225,6 +307,11 @@
     "T40": 1
    },
    "sealed": 11,
+   "seized": [
+    "B01b"
+   ],
+   "swollen": [],
+   "pads": [],
    "harness": "lid",
    "harness_covers": [
     "L03",
@@ -246,5 +333,10 @@
  "sealant_drawn_utc": "2026-11-25T20:37:35Z",
  "appearance_key_hex": "588b5308fd0e5908a38de23de2487b83cab12d118322ed755feaa6caebfa4182",
  "appearance_rule": "tests/review/select_set.py (its docstring), rule 4",
- "appearance_drawn_utc": "2026-11-25T22:27:10Z"
+ "appearance_drawn_utc": "2026-11-25T22:27:10Z",
+ "seized_key_hex": "05ea419a5be75ddf813e5a6f95838a7f0cb84562f1a9522f119cf6e1d40af55e",
+ "swollen_key_hex": "974f0c9f88161a199c45042763b5fae7ed4c5bc28c601605f349274e1016da2a",
+ "foam_key_hex": "6852b56cd38a1ec083d694c2a81b670538959eab730658527760bcc4a380649d",
+ "round2_rule": "tests/review/select_set.py (its docstring), rules 5 to 7",
+ "round2_drawn_utc": "2026-11-26T13:18:41Z"
 }

@@ -23,7 +23,13 @@
     ]
    },
    "appearance_seed": 13938128564226383250,
-   "sealant_seed": 16503930125356601231
+   "sealant_seed": 16503930125356601231,
+   "seized_seed": 16225356077844635362,
+   "seized_n": 2,
+   "swollen_seed": 16049566731049444597,
+   "swollen": true,
+   "foam_seed": 14814331181428029708,
+   "foam_n": 2
   },
   {
    "seed": 18166115029290013393,
@@ -48,7 +54,13 @@
     ]
    },
    "appearance_seed": 17252741175298076667,
-   "sealant_seed": 4005758082733538299
+   "sealant_seed": 4005758082733538299,
+   "seized_seed": 828378906264826601,
+   "seized_n": 2,
+   "swollen_seed": 8193784037573283608,
+   "swollen": true,
+   "foam_seed": 10638465951787011354,
+   "foam_n": 1
   },
   {
    "seed": 9429699338181942882,
@@ -73,7 +85,13 @@
     ]
    },
    "appearance_seed": 6864761039767152326,
-   "sealant_seed": 3566401301014248858
+   "sealant_seed": 3566401301014248858,
+   "seized_seed": 16302319673846322075,
+   "seized_n": 4,
+   "swollen_seed": 4175648977437553629,
+   "swollen": false,
+   "foam_seed": 6624237903518949427,
+   "foam_n": 1
   },
   {
    "seed": 2668488664467343524,
@@ -98,7 +116,13 @@
     ]
    },
    "appearance_seed": 822049254866462301,
-   "sealant_seed": 5410141177403241722
+   "sealant_seed": 5410141177403241722,
+   "seized_seed": 18263760559745546286,
+   "seized_n": 2,
+   "swollen_seed": 13004010384168206669,
+   "swollen": true,
+   "foam_seed": 3997508065325526115,
+   "foam_n": 2
   },
   {
    "seed": 10067437286830775329,
@@ -123,7 +147,13 @@
     ]
    },
    "appearance_seed": 5796908218476894454,
-   "sealant_seed": 18132533050073856919
+   "sealant_seed": 18132533050073856919,
+   "seized_seed": 13941346539316048406,
+   "seized_n": 2,
+   "swollen_seed": 8215821666515257532,
+   "swollen": true,
+   "foam_seed": 127413278742760984,
+   "foam_n": 0
   },
   {
    "seed": 12647498776139476245,
@@ -148,7 +178,13 @@
     ]
    },
    "appearance_seed": 3722729031232224890,
-   "sealant_seed": 13929600898595242513
+   "sealant_seed": 13929600898595242513,
+   "seized_seed": 6925569159136204614,
+   "seized_n": 3,
+   "swollen_seed": 11980843862877421225,
+   "swollen": false,
+   "foam_seed": 18439706256975687588,
+   "foam_n": 1
   }
  ],
  "note": "the fixed hidden set: tests/review/select_set.py"
