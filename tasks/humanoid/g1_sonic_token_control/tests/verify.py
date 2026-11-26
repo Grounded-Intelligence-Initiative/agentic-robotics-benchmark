@@ -1,5 +1,7 @@
 """Trusted ALE verifier for a native G1 pick-and-place episode."""
+import hashlib
 import math
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -9,7 +11,7 @@ sys.path.insert(0, str(STAGE))
 sys.path.insert(1, "/opt/sonic")
 
 from robotics_grader import (ProbeLock, Solver, SolverAborted, SolverMissing, VerifierDeadline,
-                             deprivileged, ratio_rewards, read_anchor, replies_differ, require,
+                             clear_agent_account, deprivileged, ratio_rewards, read_anchor, replies_differ, require,
                              seed_rng, stage_config, write_verdict, zero_verdict)
 from sonic_io import LiveEpisode, validate_action
 from sonic_sim import BenchSession
@@ -27,9 +29,31 @@ def offline_command(entry):
     return [sys.executable, "-I", "-S", "-c", OFFLINE_SOURCE, entry]
 
 
+RUNTIME_ENV = (
+    "OPENBLAS_CORETYPE", "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
+    "NPY_DISABLE_CPU_FEATURES", "MUJOCO_GL", "PYOPENGL_PLATFORM", "EGL_PLATFORM",
+    "__EGL_VENDOR_LIBRARY_FILENAMES", "LIBGL_ALWAYS_SOFTWARE", "GALLIUM_DRIVER", "LP_NUM_THREADS",
+)
+
+
 def solver_environment():
-    return dict(HOME="/home/user", PATH="/opt/venv/bin:/usr/local/bin:/usr/bin:/bin",
-                LANG="C.UTF-8", PYTHONNOUSERSITE="1", PYTHONDONTWRITEBYTECODE="1")
+    env = dict(HOME="/home/user", PATH="/opt/venv/bin:/usr/local/bin:/usr/bin:/bin",
+               LANG="C.UTF-8", PYTHONNOUSERSITE="1", PYTHONDONTWRITEBYTECODE="1")
+    # The image's root-installed startup file pins these before NumPy or MuJoCo imports.
+    # Propagate only the explicit public runtime settings to native and Python solvers.
+    env.update({key: os.environ[key] for key in RUNTIME_ENV})
+    return env
+
+
+def check_numerics():
+    """Check the packaged float64 BLAS result before allocating any hidden episode."""
+    i = np.arange(71 * 97, dtype=np.int64)
+    j = np.arange(97 * 53, dtype=np.int64)
+    a = ((i * 31337 + 11) % 3299 - 1649).reshape(71, 97) / 1291.0
+    b = ((j * 30757 + 17) % 3511 - 1755).reshape(97, 53) / 1303.0
+    digest = hashlib.sha256(np.asarray(a @ b, dtype="<f8").tobytes()).hexdigest()
+    require(digest == "f83f8230aa5e4c8b0e595efe592952b387120788d96d7aed3696fea03728c0cc",
+            "float64 matrix product differs from the pinned CPU runtime")
 
 
 class OfflineSolver(Solver):
@@ -199,7 +223,13 @@ def verify():
         write_verdict(zero_verdict("verifier wall-time budget exhausted", anchor is not None,
                                    extra={"elapsed_s": elapsed}))
     with VerifierDeadline(config["verifier_deadline_s"], expired):
-        # A failed security self-test is a grader error and cannot silently enable egress.
+        check_numerics()
+        # In the official stage the kit clears the account before starting anything as
+        # the solver. Explicitly check its report so no pre-existing service can relay
+        # traffic. A maintainer can exercise the same code in an isolated Docker container.
+        require(os.environ.get("ALE_VERIFY_PYTHON") or Path("/.dockerenv").is_file(),
+                "the verifier must run inside an isolated task sandbox")
+        require(clear_agent_account(force=True)["cleared"], "could not isolate the agent account")
         check = deprivileged(offline_command("--self-test"), env=solver_environment(),
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         output, _ = check.communicate(timeout=15)
@@ -211,6 +241,7 @@ def verify():
             write_verdict(zero_verdict(str(exc), anchor is not None,
                                        extra={"episodes": config["episodes"], "episodes_aborted": config["episodes"]}))
             return
+        metrics.update(numerics_ok=1, offline_launcher_ok=1, agent_account_cleared=1)
         raw = metrics["placed"] / metrics["episodes"]
         verdict = ratio_rewards(raw, anchor, cap=config["scoring_cap"],
                                 metric_name="strict_placement_fraction", locks_ok=metrics["match_lock_ok"],
