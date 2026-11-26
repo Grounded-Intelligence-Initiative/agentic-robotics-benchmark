@@ -10,8 +10,16 @@ import cv2
 import numpy as np
 
 
+# the white balance of this pack's hall light: the plates' white under the nominal light (measured on development
+# frames) over the same white now (set by the controller after calibration); colours are read balanced
+WHITE_REF = np.array([178.0, 180.0, 180.0])
+WB = np.ones(3)
+
+
 def decode(image):
     rgb = cv2.cvtColor(cv2.imdecode(np.frombuffer(base64.b64decode(image["rgb"]), np.uint8), cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
+    if np.any(WB != 1.0):
+        rgb = np.clip(np.round(rgb.astype(np.float32) * WB.astype(np.float32)), 0, 255).astype(np.uint8)
     dep = cv2.imdecode(np.frombuffer(base64.b64decode(image["depth"]), np.uint8), cv2.IMREAD_UNCHANGED).astype(np.float32)
     return rgb, dep * float(image.get("depth_unit_m", 1e-4))
 
@@ -67,14 +75,20 @@ def pack_pose(cam, depth, table_z, top_z, size=(0.62, 1.0)):
     k = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
     blob = (lab == k).astype(np.uint8)
     cnts, _ = cv2.findContours(blob, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    c = max(cnts, key=cv2.contourArea)[:, 0, :]
-    # the boundary pixels' points in the base frame, at the height of the top (the silhouette's own depth)
-    xy = []
-    for u, v in c:
-        p = P[v, u]
-        if np.isfinite(p).all():
-            xy.append(p[:2])
-    xy = np.array(xy)
+    c = max(cnts, key=cv2.contourArea)
+    # the silhouette's convex hull: grime that loses the depth at the lid's edge, or a cable lying over it, cuts
+    # notches into the outline that the hull bridges; its edges, densified, are the boundary
+    hull = cv2.convexHull(c)[:, 0, :].astype(np.float64)
+    pts = []
+    for a, b in zip(hull, np.roll(hull, -1, axis=0)):
+        n = max(2, int(np.ceil(np.linalg.norm(b - a))))
+        pts.append(a + (b - a) * np.linspace(0.0, 1.0, n, endpoint=False)[:, None])
+    uv = np.concatenate(pts)
+    # each boundary pixel's ray meets the plane of the top (its height is known): no depth needed on the edge
+    zt = table_z + top_z
+    rays = np.stack([(uv[:, 0] - cam.cx) / cam.fx, (uv[:, 1] - cam.cy) / cam.fy, np.ones(len(uv))], axis=1) @ cam.T[:3, :3].T
+    s = (zt - cam.T[2, 3]) / rays[:, 2]
+    xy = (cam.T[:3, 3][None, :] + s[:, None] * rays)[:, :2]
     (cx, cy), (w, h), ang = cv2.minAreaRect(xy.astype(np.float32) * 1000.0)
     cx, cy = cx / 1000.0, cy / 1000.0
     # the long side along y: choose the angle whose long axis is nearest to y
@@ -95,6 +109,8 @@ def pack_pose(cam, depth, table_z, top_z, size=(0.62, 1.0)):
         for axis, sign, half in ((0, 1, hx), (0, -1, hx), (1, 1, hy), (1, -1, hy)):
             other = 1 - axis
             sel = (np.abs(loc[:, axis] - sign * half) < 0.012) & (np.abs(loc[:, other]) < (hy if other else hx) - 0.03)
+            if sel.sum() < 20:              # a first guess pulled off by something on the edge: a wider window
+                sel = (np.abs(loc[:, axis] - sign * half) < 0.03) & (np.abs(loc[:, other]) < (hy if other else hx) - 0.03)
             if sel.sum() < 20:
                 return None
             sides.append((axis, sign, loc[sel]))
@@ -132,6 +148,7 @@ class PackView(object):
         self.py = -s * dx + c * dy
         self.pz = P[..., 2] - table_z
         self.hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
+        self.luma = rgb[..., 0] * 0.299 + rgb[..., 1] * 0.587 + rgb[..., 2] * 0.114
 
     def to_base(self, x, y, z):
         c, s = math.cos(self.yaw), math.sin(self.yaw)
@@ -169,30 +186,44 @@ def rib_scores(view, manual, lid_z):
     return scores, raised
 
 
-def head_at(view, x, y, seat_z, r_search=0.009, r_ring=(0.012, 0.016)):
-    """What stands at a fastener's place in an overhead frame: ('head', x, y, height, top_z) with the head's height
-    above its seat and the centre of its top, ('hole', x, y) for an empty hole, ('covered', ...) when something much
-    taller than a head lies there, or ('none',)."""
-    sel = view.disc(x, y, r_search)
+def head_at(view, x, y, seat_z, r_core=0.0045, r_search=0.009, r_ring=(0.012, 0.016)):
+    """What stands at a fastener's place in an overhead frame (depth averaged over several frames: one frame's noise
+    is 2.5 mm here): ('head', x, y, height, top_z) with a rough height above the seat (not enough to tell the head's
+    type) and the centre of the bump, ('hole', x, y) for an empty hole, ('covered', ...) when something much taller
+    than a head lies there, or ('none',). Robust statistics only (medians), and the colour where the sensor has no
+    reading: a dark hole returns none, a bright plated head often loses part of its readings."""
     ring = view.disc(x, y, r_ring[1]) & ~view.disc(x, y, r_ring[0])
     hr = view.pz[ring]
     hr = hr[np.isfinite(hr)]
     seat = float(np.median(hr)) if hr.size > 10 and abs(float(np.median(hr)) - seat_z) < 0.004 else seat_z
     h = view.pz - seat
-    hs = h[sel]
-    if not np.isfinite(hs).any():
-        return ("none",)
-    hmax = float(np.nanmax(hs))
-    if hmax > 0.0095:
-        return ("covered", hmax)
-    if hmax > 0.0028:
-        top = sel & (h > 0.5 * hmax)
-        hh = h[top]
-        height = float(np.percentile(hh, 80))
-        return ("head", float(np.mean(view.px[top])), float(np.mean(view.py[top])), height, seat + height)
-    low = sel & (h < -0.003)
-    if low.sum() >= 4:
-        return ("hole", float(np.mean(view.px[low])), float(np.mean(view.py[low])))
+    core = view.disc(x, y, r_core)
+    hc = h[core]
+    valid = np.isfinite(hc)
+    luma = view.luma[core]
+    if valid.sum() >= max(4, 0.3 * core.sum()):
+        hm = float(np.median(hc[valid]))
+    else:
+        # mostly no reading: dark (a hole, a black part) or bright (a plated head's highlights)
+        hm = None
+    if hm is None:
+        if luma.size and float(np.median(luma)) < 40:
+            return ("hole", float(x), float(y))
+        if luma.size and float(np.median(luma)) > 120:
+            hm = 0.005
+        else:
+            return ("none",)
+    if hm > 0.0105:
+        return ("covered", hm)
+    if hm > 0.0025:
+        sel = view.disc(x, y, r_search) & (np.nan_to_num(h, nan=-9.0) > 0.5 * hm)
+        if sel.sum() >= 4:
+            cx, cy = float(np.mean(view.px[sel])), float(np.mean(view.py[sel]))
+        else:
+            cx, cy = float(x), float(y)
+        return ("head", cx, cy, hm, seat + hm)
+    if hm < -0.0015 or (luma.size and float(np.median(luma)) < 40):
+        return ("hole", float(x), float(y))
     return ("none",)
 
 
@@ -256,29 +287,166 @@ def harness_grasp(view, mask, min_px=150):
     return best
 
 
-def wrist_head(cam, depth, expect, seat_z, r_search=0.0075):
-    """A fastener's head in a wrist frame: the points of its top face (within 1.2 mm of its highest point) near the
-    expected place, their centre (base frame) and the head's height above `seat_z` (base frame). None when nothing
-    stands there higher than 2.5 mm."""
+def wrist_head(cam, depth, expect, seat_z, r_search=0.0085, rgb=None):
+    """A fastener's head in a wrist frame (depth noise about 0.3 mm here; a plated head loses part of its top face's
+    readings to its highlights): the head is the region near the expected place standing more than 2.5 mm above
+    `seat_z`; its outline's convex hull (which closes the gaps the lost readings leave) gives the centre, projected
+    onto the plane of the head's top, and the median of its top face gives the height. Returns {"hole": False, x, y,
+    z, height, n (hull area in pixels), n_full (the area a whole head of that height would have)}, {"hole": True}
+    when nothing stands there and the place is dark or low, or None."""
     P = cam.points(depth)
-    sel = np.nan_to_num(np.hypot(P[..., 0] - expect[0], P[..., 1] - expect[1]), nan=9.0) < r_search
+    rr = np.nan_to_num(np.hypot(P[..., 0] - expect[0], P[..., 1] - expect[1]), nan=9.0)
     h = P[..., 2] - seat_z
-    sel &= np.nan_to_num(h, nan=-9.0) > -0.004
-    sel &= np.nan_to_num(h, nan=9.0) < 0.012
-    if sel.sum() < 20:
+    win = (rr < r_search) & (np.nan_to_num(h, nan=-9.0) > -0.004) & (np.nan_to_num(h, nan=9.0) < 0.012)
+    if win.sum() < 20:
         return None
-    hs = h[sel]
-    hmax = float(np.percentile(hs, 99.5))
-    if hmax < 0.0025:
-        low = sel & (h < -0.003)
-        return {"hole": True, "n_low": int(low.sum())}
-    top = sel & (h > hmax - 0.0012)
-    # re-centre once on the top face found, so that a head near the window's edge is taken whole
-    c = P[top][:, :2].mean(axis=0)
-    sel2 = np.nan_to_num(np.hypot(P[..., 0] - c[0], P[..., 1] - c[1]), nan=9.0) < r_search
-    sel2 &= (np.nan_to_num(h, nan=-9.0) > -0.004) & (np.nan_to_num(h, nan=9.0) < 0.012)
-    hmax = float(np.percentile(h[sel2], 99.5))
-    top = sel2 & (h > hmax - 0.0012)
-    p = P[top]
-    return {"hole": False, "x": float(p[:, 0].mean()), "y": float(p[:, 1].mean()), "z": float(seat_z + hmax),
-            "height": hmax, "n": int(top.sum())}
+    up = win & (np.nan_to_num(h, nan=-9.0) > 0.0025)
+    if up.sum() < 30:
+        return {"hole": True, "n_low": int((win & (np.nan_to_num(h, nan=9.0) < -0.002)).sum())}
+    m = up.astype(np.uint8)
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8)), connectivity=8)
+    if n < 2:
+        return None
+    k = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    blob = (lab == k).astype(np.uint8)
+    cnts, _ = cv2.findContours(blob, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    hull = cv2.convexHull(max(cnts, key=cv2.contourArea))
+    area = float(cv2.contourArea(hull))
+    mo = cv2.moments(hull)
+    if mo["m00"] <= 0:
+        return None
+    u, v = mo["m10"] / mo["m00"], mo["m01"] / mo["m00"]
+    hv = h[(blob > 0) & np.isfinite(h)]
+    height = float(np.median(hv[hv > np.median(hv) - 0.0015]))
+    # the hull's centre is a pixel: its ray meets the plane of the head's top
+    ray = cam.T[:3, :3] @ np.array([(u - cam.cx) / cam.fx, (v - cam.cy) / cam.fy, 1.0])
+    o = cam.T[:3, 3]
+    z = seat_z + height
+    s = (z - o[2]) / ray[2]
+    c = o + s * ray
+    dist = float(np.linalg.norm(c - o))
+    return {"hole": False, "x": float(c[0]), "y": float(c[1]), "z": float(z), "height": height, "n": int(area),
+            "px_per_m": cam.fx / dist}
+
+
+# the rim pixels of a head's top lie a little inside its outline (the depth's smoothing), measured on development
+# frames with free-radius fits
+RIM_INSET = 0.00015
+
+
+def fit_circle(xy, r=None, iters=8):
+    """A circle through 2D points: the algebraic fit, then (with a known radius r) the centre that brings every point
+    to r from it, by Gauss-Newton; a robust reweighting drops points far off. Returns (centre, radius, rms)."""
+    x, y = xy[:, 0], xy[:, 1]
+    A = np.stack([x, y, np.ones_like(x)], axis=1)
+    b = x * x + y * y
+    sol, *_ = np.linalg.lstsq(A, b, rcond=None)
+    c = np.array([sol[0] / 2, sol[1] / 2])
+    rad = math.sqrt(max(sol[2] + c @ c, 1e-12))
+    w = np.ones(len(xy))
+    for _ in range(iters):
+        d = xy - c
+        dist = np.linalg.norm(d, axis=1) + 1e-12
+        rr = rad if r is None else r
+        res = dist - rr
+        s = 1.4826 * float(np.median(np.abs(res))) + 1e-5
+        w = 1.0 / (1.0 + (res / (2.5 * s)) ** 2)
+        J = -d / dist[:, None]
+        if r is None:
+            J = np.concatenate([J, -np.ones((len(xy), 1))], axis=1)
+        H = J.T @ (J * w[:, None])
+        g = J.T @ (w * res)
+        step = -np.linalg.solve(H + 1e-12 * np.eye(H.shape[0]), g)
+        c = c + step[:2]
+        if r is None:
+            rad = rad + step[2]
+    res = np.linalg.norm(xy - c, axis=1) - (rad if r is None else r)
+    return c, (rad if r is None else r), float(np.sqrt(np.average(res ** 2, weights=w)))
+
+
+def fit_hexagon(xy, apothem, c0):
+    """A regular hexagon with a known apothem (half the width across flats) through 2D points on its boundary: its
+    centre and turn. For each turn on a grid, each point is given to the side it lies against (the largest projection
+    on the sides' normals) and the centre follows by least squares; the turn with the least residual wins. Returns
+    (centre, turn, rms)."""
+    best = None
+    for k in range(30):
+        phi = math.radians(2.0 * k)
+        N = np.array([[math.cos(phi + j * math.pi / 3), math.sin(phi + j * math.pi / 3)] for j in range(6)])
+        c = np.array(c0, dtype=float)
+        for _ in range(6):
+            side = np.argmax((xy - c) @ N.T, axis=1)
+            A = N[side]
+            b = np.sum(xy * A, axis=1) - apothem
+            c, *_ = np.linalg.lstsq(A, b, rcond=None)
+        res = np.max((xy - c) @ N.T, axis=1) - apothem
+        s = 1.4826 * float(np.median(np.abs(res))) + 1e-5
+        keep = np.abs(res) < 3 * s
+        if keep.sum() >= 10:
+            side = np.argmax((xy[keep] - c) @ N.T, axis=1)
+            A = N[side]
+            b = np.sum(xy[keep] * A, axis=1) - apothem
+            c, *_ = np.linalg.lstsq(A, b, rcond=None)
+            res = np.max((xy[keep] - c) @ N.T, axis=1) - apothem
+        rms = float(np.sqrt(np.mean(res ** 2)))
+        if best is None or rms < best[2]:
+            best = (c, phi, rms)
+    return best
+
+
+def wrist_head_fit(cam, depth, expect, seat_z, thread, r_search=0.009):
+    """A fastener's head in a wrist frame when part of it may be under a dab of sealant (service manual, section 7):
+    the head's flat top is the dominant height plateau above the seat; its rim is where that plateau drops to the seat
+    (under sealant there is no such drop, the dome goes on); a circle fitted to the rim gives the centre (a pan head's
+    known radius; a hexagon's rim lies between its half width across flats and across corners, so its radius is
+    fitted). Returns the dict of `wrist_head` with "fit": True, or None when the rim is too short to fit (the caller
+    then uses `wrist_head`)."""
+    P = cam.points(depth)
+    rr = np.nan_to_num(np.hypot(P[..., 0] - expect[0], P[..., 1] - expect[1]), nan=9.0)
+    h = P[..., 2] - seat_z
+    hz = np.nan_to_num(h, nan=-9.0)
+    win = (rr < r_search) & (hz > -0.004) & (hz < 0.014)
+    up = win & (hz > 0.0025)
+    if up.sum() < 30:
+        return None
+    hv = h[up]
+    bins = np.arange(0.0025, 0.0125, 0.00025)
+    hist, edges = np.histogram(hv, bins=bins)
+    hist = np.convolve(hist, [1, 2, 3, 2, 1], mode="same")
+    H = float(edges[int(np.argmax(hist))] + 0.000125)
+    # refine the plateau's height: the median of the pixels near the peak
+    near = hv[np.abs(hv - H) < 0.0007]
+    if near.size < 20:
+        return None
+    H = float(np.median(near))
+    top = win & (np.abs(hz - H) < 0.0008)
+    low = (rr < r_search + 0.004) & np.isfinite(h) & (hz < H - 0.002) & (hz > -0.004)
+    k3 = np.ones((3, 3), np.uint8)
+    rim = top & (cv2.dilate(low.astype(np.uint8), k3) > 0)
+    # the rim of the head under the camera: keep the connected part of the plateau nearest the expected place
+    n, lab, stats, cent = cv2.connectedComponentsWithStats(cv2.morphologyEx(top.astype(np.uint8), cv2.MORPH_CLOSE, k3), connectivity=8)
+    if n < 2:
+        return None
+    k = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    plateau = lab == k
+    rim &= cv2.dilate(plateau.astype(np.uint8), k3) > 0
+    pts = P[rim][:, :2]
+    if len(pts) < 25:
+        return None
+    kind = head_kind(thread, H)
+    if kind in ("S10", "S13"):
+        c0 = pts.mean(axis=0)
+        c, _, rms = fit_hexagon(pts, {"S10": 0.005, "S13": 0.0065}[kind] - RIM_INSET, c0)
+        rad = None
+        radius = 0.0
+    else:
+        radius = {"T30": 0.006, "T40": 0.008}[kind] - RIM_INSET
+        c, rad, rms = fit_circle(pts, r=radius)
+    # how much of the circumference the rim covers (sealant hides the rest)
+    ang = np.arctan2(pts[:, 1] - c[1], pts[:, 0] - c[0])
+    cover = len(np.unique(np.floor((ang + math.pi) / (2 * math.pi) * 36).astype(int))) / 36.0
+    if cover < 0.4 or rms > 0.0006:
+        return None
+    pz = seat_z + H
+    return {"hole": False, "x": float(c[0]), "y": float(c[1]), "z": float(pz), "height": H, "fit": True, "cover": cover,
+            "rms": rms, "radius": None if rad is None else float(rad), "n_rim": int(len(pts))}

@@ -1,8 +1,10 @@
 """A perception-based program for the disassembly cell: takes a pack apart to module level from what the cell's
-interface gives (the two RGB-D cameras with their published calibration, the robot's and the tools' readings, the
-cell's messages) and the pack series' manual. Nothing on the wire says where a part is; every place, the variant,
-the pack's placement, each fastener's position, head type, presence, and the harness remnant come from the frames
-(`vision.py`), and whether a fastener turns, stalls, slips or is out comes from the nutrunner's torque and angle.
+interface gives (the two RGB-D cameras with their nominal mounting and data sheets, the calibration plates, the
+robot's and the tools' readings, the cell's messages) and the pack series' manual. Nothing on the wire says where a
+part is; every place, the variant, the pack's placement, each fastener's position, head type, presence, and the
+harness remnant come from the frames (`vision.py`), seen through this cell's own camera calibration, identified at
+the start of every pack (`calib.py`), and whether a fastener turns, stalls, slips or is out comes from the
+nutrunner's torque and angle.
 
 The motion skills (`move`, `move_joints`, `go`, `lift`, `command`, `change_tool`, `change_bit`, `eject`, `pick`,
 `drop_in_bin`, `remove_lid`, `rack_module`) and the order of the job are adapted from the task's privileged reference
@@ -21,6 +23,7 @@ import time
 
 import numpy as np
 
+import calib as CB
 import vision as V
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -36,8 +39,17 @@ OPEN = CELL["tools"]["gripper"]["open_max"]
 TORQUE = MANUAL["torque"]
 HEADS = MANUAL["heads"]
 ISOLATION_S = CELL["isolation_wait_s"]
-# the top face of a whole head in a wrist frame taken 0.105 m above it, in pixels (measured on development frames)
-TOP_FACE_PX = {"S10": 1260, "T30": 1440, "S13": 2120, "T40": 2175}
+# a whole head's outline in a wrist frame over its nominal area (hexagon across flats, pan head's circle): the
+# outline's hull is a little larger for a hexagon and smaller for a pan head (measured on development frames)
+HULL_OVER_AREA = {"hex": 1.10, "torx": 0.87}
+# the heads' shapes (service manual, section 5): a hexagon across flats, a pan head's diameter (m)
+HEAD_SHAPE = {"S10": ("hex", 0.010), "S13": ("hex", 0.013), "T30": ("torx", 0.012), "T40": ("torx", 0.016)}
+# the height (of the tool's centre point) at which tool and bit exchanges cross the cell: above everything a pack
+# carries (the lid's handle at -0.194 m, a harness on the lid), found when a swing toward the tool stand dragged a lid
+# freed of its last bolt
+Z_TRANSFER = -0.10
+# overhead frames averaged per look (the depth's noise is independent from frame to frame)
+N_OVERHEAD = 6
 # heights in the pack frame (manual, section 3)
 Z_LID_TOP, Z_BUSBAR_TOP, Z_BRACKET_TOP = 0.164, 0.136, 0.040
 
@@ -117,16 +129,37 @@ def rot_z(a):
 DOCK_R = down([0.0, -1.0])       # the tool's x axis along the world's x axis, as the docks ask
 
 
-def overhead_camera():
-    c = CELL["cameras"]["overhead"]
+def nominal(name):
+    """A camera's nominal pose (overhead: in the base frame; wrist: on the flange), from cell.json."""
+    c = CELL["cameras"][name]
     T = np.eye(4)
     T[:3, :3] = c["R"]
     T[:3, 3] = c["pos"]
-    return V.Camera(c, T)
+    return T
+
+
+OVH_NOM, MOUNT_NOM = nominal("overhead"), nominal("wrist")
+PLATES = CELL["calibration_plates"]
+# this cell's cameras, identified at the start of every pack (`Baseline.calibrate`)
+CAL = {"overhead": None, "mount": None}
+
+
+def overhead_camera():
+    return V.Camera(CELL["cameras"]["overhead"], CAL["overhead"] if CAL["overhead"] is not None else OVH_NOM)
 
 
 def wrist_camera(pose):
-    return V.Camera(CELL["cameras"]["wrist"], T_of(pose))
+    """The wrist camera of a frame whose `pose` is the nominal one (flange times the nominal mounting)."""
+    flange = T_of(pose) @ np.linalg.inv(MOUNT_NOM)
+    return V.Camera(CELL["cameras"]["wrist"], flange @ (CAL["mount"] if CAL["mount"] is not None else MOUNT_NOM))
+
+
+def tilt_R(ax, ay):
+    """A rotation by ax degrees about the base x axis, then ay about y."""
+    a, b = math.radians(ax), math.radians(ay)
+    Rx = np.array([[1, 0, 0], [0, math.cos(a), -math.sin(a)], [0, math.sin(a), math.cos(a)]])
+    Ry = np.array([[math.cos(b), 0, math.sin(b)], [0, 1, 0], [-math.sin(b), 0, math.cos(b)]])
+    return Ry @ Rx
 
 
 class GiveUp(Exception):
@@ -150,6 +183,8 @@ class Baseline(object):
         self.pack = None             # what is known of the pack
         self.cpu = 0.0
         self.dbg = {"frames": [], "fasteners": {}, "notes": []}
+        CAL["overhead"], CAL["mount"] = None, None
+        V.WB = np.ones(3)
 
     # ------------------------------------------------------------------ the wire
     def act(self, t, obs):
@@ -322,7 +357,9 @@ class Baseline(object):
                 name = self.o["tool"]
                 z = CELL["tools"][name]["tcp_z"]
                 dock = np.array(CELL["docks"][name])
-                yield from self.go(mk(DOCK_R, dock - [0, 0, z]), dock[2] - z + 0.14, final_speed=0.12)
+                # across the cell high enough to clear the pack (the lid's handle stands 0.206 m above the table):
+                # the dock's own approach height would sweep the tool through a freed lid's handle
+                yield from self.go(mk(DOCK_R, dock - [0, 0, z]), max(dock[2] - z + 0.14, Z_TRANSFER), final_speed=0.12)
                 yield from self.wait(0.5)
                 if not (yield from self.command("tool_release")):
                     yield from self.lift(dock[2] - z + 0.14)
@@ -344,7 +381,7 @@ class Baseline(object):
         for _ in range(3):
             if self.o["bit"] == bit:
                 return True
-            yield from self.go(mk(DOCK_R, st), st[2] + 0.12, final_speed=0.12)
+            yield from self.go(mk(DOCK_R, st), max(st[2] + 0.12, Z_TRANSFER), final_speed=0.12)
             yield from self.wait(0.5)
             yield from self.command("bit:" + bit)
             yield from self.lift(st[2] + 0.12)
@@ -371,9 +408,11 @@ class Baseline(object):
                 return im["pose"]
         return None
 
-    def look_overhead(self, tag):
-        """An overhead frame with the arm out of the camera's view (up, then the first joint turned so the arm points
-        away from the fixture). Returns (rgb, depth)."""
+    def look_overhead(self, tag, n=None):
+        """Overhead frames with the arm out of the camera's view (up, then the first joint turned so the arm points
+        away from the fixture). Returns (rgb, depth): the first frame's colour and the mean of the `n` frames' valid
+        depth readings (0 where none had one)."""
+        n = N_OVERHEAD if n is None else n
         yield from self.lift(-0.05)
         cur = self.cur_T()
         ang = math.atan2(cur[1, 3], cur[0, 3])
@@ -381,17 +420,27 @@ class Baseline(object):
         if abs(wrap(target - ang)) > 0.25 and np.hypot(cur[0, 3], cur[1, 3]) > 0.05:
             q = np.array(self.o["q_target"])
             yield from self.move_joints(q + [wrap(target - ang), 0, 0, 0, 0, 0], speed=1.2)
-        for _ in range(3):
+        rgb, acc, cnt = None, None, None
+        for _ in range(n + 2):
             o = yield from self.do(lambda ob: {"move": {"type": "hold", "ticks": 2}, "cams": ["overhead"]})
             im = (o.get("images") or {}).get("overhead")
-            if im:
-                rgb, dep = V.decode(im)
-                self.dbg["frames"].append({"tag": tag, "cam": "overhead", "t": o["time"]})
+            if not im:
+                continue
+            c, dep = V.decode(im)
+            if rgb is None:
+                rgb, acc, cnt = c, np.zeros(dep.shape, np.float64), np.zeros(dep.shape, np.float64)
+                self.dbg["frames"].append({"tag": tag, "cam": "overhead", "t": o["time"], "n": n})
                 if self.debug_dir:
                     import cv2
                     cv2.imwrite(os.path.join(self.debug_dir, "%s_overhead.png" % tag), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
-                return rgb, dep
-        raise GiveUp("no overhead frame")
+            acc += dep
+            cnt += dep > 0
+            n -= 1
+            if n <= 0:
+                break
+        if rgb is None:
+            raise GiveUp("no overhead frame")
+        return rgb, np.where(cnt > 0, acc / np.maximum(cnt, 1), 0.0).astype(np.float32)
 
     def look_wrist(self, p, z_top, cam_dir, z_safe=-0.10, tag=""):
         """A wrist frame with the head at (p, z_top) on the camera's optical axis: tool axis down, the camera (on the
@@ -415,6 +464,58 @@ class Baseline(object):
             self.dbg["frames"].append({"tag": tag, "cam": "wrist", "t": o["time"]})
             return wrist_camera(pose), dep, rgb
         return None
+
+    # ------------------------------------------------------------------ the cell's own cameras
+    def calibrate(self):
+        """Identify this cell's cameras: the overhead camera from both plates in an overhead frame, the wrist
+        camera's place on the flange from whole-board views of a plate (the bit's tip 0.10 m above its centre, two
+        yaws, square and tilted 8 degrees), the flange's pose from each frame's nominal `pose`."""
+        for attempt in range(6):
+            rgb, dep = yield from self.look_overhead("calib%d" % attempt, n=1)
+            T, rms, found = CB.overhead(rgb, CELL["cameras"]["overhead"]["K"], OVH_NOM, PLATES)
+            self.note("overhead calibration: plates %s, rms %.2f px" % (found, rms))
+            if T is not None and len(found) == 2 and rms < 0.6:
+                CAL["overhead"] = T
+                # the hall's light: white-balance every later frame on the plates' white
+                white = CB.plate_white(rgb, CELL["cameras"]["overhead"]["K"], T, PLATES)
+                if white is not None and np.all(white > 20):
+                    V.WB = np.clip(V.WHITE_REF / white, 0.4, 3.0)
+                self.note("white balance from the plates:", np.round(V.WB, 3).tolist(), "(plate white %s)" % (None if white is None else np.round(white, 1).tolist()))
+                break
+        if CAL["overhead"] is None:
+            raise GiveUp("the overhead camera could not be calibrated")
+        self.dbg["cal_overhead"] = CAL["overhead"].tolist()
+        mounts = []
+        for name in ("near", "far"):
+            p = PLATES[name]
+            c = np.array(p["origin"]) + [p["squares"][0] * p["square"] / 2, p["squares"][1] * p["square"] / 2, 0.0]
+            for yaw in (0.0, math.pi):
+                for tilt in ((0, 0), (8, 0), (-8, 0), (0, 8), (0, -8)):
+                    if len(mounts) >= 6:
+                        break
+                    goal = mk(tilt_R(*tilt) @ rot_z(yaw) @ DOCK_R, c + [0.0, 0.0, 0.10])
+                    if (yield from self.go(goal, -0.05, yaw="goal", final_speed=0.25)) != "ok":
+                        continue
+                    yield from self.wait(0.25)
+                    o = yield from self.do(lambda ob: {"move": {"type": "hold", "ticks": 2}, "cams": ["wrist"]})
+                    yield from self.do(lambda ob: {"move": {"type": "hold", "ticks": 1}})
+                    pose = self.frame_pose_ok(o, "wrist") if "wrist" in (o.get("images") or {}) else None
+                    if pose is None:
+                        continue
+                    rgb, _ = V.decode(o["images"]["wrist"])
+                    M, rms = CB.wrist_view(rgb, CELL["cameras"]["wrist"]["K"], T_of(pose) @ np.linalg.inv(MOUNT_NOM), MOUNT_NOM, p)
+                    if M is not None and rms < 0.6:
+                        mounts.append(M)
+            if len(mounts) >= 4:
+                break
+        yield from self.lift(-0.05)
+        if len(mounts) < 2:
+            raise GiveUp("the wrist camera could not be calibrated (%d views)" % len(mounts))
+        CAL["mount"], good = CB.robust_average(mounts)
+        spread = max(CB.pose_err(M, CAL["mount"])[0] for M in good)
+        self.note("wrist calibration: %d of %d views, spread %.2f mm, off nominal %.1f mm" % (
+            len(good), len(mounts), 1e3 * spread, 1e3 * CB.pose_err(CAL["mount"], MOUNT_NOM)[0]))
+        self.dbg["cal_mount"] = CAL["mount"].tolist()
 
     # ------------------------------------------------------------------ the pack, seen from above
     def pack_frame(self, dep, top_z):
@@ -490,14 +591,16 @@ class Baseline(object):
         est = rec["est"]
         if est is None:
             est = self.nominal_base(rec)
-        side = self.cam_side(rec)
+        side = np.asarray(self.cam_side(rec), dtype=float)
+        sides = [side, -side, np.array([-side[1], side[0]])]
         h, best = None, None
-        for look in range(2):
+        for look in range(3):
+            side = sides[look]
             res = yield from self.look_wrist(est[:2], est[2], side, z_safe=z_safe, tag=rec["id"])
             if res is None:
                 return False
             cam, dep, rgb = res
-            h = V.wrist_head(cam, dep, est, self.seat_z(rec))
+            h = V.wrist_head(cam, dep, est, self.seat_z(rec), rgb=rgb)
             if self.debug_dir:
                 import cv2
                 cv2.imwrite(os.path.join(self.debug_dir, "w_%s_%d_%d.png" % (rec["id"], rec["tries"], look)), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
@@ -507,14 +610,26 @@ class Baseline(object):
                 break
             # a head partly hidden (by a busbar, a module's edge) shows less of its top face, and its centre moves:
             # look again from the other side
-            full = TOP_FACE_PX[V.head_kind(rec["thread"], h["height"])]
+            # the head's outline fitted to its rim (sealant or a neighbour may hide part of it), else the hull
+            hf = V.wrist_head_fit(cam, dep, est, self.seat_z(rec), rec["thread"])
+            shape, size = HEAD_SHAPE[V.head_kind(rec["thread"], h["height"])]
+            area = (math.sqrt(3) / 2 * size ** 2) if shape == "hex" else math.pi * (size / 2) ** 2
+            h["whole"] = h["n"] / (area * h["px_per_m"] ** 2) / HULL_OVER_AREA[shape]
+            if hf is not None:
+                h.update(x=hf["x"], y=hf["y"], z=hf["z"], height=hf["height"], fit=True, cover=hf["cover"])
+                h["score"], good = 1.0 + hf["cover"], hf["cover"] >= 0.45
+            else:
+                # no rim to fit: the hull is trusted only when its area is a bare head's (sealant makes it larger,
+                # a neighbour in the way smaller)
+                h["score"], good = 1.0 - abs(h["whole"] - 1.0), 0.88 <= h["whole"] <= 1.08
+            d.setdefault("wrist_fit", []).append(hf)
             off = math.hypot(h["x"] - est[0], h["y"] - est[1]) if rec.get("est") else 0.0
-            if best is None or h["n"] > best["n"]:
+            if best is None or h["score"] > best["score"]:
                 best = h
-            if h["n"] >= 0.93 * full and off < 1.4e-3:
+            if good and off < 3.0e-3:
                 break
-            self.note(rec["id"], "partly hidden or far from the overhead estimate (%d of %d px, %.2f mm): from the other side" % (h["n"], full, 1000 * off))
-            side = -np.asarray(side)
+            self.note(rec["id"], "partly hidden, sealed or far from the overhead estimate (fit %s, %.2f of a whole head, %.2f mm): "
+                      "from another side" % ("cover %.2f" % hf["cover"] if hf else "none", h["whole"], 1000 * off))
             h = best
         if h is None:
             return False
@@ -733,7 +848,9 @@ class Baseline(object):
         yield from self.wait(0.2, extra={"gripper": w})
         held = yield from self.close_on()
         if not held:
-            self.note("the gripper did not close on", name)
+            cur = T_of(self.o["tcp"])
+            self.note("the gripper did not close on", name, "(opening %s, tcp %.1f mm from the grip point, tool %s)" % (
+                self.o["gripper"]["width"], 1000 * float(np.linalg.norm(cur[:3, 3] - np.asarray(gp))), self.o["tool"]))
             yield from self.open_wait()
             yield from self.lift(z_safe)
             return False
@@ -857,6 +974,8 @@ class Baseline(object):
 
     def job(self):
         Z_PART, Z_MODULE, Z_LID = -0.10, 0.02, 0.17
+        # 0. this cell's cameras
+        yield from self.calibrate()
         # 1. the lid from above: placement, variant, its fasteners, a harness on it
         rgb, dep = yield from self.look_overhead("lid")
         self.survey_lid(rgb, dep)
