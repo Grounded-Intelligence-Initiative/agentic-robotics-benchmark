@@ -4,10 +4,10 @@ import math
 import os
 
 import numpy as np
-from scipy.ndimage import median_filter
+from scipy.ndimage import label, median_filter
 
 import remote_env as E
-from skills import DOWN_Y, FWD_V, Robot, down, find_remote, overview_pose, rot_from_axes
+from skills import DOWN_X, DOWN_Y, FWD_V, Robot, down, find_remote, overview_pose, rot_from_axes
 
 CAB_CY = E.CAB_CY
 KNOB_X = E.CAB_X0 + E.KNOB_X
@@ -20,6 +20,11 @@ DIP = 0.10
 UNDER_TILT = 15                 # degrees the flat hand points down when it reaches in under the chest
 UNDER_DEPTH = 0.135             # how far behind the chest's front the fingers take the remote
 UNDER_Z = 0.018
+HAT_LEAN = 30                   # degrees the hand leans toward the hat when it takes its brim
+HAT_BITE = 0.022                # how far in from the brim's edge the fingers take it
+HAT_SLIDE = 0.028               # the hand comes down this far outside that, then slides in
+HAT_BRIM_Z = 0.027              # the brim's high side above the drawer's floor
+HAT_OPEN = 0.045
 UNDER_OUT = 0.26                # the remote's near end is drawn out to this far in front of the chest
 
 class Reference(Robot):
@@ -31,26 +36,27 @@ class Reference(Robot):
         # coordinates of the piece it deals with.
         first = obs["images"]["overview"]
         sofa, cab = self.locator.locate(self.kin, E.decode_image(first["depth"]), obs["q"])
+        self.layout = (sofa, cab)
         self.log.append(("layout", [round(float(v), 4) for v in sofa], [round(float(v), 4) for v in cab]))
-        # ... and the hat on the chest, so that the arm keeps clear of it until it is taken off.
+        # ... and the box on the chest, so that the arm keeps clear of it.
         self.kin.use("cabinet")
         depth = median_filter(E.decode_image(first["depth"]), size=3)
-        crown = self.crown(self.points("overview", depth, overview_pose(), depth > 0))
-        if len(crown) >= 200:
-            centre = [float(0.5 * (np.percentile(crown[:, i], 2) + np.percentile(crown[:, i], 98))) for i in (0, 1)]
-            adr = self.kin.free_adr["hat"]
-            world = self.kin.to_world((centre[0], centre[1], 0.0))
-            self.kin.model.qpos0[adr:adr + 2] = world[:2]
-            self.kin.data.qpos[adr:adr + 2] = world[:2]
-        order = getattr(self, "order", ("under", "chest", "lower", "hat", "upper", "left", "right"))
+        rim = self.box_rim(self.points("overview", depth, overview_pose(), depth > 0))
+        self.box_xy = (E.CAB_X0 + E.BOX_X, CAB_CY)
+        if len(rim) >= 80:
+            self.box_xy = tuple(float(0.5 * (np.percentile(rim[:, i], 2) + np.percentile(rim[:, i], 98))) for i in (0, 1))
+        self.log.append(("box", len(rim), [round(v, 3) for v in self.box_xy]))
+        self.kin.box_xy = self.box_xy
+        self.kin.set_layout(sofa, cab)
+        order = getattr(self, "order", ("under", "chest", "box", "left", "right", "lower", "mid", "upper"))
         for name in order:
             if name == "under":
                 found = yield from self.search_under()
             elif name == "chest":
                 found = yield from self.search_under_chest()
-            elif name == "hat":
-                found = yield from self.search_hat()
-            elif name in ("lower", "upper"):
+            elif name == "box":
+                found = yield from self.search_box()
+            elif name in ("lower", "mid", "upper"):
                 found = yield from self.search_drawer(name)
             else:
                 found = yield from self.search_cushion(name)
@@ -79,15 +85,84 @@ class Reference(Robot):
         view = (x0 + 0.5 * E.DRAWER_INNER[0] - 0.08, CAB_CY, floor + 0.42)
         yield from self.move_pose(view, DOWN_Y, rails=rails)
         half_w = 0.5 * E.DRAWER_INNER[1] - 0.015
-        hit = yield from self.see_remote((floor + 0.007, floor + 0.03),
-                                         ((x0 + 0.015, min(x0 + E.DRAWER_INNER[0] - 0.01, E.CAB_X0 - 0.01)),
-                                          (CAB_CY - half_w, CAB_CY + half_w)))
+        area = ((x0 + 0.015, min(x0 + E.DRAWER_INNER[0] - 0.01, E.CAB_X0 - 0.01)), (CAB_CY - half_w, CAB_CY + half_w))
+        # Is the hat in this drawer? Its crown is the only thing that tall.
+        tipped = False
+        for attempt in range(2):
+            yield from self.wait(6)
+            views = yield from self.look(2)
+            rgb, depth, pose = views["wrist"]
+            depth = median_filter(depth, size=3)
+            pts = self.points("wrist", depth, pose, depth > 0)
+            crown = pts[(pts[:, 2] > floor + 0.085) & (pts[:, 2] < floor + 0.125) & (pts[:, 0] > area[0][0] + 0.03)
+                        & (pts[:, 0] < area[0][1] - 0.03) & (pts[:, 1] > area[1][0] + 0.03) & (pts[:, 1] < area[1][1] - 0.03)]
+            self.log.append(("hat_points", name, len(crown)))
+            if len(crown) < 150:
+                break
+            centre = [float(0.5 * (np.percentile(crown[:, i], 2) + np.percentile(crown[:, i], 98))) for i in (0, 1)]
+            yield from self.tip_hat(centre, floor)
+            tipped = True
+            yield from self.move_pose(view, DOWN_Y, rails=rails)
+        hit = yield from self.see_remote((floor + 0.007, floor + 0.03), area)
         self.log.append(("drawer", name, hit))
         if hit is None:
             yield from self.close_drawer(name, rails)
             return False
         yield from self.pick(hit, floor, rails)
         return True
+
+    def tip_hat(self, centre, floor):
+        """Take the hat out of an open drawer. The high side of its brim is toward the drawer's
+        side wall it lies farther from: the hand comes down there leaning toward the hat, one
+        finger goes in under the brim and the other over it, and the hat is lifted out by its
+        brim and put down on the floor beyond the chest."""
+        cx, cy = centre
+        e = -1.0 if cy > CAB_CY else 1.0             # the side of the hat the hand comes down on
+        self.kin.use("cabinet")
+        lean = math.radians(HAT_LEAN)
+        a = np.array([0.0, -e * math.sin(lean), -math.cos(lean)])        # the hand's approach direction
+        c = np.array([0.0, -e * math.cos(lean), math.sin(lean)])         # closing direction: the upper finger's side
+        rot = rot_from_axes(a, c)
+        edge = cy + e * E.HAT_BRIM[1]
+        grip = np.array([cx, edge - e * HAT_BITE, floor + HAT_BRIM_Z])
+        out = np.array([0.0, e, 0.0])
+        pre = grip + out * HAT_SLIDE
+        self.grip_cmd = HAT_OPEN
+        rails = [cy + o for o in (-e * 0.25, -e * 0.35, -e * 0.15, e * 0.25, -e * 0.45, e * 0.35, 0.0, e * 0.15)]
+        up = np.array([0.0, 0.0, 0.17])           # straight down between the hat and the wall
+        ok = False
+        for sym in (False, True):                # (either finger may be the one under the brim)
+            q, ok = self.best_q(pre + up, rot @ np.diag([-1.0, -1.0, 1.0]) if sym else rot, [self.q_cmd[0]],
+                                sym=False, direct=True, then=-up)
+            if ok:
+                if self.via is not None:
+                    yield from self.move_q(self.via, speed=0.7, settle=False)
+                yield from self.move_q(q, speed=0.7)
+                break
+        if not ok:
+            ok = yield from self.move_pose(pre + up, rot, rails=rails, sym=True, then=-up)
+        self.log.append(("hat_ik", ok))
+        yield from self.move_line(pre, step=0.006)
+        yield from self.move_line(grip, step=0.004)
+        yield from self.grip(0.0, steps=18)
+        yield from self.move_line(grip + np.array([0.0, 0.0, 0.30]), step=0.006)
+        # ... and down to the floor beside the open drawer, on the side the pedestal stands on
+        # (it cannot pass an open drawer).
+        p, _ = self.kin.fk(self.q_cmd)
+        base = self.kin.to_frame((0.0, self.q_cmd[0], 0.0))[1]
+        side = 1.0 if base > CAB_CY else -1.0
+        drop = (0.24, CAB_CY + side * 0.56)
+        yield from self.move_line((drop[0], p[1], p[2]), step=0.01)
+        shift = min(max(self.q_cmd[0] + drop[1] - p[1], E.RAIL_RANGE[0] + 0.01), E.RAIL_RANGE[1] - 0.01) - self.q_cmd[0]
+        if side * shift > 0:
+            yield from self.move_q(self.q_cmd + np.array([shift] + [0.0] * 7), speed=0.6)
+        p, _ = self.kin.fk(self.q_cmd)
+        if abs(drop[1] - p[1]) > 0.02:
+            yield from self.move_line((p[0], drop[1], p[2]), step=0.012)
+            p, _ = self.kin.fk(self.q_cmd)
+        yield from self.move_line((p[0], p[1], 0.32), step=0.012)
+        yield from self.grip(0.08, steps=12)
+        yield from self.move_line((p[0] - 0.06, p[1], p[2]), step=0.012)
 
     def close_drawer(self, name, rails):
         z = E.KNOB_Z[name] + 0.045
@@ -99,6 +174,13 @@ class Reference(Robot):
         self.grip_cmd = 0.06
 
     # -- the hat on the cabinet ----------------------------------------------------------
+    @staticmethod
+    def box_rim(pts):
+        """The points of the box's walls: the only thing above the chest's top."""
+        top = E.CAB_H
+        return pts[(pts[:, 2] > top + 0.035) & (pts[:, 2] < top + 0.09) & (np.abs(pts[:, 1] - CAB_CY) < 0.3)
+                   & (pts[:, 0] > E.CAB_X0) & (pts[:, 0] < E.CAB_X0 + E.CAB_DEPTH)]
+
     @staticmethod
     def crown(pts):
         """The points of the hat's crown: the only thing well above the chest's top."""
@@ -151,6 +233,97 @@ class Reference(Robot):
             return False
         yield from self.pick(hit, top, rails)
         return True
+
+    # -- the box on the cabinet ------------------------------------------------------------
+    def box_things(self, top_view):
+        """From a view straight down into the box: where the box stands (kept in `kin`) and the
+        things in it, each (centre xy, yaw of its long axis, length, top height above the box's
+        floor, number of points), the longest first."""
+        import cv2
+        floor = E.CAB_H + E.BOX_WALL
+        rgb, depth, pose = top_view
+        depth = median_filter(depth, size=3)
+        pts = self.points("wrist", depth, pose, depth > 0)
+        near = (np.abs(pts[:, 0] - self.box_xy[0]) < 0.22) & (np.abs(pts[:, 1] - self.box_xy[1]) < 0.25)
+        rim = pts[near & (pts[:, 2] > floor + E.BOX_WALL_H - 0.012) & (pts[:, 2] < floor + E.BOX_WALL_H + 0.012)]
+        yaw = 0.0
+        if len(rim) >= 150:
+            (cx, cy), sides, angle = cv2.minAreaRect(rim[:, :2].astype(np.float32))
+            outer = E.BOX_INNER[0] + 2.0 * E.BOX_WALL
+            if all(abs(side - outer) < 0.02 for side in sides):       # the whole rim is in view
+                yaw = math.radians((angle + 45.0) % 90.0 - 45.0)
+                self.box_xy = (float(cx), float(cy))
+                self.kin.box_xy, self.kin.box_yaw = self.box_xy, yaw
+                self.kin.set_layout(*self.layout)
+        c, s = math.cos(yaw), math.sin(yaw)
+        local = (pts[:, :2] - np.array(self.box_xy)) @ np.array([[c, -s], [s, c]])
+        inside = (np.abs(local[:, 0]) < 0.5 * E.BOX_INNER[0] - 0.012) & (np.abs(local[:, 1]) < 0.5 * E.BOX_INNER[1] - 0.012)
+        sel = pts[inside & (pts[:, 2] > floor + 0.006) & (pts[:, 2] < floor + 0.10)]
+        things = []
+        if len(sel) >= 40:
+            cell = 0.006
+            ij = np.floor((sel[:, :2] - sel[:, :2].min(axis=0)) / cell).astype(int) + 1
+            grid = np.zeros(ij.max(axis=0) + 2, dtype=bool)
+            grid[ij[:, 0], ij[:, 1]] = True
+            labels, count = label(grid, structure=np.ones((3, 3)))
+            of = labels[ij[:, 0], ij[:, 1]]
+            for k in range(1, count + 1):
+                thing = sel[of == k]
+                if len(thing) < 40:
+                    continue
+                xy = thing[:, :2]
+                centre = xy.mean(axis=0)
+                _, v = np.linalg.eigh(np.cov((xy - centre).T))
+                axis, side = v[:, 1], v[:, 0]
+                along, across = (xy - centre) @ axis, (xy - centre) @ side
+                a0, a1 = np.percentile(along, 2), np.percentile(along, 98)
+                c0, c1 = np.percentile(across, 2), np.percentile(across, 98)
+                if c1 - c0 < 0.035 or a1 - a0 > 0.23:
+                    continue                    # a wall of the box, not a thing in it
+                things.append((centre + axis * 0.5 * (a0 + a1) + side * 0.5 * (c0 + c1), math.atan2(axis[1], axis[0]),
+                               float(a1 - a0), float(np.percentile(thing[:, 2], 90) - floor), len(thing)))
+        things.sort(key=lambda t: -t[2])
+        return things
+
+    def search_box(self):
+        """Look into the box on the chest; take out what lies on top of other things there and
+        look again."""
+        self.kin.use("cabinet")
+        floor = E.CAB_H + E.BOX_WALL
+        rails = [CAB_CY + 0.40, CAB_CY + 0.30, CAB_CY + 0.50, CAB_CY - 0.35, CAB_CY + 0.20, CAB_CY - 0.20, CAB_CY + 0.10]
+        for attempt in range(2):
+            bx, by = self.box_xy
+            self.grip_cmd = 0.08
+            yield from self.move_pose((bx - 0.08, by, floor + 0.21), DOWN_Y, rails=[by + o for o in (0.2, -0.2, 0.1, -0.1, 0.3, -0.3, 0.0)])
+            yield from self.wait(6)
+            views = yield from self.look(2)
+            things = self.box_things(views["wrist"])
+            self.log.append(("box_things", [(round(float(t[0][0]), 3), round(float(t[0][1]), 3), round(t[2], 3), round(t[3], 3)) for t in things]))
+            # The remote, if it lies open?
+            hit = yield from self.see_remote((floor + 0.007, floor + 0.03), ((bx - 0.13, bx + 0.13), (by - 0.16, by + 0.16)))
+            if hit is not None:
+                self.log.append(("in_box", hit))
+                yield from self.pick(hit, floor, rails)
+                return True
+            # Something thick enough to have a thing under it, and narrow enough to take?
+            high = [t for t in things if t[3] > E.POUCH_HALF[2] * 2.0 + 0.004]
+            if not high:
+                return False
+            centre, yaw, length, height, _ = high[0]
+            z = floor + height - 0.022
+            ok = yield from self.move_pose((centre[0], centre[1], floor + 0.16), down(yaw + 0.5 * math.pi), rails=rails)
+            yield from self.move_line((centre[0], centre[1], z), step=0.006)
+            yield from self.grip(0.0, steps=18)
+            yield from self.move_line((centre[0], centre[1], floor + 0.18), step=0.006)
+            # ... and put it down on the floor beyond the chest.
+            drop_y = E.CAB_Y[0] - 0.33
+            yield from self.move_line((E.CAB_X0 - 0.12, centre[1], floor + 0.18), step=0.01)
+            yield from self.move_q(self.q_cmd + np.array([drop_y - centre[1]] + [0.0] * 7), speed=0.6)
+            p_now, _ = self.kin.fk(self.q_cmd)
+            yield from self.move_line((p_now[0], p_now[1], 0.12), step=0.012)
+            yield from self.grip(0.08, steps=10)
+            yield from self.move_line((p_now[0], p_now[1], 0.40), step=0.012)
+        return False
 
     # -- seat pads ------------------------------------------------------------------------
     def pad_grip_pose(self, y, theta, shift=0.0):

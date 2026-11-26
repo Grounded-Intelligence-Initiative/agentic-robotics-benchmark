@@ -47,7 +47,7 @@ class Kin(object):
         self.finger_adr = [m.jnt_qposadr[mujoco.mj_name2id(m, J, n)] for n in ("finger_joint1", "finger_joint2")]
         self.drawer_adr = {n: m.jnt_qposadr[mujoco.mj_name2id(m, J, "drawer_" + n)] for n in E.DRAWERS}
         self.free_adr = {n: m.jnt_qposadr[mujoco.mj_name2id(m, J, n + "_free")]
-                         for n in ("remote", "hanger", "pad_left", "pad_right", "hat")}
+                         for n in ("remote", "hanger", "pad_left", "pad_right", "hat", "box")}
         self.absent = set()
         G = mujoco.mjtObj.mjOBJ_GEOM
         self.rail_pair = {mujoco.mj_name2id(m, G, 'rail_beam'), mujoco.mj_name2id(m, G, 'pedestal')}
@@ -55,7 +55,7 @@ class Kin(object):
         for g in range(m.ngeom):
             if m.geom_bodyid[g] in self.robot:
                 m.geom_margin[g] = 0.04          # so that near misses are reported too
-        for name in ("remote", "hanger"):
+        for name in ("remote", "hanger", "hat"):      # (the hat is in a drawer: met only there)
             self.park(name)
         self.rot = np.eye(3)
         self.shift = np.zeros(3)
@@ -74,10 +74,10 @@ class Kin(object):
             m.body_quat[b] = (math.cos(0.5 * yaw), 0.0, 0.0, math.sin(0.5 * yaw))
         half = 0.5 * E.PAD_SIZE[0]
         loose = [("pad_" + side, "sofa", (E.SOFA_X0 - E.PAD_OVERHANG + half, E.PAD_Y[side])) for side in ("left", "right")]
-        loose.append(("hat", "cabinet", (E.CAB_X0 + 0.16, E.CAB_CY)))
+        loose.append(("box", "cabinet", getattr(self, "box_xy", (E.CAB_X0 + E.BOX_X, E.CAB_CY))))
         for name, piece, xy in loose:
             pivot, pose = self.layout[piece]
-            (x, y), yaw = E.place(pivot, pose, xy)
+            (x, y), yaw = E.place(pivot, pose, xy, getattr(self, "box_yaw", 0.0) if name == "box" else 0.0)
             adr = self.free_adr[name]
             m.qpos0[adr:adr + 2] = (x, y)
             m.qpos0[adr + 3:adr + 7] = (math.cos(0.5 * yaw), 0.0, 0.0, math.sin(0.5 * yaw))

@@ -1,284 +1,243 @@
 {
- "rule": "first 2 of 5 os.urandom candidates per spot that the reference retrieves, in process and in the engine's oracle run (a candidate whose outcome differs between the two is dropped and the next one taken; see the candidates' notes)",
+ "rule": "first 2 of 5 os.urandom candidates per spot that the reference retrieves",
  "candidates": [
   {
    "spot": "left_cushion",
-   "seed": 15538522863433741378,
+   "seed": 18418549816996151563,
    "reference_score": 1.0,
-   "steps": 2525,
+   "steps": 1267,
    "ended": "retrieved",
    "selected": true
   },
   {
    "spot": "left_cushion",
-   "seed": 9531026644695561531,
+   "seed": 2688040623597360411,
    "reference_score": 1.0,
-   "steps": 2570,
-   "ended": "retrieved",
-   "selected": false,
-   "note": "dropped: retrieved in process on the authoring host (score 1.0) but not in the engine's oracle run validate-8cb92903 (0.2, time), so its outcome depends on the host"
-  },
-  {
-   "spot": "left_cushion",
-   "seed": 2222706596882403605,
-   "reference_score": 1.0,
-   "steps": 2583,
+   "steps": 1263,
    "ended": "retrieved",
    "selected": true
   },
   {
    "spot": "left_cushion",
-   "seed": 6059877956884170213,
+   "seed": 12032682959613690804,
    "reference_score": 1.0,
-   "steps": 2582,
+   "steps": 1262,
    "ended": "retrieved",
    "selected": false
   },
   {
    "spot": "left_cushion",
-   "seed": 17022906081455727876,
+   "seed": 12716235099756916944,
    "reference_score": 1.0,
-   "steps": 2576,
+   "steps": 1262,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "left_cushion",
+   "seed": 3529896026110609963,
+   "reference_score": 1.0,
+   "steps": 1270,
    "ended": "retrieved",
    "selected": false
   },
   {
    "spot": "right_cushion",
-   "seed": 4472209657114240472,
-   "reference_score": 1.0,
-   "steps": 3007,
-   "ended": "retrieved",
-   "selected": true
-  },
-  {
-   "spot": "right_cushion",
-   "seed": 14577912956839702195,
-   "reference_score": 1.0,
-   "steps": 2836,
-   "ended": "retrieved",
-   "selected": true
-  },
-  {
-   "spot": "right_cushion",
-   "seed": 11072287979586904258,
-   "reference_score": 1.0,
-   "steps": 2904,
-   "ended": "retrieved",
-   "selected": false
-  },
-  {
-   "spot": "right_cushion",
-   "seed": 11515931909408356842,
-   "reference_score": 1.0,
-   "steps": 2902,
-   "ended": "retrieved",
-   "selected": false
-  },
-  {
-   "spot": "right_cushion",
-   "seed": 14821125858565377930,
-   "reference_score": 1.0,
-   "steps": 2969,
-   "ended": "retrieved",
-   "selected": false
-  },
-  {
-   "spot": "upper_drawer",
-   "seed": 12214366878619689383,
-   "reference_score": 1.0,
-   "steps": 1985,
-   "ended": "retrieved",
-   "selected": true
-  },
-  {
-   "spot": "upper_drawer",
-   "seed": 10116337135828302195,
-   "reference_score": 1.0,
-   "steps": 2006,
-   "ended": "retrieved",
-   "selected": true
-  },
-  {
-   "spot": "upper_drawer",
-   "seed": 16906824110352737528,
-   "reference_score": 1.0,
-   "steps": 1951,
-   "ended": "retrieved",
-   "selected": false
-  },
-  {
-   "spot": "upper_drawer",
-   "seed": 15435100952155642480,
-   "reference_score": 1.0,
-   "steps": 2027,
-   "ended": "retrieved",
-   "selected": false
-  },
-  {
-   "spot": "upper_drawer",
-   "seed": 8776845749424582053,
-   "reference_score": 1.0,
-   "steps": 2014,
-   "ended": "retrieved",
-   "selected": false
-  },
-  {
-   "spot": "lower_drawer",
-   "seed": 849282218392547828,
-   "reference_score": 1.0,
-   "steps": 1141,
-   "ended": "retrieved",
-   "selected": true
-  },
-  {
-   "spot": "lower_drawer",
-   "seed": 10446909096522707841,
-   "reference_score": 1.0,
-   "steps": 1128,
-   "ended": "retrieved",
-   "selected": true
-  },
-  {
-   "spot": "lower_drawer",
-   "seed": 7726306862411875654,
-   "reference_score": 1.0,
-   "steps": 1086,
-   "ended": "retrieved",
-   "selected": false
-  },
-  {
-   "spot": "lower_drawer",
-   "seed": 15025108859432179720,
-   "reference_score": 1.0,
-   "steps": 1107,
-   "ended": "retrieved",
-   "selected": false
-  },
-  {
-   "spot": "lower_drawer",
-   "seed": 6437802395680882054,
-   "reference_score": 1.0,
-   "steps": 1081,
-   "ended": "retrieved",
-   "selected": false
-  },
-  {
-   "spot": "under_sofa",
-   "seed": 9569783979384368351,
-   "reference_score": 1.0,
-   "steps": 1476,
-   "ended": "retrieved",
-   "selected": true
-  },
-  {
-   "spot": "under_sofa",
-   "seed": 5492241274724678024,
-   "reference_score": 1.0,
-   "steps": 1469,
-   "ended": "retrieved",
-   "selected": true
-  },
-  {
-   "spot": "under_sofa",
-   "seed": 6294959933647279333,
-   "reference_score": 0.4,
-   "steps": 1745,
-   "ended": null,
-   "selected": false
-  },
-  {
-   "spot": "under_sofa",
-   "seed": 11876948060327614804,
+   "seed": 8509127856441935983,
    "reference_score": 0.2,
-   "steps": 1724,
+   "steps": 3120,
    "ended": null,
    "selected": false
   },
   {
+   "spot": "right_cushion",
+   "seed": 18320508025434250945,
+   "reference_score": 1.0,
+   "steps": 1585,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "right_cushion",
+   "seed": 9181158846630823455,
+   "reference_score": 1.0,
+   "steps": 2547,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "right_cushion",
+   "seed": 10191129381245399436,
+   "reference_score": 1.0,
+   "steps": 1593,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "right_cushion",
+   "seed": 12481512586786544503,
+   "reference_score": 1.0,
+   "steps": 1595,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
    "spot": "under_sofa",
-   "seed": 8535411722779758983,
+   "seed": 7459490083679934708,
+   "reference_score": 1.0,
+   "steps": 1485,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "under_sofa",
+   "seed": 13036641430409394638,
+   "reference_score": 1.0,
+   "steps": 1482,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "under_sofa",
+   "seed": 10678376383342395037,
+   "reference_score": 1.0,
+   "steps": 1486,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "under_sofa",
+   "seed": 9161043746868317466,
+   "reference_score": 1.0,
+   "steps": 1503,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "under_sofa",
+   "seed": 13769436958188298415,
    "reference_score": 1.0,
    "steps": 1491,
    "ended": "retrieved",
    "selected": false
   },
   {
-   "spot": "under_hat",
-   "seed": 9969746043490965150,
-   "reference_score": 1.0,
-   "steps": 1719,
-   "ended": "retrieved",
-   "selected": true
-  },
-  {
-   "spot": "under_hat",
-   "seed": 15110009238447260212,
-   "reference_score": 1.0,
-   "steps": 1785,
-   "ended": "retrieved",
-   "selected": true
-  },
-  {
-   "spot": "under_hat",
-   "seed": 15870839340897624387,
-   "reference_score": 1.0,
-   "steps": 1771,
-   "ended": "retrieved",
-   "selected": false
-  },
-  {
-   "spot": "under_hat",
-   "seed": 10008258237708825544,
-   "reference_score": 1.0,
-   "steps": 1732,
-   "ended": "retrieved",
-   "selected": false
-  },
-  {
-   "spot": "under_hat",
-   "seed": 3066906950883213637,
-   "reference_score": 1.0,
-   "steps": 1761,
-   "ended": "retrieved",
-   "selected": false
-  },
-  {
    "spot": "under_chest",
-   "seed": 351794746640674588,
+   "seed": 9720054565253941613,
    "reference_score": 1.0,
-   "steps": 1335,
+   "steps": 1342,
    "ended": "retrieved",
    "selected": true
   },
   {
    "spot": "under_chest",
-   "seed": 5085637895870125963,
+   "seed": 8916288406249395191,
    "reference_score": 1.0,
-   "steps": 1335,
+   "steps": 1342,
    "ended": "retrieved",
    "selected": true
   },
   {
    "spot": "under_chest",
-   "seed": 14653193015437889412,
+   "seed": 10917382373469300007,
    "reference_score": 1.0,
-   "steps": 1360,
+   "steps": 1340,
    "ended": "retrieved",
    "selected": false
   },
   {
    "spot": "under_chest",
-   "seed": 12053825690698096918,
+   "seed": 3154023387580501689,
    "reference_score": 1.0,
-   "steps": 1373,
+   "steps": 1328,
    "ended": "retrieved",
    "selected": false
   },
   {
    "spot": "under_chest",
-   "seed": 8404213999545200525,
+   "seed": 1211823204758487143,
    "reference_score": 1.0,
-   "steps": 1341,
+   "steps": 1336,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "under_hat",
+   "seed": 14270312516683114971,
+   "reference_score": 1.0,
+   "steps": 2068,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "under_hat",
+   "seed": 15400125629314214758,
+   "reference_score": 1.0,
+   "steps": 3153,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "under_hat",
+   "seed": 5318957796800869662,
+   "reference_score": 1.0,
+   "steps": 3136,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "under_hat",
+   "seed": 16634862758184343049,
+   "reference_score": 1.0,
+   "steps": 3109,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "under_hat",
+   "seed": 6827444612213113144,
+   "reference_score": 1.0,
+   "steps": 3087,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "in_box",
+   "seed": 3372620294856295032,
+   "reference_score": 1.0,
+   "steps": 1270,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "in_box",
+   "seed": 948171595069529493,
+   "reference_score": 1.0,
+   "steps": 1272,
+   "ended": "retrieved",
+   "selected": true
+  },
+  {
+   "spot": "in_box",
+   "seed": 11840269797054643066,
+   "reference_score": 1.0,
+   "steps": 1260,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "in_box",
+   "seed": 17910098498819244391,
+   "reference_score": 1.0,
+   "steps": 1265,
+   "ended": "retrieved",
+   "selected": false
+  },
+  {
+   "spot": "in_box",
+   "seed": 6515069268195732608,
+   "reference_score": 1.0,
+   "steps": 1268,
    "ended": "retrieved",
    "selected": false
   }

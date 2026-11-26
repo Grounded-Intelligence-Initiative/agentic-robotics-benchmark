@@ -1,8 +1,9 @@
 # TV remote search and retrieval: a Franka Panda on a floor rail in a living room has to find a
-# TV remote that is hidden in one of seven places (under either seat pad of a settee, in the upper
-# or the lower drawer of a chest, under a hat on the chest, on the floor under the chest, or on
-# the floor under the settee, where only a clothes hanger reaches it) and take it out, from two RGB-D cameras, joint readings and a wrist force sensor.
-# The grader drives the agent's controller over a stdio wire on a fixed hidden set of 14 episodes.
+# TV remote that is hidden in one of six places (under either seat pad of a settee, under a hat
+# that lies in one of a chest's drawers, in a box on the chest under a pouch, on the floor under
+# the chest, or on the floor under the settee, where only a clothes hanger reaches it) and take
+# it out, from two RGB-D cameras, joint readings and a wrist force sensor.
+# The grader drives the agent's controller over a stdio wire on a fixed hidden set of 12 episodes.
 
 schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission"]
@@ -18,18 +19,19 @@ cpus = 4
 memory_mb = 12288
 
 # 6 hours: the agent is not told where the remote may be; it has to work the places out and
-# develop the manipulation each one takes (lifting a seat pad, pulling a drawer by its knob,
-# reaching in under the chest, fetching the hanger and sweeping with it) against the simulator, whose episodes of up to 3600
+# develop the manipulation each one takes (lifting a seat pad, pulling a drawer by its knob and
+# taking a hat out of it, emptying a box, reaching in under the chest, fetching the hanger and
+# sweeping with it) against the simulator, whose episodes of up to 3600
 # control steps take one to three minutes each with camera images.
 [agent]
 timeout_sec = 21600
 network_mode = "no-network"
 
-# 14 episodes of at most 3600 control steps. Measured on the authoring host (one core, CPU
+# 12 episodes of at most 3600 control steps. Measured on the authoring host (one core, CPU
 # rendering): about 5 ms a control step and 30 ms an image, so about 20 s of simulation for an
 # episode; the reference's whole verify takes under 5 minutes. Worst case: the controller's
 # budget of 900 s an episode (its replies plus 0.2 s charged for an image; grader_config.json)
-# and a slow host at five times those costs: 14 x (900 + 100 + 3600 x 0.15) = 21600 s. The
+# and a slow host at five times those costs: 12 x (900 + 100 + 3600 x 0.15) = 18480 s. The
 # grader's own wall cap (12000 s) ends the run with a verdict before the stage's limit.
 [verifier]
 timeout_sec = 14400

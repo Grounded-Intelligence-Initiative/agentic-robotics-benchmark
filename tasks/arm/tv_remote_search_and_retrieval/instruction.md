@@ -110,7 +110,7 @@ The grader's own simulator decides; nothing your controller prints counts.
 - Otherwise 0. An episode in which the controller crashes, answers late or malformed, or drives
   an arm joint faster than 8 rad/s scores 0.
 
-Your result is the **mean score over 14 graded episodes**, in a fixed order, with seeds and
+Your result is the **mean score over 12 graded episodes**, in a fixed order, with seeds and
 places for the remote that you do not know. It is compared with a reference controller's result on the
 same episodes; the reference retrieves the remote in every one of them.
 

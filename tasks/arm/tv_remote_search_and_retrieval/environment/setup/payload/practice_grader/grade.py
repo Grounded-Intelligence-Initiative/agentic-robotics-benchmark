@@ -4,7 +4,7 @@ It speaks to `/home/user/submission/run.sh` the way the real grader does (the sa
 same deadlines, a few repeated-`t` queries) and prints the raw metric it observes: the mean of
 the episodes' scores. **You say where the remote is.** Nothing in your sandbox knows where it is
 in the graded episodes; a practice scene is a seed (which draws where the furniture stands, the
-hat, the hanger's swing and the look) and a place for the remote that you choose.
+hat's drawer, the box, the hanger's swing and the look) and a place for the remote that you choose.
 
     /opt/venv/bin/python3 /home/user/practice_grader/grade.py --remote 0.25,0.30,0.02,0.4 [--seeds 1,2]
     /opt/venv/bin/python3 /home/user/practice_grader/grade.py --scenes my_scenes.json
@@ -13,8 +13,8 @@ hat, the hanger's swing and the look) and a place for the remote that you choose
 `--remote x,y,z,yaw` is the remote's centre and direction in the world frame, as the furniture
 stands in that scene: the remote is put there and let go, so give a z just above what it is to
 lie on. `remote_env.place` turns a point of the nominal layout into the scene's. `--scenes` names
-a JSON list of `{"seed": 1, "remote": [x, y, z, yaw], "phone": [...], "case": [...]}` (`phone`
-and `case` are optional: a scene without them has none in the room). The default is one scene
+a JSON list of `{"seed": 1, "remote": [x, y, z, yaw], "phone": [...], "case": [...], "pouch": [...]}`
+(`phone`, `case` and `pouch` are optional: a scene without one has none in the room). The default is one scene
 with the remote lying in the open on the floor in front of the settee.
 
 `--film DIR` saves a picture of the room every 50 steps (a view of your own choosing is easy to
@@ -161,7 +161,7 @@ def main():
     try:
         wire.await_ready()
         for index, item in enumerate(scenes):
-            spec = E.make_scene(int(item["seed"]), item["remote"], item.get("phone"), item.get("case"))
+            spec = E.make_scene(int(item["seed"]), item["remote"], item.get("phone"), item.get("case"), item.get("pouch"))
             results.append(episode(wire, env, spec, rng, args.max_steps, args.film, item.get("name", "scene{}".format(index))))
             print("[practice] {}".format(json.dumps(results[-1])), file=sys.stderr, flush=True)
     except WireError as exc:

@@ -15,9 +15,11 @@
 | `oak.png` | Poly Haven, "Oak Veneer 01" | Poly Haven | CC0 1.0 |
 | `hanger.obj`, `cushion.obj` | made for this task | task authors | CC0 1.0 |
 
+The storage box and the pouch are plain boxes drawn by the simulator (no files).
+
 Changes made to the sources: the sofa's two seat cushions were taken out of its model (the seat pads are a
 mesh of this task's own, covered with the sofa's fabric), its two middle legs and the padded roll along its seat's front edge were removed, and its heights and width were
-rescaled; the commode was rescaled; the hat was scaled by 1.25; the remote, the phone and the glasses case were rescaled, and the scanned glasses case was reduced to about 6000 triangles per part (`tests/review/build_clutter.py`); meshes were converted to OBJ
+rescaled; the commode was rescaled; the hat was scaled by 1.25 (the simulator scales the files by 0.68 again: a hat 28 by 30 cm); the remote, the phone and the glasses case were rescaled, and the scanned glasses case was reduced to about 6000 triangles per part (`tests/review/build_clutter.py`); meshes were converted to OBJ
 (Z up, metres) and textures resampled to PNG. The conversion script is
 `tests/review/build_assets.py` (with `build_cushion.py`, `build_hat.py` and
 `build_sofa_collision.py`) in the task's folder of the benchmark repository.

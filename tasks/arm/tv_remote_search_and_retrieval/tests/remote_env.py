@@ -1,21 +1,23 @@
 """The living room of tv_remote_search_and_retrieval: a Franka Panda on a floor rail in front of a
-two-seat settee and a chest of three drawers, with the loose things of a living room, and a TV
+two-seat settee and a chest of three drawers, with the loose things of a living room (a sun hat,
+a storage box, a clothes hanger, a phone, a glasses case, a pouch), and a TV
 remote that lies somewhere in it.
 
 World frame: metres, radians, quaternions (w, x, y, z). x points from the robot's rail to the sofa,
 y to the robot's left, z up; the floor is z = 0. The rail runs along y at x = 0.
 
 A scene is a `Scene` = `make_scene(seed, remote)`: where the settee and the chest stand
-(`sofa_pose`, `cabinet_pose`), how the hanger hangs, where the hat lies, the look of the room
-(fabric, wood, floor, wall and lamp), all drawn from the seed, and where the remote is, which the
-caller says. A phone and a glasses case are in the model too; `make_scene` puts them where the
-caller says, or out of the room. This file holds no rule for where the remote is in a graded
+(`sofa_pose`, `cabinet_pose`), how the hanger hangs, which drawer the hat is in and how it lies
+there, where the box stands on the chest, the look of the room (fabric, wood, floor, wall and
+lamp), all drawn from the seed, and where the remote is, which the caller says. A phone, a
+glasses case and a pouch are in the model too; `make_scene` puts them where the caller says, or
+out of the room. This file holds no rule for where the remote is in a graded
 episode: that is the grader's, and you can put the remote wherever you want to practise.
 
 The furniture's shape is the same in every scene; where it stands is not. Every constant below
 that places something (SOFA_X0, PAD_Y, CAB_CY, KNOB_Y, PEG_X, ...) describes the **nominal
 layout**. In a scene the settee, with its pads, is that layout turned by a small angle about the
-vertical through `SOFA_PIVOT` and shifted; the chest, with its drawers, the hanger and the hat,
+vertical through `SOFA_PIVOT` and shifted; the chest, with its drawers, the hanger, the hat and the box,
 likewise about `CAB_PIVOT` (`LAYOUT_RANGE`, `place`). An observation does not say by how much: the
 cameras show it.
 
@@ -153,16 +155,27 @@ HOOK_NECK_Z = 0.055
 HANG_OFFSET = 0.008                     # hanger plane in front of the posts it rests against
 
 # ----------------------------------------------------------------------------------------------
-# Sun hat on top of the cabinet (Poly Haven "Fishermans Hat", CC0, scaled 1.25). Its crown is
-# hollow: its collision shapes are a convex decomposition of the drawn mesh. Hat frame: the
-# crown's axis is z, the hat rests on the plane z = 0; its brim is wavy, lowest on its +-y sides
-# and 2 to 3 cm above the plane at its +-x ends.
+# Sun hat in one of the chest's drawers (Poly Haven "Fishermans Hat", CC0). Its crown is hollow:
+# its collision shapes are a convex decomposition of the drawn mesh. Hat frame: the crown's axis
+# is z, the hat rests on the plane z = 0; its brim is wavy: it touches the plane on its +y side,
+# is about 1.7 cm above it at its +-x ends and 2.8 cm at its -y side.
 # ----------------------------------------------------------------------------------------------
 HAT_PARTS = 48                          # convex pieces of the collision shape (room/hat_col_NN.obj)
-HAT_BRIM = (0.205, 0.22)                # the brim's reach along the hat's x and y
-HAT_CROWN_R = 0.104                     # inner radius of the crown
-HAT_H = 0.155
-HAT_MASS = 0.12
+HAT_SCALE = 0.68                        # of the mesh files
+HAT_BRIM = (0.139, 0.150)               # the brim's reach along the hat's x and y
+HAT_CROWN_R = 0.070                     # inner radius of the crown
+HAT_H = 0.105
+HAT_MASS = 0.09
+
+# ----------------------------------------------------------------------------------------------
+# Storage box on the chest's top: an open wooden box. Box frame: x and y along its inner floor's
+# short and long side, z = 0 the plane it stands on.
+# ----------------------------------------------------------------------------------------------
+BOX_INNER = (0.30, 0.30)                # inner floor: x, y
+BOX_WALL_H = 0.06                       # the walls' height above the inner floor
+BOX_WALL = 0.006                        # thickness of the walls and of the floor
+BOX_MASS = 0.60
+BOX_X = 0.172                           # its middle behind the chest's front, give or take 1.5 cm
 
 # ----------------------------------------------------------------------------------------------
 # The remote (Objaverse "Remote control" by craazyy, CC BY 4.0, scaled)
@@ -171,13 +184,16 @@ REMOTE_HALF = (0.086, 0.022, 0.009)
 REMOTE_MASS = 0.20
 
 # ----------------------------------------------------------------------------------------------
-# A phone and a glasses case (Objaverse "SmartPhone" by shedmon and "Spectacles case" by lib.test,
-# both CC BY 4.0, scaled): two more small dark things a living room has.
+# A phone, a glasses case and a pouch (Objaverse "SmartPhone" by shedmon and "Spectacles case" by
+# lib.test, both CC BY 4.0, scaled; the pouch is a plain cloth-covered block):
+# more small things a living room has.
 # ----------------------------------------------------------------------------------------------
 PHONE_HALF = (0.075, 0.037, 0.0045)
 PHONE_MASS = 0.18
 CASE_HALF = (0.080, 0.035, 0.017)
 CASE_MASS = 0.09
+POUCH_HALF = (0.095, 0.036, 0.020)
+POUCH_MASS = 0.11
 
 # ----------------------------------------------------------------------------------------------
 # Cameras
@@ -201,7 +217,8 @@ HOLD_STEPS = 20                         # 1 s of holding the remote clear of eve
 LIFT_CLEAR = 0.08                       # the held remote's centre above the surface it lay on
 PARTIAL_SEEN = 0.2                      # score for the remote seen in a delivered image
 PARTIAL_REVEALED = 0.4                  # score for the remote laid open
-OUT_OF_ROOM = ((6.0, 6.0, 1.0, 0.0), (7.0, 6.0, 1.0, 0.0))   # where the phone and the case are when a scene has none
+# Where the phone, the case and the pouch are when a scene has none.
+OUT_OF_ROOM = ((6.0, 6.0, 1.0, 0.0), (7.0, 6.0, 1.0, 0.0), (8.0, 6.0, 1.0, 0.0))
 
 _MASK = (1 << 64) - 1
 
@@ -215,14 +232,19 @@ class Scene:
     sofa_pose: tuple        # (dx, dy, turn) of the settee from the nominal layout, about SOFA_PIVOT
     cabinet_pose: tuple     # (dx, dy, turn) of the chest, about CAB_PIVOT
     hanger_swing: float     # rad, the hanger's initial rotation about the peg
-    # The hat's place is in the nominal layout: `place` gives it as it is in the scene.
-    hat_xy: tuple           # x, y of the hat's axis on the cabinet's top
+    # The hat's and the box's places are in the nominal layout: `place` gives them as they are
+    # in the scene.
+    hat_drawer: str         # the drawer the hat lies in
+    hat_xy: tuple           # x, y of the hat's axis (the drawer closed)
     hat_yaw: float          # direction of the hat's x axis
+    box_xy: tuple           # x, y of the box's middle on the chest's top
+    box_yaw: float          # direction of the box's x axis
     # World frame, as they are in the scene: (x, y, z of the centre, yaw). A thing is put there
     # and let go; it comes to rest on whatever is below it.
     remote: tuple
     phone: tuple
     case: tuple
+    pouch: tuple
     fabric_rgb: tuple       # tints: each multiplies a surface's texture
     pad_rgb: tuple
     wood_rgb: tuple
@@ -268,17 +290,23 @@ def _shade(rgb, factor):
     return tuple(min(1.0, max(0.0, c * factor)) for c in rgb)
 
 
-def make_scene(seed, remote, phone=None, case=None, hanger_swing=None):
+def make_scene(seed, remote, phone=None, case=None, pouch=None, hanger_swing=None):
     """The scene of `seed` with the remote at `remote` = (x, y, z, yaw), world frame, as the
     furniture stands in this scene (`place` turns a point of the nominal layout into it).
-    `phone` and `case` likewise, or None for a scene without them. The layout, the hat, the
-    hanger's swing (unless given) and the look are drawn from the seed."""
+    `phone`, `case` and `pouch` likewise, or None for a scene without them. The layout, the hat,
+    the box, the hanger's swing (unless given) and the look are drawn from the seed."""
     look = _Draw(seed, "look")
-    # The hat lies on the cabinet's top, one of the brim's raised ends toward the robot and
-    # standing out 4 to 5.5 cm over the top's front edge.
     room = _Draw(seed, "room")
-    hat_xy = (CAB_X0 + room.uniform(0.150, 0.165), CAB_CY + room.uniform(-0.06, 0.06))
-    hat_yaw = room.uniform(-0.35, 0.35) + (math.pi if room.uniform() < 0.5 else 0.0)
+    # The hat lies in one of the drawers, against one of the drawer's side walls, the high side
+    # of its brim toward the other.
+    hat_drawer = room.choice(DRAWERS)
+    flip = room.uniform() < 0.5
+    hat_xy = (CAB_X0 + DRAWER_FRONT_X[1] + 0.5 * DRAWER_INNER[0] + room.uniform(-0.004, 0.004),
+              CAB_CY + (-1.0 if flip else 1.0) * room.uniform(0.070, 0.080))
+    hat_yaw = room.uniform(-0.06, 0.06) + (math.pi if flip else 0.0)
+    # The box stands on the chest's top, its long side along the chest's.
+    box_xy = (CAB_X0 + BOX_X + room.uniform(-0.015, 0.015), CAB_CY + room.uniform(-0.08, 0.08))
+    box_yaw = room.uniform(-0.2, 0.2)
     fabric = _shade(look.choice(FABRICS), look.uniform(0.88, 1.0))
     layout = _Draw(seed, "layout")
     if hanger_swing is None:
@@ -288,11 +316,15 @@ def make_scene(seed, remote, phone=None, case=None, hanger_swing=None):
         sofa_pose=tuple(layout.uniform(lo, hi) for lo, hi in LAYOUT_RANGE),
         cabinet_pose=tuple(layout.uniform(lo, hi) for lo, hi in LAYOUT_RANGE),
         hanger_swing=float(hanger_swing),
+        hat_drawer=hat_drawer,
         hat_xy=hat_xy,
         hat_yaw=hat_yaw,
+        box_xy=box_xy,
+        box_yaw=box_yaw,
         remote=tuple(float(v) for v in remote),
         phone=tuple(float(v) for v in (phone if phone is not None else OUT_OF_ROOM[0])),
         case=tuple(float(v) for v in (case if case is not None else OUT_OF_ROOM[1])),
+        pouch=tuple(float(v) for v in (pouch if pouch is not None else OUT_OF_ROOM[2])),
         fabric_rgb=fabric,
         pad_rgb=_shade(fabric, look.uniform(0.90, 1.0)),
         wood_rgb=_shade(look.choice(WOODS), look.uniform(0.85, 1.0)),
@@ -528,12 +560,30 @@ def _hanger():
 
 def _hat():
     parts = ['<body name="hat" pos="{}"><joint name="hat_free" type="free" damping="0.0005"/>'.format(
-                 _fmt((CAB_X0 + 0.16, CAB_CY, CAB_H + 0.001))),
-             '<inertial pos="0 0 0.05" mass="{}" diaginertia="0.0012 0.0012 0.002"/>'.format(HAT_MASS)]
+                 _fmt((CAB_X0 + 0.25, CAB_CY, DRAWER_FLOOR_Z["upper"] + 0.001))),
+             '<inertial pos="0 0 0.04" mass="{}" diaginertia="0.0007 0.0007 0.0012"/>'.format(HAT_MASS)]
     for i in range(HAT_PARTS):
         parts.append('<geom name="hat{i}" type="mesh" mesh="hat_col_{i:02d}" {h} friction="0.7 0.01 0.0001" '
                      'condim="4"/>'.format(i=i, h=HIDDEN))
     parts.append(_mesh("hat_look", "hat", "hat_cloth"))
+    parts.append("</body>")
+    return "\n".join(parts)
+
+
+def _storage_box():
+    """The open box on the chest: a floor and four walls, drawn as they are."""
+    ix, iy = 0.5 * BOX_INNER[0], 0.5 * BOX_INNER[1]
+    t, h = BOX_WALL, BOX_WALL_H
+    extra = 'friction="0.6 0.01 0.0001" condim="4" group="1"'
+    parts = ['<body name="box" pos="{}"><freejoint name="box_free"/>'.format(_fmt((CAB_X0 + BOX_X, CAB_CY, CAB_H + 0.001))),
+             '<inertial pos="0 0 0.02" mass="{}" diaginertia="0.008 0.006 0.012"/>'.format(BOX_MASS),
+             _box("box_floor", (0, 0, 0.5 * t), (ix + t, iy + t, 0.5 * t), material="box", extra=extra)]
+    zc = t + 0.5 * h
+    for name, pos, half in (("box_w0", (-ix - 0.5 * t, 0, zc), (0.5 * t, iy + t, 0.5 * h)),
+                            ("box_w1", (ix + 0.5 * t, 0, zc), (0.5 * t, iy + t, 0.5 * h)),
+                            ("box_w2", (0, -iy - 0.5 * t, zc), (ix, 0.5 * t, 0.5 * h)),
+                            ("box_w3", (0, iy + 0.5 * t, zc), (ix, 0.5 * t, 0.5 * h))):
+        parts.append(_box(name, pos, half, material="box", extra=extra))
     parts.append("</body>")
     return "\n".join(parts)
 
@@ -549,12 +599,19 @@ def _remote():
 
 
 def _clutter():
-    """The phone and the glasses case: boxes as their models are drawn. A pad is as soft over
-    the phone as over the remote (those two do not touch it); the two touch each other."""
+    """The phone, the glasses case and the pouch: boxes as their models are drawn. A pad is as
+    soft over the phone as over the remote (those two do not touch it); they touch each other."""
     out = []
     for i, (name, half, mass, bits) in enumerate((
-            ("phone", PHONE_HALF, PHONE_MASS, 'contype="9" conaffinity="10"'), ("case", CASE_HALF, CASE_MASS, ""))):
+            ("phone", PHONE_HALF, PHONE_MASS, 'contype="9" conaffinity="10"'), ("case", CASE_HALF, CASE_MASS, ""),
+            ("pouch", POUCH_HALF, POUCH_MASS, ""))):
         volume = 8.0 * half[0] * half[1] * half[2]
+        if name == "pouch":             # drawn as the box it is
+            out.append('<body name="pouch" pos="{x} 6 1"><freejoint name="pouch_free"/>'
+                       '<geom name="pouch" type="box" size="{s}" density="{d}" {h} friction="0.6 0.01 0.0001" condim="4"/>'
+                       '<geom name="pouch_look" type="box" size="{s}" material="pouch" {v}/></body>'.format(
+                           x=6 + i, s=_fmt(half), d=_fmt((mass / volume,)), h=HIDDEN, v=SHOWN))
+            continue
         mesh = "phone" if name == "phone" else "glasses_case"
         out.append('<body name="{n}" pos="{x} 6 1"><freejoint name="{n}_free"/>'
                    '<geom name="{n}" type="box" size="{s}" density="{d}" {h} {b} friction="0.5 0.01 0.0001" condim="4"/>'
@@ -630,7 +687,9 @@ def build_xml():
     <mesh name="hanger" file="{room}/hanger.obj"/>
     <texture name="hat" type="2d" file="{room}/hat.png"/>
     <material name="hat_cloth" texture="hat" specular="0.05" shininess="0.05"/>
-    <mesh name="hat" file="{room}/hat.obj"/>
+    <mesh name="hat" file="{room}/hat.obj" scale="{hat_scale}"/>
+    <material name="pouch" texture="fabric" texuniform="true" texrepeat="8 8" rgba="0.70 0.30 0.22 1" specular="0.05" shininess="0.05"/>
+    <material name="box" texture="oak" texuniform="true" texrepeat="5 5" rgba="0.80 0.66 0.48 1" specular="0.1" shininess="0.1"/>
     {hat_meshes}
     {clutter_assets}
   </asset>
@@ -665,8 +724,9 @@ def build_xml():
     </body>
     {hanger}
     {hat}
-    {remote}
+    {box}
     {clutter}
+    {remote}
   </worldbody>
   <contact>
     <exclude body1="pedestal" body2="link0"/>
@@ -683,14 +743,15 @@ def build_xml():
         dt=SIM_DT, assets=assets, arm=arm, room=room, pad=pad, sofa=_sofa(), cabinet=_cabinet(),
         pad_left=_pad("left", PAD_Y["left"]), pad_right=_pad("right", PAD_Y["right"]),
         drawer_upper=_drawer("upper"), drawer_mid=_drawer("mid"), drawer_lower=_drawer("lower"),
-        hanger=_hanger(), remote=_remote(), hat=_hat(), clutter=_clutter(),
+        hanger=_hanger(), remote=_remote(), hat=_hat(), box=_storage_box(), clutter=_clutter(),
+        hat_scale=_fmt((HAT_SCALE,) * 3),
         clutter_assets="\n    ".join(
             '<mesh name="{n}" file="{r}/{n}.obj"/><texture name="{n}" type="2d" file="{r}/{n}.png"/>'
             '<material name="{n}" texture="{n}" specular="0.3" shininess="0.4"/>'.format(n=n, r=room)
             for n in ("phone_0", "phone_1", "glasses_case_0", "glasses_case_1")),
         sofa_meshes="\n    ".join('<mesh name="sofa_col_{i:02d}" file="{r}/sofa_col_{i:02d}.obj"/>'.format(i=i, r=room)
                                 for i in range(SOFA_PARTS)),
-        hat_meshes="\n    ".join('<mesh name="hat_col_{i:02d}" file="{r}/hat_col_{i:02d}.obj"/>'.format(i=i, r=room)
+        hat_meshes="\n    ".join('<mesh name="hat_col_{i:02d}" file="{r}/hat_col_{i:02d}.obj" scale="{s}"/>'.format(i=i, r=room, s=_fmt((HAT_SCALE,) * 3))
                                for i in range(HAT_PARTS)),
         cab_pos=_fmt((CAB_X0, CAB_CY, 0)),
         wall_x=SOFA_X0 + 0.82, skirt_x=SOFA_X0 + 0.79,
@@ -752,9 +813,9 @@ class Env(object):
         self.arm_dadr = [m.jnt_dofadr[self._name(J, n)] for n in ["rail"] + ["joint{}".format(i) for i in range(1, 8)]]
         self.finger_qadr = [m.jnt_qposadr[self._name(J, n)] for n in ("finger_joint1", "finger_joint2")]
         self.drawer_qadr = {n: m.jnt_qposadr[self._name(J, "drawer_" + n)] for n in DRAWERS}
-        self.free_qadr = {n: m.jnt_qposadr[self._name(J, n + "_free")] for n in ("remote", "hanger", "pad_left", "pad_right", "hat", "phone", "case")}
+        self.free_qadr = {n: m.jnt_qposadr[self._name(J, n + "_free")] for n in ("remote", "hanger", "pad_left", "pad_right", "hat", "box", "phone", "case", "pouch")}
         self.free_dadr = {n: m.jnt_dofadr[self._name(J, n + "_free")] for n in ("remote", "hanger", "pad_left", "pad_right", "hat")}
-        self.body = {n: self._name(B, n) for n in ("remote", "hanger", "hat", "pad_left", "pad_right", "drawer_upper",
+        self.body = {n: self._name(B, n) for n in ("remote", "hanger", "hat", "box", "pad_left", "pad_right", "drawer_upper",
                                                    "drawer_mid", "drawer_lower", "right_gripper", "pedestal",
                                                    "sofa", "cabinet")}
         self.grip_site = self._name(mujoco.mjtObj.mjOBJ_SITE, "grip_site")
@@ -835,10 +896,14 @@ class Env(object):
         d.qpos[adr + 3:adr + 7] = turned
         adr = self.free_qadr["hat"]
         (hx, hy), yaw = place(CAB_PIVOT, cab, spec.hat_xy, spec.hat_yaw)
-        d.qpos[adr:adr + 3] = (hx, hy, CAB_H + 0.001)
+        d.qpos[adr:adr + 3] = (hx, hy, DRAWER_FLOOR_Z[spec.hat_drawer] + 0.001)
         d.qpos[adr + 3:adr + 7] = _quat_yaw(yaw)
-        # The remote, the phone and the glasses case where the scene has them.
-        for name, pose in (("remote", spec.remote), ("phone", spec.phone), ("case", spec.case)):
+        adr = self.free_qadr["box"]
+        (bx, by), yaw = place(CAB_PIVOT, cab, spec.box_xy, spec.box_yaw)
+        d.qpos[adr:adr + 3] = (bx, by, CAB_H + 0.001)
+        d.qpos[adr + 3:adr + 7] = _quat_yaw(yaw)
+        # The remote, the phone, the glasses case and the pouch where the scene has them.
+        for name, pose in (("remote", spec.remote), ("phone", spec.phone), ("case", spec.case), ("pouch", spec.pouch)):
             adr = self.free_qadr[name]
             d.qpos[adr:adr + 3] = pose[:3]
             d.qpos[adr + 3:adr + 7] = _quat_yaw(pose[3])

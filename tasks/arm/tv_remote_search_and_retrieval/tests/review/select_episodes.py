@@ -25,7 +25,7 @@ from reference import Reference  # noqa: E402
 
 PER_SPOT = 2
 CANDIDATES = 5
-# Before any candidate is played, the remote must show in neither camera.
+# A candidate in which a pixel of the remote shows in either camera at the start is not played.
 
 
 def play(env, spec):
@@ -52,7 +52,9 @@ def main():
             seed = struct.unpack("<Q", os.urandom(8))[0]
             env.reset(R.make_episode(E, seed, spot))
             if max(env._remote_pixels(name) for name in E.CAMERAS) > 0:
-                raise SystemExit("the remote shows at the start of {} {}".format(spot, seed))
+                record.append({"spot": spot, "seed": seed, "shows_at_start": True, "selected": False})
+                print(record[-1], flush=True)
+                continue
             score, steps, ended = play(env, R.make_episode(E, seed, spot))
             picked = score >= 1.0 and len(chosen[spot]) < PER_SPOT
             if picked:
@@ -69,8 +71,9 @@ def main():
     with open(os.path.join(TASK, "tests", "hidden", "selection.json"), "w") as handle:
         json.dump({"rule": "first {} of {} os.urandom candidates per spot that the reference retrieves".format(
             PER_SPOT, CANDIDATES), "candidates": record}, handle, indent=1)
-    solved = sum(1 for r in record if r["reference_score"] >= 1.0)
-    print("reference retrieved {} of {} candidates".format(solved, len(record)))
+    played = [r for r in record if "reference_score" in r]
+    solved = sum(1 for r in played if r["reference_score"] >= 1.0)
+    print("reference retrieved {} of {} candidates played".format(solved, len(played)))
 
 
 if __name__ == "__main__":

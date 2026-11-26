@@ -67,7 +67,7 @@ class Locator(object):
             src = mujoco.mj_name2id(kin.model, mujoco.mjtObj.mjOBJ_BODY, name)
             m.body_pos[b] = kin.model.body_pos[src]
             m.body_quat[b] = kin.model.body_quat[src]
-        for name in ("pad_left", "pad_right", "hat"):
+        for name in ("pad_left", "pad_right", "box"):
             d.qpos[env.free_qadr[name]:env.free_qadr[name] + 7] = kin.model.qpos0[kin.free_adr[name]:kin.free_adr[name] + 7]
         for name in ("remote", "hanger"):
             d.qpos[env.free_qadr[name]:env.free_qadr[name] + 3] = (5.0, 5.0, 5.0)
