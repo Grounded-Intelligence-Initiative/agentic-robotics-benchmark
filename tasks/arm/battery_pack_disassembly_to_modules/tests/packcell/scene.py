@@ -61,6 +61,7 @@ LOOKS = {
     "label_ink": ((0.03, 0.03, 0.03), 0.0, 0.60),
     "dusty_zinc": ((0.48, 0.47, 0.45), 0.4, 0.75),
     "plate_white": ((0.82, 0.82, 0.80), 0.0, 0.80),
+    "foam": ((0.62, 0.60, 0.52), 0.0, 0.97),
     "plate_black": ((0.02, 0.02, 0.02), 0.0, 0.85),
 }
 
@@ -205,6 +206,34 @@ class Builder(object):
         for k in range(sectors):
             counts.append(3)
             idx += [base, last + (k + 1) % sectors, last + k]
+        m = UsdGeom.Mesh.Define(self.st, path)
+        m.CreatePointsAttr(pts)
+        m.CreateFaceVertexCountsAttr(counts)
+        m.CreateFaceVertexIndicesAttr(idx)
+        m.CreateSubdivisionSchemeAttr("none")
+        m.CreateDoubleSidedAttr(True)
+        self.place(m.GetPrim(), pos)
+        self.bind(m.GetPrim(), look)
+        return m.GetPrim()
+
+    def bump(self, path, a, b, h, pos=(0, 0, 0), look=None, rings=12, sectors=48):
+        """A smooth bump on z = 0: height h (1 - rho^2)^2 over the ellipse of semi-axes a, b (a module's swollen top)."""
+        pts = []
+        for i in range(rings + 1):
+            rho = i / float(rings)
+            z = float(h * (1.0 - rho * rho) ** 2)
+            for k in range(1 if i == 0 else sectors):
+                t = 2 * math.pi * k / sectors
+                pts.append(Gf.Vec3f(float(a * rho * math.cos(t)), float(b * rho * math.sin(t)), z))
+        counts, idx = [], []
+        for k in range(sectors):
+            counts.append(3)
+            idx += [0, 1 + k, 1 + (k + 1) % sectors]
+        for i in range(rings - 1):
+            a0, a1 = 1 + i * sectors, 1 + (i + 1) * sectors
+            for k in range(sectors):
+                counts.append(4)
+                idx += [a0 + k, a1 + k, a1 + (k + 1) % sectors, a0 + (k + 1) % sectors]
         m = UsdGeom.Mesh.Define(self.st, path)
         m.CreatePointsAttr(pts)
         m.CreateFaceVertexCountsAttr(counts)
@@ -535,6 +564,13 @@ def build(stage, pack, robot_usd, render=True):
         prim = b.xform(path, tfm(T, part["pos"]), qP)
         b.body(prim, part["mass"], kinematic=True)
         shapes(path)
+        # foam pads glued over some of the fasteners this part holds (series.FOAM): drawn only, they leave with it
+        for i, pad in enumerate(d for d in pack.get("pads", []) if d["part"] == pid):
+            ca, sa, h = math.cos(pad["angle"]), math.sin(pad["angle"]), pad["side"] / 2
+            cx, cy = pad["x"] - part["pos"][0], pad["y"] - part["pos"][1]
+            sq = [(cx + u * ca - v * sa, cy + u * sa + v * ca) for u, v in ((-h, -h), (h, -h), (h, h), (-h, h))]
+            z0 = pad["z"] - part["pos"][2]
+            b.prism(path + "/pad%d" % i, sq, z0, z0 + pad["thick"], look="foam")
         index["parts"][pid] = path
         return path
 
@@ -607,6 +643,9 @@ def build(stage, pack, robot_usd, render=True):
                 ml, mw, mh = S.MODULE["size"]
                 b.box(path + "/cells", (ml, mw, mh), (0, 0, 0), "module", collide=True)
                 b.box(path + "/top", (ml - 0.02, mw - 0.02, 0.002), (0, 0, mh / 2 + 0.001), "module_top")
+                # the top plate's bump (series.SWOLLEN): a healthy module's crown, a swollen one's bulge; drawn only
+                bp = part["bump"]
+                b.bump(path + "/bump", bp["a"], bp["b"], bp["h"], (bp["dx"], 0.0, mh / 2 + 0.00205), "module_top")
                 hz = S.MODULE["handle_z"]
                 for i, hx in enumerate((-0.044, 0.044)):
                     b.box(path + "/strap_post%d" % i, (0.012, 0.03, hz - 0.006 - mh / 2), (hx, 0, (hz - 0.006 + mh / 2) / 2), "strap")

@@ -159,17 +159,18 @@ def main():
     run(r, fid, "S10", 8.0, 13.0, 15.0)
     assert r.captured == fid
     checks += 2
-    # 7. tightening a seated fastener: stall; above the head's limit it gives way
+    # 7. tightening a seated fastener: stall; above the head's limit it gives way (an M8: its head's limit is below
+    #    its shear torque); an M6 at its shear torque twists off first (check 16)
     r = fresh()
-    fid = pick(r, "S10")
-    log = run(r, fid, "S10", 2.0, 20.0, 60.0, speed=RPM)
+    fid = pick(r, "S13")
+    log = run(r, fid, "S13", 2.0, 40.0, 60.0, speed=RPM)
     assert r.fast[fid]["wear"] == 0.0 and all(sp == 0.0 for _, sp in log)
-    run(r, fid, "S10", 2.0, 30.0, 60.0, speed=RPM)
-    assert r.fast[fid]["stripped"]
+    run(r, fid, "S13", 2.0, 45.5, 60.0, speed=RPM)
+    assert r.fast[fid]["stripped"] and not r.fast[fid]["sheared"]
     # 8. the extractor takes a stripped fastener out; it ruins a sound one
-    run(r, fid, "S10", 3.0, 20.0, 60.0)
+    run(r, fid, "S13", 3.0, 30.0, 60.0)
     assert r.captured is None
-    run(r, fid, "EX", 16.0, 20.0, 60.0)
+    run(r, fid, "EX", 20.0, 40.0, 60.0)
     assert r.captured == fid
     r = fresh()
     fid = pick(r, "T40")
@@ -383,7 +384,163 @@ def main():
             R = kin.rotvec_R(unit(draw) * (math.pi - gap))
             assert np.array_equal(pc.R_rotvec(R), kin.R_rotvec(R)) and np.array_equal(ref.R_rotvec(R), kin.R_rotvec(R)), gap
     checks += 4
+    checks += round2_rules()
+    checks += huge_numbers()
     print("ok: %d checks" % checks)
+
+
+def seized_pack(seed=11, variant="P5", n=4):
+    return rules.Rules(S.draw_pack(seed, variant=variant, harness="none", seized_seed=seed + 1, seized_n=n,
+                                   swollen_seed=seed + 2, swollen=True))
+
+
+def round2_rules():
+    """Checks 16 to 21: the shank's strength, seized fasteners and working them loose, the Torx bit at a stall, the
+    head's limit both ways, the swollen module (rules 5 and 6; series.SEIZED, WORK, SWOLLEN)."""
+    checks = 0
+    # 16. a fully engaged bit holding the shear torque twists the shank off, either way: the head rides on the bit,
+    #     the stub keeps the part held for good, the fastener does not count
+    for way in (-RPM, RPM):
+        r = seized_pack()
+        fid = next(i for i, f in r.fast.items() if f["seized"] and S.HEADS[f["head"]]["kind"] == "hex")
+        th = S.THREADS[r.fast[fid]["thread"]]
+        run(r, fid, r.fast[fid]["head"], 1.0, th["shear"] + 0.5, 80.0, speed=way)
+        f = r.fast[fid]
+        assert f["sheared"] and r.captured == fid and r.eject() == fid, way
+        others = [i for i in r.part[f["holds"]]["lock"]["ids"] if i != fid] if r.part[f["holds"]]["lock"]["type"] == "fasteners" else []
+        for i in others:
+            r.fast[i]["status"] = "free"
+        assert f["holds"] not in r.unlock([], np.zeros(3)) and r.part[f["holds"]]["locked"]
+        T = np.eye(4)
+        T[:3, 3] = S.CELL["bins"]["fasteners_left"]["center"] + [S.TABLE_Z + 0.01]
+        assert not r.credit({}, {fid: T})[1][fid]
+    checks += 2
+    # a clean fastener at any limit and a corroded one at a limit just below its shear torque come out unharmed
+    r = seized_pack()
+    for corroded in (False, True):
+        fid = next(i for i, f in r.fast.items() if not f["seized"] and f["status"] == "seated" and f["corroded"] == corroded
+                   and S.HEADS[f["head"]]["kind"] == "hex")
+        th = S.THREADS[r.fast[fid]["thread"]]
+        run(r, fid, r.fast[fid]["head"], th["turns"] + 1, 60.0 if not corroded else 0.975 * th["shear"], 80.0)
+        assert r.captured == fid and not r.fast[fid]["sheared"] and r.fast[fid]["wear"] == 0.0, corroded
+        r.eject()
+    checks += 1
+    # 17. a seized fastener stalls below its shear torque without harm, and comes loose by working: each cycle (a
+    #     loosening stall at 0.85 x shear or more for 0.5 s, a tightening stall at the assembly torque or more for
+    #     0.25 s) multiplies the breakaway's excess over a clean one's by the working factor
+    r = seized_pack()
+    for fid in [i for i, f in r.fast.items() if f["seized"]]:
+        f = r.fast[fid]
+        th, bit = S.THREADS[f["thread"]], f["head"]
+        safe = min(0.975 * th["shear"], th["head_limit"] - 0.5)
+        log = run(r, fid, bit, 0.3, safe, 90.0)
+        assert all(sp == 0.0 for _, sp in log) and f["wear"] == 0.0 and f["turned"] == 0.0 and not f["sheared"], fid
+        clean, b0 = 1.15 * th["tighten"], f["breakaway"]
+        assert S.SEIZED["breakaway"][0] * th["shear"] - 1e-6 <= b0 <= S.SEIZED["breakaway"][1] * th["shear"] + 1e-6
+        f["load_s"], f["loaded"] = 0.0, False
+        cycles = 0
+        while f["breakaway"] > safe:
+            run(r, fid, bit, 0.55 * RPM * 0.05 / (2 * math.pi) / S.TICK * 1.0, 0.9 * th["shear"], 90.0)    # 0.55 s loosening stall
+            assert not f["loaded"] or f["load_s"] >= S.WORK["loosen_s"] - 1e-9
+            run(r, fid, bit, 0.30 * RPM * 0.05 / (2 * math.pi) / S.TICK * 1.0, 1.05 * th["tighten"], 90.0, speed=RPM)
+            cycles += 1
+            assert f["cycles"] == cycles and abs((f["breakaway"] - clean) - (b0 - clean) * f["work"] ** cycles) < 1e-6, fid
+            assert cycles <= 8
+        assert 1 <= cycles <= 5, (fid, cycles)
+        run(r, fid, bit, th["turns"] + 1, safe, 90.0)
+        assert r.captured == fid and f["wear"] == 0.0 and not f["sheared"], fid
+        r.eject()
+    # half a cycle does nothing: a loosening stall below 0.85 x shear, or no tightening stall after it
+    r = seized_pack()
+    fid = next(i for i, f in r.fast.items() if f["seized"])
+    f, th = r.fast[fid], S.THREADS[r.fast[fid]["thread"]]
+    b0 = f["breakaway"]
+    run(r, fid, f["head"], 0.6, 0.8 * th["shear"], 90.0)
+    run(r, fid, f["head"], 0.3, 1.05 * th["tighten"], 90.0, speed=RPM)
+    assert f["breakaway"] == b0 and f["cycles"] == 0
+    checks += 2
+    # 18. a Torx bit cams out at a stall too when it is not pressed hard enough for the torque it holds
+    r = seized_pack()
+    fid = pick(r, "T30")
+    run(r, fid, "T30", 0.5, 0.8 * r.fast[fid]["breakaway"], 10.0 + 1.5 * 0.8 * r.fast[fid]["breakaway"] - 2.0)
+    assert r.fast[fid]["wear"] > 0.0
+    r = seized_pack()
+    fid = pick(r, "T30")
+    run(r, fid, "T30", 0.5, 0.8 * r.fast[fid]["breakaway"], 10.0 + 1.5 * 0.8 * r.fast[fid]["breakaway"] + 2.0)
+    assert r.fast[fid]["wear"] == 0.0
+    checks += 1
+    # 19. the head's limit holds when loosening too: an M8 stalled above it wears its head
+    r = seized_pack()
+    fid = next(i for i, f in r.fast.items() if f["seized"] and f["thread"] == "M8") if any(
+        f["seized"] and f["thread"] == "M8" for f in r.fast.values()) else None
+    if fid is not None:
+        run(r, fid, r.fast[fid]["head"], 2.0, 45.6, 120.0)
+        assert r.fast[fid]["stripped"] and not r.fast[fid]["sheared"]
+        checks += 1
+    # 20. the swollen module: one per pack that carries one, a bump of 0.6 to 3 mm against the others' crown of at most
+    #     0.25 mm; moved 5 mm off its seat it vents and the pack ends; it counts where it stands, freed and level; a
+    #     healthy module left there does not
+    r = seized_pack()
+    sw = [pid for pid, p in r.part.items() if p.get("swollen")]
+    assert len(sw) == 1 and r.part[sw[0]]["dest"] == "seat"
+    bumps = {pid: p["bump"]["h"] for pid, p in r.part.items() if p["kind"] == "module"}
+    assert S.SWOLLEN["bulge"][0] <= bumps[sw[0]] <= S.SWOLLEN["bulge"][1]
+    assert all(h <= S.SWOLLEN["crown"][1] for pid, h in bumps.items() if pid != sw[0])
+    r.vent_check({sw[0]: 0.0049})
+    assert r.ended is None
+    r.vent_check({sw[0]: 0.0050})
+    assert r.ended == "module_vented" and r.part[sw[0]]["damaged"]
+    r = seized_pack()
+    healthy = next(pid for pid, p in r.part.items() if p["kind"] == "module" and not p.get("swollen"))
+    seat = {pid: p["seat"].copy() for pid, p in r.part.items()}
+    r.part[sw[0]]["locked"] = r.part[healthy]["locked"] = False
+    _, d = r.credit(seat, {})
+    assert d[sw[0]] and not d[healthy]
+    tilted = seat[sw[0]].copy()
+    tilted[:3, :3] = kin.rotvec_R(np.array([math.radians(6.0), 0.0, 0.0]))
+    moved = seat[sw[0]].copy()
+    moved[0, 3] += 0.006
+    assert not r.credit(dict(seat, **{sw[0]: tilted}), {})[1][sw[0]] and not r.credit(dict(seat, **{sw[0]: moved}), {})[1][sw[0]]
+    r.part[sw[0]]["locked"] = True
+    assert not r.credit(seat, {})[1][sw[0]]
+    r2 = seized_pack()
+    r2.vent_check({healthy: 0.05})
+    assert r2.ended is None
+    checks += 3
+    return checks
+
+
+def huge_numbers():
+    """Check 21 (the re-review's N1): a JSON integer too large for a float is a malformed action, never an
+    OverflowError, on the grader's path (check_action, canonical, is_idle) and in the agent's library."""
+    import json
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(HERE)), "environment", "setup", "payload", "given", "lib"))
+    import packcell_client as pc
+    big = int("1" * 400)
+    acts = [{"move": {"type": "tcp", "delta": [big, 0, 0, 0, 0, 0]}}, {"move": {"type": "tcp", "delta": [0] * 6, "ticks": big}},
+            {"spindle": {"speed_rpm": -big, "torque_limit": 5}}, {"gripper": big},
+            json.loads('{"move": {"type": "joint", "delta": [0, 0, %s, 0, 0, 0]}}' % ("9" * 400))]
+    for a in acts:
+        for fn in (wire.check_action, wire.canonical):
+            try:
+                fn(a)
+                raise AssertionError((fn.__name__, a))
+            except ValueError:
+                pass
+        assert wire.is_idle(a) is False
+        for fn in (pc.check_action, pc.canonical, lambda x: pc.replies_differ(x, {"cmd": "done"})):
+            try:
+                fn(a)
+                raise AssertionError(("client", a))
+            except ValueError:
+                pass
+        assert pc.is_idle(a) is False
+        try:
+            pc._num(big, "x")
+            raise AssertionError("client _num")
+        except ValueError:
+            pass
+    return 1
 
 
 if __name__ == "__main__":

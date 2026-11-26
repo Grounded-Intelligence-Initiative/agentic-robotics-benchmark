@@ -346,6 +346,8 @@ class Cell(object):
         if self.module_idx:
             vel = np.array(self.pv.get_velocities())
             r.drop_check({pid: float(vel[i, 2]) for pid, i in self.module_idx})
+            r.vent_check({pid: float(np.linalg.norm(tfs[i, :3] - self.seat_pos[i])) for pid, i in self.module_idx
+                          if r.part[pid].get("swollen")})
         # overload: the robot stops where it is, as a collaborative robot does
         err = float(np.max(np.abs(self.q_cmd - self.q)))
         if (np.linalg.norm(self.f_ext) > cfg["overload_force"] or np.linalg.norm(self.t_ext) > cfg["overload_torque"]
@@ -636,4 +638,5 @@ class Cell(object):
         return {"credit": credit, "detail": detail, "where": where, "ended": self.ended, "events": r.events, "time": round(r.t, 2),
                 "ticks": self.tick_n, "frames": self.frames_used, "protective_stops": self.stops,
                 "stripped": sorted(fid for fid, f in r.fast.items() if f["stripped"]),
+                "sheared": sorted(fid for fid, f in r.fast.items() if f["sheared"]),
                 "wall": {k: round(v, 1) for k, v in self.wall.items()}}

@@ -36,6 +36,7 @@ class Rules(object):
             head = S.HEADS[f["head"]]
             self.fast[f["id"]] = dict(
                 f, status="missing" if f["missing"] else "seated", turned=0.0, wear=0.0, stripped=False, broken=False,
+                sheared=False, load_s=0.0, tight_s=0.0, loaded=False, cycles=0,
                 top=(self.T[:3, :3] @ (np.array(f["pos"]) + [0, 0, head["height"]])) + self.T[:3, 3])
         self.part = {}
         for p in pack["parts"]:
@@ -159,12 +160,19 @@ class Rules(object):
         if speed < 0:                                   # loosening
             if ex:
                 need *= E["extractor"]["torque_factor"]
-            if limit < need:
-                return limit, 0.0                       # stalled at the limit
-            if S.HEADS[f["head"]]["kind"] == "torx" and not ex and force < E["torx_force_base"] + E["torx_force_per_Nm"] * need:
+            held = min(limit, need)                     # the torque the bit puts on the head
+            if S.HEADS[f["head"]]["kind"] == "torx" and not ex and force < E["torx_force_base"] + E["torx_force_per_Nm"] * held:
+                # not pressed hard enough for that torque: the bit rides up out of the recess (at a stall too)
                 f["wear"] += E["wear_per_rev_camout"] * rev
                 self.angle += speed * dt
                 return self._wear(f, min(limit, 0.3 * need * (0.6 + 0.4 * math.sin(6 * self.angle))), speed)
+            if held >= th["shear"]:
+                return self._shear(fid, f)
+            if limit < need:                            # stalled at the limit
+                if limit > th["head_limit"]:
+                    f["wear"] += E["wear_per_s_overtorque"] * dt
+                self._work(f, "loosen", limit, dt)
+                return self._wear(f, limit, 0.0)
             k = E["extractor"]["speed_factor"] if ex else 1.0
             f["turned"] += abs(speed) * dt * k
             self.angle += speed * dt * k
@@ -182,10 +190,45 @@ class Rules(object):
             if f["turned"] == 0.0:
                 f["broken"] = False
             return running, speed
+        if limit >= th["shear"]:
+            return self._shear(fid, f)
         if limit > th["head_limit"]:
             f["wear"] += E["wear_per_s_overtorque"] * dt
             return self._wear(f, limit, 0.0)
+        self._work(f, "tighten", limit, dt)
         return limit, 0.0
+
+    def _shear(self, fid, f):
+        """The shank twists off: the head rides on the bit (it can be let go like a fastener), the stub stays in the
+        thread and holds its part for good."""
+        f["sheared"] = True
+        f["status"] = "captured"
+        self.captured = fid
+        self.log("fastener_sheared", id=fid)
+        return S.THREADS[f["thread"]]["shear"], 0.0
+
+    def _work(self, f, phase, torque, dt):
+        """Working a thread loose (series.WORK): a loosening stall at `loosen` x shear or more, held `loosen_s` in all,
+        then a tightening stall at the assembly torque or more, held `tighten_s`, is a cycle; it multiplies what the
+        breakaway exceeds a clean fastener's by the fastener's working factor."""
+        W, th = S.WORK, S.THREADS[f["thread"]]
+        if phase == "loosen":
+            f["tight_s"] = 0.0
+            if torque >= W["loosen"] * th["shear"]:
+                f["load_s"] += dt
+                if f["load_s"] >= W["loosen_s"] - 1e-9:
+                    f["loaded"] = True
+            return
+        if not f["loaded"] or torque < th["tighten"]:
+            return
+        f["tight_s"] += dt
+        if f["tight_s"] >= W["tighten_s"] - 1e-9:
+            clean = 1.15 * th["tighten"]
+            if f["breakaway"] > clean:
+                f["breakaway"] = clean + (f["breakaway"] - clean) * f["work"]
+            f["cycles"] += 1
+            f["loaded"], f["load_s"], f["tight_s"] = False, 0.0, 0.0
+            self.log("fastener_worked", id=f["id"], cycles=f["cycles"], breakaway=round(f["breakaway"], 3))
 
     def _wear(self, f, torque, speed):
         if f["wear"] >= 1.0 and not f["stripped"]:
@@ -197,7 +240,7 @@ class Rules(object):
         """Let the fastener in the socket go; returns its id (the cell turns it into a falling body) or None."""
         fid, self.captured = self.captured, None
         if fid is not None:
-            self.fast[fid]["status"] = "free"
+            self.fast[fid]["status"] = "free"          # a sheared one's head (its `sheared` stays)
         return fid
 
     # ------------------------------------------------------------------ tool and bit exchange
@@ -312,7 +355,7 @@ class Rules(object):
                 continue
             lock = p["lock"]
             if lock["type"] == "fasteners":
-                free = all(self.fast[i]["status"] != "seated" for i in lock["ids"])
+                free = all(self.fast[i]["status"] != "seated" and not self.fast[i]["sheared"] for i in lock["ids"])
             elif lock["type"] == "parts":
                 free = all(self.part[i]["left_seat"] for i in lock["ids"] if i in self.part)
             elif lock["type"] == "pull":
@@ -324,6 +367,19 @@ class Rules(object):
                 out.append(pid)
                 self.log("freed", id=pid)
         return out
+
+    def vent_check(self, offsets):
+        """`offsets`: {module id: distance of its body from its seat (m)} of the swollen modules. One moved
+        `SWOLLEN["vent_m"]` or more from its seat vents: it is damaged and the pack ends."""
+        if self.ended:
+            return
+        for pid, d in offsets.items():
+            p = self.part[pid]
+            if p.get("swollen") and d >= S.SWOLLEN["vent_m"]:
+                p["damaged"] = True
+                self.ended = "module_vented"
+                self.log("module_vented", id=pid)
+                return
 
     def drop_check(self, velocities):
         """`velocities`: {module id: vertical speed (m/s)} of the modules. A free module that falls ends the pack."""
@@ -356,6 +412,9 @@ class Rules(object):
             c = S.CELL["lid_stand"]["center"]
             return (abs(pos[0] - c[0]) <= 0.10 and abs(pos[1] - c[1]) <= 0.10 and tilt <= 5.0
                     and abs(pos[2] - (S.TABLE_Z + S.LID["t"] / 2)) <= 0.03)
+        if dest == "seat":                          # a swollen module stays where it is, level
+            return (np.linalg.norm(pos - item["seat"][:3, 3]) < S.SWOLLEN["vent_m"]
+                    and angle_deg(T[:3, 2], item["seat"][:3, 2]) <= S.SWOLLEN["level_deg"])
         if dest == "rack":
             rk = S.CELL["rack"]
             bottom = pos[2] - S.MODULE["size"][2] / 2 - S.TABLE_Z
@@ -378,7 +437,8 @@ class Rules(object):
             if f["missing"]:
                 continue
             total += f["value"]
-            ok = f["status"] == "free" and not f["stripped"] and fid in fastener_poses and self.placed(f, fastener_poses[fid])
+            ok = (f["status"] == "free" and not f["stripped"] and not f["sheared"] and fid in fastener_poses
+                  and self.placed(f, fastener_poses[fid]))
             detail[fid] = bool(ok)
             earned += f["value"] if ok else 0.0
         return (earned / total if total > 0 else 0.0), detail
@@ -387,7 +447,8 @@ class Rules(object):
     def truth(self, part_poses):
         fs = {fid: {"top": [round(float(v), 5) for v in f["top"]], "head": f["head"], "thread": f["thread"],
                     "status": f["status"], "stripped": f["stripped"], "corroded": f["corroded"], "group": f["group"],
-                    "holds": f["holds"]} for fid, f in self.fast.items()}
+                    "holds": f["holds"], "seized": f["seized"], "sheared": f["sheared"],
+                    "breakaway": round(float(f["breakaway"]), 3), "cycles": f["cycles"]} for fid, f in self.fast.items()}
         ps = {}
         for pid, p in self.part.items():
             Tp = part_poses.get(pid)
@@ -397,6 +458,8 @@ class Rules(object):
                     "pos": [round(float(v), 5) for v in Tp[:3, 3]],
                     "R": [[round(float(v), 6) for v in row] for row in Tp[:3, :3]], "grasps": p["grasps"],
                     "lock": p["lock"]}
+            if p["kind"] == "module":
+                item["swollen"] = bool(p.get("swollen"))
             if p["kind"] == "harness":
                 item["path"] = [[round(float(v), 5) for v in (Tp[:3, :3] @ (np.array(q) - np.array(p["pos"]))) + Tp[:3, 3]]
                                 for q in p["path"]]

@@ -7,6 +7,7 @@
     python3 select_set.py --draw-cells     # rule 2, once: draws the cells' key and writes every pack's camera offsets
     python3 select_set.py --draw-sealant   # rule 3, once: draws the sealant key and writes every pack's sealant seed
     python3 select_set.py --draw-appearance   # rule 4, once: the appearance key and every pack's appearance seed
+    python3 select_set.py --draw-round2    # rules 5 to 7, once: their three keys and every pack's seeds and counts
     python3 select_set.py                  # re-derives both sets from the recorded keys and checks the files
 
 Rule 1, fixed before any pack was drawn or run:
@@ -61,6 +62,32 @@ the measurements on its tree): the hall's light, grime, dust and labels (packcel
   dusty heads follow from that seed (`draw_pack`'s `appearance_seed`, `series._appearance`).
 - The seeds go into each pack's entry (`appearance_seed`) of the two files above. None is drawn again or changed for
   any value it turns out to have or for how any program does with it.
+
+Rules 5 to 7, the second hardening round (2026-11-26; written and committed before any of their values was drawn,
+after a frontier model scored 0.84 on the tree of rule 4). Each has a key of its own: 32 random bytes (os.urandom),
+drawn once by `--draw-round2` and recorded in tests/hidden/selection.json as `seized_key_hex`, `swollen_key_hex` and
+`foam_key_hex`, independent of each other, of the earlier keys and of every seed. For pack k of the set <set>
+("hidden" or "dev") a rule's seed is the first 8 bytes of BLAKE2b("<name>|<set>|k", key = the rule's key) read
+little-endian. Everything else follows from packcell/series.py (`draw_pack`, `SEIZED`, `WORK`, `SWOLLEN`, `FOAM`).
+How often a condition appears in a set is part of the rule: the development packs show every condition, but not in
+the combinations and numbers the hidden packs carry (the documents state the ranges that cover both).
+
+- Rule 5, seized fasteners (name "seized"). A development pack has 1 seized fastener; hidden pack k has 2 + (the
+  first 8 bytes of BLAKE2b("seized-n|hidden|k", key = the fifth key) read little-endian, modulo 3), i.e. 2 to 4.
+  They are chosen one after the other from the seed (`series._seize`) among the pack's present fasteners, with
+  weights lid 1, busbar 1, bracket 2; a chosen fastener's breakaway is 1.15 to 1.6 times its thread's shear torque
+  (uniform); then every fastener of the pack gets its working factor, uniform in 0.55 to 0.80.
+- Rule 6, swollen modules (name "swollen"). Development packs 1 and 2 and hidden packs 0, 1, 3 and 4 carry one
+  swollen module (`SWOLLEN["dev"]`, `SWOLLEN["hidden"]`), chosen uniformly among the pack's modules from the seed;
+  its top bulges 0.6 to 3.0 mm, every other module's top has a crown of 0 to 0.25 mm (uniform), each bump with its
+  semi-axes and its centre's offset from the seed (`series._swell`).
+- Rule 7, foam pads (name "foam"). The development packs have (1, 0, 1, 0) fasteners under pads, the hidden packs
+  (2, 1, 1, 2, 0, 1) (`FOAM`). They are chosen one after the other from the seed (`series._pads`) among the lid's and
+  the busbars' fasteners (present or missing) that a harness remnant does not cover, with weights lid 2, busbar 1;
+  each pad's size, thickness, angle and centre (within 8 mm of the fastener's nominal place) follow from the seed.
+- The seeds and counts go into each pack's entry (`seized_seed`, `seized_n`, `swollen_seed`, `swollen`, `foam_seed`,
+  `foam_n`) of the two files above. None is drawn again or changed for any value it turns out to have or for how
+  any program does with it.
 """
 
 import hashlib
@@ -123,10 +150,45 @@ def with_cells(sel, tag, packs):
         key3 = bytes.fromhex(sel["sealant_key_hex"])
         packs = [dict(p, sealant_seed=int.from_bytes(hashlib.blake2b(b"sealant|%s|%d" % (tag, k), key=key3, digest_size=8).digest(), "little"))
                  for k, p in enumerate(packs)]
+    if "seized_key_hex" in sel:
+        packs = round2(sel, tag, packs)
     return packs
 
 
+def _seed(name, tag, k, key):
+    return int.from_bytes(hashlib.blake2b(b"%s|%s|%d" % (name, tag, k), key=key, digest_size=8).digest(), "little")
+
+
+def round2(sel, tag, packs):
+    """Rules 5 to 7: each pack's seeds and counts of the seized fasteners, the swollen module and the foam pads."""
+    k5, k6, k7 = (bytes.fromhex(sel[n]) for n in ("seized_key_hex", "swollen_key_hex", "foam_key_hex"))
+    hidden = tag == b"hidden"
+    out = []
+    for k, p in enumerate(packs):
+        n5 = 2 + _seed(b"seized-n", tag, k, k5) % 3 if hidden else S.SEIZED["n_dev"]
+        out.append(dict(p, seized_seed=_seed(b"seized", tag, k, k5), seized_n=n5,
+                        swollen_seed=_seed(b"swollen", tag, k, k6),
+                        swollen=bool((S.SWOLLEN["hidden"] if hidden else S.SWOLLEN["dev"])[k]),
+                        foam_seed=_seed(b"foam", tag, k, k7),
+                        foam_n=(S.FOAM["hidden"] if hidden else S.FOAM["dev"])[k]))
+    return out
+
+
 def main():
+    if "--draw-round2" in sys.argv[1:]:
+        with open(SEL) as f:
+            sel = json.load(f)
+        if "seized_key_hex" in sel:
+            raise SystemExit("the keys of rules 5 to 7 are drawn already (once)")
+        when = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        for name in ("seized", "swollen", "foam"):
+            sel[name + "_key_hex"] = os.urandom(32).hex()
+        sel["round2_rule"] = "tests/review/select_set.py (its docstring), rules 5 to 7"
+        sel["round2_drawn_utc"] = when
+        with open(SEL, "w") as f:
+            json.dump(sel, f, indent=1)
+            f.write("\n")
+        sys.argv.append("--refresh")
     if "--draw-appearance" in sys.argv[1:]:
         with open(SEL) as f:
             sel = json.load(f)
@@ -194,7 +256,8 @@ def main():
             s = S.summary(S.draw_pack(**p))
             print(name, k, s["variant"], "harness", s["harness"], s["harness_covers"], "missing", s["missing"], "corroded", s["corroded"],
                   s["heads"], "value", s["value"], "cameras", "drawn" if "cameras" in p else "NOT DRAWN", "sealed",
-                  s["sealed"] if "sealant_seed" in p else "NOT DRAWN")
+                  s["sealed"] if "sealant_seed" in p else "NOT DRAWN", "seized", s["seized"], "swollen", s["swollen"],
+                  "pads", s["pads"])
     print("files match the key:", ok)
     return 0 if ok else 1
 

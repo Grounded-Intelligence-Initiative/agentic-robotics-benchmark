@@ -162,9 +162,10 @@ BIT_LOOK = {"S10": {"r": 0.0090}, "S13": {"r": 0.0110}, "T30": {"r": 0.0040}, "T
 # --------------------------------------------------------------------------------------------- fasteners
 THREADS = {
     # tighten: the assembly torque; breakaway (first 30 degrees of loosening) = 1.15 x tighten, 1.6 to 1.9 x on a
-    # corroded fastener; head_limit: above it the head or its recess gives way; turns: full turns to free it
-    "M6": {"tighten": 10.0, "head_limit": 22.0, "turns": 7.0, "shank_r": 0.003, "shank_len": 0.016},
-    "M8": {"tighten": 23.0, "head_limit": 45.0, "turns": 9.0, "shank_r": 0.004, "shank_len": 0.022},
+    # corroded fastener, 1.15 to 1.6 x shear on a seized one (SEIZED); head_limit: above it the head or its recess gives
+    # way (either way); shear: the shank twists off at this torque (either way); turns: full turns to free it
+    "M6": {"tighten": 10.0, "head_limit": 22.0, "shear": 20.0, "turns": 7.0, "shank_r": 0.003, "shank_len": 0.016},
+    "M8": {"tighten": 23.0, "head_limit": 45.0, "shear": 46.0, "turns": 9.0, "shank_r": 0.004, "shank_len": 0.022},
 }
 HEADS = {
     # kind hex: a hexagon `af` across flats on a flange; kind torx: a round pan head with a six-lobe recess
@@ -240,6 +241,38 @@ SEALANT = {"p": {"lid": 0.35, "busbar": 0.25, "bracket": 0.25}, "d": (0.3, 0.9),
 # its bolts, handle and ribs by `label_clear`; a dusty film on some clean zinc heads (`dusty_p`). All drawn only, all
 # on the lid or its bolts except the light. A surface's depth reading does not depend on the hall's light
 # (`sensors.measure`'s `light_gain`).
+# Seized fasteners (the fifth lever, 2026-11-26; service manual, section 7; rule 5 of tests/review/select_set.py). A
+# fastener seized by corrosion or thread-locker breaks away only at `breakaway` times its thread's shear torque, more
+# than its shank holds: it has to be worked loose (WORK). It looks as it was drawn (rusty when drawn corroded, else
+# clean). A development pack has `n_dev` of them, a hidden pack `n_hidden` (the documents: up to 4 in a pack),
+# chosen with `weights` by group among the pack's present fasteners. Every fastener has a working factor `work`.
+SEIZED = {"n_dev": 1, "n_hidden": (2, 4), "max": 4, "weights": {"lid": 1.0, "busbar": 1.0, "bracket": 2.0},
+          "breakaway": (1.15, 1.6), "work": (0.55, 0.80)}
+# Working a thread loose (rules.Rules._work): with the bit fully engaged, a loosening stall at `loosen` times the shear
+# torque or more (below it) held `loosen_s` in all, then a tightening stall at the assembly torque or more (below the
+# head's limit and the shear torque) held `tighten_s`, is one cycle; a cycle multiplies what the fastener's
+# breakaway exceeds a clean one's (1.15 x tighten) by its working factor.
+WORK = {"loosen": 0.85, "loosen_s": 0.5, "tighten_s": 0.25}
+
+# Swollen modules (the sixth lever, 2026-11-26; service manual, sections 7 and 9; rule 6). Every module's top plate
+# carries a smooth bump (drawn only, `rules`/`scene`): a healthy module's `crown`, a swollen module's `bulge` (heights in
+# m at the bump's centre over the plate's rim), with semi-axes `a` along the module's length and `b` across, its centre
+# `dx` along the length off the plate's centre. A module whose bump is `criterion` or more is swollen; it stays in
+# its seat (`vent_m`: moved that far from its seat, it vents and the pack ends). Which packs carry one swollen module
+# is fixed by `dev` and `hidden` (rule 6).
+SWOLLEN = {"dev": (0, 1, 1, 0), "hidden": (1, 1, 0, 1, 1, 0), "bulge": (0.0006, 0.0030), "crown": (0.0, 0.00025),
+           "criterion": 0.0004, "a": (0.09, 0.12), "b": (0.035, 0.050), "dx": (-0.015, 0.015), "vent_m": 0.005,
+           "level_deg": 5.0}
+
+# Foam pads over fasteners (the seventh lever, 2026-11-26; service manual, section 7; rule 7). A square pad of soft
+# open-cell foam, `side` across and `thick` high above the fastener's seat, turned by up to 90 degrees, its centre
+# within `off` of the fastener's nominal place, glued to the part the fastener holds (it leaves with that part). Drawn
+# only: a bit goes through it; it hides the head (or the hole of a missing fastener) from both cameras. How many
+# fasteners a pack has under pads is fixed by `dev` and `hidden`; they are chosen with `weights` among the lid's and
+# the busbars' fasteners that a harness remnant does not cover.
+FOAM = {"dev": (1, 0, 1, 0), "hidden": (2, 1, 1, 2, 0, 1), "max": 2, "weights": {"lid": 2.0, "busbar": 1.0},
+        "side": (0.040, 0.060), "thick": (0.010, 0.014), "off": 0.008}
+
 APPEARANCE = {"gain": (0.6, 1.3), "kelvin": (3500.0, 6500.0), "lamp": (0.75, 1.25), "patches": (4, 9),
               "patch_axes": (0.015, 0.07), "labels": (1, 4), "label_size": ((0.06, 0.12), (0.03, 0.06)),
               "label_clear": 0.025, "dusty_p": 0.3}
@@ -450,14 +483,71 @@ def _harness_path(s, on, nom, fasteners):
     return pts, [f["id"] for f in cover]
 
 
-def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None, appearance_seed=None):
+def _weighted(st, items, weight):
+    """One of `items` with probability proportional to `weight(item)` (a draw of `st`)."""
+    total = sum(weight(x) for x in items)
+    u = st.random() * total
+    for x in items:
+        u -= weight(x)
+        if u < 0:
+            return x
+    return items[-1]
+
+
+def _seize(seed, n, fasteners):
+    """Rule 5: `n` seized fasteners among the present ones, then every fastener's working factor (SEIZED, WORK)."""
+    st = Stream(seed, "seized")
+    pool = [f for f in fasteners if not f["missing"]]
+    for _ in range(min(n, SEIZED["max"], len(pool))):
+        f = _weighted(st, pool, lambda x: SEIZED["weights"][x["group"]])
+        pool.remove(f)
+        f["seized"] = True
+        f["breakaway"] = round(st.uniform(*SEIZED["breakaway"]) * THREADS[f["thread"]]["shear"], 3)
+    for f in fasteners:
+        f["work"] = round(st.uniform(*SEIZED["work"]), 4)
+
+
+def _swell(seed, swollen, parts):
+    """Rule 6: every module's bump; one module of a pack that carries a swollen one has a bulge (SWOLLEN)."""
+    st = Stream(seed, "swollen")
+    modules = [p for p in parts if p["kind"] == "module"]
+    which = modules[int(st.u64() % len(modules))]["id"] if swollen else None
+    for p in modules:
+        h = st.uniform(*SWOLLEN["bulge"]) if p["id"] == which else st.uniform(*SWOLLEN["crown"])
+        p["bump"] = {"h": round(h, 6), "a": round(st.uniform(*SWOLLEN["a"]), 4), "b": round(st.uniform(*SWOLLEN["b"]), 4),
+                     "dx": round(st.uniform(*SWOLLEN["dx"]), 4)}
+        p["swollen"] = p["id"] == which
+        if p["swollen"]:
+            p["dest"] = "seat"
+
+
+def _pads(seed, n, fasteners, covered):
+    """Rule 7: `n` fasteners of the lid and the busbars under foam pads (FOAM)."""
+    st = Stream(seed, "foam")
+    pool = [f for f in fasteners if f["group"] in FOAM["weights"] and f["id"] not in covered]
+    out = []
+    for _ in range(min(n, FOAM["max"], len(pool))):
+        f = _weighted(st, pool, lambda x: FOAM["weights"][x["group"]])
+        pool.remove(f)
+        ang, rad = st.uniform(0, 2 * math.pi), FOAM["off"] * math.sqrt(st.random())
+        out.append({"fastener": f["id"], "part": f["holds"], "x": round(f["nominal"][0] + rad * math.cos(ang), 5),
+                    "y": round(f["nominal"][1] + rad * math.sin(ang), 5), "z": f["seat_z"],
+                    "side": round(st.uniform(*FOAM["side"]), 4), "thick": round(st.uniform(*FOAM["thick"]), 4),
+                    "angle": round(st.uniform(0, 0.5 * math.pi), 4)})
+    return out
+
+
+def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None, appearance_seed=None,
+              seized_seed=None, seized_n=0, swollen_seed=None, swollen=False, foam_seed=None, foam_n=0):
     """One pack: the nominal pack of its variant plus its hidden differences. `variant` and `harness` ("none",
     "lid", "busbars") may be fixed by the caller (the selection of a set); everything else comes from the seed.
     `cameras` are the mounting offsets of the cell the pack is taken apart in ({name: 6 numbers}, MOUNT_TOL; drawn
     with the set under a key of their own, not from the seed); without them the cameras sit at their nominal
     mounting. `sealant_seed` (rule 3, a key of its own) gives the dabs of sealant (SEALANT); without it there are
     none. `appearance_seed` (rule 4) gives the hall's light, the grime, dust and labels (APPEARANCE); without it the
-    pack is clean under the nominal light."""
+    pack is clean under the nominal light. `seized_seed` with `seized_n` (rule 5), `swollen_seed` with `swollen`
+    (rule 6) and `foam_seed` with `foam_n` (rule 7) give the seized fasteners, the modules' bumps and the foam pads;
+    without them there are none, every module is flat and every fastener's working factor is 0.7."""
     s = Stream(seed, "pack")
     v = s.choice(sorted(VARIANTS))
     variant = variant or v
@@ -495,7 +585,16 @@ def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None,
                 R = head_top_radius(f["head"])
                 f["sealant"] = {"angle": round(angle, 5), "d": round(d * R, 6), "r": round(r * R, 6),
                                 "h": round(HEADS[f["head"]]["height"] + above, 6)}
+    for f in fasteners:
+        f["seized"], f["work"] = False, 0.7
+    if seized_seed is not None:
+        _seize(seized_seed, int(seized_n), fasteners)
     parts = [dict(p) for p in nom["parts"]]
+    for p in parts:
+        if p["kind"] == "module":
+            p["bump"], p["swollen"] = {"h": 0.0, "a": 0.11, "b": 0.04, "dx": 0.0}, False
+    if swollen_seed is not None:
+        _swell(swollen_seed, bool(swollen), parts)
     out = {"version": VERSION, "seed": int(seed), "variant": variant, "modules": nom["modules"],
            "module_ys": nom["module_ys"], "msd_y": nom["msd_y"], "bms_y": nom["bms_y"], "ribs": nom["ribs"],
            "placement": placement, "group_head": group_head, "parts": parts, "fasteners": fasteners, "harness": None,
@@ -509,7 +608,18 @@ def draw_pack(seed, variant=None, harness=None, cameras=None, sealant_seed=None,
                       "lock": {"type": "free"}, "grasps": [], "hv": False, "value": VALUES["harness"],
                       "dest": DEST["harness"], "path": pts, "on": harness, "covers": covers})
         out["harness"] = {"on": harness, "covers": covers}
+    out["pads"] = [] if foam_seed is None else _pads(foam_seed, int(foam_n), fasteners, out["harness"]["covers"] if out["harness"] else [])
     return out
+
+
+ENTRY_KEYS = ("variant", "harness", "cameras", "sealant_seed", "appearance_seed", "seized_seed", "seized_n", "swollen_seed",
+              "swollen", "foam_seed", "foam_n")
+
+
+def draw_entry(entry):
+    """The pack of a set's entry (tests/hidden/packs.json, the commissioning service's dev_packs.json): its seed and
+    every draw the set's rules gave it (tests/review/select_set.py)."""
+    return draw_pack(entry["seed"], **{k: entry[k] for k in ENTRY_KEYS if k in entry})
 
 
 def pack_pose(pack):
@@ -534,6 +644,9 @@ def summary(pack):
             "corroded": sum(f["corroded"] for f in fs),
             "heads": {h: sum(1 for f in fs if f["head"] == h and not f["missing"]) for h in sorted(HEADS)},
             "sealed": sum(1 for f in fs if f.get("sealant")),
+            "seized": sorted(f["id"] for f in fs if f.get("seized")),
+            "swollen": [p["id"] for p in pack["parts"] if p.get("swollen")],
+            "pads": [d["fastener"] for d in pack.get("pads", [])],
             "harness": pack["harness"]["on"] if pack["harness"] else "none",
             "harness_covers": pack["harness"]["covers"] if pack["harness"] else [],
             "placement": pack["placement"], "value": round(total_value(pack), 2)}

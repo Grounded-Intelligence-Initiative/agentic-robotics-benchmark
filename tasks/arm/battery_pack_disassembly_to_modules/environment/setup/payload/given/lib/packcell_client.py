@@ -249,7 +249,11 @@ PAIR_PASS_FRACTION = 0.1
 
 
 def _num(x, what, lo=-math.inf, hi=math.inf):
-    if isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) or not lo <= x <= hi:
+    try:
+        ok = not isinstance(x, bool) and isinstance(x, (int, float)) and math.isfinite(x) and lo <= x <= hi
+    except OverflowError:                   # a JSON integer too large for a float
+        ok = False
+    if not ok:
         raise ValueError("%s must be a number in [%g, %g]" % (what, lo, hi))
     return float(x)
 
