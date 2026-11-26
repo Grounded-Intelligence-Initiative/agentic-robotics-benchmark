@@ -26,7 +26,7 @@ SH
 /opt/venv/bin/python3 practice.py run --submission submission --task box_to_pad --seed 7 --steps 10
 ```
 
-For a full rollout omit `--steps`. Try both `box_to_pad` and `cylinder_to_pad` with different seeds. The practice driver exercises your submitted process and prints the raw physical outcome. Look at the saved `hand` and `side` views together to see where the gripper and object sit relative to the pad.
+For a full rollout omit `--steps`. Try both `box_to_pad` and `cylinder_to_pad` with different seeds. The practice driver exercises your submitted process and prints the raw physical outcome. The `repeats` fields count how often the first body-code vector changed for a second observation at the same tick and for an identical observation. The neutral starter should report zero changes. Look at the saved `hand` and `side` views together to see where the gripper and object sit relative to the pad.
 
 ## Process and actions
 
@@ -46,7 +46,7 @@ reply = {"action": {"rows": [{"codes": [16] * 64, "hand": [0.0, 0.0]}]}}
 
 One row advances one physical tick. You may send one to five rows, up to the next camera boundary or the end of the episode. At `t=0` the limit is five, at `t=3` it is two, and at `t=4` it is one. The host validates the entire chunk before applying any row and stops on a physical terminal event. The next request's `t` is the number of ticks actually executed since reset.
 
-The host may ask about several observations at the **same** tick, in either order. Produce an action for each input from the same pre-tick state. If your policy carries recurrent memory, cache each candidate next state by `obs["observation_id"]`. When `t` advances, `obs["last_observation_id"]` identifies which candidate the host applied. At reset it is `null`. A timeout, malformed action or crash aborts the episode. Make the process safe to start again.
+The host may ask about several observations at the **same** tick, in either order. Produce an action for each input from the same pre-tick state. If your policy carries recurrent memory, cache each candidate next state by `obs["observation_id"]`. When `t` advances, `obs["last_observation_id"]` identifies which candidate the host applied. At reset it is `null`. A timeout, malformed action or crash aborts the episode and it counts as a failed placement. Make the process safe to restart.
 
 ## Observations
 
