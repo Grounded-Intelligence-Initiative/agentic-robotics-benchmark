@@ -64,7 +64,8 @@ A graded shift is 20 parts, one at a time, released at moments you are not told.
 different items (cans, boxes, bottles, a bowl, a mug, a drill, scissors, a marker, clamps, a banana, a foam brick and
 others, sizes and masses in `/opt/cell_items/items.json`), each with its real shape, mass and printed surface: round ones roll, flat ones slide, and
 no two sit in a gripper alike. Some are wider than one gripper opens in the pose they come down in: both arms are yours to use, on any part and in
-any way (one hand, or the two together). Two more items
+any way (one hand, or the two together). **Using both arms is recommended**: a controller that works one arm only
+cannot take the parts one gripper does not span, and the second arm can also steady, re-grip or receive a part. Two more items
 lie on a side table and are not parts: leave them where they are.
 
 Each shift has its own constants, fixed for the whole shift and hidden: the chute's slope, its surface friction, the
