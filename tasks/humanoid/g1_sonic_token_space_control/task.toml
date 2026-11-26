@@ -2,7 +2,7 @@ schema_version = "1.4+ale.1"
 artifacts = ["/home/user/submission"]
 
 [task]
-name = "grounded-intelligence-initiative/g1_sonic_token_control"
+name = "grounded-intelligence-initiative/g1_sonic_token_space_control"
 
 [metadata]
 platform = "humanoid"

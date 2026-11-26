@@ -11,7 +11,7 @@ The interactive companion explains the scoring rule, contrasts feedback control 
 Run these commands from the benchmark repository root on a Linux x86-64 host with Docker and an AVX2/FMA-capable CPU. Building fetches the pinned public model, robot assets and Python wheels. The resulting image runs the task offline using Mesa software rendering.
 
 ```bash
-task=tasks/humanoid/g1_sonic_token_control
+task=tasks/humanoid/g1_sonic_token_space_control
 docker build -t g1-sonic-review "$task/environment"
 docker run --rm --network none --user user --cpus=4 --memory=8g \
   --mount "type=bind,src=$PWD/$task/solution,dst=/review/solution,readonly" \
@@ -34,7 +34,7 @@ Both references are ordinary JSONL submissions. Their implementation, model prov
 ## Run the official benchmark gates
 
 ```bash
-task=tasks/humanoid/g1_sonic_token_control
+task=tasks/humanoid/g1_sonic_token_space_control
 git submodule update --init vendor/ale
 (cd vendor/ale && uv sync --frozen --all-groups && images/build.sh ale-qemu-runner)
 (cd vendor/ale && uv run ale lint "../../$task" && \
