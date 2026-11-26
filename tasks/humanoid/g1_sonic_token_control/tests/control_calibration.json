@@ -1,0 +1,388 @@
+{
+  "purpose": "Public local diagnostic controls, four matched starts per policy; independent of hidden ALE runs.",
+  "diagnostic_key": 766704383,
+  "roster": [
+    {
+      "shape": "box",
+      "real_seed": "7508743693422497910",
+      "shadow_seed": "160432807584435636"
+    },
+    {
+      "shape": "cylinder",
+      "real_seed": "15036975329485500346",
+      "shadow_seed": "13205978184824829019"
+    },
+    {
+      "shape": "box",
+      "real_seed": "17986018588492809808",
+      "shadow_seed": "11627654662521119470"
+    },
+    {
+      "shape": "cylinder",
+      "real_seed": "5233805742826165917",
+      "shadow_seed": "14685581559697487039"
+    }
+  ],
+  "loaded_verifier_revision": "b439ab6dad43f4eb47a5dc482080884d91befedf",
+  "verifier_sha256": "8048153893bf6895021838f55e84f6c93571195fab57377707529504ac68d4f7",
+  "offline_exec_sha256": "41dd444561ab008d51d2c976baabd4e41af3f6f0bf7d2439f9e3705efcad819d",
+  "local_launch": "Native MuJoCo EGL device 0, sequential run_panel calls. Actual unprivileged launcher and seccomp filter at UID 1000; common-account cleanup and UID switching disabled on the shared host.",
+  "source": "solution/solve.sh staged independently for SONIC_REFERENCE_POLICY=v4 and p1.",
+  "prerecorded": {
+    "pilot_diagnostic_key": 766704321,
+    "selection": "First completed source trajectory of each shape from eight-start ALE pilot, selected before the new roster.",
+    "input": "Public task label and tick; the previous last row is held after the tape ends.",
+    "source_tapes": {
+      "box_to_pad": {
+        "pilot_index": 0,
+        "seed": "11209875442393005164",
+        "ticks": 510,
+        "source_json_sha256": "899075189afdd263bce72eb17e10c009f339ca6e133348101a18aded32037948",
+        "normalized_jsonl_sha256": "06f5f41d7596f8473a51af985e8bf825aacc6c02bf696ee4679a6ff108739e21"
+      },
+      "cylinder_to_pad": {
+        "pilot_index": 1,
+        "seed": "8157610926587101407",
+        "ticks": 529,
+        "source_json_sha256": "29688203c473e1f950535e2d9cd1ca8e7aa2f5a7db8e52b179414e2919ae5cd3",
+        "normalized_jsonl_sha256": "fee5b215ab08549c053cbbfffc701caab4450ad11a06f6f011fb3199ee74bf00"
+      }
+    }
+  },
+  "control_digest_encoding": "SHA-256 of actually consumed native rows, each serialized as compact sorted-key JSON followed by LF. Retains integer FSQ codes and both native hand closures.",
+  "controls": {
+    "v4": {
+      "wall_seconds": 37.262,
+      "metrics": {
+        "episodes": 4,
+        "placed": 4,
+        "lifted": 4,
+        "falls": 0,
+        "episodes_aborted": 0,
+        "time_limits": 0,
+        "applied_native_rows": 2186,
+        "probes_total": 32,
+        "probes_passed": 24,
+        "duplicate_probes": 4,
+        "duplicate_changes": 0,
+        "missed_reached_probe_opportunities": 0,
+        "probe_change_fraction": 0.75,
+        "duplicate_change_fraction": 0.0,
+        "match_lock_ok": 1,
+        "mean_max_lift_m": 0.1637879359871772,
+        "mean_goal_error_xy_m": 0.024757110098768284,
+        "mean_release_hold_s": 0.25000000000000017,
+        "box_episodes": 2,
+        "box_placed": 2,
+        "cylinder_episodes": 2,
+        "cylinder_placed": 2
+      },
+      "measured_strict_placement_fraction": 1.0,
+      "per_start": [
+        {
+          "reason": "success",
+          "ticks": 624,
+          "placed": 1,
+          "lifted": 1,
+          "probes": 8,
+          "sensitive": 5,
+          "duplicates": 1,
+          "noisy": 0,
+          "wall_seconds": 11.4,
+          "applied_controls_sha256": "8b6a6daad5ddf8cd67eddea22ca82ac22b5ee1e1736bbd2ee09b07b8cf586e57"
+        },
+        {
+          "reason": "success",
+          "ticks": 553,
+          "placed": 1,
+          "lifted": 1,
+          "probes": 8,
+          "sensitive": 7,
+          "duplicates": 1,
+          "noisy": 0,
+          "wall_seconds": 8.884,
+          "applied_controls_sha256": "896644a1a15547e34b1ea8b158d470622a1fab114fe8baa8620fd6a8085b7804"
+        },
+        {
+          "reason": "success",
+          "ticks": 509,
+          "placed": 1,
+          "lifted": 1,
+          "probes": 8,
+          "sensitive": 5,
+          "duplicates": 1,
+          "noisy": 0,
+          "wall_seconds": 8.404,
+          "applied_controls_sha256": "a31c87f5e7a26d8185146d79a62683037b09acecb0d5a286a374623582a6864d"
+        },
+        {
+          "reason": "success",
+          "ticks": 500,
+          "placed": 1,
+          "lifted": 1,
+          "probes": 8,
+          "sensitive": 7,
+          "duplicates": 1,
+          "noisy": 0,
+          "wall_seconds": 8.413,
+          "applied_controls_sha256": "df1d7b862a7b167f0a419bc7a4e4989635061359181a43a89ff4e1a5ec7310e6"
+        }
+      ]
+    },
+    "p1": {
+      "wall_seconds": 177.472,
+      "metrics": {
+        "episodes": 4,
+        "placed": 3,
+        "lifted": 4,
+        "falls": 0,
+        "episodes_aborted": 0,
+        "time_limits": 1,
+        "applied_native_rows": 2459,
+        "probes_total": 32,
+        "probes_passed": 24,
+        "duplicate_probes": 4,
+        "duplicate_changes": 0,
+        "missed_reached_probe_opportunities": 0,
+        "probe_change_fraction": 0.75,
+        "duplicate_change_fraction": 0.0,
+        "match_lock_ok": 1,
+        "mean_max_lift_m": 0.11291057175164931,
+        "mean_goal_error_xy_m": 0.03961865328356975,
+        "mean_release_hold_s": 0.1875000000000001,
+        "box_episodes": 2,
+        "box_placed": 1,
+        "cylinder_episodes": 2,
+        "cylinder_placed": 2
+      },
+      "measured_strict_placement_fraction": 0.75,
+      "per_start": [
+        {
+          "reason": "success",
+          "ticks": 664,
+          "placed": 1,
+          "lifted": 1,
+          "probes": 8,
+          "sensitive": 6,
+          "duplicates": 1,
+          "noisy": 0,
+          "wall_seconds": 38.164,
+          "applied_controls_sha256": "b3d3c3906158bab72f496eefcc5da86f7eb261930ac1d19ea47483606259b47a"
+        },
+        {
+          "reason": "success",
+          "ticks": 536,
+          "placed": 1,
+          "lifted": 1,
+          "probes": 8,
+          "sensitive": 6,
+          "duplicates": 1,
+          "noisy": 0,
+          "wall_seconds": 43.831,
+          "applied_controls_sha256": "e78864deca91c79a63fe780612c6acdc8b33d030e8dc542cea681619e66fdfff"
+        },
+        {
+          "reason": "time_limit",
+          "ticks": 750,
+          "placed": 0,
+          "lifted": 1,
+          "probes": 8,
+          "sensitive": 6,
+          "duplicates": 1,
+          "noisy": 0,
+          "wall_seconds": 51.111,
+          "applied_controls_sha256": "09e056b47b1e0b7d26bed59917b29d46d400c6d22671b0db179228aee1d8a1d3"
+        },
+        {
+          "reason": "success",
+          "ticks": 509,
+          "placed": 1,
+          "lifted": 1,
+          "probes": 8,
+          "sensitive": 6,
+          "duplicates": 1,
+          "noisy": 0,
+          "wall_seconds": 43.767,
+          "applied_controls_sha256": "7a3a7fac7102cfe57d761cd1f6336de9287b15eeb70e67fd9821b052a3607fd1"
+        }
+      ]
+    },
+    "open_loop": {
+      "wall_seconds": 44.983,
+      "metrics": {
+        "episodes": 4,
+        "placed": 0,
+        "lifted": 1,
+        "falls": 0,
+        "episodes_aborted": 0,
+        "time_limits": 4,
+        "applied_native_rows": 3000,
+        "probes_total": 32,
+        "probes_passed": 0,
+        "duplicate_probes": 4,
+        "duplicate_changes": 0,
+        "missed_reached_probe_opportunities": 0,
+        "probe_change_fraction": 0.0,
+        "duplicate_change_fraction": 0.0,
+        "match_lock_ok": 0,
+        "mean_max_lift_m": 0.04052552468470963,
+        "mean_goal_error_xy_m": 0.15211183010805024,
+        "mean_release_hold_s": 0.0,
+        "box_episodes": 2,
+        "box_placed": 0,
+        "cylinder_episodes": 2,
+        "cylinder_placed": 0
+      },
+      "measured_strict_placement_fraction": 0.0,
+      "per_start": [
+        {
+          "reason": "time_limit",
+          "ticks": 750,
+          "placed": 0,
+          "lifted": 1,
+          "probes": 8,
+          "sensitive": 0,
+          "duplicates": 1,
+          "noisy": 0,
+          "wall_seconds": 11.577,
+          "applied_controls_sha256": "94884e05ecd72f807d5bd9a7f3d8bc7b67ae2def83c59724b9860b428666d85f"
+        },
+        {
+          "reason": "time_limit",
+          "ticks": 750,
+          "placed": 0,
+          "lifted": 0,
+          "probes": 8,
+          "sensitive": 0,
+          "duplicates": 1,
+          "noisy": 0,
+          "wall_seconds": 10.979,
+          "applied_controls_sha256": "fd39b488a0ce689af223387e1d59eb3adc54cfea8d6b105b1dd9d71b4c839a38"
+        },
+        {
+          "reason": "time_limit",
+          "ticks": 750,
+          "placed": 0,
+          "lifted": 0,
+          "probes": 8,
+          "sensitive": 0,
+          "duplicates": 1,
+          "noisy": 0,
+          "wall_seconds": 11.708,
+          "applied_controls_sha256": "94884e05ecd72f807d5bd9a7f3d8bc7b67ae2def83c59724b9860b428666d85f"
+        },
+        {
+          "reason": "time_limit",
+          "ticks": 750,
+          "placed": 0,
+          "lifted": 0,
+          "probes": 8,
+          "sensitive": 0,
+          "duplicates": 1,
+          "noisy": 0,
+          "wall_seconds": 10.632,
+          "applied_controls_sha256": "fd39b488a0ce689af223387e1d59eb3adc54cfea8d6b105b1dd9d71b4c839a38"
+        }
+      ]
+    },
+    "bad_tail": {
+      "wall_seconds": 4.488,
+      "metrics": {
+        "episodes": 4,
+        "placed": 0,
+        "lifted": 0,
+        "falls": 0,
+        "episodes_aborted": 4,
+        "time_limits": 0,
+        "applied_native_rows": 0,
+        "probes_total": 0,
+        "probes_passed": 0,
+        "duplicate_probes": 0,
+        "duplicate_changes": 0,
+        "missed_reached_probe_opportunities": 0,
+        "probe_change_fraction": 0.0,
+        "duplicate_change_fraction": 0.0,
+        "match_lock_ok": 0,
+        "box_episodes": 2,
+        "box_placed": 0,
+        "cylinder_episodes": 2,
+        "cylinder_placed": 0
+      },
+      "measured_strict_placement_fraction": 0.0,
+      "per_start": [
+        {
+          "reason": "aborted",
+          "ticks": 0,
+          "placed": 0,
+          "lifted": 0,
+          "probes": 0,
+          "sensitive": 0,
+          "duplicates": 0,
+          "noisy": 0,
+          "wall_seconds": 1.087,
+          "applied_controls_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "reason": "aborted",
+          "ticks": 0,
+          "placed": 0,
+          "lifted": 0,
+          "probes": 0,
+          "sensitive": 0,
+          "duplicates": 0,
+          "noisy": 0,
+          "wall_seconds": 1.056,
+          "applied_controls_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "reason": "aborted",
+          "ticks": 0,
+          "placed": 0,
+          "lifted": 0,
+          "probes": 0,
+          "sensitive": 0,
+          "duplicates": 0,
+          "noisy": 0,
+          "wall_seconds": 1.101,
+          "applied_controls_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "reason": "aborted",
+          "ticks": 0,
+          "placed": 0,
+          "lifted": 0,
+          "probes": 0,
+          "sensitive": 0,
+          "duplicates": 0,
+          "noisy": 0,
+          "wall_seconds": 1.16,
+          "applied_controls_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    }
+  },
+  "negative_controls": {
+    "missing_submission": {
+      "exception": "SolverMissing",
+      "verified": true
+    },
+    "network": {
+      "actual_offline_exec_sha256": "41dd444561ab008d51d2c976baabd4e41af3f6f0bf7d2439f9e3705efcad819d",
+      "result": "offline",
+      "exitcode": 0,
+      "blocked": [
+        "AF_INET",
+        "AF_INET6"
+      ],
+      "allowed": "AF_UNIX socketpair",
+      "uid": 1000
+    },
+    "invalid_counterfactual_reply": {
+      "actual_reply_valid": true,
+      "exception": "SolverAborted",
+      "diagnostic": "row 1 requires 64 integer codes in [0, 31]",
+      "probe_recorded": false,
+      "physical_rows_applied": 0
+    }
+  }
+}
