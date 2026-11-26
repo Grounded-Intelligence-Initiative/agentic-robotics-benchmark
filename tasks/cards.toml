@@ -347,6 +347,12 @@ summary = "Write the autonomous program of a cabin free-flyer that finds a block
 platforms = ["space"]
 stages = ["behavior"]
 
+[endoscope_camera_assistance_from_video]
+title = "Hold a laparoscope by video alone"
+summary = "Write the controller of a four-joint camera holder that keeps a surgeon's instruments in a usable view through recorded procedures, from the endoscope's video and its own joints alone."
+platforms = ["surgical"]
+stages = ["behavior"]
+
 [hazard_bay_build]
 title = "Rebuild a hazard bay, design and run its fleet"
 summary = "Rebuild a plant's hazard bay in Isaac Sim from photos, design a fleet of flying and ground robots from a catalog, and program it through the job."
