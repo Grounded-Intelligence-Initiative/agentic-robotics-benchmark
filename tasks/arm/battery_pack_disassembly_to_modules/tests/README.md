@@ -256,14 +256,17 @@ hidden set (section 6, the entry "2026-11-25, 10:00 to 11:35"); it scores 0.0000
 revised version, for the cell as it is now, scored `mean_pack_credit` 1.00000 on the hidden set (reward 1.0; one run of a program frozen on the development packs before it) (section 6, the entry "2026-11-25, 13:50 to 21:30").
 
 The anchor and its spread: see the status log (section 6) for the measured runs. `tests/anchor.json` holds the
-value measured natively on the author's server, outside the engine; it has to be re-measured through `ale validate`.
+value measured through `ale validate` on an RTX 3090 host (section 6, the entry "2026-11-26, from 03:54"): the same
+value, in the same steps, as every native run on the author's server.
 
 ## 5. Known limitations and open decisions (version 0.1.0)
 
-- **Not validated in the engine.** No Docker on the author's server: the image has not been built, `ale validate`
-  and `ale run` have not been run (section 6). The verify stage's root-only paths (the cell as the account
-  `packcell` from a private copy, the seccomp launcher, the kit's account clearing) were written after
-  `hazard_bay_build` and `pantry_jar_refilling` but never executed.
+- **Validated in the engine on one host.** `ale validate` passed on 2026-11-26 on the author's validate host (one
+  RTX 3090 on driver 535, rootless Docker without a CPU quota; section 6, the entry "2026-11-26, from 03:54"): the
+  image builds, setup starts the commissioning service, the verify stage's root-only paths ran (the cell as the
+  account `packcell` from a private copy, the seccomp launcher, the kit's account clearing), the untouched sandbox
+  scored 0.0 and the oracle 1.0. Not exercised there: an agent phase (the commissioning sessions as the agent
+  reaches them), any cloud GPU model, a host with a CPU quota.
 - **Difficulty is not measured.** No frontier model has run the task. The design aims at 0.3 or below through
   perception and engineering (millimetre localisation from RGB-D, per-fastener head classification, torque-trace
   logic, the isolation order, a long horizon with limited commissioning), not through penalties; whether it lands
@@ -337,13 +340,16 @@ value measured natively on the author's server, outside the engine; it has to be
   light, grime, dust and labels vary from pack to pack. Not used: a wider placement tolerance of the fixture (a
   program that finds the pack from its silhouette meets it anyway). All are perception or engineering, none a
   penalty.
-- **GPU models.** The task has run on one model only: natively, on the author's RTX 6000 Ada with driver 570 (DLSS
-  falls back to an older denoiser preset there). Since 2026-11-26 `gpu_types` lists `RTX-4090`, `RTX-5090` and
+- **GPU models.** The task has run on two models: natively, on the author's RTX 6000 Ada with driver 570 (DLSS
+  falls back to an older denoiser preset there), and in `ale validate` on an RTX 3090 with driver 535, below
+  Omniverse RTX's R550 floor, with the renderer's driver check off (`--/rtx/verifyDriverVersion/enabled=false` in
+  `packcell/server.py`; the canary judges the frames). Since 2026-11-26 `gpu_types` lists `RTX-4090`, `RTX-5090` and
   `RTX-PRO-6000`, the cloud models on which the benchmark validated the same Isaac Sim 6.2 RTX stack
-  (`hazard_bay_build`), and `RTX-6000-Ada`; the three cloud models follow that validation of the stack, not a run of
-  this task. H100 and H200 stay out (RTX rendering of this stack is unproven there). A model that does not render
+  (`hazard_bay_build`), then `RTX-6000-Ada` and `RTX-3090`; the three cloud models follow that validation of the
+  stack, not a run of this task. H100 and H200 stay out (RTX rendering of this stack is unproven there). A model that does not render
   fails the canary as a task error, never as a 0; a validate per model confirms or corrects the list.
-- **Reproducibility.** PhysX on the CPU repeated the reference's packs on this one machine (section 6); across CPUs
+- **Reproducibility.** PhysX on the CPU repeated the reference's packs on the author's server (section 6), and the
+  validate host (another CPU, an Intel i9-12900K) ran every pack in the same number of steps; across CPUs in general
   it is not expected to be bit-identical, and the renderer is not repeatable even on one GPU. The credit tolerates
   that (it reads where bodies lie), a program's behaviour may not: an agent whose perception is marginal can score
   differently on different hosts.
@@ -1043,6 +1049,53 @@ was done:
 `review/check_copies.py`, `review/test_grader.py` 15, `review/test_practice.py` 8, all ok; the scan for private
 names finds nothing.
 
+**2026-11-26, from 03:54. The first `ale validate`, on an RTX 3090 host (trees `95b843e`, `cf31bdc` and this
+entry's).** Where: the author's second server, used as a validate host (Ubuntu 22.04, Intel i9-12900K, one RTX 3090
+24 GB, NVIDIA driver 535.183.01), the pinned engine `bfb7505`, Docker 29.10.1 in rootless mode (the account has no
+root). Two things of that host differ from an evaluation host and belong to this record:
+
+* The driver is below Omniverse RTX's floor (R550), and the renderer refuses to start on it. `95b843e` turns the
+  check off in both copies of `packcell/server.py` (`--/rtx/verifyDriverVersion/enabled=false`, joined to the Kit
+  folder arguments), as the endoscope task did for the same host; the canary still judges the frames. `RTX-3090`
+  joined both `gpu_types` lists for this run and stays, since validate passed.
+* Rootless Docker there cannot set a CPU quota (the cgroup cpu controller is not delegated to user services), and
+  the engine passes `--cpus 8` to every sandbox. A wrapper in front of the docker CLI dropped `--cpus`, and a wrapper
+  around runc pinned every process started through `docker exec` (the stage commands among them) to 8 CPUs through
+  the OCI field `execCPUAffinity`. The lock records `cpus = 8` as requested; the limit was an affinity, not a quota.
+  Memory (32 GB) and the GPU were the engine's own.
+
+*First run* (03:58, tree `95b843e`; it ended at the image build, so it has no run id): the Dockerfile's self-check
+imported `packcell.scene` as the account `packcell`, and scene's `from pxr import ... PhysxSchema ...` failed
+("cannot import name 'PhysxSchema' from 'pxr'"). Isaac Sim's pip install loads those pxr modules through its
+extensions, inside a running `SimulationApp` (the cell imports scene after it). The task's fault, never met before
+because the image had never been built. `cf31bdc` imports the modules that need no simulator (series, rules, wire,
+kin, sensors, cellproc) and compiles scene, cell and server, still as `packcell`; the cell is unchanged.
+
+*Second run* (`validate-8d636430`, tree `cf31bdc`, 04:20 to 04:38):
+
+    ok    grounded-intelligence-initiative/battery_pack_disassembly_to_modules: untouched={'reward': 0.0}, oracle={'reward': 1.0}
+
+The untouched verdict: "no usable submission (no /home/user/submission/run.sh, or more than 5000 files or
+200 MB)", verify 8 s, no simulator started. The oracle: setup 0.7 s (the givens staged, the commissioning service
+listening on its socket); in the separate verifier sandbox the grader secured the root path, cleared the agent
+account (49 processes killed, the desktop's supervisord programs disabled, 4.1 s), ran the controller behind the
+seccomp guard, and the canary passed (the cell up in 15.2 s, a pack built and rendered in 125.4 s on a cold cache).
+`mean_pack_credit` 1.00000, ratio 1.000, reward 1.0: every pack 1.0 (49, 48, 59, 58, 67 and 69 items placed) in 921,
+852, 1040, 1066, 1151 and 1185 steps, the native runs' steps exactly, 91 to 123 s of wall clock a pack; no
+protective stop, no cell retry, no restart; the probe lock 83 of 83 (53 idle pairs not counted); probe copies 136,
+the true observation's residual the larger in 63; the controller's own time 3.7 s; verify 866 s (natively 1429 to
+2031 s, on a server shared with other jobs).
+
+*In the image* (the same build, no GPU, no network): `review/check_copies.py`, `review/test_rules.py` (41),
+`review/test_sensors.py` (11) and `review/test_practice.py`, and, as the image's account `user` on a writable copy,
+`review/check_numbers.py` (19 statements, 4 documents current) and `review/test_grader.py`: all ok.
+
+*What was decided.* `tests/anchor.json` keeps 1.0, its source now this run; `full_at` stays 0.95 (the validate host
+repeated every pack's steps, so there is still no spread to size it from). `RTX-3090` stays in `gpu_types`. A
+confirmation `ale validate` on the commit of this entry follows; its `ok` line goes into the pull request's
+description. Not exercised: an agent phase in the engine (the commissioning sessions through the agent's client;
+a frontier episode on this host follows), any cloud GPU model, a host with a CPU quota.
+
 ## 7. Final report (2026-11-24, 16:30 EST)
 
 **Since this report:** the kit of upstream #173 and a rebuilt probe copy (section 6, the entry "18:20 to 19:00"),
@@ -1069,6 +1122,10 @@ practice launcher runs a pack as grading does (deadline, own time, the pair coun
 `RTX-5090`, `RTX-PRO-6000` and `RTX-6000-Ada` (the task has run on the last only). The reference scored 1.00000 on
 `f2703af6` in the same steps; the anchor is unchanged; the small checks are as before on `bfc4b3c0`. The `gpu_types`
 paragraph below is superseded by section 5.
+Then (the entry "2026-11-26, from 03:54") the first `ale validate`, on an RTX 3090 host: the image's self-check
+corrected (it imported a module that needs the running simulator), the renderer's driver check off for that host's
+driver; untouched 0.0, oracle 1.0, the reference's packs in the native steps. The anchor's source is that run, and
+everything below that says the engine has not run is superseded by it.
 
 **State.** The folder is complete and committed on the branch `claude/battery-pack-disassembly-8e1039` (not
 pushed, no pull request, nothing outside the folder edited, the coordination sheet untouched). The work stops
